@@ -1,7 +1,7 @@
 'use strict';
 const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
-const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'en', historyEnabled:false};
+const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
 function parseDictionary(text) {
   const entries=[]; let word=null, lines=[];
@@ -66,7 +66,7 @@ class DictionaryView extends ItemView {
         catch(err){new Notice('Could not save word: '+err.message);}
       });
       this.results.createEl('button',{text:'Open source website'}).addEventListener('click',()=>{
-        window.open('https://en.wiktionary.org/wiki/'+encodeURIComponent(result.word),'_blank','noopener,noreferrer');
+        window.open('https://'+(this.plugin.settings.onlineLanguage==='pt'?'pt':'en')+'.wiktionary.org/wiki/'+encodeURIComponent(result.word),'_blank','noopener,noreferrer');
       });
     }catch(err){
       if(token!==this.sequence)return;
@@ -83,13 +83,13 @@ class DictionarySettings extends PluginSettingTab{
     new Setting(el).setName('Dictionary file').setDesc('Path relative to vault, or an exact file name.').addText(t=>t.setValue(this.plugin.settings.dictionaryFileName).onChange(async v=>{this.plugin.settings.dictionaryFileName=v.trim();this.plugin.invalidate();await this.plugin.saveSettings();}));
     new Setting(el).setName('Online fallback').addDropdown(d=>d.addOption('off','Offline only').addOption('ask','Ask before searching').addOption('auto','Search automatically').setValue(this.plugin.settings.onlineMode).onChange(async v=>{this.plugin.settings.onlineMode=v;await this.plugin.saveSettings();}));
     new Setting(el).setName('Ignore accents in search').addToggle(t=>t.setValue(this.plugin.settings.ignoreAccents).onChange(async v=>{this.plugin.settings.ignoreAccents=v;await this.plugin.saveSettings();}));
-    new Setting(el).setName('Online language').setDesc('Free Dictionary API currently supports selected languages; English is the default.').addDropdown(d=>{for(const [k,v] of Object.entries({en:'English',es:'Spanish',fr:'French',de:'German',it:'Italian',pt:'Portuguese',hi:'Hindi'}))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
+    new Setting(el).setName('Online language').setDesc('Select the language used for online definitions. Portuguese is the default for new installations.').addDropdown(d=>{for(const [k,v] of Object.entries({en:'English',es:'Spanish',fr:'French',de:'German',it:'Italian',pt:'Portuguese',hi:'Hindi'}))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
     el.createEl('p',{text:'Online definitions are imported only after you click Save. Existing entries are never overwritten.'});
   }
 }
 module.exports=class AlansOfflineDictionary extends Plugin{
   async onload(){
-    this.settings=Object.assign({},DEFAULTS,await this.loadData());
+    const saved=await this.loadData()||{};this.settings=Object.assign({},DEFAULTS,saved);
     this.cache={path:null,entries:[]};this.dirty=true;
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
     this.addSettingTab(new DictionarySettings(this.app,this));

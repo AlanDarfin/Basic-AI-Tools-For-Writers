@@ -1,57 +1,57 @@
-# Alan's Offline Dictionary — Beta 3 development preview
+# Basic AI Tool for Writers
 
-AI-powered word checker for Obsidian, combining a local Markdown dictionary, AI definitions, translation and contextual synonym suggestions.
+A bilingual, AI-powered writing companion for [Obsidian](https://obsidian.md), available on desktop and mobile.
+
+> Formerly **Alan's Offline Dictionary**. The plugin ID remains `alans-offline-dictionary` so existing installations and settings are preserved.
 
 ## Features
-- AI-only online lookup: OpenAI, Gemini, xAI Grok, Anthropic Claude and a custom OpenAI-compatible HTTPS endpoint.
-- Independently selectable AI providers for **definitions** and **translations**.
-- Define a word, translate a word or meaning, compare original and translated meanings, and request contextual alternatives.
-- Save definitions to an existing Markdown dictionary file. Entries already saved are not overwritten.
-- Interface follows the Obsidian application language: **Portuguese** for Portuguese locales, **English** for all others.
-- Theme-aware, responsive layout designed for desktop and mobile.
 
-## Configuration
-In Obsidian, open **Settings → Community plugins → Alan's Offline Dictionary**. Select the dictionary AI provider and translation AI provider; configure the model and API key for each service. For a custom provider, enter the full HTTPS chat-completions endpoint and model ID. Set the desired definition and translation languages independently.
+- **Definitions**, **synonyms**, and **antonyms**, with context-sensitive suggestions and Markdown-rendered results.
+- **Translation** with independent AI provider, source language (or automatic detection), and target language.
+- **Writing assistant** with custom prompts, selected-text context, copy and optional insert into the editor.
+- Editor context menu actions for translating, defining, rewriting and finding alternatives.
+- **Editable prompts** for definitions, synonyms, antonyms, translation and writing.
+- Automatic storage of new definitions in an existing local Markdown dictionary, without displaying duplicate results.
+- **Portuguese UI** when Obsidian uses Portuguese, **English** otherwise.
+- Settings tabs: **General**, **Providers**, **Models**, **Prompts**.
+- Model catalog and API connection checks.
 
-API credentials are stored in the plugin's Obsidian data file without additional encryption. Do not share or sync this file to untrusted devices. Requests send the selected text and, for writing suggestions, the supplied context to the configured AI service. API costs may apply.
+## Supported AI providers
 
-## Local Markdown dictionary
-The default dictionary is `Dicionario.md`. Entries are grouped under level-one Markdown headings:
+OpenAI, Gemini, Grok (xAI), Claude (Anthropic), Groq Cloud, OpenRouter, Ollama, and custom OpenAI-compatible HTTPS endpoints.
 
-```md
-# Serendipity
+Use separate providers for dictionary queries and translation. Providers require your own credentials, except a typical local Ollama installation. API requests may incur provider charges. Ollama on mobile must use a trusted server reachable from your phone; localhost on a phone is not your computer.
 
-Finding something valuable by chance.
+## Installation
+
+Download `main.js`, `manifest.json` and `styles.css` from the latest GitHub Release and place them in:
+
+```text
+<Vault>/.obsidian/plugins/alans-offline-dictionary/
 ```
 
-## Install manually
-Copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/alans-offline-dictionary/`, then reload the plugin.
+Reload Obsidian and enable **Basic AI Tool for Writers** in Community Plugins. **Do not change the plugin folder ID** when upgrading.
 
-## Status and limitations
-**Beta 3 development preview; not a published release.** Syntax was checked, but real API responses and Obsidian Desktop/Mobile compatibility have not been fully tested. Back up your vault before trying it. Legacy Yomitan ZIP import and traditional online dictionary providers have been removed from the active UI. The plugin's saved Markdown dictionary remains supported. Language detection still uses the optional Translate plugin integration when available.
+## Configuration
 
-## Beta 4 development changes
+Open plugin settings to choose the definition and translation engines, set your model IDs and API keys, and customize prompts. In the sidebar, the translation area has its own provider selector and language pair. Leaving the source language on automatic allows the AI to infer it when you click Translate.
 
-- Automatic AI lookup after typing pauses, plus manual retry.
-- Automatic save of new AI definitions into an existing Markdown dictionary file; no Save button, no overwrite of existing entries. Missing dictionary files are not created automatically.
-- Ollama (local/OpenAI-compatible), OpenRouter and Groq Cloud available for definitions and translation.
-- HTTP errors now include a sanitized provider error message to help diagnose invalid model IDs, request parameters or account issues.
-- Ollama local default endpoint: `http://127.0.0.1:11434/v1/chat/completions`. On Obsidian Mobile, localhost refers to the phone, not the desktop. Use only trusted endpoints and networks.
+The plugin stores API keys in its Obsidian data file **without additional encryption**. Do not publish or sync your configuration to untrusted devices. Text submitted to a provider is sent to that provider for processing.
 
-This remains a development preview; API integrations have not been end-to-end tested on mobile.
+## Local dictionary
 
-## Beta 5 development preview — writer integration
-- In plugin settings, each AI provider has **Test key/connection** (sends a small live test request) and **Fetch models** (loads available model IDs when the provider offers a listing API). Selecting a fetched model stores it as the provider default. Custom OpenAI-compatible endpoints require a manually entered model ID.
-- Editor context menu and commands: translate, define, contextual synonyms, antonyms, rewrite and custom AI prompt. Requires selected text.
-- **Custom AI prompt** and **Generate text with AI** commands open a modal. The modal accepts an instruction, optionally uses selected editor text, shows the result, and offers copy or insert. Text is not replaced automatically.
-- Results use the configured dictionary AI provider; translation from the main dictionary sidebar still uses the separately configured translation provider.
-- Model catalogs and API tests require internet access (except local Ollama). Provider model listings, permission scopes and compatibility can change. API requests may incur costs.
-- This is not a verified release: runtime tests in Obsidian desktop/mobile and API integration tests are still needed.
+By default, the optional local dictionary is `Dicionario.md`. New definitions are saved automatically when that file exists. Existing entries are not overwritten.
 
-## Beta 6 visual preview
-- AI responses are rendered using Obsidian's Markdown renderer; only one definition result is displayed.
-- Translation has source and target language dropdowns and one Translate button. Leave the source field empty to request AI language detection when translating.
-- Settings are organized into General, Providers, Models and Prompts tabs.
-- Editable system prompts for definitions, synonyms, antonyms, translation and writing; placeholders: `{language}`, `{source}`, `{target}`. Defaults request direct answers without filler introductions.
-- The Markdown dictionary still saves generated definitions automatically in the background.
-- Development preview: verify behavior on Obsidian Desktop and Mobile before a public release.
+## Version
+
+**1.0.0 — first stable release.** Built for writers who want word definitions, contextual alternatives, translation and AI-assisted drafting in one place.
+
+## Links
+
+- [GitHub repository](https://github.com/AlanDarfin/Alan-s-Offline-Dictionary)
+- [Releases](https://github.com/AlanDarfin/Alan-s-Offline-Dictionary/releases)
+- [Report an issue](https://github.com/AlanDarfin/Alan-s-Offline-Dictionary/issues)
+
+## Credits
+
+Developed by Alan Darfin. Translation workflow ideas were inspired by the [Obsidian Translate](https://github.com/Fevol/obsidian-translate) plugin; implementation is independent.

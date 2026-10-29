@@ -66,7 +66,7 @@ class DictionaryView extends ItemView {
         catch(err){new Notice('Could not save word: '+err.message);}
       });
       this.results.createEl('button',{text:'Open source website'}).addEventListener('click',()=>{
-        window.open('https://dictionaryapi.dev/','_blank','noopener,noreferrer');
+        window.open('https://en.wiktionary.org/wiki/'+encodeURIComponent(result.word),'_blank','noopener,noreferrer');
       });
     }catch(err){
       if(token!==this.sequence)return;

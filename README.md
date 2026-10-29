@@ -39,3 +39,11 @@ Copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/alans-o
 - Ollama local default endpoint: `http://127.0.0.1:11434/v1/chat/completions`. On Obsidian Mobile, localhost refers to the phone, not the desktop. Use only trusted endpoints and networks.
 
 This remains a development preview; API integrations have not been end-to-end tested on mobile.
+
+## Beta 5 development preview — writer integration
+- In plugin settings, each AI provider has **Test key/connection** (sends a small live test request) and **Fetch models** (loads available model IDs when the provider offers a listing API). Selecting a fetched model stores it as the provider default. Custom OpenAI-compatible endpoints require a manually entered model ID.
+- Editor context menu and commands: translate, define, contextual synonyms, antonyms, rewrite and custom AI prompt. Requires selected text.
+- **Custom AI prompt** and **Generate text with AI** commands open a modal. The modal accepts an instruction, optionally uses selected editor text, shows the result, and offers copy or insert. Text is not replaced automatically.
+- Results use the configured dictionary AI provider; translation from the main dictionary sidebar still uses the separately configured translation provider.
+- Model catalogs and API tests require internet access (except local Ollama). Provider model listings, permission scopes and compatibility can change. API requests may incur costs.
+- This is not a verified release: runtime tests in Obsidian desktop/mobile and API integration tests are still needed.

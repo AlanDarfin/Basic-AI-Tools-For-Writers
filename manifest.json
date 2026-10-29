@@ -1,7 +1,7 @@
 {
   "id": "alans-offline-dictionary",
   "name": "Alan's Offline Dictionary",
-  "version": "2.0.0-beta.4",
+  "version": "2.0.0-beta.5",
   "minAppVersion": "1.0.0",
   "author": "Alan",
   "description": "AI-powered bilingual word checker with dictionary, translation and contextual writing tools.",

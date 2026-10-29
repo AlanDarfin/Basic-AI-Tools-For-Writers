@@ -74,7 +74,7 @@ class DictionaryView extends ItemView{
   translation.createSpan({text:'→',cls:'dictionary-language-arrow'});
   this.targetSelect=translation.createEl('select',{attr:{'aria-label':t('target')}});
   selectOptions(this.targetSelect,Object.entries(LANGS),this.plugin.settings.targetLanguage,v=>{this.plugin.settings.targetLanguage=v;this.plugin.saveSettings();});
-  button(t('translate'),()=>this.translate(this.input.value));
+  const translateButton=translation.createEl('button',{text:t('translate'),cls:'mod-cta'});translateButton.addEventListener('click',()=>this.translate(this.input.value));
   button(t('synonyms'),()=>this.synonyms());
   this.context=root.createEl('textarea',{attr:{placeholder:t('context'),'aria-label':t('context')}});
   this.output=root.createDiv({cls:'dictionary-output'});
@@ -88,14 +88,14 @@ class DictionaryView extends ItemView{
   const matches=entries.filter(e=>normalize(e.word,this.plugin.settings.ignoreAccents).includes(normalize(word,this.plugin.settings.ignoreAccents))).slice(0,30);
   if(!matches.length)return;
   this.localMeaning=matches[0].markdown;this.renderedWord=matches[0].word;
-  for(const entry of matches.slice(0,1)){const el=this.results.createDiv({cls:'dictionary-entry'});await MarkdownRenderer.render(this.app,entry.markdown,el,this.plugin.dictionaryPath(),this);}
+  // Keep the saved entry available for context, but display only the AI result.
  }
  async refreshLocal(word){const entries=await this.plugin.getEntries();const match=entries.find(e=>normalize(e.word)===normalize(word));if(match){this.localMeaning=match.markdown;this.renderedWord=match.word;}}
  async lookup(){
   const word=this.input.value.trim();if(!word)return new Notice(t('noWord'));
   const token=this.sequence;this.output.empty();this.output.createEl('p',{text:'…'});
   try{const result=await this.plugin.lookupAI(word,'definition');if(token!==this.sequence)return;
-   this.output.empty();this.pending=result;this.meaningButton.disabled=false;try{await this.plugin.upsertEntry(result);if(token===this.sequence)await this.refreshLocal(word);}catch(e){console.warn('Dictionary auto-save skipped:',e.message);}
+   this.output.empty();this.pending=result;try{await this.plugin.upsertEntry(result);if(token===this.sequence)await this.refreshLocal(word);}catch(e){console.warn('Dictionary auto-save skipped:',e.message);}
    this.results.empty();this.renderedWord=word;await this.renderText(t('result'),result.definitions.join('\n'));
   }catch(e){if(token===this.sequence)this.showError(e);}
  }

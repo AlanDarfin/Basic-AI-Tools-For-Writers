@@ -55,3 +55,10 @@ By default, the optional local dictionary is `Dicionario.md`. New definitions ar
 ## Credits
 
 Developed by Alan Darfin. Translation workflow ideas were inspired by the [Obsidian Translate](https://github.com/Fevol/obsidian-translate) plugin; implementation is independent.
+
+## 1.1.0 — sidebar chat redesign
+The plugin sidebar now has **Definitions**, **Translation**, and **Chat** tabs. The Chat tab replaces the former mobile popup with a conversation view, Markdown-formatted AI messages, a text composer, Send button, and a Clear button. The conversation is held in memory for the current view/session; it is not permanently stored.
+
+Commands and editor context-menu actions for selected text now switch to Chat and automatically submit a request with that selection. The former **Custom AI prompt** command was removed. Use **Open writing chat** or **Generate text in chat** for freeform requests.
+
+The AI uses recent conversation text for context. Review generated writing before inserting it into a document. This version has been syntax-checked but requires testing on Obsidian Mobile.

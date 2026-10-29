@@ -49,19 +49,19 @@ The **Open source website** action opens the provider's website in your browser.
 
 This repository currently includes the distributable `main.js` and `manifest.json`. To test manually, place them in `.obsidian/plugins/alans-offline-dictionary/`, enable community plugins, and enable Alan's Offline Dictionary.
 
-**Development status:** Experimental. Test on a backup vault before relying on imported content. A full TypeScript source tree, automated test suite, and release build pipeline are planned.
+**Development status:** 2.0.0-beta.1 experimental prerelease. Test on a backup vault before relying on imported content. A full TypeScript source tree, automated test suite, and release build pipeline are planned.
 
 ## Roadmap
 
 - [x] Offline index and flexible parser
 - [x] Online lookup and explicit local import
 - [x] Selected-text search
-- [ ] Automated parser/search tests and CI
+- [x] Initial parser/search tests and CI
 - [ ] Modular TypeScript source and reproducible build
 - [ ] Multiple dictionary files
 - [ ] Search suggestions and fuzzy matching
 - [ ] Search history
-- [ ] Integrated Web Viewer, where supported
+- [ ] Dedicated integrated Web Viewer (word-specific Wiktionary link currently opens through Obsidian/browser handling)
 - [ ] Improved mobile UX
 
 ## Credits

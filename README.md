@@ -47,3 +47,11 @@ This remains a development preview; API integrations have not been end-to-end te
 - Results use the configured dictionary AI provider; translation from the main dictionary sidebar still uses the separately configured translation provider.
 - Model catalogs and API tests require internet access (except local Ollama). Provider model listings, permission scopes and compatibility can change. API requests may incur costs.
 - This is not a verified release: runtime tests in Obsidian desktop/mobile and API integration tests are still needed.
+
+## Beta 6 visual preview
+- AI responses are rendered using Obsidian's Markdown renderer; only one definition result is displayed.
+- Translation has source and target language dropdowns and one Translate button. Leave the source field empty to request AI language detection when translating.
+- Settings are organized into General, Providers, Models and Prompts tabs.
+- Editable system prompts for definitions, synonyms, antonyms, translation and writing; placeholders: `{language}`, `{source}`, `{target}`. Defaults request direct answers without filler introductions.
+- The Markdown dictionary still saves generated definitions automatically in the background.
+- Development preview: verify behavior on Obsidian Desktop and Mobile before a public release.

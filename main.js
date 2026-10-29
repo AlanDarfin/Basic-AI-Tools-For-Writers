@@ -59,11 +59,12 @@ class DictionaryView extends ItemView{
   this.localMeaning=matches[0].markdown;this.meaningButton.disabled=false;
   for(const entry of matches){const el=this.results.createDiv({cls:'dictionary-entry'});await MarkdownRenderer.render(this.app,entry.markdown,el,this.plugin.dictionaryPath(),this);}
  }
+ async refreshLocal(word){const entries=await this.plugin.getEntries();this.results.empty();const match=entries.find(e=>normalize(e.word)===normalize(word));if(match){this.localMeaning=match.markdown;const el=this.results.createDiv({cls:'dictionary-entry'});await MarkdownRenderer.render(this.app,match.markdown,el,this.plugin.dictionaryPath(),this);}}
  async lookup(){
   const word=this.input.value.trim();if(!word)return new Notice(t('noWord'));
   const token=this.sequence;this.output.empty();this.output.createEl('p',{text:'…'});
   try{const result=await this.plugin.lookupAI(word,'definition');if(token!==this.sequence)return;
-   this.output.empty();this.pending=result;this.meaningButton.disabled=false;
+   this.output.empty();this.pending=result;this.meaningButton.disabled=false;try{await this.plugin.upsertEntry(result);if(token===this.sequence)await this.refreshLocal(word);}catch(e){console.warn('Dictionary auto-save skipped:',e.message);}
    this.renderText(t('result'),result.definitions.join('\n'));
   }catch(e){if(token===this.sequence)this.showError(e);}
  }
@@ -170,6 +171,13 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const content=id==='gemini'?data.candidates?.[0]?.content?.parts?.map(p=>p.text||'').join('\n'):id==='claude'?data.content?.map(p=>p.text||'').join('\n'):data.choices?.[0]?.message?.content;
     if(typeof content!=='string'||!content.trim())throw new Error(t('noResult'));
     return {word:term,definitions:[content.slice(0,6000)],source:id};
+  }
+  async upsertEntry(result){
+    const file=this.dictionaryFile();if(!file)return;
+    const word=String(result.word||'').replace(/[\r\n#]/g,' ').trim();if(!word)return;
+    if((await this.getEntries()).some(e=>normalize(e.word)===normalize(word)))return;
+    const content='\n\n---\n\n# '+word+'\n\n'+result.definitions.map(d=>'- '+d.replace(/\r?\n/g,' ')).join('\n')+'\n';
+    await this.app.vault.process(file,old=>old.trimEnd()+content);this.invalidate();
   }
   async importEntry(result){
     const file=this.dictionaryFile();if(!file)throw new Error('Dictionary file not found');

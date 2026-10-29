@@ -49,3 +49,10 @@
 .dictionary-settings-panel{min-width:0;padding-bottom:20px}
 .dictionary-prompt-editor{width:100%;min-width:0;min-height:110px;font-family:var(--font-monospace);font-size:var(--font-ui-small)}
 @media(max-width:360px){.dictionary-translation-bar{gap:4px}.dictionary-translation-bar select{font-size:var(--font-ui-small)}}
+
+/* Stable release: visually distinct dictionary and translation sections */
+.dictionary-section-divider{height:1px;flex:none;width:100%;background:var(--background-modifier-border);margin:8px 0 4px}
+.dictionary-lexical-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+.dictionary-lexical-actions button{min-height:38px}
+.dictionary-translation-engine{grid-column:1/-1;width:100%;min-width:0}
+.dictionary-translation-bar{padding-top:3px}

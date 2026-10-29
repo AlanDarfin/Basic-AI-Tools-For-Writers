@@ -1,7 +1,7 @@
 {
   "id": "alans-offline-dictionary",
   "name": "Basic AI Tool for Writers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minAppVersion": "1.0.0",
   "author": "Alan",
   "description": "AI writing assistant for Obsidian: definitions, synonyms, antonyms, translation and custom prompts.",

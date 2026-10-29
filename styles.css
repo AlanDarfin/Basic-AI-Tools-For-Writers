@@ -56,3 +56,12 @@
 .dictionary-lexical-actions button{min-height:38px}
 .dictionary-translation-engine{grid-column:1/-1;width:100%;min-width:0}
 .dictionary-translation-bar{padding-top:3px}
+
+/* Mobile writing modal: the submit action must remain visible without scrolling */
+.dictionary-writer-modal{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dictionary-writer-modal>.dictionary-modal-primary-actions{display:flex;position:relative;flex-shrink:0;margin-top:2px}
+.dictionary-modal-primary-actions>button{width:100%;min-height:44px}
+.dictionary-writer-modal>.dictionary-modal-result{min-width:0;max-height:45vh;overflow-y:auto}
+.dictionary-modal-result textarea{width:100%;max-height:32vh;min-height:110px}
+.dictionary-modal-result .dictionary-modal-actions{padding-top:8px}
+@media(max-width:600px){.dictionary-writer-modal>textarea:not([readonly]){height:108px;min-height:90px}.dictionary-writer-modal>.dictionary-modal-result{max-height:35vh}}

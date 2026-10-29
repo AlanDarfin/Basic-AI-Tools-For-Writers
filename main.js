@@ -1,5 +1,5 @@
 'use strict';
-const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, Menu, requestUrl} = require('obsidian');
+const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
 const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions'};
@@ -147,7 +147,6 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     }
     this.registerEvent(this.app.workspace.on('editor-menu',(menu,editor)=>{
       const selection=editor.getSelection();if(!selection.trim())return;
-      const submenu=new Menu();
       for(const [id,pt,en] of [['translate','Traduzir','Translate'],['definition','Significado','Definition'],['synonyms','Sinônimos','Synonyms'],['antonyms','Antônimos','Antonyms'],['rewrite','Reescrever','Rewrite'],['custom','Prompt personalizado','Custom prompt']]){
         menu.addItem(item=>item.setTitle(msg(pt,en)).setIcon('sparkles').onClick(()=>new WriterModal(this.app,this,selection,editor,id).open()));
       }

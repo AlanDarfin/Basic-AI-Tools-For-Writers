@@ -1,9 +1,9 @@
 {
   "id": "alans-offline-dictionary",
   "name": "Alan's Offline Dictionary",
-  "version": "1.0.0",
+  "version": "2.0.0-beta.1",
   "minAppVersion": "1.0.0",
   "author": "Alan",
-  "description": "Offline dictionary search from a local file.",
+  "description": "Offline-first personal dictionary with optional online lookup and local imports.",
   "isDesktopOnly": false
 }

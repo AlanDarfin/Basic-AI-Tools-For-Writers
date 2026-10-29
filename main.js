@@ -1,7 +1,7 @@
 'use strict';
 const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
-const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'free',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:''};
+const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'free',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'deepl',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt'};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
 function parseDictionary(text) {
   const entries=[]; let word=null, lines=[];
@@ -36,13 +36,17 @@ class DictionaryView extends ItemView {
     this.saveButton.addEventListener('click',async()=>{if(!this.pending)return;try{await this.plugin.importEntry(this.pending);new Notice('Saved to local dictionary');this.pending=null;this.saveButton.disabled=true;await this.search(this.input.value);}catch(e){new Notice(e.message);}});
     this.onlineButton=root.createEl('button',{text:'Search online / provider'});this.onlineButton.style.marginBottom='10px';
     this.onlineButton.addEventListener('click',()=>{const term=this.input.value.trim();if(term)this.online(term,this.sequence);else new Notice('Enter a word first');});
+    const translation=root.createDiv({cls:'dictionary-translation-controls'});translation.style.display='flex';translation.style.flexWrap='wrap';translation.style.gap='6px';translation.style.margin='10px 0';
+    this.translateButton=translation.createEl('button',{text:'Translate word'});this.translateButton.addEventListener('click',()=>this.translateText(this.input.value.trim()));
+    this.translateMeaningButton=translation.createEl('button',{text:'Translate definitions'});this.translateMeaningButton.disabled=true;this.translateMeaningButton.addEventListener('click',()=>{if(this.pending)this.translateText(this.pending.definitions.join('\\n'));});
+    this.translationResults=root.createDiv({cls:'dictionary-translation-results'});
     this.onlineResults=root.createDiv({cls:'dictionary-online-results'});
     this.results=root.createDiv({cls:'dictionary-results'});
     input.addEventListener('input',()=>this.search(input.value));
     this.input=input;
   }
   async search(query){
-    const token=++this.sequence;this.results.empty();this.onlineResults.empty();this.pending=null;this.saveButton.disabled=true;
+    const token=++this.sequence;this.results.empty();this.onlineResults.empty();this.pending=null;this.saveButton.disabled=true;this.translateMeaningButton.disabled=true;this.translationResults.empty();
     const term=query.trim();if(!term)return;
     const entries=await this.plugin.getEntries();
     if(token!==this.sequence)return;
@@ -67,12 +71,18 @@ class DictionaryView extends ItemView {
     try{
       const result=await this.plugin.lookupProvider(term);
       if(token!==this.sequence)return;
-      target.empty();this.pending=result;this.saveButton.disabled=!result;
+      target.empty();this.pending=result;this.saveButton.disabled=!result;this.translateMeaningButton.disabled=!result;
       if(!result){target.createEl('p',{text:'No definition found from this provider.'});return;}
       target.createEl('h3',{text:result.word});
       const list=target.createEl('ul');for(const definition of result.definitions)list.createEl('li',{text:definition});
       target.createEl('small',{text:'Source: '+(result.source||this.plugin.settings.provider)});
     }catch(err){if(token!==this.sequence)return;target.empty();this.pending=null;this.saveButton.disabled=true;target.createEl('p',{text:'Lookup failed: '+err.message});console.error(err);}
+  }
+  async translateText(value){
+    if(!value){new Notice('Enter a word or search a definition first');return;}
+    const token=this.sequence;this.translationResults.empty();this.translationResults.createEl('p',{text:'Translating...'});
+    try{const output=await this.plugin.translate(value);if(token!==this.sequence)return;this.translationResults.empty();this.translationResults.createEl('strong',{text:'Translation'});this.translationResults.createEl('p',{text:output});this.translationResults.createEl('button',{text:'Copy translation'}).addEventListener('click',()=>navigator.clipboard.writeText(output));}
+    catch(e){if(token!==this.sequence)return;this.translationResults.empty();this.translationResults.createEl('p',{text:'Translation failed: '+e.message});}
   }
   async onClose(){this.sequence++;}
 }
@@ -91,6 +101,13 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(el).setName(label+' model').addText(t=>t.setPlaceholder(defaultModel||'Model ID').setValue(this.plugin.settings.aiModels[id]||defaultModel).onChange(async v=>{this.plugin.settings.aiModels[id]=v.trim();await this.plugin.saveSettings();}));
     }
     new Setting(el).setName('Custom API endpoint').setDesc('Full HTTPS chat completions endpoint URL.').addText(t=>t.setPlaceholder('https://example.com/v1/chat/completions').setValue(this.plugin.settings.customEndpoint||'').onChange(async v=>{this.plugin.settings.customEndpoint=v.trim();await this.plugin.saveSettings();}));
+    new Setting(el).setName('Translation provider').addDropdown(d=>{for(const [k,v] of Object.entries({deepl:'DeepL',google:'Google Cloud Translation',azure:'Microsoft Azure Translator',libre:'LibreTranslate'}))d.addOption(k,v);d.setValue(this.plugin.settings.translationProvider).onChange(async v=>{this.plugin.settings.translationProvider=v;await this.plugin.saveSettings();});});
+    for(const [id,label] of [['deepl','DeepL'],['google','Google Cloud'],['azure','Azure'],['libre','LibreTranslate']]){
+      new Setting(el).setName(label+' translation API key').addText(t=>{t.inputEl.type='password';t.setValue(this.plugin.settings.translationKeys[id]||'').onChange(async v=>{this.plugin.settings.translationKeys[id]=v.trim();await this.plugin.saveSettings();});});
+    }
+    new Setting(el).setName('Translation source language').addText(t=>t.setPlaceholder('auto, en, pt, ja...').setValue(this.plugin.settings.sourceLanguage).onChange(async v=>{this.plugin.settings.sourceLanguage=v.trim().toLowerCase();await this.plugin.saveSettings();}));
+    new Setting(el).setName('Translation target language').addText(t=>t.setPlaceholder('pt').setValue(this.plugin.settings.targetLanguage).onChange(async v=>{this.plugin.settings.targetLanguage=v.trim().toLowerCase();await this.plugin.saveSettings();}));
+    new Setting(el).setName('Translation endpoint').setDesc('Optional HTTPS endpoint for LibreTranslate or DeepL Free. Azure requires your region in the endpoint URL.').addText(t=>t.setPlaceholder('https://...').setValue(this.plugin.settings.translationEndpoint).onChange(async v=>{this.plugin.settings.translationEndpoint=v.trim();await this.plugin.saveSettings();}));
     new Setting(el).setName('Import Yomitan ZIP').setDesc('Select a local Yomitan dictionary ZIP. Files are kept in plugin data, not in your Markdown dictionary.').addButton(b=>b.setButtonText('Choose ZIP').onClick(()=>{const input=document.createElement('input');input.type='file';input.accept='.zip,application/zip';input.onchange=async()=>{const file=input.files?.[0];if(!file)return;try{const count=await this.plugin.importYomitan(await file.arrayBuffer(),file.name);new Notice('Imported '+count+' Yomitan entries');this.display();}catch(e){new Notice('Import failed: '+e.message);}};input.click();}));
     for(const dict of this.plugin.settings.yomitanDictionaries||[]){new Setting(el).setName(dict.name).setDesc(dict.entries.length+' entries').addToggle(t=>t.setValue(dict.enabled!==false).onChange(async v=>{dict.enabled=v;await this.plugin.saveSettings();})).addButton(b=>b.setButtonText('Remove').onClick(async()=>{this.plugin.settings.yomitanDictionaries=this.plugin.settings.yomitanDictionaries.filter(d=>d!==dict);await this.plugin.saveSettings();this.display();}));}
     el.createEl('p',{text:'Online definitions are imported only after you click Save. Existing entries are never overwritten.'});
@@ -123,6 +140,42 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const content=await this.app.vault.cachedRead(file);
     const entries=parseDictionary(content);
     this.cache={path:file.path,entries};this.dirty=false;return entries;
+  }
+  async translate(text){
+    const provider=this.settings.translationProvider||'deepl',key=this.settings.translationKeys?.[provider]||'';
+    const source=(this.settings.sourceLanguage||'auto').toLowerCase(),target=(this.settings.targetLanguage||'pt').toLowerCase();
+    if(!/^[a-z]{2,3}(-[a-z0-9]{2,8})?$/.test(target))throw new Error('Invalid target language');
+    if(text.length>8000)throw new Error('Translation is limited to 8,000 characters per request');
+    const custom=this.settings.translationEndpoint?.trim();let url,headers={},body;
+    if(provider==='deepl'){
+      if(!key)throw new Error('Configure DeepL API key');
+      url=custom||'https://api.deepl.com/v2/translate';
+      headers={'Authorization':'DeepL-Auth-Key '+key,'Content-Type':'application/json'};
+      body={text:[text],target_lang:target.toUpperCase()};if(source!=='auto')body.source_lang=source.toUpperCase();
+    }else if(provider==='google'){
+      if(!key)throw new Error('Configure Google Cloud Translation API key');
+      url='https://translation.googleapis.com/language/translate/v2';
+      headers={'Content-Type':'application/json'};
+      body={q:text,target,format:'text',key};if(source!=='auto')body.source=source;
+    }else if(provider==='azure'){
+      if(!key)throw new Error('Configure Azure API key');
+      url=custom||'https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to='+encodeURIComponent(target);
+      if(source!=='auto'&&!custom)url+='&from='+encodeURIComponent(source);
+      headers={'Ocp-Apim-Subscription-Key':key,'Content-Type':'application/json'};
+      body=[{text}];
+    }else if(provider==='libre'){
+      url=custom||'https://libretranslate.com/translate';
+      headers={'Content-Type':'application/json'};
+      body={q:text,source,target,format:'text'};if(key)body.api_key=key;
+    }else throw new Error('Unsupported translation provider');
+    const parsed=new URL(url);
+    if(parsed.protocol!=='https:'||parsed.username||parsed.password)throw new Error('Translation endpoint must use HTTPS without embedded credentials');
+    const response=await requestUrl({url,method:'POST',headers,body:JSON.stringify(body),throw:false});
+    if(response.status<200||response.status>=300)throw new Error(provider+' HTTP '+response.status);
+    const data=response.json;
+    const translated=provider==='deepl'?data.translations?.[0]?.text:provider==='google'?data.data?.translations?.[0]?.translatedText:provider==='azure'?data[0]?.translations?.[0]?.text:data.translatedText;
+    if(typeof translated!=='string'||!translated.trim())throw new Error('Empty translation response');
+    return translated;
   }
   async lookupAI(term){
     const id=this.settings.provider, lang=this.settings.onlineLanguage||'pt';

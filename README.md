@@ -62,3 +62,8 @@ The plugin sidebar now has **Definitions**, **Translation**, and **Chat** tabs. 
 Commands and editor context-menu actions for selected text now switch to Chat and automatically submit a request with that selection. The former **Custom AI prompt** command was removed. Use **Open writing chat** or **Generate text in chat** for freeform requests.
 
 The AI uses recent conversation text for context. Review generated writing before inserting it into a document. This version has been syntax-checked but requires testing on Obsidian Mobile.
+
+## 1.2.0 — configurable writing assistant
+The **Assistant** settings tab provides a separate AI provider, optional model override, temperature slider (0–2), toggle to omit the temperature parameter, and an editable system prompt. The `{language}` placeholder uses the configured definition language.
+
+These settings apply to the Chat writing assistant only; dictionary and translation engines retain their independent provider and model selections. Some provider models may reject temperature or have a narrower supported range; disable temperature if a request returns an unsupported-parameter error.

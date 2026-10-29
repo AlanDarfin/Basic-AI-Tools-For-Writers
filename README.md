@@ -1,35 +1,69 @@
 # Alan's Offline Dictionary
-A plugin for Obsidian.md that adds a sidebar with your offline dictionary.
 
-# What is this plugin?
-"Alan's Offline Dictionary" — or just "Offline Dictionary" if you’re in a rush — is exactly what it claims to be: a fully local, offline dictionary. In short, you create a note called "Dictionary" — or whatever other name you want (just change it in the settings) — and from there, you add your words and/or grab them from somewhere else. (ChatGPT, maybe?)
+An offline-first personal dictionary for [Obsidian](https://obsidian.md), with optional online lookup and local import.
 
-# Why does this plugin exist?
-I'm a Writer, and having to switch tabs every time I need to check a synonym or antonym drives me nuts. While other plugins do similar things — like "Note Definition" — I don’t like cluttering my writing space. Underlines beneath words saying they have definitions? Nah, I’d rather just search in a menu on the side and move on. While I only partially made this myself — with *a lot* of help from ChatGPT — I did my best to keep this plugin simple and useful. So feel free to suggest new features and other cool ideas!
+## Features
 
-# Note Definition
-Despite the criticism, you *can* use the Note Definition feature to easily add new words to your personal dictionary — it actually works great!
+- Search a Markdown dictionary from the Obsidian sidebar.
+- Case-insensitive and optionally accent-insensitive search.
+- Cached local index, refreshed when the dictionary file changes.
+- Flexible Markdown entries using level-one headings.
+- Optional online lookup using [Free Dictionary API](https://dictionaryapi.dev/).
+- Explicitly save online definitions to your own local Markdown file.
+- Command to search selected text in the editor.
+- No network request when online fallback is disabled.
 
-# How to use it?
-Finally, a quick and dirty tutorial on how to add new words properly to the plugin.
+## Dictionary format
 
-Create something like this in your dictionary note:
+Set the dictionary file path in plugin settings (default: `Dicionario.md`).
+
 ```markdown
+# Melancholy
 
-# word 1 <- required for the plugin to recognize it
+A thoughtful or lingering sadness.
 
-word description <- optional, but mandatory if you don’t want to just collect words like Pokémon, lol
+## Synonyms
+- wistfulness
+- sorrow
 
---- <- required between entries to avoid plugin meltdowns
+---
 
-# word 2
+# Serendipity
 
+Finding something good unexpectedly.
 ```
 
-Besides that, the plugin supports basic Markdown formatting — nothing too fancy (at least from what I tested so far).
+Each level-one heading starts a new entry. Separators are optional. Lower-level headings remain inside an entry.
 
-Credits
+## Online lookup
 
-Alan – The mastermind behind it all
-ChatGPT (aka GePeTo) – Did most of the coding (thank you, human evolution, you saved my afternoon)
-Peter Griffin – He is the real Alan's Offline Dictionary.
+When a word is missing locally, choose between offline-only, ask-before-searching (default), and automatic online search.
+
+The plugin queries Free Dictionary API only when online lookup is requested or automatic fallback is enabled. The selected language can be changed in settings. Coverage varies by language; not all words or languages are supported.
+
+Online results are **not** saved automatically. Click **Save to local dictionary** to append the definitions to your Markdown file. Existing entries are not overwritten. Check the source's terms and attribution requirements before redistributing imported content.
+
+The **Open source website** action opens the provider's website in your browser. An embedded Obsidian Web Viewer is not implemented yet.
+
+## Installation
+
+This repository currently includes the distributable `main.js` and `manifest.json`. To test manually, place them in `.obsidian/plugins/alans-offline-dictionary/`, enable community plugins, and enable Alan's Offline Dictionary.
+
+**Development status:** Experimental. Test on a backup vault before relying on imported content. A full TypeScript source tree, automated test suite, and release build pipeline are planned.
+
+## Roadmap
+
+- [x] Offline index and flexible parser
+- [x] Online lookup and explicit local import
+- [x] Selected-text search
+- [ ] Automated parser/search tests and CI
+- [ ] Modular TypeScript source and reproducible build
+- [ ] Multiple dictionary files
+- [ ] Search suggestions and fuzzy matching
+- [ ] Search history
+- [ ] Integrated Web Viewer, where supported
+- [ ] Improved mobile UX
+
+## Credits
+
+Created by Alan with help from ChatGPT.

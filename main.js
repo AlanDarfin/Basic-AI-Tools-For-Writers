@@ -54,11 +54,11 @@ class WriterModal extends Modal{
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
  getViewType(){return VIEW;}
- getDisplayText(){return t('title');}
+ getDisplayText(){return 'Basic AI Tool for Writers';}
  getIcon(){return 'book-open';}
  async onOpen(){
   this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content'});
-  root.createEl('h3',{text:t('title'),cls:'dictionary-heading'});
+  root.createEl('h3',{text:'Basic AI Tool for Writers',cls:'dictionary-heading'});
   this.input=root.createEl('input',{attr:{type:'search',placeholder:t('search'),'aria-label':t('search')}});
   const controls=root.createDiv({cls:'dictionary-controls'});
   this.provider=controls.createEl('select',{attr:{'aria-label':t('provider')}});

@@ -77,3 +77,11 @@ This repository currently includes the distributable `main.js` and `manifest.jso
 ## Credits
 
 Created by Alan with help from ChatGPT.
+
+## Translation (development preview)
+
+The dictionary sidebar now offers **Translate word** and **Translate definitions** actions. The original dictionary entry is preserved; translations appear separately and can be copied.
+
+Supported translation API integrations: DeepL, Google Cloud Translation, Microsoft Azure Translator, and LibreTranslate. Configure the provider, source/target language codes, and your own API credentials under plugin settings. LibreTranslate supports a custom HTTPS server; DeepL supports an endpoint override. Azure subscriptions may require a region-specific endpoint. API provider costs and language support vary.
+
+This feature draws UX inspiration from [Obsidian Translate](https://github.com/Fevol/obsidian-translate) but uses independent implementation. It is an untested development preview, not a published release. API keys are stored in Obsidian plugin settings without encryption; avoid syncing these settings to untrusted devices. Text is sent to the selected provider only when translation is requested.

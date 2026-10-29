@@ -1,9 +1,9 @@
 {
   "id": "alans-offline-dictionary",
-  "name": "Alan's Offline Dictionary",
-  "version": "2.0.0-beta.6",
+  "name": "Basic AI Tool for Writers",
+  "version": "1.0.0",
   "minAppVersion": "1.0.0",
   "author": "Alan",
-  "description": "AI-powered bilingual word checker with dictionary, translation and contextual writing tools.",
+  "description": "AI writing assistant for Obsidian: definitions, synonyms, antonyms, translation and custom prompts.",
   "isDesktopOnly": false
 }

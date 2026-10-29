@@ -85,3 +85,11 @@ The dictionary sidebar now offers **Translate word** and **Translate definitions
 Supported translation API integrations: DeepL, Google Cloud Translation, Microsoft Azure Translator, and LibreTranslate. Configure the provider, source/target language codes, and your own API credentials under plugin settings. LibreTranslate supports a custom HTTPS server; DeepL supports an endpoint override. Azure subscriptions may require a region-specific endpoint. API provider costs and language support vary.
 
 This feature draws UX inspiration from [Obsidian Translate](https://github.com/Fevol/obsidian-translate) but uses independent implementation. It is an untested development preview, not a published release. API keys are stored in Obsidian plugin settings without encryption; avoid syncing these settings to untrusted devices. Text is sent to the selected provider only when translation is requested.
+
+## Writer tools and FastText detection bridge (development)
+
+The sidebar adds **Detect language**, **Compare meaning**, and **Contextual synonyms**. Compare meaning displays the original definition and translated version side-by-side in sequence without overwriting the source. Contextual synonyms use the currently selected and configured AI dictionary provider and can include an optional sentence to clarify nuance and register.
+
+Language detection can use the public API of the separately installed [Obsidian Translate](https://github.com/Fevol/obsidian-translate) plugin. If Translate is configured to use FastText, this feature benefits from its FastText language detector; **this plugin does not bundle or independently run FastText**. Alternatively, select manual source language in settings. Detecting very short words can be unreliable.
+
+These features are experimental and have not yet been validated on desktop and mobile. The AI writer request sends the word and optional context to the selected AI provider, potentially incurring API costs.

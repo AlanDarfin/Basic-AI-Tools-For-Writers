@@ -21,3 +21,13 @@
 .dictionary-error{color:var(--text-error);padding:8px;border-left:3px solid var(--text-error)}
 .dictionary-view-content button:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:340px){.dictionary-controls,.dictionary-actions{grid-template-columns:1fr}.dictionary-controls select:first-child{grid-column:auto}}
+
+/* Provider model catalog and writing assistant */
+.dictionary-model-catalog{margin-top:20px;display:flex;flex-direction:column;gap:12px}
+.dictionary-model-provider{padding:12px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);background:var(--background-secondary);display:flex;flex-direction:column;gap:8px;min-width:0}
+.dictionary-model-actions,.dictionary-modal-actions{display:flex;flex-wrap:wrap;gap:8px}
+.dictionary-model-provider select{width:100%;min-width:0;padding:7px;border-radius:var(--radius-s)}
+.dictionary-model-provider small{color:var(--text-muted);overflow-wrap:anywhere}
+.dictionary-writer-modal{display:flex;flex-direction:column;gap:10px}
+.dictionary-writer-modal textarea{width:100%;min-height:90px;resize:vertical;border-radius:var(--radius-m);padding:10px;background:var(--background-primary);color:var(--text-normal)}
+.dictionary-writer-modal textarea[readonly]{background:var(--background-secondary);min-height:170px}

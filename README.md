@@ -29,3 +29,13 @@ Copy `main.js`, `manifest.json` and `styles.css` into `.obsidian/plugins/alans-o
 
 ## Status and limitations
 **Beta 3 development preview; not a published release.** Syntax was checked, but real API responses and Obsidian Desktop/Mobile compatibility have not been fully tested. Back up your vault before trying it. Legacy Yomitan ZIP import and traditional online dictionary providers have been removed from the active UI. The plugin's saved Markdown dictionary remains supported. Language detection still uses the optional Translate plugin integration when available.
+
+## Beta 4 development changes
+
+- Automatic AI lookup after typing pauses, plus manual retry.
+- Automatic save of new AI definitions into an existing Markdown dictionary file; no Save button, no overwrite of existing entries. Missing dictionary files are not created automatically.
+- Ollama (local/OpenAI-compatible), OpenRouter and Groq Cloud available for definitions and translation.
+- HTTP errors now include a sanitized provider error message to help diagnose invalid model IDs, request parameters or account issues.
+- Ollama local default endpoint: `http://127.0.0.1:11434/v1/chat/completions`. On Obsidian Mobile, localhost refers to the phone, not the desktop. Use only trusted endpoints and networks.
+
+This remains a development preview; API integrations have not been end-to-end tested on mobile.

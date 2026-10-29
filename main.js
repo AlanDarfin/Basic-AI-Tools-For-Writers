@@ -42,12 +42,33 @@ class WriterModal extends Modal{
   const defaults={definition:msg('Explique o significado da seleção.','Explain the meaning of the selection.'),translate:msg('Traduza a seleção.','Translate the selection.'),synonyms:msg('Sugira sinônimos contextuais para a seleção.','Suggest contextual synonyms for the selection.'),antonyms:msg('Sugira antônimos contextuais para a seleção.','Suggest contextual antonyms for the selection.'),rewrite:msg('Reescreva a seleção melhorando a clareza e preservando o sentido.','Rewrite the selection for clarity while preserving meaning.'),custom:''};
   prompt.value=defaults[this.mode]||'';
   if(this.selection)c.createEl('p',{text:msg('Seleção: ','Selection: ')+this.selection.slice(0,220),cls:'dictionary-muted'});
-  const buttons=c.createDiv({cls:'dictionary-modal-actions'});
-  const run=buttons.createEl('button',{text:msg('Gerar','Generate'),cls:'mod-cta'});
-  const result=c.createEl('textarea',{attr:{'aria-label':msg('Resultado','Result')}});result.rows=9;result.style.width='100%';result.readOnly=true;
-  run.addEventListener('click',async()=>{const task=prompt.value.trim();if(!task)return new Notice(msg('Escreva uma instrução.','Enter an instruction.'));run.disabled=true;result.value=msg('Gerando…','Generating…');try{result.value=await this.plugin.generateWriting(task,this.selection);}catch(e){result.value=e.message;}finally{run.disabled=false;}});
-  buttons.createEl('button',{text:msg('Copiar','Copy')}).addEventListener('click',()=>{if(result.value)navigator.clipboard?.writeText(result.value);});
-  if(this.editor)buttons.createEl('button',{text:msg('Inserir no editor','Insert into editor')}).addEventListener('click',()=>{if(!result.value||result.value===msg('Gerando…','Generating…'))return;const editor=this.editor;const original=this.selection;if(original&&editor.getSelection()!==original){new Notice(msg('A seleção mudou; resultado não inserido.','Selection changed; result not inserted.'));return;}editor.replaceSelection(result.value);this.close();});
+  const buttons=c.createDiv({cls:'dictionary-modal-actions dictionary-modal-primary-actions'});
+  const run=buttons.createEl('button',{text:msg('Enviar prompt','Send prompt'),cls:'mod-cta'});
+  run.type='button';
+  const resultArea=c.createDiv({cls:'dictionary-modal-result'});
+  resultArea.style.display='none';
+  resultArea.createEl('h4',{text:msg('Resposta da IA','AI response')});
+  const result=resultArea.createEl('textarea',{attr:{'aria-label':msg('Resultado','Result')}});result.rows=6;result.readOnly=true;
+  const resultActions=resultArea.createDiv({cls:'dictionary-modal-actions'});
+  const copy=resultActions.createEl('button',{text:msg('Copiar','Copy')});
+  copy.type='button';
+  copy.addEventListener('click',()=>{if(result.value&&result.dataset.ready==='true')navigator.clipboard?.writeText(result.value);});
+  if(this.editor){
+    const insert=resultActions.createEl('button',{text:msg('Inserir no editor','Insert into editor')});
+    insert.type='button';
+    insert.addEventListener('click',()=>{if(result.dataset.ready!=='true')return;const editor=this.editor;const original=this.selection;if(original&&editor.getSelection()!==original){new Notice(msg('A seleção mudou; resultado não inserido.','Selection changed; result not inserted.'));return;}editor.replaceSelection(result.value);this.close();});
+  }
+  const send=async()=>{
+    const task=prompt.value.trim();
+    if(!task)return new Notice(msg('Escreva uma instrução.','Enter an instruction.'));
+    run.disabled=true;run.setText(msg('Enviando…','Sending…'));
+    resultArea.style.display='block';result.dataset.ready='false';result.value=msg('Gerando resposta…','Generating response…');
+    try{result.value=await this.plugin.generateWriting(task,this.selection);result.dataset.ready='true';}
+    catch(e){result.value=msg('Erro: ','Error: ')+(e?.message||String(e));}
+    finally{run.disabled=false;run.setText(msg('Enviar prompt','Send prompt'));}
+  };
+  run.addEventListener('click',send);
+  prompt.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();send();}});
  }
  onClose(){this.contentEl.empty();}
 }

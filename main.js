@@ -33,64 +33,25 @@ const PROMPT_DEFAULTS={
 const LANGS={pt:'Português',en:'English',es:'Español',fr:'Français',de:'Deutsch',it:'Italiano',ja:'日本語'};
 function selectOptions(el,options,value,onChange){for(const [id,label] of options){const opt=el.createEl('option',{text:label});opt.value=id;}el.value=value;el.addEventListener('change',()=>onChange(el.value));}
 
-class WriterModal extends Modal{
- constructor(app,plugin,selection='',editor=null,mode='custom'){super(app);this.plugin=plugin;this.selection=selection;this.editor=editor;this.mode=mode;}
- onOpen(){
-  const c=this.contentEl;c.empty();c.addClass('dictionary-writer-modal');
-  c.createEl('h3',{text:msg('Assistente de escrita','Writing assistant')});
-  const prompt=c.createEl('textarea',{attr:{placeholder:msg('O que a IA deve fazer?','What should AI do?')}});prompt.rows=5;prompt.style.width='100%';
-  const defaults={definition:msg('Explique o significado da seleção.','Explain the meaning of the selection.'),translate:msg('Traduza a seleção.','Translate the selection.'),synonyms:msg('Sugira sinônimos contextuais para a seleção.','Suggest contextual synonyms for the selection.'),antonyms:msg('Sugira antônimos contextuais para a seleção.','Suggest contextual antonyms for the selection.'),rewrite:msg('Reescreva a seleção melhorando a clareza e preservando o sentido.','Rewrite the selection for clarity while preserving meaning.'),custom:''};
-  prompt.value=defaults[this.mode]||'';
-  if(this.selection)c.createEl('p',{text:msg('Seleção: ','Selection: ')+this.selection.slice(0,220),cls:'dictionary-muted'});
-  const buttons=c.createDiv({cls:'dictionary-modal-actions dictionary-modal-primary-actions'});
-  const run=buttons.createEl('button',{text:msg('Enviar prompt','Send prompt'),cls:'mod-cta'});
-  run.type='button';
-  const resultArea=c.createDiv({cls:'dictionary-modal-result'});
-  resultArea.style.display='none';
-  resultArea.createEl('h4',{text:msg('Resposta da IA','AI response')});
-  const result=resultArea.createEl('textarea',{attr:{'aria-label':msg('Resultado','Result')}});result.rows=6;result.readOnly=true;
-  const resultActions=resultArea.createDiv({cls:'dictionary-modal-actions'});
-  const copy=resultActions.createEl('button',{text:msg('Copiar','Copy')});
-  copy.type='button';
-  copy.addEventListener('click',()=>{if(result.value&&result.dataset.ready==='true')navigator.clipboard?.writeText(result.value);});
-  if(this.editor){
-    const insert=resultActions.createEl('button',{text:msg('Inserir no editor','Insert into editor')});
-    insert.type='button';
-    insert.addEventListener('click',()=>{if(result.dataset.ready!=='true')return;const editor=this.editor;const original=this.selection;if(original&&editor.getSelection()!==original){new Notice(msg('A seleção mudou; resultado não inserido.','Selection changed; result not inserted.'));return;}editor.replaceSelection(result.value);this.close();});
-  }
-  const send=async()=>{
-    const task=prompt.value.trim();
-    if(!task)return new Notice(msg('Escreva uma instrução.','Enter an instruction.'));
-    run.disabled=true;run.setText(msg('Enviando…','Sending…'));
-    resultArea.style.display='block';result.dataset.ready='false';result.value=msg('Gerando resposta…','Generating response…');
-    try{result.value=await this.plugin.generateWriting(task,this.selection);result.dataset.ready='true';}
-    catch(e){result.value=msg('Erro: ','Error: ')+(e?.message||String(e));}
-    finally{run.disabled=false;run.setText(msg('Enviar prompt','Send prompt'));}
-  };
-  run.addEventListener('click',send);
-  prompt.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();send();}});
- }
- onClose(){this.contentEl.empty();}
-}
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
  getViewType(){return VIEW;}
  getDisplayText(){return 'Basic AI Tool for Writers';}
  getIcon(){return 'book-open';}
  async onOpen(){
-  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content'});
-  root.createEl('h3',{text:'Basic AI Tool for Writers',cls:'dictionary-heading'});
-  this.input=root.createEl('input',{attr:{type:'search',placeholder:t('search'),'aria-label':t('search')}});
-  const controls=root.createDiv({cls:'dictionary-controls'});
+  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});this.panels={definition:defs,translation:translations,chat};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat']]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
+  defs.createEl('h3',{text:'Basic AI Tool for Writers',cls:'dictionary-heading'});
+  this.input=defs.createEl('input',{attr:{type:'search',placeholder:t('search'),'aria-label':t('search')}});
+  const controls=defs.createDiv({cls:'dictionary-controls'});
   this.provider=controls.createEl('select',{attr:{'aria-label':t('provider')}});
   selectOptions(this.provider,AI_PROVIDERS,this.plugin.settings.provider,v=>{this.plugin.settings.provider=v;this.plugin.saveSettings();if(this.input.value.trim())this.lookup();});
   this.language=controls.createEl('select',{attr:{'aria-label':t('language')}});
   selectOptions(this.language,Object.entries(LANGS),this.plugin.settings.onlineLanguage,v=>{this.plugin.settings.onlineLanguage=v;this.plugin.saveSettings();if(this.input.value.trim())this.lookup();});
   this.lookupButton=controls.createEl('button',{text:t('lookup'),cls:'mod-cta'});this.lookupButton.addEventListener('click',()=>this.lookup());
-  const actions=root.createDiv({cls:'dictionary-actions dictionary-lexical-actions'});
+  const actions=defs.createDiv({cls:'dictionary-actions dictionary-lexical-actions'});
   const button=(label,fn)=>{const b=actions.createEl('button',{text:label});b.addEventListener('click',fn);return b;};
-  root.createDiv({cls:'dictionary-section-divider',attr:{role:'separator'}});
-  const translation=root.createDiv({cls:'dictionary-translation-bar'});
+  
+  const translation=translations.createDiv({cls:'dictionary-translation-bar'});this.translationInput=translations.createEl('textarea',{attr:{placeholder:msg('Texto para traduzir','Text to translate')}});
   this.translationEngine=translation.createEl('select',{cls:'dictionary-translation-engine',attr:{'aria-label':t('transProvider')}});
   selectOptions(this.translationEngine,AI_PROVIDERS,this.plugin.settings.translationProvider,v=>{this.plugin.settings.translationProvider=v;this.plugin.saveSettings();});
   this.sourceSelect=translation.createEl('select',{attr:{'aria-label':t('source')}});
@@ -98,13 +59,39 @@ class DictionaryView extends ItemView{
   translation.createSpan({text:'→',cls:'dictionary-language-arrow'});
   this.targetSelect=translation.createEl('select',{attr:{'aria-label':t('target')}});
   selectOptions(this.targetSelect,Object.entries(LANGS),this.plugin.settings.targetLanguage,v=>{this.plugin.settings.targetLanguage=v;this.plugin.saveSettings();});
-  const translateButton=translation.createEl('button',{text:t('translate'),cls:'mod-cta'});translateButton.addEventListener('click',()=>this.translate(this.input.value));
+  const translateButton=translation.createEl('button',{text:t('translate'),cls:'mod-cta'});translateButton.addEventListener('click',()=>this.translate(this.translationInput.value));
   button(t('synonyms'),()=>this.lexical('synonyms'));
   button(t('antonyms'),()=>this.lexical('antonyms'));
-  this.context=root.createEl('textarea',{attr:{placeholder:t('context'),'aria-label':t('context')}});
-  this.output=root.createDiv({cls:'dictionary-output'});
-  this.results=root.createDiv({cls:'dictionary-results'});this.renderedWord='';
+  this.context=defs.createEl('textarea',{attr:{placeholder:t('context'),'aria-label':t('context')}});
+  this.output=defs.createDiv({cls:'dictionary-output'});
+  this.results=defs.createDiv({cls:'dictionary-results'});this.renderedWord='';
+  this.translationOutput=translations.createDiv({cls:'dictionary-output'});
+  const header=chat.createDiv({cls:'writer-chat-header'});header.createEl('strong',{text:msg('Assistente de escrita','Writing assistant')});
+  header.createEl('button',{text:msg('Limpar','Clear')}).addEventListener('click',()=>{this.chatHistory=[];this.chatMessages.empty();});
+  this.chatMessages=chat.createDiv({cls:'writer-chat-messages'});this.chatHistory=this.chatHistory||[];
+  const composer=chat.createDiv({cls:'writer-chat-composer'});this.chatInput=composer.createEl('textarea',{attr:{placeholder:msg('Escreva uma mensagem…','Write a message…')}});
+  composer.createEl('button',{text:msg('Enviar','Send'),cls:'mod-cta'}).addEventListener('click',()=>this.sendChat());
+  this.chatInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this.sendChat();}});
+  this.switchTab('definition');
   let debounce;this.input.addEventListener('input',()=>{clearTimeout(debounce);this.search(this.input.value);debounce=setTimeout(()=>{if(this.input.value.trim())this.lookup();},650);});
+ }
+ switchTab(id){for(const [key,p] of Object.entries(this.panels)){p.style.display=key===id?'flex':'none';this.tabs[key].classList.toggle('is-active',key===id);}this.activeTab=id;}
+ async addChat(role,value){const bubble=this.chatMessages.createDiv({cls:'writer-chat-bubble writer-chat-'+role});bubble.createEl('small',{text:role==='user'?msg('Você','You'):'AI'});const body=bubble.createDiv({cls:'markdown-rendered'});if(role==='assistant')await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);else body.setText(value);this.chatMessages.scrollTop=this.chatMessages.scrollHeight;return bubble;}
+ async sendChat(){
+  if(this.chatBusy)return;const value=this.chatInput.value.trim();if(!value)return;
+  this.chatInput.value='';this.chatBusy=true;await this.addChat('user',value);
+  const history=this.chatHistory.slice(-8).map(x=>x.role+': '+x.content).join('\n\n');
+  this.chatHistory.push({role:'user',content:value});
+  const loading=await this.addChat('assistant','…');
+  try{const answer=await this.plugin.generateWriting('Conversation so far:\n'+history+'\nUser: '+value,'');loading.remove();await this.addChat('assistant',answer);this.chatHistory.push({role:'assistant',content:answer});}
+  catch(e){loading.remove();await this.addChat('assistant',msg('Erro: ','Error: ')+e.message);}
+  finally{this.chatBusy=false;}
+ }
+ async receiveSelection(selection,mode){
+  this.switchTab('chat');
+  const tasks={translate:msg('Traduza este texto:','Translate this text:'),definition:msg('Explique este texto:','Explain this text:'),synonyms:msg('Sugira sinônimos para:','Suggest synonyms for:'),antonyms:msg('Sugira antônimos para:','Suggest antonyms for:'),rewrite:msg('Reescreva este texto:','Rewrite this text:')};
+  this.chatInput.value=(tasks[mode]||'')+'\n\n'+selection;
+  await this.sendChat();
  }
  async search(query){
   const token=++this.sequence;this.results.empty();this.output.empty();this.pending=null;this.localMeaning='';this.renderedWord='';
@@ -124,10 +111,10 @@ class DictionaryView extends ItemView{
    this.results.empty();this.renderedWord=word;await this.renderText(t('result'),result.definitions.join('\n'));
   }catch(e){if(token===this.sequence)this.showError(e);}
  }
- async renderText(title,value){const card=this.output.createDiv({cls:'dictionary-card'});card.createEl('h4',{text:title});const body=card.createDiv({cls:'dictionary-markdown markdown-rendered'});await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);card.createEl('button',{text:t('copy')}).addEventListener('click',()=>navigator.clipboard?.writeText(value));}
+ async renderText(title,value,container=this.output){const card=container.createDiv({cls:'dictionary-card'});card.createEl('h4',{text:title});const body=card.createDiv({cls:'dictionary-markdown markdown-rendered'});await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);card.createEl('button',{text:t('copy')}).addEventListener('click',()=>navigator.clipboard?.writeText(value));}
  showError(e){this.output.empty();this.output.createEl('p',{text:t('error')+': '+e.message,cls:'dictionary-error'});}
- async translate(value){if(!value.trim())return new Notice(t('noWord'));const token=this.sequence;this.output.empty();this.output.createEl('p',{text:'…'});
-  try{const result=await this.plugin.translateAI(value);if(token!==this.sequence)return;this.output.empty();await this.renderText(t('translation'),result);}catch(e){if(token===this.sequence)this.showError(e);}
+ async translate(value){if(!value.trim())return new Notice(t('noWord'));const token=this.sequence;const out=this.translationOutput;out.empty();out.createEl('p',{text:'…'});
+  try{const result=await this.plugin.translateAI(value);if(token!==this.sequence)return;out.empty();await this.renderText(t('translation'),result,out);}catch(e){if(token===this.sequence){out.empty();out.createEl('p',{text:e.message,cls:'dictionary-error'});}}
  }
  async detect(){const word=this.input.value.trim();if(!word)return new Notice(t('noWord'));this.output.empty();try{const d=await this.plugin.detectLanguage(word);await this.renderText(t('detect'),d.language+' ('+d.source+')');}catch(e){this.showError(e);}}
  async compare(){const value=this.pending?.definitions?.join('\n')||this.localMeaning;if(!value)return new Notice(t('noResult'));const token=this.sequence;this.output.empty();try{const translated=await this.plugin.translateAI(value);if(token!==this.sequence)return;await this.renderText(t('original'),value);await this.renderText(t('translated'),translated);}catch(e){if(token===this.sequence)this.showError(e);}}
@@ -199,21 +186,23 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.addRibbonIcon('book-open','Offline Dictionary',()=>this.activateView());
     this.addCommand({id:'open-dictionary-view',name:t('title'),callback:()=>this.activateView()});
     this.addCommand({id:'search-selected-word',name:t('lookup'),editorCallback:async editor=>{const term=editor.getSelection().trim();if(!term){new Notice('Select a word first.');return;}await this.activateView();const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;if(view?.input){view.input.value=term;await view.search(term);await view.lookup();}}});
-    this.addCommand({id:'custom-ai-prompt',name:msg('Prompt personalizado de IA','Custom AI prompt'),editorCallback:editor=>new WriterModal(this.app,this,editor.getSelection(),editor).open()});
-    this.addCommand({id:'generate-ai-text',name:msg('Gerar texto com IA','Generate text with AI'),callback:()=>new WriterModal(this.app,this).open()});
+    this.addCommand({id:'open-ai-chat',name:msg('Abrir chat de escrita','Open writing chat'),callback:()=>this.openChat()});
+    this.addCommand({id:'generate-ai-text',name:msg('Gerar texto no chat','Generate text in chat'),callback:()=>this.openChat()});
     for(const [id,pt,en] of [['translate','Traduzir seleção','Translate selection'],['definition','Significado da seleção','Define selection'],['synonyms','Sinônimos da seleção','Selection synonyms'],['antonyms','Antônimos da seleção','Selection antonyms'],['rewrite','Reescrever seleção','Rewrite selection']]){
-      this.addCommand({id:'ai-'+id+'-selection',name:msg(pt,en),editorCallback:editor=>{const selected=editor.getSelection();if(!selected.trim())return new Notice(t('noWord'));new WriterModal(this.app,this,selected,editor,id).open();}});
+      this.addCommand({id:'ai-'+id+'-selection',name:msg(pt,en),editorCallback:async editor=>{const selection=editor.getSelection();if(!selection.trim())return new Notice(t('noWord'));await this.sendSelectionToChat(selection,id);}});
     }
     this.registerEvent(this.app.workspace.on('editor-menu',(menu,editor)=>{
       const selection=editor.getSelection();if(!selection.trim())return;
-      for(const [id,pt,en] of [['translate','Traduzir','Translate'],['definition','Significado','Definition'],['synonyms','Sinônimos','Synonyms'],['antonyms','Antônimos','Antonyms'],['rewrite','Reescrever','Rewrite'],['custom','Prompt personalizado','Custom prompt']]){
-        menu.addItem(item=>item.setTitle(msg(pt,en)).setIcon('sparkles').onClick(()=>new WriterModal(this.app,this,selection,editor,id).open()));
+      for(const [id,pt,en] of [['translate','Traduzir','Translate'],['definition','Significado','Definition'],['synonyms','Sinônimos','Synonyms'],['antonyms','Antônimos','Antonyms'],['rewrite','Reescrever','Rewrite']]){
+        menu.addItem(item=>item.setTitle(msg(pt,en)).setIcon('sparkles').onClick(()=>this.sendSelectionToChat(selection,id)));
       }
     }));
     this.registerEvent(this.app.vault.on('modify',f=>{if(f.path===this.dictionaryPath())this.invalidate();}));
     this.registerEvent(this.app.vault.on('rename',()=>this.invalidate()));
     this.registerEvent(this.app.vault.on('delete',()=>this.invalidate()));
   }
+  async openChat(){await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('chat');}
+  async sendSelectionToChat(selection,mode){await this.openChat();await this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.receiveSelection(selection,mode);}
   invalidate(){this.dirty=true;}
   dictionaryFile(){
     const name=this.settings.dictionaryFileName.trim();

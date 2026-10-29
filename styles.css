@@ -31,3 +31,21 @@
 .dictionary-writer-modal{display:flex;flex-direction:column;gap:10px}
 .dictionary-writer-modal textarea{width:100%;min-height:90px;resize:vertical;border-radius:var(--radius-m);padding:10px;background:var(--background-primary);color:var(--text-normal)}
 .dictionary-writer-modal textarea[readonly]{background:var(--background-secondary);min-height:170px}
+
+/* Single Markdown result and compact translation toolbar */
+.dictionary-translation-bar{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:8px}
+.dictionary-translation-bar select{min-width:0;width:100%}
+.dictionary-translation-bar button{grid-column:1/-1;min-height:36px}
+.dictionary-language-arrow{color:var(--text-muted);font-size:var(--font-ui-medium)}
+.dictionary-markdown{line-height:1.55;overflow-wrap:anywhere}
+.dictionary-markdown :first-child{margin-top:0}
+.dictionary-markdown :last-child{margin-bottom:0}
+.dictionary-markdown p{white-space:normal}
+.dictionary-markdown ul,.dictionary-markdown ol{padding-inline-start:1.5em}
+.dictionary-markdown li{margin-block:4px}
+.dictionary-settings-tabs{display:flex;gap:5px;overflow-x:auto;padding:4px 0 10px;position:sticky;top:0;z-index:2;background:var(--background-primary)}
+.dictionary-settings-tabs button{flex:0 0 auto;white-space:nowrap;border-radius:var(--radius-m);font-size:var(--font-ui-small)}
+.dictionary-settings-tabs button.is-active{background:var(--interactive-accent);color:var(--text-on-accent)}
+.dictionary-settings-panel{min-width:0;padding-bottom:20px}
+.dictionary-prompt-editor{width:100%;min-width:0;min-height:110px;font-family:var(--font-monospace);font-size:var(--font-ui-small)}
+@media(max-width:360px){.dictionary-translation-bar{gap:4px}.dictionary-translation-bar select{font-size:var(--font-ui-small)}}

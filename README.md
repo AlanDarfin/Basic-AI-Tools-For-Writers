@@ -49,7 +49,17 @@ The **Open source website** action opens the provider's website in your browser.
 
 This repository currently includes the distributable `main.js` and `manifest.json`. To test manually, place them in `.obsidian/plugins/alans-offline-dictionary/`, enable community plugins, and enable Alan's Offline Dictionary.
 
-**Development status:** 2.0.0-beta.1 experimental prerelease. Test on a backup vault before relying on imported content. A full TypeScript source tree, automated test suite, and release build pipeline are planned.
+**Development status:** 2.0.0-beta.2 experimental prerelease. Test on a backup vault before relying on imported content. A full TypeScript source tree, automated test suite, and release build pipeline are planned.
+
+## Beta 2 additions
+
+- Search provider button remains visible even when a local match exists.
+- Language selector and Save button share a compact toolbar.
+- Choose Free Dictionary API, Wiktionary, or locally imported Yomitan dictionaries.
+- Import Yomitan ZIP files through settings and enable/disable imported dictionaries.
+- Yomitan support currently focuses on text-based term banks; audio, media, advanced structured content, and some ZIP compression features may not be supported.
+- Import limits are in place. Large dictionaries are stored in plugin settings and may be slow on mobile. Back up your vault before testing.
+- This beta has not yet been verified on Obsidian Mobile or Desktop.
 
 ## Roadmap
 

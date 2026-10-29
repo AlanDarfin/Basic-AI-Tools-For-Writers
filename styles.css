@@ -1,23 +1,6 @@
-.dictionary-view-content {
-	padding: 1rem;
-	overflow-y: auto;
-	max-height: 100%;
-}
-
-.dictionary-results {
-	display: flex;
-	flex-direction: column;
-	gap: 1.2rem;
-}
-
-input[type="text"] {
-	width: 100%;
-	padding: 0.5rem;
-	font-size: 1rem;
-}
-
-.dictionary-view-content {
-	padding: 1rem;
-	overflow-y: auto;
-	max-height: 100%;
-}
+.dictionary-view-content { padding: 12px; overflow-y: auto; height: 100%; box-sizing: border-box; }
+.dictionary-view-content input[type="search"] { width: 100%; box-sizing: border-box; padding: 8px; margin-bottom: 12px; }
+.dictionary-results { display: flex; flex-direction: column; gap: 12px; }
+.dictionary-results .dictionary-entry { padding: 8px 0; border-bottom: 1px solid var(--background-modifier-border); overflow-wrap: anywhere; }
+.dictionary-results button { align-self: flex-start; margin: 4px 8px 4px 0; }
+.dictionary-results ul { padding-inline-start: 1.5em; }

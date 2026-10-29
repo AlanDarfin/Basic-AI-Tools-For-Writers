@@ -1,0 +1,32 @@
+name: Publish Beta 2 prerelease
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-beta2.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate distributable
+        run: |
+          node --check main.js
+          node -e "const m=require('./manifest.json'); if(m.version!=='2.0.0-beta.2') process.exit(1)"
+          test -s main.js
+          test -s manifest.json
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view 2.0.0-beta.2 >/dev/null 2>&1; then
+            echo 'Release already exists; skipping.'
+            exit 0
+          fi
+          gh release create 2.0.0-beta.2 main.js manifest.json \
+            --target "$GITHUB_SHA" \
+            --title "Alan's Offline Dictionary 2.0.0-beta.2" \
+            --prerelease \
+            --notes "Experimental Beta 2. Persistent provider search button; language and Save controls side by side; Free Dictionary API, Wiktionary and local Yomitan ZIP provider selection; import, enable, disable and remove Yomitan text dictionaries. Known limitations: limited Yomitan format support, large dictionaries may be slow on mobile, and full Obsidian desktop/mobile tests have not yet been completed. Back up your vault before testing."

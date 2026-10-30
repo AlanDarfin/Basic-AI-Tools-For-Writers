@@ -322,43 +322,188 @@ class ProjectsView extends ItemView{
   panel.createEl('p',{text:'Cenas no rascunho: '+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
   panel.createEl('p',{text:'Rascunhos e metas do Basic AI ficam nas configurações do plugin; o índice Longform original não é reescrito por essas opções.'});
  }
- async compileProject(project,options){
-  const names=sceneNames(this.activeScenes(project)),contents=[];
-  for(const name of names){
-   const file=this.resolveScene(project,name);if(!file)continue;
-   let body=await this.app.vault.read(file);
-   if(options.frontmatter!==false)body=body.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/,'');
-   if(options.links!==false)body=body.replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,(_,alias,target)=>alias?target:target);
-   contents.push(body.trim());
+
+ workflowCatalog(){
+  return [
+   ['strip-frontmatter','Remover propriedades YAML','scene'],
+   ['remove-links','Remover links','scene'],
+   ['remove-comments','Remover comentários','scene'],
+   ['remove-strikethroughs','Remover trechos riscados','scene'],
+   ['prepend-title','Adicionar títulos','scene'],
+   ['concatenate-text','Juntar cenas','join'],
+   ['add-frontmatter','Adicionar propriedades YAML','manuscript'],
+   ['write-to-note','Salvar como nota','manuscript']
+  ];
+ }
+ defaultWorkflow(){
+  return {name:'Padrão',description:'Compilação compatível com etapas Longform',steps:[
+   {id:'strip-frontmatter',optionValues:{}},
+   {id:'remove-links',optionValues:{'remove-wikilinks':true,'remove-external-links':true}},
+   {id:'prepend-title',optionValues:{format:'$3{#} $1',separator:'\n\n'}},
+   {id:'concatenate-text',optionValues:{separator:'\\n\\n---\\n\\n'}},
+   {id:'write-to-note',optionValues:{target:'manuscript.md','open-after':true}}
+  ]};
+ }
+ workflowsFor(project){
+  const prefs=this.prefs(project);
+  if(!prefs.workflows||!Object.values(prefs.workflows).some(v=>v&&Array.isArray(v.steps))){
+   prefs.workflows={'Padrão':this.defaultWorkflow()};
   }
-  if(!contents.length)throw Error('Nenhuma cena encontrada.');
-  const separator=options.separator??'\n\n---\n\n';
-  return contents.join(separator)+'\n';
+  return prefs.workflows;
+ }
+ validateWorkflow(project,wf){
+  if(!wf||!Array.isArray(wf.steps)||!wf.steps.length)throw Error('Workflow sem etapas.');
+  const catalog=Object.fromEntries(this.workflowCatalog().map(([id,,kind])=>[id,kind]));
+  let joined=project.format==='single';
+  for(let i=0;i<wf.steps.length;i++){
+   const id=wf.steps[i].id,kind=catalog[id];
+   if(!kind)throw Error('Etapa não suportada: '+id+'. Scripts externos não são executados por segurança.');
+   if(kind==='scene'&&joined&&project.format!=='single')throw Error('Uma etapa de cena não pode aparecer depois de Juntar.');
+   if(kind==='join'){if(joined)throw Error('Juntar cenas só pode ocorrer uma vez em projeto multicena.');joined=true;}
+   if(kind==='manuscript'&&!joined)throw Error('Junte as cenas antes das etapas de manuscrito.');
+  }
+  if(!joined)throw Error('Adicione a etapa Juntar cenas.');
+ }
+ async compileProject(project,wf,preview=false){
+  this.validateWorkflow(project,wf);
+  const flat=project.format==='single'?[{title:project.title,indent:0}]:this.activeScenes(project);
+  let scenes=[];
+  for(const entry of flat){
+   const file=project.format==='single'?project.file:this.resolveScene(project,entry.title);
+   if(!(file instanceof TFile))throw Error('Cena ausente: '+entry.title);
+   const contents=await this.app.vault.read(file);
+   scenes.push({title:entry.title,indent:entry.indent,contents});
+  }
+  let manuscript=null,target='manuscript.md',openAfter=true;
+  for(const step of wf.steps){
+   const o=step.optionValues||{},id=step.id;
+   const each=fn=>{if(manuscript!==null)manuscript=fn(manuscript,{title:project.title,indent:0});else scenes=scenes.map(scene=>({...scene,contents:fn(scene.contents,scene)}));};
+   if(id==='strip-frontmatter')each(text=>text.replace(/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/,''));
+   else if(id==='remove-links')each(text=>{
+    if(o['remove-wikilinks']!==false)text=text.replace(/!?\[\[([^\]]+)\]\]/g,(_,inner)=>inner.includes('|')?inner.split('|').slice(1).join('|'):inner.split('#')[0]);
+    if(o['remove-external-links']!==false)text=text.replace(/!?\[([^\]]*)\]\([^)]+\)/g,'$1');
+    return text;
+   });
+   else if(id==='remove-comments')each(text=>{
+    if(o['remove-markdown-comments']!==false)text=text.replace(/%%[\s\S]*?%%/g,'');
+    if(o['remove-html-comments']!==false)text=text.replace(/<!--[\s\S]*?-->/g,'');
+    return text;
+   });
+   else if(id==='remove-strikethroughs')each(text=>text.replace(/~~[\s\S]*?~~/g,''));
+   else if(id==='prepend-title')each((text,scene)=>{
+    const number=flat.findIndex(x=>x.title===scene.title)+1;
+    const format=String(o.format??'$3{#} $1');
+    const heading=format.replace(/\$3\{([^}]*)\}/g,(_,s)=>s.repeat(Math.max(1,(scene.indent||0)+1)))
+      .replace(/\$1/g,scene.title).replace(/\$2/g,String(number));
+    return heading+lfUnescape(o.separator??'\n\n')+text;
+   });
+   else if(id==='concatenate-text'){
+    manuscript=scenes.map(x=>x.contents.trim()).join(lfUnescape(o.separator??'\\n\\n'));
+   }
+   else if(id==='add-frontmatter'){
+    let yaml=String(o.frontmatter||'').trim();
+    if(yaml){
+     try{parseYaml(yaml);}catch(e){throw Error('YAML inválido na etapa Adicionar propriedades: '+e.message);}
+     if(manuscript!==null)manuscript='---\n'+yaml+'\n---\n'+manuscript;
+     else scenes=scenes.map(x=>({...x,contents:'---\n'+yaml+'\n---\n'+x.contents}));
+    }
+   }
+   else if(id==='write-to-note'){
+    target=String(o.target||'manuscript.md').replace(/\$1/g,clean(project.title)).trim();
+    openAfter=o['open-after']!==false;
+   }
+  }
+  if(manuscript===null)manuscript=scenes.map(x=>x.contents.trim()).join('\n\n');
+  if(preview)return {contents:manuscript};
+  if(!target.endsWith('.md'))target+='.md';
+  if(target.startsWith('/')||target.split('/').some(part=>part==='..'||part==='.')||target.includes('\\'))throw Error('Caminho de saída inválido.');
+  const dir=project.file.parent?.path||'',relative=target.split('/').map(clean).filter(Boolean).join('/');
+  let path=[dir,relative].filter(Boolean).join('/');
+  if(path===project.file.path||flat.some(x=>this.resolveScene(project,x.title)?.path===path))throw Error('A saída não pode sobrescrever o índice nem uma cena.');
+  const basename=path.replace(/\.md$/i,''),original=path;let n=2;
+  while(this.app.vault.getAbstractFileByPath(path))path=basename+' '+n+++'.md';
+  const parent=path.split('/').slice(0,-1).join('/');if(parent)await this.ensureFolder(parent);
+  const file=await this.app.vault.create(path,manuscript+'\n');
+  if(openAfter)this.openFile(file);
+  return {contents:manuscript,file,original};
+ }
+ async importLongformWorkflows(project){
+  try{
+   const installed=this.app.plugins?.plugins?.longform;
+   if(!installed?.loadData)throw Error('O Longform não está instalado ou ativo; use a importação por JSON.');
+   const data=await installed.loadData(),entries=data?.workflows;
+   if(!entries||typeof entries!=='object')throw Error('Nenhum workflow encontrado no Longform.');
+   const ours=this.workflowsFor(project);
+   let count=0;
+   for(const [name,wf] of Object.entries(entries)){
+    if(!Array.isArray(wf?.steps))continue;
+    const label='Longform · '+name;
+    ours[label]=JSON.parse(JSON.stringify(wf));count++;
+   }
+   await this.savePrefs();new Notice(count+' workflow(s) importado(s). Etapas externas serão sinalizadas.');
+  }catch(e){new Notice(e.message,7000);}
  }
  drawCompile(panel,project){
-  panel.createEl('h4',{text:'Compilar manuscrito'});
-  const prefs=this.prefs(project);
-  const workflows=prefs.workflows||(prefs.workflows={Padrão:{frontmatter:true,links:true,separator:'\n\n---\n\n'}});
-  const opts={...(workflows[this.workflow]||workflows.Padrão)};
+  panel.createEl('h4',{text:'Compilação por etapas'});
+  const workflows=this.workflowsFor(project);
+  if(!workflows[this.workflow])this.workflow=Object.keys(workflows)[0];
   const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const selector=bar.createEl('select',{attr:{'aria-label':'Workflow'}});
-  for(const name of Object.keys(workflows)){const option=selector.createEl('option',{text:name});option.value=name;}
-  if(!workflows[this.workflow])this.workflow='Padrão';selector.value=this.workflow;
-  selector.addEventListener('change',()=>{this.workflow=selector.value;this.render();});
-  bar.createEl('button',{text:'Salvar workflow'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome do workflow',async name=>{name=clean(name);if(!name)return;workflows[name]={...opts};this.workflow=name;await this.savePrefs();},this.workflow).open());
-  panel.createEl('p',{text:'Rascunho: '+this.draft});
-  new Setting(panel).setName('Remover propriedades YAML').addToggle(t=>t.setValue(opts.frontmatter!==false).onChange(v=>opts.frontmatter=v));
-  new Setting(panel).setName('Remover wikilinks').addToggle(t=>t.setValue(opts.links!==false).onChange(v=>opts.links=v));
-  new Setting(panel).setName('Separador').addTextArea(t=>t.setValue((opts.separator||'\n\n---\n\n').replace(/\n/g,'\\n')).onChange(v=>opts.separator=v.replace(/\\n/g,'\n')));
-  panel.createEl('button',{text:'Gerar manuscrito Markdown',cls:'mod-cta'}).addEventListener('click',async()=>{
-   try{
-    const content=await this.compileProject(project,opts);
-    const dir=project.file.parent?.path||'',base=clean(project.title)+' - Manuscrito';
-    let path=(dir?dir+'/':'')+base+'.md',n=2;
-    while(this.app.vault.getAbstractFileByPath(path))path=(dir?dir+'/':'')+base+' '+n+++'.md';
-    const file=await this.app.vault.create(path,content);
-    this.openFile(file);new Notice('Manuscrito criado: '+file.path);
-   }catch(e){new Notice('Falha ao compilar: '+e.message);}
+  for(const name of Object.keys(workflows)){const opt=selector.createEl('option',{text:name});opt.value=name;}
+  selector.value=this.workflow;
+  selector.addEventListener('change',()=>{this.workflow=selector.value;this.workflowDraft=null;this.render();});
+  bar.createEl('button',{text:'+ Workflow'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome do workflow',async name=>{
+   name=clean(name);if(!name||workflows[name])return;
+   workflows[name]=this.defaultWorkflow();workflows[name].name=name;
+   this.workflow=name;this.workflowDraft=null;await this.savePrefs();
+  }).open());
+  bar.createEl('button',{text:'Importar Longform'}).addEventListener('click',()=>this.importLongformWorkflows(project));
+  const wf=this.workflowDraft&&this.workflowDraftName===this.workflow?this.workflowDraft:
+   (this.workflowDraft=JSON.parse(JSON.stringify(workflows[this.workflow])),this.workflowDraftName=this.workflow,this.workflowDraft);
+  const status=panel.createEl('p',{text:'Edite etapas e clique em Salvar workflow. Scripts externos não são executados.'});
+  const stepNames=Object.fromEntries(this.workflowCatalog().map(([id,label])=>[id,label]));
+  const drawStep=(step,i)=>{
+   const box=panel.createDiv({cls:'writer-project-workflow-step'});
+   const header=box.createDiv({cls:'writer-project-workflow-heading'});
+   header.createEl('strong',{text:(i+1)+'. '+(stepNames[step.id]||'Não suportada: '+step.id)});
+   for(const [label,change] of [['↑',-1],['↓',1]]){
+    header.createEl('button',{text:label,attr:{'aria-label':label==='↑'?'Subir etapa':'Descer etapa'}})
+     .addEventListener('click',()=>{const j=i+change;if(j<0||j>=wf.steps.length)return;wf.steps.splice(j,0,wf.steps.splice(i,1)[0]);this.render();});
+   }
+   header.createEl('button',{text:'×',attr:{'aria-label':'Remover etapa'}}).addEventListener('click',()=>{wf.steps.splice(i,1);this.render();});
+   const options=step.optionValues||(step.optionValues={});
+   const toggle=(label,key,def=true)=>new Setting(box).setName(label).addToggle(t=>t.setValue(options[key]??def).onChange(v=>options[key]=v));
+   const text=(label,key,def='',multiline=false)=>{
+    const setting=new Setting(box).setName(label);
+    const write=t=>t.setValue(String(options[key]??def)).onChange(v=>options[key]=v);
+    if(multiline)setting.addTextArea(write);else setting.addText(write);
+   };
+   if(step.id==='remove-links'){toggle('Remover wikilinks','remove-wikilinks');toggle('Remover links externos','remove-external-links');}
+   if(step.id==='remove-comments'){toggle('Remover %% comentários %%','remove-markdown-comments');toggle('Remover comentários HTML','remove-html-comments');}
+   if(step.id==='prepend-title'){text('Formato ($1 título, $2 número, $3{#} nível)','format','$3{#} $1');text('Separador','separator','\\n\\n');}
+   if(step.id==='concatenate-text')text('Separador','separator','\\n\\n---\\n\\n');
+   if(step.id==='write-to-note'){text('Destino relativo ao projeto','target','manuscript.md');toggle('Abrir manuscrito','open-after');}
+   if(step.id==='add-frontmatter')text('YAML','frontmatter','',true);
+   if(!stepNames[step.id])box.createEl('p',{text:'Etapa de script/customizada preservada na importação, mas não pode ser executada.'});
+  };
+  for(let i=0;i<wf.steps.length;i++)drawStep(wf.steps[i],i);
+  const add=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  const stepPicker=add.createEl('select');
+  for(const [id,label] of this.workflowCatalog()){const o=stepPicker.createEl('option',{text:label});o.value=id;}
+  add.createEl('button',{text:'+ Etapa'}).addEventListener('click',()=>{wf.steps.push({id:stepPicker.value,optionValues:{}});this.render();});
+  add.createEl('button',{text:'Salvar workflow'}).addEventListener('click',async()=>{
+   workflows[this.workflow]=JSON.parse(JSON.stringify(wf));await this.plugin.saveSettings();status.setText('Workflow salvo.');
+  });
+  add.createEl('button',{text:'Prévia'}).addEventListener('click',async()=>{
+   try{const result=await this.compileProject(project,wf,true);let preview=panel.querySelector('.writer-project-compile-preview');
+    if(!preview)preview=panel.createEl('textarea',{cls:'writer-project-compile-preview'});
+    preview.value=result.contents.slice(0,24000);preview.readOnly=true;
+    status.setText('Prévia gerada; nenhum arquivo foi modificado.');
+   }catch(e){new Notice('Workflow inválido: '+e.message,8000);}
+  });
+  add.createEl('button',{text:'Compilar',cls:'mod-cta'}).addEventListener('click',async()=>{
+   try{const result=await this.compileProject(project,wf,false);status.setText('Criado: '+result.file.path);new Notice('Manuscrito criado sem sobrescrever o original.');}
+   catch(e){new Notice('Falha: '+e.message,8000);}
   });
  }
  notesRoot(project){const dir=project.file.parent?.path||'';return (dir?dir+'/':'')+'_Notas';}

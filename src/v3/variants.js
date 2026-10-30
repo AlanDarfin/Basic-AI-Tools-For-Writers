@@ -20,6 +20,8 @@ class WriterVariants{
   const text=active.editor.getSelection();
   if(!text){if(this.atCaret())return this.open();return new Notice('Selecione uma palavra ou trecho para criar variantes.');}
   if(text.length>16000)return new Notice('Selecione um trecho menor.');
+  const from=active.editor.posToOffset(active.editor.getCursor('from'));
+  const to=active.editor.posToOffset(active.editor.getCursor('to'));
   const modal=new Modal(this.plugin.app);let alternative='';
   modal.onOpen=()=>{
    modal.setTitle('Criar variantes de escrita');
@@ -27,7 +29,6 @@ class WriterVariants{
    new Setting(modal.contentEl).setName('Primeira alternativa').addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar variantes').setCta().onClick(async()=>{
     if(!alternative.trim()||alternative===text)return new Notice('Escreva uma alternativa diferente.');
-    const from=active.editor.posToOffset(active.editor.getCursor('from')),to=active.editor.posToOffset(active.editor.getCursor('to'));
     try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),'criar variantes');modal.close();}
     catch(e){new Notice(e.message);}
    }));

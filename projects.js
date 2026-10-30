@@ -135,6 +135,7 @@ class ProjectsView extends ItemView{
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='homework')this.plugin.v4Homework?.draw(panels.homework,this,project);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
+  w4TranslateTree(this.root,this.plugin);
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';

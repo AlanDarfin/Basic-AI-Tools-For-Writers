@@ -2,7 +2,7 @@
 const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
 const {StateField,StateEffect}=require('@codemirror/state');
-const {Decoration,EditorView}=require('@codemirror/view');
+const {Decoration,EditorView,ViewPlugin}=require('@codemirror/view');
 const setReviewMarks=StateEffect.define();
 const reviewMarkField=StateField.define({
  create(){return Decoration.none;},
@@ -39,6 +39,16 @@ function reviewParagraph(source,start,end){
  const paragraph=source.slice(from,to).trim();
  return paragraph||source.slice(Math.max(0,start-80),Math.min(source.length,end+80)).trim();
 }
+function plainReviewParagraph(source,start,end){
+ const paragraph=reviewParagraph(source,start,end);
+ return paragraph
+  .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,(_,alias,name)=>name)
+  .replace(/!\[([^\]]*)\]\([^)]*\)/g,'')
+  .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+  .replace(/(\*\*|__|~~|==|\`)/g,'')
+  .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm,'')
+  .trim();
+}
 function meaningfulGrammarMatch(source,match){
  const offset=match.offset,length=match.length;
  if(!Number.isInteger(offset)||!Number.isInteger(length)||offset<0||length<=0||offset+length>source.length)return false;
@@ -56,7 +66,7 @@ function withoutFrontmatter(text){
  return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
 }
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
-const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewAutoOpenNote:true};
+const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewAutoOpenNote:true,reviewPopupEnabled:true};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
 function parseDictionary(text) {
   const entries=[]; let word=null, lines=[];
@@ -237,6 +247,7 @@ class DictionaryView extends ItemView{
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.filter(m=>(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
+      this.plugin.reviewSource=source;
       this.plugin.showReviewMarks(file,matches);
       this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found'));
       if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
@@ -253,16 +264,16 @@ class DictionaryView extends ItemView{
   }catch(e){this.reviewStatus.setText(msg('Falha: ','Failed: ')+(e.message||String(e)));}
   finally{this.reviewBusy=false;}
  }
- renderGrammarSuggestion(file,source,match){
+ renderGrammarSuggestion(file,source,match,target=this.reviewResults){
   const start=match.offset,end=start+match.length;
   if(!Number.isInteger(start)||!Number.isInteger(match.length)||start<0||end>source.length||match.length<=0)return;
   const original=source.slice(start,end);
-  const card=this.reviewResults.createDiv({cls:'writer-review-card'});
+  const card=target.createDiv({cls:'writer-review-card'});
   card.createEl('strong',{text:match.rule?.description||match.message||msg('Sugestão','Suggestion')});
   const detail=card.createEl('details',{cls:'writer-review-details'});
   detail.createEl('summary',{text:msg('Ver contexto e justificativa','View context and explanation')});
   detail.createEl('p',{text:match.message||'',cls:'writer-review-reason'});
-  detail.createEl('p',{text:msg('Parágrafo: ','Paragraph: ')+reviewParagraph(source,start,end),cls:'writer-review-paragraph'});
+  detail.createEl('p',{text:msg('Parágrafo: ','Paragraph: ')+plainReviewParagraph(source,start,end),cls:'writer-review-paragraph'});
   const suggestions=(match.replacements||[]).slice(0,5).map(r=>r.value).filter(v=>typeof v==='string');
   const selectionLabel=card.createEl('label',{text:msg('Substituir por','Replace with'),cls:'writer-review-select-label'});
   const select=card.createEl('select');
@@ -283,10 +294,10 @@ class DictionaryView extends ItemView{
         if(text.slice(start,end)!==original||text!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
         changed=true;return text.slice(0,start)+replacement+text.slice(end);
       });
-      if(changed){new Notice(msg('Alteração aplicada','Change applied'));this.plugin.clearReviewMarks();await this.reviewFile(file);}
+      if(changed){new Notice(msg('Alteração aplicada','Change applied'));this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();await this.reviewFile(file);}
     }catch(e){new Notice(e.message||String(e),7000);}
   });
-  actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>{card.remove();this.plugin.hideReviewMark(file,start,end);});
+  actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>{card.remove();this.plugin.closeReviewPopup();this.plugin.hideReviewMark(file,start,end);});
   actions.createEl('button',{text:msg('Explicar e sugerir alternativas','Explain and suggest alternatives')}).addEventListener('click',()=>{detail.open=true;this.explainGrammar(file,source,match,suggestions,detail);});
  }
  async explainGrammar(file,source,match,suggestions,card){
@@ -365,6 +376,7 @@ class DictionarySettings extends PluginSettingTab{
         d.setValue(this.plugin.settings.reviewMode||'grammar').onChange(async v=>{this.plugin.settings.reviewMode=v;await this.plugin.saveSettings();});
       });
       new Setting(panel).setName(msg('Abrir nota selecionada no editor','Open selected note in editor')).setDesc(msg('Permite ver sublinhados do CodeMirror ao revisar um arquivo que ainda não está aberto.','Enables CodeMirror underlines when reviewing a note not already open.')).addToggle(x=>x.setValue(this.plugin.settings.reviewAutoOpenNote!==false).onChange(async v=>{this.plugin.settings.reviewAutoOpenNote=v;await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('Mostrar cartão flutuante no erro','Show floating suggestion near error')).addToggle(x=>x.setValue(this.plugin.settings.reviewPopupEnabled!==false).onChange(async v=>{this.plugin.settings.reviewPopupEnabled=v;await this.plugin.saveSettings();if(!v)this.plugin.closeReviewPopup();}));
       new Setting(panel).setName(msg('Ignorar avisos de espaços e formatação','Ignore whitespace and formatting warnings')).addToggle(x=>x.setValue(this.plugin.settings.reviewIgnoreWhitespace!==false).onChange(async v=>{this.plugin.settings.reviewIgnoreWhitespace=v;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('IDs de regras ignoradas','Ignored rule IDs')).setDesc(msg('IDs do LanguageTool separados por vírgula.','Comma-separated LanguageTool rule IDs.')).addTextArea(x=>{x.inputEl.rows=3;x.setValue(this.plugin.settings.reviewIgnoreRules||'').onChange(async v=>{this.plugin.settings.reviewIgnoreRules=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(msg('Endpoint do LanguageTool','LanguageTool endpoint')).setDesc(msg('Use HTTPS. O endpoint público tem limites de uso.','Use HTTPS. The public endpoint has usage limits.')).addText(x=>x.setValue(this.plugin.settings.reviewEndpoint||'https://api.languagetool.org/v2/check').onChange(async v=>{this.plugin.settings.reviewEndpoint=v.trim();await this.plugin.saveSettings();}));
@@ -446,6 +458,15 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   async onload(){
     this.reviewMarks=[];
     this.registerEditorExtension(reviewMarkField);
+    const plugin=this;
+    this.registerEditorExtension(ViewPlugin.fromClass(class{
+      constructor(view){
+        this.view=view;
+        this.onPointerUp=()=>{setTimeout(()=>plugin.maybeShowReviewPopup(view),60);};
+        view.dom.addEventListener('pointerup',this.onPointerUp);
+      }
+      destroy(){this.view.dom.removeEventListener('pointerup',this.onPointerUp);}
+    }));
     const saved=await this.loadData()||{};this.settings=Object.assign({},DEFAULTS,saved);if(!AI_PROVIDERS.some(p=>p[0]===this.settings.provider))this.settings.provider='openai';if(!AI_PROVIDERS.some(p=>p[0]===this.settings.translationProvider))this.settings.translationProvider=this.settings.provider;this.settings.aiKeys={...DEFAULTS.aiKeys,...(saved.aiKeys||{})};this.settings.aiModels={...DEFAULTS.aiModels,...(saved.aiModels||{})};this.settings.prompts={...(saved.prompts||{})};
     this.cache={path:null,entries:[]};this.dirty=true;
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
@@ -656,6 +677,37 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       editor.focus();
     }catch(e){new Notice(msg('Não foi possível localizar o erro: ','Could not locate error: ')+(e.message||e));}
   }
+  closeReviewPopup(){
+    if(this.reviewPopup){this.reviewPopup.remove();this.reviewPopup=null;}
+  }
+  maybeShowReviewPopup(cm){
+    if(!this.settings.reviewPopupEnabled||!this.reviewMarks?.length)return;
+    const leaf=this.app.workspace.getLeavesOfType('markdown').find(l=>l.view?.editor?.cm===cm);
+    const file=leaf?.view?.file;
+    if(!file||file.path!==this.reviewMarkedPath)return;
+    const offset=cm.state.selection.main.head;
+    const match=this.reviewMarks.find(m=>offset>=m.from&&offset<=m.to);
+    if(!match){this.closeReviewPopup();return;}
+    const key=file.path+':'+match.from+':'+match.to;
+    if(this.reviewPopup?.dataset?.reviewKey===key)return;
+    const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
+    if(!view?.renderGrammarSuggestion)return;
+    const original=this.reviewMatches?.find(m=>m.offset===match.from&&m.length===match.to-match.from);
+    if(!original)return;
+    this.closeReviewPopup();
+    const popup=document.body.createDiv({cls:'writer-review-floating'});
+    popup.dataset.reviewKey=key;
+    const top=cm.coordsAtPos(match.from);
+    const width=Math.min(360,window.innerWidth-24);
+    const left=Math.max(12,Math.min(window.innerWidth-width-12,(top?.left||12)-width/2));
+    popup.style.width=width+'px';
+    popup.style.left=left+'px';
+    popup.style.top=Math.max(12,Math.min(window.innerHeight-330,(top?.bottom||80)+10))+'px';
+    const close=popup.createEl('button',{cls:'writer-review-popup-close',text:'×',attr:{'aria-label':msg('Fechar','Close')}});
+    close.addEventListener('click',()=>this.closeReviewPopup());
+    view.renderGrammarSuggestion(file,this.reviewSource,original,popup);
+    this.reviewPopup=popup;
+  }
   reviewEditors(file){
     const views=[];
     this.app.workspace.iterateAllLeaves(leaf=>{
@@ -667,6 +719,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     return views;
   }
   showReviewMarks(file,matches){
+    this.closeReviewPopup();
+    this.reviewMatches=matches;
     this.reviewMarks=matches.filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&m.length>0).map(m=>({from:m.offset,to:m.offset+m.length,message:m.message}));
     this.reviewMarkedPath=file.path;
     for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
@@ -677,7 +731,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
   }
   clearReviewMarks(){
-    this.reviewMarks=[];this.reviewMarkedPath=null;
+    this.closeReviewPopup();this.reviewMarks=[];this.reviewMatches=[];this.reviewMarkedPath=null;
     this.app.workspace.iterateAllLeaves(leaf=>{
       const cm=leaf.view instanceof MarkdownView?leaf.view.editor?.cm:null;
       if(cm)cm.dispatch({effects:setReviewMarks.of([])});

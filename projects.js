@@ -63,6 +63,15 @@ function lfSceneTree(flat){
  }
  return roots;
 }
+function lfNumberScenes(flat){
+ const parts=[];
+ return flat.map(scene=>{
+  const indent=Math.max(0,Number(scene.indent)||0);
+  parts.length=indent+1;
+  parts[indent]=(parts[indent]||0)+1;
+  return {...scene,numbering:parts.join('.')};
+ });
+}
 function lfWordCount(text){
  return (String(text||'').replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/,'').match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)||[]).length;
 }
@@ -345,10 +354,10 @@ class ProjectsView extends ItemView{
 
  workflowCatalog(){
   return [
-   ['strip-frontmatter','Remover propriedades YAML','scene'],
-   ['remove-links','Remover links','scene'],
-   ['remove-comments','Remover comentários','scene'],
-   ['remove-strikethroughs','Remover trechos riscados','scene'],
+   ['strip-frontmatter','Remover propriedades YAML','both'],
+   ['remove-links','Remover links','both'],
+   ['remove-comments','Remover comentários','both'],
+   ['remove-strikethroughs','Remover trechos riscados','both'],
    ['prepend-title','Adicionar títulos','scene'],
    ['concatenate-text','Juntar cenas','join'],
    ['add-frontmatter','Adicionar propriedades YAML','manuscript'],
@@ -377,12 +386,15 @@ class ProjectsView extends ItemView{
   if(!wf||!Array.isArray(wf.steps)||!wf.steps.length)throw Error('Workflow sem etapas.');
   const catalog=Object.fromEntries(this.workflowCatalog().map(([id,,kind])=>[id,kind]));
   let joined=project.format==='single';
+  let saves=0;
   for(let i=0;i<wf.steps.length;i++){
    const id=wf.steps[i].id,kind=catalog[id];
    if(!kind)throw Error('Etapa não suportada: '+id+'. Scripts externos não são executados por segurança.');
    if(kind==='scene'&&joined&&project.format!=='single')throw Error('Uma etapa de cena não pode aparecer depois de Juntar.');
    if(kind==='join'){if(joined)throw Error('Juntar cenas só pode ocorrer uma vez em projeto multicena.');joined=true;}
    if(kind==='manuscript'&&!joined)throw Error('Junte as cenas antes das etapas de manuscrito.');
+   if(id==='write-to-note'){saves++;if(i!==wf.steps.length-1)throw Error('Salvar como nota deve ser a última etapa.');}
+   if(saves>1)throw Error('Apenas uma etapa de salvar é permitida.');
   }
   if(!joined)throw Error('Adicione a etapa Juntar cenas.');
  }
@@ -410,13 +422,13 @@ class ProjectsView extends ItemView{
  }
  async compileProject(project,wf,preview=false){
   this.validateWorkflow(project,wf);
-  const flat=project.format==='single'?[{title:project.title,indent:0}]:this.activeScenes(project);
+  const flat=lfNumberScenes(project.format==='single'?[{title:project.title,indent:0}]:this.activeScenes(project));
   let scenes=[];
   for(const entry of flat){
    const file=project.format==='single'?project.file:this.resolveScene(project,entry.title);
    if(!(file instanceof TFile))throw Error('Cena ausente: '+entry.title);
    const contents=await this.app.vault.read(file);
-   scenes.push({title:entry.title,indent:entry.indent,contents});
+   scenes.push({title:entry.title,indent:entry.indent,numbering:entry.numbering,contents});
   }
   let manuscript=null,target='manuscript.md',openAfter=true;
   for(const step of wf.steps){
@@ -435,7 +447,7 @@ class ProjectsView extends ItemView{
    });
    else if(id==='remove-strikethroughs')each(text=>text.replace(/~~[\s\S]*?~~/g,''));
    else if(id==='prepend-title')each((text,scene)=>{
-    const number=flat.findIndex(x=>x.title===scene.title)+1;
+    const number=scene.numbering||String(flat.findIndex(x=>x.title===scene.title)+1);
     const format=String(o.format??'$3{#} $1');
     const heading=format.replace(/\$3\{([^}]*)\}/g,(_,s)=>s.repeat(Math.max(1,(scene.indent||0)+1)))
       .replace(/\$1/g,scene.title).replace(/\$2/g,String(number));
@@ -744,4 +756,4 @@ class ProjectsView extends ItemView{
  }
 
 }
-module.exports={ProjectsView,PROJECT_VIEW,lfFlattenScenes,lfNestScenes,lfSceneTree,lfWordCount};
+module.exports={ProjectsView,PROJECT_VIEW,lfFlattenScenes,lfNestScenes,lfSceneTree,lfNumberScenes,lfWordCount};

@@ -8,6 +8,7 @@ let notice='';
 const sandbox={
  console,
  writerUi:(pt,en)=>pt,
+  writerModuleOn:()=>true,
  writerMaskMarkdown:value=>value,
  MarkdownView:class{},
  Notice:class{constructor(message){notice=message;}},

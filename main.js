@@ -3523,7 +3523,8 @@ class WriterAutoGrammar{
     this.schedule(file);
    }
   }));
-  this.plugin.register(()=>this.stop());
+  // Obsidian Plugin provides register(); minimal testing hosts may not.
+  this.plugin.register?.(()=>this.stop());
  }
  stop(){this.destroyed=true;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  schedule(file,{delay}={}){

@@ -54,4 +54,22 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
   assert.ok(haystack.includes(required),required);
  }
  console.log('PASS standalone bundle includes mobile fixes');
+ const projectSource=fs.readFileSync('projects.js','utf8');
+ assert.ok(projectSource.includes("row.style.setProperty('--writer-scene-depth'"));
+ assert.ok(projectSource.includes("row.addClass('writer-project-scene-nested')"));
+ assert.ok(projectSource.includes("cls:'writer-project-scene-branch',text:'↳'"));
+ assert.ok(projectSource.includes("cls:'writer-project-scene-label',text:name"));
+ assert.ok(css.includes('var(--writer-scene-depth,0) * 9px'));
+ assert.ok(css.includes('.writer-project-scene-nested>.writer-project-scene-title'));
+ console.log('PASS nested chapter depth is visible without shifting action controls');
+ for(const expected of ["writer-v4-mobile-actions","writer-v4-format-actions",
+  "text:writerUi('Aa Formatar'","text:'✦ IA'",
+  "this.dom.toggleClass('writer-v4-expanded'","this.positionMobile()",
+  "const viewportBottom=viewportTop+","this.dom.style.setProperty('top'"]){
+  assert.ok(src.includes(expected),expected);
+ }
+ assert.ok(css.includes('.writer-v4-toolbar-mobile.writer-v4-expanded .writer-v4-format-actions'));
+ assert.ok(css.includes('.writer-v4-toolbar-mobile .writer-v4-format-actions'));
+ assert.ok(css.includes('display:none!important'));
+ console.log('PASS mobile toolbar starts compact, expands formatting and follows selection');
 })().catch(error=>{console.error(error);process.exitCode=1;});

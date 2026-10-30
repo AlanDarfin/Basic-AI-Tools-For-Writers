@@ -373,15 +373,34 @@ function writerRenderFinalSettings(panel,plugin,section){
  const bool=(field,label)=>new Setting(panel).setName(label).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
  const str=(field,label)=>new Setting(panel).setName(label).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
  bool('enabled','Enabled');
- if(section==='abbreviations'){bool('caseSensitive','Case sensitive');bool('expandAtWordBoundary','Expand on punctuation or space');new Setting(panel).setName('Edit abbreviations').addButton(b=>b.setButtonText('Open').onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
+ if(section==='abbreviations'){bool('expandAtWordBoundary','Expand on punctuation or space (instead of space only)');new Setting(panel).setName('Edit abbreviations').addButton(b=>b.setButtonText('Open').onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
  if(section==='anotherName')str('property','Frontmatter property');
  if(section==='viewMode')str('property','View mode frontmatter property');
  if(section==='templates'){str('folder','Templates folder');bool('onlyNew','Only empty notes');bool('applyOnCreate','Apply when note is created');}
- if(section==='unicode'){new Setting(panel).setName('Unicode picker').addButton(b=>b.setButtonText('Search').onClick(()=>plugin.writerFinalFeatures.unicodePicker()));str('maxResults','Max results');}
- if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');}
+ if(section==='unicode'){
+  new Setting(panel).setName('Unicode picker').addButton(b=>b.setButtonText('Search').onClick(()=>plugin.writerFinalFeatures.unicodePicker()));
+  str('maxResults','Max results');
+  new Setting(panel).setName('Offline Unicode index').setDesc('Download UnicodeData.txt from unicode.org once. Search works offline afterward.').addButton(b=>b.setButtonText('Download / update').onClick(async()=>{
+   b.setDisabled(true).setButtonText('Downloading…');
+   try{await plugin.writerFinalFeatures.downloadUnicode();}
+   catch(e){new Notice('Unicode index: '+e.message);}
+   finally{b.setDisabled(false).setButtonText('Download / update');}
+  }));
+ }
+ if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
-  str('language','Speech language (pt-BR, en-US, es-ES...)');
+  new Setting(panel).setName('Speech language').addDropdown(d=>{
+   for(const [key,name] of [['auto','Auto'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,name);
+   d.setValue(cfg.language).onChange(async v=>{cfg.language=v;await plugin.saveSettings();});
+  });
+  const voices=typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[];
+  new Setting(panel).setName('System voice').setDesc('Available voices depend on your device. A Google voice can only be selected when installed.').addDropdown(d=>{
+   d.addOption('','System default');
+   for(const voice of voices)d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
+   d.setValue(cfg.voice).onChange(async v=>{cfg.voice=v;await plugin.saveSettings();});
+  });
   bool('readSelection','Prefer selected text');
+  str('maxCharacters','Maximum characters per playback');
   for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch',.5,2,.1],['volume','Volume',0,1,.1]]){
    new Setting(panel).setName(label).addSlider(s=>s.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
   }

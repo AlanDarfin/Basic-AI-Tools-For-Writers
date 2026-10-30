@@ -1923,48 +1923,35 @@ class DictionaryView extends ItemView{
   const start=match.offset,end=start+match.length;
   if(!Number.isInteger(start)||!Number.isInteger(match.length)||start<0||end>source.length||match.length<=0)return;
   const original=source.slice(start,end);
-  const card=target.createDiv({cls:'writer-review-card'});
-  card.createEl('strong',{text:match.rule?.description||match.message||msg('Sugestão','Suggestion')});
-  const detail=card.createEl('details',{cls:'writer-review-details'});
-  detail.createEl('summary',{text:msg('Ver contexto e justificativa','View context and explanation')});
+  const suggestions=[...new Set((match.replacements||[]).map(r=>r?.value).filter(v=>typeof v==='string'))].slice(0,8);
+  const card=target.createDiv({cls:'writer-review-card writer-lt-result'});
+  card.dataset.reviewOffset=String(start);
+  const heading=card.createDiv({cls:'writer-lt-result-heading'});
+  heading.createSpan({cls:'writer-lt-category',text:match.rule?.category?.name||'LanguageTool'});
+  const title=match.rule?.description||match.shortMessage||match.message||msg('Sugestão','Suggestion');
+  heading.createEl('strong',{text:title,cls:'writer-lt-title'});
+  const excerpt=card.createDiv({cls:'writer-lt-original'});
+  excerpt.createSpan({text:msg('No texto: ','In text: '),cls:'writer-lt-muted'});
+  excerpt.createEl('mark',{text:original.slice(0,100)||msg('(sem texto)','(empty)')});
+  const choices=card.createDiv({cls:'writer-lt-choices'});
+  if(suggestions.length){
+   for(const text of suggestions.slice(0,2)){
+    const choice=choices.createEl('button',{text:text||msg('(remover)','(delete)'),cls:'writer-lt-choice'});
+    choice.setAttribute('title',msg('Substituir pelo texto sugerido','Replace with suggested text'));
+    choice.addEventListener('click',()=>this.plugin.applyGrammarReplacement(file,source,match,text));
+   }
+   if(suggestions.length>2)choices.createSpan({cls:'writer-lt-muted',text:'+'+(suggestions.length-2)});
+  }else choices.createSpan({cls:'writer-lt-muted',text:msg('Sem substituição automática','No automatic replacement')});
+  const actions=card.createDiv({cls:'writer-lt-result-actions'});
+  actions.createEl('button',{text:msg('Ir ao erro','Go to error')}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
+  actions.createEl('button',{text:msg('Opções ⋯','Options ⋯'),cls:'writer-lt-more'})
+   .addEventListener('click',event=>this.plugin.showReviewSuggestionMenu(file,source,match,{event}));
+  const detail=card.createEl('details',{cls:'writer-review-details writer-lt-details'});
+  detail.createEl('summary',{text:msg('Contexto e justificativa','Context and explanation')});
   detail.createEl('p',{text:match.message||'',cls:'writer-review-reason'});
   detail.createEl('p',{text:msg('Parágrafo: ','Paragraph: ')+plainReviewParagraph(source,start,end),cls:'writer-review-paragraph'});
-  const suggestions=(match.replacements||[]).slice(0,5).map(r=>r.value).filter(v=>typeof v==='string');
-  const selectionLabel=card.createEl('label',{text:msg('Substituir por','Replace with'),cls:'writer-review-select-label'});
-  const select=card.createEl('select');
-  selectionLabel.appendChild(select);
-  if(!suggestions.length){const opt=select.createEl('option',{text:msg('Sem substituição automática','No automatic replacement')});opt.value='';}
-  else for(const suggestion of suggestions){const opt=select.createEl('option',{text:suggestion||msg('(remover)','(remove)')});opt.value=suggestion;}
-  const actions=card.createDiv({cls:'writer-review-actions'});
-  actions.createEl('button',{text:msg('Ir ao erro','Go to error'),cls:'writer-review-action-goto'}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
-  const apply=actions.createEl('button',{text:msg('Aceitar','Accept'),cls:'mod-cta writer-review-action-accept'});
-  apply.disabled=!suggestions.length;
-  if(this.plugin.settings.variants?.enabled&&this.plugin.settings.variants.offerInReview!==false){
-    actions.addClass('writer-review-actions-has-variants');
-    const variantButton=actions.createEl('button',{text:'Criar variante',cls:'writer-review-action-variant'});
-    variantButton.disabled=!suggestions.length;
-    variantButton.addEventListener('click',async()=>{
-      const present=await writerCurrentText(this.plugin,file);
-      if(present!==source)return new Notice('A nota mudou. Faça a revisão novamente.');
-      await this.plugin.writerVariants.addFromReview(file,source,match,select.value);
-      this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();
-    });
-  }
-  apply.addEventListener('click',async()=>{
-    try{
-      const replacement=select.value;
-      const current=this.app.vault.getAbstractFileByPath(file.path);
-      if(!(current instanceof TFile))throw new Error(msg('Arquivo não encontrado','File not found'));
-      const present=await writerCurrentText(this.plugin,current);
-      if(present!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
-      await writerSafeReplace(this.plugin,current,start,end,original,replacement,'aceitar revisão gramatical');
-      new Notice(msg('Alteração aplicada','Change applied'));
-      this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();
-      setTimeout(()=>this.reviewFile(file),350);
-    }catch(e){new Notice(e.message||String(e),7000);}
-  });
-  actions.createEl('button',{text:msg('Ignorar','Ignore'),cls:'writer-review-action-ignore'}).addEventListener('click',()=>{card.remove();this.plugin.closeReviewPopup();this.plugin.hideReviewMark(file,start,end);});
-  actions.createEl('button',{text:msg('Explicar e sugerir alternativas','Explain and suggest alternatives'),cls:'writer-review-action-explain'}).addEventListener('click',()=>{detail.open=true;this.explainGrammar(file,source,match,suggestions,detail);});
+  detail.createEl('button',{text:msg('Explicar com IA','Explain with AI')})
+   .addEventListener('click',()=>this.explainGrammar(file,source,match,suggestions,detail));
  }
  async explainGrammar(file,source,match,suggestions,card){
   const explanation=card.createDiv({cls:'writer-review-explanation markdown-rendered'});
@@ -2424,7 +2411,113 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   closeReviewPopup(){
     if(this.reviewPopupCleanup){this.reviewPopupCleanup();this.reviewPopupCleanup=null;}
-    if(this.reviewPopup){this.reviewPopup.remove();this.reviewPopup=null;}
+    if(this.reviewPopup){
+      const open=this.reviewPopup;
+      this.reviewPopup=null;
+      if(typeof open.close==='function')open.close();
+      else if(typeof open.remove==='function')open.remove();
+    }
+    this.reviewPopupKey=null;
+  }
+  async applyGrammarReplacement(file,source,match,replacement){
+    try{
+      const current=this.app.vault.getAbstractFileByPath(file.path);
+      if(!(current instanceof TFile))throw new Error(msg('Arquivo não encontrado','File not found'));
+      const present=await writerCurrentText(this,current);
+      if(present!==source)throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
+      const start=match.offset,end=start+match.length;
+      await writerSafeReplace(this,current,start,end,source.slice(start,end),replacement,'aceitar revisão gramatical');
+      this.closeReviewPopup();this.clearReviewMarks();
+      new Notice(msg('Correção aplicada','Correction applied'));
+      const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
+      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar')setTimeout(()=>view.reviewFile(current),300);
+    }catch(error){new Notice(error.message||String(error),7000);}
+  }
+  async createGrammarVariant(file,source,match,replacement){
+    try{
+      const present=await writerCurrentText(this,file);
+      if(present!==source)throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
+      await this.writerVariants.addFromReview(file,source,match,replacement);
+      this.closeReviewPopup();this.clearReviewMarks();
+    }catch(error){new Notice(error.message||String(error),7000);}
+  }
+  dismissGrammarSuggestion(file,match){
+    const start=match.offset,end=start+match.length;
+    this.closeReviewPopup();this.hideReviewMark(file,start,end);
+    const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
+    if(view?.reviewResults){
+      for(const node of view.reviewResults.querySelectorAll('.writer-lt-result')){
+        if(node.dataset.reviewOffset===String(start))node.remove();
+      }
+    }
+  }
+  async explainGrammarSuggestion(file,source,match){
+    const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
+    if(!view?.explainGrammar)return new Notice(msg('Abra o painel de revisão.','Open the review panel.'));
+    const modal=new Modal(this.app);
+    modal.onOpen=()=>{
+      modal.setTitle(match.rule?.description||msg('Explicação da correção','Correction explanation'));
+      const content=modal.contentEl.createDiv({cls:'writer-lt-explanation'});
+      const suggestions=(match.replacements||[]).map(r=>r.value).filter(v=>typeof v==='string');
+      view.explainGrammar(file,source,match,suggestions,content);
+    };
+    modal.open();
+  }
+  async ignoreGrammarRule(file,match){
+    const id=match.rule?.id;
+    if(!id)return;
+    const ids=new Set(String(this.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim()).filter(Boolean));
+    ids.add(id);
+    this.settings.reviewIgnoreRules=[...ids].join(', ');
+    await this.saveSettings();
+    this.dismissGrammarSuggestion(file,match);
+    new Notice(msg('Regra ignorada. Pode reativá-la nas configurações.','Rule disabled; you can re-enable it in settings.'));
+  }
+  showReviewSuggestionMenu(file,source,match,anchor={}){
+    const key=file.path+':'+match.offset+':'+match.length;
+    this.closeReviewPopup();
+    const menu=new Menu(this.app);
+    const info=document.createDocumentFragment();
+    const block=document.createElement('div');
+    block.className='writer-lt-menu-info';
+    const title=document.createElement('strong');
+    title.className='writer-lt-menu-title';
+    title.textContent=match.rule?.description||match.shortMessage||msg('Sugestão','Suggestion');
+    block.appendChild(title);
+    if(match.message){
+      const message=document.createElement('div');
+      message.className='writer-lt-menu-message';
+      message.textContent=match.message;
+      block.appendChild(message);
+    }
+    info.appendChild(block);
+    menu.addItem(item=>{item.setTitle(info);item.setIsLabel(true);});
+    menu.addSeparator();
+    const alternatives=[...new Set((match.replacements||[]).map(r=>r?.value).filter(v=>typeof v==='string'))].slice(0,8);
+    if(!alternatives.length)menu.addItem(item=>{item.setTitle(msg('Sem substituição automática','No automatic replacement'));item.setIsLabel(true);});
+    for(const replacement of alternatives){
+      menu.addItem(item=>item.setTitle(replacement||msg('(remover)','(delete)')).setIcon('check')
+        .onClick(()=>this.applyGrammarReplacement(file,source,match,replacement)));
+    }
+    menu.addSeparator();
+    if(alternatives.length&&this.settings.variants?.enabled&&this.settings.variants.offerInReview!==false){
+      menu.addItem(item=>item.setTitle(msg('Criar variante','Create variant')).setIcon('layers')
+        .onClick(()=>this.createGrammarVariant(file,source,match,alternatives[0])));
+    }
+    menu.addItem(item=>item.setTitle(msg('Ir ao erro','Go to error')).setIcon('locate-fixed')
+      .onClick(()=>this.jumpToReviewError(file,match.offset,match.offset+match.length)));
+    menu.addItem(item=>item.setTitle(msg('Explicar com IA','Explain with AI')).setIcon('message-square-text')
+      .onClick(()=>this.explainGrammarSuggestion(file,source,match)));
+    menu.addItem(item=>item.setTitle(msg('Ignorar ocorrência','Ignore this occurrence')).setIcon('x')
+      .onClick(()=>this.dismissGrammarSuggestion(file,match)));
+    if(match.rule?.id)menu.addItem(item=>item.setTitle(msg('Ignorar esta regra','Ignore this rule')).setIcon('ban')
+      .onClick(()=>this.ignoreGrammarRule(file,match)));
+    const event=anchor.event;
+    if(event&&typeof menu.showAtMouseEvent==='function')menu.showAtMouseEvent(event);
+    else menu.showAtPosition(anchor.position||{x:window.innerWidth/2,y:Math.min(window.innerHeight/2,300)});
+    this.reviewPopup=menu;
+    this.reviewPopupKey=key;
+    return menu;
   }
   maybeShowReviewPopup(cm,onMark=false){
     if(!this.settings.reviewPopupEnabled||!this.reviewMarks?.length)return;
@@ -2432,57 +2525,16 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const file=leaf?.view?.file;
     if(!file||file.path!==this.reviewMarkedPath)return;
     const offset=cm.state.selection.main.head;
-    const match=this.reviewMarks.find(m=>offset>=m.from&&offset<=m.to);
-    if(!match){this.closeReviewPopup();return;}
-    const key=file.path+':'+match.from+':'+match.to;
-    if(this.reviewPopup?.dataset?.reviewKey===key)return;
-    const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
-    if(!view?.renderGrammarSuggestion)return;
-    const original=this.reviewMatches?.find(m=>m.offset===match.from&&m.length===match.to-match.from);
+    const mark=this.reviewMarks.find(m=>offset>=m.from&&offset<=m.to);
+    if(!mark){this.closeReviewPopup();return;}
+    const key=file.path+':'+mark.from+':'+mark.to;
+    if(this.reviewPopupKey===key)return;
+    const original=this.reviewMatches?.find(m=>m.offset===mark.from&&m.length===mark.to-mark.from);
     if(!original)return;
-    this.closeReviewPopup();
-    const popup=document.body.createDiv({cls:'writer-review-floating'});
-    popup.dataset.reviewKey=key;
-    const close=popup.createEl('button',{cls:'writer-review-popup-close',text:'×',attr:{'aria-label':msg('Fechar','Close')}});
-    close.addEventListener('click',()=>this.closeReviewPopup());
-    view.renderGrammarSuggestion(file,this.reviewSource,original,popup);
-    this.reviewPopup=popup;
-    const position=()=>{
-      if(this.reviewPopup!==popup)return;
-      const viewport=window.visualViewport;
-      const vw=viewport?.width||window.innerWidth;
-      const vh=viewport?.height||window.innerHeight;
-      const vx=viewport?.offsetLeft||0,vy=viewport?.offsetTop||0;
-      const mobile=vw<=620;
-      popup.classList.toggle('writer-review-mobile',mobile);
-      popup.style.maxHeight=Math.max(150,Math.min(mobile?390:440,vh*(mobile?.60:.72)))+'px';
-      if(mobile){
-        popup.style.width=Math.max(200,vw-20)+'px';
-        popup.style.left=vx+10+'px';
-        const height=popup.getBoundingClientRect().height;
-        popup.style.top=Math.max(vy+8,vy+vh-height-12)+'px';
-      }else{
-        const rect=cm.coordsAtPos(match.from);
-        const width=Math.max(280,Math.min(420,vw-24));
-        popup.style.width=width+'px';
-        const left=Math.max(vx+12,Math.min(vx+vw-width-12,(rect?.left??vx+vw/2)-width/2));
-        popup.style.left=left+'px';
-        const height=popup.getBoundingClientRect().height;
-        const below=(rect?.bottom??vy+60)+8;
-        const above=(rect?.top??vy+60)-height-8;
-        popup.style.top=Math.max(vy+8,below+height<vy+vh-8?below:above>=vy+8?above:vy+vh-height-8)+'px';
-      }
-    };
-    const viewport=window.visualViewport;
-    viewport?.addEventListener('resize',position);
-    viewport?.addEventListener('scroll',position);
-    window.addEventListener('resize',position);
-    this.reviewPopupCleanup=()=>{
-      viewport?.removeEventListener('resize',position);
-      viewport?.removeEventListener('scroll',position);
-      window.removeEventListener('resize',position);
-    };
-    requestAnimationFrame(position);
+    const coords=cm.coordsAtPos(mark.from);
+    const x=Math.round((coords?.left??window.innerWidth/2)+10);
+    const y=Math.round((coords?.bottom??window.innerHeight/2)+6);
+    this.showReviewSuggestionMenu(file,this.reviewSource,original,{position:{x,y}});
   }
   reviewEditors(file){
     const views=[];

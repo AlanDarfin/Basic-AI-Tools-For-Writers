@@ -123,6 +123,11 @@ class ProjectsView extends ItemView{
    }catch(e){console.warn('[Basic AI] Não foi possível ler o índice Longform',e);}
   }
   this.projectPrefs=this.prefs(project);
+  if(!writerModuleOn(this.plugin,'projects')){
+   this.root.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
+   return;
+  }
+  if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   tabs.scrollLeft=this.tabScrollLeft||0;
   tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
@@ -132,15 +137,16 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]]){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>id!=='comments'||writerModuleOn(this.plugin,'comments'))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
-  this.drawScenes(panels.scenes,project);
-  this.drawProject(panels.project,project);
-  this.drawCompile(panels.compile,project);
+  // Rendering every hidden panel was expensive for books with many chapters.
+  if(this.activeTab==='scenes')this.drawScenes(panels.scenes,project);
+  if(this.activeTab==='project')this.drawProject(panels.project,project);
+  if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);

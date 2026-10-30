@@ -123,6 +123,13 @@ class ProjectsView extends ItemView{
   }
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
+  tabs.scrollLeft=this.tabScrollLeft||0;
+  tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
+  tabs.addEventListener('wheel',event=>{
+   if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+    tabs.scrollLeft+=event.deltaY;event.preventDefault();
+   }
+  },{passive:false});
   const panels={};
   for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')]]){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});

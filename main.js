@@ -125,6 +125,13 @@ class ProjectsView extends ItemView{
   }
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
+  tabs.scrollLeft=this.tabScrollLeft||0;
+  tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
+  tabs.addEventListener('wheel',event=>{
+   if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+    tabs.scrollLeft+=event.deltaY;event.preventDefault();
+   }
+  },{passive:false});
   const panels={};
   for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')]]){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
@@ -1722,6 +1729,13 @@ class WriterToolsView extends ItemView{
   const active=this.app.workspace.getActiveFile();
   root.createEl('p',{text:active?.extension==='md'?active.path:'Abra uma nota Markdown para usar as ferramentas.',cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
+  tabs.scrollLeft=this.tabScrollLeft||0;
+  tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
+  tabs.addEventListener('wheel',event=>{
+   if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+    tabs.scrollLeft+=event.deltaY;event.preventDefault();
+   }
+  },{passive:false});
   for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
@@ -1771,25 +1785,55 @@ class WriterToolsView extends ItemView{
  }
 
  renderExtras(panel){
-  panel.createEl('h4',{text:writerUi('Símbolos Unicode','Unicode characters')});
-  panel.createEl('p',{text:writerUi('Pesquise símbolos por nome ou código Unicode. Os favoritos ficam nas configurações do Basic AI.','Search characters by name or Unicode code point. Favorites stay in Basic AI settings.')});
-  const unicode=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(unicode,writerUi('Pesquisar Unicode','Search Unicode'),()=>this.plugin.writerFinalFeatures.unicodePicker(),true);
-  panel.createEl('h4',{text:writerUi('Leitura em voz alta','Text-to-speech')});
-  panel.createEl('p',{text:writerUi('Leitor de voz do sistema, sem IA. As vozes disponíveis dependem do dispositivo.','System speech synthesis, without AI. Available voices depend on the device.')});
-  const tts=this.plugin.settings.finalSuite?.tts||{};
-  new Setting(panel).setName(writerUi('Idioma da voz','Voice language')).addDropdown(d=>{
-   for(const [key,label] of [['auto',writerUi('Automático','Auto')],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語']])d.addOption(key,label);
+  panel.addClass('writer-tools-extras');
+  const tools=this.plugin.writerFinalFeatures,tts=this.plugin.settings.finalSuite?.tts||{};
+  const unicode=panel.createDiv({cls:'writer-extras-card'});
+  const unicodeHeader=unicode.createDiv({cls:'writer-extras-card-head'});
+  unicodeHeader.createEl('h4',{text:writerUi('Símbolos Unicode','Unicode symbols')});
+  unicodeHeader.createEl('p',{text:writerUi('Busque por nome, categoria ou U+XXXX. Salve seus símbolos favoritos.','Search by name, category or U+XXXX and save favorite symbols.')});
+  const favorites=unicode.createDiv({cls:'writer-extras-favorites'});
+  for(const char of (this.plugin.settings.finalSuite?.unicode?.favorites||[]).slice(0,12)){
+   favorites.createEl('button',{text:char,attr:{'aria-label':'Insert '+char}}).addEventListener('click',()=>{
+    const editor=this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+    if(editor)editor.replaceSelection(char);else tools.unicodePicker();
+   });
+  }
+  const unicodeActions=unicode.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(unicodeActions,writerUi('Abrir pesquisa Unicode','Search Unicode'),()=>tools.unicodePicker(),true);
+  const speech=panel.createDiv({cls:'writer-extras-card'});
+  const speechHead=speech.createDiv({cls:'writer-extras-card-head'});
+  speechHead.createEl('h4',{text:writerUi('Leitura em voz alta','Text-to-speech')});
+  speechHead.createEl('p',{text:writerUi('Escolha a voz local ou uma voz neural online.','Use a local voice or a neural online voice.')});
+  new Setting(speech).setName(writerUi('Mecanismo','Engine')).addDropdown(d=>{
+   d.addOption('system',writerUi('Voz do sistema','System voice'));
+   d.addOption('edge',writerUi('Microsoft Edge (online)','Microsoft Edge (online)'));
+   d.setValue(tts.engine||'system').onChange(async value=>{
+    tools.stop();tts.engine=value;await this.plugin.saveSettings();this.render();
+   });
+  });
+  if(tts.engine==='edge'){
+   const privacy=speech.createDiv({cls:'writer-tts-privacy'});
+   privacy.createEl('p',{text:writerUi('Online: o texto selecionado ou a nota é enviado à Microsoft. Requer internet e pode ficar indisponível.','Online: selected text or the note is sent to Microsoft. Requires internet and may become unavailable.')});
+   new Setting(privacy).setName(writerUi('Permitir processamento online','Allow online processing')).addToggle(t=>t.setValue(!!tts.allowOnline).onChange(async value=>{
+    tts.allowOnline=value;if(!value)tools.stop();await this.plugin.saveSettings();
+   }));
+  }
+  new Setting(speech).setName(writerUi('Idioma','Language')).addDropdown(d=>{
+   for(const [key,label] of [['auto',writerUi('Automático','Auto')],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,label);
    d.setValue(tts.language||'auto').onChange(async value=>{tts.language=value;await this.plugin.saveSettings();});
   });
-  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(actions,writerUi('Ler texto','Read text'),()=>this.plugin.writerFinalFeatures.speakActive(),true);
-  this.addButton(actions,writerUi('Pausar','Pause'),()=>this.plugin.writerFinalFeatures.pause());
-  this.addButton(actions,writerUi('Continuar','Resume'),()=>this.plugin.writerFinalFeatures.resume());
-  this.addButton(actions,writerUi('Parar','Stop'),()=>this.plugin.writerFinalFeatures.stop());
-  this.addButton(actions,writerUi('Tarefas do projeto','Project tasks'),()=>this.plugin.openProjects('tasks'));
+  const status=speech.createDiv({cls:'writer-tts-current-status',text:writerUi('Pronto para ler','Ready to read')});
+  const actions=speech.createDiv({cls:'writer-tools-v3-actions writer-tts-actions'});
+  this.addButton(actions,writerUi('Ler','Read'),()=>tools.speakActive(),true);
+  this.addButton(actions,writerUi('Pausar','Pause'),()=>tools.pause());
+  this.addButton(actions,writerUi('Continuar','Resume'),()=>tools.resume());
+  this.addButton(actions,writerUi('Parar','Stop'),()=>tools.stop());
+  const nav=panel.createDiv({cls:'writer-extras-card writer-extras-navigation'});
+  nav.createEl('h4',{text:writerUi('Projetos e organização','Projects & organization')});
+  nav.createEl('p',{text:writerUi('Acesse rapidamente as tarefas do Longform.','Quick access to Longform project tasks.')});
+  const links=nav.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(links,writerUi('Tarefas do projeto','Project tasks'),()=>this.plugin.openProjects('tasks'));
  }
-
  renderSnapshots(panel,file){
   const opts=this.plugin.settings.snapshots||{};
   panel.createEl('h4',{text:writerUi("Histórico e recuperação","History and recovery")});
@@ -1882,7 +1926,7 @@ const WRITER_FINAL_DEFAULTS={
  templates:{enabled:true,folder:"Templates",caseSensitive:true,matchCase:true,onlyNew:true,applyOnCreate:true,templateOnRename:false,dateFormat:"YYYY-MM-DD",timeFormat:"HH:mm",matchers:[]},
  unicode:{enabled:true,favorites:["—","…","«","»","“","”","•","→","←","✓","★","≈","≠","∞"],recent:[],maxResults:40},
  toc:{enabled:true,codeBlock:"insta-toc",maxDepth:6,folded:false,numbered:false},
- tts:{enabled:true,language:"auto",rate:1,pitch:1,volume:1,voice:"",readSelection:true,maxCharacters:12000}
+ tts:{enabled:true,engine:"system",allowOnline:false,language:"auto",edgeVoice:"",rate:1,pitch:1,volume:1,voice:"",readSelection:true,maxCharacters:12000}
 };
 function writerFinalMerge(plugin){
  const current=plugin.settings.finalSuite||{};
@@ -1905,7 +1949,7 @@ function writerFinalMerge(plugin){
  return current;
 }
 class WriterFinalFeatures{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=null;}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=null;this.edgePlayer=null;this.ttsStatus='idle';this.ttsMessage='';}
  get cfg(){return this.plugin.settings.finalSuite;}
  register(){
   const p=this.plugin;
@@ -2186,74 +2230,101 @@ class WriterFinalFeatures{
   return list;
  }
  async unicodePicker(){
-  const config=this.cfg.unicode;
-  if(!config.enabled)return new Notice('Enable Unicode search in settings.');
+  const cfg=this.cfg.unicode;
+  if(!cfg.enabled)return new Notice(writerUi('Ative a busca Unicode nas configurações.','Enable Unicode search in settings.'));
   const modal=new Modal(this.plugin.app);
   const editor=this.plugin.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
-  const builtins=[['Em dash','—'],['En dash','–'],['Ellipsis','…'],['Left guillemet','«'],['Right guillemet','»'],['Left double quote','“'],['Right double quote','”'],['Bullet','•'],['Arrow right','→'],['Arrow left','←'],['Check mark','✓'],['Star','★'],['Approximation','≈'],['Not equal','≠'],['Infinity','∞'],['Section','§'],['Degree','°'],['Copyright','©'],['Registered','®'],['Euro','€'],['Smiley','☺']];
+  const common=[['Em dash','—'],['En dash','–'],['Ellipsis','…'],['Left guillemet','«'],['Right guillemet','»'],['Left double quote','“'],['Right double quote','”'],['Bullet','•'],['Arrow right','→'],['Arrow left','←'],['Check mark','✓'],['Star','★'],['Approximation','≈'],['Not equal','≠'],['Infinity','∞'],['Section','§'],['Degree','°'],['Copyright','©'],['Registered','®'],['Euro','€'],['Smiley','☺']];
   modal.onOpen=async()=>{
-   modal.setTitle('Unicode search');
-   const input=modal.contentEl.createEl('input',{type:'search',placeholder:'Search character, Unicode name or U+XXXX'});
-   input.setAttribute('aria-label','Search Unicode characters');input.style.width='100%';
-   const status=modal.contentEl.createDiv({cls:'writer-unicode-status'});
+   modal.setTitle(writerUi('Pesquisar Unicode','Unicode search'));
+   modal.contentEl.addClass('writer-unicode-modal');
+   const search=modal.contentEl.createDiv({cls:'writer-unicode-search'});
+   const input=search.createEl('input',{type:'search',placeholder:writerUi('Nome, símbolo ou U+XXXX','Name, symbol or U+XXXX')});
+   input.setAttribute('aria-label','Search Unicode characters');
+   const categories=search.createEl('select',{cls:'writer-unicode-category',attr:{'aria-label':'Character category'}});
+   for(const [id,title] of [['all',writerUi('Todos','All')],['favorites',writerUi('Favoritos','Favorites')],['arrows',writerUi('Setas','Arrows')],['quotes',writerUi('Aspas','Quotes')],['math',writerUi('Matemática','Math')],['symbols',writerUi('Símbolos','Symbols')],['letters',writerUi('Letras','Letters')]]){
+    categories.createEl('option',{value:id,text:title});
+   }
+   const info=modal.contentEl.createDiv({cls:'writer-unicode-status'});
    const results=modal.contentEl.createDiv({cls:'writer-unicode-results'});
    let index=[];
-   try{index=await this.loadUnicodeIndex();}catch(e){status.setText('Local Unicode index unavailable: '+e.message);}
-   if(!index.length){
-    status.setText('Common symbols only. Download the full Unicode index in plugin settings.');
-   }else status.setText(index.length+' indexed characters (offline).');
-   let updateId=0;
-   const show=(char,name,code)=>{
-    const row=results.createDiv({cls:'writer-unicode-entry'});
-    const button=row.createEl('button',{text:char+' '+name+' · U+'+code.toString(16).toUpperCase(),cls:'writer-unicode-insert'});
-    button.setAttribute('aria-label','Insert '+name);
-    button.addEventListener('click',()=>{
-     if(editor)editor.replaceSelection(char);
-     else if(navigator?.clipboard?.writeText)navigator.clipboard.writeText(char);
-     config.recent=[char,...(config.recent||[]).filter(x=>x!==char)].slice(0,30);
-     this.plugin.saveSettings();modal.close();
-    });
-    const favorite=row.createEl('button',{text:(config.favorites||[]).includes(char)?'★':'☆',cls:'writer-unicode-favorite'});
-    favorite.setAttribute('aria-label','Toggle favorite '+name);
-    favorite.addEventListener('click',()=>{
-     config.favorites=(config.favorites||[]).includes(char)?config.favorites.filter(x=>x!==char):[...config.favorites,char];
-     this.plugin.saveSettings();favorite.setText(config.favorites.includes(char)?'★':'☆');
-    });
+   try{index=await this.loadUnicodeIndex();}catch(error){info.setText(error.message);}
+   const meta=new Map(common.map(([name,char])=>[char,{name,char,code:char.codePointAt(0),search:name.toLowerCase()}]));
+   for(const entry of index)if(!meta.has(entry.char))meta.set(entry.char,entry);
+   const classify=entry=>{
+    const name=entry.name.toUpperCase();
+    if(/ARROW|HARPOON/.test(name))return 'arrows';
+    if(/QUOTATION|APOSTROPHE|GUILLEMET/.test(name))return 'quotes';
+    if(/MATHEMATICAL|INTEGRAL|EQUAL|PLUS|MINUS|INFINITY|SUMMATION|APPROXIMAT/.test(name))return 'math';
+    if(/LETTER|SYLLABLE|IDEOGRAPH/.test(name))return 'letters';
+    return 'symbols';
+   };
+   let visible=[];
+   const insert=entry=>{
+    if(editor)editor.replaceSelection(entry.char);
+    else if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText)navigator.clipboard.writeText(entry.char).catch(()=>new Notice('Copy failed.'));
+    cfg.recent=[entry.char,...(cfg.recent||[]).filter(c=>c!==entry.char)].slice(0,30);
+    this.plugin.saveSettings();modal.close();
    };
    const render=()=>{
     results.empty();
-    const q=input.value.trim().toLowerCase();
-    const limit=Math.max(5,Math.min(150,Number(config.maxResults)||40));
-    const matches=[];const seen=new Set();
-    const add=(char,name,code)=>{if(!char||seen.has(char)||matches.length>=limit)return;seen.add(char);matches.push({char,name,code});};
-    const fromCode=/^(?:u\+|0x)?([0-9a-f]{2,6})$/i.exec(q);
-    if(fromCode){
-     const code=Number.parseInt(fromCode[1],16);
-     if(code<=0x10ffff&&!(code>=0xd800&&code<=0xdfff)){
-      const char=String.fromCodePoint(code);
-      add(char,index.find(x=>x.code===code)?.name||'Unicode character',code);
-     }
-    }
-    const searchBuiltin=(char)=>{
-     const named=builtins.find(x=>x[1]===char);
-     const entry=index.find(x=>x.char===char);
-     const name=entry?.name||named?.[0]||'Favorite';
-     return {name,hex:char.codePointAt(0).toString(16)};
+    const q=input.value.trim().toLowerCase(),category=categories.value;
+    const limit=Math.max(5,Math.min(150,Number(cfg.maxResults)||40));
+    const score=entry=>{
+     const name=entry.name.toLowerCase(),hex=entry.code.toString(16);
+     if(entry.char===q)return 0;
+     if(q.startsWith('u+')&&hex.startsWith(q.slice(2)))return 1;
+     if(name===q)return 2;
+     if(name.startsWith(q))return 3;
+     if(name.split(/\s+/).some(word=>word===q))return 4;
+     if(name.split(/\s+/).some(word=>word.startsWith(q)))return 5;
+     if(name.includes(q))return 7;
+     if(hex.includes(q.replace('u+','')))return 9;
+     return 999;
     };
-    for(const char of [...new Set([...(config.favorites||[]),...(config.recent||[])])]){
-     const {name,hex}=searchBuiltin(char);
-     if(!q||name.toLowerCase().includes(q)||char.includes(q)||hex.includes(q.replace('u+','')))add(char,name,char.codePointAt(0));
+    let pool=[];
+    if(!q){
+     pool=[...new Set([...(cfg.favorites||[]),...(cfg.recent||[]),...common.map(x=>x[1])])].map(char=>meta.get(char)||{char,code:char.codePointAt(0),name:'Unicode character'}).filter(Boolean);
+     if(category!=='all')pool=pool.filter(entry=>category==='favorites'?(cfg.favorites||[]).includes(entry.char):classify(entry)===category);
+    }else{
+     const candidates=index.length?index:[...meta.values()];
+     pool=candidates.filter(entry=>(category==='all'||category==='favorites'&&(cfg.favorites||[]).includes(entry.char)||classify(entry)===category)&&score(entry)<999);
+     if(/^u\+[0-9a-f]{2,6}$/i.test(q)){
+      const number=Number.parseInt(q.slice(2),16);
+      if(number<=0x10ffff&&!(number>=0xd800&&number<=0xdfff)){
+       const char=String.fromCodePoint(number);
+       if(!pool.some(entry=>entry.char===char))pool.unshift(meta.get(char)||{char,code:number,name:'Unicode character'});
+      }
+     }
+     pool.sort((x,y)=>score(x)-score(y)||x.name.length-y.name.length||x.code-y.code);
     }
-    for(const [name,char] of builtins)if(!q||name.toLowerCase().includes(q)||char.includes(q))add(char,name,char.codePointAt(0));
-    if(q.length>=2)for(const entry of index){
-     if(matches.length>=limit)break;
-     if(entry.search.includes(q)||entry.hex.includes(q.replace('u+',''))||entry.char===q)add(entry.char,entry.name,entry.code);
+    visible=pool.slice(0,limit);
+    info.setText(index.length
+      ?writerUi('Índice offline: ','Offline index: ')+index.length.toLocaleString()+' · '+visible.length+writerUi(' resultados',' results')
+      :writerUi('Símbolos comuns · baixe o índice completo nas configurações.','Common symbols · download the complete index in settings.'));
+    for(const entry of visible){
+     const card=results.createDiv({cls:'writer-unicode-entry'});
+     const use=card.createEl('button',{cls:'writer-unicode-insert',attr:{'aria-label':'Insert '+entry.name}});
+     use.createSpan({cls:'writer-unicode-glyph',text:entry.char});
+     const detail=use.createSpan({cls:'writer-unicode-detail'});
+     detail.createSpan({cls:'writer-unicode-name',text:entry.name});
+     detail.createSpan({cls:'writer-unicode-code',text:'U+'+entry.code.toString(16).toUpperCase().padStart(4,'0')});
+     use.addEventListener('click',()=>insert(entry));
+     const favorite=card.createEl('button',{cls:'writer-unicode-favorite',text:(cfg.favorites||[]).includes(entry.char)?'★':'☆',attr:{'aria-label':'Toggle favorite '+entry.name,'aria-pressed':String((cfg.favorites||[]).includes(entry.char))}});
+     favorite.addEventListener('click',()=>{
+      cfg.favorites=(cfg.favorites||[]).includes(entry.char)?cfg.favorites.filter(ch=>ch!==entry.char):[...(cfg.favorites||[]),entry.char];
+      this.plugin.saveSettings();
+      favorite.setText(cfg.favorites.includes(entry.char)?'★':'☆');
+      favorite.setAttribute('aria-pressed',String(cfg.favorites.includes(entry.char)));
+      if(categories.value==='favorites')render();
+     });
     }
-    for(const entry of matches)show(entry.char,entry.name,entry.code);
-    if(!matches.length)results.createEl('p',{text:'No matching characters.'});
+    if(!visible.length)results.createEl('p',{text:writerUi('Nenhum caractere encontrado.','No matching characters.'),cls:'writer-unicode-empty'});
    };
-   let queued=null;
-   input.addEventListener('input',()=>{clearTimeout(queued);queued=setTimeout(render,110);});
+   let queued;
+   input.addEventListener('input',()=>{clearTimeout(queued);queued=setTimeout(render,100);});
+   input.addEventListener('keydown',event=>{if(event.key==='Enter'&&visible.length){event.preventDefault();insert(visible[0]);}});
+   categories.addEventListener('change',render);
    render();input.focus();
   };
   modal.open();
@@ -2303,31 +2374,69 @@ class WriterFinalFeatures{
   };
   modal.open();
  }
- speakActive(){
-  if(!this.cfg.tts.enabled)return new Notice('Enable text-to-speech in settings.');
-  if(typeof speechSynthesis==='undefined')return new Notice('System speech synthesis is unavailable on this device.');
+ onTtsState(status,message=''){
+  this.ttsStatus=status;this.ttsMessage=message;
+  if(typeof document!=='undefined')document.querySelectorAll('.writer-tts-current-status').forEach(node=>{
+   node.textContent=({idle:'Ready',loading:'Generating online speech…',playing:'Reading aloud',paused:'Paused',error:'Speech unavailable'}[status]||status)+(message?' · '+message:'');
+  });
+  if(status==='error')new Notice(message||'Online speech service unavailable.',6500);
+ }
+ getEdgePlayer(){
+  if(!this.edgePlayer){
+   if(typeof WriterEdgePlayer==='undefined')throw Error('Online TTS module was not loaded.');
+   this.edgePlayer=new WriterEdgePlayer((status,message)=>this.onTtsState(status,message));
+  }
+  return this.edgePlayer;
+ }
+ async speakActive(){
+  const cfg=this.cfg.tts;
+  if(!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
   if(!view)return new Notice('Open a Markdown note.');
   const selected=view.editor.getSelection();
-  const raw=selected&&this.cfg.tts.readSelection?selected:view.editor.getValue();
-  const text=writerMaskMarkdown(raw).replace(/ +/g,' ').trim().slice(0,this.cfg.tts.maxCharacters||12000);
+  const raw=selected&&cfg.readSelection?selected:view.editor.getValue();
+  const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
+  const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice('No readable text.');
+  const engine=cfg.engine||'system';
+  if(engine==='edge'){
+   if(!cfg.allowOnline)return new Notice('Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.');
+   if(typeof WebSocket==='undefined')return new Notice('Online voice requires WebSocket support.');
+   this.stop();
+   const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
+   const selectedVoice=cfg.edgeVoice||WRITER_EDGE_VOICES[lang]||WRITER_EDGE_VOICES[lang.split('-')[0]==='pt'?'pt-BR':'en-US'];
+   try{await this.getEdgePlayer().start(text,selectedVoice,cfg.rate);}
+   catch(error){this.onTtsState('error',error.message);}
+   return;
+  }
+  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')return new Notice('No system voice available. Select Microsoft Edge online TTS in settings.');
   this.stop();
   const utterance=new SpeechSynthesisUtterance(text);
-  const lang=this.cfg.tts.language;
-  utterance.lang=lang==='auto'?(navigator.language||'pt-BR'):lang;
-  utterance.rate=Number(this.cfg.tts.rate)||1;
-  utterance.pitch=Number(this.cfg.tts.pitch)||1;
-  utterance.volume=Number(this.cfg.tts.volume)||1;
+  const lang=cfg.language;
+  utterance.lang=lang==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):lang;
+  utterance.rate=Number(cfg.rate)||1;utterance.pitch=Number(cfg.pitch)||1;utterance.volume=Number(cfg.volume)||1;
   const voices=speechSynthesis.getVoices();
-  const requested=voices.find(v=>v.voiceURI===this.cfg.tts.voice)||voices.find(v=>v.lang.toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
+  const requested=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>v.lang.toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
   if(requested)utterance.voice=requested;
-  utterance.onend=()=>{this.speaking=false;};
+  utterance.onstart=()=>this.onTtsState('playing');
+  utterance.onend=()=>{this.speaking=false;this.onTtsState('idle');};
+  utterance.onerror=event=>this.onTtsState('error',event.error||'System voice failed.');
   speechSynthesis.speak(utterance);this.speaking=true;
  }
- pause(){if(typeof speechSynthesis!=='undefined')speechSynthesis.pause();}
- resume(){if(typeof speechSynthesis!=='undefined')speechSynthesis.resume();}
- stop(){if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();this.speaking=false;}
+ pause(){
+  if(this.cfg.tts.engine==='edge')this.edgePlayer?.pause();
+  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.pause();this.onTtsState('paused');}
+ }
+ resume(){
+  if(this.cfg.tts.engine==='edge')this.edgePlayer?.resume();
+  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
+ }
+ stop(){
+  this.edgePlayer?.stop();
+  if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+  this.speaking=false;this.onTtsState('idle');
+ }
+
 };
 function writerRenderFinalSettings(panel,plugin,section){
  const sectionMap={abbreviations:'Abbreviations',anotherName:'Another name',viewMode:'View mode',templates:'Templates by note name',unicode:'Unicode search',toc:'Instant TOC',tts:'Text to speech'};
@@ -2395,22 +2504,171 @@ function writerRenderFinalSettings(panel,plugin,section){
  }
  if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
+  new Setting(panel).setName('Voice engine').setDesc('System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.').addDropdown(d=>{
+   d.addOption('system','System / offline (Web Speech)');
+   d.addOption('edge','Microsoft Edge neural / online');
+   d.setValue(cfg.engine||'system').onChange(async value=>{cfg.engine=value;plugin.writerFinalFeatures.stop();await plugin.saveSettings();});
+  });
+  new Setting(panel).setName('Allow online text processing').setDesc('OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.').addToggle(t=>t.setValue(!!cfg.allowOnline).onChange(async value=>{cfg.allowOnline=value;if(!value)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
   new Setting(panel).setName('Speech language').addDropdown(d=>{
    for(const [key,name] of [['auto','Auto'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,name);
-   d.setValue(cfg.language).onChange(async v=>{cfg.language=v;await plugin.saveSettings();});
+   d.setValue(cfg.language).onChange(async value=>{cfg.language=value;await plugin.saveSettings();});
   });
   const voices=typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[];
-  new Setting(panel).setName('System voice').setDesc('Available voices depend on your device. A Google voice can only be selected when installed.').addDropdown(d=>{
+  new Setting(panel).setName('System voice').setDesc('Only used with the system engine.').addDropdown(d=>{
    d.addOption('','System default');
    for(const voice of voices)d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
-   d.setValue(cfg.voice).onChange(async v=>{cfg.voice=v;await plugin.saveSettings();});
+   d.setValue(cfg.voice).onChange(async value=>{cfg.voice=value;await plugin.saveSettings();});
+  });
+  new Setting(panel).setName('Edge online voice').setDesc('High-quality online voices; independent of installed Linux voices.').addDropdown(d=>{
+   d.addOption('','Auto by language');
+   for(const [lang,voice] of Object.entries(WRITER_EDGE_VOICES))d.addOption(voice,lang+' · '+voice.split('-').slice(2).join('-'));
+   d.setValue(cfg.edgeVoice||'').onChange(async value=>{cfg.edgeVoice=value;await plugin.saveSettings();});
   });
   bool('readSelection','Prefer selected text');
   str('maxCharacters','Maximum characters per playback');
-  for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch',.5,2,.1],['volume','Volume',0,1,.1]]){
-   new Setting(panel).setName(label).addSlider(s=>s.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
+  for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch (system voice)',.5,2,.1],['volume','Volume (system voice)',0,1,.1]]){
+   new Setting(panel).setName(label).addSlider(slider=>slider.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
   }
-  new Setting(panel).setName('Speech').addButton(b=>b.setButtonText('Read').onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText('Pause').onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText('Stop').onClick(()=>plugin.writerFinalFeatures.stop()));
+  new Setting(panel).setName('Speech').addButton(b=>b.setButtonText('Read').onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText('Pause').onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText('Resume').onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText('Stop').onClick(()=>plugin.writerFinalFeatures.stop()));
+  panel.createDiv({cls:'writer-tts-current-status',text:'Ready'});
+
+ }
+}
+
+// v3 module: src/v3/tts-online.js
+// Independent Edge Read Aloud integration. Uses a public, undocumented consumer
+// endpoint; it may change without notice. Never sends text until users opt in.
+const WRITER_EDGE_VOICES={
+ 'pt-BR':'pt-BR-FranciscaNeural','pt-PT':'pt-PT-RaquelNeural',
+ 'en-US':'en-US-JennyNeural','en-GB':'en-GB-SoniaNeural',
+ 'es-ES':'es-ES-ElviraNeural','fr-FR':'fr-FR-DeniseNeural',
+ 'de-DE':'de-DE-KatjaNeural','it-IT':'it-IT-ElsaNeural',
+ 'ja-JP':'ja-JP-NanamiNeural','zh-CN':'zh-CN-XiaoxiaoNeural'
+};
+const WRITER_EDGE_CLIENT='6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+const WRITER_EDGE_REVISION='1-130.0.2849.68';
+const writerEdgeXml=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));
+function writerEdgeChunks(raw,size=2800){
+ const words=String(raw||'').replace(/\s+/g,' ').trim().split(/(?<=\s)/);
+ const chunks=[];let current='';
+ for(const word of words){
+  if(current.length+word.length>size&&current.trim()){chunks.push(current.trim());current='';}
+  if(word.length>size){
+   for(let i=0;i<word.length;i+=size)chunks.push(word.slice(i,i+size));
+  }else current+=word;
+ }
+ if(current.trim())chunks.push(current.trim());
+ return chunks.filter(Boolean);
+}
+async function writerEdgeUrl(){
+ if(typeof crypto==='undefined'||!crypto.subtle)throw Error('Secure crypto is unavailable; Edge online TTS cannot start.');
+ const round=Math.floor((Date.now()/1000+11644473600)/300)*300;
+ const input=new TextEncoder().encode((round*1e7).toFixed(0)+WRITER_EDGE_CLIENT);
+ const digest=await crypto.subtle.digest('SHA-256',input);
+ const hash=Array.from(new Uint8Array(digest),v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
+ const id=typeof crypto.randomUUID==='function'?crypto.randomUUID():[Date.now().toString(16),Math.floor(Math.random()*1e12).toString(16)].join('-');
+ return 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken='+WRITER_EDGE_CLIENT+'&Sec-MS-GEC='+hash+'&Sec-MS-GEC-Version='+WRITER_EDGE_REVISION+'&ConnectionId='+id;
+}
+function writerEdgeBinaryAudio(buffer){
+ const data=new Uint8Array(buffer);
+ if(data.length<3)return null;
+ const headerBytes=data[0]*256+data[1];
+ if(headerBytes+2>data.length)return null;
+ const header=new TextDecoder().decode(data.subarray(2,headerBytes+2));
+ if(!/\bPath:audio\b/i.test(header))return null;
+ return data.slice(headerBytes+2);
+}
+function writerEdgeSynthesize(text,voice,{signal,timeout=25000}={}){
+ return new Promise(async(resolve,reject)=>{
+  let socket=null,clock=null,done=false,received=[],turnEnd=false;
+  const cleanup=()=>{
+   if(clock!==null)clearTimeout(clock);
+   signal?.removeEventListener('abort',onAbort);
+   if(socket&&socket.readyState<2)try{socket.close();}catch(_){}
+  };
+  const fail=error=>{
+   if(done)return;done=true;cleanup();reject(error instanceof Error?error:Error(String(error)));
+  };
+  const finish=()=>{
+   if(done)return;
+   if(!received.length){fail(Error('The Edge voice server returned no audio. It may be unavailable.'));return;}
+   done=true;cleanup();resolve(new Blob(received,{type:'audio/mpeg'}));
+  };
+  const onAbort=()=>fail(Error('Speech request cancelled.'));
+  if(signal?.aborted)return fail(Error('Speech request cancelled.'));
+  signal?.addEventListener('abort',onAbort,{once:true});
+  try{
+   if(typeof WebSocket==='undefined')throw Error('WebSocket unavailable on this device.');
+   const url=await writerEdgeUrl();if(done)return;
+   socket=new WebSocket(url);socket.binaryType='arraybuffer';
+   clock=setTimeout(()=>fail(Error('Edge voice service did not respond in time.')),timeout);
+   socket.onopen=()=>{
+    const ts=new Date().toUTCString();
+    const cfg={context:{synthesis:{audio:{metadataoptions:{sentenceBoundaryEnabled:false,wordBoundaryEnabled:true},outputFormat:'audio-24khz-48kbitrate-mono-mp3'}}}};
+    socket.send('X-Timestamp:'+ts+'\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n'+JSON.stringify(cfg));
+    const request=typeof crypto.randomUUID==='function'?crypto.randomUUID():String(Date.now());
+    const ssml='<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US"><voice name="'+writerEdgeXml(voice)+'"><prosody rate="+0%" pitch="+0Hz" volume="+0%">'+writerEdgeXml(text)+'</prosody></voice></speak>';
+    socket.send('X-RequestId:'+request+'\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:'+ts+'\r\nPath:ssml\r\n\r\n'+ssml);
+   };
+   socket.onmessage=event=>{
+    if(done)return;
+    if(typeof event.data==='string'){
+     if(/Path:turn\.end/i.test(event.data)){turnEnd=true;finish();}
+    }else if(event.data instanceof ArrayBuffer||Object.prototype.toString.call(event.data)==='[object ArrayBuffer]'){
+     const audio=writerEdgeBinaryAudio(event.data);
+     if(audio?.length)received.push(audio);
+    }else if(typeof Blob!=='undefined'&&event.data instanceof Blob){
+     event.data.arrayBuffer().then(bytes=>{if(!done){const audio=writerEdgeBinaryAudio(bytes);if(audio?.length)received.push(audio);}}).catch(fail);
+    }
+   };
+   socket.onerror=()=>fail(Error('Could not connect to Edge online TTS. The service may have changed.'));
+   socket.onclose=()=>{if(!done)finish();};
+  }catch(error){fail(error);}
+ });
+}
+class WriterEdgePlayer{
+ constructor(onState=()=>{}){this.onState=onState;this.generation=0;this.audio=null;this.url=null;this.abort=null;this.status='idle';this.playbackDone=null;}
+ emit(status,message=''){this.status=status;try{this.onState(status,message);}catch(_){}}
+ clearAudio(){
+  if(this.audio){this.audio.pause();this.audio.removeAttribute('src');this.audio.load();this.audio=null;}
+  if(this.url){URL.revokeObjectURL(this.url);this.url=null;}
+ }
+ stop(){
+  this.generation++;
+  this.abort?.abort();this.abort=null;
+  if(this.playbackDone){this.playbackDone();this.playbackDone=null;}
+  this.clearAudio();this.emit('idle');
+ }
+ pause(){if(this.audio&&!this.audio.paused){this.audio.pause();this.emit('paused');}}
+ resume(){if(this.audio?.paused){this.audio.play().then(()=>this.emit('playing')).catch(error=>this.emit('error',error.message));}}
+ async start(text,voice,rate=1){
+  this.stop();const serial=this.generation;
+  const chunks=writerEdgeChunks(text);
+  if(!chunks.length)return;
+  for(let i=0;i<chunks.length&&this.generation===serial;i++){
+   this.emit('loading',(i+1)+' / '+chunks.length);
+   this.abort=new AbortController();
+   let blob;
+   try{blob=await writerEdgeSynthesize(chunks[i],voice,{signal:this.abort.signal});}
+   catch(error){if(this.generation===serial)this.emit('error',error.message);return;}
+   if(this.generation!==serial)return;
+   this.abort=null;
+   this.url=URL.createObjectURL(blob);
+   const audio=new Audio(this.url);
+   this.audio=audio;
+   audio.playbackRate=Math.max(.5,Math.min(2,Number(rate)||1));
+   const finish=new Promise((resolve,reject)=>{
+    this.playbackDone=resolve;
+    audio.addEventListener('ended',resolve,{once:true});
+    audio.addEventListener('error',()=>reject(Error('Audio playback failed.')),{once:true});
+   });
+   try{await audio.play();this.emit('playing',(i+1)+' / '+chunks.length);await finish;}
+   catch(error){if(this.generation===serial)this.emit('error',error.message);this.playbackDone=null;this.clearAudio();return;}
+   this.playbackDone=null;
+   this.clearAudio();
+  }
+  if(this.generation===serial)this.emit('idle');
  }
 }
 
@@ -2421,7 +2679,7 @@ class DictionaryView extends ItemView{
  getDisplayText(){return 'Basic AI Tool for Writers';}
  getIcon(){return 'book-open';}
  async onOpen(){
-  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});const sidebarHead=root.createDiv({cls:'writer-sidebar-header'});sidebarHead.createSpan({text:'Basic AI',cls:'writer-sidebar-brand'});sidebarHead.createEl('button',{text:msg('✦ Ferramentas','✦ Writing tools'),cls:'writer-tools-launcher'}).addEventListener('click',()=>this.plugin.openWritingTools());const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});this.panels={definition:defs,translation:translations,chat,review};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
+  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});const sidebarHead=root.createDiv({cls:'writer-sidebar-header'});sidebarHead.createSpan({text:'Basic AI',cls:'writer-sidebar-brand'});sidebarHead.createEl('button',{text:msg('✦ Ferramentas','✦ Writing tools'),cls:'writer-tools-launcher'}).addEventListener('click',()=>this.plugin.openWritingTools());const tabs=root.createDiv({cls:'writer-tool-tabs'});tabs.addEventListener('wheel',event=>{if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){tabs.scrollLeft+=event.deltaY;event.preventDefault();}},{passive:false});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});this.panels={definition:defs,translation:translations,chat,review};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
   defs.createEl('h3',{text:'Basic AI Tool for Writers',cls:'dictionary-heading'});
   this.input=defs.createEl('input',{attr:{type:'search',placeholder:t('search'),'aria-label':t('search')}});
   const controls=defs.createDiv({cls:'dictionary-controls'});
@@ -2658,7 +2916,7 @@ class DictionarySettings extends PluginSettingTab{
  constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
  display(){
   const el=this.containerEl;el.empty();el.createEl('h2',{text:t('settings')});
-  const nav=el.createDiv({cls:'dictionary-settings-tabs'});
+  const nav=el.createDiv({cls:'dictionary-settings-tabs'});nav.scrollLeft=this.settingsTabsScrollLeft||0;nav.addEventListener('scroll',()=>{this.settingsTabsScrollLeft=nav.scrollLeft;},{passive:true});nav.addEventListener('wheel',event=>{if(nav.scrollWidth>nav.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){nav.scrollLeft+=event.deltaY;event.preventDefault();}},{passive:false});
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
   const sections=[
     ['general',msg('Geral','General')],

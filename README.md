@@ -1,5 +1,13 @@
 # Basic AI Tool for Writers
 
+## Writing Suite 3.1.0-beta.1 — Unicode UI, tabs and online TTS
+
+This preview improves the Unicode picker with readable character cards, category filters, relevance ranking and inline favorites. The main sidebar, writing tools, Longform and Settings now use horizontally scrollable tab rows instead of clipping or wrapping tabs. The writing-tools Extras panel separates Unicode, speech and project shortcuts.
+
+**Text-to-speech:** choose **System / offline** or opt in to **Microsoft Edge neural / online** speech, which works without an installed Linux speech engine. Online synthesis sends the selected text or note to Microsoft only after enabling **Allow online text processing**; it needs internet access and uses an undocumented, potentially unreliable service. Pause, resume and stop are supported for both engines. See [Writing Suite](docs/WRITING_SUITE.md).
+
+This is a beta because remote speech compatibility needs practical testing in Obsidian Desktop and Mobile.
+
 ## Writing Suite — 3.0.0
 
 The stable [Writing Suite](docs/WRITING_SUITE.md) brings abbreviations, another-name subtitles, per-note view modes, a Longform **Tasks** tab, instant tables of contents, offline Unicode search, rule-based templates by note name (prefix, contains, suffix and optional rename handling) and multilingual system text-to-speech to Basic AI Tool for Writers. These are configurable modules with commands and writing-sidebar controls. No AI provider is used for speech synthesis.

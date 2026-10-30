@@ -68,6 +68,11 @@ class WriterAutoGrammar{
   const file=this.plugin.app.vault.getAbstractFileByPath(path);
   if(!file||file.extension!=='md')return;
   if(view.reviewBusy){this.schedule(file,{delay:1000});return;}
+  // No redundant request if a manual check already covered this exact text.
+  const source=await writerCurrentText(this.plugin,file);
+  if(view.grammarCheckedPath===path&&view.grammarCheckedSource===source){
+   this.pendingPath=null;return;
+  }
   this.pendingPath=null;this.lastRun=Date.now();
   await view.reviewFile(file,{automatic:true});
   if(this.pendingPath){

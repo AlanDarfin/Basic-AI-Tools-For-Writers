@@ -54,4 +54,28 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
   assert.ok(haystack.includes(required),required);
  }
  console.log('PASS standalone bundle includes mobile fixes');
+ const projectSource=fs.readFileSync('projects.js','utf8');
+ assert.ok(projectSource.includes("row.dataset.depth=String(level)"));
+ assert.ok(projectSource.includes("row.style.setProperty('--writer-scene-indent'"));
+ assert.ok(projectSource.includes("writer-project-scene-depth-mark"));
+ assert.ok(css.includes("var(--writer-scene-indent,0px)"));
+ assert.ok(css.includes(".writer-project-scene-depth-mark"));
+ console.log('PASS nested chapter depth indicators are rendered without changing control columns');
+ const ui=vm.runInNewContext(fs.readFileSync('src/v4/integrations.js','utf8')+'\\n({writerV4ExtraMerge,writerV4FormatText})',{
+  EditorSuggest:class{},console
+ });
+ const legacy={writerV4Extras:{toolbar:{enabled:true}}};
+ ui.writerV4ExtraMerge(legacy);
+ assert.equal(legacy.writerV4Extras.toolbar.mobileMode,'native');
+ const opting={writerV4Extras:{toolbar:{enabled:true,mobileMode:'floating'}}};
+ ui.writerV4ExtraMerge(opting);
+ assert.equal(opting.writerV4Extras.toolbar.mobileMode,'floating');
+ assert.equal(ui.writerV4FormatText('Palavra','bold'),'**Palavra**');
+ assert.equal(ui.writerV4FormatText('Um\\nDois','quote'),'> Um\\n> Dois');
+ assert.equal(ui.writerV4FormatText('Palavra','link'),'[Palavra](https://example.com)');
+ const extras=fs.readFileSync('src/v4/integrations.js','utf8');
+ assert.ok(extras.includes("id:'v4-editing-toolbar'"));
+ assert.ok(extras.includes("this.isMobile&&owner.config.toolbar.mobileMode!=='floating'"));
+ assert.ok(css.includes('writer-v4-editor-command-grid')||fs.readFileSync('styles.css','utf8').includes('writer-v4-editor-command-grid'));
+ console.log('PASS native Android toolbar default, optional floating mode and safe formatting helpers');
 })().catch(error=>{console.error(error);process.exitCode=1;});

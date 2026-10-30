@@ -16,7 +16,7 @@ function longformIndex(file,app){
 }
 function sceneNames(items,out=[]){for(const item of items){if(typeof item==='string')out.push(item);else if(item&&typeof item==='object'){if(item.scene)out.push(String(item.scene));if(item.name)out.push(String(item.name));if(Array.isArray(item.children))sceneNames(item.children,out);}}return out;}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Default';this.workflow='Padrão';}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return 'Projetos de escrita';}
  getIcon(){return 'notebook-pen';}
@@ -33,6 +33,9 @@ class ProjectsView extends ItemView{
   if(!this.root)return;
   this.root.empty();
   const indexes=this.indexes();
+  const active=this.app.workspace.getActiveFile();
+  const activeProject=active&&indexes.find(p=>p.file.path===active.path);
+  if(!this.selected&&activeProject)this.selected=activeProject.file.path;
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
   const selector=top.createEl('select',{attr:{'aria-label':'Projeto'}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
@@ -41,6 +44,7 @@ class ProjectsView extends ItemView{
   selector.value=this.selected;
   selector.addEventListener('change',()=>{this.selected=selector.value;this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
+  this.currentProject=project;
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
   for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas']]){
@@ -61,39 +65,119 @@ class ProjectsView extends ItemView{
    ||this.app.vault.getMarkdownFiles().find(f=>f.basename===name&&f.path.startsWith(base+'/'));
  }
  openFile(file){if(file instanceof TFile)this.app.workspace.getLeaf(false).openFile(file);}
+
+ async updateIndex(project,change){
+  await this.app.fileManager.processFrontMatter(project.file,fm=>{
+   if(!fm.longform||typeof fm.longform!=='object')fm.longform={};
+   change(fm.longform);
+  });
+  await this.render();
+ }
+ sceneList(project){return Array.isArray(project.meta.scenes)?project.meta.scenes:[];}
+ async addScene(project,parent=null){
+  new TextPrompt(this.app,parent?'Novo subcapítulo':'Nova cena',async raw=>{
+   const name=clean(raw);if(!name)return;
+   const dir=project.file.parent?.path||'',folder=String(project.meta.sceneFolder||'').replace(/^\/+|\/+$/g,'');
+   const path=[dir,folder,name+'.md'].filter(Boolean).join('/');
+   try{
+    if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe um arquivo com esse nome.');
+    if(folder)await this.ensureFolder([dir,folder].filter(Boolean).join('/'));
+    const file=await this.app.vault.create(path,'');
+    await this.updateIndex(project,data=>{
+     if(!Array.isArray(data.scenes))data.scenes=[];
+     if(parent){
+      const target=this.findScene(data.scenes,parent);
+      if(!target)throw Error('Cena pai não encontrada');
+      if(typeof target.item==='string')target.list[target.index]={name:target.item,children:[]};
+      const node=target.list[target.index];
+      if(!Array.isArray(node.children))node.children=[];
+      node.children.push(name);
+     }else data.scenes.push(name);
+    });
+    this.openFile(file);
+   }catch(e){new Notice('Não foi possível criar cena: '+e.message);}
+  }).open();
+ }
+ findScene(items,path){
+  if(!Array.isArray(items))return null;
+  for(let i=0;i<items.length;i++){
+   const item=items[i],name=typeof item==='string'?item:String(item?.scene||item?.name||'');
+   const current=path[0];
+   if(name!==current)continue;
+   if(path.length===1)return {list:items,index:i,item};
+   return this.findScene(item?.children,path.slice(1));
+  }
+  return null;
+ }
+ async reorderScene(project,path,delta){
+  try{await this.updateIndex(project,data=>{
+   const found=this.findScene(data.scenes,path);
+   if(!found)return;
+   const to=found.index+delta;
+   if(to<0||to>=found.list.length)return;
+   found.list.splice(to,0,found.list.splice(found.index,1)[0]);
+  });}catch(e){new Notice(e.message);}
+ }
+ async removeSceneFromIndex(project,path){
+  try{await this.updateIndex(project,data=>{
+   const found=this.findScene(data.scenes,path);
+   if(found)found.list.splice(found.index,1);
+  });new Notice('Cena removida apenas do índice; arquivo preservado.');}catch(e){new Notice(e.message);}
+ }
  drawScenes(panel,project){
-  panel.createEl('h4',{text:'Cenas do manuscrito'});
-  const renderItem=(item,parent,level=0)=>{
+  const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  toolbar.createEl('button',{text:'+ Cena'}).addEventListener('click',()=>this.addScene(project));
+  const renderItem=(item,parent,path=[],level=0)=>{
    if(level>25)return;
    const name=typeof item==='string'?item:String(item?.scene||item?.name||'Cena');
-   const row=parent.createDiv({cls:'writer-project-scene'});
-   row.style.paddingLeft=(level*12)+'px';
+   const next=[...path,name],row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
+   row.style.paddingLeft=(level*10)+'px';
    const file=this.resolveScene(project,name);
-   row.createEl('button',{text:name}).addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
-   if(Array.isArray(item?.children))for(const child of item.children)renderItem(child,parent,level+1);
+   row.createEl('button',{text:name,cls:'writer-project-scene-title'}).addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
+   for(const [label,fn,title] of [['↑',()=>this.reorderScene(project,next,-1),'Mover para cima'],['↓',()=>this.reorderScene(project,next,1),'Mover para baixo'],['+',()=>this.addScene(project,next),'Novo subcapítulo'],['×',()=>this.removeSceneFromIndex(project,next),'Retirar do índice (não apaga arquivo)']]){
+    const button=row.createEl('button',{text:label,cls:'writer-project-small-button',attr:{'aria-label':title,title}});
+    button.addEventListener('click',fn);
+   }
+   if(Array.isArray(item?.children))for(const child of item.children)renderItem(child,parent,next,level+1);
   };
   for(const scene of project.scenes)renderItem(scene,panel);
-  if(!project.scenes.length)panel.createEl('p',{text:'Nenhuma cena cadastrada neste índice.'});
+  if(!project.scenes.length)panel.createEl('p',{text:'Nenhuma cena cadastrada. Use + Cena.'});
  }
  drawProject(panel,project){
   panel.createEl('h4',{text:project.title});
   panel.createEl('p',{text:'Índice: '+project.file.path});
-  panel.createEl('p',{text:'Cenas no índice: '+sceneNames(project.scenes).length});
-  panel.createEl('button',{text:'Abrir índice do Longform'}).addEventListener('click',()=>this.openFile(project.file));
-  panel.createEl('p',{text:'Importação compatível: leitura dos metadados existentes, sem alterar arquivos.'});
+  panel.createEl('p',{text:'Cenas: '+sceneNames(project.scenes).length});
+  panel.createEl('button',{text:'Abrir índice'}).addEventListener('click',()=>this.openFile(project.file));
+  new Setting(panel).setName('Título do projeto').addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
+  new Setting(panel).setName('Pasta das cenas').setDesc('Relativa à pasta do índice; não move arquivos existentes.').addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
+  panel.createEl('p',{text:'Metadados Longform originais preservados. Alterações são feitas somente após confirmação.'});
+ }
+ async compileProject(project,options){
+  const names=sceneNames(project.scenes),contents=[];
+  for(const name of names){
+   const file=this.resolveScene(project,name);if(!file)continue;
+   let body=await this.app.vault.read(file);
+   if(options.frontmatter!==false)body=body.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/,'');
+   if(options.links!==false)body=body.replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,(_,alias,target)=>alias?target:target);
+   contents.push(body.trim());
+  }
+  if(!contents.length)throw Error('Nenhuma cena encontrada.');
+  const separator=options.separator??'\n\n---\n\n';
+  return contents.join(separator)+'\n';
  }
  drawCompile(panel,project){
-  panel.createEl('h4',{text:'Compilação básica'});
-  panel.createEl('p',{text:'Concatena cenas existentes na ordem do índice. Não altera os capítulos nem substitui workflows personalizados do Longform.'});
-  panel.createEl('button',{text:'Gerar manuscrito Markdown'}).addEventListener('click',async()=>{
+  panel.createEl('h4',{text:'Compilar manuscrito'});
+  const opts={frontmatter:true,links:true,separator:'\n\n---\n\n'};
+  new Setting(panel).setName('Remover propriedades YAML').addToggle(t=>t.setValue(true).onChange(v=>opts.frontmatter=v));
+  new Setting(panel).setName('Remover wikilinks').addToggle(t=>t.setValue(true).onChange(v=>opts.links=v));
+  new Setting(panel).setName('Separador').addTextArea(t=>t.setValue('\\n\\n---\\n\\n').onChange(v=>opts.separator=v.replace(/\\n/g,'\n')));
+  panel.createEl('button',{text:'Gerar manuscrito Markdown',cls:'mod-cta'}).addEventListener('click',async()=>{
    try{
-    const names=sceneNames(project.scenes),contents=[];
-    for(const name of names){const f=this.resolveScene(project,name);if(f)contents.push((await this.app.vault.read(f)).replace(/^---\s*\n[\s\S]*?\n---\s*\n?/,'').trim());}
-    if(!contents.length)throw Error('Nenhuma cena encontrada.');
+    const content=await this.compileProject(project,opts);
     const dir=project.file.parent?.path||'',base=clean(project.title)+' - Manuscrito';
     let path=(dir?dir+'/':'')+base+'.md',n=2;
     while(this.app.vault.getAbstractFileByPath(path))path=(dir?dir+'/':'')+base+' '+n+++'.md';
-    const file=await this.app.vault.create(path,contents.join('\n\n---\n\n')+'\n');
+    const file=await this.app.vault.create(path,content);
     this.openFile(file);new Notice('Manuscrito criado: '+file.path);
    }catch(e){new Notice('Falha ao compilar: '+e.message);}
   });
@@ -121,110 +205,6 @@ class ProjectsView extends ItemView{
   drawFolder(folder,panel,0);
  }
  promptNote(dir){new TextPrompt(this.app,'Nova nota',async name=>{name=clean(name);if(!name)return;try{await this.ensureFolder(dir);let path=dir+'/'+name+'.md';if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe uma nota com esse nome.');const file=await this.app.vault.create(path,'');this.openFile(file);await this.render();}catch(e){new Notice(e.message);}}).open();}
-}
-
-
-const {StateField,StateEffect}=require('@codemirror/state');
-const {Decoration,EditorView,ViewPlugin}=require('@codemirror/view');
-const setReviewMarks=StateEffect.define();
-const reviewMarkField=StateField.define({
- create(){return Decoration.none;},
- update(value,tr){
-  value=value.map(tr.changes);
-  for(const effect of tr.effects)if(effect.is(setReviewMarks)){
-   const marks=effect.value||[];
-   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark',attributes:{title:m.message||'LanguageTool'}}).range(m.from,m.to)),true);
-  }
-  if(tr.docChanged)value=Decoration.none;
-  return value;
- },
- provide:f=>EditorView.decorations.from(f)
-});
-function prepareGrammarText(text){
- let masked=withoutFrontmatter(text);
- const hide=(re)=>{masked=masked.replace(re,match=>match.replace(/[^\r\n]/g,' '));};
- hide(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm);
- hide(/^~~~[^\n]*\n[\s\S]*?^~~~[^\n]*$/gm);
- hide(/^`{1,3}[^\n]*`{1,3}$/gm);
- hide(/\!\[[^\]]*\]\([^\n)]*\)/g);
- hide(/\[\[[^\]\n]*\]\]/g);
- hide(/^\s{0,3}#{1,6}(?=\s)/gm);
- hide(/\[([^\]]+)\]\([^\n)]*\)/g);
- return masked;
-}
-function reviewParagraph(source,start,end){
- const breaks=/\r?\n[ \t]*\r?\n/g;
- let from=0,to=source.length,m;
- while((m=breaks.exec(source))!==null){
-   if(m.index+ m[0].length<=start)from=m.index+m[0].length;
-   else if(m.index>=end){to=m.index;break;}
- }
- const paragraph=source.slice(from,to).trim();
- return paragraph||source.slice(Math.max(0,start-80),Math.min(source.length,end+80)).trim();
-}
-function plainReviewParagraph(source,start,end){
- const paragraph=reviewParagraph(source,start,end);
- return paragraph
-  .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,(_,alias,name)=>name)
-  .replace(/!\[([^\]]*)\]\([^)]*\)/g,'')
-  .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
-  .replace(/(\*\*|__|~~|==|\`)/g,'')
-  .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm,'')
-  .trim();
-}
-function meaningfulGrammarMatch(source,match){
- const offset=match.offset,length=match.length;
- if(!Number.isInteger(offset)||!Number.isInteger(length)||offset<0||length<=0||offset+length>source.length)return false;
- const rule=String(match.rule?.id||'').toUpperCase();
- const category=String(match.rule?.category?.id||'').toUpperCase();
- const text=source.slice(offset,offset+length);
- if(/WHITESPACE|SPACE|TYPOGRAPHY|PUNCTUATION/.test(rule)&&/^\s+$/.test(text))return false;
- if(/WHITESPACE_RULE|COMMA_PARENTHESIS_WHITESPACE|DOUBLE_PUNCTUATION/.test(rule))return false;
- if(category==='TYPOGRAPHY'&&/^\s+$/.test(text))return false;
- return true;
-}
-function withoutFrontmatter(text){
- const match=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
- if(!match)return text;
- return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
-}
-const msg=(pt,en)=>getLocale()==='pt'?pt:en;
-const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewAutoOpenNote:true,reviewPopupEnabled:true};
-const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
-function parseDictionary(text) {
-  const entries=[]; let word=null, lines=[];
-  const flush=()=>{if(word) entries.push({word, markdown:('# '+word+'\n'+lines.join('\n')).trim()});};
-  for(const line of text.split(/\r?\n/)){
-    const heading=/^#\s+(.+?)\s*$/.exec(line);
-    if(heading){flush();word=heading[1];lines=[];}
-    else if(word){if(/^---+\s*$/.test(line)) continue;lines.push(line);}
-  }
-  flush();return entries;
-}
-
-const AI_PROVIDERS=[['openai','OpenAI'],['gemini','Gemini'],['grok','Grok (xAI)'],['claude','Claude (Anthropic)'],['custom','Custom (OpenAI-compatible)'],['ollama','Ollama'],['openrouter','OpenRouter'],['groqcloud','Groq Cloud']];
-const I18N={
- en:{title:'Word checker',search:'Search a word...',provider:'AI provider',language:'Definition language',lookup:'Define word',save:'Save definition',translate:'Translate word',translateMeaning:'Translate meaning',synonyms:'Synonyms',antonyms:'Antonyms',context:'Optional sentence or context',result:'Definition',translation:'Translation',copy:'Copy',missing:'No local entry found.',saved:'Definition saved.',noWord:'Enter a word first.',noResult:'No definition returned.',error:'Request failed',settings:'Word checker settings',dictionary:'Local Markdown dictionary',target:'Translation target language',source:'Translation source language',key:'API key',model:'Model',endpoint:'Custom HTTPS endpoint',offline:'Local entries',notice:'API keys are stored in Obsidian plugin data without encryption. Do not sync them to untrusted devices.',transProvider:'Translation AI provider',detect:'Detect language',compare:'Compare meaning',original:'Original meaning',translated:'Translated meaning',alternatives:'Contextual alternatives',needAI:'Configure an AI provider and API key in settings.'},
- pt:{title:'Verificador de palavras',search:'Pesquisar palavra...',provider:'Provedor de IA',language:'Idioma da definição',lookup:'Definir palavra',save:'Salvar definição',translate:'Traduzir palavra',translateMeaning:'Traduzir significado',synonyms:'Sinônimos',antonyms:'Antônimos',context:'Frase ou contexto opcional',result:'Definição',translation:'Tradução',copy:'Copiar',missing:'Nenhuma entrada local encontrada.',saved:'Definição salva.',noWord:'Digite uma palavra primeiro.',noResult:'Nenhuma definição retornada.',error:'Falha na solicitação',settings:'Configurações do verificador',dictionary:'Dicionário Markdown local',target:'Idioma de destino da tradução',source:'Idioma de origem da tradução',key:'Chave de API',model:'Modelo',endpoint:'Endpoint HTTPS personalizado',offline:'Entradas locais',notice:'As chaves de API ficam nos dados do plugin sem criptografia. Não sincronize com dispositivos não confiáveis.',transProvider:'IA para tradução',detect:'Detectar idioma',compare:'Comparar significado',original:'Significado original',translated:'Significado traduzido',alternatives:'Alternativas contextuais',needAI:'Configure um provedor de IA e sua chave nas opções.'}
-};
-const getLocale=()=>{try{const l=require('obsidian').getLanguage?.()||'en';return l.toLowerCase().startsWith('pt')?'pt':'en';}catch{return 'en';}};
-const t=k=>(I18N[getLocale()]||I18N.en)[k]||k;
-const PROMPT_DEFAULTS={
- definition:'You are a precise dictionary. Define the word in {language}. Give part of speech, concise senses and one short example. No introduction or closing remarks. Return Markdown.',
- synonyms:'In {language}, provide 5 contextual synonyms for the given word. For each, give a short nuance and example. No introductory text or conclusion. Return only a Markdown list.',
- antonyms:'In {language}, provide contextual antonyms, their nuances and short examples. No introductory text or conclusion. Return only a Markdown list.',
- translate:'Translate the user text from {source} into {target}. If source is auto, infer the source language from the text. Preserve meaning, tone and formatting. Return only the translation.',
- writing:'You are a writing assistant. Follow the task and preserve the author intent. Return only the requested text, formatted as Markdown.',
- test:'Reply with OK only.'
-};
-const LANGS={pt:'Português',en:'English',es:'Español',fr:'Français',de:'Deutsch',it:'Italiano',ja:'日本語'};
-function selectOptions(el,options,value,onChange){for(const [id,label] of options){const opt=el.createEl('option',{text:label});opt.value=id;}el.value=value;el.addEventListener('change',()=>onChange(el.value));}
-
-class MarkdownVaultPicker extends FuzzySuggestModal{
- constructor(app,callback){super(app);this.callback=callback;this.setPlaceholder(msg('Pesquisar arquivos Markdown…','Search Markdown files…'));}
- getItems(){return this.app.vault.getMarkdownFiles();}
- getItemText(file){return file.path;}
- onChooseItem(file){this.callback(file);}
 }
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}

@@ -9,7 +9,7 @@ const mockTimers={
 };
 const api=vm.runInNewContext(fs.readFileSync('src/v4/auto-grammar.js','utf8')+
  '\n({writerAutoGrammarSettings,writerAutoGrammarWindow,WriterAutoGrammar})',{
- VIEW:'basic-ai-tool-for-writers',writerUi:(pt,en)=>pt,writerCurrentText:async()=> 'Sample document',console,...mockTimers,Date
+ VIEW:'basic-ai-tool-for-writers',writerModuleOn:()=>true,writerUi:(pt,en)=>pt,writerCurrentText:async()=> 'Sample document',console,...mockTimers,Date
 });
 const {writerAutoGrammarSettings,writerAutoGrammarWindow,WriterAutoGrammar}=api;
 let passed=0;

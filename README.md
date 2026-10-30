@@ -1,14 +1,17 @@
 # Basic AI Tool for Writers
 
-## V3 preview — autocomplete, variantes e versões
+## V3 beta 2 — autocomplete, variantes e versões
 
-A branch `develop/v3-workspace` contém a prévia **3.0.0-beta.1** com três módulos novos, integrados ao Obsidian:
+A versão **3.0.0-beta.2** contém a prévia com três módulos novos, integrados ao Obsidian:
 
 - **Sugestões:** autocomplete local do arquivo, cofre, dicionários e links;
 - **Variantes:** alternativas inline de escrita, revisão → variante e geração com IA;
 - **Versões:** snapshots locais nomeados, diferenças, restauração segura e anexos opcionais.
 
-Os módulos têm **configurações próprias, comandos na paleta e uma nova barra lateral**. A atualização preserva as configurações antigas e gera backup de `data.json` antes de migrar. Para instruções, limitações e segurança, consulte [Guia da v3](docs/V3.md). **Ainda é uma versão beta, sem validação manual concluída no Android.**
+Os módulos têm **configurações próprias, comandos na paleta e uma nova barra lateral**. A atualização preserva as configurações antigas e gera backup de `data.json` antes de migrar.
+**Correções da beta 2:** o LanguageTool ignora delimitadores Markdown como `_itálico_` sem perder a posição dos erros; o cartão de revisão foi adaptado à tela e ao teclado do Android; controles de cenas agora ficam em linha, com setas e menu contextual `⋯`. Testes de regressão foram adicionados.
+
+Para instruções, limitações e segurança, consulte [Guia da v3](docs/V3.md). **Ainda é uma versão beta, sem validação manual concluída no Android.**
 
 
 A bilingual, AI-powered writing companion for [Obsidian](https://obsidian.md), available on desktop and mobile.

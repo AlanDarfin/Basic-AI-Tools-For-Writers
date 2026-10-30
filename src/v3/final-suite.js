@@ -27,18 +27,6 @@ class WriterFinalFeatures{
   p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
   p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
   p.registerEvent(p.app.vault.on('create',file=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplate(file).catch(e=>console.warn('[Basic AI] template:',e));}));
-  p.registerEditorExtension(ViewPlugin.fromClass(class{
-   constructor(view){this.view=view;this.onUpdate=update=>{
-    if(!update.docChanged||!p.settings.finalSuite?.abbreviations?.enabled)return;
-    const changes=[];update.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
-     const value=inserted.toString();
-     if(value.length===1&&/[\s.,!?;:]/.test(value))changes.push({at:toB,character:value});
-    });
-    if(!changes.length)return;
-    setTimeout(()=>{for(const c of changes)p.writerFinalFeatures.tryExpand(view,c);},0);
-   };this.extension=EditorView.updateListener.of(this.onUpdate);
-   }
-  }));
   p.registerEditorExtension(EditorView.updateListener.of(update=>{
    if(!update.docChanged||!p.settings.finalSuite?.abbreviations?.enabled)return;
    if(this.expanding)return;

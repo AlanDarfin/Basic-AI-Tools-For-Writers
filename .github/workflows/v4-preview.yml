@@ -17,15 +17,15 @@ jobs:
         run: npm run check
       - name: Verify v4 preview metadata
         run: |
-          node -e "const m=require('./manifest.json'),p=require('./package.json');if(m.version!==p.version||!/^4\.0\.0-beta\./.test(m.version)||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1)"
-      - name: Package beta files and checksums
+          node -e "const m=require('./manifest.json'),p=require('./package.json');if(m.version!==p.version||!/^4\.0\.0-(?:beta\.\d+|rc\.\d+)$/.test(m.version)||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1)"
+      - name: Package candidate files and checksums
         run: |
           set -euo pipefail
           zip -j basic-ai-tool-for-writers-v4-preview.zip main.js manifest.json styles.css
           sha256sum main.js manifest.json styles.css basic-ai-tool-for-writers-v4-preview.zip > SHA256SUMS-v4.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: basic-ai-v4-beta-preview
+          name: basic-ai-v4-candidate
           path: |
             basic-ai-tool-for-writers-v4-preview.zip
             SHA256SUMS-v4.txt

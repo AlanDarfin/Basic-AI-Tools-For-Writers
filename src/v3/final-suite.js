@@ -7,7 +7,7 @@ const WRITER_FINAL_DEFAULTS={
  templates:{enabled:true,folder:"Templates",caseSensitive:true,matchCase:true,onlyNew:true,applyOnCreate:true,templateOnRename:false,dateFormat:"YYYY-MM-DD",timeFormat:"HH:mm",matchers:[]},
  unicode:{enabled:true,favorites:["—","…","«","»","“","”","•","→","←","✓","★","≈","≠","∞"],recent:[],maxResults:40},
  toc:{enabled:true,codeBlock:"insta-toc",maxDepth:6,folded:false,numbered:false},
- tts:{enabled:true,language:"auto",rate:1,pitch:1,volume:1,voice:"",readSelection:true,maxCharacters:12000}
+ tts:{enabled:true,engine:"system",allowOnline:false,language:"auto",edgeVoice:"",rate:1,pitch:1,volume:1,voice:"",readSelection:true,maxCharacters:12000}
 };
 function writerFinalMerge(plugin){
  const current=plugin.settings.finalSuite||{};
@@ -30,7 +30,7 @@ function writerFinalMerge(plugin){
  return current;
 }
 class WriterFinalFeatures{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=null;}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=null;this.edgePlayer=null;this.ttsStatus='idle';this.ttsMessage='';}
  get cfg(){return this.plugin.settings.finalSuite;}
  register(){
   const p=this.plugin;
@@ -428,31 +428,69 @@ class WriterFinalFeatures{
   };
   modal.open();
  }
- speakActive(){
-  if(!this.cfg.tts.enabled)return new Notice('Enable text-to-speech in settings.');
-  if(typeof speechSynthesis==='undefined')return new Notice('System speech synthesis is unavailable on this device.');
+ onTtsState(status,message=''){
+  this.ttsStatus=status;this.ttsMessage=message;
+  if(typeof document!=='undefined')document.querySelectorAll('.writer-tts-current-status').forEach(node=>{
+   node.textContent=({idle:'Ready',loading:'Generating online speech…',playing:'Reading aloud',paused:'Paused',error:'Speech unavailable'}[status]||status)+(message?' · '+message:'');
+  });
+  if(status==='error')new Notice(message||'Online speech service unavailable.',6500);
+ }
+ getEdgePlayer(){
+  if(!this.edgePlayer){
+   if(typeof WriterEdgePlayer==='undefined')throw Error('Online TTS module was not loaded.');
+   this.edgePlayer=new WriterEdgePlayer((status,message)=>this.onTtsState(status,message));
+  }
+  return this.edgePlayer;
+ }
+ async speakActive(){
+  const cfg=this.cfg.tts;
+  if(!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
   if(!view)return new Notice('Open a Markdown note.');
   const selected=view.editor.getSelection();
-  const raw=selected&&this.cfg.tts.readSelection?selected:view.editor.getValue();
-  const text=writerMaskMarkdown(raw).replace(/ +/g,' ').trim().slice(0,this.cfg.tts.maxCharacters||12000);
+  const raw=selected&&cfg.readSelection?selected:view.editor.getValue();
+  const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
+  const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice('No readable text.');
+  const engine=cfg.engine||'system';
+  if(engine==='edge'){
+   if(!cfg.allowOnline)return new Notice('Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.');
+   if(typeof WebSocket==='undefined')return new Notice('Online voice requires WebSocket support.');
+   this.stop();
+   const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
+   const selectedVoice=cfg.edgeVoice||WRITER_EDGE_VOICES[lang]||WRITER_EDGE_VOICES[lang.split('-')[0]==='pt'?'pt-BR':'en-US'];
+   try{await this.getEdgePlayer().start(text,selectedVoice,cfg.rate);}
+   catch(error){this.onTtsState('error',error.message);}
+   return;
+  }
+  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')return new Notice('No system voice available. Select Microsoft Edge online TTS in settings.');
   this.stop();
   const utterance=new SpeechSynthesisUtterance(text);
-  const lang=this.cfg.tts.language;
-  utterance.lang=lang==='auto'?(navigator.language||'pt-BR'):lang;
-  utterance.rate=Number(this.cfg.tts.rate)||1;
-  utterance.pitch=Number(this.cfg.tts.pitch)||1;
-  utterance.volume=Number(this.cfg.tts.volume)||1;
+  const lang=cfg.language;
+  utterance.lang=lang==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):lang;
+  utterance.rate=Number(cfg.rate)||1;utterance.pitch=Number(cfg.pitch)||1;utterance.volume=Number(cfg.volume)||1;
   const voices=speechSynthesis.getVoices();
-  const requested=voices.find(v=>v.voiceURI===this.cfg.tts.voice)||voices.find(v=>v.lang.toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
+  const requested=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>v.lang.toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
   if(requested)utterance.voice=requested;
-  utterance.onend=()=>{this.speaking=false;};
+  utterance.onstart=()=>this.onTtsState('playing');
+  utterance.onend=()=>{this.speaking=false;this.onTtsState('idle');};
+  utterance.onerror=event=>this.onTtsState('error',event.error||'System voice failed.');
   speechSynthesis.speak(utterance);this.speaking=true;
  }
- pause(){if(typeof speechSynthesis!=='undefined')speechSynthesis.pause();}
- resume(){if(typeof speechSynthesis!=='undefined')speechSynthesis.resume();}
- stop(){if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();this.speaking=false;}
+ pause(){
+  if(this.cfg.tts.engine==='edge')this.edgePlayer?.pause();
+  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.pause();this.onTtsState('paused');}
+ }
+ resume(){
+  if(this.cfg.tts.engine==='edge')this.edgePlayer?.resume();
+  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
+ }
+ stop(){
+  this.edgePlayer?.stop();
+  if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+  this.speaking=false;this.onTtsState('idle');
+ }
+
 };
 function writerRenderFinalSettings(panel,plugin,section){
  const sectionMap={abbreviations:'Abbreviations',anotherName:'Another name',viewMode:'View mode',templates:'Templates by note name',unicode:'Unicode search',toc:'Instant TOC',tts:'Text to speech'};
@@ -520,21 +558,34 @@ function writerRenderFinalSettings(panel,plugin,section){
  }
  if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
+  new Setting(panel).setName('Voice engine').setDesc('System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.').addDropdown(d=>{
+   d.addOption('system','System / offline (Web Speech)');
+   d.addOption('edge','Microsoft Edge neural / online');
+   d.setValue(cfg.engine||'system').onChange(async value=>{cfg.engine=value;plugin.writerFinalFeatures.stop();await plugin.saveSettings();});
+  });
+  new Setting(panel).setName('Allow online text processing').setDesc('OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.').addToggle(t=>t.setValue(!!cfg.allowOnline).onChange(async value=>{cfg.allowOnline=value;if(!value)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
   new Setting(panel).setName('Speech language').addDropdown(d=>{
    for(const [key,name] of [['auto','Auto'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,name);
-   d.setValue(cfg.language).onChange(async v=>{cfg.language=v;await plugin.saveSettings();});
+   d.setValue(cfg.language).onChange(async value=>{cfg.language=value;await plugin.saveSettings();});
   });
   const voices=typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[];
-  new Setting(panel).setName('System voice').setDesc('Available voices depend on your device. A Google voice can only be selected when installed.').addDropdown(d=>{
+  new Setting(panel).setName('System voice').setDesc('Only used with the system engine.').addDropdown(d=>{
    d.addOption('','System default');
    for(const voice of voices)d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
-   d.setValue(cfg.voice).onChange(async v=>{cfg.voice=v;await plugin.saveSettings();});
+   d.setValue(cfg.voice).onChange(async value=>{cfg.voice=value;await plugin.saveSettings();});
+  });
+  new Setting(panel).setName('Edge online voice').setDesc('High-quality online voices; independent of installed Linux voices.').addDropdown(d=>{
+   d.addOption('','Auto by language');
+   for(const [lang,voice] of Object.entries(WRITER_EDGE_VOICES))d.addOption(voice,lang+' · '+voice.split('-').slice(2).join('-'));
+   d.setValue(cfg.edgeVoice||'').onChange(async value=>{cfg.edgeVoice=value;await plugin.saveSettings();});
   });
   bool('readSelection','Prefer selected text');
   str('maxCharacters','Maximum characters per playback');
-  for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch',.5,2,.1],['volume','Volume',0,1,.1]]){
-   new Setting(panel).setName(label).addSlider(s=>s.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
+  for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch (system voice)',.5,2,.1],['volume','Volume (system voice)',0,1,.1]]){
+   new Setting(panel).setName(label).addSlider(slider=>slider.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
   }
-  new Setting(panel).setName('Speech').addButton(b=>b.setButtonText('Read').onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText('Pause').onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText('Stop').onClick(()=>plugin.writerFinalFeatures.stop()));
+  new Setting(panel).setName('Speech').addButton(b=>b.setButtonText('Read').onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText('Pause').onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText('Resume').onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText('Stop').onClick(()=>plugin.writerFinalFeatures.stop()));
+  panel.createDiv({cls:'writer-tts-current-status',text:'Ready'});
+
  }
 }

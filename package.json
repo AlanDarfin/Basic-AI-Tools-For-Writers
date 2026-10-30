@@ -1,13 +1,13 @@
 {
   "name": "basic-ai-tool-for-writers",
-  "version": "3.0.0-beta.3",
+  "version": "4.0.0-beta.1",
   "private": true,
   "description": "Obsidian writing workspace",
   "scripts": {
-    "build": "node scripts/sync-projects.js && node scripts/build-v3.js",
-    "check:bundle": "node scripts/sync-projects.js --check && node scripts/build-v3.js --check",
-    "test": "node tests/projects.test.js && node tests/v3.test.js",
-    "check": "node --check main.js && node --check projects.js && node --check src/v3/core.js && node --check src/v3/complements.js && node --check src/v3/variants.js && node --check src/v3/snapshots.js && node --check src/v3/workspace.js && npm run check:bundle && npm test"
+    "build": "node scripts/sync-projects.js && node scripts/build-v3.js && node scripts/build-v4.js",
+    "check:bundle": "node scripts/sync-projects.js --check && node scripts/build-v3.js --check && node scripts/build-v4.js --check",
+    "test": "node tests/projects.test.js && node tests/v3.test.js && node tests/v4.test.js",
+    "check": "node --check main.js && node --check projects.js && node --check src/v3/core.js && node --check src/v3/complements.js && node --check src/v3/variants.js && node --check src/v3/snapshots.js && node --check src/v3/workspace.js && node --check src/v4/core.js && node --check src/v4/editor.js && node --check src/v4/tts.js && node --check src/v4/unicode.js && node --check src/v4/toc.js && node --check src/v4/homework.js && node --check src/v4/settings.js && npm run check:bundle && npm test"
   },
   "license": "MIT"
 }

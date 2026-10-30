@@ -103,10 +103,10 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)this.selected=activeProject.file.path;
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:'+ Projeto',cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
+  top.createEl('button',{text:w4label(this.plugin,'+ Projeto'),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':'Projeto'}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
-  if(!indexes.length){this.root.createEl('p',{text:'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.'});return;}
+  if(!indexes.length){this.root.createEl('p',{text:w4label(this.plugin,'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.')});return;}
   if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
   if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
   this.lastSelected=this.selected;
@@ -123,8 +123,8 @@ class ProjectsView extends ItemView{
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
-  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas']]){
-   const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
+  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas'],['homework','Tarefas']]){
+   const btn=tabs.createEl('button',{text:w4label(this.plugin,name),cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
    panels[id].style.display=this.activeTab===id?'block':'none';
@@ -133,7 +133,9 @@ class ProjectsView extends ItemView{
   this.drawProject(panels.project,project);
   this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
+  if(this.activeTab==='homework')this.plugin.v4Homework?.draw(panels.homework,this,project);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
+  w4TranslateTree(this.root,this.plugin);
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';

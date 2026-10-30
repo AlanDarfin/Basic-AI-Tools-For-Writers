@@ -1,6 +1,32 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.1** (development branch). Not a stable release.
+Status: **4.0.0-beta.4** (development branch). Not a stable release.
+
+
+## Beta.4 — hierarchy and Android toolbar polish
+
+- **Longform indentation:** restores per-level visual offset under the compact mobile grid, adds a tinted guide for nested chapters and a clear `↳ 1` / `↳ 2` label at each nested level. Existing up/down and drag controls stay in one row.
+- **Mobile editing toolbar:** moves from a keyboard-adjacent fixed dock to a compact pill positioned near the selected passage, below Android's native selection popup where possible. Omits quote/list controls already present in native editing bars.
+- **Mobile preference:** configure **Integrated tools → Toolbar on Android → Near selection / Off on mobile** to avoid overlap with Obsidian's native toolbar.
+- Automated regression assertions cover depth indicators, CSS indentation and toolbar location/opt-out. Desktop formatting controls stay available.
+
+## Beta.3 — Android repair release
+
+- **Longform:** scene cards now have a compact three-column layout (grip / wrapping title / arrow controls), even with narrow sidebars and large text.
+- **Mobile toolbar:** editor selection now reacts to touch and WebView selection-change events; the toolbar is docked near the bottom rather than directly over the Android text-selection handles. It remains available on desktop.
+- **Android TTS:** explicit diagnostics distinguish unavailable WebView speech APIs from empty voice lists; late-loaded system voices update through `voiceschanged` and can be refreshed in settings. Obsidian Android may not expose Android's native speech service to plugins. The online Edge engine still requires manual opt-in, and no text is transmitted automatically.
+- **Regression coverage:** automated Android capability, mobile selection, standalone bundle and compact chapter layout checks.
+
+## Beta.2 — integrated writing workspace
+
+- Longform chapter reordering supports desktop HTML drag/drop (before or after) and an accessible two-tap handle flow for touch devices. Up/down buttons remain available. The vertical scrollbar position now persists across rerenders and chapter index writes.
+- Android TTS resolves the most recently opened Markdown editor and falls back to reading the actual vault file when a sidebar has focus.
+- A **Comments** tab in Longform stores selected-text comments per chapter locally, including jump-to-passage, resolve/reopen and delete. Comments follow a note when it is renamed. This is a native Basic AI implementation, not the Document Comments plugin's full inline margin UI.
+- A note **Mention** suggester uses configurable trigger/folder/link mode; it supports explicit note creation after confirmation.
+- A contextual **Editing toolbar** formats selected text with Markdown; a **Writing actions** menu provides AI-based improvement, expansion, shortening, simplification, dialogue, tone, grammar, critique and brainstorming. Proposals are reviewed before application using selective Diff.
+- **Typewriter mode** centers the cursor while composing and optionally dims surrounding lines, all independently configurable.
+
+The new tools live under **Settings → Integrated tools**. The comments UI lives inside the Longform Projects panel. This is an original implementation with distinct behavior from the referenced third-party plugins.
 
 ## Highlights
 

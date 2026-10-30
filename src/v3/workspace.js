@@ -119,6 +119,14 @@ class WriterToolsView extends ItemView{
     tools.stop();tts.engine=value;await this.plugin.saveSettings();this.render();
    });
   });
+  if(tts.engine!=='edge'){
+   const support=speech.createDiv({cls:'writer-tts-support'});
+   support.createEl('p',{text:tools.systemSpeechStatus(),cls:'writer-tts-system-diagnostic'});
+   const diagnostics=support.createDiv({cls:'writer-tools-v3-actions'});
+   this.addButton(diagnostics,writerUi('Verificar vozes','Check voices'),()=>{
+    tools.refreshVoiceSelectors();this.render();
+   });
+  }
   if(tts.engine==='edge'){
    const privacy=speech.createDiv({cls:'writer-tts-privacy'});
    privacy.createEl('p',{text:writerUi('Online: o texto selecionado ou a nota é enviado à Microsoft. Requer internet e pode ficar indisponível.','Online: selected text or the note is sent to Microsoft. Requires internet and may become unavailable.')});

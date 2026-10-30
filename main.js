@@ -339,6 +339,7 @@ class DictionarySettings extends PluginSettingTab{
     ['prompts',msg('Prompts','Prompts')]
   ];
   const showTab=id=>{
+    this.activeSettingsTab=id;
     for(const button of Array.from(nav.children)){button.classList.toggle('is-active',button.dataset.tab===id);button.setAttribute('aria-selected',String(button.dataset.tab===id));}
     panel.empty();
     if(id==='review'){
@@ -427,7 +428,7 @@ class DictionarySettings extends PluginSettingTab{
     }
   };
   for(const [id,label] of sections){const b=nav.createEl('button',{text:label,attr:{role:'tab','aria-selected':'false'}});b.dataset.tab=id;b.addEventListener('click',()=>showTab(id));}
-  nav.setAttribute('role','tablist');showTab('general');
+  nav.setAttribute('role','tablist');showTab(this.activeSettingsTab||'general');
  }
 }
 module.exports=class AlansOfflineDictionary extends Plugin{
@@ -438,9 +439,11 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.cache={path:null,entries:[]};this.dirty=true;
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
     this.addSettingTab(new DictionarySettings(this.app,this));
-    this.addRibbonIcon('book-open','Basic AI Tool for Writers',()=>this.activateView());
+    this.addRibbonIcon('book-open',msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),()=>this.activateView());
     this.addCommand({id:'open-dictionary-view',name:msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),callback:()=>this.activateView()});
     this.addCommand({id:'search-selected-word',name:t('lookup'),editorCallback:async editor=>{const term=editor.getSelection().trim();if(!term){new Notice('Select a word first.');return;}await this.activateView();const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;if(view?.input){view.input.value=term;await view.search(term);await view.lookup();}}});
+    this.addCommand({id:'open-translation-tab',name:msg('Abrir tradutor','Open translator'),callback:async()=>{await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('translation');}});
+    this.addCommand({id:'open-definitions-tab',name:msg('Abrir definições','Open definitions'),callback:async()=>{await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');}});
     this.addCommand({id:'open-writing-review',name:msg('Abrir revisão de escrita','Open writing review'),callback:()=>this.openReview()});
     for(const [mode,pt,en] of [['grammar','Revisar gramática da nota ativa','Review active note grammar'],['style','Revisar estilo da nota ativa','Review active note style'],['beta','Fazer leitura beta da nota ativa','Beta read active note']]){
       this.addCommand({id:'review-'+mode+'-active-note',name:msg(pt,en),callback:async()=>{const file=this.app.workspace.getActiveFile();if(!(file instanceof TFile)||file.extension!=='md')return new Notice(msg('Abra uma nota Markdown primeiro.','Open a Markdown note first.'));await this.openReview(mode,file);}});

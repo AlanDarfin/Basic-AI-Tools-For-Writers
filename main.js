@@ -106,10 +106,10 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)this.selected=activeProject.file.path;
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:'+ Projeto',cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
-  const selector=top.createEl('select',{attr:{'aria-label':'Projeto'}});
+  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
+  const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
-  if(!indexes.length){this.root.createEl('p',{text:'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.'});return;}
+  if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
   if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
   if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
   this.lastSelected=this.selected;
@@ -126,7 +126,7 @@ class ProjectsView extends ItemView{
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
-  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas'],['tasks',lfMsg('Tarefas','Tasks')]]){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')]]){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -213,7 +213,7 @@ class ProjectsView extends ItemView{
      }else scenes.push({title:name,indent:0});
     });
     this.openFile(file);
-   }catch(e){new Notice('Não foi possível criar a cena: '+e.message);}
+   }catch(e){new Notice(lfMsg("Não foi possível criar a cena: ","Could not create scene: ")+e.message);}
   }).open();
  }
  async moveScene(project,title,delta){
@@ -261,14 +261,14 @@ class ProjectsView extends ItemView{
    const depth=scenes[i].indent,end=this.subtreeEnd(scenes,i);
    scenes.splice(i,1);
    for(let j=i;j<end-1;j++)scenes[j].indent=Math.max(0,scenes[j].indent-1);
-  });new Notice('Entrada removida do índice. Arquivo e subcapítulos preservados.');}
+  });new Notice(lfMsg("Entrada removida do índice. Arquivo e subcapítulos preservados.","Entry removed from index. The file and child chapters were preserved."));}
   catch(e){new Notice(e.message);}
  }
  async renameScene(project,title){
   new TextPrompt(this.app,'Renomear cena',async raw=>{
    const name=clean(raw);if(!name||name===title)return;
    const file=this.resolveScene(project,title);
-   if(!(file instanceof TFile))return new Notice('Arquivo da cena não encontrado.');
+   if(!(file instanceof TFile))return new Notice(lfMsg("Arquivo da cena não encontrado.","Scene file not found."));
    const newPath=[file.parent?.path,name+'.md'].filter(Boolean).join('/');
    try{
     if(this.app.vault.getAbstractFileByPath(newPath))throw Error('Já existe uma cena com esse nome.');
@@ -279,8 +279,8 @@ class ProjectsView extends ItemView{
  }
  drawScenes(panel,project){
   if(project.format==='single'){
-   panel.createEl('p',{text:'Projeto de nota única.'});
-   panel.createEl('button',{text:'Abrir texto'}).addEventListener('click',()=>this.openFile(project.file));
+   panel.createEl('p',{text:lfMsg("Projeto de nota única.","Single-note project.")});
+   panel.createEl('button',{text:lfMsg("Abrir texto","Open text")}).addEventListener('click',()=>this.openFile(project.file));
    return;
   }
   const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar'});
@@ -301,12 +301,12 @@ class ProjectsView extends ItemView{
    prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
   }).open());
-  if(this.draft!=='Principal')draftBar.createEl('button',{text:'Excluir variante'}).addEventListener('click',async()=>{
+  if(this.draft!=='Principal')draftBar.createEl('button',{text:lfMsg("Excluir variante","Delete variant")}).addEventListener('click',async()=>{
    delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();
   });
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
-  toolbar.createEl('button',{text:'+ Cena'}).addEventListener('click',()=>this.addScene(project));
-  toolbar.createEl('button',{text:'Novo rascunho Longform'}).addEventListener('click',()=>this.createLinkedDraft(project));
+  toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
+  toolbar.createEl('button',{text:lfMsg("Novo rascunho Longform","New Longform draft")}).addEventListener('click',()=>this.createLinkedDraft(project));
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
@@ -319,7 +319,7 @@ class ProjectsView extends ItemView{
    row.addEventListener('drop',e=>{e.preventDefault();row.removeClass('writer-project-dragover');const source=e.dataTransfer.getData('text/plain');if(source)this.moveSceneBefore(project,source,name);});
    const file=this.resolveScene(project,name);
    const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
-   titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
+   titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));
    const controls=row.createDiv({cls:'writer-project-scene-controls'});
    for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){
     controls.createEl('button',{text:label,cls:'writer-project-small-button',attr:{title:hint,'aria-label':hint+' — '+name}})
@@ -362,24 +362,24 @@ class ProjectsView extends ItemView{
     const payload={longform:{format:'scenes',title:project.title,draftTitle:name,sceneFolder:'/',scenes:lfNestScenes(scenes),ignoredFiles:[]}};
     const index=await this.app.vault.create(path,'---\n'+stringifyYaml(payload)+'---\n');
     this.selected=index.path;this.draft='Principal';await this.render();this.queueRender();
-    new Notice('Rascunho Longform criado sem alterar o original.');
-   }catch(e){new Notice('Não foi possível criar rascunho: '+e.message);}
+    new Notice(lfMsg("Rascunho Longform criado sem alterar o original.","Longform draft created without changing the original."));
+   }catch(e){new Notice(lfMsg("Não foi possível criar rascunho: ","Could not create draft: ")+e.message);}
   }).open();
  }
  drawProject(panel,project){
   panel.createEl('h4',{text:project.title});
-  panel.createEl('p',{text:'Índice: '+project.file.path});
-  panel.createEl('p',{text:'Cenas: '+sceneNames(project.scenes).length});
-  panel.createEl('button',{text:'Abrir índice'}).addEventListener('click',()=>this.openFile(project.file));
-  new Setting(panel).setName('Título do projeto').addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
-  new Setting(panel).setName('Pasta das cenas').setDesc('Relativa à pasta do índice; não move arquivos existentes.').addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
+  panel.createEl('p',{text:lfMsg("Índice: ","Index: ")+project.file.path});
+  panel.createEl('p',{text:lfMsg("Cenas: ","Scenes: ")+sceneNames(project.scenes).length});
+  panel.createEl('button',{text:lfMsg("Abrir índice","Open index")}).addEventListener('click',()=>this.openFile(project.file));
+  new Setting(panel).setName(lfMsg("Título do projeto","Project title")).addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
+  new Setting(panel).setName(lfMsg("Pasta das cenas","Scene folder")).setDesc(lfMsg("Relativa à pasta do índice; não move arquivos existentes.","Relative to the index folder; does not move existing files.")).addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
   const prefs=this.prefs(project);
-  new Setting(panel).setName('Meta diária (palavras)').addText(t=>t.setValue(String(prefs.dailyGoal||0)).onChange(v=>this.dailyGoalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.dailyGoal=Math.max(0,Number(this.dailyGoalInput)||0);await this.savePrefs();}));
+  new Setting(panel).setName(lfMsg("Meta diária (palavras)","Daily goal (words)")).addText(t=>t.setValue(String(prefs.dailyGoal||0)).onChange(v=>this.dailyGoalInput=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(async()=>{prefs.dailyGoal=Math.max(0,Number(this.dailyGoalInput)||0);await this.savePrefs();}));
   this.drawSession(panel,project);
-  new Setting(panel).setName('Meta de palavras').setDesc('Meta total do projeto').addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
+  new Setting(panel).setName(lfMsg("Meta de palavras","Word goal")).setDesc(lfMsg("Meta total do projeto","Total project goal")).addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
   const count=this.activeScenes(project).length;
-  panel.createEl('p',{text:'Cenas no rascunho: '+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
-  panel.createEl('p',{text:'Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.'});
+  panel.createEl('p',{text:lfMsg("Cenas no rascunho: ","Scenes in draft: ")+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
+  panel.createEl('p',{text:lfMsg("Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.","Local drafts and goals are stored in Basic AI settings. Longform drafts are separate index notes.")});
   this.drawSceneDiagnostics(panel,project);
  }
 
@@ -448,11 +448,11 @@ class ProjectsView extends ItemView{
   const unknown=existing.filter(f=>!tracked.has(f.basename)&&!((project.meta.ignoredFiles||[]).includes(f.basename)));
   const missing=[...tracked].filter(name=>!this.resolveScene(project,name));
   const section=panel.createEl('details',{cls:'writer-project-diagnostics'});
-  section.createEl('summary',{text:'Diagnóstico · '+missing.length+' cenas ausentes, '+unknown.length+' arquivos soltos'});
+  section.createEl('summary',{text:lfMsg("Diagnóstico · ","Diagnostics · ")+missing.length+' cenas ausentes, '+unknown.length+' arquivos soltos'});
   if(missing.length)section.createEl('p',{text:'Ausentes: '+missing.join(', ')});
   if(unknown.length){
-   section.createEl('p',{text:'Novos arquivos: '+unknown.map(f=>f.basename).join(', ')});
-   section.createEl('button',{text:'Adicionar arquivos soltos ao índice'}).addEventListener('click',()=>{
+   section.createEl('p',{text:lfMsg("Novos arquivos: ","New files: ")+unknown.map(f=>f.basename).join(', ')});
+   section.createEl('button',{text:lfMsg("Adicionar arquivos soltos ao índice","Add unindexed files")}).addEventListener('click',()=>{
     new ConfirmProjectAction(this.app,'Adicionar arquivos ao índice',
      'Adicionar '+unknown.length+' arquivo(s) Markdown como cenas ao final do índice? Nenhum arquivo será movido.',
      ()=>this.changeScenes(project,scenes=>{for(const f of unknown)scenes.push({title:f.basename,indent:0});})
@@ -543,7 +543,7 @@ class ProjectsView extends ItemView{
   const modal=new Modal(this.app);let raw='';
   modal.onOpen=()=>{
    modal.setTitle('Importar workflows (JSON)');
-   modal.contentEl.createEl('p',{text:'Cole o objeto workflows ou o conteúdo de data.json do Longform. Apenas etapas reconhecidas poderão ser executadas.'});
+   modal.contentEl.createEl('p',{text:lfMsg("Cole o objeto workflows ou o conteúdo de data.json do Longform. Apenas etapas reconhecidas poderão ser executadas.","Paste the workflows object or Longform data.json contents. Only recognized steps can be executed.")});
    const area=modal.contentEl.createEl('textarea',{attr:{rows:'12',placeholder:'{"workflows":{...}}'}});
    area.style.width='100%';area.addEventListener('input',()=>raw=area.value);
    new Setting(modal.contentEl).addButton(b=>b.setButtonText('Importar').setCta().onClick(async()=>{
@@ -559,13 +559,13 @@ class ProjectsView extends ItemView{
      }
      if(!count)throw Error('Nenhum workflow com etapas foi encontrado.');
      modal.close();await this.savePrefs();new Notice(count+' workflow(s) importado(s).');
-    }catch(e){new Notice('Importação inválida: '+e.message,7000);}
+    }catch(e){new Notice(lfMsg("Importação inválida: ","Invalid import: ")+e.message,7000);}
    }));
   };
   modal.open();
  }
  drawCompile(panel,project){
-  panel.createEl('h4',{text:'Compilação por etapas'});
+  panel.createEl('h4',{text:lfMsg("Compilação por etapas","Step-by-step compilation")});
   const workflows=this.workflowsFor(project);
   if(!workflows[this.workflow])this.workflow=Object.keys(workflows)[0];
   const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
@@ -582,7 +582,7 @@ class ProjectsView extends ItemView{
   bar.createEl('button',{text:'Importar JSON'}).addEventListener('click',()=>this.importWorkflowJSON(project));
   const wf=this.workflowDraft&&this.workflowDraftName===this.workflow?this.workflowDraft:
    (this.workflowDraft=JSON.parse(JSON.stringify(workflows[this.workflow])),this.workflowDraftName=this.workflow,this.workflowDraft);
-  const status=panel.createEl('p',{text:'Edite etapas e clique em Salvar workflow. Scripts externos não são executados.'});
+  const status=panel.createEl('p',{text:lfMsg("Edite etapas e clique em Salvar workflow. Scripts externos não são executados.","Edit steps and select Save workflow. External scripts are not executed.")});
   const stepNames=Object.fromEntries(this.workflowCatalog().map(([id,label])=>[id,label]));
   const drawStep=(step,i)=>{
    const box=panel.createDiv({cls:'writer-project-workflow-step'});
@@ -606,24 +606,24 @@ class ProjectsView extends ItemView{
    if(step.id==='concatenate-text')text('Separador','separator','\\n\\n---\\n\\n');
    if(step.id==='write-to-note'){text('Destino relativo ao projeto','target','manuscript.md');toggle('Abrir manuscrito','open-after');}
    if(step.id==='add-frontmatter')text('YAML','frontmatter','',true);
-   if(!stepNames[step.id])box.createEl('p',{text:'Etapa de script/customizada preservada na importação, mas não pode ser executada.'});
+   if(!stepNames[step.id])box.createEl('p',{text:lfMsg("Etapa de script/customizada preservada na importação, mas não pode ser executada.","Custom/script step preserved on import but cannot be executed.")});
   };
   for(let i=0;i<wf.steps.length;i++)drawStep(wf.steps[i],i);
   const add=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const stepPicker=add.createEl('select');
   for(const [id,label] of this.workflowCatalog()){const o=stepPicker.createEl('option',{text:label});o.value=id;}
   add.createEl('button',{text:'+ Etapa'}).addEventListener('click',()=>{wf.steps.push({id:stepPicker.value,optionValues:{}});this.render();});
-  add.createEl('button',{text:'Salvar workflow'}).addEventListener('click',async()=>{
+  add.createEl('button',{text:lfMsg("Salvar workflow","Save workflow")}).addEventListener('click',async()=>{
    workflows[this.workflow]=JSON.parse(JSON.stringify(wf));await this.plugin.saveSettings();status.setText('Workflow salvo.');
   });
-  add.createEl('button',{text:'Prévia'}).addEventListener('click',async()=>{
+  add.createEl('button',{text:lfMsg("Prévia","Preview")}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,true);let preview=panel.querySelector('.writer-project-compile-preview');
     if(!preview)preview=panel.createEl('textarea',{cls:'writer-project-compile-preview'});
     preview.value=result.contents.slice(0,24000);preview.readOnly=true;
     status.setText('Prévia gerada; nenhum arquivo foi modificado.');
-   }catch(e){new Notice('Workflow inválido: '+e.message,8000);}
+   }catch(e){new Notice(lfMsg("Workflow inválido: ","Invalid workflow: ")+e.message,8000);}
   });
-  add.createEl('button',{text:'Compilar',cls:'mod-cta'}).addEventListener('click',async()=>{
+  add.createEl('button',{text:lfMsg("Compilar","Compile"),cls:'mod-cta'}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,false);status.setText('Criado: '+result.file.path);new Notice('Manuscrito criado sem sobrescrever o original.');}
    catch(e){new Notice('Falha: '+e.message,8000);}
   });
@@ -635,21 +635,21 @@ class ProjectsView extends ItemView{
   const root=this.notesRoot(project);
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:'+ Pasta'}).addEventListener('click',()=>this.promptNotesFolder(root));
-  toolbar.createEl('button',{text:'+ Nota'}).addEventListener('click',()=>this.promptNote(root));
+  toolbar.createEl('button',{text:lfMsg("+ Nota","+ Note")}).addEventListener('click',()=>this.promptNote(root));
   const search=panel.createEl('input',{attr:{type:'search',placeholder:'Pesquisar notas deste projeto','aria-label':'Pesquisar notas'}});
   search.addClass('writer-project-note-search');
   const contents=panel.createDiv({cls:'writer-project-note-tree'});
   const folder=this.app.vault.getAbstractFileByPath(root);
-  if(!(folder instanceof TFolder)){contents.createEl('p',{text:'Crie uma pasta ou nota para começar. As notas não entram no manuscrito.'});return;}
+  if(!(folder instanceof TFolder)){contents.createEl('p',{text:lfMsg("Crie uma pasta ou nota para começar. As notas não entram no manuscrito.","Create a folder or note to get started. Notes are excluded from the manuscript.")});return;}
   const viewFolder=(f,parent,level=0)=>{
    if(level>18)return;
    const block=parent.createEl('details',{cls:'writer-project-notes-folder'});block.open=level<=1;
-   block.createEl('summary',{text:level===0?'Notas':f.name});
+   block.createEl('summary',{text:level===0?lfMsg("Notas","Notes"):f.name});
    const actions=block.createDiv({cls:'writer-project-note-actions'});
-   actions.createEl('button',{text:'+ Nota'}).addEventListener('click',()=>this.promptNote(f.path));
+   actions.createEl('button',{text:lfMsg("+ Nota","+ Note")}).addEventListener('click',()=>this.promptNote(f.path));
    actions.createEl('button',{text:'+ Pasta'}).addEventListener('click',()=>this.promptNotesFolder(f.path));
    if(level>0){
-    actions.createEl('button',{text:'Renomear'}).addEventListener('click',()=>this.renameProjectItem(f));
+    actions.createEl('button',{text:lfMsg("Renomear","Rename")}).addEventListener('click',()=>this.renameProjectItem(f));
     actions.createEl('button',{text:'Lixeira'}).addEventListener('click',()=>this.trashProjectItem(f));
    }
    for(const item of [...f.children].sort((x,y)=>x.name.localeCompare(y.name,'pt-BR'))){
@@ -658,7 +658,7 @@ class ProjectsView extends ItemView{
      const row=block.createDiv({cls:'writer-project-note-row'});
      row.dataset.noteTitle=item.basename.toLowerCase();
      row.createEl('button',{text:item.basename,cls:'writer-project-note'}).addEventListener('click',()=>this.openFile(item));
-     row.createEl('button',{text:'✎',attr:{title:'Renomear', 'aria-label':'Renomear'}}).addEventListener('click',()=>this.renameProjectItem(item));
+     row.createEl('button',{text:'✎',attr:{title:lfMsg("Renomear","Rename"), 'aria-label':lfMsg("Renomear","Rename")}}).addEventListener('click',()=>this.renameProjectItem(item));
      row.createEl('button',{text:'↪',attr:{title:'Mover', 'aria-label':'Mover'}}).addEventListener('click',()=>this.moveProjectNote(item,folder));
      row.createEl('button',{text:'✦',attr:{title:'Revisar nota','aria-label':'Revisar nota'}}).addEventListener('click',()=>this.plugin.openReview('grammar',item));
      row.createEl('button',{text:'×',attr:{title:'Mover para lixeira','aria-label':'Mover para lixeira'}}).addEventListener('click',()=>this.trashProjectItem(item));
@@ -708,13 +708,13 @@ class ProjectsView extends ItemView{
  moveProjectNote(file,root){
   const modal=new Modal(this.app);
   modal.onOpen=()=>{
-   modal.setTitle('Mover nota para pasta');
+   modal.setTitle(lfMsg("Mover nota para pasta","Move note to folder"));
    const folders=[];
    const walk=f=>{folders.push(f);for(const c of f.children)if(c instanceof TFolder)walk(c);};
    walk(root);
    let chosen=folders[0].path;
    new Setting(modal.contentEl).setName('Destino').addDropdown(d=>{
-    for(const f of folders)d.addOption(f.path,f.path.replace(root.path,'Notas')||'Notas');
+    for(const f of folders)d.addOption(f.path,f.path.replace(root.path,lfMsg("Notas","Notes"))||lfMsg("Notas","Notes"));
     d.setValue(file.parent?.path||chosen).onChange(v=>chosen=v);
    });
    new Setting(modal.contentEl).addButton(b=>b.setButtonText('Mover').setCta().onClick(async()=>{
@@ -735,11 +735,11 @@ class ProjectsView extends ItemView{
   const modal=new Modal(this.app),active=this.app.workspace.getActiveFile();
   let title='',parent=active?.parent?.path||'',format='scenes';
   modal.onOpen=()=>{
-   modal.setTitle('Novo projeto de escrita');
+   modal.setTitle(lfMsg("Novo projeto de escrita","New writing project"));
    new Setting(modal.contentEl).setName('Nome').addText(t=>t.setPlaceholder('Meu livro').onChange(v=>title=v));
    new Setting(modal.contentEl).setName('Pasta no cofre').setDesc('Caminho relativo ao cofre').addText(t=>t.setValue(parent).onChange(v=>parent=v));
    new Setting(modal.contentEl).setName('Tipo').addDropdown(d=>d.addOption('scenes','Várias cenas').addOption('single','Nota única').onChange(v=>format=v));
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar projeto').setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg("Criar projeto","Create project")).setCta().onClick(async()=>{
     try{
      title=clean(title);if(!title)throw Error('Informe o nome do projeto.');
      if(parent.startsWith('/')||parent.split('/').includes('..'))throw Error('Pasta inválida.');
@@ -784,7 +784,7 @@ class ProjectsView extends ItemView{
     const before=session.baseline[file.path],diff=words-before;
     session.baseline[file.path]=words;
     session.words=Math.max(0,(session.words||0)+diff);
-    if(prefs.dailyGoal>0&&session.words>=prefs.dailyGoal&&!session.notified){session.notified=true;new Notice('Meta diária de escrita atingida!');}
+    if(prefs.dailyGoal>0&&session.words>=prefs.dailyGoal&&!session.notified){session.notified=true;new Notice(lfMsg("Meta diária de escrita atingida!","Daily writing goal reached!"));}
     clearTimeout(this.sessionSaveTimer);
     this.sessionSaveTimer=setTimeout(()=>this.plugin.saveSettings(),1300);
     if(this.activeTab==='project')this.queueRender();
@@ -794,14 +794,14 @@ class ProjectsView extends ItemView{
  drawSession(panel,project){
   const prefs=this.prefs(project),session=prefs.session;
   const box=panel.createDiv({cls:'writer-project-session'});
-  box.createEl('h4',{text:'Sessão de escrita'});
+  box.createEl('h4',{text:lfMsg("Sessão de escrita","Writing session")});
   const today=new Date().toDateString(),words=session?.day===today?session.words||0:0;
   box.createEl('p',{text:words+' palavras registradas hoje'+(prefs.dailyGoal?' / meta '+prefs.dailyGoal:'')});
   if(prefs.dailyGoal>0){
    const progress=box.createEl('progress');progress.max=prefs.dailyGoal;progress.value=Math.min(words,prefs.dailyGoal);
   }
   box.createEl('button',{text:session?.active?'Encerrar sessão':'Iniciar sessão'}).addEventListener('click',()=>session?.active?this.stopWritingSession(project):this.startWritingSession(project));
-  box.createEl('p',{text:'Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.'});
+  box.createEl('p',{text:lfMsg("Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.","Counts reflect files saved during this session. Changes outside Obsidian may not be counted.")});
  }
  async drawStats(panel,project,token){
   const scenes=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
@@ -897,7 +897,7 @@ class ProjectsView extends ItemView{
    new Setting(modal.contentEl).setName(lfMsg('Descrição','Description')).addText(x=>x.setValue(values.name).onChange(v=>values.name=v));
    new Setting(modal.contentEl).setName(lfMsg('Prazo (AAAA-MM-DD)','Due (YYYY-MM-DD)')).addText(x=>x.setValue(values.date||'').onChange(v=>values.date=v));
    new Setting(modal.contentEl).setName(lfMsg('Nota vinculada (opcional)','Linked note (optional)')).addText(x=>x.setValue(values.page||'').onChange(v=>values.page=v));
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg('Salvar','Save')).setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg(lfMsg("Salvar","Save"),'Save')).setCta().onClick(async()=>{
     if(!values.name.trim())return new Notice(lfMsg('Informe a tarefa','Enter a task'));
     if(values.date&&!/^\d{4}-\d{2}-\d{2}$/.test(values.date))return new Notice('YYYY-MM-DD');
     if(existing)Object.assign(existing,values);else (group?group.tasks:state.tasks).push(values);
@@ -1024,6 +1024,7 @@ function writerMergeV3(settings){
  }
  base.schemaVersion=3;return base;
 }
+function writerUi(pt,en){try{return (require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}}
 function writerMaskMarkdown(source,keepVariants=false){
  const text=String(source||''),hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
@@ -1264,15 +1265,15 @@ class WriterComplements extends EditorSuggest{
  }
  async manual(){
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView),editor=view?.editor,file=view?.file;
-  if(!editor||!file)return new Notice('Abra uma nota Markdown.');
+  if(!editor||!file)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const cursor=editor.getCursor(),line=editor.getLine(cursor.line)||'';
   const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(line.slice(0,cursor.ch));
-  if(!m)return new Notice('Posicione o cursor após o começo de uma palavra.');
+  if(!m)return new Notice(writerUi("Posicione o cursor após o começo de uma palavra.","Place the cursor after the beginning of a word."));
   const context={query:m[1],start:{line:cursor.line,ch:cursor.ch-m[1].length},end:cursor,editor,file};
   const results=await this.getSuggestions(context);
-  if(!results.length)return new Notice('Nenhuma sugestão disponível.');
+  if(!results.length)return new Notice(writerUi("Nenhuma sugestão disponível.","No suggestions available."));
   const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
-   modal.setTitle('Sugestões de escrita');
+   modal.setTitle(writerUi("Sugestões de escrita","Writing suggestions"));
    const list=modal.contentEl.createDiv({cls:'writer-complement-manual'});
    for(const item of results){
     list.createEl('button',{text:item.word+' · '+item.source}).addEventListener('click',()=>{modal.close();editor.replaceRange(item.insert,context.start,context.end);});
@@ -1298,19 +1299,19 @@ class WriterVariants{
   return found?{...active,found}:null;
  }
  async createFromSelection(){
-  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
-  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
+  if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
+  const active=this.active();if(!active)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const text=active.editor.getSelection();
-  if(!text){if(this.atCaret())return this.open();return new Notice('Selecione uma palavra ou trecho para criar variantes.');}
+  if(!text){if(this.atCaret())return this.open();return new Notice(writerUi("Selecione uma palavra ou trecho para criar variantes.","Select a word or passage to create variants."));}
   if(text.length>16000)return new Notice('Selecione um trecho menor.');
   const from=active.editor.posToOffset(active.editor.getCursor('from'));
   const to=active.editor.posToOffset(active.editor.getCursor('to'));
   const modal=new Modal(this.plugin.app);let alternative='';
   modal.onOpen=()=>{
-   modal.setTitle('Criar variantes de escrita');
+   modal.setTitle(writerUi("Criar variantes de escrita","Create writing variants"));
    modal.contentEl.createEl('p',{text:'Original: '+text.slice(0,400)});
    new Setting(modal.contentEl).setName('Primeira alternativa').addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar variantes').setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Criar variantes","Create variants")).setCta().onClick(async()=>{
     if(!alternative.trim()||alternative===text)return new Notice('Escreva uma alternativa diferente.');
     try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),'criar variantes');modal.close();}
     catch(e){new Notice(e.message);}
@@ -1318,10 +1319,10 @@ class WriterVariants{
   };modal.open();
  }
  async addFromReview(file,source,match,replacement){
-  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
+  if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
   const from=match.offset,to=from+match.length,original=source.slice(from,to);
-  if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice('Sugestão inválida.');
-  if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice('A sugestão contém caracteres de controle. Use o editor de variantes.');
+  if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice(writerUi("Sugestão inválida.","Invalid suggestion."));
+  if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice(writerUi("A sugestão contém caracteres de controle. Use o editor de variantes.","The suggestion contains control characters. Use the variant editor."));
   try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),'criar variante da revisão');
    new Notice('Variante adicionada sem descartar o original.');
   }catch(e){new Notice(e.message);}
@@ -1333,16 +1334,16 @@ class WriterVariants{
   await writerSafeReplace(this.plugin,selected,found.from,found.to,found.raw,replacement,commit?'confirmar variante':'editar variantes');
  }
  async open(){
-  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
+  if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
   const current=this.atCaret();
-  if(!current)return new Notice('Posicione o cursor dentro de uma expressão de variantes.');
+  if(!current)return new Notice(writerUi("Posicione o cursor dentro de uma expressão de variantes.","Place the cursor inside a variant expression."));
   const {found,file}=current;
   if(this.plugin.closeReviewPopup)this.plugin.closeReviewPopup();
   const modal=new Modal(this.plugin.app);
   let items=[...found.variants],selected=found.active;
   const render=()=>{
    modal.contentEl.empty();modal.setTitle('Editar variantes');
-   modal.contentEl.createEl('p',{text:'Escolha a alternativa que ficará visível ou edite as opções. Nenhuma alteração acontece até salvar.'});
+   modal.contentEl.createEl('p',{text:writerUi("Escolha a alternativa que ficará visível ou edite as opções. Nenhuma alteração acontece até salvar.","Choose the visible alternative or edit the options. Nothing changes until you save.")});
    items.forEach((value,i)=>{
     const box=modal.contentEl.createDiv({cls:'writer-variant-option'});
     const header=box.createDiv({cls:'writer-variant-option-header'});
@@ -1363,12 +1364,12 @@ class WriterVariants{
    });
    const actions=modal.contentEl.createDiv({cls:'writer-variant-actions'});
    actions.createEl('button',{text:'+ Alternativa'}).addEventListener('click',()=>{items.push('');render();});
-   actions.createEl('button',{text:'Salvar',cls:'mod-cta'}).addEventListener('click',async()=>{
+   actions.createEl('button',{text:writerUi("Salvar","Save"),cls:'mod-cta'}).addEventListener('click',async()=>{
     try{if(items.some(x=>!x.trim()))throw Error('Preencha todas as alternativas.');
      await this.replace(found,items,selected,false,file);modal.close();new Notice('Variantes salvas.');
     }catch(e){new Notice(e.message);}
    });
-   actions.createEl('button',{text:'Confirmar escolhida'}).addEventListener('click',async()=>{
+   actions.createEl('button',{text:writerUi("Confirmar escolhida","Commit selected")}).addEventListener('click',async()=>{
     try{await this.replace(found,items,selected,true,file);modal.close();}
     catch(e){new Notice(e.message);}
    });
@@ -1387,9 +1388,9 @@ class WriterVariants{
   catch(e){new Notice(e.message);}
  }
  async commitAll(){
-  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
+  const active=this.active();if(!active)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const text=active.editor.getValue(),items=writerParseVariants(text);
-  if(!items.length)return new Notice('Esta nota não contém variantes.');
+  if(!items.length)return new Notice(writerUi("Esta nota não contém variantes.","This note has no variants."));
   const run=async()=>{
    let result=text;
    for(const item of [...items].reverse())result=result.slice(0,item.from)+item.variants[item.active]+result.slice(item.to);
@@ -1405,8 +1406,8 @@ class WriterVariants{
  }
  async aiAlternatives(){
   if(!this.options.enabled)return new Notice('Ative Variantes.');
-  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
-  const selected=active.editor.getSelection();if(!selected||selected.length>6000)return new Notice('Selecione um trecho de até 6000 caracteres.');
+  const active=this.active();if(!active)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
+  const selected=active.editor.getSelection();if(!selected||selected.length>6000)return new Notice(writerUi("Selecione um trecho de até 6000 caracteres.","Select a passage of up to 6000 characters."));
   const from=active.editor.posToOffset(active.editor.getCursor('from')),to=active.editor.posToOffset(active.editor.getCursor('to'));
   try{
    new Notice('Gerando alternativas com o provedor de IA configurado…');
@@ -1416,7 +1417,7 @@ class WriterVariants{
    if(!alternatives.length)throw Error('A IA não retornou alternativas válidas.');
    await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),'inserir variantes da IA');
    new Notice('Alternativas adicionadas como variantes.');
-  }catch(e){new Notice('Não foi possível gerar variantes: '+e.message);}
+  }catch(e){new Notice(writerUi("Não foi possível gerar variantes: ","Could not generate variants: ")+e.message);}
  }
  editorExtension(){
   const plugin=this.plugin;
@@ -1625,22 +1626,22 @@ class WriterSnapshots{
   this.create(file,'Automático').catch(e=>console.warn('[Basic AI] Autosnapshot:',e));
  }
  async showHistory(file){
-  if(!(file instanceof TFile)||file.extension!=='md')return new Notice('Abra uma nota Markdown.');
+  if(!(file instanceof TFile)||file.extension!=='md')return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const modal=new Modal(this.plugin.app);
   const render=async()=>{
-   modal.contentEl.empty();modal.setTitle('Histórico de versões · '+file.basename);
+   modal.contentEl.empty();modal.setTitle(writerUi("Histórico de versões · ","Version history · ")+file.basename);
    const snapshots=await this.list(file);
    modal.contentEl.createEl('p',{text:snapshots.length+' versões · histórico local do Basic AI'});
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Salvar versão agora').setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
     await this.create(file,'Manual');await render();
-   })).addButton(b=>b.setButtonText('Nomear versão').onClick(()=>{
+   })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
     const prompt=new Modal(this.plugin.app);let label='';
-    prompt.onOpen=()=>{prompt.setTitle('Nome da versão');
+    prompt.onOpen=()=>{prompt.setTitle(writerUi("Nome da versão","Version name"));
      new Setting(prompt.contentEl).addText(t=>t.setPlaceholder('Antes da revisão').onChange(v=>label=v))
-      .addButton(b=>b.setButtonText('Salvar').setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
+      .addButton(b=>b.setButtonText(writerUi("Salvar","Save")).setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
     };prompt.open();
    }));
-   if(!snapshots.length)modal.contentEl.createEl('p',{text:'Nenhuma versão salva ainda.'});
+   if(!snapshots.length)modal.contentEl.createEl('p',{text:writerUi("Nenhuma versão salva ainda.","No versions saved yet.")});
    const list=modal.contentEl.createDiv({cls:'writer-history-list'});
    for(const entry of snapshots.slice(0,250)){
     const card=list.createDiv({cls:'writer-history-entry'});
@@ -1650,27 +1651,27 @@ class WriterSnapshots{
     actions.createEl('button',{text:'Comparar'}).addEventListener('click',()=>this.showDiff(file,entry));
     actions.createEl('button',{text:'Restaurar'}).addEventListener('click',()=>{
      const confirm=new Modal(this.plugin.app);let withAttachments=false;
-     confirm.onOpen=()=>{confirm.setTitle('Restaurar versão');
+     confirm.onOpen=()=>{confirm.setTitle(writerUi("Restaurar versão","Restore version"));
       confirm.contentEl.createEl('p',{text:'Restaurar '+entry.name+'? O estado atual será salvo automaticamente antes da restauração.'});
-      if(entry.attachments?.length)new Setting(confirm.contentEl).setName('Restaurar somente anexos ausentes').setDesc('Anexos existentes jamais serão sobrescritos.').addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
+      if(entry.attachments?.length)new Setting(confirm.contentEl).setName('Restaurar somente anexos ausentes').setDesc(writerUi("Anexos existentes jamais serão sobrescritos.","Existing attachments will never be overwritten.")).addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
       new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
        .addButton(b=>b.setButtonText('Restaurar').setWarning().onClick(async()=>{
-        try{await this.restore(file,entry,withAttachments);confirm.close();await render();new Notice('Nota restaurada.');}
+        try{await this.restore(file,entry,withAttachments);confirm.close();await render();new Notice(writerUi("Nota restaurada.","Note restored."));}
         catch(e){new Notice(e.message);}
        }));
      };confirm.open();
     });
-    actions.createEl('button',{text:'Excluir'}).addEventListener('click',()=>{
+    actions.createEl('button',{text:writerUi("Excluir","Delete")}).addEventListener('click',()=>{
      const confirm=new Modal(this.plugin.app);
-     confirm.onOpen=()=>{confirm.setTitle('Excluir versão');
-      confirm.contentEl.createEl('p',{text:'Excluir permanentemente esta versão? A operação não poderá ser desfeita.'});
+     confirm.onOpen=()=>{confirm.setTitle(writerUi("Excluir versão","Delete version"));
+      confirm.contentEl.createEl('p',{text:writerUi("Excluir permanentemente esta versão? A operação não poderá ser desfeita.","Permanently delete this version? This cannot be undone.")});
       new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
-       .addButton(b=>b.setButtonText('Excluir').setWarning().onClick(async()=>{await this.delete(file,entry);confirm.close();await render();}));
+       .addButton(b=>b.setButtonText(writerUi("Excluir","Delete")).setWarning().onClick(async()=>{await this.delete(file,entry);confirm.close();await render();}));
      };confirm.open();
     });
    }
   };
-  modal.onOpen=()=>{render().catch(e=>new Notice('Histórico: '+e.message));};modal.open();
+  modal.onOpen=()=>{render().catch(e=>new Notice(writerUi("Histórico: ","History: ")+e.message));};modal.open();
  }
  async showDiff(file,entry){
   const [oldText,current]=await Promise.all([this.read(file,entry),writerCurrentText(this.plugin,file)]);
@@ -1680,7 +1681,7 @@ class WriterSnapshots{
    modal.contentEl.createEl('p',{text:diff.added+' linha(s) adicionada(s) · '+diff.removed+' removida(s)'});
    const box=modal.contentEl.createDiv({cls:'writer-history-diff'});
    if(diff.truncated){
-    box.createEl('p',{text:'Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.'});
+    box.createEl('p',{text:writerUi("Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.","Note too long for line-by-line diff. Side-by-side comparison is available.")});
     for(const [title,contents] of [['Versão salva',oldText],['Nota atual',current]]){
      box.createEl('strong',{text:title});const area=box.createEl('textarea');area.readOnly=true;area.value=contents;
     }
@@ -1702,7 +1703,7 @@ const WRITER_TOOLS_VIEW='basic-ai-writing-tools';
 class WriterToolsView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.tab='complements';}
  getViewType(){return WRITER_TOOLS_VIEW;}
- getDisplayText(){return 'Ferramentas de escrita';}
+ getDisplayText(){return writerUi("Ferramentas de escrita","Writing tools");}
  getIcon(){return 'wand-sparkles';}
  async onOpen(){
   this.root=this.contentEl.createDiv({cls:'writer-tools-v3'});
@@ -1717,11 +1718,11 @@ class WriterToolsView extends ItemView{
  render(){
   if(!this.root)return;
   const root=this.root;root.empty();
-  root.createEl('h3',{text:'Ferramentas de escrita'});
+  root.createEl('h3',{text:writerUi("Ferramentas de escrita","Writing tools")});
   const active=this.app.workspace.getActiveFile();
   root.createEl('p',{text:active?.extension==='md'?active.path:'Abra uma nota Markdown para usar as ferramentas.',cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
-  for(const [id,label] of [['complements','Sugestões'],['variants','Variantes'],['snapshots','Versões']]){
+  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
@@ -1729,37 +1730,38 @@ class WriterToolsView extends ItemView{
   if(this.tab==='complements')this.renderComplements(panel);
   if(this.tab==='variants')this.renderVariants(panel);
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
+  if(this.tab==='extras')this.renderExtras(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
-  this.addButton(footer,'Revisão',()=>this.plugin.openReview());
-  this.addButton(footer,'Projetos',()=>this.plugin.openProjects());
-  this.addButton(footer,'Configurações',()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
+  this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
+  this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
+  this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};
   panel.createEl('h4',{text:'Autocomplete contextual'});
-  panel.createEl('p',{text:'Sugestões locais do arquivo, do cofre, dos dicionários e de links internos.'});
-  new Setting(panel).setName('Ativar sugestões').addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
-  new Setting(panel).setName('Aparecer enquanto escreve').addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
+  panel.createEl('p',{text:writerUi("Sugestões locais do arquivo, do cofre, dos dicionários e de links internos.","Local suggestions from the current note, vault, dictionaries and internal links.")});
+  new Setting(panel).setName(writerUi("Ativar sugestões","Enable suggestions")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi("Aparecer enquanto escreve","Suggest while typing")).addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(actions,'Mostrar sugestões',()=>this.plugin.writerComplements.manual(),true);
-  this.addButton(actions,'Reindexar cofre',async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice('Índice de sugestões atualizado.');});
-  this.addButton(actions,'Abrir dicionário',async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
+  this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(),true);
+  this.addButton(actions,writerUi("Reindexar cofre","Reindex vault"),async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice(writerUi("Índice de sugestões atualizado.","Suggestion index updated."));});
+  this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
   const tracked=this.plugin.writerComplements?.cache?.size||0;
   panel.createEl('p',{text:tracked+' arquivo(s) no índice atual.',cls:'writer-tools-muted'});
  }
  renderVariants(panel){
   const opts=this.plugin.settings.variants||{};
-  panel.createEl('h4',{text:'Alternativas de escrita'});
+  panel.createEl('h4',{text:writerUi("Alternativas de escrita","Writing alternatives")});
   panel.createEl('p',{text:'Experimente frases alternativas sem apagar o original. Toque numa variante destacada para editar.'});
-  new Setting(panel).setName('Ativar variantes').addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi("Ativar variantes","Enable variants")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(actions,'Criar da seleção',()=>this.plugin.writerVariants.createFromSelection(),true);
-  this.addButton(actions,'Editar no cursor',()=>this.plugin.writerVariants.open());
-  this.addButton(actions,'Anterior',()=>this.plugin.writerVariants.step(-1));
-  this.addButton(actions,'Próxima',()=>this.plugin.writerVariants.step(1));
-  this.addButton(actions,'Confirmar escolhida',()=>this.plugin.writerVariants.commit());
-  this.addButton(actions,'Confirmar todas',()=>this.plugin.writerVariants.commitAll());
-  this.addButton(actions,'Gerar com IA',()=>this.plugin.writerVariants.aiAlternatives());
+  this.addButton(actions,writerUi("Criar da seleção","Create from selection"),()=>this.plugin.writerVariants.createFromSelection(),true);
+  this.addButton(actions,writerUi("Editar no cursor","Edit at cursor"),()=>this.plugin.writerVariants.open());
+  this.addButton(actions,writerUi("Anterior","Previous"),()=>this.plugin.writerVariants.step(-1));
+  this.addButton(actions,writerUi("Próxima","Next"),()=>this.plugin.writerVariants.step(1));
+  this.addButton(actions,writerUi("Confirmar escolhida","Commit selected"),()=>this.plugin.writerVariants.commit());
+  this.addButton(actions,writerUi("Confirmar todas","Commit all"),()=>this.plugin.writerVariants.commitAll());
+  this.addButton(actions,writerUi("Gerar com IA","Generate with AI"),()=>this.plugin.writerVariants.aiAlternatives());
   const current=this.plugin.writerVariants.atCaret();
   if(current){
    panel.createEl('strong',{text:'Variante '+(current.found.active+1)+' de '+current.found.variants.length});
@@ -1767,18 +1769,39 @@ class WriterToolsView extends ItemView{
    sample.setText(current.found.variants[current.found.active].slice(0,1000));
   }
  }
+
+ renderExtras(panel){
+  panel.createEl('h4',{text:writerUi('Símbolos Unicode','Unicode characters')});
+  panel.createEl('p',{text:writerUi('Pesquise símbolos por nome ou código Unicode. Os favoritos ficam nas configurações do Basic AI.','Search characters by name or Unicode code point. Favorites stay in Basic AI settings.')});
+  const unicode=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(unicode,writerUi('Pesquisar Unicode','Search Unicode'),()=>this.plugin.writerFinalFeatures.unicodePicker(),true);
+  panel.createEl('h4',{text:writerUi('Leitura em voz alta','Text-to-speech')});
+  panel.createEl('p',{text:writerUi('Leitor de voz do sistema, sem IA. As vozes disponíveis dependem do dispositivo.','System speech synthesis, without AI. Available voices depend on the device.')});
+  const tts=this.plugin.settings.finalSuite?.tts||{};
+  new Setting(panel).setName(writerUi('Idioma da voz','Voice language')).addDropdown(d=>{
+   for(const [key,label] of [['auto',writerUi('Automático','Auto')],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語']])d.addOption(key,label);
+   d.setValue(tts.language||'auto').onChange(async value=>{tts.language=value;await this.plugin.saveSettings();});
+  });
+  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(actions,writerUi('Ler texto','Read text'),()=>this.plugin.writerFinalFeatures.speakActive(),true);
+  this.addButton(actions,writerUi('Pausar','Pause'),()=>this.plugin.writerFinalFeatures.pause());
+  this.addButton(actions,writerUi('Continuar','Resume'),()=>this.plugin.writerFinalFeatures.resume());
+  this.addButton(actions,writerUi('Parar','Stop'),()=>this.plugin.writerFinalFeatures.stop());
+  this.addButton(actions,writerUi('Tarefas do projeto','Project tasks'),()=>this.plugin.openProjects('tasks'));
+ }
+
  renderSnapshots(panel,file){
   const opts=this.plugin.settings.snapshots||{};
-  panel.createEl('h4',{text:'Histórico e recuperação'});
-  panel.createEl('p',{text:'Guarde versões da nota antes de revisões ou mudanças importantes. Os arquivos ficam no próprio cofre.'});
-  new Setting(panel).setName('Ativar snapshots').addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
+  panel.createEl('h4',{text:writerUi("Histórico e recuperação","History and recovery")});
+  panel.createEl('p',{text:writerUi("Guarde versões da nota antes de revisões ou mudanças importantes. Os arquivos ficam no próprio cofre.","Keep note versions before revisions or important changes. They remain in your vault.")});
+  new Setting(panel).setName(writerUi("Ativar snapshots","Enable snapshots")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(actions,'Salvar versão agora',async()=>{
-   if(!(file instanceof TFile)||file.extension!=='md')throw Error('Abra uma nota Markdown.');
-   await this.plugin.writerSnapshots.create(file,'Manual');new Notice('Versão salva.');
+  this.addButton(actions,writerUi("Salvar versão agora","Save version now"),async()=>{
+   if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
+   await this.plugin.writerSnapshots.create(file,'Manual');new Notice(writerUi("Versão salva.","Version saved."));
   },true);
   this.addButton(actions,'Nomear uma versão',async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
-  this.addButton(actions,'Abrir histórico',async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
+  this.addButton(actions,writerUi("Abrir histórico","Open history"),async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
   if(file instanceof TFile&&file.extension==='md'){
    this.plugin.writerSnapshots.list(file).then(items=>{
     if(this.tab==='snapshots'&&panel.isConnected){
@@ -1804,33 +1827,33 @@ function writerRenderV3Settings(panel,plugin,id){
   });
  };
  if(id==='complements'){
-  toggle('enabled','Ativar sugestões','Todos os complementos funcionam localmente e sem rede.');
+  toggle('enabled',writerUi("Ativar sugestões","Enable suggestions"),'Todos os complementos funcionam localmente e sem rede.');
   toggle('automatic','Sugestões automáticas','Mostrar ao digitar.');
-  toggle('currentFile','Palavras do arquivo atual');
-  toggle('vault','Palavras de outras notas do cofre');
-  toggle('internalLinks','Links internos','Sugere títulos como wikilinks.');
-  toggle('dictionaries','Dicionários personalizados');
+  toggle('currentFile',writerUi("Palavras do arquivo atual","Words from current note"));
+  toggle('vault',writerUi("Palavras de outras notas do cofre","Words from other vault notes"));
+  toggle('internalLinks',writerUi("Links internos","Internal links"),'Sugere títulos como wikilinks.');
+  toggle('dictionaries',writerUi("Dicionários personalizados","Custom dictionaries"));
   toggle('useLocalDictionary','Usar Dicionario.md','Sem alterar seu formato.');
-  toggle('frontmatter','Propriedades YAML','Sugestões de nomes de propriedades.');
-  toggle('caseSensitive','Diferenciar maiúsculas de minúsculas');
-  toggle('matchMiddle','Corresponder dentro da palavra','Menos restritivo que prefixo.');
-  toggle('learnRanking','Aprender sugestões escolhidas','Ranking armazenado localmente.');
-  input('minChars','Mínimo de caracteres','Padrão: 3',true);
-  input('maxResults','Número máximo de sugestões','Padrão: 8',true);
-  input('maxFiles','Máximo de arquivos no índice','Limita uso de memória.',true);
-  input('fileLimit','Tamanho máximo por arquivo (bytes)','Padrão: 120000',true);
-  new Setting(panel).setName('Pastas excluídas').setDesc('Separadas por vírgula.').addTextArea(t=>t.setValue(config.excludedFolders||'').onChange(async v=>{config.excludedFolders=v;await plugin.saveSettings();}));
-  new Setting(panel).setName('Arquivos de dicionário').setDesc('Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.').addTextArea(t=>t.setValue(config.dictionaryPaths||'').onChange(async v=>{config.dictionaryPaths=v;await plugin.saveSettings();}));
-  new Setting(panel).setName('Reindexar').addButton(b=>b.setButtonText('Atualizar índice').setCta().onClick(async()=>{plugin.writerComplements.reset();await plugin.writerComplements.rebuild();new Notice('Índice atualizado.');}));
-  new Setting(panel).setName('Limpar aprendizado').addButton(b=>b.setButtonText('Limpar histórico').onClick(async()=>{config.usage={};await plugin.saveSettings();}));
+  toggle('frontmatter',writerUi("Propriedades YAML","YAML properties"),'Sugestões de nomes de propriedades.');
+  toggle('caseSensitive',writerUi("Diferenciar maiúsculas de minúsculas","Case sensitive"));
+  toggle('matchMiddle',writerUi("Corresponder dentro da palavra","Match inside words"),'Menos restritivo que prefixo.');
+  toggle('learnRanking',writerUi("Aprender sugestões escolhidas","Learn from selected suggestions"),'Ranking armazenado localmente.');
+  input('minChars',writerUi("Mínimo de caracteres","Minimum characters"),'Padrão: 3',true);
+  input('maxResults',writerUi("Número máximo de sugestões","Maximum suggestions"),'Padrão: 8',true);
+  input('maxFiles',writerUi("Máximo de arquivos no índice","Maximum indexed files"),'Limita uso de memória.',true);
+  input('fileLimit',writerUi("Tamanho máximo por arquivo (bytes)","Maximum file size (bytes)"),'Padrão: 120000',true);
+  new Setting(panel).setName(writerUi("Pastas excluídas","Excluded folders")).setDesc(writerUi("Separadas por vírgula.","Comma separated.")).addTextArea(t=>t.setValue(config.excludedFolders||'').onChange(async v=>{config.excludedFolders=v;await plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi("Arquivos de dicionário","Dictionary files")).setDesc(writerUi("Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.","Markdown paths separated by line. Entries may use word => insertion.")).addTextArea(t=>t.setValue(config.dictionaryPaths||'').onChange(async v=>{config.dictionaryPaths=v;await plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi("Reindexar","Reindex")).addButton(b=>b.setButtonText(writerUi("Atualizar índice","Update index")).setCta().onClick(async()=>{plugin.writerComplements.reset();await plugin.writerComplements.rebuild();new Notice(writerUi("Índice atualizado.","Index updated."));}));
+  new Setting(panel).setName(writerUi("Limpar aprendizado","Clear learning")).addButton(b=>b.setButtonText(writerUi("Limpar histórico","Clear history")).onClick(async()=>{config.usage={};await plugin.saveSettings();}));
  }else if(id==='variants'){
-  toggle('enabled','Ativar variantes','Usa sintaxe compatível com {{texto A|texto B}}^0.');
+  toggle('enabled',writerUi("Ativar variantes","Enable variants"),'Usa sintaxe compatível com {{texto A|texto B}}^0.');
   toggle('decorate','Destacar variantes no editor');
   toggle('offerInReview','Oferecer variantes na revisão gramatical');
   toggle('snapshotBeforeCommit','Salvar versão antes de confirmar','Requer snapshots ativos.');
   toggle('confirmAll','Confirmar antes de aplicar todas');
-  new Setting(panel).setName('Instruções da IA para variantes').addTextArea(t=>{t.inputEl.rows=6;t.setValue(config.aiPrompt||'').onChange(async v=>{config.aiPrompt=v;await plugin.saveSettings();});});
-  new Setting(panel).setName('Abrir editor de variantes').addButton(b=>b.setButtonText('Abrir ferramentas').setCta().onClick(()=>plugin.openWritingTools('variants')));
+  new Setting(panel).setName(writerUi("Instruções da IA para variantes","AI instructions for variants")).addTextArea(t=>{t.inputEl.rows=6;t.setValue(config.aiPrompt||'').onChange(async v=>{config.aiPrompt=v;await plugin.saveSettings();});});
+  new Setting(panel).setName(writerUi("Abrir editor de variantes","Open variant editor")).addButton(b=>b.setButtonText(writerUi("Abrir ferramentas","Open tools")).setCta().onClick(()=>plugin.openWritingTools('variants')));
  }else if(id==='snapshots'){
   toggle('enabled','Ativar histórico local','Snapshots ficam no seu cofre e não são enviados para IA.');
   toggle('automatic','Snapshots automáticos','Por padrão, apenas snapshots manuais.');
@@ -1842,18 +1865,18 @@ function writerRenderV3Settings(panel,plugin,id){
   input('maxPerNote','Limite de versões por nota','0 mantém todas. Exclusões automáticas não são reversíveis.',true);
   input('retentionDays','Retenção em dias','0 desativa limpeza por idade.',true);
   input('showDiffContext','Linhas de contexto no diff',null,true);
-  new Setting(panel).setName('Abrir histórico da nota').addButton(b=>b.setButtonText('Abrir versões').setCta().onClick(async()=>{
-   const file=plugin.app.workspace.getActiveFile();if(!file)return new Notice('Abra uma nota.');
+  new Setting(panel).setName(writerUi("Abrir histórico da nota","Open note history")).addButton(b=>b.setButtonText(writerUi("Abrir versões","Open versions")).setCta().onClick(async()=>{
+   const file=plugin.app.workspace.getActiveFile();if(!file)return new Notice(writerUi("Abra uma nota.","Open a note."));
    await plugin.writerSnapshots.showHistory(file);
   }));
-  panel.createEl('p',{text:'Históricos existentes do plugin Note Snapshots não são modificados. Esta integração mantém sua própria pasta .basic-ai-history e preserva dados anteriores.',cls:'dictionary-muted'});
+  panel.createEl('p',{text:writerUi("Históricos existentes do plugin Note Snapshots não são modificados. Esta integração mantém sua própria pasta .basic-ai-history e preserva dados anteriores.","Existing Note Snapshots histories are not modified. This integration uses its own .basic-ai-history folder and preserves older data."),cls:'dictionary-muted'});
  }
 }
 
 // v3 module: src/v3/final-suite.js
 /* Independent small writing utilities. No upstream bundled files are copied. */
 const WRITER_FINAL_DEFAULTS={
- abbreviations:{enabled:true,caseSensitive:false,entries:{"eg.":"for example","atm":"at the moment","imo":"in my opinion","w/":"with","w/o":"without","btw":"by the way","afaik":"as far as I know","rn":"right now","ily":"I love you"},expandAtWordBoundary:true},
+ abbreviations:{enabled:true,entries:{"eg.":{value:"for example",isEnabled:true},"atm":{value:"at the moment",isEnabled:true},"imo":{value:"in my opinion",isEnabled:true},"w/":{value:"with",isEnabled:true},"w/o":{value:"without",isEnabled:true},"btw":{value:"by the way",isEnabled:true},"afaik":{value:"as far as I know",isEnabled:true},"rn":{value:"right now",isEnabled:true},"ily":{value:"I love you",isEnabled:true}},expandAtWordBoundary:false},
  anotherName:{enabled:true,property:"another-name"},
  viewMode:{enabled:true,property:"prefer-view"},
  templates:{enabled:true,folder:"Templates",matchCase:false,onlyNew:true,applyOnCreate:true},
@@ -1865,7 +1888,14 @@ function writerFinalMerge(plugin){
  const current=plugin.settings.finalSuite||{};
  for(const [key,defaults] of Object.entries(WRITER_FINAL_DEFAULTS)){
   current[key]={...defaults,...(current[key]||{})};
-  if(key==='abbreviations')current[key].entries={...defaults.entries,...(current[key].entries||{})};
+  if(key==='abbreviations'){
+   current[key].entries={...defaults.entries,...(current[key].entries||{})};
+   for(const [abbr,entry] of Object.entries(current[key].entries)){
+    current[key].entries[abbr]=typeof entry==='string'?{value:entry,isEnabled:true,isCaseSensitive:false}:{
+     value:String(entry?.value||''),isEnabled:entry?.isEnabled!==false,isCaseSensitive:entry?.isCaseSensitive===true
+    };
+   }
+  }
  }
  plugin.settings.finalSuite=current;
  return current;
@@ -1881,11 +1911,12 @@ class WriterFinalFeatures{
   p.registerEvent(p.app.vault.on('create',file=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplate(file).catch(e=>console.warn('[Basic AI] template:',e));}));
   if(EditorView.updateListener?.of)p.registerEditorExtension(EditorView.updateListener.of(update=>{
    if(!update.docChanged||!p.settings.finalSuite?.abbreviations?.enabled)return;
+   if(!update.transactions?.some(tr=>tr.isUserEvent?.('input.type')))return;
    if(this.expanding)return;
    let change=null;
    update.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
     const value=inserted.toString();
-    if(value.length===1&&/[\s.,!?;:]/.test(value))change={at:toB,character:value};
+    if(value===' '||(value.length===1&&p.settings.finalSuite.abbreviations.expandAtWordBoundary&&/[\t.,!?;:]/.test(value)))change={at:toB,character:value};
    });
    if(change)queueMicrotask(()=>this.tryExpand(update.view,change));
   }));
@@ -1904,20 +1935,21 @@ class WriterFinalFeatures{
   if(p.app.workspace.iterateAllLeaves)this.refreshNames();
  }
  tryExpand(view,change){
-  const config=this.cfg.abbreviations;if(!config?.enabled||this.expanding)return;
-  const doc=view.state.doc.toString(),position=change.at;
-  if(position<1||doc[position-1]!==change.character)return;
-  const prefix=doc.slice(Math.max(0,position-160),position-1);
-  const entries=Object.entries(config.entries||{}).filter(([k,v])=>k&&typeof v==='string'&&v);
-  entries.sort((a,b)=>b[0].length-a[0].length);
-  for(const [needle,replacement] of entries){
+  const cfg=this.cfg.abbreviations;
+  if(!cfg?.enabled||this.expanding)return;
+  const doc=view.state.doc.toString(),pos=change.at;
+  if(pos<1||doc[pos-1]!==change.character)return;
+  const prefix=doc.slice(Math.max(0,pos-160),pos-1);
+  const entries=Object.entries(cfg.entries||{}).filter(([k,v])=>k&&v?.isEnabled!==false&&typeof v?.value==='string'&&v.value.trim()).sort((a,b)=>b[0].length-a[0].length);
+  for(const [needle,entry] of entries){
    const before=prefix.slice(-needle.length);
-   if(config.caseSensitive?before!==needle:before.toLocaleLowerCase()!==needle.toLocaleLowerCase())continue;
-   const start=position-1-needle.length;
+   if(entry.isCaseSensitive?before!==needle:before.toLocaleLowerCase()!==needle.toLocaleLowerCase())continue;
+   const start=pos-1-needle.length;
    if(start>0&&/[\p{L}\p{N}_]/u.test(doc[start-1]))continue;
    this.expanding=true;
-   view.dispatch({changes:{from:start,to:position-1,insert:replacement}});
-   this.expanding=false;return;
+   try{view.dispatch({changes:{from:start,to:pos-1,insert:entry.value}});}
+   finally{this.expanding=false;}
+   return;
   }
  }
  refreshNames(){
@@ -1970,57 +2002,171 @@ class WriterFinalFeatures{
   if(!view)return new Notice('Open a Markdown note.');
   view.editor.replaceSelection('\n'+String.fromCharCode(96,96,96)+'insta-toc\n'+String.fromCharCode(96,96,96)+'\n');
  }
- async renderToc(el,path){
-  if(!this.cfg.toc.enabled)return;
+ async renderToc(el,path,source=''){
+  const cfg=this.cfg.toc;
+  if(!cfg.enabled)return;
   const file=this.plugin.app.vault.getAbstractFileByPath(path);
   if(!(file instanceof TFile))return;
-  const text=await this.plugin.app.vault.cachedRead(file);
-  const headings=[...text.matchAll(/^(#{1,6})[ \t]+(.+)$/gm)].filter(m=>m[1].length<=Number(this.cfg.toc.maxDepth||6));
-  const list=el.createEl(this.cfg.toc.numbered?'ol':'ul',{cls:'writer-insta-toc'});
-  for(const [,level,label] of headings){
-   const li=list.createEl('li');
-   li.style.marginInlineStart=((level.length-1)*12)+'px';
-   const link=li.createEl('a',{text:label.replace(/[*_]+/g,''),href:'#'});
-   link.addEventListener('click',e=>{
-    e.preventDefault();
-    const target=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-    const cache=this.plugin.app.metadataCache.getFileCache(file);
-    const heading=cache?.headings?.find(h=>h.heading===label.replace(/[*_]+/g,''));
-    if(target?.file?.path===file.path&&heading){target.editor.setCursor(heading.position.start);target.editor.scrollIntoView({from:heading.position.start,to:heading.position.end},true);}
-   });
+  const local={...cfg};
+  for(const line of String(source).split('\n')){
+   const match=/^\s*(maxDepth|numbered|folded)\s*:\s*(.*?)\s*$/i.exec(line);
+   if(!match)continue;
+   if(match[1]==='maxDepth')local.maxDepth=Math.max(1,Math.min(6,Number(match[2])||6));
+   else local[match[1]]=match[2].toLowerCase()==='true';
   }
+  const text=await this.plugin.app.vault.cachedRead(file);
+  const re=/^(#{1,6})[ \t]+([^\r\n]+)$/gm;
+  const nodes=[],stack=[{level:0,children:nodes}];let match;
+  while((match=re.exec(text))!==null){
+   const level=match[1].length,title=match[2].replace(/[ \t]+#+[ \t]*$/,'').trim();
+   if(!title||level>Number(local.maxDepth)||title.toLowerCase()==='table of contents')continue;
+   const node={level,title,children:[],offset:match.index};
+   while(stack.length>1&&stack[stack.length-1].level>=level)stack.pop();
+   stack[stack.length-1].children.push(node);stack.push(node);
+  }
+  const wrap=el.createDiv({cls:'writer-insta-toc-rendered'});
+  if(!nodes.length){wrap.createEl('p',{text:'No headings found.'});return;}
+  const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
+  const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
+  const openAt=async node=>{
+   const active=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+   if(!active||active.file?.path!==file.path){
+    const leaf=this.plugin.app.workspace.getLeaf(false);
+    await leaf.openFile(file);
+   }
+   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+   const cache=this.plugin.app.metadataCache.getFileCache(file);
+   const found=cache?.headings?.find(h=>h.heading===node.title&&h.level===node.level);
+   if(view?.editor){
+    const pos=found?.position?.start||view.editor.offsetToPos(node.offset);
+    view.editor.setCursor(pos);view.editor.scrollIntoView({from:pos,to:pos},true);
+   }
+  };
+  const draw=(items,parent)=>{
+   for(const node of items){
+    const li=parent.createEl('li',{cls:'writer-insta-toc-item'});
+    if(node.children.length){
+     const details=li.createEl('details',{cls:'writer-insta-toc-branch'});
+     details.open=!local.folded;
+     const summary=details.createEl('summary');
+     const title=summary.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     title.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openAt(node).catch(console.warn);});
+     const child=details.createEl(local.numbered?'ol':'ul');
+     draw(node.children,child);
+    }else{
+     const link=li.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     link.addEventListener('click',event=>{event.preventDefault();openAt(node).catch(console.warn);});
+    }
+   }
+  };
+  draw(nodes,list);
+  const all=()=>[...list.querySelectorAll('details')];
+  toolbar.createEl('button',{text:'Expand all',attr:{'aria-label':'Expand all headings'}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
+  toolbar.createEl('button',{text:'Collapse all',attr:{'aria-label':'Collapse all headings'}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
+ }
+ unicodePath(){
+  const base=this.plugin.manifest.dir||this.plugin.app.vault.configDir+'/plugins/'+this.plugin.manifest.id;
+  return base+'/writer-unicode-data.txt';
+ }
+ async loadUnicodeIndex(){
+  if(this.unicodeIndex)return this.unicodeIndex;
+  const path=this.unicodePath();
+  const adapter=this.plugin.app.vault.adapter;
+  const list=[];
+  if(await adapter.exists(path)){
+   const raw=await adapter.read(path);
+   for(const line of raw.split('\n')){
+    const columns=line.split(';');
+    if(columns.length<2)continue;
+    const code=Number.parseInt(columns[0],16),name=columns[1]?.trim();
+    if(!Number.isInteger(code)||code>0x10ffff||code>=0xd800&&code<=0xdfff||!name||name.startsWith('<'))continue;
+    list.push({code,char:String.fromCodePoint(code),name,search:name.toLowerCase(),hex:columns[0].toLowerCase()});
+   }
+  }
+  this.unicodeIndex=list;
+  return list;
+ }
+ async downloadUnicode(){
+  const url='https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt';
+  const response=await requestUrl({url,throw:false});
+  if(response.status!==200||!response.text||response.text.length>12000000||!response.text.includes(';LATIN CAPITAL LETTER A;'))throw Error('UnicodeData download failed.');
+  const path=this.unicodePath();
+  await this.plugin.app.vault.adapter.write(path,response.text);
+  this.unicodeIndex=null;
+  const list=await this.loadUnicodeIndex();
+  new Notice('Unicode index ready: '+list.length+' characters.');
+  return list;
  }
  async unicodePicker(){
   const config=this.cfg.unicode;
+  if(!config.enabled)return new Notice('Enable Unicode search in settings.');
   const modal=new Modal(this.plugin.app);
-  modal.onOpen=()=>{
+  const editor=this.plugin.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+  const builtins=[['Em dash','—'],['En dash','–'],['Ellipsis','…'],['Left guillemet','«'],['Right guillemet','»'],['Left double quote','“'],['Right double quote','”'],['Bullet','•'],['Arrow right','→'],['Arrow left','←'],['Check mark','✓'],['Star','★'],['Approximation','≈'],['Not equal','≠'],['Infinity','∞'],['Section','§'],['Degree','°'],['Copyright','©'],['Registered','®'],['Euro','€'],['Smiley','☺']];
+  modal.onOpen=async()=>{
    modal.setTitle('Unicode search');
-   const input=modal.contentEl.createEl('input',{type:'search',placeholder:'Name, symbol or U+ code point'});
-   input.style.width='100%';
+   const input=modal.contentEl.createEl('input',{type:'search',placeholder:'Search character, Unicode name or U+XXXX'});
+   input.setAttribute('aria-label','Search Unicode characters');input.style.width='100%';
+   const status=modal.contentEl.createDiv({cls:'writer-unicode-status'});
    const results=modal.contentEl.createDiv({cls:'writer-unicode-results'});
-   const builtins=[['Em dash','—'],['En dash','–'],['Ellipsis','…'],['Left guillemet','«'],['Right guillemet','»'],['Left double quote','“'],['Right double quote','”'],['Bullet','•'],['Arrow right','→'],['Arrow left','←'],['Check mark','✓'],['Star','★'],['Approximation','≈'],['Not equal','≠'],['Infinity','∞'],['Section','§'],['Degree','°'],['Copyright','©'],['Registered','®'],['Euro','€'],['Emoticon','☺']];
+   let index=[];
+   try{index=await this.loadUnicodeIndex();}catch(e){status.setText('Local Unicode index unavailable: '+e.message);}
+   if(!index.length){
+    status.setText('Common symbols only. Download the full Unicode index in plugin settings.');
+   }else status.setText(index.length+' indexed characters (offline).');
+   let updateId=0;
+   const show=(char,name,code)=>{
+    const row=results.createDiv({cls:'writer-unicode-entry'});
+    const button=row.createEl('button',{text:char+' '+name+' · U+'+code.toString(16).toUpperCase(),cls:'writer-unicode-insert'});
+    button.setAttribute('aria-label','Insert '+name);
+    button.addEventListener('click',()=>{
+     if(editor)editor.replaceSelection(char);
+     else if(navigator?.clipboard?.writeText)navigator.clipboard.writeText(char);
+     config.recent=[char,...(config.recent||[]).filter(x=>x!==char)].slice(0,30);
+     this.plugin.saveSettings();modal.close();
+    });
+    const favorite=row.createEl('button',{text:(config.favorites||[]).includes(char)?'★':'☆',cls:'writer-unicode-favorite'});
+    favorite.setAttribute('aria-label','Toggle favorite '+name);
+    favorite.addEventListener('click',()=>{
+     config.favorites=(config.favorites||[]).includes(char)?config.favorites.filter(x=>x!==char):[...config.favorites,char];
+     this.plugin.saveSettings();favorite.setText(config.favorites.includes(char)?'★':'☆');
+    });
+   };
    const render=()=>{
     results.empty();
-    const query=input.value.trim().toLocaleLowerCase();
-    let values=[...new Set([...config.favorites,...config.recent,...builtins.map(x=>x[1])])];
-    if(/^u\+[0-9a-f]{1,6}$/i.test(query)){
-     const n=parseInt(query.slice(2),16);
-     if(n<=0x10ffff&&!(n>=0xd800&&n<=0xdfff))values.unshift(String.fromCodePoint(n));
+    const q=input.value.trim().toLowerCase();
+    const limit=Math.max(5,Math.min(150,Number(config.maxResults)||40));
+    const matches=[];const seen=new Set();
+    const add=(char,name,code)=>{if(!char||seen.has(char)||matches.length>=limit)return;seen.add(char);matches.push({char,name,code});};
+    const fromCode=/^(?:u\+|0x)?([0-9a-f]{2,6})$/i.exec(q);
+    if(fromCode){
+     const code=Number.parseInt(fromCode[1],16);
+     if(code<=0x10ffff&&!(code>=0xd800&&code<=0xdfff)){
+      const char=String.fromCodePoint(code);
+      add(char,index.find(x=>x.code===code)?.name||'Unicode character',code);
+     }
     }
-    const filtered=values.filter(c=>!query||c.includes(query)||builtins.find(x=>x[1]===c)?.[0].toLowerCase().includes(query)||c.codePointAt(0)?.toString(16).includes(query.replace('u+',''))).slice(0,config.maxResults||40);
-    for(const char of filtered){
-     const name=builtins.find(x=>x[1]===char)?.[0]||'Unicode';
-     const button=results.createEl('button',{text:char+'  '+name+'  U+'+char.codePointAt(0).toString(16).toUpperCase()});
-     button.addEventListener('click',()=>{
-      const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-      if(view)view.editor.replaceSelection(char);
-      else navigator.clipboard?.writeText(char);
-      config.recent=[char,...config.recent.filter(x=>x!==char)].slice(0,30);
-      this.plugin.saveSettings();modal.close();
-     });
+    const searchBuiltin=(char)=>{
+     const named=builtins.find(x=>x[1]===char);
+     const entry=index.find(x=>x.char===char);
+     const name=entry?.name||named?.[0]||'Favorite';
+     return {name,hex:char.codePointAt(0).toString(16)};
+    };
+    for(const char of [...new Set([...(config.favorites||[]),...(config.recent||[])])]){
+     const {name,hex}=searchBuiltin(char);
+     if(!q||name.toLowerCase().includes(q)||char.includes(q)||hex.includes(q.replace('u+','')))add(char,name,char.codePointAt(0));
     }
+    for(const [name,char] of builtins)if(!q||name.toLowerCase().includes(q)||char.includes(q))add(char,name,char.codePointAt(0));
+    if(q.length>=2)for(const entry of index){
+     if(matches.length>=limit)break;
+     if(entry.search.includes(q)||entry.hex.includes(q.replace('u+',''))||entry.char===q)add(entry.char,entry.name,entry.code);
+    }
+    for(const entry of matches)show(entry.char,entry.name,entry.code);
+    if(!matches.length)results.createEl('p',{text:'No matching characters.'});
    };
-   input.addEventListener('input',render);render();input.focus();
+   let queued=null;
+   input.addEventListener('input',()=>{clearTimeout(queued);queued=setTimeout(render,110);});
+   render();input.focus();
   };
   modal.open();
  }
@@ -2028,19 +2174,46 @@ class WriterFinalFeatures{
   const modal=new Modal(this.plugin.app),entries=this.cfg.abbreviations.entries;
   modal.onOpen=()=>{
    modal.setTitle('Abbreviations');
-   const list=modal.contentEl.createDiv();
+   const create=modal.contentEl.createDiv({cls:'writer-abbr-add'});
+   let word='',expansion='';
+   new Setting(create).setName('Add abbreviation')
+    .addText(t=>t.setPlaceholder('Abbreviation').onChange(v=>word=v))
+    .addText(t=>t.setPlaceholder('Expansion').onChange(v=>expansion=v))
+    .addButton(b=>b.setButtonText('Add').onClick(async()=>{
+     const key=word.trim();
+     if(!key||!expansion.trim()||/\s/.test(key))return new Notice('Please enter a word without spaces and a replacement.');
+     if(entries[key])return new Notice('This abbreviation already exists.');
+     entries[key]={value:expansion,isEnabled:true,isCaseSensitive:false};
+     await this.plugin.saveSettings();paint();
+    }));
+   const list=modal.contentEl.createDiv({cls:'writer-abbr-list'});
    const paint=()=>{
     list.empty();
-    for(const [key,value] of Object.entries(entries)){
-     new Setting(list).setName(key).setDesc(value).addExtraButton(b=>b.setIcon('trash').onClick(async()=>{delete entries[key];await this.plugin.saveSettings();paint();}));
+    for(const [key,entry] of Object.entries(entries)){
+     const row=new Setting(list);
+     row.setName(key);
+     row.addToggle(t=>t.setValue(entry.isEnabled!==false).onChange(async value=>{
+      entry.isEnabled=value;await this.plugin.saveSettings();
+     }));
+     row.addText(t=>t.setValue(entry.value||'').onChange(async value=>{entry.value=value;await this.plugin.saveSettings();}));
+     row.addExtraButton(b=>b.setIcon('case-sensitive').setTooltip('Case sensitive').onClick(async()=>{
+      entry.isCaseSensitive=!entry.isCaseSensitive;await this.plugin.saveSettings();new Notice(entry.isCaseSensitive?'Case-sensitive':'Case-insensitive');
+     }));
+     row.addExtraButton(b=>b.setIcon('pencil').setTooltip('Rename abbreviation').onClick(()=>{
+      new TextPrompt(this.plugin.app,'Rename abbreviation',async name=>{
+       const newName=name.trim();
+       if(!newName||/\s/.test(newName)||entries[newName])return new Notice('Invalid or duplicate abbreviation.');
+       entries[newName]=entry;delete entries[key];await this.plugin.saveSettings();paint();
+      },key).open();
+     }));
+     row.addExtraButton(b=>b.setIcon('trash').setTooltip('Delete abbreviation').onClick(async()=>{
+      delete entries[key];await this.plugin.saveSettings();paint();
+     }));
     }
    };
-   const row=new Setting(modal.contentEl);let key='',value='';
-   row.addText(t=>t.setPlaceholder('Short form').onChange(v=>key=v));
-   row.addText(t=>t.setPlaceholder('Expansion').onChange(v=>value=v));
-   row.addButton(b=>b.setButtonText('Add').onClick(async()=>{if(!key.trim()||!value.trim())return;entries[key.trim()]=value;await this.plugin.saveSettings();paint();}));
    paint();
-  };modal.open();
+  };
+  modal.open();
  }
  speakActive(){
   if(!this.cfg.tts.enabled)return new Notice('Enable text-to-speech in settings.');
@@ -2075,15 +2248,34 @@ function writerRenderFinalSettings(panel,plugin,section){
  const bool=(field,label)=>new Setting(panel).setName(label).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
  const str=(field,label)=>new Setting(panel).setName(label).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
  bool('enabled','Enabled');
- if(section==='abbreviations'){bool('caseSensitive','Case sensitive');bool('expandAtWordBoundary','Expand on punctuation or space');new Setting(panel).setName('Edit abbreviations').addButton(b=>b.setButtonText('Open').onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
+ if(section==='abbreviations'){bool('expandAtWordBoundary','Expand on punctuation or space (instead of space only)');new Setting(panel).setName('Edit abbreviations').addButton(b=>b.setButtonText('Open').onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
  if(section==='anotherName')str('property','Frontmatter property');
  if(section==='viewMode')str('property','View mode frontmatter property');
  if(section==='templates'){str('folder','Templates folder');bool('onlyNew','Only empty notes');bool('applyOnCreate','Apply when note is created');}
- if(section==='unicode'){new Setting(panel).setName('Unicode picker').addButton(b=>b.setButtonText('Search').onClick(()=>plugin.writerFinalFeatures.unicodePicker()));str('maxResults','Max results');}
- if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');}
+ if(section==='unicode'){
+  new Setting(panel).setName('Unicode picker').addButton(b=>b.setButtonText('Search').onClick(()=>plugin.writerFinalFeatures.unicodePicker()));
+  str('maxResults','Max results');
+  new Setting(panel).setName('Offline Unicode index').setDesc('Download UnicodeData.txt from unicode.org once. Search works offline afterward.').addButton(b=>b.setButtonText('Download / update').onClick(async()=>{
+   b.setDisabled(true).setButtonText('Downloading…');
+   try{await plugin.writerFinalFeatures.downloadUnicode();}
+   catch(e){new Notice('Unicode index: '+e.message);}
+   finally{b.setDisabled(false).setButtonText('Download / update');}
+  }));
+ }
+ if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
-  str('language','Speech language (pt-BR, en-US, es-ES...)');
+  new Setting(panel).setName('Speech language').addDropdown(d=>{
+   for(const [key,name] of [['auto','Auto'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,name);
+   d.setValue(cfg.language).onChange(async v=>{cfg.language=v;await plugin.saveSettings();});
+  });
+  const voices=typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[];
+  new Setting(panel).setName('System voice').setDesc('Available voices depend on your device. A Google voice can only be selected when installed.').addDropdown(d=>{
+   d.addOption('','System default');
+   for(const voice of voices)d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
+   d.setValue(cfg.voice).onChange(async v=>{cfg.voice=v;await plugin.saveSettings();});
+  });
   bool('readSelection','Prefer selected text');
+  str('maxCharacters','Maximum characters per playback');
   for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch',.5,2,.1],['volume','Volume',0,1,.1]]){
    new Setting(panel).setName(label).addSlider(s=>s.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
   }

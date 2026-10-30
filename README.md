@@ -123,3 +123,15 @@ LanguageTool suggestion cards now display the **paragraph containing the finding
 LanguageTool findings still appear in the Review sidebar, but tapping or clicking a highlighted finding in an open CodeMirror editor can now show a **floating suggestion card** near the cursor. It provides the same replacement, Accept, Ignore, explanation and navigation actions as the sidebar. The card is scrollable and has a close button. Disable it under **Settings → Review → Show floating suggestion near error**.
 
 Paragraph context is displayed as plain text rather than rendered Markdown, stripping common emphasis, links, images and heading/list syntax. Source Markdown is not changed by these display-only transformations. The popup is available for grammar findings, not AI editorial reports. Mobile popup placement and touch behavior still require device testing.
+
+## 1.7.0 — Writing Projects (initial preview)
+
+New command-palette entries: **Abrir projetos de escrita** and **Abrir notas do projeto**. A dedicated project sidebar recognizes existing Longform index notes via the `longform` YAML frontmatter and displays **Cenas**, **Projeto**, **Compilar**, and **Notas** tabs.
+
+- **Cenas:** read-only listing of scene hierarchy found in Longform frontmatter; tap a scene to open it.
+- **Projeto:** title, index location, scene count and shortcut to the original index.
+- **Compilar:** basic, non-destructive Markdown export concatenating resolvable scenes in index order. It does not implement Longform custom workflows yet.
+- **Notas:** project-local `_Notas/` directory with named subfolders and Markdown notes. Notes are not included in the compiled manuscript.
+- **Compatibility:** this preview reads existing Longform project metadata; it does not rewrite the index or migrate drafts. Keep Longform installed until full feature parity is validated.
+
+**Known limitations:** This is a foundation, **not** a complete fork. Drag-to-reorder, creating scenes and drafts, custom compilation workflows, goal tracking, and full Longform project-import edge cases are still to be implemented and tested. The standalone `projects.js` file is source/reference; the code is inlined in `main.js` for Obsidian Mobile.

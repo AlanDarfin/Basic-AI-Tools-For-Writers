@@ -58,7 +58,7 @@ class WriterTTS{
   utterance.lang=cfg.language==='auto'?(voice?.lang||this.plugin.settings.targetLanguage||'pt-BR'):cfg.language;
   utterance.rate=Math.min(2,Math.max(0.5,Number(cfg.rate)||1));
   utterance.pitch=Math.min(2,Math.max(0.5,Number(cfg.pitch)||1));
-  utterance.volume=Math.max(0,Math.min(1,Number(cfg.volume)??1));
+  utterance.volume=Math.max(0,Math.min(1,Number.isFinite(Number(cfg.volume))?Number(cfg.volume):1));
   utterance.onend=()=>{if(this.current===utterance&&!this.stopping)this.next();};
   utterance.onerror=event=>{
    if(this.stopping||event.error==='interrupted'||event.error==='canceled')return;

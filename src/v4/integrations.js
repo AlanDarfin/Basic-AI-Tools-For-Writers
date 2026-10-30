@@ -3,14 +3,17 @@
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
   toolbar:{enabled:true},
-  typewriter:{enabled:false,centerPercent:0.43},
+  typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
     shorten:'Make the selection more concise without removing essential meaning or changing Markdown links.',
     expand:'Expand this passage naturally, maintaining perspective, tense, voice and factual accuracy.',
     simplify:'Make this passage easier to read, preserving its important meaning and Markdown.',
     tone:'Rewrite with an expressive, polished literary tone without introducing new facts.',
-    dialogue:'Improve the naturalness and characterization of this dialogue without altering its intent.'
+    dialogue:'Improve the naturalness and characterization of this dialogue without altering its intent.',
+    critique:'Give concise, specific suggestions about weak points and improvements, then offer an improved rewrite of this passage. Return only the improved passage.',
+    brainstorm:'Suggest a creative alternative approach to this scene while preserving its characters and established facts. Return only the alternative text.',
+    grammar:'Correct spelling, grammar and punctuation while preserving intentional literary choices and all Markdown syntax.'
   }}
 };
 function writerV4ExtraMerge(settings){
@@ -50,15 +53,41 @@ class WriterV4Mentions extends EditorSuggest{
   return this.plugin.app.vault.getMarkdownFiles()
    .filter(file=>!folder||file.path.startsWith(folder+'/'))
    .filter(file=>file.basename.toLocaleLowerCase().includes(query))
-   .slice(0,config.maxResults);
+   .slice(0,config.maxResults).concat(query?[{createNew:true,basename:context.query.trim(),path:''}]:[]);
  }
  renderSuggestion(file,el){
-  el.createEl('div',{text:file.basename});
-  el.createEl('small',{text:file.path,cls:'writer-v4-mention-hint'});
+  el.createEl('div',{text:file.createNew?writerUi('Criar nota: ','Create note: ')+file.basename:file.basename});
+  if(!file.createNew)el.createEl('small',{text:file.path,cls:'writer-v4-mention-hint'});
  }
- selectSuggestion(file,evt){
+ async selectSuggestion(file,evt){
   const {editor,start,end}=this.context||{};
   if(!editor||!file)return;
+  if(file.createNew){
+   const name=String(file.basename||'').replace(/[\\/:*?"<>|]/g,'-').trim().slice(0,80);
+   if(!name)return;
+   const folder=String(this.opts.folder||'').trim().replace(/^\/+|\/+$/g,'');
+   const target=[folder,name+'.md'].filter(Boolean).join('/');
+   let existing=this.plugin.app.vault.getAbstractFileByPath(target);
+   if(!existing){
+    const modal=new Modal(this.plugin.app);
+    modal.onOpen=()=>{
+     modal.setTitle(writerUi('Criar nota para menção?','Create mentioned note?'));
+     modal.contentEl.createEl('p',{text:target});
+     new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+      .addButton(b=>b.setButtonText(writerUi('Criar','Create')).setCta().onClick(async()=>{
+       try{
+        if(folder){let partial='';for(const part of folder.split('/')){partial=partial?partial+'/'+part:part;if(!(await this.plugin.app.vault.adapter.exists(partial)))await this.plugin.app.vault.createFolder(partial);}}
+        const created=this.plugin.app.vault.getAbstractFileByPath(target)||await this.plugin.app.vault.create(target,'');
+        this.insertMention(created,editor,start,end);modal.close();
+       }catch(error){new Notice(String(error?.message||error));}
+      }));
+    };modal.open();return;
+   }
+   file=existing;
+  }
+  this.insertMention(file,editor,start,end);
+ }
+ insertMention(file,editor,start,end){
   const label=(this.opts.sign||'@')+file.basename;
   const source=this.context?.file?.path||'';
   const replacement=this.opts.mode==='text'?label:this.plugin.app.fileManager.generateMarkdownLink(file,source,'',label);
@@ -99,7 +128,7 @@ class WriterV4Extras{
    new Notice(this.config.typewriter.enabled?writerUi('Modo máquina de escrever ativado.','Typewriter mode enabled.'):writerUi('Modo máquina de escrever desativado.','Typewriter mode disabled.'));
   }});
   this.updateTypewriterClass();
-  if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter');});
+  if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
     if(!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
@@ -159,7 +188,7 @@ class WriterV4Extras{
   }
  }
  updateTypewriterClass(){
-  if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.toggle('writer-v4-typewriter',this.config.typewriter.enabled===true);
+  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
  }
  currentEditor(){
   const app=this.plugin.app;
@@ -257,7 +286,7 @@ class WriterV4Extras{
   const items=[
    ['improve',writerUi('Melhorar estilo','Improve style')],['shorten',writerUi('Encurtar','Shorten')],
    ['expand',writerUi('Expandir','Expand')],['simplify',writerUi('Simplificar','Simplify')],
-   ['tone',writerUi('Mudar tom','Change tone')],['dialogue',writerUi('Melhorar diálogo','Improve dialogue')]
+   ['tone',writerUi('Mudar tom','Change tone')],['dialogue',writerUi('Melhorar diálogo','Improve dialogue')],['critique',writerUi('Revisar pontos fracos','Critique & improve')],['brainstorm',writerUi('Explorar alternativa','Brainstorm alternative')],['grammar',writerUi('Corrigir gramática','Fix grammar')]
   ];
   const modal=new Modal(this.plugin.app);
   modal.onOpen=()=>{
@@ -290,9 +319,10 @@ class WriterV4Extras{
   });
   toggle('toolbar','enabled',writerUi('Barra de edição na seleção','Selection editing toolbar'));
   toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));
+  toggle('typewriter','focusMode',writerUi('Atenuar linhas fora de foco','Dim unfocused lines'));
   toggle('wordwise','enabled',writerUi('Ações de IA para escrita','AI writing actions'));
   panel.createEl('h4',{text:writerUi('Prompts das ações de IA','AI action prompts')});
-  for(const [key,label] of [['improve','Melhorar estilo'],['shorten','Encurtar'],['expand','Expandir'],['simplify','Simplificar'],['tone','Mudar tom'],['dialogue','Melhorar diálogo']]){
+  for(const [key,label] of [['improve','Melhorar estilo'],['shorten','Encurtar'],['expand','Expandir'],['simplify','Simplificar'],['tone','Mudar tom'],['dialogue','Melhorar diálogo'],['critique','Revisar pontos fracos'],['brainstorm','Explorar alternativa'],['grammar','Corrigir gramática']]){
    new Setting(panel).setName(label).addTextArea(t=>{t.inputEl.rows=3;t.setValue(cfg.wordwise.prompts[key]||'').onChange(async v=>{cfg.wordwise.prompts[key]=v;await this.plugin.saveSettings();});});
   }
  }

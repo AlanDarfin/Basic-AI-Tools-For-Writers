@@ -1,7 +1,7 @@
 'use strict';
 /* Independent small writing utilities. No upstream bundled files are copied. */
 const WRITER_FINAL_DEFAULTS={
- abbreviations:{enabled:true,caseSensitive:false,entries:{"eg.":"for example","atm":"at the moment","imo":"in my opinion","w/":"with","w/o":"without","btw":"by the way"},expandAtWordBoundary:true},
+ abbreviations:{enabled:true,caseSensitive:false,entries:{"eg.":"for example","atm":"at the moment","imo":"in my opinion","w/":"with","w/o":"without","btw":"by the way","afaik":"as far as I know","rn":"right now","ily":"I love you"},expandAtWordBoundary:true},
  anotherName:{enabled:true,property:"another-name"},
  viewMode:{enabled:true,property:"prefer-view"},
  templates:{enabled:true,folder:"Templates",matchCase:false,onlyNew:true,applyOnCreate:true},
@@ -24,10 +24,10 @@ class WriterFinalFeatures{
  register(){
   const p=this.plugin;
   p.registerEvent(p.app.workspace.on('layout-change',()=>this.refreshNames()));
-  p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
+  if(p.app.metadataCache?.on)p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
   p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
   p.registerEvent(p.app.vault.on('create',file=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplate(file).catch(e=>console.warn('[Basic AI] template:',e));}));
-  p.registerEditorExtension(EditorView.updateListener.of(update=>{
+  if(EditorView.updateListener?.of)p.registerEditorExtension(EditorView.updateListener.of(update=>{
    if(!update.docChanged||!p.settings.finalSuite?.abbreviations?.enabled)return;
    if(this.expanding)return;
    let change=null;
@@ -37,7 +37,7 @@ class WriterFinalFeatures{
    });
    if(change)queueMicrotask(()=>this.tryExpand(update.view,change));
   }));
-  p.registerMarkdownCodeBlockProcessor('insta-toc',async(source,el,ctx)=>this.renderToc(el,ctx.sourcePath,source));
+  if(p.registerMarkdownCodeBlockProcessor)p.registerMarkdownCodeBlockProcessor('insta-toc',async(source,el,ctx)=>this.renderToc(el,ctx.sourcePath,source));
   const commands=[
    ['writer-insert-unicode','Unicode: Search and insert',()=>this.unicodePicker()],
    ['writer-tts-read','Read selection or current note aloud',()=>this.speakActive()],
@@ -49,7 +49,7 @@ class WriterFinalFeatures{
    ['writer-insert-template','Insert note-name template',()=>this.applyTemplateToCurrent()]
   ];
   for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
-  this.refreshNames();
+  if(p.app.workspace.iterateAllLeaves)this.refreshNames();
  }
  tryExpand(view,change){
   const config=this.cfg.abbreviations;if(!config?.enabled||this.expanding)return;
@@ -69,7 +69,7 @@ class WriterFinalFeatures{
   }
  }
  refreshNames(){
-  if(!this.cfg.anotherName.enabled)return;
+  if(!this.cfg.anotherName.enabled||!this.plugin.app.workspace.iterateAllLeaves)return;
   this.plugin.app.workspace.iterateAllLeaves(leaf=>{
    if(!(leaf.view instanceof MarkdownView))return;
    const view=leaf.view,file=view.file,root=view.containerEl;

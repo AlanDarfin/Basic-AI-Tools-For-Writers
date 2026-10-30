@@ -462,7 +462,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerEditorExtension(ViewPlugin.fromClass(class{
       constructor(view){
         this.view=view;
-        this.onPointerUp=()=>{setTimeout(()=>plugin.maybeShowReviewPopup(view),60);};
+        this.onPointerUp=event=>{const onMark=!!event.target?.closest?.('.writer-cm-review-mark');setTimeout(()=>plugin.maybeShowReviewPopup(view,onMark),60);};
         view.dom.addEventListener('pointerup',this.onPointerUp);
       }
       destroy(){this.view.dom.removeEventListener('pointerup',this.onPointerUp);}
@@ -680,7 +680,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   closeReviewPopup(){
     if(this.reviewPopup){this.reviewPopup.remove();this.reviewPopup=null;}
   }
-  maybeShowReviewPopup(cm){
+  maybeShowReviewPopup(cm,onMark=false){
     if(!this.settings.reviewPopupEnabled||!this.reviewMarks?.length)return;
     const leaf=this.app.workspace.getLeavesOfType('markdown').find(l=>l.view?.editor?.cm===cm);
     const file=leaf?.view?.file;
@@ -702,7 +702,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const left=Math.max(12,Math.min(window.innerWidth-width-12,(top?.left||12)-width/2));
     popup.style.width=width+'px';
     popup.style.left=left+'px';
-    popup.style.top=Math.max(12,Math.min(window.innerHeight-330,(top?.bottom||80)+10))+'px';
+    const keyboardRoom=window.visualViewport?.height||window.innerHeight;
+    popup.style.top=Math.max(12,Math.min(Math.max(12,keyboardRoom-210),(top?.bottom||80)+10))+'px';
     const close=popup.createEl('button',{cls:'writer-review-popup-close',text:'×',attr:{'aria-label':msg('Fechar','Close')}});
     close.addEventListener('click',()=>this.closeReviewPopup());
     view.renderGrammarSuggestion(file,this.reviewSource,original,popup);

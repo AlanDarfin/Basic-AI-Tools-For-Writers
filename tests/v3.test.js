@@ -165,7 +165,7 @@ async function run(){
  console.log('PASS','Live LanguageTool preparation uses the shared Markdown mask');tests++;
  const entry=new module.exports();
  await entry.onload();
- assert.equal(entry.settings.schemaVersion,3);
+ assert.equal(entry.settings.schemaVersion,4);
  assert.ok(entry.registrations.includes('view:basic-ai-writing-tools'));
  assert.ok(entry.registrations.includes('suggest'));
  assert.ok(entry.registrations.includes('command:open-note-snapshots'));

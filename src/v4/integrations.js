@@ -2,7 +2,7 @@
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  toolbar:{enabled:true},
+  toolbar:{enabled:true,mobileMode:'native'},
   typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
@@ -27,6 +27,7 @@ function writerV4ExtraMerge(settings){
    prompts:{...WRITER_V4_EXTRA_DEFAULTS.wordwise.prompts,...(old.wordwise?.prompts||{})}},
   comments:old.comments&&typeof old.comments==='object'&&!Array.isArray(old.comments)?old.comments:{}
  };
+ if(!['native','floating'].includes(cfg.toolbar.mobileMode))cfg.toolbar.mobileMode='native';
  cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
  cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
  return cfg;
@@ -94,6 +95,18 @@ class WriterV4Mentions extends EditorSuggest{
   editor.replaceRange(replacement,start,end);
  }
 }
+function writerV4FormatText(original,kind){
+ const text=String(original||'');
+ switch(kind){
+  case 'bold':return '**'+text+'**';
+  case 'italic':return '*'+text+'*';
+  case 'heading':return text.split('\n').map(line=>'## '+line).join('\n');
+  case 'quote':return text.split('\n').map(line=>'> '+line).join('\n');
+  case 'list':return text.split('\n').map(line=>'- '+line).join('\n');
+  case 'link':return '['+text+'](https://example.com)';
+  default:return text;
+ }
+}
 class WriterV4Extras{
  constructor(plugin){this.plugin=plugin;this.lastNote=null;}
  get config(){return this.plugin.settings.writerV4Extras;}
@@ -122,6 +135,8 @@ class WriterV4Extras{
     this.commentSelection(view?.file,editor);
   }});
   p.addCommand({id:'v4-wordwise',name:writerUi('Ferramentas inteligentes de escrita','AI writing actions'),editorCallback:()=>this.wordwise()});
+  p.addCommand({id:'v4-editing-toolbar',name:writerUi('Barra de edição: formatar seleção','Editing toolbar: format selection'),
+   editorCallback:(editor,view)=>this.openEditingToolbar(editor,view)});
   p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Alternar modo máquina de escrever','Toggle typewriter mode'),callback:async()=>{
    this.config.typewriter.enabled=!this.config.typewriter.enabled;
    this.updateTypewriterClass();await p.saveSettings();
@@ -188,7 +203,9 @@ class WriterV4Extras{
      if(update.selectionSet||update.docChanged)this.refresh();
     }
     refresh(){
-     if(!owner.config.toolbar.enabled){this.dom.removeClass('is-visible');return;}
+     if(!owner.config.toolbar.enabled||(this.isMobile&&owner.config.toolbar.mobileMode!=='floating')){
+      this.dom.removeClass('is-visible');return;
+     }
      const selection=this.view.state.selection.main;
      if(selection.empty){this.savedRange=null;this.dom.removeClass('is-visible');return;}
      if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
@@ -310,6 +327,41 @@ class WriterV4Extras{
   }
   if(!count)panel.createEl('p',{text:writerUi('Nenhum comentário para exibir.','No comments to show.'),cls:'writer-tools-muted'});
  }
+ openEditingToolbar(editor,view){
+  if(this.config.toolbar.enabled===false)return new Notice(writerUi('Ative as ferramentas de edição nas configurações.','Enable editing tools in settings.'));
+  if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para formatar.','Select a passage to format.'));
+  const original=editor.getSelection();
+  const from=editor.posToOffset(editor.getCursor('from')),to=editor.posToOffset(editor.getCursor('to'));
+  const items=[
+   ['bold',writerUi('Negrito','Bold')],['italic',writerUi('Itálico','Italic')],
+   ['heading',writerUi('Título H2','Heading H2')],['quote',writerUi('Citação','Blockquote')],
+   ['list',writerUi('Lista','List')],['link',writerUi('Link','Link')]
+  ];
+  const modal=new Modal(this.plugin.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Barra de edição · Basic AI','Editing toolbar · Basic AI'));
+   modal.contentEl.createEl('p',{cls:'writer-tools-muted',text:writerUi('Escolha uma formatação. A seleção será preservada até a aplicação.','Choose formatting. The selection is preserved until applying.')});
+   const actions=modal.contentEl.createDiv({cls:'writer-v4-editor-command-grid'});
+   for(const [kind,label] of items){
+    actions.createEl('button',{text:label}).addEventListener('click',()=>{
+     try{
+      if(editor.getValue().slice(from,to)!==original)throw Error(writerUi('A nota mudou. Selecione novamente o trecho.','The note changed. Select the passage again.'));
+      const replacement=writerV4FormatText(original,kind);
+      editor.replaceRange(replacement,editor.offsetToPos(from),editor.offsetToPos(to));
+      modal.close();editor.focus?.();
+     }catch(error){new Notice(String(error?.message||error));}
+    });
+   }
+   const extra=modal.contentEl.createDiv({cls:'writer-v4-editor-command-grid'});
+   extra.createEl('button',{text:writerUi('Ações com IA ✦','AI writing actions ✦')}).addEventListener('click',()=>{
+    modal.close();
+    if(editor.getValue().slice(from,to)!==original)return new Notice(writerUi('Selecione novamente o trecho.','Select the passage again.'));
+    editor.setSelection(editor.offsetToPos(from),editor.offsetToPos(to));
+    this.wordwise();
+   });
+  };
+  modal.open();
+ }
  wordwise(){
   if(this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
   const view=this.currentEditor();
@@ -349,6 +401,15 @@ class WriterV4Extras{
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
   });
   toggle('toolbar','enabled',writerUi('Barra de edição na seleção','Selection editing toolbar'));
+  new Setting(panel).setName(writerUi('Toolbar no Android','Android toolbar'))
+   .setDesc(writerUi('Recomendado: use a barra nativa do Obsidian e adicione o comando Basic AI: Barra de edição nas configurações da barra móvel. A flutuante é opcional.','Recommended: use Obsidian’s native mobile toolbar and add the Basic AI editing toolbar command in mobile toolbar settings. The floating toolbar is optional.'))
+   .addDropdown(d=>d.addOption('native',writerUi('Nativa (recomendado)','Native (recommended)'))
+    .addOption('floating',writerUi('Flutuante adicional','Additional floating toolbar'))
+    .setValue(cfg.toolbar.mobileMode||'native').onChange(async value=>{cfg.toolbar.mobileMode=value;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Abrir ferramentas de formatação','Open formatting tools'))
+   .addButton(b=>b.setButtonText(writerUi('Barra de edição','Editing toolbar')).onClick(()=>{
+    const view=this.currentEditor();this.openEditingToolbar(view?.editor,view);
+   }));
   toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));
   toggle('typewriter','focusMode',writerUi('Atenuar linhas fora de foco','Dim unfocused lines'));
   toggle('wordwise','enabled',writerUi('Ações de IA para escrita','AI writing actions'));

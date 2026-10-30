@@ -90,7 +90,7 @@ function writerEdgeSynthesize(text,voice,{signal,timeout=25000}={}){
  });
 }
 class WriterEdgePlayer{
- constructor(onState=()=>{}){this.onState=onState;this.generation=0;this.audio=null;this.url=null;this.abort=null;this.status='idle';}
+ constructor(onState=()=>{}){this.onState=onState;this.generation=0;this.audio=null;this.url=null;this.abort=null;this.status='idle';this.playbackDone=null;}
  emit(status,message=''){this.status=status;try{this.onState(status,message);}catch(_){}}
  clearAudio(){
   if(this.audio){this.audio.pause();this.audio.removeAttribute('src');this.audio.load();this.audio=null;}
@@ -99,6 +99,7 @@ class WriterEdgePlayer{
  stop(){
   this.generation++;
   this.abort?.abort();this.abort=null;
+  if(this.playbackDone){this.playbackDone();this.playbackDone=null;}
   this.clearAudio();this.emit('idle');
  }
  pause(){if(this.audio&&!this.audio.paused){this.audio.pause();this.emit('paused');}}
@@ -120,11 +121,13 @@ class WriterEdgePlayer{
    this.audio=audio;
    audio.playbackRate=Math.max(.5,Math.min(2,Number(rate)||1));
    const finish=new Promise((resolve,reject)=>{
+    this.playbackDone=resolve;
     audio.addEventListener('ended',resolve,{once:true});
     audio.addEventListener('error',()=>reject(Error('Audio playback failed.')),{once:true});
    });
    try{await audio.play();this.emit('playing',(i+1)+' / '+chunks.length);await finish;}
-   catch(error){if(this.generation===serial)this.emit('error',error.message);return;}
+   catch(error){if(this.generation===serial)this.emit('error',error.message);this.playbackDone=null;this.clearAudio();return;}
+   this.playbackDone=null;
    this.clearAudio();
   }
   if(this.generation===serial)this.emit('idle');

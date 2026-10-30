@@ -915,7 +915,7 @@ const WRITER_V3_DEFAULTS={
  schemaVersion:3,
  complements:{enabled:true,automatic:true,currentFile:true,vault:true,dictionaries:true,internalLinks:true,frontmatter:false,minChars:3,maxResults:8,caseSensitive:false,excludedFolders:'.obsidian,.trash,.note-snapshots,.basic-ai-history',dictionaryPaths:'',useLocalDictionary:false,indexLimit:12000,fileLimit:120000,maxFiles:3000,matchMiddle:false,learnRanking:true,usage:{}},
  variants:{enabled:true,decorate:true,offerInReview:true,snapshotBeforeCommit:true,confirmAll:true,defaultAlternatives:2,aiPrompt:'Suggest 3 stylistically distinct, natural rewrites of the passage in the original language. Preserve meaning, voice, tense and Markdown. Return only the alternatives, one per line, without numbering. Passage:'},
- snapshots:{enabled:true,store:'.basic-ai-history',automatic:false,autoDelaySeconds:300,includeAttachments:false,snapshotBeforeRewrite:true,snapshotBeforeRestore:true,maxPerNote:100,retentionDays:0,identityMap:{},showDiffContext:3}
+ snapshots:{enabled:true,store:'.basic-ai-history',automatic:false,autoDelaySeconds:300,includeAttachments:false,snapshotBeforeRewrite:true,snapshotBeforeRestore:true,maxPerNote:0,retentionDays:0,identityMap:{},showDiffContext:3}
 };
 function writerMergeV3(settings){
  const base=settings&&typeof settings==='object'?settings:{};
@@ -982,7 +982,9 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
  if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<from)throw Error('Intervalo inválido.');
  const editor=writerActiveEditor(plugin,file),text=editor?editor.getValue():await plugin.app.vault.read(file);
  if(to>text.length||text.slice(from,to)!==expected)throw Error('A nota mudou depois da sugestão. Refaça a operação.');
- if(plugin.settings.snapshots?.enabled&&plugin.settings.snapshots?.snapshotBeforeRewrite!==false&&plugin.writerSnapshots){
+ const committing=reason.includes('confirmar variante')||reason.includes('confirmar todas as variantes');
+ const shouldSnapshot=committing?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
+ if(plugin.settings.snapshots?.enabled&&shouldSnapshot&&plugin.writerSnapshots){
   await plugin.writerSnapshots.create(file,'Antes de '+reason,{content:text});
  }
  const next=text.slice(0,from)+replacement+text.slice(to);
@@ -997,7 +999,7 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
 // v3 module: src/v3/complements.js
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{
- constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;}
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();}
  get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
  isExcluded(file){
   if(!file||file.extension!=='md')return true;
@@ -1102,8 +1104,9 @@ class WriterComplements extends EditorSuggest{
   const start={line:cursor.line,ch:cursor.ch-m[1].length},end={line:cursor.line,ch:cursor.ch};
   const pos=typeof editor.posToOffset==='function'?editor.posToOffset(start):null;
   if(pos!==null){
-   const full=editor.getValue(),masked=writerMaskMarkdown(full);
-   if(masked.slice(pos,pos+m[1].length)!==m[1])return null;
+   const full=editor.getValue();let record=this.maskCache.get(editor);
+   if(!record||record.source!==full){record={source:full,masked:writerMaskMarkdown(full)};this.maskCache.set(editor,record);}
+   if(record.masked.slice(pos,pos+m[1].length)!==m[1])return null;
   }
   if(this.plugin.reviewPopup)this.plugin.closeReviewPopup();
   return {start,end,query:m[1],editor,file};
@@ -1165,6 +1168,8 @@ class WriterVariants{
   const text=active.editor.getSelection();
   if(!text){if(this.atCaret())return this.open();return new Notice('Selecione uma palavra ou trecho para criar variantes.');}
   if(text.length>16000)return new Notice('Selecione um trecho menor.');
+  const from=active.editor.posToOffset(active.editor.getCursor('from'));
+  const to=active.editor.posToOffset(active.editor.getCursor('to'));
   const modal=new Modal(this.plugin.app);let alternative='';
   modal.onOpen=()=>{
    modal.setTitle('Criar variantes de escrita');
@@ -1172,7 +1177,6 @@ class WriterVariants{
    new Setting(modal.contentEl).setName('Primeira alternativa').addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar variantes').setCta().onClick(async()=>{
     if(!alternative.trim()||alternative===text)return new Notice('Escreva uma alternativa diferente.');
-    const from=active.editor.posToOffset(active.editor.getCursor('from')),to=active.editor.posToOffset(active.editor.getCursor('to'));
     try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),'criar variantes');modal.close();}
     catch(e){new Notice(e.message);}
    }));
@@ -1379,7 +1383,7 @@ class WriterSnapshots{
   const links=new Set(),re=/!\[\[([^\]]+)\]\]|!\[[^\]]*\]\(([^)]+)\)/g;
   let match;while((match=re.exec(source))){
    let raw=(match[1]||match[2]||'').split('|')[0].split('#')[0].trim();
-   raw=decodeURIComponent(raw.replace(/^<|>$/g,'')).trim();
+   try{raw=decodeURIComponent(raw.replace(/^<|>$/g,'')).trim();}catch(_){continue;}
    if(!raw||/^[a-z]+:\/\//i.test(raw)||raw.startsWith('data:'))continue;
    const found=this.plugin.app.metadataCache.getFirstLinkpathDest(raw,file.path);
    if(found instanceof TFile&&found.extension!=='md')links.add(found);
@@ -1394,6 +1398,7 @@ class WriterSnapshots{
   for(const target of this.attachmentLinks(source,file)){
    if(target.stat?.size>20*1024*1024||used+(target.stat?.size||0)>40*1024*1024)continue;
    const bytes=await this.plugin.app.vault.readBinary(target);
+   if(bytes.byteLength>20*1024*1024||used+bytes.byteLength>40*1024*1024)continue;
    const hash=await this.digest(bytes);
    const extension=String(target.extension||'bin').replace(/[^a-z0-9]/gi,'').slice(0,10)||'bin';
    const stored=this.path(dir,hash+'.'+extension);
@@ -1451,9 +1456,10 @@ class WriterSnapshots{
   else await this.plugin.app.vault.process(file,()=>text);
   let restored=0,skipped=0;
   if(attachments)for(const item of entry.attachments||[]){
+   if(typeof item.path!=='string'||item.path.startsWith('/')||item.path.split('/').some(x=>x==='..'||x==='.')||item.path.includes('\\')){skipped++;continue;}
    const dst=this.plugin.app.vault.getAbstractFileByPath(item.path);
    // NEVER overwrite existing attachment files: they may be shared with other notes.
-   if(dst){skipped++;continue;}
+   if(dst||await this.plugin.app.vault.adapter.exists(item.path)){skipped++;continue;}
    const stored=this.path(this.folder(file),'attachments',item.stored.split('/').pop());
    if(!(await this.plugin.app.vault.adapter.exists(stored))){skipped++;continue;}
    const binary=await this.plugin.app.vault.adapter.readBinary(stored);
@@ -1591,7 +1597,7 @@ class WriterToolsView extends ItemView{
   const footer=root.createDiv({cls:'writer-tools-footer'});
   this.addButton(footer,'Revisão',()=>this.plugin.openReview());
   this.addButton(footer,'Projetos',()=>this.plugin.openProjects());
-  this.addButton(footer,'Configurações',()=>{this.app.setting.open();this.app.setting.openTabById(this.plugin.manifest.id);});
+  this.addButton(footer,'Configurações',()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};

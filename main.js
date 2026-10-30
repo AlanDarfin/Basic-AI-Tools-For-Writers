@@ -2346,6 +2346,7 @@ class DictionarySettings extends PluginSettingTab{
     ['complements',msg('Sugestões','Suggestions')],
     ['variants',msg('Variantes','Variants')],
     ['snapshots',msg('Versões','Versions')],
+    ['projectTasks',msg('Tarefas','Tasks')],
     ['abbreviations',msg('Abreviações','Abbreviations')],
     ['anotherName',msg('Outro nome','Another name')],
     ['viewMode',msg('Modo de visualização','View mode')],
@@ -2363,7 +2364,14 @@ class DictionarySettings extends PluginSettingTab{
     this.activeSettingsTab=id;
     for(const button of Array.from(nav.children)){button.classList.toggle('is-active',button.dataset.tab===id);button.setAttribute('aria-selected',String(button.dataset.tab===id));}
     panel.empty();
-    if(['abbreviations','anotherName','viewMode','templates','unicode','toc','tts'].includes(id)){
+    if(id==='projectTasks'){
+      const cfg=this.plugin.settings.longformTasksOptions||(this.plugin.settings.longformTasksOptions={autoSort:true,hideCompleted:false,showDueDates:true,showTooltips:true});
+      panel.createEl('h3',{text:msg('Tarefas dos projetos Longform','Longform project tasks')});
+      panel.createEl('p',{text:msg('Listas independentes por projeto, com grupos, prazos e links. Os dados ficam nas configurações do Basic AI.','Separate lists per project, with groups, deadlines and note links. Data is kept in Basic AI settings.')});
+      for(const [key,pt,en] of [['autoSort','Ordenar grupos por tarefas pendentes','Sort groups by pending tasks'],['hideCompleted','Ocultar tarefas concluídas','Hide completed tasks'],['showDueDates','Mostrar prazos','Show due dates'],['showTooltips','Mostrar dicas dos botões','Show button tooltips']]){
+        new Setting(panel).setName(msg(pt,en)).addToggle(t=>t.setValue(!!cfg[key]).onChange(async value=>{cfg[key]=value;await this.plugin.saveSettings();}));
+      }
+    }else if(['abbreviations','anotherName','viewMode','templates','unicode','toc','tts'].includes(id)){
       writerRenderFinalSettings(panel,this.plugin,id);
     }else if(['complements','variants','snapshots'].includes(id)){
       writerRenderV3Settings(panel,this.plugin,id);

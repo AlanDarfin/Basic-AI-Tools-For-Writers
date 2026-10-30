@@ -321,7 +321,11 @@ class ProjectsView extends ItemView{
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
    const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
-   row.style.paddingLeft=(Math.min(12,level)*10)+'px';
+   // Keep three-column chapter cards compact; indentation belongs to the title
+   // region, not to the whole row (which would push controls out on Android).
+   row.style.setProperty('--writer-scene-depth',String(Math.min(6,level)));
+   row.dataset.sceneDepth=String(level);
+   if(level>0)row.addClass('writer-project-scene-nested');
    row.dataset.sceneTitle=name;
    row.draggable=true;
    const grip=row.createEl('button',{text:'⠿',cls:'writer-project-drag-handle',attr:{title:lfMsg('Arraste para mover ou toque e escolha o destino','Drag to reorder or tap and choose a destination'),'aria-label':lfMsg('Mover capítulo: ','Move chapter: ')+name}});
@@ -358,7 +362,11 @@ class ProjectsView extends ItemView{
      this.moveSceneRelative(project,data.name,name,after);
    });
    const file=this.resolveScene(project,name);
-   const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
+   const titleButton=row.createEl('button',{cls:'writer-project-scene-title',attr:{'aria-label':level>0?lfMsg('Subcapítulo nível ','Nested chapter level ')+level+': '+name:name}});
+   if(level>0){
+    titleButton.createSpan({cls:'writer-project-scene-branch',text:'↳',attr:{'aria-hidden':'true'}});
+   }
+   titleButton.createSpan({cls:'writer-project-scene-label',text:name});
    titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));
    const controls=row.createDiv({cls:'writer-project-scene-controls'});
    for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){

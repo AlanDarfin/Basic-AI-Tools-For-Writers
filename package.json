@@ -1,12 +1,12 @@
 {
   "name": "basic-ai-tool-for-writers",
-  "version": "4.0.0-beta.2",
+  "version": "4.0.0-beta.3",
   "private": true,
   "description": "Obsidian writing workspace",
   "scripts": {
     "build": "node scripts/sync-projects.js && node scripts/build-v3.js",
     "check:bundle": "node scripts/sync-projects.js --check && node scripts/build-v3.js --check",
-    "test": "node tests/projects.test.js && node tests/v3.test.js && node tests/final-suite.test.js && node tests/tts-online.test.js && node tests/ui-controls.test.js && node tests/v4.test.js && node tests/v4-integrations.test.js",
+    "test": "node tests/projects.test.js && node tests/v3.test.js && node tests/final-suite.test.js && node tests/tts-online.test.js && node tests/ui-controls.test.js && node tests/v4.test.js && node tests/v4-integrations.test.js && node tests/v4-mobile.test.js",
     "check": "node --check main.js && node --check projects.js && node --check src/v4/integrations.js && node --check src/v4/editor.js && node --check src/v3/core.js && node --check src/v3/complements.js && node --check src/v3/variants.js && node --check src/v3/snapshots.js && node --check src/v3/workspace.js && node --check src/v3/final-suite.js && node --check src/v3/tts-online.js && npm run check:bundle && npm test"
   },
   "license": "MIT"

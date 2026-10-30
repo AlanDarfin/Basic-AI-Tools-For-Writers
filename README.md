@@ -117,3 +117,9 @@ Settings are grouped by workflow: **General**, **Dictionary**, **Translation**, 
 ## 1.5.1 — Review paragraph context and jump to error
 
 LanguageTool suggestion cards now display the **paragraph containing the finding**, rather than an arbitrary 65-character excerpt on either side. Paragraphs are determined by blank lines in the original Markdown. Each card includes a **Go to error** action, which opens or focuses the appropriate Markdown editor, selects the matched text, and scrolls it into view without changing the note. Accept and Ignore remain separate actions.
+
+## 1.6.0 — Floating grammar review card and plain Markdown context
+
+LanguageTool findings still appear in the Review sidebar, but tapping or clicking a highlighted finding in an open CodeMirror editor can now show a **floating suggestion card** near the cursor. It provides the same replacement, Accept, Ignore, explanation and navigation actions as the sidebar. The card is scrollable and has a close button. Disable it under **Settings → Review → Show floating suggestion near error**.
+
+Paragraph context is displayed as plain text rather than rendered Markdown, stripping common emphasis, links, images and heading/list syntax. Source Markdown is not changed by these display-only transformations. The popup is available for grammar findings, not AI editorial reports. Mobile popup placement and touch behavior still require device testing.

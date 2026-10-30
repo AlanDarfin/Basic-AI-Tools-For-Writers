@@ -110,7 +110,7 @@ class ProjectsView extends ItemView{
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
-  const raw=String(project.meta.sceneFolder||'/').replace(/^\\/+|\\/+$/g,'');
+  const raw=String(project.meta.sceneFolder||'/').split('/').filter(Boolean).join('/');
   const folder=[base,raw].filter(Boolean).join('/');
   const exact=[[folder,name+'.md'].filter(Boolean).join('/'),[folder,name].filter(Boolean).join('/'),[base,name+'.md'].filter(Boolean).join('/'),name+'.md',name];
   return exact.map(p=>this.app.vault.getAbstractFileByPath(p)).find(f=>f instanceof TFile)||null;

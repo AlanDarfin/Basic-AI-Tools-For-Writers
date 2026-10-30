@@ -3519,7 +3519,16 @@ class DictionaryView extends ItemView{
   this.switchTab('definition');
   let debounce;this.input.addEventListener('input',()=>{clearTimeout(debounce);this.search(this.input.value);debounce=setTimeout(()=>{if(this.input.value.trim())this.lookup();},650);});
  }
- switchTab(id){for(const [key,p] of Object.entries(this.panels)){p.style.display=key===id?'flex':'none';this.tabs[key].classList.toggle('is-active',key===id);}this.activeTab=id;}
+ switchTab(id){
+  for(const [key,p] of Object.entries(this.panels)){p.style.display=key===id?'flex':'none';this.tabs[key].classList.toggle('is-active',key===id);}
+  this.activeTab=id;
+  if(id==='review'&&this.reviewMode?.value==='grammar'&&this.plugin.settings.autoGrammar?.enabled!==false){
+   const file=this.app.workspace.getActiveFile?.();
+   if(file instanceof TFile&&file.extension==='md'){
+    this.reviewFilePath=file.path;this.plugin.autoGrammar?.schedule(file);
+   }
+  }
+ }
  async addChat(role,value){const bubble=this.chatMessages.createDiv({cls:'writer-chat-bubble writer-chat-'+role});bubble.createEl('small',{text:role==='user'?msg('Você','You'):'AI'});const body=bubble.createDiv({cls:'markdown-rendered'});if(role==='assistant')await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);else body.setText(value);this.chatMessages.scrollTop=this.chatMessages.scrollHeight;return bubble;}
 
  async translateVaultFile(file){
@@ -3617,6 +3626,7 @@ class DictionaryView extends ItemView{
       this.reviewResults.empty();
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
+      this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
       this.plugin.showReviewMarks(file,matches);
       this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found')+(window.partial?msg(' (trecho próximo ao cursor)',' (near cursor)'):''));
       if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
@@ -4199,7 +4209,10 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       this.closeReviewPopup();this.clearReviewMarks();
       new Notice(msg('Correção aplicada','Correction applied'));
       const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
-      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar')setTimeout(()=>view.reviewFile(current),300);
+      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'){
+        if(this.settings.autoGrammar?.enabled!==false)this.autoGrammar?.schedule(current);
+        else setTimeout(()=>view.reviewFile(current),300);
+      }
     }catch(error){new Notice(error.message||String(error),7000);}
   }
   async createGrammarVariant(file,source,match,replacement){

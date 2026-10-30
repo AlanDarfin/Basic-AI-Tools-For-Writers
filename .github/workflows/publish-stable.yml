@@ -1,4 +1,4 @@
-name: Publish stable release 1.1.0
+name: Publish stable release 1.2.0
 on:
   push:
     paths:
@@ -16,23 +16,23 @@ jobs:
         run: |
           set -euo pipefail
           node --check main.js
-          node -e "const m=require('./manifest.json'); if(m.version!=='1.1.0'||m.name!=='Basic AI Tool for Writers')process.exit(1)"
+          node -e "const m=require('./manifest.json'); if(m.version!=='1.2.0'||m.name!=='Basic AI Tool for Writers'||m.id!=='basic-ai-tool-for-writers')process.exit(1)"
           test -s styles.css
           test -s README.md
       - name: Package plugin
-        run: zip -j basic-ai-tool-for-writers-1.1.0.zip main.js manifest.json styles.css
+        run: zip -j basic-ai-tool-for-writers-1.2.0.zip main.js manifest.json styles.css
       - name: Publish stable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view 1.1.0 >/dev/null 2>&1; then
+          if gh release view 1.2.0 >/dev/null 2>&1; then
             echo 'Release already exists; skipping.'
             exit 0
           fi
-          gh release create 1.1.0 main.js manifest.json styles.css basic-ai-tool-for-writers-1.1.0.zip \
+          gh release create 1.2.0 main.js manifest.json styles.css basic-ai-tool-for-writers-1.2.0.zip \
             --target "$GITHUB_SHA" \
-            --title "Basic AI Tool for Writers 1.1.0" \
+            --title "Basic AI Tool for Writers 1.2.0" \
             --latest \
-            --notes "Sidebar chat redesign. AI definitions, synonyms and antonyms, independent translation engine, source/target language selectors, editable prompts, context-menu writing tools and model management. Renamed from Alan's Offline Dictionary; the plugin ID stays alans-offline-dictionary to preserve settings."
+            --notes "Sidebar chat redesign. AI definitions, synonyms and antonyms, independent translation engine, source/target language selectors, editable prompts, context-menu writing tools and model management. Updated plugin branding and ID. Back up and migrate data.json when upgrading from the old plugin ID."

@@ -1,5 +1,5 @@
 'use strict';
-const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, requestUrl} = require('obsidian');
+const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
 const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:''};
@@ -33,6 +33,12 @@ const PROMPT_DEFAULTS={
 const LANGS={pt:'Português',en:'English',es:'Español',fr:'Français',de:'Deutsch',it:'Italiano',ja:'日本語'};
 function selectOptions(el,options,value,onChange){for(const [id,label] of options){const opt=el.createEl('option',{text:label});opt.value=id;}el.value=value;el.addEventListener('change',()=>onChange(el.value));}
 
+class MarkdownVaultPicker extends FuzzySuggestModal{
+ constructor(app,callback){super(app);this.callback=callback;this.setPlaceholder(msg('Pesquisar arquivos Markdown…','Search Markdown files…'));}
+ getItems(){return this.app.vault.getMarkdownFiles();}
+ getItemText(file){return file.path;}
+ onChooseItem(file){this.callback(file);}
+}
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
  getViewType(){return VIEW;}
@@ -65,10 +71,17 @@ class DictionaryView extends ItemView{
   this.context=defs.createEl('textarea',{attr:{placeholder:t('context'),'aria-label':t('context')}});
   this.output=defs.createDiv({cls:'dictionary-output'});
   this.results=defs.createDiv({cls:'dictionary-results'});this.renderedWord='';
+  const fileActions=translations.createDiv({cls:'writer-file-actions'});
+  this.translateFileButton=fileActions.createEl('button',{text:msg('Traduzir arquivo','Translate file')});
+  this.translateFileButton.addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.translateVaultFile(file)).open());
+  this.fileTranslationStatus=translations.createDiv({cls:'writer-file-status'});
   this.translationOutput=translations.createDiv({cls:'dictionary-output'});
   const header=chat.createDiv({cls:'writer-chat-header'});header.createEl('strong',{text:msg('Assistente de escrita','Writing assistant')});
   header.createEl('button',{text:msg('Limpar','Clear')}).addEventListener('click',()=>{this.chatHistory=[];this.chatMessages.empty();});
   this.chatMessages=chat.createDiv({cls:'writer-chat-messages'});this.chatHistory=this.chatHistory||[];
+  this.chatAttachments=[];
+  this.chatAttachmentArea=chat.createDiv({cls:'writer-chat-attachments'});
+  this.chatAttachmentArea.createEl('button',{text:msg('Anexar Markdown','Attach Markdown')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.attachChatFile(file)).open());
   const composer=chat.createDiv({cls:'writer-chat-composer'});this.chatInput=composer.createEl('textarea',{attr:{placeholder:msg('Escreva uma mensagem…','Write a message…')}});
   composer.createEl('button',{text:msg('Enviar','Send'),cls:'mod-cta'}).addEventListener('click',()=>this.sendChat());
   this.chatInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this.sendChat();}});

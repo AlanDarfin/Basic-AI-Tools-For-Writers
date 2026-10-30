@@ -87,3 +87,11 @@ The new **Review** sidebar tab offers three modes:
 **Privacy:** Grammar text is sent to the configured LanguageTool service. AI review text and explanation requests are sent to the selected AI provider. No external Grammarly integration is included.
 
 **Limitations:** This release shows findings in the sidebar rather than adding inline CodeMirror underlines. DeepL Write is not integrated yet. Review on Obsidian Desktop and Mobile before relying on the results for important documents.
+
+## 1.4.1 — CodeMirror review and mobile layout
+
+LanguageTool grammar findings now appear as temporary **CodeMirror 6 wavy underlines** in the open Markdown editor, in addition to review cards in the side panel. The Markdown file is not changed until a specific suggestion is accepted. Ignoring a suggestion removes its underline. Editing the document clears stale marks; rerun review to refresh them.
+
+The grammar checker skips the initial YAML frontmatter block (`---` metadata) while preserving original text offsets for accurate suggestions. The sidebar now scrolls independently and the review actions wrap into accessible rows on narrow Android screens.
+
+Only the **currently open editor** for the selected note can display inline marks. AI style and beta-reader feedback remain non-destructive sidebar reports. Markdown metadata is excluded from LanguageTool checks, not from AI editorial context. Review this release on your device before relying on it for critical editing.

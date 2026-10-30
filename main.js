@@ -328,33 +328,55 @@ class DictionarySettings extends PluginSettingTab{
   const nav=el.createDiv({cls:'dictionary-settings-tabs'});
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
   const sections=[
-    ['review',msg('Revisão','Review')],
     ['general',msg('Geral','General')],
-    ['providers',msg('Provedores','Providers')],
+    ['dictionary',msg('Dicionário','Dictionary')],
+    ['translation',msg('Tradução','Translation')],
+    ['assistant',msg('Chat','Chat')],
+    ['review',msg('Revisão','Review')],
+    ['reviewAI',msg('Revisores IA','AI reviewers')],
+    ['providers',msg('APIs','APIs')],
     ['models',msg('Modelos','Models')],
-    ['assistant',msg('Assistente','Assistant')],
     ['prompts',msg('Prompts','Prompts')]
   ];
   const showTab=id=>{
     for(const button of Array.from(nav.children)){button.classList.toggle('is-active',button.dataset.tab===id);button.setAttribute('aria-selected',String(button.dataset.tab===id));}
     panel.empty();
     if(id==='review'){
-      panel.createEl('p',{text:msg('LanguageTool para gramática; IA para estilo, leitura beta e explicações. Nada é alterado automaticamente.','LanguageTool for grammar; AI for style, beta reading and explanations. Nothing is changed automatically.'),cls:'dictionary-muted'});
+      panel.createEl('h3',{text:msg('LanguageTool e comportamento da revisão','LanguageTool and review behavior')});
+      panel.createEl('p',{text:msg('As correções são sugestões: o arquivo só muda quando você aceita uma alteração.','Corrections are suggestions: the file changes only when you accept a change.'),cls:'dictionary-muted'});
       new Setting(panel).setName(msg('Idioma da revisão','Review language')).addDropdown(d=>{
-        for(const [id,label] of [['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es','Español'],['fr','Français'],['de-DE','Deutsch'],['auto','Auto']])d.addOption(id,label);
+        for(const [code,label] of [['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es','Español'],['fr','Français'],['de-DE','Deutsch'],['auto','Auto']])d.addOption(code,label);
         d.setValue(this.plugin.settings.reviewLanguage||'pt-BR').onChange(async v=>{this.plugin.settings.reviewLanguage=v;await this.plugin.saveSettings();});
       });
-      new Setting(panel).setName(msg('Endpoint do LanguageTool (HTTPS)','LanguageTool endpoint (HTTPS)')).addText(x=>x.setValue(this.plugin.settings.reviewEndpoint||'https://api.languagetool.org/v2/check').onChange(async v=>{this.plugin.settings.reviewEndpoint=v.trim();await this.plugin.saveSettings();}));
-      new Setting(panel).setName(msg('Chave da API do LanguageTool (opcional)','LanguageTool API key (optional)')).addText(x=>{x.inputEl.type='password';x.setValue(this.plugin.settings.reviewApiKey||'').onChange(async v=>{this.plugin.settings.reviewApiKey=v.trim();await this.plugin.saveSettings();});});
-      new Setting(panel).setName(msg('Perfil editorial / instruções do autor','Editorial profile / author preferences'))
-        .setDesc(msg('Descreva gênero, voz, público-alvo e escolhas estilísticas que o revisor deve respeitar.','Describe genre, voice, audience and stylistic choices to respect.'))
-        .addTextArea(x=>{x.inputEl.rows=6;x.inputEl.addClass('dictionary-prompt-editor');x.setValue(this.plugin.settings.reviewProfile||'').onChange(async v=>{this.plugin.settings.reviewProfile=v;await this.plugin.saveSettings();});});
-      panel.createEl('p',{text:msg('A API pública do LanguageTool tem limites e não é adequada para uso intensivo. A revisão por IA envia o texto ao provedor escolhido.','The public LanguageTool API has limits and is not suitable for heavy use. AI review sends text to your chosen provider.'),cls:'dictionary-muted'});
+      new Setting(panel).setName(msg('Modo inicial','Default review mode')).addDropdown(d=>{
+        for(const [code,label] of [['grammar',msg('Gramática','Grammar')],['style',msg('Estilo','Style')],['beta',msg('Leitura beta','Beta reading')]])d.addOption(code,label);
+        d.setValue(this.plugin.settings.reviewMode||'grammar').onChange(async v=>{this.plugin.settings.reviewMode=v;await this.plugin.saveSettings();});
+      });
+      new Setting(panel).setName(msg('Abrir nota selecionada no editor','Open selected note in editor')).setDesc(msg('Permite ver sublinhados do CodeMirror ao revisar um arquivo que ainda não está aberto.','Enables CodeMirror underlines when reviewing a note not already open.')).addToggle(x=>x.setValue(this.plugin.settings.reviewAutoOpenNote!==false).onChange(async v=>{this.plugin.settings.reviewAutoOpenNote=v;await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('Ignorar avisos de espaços e formatação','Ignore whitespace and formatting warnings')).addToggle(x=>x.setValue(this.plugin.settings.reviewIgnoreWhitespace!==false).onChange(async v=>{this.plugin.settings.reviewIgnoreWhitespace=v;await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('IDs de regras ignoradas','Ignored rule IDs')).setDesc(msg('IDs do LanguageTool separados por vírgula.','Comma-separated LanguageTool rule IDs.')).addTextArea(x=>{x.inputEl.rows=3;x.setValue(this.plugin.settings.reviewIgnoreRules||'').onChange(async v=>{this.plugin.settings.reviewIgnoreRules=v;await this.plugin.saveSettings();});});
+      new Setting(panel).setName(msg('Endpoint do LanguageTool','LanguageTool endpoint')).setDesc(msg('Use HTTPS. O endpoint público tem limites de uso.','Use HTTPS. The public endpoint has usage limits.')).addText(x=>x.setValue(this.plugin.settings.reviewEndpoint||'https://api.languagetool.org/v2/check').onChange(async v=>{this.plugin.settings.reviewEndpoint=v.trim();await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('Chave do LanguageTool (opcional)','LanguageTool key (optional)')).addText(x=>{x.inputEl.type='password';x.setValue(this.plugin.settings.reviewApiKey||'').onChange(async v=>{this.plugin.settings.reviewApiKey=v.trim();await this.plugin.saveSettings();});});
+    }else if(id==='reviewAI'){
+      panel.createEl('h3',{text:msg('Revisores de estilo e leitor beta','Style reviewer and beta reader')});
+      panel.createEl('p',{text:msg('Cada revisor usa a IA selecionada aqui. Deixe provedor/modelo vazios para herdar do chat.','Reviewers use the AI configured here. Leave provider/model blank to inherit from chat.'),cls:'dictionary-muted'});
+      new Setting(panel).setName(msg('Provedor dos revisores','Reviewer provider')).addDropdown(d=>{d.addOption('',msg('Mesmo do chat','Same as chat'));for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.reviewProvider||'').onChange(async v=>{this.plugin.settings.reviewProvider=v;await this.plugin.saveSettings();});});
+      new Setting(panel).setName(msg('Modelo dos revisores','Reviewer model')).addText(x=>x.setPlaceholder(msg('Herdar do chat','Inherit from chat')).setValue(this.plugin.settings.reviewModel||'').onChange(async v=>{this.plugin.settings.reviewModel=v.trim();await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('Máximo de caracteres por análise IA','Maximum characters per AI review')).setDesc(msg('Entre 1.000 e 28.000. Documentos maiores serão analisados parcialmente.','Between 1,000 and 28,000. Longer documents are analyzed partially.')).addSlider(x=>x.setLimits(1000,28000,1000).setDynamicTooltip().setValue(this.plugin.settings.reviewMaxChars||14000).onChange(async v=>{this.plugin.settings.reviewMaxChars=v;await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('Perfil editorial','Editorial profile')).setDesc(msg('Gênero, voz, público-alvo, estilo e preferências do autor.','Genre, voice, audience, style and author preferences.')).addTextArea(x=>{x.inputEl.rows=5;x.inputEl.addClass('dictionary-prompt-editor');x.setValue(this.plugin.settings.reviewProfile||'').onChange(async v=>{this.plugin.settings.reviewProfile=v;await this.plugin.saveSettings();});});
+      for(const [key,label,desc] of [['reviewStylePrompt',msg('Prompt do revisor de estilo','Style reviewer prompt'),msg('Clareza, ritmo, repetição e alternativas.','Clarity, rhythm, repetition and alternatives.')],['reviewBetaPrompt',msg('Prompt do leitor beta','Beta reader prompt'),msg('Narrativa, personagens, coerência e diálogos.','Narrative, characters, coherence and dialogue.')],['reviewExplainPrompt',msg('Prompt de explicações gramaticais','Grammar explanation prompt'),msg('Explique a regra e apresente exemplos.','Explain rules and give examples.')]]){
+        new Setting(panel).setName(label).setDesc(desc+' '+msg('Vazio usa o prompt padrão.','Blank uses the default prompt.')).addTextArea(x=>{x.inputEl.rows=7;x.inputEl.addClass('dictionary-prompt-editor');x.setValue(this.plugin.settings[key]||'').onChange(async v=>{this.plugin.settings[key]=v;await this.plugin.saveSettings();});});
+      }
+      panel.createEl('p',{text:msg('A revisão por IA envia o texto ao provedor configurado. Os pareceres não alteram a nota.','AI review sends text to the configured provider. Feedback never edits the note.'),cls:'dictionary-muted'});
     }else if(id==='general'){
+      panel.createEl('h3',{text:msg('Preferências gerais','General preferences')});
+      new Setting(panel).setName(t('language')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
+      panel.createEl('p',{text:msg('Configure dicionário, tradução, chat e revisão nas respectivas abas. As chaves ficam em APIs e os modelos padrão em Modelos.','Configure dictionary, translation, chat and review in their respective tabs. API keys are under APIs and default models under Models.'),cls:'dictionary-muted'});
+    }else if(id==='dictionary'){
       new Setting(panel).setName(t('dictionary')).addText(x=>x.setValue(this.plugin.settings.dictionaryFileName).onChange(async v=>{this.plugin.settings.dictionaryFileName=v.trim();this.plugin.invalidate();await this.plugin.saveSettings();}));
       new Setting(panel).setName(t('provider')).addDropdown(d=>{for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.provider).onChange(async v=>{this.plugin.settings.provider=v;await this.plugin.saveSettings();});});
+    }else if(id==='translation'){
       new Setting(panel).setName(t('transProvider')).addDropdown(d=>{for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.translationProvider).onChange(async v=>{this.plugin.settings.translationProvider=v;await this.plugin.saveSettings();});});
-      new Setting(panel).setName(t('language')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(t('target')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.targetLanguage).onChange(async v=>{this.plugin.settings.targetLanguage=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(t('source')).addDropdown(d=>{d.addOption('auto',msg('Automático','Automatic'));for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.sourceLanguage||'auto').onChange(async v=>{this.plugin.settings.sourceLanguage=v;await this.plugin.saveSettings();});});
     }else if(id==='providers'){

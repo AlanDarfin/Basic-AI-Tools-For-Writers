@@ -215,3 +215,17 @@
 .writer-review-popup-close{position:sticky;top:0;float:right;z-index:1;min-width:30px;min-height:30px;padding:2px 8px;background:var(--background-secondary);border-radius:50%}
 .writer-review-floating .writer-review-paragraph{max-height:120px;overflow:auto}
 @media(max-width:600px){.writer-review-floating{max-height:min(380px,55dvh)}}
+
+/* Longform-compatible project manager */
+.writer-project-root{height:100%;overflow:auto;padding:12px;box-sizing:border-box;color:var(--text-normal)}
+.writer-project-toolbar select{width:100%;max-width:100%;margin-bottom:12px}
+.writer-project-tabs{display:flex;overflow-x:auto;gap:4px;border-bottom:1px solid var(--background-modifier-border);margin-bottom:12px}
+.writer-project-tabs button{flex:1 0 auto;padding:10px 8px;border-radius:8px 8px 0 0;background:transparent;box-shadow:none}
+.writer-project-tabs button.is-active{background:var(--background-secondary);color:var(--text-accent);border-bottom:2px solid var(--interactive-accent)}
+.writer-project-panel{min-width:0;overflow-wrap:anywhere}
+.writer-project-scene button,.writer-project-note{display:block;width:100%;text-align:left;background:transparent;box-shadow:none;white-space:normal;height:auto;min-height:32px;padding:7px 8px}
+.writer-project-scene button:hover,.writer-project-note:hover{background:var(--background-modifier-hover)}
+.writer-project-notes-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.writer-project-notes-folder{margin:5px 0 5px 8px;padding-left:8px;border-left:1px solid var(--background-modifier-border)}
+.writer-project-notes-folder>summary{padding:8px 4px;cursor:pointer}
+.writer-project-small-button{font-size:var(--font-smallest);padding:4px 8px;height:auto}

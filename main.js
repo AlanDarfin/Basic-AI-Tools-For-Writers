@@ -125,6 +125,11 @@ class ProjectsView extends ItemView{
    }catch(e){console.warn('[Basic AI] Não foi possível ler o índice Longform',e);}
   }
   this.projectPrefs=this.prefs(project);
+  if(!writerModuleOn(this.plugin,'projects')){
+   this.root.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
+   return;
+  }
+  if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   tabs.scrollLeft=this.tabScrollLeft||0;
   tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
@@ -134,15 +139,16 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]]){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>id!=='comments'||writerModuleOn(this.plugin,'comments'))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
-  this.drawScenes(panels.scenes,project);
-  this.drawProject(panels.project,project);
-  this.drawCompile(panels.compile,project);
+  // Rendering every hidden panel was expensive for books with many chapters.
+  if(this.activeTab==='scenes')this.drawScenes(panels.scenes,project);
+  if(this.activeTab==='project')this.drawProject(panels.project,project);
+  if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
@@ -1290,7 +1296,7 @@ class WriterComplements extends EditorSuggest{
    .slice(0,Math.max(1,Math.min(30,Number(this.options.maxResults)||8)));
  }
  onTrigger(cursor,editor,file){
-  if(!this.options.enabled||this.options.automatic===false||!file||this.isExcluded(file))return null;
+  if(!writerModuleOn(this.plugin,'complements')||!this.options.enabled||this.options.automatic===false||!file||this.isExcluded(file))return null;
   const line=editor.getLine(cursor.line)||'',before=line.slice(0,cursor.ch);
   const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(before);
   if(!m||m[1].length<Math.max(1,Number(this.options.minChars)||3))return null;
@@ -1321,6 +1327,7 @@ class WriterComplements extends EditorSuggest{
   }
  }
  async manual(){
+   if(!writerModuleOn(this.plugin,'complements'))return;
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView),editor=view?.editor,file=view?.file;
   if(!editor||!file)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const cursor=editor.getCursor(),line=editor.getLine(cursor.line)||'';
@@ -1786,7 +1793,15 @@ class WriterToolsView extends ItemView{
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
-  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['reviewV4',writerUi('Diff e perfis','Diff & profiles')],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
+  const sections=[
+   ['complements',writerUi("Sugestões","Suggestions"),'complements'],
+   ['variants',writerUi("Variantes","Variants"),'variants'],
+   ['reviewV4',writerUi('Diff e perfis','Diff & profiles'),'diff'],
+   ['snapshots',writerUi("Versões","Versions"),'snapshots'],
+   ['extras',writerUi('Extras','Extras'),'tts']
+  ].filter(([,label,feature])=>writerModuleOn(this.plugin,feature));
+  if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
+  for(const [id,label] of sections){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
@@ -1797,8 +1812,8 @@ class WriterToolsView extends ItemView{
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
   if(this.tab==='extras')this.renderExtras(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
-  this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
-  this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
+  if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
+  if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
   this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
  }
  renderComplements(panel){
@@ -1810,7 +1825,7 @@ class WriterToolsView extends ItemView{
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(),true);
   this.addButton(actions,writerUi("Reindexar cofre","Reindex vault"),async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice(writerUi("Índice de sugestões atualizado.","Suggestion index updated."));});
-  this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
+  if(writerModuleOn(this.plugin,'dictionary'))this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
   const tracked=this.plugin.writerComplements?.cache?.size||0;
   panel.createEl('p',{text:tracked+' arquivo(s) no índice atual.',cls:'writer-tools-muted'});
  }
@@ -1900,6 +1915,7 @@ class WriterToolsView extends ItemView{
   this.addButton(actions,writerUi('Pausar','Pause'),()=>tools.pause());
   this.addButton(actions,writerUi('Continuar','Resume'),()=>tools.resume());
   this.addButton(actions,writerUi('Parar','Stop'),()=>tools.stop());
+  if(!writerModuleOn(this.plugin,'projects'))return;
   const nav=panel.createDiv({cls:'writer-extras-card writer-extras-navigation'});
   nav.createEl('h4',{text:writerUi('Projetos e organização','Projects & organization')});
   nav.createEl('p',{text:writerUi('Acesse rapidamente as tarefas do Longform.','Quick access to Longform project tasks.')});
@@ -2490,7 +2506,7 @@ class WriterFinalFeatures{
  }
  async speakActive(){
   const cfg=this.cfg.tts;
-  if(!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
+  if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
   const workspace=this.plugin.app.workspace;
@@ -3020,7 +3036,7 @@ class WriterV4Mentions extends EditorSuggest{
  constructor(plugin){super(plugin.app);this.plugin=plugin;}
  get opts(){return this.plugin.settings.writerV4Extras.mention;}
  onTrigger(cursor,editor,file){
-  if(!this.opts.enabled||file?.extension!=='md')return null;
+  if(!writerModuleOn(this.plugin,'mentions')||!this.opts.enabled||file?.extension!=='md')return null;
   const sign=String(this.opts.sign||'@').slice(0,1);
   const preceding=editor.getLine(cursor.line).slice(0,cursor.ch);
   const i=preceding.lastIndexOf(sign);
@@ -3141,7 +3157,7 @@ class WriterV4Extras{
   if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
-    if(!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
+    if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
     try{
      const pos=update.state.selection.main.head;
      update.view.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',yMargin:0})});
@@ -3283,7 +3299,7 @@ class WriterV4Extras{
   }
  }
  updateTypewriterClass(){
-  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
+  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
  }
  currentEditor(){
   const app=this.plugin.app;
@@ -3293,6 +3309,7 @@ class WriterV4Extras{
   return (app.workspace.getLeavesOfType('markdown')||[]).find(leaf=>leaf.view?.file?.path===note?.path&&leaf.view.editor)?.view||null;
  }
  commentSelection(file,editor){
+  if(!writerModuleOn(this.plugin,'comments'))return new Notice(writerUi('Comentários ocultos nas configurações.','Comments are hidden in settings.'));
   if(!file||file.extension!=='md'||!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para comentar.','Select text to comment on.'));
   const quote=editor.getSelection().slice(0,2000);
   const modal=new Modal(this.plugin.app);
@@ -3381,7 +3398,8 @@ class WriterV4Extras{
    editor.replaceRange(writerV4FormatText(text,kind),editor.getCursor('from'),editor.getCursor('to'));
   }
  runEditorAIAction(editor,kind){
-   if(this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
+   if(!writerModuleOn(this.plugin,'wordwise'))return new Notice(writerUi('Ações de IA ocultas nas configurações.','AI actions are hidden in settings.'));
+   if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
    if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
    return writerV4OpenDiff(this.plugin,{task:this.config.wordwise.prompts[kind],autoGenerate:true});
   }
@@ -3421,7 +3439,7 @@ class WriterV4Extras{
   modal.open();
  }
  wordwise(){
-  if(this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
+  if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
   const view=this.currentEditor();
   if(!view?.editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para usar as ações de IA.','Select text to use AI actions.'));
   const items=[
@@ -3528,7 +3546,7 @@ class WriterAutoGrammar{
  }
  stop(){this.destroyed=true;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  schedule(file,{delay}={}){
-  if(this.destroyed||this.config?.enabled===false||file?.extension!=='md')return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md')return;
   const view=this.reviewView();
   if(!view||view.reviewFilePath!==file.path)return;
   this.pendingPath=file.path;
@@ -3540,7 +3558,7 @@ class WriterAutoGrammar{
  }
  async run(){
   this.timer=null;
-  if(this.destroyed||this.config?.enabled===false)return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false)return;
   const view=this.reviewView(),path=this.pendingPath;
   if(!view||!path||view.reviewFilePath!==path)return;
   const file=this.plugin.app.vault.getAbstractFileByPath(path);
@@ -3558,6 +3576,92 @@ class WriterAutoGrammar{
    if(next)this.schedule(next);
   }
  }
+}
+
+// v3 module: src/v4/modules.js
+/* Basic AI v4 RC — opt-in module visibility, persisted independently of data. */
+const WRITER_MODULES=[
+ ['dictionary','Dicionário e definições','Dictionary & definitions','Consultas locais/online, sinônimos e antônimos.','Local/online lookup, synonyms and antonyms.'],
+ ['translation','Tradutor','Translator','Oculta tradução do menu, da seleção e do painel.','Hides translation in sidebar and selection menus.'],
+ ['chat','Assistente de escrita','Writing assistant','Oculta o chat e ações que abrem o assistente.','Hides chat and assistant shortcuts.'],
+ ['review','Revisão e LanguageTool','Review & LanguageTool','Oculta revisão gramatical, estilo e leitor beta.','Hides grammar, style and beta reader.'],
+ ['projects','Longform e projetos','Longform & projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
+ ['tools','Ferramentas de escrita','Writing tools','Oculta a barra lateral complementar.','Hides supplementary tools pane.'],
+ ['complements','Autocomplete','Autocomplete','Oculta sugestões locais e busca de termos.','Hides local word suggestions and indexing controls.'],
+ ['variants','Variantes','Writing variants','Oculta comparações e variantes de frases.','Hides writing variants.'],
+ ['diff','Diff e perfis','Diff & profiles','Oculta revisão seletiva.','Hides selective review.'],
+ ['snapshots','Histórico de versões','Version history','Oculta atalhos de snapshots; não apaga backups.','Hides snapshot shortcuts; never deletes backups.'],
+ ['tts','Leitura em voz alta','Text to speech','Oculta o leitor e seus controles.','Hides speech controls.'],
+ ['unicode','Unicode','Unicode','Oculta o seletor de símbolos.','Hides symbol picker.'],
+ ['templates','Templates e sumário','Templates & table of contents','Oculta modelos e sumários.','Hides templates and table of contents.'],
+ ['mentions','Menções','Mentions','Oculta menções de notas.','Hides note mentions.'],
+ ['comments','Comentários','Comments','Oculta comentários do Longform; mantém seus dados.','Hides Longform comments; keeps existing data.'],
+ ['wordwise','Ações de escrita com IA','AI writing actions','Oculta ações Wordwise e seus menus.','Hides AI writing actions.'],
+ ['typewriter','Máquina de escrever','Typewriter','Oculta o modo de foco.','Hides focus mode.']
+];
+const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
+function writerMergeModules(settings){
+ const existing=settings.visibleModules;
+ settings.visibleModules={...WRITER_MODULE_DEFAULTS,...(existing&&typeof existing==='object'&&!Array.isArray(existing)?existing:{})};
+ for(const id of Object.keys(WRITER_MODULE_DEFAULTS))settings.visibleModules[id]=settings.visibleModules[id]!==false;
+ return settings.visibleModules;
+}
+function writerModuleOn(plugin,id){return plugin?.settings?.visibleModules?.[id]!==false;}
+function writerVisibleTabs(plugin,definitions){
+ return definitions.filter(([id])=>writerModuleOn(plugin,id));
+}
+function writerDiagnostics(plugin){
+ const app=plugin.app,settings=plugin.settings,checks=[];
+ const count=app.vault.getMarkdownFiles?.().length??0;
+ checks.push([writerUi('Versão do plugin','Plugin version'),String(plugin.manifest?.version||'?')]);
+ checks.push([writerUi('Plataforma','Platform'),app.isMobile?writerUi('Android/iOS (móvel)','Mobile'):writerUi('Desktop','Desktop')]);
+ checks.push([writerUi('Notas Markdown','Markdown notes'),String(count)]);
+ checks.push([writerUi('Módulos visíveis','Visible modules'),Object.keys(WRITER_MODULE_DEFAULTS).filter(id=>writerModuleOn(plugin,id)).length+'/'+Object.keys(WRITER_MODULE_DEFAULTS).length]);
+ checks.push(['LanguageTool',writerModuleOn(plugin,'review')
+  ?(settings.autoGrammar?.enabled===false?writerUi('Manual','Manual'):writerUi('Automático quando Revisão está aberta','Automatic while Review is open'))
+  :writerUi('Oculto','Hidden')]);
+ const endpoint=String(settings.reviewEndpoint||'');
+ let safeEndpoint=writerUi('Não configurado','Not configured');
+ try{const url=new URL(endpoint);safeEndpoint=url.protocol==='https:'?url.origin:writerUi('URL não HTTPS','Non-HTTPS URL');}catch(_){}
+ checks.push([writerUi('Servidor LanguageTool','LanguageTool server'),safeEndpoint]);
+ checks.push([writerUi('Provedores de IA','AI providers'),Object.entries(settings.aiKeys||{}).filter(([_,v])=>Boolean(v)).length+writerUi(' com chave configurada',' configured keys')]);
+ const nativeSpeech=typeof speechSynthesis!=='undefined'&&typeof SpeechSynthesisUtterance!=='undefined';
+ checks.push(['TTS',!writerModuleOn(plugin,'tts')?writerUi('Oculto','Hidden'):
+  nativeSpeech?writerUi('API Web Speech disponível','Web Speech API exposed'):writerUi('API Web Speech indisponível','Web Speech API unavailable')]);
+ checks.push([writerUi('Snapshots','Snapshots'),settings.snapshots?.enabled===false?writerUi('Desativados','Disabled'):writerUi('Ativos','Active')]);
+ return checks;
+}
+function writerRenderModuleSettings(plugin,panel,refresh){
+ panel.createEl('h3',{text:writerUi('Módulos visíveis','Visible modules')});
+ panel.createEl('p',{text:writerUi('Desative recursos que não utiliza para ocultar abas, menus e atalhos de acesso. Os dados e configurações são mantidos. Recursos podem ser reativados aqui a qualquer momento.','Hide unused features from tabs and menus. Existing settings and data are retained and can be restored any time.'),cls:'dictionary-muted'});
+ for(const [id,pt,en,descPt,descEn] of WRITER_MODULES){
+  new Setting(panel).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
+   .addToggle(t=>t.setValue(writerModuleOn(plugin,id)).onChange(async value=>{
+    plugin.settings.visibleModules[id]=value;
+    await plugin.saveSettings();
+    plugin.refreshModuleVisibility?.();
+    if(typeof refresh==='function')refresh();
+   }));
+ }
+}
+function writerRenderDiagnostics(plugin,panel){
+ panel.createEl('h3',{text:writerUi('Diagnóstico','Diagnostics')});
+ panel.createEl('p',{text:writerUi('Informações locais sem revelar chaves de API. O diagnóstico não envia dados para serviços externos.','Local status without revealing API keys. Diagnostics do not send requests to external services.'),cls:'dictionary-muted'});
+ const table=panel.createDiv({cls:'writer-diagnostics'});
+ for(const [label,value] of writerDiagnostics(plugin)){
+  const row=table.createDiv({cls:'writer-diagnostic-item'});
+  row.createSpan({text:label,cls:'writer-diagnostic-label'});
+  row.createSpan({text:value,cls:'writer-diagnostic-value'});
+ }
+ new Setting(panel).setName(writerUi('Atualizar informações','Refresh information'))
+  .addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>{
+   table.empty();
+   for(const [label,value] of writerDiagnostics(plugin)){
+    const row=table.createDiv({cls:'writer-diagnostic-item'});
+    row.createSpan({text:label,cls:'writer-diagnostic-label'});
+    row.createSpan({text:value,cls:'writer-diagnostic-value'});
+   }
+  }));
 }
 
 // END WRITER V3 MODULES

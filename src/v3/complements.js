@@ -24,14 +24,17 @@ class WriterComplements extends EditorSuggest{
   const generation=++this.generation;
   this.building=(async()=>{
    const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f)).slice(0,Math.max(10,Math.min(6000,Number(this.options.maxFiles)||500)));
-   const next=new Map();
+   const next=new Map();let total=0;const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
    if(this.options.vault!==false){
     for(let i=0;i<files.length;i++){
      const file=files[i];if(generation!==this.generation)return;
      try{
       if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
       const text=await this.plugin.app.vault.cachedRead(file);
-      next.set(file.path,this.tokenize(writerMaskMarkdown(text)));
+      const terms=this.tokenize(writerMaskMarkdown(text));
+      const remaining=Math.max(0,limit-total);
+      const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
+      total+=subset.size;if(total>=limit)break;
      }catch(e){console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
      if(i%20===19)await Promise.resolve();
     }

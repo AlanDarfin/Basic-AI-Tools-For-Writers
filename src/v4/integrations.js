@@ -166,7 +166,7 @@ class WriterV4Extras{
      this.view=view;this.dom=view.dom.createDiv({cls:'writer-v4-floating-toolbar'});
      this.isMobile=owner.plugin.app.isMobile===true||(typeof navigator!=='undefined'&&/Android|iPad|iPhone/i.test(navigator.userAgent||''));
      if(this.isMobile)this.dom.addClass('writer-v4-toolbar-mobile');
-     this.savedRange=null;
+     this.savedRange=null;this.expanded=false;this.dismissedKey=null;
      this.onSelection=()=>{
       clearTimeout(this.selectionTimer);
       this.selectionTimer=setTimeout(()=>this.refresh(),70);
@@ -176,6 +176,29 @@ class WriterV4Extras{
      view.dom.addEventListener('keyup',this.onSelection);
      this.ownerDocument=view.dom.ownerDocument;
      this.ownerDocument?.addEventListener('selectionchange',this.onSelection);
+     this.visualViewport=this.ownerDocument?.defaultView?.visualViewport||null;
+     this.onViewport=()=>this.positionMobile();
+     this.visualViewport?.addEventListener?.('resize',this.onViewport);
+     this.visualViewport?.addEventListener?.('scroll',this.onViewport);
+     if(this.isMobile){
+      const nav=this.dom.createDiv({cls:'writer-v4-mobile-actions'});
+      const toggle=nav.createEl('button',{text:writerUi('Aa Formatar','Aa Format'),attr:{'aria-expanded':'false','aria-label':writerUi('Expandir ferramentas','Expand editing tools')}});
+      toggle.addEventListener('pointerdown',e=>e.preventDefault());
+      toggle.addEventListener('click',()=>{
+       this.expanded=!this.expanded;toggle.setAttribute('aria-expanded',String(this.expanded));
+       this.dom.toggleClass('writer-v4-expanded',this.expanded);this.positionMobile();
+      });
+      const ai=nav.createEl('button',{text:'✦ IA',attr:{'aria-label':writerUi('Ações de IA','AI writing actions')}});
+      ai.addEventListener('pointerdown',e=>e.preventDefault());
+      ai.addEventListener('click',()=>this.useSelectedRange(()=>owner.wordwise()));
+      const close=nav.createEl('button',{text:'×',cls:'writer-v4-toolbar-close',attr:{'aria-label':writerUi('Fechar barra','Close toolbar')}});
+      close.addEventListener('pointerdown',e=>e.preventDefault());
+      close.addEventListener('click',()=>{
+       const selected=this.view.state.selection.main;this.dismissedKey=selected.from+':'+selected.to;
+       this.expanded=false;this.dom.removeClass('is-visible','writer-v4-expanded');
+      });
+     }
+     const formatActions=this.dom.createDiv({cls:'writer-v4-format-actions'});
      const formats=[
       ['B','bold','**','**'],['I','italic','*','*'],
       ['H','heading','## ',''],['“”','quote','> ',''],
@@ -183,29 +206,31 @@ class WriterV4Extras{
       ['✦','wordwise',null,null]
      ];
      for(const [label,title,before,after] of formats){
-      const button=this.dom.createEl('button',{text:label,attr:{'aria-label':title,title}});
+      if(this.isMobile&&title==='wordwise')continue;
+      const button=formatActions.createEl('button',{text:label,attr:{'aria-label':title,title}});
       button.addEventListener('pointerdown',e=>e.preventDefault());
-      button.addEventListener('click',()=>{
-       const current=this.view.state.selection.main;
-       const selected=!current.empty?current:this.savedRange;
-       if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
-       // Mobile tap can blur native selection; restore its exact CodeMirror range.
-       if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
-       if(title==='wordwise'){
-        this.view.focus();
-        owner.wordwise();
-        return;
-       }
+      button.addEventListener('click',()=>this.useSelectedRange(()=>{
+       if(title==='wordwise')return owner.wordwise();
+       const selected=this.view.state.selection.main;
+       if(selected.empty)return;
        const raw=this.view.state.doc.sliceString(selected.from,selected.to);
        const value=(before||'')+raw+(after||'');
        this.view.dispatch({changes:{from:selected.from,to:selected.to,insert:value},selection:{anchor:selected.from+value.length}});
-       this.dom.removeClass('is-visible');this.view.focus();
-      });
+       this.expanded=false;this.savedRange=null;
+       this.dom.removeClass('is-visible','writer-v4-expanded');this.view.focus();
+      }));
      }
      this.refresh();
     }
+    useSelectedRange(action){
+     const current=this.view.state.selection.main;
+     const selected=!current.empty?current:this.savedRange;
+     if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
+     if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
+     action();
+    }
     update(update){
-     if(update.docChanged)this.savedRange=null;
+     if(update.docChanged){this.savedRange=null;this.expanded=false;this.dismissedKey=null;}
      if(update.selectionSet||update.docChanged)this.refresh();
     }
     refresh(){

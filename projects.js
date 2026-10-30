@@ -79,7 +79,7 @@ function lfWordCount(text){
 }
 function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft=lfMsg("Principal","Main");this.workflow='Padrão';this.renderToken=0;}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return 'Projetos de escrita';}
  getIcon(){return 'notebook-pen';}
@@ -104,12 +104,12 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)this.selected=activeProject.file.path;
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:'+ Projeto',cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
-  const selector=top.createEl('select',{attr:{'aria-label':'Projeto'}});
+  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
+  const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
-  if(!indexes.length){this.root.createEl('p',{text:'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.'});return;}
+  if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
   if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
-  if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
+  if(this.lastSelected!==this.selected){this.draft=lfMsg("Principal","Main");this.workflowDraft=null;}
   this.lastSelected=this.selected;
   selector.value=this.selected;
   selector.addEventListener('change',()=>{this.selected=selector.value;this.render();});
@@ -124,7 +124,7 @@ class ProjectsView extends ItemView{
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
-  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas'],['tasks',lfMsg('Tarefas','Tasks')]]){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')]]){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -172,9 +172,9 @@ class ProjectsView extends ItemView{
   await this.render();
  }
  sceneList(project){return lfFlattenScenes(project.scenes);}
- activeScenes(project){return this.draft==='Principal'?this.sceneList(project):(this.prefs(project).drafts[this.draft]||this.sceneList(project));}
+ activeScenes(project){return this.draft===lfMsg("Principal","Main")?this.sceneList(project):(this.prefs(project).drafts[this.draft]||this.sceneList(project));}
  async changeScenes(project,change){
-  if(this.draft==='Principal')return this.updateIndex(project,data=>{
+  if(this.draft===lfMsg("Principal","Main"))return this.updateIndex(project,data=>{
    const flat=lfFlattenScenes(data.scenes||[]);
    change(flat);
    data.scenes=lfNestScenes(flat);
@@ -211,7 +211,7 @@ class ProjectsView extends ItemView{
      }else scenes.push({title:name,indent:0});
     });
     this.openFile(file);
-   }catch(e){new Notice('Não foi possível criar a cena: '+e.message);}
+   }catch(e){new Notice(lfMsg("Não foi possível criar a cena: ","Could not create scene: ")+e.message);}
   }).open();
  }
  async moveScene(project,title,delta){
@@ -259,14 +259,14 @@ class ProjectsView extends ItemView{
    const depth=scenes[i].indent,end=this.subtreeEnd(scenes,i);
    scenes.splice(i,1);
    for(let j=i;j<end-1;j++)scenes[j].indent=Math.max(0,scenes[j].indent-1);
-  });new Notice('Entrada removida do índice. Arquivo e subcapítulos preservados.');}
+  });new Notice(lfMsg("Entrada removida do índice. Arquivo e subcapítulos preservados.","Entry removed from index. The file and child chapters were preserved."));}
   catch(e){new Notice(e.message);}
  }
  async renameScene(project,title){
   new TextPrompt(this.app,'Renomear cena',async raw=>{
    const name=clean(raw);if(!name||name===title)return;
    const file=this.resolveScene(project,title);
-   if(!(file instanceof TFile))return new Notice('Arquivo da cena não encontrado.');
+   if(!(file instanceof TFile))return new Notice(lfMsg("Arquivo da cena não encontrado.","Scene file not found."));
    const newPath=[file.parent?.path,name+'.md'].filter(Boolean).join('/');
    try{
     if(this.app.vault.getAbstractFileByPath(newPath))throw Error('Já existe uma cena com esse nome.');
@@ -277,8 +277,8 @@ class ProjectsView extends ItemView{
  }
  drawScenes(panel,project){
   if(project.format==='single'){
-   panel.createEl('p',{text:'Projeto de nota única.'});
-   panel.createEl('button',{text:'Abrir texto'}).addEventListener('click',()=>this.openFile(project.file));
+   panel.createEl('p',{text:lfMsg("Projeto de nota única.","Single-note project.")});
+   panel.createEl('button',{text:lfMsg("Abrir texto","Open text")}).addEventListener('click',()=>this.openFile(project.file));
    return;
   }
   const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar'});
@@ -287,24 +287,24 @@ class ProjectsView extends ItemView{
    const other=draftBar.createEl('select',{attr:{'aria-label':'Rascunhos Longform existentes'}});
    other.createEl('option',{text:'Trocar para rascunho Longform...',value:''});
    for(const d of linked){const o=other.createEl('option',{text:d.draftTitle||d.file.basename});o.value=d.file.path;}
-   other.addEventListener('change',()=>{if(other.value){this.selected=other.value;this.draft='Principal';this.render();}});
+   other.addEventListener('change',()=>{if(other.value){this.selected=other.value;this.draft=lfMsg("Principal","Main");this.render();}});
   }
   const select=draftBar.createEl('select',{attr:{'aria-label':'Rascunho local'}});
-  const drafts=['Principal',...Object.keys(prefs.drafts||{})];
-  if(!drafts.includes(this.draft))this.draft='Principal';
+  const drafts=[lfMsg("Principal","Main"),...Object.keys(prefs.drafts||{})];
+  if(!drafts.includes(this.draft))this.draft=lfMsg("Principal","Main");
   for(const d of drafts){const o=select.createEl('option',{text:d});o.value=d;}select.value=this.draft;
   select.addEventListener('change',()=>{this.draft=select.value;this.render();});
   draftBar.createEl('button',{text:'+ Variante'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome da variante',async name=>{
-   name=clean(name);if(!name||name==='Principal'||prefs.drafts[name])return;
+   name=clean(name);if(!name||name===lfMsg("Principal","Main")||prefs.drafts[name])return;
    prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
   }).open());
-  if(this.draft!=='Principal')draftBar.createEl('button',{text:'Excluir variante'}).addEventListener('click',async()=>{
-   delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();
+  if(this.draft!==lfMsg("Principal","Main"))draftBar.createEl('button',{text:lfMsg("Excluir variante","Delete variant")}).addEventListener('click',async()=>{
+   delete prefs.drafts[this.draft];this.draft=lfMsg("Principal","Main");await this.savePrefs();
   });
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
-  toolbar.createEl('button',{text:'+ Cena'}).addEventListener('click',()=>this.addScene(project));
-  toolbar.createEl('button',{text:'Novo rascunho Longform'}).addEventListener('click',()=>this.createLinkedDraft(project));
+  toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
+  toolbar.createEl('button',{text:lfMsg("Novo rascunho Longform","New Longform draft")}).addEventListener('click',()=>this.createLinkedDraft(project));
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
@@ -317,7 +317,7 @@ class ProjectsView extends ItemView{
    row.addEventListener('drop',e=>{e.preventDefault();row.removeClass('writer-project-dragover');const source=e.dataTransfer.getData('text/plain');if(source)this.moveSceneBefore(project,source,name);});
    const file=this.resolveScene(project,name);
    const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
-   titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
+   titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));
    const controls=row.createDiv({cls:'writer-project-scene-controls'});
    for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){
     controls.createEl('button',{text:label,cls:'writer-project-small-button',attr:{title:hint,'aria-label':hint+' — '+name}})
@@ -359,25 +359,25 @@ class ProjectsView extends ItemView{
     }
     const payload={longform:{format:'scenes',title:project.title,draftTitle:name,sceneFolder:'/',scenes:lfNestScenes(scenes),ignoredFiles:[]}};
     const index=await this.app.vault.create(path,'---\n'+stringifyYaml(payload)+'---\n');
-    this.selected=index.path;this.draft='Principal';await this.render();this.queueRender();
-    new Notice('Rascunho Longform criado sem alterar o original.');
-   }catch(e){new Notice('Não foi possível criar rascunho: '+e.message);}
+    this.selected=index.path;this.draft=lfMsg("Principal","Main");await this.render();this.queueRender();
+    new Notice(lfMsg("Rascunho Longform criado sem alterar o original.","Longform draft created without changing the original."));
+   }catch(e){new Notice(lfMsg("Não foi possível criar rascunho: ","Could not create draft: ")+e.message);}
   }).open();
  }
  drawProject(panel,project){
   panel.createEl('h4',{text:project.title});
-  panel.createEl('p',{text:'Índice: '+project.file.path});
-  panel.createEl('p',{text:'Cenas: '+sceneNames(project.scenes).length});
-  panel.createEl('button',{text:'Abrir índice'}).addEventListener('click',()=>this.openFile(project.file));
-  new Setting(panel).setName('Título do projeto').addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
-  new Setting(panel).setName('Pasta das cenas').setDesc('Relativa à pasta do índice; não move arquivos existentes.').addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
+  panel.createEl('p',{text:lfMsg("Índice: ","Index: ")+project.file.path});
+  panel.createEl('p',{text:lfMsg("Cenas: ","Scenes: ")+sceneNames(project.scenes).length});
+  panel.createEl('button',{text:lfMsg("Abrir índice","Open index")}).addEventListener('click',()=>this.openFile(project.file));
+  new Setting(panel).setName(lfMsg("Título do projeto","Project title")).addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
+  new Setting(panel).setName(lfMsg("Pasta das cenas","Scene folder")).setDesc(lfMsg("Relativa à pasta do índice; não move arquivos existentes.","Relative to the index folder; does not move existing files.")).addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
   const prefs=this.prefs(project);
-  new Setting(panel).setName('Meta diária (palavras)').addText(t=>t.setValue(String(prefs.dailyGoal||0)).onChange(v=>this.dailyGoalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.dailyGoal=Math.max(0,Number(this.dailyGoalInput)||0);await this.savePrefs();}));
+  new Setting(panel).setName(lfMsg("Meta diária (palavras)","Daily goal (words)")).addText(t=>t.setValue(String(prefs.dailyGoal||0)).onChange(v=>this.dailyGoalInput=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(async()=>{prefs.dailyGoal=Math.max(0,Number(this.dailyGoalInput)||0);await this.savePrefs();}));
   this.drawSession(panel,project);
-  new Setting(panel).setName('Meta de palavras').setDesc('Meta total do projeto').addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
+  new Setting(panel).setName(lfMsg("Meta de palavras","Word goal")).setDesc(lfMsg("Meta total do projeto","Total project goal")).addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
   const count=this.activeScenes(project).length;
-  panel.createEl('p',{text:'Cenas no rascunho: '+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
-  panel.createEl('p',{text:'Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.'});
+  panel.createEl('p',{text:lfMsg("Cenas no rascunho: ","Scenes in draft: ")+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
+  panel.createEl('p',{text:lfMsg("Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.","Local drafts and goals are stored in Basic AI settings. Longform drafts are separate index notes.")});
   this.drawSceneDiagnostics(panel,project);
  }
 
@@ -446,11 +446,11 @@ class ProjectsView extends ItemView{
   const unknown=existing.filter(f=>!tracked.has(f.basename)&&!((project.meta.ignoredFiles||[]).includes(f.basename)));
   const missing=[...tracked].filter(name=>!this.resolveScene(project,name));
   const section=panel.createEl('details',{cls:'writer-project-diagnostics'});
-  section.createEl('summary',{text:'Diagnóstico · '+missing.length+' cenas ausentes, '+unknown.length+' arquivos soltos'});
+  section.createEl('summary',{text:lfMsg("Diagnóstico · ","Diagnostics · ")+missing.length+' cenas ausentes, '+unknown.length+' arquivos soltos'});
   if(missing.length)section.createEl('p',{text:'Ausentes: '+missing.join(', ')});
   if(unknown.length){
-   section.createEl('p',{text:'Novos arquivos: '+unknown.map(f=>f.basename).join(', ')});
-   section.createEl('button',{text:'Adicionar arquivos soltos ao índice'}).addEventListener('click',()=>{
+   section.createEl('p',{text:lfMsg("Novos arquivos: ","New files: ")+unknown.map(f=>f.basename).join(', ')});
+   section.createEl('button',{text:lfMsg("Adicionar arquivos soltos ao índice","Add unindexed files")}).addEventListener('click',()=>{
     new ConfirmProjectAction(this.app,'Adicionar arquivos ao índice',
      'Adicionar '+unknown.length+' arquivo(s) Markdown como cenas ao final do índice? Nenhum arquivo será movido.',
      ()=>this.changeScenes(project,scenes=>{for(const f of unknown)scenes.push({title:f.basename,indent:0});})
@@ -541,7 +541,7 @@ class ProjectsView extends ItemView{
   const modal=new Modal(this.app);let raw='';
   modal.onOpen=()=>{
    modal.setTitle('Importar workflows (JSON)');
-   modal.contentEl.createEl('p',{text:'Cole o objeto workflows ou o conteúdo de data.json do Longform. Apenas etapas reconhecidas poderão ser executadas.'});
+   modal.contentEl.createEl('p',{text:lfMsg("Cole o objeto workflows ou o conteúdo de data.json do Longform. Apenas etapas reconhecidas poderão ser executadas.","Paste the workflows object or Longform data.json contents. Only recognized steps can be executed.")});
    const area=modal.contentEl.createEl('textarea',{attr:{rows:'12',placeholder:'{"workflows":{...}}'}});
    area.style.width='100%';area.addEventListener('input',()=>raw=area.value);
    new Setting(modal.contentEl).addButton(b=>b.setButtonText('Importar').setCta().onClick(async()=>{
@@ -557,13 +557,13 @@ class ProjectsView extends ItemView{
      }
      if(!count)throw Error('Nenhum workflow com etapas foi encontrado.');
      modal.close();await this.savePrefs();new Notice(count+' workflow(s) importado(s).');
-    }catch(e){new Notice('Importação inválida: '+e.message,7000);}
+    }catch(e){new Notice(lfMsg("Importação inválida: ","Invalid import: ")+e.message,7000);}
    }));
   };
   modal.open();
  }
  drawCompile(panel,project){
-  panel.createEl('h4',{text:'Compilação por etapas'});
+  panel.createEl('h4',{text:lfMsg("Compilação por etapas","Step-by-step compilation")});
   const workflows=this.workflowsFor(project);
   if(!workflows[this.workflow])this.workflow=Object.keys(workflows)[0];
   const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
@@ -580,7 +580,7 @@ class ProjectsView extends ItemView{
   bar.createEl('button',{text:'Importar JSON'}).addEventListener('click',()=>this.importWorkflowJSON(project));
   const wf=this.workflowDraft&&this.workflowDraftName===this.workflow?this.workflowDraft:
    (this.workflowDraft=JSON.parse(JSON.stringify(workflows[this.workflow])),this.workflowDraftName=this.workflow,this.workflowDraft);
-  const status=panel.createEl('p',{text:'Edite etapas e clique em Salvar workflow. Scripts externos não são executados.'});
+  const status=panel.createEl('p',{text:lfMsg("Edite etapas e clique em Salvar workflow. Scripts externos não são executados.","Edit steps and select Save workflow. External scripts are not executed.")});
   const stepNames=Object.fromEntries(this.workflowCatalog().map(([id,label])=>[id,label]));
   const drawStep=(step,i)=>{
    const box=panel.createDiv({cls:'writer-project-workflow-step'});
@@ -604,24 +604,24 @@ class ProjectsView extends ItemView{
    if(step.id==='concatenate-text')text('Separador','separator','\\n\\n---\\n\\n');
    if(step.id==='write-to-note'){text('Destino relativo ao projeto','target','manuscript.md');toggle('Abrir manuscrito','open-after');}
    if(step.id==='add-frontmatter')text('YAML','frontmatter','',true);
-   if(!stepNames[step.id])box.createEl('p',{text:'Etapa de script/customizada preservada na importação, mas não pode ser executada.'});
+   if(!stepNames[step.id])box.createEl('p',{text:lfMsg("Etapa de script/customizada preservada na importação, mas não pode ser executada.","Custom/script step preserved on import but cannot be executed.")});
   };
   for(let i=0;i<wf.steps.length;i++)drawStep(wf.steps[i],i);
   const add=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const stepPicker=add.createEl('select');
   for(const [id,label] of this.workflowCatalog()){const o=stepPicker.createEl('option',{text:label});o.value=id;}
   add.createEl('button',{text:'+ Etapa'}).addEventListener('click',()=>{wf.steps.push({id:stepPicker.value,optionValues:{}});this.render();});
-  add.createEl('button',{text:'Salvar workflow'}).addEventListener('click',async()=>{
+  add.createEl('button',{text:lfMsg("Salvar workflow","Save workflow")}).addEventListener('click',async()=>{
    workflows[this.workflow]=JSON.parse(JSON.stringify(wf));await this.plugin.saveSettings();status.setText('Workflow salvo.');
   });
-  add.createEl('button',{text:'Prévia'}).addEventListener('click',async()=>{
+  add.createEl('button',{text:lfMsg("Prévia","Preview")}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,true);let preview=panel.querySelector('.writer-project-compile-preview');
     if(!preview)preview=panel.createEl('textarea',{cls:'writer-project-compile-preview'});
     preview.value=result.contents.slice(0,24000);preview.readOnly=true;
     status.setText('Prévia gerada; nenhum arquivo foi modificado.');
-   }catch(e){new Notice('Workflow inválido: '+e.message,8000);}
+   }catch(e){new Notice(lfMsg("Workflow inválido: ","Invalid workflow: ")+e.message,8000);}
   });
-  add.createEl('button',{text:'Compilar',cls:'mod-cta'}).addEventListener('click',async()=>{
+  add.createEl('button',{text:lfMsg("Compilar","Compile"),cls:'mod-cta'}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,false);status.setText('Criado: '+result.file.path);new Notice('Manuscrito criado sem sobrescrever o original.');}
    catch(e){new Notice('Falha: '+e.message,8000);}
   });
@@ -633,21 +633,21 @@ class ProjectsView extends ItemView{
   const root=this.notesRoot(project);
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:'+ Pasta'}).addEventListener('click',()=>this.promptNotesFolder(root));
-  toolbar.createEl('button',{text:'+ Nota'}).addEventListener('click',()=>this.promptNote(root));
+  toolbar.createEl('button',{text:lfMsg("+ Nota","+ Note")}).addEventListener('click',()=>this.promptNote(root));
   const search=panel.createEl('input',{attr:{type:'search',placeholder:'Pesquisar notas deste projeto','aria-label':'Pesquisar notas'}});
   search.addClass('writer-project-note-search');
   const contents=panel.createDiv({cls:'writer-project-note-tree'});
   const folder=this.app.vault.getAbstractFileByPath(root);
-  if(!(folder instanceof TFolder)){contents.createEl('p',{text:'Crie uma pasta ou nota para começar. As notas não entram no manuscrito.'});return;}
+  if(!(folder instanceof TFolder)){contents.createEl('p',{text:lfMsg("Crie uma pasta ou nota para começar. As notas não entram no manuscrito.","Create a folder or note to get started. Notes are excluded from the manuscript.")});return;}
   const viewFolder=(f,parent,level=0)=>{
    if(level>18)return;
    const block=parent.createEl('details',{cls:'writer-project-notes-folder'});block.open=level<=1;
-   block.createEl('summary',{text:level===0?'Notas':f.name});
+   block.createEl('summary',{text:level===0?lfMsg("Notas","Notes"):f.name});
    const actions=block.createDiv({cls:'writer-project-note-actions'});
-   actions.createEl('button',{text:'+ Nota'}).addEventListener('click',()=>this.promptNote(f.path));
+   actions.createEl('button',{text:lfMsg("+ Nota","+ Note")}).addEventListener('click',()=>this.promptNote(f.path));
    actions.createEl('button',{text:'+ Pasta'}).addEventListener('click',()=>this.promptNotesFolder(f.path));
    if(level>0){
-    actions.createEl('button',{text:'Renomear'}).addEventListener('click',()=>this.renameProjectItem(f));
+    actions.createEl('button',{text:lfMsg("Renomear","Rename")}).addEventListener('click',()=>this.renameProjectItem(f));
     actions.createEl('button',{text:'Lixeira'}).addEventListener('click',()=>this.trashProjectItem(f));
    }
    for(const item of [...f.children].sort((x,y)=>x.name.localeCompare(y.name,'pt-BR'))){
@@ -656,7 +656,7 @@ class ProjectsView extends ItemView{
      const row=block.createDiv({cls:'writer-project-note-row'});
      row.dataset.noteTitle=item.basename.toLowerCase();
      row.createEl('button',{text:item.basename,cls:'writer-project-note'}).addEventListener('click',()=>this.openFile(item));
-     row.createEl('button',{text:'✎',attr:{title:'Renomear', 'aria-label':'Renomear'}}).addEventListener('click',()=>this.renameProjectItem(item));
+     row.createEl('button',{text:'✎',attr:{title:lfMsg("Renomear","Rename"), 'aria-label':lfMsg("Renomear","Rename")}}).addEventListener('click',()=>this.renameProjectItem(item));
      row.createEl('button',{text:'↪',attr:{title:'Mover', 'aria-label':'Mover'}}).addEventListener('click',()=>this.moveProjectNote(item,folder));
      row.createEl('button',{text:'✦',attr:{title:'Revisar nota','aria-label':'Revisar nota'}}).addEventListener('click',()=>this.plugin.openReview('grammar',item));
      row.createEl('button',{text:'×',attr:{title:'Mover para lixeira','aria-label':'Mover para lixeira'}}).addEventListener('click',()=>this.trashProjectItem(item));
@@ -706,13 +706,13 @@ class ProjectsView extends ItemView{
  moveProjectNote(file,root){
   const modal=new Modal(this.app);
   modal.onOpen=()=>{
-   modal.setTitle('Mover nota para pasta');
+   modal.setTitle(lfMsg("Mover nota para pasta","Move note to folder"));
    const folders=[];
    const walk=f=>{folders.push(f);for(const c of f.children)if(c instanceof TFolder)walk(c);};
    walk(root);
    let chosen=folders[0].path;
    new Setting(modal.contentEl).setName('Destino').addDropdown(d=>{
-    for(const f of folders)d.addOption(f.path,f.path.replace(root.path,'Notas')||'Notas');
+    for(const f of folders)d.addOption(f.path,f.path.replace(root.path,lfMsg("Notas","Notes"))||lfMsg("Notas","Notes"));
     d.setValue(file.parent?.path||chosen).onChange(v=>chosen=v);
    });
    new Setting(modal.contentEl).addButton(b=>b.setButtonText('Mover').setCta().onClick(async()=>{
@@ -733,11 +733,11 @@ class ProjectsView extends ItemView{
   const modal=new Modal(this.app),active=this.app.workspace.getActiveFile();
   let title='',parent=active?.parent?.path||'',format='scenes';
   modal.onOpen=()=>{
-   modal.setTitle('Novo projeto de escrita');
+   modal.setTitle(lfMsg("Novo projeto de escrita","New writing project"));
    new Setting(modal.contentEl).setName('Nome').addText(t=>t.setPlaceholder('Meu livro').onChange(v=>title=v));
    new Setting(modal.contentEl).setName('Pasta no cofre').setDesc('Caminho relativo ao cofre').addText(t=>t.setValue(parent).onChange(v=>parent=v));
    new Setting(modal.contentEl).setName('Tipo').addDropdown(d=>d.addOption('scenes','Várias cenas').addOption('single','Nota única').onChange(v=>format=v));
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar projeto').setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg("Criar projeto","Create project")).setCta().onClick(async()=>{
     try{
      title=clean(title);if(!title)throw Error('Informe o nome do projeto.');
      if(parent.startsWith('/')||parent.split('/').includes('..'))throw Error('Pasta inválida.');
@@ -748,7 +748,7 @@ class ProjectsView extends ItemView{
      const data={format,title,sceneFolder:'/',scenes:[],ignoredFiles:[]};
      if(format==='single'){delete data.sceneFolder;delete data.scenes;delete data.ignoredFiles;}
      const file=await this.app.vault.create(path,'---\n'+stringifyYaml({longform:data})+'---\n\n');
-     modal.close();this.selected=file.path;this.draft='Principal';await this.render();this.queueRender();this.openFile(file);
+     modal.close();this.selected=file.path;this.draft=lfMsg("Principal","Main");await this.render();this.queueRender();this.openFile(file);
     }catch(e){new Notice(e.message,7000);}
    }));
   };
@@ -782,7 +782,7 @@ class ProjectsView extends ItemView{
     const before=session.baseline[file.path],diff=words-before;
     session.baseline[file.path]=words;
     session.words=Math.max(0,(session.words||0)+diff);
-    if(prefs.dailyGoal>0&&session.words>=prefs.dailyGoal&&!session.notified){session.notified=true;new Notice('Meta diária de escrita atingida!');}
+    if(prefs.dailyGoal>0&&session.words>=prefs.dailyGoal&&!session.notified){session.notified=true;new Notice(lfMsg("Meta diária de escrita atingida!","Daily writing goal reached!"));}
     clearTimeout(this.sessionSaveTimer);
     this.sessionSaveTimer=setTimeout(()=>this.plugin.saveSettings(),1300);
     if(this.activeTab==='project')this.queueRender();
@@ -792,14 +792,14 @@ class ProjectsView extends ItemView{
  drawSession(panel,project){
   const prefs=this.prefs(project),session=prefs.session;
   const box=panel.createDiv({cls:'writer-project-session'});
-  box.createEl('h4',{text:'Sessão de escrita'});
+  box.createEl('h4',{text:lfMsg("Sessão de escrita","Writing session")});
   const today=new Date().toDateString(),words=session?.day===today?session.words||0:0;
   box.createEl('p',{text:words+' palavras registradas hoje'+(prefs.dailyGoal?' / meta '+prefs.dailyGoal:'')});
   if(prefs.dailyGoal>0){
    const progress=box.createEl('progress');progress.max=prefs.dailyGoal;progress.value=Math.min(words,prefs.dailyGoal);
   }
   box.createEl('button',{text:session?.active?'Encerrar sessão':'Iniciar sessão'}).addEventListener('click',()=>session?.active?this.stopWritingSession(project):this.startWritingSession(project));
-  box.createEl('p',{text:'Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.'});
+  box.createEl('p',{text:lfMsg("Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.","Counts reflect files saved during this session. Changes outside Obsidian may not be counted.")});
  }
  async drawStats(panel,project,token){
   const scenes=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
@@ -895,7 +895,7 @@ class ProjectsView extends ItemView{
    new Setting(modal.contentEl).setName(lfMsg('Descrição','Description')).addText(x=>x.setValue(values.name).onChange(v=>values.name=v));
    new Setting(modal.contentEl).setName(lfMsg('Prazo (AAAA-MM-DD)','Due (YYYY-MM-DD)')).addText(x=>x.setValue(values.date||'').onChange(v=>values.date=v));
    new Setting(modal.contentEl).setName(lfMsg('Nota vinculada (opcional)','Linked note (optional)')).addText(x=>x.setValue(values.page||'').onChange(v=>values.page=v));
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg('Salvar','Save')).setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg(lfMsg("Salvar","Save"),'Save')).setCta().onClick(async()=>{
     if(!values.name.trim())return new Notice(lfMsg('Informe a tarefa','Enter a task'));
     if(values.date&&!/^\d{4}-\d{2}-\d{2}$/.test(values.date))return new Notice('YYYY-MM-DD');
     if(existing)Object.assign(existing,values);else (group?group.tasks:state.tasks).push(values);

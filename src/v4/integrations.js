@@ -99,7 +99,7 @@ class WriterV4Extras{
    new Notice(this.config.typewriter.enabled?writerUi('Modo máquina de escrever ativado.','Typewriter mode enabled.'):writerUi('Modo máquina de escrever desativado.','Typewriter mode disabled.'));
   }});
   this.updateTypewriterClass();
-  p.register(()=>{if(typeof document!=='undefined')document.body.classList.remove('writer-v4-typewriter');});
+  if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter');});
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
     if(!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
@@ -159,7 +159,7 @@ class WriterV4Extras{
   }
  }
  updateTypewriterClass(){
-  if(typeof document!=='undefined')document.body.classList.toggle('writer-v4-typewriter',this.config.typewriter.enabled===true);
+  if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.toggle('writer-v4-typewriter',this.config.typewriter.enabled===true);
  }
  currentEditor(){
   const app=this.plugin.app;

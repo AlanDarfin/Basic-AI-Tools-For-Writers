@@ -147,37 +147,109 @@ class WriterFinalFeatures{
    });
   }
  }
+ unicodePath(){
+  const base=this.plugin.manifest.dir||this.plugin.app.vault.configDir+'/plugins/'+this.plugin.manifest.id;
+  return base+'/writer-unicode-data.txt';
+ }
+ async loadUnicodeIndex(){
+  if(this.unicodeIndex)return this.unicodeIndex;
+  const path=this.unicodePath();
+  const adapter=this.plugin.app.vault.adapter;
+  const list=[];
+  if(await adapter.exists(path)){
+   const raw=await adapter.read(path);
+   for(const line of raw.split('\n')){
+    const columns=line.split(';');
+    if(columns.length<2)continue;
+    const code=Number.parseInt(columns[0],16),name=columns[1]?.trim();
+    if(!Number.isInteger(code)||code>0x10ffff||code>=0xd800&&code<=0xdfff||!name||name.startsWith('<'))continue;
+    list.push({code,char:String.fromCodePoint(code),name,search:name.toLowerCase(),hex:columns[0].toLowerCase()});
+   }
+  }
+  this.unicodeIndex=list;
+  return list;
+ }
+ async downloadUnicode(){
+  const url='https://www.unicode.org/Public/UCD/latest/ucd/UnicodeData.txt';
+  const response=await requestUrl({url,throw:false});
+  if(response.status!==200||!response.text||response.text.length>12000000||!response.text.includes(';LATIN CAPITAL LETTER A;'))throw Error('UnicodeData download failed.');
+  const path=this.unicodePath();
+  await this.plugin.app.vault.adapter.write(path,response.text);
+  this.unicodeIndex=null;
+  const list=await this.loadUnicodeIndex();
+  new Notice('Unicode index ready: '+list.length+' characters.');
+  return list;
+ }
  async unicodePicker(){
   const config=this.cfg.unicode;
+  if(!config.enabled)return new Notice('Enable Unicode search in settings.');
   const modal=new Modal(this.plugin.app);
-  modal.onOpen=()=>{
+  const editor=this.plugin.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+  const builtins=[['Em dash','—'],['En dash','–'],['Ellipsis','…'],['Left guillemet','«'],['Right guillemet','»'],['Left double quote','“'],['Right double quote','”'],['Bullet','•'],['Arrow right','→'],['Arrow left','←'],['Check mark','✓'],['Star','★'],['Approximation','≈'],['Not equal','≠'],['Infinity','∞'],['Section','§'],['Degree','°'],['Copyright','©'],['Registered','®'],['Euro','€'],['Smiley','☺']];
+  modal.onOpen=async()=>{
    modal.setTitle('Unicode search');
-   const input=modal.contentEl.createEl('input',{type:'search',placeholder:'Name, symbol or U+ code point'});
-   input.style.width='100%';
+   const input=modal.contentEl.createEl('input',{type:'search',placeholder:'Search character, Unicode name or U+XXXX'});
+   input.setAttribute('aria-label','Search Unicode characters');input.style.width='100%';
+   const status=modal.contentEl.createDiv({cls:'writer-unicode-status'});
    const results=modal.contentEl.createDiv({cls:'writer-unicode-results'});
-   const builtins=[['Em dash','—'],['En dash','–'],['Ellipsis','…'],['Left guillemet','«'],['Right guillemet','»'],['Left double quote','“'],['Right double quote','”'],['Bullet','•'],['Arrow right','→'],['Arrow left','←'],['Check mark','✓'],['Star','★'],['Approximation','≈'],['Not equal','≠'],['Infinity','∞'],['Section','§'],['Degree','°'],['Copyright','©'],['Registered','®'],['Euro','€'],['Emoticon','☺']];
+   let index=[];
+   try{index=await this.loadUnicodeIndex();}catch(e){status.setText('Local Unicode index unavailable: '+e.message);}
+   if(!index.length){
+    status.setText('Common symbols only. Download the full Unicode index in plugin settings.');
+   }else status.setText(index.length+' indexed characters (offline).');
+   let updateId=0;
+   const show=(char,name,code)=>{
+    const row=results.createDiv({cls:'writer-unicode-entry'});
+    const button=row.createEl('button',{text:char+' '+name+' · U+'+code.toString(16).toUpperCase(),cls:'writer-unicode-insert'});
+    button.setAttribute('aria-label','Insert '+name);
+    button.addEventListener('click',()=>{
+     if(editor)editor.replaceSelection(char);
+     else if(navigator?.clipboard?.writeText)navigator.clipboard.writeText(char);
+     config.recent=[char,...(config.recent||[]).filter(x=>x!==char)].slice(0,30);
+     this.plugin.saveSettings();modal.close();
+    });
+    const favorite=row.createEl('button',{text:(config.favorites||[]).includes(char)?'★':'☆',cls:'writer-unicode-favorite'});
+    favorite.setAttribute('aria-label','Toggle favorite '+name);
+    favorite.addEventListener('click',()=>{
+     config.favorites=(config.favorites||[]).includes(char)?config.favorites.filter(x=>x!==char):[...config.favorites,char];
+     this.plugin.saveSettings();favorite.setText(config.favorites.includes(char)?'★':'☆');
+    });
+   };
    const render=()=>{
     results.empty();
-    const query=input.value.trim().toLocaleLowerCase();
-    let values=[...new Set([...config.favorites,...config.recent,...builtins.map(x=>x[1])])];
-    if(/^u\+[0-9a-f]{1,6}$/i.test(query)){
-     const n=parseInt(query.slice(2),16);
-     if(n<=0x10ffff&&!(n>=0xd800&&n<=0xdfff))values.unshift(String.fromCodePoint(n));
+    const q=input.value.trim().toLowerCase();
+    const limit=Math.max(5,Math.min(150,Number(config.maxResults)||40));
+    const matches=[];const seen=new Set();
+    const add=(char,name,code)=>{if(!char||seen.has(char)||matches.length>=limit)return;seen.add(char);matches.push({char,name,code});};
+    const fromCode=/^(?:u\+|0x)?([0-9a-f]{2,6})$/i.exec(q);
+    if(fromCode){
+     const code=Number.parseInt(fromCode[1],16);
+     if(code<=0x10ffff&&!(code>=0xd800&&code<=0xdfff)){
+      const char=String.fromCodePoint(code);
+      add(char,index.find(x=>x.code===code)?.name||'Unicode character',code);
+     }
     }
-    const filtered=values.filter(c=>!query||c.includes(query)||builtins.find(x=>x[1]===c)?.[0].toLowerCase().includes(query)||c.codePointAt(0)?.toString(16).includes(query.replace('u+',''))).slice(0,config.maxResults||40);
-    for(const char of filtered){
-     const name=builtins.find(x=>x[1]===char)?.[0]||'Unicode';
-     const button=results.createEl('button',{text:char+'  '+name+'  U+'+char.codePointAt(0).toString(16).toUpperCase()});
-     button.addEventListener('click',()=>{
-      const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-      if(view)view.editor.replaceSelection(char);
-      else navigator.clipboard?.writeText(char);
-      config.recent=[char,...config.recent.filter(x=>x!==char)].slice(0,30);
-      this.plugin.saveSettings();modal.close();
-     });
+    const searchBuiltin=(char)=>{
+     const named=builtins.find(x=>x[1]===char);
+     const entry=index.find(x=>x.char===char);
+     const name=entry?.name||named?.[0]||'Favorite';
+     return {name,hex:char.codePointAt(0).toString(16)};
+    };
+    for(const char of [...new Set([...(config.favorites||[]),...(config.recent||[])])]){
+     const {name,hex}=searchBuiltin(char);
+     if(!q||name.toLowerCase().includes(q)||char.includes(q)||hex.includes(q.replace('u+','')))add(char,name,char.codePointAt(0));
     }
+    for(const [name,char] of builtins)if(!q||name.toLowerCase().includes(q)||char.includes(q))add(char,name,char.codePointAt(0));
+    if(q.length>=2)for(const entry of index){
+     if(matches.length>=limit)break;
+     if(entry.search.includes(q)||entry.hex.includes(q.replace('u+',''))||entry.char===q)add(entry.char,entry.name,entry.code);
+    }
+    for(const entry of matches)show(entry.char,entry.name,entry.code);
+    if(!matches.length)results.createEl('p',{text:'No matching characters.'});
    };
-   input.addEventListener('input',render);render();input.focus();
+   let queued=null;
+   input.addEventListener('input',()=>{clearTimeout(queued);queued=setTimeout(render,110);});
+   render();input.focus();
   };
   modal.open();
  }

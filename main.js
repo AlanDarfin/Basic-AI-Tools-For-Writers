@@ -2981,7 +2981,7 @@ function writerV4Register(plugin){
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  toolbar:{enabled:true,mobileMode:'native'},
+  toolbar:{enabled:true,mobileMode:'floating'},
   typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
@@ -3006,7 +3006,13 @@ function writerV4ExtraMerge(settings){
    prompts:{...WRITER_V4_EXTRA_DEFAULTS.wordwise.prompts,...(old.wordwise?.prompts||{})}},
   comments:old.comments&&typeof old.comments==='object'&&!Array.isArray(old.comments)?old.comments:{}
  };
- if(!['native','floating'].includes(cfg.toolbar.mobileMode))cfg.toolbar.mobileMode='native';
+ if(!['native','floating'].includes(cfg.toolbar.mobileMode))cfg.toolbar.mobileMode='floating';
+  // v4.4 selected native-only by default, hiding the plugin toolbar unless
+  // the user manually added its command. Migrate that default only once.
+  if(!cfg.toolbar.mobileModeConfirmed){
+   if(cfg.toolbar.mobileMode==='native')cfg.toolbar.mobileMode='floating';
+   cfg.toolbar.mobileModeConfirmed=true;
+  }
  cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
  cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
  return cfg;
@@ -3139,7 +3145,7 @@ class WriterV4Extras{
      this.view=view;this.dom=view.dom.createDiv({cls:'writer-v4-floating-toolbar'});
      this.isMobile=owner.plugin.app.isMobile===true||(typeof navigator!=='undefined'&&/Android|iPad|iPhone/i.test(navigator.userAgent||''));
      if(this.isMobile)this.dom.addClass('writer-v4-toolbar-mobile');
-     this.savedRange=null;
+     this.savedRange=null;this.expanded=false;this.dismissedKey=null;
      this.onSelection=()=>{
       clearTimeout(this.selectionTimer);
       this.selectionTimer=setTimeout(()=>this.refresh(),70);
@@ -3149,6 +3155,29 @@ class WriterV4Extras{
      view.dom.addEventListener('keyup',this.onSelection);
      this.ownerDocument=view.dom.ownerDocument;
      this.ownerDocument?.addEventListener('selectionchange',this.onSelection);
+     this.visualViewport=this.ownerDocument?.defaultView?.visualViewport||null;
+     this.onViewport=()=>this.positionMobile();
+     this.visualViewport?.addEventListener?.('resize',this.onViewport);
+     this.visualViewport?.addEventListener?.('scroll',this.onViewport);
+     if(this.isMobile){
+      const nav=this.dom.createDiv({cls:'writer-v4-mobile-actions'});
+      const toggle=nav.createEl('button',{text:writerUi('Aa Formatar','Aa Format'),attr:{'aria-expanded':'false','aria-label':writerUi('Expandir ferramentas','Expand editing tools')}});
+      toggle.addEventListener('pointerdown',e=>e.preventDefault());
+      toggle.addEventListener('click',()=>{
+       this.expanded=!this.expanded;toggle.setAttribute('aria-expanded',String(this.expanded));
+       this.dom.toggleClass('writer-v4-expanded',this.expanded);this.positionMobile();
+      });
+      const ai=nav.createEl('button',{text:'✦ IA',attr:{'aria-label':writerUi('Ações de IA','AI writing actions')}});
+      ai.addEventListener('pointerdown',e=>e.preventDefault());
+      ai.addEventListener('click',()=>this.useSelectedRange(()=>owner.wordwise()));
+      const close=nav.createEl('button',{text:'×',cls:'writer-v4-toolbar-close',attr:{'aria-label':writerUi('Fechar barra','Close toolbar')}});
+      close.addEventListener('pointerdown',e=>e.preventDefault());
+      close.addEventListener('click',()=>{
+       const selected=this.view.state.selection.main;this.dismissedKey=selected.from+':'+selected.to;
+       this.expanded=false;this.dom.removeClass('is-visible','writer-v4-expanded');
+      });
+     }
+     const formatActions=this.dom.createDiv({cls:'writer-v4-format-actions'});
      const formats=[
       ['B','bold','**','**'],['I','italic','*','*'],
       ['H','heading','## ',''],['“”','quote','> ',''],
@@ -3156,52 +3185,79 @@ class WriterV4Extras{
       ['✦','wordwise',null,null]
      ];
      for(const [label,title,before,after] of formats){
-      const button=this.dom.createEl('button',{text:label,attr:{'aria-label':title,title}});
+      if(this.isMobile&&title==='wordwise')continue;
+      const button=formatActions.createEl('button',{text:label,attr:{'aria-label':title,title}});
       button.addEventListener('pointerdown',e=>e.preventDefault());
-      button.addEventListener('click',()=>{
-       const current=this.view.state.selection.main;
-       const selected=!current.empty?current:this.savedRange;
-       if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
-       // Mobile tap can blur native selection; restore its exact CodeMirror range.
-       if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
-       if(title==='wordwise'){
-        this.view.focus();
-        owner.wordwise();
-        return;
-       }
+      button.addEventListener('click',()=>this.useSelectedRange(()=>{
+       if(title==='wordwise')return owner.wordwise();
+       const selected=this.view.state.selection.main;
+       if(selected.empty)return;
        const raw=this.view.state.doc.sliceString(selected.from,selected.to);
        const value=(before||'')+raw+(after||'');
        this.view.dispatch({changes:{from:selected.from,to:selected.to,insert:value},selection:{anchor:selected.from+value.length}});
-       this.dom.removeClass('is-visible');this.view.focus();
-      });
+       this.expanded=false;this.savedRange=null;
+       this.dom.removeClass('is-visible','writer-v4-expanded');this.view.focus();
+      }));
      }
      this.refresh();
     }
+    useSelectedRange(action){
+     const current=this.view.state.selection.main;
+     const selected=!current.empty?current:this.savedRange;
+     if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
+     if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
+     action();
+    }
     update(update){
-     if(update.docChanged)this.savedRange=null;
+     if(update.docChanged){this.savedRange=null;this.expanded=false;this.dismissedKey=null;}
      if(update.selectionSet||update.docChanged)this.refresh();
     }
     refresh(){
-     if(!owner.config.toolbar.enabled||(this.isMobile&&owner.config.toolbar.mobileMode!=='floating')){
+     if(!owner.config.toolbar.enabled||(this.isMobile&&owner.config.toolbar.mobileMode==='native')){
       this.dom.removeClass('is-visible');return;
      }
-     const selection=this.view.state.selection.main;
-     if(selection.empty){this.savedRange=null;this.dom.removeClass('is-visible');return;}
-     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
-     this.savedRange={from:selection.from,to:selection.to};
-     if(this.isMobile){
-      // Bottom-docked instead of covering Android's native selection handles.
-      this.dom.style.removeProperty('top');
-      this.dom.style.removeProperty('left');
-      this.dom.addClass('is-visible');
-      return;
+     const selected=this.view.state.selection.main;
+     if(selected.empty){
+      this.savedRange=null;this.expanded=false;this.dismissedKey=null;
+      this.dom.removeClass('is-visible','writer-v4-expanded');return;
      }
-     const pos=this.view.coordsAtPos(selection.from);
-     if(!pos){this.dom.removeClass('is-visible');return;}
+     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
+     const key=selected.from+':'+selected.to;
+     if(this.dismissedKey===key)return;
+     if(this.savedRange&&(this.savedRange.from!==selected.from||this.savedRange.to!==selected.to)){
+      this.expanded=false;this.dom.removeClass('writer-v4-expanded');
+     }
+     this.savedRange={from:selected.from,to:selected.to};
      this.dom.addClass('is-visible');
-     const box=this.view.dom.getBoundingClientRect();
+     if(this.isMobile){this.positionMobile();return;}
+     const pos=this.view.coordsAtPos(selected.from),box=this.view.dom.getBoundingClientRect();
+     if(!pos){this.dom.removeClass('is-visible');return;}
      this.dom.style.top=Math.max(4,pos.top-box.top-42)+'px';
      this.dom.style.left=Math.max(0,Math.min(box.width-240,pos.left-box.left))+'px';
+    }
+    positionMobile(){
+     if(!this.isMobile||!this.dom.hasClass('is-visible'))return;
+     const selected=this.view.state.selection.main;
+     const offset=selected.empty?this.savedRange?.to:selected.to;
+     if(!Number.isInteger(offset))return;
+     const rect=this.view.coordsAtPos(offset);
+     if(!rect)return;
+     const win=this.ownerDocument?.defaultView,vv=this.visualViewport;
+     const leftEdge=vv?.offsetLeft||0,topEdge=vv?.offsetTop||0;
+     const width=vv?.width||win?.innerWidth||360,height=vv?.height||win?.innerHeight||650;
+     const barHeight=this.dom.offsetHeight||46,barWidth=this.dom.offsetWidth||185;
+     const safeBottom=topEdge+height-12,safeTop=topEdge+46;
+     // Avoid both Android's native selection popup and Obsidian's keyboard ribbon.
+     let top=rect.bottom+62;
+     if(top+barHeight>safeBottom)top=rect.top-barHeight-66;
+     top=Math.max(safeTop,Math.min(top,safeBottom-barHeight));
+     const left=Math.max(leftEdge+8,Math.min(rect.left-40,leftEdge+width-barWidth-8));
+     this.dom.style.setProperty('top',top+'px','important');
+     this.dom.style.setProperty('left',left+'px','important');
+     this.dom.style.setProperty('inset-block-start',top+'px','important');
+     this.dom.style.setProperty('inset-inline-start',left+'px','important');
+     this.dom.style.setProperty('bottom','auto','important');
+     this.dom.style.setProperty('right','auto','important');
     }
     destroy(){
      clearTimeout(this.selectionTimer);
@@ -3209,6 +3265,8 @@ class WriterV4Extras{
      this.view.dom.removeEventListener('touchend',this.onSelection);
      this.view.dom.removeEventListener('keyup',this.onSelection);
      this.ownerDocument?.removeEventListener('selectionchange',this.onSelection);
+     this.visualViewport?.removeEventListener?.('resize',this.onViewport);
+     this.visualViewport?.removeEventListener?.('scroll',this.onViewport);
      this.dom.remove();
     }
    }));
@@ -3381,10 +3439,10 @@ class WriterV4Extras{
   });
   toggle('toolbar','enabled',writerUi('Barra de edição na seleção','Selection editing toolbar'));
   new Setting(panel).setName(writerUi('Toolbar no Android','Android toolbar'))
-   .setDesc(writerUi('Recomendado: use a barra nativa do Obsidian e adicione o comando Basic AI: Barra de edição nas configurações da barra móvel. A flutuante é opcional.','Recommended: use Obsidian’s native mobile toolbar and add the Basic AI editing toolbar command in mobile toolbar settings. The floating toolbar is optional.'))
-   .addDropdown(d=>d.addOption('native',writerUi('Nativa (recomendado)','Native (recommended)'))
-    .addOption('floating',writerUi('Flutuante adicional','Additional floating toolbar'))
-    .setValue(cfg.toolbar.mobileMode||'native').onChange(async value=>{cfg.toolbar.mobileMode=value;await this.plugin.saveSettings();}));
+   .setDesc(writerUi('Padrão: controle compacto ao selecionar texto. O modo nativo utiliza o comando na barra móvel do Obsidian.','Default: compact controls appear on selection. Native mode uses a command in Obsidian’s mobile toolbar.'))
+   .addDropdown(d=>d.addOption('floating',writerUi('Compacta automática','Automatic compact'))
+    .addOption('native',writerUi('Somente barra nativa','Native toolbar only'))
+    .setValue(cfg.toolbar.mobileMode||'floating').onChange(async value=>{cfg.toolbar.mobileMode=value;cfg.toolbar.mobileModeConfirmed=true;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Abrir ferramentas de formatação','Open formatting tools'))
    .addButton(b=>b.setButtonText(writerUi('Barra de edição','Editing toolbar')).onClick(()=>{
     const view=this.currentEditor();this.openEditingToolbar(view?.editor,view);

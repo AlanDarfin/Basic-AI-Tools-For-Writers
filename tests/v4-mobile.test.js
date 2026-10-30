@@ -66,11 +66,11 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
  });
  const legacy={writerV4Extras:{toolbar:{enabled:true}}};
  ui.writerV4ExtraMerge(legacy);
- assert.equal(legacy.writerV4Extras.toolbar.mobileMode,'floating');
+ assert.equal(legacy.writerV4Extras.toolbar.mobileMode,'native');
  assert.equal(legacy.writerV4Extras.toolbar.mobileModeConfirmed,true);
  const opting={writerV4Extras:{toolbar:{enabled:true,mobileMode:'floating'}}};
  ui.writerV4ExtraMerge(opting);
- assert.equal(opting.writerV4Extras.toolbar.mobileMode,'floating');
+ assert.equal(opting.writerV4Extras.toolbar.mobileMode,'native');
  const native={writerV4Extras:{toolbar:{enabled:true,mobileMode:'native',mobileModeConfirmed:true}}};
  ui.writerV4ExtraMerge(native);
  assert.equal(native.writerV4Extras.toolbar.mobileMode,'native');
@@ -79,10 +79,8 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
  assert.equal(ui.writerV4FormatText('Palavra','link'),'[Palavra](https://example.com)');
  const extras=fs.readFileSync('src/v4/integrations.js','utf8');
  assert.ok(extras.includes("id:'v4-editing-toolbar'"));
- assert.ok(extras.includes("this.isMobile&&owner.config.toolbar.mobileMode==='native'"));
- for(const marker of ["writer-v4-mobile-actions","writer-v4-format-actions",
-   "text:writerUi('Aa Formatar'","text:'✦ IA'","this.dom.toggleClass('writer-v4-expanded'",
-   "this.positionMobile()","this.dom.style.setProperty('top'"]){
+ assert.ok(extras.includes("!owner.config.toolbar.enabled||this.isMobile"));
+ for(const marker of ["id:'v4-format-'","id:'v4-writing-'","this.applyEditorFormat(editor,kind)","this.runEditorAIAction(editor,key)"]){
   assert.ok(extras.includes(marker),marker);
  }
  for(const marker of [".setting-item:has(.checkbox-container)","grid-template-columns:minmax(0,1fr) auto",
@@ -90,5 +88,5 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
   assert.ok(css.includes(marker),marker);
  }
  assert.ok(css.includes('writer-v4-editor-command-grid')||fs.readFileSync('styles.css','utf8').includes('writer-v4-editor-command-grid'));
- console.log('PASS automatic Android toolbar, compact toggles and preserved explicit native opt-in');
+ console.log('PASS native Obsidian mobile toolbar commands and no duplicate floating controls');
 })().catch(error=>{console.error(error);process.exitCode=1;});

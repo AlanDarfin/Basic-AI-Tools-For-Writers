@@ -2,7 +2,7 @@
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  toolbar:{enabled:true},
+  toolbar:{enabled:true,mobileMode:'selection'},
   typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
@@ -162,7 +162,7 @@ class WriterV4Extras{
       ['✦','wordwise',null,null]
      ];
      for(const [label,title,before,after] of formats){
-      const button=this.dom.createEl('button',{text:label,attr:{'aria-label':title,title}});
+      const button=this.dom.createEl('button',{text:label,cls:['quote','list'].includes(title)?'writer-v4-toolbar-desktop-only':'',attr:{'aria-label':title,title}});
       button.addEventListener('pointerdown',e=>e.preventDefault());
       button.addEventListener('click',()=>{
        const current=this.view.state.selection.main;
@@ -188,16 +188,32 @@ class WriterV4Extras{
      if(update.selectionSet||update.docChanged)this.refresh();
     }
     refresh(){
-     if(!owner.config.toolbar.enabled){this.dom.removeClass('is-visible');return;}
+     if(!owner.config.toolbar.enabled||(this.isMobile&&owner.config.toolbar.mobileMode==='off')){this.dom.removeClass('is-visible');return;}
      const selection=this.view.state.selection.main;
      if(selection.empty){this.savedRange=null;this.dom.removeClass('is-visible');return;}
      if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
      this.savedRange={from:selection.from,to:selection.to};
      if(this.isMobile){
-      // Bottom-docked instead of covering Android's native selection handles.
-      this.dom.style.removeProperty('top');
-      this.dom.style.removeProperty('left');
+      // Android's native selection menu is usually above the text.
+      // Place a compact toolbar just BELOW the selected passage instead of
+      // adding a second bar above the software keyboard.
+      const anchor=this.view.coordsAtPos(selection.to)||this.view.coordsAtPos(selection.from);
+      if(!anchor){this.dom.removeClass('is-visible');return;}
       this.dom.addClass('is-visible');
+      const win=this.ownerDocument?.defaultView;
+      const viewport=win?.visualViewport;
+      const top=viewport?.offsetTop||0,left=viewport?.offsetLeft||0;
+      const width=viewport?.width||win?.innerWidth||this.view.dom.clientWidth;
+      const height=viewport?.height||win?.innerHeight||this.view.dom.clientHeight;
+      const panelW=this.dom.offsetWidth||200,panelH=this.dom.offsetHeight||40;
+      const gap=10,pad=8;
+      const selectionCenter=(anchor.left+anchor.right)/2;
+      const posX=Math.max(left+pad,Math.min(left+width-panelW-pad,selectionCenter-panelW/2));
+      let posY=anchor.bottom+gap;
+      if(posY+panelH>top+height-pad)posY=anchor.top-panelH-gap;
+      if(posY<top+pad)posY=top+height-panelH-pad;
+      this.dom.style.left=Math.max(left+pad,posX)+'px';
+      this.dom.style.top=Math.max(top+pad,posY)+'px';
       return;
      }
      const pos=this.view.coordsAtPos(selection.from);
@@ -349,6 +365,13 @@ class WriterV4Extras{
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
   });
   toggle('toolbar','enabled',writerUi('Barra de edição na seleção','Selection editing toolbar'));
+  new Setting(panel).setName(writerUi('Toolbar no Android','Toolbar on Android'))
+   .setDesc(writerUi('Mostrar uma barra compacta ao lado do texto selecionado, ou usar apenas a barra nativa do Obsidian.','Show a compact bar beside selected text or use only the native Obsidian toolbar.'))
+   .addDropdown(d=>d.addOption('selection',writerUi('Próxima da seleção','Near selection'))
+    .addOption('off',writerUi('Desativada no celular','Off on mobile'))
+    .setValue(cfg.toolbar.mobileMode||'selection').onChange(async value=>{
+      cfg.toolbar.mobileMode=value;await this.plugin.saveSettings();
+    }));
   toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));
   toggle('typewriter','focusMode',writerUi('Atenuar linhas fora de foco','Dim unfocused lines'));
   toggle('wordwise','enabled',writerUi('Ações de IA para escrita','AI writing actions'));

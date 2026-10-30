@@ -45,3 +45,12 @@ This is the **3.0.0 stable release**, with automated checks and regression tests
 ## Responsive translation sidebar
 
 In a narrow Obsidian desktop sidebar, provider and source/target language selectors stack vertically. The layout responds to the **sidebar width**, not just the monitor width, to prevent truncated dropdowns and controls.
+
+## 3.1.0-beta.1 preview: online speech and readable Unicode UI
+
+- **Unicode search** displays the character as a large glyph beside its readable Unicode name, U+ code, and a favorite star. The search is ranked by name relevance and can be limited to arrows, quotations, math, letters, symbols or favorites. The full index remains locally cached after an optional one-time download from unicode.org.
+- **Tab navigation** in the main sidebar, Writing Tools, Longform and Settings is horizontally scrollable on narrow desktop windows and phones. The writing-tools Extras panel separates characters, speech and project navigation into sections.
+- **TTS engines**: System / offline (the existing Web Speech API), or Microsoft Edge neural / online (an independent implementation inspired by the user-provided Edge TTS plugin). Choose a language and online voice under Settings → TTS. Online TTS requires explicit opt-in and sends the text being read to Microsoft servers. It does not require an AI API key or an installed Linux voice package. Pause, resume, stop, sequential audio chunks and error feedback are supported.
+- **Limitations**: the Edge consumer service is unofficial/undocumented and may reject requests or stop working without notice. Voice quality, network access and playback are not guaranteed. The original Obsidian Edge TTS plugin is licensed AGPL-3.0; the implementation here is independent, with no bundled code from that plugin. Do not use online speech for confidential notes unless you are comfortable sending their text to Microsoft.
+
+Test online speech with a short selected passage first. If it fails on your Arch installation, the system engine remains available once you install an OS-compatible speech voice.

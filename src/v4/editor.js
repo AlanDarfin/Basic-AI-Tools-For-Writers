@@ -102,7 +102,7 @@ async function writerV4OpenDiff(plugin){
     const heading=root.createEl('label',{text:writerUi('Versão proposta (editável)','Suggested version (editable)'),cls:'writer-v4-label'});
     const area=root.createEl('textarea',{cls:'writer-v4-candidate',attr:{'aria-label':heading.textContent}});
     area.value=proposal;area.rows=7;area.disabled=busy;
-    area.addEventListener('input',()=>{proposal=area.value;});
+    area.addEventListener('input',()=>{proposal=area.value;apply.disabled=true;diffEl.createEl('p',{text:writerUi('Compare novamente para atualizar as alterações.','Compare again to refresh the changes.'),cls:'writer-v4-hint'});});
     const toolbar=root.createDiv({cls:'writer-v4-actions'});
     const btn=(label,click,primary=false)=>{const b=toolbar.createEl('button',{text:label,cls:primary?'mod-cta':''});b.disabled=busy;b.addEventListener('click',click);return b;};
     btn(writerUi('Comparar','Compare'),()=>{proposal=area.value;accepted=new Set();renderDiff(root);});

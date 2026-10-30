@@ -105,10 +105,10 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)this.selected=activeProject.file.path;
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:'+ Projeto',cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
+  top.createEl('button',{text:w4label(this.plugin,'+ Projeto'),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':'Projeto'}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
-  if(!indexes.length){this.root.createEl('p',{text:'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.'});return;}
+  if(!indexes.length){this.root.createEl('p',{text:w4label(this.plugin,'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.')});return;}
   if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
   if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
   this.lastSelected=this.selected;
@@ -125,8 +125,8 @@ class ProjectsView extends ItemView{
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
-  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas']]){
-   const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
+  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas'],['homework','Tarefas']]){
+   const btn=tabs.createEl('button',{text:w4label(this.plugin,name),cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
    panels[id].style.display=this.activeTab===id?'block':'none';
@@ -135,7 +135,9 @@ class ProjectsView extends ItemView{
   this.drawProject(panels.project,project);
   this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
+  if(this.activeTab==='homework')this.plugin.v4Homework?.draw(panels.homework,this,project);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
+  w4TranslateTree(this.root,this.plugin);
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
@@ -1630,22 +1632,25 @@ class WriterToolsView extends ItemView{
  render(){
   if(!this.root)return;
   const root=this.root;root.empty();
-  root.createEl('h3',{text:'Ferramentas de escrita'});
+  root.createEl('h3',{text:w4label(this.plugin,'Ferramentas de escrita')});
   const active=this.app.workspace.getActiveFile();
-  root.createEl('p',{text:active?.extension==='md'?active.path:'Abra uma nota Markdown para usar as ferramentas.',cls:'writer-tools-note-path'});
+  root.createEl('p',{text:active?.extension==='md'?active.path:w4label(this.plugin,'Abra uma nota Markdown para usar as ferramentas.'),cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
-  for(const [id,label] of [['complements','Sugestões'],['variants','Variantes'],['snapshots','Versões']]){
-   const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
+  for(const [id,label] of [['complements','Sugestões'],['variants','Variantes'],['snapshots','Versões'],['unicode','Pesquisa Unicode'],['tts','Leitor de voz']]){
+   const btn=tabs.createEl('button',{text:w4label(this.plugin,label),cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
   const panel=root.createDiv({cls:'writer-tools-v3-panel'});
   if(this.tab==='complements')this.renderComplements(panel);
   if(this.tab==='variants')this.renderVariants(panel);
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
+  if(this.tab==='unicode')this.plugin.v4Unicode?.renderPanel(panel);
+  if(this.tab==='tts')this.plugin.v4TTS?.renderPanel(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
-  this.addButton(footer,'Revisão',()=>this.plugin.openReview());
-  this.addButton(footer,'Projetos',()=>this.plugin.openProjects());
-  this.addButton(footer,'Configurações',()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
+  this.addButton(footer,w4label(this.plugin,'Revisão'),()=>this.plugin.openReview());
+  this.addButton(footer,w4label(this.plugin,'Projetos'),()=>this.plugin.openProjects());
+  this.addButton(footer,w4label(this.plugin,'Configurações'),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
+  w4TranslateTree(root,this.plugin);
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};
@@ -1824,6 +1829,98 @@ const w4labels={
 function w4label(plugin,value){return w4locale(plugin)==='pt'?value:(w4labels[value]||value);}
 function w4setting(panel,name,desc,setting,plugin){
  return new Setting(panel).setName(w4text(plugin,name,desc||name));
+}
+
+Object.assign(w4labels,{
+ '+ Cena':'+ Scene','+ Nota':'+ Note','+ Pasta':'+ Folder','+ Variante':'+ Variant',
+ 'Novo rascunho Longform':'New Longform draft','Trocar para rascunho Longform...':'Switch Longform draft...',
+ 'Excluir variante':'Delete variant','Nenhuma cena cadastrada. Use + Cena.':'No scenes yet. Use + Scene.',
+ 'Cena não encontrada: ':'Scene not found: ','Entrada removida do índice. Arquivo e subcapítulos preservados.':'Removed from the index. File and child scenes preserved.',
+ 'Arquivo da cena não encontrado.':'Scene file not found.','Projeto de nota única.':'Single-note project.',
+ 'Abrir texto':'Open text','Abrir índice':'Open index','Índice: ':'Index: ','Cenas: ':'Scenes: ',
+ 'Título do projeto':'Project title','Pasta das cenas':'Scenes folder',
+ 'Relativa à pasta do índice; não move arquivos existentes.':'Relative to the index folder; existing files are not moved.',
+ 'Meta diária (palavras)':'Daily goal (words)','Meta de palavras':'Word goal',
+ 'Meta total do projeto':'Total project goal','Cenas no rascunho: ':'Scenes in draft: ',
+ 'Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.':'Local drafts and goals are saved in Basic AI settings. Longform drafts have their own index notes.',
+ 'Diagnóstico · ':'Diagnostics · ','Ausentes: ':'Missing: ','Novos arquivos: ':'Unindexed files: ',
+ 'Adicionar arquivos soltos ao índice':'Add unindexed files','Importar workflows (JSON)':'Import workflows (JSON)',
+ 'Cole o objeto workflows ou o conteúdo de data.json do Longform. Apenas etapas reconhecidas poderão ser executadas.':'Paste workflows or the Longform data.json file. Only recognized steps can be executed.',
+ 'Compilação por etapas':'Step-by-step compilation','+ Workflow':'+ Workflow','Importar Longform':'Import Longform',
+ 'Importar JSON':'Import JSON','Edite etapas e clique em Salvar workflow. Scripts externos não são executados.':'Edit steps and select Save workflow. External scripts cannot run.',
+ 'Etapa de script/customizada preservada na importação, mas não pode ser executada.':'Custom/script step kept during import but cannot be executed.',
+ '+ Etapa':'+ Step','Salvar workflow':'Save workflow','Prévia':'Preview','Workflow inválido: ':'Invalid workflow: ',
+ 'Manuscrito criado sem sobrescrever o original.':'Manuscript created without overwriting the original.',
+ 'Crie uma pasta ou nota para começar. As notas não entram no manuscrito.':'Create a folder or a note. Notes do not enter the manuscript.',
+ 'Renomear':'Rename','Lixeira':'Trash','Mover nota para pasta':'Move note to folder',
+ 'Destino':'Destination','Novo projeto de escrita':'New writing project',
+ 'Nome':'Name','Pasta no cofre':'Vault folder','Caminho relativo ao cofre':'Path relative to the vault',
+ 'Tipo':'Type','Meta diária de escrita atingida!':'Daily writing goal reached!',
+ 'Sessão de escrita':'Writing session','Iniciar sessão':'Start session','Encerrar sessão':'Stop session',
+ 'Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.':'Count based on files saved during the session. Changes outside Obsidian may not count.',
+ 'Total: ':'Total: ','Avisos':'Notices','Título':'Title','Novo':'New','Excluir':'Delete',
+ 'Voltar':'Back','Avançar':'Next','Iniciar':'Start','Terminar':'Finish',
+ 'Dicionário':'Dictionary','Definições':'Definitions','Tradução':'Translation',
+ 'Explicar e sugerir alternativas':'Explain and suggest alternatives',
+ 'Aceitar':'Accept','Ignorar':'Ignore','Ver contexto e justificativa':'View context and explanation',
+ 'Substituir por':'Replace with','Sem substituição automática':'No automatic replacement',
+ 'Tarefas rápidas':'Quick tasks','Tarefas do projeto':'Project tasks',
+ 'Leitor de voz':'Speech reader','Unicode':'Unicode',
+ 'Abra uma nota Markdown.':'Open a Markdown note.',
+ 'Novo rascunho':'New draft','Gerenciador de tarefas':'Task manager',
+ 'Ativar sugestões':'Enable suggestions','Reindexar cofre':'Reindex vault',
+ 'Mostrar sugestões':'Show suggestions','Abrir dicionário':'Open dictionary',
+ 'Abrir histórico':'Open history','Salvar versão agora':'Save version now',
+ 'Nomear uma versão':'Name a version','Pesquisa Unicode':'Unicode search',
+ 'Histórico e recuperação':'History and recovery',
+ 'Alternativas de escrita':'Writing alternatives',
+ 'Autocomplete contextual':'Contextual autocomplete',
+ 'Ativar variantes':'Enable variants','Ativar snapshots':'Enable snapshots',
+ 'Ativar ou desativar autocomplete':'Enable or disable autocomplete',
+ 'Palavras do arquivo atual':'Words from current file',
+ 'Palavras de outras notas do cofre':'Words from other vault notes',
+ 'Links internos':'Internal links','Dicionários personalizados':'Custom dictionaries',
+ 'Diferenciar maiúsculas de minúsculas':'Case sensitive',
+ 'Número máximo de sugestões':'Maximum suggestions',
+ 'Máximo de arquivos no índice':'Maximum indexed files',
+ 'Tamanho máximo por arquivo (bytes)':'Maximum file size (bytes)',
+ 'Pastas excluídas':'Excluded folders','Arquivos de dicionário':'Dictionary files',
+ 'Limpar aprendizado':'Clear learned rankings','Reindexar':'Reindex',
+ 'Ativar variantes':'Enable variants',
+ 'Destacar variantes no editor':'Highlight inline variants',
+ 'Oferecer variantes na revisão gramatical':'Offer variants during grammar review',
+ 'Salvar versão antes de confirmar':'Save a snapshot before committing',
+ 'Confirmar antes de aplicar todas':'Confirm before applying all',
+ 'Instruções da IA para variantes':'AI instructions for variants',
+ 'Ativar histórico local':'Enable local history',
+ 'Snapshots automáticos':'Automatic snapshots',
+ 'Incluir anexos nos novos snapshots':'Include attachments in new snapshots',
+ 'Criar snapshot antes de alterações':'Snapshot before changes',
+ 'Criar snapshot antes de restaurar':'Snapshot before restore',
+ 'Pasta do histórico':'History folder',
+ 'Intervalo entre snapshots automáticos (segundos)':'Automatic snapshot interval (seconds)',
+ 'Limite de versões por nota':'Maximum versions per note','Retenção em dias':'Retention in days',
+ 'Linhas de contexto no diff':'Diff context lines',
+ 'Abrir histórico da nota':'Open note history',
+ 'Nome do arquivo':'File name',
+ 'Configurações do Basic AI':'Basic AI settings'
+});
+function w4TranslateTree(root,plugin){
+ if(w4locale(plugin)!=='en'||!root?.querySelectorAll)return;
+ const allowed='button,label,summary,option,h1,h2,h3,h4,h5,small,p,strong,span,.setting-item-name,.setting-item-description';
+ const nodes=[root,...root.querySelectorAll(allowed)];
+ for(const el of nodes){
+  if(el.closest?.('.markdown-rendered,.writer-project-scene-title,.writer-v4-task-description,.writer-lt-original,.writer-unicode-descriptor,pre,code,[contenteditable="true"]'))continue;
+  for(const node of el.childNodes||[]){
+   if(node.nodeType!==3)continue;
+   const raw=node.nodeValue||'';
+   const trimmed=raw.trim();
+   if(!trimmed||!w4labels[trimmed])continue;
+   node.nodeValue=raw.replace(trimmed,w4labels[trimmed]);
+  }
+  const placeholder=el.getAttribute?.('placeholder');
+  if(placeholder&&w4labels[placeholder])el.setAttribute('placeholder',w4labels[placeholder]);
+ }
 }
 
 // v4 module: src/v4/editor.js
@@ -2605,6 +2702,7 @@ class DictionaryView extends ItemView{
   this.reviewResults=review.createDiv({cls:'writer-review-results'});
   this.switchTab('definition');
   let debounce;this.input.addEventListener('input',()=>{clearTimeout(debounce);this.search(this.input.value);debounce=setTimeout(()=>{if(this.input.value.trim())this.lookup();},650);});
+  w4TranslateTree(root,this.plugin);
  }
  switchTab(id){for(const [key,p] of Object.entries(this.panels)){p.style.display=key===id?'flex':'none';this.tabs[key].classList.toggle('is-active',key===id);}this.activeTab=id;}
  async addChat(role,value){const bubble=this.chatMessages.createDiv({cls:'writer-chat-bubble writer-chat-'+role});bubble.createEl('small',{text:role==='user'?msg('Você','You'):'AI'});const body=bubble.createDiv({cls:'markdown-rendered'});if(role==='assistant')await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);else body.setText(value);this.chatMessages.scrollTop=this.chatMessages.scrollHeight;return bubble;}
@@ -2913,6 +3011,7 @@ class DictionarySettings extends PluginSettingTab{
         new Setting(panel).setName(label).addTextArea(x=>{x.inputEl.rows=5;x.inputEl.addClass('dictionary-prompt-editor');x.setValue(this.plugin.settings.prompts[kind]||PROMPT_DEFAULTS[kind]).onChange(async v=>{this.plugin.settings.prompts[kind]=v;await this.plugin.saveSettings();});});
       }
     }
+    w4TranslateTree(panel,this.plugin);
   };
   for(const [id,label] of sections){const b=nav.createEl('button',{text:label,attr:{role:'tab','aria-selected':'false'}});b.dataset.tab=id;b.addEventListener('click',()=>showTab(id));}
   nav.setAttribute('role','tablist');showTab(this.activeSettingsTab||'general');

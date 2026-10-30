@@ -13,6 +13,11 @@ of the following independent Obsidian community plugins. Their source code has
   https://github.com/kunalJa/VariantEditor
 - **Note Snapshots** — Aphasia. MIT.
   https://github.com/aphasialog/obsidian-note-snapshots
+- **Edge TTS (Obsidian)** — travisvn and contributors. AGPL-3.0.
+  The browser Edge Read Aloud protocol and UI are used as reference; no source
+  code from this AGPL plugin has been copied or bundled here. Microsoft's
+  endpoint is unofficial and can change.
+  https://github.com/travisvn/obsidian-edge-tts
 - **Longform** — Kevin Boeh and contributors. The project-index YAML format
   and workflow concepts inspired the compatible project manager.
   https://github.com/kevboh/longform

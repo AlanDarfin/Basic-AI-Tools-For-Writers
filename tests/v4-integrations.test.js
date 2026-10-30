@@ -6,7 +6,7 @@ const source=fs.readFileSync('src/v4/integrations.js','utf8');
 const extra=vm.runInNewContext(source+'\n({writerV4ExtraMerge,WriterV4Mentions,WriterV4Extras})',{
  EditorSuggest:class{constructor(app){this.app=app;}},
  EditorView:{},ViewPlugin:null,Modal:class{},Setting:class{},TFile:class{},
- writerUi:(pt,en)=>en,Notice:class{},console,
+ writerUi:(pt,en)=>en,writerModuleOn:()=>true,Notice:class{},console,
  document:{body:{classList:{toggle(){},remove(){}}}}
 });
 const {writerV4ExtraMerge,WriterV4Mentions,WriterV4Extras}=extra;
@@ -69,7 +69,7 @@ async function asyncChecks(){
  const speech={utterance:null,getVoices:()=>[],cancel(){},speak(v){this.utterance=v;}};
  const feature=vm.runInNewContext(suite+'\nWriterFinalFeatures',{
   console,require:()=>({getLanguage:()=> 'en'}),SpeechSynthesisUtterance:class{constructor(t){this.text=t;}},
-  speechSynthesis:speech,writerMaskMarkdown:text=>text,
+  speechSynthesis:speech,writerModuleOn:()=>true,writerMaskMarkdown:text=>text,
   MarkdownView:class{},Notice:class{},WRITER_EDGE_VOICES:{},window:{},
   document:{querySelectorAll:()=>[]}
  });

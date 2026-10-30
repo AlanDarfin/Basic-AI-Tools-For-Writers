@@ -189,3 +189,9 @@
  .dictionary-settings-panel .setting-item-control input[type=password],
  .dictionary-settings-panel .setting-item-control select{width:100%;max-width:100%}
 }
+
+/* Review 1.5.1: jump-to-error action and paragraph context */
+.writer-review-actions>button:first-child,
+.writer-review-actions>button:last-child{grid-column:1/-1}
+.writer-review-actions>button:nth-child(3){grid-column:auto}
+.writer-review-paragraph{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;max-height:16em;overflow-y:auto;overscroll-behavior:contain;border-left:2px solid var(--background-modifier-border);padding-left:10px}

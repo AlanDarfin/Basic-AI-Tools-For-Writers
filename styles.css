@@ -1493,3 +1493,23 @@ body.writer-v4-typewriter-focus .cm-editor .cm-activeLine{opacity:1}
 }
 /* Mobile toolbar in native mode must not add a second floating row. */
 body.is-mobile .writer-v4-floating-toolbar:not(.writer-v4-toolbar-mobile){display:none}
+
+/* Native-toolbar command dialog for Android/desktop: no overlapping context menus. */
+.writer-v4-editor-command-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:12px 0;min-width:0;
+}
+.writer-v4-editor-command-grid button{
+ box-sizing:border-box;min-width:0;min-height:42px;
+ white-space:normal;overflow-wrap:anywhere;
+ text-align:center;padding:8px 12px;
+ background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+}
+.writer-v4-editor-command-grid button:hover{
+ background:var(--background-modifier-hover);
+}
+@media(max-width:360px){
+ .writer-v4-editor-command-grid{grid-template-columns:1fr}
+}

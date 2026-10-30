@@ -83,7 +83,8 @@ class WriterUnicode{
   const plugin=this.plugin,owner=this;
   class Picker extends FuzzySuggestModal{
    getItems(){return owner.items();}
-   getItemText(item){return item.char+' '+item.name+' '+item.pt+' U+'+item.code.toString(16).toUpperCase();}
+   getItemText(item){return item.char+' '+(plugin.settings.unicode.searchDescriptions===false?'':item.name+' '+item.pt+' ')+'U+'+item.code.toString(16).toUpperCase();}
+   getSuggestions(query){return super.getSuggestions(query).slice(0,Math.max(5,Math.min(200,Number(plugin.settings.unicode.maxResults)||80)));}
    renderSuggestion(match,el){
     const item=match.item;
     el.createSpan({text:item.char,cls:'writer-unicode-preview'});

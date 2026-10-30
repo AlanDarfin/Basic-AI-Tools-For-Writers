@@ -1792,7 +1792,7 @@ function w4merge(settings){
  for(const [key,val] of Object.entries(W4_DEFAULTS)){
   if(key==='interfaceLanguage'){if(typeof settings[key]!=='string')settings[key]=val;continue;}
   const old=settings[key];
-  settings[key]={...structuredClone(val),...(old&&typeof old==='object'?old:{})};
+  settings[key]={...JSON.parse(JSON.stringify(val)),...(old&&typeof old==='object'?old:{})};
   if(key==='abbreviations'&&old?.entries)settings[key].entries={...old.entries};
  }
  settings.schemaVersion=4;
@@ -1801,8 +1801,9 @@ function w4merge(settings){
 function w4locale(plugin){
  const custom=plugin?.settings?.interfaceLanguage||'auto';
  if(custom==='pt'||custom==='en')return custom;
- try{return String(require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?'pt':'en';}
- catch{return typeof getLocale==='function'?getLocale():'en';}
+ try{const lang=require('obsidian').getLanguage?.();if(lang)return String(lang).toLowerCase().startsWith('pt')?'pt':'en';}
+ catch(_){}
+ return typeof getLocale==='function'?getLocale():'en';
 }
 function w4text(plugin,pt,en){return w4locale(plugin)==='pt'?pt:en;}
 const w4labels={
@@ -2126,7 +2127,7 @@ class WriterTTS{
   utterance.lang=cfg.language==='auto'?(voice?.lang||this.plugin.settings.targetLanguage||'pt-BR'):cfg.language;
   utterance.rate=Math.min(2,Math.max(0.5,Number(cfg.rate)||1));
   utterance.pitch=Math.min(2,Math.max(0.5,Number(cfg.pitch)||1));
-  utterance.volume=Math.max(0,Math.min(1,Number(cfg.volume)??1));
+  utterance.volume=Math.max(0,Math.min(1,Number.isFinite(Number(cfg.volume))?Number(cfg.volume):1));
   utterance.onend=()=>{if(this.current===utterance&&!this.stopping)this.next();};
   utterance.onerror=event=>{
    if(this.stopping||event.error==='interrupted'||event.error==='canceled')return;
@@ -2249,7 +2250,8 @@ class WriterUnicode{
   const plugin=this.plugin,owner=this;
   class Picker extends FuzzySuggestModal{
    getItems(){return owner.items();}
-   getItemText(item){return item.char+' '+item.name+' '+item.pt+' U+'+item.code.toString(16).toUpperCase();}
+   getItemText(item){return item.char+' '+(plugin.settings.unicode.searchDescriptions===false?'':item.name+' '+item.pt+' ')+'U+'+item.code.toString(16).toUpperCase();}
+   getSuggestions(query){return super.getSuggestions(query).slice(0,Math.max(5,Math.min(200,Number(plugin.settings.unicode.maxResults)||80)));}
    renderSuggestion(match,el){
     const item=match.item;
     el.createSpan({text:item.char,cls:'writer-unicode-preview'});
@@ -2272,6 +2274,11 @@ class WriterUnicode{
   const input=row.createEl('input',{attr:{type:'text',placeholder:'U+2764'}});
   row.createEl('button',{text:txt('Inserir código','Insert code point')}).addEventListener('click',()=>this.insertCodePoint(input.value));
   row.createEl('button',{text:txt('Pesquisar símbolos','Search symbols')}).addEventListener('click',()=>this.open());
+  row.createEl('button',{text:txt('Favoritar código','Favorite code point')}).addEventListener('click',()=>{
+   const item=w4UnicodeFromCode(input.value);
+   if(!item)return new Notice(txt('Código Unicode inválido.','Invalid Unicode code point.'));
+   this.favorite(item.char);new Notice(txt('Favoritos atualizados.','Favorites updated.'));
+  });
   const favorites=panel.createDiv({cls:'writer-v4-unicode-favorites'});
   favorites.createEl('strong',{text:txt('Favoritos','Favorites')});
   for(const ch of cfg.favorites||[]){
@@ -2283,6 +2290,11 @@ class WriterUnicode{
   const p=this.plugin;
   p.addCommand({id:'v4-search-unicode',name:w4text(p,'Pesquisar caracteres Unicode','Search Unicode characters'),callback:()=>this.open()});
   p.addCommand({id:'v4-open-unicode-tool',name:w4text(p,'Abrir ferramenta Unicode','Open Unicode tool'),callback:()=>p.openWritingTools('unicode')});
+  p.addCommand({id:'v4-favorite-unicode-selection',name:w4text(p,'Favoritar símbolo selecionado','Favorite selected Unicode character'),callback:()=>{
+   const ch=p.app.workspace.getActiveViewOfType(MarkdownView)?.editor?.getSelection();
+   if(!ch||[...ch].length!==1)return new Notice(w4text(p,'Selecione um símbolo.','Select one character.'));
+   this.favorite(ch);new Notice(w4text(p,'Favoritos atualizados.','Favorites updated.'));
+  }});
  }
 }
 
@@ -2345,6 +2357,8 @@ class WriterInstaToc{
   const omissions=(Array.isArray(local?.omit)?local.omit:[]).map(x=>String(x).toLowerCase());
   const headings=this.headings(file).filter(h=>h.level>=min&&h.level<=max&&!omissions.includes(h.heading.toLowerCase()));
   const root=el.createDiv({cls:'writer-v4-insta-toc insta-toc-rendered'});
+  root.style.setProperty('--writer-v4-toc-indent',Math.min(48,Math.max(5,Number(this.options.indent)||12))+'px');
+  root.style.setProperty('--writer-v4-toc-list-style',String(this.options.listType||'circle'));
   const heading=root.createDiv({cls:'writer-v4-toc-heading'});
   heading.createEl('strong',{text:title||w4text(this.plugin,'Índice','Contents')});
   const fold=heading.createEl('button',{text:'▾',cls:'writer-v4-toc-collapse',attr:{'aria-label':w4text(this.plugin,'Recolher índice','Collapse index')}});
@@ -2552,7 +2566,7 @@ function writerRenderV4Settings(panel,plugin,id){
    cfg.entries[key]={value:'',isEnabled:true,position:Object.keys(cfg.entries).length};
    await plugin.saveSettings();render();
   })).addButton(b=>b.setButtonText(tr('Restaurar padrão','Reset defaults')).onClick(async()=>{
-   cfg.entries=structuredClone(W4_DEFAULTS.abbreviations.entries);await plugin.saveSettings();render();
+   cfg.entries=JSON.parse(JSON.stringify(W4_DEFAULTS.abbreviations.entries));await plugin.saveSettings();render();
   }));
   render();
  }else if(id==='anotherName'){

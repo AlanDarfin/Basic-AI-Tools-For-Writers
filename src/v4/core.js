@@ -20,7 +20,7 @@ function w4merge(settings){
  for(const [key,val] of Object.entries(W4_DEFAULTS)){
   if(key==='interfaceLanguage'){if(typeof settings[key]!=='string')settings[key]=val;continue;}
   const old=settings[key];
-  settings[key]={...structuredClone(val),...(old&&typeof old==='object'?old:{})};
+  settings[key]={...JSON.parse(JSON.stringify(val)),...(old&&typeof old==='object'?old:{})};
   if(key==='abbreviations'&&old?.entries)settings[key].entries={...old.entries};
  }
  settings.schemaVersion=4;

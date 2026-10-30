@@ -136,7 +136,7 @@ class WriterV4Editor{
   plugin.addCommand({id:'v4-apply-view-mode',name:w4text(plugin,'Aplicar modo preferido da nota','Apply preferred note view mode'),callback:()=>{
    const file=plugin.app.workspace.getActiveFile();if(file)this.applyViewMode(file);
   }});
-  plugin.app.workspace.onLayoutReady(()=>this.updateAnotherName());
+  plugin.app.workspace.onLayoutReady?.(()=>this.updateAnotherName());
  }
  destroy(){for(const timer of this.templateTimers.values())clearTimeout(timer);this.templateTimers.clear();}
 }

@@ -142,7 +142,7 @@ The **Projetos de escrita** panel now supports creating Markdown scenes, adding 
 
 **Compatibility and limitations:** Longform index metadata is recognized and the primary scene tree can be edited through Obsidian's frontmatter processor. The imported Longform project is not automatically migrated; there is no full bidirectional synchronization of Longform-specific drafts, custom workflow steps, template expansion, drag-and-drop or every Longform metadata variant. Always back up your vault before editing existing Longform projects. No device-level Obsidian Mobile integration tests have been performed.
 
-## 2.0.0-beta.3 — Writing project workspace (experimental)
+## 2.0.0 — Writing project workspace
 
 The plugin now includes a dedicated project sidebar with **Cenas, Projeto, Compilar, Notas**. Open it from the ribbon or the command palette. Existing Longform projects with 'longform' YAML frontmatter are discovered automatically, including multi-scene and single-scene projects.
 
@@ -154,9 +154,9 @@ The plugin now includes a dedicated project sidebar with **Cenas, Projeto, Compi
 
 **Notas:** A separate _Notas directory per project, nested named folders, quick notes, search, rename, move between note folders, send to Obsidian Trash with confirmation, and review a note using the existing Basic AI tools. Notes are not compiled.
 
-**Safety and migration:** Back up your vault before beta testing. An index backup is created on first edit per session under _Backups as a .txt snapshot (to avoid registering a duplicate Longform project). Existing 1.8.x compilation presets are migrated to the step-based configuration on use. Do not edit the same index simultaneously with both Longform and Basic AI until compatibility has been confirmed.
+**Safety and migration:** Back up your vault before updating. An index backup is created on first edit per session under _Backups as a .txt snapshot (to avoid registering a duplicate Longform project). Existing 1.8.x compilation presets are migrated to the step-based configuration on use. Do not edit the same index simultaneously with both Longform and Basic AI until compatibility has been confirmed.
 
-**Limitations:** This is not a promise of 100% Longform parity. User-script execution, some advanced third-party workflow steps and edge-case templates are not supported. Writing sessions use saved-file deltas rather than tracking every keystroke; Android runtime validation remains necessary.
+**Limitations:** This is not a promise of 100% Longform parity. User-script execution, some advanced third-party workflow steps and edge-case templates are not supported. Writing sessions use saved-file deltas rather than tracking every keystroke; Some advanced Longform workflows and Android runtime edge cases still require validation.
 
 **Commands:** Abrir projetos de escrita; Criar projeto de escrita; Criar cena no projeto; Abrir notas do projeto; Criar nota rápida do projeto; Abrir compilação do projeto; Iniciar sessão de escrita; Encerrar sessão de escrita.
 

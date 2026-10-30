@@ -87,7 +87,7 @@ class WriterToolsView extends ItemView{
   const buttons=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(buttons,writerUi('Abrir revisão seletiva','Open selective review'),()=>writerV4OpenDiff(this.plugin),true);
   this.addButton(buttons,writerUi('Configurar perfis','Configure profiles'),()=>{
-   if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);this.plugin.settingsTabV4Hint=true;}
+   if(this.app.setting?.open){this.plugin.settingsTabV4Hint=true;this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}
    else new Notice(writerUi('Abra as configurações do plugin.','Open the plugin settings.'));
   });
   panel.createEl('p',{text:writerUi('A geração de alternativas usa seu provedor de IA apenas quando você clicar em Gerar com IA no comparador.','AI generation uses your configured provider only after you choose Generate with AI in the comparator.'),cls:'writer-tools-muted'});

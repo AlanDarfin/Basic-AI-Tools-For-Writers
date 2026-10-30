@@ -1,4 +1,4 @@
-name: Publish stable release 1.8.0
+name: Publish stable release 2.0.0
 on:
   push:
     paths:
@@ -11,28 +11,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Validate plugin package
         shell: bash
         run: |
           set -euo pipefail
           node --check main.js
-          node -e "const m=require('./manifest.json'); if(m.version!=='1.8.0'||m.name!=='Basic AI Tool for Writers'||m.id!=='basic-ai-tool-for-writers')process.exit(1)"
+          node --check projects.js
+          node --check scripts/sync-projects.js
+          node scripts/sync-projects.js --check
+          node tests/projects.test.js
+          node -e "const m=require('./manifest.json'); if(m.version!=='2.0.0'||m.name!=='Basic AI Tool for Writers'||m.id!=='basic-ai-tool-for-writers')process.exit(1)"
           test -s styles.css
           test -s README.md
       - name: Package plugin
-        run: zip -j basic-ai-tool-for-writers-1.8.0.zip main.js manifest.json styles.css
+        run: zip -j basic-ai-tool-for-writers-2.0.0.zip main.js manifest.json styles.css
       - name: Publish stable GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          if gh release view 1.8.0 >/dev/null 2>&1; then
+          if gh release view 2.0.0 >/dev/null 2>&1; then
             echo 'Release already exists; skipping.'
             exit 0
           fi
-          gh release create 1.8.0 main.js manifest.json styles.css basic-ai-tool-for-writers-1.8.0.zip \
+          gh release create 2.0.0 main.js manifest.json styles.css basic-ai-tool-for-writers-2.0.0.zip \
             --target "$GITHUB_SHA" \
-            --title "Basic AI Tool for Writers 1.8.0" \
+            --title "Basic AI Tool for Writers 2.0.0" \
             --latest \
-            --notes "Sidebar chat redesign. AI definitions, synonyms and antonyms, independent translation engine, source/target language selectors, editable prompts, context-menu writing tools and model management. Non-destructive LanguageTool grammar review, AI style review and beta-reader modes, and editable review settings."
+            --notes "Stable 2.0.0: Longform-compatible writing projects with nested scenes, chapters, drafts, project notes, word goals, writing sessions, configurable compilation workflows, previews, backups and safe manuscript exports. Existing AI writing, translation, grammar review and chat features remain available. External custom Longform workflow scripts are not executed. Back up your vault before migrating."

@@ -50,5 +50,22 @@ async function test(){
  ctl.abort();
  await assert.rejects(promise,/cancelled/);
  check('Online TTS supports cancellation');
+ const markup=fs.readFileSync('styles.css','utf8');
+ const code=fs.readFileSync('main.js','utf8');
+ for(const selector of [
+  'writer-unicode-glyph',
+  'writer-unicode-favorite',
+  'writer-unicode-detail',
+  'writer-extras-card',
+  'writer-tools-v3-tabs.writer-tools-v3-tabs',
+  'writer-project-tabs.writer-project-tabs',
+  'dictionary-settings-tabs.dictionary-settings-tabs',
+  'writer-tool-tabs.writer-tool-tabs'
+ ])assert.ok(markup.includes(selector),'Missing '+selector);
+ assert.ok(code.includes('writer-tts-privacy'));
+ assert.ok(code.includes('cfg.allowOnline'));
+ assert.ok(code.includes('writer-unicode-category'));
+ check('Unicode visual cards, scrollable tabs and online speech consent are bundled');
+
 }
 test().catch(e=>{console.error(e.stack||e);process.exitCode=1;});

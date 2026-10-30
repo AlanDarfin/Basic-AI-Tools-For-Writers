@@ -4,8 +4,8 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const base=fs.readFileSync('src/v3/core.js','utf8')+'\n'+fs.readFileSync('src/v3/snapshots.js','utf8');
 const code=base+'\n'+fs.readFileSync('src/v4/editor.js','utf8');
-const api=vm.runInNewContext(code+'\n({writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence})',{console,require:()=>({getLanguage:()=> 'pt'}),Uint8Array,Uint16Array});
-const {writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence}=api;
+const api=vm.runInNewContext(code+'\n({writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence,writerSafeReplace})',{console,require:()=>({getLanguage:()=> 'pt'}),Uint8Array,Uint16Array});
+const {writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence,writerSafeReplace}=api;
 let count=0;function test(name,fn){fn();count++;console.log('PASS',name);}
 test('v4 settings migrate without deleting legacy keys',()=>{
   const settings={schemaVersion:3,projectsData:{book:{goal:12000}},aiKeys:{openai:'secret'}};
@@ -58,4 +58,29 @@ test('standalone bundle includes v4 module, hook and profile settings',()=>{
   const bundled=fs.readFileSync('main.js','utf8');
   for(const expected of ['// v3 module: src/v4/editor.js','writerV4Merge(this.settings);','writerV4RenderSettings(this.plugin,panel);','writerV4ProfilePrompt(this','writerV4AssertProtected(content,translatedText)'])assert.ok(bundled.includes(expected),expected);
 });
-console.log(count+' v4 tests passed.');
+async function concurrencyTests(){
+  const file={path:'Story.md',extension:'md'};
+  let current='Hello world',calls=0;
+  const editor={getValue:()=>current,replaceRange:()=>{calls++;},offsetToPos:offset=>({line:0,ch:offset})};
+  const plugin={
+    settings:{snapshots:{enabled:true,snapshotBeforeRewrite:true}},
+    writerSnapshots:{create:async()=>{current='Edited elsewhere';}},
+    app:{workspace:{getLeavesOfType:()=>[{view:{file,editor}}]}}
+  };
+  await assert.rejects(writerSafeReplace(plugin,file,0,5,'Hello','Hi','v4 revision'),/mudou durante o snapshot/);
+  assert.equal(calls,0);
+  count++;console.log('PASS concurrent editor edit is blocked after async snapshot');
+  let stored='Hello world';
+  const vaultPlugin={
+    settings:{snapshots:{enabled:false,snapshotBeforeRewrite:false}},
+    app:{
+      workspace:{getLeavesOfType:()=>[]},
+      vault:{read:async()=>stored,process:async(_file,fn)=>{stored='Other world';stored=fn(stored);}}
+    }
+  };
+  await assert.rejects(writerSafeReplace(vaultPlugin,file,0,5,'Hello','Hi','v4 revision'),/simultaneamente/);
+  assert.equal(stored,'Other world');
+  count++;console.log('PASS concurrent vault edit cannot be overwritten');
+  console.log(count+' v4 tests passed.');
+}
+concurrencyTests().catch(err=>{console.error(err);process.exitCode=1;});

@@ -37,6 +37,7 @@ class WriterToolsView extends ItemView{
   this.addButton(footer,w4label(this.plugin,'Revisão'),()=>this.plugin.openReview());
   this.addButton(footer,w4label(this.plugin,'Projetos'),()=>this.plugin.openProjects());
   this.addButton(footer,w4label(this.plugin,'Configurações'),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
+  w4TranslateTree(root,this.plugin);
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};

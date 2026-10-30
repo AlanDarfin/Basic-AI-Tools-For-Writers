@@ -54,3 +54,7 @@ In a narrow Obsidian desktop sidebar, provider and source/target language select
 - **Limitations**: the Edge consumer service is unofficial/undocumented and may reject requests or stop working without notice. Voice quality, network access and playback are not guaranteed. The original Obsidian Edge TTS plugin is licensed AGPL-3.0; the implementation here is independent, with no bundled code from that plugin. Do not use online speech for confidential notes unless you are comfortable sending their text to Microsoft.
 
 Test online speech with a short selected passage first. If it fails on your Arch installation, the system engine remains available once you install an OS-compatible speech voice.
+
+## 3.1.0-beta.2 — Unified menu controls
+
+The LanguageTool review selector and other native dropdowns in the main sidebar, Writing Tools, Longform, Unicode search and Settings now share a consistent minimum height, padding, font size and focus styling. This prevents the older theme-dependent combination of fixed Obsidian dropdown height and 9px vertical padding from vertically cropping selected text. Responsive settings columns adjust to the panel width, not the display width. The same styles remain scoped to Basic AI to avoid changing unrelated Obsidian plugins.

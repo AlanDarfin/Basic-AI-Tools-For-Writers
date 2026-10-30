@@ -92,3 +92,62 @@ class WriterToolsView extends ItemView{
   }
  }
 }
+
+function writerRenderV3Settings(panel,plugin,id){
+ const config=plugin.settings[id];if(!config)return;
+ const title={complements:'Complementos e sugestões',variants:'Variações de escrita',snapshots:'Versionamento e snapshots'}[id];
+ panel.createEl('h3',{text:title});
+ const toggle=(key,name,description)=>{
+  new Setting(panel).setName(name).setDesc(description||'').addToggle(t=>t.setValue(config[key]!==false).onChange(async v=>{config[key]=v;await plugin.saveSettings();}));
+ };
+ const input=(key,name,description,numeric=false)=>{
+  new Setting(panel).setName(name).setDesc(description||'').addText(t=>{
+   t.setValue(String(config[key]??'')).onChange(async v=>{config[key]=numeric?Math.max(0,Number(v)||0):v;await plugin.saveSettings();});
+  });
+ };
+ if(id==='complements'){
+  toggle('enabled','Ativar sugestões','Todos os complementos funcionam localmente e sem rede.');
+  toggle('automatic','Sugestões automáticas','Mostrar ao digitar.');
+  toggle('currentFile','Palavras do arquivo atual');
+  toggle('vault','Palavras de outras notas do cofre');
+  toggle('internalLinks','Links internos','Sugere títulos como wikilinks.');
+  toggle('dictionaries','Dicionários personalizados');
+  toggle('useLocalDictionary','Usar Dicionario.md','Sem alterar seu formato.');
+  toggle('frontmatter','Propriedades YAML','Sugestões de nomes de propriedades.');
+  toggle('caseSensitive','Diferenciar maiúsculas de minúsculas');
+  toggle('matchMiddle','Corresponder dentro da palavra','Menos restritivo que prefixo.');
+  toggle('learnRanking','Aprender sugestões escolhidas','Ranking armazenado localmente.');
+  input('minChars','Mínimo de caracteres','Padrão: 3',true);
+  input('maxResults','Número máximo de sugestões','Padrão: 8',true);
+  input('maxFiles','Máximo de arquivos no índice','Limita uso de memória.',true);
+  input('fileLimit','Tamanho máximo por arquivo (bytes)','Padrão: 120000',true);
+  new Setting(panel).setName('Pastas excluídas').setDesc('Separadas por vírgula.').addTextArea(t=>t.setValue(config.excludedFolders||'').onChange(async v=>{config.excludedFolders=v;await plugin.saveSettings();}));
+  new Setting(panel).setName('Arquivos de dicionário').setDesc('Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.').addTextArea(t=>t.setValue(config.dictionaryPaths||'').onChange(async v=>{config.dictionaryPaths=v;await plugin.saveSettings();}));
+  new Setting(panel).setName('Reindexar').addButton(b=>b.setButtonText('Atualizar índice').setCta().onClick(async()=>{plugin.writerComplements.reset();await plugin.writerComplements.rebuild();new Notice('Índice atualizado.');}));
+  new Setting(panel).setName('Limpar aprendizado').addButton(b=>b.setButtonText('Limpar histórico').onClick(async()=>{config.usage={};await plugin.saveSettings();}));
+ }else if(id==='variants'){
+  toggle('enabled','Ativar variantes','Usa sintaxe compatível com {{texto A|texto B}}^0.');
+  toggle('decorate','Destacar variantes no editor');
+  toggle('offerInReview','Oferecer variantes na revisão gramatical');
+  toggle('snapshotBeforeCommit','Salvar versão antes de confirmar','Requer snapshots ativos.');
+  toggle('confirmAll','Confirmar antes de aplicar todas');
+  new Setting(panel).setName('Instruções da IA para variantes').addTextArea(t=>{t.inputEl.rows=6;t.setValue(config.aiPrompt||'').onChange(async v=>{config.aiPrompt=v;await plugin.saveSettings();});});
+  new Setting(panel).setName('Abrir editor de variantes').addButton(b=>b.setButtonText('Abrir ferramentas').setCta().onClick(()=>plugin.openWritingTools('variants')));
+ }else if(id==='snapshots'){
+  toggle('enabled','Ativar histórico local','Snapshots ficam no seu cofre e não são enviados para IA.');
+  toggle('automatic','Snapshots automáticos','Por padrão, apenas snapshots manuais.');
+  toggle('includeAttachments','Incluir anexos nos novos snapshots','Pode consumir bastante espaço. Restauração não sobrescreve anexos compartilhados.');
+  toggle('snapshotBeforeRewrite','Criar snapshot antes de alterações','Correções, variantes e outros recursos integrados.');
+  toggle('snapshotBeforeRestore','Criar snapshot antes de restaurar');
+  input('store','Pasta do histórico','Caminho relativo ao cofre. Alterar a pasta não migra o histórico existente.');
+  input('autoDelaySeconds','Intervalo entre snapshots automáticos (segundos)','Mínimo de 60.',true);
+  input('maxPerNote','Limite de versões por nota','0 mantém todas. Exclusões automáticas não são reversíveis.',true);
+  input('retentionDays','Retenção em dias','0 desativa limpeza por idade.',true);
+  input('showDiffContext','Linhas de contexto no diff',null,true);
+  new Setting(panel).setName('Abrir histórico da nota').addButton(b=>b.setButtonText('Abrir versões').setCta().onClick(async()=>{
+   const file=plugin.app.workspace.getActiveFile();if(!file)return new Notice('Abra uma nota.');
+   await plugin.writerSnapshots.showHistory(file);
+  }));
+  panel.createEl('p',{text:'Históricos existentes do plugin Note Snapshots não são modificados. Esta integração mantém sua própria pasta .basic-ai-history e preserva dados anteriores.',cls:'dictionary-muted'});
+ }
+}

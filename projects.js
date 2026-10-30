@@ -150,7 +150,19 @@ class ProjectsView extends ItemView{
   return this.plugin.settings.projectsData[key]||(this.plugin.settings.projectsData[key]={drafts:{},goal:0,workflow:'standard'});
  }
  async savePrefs(){await this.plugin.saveSettings();await this.render();}
+ async backupIndex(project){
+  if(!this.indexBackups)this.indexBackups=new Set();
+  if(this.indexBackups.has(project.file.path))return;
+  const dir=lfPath(project.file.parent?.path,'_Backups');
+  await this.ensureFolder(dir);
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const filename=clean(project.file.basename)+' - '+stamp+'.txt';
+  const path=lfPath(dir,filename);
+  await this.app.vault.create(path,await this.app.vault.read(project.file));
+  this.indexBackups.add(project.file.path);
+ }
  async updateIndex(project,change){
+  await this.backupIndex(project);
   await this.app.fileManager.processFrontMatter(project.file,fm=>{
    if(!fm.longform||typeof fm.longform!=='object')fm.longform={};
    change(fm.longform);
@@ -377,9 +389,18 @@ class ProjectsView extends ItemView{
  workflowsFor(project){
   const prefs=this.prefs(project);
   if(!prefs.workflows||!Object.values(prefs.workflows).some(v=>v&&Array.isArray(v.steps))){
-   const standard=this.defaultWorkflow();
+   const legacy=prefs.workflows||{},standard=this.defaultWorkflow();
    if(project.format==='single')standard.steps=standard.steps.filter(s=>s.id!=='concatenate-text');
    prefs.workflows={'Padrão':standard};
+   for(const [name,options] of Object.entries(legacy)){
+    if(!options||typeof options!=='object'||Array.isArray(options.steps))continue;
+    const steps=JSON.parse(JSON.stringify(standard.steps));
+    if(options.frontmatter===false)steps.splice(steps.findIndex(x=>x.id==='strip-frontmatter'),1);
+    const links=steps.find(x=>x.id==='remove-links');
+    if(options.links===false&&links)links.optionValues={'remove-wikilinks':false,'remove-external-links':false};
+    const join=steps.find(x=>x.id==='concatenate-text');if(join&&options.separator!=null)join.optionValues.separator=options.separator;
+    prefs.workflows[name]={name,steps,description:'Importado da configuração anterior'};
+   }
   }
   return prefs.workflows;
  }

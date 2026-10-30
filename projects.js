@@ -329,7 +329,8 @@ class ProjectsView extends ItemView{
   new Setting(panel).setName('Meta de palavras').setDesc('Meta total do projeto').addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
   const count=this.activeScenes(project).length;
   panel.createEl('p',{text:'Cenas no rascunho: '+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
-  panel.createEl('p',{text:'Rascunhos e metas do Basic AI ficam nas configurações do plugin; o índice Longform original não é reescrito por essas opções.'});
+  panel.createEl('p',{text:'Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.'});
+  this.drawSceneDiagnostics(panel,project);
  }
 
  workflowCatalog(){
@@ -356,7 +357,9 @@ class ProjectsView extends ItemView{
  workflowsFor(project){
   const prefs=this.prefs(project);
   if(!prefs.workflows||!Object.values(prefs.workflows).some(v=>v&&Array.isArray(v.steps))){
-   prefs.workflows={'Padrão':this.defaultWorkflow()};
+   const standard=this.defaultWorkflow();
+   if(project.format==='single')standard.steps=standard.steps.filter(s=>s.id!=='concatenate-text');
+   prefs.workflows={'Padrão':standard};
   }
   return prefs.workflows;
  }
@@ -372,6 +375,28 @@ class ProjectsView extends ItemView{
    if(kind==='manuscript'&&!joined)throw Error('Junte as cenas antes das etapas de manuscrito.');
   }
   if(!joined)throw Error('Adicione a etapa Juntar cenas.');
+ }
+
+ drawSceneDiagnostics(panel,project){
+  if(project.format==='single')return;
+  const tracked=new Set(this.sceneList(project).map(x=>x.title));
+  const dir=[project.file.parent?.path||'',String(project.meta.sceneFolder||'/').split('/').filter(Boolean).join('/')].filter(Boolean).join('/');
+  const folder=this.app.vault.getAbstractFileByPath(dir||'/');
+  const existing=folder instanceof TFolder?folder.children.filter(x=>x instanceof TFile&&x.extension==='md'&&x.path!==project.file.path):[];
+  const unknown=existing.filter(f=>!tracked.has(f.basename)&&!((project.meta.ignoredFiles||[]).includes(f.basename)));
+  const missing=[...tracked].filter(name=>!this.resolveScene(project,name));
+  const section=panel.createEl('details',{cls:'writer-project-diagnostics'});
+  section.createEl('summary',{text:'Diagnóstico · '+missing.length+' cenas ausentes, '+unknown.length+' arquivos soltos'});
+  if(missing.length)section.createEl('p',{text:'Ausentes: '+missing.join(', ')});
+  if(unknown.length){
+   section.createEl('p',{text:'Novos arquivos: '+unknown.map(f=>f.basename).join(', ')});
+   section.createEl('button',{text:'Adicionar arquivos soltos ao índice'}).addEventListener('click',()=>{
+    new ConfirmProjectAction(this.app,'Adicionar arquivos ao índice',
+     'Adicionar '+unknown.length+' arquivo(s) Markdown como cenas ao final do índice? Nenhum arquivo será movido.',
+     ()=>this.changeScenes(project,scenes=>{for(const f of unknown)scenes.push({title:f.basename,indent:0});})
+    ).open();
+   });
+  }
  }
  async compileProject(project,wf,preview=false){
   this.validateWorkflow(project,wf);
@@ -463,7 +488,7 @@ class ProjectsView extends ItemView{
   selector.addEventListener('change',()=>{this.workflow=selector.value;this.workflowDraft=null;this.render();});
   bar.createEl('button',{text:'+ Workflow'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome do workflow',async name=>{
    name=clean(name);if(!name||workflows[name])return;
-   workflows[name]=this.defaultWorkflow();workflows[name].name=name;
+   workflows[name]=JSON.parse(JSON.stringify(workflows[this.workflow]));workflows[name].name=name;
    this.workflow=name;this.workflowDraft=null;await this.savePrefs();
   }).open());
   bar.createEl('button',{text:'Importar Longform'}).addEventListener('click',()=>this.importLongformWorkflows(project));

@@ -499,7 +499,7 @@ class WriterFinalFeatures{
  }
  async speakActive(){
   const cfg=this.cfg.tts;
-  if(!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
+  if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
   const workspace=this.plugin.app.workspace;

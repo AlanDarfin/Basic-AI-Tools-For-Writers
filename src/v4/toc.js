@@ -29,14 +29,15 @@ class WriterInstaToc{
   const before=await this.plugin.app.vault.cachedRead(file);
   const fence=/^(\x60{3,})insta-toc[ \t]*\r?\n([\s\S]*?)^\1[ \t]*$/gm;
   if(!fence.test(before))return;
-  this.processing.add(file.path);
-  try{
-   await this.plugin.app.vault.process(file,current=>current.replace(fence,(all,delimiter,body)=>{
+  const rewrite=current=>current.replace(fence,(all,delimiter,body)=>{
     const retained=/^---\r?\n[\s\S]*?\r?\n---\r?\n/.exec(body)?.[0]||'';
     const entries=this.entries(file);
     return delimiter+'insta-toc\n'+retained+entries+(entries?'\n':'')+delimiter;
-   }));
-  }catch(e){console.warn('[Basic AI] TOC refresh:',e);}
+   });
+  if(rewrite(before)===before)return;
+  this.processing.add(file.path);
+  try{await this.plugin.app.vault.process(file,current=>rewrite(current));}
+  catch(e){console.warn('[Basic AI] TOC refresh:',e);}
   finally{this.processing.delete(file.path);}
  }
  schedule(file){

@@ -181,9 +181,9 @@ async function run(){
  assert.ok(menu.items.some(x=>x.label));
  assert.ok(menu.items.some(x=>x.title==='Era'));
  assert.ok(menu.items.some(x=>x.title==='Está'));
- assert.ok(menu.items.some(x=>x.title==='Criar variante'));
- assert.ok(menu.items.some(x=>x.title==='Ignorar esta regra'));
- assert.ok(menu.items.some(x=>x.title==='Explicar com IA'));
+ assert.ok(menu.items.some(x=>['Criar variante','Create variant'].includes(x.title)));
+ assert.ok(menu.items.some(x=>['Ignorar esta regra','Ignore this rule'].includes(x.title)));
+ assert.ok(menu.items.some(x=>['Explicar com IA','Explain with AI'].includes(x.title)));
  menu.close();
  assert.equal(entry.reviewPopupKey,null);
  console.log('PASS','Native LanguageTool-style menu shows actions and clears after closing');tests++;

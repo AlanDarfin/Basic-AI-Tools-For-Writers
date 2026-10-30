@@ -1,8 +1,8 @@
 # Basic AI Tool for Writers
 
-## V3 beta 2 — autocomplete, variantes e versões
+## V3 beta 3 — autocomplete, variantes e versões
 
-A versão **3.0.0-beta.2** contém a prévia com três módulos novos, integrados ao Obsidian:
+A versão **3.0.0-beta.3** contém a prévia com três módulos novos, integrados ao Obsidian:
 
 - **Sugestões:** autocomplete local do arquivo, cofre, dicionários e links;
 - **Variantes:** alternativas inline de escrita, revisão → variante e geração com IA;
@@ -177,3 +177,6 @@ The plugin now includes a dedicated project sidebar with **Cenas, Projeto, Compi
 **Maintenance:** The project manager source is projects.js. It is inlined into main.js for normal Obsidian installation using the command: node scripts/sync-projects.js. Run node scripts/sync-projects.js --check and node tests/projects.test.js before releasing.
 
 Inspired by the open-source [Longform project](https://github.com/kevboh/longform), using a separately implemented, compatible data model.
+
+**Beta 3 (PC e Android):** o revisor usa menus nativos do Obsidian para mostrar explicações, substituições, variantes e ações de ignorar regras, seguindo a experiência do LanguageTool. Os resultados no painel são compactos e têm botões para as duas primeiras sugestões; abas e rolagem foram corrigidas para painéis estreitos no desktop. Os sublinhados distinguem ortografia, gramática e estilo. A implementação foi inspirada no LanguageTool v1.5.2 fornecido para comparação, sem incorporar o código distribuído dele.
+

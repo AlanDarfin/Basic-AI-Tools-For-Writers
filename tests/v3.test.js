@@ -48,8 +48,8 @@ const S={StateField:{define:()=>({})},StateEffect:{define:()=>({of:x=>x})}};
 const V={Decoration:{none:{map:()=>({})},set:()=>({}),mark:()=>({range:()=>({})})},EditorView:{decorations:{from:()=>({})}},ViewPlugin:{fromClass:()=>({})}};
 const getRequire=name=>name==='obsidian'?O:name==='@codemirror/state'?S:name==='@codemirror/view'?V:(()=>{throw Error('unknown import: '+name)})();
 const mods=['core','complements','variants','snapshots','workspace'].map(name=>fs.readFileSync('src/v3/'+name+'.js','utf8').replace(/^'use strict';\s*/,'')).join('\n');
-const api=vm.runInNewContext(mods+'\n({writerMergeV3,writerMaskMarkdown,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots,WriterVariants})',{...O,...V,require:getRequire,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
-const {writerMergeV3,writerMaskMarkdown,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots}=api;
+const api=vm.runInNewContext(mods+'\n({writerMergeV3,writerMaskMarkdown,writerGrammarMatchIsSafe,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots,WriterVariants})',{...O,...V,require:getRequire,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
+const {writerMergeV3,writerMaskMarkdown,writerGrammarMatchIsSafe,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots}=api;
 function j(value){return JSON.parse(JSON.stringify(value));}
 async function run(){
  let tests=0;
@@ -64,6 +64,38 @@ async function run(){
   const md='---\ntitle: Personagem\n---\nOlá Mundo.\n'+String.fromCharCode(96,96,96)+'js\nconst segredo = 1;\n'+String.fromCharCode(96,96,96)+'\n[[Link]] {{abc|def}}^0';
   const masked=writerMaskMarkdown(md);
   assert.equal(masked.length,md.length);assert.ok(masked.includes('Olá Mundo'));assert.ok(!masked.includes('segredo'));assert.ok(!masked.includes('Personagem'));assert.ok(!masked.includes('[[Link]]'));
+ });
+ t('LanguageTool ignores Markdown emphasis markers but retains italic prose offsets',()=>{
+  const raw='_Não morre... eu não quero viver nesse lugar sem você._';
+  const masked=writerMaskMarkdown(raw);
+  assert.equal(masked.length,raw.length);
+  assert.equal(masked[0],' ');
+  assert.equal(masked.at(-1),' ');
+  assert.equal(masked.indexOf('Não'),raw.indexOf('Não'));
+  assert.equal(writerGrammarMatchIsSafe(raw,masked,{offset:0,length:1}),false);
+  assert.equal(writerGrammarMatchIsSafe(raw,masked,{offset:1,length:3}),true);
+  assert.equal(writerGrammarMatchIsSafe(raw,masked,{offset:raw.length-1,length:1}),false);
+ });
+ t('Markdown bold, italics, code and ordinary identifier underscores do not interfere',()=>{
+  const raw='O _beijo_ foi **rápido**; __outro__ e *curto*. foo_bar_baz';
+  const masked=writerMaskMarkdown(raw);
+  assert.equal(masked.length,raw.length);
+  assert.ok(masked.includes('beijo'));
+  assert.ok(masked.includes('rápido'));
+  assert.ok(masked.includes('foo_bar_baz'));
+  assert.ok(!masked.includes('**rápido**'));
+  const word=raw.indexOf('rápido');
+  assert.equal(writerGrammarMatchIsSafe(raw,masked,{offset:word,length:6}),true);
+  assert.equal(writerGrammarMatchIsSafe(raw,masked,{offset:word-2,length:2}),false);
+ });
+ t('Markdown fences and inline code stay masked while words outside remain checked',()=>{
+  const raw=''+String.fromCharCode(96,96,96)+'md\n_errado_\n'+String.fromCharCode(96,96,96)+'\nTexto _correto_.';
+  const masked=writerMaskMarkdown(raw);
+  assert.equal(masked.length,raw.length);
+  assert.ok(!masked.includes('errado'));
+  assert.ok(masked.includes('correto'));
+  const phrase=raw.indexOf('correto');
+  assert.equal(writerGrammarMatchIsSafe(raw,masked,{offset:phrase,length:7}),true);
  });
  t('variant syntax roundtrips escaped pipes and braces',()=>{
   const encoded=writerEncodeVariant(['Uma frase|alternativa','Texto } e barra \\'],1);
@@ -102,7 +134,13 @@ async function run(){
  assert.ok(results.some(r=>r.word.toLowerCase()==='personagem'));
  console.log('PASS','autocomplete returns current-file terms');tests++;
  const module={exports:{}};
- vm.runInNewContext(fs.readFileSync('main.js','utf8'),{require:getRequire,module,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
+ vm.runInNewContext(fs.readFileSync('main.js','utf8')+'\nmodule.exports.__test={prepareGrammarText};',{require:getRequire,module,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
+ const rawItalic='_Não morre..._';
+ const checked=module.exports.__test.prepareGrammarText(rawItalic);
+ assert.equal(checked.length,rawItalic.length);
+ assert.equal(checked[0],' ');
+ assert.equal(checked.at(-1),' ');
+ console.log('PASS','Live LanguageTool preparation uses the shared Markdown mask');tests++;
  const entry=new module.exports();
  await entry.onload();
  assert.equal(entry.settings.schemaVersion,3);

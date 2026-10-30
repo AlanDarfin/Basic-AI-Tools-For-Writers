@@ -135,3 +135,9 @@ New command-palette entries: **Abrir projetos de escrita** and **Abrir notas do 
 - **Compatibility:** this preview reads existing Longform project metadata; it does not rewrite the index or migrate drafts. Keep Longform installed until full feature parity is validated.
 
 **Known limitations:** This is a foundation, **not** a complete fork. Drag-to-reorder, creating scenes and drafts, custom compilation workflows, goal tracking, and full Longform project-import edge cases are still to be implemented and tested. The standalone `projects.js` file is source/reference; the code is inlined in `main.js` for Obsidian Mobile.
+
+## 1.8.0 — Project editing
+
+The **Projetos de escrita** panel now supports creating Markdown scenes, adding nested subchapters, moving scenes up/down in their lists, and removing scenes from the index without deleting files. The **Projeto** tab can edit project title and scene folder and save a word-count goal. **Rascunhos** are alternate scene-order structures stored in the Basic AI plugin settings, leaving the original Longform index intact. **Compilar** offers YAML stripping, wikilink conversion, separators, and named workflow presets, exporting to a new Markdown note. **Notas** continues to support nested folders and Markdown notes.
+
+**Compatibility and limitations:** Longform index metadata is recognized and the primary scene tree can be edited through Obsidian's frontmatter processor. The imported Longform project is not automatically migrated; there is no full bidirectional synchronization of Longform-specific drafts, custom workflow steps, template expansion, drag-and-drop or every Longform metadata variant. Always back up your vault before editing existing Longform projects. No device-level Obsidian Mobile integration tests have been performed.

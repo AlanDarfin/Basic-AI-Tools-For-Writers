@@ -17,7 +17,7 @@ jobs:
         run: npm run check
       - name: Verify v4 preview metadata
         run: |
-          node -e "const m=require('./manifest.json'),p=require('./package.json');if(m.version!==p.version||!/^4\.0\.0-(?:beta\.\d+|rc\.\d+)$/.test(m.version)||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1)"
+          node -e "const m=require('./manifest.json'),p=require('./package.json');if(m.version!==p.version||!/^4\.0\.0(?:-(?:beta\.\d+|rc\.\d+))?$/.test(m.version)||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1)"
       - name: Package candidate files and checksums
         run: |
           set -euo pipefail

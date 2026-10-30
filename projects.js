@@ -7,30 +7,80 @@ class TextPrompt extends Modal{
  onOpen(){this.contentEl.empty();this.setTitle(this.titleText);let value=this.initial;new Setting(this.contentEl).setName(this.titleText).addText(t=>{t.setValue(value).onChange(v=>value=v);t.inputEl.focus();t.inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();this.close();this.done(value);}})});new Setting(this.contentEl).addButton(b=>b.setButtonText('Confirmar').setCta().onClick(()=>{this.close();this.done(value);}));}
  onClose(){this.contentEl.empty();}
 }
+function lfFlattenScenes(raw){
+ const out=[];
+ function walk(list,depth){
+  if(!Array.isArray(list))return;
+  for(const entry of list){
+   if(Array.isArray(entry)){walk(entry,depth+1);continue;}
+   if(typeof entry==='string'&&entry.trim()){out.push({title:entry,indent:depth});continue;}
+   if(entry&&typeof entry==='object'){
+    const title=entry.title||entry.scene||entry.name;
+    if(typeof title==='string'&&title.trim())out.push({title,indent:Math.max(0,Number.isFinite(+entry.indent)?+entry.indent:depth)});
+    if(Array.isArray(entry.children))walk(entry.children,depth+1);
+   }
+  }
+ }
+ walk(raw,0);
+ return out;
+}
+function lfNestScenes(flat){
+ const result=[],stack=[result];let depth=0;
+ for(const scene of flat){
+  const title=typeof scene==='string'?scene:scene?.title;
+  if(!title||typeof title!=='string')continue;
+  let target=Math.max(0,Math.min(stack.length,Number(scene?.indent)||0));
+  while(depth<target){const nested=[];stack[depth].push(nested);stack.push(nested);depth++;}
+  while(depth>target){stack.pop();depth--;}
+  stack[depth].push(title);
+ }
+ return result;
+}
+function sceneNames(items,out=[]){
+ for(const scene of lfFlattenScenes(items))out.push(scene.title);
+ return out;
+}
 function longformIndex(file,app){
  const data=app.metadataCache.getFileCache(file)?.frontmatter?.longform;
- if(!data||typeof data!=='object')return null;
- return {file,meta:data,title:String(data.title||file.basename),scenes:Array.isArray(data.scenes)?data.scenes:[]};
+ if(!data||typeof data!=='object'||!['scenes','single'].includes(data.format||'scenes'))return null;
+ const title=String(data.title||file.basename);
+ return {file,meta:data,title,format:data.format||'scenes',draftTitle:data.draftTitle||'',scenes:Array.isArray(data.scenes)?data.scenes:[]};
 }
-function sceneNames(items,out=[]){for(const item of items){if(typeof item==='string')out.push(item);else if(item&&typeof item==='object'){if(item.scene)out.push(String(item.scene));if(item.name)out.push(String(item.name));if(Array.isArray(item.children))sceneNames(item.children,out);}}return out;}
+function lfSceneTree(flat){
+ const roots=[],nodes=[];
+ for(const entry of flat){
+  const depth=Math.max(0,Math.min(nodes.length,Number(entry.indent)||0));
+  const node={title:entry.title,indent:depth,children:[]};
+  if(depth===0)roots.push(node);else nodes[depth-1].children.push(node);
+  nodes.length=depth;nodes.push(node);
+ }
+ return roots;
+}
+function lfWordCount(text){
+ return (String(text||'').replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/,'').match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)||[]).length;
+}
+function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Default';this.workflow='Padrão';}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return 'Projetos de escrita';}
  getIcon(){return 'notebook-pen';}
  async onOpen(){
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
-  this.registerEvent(this.app.vault.on('create',()=>this.render()));
-  this.registerEvent(this.app.vault.on('delete',()=>this.render()));
-  this.registerEvent(this.app.vault.on('rename',()=>this.render()));
-  this.registerEvent(this.app.metadataCache.on('changed',()=>this.render()));
+  this.registerEvent(this.app.vault.on('create',()=>this.queueRender()));
+  this.registerEvent(this.app.vault.on('delete',()=>this.queueRender()));
+  this.registerEvent(this.app.vault.on('rename',()=>this.queueRender()));
+  this.registerEvent(this.app.metadataCache.on('changed',file=>{if(file?.path===this.selected)this.queueRender();}));
   await this.render();
  }
+ queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
+ async onClose(){clearTimeout(this.refreshTimer);}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;
   this.root.empty();
   const indexes=this.indexes();
+  const token=++this.renderToken;
   const active=this.app.workspace.getActiveFile();
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)this.selected=activeProject.file.path;
@@ -55,13 +105,15 @@ class ProjectsView extends ItemView{
   this.drawScenes(panels.scenes,project);
   this.drawProject(panels.project,project);
   this.drawCompile(panels.compile,project);
-  await this.drawNotes(panels.notes,project);
+  if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
+  if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
-  const exact=[base+'/'+name+'.md',base+'/'+name,name+'.md',name];
-  return exact.map(p=>this.app.vault.getAbstractFileByPath(p)).find(f=>f instanceof TFile)
-   ||this.app.vault.getMarkdownFiles().find(f=>f.basename===name&&f.path.startsWith(base+'/'));
+  const raw=String(project.meta.sceneFolder||'/').replace(/^\\/+|\\/+$/g,'');
+  const folder=[base,raw].filter(Boolean).join('/');
+  const exact=[[folder,name+'.md'].filter(Boolean).join('/'),[folder,name].filter(Boolean).join('/'),[base,name+'.md'].filter(Boolean).join('/'),name+'.md',name];
+  return exact.map(p=>this.app.vault.getAbstractFileByPath(p)).find(f=>f instanceof TFile)||null;
  }
  openFile(file){if(file instanceof TFile)this.app.workspace.getLeaf(false).openFile(file);}
 
@@ -78,11 +130,17 @@ class ProjectsView extends ItemView{
   });
   await this.render();
  }
- sceneList(project){return Array.isArray(project.meta.scenes)?project.meta.scenes:[];}
- activeScenes(project){return this.draft==='Principal'?project.scenes:(this.prefs(project).drafts[this.draft]||project.scenes);}
+ sceneList(project){return lfFlattenScenes(project.scenes);}
+ activeScenes(project){return this.draft==='Principal'?this.sceneList(project):(this.prefs(project).drafts[this.draft]||this.sceneList(project));}
  async changeScenes(project,change){
-  if(this.draft==='Principal')return this.updateIndex(project,data=>{if(!Array.isArray(data.scenes))data.scenes=[];change(data.scenes);});
-  const prefs=this.prefs(project);change(prefs.drafts[this.draft]);await this.savePrefs();
+  if(this.draft==='Principal')return this.updateIndex(project,data=>{
+   const flat=lfFlattenScenes(data.scenes||[]);
+   change(flat);
+   data.scenes=lfNestScenes(flat);
+  });
+  const prefs=this.prefs(project);
+  if(!prefs.drafts[this.draft])prefs.drafts[this.draft]=this.sceneList(project);
+  change(prefs.drafts[this.draft]);await this.savePrefs();
  }
  async addScene(project,parent=null){
   new TextPrompt(this.app,parent?'Novo subcapítulo':'Nova cena',async raw=>{
@@ -175,7 +233,7 @@ class ProjectsView extends ItemView{
   new Setting(panel).setName('Pasta das cenas').setDesc('Relativa à pasta do índice; não move arquivos existentes.').addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
   const prefs=this.prefs(project);
   new Setting(panel).setName('Meta de palavras').setDesc('Meta total do projeto').addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
-  const count=sceneNames(this.activeScenes(project)).length;
+  const count=this.activeScenes(project).length;
   panel.createEl('p',{text:'Cenas no rascunho: '+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
   panel.createEl('p',{text:'Rascunhos e metas do Basic AI ficam nas configurações do plugin; o índice Longform original não é reescrito por essas opções.'});
  }

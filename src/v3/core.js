@@ -111,10 +111,14 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
   await plugin.writerSnapshots.create(file,'Antes de '+reason,{content:text});
  }
  const next=text.slice(0,from)+replacement+text.slice(to);
- if(editor)editor.replaceRange(replacement,writerOffsetToPos(editor,from),writerOffsetToPos(editor,to));
- else await plugin.app.vault.process(file,old=>{
-   if(old.slice(from,to)!==expected)throw Error('O arquivo foi editado simultaneamente.');
-   return next;
+ if(editor){
+  // A snapshot may involve async I/O: never apply stale offsets afterward.
+  if(editor.getValue()!==text)throw Error('A nota mudou durante o snapshot. Faça uma nova revisão.');
+  editor.replaceRange(replacement,writerOffsetToPos(editor,from),writerOffsetToPos(editor,to));
+ }else await plugin.app.vault.process(file,old=>{
+   // A matching fragment is not enough: concurrent edits elsewhere must survive.
+   if(old!==text)throw Error('O arquivo foi editado simultaneamente.');
+   return old.slice(0,from)+replacement+old.slice(to);
  });
  return next;
 }

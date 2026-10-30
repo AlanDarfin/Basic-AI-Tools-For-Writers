@@ -17,6 +17,29 @@ const reviewMarkField=StateField.define({
  },
  provide:f=>EditorView.decorations.from(f)
 });
+function prepareGrammarText(text){
+ let masked=withoutFrontmatter(text);
+ const hide=(re)=>{masked=masked.replace(re,match=>match.replace(/[^\r\n]/g,' '));};
+ hide(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm);
+ hide(/^~~~[^\n]*\n[\s\S]*?^~~~[^\n]*$/gm);
+ hide(/^`{1,3}[^\n]*`{1,3}$/gm);
+ hide(/\!\[[^\]]*\]\([^\n)]*\)/g);
+ hide(/\[\[[^\]\n]*\]\]/g);
+ hide(/^\s{0,3}#{1,6}(?=\s)/gm);
+ hide(/\[([^\]]+)\]\([^\n)]*\)/g);
+ return masked;
+}
+function meaningfulGrammarMatch(source,match){
+ const offset=match.offset,length=match.length;
+ if(!Number.isInteger(offset)||!Number.isInteger(length)||offset<0||length<=0||offset+length>source.length)return false;
+ const rule=String(match.rule?.id||'').toUpperCase();
+ const category=String(match.rule?.category?.id||'').toUpperCase();
+ const text=source.slice(offset,offset+length);
+ if(/WHITESPACE|SPACE|TYPOGRAPHY|PUNCTUATION/.test(rule)&&/^\s+$/.test(text))return false;
+ if(/WHITESPACE_RULE|COMMA_PARENTHESIS_WHITESPACE|DOUBLE_PUNCTUATION/.test(rule))return false;
+ if(category==='TYPOGRAPHY'&&/^\s+$/.test(text))return false;
+ return true;
+}
 function withoutFrontmatter(text){
  const match=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
  if(!match)return text;
@@ -200,7 +223,8 @@ class DictionaryView extends ItemView{
     this.reviewFilePath=file.path;
     this.reviewSource=source;
     if(this.reviewMode.value==='grammar'){
-      const matches=await this.plugin.checkGrammar(withoutFrontmatter(source));
+      const rawMatches=await this.plugin.checkGrammar(prepareGrammarText(source));
+      const matches=rawMatches.filter(m=>meaningfulGrammarMatch(source,m));
       this.plugin.showReviewMarks(file,matches);
       this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found'));
       if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
@@ -223,10 +247,14 @@ class DictionaryView extends ItemView{
   const original=source.slice(start,end);
   const card=this.reviewResults.createDiv({cls:'writer-review-card'});
   card.createEl('strong',{text:match.rule?.description||match.message||msg('Sugestão','Suggestion')});
-  card.createEl('p',{text:match.message||'',cls:'writer-review-reason'});
-  card.createEl('p',{text:msg('Trecho: ','Excerpt: ')+source.slice(Math.max(0,start-65),Math.min(source.length,end+65))});
+  const detail=card.createEl('details',{cls:'writer-review-details'});
+  detail.createEl('summary',{text:msg('Ver contexto e justificativa','View context and explanation')});
+  detail.createEl('p',{text:match.message||'',cls:'writer-review-reason'});
+  detail.createEl('p',{text:msg('Trecho: ','Excerpt: ')+source.slice(Math.max(0,start-65),Math.min(source.length,end+65))});
   const suggestions=(match.replacements||[]).slice(0,5).map(r=>r.value).filter(v=>typeof v==='string');
+  const selectionLabel=card.createEl('label',{text:msg('Substituir por','Replace with'),cls:'writer-review-select-label'});
   const select=card.createEl('select');
+  selectionLabel.appendChild(select);
   if(!suggestions.length){const opt=select.createEl('option',{text:msg('Sem substituição automática','No automatic replacement')});opt.value='';}
   else for(const suggestion of suggestions){const opt=select.createEl('option',{text:suggestion||msg('(remover)','(remove)')});opt.value=suggestion;}
   const actions=card.createDiv({cls:'writer-review-actions'});
@@ -246,7 +274,7 @@ class DictionaryView extends ItemView{
     }catch(e){new Notice(e.message||String(e),7000);}
   });
   actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>{card.remove();this.plugin.hideReviewMark(file,start,end);});
-  actions.createEl('button',{text:msg('Por quê? / Alternativas','Why? / Alternatives')}).addEventListener('click',()=>this.explainGrammar(file,source,match,suggestions,card));
+  actions.createEl('button',{text:msg('Explicar e sugerir alternativas','Explain and suggest alternatives')}).addEventListener('click',()=>{detail.open=true;this.explainGrammar(file,source,match,suggestions,detail);});
  }
  async explainGrammar(file,source,match,suggestions,card){
   const explanation=card.createDiv({cls:'writer-review-explanation markdown-rendered'});

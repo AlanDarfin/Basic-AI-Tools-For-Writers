@@ -15,19 +15,19 @@ class WriterVariants{
   return found?{...active,found}:null;
  }
  async createFromSelection(){
-  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
-  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
+  if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
+  const active=this.active();if(!active)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const text=active.editor.getSelection();
-  if(!text){if(this.atCaret())return this.open();return new Notice('Selecione uma palavra ou trecho para criar variantes.');}
+  if(!text){if(this.atCaret())return this.open();return new Notice(writerUi("Selecione uma palavra ou trecho para criar variantes.","Select a word or passage to create variants."));}
   if(text.length>16000)return new Notice('Selecione um trecho menor.');
   const from=active.editor.posToOffset(active.editor.getCursor('from'));
   const to=active.editor.posToOffset(active.editor.getCursor('to'));
   const modal=new Modal(this.plugin.app);let alternative='';
   modal.onOpen=()=>{
-   modal.setTitle('Criar variantes de escrita');
+   modal.setTitle(writerUi("Criar variantes de escrita","Create writing variants"));
    modal.contentEl.createEl('p',{text:'Original: '+text.slice(0,400)});
    new Setting(modal.contentEl).setName('Primeira alternativa').addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar variantes').setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Criar variantes","Create variants")).setCta().onClick(async()=>{
     if(!alternative.trim()||alternative===text)return new Notice('Escreva uma alternativa diferente.');
     try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),'criar variantes');modal.close();}
     catch(e){new Notice(e.message);}
@@ -35,10 +35,10 @@ class WriterVariants{
   };modal.open();
  }
  async addFromReview(file,source,match,replacement){
-  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
+  if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
   const from=match.offset,to=from+match.length,original=source.slice(from,to);
-  if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice('Sugestão inválida.');
-  if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice('A sugestão contém caracteres de controle. Use o editor de variantes.');
+  if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice(writerUi("Sugestão inválida.","Invalid suggestion."));
+  if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice(writerUi("A sugestão contém caracteres de controle. Use o editor de variantes.","The suggestion contains control characters. Use the variant editor."));
   try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),'criar variante da revisão');
    new Notice('Variante adicionada sem descartar o original.');
   }catch(e){new Notice(e.message);}
@@ -50,16 +50,16 @@ class WriterVariants{
   await writerSafeReplace(this.plugin,selected,found.from,found.to,found.raw,replacement,commit?'confirmar variante':'editar variantes');
  }
  async open(){
-  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
+  if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
   const current=this.atCaret();
-  if(!current)return new Notice('Posicione o cursor dentro de uma expressão de variantes.');
+  if(!current)return new Notice(writerUi("Posicione o cursor dentro de uma expressão de variantes.","Place the cursor inside a variant expression."));
   const {found,file}=current;
   if(this.plugin.closeReviewPopup)this.plugin.closeReviewPopup();
   const modal=new Modal(this.plugin.app);
   let items=[...found.variants],selected=found.active;
   const render=()=>{
    modal.contentEl.empty();modal.setTitle('Editar variantes');
-   modal.contentEl.createEl('p',{text:'Escolha a alternativa que ficará visível ou edite as opções. Nenhuma alteração acontece até salvar.'});
+   modal.contentEl.createEl('p',{text:writerUi("Escolha a alternativa que ficará visível ou edite as opções. Nenhuma alteração acontece até salvar.","Choose the visible alternative or edit the options. Nothing changes until you save.")});
    items.forEach((value,i)=>{
     const box=modal.contentEl.createDiv({cls:'writer-variant-option'});
     const header=box.createDiv({cls:'writer-variant-option-header'});
@@ -80,12 +80,12 @@ class WriterVariants{
    });
    const actions=modal.contentEl.createDiv({cls:'writer-variant-actions'});
    actions.createEl('button',{text:'+ Alternativa'}).addEventListener('click',()=>{items.push('');render();});
-   actions.createEl('button',{text:'Salvar',cls:'mod-cta'}).addEventListener('click',async()=>{
+   actions.createEl('button',{text:writerUi("Salvar","Save"),cls:'mod-cta'}).addEventListener('click',async()=>{
     try{if(items.some(x=>!x.trim()))throw Error('Preencha todas as alternativas.');
      await this.replace(found,items,selected,false,file);modal.close();new Notice('Variantes salvas.');
     }catch(e){new Notice(e.message);}
    });
-   actions.createEl('button',{text:'Confirmar escolhida'}).addEventListener('click',async()=>{
+   actions.createEl('button',{text:writerUi("Confirmar escolhida","Commit selected")}).addEventListener('click',async()=>{
     try{await this.replace(found,items,selected,true,file);modal.close();}
     catch(e){new Notice(e.message);}
    });
@@ -104,9 +104,9 @@ class WriterVariants{
   catch(e){new Notice(e.message);}
  }
  async commitAll(){
-  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
+  const active=this.active();if(!active)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const text=active.editor.getValue(),items=writerParseVariants(text);
-  if(!items.length)return new Notice('Esta nota não contém variantes.');
+  if(!items.length)return new Notice(writerUi("Esta nota não contém variantes.","This note has no variants."));
   const run=async()=>{
    let result=text;
    for(const item of [...items].reverse())result=result.slice(0,item.from)+item.variants[item.active]+result.slice(item.to);
@@ -122,8 +122,8 @@ class WriterVariants{
  }
  async aiAlternatives(){
   if(!this.options.enabled)return new Notice('Ative Variantes.');
-  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
-  const selected=active.editor.getSelection();if(!selected||selected.length>6000)return new Notice('Selecione um trecho de até 6000 caracteres.');
+  const active=this.active();if(!active)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
+  const selected=active.editor.getSelection();if(!selected||selected.length>6000)return new Notice(writerUi("Selecione um trecho de até 6000 caracteres.","Select a passage of up to 6000 characters."));
   const from=active.editor.posToOffset(active.editor.getCursor('from')),to=active.editor.posToOffset(active.editor.getCursor('to'));
   try{
    new Notice('Gerando alternativas com o provedor de IA configurado…');
@@ -133,7 +133,7 @@ class WriterVariants{
    if(!alternatives.length)throw Error('A IA não retornou alternativas válidas.');
    await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),'inserir variantes da IA');
    new Notice('Alternativas adicionadas como variantes.');
-  }catch(e){new Notice('Não foi possível gerar variantes: '+e.message);}
+  }catch(e){new Notice(writerUi("Não foi possível gerar variantes: ","Could not generate variants: ")+e.message);}
  }
  editorExtension(){
   const plugin=this.plugin;

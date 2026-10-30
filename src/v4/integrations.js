@@ -234,26 +234,51 @@ class WriterV4Extras{
      if(update.selectionSet||update.docChanged)this.refresh();
     }
     refresh(){
-     if(!owner.config.toolbar.enabled||(this.isMobile&&owner.config.toolbar.mobileMode!=='floating')){
+     if(!owner.config.toolbar.enabled||(this.isMobile&&owner.config.toolbar.mobileMode==='native')){
       this.dom.removeClass('is-visible');return;
      }
-     const selection=this.view.state.selection.main;
-     if(selection.empty){this.savedRange=null;this.dom.removeClass('is-visible');return;}
-     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
-     this.savedRange={from:selection.from,to:selection.to};
-     if(this.isMobile){
-      // Bottom-docked instead of covering Android's native selection handles.
-      this.dom.style.removeProperty('top');
-      this.dom.style.removeProperty('left');
-      this.dom.addClass('is-visible');
-      return;
+     const selected=this.view.state.selection.main;
+     if(selected.empty){
+      this.savedRange=null;this.expanded=false;this.dismissedKey=null;
+      this.dom.removeClass('is-visible','writer-v4-expanded');return;
      }
-     const pos=this.view.coordsAtPos(selection.from);
-     if(!pos){this.dom.removeClass('is-visible');return;}
+     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
+     const key=selected.from+':'+selected.to;
+     if(this.dismissedKey===key)return;
+     if(this.savedRange&&(this.savedRange.from!==selected.from||this.savedRange.to!==selected.to)){
+      this.expanded=false;this.dom.removeClass('writer-v4-expanded');
+     }
+     this.savedRange={from:selected.from,to:selected.to};
      this.dom.addClass('is-visible');
-     const box=this.view.dom.getBoundingClientRect();
+     if(this.isMobile){this.positionMobile();return;}
+     const pos=this.view.coordsAtPos(selected.from),box=this.view.dom.getBoundingClientRect();
+     if(!pos){this.dom.removeClass('is-visible');return;}
      this.dom.style.top=Math.max(4,pos.top-box.top-42)+'px';
      this.dom.style.left=Math.max(0,Math.min(box.width-240,pos.left-box.left))+'px';
+    }
+    positionMobile(){
+     if(!this.isMobile||!this.dom.hasClass('is-visible'))return;
+     const selected=this.view.state.selection.main;
+     const offset=selected.empty?this.savedRange?.to:selected.to;
+     if(!Number.isInteger(offset))return;
+     const rect=this.view.coordsAtPos(offset);
+     if(!rect)return;
+     const win=this.ownerDocument?.defaultView,vv=this.visualViewport;
+     const leftEdge=vv?.offsetLeft||0,topEdge=vv?.offsetTop||0;
+     const width=vv?.width||win?.innerWidth||360,height=vv?.height||win?.innerHeight||650;
+     const barHeight=this.dom.offsetHeight||46,barWidth=this.dom.offsetWidth||185;
+     const safeBottom=topEdge+height-12,safeTop=topEdge+46;
+     // Avoid both Android's native selection popup and Obsidian's keyboard ribbon.
+     let top=rect.bottom+62;
+     if(top+barHeight>safeBottom)top=rect.top-barHeight-66;
+     top=Math.max(safeTop,Math.min(top,safeBottom-barHeight));
+     const left=Math.max(leftEdge+8,Math.min(rect.left-40,leftEdge+width-barWidth-8));
+     this.dom.style.setProperty('top',top+'px','important');
+     this.dom.style.setProperty('left',left+'px','important');
+     this.dom.style.setProperty('inset-block-start',top+'px','important');
+     this.dom.style.setProperty('inset-inline-start',left+'px','important');
+     this.dom.style.setProperty('bottom','auto','important');
+     this.dom.style.setProperty('right','auto','important');
     }
     destroy(){
      clearTimeout(this.selectionTimer);
@@ -261,6 +286,8 @@ class WriterV4Extras{
      this.view.dom.removeEventListener('touchend',this.onSelection);
      this.view.dom.removeEventListener('keyup',this.onSelection);
      this.ownerDocument?.removeEventListener('selectionchange',this.onSelection);
+     this.visualViewport?.removeEventListener?.('resize',this.onViewport);
+     this.visualViewport?.removeEventListener?.('scroll',this.onViewport);
      this.dom.remove();
     }
    }));

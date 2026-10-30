@@ -14,7 +14,7 @@ function writerMergeV3(settings){
  }
  base.schemaVersion=3;return base;
 }
-function writerMaskMarkdown(source){
+function writerMaskMarkdown(source,keepVariants=false){
  const text=String(source||'');
  const hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
@@ -29,14 +29,16 @@ function writerMaskMarkdown(source){
   else if(inside)hide(at,at+line.length);
   at+=line.length+1;
  }
- const masks=[/\x60+[^\x60\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\n]*\]\([^\n)]*\)/g,/!?\[\[[^\]\n]*\]\]/g,/(\[[^\]\n]+\])\([^\n)]*\)/g,/\{\{[^\n]{1,6000}?\}\}\^\d+/g];
+ const masks=[/\x60+[^\x60\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\n]*\]\([^\n)]*\)/g,/!?\[\[[^\]\n]*\]\]/g,/(\[[^\]\n]+\])\([^\n)]*\)/g]; if(!keepVariants)masks.push(/\{\{[^\n]{1,6000}?\}\}\^\d+/g);
  for(const re of masks){let m;while((m=re.exec(text))){hide(m.index,m.index+m[0].length);if(m[0].length===0)re.lastIndex++;}}
  let out='';for(let i=0;i<text.length;i++)out+=hidden[i]?' ':text[i];return out;
 }
 function writerParseVariants(input){
  const text=String(input||''),found=[];let pos=0;
+ const exposed=writerMaskMarkdown(text,true);
  while(pos<text.length){
   const from=text.indexOf('{{',pos);if(from<0)break;
+  if(exposed.slice(from,from+2)!=='{{'){pos=from+2;continue;}
   let i=from+2,escaped=false,part='',items=[],end=-1;
   while(i<text.length&&i-from<32000){
    const c=text[i];

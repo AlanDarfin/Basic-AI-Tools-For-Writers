@@ -97,6 +97,7 @@ class ProjectsView extends ItemView{
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;
+  const previousScroll=this.root.scrollTop;
   this.root.empty();
   const indexes=this.indexes();
   const token=++this.renderToken;
@@ -131,7 +132,7 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')]]){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]]){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -142,7 +143,9 @@ class ProjectsView extends ItemView{
   this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
+  if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
+  this.root.scrollTop=previousScroll;
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
@@ -245,19 +248,21 @@ class ProjectsView extends ItemView{
    for(let j=i;j<end;j++)scenes[j].indent+=delta;
   });}catch(e){new Notice(e.message);}
  }
- async moveSceneBefore(project,source,target){
+ async moveSceneBefore(project,source,target){return this.moveSceneRelative(project,source,target,false);}
+ async moveSceneRelative(project,source,target,after=false){
   if(source===target)return;
   try{await this.changeScenes(project,scenes=>{
    const i=this.sceneIndex(scenes,source),j=this.sceneIndex(scenes,target);
    if(i<0||j<0)return;
    const end=this.subtreeEnd(scenes,i);
    if(j>=i&&j<end)return;
-   const part=scenes.splice(i,end-i);
-   const dest=this.sceneIndex(scenes,target);
-   if(dest<0)return;
-   const shift=scenes[dest].indent-part[0].indent;
+   const level=scenes[j].indent,part=scenes.splice(i,end-i);
+   const targetIndex=this.sceneIndex(scenes,target);
+   if(targetIndex<0)throw Error('Cena de destino não encontrada.');
+   const destination=after?this.subtreeEnd(scenes,targetIndex):targetIndex;
+   const shift=level-part[0].indent;
    part.forEach(item=>item.indent=Math.max(0,item.indent+shift));
-   scenes.splice(dest,0,...part);
+   scenes.splice(destination,0,...part);
   });}catch(e){new Notice(e.message);}
  }
  async removeSceneFromIndex(project,title){
@@ -317,11 +322,41 @@ class ProjectsView extends ItemView{
    const name=item.title;
    const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
    row.style.paddingLeft=(Math.min(12,level)*10)+'px';
+   row.dataset.sceneTitle=name;
    row.draggable=true;
-   row.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',name);e.dataTransfer.effectAllowed='move';});
-   row.addEventListener('dragover',e=>{e.preventDefault();row.addClass('writer-project-dragover');});
-   row.addEventListener('dragleave',()=>row.removeClass('writer-project-dragover'));
-   row.addEventListener('drop',e=>{e.preventDefault();row.removeClass('writer-project-dragover');const source=e.dataTransfer.getData('text/plain');if(source)this.moveSceneBefore(project,source,name);});
+   const grip=row.createEl('button',{text:'⠿',cls:'writer-project-drag-handle',attr:{title:lfMsg('Arraste para mover ou toque e escolha o destino','Drag to reorder or tap and choose a destination'),'aria-label':lfMsg('Mover capítulo: ','Move chapter: ')+name}});
+   grip.draggable=true;
+   grip.addEventListener('click',()=>{
+    if(this.scenePickup?.path===project.file.path&&this.scenePickup?.source===name){this.scenePickup=null;this.render();return;}
+    if(this.scenePickup?.path===project.file.path&&this.scenePickup?.draft===this.draft){
+     const source=this.scenePickup.source;this.scenePickup=null;this.moveSceneRelative(project,source,name,false);
+    }else{
+     this.scenePickup={path:project.file.path,draft:this.draft,source:name};
+     new Notice(lfMsg('Capítulo selecionado. Toque na alça do destino para mover antes dele.','Chapter selected. Tap the destination handle to move before it.'),4000);
+     row.addClass('writer-project-pickup');
+    }
+   });
+   if(this.scenePickup?.source===name&&this.scenePickup?.path===project.file.path)row.addClass('writer-project-pickup');
+   row.addEventListener('dragstart',e=>{
+    if(!e.dataTransfer)return;
+    e.dataTransfer.setData('application/x-basic-ai-scene',JSON.stringify({path:project.file.path,draft:this.draft,name}));
+    e.dataTransfer.effectAllowed='move';row.addClass('writer-project-dragging');
+   });
+   row.addEventListener('dragend',()=>{row.removeClass('writer-project-dragging');row.removeClass('writer-project-dragover');});
+   row.addEventListener('dragover',e=>{
+    if(!e.dataTransfer?.types?.includes('application/x-basic-ai-scene'))return;
+    e.preventDefault();e.dataTransfer.dropEffect='move';row.addClass('writer-project-dragover');
+    row.toggleClass('writer-project-drop-after',e.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2);
+   });
+   row.addEventListener('dragleave',e=>{if(!row.contains(e.relatedTarget)){row.removeClass('writer-project-dragover');row.removeClass('writer-project-drop-after');}});
+   row.addEventListener('drop',e=>{
+    e.preventDefault();e.stopPropagation();
+    const after=e.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
+    row.removeClass('writer-project-dragover');row.removeClass('writer-project-drop-after');
+    let data;try{data=JSON.parse(e.dataTransfer?.getData('application/x-basic-ai-scene')||'null');}catch(_){return;}
+    if(data?.path===project.file.path&&data?.draft===this.draft&&typeof data.name==='string')
+     this.moveSceneRelative(project,data.name,name,after);
+   });
    const file=this.resolveScene(project,name);
    const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
    titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));

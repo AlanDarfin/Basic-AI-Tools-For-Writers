@@ -1,7 +1,15 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.5** (development branch). Not a stable release.
+Status: **4.0.0-beta.6** (development branch). Not a stable release.
 
+
+## Beta.6 — native Android editing commands and automatic LanguageTool checks
+
+- **Obsidian-native Android toolbar:** the plugin does not render a second floating toolbar on mobile. Each formatting operation is registered as an independent command: Bold, Italic, Heading H2, Blockquote, List, and Link. AI writing actions also have individual commands. Users can pin selected commands in Obsidian's native mobile editing toolbar. Desktop floating controls are unchanged.
+- **Automatic LanguageTool rechecking:** while the **Review** tab is open in grammar mode, editing the reviewed Markdown file schedules an automatic check after 3.5 seconds of inactivity (adjustable 2–15 seconds). Checks are spaced at least 9 seconds apart; older responses are discarded if text changed. The source is never modified automatically.
+- **Long notes:** to avoid excessive requests and LanguageTool length limits, grammar checks use a 12,000-character window near the editor cursor (16,000 on manual review), remapping offsets back to their original positions. The review panel shows when only a portion was examined.
+- **Privacy:** while Review is active, this feature sends the checked text to the LanguageTool endpoint configured in **Settings → Review**. Disable **Automatic LanguageTool check** to allow manual-only analysis.
+- **Regression tests:** new checks verify windowed offsets, delays, active-review gating, and toolbar command registration. Manual Android testing is still advised.
 
 ## Beta.5 — automatic Android toolbar and compact settings switches
 

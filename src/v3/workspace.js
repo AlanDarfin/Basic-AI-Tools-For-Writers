@@ -30,7 +30,15 @@ class WriterToolsView extends ItemView{
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
-  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['reviewV4',writerUi('Diff e perfis','Diff & profiles')],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
+  const sections=[
+   ['complements',writerUi("Sugestões","Suggestions"),'complements'],
+   ['variants',writerUi("Variantes","Variants"),'variants'],
+   ['reviewV4',writerUi('Diff e perfis','Diff & profiles'),'diff'],
+   ['snapshots',writerUi("Versões","Versions"),'snapshots'],
+   ['extras',writerUi('Extras','Extras'),'tts']
+  ].filter(([,label,feature])=>writerModuleOn(this.plugin,feature));
+  if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
+  for(const [id,label] of sections){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
@@ -41,8 +49,8 @@ class WriterToolsView extends ItemView{
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
   if(this.tab==='extras')this.renderExtras(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
-  this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
-  this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
+  if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
+  if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
   this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
  }
  renderComplements(panel){
@@ -54,7 +62,7 @@ class WriterToolsView extends ItemView{
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(),true);
   this.addButton(actions,writerUi("Reindexar cofre","Reindex vault"),async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice(writerUi("Índice de sugestões atualizado.","Suggestion index updated."));});
-  this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
+  if(writerModuleOn(this.plugin,'dictionary'))this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
   const tracked=this.plugin.writerComplements?.cache?.size||0;
   panel.createEl('p',{text:tracked+' arquivo(s) no índice atual.',cls:'writer-tools-muted'});
  }
@@ -144,6 +152,7 @@ class WriterToolsView extends ItemView{
   this.addButton(actions,writerUi('Pausar','Pause'),()=>tools.pause());
   this.addButton(actions,writerUi('Continuar','Resume'),()=>tools.resume());
   this.addButton(actions,writerUi('Parar','Stop'),()=>tools.stop());
+  if(!writerModuleOn(this.plugin,'projects'))return;
   const nav=panel.createDiv({cls:'writer-extras-card writer-extras-navigation'});
   nav.createEl('h4',{text:writerUi('Projetos e organização','Projects & organization')});
   nav.createEl('p',{text:writerUi('Acesse rapidamente as tarefas do Longform.','Quick access to Longform project tasks.')});

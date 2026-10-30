@@ -98,11 +98,18 @@ class ProjectsView extends ItemView{
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.'});return;}
   if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
-  this.draft=this.lastSelected===this.selected?this.draft:'Principal';this.lastSelected=this.selected;
+  if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
+  this.lastSelected=this.selected;
   selector.value=this.selected;
   selector.addEventListener('change',()=>{this.selected=selector.value;this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
   this.currentProject=project;
+  if(project.format==='scenes'&&!project.scenes.length){
+   try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
+    const parsed=fm?parseYaml(fm[1]):null;
+    if(Array.isArray(parsed?.longform?.scenes)&&parsed.longform.scenes.length){project.meta={...project.meta,...parsed.longform};project.scenes=parsed.longform.scenes;}
+   }catch(e){console.warn('[Basic AI] Não foi possível ler o índice Longform',e);}
+  }
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
@@ -314,7 +321,7 @@ class ProjectsView extends ItemView{
     }
     const payload={longform:{format:'scenes',title:project.title,draftTitle:name,sceneFolder:'/',scenes:lfNestScenes(scenes),ignoredFiles:[]}};
     const index=await this.app.vault.create(path,'---\n'+stringifyYaml(payload)+'---\n');
-    this.selected=index.path;this.draft='Principal';await this.render();
+    this.selected=index.path;this.draft='Principal';await this.render();this.queueRender();
     new Notice('Rascunho Longform criado sem alterar o original.');
    }catch(e){new Notice('Não foi possível criar rascunho: '+e.message);}
   }).open();
@@ -644,7 +651,7 @@ class ProjectsView extends ItemView{
  trashProjectItem(file){
   new ConfirmProjectAction(this.app,'Mover para a lixeira',
    'Enviar “'+file.name+'” para a lixeira do Obsidian? Esta ação inclui os arquivos internos se for uma pasta.',
-   async()=>{await this.app.fileManager.trashFile(file);await this.render();}).open();
+   async()=>{await this.app.vault.trash(file,false);await this.render();}).open();
  }
  promptNewProject(){
   const modal=new Modal(this.app),active=this.app.workspace.getActiveFile();
@@ -665,7 +672,7 @@ class ProjectsView extends ItemView{
      const data={format,title,sceneFolder:'/',scenes:[],ignoredFiles:[]};
      if(format==='single'){delete data.sceneFolder;delete data.scenes;delete data.ignoredFiles;}
      const file=await this.app.vault.create(path,'---\n'+stringifyYaml({longform:data})+'---\n\n');
-     modal.close();this.selected=file.path;this.draft='Principal';await this.render();this.openFile(file);
+     modal.close();this.selected=file.path;this.draft='Principal';await this.render();this.queueRender();this.openFile(file);
     }catch(e){new Notice(e.message,7000);}
    }));
   };
@@ -737,4 +744,4 @@ class ProjectsView extends ItemView{
  }
 
 }
-module.exports={ProjectsView,PROJECT_VIEW};
+module.exports={ProjectsView,PROJECT_VIEW,lfFlattenScenes,lfNestScenes,lfSceneTree,lfWordCount};

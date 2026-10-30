@@ -490,15 +490,15 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     let url,headers={'Content-Type':'application/json'},body;
     if(id==='gemini'){
       url='https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent';
-      headers['x-goog-api-key']=key;body={systemInstruction:{parts:[{text:instruction}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:mode==='filetranslate'?4096:700,...(mode==='writing'&&this.settings.assistantSendTemperature!==false?{temperature:Number(this.settings.assistantTemperature??0.7)}:{})}};
+      headers['x-goog-api-key']=key;body={systemInstruction:{parts:[{text:instruction}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{maxOutputTokens:(mode==='filetranslate'||mode==='review')?4096:700,...(mode==='writing'&&this.settings.assistantSendTemperature!==false?{temperature:Number(this.settings.assistantTemperature??0.7)}:{})}};
     }else if(id==='claude'){
       url='https://api.anthropic.com/v1/messages';headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';
-      body={model,max_tokens:mode==='filetranslate'?4096:700,system:instruction,messages:[{role:'user',content:input}],...(mode==='writing'&&this.settings.assistantSendTemperature!==false?{temperature:Number(this.settings.assistantTemperature??0.7)}:{})};
+      body={model,max_tokens:(mode==='filetranslate'||mode==='review')?4096:700,system:instruction,messages:[{role:'user',content:input}],...(mode==='writing'&&this.settings.assistantSendTemperature!==false?{temperature:Number(this.settings.assistantTemperature??0.7)}:{})};
     }else{
       url=id==='custom'?this.settings.customEndpoint:urls[id];
       if(!url)throw new Error(t('endpoint'));
       if(id!=='ollama'||key)headers.Authorization='Bearer '+(key||'ollama');
-      body={model,max_tokens:mode==='filetranslate'?4096:700,messages:[{role:'system',content:instruction},{role:'user',content:input}],...(mode==='writing'&&this.settings.assistantSendTemperature!==false?{temperature:Number(this.settings.assistantTemperature??0.7)}:{})};
+      body={model,max_tokens:(mode==='filetranslate'||mode==='review')?4096:700,messages:[{role:'system',content:instruction},{role:'user',content:input}],...(mode==='writing'&&this.settings.assistantSendTemperature!==false?{temperature:Number(this.settings.assistantTemperature??0.7)}:{})};
     }
     const parsed=new URL(url);if(parsed.username||parsed.password||!(parsed.protocol==='https:'||(id==='ollama'&&parsed.protocol==='http:')))throw new Error('HTTPS required (HTTP is permitted for Ollama only)');
     const response=await requestUrl({url,method:'POST',headers,body:JSON.stringify(body),throw:false});

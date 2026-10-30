@@ -1,7 +1,14 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.3** (development branch). Not a stable release.
+Status: **4.0.0-beta.4** (development branch). Not a stable release.
 
+
+## Beta.4 — hierarchy and Android toolbar polish
+
+- **Longform indentation:** restores per-level visual offset under the compact mobile grid, adds a tinted guide for nested chapters and a clear `↳ 1` / `↳ 2` label at each nested level. Existing up/down and drag controls stay in one row.
+- **Mobile editing toolbar:** moves from a keyboard-adjacent fixed dock to a compact pill positioned near the selected passage, below Android's native selection popup where possible. Omits quote/list controls already present in native editing bars.
+- **Mobile preference:** configure **Integrated tools → Toolbar on Android → Near selection / Off on mobile** to avoid overlap with Obsidian's native toolbar.
+- Automated regression assertions cover depth indicators, CSS indentation and toolbar location/opt-out. Desktop formatting controls stay available.
 
 ## Beta.3 — Android repair release
 

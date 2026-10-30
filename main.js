@@ -1057,6 +1057,7 @@ class DictionarySettings extends PluginSettingTab{
     ['dictionary',msg('Dicionário','Dictionary')],
     ['translation',msg('Tradução','Translation')],
     ['assistant',msg('Chat','Chat')],
+    ['projects',msg('Projetos','Projects')],
     ['review',msg('Revisão','Review')],
     ['reviewAI',msg('Revisores IA','AI reviewers')],
     ['providers',msg('APIs','APIs')],
@@ -1106,6 +1107,12 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(panel).setName(t('transProvider')).addDropdown(d=>{for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.translationProvider).onChange(async v=>{this.plugin.settings.translationProvider=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(t('target')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.targetLanguage).onChange(async v=>{this.plugin.settings.targetLanguage=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(t('source')).addDropdown(d=>{d.addOption('auto',msg('Automático','Automatic'));for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.sourceLanguage||'auto').onChange(async v=>{this.plugin.settings.sourceLanguage=v;await this.plugin.saveSettings();});});
+    }else if(id==='projects'){
+      panel.createEl('h3',{text:msg('Projetos de escrita','Writing projects')});
+      panel.createEl('p',{text:msg('Compatibilidade com índices Longform, cenas, rascunhos, notas organizadas, metas e compilação. Os índices existentes são reconhecidos automaticamente, sem importação destrutiva.','Longform-compatible indexes, scenes, drafts, organized notes, goals and compilation. Existing indexes are detected automatically, without destructive migration.'),cls:'dictionary-muted'});
+      new Setting(panel).setName(msg('Abrir gerenciador de projetos','Open project manager')).addButton(b=>b.setButtonText(msg('Abrir projetos','Open projects')).setCta().onClick(()=>this.plugin.openProjects()));
+      new Setting(panel).setName(msg('Abrir notas do projeto','Open project notes')).addButton(b=>b.setButtonText(msg('Abrir notas','Open notes')).onClick(()=>this.plugin.openProjects('notes')));
+      panel.createEl('p',{text:msg('Uma cópia do índice é salva em _Backups antes da primeira alteração da sessão. Compilações criam novos arquivos; scripts de workflows externos não são executados.','A copy of the index is saved under _Backups before the first edit of the session. Compilations create new files; external workflow scripts are not executed.'),cls:'dictionary-muted'});
     }else if(id==='providers'){
       for(const [provider,label] of AI_PROVIDERS){
         new Setting(panel).setName(label+' — '+t('key')).addText(x=>{x.inputEl.type='password';x.setValue(this.plugin.settings.aiKeys[provider]||'').onChange(async v=>{this.plugin.settings.aiKeys[provider]=v.trim();await this.plugin.saveSettings();});});
@@ -1181,6 +1188,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.addCommand({id:'start-writing-session',name:msg('Iniciar sessão de escrita','Start writing session'),callback:async()=>{await this.openProjects('project');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)await v.startWritingSession(v.currentProject);}});
     this.addCommand({id:'stop-writing-session',name:msg('Encerrar sessão de escrita','Stop writing session'),callback:async()=>{await this.openProjects('project');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)await v.stopWritingSession(v.currentProject);}});
     this.addCommand({id:'open-project-notes',name:msg('Abrir notas do projeto','Open project notes'),callback:()=>this.openProjects('notes')});
+    this.addCommand({id:'new-project-note',name:msg('Criar nota rápida do projeto','Create quick project note'),callback:async()=>{await this.openProjects('notes');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)v.promptNote(v.notesRoot(v.currentProject));}});
     this.addSettingTab(new DictionarySettings(this.app,this));
     this.addRibbonIcon('book-open',msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),()=>this.activateView());
     this.addRibbonIcon('notebook-pen',msg('Projetos de escrita','Writing projects'),()=>this.openProjects());

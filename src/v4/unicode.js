@@ -107,6 +107,11 @@ class WriterUnicode{
   const input=row.createEl('input',{attr:{type:'text',placeholder:'U+2764'}});
   row.createEl('button',{text:txt('Inserir código','Insert code point')}).addEventListener('click',()=>this.insertCodePoint(input.value));
   row.createEl('button',{text:txt('Pesquisar símbolos','Search symbols')}).addEventListener('click',()=>this.open());
+  row.createEl('button',{text:txt('Favoritar código','Favorite code point')}).addEventListener('click',()=>{
+   const item=w4UnicodeFromCode(input.value);
+   if(!item)return new Notice(txt('Código Unicode inválido.','Invalid Unicode code point.'));
+   this.favorite(item.char);new Notice(txt('Favoritos atualizados.','Favorites updated.'));
+  });
   const favorites=panel.createDiv({cls:'writer-v4-unicode-favorites'});
   favorites.createEl('strong',{text:txt('Favoritos','Favorites')});
   for(const ch of cfg.favorites||[]){
@@ -118,5 +123,10 @@ class WriterUnicode{
   const p=this.plugin;
   p.addCommand({id:'v4-search-unicode',name:w4text(p,'Pesquisar caracteres Unicode','Search Unicode characters'),callback:()=>this.open()});
   p.addCommand({id:'v4-open-unicode-tool',name:w4text(p,'Abrir ferramenta Unicode','Open Unicode tool'),callback:()=>p.openWritingTools('unicode')});
+  p.addCommand({id:'v4-favorite-unicode-selection',name:w4text(p,'Favoritar símbolo selecionado','Favorite selected Unicode character'),callback:()=>{
+   const ch=p.app.workspace.getActiveViewOfType(MarkdownView)?.editor?.getSelection();
+   if(!ch||[...ch].length!==1)return new Notice(w4text(p,'Selecione um símbolo.','Select one character.'));
+   this.favorite(ch);new Notice(w4text(p,'Favoritos atualizados.','Favorites updated.'));
+  }});
  }
 }

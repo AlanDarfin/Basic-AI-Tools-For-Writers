@@ -321,8 +321,12 @@ class ProjectsView extends ItemView{
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
    const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
-   row.style.paddingLeft=(Math.min(12,level)*10)+'px';
+   // Keep the grid and drag handle aligned. Indent the *title* instead: row
+   // padding is overridden by the compact Android CSS with !important.
+   row.style.setProperty('--writer-scene-indent',Math.min(4,level)*11+'px');
+   row.dataset.depth=String(level);
    row.dataset.sceneTitle=name;
+   if(item.children?.length)row.addClass('writer-project-scene-has-children');
    row.draggable=true;
    const grip=row.createEl('button',{text:'⠿',cls:'writer-project-drag-handle',attr:{title:lfMsg('Arraste para mover ou toque e escolha o destino','Drag to reorder or tap and choose a destination'),'aria-label':lfMsg('Mover capítulo: ','Move chapter: ')+name}});
    grip.draggable=true;
@@ -358,7 +362,14 @@ class ProjectsView extends ItemView{
      this.moveSceneRelative(project,data.name,name,after);
    });
    const file=this.resolveScene(project,name);
-   const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
+   const titleButton=row.createEl('button',{cls:'writer-project-scene-title',attr:{
+    'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
+   }});
+   if(level>0){
+    titleButton.createSpan({text:level===1?'↳':'↳ '+level,cls:'writer-project-scene-depth-mark',
+     attr:{title:lfMsg('Nível de recuo ','Indent level ')+level,'aria-hidden':'true'}});
+   }
+   titleButton.createSpan({text:name,cls:'writer-project-scene-title-text'});
    titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));
    const controls=row.createDiv({cls:'writer-project-scene-controls'});
    for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){

@@ -2,7 +2,7 @@
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  toolbar:{enabled:true,mobileMode:'floating'},
+  toolbar:{enabled:true,mobileMode:'native'},
   typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
@@ -27,14 +27,9 @@ function writerV4ExtraMerge(settings){
    prompts:{...WRITER_V4_EXTRA_DEFAULTS.wordwise.prompts,...(old.wordwise?.prompts||{})}},
   comments:old.comments&&typeof old.comments==='object'&&!Array.isArray(old.comments)?old.comments:{}
  };
- if(!['native','floating'].includes(cfg.toolbar.mobileMode))cfg.toolbar.mobileMode='floating';
-  // v4.4 selected native-only by default, hiding the plugin toolbar unless
-  // the user manually added its command. Migrate that default only once.
-  if(!cfg.toolbar.mobileModeConfirmed){
-   if(cfg.toolbar.mobileMode==='native')cfg.toolbar.mobileMode='floating';
-   cfg.toolbar.mobileModeConfirmed=true;
-  }
- cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
+ cfg.toolbar.mobileMode='native';
+  cfg.toolbar.mobileModeConfirmed=true;
+  cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
  cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
  return cfg;
 }
@@ -143,6 +138,21 @@ class WriterV4Extras{
   p.addCommand({id:'v4-wordwise',name:writerUi('Ferramentas inteligentes de escrita','AI writing actions'),editorCallback:()=>this.wordwise()});
   p.addCommand({id:'v4-editing-toolbar',name:writerUi('Barra de edição: formatar seleção','Editing toolbar: format selection'),
    editorCallback:(editor,view)=>this.openEditingToolbar(editor,view)});
+  // Individual actions can be pinned to Obsidian's native mobile toolbar.
+  for(const [kind,pt,en] of [
+   ['bold','Negrito','Bold'],['italic','Itálico','Italic'],
+   ['heading','Título H2','Heading H2'],['quote','Citação','Blockquote'],
+   ['list','Lista','List'],['link','Link','Link']
+  ])p.addCommand({id:'v4-format-'+kind,name:writerUi('Formatar: '+pt,'Format: '+en),
+    editorCallback:editor=>this.applyEditorFormat(editor,kind)});
+  for(const [key,pt,en] of [
+   ['improve','Melhorar estilo','Improve style'],['shorten','Encurtar texto','Shorten text'],
+   ['expand','Expandir texto','Expand text'],['simplify','Simplificar texto','Simplify text'],
+   ['tone','Mudar tom','Change tone'],['dialogue','Melhorar diálogo','Improve dialogue'],
+   ['grammar','Corrigir gramática','Fix grammar'],['critique','Revisar pontos fracos','Critique passage'],
+   ['brainstorm','Explorar alternativa','Brainstorm alternative']
+  ])p.addCommand({id:'v4-writing-'+key,name:writerUi('IA: '+pt,'AI: '+en),
+    editorCallback:editor=>this.runEditorAIAction(editor,key)});
   p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Alternar modo máquina de escrever','Toggle typewriter mode'),callback:async()=>{
    this.config.typewriter.enabled=!this.config.typewriter.enabled;
    this.updateTypewriterClass();await p.saveSettings();
@@ -234,7 +244,7 @@ class WriterV4Extras{
      if(update.selectionSet||update.docChanged)this.refresh();
     }
     refresh(){
-     if(!owner.config.toolbar.enabled||(this.isMobile&&owner.config.toolbar.mobileMode==='native')){
+     if(!owner.config.toolbar.enabled||this.isMobile){
       this.dom.removeClass('is-visible');return;
      }
      const selected=this.view.state.selection.main;
@@ -385,6 +395,17 @@ class WriterV4Extras{
   }
   if(!count)panel.createEl('p',{text:writerUi('Nenhum comentário para exibir.','No comments to show.'),cls:'writer-tools-muted'});
  }
+ applyEditorFormat(editor,kind){
+   if(this.config.toolbar.enabled===false)return new Notice(writerUi('Ative as ferramentas de edição nas configurações.','Enable editing tools in settings.'));
+   const text=editor?.getSelection?.()||'';
+   if(!text.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
+   editor.replaceRange(writerV4FormatText(text,kind),editor.getCursor('from'),editor.getCursor('to'));
+  }
+ runEditorAIAction(editor,kind){
+   if(this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
+   if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
+   return writerV4OpenDiff(this.plugin,{task:this.config.wordwise.prompts[kind],autoGenerate:true});
+  }
  openEditingToolbar(editor,view){
   if(this.config.toolbar.enabled===false)return new Notice(writerUi('Ative as ferramentas de edição nas configurações.','Enable editing tools in settings.'));
   if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para formatar.','Select a passage to format.'));
@@ -458,14 +479,11 @@ class WriterV4Extras{
    d.addOption('link',writerUi('Wikilink','Wikilink')).addOption('text',writerUi('Apenas texto','Plain text'));
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
   });
-  toggle('toolbar','enabled',writerUi('Barra de edição na seleção','Selection editing toolbar'));
-  new Setting(panel).setName(writerUi('Toolbar no Android','Android toolbar'))
-   .setDesc(writerUi('Padrão: controle compacto ao selecionar texto. O modo nativo utiliza o comando na barra móvel do Obsidian.','Default: compact controls appear on selection. Native mode uses a command in Obsidian’s mobile toolbar.'))
-   .addDropdown(d=>d.addOption('floating',writerUi('Compacta automática','Automatic compact'))
-    .addOption('native',writerUi('Somente barra nativa','Native toolbar only'))
-    .setValue(cfg.toolbar.mobileMode||'floating').onChange(async value=>{cfg.toolbar.mobileMode=value;cfg.toolbar.mobileModeConfirmed=true;await this.plugin.saveSettings();}));
-  new Setting(panel).setName(writerUi('Abrir ferramentas de formatação','Open formatting tools'))
-   .addButton(b=>b.setButtonText(writerUi('Barra de edição','Editing toolbar')).onClick(()=>{
+  toggle('toolbar','enabled',writerUi('Comandos de formatação','Formatting commands'));
+  new Setting(panel).setName(writerUi('Barra móvel do Obsidian','Obsidian mobile toolbar'))
+   .setDesc(writerUi('No Android, adicione os comandos Basic AI: Formatar (Negrito, Itálico, Título, Citação, Lista, Link) e IA à barra nativa. A barra flutuante adicional está desativada.','On Android, add individual Basic AI Format and AI commands to the native mobile toolbar. No additional floating toolbar.'));
+  new Setting(panel).setName(writerUi('Abrir todas as ferramentas','Open all formatting actions'))
+   .addButton(b=>b.setButtonText(writerUi('Abrir menu','Open menu')).onClick(()=>{
     const view=this.currentEditor();this.openEditingToolbar(view?.editor,view);
    }));
   toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));

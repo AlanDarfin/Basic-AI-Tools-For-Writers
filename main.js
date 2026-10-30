@@ -829,13 +829,20 @@ const reviewMarkField=StateField.define({
   value=value.map(tr.changes);
   for(const effect of tr.effects)if(effect.is(setReviewMarks)){
    const marks=effect.value||[];
-   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark',attributes:{title:m.message||'LanguageTool'}}).range(m.from,m.to)),true);
+   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark writer-lt-'+(m.severity||'minor'),attributes:{title:m.message||'LanguageTool'}}).range(m.from,m.to)),true);
   }
   if(tr.docChanged)value=Decoration.none;
   return value;
  },
  provide:f=>EditorView.decorations.from(f)
 });
+function writerGrammarSeverity(match){
+ const category=String(match?.rule?.category?.id||'').toUpperCase();
+ const rule=String(match?.rule?.id||'').toUpperCase();
+ if(category==='TYPOS'||/SPELLING|ORTHOGRAPHY/.test(rule))return 'major';
+ if(['STYLE','REDUNDANCY','COLLOQUIALISMS','SYNONYMS'].includes(category))return 'style';
+ return 'minor';
+}
 function prepareGrammarText(text){
  return writerMaskMarkdown(text);
 }
@@ -1924,7 +1931,7 @@ class DictionaryView extends ItemView{
   if(!Number.isInteger(start)||!Number.isInteger(match.length)||start<0||end>source.length||match.length<=0)return;
   const original=source.slice(start,end);
   const suggestions=[...new Set((match.replacements||[]).map(r=>r?.value).filter(v=>typeof v==='string'))].slice(0,8);
-  const card=target.createDiv({cls:'writer-review-card writer-lt-result'});
+  const card=target.createDiv({cls:'writer-review-card writer-lt-result writer-lt-'+writerGrammarSeverity(match)});
   card.dataset.reviewOffset=String(start);
   const heading=card.createDiv({cls:'writer-lt-result-heading'});
   heading.createSpan({cls:'writer-lt-category',text:match.rule?.category?.name||'LanguageTool'});
@@ -2479,7 +2486,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const menu=new Menu(this.app);
     const info=document.createDocumentFragment();
     const block=document.createElement('div');
-    block.className='writer-lt-menu-info';
+    block.className='writer-lt-menu-info writer-lt-'+writerGrammarSeverity(match);
     const title=document.createElement('strong');
     title.className='writer-lt-menu-title';
     title.textContent=match.rule?.description||match.shortMessage||msg('Sugestão','Suggestion');
@@ -2554,7 +2561,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   showReviewMarks(file,matches){
     this.closeReviewPopup();
     this.reviewMatches=matches;
-    this.reviewMarks=matches.filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&m.length>0).map(m=>({from:m.offset,to:m.offset+m.length,message:m.message}));
+    this.reviewMarks=matches.filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&m.length>0).map(m=>({from:m.offset,to:m.offset+m.length,message:m.message,severity:writerGrammarSeverity(m)}));
     this.reviewMarkedPath=file.path;
     for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
   }

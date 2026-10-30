@@ -195,3 +195,23 @@
 .writer-review-actions>button:last-child{grid-column:1/-1}
 .writer-review-actions>button:nth-child(3){grid-column:auto}
 .writer-review-paragraph{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.55;max-height:16em;overflow-y:auto;overscroll-behavior:contain;border-left:2px solid var(--background-modifier-border);padding-left:10px}
+
+/* Floating LanguageTool-style suggestion card beside editor selection */
+.writer-review-floating{
+ position:fixed;z-index:var(--layer-popover,1000);
+ box-sizing:border-box;max-width:calc(100vw - 24px);
+ max-height:min(430px,65dvh);overflow-y:auto;overflow-x:hidden;
+ background:var(--background-primary);
+ color:var(--text-normal);border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-l);box-shadow:var(--shadow-l);
+ padding:10px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+}
+.writer-review-floating .writer-review-card{border:0;background:transparent;padding:6px 0 0;max-height:none;min-height:max-content;flex-shrink:0}
+.writer-review-floating .writer-review-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.writer-review-floating .writer-review-actions button{min-width:0;white-space:normal;height:auto;min-height:36px}
+.writer-review-floating .writer-review-actions button:first-child,
+.writer-review-floating .writer-review-actions button:last-child{grid-column:1/-1}
+.writer-review-floating .writer-review-actions button:nth-child(3){grid-column:auto}
+.writer-review-popup-close{position:sticky;top:0;float:right;z-index:1;min-width:30px;min-height:30px;padding:2px 8px;background:var(--background-secondary);border-radius:50%}
+.writer-review-floating .writer-review-paragraph{max-height:120px;overflow:auto}
+@media(max-width:600px){.writer-review-floating{max-height:min(380px,55dvh)}}

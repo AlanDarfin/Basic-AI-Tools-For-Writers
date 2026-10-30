@@ -1,0 +1,35 @@
+name: Publish v3 prerelease
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check v3
+        run: npm run check
+      - name: Validate prerelease version
+        run: node -e "const m=require('./manifest.json');if(!/^3\.0\.0-beta\.\d+$/.test(m.version))process.exit(1)"
+      - name: Build and fingerprint
+        run: |
+          version=$(node -p "require('./manifest.json').version")
+          zip -j "basic-ai-tool-for-writers-${version}.zip" main.js manifest.json styles.css
+          sha256sum main.js manifest.json styles.css "basic-ai-tool-for-writers-${version}.zip" > SHA256SUMS.txt
+      - name: Publish GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./manifest.json').version")
+          if gh release view "$version" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to overwrite."
+            exit 1
+          fi
+          gh release create "$version" main.js manifest.json styles.css "basic-ai-tool-for-writers-${version}.zip" SHA256SUMS.txt THIRD_PARTY_NOTICES.md \
+            --target "$GITHUB_SHA" --prerelease --title "Basic AI Tool for Writers $version" \
+            --notes "V3 preview: local autocomplete, inline writing variants, safe per-note snapshots, project workspace, writing review and AI integrations. Includes new settings and migration backup. Manual Android testing required before stable."

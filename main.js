@@ -1736,13 +1736,14 @@ class WriterToolsView extends ItemView{
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
-  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
+  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['reviewV4',writerUi('Diff e perfis','Diff & profiles')],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
   const panel=root.createDiv({cls:'writer-tools-v3-panel'});
   if(this.tab==='complements')this.renderComplements(panel);
   if(this.tab==='variants')this.renderVariants(panel);
+  if(this.tab==='reviewV4')this.renderV4(panel,active);
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
   if(this.tab==='extras')this.renderExtras(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
@@ -1784,6 +1785,19 @@ class WriterToolsView extends ItemView{
   }
  }
 
+ renderV4(panel,file){
+  panel.createEl('h4',{text:writerUi('Revisão seletiva · v4','Selective review · v4')});
+  panel.createEl('p',{text:writerUi('Selecione um trecho na nota, compare as propostas e aceite somente as alterações desejadas. A nota original permanece intacta até você aplicar.','Select a passage, compare the suggestions and accept only the changes you want. Your note stays unchanged until you apply.'),cls:'writer-tools-muted'});
+  const profile=file?writerV4Profile(this.plugin,file):null;
+  panel.createEl('p',{text:writerUi('Perfil ativo: ','Active profile: ')+(profile?.name||writerUi('Padrão','Default')),cls:'writer-tools-muted'});
+  const buttons=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(buttons,writerUi('Abrir revisão seletiva','Open selective review'),()=>writerV4OpenDiff(this.plugin),true);
+  this.addButton(buttons,writerUi('Configurar perfis','Configure profiles'),()=>{
+   if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);this.plugin.settingsTabV4Hint=true;}
+   else new Notice(writerUi('Abra as configurações do plugin.','Open the plugin settings.'));
+  });
+  panel.createEl('p',{text:writerUi('A geração de alternativas usa seu provedor de IA apenas quando você clicar em Gerar com IA no comparador.','AI generation uses your configured provider only after you choose Generate with AI in the comparator.'),cls:'writer-tools-muted'});
+ }
  renderExtras(panel){
   panel.addClass('writer-tools-extras');
   const tools=this.plugin.writerFinalFeatures,tts=this.plugin.settings.finalSuite?.tts||{};
@@ -2759,9 +2773,9 @@ function writerV4StripFence(text){
   const m=/^```(?:markdown|md|text)?\r?\n([\s\S]*?)\r?\n```$/.exec(value);
   return m?m[1]:value;
 }
-async function writerV4OpenDiff(plugin,{generate=false}={}){
+async function writerV4OpenDiff(plugin){
   if(plugin.settings.writerV4?.enabled===false)return new Notice(writerUi('Ative a revisão seletiva nas configurações.','Enable selective review in settings.'));
-  const view=plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  const view=plugin.app.workspace.getActiveViewOfType(MarkdownView)||plugin.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(view=>view?.file?.extension==='md'&&view?.editor?.getSelection?.()?.trim());
   if(!view?.file||!view?.editor||view.file.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown no editor.','Open a Markdown note in the editor.'));
   const editor=view.editor,original=editor.getSelection(),max=plugin.settings.writerV4.maxSelectedChars||2800;
   if(!original.trim())return new Notice(writerUi('Selecione o trecho que deseja revisar.','Select a passage to review.'));
@@ -2827,9 +2841,6 @@ async function writerV4OpenDiff(plugin,{generate=false}={}){
     renderDiff();
   };
   modal.onOpen=render;modal.open();
-  if(generate){ // The user explicitly invoked an AI revision, not the manual comparison.
-    // Open the editor first; the generation button makes data transmission explicit.
-  }
 }
 function writerV4RenderSettings(plugin,panel){
   const cfg=plugin.settings.writerV4;

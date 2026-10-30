@@ -321,7 +321,11 @@ class ProjectsView extends ItemView{
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
    const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
-   row.style.paddingLeft=(Math.min(12,level)*10)+'px';
+   // Indentation is owned by a CSS custom property: the mobile compact layout
+   // overrides padding with !important and previously flattened the scene hierarchy.
+   row.style.setProperty('--writer-scene-indent',Math.min(6,Math.max(0,level))*10+2+'px');
+   row.dataset.sceneDepth=String(level);
+   row.toggleClass('writer-project-scene-nested',level>0);
    row.dataset.sceneTitle=name;
    row.draggable=true;
    const grip=row.createEl('button',{text:'⠿',cls:'writer-project-drag-handle',attr:{title:lfMsg('Arraste para mover ou toque e escolha o destino','Drag to reorder or tap and choose a destination'),'aria-label':lfMsg('Mover capítulo: ','Move chapter: ')+name}});
@@ -358,7 +362,11 @@ class ProjectsView extends ItemView{
      this.moveSceneRelative(project,data.name,name,after);
    });
    const file=this.resolveScene(project,name);
-   const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
+   const titleButton=row.createEl('button',{cls:'writer-project-scene-title',attr:{title:name}});
+   if(level>0){
+    titleButton.createSpan({cls:'writer-project-scene-depth',text:'↳ '+level,attr:{'aria-label':lfMsg('Nível de recuo ','Indent level ')+level}});
+   }
+   titleButton.createSpan({cls:'writer-project-scene-name',text:name});
    titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));
    const controls=row.createDiv({cls:'writer-project-scene-controls'});
    for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){

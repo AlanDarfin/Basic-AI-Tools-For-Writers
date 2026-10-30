@@ -127,25 +127,67 @@ class WriterFinalFeatures{
   if(!view)return new Notice('Open a Markdown note.');
   view.editor.replaceSelection('\n'+String.fromCharCode(96,96,96)+'insta-toc\n'+String.fromCharCode(96,96,96)+'\n');
  }
- async renderToc(el,path){
-  if(!this.cfg.toc.enabled)return;
+ async renderToc(el,path,source=''){
+  const cfg=this.cfg.toc;
+  if(!cfg.enabled)return;
   const file=this.plugin.app.vault.getAbstractFileByPath(path);
   if(!(file instanceof TFile))return;
-  const text=await this.plugin.app.vault.cachedRead(file);
-  const headings=[...text.matchAll(/^(#{1,6})[ \t]+(.+)$/gm)].filter(m=>m[1].length<=Number(this.cfg.toc.maxDepth||6));
-  const list=el.createEl(this.cfg.toc.numbered?'ol':'ul',{cls:'writer-insta-toc'});
-  for(const [,level,label] of headings){
-   const li=list.createEl('li');
-   li.style.marginInlineStart=((level.length-1)*12)+'px';
-   const link=li.createEl('a',{text:label.replace(/[*_]+/g,''),href:'#'});
-   link.addEventListener('click',e=>{
-    e.preventDefault();
-    const target=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-    const cache=this.plugin.app.metadataCache.getFileCache(file);
-    const heading=cache?.headings?.find(h=>h.heading===label.replace(/[*_]+/g,''));
-    if(target?.file?.path===file.path&&heading){target.editor.setCursor(heading.position.start);target.editor.scrollIntoView({from:heading.position.start,to:heading.position.end},true);}
-   });
+  const local={...cfg};
+  for(const line of String(source).split('\n')){
+   const match=/^\s*(maxDepth|numbered|folded)\s*:\s*(.*?)\s*$/i.exec(line);
+   if(!match)continue;
+   if(match[1]==='maxDepth')local.maxDepth=Math.max(1,Math.min(6,Number(match[2])||6));
+   else local[match[1]]=match[2].toLowerCase()==='true';
   }
+  const text=await this.plugin.app.vault.cachedRead(file);
+  const re=/^(#{1,6})[ \t]+([^\r\n]+)$/gm;
+  const nodes=[],stack=[{level:0,children:nodes}];let match;
+  while((match=re.exec(text))!==null){
+   const level=match[1].length,title=match[2].replace(/[ \t]+#+[ \t]*$/,'').trim();
+   if(!title||level>Number(local.maxDepth)||title.toLowerCase()==='table of contents')continue;
+   const node={level,title,children:[],offset:match.index};
+   while(stack.length>1&&stack[stack.length-1].level>=level)stack.pop();
+   stack[stack.length-1].children.push(node);stack.push(node);
+  }
+  const wrap=el.createDiv({cls:'writer-insta-toc-rendered'});
+  if(!nodes.length){wrap.createEl('p',{text:'No headings found.'});return;}
+  const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
+  const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
+  const openAt=async node=>{
+   const active=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+   if(!active||active.file?.path!==file.path){
+    const leaf=this.plugin.app.workspace.getLeaf(false);
+    await leaf.openFile(file);
+   }
+   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+   const cache=this.plugin.app.metadataCache.getFileCache(file);
+   const found=cache?.headings?.find(h=>h.heading===node.title&&h.level===node.level);
+   if(view?.editor){
+    const pos=found?.position?.start||view.editor.offsetToPos(node.offset);
+    view.editor.setCursor(pos);view.editor.scrollIntoView({from:pos,to:pos},true);
+   }
+  };
+  const draw=(items,parent)=>{
+   for(const node of items){
+    const li=parent.createEl('li',{cls:'writer-insta-toc-item'});
+    if(node.children.length){
+     const details=li.createEl('details',{cls:'writer-insta-toc-branch'});
+     details.open=!local.folded;
+     const summary=details.createEl('summary');
+     const title=summary.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     title.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openAt(node).catch(console.warn);});
+     const child=details.createEl(local.numbered?'ol':'ul');
+     draw(node.children,child);
+    }else{
+     const link=li.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     link.addEventListener('click',event=>{event.preventDefault();openAt(node).catch(console.warn);});
+    }
+   }
+  };
+  draw(nodes,list);
+  const all=()=>[...list.querySelectorAll('details')];
+  toolbar.createEl('button',{text:'Expand all',attr:{'aria-label':'Expand all headings'}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
+  toolbar.createEl('button',{text:'Collapse all',attr:{'aria-label':'Collapse all headings'}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
  }
  unicodePath(){
   const base=this.plugin.manifest.dir||this.plugin.app.vault.configDir+'/plugins/'+this.plugin.manifest.id;

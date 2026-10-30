@@ -3,7 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const code = fs.readFileSync(require('node:path').join(__dirname, '../main.js'), 'utf8');
-const sandbox = { require: () => ({Plugin:class{}, ItemView:class{}, PluginSettingTab:class{}}), module:{exports:{}}, console };
+const Base=class {};
+const obsidian={Plugin:Base,ItemView:Base,PluginSettingTab:Base,Setting:Base,Notice:Base,MarkdownRenderer:Base,MarkdownView:Base,TFile:Base,TFolder:Base,Modal:Base,FuzzySuggestModal:Base,EditorSuggest:Base,requestUrl:async()=>{},parseYaml:()=>({}),stringifyYaml:()=>''};
+const state={StateField:{define:()=>({})},StateEffect:{define:()=>({of:v=>v})}};
+const cmView={Decoration:{none:{map:()=>({})},set:()=>({}),mark:()=>({range:()=>({})})},EditorView:{decorations:{from:()=>({})}},ViewPlugin:{fromClass:()=>({})}};
+const sandbox={require:name=>name==='obsidian'?obsidian:name==='@codemirror/state'?state:name==='@codemirror/view'?cmView:(()=>{throw Error('unknown '+name)})(),module:{exports:{}},console,setTimeout,clearTimeout};
 vm.runInNewContext(code + '\nmodule.exports.__test = {parseDictionary, normalize};', sandbox);
 const {parseDictionary, normalize} = sandbox.module.exports.__test;
 test('parses headings without separators', () => {

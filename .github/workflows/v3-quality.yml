@@ -1,0 +1,37 @@
+name: V3 quality checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [develop/v3-workspace]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax, source-sync, migration and integration tests
+        run: npm run check
+      - name: Validate package metadata
+        run: |
+          node -e "const m=require('./manifest.json');const p=require('./package.json');if(m.version!==p.version||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1)"
+          test -s LICENSE.md
+          test -s THIRD_PARTY_NOTICES.md
+          test -s styles.css
+      - name: Package test build
+        run: |
+          zip -j basic-ai-tool-for-writers-v3-preview.zip main.js manifest.json styles.css
+          sha256sum main.js manifest.json styles.css basic-ai-tool-for-writers-v3-preview.zip > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: basic-ai-writers-v3-test-build
+          path: |
+            basic-ai-tool-for-writers-v3-preview.zip
+            SHA256SUMS.txt
+            THIRD_PARTY_NOTICES.md
+          retention-days: 14

@@ -1,5 +1,5 @@
 'use strict';
-const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, requestUrl, parseYaml, stringifyYaml} = require('obsidian');
+const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, EditorSuggest, requestUrl, parseYaml, stringifyYaml} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
 const {TFolder}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
@@ -806,13 +806,928 @@ class ProjectsView extends ItemView{
  }
 
 }
+const {StateField,StateEffect}=require('@codemirror/state');
+const {Decoration,EditorView,ViewPlugin}=require('@codemirror/view');
+const setReviewMarks=StateEffect.define();
+const reviewMarkField=StateField.define({
+ create(){return Decoration.none;},
+ update(value,tr){
+  value=value.map(tr.changes);
+  for(const effect of tr.effects)if(effect.is(setReviewMarks)){
+   const marks=effect.value||[];
+   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark',attributes:{title:m.message||'LanguageTool'}}).range(m.from,m.to)),true);
+  }
+  if(tr.docChanged)value=Decoration.none;
+  return value;
+ },
+ provide:f=>EditorView.decorations.from(f)
+});
+function prepareGrammarText(text){
+ let masked=withoutFrontmatter(text);
+ const hide=(re)=>{masked=masked.replace(re,match=>match.replace(/[^\r\n]/g,' '));};
+ hide(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm);
+ hide(/^~~~[^\n]*\n[\s\S]*?^~~~[^\n]*$/gm);
+ hide(/^`{1,3}[^\n]*`{1,3}$/gm);
+ hide(/\!\[[^\]]*\]\([^\n)]*\)/g);
+ hide(/\[\[[^\]\n]*\]\]/g);
+ hide(/^\s{0,3}#{1,6}(?=\s)/gm);
+ hide(/\[([^\]]+)\]\([^\n)]*\)/g);
+ return writerMaskMarkdown(masked);
+}
+function reviewParagraph(source,start,end){
+ const breaks=/\r?\n[ \t]*\r?\n/g;
+ let from=0,to=source.length,m;
+ while((m=breaks.exec(source))!==null){
+   if(m.index+ m[0].length<=start)from=m.index+m[0].length;
+   else if(m.index>=end){to=m.index;break;}
+ }
+ const paragraph=source.slice(from,to).trim();
+ return paragraph||source.slice(Math.max(0,start-80),Math.min(source.length,end+80)).trim();
+}
+function plainReviewParagraph(source,start,end){
+ const paragraph=reviewParagraph(source,start,end);
+ return paragraph
+  .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,(_,alias,name)=>name)
+  .replace(/!\[([^\]]*)\]\([^)]*\)/g,'')
+  .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+  .replace(/(\*\*|__|~~|==|\`)/g,'')
+  .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm,'')
+  .trim();
+}
+function meaningfulGrammarMatch(source,match){
+ const offset=match.offset,length=match.length;
+ if(!Number.isInteger(offset)||!Number.isInteger(length)||offset<0||length<=0||offset+length>source.length)return false;
+ const rule=String(match.rule?.id||'').toUpperCase();
+ const category=String(match.rule?.category?.id||'').toUpperCase();
+ const text=source.slice(offset,offset+length);
+ if(/WHITESPACE|SPACE|TYPOGRAPHY|PUNCTUATION/.test(rule)&&/^\s+$/.test(text))return false;
+ if(/WHITESPACE_RULE|COMMA_PARENTHESIS_WHITESPACE|DOUBLE_PUNCTUATION/.test(rule))return false;
+ if(category==='TYPOGRAPHY'&&/^\s+$/.test(text))return false;
+ return true;
+}
+function withoutFrontmatter(text){
+ const match=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+ if(!match)return text;
+ return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
+}
+const msg=(pt,en)=>getLocale()==='pt'?pt:en;
+const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewAutoOpenNote:true,reviewPopupEnabled:true};
+const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
+function parseDictionary(text) {
+  const entries=[]; let word=null, lines=[];
+  const flush=()=>{if(word) entries.push({word, markdown:('# '+word+'\n'+lines.join('\n')).trim()});};
+  for(const line of text.split(/\r?\n/)){
+    const heading=/^#\s+(.+?)\s*$/.exec(line);
+    if(heading){flush();word=heading[1];lines=[];}
+    else if(word){if(/^---+\s*$/.test(line)) continue;lines.push(line);}
+  }
+  flush();return entries;
+}
+
+const AI_PROVIDERS=[['openai','OpenAI'],['gemini','Gemini'],['grok','Grok (xAI)'],['claude','Claude (Anthropic)'],['custom','Custom (OpenAI-compatible)'],['ollama','Ollama'],['openrouter','OpenRouter'],['groqcloud','Groq Cloud']];
+const I18N={
+ en:{title:'Word checker',search:'Search a word...',provider:'AI provider',language:'Definition language',lookup:'Define word',save:'Save definition',translate:'Translate word',translateMeaning:'Translate meaning',synonyms:'Synonyms',antonyms:'Antonyms',context:'Optional sentence or context',result:'Definition',translation:'Translation',copy:'Copy',missing:'No local entry found.',saved:'Definition saved.',noWord:'Enter a word first.',noResult:'No definition returned.',error:'Request failed',settings:'Word checker settings',dictionary:'Local Markdown dictionary',target:'Translation target language',source:'Translation source language',key:'API key',model:'Model',endpoint:'Custom HTTPS endpoint',offline:'Local entries',notice:'API keys are stored in Obsidian plugin data without encryption. Do not sync them to untrusted devices.',transProvider:'Translation AI provider',detect:'Detect language',compare:'Compare meaning',original:'Original meaning',translated:'Translated meaning',alternatives:'Contextual alternatives',needAI:'Configure an AI provider and API key in settings.'},
+ pt:{title:'Verificador de palavras',search:'Pesquisar palavra...',provider:'Provedor de IA',language:'Idioma da definição',lookup:'Definir palavra',save:'Salvar definição',translate:'Traduzir palavra',translateMeaning:'Traduzir significado',synonyms:'Sinônimos',antonyms:'Antônimos',context:'Frase ou contexto opcional',result:'Definição',translation:'Tradução',copy:'Copiar',missing:'Nenhuma entrada local encontrada.',saved:'Definição salva.',noWord:'Digite uma palavra primeiro.',noResult:'Nenhuma definição retornada.',error:'Falha na solicitação',settings:'Configurações do verificador',dictionary:'Dicionário Markdown local',target:'Idioma de destino da tradução',source:'Idioma de origem da tradução',key:'Chave de API',model:'Modelo',endpoint:'Endpoint HTTPS personalizado',offline:'Entradas locais',notice:'As chaves de API ficam nos dados do plugin sem criptografia. Não sincronize com dispositivos não confiáveis.',transProvider:'IA para tradução',detect:'Detectar idioma',compare:'Comparar significado',original:'Significado original',translated:'Significado traduzido',alternatives:'Alternativas contextuais',needAI:'Configure um provedor de IA e sua chave nas opções.'}
+};
+const getLocale=()=>{try{const l=require('obsidian').getLanguage?.()||'en';return l.toLowerCase().startsWith('pt')?'pt':'en';}catch{return 'en';}};
+const t=k=>(I18N[getLocale()]||I18N.en)[k]||k;
+const PROMPT_DEFAULTS={
+ definition:'You are a precise dictionary. Define the word in {language}. Give part of speech, concise senses and one short example. No introduction or closing remarks. Return Markdown.',
+ synonyms:'In {language}, provide 5 contextual synonyms for the given word. For each, give a short nuance and example. No introductory text or conclusion. Return only a Markdown list.',
+ antonyms:'In {language}, provide contextual antonyms, their nuances and short examples. No introductory text or conclusion. Return only a Markdown list.',
+ translate:'Translate the user text from {source} into {target}. If source is auto, infer the source language from the text. Preserve meaning, tone and formatting. Return only the translation.',
+ writing:'You are a writing assistant. Follow the task and preserve the author intent. Return only the requested text, formatted as Markdown.',
+ test:'Reply with OK only.'
+};
+const LANGS={pt:'Português',en:'English',es:'Español',fr:'Français',de:'Deutsch',it:'Italiano',ja:'日本語'};
+function selectOptions(el,options,value,onChange){for(const [id,label] of options){const opt=el.createEl('option',{text:label});opt.value=id;}el.value=value;el.addEventListener('change',()=>onChange(el.value));}
+
+class MarkdownVaultPicker extends FuzzySuggestModal{
+ constructor(app,callback){super(app);this.callback=callback;this.setPlaceholder(msg('Pesquisar arquivos Markdown…','Search Markdown files…'));}
+ getItems(){return this.app.vault.getMarkdownFiles();}
+ getItemText(file){return file.path;}
+ onChooseItem(file){this.callback(file);}
+}
+// BEGIN WRITER V3 MODULES
+// v3 module: src/v3/core.js
+/* Basic AI v3 editor core. Local helpers with original source offsets. */
+const WRITER_V3_DEFAULTS={
+ schemaVersion:3,
+ complements:{enabled:true,automatic:true,currentFile:true,vault:true,dictionaries:true,internalLinks:true,frontmatter:false,minChars:3,maxResults:8,caseSensitive:false,excludedFolders:'.obsidian,.trash,.note-snapshots,.basic-ai-history',dictionaryPaths:'',useLocalDictionary:false,indexLimit:12000,fileLimit:120000,maxFiles:3000,matchMiddle:false,learnRanking:true,usage:{}},
+ variants:{enabled:true,decorate:true,offerInReview:true,snapshotBeforeCommit:true,confirmAll:true,defaultAlternatives:2,aiPrompt:'Suggest 3 stylistically distinct, natural rewrites of the passage in the original language. Preserve meaning, voice, tense and Markdown. Return only the alternatives, one per line, without numbering. Passage:'},
+ snapshots:{enabled:true,store:'.basic-ai-history',automatic:false,autoDelaySeconds:300,includeAttachments:false,snapshotBeforeRewrite:true,snapshotBeforeRestore:true,maxPerNote:0,retentionDays:0,identityMap:{},showDiffContext:3}
+};
+function writerMergeV3(settings){
+ const base=settings&&typeof settings==='object'?settings:{};
+ for(const [name,values] of Object.entries(WRITER_V3_DEFAULTS)){
+  if(name==='schemaVersion')continue;
+  base[name]={...values,...(base[name]&&typeof base[name]==='object'&&!Array.isArray(base[name])?base[name]:{})};
+ }
+ base.schemaVersion=3;return base;
+}
+function writerMaskMarkdown(source,keepVariants=false){
+ const text=String(source||'');
+ const hidden=new Uint8Array(text.length);
+ const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
+ if(text.startsWith('---\n')||text.startsWith('---\r\n')){
+  const front=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  if(front)hide(0,front[0].length);
+ }
+ let inside=null,at=0;
+ for(const line of text.split('\n')){
+  const m=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
+  if(m){if(!inside)inside={char:m[1][0],n:m[1].length};else if(m[1][0]===inside.char&&m[1].length>=inside.n)inside=null;hide(at,at+line.length);}
+  else if(inside)hide(at,at+line.length);
+  at+=line.length+1;
+ }
+ const masks=[/\x60+[^\x60\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\n]*\]\([^\n)]*\)/g,/!?\[\[[^\]\n]*\]\]/g,/(\[[^\]\n]+\])\([^\n)]*\)/g]; if(!keepVariants)masks.push(/\{\{[^\n]{1,6000}?\}\}\^\d+/g);
+ for(const re of masks){let m;while((m=re.exec(text))){hide(m.index,m.index+m[0].length);if(m[0].length===0)re.lastIndex++;}}
+ let out='';for(let i=0;i<text.length;i++)out+=hidden[i]?' ':text[i];return out;
+}
+function writerParseVariants(input){
+ const text=String(input||''),found=[];let pos=0;
+ const exposed=writerMaskMarkdown(text,true);
+ while(pos<text.length){
+  const from=text.indexOf('{{',pos);if(from<0)break;
+  if(exposed.slice(from,from+2)!=='{{'){pos=from+2;continue;}
+  let i=from+2,escaped=false,part='',items=[],end=-1;
+  while(i<text.length&&i-from<32000){
+   const c=text[i];
+   if(escaped){part+=c;escaped=false;i++;continue;}
+   if(c==='\\'){escaped=true;i++;continue;}
+   if(c==='|'){items.push(part);part='';i++;continue;}
+   if(c==='}'&&text[i+1]==='}'&&text[i+2]==='^'){
+    const m=/^\^(\d{1,5})(?!\d)/.exec(text.slice(i+2,i+10));
+    if(m){items.push(part);end=i+2+m[0].length;const active=Number(m[1]);if(items.length>1&&active<items.length)found.push({from,to:end,variants:items,active,raw:text.slice(from,end)});break;}
+   }
+   if(c==='\n'&&i-from>16000)break;
+   part+=c;i++;
+  }
+  pos=end>from?end:from+2;
+ }
+ return found;
+}
+function writerEncodeVariant(items,active=0){
+ const list=(items||[]).map(v=>String(v).replace(/\\/g,'\\\\').replace(/\|/g,'\\|').replace(/\}/g,'\\}'));
+ if(list.length<2||list.some(v=>v.length>16000))throw Error('Variantes inválidas');
+ return '{{'+list.join('|')+'}}^'+Math.min(Math.max(0,active),list.length-1);
+}
+function writerVariantAt(text,offset){return writerParseVariants(text).find(v=>offset>=v.from&&offset<=v.to)||null;}
+function writerActiveEditor(plugin,file){
+ const leaf=plugin.app.workspace.getLeavesOfType('markdown').find(l=>l.view?.file?.path===file?.path);
+ return leaf?.view?.editor||null;
+}
+function writerCurrentText(plugin,file){const editor=writerActiveEditor(plugin,file);return editor?Promise.resolve(editor.getValue()):plugin.app.vault.read(file);}
+function writerOffsetToPos(editor,offset){return typeof editor.offsetToPos==='function'?editor.offsetToPos(offset):{line:0,ch:offset};}
+async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason){
+ if(!file||file.extension!=='md')throw Error('Abra uma nota Markdown.');
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<from)throw Error('Intervalo inválido.');
+ const editor=writerActiveEditor(plugin,file),text=editor?editor.getValue():await plugin.app.vault.read(file);
+ if(to>text.length||text.slice(from,to)!==expected)throw Error('A nota mudou depois da sugestão. Refaça a operação.');
+ const committing=reason.includes('confirmar variante')||reason.includes('confirmar todas as variantes');
+ const shouldSnapshot=committing?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
+ if(plugin.settings.snapshots?.enabled&&shouldSnapshot&&plugin.writerSnapshots){
+  await plugin.writerSnapshots.create(file,'Antes de '+reason,{content:text});
+ }
+ const next=text.slice(0,from)+replacement+text.slice(to);
+ if(editor)editor.replaceRange(replacement,writerOffsetToPos(editor,from),writerOffsetToPos(editor,to));
+ else await plugin.app.vault.process(file,old=>{
+   if(old.slice(from,to)!==expected)throw Error('O arquivo foi editado simultaneamente.');
+   return next;
+ });
+ return next;
+}
+
+// v3 module: src/v3/complements.js
+/* Offline autocomplete inspired by Various Complements. */
+class WriterComplements extends EditorSuggest{
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();}
+ get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
+ isExcluded(file){
+  if(!file||file.extension!=='md')return true;
+  const path=file.path.toLowerCase(),folders=String(this.options.excludedFolders||'').split(/[,;\n]/).map(s=>s.trim().toLowerCase()).filter(Boolean);
+  return folders.some(f=>path===f||path.startsWith(f.replace(/\/+$/,'')+'/')||path.includes('/'+f.replace(/\/+$/,'')+'/'));
+ }
+ tokenize(text){
+  const m=new Map(),re=/[\p{L}\p{N}][\p{L}\p{N}_’'-]{1,64}/gu;
+  let found;while((found=re.exec(text))!==null){
+   const word=found[0];if(word.length<2||word.length>64)continue;
+   const key=this.options.caseSensitive?word:word.toLocaleLowerCase();
+   const prev=m.get(key);if(prev){prev.count++;}else m.set(key,{word,count:1});
+   if(m.size>10000)break;
+  }
+  return m;
+ }
+ reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.dictionaries.clear();}
+ async rebuild(){
+  if(this.building)return this.building;
+  const generation=++this.generation;
+  this.building=(async()=>{
+   const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f)).slice(0,Math.max(10,Math.min(6000,Number(this.options.maxFiles)||500)));
+   const next=new Map();let total=0;const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   if(this.options.vault!==false){
+    for(let i=0;i<files.length;i++){
+     const file=files[i];if(generation!==this.generation)return;
+     try{
+      if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
+      const text=await this.plugin.app.vault.cachedRead(file);
+      const terms=this.tokenize(writerMaskMarkdown(text));
+      const remaining=Math.max(0,limit-total);
+      const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
+      total+=subset.size;if(total>=limit)break;
+     }catch(e){console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
+     if(i%20===19)await Promise.resolve();
+    }
+   }
+   if(generation!==this.generation)return;
+   this.cache=next;this.ready=true;this.dirty=false;
+   await this.loadDictionaries();
+  })().finally(()=>{this.building=null;});
+  return this.building;
+ }
+ async loadDictionaries(){
+  this.dictionaries.clear();
+  if(!this.options.dictionaries)return;
+  let paths=String(this.options.dictionaryPaths||'').split(/[\n,;]/).map(s=>s.trim()).filter(Boolean);
+  if(this.options.useLocalDictionary&&this.plugin.settings.dictionaryFileName)paths.push(this.plugin.settings.dictionaryFileName);
+  for(const path of new Set(paths)){
+   const file=this.plugin.app.vault.getAbstractFileByPath(path);
+   if(!(file instanceof TFile)||file.extension!=='md')continue;
+   try{
+    const text=await this.plugin.app.vault.cachedRead(file);
+    for(const line of text.split('\n').slice(0,25000)){
+     if(!line.trim()||/^\s*(?:#|---|\x60{3}|%%)/.test(line))continue;
+     let parts=line.split(/\s*(?:=>|→|\t)\s*/);
+     if(parts.length===1&&line.includes('|'))parts=line.split('|').map(x=>x.trim()).filter(Boolean);
+     const label=parts[0].replace(/^[-*]\s+/,'').replace(/^\*\*|\*\*$/g,'').trim();
+     if(!label||label.length>100||/[:{}\[\]]/.test(label))continue;
+     const insert=(parts[1]||label).trim();
+     this.dictionaries.set(this.options.caseSensitive?label:label.toLocaleLowerCase(),{word:label,insert,source:'Dicionário',count:7});
+    }
+   }catch(e){console.warn('[Basic AI] dictionary:',path,e.message);}
+  }
+ }
+ async getSuggestions(context){
+  if(!this.options.enabled)return [];
+  if(this.dirty||!this.ready)try{await this.rebuild();}catch(e){console.warn(e);}
+  const query=String(context.query||''),key=this.options.caseSensitive?query:query.toLocaleLowerCase(),candidates=new Map();
+  const add=(word,insert,score,source)=>{
+   if(!word||word===query||word.length>128)return;
+   const normalized=this.options.caseSensitive?word:word.toLocaleLowerCase();
+   const pos=normalized.indexOf(key);
+   if(pos!==0&&!(this.options.matchMiddle&&pos>0))return;
+   const prior=candidates.get(normalized);
+   const usage=Math.min(50,this.options.usage?.[normalized]||0);
+   const weight=score+(pos===0?35:0)+usage+(normalized===key?0:1);
+   if(!prior||prior.score<weight)candidates.set(normalized,{word,insert,source,score:weight});
+  };
+  if(this.options.currentFile&&context.editor){
+   const current=this.tokenize(writerMaskMarkdown(context.editor.getValue()));
+   for(const item of current.values())add(item.word,item.word,55+Math.min(35,item.count),'Nota atual');
+  }
+  if(this.options.vault)for(const [path,terms] of this.cache){
+   if(path===context.file?.path)continue;
+   for(const item of terms.values())add(item.word,item.word,10+Math.min(20,item.count),'Cofre');
+  }
+  if(this.options.dictionaries)for(const item of this.dictionaries.values())add(item.word,item.insert,85,item.source);
+  if(this.options.internalLinks)for(const file of this.plugin.app.vault.getMarkdownFiles()){
+   if(this.isExcluded(file))continue;
+   add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,'Link interno');
+  }
+  if(this.options.frontmatter&&context.file){
+   const props=this.plugin.app.metadataCache.getFileCache(context.file)?.frontmatter||{};
+   for(const name of Object.keys(props))if(name!=='position')add(name,name,17,'Propriedade');
+  }
+  return [...candidates.values()].sort((a,b)=>b.score-a.score||a.word.localeCompare(b.word,'pt-BR'))
+   .slice(0,Math.max(1,Math.min(30,Number(this.options.maxResults)||8)));
+ }
+ onTrigger(cursor,editor,file){
+  if(!this.options.enabled||this.options.automatic===false||!file||this.isExcluded(file))return null;
+  const line=editor.getLine(cursor.line)||'',before=line.slice(0,cursor.ch);
+  const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(before);
+  if(!m||m[1].length<Math.max(1,Number(this.options.minChars)||3))return null;
+  const start={line:cursor.line,ch:cursor.ch-m[1].length},end={line:cursor.line,ch:cursor.ch};
+  const pos=typeof editor.posToOffset==='function'?editor.posToOffset(start):null;
+  if(pos!==null){
+   const full=editor.getValue();let record=this.maskCache.get(editor);
+   if(!record||record.source!==full){record={source:full,masked:writerMaskMarkdown(full)};this.maskCache.set(editor,record);}
+   if(record.masked.slice(pos,pos+m[1].length)!==m[1])return null;
+  }
+  if(this.plugin.reviewPopup)this.plugin.closeReviewPopup();
+  return {start,end,query:m[1],editor,file};
+ }
+ renderSuggestion(suggestion,el){
+  const row=el.createDiv({cls:'writer-complement-option'});
+  row.createSpan({text:suggestion.word});
+  row.createSpan({text:suggestion.source,cls:'writer-complement-kind'});
+ }
+ selectSuggestion(suggestion){
+  const ctx=this.context;if(!ctx?.editor)return;
+  ctx.editor.replaceRange(suggestion.insert,ctx.start,ctx.end);
+  if(this.options.learnRanking){
+   const key=this.options.caseSensitive?suggestion.word:suggestion.word.toLocaleLowerCase();
+   const usage=this.options.usage||(this.options.usage={});
+   usage[key]=Math.min(50,(usage[key]||0)+1);
+   if(Object.keys(usage).length>1500)for(const k of Object.keys(usage).slice(0,300))delete usage[k];
+   this.plugin.saveSettings();
+  }
+ }
+ async manual(){
+  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView),editor=view?.editor,file=view?.file;
+  if(!editor||!file)return new Notice('Abra uma nota Markdown.');
+  const cursor=editor.getCursor(),line=editor.getLine(cursor.line)||'';
+  const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(line.slice(0,cursor.ch));
+  if(!m)return new Notice('Posicione o cursor após o começo de uma palavra.');
+  const context={query:m[1],start:{line:cursor.line,ch:cursor.ch-m[1].length},end:cursor,editor,file};
+  const results=await this.getSuggestions(context);
+  if(!results.length)return new Notice('Nenhuma sugestão disponível.');
+  const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
+   modal.setTitle('Sugestões de escrita');
+   const list=modal.contentEl.createDiv({cls:'writer-complement-manual'});
+   for(const item of results){
+    list.createEl('button',{text:item.word+' · '+item.source}).addEventListener('click',()=>{modal.close();editor.replaceRange(item.insert,context.start,context.end);});
+   }
+  };modal.open();
+ }
+}
+
+// v3 module: src/v3/variants.js
+/* Basic AI v3: inline writing alternatives inspired by VariantEditor. */
+class WriterVariants{
+ constructor(plugin){this.plugin=plugin;}
+ get options(){return this.plugin.settings.variants||WRITER_V3_DEFAULTS.variants;}
+ active(){
+  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  if(!view?.file||!view?.editor||view.file.extension!=='md')return null;
+  return {file:view.file,editor:view.editor};
+ }
+ atCaret(){
+  const active=this.active();if(!active)return null;
+  const pos=active.editor.getCursor(),offset=active.editor.posToOffset(pos);
+  const found=writerVariantAt(active.editor.getValue(),offset);
+  return found?{...active,found}:null;
+ }
+ async createFromSelection(){
+  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
+  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
+  const text=active.editor.getSelection();
+  if(!text){if(this.atCaret())return this.open();return new Notice('Selecione uma palavra ou trecho para criar variantes.');}
+  if(text.length>16000)return new Notice('Selecione um trecho menor.');
+  const from=active.editor.posToOffset(active.editor.getCursor('from'));
+  const to=active.editor.posToOffset(active.editor.getCursor('to'));
+  const modal=new Modal(this.plugin.app);let alternative='';
+  modal.onOpen=()=>{
+   modal.setTitle('Criar variantes de escrita');
+   modal.contentEl.createEl('p',{text:'Original: '+text.slice(0,400)});
+   new Setting(modal.contentEl).setName('Primeira alternativa').addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar variantes').setCta().onClick(async()=>{
+    if(!alternative.trim()||alternative===text)return new Notice('Escreva uma alternativa diferente.');
+    try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),'criar variantes');modal.close();}
+    catch(e){new Notice(e.message);}
+   }));
+  };modal.open();
+ }
+ async addFromReview(file,source,match,replacement){
+  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
+  const from=match.offset,to=from+match.length,original=source.slice(from,to);
+  if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice('Sugestão inválida.');
+  if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice('A sugestão contém caracteres de controle. Use o editor de variantes.');
+  try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),'criar variante da revisão');
+   new Notice('Variante adicionada sem descartar o original.');
+  }catch(e){new Notice(e.message);}
+ }
+ async replace(found,newOptions,active,commit=false,file){
+  const selected=file||this.active()?.file;
+  if(!selected||!found)return;
+  const replacement=commit?newOptions[active]:writerEncodeVariant(newOptions,active);
+  await writerSafeReplace(this.plugin,selected,found.from,found.to,found.raw,replacement,commit?'confirmar variante':'editar variantes');
+ }
+ async open(){
+  if(!this.options.enabled)return new Notice('Ative Variantes nas configurações.');
+  const current=this.atCaret();
+  if(!current)return new Notice('Posicione o cursor dentro de uma expressão de variantes.');
+  const {found,file}=current;
+  if(this.plugin.closeReviewPopup)this.plugin.closeReviewPopup();
+  const modal=new Modal(this.plugin.app);
+  let items=[...found.variants],selected=found.active;
+  const render=()=>{
+   modal.contentEl.empty();modal.setTitle('Editar variantes');
+   modal.contentEl.createEl('p',{text:'Escolha a alternativa que ficará visível ou edite as opções. Nenhuma alteração acontece até salvar.'});
+   items.forEach((value,i)=>{
+    const box=modal.contentEl.createDiv({cls:'writer-variant-option'});
+    const header=box.createDiv({cls:'writer-variant-option-header'});
+    header.createEl('button',{text:(selected===i?'● ':'○ ')+(i+1),attr:{'aria-label':'Selecionar alternativa '+(i+1)}}).addEventListener('click',()=>{selected=i;render();});
+    for(const [label,delta] of [['↑',-1],['↓',1]]){
+     header.createEl('button',{text:label,attr:{'aria-label':label==='↑'?'Mover para cima':'Mover para baixo'}}).addEventListener('click',()=>{
+      const n=i+delta;if(n<0||n>=items.length)return;
+      const tmp=items[i];items[i]=items[n];items[n]=tmp;
+      if(selected===i)selected=n;else if(selected===n)selected=i;render();
+     });
+    }
+    header.createEl('button',{text:'×',attr:{'aria-label':'Excluir alternativa'}}).addEventListener('click',()=>{
+     if(items.length<=2)return new Notice('Mantenha ao menos duas alternativas.');
+     items.splice(i,1);if(selected>=items.length)selected=items.length-1;render();
+    });
+    const textarea=box.createEl('textarea',{cls:'writer-variant-textarea'});
+    textarea.value=value;textarea.addEventListener('input',()=>{items[i]=textarea.value;});
+   });
+   const actions=modal.contentEl.createDiv({cls:'writer-variant-actions'});
+   actions.createEl('button',{text:'+ Alternativa'}).addEventListener('click',()=>{items.push('');render();});
+   actions.createEl('button',{text:'Salvar',cls:'mod-cta'}).addEventListener('click',async()=>{
+    try{if(items.some(x=>!x.trim()))throw Error('Preencha todas as alternativas.');
+     await this.replace(found,items,selected,false,file);modal.close();new Notice('Variantes salvas.');
+    }catch(e){new Notice(e.message);}
+   });
+   actions.createEl('button',{text:'Confirmar escolhida'}).addEventListener('click',async()=>{
+    try{await this.replace(found,items,selected,true,file);modal.close();}
+    catch(e){new Notice(e.message);}
+   });
+  };
+  modal.onOpen=render;modal.open();
+ }
+ async step(delta){
+  const current=this.atCaret();if(!current)return new Notice('Posicione o cursor numa variante.');
+  const found=current.found,index=(found.active+delta+found.variants.length)%found.variants.length;
+  try{await this.replace(found,found.variants,index,false,current.file);}
+  catch(e){new Notice(e.message);}
+ }
+ async commit(){
+  const current=this.atCaret();if(!current)return new Notice('Nenhuma variante sob o cursor.');
+  try{await this.replace(current.found,current.found.variants,current.found.active,true,current.file);}
+  catch(e){new Notice(e.message);}
+ }
+ async commitAll(){
+  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
+  const text=active.editor.getValue(),items=writerParseVariants(text);
+  if(!items.length)return new Notice('Esta nota não contém variantes.');
+  const run=async()=>{
+   let result=text;
+   for(const item of [...items].reverse())result=result.slice(0,item.from)+item.variants[item.active]+result.slice(item.to);
+   try{await writerSafeReplace(this.plugin,active.file,0,text.length,text,result,'confirmar todas as variantes');new Notice(items.length+' variantes confirmadas.');}
+   catch(e){new Notice(e.message);}
+  };
+  if(!this.options.confirmAll)return run();
+  const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
+   modal.setTitle('Confirmar todas as variantes');
+   modal.contentEl.createEl('p',{text:'Substituir '+items.length+' expressão(ões) pelas alternativas escolhidas? Um snapshot será criado antes, se a opção estiver ativa.'});
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>modal.close())).addButton(b=>b.setButtonText('Confirmar').setWarning().onClick(async()=>{modal.close();await run();}));
+  };modal.open();
+ }
+ async aiAlternatives(){
+  if(!this.options.enabled)return new Notice('Ative Variantes.');
+  const active=this.active();if(!active)return new Notice('Abra uma nota Markdown.');
+  const selected=active.editor.getSelection();if(!selected||selected.length>6000)return new Notice('Selecione um trecho de até 6000 caracteres.');
+  const from=active.editor.posToOffset(active.editor.getCursor('from')),to=active.editor.posToOffset(active.editor.getCursor('to'));
+  try{
+   new Notice('Gerando alternativas com o provedor de IA configurado…');
+   const prompt=this.options.aiPrompt||WRITER_V3_DEFAULTS.variants.aiPrompt;
+   const response=await this.plugin.generateWriting(prompt,selected);
+   const alternatives=response.split(/\n+/).map(x=>x.replace(/^\s*(?:[-*]|\d+[.)])\s*/,'').trim()).filter(x=>x&&x!==selected).slice(0,5);
+   if(!alternatives.length)throw Error('A IA não retornou alternativas válidas.');
+   await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),'inserir variantes da IA');
+   new Notice('Alternativas adicionadas como variantes.');
+  }catch(e){new Notice('Não foi possível gerar variantes: '+e.message);}
+ }
+ editorExtension(){
+  const plugin=this.plugin;
+  return ViewPlugin.fromClass(class{
+   constructor(view){this.view=view;this.decorations=this.build();this.onPointerUp=e=>{
+    if(!plugin.settings.variants?.enabled)return;
+    if(!e.target?.closest?.('.writer-variant-mark'))return;
+    const p=this.view.posAtCoords({x:e.clientX,y:e.clientY});
+    const md=plugin.app.workspace.getActiveViewOfType(MarkdownView);
+    if(p===null||md?.editor?.cm!==this.view)return;
+    md.editor.setCursor(md.editor.offsetToPos(p));
+    plugin.writerVariants.open();
+   };view.dom.addEventListener('pointerup',this.onPointerUp);}
+   update(update){if(update.docChanged||update.viewportChanged)this.decorations=this.build();}
+   build(){
+    if(!plugin.settings?.variants?.enabled||plugin.settings.variants.decorate===false)return Decoration.none;
+    const text=this.view.state.doc.toString(),variants=writerParseVariants(text).slice(0,500);
+    const ranges=variants.filter(v=>v.to<=text.length).map(v=>Decoration.mark({class:'writer-variant-mark',attributes:{title:'Alternativa '+(v.active+1)+' de '+v.variants.length+' · toque para editar'}}).range(v.from,v.to));
+    return Decoration.set(ranges,true);
+   }
+   destroy(){this.view.dom.removeEventListener('pointerup',this.onPointerUp);}
+  },{decorations:v=>v.decorations});
+ }
+}
+
+// v3 module: src/v3/snapshots.js
+/* Basic AI v3: local per-note snapshots, separate store to avoid altering Note Snapshots data. */
+function writerDiffLines(before,after,limit=500){
+ const oldLines=String(before).split('\n'),newLines=String(after).split('\n');
+ if(oldLines.length>limit||newLines.length>limit)return {truncated:true,removed:oldLines.length,added:newLines.length,changes:[]};
+ const n=oldLines.length,m=newLines.length,rows=Array.from({length:n+1},()=>new Uint16Array(m+1));
+ for(let i=n-1;i>=0;i--)for(let j=m-1;j>=0;j--)rows[i][j]=oldLines[i]===newLines[j]?1+rows[i+1][j+1]:Math.max(rows[i+1][j],rows[i][j+1]);
+ const changes=[];let i=0,j=0;
+ while(i<n||j<m){
+  if(i<n&&j<m&&oldLines[i]===newLines[j]){changes.push({type:'same',line:oldLines[i++]});j++;}
+  else if(j<m&&(i>=n||rows[i][j+1]>=rows[i+1][j]))changes.push({type:'add',line:newLines[j++]});
+  else if(i<n)changes.push({type:'remove',line:oldLines[i++]});
+ }
+ return {truncated:false,changes,added:changes.filter(x=>x.type==='add').length,removed:changes.filter(x=>x.type==='remove').length};
+}
+class WriterSnapshots{
+ constructor(plugin){this.plugin=plugin;this.lastAuto=new Map();this.jobs=new Map();}
+ get config(){return this.plugin.settings.snapshots||WRITER_V3_DEFAULTS.snapshots;}
+ path(...parts){
+  const all=parts.flatMap(v=>String(v||'').split('/')).filter(Boolean);
+  if(all.some(s=>s==='.'||s==='..'||s.includes('\\')))throw Error('Caminho inseguro para histórico.');
+  return all.join('/');
+ }
+ root(){
+  const root=String(this.config.store||'.basic-ai-history').trim().replace(/\/+$/,'');
+  if(!root||root.startsWith('/')||root.split('/').some(p=>p==='..'||p==='.')||root.includes('\\'))throw Error('Pasta de histórico inválida.');
+  return root;
+ }
+ async mkdir(path){
+  const adapter=this.plugin.app.vault.adapter;let part='';
+  for(const segment of path.split('/').filter(Boolean)){
+   part=part?part+'/'+segment:segment;
+   if(!(await adapter.exists(part)))await adapter.mkdir(part);
+  }
+ }
+ identity(file){
+  const map=this.config.identityMap||(this.config.identityMap={});
+  if(map[file.path])return map[file.path];
+  const id='n'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
+  map[file.path]=id;return id;
+ }
+ folder(file){const id=this.identity(file);if(!/^n[a-z0-9-]+$/i.test(id))throw Error('Identidade de nota inválida.');return this.path(this.root(),id);}
+ async manifest(file){
+  const path=this.path(this.folder(file),'manifest.json');
+  if(!(await this.plugin.app.vault.adapter.exists(path)))return {version:1,notePath:file.path,snapshots:[]};
+  try{
+   const obj=JSON.parse(await this.plugin.app.vault.adapter.read(path));
+   if(!Array.isArray(obj.snapshots))throw Error('Manifesto inválido.');
+   return obj;
+  }catch(e){throw Error('Não foi possível ler o histórico. Nada será sobrescrito: '+e.message);}
+ }
+ async writeManifest(file,data){
+  const path=this.path(this.folder(file),'manifest.json'),adapter=this.plugin.app.vault.adapter;
+  await this.mkdir(this.folder(file));
+  // Backup old manifest if it exists before writing.
+  if(await adapter.exists(path)){
+   const copy=this.path(this.folder(file),'manifest.previous.json');
+   await adapter.write(copy,await adapter.read(path));
+  }
+  await adapter.write(path,JSON.stringify(data,null,2));
+ }
+ async digest(data){
+  const arr=data instanceof ArrayBuffer?data:data.buffer.slice(data.byteOffset,data.byteOffset+data.byteLength);
+  if(typeof crypto!=='undefined'&&crypto.subtle?.digest){
+   const hash=await crypto.subtle.digest('SHA-256',arr);
+   return [...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }
+  // FNV hash fallback used only as a non-cryptographic content key on unsupported runtimes.
+  const bytes=new Uint8Array(arr);let h=2166136261;
+  for(const n of bytes)h=Math.imul(h^n,16777619);
+  return 'fnv'+(h>>>0).toString(16)+'-'+bytes.length;
+ }
+ attachmentLinks(source,file){
+  const links=new Set(),re=/!\[\[([^\]]+)\]\]|!\[[^\]]*\]\(([^)]+)\)/g;
+  let match;while((match=re.exec(source))){
+   let raw=(match[1]||match[2]||'').split('|')[0].split('#')[0].trim();
+   try{raw=decodeURIComponent(raw.replace(/^<|>$/g,'')).trim();}catch(_){continue;}
+   if(!raw||/^[a-z]+:\/\//i.test(raw)||raw.startsWith('data:'))continue;
+   const found=this.plugin.app.metadataCache.getFirstLinkpathDest(raw,file.path);
+   if(found instanceof TFile&&found.extension!=='md')links.add(found);
+   if(links.size>=30)break;
+  }
+  return [...links];
+ }
+ async captureAttachments(file,source,folder){
+  const refs=[],adapter=this.plugin.app.vault.adapter;
+  const dir=this.path(folder,'attachments');await this.mkdir(dir);
+  let used=0;
+  for(const target of this.attachmentLinks(source,file)){
+   if(target.stat?.size>20*1024*1024||used+(target.stat?.size||0)>40*1024*1024)continue;
+   const bytes=await this.plugin.app.vault.readBinary(target);
+   if(bytes.byteLength>20*1024*1024||used+bytes.byteLength>40*1024*1024)continue;
+   const hash=await this.digest(bytes);
+   const extension=String(target.extension||'bin').replace(/[^a-z0-9]/gi,'').slice(0,10)||'bin';
+   const stored=this.path(dir,hash+'.'+extension);
+   if(!(await adapter.exists(stored)))await adapter.writeBinary(stored,bytes);
+   refs.push({path:target.path,stored,hash,size:bytes.byteLength});
+   used+=bytes.byteLength;
+  }
+  return refs;
+ }
+ async create(file,name='Versão manual',options={}){
+  if(!this.config.enabled)throw Error('Snapshots desativados.');
+  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Selecione uma nota Markdown.');
+  const text=options.content??await writerCurrentText(this.plugin,file);
+  const folder=this.folder(file);await this.mkdir(folder);
+  const manifest=await this.manifest(file);
+  const entry={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),name:String(name||'Versão manual').slice(0,120),size:text.length,attachments:[]};
+  const path=this.path(folder,entry.id+'.md'),adapter=this.plugin.app.vault.adapter;
+  await adapter.write(path,text);
+  try{
+   if(options.attachments??this.config.includeAttachments)entry.attachments=await this.captureAttachments(file,text,folder);
+   manifest.notePath=file.path;manifest.snapshots.push(entry);
+   await this.writeManifest(file,manifest);
+   await this.prune(file,manifest);
+   await this.plugin.saveSettings();
+   return entry;
+  }catch(e){throw Error('O snapshot foi salvo, mas o índice não foi atualizado: '+e.message);}
+ }
+ async prune(file,manifest){
+  const max=Number(this.config.maxPerNote)||0,days=Number(this.config.retentionDays)||0;
+  if(max<=0&&days<=0)return;
+  const now=Date.now(),byDate=days>0?now-days*86400000:0;
+  const expired=manifest.snapshots.filter((x,i)=>(max>0&&i<manifest.snapshots.length-max)||(byDate&&Date.parse(x.at)<byDate));
+  if(!expired.length)return;
+  const keep=manifest.snapshots.filter(x=>!expired.includes(x));
+  await this.writeManifest(file,{...manifest,snapshots:keep});
+  for(const item of expired){
+   const path=this.path(this.folder(file),item.id+'.md');
+   if(await this.plugin.app.vault.adapter.exists(path))await this.plugin.app.vault.adapter.remove(path);
+  }
+  // Deduplicated attachments are retained to protect other snapshots.
+ }
+ async list(file){return (await this.manifest(file)).snapshots.slice().reverse();}
+ async read(file,entry){
+  if(!/^s[a-z0-9]+$/i.test(String(entry.id)))throw Error('ID de versão inválido.');
+  const path=this.path(this.folder(file),entry.id+'.md');
+  if(!(await this.plugin.app.vault.adapter.exists(path)))throw Error('Conteúdo desta versão não foi encontrado.');
+  return this.plugin.app.vault.adapter.read(path);
+ }
+ async restore(file,entry,attachments=false){
+  const text=await this.read(file,entry);
+  const live=await writerCurrentText(this.plugin,file);
+  if(this.config.snapshotBeforeRestore!==false&&this.config.enabled)await this.create(file,'Antes de restaurar '+entry.name,{content:live});
+  const editor=writerActiveEditor(this.plugin,file);
+  if(editor)editor.setValue(text);
+  else await this.plugin.app.vault.process(file,()=>text);
+  let restored=0,skipped=0;
+  if(attachments)for(const item of entry.attachments||[]){
+   if(typeof item.path!=='string'||item.path.startsWith('/')||item.path.split('/').some(x=>x==='..'||x==='.')||item.path.includes('\\')){skipped++;continue;}
+   const dst=this.plugin.app.vault.getAbstractFileByPath(item.path);
+   // NEVER overwrite existing attachment files: they may be shared with other notes.
+   if(dst||await this.plugin.app.vault.adapter.exists(item.path)){skipped++;continue;}
+   const stored=this.path(this.folder(file),'attachments',item.stored.split('/').pop());
+   if(!(await this.plugin.app.vault.adapter.exists(stored))){skipped++;continue;}
+   const binary=await this.plugin.app.vault.adapter.readBinary(stored);
+   const parent=item.path.split('/').slice(0,-1).join('/');
+   if(parent)await this.mkdir(parent);
+   await this.plugin.app.vault.createBinary(item.path,binary);restored++;
+  }
+  return {restored,skipped};
+ }
+ async delete(file,entry){
+  const data=await this.manifest(file);
+  const current=data.snapshots.find(x=>x.id===entry.id);if(!current)return;
+  data.snapshots=data.snapshots.filter(x=>x.id!==entry.id);
+  await this.writeManifest(file,data);
+  const path=this.path(this.folder(file),entry.id+'.md');
+  if(await this.plugin.app.vault.adapter.exists(path))await this.plugin.app.vault.adapter.remove(path);
+ }
+ onRename(file,oldPath){
+  const map=this.config.identityMap||{};
+  if(map[oldPath]){map[file.path]=map[oldPath];delete map[oldPath];this.plugin.saveSettings();}
+ }
+ onModify(file){
+  if(!this.config.enabled||!this.config.automatic||!(file instanceof TFile)||file.extension!=='md'||file.path.startsWith(this.root()+'/'))return;
+  const delay=Math.max(60,Number(this.config.autoDelaySeconds)||300)*1000;
+  const last=this.lastAuto.get(file.path)||0;
+  if(Date.now()-last<delay)return;
+  this.lastAuto.set(file.path,Date.now());
+  this.create(file,'Automático').catch(e=>console.warn('[Basic AI] Autosnapshot:',e));
+ }
+ async showHistory(file){
+  if(!(file instanceof TFile)||file.extension!=='md')return new Notice('Abra uma nota Markdown.');
+  const modal=new Modal(this.plugin.app);
+  const render=async()=>{
+   modal.contentEl.empty();modal.setTitle('Histórico de versões · '+file.basename);
+   const snapshots=await this.list(file);
+   modal.contentEl.createEl('p',{text:snapshots.length+' versões · histórico local do Basic AI'});
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Salvar versão agora').setCta().onClick(async()=>{
+    await this.create(file,'Manual');await render();
+   })).addButton(b=>b.setButtonText('Nomear versão').onClick(()=>{
+    const prompt=new Modal(this.plugin.app);let label='';
+    prompt.onOpen=()=>{prompt.setTitle('Nome da versão');
+     new Setting(prompt.contentEl).addText(t=>t.setPlaceholder('Antes da revisão').onChange(v=>label=v))
+      .addButton(b=>b.setButtonText('Salvar').setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
+    };prompt.open();
+   }));
+   if(!snapshots.length)modal.contentEl.createEl('p',{text:'Nenhuma versão salva ainda.'});
+   const list=modal.contentEl.createDiv({cls:'writer-history-list'});
+   for(const entry of snapshots.slice(0,250)){
+    const card=list.createDiv({cls:'writer-history-entry'});
+    card.createEl('strong',{text:entry.name});
+    card.createEl('small',{text:new Date(entry.at).toLocaleString()+' · '+entry.size+' caracteres · '+(entry.attachments?.length||0)+' anexo(s)'});
+    const actions=card.createDiv({cls:'writer-history-actions'});
+    actions.createEl('button',{text:'Comparar'}).addEventListener('click',()=>this.showDiff(file,entry));
+    actions.createEl('button',{text:'Restaurar'}).addEventListener('click',()=>{
+     const confirm=new Modal(this.plugin.app);let withAttachments=false;
+     confirm.onOpen=()=>{confirm.setTitle('Restaurar versão');
+      confirm.contentEl.createEl('p',{text:'Restaurar '+entry.name+'? O estado atual será salvo automaticamente antes da restauração.'});
+      if(entry.attachments?.length)new Setting(confirm.contentEl).setName('Restaurar somente anexos ausentes').setDesc('Anexos existentes jamais serão sobrescritos.').addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
+      new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
+       .addButton(b=>b.setButtonText('Restaurar').setWarning().onClick(async()=>{
+        try{await this.restore(file,entry,withAttachments);confirm.close();await render();new Notice('Nota restaurada.');}
+        catch(e){new Notice(e.message);}
+       }));
+     };confirm.open();
+    });
+    actions.createEl('button',{text:'Excluir'}).addEventListener('click',()=>{
+     const confirm=new Modal(this.plugin.app);
+     confirm.onOpen=()=>{confirm.setTitle('Excluir versão');
+      confirm.contentEl.createEl('p',{text:'Excluir permanentemente esta versão? A operação não poderá ser desfeita.'});
+      new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
+       .addButton(b=>b.setButtonText('Excluir').setWarning().onClick(async()=>{await this.delete(file,entry);confirm.close();await render();}));
+     };confirm.open();
+    });
+   }
+  };
+  modal.onOpen=()=>{render().catch(e=>new Notice('Histórico: '+e.message));};modal.open();
+ }
+ async showDiff(file,entry){
+  const [oldText,current]=await Promise.all([this.read(file,entry),writerCurrentText(this.plugin,file)]);
+  const diff=writerDiffLines(oldText,current);
+  const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
+   modal.setTitle('Comparar · '+entry.name);
+   modal.contentEl.createEl('p',{text:diff.added+' linha(s) adicionada(s) · '+diff.removed+' removida(s)'});
+   const box=modal.contentEl.createDiv({cls:'writer-history-diff'});
+   if(diff.truncated){
+    box.createEl('p',{text:'Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.'});
+    for(const [title,contents] of [['Versão salva',oldText],['Nota atual',current]]){
+     box.createEl('strong',{text:title});const area=box.createEl('textarea');area.readOnly=true;area.value=contents;
+    }
+   }else{
+    let unchanged=0;
+    for(const chunk of diff.changes){
+     if(chunk.type==='same'&&unchanged++>Number(this.config.showDiffContext||3))continue;
+     if(chunk.type!=='same')unchanged=0;
+     box.createDiv({cls:'writer-diff-line writer-diff-'+chunk.type,text:(chunk.type==='add'?'+ ':chunk.type==='remove'?'- ':'  ')+chunk.line});
+    }
+   }
+  };modal.open();
+ }
+}
+
+// v3 module: src/v3/workspace.js
+/* v3 sidebar for local writing tools; complements the existing AI and project panes. */
+const WRITER_TOOLS_VIEW='basic-ai-writing-tools';
+class WriterToolsView extends ItemView{
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.tab='complements';}
+ getViewType(){return WRITER_TOOLS_VIEW;}
+ getDisplayText(){return 'Ferramentas de escrita';}
+ getIcon(){return 'wand-sparkles';}
+ async onOpen(){
+  this.root=this.contentEl.createDiv({cls:'writer-tools-v3'});
+  this.registerEvent(this.app.workspace.on('active-leaf-change',()=>this.render()));
+  this.render();
+ }
+ addButton(container,label,fn,primary=false){
+  const button=container.createEl('button',{text:label,cls:primary?'mod-cta':''});
+  button.addEventListener('click',async()=>{try{await fn();this.render();}catch(e){new Notice(e.message||String(e));}});
+  return button;
+ }
+ render(){
+  if(!this.root)return;
+  const root=this.root;root.empty();
+  root.createEl('h3',{text:'Ferramentas de escrita'});
+  const active=this.app.workspace.getActiveFile();
+  root.createEl('p',{text:active?.extension==='md'?active.path:'Abra uma nota Markdown para usar as ferramentas.',cls:'writer-tools-note-path'});
+  const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
+  for(const [id,label] of [['complements','Sugestões'],['variants','Variantes'],['snapshots','Versões']]){
+   const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
+   btn.addEventListener('click',()=>{this.tab=id;this.render();});
+  }
+  const panel=root.createDiv({cls:'writer-tools-v3-panel'});
+  if(this.tab==='complements')this.renderComplements(panel);
+  if(this.tab==='variants')this.renderVariants(panel);
+  if(this.tab==='snapshots')this.renderSnapshots(panel,active);
+  const footer=root.createDiv({cls:'writer-tools-footer'});
+  this.addButton(footer,'Revisão',()=>this.plugin.openReview());
+  this.addButton(footer,'Projetos',()=>this.plugin.openProjects());
+  this.addButton(footer,'Configurações',()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
+ }
+ renderComplements(panel){
+  const opts=this.plugin.settings.complements||{};
+  panel.createEl('h4',{text:'Autocomplete contextual'});
+  panel.createEl('p',{text:'Sugestões locais do arquivo, do cofre, dos dicionários e de links internos.'});
+  new Setting(panel).setName('Ativar sugestões').addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName('Aparecer enquanto escreve').addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
+  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(actions,'Mostrar sugestões',()=>this.plugin.writerComplements.manual(),true);
+  this.addButton(actions,'Reindexar cofre',async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice('Índice de sugestões atualizado.');});
+  this.addButton(actions,'Abrir dicionário',async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
+  const tracked=this.plugin.writerComplements?.cache?.size||0;
+  panel.createEl('p',{text:tracked+' arquivo(s) no índice atual.',cls:'writer-tools-muted'});
+ }
+ renderVariants(panel){
+  const opts=this.plugin.settings.variants||{};
+  panel.createEl('h4',{text:'Alternativas de escrita'});
+  panel.createEl('p',{text:'Experimente frases alternativas sem apagar o original. Toque numa variante destacada para editar.'});
+  new Setting(panel).setName('Ativar variantes').addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
+  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(actions,'Criar da seleção',()=>this.plugin.writerVariants.createFromSelection(),true);
+  this.addButton(actions,'Editar no cursor',()=>this.plugin.writerVariants.open());
+  this.addButton(actions,'Anterior',()=>this.plugin.writerVariants.step(-1));
+  this.addButton(actions,'Próxima',()=>this.plugin.writerVariants.step(1));
+  this.addButton(actions,'Confirmar escolhida',()=>this.plugin.writerVariants.commit());
+  this.addButton(actions,'Confirmar todas',()=>this.plugin.writerVariants.commitAll());
+  this.addButton(actions,'Gerar com IA',()=>this.plugin.writerVariants.aiAlternatives());
+  const current=this.plugin.writerVariants.atCaret();
+  if(current){
+   panel.createEl('strong',{text:'Variante '+(current.found.active+1)+' de '+current.found.variants.length});
+   const sample=panel.createDiv({cls:'writer-variant-current'});
+   sample.setText(current.found.variants[current.found.active].slice(0,1000));
+  }
+ }
+ renderSnapshots(panel,file){
+  const opts=this.plugin.settings.snapshots||{};
+  panel.createEl('h4',{text:'Histórico e recuperação'});
+  panel.createEl('p',{text:'Guarde versões da nota antes de revisões ou mudanças importantes. Os arquivos ficam no próprio cofre.'});
+  new Setting(panel).setName('Ativar snapshots').addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
+  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(actions,'Salvar versão agora',async()=>{
+   if(!(file instanceof TFile)||file.extension!=='md')throw Error('Abra uma nota Markdown.');
+   await this.plugin.writerSnapshots.create(file,'Manual');new Notice('Versão salva.');
+  },true);
+  this.addButton(actions,'Nomear uma versão',async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
+  this.addButton(actions,'Abrir histórico',async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
+  if(file instanceof TFile&&file.extension==='md'){
+   this.plugin.writerSnapshots.list(file).then(items=>{
+    if(this.tab==='snapshots'&&panel.isConnected){
+     const box=panel.createDiv({cls:'writer-tools-snapshot-recent'});
+     box.createEl('strong',{text:items.length+' versão(ões) salva(s)'});
+     for(const item of items.slice(0,5))box.createEl('p',{text:item.name+' · '+new Date(item.at).toLocaleString()});
+    }
+   }).catch(()=>{});
+  }
+ }
+}
+
+function writerRenderV3Settings(panel,plugin,id){
+ const config=plugin.settings[id];if(!config)return;
+ const title={complements:'Complementos e sugestões',variants:'Variações de escrita',snapshots:'Versionamento e snapshots'}[id];
+ panel.createEl('h3',{text:title});
+ const toggle=(key,name,description)=>{
+  new Setting(panel).setName(name).setDesc(description||'').addToggle(t=>t.setValue(config[key]!==false).onChange(async v=>{config[key]=v;await plugin.saveSettings();}));
+ };
+ const input=(key,name,description,numeric=false)=>{
+  new Setting(panel).setName(name).setDesc(description||'').addText(t=>{
+   t.setValue(String(config[key]??'')).onChange(async v=>{config[key]=numeric?Math.max(0,Number(v)||0):v;await plugin.saveSettings();});
+  });
+ };
+ if(id==='complements'){
+  toggle('enabled','Ativar sugestões','Todos os complementos funcionam localmente e sem rede.');
+  toggle('automatic','Sugestões automáticas','Mostrar ao digitar.');
+  toggle('currentFile','Palavras do arquivo atual');
+  toggle('vault','Palavras de outras notas do cofre');
+  toggle('internalLinks','Links internos','Sugere títulos como wikilinks.');
+  toggle('dictionaries','Dicionários personalizados');
+  toggle('useLocalDictionary','Usar Dicionario.md','Sem alterar seu formato.');
+  toggle('frontmatter','Propriedades YAML','Sugestões de nomes de propriedades.');
+  toggle('caseSensitive','Diferenciar maiúsculas de minúsculas');
+  toggle('matchMiddle','Corresponder dentro da palavra','Menos restritivo que prefixo.');
+  toggle('learnRanking','Aprender sugestões escolhidas','Ranking armazenado localmente.');
+  input('minChars','Mínimo de caracteres','Padrão: 3',true);
+  input('maxResults','Número máximo de sugestões','Padrão: 8',true);
+  input('maxFiles','Máximo de arquivos no índice','Limita uso de memória.',true);
+  input('fileLimit','Tamanho máximo por arquivo (bytes)','Padrão: 120000',true);
+  new Setting(panel).setName('Pastas excluídas').setDesc('Separadas por vírgula.').addTextArea(t=>t.setValue(config.excludedFolders||'').onChange(async v=>{config.excludedFolders=v;await plugin.saveSettings();}));
+  new Setting(panel).setName('Arquivos de dicionário').setDesc('Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.').addTextArea(t=>t.setValue(config.dictionaryPaths||'').onChange(async v=>{config.dictionaryPaths=v;await plugin.saveSettings();}));
+  new Setting(panel).setName('Reindexar').addButton(b=>b.setButtonText('Atualizar índice').setCta().onClick(async()=>{plugin.writerComplements.reset();await plugin.writerComplements.rebuild();new Notice('Índice atualizado.');}));
+  new Setting(panel).setName('Limpar aprendizado').addButton(b=>b.setButtonText('Limpar histórico').onClick(async()=>{config.usage={};await plugin.saveSettings();}));
+ }else if(id==='variants'){
+  toggle('enabled','Ativar variantes','Usa sintaxe compatível com {{texto A|texto B}}^0.');
+  toggle('decorate','Destacar variantes no editor');
+  toggle('offerInReview','Oferecer variantes na revisão gramatical');
+  toggle('snapshotBeforeCommit','Salvar versão antes de confirmar','Requer snapshots ativos.');
+  toggle('confirmAll','Confirmar antes de aplicar todas');
+  new Setting(panel).setName('Instruções da IA para variantes').addTextArea(t=>{t.inputEl.rows=6;t.setValue(config.aiPrompt||'').onChange(async v=>{config.aiPrompt=v;await plugin.saveSettings();});});
+  new Setting(panel).setName('Abrir editor de variantes').addButton(b=>b.setButtonText('Abrir ferramentas').setCta().onClick(()=>plugin.openWritingTools('variants')));
+ }else if(id==='snapshots'){
+  toggle('enabled','Ativar histórico local','Snapshots ficam no seu cofre e não são enviados para IA.');
+  toggle('automatic','Snapshots automáticos','Por padrão, apenas snapshots manuais.');
+  toggle('includeAttachments','Incluir anexos nos novos snapshots','Pode consumir bastante espaço. Restauração não sobrescreve anexos compartilhados.');
+  toggle('snapshotBeforeRewrite','Criar snapshot antes de alterações','Correções, variantes e outros recursos integrados.');
+  toggle('snapshotBeforeRestore','Criar snapshot antes de restaurar');
+  input('store','Pasta do histórico','Caminho relativo ao cofre. Alterar a pasta não migra o histórico existente.');
+  input('autoDelaySeconds','Intervalo entre snapshots automáticos (segundos)','Mínimo de 60.',true);
+  input('maxPerNote','Limite de versões por nota','0 mantém todas. Exclusões automáticas não são reversíveis.',true);
+  input('retentionDays','Retenção em dias','0 desativa limpeza por idade.',true);
+  input('showDiffContext','Linhas de contexto no diff',null,true);
+  new Setting(panel).setName('Abrir histórico da nota').addButton(b=>b.setButtonText('Abrir versões').setCta().onClick(async()=>{
+   const file=plugin.app.workspace.getActiveFile();if(!file)return new Notice('Abra uma nota.');
+   await plugin.writerSnapshots.showHistory(file);
+  }));
+  panel.createEl('p',{text:'Históricos existentes do plugin Note Snapshots não são modificados. Esta integração mantém sua própria pasta .basic-ai-history e preserva dados anteriores.',cls:'dictionary-muted'});
+ }
+}
+
+// END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
  getViewType(){return VIEW;}
  getDisplayText(){return 'Basic AI Tool for Writers';}
  getIcon(){return 'book-open';}
  async onOpen(){
-  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});this.panels={definition:defs,translation:translations,chat,review};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
+  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});root.createEl('button',{text:'✦ Ferramentas de escrita',cls:'writer-tools-launcher'}).addEventListener('click',()=>this.plugin.openWritingTools());const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});this.panels={definition:defs,translation:translations,chat,review};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
   defs.createEl('h3',{text:'Basic AI Tool for Writers',cls:'dictionary-heading'});
   this.input=defs.createEl('input',{attr:{type:'search',placeholder:t('search'),'aria-label':t('search')}});
   const controls=defs.createDiv({cls:'dictionary-controls'});
@@ -987,17 +1902,27 @@ class DictionaryView extends ItemView{
   actions.createEl('button',{text:msg('Ir ao erro','Go to error')}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
   const apply=actions.createEl('button',{text:msg('Aceitar','Accept'),cls:'mod-cta'});
   apply.disabled=!suggestions.length;
+  if(this.plugin.settings.variants?.enabled&&this.plugin.settings.variants.offerInReview!==false){
+    const variantButton=actions.createEl('button',{text:'Criar variante'});
+    variantButton.disabled=!suggestions.length;
+    variantButton.addEventListener('click',async()=>{
+      const present=await writerCurrentText(this.plugin,file);
+      if(present!==source)return new Notice('A nota mudou. Faça a revisão novamente.');
+      await this.plugin.writerVariants.addFromReview(file,source,match,select.value);
+      this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();
+    });
+  }
   apply.addEventListener('click',async()=>{
     try{
       const replacement=select.value;
       const current=this.app.vault.getAbstractFileByPath(file.path);
       if(!(current instanceof TFile))throw new Error(msg('Arquivo não encontrado','File not found'));
-      let changed=false;
-      await this.app.vault.process(current,text=>{
-        if(text.slice(start,end)!==original||text!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
-        changed=true;return text.slice(0,start)+replacement+text.slice(end);
-      });
-      if(changed){new Notice(msg('Alteração aplicada','Change applied'));this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();await this.reviewFile(file);}
+      const present=await writerCurrentText(this.plugin,current);
+      if(present!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
+      await writerSafeReplace(this.plugin,current,start,end,original,replacement,'aceitar revisão gramatical');
+      new Notice(msg('Alteração aplicada','Change applied'));
+      this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();
+      setTimeout(()=>this.reviewFile(file),350);
     }catch(e){new Notice(e.message||String(e),7000);}
   });
   actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>{card.remove();this.plugin.closeReviewPopup();this.plugin.hideReviewMark(file,start,end);});
@@ -1058,6 +1983,9 @@ class DictionarySettings extends PluginSettingTab{
     ['translation',msg('Tradução','Translation')],
     ['assistant',msg('Chat','Chat')],
     ['projects',msg('Projetos','Projects')],
+    ['complements','Sugestões'],
+    ['variants','Variantes'],
+    ['snapshots','Versões'],
     ['review',msg('Revisão','Review')],
     ['reviewAI',msg('Revisores IA','AI reviewers')],
     ['providers',msg('APIs','APIs')],
@@ -1068,7 +1996,9 @@ class DictionarySettings extends PluginSettingTab{
     this.activeSettingsTab=id;
     for(const button of Array.from(nav.children)){button.classList.toggle('is-active',button.dataset.tab===id);button.setAttribute('aria-selected',String(button.dataset.tab===id));}
     panel.empty();
-    if(id==='review'){
+    if(['complements','variants','snapshots'].includes(id)){
+      writerRenderV3Settings(panel,this.plugin,id);
+    }else if(id==='review'){
       panel.createEl('h3',{text:msg('LanguageTool e comportamento da revisão','LanguageTool and review behavior')});
       panel.createEl('p',{text:msg('As correções são sugestões: o arquivo só muda quando você aceita uma alteração.','Corrections are suggestions: the file changes only when you accept a change.'),cls:'dictionary-muted'});
       new Setting(panel).setName(msg('Idioma da revisão','Review language')).addDropdown(d=>{
@@ -1177,10 +2107,36 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       }
       destroy(){this.view.dom.removeEventListener('pointerup',this.onPointerUp);}
     }));
-    const saved=await this.loadData()||{};this.settings=Object.assign({},DEFAULTS,saved);if(!AI_PROVIDERS.some(p=>p[0]===this.settings.provider))this.settings.provider='openai';if(!AI_PROVIDERS.some(p=>p[0]===this.settings.translationProvider))this.settings.translationProvider=this.settings.provider;this.settings.aiKeys={...DEFAULTS.aiKeys,...(saved.aiKeys||{})};this.settings.aiModels={...DEFAULTS.aiModels,...(saved.aiModels||{})};this.settings.prompts={...(saved.prompts||{})};
+    const saved=await this.loadData()||{};
+    if(Number(saved.schemaVersion||0)<3){
+      const base=this.manifest.dir||this.app.vault.configDir+'/plugins/'+this.manifest.id;
+      const adapter=this.app.vault.adapter;
+      const source=base+'/data.json',backup=base+'/data.v2-backup.json';
+      if(await adapter.exists(source)&&!(await adapter.exists(backup)))await adapter.write(backup,await adapter.read(source));
+    }
+    this.settings=Object.assign({},DEFAULTS,saved);if(!AI_PROVIDERS.some(p=>p[0]===this.settings.provider))this.settings.provider='openai';if(!AI_PROVIDERS.some(p=>p[0]===this.settings.translationProvider))this.settings.translationProvider=this.settings.provider;this.settings.aiKeys={...DEFAULTS.aiKeys,...(saved.aiKeys||{})};this.settings.aiModels={...DEFAULTS.aiModels,...(saved.aiModels||{})};this.settings.prompts={...(saved.prompts||{})};
+    const migrating=Number(saved.schemaVersion||0)<3;
+    writerMergeV3(this.settings);
+    this.writerSnapshots=new WriterSnapshots(this);
+    this.writerVariants=new WriterVariants(this);
+    this.writerComplements=new WriterComplements(this);
+    this.registerEditorSuggest(this.writerComplements);
+    this.registerEditorExtension(this.writerVariants.editorExtension());
+    this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
+      if(file instanceof TFile)this.writerSnapshots.onRename(file,oldPath);
+      this.writerComplements.dirty=true;
+    }));
+    for(const event of ['create','delete','modify'])this.registerEvent(this.app.vault.on(event,file=>{
+      if(file instanceof TFile&&file.extension==='md'&&!file.path.startsWith(this.writerSnapshots.root()+'/')){
+        this.writerComplements.dirty=true;
+        if(event==='modify')this.writerSnapshots.onModify(file);
+      }
+    }));
+    if(migrating)await this.saveSettings();
     this.cache={path:null,entries:[]};this.dirty=true;
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
     this.registerView(PROJECT_VIEW,leaf=>new ProjectsView(leaf,this));
+    this.registerView(WRITER_TOOLS_VIEW,leaf=>new WriterToolsView(leaf,this));
     this.addCommand({id:'open-writing-projects',name:msg('Abrir projetos de escrita','Open writing projects'),callback:()=>this.openProjects()});
     this.addCommand({id:'create-writing-project',name:msg('Criar projeto de escrita','Create writing project'),callback:async()=>{await this.openProjects();this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view?.promptNewProject();}});
     this.addCommand({id:'create-writing-scene',name:msg('Criar cena no projeto','Create project scene'),callback:async()=>{await this.openProjects('scenes');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)v.addScene(v.currentProject);}});
@@ -1189,9 +2145,28 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.addCommand({id:'stop-writing-session',name:msg('Encerrar sessão de escrita','Stop writing session'),callback:async()=>{await this.openProjects('project');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)await v.stopWritingSession(v.currentProject);}});
     this.addCommand({id:'open-project-notes',name:msg('Abrir notas do projeto','Open project notes'),callback:()=>this.openProjects('notes')});
     this.addCommand({id:'new-project-note',name:msg('Criar nota rápida do projeto','Create quick project note'),callback:async()=>{await this.openProjects('notes');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)v.promptNote(v.notesRoot(v.currentProject));}});
+    const v3Commands=[
+      ['open-writing-tools','Abrir ferramentas de escrita',()=>this.openWritingTools()],
+      ['show-complements','Mostrar sugestões de palavras',()=>this.writerComplements.manual()],
+      ['reindex-complements','Reindexar palavras do cofre',async()=>{this.writerComplements.reset();await this.writerComplements.rebuild();new Notice('Índice atualizado.');}],
+      ['toggle-complements','Ativar ou desativar autocomplete',async()=>{this.settings.complements.enabled=!this.settings.complements.enabled;await this.saveSettings();new Notice('Autocomplete: '+(this.settings.complements.enabled?'ativo':'desativado'));}],
+      ['create-writing-variant','Criar variante da seleção',()=>this.writerVariants.createFromSelection()],
+      ['edit-writing-variant','Editar variante sob o cursor',()=>this.writerVariants.open()],
+      ['previous-writing-variant','Variante anterior',()=>this.writerVariants.step(-1)],
+      ['next-writing-variant','Próxima variante',()=>this.writerVariants.step(1)],
+      ['commit-writing-variant','Confirmar variante escolhida',()=>this.writerVariants.commit()],
+      ['commit-all-writing-variants','Confirmar todas as variantes',()=>this.writerVariants.commitAll()],
+      ['ai-writing-variants','Gerar alternativas com IA',()=>this.writerVariants.aiAlternatives()],
+      ['save-note-snapshot','Salvar versão da nota atual',async()=>{const file=this.app.workspace.getActiveFile();if(!(file instanceof TFile))return new Notice('Abra uma nota Markdown.');await this.writerSnapshots.create(file,'Manual');new Notice('Versão salva.');}],
+      ['open-note-snapshots','Abrir histórico de versões',async()=>{const file=this.app.workspace.getActiveFile();if(file)await this.writerSnapshots.showHistory(file);}],
+      ['open-variants-tools','Abrir variantes na barra lateral',()=>this.openWritingTools('variants')],
+      ['open-snapshots-tools','Abrir versões na barra lateral',()=>this.openWritingTools('snapshots')]
+    ];
+    for(const [id,name,callback] of v3Commands)this.addCommand({id,name:'Basic AI: '+name,callback:async()=>{try{await callback();}catch(e){new Notice(e.message||String(e),7000);}}});
     this.addSettingTab(new DictionarySettings(this.app,this));
     this.addRibbonIcon('book-open',msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),()=>this.activateView());
     this.addRibbonIcon('notebook-pen',msg('Projetos de escrita','Writing projects'),()=>this.openProjects());
+    this.addRibbonIcon('wand-sparkles',msg('Ferramentas de escrita','Writing tools'),()=>this.openWritingTools());
     this.addCommand({id:'open-dictionary-view',name:msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),callback:()=>this.activateView()});
     this.addCommand({id:'search-selected-word',name:t('lookup'),editorCallback:async editor=>{const term=editor.getSelection().trim();if(!term){new Notice('Select a word first.');return;}await this.activateView();const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;if(view?.input){view.input.value=term;await view.search(term);await view.lookup();}}});
     this.addCommand({id:'open-translation-tab',name:msg('Abrir tradutor','Open translator'),callback:async()=>{await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('translation');}});
@@ -1377,6 +2352,12 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     await this.app.vault.process(file,old=>old.trimEnd()+content);
     this.invalidate();
   }
+  async openWritingTools(tab){
+    let leaf=this.app.workspace.getLeavesOfType(WRITER_TOOLS_VIEW)[0];
+    if(!leaf){leaf=this.app.workspace.getRightLeaf(true);if(!leaf)return;await leaf.setViewState({type:WRITER_TOOLS_VIEW,active:true});}
+    await this.app.workspace.revealLeaf(leaf);
+    if(tab&&leaf.view){leaf.view.tab=tab;leaf.view.render();}
+  }
   async openProjects(tab){
     let leaf=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0];
     if(!leaf){leaf=this.app.workspace.getLeftLeaf(false);if(!leaf)return;await leaf.setViewState({type:PROJECT_VIEW,active:true});}
@@ -1465,5 +2446,5 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     });
   }
   async saveSettings(){await this.saveData(this.settings);}
-  onunload(){this.app.workspace.detachLeavesOfType(VIEW);this.app.workspace.detachLeavesOfType(PROJECT_VIEW);}
+  onunload(){this.app.workspace.detachLeavesOfType(VIEW);this.app.workspace.detachLeavesOfType(PROJECT_VIEW);this.app.workspace.detachLeavesOfType(WRITER_TOOLS_VIEW);}
 };

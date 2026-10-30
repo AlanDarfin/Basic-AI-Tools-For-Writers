@@ -7,7 +7,7 @@ const source=fs.readFileSync(path.join(root,'projects.js'),'utf8');
 const mainFile=path.join(root,'main.js');
 const main=fs.readFileSync(mainFile,'utf8');
 const begin="const PROJECT_VIEW='basic-ai-projects';";
-const end='class DictionaryView extends ItemView{';
+const end="const {StateField,StateEffect}=require('@codemirror/state');";
 const first=main.indexOf(begin),last=main.indexOf(end,first);
 if(first<0||last<0)throw Error('Project manager markers not found in main.js');
 const start=source.indexOf(begin),stop=source.lastIndexOf('module.exports=');

@@ -2615,7 +2615,7 @@ function writerEdgeSynthesize(text,voice,{signal,timeout=25000}={}){
     if(done)return;
     if(typeof event.data==='string'){
      if(/Path:turn\.end/i.test(event.data)){turnEnd=true;finish();}
-    }else if(event.data instanceof ArrayBuffer){
+    }else if(event.data instanceof ArrayBuffer||Object.prototype.toString.call(event.data)==='[object ArrayBuffer]'){
      const audio=writerEdgeBinaryAudio(event.data);
      if(audio?.length)received.push(audio);
     }else if(typeof Blob!=='undefined'&&event.data instanceof Blob){

@@ -1,6 +1,27 @@
 'use strict';
 const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
+const {StateField,StateEffect}=require('@codemirror/state');
+const {Decoration,EditorView}=require('@codemirror/view');
+const setReviewMarks=StateEffect.define();
+const reviewMarkField=StateField.define({
+ create(){return Decoration.none;},
+ update(value,tr){
+  value=value.map(tr.changes);
+  for(const effect of tr.effects)if(effect.is(setReviewMarks)){
+   const marks=effect.value||[];
+   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark',attributes:{title:m.message||'LanguageTool'}}).range(m.from,m.to)),true);
+  }
+  if(tr.docChanged)value=Decoration.none;
+  return value;
+ },
+ provide:f=>EditorView.decorations.from(f)
+});
+function withoutFrontmatter(text){
+ const match=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+ if(!match)return text;
+ return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
+}
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
 const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar'};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
@@ -177,12 +198,15 @@ class DictionaryView extends ItemView{
   try{
     const source=await this.app.vault.read(file);
     this.reviewFilePath=file.path;
+    this.reviewSource=source;
     if(this.reviewMode.value==='grammar'){
-      const matches=await this.plugin.checkGrammar(source);
+      const matches=await this.plugin.checkGrammar(withoutFrontmatter(source));
+      this.plugin.showReviewMarks(file,matches);
       this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found'));
       if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
       for(const match of matches)this.renderGrammarSuggestion(file,source,match);
     }else{
+      this.plugin.clearReviewMarks();
       const mode=this.reviewMode.value;
       const result=await this.plugin.reviewWithAI(source,mode);
       this.reviewStatus.setText(msg('Parecer editorial (sem alterar o arquivo)','Editorial feedback (file unchanged)'));
@@ -218,10 +242,10 @@ class DictionaryView extends ItemView{
         if(text.slice(start,end)!==original||text!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
         changed=true;return text.slice(0,start)+replacement+text.slice(end);
       });
-      if(changed){new Notice(msg('Alteração aplicada','Change applied'));await this.reviewFile(file);}
+      if(changed){new Notice(msg('Alteração aplicada','Change applied'));this.plugin.clearReviewMarks();await this.reviewFile(file);}
     }catch(e){new Notice(e.message||String(e),7000);}
   });
-  actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>card.remove());
+  actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>{card.remove();this.plugin.hideReviewMark(file,start,end);});
   actions.createEl('button',{text:msg('Por quê? / Alternativas','Why? / Alternatives')}).addEventListener('click',()=>this.explainGrammar(file,source,match,suggestions,card));
  }
  async explainGrammar(file,source,match,suggestions,card){
@@ -356,11 +380,13 @@ class DictionarySettings extends PluginSettingTab{
 }
 module.exports=class AlansOfflineDictionary extends Plugin{
   async onload(){
+    this.reviewMarks=[];
+    this.registerEditorExtension(reviewMarkField);
     const saved=await this.loadData()||{};this.settings=Object.assign({},DEFAULTS,saved);if(!AI_PROVIDERS.some(p=>p[0]===this.settings.provider))this.settings.provider='openai';if(!AI_PROVIDERS.some(p=>p[0]===this.settings.translationProvider))this.settings.translationProvider=this.settings.provider;this.settings.aiKeys={...DEFAULTS.aiKeys,...(saved.aiKeys||{})};this.settings.aiModels={...DEFAULTS.aiModels,...(saved.aiModels||{})};this.settings.prompts={...(saved.prompts||{})};
     this.cache={path:null,entries:[]};this.dirty=true;
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
     this.addSettingTab(new DictionarySettings(this.app,this));
-    this.addRibbonIcon('book-open','Offline Dictionary',()=>this.activateView());
+    this.addRibbonIcon('book-open','Basic AI Tool for Writers',()=>this.activateView());
     this.addCommand({id:'open-dictionary-view',name:t('title'),callback:()=>this.activateView()});
     this.addCommand({id:'search-selected-word',name:t('lookup'),editorCallback:async editor=>{const term=editor.getSelection().trim();if(!term){new Notice('Select a word first.');return;}await this.activateView();const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;if(view?.input){view.input.value=term;await view.search(term);await view.lookup();}}});
     this.addCommand({id:'open-ai-chat',name:msg('Abrir chat de escrita','Open writing chat'),callback:()=>this.openChat()});
@@ -527,6 +553,33 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     let leaf=this.app.workspace.getLeavesOfType(VIEW)[0];
     if(!leaf){leaf=this.app.workspace.getRightLeaf(false);if(!leaf)return;await leaf.setViewState({type:VIEW,active:true});}
     await this.app.workspace.revealLeaf(leaf);
+  }
+  reviewEditors(file){
+    const views=[];
+    this.app.workspace.iterateAllLeaves(leaf=>{
+      if(leaf.view instanceof MarkdownView&&leaf.view.file?.path===file.path){
+        const cm=leaf.view.editor?.cm;
+        if(cm)views.push(cm);
+      }
+    });
+    return views;
+  }
+  showReviewMarks(file,matches){
+    this.reviewMarks=matches.filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&m.length>0).map(m=>({from:m.offset,to:m.offset+m.length,message:m.message}));
+    this.reviewMarkedPath=file.path;
+    for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
+  }
+  hideReviewMark(file,start,end){
+    if(this.reviewMarkedPath!==file.path)return;
+    this.reviewMarks=this.reviewMarks.filter(m=>m.from!==start||m.to!==end);
+    for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
+  }
+  clearReviewMarks(){
+    this.reviewMarks=[];this.reviewMarkedPath=null;
+    this.app.workspace.iterateAllLeaves(leaf=>{
+      const cm=leaf.view instanceof MarkdownView?leaf.view.editor?.cm:null;
+      if(cm)cm.dispatch({effects:setReviewMarks.of([])});
+    });
   }
   async saveSettings(){await this.saveData(this.settings);}
   onunload(){this.app.workspace.detachLeavesOfType(VIEW);}

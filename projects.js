@@ -78,10 +78,11 @@ class ProjectsView extends ItemView{
   this.registerEvent(this.app.vault.on('delete',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('rename',()=>this.queueRender()));
   this.registerEvent(this.app.metadataCache.on('changed',file=>{if(file?.path===this.selected)this.queueRender();}));
+  this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
  }
  queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){clearTimeout(this.refreshTimer);}
+ async onClose(){clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;
@@ -326,6 +327,8 @@ class ProjectsView extends ItemView{
   new Setting(panel).setName('Título do projeto').addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
   new Setting(panel).setName('Pasta das cenas').setDesc('Relativa à pasta do índice; não move arquivos existentes.').addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
   const prefs=this.prefs(project);
+  new Setting(panel).setName('Meta diária (palavras)').addText(t=>t.setValue(String(prefs.dailyGoal||0)).onChange(v=>this.dailyGoalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.dailyGoal=Math.max(0,Number(this.dailyGoalInput)||0);await this.savePrefs();}));
+  this.drawSession(panel,project);
   new Setting(panel).setName('Meta de palavras').setDesc('Meta total do projeto').addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText('Salvar').onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
   const count=this.activeScenes(project).length;
   panel.createEl('p',{text:'Cenas no rascunho: '+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
@@ -667,6 +670,53 @@ class ProjectsView extends ItemView{
    }));
   };
   modal.open();
+ }
+
+ async startWritingSession(project){
+  const prefs=this.prefs(project),baseline={};
+  const files=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
+  for(const file of files){try{baseline[file.path]=lfWordCount(await this.app.vault.cachedRead(file));}catch(_){}}
+  const today=new Date().toDateString();
+  const previous=prefs.session;
+  prefs.session={active:true,startedAt:Date.now(),day:today,words:previous?.day===today?previous.words||0:0,baseline,notified:false};
+  await this.plugin.saveSettings();await this.render();
+ }
+ async stopWritingSession(project){
+  const prefs=this.prefs(project);
+  if(prefs.session){prefs.session.active=false;prefs.session.stoppedAt=Date.now();}
+  await this.plugin.saveSettings();await this.render();
+ }
+ async recordSessionChange(file){
+  const project=this.currentProject;if(!project||!this.plugin.settings?.projectsData)return;
+  const prefs=this.prefs(project),session=prefs.session;
+  if(!session?.active||session.day!==new Date().toDateString())return;
+  if(!Object.prototype.hasOwnProperty.call(session.baseline||{},file.path))return;
+  if(!this.sessionUpdateJobs)this.sessionUpdateJobs=new Map();
+  clearTimeout(this.sessionUpdateJobs.get(file.path));
+  this.sessionUpdateJobs.set(file.path,setTimeout(async()=>{
+   try{
+    const words=lfWordCount(await this.app.vault.cachedRead(file));
+    const before=session.baseline[file.path],diff=words-before;
+    session.baseline[file.path]=words;
+    session.words=Math.max(0,(session.words||0)+diff);
+    if(prefs.dailyGoal>0&&session.words>=prefs.dailyGoal&&!session.notified){session.notified=true;new Notice('Meta diária de escrita atingida!');}
+    clearTimeout(this.sessionSaveTimer);
+    this.sessionSaveTimer=setTimeout(()=>this.plugin.saveSettings(),1300);
+    if(this.activeTab==='project')this.queueRender();
+   }catch(e){console.warn('[Basic AI] Session tracking:',e);}
+  },500));
+ }
+ drawSession(panel,project){
+  const prefs=this.prefs(project),session=prefs.session;
+  const box=panel.createDiv({cls:'writer-project-session'});
+  box.createEl('h4',{text:'Sessão de escrita'});
+  const today=new Date().toDateString(),words=session?.day===today?session.words||0:0;
+  box.createEl('p',{text:words+' palavras registradas hoje'+(prefs.dailyGoal?' / meta '+prefs.dailyGoal:'')});
+  if(prefs.dailyGoal>0){
+   const progress=box.createEl('progress');progress.max=prefs.dailyGoal;progress.value=Math.min(words,prefs.dailyGoal);
+  }
+  box.createEl('button',{text:session?.active?'Encerrar sessão':'Iniciar sessão'}).addEventListener('click',()=>session?.active?this.stopWritingSession(project):this.startWritingSession(project));
+  box.createEl('p',{text:'Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.'});
  }
  async drawStats(panel,project,token){
   const scenes=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);

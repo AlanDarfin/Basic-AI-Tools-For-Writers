@@ -145,16 +145,44 @@ class WriterV4Extras{
      this.view=view;this.dom=view.dom.createDiv({cls:'writer-v4-floating-toolbar'});
      this.isMobile=owner.plugin.app.isMobile===true||(typeof navigator!=='undefined'&&/Android|iPad|iPhone/i.test(navigator.userAgent||''));
      if(this.isMobile)this.dom.addClass('writer-v4-toolbar-mobile');
-     this.savedRange=null;
+     this.savedRange=null;this.expanded=false;this.dismissedSelection=null;
+     this.ownerDocument=view.dom.ownerDocument;
      this.onSelection=()=>{
       clearTimeout(this.selectionTimer);
-      this.selectionTimer=setTimeout(()=>this.refresh(),70);
+      this.selectionTimer=setTimeout(()=>this.refresh(),75);
      };
      view.dom.addEventListener('pointerup',this.onSelection);
      view.dom.addEventListener('touchend',this.onSelection,{passive:true});
      view.dom.addEventListener('keyup',this.onSelection);
-     this.ownerDocument=view.dom.ownerDocument;
      this.ownerDocument?.addEventListener('selectionchange',this.onSelection);
+     this.onViewport=()=>{if(this.dom.hasClass('is-visible'))this.positionMobile();};
+     this.visualViewport=this.ownerDocument?.defaultView?.visualViewport||null;
+     this.visualViewport?.addEventListener?.('resize',this.onViewport);
+     this.visualViewport?.addEventListener?.('scroll',this.onViewport);
+     // A compact action pill avoids competing with Android's cut/copy popup
+     // and Obsidian's editing ribbon. Full formatting is one tap away.
+     if(this.isMobile){
+      const head=this.dom.createDiv({cls:'writer-v4-mobile-actions'});
+      const format=head.createEl('button',{text:writerUi('Aa Formatar','Aa Format'),attr:{'aria-label':writerUi('Mostrar formatação','Show formatting'),'aria-expanded':'false'}});
+      format.addEventListener('pointerdown',e=>e.preventDefault());
+      format.addEventListener('click',()=>{
+       this.expanded=!this.expanded;
+       format.setAttribute('aria-expanded',String(this.expanded));
+       this.dom.toggleClass('writer-v4-expanded',this.expanded);
+       this.positionMobile();
+      });
+      const ai=head.createEl('button',{text:'✦ IA',attr:{'aria-label':writerUi('Ações de IA para seleção','AI actions for selection')}});
+      ai.addEventListener('pointerdown',e=>e.preventDefault());
+      ai.addEventListener('click',()=>this.useSelection(()=>owner.wordwise()));
+      const close=head.createEl('button',{text:'×',cls:'writer-v4-toolbar-close',attr:{'aria-label':writerUi('Fechar barra de edição','Close editing toolbar')}});
+      close.addEventListener('pointerdown',e=>e.preventDefault());
+      close.addEventListener('click',()=>{
+       const selected=this.view.state.selection.main;
+       this.dismissedSelection=selected.empty?'':selected.from+':'+selected.to;
+       this.expanded=false;this.dom.removeClass('is-visible','writer-v4-expanded');
+      });
+     }
+     const formatActions=this.dom.createDiv({cls:'writer-v4-format-actions'});
      const formats=[
       ['B','bold','**','**'],['I','italic','*','*'],
       ['H','heading','## ',''],['“”','quote','> ',''],
@@ -162,50 +190,86 @@ class WriterV4Extras{
       ['✦','wordwise',null,null]
      ];
      for(const [label,title,before,after] of formats){
-      const button=this.dom.createEl('button',{text:label,attr:{'aria-label':title,title}});
+      if(this.isMobile&&title==='wordwise')continue;
+      const button=formatActions.createEl('button',{text:label,attr:{'aria-label':title,title}});
       button.addEventListener('pointerdown',e=>e.preventDefault());
       button.addEventListener('click',()=>{
-       const current=this.view.state.selection.main;
-       const selected=!current.empty?current:this.savedRange;
-       if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
-       // Mobile tap can blur native selection; restore its exact CodeMirror range.
-       if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
-       if(title==='wordwise'){
+       this.useSelection(()=>{
+        if(title==='wordwise')return owner.wordwise();
+        const selected=this.view.state.selection.main;
+        if(selected.empty)return;
+        const raw=this.view.state.doc.sliceString(selected.from,selected.to);
+        const value=(before||'')+raw+(after||'');
+        this.view.dispatch({changes:{from:selected.from,to:selected.to,insert:value},
+         selection:{anchor:selected.from+value.length}});
+        this.expanded=false;this.savedRange=null;
+        this.dom.removeClass('is-visible','writer-v4-expanded');
         this.view.focus();
-        owner.wordwise();
-        return;
-       }
-       const raw=this.view.state.doc.sliceString(selected.from,selected.to);
-       const value=(before||'')+raw+(after||'');
-       this.view.dispatch({changes:{from:selected.from,to:selected.to,insert:value},selection:{anchor:selected.from+value.length}});
-       this.dom.removeClass('is-visible');this.view.focus();
+       });
       });
      }
      this.refresh();
     }
+    useSelection(action){
+     const current=this.view.state.selection.main;
+     const selected=!current.empty?current:this.savedRange;
+     if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
+     if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
+     action();
+    }
     update(update){
-     if(update.docChanged)this.savedRange=null;
+     if(update.docChanged){this.savedRange=null;this.expanded=false;}
      if(update.selectionSet||update.docChanged)this.refresh();
     }
     refresh(){
      if(!owner.config.toolbar.enabled){this.dom.removeClass('is-visible');return;}
      const selection=this.view.state.selection.main;
-     if(selection.empty){this.savedRange=null;this.dom.removeClass('is-visible');return;}
-     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
-     this.savedRange={from:selection.from,to:selection.to};
-     if(this.isMobile){
-      // Bottom-docked instead of covering Android's native selection handles.
-      this.dom.style.removeProperty('top');
-      this.dom.style.removeProperty('left');
-      this.dom.addClass('is-visible');
-      return;
+     if(selection.empty){
+      this.savedRange=null;this.expanded=false;this.dismissedSelection=null;
+      this.dom.removeClass('is-visible','writer-v4-expanded');return;
      }
+     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
+     const key=selection.from+':'+selection.to;
+     if(key===this.dismissedSelection)return;
+     if(this.savedRange&&(this.savedRange.from!==selection.from||this.savedRange.to!==selection.to)){
+      this.expanded=false;this.dom.removeClass('writer-v4-expanded');
+     }
+     this.savedRange={from:selection.from,to:selection.to};
+     this.dom.addClass('is-visible');
+     if(this.isMobile){this.positionMobile();return;}
      const pos=this.view.coordsAtPos(selection.from);
      if(!pos){this.dom.removeClass('is-visible');return;}
-     this.dom.addClass('is-visible');
      const box=this.view.dom.getBoundingClientRect();
      this.dom.style.top=Math.max(4,pos.top-box.top-42)+'px';
      this.dom.style.left=Math.max(0,Math.min(box.width-240,pos.left-box.left))+'px';
+    }
+    positionMobile(){
+     if(!this.isMobile||!this.dom.hasClass('is-visible'))return;
+     const selection=this.view.state.selection.main;
+     const at=selection.empty?this.savedRange?.to:selection.to;
+     if(!Number.isInteger(at))return;
+     const rect=this.view.coordsAtPos(at);
+     if(!rect)return;
+     const win=this.ownerDocument?.defaultView;
+     const vv=win?.visualViewport;
+     const viewportTop=vv?.offsetTop||0;
+     const viewportBottom=viewportTop+(vv?.height||win?.innerHeight||680);
+     const viewportLeft=vv?.offsetLeft||0;
+     const viewportWidth=vv?.width||win?.innerWidth||360;
+     const toolbarHeight=this.dom.offsetHeight|| (this.expanded?88:46);
+     const toolbarWidth=this.dom.offsetWidth||200;
+     const safeBottom=Math.min(viewportBottom,this.view.dom.getBoundingClientRect().bottom)-10;
+     let top=rect.bottom+26;
+     if(top+toolbarHeight>safeBottom)top=rect.top-toolbarHeight-38;
+     top=Math.max(viewportTop+44,Math.min(top,viewportBottom-toolbarHeight-10));
+     const left=Math.max(viewportLeft+8,Math.min(rect.left-12,viewportLeft+viewportWidth-toolbarWidth-8));
+     // Inline important overrides mobile docking rules from earlier betas.
+     this.dom.style.setProperty('top',top+'px','important');
+     this.dom.style.setProperty('inset-block-start',top+'px','important');
+     this.dom.style.setProperty('left',left+'px','important');
+     this.dom.style.setProperty('inset-inline-start',left+'px','important');
+     this.dom.style.setProperty('bottom','auto','important');
+     this.dom.style.setProperty('right','auto','important');
     }
     destroy(){
      clearTimeout(this.selectionTimer);
@@ -213,6 +277,8 @@ class WriterV4Extras{
      this.view.dom.removeEventListener('touchend',this.onSelection);
      this.view.dom.removeEventListener('keyup',this.onSelection);
      this.ownerDocument?.removeEventListener('selectionchange',this.onSelection);
+     this.visualViewport?.removeEventListener?.('resize',this.onViewport);
+     this.visualViewport?.removeEventListener?.('scroll',this.onViewport);
      this.dom.remove();
     }
    }));

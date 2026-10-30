@@ -23,7 +23,7 @@ class WriterToolsView extends ItemView{
   const active=this.app.workspace.getActiveFile();
   root.createEl('p',{text:active?.extension==='md'?active.path:'Abra uma nota Markdown para usar as ferramentas.',cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
-  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['snapshots',writerUi("Versões","Versions")]]){
+  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
@@ -31,6 +31,7 @@ class WriterToolsView extends ItemView{
   if(this.tab==='complements')this.renderComplements(panel);
   if(this.tab==='variants')this.renderVariants(panel);
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
+  if(this.tab==='extras')this.renderExtras(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
   this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
   this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
@@ -69,6 +70,27 @@ class WriterToolsView extends ItemView{
    sample.setText(current.found.variants[current.found.active].slice(0,1000));
   }
  }
+
+ renderExtras(panel){
+  panel.createEl('h4',{text:writerUi('Símbolos Unicode','Unicode characters')});
+  panel.createEl('p',{text:writerUi('Pesquise símbolos por nome ou código Unicode. Os favoritos ficam nas configurações do Basic AI.','Search characters by name or Unicode code point. Favorites stay in Basic AI settings.')});
+  const unicode=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(unicode,writerUi('Pesquisar Unicode','Search Unicode'),()=>this.plugin.writerFinalFeatures.unicodePicker(),true);
+  panel.createEl('h4',{text:writerUi('Leitura em voz alta','Text-to-speech')});
+  panel.createEl('p',{text:writerUi('Leitor de voz do sistema, sem IA. As vozes disponíveis dependem do dispositivo.','System speech synthesis, without AI. Available voices depend on the device.')});
+  const tts=this.plugin.settings.finalSuite?.tts||{};
+  new Setting(panel).setName(writerUi('Idioma da voz','Voice language')).addDropdown(d=>{
+   for(const [key,label] of [['auto',writerUi('Automático','Auto')],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語']])d.addOption(key,label);
+   d.setValue(tts.language||'auto').onChange(async value=>{tts.language=value;await this.plugin.saveSettings();});
+  });
+  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(actions,writerUi('Ler texto','Read text'),()=>this.plugin.writerFinalFeatures.speakActive(),true);
+  this.addButton(actions,writerUi('Pausar','Pause'),()=>this.plugin.writerFinalFeatures.pause());
+  this.addButton(actions,writerUi('Continuar','Resume'),()=>this.plugin.writerFinalFeatures.resume());
+  this.addButton(actions,writerUi('Parar','Stop'),()=>this.plugin.writerFinalFeatures.stop());
+  this.addButton(actions,writerUi('Tarefas do projeto','Project tasks'),()=>this.plugin.openProjects('tasks'));
+ }
+
  renderSnapshots(panel,file){
   const opts=this.plugin.settings.snapshots||{};
   panel.createEl('h4',{text:writerUi("Histórico e recuperação","History and recovery")});

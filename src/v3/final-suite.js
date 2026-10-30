@@ -1,7 +1,7 @@
 'use strict';
 /* Independent small writing utilities. No upstream bundled files are copied. */
 const WRITER_FINAL_DEFAULTS={
- abbreviations:{enabled:true,caseSensitive:false,entries:{"eg.":"for example","atm":"at the moment","imo":"in my opinion","w/":"with","w/o":"without","btw":"by the way","afaik":"as far as I know","rn":"right now","ily":"I love you"},expandAtWordBoundary:true},
+ abbreviations:{enabled:true,entries:{"eg.":{value:"for example",isEnabled:true},"atm":{value:"at the moment",isEnabled:true},"imo":{value:"in my opinion",isEnabled:true},"w/":{value:"with",isEnabled:true},"w/o":{value:"without",isEnabled:true},"btw":{value:"by the way",isEnabled:true},"afaik":{value:"as far as I know",isEnabled:true},"rn":{value:"right now",isEnabled:true},"ily":{value:"I love you",isEnabled:true}},expandAtWordBoundary:false},
  anotherName:{enabled:true,property:"another-name"},
  viewMode:{enabled:true,property:"prefer-view"},
  templates:{enabled:true,folder:"Templates",matchCase:false,onlyNew:true,applyOnCreate:true},
@@ -13,7 +13,14 @@ function writerFinalMerge(plugin){
  const current=plugin.settings.finalSuite||{};
  for(const [key,defaults] of Object.entries(WRITER_FINAL_DEFAULTS)){
   current[key]={...defaults,...(current[key]||{})};
-  if(key==='abbreviations')current[key].entries={...defaults.entries,...(current[key].entries||{})};
+  if(key==='abbreviations'){
+   current[key].entries={...defaults.entries,...(current[key].entries||{})};
+   for(const [abbr,entry] of Object.entries(current[key].entries)){
+    current[key].entries[abbr]=typeof entry==='string'?{value:entry,isEnabled:true,isCaseSensitive:false}:{
+     value:String(entry?.value||''),isEnabled:entry?.isEnabled!==false,isCaseSensitive:entry?.isCaseSensitive===true
+    };
+   }
+  }
  }
  plugin.settings.finalSuite=current;
  return current;
@@ -29,11 +36,12 @@ class WriterFinalFeatures{
   p.registerEvent(p.app.vault.on('create',file=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplate(file).catch(e=>console.warn('[Basic AI] template:',e));}));
   if(EditorView.updateListener?.of)p.registerEditorExtension(EditorView.updateListener.of(update=>{
    if(!update.docChanged||!p.settings.finalSuite?.abbreviations?.enabled)return;
+   if(!update.transactions?.some(tr=>tr.isUserEvent?.('input.type')))return;
    if(this.expanding)return;
    let change=null;
    update.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
     const value=inserted.toString();
-    if(value.length===1&&/[\s.,!?;:]/.test(value))change={at:toB,character:value};
+    if(value===' '||(value.length===1&&p.settings.finalSuite.abbreviations.expandAtWordBoundary&&/[\t.,!?;:]/.test(value)))change={at:toB,character:value};
    });
    if(change)queueMicrotask(()=>this.tryExpand(update.view,change));
   }));
@@ -52,20 +60,21 @@ class WriterFinalFeatures{
   if(p.app.workspace.iterateAllLeaves)this.refreshNames();
  }
  tryExpand(view,change){
-  const config=this.cfg.abbreviations;if(!config?.enabled||this.expanding)return;
-  const doc=view.state.doc.toString(),position=change.at;
-  if(position<1||doc[position-1]!==change.character)return;
-  const prefix=doc.slice(Math.max(0,position-160),position-1);
-  const entries=Object.entries(config.entries||{}).filter(([k,v])=>k&&typeof v==='string'&&v);
-  entries.sort((a,b)=>b[0].length-a[0].length);
-  for(const [needle,replacement] of entries){
+  const cfg=this.cfg.abbreviations;
+  if(!cfg?.enabled||this.expanding)return;
+  const doc=view.state.doc.toString(),pos=change.at;
+  if(pos<1||doc[pos-1]!==change.character)return;
+  const prefix=doc.slice(Math.max(0,pos-160),pos-1);
+  const entries=Object.entries(cfg.entries||{}).filter(([k,v])=>k&&v?.isEnabled!==false&&typeof v?.value==='string'&&v.value.trim()).sort((a,b)=>b[0].length-a[0].length);
+  for(const [needle,entry] of entries){
    const before=prefix.slice(-needle.length);
-   if(config.caseSensitive?before!==needle:before.toLocaleLowerCase()!==needle.toLocaleLowerCase())continue;
-   const start=position-1-needle.length;
+   if(entry.isCaseSensitive?before!==needle:before.toLocaleLowerCase()!==needle.toLocaleLowerCase())continue;
+   const start=pos-1-needle.length;
    if(start>0&&/[\p{L}\p{N}_]/u.test(doc[start-1]))continue;
    this.expanding=true;
-   view.dispatch({changes:{from:start,to:position-1,insert:replacement}});
-   this.expanding=false;return;
+   try{view.dispatch({changes:{from:start,to:pos-1,insert:entry.value}});}
+   finally{this.expanding=false;}
+   return;
   }
  }
  refreshNames(){
@@ -176,19 +185,46 @@ class WriterFinalFeatures{
   const modal=new Modal(this.plugin.app),entries=this.cfg.abbreviations.entries;
   modal.onOpen=()=>{
    modal.setTitle('Abbreviations');
-   const list=modal.contentEl.createDiv();
+   const create=modal.contentEl.createDiv({cls:'writer-abbr-add'});
+   let word='',expansion='';
+   new Setting(create).setName('Add abbreviation')
+    .addText(t=>t.setPlaceholder('Abbreviation').onChange(v=>word=v))
+    .addText(t=>t.setPlaceholder('Expansion').onChange(v=>expansion=v))
+    .addButton(b=>b.setButtonText('Add').onClick(async()=>{
+     const key=word.trim();
+     if(!key||!expansion.trim()||/\s/.test(key))return new Notice('Please enter a word without spaces and a replacement.');
+     if(entries[key])return new Notice('This abbreviation already exists.');
+     entries[key]={value:expansion,isEnabled:true,isCaseSensitive:false};
+     await this.plugin.saveSettings();paint();
+    }));
+   const list=modal.contentEl.createDiv({cls:'writer-abbr-list'});
    const paint=()=>{
     list.empty();
-    for(const [key,value] of Object.entries(entries)){
-     new Setting(list).setName(key).setDesc(value).addExtraButton(b=>b.setIcon('trash').onClick(async()=>{delete entries[key];await this.plugin.saveSettings();paint();}));
+    for(const [key,entry] of Object.entries(entries)){
+     const row=new Setting(list);
+     row.setName(key);
+     row.addToggle(t=>t.setValue(entry.isEnabled!==false).onChange(async value=>{
+      entry.isEnabled=value;await this.plugin.saveSettings();
+     }));
+     row.addText(t=>t.setValue(entry.value||'').onChange(async value=>{entry.value=value;await this.plugin.saveSettings();}));
+     row.addExtraButton(b=>b.setIcon('case-sensitive').setTooltip('Case sensitive').onClick(async()=>{
+      entry.isCaseSensitive=!entry.isCaseSensitive;await this.plugin.saveSettings();new Notice(entry.isCaseSensitive?'Case-sensitive':'Case-insensitive');
+     }));
+     row.addExtraButton(b=>b.setIcon('pencil').setTooltip('Rename abbreviation').onClick(()=>{
+      new TextPrompt(this.plugin.app,'Rename abbreviation',async name=>{
+       const newName=name.trim();
+       if(!newName||/\s/.test(newName)||entries[newName])return new Notice('Invalid or duplicate abbreviation.');
+       entries[newName]=entry;delete entries[key];await this.plugin.saveSettings();paint();
+      },key).open();
+     }));
+     row.addExtraButton(b=>b.setIcon('trash').setTooltip('Delete abbreviation').onClick(async()=>{
+      delete entries[key];await this.plugin.saveSettings();paint();
+     }));
     }
    };
-   const row=new Setting(modal.contentEl);let key='',value='';
-   row.addText(t=>t.setPlaceholder('Short form').onChange(v=>key=v));
-   row.addText(t=>t.setPlaceholder('Expansion').onChange(v=>value=v));
-   row.addButton(b=>b.setButtonText('Add').onClick(async()=>{if(!key.trim()||!value.trim())return;entries[key.trim()]=value;await this.plugin.saveSettings();paint();}));
    paint();
-  };modal.open();
+  };
+  modal.open();
  }
  speakActive(){
   if(!this.cfg.tts.enabled)return new Notice('Enable text-to-speech in settings.');

@@ -48,7 +48,7 @@ const S={StateField:{define:()=>({})},StateEffect:{define:()=>({of:x=>x})}};
 const V={Decoration:{none:{map:()=>({})},set:()=>({}),mark:()=>({range:()=>({})})},EditorView:{decorations:{from:()=>({})}},ViewPlugin:{fromClass:()=>({})}};
 const getRequire=name=>name==='obsidian'?O:name==='@codemirror/state'?S:name==='@codemirror/view'?V:(()=>{throw Error('unknown import: '+name)})();
 const mods=['core','complements','variants','snapshots','workspace'].map(name=>fs.readFileSync('src/v3/'+name+'.js','utf8').replace(/^'use strict';\s*/,'')).join('\n');
-const api=vm.runInNewContext(mods+'\n({writerMergeV3,writerMaskMarkdown,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots,WriterVariants})',{require:getRequire,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
+const api=vm.runInNewContext(mods+'\n({writerMergeV3,writerMaskMarkdown,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots,WriterVariants})',{...O,...V,require:getRequire,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
 const {writerMergeV3,writerMaskMarkdown,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots}=api;
 function j(value){return JSON.parse(JSON.stringify(value));}
 async function run(){

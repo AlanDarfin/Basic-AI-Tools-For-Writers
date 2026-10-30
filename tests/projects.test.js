@@ -80,4 +80,19 @@ tests.push(test('Compiled notes never replace source or existing output',async()
  assert.equal(result.file.path,'Book/manuscript 2.md');
  assert.ok(files.has('Book/A.md')&&files.has('Book/Index.md'));
 }));
+tests.push(test('Reorder, indent and remove parent without deleting subchapters',async()=>{
+ const view=instance();
+ const project={file:new TFile('Book/Index.md'),format:'scenes',title:'Book',meta:{scenes:['A',['B','C'],'D']},scenes:['A',['B','C'],'D']};
+ view.backupIndex=async()=>{};
+ view.render=async()=>{};
+ view.app.fileManager.processFrontMatter=async(_f,mutate)=>{
+  const fm={longform:project.meta};mutate(fm);project.meta=fm.longform;project.scenes=fm.longform.scenes;
+ };
+ await view.moveScene(project,'B',1);
+ assert.deepEqual(j(lfFlattenScenes(project.scenes)),[{title:'A',indent:0},{title:'C',indent:1},{title:'B',indent:1},{title:'D',indent:0}]);
+ await view.indentScene(project,'D',1);
+ assert.equal(lfFlattenScenes(project.scenes).at(-1).indent,1);
+ await view.removeSceneFromIndex(project,'A');
+ assert.deepEqual(j(lfFlattenScenes(project.scenes)),[{title:'C',indent:0},{title:'B',indent:0},{title:'D',indent:0}]);
+}));
 Promise.all(tests).then(()=>{if(process.exitCode)process.exit(process.exitCode);});

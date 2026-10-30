@@ -15,23 +15,54 @@ function writerMergeV3(settings){
  base.schemaVersion=3;return base;
 }
 function writerMaskMarkdown(source,keepVariants=false){
- const text=String(source||'');
- const hidden=new Uint8Array(text.length);
+ const text=String(source||''),hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
+ // Never alter the length: LanguageTool offsets correspond to the original Markdown.
  if(text.startsWith('---\n')||text.startsWith('---\r\n')){
-  const front=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
-  if(front)hide(0,front[0].length);
+  const fm=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  if(fm)hide(0,fm[0].length);
  }
- let inside=null,at=0;
+ let fence=null,offset=0;
  for(const line of text.split('\n')){
-  const m=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
-  if(m){if(!inside)inside={char:m[1][0],n:m[1].length};else if(m[1][0]===inside.char&&m[1].length>=inside.n)inside=null;hide(at,at+line.length);}
-  else if(inside)hide(at,at+line.length);
-  at+=line.length+1;
+  const m=/^[ \t]{0,3}(\x60{3,}|~{3,})/.exec(line);
+  if(m){
+   if(!fence)fence={char:m[1][0],size:m[1].length};
+   else if(m[1][0]===fence.char&&m[1].length>=fence.size)fence=null;
+   hide(offset,offset+line.length);
+  }else if(fence)hide(offset,offset+line.length);
+  offset+=line.length+1;
  }
- const masks=[/\x60+[^\x60\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\n]*\]\([^\n)]*\)/g,/!?\[\[[^\]\n]*\]\]/g,/(\[[^\]\n]+\])\([^\n)]*\)/g]; if(!keepVariants)masks.push(/\{\{[^\n]{1,6000}?\}\}\^\d+/g);
- for(const re of masks){let m;while((m=re.exec(text))){hide(m.index,m.index+m[0].length);if(m[0].length===0)re.lastIndex++;}}
- let out='';for(let i=0;i<text.length;i++)out+=hidden[i]?' ':text[i];return out;
+ const masks=[/\x60+[^\x60\r\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\r\n]*\]\([^\r\n)]*\)/g,/!?\[\[[^\]\r\n]*\]\]/g,/\[[^\]\r\n]+\]\([^\r\n)]*\)/g];
+ if(!keepVariants)masks.push(/\{\{[^\r\n]{1,6000}?\}\}\^\d+/g);
+ for(const re of masks){
+  let m;while((m=re.exec(text))!==null){
+   hide(m.index,m.index+m[0].length);
+   if(!m[0].length)re.lastIndex++;
+  }
+ }
+ // A paired delimiter marks formatting, but the words between markers are prose.
+ // This excludes underscores inside identifiers (foo_bar) and escaped characters.
+ const emphasis=/(?<![\p{L}\p{N}\\])(\*\*|__|~~|\*|_)(?=\S)([^\r\n]*?\S)\1(?![\p{L}\p{N}])/gu;
+ let m;
+ while((m=emphasis.exec(text))!==null){
+  const from=m.index,closing=from+m[0].length-m[1].length;
+  if(closing-from>4000||hidden[from]||hidden[closing])continue;
+  let protectedPart=false;
+  for(let i=from;i<closing;i++)if(hidden[i]){protectedPart=true;break;}
+  if(protectedPart)continue;
+  hide(from,from+m[1].length);
+  hide(closing,closing+m[1].length);
+ }
+ const structural=/^[ \t]{0,3}(?:#{1,6}(?=\s)|>(?=\s)|[-*+](?=\s)|\d+[.)](?=\s)|(?:---+|\*\*\*+|___+)[ \t]*$)/gm;
+ while((m=structural.exec(text))!==null)hide(m.index,m.index+m[0].length);
+ let masked='';for(let i=0;i<text.length;i++)masked+=hidden[i]?' ':text[i];
+ return masked;
+}
+function writerGrammarMatchIsSafe(source,masked,match){
+ const from=match?.offset,length=match?.length;
+ if(!Number.isInteger(from)||!Number.isInteger(length)||length<=0||from<0||from+length>source.length||masked.length!==source.length)return false;
+ for(let i=from;i<from+length;i++)if(source[i]!==masked[i])return false;
+ return true;
 }
 function writerParseVariants(input){
  const text=String(input||''),found=[];let pos=0;

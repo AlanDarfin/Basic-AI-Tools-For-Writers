@@ -1,7 +1,7 @@
 'use strict';
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{
- constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;}
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();}
  get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
  isExcluded(file){
   if(!file||file.extension!=='md')return true;
@@ -106,8 +106,9 @@ class WriterComplements extends EditorSuggest{
   const start={line:cursor.line,ch:cursor.ch-m[1].length},end={line:cursor.line,ch:cursor.ch};
   const pos=typeof editor.posToOffset==='function'?editor.posToOffset(start):null;
   if(pos!==null){
-   const full=editor.getValue(),masked=writerMaskMarkdown(full);
-   if(masked.slice(pos,pos+m[1].length)!==m[1])return null;
+   const full=editor.getValue();let record=this.maskCache.get(editor);
+   if(!record||record.source!==full){record={source:full,masked:writerMaskMarkdown(full)};this.maskCache.set(editor,record);}
+   if(record.masked.slice(pos,pos+m[1].length)!==m[1])return null;
   }
   if(this.plugin.reviewPopup)this.plugin.closeReviewPopup();
   return {start,end,query:m[1],editor,file};

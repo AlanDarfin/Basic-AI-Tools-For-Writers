@@ -832,7 +832,7 @@ function prepareGrammarText(text){
  hide(/\[\[[^\]\n]*\]\]/g);
  hide(/^\s{0,3}#{1,6}(?=\s)/gm);
  hide(/\[([^\]]+)\]\([^\n)]*\)/g);
- return masked;
+ return writerMaskMarkdown(masked);
 }
 function reviewParagraph(source,start,end){
  const breaks=/\r?\n[ \t]*\r?\n/g;
@@ -925,7 +925,7 @@ function writerMergeV3(settings){
  }
  base.schemaVersion=3;return base;
 }
-function writerMaskMarkdown(source){
+function writerMaskMarkdown(source,keepVariants=false){
  const text=String(source||'');
  const hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
@@ -940,14 +940,16 @@ function writerMaskMarkdown(source){
   else if(inside)hide(at,at+line.length);
   at+=line.length+1;
  }
- const masks=[/\x60+[^\x60\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\n]*\]\([^\n)]*\)/g,/!?\[\[[^\]\n]*\]\]/g,/(\[[^\]\n]+\])\([^\n)]*\)/g,/\{\{[^\n]{1,6000}?\}\}\^\d+/g];
+ const masks=[/\x60+[^\x60\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\n]*\]\([^\n)]*\)/g,/!?\[\[[^\]\n]*\]\]/g,/(\[[^\]\n]+\])\([^\n)]*\)/g]; if(!keepVariants)masks.push(/\{\{[^\n]{1,6000}?\}\}\^\d+/g);
  for(const re of masks){let m;while((m=re.exec(text))){hide(m.index,m.index+m[0].length);if(m[0].length===0)re.lastIndex++;}}
  let out='';for(let i=0;i<text.length;i++)out+=hidden[i]?' ':text[i];return out;
 }
 function writerParseVariants(input){
  const text=String(input||''),found=[];let pos=0;
+ const exposed=writerMaskMarkdown(text,true);
  while(pos<text.length){
   const from=text.indexOf('{{',pos);if(from<0)break;
+  if(exposed.slice(from,from+2)!=='{{'){pos=from+2;continue;}
   let i=from+2,escaped=false,part='',items=[],end=-1;
   while(i<text.length&&i-from<32000){
    const c=text[i];
@@ -1022,14 +1024,17 @@ class WriterComplements extends EditorSuggest{
   const generation=++this.generation;
   this.building=(async()=>{
    const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f)).slice(0,Math.max(10,Math.min(6000,Number(this.options.maxFiles)||500)));
-   const next=new Map();
+   const next=new Map();let total=0;const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
    if(this.options.vault!==false){
     for(let i=0;i<files.length;i++){
      const file=files[i];if(generation!==this.generation)return;
      try{
       if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
       const text=await this.plugin.app.vault.cachedRead(file);
-      next.set(file.path,this.tokenize(writerMaskMarkdown(text)));
+      const terms=this.tokenize(writerMaskMarkdown(text));
+      const remaining=Math.max(0,limit-total);
+      const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
+      total+=subset.size;if(total>=limit)break;
      }catch(e){console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
      if(i%20===19)await Promise.resolve();
     }

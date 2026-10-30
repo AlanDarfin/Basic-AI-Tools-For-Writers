@@ -14,6 +14,7 @@ function writerMergeV3(settings){
  }
  base.schemaVersion=3;return base;
 }
+function writerUi(pt,en){try{return (require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}}
 function writerMaskMarkdown(source,keepVariants=false){
  const text=String(source||''),hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};

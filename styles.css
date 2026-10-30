@@ -1291,3 +1291,70 @@ select:not([multiple]){
  .writer-v4-diff-results{max-height:35vh}
  .writer-v4-profile .setting-item-control{flex:1 1 100%}
 }
+
+/* Basic AI v4 beta.2: Longform drag/tap reordering + integrated writing tools. */
+.writer-project-scene-actions .writer-project-drag-handle {
+ flex:0 0 34px!important;width:34px!important;min-width:34px!important;
+ min-height:36px;cursor:grab;touch-action:manipulation;
+ color:var(--text-muted);background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+ text-align:center;font-size:20px;line-height:1;
+}
+.writer-project-scene-actions .writer-project-drag-handle:active{cursor:grabbing}
+.writer-project-scene-actions.writer-project-dragging{opacity:.5}
+.writer-project-scene-actions.writer-project-dragover{
+ background:var(--background-modifier-hover);
+ box-shadow:inset 0 3px var(--interactive-accent);outline:0;
+}
+.writer-project-scene-actions.writer-project-drop-after{
+ box-shadow:inset 0 -3px var(--interactive-accent);
+}
+.writer-project-scene-actions.writer-project-pickup{
+ outline:2px dashed var(--interactive-accent);outline-offset:-2px;
+ background:var(--background-secondary);
+}
+.writer-v4-comment-section{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.writer-v4-comment-section>h5{margin:6px 0;color:var(--text-muted)}
+.writer-v4-comment-card{
+ padding:10px 12px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-secondary);
+ overflow-wrap:anywhere;min-width:0;
+}
+.writer-v4-comment-card blockquote{
+ margin:5px 0;padding:6px 8px;border-inline-start:3px solid var(--interactive-accent);
+ background:var(--background-primary);white-space:pre-wrap;
+}
+.writer-v4-comment-card p{margin:10px 0;white-space:pre-wrap}
+.writer-v4-comment-card small{display:block;color:var(--text-muted)}
+.writer-v4-comment-card.is-resolved{opacity:.6}
+.writer-v4-comment-filter{display:flex;align-items:center;gap:10px;margin:8px 0}
+.writer-v4-floating-toolbar{
+ position:absolute;z-index:50;display:none;align-items:center;gap:3px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+ box-shadow:var(--shadow-s);padding:4px;max-width:calc(100% - 8px);
+}
+.writer-v4-floating-toolbar.is-visible{display:flex}
+.writer-v4-floating-toolbar button{
+ min-width:30px;min-height:30px;border:0;box-shadow:none;
+ border-radius:var(--radius-s);background:transparent;
+ color:var(--text-normal);font-size:var(--font-ui-small);padding:4px 6px;
+}
+.writer-v4-floating-toolbar button:hover{background:var(--background-modifier-hover)}
+.writer-v4-mention-hint{display:block;color:var(--text-muted);font-size:var(--font-ui-smaller);overflow-wrap:anywhere}
+.writer-v4-wordwise-action{
+ display:block;width:100%;min-height:38px;margin:6px 0;padding:8px 12px;
+ text-align:start;white-space:normal;overflow-wrap:anywhere;
+ border:1px solid var(--background-modifier-border);
+ background:var(--background-secondary);border-radius:var(--radius-m);
+}
+body.writer-v4-typewriter .cm-editor .cm-activeLine{
+ background:var(--background-secondary-alt);
+ box-shadow:inset 3px 0 var(--interactive-accent);
+}
+body.writer-v4-typewriter .cm-editor .cm-scroller{scroll-padding-block:40vh}
+@media(max-width:520px){
+ .writer-v4-floating-toolbar{gap:1px;max-width:96%;overflow-x:auto}
+ .writer-v4-floating-toolbar button{min-width:32px;min-height:34px}
+ .writer-project-scene-actions .writer-project-drag-handle{flex-basis:40px!important}
+}

@@ -88,3 +88,13 @@
 .writer-chat-composer textarea{flex:1;min-width:0;min-height:58px;max-height:140px;resize:vertical}
 .writer-chat-composer button{min-height:42px;flex-shrink:0}
 @media(max-width:380px){.writer-chat-composer{flex-wrap:wrap}.writer-chat-composer button{width:100%}}
+
+/* Vault Markdown translation and chat attachments */
+.writer-file-actions{display:flex;flex-wrap:wrap;gap:8px}
+.writer-file-actions button{flex:1;min-height:38px}
+.writer-file-status{color:var(--text-muted);font-size:var(--font-ui-small);overflow-wrap:anywhere}
+.writer-chat-attachments{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 2px;border-top:1px solid var(--background-modifier-border)}
+.writer-chat-attachments>button{font-size:var(--font-ui-smaller)}
+.writer-attachment-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 8px;border:1px solid var(--background-modifier-border);background:var(--background-secondary);border-radius:var(--radius-m);font-size:var(--font-ui-smaller)}
+.writer-attachment-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.writer-attachment-chip button{min-width:24px;padding:0 5px}

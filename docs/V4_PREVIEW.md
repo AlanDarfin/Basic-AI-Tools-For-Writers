@@ -1,7 +1,14 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.3** (development branch). Not a stable release.
+Status: **4.0.0-beta.4** (development branch). Not a stable release.
 
+
+## Beta.4 — Android hierarchy and compact contextual toolbar
+
+- **Longform hierarchy:** nested chapters retain the one-row, three-column layout while displaying progressive title indentation, a clear `↳` marker, and an accessible nesting-level description. The action buttons stay in place.
+- **Mobile toolbar:** formatting/AI actions now start as a compact two-button selection pill with an explicit close control. Tap **Aa Formatar** to expand Markdown formatting; tap **✦ IA** to open AI writing actions. The pill positions near selected text and adjusts to the visible WebView viewport rather than permanently occupying a strip over Obsidian's own editing ribbon. Desktop remains unchanged.
+- **Safety and verification:** selection ranges are preserved while interacting with the toolbar; automated checks validate nested scene markers, mobile toolbar states, and source/bundle synchronization.
+- **Known limitation:** mobile selection handles and keyboard behavior depend on Obsidian's Android WebView. This requires on-device visual verification.
 
 ## Beta.3 — Android repair release
 

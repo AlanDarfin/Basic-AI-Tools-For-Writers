@@ -806,6 +806,108 @@ class ProjectsView extends ItemView{
  }
 
 }
+const {StateField,StateEffect}=require('@codemirror/state');
+const {Decoration,EditorView,ViewPlugin}=require('@codemirror/view');
+const setReviewMarks=StateEffect.define();
+const reviewMarkField=StateField.define({
+ create(){return Decoration.none;},
+ update(value,tr){
+  value=value.map(tr.changes);
+  for(const effect of tr.effects)if(effect.is(setReviewMarks)){
+   const marks=effect.value||[];
+   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark',attributes:{title:m.message||'LanguageTool'}}).range(m.from,m.to)),true);
+  }
+  if(tr.docChanged)value=Decoration.none;
+  return value;
+ },
+ provide:f=>EditorView.decorations.from(f)
+});
+function prepareGrammarText(text){
+ let masked=withoutFrontmatter(text);
+ const hide=(re)=>{masked=masked.replace(re,match=>match.replace(/[^\r\n]/g,' '));};
+ hide(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm);
+ hide(/^~~~[^\n]*\n[\s\S]*?^~~~[^\n]*$/gm);
+ hide(/^`{1,3}[^\n]*`{1,3}$/gm);
+ hide(/\!\[[^\]]*\]\([^\n)]*\)/g);
+ hide(/\[\[[^\]\n]*\]\]/g);
+ hide(/^\s{0,3}#{1,6}(?=\s)/gm);
+ hide(/\[([^\]]+)\]\([^\n)]*\)/g);
+ return masked;
+}
+function reviewParagraph(source,start,end){
+ const breaks=/\r?\n[ \t]*\r?\n/g;
+ let from=0,to=source.length,m;
+ while((m=breaks.exec(source))!==null){
+   if(m.index+ m[0].length<=start)from=m.index+m[0].length;
+   else if(m.index>=end){to=m.index;break;}
+ }
+ const paragraph=source.slice(from,to).trim();
+ return paragraph||source.slice(Math.max(0,start-80),Math.min(source.length,end+80)).trim();
+}
+function plainReviewParagraph(source,start,end){
+ const paragraph=reviewParagraph(source,start,end);
+ return paragraph
+  .replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,(_,alias,name)=>name)
+  .replace(/!\[([^\]]*)\]\([^)]*\)/g,'')
+  .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+  .replace(/(\*\*|__|~~|==|\`)/g,'')
+  .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+|\d+\.\s+)/gm,'')
+  .trim();
+}
+function meaningfulGrammarMatch(source,match){
+ const offset=match.offset,length=match.length;
+ if(!Number.isInteger(offset)||!Number.isInteger(length)||offset<0||length<=0||offset+length>source.length)return false;
+ const rule=String(match.rule?.id||'').toUpperCase();
+ const category=String(match.rule?.category?.id||'').toUpperCase();
+ const text=source.slice(offset,offset+length);
+ if(/WHITESPACE|SPACE|TYPOGRAPHY|PUNCTUATION/.test(rule)&&/^\s+$/.test(text))return false;
+ if(/WHITESPACE_RULE|COMMA_PARENTHESIS_WHITESPACE|DOUBLE_PUNCTUATION/.test(rule))return false;
+ if(category==='TYPOGRAPHY'&&/^\s+$/.test(text))return false;
+ return true;
+}
+function withoutFrontmatter(text){
+ const match=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+ if(!match)return text;
+ return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
+}
+const msg=(pt,en)=>getLocale()==='pt'?pt:en;
+const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewAutoOpenNote:true,reviewPopupEnabled:true};
+const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
+function parseDictionary(text) {
+  const entries=[]; let word=null, lines=[];
+  const flush=()=>{if(word) entries.push({word, markdown:('# '+word+'\n'+lines.join('\n')).trim()});};
+  for(const line of text.split(/\r?\n/)){
+    const heading=/^#\s+(.+?)\s*$/.exec(line);
+    if(heading){flush();word=heading[1];lines=[];}
+    else if(word){if(/^---+\s*$/.test(line)) continue;lines.push(line);}
+  }
+  flush();return entries;
+}
+
+const AI_PROVIDERS=[['openai','OpenAI'],['gemini','Gemini'],['grok','Grok (xAI)'],['claude','Claude (Anthropic)'],['custom','Custom (OpenAI-compatible)'],['ollama','Ollama'],['openrouter','OpenRouter'],['groqcloud','Groq Cloud']];
+const I18N={
+ en:{title:'Word checker',search:'Search a word...',provider:'AI provider',language:'Definition language',lookup:'Define word',save:'Save definition',translate:'Translate word',translateMeaning:'Translate meaning',synonyms:'Synonyms',antonyms:'Antonyms',context:'Optional sentence or context',result:'Definition',translation:'Translation',copy:'Copy',missing:'No local entry found.',saved:'Definition saved.',noWord:'Enter a word first.',noResult:'No definition returned.',error:'Request failed',settings:'Word checker settings',dictionary:'Local Markdown dictionary',target:'Translation target language',source:'Translation source language',key:'API key',model:'Model',endpoint:'Custom HTTPS endpoint',offline:'Local entries',notice:'API keys are stored in Obsidian plugin data without encryption. Do not sync them to untrusted devices.',transProvider:'Translation AI provider',detect:'Detect language',compare:'Compare meaning',original:'Original meaning',translated:'Translated meaning',alternatives:'Contextual alternatives',needAI:'Configure an AI provider and API key in settings.'},
+ pt:{title:'Verificador de palavras',search:'Pesquisar palavra...',provider:'Provedor de IA',language:'Idioma da definição',lookup:'Definir palavra',save:'Salvar definição',translate:'Traduzir palavra',translateMeaning:'Traduzir significado',synonyms:'Sinônimos',antonyms:'Antônimos',context:'Frase ou contexto opcional',result:'Definição',translation:'Tradução',copy:'Copiar',missing:'Nenhuma entrada local encontrada.',saved:'Definição salva.',noWord:'Digite uma palavra primeiro.',noResult:'Nenhuma definição retornada.',error:'Falha na solicitação',settings:'Configurações do verificador',dictionary:'Dicionário Markdown local',target:'Idioma de destino da tradução',source:'Idioma de origem da tradução',key:'Chave de API',model:'Modelo',endpoint:'Endpoint HTTPS personalizado',offline:'Entradas locais',notice:'As chaves de API ficam nos dados do plugin sem criptografia. Não sincronize com dispositivos não confiáveis.',transProvider:'IA para tradução',detect:'Detectar idioma',compare:'Comparar significado',original:'Significado original',translated:'Significado traduzido',alternatives:'Alternativas contextuais',needAI:'Configure um provedor de IA e sua chave nas opções.'}
+};
+const getLocale=()=>{try{const l=require('obsidian').getLanguage?.()||'en';return l.toLowerCase().startsWith('pt')?'pt':'en';}catch{return 'en';}};
+const t=k=>(I18N[getLocale()]||I18N.en)[k]||k;
+const PROMPT_DEFAULTS={
+ definition:'You are a precise dictionary. Define the word in {language}. Give part of speech, concise senses and one short example. No introduction or closing remarks. Return Markdown.',
+ synonyms:'In {language}, provide 5 contextual synonyms for the given word. For each, give a short nuance and example. No introductory text or conclusion. Return only a Markdown list.',
+ antonyms:'In {language}, provide contextual antonyms, their nuances and short examples. No introductory text or conclusion. Return only a Markdown list.',
+ translate:'Translate the user text from {source} into {target}. If source is auto, infer the source language from the text. Preserve meaning, tone and formatting. Return only the translation.',
+ writing:'You are a writing assistant. Follow the task and preserve the author intent. Return only the requested text, formatted as Markdown.',
+ test:'Reply with OK only.'
+};
+const LANGS={pt:'Português',en:'English',es:'Español',fr:'Français',de:'Deutsch',it:'Italiano',ja:'日本語'};
+function selectOptions(el,options,value,onChange){for(const [id,label] of options){const opt=el.createEl('option',{text:label});opt.value=id;}el.value=value;el.addEventListener('change',()=>onChange(el.value));}
+
+class MarkdownVaultPicker extends FuzzySuggestModal{
+ constructor(app,callback){super(app);this.callback=callback;this.setPlaceholder(msg('Pesquisar arquivos Markdown…','Search Markdown files…'));}
+ getItems(){return this.app.vault.getMarkdownFiles();}
+ getItemText(file){return file.path;}
+ onChooseItem(file){this.callback(file);}
+}
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
  getViewType(){return VIEW;}

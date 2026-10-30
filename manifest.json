@@ -1,7 +1,7 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "4.0.0-beta.5",
+  "version": "4.0.0-beta.6",
   "minAppVersion": "1.11.4",
   "author": "Alan",
   "description": "Obsidian writing studio: Longform reorder, anchored comments, mentions, editing toolbar, selective AI revision, typewriter mode, safe snapshots and TTS.",

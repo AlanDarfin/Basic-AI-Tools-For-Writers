@@ -99,6 +99,7 @@ class ProjectsView extends ItemView{
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;
+  const previousScroll=this.root.scrollTop;
   this.root.empty();
   const indexes=this.indexes();
   const token=++this.renderToken;
@@ -124,6 +125,11 @@ class ProjectsView extends ItemView{
    }catch(e){console.warn('[Basic AI] Não foi possível ler o índice Longform',e);}
   }
   this.projectPrefs=this.prefs(project);
+  if(!writerModuleOn(this.plugin,'projects')){
+   this.root.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
+   return;
+  }
+  if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   tabs.scrollLeft=this.tabScrollLeft||0;
   tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
@@ -133,18 +139,21 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')]]){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>id!=='comments'||writerModuleOn(this.plugin,'comments'))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
-  this.drawScenes(panels.scenes,project);
-  this.drawProject(panels.project,project);
-  this.drawCompile(panels.compile,project);
+  // Rendering every hidden panel was expensive for books with many chapters.
+  if(this.activeTab==='scenes')this.drawScenes(panels.scenes,project);
+  if(this.activeTab==='project')this.drawProject(panels.project,project);
+  if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
+  if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
+  this.root.scrollTop=previousScroll;
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
@@ -247,19 +256,21 @@ class ProjectsView extends ItemView{
    for(let j=i;j<end;j++)scenes[j].indent+=delta;
   });}catch(e){new Notice(e.message);}
  }
- async moveSceneBefore(project,source,target){
+ async moveSceneBefore(project,source,target){return this.moveSceneRelative(project,source,target,false);}
+ async moveSceneRelative(project,source,target,after=false){
   if(source===target)return;
   try{await this.changeScenes(project,scenes=>{
    const i=this.sceneIndex(scenes,source),j=this.sceneIndex(scenes,target);
    if(i<0||j<0)return;
    const end=this.subtreeEnd(scenes,i);
    if(j>=i&&j<end)return;
-   const part=scenes.splice(i,end-i);
-   const dest=this.sceneIndex(scenes,target);
-   if(dest<0)return;
-   const shift=scenes[dest].indent-part[0].indent;
+   const level=scenes[j].indent,part=scenes.splice(i,end-i);
+   const targetIndex=this.sceneIndex(scenes,target);
+   if(targetIndex<0)throw Error('Cena de destino não encontrada.');
+   const destination=after?this.subtreeEnd(scenes,targetIndex):targetIndex;
+   const shift=level-part[0].indent;
    part.forEach(item=>item.indent=Math.max(0,item.indent+shift));
-   scenes.splice(dest,0,...part);
+   scenes.splice(destination,0,...part);
   });}catch(e){new Notice(e.message);}
  }
  async removeSceneFromIndex(project,title){
@@ -318,14 +329,55 @@ class ProjectsView extends ItemView{
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
    const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
-   row.style.paddingLeft=(Math.min(12,level)*10)+'px';
+   // Keep the grid and drag handle aligned. Indent the *title* instead: row
+   // padding is overridden by the compact Android CSS with !important.
+   row.style.setProperty('--writer-scene-indent',Math.min(4,level)*11+'px');
+   row.dataset.depth=String(level);
+   row.dataset.sceneTitle=name;
+   if(item.children?.length)row.addClass('writer-project-scene-has-children');
    row.draggable=true;
-   row.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',name);e.dataTransfer.effectAllowed='move';});
-   row.addEventListener('dragover',e=>{e.preventDefault();row.addClass('writer-project-dragover');});
-   row.addEventListener('dragleave',()=>row.removeClass('writer-project-dragover'));
-   row.addEventListener('drop',e=>{e.preventDefault();row.removeClass('writer-project-dragover');const source=e.dataTransfer.getData('text/plain');if(source)this.moveSceneBefore(project,source,name);});
+   const grip=row.createEl('button',{text:'⠿',cls:'writer-project-drag-handle',attr:{title:lfMsg('Arraste para mover ou toque e escolha o destino','Drag to reorder or tap and choose a destination'),'aria-label':lfMsg('Mover capítulo: ','Move chapter: ')+name}});
+   grip.draggable=true;
+   grip.addEventListener('click',()=>{
+    if(this.scenePickup?.path===project.file.path&&this.scenePickup?.source===name){this.scenePickup=null;this.render();return;}
+    if(this.scenePickup?.path===project.file.path&&this.scenePickup?.draft===this.draft){
+     const source=this.scenePickup.source;this.scenePickup=null;this.moveSceneRelative(project,source,name,false);
+    }else{
+     this.scenePickup={path:project.file.path,draft:this.draft,source:name};
+     new Notice(lfMsg('Capítulo selecionado. Toque na alça do destino para mover antes dele.','Chapter selected. Tap the destination handle to move before it.'),4000);
+     row.addClass('writer-project-pickup');
+    }
+   });
+   if(this.scenePickup?.source===name&&this.scenePickup?.path===project.file.path)row.addClass('writer-project-pickup');
+   row.addEventListener('dragstart',e=>{
+    if(!e.dataTransfer)return;
+    e.dataTransfer.setData('application/x-basic-ai-scene',JSON.stringify({path:project.file.path,draft:this.draft,name}));
+    e.dataTransfer.effectAllowed='move';row.addClass('writer-project-dragging');
+   });
+   row.addEventListener('dragend',()=>{row.removeClass('writer-project-dragging');row.removeClass('writer-project-dragover');});
+   row.addEventListener('dragover',e=>{
+    if(!e.dataTransfer?.types?.includes('application/x-basic-ai-scene'))return;
+    e.preventDefault();e.dataTransfer.dropEffect='move';row.addClass('writer-project-dragover');
+    row.toggleClass('writer-project-drop-after',e.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2);
+   });
+   row.addEventListener('dragleave',e=>{if(!row.contains(e.relatedTarget)){row.removeClass('writer-project-dragover');row.removeClass('writer-project-drop-after');}});
+   row.addEventListener('drop',e=>{
+    e.preventDefault();e.stopPropagation();
+    const after=e.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
+    row.removeClass('writer-project-dragover');row.removeClass('writer-project-drop-after');
+    let data;try{data=JSON.parse(e.dataTransfer?.getData('application/x-basic-ai-scene')||'null');}catch(_){return;}
+    if(data?.path===project.file.path&&data?.draft===this.draft&&typeof data.name==='string')
+     this.moveSceneRelative(project,data.name,name,after);
+   });
    const file=this.resolveScene(project,name);
-   const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
+   const titleButton=row.createEl('button',{cls:'writer-project-scene-title',attr:{
+    'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
+   }});
+   if(level>0){
+    titleButton.createSpan({text:level===1?'↳':'↳ '+level,cls:'writer-project-scene-depth-mark',
+     attr:{title:lfMsg('Nível de recuo ','Indent level ')+level,'aria-hidden':'true'}});
+   }
+   titleButton.createSpan({text:name,cls:'writer-project-scene-title-text'});
    titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));
    const controls=row.createDiv({cls:'writer-project-scene-controls'});
    for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){
@@ -1244,7 +1296,7 @@ class WriterComplements extends EditorSuggest{
    .slice(0,Math.max(1,Math.min(30,Number(this.options.maxResults)||8)));
  }
  onTrigger(cursor,editor,file){
-  if(!this.options.enabled||this.options.automatic===false||!file||this.isExcluded(file))return null;
+  if(!writerModuleOn(this.plugin,'complements')||!this.options.enabled||this.options.automatic===false||!file||this.isExcluded(file))return null;
   const line=editor.getLine(cursor.line)||'',before=line.slice(0,cursor.ch);
   const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(before);
   if(!m||m[1].length<Math.max(1,Number(this.options.minChars)||3))return null;
@@ -1275,6 +1327,7 @@ class WriterComplements extends EditorSuggest{
   }
  }
  async manual(){
+   if(!writerModuleOn(this.plugin,'complements'))return;
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView),editor=view?.editor,file=view?.file;
   if(!editor||!file)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const cursor=editor.getCursor(),line=editor.getLine(cursor.line)||'';
@@ -1740,7 +1793,17 @@ class WriterToolsView extends ItemView{
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
-  for(const [id,label] of [['complements',writerUi("Sugestões","Suggestions")],['variants',writerUi("Variantes","Variants")],['reviewV4',writerUi('Diff e perfis','Diff & profiles')],['snapshots',writerUi("Versões","Versions")],['extras',writerUi('Extras','Extras')]]){
+  const sections=[
+   ['complements',writerUi("Sugestões","Suggestions"),'complements'],
+   ['variants',writerUi("Variantes","Variants"),'variants'],
+   ['reviewV4',writerUi('Diff e perfis','Diff & profiles'),'diff'],
+   ['snapshots',writerUi("Versões","Versions"),'snapshots'],
+   ['extras',writerUi('Extras','Extras'),'extras']
+  ].filter(([,label,feature])=>feature==='extras'
+   ?['tts','unicode','projects'].some(id=>writerModuleOn(this.plugin,id))
+   :writerModuleOn(this.plugin,feature));
+  if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
+  for(const [id,label] of sections){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
@@ -1751,8 +1814,8 @@ class WriterToolsView extends ItemView{
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
   if(this.tab==='extras')this.renderExtras(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
-  this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
-  this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
+  if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
+  if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
   this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
  }
  renderComplements(panel){
@@ -1764,7 +1827,7 @@ class WriterToolsView extends ItemView{
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(),true);
   this.addButton(actions,writerUi("Reindexar cofre","Reindex vault"),async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice(writerUi("Índice de sugestões atualizado.","Suggestion index updated."));});
-  this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
+  if(writerModuleOn(this.plugin,'dictionary'))this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
   const tracked=this.plugin.writerComplements?.cache?.size||0;
   panel.createEl('p',{text:tracked+' arquivo(s) no índice atual.',cls:'writer-tools-muted'});
  }
@@ -1829,6 +1892,14 @@ class WriterToolsView extends ItemView{
     tools.stop();tts.engine=value;await this.plugin.saveSettings();this.render();
    });
   });
+  if(tts.engine!=='edge'){
+   const support=speech.createDiv({cls:'writer-tts-support'});
+   support.createEl('p',{text:tools.systemSpeechStatus(),cls:'writer-tts-system-diagnostic'});
+   const diagnostics=support.createDiv({cls:'writer-tools-v3-actions'});
+   this.addButton(diagnostics,writerUi('Verificar vozes','Check voices'),()=>{
+    tools.refreshVoiceSelectors();this.render();
+   });
+  }
   if(tts.engine==='edge'){
    const privacy=speech.createDiv({cls:'writer-tts-privacy'});
    privacy.createEl('p',{text:writerUi('Online: o texto selecionado ou a nota é enviado à Microsoft. Requer internet e pode ficar indisponível.','Online: selected text or the note is sent to Microsoft. Requires internet and may become unavailable.')});
@@ -1846,6 +1917,7 @@ class WriterToolsView extends ItemView{
   this.addButton(actions,writerUi('Pausar','Pause'),()=>tools.pause());
   this.addButton(actions,writerUi('Continuar','Resume'),()=>tools.resume());
   this.addButton(actions,writerUi('Parar','Stop'),()=>tools.stop());
+  if(!writerModuleOn(this.plugin,'projects'))return;
   const nav=panel.createDiv({cls:'writer-extras-card writer-extras-navigation'});
   nav.createEl('h4',{text:writerUi('Projetos e organização','Projects & organization')});
   nav.createEl('p',{text:writerUi('Acesse rapidamente as tarefas do Longform.','Quick access to Longform project tasks.')});
@@ -1967,13 +2039,13 @@ function writerFinalMerge(plugin){
  return current;
 }
 class WriterFinalFeatures{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=null;this.edgePlayer=null;this.ttsStatus='idle';this.ttsMessage='';}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsStatus='idle';this.ttsMessage='';}
  get cfg(){return this.plugin.settings.finalSuite;}
  register(){
   const p=this.plugin;
   p.registerEvent(p.app.workspace.on('layout-change',()=>this.refreshNames()));
   if(p.app.metadataCache?.on)p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
-  p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
+  p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.lastFile=file;this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
   p.registerEvent(p.app.vault.on('create',file=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplate(file).catch(e=>console.warn('[Basic AI] template:',e));}));
   p.registerEvent(p.app.vault.on('rename',(file,oldPath)=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplateOnRename(file,oldPath).catch(e=>console.warn('[Basic AI] template rename:',e));}));
   if(EditorView.updateListener?.of)p.registerEditorExtension(EditorView.updateListener.of(update=>{
@@ -1999,6 +2071,12 @@ class WriterFinalFeatures{
    ['writer-insert-template','Insert note-name template',()=>this.applyTemplateToCurrent()]
   ];
   for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
+  // Voices can arrive asynchronously. Android WebView may not expose Web Speech.
+  if(typeof speechSynthesis!=='undefined'&&typeof speechSynthesis.addEventListener==='function'){
+   const update=()=>this.refreshVoiceSelectors();
+   speechSynthesis.addEventListener('voiceschanged',update);
+   if(typeof p.register==='function')p.register(()=>speechSynthesis.removeEventListener('voiceschanged',update));
+  }
   if(p.app.workspace.iterateAllLeaves)this.refreshNames();
  }
  tryExpand(view,change){
@@ -2406,13 +2484,45 @@ class WriterFinalFeatures{
   }
   return this.edgePlayer;
  }
+ systemVoices(){
+  if(typeof speechSynthesis==='undefined'||typeof speechSynthesis.getVoices!=='function')return [];
+  try{return Array.from(speechSynthesis.getVoices()||[]);}catch(_){return [];}
+ }
+ systemSpeechStatus(){
+  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')
+   return writerUi('A voz nativa não está disponível no WebView do Obsidian. No Android isso pode acontecer mesmo com vozes instaladas no telefone. Escolha o mecanismo online apenas se quiser permitir o envio do texto.','Native speech is not exposed by Obsidian’s WebView. On Android, this can happen even with voices installed on the phone. Select online speech only if you consent to sending text.');
+  const voices=this.systemVoices();
+  if(!voices.length)return writerUi('O WebView ainda não forneceu uma lista de vozes. Tente a voz padrão ou um mecanismo online com consentimento explícito.','The WebView has not provided a voice list. Try system default or an online engine with explicit consent.');
+  return writerUi('Vozes disponíveis pelo WebView: ','Voices available in WebView: ')+voices.length;
+ }
+ refreshVoiceSelectors(){
+  if(typeof document==='undefined'||!document.querySelectorAll)return;
+  for(const select of document.querySelectorAll('.writer-tts-voice-select')){
+   const selected=this.cfg.tts.voice||'';
+   select.empty();
+   select.createEl('option',{text:writerUi('Voz padrão do sistema','System default'),value:''});
+   for(const voice of this.systemVoices())select.createEl('option',{text:voice.name+' ('+voice.lang+')',value:voice.voiceURI});
+   select.value=[...select.options].some(o=>o.value===selected)?selected:'';
+  }
+  for(const node of document.querySelectorAll('.writer-tts-system-diagnostic'))node.setText?.(this.systemSpeechStatus());
+ }
  async speakActive(){
   const cfg=this.cfg.tts;
-  if(!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
-  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-  if(!view)return new Notice('Open a Markdown note.');
-  const selected=view.editor.getSelection();
-  const raw=selected&&cfg.readSelection?selected:view.editor.getValue();
+  if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
+  // On Android, tapping a sidebar button often makes the sidebar the active leaf.
+  // Find the last markdown editor before falling back to the vault note on disk.
+  const workspace=this.plugin.app.workspace;
+  const file=workspace.getActiveFile?.()||this.lastFile;
+  const leaves=workspace.getLeavesOfType?.('markdown')||[];
+  const view=workspace.getActiveViewOfType(MarkdownView)
+   ||leaves.find(leaf=>leaf.view?.file?.path===file?.path&&leaf.view?.editor)?.view
+   ||leaves.find(leaf=>leaf.view?.file?.extension==='md'&&leaf.view?.editor)?.view;
+  const note= view?.file||file;
+  if(!note||note.extension!=='md')return new Notice('Open a Markdown note.');
+  this.lastFile=note;
+  const selected=view?.editor?.getSelection?.()||'';
+  const raw=selected&&cfg.readSelection?selected:
+    (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
   const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice('No readable text.');
@@ -2427,19 +2537,21 @@ class WriterFinalFeatures{
    catch(error){this.onTtsState('error',error.message);}
    return;
   }
-  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')return new Notice('No system voice available. Select Microsoft Edge online TTS in settings.');
+  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')
+   return new Notice(writerUi('O WebView do Android não expõe a voz nativa do sistema. Use o mecanismo online somente se autorizar o envio do texto.','This WebView does not expose native text-to-speech. Use online speech only after allowing text to be sent.'),8000);
   this.stop();
   const utterance=new SpeechSynthesisUtterance(text);
   const lang=cfg.language;
   utterance.lang=lang==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):lang;
   utterance.rate=Number(cfg.rate)||1;utterance.pitch=Number(cfg.pitch)||1;utterance.volume=Number(cfg.volume)||1;
-  const voices=speechSynthesis.getVoices();
-  const requested=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>v.lang.toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
+  const voices=this.systemVoices();
+  const requested=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>String(v.lang||'').toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
   if(requested)utterance.voice=requested;
   utterance.onstart=()=>this.onTtsState('playing');
   utterance.onend=()=>{this.speaking=false;this.onTtsState('idle');};
   utterance.onerror=event=>this.onTtsState('error',event.error||'System voice failed.');
-  speechSynthesis.speak(utterance);this.speaking=true;
+  try{speechSynthesis.speak(utterance);this.speaking=true;}
+  catch(error){this.speaking=false;this.onTtsState('error',writerUi('Não foi possível usar o mecanismo local: ','Cannot use system TTS: ')+String(error?.message||error));}
  }
  pause(){
   if(this.cfg.tts.engine==='edge')this.edgePlayer?.pause();
@@ -2532,12 +2644,15 @@ function writerRenderFinalSettings(panel,plugin,section){
    for(const [key,name] of [['auto','Auto'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,name);
    d.setValue(cfg.language).onChange(async value=>{cfg.language=value;await plugin.saveSettings();});
   });
-  const voices=typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[];
-  new Setting(panel).setName('System voice').setDesc('Only used with the system engine.').addDropdown(d=>{
-   d.addOption('','System default');
-   for(const voice of voices)d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
-   d.setValue(cfg.voice).onChange(async value=>{cfg.voice=value;await plugin.saveSettings();});
+  const system=plugin.writerFinalFeatures;
+  panel.createEl('p',{text:system.systemSpeechStatus(),cls:'writer-tts-system-diagnostic dictionary-muted'});
+  new Setting(panel).setName(writerUi('Voz do sistema','System voice')).setDesc(writerUi('As vozes dependem do WebView; talvez não estejam disponíveis no Android.','Voices depend on the WebView and might be unavailable on Android.')).addDropdown(d=>{
+   d.selectEl?.addClass?.('writer-tts-voice-select');
+   d.addOption('',writerUi('Voz padrão do sistema','System default'));
+   for(const voice of system.systemVoices())d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
+   d.setValue(cfg.voice||'').onChange(async value=>{cfg.voice=value;await plugin.saveSettings();});
   });
+  new Setting(panel).setName(writerUi('Verificar vozes disponíveis','Check available voices')).addButton(b=>b.setButtonText(writerUi('Atualizar lista','Refresh list')).onClick(()=>system.refreshVoiceSelectors()));
   new Setting(panel).setName('Edge online voice').setDesc('High-quality online voices; independent of installed Linux voices.').addDropdown(d=>{
    d.addOption('','Auto by language');
    for(const [lang,voice] of Object.entries(WRITER_EDGE_VOICES))d.addOption(voice,lang+' · '+voice.split('-').slice(2).join('-'));
@@ -2777,7 +2892,7 @@ function writerV4StripFence(text){
   const m=/^```(?:markdown|md|text)?\r?\n([\s\S]*?)\r?\n```$/.exec(value);
   return m?m[1]:value;
 }
-async function writerV4OpenDiff(plugin){
+async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false}={}){
   if(plugin.settings.writerV4?.enabled===false)return new Notice(writerUi('Ative a revisão seletiva nas configurações.','Enable selective review in settings.'));
   const view=plugin.app.workspace.getActiveViewOfType(MarkdownView)||plugin.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(view=>view?.file?.extension==='md'&&view?.editor?.getSelection?.()?.trim());
   if(!view?.file||!view?.editor||view.file.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown no editor.','Open a Markdown note in the editor.'));
@@ -2787,6 +2902,18 @@ async function writerV4OpenDiff(plugin){
   const file=view.file,from=editor.posToOffset(editor.getCursor('from')),to=editor.posToOffset(editor.getCursor('to'));
   const profile=writerV4Profile(plugin,file),modal=new Modal(plugin.app);
   let proposal=original,accepted=new Set(),busy=false;
+  const generateProposal=async(prompt)=>{
+   if(busy)return;
+   busy=true;render();
+   try{
+    const instruction=prompt||plugin.settings.writerV4.rewritePrompt||WRITER_V4_DEFAULTS.rewritePrompt;
+    const answer=await plugin.generateWriting(instruction,original);
+    proposal=writerV4StripFence(answer);
+    if(!proposal)throw Error('A IA não retornou texto.');
+    accepted=new Set();
+   }catch(error){new Notice(String(error?.message||error),7000);}
+   finally{busy=false;render();}
+  };
   const render=()=>{
     modal.setTitle(writerUi('Revisão seletiva · v4','Selective review · v4'));
     const root=modal.contentEl;root.empty();root.addClass('writer-v4-diff-modal');
@@ -2798,18 +2925,7 @@ async function writerV4OpenDiff(plugin){
     const toolbar=root.createDiv({cls:'writer-v4-actions'});
     const btn=(label,click,primary=false)=>{const b=toolbar.createEl('button',{text:label,cls:primary?'mod-cta':''});b.disabled=busy;b.addEventListener('click',click);return b;};
     btn(writerUi('Comparar','Compare'),()=>{proposal=area.value;accepted=new Set();renderDiff(root);});
-    btn(writerUi('Gerar com IA','Generate with AI'),async()=>{
-      if(busy)return;
-      busy=true;area.disabled=true;
-      try{
-        const task=(plugin.settings.writerV4.rewritePrompt||WRITER_V4_DEFAULTS.rewritePrompt);
-        const answer=await plugin.generateWriting(task,original);
-        proposal=writerV4StripFence(answer);
-        if(!proposal)throw Error('A IA não retornou texto.');
-        accepted=new Set();render();
-      }catch(e){busy=false;new Notice(String(e?.message||e),7000);render();return;}
-      busy=false;render();
-    });
+    btn(writerUi('Gerar com IA','Generate with AI'),()=>generateProposal(task));
     const diffEl=root.createDiv({cls:'writer-v4-diff-results'});
     const apply=root.createEl('button',{text:writerUi('Aplicar mudanças selecionadas','Apply selected changes'),cls:'mod-cta writer-v4-apply'});
     const renderDiff=()=>{
@@ -2828,7 +2944,7 @@ async function writerV4OpenDiff(plugin){
         card.createEl('strong',{text:writerUi('Alteração ','Change ')+(i+1)});
         if(group.old.length)card.createEl('pre',{text:group.old.join('\n'),cls:'writer-v4-removed'});
         if(group.next.length)card.createEl('pre',{text:group.next.join('\n'),cls:'writer-v4-added'});
-        const accept=card.createEl('label',{cls:'writer-v4-choice'}),input=accept.createEl('input',{type:'checkbox'});
+        const accept=card.createEl('label',{cls:'writer-v4-choice'}),input=accept.createEl('input',{attr:{type:'checkbox'}});
         input.checked=accepted.has(i);accept.createSpan({text:writerUi('Aceitar esta alteração','Accept this change')});
         input.addEventListener('change',()=>{if(input.checked)accepted.add(i);else accepted.delete(i);apply.disabled=accepted.size===0;});
       }
@@ -2844,7 +2960,7 @@ async function writerV4OpenDiff(plugin){
     };
     renderDiff();
   };
-  modal.onOpen=render;modal.open();
+  modal.onOpen=()=>{render();if(autoGenerate)void generateProposal(task);};modal.open();
 }
 function writerV4RenderSettings(plugin,panel){
   const cfg=plugin.settings.writerV4;
@@ -2877,6 +2993,677 @@ function writerV4RenderSettings(plugin,panel){
 }
 function writerV4Register(plugin){
   plugin.addCommand({id:'v4-selective-review',name:'Basic AI: '+writerUi('Revisar seleção com diff','Review selection with diff'),editorCallback:()=>writerV4OpenDiff(plugin)});
+}
+
+// v3 module: src/v4/integrations.js
+/* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
+const WRITER_V4_EXTRA_DEFAULTS={
+  comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
+  toolbar:{enabled:true,mobileMode:'native'},
+  typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
+  wordwise:{enabled:true,prompts:{
+    improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
+    shorten:'Make the selection more concise without removing essential meaning or changing Markdown links.',
+    expand:'Expand this passage naturally, maintaining perspective, tense, voice and factual accuracy.',
+    simplify:'Make this passage easier to read, preserving its important meaning and Markdown.',
+    tone:'Rewrite with an expressive, polished literary tone without introducing new facts.',
+    dialogue:'Improve the naturalness and characterization of this dialogue without altering its intent.',
+    critique:'Give concise, specific suggestions about weak points and improvements, then offer an improved rewrite of this passage. Return only the improved passage.',
+    brainstorm:'Suggest a creative alternative approach to this scene while preserving its characters and established facts. Return only the alternative text.',
+    grammar:'Correct spelling, grammar and punctuation while preserving intentional literary choices and all Markdown syntax.'
+  }}
+};
+function writerV4ExtraMerge(settings){
+ const old=settings.writerV4Extras&&typeof settings.writerV4Extras==='object'?settings.writerV4Extras:{};
+ const cfg=settings.writerV4Extras={
+  ...WRITER_V4_EXTRA_DEFAULTS,...old,
+  mention:{...WRITER_V4_EXTRA_DEFAULTS.mention,...(old.mention||{})},
+  toolbar:{...WRITER_V4_EXTRA_DEFAULTS.toolbar,...(old.toolbar||{})},
+  typewriter:{...WRITER_V4_EXTRA_DEFAULTS.typewriter,...(old.typewriter||{})},
+  wordwise:{...WRITER_V4_EXTRA_DEFAULTS.wordwise,...(old.wordwise||{}),
+   prompts:{...WRITER_V4_EXTRA_DEFAULTS.wordwise.prompts,...(old.wordwise?.prompts||{})}},
+  comments:old.comments&&typeof old.comments==='object'&&!Array.isArray(old.comments)?old.comments:{}
+ };
+ cfg.toolbar.mobileMode='native';
+  cfg.toolbar.mobileModeConfirmed=true;
+  cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
+ cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
+ return cfg;
+}
+function writerV4NoteEditor(plugin,file){
+ const leaves=plugin.app.workspace.getLeavesOfType('markdown')||[];
+ return leaves.find(leaf=>leaf.view?.file?.path===file?.path)?.view?.editor||null;
+}
+class WriterV4Mentions extends EditorSuggest{
+ constructor(plugin){super(plugin.app);this.plugin=plugin;}
+ get opts(){return this.plugin.settings.writerV4Extras.mention;}
+ onTrigger(cursor,editor,file){
+  if(!writerModuleOn(this.plugin,'mentions')||!this.opts.enabled||file?.extension!=='md')return null;
+  const sign=String(this.opts.sign||'@').slice(0,1);
+  const preceding=editor.getLine(cursor.line).slice(0,cursor.ch);
+  const i=preceding.lastIndexOf(sign);
+  if(i<0||(i>0&&!/\s/.test(preceding[i-1])))return null;
+  const query=preceding.slice(i+1);
+  if(query.length>60||/[\[\]{}()|#\n\r]/.test(query))return null;
+  return {start:{line:cursor.line,ch:i},end:cursor,query};
+ }
+ getSuggestions(context){
+  const config=this.opts,query=context.query.trim().toLocaleLowerCase(),folder=String(config.folder||'').trim().replace(/^\/+|\/+$/g,'');
+  return this.plugin.app.vault.getMarkdownFiles()
+   .filter(file=>!folder||file.path.startsWith(folder+'/'))
+   .filter(file=>file.basename.toLocaleLowerCase().includes(query))
+   .slice(0,config.maxResults).concat(query?[{createNew:true,basename:context.query.trim(),path:''}]:[]);
+ }
+ renderSuggestion(file,el){
+  el.createEl('div',{text:file.createNew?writerUi('Criar nota: ','Create note: ')+file.basename:file.basename});
+  if(!file.createNew)el.createEl('small',{text:file.path,cls:'writer-v4-mention-hint'});
+ }
+ async selectSuggestion(file,evt){
+  const {editor,start,end}=this.context||{};
+  if(!editor||!file)return;
+  if(file.createNew){
+   const name=String(file.basename||'').replace(/[\\/:*?"<>|]/g,'-').trim().slice(0,80);
+   if(!name)return;
+   const folder=String(this.opts.folder||'').trim().replace(/^\/+|\/+$/g,'');
+   const target=[folder,name+'.md'].filter(Boolean).join('/');
+   let existing=this.plugin.app.vault.getAbstractFileByPath(target);
+   if(!existing){
+    const modal=new Modal(this.plugin.app);
+    modal.onOpen=()=>{
+     modal.setTitle(writerUi('Criar nota para menção?','Create mentioned note?'));
+     modal.contentEl.createEl('p',{text:target});
+     new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+      .addButton(b=>b.setButtonText(writerUi('Criar','Create')).setCta().onClick(async()=>{
+       try{
+        if(folder){let partial='';for(const part of folder.split('/')){partial=partial?partial+'/'+part:part;if(!(await this.plugin.app.vault.adapter.exists(partial)))await this.plugin.app.vault.createFolder(partial);}}
+        const created=this.plugin.app.vault.getAbstractFileByPath(target)||await this.plugin.app.vault.create(target,'');
+        this.insertMention(created,editor,start,end);modal.close();
+       }catch(error){new Notice(String(error?.message||error));}
+      }));
+    };modal.open();return;
+   }
+   file=existing;
+  }
+  this.insertMention(file,editor,start,end);
+ }
+ insertMention(file,editor,start,end){
+  const label=(this.opts.sign||'@')+file.basename;
+  const source=this.context?.file?.path||'';
+  const replacement=this.opts.mode==='text'?label:this.plugin.app.fileManager.generateMarkdownLink(file,source,'',label);
+  editor.replaceRange(replacement,start,end);
+ }
+}
+function writerV4FormatText(original,kind){
+ const text=String(original||'');
+ switch(kind){
+  case 'bold':return '**'+text+'**';
+  case 'italic':return '*'+text+'*';
+  case 'heading':return text.split('\n').map(line=>'## '+line).join('\n');
+  case 'quote':return text.split('\n').map(line=>'> '+line).join('\n');
+  case 'list':return text.split('\n').map(line=>'- '+line).join('\n');
+  case 'link':return '['+text+'](https://example.com)';
+  default:return text;
+ }
+}
+class WriterV4Extras{
+ constructor(plugin){this.plugin=plugin;this.lastNote=null;}
+ get config(){return this.plugin.settings.writerV4Extras;}
+ getCurrentNote(){
+  const app=this.plugin.app;
+  const active=app.workspace.getActiveFile?.();
+  if(active?.extension==='md')return active;
+  const leaves=app.workspace.getLeavesOfType('markdown')||[];
+  const visible=leaves.find(leaf=>leaf.view?.file?.extension==='md')?.view?.file;
+  return visible||this.lastNote;
+ }
+ register(){
+  const p=this.plugin;
+  p.registerEvent(p.app.workspace.on('file-open',file=>{if(file?.extension==='md')this.lastNote=file;}));
+  this.lastNote=this.getCurrentNote();
+  p.registerEvent(p.app.vault.on('rename',(file,oldPath)=>{
+   if(!(file instanceof TFile))return;
+   const store=this.config.comments||{};
+   if(store[oldPath]){
+    store[file.path]=[...(store[file.path]||[]),...store[oldPath]];
+    delete store[oldPath];p.saveSettings().catch(console.warn);
+   }
+  }));
+  p.registerEditorSuggest(new WriterV4Mentions(p));
+  p.addCommand({id:'v4-add-comment',name:writerUi('Comentar seleção','Comment on selection'),editorCallback:(editor,view)=>{
+    this.commentSelection(view?.file,editor);
+  }});
+  p.addCommand({id:'v4-wordwise',name:writerUi('Ferramentas inteligentes de escrita','AI writing actions'),editorCallback:()=>this.wordwise()});
+  p.addCommand({id:'v4-editing-toolbar',name:writerUi('Barra de edição: formatar seleção','Editing toolbar: format selection'),
+   editorCallback:(editor,view)=>this.openEditingToolbar(editor,view)});
+  // Individual actions can be pinned to Obsidian's native mobile toolbar.
+  for(const [kind,pt,en] of [
+   ['bold','Negrito','Bold'],['italic','Itálico','Italic'],
+   ['heading','Título H2','Heading H2'],['quote','Citação','Blockquote'],
+   ['list','Lista','List'],['link','Link','Link']
+  ])p.addCommand({id:'v4-format-'+kind,name:writerUi('Formatar: '+pt,'Format: '+en),
+    editorCallback:editor=>this.applyEditorFormat(editor,kind)});
+  for(const [key,pt,en] of [
+   ['improve','Melhorar estilo','Improve style'],['shorten','Encurtar texto','Shorten text'],
+   ['expand','Expandir texto','Expand text'],['simplify','Simplificar texto','Simplify text'],
+   ['tone','Mudar tom','Change tone'],['dialogue','Melhorar diálogo','Improve dialogue'],
+   ['grammar','Corrigir gramática','Fix grammar'],['critique','Revisar pontos fracos','Critique passage'],
+   ['brainstorm','Explorar alternativa','Brainstorm alternative']
+  ])p.addCommand({id:'v4-writing-'+key,name:writerUi('IA: '+pt,'AI: '+en),
+    editorCallback:editor=>this.runEditorAIAction(editor,key)});
+  p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Alternar modo máquina de escrever','Toggle typewriter mode'),callback:async()=>{
+   this.config.typewriter.enabled=!this.config.typewriter.enabled;
+   this.updateTypewriterClass();await p.saveSettings();
+   new Notice(this.config.typewriter.enabled?writerUi('Modo máquina de escrever ativado.','Typewriter mode enabled.'):writerUi('Modo máquina de escrever desativado.','Typewriter mode disabled.'));
+  }});
+  this.updateTypewriterClass();
+  if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
+  if(EditorView.updateListener?.of){
+   p.registerEditorExtension(EditorView.updateListener.of(update=>{
+    if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
+    try{
+     const pos=update.state.selection.main.head;
+     update.view.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',yMargin:0})});
+    }catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}
+   }));
+  }
+  if(ViewPlugin?.fromClass){
+   const owner=this;
+   p.registerEditorExtension(ViewPlugin.fromClass(class{
+    constructor(view){
+     this.view=view;this.dom=view.dom.createDiv({cls:'writer-v4-floating-toolbar'});
+     this.isMobile=owner.plugin.app.isMobile===true||(typeof navigator!=='undefined'&&/Android|iPad|iPhone/i.test(navigator.userAgent||''));
+     if(this.isMobile)this.dom.addClass('writer-v4-toolbar-mobile');
+     this.savedRange=null;this.expanded=false;this.dismissedKey=null;
+     this.onSelection=()=>{
+      clearTimeout(this.selectionTimer);
+      this.selectionTimer=setTimeout(()=>this.refresh(),70);
+     };
+     view.dom.addEventListener('pointerup',this.onSelection);
+     view.dom.addEventListener('touchend',this.onSelection,{passive:true});
+     view.dom.addEventListener('keyup',this.onSelection);
+     this.ownerDocument=view.dom.ownerDocument;
+     this.ownerDocument?.addEventListener('selectionchange',this.onSelection);
+     this.visualViewport=this.ownerDocument?.defaultView?.visualViewport||null;
+     this.onViewport=()=>this.positionMobile();
+     this.visualViewport?.addEventListener?.('resize',this.onViewport);
+     this.visualViewport?.addEventListener?.('scroll',this.onViewport);
+     if(this.isMobile){
+      const nav=this.dom.createDiv({cls:'writer-v4-mobile-actions'});
+      const toggle=nav.createEl('button',{text:writerUi('Aa Formatar','Aa Format'),attr:{'aria-expanded':'false','aria-label':writerUi('Expandir ferramentas','Expand editing tools')}});
+      toggle.addEventListener('pointerdown',e=>e.preventDefault());
+      toggle.addEventListener('click',()=>{
+       this.expanded=!this.expanded;toggle.setAttribute('aria-expanded',String(this.expanded));
+       this.dom.toggleClass('writer-v4-expanded',this.expanded);this.positionMobile();
+      });
+      const ai=nav.createEl('button',{text:'✦ IA',attr:{'aria-label':writerUi('Ações de IA','AI writing actions')}});
+      ai.addEventListener('pointerdown',e=>e.preventDefault());
+      ai.addEventListener('click',()=>this.useSelectedRange(()=>owner.wordwise()));
+      const close=nav.createEl('button',{text:'×',cls:'writer-v4-toolbar-close',attr:{'aria-label':writerUi('Fechar barra','Close toolbar')}});
+      close.addEventListener('pointerdown',e=>e.preventDefault());
+      close.addEventListener('click',()=>{
+       const selected=this.view.state.selection.main;this.dismissedKey=selected.from+':'+selected.to;
+       this.expanded=false;this.dom.removeClass('is-visible','writer-v4-expanded');
+      });
+     }
+     const formatActions=this.dom.createDiv({cls:'writer-v4-format-actions'});
+     const formats=[
+      ['B','bold','**','**'],['I','italic','*','*'],
+      ['H','heading','## ',''],['“”','quote','> ',''],
+      ['🔗','link','[','](https://example.com)'],['•','list','- ',''],
+      ['✦','wordwise',null,null]
+     ];
+     for(const [label,title,before,after] of formats){
+      if(this.isMobile&&title==='wordwise')continue;
+      const button=formatActions.createEl('button',{text:label,attr:{'aria-label':title,title}});
+      button.addEventListener('pointerdown',e=>e.preventDefault());
+      button.addEventListener('click',()=>this.useSelectedRange(()=>{
+       if(title==='wordwise')return owner.wordwise();
+       const selected=this.view.state.selection.main;
+       if(selected.empty)return;
+       const raw=this.view.state.doc.sliceString(selected.from,selected.to);
+       const value=(before||'')+raw+(after||'');
+       this.view.dispatch({changes:{from:selected.from,to:selected.to,insert:value},selection:{anchor:selected.from+value.length}});
+       this.expanded=false;this.savedRange=null;
+       this.dom.removeClass('is-visible','writer-v4-expanded');this.view.focus();
+      }));
+     }
+     this.refresh();
+    }
+    useSelectedRange(action){
+     const current=this.view.state.selection.main;
+     const selected=!current.empty?current:this.savedRange;
+     if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
+     if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
+     action();
+    }
+    update(update){
+     if(update.docChanged){this.savedRange=null;this.expanded=false;this.dismissedKey=null;}
+     if(update.selectionSet||update.docChanged)this.refresh();
+    }
+    refresh(){
+     if(!owner.config.toolbar.enabled||this.isMobile){
+      this.dom.removeClass('is-visible');return;
+     }
+     const selected=this.view.state.selection.main;
+     if(selected.empty){
+      this.savedRange=null;this.expanded=false;this.dismissedKey=null;
+      this.dom.removeClass('is-visible','writer-v4-expanded');return;
+     }
+     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
+     const key=selected.from+':'+selected.to;
+     if(this.dismissedKey===key)return;
+     if(this.savedRange&&(this.savedRange.from!==selected.from||this.savedRange.to!==selected.to)){
+      this.expanded=false;this.dom.removeClass('writer-v4-expanded');
+     }
+     this.savedRange={from:selected.from,to:selected.to};
+     this.dom.addClass('is-visible');
+     if(this.isMobile){this.positionMobile();return;}
+     const pos=this.view.coordsAtPos(selected.from),box=this.view.dom.getBoundingClientRect();
+     if(!pos){this.dom.removeClass('is-visible');return;}
+     this.dom.style.top=Math.max(4,pos.top-box.top-42)+'px';
+     this.dom.style.left=Math.max(0,Math.min(box.width-240,pos.left-box.left))+'px';
+    }
+    positionMobile(){
+     if(!this.isMobile||!this.dom.hasClass('is-visible'))return;
+     const selected=this.view.state.selection.main;
+     const offset=selected.empty?this.savedRange?.to:selected.to;
+     if(!Number.isInteger(offset))return;
+     const rect=this.view.coordsAtPos(offset);
+     if(!rect)return;
+     const win=this.ownerDocument?.defaultView,vv=this.visualViewport;
+     const leftEdge=vv?.offsetLeft||0,topEdge=vv?.offsetTop||0;
+     const width=vv?.width||win?.innerWidth||360,height=vv?.height||win?.innerHeight||650;
+     const barHeight=this.dom.offsetHeight||46,barWidth=this.dom.offsetWidth||185;
+     const safeBottom=topEdge+height-12,safeTop=topEdge+46;
+     // Avoid both Android's native selection popup and Obsidian's keyboard ribbon.
+     let top=rect.bottom+62;
+     if(top+barHeight>safeBottom)top=rect.top-barHeight-66;
+     top=Math.max(safeTop,Math.min(top,safeBottom-barHeight));
+     const left=Math.max(leftEdge+8,Math.min(rect.left-40,leftEdge+width-barWidth-8));
+     this.dom.style.setProperty('top',top+'px','important');
+     this.dom.style.setProperty('left',left+'px','important');
+     this.dom.style.setProperty('inset-block-start',top+'px','important');
+     this.dom.style.setProperty('inset-inline-start',left+'px','important');
+     this.dom.style.setProperty('bottom','auto','important');
+     this.dom.style.setProperty('right','auto','important');
+    }
+    destroy(){
+     clearTimeout(this.selectionTimer);
+     this.view.dom.removeEventListener('pointerup',this.onSelection);
+     this.view.dom.removeEventListener('touchend',this.onSelection);
+     this.view.dom.removeEventListener('keyup',this.onSelection);
+     this.ownerDocument?.removeEventListener('selectionchange',this.onSelection);
+     this.visualViewport?.removeEventListener?.('resize',this.onViewport);
+     this.visualViewport?.removeEventListener?.('scroll',this.onViewport);
+     this.dom.remove();
+    }
+   }));
+  }
+ }
+ updateTypewriterClass(){
+  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
+ }
+ currentEditor(){
+  const app=this.plugin.app;
+  const active=app.workspace.getActiveViewOfType(MarkdownView);
+  if(active?.editor&&active.file?.extension==='md')return active;
+  const note=this.getCurrentNote();
+  return (app.workspace.getLeavesOfType('markdown')||[]).find(leaf=>leaf.view?.file?.path===note?.path&&leaf.view.editor)?.view||null;
+ }
+ commentSelection(file,editor){
+  if(!writerModuleOn(this.plugin,'comments'))return new Notice(writerUi('Comentários ocultos nas configurações.','Comments are hidden in settings.'));
+  if(!file||file.extension!=='md'||!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para comentar.','Select text to comment on.'));
+  const quote=editor.getSelection().slice(0,2000);
+  const modal=new Modal(this.plugin.app);
+  let body='';
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Comentar trecho','Comment on passage'));
+   modal.contentEl.createEl('blockquote',{text:quote.slice(0,250)});
+   new Setting(modal.contentEl).setName(writerUi('Comentário','Comment')).addTextArea(t=>{t.inputEl.rows=5;t.onChange(v=>body=v);});
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+   .addButton(b=>b.setButtonText(writerUi('Salvar comentário','Save comment')).setCta().onClick(async()=>{
+    if(!body.trim())return;
+    const record={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),quote,
+      body:body.trim().slice(0,10000),at:new Date().toISOString(),resolved:false};
+    const items=this.config.comments[file.path]||(this.config.comments[file.path]=[]);
+    items.push(record);await this.plugin.saveSettings();modal.close();
+    new Notice(writerUi('Comentário adicionado.','Comment added.'));
+   }));
+  };
+  modal.open();
+ }
+ async jumpComment(file,comment){
+  await this.plugin.app.workspace.getLeaf(false).openFile(file);
+  const view=this.currentEditor();
+  if(!view?.editor)return;
+  const text=view.editor.getValue(),pos=text.indexOf(comment.quote);
+  if(pos<0)return new Notice(writerUi('Trecho original alterado; comentário preservado.','Quote changed; comment is preserved.'));
+  view.editor.setSelection(view.editor.offsetToPos(pos),view.editor.offsetToPos(pos+comment.quote.length));
+  view.editor.scrollIntoView({from:view.editor.offsetToPos(pos),to:view.editor.offsetToPos(pos+comment.quote.length)},true);
+ }
+ drawComments(panel,project,projectsView){
+  panel.createEl('h4',{text:writerUi('Comentários do manuscrito','Manuscript comments')});
+  panel.createEl('p',{text:writerUi('Anotações locais ligadas a trechos dos capítulos. Não são enviadas à IA.','Local annotations anchored to passages in chapters. Never sent to AI.'),cls:'writer-tools-muted'});
+  const scenes=projectsView.activeScenes(project),files=[project.file,...scenes.map(s=>projectsView.resolveScene(project,s.title)).filter(Boolean)];
+  const unique=[...new Map(files.map(f=>[f.path,f])).values()];
+  const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  const dropdown=bar.createEl('select',{attr:{'aria-label':writerUi('Capítulo para comentar','Chapter to comment')}});
+  for(const file of unique){const opt=dropdown.createEl('option',{text:file.basename});opt.value=file.path;}
+  const current=projectsView.commentsFilePath||this.getCurrentNote()?.path||project.file.path;
+  dropdown.value=unique.some(f=>f.path===current)?current:project.file.path;
+  dropdown.addEventListener('change',()=>{projectsView.commentsFilePath=dropdown.value;projectsView.render();});
+  bar.createEl('button',{text:writerUi('Comentar seleção','Comment selection')}).addEventListener('click',()=>{
+   const file=unique.find(f=>f.path===dropdown.value),editor=writerV4NoteEditor(this.plugin,file);
+   if(!editor)return new Notice(writerUi('Abra o capítulo e selecione o texto antes de comentar.','Open the chapter and select text to comment.'));
+   this.commentSelection(file,editor);
+  });
+  const filter=panel.createEl('label',{cls:'writer-v4-comment-filter'});
+  const check=filter.createEl('input',{attr:{type:'checkbox'}});check.checked=!!projectsView.showResolvedComments;
+  filter.createSpan({text:writerUi('Mostrar comentários resolvidos','Show resolved comments')});
+  check.addEventListener('change',()=>{projectsView.showResolvedComments=check.checked;projectsView.render();});
+  let count=0;
+  for(const file of unique){
+   const items=(this.config.comments[file.path]||[]).filter(c=>projectsView.showResolvedComments||!c.resolved);
+   if(!items.length)continue;
+   const section=panel.createDiv({cls:'writer-v4-comment-section'});
+   section.createEl('h5',{text:file.basename});
+   for(const comment of items){
+    count++;
+    const card=section.createDiv({cls:'writer-v4-comment-card'+(comment.resolved?' is-resolved':'')});
+    card.createEl('blockquote',{text:comment.quote||''});
+    card.createEl('p',{text:comment.body});
+    card.createEl('small',{text:new Date(comment.at).toLocaleString()});
+    const actions=card.createDiv({cls:'writer-v4-actions'});
+    actions.createEl('button',{text:writerUi('Localizar','Locate')}).addEventListener('click',()=>this.jumpComment(file,comment));
+    actions.createEl('button',{text:comment.resolved?writerUi('Reabrir','Reopen'):writerUi('Resolver','Resolve')}).addEventListener('click',async()=>{
+     comment.resolved=!comment.resolved;await this.plugin.saveSettings();projectsView.render();
+    });
+    actions.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
+     const modal=new Modal(this.plugin.app);
+     modal.onOpen=()=>{
+      modal.setTitle(writerUi('Excluir comentário?','Delete comment?'));
+      new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+       .addButton(b=>b.setButtonText(writerUi('Excluir','Delete')).setWarning().onClick(async()=>{
+        this.config.comments[file.path]=this.config.comments[file.path].filter(c=>c.id!==comment.id);
+        await this.plugin.saveSettings();modal.close();projectsView.render();
+       }));
+     };modal.open();
+    });
+   }
+  }
+  if(!count)panel.createEl('p',{text:writerUi('Nenhum comentário para exibir.','No comments to show.'),cls:'writer-tools-muted'});
+ }
+ applyEditorFormat(editor,kind){
+   if(this.config.toolbar.enabled===false)return new Notice(writerUi('Ative as ferramentas de edição nas configurações.','Enable editing tools in settings.'));
+   const text=editor?.getSelection?.()||'';
+   if(!text.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
+   editor.replaceRange(writerV4FormatText(text,kind),editor.getCursor('from'),editor.getCursor('to'));
+  }
+ runEditorAIAction(editor,kind){
+   if(!writerModuleOn(this.plugin,'wordwise'))return new Notice(writerUi('Ações de IA ocultas nas configurações.','AI actions are hidden in settings.'));
+   if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
+   if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
+   return writerV4OpenDiff(this.plugin,{task:this.config.wordwise.prompts[kind],autoGenerate:true});
+  }
+ openEditingToolbar(editor,view){
+  if(this.config.toolbar.enabled===false)return new Notice(writerUi('Ative as ferramentas de edição nas configurações.','Enable editing tools in settings.'));
+  if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para formatar.','Select a passage to format.'));
+  const original=editor.getSelection();
+  const from=editor.posToOffset(editor.getCursor('from')),to=editor.posToOffset(editor.getCursor('to'));
+  const items=[
+   ['bold',writerUi('Negrito','Bold')],['italic',writerUi('Itálico','Italic')],
+   ['heading',writerUi('Título H2','Heading H2')],['quote',writerUi('Citação','Blockquote')],
+   ['list',writerUi('Lista','List')],['link',writerUi('Link','Link')]
+  ];
+  const modal=new Modal(this.plugin.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Barra de edição · Basic AI','Editing toolbar · Basic AI'));
+   modal.contentEl.createEl('p',{cls:'writer-tools-muted',text:writerUi('Escolha uma formatação. A seleção será preservada até a aplicação.','Choose formatting. The selection is preserved until applying.')});
+   const actions=modal.contentEl.createDiv({cls:'writer-v4-editor-command-grid'});
+   for(const [kind,label] of items){
+    actions.createEl('button',{text:label}).addEventListener('click',()=>{
+     try{
+      if(editor.getValue().slice(from,to)!==original)throw Error(writerUi('A nota mudou. Selecione novamente o trecho.','The note changed. Select the passage again.'));
+      const replacement=writerV4FormatText(original,kind);
+      editor.replaceRange(replacement,editor.offsetToPos(from),editor.offsetToPos(to));
+      modal.close();editor.focus?.();
+     }catch(error){new Notice(String(error?.message||error));}
+    });
+   }
+   const extra=modal.contentEl.createDiv({cls:'writer-v4-editor-command-grid'});
+   extra.createEl('button',{text:writerUi('Ações com IA ✦','AI writing actions ✦')}).addEventListener('click',()=>{
+    modal.close();
+    if(editor.getValue().slice(from,to)!==original)return new Notice(writerUi('Selecione novamente o trecho.','Select the passage again.'));
+    editor.setSelection(editor.offsetToPos(from),editor.offsetToPos(to));
+    this.wordwise();
+   });
+  };
+  modal.open();
+ }
+ wordwise(){
+  if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
+  const view=this.currentEditor();
+  if(!view?.editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para usar as ações de IA.','Select text to use AI actions.'));
+  const items=[
+   ['improve',writerUi('Melhorar estilo','Improve style')],['shorten',writerUi('Encurtar','Shorten')],
+   ['expand',writerUi('Expandir','Expand')],['simplify',writerUi('Simplificar','Simplify')],
+   ['tone',writerUi('Mudar tom','Change tone')],['dialogue',writerUi('Melhorar diálogo','Improve dialogue')],['critique',writerUi('Revisar pontos fracos','Critique & improve')],['brainstorm',writerUi('Explorar alternativa','Brainstorm alternative')],['grammar',writerUi('Corrigir gramática','Fix grammar')]
+  ];
+  const modal=new Modal(this.plugin.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Ações de escrita com IA','AI writing actions'));
+   modal.contentEl.createEl('p',{text:writerUi('A ação selecionada enviará o trecho ao seu provedor de IA e abrirá um comparador antes de alterar a nota.','The selected action sends the passage to your AI provider and opens a comparison before any edit.'),cls:'writer-tools-muted'});
+   for(const [key,label] of items){
+    const b=modal.contentEl.createEl('button',{text:label,cls:'writer-v4-wordwise-action'});
+    b.addEventListener('click',()=>{modal.close();writerV4OpenDiff(this.plugin,{task:this.config.wordwise.prompts[key],autoGenerate:true});});
+   }
+  };
+  modal.open();
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Ferramentas integradas · v4','Integrated writing tools · v4')});
+  const cfg=this.config;
+  const toggle=(section,key,label)=>new Setting(panel).setName(label).addToggle(t=>t.setValue(cfg[section][key]!==false).onChange(async v=>{
+   cfg[section][key]=v;if(section==='typewriter')this.updateTypewriterClass();await this.plugin.saveSettings();
+  }));
+  toggle('mention','enabled',writerUi('Menções de notas','Note mentions'));
+  new Setting(panel).setName(writerUi('Símbolo de menção','Mention trigger')).addDropdown(d=>{
+   for(const sign of ['@','#','§','+','!'])d.addOption(sign,sign);
+   d.setValue(cfg.mention.sign).onChange(async v=>{cfg.mention.sign=v;await this.plugin.saveSettings();});
+  });
+  new Setting(panel).setName(writerUi('Pasta das menções','Mention folder')).addText(t=>t.setPlaceholder('Characters').setValue(cfg.mention.folder).onChange(async v=>{
+   cfg.mention.folder=v;await this.plugin.saveSettings();
+  }));
+  new Setting(panel).setName(writerUi('Inserção de menções','Mention insertion')).addDropdown(d=>{
+   d.addOption('link',writerUi('Wikilink','Wikilink')).addOption('text',writerUi('Apenas texto','Plain text'));
+   d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
+  });
+  toggle('toolbar','enabled',writerUi('Comandos de formatação','Formatting commands'));
+  new Setting(panel).setName(writerUi('Barra móvel do Obsidian','Obsidian mobile toolbar'))
+   .setDesc(writerUi('No Android, adicione os comandos Basic AI: Formatar (Negrito, Itálico, Título, Citação, Lista, Link) e IA à barra nativa. A barra flutuante adicional está desativada.','On Android, add individual Basic AI Format and AI commands to the native mobile toolbar. No additional floating toolbar.'));
+  new Setting(panel).setName(writerUi('Abrir todas as ferramentas','Open all formatting actions'))
+   .addButton(b=>b.setButtonText(writerUi('Abrir menu','Open menu')).onClick(()=>{
+    const view=this.currentEditor();this.openEditingToolbar(view?.editor,view);
+   }));
+  toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));
+  toggle('typewriter','focusMode',writerUi('Atenuar linhas fora de foco','Dim unfocused lines'));
+  toggle('wordwise','enabled',writerUi('Ações de IA para escrita','AI writing actions'));
+  panel.createEl('h4',{text:writerUi('Prompts das ações de IA','AI action prompts')});
+  for(const [key,label] of [['improve','Melhorar estilo'],['shorten','Encurtar'],['expand','Expandir'],['simplify','Simplificar'],['tone','Mudar tom'],['dialogue','Melhorar diálogo'],['critique','Revisar pontos fracos'],['brainstorm','Explorar alternativa'],['grammar','Corrigir gramática']]){
+   new Setting(panel).setName(label).addTextArea(t=>{t.inputEl.rows=3;t.setValue(cfg.wordwise.prompts[key]||'').onChange(async v=>{cfg.wordwise.prompts[key]=v;await this.plugin.saveSettings();});});
+  }
+ }
+}
+
+// v3 module: src/v4/auto-grammar.js
+/* Opt-in-while-reviewing LanguageTool checks. Manual review remains available. */
+const WRITER_AUTO_GRAMMAR_DEFAULTS={enabled:true,delayMs:3500,minIntervalMs:9000,maxWindowChars:12000};
+function writerAutoGrammarSettings(settings){
+ const old=settings.autoGrammar&&typeof settings.autoGrammar==='object'?settings.autoGrammar:{};
+ const cfg=settings.autoGrammar={...WRITER_AUTO_GRAMMAR_DEFAULTS,...old};
+ cfg.delayMs=Math.max(2000,Math.min(15000,Number(cfg.delayMs)||3500));
+ cfg.minIntervalMs=Math.max(6000,Math.min(30000,Number(cfg.minIntervalMs)||9000));
+ cfg.maxWindowChars=Math.max(4000,Math.min(16000,Number(cfg.maxWindowChars)||12000));
+ return cfg;
+}
+// Long manuscripts exceed LanguageTool's single-request limit. Check a bounded
+// window around the cursor and translate its offsets back into full-note offsets.
+function writerAutoGrammarWindow(source,position=0,limit=12000){
+ const text=String(source||'');
+ const max=Math.min(16000,Math.max(4000,Math.trunc(limit)||12000));
+ if(text.length<=max)return {from:0,to:text.length,text,partial:false};
+ const pos=Math.max(0,Math.min(text.length,Math.trunc(position)||0));
+ let from=Math.max(0,Math.min(text.length-max,pos-Math.floor(max/2)));
+ let to=from+max;
+ // Favor paragraph boundaries only if they do not shrink the window excessively.
+ const startBreak=text.indexOf('\n',from);
+ if(from>0&&startBreak>from&&startBreak-from<160)from=startBreak+1;
+ const endBreak=text.lastIndexOf('\n',to);
+ if(to<text.length&&endBreak>from&&to-endBreak<160)to=endBreak;
+ return {from,to,text:text.slice(from,to),partial:true};
+}
+class WriterAutoGrammar{
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.lastRun=0;this.pendingPath=null;this.destroyed=false;}
+ get config(){return this.plugin.settings.autoGrammar;}
+ reviewView(){
+  const leaf=this.plugin.app.workspace.getLeavesOfType(VIEW)?.[0];
+  const view=leaf?.view;
+  return view?.reviewMode?.value==='grammar'&&view?.activeTab==='review'?view:null;
+ }
+ register(){
+  this.plugin.registerEvent(this.plugin.app.workspace.on('editor-change',(editor,info)=>{
+   const file=info?.file||this.plugin.app.workspace.getActiveFile?.();
+   if(file?.extension!=='md')return;
+   this.schedule(file);
+  }));
+  this.plugin.registerEvent(this.plugin.app.workspace.on('file-open',file=>{
+   const view=this.reviewView();
+   if(file?.extension==='md'&&view&&view.reviewFilePath){
+    view.reviewFilePath=file.path;
+    this.schedule(file);
+   }
+  }));
+  // Obsidian Plugin provides register(); minimal testing hosts may not.
+  this.plugin.register?.(()=>this.stop());
+ }
+ stop(){this.destroyed=true;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
+ schedule(file,{delay}={}){
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md')return;
+  const view=this.reviewView();
+  if(!view||view.reviewFilePath!==file.path)return;
+  this.pendingPath=file.path;
+  clearTimeout(this.timer);
+  const cooldown=Math.max(0,this.lastRun+(this.config.minIntervalMs||9000)-Date.now());
+  const ms=Math.max(delay??(this.config.delayMs||3500),cooldown);
+  this.timer=setTimeout(()=>this.run(),ms);
+  view.reviewStatus?.setText?.(writerUi('Alterações detectadas. Verificação automática em breve…','Changes detected. Automatic grammar check scheduled…'));
+ }
+ async run(){
+  this.timer=null;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false)return;
+  const view=this.reviewView(),path=this.pendingPath;
+  if(!view||!path||view.reviewFilePath!==path)return;
+  const file=this.plugin.app.vault.getAbstractFileByPath(path);
+  if(!file||file.extension!=='md')return;
+  if(view.reviewBusy){this.schedule(file,{delay:1000});return;}
+  // No redundant request if a manual check already covered this exact text.
+  const source=await writerCurrentText(this.plugin,file);
+  if(view.grammarCheckedPath===path&&view.grammarCheckedSource===source){
+   this.pendingPath=null;return;
+  }
+  this.pendingPath=null;this.lastRun=Date.now();
+  await view.reviewFile(file,{automatic:true});
+  if(this.pendingPath){
+   const next=this.plugin.app.vault.getAbstractFileByPath(this.pendingPath);
+   if(next)this.schedule(next);
+  }
+ }
+}
+
+// v3 module: src/v4/modules.js
+/* Basic AI v4 RC — opt-in module visibility, persisted independently of data. */
+const WRITER_MODULES=[
+ ['dictionary','Dicionário e definições','Dictionary & definitions','Consultas locais/online, sinônimos e antônimos.','Local/online lookup, synonyms and antonyms.'],
+ ['translation','Tradutor','Translator','Oculta tradução do menu, da seleção e do painel.','Hides translation in sidebar and selection menus.'],
+ ['chat','Assistente de escrita','Writing assistant','Oculta o chat e ações que abrem o assistente.','Hides chat and assistant shortcuts.'],
+ ['review','Revisão e LanguageTool','Review & LanguageTool','Oculta revisão gramatical, estilo e leitor beta.','Hides grammar, style and beta reader.'],
+ ['projects','Longform e projetos','Longform & projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
+ ['tools','Ferramentas de escrita','Writing tools','Oculta a barra lateral complementar.','Hides supplementary tools pane.'],
+ ['complements','Autocomplete','Autocomplete','Oculta sugestões locais e busca de termos.','Hides local word suggestions and indexing controls.'],
+ ['variants','Variantes','Writing variants','Oculta comparações e variantes de frases.','Hides writing variants.'],
+ ['diff','Diff e perfis','Diff & profiles','Oculta revisão seletiva.','Hides selective review.'],
+ ['snapshots','Histórico de versões','Version history','Oculta atalhos de snapshots; não apaga backups.','Hides snapshot shortcuts; never deletes backups.'],
+ ['tts','Leitura em voz alta','Text to speech','Oculta o leitor e seus controles.','Hides speech controls.'],
+ ['unicode','Unicode','Unicode','Oculta o seletor de símbolos.','Hides symbol picker.'],
+ ['templates','Templates e sumário','Templates & table of contents','Oculta modelos e sumários.','Hides templates and table of contents.'],
+ ['mentions','Menções','Mentions','Oculta menções de notas.','Hides note mentions.'],
+ ['comments','Comentários','Comments','Oculta comentários do Longform; mantém seus dados.','Hides Longform comments; keeps existing data.'],
+ ['wordwise','Ações de escrita com IA','AI writing actions','Oculta ações Wordwise e seus menus.','Hides AI writing actions.'],
+ ['typewriter','Máquina de escrever','Typewriter','Oculta o modo de foco.','Hides focus mode.']
+];
+const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
+function writerMergeModules(settings){
+ const existing=settings.visibleModules;
+ settings.visibleModules={...WRITER_MODULE_DEFAULTS,...(existing&&typeof existing==='object'&&!Array.isArray(existing)?existing:{})};
+ for(const id of Object.keys(WRITER_MODULE_DEFAULTS))settings.visibleModules[id]=settings.visibleModules[id]!==false;
+ return settings.visibleModules;
+}
+function writerModuleOn(plugin,id){return plugin?.settings?.visibleModules?.[id]!==false;}
+function writerVisibleTabs(plugin,definitions){
+ return definitions.filter(([id])=>writerModuleOn(plugin,id));
+}
+function writerDiagnostics(plugin){
+ const app=plugin.app,settings=plugin.settings,checks=[];
+ const count=app.vault.getMarkdownFiles?.().length??0;
+ checks.push([writerUi('Versão do plugin','Plugin version'),String(plugin.manifest?.version||'?')]);
+ checks.push([writerUi('Plataforma','Platform'),app.isMobile?writerUi('Android/iOS (móvel)','Mobile'):writerUi('Desktop','Desktop')]);
+ checks.push([writerUi('Notas Markdown','Markdown notes'),String(count)]);
+ checks.push([writerUi('Módulos visíveis','Visible modules'),Object.keys(WRITER_MODULE_DEFAULTS).filter(id=>writerModuleOn(plugin,id)).length+'/'+Object.keys(WRITER_MODULE_DEFAULTS).length]);
+ checks.push(['LanguageTool',writerModuleOn(plugin,'review')
+  ?(settings.autoGrammar?.enabled===false?writerUi('Manual','Manual'):writerUi('Automático quando Revisão está aberta','Automatic while Review is open'))
+  :writerUi('Oculto','Hidden')]);
+ const endpoint=String(settings.reviewEndpoint||'');
+ let safeEndpoint=writerUi('Não configurado','Not configured');
+ try{const url=new URL(endpoint);safeEndpoint=url.protocol==='https:'?url.origin:writerUi('URL não HTTPS','Non-HTTPS URL');}catch(_){}
+ checks.push([writerUi('Servidor LanguageTool','LanguageTool server'),safeEndpoint]);
+ checks.push([writerUi('Provedores de IA','AI providers'),Object.entries(settings.aiKeys||{}).filter(([_,v])=>Boolean(v)).length+writerUi(' com chave configurada',' configured keys')]);
+ const nativeSpeech=typeof speechSynthesis!=='undefined'&&typeof SpeechSynthesisUtterance!=='undefined';
+ checks.push(['TTS',!writerModuleOn(plugin,'tts')?writerUi('Oculto','Hidden'):
+  nativeSpeech?writerUi('API Web Speech disponível','Web Speech API exposed'):writerUi('API Web Speech indisponível','Web Speech API unavailable')]);
+ checks.push([writerUi('Snapshots','Snapshots'),settings.snapshots?.enabled===false?writerUi('Desativados','Disabled'):writerUi('Ativos','Active')]);
+ return checks;
+}
+function writerRenderModuleSettings(plugin,panel,refresh){
+ panel.createEl('h3',{text:writerUi('Módulos visíveis','Visible modules')});
+ panel.createEl('p',{text:writerUi('Desative recursos que não utiliza para ocultar abas, menus e atalhos de acesso. Os dados e configurações são mantidos. Recursos podem ser reativados aqui a qualquer momento.','Hide unused features from tabs and menus. Existing settings and data are retained and can be restored any time.'),cls:'dictionary-muted'});
+ for(const [id,pt,en,descPt,descEn] of WRITER_MODULES){
+  new Setting(panel).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
+   .addToggle(t=>t.setValue(writerModuleOn(plugin,id)).onChange(async value=>{
+    plugin.settings.visibleModules[id]=value;
+    await plugin.saveSettings();
+    plugin.refreshModuleVisibility?.();
+    if(typeof refresh==='function')refresh();
+   }));
+ }
+}
+function writerRenderDiagnostics(plugin,panel){
+ panel.createEl('h3',{text:writerUi('Diagnóstico','Diagnostics')});
+ panel.createEl('p',{text:writerUi('Informações locais sem revelar chaves de API. O diagnóstico não envia dados para serviços externos.','Local status without revealing API keys. Diagnostics do not send requests to external services.'),cls:'dictionary-muted'});
+ const table=panel.createDiv({cls:'writer-diagnostics'});
+ for(const [label,value] of writerDiagnostics(plugin)){
+  const row=table.createDiv({cls:'writer-diagnostic-item'});
+  row.createSpan({text:label,cls:'writer-diagnostic-label'});
+  row.createSpan({text:value,cls:'writer-diagnostic-value'});
+ }
+ new Setting(panel).setName(writerUi('Atualizar informações','Refresh information'))
+  .addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>{
+   table.empty();
+   for(const [label,value] of writerDiagnostics(plugin)){
+    const row=table.createDiv({cls:'writer-diagnostic-item'});
+    row.createSpan({text:label,cls:'writer-diagnostic-label'});
+    row.createSpan({text:value,cls:'writer-diagnostic-value'});
+   }
+  }));
 }
 
 // END WRITER V3 MODULES
@@ -2932,19 +3719,36 @@ class DictionaryView extends ItemView{
   this.reviewMode=reviewControls.createEl('select',{attr:{'aria-label':msg('Modo de revisão','Review mode')}});
   for(const [id,label] of [['grammar',msg('Gramática (LanguageTool)','Grammar (LanguageTool)')],['style',msg('Estilo e fluidez (IA)','Style and flow (AI)')],['beta',msg('Leitor beta (IA)','Beta reader (AI)')]]){const opt=this.reviewMode.createEl('option',{text:label});opt.value=id;}
   this.reviewMode.value=this.plugin.settings.reviewMode||'grammar';
-  this.reviewMode.addEventListener('change',()=>{this.plugin.settings.reviewMode=this.reviewMode.value;this.plugin.saveSettings();});
+  this.reviewMode.addEventListener('change',()=>{this.plugin.settings.reviewMode=this.reviewMode.value;this.plugin.saveSettings();if(this.reviewMode.value==='grammar'&&this.reviewFilePath){const file=this.app.vault.getAbstractFileByPath(this.reviewFilePath);if(file)this.plugin.autoGrammar?.schedule(file);}});
   const reviewButtons=review.createDiv({cls:'writer-file-actions'});
   reviewButtons.createEl('button',{text:msg('Revisar nota ativa','Review active note')}).addEventListener('click',()=>this.reviewActiveFile());
   reviewButtons.createEl('button',{text:msg('Escolher arquivo','Choose file')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
   this.reviewStatus=review.createDiv({cls:'writer-file-status'});
   this.reviewResults=review.createDiv({cls:'writer-review-results'});
-  this.switchTab('definition');
+  this.applyModuleVisibility();
   let debounce;this.input.addEventListener('input',()=>{clearTimeout(debounce);this.search(this.input.value);debounce=setTimeout(()=>{if(this.input.value.trim())this.lookup();},650);});
  }
- switchTab(id){for(const [key,p] of Object.entries(this.panels)){p.style.display=key===id?'flex':'none';this.tabs[key].classList.toggle('is-active',key===id);}this.activeTab=id;}
+ applyModuleVisibility(){
+  const tabs={definition:'dictionary',translation:'translation',chat:'chat',review:'review'};
+  for(const [id,button] of Object.entries(this.tabs))button.style.display=writerModuleOn(this.plugin,tabs[id])?'':'none';
+  this.switchTab(this.activeTab||'definition');
+ }
+ switchTab(id){
+  const mapping={definition:'dictionary',translation:'translation',chat:'chat',review:'review'};
+  if(!writerModuleOn(this.plugin,mapping[id]))id=Object.keys(mapping).find(key=>writerModuleOn(this.plugin,mapping[key]))||null;
+  for(const [key,p] of Object.entries(this.panels)){p.style.display=key===id?'flex':'none';this.tabs[key].classList.toggle('is-active',key===id);}
+  this.activeTab=id;
+  if(id==='review'&&this.reviewMode?.value==='grammar'&&this.plugin.settings.autoGrammar?.enabled!==false){
+   const file=this.app.workspace.getActiveFile?.();
+   if(file instanceof TFile&&file.extension==='md'){
+    this.reviewFilePath=file.path;this.plugin.autoGrammar?.schedule(file);
+   }
+  }
+ }
  async addChat(role,value){const bubble=this.chatMessages.createDiv({cls:'writer-chat-bubble writer-chat-'+role});bubble.createEl('small',{text:role==='user'?msg('Você','You'):'AI'});const body=bubble.createDiv({cls:'markdown-rendered'});if(role==='assistant')await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);else body.setText(value);this.chatMessages.scrollTop=this.chatMessages.scrollHeight;return bubble;}
 
  async translateVaultFile(file){
+  if(!writerModuleOn(this.plugin,'translation'))return;
   if(!(file instanceof TFile)||file.extension!=='md')return;
   if(this.translatingFile)return new Notice(msg('Uma tradução já está em andamento.','A translation is already running.'));
   this.translatingFile=true;this.translateFileButton.disabled=true;
@@ -2985,6 +3789,7 @@ class DictionaryView extends ItemView{
   }
  }
  async sendChat(){
+  if(!writerModuleOn(this.plugin,'chat'))return;
   if(this.chatBusy)return;const value=this.chatInput.value.trim();if(!value)return;const attached=[...this.chatAttachments];
   this.chatInput.value='';this.chatBusy=true;await this.addChat('user',value);
   const history=this.chatHistory.slice(-8).map(x=>x.role+': '+x.content).join('\n\n');
@@ -3013,23 +3818,36 @@ class DictionaryView extends ItemView{
   if(!(file instanceof TFile)||file.extension!=='md')return new Notice(msg('Abra uma nota Markdown ou escolha um arquivo.','Open a Markdown note or choose a file.'));
   await this.reviewFile(file);
  }
- async reviewFile(file){
+ async reviewFile(file,{automatic=false}={}){
+  if(!writerModuleOn(this.plugin,'review'))return;
   if(this.reviewBusy)return;
   if(!(file instanceof TFile)||file.extension!=='md')return;
-  this.reviewBusy=true;this.reviewResults.empty();this.reviewStatus.setText(msg('Analisando ','Analyzing ')+file.path+'…');
+  this.reviewBusy=true;if(!automatic)this.reviewResults.empty();this.reviewStatus.setText((automatic?msg('Atualizando gramática de ','Updating grammar for '):msg('Analisando ','Analyzing '))+file.path+'…');
   try{
-    const source=await this.app.vault.read(file);
+    const source=await writerCurrentText(this.plugin,file);
     this.reviewFilePath=file.path;
     this.reviewSource=source;
     if(this.reviewMode.value==='grammar'){
       const grammarText=prepareGrammarText(source);
-      const rawMatches=await this.plugin.checkGrammar(grammarText);
+      const editor=writerActiveEditor(this.plugin,file);
+      const offset=editor?.posToOffset?.(editor.getCursor?.())||0;
+      const window=writerAutoGrammarWindow(grammarText,offset,automatic?(this.plugin.settings.autoGrammar?.maxWindowChars||12000):16000);
+      const rawMatches=await this.plugin.checkGrammar(window.text);
+      // Never publish stale matches from a request that finished after the edit.
+      if(source!==await writerCurrentText(this.plugin,file)){
+       this.reviewStatus.setText(msg('Nota alterada durante a análise; atualizando…','Note changed during review; refreshing…'));
+       this.plugin.autoGrammar?.schedule(file);return;
+      }
+      if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode.value!=='grammar')return;
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
-      const matches=rawMatches.filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+      const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
+       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+      this.reviewResults.empty();
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
+      this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
       this.plugin.showReviewMarks(file,matches);
-      this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found'));
+      this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found')+(window.partial?msg(' (trecho próximo ao cursor)',' (near cursor)'):''));
       if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
       for(const match of matches)this.renderGrammarSuggestion(file,source,match);
     }else{
@@ -3042,7 +3860,10 @@ class DictionaryView extends ItemView{
       card.createEl('button',{text:msg('Discutir no chat','Discuss in chat')}).addEventListener('click',()=>this.reviewToChat(file,source.slice(0,3500),result));
     }
   }catch(e){this.reviewStatus.setText(msg('Falha: ','Failed: ')+(e.message||String(e)));}
-  finally{this.reviewBusy=false;}
+  finally{
+   this.reviewBusy=false;
+   if(this.plugin.autoGrammar?.pendingPath===file.path&&!this.plugin.autoGrammar.timer)this.plugin.autoGrammar.schedule(file);
+  }
  }
  renderGrammarSuggestion(file,source,match,target=this.reviewResults){
   const start=match.offset,end=start+match.length;
@@ -3113,7 +3934,7 @@ class DictionaryView extends ItemView{
  }
  async renderText(title,value,container=this.output){const card=container.createDiv({cls:'dictionary-card'});card.createEl('h4',{text:title});const body=card.createDiv({cls:'dictionary-markdown markdown-rendered'});await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);card.createEl('button',{text:t('copy')}).addEventListener('click',()=>navigator.clipboard?.writeText(value));}
  showError(e){this.output.empty();this.output.createEl('p',{text:t('error')+': '+e.message,cls:'dictionary-error'});}
- async translate(value){if(!value.trim())return new Notice(t('noWord'));const token=this.sequence;const out=this.translationOutput;out.empty();out.createEl('p',{text:'…'});
+ async translate(value){if(!writerModuleOn(this.plugin,'translation'))return;if(!value.trim())return new Notice(t('noWord'));const token=this.sequence;const out=this.translationOutput;out.empty();out.createEl('p',{text:'…'});
   try{const result=await this.plugin.translateAI(value);if(token!==this.sequence)return;out.empty();await this.renderText(t('translation'),result,out);}catch(e){if(token===this.sequence){out.empty();out.createEl('p',{text:e.message,cls:'dictionary-error'});}}
  }
  async detect(){const word=this.input.value.trim();if(!word)return new Notice(t('noWord'));this.output.empty();try{const d=await this.plugin.detectLanguage(word);await this.renderText(t('detect'),d.language+' ('+d.source+')');}catch(e){this.showError(e);}}
@@ -3129,6 +3950,8 @@ class DictionarySettings extends PluginSettingTab{
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
   const sections=[
     ['general',msg('Geral','General')],
+    ['modules',msg('Módulos','Modules')],
+    ['diagnostics',msg('Diagnóstico','Diagnostics')],
     ['dictionary',msg('Dicionário','Dictionary')],
     ['translation',msg('Tradução','Translation')],
     ['assistant',msg('Chat','Chat')],
@@ -3136,6 +3959,7 @@ class DictionarySettings extends PluginSettingTab{
     ['complements',msg('Sugestões','Suggestions')],
     ['variants',msg('Variantes','Variants')],
     ['writingProfiles',msg('Revisão seletiva e perfis','Selective review & profiles')],
+    ['integrationsV4',msg('Ferramentas integradas','Integrated tools')],
     ['snapshots',msg('Versões','Versions')],
     ['projectTasks',msg('Tarefas','Tasks')],
     ['abbreviations',msg('Abreviações','Abbreviations')],
@@ -3151,7 +3975,13 @@ class DictionarySettings extends PluginSettingTab{
     ['models',msg('Modelos','Models')],
     ['prompts',msg('Prompts','Prompts')]
   ];
+  const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
+   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',
+   snapshots:'snapshots',projectTasks:'projects',unicode:'unicode',templates:'templates',
+   toc:'templates',tts:'tts',review:'review',reviewAI:'review'};
+  const enabledSections=sections.filter(([id])=>!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const showTab=id=>{
+    if(!enabledSections.some(([key])=>key===id))id='modules';
     this.activeSettingsTab=id;
     for(const button of Array.from(nav.children)){button.classList.toggle('is-active',button.dataset.tab===id);button.setAttribute('aria-selected',String(button.dataset.tab===id));}
     panel.empty();
@@ -3169,6 +3999,17 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='review'){
       panel.createEl('h3',{text:msg('LanguageTool e comportamento da revisão','LanguageTool and review behavior')});
       panel.createEl('p',{text:msg('As correções são sugestões: o arquivo só muda quando você aceita uma alteração.','Corrections are suggestions: the file changes only when you accept a change.'),cls:'dictionary-muted'});
+      new Setting(panel).setName(msg('Verificação automática do LanguageTool','Automatic LanguageTool check'))
+       .setDesc(msg('Com a aba Revisão aberta, verifica a nota após uma pausa na digitação. O texto é enviado ao endpoint configurado.','While the Review tab is open, checks after a typing pause. Text is sent to the configured endpoint.'))
+       .addToggle(t=>t.setValue(this.plugin.settings.autoGrammar?.enabled!==false).onChange(async v=>{
+        this.plugin.settings.autoGrammar.enabled=v;
+        if(!v){this.plugin.autoGrammar.pendingPath=null;clearTimeout(this.plugin.autoGrammar.timer);}
+        await this.plugin.saveSettings();
+       }));
+      new Setting(panel).setName(msg('Pausa antes da verificação','Pause before checking'))
+       .setDesc(msg('Intervalo de 2 a 15 segundos. O plugin também respeita pelo menos 9 segundos entre requisições.','2–15 seconds; requests are also spaced at least 9 seconds apart.'))
+       .addSlider(t=>t.setLimits(2,15,1).setDynamicTooltip().setValue(Math.round((this.plugin.settings.autoGrammar?.delayMs||3500)/1000))
+        .onChange(async v=>{this.plugin.settings.autoGrammar.delayMs=v*1000;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Idioma da revisão','Review language')).addDropdown(d=>{
         for(const [code,label] of [['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es','Español'],['fr','Français'],['de-DE','Deutsch'],['auto','Auto']])d.addOption(code,label);
         d.setValue(this.plugin.settings.reviewLanguage||'pt-BR').onChange(async v=>{this.plugin.settings.reviewLanguage=v;await this.plugin.saveSettings();});
@@ -3196,6 +4037,12 @@ class DictionarySettings extends PluginSettingTab{
       panel.createEl('p',{text:msg('A revisão por IA envia o texto ao provedor configurado. Os pareceres não alteram a nota.','AI review sends text to the configured provider. Feedback never edits the note.'),cls:'dictionary-muted'});
     }else if(id==='writingProfiles'){
       writerV4RenderSettings(this.plugin,panel);
+    }else if(id==='integrationsV4'){
+      this.plugin.writerV4Extras.renderSettings(panel);
+    }else if(id==='modules'){
+      writerRenderModuleSettings(this.plugin,panel,()=>this.display());
+    }else if(id==='diagnostics'){
+      writerRenderDiagnostics(this.plugin,panel);
     }else if(id==='general'){
       panel.createEl('h3',{text:msg('Preferências gerais','General preferences')});
       new Setting(panel).setName(t('language')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
@@ -3260,7 +4107,7 @@ class DictionarySettings extends PluginSettingTab{
       }
     }
   };
-  for(const [id,label] of sections){const b=nav.createEl('button',{text:label,attr:{role:'tab','aria-selected':'false'}});b.dataset.tab=id;b.addEventListener('click',()=>showTab(id));}
+  for(const [id,label] of enabledSections){const b=nav.createEl('button',{text:label,attr:{role:'tab','aria-selected':'false'}});b.dataset.tab=id;b.addEventListener('click',()=>showTab(id));}
   nav.setAttribute('role','tablist');showTab(this.plugin.settingsTabV4Hint?'writingProfiles':(this.activeSettingsTab||'general'));this.plugin.settingsTabV4Hint=false;
  }
 }
@@ -3294,11 +4141,18 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerMergeV3(this.settings);
     writerFinalMerge(this);
     writerV4Merge(this.settings);
+    writerV4ExtraMerge(this.settings);
+    writerMergeModules(this.settings);
+    writerAutoGrammarSettings(this.settings);
+    this.autoGrammar=new WriterAutoGrammar(this);
+    this.autoGrammar.register();
     this.writerSnapshots=new WriterSnapshots(this);
     this.writerVariants=new WriterVariants(this);
     this.writerComplements=new WriterComplements(this);
     this.writerFinalFeatures=new WriterFinalFeatures(this);
     this.writerFinalFeatures.register();
+    this.writerV4Extras=new WriterV4Extras(this);
+    this.writerV4Extras.register();
     writerV4Register(this);
     this.registerEditorSuggest(this.writerComplements);
     this.registerEditorExtension(this.writerVariants.editorExtension());
@@ -3346,9 +4200,12 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     ];
     for(const [id,name,callback] of v3Commands)this.addCommand({id,name:'Basic AI: '+name,callback:async()=>{try{await callback();}catch(e){new Notice(e.message||String(e),7000);}}});
     this.addSettingTab(new DictionarySettings(this.app,this));
-    this.addRibbonIcon('book-open',msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),()=>this.activateView());
-    this.addRibbonIcon('notebook-pen',msg('Projetos de escrita','Writing projects'),()=>this.openProjects());
-    this.addRibbonIcon('wand-sparkles',msg('Ferramentas de escrita','Writing tools'),()=>this.openWritingTools());
+    this.writerRibbon={
+     dictionary:this.addRibbonIcon('book-open',msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),()=>this.activateView()),
+     projects:this.addRibbonIcon('notebook-pen',msg('Projetos de escrita','Writing projects'),()=>this.openProjects()),
+     tools:this.addRibbonIcon('wand-sparkles',msg('Ferramentas de escrita','Writing tools'),()=>this.openWritingTools())
+    };
+    this.refreshModuleVisibility();
     this.addCommand({id:'open-dictionary-view',name:msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),callback:()=>this.activateView()});
     this.addCommand({id:'search-selected-word',name:t('lookup'),editorCallback:async editor=>{const term=editor.getSelection().trim();if(!term){new Notice('Select a word first.');return;}await this.activateView();const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;if(view?.input){view.input.value=term;await view.search(term);await view.lookup();}}});
     this.addCommand({id:'open-translation-tab',name:msg('Abrir tradutor','Open translator'),callback:async()=>{await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('translation');}});
@@ -3368,6 +4225,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerEvent(this.app.workspace.on('editor-menu',(menu,editor)=>{
       const selection=editor.getSelection();if(!selection.trim())return;
       for(const [id,pt,en] of [['translate','Traduzir','Translate'],['definition','Significado','Definition'],['synonyms','Sinônimos','Synonyms'],['antonyms','Antônimos','Antonyms'],['rewrite','Reescrever','Rewrite']]){
+        const feature=id==='translate'?'translation':id==='rewrite'?'chat':'dictionary';
+        if(!writerModuleOn(this,feature)||!writerModuleOn(this,'chat'))continue;
         menu.addItem(item=>item.setTitle(msg(pt,en)).setIcon('sparkles').onClick(()=>this.sendSelectionToChat(selection,id)));
       }
     }));
@@ -3376,6 +4235,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerEvent(this.app.vault.on('delete',()=>this.invalidate()));
   }
   async openReview(mode,file){
+    if(!this.featureGuard('review'))return;
     await this.activateView();
     const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
     if(!view)return;
@@ -3388,8 +4248,10 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const leaf=this.app.workspace.getLeaf('tab');
     if(leaf)await leaf.openFile(file,{active:false});
   }
-  async openChat(){await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('chat');}
-  async sendSelectionToChat(selection,mode){await this.openChat();await this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.receiveSelection(selection,mode);}
+  async openChat(){if(!this.featureGuard('chat'))return;await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('chat');}
+  async sendSelectionToChat(selection,mode){
+  if(!writerModuleOn(this,'chat')||!writerModuleOn(this,mode==='translate'?'translation':mode==='rewrite'?'chat':'dictionary'))return;
+  await this.openChat();await this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.receiveSelection(selection,mode);}
   invalidate(){this.dirty=true;}
   dictionaryFile(){
     const name=this.settings.dictionaryFileName.trim();
@@ -3482,6 +4344,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     return chunks;
   }
   async translateAI(text,fileMode=false){
+    if(!writerModuleOn(this,'translation'))throw new Error(msg('Tradutor oculto em Módulos.','Translator hidden in Modules.'));
     const result=await this.lookupAI(text,fileMode?'filetranslate':'translate','',this.settings.translationProvider);
     return result.definitions.join('\n');
   }
@@ -3535,18 +4398,41 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.invalidate();
   }
   async openWritingTools(tab){
+    if(!this.featureGuard('tools'))return;
     let leaf=this.app.workspace.getLeavesOfType(WRITER_TOOLS_VIEW)[0];
     if(!leaf){leaf=this.app.workspace.getRightLeaf(true);if(!leaf)return;await leaf.setViewState({type:WRITER_TOOLS_VIEW,active:true});}
     await this.app.workspace.revealLeaf(leaf);
     if(tab&&leaf.view){leaf.view.tab=tab;leaf.view.render();}
   }
   async openProjects(tab){
+    if(!this.featureGuard('projects'))return;
     let leaf=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0];
     if(!leaf){leaf=this.app.workspace.getLeftLeaf(false);if(!leaf)return;await leaf.setViewState({type:PROJECT_VIEW,active:true});}
     await this.app.workspace.revealLeaf(leaf);
     if(tab&&leaf.view?.root){leaf.view.activeTab=tab;await leaf.view.render();}
   }
+  featureGuard(id){
+    if(writerModuleOn(this,id))return true;
+    new Notice(msg('Reative este recurso em Configurações → Módulos.','Enable this feature in Settings → Modules.'));
+    return false;
+  }
+  refreshModuleVisibility(){
+    for(const [id,element] of Object.entries(this.writerRibbon||{})){
+     if(element?.style)element.style.display=writerModuleOn(this,id)?'':'none';
+    }
+    for(const leaf of this.app.workspace.getLeavesOfType(VIEW)||[])leaf.view?.applyModuleVisibility?.();
+    for(const leaf of this.app.workspace.getLeavesOfType(WRITER_TOOLS_VIEW)||[])leaf.view?.render?.();
+    for(const leaf of this.app.workspace.getLeavesOfType(PROJECT_VIEW)||[])leaf.view?.render?.();
+    if(!writerModuleOn(this,'review')){
+     if(this.autoGrammar?.timer)clearTimeout(this.autoGrammar.timer);
+     if(this.autoGrammar)this.autoGrammar.pendingPath=null;
+     this.closeReviewPopup?.();
+    }
+    if(!writerModuleOn(this,'tts'))this.writerFinalFeatures?.stop?.();
+    if(!writerModuleOn(this,'typewriter')&&typeof document!=='undefined')document.body?.classList?.remove('writer-v4-typewriter','writer-v4-typewriter-focus');
+  }
   async activateView(){
+    if(!['dictionary','translation','chat','review'].some(id=>writerModuleOn(this,id)))return this.featureGuard('dictionary');
     let leaf=this.app.workspace.getLeavesOfType(VIEW)[0];
     if(!leaf){leaf=this.app.workspace.getRightLeaf(false);if(!leaf)return;await leaf.setViewState({type:VIEW,active:true});}
     await this.app.workspace.revealLeaf(leaf);
@@ -3587,7 +4473,10 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       this.closeReviewPopup();this.clearReviewMarks();
       new Notice(msg('Correção aplicada','Correction applied'));
       const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
-      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar')setTimeout(()=>view.reviewFile(current),300);
+      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'){
+        if(this.settings.autoGrammar?.enabled!==false)this.autoGrammar?.schedule(current);
+        else setTimeout(()=>view.reviewFile(current),300);
+      }
     }catch(error){new Notice(error.message||String(error),7000);}
   }
   async createGrammarVariant(file,source,match,replacement){

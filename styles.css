@@ -1291,3 +1291,358 @@ select:not([multiple]){
  .writer-v4-diff-results{max-height:35vh}
  .writer-v4-profile .setting-item-control{flex:1 1 100%}
 }
+
+/* Basic AI v4 beta.2: Longform drag/tap reordering + integrated writing tools. */
+.writer-project-scene-actions .writer-project-drag-handle {
+ flex:0 0 34px!important;width:34px!important;min-width:34px!important;
+ min-height:36px;cursor:grab;touch-action:manipulation;
+ color:var(--text-muted);background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+ text-align:center;font-size:20px;line-height:1;
+}
+.writer-project-scene-actions .writer-project-drag-handle:active{cursor:grabbing}
+.writer-project-scene-actions.writer-project-dragging{opacity:.5}
+.writer-project-scene-actions.writer-project-dragover{
+ background:var(--background-modifier-hover);
+ box-shadow:inset 0 3px var(--interactive-accent);outline:0;
+}
+.writer-project-scene-actions.writer-project-drop-after{
+ box-shadow:inset 0 -3px var(--interactive-accent);
+}
+.writer-project-scene-actions.writer-project-pickup{
+ outline:2px dashed var(--interactive-accent);outline-offset:-2px;
+ background:var(--background-secondary);
+}
+.writer-v4-comment-section{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+.writer-v4-comment-section>h5{margin:6px 0;color:var(--text-muted)}
+.writer-v4-comment-card{
+ padding:10px 12px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-secondary);
+ overflow-wrap:anywhere;min-width:0;
+}
+.writer-v4-comment-card blockquote{
+ margin:5px 0;padding:6px 8px;border-inline-start:3px solid var(--interactive-accent);
+ background:var(--background-primary);white-space:pre-wrap;
+}
+.writer-v4-comment-card p{margin:10px 0;white-space:pre-wrap}
+.writer-v4-comment-card small{display:block;color:var(--text-muted)}
+.writer-v4-comment-card.is-resolved{opacity:.6}
+.writer-v4-comment-filter{display:flex;align-items:center;gap:10px;margin:8px 0}
+.writer-v4-floating-toolbar{
+ position:absolute;z-index:50;display:none;align-items:center;gap:3px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+ box-shadow:var(--shadow-s);padding:4px;max-width:calc(100% - 8px);
+}
+.writer-v4-floating-toolbar.is-visible{display:flex}
+.writer-v4-floating-toolbar button{
+ min-width:30px;min-height:30px;border:0;box-shadow:none;
+ border-radius:var(--radius-s);background:transparent;
+ color:var(--text-normal);font-size:var(--font-ui-small);padding:4px 6px;
+}
+.writer-v4-floating-toolbar button:hover{background:var(--background-modifier-hover)}
+.writer-v4-mention-hint{display:block;color:var(--text-muted);font-size:var(--font-ui-smaller);overflow-wrap:anywhere}
+.writer-v4-wordwise-action{
+ display:block;width:100%;min-height:38px;margin:6px 0;padding:8px 12px;
+ text-align:start;white-space:normal;overflow-wrap:anywhere;
+ border:1px solid var(--background-modifier-border);
+ background:var(--background-secondary);border-radius:var(--radius-m);
+}
+body.writer-v4-typewriter .cm-editor .cm-activeLine{
+ background:var(--background-secondary-alt);
+ box-shadow:inset 3px 0 var(--interactive-accent);
+}
+body.writer-v4-typewriter .cm-editor .cm-scroller{scroll-padding-block:40vh}
+@media(max-width:520px){
+ .writer-v4-floating-toolbar{gap:1px;max-width:96%;overflow-x:auto}
+ .writer-v4-floating-toolbar button{min-width:32px;min-height:34px}
+ .writer-project-scene-actions .writer-project-drag-handle{flex-basis:40px!important}
+}
+
+body.writer-v4-typewriter-focus .cm-editor .cm-line:not(.cm-activeLine){opacity:.62;transition:opacity 140ms ease}
+body.writer-v4-typewriter-focus .cm-editor .cm-activeLine{opacity:1}
+
+/* v4 beta.3 — Longform scene cards: restore a three-column compact row on mobile. */
+.writer-project-panel .writer-project-scene.writer-project-scene-actions{
+ display:grid!important;
+ grid-template-columns:36px minmax(0,1fr) max-content!important;
+ grid-template-rows:auto!important;
+ align-items:center!important;
+ gap:6px!important;
+ padding:5px 2px!important;
+ min-width:0!important;
+ max-width:100%!important;
+ flex-wrap:nowrap!important;
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{
+ grid-column:1!important;grid-row:1!important;
+ display:flex!important;align-items:center;justify-content:center;
+ box-sizing:border-box!important;width:36px!important;height:36px!important;
+ min-width:36px!important;max-width:36px!important;
+ flex:0 0 36px!important;padding:0!important;text-align:center!important;
+}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+ grid-column:2!important;grid-row:1!important;
+ display:block!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ margin:0!important;padding:6px 2px!important;min-height:36px;
+ box-sizing:border-box!important;
+ flex:none!important;text-align:start!important;
+ white-space:normal!important;overflow:visible!important;
+ overflow-wrap:anywhere!important;word-break:normal!important;
+ line-height:1.25!important;font-weight:500;
+}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{
+ grid-column:3!important;grid-row:1!important;
+ display:flex!important;flex:0 0 auto!important;
+ flex-wrap:nowrap!important;gap:3px!important;
+ margin:0!important;padding:0!important;
+ min-width:0!important;max-width:max-content!important;
+ align-items:center!important;justify-content:flex-end!important;
+}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls>button.writer-project-small-button{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ box-sizing:border-box!important;width:30px!important;min-width:30px!important;
+ max-width:30px!important;height:34px!important;min-height:34px!important;
+ margin:0!important;padding:0!important;flex:0 0 30px!important;
+ font-size:var(--font-ui-small)!important;
+}
+@media(max-width:340px){
+ .writer-project-panel .writer-project-scene.writer-project-scene-actions{
+  grid-template-columns:32px minmax(0,1fr) max-content!important;gap:4px!important;
+ }
+ .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{
+  width:32px!important;min-width:32px!important;max-width:32px!important;
+ }
+ .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls>button.writer-project-small-button{
+  width:26px!important;min-width:26px!important;max-width:26px!important;
+  flex-basis:26px!important;
+ }
+}
+
+/* v4 beta.3 — mobile selection editing toolbar and TTS capability status. */
+.writer-tts-system-diagnostic{
+ margin:8px 0;padding:8px 10px;
+ border-left:3px solid var(--interactive-accent);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+ color:var(--text-muted);font-size:var(--font-ui-smaller);
+ overflow-wrap:anywhere;line-height:1.45;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
+ position:fixed!important;
+ inset-block-start:auto!important;top:auto!important;
+ inset-inline-start:12px!important;left:12px!important;
+ inset-inline-end:12px!important;right:12px!important;
+ bottom:calc(62px + env(safe-area-inset-bottom,0px))!important;
+ z-index:calc(var(--layer-modal,100) - 1)!important;
+ max-width:calc(100vw - 24px)!important;width:max-content;
+ min-width:0;justify-content:center;
+ overflow-x:auto;overflow-y:hidden;
+ overscroll-behavior-inline:contain;
+ padding:5px;box-shadow:var(--shadow-l);
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile button{
+ flex:0 0 auto;min-width:36px!important;min-height:38px!important;
+ padding:7px 8px!important;touch-action:manipulation;
+ font-size:var(--font-ui-small);
+}
+@media(max-width:370px){
+ .writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
+  left:7px!important;right:7px!important;
+  max-width:calc(100vw - 14px)!important;
+  justify-content:flex-start;
+ }
+}
+
+/* v4 beta.4 — hierarchy indication inside compact Longform scene rows.
+   Only the title is indented, so controls/grip remain consistently aligned. */
+.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+ display:block!important;
+ padding-inline-start:calc(4px + var(--writer-scene-indent,0px))!important;
+ text-align:start!important;
+ min-width:0!important;
+ white-space:normal!important;
+ overflow-wrap:anywhere!important;
+}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions[data-depth]:not([data-depth="0"])>.writer-project-scene-title{
+ box-shadow:inset 2px 0 var(--interactive-accent);
+ border-radius:var(--radius-s);
+ background:var(--background-secondary);
+}
+.writer-project-scene-depth-mark{
+ display:inline-flex;align-items:center;justify-content:center;
+ margin-inline-end:7px;
+ min-width:21px;min-height:21px;
+ padding-inline:3px;
+ border-radius:5px;
+ color:var(--text-accent);
+ background:var(--background-modifier-hover);
+ font-size:var(--font-ui-smaller);
+ line-height:1.2;
+ vertical-align:baseline;
+ font-weight:700;
+ white-space:nowrap;
+}
+.writer-project-scene-title-text{display:inline;overflow-wrap:anywhere}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions.writer-project-scene-has-children>.writer-project-scene-title{
+ font-weight:600;
+}
+@media(max-width:380px){
+ .writer-project-scene-depth-mark{margin-inline-end:4px;min-width:18px;font-size:var(--font-smallest)}
+}
+/* Mobile toolbar in native mode must not add a second floating row. */
+body.is-mobile .writer-v4-floating-toolbar:not(.writer-v4-toolbar-mobile){display:none}
+
+/* Native-toolbar command dialog for Android/desktop: no overlapping context menus. */
+.writer-v4-editor-command-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;margin:12px 0;min-width:0;
+}
+.writer-v4-editor-command-grid button{
+ box-sizing:border-box;min-width:0;min-height:42px;
+ white-space:normal;overflow-wrap:anywhere;
+ text-align:center;padding:8px 12px;
+ background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+}
+.writer-v4-editor-command-grid button:hover{
+ background:var(--background-modifier-hover);
+}
+@media(max-width:360px){
+ .writer-v4-editor-command-grid{grid-template-columns:1fr}
+}
+
+/* v4 beta.5 — compact settings switches without wasted vertical space. */
+@media(max-width:800px){
+ :is(.dictionary-settings-panel,.writer-tools-v3-panel,.writer-project-root)
+ .setting-item:has(.checkbox-container){
+  display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;
+  grid-auto-flow:row;align-items:center!important;justify-content:space-between!important;
+  column-gap:12px!important;row-gap:0!important;
+  min-height:52px!important;height:auto!important;
+  padding:10px 12px!important;margin-block:4px!important;
+ }
+ :is(.dictionary-settings-panel,.writer-tools-v3-panel,.writer-project-root)
+ .setting-item:has(.checkbox-container)>.setting-item-info{
+  display:block!important;width:auto!important;max-width:none!important;
+  min-width:0!important;flex:1 1 auto!important;margin:0!important;
+  padding:0!important;align-self:center!important;
+ }
+ :is(.dictionary-settings-panel,.writer-tools-v3-panel,.writer-project-root)
+ .setting-item:has(.checkbox-container)>.setting-item-control{
+  display:flex!important;width:auto!important;min-width:max-content!important;
+  max-width:max-content!important;flex:0 0 auto!important;
+  align-self:center!important;justify-self:end!important;align-items:center!important;
+  justify-content:flex-end!important;margin:0!important;padding:0!important;
+ }
+ :is(.dictionary-settings-panel,.writer-tools-v3-panel,.writer-project-root)
+ .setting-item:has(.checkbox-container) .setting-item-name{
+  margin:0!important;line-height:1.3!important;
+ }
+ :is(.dictionary-settings-panel,.writer-tools-v3-panel,.writer-project-root)
+ .setting-item:has(.checkbox-container) .setting-item-description{
+  margin-top:3px!important;line-height:1.4!important;
+ }
+ /* Prompts should use all of the sidebar instead of a narrow text box. */
+ .dictionary-settings-panel .setting-item:has(textarea){
+  display:flex!important;flex-direction:column!important;gap:9px!important;
+  align-items:stretch!important;
+ }
+ .dictionary-settings-panel .setting-item:has(textarea)>.setting-item-info,
+ .dictionary-settings-panel .setting-item:has(textarea)>.setting-item-control{
+  flex:1 1 100%!important;width:100%!important;max-width:100%!important;
+ }
+ .dictionary-settings-panel .setting-item:has(textarea) textarea{
+  box-sizing:border-box!important;width:100%!important;max-width:100%!important;
+  min-width:0!important;resize:vertical;
+ }
+}
+/* Selection toolbar: one unobtrusive floating pill, no permanent keyboard row. */
+.writer-v4-floating-toolbar .writer-v4-mobile-actions{display:none}
+.writer-v4-floating-toolbar .writer-v4-format-actions{
+ display:flex;align-items:center;gap:4px;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
+ position:fixed!important;
+ bottom:auto!important;right:auto!important;
+ inset-block-end:auto!important;inset-inline-end:auto!important;
+ width:max-content!important;min-width:0!important;
+ max-width:min(88vw,315px)!important;
+ padding:5px!important;gap:4px!important;
+ display:none;flex-direction:column!important;align-items:stretch!important;
+ overflow:visible!important;overscroll-behavior:contain;
+ border:1px solid var(--background-modifier-border)!important;
+ background:var(--background-primary)!important;
+ border-radius:12px!important;
+ box-shadow:var(--shadow-l)!important;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile.is-visible{display:flex!important}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions{
+ display:flex!important;align-items:center!important;justify-content:flex-start;
+ gap:4px;min-width:0;white-space:nowrap;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions>button{
+ box-sizing:border-box!important;display:inline-flex!important;
+ min-height:34px!important;height:34px!important;min-width:0!important;
+ width:auto!important;flex:0 0 auto!important;
+ padding:6px 10px!important;font-size:var(--font-ui-smaller)!important;
+ background:var(--background-secondary)!important;
+ border-radius:8px!important;line-height:1.2!important;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions .writer-v4-toolbar-close{
+ padding-inline:9px!important;color:var(--text-muted);
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-format-actions{
+ display:none!important;max-width:100%!important;
+ padding-top:5px!important;border-top:1px solid var(--background-modifier-border);
+ gap:3px!important;overflow-x:auto!important;overflow-y:hidden!important;
+ white-space:nowrap;scrollbar-width:thin;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile.writer-v4-expanded .writer-v4-format-actions{
+ display:flex!important;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-format-actions button{
+ width:auto!important;min-width:32px!important;height:34px!important;
+ min-height:34px!important;padding:6px 8px!important;flex:0 0 auto!important;
+ font-size:var(--font-ui-smaller)!important;
+}
+
+/* v4 RC — clean module management, diagnostics and narrow-screen settings. */
+.dictionary-settings-panel .writer-diagnostics{
+ display:flex;flex-direction:column;min-width:0;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);overflow:hidden;
+ margin-block:12px;
+}
+.dictionary-settings-panel .writer-diagnostic-item{
+ display:grid;grid-template-columns:minmax(95px,40%) minmax(0,1fr);
+ gap:12px;align-items:start;padding:10px 12px;
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.dictionary-settings-panel .writer-diagnostic-item:last-child{border-bottom:0}
+.dictionary-settings-panel .writer-diagnostic-label{
+ font-weight:600;color:var(--text-normal);overflow-wrap:anywhere;
+}
+.dictionary-settings-panel .writer-diagnostic-value{
+ color:var(--text-muted);overflow-wrap:anywhere;
+}
+@media(max-width:650px){
+ .dictionary-settings-panel .setting-item:has(.checkbox-container){
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) max-content!important;
+  gap:10px!important;align-items:center!important;
+  min-height:50px!important;margin-block:4px!important;padding:10px 12px!important;
+ }
+ .dictionary-settings-panel .setting-item:has(.checkbox-container)>.setting-item-info{
+  min-width:0!important;max-width:none!important;flex:1 1 auto!important;
+ }
+ .dictionary-settings-panel .setting-item:has(.checkbox-container)>.setting-item-control{
+  width:auto!important;max-width:max-content!important;min-width:max-content!important;
+  justify-self:end!important;margin:0!important;align-self:center!important;
+ }
+ .dictionary-settings-panel .writer-diagnostic-item{
+  grid-template-columns:minmax(82px,35%) minmax(0,1fr);gap:8px;
+ }
+}

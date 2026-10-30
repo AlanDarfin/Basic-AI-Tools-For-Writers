@@ -1,6 +1,49 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.1** (development branch). Not a stable release.
+Status: **4.0.0-beta.6** (development branch). Not a stable release.
+
+
+## Beta.6 — native Android editing commands and automatic LanguageTool checks
+
+- **Obsidian-native Android toolbar:** the plugin does not render a second floating toolbar on mobile. Each formatting operation is registered as an independent command: Bold, Italic, Heading H2, Blockquote, List, and Link. AI writing actions also have individual commands. Users can pin selected commands in Obsidian's native mobile editing toolbar. Desktop floating controls are unchanged.
+- **Automatic LanguageTool rechecking:** while the **Review** tab is open in grammar mode, editing the reviewed Markdown file schedules an automatic check after 3.5 seconds of inactivity (adjustable 2–15 seconds). Checks are spaced at least 9 seconds apart; older responses are discarded if text changed. The source is never modified automatically.
+- **Long notes:** to avoid excessive requests and LanguageTool length limits, grammar checks use a 12,000-character window near the editor cursor (16,000 on manual review), remapping offsets back to their original positions. The review panel shows when only a portion was examined.
+- **Privacy:** while Review is active, this feature sends the checked text to the LanguageTool endpoint configured in **Settings → Review**. Disable **Automatic LanguageTool check** to allow manual-only analysis.
+- **Regression tests:** new checks verify windowed offsets, delays, active-review gating, and toolbar command registration. Manual Android testing is still advised.
+
+## Beta.5 — automatic Android toolbar and compact settings switches
+
+- The previous beta selected the Obsidian-native toolbar mode by default, hiding the plugin’s floating control until users manually installed a command. Beta.5 migrates this old default **once** to an automatic compact contextual toolbar, while preserving user selections made thereafter.
+- Long-press/select text in the mobile Markdown editor to display a small **Aa Formatar / ✦ IA / ×** pill. Formatting expands on demand; the pill follows the selected text and tracks viewport and keyboard changes instead of occupying a permanent keyboard row.
+- **Integrated tools → Android toolbar** still offers a native-only mode for those who prefer to add the **Editing toolbar: format selection** command manually in Obsidian’s mobile toolbar.
+- Mobile settings toggles keep their labels, descriptions and switches on a single compact row when possible. Multiline prompt editors receive full available width.
+- Automated regression tests cover the configuration migration, toolbar/selection code and CSS structure. Manual Android testing is still needed to verify positioning under the device’s keyboard and native copy/paste popup.
+
+## Beta.4 — Longform hierarchy and Android toolbar polish
+
+- **Longform hierarchy:** the compact three-column scene layout now visibly distinguishes nested chapters. Each indented item has its own title offset, an accent guide, a subchapter marker (↳) and a level indicator for deeper levels, while drag handles and arrow controls stay aligned.
+- **Mobile editing toolbar:** the separate floating toolbar no longer competes with Android's text selection menu and Obsidian's built-in editing bar by default. In **Settings → Integrated tools → Android toolbar**, the recommended option is **Native**. The old floating toolbar is still available as an explicit opt-in.
+- **Native commands:** Basic AI now registers **Editing toolbar: format selection** in the command palette. Add this command to Obsidian's mobile toolbar using **Settings → Interface → Configure mobile toolbar → Manage toolbar options → Add a command**. It opens a touch-friendly dialog for bold, italic, heading, quote, list and links, plus AI writing actions. Existing AI/review/comment commands can be added to the native toolbar too.
+- **Safety:** the formatting modal captures the selected range and validates its original text before applying a change, avoiding stale offset edits.
+- **Regression tests:** hierarchy markup, depth CSS, default native toolbar, opt-in floating toolbar and formatting operations.
+
+## Beta.3 — Android repair release
+
+- **Longform:** scene cards now have a compact three-column layout (grip / wrapping title / arrow controls), even with narrow sidebars and large text.
+- **Mobile toolbar:** editor selection now reacts to touch and WebView selection-change events; the toolbar is docked near the bottom rather than directly over the Android text-selection handles. It remains available on desktop.
+- **Android TTS:** explicit diagnostics distinguish unavailable WebView speech APIs from empty voice lists; late-loaded system voices update through `voiceschanged` and can be refreshed in settings. Obsidian Android may not expose Android's native speech service to plugins. The online Edge engine still requires manual opt-in, and no text is transmitted automatically.
+- **Regression coverage:** automated Android capability, mobile selection, standalone bundle and compact chapter layout checks.
+
+## Beta.2 — integrated writing workspace
+
+- Longform chapter reordering supports desktop HTML drag/drop (before or after) and an accessible two-tap handle flow for touch devices. Up/down buttons remain available. The vertical scrollbar position now persists across rerenders and chapter index writes.
+- Android TTS resolves the most recently opened Markdown editor and falls back to reading the actual vault file when a sidebar has focus.
+- A **Comments** tab in Longform stores selected-text comments per chapter locally, including jump-to-passage, resolve/reopen and delete. Comments follow a note when it is renamed. This is a native Basic AI implementation, not the Document Comments plugin's full inline margin UI.
+- A note **Mention** suggester uses configurable trigger/folder/link mode; it supports explicit note creation after confirmation.
+- A contextual **Editing toolbar** formats selected text with Markdown; a **Writing actions** menu provides AI-based improvement, expansion, shortening, simplification, dialogue, tone, grammar, critique and brainstorming. Proposals are reviewed before application using selective Diff.
+- **Typewriter mode** centers the cursor while composing and optionally dims surrounding lines, all independently configurable.
+
+The new tools live under **Settings → Integrated tools**. The comments UI lives inside the Longform Projects panel. This is an original implementation with distinct behavior from the referenced third-party plugins.
 
 ## Highlights
 

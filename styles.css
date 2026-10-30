@@ -1454,3 +1454,94 @@ body.writer-v4-typewriter-focus .cm-editor .cm-activeLine{opacity:1}
   justify-content:flex-start;
  }
 }
+
+/* v4 beta.4 — visible Longform nesting without breaking compact mobile rows. */
+.writer-project-panel .writer-project-scene.writer-project-scene-actions{
+ --writer-scene-depth:0;
+}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+ display:flex!important;align-items:flex-start!important;
+ gap:5px!important;text-align:start!important;
+ box-sizing:border-box!important;
+ padding-inline-start:calc(3px + var(--writer-scene-depth,0) * 9px)!important;
+ overflow:visible!important;
+}
+.writer-project-scene-title .writer-project-scene-label{
+ display:block;min-width:0;flex:1 1 auto;
+ line-height:1.32;overflow-wrap:anywhere;white-space:normal;
+}
+.writer-project-scene-title .writer-project-scene-branch{
+ color:var(--text-accent);font-weight:700;
+ flex:0 0 13px;min-width:13px;font-size:1.1em;line-height:1.1;
+}
+.writer-project-scene-nested>.writer-project-scene-title{
+ border-inline-start:2px solid var(--interactive-accent)!important;
+ border-radius:var(--radius-s);
+ background:var(--background-secondary-alt)!important;
+}
+.writer-project-scene-nested .writer-project-scene-label{
+ font-weight:400;
+}
+.writer-project-scene:not(.writer-project-scene-nested) .writer-project-scene-label{
+ font-weight:600;
+}
+/* Android: show only a small contextual pill until formatting is requested.
+   The position follows the selected text; it does not stack a full toolbar
+   over Obsidian's native keyboard/editing ribbon. */
+.writer-v4-floating-toolbar .writer-v4-mobile-actions{display:none}
+.writer-v4-floating-toolbar .writer-v4-format-actions{
+ display:flex;align-items:center;gap:3px;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
+ position:fixed!important;
+ bottom:auto!important;right:auto!important;
+ inset-block-end:auto!important;inset-inline-end:auto!important;
+ display:none;flex-direction:column;align-items:stretch;
+ width:max-content!important;max-width:min(90vw,320px)!important;
+ min-width:0!important;gap:4px!important;padding:5px!important;
+ border:1px solid var(--background-modifier-border)!important;
+ border-radius:12px!important;
+ background:var(--background-primary)!important;color:var(--text-normal);
+ box-shadow:var(--shadow-l)!important;
+ backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile.is-visible{display:flex!important}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions{
+ display:flex;align-items:center;gap:4px;justify-content:flex-start;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions button{
+ min-height:34px!important;width:auto!important;
+ flex:0 0 auto!important;min-width:0!important;
+ font-size:var(--font-ui-smaller)!important;
+ white-space:nowrap;border-radius:8px!important;
+ padding:6px 10px!important;
+ background:var(--background-secondary)!important;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions button:first-child{
+ color:var(--text-normal);font-weight:600;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions button:nth-child(2){
+ color:var(--text-accent);font-weight:600;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions .writer-v4-toolbar-close{
+ min-width:28px!important;padding-inline:6px!important;
+ color:var(--text-muted);
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-format-actions{
+ display:none!important;gap:3px;flex-wrap:nowrap;
+ border-top:1px solid var(--background-modifier-border);
+ padding-top:5px;max-width:100%;overflow-x:auto;
+ scrollbar-width:thin;overscroll-behavior-x:contain;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile.writer-v4-expanded .writer-v4-format-actions{
+ display:flex!important;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-format-actions button{
+ flex:0 0 auto!important;min-width:35px!important;
+ min-height:35px!important;padding:6px 8px!important;
+ color:var(--text-normal);font-size:var(--font-ui-small);
+ border-radius:7px;background:transparent;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile button:hover{
+ background:var(--background-modifier-hover)!important;
+}

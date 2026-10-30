@@ -196,11 +196,19 @@ class ProjectsView extends ItemView{
  }
  drawCompile(panel,project){
   panel.createEl('h4',{text:'Compilar manuscrito'});
-  const opts={frontmatter:true,links:true,separator:'\n\n---\n\n'};
+  const prefs=this.prefs(project);
+  const workflows=prefs.workflows||(prefs.workflows={Padrão:{frontmatter:true,links:true,separator:'\n\n---\n\n'}});
+  const opts={...(workflows[this.workflow]||workflows.Padrão)};
+  const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  const selector=bar.createEl('select',{attr:{'aria-label':'Workflow'}});
+  for(const name of Object.keys(workflows)){const option=selector.createEl('option',{text:name});option.value=name;}
+  if(!workflows[this.workflow])this.workflow='Padrão';selector.value=this.workflow;
+  selector.addEventListener('change',()=>{this.workflow=selector.value;this.render();});
+  bar.createEl('button',{text:'Salvar workflow'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome do workflow',async name=>{name=clean(name);if(!name)return;workflows[name]={...opts};this.workflow=name;await this.savePrefs();},this.workflow).open());
   panel.createEl('p',{text:'Rascunho: '+this.draft});
-  new Setting(panel).setName('Remover propriedades YAML').addToggle(t=>t.setValue(true).onChange(v=>opts.frontmatter=v));
-  new Setting(panel).setName('Remover wikilinks').addToggle(t=>t.setValue(true).onChange(v=>opts.links=v));
-  new Setting(panel).setName('Separador').addTextArea(t=>t.setValue('\\n\\n---\\n\\n').onChange(v=>opts.separator=v.replace(/\\n/g,'\n')));
+  new Setting(panel).setName('Remover propriedades YAML').addToggle(t=>t.setValue(opts.frontmatter!==false).onChange(v=>opts.frontmatter=v));
+  new Setting(panel).setName('Remover wikilinks').addToggle(t=>t.setValue(opts.links!==false).onChange(v=>opts.links=v));
+  new Setting(panel).setName('Separador').addTextArea(t=>t.setValue((opts.separator||'\n\n---\n\n').replace(/\n/g,'\\n')).onChange(v=>opts.separator=v.replace(/\\n/g,'\n')));
   panel.createEl('button',{text:'Gerar manuscrito Markdown',cls:'mod-cta'}).addEventListener('click',async()=>{
    try{
     const content=await this.compileProject(project,opts);

@@ -65,3 +65,11 @@ The AI uses recent conversation text for context. Review generated writing befor
 The **Assistant** settings tab provides a separate AI provider, optional model override, temperature slider (0–2), toggle to omit the temperature parameter, and an editable system prompt. The `{language}` placeholder uses the configured definition language.
 
 These settings apply to the Chat writing assistant only; dictionary and translation engines retain their independent provider and model selections. Some provider models may reject temperature or have a narrower supported range; disable temperature if a request returns an unsupported-parameter error.
+
+## 1.3.0 — Markdown files
+
+**Translate file:** In the Translation tab, click **Translate file** to pick a Markdown note from the Obsidian vault. The plugin translates the filename and Markdown content, processes longer notes in chunks, and saves a **new** Markdown note in the same folder. If the translated filename already exists, a numbered suffix is added. The original is never overwritten. Translation requests are sent to the configured AI translation provider and may incur usage costs. Formatting is preserved on a best-effort basis; review long documents, YAML frontmatter, internal links and code blocks.
+
+**Attach Markdown to chat:** In the Chat tab, click **Attach Markdown** to select up to three vault notes. Attached files appear as removable chips. The full text of each note is included as context in the next chat request, up to **25,000 characters total**. Attachments are cleared after a successful response. The files are not modified. File contents are sent to the selected assistant AI provider; avoid attaching private notes unless you trust that provider.
+
+Only `.md` files from the Obsidian vault are supported. No PDFs, images or arbitrary local filesystem files.

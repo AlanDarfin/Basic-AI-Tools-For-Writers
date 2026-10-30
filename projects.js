@@ -521,6 +521,31 @@ class ProjectsView extends ItemView{
    await this.savePrefs();new Notice(count+' workflow(s) importado(s). Etapas externas serão sinalizadas.');
   }catch(e){new Notice(e.message,7000);}
  }
+ importWorkflowJSON(project){
+  const modal=new Modal(this.app);let raw='';
+  modal.onOpen=()=>{
+   modal.setTitle('Importar workflows (JSON)');
+   modal.contentEl.createEl('p',{text:'Cole o objeto workflows ou o conteúdo de data.json do Longform. Apenas etapas reconhecidas poderão ser executadas.'});
+   const area=modal.contentEl.createEl('textarea',{attr:{rows:'12',placeholder:'{"workflows":{...}}'}});
+   area.style.width='100%';area.addEventListener('input',()=>raw=area.value);
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Importar').setCta().onClick(async()=>{
+    try{
+     const parsed=JSON.parse(raw),input=parsed.workflows||parsed;
+     if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Esperado objeto de workflows.');
+     const dest=this.workflowsFor(project);let count=0;
+     for(const [key,wf] of Object.entries(input)){
+      if(!wf||!Array.isArray(wf.steps))continue;
+      let name='Importado · '+String(key).slice(0,90);
+      if(dest[name])name+=' (2)';
+      dest[name]=JSON.parse(JSON.stringify(wf));count++;
+     }
+     if(!count)throw Error('Nenhum workflow com etapas foi encontrado.');
+     modal.close();await this.savePrefs();new Notice(count+' workflow(s) importado(s).');
+    }catch(e){new Notice('Importação inválida: '+e.message,7000);}
+   }));
+  };
+  modal.open();
+ }
  drawCompile(panel,project){
   panel.createEl('h4',{text:'Compilação por etapas'});
   const workflows=this.workflowsFor(project);
@@ -536,6 +561,7 @@ class ProjectsView extends ItemView{
    this.workflow=name;this.workflowDraft=null;await this.savePrefs();
   }).open());
   bar.createEl('button',{text:'Importar Longform'}).addEventListener('click',()=>this.importLongformWorkflows(project));
+  bar.createEl('button',{text:'Importar JSON'}).addEventListener('click',()=>this.importWorkflowJSON(project));
   const wf=this.workflowDraft&&this.workflowDraftName===this.workflow?this.workflowDraft:
    (this.workflowDraft=JSON.parse(JSON.stringify(workflows[this.workflow])),this.workflowDraftName=this.workflow,this.workflowDraft);
   const status=panel.createEl('p',{text:'Edite etapas e clique em Salvar workflow. Scripts externos não são executados.'});

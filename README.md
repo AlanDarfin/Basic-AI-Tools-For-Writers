@@ -142,7 +142,7 @@ The **Projetos de escrita** panel now supports creating Markdown scenes, adding 
 
 **Compatibility and limitations:** Longform index metadata is recognized and the primary scene tree can be edited through Obsidian's frontmatter processor. The imported Longform project is not automatically migrated; there is no full bidirectional synchronization of Longform-specific drafts, custom workflow steps, template expansion, drag-and-drop or every Longform metadata variant. Always back up your vault before editing existing Longform projects. No device-level Obsidian Mobile integration tests have been performed.
 
-## 2.0.0-beta.1 — Writing project workspace (experimental)
+## 2.0.0-beta.3 — Writing project workspace (experimental)
 
 The plugin now includes a dedicated project sidebar with **Cenas, Projeto, Compilar, Notas**. Open it from the ribbon or the command palette. Existing Longform projects with 'longform' YAML frontmatter are discovered automatically, including multi-scene and single-scene projects.
 

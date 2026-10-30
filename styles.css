@@ -98,3 +98,19 @@
 .writer-attachment-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;padding:4px 8px;border:1px solid var(--background-modifier-border);background:var(--background-secondary);border-radius:var(--radius-m);font-size:var(--font-ui-smaller)}
 .writer-attachment-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .writer-attachment-chip button{min-width:24px;padding:0 5px}
+
+/* Non-destructive writing review */
+.writer-tool-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.writer-review-panel{gap:12px}
+.writer-review-header{display:flex;align-items:center;justify-content:space-between;padding:8px 0}
+.writer-review-controls{display:flex;flex-direction:column;gap:8px}
+.writer-review-controls select{width:100%}
+.writer-review-results{display:flex;flex-direction:column;gap:12px;padding-bottom:16px}
+.writer-review-card{display:flex;flex-direction:column;gap:8px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-l);padding:12px;background:var(--background-secondary);overflow-wrap:anywhere}
+.writer-review-card p{margin:2px 0;white-space:pre-wrap}
+.writer-review-card select{width:100%;min-height:34px}
+.writer-review-reason{color:var(--text-muted)}
+.writer-review-actions{display:flex;flex-wrap:wrap;gap:6px}
+.writer-review-actions button{flex:1;min-width:90px}
+.writer-review-explanation{padding:10px;background:var(--background-primary);border-radius:var(--radius-m)}
+@media(max-width:380px){.writer-tool-tabs button{font-size:11px;padding:8px 2px}}

@@ -2,7 +2,7 @@
 const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
-const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:''};
+const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar'};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
 function parseDictionary(text) {
   const entries=[]; let word=null, lines=[];
@@ -45,7 +45,7 @@ class DictionaryView extends ItemView{
  getDisplayText(){return 'Basic AI Tool for Writers';}
  getIcon(){return 'book-open';}
  async onOpen(){
-  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});this.panels={definition:defs,translation:translations,chat};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat']]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
+  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});this.panels={definition:defs,translation:translations,chat,review};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
   defs.createEl('h3',{text:'Basic AI Tool for Writers',cls:'dictionary-heading'});
   this.input=defs.createEl('input',{attr:{type:'search',placeholder:t('search'),'aria-label':t('search')}});
   const controls=defs.createDiv({cls:'dictionary-controls'});
@@ -85,6 +85,18 @@ class DictionaryView extends ItemView{
   const composer=chat.createDiv({cls:'writer-chat-composer'});this.chatInput=composer.createEl('textarea',{attr:{placeholder:msg('Escreva uma mensagem…','Write a message…')}});
   composer.createEl('button',{text:msg('Enviar','Send'),cls:'mod-cta'}).addEventListener('click',()=>this.sendChat());
   this.chatInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();this.sendChat();}});
+  const reviewHead=review.createDiv({cls:'writer-review-header'});
+  reviewHead.createEl('strong',{text:msg('Revisor de escrita','Writing reviewer')});
+  const reviewControls=review.createDiv({cls:'writer-review-controls'});
+  this.reviewMode=reviewControls.createEl('select',{attr:{'aria-label':msg('Modo de revisão','Review mode')}});
+  for(const [id,label] of [['grammar',msg('Gramática (LanguageTool)','Grammar (LanguageTool)')],['style',msg('Estilo e fluidez (IA)','Style and flow (AI)')],['beta',msg('Leitor beta (IA)','Beta reader (AI)')]]){const opt=this.reviewMode.createEl('option',{text:label});opt.value=id;}
+  this.reviewMode.value=this.plugin.settings.reviewMode||'grammar';
+  this.reviewMode.addEventListener('change',()=>{this.plugin.settings.reviewMode=this.reviewMode.value;this.plugin.saveSettings();});
+  const reviewButtons=review.createDiv({cls:'writer-file-actions'});
+  reviewButtons.createEl('button',{text:msg('Revisar nota ativa','Review active note')}).addEventListener('click',()=>this.reviewActiveFile());
+  reviewButtons.createEl('button',{text:msg('Escolher arquivo','Choose file')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
+  this.reviewStatus=review.createDiv({cls:'writer-file-status'});
+  this.reviewResults=review.createDiv({cls:'writer-review-results'});
   this.switchTab('definition');
   let debounce;this.input.addEventListener('input',()=>{clearTimeout(debounce);this.search(this.input.value);debounce=setTimeout(()=>{if(this.input.value.trim())this.lookup();},650);});
  }
@@ -152,6 +164,80 @@ class DictionaryView extends ItemView{
   const tasks={translate:msg('Traduza este texto:','Translate this text:'),definition:msg('Explique este texto:','Explain this text:'),synonyms:msg('Sugira sinônimos para:','Suggest synonyms for:'),antonyms:msg('Sugira antônimos para:','Suggest antonyms for:'),rewrite:msg('Reescreva este texto:','Rewrite this text:')};
   this.chatInput.value=(tasks[mode]||'')+'\n\n'+selection;
   await this.sendChat();
+ }
+ async reviewActiveFile(){
+  const file=this.app.workspace.getActiveFile();
+  if(!(file instanceof TFile)||file.extension!=='md')return new Notice(msg('Abra uma nota Markdown ou escolha um arquivo.','Open a Markdown note or choose a file.'));
+  await this.reviewFile(file);
+ }
+ async reviewFile(file){
+  if(this.reviewBusy)return;
+  if(!(file instanceof TFile)||file.extension!=='md')return;
+  this.reviewBusy=true;this.reviewResults.empty();this.reviewStatus.setText(msg('Analisando ','Analyzing ')+file.path+'…');
+  try{
+    const source=await this.app.vault.read(file);
+    this.reviewFilePath=file.path;
+    if(this.reviewMode.value==='grammar'){
+      const matches=await this.plugin.checkGrammar(source);
+      this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found'));
+      if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
+      for(const match of matches)this.renderGrammarSuggestion(file,source,match);
+    }else{
+      const mode=this.reviewMode.value;
+      const result=await this.plugin.reviewWithAI(source,mode);
+      this.reviewStatus.setText(msg('Parecer editorial (sem alterar o arquivo)','Editorial feedback (file unchanged)'));
+      const card=this.reviewResults.createDiv({cls:'writer-review-card'});
+      await MarkdownRenderer.render(this.app,result,card,this.plugin.dictionaryPath(),this);
+      card.createEl('button',{text:msg('Discutir no chat','Discuss in chat')}).addEventListener('click',()=>this.reviewToChat(file,source.slice(0,3500),result));
+    }
+  }catch(e){this.reviewStatus.setText(msg('Falha: ','Failed: ')+(e.message||String(e)));}
+  finally{this.reviewBusy=false;}
+ }
+ renderGrammarSuggestion(file,source,match){
+  const start=match.offset,end=start+match.length;
+  if(!Number.isInteger(start)||!Number.isInteger(match.length)||start<0||end>source.length||match.length<=0)return;
+  const original=source.slice(start,end);
+  const card=this.reviewResults.createDiv({cls:'writer-review-card'});
+  card.createEl('strong',{text:match.rule?.description||match.message||msg('Sugestão','Suggestion')});
+  card.createEl('p',{text:match.message||'',cls:'writer-review-reason'});
+  card.createEl('p',{text:msg('Trecho: ','Excerpt: ')+source.slice(Math.max(0,start-65),Math.min(source.length,end+65))});
+  const suggestions=(match.replacements||[]).slice(0,5).map(r=>r.value).filter(v=>typeof v==='string');
+  const select=card.createEl('select');
+  if(!suggestions.length){const opt=select.createEl('option',{text:msg('Sem substituição automática','No automatic replacement')});opt.value='';}
+  else for(const suggestion of suggestions){const opt=select.createEl('option',{text:suggestion||msg('(remover)','(remove)')});opt.value=suggestion;}
+  const actions=card.createDiv({cls:'writer-review-actions'});
+  const apply=actions.createEl('button',{text:msg('Aceitar','Accept'),cls:'mod-cta'});
+  apply.disabled=!suggestions.length;
+  apply.addEventListener('click',async()=>{
+    try{
+      const replacement=select.value;
+      const current=this.app.vault.getAbstractFileByPath(file.path);
+      if(!(current instanceof TFile))throw new Error(msg('Arquivo não encontrado','File not found'));
+      let changed=false;
+      await this.app.vault.process(current,text=>{
+        if(text.slice(start,end)!==original||text!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
+        changed=true;return text.slice(0,start)+replacement+text.slice(end);
+      });
+      if(changed){new Notice(msg('Alteração aplicada','Change applied'));await this.reviewFile(file);}
+    }catch(e){new Notice(e.message||String(e),7000);}
+  });
+  actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>card.remove());
+  actions.createEl('button',{text:msg('Por quê? / Alternativas','Why? / Alternatives')}).addEventListener('click',()=>this.explainGrammar(file,source,match,suggestions,card));
+ }
+ async explainGrammar(file,source,match,suggestions,card){
+  const explanation=card.createDiv({cls:'writer-review-explanation markdown-rendered'});
+  explanation.setText('…');
+  const excerpt=source.slice(Math.max(0,match.offset-350),Math.min(source.length,match.offset+match.length+350));
+  try{
+    const answer=await this.plugin.reviewWithAI('Original excerpt:\n'+excerpt+'\nLanguageTool finding:\n'+match.message+'\nSuggestions: '+suggestions.join(' | '),'explain');
+    explanation.empty();
+    await MarkdownRenderer.render(this.app,answer,explanation,this.plugin.dictionaryPath(),this);
+    explanation.createEl('button',{text:msg('Discutir no chat','Discuss in chat')}).addEventListener('click',()=>this.reviewToChat(file,excerpt,answer));
+  }catch(e){explanation.setText(e.message||String(e));}
+ }
+ reviewToChat(file,excerpt,feedback){
+  this.switchTab('chat');
+  this.chatInput.value=msg('Quero discutir esta sugestão de revisão. Considere a intenção do autor e explique as alternativas.','I want to discuss this revision suggestion. Consider author intent and explain alternatives.')+'\nArquivo: '+file.path+'\nTrecho:\n'+excerpt+'\nSugestão:\n'+feedback;
  }
  async search(query){
   const token=++this.sequence;this.results.empty();this.output.empty();this.pending=null;this.localMeaning='';this.renderedWord='';

@@ -45,7 +45,7 @@ function writerRenderV4Settings(panel,plugin,id){
    cfg.entries[key]={value:'',isEnabled:true,position:Object.keys(cfg.entries).length};
    await plugin.saveSettings();render();
   })).addButton(b=>b.setButtonText(tr('Restaurar padrão','Reset defaults')).onClick(async()=>{
-   cfg.entries=structuredClone(W4_DEFAULTS.abbreviations.entries);await plugin.saveSettings();render();
+   cfg.entries=JSON.parse(JSON.stringify(W4_DEFAULTS.abbreviations.entries));await plugin.saveSettings();render();
   }));
   render();
  }else if(id==='anotherName'){

@@ -1,5 +1,5 @@
 'use strict';
-const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, EditorSuggest, requestUrl, parseYaml, stringifyYaml} = require('obsidian');
+const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, EditorSuggest, Menu, requestUrl, parseYaml, stringifyYaml} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
 const {TFolder}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
@@ -316,11 +316,25 @@ class ProjectsView extends ItemView{
    row.addEventListener('dragleave',()=>row.removeClass('writer-project-dragover'));
    row.addEventListener('drop',e=>{e.preventDefault();row.removeClass('writer-project-dragover');const source=e.dataTransfer.getData('text/plain');if(source)this.moveSceneBefore(project,source,name);});
    const file=this.resolveScene(project,name);
-   row.createEl('button',{text:name,cls:'writer-project-scene-title'}).addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
-   const controls=[['↑',()=>this.moveScene(project,name,-1),'Subir'],['↓',()=>this.moveScene(project,name,1),'Descer'],
-    ['←',()=>this.indentScene(project,name,-1),'Diminuir recuo'],['→',()=>this.indentScene(project,name,1),'Aumentar recuo'],
-    ['+',()=>this.addScene(project,name),'Adicionar subcapítulo'],['⋯',()=>this.renameScene(project,name),'Renomear'],['×',()=>this.removeSceneFromIndex(project,name),'Tirar do índice (sem excluir arquivo)']];
-   for(const [label,fn,title] of controls)row.createEl('button',{text:label,cls:'writer-project-small-button',attr:{title,'aria-label':title}}).addEventListener('click',fn);
+   const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
+   titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
+   const controls=row.createDiv({cls:'writer-project-scene-controls'});
+   for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){
+    controls.createEl('button',{text:label,cls:'writer-project-small-button',attr:{title:hint,'aria-label':hint+' — '+name}})
+     .addEventListener('click',()=>this.moveScene(project,name,delta));
+   }
+   const more=controls.createEl('button',{text:'⋯',cls:'writer-project-small-button writer-project-scene-more',attr:{title:'Mais ações','aria-label':'Mais ações para '+name,'aria-haspopup':'menu'}});
+   more.addEventListener('click',event=>{
+    const menu=new Menu();
+    for(const [label,icon,action] of [
+     ['Diminuir recuo','arrow-left',()=>this.indentScene(project,name,-1)],
+     ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
+     ['Adicionar subcapítulo','plus',()=>this.addScene(project,name)],
+     ['Renomear cena','pencil',()=>this.renameScene(project,name)],
+     ['Retirar do índice (preservar arquivo)','list-x',()=>this.removeSceneFromIndex(project,name)]
+    ])menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
+    menu.showAtMouseEvent(event);
+   });
    for(const child of item.children)renderItem(child,parent,level+1);
   };
   for(const item of tree)renderItem(item,panel);
@@ -823,16 +837,7 @@ const reviewMarkField=StateField.define({
  provide:f=>EditorView.decorations.from(f)
 });
 function prepareGrammarText(text){
- let masked=withoutFrontmatter(text);
- const hide=(re)=>{masked=masked.replace(re,match=>match.replace(/[^\r\n]/g,' '));};
- hide(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm);
- hide(/^~~~[^\n]*\n[\s\S]*?^~~~[^\n]*$/gm);
- hide(/^`{1,3}[^\n]*`{1,3}$/gm);
- hide(/\!\[[^\]]*\]\([^\n)]*\)/g);
- hide(/\[\[[^\]\n]*\]\]/g);
- hide(/^\s{0,3}#{1,6}(?=\s)/gm);
- hide(/\[([^\]]+)\]\([^\n)]*\)/g);
- return writerMaskMarkdown(masked);
+ return writerMaskMarkdown(text);
 }
 function reviewParagraph(source,start,end){
  const breaks=/\r?\n[ \t]*\r?\n/g;
@@ -926,23 +931,54 @@ function writerMergeV3(settings){
  base.schemaVersion=3;return base;
 }
 function writerMaskMarkdown(source,keepVariants=false){
- const text=String(source||'');
- const hidden=new Uint8Array(text.length);
+ const text=String(source||''),hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
+ // Never alter the length: LanguageTool offsets correspond to the original Markdown.
  if(text.startsWith('---\n')||text.startsWith('---\r\n')){
-  const front=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
-  if(front)hide(0,front[0].length);
+  const fm=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
+  if(fm)hide(0,fm[0].length);
  }
- let inside=null,at=0;
+ let fence=null,offset=0;
  for(const line of text.split('\n')){
-  const m=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
-  if(m){if(!inside)inside={char:m[1][0],n:m[1].length};else if(m[1][0]===inside.char&&m[1].length>=inside.n)inside=null;hide(at,at+line.length);}
-  else if(inside)hide(at,at+line.length);
-  at+=line.length+1;
+  const m=/^[ \t]{0,3}(\x60{3,}|~{3,})/.exec(line);
+  if(m){
+   if(!fence)fence={char:m[1][0],size:m[1].length};
+   else if(m[1][0]===fence.char&&m[1].length>=fence.size)fence=null;
+   hide(offset,offset+line.length);
+  }else if(fence)hide(offset,offset+line.length);
+  offset+=line.length+1;
  }
- const masks=[/\x60+[^\x60\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\n]*\]\([^\n)]*\)/g,/!?\[\[[^\]\n]*\]\]/g,/(\[[^\]\n]+\])\([^\n)]*\)/g]; if(!keepVariants)masks.push(/\{\{[^\n]{1,6000}?\}\}\^\d+/g);
- for(const re of masks){let m;while((m=re.exec(text))){hide(m.index,m.index+m[0].length);if(m[0].length===0)re.lastIndex++;}}
- let out='';for(let i=0;i<text.length;i++)out+=hidden[i]?' ':text[i];return out;
+ const masks=[/\x60+[^\x60\r\n]*\x60+/g,/%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,/!\[[^\]\r\n]*\]\([^\r\n)]*\)/g,/!?\[\[[^\]\r\n]*\]\]/g,/\[[^\]\r\n]+\]\([^\r\n)]*\)/g];
+ if(!keepVariants)masks.push(/\{\{[^\r\n]{1,6000}?\}\}\^\d+/g);
+ for(const re of masks){
+  let m;while((m=re.exec(text))!==null){
+   hide(m.index,m.index+m[0].length);
+   if(!m[0].length)re.lastIndex++;
+  }
+ }
+ // A paired delimiter marks formatting, but the words between markers are prose.
+ // This excludes underscores inside identifiers (foo_bar) and escaped characters.
+ const emphasis=/(?<![\p{L}\p{N}\\])(\*\*|__|~~|\*|_)(?=\S)([^\r\n]*?\S)\1(?![\p{L}\p{N}])/gu;
+ let m;
+ while((m=emphasis.exec(text))!==null){
+  const from=m.index,closing=from+m[0].length-m[1].length;
+  if(closing-from>4000||hidden[from]||hidden[closing])continue;
+  let protectedPart=false;
+  for(let i=from;i<closing;i++)if(hidden[i]){protectedPart=true;break;}
+  if(protectedPart)continue;
+  hide(from,from+m[1].length);
+  hide(closing,closing+m[1].length);
+ }
+ const structural=/^[ \t]{0,3}(?:#{1,6}(?=\s)|>(?=\s)|[-*+](?=\s)|\d+[.)](?=\s)|(?:---+|\*\*\*+|___+)[ \t]*$)/gm;
+ while((m=structural.exec(text))!==null)hide(m.index,m.index+m[0].length);
+ let masked='';for(let i=0;i<text.length;i++)masked+=hidden[i]?' ':text[i];
+ return masked;
+}
+function writerGrammarMatchIsSafe(source,masked,match){
+ const from=match?.offset,length=match?.length;
+ if(!Number.isInteger(from)||!Number.isInteger(length)||length<=0||from<0||from+length>source.length||masked.length!==source.length)return false;
+ for(let i=from;i<from+length;i++)if(source[i]!==masked[i])return false;
+ return true;
 }
 function writerParseVariants(input){
  const text=String(input||''),found=[];let pos=0;
@@ -1861,9 +1897,10 @@ class DictionaryView extends ItemView{
     this.reviewFilePath=file.path;
     this.reviewSource=source;
     if(this.reviewMode.value==='grammar'){
-      const rawMatches=await this.plugin.checkGrammar(prepareGrammarText(source));
+      const grammarText=prepareGrammarText(source);
+      const rawMatches=await this.plugin.checkGrammar(grammarText);
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
-      const matches=rawMatches.filter(m=>(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+      const matches=rawMatches.filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.plugin.showReviewMarks(file,matches);
@@ -1899,11 +1936,12 @@ class DictionaryView extends ItemView{
   if(!suggestions.length){const opt=select.createEl('option',{text:msg('Sem substituição automática','No automatic replacement')});opt.value='';}
   else for(const suggestion of suggestions){const opt=select.createEl('option',{text:suggestion||msg('(remover)','(remove)')});opt.value=suggestion;}
   const actions=card.createDiv({cls:'writer-review-actions'});
-  actions.createEl('button',{text:msg('Ir ao erro','Go to error')}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
-  const apply=actions.createEl('button',{text:msg('Aceitar','Accept'),cls:'mod-cta'});
+  actions.createEl('button',{text:msg('Ir ao erro','Go to error'),cls:'writer-review-action-goto'}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
+  const apply=actions.createEl('button',{text:msg('Aceitar','Accept'),cls:'mod-cta writer-review-action-accept'});
   apply.disabled=!suggestions.length;
   if(this.plugin.settings.variants?.enabled&&this.plugin.settings.variants.offerInReview!==false){
-    const variantButton=actions.createEl('button',{text:'Criar variante'});
+    actions.addClass('writer-review-actions-has-variants');
+    const variantButton=actions.createEl('button',{text:'Criar variante',cls:'writer-review-action-variant'});
     variantButton.disabled=!suggestions.length;
     variantButton.addEventListener('click',async()=>{
       const present=await writerCurrentText(this.plugin,file);
@@ -1925,8 +1963,8 @@ class DictionaryView extends ItemView{
       setTimeout(()=>this.reviewFile(file),350);
     }catch(e){new Notice(e.message||String(e),7000);}
   });
-  actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>{card.remove();this.plugin.closeReviewPopup();this.plugin.hideReviewMark(file,start,end);});
-  actions.createEl('button',{text:msg('Explicar e sugerir alternativas','Explain and suggest alternatives')}).addEventListener('click',()=>{detail.open=true;this.explainGrammar(file,source,match,suggestions,detail);});
+  actions.createEl('button',{text:msg('Ignorar','Ignore'),cls:'writer-review-action-ignore'}).addEventListener('click',()=>{card.remove();this.plugin.closeReviewPopup();this.plugin.hideReviewMark(file,start,end);});
+  actions.createEl('button',{text:msg('Explicar e sugerir alternativas','Explain and suggest alternatives'),cls:'writer-review-action-explain'}).addEventListener('click',()=>{detail.open=true;this.explainGrammar(file,source,match,suggestions,detail);});
  }
  async explainGrammar(file,source,match,suggestions,card){
   const explanation=card.createDiv({cls:'writer-review-explanation markdown-rendered'});
@@ -2385,6 +2423,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     }catch(e){new Notice(msg('Não foi possível localizar o erro: ','Could not locate error: ')+(e.message||e));}
   }
   closeReviewPopup(){
+    if(this.reviewPopupCleanup){this.reviewPopupCleanup();this.reviewPopupCleanup=null;}
     if(this.reviewPopup){this.reviewPopup.remove();this.reviewPopup=null;}
   }
   maybeShowReviewPopup(cm,onMark=false){
@@ -2404,17 +2443,46 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.closeReviewPopup();
     const popup=document.body.createDiv({cls:'writer-review-floating'});
     popup.dataset.reviewKey=key;
-    const top=cm.coordsAtPos(match.from);
-    const width=Math.min(360,window.innerWidth-24);
-    const left=Math.max(12,Math.min(window.innerWidth-width-12,(top?.left||12)-width/2));
-    popup.style.width=width+'px';
-    popup.style.left=left+'px';
-    const keyboardRoom=window.visualViewport?.height||window.innerHeight;
-    popup.style.top=Math.max(12,Math.min(Math.max(12,keyboardRoom-210),(top?.bottom||80)+10))+'px';
     const close=popup.createEl('button',{cls:'writer-review-popup-close',text:'×',attr:{'aria-label':msg('Fechar','Close')}});
     close.addEventListener('click',()=>this.closeReviewPopup());
     view.renderGrammarSuggestion(file,this.reviewSource,original,popup);
     this.reviewPopup=popup;
+    const position=()=>{
+      if(this.reviewPopup!==popup)return;
+      const viewport=window.visualViewport;
+      const vw=viewport?.width||window.innerWidth;
+      const vh=viewport?.height||window.innerHeight;
+      const vx=viewport?.offsetLeft||0,vy=viewport?.offsetTop||0;
+      const mobile=vw<=620;
+      popup.classList.toggle('writer-review-mobile',mobile);
+      popup.style.maxHeight=Math.max(150,Math.min(mobile?390:440,vh*(mobile?.60:.72)))+'px';
+      if(mobile){
+        popup.style.width=Math.max(200,vw-20)+'px';
+        popup.style.left=vx+10+'px';
+        const height=popup.getBoundingClientRect().height;
+        popup.style.top=Math.max(vy+8,vy+vh-height-12)+'px';
+      }else{
+        const rect=cm.coordsAtPos(match.from);
+        const width=Math.max(280,Math.min(420,vw-24));
+        popup.style.width=width+'px';
+        const left=Math.max(vx+12,Math.min(vx+vw-width-12,(rect?.left??vx+vw/2)-width/2));
+        popup.style.left=left+'px';
+        const height=popup.getBoundingClientRect().height;
+        const below=(rect?.bottom??vy+60)+8;
+        const above=(rect?.top??vy+60)-height-8;
+        popup.style.top=Math.max(vy+8,below+height<vy+vh-8?below:above>=vy+8?above:vy+vh-height-8)+'px';
+      }
+    };
+    const viewport=window.visualViewport;
+    viewport?.addEventListener('resize',position);
+    viewport?.addEventListener('scroll',position);
+    window.addEventListener('resize',position);
+    this.reviewPopupCleanup=()=>{
+      viewport?.removeEventListener('resize',position);
+      viewport?.removeEventListener('scroll',position);
+      window.removeEventListener('resize',position);
+    };
+    requestAnimationFrame(position);
   }
   reviewEditors(file){
     const views=[];

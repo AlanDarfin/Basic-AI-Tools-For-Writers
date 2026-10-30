@@ -323,3 +323,104 @@
  .writer-variant-option-header button{min-height:40px}
  .writer-history-diff{max-height:45vh}
 }
+
+/* v3.0.0-beta.2: Android review popover and compact scene controls */
+.writer-review-floating.writer-review-floating{
+  box-sizing:border-box;
+  display:flex;flex-direction:column;
+  min-width:0;max-width:calc(100vw - 20px);
+  max-height:min(440px,72dvh);
+  overflow-x:hidden;overflow-y:auto;
+  padding:10px 12px 12px;
+  gap:6px;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+}
+.writer-review-floating.writer-review-mobile{
+  border-radius:var(--radius-l);
+  box-shadow:0 14px 38px rgba(0,0,0,.35);
+}
+.writer-review-floating .writer-review-popup-close{
+  position:sticky;top:0;right:0;float:none;
+  align-self:flex-end;flex:0 0 auto;
+  width:34px;min-width:34px;height:34px;min-height:34px;
+  margin:0;padding:0;border-radius:50%;z-index:3;
+  text-align:center;
+}
+.writer-review-floating .writer-review-card.writer-review-card{
+  display:flex;flex-direction:column;
+  box-sizing:border-box;min-width:0;width:100%;
+  height:auto;min-height:0;max-height:none;
+  overflow:visible;flex:0 0 auto;
+  padding:0;gap:10px;
+}
+.writer-review-floating .writer-review-card .writer-review-select-label,
+.writer-review-floating .writer-review-card select{
+  box-sizing:border-box;min-width:0;width:100%;max-width:100%;
+}
+.writer-review-floating .writer-review-card .writer-review-paragraph{
+  max-height:95px;overflow:auto;
+}
+.writer-review-floating .writer-review-card .writer-review-actions.writer-review-actions{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;width:100%;min-width:0;
+}
+.writer-review-floating .writer-review-card .writer-review-actions.writer-review-actions>button{
+  display:block;box-sizing:border-box;
+  width:100%;height:auto;min-width:0;min-height:39px;
+  padding:8px 7px;line-height:1.3;white-space:normal;
+  overflow-wrap:anywhere;grid-column:auto;
+}
+.writer-review-floating .writer-review-card .writer-review-actions.writer-review-actions .writer-review-action-goto,
+.writer-review-floating .writer-review-card .writer-review-actions.writer-review-actions .writer-review-action-ignore,
+.writer-review-floating .writer-review-card .writer-review-actions.writer-review-actions .writer-review-action-explain{
+  grid-column:1/-1;
+}
+.writer-review-floating .writer-review-card .writer-review-actions:not(.writer-review-actions-has-variants) .writer-review-action-accept{
+  grid-column:1/-1;
+}
+.writer-project-scene.writer-project-scene-actions{
+  box-sizing:border-box;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;gap:5px;
+  min-width:0;max-width:100%;padding-top:6px;padding-bottom:6px;
+}
+.writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+  box-sizing:border-box;
+  width:auto;min-width:0;max-width:100%;
+  flex:none;align-self:center;
+  padding:7px 4px;
+  overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{
+  display:flex;flex-direction:row;
+  flex-wrap:nowrap;align-items:center;
+  justify-content:flex-end;gap:3px;
+  min-width:0;width:auto;flex:0 0 auto;
+}
+.writer-project-scene.writer-project-scene-actions .writer-project-scene-controls>button.writer-project-small-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  box-sizing:border-box;
+  width:32px;min-width:32px;max-width:32px;
+  height:34px;min-height:34px;
+  padding:0;flex:0 0 32px;
+  font-size:var(--font-ui-medium);
+  border-radius:var(--radius-s);
+  background:var(--background-secondary);
+  box-shadow:none;text-align:center;
+  white-space:nowrap;
+}
+.writer-project-scene.writer-project-scene-actions .writer-project-scene-controls>button.writer-project-small-button:hover{
+  background:var(--background-modifier-hover);
+}
+@media(max-width:600px){
+  .writer-review-floating.writer-review-floating{
+    border-radius:14px;
+    padding:10px 11px 13px;
+    max-height:min(390px,60dvh);
+  }
+  .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+    font-size:var(--font-ui-small);
+  }
+}

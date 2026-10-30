@@ -73,3 +73,17 @@ These settings apply to the Chat writing assistant only; dictionary and translat
 **Attach Markdown to chat:** In the Chat tab, click **Attach Markdown** to select up to three vault notes. Attached files appear as removable chips. The full text of each note is included as context in the next chat request, up to **25,000 characters total**. Attachments are cleared after a successful response. The files are not modified. File contents are sent to the selected assistant AI provider; avoid attaching private notes unless you trust that provider.
 
 Only `.md` files from the Obsidian vault are supported. No PDFs, images or arbitrary local filesystem files.
+
+## 1.4.0 — Non-destructive writing review
+
+The new **Review** sidebar tab offers three modes:
+
+- **Grammar (LanguageTool):** Review a Markdown note with LanguageTool. Each finding is displayed separately with the detected rule, explanation, replacement options, and **Accept**, **Ignore**, and **Why? / Alternatives** actions. Accept changes only that finding, and refuses to apply if the note has changed since the analysis.
+- **Style and flow (AI):** Ask the configured AI model for feedback about clarity, rhythm, repetition, voice and dialogue. The feedback is displayed in the sidebar; the note remains unchanged.
+- **Beta reader (AI):** Request editorial feedback about narrative pacing, characterization, dialogue, coherence and emotional impact, without replacing the document. Discuss feedback in the Chat tab.
+
+**Review settings** include the LanguageTool language, HTTPS API endpoint, optional API key, and an editable editorial profile. The default public LanguageTool endpoint has request and text limits; longer notes may need a self-hosted or paid endpoint. AI review currently analyzes up to 14,000 characters per request; grammar review accepts up to 18,000 characters. These limits avoid silently claiming to review content that cannot fit in a single request.
+
+**Privacy:** Grammar text is sent to the configured LanguageTool service. AI review text and explanation requests are sent to the selected AI provider. No external Grammarly integration is included.
+
+**Limitations:** This release shows findings in the sidebar rather than adding inline CodeMirror underlines. DeepL Write is not integrated yet. Review on Obsidian Desktop and Mobile before relying on the results for important documents.

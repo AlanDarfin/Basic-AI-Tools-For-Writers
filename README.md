@@ -2,8 +2,6 @@
 
 A bilingual, AI-powered writing companion for [Obsidian](https://obsidian.md), available on desktop and mobile.
 
-> Formerly **Alan's Offline Dictionary**. The plugin ID remains `alans-offline-dictionary` so existing installations and settings are preserved.
-
 ## Features
 
 - **Definitions**, **synonyms**, and **antonyms**, with context-sensitive suggestions and Markdown-rendered results.
@@ -13,7 +11,7 @@ A bilingual, AI-powered writing companion for [Obsidian](https://obsidian.md), a
 - **Editable prompts** for definitions, synonyms, antonyms, translation and writing.
 - Automatic storage of new definitions in an existing local Markdown dictionary, without displaying duplicate results.
 - **Portuguese UI** when Obsidian uses Portuguese, **English** otherwise.
-- Settings tabs: **General**, **Providers**, **Models**, **Prompts**.
+- Settings tabs: **General**, **Providers**, **Models**, **Assistant**, **Prompts**.
 - Model catalog and API connection checks.
 
 ## Supported AI providers
@@ -27,10 +25,10 @@ Use separate providers for dictionary queries and translation. Providers require
 Download `main.js`, `manifest.json` and `styles.css` from the latest GitHub Release and place them in:
 
 ```text
-<Vault>/.obsidian/plugins/alans-offline-dictionary/
+<Vault>/.obsidian/plugins/basic-ai-tool-for-writers/
 ```
 
-Reload Obsidian and enable **Basic AI Tool for Writers** in Community Plugins. **Do not change the plugin folder ID** when upgrading.
+Reload Obsidian and enable **Basic AI Tool for Writers** in Community Plugins. When migrating from an older installation, copy your existing `data.json` into this folder before enabling the plugin to preserve your settings.
 
 ## Configuration
 
@@ -44,13 +42,13 @@ By default, the optional local dictionary is `Dicionario.md`. New definitions ar
 
 ## Version
 
-**1.0.0 — first stable release.** Built for writers who want word definitions, contextual alternatives, translation and AI-assisted drafting in one place.
+**1.2.0 — stable release.** Built for writers who want word definitions, contextual alternatives, translation and AI-assisted drafting in one place.
 
 ## Links
 
-- [GitHub repository](https://github.com/AlanDarfin/Alan-s-Offline-Dictionary)
-- [Releases](https://github.com/AlanDarfin/Alan-s-Offline-Dictionary/releases)
-- [Report an issue](https://github.com/AlanDarfin/Alan-s-Offline-Dictionary/issues)
+- [GitHub repository](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers)
+- [Releases](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases)
+- [Report an issue](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/issues)
 
 ## Credits
 
@@ -59,7 +57,7 @@ Developed by Alan Darfin. Translation workflow ideas were inspired by the [Obsid
 ## 1.1.0 — sidebar chat redesign
 The plugin sidebar now has **Definitions**, **Translation**, and **Chat** tabs. The Chat tab replaces the former mobile popup with a conversation view, Markdown-formatted AI messages, a text composer, Send button, and a Clear button. The conversation is held in memory for the current view/session; it is not permanently stored.
 
-Commands and editor context-menu actions for selected text now switch to Chat and automatically submit a request with that selection. The former **Custom AI prompt** command was removed. Use **Open writing chat** or **Generate text in chat** for freeform requests.
+Commands and editor context-menu actions for selected text now switch to Chat and automatically submit a request with that selection. The former popup prompt command was removed. Use **Open writing chat** or **Generate text in chat** for freeform requests.
 
 The AI uses recent conversation text for context. Review generated writing before inserting it into a document. This version has been syntax-checked but requires testing on Obsidian Mobile.
 

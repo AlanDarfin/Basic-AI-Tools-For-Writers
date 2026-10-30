@@ -29,8 +29,9 @@ function w4merge(settings){
 function w4locale(plugin){
  const custom=plugin?.settings?.interfaceLanguage||'auto';
  if(custom==='pt'||custom==='en')return custom;
- try{return String(require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?'pt':'en';}
- catch{return typeof getLocale==='function'?getLocale():'en';}
+ try{const lang=require('obsidian').getLanguage?.();if(lang)return String(lang).toLowerCase().startsWith('pt')?'pt':'en';}
+ catch(_){}
+ return typeof getLocale==='function'?getLocale():'en';
 }
 function w4text(plugin,pt,en){return w4locale(plugin)==='pt'?pt:en;}
 const w4labels={

@@ -1,5 +1,5 @@
 'use strict';
-const {ItemView,TFile,TFolder,Notice,Modal,Setting}=require('obsidian');
+const {ItemView,TFile,TFolder,Notice,Modal,Setting,parseYaml,stringifyYaml}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
 const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
 class TextPrompt extends Modal{
@@ -14,7 +14,7 @@ function longformIndex(file,app){
 }
 function sceneNames(items,out=[]){for(const item of items){if(typeof item==='string')out.push(item);else if(item&&typeof item==='object'){if(item.scene)out.push(String(item.scene));if(item.name)out.push(String(item.name));if(Array.isArray(item.children))sceneNames(item.children,out);}}return out;}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Default';this.workflow='Padrão';}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return 'Projetos de escrita';}
  getIcon(){return 'notebook-pen';}
@@ -31,6 +31,9 @@ class ProjectsView extends ItemView{
   if(!this.root)return;
   this.root.empty();
   const indexes=this.indexes();
+  const active=this.app.workspace.getActiveFile();
+  const activeProject=active&&indexes.find(p=>p.file.path===active.path);
+  if(!this.selected&&activeProject)this.selected=activeProject.file.path;
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
   const selector=top.createEl('select',{attr:{'aria-label':'Projeto'}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
@@ -39,6 +42,7 @@ class ProjectsView extends ItemView{
   selector.value=this.selected;
   selector.addEventListener('change',()=>{this.selected=selector.value;this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
+  this.currentProject=project;
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
   for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas']]){
@@ -59,39 +63,119 @@ class ProjectsView extends ItemView{
    ||this.app.vault.getMarkdownFiles().find(f=>f.basename===name&&f.path.startsWith(base+'/'));
  }
  openFile(file){if(file instanceof TFile)this.app.workspace.getLeaf(false).openFile(file);}
+
+ async updateIndex(project,change){
+  await this.app.fileManager.processFrontMatter(project.file,fm=>{
+   if(!fm.longform||typeof fm.longform!=='object')fm.longform={};
+   change(fm.longform);
+  });
+  await this.render();
+ }
+ sceneList(project){return Array.isArray(project.meta.scenes)?project.meta.scenes:[];}
+ async addScene(project,parent=null){
+  new TextPrompt(this.app,parent?'Novo subcapítulo':'Nova cena',async raw=>{
+   const name=clean(raw);if(!name)return;
+   const dir=project.file.parent?.path||'',folder=String(project.meta.sceneFolder||'').replace(/^\/+|\/+$/g,'');
+   const path=[dir,folder,name+'.md'].filter(Boolean).join('/');
+   try{
+    if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe um arquivo com esse nome.');
+    if(folder)await this.ensureFolder([dir,folder].filter(Boolean).join('/'));
+    const file=await this.app.vault.create(path,'');
+    await this.updateIndex(project,data=>{
+     if(!Array.isArray(data.scenes))data.scenes=[];
+     if(parent){
+      const target=this.findScene(data.scenes,parent);
+      if(!target)throw Error('Cena pai não encontrada');
+      if(typeof target.item==='string')target.list[target.index]={name:target.item,children:[]};
+      const node=target.list[target.index];
+      if(!Array.isArray(node.children))node.children=[];
+      node.children.push(name);
+     }else data.scenes.push(name);
+    });
+    this.openFile(file);
+   }catch(e){new Notice('Não foi possível criar cena: '+e.message);}
+  }).open();
+ }
+ findScene(items,path){
+  if(!Array.isArray(items))return null;
+  for(let i=0;i<items.length;i++){
+   const item=items[i],name=typeof item==='string'?item:String(item?.scene||item?.name||'');
+   const current=path[0];
+   if(name!==current)continue;
+   if(path.length===1)return {list:items,index:i,item};
+   return this.findScene(item?.children,path.slice(1));
+  }
+  return null;
+ }
+ async reorderScene(project,path,delta){
+  try{await this.updateIndex(project,data=>{
+   const found=this.findScene(data.scenes,path);
+   if(!found)return;
+   const to=found.index+delta;
+   if(to<0||to>=found.list.length)return;
+   found.list.splice(to,0,found.list.splice(found.index,1)[0]);
+  });}catch(e){new Notice(e.message);}
+ }
+ async removeSceneFromIndex(project,path){
+  try{await this.updateIndex(project,data=>{
+   const found=this.findScene(data.scenes,path);
+   if(found)found.list.splice(found.index,1);
+  });new Notice('Cena removida apenas do índice; arquivo preservado.');}catch(e){new Notice(e.message);}
+ }
  drawScenes(panel,project){
-  panel.createEl('h4',{text:'Cenas do manuscrito'});
-  const renderItem=(item,parent,level=0)=>{
+  const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  toolbar.createEl('button',{text:'+ Cena'}).addEventListener('click',()=>this.addScene(project));
+  const renderItem=(item,parent,path=[],level=0)=>{
    if(level>25)return;
    const name=typeof item==='string'?item:String(item?.scene||item?.name||'Cena');
-   const row=parent.createDiv({cls:'writer-project-scene'});
-   row.style.paddingLeft=(level*12)+'px';
+   const next=[...path,name],row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
+   row.style.paddingLeft=(level*10)+'px';
    const file=this.resolveScene(project,name);
-   row.createEl('button',{text:name}).addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
-   if(Array.isArray(item?.children))for(const child of item.children)renderItem(child,parent,level+1);
+   row.createEl('button',{text:name,cls:'writer-project-scene-title'}).addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
+   for(const [label,fn,title] of [['↑',()=>this.reorderScene(project,next,-1),'Mover para cima'],['↓',()=>this.reorderScene(project,next,1),'Mover para baixo'],['+',()=>this.addScene(project,next),'Novo subcapítulo'],['×',()=>this.removeSceneFromIndex(project,next),'Retirar do índice (não apaga arquivo)']]){
+    const button=row.createEl('button',{text:label,cls:'writer-project-small-button',attr:{'aria-label':title,title}});
+    button.addEventListener('click',fn);
+   }
+   if(Array.isArray(item?.children))for(const child of item.children)renderItem(child,parent,next,level+1);
   };
   for(const scene of project.scenes)renderItem(scene,panel);
-  if(!project.scenes.length)panel.createEl('p',{text:'Nenhuma cena cadastrada neste índice.'});
+  if(!project.scenes.length)panel.createEl('p',{text:'Nenhuma cena cadastrada. Use + Cena.'});
  }
  drawProject(panel,project){
   panel.createEl('h4',{text:project.title});
   panel.createEl('p',{text:'Índice: '+project.file.path});
-  panel.createEl('p',{text:'Cenas no índice: '+sceneNames(project.scenes).length});
-  panel.createEl('button',{text:'Abrir índice do Longform'}).addEventListener('click',()=>this.openFile(project.file));
-  panel.createEl('p',{text:'Importação compatível: leitura dos metadados existentes, sem alterar arquivos.'});
+  panel.createEl('p',{text:'Cenas: '+sceneNames(project.scenes).length});
+  panel.createEl('button',{text:'Abrir índice'}).addEventListener('click',()=>this.openFile(project.file));
+  new Setting(panel).setName('Título do projeto').addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
+  new Setting(panel).setName('Pasta das cenas').setDesc('Relativa à pasta do índice; não move arquivos existentes.').addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText('Salvar').onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
+  panel.createEl('p',{text:'Metadados Longform originais preservados. Alterações são feitas somente após confirmação.'});
+ }
+ async compileProject(project,options){
+  const names=sceneNames(project.scenes),contents=[];
+  for(const name of names){
+   const file=this.resolveScene(project,name);if(!file)continue;
+   let body=await this.app.vault.read(file);
+   if(options.frontmatter!==false)body=body.replace(/^---\s*\n[\s\S]*?\n---\s*\n?/,'');
+   if(options.links!==false)body=body.replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,(_,alias,target)=>alias?target:target);
+   contents.push(body.trim());
+  }
+  if(!contents.length)throw Error('Nenhuma cena encontrada.');
+  const separator=options.separator??'\n\n---\n\n';
+  return contents.join(separator)+'\n';
  }
  drawCompile(panel,project){
-  panel.createEl('h4',{text:'Compilação básica'});
-  panel.createEl('p',{text:'Concatena cenas existentes na ordem do índice. Não altera os capítulos nem substitui workflows personalizados do Longform.'});
-  panel.createEl('button',{text:'Gerar manuscrito Markdown'}).addEventListener('click',async()=>{
+  panel.createEl('h4',{text:'Compilar manuscrito'});
+  const opts={frontmatter:true,links:true,separator:'\n\n---\n\n'};
+  new Setting(panel).setName('Remover propriedades YAML').addToggle(t=>t.setValue(true).onChange(v=>opts.frontmatter=v));
+  new Setting(panel).setName('Remover wikilinks').addToggle(t=>t.setValue(true).onChange(v=>opts.links=v));
+  new Setting(panel).setName('Separador').addTextArea(t=>t.setValue('\\n\\n---\\n\\n').onChange(v=>opts.separator=v.replace(/\\n/g,'\n')));
+  panel.createEl('button',{text:'Gerar manuscrito Markdown',cls:'mod-cta'}).addEventListener('click',async()=>{
    try{
-    const names=sceneNames(project.scenes),contents=[];
-    for(const name of names){const f=this.resolveScene(project,name);if(f)contents.push((await this.app.vault.read(f)).replace(/^---\s*\n[\s\S]*?\n---\s*\n?/,'').trim());}
-    if(!contents.length)throw Error('Nenhuma cena encontrada.');
+    const content=await this.compileProject(project,opts);
     const dir=project.file.parent?.path||'',base=clean(project.title)+' - Manuscrito';
     let path=(dir?dir+'/':'')+base+'.md',n=2;
     while(this.app.vault.getAbstractFileByPath(path))path=(dir?dir+'/':'')+base+' '+n+++'.md';
-    const file=await this.app.vault.create(path,contents.join('\n\n---\n\n')+'\n');
+    const file=await this.app.vault.create(path,content);
     this.openFile(file);new Notice('Manuscrito criado: '+file.path);
    }catch(e){new Notice('Falha ao compilar: '+e.message);}
   });

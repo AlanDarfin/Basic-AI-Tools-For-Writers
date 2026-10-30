@@ -29,6 +29,16 @@ function prepareGrammarText(text){
  hide(/\[([^\]]+)\]\([^\n)]*\)/g);
  return masked;
 }
+function reviewParagraph(source,start,end){
+ const breaks=/\r?\n[ \t]*\r?\n/g;
+ let from=0,to=source.length,m;
+ while((m=breaks.exec(source))!==null){
+   if(m.index+ m[0].length<=start)from=m.index+m[0].length;
+   else if(m.index>=end){to=m.index;break;}
+ }
+ const paragraph=source.slice(from,to).trim();
+ return paragraph||source.slice(Math.max(0,start-80),Math.min(source.length,end+80)).trim();
+}
 function meaningfulGrammarMatch(source,match){
  const offset=match.offset,length=match.length;
  if(!Number.isInteger(offset)||!Number.isInteger(length)||offset<0||length<=0||offset+length>source.length)return false;
@@ -252,7 +262,7 @@ class DictionaryView extends ItemView{
   const detail=card.createEl('details',{cls:'writer-review-details'});
   detail.createEl('summary',{text:msg('Ver contexto e justificativa','View context and explanation')});
   detail.createEl('p',{text:match.message||'',cls:'writer-review-reason'});
-  detail.createEl('p',{text:msg('Trecho: ','Excerpt: ')+source.slice(Math.max(0,start-65),Math.min(source.length,end+65))});
+  detail.createEl('p',{text:msg('Parágrafo: ','Paragraph: ')+reviewParagraph(source,start,end),cls:'writer-review-paragraph'});
   const suggestions=(match.replacements||[]).slice(0,5).map(r=>r.value).filter(v=>typeof v==='string');
   const selectionLabel=card.createEl('label',{text:msg('Substituir por','Replace with'),cls:'writer-review-select-label'});
   const select=card.createEl('select');
@@ -260,6 +270,7 @@ class DictionaryView extends ItemView{
   if(!suggestions.length){const opt=select.createEl('option',{text:msg('Sem substituição automática','No automatic replacement')});opt.value='';}
   else for(const suggestion of suggestions){const opt=select.createEl('option',{text:suggestion||msg('(remover)','(remove)')});opt.value=suggestion;}
   const actions=card.createDiv({cls:'writer-review-actions'});
+  actions.createEl('button',{text:msg('Ir ao erro','Go to error')}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
   const apply=actions.createEl('button',{text:msg('Aceitar','Accept'),cls:'mod-cta'});
   apply.disabled=!suggestions.length;
   apply.addEventListener('click',async()=>{
@@ -629,6 +640,21 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     let leaf=this.app.workspace.getLeavesOfType(VIEW)[0];
     if(!leaf){leaf=this.app.workspace.getRightLeaf(false);if(!leaf)return;await leaf.setViewState({type:VIEW,active:true});}
     await this.app.workspace.revealLeaf(leaf);
+  }
+  async jumpToReviewError(file,start,end){
+    try{
+      const existing=this.app.workspace.getLeavesOfType('markdown').find(leaf=>leaf.view?.file?.path===file.path);
+      const leaf=existing||this.app.workspace.getLeaf('tab');
+      if(!leaf)throw new Error(msg('Editor não disponível.','Editor unavailable.'));
+      if(!existing)await leaf.openFile(file,{active:false});
+      const editor=leaf.view?.editor;
+      if(!editor)throw new Error(msg('Abra a nota no editor Markdown.','Open the note in the Markdown editor.'));
+      const from=editor.offsetToPos(start),to=editor.offsetToPos(end);
+      editor.setSelection(from,to);
+      editor.scrollIntoView({from,to},true);
+      this.app.workspace.setActiveLeaf(leaf,{focus:true});
+      editor.focus();
+    }catch(e){new Notice(msg('Não foi possível localizar o erro: ','Could not locate error: ')+(e.message||e));}
   }
   reviewEditors(file){
     const views=[];

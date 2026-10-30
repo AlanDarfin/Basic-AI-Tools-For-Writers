@@ -1420,3 +1420,37 @@ body.writer-v4-typewriter-focus .cm-editor .cm-activeLine{opacity:1}
   flex-basis:26px!important;
  }
 }
+
+/* v4 beta.3 — mobile selection editing toolbar and TTS capability status. */
+.writer-tts-system-diagnostic{
+ margin:8px 0;padding:8px 10px;
+ border-left:3px solid var(--interactive-accent);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+ color:var(--text-muted);font-size:var(--font-ui-smaller);
+ overflow-wrap:anywhere;line-height:1.45;
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
+ position:fixed!important;
+ inset-block-start:auto!important;top:auto!important;
+ inset-inline-start:12px!important;left:12px!important;
+ inset-inline-end:12px!important;right:12px!important;
+ bottom:calc(62px + env(safe-area-inset-bottom,0px))!important;
+ z-index:calc(var(--layer-modal,100) - 1)!important;
+ max-width:calc(100vw - 24px)!important;width:max-content;
+ min-width:0;justify-content:center;
+ overflow-x:auto;overflow-y:hidden;
+ overscroll-behavior-inline:contain;
+ padding:5px;box-shadow:var(--shadow-l);
+}
+.writer-v4-floating-toolbar.writer-v4-toolbar-mobile button{
+ flex:0 0 auto;min-width:36px!important;min-height:38px!important;
+ padding:7px 8px!important;touch-action:manipulation;
+ font-size:var(--font-ui-small);
+}
+@media(max-width:370px){
+ .writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
+  left:7px!important;right:7px!important;
+  max-width:calc(100vw - 14px)!important;
+  justify-content:flex-start;
+ }
+}

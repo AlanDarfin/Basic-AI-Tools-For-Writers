@@ -51,7 +51,7 @@ class WriterAutoGrammar{
  }
  stop(){this.destroyed=true;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  schedule(file,{delay}={}){
-  if(this.destroyed||this.config?.enabled===false||file?.extension!=='md')return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md')return;
   const view=this.reviewView();
   if(!view||view.reviewFilePath!==file.path)return;
   this.pendingPath=file.path;
@@ -63,7 +63,7 @@ class WriterAutoGrammar{
  }
  async run(){
   this.timer=null;
-  if(this.destroyed||this.config?.enabled===false)return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false)return;
   const view=this.reviewView(),path=this.pendingPath;
   if(!view||!path||view.reviewFilePath!==path)return;
   const file=this.plugin.app.vault.getAbstractFileByPath(path);

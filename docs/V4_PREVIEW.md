@@ -1,7 +1,15 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.4** (development branch). Not a stable release.
+Status: **4.0.0-beta.5** (development branch). Not a stable release.
 
+
+## Beta.5 — automatic Android toolbar and compact settings switches
+
+- The previous beta selected the Obsidian-native toolbar mode by default, hiding the plugin’s floating control until users manually installed a command. Beta.5 migrates this old default **once** to an automatic compact contextual toolbar, while preserving user selections made thereafter.
+- Long-press/select text in the mobile Markdown editor to display a small **Aa Formatar / ✦ IA / ×** pill. Formatting expands on demand; the pill follows the selected text and tracks viewport and keyboard changes instead of occupying a permanent keyboard row.
+- **Integrated tools → Android toolbar** still offers a native-only mode for those who prefer to add the **Editing toolbar: format selection** command manually in Obsidian’s mobile toolbar.
+- Mobile settings toggles keep their labels, descriptions and switches on a single compact row when possible. Multiline prompt editors receive full available width.
+- Automated regression tests cover the configuration migration, toolbar/selection code and CSS structure. Manual Android testing is still needed to verify positioning under the device’s keyboard and native copy/paste popup.
 
 ## Beta.4 — Longform hierarchy and Android toolbar polish
 

@@ -1,6 +1,7 @@
 'use strict';
 const {ItemView,TFile,TFolder,Notice,Modal,Menu,Setting,parseYaml,stringifyYaml}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
+const lfMsg=(pt,en)=>{try{return require('obsidian').getLanguage?.()?.toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}};
 const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
 function lfPath(...parts){const path=[];for(const part of parts){for(const segment of String(part||'').split('/')){if(!segment||segment==='.')continue;if(segment==='..'){path.pop();continue;}path.push(segment);}}return path.join('/');}
 class TextPrompt extends Modal{
@@ -123,7 +124,7 @@ class ProjectsView extends ItemView{
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
-  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas'],['tasks',msg('Tarefas','Tasks')]]){
+  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas'],['tasks',lfMsg('Tarefas','Tasks')]]){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -833,12 +834,12 @@ class ProjectsView extends ItemView{
   const state=this.taskState(project),options=this.taskOptions();
   panel.addClass('writer-project-tasks');
   const h=panel.createDiv({cls:'writer-tasks-heading'});
-  h.createEl('h3',{text:msg('Tarefas do projeto','Project tasks')});
+  h.createEl('h3',{text:lfMsg('Tarefas do projeto','Project tasks')});
   const all=[...state.tasks,...state.groups.flatMap(g=>g.tasks)];
-  h.createEl('small',{text:all.filter(t=>!t.done).length+' '+msg('pendentes','open')+' · '+all.filter(t=>t.done).length+' '+msg('concluídas','done')});
+  h.createEl('small',{text:all.filter(t=>!t.done).length+' '+lfMsg('pendentes','open')+' · '+all.filter(t=>t.done).length+' '+lfMsg('concluídas','done')});
   const toolbar=panel.createDiv({cls:'writer-task-toolbar'});
-  toolbar.createEl('button',{text:msg('+ Tarefa','+ Task')}).addEventListener('click',()=>this.promptTask(project,null));
-  toolbar.createEl('button',{text:msg('+ Grupo','+ Group')}).addEventListener('click',()=>new TextPrompt(this.app,msg('Novo grupo','New group'),async name=>{
+  toolbar.createEl('button',{text:lfMsg('+ Tarefa','+ Task')}).addEventListener('click',()=>this.promptTask(project,null));
+  toolbar.createEl('button',{text:lfMsg('+ Grupo','+ Group')}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Novo grupo','New group'),async name=>{
    if(!name.trim())return;
    state.groups.push({name:name.trim(),tasks:[]});await this.saveTaskState();
   }).open());
@@ -847,7 +848,7 @@ class ProjectsView extends ItemView{
    for(const task of ordered){
     if(options.hideCompleted&&task.done)continue;
     const row=container.createDiv({cls:'writer-task-row'});
-    const toggle=row.createEl('input',{type:'checkbox',attr:{'aria-label':msg('Concluir tarefa','Complete task')}});
+    const toggle=row.createEl('input',{type:'checkbox',attr:{'aria-label':lfMsg('Concluir tarefa','Complete task')}});
     toggle.checked=!!task.done;
     toggle.addEventListener('change',async()=>{task.done=toggle.checked;await this.saveTaskState();});
     const content=row.createDiv({cls:'writer-task-info'});
@@ -857,12 +858,12 @@ class ProjectsView extends ItemView{
     if(task.page)content.createEl('button',{text:'↗ '+task.page,cls:'writer-task-link'}).addEventListener('click',()=>{
      const f=this.app.metadataCache.getFirstLinkpathDest(task.page,project.file.path);
      if(f instanceof TFile)this.openFile(f);
-     else new Notice(msg('Nota não encontrada','Note not found'));
+     else new Notice(lfMsg('Nota não encontrada','Note not found'));
     });
     row.createEl('button',{text:'⋯',cls:'writer-task-more'}).addEventListener('click',event=>{
      const menu=new Menu(this.app);
-     menu.addItem(i=>i.setTitle(msg('Editar','Edit')).setIcon('pencil').onClick(()=>this.promptTask(project,group,task)));
-     menu.addItem(i=>i.setTitle(msg('Excluir tarefa','Delete task')).setIcon('trash').onClick(async()=>{
+     menu.addItem(i=>i.setTitle(lfMsg('Editar','Edit')).setIcon('pencil').onClick(()=>this.promptTask(project,group,task)));
+     menu.addItem(i=>i.setTitle(lfMsg('Excluir tarefa','Delete task')).setIcon('trash').onClick(async()=>{
       const items=group?group.tasks:state.tasks;
       const pos=items.indexOf(task);if(pos>=0)items.splice(pos,1);await this.saveTaskState();
      }));
@@ -870,17 +871,17 @@ class ProjectsView extends ItemView{
     });
    }
   };
-  if(state.tasks.length){panel.createEl('h4',{text:msg('Sem grupo','Ungrouped')});drawList(panel,state.tasks,null);}
+  if(state.tasks.length){panel.createEl('h4',{text:lfMsg('Sem grupo','Ungrouped')});drawList(panel,state.tasks,null);}
   for(const group of [...state.groups].sort((a,b)=>options.autoSort?b.tasks.filter(x=>!x.done).length-a.tasks.filter(x=>!x.done).length:0)){
    const section=panel.createDiv({cls:'writer-task-group'});
    const top=section.createDiv({cls:'writer-task-group-header'});
    top.createEl('h4',{text:group.name});
    top.createEl('span',{text:String(group.tasks.filter(x=>!x.done).length),cls:'writer-task-count'});
-   top.createEl('button',{text:'+',attr:{title:msg('Adicionar tarefa','Add task')}}).addEventListener('click',()=>this.promptTask(project,group));
-   top.createEl('button',{text:'⋯',attr:{title:msg('Ações do grupo','Group actions')}}).addEventListener('click',e=>{
+   top.createEl('button',{text:'+',attr:{title:lfMsg('Adicionar tarefa','Add task')}}).addEventListener('click',()=>this.promptTask(project,group));
+   top.createEl('button',{text:'⋯',attr:{title:lfMsg('Ações do grupo','Group actions')}}).addEventListener('click',e=>{
     const menu=new Menu(this.app);
-    menu.addItem(i=>i.setTitle(msg('Renomear grupo','Rename group')).setIcon('pencil').onClick(()=>new TextPrompt(this.app,msg('Nome do grupo','Group name'),async name=>{if(name.trim()){group.name=name.trim();await this.saveTaskState();}},group.name).open()));
-    menu.addItem(i=>i.setTitle(msg('Excluir grupo e tarefas','Delete group and tasks')).setIcon('trash').onClick(async()=>{state.groups=state.groups.filter(x=>x!==group);await this.saveTaskState();}));
+    menu.addItem(i=>i.setTitle(lfMsg('Renomear grupo','Rename group')).setIcon('pencil').onClick(()=>new TextPrompt(this.app,lfMsg('Nome do grupo','Group name'),async name=>{if(name.trim()){group.name=name.trim();await this.saveTaskState();}},group.name).open()));
+    menu.addItem(i=>i.setTitle(lfMsg('Excluir grupo e tarefas','Delete group and tasks')).setIcon('trash').onClick(async()=>{state.groups=state.groups.filter(x=>x!==group);await this.saveTaskState();}));
     menu.showAtMouseEvent(e);
    });
    drawList(section,group.tasks,group);
@@ -890,12 +891,12 @@ class ProjectsView extends ItemView{
   const state=this.taskState(project),modal=new Modal(this.app);
   const values=existing?{...existing}:{name:'',date:'',page:'',done:false};
   modal.onOpen=()=>{
-   modal.setTitle(existing?msg('Editar tarefa','Edit task'):msg('Nova tarefa','New task'));
-   new Setting(modal.contentEl).setName(msg('Descrição','Description')).addText(x=>x.setValue(values.name).onChange(v=>values.name=v));
-   new Setting(modal.contentEl).setName(msg('Prazo (AAAA-MM-DD)','Due (YYYY-MM-DD)')).addText(x=>x.setValue(values.date||'').onChange(v=>values.date=v));
-   new Setting(modal.contentEl).setName(msg('Nota vinculada (opcional)','Linked note (optional)')).addText(x=>x.setValue(values.page||'').onChange(v=>values.page=v));
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText(msg('Salvar','Save')).setCta().onClick(async()=>{
-    if(!values.name.trim())return new Notice(msg('Informe a tarefa','Enter a task'));
+   modal.setTitle(existing?lfMsg('Editar tarefa','Edit task'):lfMsg('Nova tarefa','New task'));
+   new Setting(modal.contentEl).setName(lfMsg('Descrição','Description')).addText(x=>x.setValue(values.name).onChange(v=>values.name=v));
+   new Setting(modal.contentEl).setName(lfMsg('Prazo (AAAA-MM-DD)','Due (YYYY-MM-DD)')).addText(x=>x.setValue(values.date||'').onChange(v=>values.date=v));
+   new Setting(modal.contentEl).setName(lfMsg('Nota vinculada (opcional)','Linked note (optional)')).addText(x=>x.setValue(values.page||'').onChange(v=>values.page=v));
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg('Salvar','Save')).setCta().onClick(async()=>{
+    if(!values.name.trim())return new Notice(lfMsg('Informe a tarefa','Enter a task'));
     if(values.date&&!/^\d{4}-\d{2}-\d{2}$/.test(values.date))return new Notice('YYYY-MM-DD');
     if(existing)Object.assign(existing,values);else (group?group.tasks:state.tasks).push(values);
     modal.close();await this.saveTaskState();

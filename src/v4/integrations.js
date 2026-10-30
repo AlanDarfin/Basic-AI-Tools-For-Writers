@@ -41,7 +41,7 @@ class WriterV4Mentions extends EditorSuggest{
  constructor(plugin){super(plugin.app);this.plugin=plugin;}
  get opts(){return this.plugin.settings.writerV4Extras.mention;}
  onTrigger(cursor,editor,file){
-  if(!this.opts.enabled||file?.extension!=='md')return null;
+  if(!writerModuleOn(this.plugin,'mentions')||!this.opts.enabled||file?.extension!=='md')return null;
   const sign=String(this.opts.sign||'@').slice(0,1);
   const preceding=editor.getLine(cursor.line).slice(0,cursor.ch);
   const i=preceding.lastIndexOf(sign);
@@ -162,7 +162,7 @@ class WriterV4Extras{
   if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
-    if(!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
+    if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
     try{
      const pos=update.state.selection.main.head;
      update.view.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',yMargin:0})});
@@ -304,7 +304,7 @@ class WriterV4Extras{
   }
  }
  updateTypewriterClass(){
-  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
+  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
  }
  currentEditor(){
   const app=this.plugin.app;
@@ -402,7 +402,7 @@ class WriterV4Extras{
    editor.replaceRange(writerV4FormatText(text,kind),editor.getCursor('from'),editor.getCursor('to'));
   }
  runEditorAIAction(editor,kind){
-   if(this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
+   if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
    if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
    return writerV4OpenDiff(this.plugin,{task:this.config.wordwise.prompts[kind],autoGenerate:true});
   }
@@ -442,7 +442,7 @@ class WriterV4Extras{
   modal.open();
  }
  wordwise(){
-  if(this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
+  if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
   const view=this.currentEditor();
   if(!view?.editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para usar as ações de IA.','Select text to use AI actions.'));
   const items=[

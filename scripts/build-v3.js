@@ -1,0 +1,26 @@
+#!/usr/bin/env node
+'use strict';
+/* Rebuild / verify the standalone Obsidian main.js from modular local v3 sources. */
+const fs=require('node:fs');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const mainPath=path.join(root,'main.js');
+const sources=['core','complements','variants','snapshots','workspace'];
+const begin='// BEGIN WRITER V3 MODULES\n';
+const end='// END WRITER V3 MODULES';
+let main=fs.readFileSync(mainPath,'utf8');
+let a=main.indexOf(begin),b=main.indexOf(end,a);
+if(a<0||b<0||b<a)throw Error('Missing v3 bundle markers in main.js');
+const modules=sources.map(name=>{
+ const filename='src/v3/'+name+'.js';
+ const source=fs.readFileSync(path.join(root,filename),'utf8').replace(/^'use strict';\s*/,'');
+ return '// v3 module: '+filename+'\n'+source;
+}).join('\n');
+const expected=main.slice(0,a+begin.length)+modules+'\n'+main.slice(b);
+if(process.argv.includes('--check')){
+ if(expected!==main){console.error('main.js v3 modules are outdated. Run node scripts/build-v3.js');process.exitCode=1;}
+ else console.log('v3 source and bundled main.js are synchronized.');
+}else{
+ fs.writeFileSync(mainPath,expected);
+ console.log('Rebuilt '+sources.length+' modules into main.js.');
+}

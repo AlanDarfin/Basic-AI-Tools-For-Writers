@@ -1,203 +1,170 @@
 # Basic AI Tool for Writers
 
-> **Basic AI Tool for Writers v4.0.0 estável:** interface modular, Longform otimizado, revisão seletiva, comandos Android, LanguageTool automático e diagnóstico local. [Novidades, instalação e migração](docs/V4_RELEASE.md).
+**A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-## Writing Suite 3.1.0-beta.2 — Uniform menus and selectors
+**Latest stable:** [v4.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
-This update fixes vertically clipped dropdown text in narrow Obsidian panels, including the LanguageTool review mode, translation language selectors, project selectors and plugin settings. A shared control style uses a consistent 42px height, zero vertical padding on native selectors, coherent typography, sufficient space for dropdown indicators and keyboard-visible focus. Settings rows also respond to the width of the panel rather than only the whole screen.
+**Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
-Automated regression tests cover control styling across the plugin. This is a beta pending visual checks with installed Obsidian desktop/mobile themes.
+> **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, pin formatting commands to Obsidian's native mobile toolbar, and run LanguageTool checks after a typing pause.
 
-## Writing Suite 3.1.0-beta.1 — Unicode UI, tabs and online TTS
+## Contents
 
-This preview improves the Unicode picker with readable character cards, category filters, relevance ranking and inline favorites. The main sidebar, writing tools, Longform and Settings now use horizontally scrollable tab rows instead of clipping or wrapping tabs. The writing-tools Extras panel separates Unicode, speech and project shortcuts.
+- [What it does](#what-it-does)
+- [Customizable modules](#customizable-modules)
+- [Longform writing projects](#longform-writing-projects)
+- [AI, dictionaries and translation](#ai-dictionaries-and-translation)
+- [Review and writing tools](#review-and-writing-tools)
+- [Text-to-speech](#text-to-speech)
+- [Installation and upgrade](#installation-and-upgrade)
+- [Configuration and privacy](#configuration-and-privacy)
+- [Language support](#language-support)
+- [Development and documentation](#development-and-documentation)
 
-**Text-to-speech:** choose **System / offline** or opt in to **Microsoft Edge neural / online** speech, which works without an installed Linux speech engine. Online synthesis sends the selected text or note to Microsoft only after enabling **Allow online text processing**; it needs internet access and uses an undocumented, potentially unreliable service. Pause, resume and stop are supported for both engines. See [Writing Suite](docs/WRITING_SUITE.md).
+## What it does
 
-This is a beta because remote speech compatibility needs practical testing in Obsidian Desktop and Mobile.
+| Area | Capabilities |
+| --- | --- |
+| **Dictionary** | Local Markdown dictionary, configurable online lookup, Yomitan dictionary import, definitions, contextual synonyms and antonyms, Markdown-rendered results and optional saving of new entries. |
+| **Translation** | AI-assisted translation with source/target selectors, optional source-language detection, independent provider settings and editable prompts. |
+| **Writing assistant** | Sidebar chat, selected-text context, customizable writing prompts and model/provider choices. |
+| **Revision** | LanguageTool grammar/spelling suggestions, Markdown-aware offsets and review markers; AI style review; selective Diff before changing text. |
+| **Longform projects** | Projects, nested chapters/scenes, drag-and-drop ordering, touch-friendly movement, drafts, project notes, tasks, writing goals, sessions and compilation workflows. |
+| **Autocomplete and variants** | Local suggestions from files and dictionaries; multiple inline alternatives; AI-assisted rewriting and comparison. |
+| **Snapshots** | Separate local version history, manual and optional automatic snapshots, line-based comparison, restore safeguards and optional attachment capture. |
+| **Writing utilities** | Note mentions, chapter comments, abbreviations, Unicode picker, note-name templates, instant table of contents, alternative note subtitles, view preferences and typewriter focus mode. |
+| **Read aloud** | Browser/system speech when available, or optional online neural TTS with explicit consent. |
+| **Customization and diagnostics** | 17 individually visible module categories, compact/mobile-friendly settings and local diagnostics. |
 
-## Writing Suite — 3.0.0
+## Customizable modules
 
-The stable [Writing Suite](docs/WRITING_SUITE.md) brings abbreviations, another-name subtitles, per-note view modes, a Longform **Tasks** tab, instant tables of contents, offline Unicode search, rule-based templates by note name (prefix, contains, suffix and optional rename handling) and multilingual system text-to-speech to Basic AI Tool for Writers. These are configurable modules with commands and writing-sidebar controls. No AI provider is used for speech synthesis.
+Open **Settings → Basic AI Tool for Writers → Modules** and disable anything you do not need. The related tabs, menu entries and shortcuts are hidden, leaving more room for the tools you use. **Disabling visibility does not delete notes, project data, prompts, comments or saved history**; re-enable the module whenever you want.
 
+The available categories are:
 
-## V3 — autocomplete, variantes e versões
+| Module | What you can hide |
+| --- | --- |
+| Dictionary & definitions | Dictionary and lexical lookup |
+| Translator | Translation sidebar and translation actions |
+| Writing assistant | Chat and assistant shortcuts |
+| Review & LanguageTool | Grammar and AI review interface |
+| Longform & projects | Project workspace and shortcuts |
+| Writing tools | Supplementary writing sidebar |
+| Autocomplete | Local completion and indexing controls |
+| Writing variants | Alternative wordings and variants |
+| Diff & profiles | Selective AI revision and writing profiles |
+| Version history | Snapshot access shortcuts, **not** existing safety backups |
+| Text to speech | Read-aloud controls |
+| Unicode | Unicode character picker |
+| Templates & table of contents | Template and TOC authoring tools |
+| Mentions | Note mention suggestions |
+| Comments | Comments tab in the project workspace |
+| AI writing actions | Contextual rewriting actions |
+| Typewriter | Typewriter/focus mode |
 
-A versão estável **3.0.0** integra três módulos ao Obsidian:
+Hiding a module is an interface preference, not a destructive uninstall. Existing Obsidian commands/hotkeys are kept compatible, while hidden functions are guarded where applicable.
 
-- **Sugestões:** autocomplete local do arquivo, cofre, dicionários e links;
-- **Variantes:** alternativas inline de escrita, revisão → variante e geração com IA;
-- **Versões:** snapshots locais nomeados, diferenças, restauração segura e anexos opcionais.
+## Longform writing projects
 
-Os módulos têm **configurações próprias, comandos na paleta e uma nova barra lateral**. A atualização preserva as configurações antigas e gera backup de `data.json` antes de migrar.
-**Correções de revisão:** o LanguageTool ignora delimitadores Markdown como `_itálico_` sem perder a posição dos erros; o cartão de revisão foi adaptado à tela e ao teclado do Android; controles de cenas agora ficam em linha, com setas e menu contextual `⋯`. Testes de regressão foram adicionados.
+The independently implemented project manager is inspired by [Longform](https://github.com/kevboh/longform) and supports compatible project-index concepts; it is **not a complete replacement for every upstream Longform workflow**.
 
-Para instruções, limitações e segurança, consulte [Guia da v3](docs/V3.md). A suíte automatizada foi executada, mas diferenças de tema e de interface entre Obsidian Desktop e Android ainda exigem validação no aplicativo.
+- **Chapters and scenes:** nested hierarchy, visual indentation, project/draft selection, file creation, moving by drag-and-drop on desktop or touch selection on mobile, plus up/down buttons. Chapter reordering preserves the sidebar scroll position.
+- **Project management:** scene folders, word counts, daily/project goals, saved-file-based writing-session tracking, missing-scene warnings and safe handling of unindexed scenes.
+- **Notes and tasks:** project note folders, quick notes, search, task tracking and comments attached to selected passages (locate, resolve/reopen and delete).
+- **Compilation:** editable workflow steps, named presets, preview without writing files and safe Markdown output using a new file name. Supported built-in operations include frontmatter cleanup, link/comment removal, titles/numbering and concatenation.
+- **Safety:** backups of project indexes, path validation, no automatic overwrite of existing manuscripts and **no execution of imported third-party JavaScript workflow steps**.
 
+Only the selected project tab is rendered when possible, reducing unnecessary work in books with many chapters.
 
-A bilingual, AI-powered writing companion for [Obsidian](https://obsidian.md), available on desktop and mobile.
+## AI, dictionaries and translation
 
-## Features
+### Supported AI providers
 
-- **Definitions**, **synonyms**, and **antonyms**, with context-sensitive suggestions and Markdown-rendered results.
-- **Translation** with independent AI provider, source language (or automatic detection), and target language.
-- **Writing assistant** with custom prompts, selected-text context, copy and optional insert into the editor.
-- Editor context menu actions for translating, defining, rewriting and finding alternatives.
-- **Editable prompts** for definitions, synonyms, antonyms, translation and writing.
-- Automatic storage of new definitions in an existing local Markdown dictionary, without displaying duplicate results.
-- **Portuguese UI** when Obsidian uses Portuguese, **English** otherwise.
-- Settings tabs: **General**, **Providers**, **Models**, **Assistant**, **Prompts**.
-- Model catalog and API connection checks.
+**OpenAI, Gemini, Grok (xAI), Claude (Anthropic), Groq Cloud, OpenRouter, Ollama**, and **custom OpenAI-compatible endpoints**.
 
-## Supported AI providers
+Choose models and providers separately where supported (for example, dictionary, translation and writing assistant). Configure API keys and optional system prompts in the plugin settings. Remote providers may charge for requests. A local Ollama installation requires a reachable endpoint; a phone's `localhost` is not your desktop PC.
 
-OpenAI, Gemini, Grok (xAI), Claude (Anthropic), Groq Cloud, OpenRouter, Ollama, and custom OpenAI-compatible HTTPS endpoints.
+### Dictionary and synonyms
 
-Use separate providers for dictionary queries and translation. Providers require your own credentials, except a typical local Ollama installation. API requests may incur provider charges. Ollama on mobile must use a trusted server reachable from your phone; localhost on a phone is not your computer.
+Look up terms in a local Markdown dictionary (default file: `Dicionario.md`), use configured online sources, import compatible Yomitan dictionaries and request definitions, synonyms or antonyms. Generated entries are rendered as Markdown and can be stored locally without overwriting existing entries.
 
-## Installation
+### Translation
 
-Download `main.js`, `manifest.json` and `styles.css` from the latest GitHub Release and place them in:
+Select a target language and optionally a source language. Leaving the source on **Automatic** lets the configured AI provider infer it when you press **Translate**. Translation prompts are editable, and the translator can be hidden entirely in **Modules** if you do not use it.
 
-```text
-<Vault>/.obsidian/plugins/basic-ai-tool-for-writers/
+### AI writing actions
+
+Commands cover improving style, shortening or expanding passages, simplifying, adjusting tone, dialogue polish, grammar correction, critique and alternative approaches. The selective revision flow lets you compare the proposal with the original and choose what to accept, while retaining Markdown-aware safeguards.
+
+## Review and writing tools
+
+- **LanguageTool:** grammar and spelling suggestions in the review panel, optional ignored rules, Markdown syntax masking and markers aligned with the original text.
+- **Automatic rechecking:** while the Review tab is open in grammar mode, checks run after a typing pause (3.5 seconds by default, configurable from 2–15 seconds), with rate limiting and safeguards against stale responses. Large notes are reviewed in a bounded window near the cursor; the panel indicates partial coverage.
+- **Writing variants:** create and cycle through inline alternatives, generate new variants with AI and optionally snapshot before replacing original text.
+- **Local autocomplete:** index the current note, vault notes, custom dictionaries and internal links, with exclusions, limits and optional ranking of frequently used choices.
+- **Version history:** snapshots stored separately under `.basic-ai-history/`, optional automatic saving, Diff and safe restoration. Existing history from unrelated snapshot plugins is not modified.
+- **Editing toolbar:** desktop editing controls and **individual Markdown and AI commands** for Obsidian's **native mobile toolbar**. On Android, choose which Basic AI commands to pin; the plugin does not add a second floating toolbar.
+- **Other tools:** note mentions, Unicode favorites and search, text abbreviations, property-driven alternate titles/view modes, templates by note name, instant TOC and typewriter mode.
+
+## Text-to-speech
+
+Choose **System / offline** speech when the Obsidian WebView exposes Web Speech voices, or explicitly enable **online neural speech** if you want that service. Available voice selection, language, rate and read-selection options depend on the engine.
+
+**Android limitation:** a phone can have system TTS installed while Obsidian's WebView exposes no native speech voices. The plugin cannot guarantee native Android TTS access. Online synthesis sends the text to a third-party service **only when explicitly allowed**, needs connectivity and can become unavailable.
+
+## Installation and upgrade
+
+1. Download the latest [v4.0.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/v4.0.0/Basic-AI-Tool-for-Writers-v4.0.0.zip).
+2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
+
+   ```text
+   <your vault>/.obsidian/plugins/basic-ai-tool-for-writers/
+   ```
+
+3. Enable **Basic AI Tool for Writers** in **Obsidian → Settings → Community plugins**, or reload it after an update.
+4. Open **Settings → Basic AI Tool for Writers** to configure providers and show/hide modules.
+
+**Updating from v2/v3/beta/RC:** back up your vault and plugin directory first. Replace the three distribution files, **never delete or overwrite `data.json`** (it holds settings and API credentials). If needed, restore your backed-up settings and previous release files to roll back.
+
+This repository provides manual installation files; this README does not claim the plugin is available in Obsidian's community plugin directory.
+
+## Configuration and privacy
+
+- **Settings → Modules:** hide unused features. Your saved data remains intact.
+- **Settings → Diagnostics:** inspect the plugin version, platform, Markdown file count, active modules, LanguageTool state, configured provider count, snapshot status and Web Speech API availability. Diagnostics do **not** send network requests or display full credentials.
+- **AI providers:** cloud-based AI operations send selected text to the configured provider. You are responsible for any API costs or applicable terms.
+- **LanguageTool:** when enabled, review and automatic checks send the analyzed text to the configured LanguageTool endpoint **while Review is open**.
+- **Online TTS:** transmits text only with explicit opt-in.
+- **Stored credentials:** API keys are saved in Obsidian's `data.json` **without additional encryption**. Avoid publishing or syncing this file to untrusted devices.
+- **File safety:** review and restoration functions provide previews or backups where available. Keep regular vault backups, especially before upgrading or compiling large projects.
+
+## Language support
+
+The plugin detects the Obsidian interface language and includes **Portuguese (Brazil)** and **English** UI strings, using English as the fallback for other locales.
+
+**English localization is not yet fully audited or complete.** Most main screens use bilingual labels, but some older Longform actions, variant dialogs, snapshot prompts and status messages still contain hard-coded Portuguese. This affects interface text, **not** the ability to translate writing between languages. Translation accuracy depends on the configured AI model and prompts.
+
+The English documentation here is complete for the features described; finishing the remaining UI strings is a separate localization task.
+
+## Development and documentation
+
+The Obsidian installation bundle is `main.js`; it includes the independently maintained source from `src/v3/`, `src/v4/` and the project manager in `projects.js`.
+
+```sh
+npm run build     # regenerate the bundled project and v3/v4 modules
+npm run check     # source synchronization, syntax and regression tests
 ```
 
-Reload Obsidian and enable **Basic AI Tool for Writers** in Community Plugins. When migrating from an older installation, copy your existing `data.json` into this folder before enabling the plugin to preserve your settings.
-
-## Configuration
-
-Open plugin settings to choose the definition and translation engines, set your model IDs and API keys, and customize prompts. In the sidebar, the translation area has its own provider selector and language pair. Leaving the source language on automatic allows the AI to infer it when you click Translate.
-
-The plugin stores API keys in its Obsidian data file **without additional encryption**. Do not publish or sync your configuration to untrusted devices. Text submitted to a provider is sent to that provider for processing.
-
-## Local dictionary
-
-By default, the optional local dictionary is `Dicionario.md`. New definitions are saved automatically when that file exists. Existing entries are not overwritten.
-
-## Version
-
-**1.2.0 — stable release.** Built for writers who want word definitions, contextual alternatives, translation and AI-assisted drafting in one place.
-
-## Links
-
-- [GitHub repository](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers)
-- [Releases](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases)
-- [Report an issue](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/issues)
-
-## Credits
-
-Developed by Alan Darfin. Translation workflow ideas were inspired by the [Obsidian Translate](https://github.com/Fevol/obsidian-translate) plugin; implementation is independent.
-
-## 1.1.0 — sidebar chat redesign
-The plugin sidebar now has **Definitions**, **Translation**, and **Chat** tabs. The Chat tab replaces the former mobile popup with a conversation view, Markdown-formatted AI messages, a text composer, Send button, and a Clear button. The conversation is held in memory for the current view/session; it is not permanently stored.
-
-Commands and editor context-menu actions for selected text now switch to Chat and automatically submit a request with that selection. The former popup prompt command was removed. Use **Open writing chat** or **Generate text in chat** for freeform requests.
-
-The AI uses recent conversation text for context. Review generated writing before inserting it into a document. This version has been syntax-checked but requires testing on Obsidian Mobile.
-
-## 1.2.0 — configurable writing assistant
-The **Assistant** settings tab provides a separate AI provider, optional model override, temperature slider (0–2), toggle to omit the temperature parameter, and an editable system prompt. The `{language}` placeholder uses the configured definition language.
-
-These settings apply to the Chat writing assistant only; dictionary and translation engines retain their independent provider and model selections. Some provider models may reject temperature or have a narrower supported range; disable temperature if a request returns an unsupported-parameter error.
-
-## 1.3.0 — Markdown files
-
-**Translate file:** In the Translation tab, click **Translate file** to pick a Markdown note from the Obsidian vault. The plugin translates the filename and Markdown content, processes longer notes in chunks, and saves a **new** Markdown note in the same folder. If the translated filename already exists, a numbered suffix is added. The original is never overwritten. Translation requests are sent to the configured AI translation provider and may incur usage costs. Formatting is preserved on a best-effort basis; review long documents, YAML frontmatter, internal links and code blocks.
-
-**Attach Markdown to chat:** In the Chat tab, click **Attach Markdown** to select up to three vault notes. Attached files appear as removable chips. The full text of each note is included as context in the next chat request, up to **25,000 characters total**. Attachments are cleared after a successful response. The files are not modified. File contents are sent to the selected assistant AI provider; avoid attaching private notes unless you trust that provider.
-
-Only `.md` files from the Obsidian vault are supported. No PDFs, images or arbitrary local filesystem files.
-
-## 1.4.0 — Non-destructive writing review
-
-The new **Review** sidebar tab offers three modes:
-
-- **Grammar (LanguageTool):** Review a Markdown note with LanguageTool. Each finding is displayed separately with the detected rule, explanation, replacement options, and **Accept**, **Ignore**, and **Why? / Alternatives** actions. Accept changes only that finding, and refuses to apply if the note has changed since the analysis.
-- **Style and flow (AI):** Ask the configured AI model for feedback about clarity, rhythm, repetition, voice and dialogue. The feedback is displayed in the sidebar; the note remains unchanged.
-- **Beta reader (AI):** Request editorial feedback about narrative pacing, characterization, dialogue, coherence and emotional impact, without replacing the document. Discuss feedback in the Chat tab.
-
-**Review settings** include the LanguageTool language, HTTPS API endpoint, optional API key, and an editable editorial profile. The default public LanguageTool endpoint has request and text limits; longer notes may need a self-hosted or paid endpoint. AI review currently analyzes up to 14,000 characters per request; grammar review accepts up to 18,000 characters. These limits avoid silently claiming to review content that cannot fit in a single request.
-
-**Privacy:** Grammar text is sent to the configured LanguageTool service. AI review text and explanation requests are sent to the selected AI provider. No external Grammarly integration is included.
-
-**Limitations:** This release shows findings in the sidebar rather than adding inline CodeMirror underlines. DeepL Write is not integrated yet. Review on Obsidian Desktop and Mobile before relying on the results for important documents.
-
-## 1.4.1 — CodeMirror review and mobile layout
-
-LanguageTool grammar findings now appear as temporary **CodeMirror 6 wavy underlines** in the open Markdown editor, in addition to review cards in the side panel. The Markdown file is not changed until a specific suggestion is accepted. Ignoring a suggestion removes its underline. Editing the document clears stale marks; rerun review to refresh them.
-
-The grammar checker skips the initial YAML frontmatter block (`---` metadata) while preserving original text offsets for accurate suggestions. The sidebar now scrolls independently and the review actions wrap into accessible rows on narrow Android screens.
-
-Only the **currently open editor** for the selected note can display inline marks. AI style and beta-reader feedback remain non-destructive sidebar reports. Markdown metadata is excluded from LanguageTool checks, not from AI editorial context. Review this release on your device before relying on it for critical editing.
-
-## 1.4.2 — Mobile review layout and Markdown noise reduction
-
-Fixes review cards collapsing into thin rows in Obsidian Mobile: cards now keep their natural height and the review pane scrolls vertically. Context and explanations are expandable per finding, with the replacement selector and actions always accessible. The editor's CodeMirror marks remain non-destructive.
-
-The LanguageTool request now masks YAML frontmatter, fenced code, embedded images, wiki links and Markdown syntax while preserving character offsets. Whitespace-only and selected formatting-only matches are filtered to reduce false positives caused by Markdown indentation, paragraph breaks and formatting. Genuine spacing issues may be filtered as a trade-off. The original note remains unchanged until the user accepts a suggestion.
-
-## 1.5.0 — Reviewer configuration and Obsidian commands
-
-Settings are grouped by workflow: **General**, **Dictionary**, **Translation**, **Chat**, **Review**, **AI Reviewers**, **APIs**, **Models**, and **Prompts**. The settings tabs are horizontally scrollable on mobile and the last selected tab stays open during the current settings session.
-
-**Review**: LanguageTool language, review mode, open the selected note in an editor for CodeMirror highlights, ignore whitespace warnings, comma-separated rule IDs to ignore, HTTPS LanguageTool endpoint and optional API key.
-
-**AI Reviewers**: optional independent AI provider and model (otherwise inherits Chat), character budget (1,000–28,000), editorial profile, and three editable prompts for **style review**, **beta reading**, and **grammar explanations**. Empty prompt fields use built-in defaults. These options do not automatically change the Markdown file.
-
-**New command palette actions**: open definitions, open translation, open writing review, review active note grammar, review active note style, beta read active note, review a chosen vault Markdown file, translate a vault Markdown file, and attach a Markdown file to chat. The ribbon icon tooltip and the primary open command now use **Basic AI Tool for Writers**.
-
-**Privacy:** Review and attachment content is sent to your selected external providers. Keep API keys private. The public LanguageTool API has usage limits.
-
-## 1.5.1 — Review paragraph context and jump to error
-
-LanguageTool suggestion cards now display the **paragraph containing the finding**, rather than an arbitrary 65-character excerpt on either side. Paragraphs are determined by blank lines in the original Markdown. Each card includes a **Go to error** action, which opens or focuses the appropriate Markdown editor, selects the matched text, and scrolls it into view without changing the note. Accept and Ignore remain separate actions.
-
-## 1.6.0 — Floating grammar review card and plain Markdown context
-
-LanguageTool findings still appear in the Review sidebar, but tapping or clicking a highlighted finding in an open CodeMirror editor can now show a **floating suggestion card** near the cursor. It provides the same replacement, Accept, Ignore, explanation and navigation actions as the sidebar. The card is scrollable and has a close button. Disable it under **Settings → Review → Show floating suggestion near error**.
-
-Paragraph context is displayed as plain text rather than rendered Markdown, stripping common emphasis, links, images and heading/list syntax. Source Markdown is not changed by these display-only transformations. The popup is available for grammar findings, not AI editorial reports. Mobile popup placement and touch behavior still require device testing.
-
-## 1.7.0 — Writing Projects (initial preview)
-
-New command-palette entries: **Abrir projetos de escrita** and **Abrir notas do projeto**. A dedicated project sidebar recognizes existing Longform index notes via the `longform` YAML frontmatter and displays **Cenas**, **Projeto**, **Compilar**, and **Notas** tabs.
-
-- **Cenas:** read-only listing of scene hierarchy found in Longform frontmatter; tap a scene to open it.
-- **Projeto:** title, index location, scene count and shortcut to the original index.
-- **Compilar:** basic, non-destructive Markdown export concatenating resolvable scenes in index order. It does not implement Longform custom workflows yet.
-- **Notas:** project-local `_Notas/` directory with named subfolders and Markdown notes. Notes are not included in the compiled manuscript.
-- **Compatibility:** this preview reads existing Longform project metadata; it does not rewrite the index or migrate drafts. Keep Longform installed until full feature parity is validated.
-
-**Known limitations:** This is a foundation, **not** a complete fork. Drag-to-reorder, creating scenes and drafts, custom compilation workflows, goal tracking, and full Longform project-import edge cases are still to be implemented and tested. The standalone `projects.js` file is source/reference; the code is inlined in `main.js` for Obsidian Mobile.
-
-## 1.8.0 — Project editing
-
-The **Projetos de escrita** panel now supports creating Markdown scenes, adding nested subchapters, moving scenes up/down in their lists, and removing scenes from the index without deleting files. The **Projeto** tab can edit project title and scene folder and save a word-count goal. **Rascunhos** are alternate scene-order structures stored in the Basic AI plugin settings, leaving the original Longform index intact. **Compilar** offers YAML stripping, wikilink conversion, separators, and named workflow presets, exporting to a new Markdown note. **Notas** continues to support nested folders and Markdown notes.
-
-**Compatibility and limitations:** Longform index metadata is recognized and the primary scene tree can be edited through Obsidian's frontmatter processor. The imported Longform project is not automatically migrated; there is no full bidirectional synchronization of Longform-specific drafts, custom workflow steps, template expansion, drag-and-drop or every Longform metadata variant. Always back up your vault before editing existing Longform projects. No device-level Obsidian Mobile integration tests have been performed.
-
-## 2.0.0 — Writing project workspace
-
-The plugin now includes a dedicated project sidebar with **Cenas, Projeto, Compilar, Notas**. Open it from the ribbon or the command palette. Existing Longform projects with 'longform' YAML frontmatter are discovered automatically, including multi-scene and single-scene projects.
-
-**Cenas:** Correctly parses and writes native Longform nested scene arrays, not unsupported scene objects. Create scenes, nested subchapters, rename, remove from the index without deleting Markdown, reorder with desktop drag-and-drop or mobile-friendly ↑ ↓ ← → controls, and create scenes using a configured scene template. Alternate local scene orders are supported, as are linked Longform drafts (new draft creates a separate index and copies scene files).
-
-**Projeto:** Edit project title and scene folder; project word counts and goals, daily goal and a saved-file-based writing-session counter. Diagnostics list missing and unindexed scenes; adopting unindexed scenes requires confirmation.
-
-**Compilar:** Built-in steps: strip-frontmatter, remove-links, remove-comments, remove-strikethroughs, prepend-title (including hierarchical numbering), concatenate-text, add-frontmatter, and write-to-note. Reorder/add/remove/configure steps, save named presets, import workflows from the installed Longform plugin or pasted data.json. **Prévia** does not write files. Compiling refuses unsafe output paths and never overwrites the index, original scenes or an existing manuscript; it creates a uniquely named output. Imported third-party JavaScript workflow steps remain visible as metadata, but are **not executed**.
-
-**Notas:** A separate _Notas directory per project, nested named folders, quick notes, search, rename, move between note folders, send to Obsidian Trash with confirmation, and review a note using the existing Basic AI tools. Notes are not compiled.
-
-**Safety and migration:** Back up your vault before updating. An index backup is created on first edit per session under _Backups as a .txt snapshot (to avoid registering a duplicate Longform project). Existing 1.8.x compilation presets are migrated to the step-based configuration on use. Do not edit the same index simultaneously with both Longform and Basic AI until compatibility has been confirmed.
-
-**Limitations:** This is not a promise of 100% Longform parity. User-script execution, some advanced third-party workflow steps and edge-case templates are not supported. Writing sessions use saved-file deltas rather than tracking every keystroke; Some advanced Longform workflows and Android runtime edge cases still require validation.
-
-**Commands:** Abrir projetos de escrita; Criar projeto de escrita; Criar cena no projeto; Abrir notas do projeto; Criar nota rápida do projeto; Abrir compilação do projeto; Iniciar sessão de escrita; Encerrar sessão de escrita.
-
-**Maintenance:** The project manager source is projects.js. It is inlined into main.js for normal Obsidian installation using the command: node scripts/sync-projects.js. Run node scripts/sync-projects.js --check and node tests/projects.test.js before releasing.
-
-Inspired by the open-source [Longform project](https://github.com/kevboh/longform), using a separately implemented, compatible data model.
-
-**Beta 3 (PC e Android):** o revisor usa menus nativos do Obsidian para mostrar explicações, substituições, variantes e ações de ignorar regras, seguindo a experiência do LanguageTool. Os resultados no painel são compactos e têm botões para as duas primeiras sugestões; abas e rolagem foram corrigidas para painéis estreitos no desktop. Os sublinhados distinguem ortografia, gramática e estilo. A implementação foi inspirada no LanguageTool v1.5.2 fornecido para comparação, sem incorporar o código distribuído dele.
-
+Documentation:
+- [v4.0.0 stable release and migration guide](docs/V4_RELEASE.md)
+- [Writing Suite — utilities, TTS, templates and Unicode](docs/WRITING_SUITE.md)
+- [v3 autocomplete, variants and snapshots](docs/V3.md)
+- [v4 release candidate checklist](docs/V4_RC1_CHECKLIST.md)
+- [Historical README and earlier versions](docs/README_HISTORY.md)
+- [Third-party notices and inspiration](THIRD_PARTY_NOTICES.md)
+
+For questions or bug reports: [GitHub Issues](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/issues) · [Releases](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases) · [Repository](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers).
+
+---
+
+**Author:** Alan Darfin. Independently implemented features are inspired by community plugins such as Longform, Various Complements, VariantEditor and Note Snapshots; see [third-party notices](THIRD_PARTY_NOTICES.md) for attribution and compatibility limitations. Licensed under the repository's [MIT license](LICENSE.md).

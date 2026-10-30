@@ -1764,6 +1764,787 @@ function writerRenderV3Settings(panel,plugin,id){
 }
 
 // END WRITER V3 MODULES
+// BEGIN WRITER V4 MODULES
+// v4 module: src/v4/core.js
+/* Independent v4 integrations. Original community plugins are not bundled. */
+const W4_DEFAULTS={
+ abbreviations:{enabled:true,entries:{
+  'eg.':{value:'for example',isEnabled:true,position:0},atm:{value:'at the moment',isEnabled:true,position:1},
+  imo:{value:'in my opinion',isEnabled:true,position:2},'w/':{value:'with',isEnabled:true,position:3},
+  'w/o':{value:'without',isEnabled:true,position:4},ily:{value:'I love you',isEnabled:true,position:5},
+  btw:{value:'by the way',isEnabled:true,position:6},afaik:{value:'as far as I know',isEnabled:true,position:7},rn:{value:'right now',isEnabled:true,position:8}
+ }},
+ anotherName:{enabled:true,property:'another-name'},
+ viewMode:{enabled:true,property:'prefer-view',defaultMode:'',respectOpenFiles:true},
+ homework:{enabled:true,autoSort:true,showTooltips:true,hideCompleted:false},
+ instaToc:{enabled:true,title:'Table of Contents',listType:'circle',minLevel:1,maxLevel:6,indent:12,exclude:'',collapsed:false},
+ unicode:{enabled:true,maxResults:80,favorites:[],recent:[],searchDescriptions:true},
+ noteTemplates:{enabled:true,folder:'Templates',caseSensitive:false,onlyEmpty:true,includeSubfolders:true},
+ tts:{enabled:true,language:'auto',voice:'',rate:1,pitch:1,volume:1,preferGoogle:true,stripMarkdown:true,maxChars:120000},
+ interfaceLanguage:'auto'
+};
+function w4merge(settings){
+ for(const [key,val] of Object.entries(W4_DEFAULTS)){
+  if(key==='interfaceLanguage'){if(typeof settings[key]!=='string')settings[key]=val;continue;}
+  const old=settings[key];
+  settings[key]={...structuredClone(val),...(old&&typeof old==='object'?old:{})};
+  if(key==='abbreviations'&&old?.entries)settings[key].entries={...old.entries};
+ }
+ settings.schemaVersion=4;
+ return settings;
+}
+function w4locale(plugin){
+ const custom=plugin?.settings?.interfaceLanguage||'auto';
+ if(custom==='pt'||custom==='en')return custom;
+ try{return String(require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?'pt':'en';}
+ catch{return typeof getLocale==='function'?getLocale():'en';}
+}
+function w4text(plugin,pt,en){return w4locale(plugin)==='pt'?pt:en;}
+const w4labels={
+ 'Cenas':'Scenes','Projeto':'Project','Compilar':'Compile','Notas':'Notes','Tarefas':'Tasks',
+ '+ Projeto':'+ Project','Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.':'No project found. Create a project or select an existing Longform index.',
+ 'Principal':'Main','Padrão':'Default','Adicionar':'Add','Remover':'Remove','Cancelar':'Cancel',
+ 'Salvar':'Save','Fechar':'Close','Pesquisa Unicode':'Unicode search',
+ 'Sugestões':'Suggestions','Variantes':'Variants','Versões':'Versions','Ferramentas de escrita':'Writing tools',
+ 'Revisão':'Review','Projetos':'Projects','Configurações':'Settings',
+ 'Abra uma nota Markdown para usar as ferramentas.':'Open a Markdown note to use the writing tools.',
+ 'Autocomplete contextual':'Contextual autocomplete','Ativar sugestões':'Enable suggestions',
+ 'Aparecer enquanto escreve':'Suggest while typing','Mostrar sugestões':'Show suggestions',
+ 'Reindexar cofre':'Reindex vault','Abrir dicionário':'Open dictionary',
+ 'Alternativas de escrita':'Writing alternatives','Ativar variantes':'Enable variants',
+ 'Criar da seleção':'Create from selection','Editar no cursor':'Edit at cursor',
+ 'Anterior':'Previous','Próxima':'Next','Confirmar escolhida':'Commit selected',
+ 'Confirmar todas':'Commit all','Gerar com IA':'Generate with AI',
+ 'Histórico e recuperação':'History and recovery','Ativar snapshots':'Enable snapshots',
+ 'Salvar versão agora':'Save version now','Nomear uma versão':'Name a version',
+ 'Abrir histórico':'Open history','Abrir versões':'Open versions',
+ 'Ir ao erro':'Go to error','Criar variante':'Create variant','Explicar com IA':'Explain with AI',
+ 'Idioma':'Language','Pasta':'Folder','Pesquisar':'Search'
+};
+function w4label(plugin,value){return w4locale(plugin)==='pt'?value:(w4labels[value]||value);}
+function w4setting(panel,name,desc,setting,plugin){
+ return new Setting(panel).setName(w4text(plugin,name,desc||name));
+}
+
+// v4 module: src/v4/editor.js
+class WriterV4Editor{
+ constructor(plugin){this.plugin=plugin;this.templateTimers=new Map();this.processing=new Set();}
+ get config(){return this.plugin.settings;}
+ extension(){
+  const plugin=this.plugin;
+  return ViewPlugin.fromClass(class{
+   constructor(view){this.view=view;}
+   update(update){
+    if(!update.docChanged||!plugin.settings.abbreviations?.enabled||!update.view.hasFocus)return;
+    const transaction=update.transactions.find(t=>t.isUserEvent?.('input.type'));
+    if(!transaction)return;
+    let enteredSpace=false;
+    transaction.changes.iterChanges((fromA,toA,fromB,toB,insert)=>{
+     if(insert.toString()===' ')enteredSpace=true;
+    });
+    if(!enteredSpace||!update.state.selection.main.empty)return;
+    const position=update.state.selection.main.head;
+    if(position<2||update.state.doc.sliceString(position-1,position)!==' ')return;
+    const before=update.state.doc.sliceString(Math.max(0,position-160),position-1);
+    const raw=before.match(/(?:^|\s)(\S+)$/)?.[1];
+    if(!raw)return;
+    const entries=plugin.settings.abbreviations.entries||{};
+    const key=Object.keys(entries).find(x=>x.toLocaleLowerCase()===raw.toLocaleLowerCase());
+    if(!key)return;
+    const item=entries[key];
+    if(!item?.isEnabled||!item.value||item.isCaseSensitive&&key!==raw)return;
+    const from=position-1-raw.length;
+    const replace=item.value+' ';
+    requestAnimationFrame(()=>{
+     if(this.view.state.doc.sliceString(from,position)!==raw+' ')return;
+     this.view.dispatch({changes:{from,to:position,insert:replace},selection:{anchor:from+replace.length}});
+    });
+   }
+  });
+ }
+ updateAnotherName(){
+  if(!this.config.anotherName?.enabled)return;
+  const property=String(this.config.anotherName.property||'another-name').trim();
+  this.plugin.app.workspace.iterateAllLeaves(leaf=>{
+   if(!(leaf.view instanceof MarkdownView))return;
+   const view=leaf.view,file=view.file,container=view.containerEl;
+   if(!container)return;
+   for(const el of container.querySelectorAll('.writer-v4-another-name'))el.remove();
+   if(!file||!property)return;
+   const name=this.plugin.app.metadataCache.getFileCache(file)?.frontmatter?.[property];
+   if(typeof name!=='string'||!name.trim())return;
+   const title=container.querySelector('.inline-title');
+   if(!title)return;
+   title.insertAdjacentElement('afterend',container.createDiv({cls:'writer-v4-another-name',text:name}));
+  });
+ }
+ async applyViewMode(file){
+  if(!this.config.viewMode?.enabled||!(file instanceof TFile))return;
+  const value=this.plugin.app.metadataCache.getFileCache(file)?.frontmatter?.[this.config.viewMode.property||'prefer-view']||this.config.viewMode.defaultMode;
+  if(!['read','edit','edit-source','edit-preview'].includes(value))return;
+  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  if(!view||view.file?.path!==file.path)return;
+  const state=view.getState();
+  let next={...state};
+  if(value==='read')next.mode='preview';
+  else{
+   next.mode='source';
+   if(value==='edit-source')next.source=true;
+   else if(value==='edit-preview')next.source=false;
+   else{
+    try{const config=JSON.parse(await this.plugin.app.vault.adapter.read(this.plugin.app.vault.configDir+'/app.json'));next.source=!config.livePreview;}
+    catch{next.source=false;}
+   }
+  }
+  if(next.mode===state.mode&&(next.mode==='preview'||next.source===state.source))return;
+  await view.setState(next,{history:false});
+ }
+ templateCandidates(file){
+  const cfg=this.config.noteTemplates;
+  const base=String(cfg.folder||'Templates').replace(/^\/+|\/+$/g,'');
+  if(!base||base.split('/').includes('..'))return [];
+  const folder=this.plugin.app.vault.getAbstractFileByPath(base);
+  if(!(folder instanceof TFolder))return [];
+  const wanted=file.basename;
+  const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>f.path.startsWith(base+'/')&&(cfg.includeSubfolders||f.parent?.path===base));
+  return files.filter(f=>cfg.caseSensitive?f.basename===wanted:f.basename.toLocaleLowerCase()===wanted.toLocaleLowerCase()).sort((a,b)=>a.path.length-b.path.length);
+ }
+ async applyTemplate(file){
+  if(!this.config.noteTemplates?.enabled||!(file instanceof TFile)||file.extension!=='md'||this.processing.has(file.path))return false;
+  if(file.path.startsWith(String(this.config.noteTemplates.folder||'Templates').replace(/\/+$/,'')+'/'))return false;
+  const template=this.templateCandidates(file)[0];if(!template)return false;
+  this.processing.add(file.path);
+  try{
+   // Vault.process is atomic: a late-arriving user edit or another template wins.
+   const contents=await this.plugin.app.vault.cachedRead(template);
+   const now=new Date();
+   const values={title:file.basename,date:now.toISOString().slice(0,10),time:now.toLocaleTimeString()};
+   const expanded=contents.replace(/\{\{\s*(title|date|time)\s*\}\}/gi,(_,key)=>values[key.toLowerCase()]);
+   let changed=false;
+   await this.plugin.app.vault.process(file,old=>{
+    if(this.config.noteTemplates.onlyEmpty!==false&&old.trim())return old;
+    if(old===expanded)return old;
+    changed=true;return expanded;
+   });
+   if(changed)new Notice(w4text(this.plugin,'Modelo aplicado: ','Template applied: ')+template.basename);
+   return changed;
+  }catch(e){console.warn('[Basic AI] template:',e);return false;}
+  finally{this.processing.delete(file.path);}
+ }
+ register(){
+  const plugin=this.plugin;
+  plugin.registerEditorExtension(this.extension());
+  plugin.registerEvent(plugin.app.workspace.on('file-open',file=>{
+   if(file)this.applyViewMode(file).catch(console.error);
+   this.updateAnotherName();
+  }));
+  plugin.registerEvent(plugin.app.workspace.on('layout-change',()=>this.updateAnotherName()));
+  plugin.registerEvent(plugin.app.metadataCache.on('changed',(file)=>{
+   if(file?.extension==='md'){
+    if(this.config.anotherName.enabled)this.updateAnotherName();
+    if(this.config.viewMode.enabled&&plugin.app.workspace.getActiveFile()?.path===file.path)this.applyViewMode(file).catch(console.error);
+   }
+  }));
+  plugin.registerEvent(plugin.app.vault.on('create',file=>{
+   if(!(file instanceof TFile)||file.extension!=='md')return;
+   const timer=setTimeout(()=>{this.templateTimers.delete(file.path);this.applyTemplate(file);},450);
+   this.templateTimers.set(file.path,timer);
+  }));
+  plugin.registerEvent(plugin.app.vault.on('rename',(file,oldPath)=>{
+   if(file instanceof TFile&&this.config.noteTemplates?.enabled)this.updateAnotherName();
+  }));
+  plugin.addCommand({id:'v4-expand-abbreviation',name:w4text(plugin,'Alternar expansão de abreviações','Toggle abbreviation expansion'),callback:async()=>{
+   this.config.abbreviations.enabled=!this.config.abbreviations.enabled;await plugin.saveSettings();
+   new Notice(w4text(plugin,'Abreviações: ','Abbreviations: ')+(this.config.abbreviations.enabled?'ON':'OFF'));
+  }});
+  plugin.addCommand({id:'v4-apply-note-template',name:w4text(plugin,'Aplicar modelo por nome da nota','Apply template by note name'),callback:()=>{
+   const file=plugin.app.workspace.getActiveFile();if(file)this.applyTemplate(file);
+  }});
+  plugin.addCommand({id:'v4-refresh-another-name',name:w4text(plugin,'Atualizar segundo título','Refresh secondary note title'),callback:()=>this.updateAnotherName()});
+  plugin.addCommand({id:'v4-apply-view-mode',name:w4text(plugin,'Aplicar modo preferido da nota','Apply preferred note view mode'),callback:()=>{
+   const file=plugin.app.workspace.getActiveFile();if(file)this.applyViewMode(file);
+  }});
+  plugin.app.workspace.onLayoutReady?.(()=>this.updateAnotherName());
+ }
+ destroy(){for(const timer of this.templateTimers.values())clearTimeout(timer);this.templateTimers.clear();}
+}
+
+// v4 module: src/v4/tts.js
+/* Local device voices via Web Speech API; no model or network calls in this code. */
+class WriterTTS{
+ constructor(plugin){this.plugin=plugin;this.current=null;this.parts=[];this.index=0;this.paused=false;this.stopping=false;}
+ get engine(){return typeof window!=='undefined'?window.speechSynthesis:null;}
+ get available(){return typeof window!=='undefined'&&typeof window.SpeechSynthesisUtterance!=='undefined'&&!!this.engine;}
+ voices(){try{return this.engine?.getVoices()||[];}catch{return [];}}
+ chooseVoice(){
+  const cfg=this.plugin.settings.tts;
+  const voices=this.voices();
+  const wanted=String(cfg.voice||'');
+  if(wanted){const exact=voices.find(v=>v.voiceURI===wanted||v.name===wanted);if(exact)return exact;}
+  const locale=cfg.language==='auto'?(this.plugin.settings.targetLanguage||'pt-BR'):cfg.language;
+  const matching=voices.filter(v=>v.lang.toLowerCase().startsWith(locale.split('-')[0].toLowerCase()));
+  if(cfg.preferGoogle!==false){
+   const google=matching.find(v=>/google/i.test(v.name));if(google)return google;
+  }
+  return matching.find(v=>v.lang.toLowerCase()===locale.toLowerCase())||matching[0]||null;
+ }
+ textFromEditor(selectionOnly=false){
+  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  const editor=view?.editor;
+  if(!editor)return '';
+  const selected=editor.getSelection();
+  return selected||(!selectionOnly?editor.getValue():'');
+ }
+ clean(source){
+  const text=String(source||'');
+  const withoutMarkup=this.plugin.settings.tts.stripMarkdown!==false?writerMaskMarkdown(text):text;
+  return withoutMarkup.replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+ }
+ split(text){
+  const limit=220,parts=[];
+  for(const para of text.split(/\n+/)){
+   let remaining=para.trim();
+   while(remaining.length){
+    if(remaining.length<=limit){parts.push(remaining);break;}
+    let cut=Math.max(1,remaining.lastIndexOf(' ',limit));
+    if(cut<80)cut=limit;
+    parts.push(remaining.slice(0,cut).trim());
+    remaining=remaining.slice(cut).trim();
+   }
+  }
+  return parts.filter(Boolean);
+ }
+ speak(source){
+  if(!this.plugin.settings.tts.enabled)return new Notice(w4text(this.plugin,'Leitor de voz desativado.','Text-to-speech disabled.'));
+  if(!this.available)return new Notice(w4text(this.plugin,'Este dispositivo não oferece leitura de voz do sistema.','System speech synthesis is unavailable on this device.'));
+  const text=this.clean(source).slice(0,Math.max(500,Number(this.plugin.settings.tts.maxChars)||120000));
+  if(!text)return new Notice(w4text(this.plugin,'Não há texto para ler.','No text to read.'));
+  this.stop();this.stopping=false;this.parts=this.split(text);this.index=0;this.paused=false;this.next();
+ }
+ next(){
+  if(this.stopping||this.index>=this.parts.length){this.current=null;return;}
+  const utterance=new window.SpeechSynthesisUtterance(this.parts[this.index++]);
+  const cfg=this.plugin.settings.tts,voice=this.chooseVoice();
+  if(voice)utterance.voice=voice;
+  utterance.lang=cfg.language==='auto'?(voice?.lang||this.plugin.settings.targetLanguage||'pt-BR'):cfg.language;
+  utterance.rate=Math.min(2,Math.max(0.5,Number(cfg.rate)||1));
+  utterance.pitch=Math.min(2,Math.max(0.5,Number(cfg.pitch)||1));
+  utterance.volume=Math.max(0,Math.min(1,Number(cfg.volume)??1));
+  utterance.onend=()=>{if(this.current===utterance&&!this.stopping)this.next();};
+  utterance.onerror=event=>{
+   if(this.stopping||event.error==='interrupted'||event.error==='canceled')return;
+   new Notice(w4text(this.plugin,'Erro no leitor de voz: ','Speech error: ')+event.error);
+   this.stop();
+  };
+  this.current=utterance;this.engine.speak(utterance);
+ }
+ pause(){if(this.engine?.speaking){this.engine.pause();this.paused=true;}}
+ resume(){if(this.engine?.paused){this.engine.resume();this.paused=false;}}
+ stop(){this.stopping=true;this.parts=[];this.current=null;this.paused=false;this.engine?.cancel();}
+ register(){
+  const plugin=this.plugin;
+  const add=(id,pt,en,callback)=>plugin.addCommand({id,name:w4text(plugin,pt,en),callback});
+  add('v4-tts-read-selection','Ler seleção em voz alta','Read selection aloud',()=>this.speak(this.textFromEditor(true)));
+  add('v4-tts-read-note','Ler nota em voz alta','Read current note aloud',()=>this.speak(this.textFromEditor(false)));
+  add('v4-tts-pause','Pausar leitura','Pause reading',()=>this.pause());
+  add('v4-tts-resume','Continuar leitura','Resume reading',()=>this.resume());
+  add('v4-tts-stop','Parar leitura','Stop reading',()=>this.stop());
+  add('v4-tts-panel','Abrir leitor de voz','Open speech reader',()=>plugin.openWritingTools('tts'));
+ }
+ renderPanel(panel){
+  const cfg=this.plugin.settings.tts,txt=(pt,en)=>w4text(this.plugin,pt,en);
+  panel.createEl('h4',{text:txt('Leitor de voz','Text-to-speech')});
+  panel.createEl('p',{text:txt('Vozes do aparelho (sem IA). A disponibilidade das vozes Google depende do sistema.','Device voices (no AI). Google voice availability depends on your system.')});
+  if(!this.available)panel.createEl('p',{text:txt('Síntese de voz indisponível nesta instalação.','Speech synthesis unavailable in this installation.')});
+  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
+  for(const [label,fn] of [[txt('Ler seleção','Read selection'),()=>this.speak(this.textFromEditor(true))],
+   [txt('Ler nota','Read note'),()=>this.speak(this.textFromEditor(false))],
+   [txt('Pausar','Pause'),()=>this.pause()],[txt('Continuar','Resume'),()=>this.resume()],[txt('Parar','Stop'),()=>this.stop()]]){
+   const btn=actions.createEl('button',{text:label});btn.addEventListener('click',fn);
+  }
+  const info=panel.createEl('p',{cls:'writer-tools-muted',text:txt('Idioma: ','Language: ')+(cfg.language||'auto')+' · '+this.voices().length+' '+txt('vozes disponíveis','voices available')});
+  info.setAttribute('aria-live','polite');
+ }
+}
+
+// v4 module: src/v4/unicode.js
+/* Unicode picker: offline catalog + arbitrary code point input. */
+const W4_UNICODE_NAMED=[
+ ['→','right arrow','seta direita'],['←','left arrow','seta esquerda'],['↑','up arrow','seta cima'],['↓','down arrow','seta baixo'],
+ ['↗','northeast arrow','seta diagonal'],['↘','southeast arrow','seta diagonal'],['↖','northwest arrow','seta diagonal'],
+ ['⇒','right double arrow','seta dupla'],['⇐','left double arrow','seta dupla'],['⇔','double arrow both','equivalência'],
+ ['↔','left right arrow','seta dupla'],['↞','two headed left arrow','seta esquerda'],['↠','two headed right arrow','seta direita'],
+ ['⤛','right arrow tail','seta decorativa'],['⤜','left arrow tail','seta decorativa'],
+ ['•','bullet','ponto lista'],['◦','white bullet','ponto lista'],['▪','small square bullet','ponto quadrado'],
+ ['✓','check mark','marca confirmação'],['✔','heavy check mark','marca confirmação'],['✕','multiplication cross','cruz'],
+ ['✗','ballot x','cruz'],['★','black star','estrela'],['☆','white star','estrela vazia'],['✦','black four pointed star','estrela quatro pontas'],
+ ['✧','white four pointed star','estrela quatro pontas'],['✪','star in circle','estrela círculo'],['❖','diamond','diamante'],
+ ['◇','white diamond','losango'],['◆','black diamond','losango'],['○','white circle','círculo'],['●','black circle','círculo'],
+ ['□','white square','quadrado'],['■','black square','quadrado'],['△','white triangle','triângulo'],['▲','black triangle','triângulo'],
+ ['▽','white down triangle','triângulo baixo'],['▼','black down triangle','triângulo baixo'],['∞','infinity','infinito'],
+ ['≈','almost equal','aproximadamente'],['≠','not equal','diferente'],['≤','less than or equal','menor igual'],['≥','greater than or equal','maior igual'],
+ ['±','plus minus','mais menos'],['×','multiplication','multiplicação'],['÷','division','divisão'],
+ ['∑','summation','somatório'],['∏','product','produtório'],['√','square root','raiz quadrada'],['∫','integral','integral'],
+ ['∂','partial derivative','derivada parcial'],['∇','nabla','gradiente'],['∈','element of','pertence'],['∉','not element of','não pertence'],
+ ['∅','empty set','conjunto vazio'],['∩','intersection','interseção'],['∪','union','união'],['⊂','subset','subconjunto'],
+ ['α','greek alpha','alfa grego'],['β','greek beta','beta grego'],['γ','greek gamma','gama grego'],['δ','greek delta','delta grego'],
+ ['θ','greek theta','teta grego'],['λ','greek lambda','lambda grego'],['μ','greek mu','mu grego'],['π','greek pi','pi grego'],
+ ['σ','greek sigma','sigma grego'],['φ','greek phi','fi grego'],['ω','greek omega','ômega grego'],
+ ['Δ','greek uppercase delta','delta maiúsculo'],['Ω','greek uppercase omega','ômega maiúsculo'],
+ ['«','left guillemet','aspas angulares esquerda'],['»','right guillemet','aspas angulares direita'],
+ ['“','left double quotation','aspas duplas abrir'],['”','right double quotation','aspas duplas fechar'],
+ ['‘','left single quotation','aspas simples abrir'],['’','right single quotation','aspas simples fechar'],
+ ['—','em dash','travessão'],['–','en dash','meia risca'],['…','ellipsis','reticências'],['•','middle bullet','ponto'],['·','middle dot','ponto médio'],
+ ['°','degree sign','grau'],['′','prime','minuto'],['″','double prime','segundo'],['№','numero sign','número'],
+ ['©','copyright','direito autoral'],['®','registered','marca registrada'],['™','trademark','marca comercial'],
+ ['§','section sign','seção'],['¶','pilcrow','parágrafo'],['†','dagger','adaga'],['‡','double dagger','adaga dupla'],
+ ['♩','quarter note','nota musical'],['♪','eighth note','nota musical'],['♫','beamed eighth notes','notas musicais'],
+ ['♭','music flat','bemol'],['♯','music sharp','sustenido'],['♮','natural note','bequadro'],
+ ['♠','spade suit','espadas'],['♥','heart suit','copas'],['♦','diamond suit','ouros'],['♣','club suit','paus'],
+ ['⚠','warning','aviso'],['⚡','high voltage','raio'],['☀','sun','sol'],['☾','crescent moon','lua crescente'],
+ ['☁','cloud','nuvem'],['☂','umbrella','guarda chuva'],['☕','hot beverage','café'],['☘','shamrock','trevo'],
+ ['❤','heart','coração'],['❥','heart bullet','coração'],['☯','yin yang','yin yang'],['☮','peace symbol','paz'],
+ ['ℵ','aleph','alef'],['℘','weierstrass p','p caligráfico'],['ℝ','double struck r','reais'],['ℕ','double struck n','naturais'],
+ ['ℤ','double struck z','inteiros'],['℃','celsius','grau celsius'],['℉','fahrenheit','fahrenheit']
+];
+function w4UnicodeFromCode(value){
+ const match=/^(?:U\+|0x|\\u)([a-f\d]{2,6})$/i.exec(String(value||'').trim());
+ if(!match)return null;
+ const cp=parseInt(match[1],16);
+ if(cp<0||cp>0x10FFFF||cp>=0xD800&&cp<=0xDFFF)return null;
+ return {char:String.fromCodePoint(cp),name:'Unicode U+'+cp.toString(16).toUpperCase(),pt:'',code:cp};
+}
+class WriterUnicode{
+ constructor(plugin){this.plugin=plugin;this.catalog=null;}
+ items(){
+  if(this.catalog)return this.catalog;
+  const map=new Map();
+  const add=(ch,name,pt)=>{
+   const cp=ch.codePointAt(0);
+   if(!map.has(ch))map.set(ch,{char:ch,name,pt,code:cp});
+  };
+  for(const [ch,name,pt] of W4_UNICODE_NAMED)add(ch,name,pt);
+  // Offline coverage for symbols, arrows, box drawing and dingbats.
+  for(const [start,end] of [[0x00A1,0x024F],[0x2000,0x27BF],[0x2900,0x2BFF],[0x1F300,0x1F64F]]){
+   for(let cp=start;cp<=end;cp++){
+    if(cp>=0xD800&&cp<=0xDFFF)continue;
+    const char=String.fromCodePoint(cp);
+    add(char,'U+'+cp.toString(16).toUpperCase(),'');
+   }
+  }
+  return this.catalog=[...map.values()];
+ }
+ insert(item){
+  const editor=this.plugin.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+  if(!editor)return new Notice(w4text(this.plugin,'Abra uma nota Markdown.','Open a Markdown note.'));
+  editor.replaceSelection(item.char);editor.focus();
+  const cfg=this.plugin.settings.unicode;
+  cfg.recent=[item.char,...(cfg.recent||[]).filter(x=>x!==item.char)].slice(0,30);
+  this.plugin.saveSettings();
+ }
+ favorite(char){
+  const fav=this.plugin.settings.unicode.favorites||[];
+  this.plugin.settings.unicode.favorites=fav.includes(char)?fav.filter(x=>x!==char):[char,...fav];
+  this.plugin.saveSettings();
+ }
+ open(){
+  if(!this.plugin.settings.unicode.enabled)return new Notice(w4text(this.plugin,'Busca Unicode desativada.','Unicode search disabled.'));
+  const plugin=this.plugin,owner=this;
+  class Picker extends FuzzySuggestModal{
+   getItems(){return owner.items();}
+   getItemText(item){return item.char+' '+item.name+' '+item.pt+' U+'+item.code.toString(16).toUpperCase();}
+   renderSuggestion(match,el){
+    const item=match.item;
+    el.createSpan({text:item.char,cls:'writer-unicode-preview'});
+    const info=el.createDiv({cls:'writer-unicode-descriptor'});
+    info.createSpan({text:w4locale(plugin)==='pt'&&item.pt?item.pt:item.name});
+    info.createEl('small',{text:'U+'+item.code.toString(16).toUpperCase()});
+   }
+   onChooseItem(item){owner.insert(item);}
+  }
+  new Picker(this.plugin.app).open();
+ }
+ insertCodePoint(text){
+  const item=w4UnicodeFromCode(text);if(!item)return new Notice(w4text(this.plugin,'Código Unicode inválido. Exemplo: U+2764','Invalid Unicode code point. Example: U+2764'));
+  this.insert(item);
+ }
+ renderPanel(panel){
+  const cfg=this.plugin.settings.unicode,txt=(p,e)=>w4text(this.plugin,p,e);
+  panel.createEl('h4',{text:txt('Busca Unicode','Unicode search')});
+  const row=panel.createDiv({cls:'writer-v4-unicode-row'});
+  const input=row.createEl('input',{attr:{type:'text',placeholder:'U+2764'}});
+  row.createEl('button',{text:txt('Inserir código','Insert code point')}).addEventListener('click',()=>this.insertCodePoint(input.value));
+  row.createEl('button',{text:txt('Pesquisar símbolos','Search symbols')}).addEventListener('click',()=>this.open());
+  const favorites=panel.createDiv({cls:'writer-v4-unicode-favorites'});
+  favorites.createEl('strong',{text:txt('Favoritos','Favorites')});
+  for(const ch of cfg.favorites||[]){
+   favorites.createEl('button',{text:ch}).addEventListener('click',()=>this.insert({char:ch}));
+  }
+  panel.createEl('p',{text:txt('Busca local por símbolo, nome, descrição e U+ hexadecimal.','Offline search by symbol, name, description and U+ hexadecimal.'),cls:'writer-tools-muted'});
+ }
+ register(){
+  const p=this.plugin;
+  p.addCommand({id:'v4-search-unicode',name:w4text(p,'Pesquisar caracteres Unicode','Search Unicode characters'),callback:()=>this.open()});
+  p.addCommand({id:'v4-open-unicode-tool',name:w4text(p,'Abrir ferramenta Unicode','Open Unicode tool'),callback:()=>p.openWritingTools('unicode')});
+ }
+}
+
+// v4 module: src/v4/toc.js
+/* Live and collapsible Insta TOC built from Obsidian heading metadata. */
+class WriterInstaToc{
+ constructor(plugin){this.plugin=plugin;this.pending=new Map();this.processing=new Set();}
+ get options(){return this.plugin.settings.instaToc;}
+ headings(file){
+  const opts=this.options,cache=this.plugin.app.metadataCache.getFileCache(file);
+  const forbidden=String(opts.exclude||'').split(/\r?\n|,/).map(x=>x.trim().toLocaleLowerCase()).filter(Boolean);
+  return (cache?.headings||[]).filter(h=>{
+   const level=h.level||1;
+   return level>=Math.max(1,Number(opts.minLevel)||1)&&level<=Math.min(6,Number(opts.maxLevel)||6)&&
+    !/<!--\s*omit\s*-->/i.test(h.heading)&&!forbidden.includes(h.heading.trim().toLocaleLowerCase());
+  }).map(h=>({...h,heading:h.heading.trim()}));
+ }
+ entries(file){
+  return this.headings(file).map(h=>{
+   const indent='  '.repeat(Math.max(0,Math.min(5,(h.level||1)-Math.max(1,Number(this.options.minLevel)||1))));
+   const heading=h.heading.replace(/\|/g,'\\|').replace(/\]\]/g,'] ]');
+   return indent+'- [[#'+heading+'|'+heading+']]';
+  }).join('\n');
+ }
+ async insertBlock(){
+  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  if(!view?.file||!view.editor)return new Notice(w4text(this.plugin,'Abra uma nota Markdown.','Open a Markdown note.'));
+  view.editor.replaceSelection('\x60\x60\x60insta-toc\n'+this.entries(view.file)+'\n\x60\x60\x60\n');
+ }
+ async refresh(file){
+  if(!this.options.enabled||!(file instanceof TFile)||file.extension!=='md'||this.processing.has(file.path))return;
+  const before=await this.plugin.app.vault.cachedRead(file);
+  const fence=/^(\x60{3,})insta-toc[ \t]*\r?\n([\s\S]*?)^\1[ \t]*$/gm;
+  if(!fence.test(before))return;
+  this.processing.add(file.path);
+  try{
+   await this.plugin.app.vault.process(file,current=>current.replace(fence,(all,delimiter,body)=>{
+    const retained=/^---\r?\n[\s\S]*?\r?\n---\r?\n/.exec(body)?.[0]||'';
+    const entries=this.entries(file);
+    return delimiter+'insta-toc\n'+retained+entries+(entries?'\n':'')+delimiter;
+   }));
+  }catch(e){console.warn('[Basic AI] TOC refresh:',e);}
+  finally{this.processing.delete(file.path);}
+ }
+ schedule(file){
+  if(!(file instanceof TFile)||file.extension!=='md')return;
+  clearTimeout(this.pending.get(file.path));
+  this.pending.set(file.path,setTimeout(()=>{
+   this.pending.delete(file.path);this.refresh(file);
+  },Math.max(500,Number(this.options.updateDelay)||1500)));
+ }
+ async render(source,el,ctx){
+  const file=this.plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
+  if(!(file instanceof TFile)||!this.options.enabled)return;
+  const sourceSettings=/^---\r?\n([\s\S]*?)\r?\n---/.exec(source);
+  let local={};try{if(sourceSettings)local=parseYaml(sourceSettings[1])||{};}catch(_){}
+  const title=local?.title?.name||this.options.title;
+  const min=Math.max(1,Number(local?.levels?.min)||Number(this.options.minLevel)||1);
+  const max=Math.min(6,Number(local?.levels?.max)||Number(this.options.maxLevel)||6);
+  const omissions=(Array.isArray(local?.omit)?local.omit:[]).map(x=>String(x).toLowerCase());
+  const headings=this.headings(file).filter(h=>h.level>=min&&h.level<=max&&!omissions.includes(h.heading.toLowerCase()));
+  const root=el.createDiv({cls:'writer-v4-insta-toc insta-toc-rendered'});
+  const heading=root.createDiv({cls:'writer-v4-toc-heading'});
+  heading.createEl('strong',{text:title||w4text(this.plugin,'Índice','Contents')});
+  const fold=heading.createEl('button',{text:'▾',cls:'writer-v4-toc-collapse',attr:{'aria-label':w4text(this.plugin,'Recolher índice','Collapse index')}});
+  const list=root.createEl('ul',{cls:'writer-v4-toc-list'});
+  const stack=[{level:min-1,element:list}];
+  for(const h of headings){
+   while(stack.length>1&&stack.at(-1).level>=h.level)stack.pop();
+   const parent=stack.at(-1).element;
+   const li=parent.createEl('li',{cls:'writer-v4-toc-item'});
+   const link=li.createEl('a',{text:h.heading,href:'#'+h.heading,attr:{'data-heading':h.heading}});
+   link.addEventListener('click',e=>{e.preventDefault();this.plugin.app.workspace.openLinkText('#'+h.heading,file.path,false);});
+   const children=li.createEl('ul');
+   stack.push({level:h.level,element:children});
+  }
+  fold.addEventListener('click',()=>{
+   const collapsed=!list.hidden;list.hidden=collapsed;fold.setText(collapsed?'▸':'▾');fold.setAttribute('aria-expanded',String(!collapsed));
+  });
+  if(local?.collapsed===true||this.options.collapsed){list.hidden=true;fold.setText('▸');}
+  if(!headings.length)list.createEl('li',{text:w4text(this.plugin,'Nenhum título encontrado.','No headings found.')});
+ }
+ register(){
+  const plugin=this.plugin;
+  plugin.registerMarkdownCodeBlockProcessor('insta-toc',(source,el,ctx)=>this.render(source,el,ctx));
+  plugin.registerEvent(plugin.app.metadataCache.on('changed',file=>this.schedule(file)));
+  plugin.addCommand({id:'v4-insert-insta-toc',name:w4text(plugin,'Inserir índice automático','Insert automatic table of contents'),editorCallback:()=>this.insertBlock()});
+  plugin.addCommand({id:'v4-refresh-insta-toc',name:w4text(plugin,'Atualizar índice da nota','Refresh note TOC'),callback:()=>{
+   const f=plugin.app.workspace.getActiveFile();if(f)this.refresh(f);
+  }});
+ }
+ destroy(){for(const handle of this.pending.values())clearTimeout(handle);this.pending.clear();}
+}
+
+// v4 module: src/v4/homework.js
+/* Longform project quick tasks, inspired by Homework Manager subjects / views. */
+function w4HomeworkNormalize(prefs){
+ if(!prefs.homework||!Array.isArray(prefs.homework.views))prefs.homework={selected:0,views:[{name:'Principal',subjects:[],tasks:[]}]};
+ if(!prefs.homework.views.length)prefs.homework.views.push({name:'Principal',subjects:[],tasks:[]});
+ prefs.homework.views.forEach(view=>{
+  view.subjects=Array.isArray(view.subjects)?view.subjects:[];
+  view.tasks=Array.isArray(view.tasks)?view.tasks:[];
+  view.subjects.forEach(sub=>{sub.tasks=Array.isArray(sub.tasks)?sub.tasks:[];});
+ });
+ prefs.homework.selected=Math.max(0,Math.min(prefs.homework.views.length-1,Number(prefs.homework.selected)||0));
+ return prefs.homework;
+}
+class WriterHomework{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.homework;}
+ data(project){const prefs=this.plugin.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view?.prefs(project);return prefs?w4HomeworkNormalize(prefs):null;}
+ async save(view){await this.plugin.saveSettings();await view.render();}
+ showTaskDialog(view,project,collection,task){
+  const modal=new Modal(this.plugin.app),txt=(p,e)=>w4text(this.plugin,p,e);
+  const editing=!!task,entry=task?{...task}:{id:'task-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8),name:'',date:'',page:'',done:false};
+  modal.onOpen=()=>{
+   modal.setTitle(txt(editing?'Editar tarefa':'Nova tarefa',editing?'Edit task':'New task'));
+   new Setting(modal.contentEl).setName(txt('Descrição','Description')).addText(t=>t.setValue(entry.name).setPlaceholder(txt('O que precisa ser feito?','What needs to be done?')).onChange(v=>entry.name=v));
+   new Setting(modal.contentEl).setName(txt('Prazo (AAAA-MM-DD)','Due (YYYY-MM-DD)')).addText(t=>{
+    t.inputEl.type='date';t.setValue(entry.date||'').onChange(v=>entry.date=v);
+   });
+   new Setting(modal.contentEl).setName(txt('Nota relacionada (opcional)','Related note (optional)')).addText(t=>t.setValue(entry.page||'').onChange(v=>entry.page=v));
+   const row=new Setting(modal.contentEl);
+   row.addButton(b=>b.setButtonText(txt('Cancelar','Cancel')).onClick(()=>modal.close()));
+   row.addButton(b=>b.setButtonText(txt('Salvar','Save')).setCta().onClick(async()=>{
+    if(!entry.name.trim())return new Notice(txt('Informe o nome da tarefa.','Enter the task name.'));
+    entry.name=entry.name.trim();
+    if(entry.date&&!/^\d{4}-\d{2}-\d{2}$/.test(entry.date))return new Notice(txt('Prazo inválido.','Invalid due date.'));
+    if(!editing)collection.push(entry);
+    else Object.assign(task,entry);
+    modal.close();await this.save(view);
+   }));
+  };
+  modal.open();
+ }
+ drawTask(container,view,project,task,collection){
+  const txt=(p,e)=>w4text(this.plugin,p,e);
+  if(this.cfg.hideCompleted&&task.done)return;
+  const row=container.createDiv({cls:'writer-v4-task'});
+  const check=row.createEl('input',{attr:{type:'checkbox','aria-label':txt('Concluir tarefa','Complete task')}});
+  check.checked=!!task.done;
+  check.addEventListener('change',async()=>{task.done=check.checked;await this.save(view);});
+  const content=row.createDiv({cls:'writer-v4-task-description'});
+  const name=content.createEl('span',{text:task.name||txt('Sem título','Untitled'),cls:task.done?'is-done':''});
+  if(this.cfg.showTooltips)name.title=task.page||task.name;
+  if(task.date){
+   const label=content.createEl('small',{text:task.date});
+   if(!task.done&&task.date<new Date().toISOString().slice(0,10))label.addClass('is-overdue');
+  }
+  const buttons=row.createDiv({cls:'writer-v4-task-actions'});
+  if(task.page)buttons.createEl('button',{text:'↗',attr:{title:txt('Abrir nota','Open note'),'aria-label':txt('Abrir nota','Open note')}})
+   .addEventListener('click',()=>this.plugin.app.workspace.openLinkText(task.page,project.file.path,false));
+  buttons.createEl('button',{text:'⋯',attr:{title:txt('Editar tarefa','Edit task'),'aria-label':txt('Editar tarefa','Edit task')}})
+   .addEventListener('click',e=>{
+    const menu=new Menu(this.plugin.app);
+    menu.addItem(item=>item.setTitle(txt('Editar','Edit')).setIcon('pencil').onClick(()=>this.showTaskDialog(view,project,collection,task)));
+    menu.addItem(item=>item.setTitle(txt('Excluir','Delete')).setIcon('trash').onClick(async()=>{
+     const idx=collection.indexOf(task);if(idx>=0)collection.splice(idx,1);
+     await this.save(view);
+    }));
+    menu.showAtMouseEvent(e);
+   });
+ }
+ draw(panel,view,project){
+  const txt=(p,e)=>w4text(this.plugin,p,e),data=w4HomeworkNormalize(view.prefs(project));
+  if(!this.cfg.enabled){panel.createEl('p',{text:txt('Tarefas desativadas nas configurações.','Tasks are disabled in settings.')});return;}
+  panel.addClass('writer-v4-homework');
+  const head=panel.createDiv({cls:'writer-v4-homework-head'});
+  head.createEl('h3',{text:txt('Tarefas do projeto','Project tasks')});
+  const picker=head.createEl('select',{attr:{'aria-label':txt('Lista de tarefas','Task list')}});
+  data.views.forEach((v,i)=>{const option=picker.createEl('option',{text:v.name});option.value=String(i);});
+  picker.value=String(data.selected);
+  picker.addEventListener('change',async()=>{data.selected=Number(picker.value);await this.save(view);});
+  head.createEl('button',{text:'+',attr:{title:txt('Nova lista','New list')}}).addEventListener('click',()=>{
+   new TextPrompt(this.plugin.app,txt('Nova lista','New list'),async name=>{
+    const clean=String(name||'').trim();if(!clean)return;
+    data.views.push({name:clean,subjects:[],tasks:[]});data.selected=data.views.length-1;await this.save(view);
+   }).open();
+  });
+  const current=data.views[data.selected];
+  const toolbar=panel.createDiv({cls:'writer-v4-homework-actions'});
+  toolbar.createEl('button',{text:txt('+ Tarefa','+ Task')}).addEventListener('click',()=>this.showTaskDialog(view,project,current.tasks));
+  toolbar.createEl('button',{text:txt('+ Grupo','+ Group')}).addEventListener('click',()=>{
+   new TextPrompt(this.plugin.app,txt('Grupo de tarefas','Task group'),async name=>{
+    const clean=String(name||'').trim();if(!clean)return;
+    current.subjects.push({name:clean,tasks:[]});await this.save(view);
+   }).open();
+  });
+  toolbar.createEl('button',{text:txt('Renomear lista','Rename list')}).addEventListener('click',()=>{
+   new TextPrompt(this.plugin.app,txt('Nome da lista','List name'),async name=>{
+    if(name.trim()){current.name=name.trim();await this.save(view);}
+   },current.name).open();
+  });
+  const sum=[...current.tasks,...current.subjects.flatMap(s=>s.tasks)];
+  const done=sum.filter(t=>t.done).length;
+  panel.createEl('p',{text:done+'/'+sum.length+' '+txt('tarefas concluídas','tasks completed'),cls:'writer-tools-muted'});
+  if(sum.length){const progress=panel.createEl('progress');progress.max=sum.length;progress.value=done;}
+  const inbox=panel.createDiv({cls:'writer-v4-homework-group'});
+  inbox.createEl('h4',{text:txt('Tarefas rápidas','Quick tasks')});
+  for(const task of current.tasks)this.drawTask(inbox,view,project,task,current.tasks);
+  const subjects=this.cfg.autoSort?[...current.subjects].sort((a,b)=>b.tasks.filter(t=>!t.done).length-a.tasks.filter(t=>!t.done).length):current.subjects;
+  for(const subject of subjects){
+   const group=panel.createDiv({cls:'writer-v4-homework-group'});
+   const title=group.createDiv({cls:'writer-v4-homework-subject'});
+   title.createEl('strong',{text:subject.name});
+   title.createEl('button',{text:'+',attr:{'aria-label':txt('Adicionar tarefa','Add task')}}).addEventListener('click',()=>this.showTaskDialog(view,project,subject.tasks));
+   title.createEl('button',{text:'⋯',attr:{'aria-label':txt('Opções do grupo','Group options')}}).addEventListener('click',e=>{
+    const menu=new Menu(this.plugin.app);
+    menu.addItem(item=>item.setTitle(txt('Renomear grupo','Rename group')).onClick(()=>{
+     new TextPrompt(this.plugin.app,txt('Nome do grupo','Group name'),async name=>{if(name.trim()){subject.name=name.trim();await this.save(view);}},subject.name).open();
+    }));
+    menu.addItem(item=>item.setTitle(txt('Remover grupo','Remove group')).onClick(async()=>{
+     if(subject.tasks.length)return new Notice(txt('Mova ou remova as tarefas do grupo primeiro.','Move or remove group tasks first.'));
+     const i=current.subjects.indexOf(subject);if(i>=0)current.subjects.splice(i,1);await this.save(view);
+    }));
+    menu.showAtMouseEvent(e);
+   });
+   for(const task of subject.tasks)this.drawTask(group,view,project,task,subject.tasks);
+  }
+ }
+}
+
+// v4 module: src/v4/settings.js
+function writerRenderV4Settings(panel,plugin,id){
+ const tr=(p,e)=>w4text(plugin,p,e),cfg=plugin.settings[id];
+ if(!cfg)return;
+ const toggle=(key,pt,en,desc)=>{
+  new Setting(panel).setName(tr(pt,en)).setDesc(desc||'').addToggle(t=>t.setValue(cfg[key]!==false).onChange(async value=>{
+   cfg[key]=value;await plugin.saveSettings();
+   if(id==='anotherName')plugin.v4Editor?.updateAnotherName();
+  }));
+ };
+ const field=(key,pt,en,description='',numeric=false)=>{
+  new Setting(panel).setName(tr(pt,en)).setDesc(description).addText(t=>t.setValue(String(cfg[key]??'')).onChange(async value=>{
+   cfg[key]=numeric?Number(value)||0:value;
+   await plugin.saveSettings();
+  }));
+ };
+ const title={abbreviations:['Abreviações','Abbreviations'],anotherName:['Segundo título','Secondary note title'],
+  viewMode:['Modo de visualização','View mode'],homework:['Tarefas do Longform','Longform tasks'],
+  instaToc:['Índice automático','Automatic TOC'],unicode:['Busca Unicode','Unicode search'],
+  noteTemplates:['Modelo pelo nome','Template by note name'],tts:['Leitor de voz','Text-to-speech']}[id];
+ if(title)panel.createEl('h3',{text:tr(...title)});
+ if(id==='abbreviations'){
+  toggle('enabled','Ativar expansão ao digitar espaço','Expand abbreviations on space');
+  panel.createEl('p',{text:tr('A abreviação é substituída imediatamente quando você digita espaço. Cada entrada pode ser ativada e distinguir maiúsculas.','An abbreviation expands when you type a space. Each entry can be enabled and case-sensitive.')});
+  const list=panel.createDiv({cls:'writer-v4-abbrev-list'});
+  const render=()=>{
+   list.empty();
+   const entries=Object.entries(cfg.entries||{}).sort((a,b)=>(a[1].position||0)-(b[1].position||0));
+   for(const [key,entry] of entries){
+    const row=new Setting(list).setName(key||tr('(nova)','(new)'));
+    row.addToggle(t=>t.setValue(entry.isEnabled!==false).onChange(async v=>{entry.isEnabled=v;await plugin.saveSettings();}));
+    row.addText(t=>t.setPlaceholder(tr('Abreviação','Abbreviation')).setValue(key).onChange(async v=>{
+     const candidate=v.trim();if(!candidate||candidate===key||candidate in cfg.entries)return;
+     cfg.entries[candidate]=entry;delete cfg.entries[key];await plugin.saveSettings();render();
+    }));
+    row.addText(t=>t.setPlaceholder(tr('Expansão','Expansion')).setValue(entry.value||'').onChange(async v=>{entry.value=v;await plugin.saveSettings();}));
+    row.addExtraButton(b=>b.setIcon('case-sensitive').setTooltip(tr('Diferenciar maiúsculas','Case sensitive')).onClick(async()=>{
+     entry.isCaseSensitive=!entry.isCaseSensitive;await plugin.saveSettings();render();
+    }));
+    row.addExtraButton(b=>b.setIcon('trash').setTooltip(tr('Remover','Remove')).onClick(async()=>{delete cfg.entries[key];await plugin.saveSettings();render();}));
+   }
+  };
+  new Setting(panel).addButton(b=>b.setButtonText(tr('+ Abreviação','+ Abbreviation')).setCta().onClick(async()=>{
+   const key='new-'+Date.now().toString(36);
+   cfg.entries[key]={value:'',isEnabled:true,position:Object.keys(cfg.entries).length};
+   await plugin.saveSettings();render();
+  })).addButton(b=>b.setButtonText(tr('Restaurar padrão','Reset defaults')).onClick(async()=>{
+   cfg.entries=structuredClone(W4_DEFAULTS.abbreviations.entries);await plugin.saveSettings();render();
+  }));
+  render();
+ }else if(id==='anotherName'){
+  toggle('enabled','Exibir segundo título','Show secondary title');
+  field('property','Propriedade YAML','YAML property','e.g. another-name');
+  panel.createEl('p',{text:tr('Exibido logo abaixo do título padrão da nota. Aceita somente valores textuais.','Displayed directly below the note inline title. Only text values are accepted.')});
+  new Setting(panel).addButton(b=>b.setButtonText(tr('Atualizar títulos','Refresh titles')).onClick(()=>plugin.v4Editor?.updateAnotherName()));
+ }else if(id==='viewMode'){
+  toggle('enabled','Usar preferência da nota','Use note preference');
+  field('property','Propriedade YAML','YAML property','prefer-view');
+  new Setting(panel).setName(tr('Modo padrão (sem propriedade)','Default mode if missing')).addDropdown(d=>{
+   for(const [k,pt,en] of [['','Não alterar','Do not change'],['read','Leitura','Reading'],['edit','Editar (preferência global)','Edit (global preference)'],['edit-source','Modo fonte','Source mode'],['edit-preview','Prévia ao vivo','Live Preview']])d.addOption(k,tr(pt,en));
+   d.setValue(cfg.defaultMode||'').onChange(async v=>{cfg.defaultMode=v;await plugin.saveSettings();});
+  });
+  panel.createEl('p',{text:tr('Propriedade prefer-view: read, edit, edit-source, edit-preview.','Property prefer-view: read, edit, edit-source, edit-preview.')});
+ }else if(id==='homework'){
+  toggle('enabled','Ativar aba Tarefas','Enable Tasks tab');
+  toggle('autoSort','Ordenar grupos por tarefas pendentes','Sort groups by pending tasks');
+  toggle('showTooltips','Mostrar dicas dos botões','Show tooltips');
+  toggle('hideCompleted','Ocultar tarefas concluídas','Hide completed tasks');
+  new Setting(panel).addButton(b=>b.setButtonText(tr('Abrir tarefas do projeto','Open project tasks')).onClick(()=>plugin.openProjects('homework')));
+  panel.createEl('p',{text:tr('Cada projeto mantém listas e grupos próprios. As tarefas não fazem parte do manuscrito compilado.','Each project has independent task lists and groups. Tasks are not part of the compiled manuscript.')});
+ }else if(id==='instaToc'){
+  toggle('enabled','Ativar Insta TOC','Enable Insta TOC');
+  field('title','Título do índice','TOC title');
+  field('minLevel','Nível mínimo (1–6)','Minimum level (1–6)','',true);
+  field('maxLevel','Nível máximo (1–6)','Maximum level (1–6)','',true);
+  field('indent','Recuo em pixels','Indent in pixels','',true);
+  field('updateDelay','Atraso da atualização (ms)','Update delay (ms)','',true);
+  toggle('collapsed','Iniciar recolhido','Start collapsed');
+  new Setting(panel).setName(tr('Estilo de marcador','Bullet style')).addDropdown(d=>{
+   for(const value of ['circle','disc','square','decimal','none'])d.addOption(value,value);
+   d.setValue(cfg.listType||'circle').onChange(async v=>{cfg.listType=v;await plugin.saveSettings();});
+  });
+  new Setting(panel).setName(tr('Títulos excluídos','Excluded headings')).addTextArea(t=>t.setValue(cfg.exclude||'').setPlaceholder(tr('Um por linha','One per line')).onChange(async v=>{cfg.exclude=v;await plugin.saveSettings();}));
+  new Setting(panel).addButton(b=>b.setButtonText(tr('Inserir índice','Insert TOC')).onClick(()=>plugin.v4Toc.insertBlock()))
+   .addButton(b=>b.setButtonText(tr('Atualizar nota atual','Refresh current note')).onClick(()=>{
+    const f=plugin.app.workspace.getActiveFile();if(f)plugin.v4Toc.refresh(f);
+   }));
+ }else if(id==='unicode'){
+  toggle('enabled','Ativar busca Unicode','Enable Unicode search');
+  field('maxResults','Resultados máximos','Maximum results','',true);
+  toggle('searchDescriptions','Buscar nomes e descrições','Search names and descriptions');
+  new Setting(panel).addButton(b=>b.setButtonText(tr('Abrir busca Unicode','Open Unicode search')).setCta().onClick(()=>plugin.v4Unicode.open()));
+  const favorites=panel.createDiv({cls:'writer-v4-unicode-favorites'});
+  const render=()=>{
+   favorites.empty();favorites.createEl('h4',{text:tr('Favoritos','Favorites')});
+   for(const ch of cfg.favorites||[]){
+    favorites.createEl('button',{text:ch+' ×'}).addEventListener('click',async()=>{plugin.v4Unicode.favorite(ch);render();});
+   }
+  };render();
+ }else if(id==='noteTemplates'){
+  toggle('enabled','Ativar modelos por nome','Enable templates by note name');
+  field('folder','Pasta de modelos','Template folder','Templates');
+  toggle('caseSensitive','Diferenciar maiúsculas','Case-sensitive matching');
+  toggle('onlyEmpty','Aplicar somente em notas vazias','Apply to empty notes only');
+  toggle('includeSubfolders','Incluir subpastas','Include nested folders');
+  panel.createEl('p',{text:tr('Ao criar uma nota, procura um modelo Markdown com o mesmo nome na pasta escolhida. Substitui {{title}}, {{date}} e {{time}}. Não altera notas existentes por padrão.','When a note is created, look for a Markdown template with the same name. Supports {{title}}, {{date}} and {{time}}. Existing content is protected by default.')});
+ }else if(id==='tts'){
+  toggle('enabled','Ativar TTS','Enable text-to-speech');
+  toggle('preferGoogle','Preferir voz Google, se instalada','Prefer Google voice if installed');
+  toggle('stripMarkdown','Ignorar marcação Markdown','Strip Markdown formatting');
+  const voices=plugin.v4TTS?.voices()||[];
+  new Setting(panel).setName(tr('Idioma da leitura','Reading language')).addDropdown(d=>{
+   for(const value of ['auto','pt-BR','pt-PT','en-US','en-GB','es-ES','fr-FR','de-DE','it-IT','ja-JP','ru-RU','zh-CN','ko-KR','ar-SA','hi-IN'])d.addOption(value,value);
+   d.setValue(cfg.language||'auto').onChange(async v=>{cfg.language=v;await plugin.saveSettings();});
+  });
+  new Setting(panel).setName(tr('Voz do sistema','System voice')).addDropdown(d=>{
+   d.addOption('','Auto');
+   for(const voice of voices)d.addOption(voice.voiceURI||voice.name,voice.name+' ('+voice.lang+')');
+   d.setValue(cfg.voice||'').onChange(async v=>{cfg.voice=v;await plugin.saveSettings();});
+  });
+  for(const [key,pt,en,min,max] of [['rate','Velocidade','Rate',0.5,2],['pitch','Tom','Pitch',0.5,2],['volume','Volume','Volume',0,1]]){
+   new Setting(panel).setName(tr(pt,en)).addSlider(sl=>sl.setLimits(min,max,0.05).setValue(Number(cfg[key])||1).setDynamicTooltip().onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+  }
+  field('maxChars','Máximo de caracteres','Maximum characters','',true);
+  new Setting(panel).addButton(b=>b.setButtonText(tr('Ler seleção','Read selection')).onClick(()=>plugin.v4TTS.speak(plugin.v4TTS.textFromEditor(true))))
+   .addButton(b=>b.setButtonText(tr('Parar','Stop')).onClick(()=>plugin.v4TTS.stop()));
+ }
+}
+function writerV4LanguageSettings(panel,plugin){
+ new Setting(panel).setName(w4text(plugin,'Idioma da interface','Interface language'))
+  .setDesc('Auto / Português / English').addDropdown(d=>{
+   for(const [id,label] of [['auto','Auto'],['pt','Português (Brasil)'],['en','English']])d.addOption(id,label);
+   d.setValue(plugin.settings.interfaceLanguage||'auto').onChange(async v=>{plugin.settings.interfaceLanguage=v;await plugin.saveSettings();new Notice(w4text(plugin,'Reabra os painéis para atualizar o idioma.','Reopen panels to update language.'));});
+  });
+}
+
+// END WRITER V4 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
  getViewType(){return VIEW;}
@@ -2018,6 +2799,14 @@ class DictionarySettings extends PluginSettingTab{
     ['complements','Sugestões'],
     ['variants','Variantes'],
     ['snapshots','Versões'],
+    ['abbreviations',w4text(this.plugin,'Abreviações','Abbreviations')],
+    ['anotherName',w4text(this.plugin,'Segundo título','Secondary title')],
+    ['viewMode',w4text(this.plugin,'Visualização','View mode')],
+    ['homework',w4text(this.plugin,'Tarefas','Tasks')],
+    ['instaToc',w4text(this.plugin,'Índice automático','Auto TOC')],
+    ['unicode',w4text(this.plugin,'Unicode','Unicode')],
+    ['noteTemplates',w4text(this.plugin,'Modelos','Templates')],
+    ['tts',w4text(this.plugin,'Leitor de voz','Speech reader')],
     ['review',msg('Revisão','Review')],
     ['reviewAI',msg('Revisores IA','AI reviewers')],
     ['providers',msg('APIs','APIs')],
@@ -2028,7 +2817,10 @@ class DictionarySettings extends PluginSettingTab{
     this.activeSettingsTab=id;
     for(const button of Array.from(nav.children)){button.classList.toggle('is-active',button.dataset.tab===id);button.setAttribute('aria-selected',String(button.dataset.tab===id));}
     panel.empty();
-    if(['complements','variants','snapshots'].includes(id)){
+    if(id==='general')writerV4LanguageSettings(panel,this.plugin);
+    if(['abbreviations','anotherName','viewMode','homework','instaToc','unicode','noteTemplates','tts'].includes(id)){
+      writerRenderV4Settings(panel,this.plugin,id);
+    }else if(['complements','variants','snapshots'].includes(id)){
       writerRenderV3Settings(panel,this.plugin,id);
     }else if(id==='review'){
       panel.createEl('h3',{text:msg('LanguageTool e comportamento da revisão','LanguageTool and review behavior')});
@@ -2146,12 +2938,29 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       const source=base+'/data.json',backup=base+'/data.v2-backup.json';
       if(await adapter.exists(source)&&!(await adapter.exists(backup)))await adapter.write(backup,await adapter.read(source));
     }
+    if(Number(saved.schemaVersion||0)>=3&&Number(saved.schemaVersion||0)<4){
+      const adapter=this.app.vault.adapter;
+      const base=this.manifest.dir||this.app.vault.configDir+'/plugins/'+this.manifest.id;
+      if(await adapter.exists(base+'/data.json')&&!(await adapter.exists(base+'/data.v3-backup.json')))
+        await adapter.write(base+'/data.v3-backup.json',await adapter.read(base+'/data.json'));
+    }
     this.settings=Object.assign({},DEFAULTS,saved);if(!AI_PROVIDERS.some(p=>p[0]===this.settings.provider))this.settings.provider='openai';if(!AI_PROVIDERS.some(p=>p[0]===this.settings.translationProvider))this.settings.translationProvider=this.settings.provider;this.settings.aiKeys={...DEFAULTS.aiKeys,...(saved.aiKeys||{})};this.settings.aiModels={...DEFAULTS.aiModels,...(saved.aiModels||{})};this.settings.prompts={...(saved.prompts||{})};
-    const migrating=Number(saved.schemaVersion||0)<3;
+    const migrating=Number(saved.schemaVersion||0)<4;
     writerMergeV3(this.settings);
+    writerMergeV4(this.settings);
     this.writerSnapshots=new WriterSnapshots(this);
     this.writerVariants=new WriterVariants(this);
     this.writerComplements=new WriterComplements(this);
+    this.v4Editor=new WriterV4Editor(this);
+    this.v4TTS=new WriterTTS(this);
+    this.v4Unicode=new WriterUnicode(this);
+    this.v4Toc=new WriterInstaToc(this);
+    this.v4Homework=new WriterHomework(this);
+    this.v4Editor.register();
+    this.v4TTS.register();
+    this.v4Unicode.register();
+    this.v4Toc.register();
+
     this.registerEditorSuggest(this.writerComplements);
     this.registerEditorExtension(this.writerVariants.editorExtension());
     this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
@@ -2175,6 +2984,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.addCommand({id:'open-project-compile',name:msg('Abrir compilação do projeto','Open project compile'),callback:()=>this.openProjects('compile')});
     this.addCommand({id:'start-writing-session',name:msg('Iniciar sessão de escrita','Start writing session'),callback:async()=>{await this.openProjects('project');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)await v.startWritingSession(v.currentProject);}});
     this.addCommand({id:'stop-writing-session',name:msg('Encerrar sessão de escrita','Stop writing session'),callback:async()=>{await this.openProjects('project');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)await v.stopWritingSession(v.currentProject);}});
+    this.addCommand({id:'v4-open-project-homework',name:w4text(this,'Abrir tarefas do projeto','Open project tasks'),callback:()=>this.openProjects('homework')});
     this.addCommand({id:'open-project-notes',name:msg('Abrir notas do projeto','Open project notes'),callback:()=>this.openProjects('notes')});
     this.addCommand({id:'new-project-note',name:msg('Criar nota rápida do projeto','Create quick project note'),callback:async()=>{await this.openProjects('notes');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)v.promptNote(v.notesRoot(v.currentProject));}});
     const v3Commands=[
@@ -2578,5 +3388,5 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     });
   }
   async saveSettings(){await this.saveData(this.settings);}
-  onunload(){this.app.workspace.detachLeavesOfType(VIEW);this.app.workspace.detachLeavesOfType(PROJECT_VIEW);this.app.workspace.detachLeavesOfType(WRITER_TOOLS_VIEW);}
+  onunload(){this.v4TTS?.stop();this.v4Editor?.destroy();this.v4Toc?.destroy();this.app.workspace.detachLeavesOfType(VIEW);this.app.workspace.detachLeavesOfType(PROJECT_VIEW);this.app.workspace.detachLeavesOfType(WRITER_TOOLS_VIEW);}
 };

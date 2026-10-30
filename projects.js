@@ -142,87 +142,172 @@ class ProjectsView extends ItemView{
   if(!prefs.drafts[this.draft])prefs.drafts[this.draft]=this.sceneList(project);
   change(prefs.drafts[this.draft]);await this.savePrefs();
  }
- async addScene(project,parent=null){
-  new TextPrompt(this.app,parent?'Novo subcapítulo':'Nova cena',async raw=>{
-   const name=clean(raw);if(!name)return;
-   const dir=project.file.parent?.path||'',folder=String(project.meta.sceneFolder||'').replace(/^\/+|\/+$/g,'');
-   const path=[dir,folder,name+'.md'].filter(Boolean).join('/');
+
+ sceneIndex(scenes,title){return scenes.findIndex(x=>x.title===title);}
+ subtreeEnd(scenes,i){let end=i+1;while(end<scenes.length&&scenes[end].indent>scenes[i].indent)end++;return end;}
+ async addScene(project,parentTitle=null){
+  new TextPrompt(this.app,parentTitle?'Novo subcapítulo':'Nova cena',async raw=>{
+   const name=clean(raw);if(!name||name==='.'||name==='..')return;
+   const base=project.file.parent?.path||'',folder=String(project.meta.sceneFolder||'/').split('/').filter(Boolean).join('/');
+   const dir=[base,folder].filter(Boolean).join('/'),path=[dir,name+'.md'].filter(Boolean).join('/');
    try{
-    if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe um arquivo com esse nome.');
-    if(folder)await this.ensureFolder([dir,folder].filter(Boolean).join('/'));
-    const file=await this.app.vault.create(path,'');
+    if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe uma cena com esse nome.');
+    if(this.activeScenes(project).some(x=>x.title===name))throw Error('Nome de cena duplicado.');
+    if(dir)await this.ensureFolder(dir);
+    let template='';
+    const tp=project.meta.sceneTemplate;
+    if(typeof tp==='string'&&tp.trim()){
+     const file=this.app.vault.getAbstractFileByPath(tp)||this.app.vault.getMarkdownFiles().find(f=>f.basename===tp);
+     if(file instanceof TFile)template=await this.app.vault.read(file);
+    }
+    const file=await this.app.vault.create(path,template);
     await this.changeScenes(project,scenes=>{
-     if(parent){
-      const target=this.findScene(scenes,parent);
-      if(!target)throw Error('Cena pai não encontrada');
-      if(typeof target.item==='string')target.list[target.index]={name:target.item,children:[]};
-      const node=target.list[target.index];
-      if(!Array.isArray(node.children))node.children=[];
-      node.children.push(name);
-     }else scenes.push(name);
+     if(parentTitle){
+      const i=this.sceneIndex(scenes,parentTitle);
+      if(i<0)throw Error('Cena pai não encontrada.');
+      const end=this.subtreeEnd(scenes,i);
+      scenes.splice(end,0,{title:name,indent:scenes[i].indent+1});
+     }else scenes.push({title:name,indent:0});
     });
     this.openFile(file);
-   }catch(e){new Notice('Não foi possível criar cena: '+e.message);}
+   }catch(e){new Notice('Não foi possível criar a cena: '+e.message);}
   }).open();
  }
- findScene(items,path){
-  if(!Array.isArray(items))return null;
-  for(let i=0;i<items.length;i++){
-   const item=items[i],name=typeof item==='string'?item:String(item?.scene||item?.name||'');
-   const current=path[0];
-   if(name!==current)continue;
-   if(path.length===1)return {list:items,index:i,item};
-   return this.findScene(item?.children,path.slice(1));
-  }
-  return null;
- }
- async reorderScene(project,path,delta){
+ async moveScene(project,title,delta){
   try{await this.changeScenes(project,scenes=>{
-   const found=this.findScene(scenes,path);
-   if(!found)return;
-   const to=found.index+delta;
-   if(to<0||to>=found.list.length)return;
-   found.list.splice(to,0,found.list.splice(found.index,1)[0]);
+   const i=this.sceneIndex(scenes,title);if(i<0)return;
+   const end=this.subtreeEnd(scenes,i),block=scenes.slice(i,end),depth=scenes[i].indent;
+   const siblings=scenes.map((x,j)=>j).filter(j=>scenes[j].indent===depth&&j!==i&&
+     (j===0||scenes.slice(0,j).some(x=>x.indent<depth)||depth===0));
+   let target;
+   if(delta<0){target=siblings.filter(j=>j<i).pop();if(target==null)return;}
+   else{target=siblings.find(j=>j>=end);if(target==null)return;target=this.subtreeEnd(scenes,target);}
+   scenes.splice(i,block.length);
+   const newPos=target>i?target-block.length:target;
+   scenes.splice(newPos,0,...block);
   });}catch(e){new Notice(e.message);}
  }
- async removeSceneFromIndex(project,path){
-  try{await this.updateIndex(project,data=>{
-   const found=this.findScene(data.scenes,path);
-   if(found)found.list.splice(found.index,1);
-  });new Notice('Cena removida apenas do índice; arquivo preservado.');}catch(e){new Notice(e.message);}
+ async indentScene(project,title,delta){
+  try{await this.changeScenes(project,scenes=>{
+   const i=this.sceneIndex(scenes,title);if(i<0)return;
+   const depth=scenes[i].indent,newDepth=depth+delta;
+   if(newDepth<0||newDepth>(i>0?scenes[i-1].indent+1:0))return;
+   if(delta>0&&i>0&&scenes[i-1].indent<depth)return;
+   const end=this.subtreeEnd(scenes,i);
+   for(let j=i;j<end;j++)scenes[j].indent+=delta;
+  });}catch(e){new Notice(e.message);}
+ }
+ async moveSceneBefore(project,source,target){
+  if(source===target)return;
+  try{await this.changeScenes(project,scenes=>{
+   const i=this.sceneIndex(scenes,source),j=this.sceneIndex(scenes,target);
+   if(i<0||j<0)return;
+   const end=this.subtreeEnd(scenes,i);
+   if(j>=i&&j<end)return;
+   const part=scenes.splice(i,end-i);
+   const dest=this.sceneIndex(scenes,target);
+   if(dest<0)return;
+   const shift=scenes[dest].indent-part[0].indent;
+   part.forEach(item=>item.indent=Math.max(0,item.indent+shift));
+   scenes.splice(dest,0,...part);
+  });}catch(e){new Notice(e.message);}
+ }
+ async removeSceneFromIndex(project,title){
+  try{await this.changeScenes(project,scenes=>{
+   const i=this.sceneIndex(scenes,title);if(i<0)return;
+   const depth=scenes[i].indent,end=this.subtreeEnd(scenes,i);
+   scenes.splice(i,1);
+   for(let j=i;j<end-1;j++)scenes[j].indent=Math.max(0,scenes[j].indent-1);
+  });new Notice('Entrada removida do índice. Arquivo e subcapítulos preservados.');}
+  catch(e){new Notice(e.message);}
+ }
+ async renameScene(project,title){
+  new TextPrompt(this.app,'Renomear cena',async raw=>{
+   const name=clean(raw);if(!name||name===title)return;
+   const file=this.resolveScene(project,title);
+   if(!(file instanceof TFile))return new Notice('Arquivo da cena não encontrado.');
+   const newPath=[file.parent?.path,name+'.md'].filter(Boolean).join('/');
+   try{
+    if(this.app.vault.getAbstractFileByPath(newPath))throw Error('Já existe uma cena com esse nome.');
+    await this.app.fileManager.renameFile(file,newPath);
+    await this.changeScenes(project,scenes=>{const i=this.sceneIndex(scenes,title);if(i>=0)scenes[i].title=name;});
+   }catch(e){new Notice('Erro ao renomear cena: '+e.message);}
+  },title).open();
  }
  drawScenes(panel,project){
-  const prefs=this.prefs(project);
-  const draftBar=panel.createDiv({cls:'writer-project-notes-toolbar'});
-  const select=draftBar.createEl('select',{attr:{'aria-label':'Rascunho'}});
+  if(project.format==='single'){
+   panel.createEl('p',{text:'Projeto de nota única.'});
+   panel.createEl('button',{text:'Abrir texto'}).addEventListener('click',()=>this.openFile(project.file));
+   return;
+  }
+  const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  const linked=this.indexes().filter(x=>x.title===project.title&&x.file.path!==project.file.path);
+  if(linked.length){
+   const other=draftBar.createEl('select',{attr:{'aria-label':'Rascunhos Longform existentes'}});
+   other.createEl('option',{text:'Trocar para rascunho Longform...',value:''});
+   for(const d of linked){const o=other.createEl('option',{text:d.draftTitle||d.file.basename});o.value=d.file.path;}
+   other.addEventListener('change',()=>{if(other.value){this.selected=other.value;this.draft='Principal';this.render();}});
+  }
+  const select=draftBar.createEl('select',{attr:{'aria-label':'Rascunho local'}});
   const drafts=['Principal',...Object.keys(prefs.drafts||{})];
-  for(const d of drafts){const o=select.createEl('option',{text:d});o.value=d;}
   if(!drafts.includes(this.draft))this.draft='Principal';
-  select.value=this.draft;
+  for(const d of drafts){const o=select.createEl('option',{text:d});o.value=d;}select.value=this.draft;
   select.addEventListener('change',()=>{this.draft=select.value;this.render();});
-  draftBar.createEl('button',{text:'+ Rascunho'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome do rascunho',async name=>{
+  draftBar.createEl('button',{text:'+ Variante'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome da variante',async name=>{
    name=clean(name);if(!name||name==='Principal'||prefs.drafts[name])return;
-   prefs.drafts[name]=JSON.parse(JSON.stringify(project.scenes));
+   prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
   }).open());
-  if(this.draft!=='Principal')draftBar.createEl('button',{text:'Excluir rascunho'}).addEventListener('click',async()=>{delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();});
+  if(this.draft!=='Principal')draftBar.createEl('button',{text:'Excluir variante'}).addEventListener('click',async()=>{
+   delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();
+  });
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:'+ Cena'}).addEventListener('click',()=>this.addScene(project));
-  const renderItem=(item,parent,path=[],level=0)=>{
-   if(level>25)return;
-   const name=typeof item==='string'?item:String(item?.scene||item?.name||'Cena');
-   const next=[...path,name],row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
-   row.style.paddingLeft=(level*10)+'px';
+  toolbar.createEl('button',{text:'Novo rascunho Longform'}).addEventListener('click',()=>this.createLinkedDraft(project));
+  const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
+  const renderItem=(item,parent,level=0)=>{
+   const name=item.title;
+   const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
+   row.style.paddingLeft=(Math.min(12,level)*10)+'px';
+   row.draggable=true;
+   row.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',name);e.dataTransfer.effectAllowed='move';});
+   row.addEventListener('dragover',e=>{e.preventDefault();row.addClass('writer-project-dragover');});
+   row.addEventListener('dragleave',()=>row.removeClass('writer-project-dragover'));
+   row.addEventListener('drop',e=>{e.preventDefault();row.removeClass('writer-project-dragover');const source=e.dataTransfer.getData('text/plain');if(source)this.moveSceneBefore(project,source,name);});
    const file=this.resolveScene(project,name);
    row.createEl('button',{text:name,cls:'writer-project-scene-title'}).addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
-   for(const [label,fn,title] of [['↑',()=>this.reorderScene(project,next,-1),'Mover para cima'],['↓',()=>this.reorderScene(project,next,1),'Mover para baixo'],['+',()=>this.addScene(project,next),'Novo subcapítulo'],['×',()=>this.removeSceneFromIndex(project,next),'Retirar do índice (não apaga arquivo)']]){
-    const button=row.createEl('button',{text:label,cls:'writer-project-small-button',attr:{'aria-label':title,title}});
-    button.addEventListener('click',fn);
-   }
-   if(Array.isArray(item?.children))for(const child of item.children)renderItem(child,parent,next,level+1);
+   const controls=[['↑',()=>this.moveScene(project,name,-1),'Subir'],['↓',()=>this.moveScene(project,name,1),'Descer'],
+    ['←',()=>this.indentScene(project,name,-1),'Diminuir recuo'],['→',()=>this.indentScene(project,name,1),'Aumentar recuo'],
+    ['+',()=>this.addScene(project,name),'Adicionar subcapítulo'],['⋯',()=>this.renameScene(project,name),'Renomear'],['×',()=>this.removeSceneFromIndex(project,name),'Tirar do índice (sem excluir arquivo)']];
+   for(const [label,fn,title] of controls)row.createEl('button',{text:label,cls:'writer-project-small-button',attr:{title,'aria-label':title}}).addEventListener('click',fn);
+   for(const child of item.children)renderItem(child,parent,level+1);
   };
-  for(const scene of this.activeScenes(project))renderItem(scene,panel);
-  if(!this.activeScenes(project).length)panel.createEl('p',{text:'Nenhuma cena cadastrada. Use + Cena.'});
+  for(const item of tree)renderItem(item,panel);
+  if(!scenes.length)panel.createEl('p',{text:'Nenhuma cena cadastrada. Use + Cena.'});
+ }
+ async createLinkedDraft(project){
+  new TextPrompt(this.app,'Nome do novo rascunho Longform',async raw=>{
+   const name=clean(raw);if(!name)return;
+   const root=[project.file.parent?.path,'Rascunhos',name].filter(Boolean).join('/');
+   const path=[root,'Índice.md'].join('/');
+   try{
+    if(this.app.vault.getAbstractFileByPath(path))throw Error('Esse rascunho já existe.');
+    await this.ensureFolder(root);
+    const scenes=[];
+    for(const entry of this.activeScenes(project)){
+     const file=this.resolveScene(project,entry.title);
+     if(!(file instanceof TFile))continue;
+     const dest=[root,entry.title+'.md'].join('/');
+     if(this.app.vault.getAbstractFileByPath(dest))throw Error('Arquivo de cena já existe: '+entry.title);
+     await this.app.vault.create(dest,await this.app.vault.read(file));
+     scenes.push({...entry});
+    }
+    const payload={longform:{format:'scenes',title:project.title,draftTitle:name,sceneFolder:'/',scenes:lfNestScenes(scenes),ignoredFiles:[]}};
+    const index=await this.app.vault.create(path,'---\n'+stringifyYaml(payload)+'---\n');
+    this.selected=index.path;this.draft='Principal';await this.render();
+    new Notice('Rascunho Longform criado sem alterar o original.');
+   }catch(e){new Notice('Não foi possível criar rascunho: '+e.message);}
+  }).open();
  }
  drawProject(panel,project){
   panel.createEl('h4',{text:project.title});

@@ -4,7 +4,7 @@ const WRITER_V3_DEFAULTS={
  schemaVersion:3,
  complements:{enabled:true,automatic:true,currentFile:true,vault:true,dictionaries:true,internalLinks:true,frontmatter:false,minChars:3,maxResults:8,caseSensitive:false,excludedFolders:'.obsidian,.trash,.note-snapshots,.basic-ai-history',dictionaryPaths:'',useLocalDictionary:false,indexLimit:12000,fileLimit:120000,maxFiles:3000,matchMiddle:false,learnRanking:true,usage:{}},
  variants:{enabled:true,decorate:true,offerInReview:true,snapshotBeforeCommit:true,confirmAll:true,defaultAlternatives:2,aiPrompt:'Suggest 3 stylistically distinct, natural rewrites of the passage in the original language. Preserve meaning, voice, tense and Markdown. Return only the alternatives, one per line, without numbering. Passage:'},
- snapshots:{enabled:true,store:'.basic-ai-history',automatic:false,autoDelaySeconds:300,includeAttachments:false,snapshotBeforeRewrite:true,snapshotBeforeRestore:true,maxPerNote:100,retentionDays:0,identityMap:{},showDiffContext:3}
+ snapshots:{enabled:true,store:'.basic-ai-history',automatic:false,autoDelaySeconds:300,includeAttachments:false,snapshotBeforeRewrite:true,snapshotBeforeRestore:true,maxPerNote:0,retentionDays:0,identityMap:{},showDiffContext:3}
 };
 function writerMergeV3(settings){
  const base=settings&&typeof settings==='object'?settings:{};
@@ -71,7 +71,9 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
  if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<from)throw Error('Intervalo inválido.');
  const editor=writerActiveEditor(plugin,file),text=editor?editor.getValue():await plugin.app.vault.read(file);
  if(to>text.length||text.slice(from,to)!==expected)throw Error('A nota mudou depois da sugestão. Refaça a operação.');
- if(plugin.settings.snapshots?.enabled&&plugin.settings.snapshots?.snapshotBeforeRewrite!==false&&plugin.writerSnapshots){
+ const committing=reason.includes('confirmar variante')||reason.includes('confirmar todas as variantes');
+ const shouldSnapshot=committing?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
+ if(plugin.settings.snapshots?.enabled&&shouldSnapshot&&plugin.writerSnapshots){
   await plugin.writerSnapshots.create(file,'Antes de '+reason,{content:text});
  }
  const next=text.slice(0,from)+replacement+text.slice(to);

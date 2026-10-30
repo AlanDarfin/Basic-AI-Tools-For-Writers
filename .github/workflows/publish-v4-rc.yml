@@ -28,6 +28,7 @@ jobs:
             if(!content.includes(name))throw Error('RC missing required feature: '+name);
           }
           NODE
+      # Publish only a prerelease after a complete, passing automated suite.
       - name: Package installable release candidate and SHA256
         run: |
           set -euo pipefail

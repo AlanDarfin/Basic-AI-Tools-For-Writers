@@ -79,7 +79,7 @@ function lfWordCount(text){
 }
 function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft=lfMsg("Principal","Main");this.workflow='Padrão';this.renderToken=0;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return 'Projetos de escrita';}
  getIcon(){return 'notebook-pen';}
@@ -109,7 +109,7 @@ class ProjectsView extends ItemView{
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
   if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
-  if(this.lastSelected!==this.selected){this.draft=lfMsg("Principal","Main");this.workflowDraft=null;}
+  if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
   this.lastSelected=this.selected;
   selector.value=this.selected;
   selector.addEventListener('change',()=>{this.selected=selector.value;this.render();});
@@ -172,9 +172,9 @@ class ProjectsView extends ItemView{
   await this.render();
  }
  sceneList(project){return lfFlattenScenes(project.scenes);}
- activeScenes(project){return this.draft===lfMsg("Principal","Main")?this.sceneList(project):(this.prefs(project).drafts[this.draft]||this.sceneList(project));}
+ activeScenes(project){return this.draft==='Principal'?this.sceneList(project):(this.prefs(project).drafts[this.draft]||this.sceneList(project));}
  async changeScenes(project,change){
-  if(this.draft===lfMsg("Principal","Main"))return this.updateIndex(project,data=>{
+  if(this.draft==='Principal')return this.updateIndex(project,data=>{
    const flat=lfFlattenScenes(data.scenes||[]);
    change(flat);
    data.scenes=lfNestScenes(flat);
@@ -287,20 +287,20 @@ class ProjectsView extends ItemView{
    const other=draftBar.createEl('select',{attr:{'aria-label':'Rascunhos Longform existentes'}});
    other.createEl('option',{text:'Trocar para rascunho Longform...',value:''});
    for(const d of linked){const o=other.createEl('option',{text:d.draftTitle||d.file.basename});o.value=d.file.path;}
-   other.addEventListener('change',()=>{if(other.value){this.selected=other.value;this.draft=lfMsg("Principal","Main");this.render();}});
+   other.addEventListener('change',()=>{if(other.value){this.selected=other.value;this.draft='Principal';this.render();}});
   }
   const select=draftBar.createEl('select',{attr:{'aria-label':'Rascunho local'}});
-  const drafts=[lfMsg("Principal","Main"),...Object.keys(prefs.drafts||{})];
-  if(!drafts.includes(this.draft))this.draft=lfMsg("Principal","Main");
+  const drafts=['Principal',...Object.keys(prefs.drafts||{})];
+  if(!drafts.includes(this.draft))this.draft='Principal';
   for(const d of drafts){const o=select.createEl('option',{text:d});o.value=d;}select.value=this.draft;
   select.addEventListener('change',()=>{this.draft=select.value;this.render();});
   draftBar.createEl('button',{text:'+ Variante'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome da variante',async name=>{
-   name=clean(name);if(!name||name===lfMsg("Principal","Main")||prefs.drafts[name])return;
+   name=clean(name);if(!name||name==='Principal'||prefs.drafts[name])return;
    prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
   }).open());
-  if(this.draft!==lfMsg("Principal","Main"))draftBar.createEl('button',{text:lfMsg("Excluir variante","Delete variant")}).addEventListener('click',async()=>{
-   delete prefs.drafts[this.draft];this.draft=lfMsg("Principal","Main");await this.savePrefs();
+  if(this.draft!=='Principal')draftBar.createEl('button',{text:lfMsg("Excluir variante","Delete variant")}).addEventListener('click',async()=>{
+   delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();
   });
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
@@ -359,7 +359,7 @@ class ProjectsView extends ItemView{
     }
     const payload={longform:{format:'scenes',title:project.title,draftTitle:name,sceneFolder:'/',scenes:lfNestScenes(scenes),ignoredFiles:[]}};
     const index=await this.app.vault.create(path,'---\n'+stringifyYaml(payload)+'---\n');
-    this.selected=index.path;this.draft=lfMsg("Principal","Main");await this.render();this.queueRender();
+    this.selected=index.path;this.draft='Principal';await this.render();this.queueRender();
     new Notice(lfMsg("Rascunho Longform criado sem alterar o original.","Longform draft created without changing the original."));
    }catch(e){new Notice(lfMsg("Não foi possível criar rascunho: ","Could not create draft: ")+e.message);}
   }).open();
@@ -748,7 +748,7 @@ class ProjectsView extends ItemView{
      const data={format,title,sceneFolder:'/',scenes:[],ignoredFiles:[]};
      if(format==='single'){delete data.sceneFolder;delete data.scenes;delete data.ignoredFiles;}
      const file=await this.app.vault.create(path,'---\n'+stringifyYaml({longform:data})+'---\n\n');
-     modal.close();this.selected=file.path;this.draft=lfMsg("Principal","Main");await this.render();this.queueRender();this.openFile(file);
+     modal.close();this.selected=file.path;this.draft='Principal';await this.render();this.queueRender();this.openFile(file);
     }catch(e){new Notice(e.message,7000);}
    }));
   };

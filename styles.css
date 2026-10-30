@@ -1454,3 +1454,42 @@ body.writer-v4-typewriter-focus .cm-editor .cm-activeLine{opacity:1}
   justify-content:flex-start;
  }
 }
+
+/* v4 beta.4 — hierarchy indication inside compact Longform scene rows.
+   Only the title is indented, so controls/grip remain consistently aligned. */
+.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+ display:block!important;
+ padding-inline-start:calc(4px + var(--writer-scene-indent,0px))!important;
+ text-align:start!important;
+ min-width:0!important;
+ white-space:normal!important;
+ overflow-wrap:anywhere!important;
+}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions[data-depth]:not([data-depth="0"])>.writer-project-scene-title{
+ box-shadow:inset 2px 0 var(--interactive-accent);
+ border-radius:var(--radius-s);
+ background:var(--background-secondary);
+}
+.writer-project-scene-depth-mark{
+ display:inline-flex;align-items:center;justify-content:center;
+ margin-inline-end:7px;
+ min-width:21px;min-height:21px;
+ padding-inline:3px;
+ border-radius:5px;
+ color:var(--text-accent);
+ background:var(--background-modifier-hover);
+ font-size:var(--font-ui-smaller);
+ line-height:1.2;
+ vertical-align:baseline;
+ font-weight:700;
+ white-space:nowrap;
+}
+.writer-project-scene-title-text{display:inline;overflow-wrap:anywhere}
+.writer-project-panel .writer-project-scene.writer-project-scene-actions.writer-project-scene-has-children>.writer-project-scene-title{
+ font-weight:600;
+}
+@media(max-width:380px){
+ .writer-project-scene-depth-mark{margin-inline-end:4px;min-width:18px;font-size:var(--font-smallest)}
+}
+/* Mobile toolbar in native mode must not add a second floating row. */
+body.is-mobile .writer-v4-floating-toolbar:not(.writer-v4-toolbar-mobile){display:none}

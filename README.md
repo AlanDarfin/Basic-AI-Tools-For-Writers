@@ -141,3 +141,25 @@ New command-palette entries: **Abrir projetos de escrita** and **Abrir notas do 
 The **Projetos de escrita** panel now supports creating Markdown scenes, adding nested subchapters, moving scenes up/down in their lists, and removing scenes from the index without deleting files. The **Projeto** tab can edit project title and scene folder and save a word-count goal. **Rascunhos** are alternate scene-order structures stored in the Basic AI plugin settings, leaving the original Longform index intact. **Compilar** offers YAML stripping, wikilink conversion, separators, and named workflow presets, exporting to a new Markdown note. **Notas** continues to support nested folders and Markdown notes.
 
 **Compatibility and limitations:** Longform index metadata is recognized and the primary scene tree can be edited through Obsidian's frontmatter processor. The imported Longform project is not automatically migrated; there is no full bidirectional synchronization of Longform-specific drafts, custom workflow steps, template expansion, drag-and-drop or every Longform metadata variant. Always back up your vault before editing existing Longform projects. No device-level Obsidian Mobile integration tests have been performed.
+
+## 2.0.0-beta.1 — Writing project workspace (experimental)
+
+The plugin now includes a dedicated project sidebar with **Cenas, Projeto, Compilar, Notas**. Open it from the ribbon or the command palette. Existing Longform projects with 'longform' YAML frontmatter are discovered automatically, including multi-scene and single-scene projects.
+
+**Cenas:** Correctly parses and writes native Longform nested scene arrays, not unsupported scene objects. Create scenes, nested subchapters, rename, remove from the index without deleting Markdown, reorder with desktop drag-and-drop or mobile-friendly ↑ ↓ ← → controls, and create scenes using a configured scene template. Alternate local scene orders are supported, as are linked Longform drafts (new draft creates a separate index and copies scene files).
+
+**Projeto:** Edit project title and scene folder; project word counts and goals, daily goal and a saved-file-based writing-session counter. Diagnostics list missing and unindexed scenes; adopting unindexed scenes requires confirmation.
+
+**Compilar:** Built-in steps: strip-frontmatter, remove-links, remove-comments, remove-strikethroughs, prepend-title (including hierarchical numbering), concatenate-text, add-frontmatter, and write-to-note. Reorder/add/remove/configure steps, save named presets, import workflows from the installed Longform plugin or pasted data.json. **Prévia** does not write files. Compiling refuses unsafe output paths and never overwrites the index, original scenes or an existing manuscript; it creates a uniquely named output. Imported third-party JavaScript workflow steps remain visible as metadata, but are **not executed**.
+
+**Notas:** A separate _Notas directory per project, nested named folders, quick notes, search, rename, move between note folders, send to Obsidian Trash with confirmation, and review a note using the existing Basic AI tools. Notes are not compiled.
+
+**Safety and migration:** Back up your vault before beta testing. An index backup is created on first edit per session under _Backups as a .txt snapshot (to avoid registering a duplicate Longform project). Existing 1.8.x compilation presets are migrated to the step-based configuration on use. Do not edit the same index simultaneously with both Longform and Basic AI until compatibility has been confirmed.
+
+**Limitations:** This is not a promise of 100% Longform parity. User-script execution, some advanced third-party workflow steps and edge-case templates are not supported. Writing sessions use saved-file deltas rather than tracking every keystroke; Android runtime validation remains necessary.
+
+**Commands:** Abrir projetos de escrita; Criar projeto de escrita; Criar cena no projeto; Abrir notas do projeto; Criar nota rápida do projeto; Abrir compilação do projeto; Iniciar sessão de escrita; Encerrar sessão de escrita.
+
+**Maintenance:** The project manager source is projects.js. It is inlined into main.js for normal Obsidian installation using the command: node scripts/sync-projects.js. Run node scripts/sync-projects.js --check and node tests/projects.test.js before releasing.
+
+Inspired by the open-source [Longform project](https://github.com/kevboh/longform), using a separately implemented, compatible data model.

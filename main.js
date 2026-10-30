@@ -3510,7 +3510,7 @@ class DictionaryView extends ItemView{
   this.reviewMode=reviewControls.createEl('select',{attr:{'aria-label':msg('Modo de revisão','Review mode')}});
   for(const [id,label] of [['grammar',msg('Gramática (LanguageTool)','Grammar (LanguageTool)')],['style',msg('Estilo e fluidez (IA)','Style and flow (AI)')],['beta',msg('Leitor beta (IA)','Beta reader (AI)')]]){const opt=this.reviewMode.createEl('option',{text:label});opt.value=id;}
   this.reviewMode.value=this.plugin.settings.reviewMode||'grammar';
-  this.reviewMode.addEventListener('change',()=>{this.plugin.settings.reviewMode=this.reviewMode.value;this.plugin.saveSettings();});
+  this.reviewMode.addEventListener('change',()=>{this.plugin.settings.reviewMode=this.reviewMode.value;this.plugin.saveSettings();if(this.reviewMode.value==='grammar'&&this.reviewFilePath){const file=this.app.vault.getAbstractFileByPath(this.reviewFilePath);if(file)this.plugin.autoGrammar?.schedule(file);}});
   const reviewButtons=review.createDiv({cls:'writer-file-actions'});
   reviewButtons.createEl('button',{text:msg('Revisar nota ativa','Review active note')}).addEventListener('click',()=>this.reviewActiveFile());
   reviewButtons.createEl('button',{text:msg('Escolher arquivo','Choose file')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
@@ -3591,23 +3591,34 @@ class DictionaryView extends ItemView{
   if(!(file instanceof TFile)||file.extension!=='md')return new Notice(msg('Abra uma nota Markdown ou escolha um arquivo.','Open a Markdown note or choose a file.'));
   await this.reviewFile(file);
  }
- async reviewFile(file){
+ async reviewFile(file,{automatic=false}={}){
   if(this.reviewBusy)return;
   if(!(file instanceof TFile)||file.extension!=='md')return;
-  this.reviewBusy=true;this.reviewResults.empty();this.reviewStatus.setText(msg('Analisando ','Analyzing ')+file.path+'…');
+  this.reviewBusy=true;if(!automatic)this.reviewResults.empty();this.reviewStatus.setText((automatic?msg('Atualizando gramática de ','Updating grammar for '):msg('Analisando ','Analyzing '))+file.path+'…');
   try{
-    const source=await this.app.vault.read(file);
+    const source=await writerCurrentText(this.plugin,file);
     this.reviewFilePath=file.path;
     this.reviewSource=source;
     if(this.reviewMode.value==='grammar'){
       const grammarText=prepareGrammarText(source);
-      const rawMatches=await this.plugin.checkGrammar(grammarText);
+      const editor=writerActiveEditor(this.plugin,file);
+      const offset=editor?.posToOffset?.(editor.getCursor?.())||0;
+      const window=writerAutoGrammarWindow(grammarText,offset,automatic?(this.plugin.settings.autoGrammar?.maxWindowChars||12000):16000);
+      const rawMatches=await this.plugin.checkGrammar(window.text);
+      // Never publish stale matches from a request that finished after the edit.
+      if(source!==await writerCurrentText(this.plugin,file)){
+       this.reviewStatus.setText(msg('Nota alterada durante a análise; atualizando…','Note changed during review; refreshing…'));
+       this.plugin.autoGrammar?.schedule(file);return;
+      }
+      if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode.value!=='grammar')return;
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
-      const matches=rawMatches.filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+      const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
+       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+      this.reviewResults.empty();
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.plugin.showReviewMarks(file,matches);
-      this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found'));
+      this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found')+(window.partial?msg(' (trecho próximo ao cursor)',' (near cursor)'):''));
       if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
       for(const match of matches)this.renderGrammarSuggestion(file,source,match);
     }else{
@@ -3620,7 +3631,10 @@ class DictionaryView extends ItemView{
       card.createEl('button',{text:msg('Discutir no chat','Discuss in chat')}).addEventListener('click',()=>this.reviewToChat(file,source.slice(0,3500),result));
     }
   }catch(e){this.reviewStatus.setText(msg('Falha: ','Failed: ')+(e.message||String(e)));}
-  finally{this.reviewBusy=false;}
+  finally{
+   this.reviewBusy=false;
+   if(this.plugin.autoGrammar?.pendingPath===file.path&&!this.plugin.autoGrammar.timer)this.plugin.autoGrammar.schedule(file);
+  }
  }
  renderGrammarSuggestion(file,source,match,target=this.reviewResults){
   const start=match.offset,end=start+match.length;
@@ -3748,6 +3762,17 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='review'){
       panel.createEl('h3',{text:msg('LanguageTool e comportamento da revisão','LanguageTool and review behavior')});
       panel.createEl('p',{text:msg('As correções são sugestões: o arquivo só muda quando você aceita uma alteração.','Corrections are suggestions: the file changes only when you accept a change.'),cls:'dictionary-muted'});
+      new Setting(panel).setName(msg('Verificação automática do LanguageTool','Automatic LanguageTool check'))
+       .setDesc(msg('Com a aba Revisão aberta, verifica a nota após uma pausa na digitação. O texto é enviado ao endpoint configurado.','While the Review tab is open, checks after a typing pause. Text is sent to the configured endpoint.'))
+       .addToggle(t=>t.setValue(this.plugin.settings.autoGrammar?.enabled!==false).onChange(async v=>{
+        this.plugin.settings.autoGrammar.enabled=v;
+        if(!v){this.plugin.autoGrammar.pendingPath=null;clearTimeout(this.plugin.autoGrammar.timer);}
+        await this.plugin.saveSettings();
+       }));
+      new Setting(panel).setName(msg('Pausa antes da verificação','Pause before checking'))
+       .setDesc(msg('Intervalo de 2 a 15 segundos. O plugin também respeita pelo menos 9 segundos entre requisições.','2–15 seconds; requests are also spaced at least 9 seconds apart.'))
+       .addSlider(t=>t.setLimits(2,15,1).setDynamicTooltip().setValue(Math.round((this.plugin.settings.autoGrammar?.delayMs||3500)/1000))
+        .onChange(async v=>{this.plugin.settings.autoGrammar.delayMs=v*1000;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Idioma da revisão','Review language')).addDropdown(d=>{
         for(const [code,label] of [['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es','Español'],['fr','Français'],['de-DE','Deutsch'],['auto','Auto']])d.addOption(code,label);
         d.setValue(this.plugin.settings.reviewLanguage||'pt-BR').onChange(async v=>{this.plugin.settings.reviewLanguage=v;await this.plugin.saveSettings();});
@@ -3876,6 +3901,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerFinalMerge(this);
     writerV4Merge(this.settings);
     writerV4ExtraMerge(this.settings);
+    writerAutoGrammarSettings(this.settings);
+    this.autoGrammar=new WriterAutoGrammar(this);
+    this.autoGrammar.register();
     this.writerSnapshots=new WriterSnapshots(this);
     this.writerVariants=new WriterVariants(this);
     this.writerComplements=new WriterComplements(this);

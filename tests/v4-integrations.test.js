@@ -42,7 +42,11 @@ check('typewriter state can be toggled independently of comments and prompts',()
  assert.equal(instance.config.typewriter.enabled,false);
  assert.ok(instance.config.wordwise.prompts.grammar);
 });
-const projects=require('../projects.js');
+const projectSource=fs.readFileSync('projects.js','utf8');
+const projects=vm.runInNewContext(projectSource+'\nmodule.exports',{
+ module:{exports:{}},require:()=>({ItemView:class{},TFile:class{},TFolder:class{},Notice:class{},Modal:class{},Menu:class{},Setting:class{},parseYaml:()=>({}),stringifyYaml:()=>''}),
+ console,setTimeout,clearTimeout
+});
 async function asyncChecks(){
  const mk=(arr)=>arr.map(([title,indent])=>({title,indent}));
  const view=Object.create(projects.ProjectsView.prototype);
@@ -52,7 +56,7 @@ async function asyncChecks(){
  await view.moveSceneRelative(project,'A','B',true);
  assert.deepEqual(view.scenes.map(x=>x.title),['B','A','A1','C']);
  total++;console.log('PASS Longform moves a subtree after a sibling');
- await view.moveSceneRelative(project,'B','A1',false);
+ await view.moveSceneRelative(project,'A','A1',false);
  assert.deepEqual(view.scenes.map(x=>x.title),['B','A','A1','C']);
  total++;console.log('PASS Longform blocks moving a parent into its descendant');
  const longform=fs.readFileSync('projects.js','utf8');

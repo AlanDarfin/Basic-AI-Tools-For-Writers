@@ -101,3 +101,15 @@ Only the **currently open editor** for the selected note can display inline mark
 Fixes review cards collapsing into thin rows in Obsidian Mobile: cards now keep their natural height and the review pane scrolls vertically. Context and explanations are expandable per finding, with the replacement selector and actions always accessible. The editor's CodeMirror marks remain non-destructive.
 
 The LanguageTool request now masks YAML frontmatter, fenced code, embedded images, wiki links and Markdown syntax while preserving character offsets. Whitespace-only and selected formatting-only matches are filtered to reduce false positives caused by Markdown indentation, paragraph breaks and formatting. Genuine spacing issues may be filtered as a trade-off. The original note remains unchanged until the user accepts a suggestion.
+
+## 1.5.0 — Reviewer configuration and Obsidian commands
+
+Settings are grouped by workflow: **General**, **Dictionary**, **Translation**, **Chat**, **Review**, **AI Reviewers**, **APIs**, **Models**, and **Prompts**. The settings tabs are horizontally scrollable on mobile and the last selected tab stays open during the current settings session.
+
+**Review**: LanguageTool language, review mode, open the selected note in an editor for CodeMirror highlights, ignore whitespace warnings, comma-separated rule IDs to ignore, HTTPS LanguageTool endpoint and optional API key.
+
+**AI Reviewers**: optional independent AI provider and model (otherwise inherits Chat), character budget (1,000–28,000), editorial profile, and three editable prompts for **style review**, **beta reading**, and **grammar explanations**. Empty prompt fields use built-in defaults. These options do not automatically change the Markdown file.
+
+**New command palette actions**: open definitions, open translation, open writing review, review active note grammar, review active note style, beta read active note, review a chosen vault Markdown file, translate a vault Markdown file, and attach a Markdown file to chat. The ribbon icon tooltip and the primary open command now use **Basic AI Tool for Writers**.
+
+**Privacy:** Review and attachment content is sent to your selected external providers. Keep API keys private. The public LanguageTool API has usage limits.

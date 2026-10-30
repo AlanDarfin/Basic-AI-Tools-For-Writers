@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "3.0.0-beta.3",
+  "version": "4.0.0-beta.1",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Writing workspace for Obsidian: AI chat, dictionary, translation, grammar review, Longform-style projects, offline autocomplete, text variants and local note snapshots.",
+  "description": "Obsidian writing workspace: dictionary, AI chat, translation, LanguageTool, Longform projects and tasks, offline autocomplete, variants, snapshots, Unicode, TOC, abbreviations, note templates and TTS.",
   "isDesktopOnly": false
 }

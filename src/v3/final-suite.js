@@ -30,13 +30,13 @@ function writerFinalMerge(plugin){
  return current;
 }
 class WriterFinalFeatures{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=null;this.edgePlayer=null;this.ttsStatus='idle';this.ttsMessage='';}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsStatus='idle';this.ttsMessage='';}
  get cfg(){return this.plugin.settings.finalSuite;}
  register(){
   const p=this.plugin;
   p.registerEvent(p.app.workspace.on('layout-change',()=>this.refreshNames()));
   if(p.app.metadataCache?.on)p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
-  p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
+  p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.lastFile=file;this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
   p.registerEvent(p.app.vault.on('create',file=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplate(file).catch(e=>console.warn('[Basic AI] template:',e));}));
   p.registerEvent(p.app.vault.on('rename',(file,oldPath)=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplateOnRename(file,oldPath).catch(e=>console.warn('[Basic AI] template rename:',e));}));
   if(EditorView.updateListener?.of)p.registerEditorExtension(EditorView.updateListener.of(update=>{
@@ -472,10 +472,20 @@ class WriterFinalFeatures{
  async speakActive(){
   const cfg=this.cfg.tts;
   if(!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
-  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-  if(!view)return new Notice('Open a Markdown note.');
-  const selected=view.editor.getSelection();
-  const raw=selected&&cfg.readSelection?selected:view.editor.getValue();
+  // On Android, tapping a sidebar button often makes the sidebar the active leaf.
+  // Find the last markdown editor before falling back to the vault note on disk.
+  const workspace=this.plugin.app.workspace;
+  const file=workspace.getActiveFile?.()||this.lastFile;
+  const leaves=workspace.getLeavesOfType?.('markdown')||[];
+  const view=workspace.getActiveViewOfType(MarkdownView)
+   ||leaves.find(leaf=>leaf.view?.file?.path===file?.path&&leaf.view?.editor)?.view
+   ||leaves.find(leaf=>leaf.view?.file?.extension==='md'&&leaf.view?.editor)?.view;
+  const note= view?.file||file;
+  if(!note||note.extension!=='md')return new Notice('Open a Markdown note.');
+  this.lastFile=note;
+  const selected=view?.editor?.getSelection?.()||'';
+  const raw=selected&&cfg.readSelection?selected:
+    (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
   const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice('No readable text.');

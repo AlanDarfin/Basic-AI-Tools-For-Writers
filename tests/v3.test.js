@@ -9,6 +9,28 @@ class TFile{
 class TFolder{}
 class Empty{}
 class EditorSuggest{constructor(app){this.app=app;}}
+class FakeMenu {
+ constructor(){this.items=[];this.visible=false;}
+ addItem(configure){
+  const item={
+   title:null,label:false,icon:null,handler:null,
+   setTitle(x){this.title=x;return this;},
+   setIsLabel(value){this.label=value;return this;},
+   setIcon(icon){this.icon=icon;return this;},
+   onClick(callback){this.handler=callback;return this;}
+  };
+  configure(item);this.items.push(item);return this;
+ }
+ addSeparator(){this.items.push({separator:true});return this;}
+ showAtPosition(p){this.visible=true;this.position=p;return this;}
+ showAtMouseEvent(e){this.visible=true;this.event=e;return this;}
+ close(){this.visible=false;this.onHide?.();}
+}
+const fakeDocument={
+ createDocumentFragment:()=>({children:[],appendChild(child){this.children.push(child);}}),
+ createElement:tag=>({tag,className:'',textContent:'',children:[],appendChild(child){this.children.push(child);}})
+};
+
 class FakePlugin{
  constructor(){this.app=makeApp();this.manifest={id:'basic-ai-tool-for-writers',dir:'.obsidian/plugins/basic-ai-tool-for-writers'};this.registrations=[];}
  registerEditorExtension(){this.registrations.push('editor');}
@@ -43,7 +65,7 @@ function makeApp(){
  metadataCache:{getFileCache:()=>({frontmatter:{}}),getFirstLinkpathDest:()=>null}};
  return app;
 }
-const O={Plugin:FakePlugin,ItemView:Empty,PluginSettingTab:Empty,Setting:Empty,Notice:Empty,MarkdownRenderer:Empty,MarkdownView:Empty,TFile,TFolder,Modal:Empty,FuzzySuggestModal:Empty,EditorSuggest,requestUrl:async()=>{},parseYaml:()=>({}),stringifyYaml:()=>''};
+const O={Plugin:FakePlugin,ItemView:Empty,PluginSettingTab:Empty,Setting:Empty,Notice:Empty,MarkdownRenderer:Empty,MarkdownView:Empty,TFile,TFolder,Modal:Empty,FuzzySuggestModal:Empty,EditorSuggest,Menu:FakeMenu,requestUrl:async()=>{},parseYaml:()=>({}),stringifyYaml:()=>''};
 const S={StateField:{define:()=>({})},StateEffect:{define:()=>({of:x=>x})}};
 const V={Decoration:{none:{map:()=>({})},set:()=>({}),mark:()=>({range:()=>({})})},EditorView:{decorations:{from:()=>({})}},ViewPlugin:{fromClass:()=>({})}};
 const getRequire=name=>name==='obsidian'?O:name==='@codemirror/state'?S:name==='@codemirror/view'?V:(()=>{throw Error('unknown import: '+name)})();
@@ -134,7 +156,7 @@ async function run(){
  assert.ok(results.some(r=>r.word.toLowerCase()==='personagem'));
  console.log('PASS','autocomplete returns current-file terms');tests++;
  const module={exports:{}};
- vm.runInNewContext(fs.readFileSync('main.js','utf8')+'\nmodule.exports.__test={prepareGrammarText};',{require:getRequire,module,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
+ vm.runInNewContext(fs.readFileSync('main.js','utf8')+'\nmodule.exports.__test={prepareGrammarText,writerGrammarSeverity};',{require:getRequire,module,console,setTimeout,clearTimeout,crypto:crypto.webcrypto,document:fakeDocument,window:{innerWidth:800,innerHeight:700}});
  const rawItalic='_Não morre..._';
  const checked=module.exports.__test.prepareGrammarText(rawItalic);
  assert.equal(checked.length,rawItalic.length);
@@ -147,6 +169,30 @@ async function run(){
  assert.ok(entry.registrations.includes('view:basic-ai-writing-tools'));
  assert.ok(entry.registrations.includes('suggest'));
  assert.ok(entry.registrations.includes('command:open-note-snapshots'));
+ const finding={
+  offset:0,length:3,message:'Possível erro de escrita',
+  rule:{id:'SOME_RULE',description:'Possível erro',category:{id:'TYPOS',name:'Ortografia'}},
+  replacements:[{value:'Era'},{value:'Está'}]
+ };
+ assert.equal(module.exports.__test.writerGrammarSeverity(finding),'major');
+ const menu=entry.showReviewSuggestionMenu(new TFile('Book/Chapter.md'),'Ero',finding,{position:{x:80,y:120}});
+ assert.ok(menu instanceof FakeMenu);
+ assert.deepEqual(menu.position,{x:80,y:120});
+ assert.ok(menu.items.some(x=>x.label));
+ assert.ok(menu.items.some(x=>x.title==='Era'));
+ assert.ok(menu.items.some(x=>x.title==='Está'));
+ assert.ok(menu.items.some(x=>x.title==='Criar variante'));
+ assert.ok(menu.items.some(x=>x.title==='Ignorar esta regra'));
+ assert.ok(menu.items.some(x=>x.title==='Explicar com IA'));
+ menu.close();
+ assert.equal(entry.reviewPopupKey,null);
+ console.log('PASS','Native LanguageTool-style menu shows actions and clears after closing');tests++;
+ const css=fs.readFileSync('styles.css','utf8');
+ assert.ok(css.includes('container:writer-sidebar / inline-size'));
+ assert.ok(css.includes('@container writer-sidebar (max-width:360px)'));
+ assert.ok(css.includes('writer-lt-result-actions'));
+ assert.ok(css.includes('writer-lt-menu-info'));
+ console.log('PASS','Responsive sidebar and menu styles present');tests++;
  console.log('PASS','real bundle registers all modules and commands without missing globals');tests++;
  console.log(tests+' v3 tests passed.');
 }

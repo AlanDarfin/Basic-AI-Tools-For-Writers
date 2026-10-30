@@ -1,4 +1,4 @@
-name: Publish v3 prerelease
+name: Publish v4 prerelease
 on:
   push:
     branches: [main]
@@ -16,10 +16,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Check v3
+      - name: Check v4
         run: npm run check
       - name: Validate prerelease version
-        run: node -e "const m=require('./manifest.json');if(!/^3\.0\.0-beta\.\d+$/.test(m.version))process.exit(1)"
+        run: node -e "const m=require('./manifest.json');if(!/^4\.0\.0-beta\.\d+$/.test(m.version))process.exit(1)"
       - name: Build and fingerprint
         run: |
           version=$(node -p "require('./manifest.json').version")
@@ -37,4 +37,4 @@ jobs:
           fi
           gh release create "$version" main.js manifest.json styles.css "basic-ai-tool-for-writers-${version}.zip" SHA256SUMS.txt THIRD_PARTY_NOTICES.md \
             --target "$GITHUB_SHA" --prerelease --title "Basic AI Tool for Writers $version" \
-            --notes "V3 preview: local autocomplete, inline writing variants, safe per-note snapshots, project workspace, writing review and AI integrations. Includes new settings and migration backup. Manual Android testing required before stable."
+            --notes "V4 preview: local autocomplete, inline writing variants, safe per-note snapshots, project workspace, writing review and AI integrations. Includes new settings and migration backup. Manual Android testing required before stable."

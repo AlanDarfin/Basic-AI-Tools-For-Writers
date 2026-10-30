@@ -1,6 +1,18 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.1** (development branch). Not a stable release.
+Status: **4.0.0-beta.2** (development branch). Not a stable release.
+
+
+## Beta.2 — integrated writing workspace
+
+- Longform chapter reordering supports desktop HTML drag/drop (before or after) and an accessible two-tap handle flow for touch devices. Up/down buttons remain available. The vertical scrollbar position now persists across rerenders and chapter index writes.
+- Android TTS resolves the most recently opened Markdown editor and falls back to reading the actual vault file when a sidebar has focus.
+- A **Comments** tab in Longform stores selected-text comments per chapter locally, including jump-to-passage, resolve/reopen and delete. Comments follow a note when it is renamed. This is a native Basic AI implementation, not the Document Comments plugin's full inline margin UI.
+- A note **Mention** suggester uses configurable trigger/folder/link mode; it supports explicit note creation after confirmation.
+- A contextual **Editing toolbar** formats selected text with Markdown; a **Writing actions** menu provides AI-based improvement, expansion, shortening, simplification, dialogue, tone, grammar, critique and brainstorming. Proposals are reviewed before application using selective Diff.
+- **Typewriter mode** centers the cursor while composing and optionally dims surrounding lines, all independently configurable.
+
+The new tools live under **Settings → Integrated tools**. The comments UI lives inside the Longform Projects panel. This is an original implementation with distinct behavior from the referenced third-party plugins.
 
 ## Highlights
 

@@ -113,3 +113,7 @@ Settings are grouped by workflow: **General**, **Dictionary**, **Translation**, 
 **New command palette actions**: open definitions, open translation, open writing review, review active note grammar, review active note style, beta read active note, review a chosen vault Markdown file, translate a vault Markdown file, and attach a Markdown file to chat. The ribbon icon tooltip and the primary open command now use **Basic AI Tool for Writers**.
 
 **Privacy:** Review and attachment content is sent to your selected external providers. Keep API keys private. The public LanguageTool API has usage limits.
+
+## 1.5.1 — Review paragraph context and jump to error
+
+LanguageTool suggestion cards now display the **paragraph containing the finding**, rather than an arbitrary 65-character excerpt on either side. Paragraphs are determined by blank lines in the original Markdown. Each card includes a **Go to error** action, which opens or focuses the appropriate Markdown editor, selects the matched text, and scrolls it into view without changing the note. Accept and Ignore remain separate actions.

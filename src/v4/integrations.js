@@ -2,7 +2,7 @@
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  toolbar:{enabled:true,mobileMode:'native'},
+  toolbar:{enabled:true,mobileMode:'floating'},
   typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
@@ -27,7 +27,13 @@ function writerV4ExtraMerge(settings){
    prompts:{...WRITER_V4_EXTRA_DEFAULTS.wordwise.prompts,...(old.wordwise?.prompts||{})}},
   comments:old.comments&&typeof old.comments==='object'&&!Array.isArray(old.comments)?old.comments:{}
  };
- if(!['native','floating'].includes(cfg.toolbar.mobileMode))cfg.toolbar.mobileMode='native';
+ if(!['native','floating'].includes(cfg.toolbar.mobileMode))cfg.toolbar.mobileMode='floating';
+  // v4.4 selected native-only by default, hiding the plugin toolbar unless
+  // the user manually added its command. Migrate that default only once.
+  if(!cfg.toolbar.mobileModeConfirmed){
+   if(cfg.toolbar.mobileMode==='native')cfg.toolbar.mobileMode='floating';
+   cfg.toolbar.mobileModeConfirmed=true;
+  }
  cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
  cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
  return cfg;
@@ -402,10 +408,10 @@ class WriterV4Extras{
   });
   toggle('toolbar','enabled',writerUi('Barra de edição na seleção','Selection editing toolbar'));
   new Setting(panel).setName(writerUi('Toolbar no Android','Android toolbar'))
-   .setDesc(writerUi('Recomendado: use a barra nativa do Obsidian e adicione o comando Basic AI: Barra de edição nas configurações da barra móvel. A flutuante é opcional.','Recommended: use Obsidian’s native mobile toolbar and add the Basic AI editing toolbar command in mobile toolbar settings. The floating toolbar is optional.'))
-   .addDropdown(d=>d.addOption('native',writerUi('Nativa (recomendado)','Native (recommended)'))
-    .addOption('floating',writerUi('Flutuante adicional','Additional floating toolbar'))
-    .setValue(cfg.toolbar.mobileMode||'native').onChange(async value=>{cfg.toolbar.mobileMode=value;await this.plugin.saveSettings();}));
+   .setDesc(writerUi('Padrão: controle compacto ao selecionar texto. O modo nativo utiliza o comando na barra móvel do Obsidian.','Default: compact controls appear on selection. Native mode uses a command in Obsidian’s mobile toolbar.'))
+   .addDropdown(d=>d.addOption('floating',writerUi('Compacta automática','Automatic compact'))
+    .addOption('native',writerUi('Somente barra nativa','Native toolbar only'))
+    .setValue(cfg.toolbar.mobileMode||'floating').onChange(async value=>{cfg.toolbar.mobileMode=value;cfg.toolbar.mobileModeConfirmed=true;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Abrir ferramentas de formatação','Open formatting tools'))
    .addButton(b=>b.setButtonText(writerUi('Barra de edição','Editing toolbar')).onClick(()=>{
     const view=this.currentEditor();this.openEditingToolbar(view?.editor,view);

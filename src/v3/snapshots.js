@@ -181,22 +181,22 @@ class WriterSnapshots{
   this.create(file,'Automático').catch(e=>console.warn('[Basic AI] Autosnapshot:',e));
  }
  async showHistory(file){
-  if(!(file instanceof TFile)||file.extension!=='md')return new Notice('Abra uma nota Markdown.');
+  if(!(file instanceof TFile)||file.extension!=='md')return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const modal=new Modal(this.plugin.app);
   const render=async()=>{
-   modal.contentEl.empty();modal.setTitle('Histórico de versões · '+file.basename);
+   modal.contentEl.empty();modal.setTitle(writerUi("Histórico de versões · ","Version history · ")+file.basename);
    const snapshots=await this.list(file);
    modal.contentEl.createEl('p',{text:snapshots.length+' versões · histórico local do Basic AI'});
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Salvar versão agora').setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
     await this.create(file,'Manual');await render();
-   })).addButton(b=>b.setButtonText('Nomear versão').onClick(()=>{
+   })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
     const prompt=new Modal(this.plugin.app);let label='';
-    prompt.onOpen=()=>{prompt.setTitle('Nome da versão');
+    prompt.onOpen=()=>{prompt.setTitle(writerUi("Nome da versão","Version name"));
      new Setting(prompt.contentEl).addText(t=>t.setPlaceholder('Antes da revisão').onChange(v=>label=v))
-      .addButton(b=>b.setButtonText('Salvar').setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
+      .addButton(b=>b.setButtonText(writerUi("Salvar","Save")).setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
     };prompt.open();
    }));
-   if(!snapshots.length)modal.contentEl.createEl('p',{text:'Nenhuma versão salva ainda.'});
+   if(!snapshots.length)modal.contentEl.createEl('p',{text:writerUi("Nenhuma versão salva ainda.","No versions saved yet.")});
    const list=modal.contentEl.createDiv({cls:'writer-history-list'});
    for(const entry of snapshots.slice(0,250)){
     const card=list.createDiv({cls:'writer-history-entry'});
@@ -206,27 +206,27 @@ class WriterSnapshots{
     actions.createEl('button',{text:'Comparar'}).addEventListener('click',()=>this.showDiff(file,entry));
     actions.createEl('button',{text:'Restaurar'}).addEventListener('click',()=>{
      const confirm=new Modal(this.plugin.app);let withAttachments=false;
-     confirm.onOpen=()=>{confirm.setTitle('Restaurar versão');
+     confirm.onOpen=()=>{confirm.setTitle(writerUi("Restaurar versão","Restore version"));
       confirm.contentEl.createEl('p',{text:'Restaurar '+entry.name+'? O estado atual será salvo automaticamente antes da restauração.'});
-      if(entry.attachments?.length)new Setting(confirm.contentEl).setName('Restaurar somente anexos ausentes').setDesc('Anexos existentes jamais serão sobrescritos.').addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
+      if(entry.attachments?.length)new Setting(confirm.contentEl).setName('Restaurar somente anexos ausentes').setDesc(writerUi("Anexos existentes jamais serão sobrescritos.","Existing attachments will never be overwritten.")).addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
       new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
        .addButton(b=>b.setButtonText('Restaurar').setWarning().onClick(async()=>{
-        try{await this.restore(file,entry,withAttachments);confirm.close();await render();new Notice('Nota restaurada.');}
+        try{await this.restore(file,entry,withAttachments);confirm.close();await render();new Notice(writerUi("Nota restaurada.","Note restored."));}
         catch(e){new Notice(e.message);}
        }));
      };confirm.open();
     });
-    actions.createEl('button',{text:'Excluir'}).addEventListener('click',()=>{
+    actions.createEl('button',{text:writerUi("Excluir","Delete")}).addEventListener('click',()=>{
      const confirm=new Modal(this.plugin.app);
-     confirm.onOpen=()=>{confirm.setTitle('Excluir versão');
-      confirm.contentEl.createEl('p',{text:'Excluir permanentemente esta versão? A operação não poderá ser desfeita.'});
+     confirm.onOpen=()=>{confirm.setTitle(writerUi("Excluir versão","Delete version"));
+      confirm.contentEl.createEl('p',{text:writerUi("Excluir permanentemente esta versão? A operação não poderá ser desfeita.","Permanently delete this version? This cannot be undone.")});
       new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
-       .addButton(b=>b.setButtonText('Excluir').setWarning().onClick(async()=>{await this.delete(file,entry);confirm.close();await render();}));
+       .addButton(b=>b.setButtonText(writerUi("Excluir","Delete")).setWarning().onClick(async()=>{await this.delete(file,entry);confirm.close();await render();}));
      };confirm.open();
     });
    }
   };
-  modal.onOpen=()=>{render().catch(e=>new Notice('Histórico: '+e.message));};modal.open();
+  modal.onOpen=()=>{render().catch(e=>new Notice(writerUi("Histórico: ","History: ")+e.message));};modal.open();
  }
  async showDiff(file,entry){
   const [oldText,current]=await Promise.all([this.read(file,entry),writerCurrentText(this.plugin,file)]);
@@ -236,7 +236,7 @@ class WriterSnapshots{
    modal.contentEl.createEl('p',{text:diff.added+' linha(s) adicionada(s) · '+diff.removed+' removida(s)'});
    const box=modal.contentEl.createDiv({cls:'writer-history-diff'});
    if(diff.truncated){
-    box.createEl('p',{text:'Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.'});
+    box.createEl('p',{text:writerUi("Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.","Note too long for line-by-line diff. Side-by-side comparison is available.")});
     for(const [title,contents] of [['Versão salva',oldText],['Nota atual',current]]){
      box.createEl('strong',{text:title});const area=box.createEl('textarea');area.readOnly=true;area.value=contents;
     }

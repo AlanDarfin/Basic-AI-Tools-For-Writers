@@ -731,3 +731,42 @@
   border-left:3px solid var(--writer-lt-underline,#e9b35f);
   padding-left:7px;
 }
+
+/* Final Writing Suite: unobtrusive subtitle, project tasks, Unicode and TOC */
+.writer-another-name{
+ font-size:calc(var(--font-text-size) - 4px);
+ color:var(--text-muted);
+ margin-top:-.65rem;
+ margin-bottom:var(--inline-title-margin-bottom,12px);
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.writer-project-tabs{display:flex;flex-wrap:nowrap;gap:4px;overflow-x:auto;scrollbar-width:thin}
+.writer-project-tabs button{flex:1 0 auto;min-width:0;white-space:nowrap;padding:9px 10px}
+.writer-project-tasks{display:flex;flex-direction:column;gap:12px;min-width:0;padding:8px 2px 24px}
+.writer-tasks-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.writer-tasks-heading h3{margin:4px 0;font-size:var(--font-ui-medium)}
+.writer-tasks-heading small{color:var(--text-muted)}
+.writer-task-toolbar{display:flex;flex-wrap:wrap;gap:7px}
+.writer-task-toolbar button{min-height:36px}
+.writer-task-group{border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);padding:8px;min-width:0}
+.writer-task-group-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.writer-task-group-header h4{min-width:0;flex:1;margin:0;overflow-wrap:anywhere}
+.writer-task-group-header button{min-width:32px;width:32px;min-height:32px;height:32px;padding:0}
+.writer-task-count{color:var(--text-muted);font-size:var(--font-ui-smaller)}
+.writer-task-row{display:flex;align-items:flex-start;gap:8px;min-width:0;padding:8px 0;border-bottom:1px solid var(--background-modifier-border)}
+.writer-task-row:last-child{border-bottom:0}
+.writer-task-row>input[type=checkbox]{flex:0 0 auto;margin-top:5px}
+.writer-task-info{display:flex;flex:1;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.writer-task-info>span{font-size:var(--font-ui-small);overflow-wrap:anywhere;cursor:pointer}
+.writer-task-info>span.is-done{text-decoration:line-through;color:var(--text-muted)}
+.writer-task-date{color:var(--text-muted);font-size:var(--font-ui-smaller)}
+.writer-task-link{font-size:var(--font-ui-smaller);min-height:26px;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.writer-task-more{width:32px;min-width:32px;height:32px;min-height:32px;padding:0}
+.writer-insta-toc{margin:.5em 0;padding-left:16px}
+.writer-insta-toc li{list-style-position:inside;line-height:1.65}
+.writer-insta-toc a{overflow-wrap:anywhere}
+.writer-unicode-results{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;overflow-y:auto;max-height:58vh;margin-top:10px}
+.writer-unicode-results button{min-width:0;min-height:40px;white-space:normal;overflow-wrap:anywhere;text-align:left;padding:8px}
+@container writer-sidebar (max-width:320px){.writer-project-tabs button{font-size:var(--font-ui-smaller);padding:8px 6px}}
+@media(max-width:600px){.writer-task-row{padding:10px 0}.writer-unicode-results{grid-template-columns:repeat(2,minmax(0,1fr))}.writer-unicode-results button{min-height:44px}}

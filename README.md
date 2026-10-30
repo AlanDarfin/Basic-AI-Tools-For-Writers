@@ -1,8 +1,13 @@
 # Basic AI Tool for Writers
 
+## Writing Suite — 3.0.0-beta.4
+
+The new [Writing Suite](docs/WRITING_SUITE.md) brings abbreviations, another-name subtitles, per-note view modes, a Longform **Tasks** tab, instant tables of contents, offline Unicode search, safe templates by note name and multilingual system text-to-speech to Basic AI Tool for Writers. These are configurable modules with commands and writing-sidebar controls. No AI provider is used for speech synthesis.
+
+
 ## V3 beta 3 — autocomplete, variantes e versões
 
-A versão **3.0.0-beta.3** contém a prévia com três módulos novos, integrados ao Obsidian:
+A versão **3.0.0-beta.4** contém a prévia com três módulos novos, integrados ao Obsidian:
 
 - **Sugestões:** autocomplete local do arquivo, cofre, dicionários e links;
 - **Variantes:** alternativas inline de escrita, revisão → variante e geração com IA;

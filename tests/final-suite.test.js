@@ -1,0 +1,65 @@
+'use strict';
+const fs=require('node:fs');
+const vm=require('node:vm');
+const assert=require('node:assert/strict');
+const api={};
+class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').at(-1).replace(/\.md$/,'');}}
+const O={getLanguage:()=> 'en'};
+const source=fs.readFileSync('src/v3/final-suite.js','utf8');
+const ctx={console,require:()=>O,TFile,MarkdownView:class MarkdownView{},setTimeout,clearTimeout,requestUrl:async()=>({status:200,text:'0041;LATIN CAPITAL LETTER A;Lu;0;L;;;;;N;;;;0061;\n00E9;LATIN SMALL LETTER E WITH ACUTE;Ll;0;L;;;;;N;;;00C9;;00C9;\n'})};
+const {writerFinalMerge,WriterFinalFeatures}=vm.runInNewContext(source+'\n({writerFinalMerge,WriterFinalFeatures})',ctx);
+async function main(){
+ let count=0;const ok=(name)=>{console.log('PASS',name);count++;};
+ const settings={};
+ const docs=new Map();
+ const templateFile=new TFile('Templates/Chapter.md');
+ const file=new TFile('Books/Chapter.md');
+ docs.set(templateFile.path,'# {{title}}\nDate {{date}}');
+ docs.set(file.path,'');
+ const adapter={exists:async p=>p==='test-plugin/writer-unicode-data.txt',read:async()=> '0041;LATIN CAPITAL LETTER A;Lu;\n00E9;LATIN SMALL LETTER E WITH ACUTE;Ll;\n',write:async()=>{}};
+ const view={file,getState:()=>({mode:'source'}),async setState(state){this.state=state}};
+ const app={vault:{adapter,configDir:'.obsidian',getAbstractFileByPath:path=>docs.has(path)?new TFile(path):null,read:async f=>docs.get(f.path),cachedRead:async f=>docs.get(f.path),process:async(f,fn)=>{docs.set(f.path,fn(docs.get(f.path)));}},
+   metadataCache:{getFileCache:()=>({frontmatter:{'prefer-view':'read'}})},
+   workspace:{getActiveViewOfType:()=>view}};
+ const plugin={app,settings,manifest:{dir:'test-plugin',id:'basic-ai-tool-for-writers'},async saveSettings(){}};
+ writerFinalMerge(plugin);
+ const f=new WriterFinalFeatures(plugin);
+ assert.ok(settings.finalSuite.abbreviations.entries.atm.value==='at the moment');
+ assert.equal(settings.finalSuite.anotherName.property,'another-name');
+ assert.equal(settings.finalSuite.viewMode.property,'prefer-view');
+ ok('Existing note subtitle and view-mode properties are preserved');
+ let doc='I am atm ';
+ const editor={state:{doc:{toString:()=>doc}},dispatch({changes}){doc=doc.slice(0,changes.from)+changes.insert+doc.slice(changes.to);}};
+ f.tryExpand(editor,{at:doc.length,character:' '});
+ assert.equal(doc,'I am at the moment ');
+ ok('Abbreviation expands on space');
+ doc='I am ATM ';
+ f.tryExpand(editor,{at:doc.length,character:' '});
+ assert.equal(doc,'I am at the moment ');
+ settings.finalSuite.abbreviations.entries.atm.isEnabled=false;
+ doc='I am atm ';
+ f.tryExpand(editor,{at:doc.length,character:' '});
+ assert.equal(doc,'I am atm ');
+ settings.finalSuite.abbreviations.entries.atm.isEnabled=true;
+ settings.finalSuite.abbreviations.entries.atm.isCaseSensitive=true;
+ doc='I am ATM ';
+ f.tryExpand(editor,{at:doc.length,character:' '});
+ assert.equal(doc,'I am ATM ');
+ ok('Per-entry enable and case sensitivity work');
+ await f.applyTemplate(file,true);
+ assert.equal(docs.get(file.path).startsWith('# Chapter\nDate '),true);
+ ok('Template by note name applies from configured folder');
+ docs.set(file.path,'My manuscript');
+ await f.applyTemplate(file,false);
+ assert.equal(docs.get(file.path),'My manuscript');
+ ok('Automatic templates never overwrite existing note text');
+ await f.applyViewMode(file);
+ assert.equal(view.state.mode,'preview');
+ ok('Frontmatter view mode switches Markdown state');
+ const unicode=await f.loadUnicodeIndex();
+ assert.equal(unicode.length,2);
+ assert.equal(unicode[0].name,'LATIN CAPITAL LETTER A');
+ ok('Unicode index is parsed from the offline local cache');
+ console.log(count+' final-suite tests passed');
+}
+main().catch(e=>{console.error(e.stack||e);process.exitCode=1;});

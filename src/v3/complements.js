@@ -134,15 +134,15 @@ class WriterComplements extends EditorSuggest{
  }
  async manual(){
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView),editor=view?.editor,file=view?.file;
-  if(!editor||!file)return new Notice('Abra uma nota Markdown.');
+  if(!editor||!file)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const cursor=editor.getCursor(),line=editor.getLine(cursor.line)||'';
   const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(line.slice(0,cursor.ch));
-  if(!m)return new Notice('Posicione o cursor após o começo de uma palavra.');
+  if(!m)return new Notice(writerUi("Posicione o cursor após o começo de uma palavra.","Place the cursor after the beginning of a word."));
   const context={query:m[1],start:{line:cursor.line,ch:cursor.ch-m[1].length},end:cursor,editor,file};
   const results=await this.getSuggestions(context);
-  if(!results.length)return new Notice('Nenhuma sugestão disponível.');
+  if(!results.length)return new Notice(writerUi("Nenhuma sugestão disponível.","No suggestions available."));
   const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
-   modal.setTitle('Sugestões de escrita');
+   modal.setTitle(writerUi("Sugestões de escrita","Writing suggestions"));
    const list=modal.contentEl.createDiv({cls:'writer-complement-manual'});
    for(const item of results){
     list.createEl('button',{text:item.word+' · '+item.source}).addEventListener('click',()=>{modal.close();editor.replaceRange(item.insert,context.start,context.end);});

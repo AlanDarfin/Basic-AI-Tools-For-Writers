@@ -1763,7 +1763,7 @@ class DictionaryView extends ItemView{
  getDisplayText(){return 'Basic AI Tool for Writers';}
  getIcon(){return 'book-open';}
  async onOpen(){
-  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});root.createEl('button',{text:'✦ Ferramentas de escrita',cls:'writer-tools-launcher'}).addEventListener('click',()=>this.plugin.openWritingTools());const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});this.panels={definition:defs,translation:translations,chat,review};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
+  this.contentEl.empty();const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});const sidebarHead=root.createDiv({cls:'writer-sidebar-header'});sidebarHead.createSpan({text:'Basic AI',cls:'writer-sidebar-brand'});sidebarHead.createEl('button',{text:msg('✦ Ferramentas','✦ Writing tools'),cls:'writer-tools-launcher'}).addEventListener('click',()=>this.plugin.openWritingTools());const tabs=root.createDiv({cls:'writer-tool-tabs'});const defs=root.createDiv({cls:'writer-tool-panel'});const translations=root.createDiv({cls:'writer-tool-panel'});const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});this.panels={definition:defs,translation:translations,chat,review};this.tabs={};for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){const btn=tabs.createEl('button',{text:label});this.tabs[id]=btn;btn.addEventListener('click',()=>this.switchTab(id));}
   defs.createEl('h3',{text:'Basic AI Tool for Writers',cls:'dictionary-heading'});
   this.input=defs.createEl('input',{attr:{type:'search',placeholder:t('search'),'aria-label':t('search')}});
   const controls=defs.createDiv({cls:'dictionary-controls'});
@@ -2517,6 +2517,11 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     else menu.showAtPosition(anchor.position||{x:window.innerWidth/2,y:Math.min(window.innerHeight/2,300)});
     this.reviewPopup=menu;
     this.reviewPopupKey=key;
+    const originalOnHide=menu.onHide;
+    menu.onHide=(...args)=>{
+      if(this.reviewPopup===menu){this.reviewPopup=null;this.reviewPopupKey=null;}
+      if(typeof originalOnHide==='function')originalOnHide.apply(menu,args);
+    };
     return menu;
   }
   maybeShowReviewPopup(cm,onMark=false){

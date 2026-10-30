@@ -143,9 +143,18 @@ class WriterV4Extras{
    p.registerEditorExtension(ViewPlugin.fromClass(class{
     constructor(view){
      this.view=view;this.dom=view.dom.createDiv({cls:'writer-v4-floating-toolbar'});
-     this.onSelection=()=>this.refresh();
+     this.isMobile=owner.plugin.app.isMobile===true||(typeof navigator!=='undefined'&&/Android|iPad|iPhone/i.test(navigator.userAgent||''));
+     if(this.isMobile)this.dom.addClass('writer-v4-toolbar-mobile');
+     this.savedRange=null;
+     this.onSelection=()=>{
+      clearTimeout(this.selectionTimer);
+      this.selectionTimer=setTimeout(()=>this.refresh(),70);
+     };
      view.dom.addEventListener('pointerup',this.onSelection);
+     view.dom.addEventListener('touchend',this.onSelection,{passive:true});
      view.dom.addEventListener('keyup',this.onSelection);
+     this.ownerDocument=view.dom.ownerDocument;
+     this.ownerDocument?.addEventListener('selectionchange',this.onSelection);
      const formats=[
       ['B','bold','**','**'],['I','italic','*','*'],
       ['H','heading','## ',''],['“”','quote','> ',''],
@@ -156,9 +165,16 @@ class WriterV4Extras{
       const button=this.dom.createEl('button',{text:label,attr:{'aria-label':title,title}});
       button.addEventListener('pointerdown',e=>e.preventDefault());
       button.addEventListener('click',()=>{
-       if(title==='wordwise'){owner.wordwise();return;}
-       const selected=this.view.state.selection.main;
-       if(selected.empty)return;
+       const current=this.view.state.selection.main;
+       const selected=!current.empty?current:this.savedRange;
+       if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
+       // Mobile tap can blur native selection; restore its exact CodeMirror range.
+       if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
+       if(title==='wordwise'){
+        this.view.focus();
+        owner.wordwise();
+        return;
+       }
        const raw=this.view.state.doc.sliceString(selected.from,selected.to);
        const value=(before||'')+raw+(after||'');
        this.view.dispatch({changes:{from:selected.from,to:selected.to,insert:value},selection:{anchor:selected.from+value.length}});
@@ -167,11 +183,23 @@ class WriterV4Extras{
      }
      this.refresh();
     }
-    update(update){if(update.selectionSet||update.docChanged)this.refresh();}
+    update(update){
+     if(update.docChanged)this.savedRange=null;
+     if(update.selectionSet||update.docChanged)this.refresh();
+    }
     refresh(){
      if(!owner.config.toolbar.enabled){this.dom.removeClass('is-visible');return;}
      const selection=this.view.state.selection.main;
-     if(selection.empty||!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
+     if(selection.empty){this.savedRange=null;this.dom.removeClass('is-visible');return;}
+     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
+     this.savedRange={from:selection.from,to:selection.to};
+     if(this.isMobile){
+      // Bottom-docked instead of covering Android's native selection handles.
+      this.dom.style.removeProperty('top');
+      this.dom.style.removeProperty('left');
+      this.dom.addClass('is-visible');
+      return;
+     }
      const pos=this.view.coordsAtPos(selection.from);
      if(!pos){this.dom.removeClass('is-visible');return;}
      this.dom.addClass('is-visible');
@@ -180,8 +208,11 @@ class WriterV4Extras{
      this.dom.style.left=Math.max(0,Math.min(box.width-240,pos.left-box.left))+'px';
     }
     destroy(){
+     clearTimeout(this.selectionTimer);
      this.view.dom.removeEventListener('pointerup',this.onSelection);
+     this.view.dom.removeEventListener('touchend',this.onSelection);
      this.view.dom.removeEventListener('keyup',this.onSelection);
+     this.ownerDocument?.removeEventListener('selectionchange',this.onSelection);
      this.dom.remove();
     }
    }));

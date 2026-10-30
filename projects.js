@@ -1,5 +1,5 @@
 'use strict';
-const {ItemView,TFile,TFolder,Notice,Modal,Setting,parseYaml,stringifyYaml}=require('obsidian');
+const {ItemView,TFile,TFolder,Notice,Modal,Menu,Setting,parseYaml,stringifyYaml}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
 const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
 function lfPath(...parts){const path=[];for(const part of parts){for(const segment of String(part||'').split('/')){if(!segment||segment==='.')continue;if(segment==='..'){path.pop();continue;}path.push(segment);}}return path.join('/');}
@@ -314,11 +314,25 @@ class ProjectsView extends ItemView{
    row.addEventListener('dragleave',()=>row.removeClass('writer-project-dragover'));
    row.addEventListener('drop',e=>{e.preventDefault();row.removeClass('writer-project-dragover');const source=e.dataTransfer.getData('text/plain');if(source)this.moveSceneBefore(project,source,name);});
    const file=this.resolveScene(project,name);
-   row.createEl('button',{text:name,cls:'writer-project-scene-title'}).addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
-   const controls=[['↑',()=>this.moveScene(project,name,-1),'Subir'],['↓',()=>this.moveScene(project,name,1),'Descer'],
-    ['←',()=>this.indentScene(project,name,-1),'Diminuir recuo'],['→',()=>this.indentScene(project,name,1),'Aumentar recuo'],
-    ['+',()=>this.addScene(project,name),'Adicionar subcapítulo'],['⋯',()=>this.renameScene(project,name),'Renomear'],['×',()=>this.removeSceneFromIndex(project,name),'Tirar do índice (sem excluir arquivo)']];
-   for(const [label,fn,title] of controls)row.createEl('button',{text:label,cls:'writer-project-small-button',attr:{title,'aria-label':title}}).addEventListener('click',fn);
+   const titleButton=row.createEl('button',{text:name,cls:'writer-project-scene-title'});
+   titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice('Cena não encontrada: '+name));
+   const controls=row.createDiv({cls:'writer-project-scene-controls'});
+   for(const [label,delta,hint] of [['↑',-1,'Mover para cima'],['↓',1,'Mover para baixo']]){
+    controls.createEl('button',{text:label,cls:'writer-project-small-button',attr:{title:hint,'aria-label':hint+' — '+name}})
+     .addEventListener('click',()=>this.moveScene(project,name,delta));
+   }
+   const more=controls.createEl('button',{text:'⋯',cls:'writer-project-small-button writer-project-scene-more',attr:{title:'Mais ações','aria-label':'Mais ações para '+name,'aria-haspopup':'menu'}});
+   more.addEventListener('click',event=>{
+    const menu=new Menu();
+    for(const [label,icon,action] of [
+     ['Diminuir recuo','arrow-left',()=>this.indentScene(project,name,-1)],
+     ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
+     ['Adicionar subcapítulo','plus',()=>this.addScene(project,name)],
+     ['Renomear cena','pencil',()=>this.renameScene(project,name)],
+     ['Retirar do índice (preservar arquivo)','list-x',()=>this.removeSceneFromIndex(project,name)]
+    ])menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
+    menu.showAtMouseEvent(event);
+   });
    for(const child of item.children)renderItem(child,parent,level+1);
   };
   for(const item of tree)renderItem(item,panel);

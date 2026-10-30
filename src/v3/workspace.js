@@ -35,8 +35,10 @@ class WriterToolsView extends ItemView{
    ['variants',writerUi("Variantes","Variants"),'variants'],
    ['reviewV4',writerUi('Diff e perfis','Diff & profiles'),'diff'],
    ['snapshots',writerUi("Versões","Versions"),'snapshots'],
-   ['extras',writerUi('Extras','Extras'),'tts']
-  ].filter(([,label,feature])=>writerModuleOn(this.plugin,feature));
+   ['extras',writerUi('Extras','Extras'),'extras']
+  ].filter(([,label,feature])=>feature==='extras'
+   ?['tts','unicode','projects'].some(id=>writerModuleOn(this.plugin,id))
+   :writerModuleOn(this.plugin,feature));
   if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
   for(const [id,label] of sections){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});

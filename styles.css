@@ -1238,3 +1238,56 @@
   white-space:normal;
   overflow-wrap:anywhere;
 }
+
+/* Basic AI v4 — accessible, consistent sidebar and review controls. */
+:where(.writer-tool-root,.writer-tools-v3,.writer-project-root,.dictionary-settings-panel,.writer-unicode-modal,.writer-v4-diff-modal)
+:is(select:not([multiple]),input:not([type="checkbox"]),textarea,button){
+  box-sizing:border-box;max-width:100%;min-width:0;
+}
+:where(.writer-tool-root,.writer-tools-v3,.writer-project-root,.dictionary-settings-panel,.writer-unicode-modal)
+select:not([multiple]){
+  width:100%;min-height:44px!important;height:44px!important;max-height:none!important;
+  padding-block:0!important;line-height:normal!important;
+  font-size:var(--font-ui-small)!important;text-overflow:ellipsis;
+  vertical-align:middle;appearance:auto;
+}
+:where(.writer-tool-tabs,.writer-tools-v3-tabs,.writer-project-tabs,.dictionary-settings-tabs){
+  display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden;
+  overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;gap:6px;max-width:100%;min-width:0;
+}
+:where(.writer-tool-tabs,.writer-tools-v3-tabs,.writer-project-tabs,.dictionary-settings-tabs)>button{
+  flex:0 0 auto!important;min-width:max-content!important;max-width:none!important;
+  min-height:38px;white-space:nowrap!important;padding:7px 12px!important;
+  line-height:1.35;text-overflow:clip;align-self:center;
+}
+.writer-v4-diff-modal{min-width:0;max-width:100%;overflow-x:hidden}
+.writer-v4-hint{color:var(--text-muted);font-size:var(--font-ui-small)}
+.writer-v4-label{display:block;margin:10px 0 6px;font-weight:600}
+.writer-v4-candidate{width:100%;min-width:0;min-height:150px;max-height:40vh;resize:vertical;
+  background:var(--background-primary);color:var(--text-normal);border:1px solid var(--background-modifier-border);
+  border-radius:var(--radius-m);font:inherit;line-height:1.5;padding:10px}
+.writer-v4-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:10px 0}
+.writer-v4-actions button{flex:0 1 auto;min-height:34px;white-space:normal}
+.writer-v4-diff-results{max-height:42vh;overflow:auto;min-width:0}
+.writer-v4-hunk{border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);
+  padding:10px;margin:10px 0;min-width:0;overflow-wrap:anywhere}
+.writer-v4-hunk pre{white-space:pre-wrap;overflow-wrap:anywhere;tab-size:2;
+  padding:8px 10px;margin:8px 0;border-radius:var(--radius-s);
+  font-size:var(--font-smaller);font-family:var(--font-monospace)}
+.writer-v4-removed{border-inline-start:3px solid var(--text-error);background:var(--background-secondary)}
+.writer-v4-added{border-inline-start:3px solid var(--text-success);background:var(--background-secondary)}
+.writer-v4-choice{display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px}
+.writer-v4-choice input{flex:0 0 auto;accent-color:var(--interactive-accent)}
+.writer-v4-apply{width:100%;min-height:42px;margin-top:12px}
+.writer-v4-error{color:var(--text-error);white-space:normal;overflow-wrap:anywhere}
+.writer-v4-profile{border:1px solid var(--background-modifier-border);
+  border-radius:var(--radius-m);padding:10px;margin:12px 0;min-width:0}
+.writer-v4-profile .setting-item{flex-wrap:wrap;gap:8px;align-items:flex-start}
+.writer-v4-profile .setting-item-control{flex:1 1 200px;min-width:0}
+.writer-v4-profile :is(input[type="text"],textarea){width:100%;min-width:0;max-width:100%}
+@media (max-width:450px){
+ .writer-v4-actions button{flex:1 1 110px}
+ .writer-v4-diff-results{max-height:35vh}
+ .writer-v4-profile .setting-item-control{flex:1 1 100%}
+}

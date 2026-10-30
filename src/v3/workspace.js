@@ -72,25 +72,55 @@ class WriterToolsView extends ItemView{
  }
 
  renderExtras(panel){
-  panel.createEl('h4',{text:writerUi('Símbolos Unicode','Unicode characters')});
-  panel.createEl('p',{text:writerUi('Pesquise símbolos por nome ou código Unicode. Os favoritos ficam nas configurações do Basic AI.','Search characters by name or Unicode code point. Favorites stay in Basic AI settings.')});
-  const unicode=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(unicode,writerUi('Pesquisar Unicode','Search Unicode'),()=>this.plugin.writerFinalFeatures.unicodePicker(),true);
-  panel.createEl('h4',{text:writerUi('Leitura em voz alta','Text-to-speech')});
-  panel.createEl('p',{text:writerUi('Leitor de voz do sistema, sem IA. As vozes disponíveis dependem do dispositivo.','System speech synthesis, without AI. Available voices depend on the device.')});
-  const tts=this.plugin.settings.finalSuite?.tts||{};
-  new Setting(panel).setName(writerUi('Idioma da voz','Voice language')).addDropdown(d=>{
-   for(const [key,label] of [['auto',writerUi('Automático','Auto')],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語']])d.addOption(key,label);
+  panel.addClass('writer-tools-extras');
+  const tools=this.plugin.writerFinalFeatures,tts=this.plugin.settings.finalSuite?.tts||{};
+  const unicode=panel.createDiv({cls:'writer-extras-card'});
+  const unicodeHeader=unicode.createDiv({cls:'writer-extras-card-head'});
+  unicodeHeader.createEl('h4',{text:writerUi('Símbolos Unicode','Unicode symbols')});
+  unicodeHeader.createEl('p',{text:writerUi('Busque por nome, categoria ou U+XXXX. Salve seus símbolos favoritos.','Search by name, category or U+XXXX and save favorite symbols.')});
+  const favorites=unicode.createDiv({cls:'writer-extras-favorites'});
+  for(const char of (this.plugin.settings.finalSuite?.unicode?.favorites||[]).slice(0,12)){
+   favorites.createEl('button',{text:char,attr:{'aria-label':'Insert '+char}}).addEventListener('click',()=>{
+    const editor=this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+    if(editor)editor.replaceSelection(char);else tools.unicodePicker();
+   });
+  }
+  const unicodeActions=unicode.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(unicodeActions,writerUi('Abrir pesquisa Unicode','Search Unicode'),()=>tools.unicodePicker(),true);
+  const speech=panel.createDiv({cls:'writer-extras-card'});
+  const speechHead=speech.createDiv({cls:'writer-extras-card-head'});
+  speechHead.createEl('h4',{text:writerUi('Leitura em voz alta','Text-to-speech')});
+  speechHead.createEl('p',{text:writerUi('Escolha a voz local ou uma voz neural online.','Use a local voice or a neural online voice.')});
+  new Setting(speech).setName(writerUi('Mecanismo','Engine')).addDropdown(d=>{
+   d.addOption('system',writerUi('Voz do sistema','System voice'));
+   d.addOption('edge',writerUi('Microsoft Edge (online)','Microsoft Edge (online)'));
+   d.setValue(tts.engine||'system').onChange(async value=>{
+    tools.stop();tts.engine=value;await this.plugin.saveSettings();this.render();
+   });
+  });
+  if(tts.engine==='edge'){
+   const privacy=speech.createDiv({cls:'writer-tts-privacy'});
+   privacy.createEl('p',{text:writerUi('Online: o texto selecionado ou a nota é enviado à Microsoft. Requer internet e pode ficar indisponível.','Online: selected text or the note is sent to Microsoft. Requires internet and may become unavailable.')});
+   new Setting(privacy).setName(writerUi('Permitir processamento online','Allow online processing')).addToggle(t=>t.setValue(!!tts.allowOnline).onChange(async value=>{
+    tts.allowOnline=value;if(!value)tools.stop();await this.plugin.saveSettings();
+   }));
+  }
+  new Setting(speech).setName(writerUi('Idioma','Language')).addDropdown(d=>{
+   for(const [key,label] of [['auto',writerUi('Automático','Auto')],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,label);
    d.setValue(tts.language||'auto').onChange(async value=>{tts.language=value;await this.plugin.saveSettings();});
   });
-  const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(actions,writerUi('Ler texto','Read text'),()=>this.plugin.writerFinalFeatures.speakActive(),true);
-  this.addButton(actions,writerUi('Pausar','Pause'),()=>this.plugin.writerFinalFeatures.pause());
-  this.addButton(actions,writerUi('Continuar','Resume'),()=>this.plugin.writerFinalFeatures.resume());
-  this.addButton(actions,writerUi('Parar','Stop'),()=>this.plugin.writerFinalFeatures.stop());
-  this.addButton(actions,writerUi('Tarefas do projeto','Project tasks'),()=>this.plugin.openProjects('tasks'));
+  const status=speech.createDiv({cls:'writer-tts-current-status',text:writerUi('Pronto para ler','Ready to read')});
+  const actions=speech.createDiv({cls:'writer-tools-v3-actions writer-tts-actions'});
+  this.addButton(actions,writerUi('Ler','Read'),()=>tools.speakActive(),true);
+  this.addButton(actions,writerUi('Pausar','Pause'),()=>tools.pause());
+  this.addButton(actions,writerUi('Continuar','Resume'),()=>tools.resume());
+  this.addButton(actions,writerUi('Parar','Stop'),()=>tools.stop());
+  const nav=panel.createDiv({cls:'writer-extras-card writer-extras-navigation'});
+  nav.createEl('h4',{text:writerUi('Projetos e organização','Projects & organization')});
+  nav.createEl('p',{text:writerUi('Acesse rapidamente as tarefas do Longform.','Quick access to Longform project tasks.')});
+  const links=nav.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(links,writerUi('Tarefas do projeto','Project tasks'),()=>this.plugin.openProjects('tasks'));
  }
-
  renderSnapshots(panel,file){
   const opts=this.plugin.settings.snapshots||{};
   panel.createEl('h4',{text:writerUi("Histórico e recuperação","History and recovery")});

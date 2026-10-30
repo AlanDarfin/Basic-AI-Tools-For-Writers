@@ -102,7 +102,7 @@ class WriterComplements extends EditorSuggest{
    .slice(0,Math.max(1,Math.min(30,Number(this.options.maxResults)||8)));
  }
  onTrigger(cursor,editor,file){
-  if(!this.options.enabled||this.options.automatic===false||!file||this.isExcluded(file))return null;
+  if(!writerModuleOn(this.plugin,'complements')||!this.options.enabled||this.options.automatic===false||!file||this.isExcluded(file))return null;
   const line=editor.getLine(cursor.line)||'',before=line.slice(0,cursor.ch);
   const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(before);
   if(!m||m[1].length<Math.max(1,Number(this.options.minChars)||3))return null;
@@ -133,6 +133,7 @@ class WriterComplements extends EditorSuggest{
   }
  }
  async manual(){
+   if(!writerModuleOn(this.plugin,'complements'))return;
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView),editor=view?.editor,file=view?.file;
   if(!editor||!file)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const cursor=editor.getCursor(),line=editor.getLine(cursor.line)||'';

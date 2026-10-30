@@ -3642,6 +3642,7 @@ class DictionaryView extends ItemView{
  async addChat(role,value){const bubble=this.chatMessages.createDiv({cls:'writer-chat-bubble writer-chat-'+role});bubble.createEl('small',{text:role==='user'?msg('Você','You'):'AI'});const body=bubble.createDiv({cls:'markdown-rendered'});if(role==='assistant')await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);else body.setText(value);this.chatMessages.scrollTop=this.chatMessages.scrollHeight;return bubble;}
 
  async translateVaultFile(file){
+  if(!writerModuleOn(this.plugin,'translation'))return;
   if(!(file instanceof TFile)||file.extension!=='md')return;
   if(this.translatingFile)return new Notice(msg('Uma tradução já está em andamento.','A translation is already running.'));
   this.translatingFile=true;this.translateFileButton.disabled=true;
@@ -3682,6 +3683,7 @@ class DictionaryView extends ItemView{
   }
  }
  async sendChat(){
+  if(!writerModuleOn(this.plugin,'chat'))return;
   if(this.chatBusy)return;const value=this.chatInput.value.trim();if(!value)return;const attached=[...this.chatAttachments];
   this.chatInput.value='';this.chatBusy=true;await this.addChat('user',value);
   const history=this.chatHistory.slice(-8).map(x=>x.role+': '+x.content).join('\n\n');
@@ -3711,6 +3713,7 @@ class DictionaryView extends ItemView{
   await this.reviewFile(file);
  }
  async reviewFile(file,{automatic=false}={}){
+  if(!writerModuleOn(this.plugin,'review'))return;
   if(this.reviewBusy)return;
   if(!(file instanceof TFile)||file.extension!=='md')return;
   this.reviewBusy=true;if(!automatic)this.reviewResults.empty();this.reviewStatus.setText((automatic?msg('Atualizando gramática de ','Updating grammar for '):msg('Analisando ','Analyzing '))+file.path+'…');
@@ -3825,7 +3828,7 @@ class DictionaryView extends ItemView{
  }
  async renderText(title,value,container=this.output){const card=container.createDiv({cls:'dictionary-card'});card.createEl('h4',{text:title});const body=card.createDiv({cls:'dictionary-markdown markdown-rendered'});await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);card.createEl('button',{text:t('copy')}).addEventListener('click',()=>navigator.clipboard?.writeText(value));}
  showError(e){this.output.empty();this.output.createEl('p',{text:t('error')+': '+e.message,cls:'dictionary-error'});}
- async translate(value){if(!value.trim())return new Notice(t('noWord'));const token=this.sequence;const out=this.translationOutput;out.empty();out.createEl('p',{text:'…'});
+ async translate(value){if(!writerModuleOn(this.plugin,'translation'))return;if(!value.trim())return new Notice(t('noWord'));const token=this.sequence;const out=this.translationOutput;out.empty();out.createEl('p',{text:'…'});
   try{const result=await this.plugin.translateAI(value);if(token!==this.sequence)return;out.empty();await this.renderText(t('translation'),result,out);}catch(e){if(token===this.sequence){out.empty();out.createEl('p',{text:e.message,cls:'dictionary-error'});}}
  }
  async detect(){const word=this.input.value.trim();if(!word)return new Notice(t('noWord'));this.output.empty();try{const d=await this.plugin.detectLanguage(word);await this.renderText(t('detect'),d.language+' ('+d.source+')');}catch(e){this.showError(e);}}
@@ -4139,8 +4142,10 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const leaf=this.app.workspace.getLeaf('tab');
     if(leaf)await leaf.openFile(file,{active:false});
   }
-  async openChat(){await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('chat');}
-  async sendSelectionToChat(selection,mode){await this.openChat();await this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.receiveSelection(selection,mode);}
+  async openChat(){if(!this.featureGuard('chat'))return;await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('chat');}
+  async sendSelectionToChat(selection,mode){
+  if(!writerModuleOn(this,'chat')||!writerModuleOn(this,mode==='translate'?'translation':mode==='rewrite'?'chat':'dictionary'))return;
+  await this.openChat();await this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.receiveSelection(selection,mode);}
   invalidate(){this.dirty=true;}
   dictionaryFile(){
     const name=this.settings.dictionaryFileName.trim();
@@ -4233,6 +4238,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     return chunks;
   }
   async translateAI(text,fileMode=false){
+    if(!writerModuleOn(this,'translation'))throw new Error(msg('Tradutor oculto em Módulos.','Translator hidden in Modules.'));
     const result=await this.lookupAI(text,fileMode?'filetranslate':'translate','',this.settings.translationProvider);
     return result.definitions.join('\n');
   }

@@ -57,6 +57,8 @@ class WriterInstaToc{
   const omissions=(Array.isArray(local?.omit)?local.omit:[]).map(x=>String(x).toLowerCase());
   const headings=this.headings(file).filter(h=>h.level>=min&&h.level<=max&&!omissions.includes(h.heading.toLowerCase()));
   const root=el.createDiv({cls:'writer-v4-insta-toc insta-toc-rendered'});
+  root.style.setProperty('--writer-v4-toc-indent',Math.min(48,Math.max(5,Number(this.options.indent)||12))+'px');
+  root.style.setProperty('--writer-v4-toc-list-style',String(this.options.listType||'circle'));
   const heading=root.createDiv({cls:'writer-v4-toc-heading'});
   heading.createEl('strong',{text:title||w4text(this.plugin,'Índice','Contents')});
   const fold=heading.createEl('button',{text:'▾',cls:'writer-v4-toc-collapse',attr:{'aria-label':w4text(this.plugin,'Recolher índice','Collapse index')}});

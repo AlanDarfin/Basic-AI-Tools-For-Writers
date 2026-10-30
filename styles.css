@@ -174,3 +174,18 @@
 .writer-review-explanation{overflow:visible;max-height:none;white-space:normal}
 .writer-review-panel .writer-file-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .writer-review-panel .writer-file-actions button{min-width:0;width:100%;white-space:normal;line-height:1.25;padding:8px 5px}
+
+/* Settings navigation: compact, swipeable on mobile */
+.dictionary-settings-tabs{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:6px;scrollbar-width:thin;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.dictionary-settings-tabs button{flex:0 0 auto;scroll-snap-align:start;white-space:nowrap;min-height:36px;padding:7px 12px}
+.dictionary-settings-panel .setting-item{align-items:flex-start;gap:8px}
+.dictionary-settings-panel .setting-item-control{min-width:0;max-width:100%;flex-wrap:wrap}
+.dictionary-settings-panel textarea.dictionary-prompt-editor{width:100%;max-width:100%;min-height:130px;resize:vertical}
+@media(max-width:600px){
+ .dictionary-settings-panel .setting-item{flex-wrap:wrap}
+ .dictionary-settings-panel .setting-item-info{flex:1 1 100%;min-width:0}
+ .dictionary-settings-panel .setting-item-control{flex:1 1 100%;width:100%}
+ .dictionary-settings-panel .setting-item-control input[type=text],
+ .dictionary-settings-panel .setting-item-control input[type=password],
+ .dictionary-settings-panel .setting-item-control select{width:100%;max-width:100%}
+}

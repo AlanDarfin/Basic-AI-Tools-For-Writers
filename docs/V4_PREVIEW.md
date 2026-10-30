@@ -1,7 +1,14 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.2** (development branch). Not a stable release.
+Status: **4.0.0-beta.3** (development branch). Not a stable release.
 
+
+## Beta.3 — Android repair release
+
+- **Longform:** scene cards now have a compact three-column layout (grip / wrapping title / arrow controls), even with narrow sidebars and large text.
+- **Mobile toolbar:** editor selection now reacts to touch and WebView selection-change events; the toolbar is docked near the bottom rather than directly over the Android text-selection handles. It remains available on desktop.
+- **Android TTS:** explicit diagnostics distinguish unavailable WebView speech APIs from empty voice lists; late-loaded system voices update through `voiceschanged` and can be refreshed in settings. Obsidian Android may not expose Android's native speech service to plugins. The online Edge engine still requires manual opt-in, and no text is transmitted automatically.
+- **Regression coverage:** automated Android capability, mobile selection, standalone bundle and compact chapter layout checks.
 
 ## Beta.2 — integrated writing workspace
 

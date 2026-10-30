@@ -6,7 +6,7 @@ const api={};
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').at(-1).replace(/\.md$/,'');}}
 const O={getLanguage:()=> 'en',moment:()=>({format:pattern=>'formatted-'+pattern})};
 const source=fs.readFileSync('src/v3/final-suite.js','utf8');
-const ctx={console,require:()=>O,TFile,MarkdownView:class MarkdownView{},setTimeout,clearTimeout,requestUrl:async()=>({status:200,text:'0041;LATIN CAPITAL LETTER A;Lu;0;L;;;;;N;;;;0061;\n00E9;LATIN SMALL LETTER E WITH ACUTE;Ll;0;L;;;;;N;;;00C9;;00C9;\n'})};
+const ctx={console,writerModuleOn:()=>true,require:()=>O,TFile,MarkdownView:class MarkdownView{},setTimeout,clearTimeout,requestUrl:async()=>({status:200,text:'0041;LATIN CAPITAL LETTER A;Lu;0;L;;;;;N;;;;0061;\n00E9;LATIN SMALL LETTER E WITH ACUTE;Ll;0;L;;;;;N;;;00C9;;00C9;\n'})};
 const {writerFinalMerge,WriterFinalFeatures}=vm.runInNewContext(source+'\n({writerFinalMerge,WriterFinalFeatures})',ctx);
 async function main(){
  let count=0;const ok=(name)=>{console.log('PASS',name);count++;};

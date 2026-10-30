@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers
 
+> **v4.0.0-rc.1 release candidate:** optional modules (hide translator, TTS and other tools without deleting data), privacy-safe diagnostics and faster Longform tabs. See [RC1 release checklist](docs/V4_RC1_CHECKLIST.md). This is **not** the stable release.
+
 > **v4.0.0-beta.2 preview:** Longform drag/reorder with retained scroll, Android TTS fallback, chapter comments, configurable mentions, selection toolbar, AI writing actions and typewriter focus mode. See [v4 preview guide](docs/V4_PREVIEW.md). Test with a backed-up vault before updating.
 
 ## Writing Suite 3.1.0-beta.2 — Uniform menus and selectors

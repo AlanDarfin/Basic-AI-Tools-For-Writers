@@ -7,6 +7,13 @@ class TextPrompt extends Modal{
  onOpen(){this.contentEl.empty();this.setTitle(this.titleText);let value=this.initial;new Setting(this.contentEl).setName(this.titleText).addText(t=>{t.setValue(value).onChange(v=>value=v);t.inputEl.focus();t.inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();this.close();this.done(value);}})});new Setting(this.contentEl).addButton(b=>b.setButtonText('Confirmar').setCta().onClick(()=>{this.close();this.done(value);}));}
  onClose(){this.contentEl.empty();}
 }
+class ConfirmProjectAction extends Modal{
+ constructor(app,title,description,done){super(app);this.label=title;this.description=description;this.done=done;}
+ onOpen(){this.setTitle(this.label);this.contentEl.createEl('p',{text:this.description});const row=new Setting(this.contentEl);
+ row.addButton(b=>b.setButtonText('Cancelar').onClick(()=>this.close()));
+ row.addButton(b=>b.setButtonText('Confirmar').setWarning().onClick(async()=>{this.close();try{await this.done();}catch(e){new Notice(e.message);}}));}
+ onClose(){this.contentEl.empty();}
+}
 function lfFlattenScenes(raw){
  const out=[];
  function walk(list,depth){
@@ -85,10 +92,12 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)this.selected=activeProject.file.path;
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
+  top.createEl('button',{text:'+ Projeto',cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':'Projeto'}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
-  if(!indexes.length){this.root.createEl('p',{text:'Nenhum projeto Longform encontrado. Abra uma nota de índice com frontmatter longform para importá-la.'});return;}
+  if(!indexes.length){this.root.createEl('p',{text:'Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.'});return;}
   if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
+  this.draft=this.lastSelected===this.selected?this.draft:'Principal';this.lastSelected=this.selected;
   selector.value=this.selected;
   selector.addEventListener('change',()=>{this.selected=selector.value;this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
@@ -508,26 +517,149 @@ class ProjectsView extends ItemView{
  }
  notesRoot(project){const dir=project.file.parent?.path||'';return (dir?dir+'/':'')+'_Notas';}
  async ensureFolder(path){let current='';for(const part of path.split('/').filter(Boolean)){current=current?current+'/'+part:part;if(!this.app.vault.getAbstractFileByPath(current))await this.app.vault.createFolder(current);}}
+
  async drawNotes(panel,project){
   const root=this.notesRoot(project);
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
-  toolbar.createEl('button',{text:'+ Pasta'}).addEventListener('click',()=>new TextPrompt(this.app,'Nova pasta de notas',async name=>{name=clean(name);if(!name)return;try{await this.ensureFolder(root+'/'+name);await this.render();}catch(e){new Notice(e.message);}}).open());
+  toolbar.createEl('button',{text:'+ Pasta'}).addEventListener('click',()=>this.promptNotesFolder(root));
   toolbar.createEl('button',{text:'+ Nota'}).addEventListener('click',()=>this.promptNote(root));
+  const search=panel.createEl('input',{attr:{type:'search',placeholder:'Pesquisar notas deste projeto','aria-label':'Pesquisar notas'}});
+  search.addClass('writer-project-note-search');
+  const contents=panel.createDiv({cls:'writer-project-note-tree'});
   const folder=this.app.vault.getAbstractFileByPath(root);
-  if(!(folder instanceof TFolder)){panel.createEl('p',{text:'Crie uma pasta ou nota para começar. As notas não entram no manuscrito.'});return;}
-  const drawFolder=(f,parent,depth)=>{
-   if(depth>12)return;
-   const section=parent.createEl('details',{cls:'writer-project-notes-folder'});section.open=depth===0;
-   const summary=section.createEl('summary',{text:depth===0?'Notas':f.name});
-   summary.addEventListener('contextmenu',e=>{e.preventDefault();this.promptNote(f.path);});
-   const add=section.createEl('button',{text:'+ Nota',cls:'writer-project-small-button'});add.addEventListener('click',()=>this.promptNote(f.path));
-   for(const child of f.children.sort((a,b)=>a.name.localeCompare(b.name))){
-    if(child instanceof TFolder)drawFolder(child,section,depth+1);
-    else if(child instanceof TFile&&child.extension==='md')section.createEl('button',{text:child.basename,cls:'writer-project-note'}).addEventListener('click',()=>this.openFile(child));
+  if(!(folder instanceof TFolder)){contents.createEl('p',{text:'Crie uma pasta ou nota para começar. As notas não entram no manuscrito.'});return;}
+  const viewFolder=(f,parent,level=0)=>{
+   if(level>18)return;
+   const block=parent.createEl('details',{cls:'writer-project-notes-folder'});block.open=level<=1;
+   block.createEl('summary',{text:level===0?'Notas':f.name});
+   const actions=block.createDiv({cls:'writer-project-note-actions'});
+   actions.createEl('button',{text:'+ Nota'}).addEventListener('click',()=>this.promptNote(f.path));
+   actions.createEl('button',{text:'+ Pasta'}).addEventListener('click',()=>this.promptNotesFolder(f.path));
+   if(level>0){
+    actions.createEl('button',{text:'Renomear'}).addEventListener('click',()=>this.renameProjectItem(f));
+    actions.createEl('button',{text:'Lixeira'}).addEventListener('click',()=>this.trashProjectItem(f));
+   }
+   for(const item of [...f.children].sort((x,y)=>x.name.localeCompare(y.name,'pt-BR'))){
+    if(item instanceof TFolder)viewFolder(item,block,level+1);
+    else if(item instanceof TFile&&item.extension==='md'){
+     const row=block.createDiv({cls:'writer-project-note-row'});
+     row.dataset.noteTitle=item.basename.toLowerCase();
+     row.createEl('button',{text:item.basename,cls:'writer-project-note'}).addEventListener('click',()=>this.openFile(item));
+     row.createEl('button',{text:'✎',attr:{title:'Renomear', 'aria-label':'Renomear'}}).addEventListener('click',()=>this.renameProjectItem(item));
+     row.createEl('button',{text:'↪',attr:{title:'Mover', 'aria-label':'Mover'}}).addEventListener('click',()=>this.moveProjectNote(item,folder));
+     row.createEl('button',{text:'✦',attr:{title:'Revisar nota','aria-label':'Revisar nota'}}).addEventListener('click',()=>this.plugin.openReview('grammar',item));
+     row.createEl('button',{text:'×',attr:{title:'Mover para lixeira','aria-label':'Mover para lixeira'}}).addEventListener('click',()=>this.trashProjectItem(item));
+    }
    }
   };
-  drawFolder(folder,panel,0);
+  viewFolder(folder,contents);
+  search.addEventListener('input',()=>{
+   const q=search.value.trim().toLocaleLowerCase();
+   for(const el of contents.querySelectorAll('.writer-project-note-row')){
+    el.style.display=!q||el.dataset.noteTitle.includes(q)?'':'none';
+    if(q&&el.style.display!=='none'){let ancestor=el.parentElement;while(ancestor&&ancestor!==contents){if(ancestor.tagName==='DETAILS')ancestor.open=true;ancestor=ancestor.parentElement;}}
+   }
+  });
  }
- promptNote(dir){new TextPrompt(this.app,'Nova nota',async name=>{name=clean(name);if(!name)return;try{await this.ensureFolder(dir);let path=dir+'/'+name+'.md';if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe uma nota com esse nome.');const file=await this.app.vault.create(path,'');this.openFile(file);await this.render();}catch(e){new Notice(e.message);}}).open();}
+ promptNotesFolder(parent){
+  new TextPrompt(this.app,'Nome da pasta',async raw=>{
+   const name=clean(raw);if(!name)return;
+   try{const path=[parent,name].filter(Boolean).join('/');
+    if(this.app.vault.getAbstractFileByPath(path))throw Error('Esta pasta já existe.');
+    await this.ensureFolder(path);await this.render();
+   }catch(e){new Notice(e.message);}
+  }).open();
+ }
+ promptNote(dir){
+  new TextPrompt(this.app,'Nova nota',async raw=>{
+   const name=clean(raw);if(!name)return;
+   try{await this.ensureFolder(dir);const path=dir+'/'+name+'.md';
+    if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe uma nota com esse nome.');
+    const file=await this.app.vault.create(path,'');this.openFile(file);await this.render();
+   }catch(e){new Notice(e.message);}
+  }).open();
+ }
+ renameProjectItem(item){
+  new TextPrompt(this.app,'Novo nome',async raw=>{
+   const name=clean(raw);if(!name)return;
+   const path=[item.parent?.path,name+(item instanceof TFile?'.'+item.extension:'')].filter(Boolean).join('/');
+   if(path===item.path)return;
+   try{
+    if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe um arquivo ou pasta com esse nome.');
+    if(item instanceof TFile)await this.app.fileManager.renameFile(item,path);
+    else await this.app.vault.rename(item,path);
+    await this.render();
+   }catch(e){new Notice(e.message);}
+  },item instanceof TFile?item.basename:item.name).open();
+ }
+ moveProjectNote(file,root){
+  const modal=new Modal(this.app);
+  modal.onOpen=()=>{
+   modal.setTitle('Mover nota para pasta');
+   const folders=[];
+   const walk=f=>{folders.push(f);for(const c of f.children)if(c instanceof TFolder)walk(c);};
+   walk(root);
+   let chosen=folders[0].path;
+   new Setting(modal.contentEl).setName('Destino').addDropdown(d=>{
+    for(const f of folders)d.addOption(f.path,f.path.replace(root.path,'Notas')||'Notas');
+    d.setValue(file.parent?.path||chosen).onChange(v=>chosen=v);
+   });
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Mover').setCta().onClick(async()=>{
+    modal.close();const target=chosen+'/'+file.name;
+    try{if(target===file.path)return;if(this.app.vault.getAbstractFileByPath(target))throw Error('Já existe uma nota no destino.');
+     await this.app.fileManager.renameFile(file,target);await this.render();
+    }catch(e){new Notice(e.message);}
+   }));
+  };
+  modal.open();
+ }
+ trashProjectItem(file){
+  new ConfirmProjectAction(this.app,'Mover para a lixeira',
+   'Enviar “'+file.name+'” para a lixeira do Obsidian? Esta ação inclui os arquivos internos se for uma pasta.',
+   async()=>{await this.app.fileManager.trashFile(file);await this.render();}).open();
+ }
+ promptNewProject(){
+  const modal=new Modal(this.app),active=this.app.workspace.getActiveFile();
+  let title='',parent=active?.parent?.path||'',format='scenes';
+  modal.onOpen=()=>{
+   modal.setTitle('Novo projeto de escrita');
+   new Setting(modal.contentEl).setName('Nome').addText(t=>t.setPlaceholder('Meu livro').onChange(v=>title=v));
+   new Setting(modal.contentEl).setName('Pasta no cofre').setDesc('Caminho relativo ao cofre').addText(t=>t.setValue(parent).onChange(v=>parent=v));
+   new Setting(modal.contentEl).setName('Tipo').addDropdown(d=>d.addOption('scenes','Várias cenas').addOption('single','Nota única').onChange(v=>format=v));
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Criar projeto').setCta().onClick(async()=>{
+    try{
+     title=clean(title);if(!title)throw Error('Informe o nome do projeto.');
+     if(parent.startsWith('/')||parent.split('/').includes('..'))throw Error('Pasta inválida.');
+     const dir=[parent,clean(title)].filter(Boolean).join('/');
+     const path=dir+'/'+(format==='scenes'?'Índice.md':title+'.md');
+     if(this.app.vault.getAbstractFileByPath(path))throw Error('Projeto já existe nesse caminho.');
+     await this.ensureFolder(dir);
+     const data={format,title,sceneFolder:'/',scenes:[],ignoredFiles:[]};
+     if(format==='single'){delete data.sceneFolder;delete data.scenes;delete data.ignoredFiles;}
+     const file=await this.app.vault.create(path,'---\n'+stringifyYaml({longform:data})+'---\n\n');
+     modal.close();this.selected=file.path;this.draft='Principal';await this.render();this.openFile(file);
+    }catch(e){new Notice(e.message,7000);}
+   }));
+  };
+  modal.open();
+ }
+ async drawStats(panel,project,token){
+  const scenes=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
+  const box=panel.createDiv({cls:'writer-project-progress'});
+  let total=0;
+  for(const f of scenes){
+   if(token!==this.renderToken)return;
+   try{total+=lfWordCount(await this.app.vault.cachedRead(f));}catch(_){}
+  }
+  if(token!==this.renderToken)return;
+  const prefs=this.prefs(project);
+  box.createEl('strong',{text:'Total: '+total.toLocaleString('pt-BR')+' palavras'});
+  if(prefs.goal>0){
+   const percent=Math.min(100,Math.round(100*total/prefs.goal));
+   box.createEl('p',{text:percent+'% da meta de '+prefs.goal+' palavras'});
+   const progress=box.createEl('progress');progress.max=prefs.goal;progress.value=Math.min(total,prefs.goal);
+  }
+ }
+
 }
 module.exports={ProjectsView,PROJECT_VIEW};

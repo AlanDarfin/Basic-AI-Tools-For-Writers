@@ -61,7 +61,7 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
  assert.ok(css.includes("var(--writer-scene-indent,0px)"));
  assert.ok(css.includes(".writer-project-scene-depth-mark"));
  console.log('PASS nested chapter depth indicators are rendered without changing control columns');
- const ui=vm.runInNewContext(fs.readFileSync('src/v4/integrations.js','utf8')+'\\n({writerV4ExtraMerge,writerV4FormatText})',{
+ const ui=vm.runInNewContext(fs.readFileSync('src/v4/integrations.js','utf8')+'\n({writerV4ExtraMerge,writerV4FormatText})',{
   EditorSuggest:class{},console
  });
  const legacy={writerV4Extras:{toolbar:{enabled:true}}};
@@ -71,7 +71,7 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
  ui.writerV4ExtraMerge(opting);
  assert.equal(opting.writerV4Extras.toolbar.mobileMode,'floating');
  assert.equal(ui.writerV4FormatText('Palavra','bold'),'**Palavra**');
- assert.equal(ui.writerV4FormatText('Um\\nDois','quote'),'> Um\\n> Dois');
+ assert.equal(ui.writerV4FormatText('Um\nDois','quote'),'> Um\n> Dois');
  assert.equal(ui.writerV4FormatText('Palavra','link'),'[Palavra](https://example.com)');
  const extras=fs.readFileSync('src/v4/integrations.js','utf8');
  assert.ok(extras.includes("id:'v4-editing-toolbar'"));

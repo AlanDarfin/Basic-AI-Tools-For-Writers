@@ -1358,3 +1358,6 @@ body.writer-v4-typewriter .cm-editor .cm-scroller{scroll-padding-block:40vh}
  .writer-v4-floating-toolbar button{min-width:32px;min-height:34px}
  .writer-project-scene-actions .writer-project-drag-handle{flex-basis:40px!important}
 }
+
+body.writer-v4-typewriter-focus .cm-editor .cm-line:not(.cm-activeLine){opacity:.62;transition:opacity 140ms ease}
+body.writer-v4-typewriter-focus .cm-editor .cm-activeLine{opacity:1}

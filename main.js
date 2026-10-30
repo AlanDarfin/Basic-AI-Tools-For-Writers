@@ -1891,17 +1891,27 @@ class DictionaryView extends ItemView{
   actions.createEl('button',{text:msg('Ir ao erro','Go to error')}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
   const apply=actions.createEl('button',{text:msg('Aceitar','Accept'),cls:'mod-cta'});
   apply.disabled=!suggestions.length;
+  if(this.plugin.settings.variants?.enabled&&this.plugin.settings.variants.offerInReview!==false){
+    const variantButton=actions.createEl('button',{text:'Criar variante'});
+    variantButton.disabled=!suggestions.length;
+    variantButton.addEventListener('click',async()=>{
+      const present=await writerCurrentText(this.plugin,file);
+      if(present!==source)return new Notice('A nota mudou. Faça a revisão novamente.');
+      await this.plugin.writerVariants.addFromReview(file,source,match,select.value);
+      this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();
+    });
+  }
   apply.addEventListener('click',async()=>{
     try{
       const replacement=select.value;
       const current=this.app.vault.getAbstractFileByPath(file.path);
       if(!(current instanceof TFile))throw new Error(msg('Arquivo não encontrado','File not found'));
-      let changed=false;
-      await this.app.vault.process(current,text=>{
-        if(text.slice(start,end)!==original||text!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
-        changed=true;return text.slice(0,start)+replacement+text.slice(end);
-      });
-      if(changed){new Notice(msg('Alteração aplicada','Change applied'));this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();await this.reviewFile(file);}
+      const present=await writerCurrentText(this.plugin,current);
+      if(present!==source)throw new Error(msg('O arquivo mudou. Revise novamente antes de aplicar.','File changed. Review again before applying.'));
+      await writerSafeReplace(this.plugin,current,start,end,original,replacement,'aceitar revisão gramatical');
+      new Notice(msg('Alteração aplicada','Change applied'));
+      this.plugin.closeReviewPopup();this.plugin.clearReviewMarks();
+      setTimeout(()=>this.reviewFile(file),350);
     }catch(e){new Notice(e.message||String(e),7000);}
   });
   actions.createEl('button',{text:msg('Ignorar','Ignore')}).addEventListener('click',()=>{card.remove();this.plugin.closeReviewPopup();this.plugin.hideReviewMark(file,start,end);});

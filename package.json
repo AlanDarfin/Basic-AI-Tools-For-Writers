@@ -1,6 +1,6 @@
 {
   "name": "basic-ai-tool-for-writers",
-  "version": "3.0.0-beta.2",
+  "version": "3.0.0-beta.3",
   "private": true,
   "description": "Obsidian writing workspace",
   "scripts": {

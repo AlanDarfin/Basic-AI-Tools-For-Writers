@@ -95,3 +95,9 @@ LanguageTool grammar findings now appear as temporary **CodeMirror 6 wavy underl
 The grammar checker skips the initial YAML frontmatter block (`---` metadata) while preserving original text offsets for accurate suggestions. The sidebar now scrolls independently and the review actions wrap into accessible rows on narrow Android screens.
 
 Only the **currently open editor** for the selected note can display inline marks. AI style and beta-reader feedback remain non-destructive sidebar reports. Markdown metadata is excluded from LanguageTool checks, not from AI editorial context. Review this release on your device before relying on it for critical editing.
+
+## 1.4.2 — Mobile review layout and Markdown noise reduction
+
+Fixes review cards collapsing into thin rows in Obsidian Mobile: cards now keep their natural height and the review pane scrolls vertically. Context and explanations are expandable per finding, with the replacement selector and actions always accessible. The editor's CodeMirror marks remain non-destructive.
+
+The LanguageTool request now masks YAML frontmatter, fenced code, embedded images, wiki links and Markdown syntax while preserving character offsets. Whitespace-only and selected formatting-only matches are filtered to reduce false positives caused by Markdown indentation, paragraph breaks and formatting. Genuine spacing issues may be filtered as a trade-off. The original note remains unchanged until the user accepts a suggestion.

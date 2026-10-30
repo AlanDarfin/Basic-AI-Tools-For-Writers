@@ -1,7 +1,15 @@
 # Basic AI Tool for Writers — v4 beta preview
 
-Status: **4.0.0-beta.3** (development branch). Not a stable release.
+Status: **4.0.0-beta.4** (development branch). Not a stable release.
 
+
+## Beta.4 — Longform hierarchy and Android toolbar polish
+
+- **Longform hierarchy:** the compact three-column scene layout now visibly distinguishes nested chapters. Each indented item has its own title offset, an accent guide, a subchapter marker (↳) and a level indicator for deeper levels, while drag handles and arrow controls stay aligned.
+- **Mobile editing toolbar:** the separate floating toolbar no longer competes with Android's text selection menu and Obsidian's built-in editing bar by default. In **Settings → Integrated tools → Android toolbar**, the recommended option is **Native**. The old floating toolbar is still available as an explicit opt-in.
+- **Native commands:** Basic AI now registers **Editing toolbar: format selection** in the command palette. Add this command to Obsidian's mobile toolbar using **Settings → Interface → Configure mobile toolbar → Manage toolbar options → Add a command**. It opens a touch-friendly dialog for bold, italic, heading, quote, list and links, plus AI writing actions. Existing AI/review/comment commands can be added to the native toolbar too.
+- **Safety:** the formatting modal captures the selected range and validates its original text before applying a change, avoiding stale offset edits.
+- **Regression tests:** hierarchy markup, depth CSS, default native toolbar, opt-in floating toolbar and formatting operations.
 
 ## Beta.3 — Android repair release
 

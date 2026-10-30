@@ -39,15 +39,25 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
   assert.ok(src.includes(event),event);
  }
  assert.ok(src.includes('this.savedRange'), 'touch selection is retained');
- assert.ok(src.includes("this.dom.addClass('writer-v4-toolbar-mobile')"),'mobile toolbar has docked styling');
+ assert.ok(src.includes("this.dom.addClass('writer-v4-toolbar-mobile')"),'mobile toolbar has dedicated styling');
  assert.ok(css.includes('.writer-v4-floating-toolbar.writer-v4-toolbar-mobile'));
  assert.ok(css.includes('position:fixed!important'));
- console.log('PASS editor toolbar supports touch and mobile bottom docking');
+ assert.ok(src.includes('coordsAtPos(selection.to)'), 'mobile toolbar anchored to selection');
+ assert.ok(src.includes("mobileMode==='off'"), 'mobile toolbar can be disabled');
+ assert.ok(css.includes('bottom:auto!important'), 'no forced docking above keyboard');
+ assert.ok(css.includes('.writer-v4-toolbar-desktop-only{display:none!important}'));
+ console.log('PASS editor toolbar follows selected text and offers mobile opt-out');
  assert.ok(css.includes('grid-template-columns:36px minmax(0,1fr) max-content!important'));
  for(const item of ['>.writer-project-drag-handle','>.writer-project-scene-title','>.writer-project-scene-controls']){
   assert.ok(css.includes(item),'chapter card region '+item);
  }
- console.log('PASS Longform chapter row uses three explicit regions');
+ const scenes=fs.readFileSync('projects.js','utf8');
+ assert.ok(scenes.includes("row.style.setProperty('--writer-scene-indent'"), 'depth controls visual indentation');
+ assert.ok(scenes.includes("row.dataset.sceneDepth=String(level)"), 'scene depth is retained');
+ assert.ok(scenes.includes("cls:'writer-project-scene-depth'"), 'depth label is visible');
+ assert.ok(css.includes('padding-inline-start:var(--writer-scene-indent,2px)!important'), 'mobile CSS preserves scene depth');
+ assert.ok(css.includes('.writer-project-scene-nested'), 'nested scene border is visible');
+ console.log('PASS Longform chapter hierarchy and compact actions render separately');
  const main=fs.readFileSync('main.js','utf8');
  for(const required of ['systemSpeechStatus(){',"view.dom.addEventListener('touchend'","grid-template-columns:36px"]){
   const haystack=required.includes('grid-')?css:main;

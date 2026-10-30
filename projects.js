@@ -123,7 +123,7 @@ class ProjectsView extends ItemView{
   this.projectPrefs=this.prefs(project);
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   const panels={};
-  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas']]){
+  for(const [id,name] of [['scenes','Cenas'],['project','Projeto'],['compile','Compilar'],['notes','Notas'],['tasks',msg('Tarefas','Tasks')]]){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -133,6 +133,7 @@ class ProjectsView extends ItemView{
   this.drawProject(panels.project,project);
   this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
+  if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
  }
  resolveScene(project,name){
@@ -815,6 +816,91 @@ class ProjectsView extends ItemView{
    box.createEl('p',{text:percent+'% da meta de '+prefs.goal+' palavras'});
    const progress=box.createEl('progress');progress.max=prefs.goal;progress.value=Math.min(total,prefs.goal);
   }
+ }
+
+ taskOptions(){
+  const defaults={autoSort:true,hideCompleted:false,showDueDates:true,showTooltips:true};
+  this.plugin.settings.longformTasksOptions={...defaults,...(this.plugin.settings.longformTasksOptions||{})};
+  return this.plugin.settings.longformTasksOptions;
+ }
+ taskState(project){
+  const states=this.plugin.settings.longformTasks||(this.plugin.settings.longformTasks={});
+  if(!states[project.file.path])states[project.file.path]={groups:[{name:'General',tasks:[]}],tasks:[]};
+  return states[project.file.path];
+ }
+ async saveTaskState(){await this.plugin.saveSettings();this.render();}
+ drawTasks(panel,project){
+  const state=this.taskState(project),options=this.taskOptions();
+  panel.addClass('writer-project-tasks');
+  const h=panel.createDiv({cls:'writer-tasks-heading'});
+  h.createEl('h3',{text:msg('Tarefas do projeto','Project tasks')});
+  const all=[...state.tasks,...state.groups.flatMap(g=>g.tasks)];
+  h.createEl('small',{text:all.filter(t=>!t.done).length+' '+msg('pendentes','open')+' · '+all.filter(t=>t.done).length+' '+msg('concluídas','done')});
+  const toolbar=panel.createDiv({cls:'writer-task-toolbar'});
+  toolbar.createEl('button',{text:msg('+ Tarefa','+ Task')}).addEventListener('click',()=>this.promptTask(project,null));
+  toolbar.createEl('button',{text:msg('+ Grupo','+ Group')}).addEventListener('click',()=>new TextPrompt(this.app,msg('Novo grupo','New group'),async name=>{
+   if(!name.trim())return;
+   state.groups.push({name:name.trim(),tasks:[]});await this.saveTaskState();
+  }).open());
+  const drawList=(container,tasks,group)=>{
+   const ordered=options.autoSort?[...tasks].sort((a,b)=>Number(a.done)-Number(b.done)||String(a.date||'').localeCompare(String(b.date||''))):tasks;
+   for(const task of ordered){
+    if(options.hideCompleted&&task.done)continue;
+    const row=container.createDiv({cls:'writer-task-row'});
+    const toggle=row.createEl('input',{type:'checkbox',attr:{'aria-label':msg('Concluir tarefa','Complete task')}});
+    toggle.checked=!!task.done;
+    toggle.addEventListener('change',async()=>{task.done=toggle.checked;await this.saveTaskState();});
+    const content=row.createDiv({cls:'writer-task-info'});
+    const name=content.createEl('span',{text:task.name,cls:task.done?'is-done':''});
+    name.addEventListener('click',()=>this.promptTask(project,group,task));
+    if(task.date&&options.showDueDates)content.createEl('small',{text:task.date,cls:'writer-task-date'});
+    if(task.page)content.createEl('button',{text:'↗ '+task.page,cls:'writer-task-link'}).addEventListener('click',()=>{
+     const f=this.app.metadataCache.getFirstLinkpathDest(task.page,project.file.path);
+     if(f instanceof TFile)this.openFile(f);
+     else new Notice(msg('Nota não encontrada','Note not found'));
+    });
+    row.createEl('button',{text:'⋯',cls:'writer-task-more'}).addEventListener('click',event=>{
+     const menu=new Menu(this.app);
+     menu.addItem(i=>i.setTitle(msg('Editar','Edit')).setIcon('pencil').onClick(()=>this.promptTask(project,group,task)));
+     menu.addItem(i=>i.setTitle(msg('Excluir tarefa','Delete task')).setIcon('trash').onClick(async()=>{
+      const items=group?group.tasks:state.tasks;
+      const pos=items.indexOf(task);if(pos>=0)items.splice(pos,1);await this.saveTaskState();
+     }));
+     menu.showAtMouseEvent(event);
+    });
+   }
+  };
+  if(state.tasks.length){panel.createEl('h4',{text:msg('Sem grupo','Ungrouped')});drawList(panel,state.tasks,null);}
+  for(const group of [...state.groups].sort((a,b)=>options.autoSort?b.tasks.filter(x=>!x.done).length-a.tasks.filter(x=>!x.done).length:0)){
+   const section=panel.createDiv({cls:'writer-task-group'});
+   const top=section.createDiv({cls:'writer-task-group-header'});
+   top.createEl('h4',{text:group.name});
+   top.createEl('span',{text:String(group.tasks.filter(x=>!x.done).length),cls:'writer-task-count'});
+   top.createEl('button',{text:'+',attr:{title:msg('Adicionar tarefa','Add task')}}).addEventListener('click',()=>this.promptTask(project,group));
+   top.createEl('button',{text:'⋯',attr:{title:msg('Ações do grupo','Group actions')}}).addEventListener('click',e=>{
+    const menu=new Menu(this.app);
+    menu.addItem(i=>i.setTitle(msg('Renomear grupo','Rename group')).setIcon('pencil').onClick(()=>new TextPrompt(this.app,msg('Nome do grupo','Group name'),async name=>{if(name.trim()){group.name=name.trim();await this.saveTaskState();}},group.name).open()));
+    menu.addItem(i=>i.setTitle(msg('Excluir grupo e tarefas','Delete group and tasks')).setIcon('trash').onClick(async()=>{state.groups=state.groups.filter(x=>x!==group);await this.saveTaskState();}));
+    menu.showAtMouseEvent(e);
+   });
+   drawList(section,group.tasks,group);
+  }
+ }
+ promptTask(project,group,existing=null){
+  const state=this.taskState(project),modal=new Modal(this.app);
+  const values=existing?{...existing}:{name:'',date:'',page:'',done:false};
+  modal.onOpen=()=>{
+   modal.setTitle(existing?msg('Editar tarefa','Edit task'):msg('Nova tarefa','New task'));
+   new Setting(modal.contentEl).setName(msg('Descrição','Description')).addText(x=>x.setValue(values.name).onChange(v=>values.name=v));
+   new Setting(modal.contentEl).setName(msg('Prazo (AAAA-MM-DD)','Due (YYYY-MM-DD)')).addText(x=>x.setValue(values.date||'').onChange(v=>values.date=v));
+   new Setting(modal.contentEl).setName(msg('Nota vinculada (opcional)','Linked note (optional)')).addText(x=>x.setValue(values.page||'').onChange(v=>values.page=v));
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(msg('Salvar','Save')).setCta().onClick(async()=>{
+    if(!values.name.trim())return new Notice(msg('Informe a tarefa','Enter a task'));
+    if(values.date&&!/^\d{4}-\d{2}-\d{2}$/.test(values.date))return new Notice('YYYY-MM-DD');
+    if(existing)Object.assign(existing,values);else (group?group.tasks:state.tasks).push(values);
+    modal.close();await this.saveTaskState();
+   }));
+  };modal.open();
  }
 
 }

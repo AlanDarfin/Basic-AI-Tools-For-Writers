@@ -74,7 +74,7 @@ class WriterSnapshots{
   const links=new Set(),re=/!\[\[([^\]]+)\]\]|!\[[^\]]*\]\(([^)]+)\)/g;
   let match;while((match=re.exec(source))){
    let raw=(match[1]||match[2]||'').split('|')[0].split('#')[0].trim();
-   raw=decodeURIComponent(raw.replace(/^<|>$/g,'')).trim();
+   try{raw=decodeURIComponent(raw.replace(/^<|>$/g,'')).trim();}catch(_){continue;}
    if(!raw||/^[a-z]+:\/\//i.test(raw)||raw.startsWith('data:'))continue;
    const found=this.plugin.app.metadataCache.getFirstLinkpathDest(raw,file.path);
    if(found instanceof TFile&&found.extension!=='md')links.add(found);
@@ -89,6 +89,7 @@ class WriterSnapshots{
   for(const target of this.attachmentLinks(source,file)){
    if(target.stat?.size>20*1024*1024||used+(target.stat?.size||0)>40*1024*1024)continue;
    const bytes=await this.plugin.app.vault.readBinary(target);
+   if(bytes.byteLength>20*1024*1024||used+bytes.byteLength>40*1024*1024)continue;
    const hash=await this.digest(bytes);
    const extension=String(target.extension||'bin').replace(/[^a-z0-9]/gi,'').slice(0,10)||'bin';
    const stored=this.path(dir,hash+'.'+extension);
@@ -146,9 +147,10 @@ class WriterSnapshots{
   else await this.plugin.app.vault.process(file,()=>text);
   let restored=0,skipped=0;
   if(attachments)for(const item of entry.attachments||[]){
+   if(typeof item.path!=='string'||item.path.startsWith('/')||item.path.split('/').some(x=>x==='..'||x==='.')||item.path.includes('\\')){skipped++;continue;}
    const dst=this.plugin.app.vault.getAbstractFileByPath(item.path);
    // NEVER overwrite existing attachment files: they may be shared with other notes.
-   if(dst){skipped++;continue;}
+   if(dst||await this.plugin.app.vault.adapter.exists(item.path)){skipped++;continue;}
    const stored=this.path(this.folder(file),'attachments',item.stored.split('/').pop());
    if(!(await this.plugin.app.vault.adapter.exists(stored))){skipped++;continue;}
    const binary=await this.plugin.app.vault.adapter.readBinary(stored);

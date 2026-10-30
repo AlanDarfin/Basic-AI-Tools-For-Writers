@@ -1879,7 +1879,7 @@ const WRITER_FINAL_DEFAULTS={
  abbreviations:{enabled:true,entries:{"eg.":{value:"for example",isEnabled:true},"atm":{value:"at the moment",isEnabled:true},"imo":{value:"in my opinion",isEnabled:true},"w/":{value:"with",isEnabled:true},"w/o":{value:"without",isEnabled:true},"btw":{value:"by the way",isEnabled:true},"afaik":{value:"as far as I know",isEnabled:true},"rn":{value:"right now",isEnabled:true},"ily":{value:"I love you",isEnabled:true}},expandAtWordBoundary:false},
  anotherName:{enabled:true,property:"another-name"},
  viewMode:{enabled:true,property:"prefer-view"},
- templates:{enabled:true,folder:"Templates",matchCase:false,onlyNew:true,applyOnCreate:true},
+ templates:{enabled:true,folder:"Templates",caseSensitive:true,matchCase:true,onlyNew:true,applyOnCreate:true,templateOnRename:false,dateFormat:"YYYY-MM-DD",timeFormat:"HH:mm",matchers:[]},
  unicode:{enabled:true,favorites:["—","…","«","»","“","”","•","→","←","✓","★","≈","≠","∞"],recent:[],maxResults:40},
  toc:{enabled:true,codeBlock:"insta-toc",maxDepth:6,folded:false,numbered:false},
  tts:{enabled:true,language:"auto",rate:1,pitch:1,volume:1,voice:"",readSelection:true,maxCharacters:12000}
@@ -1888,6 +1888,10 @@ function writerFinalMerge(plugin){
  const current=plugin.settings.finalSuite||{};
  for(const [key,defaults] of Object.entries(WRITER_FINAL_DEFAULTS)){
   current[key]={...defaults,...(current[key]||{})};
+  if(key==='templates'){
+   if(!Array.isArray(current[key].matchers))current[key].matchers=[];
+   if(current[key].caseSensitive===undefined)current[key].caseSensitive=current[key].matchCase!==false;
+  }
   if(key==='abbreviations'){
    current[key].entries={...defaults.entries,...(current[key].entries||{})};
    for(const [abbr,entry] of Object.entries(current[key].entries)){
@@ -1909,6 +1913,7 @@ class WriterFinalFeatures{
   if(p.app.metadataCache?.on)p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
   p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
   p.registerEvent(p.app.vault.on('create',file=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplate(file).catch(e=>console.warn('[Basic AI] template:',e));}));
+  p.registerEvent(p.app.vault.on('rename',(file,oldPath)=>{if(file instanceof TFile&&file.extension==='md')this.applyTemplateOnRename(file,oldPath).catch(e=>console.warn('[Basic AI] template rename:',e));}));
   if(EditorView.updateListener?.of)p.registerEditorExtension(EditorView.updateListener.of(update=>{
    if(!update.docChanged||!p.settings.finalSuite?.abbreviations?.enabled)return;
    if(!update.transactions?.some(tr=>tr.isUserEvent?.('input.type')))return;
@@ -1979,23 +1984,106 @@ class WriterFinalFeatures{
   else{state.mode='source';state.source=mode==='edit-source';}
   await view.setState(state,{history:false});
  }
+ templateFolder(){
+  return String(this.cfg.templates.folder||'Templates').replace(/^\/+|\/+$/g,'');
+ }
+ fileMatchesTemplateRule(basename,rule){
+  const raw=String(rule?.matchString||'').trim();
+  if(!raw)return false;
+  const sensitive=this.cfg.templates.caseSensitive!==false&&this.cfg.templates.matchCase!==false;
+  const title=sensitive?String(basename):String(basename).toLowerCase();
+  const match=sensitive?raw:raw.toLowerCase();
+  switch(rule.matchMethod){
+   case 'prefix':return title.startsWith(match);
+   case 'suffix':return title.endsWith(match);
+   case 'contains':return title.includes(match);
+   default:return false;
+  }
+ }
+ templateMatcher(file){
+  const rules=this.cfg.templates.matchers||[];
+  return rules.find(rule=>this.fileMatchesTemplateRule(file.basename,rule));
+ }
+ async templateForFile(file){
+  const cfg=this.cfg.templates,folder=this.templateFolder();
+  if(file.path.startsWith(folder+'/'))return null;
+  const rules=cfg.matchers||[];
+  let templatePath;
+  let explicit=false;
+  if(rules.length){
+   const rule=this.templateMatcher(file);
+   if(!rule)return null;
+   templatePath=String(rule.templatePath||'');
+   explicit=true;
+  }else{
+   // Compatibility with beta 4's exact-name template lookup.
+   templatePath=folder+'/'+file.basename+'.md';
+  }
+  if(!templatePath.endsWith('.md'))return null;
+  const target=this.plugin.app.vault.getAbstractFileByPath(templatePath);
+  if(!(target instanceof TFile)||target.path===file.path)return null;
+  if(!(target.path===folder||target.path.startsWith(folder+'/')))return null;
+  return {target,explicit};
+ }
+ evaluateTemplate(template,file){
+  const cfg=this.cfg.templates;
+  const format=(pattern)=>{
+   try{
+    const moment=require('obsidian').moment;
+    if(typeof moment==='function')return moment().format(pattern);
+   }catch(_){}
+   // When Obsidian's Moment API is unavailable, use stable ISO fallbacks.
+   const now=new Date();
+   return /H|h|m|s/.test(pattern)?now.toTimeString().slice(0,5):now.toISOString().slice(0,10);
+  };
+  return String(template).replace(/\{\{(date|time)(?::([^{}]+))?\}\}/g,(_whole,kind,formatOverride)=>{
+   return format(formatOverride||(kind==='date'?cfg.dateFormat||'YYYY-MM-DD':cfg.timeFormat||'HH:mm'));
+  }).replace(/\{\{title\}\}/gi,file.basename);
+ }
+ async prependTemplate(file,target,onlyIfEmpty){
+  const source=await this.plugin.app.vault.cachedRead(target);
+  if(!source)return false;
+  const rendered=this.evaluateTemplate(source,file);
+  let changed=false;
+  const update=old=>{
+   if(onlyIfEmpty&&old.trim())return old;
+   // Never remove existing note data. A matching template is prepended.
+   const next=rendered+(old.trim()?'\n\n'+old:'');
+   if(next===old)return old;
+   changed=true;return next;
+  };
+  if(this.plugin.app.vault.process)await this.plugin.app.vault.process(file,update);
+  else{
+   const old=await this.plugin.app.vault.read(file);
+   const next=update(old);
+   if(next!==old)await this.plugin.app.vault.modify(file,next);
+  }
+  return changed;
+ }
  async applyTemplate(file,force=false){
-  const cfg=this.cfg.templates;if(!cfg.enabled||(!force&&!cfg.applyOnCreate))return;
-  const folder=String(cfg.folder||'Templates').replace(/^\/|\/$/g,'');
-  if(file.path.startsWith(folder+'/'))return;
-  const target=this.plugin.app.vault.getAbstractFileByPath(folder+'/'+file.basename+'.md');
-  if(!(target instanceof TFile)||target.path===file.path)return;
-  const current=await this.plugin.app.vault.read(file);
-  if(cfg.onlyNew&&!force&&current.trim())return;
-  const template=await this.plugin.app.vault.cachedRead(target);
-  const rendered=template.replace(/\{\{title\}\}/gi,file.basename).replace(/\{\{date\}\}/gi,new Date().toISOString().slice(0,10));
-  if(current.trim()&&!force)return;
-  await this.plugin.app.vault.process(file,old=>old.trim()?old:rendered);
+  const cfg=this.cfg.templates;
+  if(!cfg.enabled||(!force&&!cfg.applyOnCreate))return false;
+  const found=await this.templateForFile(file);
+  if(!found)return false;
+  // Existing exact-name beta-4 templates retain their non-destructive behavior.
+  return this.prependTemplate(file,found.target,found.explicit?false:cfg.onlyNew!==false);
+ }
+ async applyTemplateOnRename(file,oldPath){
+  const cfg=this.cfg.templates;
+  if(!cfg.enabled||!cfg.templateOnRename||!oldPath)return false;
+  const found=await this.templateForFile(file);
+  if(!found?.explicit)return false;
+  const oldBase=String(oldPath).split('/').pop().replace(/\.md$/i,'');
+  const matcher=this.templateMatcher(file);
+  // Do not prepend repeatedly when the old name already matched the same rule.
+  if(this.fileMatchesTemplateRule(oldBase,matcher))return false;
+  return this.prependTemplate(file,found.target,false);
  }
  async applyTemplateToCurrent(){
   const file=this.plugin.app.workspace.getActiveFile();
   if(!(file instanceof TFile))return new Notice('Open a Markdown note.');
-  await this.applyTemplate(file,true);
+  const applied=await this.applyTemplate(file,true);
+  new Notice(applied?'Template applied.':'No applicable template, or note is not empty.');
  }
  async insertToc(){
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
@@ -2251,7 +2339,50 @@ function writerRenderFinalSettings(panel,plugin,section){
  if(section==='abbreviations'){bool('expandAtWordBoundary','Expand on punctuation or space (instead of space only)');new Setting(panel).setName('Edit abbreviations').addButton(b=>b.setButtonText('Open').onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
  if(section==='anotherName')str('property','Frontmatter property');
  if(section==='viewMode')str('property','View mode frontmatter property');
- if(section==='templates'){str('folder','Templates folder');bool('onlyNew','Only empty notes');bool('applyOnCreate','Apply when note is created');}
+ if(section==='templates'){
+  str('folder','Templates folder');
+  str('dateFormat','Date format (e.g. YYYY-MM-DD)');
+  str('timeFormat','Time format (e.g. HH:mm)');
+  bool('applyOnCreate','Apply templates on note creation');
+  bool('templateOnRename','Apply templates when a note is renamed to match');
+  bool('caseSensitive','Case-sensitive title matching');
+  new Setting(panel).setName('Original matching rules').setDesc('The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.').setHeading();
+  const container=panel.createDiv({cls:'writer-template-matcher-list'});
+  const templates=plugin.app.vault.getMarkdownFiles().filter(file=>{
+   const folder=String(cfg.folder||'Templates').replace(/^\/+|\/+$/g,'');
+   return file.path.startsWith(folder+'/');
+  }).sort((a,b)=>a.path.localeCompare(b.path));
+  const render=()=>{
+   container.empty();
+   const matchers=cfg.matchers||(cfg.matchers=[]);
+   for(let index=0;index<matchers.length;index++){
+    const rule=matchers[index];
+    const row=new Setting(container).setClass('writer-template-matcher');
+    row.setName('Rule '+(index+1));
+    row.addDropdown(d=>{
+     for(const [key,label] of [['prefix','Starts with'],['contains','Contains'],['suffix','Ends with']])d.addOption(key,label);
+     d.setValue(rule.matchMethod||'prefix').onChange(async value=>{rule.matchMethod=value;await plugin.saveSettings();});
+    });
+    row.addText(t=>t.setPlaceholder('Name fragment').setValue(rule.matchString||'').onChange(async value=>{rule.matchString=value;await plugin.saveSettings();}));
+    row.addDropdown(d=>{
+     d.addOption('','Select template');
+     for(const file of templates)d.addOption(file.path,file.path);
+     if(rule.templatePath&&!templates.some(f=>f.path===rule.templatePath))d.addOption(rule.templatePath,rule.templatePath+' (missing)');
+     d.setValue(rule.templatePath||'').onChange(async value=>{rule.templatePath=value;await plugin.saveSettings();});
+    });
+    row.addExtraButton(b=>b.setIcon('trash').setTooltip('Delete rule').onClick(async()=>{
+     matchers.splice(index,1);
+     await plugin.saveSettings();render();
+    }));
+   }
+  };
+  new Setting(panel).setName('Add matching rule').addButton(b=>b.setButtonText('Add').setIcon('plus').onClick(async()=>{
+   cfg.matchers.push({matchMethod:'prefix',matchString:'',templatePath:''});
+   await plugin.saveSettings();render();
+  }));
+  render();
+  new Setting(panel).setName('Legacy exact-name fallback').setDesc('If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty.').addToggle(t=>t.setValue(cfg.onlyNew!==false).onChange(async value=>{cfg.onlyNew=value;await plugin.saveSettings();}));
+ }
  if(section==='unicode'){
   new Setting(panel).setName('Unicode picker').addButton(b=>b.setButtonText('Search').onClick(()=>plugin.writerFinalFeatures.unicodePicker()));
   str('maxResults','Max results');

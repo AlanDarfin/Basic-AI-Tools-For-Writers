@@ -1,4 +1,4 @@
-# Writing Suite — v3.0.0-beta.4
+# Writing Suite — v3.0.0
 
 This release adds several **independently implemented** features to Basic AI Tool for Writers, using the plugins supplied by the user as behavior and UI references. The original compiled plugin code has **not** been inserted wholesale into the distribution.
 
@@ -29,7 +29,7 @@ This implementation covers on-note headings and collapsible navigation; some spe
 The writing-tools sidebar has an **Extras** tab with Unicode Search. Search by character, name, or codepoint (`U+2014`), insert the result in the editor, and save favorites. A small built-in set is available immediately. For extensive name-based search, choose **Settings → Unicode → Download / update** once to download the public UnicodeData index from unicode.org into the plugin's data folder. Further searches work offline.
 
 ## Template by note name
-An automatically created *empty* note can receive the contents of `Templates/<note basename>.md`. Configure the folder under Settings → Templates. Supports `{{title}}` and `{{date}}`. Existing text is never overwritten automatically. **No separately identifiable Template by Note Name bundle was present among the supplied files**, so this is a safe independent implementation, not a claim of full upstream equivalence.
+The supplied **Template by Note Name** plugin supports ordered name-matching rules. Configure a template folder and add one or more rules using **Starts with**, **Contains**, or **Ends with**, each pointing to a selected Markdown template. The first matching rule applies on note creation. Case sensitivity, template application on renaming, and date/time formats are configurable. Placeholders `{{date}}`, `{{date:YYYY-MM-DD}}`, `{{time}}`, `{{time:HH:mm}}` and `{{title}}` are supported. A selected template is prepended, preserving existing note content; enabling rename application can therefore modify existing notes, so take a backup first. To preserve the previous beta-4 behavior, **when no rules are configured**, the plugin looks for `Templates/<note basename>.md` and applies it to empty notes without erasing their content. The supplied bundle was used to verify behavior; the integration code is independent.
 
 ## Multilingual text-to-speech
 Choose the **Extras** tab or use the command palette to read a selection or the active Markdown note. Controls: read, pause, resume and stop. Voices, speaking rate, pitch, volume and language are configurable, with Portuguese, English, Spanish, French, German, Italian, Japanese and Chinese options. Uses the operating system/browser's **Web Speech speechSynthesis**, not an AI API. A Google voice is available only if that voice is installed and exposed by the device; availability differs between Android and desktop.
@@ -40,4 +40,8 @@ UI labels and messages for the project workspace and the version-3 modules have 
 ## Testing and safety
 Run `npm run check` to validate source synchronization, syntax and regression tests. Test with a vault copy before removing any original plugins. Original Longform projects and Note Snapshots histories are not deleted or rewritten.
 
-This is a **beta integration**, pending hands-on desktop and Android confirmation. It is not guaranteed to reproduce every advanced behavior of the original upstream plugins.
+This is the **3.0.0 stable release**, with automated checks and regression tests. Full visual validation on every desktop theme and Android device is not available, and the independent integrations do not guarantee parity with every advanced upstream feature.
+
+## Responsive translation sidebar
+
+In a narrow Obsidian desktop sidebar, provider and source/target language selectors stack vertically. The layout responds to the **sidebar width**, not just the monitor width, to prevent truncated dropdowns and controls.

@@ -1,22 +1,22 @@
 # Basic AI Tool for Writers
 
-## Writing Suite — 3.0.0-beta.4
+## Writing Suite — 3.0.0
 
-The new [Writing Suite](docs/WRITING_SUITE.md) brings abbreviations, another-name subtitles, per-note view modes, a Longform **Tasks** tab, instant tables of contents, offline Unicode search, safe templates by note name and multilingual system text-to-speech to Basic AI Tool for Writers. These are configurable modules with commands and writing-sidebar controls. No AI provider is used for speech synthesis.
+The stable [Writing Suite](docs/WRITING_SUITE.md) brings abbreviations, another-name subtitles, per-note view modes, a Longform **Tasks** tab, instant tables of contents, offline Unicode search, rule-based templates by note name (prefix, contains, suffix and optional rename handling) and multilingual system text-to-speech to Basic AI Tool for Writers. These are configurable modules with commands and writing-sidebar controls. No AI provider is used for speech synthesis.
 
 
-## V3 beta 3 — autocomplete, variantes e versões
+## V3 — autocomplete, variantes e versões
 
-A versão **3.0.0-beta.4** contém a prévia com três módulos novos, integrados ao Obsidian:
+A versão estável **3.0.0** integra três módulos ao Obsidian:
 
 - **Sugestões:** autocomplete local do arquivo, cofre, dicionários e links;
 - **Variantes:** alternativas inline de escrita, revisão → variante e geração com IA;
 - **Versões:** snapshots locais nomeados, diferenças, restauração segura e anexos opcionais.
 
 Os módulos têm **configurações próprias, comandos na paleta e uma nova barra lateral**. A atualização preserva as configurações antigas e gera backup de `data.json` antes de migrar.
-**Correções da beta 2:** o LanguageTool ignora delimitadores Markdown como `_itálico_` sem perder a posição dos erros; o cartão de revisão foi adaptado à tela e ao teclado do Android; controles de cenas agora ficam em linha, com setas e menu contextual `⋯`. Testes de regressão foram adicionados.
+**Correções de revisão:** o LanguageTool ignora delimitadores Markdown como `_itálico_` sem perder a posição dos erros; o cartão de revisão foi adaptado à tela e ao teclado do Android; controles de cenas agora ficam em linha, com setas e menu contextual `⋯`. Testes de regressão foram adicionados.
 
-Para instruções, limitações e segurança, consulte [Guia da v3](docs/V3.md). **Ainda é uma versão beta, sem validação manual concluída no Android.**
+Para instruções, limitações e segurança, consulte [Guia da v3](docs/V3.md). A suíte automatizada foi executada, mas diferenças de tema e de interface entre Obsidian Desktop e Android ainda exigem validação no aplicativo.
 
 
 A bilingual, AI-powered writing companion for [Obsidian](https://obsidian.md), available on desktop and mobile.

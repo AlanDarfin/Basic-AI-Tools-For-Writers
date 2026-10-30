@@ -1,6 +1,7 @@
 'use strict';
 const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, requestUrl} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
+const {ProjectsView,PROJECT_VIEW}=require('./projects');
 const {StateField,StateEffect}=require('@codemirror/state');
 const {Decoration,EditorView,ViewPlugin}=require('@codemirror/view');
 const setReviewMarks=StateEffect.define();
@@ -470,6 +471,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const saved=await this.loadData()||{};this.settings=Object.assign({},DEFAULTS,saved);if(!AI_PROVIDERS.some(p=>p[0]===this.settings.provider))this.settings.provider='openai';if(!AI_PROVIDERS.some(p=>p[0]===this.settings.translationProvider))this.settings.translationProvider=this.settings.provider;this.settings.aiKeys={...DEFAULTS.aiKeys,...(saved.aiKeys||{})};this.settings.aiModels={...DEFAULTS.aiModels,...(saved.aiModels||{})};this.settings.prompts={...(saved.prompts||{})};
     this.cache={path:null,entries:[]};this.dirty=true;
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
+    this.registerView(PROJECT_VIEW,leaf=>new ProjectsView(leaf,this));
+    this.addCommand({id:'open-writing-projects',name:msg('Abrir projetos de escrita','Open writing projects'),callback:()=>this.openProjects()});
+    this.addCommand({id:'open-project-notes',name:msg('Abrir notas do projeto','Open project notes'),callback:()=>this.openProjects('notes')});
     this.addSettingTab(new DictionarySettings(this.app,this));
     this.addRibbonIcon('book-open',msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),()=>this.activateView());
     this.addCommand({id:'open-dictionary-view',name:msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),callback:()=>this.activateView()});
@@ -657,6 +661,12 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     await this.app.vault.process(file,old=>old.trimEnd()+content);
     this.invalidate();
   }
+  async openProjects(tab){
+    let leaf=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0];
+    if(!leaf){leaf=this.app.workspace.getLeftLeaf(false);if(!leaf)return;await leaf.setViewState({type:PROJECT_VIEW,active:true});}
+    await this.app.workspace.revealLeaf(leaf);
+    if(tab&&leaf.view?.root){leaf.view.activeTab=tab;await leaf.view.render();}
+  }
   async activateView(){
     let leaf=this.app.workspace.getLeavesOfType(VIEW)[0];
     if(!leaf){leaf=this.app.workspace.getRightLeaf(false);if(!leaf)return;await leaf.setViewState({type:VIEW,active:true});}
@@ -739,5 +749,5 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     });
   }
   async saveSettings(){await this.saveData(this.settings);}
-  onunload(){this.app.workspace.detachLeavesOfType(VIEW);}
+  onunload(){this.app.workspace.detachLeavesOfType(VIEW);this.app.workspace.detachLeavesOfType(PROJECT_VIEW);}
 };

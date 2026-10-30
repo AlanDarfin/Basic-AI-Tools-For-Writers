@@ -62,6 +62,12 @@ class WriterFinalFeatures{
    ['writer-insert-template','Insert note-name template',()=>this.applyTemplateToCurrent()]
   ];
   for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
+  // Voices can arrive asynchronously. Android WebView may not expose Web Speech.
+  if(typeof speechSynthesis!=='undefined'&&typeof speechSynthesis.addEventListener==='function'){
+   const update=()=>this.refreshVoiceSelectors();
+   speechSynthesis.addEventListener('voiceschanged',update);
+   if(typeof p.register==='function')p.register(()=>speechSynthesis.removeEventListener('voiceschanged',update));
+  }
   if(p.app.workspace.iterateAllLeaves)this.refreshNames();
  }
  tryExpand(view,change){
@@ -469,6 +475,28 @@ class WriterFinalFeatures{
   }
   return this.edgePlayer;
  }
+ systemVoices(){
+  if(typeof speechSynthesis==='undefined'||typeof speechSynthesis.getVoices!=='function')return [];
+  try{return Array.from(speechSynthesis.getVoices()||[]);}catch(_){return [];}
+ }
+ systemSpeechStatus(){
+  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')
+   return writerUi('A voz nativa não está disponível no WebView do Obsidian. No Android isso pode acontecer mesmo com vozes instaladas no telefone. Escolha o mecanismo online apenas se quiser permitir o envio do texto.','Native speech is not exposed by Obsidian’s WebView. On Android, this can happen even with voices installed on the phone. Select online speech only if you consent to sending text.');
+  const voices=this.systemVoices();
+  if(!voices.length)return writerUi('O WebView ainda não forneceu uma lista de vozes. Tente a voz padrão ou um mecanismo online com consentimento explícito.','The WebView has not provided a voice list. Try system default or an online engine with explicit consent.');
+  return writerUi('Vozes disponíveis pelo WebView: ','Voices available in WebView: ')+voices.length;
+ }
+ refreshVoiceSelectors(){
+  if(typeof document==='undefined'||!document.querySelectorAll)return;
+  for(const select of document.querySelectorAll('.writer-tts-voice-select')){
+   const selected=this.cfg.tts.voice||'';
+   select.empty();
+   select.createEl('option',{text:writerUi('Voz padrão do sistema','System default'),value:''});
+   for(const voice of this.systemVoices())select.createEl('option',{text:voice.name+' ('+voice.lang+')',value:voice.voiceURI});
+   select.value=[...select.options].some(o=>o.value===selected)?selected:'';
+  }
+  for(const node of document.querySelectorAll('.writer-tts-system-diagnostic'))node.setText?.(this.systemSpeechStatus());
+ }
  async speakActive(){
   const cfg=this.cfg.tts;
   if(!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
@@ -500,19 +528,21 @@ class WriterFinalFeatures{
    catch(error){this.onTtsState('error',error.message);}
    return;
   }
-  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')return new Notice('No system voice available. Select Microsoft Edge online TTS in settings.');
+  if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')
+   return new Notice(writerUi('O WebView do Android não expõe a voz nativa do sistema. Use o mecanismo online somente se autorizar o envio do texto.','This WebView does not expose native text-to-speech. Use online speech only after allowing text to be sent.'),8000);
   this.stop();
   const utterance=new SpeechSynthesisUtterance(text);
   const lang=cfg.language;
   utterance.lang=lang==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):lang;
   utterance.rate=Number(cfg.rate)||1;utterance.pitch=Number(cfg.pitch)||1;utterance.volume=Number(cfg.volume)||1;
-  const voices=speechSynthesis.getVoices();
-  const requested=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>v.lang.toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
+  const voices=this.systemVoices();
+  const requested=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>String(v.lang||'').toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
   if(requested)utterance.voice=requested;
   utterance.onstart=()=>this.onTtsState('playing');
   utterance.onend=()=>{this.speaking=false;this.onTtsState('idle');};
   utterance.onerror=event=>this.onTtsState('error',event.error||'System voice failed.');
-  speechSynthesis.speak(utterance);this.speaking=true;
+  try{speechSynthesis.speak(utterance);this.speaking=true;}
+  catch(error){this.speaking=false;this.onTtsState('error',writerUi('Não foi possível usar o mecanismo local: ','Cannot use system TTS: ')+String(error?.message||error));}
  }
  pause(){
   if(this.cfg.tts.engine==='edge')this.edgePlayer?.pause();
@@ -605,12 +635,15 @@ function writerRenderFinalSettings(panel,plugin,section){
    for(const [key,name] of [['auto','Auto'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,name);
    d.setValue(cfg.language).onChange(async value=>{cfg.language=value;await plugin.saveSettings();});
   });
-  const voices=typeof speechSynthesis!=='undefined'?speechSynthesis.getVoices():[];
-  new Setting(panel).setName('System voice').setDesc('Only used with the system engine.').addDropdown(d=>{
-   d.addOption('','System default');
-   for(const voice of voices)d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
-   d.setValue(cfg.voice).onChange(async value=>{cfg.voice=value;await plugin.saveSettings();});
+  const system=plugin.writerFinalFeatures;
+  panel.createEl('p',{text:system.systemSpeechStatus(),cls:'writer-tts-system-diagnostic dictionary-muted'});
+  new Setting(panel).setName(writerUi('Voz do sistema','System voice')).setDesc(writerUi('As vozes dependem do WebView; talvez não estejam disponíveis no Android.','Voices depend on the WebView and might be unavailable on Android.')).addDropdown(d=>{
+   d.selectEl?.addClass?.('writer-tts-voice-select');
+   d.addOption('',writerUi('Voz padrão do sistema','System default'));
+   for(const voice of system.systemVoices())d.addOption(voice.voiceURI,voice.name+' ('+voice.lang+')');
+   d.setValue(cfg.voice||'').onChange(async value=>{cfg.voice=value;await plugin.saveSettings();});
   });
+  new Setting(panel).setName(writerUi('Verificar vozes disponíveis','Check available voices')).addButton(b=>b.setButtonText(writerUi('Atualizar lista','Refresh list')).onClick(()=>system.refreshVoiceSelectors()));
   new Setting(panel).setName('Edge online voice').setDesc('High-quality online voices; independent of installed Linux voices.').addDropdown(d=>{
    d.addOption('','Auto by language');
    for(const [lang,voice] of Object.entries(WRITER_EDGE_VOICES))d.addOption(voice,lang+' · '+voice.split('-').slice(2).join('-'));

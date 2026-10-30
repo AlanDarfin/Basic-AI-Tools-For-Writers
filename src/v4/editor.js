@@ -85,7 +85,7 @@ function writerV4StripFence(text){
   const m=/^```(?:markdown|md|text)?\r?\n([\s\S]*?)\r?\n```$/.exec(value);
   return m?m[1]:value;
 }
-async function writerV4OpenDiff(plugin){
+async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false}={}){
   if(plugin.settings.writerV4?.enabled===false)return new Notice(writerUi('Ative a revisão seletiva nas configurações.','Enable selective review in settings.'));
   const view=plugin.app.workspace.getActiveViewOfType(MarkdownView)||plugin.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(view=>view?.file?.extension==='md'&&view?.editor?.getSelection?.()?.trim());
   if(!view?.file||!view?.editor||view.file.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown no editor.','Open a Markdown note in the editor.'));
@@ -95,6 +95,18 @@ async function writerV4OpenDiff(plugin){
   const file=view.file,from=editor.posToOffset(editor.getCursor('from')),to=editor.posToOffset(editor.getCursor('to'));
   const profile=writerV4Profile(plugin,file),modal=new Modal(plugin.app);
   let proposal=original,accepted=new Set(),busy=false;
+  const generateProposal=async(prompt)=>{
+   if(busy)return;
+   busy=true;render();
+   try{
+    const instruction=prompt||plugin.settings.writerV4.rewritePrompt||WRITER_V4_DEFAULTS.rewritePrompt;
+    const answer=await plugin.generateWriting(instruction,original);
+    proposal=writerV4StripFence(answer);
+    if(!proposal)throw Error('A IA não retornou texto.');
+    accepted=new Set();
+   }catch(error){new Notice(String(error?.message||error),7000);}
+   finally{busy=false;render();}
+  };
   const render=()=>{
     modal.setTitle(writerUi('Revisão seletiva · v4','Selective review · v4'));
     const root=modal.contentEl;root.empty();root.addClass('writer-v4-diff-modal');
@@ -106,18 +118,7 @@ async function writerV4OpenDiff(plugin){
     const toolbar=root.createDiv({cls:'writer-v4-actions'});
     const btn=(label,click,primary=false)=>{const b=toolbar.createEl('button',{text:label,cls:primary?'mod-cta':''});b.disabled=busy;b.addEventListener('click',click);return b;};
     btn(writerUi('Comparar','Compare'),()=>{proposal=area.value;accepted=new Set();renderDiff(root);});
-    btn(writerUi('Gerar com IA','Generate with AI'),async()=>{
-      if(busy)return;
-      busy=true;area.disabled=true;
-      try{
-        const task=(plugin.settings.writerV4.rewritePrompt||WRITER_V4_DEFAULTS.rewritePrompt);
-        const answer=await plugin.generateWriting(task,original);
-        proposal=writerV4StripFence(answer);
-        if(!proposal)throw Error('A IA não retornou texto.');
-        accepted=new Set();render();
-      }catch(e){busy=false;new Notice(String(e?.message||e),7000);render();return;}
-      busy=false;render();
-    });
+    btn(writerUi('Gerar com IA','Generate with AI'),()=>generateProposal(task));
     const diffEl=root.createDiv({cls:'writer-v4-diff-results'});
     const apply=root.createEl('button',{text:writerUi('Aplicar mudanças selecionadas','Apply selected changes'),cls:'mod-cta writer-v4-apply'});
     const renderDiff=()=>{
@@ -136,7 +137,7 @@ async function writerV4OpenDiff(plugin){
         card.createEl('strong',{text:writerUi('Alteração ','Change ')+(i+1)});
         if(group.old.length)card.createEl('pre',{text:group.old.join('\n'),cls:'writer-v4-removed'});
         if(group.next.length)card.createEl('pre',{text:group.next.join('\n'),cls:'writer-v4-added'});
-        const accept=card.createEl('label',{cls:'writer-v4-choice'}),input=accept.createEl('input',{type:'checkbox'});
+        const accept=card.createEl('label',{cls:'writer-v4-choice'}),input=accept.createEl('input',{attr:{type:'checkbox'}});
         input.checked=accepted.has(i);accept.createSpan({text:writerUi('Aceitar esta alteração','Accept this change')});
         input.addEventListener('change',()=>{if(input.checked)accepted.add(i);else accepted.delete(i);apply.disabled=accepted.size===0;});
       }
@@ -152,7 +153,7 @@ async function writerV4OpenDiff(plugin){
     };
     renderDiff();
   };
-  modal.onOpen=render;modal.open();
+  modal.onOpen=()=>{render();if(autoGenerate)void generateProposal(task);};modal.open();
 }
 function writerV4RenderSettings(plugin,panel){
   const cfg=plugin.settings.writerV4;

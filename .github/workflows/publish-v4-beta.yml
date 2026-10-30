@@ -1,0 +1,54 @@
+name: Publish Basic AI v4 beta.3
+on:
+  push:
+    branches: [fix/v4-beta4-android-interface]
+    paths:
+      - '.github/workflows/publish-v4-beta.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  validate-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Complete regression suite, bundle checks and migration tests
+        run: npm run check
+      - name: Verify beta manifest and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const m=require('./manifest.json'),p=require('./package.json');
+          if(m.version!=='4.0.0-beta.3'||p.version!==m.version||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1);
+          const code=fs.readFileSync('main.js','utf8');
+          for(const ref of ['writerV4Extras.register()','writerV4OpenDiff','writerV4ExtraMerge','WriterV4Mentions','writer-project-drag-handle','systemSpeechStatus','writer-v4-toolbar-mobile','writer-project-scene-branch','writer-v4-mobile-actions']){
+            if(!code.includes(ref))throw Error('Missing expected beta integration: '+ref);
+          }
+          NODE
+      - name: Package beta and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -j Basic-AI-Tool-for-Writers-v4.0.0-beta.4.zip main.js manifest.json styles.css
+          sha256sum main.js manifest.json styles.css Basic-AI-Tool-for-Writers-v4.0.0-beta.4.zip > SHA256SUMS-v4-beta4.txt
+      - name: Publish prerelease (never stable/latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v4.0.0-beta.4 >/dev/null 2>&1; then
+            echo 'Beta v4.0.0-beta.4 already exists; no overwrite.'
+            exit 0
+          fi
+          gh release create v4.0.0-beta.4 main.js manifest.json styles.css \
+            Basic-AI-Tool-for-Writers-v4.0.0-beta.4.zip SHA256SUMS-v4-beta4.txt \
+            --target "$GITHUB_SHA" \
+            --title 'Basic AI Tool for Writers v4.0.0-beta.4' \
+            --prerelease --latest=false \
+            --notes-file docs/V4_PREVIEW.md

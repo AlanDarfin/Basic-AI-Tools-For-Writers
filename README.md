@@ -1,5 +1,29 @@
 # Basic AI Tool for Writers
 
+## V4 — The final writing integrations (4.0.0-beta.1)
+
+Eight new integrated capabilities are available in the writing workspace:
+
+- **Abbreviations:** expandable text shortcuts, matching the supplied original behavior.
+- **Another Name:** configurable secondary note title, shown below the inline title.
+- **View Mode:** per-note reading/source/live-preview preference using YAML frontmatter.
+- **Tasks:** a fifth tab in Longform projects, with lists, subjects, due dates and checkboxes.
+- **Insta TOC:** automatic, foldable table of contents in Markdown code blocks.
+- **Unicode Search:** offline symbol picker, code-point insertion and favorites.
+- **Template by Note Name:** apply a same-named template when creating an empty note.
+- **TTS:** simple system/device voice reader, multi-language settings, playback controls.
+
+All tools have their own settings and appropriate commands. The interface has a broader
+English translation catalog and an Auto / Português / English language selector.
+See the [V4 feature and safety guide](docs/V4.md) and
+[third-party credits](THIRD_PARTY_NOTICES.md).
+
+**Preview release:** This is a beta for testing on desktop and Android. Do not remove
+original plugin data or rely on full format interchangeability before confirming your
+vault workflow.
+
+---
+
 ## V3 beta 3 — autocomplete, variantes e versões
 
 A versão **3.0.0-beta.3** contém a prévia com três módulos novos, integrados ao Obsidian:

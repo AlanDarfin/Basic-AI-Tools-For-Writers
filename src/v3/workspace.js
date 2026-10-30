@@ -19,22 +19,24 @@ class WriterToolsView extends ItemView{
  render(){
   if(!this.root)return;
   const root=this.root;root.empty();
-  root.createEl('h3',{text:'Ferramentas de escrita'});
+  root.createEl('h3',{text:w4label(this.plugin,'Ferramentas de escrita')});
   const active=this.app.workspace.getActiveFile();
-  root.createEl('p',{text:active?.extension==='md'?active.path:'Abra uma nota Markdown para usar as ferramentas.',cls:'writer-tools-note-path'});
+  root.createEl('p',{text:active?.extension==='md'?active.path:w4label(this.plugin,'Abra uma nota Markdown para usar as ferramentas.'),cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
-  for(const [id,label] of [['complements','Sugestões'],['variants','Variantes'],['snapshots','Versões']]){
-   const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
+  for(const [id,label] of [['complements','Sugestões'],['variants','Variantes'],['snapshots','Versões'],['unicode','Pesquisa Unicode'],['tts','Leitor de voz']]){
+   const btn=tabs.createEl('button',{text:w4label(this.plugin,label),cls:this.tab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.tab=id;this.render();});
   }
   const panel=root.createDiv({cls:'writer-tools-v3-panel'});
   if(this.tab==='complements')this.renderComplements(panel);
   if(this.tab==='variants')this.renderVariants(panel);
   if(this.tab==='snapshots')this.renderSnapshots(panel,active);
+  if(this.tab==='unicode')this.plugin.v4Unicode?.renderPanel(panel);
+  if(this.tab==='tts')this.plugin.v4TTS?.renderPanel(panel);
   const footer=root.createDiv({cls:'writer-tools-footer'});
-  this.addButton(footer,'Revisão',()=>this.plugin.openReview());
-  this.addButton(footer,'Projetos',()=>this.plugin.openProjects());
-  this.addButton(footer,'Configurações',()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
+  this.addButton(footer,w4label(this.plugin,'Revisão'),()=>this.plugin.openReview());
+  this.addButton(footer,w4label(this.plugin,'Projetos'),()=>this.plugin.openProjects());
+  this.addButton(footer,w4label(this.plugin,'Configurações'),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice('Abra as configurações do Basic AI pelo menu do Obsidian.');});
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};

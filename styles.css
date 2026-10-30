@@ -1608,3 +1608,41 @@ body.is-mobile .writer-v4-floating-toolbar:not(.writer-v4-toolbar-mobile){displa
  min-height:34px!important;padding:6px 8px!important;flex:0 0 auto!important;
  font-size:var(--font-ui-smaller)!important;
 }
+
+/* v4 RC — clean module management, diagnostics and narrow-screen settings. */
+.dictionary-settings-panel .writer-diagnostics{
+ display:flex;flex-direction:column;min-width:0;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);overflow:hidden;
+ margin-block:12px;
+}
+.dictionary-settings-panel .writer-diagnostic-item{
+ display:grid;grid-template-columns:minmax(95px,40%) minmax(0,1fr);
+ gap:12px;align-items:start;padding:10px 12px;
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.dictionary-settings-panel .writer-diagnostic-item:last-child{border-bottom:0}
+.dictionary-settings-panel .writer-diagnostic-label{
+ font-weight:600;color:var(--text-normal);overflow-wrap:anywhere;
+}
+.dictionary-settings-panel .writer-diagnostic-value{
+ color:var(--text-muted);overflow-wrap:anywhere;
+}
+@media(max-width:650px){
+ .dictionary-settings-panel .setting-item:has(.checkbox-container){
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) max-content!important;
+  gap:10px!important;align-items:center!important;
+  min-height:50px!important;margin-block:4px!important;padding:10px 12px!important;
+ }
+ .dictionary-settings-panel .setting-item:has(.checkbox-container)>.setting-item-info{
+  min-width:0!important;max-width:none!important;flex:1 1 auto!important;
+ }
+ .dictionary-settings-panel .setting-item:has(.checkbox-container)>.setting-item-control{
+  width:auto!important;max-width:max-content!important;min-width:max-content!important;
+  justify-self:end!important;margin:0!important;align-self:center!important;
+ }
+ .dictionary-settings-panel .writer-diagnostic-item{
+  grid-template-columns:minmax(82px,35%) minmax(0,1fr);gap:8px;
+ }
+}

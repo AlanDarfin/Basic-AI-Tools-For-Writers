@@ -1,7 +1,7 @@
-name: Publish Basic AI v4 beta.4
+name: Publish Basic AI v4 beta.5
 on:
   push:
-    branches: [fix/v4-beta5-longform-indent-mobile-toolbar]
+    branches: [fix/v4-beta5-mobile-toolbar-compact-toggles]
     paths:
       - '.github/workflows/publish-v4-beta.yml'
   workflow_dispatch:
@@ -24,7 +24,7 @@ jobs:
           node - <<'NODE'
           const fs=require('fs');
           const m=require('./manifest.json'),p=require('./package.json');
-          if(m.version!=='4.0.0-beta.4'||p.version!==m.version||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1);
+          if(m.version!=='4.0.0-beta.5'||p.version!==m.version||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1);
           const code=fs.readFileSync('main.js','utf8');
           for(const ref of ['writerV4Extras.register()','writerV4OpenDiff','writerV4ExtraMerge','WriterV4Mentions','writer-project-drag-handle','writer-project-scene-depth-mark','writerV4FormatText','v4-editing-toolbar','systemSpeechStatus','writer-v4-toolbar-mobile','writer-v4-mobile-actions','writer-v4-format-actions']){
             if(!code.includes(ref))throw Error('Missing expected beta integration: '+ref);

@@ -2,6 +2,7 @@
 const {ItemView,TFile,TFolder,Notice,Modal,Setting,parseYaml,stringifyYaml}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
 const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
+function lfPath(...parts){const path=[];for(const part of parts){for(const segment of String(part||'').split('/')){if(!segment||segment==='.')continue;if(segment==='..'){path.pop();continue;}path.push(segment);}}return path.join('/');}
 class TextPrompt extends Modal{
  constructor(app,title,done,initial=''){super(app);this.titleText=title;this.done=done;this.initial=initial;}
  onOpen(){this.contentEl.empty();this.setTitle(this.titleText);let value=this.initial;new Setting(this.contentEl).setName(this.titleText).addText(t=>{t.setValue(value).onChange(v=>value=v);t.inputEl.focus();t.inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();this.close();this.done(value);}})});new Setting(this.contentEl).addButton(b=>b.setButtonText('Confirmar').setCta().onClick(()=>{this.close();this.done(value);}));}
@@ -91,7 +92,7 @@ class ProjectsView extends ItemView{
   await this.render();
  }
  queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);}
+ async onClose(){clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;
@@ -137,8 +138,8 @@ class ProjectsView extends ItemView{
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
   const raw=String(project.meta.sceneFolder||'/').split('/').filter(Boolean).join('/');
-  const folder=[base,raw].filter(Boolean).join('/');
-  const exact=[[folder,name+'.md'].filter(Boolean).join('/'),[folder,name].filter(Boolean).join('/'),[base,name+'.md'].filter(Boolean).join('/'),name+'.md',name];
+  const folder=lfPath(base,raw);
+  const exact=[lfPath(folder,name+'.md'),lfPath(folder,name),lfPath(base,name+'.md'),name+'.md',name];
   return exact.map(p=>this.app.vault.getAbstractFileByPath(p)).find(f=>f instanceof TFile)||null;
  }
  openFile(file){if(file instanceof TFile)this.app.workspace.getLeaf(false).openFile(file);}
@@ -175,7 +176,7 @@ class ProjectsView extends ItemView{
   new TextPrompt(this.app,parentTitle?'Novo subcapítulo':'Nova cena',async raw=>{
    const name=clean(raw);if(!name||name==='.'||name==='..')return;
    const base=project.file.parent?.path||'',folder=String(project.meta.sceneFolder||'/').split('/').filter(Boolean).join('/');
-   const dir=[base,folder].filter(Boolean).join('/'),path=[dir,name+'.md'].filter(Boolean).join('/');
+   const dir=lfPath(base,folder),path=lfPath(dir,name+'.md');
    try{
     if(this.app.vault.getAbstractFileByPath(path))throw Error('Já existe uma cena com esse nome.');
     if(this.activeScenes(project).some(x=>x.title===name))throw Error('Nome de cena duplicado.');
@@ -402,7 +403,7 @@ class ProjectsView extends ItemView{
  drawSceneDiagnostics(panel,project){
   if(project.format==='single')return;
   const tracked=new Set(this.sceneList(project).map(x=>x.title));
-  const dir=[project.file.parent?.path||'',String(project.meta.sceneFolder||'/').split('/').filter(Boolean).join('/')].filter(Boolean).join('/');
+  const dir=lfPath(project.file.parent?.path||'',project.meta.sceneFolder||'/');
   const folder=this.app.vault.getAbstractFileByPath(dir||'/');
   const existing=folder instanceof TFolder?folder.children.filter(x=>x instanceof TFile&&x.extension==='md'&&x.path!==project.file.path):[];
   const unknown=existing.filter(f=>!tracked.has(f.basename)&&!((project.meta.ignoredFiles||[]).includes(f.basename)));

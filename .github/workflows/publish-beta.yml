@@ -1,0 +1,33 @@
+name: Beta 2.0.0 project manager
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-beta.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate and test
+        run: |
+          node --check main.js
+          node --check projects.js
+          node scripts/sync-projects.js --check
+          node tests/projects.test.js
+          node -e "const m=require('./manifest.json');if(m.version!=='2.0.0-beta.1')process.exit(1)"
+      - name: Create package
+        run: zip -j basic-ai-tool-for-writers-2.0.0-beta.1.zip main.js styles.css manifest.json
+      - name: Create prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view 2.0.0-beta.1 >/dev/null 2>&1; then exit 0; fi
+          gh release create 2.0.0-beta.1 main.js styles.css manifest.json basic-ai-tool-for-writers-2.0.0-beta.1.zip \
+            --target "$GITHUB_SHA" --title "Basic AI Tool for Writers 2.0.0-beta.1" \
+            --prerelease --notes "Longform-compatible project workspace beta. Native scene hierarchies, drafts, workflow editor, nested notes, daily goals and safe exports. Backup projects and test on Obsidian Mobile."

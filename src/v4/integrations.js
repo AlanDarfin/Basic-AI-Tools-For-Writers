@@ -314,6 +314,7 @@ class WriterV4Extras{
   return (app.workspace.getLeavesOfType('markdown')||[]).find(leaf=>leaf.view?.file?.path===note?.path&&leaf.view.editor)?.view||null;
  }
  commentSelection(file,editor){
+  if(!writerModuleOn(this.plugin,'comments'))return new Notice(writerUi('Comentários ocultos nas configurações.','Comments are hidden in settings.'));
   if(!file||file.extension!=='md'||!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para comentar.','Select text to comment on.'));
   const quote=editor.getSelection().slice(0,2000);
   const modal=new Modal(this.plugin.app);
@@ -402,6 +403,7 @@ class WriterV4Extras{
    editor.replaceRange(writerV4FormatText(text,kind),editor.getCursor('from'),editor.getCursor('to'));
   }
  runEditorAIAction(editor,kind){
+   if(!writerModuleOn(this.plugin,'wordwise'))return new Notice(writerUi('Ações de IA ocultas nas configurações.','AI actions are hidden in settings.'));
    if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
    if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
    return writerV4OpenDiff(this.plugin,{task:this.config.wordwise.prompts[kind],autoGenerate:true});

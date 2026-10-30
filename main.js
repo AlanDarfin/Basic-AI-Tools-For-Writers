@@ -1033,6 +1033,7 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
  });
  return next;
 }
+
 // v3 module: src/v3/complements.js
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{

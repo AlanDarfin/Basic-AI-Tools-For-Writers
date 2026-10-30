@@ -1,5 +1,11 @@
 # Basic AI Tool for Writers
 
+## Writing Suite 3.1.0-beta.2 — Uniform menus and selectors
+
+This update fixes vertically clipped dropdown text in narrow Obsidian panels, including the LanguageTool review mode, translation language selectors, project selectors and plugin settings. A shared control style uses a consistent 42px height, zero vertical padding on native selectors, coherent typography, sufficient space for dropdown indicators and keyboard-visible focus. Settings rows also respond to the width of the panel rather than only the whole screen.
+
+Automated regression tests cover control styling across the plugin. This is a beta pending visual checks with installed Obsidian desktop/mobile themes.
+
 ## Writing Suite 3.1.0-beta.1 — Unicode UI, tabs and online TTS
 
 This preview improves the Unicode picker with readable character cards, category filters, relevance ranking and inline favorites. The main sidebar, writing tools, Longform and Settings now use horizontally scrollable tab rows instead of clipping or wrapping tabs. The writing-tools Extras panel separates Unicode, speech and project shortcuts.

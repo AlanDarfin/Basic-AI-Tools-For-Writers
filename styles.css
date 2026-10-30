@@ -1040,3 +1040,201 @@
  .writer-unicode-entry.writer-unicode-entry{min-height:64px}
  .writer-unicode-entry>.writer-unicode-insert.writer-unicode-insert{min-height:62px}
 }
+
+
+/*
+ * Writing Suite 3.1.0-beta.2: unified form controls.
+ *
+ * Obsidian themes can impose a 26-30px native <select> height while older
+ * dictionary CSS adds 9px top/bottom padding and inherits line-height.
+ * This makes the selected text sit below the visible box. A fixed border-box
+ * control height plus zero vertical padding avoids the conflict across themes.
+ */
+:where(
+  .writer-tool-root,
+  .writer-tools-v3,
+  .writer-project-root,
+  .dictionary-settings-panel,
+  .dictionary-writer-modal,
+  .dictionary-model-provider,
+  .writer-unicode-modal,
+  .writer-abbr-add,
+  .writer-abbr-list,
+  .writer-lt-explanation,
+  .writer-template-matcher-list,
+  .writer-review-floating
+){
+  --writer-control-height:42px;
+  --writer-control-radius:var(--radius-m,8px);
+}
+:where(
+  .writer-tool-root,
+  .writer-tools-v3,
+  .writer-project-root,
+  .dictionary-settings-panel,
+  .dictionary-writer-modal,
+  .dictionary-model-provider,
+  .writer-unicode-modal,
+  .writer-abbr-add,
+  .writer-abbr-list,
+  .writer-lt-explanation,
+  .writer-template-matcher-list,
+  .writer-review-floating
+) select:not([multiple]){
+  display:block;
+  box-sizing:border-box!important;
+  flex-shrink:0;
+  min-width:0;
+  max-width:100%;
+  height:var(--writer-control-height,42px)!important;
+  min-height:var(--writer-control-height,42px)!important;
+  max-height:none!important;
+  padding-block:0!important;
+  padding-inline:12px 38px!important;
+  margin-block:0;
+  border:1px solid var(--background-modifier-border);
+  border-radius:var(--writer-control-radius,8px);
+  background-color:var(--background-primary);
+  color:var(--text-normal);
+  font-family:var(--font-interface,inherit);
+  font-size:var(--font-ui-small,13px)!important;
+  font-weight:400;
+  line-height:normal!important;
+  vertical-align:middle;
+  text-align:start;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+:where(
+  .writer-tool-root,
+  .writer-tools-v3,
+  .writer-project-root,
+  .dictionary-settings-panel,
+  .dictionary-writer-modal,
+  .dictionary-model-provider,
+  .writer-unicode-modal,
+  .writer-abbr-add,
+  .writer-abbr-list,
+  .writer-lt-explanation,
+  .writer-template-matcher-list
+) :is(
+  input[type="search"],
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="url"]
+){
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+  min-height:var(--writer-control-height,42px);
+  height:var(--writer-control-height,42px);
+  padding:0 12px;
+  border-radius:var(--writer-control-radius,8px);
+  font-family:var(--font-interface,inherit);
+  font-size:var(--font-ui-small,13px);
+  line-height:normal;
+}
+:where(
+  .writer-tool-root,
+  .writer-tools-v3,
+  .writer-project-root,
+  .dictionary-settings-panel,
+  .dictionary-writer-modal,
+  .writer-unicode-modal,
+  .writer-lt-explanation
+) textarea{
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+  height:auto;
+  min-height:96px;
+  padding:10px 12px;
+  border-radius:var(--writer-control-radius,8px);
+  font-size:var(--font-ui-small,13px);
+  line-height:1.5;
+  resize:vertical;
+}
+:where(
+  .writer-tool-root,
+  .writer-tools-v3,
+  .writer-project-root,
+  .dictionary-settings-panel,
+  .dictionary-writer-modal,
+  .writer-unicode-modal
+) :is(select,input,textarea):focus-visible{
+  outline:2px solid var(--interactive-accent);
+  outline-offset:1px;
+}
+.writer-tool-root .writer-review-controls.writer-review-controls{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:10px;
+  min-height:var(--writer-control-height,42px);
+}
+.writer-tool-root .writer-review-controls.writer-review-controls>select{
+  flex:0 0 var(--writer-control-height,42px);
+  width:100%;
+  align-self:stretch;
+}
+.writer-tool-root .dictionary-controls>select,
+.writer-tool-root .dictionary-translation-bar select,
+.writer-project-root .writer-project-toolbar select,
+.writer-project-root .writer-project-notes-toolbar select{
+  flex-shrink:0;
+  align-self:stretch;
+}
+.writer-tools-v3 .setting-item-control,
+.writer-project-root .setting-item-control,
+.dictionary-settings-panel .setting-item-control{
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+}
+.writer-tools-v3 .setting-item-control>select,
+.writer-project-root .setting-item-control>select,
+.dictionary-settings-panel .setting-item-control>select{
+  min-width:0;
+  max-width:100%;
+  flex:1 1 160px;
+}
+/* The chosen review mode must never be cropped vertically, regardless of theme. */
+.writer-review-panel .writer-review-controls>select{
+  overflow:visible;
+}
+/* Make all form-control groups respond to the width of the plugin panel. */
+.dictionary-settings-panel{
+  container-type:inline-size;
+}
+.writer-tools-v3-panel{
+  container-type:inline-size;
+}
+@container (max-width:410px){
+  .dictionary-settings-panel .setting-item,
+  .writer-tools-v3-panel .setting-item{
+    flex-wrap:wrap;
+    align-items:stretch;
+    gap:8px;
+  }
+  .dictionary-settings-panel .setting-item-control,
+  .writer-tools-v3-panel .setting-item-control{
+    flex:1 1 100%;
+    width:100%;
+  }
+  .dictionary-settings-panel .setting-item-control>select,
+  .writer-tools-v3-panel .setting-item-control>select{
+    width:100%;
+  }
+}
+/* Keep secondary action buttons visually compatible with the standard controls. */
+.writer-tool-root .writer-file-actions>button,
+.writer-tools-v3 .writer-tools-v3-actions>button,
+.writer-project-root .writer-task-toolbar>button{
+  border-radius:var(--radius-m,8px);
+  min-height:38px;
+  line-height:1.3;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}

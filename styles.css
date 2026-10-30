@@ -702,3 +702,32 @@
   .writer-tool-root>.writer-tool-panel.writer-tool-panel{padding-bottom:30px}
   .writer-lt-result-actions>button,.writer-lt-choices>.writer-lt-choice{min-height:38px}
 }
+
+/* LanguageTool-inspired category colors: spelling, grammar, style */
+.writer-cm-review-mark.writer-lt-major{--writer-lt-underline:#da615c}
+.writer-cm-review-mark.writer-lt-minor{--writer-lt-underline:#e9b35f}
+.writer-cm-review-mark.writer-lt-style{--writer-lt-underline:#8981f3}
+.cm-editor .writer-cm-review-mark{
+  text-decoration-color:var(--writer-lt-underline,#e9b35f);
+  text-decoration-line:underline;
+  text-decoration-style:wavy;
+  text-decoration-thickness:1.5px;
+  text-underline-offset:3px;
+  background:transparent;
+}
+.writer-lt-result.writer-lt-major{--writer-lt-underline:#da615c}
+.writer-lt-result.writer-lt-minor{--writer-lt-underline:#e9b35f}
+.writer-lt-result.writer-lt-style{--writer-lt-underline:#8981f3}
+.writer-lt-result .writer-lt-category{
+  color:var(--writer-lt-underline,var(--text-accent));
+}
+.writer-lt-result .writer-lt-original mark{
+  border-bottom:2px solid var(--writer-lt-underline,var(--interactive-accent));
+}
+.writer-lt-menu-info.writer-lt-major{--writer-lt-underline:#da615c}
+.writer-lt-menu-info.writer-lt-minor{--writer-lt-underline:#e9b35f}
+.writer-lt-menu-info.writer-lt-style{--writer-lt-underline:#8981f3}
+.writer-lt-menu-info .writer-lt-menu-title{
+  border-left:3px solid var(--writer-lt-underline,#e9b35f);
+  padding-left:7px;
+}

@@ -4488,7 +4488,7 @@ function writerTypoAtInput(before,typed,cfg){
   const isSingle=typed==="'",opening=isSingle?cfg.openSingle:cfg.openDouble,closing=isSingle?cfg.closeSingle:cfg.closeDouble;
   const previous=before.at(-2)||'',prior=before.slice(0,-1);
   if(isSingle&&cfg.smartApostrophes&&/[\p{L}\p{N}]/u.test(previous))return put(typed,closing);
-  const opener=!previous||/[\s([{<—–«“‘]/u.test(previous);
+  const opener=previous===opening?false:(!previous||/[\s([{<—–«“‘]/u.test(previous));
   return put(typed,opener?opening:closing);
  }
  return null;
@@ -4512,24 +4512,26 @@ function writerTypoProtectedText(text){
 }
 function writerTypoConvertProse(text,cfg){
  if(!cfg?.enabled)return text;
- const lines=writerTypoProtectedText(text);
- return lines.map(({text:line,protected:blocked})=>{
+ // Only transform ordinary prose fragments. Keep Markdown links, code, URLs and escapes intact.
+ const excluded=/\x60+[^\x60\n]*\x60+|!?\[\[[^\]\n]*\]\]|!?\[[^\]\n]*\]\([^)\n]*\)|https?:\/\/[^\s<>)]+|\\./g;
+ return writerTypoProtectedText(String(text)).map(({text:line,protected:blocked})=>{
   if(blocked)return line;
-  let output='',inCode=false,codeRun=0,linkDepth=0;
-  for(let i=0;i<line.length;i++){
-   const c=line[i];
-   if(c==='\x60'){
-    const matched=/^\x60+/.exec(line.slice(i));const n=matched[0].length;
-    if(!inCode){inCode=true;codeRun=n;}else if(n===codeRun){inCode=false;codeRun=0;}
-    output+=matched[0];i+=n-1;continue;
+  let transformed='',last=0;
+  const convert=part=>{
+   let result='';
+   for(const character of part){
+    const candidate=writerTypoAtInput(result+character,character,cfg);
+    if(candidate)result=result.slice(0,result.length+1-candidate.consume)+candidate.text;
+    else result+=character;
    }
-   if(c==='['||c===']'||c==='('&&line[i-1]===']')linkDepth=Math.max(0,linkDepth+(c==='['||c==='('?1:-1));
-   if(inCode||linkDepth>0||c==='\\'){output+=c;if(c==='\\'&&i+1<line.length)output+=line[++i];continue;}
-   const candidate=writerTypoAtInput(output+c,c,cfg);
-   if(candidate){output=output.slice(0,output.length+1-candidate.consume)+candidate.text;}
-   else output+=c;
+   return result;
+  };
+  for(const match of line.matchAll(excluded)){
+   transformed+=convert(line.slice(last,match.index));
+   transformed+=match[0];last=match.index+match[0].length;
   }
-  return output;
+  transformed+=convert(line.slice(last));
+  return transformed;
  }).join('\n');
 }
 class WriterSmartTypography{

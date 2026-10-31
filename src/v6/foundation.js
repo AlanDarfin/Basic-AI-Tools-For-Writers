@@ -39,7 +39,7 @@ const WRITER_V6_DEFAULTS={
  timestamps:{enabled:false,locale:'auto',timezone:'local',showRelative:true,recent:[]},
  ruby:{enabled:false,livePreview:true,lv1Size:50,lv2Size:45},
  discordSyntax:{enabled:false,subtext:true,blockSpoilers:false},
- ratings:{enabled:false,symbol:'star',max:5},
+ ratings:{enabled:false,symbol:'star',max:5,full:'◆',empty:'◇',half:'◈',showValue:'none'},
  linter:{enabled:false,trimTrailing:true,finalNewline:true,collapseBlanks:false,headingSpace:true,listSpace:true,footnoteSpace:true,quoteSpace:false,yamlSpacing:false,manualOnly:true,excluded:''}
 };
 function writerV6Merge(settings){

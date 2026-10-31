@@ -82,14 +82,19 @@ function writerEasyBackspacePrefix(line,column){
 }
 function writerEasyProseFormat(text,cfg){
  const parts=writerTypoProtectedText(String(text));
- const result=parts.map(({text:line,protected:blocked})=>{
+ const result=[];let blankCount=0;
+ for(const {text:line,protected:blocked} of parts){
+  if(!blocked&&!line.trim())blankCount++;else blankCount=0;
+  if(blankCount>2)continue;
+  result.push((()=>{
   if(blocked||/^\s*(?:\x60|>|[-*+]\s+|\d+[.)]\s+|[#|])/.test(line))return line;
   let next=line;
   if(cfg.inlineSpacing)next=next.replace(/([\p{L}\p{N}])(\x60[^\x60\n]+\x60)/gu,'$1 $2').replace(/(\x60[^\x60\n]+\x60)([\p{L}\p{N}])/gu,'$1 $2');
   if(cfg.cjkSpacing)next=next.replace(/([\u3400-\u9fff])([A-Za-z0-9])/gu,'$1 $2').replace(/([A-Za-z0-9])([\u3400-\u9fff])/gu,'$1 $2');
   return next;
- }).join('\n');
- return result.replace(/\n{4,}/g,'\n\n\n');
+  })());
+ }
+ return result.join('\n');
 }
 class WriterEasyTyping{
  constructor(plugin){this.plugin=plugin;}

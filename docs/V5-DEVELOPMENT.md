@@ -40,7 +40,7 @@ In Basic AI settings, **Modules** controls visibility of Keyshots, Extended Synt
 ## Known limitations
 
 - Not complete parity with the original three plugins.
-- No Pandoc executable integration, Lua filter execution, format export, DOCX/PDF preview or advanced sidebar yet. The Lua scripts supplied as references are not bundled.
+- Optional desktop Pandoc executable export is now implemented for DOCX, HTML, EPUB, ODT, plain text, LaTeX and PDF (the PDF target can require additional LaTeX installation). Executing arbitrary Lua filters, interactive PDF/DOCX previews and a full native Pandoc AST/sidebar remain out of scope. The Lua reference scripts are not bundled.
 - Fenced divs require a closing delimiter in this implementation.
 - Some complex syntax combinations, code contexts, tables, callouts and nested blocks need additional testing.
 - Changes to extension settings may require reopening the note to refresh existing decorations.
@@ -51,7 +51,7 @@ In Basic AI settings, **Modules** controls visibility of Keyshots, Extended Synt
 - [x] Add three independent source modules.
 - [x] Wire into Basic settings, module visibility, and build scripts.
 - [x] Add initial automated regression tests.
-- [ ] Run the full test suite and fix failures.
+- [x] Run the full test suite and fix automated failures (GitHub Actions checks).
 - [ ] Test desktop and mobile Live Preview and Reading mode.
 - [ ] Review accessibility, performance and Obsidian plugin submission lint.
 - [ ] Decide on the Pandoc export phase and publish release artifacts.
@@ -68,7 +68,7 @@ The Basic integration implements a focused, independent subset of the reference 
 - Explicit commands to format a selected passage or line, remove extra blank lines from a selection, wrap selected text in a code fence, toggle Obsidian comments and select the current paragraph.
 - Optional formatting on paste and path-based exclusions.
 
-The advanced upstream rule editor, embedded script execution, comprehensive codeblock editing, locale-specific spacing engine and tabstop templates are **not** implemented. Automatic changes are guarded against recognized inline code, links, URLs, frontmatter and fenced code; unusual nested Markdown should still be tested.
+The full upstream scripted rule engine and language-specific formatting system are **not** copied. Instead, v5 includes **opt-in bounded regex substitutions**, case-insensitive/Unicode flags, a JSON-lines snippet editor, a searchable template picker and navigable numbered Tab stops with a final cursor marker. Arbitrary JavaScript execution and direct copying of third-party bundles remain deliberately unsupported. Advanced codeblock commands and mobile IME behavior still require manual testing. Automatic changes are guarded against recognized inline code, links, URLs, frontmatter and fenced code; unusual nested Markdown should still be tested.
 
 ## Smart Typography (new v5 module)
 
@@ -92,6 +92,25 @@ Both new modules have independent visibility toggles in Basic AI **Modules**, pl
 
 - [x] Safe settings migration and basic replacement tests
 - [x] Separate Easy Typing and Smart Typography configurations
-- [ ] Full upstream feature parity
+- [x] Safe, opt-in regex rules, text snippets and desktop export added (not one-to-one upstream parity)
 - [ ] Manual IME/composition/mobile keyboard verification
-- [ ] Test shortcuts alongside Keyshots, abbreviations and Obsidian core editor commands
+- [ ] Manually test shortcuts alongside Keyshots, abbreviations and Obsidian core editor commands
+
+## Advanced Easy Typing rules and snippets
+
+**Regex replacements:** Enable explicitly in the Easy Typing settings. Add up to 30 one-line rules in \`pattern|replacement|flags\` format, such as \`teh|the|\` or \`([A-Za-z]+)123|$1-123|i\`. Backreferences in the replacement string use JavaScript-style \`$1\`; rule patterns are bounded in size, input is restricted to the final 256 characters, and dangerous nested repetitions are rejected. This is a practical subset, **not** a sandbox for arbitrary scripts, and care should still be taken with custom regular expressions.
+
+**Navigable snippets:** Run \`Easy Typing: insert navigation snippet\`. The snippets are configured as JSON objects, one per line, with \`name\` and \`body\`. Use \`\${1:placeholder}\`, \`\${2:placeholder}\` and \`\${0}\` to insert initial text and navigate via Tab; Shift+Tab returns to an earlier stop. The current note content is preserved outside the inserted selection.
+
+## Pandoc desktop export
+
+Configure **Pandoc Syntax → Pandoc export (desktop)**, enable it and set the installed \`pandoc\` executable if needed. Then use \`Pandoc: export current note\` or a format-specific command. Export creates a **new file** within the configured vault folder (\`Exports/Pandoc\` by default), appending a numerical suffix rather than overwriting existing files. The note is never changed and files are generated in an isolated temporary directory that is removed afterward.
+
+- Supported outputs: DOCX, HTML, EPUB, ODT, PDF, plain text and LaTeX.
+- Markdown input enables recognized Pandoc fenced divs, fancy/definition/example lists, bracketed spans and dollar-math extensions; [Pandoc manual](https://pandoc.org/MANUAL.html) documents each format.
+- Requires Pandoc installed locally; mobile Obsidian cannot run the export command. For PDF, a LaTeX-compatible PDF engine may also be required.
+- No shell interpolation and no automatic execution of user-supplied Lua filters. External Pandoc software and exported files must be validated on the actual user's operating system before stable release.
+
+## Verification status
+
+**GitHub Actions** checks the standalone bundle and executes unit/regression tests for v3/v4/v5 features, regex and snippets, syntax contexts and Pandoc argument/path construction. These automated tests **do not constitute a real Obsidian UI test**. Still required: a full smoke test on desktop and Android, input method composition, link/code preservation in the editor, CodeMirror shortcut precedence, markdown reading/live preview in a large document and a real Pandoc export with the executable installed.

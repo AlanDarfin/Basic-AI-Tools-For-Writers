@@ -142,7 +142,7 @@ This repository provides manual installation files; this README does not claim t
 
 ## Language support
 
-The built-in interface supports **English** and **Portuguese (Brazil)**, following the Obsidian interface language. The **v4.1.0 localization pass** covers Longform project controls, compilation workflows, scene actions, variant dialogs, snapshot/version history, autocomplete settings, selective Diff and user-facing error messages. English is the fallback for other locales.
+The English interface has been reviewed for v4.1.0. The built-in interface supports **English** and **Portuguese (Brazil)**, following the Obsidian interface language. The **v4.1.0 localization pass** covers Longform project controls, compilation workflows, scene actions, variant dialogs, snapshot/version history, autocomplete settings, selective Diff and user-facing error messages. English is the fallback for other locales.
 
 Existing Markdown files, project titles, custom workflow names and the historical `Padrão` / `Principal` storage identifiers remain unchanged for compatibility, while built-in labels are translated for display. The text translation feature independently supports multiple input and output languages through your configured AI model.
 

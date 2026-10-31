@@ -6,6 +6,8 @@
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
+> **v5 development branch:** Keyboard navigation (Keyshots-inspired) + Extended Markdown + Pandoc-style syntax are being integrated. This is **not a released build**. See [v5 scope, commands and limitations](docs/V5-DEVELOPMENT.md).
+
 > **Updated in v4.1:** complete English localization across built-in writing panels, Longform and history dialogs, with automated bilingual regression checks.
 
 > **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, use Obsidian's own native formatting controls, and run LanguageTool checks after a typing pause.

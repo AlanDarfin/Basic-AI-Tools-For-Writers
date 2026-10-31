@@ -163,7 +163,7 @@ class WriterKeyshots{
    }}));
   const {EditorState}=require('@codemirror/state');
   if(EditorState?.allowMultipleSelections?.of)p.registerEditorExtension(EditorState.allowMultipleSelections.of(true));
-  p.registerEditorExtension(keymap.of(map));
+  if(keymap?.of)p.registerEditorExtension(keymap.of(map));
  }
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Keyshots · navegação por teclado','Keyshots · keyboard navigation')});

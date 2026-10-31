@@ -1,28 +1,36 @@
 'use strict';
 /* v6 original manual linter; pure rules and confirmed writes, no automatic mutation by default. */
 function writerV6LintText(text,config={}){
- const source=String(text||''),lines=source.split('\n'),protect=writerV6ProtectedRanges(source),changes=[];
+ const source=String(text||''),eol=source.includes('\r\n')?'\r\n':'\n',lines=source.split(/\r?\n/),protect=writerV6ProtectedRanges(source),changes=[];
  let offset=0,inFront=false,inFence=false;
  const result=lines.map((line,index)=>{
-  const from=offset,to=from+line.length;offset=to+1;
+  const from=offset,to=from+line.length;offset=to+eol.length;
   const trim=line.trim();
   if(index===0&&trim==='---')inFront=true;
+  const yamlLine=inFront&&index>0&&trim!=='---';
   const fence=/^\s{0,3}(?:\x60{3,}|~{3,})/.test(line);
   const skip=inFront||inFence||fence||/^(?: {4}|\t)/.test(line)||writerV6Overlaps(protect,from,to);
   if(fence)inFence=!inFence;
   if(inFront&&index>0&&trim==='---')inFront=false;
-  if(skip)return line;
+  if(skip&&!yamlLine)return line;
   let next=line;
+  if(yamlLine){
+   if(config.yamlSpacing===true)next=next.replace(/^([A-Za-z_][\w-]*):(?=\S)/,'$1: ');
+   if(next!==line)changes.push({line:index+1,before:line,after:next});
+   return next;
+  }
   if(config.trimTrailing!==false)next=next.replace(/[ \t]+$/,'');
   if(config.headingSpace!==false)next=next.replace(/^(#{1,6})([^\s#])/,'$1 $2');
   if(config.listSpace!==false)next=next.replace(/^(\s{0,3}[-+*])([^\s-])/,'$1 $2').replace(/^(\s{0,3}\d+[.)])([^\s])/,'$1 $2');
+  if(config.footnoteSpace!==false)next=next.replace(/^(\[\^[^\]]{1,120}\]:)(\S)/,'$1 $2');
+  if(config.quoteSpace===true)next=next.replace(/^(\s{0,3}>)([^ >\n])/,'$1 $2');
   if(next!==line)changes.push({line:index+1,before:line,after:next});
   return next;
  });
- let output=result.join('\n');
- if(config.collapseBlanks===true)output=output.replace(/\n{4,}/g,'\n\n\n');
- if(config.finalNewline!==false&&output&&!output.endsWith('\n'))output+='\n';
- return {source,output,changed:output!==source,edits:changes,count:changes.length+(output!==result.join('\n')?1:0)};
+ let output=result.join(eol);
+ if(config.collapseBlanks===true)output=output.replace(/(?:\r?\n){4,}/g,eol+eol+eol);
+ if(config.finalNewline!==false&&output&&!output.endsWith(eol))output+=eol;
+ return {source,output,changed:output!==source,edits:changes,count:changes.length+(output!==result.join(eol)?1:0)};
 }
 function writerV6LintExcluded(path,setting){
  const p=String(path||'');
@@ -101,6 +109,9 @@ class WriterV6Linter{
    ['trimTrailing','Remover espaços ao fim da linha','Remove trailing whitespace'],
    ['headingSpace','Espaço depois de títulos #','Space after heading #'],
    ['listSpace','Espaço depois de marcadores de lista','Space after list markers'],
+   ['footnoteSpace','Espaço após definição de nota de rodapé','Space after footnote definitions'],
+   ['quoteSpace','Espaço depois de > em citações','Space after blockquote >'],
+   ['yamlSpacing','Espaço após chaves YAML','Space after YAML keys'],
    ['collapseBlanks','Reduzir linhas em branco excessivas','Collapse excessive blank lines'],
    ['finalNewline','Nova linha ao fim do arquivo','Final newline']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{cfg[key]=v;await this.plugin.saveSettings();}));

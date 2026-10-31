@@ -72,6 +72,10 @@ class WriterEasyAdvanced{
       stop.to=update.changes.mapPos(stop.to,1);
      }
     }
+    // When the user navigates outside a snippet, give Tab back to Obsidian.
+    const active=s.stops[s.index],selected=update.view.state.selection.main;
+    if(!active||selected.from<active.from||selected.to>active.to)
+     this.sessions.delete(update.view);
    }));
   if(keymap?.of)p.registerEditorExtension(keymap.of([{key:'Shift-Tab',run:view=>this.advance(view,-1)}]));
  }

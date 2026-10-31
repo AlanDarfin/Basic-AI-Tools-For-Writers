@@ -2,13 +2,15 @@
 
 **Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
 
-[English / README principal](../README.md) · [Release estável 4.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.2.0)
+[English / README principal](../README.md) · [Release estável 4.3.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.0)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
 
-**Versão atual:** 4.2.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
+**Versão atual:** 4.3.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
 
-**Novidades da 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
+**Na 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
+
+**Novidades da 4.3.0:** removemos a Editing Toolbar, os controles flutuantes para PC e celular, os comandos extras de formatação Markdown e suas configurações. Para formatar texto, use as ferramentas nativas do Obsidian. Os comandos independentes de escrita com IA, o modo Máquina de Escrever e a memória do cursor continuam disponíveis.
 
 **Para configurar:** abra **Configurações → Basic AI Tool for Writers → Posição do cursor**. Você pode ativar/desativar o recurso, escolher se deseja restaurar seleção e rolagem, definir um limite de notas (500 por padrão), limpar os registros salvos e usar comandos para restaurar ou esquecer a posição da nota atual. Links com âncoras não têm seu destino substituído pela memória. O código é uma integração independente inspirada no plugin [Remember cursor position](https://github.com/dy-sh/obsidian-remember-cursor-position), sem precisar instalá-lo.
 
@@ -93,7 +95,7 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 - **Autocomplete:** sugestões provenientes da nota atual, arquivos do cofre, dicionários e links; índice local, limites e pastas excluídas.
 - **Variantes:** alternativas inline, navegação entre versões de uma expressão e geração de novas propostas por IA.
 - **Snapshots:** histórico próprio em `.basic-ai-history/`, versões manuais e automáticas opcionais, diferenças e restauração segura. Históricos de plugins externos não são modificados.
-- **Barra de edição:** no PC, comandos de formatação; no Android, as funções aparecem como comandos individuais para a **barra móvel nativa do Obsidian**. Não há uma segunda barra flutuante no celular.
+- **Formatação nativa:** use os comandos Markdown e a barra móvel do próprio Obsidian. O Basic AI mantém os **comandos independentes de escrita com IA**, mas não oferece mais barra nem comandos extras de formatação.
 - **Extras:** TTS, Unicode com pesquisa/favoritos, menções a arquivos, abreviações, títulos alternativos, preferências de visualização, templates por nome de nota, sumário instantâneo e modo máquina de escrever.
 
 ## Leitura em voz alta
@@ -104,7 +106,7 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 ## Instalação e atualização
 
-1. Baixe o [ZIP da v4.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/v4.1.0/Basic-AI-Tool-for-Writers-v4.1.0.zip).
+1. Baixe o [ZIP da 4.3.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.0/Basic-AI-Tool-for-Writers-4.3.0.zip).
 2. Extraia os arquivos **`main.js`**, **`manifest.json`** e **`styles.css`** para:
 
    ```text

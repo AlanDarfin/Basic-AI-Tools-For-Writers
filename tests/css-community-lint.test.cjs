@@ -17,9 +17,9 @@ test('compact mobile layout uses runtime classes',()=>{
  assert.match(main,/function writerMarkCompactSettings\(/);
  assert.match(main,/writerMarkCompactSettings\(panel\)/);
 });
-test('4.1.1 release metadata matches without v prefix',()=>{
+test('release metadata is synchronized without v prefix',()=>{
  const m=require('../manifest.json'),p=require('../package.json'),v=require('../versions.json');
- assert.equal(m.version,'4.1.1');
+ assert.doesNotMatch(m.version,/^v/);
  assert.equal(p.version,m.version);
  assert.equal(v[m.version],m.minAppVersion);
 });

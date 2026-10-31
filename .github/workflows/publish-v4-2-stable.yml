@@ -1,3 +1,4 @@
+# Recheck stable workflow after fixing generic CSS-release version test.
 name: Publish Basic AI Tool for Writers 4.2.0
 on:
   push:

@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "6.0.0-beta.3",
+  "version": "6.0.0-beta.4",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Beta: Longform scene navigation recovery, Ruby above/below in Live Preview and compact settings.",
+  "description": "Beta: automatic/manual Longform navigation, smart Markdown dialogs, cleaner UI and project preferences.",
   "isDesktopOnly": false
 }

@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers
 
+> **6.0.0-beta.4 (experimental)** adds automatic Longform footers, manual Previous/Next links for standalone notes, chapter jump search, native smart syntax insertion, compact controls, per-project tool overrides and bilingual project editor preferences. [See beta notes](docs/V6_BETA4.en.md). **Stable release remains 5.2.0**.
+
 > **Beta 6.0.0-beta.3 (experimental):** Longform navigation recovers chapters from project YAML when Obsidian metadata is incomplete; Ruby renders in Live Preview with `{word|reading}` (above) and `{word|note|under}` (below), and writing settings use a cleaner compact layout. [Beta notes](docs/V6_BETA3.en.md). The stable version remains **5.2.0**.
 
 

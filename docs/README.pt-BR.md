@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers
 
+> **6.0.0-beta.4 (experimental):** navegação automática e manual entre notas avulsas, busca de capítulos, inserção inteligente de sintaxes, menus compactos e preferências por projeto. [Notas completas da beta](V6_BETA4.pt-BR.md). A versão estável continua sendo **5.2.0**.
+
 > **v6 pré-release: 6.0.0-beta.3 (experimental).** Navegação Longform com recuperação do índice YAML, Ruby acima/abaixo funcionando no Live Preview e menus mais compactos. [Notas da beta 3](V6_BETA3.pt-BR.md) · [English notes](V6_BETA3.en.md). A versão estável continua sendo **5.2.0**.
 
 > **v6 pré-release: 6.0.0-beta.2 (para testes).** Corrige a rolagem do Remember Cursor no Android e adiciona o bloco de navegação Longform por capítulos e subcapítulos. [Notas da beta 2](V6_BETA2.pt-BR.md) · [English notes](V6_BETA2.en.md).

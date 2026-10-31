@@ -73,38 +73,56 @@ class WriterCursorMemory{
   const state=view?.leaf?.getViewState?.()?.state||view?.getState?.()||{};
   return Boolean(state.subpath||state.anchor||state.search);
  }
+ restoreScrollIntoView(view,head,bookmark){
+  const editor=view?.editor,cm=editor?.cm;
+  if(this.cfg.restoreScroll===false||!editor)return;
+  // The stored pixel offset alone is unreliable on Android: a CM6 viewport may
+  // not have measured its rows when file-open fires, or the virtual keyboard
+  // may resize the scroll container after the initial scrollTo().
+  try{
+   if(typeof editor.scrollTo==='function'&&Number.isFinite(bookmark?.top))
+    editor.scrollTo(Number(bookmark.left)||0,Math.max(0,bookmark.top));
+   const pos=cm?.state?.doc?.line?
+    cm.state.doc.line(Math.max(1,Math.min(cm.state.doc.lines,head.line+1))).from+head.ch:null;
+   if(pos!=null&&typeof EditorView?.scrollIntoView==='function'&&cm?.dispatch){
+    cm.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',x:'nearest'})});
+   }else if(typeof editor.scrollIntoView==='function'){
+    editor.scrollIntoView({from:head,to:head},true);
+   }
+  }catch(error){console.warn('[Basic AI] Cursor scroll restore:',error);}
+ }
  restore(view){
-  if(!this.active()||!view?.file?.path||!view.editor)return;
-  if(this.isAnchored(view))return;
+  if(!this.active()||!view?.file?.path||!view.editor||this.isAnchored(view))return;
   const path=view.file.path,bookmark=this.entries[path];
   if(!bookmark||this.pending.has(view))return;
   const editor=view.editor,initial=editor.getCursor?.('head');
   if(!initial||typeof editor.lineCount!=='function')return;
   this.pending.set(view,path);
+  const stillValid=()=>this.pending.get(view)===path&&view.file?.path===path&&!this.isAnchored(view);
+  // Allow Obsidian to attach the editor and load the document before resetting
+  // selection, then recenter after the layout and mobile keyboard settle.
   this.timer(()=>{
-   if(this.pending.get(view)!==path)return;
-   if(view.file?.path!==path||this.isAnchored(view)){
-    this.pending.delete(view);return;
-   }
-   // If the user moved the caret after opening, do not override their choice.
-   if(!writerCursorSame(editor.getCursor('head'),initial)){
-    this.pending.delete(view);return;
+   if(!stillValid()){this.pending.delete(view);return;}
+   if(!writerCursorSame(editor.getCursor?.('head'),initial)){
+    this.pending.delete(view);return; // genuine user movement wins
    }
    try{
     const head=writerCursorClamp(bookmark.head,editor);
     const anchor=this.cfg.restoreSelection?writerCursorClamp(bookmark.anchor||bookmark.head,editor):head;
     editor.setSelection(anchor,head);
-    if(this.cfg.restoreScroll&&typeof editor.scrollTo==='function'){
-     this.timer(()=>{
-      if(view.file?.path===path)editor.scrollTo(bookmark.left||0,bookmark.top||0);
-      this.pending.delete(view);
-     },55);
-    }else this.pending.delete(view);
+    this.restoreScrollIntoView(view,head,bookmark);
+    const finish=()=>{
+     if(!stillValid())return;
+     if(!writerCursorSame(editor.getCursor?.('head'),head)){this.pending.delete(view);return;}
+     this.restoreScrollIntoView(view,head,bookmark);
+     this.pending.delete(view);
+    };
+    this.timer(finish,this.plugin.app.isMobile?380:110);
    }catch(e){
     this.pending.delete(view);
     console.warn('[Basic AI] Restore cursor:',e);
    }
-  },100);
+  },this.plugin.app.isMobile?180:100);
  }
  register(){
   const p=this.plugin,workspace=p.app.workspace;

@@ -340,7 +340,7 @@ class WriterBookNavigation{
   for(const name of ['file-open','layout-change','active-leaf-change']){
    plugin.registerEvent(plugin.app.workspace.on(name,()=>setTimeout(refreshEditors,120)));
   }
-  plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>setTimeout(refreshEditors,150)));
+  if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>setTimeout(refreshEditors,150)));
   plugin.registerEvent(plugin.app.vault.on('rename',()=>setTimeout(refreshEditors,150)));
   plugin.registerEvent(plugin.app.vault.on('modify',file=>{
    if(file?.extension==='md'&&file.path===plugin.settings.lastLongformProject)setTimeout(refreshEditors,150);

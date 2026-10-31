@@ -2,17 +2,19 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [4.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [4.3.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
 > **Updated in v4.1:** complete English localization across built-in writing panels, Longform and history dialogs, with automated bilingual regression checks.
 
-> **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, pin formatting commands to Obsidian's native mobile toolbar, and run LanguageTool checks after a typing pause.
+> **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, use Obsidian's own native formatting controls, and run LanguageTool checks after a typing pause.
 
 **4.1.1 maintenance:** Addresses Obsidian 1.11.4 CSS lint warnings, keeps compact mobile settings without `:has()` selectors, and cleans up the stylesheet cascade. Existing notes and settings are unchanged.
 
-**New in 4.2.0:** Typewriter mode now highlights the actual CodeMirror cursor line on mobile and desktop, including when Obsidian does not apply its native active-line class. The new built-in cursor memory saves each note's cursor position, optional selection and scroll offset, with local persistence and per-feature settings. No separate plugin is required.
+**4.2.0 introduced:** Typewriter mode now highlights the actual CodeMirror cursor line on mobile and desktop, including when Obsidian does not apply its native active-line class. The new built-in cursor memory saves each note's cursor position, optional selection and scroll offset, with local persistence and per-feature settings. No separate plugin is required.
+
+**New in 4.3.0:** The experimental Editing Toolbar, its floating desktop/mobile UI, the six extra Markdown-formatting commands and associated settings have been removed. Use Obsidian's built-in formatting commands and native mobile toolbar instead. **Independent AI writing actions remain available** through the plugin's commands and panels; typewriter line highlighting and cursor memory remain unchanged.
 
 ## Contents
 
@@ -109,7 +111,7 @@ Commands cover improving style, shortening or expanding passages, simplifying, a
 - **Writing variants:** create and cycle through inline alternatives, generate new variants with AI and optionally snapshot before replacing original text.
 - **Local autocomplete:** index the current note, vault notes, custom dictionaries and internal links, with exclusions, limits and optional ranking of frequently used choices.
 - **Version history:** snapshots stored separately under `.basic-ai-history/`, optional automatic saving, Diff and safe restoration. Existing history from unrelated snapshot plugins is not modified.
-- **Editing toolbar:** desktop editing controls and **individual Markdown and AI commands** for Obsidian's **native mobile toolbar**. On Android, choose which Basic AI commands to pin; the plugin does not add a second floating toolbar.
+- **Native formatting:** use Obsidian's built-in Markdown editor actions and mobile toolbar. Basic AI still provides separate **AI writing commands** for selected passages, without adding a competing formatting toolbar or Markdown-formatting commands.
 - **Other tools:** note mentions, Unicode favorites and search, text abbreviations, property-driven alternate titles/view modes, templates by note name, instant TOC and typewriter mode.
 
 ## Typewriter and cursor memory (4.2)
@@ -126,7 +128,7 @@ Choose **System / offline** speech when the Obsidian WebView exposes Web Speech 
 
 ## Installation and upgrade
 
-1. Download the latest [v4.1.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/v4.1.0/Basic-AI-Tool-for-Writers-v4.1.0.zip).
+1. Download the latest [4.3.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.0/Basic-AI-Tool-for-Writers-4.3.0.zip).
 2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
 
    ```text

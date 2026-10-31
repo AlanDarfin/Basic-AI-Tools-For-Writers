@@ -169,7 +169,6 @@ class WriterBookNavigation{
    if(this.cfg.enabled!==true||!writerModuleOn(plugin,'bookNavigation'))return;
    const options={...this.cfg,projectPath:plugin.settings.lastLongformProject};
    const match=await writerBookNavFindProjectAsync(plugin.app,ctx.sourcePath,options.projectPath);
-   if(!el.isConnected)return;
    const rendered=writerBookNavRender(el,plugin.app,ctx.sourcePath,options,match);
    if(!rendered)el.createEl('span',{cls:'writer-v6-booknav-empty',text:writerUi('Nenhum capítulo navegável foi encontrado para esta nota. Verifique o índice e a pasta de cenas do Longform.','No navigable chapters found for this note. Check the Longform index and scenes folder.')});
   });

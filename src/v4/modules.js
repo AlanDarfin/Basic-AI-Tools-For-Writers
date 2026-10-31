@@ -6,6 +6,7 @@ const WRITER_MODULES=[
  ['chat','Assistente de escrita','Writing assistant','Oculta o chat e ações que abrem o assistente.','Hides chat and assistant shortcuts.'],
  ['review','Revisão e LanguageTool','Review & LanguageTool','Oculta revisão gramatical, estilo e leitor beta.','Hides grammar, style and beta reader.'],
  ['projects','Longform e projetos','Longform & projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
+ ['bookNavigation','Navegação de capítulos Longform','Longform chapter navigation','Bloco com capítulos e subcapítulos ordenados pelo índice Longform.','Chapter and subchapter navigation based on the Longform scene order.'],
  ['tools','Ferramentas de escrita','Writing tools','Oculta a barra lateral complementar.','Hides supplementary tools pane.'],
  ['complements','Autocomplete','Autocomplete','Oculta sugestões locais e busca de termos.','Hides local word suggestions and indexing controls.'],
  ['variants','Variantes','Writing variants','Oculta comparações e variantes de frases.','Hides writing variants.'],

@@ -36,7 +36,7 @@ function writerV6Allowed(plugin,key){
 }
 const WRITER_V6_DEFAULTS={
  readingTime:{enabled:false,wpm:230,skipCode:true,skipFrontmatter:true,status:true},
- timestamps:{enabled:false,locale:'auto',timezone:'local',showRelative:true},
+ timestamps:{enabled:false,locale:'auto',timezone:'local',showRelative:true,recent:[]},
  ruby:{enabled:false,livePreview:true,lv1Size:50,lv2Size:45},
  discordSyntax:{enabled:false,subtext:true,blockSpoilers:false},
  ratings:{enabled:false,symbol:'star',max:5},

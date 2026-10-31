@@ -29,7 +29,7 @@ class WriterVariants{
    new Setting(modal.contentEl).setName('Primeira alternativa').addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Criar variantes","Create variants")).setCta().onClick(async()=>{
     if(!alternative.trim()||alternative===text)return new Notice('Escreva uma alternativa diferente.');
-    try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),'criar variantes');modal.close();}
+    try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),writerUi('criar variantes','create variants'));modal.close();}
     catch(e){new Notice(e.message);}
    }));
   };modal.open();
@@ -39,8 +39,8 @@ class WriterVariants{
   const from=match.offset,to=from+match.length,original=source.slice(from,to);
   if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice(writerUi("Sugestão inválida.","Invalid suggestion."));
   if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice(writerUi("A sugestão contém caracteres de controle. Use o editor de variantes.","The suggestion contains control characters. Use the variant editor."));
-  try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),'criar variante da revisão');
-   new Notice('Variante adicionada sem descartar o original.');
+  try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),writerUi('criar variante da revisão','create review variant'));
+   new Notice(writerUi('Variante adicionada sem descartar o original.','Variant added without discarding the original.'));
   }catch(e){new Notice(e.message);}
  }
  async replace(found,newOptions,active,commit=false,file){
@@ -65,13 +65,13 @@ class WriterVariants{
     const header=box.createDiv({cls:'writer-variant-option-header'});
     header.createEl('button',{text:(selected===i?'● ':'○ ')+(i+1),attr:{'aria-label':'Selecionar alternativa '+(i+1)}}).addEventListener('click',()=>{selected=i;render();});
     for(const [label,delta] of [['↑',-1],['↓',1]]){
-     header.createEl('button',{text:label,attr:{'aria-label':label==='↑'?'Mover para cima':'Mover para baixo'}}).addEventListener('click',()=>{
+     header.createEl('button',{text:label,attr:{'aria-label':label==='↑'?writerUi('Mover para cima','Move up'):writerUi('Mover para baixo','Move down')}}).addEventListener('click',()=>{
       const n=i+delta;if(n<0||n>=items.length)return;
       const tmp=items[i];items[i]=items[n];items[n]=tmp;
       if(selected===i)selected=n;else if(selected===n)selected=i;render();
      });
     }
-    header.createEl('button',{text:'×',attr:{'aria-label':'Excluir alternativa'}}).addEventListener('click',()=>{
+    header.createEl('button',{text:'×',attr:{'aria-label':writerUi('Excluir alternativa','Delete alternative')}}).addEventListener('click',()=>{
      if(items.length<=2)return new Notice('Mantenha ao menos duas alternativas.');
      items.splice(i,1);if(selected>=items.length)selected=items.length-1;render();
     });
@@ -99,7 +99,7 @@ class WriterVariants{
   catch(e){new Notice(e.message);}
  }
  async commit(){
-  const current=this.atCaret();if(!current)return new Notice('Nenhuma variante sob o cursor.');
+  const current=this.atCaret();if(!current)return new Notice(writerUi('Nenhuma variante sob o cursor.','No variant under the cursor.'));
   try{await this.replace(current.found,current.found.variants,current.found.active,true,current.file);}
   catch(e){new Notice(e.message);}
  }
@@ -116,7 +116,7 @@ class WriterVariants{
   if(!this.options.confirmAll)return run();
   const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
    modal.setTitle('Confirmar todas as variantes');
-   modal.contentEl.createEl('p',{text:'Substituir '+items.length+' expressão(ões) pelas alternativas escolhidas? Um snapshot será criado antes, se a opção estiver ativa.'});
+   modal.contentEl.createEl('p',{text:writerUi('Substituir ','Replace ')+items.length+writerUi(' expressão(ões) pelas alternativas escolhidas? Um snapshot será criado antes, se a opção estiver ativa.',' expression(s) with the selected alternatives? A snapshot will be created first if enabled.')});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>modal.close())).addButton(b=>b.setButtonText('Confirmar').setWarning().onClick(async()=>{modal.close();await run();}));
   };modal.open();
  }
@@ -130,7 +130,7 @@ class WriterVariants{
    const prompt=this.options.aiPrompt||WRITER_V3_DEFAULTS.variants.aiPrompt;
    const response=await this.plugin.generateWriting(prompt,selected);
    const alternatives=response.split(/\n+/).map(x=>x.replace(/^\s*(?:[-*]|\d+[.)])\s*/,'').trim()).filter(x=>x&&x!==selected).slice(0,5);
-   if(!alternatives.length)throw Error('A IA não retornou alternativas válidas.');
+   if(!alternatives.length)throw Error(writerUi('A IA não retornou alternativas válidas.','The AI did not return valid alternatives.'));
    await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),'inserir variantes da IA');
    new Notice('Alternativas adicionadas como variantes.');
   }catch(e){new Notice(writerUi("Não foi possível gerar variantes: ","Could not generate variants: ")+e.message);}

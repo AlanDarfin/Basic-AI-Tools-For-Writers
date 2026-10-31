@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers
 
+> **v6 em planejamento (não lançada):** auditoria das seis referências — Advanced Ruby, Discord Timestamps, Interactive Ratings, Discord Syntax, Linter e Reading Time. A estável continua **5.2.0**. Confira o [plano técnico v6 em português](V6-ARCHITECTURE.pt-BR.md) ou a [versão inglesa](V6-ARCHITECTURE.en.md).
+
 > **Novo na 5.2.0:** Longform lembra o **último projeto selecionado**, inclusive após reiniciar o plugin. A aba **Projeto** permite escolher uma **capa do cofre**, escrever a **sinopse/descrição** e declarar o tipo de **direitos autorais/licença**, com explicação de cada opção. Esses dados são salvos no frontmatter `longform` do índice da história. As configurações agora ficam em **seis grupos principais**, com abas menores dentro de cada grupo; Easy Typing e Smart Typography foram unidos em **Digitação e tipografia**. Veja as [notas da 5.2.0](V5_2_RELEASE.md).
 
 > **Novo na 5.1.0:** busca nas configurações (inclusive com acentos), perfis rápidos de escrita (Romance, Estudos, Revisão e Markdown técnico), perfis personalizados com desfazer, diagnóstico local de atalhos e interface mais compacta para telas pequenas. Os perfis alteram somente preferências de edição, sem modificar notas, chaves de API ou dicionários. Confira as [notas da 5.1.0](V5_1_RELEASE.md).

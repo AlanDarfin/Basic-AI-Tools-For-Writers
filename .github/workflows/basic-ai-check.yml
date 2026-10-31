@@ -18,3 +18,5 @@ jobs:
           node-version: '22'
       - name: Syntax, bundle and regression checks
         run: npm run check
+      - name: Obsidian community CSS lint
+        run: node --test tests/css-community-lint.test.cjs

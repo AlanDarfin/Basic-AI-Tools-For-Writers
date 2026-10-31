@@ -5564,7 +5564,6 @@ class WriterV6Reading{
  }
 }
 
-
 // v3 module: src/v6/markup.js
 /* v6 syntax and ratings: independently authored, safe DOM/CodeMirror implementations. */
 function writerV6RubyTokens(source){
@@ -5842,7 +5841,6 @@ class WriterV6Markup{
  }
 }
 
-
 // v3 module: src/v6/linter.js
 /* v6 original manual linter; pure rules and confirmed writes, no automatic mutation by default. */
 function writerV6LintText(text,config={}){
@@ -6029,7 +6027,6 @@ class WriterV6Linter{
   });
  }
 }
-
 
 // v3 module: src/v6/longform-navigation.js
 /* v6 beta 2: original hierarchical Longform navigation informed by BookNav and Note Chain behavior. */
@@ -6392,7 +6389,6 @@ class WriterBookNavigation{
  }
 }
 
-
 // v3 module: src/v6/project-workspace.js
 /* v6 beta4: project-level preferences, no destructive Longform frontmatter changes. */
 const WRITER_V6_PROJECT_TOOLS=[
@@ -6499,7 +6495,6 @@ function writerV6ProjectPreferencesRender(view,panel,project){
    if(preset)await view.plugin.writerWorkspaceProfiles.apply(writerUi(preset.labelPt,preset.labelEn),preset.values);
   }));
 }
-
 
 // v3 module: src/v6/smart-insert.js
 /* v6 beta4: opt-in native command palette dialogs, never a replacement toolbar. */
@@ -6637,7 +6632,6 @@ class WriterV6SmartInsert{
   new Setting(section).setName(writerUi('Inserir Ruby, avaliações ou datas','Insert Ruby, ratings or dates')).addButton(b=>b.setButtonText(writerUi('Ver comandos','See commands')).onClick(()=>new Notice(writerUi('Abra a paleta de comandos e procure por “Inserção inteligente”.','Open the command palette and search for “Smart insert”.'))));
  }
 }
-
 
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{

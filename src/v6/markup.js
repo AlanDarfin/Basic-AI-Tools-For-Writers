@@ -46,7 +46,8 @@ function writerV6RubyStrip(source){
  for(let n=0;n<2;n++)result=result.replace(/\{([^{}|\n]+)\|([^{}\n]+)\}/g,'$1');
  return result;
 }
-function writerV6RubyReading(root){
+function writerV6RubyReading(root,cfg){
+ if(root?.style){root.style.setProperty('--writer-v6-ruby-lv1-size',(cfg?.lv1Size||50)+'%');root.style.setProperty('--writer-v6-ruby-lv2-size',(cfg?.lv2Size||45)+'%');}
  for(const node of writerV6SafeTextNodes(root)){
   const text=node.nodeValue||'',tokens=writerV6RubyTokens(text);
   if(!tokens.length)continue;
@@ -188,7 +189,7 @@ class WriterV6Markup{
  register(){
   const p=this.plugin;
   p.registerMarkdownPostProcessor?.(root=>{
-   if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root);
+   if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root,p.settings.v6.ruby);
    if(writerV6Allowed(p,'discordSyntax')){writerV6SubtextReading(root);if(p.settings.v6.discordSyntax.blockSpoilers)writerV6BlockSpoilers(root);}
    if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root);
   });

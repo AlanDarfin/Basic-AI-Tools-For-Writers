@@ -5352,7 +5352,7 @@ const WRITER_V6_DEFAULTS={
  timestamps:{enabled:false,locale:'auto',timezone:'local',showRelative:true,recent:[]},
  ruby:{enabled:false,livePreview:true,lv1Size:50,lv2Size:45},
  discordSyntax:{enabled:false,subtext:true,blockSpoilers:false},
- ratings:{enabled:false,symbol:'star',max:5},
+ ratings:{enabled:false,symbol:'star',max:5,full:'◆',empty:'◇',half:'◈',showValue:'none'},
  linter:{enabled:false,trimTrailing:true,finalNewline:true,collapseBlanks:false,headingSpace:true,listSpace:true,footnoteSpace:true,quoteSpace:false,yamlSpacing:false,manualOnly:true,excluded:''}
 };
 function writerV6Merge(settings){
@@ -5635,9 +5635,16 @@ const WRITER_V6_RATING_SETS={
  circle:{full:'●',empty:'○',half:'◐'},
  bar:{full:'█',empty:'░',half:'▌'}
 };
+function writerV6RatingSymbols(kind,config){
+ if(kind==='custom'){
+  const full=String(config?.full||'◆').slice(0,12),empty=String(config?.empty||'◇').slice(0,12),half=String(config?.half||'◈').slice(0,12);
+  return {full,empty,half};
+ }
+ return WRITER_V6_RATING_SETS[kind]||WRITER_V6_RATING_SETS.star;
+}
 function writerV6RatingTokens(text){
  const results=[];
- for(const match of String(text||'').matchAll(/\[rating:((?:\d+(?:\.\d+)?))\/(\d{1,2})(?::(star|heart|moon|circle|bar))?\]/g)){
+ for(const match of String(text||'').matchAll(/\[rating:((?:\d+(?:\.\d+)?))\/(\d{1,2})(?::(star|heart|moon|circle|bar|custom))?\]/g)){
   const n=Number(match[1]),max=Number(match[2]);
   if(max<2||max>10||n<0||n>max||!Number.isFinite(n))continue;
   results.push({from:match.index,to:match.index+match[0].length,value:n,max,kind:match[3]||'star'});
@@ -5645,15 +5652,15 @@ function writerV6RatingTokens(text){
  return results;
 }
 function writerV6RatingLabel(t){return t.value+' / '+t.max;}
-function writerV6RatingText(t){
- const set=WRITER_V6_RATING_SETS[t.kind]||WRITER_V6_RATING_SETS.star;
+function writerV6RatingText(t,config){
+ const set=writerV6RatingSymbols(t.kind,config);
  return Array.from({length:t.max},(_,i)=>{
   const delta=t.value-i;
   return delta>=1?set.full:delta>=.5?set.half:set.empty;
  }).join('');
 }
 function writerV6RatingMarker(t){return '[rating:'+t.value+'/'+t.max+':'+t.kind+']';}
-function writerV6RatingReading(root){
+function writerV6RatingReading(root,config){
  for(const node of writerV6SafeTextNodes(root)){
   const source=node.nodeValue||'',tokens=writerV6RatingTokens(source);if(!tokens.length)continue;
   const doc=node.ownerDocument,fragment=doc.createDocumentFragment();let previous=0;
@@ -5661,7 +5668,7 @@ function writerV6RatingReading(root){
    if(t.from<previous)continue;
    fragment.append(doc.createTextNode(source.slice(previous,t.from)));
    const span=doc.createElement('span');span.className='writer-v6-rendered writer-v6-rating';
-   span.textContent=writerV6RatingText(t);
+   span.textContent=writerV6RatingText(t,config)+(config?.showValue==='percent'?' '+Math.round(t.value/t.max*100)+'%':config?.showValue==='fraction'?' '+writerV6RatingLabel(t):'');
    span.title=writerV6RatingLabel(t);
    span.setAttribute('role','img');span.setAttribute('aria-label',writerUi('Avaliação ','Rating ')+writerV6RatingLabel(t));
    fragment.append(span);previous=t.to;
@@ -5671,13 +5678,13 @@ function writerV6RatingReading(root){
 }
 const WriterV6WidgetType=require('@codemirror/view').WidgetType||class{};
 class WriterV6RatingWidget extends WriterV6WidgetType{
- constructor(token,view,from,to){super();this.token=token;this.view=view;this.from=from;this.to=to;}
+ constructor(token,view,from,to,config){super();this.token=token;this.view=view;this.from=from;this.to=to;this.config=config;}
  eq(other){return other instanceof WriterV6RatingWidget&&writerV6RatingMarker(this.token)===writerV6RatingMarker(other.token)&&this.from===other.from&&this.to===other.to;}
  toDOM(view){
   const doc=view.dom.ownerDocument,container=doc.createElement('span');
   container.className='writer-v6-rating-editor';container.setAttribute('role','group');
   container.setAttribute('aria-label',writerUi('Avaliação ajustável','Adjustable rating'));
-  const set=WRITER_V6_RATING_SETS[this.token.kind]||WRITER_V6_RATING_SETS.star;
+  const set=writerV6RatingSymbols(this.token.kind,this.config);
   for(let i=1;i<=this.token.max;i++){
    const button=doc.createElement('button');button.type='button';
    button.className='writer-v6-rating-button';
@@ -5718,7 +5725,7 @@ function writerV6MarkupDecorations(view,plugin){
     for(const t of writerV6RatingTokens(source)){
      const from=line.from+t.from,to=line.from+t.to;
      if(writerV6Overlaps(protectedRanges,from,to)||selection.from<=to&&selection.to>=from)continue;
-     ranges.push(Decoration.replace({widget:new WriterV6RatingWidget(t,view,from,to)}).range(from,to));
+     ranges.push(Decoration.replace({widget:new WriterV6RatingWidget(t,view,from,to,cfg.ratings)}).range(from,to));
     }
    }
   }
@@ -5732,7 +5739,7 @@ class WriterV6Markup{
   p.registerMarkdownPostProcessor?.(root=>{
    if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root,p.settings.v6.ruby);
    if(writerV6Allowed(p,'discordSyntax')){writerV6SubtextReading(root);if(p.settings.v6.discordSyntax.blockSpoilers)writerV6BlockSpoilers(root);}
-   if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root);
+   if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root,p.settings.v6.ratings);
   });
   if(ViewPlugin?.fromClass){
    p.registerEditorExtension(ViewPlugin.fromClass(class{
@@ -5764,7 +5771,9 @@ class WriterV6Markup{
   new Setting(panel).setName(writerUi('Spoiler em bloco entre linhas ||','Block spoilers between || lines')).addToggle(t=>t.setValue(cfg.discordSyntax.blockSpoilers).onChange(async v=>{cfg.discordSyntax.blockSpoilers=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   panel.createEl('h3',{text:writerUi('Avaliações interativas','Interactive ratings')});
   new Setting(panel).setName(writerUi('Habilitar [rating:3/5:star]','Enable [rating:3/5:star]')).addToggle(t=>t.setValue(cfg.ratings.enabled).onChange(async v=>{cfg.ratings.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle e bar. Clique nas estrelas no editor (Shift: meio ponto).','Formats: star, heart, moon, circle and bar. Click rating symbols (Shift: half point) to change a value.')});
+  new Setting(panel).setName(writerUi('Exibir valor','Show rating value')).addDropdown(d=>d.addOption('none',writerUi('Somente símbolos','Symbols only')).addOption('fraction',writerUi('Fração','Fraction')).addOption('percent',writerUi('Porcentagem','Percentage')).setValue(cfg.ratings.showValue||'none').onChange(async v=>{cfg.ratings.showValue=v;await this.plugin.saveSettings();}));
+  for(const [key,pt,en] of [['full','Símbolo preenchido','Filled symbol'],['empty','Símbolo vazio','Empty symbol'],['half','Meio ponto','Half symbol']])new Setting(panel).setName(writerUi(pt,en)).addText(t=>t.setValue(String(cfg.ratings[key]||'')).onChange(async v=>{cfg.ratings[key]=v.slice(0,12);await this.plugin.saveSettings();}));
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle, bar e custom. Clique nas estrelas no editor (Shift: meio ponto).','Formats: star, heart, moon, circle and bar. Click rating symbols (Shift: half point) to change a value.')});
  }
 }
 
@@ -5861,8 +5870,72 @@ class WriterV6Linter{
   }
   new Preview(plugin.app).open();
  }
+ async previewBatch(files,title){
+  const plugin=this.plugin;
+  if(this.locked){new Notice(writerUi('Outro processo do Linter está ativo.','Another Linter task is active.'));return;}
+  const eligible=files.filter(file=>file instanceof TFile&&file.extension==='md'&&!writerV6LintExcluded(file.path,this.cfg.excluded));
+  if(eligible.length>50){new Notice(writerUi('Limite de 50 notas por lote. Escolha uma pasta menor.','Batch limit is 50 notes. Select a smaller folder.'));return;}
+  this.locked=true;
+  try{
+   const entries=[];
+   const active=plugin.app.workspace.getActiveFile?.();
+   for(const file of eligible){
+    // Skip active unsaved documents in batch operations; use single-note review instead.
+    if(active?.path===file.path)continue;
+    const source=await plugin.app.vault.read(file),lint=writerV6LintText(source,this.cfg);
+    if(lint.changed)entries.push({file,source,lint});
+   }
+   if(!entries.length){new Notice(writerUi('Nenhuma nota elegível precisa de mudanças.','No eligible notes need formatting.'));return;}
+   const owner=this;
+   class BatchPreview extends Modal{
+    onOpen(){
+     this.setTitle(writerUi('Linter: revisão em lote — ','Linter batch preview — ')+title);
+     this.contentEl.addClass('writer-v6-lint-modal');
+     this.contentEl.createEl('p',{text:entries.length+' '+writerUi('notas com mudanças. A nota ativa é excluída para evitar perda de edições não salvas.','notes with changes. The active note is excluded to avoid losing unsaved edits.')});
+     const list=this.contentEl.createEl('pre',{cls:'writer-v6-lint-preview'});
+     list.textContent=entries.map(item=>item.file.path+' ('+item.lint.count+' '+writerUi('alterações','changes')+')').join('\n');
+     const actions=this.contentEl.createDiv({cls:'writer-v6-lint-actions'});
+     new Setting(actions).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>this.close()))
+      .addButton(b=>b.setButtonText(writerUi('Confirmar e aplicar','Confirm and apply')).setCta().onClick(async()=>{
+       let applied=0,skipped=0;
+       try{
+        for(const item of entries){
+         const live=await plugin.app.vault.read(item.file);
+         if(live!==item.source){skipped++;continue;}
+         try{
+          if(plugin.writerSnapshots?.config?.enabled)await plugin.writerSnapshots.create(item.file,writerUi('Antes do Linter em lote','Before batch Linter'),{content:live,attachments:false});
+          else{
+           const adapter=plugin.app.vault.adapter;
+           const folder=(plugin.manifest.dir||plugin.app.vault.configDir+'/plugins/'+plugin.manifest.id)+'/v6-linter-backups';
+           if(!(await adapter.exists(folder)))await adapter.mkdir(folder);
+           const safe=item.file.path.replace(/[^a-z0-9_.-]/gi,'_').slice(-100);
+           await adapter.write(folder+'/'+safe+'-'+Date.now()+'.md',live);
+          }
+          await plugin.app.vault.modify(item.file,item.lint.output);applied++;
+         }catch(error){skipped++;console.warn('[Basic AI] Batch lint:',error);}
+        }
+        this.close();
+        new Notice(writerUi('Notas formatadas: ','Formatted notes: ')+applied+writerUi(' · ignoradas: ',' · skipped: ')+skipped,7000);
+       }catch(error){new Notice(error.message,7000);}
+      }));
+    }
+    onClose(){this.contentEl.empty();}
+   }
+   new BatchPreview(plugin.app).open();
+  }finally{this.locked=false;}
+ }
  register(){
   const plugin=this.plugin;
+  plugin.addCommand({id:'v6-linter-current-folder',name:writerUi('Linter: revisar pasta da nota','Linter: review current folder'),checkCallback:checking=>{
+   const file=plugin.app.workspace.getActiveFile?.();
+   if(!writerV6Allowed(plugin,'linter')||!file||file.extension!=='md')return false;
+   if(!checking){
+    const prefix=file.parent?.path||'';
+    const files=plugin.app.vault.getMarkdownFiles().filter(f=>(f.parent?.path||'')===prefix);
+    this.previewBatch(files,prefix||writerUi('raiz','root')).catch(e=>new Notice(e.message));
+   }
+   return true;
+  }});
   plugin.addCommand({id:'v6-linter-current-note',name:writerUi('Linter: revisar formatação da nota','Linter: review note formatting'),checkCallback:checking=>{
    const file=plugin.app.workspace.getActiveFile?.();
    if(!writerV6Allowed(plugin,'linter')||!file||file.extension!=='md')return false;

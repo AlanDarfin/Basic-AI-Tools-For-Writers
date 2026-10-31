@@ -29,7 +29,8 @@ function writerBookNavFindSceneFile(index,entry,app){
  const projectRoot=parent?parent+'/':'';
  const basename=title.replace(/\.md$/i,'').split('/').pop();
  const matches=app.vault.getMarkdownFiles().filter(file=>
-  (file.path.startsWith(projectRoot)||!parent)&&file.basename===basename
+  (file.path.startsWith(projectRoot)||!parent)&&file.basename===basename&&
+  app.vault.getAbstractFileByPath(file.path) instanceof TFile
  );
  return matches.length===1?matches[0]:null;
 }

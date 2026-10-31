@@ -6370,7 +6370,7 @@ class WriterBookNavigation{
   for(const name of ['file-open','layout-change','active-leaf-change']){
    plugin.registerEvent(plugin.app.workspace.on(name,()=>setTimeout(refreshEditors,120)));
   }
-  plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>setTimeout(refreshEditors,150)));
+  if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>setTimeout(refreshEditors,150)));
   plugin.registerEvent(plugin.app.vault.on('rename',()=>setTimeout(refreshEditors,150)));
   plugin.registerEvent(plugin.app.vault.on('modify',file=>{
    if(file?.extension==='md'&&file.path===plugin.settings.lastLongformProject)setTimeout(refreshEditors,150);
@@ -7234,7 +7234,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerCursorMemory=new WriterCursorMemory(this);
     this.writerCursorMemory.register();
     this.writerBookNavigation=new WriterBookNavigation(this);this.writerBookNavigation.register();
-    this.registerEvent(this.app.metadataCache.on('changed',file=>{if(file instanceof TFile&&longformIndex(file,this.app))this._writerV6ProjectPaths?.clear();}));
+    if(typeof this.app.metadataCache?.on==='function')this.registerEvent(this.app.metadataCache.on('changed',file=>{if(file instanceof TFile&&longformIndex(file,this.app))this._writerV6ProjectPaths?.clear();}));
     this.registerEvent(this.app.vault.on('rename',()=>this._writerV6ProjectPaths?.clear()));
     for(const event of ['create','delete'])this.registerEvent(this.app.vault.on(event,()=>this._writerV6ProjectPaths?.clear()));
     this.writerKeyshots=new WriterKeyshots(this);this.writerKeyshots.register();

@@ -5030,6 +5030,7 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerExtendedSyntax.renderSettings(panel);
     }else if(id==='pandocSyntax'){
       this.plugin.writerPandocSyntax.renderSettings(panel);
+      this.plugin.writerPandocExporter.renderSettings(panel);
     }else if(id==='easyTyping'){
       this.plugin.writerEasyTyping.renderSettings(panel);
     }else if(id==='smartTypography'){
@@ -5143,7 +5144,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerKeyshotsMerge(this.settings);
     writerExtendedMerge(this.settings);
     writerPandocMerge(this.settings);
+    writerPandocExportMerge(this.settings);
     writerEasyMerge(this.settings);
+    writerEasyAdvancedMerge(this.settings);
     writerTypoMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -5160,7 +5163,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerKeyshots=new WriterKeyshots(this);this.writerKeyshots.register();
     this.writerExtendedSyntax=new WriterExtendedSyntax(this);this.writerExtendedSyntax.register();
     this.writerPandocSyntax=new WriterPandocSyntax(this);this.writerPandocSyntax.register();
+    this.writerPandocExporter=new WriterPandocExporter(this);this.writerPandocExporter.register();
     this.writerEasyTyping=new WriterEasyTyping(this);this.writerEasyTyping.register();
+    this.writerEasyAdvanced=new WriterEasyAdvanced(this);this.writerEasyAdvanced.register();
     this.writerSmartTypography=new WriterSmartTypography(this);this.writerSmartTypography.register();
     writerV4Register(this);
     this.registerEditorSuggest(this.writerComplements);

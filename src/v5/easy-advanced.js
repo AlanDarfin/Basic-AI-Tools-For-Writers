@@ -1,9 +1,9 @@
 'use strict';
 /* Basic AI v5: bounded regex rules and navigation snippets; no user-authored JS execution. */
 const WRITER_EASY_ADV_DEFAULTS={regexRules:[],snippets:[
- {name:'Diálogo',body:'— \${1:fala}\n\${0}'},
- {name:'Nota de pesquisa',body:'> [!note] \${1:título}\n> \${2:anotação}\n\${0}'},
- {name:'Citação',body:'> \${1:trecho}\n\n— \${2:fonte}\n\${0}'}
+ {name:'Diálogo',body:'— ${1:fala}\n${0}'},
+ {name:'Nota de pesquisa',body:'> [!note] ${1:título}\n> ${2:anotação}\n${0}'},
+ {name:'Citação',body:'> ${1:trecho}\n\n— ${2:fonte}\n${0}'}
 ],regexEnabled:false};
 function writerEasyAdvancedMerge(settings){
  const cfg=settings.easyTyping||writerEasyMerge(settings);
@@ -114,7 +114,7 @@ class WriterEasyAdvanced{
  }
  renderSettings(panel){
   panel.createEl('h4',{text:writerUi('Regras regex e modelos com Tab','Regex rules and Tab snippets')});
-  panel.createEl('p',{text:writerUi('Regras regex são limitadas, não executam JavaScript e vêm desativadas por padrão. Modelos inseridos por comando incluem marcações \${1:texto} e \${0} para a posição final.','Regex rules are bounded, do not execute JavaScript, and default to off. Snippets use \${1:text} and \${0} cursor markers.'),cls:'dictionary-muted'});
+  panel.createEl('p',{text:writerUi('Regras regex são limitadas, não executam JavaScript e vêm desativadas por padrão. Modelos inseridos por comando incluem marcações ${1:texto} e ${0} para a posição final.','Regex rules are bounded, do not execute JavaScript, and default to off. Snippets use ${1:text} and ${0} cursor markers.'),cls:'dictionary-muted'});
   new Setting(panel).setName(writerUi('Ativar regras regex','Enable regex rules')).addToggle(t=>t.setValue(this.cfg.regexEnabled).onChange(async v=>{this.cfg.regexEnabled=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Substituições regex','Regex replacement rules'))
    .setDesc(writerUi('Uma por linha: padrão|substituição|flags (i ou u). Sem avaliação de código.','One per line: pattern|replacement|flags (i or u). No code evaluation.'))

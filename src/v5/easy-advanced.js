@@ -17,6 +17,8 @@ function writerEasyRegexSafe(pattern){
  // Reject nested repeating groups and numeric backreferences, which can cause heavy backtracking.
  if(/\\[1-9]|\(\?<[=!]|(?:\+|\*|\{\d+,?\d*\})\s*(?:\+|\*|\{)/.test(pattern))return false;
  if(/\([^)]*(?:\*|\+|\{\d+,?\d*\})[^)]*\)\s*(?:\+|\*|\{)/.test(pattern))return false;
+ // Repeated groups with alternatives can be catastrophic even without nested quantifiers.
+ if(/\([^)]*\|[^)]*\)\s*(?:\+|\*|\{)/.test(pattern))return false;
  return true;
 }
 function writerEasyRegexAtInput(before,cfg){

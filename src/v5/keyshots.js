@@ -161,6 +161,8 @@ class WriterKeyshots{
     if(markdown?.editor?.cm!==cm)return false;
     return this.perform(action,markdown.editor,markdown);
    }}));
+  const {EditorState}=require('@codemirror/state');
+  if(EditorState?.allowMultipleSelections?.of)p.registerEditorExtension(EditorState.allowMultipleSelections.of(true));
   p.registerEditorExtension(keymap.of(map));
  }
  renderSettings(panel){

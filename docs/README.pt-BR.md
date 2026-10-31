@@ -2,11 +2,15 @@
 
 **Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
 
-[English / README principal](../README.md) · [Release estável v4.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.1.0)
+[English / README principal](../README.md) · [Release estável 4.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.2.0)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
 
-**Versão atual:** 4.0.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
+**Versão atual:** 4.2.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
+
+**Novidades da 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
+
+**Para configurar:** abra **Configurações → Basic AI Tool for Writers → Posição do cursor**. Você pode ativar/desativar o recurso, escolher se deseja restaurar seleção e rolagem, definir um limite de notas (500 por padrão), limpar os registros salvos e usar comandos para restaurar ou esquecer a posição da nota atual. Links com âncoras não têm seu destino substituído pela memória. O código é uma integração independente inspirada no plugin [Remember cursor position](https://github.com/dy-sh/obsidian-remember-cursor-position), sem precisar instalá-lo.
 
 ## Tudo o que o plugin oferece
 

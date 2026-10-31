@@ -2,7 +2,7 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [4.1.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.1.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [4.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
@@ -11,6 +11,8 @@
 > **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, pin formatting commands to Obsidian's native mobile toolbar, and run LanguageTool checks after a typing pause.
 
 **4.1.1 maintenance:** Addresses Obsidian 1.11.4 CSS lint warnings, keeps compact mobile settings without `:has()` selectors, and cleans up the stylesheet cascade. Existing notes and settings are unchanged.
+
+**New in 4.2.0:** Typewriter mode now highlights the actual CodeMirror cursor line on mobile and desktop, including when Obsidian does not apply its native active-line class. The new built-in cursor memory saves each note's cursor position, optional selection and scroll offset, with local persistence and per-feature settings. No separate plugin is required.
 
 ## Contents
 
@@ -36,9 +38,9 @@
 | **Longform projects** | Projects, nested chapters/scenes, drag-and-drop ordering, touch-friendly movement, drafts, project notes, tasks, writing goals, sessions and compilation workflows. |
 | **Autocomplete and variants** | Local suggestions from files and dictionaries; multiple inline alternatives; AI-assisted rewriting and comparison. |
 | **Snapshots** | Separate local version history, manual and optional automatic snapshots, line-based comparison, restore safeguards and optional attachment capture. |
-| **Writing utilities** | Note mentions, chapter comments, abbreviations, Unicode picker, note-name templates, instant table of contents, alternative note subtitles, view preferences and typewriter focus mode. |
+| **Writing utilities** | Note mentions, chapter comments, abbreviations, Unicode picker, note-name templates, instant table of contents, alternative note subtitles, view preferences and typewriter focus mode, and per-note cursor/selection/scroll memory. |
 | **Read aloud** | Browser/system speech when available, or optional online neural TTS with explicit consent. |
-| **Customization and diagnostics** | 17 individually visible module categories, compact/mobile-friendly settings and local diagnostics. |
+| **Customization and diagnostics** | 18 individually visible module categories, compact/mobile-friendly settings and local diagnostics. |
 
 ## Customizable modules
 
@@ -109,6 +111,12 @@ Commands cover improving style, shortening or expanding passages, simplifying, a
 - **Version history:** snapshots stored separately under `.basic-ai-history/`, optional automatic saving, Diff and safe restoration. Existing history from unrelated snapshot plugins is not modified.
 - **Editing toolbar:** desktop editing controls and **individual Markdown and AI commands** for Obsidian's **native mobile toolbar**. On Android, choose which Basic AI commands to pin; the plugin does not add a second floating toolbar.
 - **Other tools:** note mentions, Unicode favorites and search, text abbreviations, property-driven alternate titles/view modes, templates by note name, instant TOC and typewriter mode.
+
+## Typewriter and cursor memory (4.2)
+
+**Typewriter:** Turn on Typewriter mode from the Integrated Tools settings or the command palette. The active line receives a theme-aware highlight even on mobile. Enable **Dim unfocused lines** if you want all other lines subdued.
+
+**Remember cursor position:** In **Settings → Basic AI Tool for Writers → Cursor position**, toggle cursor memory, restore selection, and restore scroll independently. Bookmarks are saved locally with the plugin settings, limited to 500 notes by default (configurable up to 2,000). Reopening a Markdown note restores the stored position where possible; heading links are not overridden. You can forget the current note position using a command, or clear all saved bookmarks in Settings. This is an independent implementation inspired by [Remember cursor position](https://github.com/dy-sh/obsidian-remember-cursor-position), not copied code and no external plugin dependency.
 
 ## Text-to-speech
 

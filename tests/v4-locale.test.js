@@ -73,13 +73,13 @@ test('all user-visible known Portuguese-only strings are wrapped by translation 
   for(const phrase of phrases)assert.ok(!source.includes(phrase),'Untranslated UI string in '+path+': '+phrase);
  }
 });
-test('release metadata and documentation agree on 4.1.1 localization',()=>{
+test('release metadata and documentation agree on 4.2.0 localization',()=>{
  const manifest=JSON.parse(read('manifest.json'));
  const pkg=JSON.parse(read('package.json'));
  const versions=JSON.parse(read('versions.json'));
- assert.equal(manifest.version,'4.1.1');
- assert.equal(pkg.version,'4.1.1');
- assert.equal(versions['4.1.1'],manifest.minAppVersion);
+ assert.equal(manifest.version,'4.2.0');
+ assert.equal(pkg.version,'4.2.0');
+ assert.equal(versions['4.2.0'],manifest.minAppVersion);
  assert.match(read('README.md'),/English.*interface/i);
  assert.match(read('docs/README.pt-BR.md'),/inglês/i);
 });

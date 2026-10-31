@@ -67,6 +67,7 @@ test('CJK spacing, capitalization, literal rules and folder exclusions',()=>{
 test('Markdown frontmatter and separators are preserved',()=>{
  const cfg=v.writerTypoMerge({});
  assert.equal(v.writerTypoAtInput('--','-',cfg),null);
+ assert.equal(v.writerTypoAtInput('-- ',' ',cfg)?.text,'— ');
  assert.equal(v.writerTypoConvertProse('---\ntitle: "Hello"\n---\nHello ...',cfg),'---\ntitle: "Hello"\n---\nHello …');
  assert.equal(v.writerTypoConvertProse('A line\n---\nAnother line ...',cfg),'A line\n---\nAnother line …');
 });

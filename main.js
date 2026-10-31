@@ -3416,6 +3416,7 @@ const WRITER_MODULES=[
  ['chat','Assistente de escrita','Writing assistant','Oculta o chat e ações que abrem o assistente.','Hides chat and assistant shortcuts.'],
  ['review','Revisão e LanguageTool','Review & LanguageTool','Oculta revisão gramatical, estilo e leitor beta.','Hides grammar, style and beta reader.'],
  ['projects','Longform e projetos','Longform & projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
+ ['bookNavigation','Navegação de capítulos Longform','Longform chapter navigation','Bloco com capítulos e subcapítulos ordenados pelo índice Longform.','Chapter and subchapter navigation based on the Longform scene order.'],
  ['tools','Ferramentas de escrita','Writing tools','Oculta a barra lateral complementar.','Hides supplementary tools pane.'],
  ['complements','Autocomplete','Autocomplete','Oculta sugestões locais e busca de termos.','Hides local word suggestions and indexing controls.'],
  ['variants','Variantes','Writing variants','Oculta comparações e variantes de frases.','Hides writing variants.'],
@@ -3581,38 +3582,56 @@ class WriterCursorMemory{
   const state=view?.leaf?.getViewState?.()?.state||view?.getState?.()||{};
   return Boolean(state.subpath||state.anchor||state.search);
  }
+ restoreScrollIntoView(view,head,bookmark){
+  const editor=view?.editor,cm=editor?.cm;
+  if(this.cfg.restoreScroll===false||!editor)return;
+  // The stored pixel offset alone is unreliable on Android: a CM6 viewport may
+  // not have measured its rows when file-open fires, or the virtual keyboard
+  // may resize the scroll container after the initial scrollTo().
+  try{
+   if(typeof editor.scrollTo==='function'&&Number.isFinite(bookmark?.top))
+    editor.scrollTo(Number(bookmark.left)||0,Math.max(0,bookmark.top));
+   const pos=cm?.state?.doc?.line?
+    cm.state.doc.line(Math.max(1,Math.min(cm.state.doc.lines,head.line+1))).from+head.ch:null;
+   if(pos!=null&&typeof EditorView?.scrollIntoView==='function'&&cm?.dispatch){
+    cm.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',x:'nearest'})});
+   }else if(typeof editor.scrollIntoView==='function'){
+    editor.scrollIntoView({from:head,to:head},true);
+   }
+  }catch(error){console.warn('[Basic AI] Cursor scroll restore:',error);}
+ }
  restore(view){
-  if(!this.active()||!view?.file?.path||!view.editor)return;
-  if(this.isAnchored(view))return;
+  if(!this.active()||!view?.file?.path||!view.editor||this.isAnchored(view))return;
   const path=view.file.path,bookmark=this.entries[path];
   if(!bookmark||this.pending.has(view))return;
   const editor=view.editor,initial=editor.getCursor?.('head');
   if(!initial||typeof editor.lineCount!=='function')return;
   this.pending.set(view,path);
+  const stillValid=()=>this.pending.get(view)===path&&view.file?.path===path&&!this.isAnchored(view);
+  // Allow Obsidian to attach the editor and load the document before resetting
+  // selection, then recenter after the layout and mobile keyboard settle.
   this.timer(()=>{
-   if(this.pending.get(view)!==path)return;
-   if(view.file?.path!==path||this.isAnchored(view)){
-    this.pending.delete(view);return;
-   }
-   // If the user moved the caret after opening, do not override their choice.
-   if(!writerCursorSame(editor.getCursor('head'),initial)){
-    this.pending.delete(view);return;
+   if(!stillValid()){this.pending.delete(view);return;}
+   if(!writerCursorSame(editor.getCursor?.('head'),initial)){
+    this.pending.delete(view);return; // genuine user movement wins
    }
    try{
     const head=writerCursorClamp(bookmark.head,editor);
     const anchor=this.cfg.restoreSelection?writerCursorClamp(bookmark.anchor||bookmark.head,editor):head;
     editor.setSelection(anchor,head);
-    if(this.cfg.restoreScroll&&typeof editor.scrollTo==='function'){
-     this.timer(()=>{
-      if(view.file?.path===path)editor.scrollTo(bookmark.left||0,bookmark.top||0);
-      this.pending.delete(view);
-     },55);
-    }else this.pending.delete(view);
+    this.restoreScrollIntoView(view,head,bookmark);
+    const finish=()=>{
+     if(!stillValid())return;
+     if(!writerCursorSame(editor.getCursor?.('head'),head)){this.pending.delete(view);return;}
+     this.restoreScrollIntoView(view,head,bookmark);
+     this.pending.delete(view);
+    };
+    this.timer(finish,this.plugin.app.isMobile?380:110);
    }catch(e){
     this.pending.delete(view);
     console.warn('[Basic AI] Restore cursor:',e);
    }
-  },100);
+  },this.plugin.app.isMobile?180:100);
  }
  register(){
   const p=this.plugin,workspace=p.app.workspace;
@@ -5964,6 +5983,142 @@ class WriterV6Linter{
  }
 }
 
+// v3 module: src/v6/longform-navigation.js
+/* v6 beta 2: original hierarchical Longform navigation informed by BookNav and Note Chain behavior. */
+const WRITER_BOOKNAV_DEFAULTS={enabled:true,showMain:true,showSub:true};
+function writerBookNavMerge(settings){
+ const old=settings.bookNavigation;
+ settings.bookNavigation={...WRITER_BOOKNAV_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
+ return settings.bookNavigation;
+}
+function writerBookNavFindSceneFile(index,entry,app){
+ const parent=index.file.parent?.path||'',sceneFolder=String(index.meta.sceneFolder||'').replace(/^\/|\/$/g,'');
+ const title=String(entry?.title||'').trim();
+ if(!title)return null;
+ const candidates=[lfPath(parent,sceneFolder,title+'.md'),lfPath(parent,sceneFolder,title),lfPath(parent,title+'.md'),lfPath(parent,title)];
+ return candidates.map(p=>app.vault.getAbstractFileByPath(p)).find(x=>x instanceof TFile&&x.extension==='md')||null;
+}
+function writerBookNavFlatten(index,app){
+ if(!index||index.format!=='scenes')return [];
+ const entries=lfFlattenScenes(index.scenes),out=[];
+ for(let i=0;i<entries.length;i++){
+  const file=writerBookNavFindSceneFile(index,entries[i],app);
+  const level=Math.max(0,Math.floor(Number(entries[i].indent)||0));
+  // Entries lacking a valid note still determine hierarchy and placement but
+  // should never produce a navigation button to an invented or missing file.
+  out.push({title:entries[i].title,indent:level,file,path:file?.path||null,index:i});
+ }
+ return out;
+}
+function writerBookNavTargets(entries,currentPath){
+ const current=entries.findIndex(x=>x.path===currentPath);
+ if(current<0)return null;
+ const node=entries[current],level=node.indent;
+ const roots=entries.map((x,i)=>({...x,i})).filter(x=>x.indent===0);
+ const rootPos=roots.findLastIndex(x=>x.i<=current);
+ if(rootPos<0)return null;
+ const root=roots[rootPos],nextRoot=roots.slice(rootPos+1).find(x=>x.path);
+ const prevRoot=roots.slice(0,rootPos).reverse().find(x=>x.path);
+ let parent=null;
+ if(level>0)for(let j=current-1;j>=root.i;j--)if(entries[j].indent<level){parent=entries[j];break;}
+ const previousMain=level>0?(parent?.path?parent:prevRoot):prevRoot;
+ const nextMain=nextRoot;
+ const siblingRangeStart=parent?entries.indexOf(parent)+1:root.i+1;
+ const limit=nextRoot?nextRoot.i:entries.length;
+ let previousSub=null,nextSub=null;
+ if(level===0){
+  // A chapter offers its first direct subchapter independently of the next main chapter.
+  nextSub=entries.slice(current+1,limit).find(x=>x.indent===1&&x.path)||null;
+  if(prevRoot){
+   const prevEnd=root.i;
+   previousSub=entries.slice(prevRoot.i+1,prevEnd).filter(x=>x.indent===1&&x.path).pop()||null;
+  }
+ }else{
+  const targetDepth=level,upper=entries.findIndex((x,j)=>j>current&&x.indent<targetDepth);
+  const end=upper>=0?upper:entries.length;
+  const inFamily=entries.map((x,i)=>({...x,i})).filter(x=>x.i>=siblingRangeStart&&x.i<end&&x.indent===targetDepth&&x.path);
+  previousSub=inFamily.filter(x=>x.i<current).pop()||null;
+  nextSub=inFamily.find(x=>x.i>current)||null;
+  // If this note has subchapters, descend when no next sibling exists.
+  if(!nextSub)nextSub=entries.slice(current+1,end).find(x=>x.indent===level+1&&x.path)||null;
+ }
+ const same=node.path;
+ const cleaned=x=>x?.path&&x.path!==same?{path:x.path,title:x.title,indent:x.indent}:null;
+ return {current:{path:node.path,title:node.title,indent:level},previousMain:cleaned(previousMain),nextMain:cleaned(nextMain),previousSub:cleaned(previousSub),nextSub:cleaned(nextSub)};
+}
+function writerBookNavFindProject(app,sourcePath,selectedIndex){
+ const file=app.vault.getAbstractFileByPath(sourcePath);
+ if(!(file instanceof TFile)||file.extension!=='md')return null;
+ const indexes=app.vault.getMarkdownFiles().map(x=>longformIndex(x,app)).filter(Boolean);
+ const matches=[];
+ for(const index of indexes){
+  const items=writerBookNavFlatten(index,app);
+  if(items.some(x=>x.path===sourcePath))matches.push({index,items});
+ }
+ if(!matches.length)return null;
+ return matches.find(x=>x.index.file.path===selectedIndex)||matches[0];
+}
+function writerBookNavButtons(targets,options){
+ const out=[];
+ if(options.showMain!==false){
+  if(targets.previousMain)out.push({direction:'previous',kind:'main',target:targets.previousMain});
+  if(targets.nextMain)out.push({direction:'next',kind:'main',target:targets.nextMain});
+ }
+ if(options.showSub!==false){
+  if(targets.previousSub)out.push({direction:'previous',kind:'sub',target:targets.previousSub});
+  if(targets.nextSub)out.push({direction:'next',kind:'sub',target:targets.nextSub});
+ }
+ return out;
+}
+function writerBookNavRender(container,app,sourcePath,options){
+ const match=writerBookNavFindProject(app,sourcePath,options?.projectPath);
+ if(!match)return false;
+ const targets=writerBookNavTargets(match.items,sourcePath);
+ if(!targets)return false;
+ const buttons=writerBookNavButtons(targets,options||{});
+ if(!buttons.length)return false;
+ const root=container.createDiv({cls:'writer-v6-booknav'});
+ root.setAttribute('role','navigation');
+ root.setAttribute('aria-label',writerUi('Navegação Longform','Longform navigation'));
+ for(const button of buttons){
+  const label=button.kind==='main'?
+   writerUi(button.direction==='previous'?'Capítulo anterior':'Próximo capítulo',button.direction==='previous'?'Previous chapter':'Next chapter'):
+   writerUi(button.direction==='previous'?'Subcapítulo anterior':'Próximo subcapítulo',button.direction==='previous'?'Previous subchapter':'Next subchapter');
+  const item=root.createEl('button',{cls:'writer-v6-booknav-item writer-v6-booknav-'+button.direction+' writer-v6-booknav-'+button.kind,attr:{type:'button','aria-label':label+': '+button.target.title}});
+  const icon=item.createSpan({cls:'writer-v6-booknav-arrow',text:button.direction==='previous'?'‹':'›'});
+  const text=item.createSpan({cls:'writer-v6-booknav-text'});
+  text.createSpan({cls:'writer-v6-booknav-label',text:label});
+  text.createSpan({cls:'writer-v6-booknav-title',text:button.target.title});
+  item.addEventListener('click',()=>{
+   const file=app.vault.getAbstractFileByPath(button.target.path);
+   if(file instanceof TFile)void app.workspace.getLeaf(false).openFile(file);
+   else new Notice(writerUi('Capítulo não encontrado no cofre.','Chapter not found in vault.'));
+  });
+ }
+ return true;
+}
+class WriterBookNavigation{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.bookNavigation;}
+ register(){
+  const plugin=this.plugin;
+  plugin.registerMarkdownCodeBlockProcessor('longform-nav',(_source,el,ctx)=>{
+   if(this.cfg.enabled!==true||!writerModuleOn(plugin,'bookNavigation'))return;
+   const rendered=writerBookNavRender(el,plugin.app,ctx.sourcePath,{...this.cfg,projectPath:plugin.settings.lastLongformProject});
+   if(!rendered)el.createEl('span',{cls:'writer-v6-booknav-empty',text:writerUi('Esta nota não pertence à ordem de cenas de um projeto Longform.','This note is not in a Longform project scene order.')});
+  });
+  plugin.addCommand({id:'v6-insert-longform-navigation',name:writerUi('Longform: inserir navegação entre capítulos','Longform: insert chapter navigation'),editorCallback:editor=>{
+   editor.replaceSelection('\n'+'~~~longform-nav'+'\n'+'~~~'+'\n');
+  }});
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Navegação entre capítulos Longform','Longform chapter navigation')});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Use o bloco de código longform-nav para exibir botões de capítulos e subcapítulos conforme a ordem do índice Longform. Não reorganiza seus arquivos.','Insert a longform-nav code block to show chapter and subchapter buttons based on the Longform index order. No files are rearranged.')});
+  for(const [key,pt,en] of [['enabled','Ativar navegação Longform','Enable Longform navigation'],['showMain','Exibir capítulos principais','Show main chapters'],['showSub','Exibir subcapítulos','Show subchapters']])
+   new Setting(panel).setName(writerUi(pt,en)).addToggle(toggle=>toggle.setValue(this.cfg[key]!==false).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+ }
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
@@ -6281,6 +6436,7 @@ class DictionarySettings extends PluginSettingTab{
     ['cursor',msg('Posição do cursor','Cursor position')],
     ['snapshots',msg('Versões','Versions')],
     ['projectTasks',msg('Tarefas','Tasks')],
+    ['bookNavigation',msg('Navegação Longform','Longform navigation')],
     ['abbreviations',msg('Abreviações','Abbreviations')],
     ['anotherName',msg('Outro nome','Another name')],
     ['viewMode',msg('Modo de visualização','View mode')],
@@ -6298,7 +6454,7 @@ class DictionarySettings extends PluginSettingTab{
   ];
   const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
    complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
-   snapshots:'snapshots',projectTasks:'projects',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
+   snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review'};
   const enabledSections=sections.filter(([id])=>id==='v6Markdown'
    ?['ruby','discordSyntax','ratings'].some(key=>writerModuleOn(this.plugin,key))
@@ -6310,7 +6466,7 @@ class DictionarySettings extends PluginSettingTab{
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
-   ['longform',msg('Longform','Longform'),['projects','projectTasks']],
+   ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation']],
    ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode']],
    ['markdown',msg('Markdown','Markdown'),['extendedSyntax','pandocSyntax','v6Markdown','templates','unicode','toc']],
    ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
@@ -6406,6 +6562,8 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerV6Reading.renderSettings(panel);
     }else if(id==='v6Linter'){
       this.plugin.writerV6Linter.renderSettings(panel);
+    }else if(id==='bookNavigation'){
+      this.plugin.writerBookNavigation.renderSettings(panel);
     }else if(id==='extendedSyntax'){
       this.plugin.writerExtendedSyntax.renderSettings(panel);
     }else if(id==='pandocSyntax'){
@@ -6536,6 +6694,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV4ExtraMerge(this.settings);
     writerMergeModules(this.settings);
     writerCursorMerge(this.settings);
+    writerBookNavMerge(this.settings);
     writerKeyshotsMerge(this.settings);
     writerExtendedMerge(this.settings);
     writerPandocMerge(this.settings);
@@ -6557,6 +6716,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerV4Extras.register();
     this.writerCursorMemory=new WriterCursorMemory(this);
     this.writerCursorMemory.register();
+    this.writerBookNavigation=new WriterBookNavigation(this);this.writerBookNavigation.register();
     this.writerKeyshots=new WriterKeyshots(this);this.writerKeyshots.register();
     this.writerExtendedSyntax=new WriterExtendedSyntax(this);this.writerExtendedSyntax.register();
     this.writerPandocSyntax=new WriterPandocSyntax(this);this.writerPandocSyntax.register();

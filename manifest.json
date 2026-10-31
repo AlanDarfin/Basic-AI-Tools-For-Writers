@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "5.2.0",
+  "version": "6.0.0-beta.1",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Modular writing suite with AI, Longform project covers and story metadata, compact grouped settings, Markdown tools and revision.",
+  "description": "Preview: six opt-in writing extensions for Ruby, Discord dates/syntax, ratings, reading time and safe Linter.",
   "isDesktopOnly": false
 }

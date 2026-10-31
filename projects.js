@@ -455,6 +455,7 @@ class ProjectsView extends ItemView{
   const count=this.activeScenes(project).length;
   panel.createEl('p',{text:lfMsg("Cenas no rascunho: ","Scenes in draft: ")+count+(prefs.goal?' · Meta: '+prefs.goal+lfMsg(' palavras',' words'):'')});
   panel.createEl('p',{text:lfMsg("Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.","Local drafts and goals are stored in Basic AI settings. Longform drafts are separate index notes.")});
+  writerV6ProjectPreferencesRender(this,panel,project);
   this.drawSceneDiagnostics(panel,project);
  }
 

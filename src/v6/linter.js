@@ -149,7 +149,7 @@ class WriterV6Linter{
   const plugin=this.plugin;
   plugin.addCommand({id:'v6-linter-current-folder',name:writerUi('Linter: revisar pasta da nota','Linter: review current folder'),checkCallback:checking=>{
    const file=plugin.app.workspace.getActiveFile?.();
-   if(!writerV6Allowed(plugin,'linter')||!file||file.extension!=='md')return false;
+   if(!writerV6Allowed(plugin,'linter')||(typeof writerV6ProjectToolAllowed==='function'&&!writerV6ProjectToolAllowed(plugin,'linter',file?.path))||!file||file.extension!=='md')return false;
    if(!checking){
     const prefix=file.parent?.path||'';
     const files=plugin.app.vault.getMarkdownFiles().filter(f=>(f.parent?.path||'')===prefix);
@@ -159,7 +159,7 @@ class WriterV6Linter{
   }});
   plugin.addCommand({id:'v6-linter-current-note',name:writerUi('Linter: revisar formatação da nota','Linter: review note formatting'),checkCallback:checking=>{
    const file=plugin.app.workspace.getActiveFile?.();
-   if(!writerV6Allowed(plugin,'linter')||!file||file.extension!=='md')return false;
+   if(!writerV6Allowed(plugin,'linter')||(typeof writerV6ProjectToolAllowed==='function'&&!writerV6ProjectToolAllowed(plugin,'linter',file?.path))||!file||file.extension!=='md')return false;
    if(!checking)this.formatFile(file).catch(e=>new Notice(e.message));
    return true;
   }});

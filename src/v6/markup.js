@@ -186,14 +186,16 @@ class WriterV6RatingWidget extends WriterV6WidgetType{
 }
 function writerV6MarkupDecorations(view,plugin){
  const cfg=plugin.settings.v6,doc=view.state.doc,ranges=[],protectedRanges=writerV6ProtectedRanges(doc.toString()),selection=view.state.selection.main;
+ const sourcePath=typeof writerV6EditorSourcePath==='function'?writerV6EditorSourcePath(plugin,view):'';
+ const permitted=id=>typeof writerV6ProjectToolAllowed==='function'?writerV6ProjectToolAllowed(plugin,id,sourcePath):writerModuleOn(plugin,id);
  for(const v of view.visibleRanges||[{from:0,to:doc.length}]){
   const start=doc.lineAt(v.from).number,end=doc.lineAt(Math.min(v.to,doc.length)).number;
   for(let n=start;n<=end;n++){
    const line=doc.line(n),source=line.text;
-   if(cfg.discordSyntax.enabled&&writerModuleOn(plugin,'discordSyntax')&&cfg.discordSyntax.blockSpoilers&&source.trim()==='||'&&!writerV6Overlaps(protectedRanges,line.from,line.to))ranges.push(Decoration.line({class:'writer-v6-spoiler-marker'}).range(line.from));
-   if(cfg.discordSyntax.enabled&&cfg.discordSyntax.subtext&&writerModuleOn(plugin,'discordSyntax')&&/^-# /.test(source)&&!writerV6Overlaps(protectedRanges,line.from,line.to))
+   if(cfg.discordSyntax.enabled&&permitted('discordSyntax')&&cfg.discordSyntax.blockSpoilers&&source.trim()==='||'&&!writerV6Overlaps(protectedRanges,line.from,line.to))ranges.push(Decoration.line({class:'writer-v6-spoiler-marker'}).range(line.from));
+   if(cfg.discordSyntax.enabled&&cfg.discordSyntax.subtext&&permitted('discordSyntax')&&/^-# /.test(source)&&!writerV6Overlaps(protectedRanges,line.from,line.to))
     ranges.push(Decoration.line({class:'writer-v6-subtext-line'}).range(line.from));
-   if(cfg.ruby.enabled&&cfg.ruby.livePreview&&writerModuleOn(plugin,'ruby')){
+   if(cfg.ruby.enabled&&cfg.ruby.livePreview&&permitted('ruby')){
     for(const token of writerV6RubyTokens(source)){
      const from=line.from+token.from,to=line.from+token.to;
      if(writerV6Overlaps(protectedRanges,from,to))continue;
@@ -205,7 +207,7 @@ function writerV6MarkupDecorations(view,plugin){
       ranges.push(Decoration.replace({widget:new WriterV6RubyWidget(token,cfg.ruby)}).range(from,to));
     }
    }
-   if(cfg.ratings.enabled&&writerModuleOn(plugin,'ratings')){
+   if(cfg.ratings.enabled&&permitted('ratings')){
     for(const t of writerV6RatingTokens(source)){
      const from=line.from+t.from,to=line.from+t.to;
      if(writerV6Overlaps(protectedRanges,from,to)||selection.from<=to&&selection.to>=from)continue;
@@ -220,10 +222,11 @@ class WriterV6Markup{
  constructor(plugin){this.plugin=plugin;}
  register(){
   const p=this.plugin;
-  p.registerMarkdownPostProcessor?.(root=>{
-   if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root,p.settings.v6.ruby);
-   if(writerV6Allowed(p,'discordSyntax')){writerV6SubtextReading(root);if(p.settings.v6.discordSyntax.blockSpoilers)writerV6BlockSpoilers(root);}
-   if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root,p.settings.v6.ratings);
+  p.registerMarkdownPostProcessor?.((root,ctx)=>{
+   const allowed=id=>writerV6Allowed(p,id)&&(typeof writerV6ProjectToolAllowed!=='function'||writerV6ProjectToolAllowed(p,id,ctx?.sourcePath));
+   if(allowed('ruby'))writerV6RubyReading(root,p.settings.v6.ruby);
+   if(allowed('discordSyntax')){writerV6SubtextReading(root);if(p.settings.v6.discordSyntax.blockSpoilers)writerV6BlockSpoilers(root);}
+   if(allowed('ratings'))writerV6RatingReading(root,p.settings.v6.ratings);
   });
   if(ViewPlugin?.fromClass){
    p.registerEditorExtension(ViewPlugin.fromClass(class{

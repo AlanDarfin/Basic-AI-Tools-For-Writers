@@ -60,7 +60,7 @@ function writerV6TimestampReading(root,cfg){
 }
 function writerV6ReadingTextStatus(plugin,element){
  const cfg=plugin.settings.v6.readingTime,file=plugin.app.workspace.getActiveFile?.();
- if(!writerV6Allowed(plugin,'readingTime')||!cfg.status||!file||file.extension!=='md'){
+ if(!writerV6Allowed(plugin,'readingTime')||(typeof writerV6ProjectToolAllowed==='function'&&!writerV6ProjectToolAllowed(plugin,'readingTime',file?.path))||!cfg.status||!file||file.extension!=='md'){
   element.textContent='';element.style.display='none';return;
  }
  const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
@@ -90,14 +90,14 @@ class WriterV6Reading{
    const result=writerV6ReadingEstimate(text,p.settings.v6.readingTime);
    new Notice(result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('minutos de leitura','reading minutes'));
   }});
-  p.registerMarkdownPostProcessor?.(root=>{if(writerV6Allowed(p,'timestamps'))writerV6TimestampReading(root,p.settings.v6.timestamps);});
+  p.registerMarkdownPostProcessor?.((root,ctx)=>{if(writerV6Allowed(p,'timestamps')&&(typeof writerV6ProjectToolAllowed!=='function'||writerV6ProjectToolAllowed(p,'timestamps',ctx?.sourcePath)))writerV6TimestampReading(root,p.settings.v6.timestamps);});
   p.addCommand({id:'v6-insert-discord-time',name:writerUi('Data Discord: inserir marcador','Discord timestamp: insert marker'),editorCallback:editor=>this.openDatePicker(editor)});
   if(ViewPlugin?.fromClass){
    const owner=this;
    p.registerEditorExtension(ViewPlugin.fromClass(class{
     constructor(view){this.decorations=this.build(view);}
     build(view){
-     if(!writerV6Allowed(owner.plugin,'timestamps'))return Decoration.none;
+     if(!writerV6Allowed(owner.plugin,'timestamps')||(typeof writerV6ProjectToolAllowed==='function'&&!writerV6ProjectToolAllowed(owner.plugin,'timestamps',typeof writerV6EditorSourcePath==='function'?writerV6EditorSourcePath(owner.plugin,view):'')))return Decoration.none;
      const ranges=[],doc=view.state.doc,protectedRanges=writerV6ProtectedRanges(doc.toString());
      for(const visible of view.visibleRanges||[{from:0,to:doc.length}]){
       const text=doc.sliceString(visible.from,visible.to);

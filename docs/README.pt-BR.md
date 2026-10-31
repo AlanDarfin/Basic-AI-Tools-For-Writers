@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers
 
+> **v6 em desenvolvimento:** Os seis conjuntos de recursos solicitados já possuem módulos próprios no [PR #25](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/pull/25): Ruby, datas Discord, avaliações, sintaxe Discord, tempo de leitura e Linter com prévia. Ainda **não há paridade completa com todas as funções dos plugins de origem nem release v6**. Veja o [guia de implementação em português](V6-IMPLEMENTATION.pt-BR.md) e [em inglês](V6-IMPLEMENTATION.en.md).
+
 > **v6 em planejamento (não lançada):** auditoria das seis referências — Advanced Ruby, Discord Timestamps, Interactive Ratings, Discord Syntax, Linter e Reading Time. A estável continua **5.2.0**. Confira o [plano técnico v6 em português](V6-ARCHITECTURE.pt-BR.md) ou a [versão inglesa](V6-ARCHITECTURE.en.md).
 
 > **Novo na 5.2.0:** Longform lembra o **último projeto selecionado**, inclusive após reiniciar o plugin. A aba **Projeto** permite escolher uma **capa do cofre**, escrever a **sinopse/descrição** e declarar o tipo de **direitos autorais/licença**, com explicação de cada opção. Esses dados são salvos no frontmatter `longform` do índice da história. As configurações agora ficam em **seis grupos principais**, com abas menores dentro de cada grupo; Easy Typing e Smart Typography foram unidos em **Digitação e tipografia**. Veja as [notas da 5.2.0](V5_2_RELEASE.md).

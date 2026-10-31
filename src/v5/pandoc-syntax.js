@@ -177,7 +177,7 @@ class WriterPandocSyntax{
  active(){return writerModuleOn(this.plugin,'pandocSyntax')&&this.cfg.enabled;}
  register(){
   const p=this.plugin;
-  p.registerMarkdownPostProcessor(el=>{if(this.active())writerPandocReading(el,{...this.cfg,superSub:this.cfg.superSub&&!p.settings.extendedSyntax?.enabled});});
+  p.registerMarkdownPostProcessor(el=>{if(this.active())writerPandocReading(el,{...this.cfg,superSub:this.cfg.superSub&&!(writerModuleOn(p,'extendedSyntax')&&p.settings.extendedSyntax?.enabled)});});
   if(ViewPlugin?.fromClass){
    const controller=this;
    p.registerEditorExtension(ViewPlugin.fromClass(class{

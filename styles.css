@@ -1758,3 +1758,10 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
  .writer-v6-reading-status{max-width:85vw;overflow:hidden;text-overflow:ellipsis}
 }
 @media(prefers-reduced-motion:reduce){.writer-v6-rating-button{transition:none}}
+
+.writer-v6-ruby-lv1>rt{font-size:var(--writer-v6-ruby-lv1-size,50%)}
+.writer-v6-ruby-lv2>rt{font-size:var(--writer-v6-ruby-lv2-size,45%)}
+.writer-v6-block-spoiler{margin:8px 0;padding:8px 10px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:var(--radius-m)}
+.writer-v6-block-spoiler>summary{cursor:pointer;color:var(--text-muted);font-weight:600}
+.writer-v6-block-spoiler:not([open]){min-height:35px}
+.cm-line.writer-v6-spoiler-marker{color:var(--text-accent)}

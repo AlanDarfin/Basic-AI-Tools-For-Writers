@@ -58,9 +58,13 @@ async function writerPandocExportRun(plugin,format){
   await new Promise((resolve,reject)=>{
    const child=cp.spawn(cfg.pandocPath,[...args,source],{cwd:parent,shell:false,windowsHide:true,stdio:['ignore','ignore','pipe']});
    let stderr='',finished=false;
-   const timeout=setTimeout(()=>{if(!finished){const err=new Error('Pandoc timeout');err.code='ETIMEDOUT';child.kill();reject(err);}},cfg.timeoutSeconds*1000);
-   child.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString('utf8')).slice(-4000);});
+   let timeout;
    const finish=(err)=>{if(finished)return;finished=true;clearTimeout(timeout);if(err)reject(new Error(writerPandocExportError(err,stderr)));else resolve();};
+   timeout=setTimeout(()=>{
+    const err=new Error('Pandoc timeout');err.code='ETIMEDOUT';
+    try{child.kill();}catch(_){}finish(err);
+   },cfg.timeoutSeconds*1000);
+   child.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString('utf8')).slice(-4000);});
    child.on('error',finish);
    child.on('close',code=>finish(code===0?null:new Error('pandoc exit '+code)));
   });

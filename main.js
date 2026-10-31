@@ -3419,7 +3419,9 @@ const WRITER_MODULES=[
  ['cursorMemory','Lembrar posição do cursor','Remember cursor position','Salva e restaura posição, seleção e rolagem por nota.','Saves and restores cursor, selection and scroll per note.'],
  ['keyshots','Keyshots · teclado','Keyshots · keyboard','Navegação e transformação de linhas por atalhos no PC.','Desktop keyboard navigation and line actions.'],
  ['extendedSyntax','Extended Syntax','Extended Syntax','Formatação Markdown com delimitadores estendidos.','Extra Markdown delimiters and rendering.'],
- ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.']
+ ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.'],
+ ['easyTyping','Easy Typing','Easy Typing','Digitação e edição rápida, colagem e Backspace inteligentes.','Typing helpers, smart paste and Backspace.'],
+ ['smartTypography','Smart Typography','Smart Typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.']
 ];
 const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
 function writerMergeModules(settings){
@@ -4233,6 +4235,383 @@ class WriterPandocSyntax{
  }
 }
 
+// v3 module: src/v5/easy-typing.js
+/* Basic AI v5 — independently implemented Easy Typing features. */
+const WRITER_EASY_DEFAULTS={
+ enabled:true,tabOut:true,smartPaste:true,smartBackspace:true,autoCapitalize:false,
+ cjkSpacing:false,inlineSpacing:false,autoFormatPaste:false,excludedPaths:'',
+ customReplacements:[],maxPasteChars:20000
+};
+const WRITER_EASY_PAIRS=[
+ ['(',')'],['[',']'],['{','}'],['“','”'],['‘','’'],['«','»'],
+ ['「','」'],['『','』'],['（','）'],['【','】'],['《','》'],
+ ['\x60','\x60'],['**','**'],['__','__'],['~~','~~'],['==','=='],['[[',']]'],['$','$']
+];
+function writerEasyMerge(settings){
+ const original=settings.easyTyping;
+ const cfg=settings.easyTyping={...WRITER_EASY_DEFAULTS,...(original&&typeof original==='object'&&!Array.isArray(original)?original:{})};
+ for(const key of ['enabled','tabOut','smartPaste','smartBackspace','autoCapitalize','cjkSpacing','inlineSpacing','autoFormatPaste'])cfg[key]=cfg[key]===true;
+ cfg.excludedPaths=String(cfg.excludedPaths||'').slice(0,4096);
+ cfg.maxPasteChars=Math.max(250,Math.min(100000,Number(cfg.maxPasteChars)||20000));
+ cfg.customReplacements=Array.isArray(cfg.customReplacements)?cfg.customReplacements.slice(0,50).filter(x=>x&&typeof x.from==='string'&&x.from.length>0&&x.from.length<=80&&typeof x.to==='string'&&x.to.length<=300).map(x=>({from:x.from,to:x.to,enabled:x.enabled!==false})):[];
+ return cfg;
+}
+function writerEasyExcluded(filePath,cfg){
+ const path=String(filePath||'');
+ return String(cfg?.excludedPaths||'').split(/[\r\n,]+/).map(x=>x.trim()).filter(Boolean).some(rule=>{
+  const folder=rule.replace(/\/+$/,'');
+  return path===folder||path.startsWith(folder+'/');
+ });
+}
+function writerEasyTypingAtInput(before,character,cfg){
+ if(!cfg?.enabled||!character||character.length!==1)return null;
+ for(const rule of [...(cfg.customReplacements||[])].filter(r=>r.enabled!==false).sort((a,b)=>b.from.length-a.from.length)){
+  if(before.endsWith(rule.from))return {consume:rule.from.length,text:rule.to};
+ }
+ if(cfg.autoCapitalize&&/\p{L}/u.test(character)){
+  const pre=before.slice(0,-1);
+  if(/^\s*(?:>\s*)?(?:[-*+]\s+|\d+[.)]\s+)?$/.test(pre)||/[.!?…][”’"')\]]*\s+$/.test(pre))
+   return {consume:1,text:character.toLocaleUpperCase()};
+ }
+ if(cfg.cjkSpacing){
+  const prev=before.at(-2)||'';
+  const cjk=/[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/u;
+  const alpha=/[A-Za-z0-9]/;
+  if((cjk.test(prev)&&alpha.test(character))||(alpha.test(prev)&&cjk.test(character)))
+   return {consume:1,text:' '+character};
+ }
+ return null;
+}
+function writerEasyPaste(source,prior,cfg){
+ if(!cfg?.smartPaste||!source.includes('\n')||source.length>cfg.maxPasteChars)return source;
+ const match=/^([ \t]*(?:>\s*)*)(?:([-*+]|\d+[.)])(\s+))?/.exec(prior||'');
+ if(!match)return source;
+ const quotePrefix=match[1]||'',listPrefix=match[2]||'',space=match[3]||' ';
+ if(!quotePrefix&&!listPrefix)return source;
+ const prefix=quotePrefix+(listPrefix?listPrefix+space:'');
+ const lines=source.split(/\r?\n/);
+ for(let i=1;i<lines.length;i++){
+  if(!lines[i].trim()||/^\s*(?:>\s*|[-*+]\s+|\d+[.)]\s+|\x60{3,}|~{3,})/.test(lines[i]))continue;
+  lines[i]=prefix+lines[i];
+ }
+ return lines.join('\n');
+}
+function writerEasyTabOut(line,column,pairs=WRITER_EASY_PAIRS){
+ const right=String(line).slice(column),left=String(line).slice(0,column);
+ if(!right||!left)return 0;
+ for(const [opening,closing] of [...pairs].sort((a,b)=>b[1].length-a[1].length)){
+  if(!right.startsWith(closing))continue;
+  if(opening===closing){
+   const escaped=opening.replace(/[|\\{}()[\]^$+*?.]/g,'\\$&');
+   const count=(left.match(new RegExp(escaped,'g'))||[]).length;
+   if(count%2===1)return closing.length;
+  }else{
+   const count=left.split(opening).length-left.split(closing).length;
+   if(count>0)return closing.length;
+  }
+ }
+ return 0;
+}
+function writerEasyBackspacePrefix(line,column){
+ const prefix=line.slice(0,column);
+ if(!/^\s*(?:>\s*)*(?:(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s*)?)?$/.test(prefix)||!prefix.trim()||column!==line.length)return null;
+ return {from:0,to:column,insert:''};
+}
+function writerEasyProseFormat(text,cfg){
+ const parts=writerTypoProtectedText(String(text));
+ const result=parts.map(({text:line,protected:blocked})=>{
+  if(blocked||/^\s*(?:\x60|>|[-*+]\s+|\d+[.)]\s+|[#|])/.test(line))return line;
+  let next=line;
+  if(cfg.inlineSpacing)next=next.replace(/([\p{L}\p{N}])(\x60[^\x60\n]+\x60)/gu,'$1 $2').replace(/(\x60[^\x60\n]+\x60)([\p{L}\p{N}])/gu,'$1 $2');
+  if(cfg.cjkSpacing)next=next.replace(/([\u3400-\u9fff])([A-Za-z0-9])/gu,'$1 $2').replace(/([A-Za-z0-9])([\u3400-\u9fff])/gu,'$1 $2');
+  return next;
+ }).join('\n');
+ return result.replace(/\n{4,}/g,'\n\n\n');
+}
+class WriterEasyTyping{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.easyTyping;}
+ active(){
+  if(!writerModuleOn(this.plugin,'easyTyping')||!this.cfg.enabled)return false;
+  return !writerEasyExcluded(this.plugin.app.workspace.getActiveFile?.()?.path||'',this.cfg);
+ }
+ register(){
+  const p=this.plugin;
+  const commands=[
+   ['format-selection','Formatar seleção ou linha','Format selection or line',(ed)=>{
+    const text=ed.getSelection(),cursor=ed.getCursor();
+    const start=text?ed.getCursor('from'):{line:cursor.line,ch:0};
+    const end=text?ed.getCursor('to'):{line:cursor.line,ch:ed.getLine(cursor.line).length};
+    const source=ed.getRange(start,end),next=writerEasyProseFormat(source,this.cfg);
+    if(source!==next)ed.replaceRange(next,start,end);
+   }],
+   ['delete-empty-lines','Remover linhas vazias extras','Remove extra blank lines',(ed)=>{
+    const source=ed.getSelection();
+    if(!source)return new Notice(writerUi('Selecione um trecho antes.','Select text first.'));
+    const next=source.replace(/\n(?:[ \t]*\n){2,}/g,'\n\n');
+    if(source!==next)ed.replaceSelection(next);
+   }],
+   ['wrap-code','Envolver seleção em bloco de código','Wrap selection in code fence',(ed)=>{
+    const source=ed.getSelection();
+    if(!source||/^\s*(?:\x60{3,}|~{3,})/.test(source))return;
+    const fence='\x60'.repeat(Math.max(3,...(source.match(/\x60+/g)||[]).map(x=>x.length+1)));
+    ed.replaceSelection(fence+'\n'+source.replace(/\n$/,'')+'\n'+fence);
+   }],
+   ['toggle-comment','Alternar comentário %%','Toggle %% comment',(ed)=>{
+    const source=ed.getSelection();
+    if(!source)return;
+    const trimmed=source.trim();
+    ed.replaceSelection(trimmed.startsWith('%%')&&trimmed.endsWith('%%')?trimmed.slice(2,-2):'%%'+source+'%%');
+   }],
+   ['select-paragraph','Selecionar parágrafo','Select paragraph',(ed)=>{
+    let from=ed.getCursor().line,to=from;
+    while(from>0&&ed.getLine(from-1).trim())from--;
+    while(to+1<ed.lineCount()&&ed.getLine(to+1).trim())to++;
+    ed.setSelection({line:from,ch:0},{line:to,ch:ed.getLine(to).length});
+   }]
+  ];
+  for(const [id,pt,en,action] of commands)p.addCommand({id:'v5-easy-'+id,name:'Easy Typing: '+writerUi(pt,en),editorCheckCallback:(checking,editor)=>{
+   if(!this.active())return false;
+   if(!checking)action(editor);return true;
+  }});
+  p.addCommand({id:'v5-easy-toggle',name:writerUi('Easy Typing: alternar assistentes','Easy Typing: toggle helpers'),callback:async()=>{
+   this.cfg.enabled=!this.cfg.enabled;await p.saveSettings();
+   new Notice('Easy Typing: '+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
+  }});
+  const {keymap,EditorView}=require('@codemirror/view');
+  const bindings=[
+   {key:'Tab',run:view=>{
+    if(!this.active()||!this.cfg.tabOut||view.state.selection.ranges.length!==1)return false;
+    const selection=view.state.selection.main;
+    if(!selection.empty)return false;
+    const line=view.state.doc.lineAt(selection.head);
+    const jump=writerEasyTabOut(line.text,selection.head-line.from);
+    if(!jump)return false;
+    view.dispatch({selection:{anchor:selection.head+jump},scrollIntoView:true});return true;
+   }},
+   {key:'Backspace',run:view=>{
+    if(!this.active()||!this.cfg.smartBackspace||view.state.selection.ranges.length!==1)return false;
+    const selection=view.state.selection.main;
+    if(!selection.empty)return false;
+    const line=view.state.doc.lineAt(selection.head),col=selection.head-line.from;
+    if(writerTypingUnsafeContext(view.state,selection.head,line.text.slice(0,col)))return false;
+    const change=writerEasyBackspacePrefix(line.text,col);
+    if(!change)return false;
+    view.dispatch({changes:{from:line.from,to:line.from+col,insert:''},selection:{anchor:line.from}});
+    return true;
+   }}
+  ];
+  if(keymap?.of)p.registerEditorExtension(keymap.of(bindings));
+  if(EditorView?.clipboardInputFilter?.of)p.registerEditorExtension(EditorView.clipboardInputFilter.of((text,state)=>{
+   if(!this.active()||!this.cfg.smartPaste||state.selection.ranges.length!==1)return text;
+   const line=state.doc.lineAt(state.selection.main.head),col=state.selection.main.head-line.from;
+   if(writerTypingUnsafeContext(state,state.selection.main.head,line.text.slice(0,col)))return text;
+   let output=writerEasyPaste(text,line.text.slice(0,col),this.cfg);
+   if(this.cfg.autoFormatPaste)output=writerEasyProseFormat(output,this.cfg);
+   return output;
+  }));
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Easy Typing · digitação eficiente','Easy Typing · editing assistance')});
+  panel.createEl('p',{text:writerUi('Tab e Backspace inteligentes, colagem em listas, substituições literais e comandos manuais. Sem a antiga toolbar.','Tab and Backspace helpers, smart list pasting, literal rules and editor commands; no retired toolbar.'),cls:'dictionary-muted'});
+  for(const [key,pt,en] of [
+   ['enabled','Ativar Easy Typing','Enable Easy Typing'],['tabOut','Tab sai de símbolos pareados','Tab moves past paired symbols'],
+   ['smartPaste','Colagem inteligente em listas e citações','Smart paste in lists and quotes'],
+   ['smartBackspace','Backspace em itens vazios','Smart Backspace for empty list items'],
+   ['autoCapitalize','Maiúsculas no início de frases','Auto capitalize sentences'],
+   ['cjkSpacing','Espaçamento entre CJK e alfanuméricos','CJK/Latin spacing'],
+   ['inlineSpacing','Espaçamento ao formatar código inline','Space inline code when formatting'],
+   ['autoFormatPaste','Formatar texto colado','Format pasted text']
+  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async v=>{this.cfg[key]=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
+   .setDesc(writerUi('Um caminho por linha.','One path per line.'))
+   .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  new Setting(panel).setName(writerUi('Substituições literais','Literal replacement rules'))
+   .setDesc(writerUi('Uma por linha: origem|destino. Sem regex ou JavaScript.','One per line: source|replacement; no regex or JavaScript.'))
+   .addTextArea(t=>{t.inputEl.rows=5;t.setValue(this.cfg.customReplacements.map(x=>x.from+'|'+x.to).join('\n')).onChange(async v=>{
+    this.cfg.customReplacements=v.split(/\r?\n/).slice(0,50).map(line=>{
+     const split=line.indexOf('|');
+     return split>0?{from:line.slice(0,split).trim(),to:line.slice(split+1),enabled:true}:null;
+    }).filter(Boolean).filter(x=>x.from&&x.from.length<=80&&x.to.length<=300);
+    await this.plugin.saveSettings();
+   });});
+ }
+}
+
+
+// v3 module: src/v5/smart-typography.js
+/* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
+const WRITER_TYPO_DEFAULTS={
+ enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
+ fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,
+ openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
+ openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
+};
+const WRITER_TYPO_FRACTIONS={
+ '1/2':'½','1/3':'⅓','2/3':'⅔','1/4':'¼','3/4':'¾',
+ '1/5':'⅕','2/5':'⅖','3/5':'⅗','4/5':'⅘','1/6':'⅙','5/6':'⅚',
+ '1/7':'⅐','1/8':'⅛','3/8':'⅜','5/8':'⅝','7/8':'⅞','1/9':'⅑','1/10':'⅒'
+};
+function writerTypoMerge(settings){
+ const old=settings.smartTypography;
+ const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes'])cfg[key]=cfg[key]===true;
+ for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
+  if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
+ return cfg;
+}
+function writerTypoAtInput(before,typed,cfg){
+ if(!typed||typed.length!==1||!cfg?.enabled)return null;
+ const put=(needle,output)=>({consume:needle.length,text:output});
+ if(cfg.dashes&&typed==='-'){
+  if(before.endsWith('—-'))return put('—-','---');
+  if(before.endsWith('–-'))return put('–-','—');
+  if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
+ }
+ if(cfg.ellipsis&&typed==='.'&&before.endsWith('...'))return put('...','…');
+ if(cfg.guillemets&&typed==='< ' .trim()&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
+ if(cfg.guillemets&&typed==='>'&&before.endsWith('>>'))return put('>>',cfg.closeGuillemet);
+ if(cfg.arrows&&typed==='>'&&before.endsWith('->'))return put('->',cfg.rightArrow);
+ if(cfg.arrows&&typed==='-'&&before.endsWith('<-'))return put('<-',cfg.leftArrow);
+ if(cfg.comparisons&&typed==='='){
+  for(const [s,d] of [['>=','≥'],['<=','≤'],['/=','≠']])if(before.endsWith(s))return put(s,d);
+ }
+ if(cfg.fractions&&/\d/.test(typed)){
+  for(const [s,d] of Object.entries(WRITER_TYPO_FRACTIONS).sort((a,b)=>b[0].length-a[0].length)){
+   if(before.endsWith(s)){
+    const left=before.slice(0,-s.length);
+    if(!left||/[\s([{“‘]/.test(left.at(-1)))return put(s,d);
+   }
+  }
+ }
+ if(cfg.curlyQuotes&&(typed==='"'||typed==="'")){
+  const isSingle=typed==="'",opening=isSingle?cfg.openSingle:cfg.openDouble,closing=isSingle?cfg.closeSingle:cfg.closeDouble;
+  const previous=before.at(-2)||'',prior=before.slice(0,-1);
+  if(isSingle&&cfg.smartApostrophes&&/[\p{L}\p{N}]/u.test(previous))return put(typed,closing);
+  const opener=!previous||/[\s([{<—–«“‘]/u.test(previous);
+  return put(typed,opener?opening:closing);
+ }
+ return null;
+}
+function writerTypoProtectedText(text){
+ const lines=String(text||'').split('\n'),out=[];let fence='',frontmatter=false;
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i],trim=line.trim();
+  if(i===0&&trim==='---'){frontmatter=true;out.push({text:line,protected:true});continue;}
+  if(frontmatter){out.push({text:line,protected:true});if(trim==='---')frontmatter=false;continue;}
+  const found=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
+  if(found){
+   const symbol=found[1][0];
+   if(!fence)fence=symbol;else if(fence===symbol)fence='';
+   out.push({text:line,protected:true});continue;
+  }
+  const protectedLine=Boolean(fence)||/^(?: {4}|\t)/.test(line);
+  out.push({text:line,protected:protectedLine});
+ }
+ return out;
+}
+function writerTypoConvertProse(text,cfg){
+ if(!cfg?.enabled)return text;
+ const lines=writerTypoProtectedText(text);
+ return lines.map(({text:line,protected:blocked})=>{
+  if(blocked)return line;
+  let output='',inCode=false,codeRun=0,linkDepth=0;
+  for(let i=0;i<line.length;i++){
+   const c=line[i];
+   if(c==='\x60'){
+    const matched=/^\x60+/.exec(line.slice(i));const n=matched[0].length;
+    if(!inCode){inCode=true;codeRun=n;}else if(n===codeRun){inCode=false;codeRun=0;}
+    output+=matched[0];i+=n-1;continue;
+   }
+   if(c==='['||c===']'||c==='('&&line[i-1]===']')linkDepth=Math.max(0,linkDepth+(c==='['||c==='('?1:-1));
+   if(inCode||linkDepth>0||c==='\\'){output+=c;if(c==='\\'&&i+1<line.length)output+=line[++i];continue;}
+   const candidate=writerTypoAtInput(output+c,c,cfg);
+   if(candidate){output=output.slice(0,output.length+1-candidate.consume)+candidate.text;}
+   else output+=c;
+  }
+  return output;
+ }).join('\n');
+}
+class WriterSmartTypography{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.smartTypography;}
+ active(){return writerModuleOn(this.plugin,'smartTypography')&&this.cfg.enabled;}
+ register(){
+  const p=this.plugin;
+  p.addCommand({id:'v5-typography-toggle',name:writerUi('Tipografia: ativar/desativar substituições','Typography: toggle smart replacements'),callback:async()=>{
+   this.cfg.enabled=!this.cfg.enabled;await p.saveSettings();
+   new Notice(writerUi('Tipografia inteligente: ','Smart typography: ')+(this.cfg.enabled?writerUi('ativada','on'):writerUi('desativada','off')));
+  }});
+  p.addCommand({id:'v5-typography-convert-selection',name:writerUi('Tipografia: converter seleção','Typography: convert selection'),editorCallback:editor=>{
+   if(!this.active()||!editor.getSelection())return;
+   const text=editor.getSelection(),converted=writerTypoConvertProse(text,this.cfg);
+   if(text!==converted)editor.replaceSelection(converted);
+  }});
+  const {EditorState}=require('@codemirror/state');
+  if(!EditorState?.transactionFilter?.of)return;
+  p.registerEditorExtension(EditorState.transactionFilter.of(tr=>{
+   if(!tr.docChanged||!tr.isUserEvent?.('input.type')||tr.isUserEvent?.('input.type.compose')||!tr.changes?.iterChanges)return tr;
+   if(!this.active()&&!p.writerEasyTyping?.active())return tr;
+   const edits=[];
+   tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+    const character=inserted.toString();
+    if(character.length!==1||fromA!==toA)return;
+    const doc=tr.newDoc;
+    const line=doc.lineAt(Math.min(toB,doc.length));
+    const priorLine=doc.sliceString(line.from,toB);
+    if(writerTypingUnsafeContext(tr.startState,fromA,priorLine))return;
+    let proposal=null;
+    if(this.active())proposal=writerTypoAtInput(priorLine,character,this.cfg);
+    if(!proposal&&p.writerEasyTyping?.active())
+     proposal=writerEasyTypingAtInput(priorLine,character,p.writerEasyTyping.cfg);
+    if(proposal&&proposal.consume>0&&proposal.consume<=priorLine.length)
+     edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+   });
+   if(!edits.length)return tr;
+   edits.sort((a,b)=>a.from-b.from);
+   if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
+   return [tr,{changes:edits,sequential:true}];
+  }));
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Smart Typography · tipografia','Smart Typography')});
+  panel.createEl('p',{text:writerUi('Substituições somente durante digitação em prosa. Código, fórmulas, URLs e outros contextos estruturados são ignorados sempre que detectados.','Replacements while typing prose; recognized code, math and structured contexts are skipped.'),cls:'dictionary-muted'});
+  for(const [key,pt,en] of [
+   ['enabled','Ativar Smart Typography','Enable Smart Typography'],['curlyQuotes','Aspas curvas e apóstrofos','Curly quotes and apostrophes'],
+   ['dashes','Travessões e meia-risca','Dashes'],['ellipsis','Reticências (...)','Ellipsis (...)'],
+   ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
+   ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
+   ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
+  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  for(const [key,pt,en] of [
+   ['openDouble','Aspas duplas de abertura','Opening double quote'],['closeDouble','Aspas duplas de fechamento','Closing double quote'],
+   ['openSingle','Aspas simples de abertura','Opening single quote'],['closeSingle','Aspas simples de fechamento','Closing single quote'],
+   ['openGuillemet','Guillemet de abertura','Opening guillemet'],['closeGuillemet','Guillemet de fechamento','Closing guillemet'],
+   ['leftArrow','Seta esquerda','Left arrow'],['rightArrow','Seta direita','Right arrow']
+  ])new Setting(panel).setName(writerUi(pt,en)).addText(t=>t.setValue(this.cfg[key]).onChange(async value=>{
+   if(value.length>0&&value.length<=8){this.cfg[key]=value;await this.plugin.saveSettings();}
+  }));
+ }
+}
+function writerTypingUnsafeContext(state,from,prefix){
+ const line=prefix||'';
+ if(/^\s*(?:\x60{3,}|~{3,}|---|<!--)/.test(line)||/^(?: {4}|\t)/.test(line))return true;
+ const ticks=(line.match(/(?<!\\)\x60/g)||[]).length;
+ if(ticks%2!==0)return true;
+ if(/(?:https?:\/\/|obsidian:\/\/|www\.|mailto:)\S*$/i.test(line))return true;
+ if(/(?:!?\[[^\]]*\]\([^)]*|\[\[[^\]]*|\$\$?[^$]*)$/.test(line))return true;
+ try{
+  const {syntaxTree}=require('@codemirror/language');
+  const tree=typeof syntaxTree==='function'&&state?syntaxTree(state):null;
+  if(tree){
+   for(let node=tree.resolveInner(Math.max(0,from-1),1);node;node=node.parent)
+    if(/Code|Math|Frontmatter|YAML|Link|URL|HTML|Comment|Tag/i.test(node.name||''))return true;
+  }
+ }catch(_){}
+ return false;
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
@@ -4543,6 +4922,8 @@ class DictionarySettings extends PluginSettingTab{
     ['keyshots',msg('Keyshots · teclado','Keyshots · keyboard')],
     ['extendedSyntax',msg('Extended Syntax','Extended Syntax')],
     ['pandocSyntax',msg('Pandoc Syntax','Pandoc Syntax')],
+    ['easyTyping',msg('Easy Typing','Easy Typing')],
+    ['smartTypography',msg('Smart Typography','Smart Typography')],
     ['cursor',msg('Posição do cursor','Cursor position')],
     ['snapshots',msg('Versões','Versions')],
     ['projectTasks',msg('Tarefas','Tasks')],
@@ -4560,7 +4941,7 @@ class DictionarySettings extends PluginSettingTab{
     ['prompts',msg('Prompts','Prompts')]
   ];
   const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
-   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
+   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',easyTyping:'easyTyping',smartTypography:'smartTypography',
    snapshots:'snapshots',projectTasks:'projects',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review'};
   const enabledSections=sections.filter(([id])=>!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
@@ -4631,6 +5012,10 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerExtendedSyntax.renderSettings(panel);
     }else if(id==='pandocSyntax'){
       this.plugin.writerPandocSyntax.renderSettings(panel);
+    }else if(id==='easyTyping'){
+      this.plugin.writerEasyTyping.renderSettings(panel);
+    }else if(id==='smartTypography'){
+      this.plugin.writerSmartTypography.renderSettings(panel);
     }else if(id==='modules'){
       writerRenderModuleSettings(this.plugin,panel,()=>this.display());
     }else if(id==='diagnostics'){
@@ -4740,6 +5125,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerKeyshotsMerge(this.settings);
     writerExtendedMerge(this.settings);
     writerPandocMerge(this.settings);
+    writerEasyMerge(this.settings);
+    writerTypoMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
     this.autoGrammar.register();
@@ -4755,6 +5142,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerKeyshots=new WriterKeyshots(this);this.writerKeyshots.register();
     this.writerExtendedSyntax=new WriterExtendedSyntax(this);this.writerExtendedSyntax.register();
     this.writerPandocSyntax=new WriterPandocSyntax(this);this.writerPandocSyntax.register();
+    this.writerEasyTyping=new WriterEasyTyping(this);this.writerEasyTyping.register();
+    this.writerSmartTypography=new WriterSmartTypography(this);this.writerSmartTypography.register();
     writerV4Register(this);
     this.registerEditorSuggest(this.writerComplements);
     this.registerEditorExtension(this.writerVariants.editorExtension());

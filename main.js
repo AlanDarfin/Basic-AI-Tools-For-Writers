@@ -5590,7 +5590,7 @@ function writerV6RatingReading(root){
   fragment.append(doc.createTextNode(source.slice(previous)));node.replaceWith(fragment);
  }
 }
-const WriterV6WidgetType=require('@codemirror/view').WidgetType;
+const WriterV6WidgetType=require('@codemirror/view').WidgetType||class{};
 class WriterV6RatingWidget extends WriterV6WidgetType{
  constructor(token,view,from,to){super();this.token=token;this.view=view;this.from=from;this.to=to;}
  eq(other){return other instanceof WriterV6RatingWidget&&writerV6RatingMarker(this.token)===writerV6RatingMarker(other.token)&&this.from===other.from&&this.to===other.to;}

@@ -91,8 +91,72 @@ class WriterV6Linter{
   }
   new Preview(plugin.app).open();
  }
+ async previewBatch(files,title){
+  const plugin=this.plugin;
+  if(this.locked){new Notice(writerUi('Outro processo do Linter está ativo.','Another Linter task is active.'));return;}
+  const eligible=files.filter(file=>file instanceof TFile&&file.extension==='md'&&!writerV6LintExcluded(file.path,this.cfg.excluded));
+  if(eligible.length>50){new Notice(writerUi('Limite de 50 notas por lote. Escolha uma pasta menor.','Batch limit is 50 notes. Select a smaller folder.'));return;}
+  this.locked=true;
+  try{
+   const entries=[];
+   const active=plugin.app.workspace.getActiveFile?.();
+   for(const file of eligible){
+    // Skip active unsaved documents in batch operations; use single-note review instead.
+    if(active?.path===file.path)continue;
+    const source=await plugin.app.vault.read(file),lint=writerV6LintText(source,this.cfg);
+    if(lint.changed)entries.push({file,source,lint});
+   }
+   if(!entries.length){new Notice(writerUi('Nenhuma nota elegível precisa de mudanças.','No eligible notes need formatting.'));return;}
+   const owner=this;
+   class BatchPreview extends Modal{
+    onOpen(){
+     this.setTitle(writerUi('Linter: revisão em lote — ','Linter batch preview — ')+title);
+     this.contentEl.addClass('writer-v6-lint-modal');
+     this.contentEl.createEl('p',{text:entries.length+' '+writerUi('notas com mudanças. A nota ativa é excluída para evitar perda de edições não salvas.','notes with changes. The active note is excluded to avoid losing unsaved edits.')});
+     const list=this.contentEl.createEl('pre',{cls:'writer-v6-lint-preview'});
+     list.textContent=entries.map(item=>item.file.path+' ('+item.lint.count+' '+writerUi('alterações','changes')+')').join('\n');
+     const actions=this.contentEl.createDiv({cls:'writer-v6-lint-actions'});
+     new Setting(actions).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>this.close()))
+      .addButton(b=>b.setButtonText(writerUi('Confirmar e aplicar','Confirm and apply')).setCta().onClick(async()=>{
+       let applied=0,skipped=0;
+       try{
+        for(const item of entries){
+         const live=await plugin.app.vault.read(item.file);
+         if(live!==item.source){skipped++;continue;}
+         try{
+          if(plugin.writerSnapshots?.config?.enabled)await plugin.writerSnapshots.create(item.file,writerUi('Antes do Linter em lote','Before batch Linter'),{content:live,attachments:false});
+          else{
+           const adapter=plugin.app.vault.adapter;
+           const folder=(plugin.manifest.dir||plugin.app.vault.configDir+'/plugins/'+plugin.manifest.id)+'/v6-linter-backups';
+           if(!(await adapter.exists(folder)))await adapter.mkdir(folder);
+           const safe=item.file.path.replace(/[^a-z0-9_.-]/gi,'_').slice(-100);
+           await adapter.write(folder+'/'+safe+'-'+Date.now()+'.md',live);
+          }
+          await plugin.app.vault.modify(item.file,item.lint.output);applied++;
+         }catch(error){skipped++;console.warn('[Basic AI] Batch lint:',error);}
+        }
+        this.close();
+        new Notice(writerUi('Notas formatadas: ','Formatted notes: ')+applied+writerUi(' · ignoradas: ',' · skipped: ')+skipped,7000);
+       }catch(error){new Notice(error.message,7000);}
+      }));
+    }
+    onClose(){this.contentEl.empty();}
+   }
+   new BatchPreview(plugin.app).open();
+  }finally{this.locked=false;}
+ }
  register(){
   const plugin=this.plugin;
+  plugin.addCommand({id:'v6-linter-current-folder',name:writerUi('Linter: revisar pasta da nota','Linter: review current folder'),checkCallback:checking=>{
+   const file=plugin.app.workspace.getActiveFile?.();
+   if(!writerV6Allowed(plugin,'linter')||!file||file.extension!=='md')return false;
+   if(!checking){
+    const prefix=file.parent?.path||'';
+    const files=plugin.app.vault.getMarkdownFiles().filter(f=>(f.parent?.path||'')===prefix);
+    this.previewBatch(files,prefix||writerUi('raiz','root')).catch(e=>new Notice(e.message));
+   }
+   return true;
+  }});
   plugin.addCommand({id:'v6-linter-current-note',name:writerUi('Linter: revisar formatação da nota','Linter: review note formatting'),checkCallback:checking=>{
    const file=plugin.app.workspace.getActiveFile?.();
    if(!writerV6Allowed(plugin,'linter')||!file||file.extension!=='md')return false;

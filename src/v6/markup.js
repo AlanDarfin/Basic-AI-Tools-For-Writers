@@ -94,9 +94,16 @@ const WRITER_V6_RATING_SETS={
  circle:{full:'●',empty:'○',half:'◐'},
  bar:{full:'█',empty:'░',half:'▌'}
 };
+function writerV6RatingSymbols(kind,config){
+ if(kind==='custom'){
+  const full=String(config?.full||'◆').slice(0,12),empty=String(config?.empty||'◇').slice(0,12),half=String(config?.half||'◈').slice(0,12);
+  return {full,empty,half};
+ }
+ return WRITER_V6_RATING_SETS[kind]||WRITER_V6_RATING_SETS.star;
+}
 function writerV6RatingTokens(text){
  const results=[];
- for(const match of String(text||'').matchAll(/\[rating:((?:\d+(?:\.\d+)?))\/(\d{1,2})(?::(star|heart|moon|circle|bar))?\]/g)){
+ for(const match of String(text||'').matchAll(/\[rating:((?:\d+(?:\.\d+)?))\/(\d{1,2})(?::(star|heart|moon|circle|bar|custom))?\]/g)){
   const n=Number(match[1]),max=Number(match[2]);
   if(max<2||max>10||n<0||n>max||!Number.isFinite(n))continue;
   results.push({from:match.index,to:match.index+match[0].length,value:n,max,kind:match[3]||'star'});
@@ -104,15 +111,15 @@ function writerV6RatingTokens(text){
  return results;
 }
 function writerV6RatingLabel(t){return t.value+' / '+t.max;}
-function writerV6RatingText(t){
- const set=WRITER_V6_RATING_SETS[t.kind]||WRITER_V6_RATING_SETS.star;
+function writerV6RatingText(t,config){
+ const set=writerV6RatingSymbols(t.kind,config);
  return Array.from({length:t.max},(_,i)=>{
   const delta=t.value-i;
   return delta>=1?set.full:delta>=.5?set.half:set.empty;
  }).join('');
 }
 function writerV6RatingMarker(t){return '[rating:'+t.value+'/'+t.max+':'+t.kind+']';}
-function writerV6RatingReading(root){
+function writerV6RatingReading(root,config){
  for(const node of writerV6SafeTextNodes(root)){
   const source=node.nodeValue||'',tokens=writerV6RatingTokens(source);if(!tokens.length)continue;
   const doc=node.ownerDocument,fragment=doc.createDocumentFragment();let previous=0;
@@ -120,7 +127,7 @@ function writerV6RatingReading(root){
    if(t.from<previous)continue;
    fragment.append(doc.createTextNode(source.slice(previous,t.from)));
    const span=doc.createElement('span');span.className='writer-v6-rendered writer-v6-rating';
-   span.textContent=writerV6RatingText(t);
+   span.textContent=writerV6RatingText(t,config)+(config?.showValue==='percent'?' '+Math.round(t.value/t.max*100)+'%':config?.showValue==='fraction'?' '+writerV6RatingLabel(t):'');
    span.title=writerV6RatingLabel(t);
    span.setAttribute('role','img');span.setAttribute('aria-label',writerUi('Avaliação ','Rating ')+writerV6RatingLabel(t));
    fragment.append(span);previous=t.to;
@@ -130,13 +137,13 @@ function writerV6RatingReading(root){
 }
 const WriterV6WidgetType=require('@codemirror/view').WidgetType||class{};
 class WriterV6RatingWidget extends WriterV6WidgetType{
- constructor(token,view,from,to){super();this.token=token;this.view=view;this.from=from;this.to=to;}
+ constructor(token,view,from,to,config){super();this.token=token;this.view=view;this.from=from;this.to=to;this.config=config;}
  eq(other){return other instanceof WriterV6RatingWidget&&writerV6RatingMarker(this.token)===writerV6RatingMarker(other.token)&&this.from===other.from&&this.to===other.to;}
  toDOM(view){
   const doc=view.dom.ownerDocument,container=doc.createElement('span');
   container.className='writer-v6-rating-editor';container.setAttribute('role','group');
   container.setAttribute('aria-label',writerUi('Avaliação ajustável','Adjustable rating'));
-  const set=WRITER_V6_RATING_SETS[this.token.kind]||WRITER_V6_RATING_SETS.star;
+  const set=writerV6RatingSymbols(this.token.kind,this.config);
   for(let i=1;i<=this.token.max;i++){
    const button=doc.createElement('button');button.type='button';
    button.className='writer-v6-rating-button';
@@ -177,7 +184,7 @@ function writerV6MarkupDecorations(view,plugin){
     for(const t of writerV6RatingTokens(source)){
      const from=line.from+t.from,to=line.from+t.to;
      if(writerV6Overlaps(protectedRanges,from,to)||selection.from<=to&&selection.to>=from)continue;
-     ranges.push(Decoration.replace({widget:new WriterV6RatingWidget(t,view,from,to)}).range(from,to));
+     ranges.push(Decoration.replace({widget:new WriterV6RatingWidget(t,view,from,to,cfg.ratings)}).range(from,to));
     }
    }
   }
@@ -191,7 +198,7 @@ class WriterV6Markup{
   p.registerMarkdownPostProcessor?.(root=>{
    if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root,p.settings.v6.ruby);
    if(writerV6Allowed(p,'discordSyntax')){writerV6SubtextReading(root);if(p.settings.v6.discordSyntax.blockSpoilers)writerV6BlockSpoilers(root);}
-   if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root);
+   if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root,p.settings.v6.ratings);
   });
   if(ViewPlugin?.fromClass){
    p.registerEditorExtension(ViewPlugin.fromClass(class{
@@ -223,6 +230,8 @@ class WriterV6Markup{
   new Setting(panel).setName(writerUi('Spoiler em bloco entre linhas ||','Block spoilers between || lines')).addToggle(t=>t.setValue(cfg.discordSyntax.blockSpoilers).onChange(async v=>{cfg.discordSyntax.blockSpoilers=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   panel.createEl('h3',{text:writerUi('Avaliações interativas','Interactive ratings')});
   new Setting(panel).setName(writerUi('Habilitar [rating:3/5:star]','Enable [rating:3/5:star]')).addToggle(t=>t.setValue(cfg.ratings.enabled).onChange(async v=>{cfg.ratings.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle e bar. Clique nas estrelas no editor (Shift: meio ponto).','Formats: star, heart, moon, circle and bar. Click rating symbols (Shift: half point) to change a value.')});
+  new Setting(panel).setName(writerUi('Exibir valor','Show rating value')).addDropdown(d=>d.addOption('none',writerUi('Somente símbolos','Symbols only')).addOption('fraction',writerUi('Fração','Fraction')).addOption('percent',writerUi('Porcentagem','Percentage')).setValue(cfg.ratings.showValue||'none').onChange(async v=>{cfg.ratings.showValue=v;await this.plugin.saveSettings();}));
+  for(const [key,pt,en] of [['full','Símbolo preenchido','Filled symbol'],['empty','Símbolo vazio','Empty symbol'],['half','Meio ponto','Half symbol']])new Setting(panel).setName(writerUi(pt,en)).addText(t=>t.setValue(String(cfg.ratings[key]||'')).onChange(async v=>{cfg.ratings[key]=v.slice(0,12);await this.plugin.saveSettings();}));
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle, bar e custom. Clique nas estrelas no editor (Shift: meio ponto).','Formats: star, heart, moon, circle and bar. Click rating symbols (Shift: half point) to change a value.')});
  }
 }

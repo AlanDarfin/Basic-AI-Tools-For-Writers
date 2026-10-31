@@ -64,6 +64,19 @@ test('CJK spacing, capitalization, literal rules and folder exclusions',()=>{
  assert.equal(v.writerEasyExcluded('Drafts/story.md',s),true);
  assert.equal(v.writerEasyExcluded('Other/story.md',s),false);
 });
+test('Markdown frontmatter and separators are preserved',()=>{
+ const cfg=v.writerTypoMerge({});
+ assert.equal(v.writerTypoAtInput('--','-',cfg),null);
+ assert.equal(v.writerTypoConvertProse('---\ntitle: "Hello"\n---\nHello ...',cfg),'---\ntitle: "Hello"\n---\nHello …');
+ assert.equal(v.writerTypoConvertProse('A line\n---\nAnother line ...',cfg),'A line\n---\nAnother line …');
+});
+test('formatter leaves blank lines inside code fences intact',()=>{
+ const cfg=v.writerEasyMerge({easyTyping:{inlineSpacing:true}});
+ const input='\x60\x60\x60js\nconst x=1;\n\n\n\nstill code\n\x60\x60\x60\n\n\n\nOutside';
+ const output=v.writerEasyProseFormat(input,cfg);
+ assert.ok(output.includes('const x=1;\n\n\n\nstill code'));
+ assert.ok(output.includes('\x60\x60\x60\n\n\nOutside'));
+});
 test('typing settings are independent of Keyshots bindings',()=>{
  const basic=fs.readFileSync('main.js','utf8');
  const build=fs.readFileSync('scripts/build-v3.js','utf8');

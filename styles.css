@@ -1879,3 +1879,124 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
  }
  .dictionary-settings-panel .writer-v6-settings-section>h3{font-size:var(--font-ui-small)}
 }
+
+
+/* Basic AI 6 beta.4 — quiet, responsive writing controls. */
+.writer-v6-booknav-preview-auto{
+ margin-block:14px 4px;
+ max-width:100%;
+ min-width:0;
+}
+.writer-v6-booknav-auto{
+ border-style:solid;
+ background:var(--background-primary);
+}
+.writer-v6-booknav-manual{
+ border-inline-start:2px solid var(--interactive-accent);
+}
+.writer-v6-settings-section>.setting-item:focus-within,
+.writer-v6-project-prefs .setting-item:focus-within{
+ background:var(--background-modifier-hover);
+}
+.writer-v6-project-prefs{
+ width:100%;
+ max-width:100%;
+ margin-block:14px 6px;
+}
+.writer-v6-project-prefs .writer-v6-settings-section{
+ border-top:0;
+ border-bottom:1px solid var(--background-modifier-border);
+ margin:0;
+ padding:0 0 12px;
+}
+.writer-v6-project-prefs .setting-item{
+ box-sizing:border-box;
+ display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(114px,44%);
+ gap:10px;
+ align-items:center;
+ padding:9px 3px;
+ margin:0;
+ border-top:0;
+ border-bottom:1px solid var(--background-modifier-border);
+ background:transparent;
+ border-radius:0;
+}
+.writer-v6-project-prefs .setting-item:last-child{border-bottom:0}
+.writer-v6-project-prefs .setting-item-info{
+ display:block;
+ max-width:100%;
+ min-width:0;
+ margin:0;
+ padding:0;
+}
+.writer-v6-project-prefs .setting-item-control{
+ display:flex;
+ align-items:center;
+ gap:6px;
+ min-width:0;
+ max-width:100%;
+ justify-content:flex-end;
+ flex-wrap:wrap;
+ margin:0;
+}
+.writer-v6-project-prefs :is(select,textarea,input[type="text"]){
+ box-sizing:border-box;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ height:auto;
+ line-height:1.4;
+ font-size:var(--font-ui-small);
+}
+.writer-v6-project-prefs select{
+ min-height:36px;
+ height:36px;
+}
+.writer-v6-project-prefs textarea{
+ min-height:74px;
+ resize:vertical;
+}
+.writer-v6-smart-insert{
+ display:flex;
+ flex-direction:column;
+ min-width:0;
+ gap:5px;
+}
+.writer-v6-smart-insert .setting-item{
+ box-sizing:border-box;
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ padding:8px 0;
+ background:transparent;
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.writer-v6-smart-insert .setting-item-control{
+ flex:1 1 155px;
+ min-width:0;
+ max-width:100%;
+ gap:6px;
+ display:flex;
+ flex-wrap:wrap;
+ justify-content:flex-end;
+}
+.writer-v6-smart-insert .setting-item-control :is(input,select,textarea){
+ box-sizing:border-box;
+ min-width:0;
+ width:100%;
+ max-width:100%;
+}
+.writer-v6-smart-insert input[type="datetime-local"]{min-height:40px}
+.writer-v6-smart-insert .setting-item-control button{min-height:36px}
+@media(max-width:480px){
+ .writer-v6-project-prefs .setting-item{
+  grid-template-columns:minmax(0,1fr) minmax(98px,44%);
+  gap:7px;
+  padding:7px 2px;
+ }
+ .writer-v6-project-prefs .setting-item-name{font-size:var(--font-ui-smaller)}
+ .writer-v6-smart-insert .setting-item{display:block}
+ .writer-v6-smart-insert .setting-item-control{margin-top:7px;max-width:100%}
+ .writer-v6-booknav-preview-auto{margin-block:8px}
+}

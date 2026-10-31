@@ -115,7 +115,7 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   if(event.key==='Escape'){input.value='';update();}
   if(event.key==='Enter'){const first=writerWorkspaceSearchSections(sections,input.value)[0];if(first){event.preventDefault();onOpen(first[0]);update();}}
  });
- return {update,input};
+ return {update,input,wrap};
 }
 function writerWorkspaceNormalizeShortcut(key){
  return String(key||'').toLowerCase().replace(/command|cmd|ctrl|control/g,'mod').replace(/arrow/g,'').split('-').filter(Boolean).sort().join('-');
@@ -230,7 +230,7 @@ class WriterWorkspaceProfiles{
     d.onChange(v=>this.selectedToDelete=v);
    }).addButton(b=>b.setButtonText(writerUi('Excluir','Delete')).onClick(async()=>{
     const name=this.selectedToDelete||this.cfg.saved[0]?.name;
-    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==name);await this.plugin.saveSettings();this.plugin.settingsTab?.display?.();
+    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==name);await this.plugin.saveSettings();this.plugin.writerSettingsTab?.display?.();
    }));
   }
   new Setting(panel).setName(writerUi('Desfazer última aplicação','Undo last application'))

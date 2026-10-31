@@ -1,0 +1,68 @@
+# Stable release pipeline. Trigger only when this workflow first lands on main,
+# or when explicitly run by a maintainer.
+name: Publish Basic AI Tool for Writers 5.2.0
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-v5-2-stable.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check complete source, bundle and regression suite
+        run: npm run check
+      - name: Obsidian community CSS audit
+        run: node --test tests/css-community-lint.test.cjs
+      - name: Verify v5 release metadata and required files
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const manifest=require('./manifest.json');
+          const pkg=require('./package.json');
+          const versions=require('./versions.json');
+          if(manifest.id!=='basic-ai-tool-for-writers'||manifest.name!=='Basic AI Tool for Writers')throw Error('Plugin identity changed');
+          if(manifest.version!=='5.2.0'||pkg.version!==manifest.version||versions[manifest.version]!==manifest.minAppVersion)throw Error('Invalid 5.2.0 version mapping');
+          if(manifest.isDesktopOnly!==false)throw Error('Unexpected desktop-only restriction');
+          if(!/^\d+\.\d+\.\d+$/.test(manifest.version))throw Error('Unexpected release version tag');
+          for(const path of ['main.js','manifest.json','styles.css','docs/V5_2_RELEASE.md','docs/README.pt-BR.md','README.md']){
+            if(!fs.statSync(path).size)throw Error('Empty release file: '+path);
+          }
+          for(const token of ['writerProjectMetaRender','writerProjectRemember','class WriterWorkspaceProfiles','writerWorkspaceBindSearch','writerWorkspaceRenderHotkeys','class WriterKeyshots','class WriterExtendedSyntax','class WriterPandocSyntax','class WriterEasyTyping','class WriterSmartTypography','class WriterPandocExporter']){
+            if(!fs.readFileSync('main.js','utf8').includes(token))throw Error('Missing bundled v5 module: '+token);
+          }
+          NODE
+      - name: Create ZIP and SHA-256 manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -j Basic-AI-Tool-for-Writers-5.2.0.zip main.js manifest.json styles.css
+          unzip -t Basic-AI-Tool-for-Writers-5.2.0.zip
+          test "$(unzip -Z1 Basic-AI-Tool-for-Writers-5.2.0.zip | wc -l)" -eq 3
+          sha256sum main.js manifest.json styles.css Basic-AI-Tool-for-Writers-5.2.0.zip > SHA256SUMS-5.2.0.txt
+      - name: Publish 5.2.0 tag and GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view 5.2.0 >/dev/null 2>&1; then
+            echo 'Release 5.2.0 exists; not overwriting.'
+            exit 0
+          fi
+          gh release create 5.2.0 \
+            main.js manifest.json styles.css \
+            Basic-AI-Tool-for-Writers-5.2.0.zip SHA256SUMS-5.2.0.txt \
+            --target "$GITHUB_SHA" \
+            --title 'Basic AI Tool for Writers 5.2.0' \
+            --latest \
+            --notes-file docs/V5_2_RELEASE.md

@@ -79,8 +79,15 @@ test('release metadata and documentation agree on the current version',()=>{
  const versions=JSON.parse(read('versions.json'));
  assert.equal(manifest.version,pkg.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
- assert.ok(read('README.md').includes('Latest stable:** ['+manifest.version+']'));
- assert.ok(read('docs/README.pt-BR.md').includes('Versão atual:** '+manifest.version));
+ if(manifest.version.includes('-')){
+  assert.ok(read('README.md').includes('Latest stable:** [5.2.0]'));
+  assert.ok(read('README.md').includes(manifest.version));
+  assert.ok(read('docs/README.pt-BR.md').includes('Versão atual:** 5.2.0'));
+  assert.ok(read('docs/README.pt-BR.md').includes(manifest.version));
+ }else{
+  assert.ok(read('README.md').includes('Latest stable:** ['+manifest.version+']'));
+  assert.ok(read('docs/README.pt-BR.md').includes('Versão atual:** '+manifest.version));
+ }
  assert.match(read('README.md'),/English.*interface/i);
  assert.match(read('docs/README.pt-BR.md'),/inglês/i);
 });

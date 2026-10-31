@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "4.3.1",
+  "version": "5.0.0",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Modular writing suite: bilingual English/Portuguese UI, Longform, AI editing, LanguageTool, translation, TTS, snapshots and diagnostics.",
+  "description": "Modular writing companion for Obsidian: AI assistant, dictionary, translation, LanguageTool, Longform projects, advanced typing, Markdown syntax, typography, snapshots and TTS.",
   "isDesktopOnly": false
 }

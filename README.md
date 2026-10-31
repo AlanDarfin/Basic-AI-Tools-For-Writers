@@ -6,6 +6,8 @@
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
+> **v6 under design (not released):** Architecture review of six planned integrations — Advanced Ruby, Discord Timestamps, Interactive Ratings, Discord Syntax, Linter and Reading Time. The current stable version remains **5.2.0**. Read the [English v6 review](docs/V6-ARCHITECTURE.en.md) or [Portuguese technical plan](docs/V6-ARCHITECTURE.pt-BR.md).
+
 **New in 5.2.0:** Longform remembers the **last selected project**, including when switching between its separate index/draft notes. Project details now include a vault-image **cover**, a short **synopsis/description**, and a copyright/license selector explaining *All rights reserved*, Creative Commons choices, CC0 and public domain. These details are written to the existing project's `longform` frontmatter. The settings interface now has **six grouped top-level tabs** with smaller category tabs, and Easy Typing plus Smart Typography share a single **Typing & typography** settings page. All new controls have Portuguese and English labels. See the [release notes](docs/V5_2_RELEASE.md).
 
 **New in 5.1.0:** Searchable plugin settings (accent-insensitive category suggestions and filtering within the current tab), four quick writing profiles (Novel, Study, Revision and Technical Markdown), up to 10 custom profile snapshots with one-step undo, a local keyboard shortcut audit, and more compact, accessible settings on narrow/mobile screens. Only editor preferences change when switching profiles—notes, API keys, prompts and dictionaries remain untouched. See [5.1.0 release notes](docs/V5_1_RELEASE.md).

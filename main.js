@@ -119,7 +119,7 @@ class ProjectsView extends ItemView{
   const token=++this.renderToken;
   const active=this.app.workspace.getActiveFile();
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
-  if(!this.selected&&activeProject)this.selected=activeProject.file.path;
+  if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
   top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
@@ -5235,6 +5235,12 @@ function writerProjectValidCover(app,path){
  return file instanceof TFile&&/^(png|jpe?g|webp|gif|svg|avif)$/i.test(file.extension||'')?file:null;
 }
 function writerProjectNormalizeDescription(value){return String(value||'').trim().slice(0,2000);}
+function writerProjectRenamedPath(selected,oldPath,newPath){
+ if(typeof selected!=='string'||!selected||!oldPath||!newPath)return selected;
+ if(selected===oldPath)return newPath;
+ if(selected.startsWith(oldPath+'/'))return newPath+selected.slice(oldPath.length);
+ return selected;
+}
 function writerProjectRemember(view,path){
  if(!path||typeof path!=='string')return;
  view.selected=path;

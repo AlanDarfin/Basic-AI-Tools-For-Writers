@@ -43,7 +43,7 @@ In Basic AI settings, **Modules** controls visibility of Keyshots, Extended Synt
 - Optional desktop Pandoc executable export is now implemented for DOCX, HTML, EPUB, ODT, plain text, LaTeX and PDF (the PDF target can require additional LaTeX installation). Executing arbitrary Lua filters, interactive PDF/DOCX previews and a full native Pandoc AST/sidebar remain out of scope. The Lua reference scripts are not bundled.
 - Fenced divs require a closing delimiter in this implementation.
 - Some complex syntax combinations, code contexts, tables, callouts and nested blocks need additional testing.
-- Changes to extension settings may require reopening the note to refresh existing decorations.
+- Extended and Pandoc editor decorations are refreshed when their settings change; verify real Live Preview refresh behavior in Obsidian before release.
 - Keyboard layouts and clashes with native Obsidian or other plugin hotkeys need desktop testing.
 
 ## Before publishing v5

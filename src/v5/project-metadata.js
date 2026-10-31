@@ -23,6 +23,12 @@ function writerProjectValidCover(app,path){
  return file instanceof TFile&&/^(png|jpe?g|webp|gif|svg|avif)$/i.test(file.extension||'')?file:null;
 }
 function writerProjectNormalizeDescription(value){return String(value||'').trim().slice(0,2000);}
+function writerProjectRenamedPath(selected,oldPath,newPath){
+ if(typeof selected!=='string'||!selected||!oldPath||!newPath)return selected;
+ if(selected===oldPath)return newPath;
+ if(selected.startsWith(oldPath+'/'))return newPath+selected.slice(oldPath.length);
+ return selected;
+}
 function writerProjectRemember(view,path){
  if(!path||typeof path!=='string')return;
  view.selected=path;

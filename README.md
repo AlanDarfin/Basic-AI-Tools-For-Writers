@@ -6,7 +6,7 @@
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
-> **v5 development branch:** Keyboard navigation (Keyshots-inspired) + Extended Markdown + Pandoc-style syntax are being integrated. This is **not a released build**. See [v5 scope, commands and limitations](docs/V5-DEVELOPMENT.md).
+> **v5 development branch:** Keyshots-style keyboard navigation, Extended/Pandoc syntax, **Easy Typing** helpers and **Smart Typography** are being integrated. This is **not a released build**. Veja a [documentação técnica da v5](docs/V5-DEVELOPMENT.md).
 
 > **Updated in v4.1:** complete English localization across built-in writing panels, Longform and history dialogs, with automated bilingual regression checks.
 

@@ -55,3 +55,43 @@ In Basic AI settings, **Modules** controls visibility of Keyshots, Extended Synt
 - [ ] Test desktop and mobile Live Preview and Reading mode.
 - [ ] Review accessibility, performance and Obsidian plugin submission lint.
 - [ ] Decide on the Pandoc export phase and publish release artifacts.
+
+
+## Easy Typing (new v5 module)
+
+The Basic integration implements a focused, independent subset of the reference Easy Typing plugin, without copying its minified bundle:
+
+- **Tab out of paired delimiters** in the active editor (parentheses, brackets, quotes, wiki links, inline-code ticks and common Markdown delimiters). The keymap yields to normal Tab when not applicable.
+- **Smart paste in lists and blockquotes**, adding the current marker to subsequent pasted lines while preserving already-marked lines.
+- **Smart Backspace** to remove an empty list/quote marker instead of leaving stray Markdown punctuation.
+- Optional **sentence capitalization**, **CJK/Latin spacing**, and **literal text replacement** rules. Rules are limited to safe source/replacement pairs, not scripts or regex execution.
+- Explicit commands to format a selected passage or line, remove extra blank lines from a selection, wrap selected text in a code fence, toggle Obsidian comments and select the current paragraph.
+- Optional formatting on paste and path-based exclusions.
+
+The advanced upstream rule editor, embedded script execution, comprehensive codeblock editing, locale-specific spacing engine and tabstop templates are **not** implemented. Automatic changes are guarded against recognized inline code, links, URLs, frontmatter and fenced code; unusual nested Markdown should still be tested.
+
+## Smart Typography (new v5 module)
+
+Uses the same safe transaction pipeline as Easy Typing but can be enabled independently:
+
+| Input | Output, when enabled |
+| --- | --- |
+| Straight quotes/apostrophes | Smart opening/closing quotes |
+| Two hyphens | Em dash, or en dash if configured |
+| Three dots | Ellipsis |
+| Arrow sequences | Left/right arrows |
+| Comparison sequences | Greater-or-equal, less-or-equal, not-equal symbols |
+| Simple fractions | Unicode fractions (opt-in) |
+| Double angle brackets | Guillemet quotation marks (opt-in) |
+
+The eight quotation/arrow symbols are customizable. There is an on/off command and a **convert selection** command. Conversions do **not** require an external typography engine. They are designed not to rewrite code/URLs or existing Markdown markup when recognized, and are only applied automatically during single-character typing (never on opening an existing note).
+
+Both new modules have independent visibility toggles in Basic AI **Modules**, plus dedicated settings tabs. The existing Keyshots hotkey profiles are unaffected. No retired Editing Toolbar is restored.
+
+### Extra release checks
+
+- [x] Safe settings migration and basic replacement tests
+- [x] Separate Easy Typing and Smart Typography configurations
+- [ ] Full upstream feature parity
+- [ ] Manual IME/composition/mobile keyboard verification
+- [ ] Test shortcuts alongside Keyshots, abbreviations and Obsidian core editor commands

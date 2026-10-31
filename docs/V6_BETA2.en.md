@@ -20,10 +20,10 @@ Depending on the current scene, a navigation block can show four separate choice
 
 Insert the block using the command **Longform: insert chapter navigation**, or add the following fenced Markdown block in an existing scene (and optionally in your Longform scene template):
 
-~~~markdown
+````markdown
 ~~~longform-nav
 ~~~
-~~~
+````
 
 The fenced processor renders the buttons in Obsidian's Reading/Live Preview modes. Settings are grouped under **Longform → Longform navigation**. You can independently disable the whole feature or hide main/subchapter buttons.
 

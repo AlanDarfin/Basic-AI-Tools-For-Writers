@@ -48,7 +48,7 @@ Foram examinados os **seis bundles JavaScript** enviados, os seis \`manifest.jso
 
 ### B. Discord Timestamps
 
-**Escopo:** reconhecer e preservar os códigos de tempo de Discord, seis estilos principais \`t/T/d/D/f/F/R\`, exibição localizada em Reading, comando para inserir, seletor de data/hora/fuso, histórico curto e comportamento opt-in para trechos \`code\`. **Implementação:** \`Intl.DateTimeFormat\`, validação de epoch/faixa, timezone IANA com fallback, atualização dos formatos relativos sem temporizadores por fragmento. Manter texto fonte inalterado.
+**Escopo:** reconhecer e preservar os códigos de tempo de Discord, sete formatos \`t/T/d/D/f/F/R\`, exibição localizada em Reading, comando para inserir, seletor de data/hora/fuso, histórico curto e comportamento opt-in para trechos \`code\`. **Implementação:** \`Intl.DateTimeFormat\`, validação de epoch/faixa, timezone IANA com fallback, atualização dos formatos relativos sem temporizadores por fragmento. Manter texto fonte inalterado.
 
 ### C. Interactive Ratings
 

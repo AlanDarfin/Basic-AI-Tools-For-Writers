@@ -1738,7 +1738,7 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 /* Basic AI v6: scoped Markdown annotations, ratings and safe editor previews. */
 .writer-v6-rendered.writer-v6-ruby{ruby-position:over;white-space:normal}
 .writer-v6-ruby>rt{font-size:var(--writer-v6-ruby-size,50%);line-height:1.2;color:var(--text-muted)}
-.writer-v6-ruby-source{text-decoration:underline dotted var(--text-faint);text-underline-offset:3px}
+.writer-v6-ruby-source{border-bottom:1px dotted var(--text-faint)}
 .writer-v6-subtext,.cm-line.writer-v6-subtext-line{font-size:var(--font-smaller);color:var(--text-muted);line-height:1.35}
 .writer-v6-rating,.writer-v6-rating-editor{display:inline-flex;align-items:center;white-space:nowrap;gap:0.08em;color:var(--text-accent)}
 .writer-v6-rating-editor{vertical-align:middle;max-width:100%;flex-wrap:wrap}
@@ -1746,7 +1746,7 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 .writer-v6-rating-button:hover{background:var(--background-modifier-hover)}
 .writer-v6-rating-button:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px;border-radius:var(--radius-s)}
 .writer-v6-timestamp{background:var(--background-secondary);border-radius:var(--radius-s);padding:0.08em 0.24em;color:var(--text-normal);font-variant-numeric:tabular-nums;white-space:normal}
-.writer-v6-timestamp-source{text-decoration:underline dotted var(--interactive-accent);text-underline-offset:3px}
+.writer-v6-timestamp-source{border-bottom:1px dotted var(--interactive-accent)}
 .writer-v6-reading-status{font-variant-numeric:tabular-nums;font-size:var(--font-ui-smaller);color:var(--text-muted)}
 .writer-v6-lint-modal{max-height:75vh;overflow:auto}
 .writer-v6-lint-preview{white-space:pre-wrap;overflow-wrap:anywhere;max-height:45vh;overflow-y:auto;user-select:text;font-family:var(--font-monospace);font-size:var(--font-smaller);padding:12px;background:var(--background-secondary);color:var(--text-normal);border:1px solid var(--background-modifier-border);border-radius:var(--radius-m)}

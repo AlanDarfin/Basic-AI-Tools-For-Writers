@@ -2,9 +2,11 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [5.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.1.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [5.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
+
+**New in 5.2.0:** Longform remembers the **last selected project**, including when switching between its separate index/draft notes. Project details now include a vault-image **cover**, a short **synopsis/description**, and a copyright/license selector explaining *All rights reserved*, Creative Commons choices, CC0 and public domain. These details are written to the existing project's `longform` frontmatter. The settings interface now has **six grouped top-level tabs** with smaller category tabs, and Easy Typing plus Smart Typography share a single **Typing & typography** settings page. All new controls have Portuguese and English labels. See the [release notes](docs/V5_2_RELEASE.md).
 
 **New in 5.1.0:** Searchable plugin settings (accent-insensitive category suggestions and filtering within the current tab), four quick writing profiles (Novel, Study, Revision and Technical Markdown), up to 10 custom profile snapshots with one-step undo, a local keyboard shortcut audit, and more compact, accessible settings on narrow/mobile screens. Only editor preferences change when switching profiles—notes, API keys, prompts and dictionaries remain untouched. See [5.1.0 release notes](docs/V5_1_RELEASE.md).
 
@@ -148,7 +150,7 @@ Choose **System / offline** speech when the Obsidian WebView exposes Web Speech 
 
 ## Installation and upgrade
 
-1. Download the [5.1.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.1.0/Basic-AI-Tool-for-Writers-5.1.0.zip).
+1. Download the [5.2.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.2.0/Basic-AI-Tool-for-Writers-5.2.0.zip).
 2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
 
    ```text

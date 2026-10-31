@@ -79,7 +79,7 @@ function lfWordCount(text){
 }
 function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
@@ -93,7 +93,15 @@ class ProjectsView extends ItemView{
   }
   this.registerEvent(this.app.vault.on('create',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('delete',()=>this.queueRender()));
-  this.registerEvent(this.app.vault.on('rename',()=>this.queueRender()));
+  this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
+   if(oldPath&&file?.path){
+    const saved=this.plugin.settings.lastLongformProject;
+    const next=writerProjectRenamedPath(saved,oldPath,file.path);
+    if(next!==saved){this.plugin.settings.lastLongformProject=next;void this.plugin.saveSettings();}
+    this.selected=writerProjectRenamedPath(this.selected,oldPath,file.path);
+   }
+   this.queueRender();
+  }));
   this.registerEvent(this.app.metadataCache.on('changed',file=>{if(file?.path===this.selected)this.queueRender();}));
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
@@ -109,17 +117,20 @@ class ProjectsView extends ItemView{
   const token=++this.renderToken;
   const active=this.app.workspace.getActiveFile();
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
-  if(!this.selected&&activeProject)this.selected=activeProject.file.path;
+  if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
   top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
-  if(!indexes.some(x=>x.file.path===this.selected))this.selected=indexes[0].file.path;
+  if(!indexes.some(x=>x.file.path===this.selected)){
+   this.selected=activeProject?.file.path||indexes[0].file.path;
+   writerProjectRemember(this,this.selected);
+  }
   if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
   this.lastSelected=this.selected;
   selector.value=this.selected;
-  selector.addEventListener('change',()=>{this.selected=selector.value;this.render();});
+  selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
   this.currentProject=project;
   if(project.format==='scenes'&&!project.scenes.length){
@@ -311,7 +322,7 @@ class ProjectsView extends ItemView{
    const other=draftBar.createEl('select',{attr:{'aria-label':lfMsg('Rascunhos Longform existentes','Existing Longform drafts')}});
    other.createEl('option',{text:lfMsg('Trocar para rascunho Longform...','Switch to Longform draft...'),value:''});
    for(const d of linked){const o=other.createEl('option',{text:d.draftTitle||d.file.basename});o.value=d.file.path;}
-   other.addEventListener('change',()=>{if(other.value){this.selected=other.value;this.draft='Principal';this.render();}});
+   other.addEventListener('change',()=>{if(other.value){this.draft='Principal';writerProjectRemember(this,other.value);this.render();}});
   }
   const select=draftBar.createEl('select',{attr:{'aria-label':lfMsg('Rascunho local','Local draft')}});
   const drafts=['Principal',...Object.keys(prefs.drafts||{})];
@@ -424,13 +435,14 @@ class ProjectsView extends ItemView{
     }
     const payload={longform:{format:'scenes',title:project.title,draftTitle:name,sceneFolder:'/',scenes:lfNestScenes(scenes),ignoredFiles:[]}};
     const index=await this.app.vault.create(path,'---\n'+stringifyYaml(payload)+'---\n');
-    this.selected=index.path;this.draft='Principal';await this.render();this.queueRender();
+    writerProjectRemember(this,index.path);this.draft='Principal';await this.render();this.queueRender();
     new Notice(lfMsg("Rascunho Longform criado sem alterar o original.","Longform draft created without changing the original."));
    }catch(e){new Notice(lfMsg("Não foi possível criar rascunho: ","Could not create draft: ")+e.message);}
   }).open();
  }
  drawProject(panel,project){
   panel.createEl('h4',{text:project.title});
+  writerProjectMetaRender(this,panel,project);
   panel.createEl('p',{text:lfMsg("Índice: ","Index: ")+project.file.path});
   panel.createEl('p',{text:lfMsg("Cenas: ","Scenes: ")+sceneNames(project.scenes).length});
   panel.createEl('button',{text:lfMsg("Abrir índice","Open index")}).addEventListener('click',()=>this.openFile(project.file));
@@ -813,7 +825,7 @@ class ProjectsView extends ItemView{
      const data={format,title,sceneFolder:'/',scenes:[],ignoredFiles:[]};
      if(format==='single'){delete data.sceneFolder;delete data.scenes;delete data.ignoredFiles;}
      const file=await this.app.vault.create(path,'---\n'+stringifyYaml({longform:data})+'---\n\n');
-     modal.close();this.selected=file.path;this.draft='Principal';await this.render();this.queueRender();this.openFile(file);
+     modal.close();writerProjectRemember(this,file.path);this.draft='Principal';await this.render();this.queueRender();this.openFile(file);
     }catch(e){new Notice(e.message,7000);}
    }));
   };

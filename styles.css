@@ -1670,3 +1670,66 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 @media(prefers-reduced-motion:reduce){
  .writer-v51-search-results button{transition:none}
 }
+
+
+/* Basic AI 5.2 — grouped setting navigation and illustrated Longform projects */
+.dictionary-settings-subtabs{
+ display:flex;flex-wrap:nowrap;align-items:center;gap:5px;
+ overflow-x:auto;overflow-y:hidden;padding:2px 1px 9px;
+ scrollbar-width:thin;scrollbar-color:var(--background-modifier-border) transparent;
+ scroll-snap-type:x proximity;max-width:100%;
+}
+.dictionary-settings-subtabs>button{
+ flex:0 0 auto;max-width:70%;white-space:nowrap;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);
+ background:var(--background-secondary);color:var(--text-muted);
+ font-size:var(--font-ui-small);padding:5px 10px;min-height:31px;scroll-snap-align:start;
+}
+.dictionary-settings-subtabs>button.is-active{
+ color:var(--text-on-accent);background:var(--interactive-accent);
+ border-color:var(--interactive-accent);
+}
+.dictionary-settings-subtabs>button:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:2px}
+.dictionary-settings-tabs>button{min-height:36px}
+.writer-project-metadata{
+ display:flex;flex-direction:column;gap:7px;
+ border:1px solid var(--background-modifier-border);
+ background:var(--background-secondary);padding:12px;
+ margin-block:12px;border-radius:var(--radius-m);
+ min-width:0;max-width:100%;
+}
+.writer-project-metadata>h4{margin:0 0 3px}
+.writer-project-metadata .setting-item{
+ min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+ padding:7px 0;
+}
+.writer-project-metadata .setting-item-info{min-width:0;flex:1 1 180px}
+.writer-project-metadata .setting-item-control{min-width:0;max-width:100%;flex:2 1 200px;display:flex;flex-wrap:wrap;gap:5px}
+.writer-project-metadata .setting-item-control select,
+.writer-project-metadata .setting-item-control textarea{
+ max-width:100%;min-width:0;width:100%;box-sizing:border-box;
+ color:var(--text-normal);background:var(--background-primary);
+}
+.writer-project-metadata .setting-item-control textarea{
+ min-height:80px;max-height:220px;resize:vertical;overflow-wrap:anywhere;
+}
+.writer-project-cover-preview{
+ display:flex;justify-content:center;align-items:center;
+ min-height:80px;max-width:100%;margin-block:4px;
+}
+.writer-project-cover-preview img{
+ width:auto;max-width:min(100%,230px);max-height:310px;
+ object-fit:contain;box-shadow:var(--shadow-s);
+ border-radius:var(--radius-s);
+}
+.writer-project-cover-preview>p{margin:8px 0;text-align:center}
+.writer-project-copyright-explanation{
+ color:var(--text-muted);font-size:var(--font-ui-small);
+ overflow-wrap:anywhere;line-height:1.45;margin:0;
+}
+@media(max-width:600px),(max-height:740px){
+ .dictionary-settings-subtabs{gap:4px;padding-bottom:6px}
+ .dictionary-settings-subtabs>button{padding:5px 8px;font-size:var(--font-ui-smaller)}
+ .writer-project-metadata{padding:9px;gap:5px}
+ .writer-project-cover-preview img{max-width:min(100%,165px);max-height:235px}
+}

@@ -1,16 +1,18 @@
 # Basic AI Tool for Writers
 
+> **Novo na 5.2.0:** Longform lembra o **último projeto selecionado**, inclusive após reiniciar o plugin. A aba **Projeto** permite escolher uma **capa do cofre**, escrever a **sinopse/descrição** e declarar o tipo de **direitos autorais/licença**, com explicação de cada opção. Esses dados são salvos no frontmatter `longform` do índice da história. As configurações agora ficam em **seis grupos principais**, com abas menores dentro de cada grupo; Easy Typing e Smart Typography foram unidos em **Digitação e tipografia**. Veja as [notas da 5.2.0](V5_2_RELEASE.md).
+
 > **Novo na 5.1.0:** busca nas configurações (inclusive com acentos), perfis rápidos de escrita (Romance, Estudos, Revisão e Markdown técnico), perfis personalizados com desfazer, diagnóstico local de atalhos e interface mais compacta para telas pequenas. Os perfis alteram somente preferências de edição, sem modificar notas, chaves de API ou dicionários. Confira as [notas da 5.1.0](V5_1_RELEASE.md).
 
 > **Novidade — v5.0.0:** navegação Keyshots, sintaxes Extended/Pandoc, Easy Typing (regex opcionais e modelos com Tab), Smart Typography e exportação Pandoc opcional no desktop. Veja as [notas de lançamento](V5_RELEASE.md) e o [guia técnico](V5-DEVELOPMENT.md).
 
 **Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
 
-[English / README principal](../README.md) · [Release estável 5.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.1.0)
+[English / README principal](../README.md) · [Release estável 5.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.2.0)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
 
-**Versão atual:** 5.1.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
+**Versão atual:** 5.2.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
 
 **Na 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
 
@@ -132,7 +134,7 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 ## Instalação e atualização
 
-1. Baixe o [ZIP da 5.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.1.0/Basic-AI-Tool-for-Writers-5.1.0.zip).
+1. Baixe o [ZIP da 5.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.2.0/Basic-AI-Tool-for-Writers-5.2.0.zip).
 2. Extraia os arquivos **`main.js`**, **`manifest.json`** e **`styles.css`** para:
 
    ```text

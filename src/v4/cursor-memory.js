@@ -136,8 +136,13 @@ class WriterCursorMemory{
    }));
   }
   p.registerEvent(workspace.on('active-leaf-change',leaf=>{
-   if(this.lastView)this.capture(this.lastView);
+   if(this.lastView&&this.lastView!==leaf?.view)this.capture(this.lastView);
    this.lastView=leaf?.view instanceof MarkdownView?leaf.view:null;
+   // Mobile may create its Markdown editor after file-open. Retry once when
+   // the leaf has had time to mount, without moving a caret the user touched.
+   const opened=this.lastView;
+   if(opened?.file?.path&&this.entries[opened.file.path])
+    this.timer(()=>{if(this.lastView===opened)this.restore(opened);},this.plugin.app.isMobile?260:110);
   }));
   p.registerEvent(workspace.on('file-open',file=>{
    if(file?.extension!=='md')return;

@@ -4319,14 +4319,19 @@ function writerEasyBackspacePrefix(line,column){
 }
 function writerEasyProseFormat(text,cfg){
  const parts=writerTypoProtectedText(String(text));
- const result=parts.map(({text:line,protected:blocked})=>{
+ const result=[];let blankCount=0;
+ for(const {text:line,protected:blocked} of parts){
+  if(!blocked&&!line.trim())blankCount++;else blankCount=0;
+  if(blankCount>2)continue;
+  result.push((()=>{
   if(blocked||/^\s*(?:\x60|>|[-*+]\s+|\d+[.)]\s+|[#|])/.test(line))return line;
   let next=line;
   if(cfg.inlineSpacing)next=next.replace(/([\p{L}\p{N}])(\x60[^\x60\n]+\x60)/gu,'$1 $2').replace(/(\x60[^\x60\n]+\x60)([\p{L}\p{N}])/gu,'$1 $2');
   if(cfg.cjkSpacing)next=next.replace(/([\u3400-\u9fff])([A-Za-z0-9])/gu,'$1 $2').replace(/([A-Za-z0-9])([\u3400-\u9fff])/gu,'$1 $2');
   return next;
- }).join('\n');
- return result.replace(/\n{4,}/g,'\n\n\n');
+  })());
+ }
+ return result.join('\n');
 }
 class WriterEasyTyping{
  constructor(plugin){this.plugin=plugin;}
@@ -4463,12 +4468,14 @@ function writerTypoAtInput(before,typed,cfg){
  if(!typed||typed.length!==1||!cfg?.enabled)return null;
  const put=(needle,output)=>({consume:needle.length,text:output});
  if(cfg.dashes&&typed==='-'){
+  // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
+  if(/^\s*-{2,}$/.test(before))return null;
   if(before.endsWith('—-'))return put('—-','---');
   if(before.endsWith('–-'))return put('–-','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
  if(cfg.ellipsis&&typed==='.'&&before.endsWith('...'))return put('...','…');
- if(cfg.guillemets&&typed==='< ' .trim()&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
+ if(cfg.guillemets&&typed==='<'&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
  if(cfg.guillemets&&typed==='>'&&before.endsWith('>>'))return put('>>',cfg.closeGuillemet);
  if(cfg.arrows&&typed==='>'&&before.endsWith('->'))return put('->',cfg.rightArrow);
  if(cfg.arrows&&typed==='-'&&before.endsWith('<-'))return put('<-',cfg.leftArrow);
@@ -4498,6 +4505,7 @@ function writerTypoProtectedText(text){
   const line=lines[i],trim=line.trim();
   if(i===0&&trim==='---'){frontmatter=true;out.push({text:line,protected:true});continue;}
   if(frontmatter){out.push({text:line,protected:true});if(trim==='---')frontmatter=false;continue;}
+  if(/^(-{3,}|\*{3,}|_{3,})$/.test(trim)){out.push({text:line,protected:true});continue;}
   const found=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
   if(found){
    const symbol=found[1][0];
@@ -4598,6 +4606,14 @@ class WriterSmartTypography{
 function writerTypingUnsafeContext(state,from,prefix){
  const line=prefix||'';
  if(/^\s*(?:\x60{3,}|~{3,}|---|<!--)/.test(line)||/^(?: {4}|\t)/.test(line))return true;
+ if(state?.doc?.lineAt&&state.doc.line?.(1)?.text?.trim()==='---'){
+  const cursorLine=state.doc.lineAt(Math.min(from,state.doc.length)).number;
+  if(cursorLine<=256){
+   let ended=false;
+   for(let n=2;n<=cursorLine;n++)if(state.doc.line(n).text.trim()==='---'){ended=true;break;}
+   if(!ended)return true;
+  }
+ }
  const ticks=(line.match(/(?<!\\)\x60/g)||[]).length;
  if(ticks%2!==0)return true;
  if(/(?:https?:\/\/|obsidian:\/\/|www\.|mailto:)\S*$/i.test(line))return true;

@@ -87,6 +87,12 @@ class ProjectsView extends ItemView{
  getIcon(){return 'notebook-pen';}
  async onOpen(){
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
+  if(typeof MutationObserver==='function'){
+   this.writerSettingsObserver=new MutationObserver(()=>{
+    if(typeof writerMarkCompactSettings==='function')writerMarkCompactSettings(this.root);
+   });
+   this.writerSettingsObserver.observe(this.root,{childList:true,subtree:true});
+  }
   this.registerEvent(this.app.vault.on('create',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('delete',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('rename',()=>this.queueRender()));
@@ -95,7 +101,7 @@ class ProjectsView extends ItemView{
   await this.render();
  }
  queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
+ async onClose(){this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;
@@ -1816,6 +1822,7 @@ class WriterToolsView extends ItemView{
   const footer=root.createDiv({cls:'writer-tools-footer'});
   if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
   if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
+  writerMarkCompactSettings(panel);
   this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
  }
  renderComplements(panel){
@@ -3942,12 +3949,25 @@ class DictionaryView extends ItemView{
  async lexical(mode){const word=this.input.value.trim();if(!word)return new Notice(t('noWord'));const token=this.sequence;this.output.empty();try{const result=await this.plugin.lookupAI(word,mode,this.context.value);if(token!==this.sequence)return;await this.renderText(mode==='antonyms'?t('antonyms'):t('synonyms'),result.definitions.join('\n'));}catch(e){if(token===this.sequence)this.showError(e);}}
  async onClose(){this.sequence++;}
 }
+/* Mark plugin setting rows without expensive :has() selectors. */
+function writerMarkCompactSettings(root){
+ if(!root)return;
+ for(const row of root.querySelectorAll('.setting-item')){
+  row.classList.toggle('writer-setting-toggle',Boolean(row.querySelector('.checkbox-container')));
+  row.classList.toggle('writer-setting-textarea',Boolean(row.querySelector('textarea')));
+ }
+}
 class DictionarySettings extends PluginSettingTab{
  constructor(app,plugin){super(app,plugin);this.plugin=plugin;}
  display(){
   const el=this.containerEl;el.empty();el.createEl('h2',{text:t('settings')});
   const nav=el.createDiv({cls:'dictionary-settings-tabs'});nav.scrollLeft=this.settingsTabsScrollLeft||0;nav.addEventListener('scroll',()=>{this.settingsTabsScrollLeft=nav.scrollLeft;},{passive:true});nav.addEventListener('wheel',event=>{if(nav.scrollWidth>nav.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){nav.scrollLeft+=event.deltaY;event.preventDefault();}},{passive:false});
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
+  this.writerSettingsObserver?.disconnect();
+  if(typeof MutationObserver==='function'){
+   this.writerSettingsObserver=new MutationObserver(()=>writerMarkCompactSettings(panel));
+   this.writerSettingsObserver.observe(panel,{childList:true,subtree:true});
+  }
   const sections=[
     ['general',msg('Geral','General')],
     ['modules',msg('Módulos','Modules')],
@@ -4106,6 +4126,7 @@ class DictionarySettings extends PluginSettingTab{
         new Setting(panel).setName(label).addTextArea(x=>{x.inputEl.rows=5;x.inputEl.addClass('dictionary-prompt-editor');x.setValue(this.plugin.settings.prompts[kind]||PROMPT_DEFAULTS[kind]).onChange(async v=>{this.plugin.settings.prompts[kind]=v;await this.plugin.saveSettings();});});
       }
     }
+    writerMarkCompactSettings(panel);
   };
   for(const [id,label] of enabledSections){const b=nav.createEl('button',{text:label,attr:{role:'tab','aria-selected':'false'}});b.dataset.tab=id;b.addEventListener('click',()=>showTab(id));}
   nav.setAttribute('role','tablist');showTab(this.plugin.settingsTabV4Hint?'writingProfiles':(this.activeSettingsTab||'general'));this.plugin.settingsTabV4Hint=false;

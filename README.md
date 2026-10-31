@@ -2,13 +2,15 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [v4.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.1.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [4.1.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.1.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
 > **Updated in v4.1:** complete English localization across built-in writing panels, Longform and history dialogs, with automated bilingual regression checks.
 
 > **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, pin formatting commands to Obsidian's native mobile toolbar, and run LanguageTool checks after a typing pause.
+
+**4.1.1 maintenance:** Addresses Obsidian 1.11.4 CSS lint warnings, keeps compact mobile settings without `:has()` selectors, and cleans up the stylesheet cascade. Existing notes and settings are unchanged.
 
 ## Contents
 

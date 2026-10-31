@@ -1,7 +1,7 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "minAppVersion": "1.11.4",
   "author": "Alan",
   "description": "Modular writing suite: bilingual English/Portuguese UI, Longform, AI editing, LanguageTool, translation, TTS, snapshots and diagnostics.",

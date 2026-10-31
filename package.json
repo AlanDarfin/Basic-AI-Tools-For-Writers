@@ -1,6 +1,6 @@
 {
   "name": "basic-ai-tool-for-writers",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "private": true,
   "description": "Obsidian writing workspace",
   "scripts": {

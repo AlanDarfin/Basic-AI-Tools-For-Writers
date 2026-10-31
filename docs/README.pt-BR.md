@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers — Português (Brasil)
 
+**Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
+
 [English / README principal](../README.md) · [Release estável v4.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.1.0)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.

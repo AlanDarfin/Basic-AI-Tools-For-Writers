@@ -85,6 +85,12 @@ class ProjectsView extends ItemView{
  getIcon(){return 'notebook-pen';}
  async onOpen(){
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
+  if(typeof MutationObserver==='function'){
+   this.writerSettingsObserver=new MutationObserver(()=>{
+    if(typeof writerMarkCompactSettings==='function')writerMarkCompactSettings(this.root);
+   });
+   this.writerSettingsObserver.observe(this.root,{childList:true,subtree:true});
+  }
   this.registerEvent(this.app.vault.on('create',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('delete',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('rename',()=>this.queueRender()));
@@ -93,7 +99,7 @@ class ProjectsView extends ItemView{
   await this.render();
  }
  queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
+ async onClose(){this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;

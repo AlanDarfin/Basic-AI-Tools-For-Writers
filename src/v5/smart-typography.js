@@ -22,6 +22,7 @@ function writerTypoMerge(settings){
 function writerTypoAtInput(before,typed,cfg){
  if(!typed||typed.length!==1||!cfg?.enabled)return null;
  const put=(needle,output)=>({consume:needle.length,text:output});
+ if(cfg.dashes&&typed===' '&&/^\s*-- $/.test(before))return put('-- ','— '); // Dialogue, but preserve YAML and thematic breaks.
  if(cfg.dashes&&typed==='-'){
   // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
   if(/^\s*-{2,}$/.test(before))return null;

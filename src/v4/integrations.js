@@ -169,6 +169,20 @@ class WriterV4Extras{
     }catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}
    }));
   }
+  // Explicit line decoration works even when Obsidian Mobile does not maintain .cm-activeLine.
+  if(ViewPlugin?.fromClass&&Decoration?.line){
+   p.registerEditorExtension(ViewPlugin.fromClass(class{
+    constructor(view){this.decorations=this.mark(view);}
+    mark(view){
+     const line=view.state.doc.lineAt(view.state.selection.main.head);
+     return Decoration.set([Decoration.line({class:'writer-v4-typewriter-current-line'}).range(line.from)]);
+    }
+    update(update){
+     if(update.docChanged||update.selectionSet||update.viewportChanged||update.focusChanged)
+      this.decorations=this.mark(update.view);
+    }
+   },{decorations:value=>value.decorations}));
+  }
   if(ViewPlugin?.fromClass){
    const owner=this;
    p.registerEditorExtension(ViewPlugin.fromClass(class{

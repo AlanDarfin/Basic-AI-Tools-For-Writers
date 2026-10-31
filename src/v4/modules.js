@@ -17,7 +17,8 @@ const WRITER_MODULES=[
  ['mentions','Menções','Mentions','Oculta menções de notas.','Hides note mentions.'],
  ['comments','Comentários','Comments','Oculta comentários do Longform; mantém seus dados.','Hides Longform comments; keeps existing data.'],
  ['wordwise','Ações de escrita com IA','AI writing actions','Oculta ações Wordwise e seus menus.','Hides AI writing actions.'],
- ['typewriter','Máquina de escrever','Typewriter','Oculta o modo de foco.','Hides focus mode.']
+ ['typewriter','Máquina de escrever','Typewriter','Oculta o modo de foco.','Hides focus mode.'],
+ ['cursorMemory','Lembrar posição do cursor','Remember cursor position','Salva e restaura posição, seleção e rolagem por nota.','Saves and restores cursor, selection and scroll per note.']
 ];
 const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
 function writerMergeModules(settings){

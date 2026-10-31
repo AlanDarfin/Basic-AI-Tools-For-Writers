@@ -5349,11 +5349,11 @@ function writerV6Allowed(plugin,key){
 }
 const WRITER_V6_DEFAULTS={
  readingTime:{enabled:false,wpm:230,skipCode:true,skipFrontmatter:true,status:true},
- timestamps:{enabled:false,locale:'auto',timezone:'local',showRelative:true},
+ timestamps:{enabled:false,locale:'auto',timezone:'local',showRelative:true,recent:[]},
  ruby:{enabled:false,livePreview:true,lv1Size:50,lv2Size:45},
  discordSyntax:{enabled:false,subtext:true,blockSpoilers:false},
  ratings:{enabled:false,symbol:'star',max:5},
- linter:{enabled:false,trimTrailing:true,finalNewline:true,collapseBlanks:false,headingSpace:true,listSpace:true,manualOnly:true,excluded:''}
+ linter:{enabled:false,trimTrailing:true,finalNewline:true,collapseBlanks:false,headingSpace:true,listSpace:true,footnoteSpace:true,quoteSpace:false,yamlSpacing:false,manualOnly:true,excluded:''}
 };
 function writerV6Merge(settings){
  const original=settings.v6&&typeof settings.v6==='object'&&!Array.isArray(settings.v6)?settings.v6:{};
@@ -5405,7 +5405,6 @@ function writerV6FormatTimestamp(epoch,format,locale='auto',timezone='local',now
   const relative=new Intl.RelativeTimeFormat(lang,{numeric:'auto'});
   return relative.format(Math.round(seconds/divisor),unit);
  }
- const dateStyle=format==='d'||format==='D'||format==='f'||format==='F';
  if(format==='t')return make({hour:'2-digit',minute:'2-digit'});
  if(format==='T')return make({hour:'2-digit',minute:'2-digit',second:'2-digit'});
  if(format==='d')return make({year:'numeric',month:'2-digit',day:'2-digit'});
@@ -5465,10 +5464,7 @@ class WriterV6Reading{
    new Notice(result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('minutos de leitura','reading minutes'));
   }});
   p.registerMarkdownPostProcessor?.(root=>{if(writerV6Allowed(p,'timestamps'))writerV6TimestampReading(root,p.settings.v6.timestamps);});
-  p.addCommand({id:'v6-insert-discord-time',name:writerUi('Data Discord: inserir marcador','Discord timestamp: insert marker'),editorCallback:editor=>{
-   const unix=Math.floor(Date.now()/1000);
-   editor.replaceSelection('<t:'+unix+':f>');
-  }});
+  p.addCommand({id:'v6-insert-discord-time',name:writerUi('Data Discord: inserir marcador','Discord timestamp: insert marker'),editorCallback:editor=>this.openDatePicker(editor)});
   if(ViewPlugin?.fromClass){
    const owner=this;
    p.registerEditorExtension(ViewPlugin.fromClass(class{
@@ -5490,12 +5486,52 @@ class WriterV6Reading{
    },{decorations:v=>v.decorations}));
   }
  }
+ openDatePicker(editor){
+  const plugin=this.plugin,cfg=plugin.settings.v6.timestamps;
+  const local=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+  let dateValue=local,format='f';
+  class Picker extends Modal{
+   onOpen(){
+    this.setTitle(writerUi('Inserir data do Discord','Insert Discord timestamp'));
+    new Setting(this.contentEl).setName(writerUi('Data e hora local','Local date and time')).addText(t=>{
+     t.inputEl.type='datetime-local';t.setValue(local).onChange(v=>dateValue=v);
+    });
+    new Setting(this.contentEl).setName(writerUi('Formato','Format')).addDropdown(d=>{
+     for(const [id,label] of [['t',writerUi('Hora curta','Short time')],['T',writerUi('Hora com segundos','Long time')],['d',writerUi('Data curta','Short date')],['D',writerUi('Data longa','Long date')],['f',writerUi('Data e hora','Date & time')],['F',writerUi('Data completa','Full date')],['R',writerUi('Tempo relativo','Relative time')]])d.addOption(id,label);
+     d.setValue('f').onChange(v=>format=v);
+    });
+    new Setting(this.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>this.close()))
+      .addButton(b=>b.setButtonText(writerUi('Inserir','Insert')).setCta().onClick(async()=>{
+       const unix=Math.floor(new Date(dateValue).getTime()/1000);
+       if(!Number.isFinite(unix)||unix<0||unix>253402300799)return new Notice(writerUi('Data inválida.','Invalid date.'));
+       const token='<t:'+unix+':'+format+'>';
+       editor.replaceSelection(token);
+       cfg.recent=[token,...(Array.isArray(cfg.recent)?cfg.recent:[]).filter(x=>x!==token)].slice(0,10);
+       await plugin.saveSettings();this.close();
+      }));
+    const recent=Array.isArray(cfg.recent)?cfg.recent:[];
+    if(recent.length){
+     this.contentEl.createEl('h4',{text:writerUi('Últimas datas usadas','Recently used timestamps')});
+     const list=this.contentEl.createDiv({cls:'writer-v6-date-history'});
+     for(const token of recent.slice(0,6)){
+      const valid=writerV6TimestampTokens(token)[0];
+      if(!valid)continue;
+      list.createEl('button',{text:writerV6FormatTimestamp(valid.epoch,valid.format,cfg.locale,cfg.timezone)}).addEventListener('click',()=>{editor.replaceSelection(token);this.close();});
+     }
+    }
+   }
+   onClose(){this.contentEl.empty();}
+  }
+  new Picker(plugin.app).open();
+ }
  renderSettings(panel){
   const rt=this.plugin.settings.v6.readingTime,ts=this.plugin.settings.v6.timestamps;
   panel.createEl('h3',{text:writerUi('Tempo de leitura','Reading time')});
   new Setting(panel).setName(writerUi('Ativar tempo de leitura','Enable reading time')).addToggle(t=>t.setValue(rt.enabled).onChange(async v=>{rt.enabled=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Palavras por minuto','Words per minute')).addSlider(s=>s.setLimits(60,900,10).setDynamicTooltip().setValue(rt.wpm).onChange(async v=>{rt.wpm=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Ignorar código','Exclude code')).addToggle(t=>t.setValue(rt.skipCode).onChange(async v=>{rt.skipCode=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Ignorar frontmatter','Exclude frontmatter')).addToggle(t=>t.setValue(rt.skipFrontmatter).onChange(async v=>{rt.skipFrontmatter=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Exibir na barra de status','Show in status bar')).addToggle(t=>t.setValue(rt.status).onChange(async v=>{rt.status=v;await this.plugin.saveSettings();}));
   panel.createEl('h3',{text:writerUi('Datas do Discord','Discord timestamps')});
   new Setting(panel).setName(writerUi('Renderizar marcadores <t:…>','Render <t:…> timestamps')).addToggle(t=>t.setValue(ts.enabled).onChange(async v=>{ts.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   new Setting(panel).setName(writerUi('Idioma de exibição','Display locale')).setDesc(writerUi('Automático, pt-BR, en-US ou espanhol','Auto, pt-BR, en-US or Spanish')).addDropdown(d=>d.addOption('auto',writerUi('Automático','Automatic')).addOption('pt-BR','Português (Brasil)').addOption('en-US','English (US)').addOption('es-ES','Español').setValue(ts.locale).onChange(async v=>{ts.locale=v;await this.plugin.saveSettings();}));
@@ -5521,13 +5557,38 @@ function writerV6RubyTokens(source){
  }
  return out;
 }
-function writerV6RubyNode(doc,base,ruby){
- const root=doc.createElement('ruby');root.className='writer-v6-rendered writer-v6-ruby';
- root.append(doc.createTextNode(base));
+function writerV6RubyNode(doc,base,ruby,level=1){
+ const root=doc.createElement('ruby');root.className='writer-v6-rendered writer-v6-ruby writer-v6-ruby-lv'+Math.min(2,level);
+ if(level<2){
+  let offset=0;
+  for(const nested of writerV6RubyTokens(base)){
+   root.append(doc.createTextNode(base.slice(offset,nested.from)));
+   root.append(writerV6RubyNode(doc,nested.base,nested.ruby,level+1));
+   offset=nested.to;
+  }
+  root.append(doc.createTextNode(base.slice(offset)));
+ }else root.append(doc.createTextNode(base));
  const rt=doc.createElement('rt');rt.textContent=ruby;root.append(rt);
  return root;
 }
-function writerV6RubyReading(root){
+function writerV6RubyHtml(source){
+ const tokens=writerV6RubyTokens(source);
+ if(!tokens.length)return source;
+ const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ let result='',offset=0;
+ for(const t of tokens){
+  result+=escape(source.slice(offset,t.from))+'<ruby>'+escape(t.base)+'<rt>'+escape(t.ruby)+'</rt></ruby>';
+  offset=t.to;
+ }
+ return result+escape(source.slice(offset));
+}
+function writerV6RubyStrip(source){
+ let result=String(source||'');
+ for(let n=0;n<2;n++)result=result.replace(/\{([^{}|\n]+)\|([^{}\n]+)\}/g,'$1');
+ return result;
+}
+function writerV6RubyReading(root,cfg){
+ if(root?.style){root.style.setProperty('--writer-v6-ruby-lv1-size',(cfg?.lv1Size||50)+'%');root.style.setProperty('--writer-v6-ruby-lv2-size',(cfg?.lv2Size||45)+'%');}
  for(const node of writerV6SafeTextNodes(root)){
   const text=node.nodeValue||'',tokens=writerV6RubyTokens(text);
   if(!tokens.length)continue;
@@ -5538,6 +5599,24 @@ function writerV6RubyReading(root){
    fragment.append(writerV6RubyNode(doc,token.base,token.ruby));cursor=token.to;
   }
   fragment.append(doc.createTextNode(text.slice(cursor)));node.replaceWith(fragment);
+ }
+}
+function writerV6BlockSpoilers(root){
+ for(const opener of [...(root?.querySelectorAll?.('p')||[])]){
+  if(!opener.isConnected||opener.children.length||opener.textContent.trim()!=='||')continue;
+  let current=opener.nextElementSibling,closer=null;const contents=[];
+  while(current&&contents.length<80){
+   if(current.tagName==='P'&&!current.children.length&&current.textContent.trim()==='||'){closer=current;break;}
+   if(current.tagName==='HR'||current.tagName==='SECTION')break;
+   contents.push(current);current=current.nextElementSibling;
+  }
+  if(!closer||!contents.length||!opener.parentElement)continue;
+  const doc=opener.ownerDocument,details=doc.createElement('details');
+  details.className='writer-v6-rendered writer-v6-block-spoiler';
+  const summary=doc.createElement('summary');summary.textContent=writerUi('Mostrar spoiler','Show spoiler');details.append(summary);
+  opener.parentNode.insertBefore(details,opener);
+  for(const child of contents)details.append(child);
+  opener.remove();closer.remove();
  }
 }
 function writerV6SubtextReading(root){
@@ -5602,14 +5681,14 @@ class WriterV6RatingWidget extends WriterV6WidgetType{
   for(let i=1;i<=this.token.max;i++){
    const button=doc.createElement('button');button.type='button';
    button.className='writer-v6-rating-button';
-   button.textContent=i<=this.token.value?set.full:set.empty;
-   button.title=writerUi('Definir avaliação como ','Set rating to ')+i+'/'+this.token.max;
+   button.textContent=i<=this.token.value?set.full:i-this.token.value===.5?set.half:set.empty;
+   button.title=writerUi('Definir avaliação como ','Set rating to ')+i+'/'+this.token.max+writerUi(' (Shift: meio ponto)',' (Shift: half point)');
    button.setAttribute('aria-label',button.title);
    button.setAttribute('aria-pressed',String(i===this.token.value));
    button.addEventListener('mousedown',event=>event.preventDefault());
    button.addEventListener('click',event=>{
     event.preventDefault();event.stopPropagation();
-    const next={...this.token,value:i};
+    const next={...this.token,value:event.shiftKey?i-.5:i};
     if(view.state.doc.sliceString(this.from,this.to)!==writerV6RatingMarker(this.token))return;
     view.dispatch({changes:{from:this.from,to:this.to,insert:writerV6RatingMarker(next)}});
    });
@@ -5625,6 +5704,7 @@ function writerV6MarkupDecorations(view,plugin){
   const start=doc.lineAt(v.from).number,end=doc.lineAt(Math.min(v.to,doc.length)).number;
   for(let n=start;n<=end;n++){
    const line=doc.line(n),source=line.text;
+   if(cfg.discordSyntax.enabled&&writerModuleOn(plugin,'discordSyntax')&&cfg.discordSyntax.blockSpoilers&&source.trim()==='||'&&!writerV6Overlaps(protectedRanges,line.from,line.to))ranges.push(Decoration.line({class:'writer-v6-spoiler-marker'}).range(line.from));
    if(cfg.discordSyntax.enabled&&cfg.discordSyntax.subtext&&writerModuleOn(plugin,'discordSyntax')&&/^-# /.test(source)&&!writerV6Overlaps(protectedRanges,line.from,line.to))
     ranges.push(Decoration.line({class:'writer-v6-subtext-line'}).range(line.from));
    if(cfg.ruby.enabled&&cfg.ruby.livePreview&&writerModuleOn(plugin,'ruby')){
@@ -5650,8 +5730,8 @@ class WriterV6Markup{
  register(){
   const p=this.plugin;
   p.registerMarkdownPostProcessor?.(root=>{
-   if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root);
-   if(writerV6Allowed(p,'discordSyntax'))writerV6SubtextReading(root);
+   if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root,p.settings.v6.ruby);
+   if(writerV6Allowed(p,'discordSyntax')){writerV6SubtextReading(root);if(p.settings.v6.discordSyntax.blockSpoilers)writerV6BlockSpoilers(root);}
    if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root);
   });
   if(ViewPlugin?.fromClass){
@@ -5668,6 +5748,8 @@ class WriterV6Markup{
    }
    return true;
   }});
+  p.addCommand({id:'v6-ruby-strip',name:writerUi('Ruby: remover anotações da seleção','Ruby: remove annotations from selection'),editorCheckCallback:(checking,editor)=>{if(!editor?.getSelection?.())return false;if(!checking)editor.replaceSelection(writerV6RubyStrip(editor.getSelection()));return true;}});
+  p.addCommand({id:'v6-ruby-html',name:writerUi('Ruby: converter seleção em HTML','Ruby: convert selection to HTML'),editorCheckCallback:(checking,editor)=>{if(!editor?.getSelection?.())return false;if(!checking)editor.replaceSelection(writerV6RubyHtml(editor.getSelection()));return true;}});
   p.addCommand({id:'v6-insert-rating',name:writerUi('Avaliação: inserir estrelas','Rating: insert stars'),editorCallback:editor=>editor.replaceSelection('[rating:3/5:star]')});
  }
  renderSettings(panel){
@@ -5675,39 +5757,50 @@ class WriterV6Markup{
   panel.createEl('h3',{text:writerUi('Ruby — pronúncia e anotações','Ruby — pronunciation and annotations')});
   new Setting(panel).setName(writerUi('Habilitar Ruby {base|leitura}','Enable Ruby {base|reading}')).addToggle(t=>t.setValue(cfg.ruby.enabled).onChange(async v=>{cfg.ruby.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   new Setting(panel).setName(writerUi('Ruby no Live Preview','Ruby in Live Preview')).addToggle(t=>t.setValue(cfg.ruby.livePreview).onChange(async v=>{cfg.ruby.livePreview=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(panel).setName(writerUi('Tamanho da anotação principal','Primary annotation size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv1Size).onChange(async v=>{cfg.ruby.lv1Size=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Tamanho do segundo nível','Second-level annotation size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv2Size).onChange(async v=>{cfg.ruby.lv2Size=v;await this.plugin.saveSettings();}));
   panel.createEl('h3',{text:writerUi('Discord Syntax','Discord Syntax')});
   new Setting(panel).setName(writerUi('Ativar subtexto -#','Enable -# subtext')).setDesc(writerUi('Mantém o mesmo parser de spoilers ||texto|| existente.','Keeps the existing ||text|| spoiler parser.')).addToggle(t=>t.setValue(cfg.discordSyntax.enabled).onChange(async v=>{cfg.discordSyntax.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(panel).setName(writerUi('Spoiler em bloco entre linhas ||','Block spoilers between || lines')).addToggle(t=>t.setValue(cfg.discordSyntax.blockSpoilers).onChange(async v=>{cfg.discordSyntax.blockSpoilers=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   panel.createEl('h3',{text:writerUi('Avaliações interativas','Interactive ratings')});
   new Setting(panel).setName(writerUi('Habilitar [rating:3/5:star]','Enable [rating:3/5:star]')).addToggle(t=>t.setValue(cfg.ratings.enabled).onChange(async v=>{cfg.ratings.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle e bar. Clique nas estrelas no editor para alterar valores.','Formats: star, heart, moon, circle and bar. Click rating symbols in the editor to change a value.')});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle e bar. Clique nas estrelas no editor (Shift: meio ponto).','Formats: star, heart, moon, circle and bar. Click rating symbols (Shift: half point) to change a value.')});
  }
 }
 
 // v3 module: src/v6/linter.js
 /* v6 original manual linter; pure rules and confirmed writes, no automatic mutation by default. */
 function writerV6LintText(text,config={}){
- const source=String(text||''),lines=source.split('\n'),protect=writerV6ProtectedRanges(source),changes=[];
+ const source=String(text||''),eol=source.includes('\r\n')?'\r\n':'\n',lines=source.split(/\r?\n/),protect=writerV6ProtectedRanges(source),changes=[];
  let offset=0,inFront=false,inFence=false;
  const result=lines.map((line,index)=>{
-  const from=offset,to=from+line.length;offset=to+1;
+  const from=offset,to=from+line.length;offset=to+eol.length;
   const trim=line.trim();
   if(index===0&&trim==='---')inFront=true;
+  const yamlLine=inFront&&index>0&&trim!=='---';
   const fence=/^\s{0,3}(?:\x60{3,}|~{3,})/.test(line);
   const skip=inFront||inFence||fence||/^(?: {4}|\t)/.test(line)||writerV6Overlaps(protect,from,to);
   if(fence)inFence=!inFence;
   if(inFront&&index>0&&trim==='---')inFront=false;
-  if(skip)return line;
+  if(skip&&!yamlLine)return line;
   let next=line;
+  if(yamlLine){
+   if(config.yamlSpacing===true)next=next.replace(/^([A-Za-z_][\w-]*):(?=\S)/,'$1: ');
+   if(next!==line)changes.push({line:index+1,before:line,after:next});
+   return next;
+  }
   if(config.trimTrailing!==false)next=next.replace(/[ \t]+$/,'');
   if(config.headingSpace!==false)next=next.replace(/^(#{1,6})([^\s#])/,'$1 $2');
   if(config.listSpace!==false)next=next.replace(/^(\s{0,3}[-+*])([^\s-])/,'$1 $2').replace(/^(\s{0,3}\d+[.)])([^\s])/,'$1 $2');
+  if(config.footnoteSpace!==false)next=next.replace(/^(\[\^[^\]]{1,120}\]:)(\S)/,'$1 $2');
+  if(config.quoteSpace===true)next=next.replace(/^(\s{0,3}>)([^ >\n])/,'$1 $2');
   if(next!==line)changes.push({line:index+1,before:line,after:next});
   return next;
  });
- let output=result.join('\n');
- if(config.collapseBlanks===true)output=output.replace(/\n{4,}/g,'\n\n\n');
- if(config.finalNewline!==false&&output&&!output.endsWith('\n'))output+='\n';
- return {source,output,changed:output!==source,edits:changes,count:changes.length+(output!==result.join('\n')?1:0)};
+ let output=result.join(eol);
+ if(config.collapseBlanks===true)output=output.replace(/(?:\r?\n){4,}/g,eol+eol+eol);
+ if(config.finalNewline!==false&&output&&!output.endsWith(eol))output+=eol;
+ return {source,output,changed:output!==source,edits:changes,count:changes.length+(output!==result.join(eol)?1:0)};
 }
 function writerV6LintExcluded(path,setting){
  const p=String(path||'');
@@ -5786,6 +5879,9 @@ class WriterV6Linter{
    ['trimTrailing','Remover espaços ao fim da linha','Remove trailing whitespace'],
    ['headingSpace','Espaço depois de títulos #','Space after heading #'],
    ['listSpace','Espaço depois de marcadores de lista','Space after list markers'],
+   ['footnoteSpace','Espaço após definição de nota de rodapé','Space after footnote definitions'],
+   ['quoteSpace','Espaço depois de > em citações','Space after blockquote >'],
+   ['yamlSpacing','Espaço após chaves YAML','Space after YAML keys'],
    ['collapseBlanks','Reduzir linhas em branco excessivas','Collapse excessive blank lines'],
    ['finalNewline','Nova linha ao fim do arquivo','Final newline']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{cfg[key]=v;await this.plugin.saveSettings();}));

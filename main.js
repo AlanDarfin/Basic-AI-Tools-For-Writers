@@ -4438,7 +4438,6 @@ class WriterEasyTyping{
  }
 }
 
-
 // v3 module: src/v5/smart-typography.js
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={

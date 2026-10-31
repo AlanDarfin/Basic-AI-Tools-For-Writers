@@ -11,12 +11,16 @@ function writerV6ProjectPreferences(plugin,indexPath){
 }
 function writerV6ProjectContext(plugin,path){
  if(!plugin?.app||typeof path!=='string'||!path)return null;
+ const cache=plugin._writerV6ProjectPaths||(plugin._writerV6ProjectPaths=new Map());
+ const cacheKey=String(plugin.settings.lastLongformProject||'')+'|'+path;
+ if(cache.has(cacheKey))return cache.get(cacheKey);
  const indexes=plugin.app.vault.getMarkdownFiles().map(f=>longformIndex(f,plugin.app)).filter(Boolean);
  const selected=plugin.settings.lastLongformProject;
  // Prefer a genuine scene match over merely being inside an index folder.
  const matched=writerBookNavFindProject(plugin.app,path,selected);
  if(matched){
-  return {indexPath:matched.index.file.path,prefs:writerV6ProjectPreferences(plugin,matched.index.file.path)};
+  const context={indexPath:matched.index.file.path,prefs:writerV6ProjectPreferences(plugin,matched.index.file.path)};
+  cache.set(cacheKey,context);return context;
  }
  const possible=indexes.map(index=>{
   const base=index.file.parent?.path||'',folder=String(index.meta?.sceneFolder||'').replace(/^\/+|\/+$/g,'');
@@ -24,7 +28,8 @@ function writerV6ProjectContext(plugin,path){
   if(!root||!(path.startsWith(root+'/')||path===index.file.path))return null;
   return {indexPath:index.file.path,size:root.length,prefs:writerV6ProjectPreferences(plugin,index.file.path)};
  }).filter(Boolean).sort((a,b)=>b.size-a.size);
- return possible.find(item=>item.indexPath===selected)||possible[0]||null;
+ const context=possible.find(item=>item.indexPath===selected)||possible[0]||null;
+ cache.set(cacheKey,context);return context;
 }
 function writerV6ProjectToolAllowed(plugin,key,path){
  if(!writerModuleOn(plugin,key))return false;
@@ -58,6 +63,7 @@ function writerV6ProjectPreferencesRender(view,panel,project){
     .setValue(['on','off'].includes(cfg[key])?cfg[key]:'inherit').onChange(async value=>{
      cfg[key]=value;
      await view.plugin.saveSettings();
+     view.plugin._writerV6ProjectPaths?.clear();
      view.plugin.writerBookNavigation?.refreshAutomatic?.();
      writerV6Refresh(view.plugin);
     }));
@@ -71,7 +77,7 @@ function writerV6ProjectPreferencesRender(view,panel,project){
    d.addOption('inherit',writerUi('Herdar','Inherit')).addOption('off',writerUi('Desativar aqui','Disable here'))
     .setValue(cfg.tools[key]==='off'?'off':'inherit').onChange(async value=>{
      if(value==='off')cfg.tools[key]='off';else delete cfg.tools[key];
-     await view.plugin.saveSettings();writerV6Refresh(view.plugin);
+     await view.plugin.saveSettings();view.plugin._writerV6ProjectPaths?.clear();writerV6Refresh(view.plugin);
     }));
  }
  const editorial=root.createDiv({cls:'writer-v6-settings-section'});
@@ -81,7 +87,7 @@ function writerV6ProjectPreferencesRender(view,panel,project){
  new Setting(editorial).setName(writerUi('Orientações do projeto','Project guidelines')).addTextArea(t=>{
   t.inputEl.rows=3;t.setValue(profile).onChange(v=>profile=v.slice(0,3000));
  }).addButton(b=>b.setButtonText(writerUi('Salvar','Save')).onClick(async()=>{
-  cfg.reviewProfile=profile;await view.plugin.saveSettings();
+  cfg.reviewProfile=profile;await view.plugin.saveSettings();view.plugin._writerV6ProjectPaths?.clear();
   new Notice(writerUi('Preferências salvas.','Preferences saved.'));
  }));
  const presets=root.createDiv({cls:'writer-v6-settings-section'});

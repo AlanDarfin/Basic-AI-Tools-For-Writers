@@ -1,4 +1,4 @@
-# Publish 4.3.0 after checks on the exact version tag.
+# Publish 4.3.0 with release metadata validation and full regression checks.
 name: Publish Basic AI Tool for Writers 4.3.0
 on:
   push:

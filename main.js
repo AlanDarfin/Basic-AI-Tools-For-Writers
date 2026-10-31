@@ -6107,7 +6107,7 @@ class WriterBookNavigation{
  get cfg(){return this.plugin.settings.bookNavigation;}
  register(){
   const plugin=this.plugin;
-  plugin.registerMarkdownCodeBlockProcessor('longform-nav',(_source,el,ctx)=>{
+  plugin.registerMarkdownCodeBlockProcessor?.('longform-nav',(_source,el,ctx)=>{
    if(this.cfg.enabled!==true||!writerModuleOn(plugin,'bookNavigation'))return;
    const rendered=writerBookNavRender(el,plugin.app,ctx.sourcePath,{...this.cfg,projectPath:plugin.settings.lastLongformProject});
    if(!rendered)el.createEl('span',{cls:'writer-v6-booknav-empty',text:writerUi('Esta nota não pertence à ordem de cenas de um projeto Longform.','This note is not in a Longform project scene order.')});

@@ -1765,3 +1765,32 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 .writer-v6-block-spoiler>summary{cursor:pointer;color:var(--text-muted);font-weight:600}
 .writer-v6-block-spoiler:not([open]){min-height:35px}
 .cm-line.writer-v6-spoiler-marker{color:var(--text-accent)}
+
+
+/* V6 beta 2 — BookNav-inspired Longform chapter/subchapter navigation, without upstream CSS. */
+.writer-v6-booknav{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+ border-top:1px dashed var(--background-modifier-border);
+ padding-top:12px;margin:16px 0 12px;min-width:0;
+}
+.writer-v6-booknav-item{
+ display:flex;align-items:center;gap:10px;min-width:0;
+ padding:10px 12px;min-height:58px;text-align:start;
+ background:var(--background-secondary);color:var(--text-normal);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);cursor:pointer;
+}
+.writer-v6-booknav-item:hover{background:var(--background-modifier-hover);border-color:var(--interactive-accent)}
+.writer-v6-booknav-item:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:2px}
+.writer-v6-booknav-next{flex-direction:row-reverse;text-align:end}
+.writer-v6-booknav-arrow{font-size:1.7em;color:var(--text-accent);flex:none;line-height:1}
+.writer-v6-booknav-text{display:flex;flex-direction:column;min-width:0;gap:3px;flex:1}
+.writer-v6-booknav-label{color:var(--text-muted);font-size:var(--font-ui-smaller)}
+.writer-v6-booknav-title{font-size:var(--font-ui-small);font-weight:600;overflow-wrap:anywhere;line-height:1.35}
+.writer-v6-booknav-sub{border-style:dashed}
+.writer-v6-booknav-empty{font-size:var(--font-ui-smaller);color:var(--text-muted)}
+@media(max-width:420px){
+ .writer-v6-booknav{grid-template-columns:1fr;gap:6px}
+ .writer-v6-booknav-item{min-height:48px;padding:8px 10px}
+}
+@media(prefers-reduced-motion:reduce){.writer-v6-booknav-item{transition:none}}

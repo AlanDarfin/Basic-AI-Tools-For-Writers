@@ -1330,19 +1330,6 @@ select:not([multiple]){
 .writer-v4-comment-card small{display:block;color:var(--text-muted)}
 .writer-v4-comment-card.is-resolved{opacity:.6}
 .writer-v4-comment-filter{display:flex;align-items:center;gap:10px;margin:8px 0}
-.writer-v4-floating-toolbar{
- position:absolute;z-index:50;display:none;align-items:center;gap:3px;
- border:1px solid var(--background-modifier-border);
- border-radius:var(--radius-m);background:var(--background-primary);
- box-shadow:var(--shadow-s);padding:4px;max-width:calc(100% - 8px);
-}
-.writer-v4-floating-toolbar.is-visible{display:flex}
-.writer-v4-floating-toolbar button{
- min-width:30px;min-height:30px;border:0;box-shadow:none;
- border-radius:var(--radius-s);background:transparent;
- color:var(--text-normal);font-size:var(--font-ui-small);padding:4px 6px;
-}
-.writer-v4-floating-toolbar button:hover{background:var(--background-modifier-hover)}
 .writer-v4-mention-hint{display:block;color:var(--text-muted);font-size:var(--font-ui-smaller);overflow-wrap:anywhere}
 .writer-v4-wordwise-action{
  display:block;width:100%;min-height:38px;margin:6px 0;padding:8px 12px;
@@ -1359,8 +1346,6 @@ body.writer-v4-typewriter .cm-editor .cm-line.writer-v4-typewriter-current-line{
 }
 body.writer-v4-typewriter .cm-editor .cm-scroller{scroll-padding-block:40vh}
 @media(max-width:520px){
- .writer-v4-floating-toolbar{gap:1px;max-width:96%;overflow-x:auto}
- .writer-v4-floating-toolbar button{min-width:32px;min-height:34px}
  .writer-project-scene-actions .writer-project-drag-handle{flex-basis:40px}
 }
 
@@ -1428,7 +1413,7 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
  }
 }
 
-/* v4 beta.3 — mobile selection editing toolbar and TTS capability status. */
+/* TTS capability status. */
 .writer-tts-system-diagnostic{
  margin:8px 0;padding:8px 10px;
  border-left:3px solid var(--interactive-accent);
@@ -1436,32 +1421,6 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
  color:var(--text-muted);font-size:var(--font-ui-smaller);
  overflow-wrap:anywhere;line-height:1.45;
 }
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
- position:fixed;
- inset-block-start:auto;top:auto;
- inset-inline-start:12px;left:12px;
- inset-inline-end:12px;right:12px;
- bottom:calc(62px + env(safe-area-inset-bottom,0px));
- z-index:calc(var(--layer-modal,100) - 1);
- max-width:calc(100vw - 24px);width:max-content;
- min-width:0;justify-content:center;
- overflow-x:auto;overflow-y:hidden;
- overscroll-behavior-inline:contain;
- padding:5px;box-shadow:var(--shadow-l);
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile button{
- flex:0 0 auto;min-width:36px;min-height:38px;
- padding:7px 8px;touch-action:manipulation;
- font-size:var(--font-ui-small);
-}
-@media(max-width:370px){
- .writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
-  left:7px;right:7px;
-  max-width:calc(100vw - 14px);
-  justify-content:flex-start;
- }
-}
-
 /* v4 beta.4 — hierarchy indication inside compact Longform scene rows.
    Only the title is indented, so controls/grip remain consistently aligned. */
 .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
@@ -1498,29 +1457,6 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 @media(max-width:380px){
  .writer-project-scene-depth-mark{margin-inline-end:4px;min-width:18px;font-size:var(--font-smallest)}
 }
-/* Mobile toolbar in native mode must not add a second floating row. */
-body.is-mobile .writer-v4-floating-toolbar:not(.writer-v4-toolbar-mobile){display:none}
-
-/* Native-toolbar command dialog for Android/desktop: no overlapping context menus. */
-.writer-v4-editor-command-grid{
- display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
- gap:8px;margin:12px 0;min-width:0;
-}
-.writer-v4-editor-command-grid button{
- box-sizing:border-box;min-width:0;min-height:42px;
- white-space:normal;overflow-wrap:anywhere;
- text-align:center;padding:8px 12px;
- background:var(--background-secondary);
- border:1px solid var(--background-modifier-border);
- border-radius:var(--radius-m);
-}
-.writer-v4-editor-command-grid button:hover{
- background:var(--background-modifier-hover);
-}
-@media(max-width:360px){
- .writer-v4-editor-command-grid{grid-template-columns:1fr}
-}
-
 /* v4 beta.5 — compact settings switches without wasted vertical space. */
 @media(max-width:800px){
  :is(.dictionary-settings-panel,.writer-tools-v3-panel,.writer-project-root)
@@ -1566,56 +1502,6 @@ body.is-mobile .writer-v4-floating-toolbar:not(.writer-v4-toolbar-mobile){displa
   min-width:0;resize:vertical;
  }
 }
-/* Selection toolbar: one unobtrusive floating pill, no permanent keyboard row. */
-.writer-v4-floating-toolbar .writer-v4-mobile-actions{display:none}
-.writer-v4-floating-toolbar .writer-v4-format-actions{
- display:flex;align-items:center;gap:4px;
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile{
- position:fixed;
- bottom:auto;right:auto;
- inset-block-end:auto;inset-inline-end:auto;
- width:max-content;min-width:0;
- max-width:min(88vw,315px);
- padding:5px;gap:4px;
- display:none;flex-direction:column;align-items:stretch;
- overflow:visible;overscroll-behavior:contain;
- border:1px solid var(--background-modifier-border);
- background:var(--background-primary);
- border-radius:12px;
- box-shadow:var(--shadow-l);
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile.is-visible{display:flex}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions{
- display:flex;align-items:center;justify-content:flex-start;
- gap:4px;min-width:0;white-space:nowrap;
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions>button{
- box-sizing:border-box;display:inline-flex;
- min-height:34px;height:34px;min-width:0;
- width:auto;flex:0 0 auto;
- padding:6px 10px;font-size:var(--font-ui-smaller);
- background:var(--background-secondary);
- border-radius:8px;line-height:1.2;
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-mobile-actions .writer-v4-toolbar-close{
- padding-inline:9px;color:var(--text-muted);
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-format-actions{
- display:none;max-width:100%;
- padding-top:5px;border-top:1px solid var(--background-modifier-border);
- gap:3px;overflow-x:auto;overflow-y:hidden;
- white-space:nowrap;scrollbar-width:thin;
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile.writer-v4-expanded .writer-v4-format-actions{
- display:flex;
-}
-.writer-v4-floating-toolbar.writer-v4-toolbar-mobile .writer-v4-format-actions button{
- width:auto;min-width:32px;height:34px;
- min-height:34px;padding:6px 8px;flex:0 0 auto;
- font-size:var(--font-ui-smaller);
-}
-
 /* v4 RC — clean module management, diagnostics and narrow-screen settings. */
 .dictionary-settings-panel .writer-diagnostics{
  display:flex;flex-direction:column;min-width:0;

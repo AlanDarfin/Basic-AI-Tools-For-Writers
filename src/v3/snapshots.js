@@ -100,7 +100,7 @@ class WriterSnapshots{
   return refs;
  }
  async create(file,name=writerUi('Versão manual','Manual version'),options={}){
-  if(!this.config.enabled)throw Error('Snapshots desativados.');
+  if(!this.config.enabled)throw Error(writerUi('Snapshots desativados.','Snapshots are disabled.'));
   if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi('Selecione uma nota Markdown.','Select a Markdown note.'));
   const text=options.content??await writerCurrentText(this.plugin,file);
   const folder=this.folder(file);await this.mkdir(folder);
@@ -201,15 +201,15 @@ class WriterSnapshots{
    for(const entry of snapshots.slice(0,250)){
     const card=list.createDiv({cls:'writer-history-entry'});
     card.createEl('strong',{text:entry.name});
-    card.createEl('small',{text:new Date(entry.at).toLocaleString()+' · '+entry.size+' caracteres · '+(entry.attachments?.length||0)+' anexo(s)'});
+    card.createEl('small',{text:new Date(entry.at).toLocaleString()+' · '+entry.size+writerUi(' caracteres · ',' characters · ')+(entry.attachments?.length||0)+writerUi(' anexo(s)',' attachment(s)')});
     const actions=card.createDiv({cls:'writer-history-actions'});
-    actions.createEl('button',{text:'Comparar'}).addEventListener('click',()=>this.showDiff(file,entry));
+    actions.createEl('button',{text:writerUi('Comparar','Compare')}).addEventListener('click',()=>this.showDiff(file,entry));
     actions.createEl('button',{text:writerUi('Restaurar','Restore')}).addEventListener('click',()=>{
      const confirm=new Modal(this.plugin.app);let withAttachments=false;
      confirm.onOpen=()=>{confirm.setTitle(writerUi("Restaurar versão","Restore version"));
       confirm.contentEl.createEl('p',{text:writerUi('Restaurar ','Restore ')+entry.name+writerUi('? O estado atual será salvo automaticamente antes da restauração.','? The current state will be saved automatically before restoring.')});
-      if(entry.attachments?.length)new Setting(confirm.contentEl).setName('Restaurar somente anexos ausentes').setDesc(writerUi("Anexos existentes jamais serão sobrescritos.","Existing attachments will never be overwritten.")).addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
-      new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
+      if(entry.attachments?.length)new Setting(confirm.contentEl).setName(writerUi('Restaurar somente anexos ausentes','Restore missing attachments only')).setDesc(writerUi("Anexos existentes jamais serão sobrescritos.","Existing attachments will never be overwritten.")).addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
+      new Setting(confirm.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>confirm.close()))
        .addButton(b=>b.setButtonText(writerUi('Restaurar','Restore')).setWarning().onClick(async()=>{
         try{await this.restore(file,entry,withAttachments);confirm.close();await render();new Notice(writerUi("Nota restaurada.","Note restored."));}
         catch(e){new Notice(e.message);}
@@ -220,7 +220,7 @@ class WriterSnapshots{
      const confirm=new Modal(this.plugin.app);
      confirm.onOpen=()=>{confirm.setTitle(writerUi("Excluir versão","Delete version"));
       confirm.contentEl.createEl('p',{text:writerUi("Excluir permanentemente esta versão? A operação não poderá ser desfeita.","Permanently delete this version? This cannot be undone.")});
-      new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
+      new Setting(confirm.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>confirm.close()))
        .addButton(b=>b.setButtonText(writerUi("Excluir","Delete")).setWarning().onClick(async()=>{await this.delete(file,entry);confirm.close();await render();}));
      };confirm.open();
     });
@@ -232,8 +232,8 @@ class WriterSnapshots{
   const [oldText,current]=await Promise.all([this.read(file,entry),writerCurrentText(this.plugin,file)]);
   const diff=writerDiffLines(oldText,current);
   const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
-   modal.setTitle('Comparar · '+entry.name);
-   modal.contentEl.createEl('p',{text:diff.added+' linha(s) adicionada(s) · '+diff.removed+' removida(s)'});
+   modal.setTitle(writerUi('Comparar · ','Compare · ')+entry.name);
+   modal.contentEl.createEl('p',{text:diff.added+writerUi(' linha(s) adicionada(s) · ',' added line(s) · ')+diff.removed+writerUi(' removida(s)',' removed')});
    const box=modal.contentEl.createDiv({cls:'writer-history-diff'});
    if(diff.truncated){
     box.createEl('p',{text:writerUi("Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.","Note too long for line-by-line diff. Side-by-side comparison is available.")});

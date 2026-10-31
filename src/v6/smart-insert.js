@@ -124,8 +124,7 @@ class WriterV6SmartInsert{
     else this[id](editor);
    }));
   }
-  menu.showAtMouseEvent?.(this.plugin.app.workspace.getActiveViewOfType?.(MarkdownView)?.containerEl?.ownerDocument?.defaultView?.event);
-  if(!menu.showAtMouseEvent||!this.plugin.app.workspace.getActiveViewOfType?.(MarkdownView)?.containerEl?.ownerDocument?.defaultView?.event)menu.showAtPosition({x:90,y:130});
+  menu.showAtPosition({x:90,y:130});
  }
  renderSettings(panel){
   const root=panel.createDiv({cls:'writer-v6-settings-clean'});

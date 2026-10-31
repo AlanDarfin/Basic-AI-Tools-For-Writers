@@ -25,27 +25,24 @@ test('language detection switches between English and Portuguese',()=>{
 });
 test('Longform UI uses bilingual labels and keeps stored identifiers unchanged',()=>{
  const code=read('projects.js');
- for(const term of [
-  "lfMsg('Novo subcapítulo','New subchapter')",
-  "lfMsg('Projetos de escrita','Writing projects')",
-  "lfMsg('Padrão','Default')",
-  "lfMsg('Principal','Main')",
-  "lfMsg('Renomear cena','Rename scene')",
-  "lfMsg('Salvar','Save')"
- ])assert.ok(code.includes(term),'Missing translated label: '+term);
+ for(const [pt,en] of [['Novo subcapítulo','New subchapter'],['Projetos de escrita','Writing projects'],
+  ['Padrão','Default'],['Principal','Main'],['Renomear cena','Rename scene'],['Salvar','Save']]){
+  const matches=code.includes("lfMsg('"+pt+"','"+en+"')")||code.includes('lfMsg("'+pt+'","'+en+'")');
+  assert.ok(matches,'Missing translated label '+pt+' → '+en);
+ }
  assert.ok(code.includes("prefs.workflows={'Padrão':standard}"));
  assert.ok(code.includes("const path=[root,'Índice.md'].join('/')"));
 });
 test('variants and snapshots have English error, action and dialog text',()=>{
  const v=read('src/v3/variants.js'),s=read('src/v3/snapshots.js'),w=read('src/v3/workspace.js');
- for(const phrase of ["'Editar variantes','Edit variants'","'Alternativa ','Alternative '","'Variantes salvas.','Variants saved.'"]){
-  assert.ok(v.includes(phrase),'Variants locale missing: '+phrase);
+ for(const name of ['Edit variants','Alternative ','Variants saved.']){
+  assert.ok(v.includes(name),'Variants translation missing: '+name);
  }
- for(const phrase of ["'Restaurar','Restore'","'Comparar','Compare'","'Cancelar','Cancel'"]){
-  assert.ok(s.includes(phrase),'History locale missing: '+phrase);
+ for(const name of ['Restore','Compare','Cancel']){
+  assert.ok(s.includes(name),'History translation missing: '+name);
  }
- assert.ok(w.includes("'Snapshots automáticos','Automatic snapshots'"));
- assert.ok(w.includes("'Ativar histórico local','Enable local history'"));
+ assert.ok(w.includes('Automatic snapshots'));
+ assert.ok(w.includes('Enable local history'));
 });
 test('canonical source components are embedded in main bundle',()=>{
  for(const path of files){

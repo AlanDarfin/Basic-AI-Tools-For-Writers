@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-> **Em desenvolvimento — v5:** navegação por teclado inspirada no Keyshots e sintaxes Extended/Pandoc, ainda **sem release publicada**. Veja [recursos, limites e etapas da v5](V5-DEVELOPMENT.md). — Português (Brasil)
+> **Em desenvolvimento — v5:** navegação Keyshots, sintaxes Extended/Pandoc, recursos do **Easy Typing** e **Smart Typography**. A v5 ainda **não foi publicada**. Consulte o [guia da v5](V5-DEVELOPMENT.md).
 
 **Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
 

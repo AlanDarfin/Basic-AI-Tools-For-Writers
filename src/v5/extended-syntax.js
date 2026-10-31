@@ -1,6 +1,13 @@
 'use strict';
 /* Basic AI v5: original extended Markdown implementation. */
 const WRITER_EXTENDED_DEFAULTS={enabled:true,underline:true,spoiler:true,superscript:true,subscript:true,coloredHighlight:true,customSpan:true,fencedDivs:true,livePreview:true};
+function writerV5RefreshEditors(plugin){
+ try{
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
+   leaf.view?.editor?.cm?.dispatch?.({});
+  }
+ }catch(error){console.warn('[Basic AI] syntax refresh:',error);}
+}
 function writerExtendedMerge(settings){
  const old=settings.extendedSyntax;
  settings.extendedSyntax={...WRITER_EXTENDED_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
@@ -121,7 +128,7 @@ function writerExtendedLiveDecorations(view,cfg){
  return ranges.length?Decoration.set(ranges.sort((a,b)=>a.from-b.from||a.to-b.to),true):Decoration.none;
 }
 class WriterExtendedSyntax{
- constructor(plugin){this.plugin=plugin;}
+ constructor(plugin){this.plugin=plugin;this.revision=0;}
  get cfg(){return this.plugin.settings.extendedSyntax;}
  active(){return writerModuleOn(this.plugin,'extendedSyntax')&&this.cfg.enabled;}
  register(){
@@ -150,6 +157,6 @@ class WriterExtendedSyntax{
    ['customSpan','Span !!{classe}texto!!','Custom span !!{class}text!!'],
    ['fencedDivs','Blocos ::: classe (fechamento :::)','Fenced div ::: class (closing :::)'],
    ['livePreview','Estilizar no Live Preview','Style in Live Preview']
-  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();this.revision++;writerV5RefreshEditors(this.plugin);}));
  }
 }

@@ -19,6 +19,8 @@ jobs:
         run: npm run check
       - name: Obsidian community CSS audit
         run: node --test tests/css-community-lint.test.cjs
+      - name: Explicit Longform hierarchy and Android cursor regression
+        run: node tests/v6-beta2-navigation.test.js
       - name: Validate beta metadata and required tool families
         shell: bash
         run: |

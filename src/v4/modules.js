@@ -23,7 +23,13 @@ const WRITER_MODULES=[
  ['extendedSyntax','Extended Syntax','Extended Syntax','Formatação Markdown com delimitadores estendidos.','Extra Markdown delimiters and rendering.'],
  ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.'],
  ['easyTyping','Easy Typing','Easy Typing','Digitação e edição rápida, colagem e Backspace inteligentes.','Typing helpers, smart paste and Backspace.'],
- ['smartTypography','Smart Typography','Smart Typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.']
+ ['smartTypography','Smart Typography','Smart Typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.'],
+ ['ruby','Ruby','Ruby','Anotações de pronúncia sobre texto Markdown.','Pronunciation annotations above Markdown text.'],
+ ['timestamps','Datas Discord','Discord timestamps','Exibição localizada de marcadores de tempo.','Localized timestamp markup rendering.'],
+ ['ratings','Avaliações interativas','Interactive ratings','Símbolos editáveis no Live Preview.','Interactive symbols in Live Preview.'],
+ ['discordSyntax','Subtexto Discord','Discord subtext','Subtexto -# e extensão de spoilers.','-# subtext and extended spoilers.'],
+ ['linter','Linter','Linter','Prévia e formatação manual com cópia de recuperação.','Previewed manual formatting with recovery copy.'],
+ ['readingTime','Tempo de leitura','Reading time','Estimativa de leitura da nota e seleção.','Reading estimates for notes and selections.']
 ];
 const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
 function writerMergeModules(settings){

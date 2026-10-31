@@ -7,11 +7,31 @@ function writerBookNavMerge(settings){
  return settings.bookNavigation;
 }
 function writerBookNavFindSceneFile(index,entry,app){
- const parent=index.file.parent?.path||'',sceneFolder=String(index.meta.sceneFolder||'').replace(/^\/|\/$/g,'');
+ const parent=index.file.parent?.path||'';
+ const folder=String(index.meta?.sceneFolder||'/').replace(/^\/+|\/+$/g,'');
  const title=String(entry?.title||'').trim();
  if(!title)return null;
- const candidates=[lfPath(parent,sceneFolder,title+'.md'),lfPath(parent,sceneFolder,title),lfPath(parent,title+'.md'),lfPath(parent,title)];
- return candidates.map(p=>app.vault.getAbstractFileByPath(p)).find(x=>x instanceof TFile&&x.extension==='md')||null;
+ const names=[entry?.path,entry?.file,title].filter(x=>typeof x==='string'&&x.trim());
+ const candidatePaths=[];
+ for(const name of names){
+  const base=name.replace(/\\/g,'/').replace(/\.md$/i,'');
+  for(const prefix of [[parent,folder],[parent],[]]){
+   candidatePaths.push(lfPath(...prefix,base+'.md'));
+   candidatePaths.push(lfPath(...prefix,base));
+  }
+ }
+ for(const path of new Set(candidatePaths)){
+  const found=app.vault.getAbstractFileByPath(path);
+  if(found instanceof TFile&&found.extension==='md')return found;
+ }
+ // A Longform scene can live in a nested folder. Search *inside this project*
+ // only, and only when the basename is unambiguous, never across other books.
+ const projectRoot=parent?parent+'/':'';
+ const basename=title.replace(/\.md$/i,'').split('/').pop();
+ const matches=app.vault.getMarkdownFiles().filter(file=>
+  (file.path.startsWith(projectRoot)||!parent)&&file.basename===basename
+ );
+ return matches.length===1?matches[0]:null;
 }
 function writerBookNavFlatten(index,app){
  if(!index||index.format!=='scenes')return [];
@@ -73,6 +93,34 @@ function writerBookNavFindProject(app,sourcePath,selectedIndex){
  if(!matches.length)return null;
  return matches.find(x=>x.index.file.path===selectedIndex)||matches[0];
 }
+async function writerBookNavFindProjectAsync(app,sourcePath,selectedIndex){
+ // Fast path for normal indexed YAML metadata.
+ const direct=writerBookNavFindProject(app,sourcePath,selectedIndex);
+ if(direct)return direct;
+ const sourceFile=app.vault.getAbstractFileByPath(sourcePath);
+ if(!(sourceFile instanceof TFile)||sourceFile.extension!=='md')return null;
+ const indexes=app.vault.getMarkdownFiles().map(file=>longformIndex(file,app)).filter(Boolean);
+ indexes.sort((a,b)=>Number(b.file.path===selectedIndex)-Number(a.file.path===selectedIndex));
+ const matches=[];
+ for(const index of indexes){
+  // Obsidian's metadata cache may contain the Longform header but omit or
+  // temporarily lag behind its nested scenes. The Projects sidebar already
+  // handles this by reading the original YAML, so navigation does too.
+  let actual=index;
+  try{
+   const text=await app.vault.cachedRead(index.file);
+   const front=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
+   const parsed=front?parseYaml(front[1]):null;
+   if(parsed?.longform&&typeof parsed.longform==='object'&&Array.isArray(parsed.longform.scenes)){
+    actual={...index,meta:{...index.meta,...parsed.longform},scenes:parsed.longform.scenes};
+   }
+  }catch(error){console.warn('[Basic AI] Longform index fallback:',error);}
+  const items=writerBookNavFlatten(actual,app);
+  if(items.some(item=>item.path===sourcePath))matches.push({index:actual,items});
+ }
+ if(!matches.length)return null;
+ return matches.find(match=>match.index.file.path===selectedIndex)||matches[0];
+}
 function writerBookNavButtons(targets,options){
  const out=[];
  if(options.showMain!==false){
@@ -85,8 +133,8 @@ function writerBookNavButtons(targets,options){
  }
  return out;
 }
-function writerBookNavRender(container,app,sourcePath,options){
- const match=writerBookNavFindProject(app,sourcePath,options?.projectPath);
+function writerBookNavRender(container,app,sourcePath,options,resolvedMatch){
+ const match=resolvedMatch||writerBookNavFindProject(app,sourcePath,options?.projectPath);
  if(!match)return false;
  const targets=writerBookNavTargets(match.items,sourcePath);
  if(!targets)return false;
@@ -117,19 +165,24 @@ class WriterBookNavigation{
  get cfg(){return this.plugin.settings.bookNavigation;}
  register(){
   const plugin=this.plugin;
-  plugin.registerMarkdownCodeBlockProcessor?.('longform-nav',(_source,el,ctx)=>{
+  plugin.registerMarkdownCodeBlockProcessor?.('longform-nav',async (_source,el,ctx)=>{
    if(this.cfg.enabled!==true||!writerModuleOn(plugin,'bookNavigation'))return;
-   const rendered=writerBookNavRender(el,plugin.app,ctx.sourcePath,{...this.cfg,projectPath:plugin.settings.lastLongformProject});
-   if(!rendered)el.createEl('span',{cls:'writer-v6-booknav-empty',text:writerUi('Esta nota não pertence à ordem de cenas de um projeto Longform.','This note is not in a Longform project scene order.')});
+   const options={...this.cfg,projectPath:plugin.settings.lastLongformProject};
+   const match=await writerBookNavFindProjectAsync(plugin.app,ctx.sourcePath,options.projectPath);
+   if(!el.isConnected)return;
+   const rendered=writerBookNavRender(el,plugin.app,ctx.sourcePath,options,match);
+   if(!rendered)el.createEl('span',{cls:'writer-v6-booknav-empty',text:writerUi('Nenhum capítulo navegável foi encontrado para esta nota. Verifique o índice e a pasta de cenas do Longform.','No navigable chapters found for this note. Check the Longform index and scenes folder.')});
   });
   plugin.addCommand({id:'v6-insert-longform-navigation',name:writerUi('Longform: inserir navegação entre capítulos','Longform: insert chapter navigation'),editorCallback:editor=>{
    editor.replaceSelection('\n'+'~~~longform-nav'+'\n'+'~~~'+'\n');
   }});
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Navegação entre capítulos Longform','Longform chapter navigation')});
-  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Use o bloco de código longform-nav para exibir botões de capítulos e subcapítulos conforme a ordem do índice Longform. Não reorganiza seus arquivos.','Insert a longform-nav code block to show chapter and subchapter buttons based on the Longform index order. No files are rearranged.')});
-  for(const [key,pt,en] of [['enabled','Ativar navegação Longform','Enable Longform navigation'],['showMain','Exibir capítulos principais','Show main chapters'],['showSub','Exibir subcapítulos','Show subchapters']])
-   new Setting(panel).setName(writerUi(pt,en)).addToggle(toggle=>toggle.setValue(this.cfg[key]!==false).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  const root=panel.createDiv({cls:'writer-v6-settings-clean'});
+  const section=root.createDiv({cls:'writer-v6-settings-section'});
+  section.createEl('h3',{text:writerUi('Navegação Longform','Longform navigation')});
+  section.createEl('p',{cls:'dictionary-muted',text:writerUi('Use ~~~longform-nav. A navegação acompanha a ordem real dos capítulos e subcapítulos do índice, inclusive em projetos cuja lista só apareça após carregar o YAML.','Insert ~~~longform-nav. Navigation follows the actual chapter and subchapter order, including projects whose scene list requires loading the YAML.')});
+  for(const [key,pt,en] of [['enabled','Ativar navegação','Enable navigation'],['showMain','Exibir capítulos principais','Show main chapters'],['showSub','Exibir subcapítulos','Show subchapters']])
+   new Setting(section).setName(writerUi(pt,en)).addToggle(toggle=>toggle.setValue(this.cfg[key]!==false).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
  }
 }

@@ -62,7 +62,7 @@ class WriterComplements extends EditorSuggest{
      const label=parts[0].replace(/^[-*]\s+/,'').replace(/^\*\*|\*\*$/g,'').trim();
      if(!label||label.length>100||/[:{}\[\]]/.test(label))continue;
      const insert=(parts[1]||label).trim();
-     this.dictionaries.set(this.options.caseSensitive?label:label.toLocaleLowerCase(),{word:label,insert,source:'Dicionário',count:7});
+     this.dictionaries.set(this.options.caseSensitive?label:label.toLocaleLowerCase(),{word:label,insert,source:writerUi('Dicionário','Dictionary'),count:7});
     }
    }catch(e){console.warn('[Basic AI] dictionary:',path,e.message);}
   }
@@ -83,7 +83,7 @@ class WriterComplements extends EditorSuggest{
   };
   if(this.options.currentFile&&context.editor){
    const current=this.tokenize(writerMaskMarkdown(context.editor.getValue()));
-   for(const item of current.values())add(item.word,item.word,55+Math.min(35,item.count),'Nota atual');
+   for(const item of current.values())add(item.word,item.word,55+Math.min(35,item.count),writerUi('Nota atual','Current note'));
   }
   if(this.options.vault)for(const [path,terms] of this.cache){
    if(path===context.file?.path)continue;

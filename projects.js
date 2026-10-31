@@ -400,7 +400,7 @@ class ProjectsView extends ItemView{
   if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use + Cena.','No scenes yet. Use + Scene.')});
  }
  async createLinkedDraft(project){
-  new TextPrompt(this.app,'Nome do novo rascunho Longform',async raw=>{
+  new TextPrompt(this.app,lfMsg('Nome do novo rascunho Longform','New Longform draft name'),async raw=>{
    const name=clean(raw);if(!name)return;
    const root=[project.file.parent?.path,'Rascunhos',name].filter(Boolean).join('/');
    const path=[root,'Índice.md'].join('/');
@@ -707,7 +707,7 @@ class ProjectsView extends ItemView{
    actions.createEl('button',{text:lfMsg('+ Pasta','+ Folder')}).addEventListener('click',()=>this.promptNotesFolder(f.path));
    if(level>0){
     actions.createEl('button',{text:lfMsg("Renomear","Rename")}).addEventListener('click',()=>this.renameProjectItem(f));
-    actions.createEl('button',{text:'Lixeira'}).addEventListener('click',()=>this.trashProjectItem(f));
+    actions.createEl('button',{text:lfMsg('Lixeira','Trash')}).addEventListener('click',()=>this.trashProjectItem(f));
    }
    for(const item of [...f.children].sort((x,y)=>x.name.localeCompare(y.name,'pt-BR'))){
     if(item instanceof TFolder)viewFolder(item,block,level+1);
@@ -750,7 +750,7 @@ class ProjectsView extends ItemView{
   }).open();
  }
  renameProjectItem(item){
-  new TextPrompt(this.app,'Novo nome',async raw=>{
+  new TextPrompt(this.app,lfMsg('Novo nome','New name'),async raw=>{
    const name=clean(raw);if(!name)return;
    const path=[item.parent?.path,name+(item instanceof TFile?'.'+item.extension:'')].filter(Boolean).join('/');
    if(path===item.path)return;
@@ -770,7 +770,7 @@ class ProjectsView extends ItemView{
    const walk=f=>{folders.push(f);for(const c of f.children)if(c instanceof TFolder)walk(c);};
    walk(root);
    let chosen=folders[0].path;
-   new Setting(modal.contentEl).setName('Destino').addDropdown(d=>{
+   new Setting(modal.contentEl).setName(lfMsg('Destino','Destination')).addDropdown(d=>{
     for(const f of folders)d.addOption(f.path,f.path.replace(root.path,lfMsg("Notas","Notes"))||lfMsg("Notas","Notes"));
     d.setValue(file.parent?.path||chosen).onChange(v=>chosen=v);
    });
@@ -793,7 +793,7 @@ class ProjectsView extends ItemView{
   let title='',parent=active?.parent?.path||'',format='scenes';
   modal.onOpen=()=>{
    modal.setTitle(lfMsg("Novo projeto de escrita","New writing project"));
-   new Setting(modal.contentEl).setName('Nome').addText(t=>t.setPlaceholder('Meu livro').onChange(v=>title=v));
+   new Setting(modal.contentEl).setName('Nome').addText(t=>t.setPlaceholder(lfMsg('Meu livro','My book')).onChange(v=>title=v));
    new Setting(modal.contentEl).setName(lfMsg('Pasta no cofre','Vault folder')).setDesc(lfMsg('Caminho relativo ao cofre','Path relative to the vault')).addText(t=>t.setValue(parent).onChange(v=>parent=v));
    new Setting(modal.contentEl).setName(lfMsg('Tipo','Type')).addDropdown(d=>d.addOption('scenes',lfMsg('Várias cenas','Multiple scenes')).addOption('single',lfMsg('Nota única','Single note')).onChange(v=>format=v));
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg("Criar projeto","Create project")).setCta().onClick(async()=>{
@@ -853,7 +853,7 @@ class ProjectsView extends ItemView{
   const box=panel.createDiv({cls:'writer-project-session'});
   box.createEl('h4',{text:lfMsg("Sessão de escrita","Writing session")});
   const today=new Date().toDateString(),words=session?.day===today?session.words||0:0;
-  box.createEl('p',{text:words+' palavras registradas hoje'+(prefs.dailyGoal?' / meta '+prefs.dailyGoal:'')});
+  box.createEl('p',{text:words+lfMsg(' palavras registradas hoje',' words recorded today')+(prefs.dailyGoal?' / meta '+prefs.dailyGoal:'')});
   if(prefs.dailyGoal>0){
    const progress=box.createEl('progress');progress.max=prefs.dailyGoal;progress.value=Math.min(words,prefs.dailyGoal);
   }

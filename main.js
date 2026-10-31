@@ -3433,7 +3433,13 @@ const WRITER_MODULES=[
  ['extendedSyntax','Extended Syntax','Extended Syntax','Formatação Markdown com delimitadores estendidos.','Extra Markdown delimiters and rendering.'],
  ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.'],
  ['easyTyping','Easy Typing','Easy Typing','Digitação e edição rápida, colagem e Backspace inteligentes.','Typing helpers, smart paste and Backspace.'],
- ['smartTypography','Smart Typography','Smart Typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.']
+ ['smartTypography','Smart Typography','Smart Typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.'],
+ ['ruby','Ruby','Ruby','Anotações de pronúncia sobre texto Markdown.','Pronunciation annotations above Markdown text.'],
+ ['timestamps','Datas Discord','Discord timestamps','Exibição localizada de marcadores de tempo.','Localized timestamp markup rendering.'],
+ ['ratings','Avaliações interativas','Interactive ratings','Símbolos editáveis no Live Preview.','Interactive symbols in Live Preview.'],
+ ['discordSyntax','Subtexto Discord','Discord subtext','Subtexto -# e extensão de spoilers.','-# subtext and extended spoilers.'],
+ ['linter','Linter','Linter','Prévia e formatação manual com cópia de recuperação.','Previewed manual formatting with recovery copy.'],
+ ['readingTime','Tempo de leitura','Reading time','Estimativa de leitura da nota e seleção.','Reading estimates for notes and selections.']
 ];
 const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
 function writerMergeModules(settings){
@@ -5305,6 +5311,490 @@ function writerProjectMetaRender(view,panel,project){
  show(currentLicense);
 }
 
+// v3 module: src/v6/foundation.js
+/* Basic AI v6 — bounded Markdown scanning shared by all opt-in additions. */
+function writerV6ProtectedRanges(source){
+ const text=String(source||''),ranges=[];let offset=0,fence=null,front=false;
+ for(const line of text.split('\n')){
+  const end=offset+line.length,trim=line.trim();
+  if(offset===0&&trim==='---'){front=true;ranges.push([offset,end]);offset=end+1;continue;}
+  if(front){ranges.push([offset,end]);if(trim==='---')front=false;offset=end+1;continue;}
+  const f=/^ {0,3}(\x60{3,}|~{3,})/.exec(line);
+  if(f){
+   const marker=f[1];if(!fence)fence=[marker[0],marker.length];
+   else if(fence[0]===marker[0]&&marker.length>=fence[1])fence=null;
+   ranges.push([offset,end]);offset=end+1;continue;
+  }
+  if(fence||/^( {4}|\t)/.test(line)){ranges.push([offset,end]);offset=end+1;continue;}
+  const rx=/(\x60+)([^\x60\n]*?)\1|!?\[[^\]\n]{0,512}\]\([^\)\n]{0,1000}\)|<https?:\/\/[^>\n]+>|https?:\/\/[^\s<>()]+/g;
+  for(const match of line.matchAll(rx))ranges.push([offset+match.index,offset+match.index+match[0].length]);
+  offset=end+1;
+ }
+ return ranges;
+}
+function writerV6Overlaps(ranges,from,to){return ranges.some(([a,b])=>from<b&&to>a);}
+function writerV6SafeTextNodes(root){
+ if(!root?.ownerDocument?.createTreeWalker)return [];
+ const walker=root.ownerDocument.createTreeWalker(root,4),nodes=[];
+ while(walker.nextNode()){
+  const n=walker.currentNode;
+  if(!n.nodeValue?.trim())continue;
+  if(n.parentElement?.closest('a,code,pre,kbd,samp,math,svg,script,style,textarea,ruby,.cm-editor,.writer-v6-rendered,.writer-v5-ext,.writer-v5-fenced-div'))continue;
+  nodes.push(n);
+ }
+ return nodes;
+}
+function writerV6Allowed(plugin,key){
+ return plugin.settings.v6?.[key]?.enabled===true&&writerModuleOn(plugin,key);
+}
+const WRITER_V6_DEFAULTS={
+ readingTime:{enabled:false,wpm:230,skipCode:true,skipFrontmatter:true,status:true},
+ timestamps:{enabled:false,locale:'auto',timezone:'local',showRelative:true},
+ ruby:{enabled:false,livePreview:true,lv1Size:50,lv2Size:45},
+ discordSyntax:{enabled:false,subtext:true,blockSpoilers:false},
+ ratings:{enabled:false,symbol:'star',max:5},
+ linter:{enabled:false,trimTrailing:true,finalNewline:true,collapseBlanks:false,headingSpace:true,listSpace:true,manualOnly:true,excluded:''}
+};
+function writerV6Merge(settings){
+ const original=settings.v6&&typeof settings.v6==='object'&&!Array.isArray(settings.v6)?settings.v6:{};
+ const result={};
+ for(const [key,defaults] of Object.entries(WRITER_V6_DEFAULTS)){
+  const old=original[key]&&typeof original[key]==='object'&&!Array.isArray(original[key])?original[key]:{};
+  result[key]={...defaults,...old,enabled:old.enabled===true};
+ }
+ result.readingTime.wpm=Math.max(60,Math.min(900,Number(result.readingTime.wpm)||230));
+ result.ratings.max=Math.max(2,Math.min(10,Math.floor(Number(result.ratings.max)||5)));
+ result.ruby.lv1Size=Math.max(25,Math.min(100,Number(result.ruby.lv1Size)||50));
+ result.ruby.lv2Size=Math.max(25,Math.min(100,Number(result.ruby.lv2Size)||45));
+ result.linter.excluded=String(result.linter.excluded||'').slice(0,3000);
+ settings.v6=result;return result;
+}
+function writerV6Refresh(plugin){try{writerV5RefreshEditors(plugin);}catch(_){}}
+
+// v3 module: src/v6/reading.js
+/* v6: reading-time and Discord timestamp support, without upstream bundled dependencies. */
+function writerV6ReadingCount(source,{skipCode=true,skipFrontmatter=true}={}){
+ let text=String(source||'');
+ if(skipFrontmatter)text=text.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/,'');
+ if(skipCode)text=text.replace(/^\s*(?:\x60{3,}|~{3,})[\s\S]*?^\s*(?:\x60{3,}|~{3,})[^\n]*$/gm,' ').replace(/\x60+[^\x60\n]*\x60+/g,' ');
+ text=text.replace(/!?\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/<[^>]+>/g,' ');
+ return (text.match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)||[]).length;
+}
+function writerV6ReadingEstimate(text,cfg){
+ const words=writerV6ReadingCount(text,cfg),seconds=Math.max(0,Math.round(words*60/(cfg.wpm||230)));
+ return {words,seconds,minutes:Math.ceil(seconds/60)};
+}
+function writerV6TimestampTokens(text){
+ const out=[],rx=/<t:(-?\d{1,12})(?::([tTdDfFR]))?>/g;
+ for(const m of String(text||'').matchAll(rx)){
+  const unix=Number(m[1]);
+  if(!Number.isSafeInteger(unix)||unix<0||unix>253402300799)continue;
+  out.push({from:m.index,to:m.index+m[0].length,epoch:unix,format:m[2]||'f'});
+ }
+ return out;
+}
+function writerV6FormatTimestamp(epoch,format,locale='auto',timezone='local',now=Date.now()){
+ const date=new Date(epoch*1000);
+ if(!Number.isFinite(date.getTime()))return '';
+ const lang=locale==='auto'?undefined:locale;
+ const tz=timezone==='local'?undefined:timezone;
+ const make=options=>{try{return new Intl.DateTimeFormat(lang,{...options,...(tz?{timeZone:tz}:{})}).format(date);}catch(_){return new Intl.DateTimeFormat(lang,options).format(date);}};
+ if(format==='R'){
+  const seconds=Math.round((epoch*1000-now)/1000),abs=Math.abs(seconds);
+  const [unit,divisor]=abs>=86400?['day',86400]:abs>=3600?['hour',3600]:abs>=60?['minute',60]:['second',1];
+  const relative=new Intl.RelativeTimeFormat(lang,{numeric:'auto'});
+  return relative.format(Math.round(seconds/divisor),unit);
+ }
+ const dateStyle=format==='d'||format==='D'||format==='f'||format==='F';
+ if(format==='t')return make({hour:'2-digit',minute:'2-digit'});
+ if(format==='T')return make({hour:'2-digit',minute:'2-digit',second:'2-digit'});
+ if(format==='d')return make({year:'numeric',month:'2-digit',day:'2-digit'});
+ if(format==='D')return make({year:'numeric',month:'long',day:'numeric'});
+ if(format==='F')return make({weekday:'long',month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'});
+ return make({year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+function writerV6TimestampReading(root,cfg){
+ for(const node of writerV6SafeTextNodes(root)){
+  const value=node.nodeValue||'',tokens=writerV6TimestampTokens(value);
+  if(!tokens.length)continue;
+  const doc=node.ownerDocument,fragment=doc.createDocumentFragment();let cursor=0;
+  for(const t of tokens){
+   if(t.from<cursor)continue;
+   fragment.append(doc.createTextNode(value.slice(cursor,t.from)));
+   const mark=doc.createElement('time');
+   mark.className='writer-v6-rendered writer-v6-timestamp';
+   mark.dateTime=new Date(t.epoch*1000).toISOString();
+   mark.textContent=writerV6FormatTimestamp(t.epoch,t.format,cfg.locale,cfg.timezone);
+   mark.title=value.slice(t.from,t.to);
+   fragment.append(mark);cursor=t.to;
+  }
+  fragment.append(doc.createTextNode(value.slice(cursor)));
+  node.replaceWith(fragment);
+ }
+}
+function writerV6ReadingTextStatus(plugin,element){
+ const cfg=plugin.settings.v6.readingTime,file=plugin.app.workspace.getActiveFile?.();
+ if(!writerV6Allowed(plugin,'readingTime')||!cfg.status||!file||file.extension!=='md'){
+  element.textContent='';element.style.display='none';return;
+ }
+ const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
+ const source=view?.editor?.getValue?.()||'';
+ const result=writerV6ReadingEstimate(source,cfg);
+ element.style.display='';
+ element.textContent=result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('min leitura','min read');
+ element.title=writerUi('Estimativa de tempo de leitura','Estimated reading time');
+}
+class WriterV6Reading{
+ constructor(plugin){this.plugin=plugin;this.updateTimer=null;}
+ register(){
+  const p=this.plugin;
+  const status=p.addStatusBarItem?.();
+  if(status){
+   status.addClass('writer-v6-reading-status');
+   const update=()=>{clearTimeout(this.updateTimer);this.updateTimer=setTimeout(()=>writerV6ReadingTextStatus(p,status),250);};
+   p.registerEvent(p.app.workspace.on('active-leaf-change',update));
+   p.registerEvent(p.app.vault.on('modify',file=>{if(file?.path===p.app.workspace.getActiveFile?.()?.path)update();}));
+   p.registerEvent(p.app.workspace.on('editor-change',update));
+   p.register(()=>clearTimeout(this.updateTimer));update();
+  }
+  p.addCommand({id:'v6-reading-time-selection',name:writerUi('Tempo de leitura: seleção ou nota','Reading time: selection or note'),callback:()=>{
+   const editor=p.app.workspace.getActiveViewOfType?.(MarkdownView)?.editor;
+   if(!editor)return;
+   const text=editor.getSelection?.()||editor.getValue();
+   const result=writerV6ReadingEstimate(text,p.settings.v6.readingTime);
+   new Notice(result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('minutos de leitura','reading minutes'));
+  }});
+  p.registerMarkdownPostProcessor?.(root=>{if(writerV6Allowed(p,'timestamps'))writerV6TimestampReading(root,p.settings.v6.timestamps);});
+  p.addCommand({id:'v6-insert-discord-time',name:writerUi('Data Discord: inserir marcador','Discord timestamp: insert marker'),editorCallback:editor=>{
+   const unix=Math.floor(Date.now()/1000);
+   editor.replaceSelection('<t:'+unix+':f>');
+  }});
+  if(ViewPlugin?.fromClass){
+   const owner=this;
+   p.registerEditorExtension(ViewPlugin.fromClass(class{
+    constructor(view){this.decorations=this.build(view);}
+    build(view){
+     if(!writerV6Allowed(owner.plugin,'timestamps'))return Decoration.none;
+     const ranges=[],doc=view.state.doc,protectedRanges=writerV6ProtectedRanges(doc.toString());
+     for(const visible of view.visibleRanges||[{from:0,to:doc.length}]){
+      const text=doc.sliceString(visible.from,visible.to);
+      for(const t of writerV6TimestampTokens(text)){
+       const from=visible.from+t.from,to=visible.from+t.to;
+       if(writerV6Overlaps(protectedRanges,from,to))continue;
+       ranges.push(Decoration.mark({class:'writer-v6-timestamp-source',attributes:{title:writerV6FormatTimestamp(t.epoch,t.format,owner.plugin.settings.v6.timestamps.locale,owner.plugin.settings.v6.timestamps.timezone)}}).range(from,to));
+      }
+     }
+     return ranges.length?Decoration.set(ranges.sort((a,b)=>a.from-b.from),true):Decoration.none;
+    }
+    update(update){if(update.docChanged||update.viewportChanged)this.decorations=this.build(update.view);}
+   },{decorations:v=>v.decorations}));
+  }
+ }
+ renderSettings(panel){
+  const rt=this.plugin.settings.v6.readingTime,ts=this.plugin.settings.v6.timestamps;
+  panel.createEl('h3',{text:writerUi('Tempo de leitura','Reading time')});
+  new Setting(panel).setName(writerUi('Ativar tempo de leitura','Enable reading time')).addToggle(t=>t.setValue(rt.enabled).onChange(async v=>{rt.enabled=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Palavras por minuto','Words per minute')).addSlider(s=>s.setLimits(60,900,10).setDynamicTooltip().setValue(rt.wpm).onChange(async v=>{rt.wpm=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Ignorar código','Exclude code')).addToggle(t=>t.setValue(rt.skipCode).onChange(async v=>{rt.skipCode=v;await this.plugin.saveSettings();}));
+  panel.createEl('h3',{text:writerUi('Datas do Discord','Discord timestamps')});
+  new Setting(panel).setName(writerUi('Renderizar marcadores <t:…>','Render <t:…> timestamps')).addToggle(t=>t.setValue(ts.enabled).onChange(async v=>{ts.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(panel).setName(writerUi('Idioma de exibição','Display locale')).setDesc(writerUi('Automático, pt-BR, en-US ou espanhol','Auto, pt-BR, en-US or Spanish')).addDropdown(d=>d.addOption('auto',writerUi('Automático','Automatic')).addOption('pt-BR','Português (Brasil)').addOption('en-US','English (US)').addOption('es-ES','Español').setValue(ts.locale).onChange(async v=>{ts.locale=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Fuso horário IANA','IANA timezone')).setDesc(writerUi('Use local ou um nome como America/Sao_Paulo','Use local or a name such as America/New_York')).addText(t=>t.setValue(ts.timezone).onChange(async v=>{ts.timezone=String(v||'local').slice(0,60);await this.plugin.saveSettings();}));
+ }
+}
+
+// v3 module: src/v6/markup.js
+/* v6 syntax and ratings: independently authored, safe DOM/CodeMirror implementations. */
+function writerV6RubyTokens(source){
+ const text=String(source||''),out=[];let start=-1,divider=-1,depth=0;
+ for(let i=0;i<text.length;i++){
+  if(text[i]==='\\'){i++;continue;}
+  if(text[i]==='{'){if(depth===0){start=i;divider=-1;}depth++;continue;}
+  if(text[i]==='|'&&depth===1&&divider<0){divider=i;continue;}
+  if(text[i]!=='}'||!depth)continue;
+  depth--;
+  if(depth!==0||start<0||divider<start+2||i-divider<2||i-start>500)continue;
+  const base=text.slice(start+1,divider),ruby=text.slice(divider+1,i);
+  if(/[\r\n]/.test(base+ruby))continue;
+  out.push({from:start,to:i+1,base,ruby});
+  start=-1;
+ }
+ return out;
+}
+function writerV6RubyNode(doc,base,ruby){
+ const root=doc.createElement('ruby');root.className='writer-v6-rendered writer-v6-ruby';
+ root.append(doc.createTextNode(base));
+ const rt=doc.createElement('rt');rt.textContent=ruby;root.append(rt);
+ return root;
+}
+function writerV6RubyReading(root){
+ for(const node of writerV6SafeTextNodes(root)){
+  const text=node.nodeValue||'',tokens=writerV6RubyTokens(text);
+  if(!tokens.length)continue;
+  const doc=node.ownerDocument,fragment=doc.createDocumentFragment();let cursor=0;
+  for(const token of tokens){
+   if(token.from<cursor)continue;
+   fragment.append(doc.createTextNode(text.slice(cursor,token.from)));
+   fragment.append(writerV6RubyNode(doc,token.base,token.ruby));cursor=token.to;
+  }
+  fragment.append(doc.createTextNode(text.slice(cursor)));node.replaceWith(fragment);
+ }
+}
+function writerV6SubtextReading(root){
+ for(const p of root?.querySelectorAll?.('p')||[]){
+  if(p.closest('pre,code,blockquote,.cm-editor,.writer-v6-rendered')||p.children.length)continue;
+  const text=p.textContent||'';
+  if(!/^-# [^\n]/.test(text))continue;
+  p.classList.add('writer-v6-subtext');
+  if(p.firstChild?.nodeType===3)p.firstChild.nodeValue=p.firstChild.nodeValue.replace(/^-# /,'');
+ }
+}
+const WRITER_V6_RATING_SETS={
+ star:{full:'★',empty:'☆',half:'⯪'},
+ heart:{full:'♥',empty:'♡',half:'♥'},
+ moon:{full:'🌕',empty:'🌑',half:'🌗'},
+ circle:{full:'●',empty:'○',half:'◐'},
+ bar:{full:'█',empty:'░',half:'▌'}
+};
+function writerV6RatingTokens(text){
+ const results=[];
+ for(const match of String(text||'').matchAll(/\[rating:((?:\d+(?:\.\d+)?))\/(\d{1,2})(?::(star|heart|moon|circle|bar))?\]/g)){
+  const n=Number(match[1]),max=Number(match[2]);
+  if(max<2||max>10||n<0||n>max||!Number.isFinite(n))continue;
+  results.push({from:match.index,to:match.index+match[0].length,value:n,max,kind:match[3]||'star'});
+ }
+ return results;
+}
+function writerV6RatingLabel(t){return t.value+' / '+t.max;}
+function writerV6RatingText(t){
+ const set=WRITER_V6_RATING_SETS[t.kind]||WRITER_V6_RATING_SETS.star;
+ return Array.from({length:t.max},(_,i)=>{
+  const delta=t.value-i;
+  return delta>=1?set.full:delta>=.5?set.half:set.empty;
+ }).join('');
+}
+function writerV6RatingMarker(t){return '[rating:'+t.value+'/'+t.max+':'+t.kind+']';}
+function writerV6RatingReading(root){
+ for(const node of writerV6SafeTextNodes(root)){
+  const source=node.nodeValue||'',tokens=writerV6RatingTokens(source);if(!tokens.length)continue;
+  const doc=node.ownerDocument,fragment=doc.createDocumentFragment();let previous=0;
+  for(const t of tokens){
+   if(t.from<previous)continue;
+   fragment.append(doc.createTextNode(source.slice(previous,t.from)));
+   const span=doc.createElement('span');span.className='writer-v6-rendered writer-v6-rating';
+   span.textContent=writerV6RatingText(t);
+   span.title=writerV6RatingLabel(t);
+   span.setAttribute('role','img');span.setAttribute('aria-label',writerUi('Avaliação ','Rating ')+writerV6RatingLabel(t));
+   fragment.append(span);previous=t.to;
+  }
+  fragment.append(doc.createTextNode(source.slice(previous)));node.replaceWith(fragment);
+ }
+}
+const WriterV6WidgetType=require('@codemirror/view').WidgetType;
+class WriterV6RatingWidget extends WriterV6WidgetType{
+ constructor(token,view,from,to){super();this.token=token;this.view=view;this.from=from;this.to=to;}
+ eq(other){return other instanceof WriterV6RatingWidget&&writerV6RatingMarker(this.token)===writerV6RatingMarker(other.token)&&this.from===other.from&&this.to===other.to;}
+ toDOM(view){
+  const doc=view.dom.ownerDocument,container=doc.createElement('span');
+  container.className='writer-v6-rating-editor';container.setAttribute('role','group');
+  container.setAttribute('aria-label',writerUi('Avaliação ajustável','Adjustable rating'));
+  const set=WRITER_V6_RATING_SETS[this.token.kind]||WRITER_V6_RATING_SETS.star;
+  for(let i=1;i<=this.token.max;i++){
+   const button=doc.createElement('button');button.type='button';
+   button.className='writer-v6-rating-button';
+   button.textContent=i<=this.token.value?set.full:set.empty;
+   button.title=writerUi('Definir avaliação como ','Set rating to ')+i+'/'+this.token.max;
+   button.setAttribute('aria-label',button.title);
+   button.setAttribute('aria-pressed',String(i===this.token.value));
+   button.addEventListener('mousedown',event=>event.preventDefault());
+   button.addEventListener('click',event=>{
+    event.preventDefault();event.stopPropagation();
+    const next={...this.token,value:i};
+    if(view.state.doc.sliceString(this.from,this.to)!==writerV6RatingMarker(this.token))return;
+    view.dispatch({changes:{from:this.from,to:this.to,insert:writerV6RatingMarker(next)}});
+   });
+   container.append(button);
+  }
+  return container;
+ }
+ ignoreEvent(){return true;}
+}
+function writerV6MarkupDecorations(view,plugin){
+ const cfg=plugin.settings.v6,doc=view.state.doc,ranges=[],protectedRanges=writerV6ProtectedRanges(doc.toString()),selection=view.state.selection.main;
+ for(const v of view.visibleRanges||[{from:0,to:doc.length}]){
+  const start=doc.lineAt(v.from).number,end=doc.lineAt(Math.min(v.to,doc.length)).number;
+  for(let n=start;n<=end;n++){
+   const line=doc.line(n),source=line.text;
+   if(cfg.discordSyntax.enabled&&cfg.discordSyntax.subtext&&writerModuleOn(plugin,'discordSyntax')&&/^-# /.test(source)&&!writerV6Overlaps(protectedRanges,line.from,line.to))
+    ranges.push(Decoration.line({class:'writer-v6-subtext-line'}).range(line.from));
+   if(cfg.ruby.enabled&&cfg.ruby.livePreview&&writerModuleOn(plugin,'ruby')){
+    for(const token of writerV6RubyTokens(source)){
+     const from=line.from+token.from,to=line.from+token.to;
+     if(writerV6Overlaps(protectedRanges,from,to))continue;
+     ranges.push(Decoration.mark({class:'writer-v6-ruby-source'}).range(from,to));
+    }
+   }
+   if(cfg.ratings.enabled&&writerModuleOn(plugin,'ratings')){
+    for(const t of writerV6RatingTokens(source)){
+     const from=line.from+t.from,to=line.from+t.to;
+     if(writerV6Overlaps(protectedRanges,from,to)||selection.from<=to&&selection.to>=from)continue;
+     ranges.push(Decoration.replace({widget:new WriterV6RatingWidget(t,view,from,to)}).range(from,to));
+    }
+   }
+  }
+ }
+ return ranges.length?Decoration.set(ranges.sort((a,b)=>a.from-b.from||a.to-b.to),true):Decoration.none;
+}
+class WriterV6Markup{
+ constructor(plugin){this.plugin=plugin;}
+ register(){
+  const p=this.plugin;
+  p.registerMarkdownPostProcessor?.(root=>{
+   if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root);
+   if(writerV6Allowed(p,'discordSyntax'))writerV6SubtextReading(root);
+   if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root);
+  });
+  if(ViewPlugin?.fromClass){
+   p.registerEditorExtension(ViewPlugin.fromClass(class{
+    constructor(view){this.decorations=writerV6MarkupDecorations(view,p);}
+    update(update){if(update.docChanged||update.viewportChanged||update.selectionSet)this.decorations=writerV6MarkupDecorations(update.view,p);}
+   },{decorations:v=>v.decorations}));
+  }
+  p.addCommand({id:'v6-wrap-ruby',name:writerUi('Ruby: anotar texto selecionado','Ruby: annotate selection'),editorCheckCallback:(checking,editor)=>{
+   if(!editor?.getSelection?.())return false;
+   if(!checking){
+    const selection=editor.getSelection();
+    editor.replaceSelection('{'+selection+'|'+writerUi('leitura','reading')+'}');
+   }
+   return true;
+  }});
+  p.addCommand({id:'v6-insert-rating',name:writerUi('Avaliação: inserir estrelas','Rating: insert stars'),editorCallback:editor=>editor.replaceSelection('[rating:3/5:star]')});
+ }
+ renderSettings(panel){
+  const cfg=this.plugin.settings.v6;
+  panel.createEl('h3',{text:writerUi('Ruby — pronúncia e anotações','Ruby — pronunciation and annotations')});
+  new Setting(panel).setName(writerUi('Habilitar Ruby {base|leitura}','Enable Ruby {base|reading}')).addToggle(t=>t.setValue(cfg.ruby.enabled).onChange(async v=>{cfg.ruby.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(panel).setName(writerUi('Ruby no Live Preview','Ruby in Live Preview')).addToggle(t=>t.setValue(cfg.ruby.livePreview).onChange(async v=>{cfg.ruby.livePreview=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  panel.createEl('h3',{text:writerUi('Discord Syntax','Discord Syntax')});
+  new Setting(panel).setName(writerUi('Ativar subtexto -#','Enable -# subtext')).setDesc(writerUi('Mantém o mesmo parser de spoilers ||texto|| existente.','Keeps the existing ||text|| spoiler parser.')).addToggle(t=>t.setValue(cfg.discordSyntax.enabled).onChange(async v=>{cfg.discordSyntax.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  panel.createEl('h3',{text:writerUi('Avaliações interativas','Interactive ratings')});
+  new Setting(panel).setName(writerUi('Habilitar [rating:3/5:star]','Enable [rating:3/5:star]')).addToggle(t=>t.setValue(cfg.ratings.enabled).onChange(async v=>{cfg.ratings.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle e bar. Clique nas estrelas no editor para alterar valores.','Formats: star, heart, moon, circle and bar. Click rating symbols in the editor to change a value.')});
+ }
+}
+
+// v3 module: src/v6/linter.js
+/* v6 original manual linter; pure rules and confirmed writes, no automatic mutation by default. */
+function writerV6LintText(text,config={}){
+ const source=String(text||''),lines=source.split('\n'),protect=writerV6ProtectedRanges(source),changes=[];
+ let offset=0,inFront=false,inFence=false;
+ const result=lines.map((line,index)=>{
+  const from=offset,to=from+line.length;offset=to+1;
+  const trim=line.trim();
+  if(index===0&&trim==='---')inFront=true;
+  const fence=/^\s{0,3}(?:\x60{3,}|~{3,})/.test(line);
+  const skip=inFront||inFence||fence||/^(?: {4}|\t)/.test(line)||writerV6Overlaps(protect,from,to);
+  if(fence)inFence=!inFence;
+  if(inFront&&index>0&&trim==='---')inFront=false;
+  if(skip)return line;
+  let next=line;
+  if(config.trimTrailing!==false)next=next.replace(/[ \t]+$/,'');
+  if(config.headingSpace!==false)next=next.replace(/^(#{1,6})([^\s#])/,'$1 $2');
+  if(config.listSpace!==false)next=next.replace(/^(\s{0,3}[-+*])([^\s-])/,'$1 $2').replace(/^(\s{0,3}\d+[.)])([^\s])/,'$1 $2');
+  if(next!==line)changes.push({line:index+1,before:line,after:next});
+  return next;
+ });
+ let output=result.join('\n');
+ if(config.collapseBlanks===true)output=output.replace(/\n{4,}/g,'\n\n\n');
+ if(config.finalNewline!==false&&output&&!output.endsWith('\n'))output+='\n';
+ return {source,output,changed:output!==source,edits:changes,count:changes.length+(output!==result.join('\n')?1:0)};
+}
+function writerV6LintExcluded(path,setting){
+ const p=String(path||'');
+ return String(setting||'').split(/[,\n]/).map(s=>s.trim()).filter(Boolean).some(s=>{
+  if(s.endsWith('/'))return p.startsWith(s);
+  return p===s||p.startsWith(s+'/');
+ });
+}
+class WriterV6Linter{
+ constructor(plugin){this.plugin=plugin;this.locked=false;}
+ get cfg(){return this.plugin.settings.v6.linter;}
+ async formatFile(file){
+  if(!(file instanceof TFile)||file.extension!=='md'||writerV6LintExcluded(file.path,this.cfg.excluded))return;
+  if(this.locked){new Notice(writerUi('O Linter já está processando outra nota.','The Linter is already processing another note.'));return;}
+  this.locked=true;
+  try{
+   const editorView=this.plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
+   const editor=editorView?.file?.path===file.path?editorView.editor:null;
+   const source=editor?editor.getValue():await this.plugin.app.vault.read(file);
+   const lint=writerV6LintText(source,this.cfg);
+   if(!lint.changed){new Notice(writerUi('Nenhuma alteração de formatação sugerida.','No formatting changes suggested.'));return;}
+   await this.previewAndApply(file,source,lint,editor);
+  }finally{this.locked=false;}
+ }
+ async previewAndApply(file,source,lint,editor){
+  const plugin=this.plugin,owner=this;
+  class Preview extends Modal{
+   onOpen(){
+    this.setTitle(writerUi('Linter — prévia das alterações','Linter — change preview'));
+    this.contentEl.addClass('writer-v6-lint-modal');
+    this.contentEl.createEl('p',{text:writerUi('Mudanças propostas: ','Proposed changes: ')+lint.count});
+    const preview=this.contentEl.createEl('pre',{cls:'writer-v6-lint-preview'});
+    preview.textContent=lint.edits.slice(0,80).map(e=>'L'+e.line+'\n− '+e.before+'\n+ '+e.after).join('\n')||
+      writerUi('Normalização de linhas em branco/final do arquivo.','Blank-line/EOF normalization.');
+    if(lint.edits.length>80)preview.append(document.createTextNode('\n…'));
+    const actions=this.contentEl.createDiv({cls:'writer-v6-lint-actions'});
+    new Setting(actions).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>this.close()))
+     .addButton(b=>b.setButtonText(writerUi('Aplicar alterações','Apply changes')).setCta().onClick(async()=>{
+      try{
+       const active=editor?editor.getValue():await plugin.app.vault.read(file);
+       if(active!==source)throw Error(writerUi('A nota foi modificada. Analise novamente antes de aplicar.','Note changed; rerun the preview before applying.'));
+       if(plugin.writerSnapshots?.config?.enabled)await plugin.writerSnapshots.create(file,writerUi('Antes do Linter v6','Before v6 Linter'),{content:source,attachments:false});
+       else{
+        // Even without optional Snapshots enabled, persist a recovery copy in the plugin vault adapter.
+        const adapter=plugin.app.vault.adapter,folder=(plugin.manifest.dir||plugin.app.vault.configDir+'/plugins/'+plugin.manifest.id)+'/v6-linter-backups';
+        if(!(await adapter.exists(folder)))await adapter.mkdir(folder);
+        const safe=file.path.replace(/[^a-z0-9_.-]/gi,'_').slice(-100);
+        await adapter.write(folder+'/'+safe+'-'+Date.now()+'.md',source);
+       }
+       if(editor)editor.setValue(lint.output);
+       else await plugin.app.vault.modify(file,lint.output);
+       this.close();
+       new Notice(writerUi('Formatação aplicada; backup criado.','Formatting applied; backup created.'));
+      }catch(error){new Notice(writerUi('Não foi possível formatar: ','Unable to format: ')+error.message,6500);}
+     }));
+   }
+   onClose(){this.contentEl.empty();}
+  }
+  new Preview(plugin.app).open();
+ }
+ register(){
+  const plugin=this.plugin;
+  plugin.addCommand({id:'v6-linter-current-note',name:writerUi('Linter: revisar formatação da nota','Linter: review note formatting'),checkCallback:checking=>{
+   const file=plugin.app.workspace.getActiveFile?.();
+   if(!writerV6Allowed(plugin,'linter')||!file||file.extension!=='md')return false;
+   if(!checking)this.formatFile(file).catch(e=>new Notice(e.message));
+   return true;
+  }});
+ }
+ renderSettings(panel){
+  const cfg=this.cfg;
+  panel.createEl('h3',{text:writerUi('Linter — formatação assistida','Linter — assisted formatting')});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Apenas manual: mostra uma prévia e cria backup antes de escrever. Exclui regiões Markdown protegidas.','Manual only: shows a preview and creates a backup before writing. Protected Markdown ranges are excluded.')});
+  for(const [key,pt,en] of [
+   ['enabled','Ativar Linter','Enable Linter'],
+   ['trimTrailing','Remover espaços ao fim da linha','Remove trailing whitespace'],
+   ['headingSpace','Espaço depois de títulos #','Space after heading #'],
+   ['listSpace','Espaço depois de marcadores de lista','Space after list markers'],
+   ['collapseBlanks','Reduzir linhas em branco excessivas','Collapse excessive blank lines'],
+   ['finalNewline','Nova linha ao fim do arquivo','Final newline']
+  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{cfg[key]=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Arquivos e pastas excluídos','Excluded files and folders')).setDesc(writerUi('Caminhos relativos ao cofre, um por linha; use barra final para pastas.','Vault-relative paths, one per line; end folder names with a slash.')).addTextArea(t=>{
+   t.inputEl.rows=4;t.setValue(cfg.excluded).onChange(async v=>{cfg.excluded=v.slice(0,3000);await this.plugin.saveSettings();});
+  });
+ }
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
@@ -5617,6 +6107,7 @@ class DictionarySettings extends PluginSettingTab{
     ['keyshots',msg('Keyshots · teclado','Keyshots · keyboard')],
     ['extendedSyntax',msg('Extended Syntax','Extended Syntax')],
     ['pandocSyntax',msg('Pandoc Syntax','Pandoc Syntax')],
+    ['v6Markdown',msg('Ruby, Discord e avaliações','Ruby, Discord & ratings')],
     ['typing',msg('Digitação e tipografia','Typing & typography')],
     ['cursor',msg('Posição do cursor','Cursor position')],
     ['snapshots',msg('Versões','Versions')],
@@ -5628,6 +6119,8 @@ class DictionarySettings extends PluginSettingTab{
     ['unicode','Unicode'],
     ['toc',msg('Sumário','Table of contents')],
     ['tts','TTS'],
+    ['v6Reading',msg('Datas e tempo de leitura','Dates & reading time')],
+    ['v6Linter',msg('Linter de escrita','Writing linter')],
     ['review',msg('Revisão','Review')],
     ['reviewAI',msg('Revisores IA','AI reviewers')],
     ['providers',msg('APIs','APIs')],
@@ -5638,16 +6131,20 @@ class DictionarySettings extends PluginSettingTab{
    complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
    snapshots:'snapshots',projectTasks:'projects',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review'};
-  const enabledSections=sections.filter(([id])=>id==='typing'
+  const enabledSections=sections.filter(([id])=>id==='v6Markdown'
+   ?['ruby','discordSyntax','ratings'].some(key=>writerModuleOn(this.plugin,key))
+   :id==='v6Reading'?['timestamps','readingTime'].some(key=>writerModuleOn(this.plugin,key))
+   :id==='v6Linter'?writerModuleOn(this.plugin,'linter')
+   :id==='typing'
    ?writerModuleOn(this.plugin,'easyTyping')||writerModuleOn(this.plugin,'smartTypography')
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['longform',msg('Longform','Longform'),['projects','projectTasks']],
-   ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','keyshots','typing','cursor','abbreviations','anotherName','viewMode']],
-   ['markdown',msg('Markdown','Markdown'),['extendedSyntax','pandocSyntax','templates','unicode','toc']],
-   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts']]
+   ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode']],
+   ['markdown',msg('Markdown','Markdown'),['extendedSyntax','pandocSyntax','v6Markdown','templates','unicode','toc']],
+   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
   ];
   const groupFor=id=>groups.find(([, ,ids])=>ids.includes(id))?.[0]||'general';
   this.lastSectionByGroup=this.lastSectionByGroup||{};
@@ -5734,6 +6231,12 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerV4Extras.renderSettings(panel);
     }else if(id==='keyshots'){
       this.plugin.writerKeyshots.renderSettings(panel);
+    }else if(id==='v6Markdown'){
+      this.plugin.writerV6Markup.renderSettings(panel);
+    }else if(id==='v6Reading'){
+      this.plugin.writerV6Reading.renderSettings(panel);
+    }else if(id==='v6Linter'){
+      this.plugin.writerV6Linter.renderSettings(panel);
     }else if(id==='extendedSyntax'){
       this.plugin.writerExtendedSyntax.renderSettings(panel);
     }else if(id==='pandocSyntax'){
@@ -5871,6 +6374,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerEasyMerge(this.settings);
     writerEasyAdvancedMerge(this.settings);
     writerTypoMerge(this.settings);
+    writerV6Merge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -5891,6 +6395,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerEasyTyping=new WriterEasyTyping(this);this.writerEasyTyping.register();
     this.writerEasyAdvanced=new WriterEasyAdvanced(this);this.writerEasyAdvanced.register();
     this.writerSmartTypography=new WriterSmartTypography(this);this.writerSmartTypography.register();
+    this.writerV6Reading=new WriterV6Reading(this);this.writerV6Reading.register();
+    this.writerV6Markup=new WriterV6Markup(this);this.writerV6Markup.register();
+    this.writerV6Linter=new WriterV6Linter(this);this.writerV6Linter.register();
     this.writerWorkspaceProfiles=new WriterWorkspaceProfiles(this);this.writerWorkspaceProfiles.register();
     writerV4Register(this);
     this.registerEditorSuggest(this.writerComplements);

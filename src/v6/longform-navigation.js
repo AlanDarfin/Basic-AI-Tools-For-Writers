@@ -195,7 +195,7 @@ function writerBookNavAutoAllowed(plugin,match){
 function writerBookNavHasSourceBlock(text){
  return /^ {0,3}(?:\x60{3,}|~{3,})longform-nav(?:\s|$)/mi.test(String(text||''));
 }
-class WriterBookNavWidget extends (require('@codemirror/view').WidgetType||class{}){
+class WriterBookNavWidget extends (typeof WriterV6WidgetType!=='undefined'?WriterV6WidgetType:class{}){
  constructor(plugin,buttons){super();this.plugin=plugin;this.buttons=buttons;}
  eq(other){return other instanceof WriterBookNavWidget&&JSON.stringify(other.buttons)===JSON.stringify(this.buttons);}
  toDOM(view){

@@ -28,6 +28,8 @@ function writerEasyExcluded(filePath,cfg){
 }
 function writerEasyTypingAtInput(before,character,cfg){
  if(!cfg?.enabled||!character||character.length!==1)return null;
+ const advanced=writerEasyRegexAtInput(before,cfg);
+ if(advanced)return advanced;
  for(const rule of [...(cfg.customReplacements||[])].filter(r=>r.enabled!==false).sort((a,b)=>b.from.length-a.from.length)){
   if(before.endsWith(rule.from))return {consume:rule.from.length,text:rule.to};
  }
@@ -149,7 +151,9 @@ class WriterEasyTyping{
   const {keymap,EditorView}=require('@codemirror/view');
   const bindings=[
    {key:'Tab',run:view=>{
-    if(!this.active()||!this.cfg.tabOut||view.state.selection.ranges.length!==1)return false;
+    if(!this.active()||view.state.selection.ranges.length!==1)return false;
+    if(this.plugin.writerEasyAdvanced?.advance(view,1))return true;
+    if(!this.cfg.tabOut)return false;
     const selection=view.state.selection.main;
     if(!selection.empty)return false;
     const line=view.state.doc.lineAt(selection.head);
@@ -194,6 +198,7 @@ class WriterEasyTyping{
   new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
    .setDesc(writerUi('Um caminho por linha.','One path per line.'))
    .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  this.plugin.writerEasyAdvanced?.renderSettings(panel);
   new Setting(panel).setName(writerUi('Substituições literais','Literal replacement rules'))
    .setDesc(writerUi('Uma por linha: origem|destino. Sem regex ou JavaScript.','One per line: source|replacement; no regex or JavaScript.'))
    .addTextArea(t=>{t.inputEl.rows=5;t.setValue(this.cfg.customReplacements.map(x=>x.from+'|'+x.to).join('\n')).onChange(async v=>{

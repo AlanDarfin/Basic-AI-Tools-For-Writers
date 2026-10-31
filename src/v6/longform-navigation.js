@@ -39,7 +39,7 @@ function writerBookNavTargets(entries,currentPath){
  const previousMain=level>0?(parent?.path?parent:prevRoot):prevRoot;
  const nextMain=nextRoot;
  const siblingRangeStart=parent?entries.indexOf(parent)+1:root.i+1;
- const limit=nextRoot?nextRoot.i:entries.length;
+ const limit=roots[rootPos+1]?.i??entries.length;
  let previousSub=null,nextSub=null;
  if(level===0){
   // A chapter offers its first direct subchapter independently of the next main chapter.

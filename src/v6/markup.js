@@ -16,11 +16,35 @@ function writerV6RubyTokens(source){
  }
  return out;
 }
-function writerV6RubyNode(doc,base,ruby){
- const root=doc.createElement('ruby');root.className='writer-v6-rendered writer-v6-ruby';
- root.append(doc.createTextNode(base));
+function writerV6RubyNode(doc,base,ruby,level=1){
+ const root=doc.createElement('ruby');root.className='writer-v6-rendered writer-v6-ruby writer-v6-ruby-lv'+Math.min(2,level);
+ if(level<2){
+  let offset=0;
+  for(const nested of writerV6RubyTokens(base)){
+   root.append(doc.createTextNode(base.slice(offset,nested.from)));
+   root.append(writerV6RubyNode(doc,nested.base,nested.ruby,level+1));
+   offset=nested.to;
+  }
+  root.append(doc.createTextNode(base.slice(offset)));
+ }else root.append(doc.createTextNode(base));
  const rt=doc.createElement('rt');rt.textContent=ruby;root.append(rt);
  return root;
+}
+function writerV6RubyHtml(source){
+ const tokens=writerV6RubyTokens(source);
+ if(!tokens.length)return source;
+ const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+ let result='',offset=0;
+ for(const t of tokens){
+  result+=escape(source.slice(offset,t.from))+'<ruby>'+escape(t.base)+'<rt>'+escape(t.ruby)+'</rt></ruby>';
+  offset=t.to;
+ }
+ return result+escape(source.slice(offset));
+}
+function writerV6RubyStrip(source){
+ let result=String(source||'');
+ for(let n=0;n<2;n++)result=result.replace(/\{([^{}|\n]+)\|([^{}\n]+)\}/g,'$1');
+ return result;
 }
 function writerV6RubyReading(root){
  for(const node of writerV6SafeTextNodes(root)){
@@ -33,6 +57,24 @@ function writerV6RubyReading(root){
    fragment.append(writerV6RubyNode(doc,token.base,token.ruby));cursor=token.to;
   }
   fragment.append(doc.createTextNode(text.slice(cursor)));node.replaceWith(fragment);
+ }
+}
+function writerV6BlockSpoilers(root){
+ for(const opener of [...(root?.querySelectorAll?.('p')||[])]){
+  if(!opener.isConnected||opener.children.length||opener.textContent.trim()!=='||')continue;
+  let current=opener.nextElementSibling,closer=null;const contents=[];
+  while(current&&contents.length<80){
+   if(current.tagName==='P'&&!current.children.length&&current.textContent.trim()==='||'){closer=current;break;}
+   if(current.tagName==='HR'||current.tagName==='SECTION')break;
+   contents.push(current);current=current.nextElementSibling;
+  }
+  if(!closer||!contents.length||!opener.parentElement)continue;
+  const doc=opener.ownerDocument,details=doc.createElement('details');
+  details.className='writer-v6-rendered writer-v6-block-spoiler';
+  const summary=doc.createElement('summary');summary.textContent=writerUi('Mostrar spoiler','Show spoiler');details.append(summary);
+  opener.parentNode.insertBefore(details,opener);
+  for(const child of contents)details.append(child);
+  opener.remove();closer.remove();
  }
 }
 function writerV6SubtextReading(root){
@@ -97,14 +139,14 @@ class WriterV6RatingWidget extends WriterV6WidgetType{
   for(let i=1;i<=this.token.max;i++){
    const button=doc.createElement('button');button.type='button';
    button.className='writer-v6-rating-button';
-   button.textContent=i<=this.token.value?set.full:set.empty;
-   button.title=writerUi('Definir avaliação como ','Set rating to ')+i+'/'+this.token.max;
+   button.textContent=i<=this.token.value?set.full:i-this.token.value===.5?set.half:set.empty;
+   button.title=writerUi('Definir avaliação como ','Set rating to ')+i+'/'+this.token.max+writerUi(' (Shift: meio ponto)',' (Shift: half point)');
    button.setAttribute('aria-label',button.title);
    button.setAttribute('aria-pressed',String(i===this.token.value));
    button.addEventListener('mousedown',event=>event.preventDefault());
    button.addEventListener('click',event=>{
     event.preventDefault();event.stopPropagation();
-    const next={...this.token,value:i};
+    const next={...this.token,value:event.shiftKey?i-.5:i};
     if(view.state.doc.sliceString(this.from,this.to)!==writerV6RatingMarker(this.token))return;
     view.dispatch({changes:{from:this.from,to:this.to,insert:writerV6RatingMarker(next)}});
    });
@@ -120,6 +162,7 @@ function writerV6MarkupDecorations(view,plugin){
   const start=doc.lineAt(v.from).number,end=doc.lineAt(Math.min(v.to,doc.length)).number;
   for(let n=start;n<=end;n++){
    const line=doc.line(n),source=line.text;
+   if(cfg.discordSyntax.enabled&&writerModuleOn(plugin,'discordSyntax')&&cfg.discordSyntax.blockSpoilers&&source.trim()==='||'&&!writerV6Overlaps(protectedRanges,line.from,line.to))ranges.push(Decoration.line({class:'writer-v6-spoiler-marker'}).range(line.from));
    if(cfg.discordSyntax.enabled&&cfg.discordSyntax.subtext&&writerModuleOn(plugin,'discordSyntax')&&/^-# /.test(source)&&!writerV6Overlaps(protectedRanges,line.from,line.to))
     ranges.push(Decoration.line({class:'writer-v6-subtext-line'}).range(line.from));
    if(cfg.ruby.enabled&&cfg.ruby.livePreview&&writerModuleOn(plugin,'ruby')){
@@ -146,7 +189,7 @@ class WriterV6Markup{
   const p=this.plugin;
   p.registerMarkdownPostProcessor?.(root=>{
    if(writerV6Allowed(p,'ruby'))writerV6RubyReading(root);
-   if(writerV6Allowed(p,'discordSyntax'))writerV6SubtextReading(root);
+   if(writerV6Allowed(p,'discordSyntax')){writerV6SubtextReading(root);if(p.settings.v6.discordSyntax.blockSpoilers)writerV6BlockSpoilers(root);}
    if(writerV6Allowed(p,'ratings'))writerV6RatingReading(root);
   });
   if(ViewPlugin?.fromClass){
@@ -163,6 +206,8 @@ class WriterV6Markup{
    }
    return true;
   }});
+  p.addCommand({id:'v6-ruby-strip',name:writerUi('Ruby: remover anotações da seleção','Ruby: remove annotations from selection'),editorCheckCallback:(checking,editor)=>{if(!editor?.getSelection?.())return false;if(!checking)editor.replaceSelection(writerV6RubyStrip(editor.getSelection()));return true;}});
+  p.addCommand({id:'v6-ruby-html',name:writerUi('Ruby: converter seleção em HTML','Ruby: convert selection to HTML'),editorCheckCallback:(checking,editor)=>{if(!editor?.getSelection?.())return false;if(!checking)editor.replaceSelection(writerV6RubyHtml(editor.getSelection()));return true;}});
   p.addCommand({id:'v6-insert-rating',name:writerUi('Avaliação: inserir estrelas','Rating: insert stars'),editorCallback:editor=>editor.replaceSelection('[rating:3/5:star]')});
  }
  renderSettings(panel){
@@ -170,10 +215,13 @@ class WriterV6Markup{
   panel.createEl('h3',{text:writerUi('Ruby — pronúncia e anotações','Ruby — pronunciation and annotations')});
   new Setting(panel).setName(writerUi('Habilitar Ruby {base|leitura}','Enable Ruby {base|reading}')).addToggle(t=>t.setValue(cfg.ruby.enabled).onChange(async v=>{cfg.ruby.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   new Setting(panel).setName(writerUi('Ruby no Live Preview','Ruby in Live Preview')).addToggle(t=>t.setValue(cfg.ruby.livePreview).onChange(async v=>{cfg.ruby.livePreview=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(panel).setName(writerUi('Tamanho da anotação principal','Primary annotation size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv1Size).onChange(async v=>{cfg.ruby.lv1Size=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Tamanho do segundo nível','Second-level annotation size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv2Size).onChange(async v=>{cfg.ruby.lv2Size=v;await this.plugin.saveSettings();}));
   panel.createEl('h3',{text:writerUi('Discord Syntax','Discord Syntax')});
   new Setting(panel).setName(writerUi('Ativar subtexto -#','Enable -# subtext')).setDesc(writerUi('Mantém o mesmo parser de spoilers ||texto|| existente.','Keeps the existing ||text|| spoiler parser.')).addToggle(t=>t.setValue(cfg.discordSyntax.enabled).onChange(async v=>{cfg.discordSyntax.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(panel).setName(writerUi('Spoiler em bloco entre linhas ||','Block spoilers between || lines')).addToggle(t=>t.setValue(cfg.discordSyntax.blockSpoilers).onChange(async v=>{cfg.discordSyntax.blockSpoilers=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   panel.createEl('h3',{text:writerUi('Avaliações interativas','Interactive ratings')});
   new Setting(panel).setName(writerUi('Habilitar [rating:3/5:star]','Enable [rating:3/5:star]')).addToggle(t=>t.setValue(cfg.ratings.enabled).onChange(async v=>{cfg.ratings.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle e bar. Clique nas estrelas no editor para alterar valores.','Formats: star, heart, moon, circle and bar. Click rating symbols in the editor to change a value.')});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle e bar. Clique nas estrelas no editor (Shift: meio ponto).','Formats: star, heart, moon, circle and bar. Click rating symbols (Shift: half point) to change a value.')});
  }
 }

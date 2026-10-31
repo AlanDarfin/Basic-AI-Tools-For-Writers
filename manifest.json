@@ -4,6 +4,6 @@
   "version": "4.1.0",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Modular writing suite for Obsidian: bilingual English/Portuguese UI, Longform, AI editing, LanguageTool, translation, TTS, snapshots and diagnostics.",
+  "description": "Modular writing suite: bilingual English/Portuguese UI, Longform, AI editing, LanguageTool, translation, TTS, snapshots and diagnostics.",
   "isDesktopOnly": false
 }

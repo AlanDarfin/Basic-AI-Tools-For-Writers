@@ -2,9 +2,11 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [5.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [5.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.1.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
+
+**New in 5.1.0:** Searchable plugin settings (accent-insensitive category suggestions and filtering within the current tab), four quick writing profiles (Novel, Study, Revision and Technical Markdown), up to 10 custom profile snapshots with one-step undo, a local keyboard shortcut audit, and more compact, accessible settings on narrow/mobile screens. Only editor preferences change when switching profiles—notes, API keys, prompts and dictionaries remain untouched. See [5.1.0 release notes](docs/V5_1_RELEASE.md).
 
 **New in 5.0.0:** Desktop Keyshots-style editor navigation, Extended Markdown and Pandoc-inspired syntax, Easy Typing (smart paste, Tab-out, optional regex rules and navigable snippets), Smart Typography, and optional **desktop Pandoc export**. Read the [v5 release notes](docs/V5_RELEASE.md) and [technical guide](docs/V5-DEVELOPMENT.md).
 
@@ -146,7 +148,7 @@ Choose **System / offline** speech when the Obsidian WebView exposes Web Speech 
 
 ## Installation and upgrade
 
-1. Download the [5.0.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.0.0/Basic-AI-Tool-for-Writers-5.0.0.zip).
+1. Download the [5.1.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.1.0/Basic-AI-Tool-for-Writers-5.1.0.zip).
 2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
 
    ```text

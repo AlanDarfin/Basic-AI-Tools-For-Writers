@@ -146,7 +146,10 @@ function writerBookNavParseManual(source){
  return {previous:allowed(data.previous||data.before),next:allowed(data.next||data.after)};
 }
 function writerBookNavResolveManual(app,sourcePath,value){
- let link=String(value||'').trim().replace(/^!?\\[\\[/,'').replace(/\\]\\]$/,'').split('|')[0].split('#')[0].trim();
+ let link=String(value||'').trim();
+ if(link.startsWith('![['))link=link.slice(3);else if(link.startsWith('[['))link=link.slice(2);
+ if(link.endsWith(']]'))link=link.slice(0,-2);
+ link=link.split('|')[0].split('#')[0].trim();
  if(!link||link.includes('\0'))return null;
  const file=app.metadataCache?.getFirstLinkpathDest?.(link,sourcePath)||
   app.vault.getAbstractFileByPath(link.endsWith('.md')?link:link+'.md');

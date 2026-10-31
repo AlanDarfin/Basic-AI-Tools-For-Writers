@@ -1611,3 +1611,62 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 }
 .writer-v5-pandoc-outline{display:flex;flex-direction:column;gap:4px;max-height:min(65vh,600px);overflow-y:auto}
 .writer-v5-pandoc-outline button{display:block;width:100%;min-height:32px;text-align:start;white-space:normal;overflow-wrap:anywhere}
+
+
+/* Basic AI 5.1 — searchable settings, concise profiles and comfortable small-screen controls. */
+.dictionary-settings .writer-v51-search,
+.writer-v51-search{
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+ padding:8px 10px;margin:4px 0 8px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-secondary);
+}
+.writer-v51-search>label{font-size:var(--font-ui-small);font-weight:600;color:var(--text-muted)}
+.writer-v51-search input[type="search"]{
+ width:100%;min-width:0;box-sizing:border-box;min-height:36px;
+ font:inherit;padding:7px 10px;
+ color:var(--text-normal);background:var(--background-primary);
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s)
+}
+.writer-v51-search input[type="search"]:focus-visible,
+.writer-v51-search-results button:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:2px}
+.writer-v51-search-results{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
+.writer-v51-search-results:empty{display:none}
+.writer-v51-search-results>span{font-size:var(--font-ui-smaller);color:var(--text-muted);flex-basis:100%}
+.writer-v51-search-results button{
+ max-width:100%;white-space:normal;text-align:start;overflow-wrap:anywhere;
+ font-size:var(--font-ui-smaller);min-height:30px;padding:5px 8px;
+ border:1px solid var(--background-modifier-border);
+}
+.dictionary-settings-tabs{scrollbar-width:thin;max-width:100%;overscroll-behavior-x:contain}
+.dictionary-settings-panel .setting-item[hidden]{display:none}
+.writer-v51-profile-actions,.writer-v51-hotkey-audit{min-width:0}
+.writer-v51-profile-actions .setting-item{max-width:100%}
+.writer-v51-conflict{
+ display:flex;align-items:flex-start;flex-wrap:wrap;gap:6px;
+ margin:4px 0;padding:7px 8px;
+ border-inline-start:2px solid var(--text-warning);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+}
+.writer-v51-conflict>span{overflow-wrap:anywhere;min-width:0}
+@media(max-width:720px), (max-height:740px){
+ .dictionary-settings-panel{padding-bottom:12px}
+ .dictionary-settings-panel>h3{margin-block:10px 5px;font-size:var(--font-ui-medium)}
+ .dictionary-settings-panel>p{margin-block:4px 9px}
+ .dictionary-settings-panel .setting-item{padding:8px 0;min-width:0}
+ .dictionary-settings-tabs{gap:4px;padding:3px 0 6px}
+ .dictionary-settings-tabs>button{min-height:32px;padding:5px 9px}
+ .writer-v51-search{padding:7px 9px;margin:2px 0 6px}
+}
+@media(max-width:520px){
+ .dictionary-settings-panel .setting-item-control,
+ .dictionary-settings-panel .setting-item-control>select,
+ .dictionary-settings-panel .setting-item-control>input[type="text"],
+ .dictionary-settings-panel .setting-item-control>textarea{max-width:100%;min-width:0;box-sizing:border-box}
+ .dictionary-settings-panel .setting-item-control{display:flex;flex-wrap:wrap;gap:7px}
+ .dictionary-settings-panel .setting-item-name{overflow-wrap:anywhere}
+ .writer-v51-search-results button{max-width:calc(100% - 4px)}
+}
+@media(prefers-reduced-motion:reduce){
+ .writer-v51-search-results button{transition:none}
+}

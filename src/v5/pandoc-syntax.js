@@ -160,6 +160,7 @@ function writerPandocLiveDecorations(view,cfg){
   const line=doc.line(n),trim=line.text.trim();
   if(/^(?:\x60{3,}|~{3,})/.test(trim)){code=!code;continue;}
   if(code)continue;
+  if(view.visibleRanges?.length&&!view.visibleRanges.some(r=>line.to>=r.from&&line.from<=r.to))continue;
   const fancy=cfg.fancyLists&&writerPandocListItem(line.text);
   let cls='';
   if(fancy)cls='writer-v5-pandoc-fancy-line';
@@ -172,7 +173,7 @@ function writerPandocLiveDecorations(view,cfg){
  return ranges.length?Decoration.set(ranges,true):Decoration.none;
 }
 class WriterPandocSyntax{
- constructor(plugin){this.plugin=plugin;}
+ constructor(plugin){this.plugin=plugin;this.revision=0;}
  get cfg(){return this.plugin.settings.pandocSyntax;}
  active(){return writerModuleOn(this.plugin,'pandocSyntax')&&this.cfg.enabled;}
  register(){
@@ -181,9 +182,9 @@ class WriterPandocSyntax{
   if(ViewPlugin?.fromClass){
    const controller=this;
    p.registerEditorExtension(ViewPlugin.fromClass(class{
-    constructor(view){this.decorations=this.make(view);}
+    constructor(view){this.revision=controller.revision;this.decorations=this.make(view);}
     make(view){return controller.active()?writerPandocLiveDecorations(view,controller.cfg):Decoration.none;}
-    update(update){if(update.docChanged||update.viewportChanged)this.decorations=this.make(update.view);}
+    update(update){if(update.docChanged||update.viewportChanged||this.revision!==controller.revision){this.decorations=this.make(update.view);this.revision=controller.revision;}}
    },{decorations:v=>v.decorations}));
   }
   p.addCommand({id:'v5-pandoc-outline',name:writerUi('Pandoc: índice de listas e definições','Pandoc: list and definition outline'),callback:()=>this.openOutline()});
@@ -217,6 +218,6 @@ class WriterPandocSyntax{
    ['fencedDivs','Blocos ::: {.classe}','Fenced div ::: {.class}'],
    ['superSub','Sobrescrito e subscrito','Superscript and subscript'],
    ['outline','Índice navegável','Navigable outline']
-  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();this.revision++;writerV5RefreshEditors(this.plugin);}));
  }
 }

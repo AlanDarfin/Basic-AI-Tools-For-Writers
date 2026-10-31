@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "6.0.0-beta.2",
+  "version": "6.0.0-beta.3",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Beta: Longform hierarchical chapter navigation, Android cursor restoration, plus six writing modules.",
+  "description": "Beta: Longform scene navigation recovery, Ruby above/below in Live Preview and compact settings.",
   "isDesktopOnly": false
 }

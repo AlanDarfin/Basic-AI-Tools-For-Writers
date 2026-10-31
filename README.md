@@ -1,5 +1,8 @@
 # Basic AI Tool for Writers
 
+> **Beta 6.0.0-beta.3 (experimental):** Longform navigation recovers chapters from project YAML when Obsidian metadata is incomplete; Ruby renders in Live Preview with `{word|reading}` (above) and `{word|note|under}` (below), and writing settings use a cleaner compact layout. [Beta notes](docs/V6_BETA3.en.md). The stable version remains **5.2.0**.
+
+
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
 **v6 prerelease: 6.0.0-beta.2 (testing only).** Fixed mobile cursor scrolling and added Longform navigation by real chapter/subchapter order. [Beta 2 details](docs/V6_BETA2.en.md) · [Português](docs/V6_BETA2.pt-BR.md).

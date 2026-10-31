@@ -5574,20 +5574,25 @@ function writerV6RubyTokens(source){
   if(text[i]!=='}'||!depth)continue;
   depth--;
   if(depth!==0||start<0||divider<start+2||i-divider<2||i-start>500)continue;
-  const base=text.slice(start+1,divider),ruby=text.slice(divider+1,i);
+  const base=text.slice(start+1,divider),raw=text.slice(divider+1,i);
+  const modifier=/\|(under|below|abaixo|over|above|acima)$/i.exec(raw);
+  const position=modifier&&/^(under|below|abaixo)$/i.test(modifier[1])?'under':'over';
+  const ruby=modifier?raw.slice(0,-modifier[0].length):raw;
+  if(!ruby.trim())continue;
   if(/[\r\n]/.test(base+ruby))continue;
-  out.push({from:start,to:i+1,base,ruby});
+  out.push({from:start,to:i+1,base,ruby,position});
   start=-1;
  }
  return out;
 }
-function writerV6RubyNode(doc,base,ruby,level=1){
- const root=doc.createElement('ruby');root.className='writer-v6-rendered writer-v6-ruby writer-v6-ruby-lv'+Math.min(2,level);
+function writerV6RubyNode(doc,base,ruby,level=1,position='over'){
+ const root=doc.createElement('ruby');
+ root.className='writer-v6-rendered writer-v6-ruby writer-v6-ruby-'+position+' writer-v6-ruby-lv'+Math.min(2,level);
  if(level<2){
   let offset=0;
   for(const nested of writerV6RubyTokens(base)){
    root.append(doc.createTextNode(base.slice(offset,nested.from)));
-   root.append(writerV6RubyNode(doc,nested.base,nested.ruby,level+1));
+   root.append(writerV6RubyNode(doc,nested.base,nested.ruby,level+1,nested.position));
    offset=nested.to;
   }
   root.append(doc.createTextNode(base.slice(offset)));
@@ -5601,7 +5606,7 @@ function writerV6RubyHtml(source){
  const escape=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
  let result='',offset=0;
  for(const t of tokens){
-  result+=escape(source.slice(offset,t.from))+'<ruby>'+escape(t.base)+'<rt>'+escape(t.ruby)+'</rt></ruby>';
+  result+=escape(source.slice(offset,t.from))+'<ruby class="writer-v6-ruby writer-v6-ruby-'+t.position+'">'+escape(t.base)+'<rt>'+escape(t.ruby)+'</rt></ruby>';
   offset=t.to;
  }
  return result+escape(source.slice(offset));
@@ -5620,7 +5625,7 @@ function writerV6RubyReading(root,cfg){
   for(const token of tokens){
    if(token.from<cursor)continue;
    fragment.append(doc.createTextNode(text.slice(cursor,token.from)));
-   fragment.append(writerV6RubyNode(doc,token.base,token.ruby));cursor=token.to;
+   fragment.append(writerV6RubyNode(doc,token.base,token.ruby,1,token.position));cursor=token.to;
   }
   fragment.append(doc.createTextNode(text.slice(cursor)));node.replaceWith(fragment);
  }
@@ -5701,6 +5706,21 @@ function writerV6RatingReading(root,config){
  }
 }
 const WriterV6WidgetType=require('@codemirror/view').WidgetType||class{};
+class WriterV6RubyWidget extends WriterV6WidgetType{
+ constructor(token,config){super();this.token=token;this.config=config;}
+ eq(other){
+  return other instanceof WriterV6RubyWidget&&other.token.base===this.token.base&&other.token.ruby===this.token.ruby&&other.token.position===this.token.position&&other.config.lv1Size===this.config.lv1Size&&other.config.lv2Size===this.config.lv2Size;
+ }
+ toDOM(view){
+  const root=writerV6RubyNode(view.dom.ownerDocument,this.token.base,this.token.ruby,1,this.token.position);
+  root.classList.add('writer-v6-ruby-editor');
+  root.style.setProperty('--writer-v6-ruby-lv1-size',(this.config.lv1Size||50)+'%');
+  root.style.setProperty('--writer-v6-ruby-lv2-size',(this.config.lv2Size||45)+'%');
+  root.setAttribute('aria-label',this.token.base+': '+this.token.ruby);
+  return root;
+ }
+ ignoreEvent(){return false;}
+}
 class WriterV6RatingWidget extends WriterV6WidgetType{
  constructor(token,view,from,to,config){super();this.token=token;this.view=view;this.from=from;this.to=to;this.config=config;}
  eq(other){return other instanceof WriterV6RatingWidget&&writerV6RatingMarker(this.token)===writerV6RatingMarker(other.token)&&this.from===other.from&&this.to===other.to;}
@@ -5742,7 +5762,12 @@ function writerV6MarkupDecorations(view,plugin){
     for(const token of writerV6RubyTokens(source)){
      const from=line.from+token.from,to=line.from+token.to;
      if(writerV6Overlaps(protectedRanges,from,to))continue;
-     ranges.push(Decoration.mark({class:'writer-v6-ruby-source'}).range(from,to));
+     // Preserve editable source at the caret/selection; otherwise show the
+     // same Ruby layout as Reading View, without mutating the Markdown file.
+     if(selection.from<=to&&selection.to>=from)
+      ranges.push(Decoration.mark({class:'writer-v6-ruby-source'}).range(from,to));
+     else
+      ranges.push(Decoration.replace({widget:new WriterV6RubyWidget(token,cfg.ruby)}).range(from,to));
     }
    }
    if(cfg.ratings.enabled&&writerModuleOn(plugin,'ratings')){
@@ -5779,25 +5804,36 @@ class WriterV6Markup{
    }
    return true;
   }});
+  p.addCommand({id:'v6-wrap-ruby-below',name:writerUi('Ruby: anotar abaixo da seleção','Ruby: annotate below selection'),editorCheckCallback:(checking,editor)=>{
+   if(!editor?.getSelection?.())return false;
+   if(!checking)editor.replaceSelection('{'+editor.getSelection()+'|'+writerUi('leitura','reading')+'|under}');
+   return true;
+  }});
   p.addCommand({id:'v6-ruby-strip',name:writerUi('Ruby: remover anotações da seleção','Ruby: remove annotations from selection'),editorCheckCallback:(checking,editor)=>{if(!editor?.getSelection?.())return false;if(!checking)editor.replaceSelection(writerV6RubyStrip(editor.getSelection()));return true;}});
   p.addCommand({id:'v6-ruby-html',name:writerUi('Ruby: converter seleção em HTML','Ruby: convert selection to HTML'),editorCheckCallback:(checking,editor)=>{if(!editor?.getSelection?.())return false;if(!checking)editor.replaceSelection(writerV6RubyHtml(editor.getSelection()));return true;}});
   p.addCommand({id:'v6-insert-rating',name:writerUi('Avaliação: inserir estrelas','Rating: insert stars'),editorCallback:editor=>editor.replaceSelection('[rating:3/5:star]')});
  }
  renderSettings(panel){
   const cfg=this.plugin.settings.v6;
-  panel.createEl('h3',{text:writerUi('Ruby — pronúncia e anotações','Ruby — pronunciation and annotations')});
-  new Setting(panel).setName(writerUi('Habilitar Ruby {base|leitura}','Enable Ruby {base|reading}')).addToggle(t=>t.setValue(cfg.ruby.enabled).onChange(async v=>{cfg.ruby.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  new Setting(panel).setName(writerUi('Ruby no Live Preview','Ruby in Live Preview')).addToggle(t=>t.setValue(cfg.ruby.livePreview).onChange(async v=>{cfg.ruby.livePreview=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  new Setting(panel).setName(writerUi('Tamanho da anotação principal','Primary annotation size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv1Size).onChange(async v=>{cfg.ruby.lv1Size=v;await this.plugin.saveSettings();}));
-  new Setting(panel).setName(writerUi('Tamanho do segundo nível','Second-level annotation size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv2Size).onChange(async v=>{cfg.ruby.lv2Size=v;await this.plugin.saveSettings();}));
-  panel.createEl('h3',{text:writerUi('Discord Syntax','Discord Syntax')});
-  new Setting(panel).setName(writerUi('Ativar subtexto -#','Enable -# subtext')).setDesc(writerUi('Mantém o mesmo parser de spoilers ||texto|| existente.','Keeps the existing ||text|| spoiler parser.')).addToggle(t=>t.setValue(cfg.discordSyntax.enabled).onChange(async v=>{cfg.discordSyntax.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  new Setting(panel).setName(writerUi('Spoiler em bloco entre linhas ||','Block spoilers between || lines')).addToggle(t=>t.setValue(cfg.discordSyntax.blockSpoilers).onChange(async v=>{cfg.discordSyntax.blockSpoilers=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  panel.createEl('h3',{text:writerUi('Avaliações interativas','Interactive ratings')});
-  new Setting(panel).setName(writerUi('Habilitar [rating:3/5:star]','Enable [rating:3/5:star]')).addToggle(t=>t.setValue(cfg.ratings.enabled).onChange(async v=>{cfg.ratings.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
-  new Setting(panel).setName(writerUi('Exibir valor','Show rating value')).addDropdown(d=>d.addOption('none',writerUi('Somente símbolos','Symbols only')).addOption('fraction',writerUi('Fração','Fraction')).addOption('percent',writerUi('Porcentagem','Percentage')).setValue(cfg.ratings.showValue||'none').onChange(async v=>{cfg.ratings.showValue=v;await this.plugin.saveSettings();}));
-  for(const [key,pt,en] of [['full','Símbolo preenchido','Filled symbol'],['empty','Símbolo vazio','Empty symbol'],['half','Meio ponto','Half symbol']])new Setting(panel).setName(writerUi(pt,en)).addText(t=>t.setValue(String(cfg.ratings[key]||'')).onChange(async v=>{cfg.ratings[key]=v.slice(0,12);await this.plugin.saveSettings();}));
-  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Formatos: star, heart, moon, circle, bar e custom. Clique nas estrelas no editor (Shift: meio ponto).','Formats: star, heart, moon, circle and bar. Click rating symbols (Shift: half point) to change a value.')});
+  const root=panel.createDiv({cls:'writer-v6-settings-clean'});
+  const ruby=root.createDiv({cls:'writer-v6-settings-section'});
+  ruby.createEl('h3',{text:writerUi('Ruby · anotações','Ruby · annotations')});
+  ruby.createEl('p',{cls:'dictionary-muted',text:writerUi('Exemplos: {palavra|pronúncia} (acima) e {palavra|anotação|under} (abaixo). No Live Preview, clique na anotação para editar o texto original.','Examples: {word|reading} (above) and {word|note|under} (below). In Live Preview, select an annotation to edit the source.')});
+  new Setting(ruby).setName(writerUi('Ativar Ruby','Enable Ruby')).addToggle(t=>t.setValue(cfg.ruby.enabled).onChange(async v=>{cfg.ruby.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(ruby).setName(writerUi('Renderizar ao editar','Render while editing')).addToggle(t=>t.setValue(cfg.ruby.livePreview).onChange(async v=>{cfg.ruby.livePreview=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(ruby).setName(writerUi('Tamanho da anotação','Annotation size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv1Size).onChange(async v=>{cfg.ruby.lv1Size=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(ruby).setName(writerUi('Tamanho do Ruby aninhado','Nested Ruby size')).addSlider(t=>t.setLimits(25,100,5).setDynamicTooltip().setValue(cfg.ruby.lv2Size).onChange(async v=>{cfg.ruby.lv2Size=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  const discord=root.createDiv({cls:'writer-v6-settings-section'});
+  discord.createEl('h3',{text:writerUi('Discord Syntax','Discord syntax')});
+  new Setting(discord).setName(writerUi('Ativar subtexto -#','Enable -# subtext')).addToggle(t=>t.setValue(cfg.discordSyntax.enabled).onChange(async v=>{cfg.discordSyntax.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(discord).setName(writerUi('Spoiler em bloco ||','Block spoiler ||')).addToggle(t=>t.setValue(cfg.discordSyntax.blockSpoilers).onChange(async v=>{cfg.discordSyntax.blockSpoilers=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  const ratings=root.createDiv({cls:'writer-v6-settings-section'});
+  ratings.createEl('h3',{text:writerUi('Avaliações','Ratings')});
+  ratings.createEl('p',{cls:'dictionary-muted',text:writerUi('Use [rating:3/5:star]. Clique para ajustar; Shift define meio ponto.','Use [rating:3/5:star]. Click to change; Shift sets a half point.')});
+  new Setting(ratings).setName(writerUi('Habilitar avaliações','Enable ratings')).addToggle(t=>t.setValue(cfg.ratings.enabled).onChange(async v=>{cfg.ratings.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  new Setting(ratings).setName(writerUi('Exibir valor','Show rating value')).addDropdown(d=>d.addOption('none',writerUi('Somente símbolos','Symbols only')).addOption('fraction',writerUi('Fração','Fraction')).addOption('percent',writerUi('Porcentagem','Percentage')).setValue(cfg.ratings.showValue||'none').onChange(async v=>{cfg.ratings.showValue=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
+  for(const [key,pt,en] of [['full','Símbolo preenchido','Filled symbol'],['empty','Símbolo vazio','Empty symbol'],['half','Meio ponto','Half symbol']])
+   new Setting(ratings).setName(writerUi(pt,en)).addText(t=>t.setValue(String(cfg.ratings[key]||'')).onChange(async v=>{cfg.ratings[key]=v.slice(0,12);await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
  }
 }
 
@@ -5997,11 +6033,31 @@ function writerBookNavMerge(settings){
  return settings.bookNavigation;
 }
 function writerBookNavFindSceneFile(index,entry,app){
- const parent=index.file.parent?.path||'',sceneFolder=String(index.meta.sceneFolder||'').replace(/^\/|\/$/g,'');
+ const parent=index.file.parent?.path||'';
+ const folder=String(index.meta?.sceneFolder||'/').replace(/^\/+|\/+$/g,'');
  const title=String(entry?.title||'').trim();
  if(!title)return null;
- const candidates=[lfPath(parent,sceneFolder,title+'.md'),lfPath(parent,sceneFolder,title),lfPath(parent,title+'.md'),lfPath(parent,title)];
- return candidates.map(p=>app.vault.getAbstractFileByPath(p)).find(x=>x instanceof TFile&&x.extension==='md')||null;
+ const names=[entry?.path,entry?.file,title].filter(x=>typeof x==='string'&&x.trim());
+ const candidatePaths=[];
+ for(const name of names){
+  const base=name.replace(/\\/g,'/').replace(/\.md$/i,'');
+  for(const prefix of [[parent,folder],[parent],[]]){
+   candidatePaths.push(lfPath(...prefix,base+'.md'));
+   candidatePaths.push(lfPath(...prefix,base));
+  }
+ }
+ for(const path of new Set(candidatePaths)){
+  const found=app.vault.getAbstractFileByPath(path);
+  if(found instanceof TFile&&found.extension==='md')return found;
+ }
+ // A Longform scene can live in a nested folder. Search *inside this project*
+ // only, and only when the basename is unambiguous, never across other books.
+ const projectRoot=parent?parent+'/':'';
+ const basename=title.replace(/\.md$/i,'').split('/').pop();
+ const matches=app.vault.getMarkdownFiles().filter(file=>
+  (file.path.startsWith(projectRoot)||!parent)&&file.basename===basename
+ );
+ return matches.length===1?matches[0]:null;
 }
 function writerBookNavFlatten(index,app){
  if(!index||index.format!=='scenes')return [];
@@ -6063,6 +6119,34 @@ function writerBookNavFindProject(app,sourcePath,selectedIndex){
  if(!matches.length)return null;
  return matches.find(x=>x.index.file.path===selectedIndex)||matches[0];
 }
+async function writerBookNavFindProjectAsync(app,sourcePath,selectedIndex){
+ // Fast path for normal indexed YAML metadata.
+ const direct=writerBookNavFindProject(app,sourcePath,selectedIndex);
+ if(direct)return direct;
+ const sourceFile=app.vault.getAbstractFileByPath(sourcePath);
+ if(!(sourceFile instanceof TFile)||sourceFile.extension!=='md')return null;
+ const indexes=app.vault.getMarkdownFiles().map(file=>longformIndex(file,app)).filter(Boolean);
+ indexes.sort((a,b)=>Number(b.file.path===selectedIndex)-Number(a.file.path===selectedIndex));
+ const matches=[];
+ for(const index of indexes){
+  // Obsidian's metadata cache may contain the Longform header but omit or
+  // temporarily lag behind its nested scenes. The Projects sidebar already
+  // handles this by reading the original YAML, so navigation does too.
+  let actual=index;
+  try{
+   const text=await app.vault.cachedRead(index.file);
+   const front=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
+   const parsed=front?parseYaml(front[1]):null;
+   if(parsed?.longform&&typeof parsed.longform==='object'&&Array.isArray(parsed.longform.scenes)){
+    actual={...index,meta:{...index.meta,...parsed.longform},scenes:parsed.longform.scenes};
+   }
+  }catch(error){console.warn('[Basic AI] Longform index fallback:',error);}
+  const items=writerBookNavFlatten(actual,app);
+  if(items.some(item=>item.path===sourcePath))matches.push({index:actual,items});
+ }
+ if(!matches.length)return null;
+ return matches.find(match=>match.index.file.path===selectedIndex)||matches[0];
+}
 function writerBookNavButtons(targets,options){
  const out=[];
  if(options.showMain!==false){
@@ -6075,8 +6159,8 @@ function writerBookNavButtons(targets,options){
  }
  return out;
 }
-function writerBookNavRender(container,app,sourcePath,options){
- const match=writerBookNavFindProject(app,sourcePath,options?.projectPath);
+function writerBookNavRender(container,app,sourcePath,options,resolvedMatch){
+ const match=resolvedMatch||writerBookNavFindProject(app,sourcePath,options?.projectPath);
  if(!match)return false;
  const targets=writerBookNavTargets(match.items,sourcePath);
  if(!targets)return false;
@@ -6107,20 +6191,24 @@ class WriterBookNavigation{
  get cfg(){return this.plugin.settings.bookNavigation;}
  register(){
   const plugin=this.plugin;
-  plugin.registerMarkdownCodeBlockProcessor?.('longform-nav',(_source,el,ctx)=>{
+  plugin.registerMarkdownCodeBlockProcessor?.('longform-nav',async (_source,el,ctx)=>{
    if(this.cfg.enabled!==true||!writerModuleOn(plugin,'bookNavigation'))return;
-   const rendered=writerBookNavRender(el,plugin.app,ctx.sourcePath,{...this.cfg,projectPath:plugin.settings.lastLongformProject});
-   if(!rendered)el.createEl('span',{cls:'writer-v6-booknav-empty',text:writerUi('Esta nota não pertence à ordem de cenas de um projeto Longform.','This note is not in a Longform project scene order.')});
+   const options={...this.cfg,projectPath:plugin.settings.lastLongformProject};
+   const match=await writerBookNavFindProjectAsync(plugin.app,ctx.sourcePath,options.projectPath);
+   const rendered=writerBookNavRender(el,plugin.app,ctx.sourcePath,options,match);
+   if(!rendered)el.createEl('span',{cls:'writer-v6-booknav-empty',text:writerUi('Nenhum capítulo navegável foi encontrado para esta nota. Verifique o índice e a pasta de cenas do Longform.','No navigable chapters found for this note. Check the Longform index and scenes folder.')});
   });
   plugin.addCommand({id:'v6-insert-longform-navigation',name:writerUi('Longform: inserir navegação entre capítulos','Longform: insert chapter navigation'),editorCallback:editor=>{
    editor.replaceSelection('\n'+'~~~longform-nav'+'\n'+'~~~'+'\n');
   }});
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Navegação entre capítulos Longform','Longform chapter navigation')});
-  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Use o bloco de código longform-nav para exibir botões de capítulos e subcapítulos conforme a ordem do índice Longform. Não reorganiza seus arquivos.','Insert a longform-nav code block to show chapter and subchapter buttons based on the Longform index order. No files are rearranged.')});
-  for(const [key,pt,en] of [['enabled','Ativar navegação Longform','Enable Longform navigation'],['showMain','Exibir capítulos principais','Show main chapters'],['showSub','Exibir subcapítulos','Show subchapters']])
-   new Setting(panel).setName(writerUi(pt,en)).addToggle(toggle=>toggle.setValue(this.cfg[key]!==false).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  const root=panel.createDiv({cls:'writer-v6-settings-clean'});
+  const section=root.createDiv({cls:'writer-v6-settings-section'});
+  section.createEl('h3',{text:writerUi('Navegação Longform','Longform navigation')});
+  section.createEl('p',{cls:'dictionary-muted',text:writerUi('Use ~~~longform-nav. A navegação acompanha a ordem real dos capítulos e subcapítulos do índice, inclusive em projetos cuja lista só apareça após carregar o YAML.','Insert ~~~longform-nav. Navigation follows the actual chapter and subchapter order, including projects whose scene list requires loading the YAML.')});
+  for(const [key,pt,en] of [['enabled','Ativar navegação','Enable navigation'],['showMain','Exibir capítulos principais','Show main chapters'],['showSub','Exibir subcapítulos','Show subchapters']])
+   new Setting(section).setName(writerUi(pt,en)).addToggle(toggle=>toggle.setValue(this.cfg[key]!==false).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
  }
 }
 

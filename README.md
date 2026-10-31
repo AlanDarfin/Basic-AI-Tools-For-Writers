@@ -2,11 +2,11 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [4.3.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [5.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
-> **v5 development branch:** Keyshots keyboard navigation, Extended/Pandoc syntax, **Easy Typing** (including opt-in regex and Tab snippets), **Smart Typography**, and optional desktop **Pandoc export** are integrated. This is **not a released build**. Veja a [documentação técnica da v5](docs/V5-DEVELOPMENT.md).
+**New in 5.0.0:** Desktop Keyshots-style editor navigation, Extended Markdown and Pandoc-inspired syntax, Easy Typing (smart paste, Tab-out, optional regex rules and navigable snippets), Smart Typography, and optional **desktop Pandoc export**. Read the [v5 release notes](docs/V5_RELEASE.md) and [technical guide](docs/V5-DEVELOPMENT.md).
 
 > **Updated in v4.1:** complete English localization across built-in writing panels, Longform and history dialogs, with automated bilingual regression checks.
 
@@ -32,6 +32,20 @@
 - [Configuration and privacy](#configuration-and-privacy)
 - [Language support](#language-support)
 - [Development and documentation](#development-and-documentation)
+
+## Writing and Markdown in v5
+
+The **23 independently configurable modules** include five new writing-focused areas alongside the previous v4 toolset:
+
+- **Keyshots-inspired keyboard navigation (desktop):** move, duplicate, join and sort lines, add cursors, change selection case and choose a VS Code or JetBrains-style shortcut profile. Disable preset shortcuts if they conflict with Obsidian.
+- **Extended Markdown:** underline, spoiler, super/subscript, color highlights, custom spans and fenced divs in Reading mode and Live Preview.
+- **Pandoc-inspired Markdown:** lettered and Roman lists, definition lists, numbered examples, custom labels, fenced blocks and an in-note outline.
+- **Easy Typing:** smart Tab/Backspace, list-aware paste, optional automatic spacing and case rules, literal/opt-in regex replacements, and navigable text snippets.
+- **Smart Typography:** smart quotation marks, dashes, ellipses, arrows, comparison symbols and optional fractions. Converts text as you type or from a selected passage.
+
+**Pandoc export** is an additional, disabled-by-default desktop integration for DOCX, HTML, EPUB, ODT, PDF, LaTeX and plain text. It requires an installed Pandoc executable and may require an additional PDF engine. Export files are written to a configurable folder without changing the source note.
+
+All new features can be disabled in **Settings → Basic AI Tool for Writers → Modules**. Regular Obsidian formatting is unchanged: the old experimental Editing Toolbar is **not** restored. The majority of functionality works without an external service, while AI and online TTS features may contact the providers selected by the user.
 
 ## What it does
 
@@ -132,7 +146,7 @@ Choose **System / offline** speech when the Obsidian WebView exposes Web Speech 
 
 ## Installation and upgrade
 
-1. Download the latest [4.3.1 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.1/Basic-AI-Tool-for-Writers-4.3.1.zip).
+1. Download the [5.0.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.0.0/Basic-AI-Tool-for-Writers-5.0.0.zip).
 2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
 
    ```text

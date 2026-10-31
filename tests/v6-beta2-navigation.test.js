@@ -80,7 +80,6 @@ test('navigation toggle and main/sub filtering keep distinct targets',()=>{
  assert.deepEqual(Array.from(buttons,x=>x.kind),['sub']);
  assert.equal(buttons[0].target.title,'A.1');
 });
-test('mobile cursor restoration waits for editor layout and recenters caret',async()=>{});
 (async()=>{
  const cursor=fs.readFileSync('src/v4/cursor-memory.js','utf8');
  const effects=[],scrollCalls=[];

@@ -6,14 +6,14 @@ const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
 function lfPath(...parts){const path=[];for(const part of parts){for(const segment of String(part||'').split('/')){if(!segment||segment==='.')continue;if(segment==='..'){path.pop();continue;}path.push(segment);}}return path.join('/');}
 class TextPrompt extends Modal{
  constructor(app,title,done,initial=''){super(app);this.titleText=title;this.done=done;this.initial=initial;}
- onOpen(){this.contentEl.empty();this.setTitle(this.titleText);let value=this.initial;new Setting(this.contentEl).setName(this.titleText).addText(t=>{t.setValue(value).onChange(v=>value=v);t.inputEl.focus();t.inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();this.close();this.done(value);}})});new Setting(this.contentEl).addButton(b=>b.setButtonText('Confirmar').setCta().onClick(()=>{this.close();this.done(value);}));}
+ onOpen(){this.contentEl.empty();this.setTitle(this.titleText);let value=this.initial;new Setting(this.contentEl).setName(this.titleText).addText(t=>{t.setValue(value).onChange(v=>value=v);t.inputEl.focus();t.inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();this.close();this.done(value);}})});new Setting(this.contentEl).addButton(b=>b.setButtonText(lfMsg('Confirmar','Confirm')).setCta().onClick(()=>{this.close();this.done(value);}));}
  onClose(){this.contentEl.empty();}
 }
 class ConfirmProjectAction extends Modal{
  constructor(app,title,description,done){super(app);this.label=title;this.description=description;this.done=done;}
  onOpen(){this.setTitle(this.label);this.contentEl.createEl('p',{text:this.description});const row=new Setting(this.contentEl);
- row.addButton(b=>b.setButtonText('Cancelar').onClick(()=>this.close()));
- row.addButton(b=>b.setButtonText('Confirmar').setWarning().onClick(async()=>{this.close();try{await this.done();}catch(e){new Notice(e.message);}}));}
+ row.addButton(b=>b.setButtonText(lfMsg('Cancelar','Cancel')).onClick(()=>this.close()));
+ row.addButton(b=>b.setButtonText(lfMsg('Confirmar','Confirm')).setWarning().onClick(async()=>{this.close();try{await this.done();}catch(e){new Notice(e.message);}}));}
  onClose(){this.contentEl.empty();}
 }
 function lfFlattenScenes(raw){
@@ -302,17 +302,17 @@ class ProjectsView extends ItemView{
   const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const linked=this.indexes().filter(x=>x.title===project.title&&x.file.path!==project.file.path);
   if(linked.length){
-   const other=draftBar.createEl('select',{attr:{'aria-label':'Rascunhos Longform existentes'}});
-   other.createEl('option',{text:'Trocar para rascunho Longform...',value:''});
+   const other=draftBar.createEl('select',{attr:{'aria-label':lfMsg('Rascunhos Longform existentes','Existing Longform drafts')}});
+   other.createEl('option',{text:lfMsg('Trocar para rascunho Longform...','Switch to Longform draft...'),value:''});
    for(const d of linked){const o=other.createEl('option',{text:d.draftTitle||d.file.basename});o.value=d.file.path;}
    other.addEventListener('change',()=>{if(other.value){this.selected=other.value;this.draft='Principal';this.render();}});
   }
-  const select=draftBar.createEl('select',{attr:{'aria-label':'Rascunho local'}});
+  const select=draftBar.createEl('select',{attr:{'aria-label':lfMsg('Rascunho local','Local draft')}});
   const drafts=['Principal',...Object.keys(prefs.drafts||{})];
   if(!drafts.includes(this.draft))this.draft='Principal';
   for(const d of drafts){const o=select.createEl('option',{text:d});o.value=d;}select.value=this.draft;
   select.addEventListener('change',()=>{this.draft=select.value;this.render();});
-  draftBar.createEl('button',{text:'+ Variante'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome da variante',async name=>{
+  draftBar.createEl('button',{text:lfMsg('+ Variante','+ Variant')}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome da variante','Variant name'),async name=>{
    name=clean(name);if(!name||name==='Principal'||prefs.drafts[name])return;
    prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
@@ -435,7 +435,7 @@ class ProjectsView extends ItemView{
   this.drawSession(panel,project);
   new Setting(panel).setName(lfMsg("Meta de palavras","Word goal")).setDesc(lfMsg("Meta total do projeto","Total project goal")).addText(t=>t.setValue(String(prefs.goal||0)).onChange(v=>this.goalInput=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(async()=>{prefs.goal=Math.max(0,Number(this.goalInput)||0);await this.savePrefs();}));
   const count=this.activeScenes(project).length;
-  panel.createEl('p',{text:lfMsg("Cenas no rascunho: ","Scenes in draft: ")+count+(prefs.goal?' · Meta: '+prefs.goal+' palavras':'')});
+  panel.createEl('p',{text:lfMsg("Cenas no rascunho: ","Scenes in draft: ")+count+(prefs.goal?' · Meta: '+prefs.goal+lfMsg(' palavras',' words'):'')});
   panel.createEl('p',{text:lfMsg("Rascunhos locais e metas ficam nas configurações do Basic AI. Rascunhos Longform são índices próprios.","Local drafts and goals are stored in Basic AI settings. Longform drafts are separate index notes.")});
   this.drawSceneDiagnostics(panel,project);
  }
@@ -489,11 +489,11 @@ class ProjectsView extends ItemView{
    if(!kind)throw Error(lfMsg('Etapa não suportada: ','Unsupported step: ')+id+lfMsg('. Scripts externos não são executados por segurança.','. External scripts are not executed for security.'));
    if(kind==='scene'&&joined&&project.format!=='single')throw Error(lfMsg('Uma etapa de cena não pode aparecer depois de Juntar.','A scene step cannot come after Join.'));
    if(kind==='join'){if(joined)throw Error(lfMsg('Juntar cenas só pode ocorrer uma vez em projeto multicena.','Join scenes can appear only once in a multi-scene project.'));joined=true;}
-   if(kind==='manuscript'&&!joined)throw Error('Junte as cenas antes das etapas de manuscrito.');
+   if(kind==='manuscript'&&!joined)throw Error(lfMsg('Junte as cenas antes das etapas de manuscrito.','Join scenes before manuscript steps.'));
    if(id==='write-to-note'){saves++;if(i!==wf.steps.length-1)throw Error(lfMsg('Salvar como nota deve ser a última etapa.','Save as note must be the final step.'));}
    if(saves>1)throw Error(lfMsg('Apenas uma etapa de salvar é permitida.','Only one save step is allowed.'));
   }
-  if(!joined)throw Error('Adicione a etapa Juntar cenas.');
+  if(!joined)throw Error(lfMsg('Adicione a etapa Juntar cenas.','Add a Join scenes step.'));
  }
 
  drawSceneDiagnostics(panel,project){
@@ -505,8 +505,8 @@ class ProjectsView extends ItemView{
   const unknown=existing.filter(f=>!tracked.has(f.basename)&&!((project.meta.ignoredFiles||[]).includes(f.basename)));
   const missing=[...tracked].filter(name=>!this.resolveScene(project,name));
   const section=panel.createEl('details',{cls:'writer-project-diagnostics'});
-  section.createEl('summary',{text:lfMsg("Diagnóstico · ","Diagnostics · ")+missing.length+' cenas ausentes, '+unknown.length+' arquivos soltos'});
-  if(missing.length)section.createEl('p',{text:'Ausentes: '+missing.join(', ')});
+  section.createEl('summary',{text:lfMsg("Diagnóstico · ","Diagnostics · ")+missing.length+lfMsg(' cenas ausentes, ',' missing scenes, ')+unknown.length+lfMsg(' arquivos soltos',' unindexed files')});
+  if(missing.length)section.createEl('p',{text:lfMsg('Ausentes: ','Missing: ')+missing.join(', ')});
   if(unknown.length){
    section.createEl('p',{text:lfMsg("Novos arquivos: ","New files: ")+unknown.map(f=>f.basename).join(', ')});
    section.createEl('button',{text:lfMsg("Adicionar arquivos soltos ao índice","Add unindexed files")}).addEventListener('click',()=>{
@@ -585,7 +585,7 @@ class ProjectsView extends ItemView{
    const installed=this.app.plugins?.plugins?.longform;
    if(!installed?.loadData)throw Error(lfMsg('O Longform não está instalado ou ativo; use a importação por JSON.','Longform is not installed or active; use JSON import.'));
    const data=await installed.loadData(),entries=data?.workflows;
-   if(!entries||typeof entries!=='object')throw Error('Nenhum workflow encontrado no Longform.');
+   if(!entries||typeof entries!=='object')throw Error(lfMsg('Nenhum workflow encontrado no Longform.','No workflows found in Longform.'));
    const ours=this.workflowsFor(project);
    let count=0;
    for(const [name,wf] of Object.entries(entries)){
@@ -599,14 +599,14 @@ class ProjectsView extends ItemView{
  importWorkflowJSON(project){
   const modal=new Modal(this.app);let raw='';
   modal.onOpen=()=>{
-   modal.setTitle('Importar workflows (JSON)');
+   modal.setTitle(lfMsg('Importar workflows (JSON)','Import workflows (JSON)'));
    modal.contentEl.createEl('p',{text:lfMsg("Cole o objeto workflows ou o conteúdo de data.json do Longform. Apenas etapas reconhecidas poderão ser executadas.","Paste the workflows object or Longform data.json contents. Only recognized steps can be executed.")});
    const area=modal.contentEl.createEl('textarea',{attr:{rows:'12',placeholder:'{"workflows":{...}}'}});
    area.style.width='100%';area.addEventListener('input',()=>raw=area.value);
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText('Importar').setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg('Importar','Import')).setCta().onClick(async()=>{
     try{
      const parsed=JSON.parse(raw),input=parsed.workflows||parsed;
-     if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Esperado objeto de workflows.');
+     if(!input||typeof input!=='object'||Array.isArray(input))throw Error(lfMsg('Esperado objeto de workflows.','Expected a workflows object.'));
      const dest=this.workflowsFor(project);let count=0;
      for(const [key,wf] of Object.entries(input)){
       if(!wf||!Array.isArray(wf.steps))continue;
@@ -614,8 +614,8 @@ class ProjectsView extends ItemView{
       if(dest[name])name+=' (2)';
       dest[name]=JSON.parse(JSON.stringify(wf));count++;
      }
-     if(!count)throw Error('Nenhum workflow com etapas foi encontrado.');
-     modal.close();await this.savePrefs();new Notice(count+' workflow(s) importado(s).');
+     if(!count)throw Error(lfMsg('Nenhum workflow com etapas foi encontrado.','No workflow with steps was found.'));
+     modal.close();await this.savePrefs();new Notice(count+lfMsg(' workflow(s) importado(s).',' workflow(s) imported.'));
     }catch(e){new Notice(lfMsg("Importação inválida: ","Invalid import: ")+e.message,7000);}
    }));
   };
@@ -630,13 +630,13 @@ class ProjectsView extends ItemView{
   for(const name of Object.keys(workflows)){const opt=selector.createEl('option',{text:name});opt.value=name;}
   selector.value=this.workflow;
   selector.addEventListener('change',()=>{this.workflow=selector.value;this.workflowDraft=null;this.render();});
-  bar.createEl('button',{text:'+ Workflow'}).addEventListener('click',()=>new TextPrompt(this.app,'Nome do workflow',async name=>{
+  bar.createEl('button',{text:'+ Workflow'}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome do workflow','Workflow name'),async name=>{
    name=clean(name);if(!name||workflows[name])return;
    workflows[name]=JSON.parse(JSON.stringify(workflows[this.workflow]));workflows[name].name=name;
    this.workflow=name;this.workflowDraft=null;await this.savePrefs();
   }).open());
-  bar.createEl('button',{text:'Importar Longform'}).addEventListener('click',()=>this.importLongformWorkflows(project));
-  bar.createEl('button',{text:'Importar JSON'}).addEventListener('click',()=>this.importWorkflowJSON(project));
+  bar.createEl('button',{text:lfMsg('Importar Longform','Import from Longform')}).addEventListener('click',()=>this.importLongformWorkflows(project));
+  bar.createEl('button',{text:lfMsg('Importar JSON','Import JSON')}).addEventListener('click',()=>this.importWorkflowJSON(project));
   const wf=this.workflowDraft&&this.workflowDraftName===this.workflow?this.workflowDraft:
    (this.workflowDraft=JSON.parse(JSON.stringify(workflows[this.workflow])),this.workflowDraftName=this.workflow,this.workflowDraft);
   const status=panel.createEl('p',{text:lfMsg("Edite etapas e clique em Salvar workflow. Scripts externos não são executados.","Edit steps and select Save workflow. External scripts are not executed.")});
@@ -646,10 +646,10 @@ class ProjectsView extends ItemView{
    const header=box.createDiv({cls:'writer-project-workflow-heading'});
    header.createEl('strong',{text:(i+1)+'. '+(stepNames[step.id]||lfMsg('Não suportada: ','Unsupported: ')+step.id)});
    for(const [label,change] of [['↑',-1],['↓',1]]){
-    header.createEl('button',{text:label,attr:{'aria-label':label==='↑'?'Subir etapa':'Descer etapa'}})
+    header.createEl('button',{text:label,attr:{'aria-label':label==='↑'?lfMsg('Subir etapa','Move step up'):lfMsg('Descer etapa','Move step down')}})
      .addEventListener('click',()=>{const j=i+change;if(j<0||j>=wf.steps.length)return;wf.steps.splice(j,0,wf.steps.splice(i,1)[0]);this.render();});
    }
-   header.createEl('button',{text:'×',attr:{'aria-label':'Remover etapa'}}).addEventListener('click',()=>{wf.steps.splice(i,1);this.render();});
+   header.createEl('button',{text:'×',attr:{'aria-label':lfMsg('Remover etapa','Remove step')}}).addEventListener('click',()=>{wf.steps.splice(i,1);this.render();});
    const options=step.optionValues||(step.optionValues={});
    const toggle=(label,key,def=true)=>new Setting(box).setName(label).addToggle(t=>t.setValue(options[key]??def).onChange(v=>options[key]=v));
    const text=(label,key,def='',multiline=false)=>{
@@ -657,7 +657,7 @@ class ProjectsView extends ItemView{
     const write=t=>t.setValue(String(options[key]??def)).onChange(v=>options[key]=v);
     if(multiline)setting.addTextArea(write);else setting.addText(write);
    };
-   if(step.id==='remove-links'){toggle('Remover wikilinks','remove-wikilinks');toggle('Remover links externos','remove-external-links');}
+   if(step.id==='remove-links'){toggle(lfMsg('Remover wikilinks','Remove wikilinks'),'remove-wikilinks');toggle(lfMsg('Remover links externos','Remove external links'),'remove-external-links');}
    if(step.id==='remove-comments'){toggle(lfMsg('Remover %% comentários %%','Remove %% comments %%'),'remove-markdown-comments');toggle(lfMsg('Remover comentários HTML','Remove HTML comments'),'remove-html-comments');}
    if(step.id==='prepend-title'){text(lfMsg('Formato ($1 título, $2 número, $3{#} nível)','Format ($1 title, $2 number, $3{#} level)'),'format','$3{#} $1');text(lfMsg('Separador','Separator'),'separator','\\n\\n');}
    if(step.id==='concatenate-text')text(lfMsg('Separador','Separator'),'separator','\\n\\n---\\n\\n');
@@ -669,7 +669,7 @@ class ProjectsView extends ItemView{
   const add=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const stepPicker=add.createEl('select');
   for(const [id,label] of this.workflowCatalog()){const o=stepPicker.createEl('option',{text:label});o.value=id;}
-  add.createEl('button',{text:'+ Etapa'}).addEventListener('click',()=>{wf.steps.push({id:stepPicker.value,optionValues:{}});this.render();});
+  add.createEl('button',{text:lfMsg('+ Etapa','+ Step')}).addEventListener('click',()=>{wf.steps.push({id:stepPicker.value,optionValues:{}});this.render();});
   add.createEl('button',{text:lfMsg("Salvar workflow","Save workflow")}).addEventListener('click',async()=>{
    workflows[this.workflow]=JSON.parse(JSON.stringify(wf));await this.plugin.saveSettings();status.setText(lfMsg('Workflow salvo.','Workflow saved.'));
   });
@@ -870,10 +870,10 @@ class ProjectsView extends ItemView{
   }
   if(token!==this.renderToken)return;
   const prefs=this.prefs(project);
-  box.createEl('strong',{text:'Total: '+total.toLocaleString('pt-BR')+' palavras'});
+  box.createEl('strong',{text:'Total: '+total.toLocaleString('pt-BR')+lfMsg(' palavras',' words')});
   if(prefs.goal>0){
    const percent=Math.min(100,Math.round(100*total/prefs.goal));
-   box.createEl('p',{text:percent+'% da meta de '+prefs.goal+' palavras'});
+   box.createEl('p',{text:percent+'% da meta de '+prefs.goal+lfMsg(' palavras',' words')});
    const progress=box.createEl('progress');progress.max=prefs.goal;progress.value=Math.min(total,prefs.goal);
   }
  }

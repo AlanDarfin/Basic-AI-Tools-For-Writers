@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=['src/v5/easy-typing.js','src/v5/smart-typography.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n');
+const source=['src/v5/easy-typing.js','src/v5/easy-advanced.js','src/v5/smart-typography.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n');
 const mock={writerUi:(pt)=>pt,writerModuleOn:()=>true,console,require:()=>({})};
 const v=vm.runInNewContext(source+'\n({writerEasyMerge,writerEasyTypingAtInput,writerEasyExcluded,writerEasyPaste,writerEasyTabOut,writerEasyBackspacePrefix,writerEasyProseFormat,writerTypoMerge,writerTypoAtInput,writerTypoConvertProse,writerTypingUnsafeContext,WriterEasyTyping,WriterSmartTypography})',mock);
 let count=0;

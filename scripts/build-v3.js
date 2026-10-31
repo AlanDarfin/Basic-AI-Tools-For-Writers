@@ -5,14 +5,14 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const mainPath=path.join(root,'main.js');
-const sources=['core','complements','variants','snapshots','workspace','final-suite','tts-online','v4/editor','v4/integrations','v4/auto-grammar','v4/modules','v4/cursor-memory'];
+const sources=['core','complements','variants','snapshots','workspace','final-suite','tts-online','v4/editor','v4/integrations','v4/auto-grammar','v4/modules','v4/cursor-memory','v5/keyshots','v5/extended-syntax','v5/pandoc-syntax','v5/pandoc-export','v5/easy-typing','v5/easy-advanced','v5/smart-typography'];
 const begin='// BEGIN WRITER V3 MODULES\n';
 const end='// END WRITER V3 MODULES';
 let main=fs.readFileSync(mainPath,'utf8');
 let a=main.indexOf(begin),b=main.indexOf(end,a);
 if(a<0||b<0||b<a)throw Error('Missing v3 bundle markers in main.js');
 const modules=sources.map(name=>{
- const filename=name.startsWith('v4/')?'src/'+name+'.js':'src/v3/'+name+'.js';
+ const filename=(name.startsWith('v4/')||name.startsWith('v5/'))?'src/'+name+'.js':'src/v3/'+name+'.js';
  const source=fs.readFileSync(path.join(root,filename),'utf8').replace(/^'use strict';\s*/,'');
  return '// v3 module: '+filename+'\n'+source;
 }).join('\n');

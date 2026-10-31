@@ -1,4 +1,4 @@
-name: V4 preview quality & package
+name: Basic AI preview quality & package
 on:
   pull_request:
     branches: [main]
@@ -15,19 +15,19 @@ jobs:
           node-version: '22'
       - name: Verify generated bundle, source syntax and regression suite
         run: npm run check
-      - name: Verify v4 preview metadata
+      - name: Verify preview metadata
         run: |
-          node -e "const m=require('./manifest.json'),p=require('./package.json');if(m.version!==p.version||!/^4\.(?:0|1)\.\d+(?:-(?:beta\.\d+|rc\.\d+))?$/.test(m.version)||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1)"
+          node -e "const m=require('./manifest.json'),p=require('./package.json');if(m.version!==p.version||!/^(?:4|5)\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/.test(m.version)||m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)process.exit(1)"
       - name: Package candidate files and checksums
         run: |
           set -euo pipefail
-          zip -j basic-ai-tool-for-writers-v4-preview.zip main.js manifest.json styles.css
-          sha256sum main.js manifest.json styles.css basic-ai-tool-for-writers-v4-preview.zip > SHA256SUMS-v4.txt
+          zip -j basic-ai-tool-for-writers-preview.zip main.js manifest.json styles.css
+          sha256sum main.js manifest.json styles.css basic-ai-tool-for-writers-preview.zip > SHA256SUMS-preview.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: basic-ai-v4-candidate
+          name: basic-ai-candidate
           path: |
-            basic-ai-tool-for-writers-v4-preview.zip
-            SHA256SUMS-v4.txt
+            basic-ai-tool-for-writers-preview.zip
+            SHA256SUMS-preview.txt
             THIRD_PARTY_NOTICES.md
           retention-days: 14

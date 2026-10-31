@@ -1,13 +1,13 @@
 {
   "name": "basic-ai-tool-for-writers",
-  "version": "4.3.1",
+  "version": "5.0.0",
   "private": true,
   "description": "Obsidian writing workspace",
   "scripts": {
     "build": "node scripts/sync-projects.js && node scripts/build-v3.js",
     "check:bundle": "node scripts/sync-projects.js --check && node scripts/build-v3.js --check",
-    "test": "node tests/projects.test.js && node tests/v3.test.js && node tests/final-suite.test.js && node tests/tts-online.test.js && node tests/ui-controls.test.js && node tests/v4.test.js && node tests/v4-integrations.test.js && node tests/v4-mobile.test.js && node tests/v4-auto-grammar.test.js && node tests/v4-modules.test.js && node tests/v4-locale.test.js && node tests/v4-cursor-memory.test.js",
-    "check": "node --check main.js && node --check projects.js && node --check src/v4/cursor-memory.js && node --check src/v4/modules.js && node --check src/v4/auto-grammar.js && node --check src/v4/integrations.js && node --check src/v4/editor.js && node --check src/v3/core.js && node --check src/v3/complements.js && node --check src/v3/variants.js && node --check src/v3/snapshots.js && node --check src/v3/workspace.js && node --check src/v3/final-suite.js && node --check src/v3/tts-online.js && npm run check:bundle && npm test"
+    "test": "node tests/projects.test.js && node tests/v3.test.js && node tests/final-suite.test.js && node tests/tts-online.test.js && node tests/ui-controls.test.js && node tests/v4.test.js && node tests/v4-integrations.test.js && node tests/v4-mobile.test.js && node tests/v4-auto-grammar.test.js && node tests/v4-modules.test.js && node tests/v4-locale.test.js && node tests/v4-cursor-memory.test.js && node tests/v5.test.js && node tests/v5-typing.test.js && node tests/v5-advanced.test.js",
+    "check": "node --check main.js && node --check projects.js && node --check src/v5/keyshots.js && node --check src/v5/extended-syntax.js && node --check src/v5/pandoc-syntax.js && node --check src/v5/easy-typing.js && node --check src/v5/smart-typography.js && node --check src/v5/easy-advanced.js && node --check src/v5/pandoc-export.js && node --check src/v4/cursor-memory.js && node --check src/v4/modules.js && node --check src/v4/auto-grammar.js && node --check src/v4/integrations.js && node --check src/v4/editor.js && node --check src/v3/core.js && node --check src/v3/complements.js && node --check src/v3/variants.js && node --check src/v3/snapshots.js && node --check src/v3/workspace.js && node --check src/v3/final-suite.js && node --check src/v3/tts-online.js && npm run check:bundle && npm test"
   },
   "license": "MIT"
 }

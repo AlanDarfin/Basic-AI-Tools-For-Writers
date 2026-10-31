@@ -23,12 +23,14 @@ function writerTypoAtInput(before,typed,cfg){
  if(!typed||typed.length!==1||!cfg?.enabled)return null;
  const put=(needle,output)=>({consume:needle.length,text:output});
  if(cfg.dashes&&typed==='-'){
+  // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
+  if(/^\s*-{2,}$/.test(before))return null;
   if(before.endsWith('—-'))return put('—-','---');
   if(before.endsWith('–-'))return put('–-','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
  if(cfg.ellipsis&&typed==='.'&&before.endsWith('...'))return put('...','…');
- if(cfg.guillemets&&typed==='< ' .trim()&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
+ if(cfg.guillemets&&typed==='<'&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
  if(cfg.guillemets&&typed==='>'&&before.endsWith('>>'))return put('>>',cfg.closeGuillemet);
  if(cfg.arrows&&typed==='>'&&before.endsWith('->'))return put('->',cfg.rightArrow);
  if(cfg.arrows&&typed==='-'&&before.endsWith('<-'))return put('<-',cfg.leftArrow);
@@ -56,6 +58,7 @@ function writerTypoProtectedText(text){
  const lines=String(text||'').split('\n'),out=[];let fence='',frontmatter=false;
  for(let i=0;i<lines.length;i++){
   const line=lines[i],trim=line.trim();
+  if(/^(-{3,}|\*{3,}|_{3,})$/.test(trim)){out.push({text:line,protected:true});continue;}
   if(i===0&&trim==='---'){frontmatter=true;out.push({text:line,protected:true});continue;}
   if(frontmatter){out.push({text:line,protected:true});if(trim==='---')frontmatter=false;continue;}
   const found=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
@@ -158,6 +161,14 @@ class WriterSmartTypography{
 function writerTypingUnsafeContext(state,from,prefix){
  const line=prefix||'';
  if(/^\s*(?:\x60{3,}|~{3,}|---|<!--)/.test(line)||/^(?: {4}|\t)/.test(line))return true;
+ if(state?.doc?.lineAt&&state.doc.line?.(1)?.text?.trim()==='---'){
+  const cursorLine=state.doc.lineAt(Math.min(from,state.doc.length)).number;
+  if(cursorLine<=256){
+   let ended=false;
+   for(let n=2;n<=cursorLine;n++)if(state.doc.line(n).text.trim()==='---'){ended=true;break;}
+   if(!ended)return true;
+  }
+ }
  const ticks=(line.match(/(?<!\\)\x60/g)||[]).length;
  if(ticks%2!==0)return true;
  if(/(?:https?:\/\/|obsidian:\/\/|www\.|mailto:)\S*$/i.test(line))return true;

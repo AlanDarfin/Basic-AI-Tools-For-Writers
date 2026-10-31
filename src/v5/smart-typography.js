@@ -58,9 +58,9 @@ function writerTypoProtectedText(text){
  const lines=String(text||'').split('\n'),out=[];let fence='',frontmatter=false;
  for(let i=0;i<lines.length;i++){
   const line=lines[i],trim=line.trim();
-  if(/^(-{3,}|\*{3,}|_{3,})$/.test(trim)){out.push({text:line,protected:true});continue;}
   if(i===0&&trim==='---'){frontmatter=true;out.push({text:line,protected:true});continue;}
   if(frontmatter){out.push({text:line,protected:true});if(trim==='---')frontmatter=false;continue;}
+  if(/^(-{3,}|\*{3,}|_{3,})$/.test(trim)){out.push({text:line,protected:true});continue;}
   const found=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
   if(found){
    const symbol=found[1][0];

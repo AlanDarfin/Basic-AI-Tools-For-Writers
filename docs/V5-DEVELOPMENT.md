@@ -1,6 +1,6 @@
-# Basic AI v5 — Keyboard and Markdown (development)
+# Basic AI v5 — Keyboard, Markdown and writing tools
 
-**Status:** Development branch. Stable release remains **4.3.1**. This branch has not been released or manually tested in Obsidian.
+**Status:** Source and automated test documentation for stable **5.0.0**. GitHub Actions checks do not replace testing in real Obsidian desktop or Android. See [release notes](V5_RELEASE.md).
 
 This implementation is original and takes the **Keyshots**, **Extended Markdown Syntax**, and **Pandoc Extended Markdown** community plugins as feature references. Their minified source files are not embedded.
 
@@ -35,7 +35,7 @@ Original Markdown source is preserved. The extension is not a complete Pandoc pa
 
 ## Configuration
 
-In Basic AI settings, **Modules** controls visibility of Keyshots, Extended Syntax and Pandoc Syntax independently. Separate settings tabs provide feature toggles. The deprecated Editing Toolbar and formatting commands are not restored.
+In Basic AI settings, **Modules** controls visibility of Keyshots, Extended Syntax, Pandoc Syntax, Easy Typing and Smart Typography independently. Separate settings tabs provide feature toggles. The deprecated Editing Toolbar and formatting commands are not restored.
 
 ## Known limitations
 
@@ -46,15 +46,15 @@ In Basic AI settings, **Modules** controls visibility of Keyshots, Extended Synt
 - Extended and Pandoc editor decorations are refreshed when their settings change; verify real Live Preview refresh behavior in Obsidian before release.
 - Keyboard layouts and clashes with native Obsidian or other plugin hotkeys need desktop testing.
 
-## Before publishing v5
+## Release validation and remaining real-device checks
 
 - [x] Add three independent source modules.
 - [x] Wire into Basic settings, module visibility, and build scripts.
 - [x] Add initial automated regression tests.
 - [x] Run the full test suite and fix automated failures (GitHub Actions checks).
 - [ ] Test desktop and mobile Live Preview and Reading mode.
-- [ ] Review accessibility, performance and Obsidian plugin submission lint.
-- [ ] Decide on the Pandoc export phase and publish release artifacts.
+- [x] Run automated source/bundle tests, CSS lint and packaged artifact checks. UI accessibility and performance still require real-app checks.
+- [x] Implement optional desktop Pandoc export and prepare tagged release workflow.
 
 
 ## Easy Typing (new v5 module)

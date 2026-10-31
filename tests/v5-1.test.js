@@ -65,6 +65,13 @@ test('diagnostics reports duplicate known keymaps and distinguishes host uncerta
  plugin.settings.keyshots.shortcuts=false;
  assert.equal(v.writerWorkspaceHotkeyAudit(plugin).items.length,3);
 });
+test('mobile runtime skips desktop Keyshots while preserving editing helpers',()=>{
+ const settings=defaults(),app={isMobile:true};
+ const scan=v.writerWorkspaceHotkeyAudit({settings,app,manifest:{id:'basic-ai-tool-for-writers'}});
+ assert.equal(scan.items.some(item=>item.action.startsWith('Keyshots')),false);
+ assert.ok(scan.items.some(item=>item.key==='Tab'));
+ assert.ok(scan.items.some(item=>item.key==='Backspace'));
+});
 test('source, bundle and responsive UI remain synchronized',()=>{
  const main=fs.readFileSync('main.js','utf8'),css=fs.readFileSync('styles.css','utf8'),builder=fs.readFileSync('scripts/build-v3.js','utf8');
  assert.ok(main.includes('// v3 module: src/v5/workspace-ux.js'));

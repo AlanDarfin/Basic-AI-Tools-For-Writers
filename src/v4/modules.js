@@ -21,7 +21,9 @@ const WRITER_MODULES=[
  ['cursorMemory','Lembrar posição do cursor','Remember cursor position','Salva e restaura posição, seleção e rolagem por nota.','Saves and restores cursor, selection and scroll per note.'],
  ['keyshots','Keyshots · teclado','Keyshots · keyboard','Navegação e transformação de linhas por atalhos no PC.','Desktop keyboard navigation and line actions.'],
  ['extendedSyntax','Extended Syntax','Extended Syntax','Formatação Markdown com delimitadores estendidos.','Extra Markdown delimiters and rendering.'],
- ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.']
+ ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.'],
+ ['easyTyping','Easy Typing','Easy Typing','Digitação e edição rápida, colagem e Backspace inteligentes.','Typing helpers, smart paste and Backspace.'],
+ ['smartTypography','Smart Typography','Smart Typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.']
 ];
 const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
 function writerMergeModules(settings){

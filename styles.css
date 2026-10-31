@@ -2000,3 +2000,658 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
  .writer-v6-smart-insert .setting-item-control{margin-top:7px;max-width:100%}
  .writer-v6-booknav-preview-auto{margin-block:8px}
 }
+
+
+/* ========================================================================
+   Basic AI v6.0.0 | One visual language for EVERY plugin-owned interface
+   Flat sections, unobtrusive dividers, compact controls, readable text.
+   Scoped to Basic AI views and modals; no global Obsidian theme overrides.
+   ======================================================================== */
+:is(.dictionary-view-content,.writer-tool-root,.writer-tools-v3,.writer-project-root,
+    .dictionary-settings-panel,.dictionary-writer-modal,.writer-v4-diff-modal,
+    .writer-unicode-modal,.writer-v6-lint-modal,.writer-v6-smart-insert,
+    .writer-abbr-add,.writer-abbr-list,.writer-lt-explanation){
+ --writer-ui-space:9px;
+ --writer-ui-control:40px;
+ --writer-ui-radius:var(--radius-s,6px);
+ --writer-ui-border:var(--background-modifier-border);
+ box-sizing:border-box;
+ min-width:0;
+ color:var(--text-normal);
+}
+:is(.writer-tool-root,.writer-tools-v3,.writer-project-root,
+    .dictionary-view-content,.dictionary-settings-panel) :is(h2,h3,h4){
+ overflow-wrap:anywhere;
+ line-height:1.35;
+}
+:is(.writer-tools-v3,.writer-project-root,.dictionary-settings-panel) :is(h3,h4){
+ font-size:var(--font-ui-medium);
+ font-weight:600;
+ margin:15px 0 7px;
+ padding:0;
+}
+:is(.writer-tools-v3,.writer-project-root,.dictionary-settings-panel) :is(p,.dictionary-muted,.writer-tools-muted){
+ font-size:var(--font-ui-small);
+ line-height:1.48;
+ overflow-wrap:anywhere;
+}
+:is(.writer-tools-v3,.writer-project-root,.dictionary-settings-panel) .setting-item-description{
+ color:var(--text-muted);
+ font-size:var(--font-ui-smaller);
+ line-height:1.42;
+ overflow-wrap:anywhere;
+}
+/* Identical, compact, *flat* settings rows in tools, projects, all setting tabs. */
+:is(.dictionary-settings-panel.dictionary-settings-panel,
+    .writer-tools-v3.writer-tools-v3,
+    .writer-project-root.writer-project-root,
+    .dictionary-writer-modal.dictionary-writer-modal,
+    .writer-v6-smart-insert.writer-v6-smart-insert) .setting-item{
+ box-sizing:border-box;
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:5px 12px;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ min-height:40px;
+ margin:0;
+ padding:9px 2px;
+ border:0;
+ border-bottom:1px solid var(--writer-ui-border);
+ border-radius:0;
+ box-shadow:none;
+ background:transparent;
+}
+:is(.dictionary-settings-panel.dictionary-settings-panel,
+    .writer-tools-v3.writer-tools-v3,
+    .writer-project-root.writer-project-root,
+    .dictionary-writer-modal.dictionary-writer-modal,
+    .writer-v6-smart-insert.writer-v6-smart-insert) .setting-item-info{
+ box-sizing:border-box;
+ flex:1 1 100%;
+ width:100%;
+ max-width:100%;
+ min-width:0;
+ margin:0;
+ padding:0;
+}
+:is(.dictionary-settings-panel.dictionary-settings-panel,
+    .writer-tools-v3.writer-tools-v3,
+    .writer-project-root.writer-project-root,
+    .dictionary-writer-modal.dictionary-writer-modal,
+    .writer-v6-smart-insert.writer-v6-smart-insert) .setting-item-name{
+ line-height:1.35;
+ overflow-wrap:anywhere;
+ font-size:var(--font-ui-small);
+ font-weight:500;
+}
+:is(.dictionary-settings-panel.dictionary-settings-panel,
+    .writer-tools-v3.writer-tools-v3,
+    .writer-project-root.writer-project-root,
+    .dictionary-writer-modal.dictionary-writer-modal,
+    .writer-v6-smart-insert.writer-v6-smart-insert) .setting-item-control{
+ display:flex;
+ flex:1 1 100%;
+ flex-wrap:wrap;
+ align-items:center;
+ justify-content:flex-start;
+ gap:6px;
+ box-sizing:border-box;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ padding:0;
+ margin:0;
+}
+:is(.dictionary-settings-panel,.writer-tools-v3,.writer-project-root)
+ .setting-item.writer-setting-toggle{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) auto;
+ align-items:center;
+ gap:5px 9px;
+ padding:9px 3px;
+ min-height:43px;
+ background:transparent;
+ border-radius:0;
+}
+:is(.dictionary-settings-panel,.writer-tools-v3,.writer-project-root)
+ .setting-item.writer-setting-toggle>.setting-item-info{
+ grid-column:1;
+ flex:1 1 auto;
+ width:auto;
+ max-width:none;
+ align-self:center;
+}
+:is(.dictionary-settings-panel,.writer-tools-v3,.writer-project-root)
+ .setting-item.writer-setting-toggle>.setting-item-control{
+ grid-column:2;
+ flex:0 0 auto;
+ width:auto;
+ min-width:34px;
+ max-width:none;
+ justify-content:flex-end;
+ flex-wrap:nowrap;
+}
+:is(.dictionary-settings-panel,.writer-tools-v3,.writer-project-root)
+ .setting-item.writer-setting-textarea{
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ gap:6px;
+}
+:is(.dictionary-settings-panel,.writer-tools-v3,.writer-project-root)
+ .setting-item.writer-setting-textarea :is(.setting-item-info,.setting-item-control){
+ flex:1 1 auto;
+ width:100%;
+ max-width:100%;
+}
+:is(.dictionary-settings-panel,.writer-tools-v3,.writer-project-root)
+ .setting-item.writer-setting-field>.setting-item-control{
+ justify-content:flex-start;
+}
+/* Native selects remain tall enough to avoid clipping in Android WebView. */
+:is(.dictionary-view-content,.writer-tool-root,.writer-tools-v3,.writer-project-root,
+    .dictionary-settings-panel,.dictionary-writer-modal,.writer-v4-diff-modal,
+    .writer-unicode-modal,.writer-v6-smart-insert,.writer-v6-lint-modal,
+    .writer-abbr-add,.writer-abbr-list)
+ select:not([multiple]){
+ box-sizing:border-box;
+ display:block;
+ flex:1 1 135px;
+ width:auto;
+ max-width:100%;
+ min-width:0;
+ min-height:var(--writer-ui-control,40px);
+ height:var(--writer-ui-control,40px);
+ max-height:none;
+ padding-block:0;
+ padding-inline:10px 34px;
+ line-height:normal;
+ font-size:var(--font-ui-small);
+ text-overflow:ellipsis;
+ color:var(--text-normal);
+ background-color:var(--background-primary);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--writer-ui-radius,6px);
+ vertical-align:middle;
+}
+:is(.dictionary-view-content,.writer-tool-root,.writer-tools-v3,.writer-project-root,
+    .dictionary-settings-panel,.dictionary-writer-modal,.writer-v4-diff-modal,
+    .writer-unicode-modal,.writer-v6-smart-insert,.writer-v6-lint-modal)
+ :is(input[type="text"],input[type="search"],input[type="number"],input[type="password"],
+     input[type="date"],input[type="datetime-local"],input[type="url"]){
+ box-sizing:border-box;
+ flex:1 1 135px;
+ min-width:0;
+ max-width:100%;
+ min-height:var(--writer-ui-control,40px);
+ height:var(--writer-ui-control,40px);
+ line-height:normal;
+ padding:0 10px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--writer-ui-radius,6px);
+ font-size:var(--font-ui-small);
+ background:var(--background-primary);
+ color:var(--text-normal);
+}
+:is(.dictionary-view-content,.writer-tool-root,.writer-tools-v3,.writer-project-root,
+    .dictionary-settings-panel,.dictionary-writer-modal,.writer-v4-diff-modal,
+    .writer-unicode-modal,.writer-v6-smart-insert,.writer-v6-lint-modal) textarea{
+ box-sizing:border-box;
+ flex:1 1 100%;
+ min-width:0;
+ width:100%;
+ max-width:100%;
+ min-height:76px;
+ height:auto;
+ padding:9px 10px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--writer-ui-radius,6px);
+ background:var(--background-primary);
+ color:var(--text-normal);
+ font-size:var(--font-ui-small);
+ line-height:1.45;
+ resize:vertical;
+}
+:is(.dictionary-view-content,.writer-tool-root,.writer-tools-v3,.writer-project-root,
+    .dictionary-settings-panel,.dictionary-writer-modal,.writer-v4-diff-modal,
+    .writer-unicode-modal,.writer-v6-smart-insert,.writer-v6-lint-modal)
+ button:not(.clickable-icon){
+ box-sizing:border-box;
+ max-width:100%;
+ min-width:0;
+ min-height:32px;
+ height:auto;
+ line-height:1.3;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ box-shadow:none;
+}
+:is(.dictionary-view-content,.writer-tools-v3,.writer-project-root,
+    .dictionary-settings-panel,.dictionary-writer-modal,.writer-v6-smart-insert)
+ :is(button,select,input,textarea):focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:2px;
+}
+/* Tabs: same active underline and scroll mechanics across four main views. */
+.writer-tool-root .writer-tool-tabs.writer-tool-tabs,
+.writer-tools-v3 .writer-tools-v3-tabs.writer-tools-v3-tabs,
+.writer-project-root .writer-project-tabs.writer-project-tabs,
+.dictionary-settings-tabs.dictionary-settings-tabs,
+.dictionary-settings-subtabs.dictionary-settings-subtabs{
+ box-sizing:border-box;
+ display:flex;
+ flex-direction:row;
+ flex-wrap:nowrap;
+ align-items:stretch;
+ gap:3px;
+ min-width:0;
+ max-width:100%;
+ width:100%;
+ overflow-x:auto;
+ overflow-y:hidden;
+ scrollbar-width:thin;
+ overscroll-behavior-x:contain;
+ padding:2px 0 6px;
+ margin:0 0 10px;
+ background:var(--background-primary);
+ border-bottom:1px solid var(--background-modifier-border);
+ border-radius:0;
+}
+.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button,
+.writer-tools-v3 .writer-tools-v3-tabs.writer-tools-v3-tabs>button,
+.writer-project-root .writer-project-tabs.writer-project-tabs>button,
+.dictionary-settings-tabs.dictionary-settings-tabs>button,
+.dictionary-settings-subtabs.dictionary-settings-subtabs>button{
+ display:inline-flex;
+ flex:0 0 auto;
+ align-items:center;
+ justify-content:center;
+ width:auto;
+ max-width:none;
+ min-width:max-content;
+ min-height:36px;
+ height:auto;
+ margin:0;
+ padding:8px 11px;
+ border:0;
+ border-bottom:2px solid transparent;
+ border-radius:var(--radius-s) var(--radius-s) 0 0;
+ background:transparent;
+ color:var(--text-muted);
+ font-size:var(--font-ui-small);
+ font-weight:500;
+ white-space:nowrap;
+ box-shadow:none;
+}
+.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button.is-active,
+.writer-tools-v3 .writer-tools-v3-tabs.writer-tools-v3-tabs>button.is-active,
+.writer-project-root .writer-project-tabs.writer-project-tabs>button.is-active,
+.dictionary-settings-tabs.dictionary-settings-tabs>button.is-active,
+.dictionary-settings-subtabs.dictionary-settings-subtabs>button.is-active{
+ border-bottom-color:var(--interactive-accent);
+ border-radius:var(--radius-s) var(--radius-s) 0 0;
+ background:var(--background-modifier-hover);
+ color:var(--text-normal);
+ font-weight:600;
+ box-shadow:none;
+}
+/* Shared section surface: no oversized pill cards or nested dark panels. */
+.writer-project-root .writer-project-metadata.writer-project-metadata,
+.writer-project-root .writer-project-session.writer-project-session,
+.writer-project-root .writer-project-progress.writer-project-progress,
+.writer-project-root .writer-project-workflow-step.writer-project-workflow-step,
+.writer-tools-v3 .writer-extras-card.writer-extras-card,
+.dictionary-settings-panel .writer-v6-settings-section.writer-v6-settings-section,
+.writer-project-root .writer-v6-settings-section.writer-v6-settings-section{
+ display:block;
+ box-sizing:border-box;
+ min-width:0;
+ max-width:100%;
+ margin:10px 0;
+ padding:8px 2px 13px;
+ border:0;
+ border-bottom:1px solid var(--background-modifier-border);
+ border-radius:0;
+ background:transparent;
+ box-shadow:none;
+}
+.writer-tools-v3 .writer-extras-card.writer-extras-card> :is(h3,h4),
+.writer-project-root .writer-project-metadata.writer-project-metadata> :is(h3,h4){
+ margin:5px 0 7px;
+}
+.writer-project-root .writer-project-toolbar{
+ display:flex;
+ align-items:center;
+ gap:7px;
+ flex-wrap:wrap;
+ margin:0 0 10px;
+}
+.writer-project-root .writer-project-toolbar>select{flex:1 1 165px;margin:0}
+.writer-project-root .writer-project-notes-toolbar{
+ display:flex;
+ gap:6px;
+ flex-wrap:wrap;
+ margin:7px 0 12px;
+}
+.writer-project-root .writer-project-notes-toolbar>button{
+ min-height:36px;
+ padding:7px 11px;
+ border-radius:var(--radius-s);
+}
+.writer-project-root .writer-project-panel{
+ width:100%;
+ max-width:100%;
+ overflow-wrap:anywhere;
+}
+/* Scene rows: intact hierarchy and drag controls, no bulky tile backgrounds. */
+.writer-project-root .writer-project-scene.writer-project-scene-actions{
+ display:grid;
+ grid-template-columns:34px minmax(0,1fr) auto;
+ align-items:center;
+ gap:5px;
+ width:100%;
+ min-width:0;
+ padding:5px 0;
+ margin:0;
+ border:0;
+ border-bottom:1px solid var(--background-modifier-border);
+ border-radius:0;
+ background:transparent;
+}
+.writer-project-root .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+ grid-column:2;
+ min-width:0;
+ width:100%;
+ max-width:100%;
+ padding:6px 4px;
+ margin:0;
+ overflow:visible;
+ text-overflow:clip;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ line-height:1.35;
+ text-align:start;
+}
+.writer-project-root .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{
+ grid-column:1;
+ width:32px;
+ min-width:32px;
+ height:32px;
+ min-height:32px;
+ padding:0;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ background:transparent;
+ text-align:center;
+}
+.writer-project-root .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{
+ grid-column:3;
+ display:flex;
+ align-items:center;
+ flex-wrap:nowrap;
+ gap:2px;
+ min-width:0;
+ width:auto;
+ margin:0;
+}
+.writer-project-root .writer-project-scene.writer-project-scene-actions .writer-project-scene-controls>button.writer-project-small-button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ width:29px;
+ min-width:29px;
+ max-width:29px;
+ min-height:32px;
+ height:32px;
+ padding:0;
+ flex:0 0 29px;
+ border-radius:var(--radius-s);
+ background:transparent;
+}
+/* Longform and Markdown project preference subsections follow the same layout. */
+.writer-project-root .writer-v6-project-prefs .setting-item,
+.dictionary-settings-panel .writer-v6-settings-section .setting-item{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ grid-template-columns:none;
+ gap:5px 10px;
+ margin:0;
+ padding:8px 2px;
+ border:0;
+ border-bottom:1px solid var(--background-modifier-border);
+ background:transparent;
+ border-radius:0;
+}
+.writer-project-root .writer-v6-project-prefs .setting-item-info,
+.dictionary-settings-panel .writer-v6-settings-section .setting-item-info{
+ flex:1 1 100%;
+ width:100%;
+ max-width:100%;
+}
+.writer-project-root .writer-v6-project-prefs .setting-item-control,
+.dictionary-settings-panel .writer-v6-settings-section .setting-item-control{
+ display:flex;
+ flex:1 1 100%;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ justify-content:flex-start;
+ flex-wrap:wrap;
+}
+:is(.writer-project-root,.dictionary-settings-panel) .writer-v6-settings-section .setting-item.writer-setting-toggle{
+ display:grid;
+ grid-template-columns:minmax(0,1fr) auto;
+ align-items:center;
+}
+:is(.writer-project-root,.dictionary-settings-panel) .writer-v6-settings-section .setting-item.writer-setting-toggle>.setting-item-info{
+ grid-column:1;
+ width:auto;
+ flex:1 1 auto;
+}
+:is(.writer-project-root,.dictionary-settings-panel) .writer-v6-settings-section .setting-item.writer-setting-toggle>.setting-item-control{
+ grid-column:2;
+ width:auto;
+ flex:0 0 auto;
+ justify-content:flex-end;
+}
+/* Single consistent treatment for review, dictionary and writing panels. */
+.writer-tool-root .writer-tool-panel.writer-tool-panel,
+.writer-tools-v3 .writer-tools-v3-panel.writer-tools-v3-panel,
+.writer-project-root .writer-project-panel.writer-project-panel,
+.dictionary-settings-panel.dictionary-settings-panel{
+ background:transparent;
+ border:0;
+ border-radius:0;
+ min-width:0;
+ max-width:100%;
+}
+.writer-tools-v3 .writer-tools-v3-actions.writer-tools-v3-actions,
+.writer-project-root .writer-project-note-actions.writer-project-note-actions{
+ display:flex;
+ flex-wrap:wrap;
+ gap:6px;
+ margin:8px 0;
+}
+.writer-tools-v3 .writer-tools-v3-actions>button,
+.writer-project-root .writer-project-note-actions>button{
+ flex:1 1 110px;
+ min-height:36px;
+ border-radius:var(--radius-s);
+}
+.writer-tool-root .writer-review-card,
+.writer-tools-v3 .writer-variant-current,
+.writer-tools-v3 .writer-extras-card,
+.writer-project-root .writer-project-note-row{
+ max-width:100%;
+ min-width:0;
+ overflow-wrap:anywhere;
+}
+/* Completely rebuilt Longform Nav: readable single-column list at narrow widths. */
+.writer-v6-booknav.writer-v6-booknav{
+ box-sizing:border-box;
+ display:block;
+ container:writer-booknav / inline-size;
+ min-width:0;
+ width:100%;
+ max-width:100%;
+ margin:12px 0;
+ padding:0;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-primary);
+ color:var(--text-normal);
+ box-shadow:none;
+ overflow:hidden;
+}
+.writer-v6-booknav .writer-v6-booknav-heading{
+ display:flex;
+ align-items:center;
+ gap:7px;
+ min-height:34px;
+ padding:8px 12px 6px;
+ background:transparent;
+ border:0;
+ border-bottom:1px solid var(--background-modifier-border);
+ color:var(--text-muted);
+ font-size:var(--font-ui-smaller);
+ font-weight:600;
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.writer-v6-booknav .writer-v6-booknav-list{
+ box-sizing:border-box;
+ display:grid;
+ grid-template-columns:minmax(0,1fr);
+ gap:0;
+ min-width:0;
+ width:100%;
+ padding:3px 10px;
+ margin:0;
+}
+.writer-v6-booknav .writer-v6-booknav-item.writer-v6-booknav-item{
+ box-sizing:border-box;
+ display:flex;
+ flex-direction:row;
+ align-items:center;
+ gap:10px;
+ min-width:0;
+ width:100%;
+ max-width:100%;
+ min-height:52px;
+ height:auto;
+ margin:0;
+ padding:10px 3px;
+ border:0;
+ border-bottom:1px solid var(--background-modifier-border);
+ border-radius:0;
+ background:transparent;
+ color:var(--text-normal);
+ box-shadow:none;
+ text-align:start;
+ cursor:pointer;
+ overflow:visible;
+}
+.writer-v6-booknav .writer-v6-booknav-item:last-child{border-bottom:0}
+.writer-v6-booknav .writer-v6-booknav-item.writer-v6-booknav-next{
+ flex-direction:row-reverse;
+ text-align:end;
+}
+.writer-v6-booknav .writer-v6-booknav-item:hover{
+ background:var(--background-modifier-hover);
+}
+.writer-v6-booknav .writer-v6-booknav-item:focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:-2px;
+}
+.writer-v6-booknav .writer-v6-booknav-text{
+ display:flex;
+ flex-direction:column;
+ flex:1 1 auto;
+ min-width:0;
+ width:auto;
+ gap:3px;
+ margin:0;
+ overflow:visible;
+}
+.writer-v6-booknav .writer-v6-booknav-label{
+ display:block;
+ min-width:0;
+ white-space:normal;
+ font-size:var(--font-ui-smaller);
+ font-weight:400;
+ line-height:1.25;
+ color:var(--text-muted);
+ overflow-wrap:anywhere;
+}
+.writer-v6-booknav .writer-v6-booknav-title{
+ display:block;
+ box-sizing:border-box;
+ min-width:0;
+ max-width:100%;
+ width:auto;
+ white-space:normal;
+ overflow:visible;
+ text-overflow:clip;
+ overflow-wrap:anywhere;
+ word-break:normal;
+ font-size:var(--font-ui-small);
+ font-weight:600;
+ line-height:1.42;
+ color:var(--text-normal);
+}
+.writer-v6-booknav .writer-v6-booknav-arrow{
+ flex:0 0 18px;
+ width:18px;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ color:var(--text-accent);
+ font-size:1.45em;
+ font-weight:400;
+ line-height:1;
+}
+.writer-v6-booknav-preview-auto{
+ box-sizing:border-box;
+ width:100%;
+ max-width:100%;
+ overflow:visible;
+}
+@container writer-booknav (min-width:680px){
+ .writer-v6-booknav .writer-v6-booknav-list{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:0 12px;
+ }
+ .writer-v6-booknav .writer-v6-booknav-item:nth-last-child(2):first-child{
+  border-bottom:0;
+ }
+}
+/* Preserve touch targets without using viewport width as a proxy for sidebar width. */
+@media(max-width:600px),(max-height:740px){
+ :is(.writer-tool-root,.writer-tools-v3,.writer-project-root,
+     .dictionary-settings-panel,.dictionary-view-content){
+  --writer-ui-control:40px;
+ }
+ .writer-project-root.writer-project-root,
+ .writer-tools-v3.writer-tools-v3{padding-inline:9px}
+ .writer-project-root .writer-project-scene.writer-project-scene-actions{
+  grid-template-columns:32px minmax(0,1fr) auto;
+  gap:3px;
+ }
+ .writer-project-root .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{
+  gap:0;
+ }
+ .writer-project-root .writer-project-scene.writer-project-scene-actions .writer-project-scene-controls>button.writer-project-small-button{
+  width:27px;
+  min-width:27px;
+  max-width:27px;
+  flex-basis:27px;
+ }
+ .writer-v6-booknav .writer-v6-booknav-title{font-size:var(--font-ui-small)}
+}
+@media(prefers-reduced-motion:reduce){
+ .writer-v6-booknav .writer-v6-booknav-item{transition:none}
+}

@@ -21,7 +21,7 @@ class WriterToolsView extends ItemView{
   const root=this.root;root.empty();
   root.createEl('h3',{text:writerUi("Ferramentas de escrita","Writing tools")});
   const active=this.app.workspace.getActiveFile();
-  root.createEl('p',{text:active?.extension==='md'?active.path:'Abra uma nota Markdown para usar as ferramentas.',cls:'writer-tools-note-path'});
+  root.createEl('p',{text:active?.extension==='md'?active.path:writerUi('Abra uma nota Markdown para usar as ferramentas.','Open a Markdown note to use the tools.'),cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
   tabs.scrollLeft=this.tabScrollLeft||0;
   tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
@@ -57,7 +57,7 @@ class WriterToolsView extends ItemView{
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};
-  panel.createEl('h4',{text:'Autocomplete contextual'});
+  panel.createEl('h4',{text:writerUi('Autocomplete contextual','Contextual autocomplete')});
   panel.createEl('p',{text:writerUi("Sugestões locais do arquivo, do cofre, dos dicionários e de links internos.","Local suggestions from the current note, vault, dictionaries and internal links.")});
   new Setting(panel).setName(writerUi("Ativar sugestões","Enable suggestions")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi("Aparecer enquanto escreve","Suggest while typing")).addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
@@ -66,12 +66,12 @@ class WriterToolsView extends ItemView{
   this.addButton(actions,writerUi("Reindexar cofre","Reindex vault"),async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice(writerUi("Índice de sugestões atualizado.","Suggestion index updated."));});
   if(writerModuleOn(this.plugin,'dictionary'))this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
   const tracked=this.plugin.writerComplements?.cache?.size||0;
-  panel.createEl('p',{text:tracked+' arquivo(s) no índice atual.',cls:'writer-tools-muted'});
+  panel.createEl('p',{text:tracked+writerUi(' arquivo(s) no índice atual.',' file(s) in the current index.'),cls:'writer-tools-muted'});
  }
  renderVariants(panel){
   const opts=this.plugin.settings.variants||{};
   panel.createEl('h4',{text:writerUi("Alternativas de escrita","Writing alternatives")});
-  panel.createEl('p',{text:'Experimente frases alternativas sem apagar o original. Toque numa variante destacada para editar.'});
+  panel.createEl('p',{text:writerUi('Experimente frases alternativas sem apagar o original. Toque numa variante destacada para editar.','Try alternative wording without deleting the original. Tap a highlighted variant to edit.')});
   new Setting(panel).setName(writerUi("Ativar variantes","Enable variants")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Criar da seleção","Create from selection"),()=>this.plugin.writerVariants.createFromSelection(),true);
@@ -83,7 +83,7 @@ class WriterToolsView extends ItemView{
   this.addButton(actions,writerUi("Gerar com IA","Generate with AI"),()=>this.plugin.writerVariants.aiAlternatives());
   const current=this.plugin.writerVariants.atCaret();
   if(current){
-   panel.createEl('strong',{text:'Variante '+(current.found.active+1)+' de '+current.found.variants.length});
+   panel.createEl('strong',{text:writerUi('Variante ','Variant ')+(current.found.active+1)+' de '+current.found.variants.length});
    const sample=panel.createDiv({cls:'writer-variant-current'});
    sample.setText(current.found.variants[current.found.active].slice(0,1000));
   }
@@ -169,15 +169,15 @@ class WriterToolsView extends ItemView{
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Salvar versão agora","Save version now"),async()=>{
    if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
-   await this.plugin.writerSnapshots.create(file,'Manual');new Notice(writerUi("Versão salva.","Version saved."));
+   await this.plugin.writerSnapshots.create(file,writerUi('Manual','Manual'));new Notice(writerUi(writerUi('Versão salva.','Version saved.'),"Version saved."));
   },true);
-  this.addButton(actions,'Nomear uma versão',async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
+  this.addButton(actions,writerUi('Nomear uma versão','Name a version'),async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
   this.addButton(actions,writerUi("Abrir histórico","Open history"),async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
   if(file instanceof TFile&&file.extension==='md'){
    this.plugin.writerSnapshots.list(file).then(items=>{
     if(this.tab==='snapshots'&&panel.isConnected){
      const box=panel.createDiv({cls:'writer-tools-snapshot-recent'});
-     box.createEl('strong',{text:items.length+' versão(ões) salva(s)'});
+     box.createEl('strong',{text:items.length+writerUi(' versão(ões) salva(s)',' saved version(s)')});
      for(const item of items.slice(0,5))box.createEl('p',{text:item.name+' · '+new Date(item.at).toLocaleString()});
     }
    }).catch(()=>{});
@@ -187,7 +187,7 @@ class WriterToolsView extends ItemView{
 
 function writerRenderV3Settings(panel,plugin,id){
  const config=plugin.settings[id];if(!config)return;
- const title={complements:'Complementos e sugestões',variants:'Variações de escrita',snapshots:'Versionamento e snapshots'}[id];
+ const title={complements:writerUi('Complementos e sugestões','Complements and suggestions'),variants:writerUi('Variações de escrita','Writing variants'),snapshots:writerUi('Versionamento e snapshots','Versioning and snapshots')}[id];
  panel.createEl('h3',{text:title});
  const toggle=(key,name,description)=>{
   new Setting(panel).setName(name).setDesc(description||'').addToggle(t=>t.setValue(config[key]!==false).onChange(async v=>{config[key]=v;await plugin.saveSettings();}));
@@ -198,44 +198,44 @@ function writerRenderV3Settings(panel,plugin,id){
   });
  };
  if(id==='complements'){
-  toggle('enabled',writerUi("Ativar sugestões","Enable suggestions"),'Todos os complementos funcionam localmente e sem rede.');
-  toggle('automatic','Sugestões automáticas','Mostrar ao digitar.');
+  toggle('enabled',writerUi("Ativar sugestões","Enable suggestions"),writerUi('Todos os complementos funcionam localmente e sem rede.','All completion sources work locally without network access.'));
+  toggle('automatic',writerUi('Sugestões automáticas','Automatic suggestions'),writerUi('Mostrar ao digitar.','Show while typing.'));
   toggle('currentFile',writerUi("Palavras do arquivo atual","Words from current note"));
   toggle('vault',writerUi("Palavras de outras notas do cofre","Words from other vault notes"));
-  toggle('internalLinks',writerUi("Links internos","Internal links"),'Sugere títulos como wikilinks.');
+  toggle('internalLinks',writerUi("Links internos","Internal links"),writerUi('Sugere títulos como wikilinks.','Suggest note titles as wikilinks.'));
   toggle('dictionaries',writerUi("Dicionários personalizados","Custom dictionaries"));
-  toggle('useLocalDictionary','Usar Dicionario.md','Sem alterar seu formato.');
-  toggle('frontmatter',writerUi("Propriedades YAML","YAML properties"),'Sugestões de nomes de propriedades.');
+  toggle('useLocalDictionary',writerUi('Usar Dicionario.md','Use Dicionario.md'),writerUi('Sem alterar seu formato.','Without changing its format.'));
+  toggle('frontmatter',writerUi("Propriedades YAML","YAML properties"),writerUi('Sugestões de nomes de propriedades.','Suggest property names.'));
   toggle('caseSensitive',writerUi("Diferenciar maiúsculas de minúsculas","Case sensitive"));
-  toggle('matchMiddle',writerUi("Corresponder dentro da palavra","Match inside words"),'Menos restritivo que prefixo.');
-  toggle('learnRanking',writerUi("Aprender sugestões escolhidas","Learn from selected suggestions"),'Ranking armazenado localmente.');
-  input('minChars',writerUi("Mínimo de caracteres","Minimum characters"),'Padrão: 3',true);
-  input('maxResults',writerUi("Número máximo de sugestões","Maximum suggestions"),'Padrão: 8',true);
-  input('maxFiles',writerUi("Máximo de arquivos no índice","Maximum indexed files"),'Limita uso de memória.',true);
-  input('fileLimit',writerUi("Tamanho máximo por arquivo (bytes)","Maximum file size (bytes)"),'Padrão: 120000',true);
+  toggle('matchMiddle',writerUi("Corresponder dentro da palavra","Match inside words"),writerUi('Menos restritivo que prefixo.','Less restrictive than prefix matching.'));
+  toggle('learnRanking',writerUi("Aprender sugestões escolhidas","Learn from selected suggestions"),writerUi('Ranking armazenado localmente.','Ranking stored locally.'));
+  input('minChars',writerUi("Mínimo de caracteres","Minimum characters"),writerUi('Padrão: 3','Default: 3'),true);
+  input('maxResults',writerUi("Número máximo de sugestões","Maximum suggestions"),writerUi('Padrão: 8','Default: 8'),true);
+  input('maxFiles',writerUi("Máximo de arquivos no índice","Maximum indexed files"),writerUi('Limita uso de memória.','Limits memory usage.'),true);
+  input('fileLimit',writerUi("Tamanho máximo por arquivo (bytes)","Maximum file size (bytes)"),writerUi('Padrão: 120000','Default: 120000'),true);
   new Setting(panel).setName(writerUi("Pastas excluídas","Excluded folders")).setDesc(writerUi("Separadas por vírgula.","Comma separated.")).addTextArea(t=>t.setValue(config.excludedFolders||'').onChange(async v=>{config.excludedFolders=v;await plugin.saveSettings();}));
   new Setting(panel).setName(writerUi("Arquivos de dicionário","Dictionary files")).setDesc(writerUi("Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.","Markdown paths separated by line. Entries may use word => insertion.")).addTextArea(t=>t.setValue(config.dictionaryPaths||'').onChange(async v=>{config.dictionaryPaths=v;await plugin.saveSettings();}));
   new Setting(panel).setName(writerUi("Reindexar","Reindex")).addButton(b=>b.setButtonText(writerUi("Atualizar índice","Update index")).setCta().onClick(async()=>{plugin.writerComplements.reset();await plugin.writerComplements.rebuild();new Notice(writerUi("Índice atualizado.","Index updated."));}));
   new Setting(panel).setName(writerUi("Limpar aprendizado","Clear learning")).addButton(b=>b.setButtonText(writerUi("Limpar histórico","Clear history")).onClick(async()=>{config.usage={};await plugin.saveSettings();}));
  }else if(id==='variants'){
-  toggle('enabled',writerUi("Ativar variantes","Enable variants"),'Usa sintaxe compatível com {{texto A|texto B}}^0.');
-  toggle('decorate','Destacar variantes no editor');
-  toggle('offerInReview','Oferecer variantes na revisão gramatical');
-  toggle('snapshotBeforeCommit','Salvar versão antes de confirmar','Requer snapshots ativos.');
-  toggle('confirmAll','Confirmar antes de aplicar todas');
+  toggle('enabled',writerUi("Ativar variantes","Enable variants"),writerUi('Usa sintaxe compatível com {{texto A|texto B}}^0.','Uses syntax compatible with {{text A|text B}}^0.'));
+  toggle('decorate',writerUi('Destacar variantes no editor','Highlight variants in editor'));
+  toggle('offerInReview',writerUi('Oferecer variantes na revisão gramatical','Offer variants in grammar review'));
+  toggle('snapshotBeforeCommit',writerUi('Salvar versão antes de confirmar','Save version before confirming'),writerUi('Requer snapshots ativos.','Requires snapshots enabled.'));
+  toggle('confirmAll',writerUi('Confirmar antes de aplicar todas','Confirm before applying all'));
   new Setting(panel).setName(writerUi("Instruções da IA para variantes","AI instructions for variants")).addTextArea(t=>{t.inputEl.rows=6;t.setValue(config.aiPrompt||'').onChange(async v=>{config.aiPrompt=v;await plugin.saveSettings();});});
   new Setting(panel).setName(writerUi("Abrir editor de variantes","Open variant editor")).addButton(b=>b.setButtonText(writerUi("Abrir ferramentas","Open tools")).setCta().onClick(()=>plugin.openWritingTools('variants')));
  }else if(id==='snapshots'){
-  toggle('enabled','Ativar histórico local','Snapshots ficam no seu cofre e não são enviados para IA.');
-  toggle('automatic','Snapshots automáticos','Por padrão, apenas snapshots manuais.');
-  toggle('includeAttachments','Incluir anexos nos novos snapshots','Pode consumir bastante espaço. Restauração não sobrescreve anexos compartilhados.');
-  toggle('snapshotBeforeRewrite','Criar snapshot antes de alterações','Correções, variantes e outros recursos integrados.');
-  toggle('snapshotBeforeRestore','Criar snapshot antes de restaurar');
-  input('store','Pasta do histórico','Caminho relativo ao cofre. Alterar a pasta não migra o histórico existente.');
-  input('autoDelaySeconds','Intervalo entre snapshots automáticos (segundos)','Mínimo de 60.',true);
-  input('maxPerNote','Limite de versões por nota','0 mantém todas. Exclusões automáticas não são reversíveis.',true);
-  input('retentionDays','Retenção em dias','0 desativa limpeza por idade.',true);
-  input('showDiffContext','Linhas de contexto no diff',null,true);
+  toggle('enabled',writerUi('Ativar histórico local','Enable local history'),writerUi('Snapshots ficam no seu cofre e não são enviados para IA.','Snapshots stay in your vault and are not sent to AI.'));
+  toggle('automatic',writerUi('Snapshots automáticos','Automatic snapshots'),writerUi('Por padrão, apenas snapshots manuais.','By default, only manual snapshots.'));
+  toggle('includeAttachments',writerUi('Incluir anexos nos novos snapshots','Include attachments in new snapshots'),writerUi('Pode consumir bastante espaço. Restauração não sobrescreve anexos compartilhados.','May use significant space. Restoring never overwrites shared attachments.'));
+  toggle('snapshotBeforeRewrite',writerUi('Criar snapshot antes de alterações','Snapshot before edits'),writerUi('Correções, variantes e outros recursos integrados.','Corrections, variants and other integrated features.'));
+  toggle('snapshotBeforeRestore',writerUi('Criar snapshot antes de restaurar','Snapshot before restoring'));
+  input('store',writerUi('Pasta do histórico','History folder'),writerUi('Caminho relativo ao cofre. Alterar a pasta não migra o histórico existente.','Path relative to the vault. Changing the folder does not move existing history.'));
+  input('autoDelaySeconds',writerUi('Intervalo entre snapshots automáticos (segundos)','Interval between automatic snapshots (seconds)'),writerUi('Mínimo de 60.','Minimum 60.'),true);
+  input('maxPerNote',writerUi('Limite de versões por nota','Version limit per note'),writerUi('0 mantém todas. Exclusões automáticas não são reversíveis.','0 keeps all. Automatic deletions cannot be undone.'),true);
+  input('retentionDays',writerUi('Retenção em dias','Retention in days'),writerUi('0 desativa limpeza por idade.','0 disables age-based cleanup.'),true);
+  input('showDiffContext',writerUi('Linhas de contexto no diff','Context lines in diff'),null,true);
   new Setting(panel).setName(writerUi("Abrir histórico da nota","Open note history")).addButton(b=>b.setButtonText(writerUi("Abrir versões","Open versions")).setCta().onClick(async()=>{
    const file=plugin.app.workspace.getActiveFile();if(!file)return new Notice(writerUi("Abra uma nota.","Open a note."));
    await plugin.writerSnapshots.showHistory(file);

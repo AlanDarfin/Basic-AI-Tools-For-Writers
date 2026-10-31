@@ -18,12 +18,12 @@ class WriterSnapshots{
  get config(){return this.plugin.settings.snapshots||WRITER_V3_DEFAULTS.snapshots;}
  path(...parts){
   const all=parts.flatMap(v=>String(v||'').split('/')).filter(Boolean);
-  if(all.some(s=>s==='.'||s==='..'||s.includes('\\')))throw Error('Caminho inseguro para histórico.');
+  if(all.some(s=>s==='.'||s==='..'||s.includes('\\')))throw Error(writerUi('Caminho inseguro para histórico.','Unsafe history path.'));
   return all.join('/');
  }
  root(){
   const root=String(this.config.store||'.basic-ai-history').trim().replace(/\/+$/,'');
-  if(!root||root.startsWith('/')||root.split('/').some(p=>p==='..'||p==='.')||root.includes('\\'))throw Error('Pasta de histórico inválida.');
+  if(!root||root.startsWith('/')||root.split('/').some(p=>p==='..'||p==='.')||root.includes('\\'))throw Error(writerUi('Pasta de histórico inválida.','Invalid history folder.'));
   return root;
  }
  async mkdir(path){
@@ -39,15 +39,15 @@ class WriterSnapshots{
   const id='n'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
   map[file.path]=id;return id;
  }
- folder(file){const id=this.identity(file);if(!/^n[a-z0-9-]+$/i.test(id))throw Error('Identidade de nota inválida.');return this.path(this.root(),id);}
+ folder(file){const id=this.identity(file);if(!/^n[a-z0-9-]+$/i.test(id))throw Error(writerUi('Identidade de nota inválida.','Invalid note identity.'));return this.path(this.root(),id);}
  async manifest(file){
   const path=this.path(this.folder(file),'manifest.json');
   if(!(await this.plugin.app.vault.adapter.exists(path)))return {version:1,notePath:file.path,snapshots:[]};
   try{
    const obj=JSON.parse(await this.plugin.app.vault.adapter.read(path));
-   if(!Array.isArray(obj.snapshots))throw Error('Manifesto inválido.');
+   if(!Array.isArray(obj.snapshots))throw Error(writerUi('Manifesto inválido.','Invalid manifest.'));
    return obj;
-  }catch(e){throw Error('Não foi possível ler o histórico. Nada será sobrescrito: '+e.message);}
+  }catch(e){throw Error(writerUi('Não foi possível ler o histórico. Nada será sobrescrito: ','Could not read history. Nothing will be overwritten: ')+e.message);}
  }
  async writeManifest(file,data){
   const path=this.path(this.folder(file),'manifest.json'),adapter=this.plugin.app.vault.adapter;
@@ -99,13 +99,13 @@ class WriterSnapshots{
   }
   return refs;
  }
- async create(file,name='Versão manual',options={}){
-  if(!this.config.enabled)throw Error('Snapshots desativados.');
-  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Selecione uma nota Markdown.');
+ async create(file,name=writerUi('Versão manual','Manual version'),options={}){
+  if(!this.config.enabled)throw Error(writerUi('Snapshots desativados.','Snapshots are disabled.'));
+  if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi('Selecione uma nota Markdown.','Select a Markdown note.'));
   const text=options.content??await writerCurrentText(this.plugin,file);
   const folder=this.folder(file);await this.mkdir(folder);
   const manifest=await this.manifest(file);
-  const entry={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),name:String(name||'Versão manual').slice(0,120),size:text.length,attachments:[]};
+  const entry={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),name:String(name||writerUi('Versão manual','Manual version')).slice(0,120),size:text.length,attachments:[]};
   const path=this.path(folder,entry.id+'.md'),adapter=this.plugin.app.vault.adapter;
   await adapter.write(path,text);
   try{
@@ -115,7 +115,7 @@ class WriterSnapshots{
    await this.prune(file,manifest);
    await this.plugin.saveSettings();
    return entry;
-  }catch(e){throw Error('O snapshot foi salvo, mas o índice não foi atualizado: '+e.message);}
+  }catch(e){throw Error(writerUi('O snapshot foi salvo, mas o índice não foi atualizado: ','Snapshot saved, but the index was not updated: ')+e.message);}
  }
  async prune(file,manifest){
   const max=Number(this.config.maxPerNote)||0,days=Number(this.config.retentionDays)||0;
@@ -133,15 +133,15 @@ class WriterSnapshots{
  }
  async list(file){return (await this.manifest(file)).snapshots.slice().reverse();}
  async read(file,entry){
-  if(!/^s[a-z0-9]+$/i.test(String(entry.id)))throw Error('ID de versão inválido.');
+  if(!/^s[a-z0-9]+$/i.test(String(entry.id)))throw Error(writerUi('ID de versão inválido.','Invalid version ID.'));
   const path=this.path(this.folder(file),entry.id+'.md');
-  if(!(await this.plugin.app.vault.adapter.exists(path)))throw Error('Conteúdo desta versão não foi encontrado.');
+  if(!(await this.plugin.app.vault.adapter.exists(path)))throw Error(writerUi('Conteúdo desta versão não foi encontrado.','Version content not found.'));
   return this.plugin.app.vault.adapter.read(path);
  }
  async restore(file,entry,attachments=false){
   const text=await this.read(file,entry);
   const live=await writerCurrentText(this.plugin,file);
-  if(this.config.snapshotBeforeRestore!==false&&this.config.enabled)await this.create(file,'Antes de restaurar '+entry.name,{content:live});
+  if(this.config.snapshotBeforeRestore!==false&&this.config.enabled)await this.create(file,writerUi('Antes de restaurar ','Before restoring ')+entry.name,{content:live});
   const editor=writerActiveEditor(this.plugin,file);
   if(editor)editor.setValue(text);
   else await this.plugin.app.vault.process(file,()=>text);
@@ -178,7 +178,7 @@ class WriterSnapshots{
   const last=this.lastAuto.get(file.path)||0;
   if(Date.now()-last<delay)return;
   this.lastAuto.set(file.path,Date.now());
-  this.create(file,'Automático').catch(e=>console.warn('[Basic AI] Autosnapshot:',e));
+  this.create(file,writerUi('Automático','Automatic')).catch(e=>console.warn('[Basic AI] Autosnapshot:',e));
  }
  async showHistory(file){
   if(!(file instanceof TFile)||file.extension!=='md')return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
@@ -186,13 +186,13 @@ class WriterSnapshots{
   const render=async()=>{
    modal.contentEl.empty();modal.setTitle(writerUi("Histórico de versões · ","Version history · ")+file.basename);
    const snapshots=await this.list(file);
-   modal.contentEl.createEl('p',{text:snapshots.length+' versões · histórico local do Basic AI'});
+   modal.contentEl.createEl('p',{text:snapshots.length+writerUi(' versões · histórico local do Basic AI',' versions · local Basic AI history')});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
-    await this.create(file,'Manual');await render();
+    await this.create(file,writerUi('Manual','Manual'));await render();
    })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
     const prompt=new Modal(this.plugin.app);let label='';
     prompt.onOpen=()=>{prompt.setTitle(writerUi("Nome da versão","Version name"));
-     new Setting(prompt.contentEl).addText(t=>t.setPlaceholder('Antes da revisão').onChange(v=>label=v))
+     new Setting(prompt.contentEl).addText(t=>t.setPlaceholder(writerUi('Antes da revisão','Before review')).onChange(v=>label=v))
       .addButton(b=>b.setButtonText(writerUi("Salvar","Save")).setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
     };prompt.open();
    }));
@@ -201,16 +201,16 @@ class WriterSnapshots{
    for(const entry of snapshots.slice(0,250)){
     const card=list.createDiv({cls:'writer-history-entry'});
     card.createEl('strong',{text:entry.name});
-    card.createEl('small',{text:new Date(entry.at).toLocaleString()+' · '+entry.size+' caracteres · '+(entry.attachments?.length||0)+' anexo(s)'});
+    card.createEl('small',{text:new Date(entry.at).toLocaleString()+' · '+entry.size+writerUi(' caracteres · ',' characters · ')+(entry.attachments?.length||0)+writerUi(' anexo(s)',' attachment(s)')});
     const actions=card.createDiv({cls:'writer-history-actions'});
-    actions.createEl('button',{text:'Comparar'}).addEventListener('click',()=>this.showDiff(file,entry));
-    actions.createEl('button',{text:'Restaurar'}).addEventListener('click',()=>{
+    actions.createEl('button',{text:writerUi('Comparar','Compare')}).addEventListener('click',()=>this.showDiff(file,entry));
+    actions.createEl('button',{text:writerUi('Restaurar','Restore')}).addEventListener('click',()=>{
      const confirm=new Modal(this.plugin.app);let withAttachments=false;
      confirm.onOpen=()=>{confirm.setTitle(writerUi("Restaurar versão","Restore version"));
-      confirm.contentEl.createEl('p',{text:'Restaurar '+entry.name+'? O estado atual será salvo automaticamente antes da restauração.'});
-      if(entry.attachments?.length)new Setting(confirm.contentEl).setName('Restaurar somente anexos ausentes').setDesc(writerUi("Anexos existentes jamais serão sobrescritos.","Existing attachments will never be overwritten.")).addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
-      new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
-       .addButton(b=>b.setButtonText('Restaurar').setWarning().onClick(async()=>{
+      confirm.contentEl.createEl('p',{text:writerUi('Restaurar ','Restore ')+entry.name+writerUi('? O estado atual será salvo automaticamente antes da restauração.','? The current state will be saved automatically before restoring.')});
+      if(entry.attachments?.length)new Setting(confirm.contentEl).setName(writerUi('Restaurar somente anexos ausentes','Restore missing attachments only')).setDesc(writerUi("Anexos existentes jamais serão sobrescritos.","Existing attachments will never be overwritten.")).addToggle(t=>t.setValue(false).onChange(v=>withAttachments=v));
+      new Setting(confirm.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>confirm.close()))
+       .addButton(b=>b.setButtonText(writerUi('Restaurar','Restore')).setWarning().onClick(async()=>{
         try{await this.restore(file,entry,withAttachments);confirm.close();await render();new Notice(writerUi("Nota restaurada.","Note restored."));}
         catch(e){new Notice(e.message);}
        }));
@@ -220,7 +220,7 @@ class WriterSnapshots{
      const confirm=new Modal(this.plugin.app);
      confirm.onOpen=()=>{confirm.setTitle(writerUi("Excluir versão","Delete version"));
       confirm.contentEl.createEl('p',{text:writerUi("Excluir permanentemente esta versão? A operação não poderá ser desfeita.","Permanently delete this version? This cannot be undone.")});
-      new Setting(confirm.contentEl).addButton(b=>b.setButtonText('Cancelar').onClick(()=>confirm.close()))
+      new Setting(confirm.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>confirm.close()))
        .addButton(b=>b.setButtonText(writerUi("Excluir","Delete")).setWarning().onClick(async()=>{await this.delete(file,entry);confirm.close();await render();}));
      };confirm.open();
     });
@@ -232,12 +232,12 @@ class WriterSnapshots{
   const [oldText,current]=await Promise.all([this.read(file,entry),writerCurrentText(this.plugin,file)]);
   const diff=writerDiffLines(oldText,current);
   const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
-   modal.setTitle('Comparar · '+entry.name);
-   modal.contentEl.createEl('p',{text:diff.added+' linha(s) adicionada(s) · '+diff.removed+' removida(s)'});
+   modal.setTitle(writerUi('Comparar · ','Compare · ')+entry.name);
+   modal.contentEl.createEl('p',{text:diff.added+writerUi(' linha(s) adicionada(s) · ',' added line(s) · ')+diff.removed+writerUi(' removida(s)',' removed')});
    const box=modal.contentEl.createDiv({cls:'writer-history-diff'});
    if(diff.truncated){
     box.createEl('p',{text:writerUi("Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.","Note too long for line-by-line diff. Side-by-side comparison is available.")});
-    for(const [title,contents] of [['Versão salva',oldText],['Nota atual',current]]){
+    for(const [title,contents] of [[writerUi('Versão salva','Saved version'),oldText],[writerUi('Nota atual','Current note'),current]]){
      box.createEl('strong',{text:title});const area=box.createEl('textarea');area.readOnly=true;area.value=contents;
     }
    }else{

@@ -55,7 +55,7 @@ function writerV4AssertProtected(before,after){
   if(a.length!==b.length||a.some((token,i)=>token!==b[i]))throw Error(writerUi('O texto sugerido alterou YAML, links, código ou sintaxe protegida. Ajuste a proposta antes de aplicar.','The suggestion changed frontmatter, links, code or other protected syntax. Edit it before applying.'));
 }
 function writerV4Hunks(before,after){
-  if(String(before).length>12000||String(after).length>12000)throw Error('Trecho muito longo para comparação interativa.');
+  if(String(before).length>12000||String(after).length>12000)throw Error(writerUi('Trecho muito longo para comparação interativa.','Passage too long for interactive comparison.'));
   const diff=writerDiffLines(before,after,350);
   if(diff.truncated)throw Error(writerUi('Trecho com muitas linhas para o diff seletivo. Use um trecho menor.','Too many lines for selective diff. Select a smaller passage.'));
   const groups=[];let group=null;
@@ -102,7 +102,7 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false}={}){
     const instruction=prompt||plugin.settings.writerV4.rewritePrompt||WRITER_V4_DEFAULTS.rewritePrompt;
     const answer=await plugin.generateWriting(instruction,original);
     proposal=writerV4StripFence(answer);
-    if(!proposal)throw Error('A IA não retornou texto.');
+    if(!proposal)throw Error(writerUi('A IA não retornou texto.','The AI returned no text.'));
     accepted=new Set();
    }catch(error){new Notice(String(error?.message||error),7000);}
    finally{busy=false;render();}
@@ -146,7 +146,7 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false}={}){
         try{
           const result=writerV4MergeHunks(groups,accepted);
           if(plugin.settings.writerV4.protectMarkdown!==false)writerV4AssertProtected(original,result);
-          await writerSafeReplace(plugin,file,from,to,original,result,'revisão seletiva v4');
+          await writerSafeReplace(plugin,file,from,to,original,result,writerUi('revisão seletiva v4','v4 selective review'));
           modal.close();new Notice(writerUi('Revisão aplicada.','Review applied.'));
         }catch(e){busy=false;new Notice(String(e?.message||e),7000);renderDiff();}
       };

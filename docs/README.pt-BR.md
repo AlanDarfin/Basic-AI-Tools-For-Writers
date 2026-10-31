@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers — Português (Brasil)
 
-[English / README principal](../README.md) · [Release estável v4.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.0.0)
+[English / README principal](../README.md) · [Release estável v4.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.1.0)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
 
@@ -98,7 +98,7 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 ## Instalação e atualização
 
-1. Baixe o [ZIP da v4.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/v4.0.0/Basic-AI-Tool-for-Writers-v4.0.0.zip).
+1. Baixe o [ZIP da v4.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/v4.1.0/Basic-AI-Tool-for-Writers-v4.1.0.zip).
 2. Extraia os arquivos **`main.js`**, **`manifest.json`** e **`styles.css`** para:
 
    ```text
@@ -121,9 +121,11 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 ## Idiomas da interface
 
-O Basic AI reconhece a língua configurada no Obsidian. Existem traduções para **português brasileiro** e **inglês**, com inglês como idioma de fallback.
+O Basic AI utiliza a língua configurada no Obsidian e disponibiliza sua interface em **português brasileiro e inglês**, com inglês como alternativa para os demais idiomas.
 
-**A tradução da interface para inglês ainda não está totalmente concluída.** Grande parte das telas usa pares de textos traduzidos, mas ainda há mensagens fixas em português, especialmente em partes antigas do Longform, variantes e histórico de versões. Isso não limita os idiomas de origem/destino usados na função Tradutor.
+**Na v4.1.0, foi concluída a revisão da tradução inglesa dos controles integrados**, incluindo Longform, compilação, variantes, snapshots, mensagens de erro, autocomplete e revisão seletiva. Um teste automatizado evita a volta de rótulos antigos sem tradução.
+
+Os nomes dos seus projetos, notas e fluxos personalizados permanecem no idioma escolhido por você. Identificadores antigos como `Padrão` e `Principal` continuam preservados internamente para não quebrar o histórico, mas aparecem com equivalentes ingleses nos seletores. A ferramenta de Tradução de textos funciona separadamente, conforme o modelo escolhido.
 
 ## Desenvolvimento e documentação
 
@@ -135,7 +137,8 @@ npm run check
 ```
 
 Documentos úteis:
-- [Lançamento e migração da v4](V4_RELEASE.md)
+- [Lançamento estável da v4.1 e internacionalização](V4_1_RELEASE.md)
+- [Referência de migração v4.0](V4_RELEASE.md)
 - [Writing Suite: TTS, Unicode, templates e extras](WRITING_SUITE.md)
 - [Guia técnico da v3](V3.md)
 - [Checklist da RC1](V4_RC1_CHECKLIST.md)

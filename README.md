@@ -2,9 +2,11 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [v4.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [v4.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/v4.1.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
+
+> **Updated in v4.1:** complete English localization across built-in writing panels, Longform and history dialogs, with automated bilingual regression checks.
 
 > **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, pin formatting commands to Obsidian's native mobile toolbar, and run LanguageTool checks after a typing pause.
 
@@ -114,7 +116,7 @@ Choose **System / offline** speech when the Obsidian WebView exposes Web Speech 
 
 ## Installation and upgrade
 
-1. Download the latest [v4.0.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/v4.0.0/Basic-AI-Tool-for-Writers-v4.0.0.zip).
+1. Download the latest [v4.1.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/v4.1.0/Basic-AI-Tool-for-Writers-v4.1.0.zip).
 2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
 
    ```text
@@ -140,11 +142,11 @@ This repository provides manual installation files; this README does not claim t
 
 ## Language support
 
-The plugin detects the Obsidian interface language and includes **Portuguese (Brazil)** and **English** UI strings, using English as the fallback for other locales.
+The English interface has been reviewed for v4.1.0. The built-in interface supports **English** and **Portuguese (Brazil)**, following the Obsidian interface language. The **v4.1.0 localization pass** covers Longform project controls, compilation workflows, scene actions, variant dialogs, snapshot/version history, autocomplete settings, selective Diff and user-facing error messages. English is the fallback for other locales.
 
-**English localization is not yet fully audited or complete.** Most main screens use bilingual labels, but some older Longform actions, variant dialogs, snapshot prompts and status messages still contain hard-coded Portuguese. This affects interface text, **not** the ability to translate writing between languages. Translation accuracy depends on the configured AI model and prompts.
+Existing Markdown files, project titles, custom workflow names and the historical `Padrão` / `Principal` storage identifiers remain unchanged for compatibility, while built-in labels are translated for display. The text translation feature independently supports multiple input and output languages through your configured AI model.
 
-The English documentation here is complete for the features described; finishing the remaining UI strings is a separate localization task.
+**What's new in v4.1:** the missing English labels and messages were translated without altering saved project identifiers, while automatic localization regression tests were added.
 
 ## Development and documentation
 
@@ -156,7 +158,7 @@ npm run check     # source synchronization, syntax and regression tests
 ```
 
 Documentation:
-- [v4.0.0 stable release and migration guide](docs/V4_RELEASE.md)
+- [v4.1.0 stable release and migration guide](docs/V4_RELEASE.md)
 - [Writing Suite — utilities, TTS, templates and Unicode](docs/WRITING_SUITE.md)
 - [v3 autocomplete, variants and snapshots](docs/V3.md)
 - [v4 release candidate checklist](docs/V4_RC1_CHECKLIST.md)

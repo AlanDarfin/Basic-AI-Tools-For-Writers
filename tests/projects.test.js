@@ -8,7 +8,7 @@ class Modal{}
 class ItemView{}
 class Setting{}
 class Notice{}
-const obsidian={TFile,TFolder,Modal,ItemView,Setting,Notice,parseYaml:()=>({}),stringifyYaml:()=>''};
+const obsidian={TFile,TFolder,Modal,ItemView,Setting,Notice,parseYaml:()=>({}),stringifyYaml:()=>'',getLanguage:()=> 'pt-BR'};
 const context={module:{exports:{}},require:id=>{if(id!=='obsidian')throw Error('Unexpected dependency');return obsidian;},console,setTimeout,clearTimeout};
 vm.runInNewContext(fs.readFileSync('projects.js','utf8'),context,{filename:'projects.js'});
 const {ProjectsView,lfFlattenScenes,lfNestScenes,lfSceneTree,lfWordCount}=context.module.exports;

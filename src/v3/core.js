@@ -90,7 +90,7 @@ function writerParseVariants(input){
 }
 function writerEncodeVariant(items,active=0){
  const list=(items||[]).map(v=>String(v).replace(/\\/g,'\\\\').replace(/\|/g,'\\|').replace(/\}/g,'\\}'));
- if(list.length<2||list.some(v=>v.length>16000))throw Error('Variantes inválidas');
+ if(list.length<2||list.some(v=>v.length>16000))throw Error(writerUi('Variantes inválidas','Invalid variants'));
  return '{{'+list.join('|')+'}}^'+Math.min(Math.max(0,active),list.length-1);
 }
 function writerVariantAt(text,offset){return writerParseVariants(text).find(v=>offset>=v.from&&offset<=v.to)||null;}
@@ -101,10 +101,10 @@ function writerActiveEditor(plugin,file){
 function writerCurrentText(plugin,file){const editor=writerActiveEditor(plugin,file);return editor?Promise.resolve(editor.getValue()):plugin.app.vault.read(file);}
 function writerOffsetToPos(editor,offset){return typeof editor.offsetToPos==='function'?editor.offsetToPos(offset):{line:0,ch:offset};}
 async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason){
- if(!file||file.extension!=='md')throw Error('Abra uma nota Markdown.');
- if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<from)throw Error('Intervalo inválido.');
+ if(!file||file.extension!=='md')throw Error(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<from)throw Error(writerUi('Intervalo inválido.','Invalid range.'));
  const editor=writerActiveEditor(plugin,file),text=editor?editor.getValue():await plugin.app.vault.read(file);
- if(to>text.length||text.slice(from,to)!==expected)throw Error('A nota mudou depois da sugestão. Refaça a operação.');
+ if(to>text.length||text.slice(from,to)!==expected)throw Error(writerUi('A nota mudou depois da sugestão. Refaça a operação.','The note changed after the suggestion. Please try again.'));
  const committing=reason.includes('confirmar variante')||reason.includes('confirmar todas as variantes');
  const shouldSnapshot=committing?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
  if(plugin.settings.snapshots?.enabled&&shouldSnapshot&&plugin.writerSnapshots){
@@ -113,11 +113,11 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
  const next=text.slice(0,from)+replacement+text.slice(to);
  if(editor){
   // A snapshot may involve async I/O: never apply stale offsets afterward.
-  if(editor.getValue()!==text)throw Error('A nota mudou durante o snapshot. Faça uma nova revisão.');
+  if(editor.getValue()!==text)throw Error(writerUi('A nota mudou durante o snapshot. Faça uma nova revisão.','The note changed while creating the snapshot. Run the review again.'));
   editor.replaceRange(replacement,writerOffsetToPos(editor,from),writerOffsetToPos(editor,to));
  }else await plugin.app.vault.process(file,old=>{
    // A matching fragment is not enough: concurrent edits elsewhere must survive.
-   if(old!==text)throw Error('O arquivo foi editado simultaneamente.');
+   if(old!==text)throw Error(writerUi('O arquivo foi editado simultaneamente.','The file was edited concurrently.'));
    return old.slice(0,from)+replacement+old.slice(to);
  });
  return next;

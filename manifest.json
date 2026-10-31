@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "6.0.0-beta.1",
+  "version": "6.0.0-beta.2",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Preview: six opt-in writing extensions for Ruby, Discord dates/syntax, ratings, reading time and safe Linter.",
+  "description": "Beta: Longform hierarchical chapter navigation, Android cursor restoration, plus six writing modules.",
   "isDesktopOnly": false
 }

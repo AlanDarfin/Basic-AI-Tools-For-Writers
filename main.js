@@ -5587,6 +5587,7 @@ class DictionarySettings extends PluginSettingTab{
  display(){
   const el=this.containerEl;el.empty();el.createEl('h2',{text:t('settings')});
   const nav=el.createDiv({cls:'dictionary-settings-tabs'});nav.scrollLeft=this.settingsTabsScrollLeft||0;nav.addEventListener('scroll',()=>{this.settingsTabsScrollLeft=nav.scrollLeft;},{passive:true});nav.addEventListener('wheel',event=>{if(nav.scrollWidth>nav.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){nav.scrollLeft+=event.deltaY;event.preventDefault();}},{passive:false});
+  const subnav=el.createDiv({cls:'dictionary-settings-subtabs'});
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
   this.writerSettingsObserver?.disconnect();
   if(typeof MutationObserver==='function'){
@@ -5609,8 +5610,7 @@ class DictionarySettings extends PluginSettingTab{
     ['keyshots',msg('Keyshots · teclado','Keyshots · keyboard')],
     ['extendedSyntax',msg('Extended Syntax','Extended Syntax')],
     ['pandocSyntax',msg('Pandoc Syntax','Pandoc Syntax')],
-    ['easyTyping',msg('Easy Typing','Easy Typing')],
-    ['smartTypography',msg('Smart Typography','Smart Typography')],
+    ['typing',msg('Digitação e tipografia','Typing & typography')],
     ['cursor',msg('Posição do cursor','Cursor position')],
     ['snapshots',msg('Versões','Versions')],
     ['projectTasks',msg('Tarefas','Tasks')],
@@ -5628,16 +5628,44 @@ class DictionarySettings extends PluginSettingTab{
     ['prompts',msg('Prompts','Prompts')]
   ];
   const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
-   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',easyTyping:'easyTyping',smartTypography:'smartTypography',
+   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
    snapshots:'snapshots',projectTasks:'projects',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review'};
-  const enabledSections=sections.filter(([id])=>!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
+  const enabledSections=sections.filter(([id])=>id==='typing'
+   ?writerModuleOn(this.plugin,'easyTyping')||writerModuleOn(this.plugin,'smartTypography')
+   :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
+  const groups=[
+   ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
+   ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
+   ['longform',msg('Longform','Longform'),['projects','projectTasks']],
+   ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','keyshots','typing','cursor','abbreviations','anotherName','viewMode']],
+   ['markdown',msg('Markdown','Markdown'),['extendedSyntax','pandocSyntax','templates','unicode','toc']],
+   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts']]
+  ];
+  const groupFor=id=>groups.find(([, ,ids])=>ids.includes(id))?.[0]||'general';
+  this.lastSectionByGroup=this.lastSectionByGroup||{};
+  const renderSubtabs=(group,id)=>{
+   subnav.empty();
+   for(const [key,label] of enabledSections.filter(([key])=>groupFor(key)===group)){
+    const b=subnav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':String(key===id)}});
+    b.dataset.tab=key;b.classList.toggle('is-active',key===id);
+    b.addEventListener('click',()=>showTab(key));
+   }
+   subnav.setAttribute('role','tablist');
+  };
   const finder=writerWorkspaceBindSearch(el,enabledSections,id=>showTab(id),()=>panel,()=>this.activeSettingsTab);
   el.insertBefore(finder.wrap,nav);
   const showTab=id=>{
     if(!enabledSections.some(([key])=>key===id))id='modules';
     this.activeSettingsTab=id;
-    for(const button of Array.from(nav.children)){button.classList.toggle('is-active',button.dataset.tab===id);button.setAttribute('aria-selected',String(button.dataset.tab===id));}
+    const group=groupFor(id);
+    this.lastSectionByGroup[group]=id;
+    for(const button of Array.from(nav.children)){
+     const selected=button.dataset.group===group;
+     button.classList.toggle('is-active',selected);
+     button.setAttribute('aria-selected',String(selected));
+    }
+    renderSubtabs(group,id);
     panel.empty();
     if(id==='workspaceProfiles'){
       this.plugin.writerWorkspaceProfiles.renderSettings(panel);
@@ -5704,10 +5732,12 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='pandocSyntax'){
       this.plugin.writerPandocSyntax.renderSettings(panel);
       this.plugin.writerPandocExporter.renderSettings(panel);
-    }else if(id==='easyTyping'){
-      this.plugin.writerEasyTyping.renderSettings(panel);
-    }else if(id==='smartTypography'){
-      this.plugin.writerSmartTypography.renderSettings(panel);
+    }else if(id==='typing'){
+      if(writerModuleOn(this.plugin,'easyTyping'))this.plugin.writerEasyTyping.renderSettings(panel);
+      if(writerModuleOn(this.plugin,'smartTypography')){
+       if(writerModuleOn(this.plugin,'easyTyping'))panel.createEl('hr');
+       this.plugin.writerSmartTypography.renderSettings(panel);
+      }
     }else if(id==='modules'){
       writerRenderModuleSettings(this.plugin,panel,()=>this.display());
     }else if(id==='diagnostics'){
@@ -5779,8 +5809,19 @@ class DictionarySettings extends PluginSettingTab{
     writerMarkCompactSettings(panel);
     finder.update();
   };
-  for(const [id,label] of enabledSections){const b=nav.createEl('button',{text:label,attr:{role:'tab','aria-selected':'false'}});b.dataset.tab=id;b.addEventListener('click',()=>showTab(id));}
-  nav.setAttribute('role','tablist');showTab(this.plugin.settingsTabV4Hint?'writingProfiles':(this.activeSettingsTab||'general'));this.plugin.settingsTabV4Hint=false;
+  for(const [id,label] of groups){
+   if(!enabledSections.some(([key])=>groupFor(key)===id))continue;
+   const b=nav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':'false'}});
+   b.dataset.group=id;
+   b.addEventListener('click',()=>{
+    const remembered=this.lastSectionByGroup[id];
+    const target=enabledSections.some(([key])=>key===remembered)?remembered:enabledSections.find(([key])=>groupFor(key)===id)?.[0];
+    if(target)showTab(target);
+   });
+  }
+  nav.setAttribute('role','tablist');
+  showTab(this.plugin.settingsTabV4Hint?'writingProfiles':(this.activeSettingsTab||'general'));
+  this.plugin.settingsTabV4Hint=false;
  }
 }
 module.exports=class AlansOfflineDictionary extends Plugin{

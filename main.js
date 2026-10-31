@@ -3416,7 +3416,10 @@ const WRITER_MODULES=[
  ['comments','Comentários','Comments','Oculta comentários do Longform; mantém seus dados.','Hides Longform comments; keeps existing data.'],
  ['wordwise','Ações de escrita com IA','AI writing actions','Oculta ações Wordwise e seus menus.','Hides AI writing actions.'],
  ['typewriter','Máquina de escrever','Typewriter','Oculta o modo de foco.','Hides focus mode.'],
- ['cursorMemory','Lembrar posição do cursor','Remember cursor position','Salva e restaura posição, seleção e rolagem por nota.','Saves and restores cursor, selection and scroll per note.']
+ ['cursorMemory','Lembrar posição do cursor','Remember cursor position','Salva e restaura posição, seleção e rolagem por nota.','Saves and restores cursor, selection and scroll per note.'],
+ ['keyshots','Keyshots · teclado','Keyshots · keyboard','Navegação e transformação de linhas por atalhos no PC.','Desktop keyboard navigation and line actions.'],
+ ['extendedSyntax','Extended Syntax','Extended Syntax','Formatação Markdown com delimitadores estendidos.','Extra Markdown delimiters and rendering.'],
+ ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.']
 ];
 const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
 function writerMergeModules(settings){
@@ -3667,6 +3670,563 @@ class WriterCursorMemory{
    clearTimeout(this.flushTimer);this.flushTimer=null;
    await this.plugin.saveSettings();
   }
+ }
+}
+
+// v3 module: src/v5/keyshots.js
+/* Basic AI v5 — original, desktop-first editor navigation inspired by IDE workflows. */
+const WRITER_KEYSHOTS_DEFAULTS={enabled:true,shortcuts:true,preset:'vscode'};
+const WRITER_KEYSHOTS_ACTIONS=[
+ ['move-up','Mover linha(s) para cima','Move line(s) up'],
+ ['move-down','Mover linha(s) para baixo','Move line(s) down'],
+ ['duplicate-up','Duplicar linha(s) acima','Duplicate line(s) above'],
+ ['duplicate-down','Duplicar linha(s) abaixo','Duplicate line(s) below'],
+ ['insert-above','Inserir linha acima','Insert line above'],
+ ['insert-below','Inserir linha abaixo','Insert line below'],
+ ['delete-line','Excluir linha(s)','Delete line(s)'],
+ ['join-lines','Unir linhas selecionadas','Join selected lines'],
+ ['sort-lines','Ordenar linhas selecionadas','Sort selected lines'],
+ ['uppercase','Converter seleção em maiúsculas','Uppercase selection'],
+ ['lowercase','Converter seleção em minúsculas','Lowercase selection'],
+ ['titlecase','Converter seleção em título','Title-case selection'],
+ ['add-cursor-up','Adicionar cursor acima','Add cursor above'],
+ ['add-cursor-down','Adicionar cursor abaixo','Add cursor below']
+];
+function writerKeyshotsMerge(settings){
+ const old=settings.keyshots&&typeof settings.keyshots==='object'&&!Array.isArray(settings.keyshots)?settings.keyshots:{};
+ settings.keyshots={...WRITER_KEYSHOTS_DEFAULTS,...old};
+ settings.keyshots.enabled=settings.keyshots.enabled!==false;
+ settings.keyshots.shortcuts=settings.keyshots.shortcuts!==false;
+ if(!['vscode','jetbrains','none'].includes(settings.keyshots.preset))settings.keyshots.preset='vscode';
+ return settings.keyshots;
+}
+function writerKeyshotsSelectionLines(editor){
+ const from=editor.getCursor('from'),to=editor.getCursor('to');
+ const end=Math.max(from.line,to.line-(to.ch===0&&to.line>from.line?1:0));
+ return {start:from.line,end,from,to};
+}
+function writerKeyshotsLineAction(editor,action){
+ if(!editor||typeof editor.getLine!=='function')return false;
+ const {start,end,from,to}=writerKeyshotsSelectionLines(editor);
+ const last=editor.lineCount()-1;
+ const lines=[];for(let i=start;i<=end;i++)lines.push(editor.getLine(i));
+ const block=lines.join('\n');
+ const set=(first,lastLine)=>{
+  const a={line:Math.min(first,lastLine),ch:from.ch};
+  const b={line:Math.max(first,lastLine),ch:to.ch};
+  if(from.line===to.line&&from.ch===to.ch)editor.setCursor({line:first,ch:Math.min(from.ch,(editor.getLine(first)||'').length)});
+  else editor.setSelection(a,b);
+ };
+ if(action==='move-up'&&start>0){
+  const prev=editor.getLine(start-1);
+  editor.replaceRange(block+'\n'+prev,{line:start-1,ch:0},{line:end,ch:editor.getLine(end).length});
+  set(start-1,end-1);return true;
+ }
+ if(action==='move-down'&&end<last){
+  const next=editor.getLine(end+1);
+  editor.replaceRange(next+'\n'+block,{line:start,ch:0},{line:end+1,ch:next.length});
+  set(start+1,end+1);return true;
+ }
+ if(action==='duplicate-up'){
+  editor.replaceRange(block+'\n',{line:start,ch:0});
+  set(start,end);return true;
+ }
+ if(action==='duplicate-down'){
+  editor.replaceRange('\n'+block,{line:end,ch:editor.getLine(end).length});
+  set(start+end-start+1,end+end-start+1);return true;
+ }
+ if(action==='insert-above'){
+  editor.replaceRange('\n',{line:from.line,ch:0});
+  editor.setCursor({line:from.line,ch:0});return true;
+ }
+ if(action==='insert-below'){
+  const line=to.line;
+  editor.replaceRange('\n',{line,ch:editor.getLine(line).length});
+  editor.setCursor({line:line+1,ch:0});return true;
+ }
+ if(action==='delete-line'){
+  if(end<last)editor.replaceRange('',{line:start,ch:0},{line:end+1,ch:0});
+  else if(start>0)editor.replaceRange('',{line:start-1,ch:editor.getLine(start-1).length},{line:end,ch:editor.getLine(end).length});
+  else editor.replaceRange('',{line:0,ch:0},{line:0,ch:editor.getLine(0).length});
+  editor.setCursor({line:Math.min(start,Math.max(0,editor.lineCount()-1)),ch:0});return true;
+ }
+ if(action==='join-lines'){
+  const final=Math.max(end,Math.min(last,start+1));
+  if(final===start)return false;
+  const text=Array.from({length:final-start+1},(_,i)=>editor.getLine(start+i).trim()).join(' ');
+  editor.replaceRange(text,{line:start,ch:0},{line:final,ch:editor.getLine(final).length});
+  editor.setCursor({line:start,ch:text.length});return true;
+ }
+ if(action==='sort-lines'){
+  if(end<=start)return false;
+  const sorted=[...lines].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+  editor.replaceRange(sorted.join('\n'),{line:start,ch:0},{line:end,ch:editor.getLine(end).length});
+  editor.setSelection({line:start,ch:0},{line:end,ch:sorted.at(-1).length});return true;
+ }
+ return false;
+}
+function writerKeyshotsCaseAction(editor,action){
+ const selection=editor?.getSelection?.();
+ if(!selection)return false;
+ let next=selection;
+ if(action==='uppercase')next=selection.toLocaleUpperCase();
+ else if(action==='lowercase')next=selection.toLocaleLowerCase();
+ else if(action==='titlecase')next=selection.replace(/(^|[^\p{L}\p{N}])(\p{L})/gu,(_,a,b)=>a+b.toLocaleUpperCase());
+ else return false;
+ editor.replaceSelection(next,'around');return true;
+}
+function writerKeyshotsAddCursor(cm,direction){
+ if(!cm?.state?.selection||!cm?.state?.doc)return false;
+ const {EditorSelection}=require('@codemirror/state');
+ const ranges=cm.state.selection.ranges,extra=[];
+ const doc=cm.state.doc;
+ for(const range of ranges){
+  const line=doc.lineAt(range.head),n=line.number+direction;
+  if(n<1||n>doc.lines)continue;
+  const target=doc.line(n),column=range.head-line.from;
+  extra.push(EditorSelection.cursor(target.from+Math.min(column,target.length)));
+ }
+ if(!extra.length)return false;
+ cm.dispatch({selection:EditorSelection.create([...ranges,...extra],Math.min(ranges.length+extra.length-1,ranges.length))});
+ cm.focus();return true;
+}
+function writerKeyshotsBindings(preset){
+ const vscode=[
+  ['Alt-ArrowUp','move-up'],['Alt-ArrowDown','move-down'],
+  ['Shift-Alt-ArrowUp','duplicate-up'],['Shift-Alt-ArrowDown','duplicate-down'],
+  ['Mod-Shift-Enter','insert-above'],['Mod-Enter','insert-below'],
+  ['Mod-Shift-k','delete-line'],['Mod-j','join-lines'],
+  ['Mod-Alt-ArrowUp','add-cursor-up'],['Mod-Alt-ArrowDown','add-cursor-down']
+ ];
+ const jetbrains=[
+  ['Shift-Alt-ArrowUp','move-up'],['Shift-Alt-ArrowDown','move-down'],
+  ['Mod-Alt-Enter','insert-above'],['Shift-Enter','insert-below'],
+  ['Mod-Shift-j','join-lines'],['Mod-Alt-ArrowUp','add-cursor-up'],
+  ['Mod-Alt-ArrowDown','add-cursor-down']
+ ];
+ return preset==='jetbrains'?jetbrains:preset==='vscode'?vscode:[];
+}
+class WriterKeyshots{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.keyshots;}
+ available(){return !this.plugin.app.isMobile&&writerModuleOn(this.plugin,'keyshots')&&this.cfg.enabled;}
+ perform(action,editor,view){
+  if(!this.available())return false;
+  if(action.startsWith('add-cursor-'))return writerKeyshotsAddCursor(view?.editor?.cm||editor?.cm,action.endsWith('up')?-1:1);
+  return writerKeyshotsLineAction(editor,action)||writerKeyshotsCaseAction(editor,action);
+ }
+ register(){
+  const p=this.plugin;
+  for(const [id,pt,en] of WRITER_KEYSHOTS_ACTIONS){
+   p.addCommand({id:'v5-keyshots-'+id,name:'Keyshots: '+writerUi(pt,en),
+    editorCheckCallback:(checking,editor,view)=>{
+     if(!this.available()||!editor)return false;
+     if(!checking)this.perform(id,editor,view);
+     return true;
+    }});
+  }
+  const {keymap}=require('@codemirror/view');
+  const map=[...writerKeyshotsBindings('vscode'),...writerKeyshotsBindings('jetbrains')]
+   .filter(([key],i,all)=>all.findIndex(([other])=>key===other)===i)
+   .map(([key])=>({key,run:cm=>{
+    if(!this.available()||!this.cfg.shortcuts)return false;
+    const action=new Map(writerKeyshotsBindings(this.cfg.preset)).get(key);
+    if(!action)return false;
+    const markdown=p.app.workspace.getActiveViewOfType(MarkdownView);
+    if(markdown?.editor?.cm!==cm)return false;
+    return this.perform(action,markdown.editor,markdown);
+   }}));
+  p.registerEditorExtension(keymap.of(map));
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Keyshots · navegação por teclado','Keyshots · keyboard navigation')});
+  panel.createEl('p',{text:writerUi('Comandos para mover, duplicar, inserir e organizar linhas. Funciona somente no editor desktop. Os atalhos podem ser alterados nas configurações de teclas do Obsidian.','Desktop-only commands to move, duplicate, insert and organize lines. Assign custom shortcuts in Obsidian Hotkeys.'),cls:'dictionary-muted'});
+  new Setting(panel).setName(writerUi('Ativar comandos de teclado','Enable keyboard commands'))
+   .addToggle(t=>t.setValue(this.cfg.enabled).onChange(async v=>{this.cfg.enabled=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Usar atalhos de editor','Use editor shortcuts'))
+   .addToggle(t=>t.setValue(this.cfg.shortcuts).onChange(async v=>{this.cfg.shortcuts=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Perfil de atalhos','Shortcut profile'))
+   .setDesc(writerUi('Nenhum = apenas comandos do Obsidian. Se outra extensão usar o mesmo atalho, escolha Nenhum.','None = Obsidian commands only. Choose None if another plugin owns the same shortcuts.'))
+   .addDropdown(d=>d.addOption('vscode','VS Code').addOption('jetbrains','JetBrains').addOption('none',writerUi('Nenhum','None'))
+    .setValue(this.cfg.preset).onChange(async v=>{this.cfg.preset=v;await this.plugin.saveSettings();}));
+ }
+}
+
+// v3 module: src/v5/extended-syntax.js
+/* Basic AI v5: original extended Markdown implementation. */
+const WRITER_EXTENDED_DEFAULTS={enabled:true,underline:true,spoiler:true,superscript:true,subscript:true,coloredHighlight:true,customSpan:true,fencedDivs:true,livePreview:true};
+function writerExtendedMerge(settings){
+ const old=settings.extendedSyntax;
+ settings.extendedSyntax={...WRITER_EXTENDED_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
+ for(const key in WRITER_EXTENDED_DEFAULTS)settings.extendedSyntax[key]=settings.extendedSyntax[key]!==false;
+ return settings.extendedSyntax;
+}
+function writerExtendedTokens(source,config=WRITER_EXTENDED_DEFAULTS){
+ const rules=[
+  ['underline','underline',/\+\+([^\s+](?:[^\n]*?[^\s+])?)\+\+/g],
+  ['spoiler','spoiler',/\|\|([^\s|](?:[^\n]*?[^\s|])?)\|\|/g],
+  ['superscript','superscript',/\^([^\s^]+)\^/g],
+  ['subscript','subscript',/~([^\s~]+)~/g],
+  ['coloredHighlight','highlight',/==\{([a-zA-Z0-9_-]{1,30})\}([^\s=](?:[^\n]*?[^\s=])?)==/g],
+  ['customSpan','span',/!!\{([a-zA-Z0-9_ -]{1,60})\}([^\s!](?:[^\n]*?[^\s!])?)!!/g]
+ ],result=[],matches=[];
+ const ignored=[];
+ for(const match of source.matchAll(/\x60+[^\x60\n]*\x60+|\\./g))ignored.push([match.index,match.index+match[0].length]);
+ for(const [feature,kind,re] of rules){
+  if(config[feature]===false)continue;
+  for(const m of source.matchAll(re)){
+   const from=m.index,to=from+m[0].length;
+   if(to-from>3072)continue;
+   const opening=kind==='highlight'?'=={'+m[1]+'}':kind==='span'?'!!{'+m[1]+'}':({underline:'++',spoiler:'||',superscript:'^',subscript:'~'})[kind];
+   const closing=kind==='highlight'?'==':kind==='span'?'!!':opening;
+   if(from>0&&(source[from-1]==='\\'||source[from-1]===opening[0]))continue;
+   if(source[to]===closing[0]||ignored.some(([a,b])=>from<b&&to>a))continue;
+   const value=kind==='highlight'||kind==='span'?m[2]:m[1];
+   if(!value||!value.trim())continue;
+   matches.push({from,to,innerFrom:from+opening.length,innerTo:to-closing.length,kind,value,tag:kind==='highlight'||kind==='span'?m[1]:''});
+  }
+ }
+ matches.sort((a,b)=>a.from-b.from||b.to-a.to);
+ let end=0;for(const match of matches)if(match.from>=end){result.push(match);end=match.to;}
+ return result;
+}
+function writerExtendedColor(tag){
+ return ({red:'var(--color-red)',orange:'var(--color-orange)',yellow:'var(--color-yellow)',green:'var(--color-green)',blue:'var(--color-blue)',purple:'var(--color-purple)',pink:'var(--color-pink)',accent:'var(--interactive-accent)'})[String(tag).toLowerCase()]||null;
+}
+function writerExtendedElement(token){
+ const tag=token.kind==='superscript'?'sup':token.kind==='subscript'?'sub':token.kind==='underline'?'ins':token.kind==='highlight'?'mark':'span';
+ const node=document.createElement(tag);node.classList.add('writer-v5-ext','writer-v5-'+token.kind);node.textContent=token.value;
+ if(token.kind==='highlight'){
+  const color=writerExtendedColor(token.tag);
+  if(color)node.style.setProperty('--writer-v5-highlight-color',color);
+ }
+ if(token.kind==='span'){
+  for(const cls of token.tag.trim().split(/\s+/))if(/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(cls))node.classList.add('writer-v5-class-'+cls);
+ }
+ if(token.kind==='spoiler'){
+  node.tabIndex=0;node.setAttribute('role','button');node.setAttribute('aria-label',writerUi('Revelar spoiler','Reveal spoiler'));node.setAttribute('aria-pressed','false');
+  const toggle=()=>{node.setAttribute('aria-pressed',String(node.classList.toggle('is-revealed')));};
+  node.addEventListener('click',toggle);
+  node.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}});
+ }
+ return node;
+}
+function writerExtendedReading(root,cfg){
+ if(!root||typeof document==='undefined'||typeof document.createTreeWalker!=='function')return;
+ const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];
+ while(walker.nextNode()){
+  const n=walker.currentNode,p=n.parentElement;
+  if(!p||p.closest('pre,code,kbd,samp,script,style,textarea,a,math,svg,.cm-editor,.writer-v5-ext'))continue;
+  if(/[+|^~!=]/.test(n.nodeValue||''))nodes.push(n);
+ }
+ for(const node of nodes){
+  const source=node.nodeValue||'',tokens=writerExtendedTokens(source,cfg);
+  if(!tokens.length||!node.parentNode)continue;
+  const fragment=document.createDocumentFragment();let offset=0;
+  for(const token of tokens){
+   fragment.append(document.createTextNode(source.slice(offset,token.from)));
+   fragment.append(writerExtendedElement(token));offset=token.to;
+  }
+  fragment.append(document.createTextNode(source.slice(offset)));
+  node.parentNode.replaceChild(fragment,node);
+ }
+}
+function writerExtendedFencedDivs(root,cfg){
+ if(!cfg.fencedDivs||!root?.querySelectorAll||typeof document==='undefined')return;
+ for(const el of root.querySelectorAll('p')){
+  if(!el.isConnected||!el.parentElement||el.children.length)continue;
+  const m=/^:{3,}\s+([a-zA-Z][\w .-]{0,90})$/.exec(el.textContent.trim());
+  if(!m)continue;
+  let cursor=el.nextElementSibling;const entries=[];let close=null;
+  while(cursor&&entries.length<120){
+   if(cursor.tagName==='P'&&/^:{3,}\s*$/.test(cursor.textContent.trim())){close=cursor;break;}
+   if(cursor.tagName==='HR')break;
+   entries.push(cursor);cursor=cursor.nextElementSibling;
+  }
+  if(!close||!entries.length)continue;
+  const section=document.createElement('section');section.className='writer-v5-fenced-div';
+  for(const name of m[1].trim().split(/\s+/))if(/^[a-zA-Z][\w-]{0,40}$/.test(name))section.classList.add('writer-v5-class-'+name);
+  el.parentElement.insertBefore(section,el);
+  for(const entry of entries)section.appendChild(entry);
+  el.remove();close.remove();
+ }
+}
+function writerExtendedLiveDecorations(view,cfg){
+ if(!cfg.livePreview||!view?.state?.doc)return Decoration.none;
+ const doc=view.state.doc,selection=view.state.selection.main,ranges=[];
+ let fenced=false,frontMatter=false;
+ for(let n=1;n<=doc.lines;n++){
+  const line=doc.line(n),raw=line.text,trim=raw.trim();
+  if(n===1&&trim==='---'){frontMatter=true;continue;}
+  if(frontMatter){if(trim==='---')frontMatter=false;continue;}
+  if(/^\s{0,3}(?:\x60{3,}|~{3,})/.test(raw)){fenced=!fenced;continue;}
+  if(fenced||/^(?: {4}|\t)/.test(raw))continue;
+  for(const token of writerExtendedTokens(raw,cfg)){
+   const from=line.from+token.from,to=line.from+token.to;
+   const attrs={};
+   if(token.kind==='highlight'&&writerExtendedColor(token.tag))attrs.style='--writer-v5-highlight-color:'+writerExtendedColor(token.tag);
+   ranges.push(Decoration.mark({class:'writer-v5-ext writer-v5-'+token.kind,attributes:attrs}).range(line.from+token.innerFrom,line.from+token.innerTo));
+   if(selection.from<=to&&selection.to>=from)continue;
+   ranges.push(Decoration.replace({}).range(from,line.from+token.innerFrom));
+   ranges.push(Decoration.replace({}).range(line.from+token.innerTo,to));
+  }
+ }
+ return ranges.length?Decoration.set(ranges.sort((a,b)=>a.from-b.from||a.to-b.to),true):Decoration.none;
+}
+class WriterExtendedSyntax{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.extendedSyntax;}
+ active(){return writerModuleOn(this.plugin,'extendedSyntax')&&this.cfg.enabled;}
+ register(){
+  this.plugin.registerMarkdownPostProcessor(el=>{
+   if(this.active()){writerExtendedReading(el,this.cfg);writerExtendedFencedDivs(el,this.cfg);}
+  });
+  if(ViewPlugin?.fromClass){
+   const controller=this;
+   this.plugin.registerEditorExtension(ViewPlugin.fromClass(class{
+    constructor(view){this.decorations=this.make(view);}
+    make(view){return controller.active()?writerExtendedLiveDecorations(view,controller.cfg):Decoration.none;}
+    update(update){if(update.docChanged||update.viewportChanged||update.selectionSet||update.focusChanged)this.decorations=this.make(update.view);}
+   },{decorations:v=>v.decorations}));
+  }
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Extended Syntax · Markdown','Extended Syntax · Markdown')});
+  panel.createEl('p',{text:writerUi('Renderização adicional; não reinstala a antiga toolbar nem comandos de formatação.','Extra syntax without reinstating the retired toolbar or formatting commands.'),cls:'dictionary-muted'});
+  for(const [key,pt,en] of [
+   ['enabled','Habilitar sintaxe estendida','Enable extended syntax'],
+   ['underline','Sublinhado ++texto++','Underline ++text++'],
+   ['spoiler','Spoiler ||texto||','Spoiler ||text||'],
+   ['superscript','Sobrescrito ^texto^','Superscript ^text^'],
+   ['subscript','Subscrito ~texto~','Subscript ~text~'],
+   ['coloredHighlight','Destaque =={cor}texto==','Colored highlight =={color}text=='],
+   ['customSpan','Span !!{classe}texto!!','Custom span !!{class}text!!'],
+   ['fencedDivs','Blocos ::: classe (fechamento :::)','Fenced div ::: class (closing :::)'],
+   ['livePreview','Estilizar no Live Preview','Style in Live Preview']
+  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+ }
+}
+
+// v3 module: src/v5/pandoc-syntax.js
+/* Basic AI v5: lightweight Pandoc-compatible syntax, preserving Markdown source. */
+const WRITER_PANDOC_DEFAULTS={enabled:true,fancyLists:true,definitionLists:true,exampleLists:true,customLabels:true,fencedDivs:true,superSub:true,outline:true};
+function writerPandocMerge(settings){
+ const old=settings.pandocSyntax;
+ settings.pandocSyntax={...WRITER_PANDOC_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
+ for(const key in WRITER_PANDOC_DEFAULTS)settings.pandocSyntax[key]=settings.pandocSyntax[key]!==false;
+ return settings.pandocSyntax;
+}
+function writerPandocRoman(number){
+ let value=Number(number)||0,answer='';
+ for(const [unit,letter] of [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']])
+  while(value>=unit){answer+=letter;value-=unit;}
+ return answer;
+}
+function writerPandocNumber(letters){
+ if(!letters)return 1;
+ if(/^\d+$/.test(letters))return Number(letters);
+ if(/^[ivxlcdm]+$/i.test(letters)){
+  const symbols={I:1,V:5,X:10,L:50,C:100,D:500,M:1000};
+  let sum=0,last=0;
+  for(const ch of letters.toUpperCase().split('').reverse()){
+   const n=symbols[ch];sum+=n<last?-n:n;last=n;
+  }
+  if(sum>0&&sum<4000&&writerPandocRoman(sum).toLowerCase()===letters.toLowerCase())return sum;
+ }
+ if(/^[a-z]$/i.test(letters))return letters.toLowerCase().charCodeAt(0)-96;
+ return 1;
+}
+function writerPandocListItem(text){
+ const m=/^\s{0,3}([A-Za-z]{1,7}|#|\d{1,5})([.)])\s+(.+)$/.exec(text);
+ if(!m)return null;
+ const marker=m[1];
+ let type='1';
+ if(marker==='#')type='1';
+ else if(/^[ivxlcdm]+$/.test(marker))type='i';
+ else if(/^[IVXLCDM]+$/.test(marker))type='I';
+ else if(/^[a-z]$/.test(marker))type='a';
+ else if(/^[A-Z]$/.test(marker))type='A';
+ else if(!/^\d+$/.test(marker))return null;
+ return {type,start:writerPandocNumber(marker),prefix:m[0].length-m[3].length,content:m[3],marker};
+}
+function writerPandocOutline(text){
+ const entries=[],lines=String(text).split(/\r?\n/);let fenced=false;
+ for(let line=0;line<lines.length;line++){
+  const s=lines[line].trim();
+  if(/^(?:\x60{3,}|~{3,})/.test(s)){fenced=!fenced;continue;}
+  if(fenced)continue;
+  const fancy=writerPandocListItem(lines[line]);
+  const example=/^\(@([-\w]+)\)\s+(.+)/.exec(s);
+  const custom=/^\{::([^}]+)\}\s*(.*)/.exec(s);
+  const div=/^:{3,}\s+\{?\.[\w-]+/.exec(s);
+  const definition=line>0&&/^:\s+\S/.test(s);
+  if(example)entries.push({line,title:'(@'+example[1]+') '+example[2],kind:'example'});
+  else if(custom)entries.push({line,title:custom[1]+': '+custom[2],kind:'label'});
+  else if(div)entries.push({line,title:s,kind:'div'});
+  else if(definition)entries.push({line,title:lines[line-1].trim()+': '+s.replace(/^:\s*/,''),kind:'definition'});
+  else if(fancy)entries.push({line,title:lines[line].trim(),kind:'list'});
+ }
+ return entries;
+}
+function writerPandocRemovePrefix(p,chars){
+ let remaining=chars;
+ const walker=document.createTreeWalker(p,NodeFilter.SHOW_TEXT);
+ while(remaining>0&&walker.nextNode()){
+  const node=walker.currentNode,n=node.nodeValue||'',cut=Math.min(remaining,n.length);
+  node.nodeValue=n.slice(cut);remaining-=cut;
+ }
+}
+function writerPandocReading(root,cfg){
+ if(!root?.querySelectorAll||typeof document==='undefined')return;
+ if(cfg.superSub&&!root.querySelector('.cm-editor')){
+  writerExtendedReading(root,{underline:false,spoiler:false,superscript:true,subscript:true,coloredHighlight:false,customSpan:false});
+ }
+ const paragraphs=Array.from(root.querySelectorAll('p'));
+ const examples=new Map();let exampleIndex=0;
+ if(cfg.exampleLists){
+  for(const p of paragraphs){
+   if(!p.isConnected||p.closest('pre,blockquote,li,code'))continue;
+   const m=/^\(@([-\w]{1,80})\)\s+(.+)/.exec(p.textContent||'');
+   if(!m)continue;
+   if(!examples.has(m[1]))examples.set(m[1],++exampleIndex);
+   const badge=document.createElement('span');badge.className='writer-v5-pandoc-marker';badge.textContent='('+examples.get(m[1])+') ';
+   writerPandocRemovePrefix(p,m[0].length-m[2].length);
+   p.prepend(badge);p.classList.add('writer-v5-pandoc-example');
+  }
+ }
+ if(cfg.customLabels){
+  for(const p of paragraphs){
+   if(!p.isConnected||p.closest('pre,blockquote,li,code'))continue;
+   const m=/^\{::([^}]{1,60})\}\s*/.exec(p.textContent||'');
+   if(!m)continue;
+   writerPandocRemovePrefix(p,m[0].length);
+   const badge=document.createElement('span');badge.className='writer-v5-pandoc-marker';badge.textContent='('+m[1]+') ';
+   p.prepend(badge);p.classList.add('writer-v5-pandoc-labeled');
+  }
+ }
+ if(cfg.definitionLists){
+  for(const p of paragraphs){
+   if(!p.isConnected||p.closest('li,blockquote,pre,code')||p.children.length)continue;
+   const next=p.nextElementSibling;
+   if(!next||next.tagName!=='P'||next.children.length)continue;
+   const m=/^:\s+([\s\S]+)/.exec(next.textContent||'');
+   if(!m||!p.textContent?.trim())continue;
+   const dl=document.createElement('dl');dl.className='writer-v5-pandoc-definition';
+   const dt=document.createElement('dt'),dd=document.createElement('dd');
+   while(p.firstChild)dt.appendChild(p.firstChild);
+   while(next.firstChild)dd.appendChild(next.firstChild);
+   writerPandocRemovePrefix(dd,m[0].length-m[1].length);
+   dl.append(dt,dd);p.replaceWith(dl);next.remove();
+  }
+ }
+ if(cfg.fancyLists){
+  for(const p of paragraphs){
+   if(!p.isConnected||p.tagName!=='P'||p.closest('blockquote,pre,code,li'))continue;
+   const parsed=writerPandocListItem(p.textContent||'');
+   if(!parsed)continue;
+   const previous=p.previousElementSibling;
+   let ol=previous?.tagName==='OL'&&previous.classList.contains('writer-v5-pandoc-fancy')&&previous.getAttribute('type')===parsed.type?previous:null;
+   if(!ol){ol=document.createElement('ol');ol.className='writer-v5-pandoc-fancy';ol.type=parsed.type;ol.start=Math.max(1,Math.min(parsed.start,3999));p.parentElement.insertBefore(ol,p);}
+   const li=document.createElement('li');
+   writerPandocRemovePrefix(p,parsed.prefix);
+   while(p.firstChild)li.appendChild(p.firstChild);
+   ol.appendChild(li);p.remove();
+  }
+ }
+ if(cfg.fencedDivs){
+  for(const p of paragraphs){
+   if(!p.isConnected||p.children.length)continue;
+   const m=/^:{3,}\s+\{\.([\w-]{1,60})(?:\s+#([\w-]{1,80}))?(?:\s+title="([^"]{1,120})")?\}$/.exec((p.textContent||'').trim());
+   if(!m)continue;
+   const children=[];let next=p.nextElementSibling,closing=null;
+   while(next&&children.length<120){
+    if(next.tagName==='P'&&/^:{3,}\s*$/.test((next.textContent||'').trim())){closing=next;break;}
+    if(next.tagName==='HR')break;
+    children.push(next);next=next.nextElementSibling;
+   }
+   if(!closing)continue;
+   const section=document.createElement('section');section.className='writer-v5-pandoc-div writer-v5-class-'+m[1];
+   if(m[2])section.id=m[2];
+   if(m[3]){const header=document.createElement('div');header.className='writer-v5-pandoc-div-title';header.textContent=m[3];section.appendChild(header);}
+   p.parentElement.insertBefore(section,p);
+   for(const item of children)section.appendChild(item);
+   p.remove();closing.remove();
+  }
+ }
+ if(examples.size){
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),refs=[];
+  while(walker.nextNode()){
+   const n=walker.currentNode;
+   if(!n.parentElement?.closest('pre,code,a,.writer-v5-pandoc-marker')&&/\(@[-\w]+\)/.test(n.nodeValue||''))refs.push(n);
+  }
+  for(const n of refs)n.nodeValue=n.nodeValue.replace(/\(@([-\w]+)\)/g,(match,id)=>examples.has(id)?'('+examples.get(id)+')':match);
+ }
+}
+function writerPandocLiveDecorations(view,cfg){
+ if(!cfg.enabled||!view?.state?.doc)return Decoration.none;
+ const doc=view.state.doc,ranges=[];let code=false;
+ for(let n=1;n<=doc.lines;n++){
+  const line=doc.line(n),trim=line.text.trim();
+  if(/^(?:\x60{3,}|~{3,})/.test(trim)){code=!code;continue;}
+  if(code)continue;
+  const fancy=cfg.fancyLists&&writerPandocListItem(line.text);
+  let cls='';
+  if(fancy)cls='writer-v5-pandoc-fancy-line';
+  else if(cfg.definitionLists&&/^:\s+\S/.test(trim))cls='writer-v5-pandoc-definition-line';
+  else if(cfg.exampleLists&&/^\(@[-\w]+\)\s+/.test(trim))cls='writer-v5-pandoc-example-line';
+  else if(cfg.customLabels&&/^\{::[^}]+\}/.test(trim))cls='writer-v5-pandoc-custom-line';
+  else if(cfg.fencedDivs&&/^:{3,}\s+\{/.test(trim))cls='writer-v5-pandoc-div-line';
+  if(cls)ranges.push(Decoration.line({class:cls}).range(line.from));
+ }
+ return ranges.length?Decoration.set(ranges,true):Decoration.none;
+}
+class WriterPandocSyntax{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.pandocSyntax;}
+ active(){return writerModuleOn(this.plugin,'pandocSyntax')&&this.cfg.enabled;}
+ register(){
+  const p=this.plugin;
+  p.registerMarkdownPostProcessor(el=>{if(this.active())writerPandocReading(el,{...this.cfg,superSub:this.cfg.superSub&&!p.settings.extendedSyntax?.enabled});});
+  if(ViewPlugin?.fromClass){
+   const controller=this;
+   p.registerEditorExtension(ViewPlugin.fromClass(class{
+    constructor(view){this.decorations=this.make(view);}
+    make(view){return controller.active()?writerPandocLiveDecorations(view,controller.cfg):Decoration.none;}
+    update(update){if(update.docChanged||update.viewportChanged)this.decorations=this.make(update.view);}
+   },{decorations:v=>v.decorations}));
+  }
+  p.addCommand({id:'v5-pandoc-outline',name:writerUi('Pandoc: índice de listas e definições','Pandoc: list and definition outline'),callback:()=>this.openOutline()});
+ }
+ openOutline(){
+  if(!this.active()||!this.cfg.outline)return;
+  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  if(!view?.editor)return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
+  const entries=writerPandocOutline(view.editor.getValue());
+  const dialog=new Modal(this.plugin.app);
+  dialog.onOpen=()=>{
+   dialog.setTitle(writerUi('Índice Pandoc','Pandoc outline'));
+   if(!entries.length){dialog.contentEl.createEl('p',{text:writerUi('Nenhum item estruturado encontrado.','No structured entries found.')});return;}
+   const box=dialog.contentEl.createDiv({cls:'writer-v5-pandoc-outline'});
+   for(const entry of entries.slice(0,500)){
+    const button=box.createEl('button',{text:(entry.line+1)+' · '+entry.title});
+    button.addEventListener('click',()=>{dialog.close();view.editor.setCursor({line:entry.line,ch:0});view.editor.scrollIntoView?.({from:{line:entry.line,ch:0},to:{line:entry.line,ch:0}},true);view.editor.focus();});
+   }
+  };
+  dialog.open();
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Pandoc Syntax · listas e blocos','Pandoc Syntax · lists and blocks')});
+  panel.createEl('p',{text:writerUi('Renderização local de Markdown compatível com Pandoc. Exportação por executável Pandoc e filtros Lua não estão incluídos nesta etapa.','Local Pandoc-compatible Markdown rendering. Pandoc executable exports and Lua filters are not part of this stage.'),cls:'dictionary-muted'});
+  for(const [key,pt,en] of [
+   ['enabled','Habilitar Pandoc Syntax','Enable Pandoc Syntax'],
+   ['fancyLists','Listas alfabéticas, romanas e #.','Alphabetic, Roman and #. lists'],
+   ['definitionLists','Listas de definições','Definition lists'],
+   ['exampleLists','Exemplos numerados (@id)','Numbered examples (@id)'],
+   ['customLabels','Rótulos {::P}','Custom labels {::P}'],
+   ['fencedDivs','Blocos ::: {.classe}','Fenced div ::: {.class}'],
+   ['superSub','Sobrescrito e subscrito','Superscript and subscript'],
+   ['outline','Índice navegável','Navigable outline']
+  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
  }
 }
 
@@ -3977,6 +4537,9 @@ class DictionarySettings extends PluginSettingTab{
     ['variants',msg('Variantes','Variants')],
     ['writingProfiles',msg('Revisão seletiva e perfis','Selective review & profiles')],
     ['integrationsV4',msg('Ferramentas integradas','Integrated tools')],
+    ['keyshots',msg('Keyshots · teclado','Keyshots · keyboard')],
+    ['extendedSyntax',msg('Extended Syntax','Extended Syntax')],
+    ['pandocSyntax',msg('Pandoc Syntax','Pandoc Syntax')],
     ['cursor',msg('Posição do cursor','Cursor position')],
     ['snapshots',msg('Versões','Versions')],
     ['projectTasks',msg('Tarefas','Tasks')],
@@ -3994,7 +4557,7 @@ class DictionarySettings extends PluginSettingTab{
     ['prompts',msg('Prompts','Prompts')]
   ];
   const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
-   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',
+   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
    snapshots:'snapshots',projectTasks:'projects',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review'};
   const enabledSections=sections.filter(([id])=>!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
@@ -4059,6 +4622,12 @@ class DictionarySettings extends PluginSettingTab{
       writerV4RenderSettings(this.plugin,panel);
     }else if(id==='integrationsV4'){
       this.plugin.writerV4Extras.renderSettings(panel);
+    }else if(id==='keyshots'){
+      this.plugin.writerKeyshots.renderSettings(panel);
+    }else if(id==='extendedSyntax'){
+      this.plugin.writerExtendedSyntax.renderSettings(panel);
+    }else if(id==='pandocSyntax'){
+      this.plugin.writerPandocSyntax.renderSettings(panel);
     }else if(id==='modules'){
       writerRenderModuleSettings(this.plugin,panel,()=>this.display());
     }else if(id==='diagnostics'){
@@ -4165,6 +4734,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV4ExtraMerge(this.settings);
     writerMergeModules(this.settings);
     writerCursorMerge(this.settings);
+    writerKeyshotsMerge(this.settings);
+    writerExtendedMerge(this.settings);
+    writerPandocMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
     this.autoGrammar.register();
@@ -4177,6 +4749,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerV4Extras.register();
     this.writerCursorMemory=new WriterCursorMemory(this);
     this.writerCursorMemory.register();
+    this.writerKeyshots=new WriterKeyshots(this);this.writerKeyshots.register();
+    this.writerExtendedSyntax=new WriterExtendedSyntax(this);this.writerExtendedSyntax.register();
+    this.writerPandocSyntax=new WriterPandocSyntax(this);this.writerPandocSyntax.register();
     writerV4Register(this);
     this.registerEditorSuggest(this.writerComplements);
     this.registerEditorExtension(this.writerVariants.editorExtension());

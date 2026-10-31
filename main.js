@@ -1499,7 +1499,7 @@ class WriterVariants{
    build(){
     if(!plugin.settings?.variants?.enabled||plugin.settings.variants.decorate===false)return Decoration.none;
     const text=this.view.state.doc.toString(),variants=writerParseVariants(text).slice(0,500);
-    const ranges=variants.filter(v=>v.to<=text.length).map(v=>Decoration.mark({class:'writer-variant-mark',attributes:{title:writerUi('Alternativa ','Alternative ')+(v.active+1)+' de '+v.variants.length+writerUi(' · toque para editar',' · tap to edit')}}).range(v.from,v.to));
+    const ranges=variants.filter(v=>v.to<=text.length).map(v=>Decoration.mark({class:'writer-variant-mark',attributes:{title:writerUi('Alternativa ','Alternative ')+(v.active+1)+writerUi(' de ',' of ')+v.variants.length+writerUi(' · toque para editar',' · tap to edit')}}).range(v.from,v.to));
     return Decoration.set(ranges,true);
    }
    destroy(){this.view.dom.removeEventListener('pointerup',this.onPointerUp);}

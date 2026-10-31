@@ -4303,9 +4303,13 @@ async function writerPandocExportRun(plugin,format){
   await new Promise((resolve,reject)=>{
    const child=cp.spawn(cfg.pandocPath,[...args,source],{cwd:parent,shell:false,windowsHide:true,stdio:['ignore','ignore','pipe']});
    let stderr='',finished=false;
-   const timeout=setTimeout(()=>{if(!finished){const err=new Error('Pandoc timeout');err.code='ETIMEDOUT';child.kill();reject(err);}},cfg.timeoutSeconds*1000);
-   child.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString('utf8')).slice(-4000);});
+   let timeout;
    const finish=(err)=>{if(finished)return;finished=true;clearTimeout(timeout);if(err)reject(new Error(writerPandocExportError(err,stderr)));else resolve();};
+   timeout=setTimeout(()=>{
+    const err=new Error('Pandoc timeout');err.code='ETIMEDOUT';
+    try{child.kill();}catch(_){}finish(err);
+   },cfg.timeoutSeconds*1000);
+   child.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString('utf8')).slice(-4000);});
    child.on('error',finish);
    child.on('close',code=>finish(code===0?null:new Error('pandoc exit '+code)));
   });
@@ -4384,7 +4388,7 @@ const WRITER_EASY_DEFAULTS={
  customReplacements:[],maxPasteChars:20000
 };
 const WRITER_EASY_PAIRS=[
- ['(',')'],['[',']'],['{','}'],['“','”'],['‘','’'],['«','»'],
+ ['(',')'],['[',']'],['{','}'],['"','"'],["'","'"],['“','”'],['‘','’'],['«','»'],
  ['「','」'],['『','』'],['（','）'],['【','】'],['《','》'],
  ['\x60','\x60'],['**','**'],['__','__'],['~~','~~'],['==','=='],['[[',']]'],['$','$']
 ];
@@ -4663,6 +4667,10 @@ class WriterEasyAdvanced{
       stop.to=update.changes.mapPos(stop.to,1);
      }
     }
+    // When the user navigates outside a snippet, give Tab back to Obsidian.
+    const active=s.stops[s.index],selected=update.view.state.selection.main;
+    if(!active||selected.from<active.from||selected.to>active.to)
+     this.sessions.delete(update.view);
    }));
   if(keymap?.of)p.registerEditorExtension(keymap.of([{key:'Shift-Tab',run:view=>this.advance(view,-1)}]));
  }

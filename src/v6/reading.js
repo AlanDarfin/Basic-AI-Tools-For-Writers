@@ -32,7 +32,6 @@ function writerV6FormatTimestamp(epoch,format,locale='auto',timezone='local',now
   const relative=new Intl.RelativeTimeFormat(lang,{numeric:'auto'});
   return relative.format(Math.round(seconds/divisor),unit);
  }
- const dateStyle=format==='d'||format==='D'||format==='f'||format==='F';
  if(format==='t')return make({hour:'2-digit',minute:'2-digit'});
  if(format==='T')return make({hour:'2-digit',minute:'2-digit',second:'2-digit'});
  if(format==='d')return make({year:'numeric',month:'2-digit',day:'2-digit'});
@@ -92,10 +91,7 @@ class WriterV6Reading{
    new Notice(result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('minutos de leitura','reading minutes'));
   }});
   p.registerMarkdownPostProcessor?.(root=>{if(writerV6Allowed(p,'timestamps'))writerV6TimestampReading(root,p.settings.v6.timestamps);});
-  p.addCommand({id:'v6-insert-discord-time',name:writerUi('Data Discord: inserir marcador','Discord timestamp: insert marker'),editorCallback:editor=>{
-   const unix=Math.floor(Date.now()/1000);
-   editor.replaceSelection('<t:'+unix+':f>');
-  }});
+  p.addCommand({id:'v6-insert-discord-time',name:writerUi('Data Discord: inserir marcador','Discord timestamp: insert marker'),editorCallback:editor=>this.openDatePicker(editor)});
   if(ViewPlugin?.fromClass){
    const owner=this;
    p.registerEditorExtension(ViewPlugin.fromClass(class{
@@ -117,12 +113,52 @@ class WriterV6Reading{
    },{decorations:v=>v.decorations}));
   }
  }
+ openDatePicker(editor){
+  const plugin=this.plugin,cfg=plugin.settings.v6.timestamps;
+  const local=new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16);
+  let dateValue=local,format='f';
+  class Picker extends Modal{
+   onOpen(){
+    this.setTitle(writerUi('Inserir data do Discord','Insert Discord timestamp'));
+    new Setting(this.contentEl).setName(writerUi('Data e hora local','Local date and time')).addText(t=>{
+     t.inputEl.type='datetime-local';t.setValue(local).onChange(v=>dateValue=v);
+    });
+    new Setting(this.contentEl).setName(writerUi('Formato','Format')).addDropdown(d=>{
+     for(const [id,label] of [['t',writerUi('Hora curta','Short time')],['T',writerUi('Hora com segundos','Long time')],['d',writerUi('Data curta','Short date')],['D',writerUi('Data longa','Long date')],['f',writerUi('Data e hora','Date & time')],['F',writerUi('Data completa','Full date')],['R',writerUi('Tempo relativo','Relative time')]])d.addOption(id,label);
+     d.setValue('f').onChange(v=>format=v);
+    });
+    new Setting(this.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>this.close()))
+      .addButton(b=>b.setButtonText(writerUi('Inserir','Insert')).setCta().onClick(async()=>{
+       const unix=Math.floor(new Date(dateValue).getTime()/1000);
+       if(!Number.isFinite(unix)||unix<0||unix>253402300799)return new Notice(writerUi('Data inválida.','Invalid date.'));
+       const token='<t:'+unix+':'+format+'>';
+       editor.replaceSelection(token);
+       cfg.recent=[token,...(Array.isArray(cfg.recent)?cfg.recent:[]).filter(x=>x!==token)].slice(0,10);
+       await plugin.saveSettings();this.close();
+      }));
+    const recent=Array.isArray(cfg.recent)?cfg.recent:[];
+    if(recent.length){
+     this.contentEl.createEl('h4',{text:writerUi('Últimas datas usadas','Recently used timestamps')});
+     const list=this.contentEl.createDiv({cls:'writer-v6-date-history'});
+     for(const token of recent.slice(0,6)){
+      const valid=writerV6TimestampTokens(token)[0];
+      if(!valid)continue;
+      list.createEl('button',{text:writerV6FormatTimestamp(valid.epoch,valid.format,cfg.locale,cfg.timezone)}).addEventListener('click',()=>{editor.replaceSelection(token);this.close();});
+     }
+    }
+   }
+   onClose(){this.contentEl.empty();}
+  }
+  new Picker(plugin.app).open();
+ }
  renderSettings(panel){
   const rt=this.plugin.settings.v6.readingTime,ts=this.plugin.settings.v6.timestamps;
   panel.createEl('h3',{text:writerUi('Tempo de leitura','Reading time')});
   new Setting(panel).setName(writerUi('Ativar tempo de leitura','Enable reading time')).addToggle(t=>t.setValue(rt.enabled).onChange(async v=>{rt.enabled=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Palavras por minuto','Words per minute')).addSlider(s=>s.setLimits(60,900,10).setDynamicTooltip().setValue(rt.wpm).onChange(async v=>{rt.wpm=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Ignorar código','Exclude code')).addToggle(t=>t.setValue(rt.skipCode).onChange(async v=>{rt.skipCode=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Ignorar frontmatter','Exclude frontmatter')).addToggle(t=>t.setValue(rt.skipFrontmatter).onChange(async v=>{rt.skipFrontmatter=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Exibir na barra de status','Show in status bar')).addToggle(t=>t.setValue(rt.status).onChange(async v=>{rt.status=v;await this.plugin.saveSettings();}));
   panel.createEl('h3',{text:writerUi('Datas do Discord','Discord timestamps')});
   new Setting(panel).setName(writerUi('Renderizar marcadores <t:…>','Render <t:…> timestamps')).addToggle(t=>t.setValue(ts.enabled).onChange(async v=>{ts.enabled=v;await this.plugin.saveSettings();writerV6Refresh(this.plugin);}));
   new Setting(panel).setName(writerUi('Idioma de exibição','Display locale')).setDesc(writerUi('Automático, pt-BR, en-US ou espanhol','Auto, pt-BR, en-US or Spanish')).addDropdown(d=>d.addOption('auto',writerUi('Automático','Automatic')).addOption('pt-BR','Português (Brasil)').addOption('en-US','English (US)').addOption('es-ES','Español').setValue(ts.locale).onChange(async v=>{ts.locale=v;await this.plugin.saveSettings();}));

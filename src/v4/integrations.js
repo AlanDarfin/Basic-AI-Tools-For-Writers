@@ -2,7 +2,6 @@
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  toolbar:{enabled:true,mobileMode:'native'},
   typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
@@ -21,14 +20,12 @@ function writerV4ExtraMerge(settings){
  const cfg=settings.writerV4Extras={
   ...WRITER_V4_EXTRA_DEFAULTS,...old,
   mention:{...WRITER_V4_EXTRA_DEFAULTS.mention,...(old.mention||{})},
-  toolbar:{...WRITER_V4_EXTRA_DEFAULTS.toolbar,...(old.toolbar||{})},
   typewriter:{...WRITER_V4_EXTRA_DEFAULTS.typewriter,...(old.typewriter||{})},
   wordwise:{...WRITER_V4_EXTRA_DEFAULTS.wordwise,...(old.wordwise||{}),
    prompts:{...WRITER_V4_EXTRA_DEFAULTS.wordwise.prompts,...(old.wordwise?.prompts||{})}},
   comments:old.comments&&typeof old.comments==='object'&&!Array.isArray(old.comments)?old.comments:{}
  };
- cfg.toolbar.mobileMode='native';
-  cfg.toolbar.mobileModeConfirmed=true;
+ delete cfg.toolbar; // Drop retired toolbar preferences during settings migration.
   cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
  cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
  return cfg;
@@ -96,18 +93,6 @@ class WriterV4Mentions extends EditorSuggest{
   editor.replaceRange(replacement,start,end);
  }
 }
-function writerV4FormatText(original,kind){
- const text=String(original||'');
- switch(kind){
-  case 'bold':return '**'+text+'**';
-  case 'italic':return '*'+text+'*';
-  case 'heading':return text.split('\n').map(line=>'## '+line).join('\n');
-  case 'quote':return text.split('\n').map(line=>'> '+line).join('\n');
-  case 'list':return text.split('\n').map(line=>'- '+line).join('\n');
-  case 'link':return '['+text+'](https://example.com)';
-  default:return text;
- }
-}
 class WriterV4Extras{
  constructor(plugin){this.plugin=plugin;this.lastNote=null;}
  get config(){return this.plugin.settings.writerV4Extras;}
@@ -136,15 +121,6 @@ class WriterV4Extras{
     this.commentSelection(view?.file,editor);
   }});
   p.addCommand({id:'v4-wordwise',name:writerUi('Ferramentas inteligentes de escrita','AI writing actions'),editorCallback:()=>this.wordwise()});
-  p.addCommand({id:'v4-editing-toolbar',name:writerUi('Barra de edição: formatar seleção','Editing toolbar: format selection'),
-   editorCallback:(editor,view)=>this.openEditingToolbar(editor,view)});
-  // Individual actions can be pinned to Obsidian's native mobile toolbar.
-  for(const [kind,pt,en] of [
-   ['bold','Negrito','Bold'],['italic','Itálico','Italic'],
-   ['heading','Título H2','Heading H2'],['quote','Citação','Blockquote'],
-   ['list','Lista','List'],['link','Link','Link']
-  ])p.addCommand({id:'v4-format-'+kind,name:writerUi('Formatar: '+pt,'Format: '+en),
-    editorCallback:editor=>this.applyEditorFormat(editor,kind)});
   for(const [key,pt,en] of [
    ['improve','Melhorar estilo','Improve style'],['shorten','Encurtar texto','Shorten text'],
    ['expand','Expandir texto','Expand text'],['simplify','Simplificar texto','Simplify text'],
@@ -183,140 +159,7 @@ class WriterV4Extras{
     }
    },{decorations:value=>value.decorations}));
   }
-  if(ViewPlugin?.fromClass){
-   const owner=this;
-   p.registerEditorExtension(ViewPlugin.fromClass(class{
-    constructor(view){
-     this.view=view;this.dom=view.dom.createDiv({cls:'writer-v4-floating-toolbar'});
-     this.isMobile=owner.plugin.app.isMobile===true||(typeof navigator!=='undefined'&&/Android|iPad|iPhone/i.test(navigator.userAgent||''));
-     if(this.isMobile)this.dom.addClass('writer-v4-toolbar-mobile');
-     this.savedRange=null;this.expanded=false;this.dismissedKey=null;
-     this.onSelection=()=>{
-      clearTimeout(this.selectionTimer);
-      this.selectionTimer=setTimeout(()=>this.refresh(),70);
-     };
-     view.dom.addEventListener('pointerup',this.onSelection);
-     view.dom.addEventListener('touchend',this.onSelection,{passive:true});
-     view.dom.addEventListener('keyup',this.onSelection);
-     this.ownerDocument=view.dom.ownerDocument;
-     this.ownerDocument?.addEventListener('selectionchange',this.onSelection);
-     this.visualViewport=this.ownerDocument?.defaultView?.visualViewport||null;
-     this.onViewport=()=>this.positionMobile();
-     this.visualViewport?.addEventListener?.('resize',this.onViewport);
-     this.visualViewport?.addEventListener?.('scroll',this.onViewport);
-     if(this.isMobile){
-      const nav=this.dom.createDiv({cls:'writer-v4-mobile-actions'});
-      const toggle=nav.createEl('button',{text:writerUi('Aa Formatar','Aa Format'),attr:{'aria-expanded':'false','aria-label':writerUi('Expandir ferramentas','Expand editing tools')}});
-      toggle.addEventListener('pointerdown',e=>e.preventDefault());
-      toggle.addEventListener('click',()=>{
-       this.expanded=!this.expanded;toggle.setAttribute('aria-expanded',String(this.expanded));
-       this.dom.toggleClass('writer-v4-expanded',this.expanded);this.positionMobile();
-      });
-      const ai=nav.createEl('button',{text:'✦ IA',attr:{'aria-label':writerUi('Ações de IA','AI writing actions')}});
-      ai.addEventListener('pointerdown',e=>e.preventDefault());
-      ai.addEventListener('click',()=>this.useSelectedRange(()=>owner.wordwise()));
-      const close=nav.createEl('button',{text:'×',cls:'writer-v4-toolbar-close',attr:{'aria-label':writerUi('Fechar barra','Close toolbar')}});
-      close.addEventListener('pointerdown',e=>e.preventDefault());
-      close.addEventListener('click',()=>{
-       const selected=this.view.state.selection.main;this.dismissedKey=selected.from+':'+selected.to;
-       this.expanded=false;this.dom.removeClass('is-visible','writer-v4-expanded');
-      });
-     }
-     const formatActions=this.dom.createDiv({cls:'writer-v4-format-actions'});
-     const formats=[
-      ['B','bold','**','**'],['I','italic','*','*'],
-      ['H','heading','## ',''],['“”','quote','> ',''],
-      ['🔗','link','[','](https://example.com)'],['•','list','- ',''],
-      ['✦','wordwise',null,null]
-     ];
-     for(const [label,title,before,after] of formats){
-      if(this.isMobile&&title==='wordwise')continue;
-      const button=formatActions.createEl('button',{text:label,attr:{'aria-label':title,title}});
-      button.addEventListener('pointerdown',e=>e.preventDefault());
-      button.addEventListener('click',()=>this.useSelectedRange(()=>{
-       if(title==='wordwise')return owner.wordwise();
-       const selected=this.view.state.selection.main;
-       if(selected.empty)return;
-       const raw=this.view.state.doc.sliceString(selected.from,selected.to);
-       const value=(before||'')+raw+(after||'');
-       this.view.dispatch({changes:{from:selected.from,to:selected.to,insert:value},selection:{anchor:selected.from+value.length}});
-       this.expanded=false;this.savedRange=null;
-       this.dom.removeClass('is-visible','writer-v4-expanded');this.view.focus();
-      }));
-     }
-     this.refresh();
-    }
-    useSelectedRange(action){
-     const current=this.view.state.selection.main;
-     const selected=!current.empty?current:this.savedRange;
-     if(!selected||selected.from===selected.to||selected.to>this.view.state.doc.length)return;
-     if(current.empty)this.view.dispatch({selection:{anchor:selected.from,head:selected.to}});
-     action();
-    }
-    update(update){
-     if(update.docChanged){this.savedRange=null;this.expanded=false;this.dismissedKey=null;}
-     if(update.selectionSet||update.docChanged)this.refresh();
-    }
-    refresh(){
-     if(!owner.config.toolbar.enabled||this.isMobile){
-      this.dom.removeClass('is-visible');return;
-     }
-     const selected=this.view.state.selection.main;
-     if(selected.empty){
-      this.savedRange=null;this.expanded=false;this.dismissedKey=null;
-      this.dom.removeClass('is-visible','writer-v4-expanded');return;
-     }
-     if(!this.isMobile&&!this.view.hasFocus){this.dom.removeClass('is-visible');return;}
-     const key=selected.from+':'+selected.to;
-     if(this.dismissedKey===key)return;
-     if(this.savedRange&&(this.savedRange.from!==selected.from||this.savedRange.to!==selected.to)){
-      this.expanded=false;this.dom.removeClass('writer-v4-expanded');
-     }
-     this.savedRange={from:selected.from,to:selected.to};
-     this.dom.addClass('is-visible');
-     if(this.isMobile){this.positionMobile();return;}
-     const pos=this.view.coordsAtPos(selected.from),box=this.view.dom.getBoundingClientRect();
-     if(!pos){this.dom.removeClass('is-visible');return;}
-     this.dom.style.top=Math.max(4,pos.top-box.top-42)+'px';
-     this.dom.style.left=Math.max(0,Math.min(box.width-240,pos.left-box.left))+'px';
-    }
-    positionMobile(){
-     if(!this.isMobile||!this.dom.hasClass('is-visible'))return;
-     const selected=this.view.state.selection.main;
-     const offset=selected.empty?this.savedRange?.to:selected.to;
-     if(!Number.isInteger(offset))return;
-     const rect=this.view.coordsAtPos(offset);
-     if(!rect)return;
-     const win=this.ownerDocument?.defaultView,vv=this.visualViewport;
-     const leftEdge=vv?.offsetLeft||0,topEdge=vv?.offsetTop||0;
-     const width=vv?.width||win?.innerWidth||360,height=vv?.height||win?.innerHeight||650;
-     const barHeight=this.dom.offsetHeight||46,barWidth=this.dom.offsetWidth||185;
-     const safeBottom=topEdge+height-12,safeTop=topEdge+46;
-     // Avoid both Android's native selection popup and Obsidian's keyboard ribbon.
-     let top=rect.bottom+62;
-     if(top+barHeight>safeBottom)top=rect.top-barHeight-66;
-     top=Math.max(safeTop,Math.min(top,safeBottom-barHeight));
-     const left=Math.max(leftEdge+8,Math.min(rect.left-40,leftEdge+width-barWidth-8));
-     this.dom.style.setProperty('top',top+'px','important');
-     this.dom.style.setProperty('left',left+'px','important');
-     this.dom.style.setProperty('inset-block-start',top+'px','important');
-     this.dom.style.setProperty('inset-inline-start',left+'px','important');
-     this.dom.style.setProperty('bottom','auto','important');
-     this.dom.style.setProperty('right','auto','important');
-    }
-    destroy(){
-     clearTimeout(this.selectionTimer);
-     this.view.dom.removeEventListener('pointerup',this.onSelection);
-     this.view.dom.removeEventListener('touchend',this.onSelection);
-     this.view.dom.removeEventListener('keyup',this.onSelection);
-     this.ownerDocument?.removeEventListener('selectionchange',this.onSelection);
-     this.visualViewport?.removeEventListener?.('resize',this.onViewport);
-     this.visualViewport?.removeEventListener?.('scroll',this.onViewport);
-     this.dom.remove();
-    }
-   }));
   }
- }
  updateTypewriterClass(){
   if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
  }
@@ -410,53 +253,12 @@ class WriterV4Extras{
   }
   if(!count)panel.createEl('p',{text:writerUi('Nenhum comentário para exibir.','No comments to show.'),cls:'writer-tools-muted'});
  }
- applyEditorFormat(editor,kind){
-   if(this.config.toolbar.enabled===false)return new Notice(writerUi('Ative as ferramentas de edição nas configurações.','Enable editing tools in settings.'));
-   const text=editor?.getSelection?.()||'';
-   if(!text.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
-   editor.replaceRange(writerV4FormatText(text,kind),editor.getCursor('from'),editor.getCursor('to'));
-  }
  runEditorAIAction(editor,kind){
    if(!writerModuleOn(this.plugin,'wordwise'))return new Notice(writerUi('Ações de IA ocultas nas configurações.','AI actions are hidden in settings.'));
    if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
    if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho no editor.','Select text in the editor.'));
    return writerV4OpenDiff(this.plugin,{task:this.config.wordwise.prompts[kind],autoGenerate:true});
   }
- openEditingToolbar(editor,view){
-  if(this.config.toolbar.enabled===false)return new Notice(writerUi('Ative as ferramentas de edição nas configurações.','Enable editing tools in settings.'));
-  if(!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para formatar.','Select a passage to format.'));
-  const original=editor.getSelection();
-  const from=editor.posToOffset(editor.getCursor('from')),to=editor.posToOffset(editor.getCursor('to'));
-  const items=[
-   ['bold',writerUi('Negrito','Bold')],['italic',writerUi('Itálico','Italic')],
-   ['heading',writerUi('Título H2','Heading H2')],['quote',writerUi('Citação','Blockquote')],
-   ['list',writerUi('Lista','List')],['link',writerUi('Link','Link')]
-  ];
-  const modal=new Modal(this.plugin.app);
-  modal.onOpen=()=>{
-   modal.setTitle(writerUi('Barra de edição · Basic AI','Editing toolbar · Basic AI'));
-   modal.contentEl.createEl('p',{cls:'writer-tools-muted',text:writerUi('Escolha uma formatação. A seleção será preservada até a aplicação.','Choose formatting. The selection is preserved until applying.')});
-   const actions=modal.contentEl.createDiv({cls:'writer-v4-editor-command-grid'});
-   for(const [kind,label] of items){
-    actions.createEl('button',{text:label}).addEventListener('click',()=>{
-     try{
-      if(editor.getValue().slice(from,to)!==original)throw Error(writerUi('A nota mudou. Selecione novamente o trecho.','The note changed. Select the passage again.'));
-      const replacement=writerV4FormatText(original,kind);
-      editor.replaceRange(replacement,editor.offsetToPos(from),editor.offsetToPos(to));
-      modal.close();editor.focus?.();
-     }catch(error){new Notice(String(error?.message||error));}
-    });
-   }
-   const extra=modal.contentEl.createDiv({cls:'writer-v4-editor-command-grid'});
-   extra.createEl('button',{text:writerUi('Ações com IA ✦','AI writing actions ✦')}).addEventListener('click',()=>{
-    modal.close();
-    if(editor.getValue().slice(from,to)!==original)return new Notice(writerUi('Selecione novamente o trecho.','Select the passage again.'));
-    editor.setSelection(editor.offsetToPos(from),editor.offsetToPos(to));
-    this.wordwise();
-   });
-  };
-  modal.open();
- }
  wordwise(){
   if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));
   const view=this.currentEditor();
@@ -495,13 +297,6 @@ class WriterV4Extras{
    d.addOption('link',writerUi('Wikilink','Wikilink')).addOption('text',writerUi('Apenas texto','Plain text'));
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
   });
-  toggle('toolbar','enabled',writerUi('Comandos de formatação','Formatting commands'));
-  new Setting(panel).setName(writerUi('Barra móvel do Obsidian','Obsidian mobile toolbar'))
-   .setDesc(writerUi('No Android, adicione os comandos Basic AI: Formatar (Negrito, Itálico, Título, Citação, Lista, Link) e IA à barra nativa. A barra flutuante adicional está desativada.','On Android, add individual Basic AI Format and AI commands to the native mobile toolbar. No additional floating toolbar.'));
-  new Setting(panel).setName(writerUi('Abrir todas as ferramentas','Open all formatting actions'))
-   .addButton(b=>b.setButtonText(writerUi('Abrir menu','Open menu')).onClick(()=>{
-    const view=this.currentEditor();this.openEditingToolbar(view?.editor,view);
-   }));
   toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));
   toggle('typewriter','focusMode',writerUi('Atenuar linhas fora de foco','Dim unfocused lines'));
   toggle('wordwise','enabled',writerUi('Ações de IA para escrita','AI writing actions'));

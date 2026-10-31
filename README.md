@@ -2,7 +2,7 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
-**Latest stable:** [4.3.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [4.3.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
 
@@ -15,6 +15,8 @@
 **4.2.0 introduced:** Typewriter mode now highlights the actual CodeMirror cursor line on mobile and desktop, including when Obsidian does not apply its native active-line class. The new built-in cursor memory saves each note's cursor position, optional selection and scroll offset, with local persistence and per-feature settings. No separate plugin is required.
 
 **New in 4.3.0:** The experimental Editing Toolbar, its floating desktop/mobile UI, the six extra Markdown-formatting commands and associated settings have been removed. Use Obsidian's built-in formatting commands and native mobile toolbar instead. **Independent AI writing actions remain available** through the plugin's commands and panels; typewriter line highlighting and cursor memory remain unchanged.
+
+**4.3.1 fix:** The typewriter-mode active-line accent no longer overlaps the first character. The highlight now uses a separate marker and consistent text spacing across lines on desktop and mobile. No other writing features have changed.
 
 ## Contents
 
@@ -128,7 +130,7 @@ Choose **System / offline** speech when the Obsidian WebView exposes Web Speech 
 
 ## Installation and upgrade
 
-1. Download the latest [4.3.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.0/Basic-AI-Tool-for-Writers-4.3.0.zip).
+1. Download the latest [4.3.1 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.1/Basic-AI-Tool-for-Writers-4.3.1.zip).
 2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
 
    ```text

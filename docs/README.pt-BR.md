@@ -2,15 +2,17 @@
 
 **Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
 
-[English / README principal](../README.md) · [Release estável 4.3.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.0)
+[English / README principal](../README.md) · [Release estável 4.3.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.1)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
 
-**Versão atual:** 4.3.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
+**Versão atual:** 4.3.1 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
 
 **Na 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
 
 **Novidades da 4.3.0:** removemos a Editing Toolbar, os controles flutuantes para PC e celular, os comandos extras de formatação Markdown e suas configurações. Para formatar texto, use as ferramentas nativas do Obsidian. Os comandos independentes de escrita com IA, o modo Máquina de Escrever e a memória do cursor continuam disponíveis.
+
+**Correção da 4.3.1:** a barrinha colorida do realce no modo Máquina de Escrever fica separada das letras, com espaçamento consistente em todas as linhas, tanto no PC quanto no celular.
 
 **Para configurar:** abra **Configurações → Basic AI Tool for Writers → Posição do cursor**. Você pode ativar/desativar o recurso, escolher se deseja restaurar seleção e rolagem, definir um limite de notas (500 por padrão), limpar os registros salvos e usar comandos para restaurar ou esquecer a posição da nota atual. Links com âncoras não têm seu destino substituído pela memória. O código é uma integração independente inspirada no plugin [Remember cursor position](https://github.com/dy-sh/obsidian-remember-cursor-position), sem precisar instalá-lo.
 
@@ -106,7 +108,7 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 ## Instalação e atualização
 
-1. Baixe o [ZIP da 4.3.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.0/Basic-AI-Tool-for-Writers-4.3.0.zip).
+1. Baixe o [ZIP da 4.3.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.1/Basic-AI-Tool-for-Writers-4.3.1.zip).
 2. Extraia os arquivos **`main.js`**, **`manifest.json`** e **`styles.css`** para:
 
    ```text

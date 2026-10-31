@@ -22,7 +22,7 @@ test('curly quotation marks and apostrophes',()=>{
 });
 test('smart dashes, ellipses, symbols and disabled options',()=>{
  const c=v.writerTypoMerge({});
- for(const [input,key,expect] of [['--','-','—'],['...','.','…'],['->','>','→'],['<-','-','←'],['>=','=','≥'],['<=','=','≤'],['/=','=','≠']])
+ for(const [input,key,expect] of [['Text --','-','—'],['...','.','…'],['->','>','→'],['<-','-','←'],['>=','=','≥'],['<=','=','≤'],['/=','=','≠']])
   assert.equal(v.writerTypoAtInput(input,key,c)?.text,expect,input);
  assert.equal(v.writerTypoAtInput('1/2','2',c),null);
  assert.equal(v.writerTypoAtInput('1/2','2',{...c,fractions:true}).text,'½');

@@ -107,6 +107,7 @@ function writerExtendedLiveDecorations(view,cfg){
   if(frontMatter){if(trim==='---')frontMatter=false;continue;}
   if(/^\s{0,3}(?:\x60{3,}|~{3,})/.test(raw)){fenced=!fenced;continue;}
   if(fenced||/^(?: {4}|\t)/.test(raw))continue;
+  if(view.visibleRanges?.length&&!view.visibleRanges.some(range=>line.to>=range.from&&line.from<=range.to))continue;
   for(const token of writerExtendedTokens(raw,cfg)){
    const from=line.from+token.from,to=line.from+token.to;
    const attrs={};

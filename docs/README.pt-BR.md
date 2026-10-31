@@ -1,14 +1,14 @@
 # Basic AI Tool for Writers
 
-> **Em desenvolvimento — v5:** navegação Keyshots, sintaxes Extended/Pandoc, **Easy Typing** (regex opcionais e modelos com Tab), **Smart Typography** e exportação **Pandoc** opcional no desktop. A v5 ainda **não foi publicada**. Consulte o [guia da v5](V5-DEVELOPMENT.md).
+> **Novidade — v5.0.0:** navegação Keyshots, sintaxes Extended/Pandoc, Easy Typing (regex opcionais e modelos com Tab), Smart Typography e exportação Pandoc opcional no desktop. Veja as [notas de lançamento](V5_RELEASE.md) e o [guia técnico](V5-DEVELOPMENT.md).
 
 **Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
 
-[English / README principal](../README.md) · [Release estável 4.3.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/4.3.1)
+[English / README principal](../README.md) · [Release estável 5.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.0.0)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
 
-**Versão atual:** 4.3.1 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
+**Versão atual:** 5.0.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
 
 **Na 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
 
@@ -30,13 +30,27 @@ Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), q
 | **Produtividade** | Autocomplete local, variantes, snippets de abreviações, menções, Unicode, templates por nome, sumário instantâneo e máquina de escrever. |
 | **Versões** | Snapshots por nota, histórico, diferenças, restauração e backup preventivo. |
 | **Leitura** | TTS local via Web Speech quando disponível e leitura neural online com permissão. |
-| **Personalização** | 17 categorias de módulos opcionais, interface adaptada ao celular e diagnóstico integrado. |
+| **Personalização** | 23 categorias de módulos opcionais, interface adaptada ao celular e diagnóstico integrado. |
+
+## Novidades da versão 5.0.0
+
+A v5 amplia a suíte de escrita com cinco áreas de produtividade:
+
+- **Keyshots:** movimentar, duplicar e organizar linhas, adicionar cursores e escolher atalhos estilo VS Code/JetBrains (somente desktop).
+- **Extended Markdown Syntax:** sublinhado, spoiler, sobrescrito/subscrito, destaques coloridos, classes e blocos especiais.
+- **Pandoc Syntax:** listas especiais, definições, exemplos numerados, rótulos, blocos e índice navegável.
+- **Easy Typing:** Tab e Backspace inteligentes, colagem em listas, capitalização e espaçamento opcionais, substituições literais e regras regex opt-in, além de modelos de texto com navegação por Tab.
+- **Smart Typography:** aspas curvas, travessões, reticências, setas, comparações, frações opcionais e conversão da seleção.
+
+Também há **exportação Pandoc opcional no desktop** para DOCX, HTML, EPUB, ODT, PDF, LaTeX e texto simples. Requer o programa Pandoc instalado; PDF pode depender de um motor adicional. Os arquivos exportados são cópias, sem sobrescrever a nota.
+
+Cada módulo continua independente e configurável, e a antiga Editing Toolbar **não voltou**.
 
 ## Módulos opcionais
 
 Acesse **Configurações → Basic AI Tool for Writers → Módulos** para ocultar recursos que não usa. Por exemplo, desligar **Tradutor** remove a aba e os atalhos correspondentes, sem apagar idiomas, prompts ou qualquer outro dado. É possível reativar posteriormente.
 
-As 17 categorias disponíveis são:
+As 23 categorias disponíveis são:
 
 1. Dicionário e definições
 2. Tradutor
@@ -55,6 +69,12 @@ As 17 categorias disponíveis são:
 15. Comentários
 16. Ações de escrita com IA
 17. Máquina de escrever
+18. Memória de posição do cursor
+19. Keyshots (atalhos e navegação)
+20. Sintaxe Markdown estendida
+21. Sintaxe Pandoc
+22. Easy Typing (digitação inteligente)
+23. Smart Typography (tipografia inteligente)
 
 Ocultar **Histórico de versões** esconde acessos na interface, mas não remove os backups preventivos ou snapshots existentes. As configurações e dados persistem.
 
@@ -110,7 +130,7 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 ## Instalação e atualização
 
-1. Baixe o [ZIP da 4.3.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/4.3.1/Basic-AI-Tool-for-Writers-4.3.1.zip).
+1. Baixe o [ZIP da 5.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.0.0/Basic-AI-Tool-for-Writers-5.0.0.zip).
 2. Extraia os arquivos **`main.js`**, **`manifest.json`** e **`styles.css`** para:
 
    ```text

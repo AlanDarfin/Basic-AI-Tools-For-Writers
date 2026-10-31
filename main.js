@@ -4235,6 +4235,139 @@ class WriterPandocSyntax{
  }
 }
 
+// v3 module: src/v5/pandoc-export.js
+/* Basic AI v5 — optional Pandoc export. No shell, scripts or bundled Lua filters. */
+const WRITER_PANDOC_EXPORT_FORMATS={docx:'docx',html:'html',epub:'epub',odt:'odt',pdf:'pdf',plain:'txt',latex:'tex'};
+const WRITER_PANDOC_EXPORT_DEFAULTS={enabled:false,format:'docx',pandocPath:'pandoc',folder:'Exports/Pandoc',timeoutSeconds:90};
+function writerPandocExportMerge(settings){
+ const existing=settings.pandocExport;
+ const cfg=settings.pandocExport={...WRITER_PANDOC_EXPORT_DEFAULTS,...(existing&&typeof existing==='object'&&!Array.isArray(existing)?existing:{})};
+ cfg.enabled=cfg.enabled===true;
+ if(!Object.hasOwn(WRITER_PANDOC_EXPORT_FORMATS,cfg.format))cfg.format='docx';
+ cfg.pandocPath=typeof cfg.pandocPath==='string'&&cfg.pandocPath.trim()?cfg.pandocPath.trim().slice(0,512):'pandoc';
+ cfg.folder=writerPandocExportFolder(cfg.folder);
+ cfg.timeoutSeconds=Math.min(180,Math.max(15,Number(cfg.timeoutSeconds)||90));
+ return cfg;
+}
+function writerPandocExportFolder(value){
+ const path=String(value??'Exports/Pandoc').trim().replace(/\\/g,'/');
+ const segments=path.split('/').filter(Boolean);
+ if(!segments.length||segments.some(x=>x==='.'||x==='..'||/[:*?"<>|]/.test(x)||x.length>120))return 'Exports/Pandoc';
+ return segments.join('/');
+}
+function writerPandocExportFilename(basename,format){
+ if(!Object.hasOwn(WRITER_PANDOC_EXPORT_FORMATS,format))throw Error('Invalid export format');
+ const stem=String(basename||'Untitled').replace(/[\\/:*?"<>|\x00-\x1f]/g,'-').trim().slice(0,100)||'Untitled';
+ return stem+'.'+WRITER_PANDOC_EXPORT_FORMATS[format];
+}
+function writerPandocExportArgs(format,outputPath,resourcePath){
+ if(!Object.hasOwn(WRITER_PANDOC_EXPORT_FORMATS,format))throw Error('Invalid export format');
+ // Arguments are fixed; user content is never interpolated into a shell command.
+ const from='markdown+fenced_divs+fancy_lists+definition_lists+example_lists+bracketed_spans+native_divs+tex_math_dollars';
+ const to=format==='plain'?'plain':format;
+ const args=['--standalone','--from',from,'--to',to,'--output',outputPath];
+ if(resourcePath)args.push('--resource-path',resourcePath);
+ return args;
+}
+function writerPandocExportError(error,stderr){
+ if(error?.code==='ENOENT')return writerUi('Pandoc não encontrado. Instale-o no computador ou configure o caminho do executável.','Pandoc was not found. Install it or configure the executable path.');
+ if(error?.code==='ETIMEDOUT'||error?.killed)return writerUi('Tempo de exportação esgotado.','Pandoc export timed out.');
+ const summary=String(stderr||error?.message||'').trim().slice(-600);
+ return (summary||writerUi('Erro desconhecido na exportação.','Unknown export error.'));
+}
+async function writerPandocExportRun(plugin,format){
+ const cfg=plugin.settings.pandocExport;
+ if(plugin.app.isMobile)throw Error(writerUi('Exportação Pandoc requer Obsidian para desktop.','Pandoc export requires desktop Obsidian.'));
+ if(!cfg?.enabled)throw Error(writerUi('Ative a exportação Pandoc nas configurações.','Enable Pandoc export in settings.'));
+ const view=plugin.app.workspace.getActiveViewOfType(MarkdownView);
+ const file=view?.file;
+ if(!file||file.extension!=='md'||!view.editor)throw Error(writerUi('Abra uma nota Markdown para exportar.','Open a Markdown note before exporting.'));
+ if(!Object.hasOwn(WRITER_PANDOC_EXPORT_FORMATS,format))throw Error('Invalid format');
+ const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),cp=require('node:child_process');
+ const root=plugin.app.vault.adapter?.getBasePath?.();
+ if(!root)throw Error(writerUi('Este cofre não fornece acesso a um diretório local.','This vault does not expose a local filesystem.'));
+ const folder=await fs.promises.mkdtemp(path.join(os.tmpdir(),'basic-ai-pandoc-'));
+ const source=path.join(folder,'input.md'),dest=path.join(folder,'result.'+WRITER_PANDOC_EXPORT_FORMATS[format]);
+ const parent=path.dirname(path.resolve(root,file.path));
+ try{
+  await fs.promises.writeFile(source,view.editor.getValue(),'utf8');
+  const args=writerPandocExportArgs(format,dest,parent+path.delimiter+root);
+  await new Promise((resolve,reject)=>{
+   const child=cp.spawn(cfg.pandocPath,[...args,source],{cwd:parent,shell:false,windowsHide:true,stdio:['ignore','ignore','pipe']});
+   let stderr='',finished=false;
+   const timeout=setTimeout(()=>{if(!finished){const err=new Error('Pandoc timeout');err.code='ETIMEDOUT';child.kill();reject(err);}},cfg.timeoutSeconds*1000);
+   child.stderr.on('data',chunk=>{stderr=(stderr+chunk.toString('utf8')).slice(-4000);});
+   const finish=(err)=>{if(finished)return;finished=true;clearTimeout(timeout);if(err)reject(new Error(writerPandocExportError(err,stderr)));else resolve();};
+   child.on('error',finish);
+   child.on('close',code=>finish(code===0?null:new Error('pandoc exit '+code)));
+  });
+  const bytes=await fs.promises.readFile(dest);
+  if(bytes.length===0)throw Error(writerUi('Pandoc gerou um arquivo vazio.','Pandoc generated an empty file.'));
+  const folderInVault=writerPandocExportFolder(cfg.folder);
+  let segments='';
+  for(const part of folderInVault.split('/')){
+   segments=segments?segments+'/'+part:part;
+   if(!plugin.app.vault.getAbstractFileByPath(segments))await plugin.app.vault.createFolder(segments);
+  }
+  const filename=writerPandocExportFilename(file.basename,format);
+  const dot=filename.lastIndexOf('.'),base=filename.slice(0,dot),extension=filename.slice(dot);
+  let target=folderInVault+'/'+filename,number=2;
+  while(plugin.app.vault.getAbstractFileByPath(target))target=folderInVault+'/'+base+' ('+number+++')'+extension;
+  await plugin.app.vault.createBinary(target,Uint8Array.from(bytes).buffer);
+  return target;
+ }finally{
+  await fs.promises.rm(folder,{recursive:true,force:true}).catch(()=>{});
+ }
+}
+class WriterPandocExporter{
+ constructor(plugin){this.plugin=plugin;}
+ get cfg(){return this.plugin.settings.pandocExport;}
+ async run(format){
+  try{
+   const path=await writerPandocExportRun(this.plugin,format);
+   new Notice(writerUi('Arquivo exportado: ','Exported file: ')+path,8000);
+  }catch(error){console.warn('[Basic AI] Pandoc export:',error);new Notice(writerUi('Falha na exportação Pandoc: ','Pandoc export failed: ')+String(error.message||error).slice(0,250),9000);}
+ }
+ register(){
+  const p=this.plugin;
+  p.addCommand({id:'v5-pandoc-export',name:writerUi('Pandoc: exportar nota atual','Pandoc: export current note'),checkCallback:checking=>{
+   if(p.app.isMobile||!this.cfg?.enabled||!p.app.workspace.getActiveViewOfType(MarkdownView)?.file)return false;
+   if(!checking)this.openDialog();
+   return true;
+  }});
+  for(const format of ['docx','html','pdf','epub','odt','plain'])
+   p.addCommand({id:'v5-pandoc-export-'+format,name:'Pandoc: '+format.toUpperCase(),checkCallback:checking=>{
+    if(p.app.isMobile||!this.cfg?.enabled||!p.app.workspace.getActiveViewOfType(MarkdownView)?.file)return false;
+    if(!checking)this.run(format);
+    return true;
+   }});
+ }
+ openDialog(){
+  const dialog=new Modal(this.plugin.app);dialog.onOpen=()=>{
+   dialog.setTitle(writerUi('Exportar com Pandoc','Export with Pandoc'));
+   dialog.contentEl.createEl('p',{text:writerUi('O Pandoc deve estar instalado no computador. Os documentos originais não serão modificados.','Pandoc must be installed on your computer. The original note will not be changed.')});
+   let selected=this.cfg.format;
+   new Setting(dialog.contentEl).setName(writerUi('Formato','Format')).addDropdown(d=>{
+    for(const key of Object.keys(WRITER_PANDOC_EXPORT_FORMATS))d.addOption(key,key.toUpperCase());
+    d.setValue(selected).onChange(value=>selected=value);
+   });
+   new Setting(dialog.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>dialog.close()))
+    .addButton(b=>b.setCta().setButtonText(writerUi('Exportar','Export')).onClick(()=>{dialog.close();this.run(selected);}));
+  };dialog.open();
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Exportação Pandoc (desktop)','Pandoc export (desktop)')});
+  panel.createEl('p',{text:writerUi('Requer Pandoc instalado. A exportação cria uma cópia em seu cofre. Não executa filtros Lua ou comandos de shell. PDF pode exigir um mecanismo LaTeX instalado.','Requires a local Pandoc executable. Exports into a vault folder without running shell commands or Lua filters. PDF may require an additional LaTeX engine.'),cls:'dictionary-muted'});
+  new Setting(panel).setName(writerUi('Ativar exportação','Enable export')).addToggle(t=>t.setValue(this.cfg.enabled).onChange(async value=>{this.cfg.enabled=value;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Formato padrão','Default format')).addDropdown(d=>{
+   for(const key of Object.keys(WRITER_PANDOC_EXPORT_FORMATS))d.addOption(key,key.toUpperCase());
+   d.setValue(this.cfg.format).onChange(async value=>{this.cfg.format=value;await this.plugin.saveSettings();});
+  });
+  new Setting(panel).setName(writerUi('Executável Pandoc','Pandoc executable')).addText(t=>t.setValue(this.cfg.pandocPath).onChange(async value=>{this.cfg.pandocPath=value.trim().slice(0,512)||'pandoc';await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Pasta de exportações','Export folder')).addText(t=>t.setValue(this.cfg.folder).onChange(async value=>{this.cfg.folder=writerPandocExportFolder(value);await this.plugin.saveSettings();}));
+ }
+}
+
 // v3 module: src/v5/easy-typing.js
 /* Basic AI v5 — independently implemented Easy Typing features. */
 const WRITER_EASY_DEFAULTS={
@@ -4265,6 +4398,8 @@ function writerEasyExcluded(filePath,cfg){
 }
 function writerEasyTypingAtInput(before,character,cfg){
  if(!cfg?.enabled||!character||character.length!==1)return null;
+ const advanced=writerEasyRegexAtInput(before,cfg);
+ if(advanced)return advanced;
  for(const rule of [...(cfg.customReplacements||[])].filter(r=>r.enabled!==false).sort((a,b)=>b.from.length-a.from.length)){
   if(before.endsWith(rule.from))return {consume:rule.from.length,text:rule.to};
  }
@@ -4386,7 +4521,9 @@ class WriterEasyTyping{
   const {keymap,EditorView}=require('@codemirror/view');
   const bindings=[
    {key:'Tab',run:view=>{
-    if(!this.active()||!this.cfg.tabOut||view.state.selection.ranges.length!==1)return false;
+    if(!this.active()||view.state.selection.ranges.length!==1)return false;
+    if(this.plugin.writerEasyAdvanced?.advance(view,1))return true;
+    if(!this.cfg.tabOut)return false;
     const selection=view.state.selection.main;
     if(!selection.empty)return false;
     const line=view.state.doc.lineAt(selection.head);
@@ -4431,6 +4568,7 @@ class WriterEasyTyping{
   new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
    .setDesc(writerUi('Um caminho por linha.','One path per line.'))
    .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  this.plugin.writerEasyAdvanced?.renderSettings(panel);
   new Setting(panel).setName(writerUi('Substituições literais','Literal replacement rules'))
    .setDesc(writerUi('Uma por linha: origem|destino. Sem regex ou JavaScript.','One per line: source|replacement; no regex or JavaScript.'))
    .addTextArea(t=>{t.inputEl.rows=5;t.setValue(this.cfg.customReplacements.map(x=>x.from+'|'+x.to).join('\n')).onChange(async v=>{
@@ -4440,6 +4578,153 @@ class WriterEasyTyping{
     }).filter(Boolean).filter(x=>x.from&&x.from.length<=80&&x.to.length<=300);
     await this.plugin.saveSettings();
    });});
+ }
+}
+
+// v3 module: src/v5/easy-advanced.js
+/* Basic AI v5: bounded regex rules and navigation snippets; no user-authored JS execution. */
+const WRITER_EASY_ADV_DEFAULTS={regexRules:[],snippets:[
+ {name:'Diálogo',body:'— ${1:fala}\n${0}'},
+ {name:'Nota de pesquisa',body:'> [!note] ${1:título}\n> ${2:anotação}\n${0}'},
+ {name:'Citação',body:'> ${1:trecho}\n\n— ${2:fonte}\n${0}'}
+],regexEnabled:false};
+function writerEasyAdvancedMerge(settings){
+ const cfg=settings.easyTyping||writerEasyMerge(settings);
+ cfg.regexEnabled=cfg.regexEnabled===true;
+ cfg.regexRules=Array.isArray(cfg.regexRules)?cfg.regexRules.slice(0,30).filter(r=>r&&typeof r.pattern==='string'&&r.pattern.length>0&&r.pattern.length<=120&&typeof r.replace==='string'&&r.replace.length<=250&&/^[iu]*$/.test(r.flags||'')).map(r=>({pattern:r.pattern,replace:r.replace,flags:r.flags||'',enabled:r.enabled!==false})):[];
+ cfg.snippets=Array.isArray(cfg.snippets)?cfg.snippets.slice(0,24).filter(s=>s&&typeof s.name==='string'&&s.name.length>0&&s.name.length<=60&&typeof s.body==='string'&&s.body.length<=2500).map(s=>({name:s.name,body:s.body})):[...WRITER_EASY_ADV_DEFAULTS.snippets];
+ return cfg;
+}
+function writerEasyRegexSafe(pattern){
+ if(typeof pattern!=='string'||pattern.length<1||pattern.length>120)return false;
+ // Reject nested repeating groups and numeric backreferences, which can cause heavy backtracking.
+ if(/\\[1-9]|\(\?<[=!]|(?:\+|\*|\{\d+,?\d*\})\s*(?:\+|\*|\{)/.test(pattern))return false;
+ if(/\([^)]*(?:\*|\+|\{\d+,?\d*\})[^)]*\)\s*(?:\+|\*|\{)/.test(pattern))return false;
+ return true;
+}
+function writerEasyRegexAtInput(before,cfg){
+ if(!cfg?.regexEnabled||!cfg.enabled)return null;
+ const slice=String(before).slice(-256);
+ for(const rule of cfg.regexRules||[]){
+  if(!rule.enabled||!writerEasyRegexSafe(rule.pattern))continue;
+  try{
+   const re=new RegExp('(?:'+rule.pattern+')$',(rule.flags||'').replace(/[^iu]/g,''));
+   const match=re.exec(slice);
+   if(!match||!match[0]||match[0].length>120)continue;
+   return {consume:match[0].length,text:match[0].replace(re,rule.replace)};
+  }catch(error){continue;}
+ }
+ return null;
+}
+function writerEasySnippetExpand(template){
+ const source=String(template||'').slice(0,2500);
+ const regex=/\$\{([0-9])(?::([^}\n]{0,120}))?\}/g;
+ const stops=[];let output='',offset=0;
+ for(const m of source.matchAll(regex)){
+  output+=source.slice(offset,m.index);
+  const from=output.length;output+=m[2]||'';
+  stops.push({index:Number(m[1]),from,to:output.length});
+  offset=m.index+m[0].length;
+ }
+ output+=source.slice(offset);
+ stops.sort((a,b)=>(a.index===0?Infinity:a.index)-(b.index===0?Infinity:b.index));
+ return {text:output,stops};
+}
+class WriterEasyAdvanced{
+ constructor(plugin){this.plugin=plugin;this.sessions=new WeakMap();}
+ get cfg(){return this.plugin.settings.easyTyping;}
+ active(){return this.plugin.writerEasyTyping?.active()===true;}
+ register(){
+  const p=this.plugin;
+  p.addCommand({id:'v5-easy-insert-snippet',name:writerUi('Easy Typing: inserir modelo com Tab','Easy Typing: insert navigation snippet'),editorCheckCallback:(checking)=>{
+   if(!this.active()||!this.cfg.snippets.length)return false;
+   if(!checking)this.openPicker();
+   return true;
+  }});
+  const {EditorView,keymap}=require('@codemirror/view');
+  if(EditorView?.updateListener?.of)
+   p.registerEditorExtension(EditorView.updateListener.of(update=>{
+    const s=this.sessions.get(update.view);
+    if(!s)return;
+    if(!this.active()||update.view.state.selection.ranges.length!==1){this.sessions.delete(update.view);return;}
+    if(update.docChanged){
+     for(const stop of s.stops){
+      stop.from=update.changes.mapPos(stop.from,-1);
+      stop.to=update.changes.mapPos(stop.to,1);
+     }
+    }
+   }));
+  if(keymap?.of)p.registerEditorExtension(keymap.of([{key:'Shift-Tab',run:view=>this.advance(view,-1)}]));
+ }
+ openPicker(){
+  if(!this.active())return;
+  const plugin=this.plugin,controller=this;
+  class SnippetsPicker extends FuzzySuggestModal{
+   getItems(){return controller.cfg.snippets;}
+   getItemText(item){return item.name;}
+   onChooseItem(item){controller.insert(item);}
+  }
+  new SnippetsPicker(plugin.app).open();
+ }
+ insert(item){
+  if(!this.active())return false;
+  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
+  const cm=view?.editor?.cm;
+  if(!cm)return false;
+  const selection=cm.state.selection.main;
+  const rendered=writerEasySnippetExpand(item.body);
+  const stops=rendered.stops.map(s=>({...s,from:s.from+selection.from,to:s.to+selection.from}));
+  const first=stops[0];
+  cm.dispatch({
+   changes:{from:selection.from,to:selection.to,insert:rendered.text},
+   selection:first?{anchor:first.from,head:first.to}:{anchor:selection.from+rendered.text.length},
+   scrollIntoView:true
+  });
+  if(stops.length)this.sessions.set(cm,{stops,index:0});
+  cm.focus();return true;
+ }
+ advance(view,delta){
+  if(!this.active())return false;
+  const session=this.sessions.get(view);
+  if(!session)return false;
+  const index=session.index+delta;
+  if(index<0)return false;
+  if(index>=session.stops.length){this.sessions.delete(view);return false;}
+  session.index=index;
+  const stop=session.stops[index];
+  view.dispatch({selection:{anchor:stop.from,head:stop.to},scrollIntoView:true});
+  return true;
+ }
+ renderSettings(panel){
+  panel.createEl('h4',{text:writerUi('Regras regex e modelos com Tab','Regex rules and Tab snippets')});
+  panel.createEl('p',{text:writerUi('Regras regex são limitadas, não executam JavaScript e vêm desativadas por padrão. Modelos inseridos por comando incluem marcações ${1:texto} e ${0} para a posição final.','Regex rules are bounded, do not execute JavaScript, and default to off. Snippets use ${1:text} and ${0} cursor markers.'),cls:'dictionary-muted'});
+  new Setting(panel).setName(writerUi('Ativar regras regex','Enable regex rules')).addToggle(t=>t.setValue(this.cfg.regexEnabled).onChange(async v=>{this.cfg.regexEnabled=v;await this.plugin.saveSettings();}));
+  new Setting(panel).setName(writerUi('Substituições regex','Regex replacement rules'))
+   .setDesc(writerUi('Uma por linha: padrão|substituição|flags (i ou u). Sem avaliação de código.','One per line: pattern|replacement|flags (i or u). No code evaluation.'))
+   .addTextArea(t=>{
+    t.inputEl.rows=5;
+    t.setValue((this.cfg.regexRules||[]).map(x=>[x.pattern,x.replace,x.flags||''].join('|')).join('\n')).onChange(async value=>{
+     this.cfg.regexRules=value.split(/\r?\n/).slice(0,30).map(line=>{
+      const parts=line.split('|');
+      if(parts.length<2)return null;
+      const [pattern,replace,flags='']=parts;
+      return writerEasyRegexSafe(pattern)&&replace.length<=250&&/^[iu]*$/.test(flags)?{pattern,replace,flags,enabled:true}:null;
+     }).filter(Boolean);
+     await this.plugin.saveSettings();
+    });
+   });
+  new Setting(panel).setName(writerUi('Modelos de texto','Text snippets'))
+   .setDesc(writerUi('Uma linha por modelo usando JSON com name e body. Para múltiplas linhas, use \\n no body.','One JSON object per line with name and body. Use \\n for multiline content.'))
+   .addTextArea(t=>{
+    t.inputEl.rows=7;
+    t.setValue((this.cfg.snippets||[]).map(x=>JSON.stringify(x)).join('\n')).onChange(async value=>{
+     const parsed=[];
+     for(const line of value.split(/\r?\n/).slice(0,24)){
+      try{const obj=JSON.parse(line);if(obj&&typeof obj.name==='string'&&obj.name&&obj.name.length<=60&&typeof obj.body==='string'&&obj.body.length<=2500)parsed.push({name:obj.name,body:obj.body});}catch(error){}
+     }
+     this.cfg.snippets=parsed;await this.plugin.saveSettings();
+    });
+   });
  }
 }
 

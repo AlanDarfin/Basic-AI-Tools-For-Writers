@@ -44,6 +44,8 @@ test('tab out works for Markdown and punctuation pairs without swallowing normal
  assert.equal(v.writerEasyTabOut('**bold**',6),2);
  assert.equal(v.writerEasyTabOut('[[Page]]',6),2);
  assert.equal(v.writerEasyTabOut('“Olá”',4),1);
+ assert.equal(v.writerEasyTabOut('"x"',2),1);
+ assert.equal(v.writerEasyTabOut("'x'",2),1);
 });
 test('list paste adds markdown marker only on subsequent unmarked lines',()=>{
  const s=v.writerEasyMerge({});

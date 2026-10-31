@@ -81,7 +81,7 @@ function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,
 class ProjectsView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;}
  getViewType(){return PROJECT_VIEW;}
- getDisplayText(){return 'Projetos de escrita';}
+ getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
  async onOpen(){
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
@@ -120,7 +120,7 @@ class ProjectsView extends ItemView{
    try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
     const parsed=fm?parseYaml(fm[1]):null;
     if(Array.isArray(parsed?.longform?.scenes)&&parsed.longform.scenes.length){project.meta={...project.meta,...parsed.longform};project.scenes=parsed.longform.scenes;}
-   }catch(e){console.warn('[Basic AI] Não foi possível ler o índice Longform',e);}
+   }catch(e){console.warn('[Basic AI] Could not read Longform index',e);}
   }
   this.projectPrefs=this.prefs(project);
   if(!writerModuleOn(this.plugin,'projects')){
@@ -310,7 +310,7 @@ class ProjectsView extends ItemView{
   const select=draftBar.createEl('select',{attr:{'aria-label':lfMsg('Rascunho local','Local draft')}});
   const drafts=['Principal',...Object.keys(prefs.drafts||{})];
   if(!drafts.includes(this.draft))this.draft='Principal';
-  for(const d of drafts){const o=select.createEl('option',{text:d});o.value=d;}select.value=this.draft;
+  for(const d of drafts){const o=select.createEl('option',{text:d==='Principal'?lfMsg('Principal','Main'):d});o.value=d;}select.value=this.draft;
   select.addEventListener('change',()=>{this.draft=select.value;this.render();});
   draftBar.createEl('button',{text:lfMsg('+ Variante','+ Variant')}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome da variante','Variant name'),async name=>{
    name=clean(name);if(!name||name==='Principal'||prefs.drafts[name])return;
@@ -445,10 +445,10 @@ class ProjectsView extends ItemView{
    ['strip-frontmatter','Remover propriedades YAML','both'],
    ['remove-links','Remover links','both'],
    ['remove-comments',lfMsg('Remover comentários','Remove comments'),'both'],
-   ['remove-strikethroughs','Remover trechos riscados','both'],
+   ['remove-strikethroughs',lfMsg('Remover trechos riscados','Remove strikethrough passages'),'both'],
    ['prepend-title',lfMsg('Adicionar títulos','Add titles'),'scene'],
-   ['concatenate-text','Juntar cenas','join'],
-   ['add-frontmatter','Adicionar propriedades YAML','manuscript'],
+   ['concatenate-text',lfMsg('Juntar cenas','Join scenes'),'join'],
+   ['add-frontmatter',lfMsg('Adicionar propriedades YAML','Add YAML properties'),'manuscript'],
    ['write-to-note',lfMsg('Salvar como nota','Save as note'),'manuscript']
   ];
  }
@@ -627,7 +627,7 @@ class ProjectsView extends ItemView{
   if(!workflows[this.workflow])this.workflow=Object.keys(workflows)[0];
   const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const selector=bar.createEl('select',{attr:{'aria-label':'Workflow'}});
-  for(const name of Object.keys(workflows)){const opt=selector.createEl('option',{text:name});opt.value=name;}
+  for(const name of Object.keys(workflows)){const opt=selector.createEl('option',{text:name==='Padrão'?lfMsg('Padrão','Default'):name});opt.value=name;}
   selector.value=this.workflow;
   selector.addEventListener('change',()=>{this.workflow=selector.value;this.workflowDraft=null;this.render();});
   bar.createEl('button',{text:'+ Workflow'}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome do workflow','Workflow name'),async name=>{

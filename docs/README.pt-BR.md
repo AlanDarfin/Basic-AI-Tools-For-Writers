@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers
 
+> **v6 pré-release: 6.0.0-beta.3 (experimental).** Navegação Longform com recuperação do índice YAML, Ruby acima/abaixo funcionando no Live Preview e menus mais compactos. [Notas da beta 3](V6_BETA3.pt-BR.md) · [English notes](V6_BETA3.en.md). A versão estável continua sendo **5.2.0**.
+
 > **v6 pré-release: 6.0.0-beta.2 (para testes).** Corrige a rolagem do Remember Cursor no Android e adiciona o bloco de navegação Longform por capítulos e subcapítulos. [Notas da beta 2](V6_BETA2.pt-BR.md) · [English notes](V6_BETA2.en.md).
 
 > **v6 pré-release: 6.0.0-beta.1 — anterior (para testes).** Os seis conjuntos de recursos solicitados já possuem módulos próprios no [PR #25](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/pull/25): Ruby, datas Discord, avaliações, sintaxe Discord, tempo de leitura e Linter com prévia. Ainda **não há paridade completa com todas as funções dos plugins de origem nem release v6**. Veja o [guia de implementação em português](V6-IMPLEMENTATION.pt-BR.md) e [em inglês](V6-IMPLEMENTATION.en.md).

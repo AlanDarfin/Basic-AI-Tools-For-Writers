@@ -345,7 +345,6 @@ class WriterBookNavigation{
   plugin.registerEvent(plugin.app.vault.on('modify',file=>{
    if(file?.extension==='md'&&file.path===plugin.settings.lastLongformProject)setTimeout(refreshEditors,150);
   }));
-  plugin.register(()=>{});
   setTimeout(refreshEditors,220);
   this.refreshAutomatic=refreshEditors;
  }

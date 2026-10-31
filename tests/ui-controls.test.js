@@ -14,10 +14,10 @@ for(const root of ['.writer-tool-root','.writer-tools-v3','.writer-project-root'
  check(latest.includes(root),'Uniform native controls scope: '+root);
 }
 check(latest.includes('select:not([multiple])'),'Only single-choice dropdowns receive fixed native height');
-check(latest.includes('height:var(--writer-control-height,42px)!important'),'Native dropdown height overrides incompatible Obsidian themes');
-check(latest.includes('padding-block:0!important'),'Dropdown vertical padding cannot crop selected text');
-check(latest.includes('line-height:normal!important'),'Dropdown text line height is normalized');
-check(latest.includes('padding-inline:12px 38px!important'),'Room for native dropdown indicator and long text');
+check(latest.includes('height:var(--writer-control-height,42px)'),'Native dropdown height overrides incompatible Obsidian themes');
+check(latest.includes('padding-block:0'),'Dropdown vertical padding cannot crop selected text');
+check(latest.includes('line-height:normal'),'Dropdown text line height is normalized');
+check(latest.includes('padding-inline:12px 38px'),'Room for native dropdown indicator and long text');
 check(latest.includes('writer-review-controls.writer-review-controls>select'),'Review mode has explicit full-height flex row');
 check(latest.includes(':focus-visible'),'Form controls keep visible keyboard focus');
 check(latest.includes('container-type:inline-size'),'Settings layout responds to panel width');

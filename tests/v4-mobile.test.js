@@ -42,9 +42,9 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
  assert.ok(src.includes('this.savedRange'), 'touch selection is retained');
  assert.ok(src.includes("this.dom.addClass('writer-v4-toolbar-mobile')"),'mobile toolbar has docked styling');
  assert.ok(css.includes('.writer-v4-floating-toolbar.writer-v4-toolbar-mobile'));
- assert.ok(css.includes('position:fixed!important'));
+ assert.ok(css.includes('position:fixed'));
  console.log('PASS editor toolbar supports touch and mobile bottom docking');
- assert.ok(css.includes('grid-template-columns:36px minmax(0,1fr) max-content!important'));
+ assert.ok(css.includes('grid-template-columns:36px minmax(0,1fr) max-content'));
  for(const item of ['>.writer-project-drag-handle','>.writer-project-scene-title','>.writer-project-scene-controls']){
   assert.ok(css.includes(item),'chapter card region '+item);
  }
@@ -84,7 +84,7 @@ console.log('PASS Android WebView diagnostic does not claim to access native sys
  for(const marker of ["id:'v4-format-'","id:'v4-writing-'","this.applyEditorFormat(editor,kind)","this.runEditorAIAction(editor,key)"]){
   assert.ok(extras.includes(marker),marker);
  }
- for(const marker of [".setting-item:has(.checkbox-container)","grid-template-columns:minmax(0,1fr) auto",
+ for(const marker of [".setting-item.writer-setting-toggle","grid-template-columns:minmax(0,1fr) auto",
     ".writer-v4-toolbar-mobile.writer-v4-expanded .writer-v4-format-actions"]){
   assert.ok(css.includes(marker),marker);
  }

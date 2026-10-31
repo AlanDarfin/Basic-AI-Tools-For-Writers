@@ -60,6 +60,20 @@ test('linter proposes safe changes, preserving frontmatter and code',()=>{
  assert.ok(l.output.endsWith('Text\n'));
  assert.ok(!l.output.includes('Text   '));
 });
+test('ruby parser keeps nested two-level annotations available for rendering',()=>{
+ const nested=v.writerV6RubyTokens('{one {漢字|かんじ}|annotation}');
+ assert.equal(nested.length,1);
+ assert.ok(nested[0].base.includes('{漢字|かんじ}'));
+ assert.equal(v.writerV6RubyTokens(nested[0].base).length,1);
+});
+test('linter conserves CRLF and formats optional footnotes and YAML',()=>{
+ const raw='---\r\ntitle:Book\r\n---\r\n[^1]:text\r\n>quoted\r\n';
+ const out=v.writerV6LintText(raw,{yamlSpacing:true,footnoteSpace:true,quoteSpace:true});
+ assert.ok(out.output.includes('title: Book\r\n'));
+ assert.ok(out.output.includes('[^1]: text\r\n'));
+ assert.ok(out.output.includes('> quoted\r\n'));
+ assert.ok(!/(?<!\r)\n/.test(out.output));
+});
 test('linter exclusions never process excluded folders',()=>{
  assert.equal(v.writerV6LintExcluded('Private/book.md','Private/'),true);
  assert.equal(v.writerV6LintExcluded('Books/book.md','Private/'),false);

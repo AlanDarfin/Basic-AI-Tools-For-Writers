@@ -125,7 +125,7 @@ class WriterExtendedSyntax{
  get cfg(){return this.plugin.settings.extendedSyntax;}
  active(){return writerModuleOn(this.plugin,'extendedSyntax')&&this.cfg.enabled;}
  register(){
-  this.plugin.registerMarkdownPostProcessor(el=>{
+  this.plugin.registerMarkdownPostProcessor?.(el=>{
    if(this.active()){writerExtendedReading(el,this.cfg);writerExtendedFencedDivs(el,this.cfg);}
   });
   if(ViewPlugin?.fromClass){

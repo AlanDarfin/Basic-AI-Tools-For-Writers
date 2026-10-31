@@ -21,10 +21,10 @@ O bloco suporta **quatro destinos independentes** conforme existirem: capítulo 
 
 **Como inserir o bloco:** abra uma nota que faça parte de um projeto Longform e execute o comando **Longform: inserir navegação entre capítulos**. Alternativamente, escreva:
 
-~~~markdown
+````markdown
 ~~~longform-nav
 ~~~
-~~~
+````
 
 O bloco é renderizado pelo mecanismo de blocos Markdown do Obsidian no modo Leitura/Live Preview. Pode ser adicionado ao template de cenas do seu projeto para aparecer em novos capítulos. Em **Configurações → Longform → Navegação Longform**, é possível ligar/desligar o recurso e mostrar apenas capítulos principais ou subcapítulos.
 

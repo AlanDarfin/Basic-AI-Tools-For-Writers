@@ -3836,6 +3836,8 @@ class WriterKeyshots{
     if(markdown?.editor?.cm!==cm)return false;
     return this.perform(action,markdown.editor,markdown);
    }}));
+  const {EditorState}=require('@codemirror/state');
+  if(EditorState?.allowMultipleSelections?.of)p.registerEditorExtension(EditorState.allowMultipleSelections.of(true));
   p.registerEditorExtension(keymap.of(map));
  }
  renderSettings(panel){
@@ -3961,6 +3963,7 @@ function writerExtendedLiveDecorations(view,cfg){
   if(frontMatter){if(trim==='---')frontMatter=false;continue;}
   if(/^\s{0,3}(?:\x60{3,}|~{3,})/.test(raw)){fenced=!fenced;continue;}
   if(fenced||/^(?: {4}|\t)/.test(raw))continue;
+  if(view.visibleRanges?.length&&!view.visibleRanges.some(range=>line.to>=range.from&&line.from<=range.to))continue;
   for(const token of writerExtendedTokens(raw,cfg)){
    const from=line.from+token.from,to=line.from+token.to;
    const attrs={};
@@ -4186,7 +4189,7 @@ class WriterPandocSyntax{
  active(){return writerModuleOn(this.plugin,'pandocSyntax')&&this.cfg.enabled;}
  register(){
   const p=this.plugin;
-  p.registerMarkdownPostProcessor(el=>{if(this.active())writerPandocReading(el,{...this.cfg,superSub:this.cfg.superSub&&!p.settings.extendedSyntax?.enabled});});
+  p.registerMarkdownPostProcessor(el=>{if(this.active())writerPandocReading(el,{...this.cfg,superSub:this.cfg.superSub&&!(writerModuleOn(p,'extendedSyntax')&&p.settings.extendedSyntax?.enabled)});});
   if(ViewPlugin?.fromClass){
    const controller=this;
    p.registerEditorExtension(ViewPlugin.fromClass(class{

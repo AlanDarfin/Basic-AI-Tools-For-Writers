@@ -30,7 +30,7 @@ test('both existing typing modules are preserved before the new linter',()=>{
 test('canonical Longform and plugin bundle scripts are present',()=>{
  const build=read('scripts/build-v3.js'),sync=read('scripts/sync-projects.js');
  assert.ok(build.includes('src/v3/'));
- assert.ok(build.includes('src/v5/'));
+ assert.ok(build.includes("'v5/"));
  assert.ok(sync.includes('projects.js'));
  assert.ok(sync.includes('main.js'));
  assert.ok(read('projects.js').includes('lastLongformProject'));

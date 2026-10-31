@@ -24,7 +24,7 @@ const n=vm.runInNewContext(fs.readFileSync('src/v6/longform-navigation.js','utf8
  const links=n.writerBookNavTargets(project.items,all[1].path);
  assert.equal(links.nextMain.path,all[4].path);
  assert.equal(links.nextSub.path,all[2].path);
- const Decoration={mark:x=>({mark:x}),replace:x=>({replace:x}),line:x=>({line:x}),set:xs=>xs,none:[]};
+ const Decoration={mark:x=>({range:(from,to)=>({from,to,mark:x})}),replace:x=>({range:(from,to)=>({from,to,replace:x})}),line:x=>({range:(from)=>({from,line:x})}),set:xs=>xs,none:[]};
  const m=vm.runInNewContext(fs.readFileSync('src/v6/markup.js','utf8')+'\n({writerV6RubyTokens,writerV6RubyHtml,writerV6RubyStrip,writerV6MarkupDecorations,WriterV6RubyWidget})',{
  require:x=>x==='@codemirror/view'?{WidgetType:class{}}:{},
  writerUi:(a,b)=>b||a,writerModuleOn:()=>true,writerV6ProtectedRanges:()=>[],

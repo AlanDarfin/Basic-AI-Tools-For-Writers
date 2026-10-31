@@ -57,7 +57,7 @@ class WriterToolsView extends ItemView{
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};
-  panel.createEl('h4',{text:'Autocomplete contextual'});
+  panel.createEl('h4',{text:writerUi('Autocomplete contextual','Contextual autocomplete')});
   panel.createEl('p',{text:writerUi("Sugestões locais do arquivo, do cofre, dos dicionários e de links internos.","Local suggestions from the current note, vault, dictionaries and internal links.")});
   new Setting(panel).setName(writerUi("Ativar sugestões","Enable suggestions")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi("Aparecer enquanto escreve","Suggest while typing")).addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
@@ -83,7 +83,7 @@ class WriterToolsView extends ItemView{
   this.addButton(actions,writerUi("Gerar com IA","Generate with AI"),()=>this.plugin.writerVariants.aiAlternatives());
   const current=this.plugin.writerVariants.atCaret();
   if(current){
-   panel.createEl('strong',{text:'Variante '+(current.found.active+1)+' de '+current.found.variants.length});
+   panel.createEl('strong',{text:writerUi('Variante ','Variant ')+(current.found.active+1)+' de '+current.found.variants.length});
    const sample=panel.createDiv({cls:'writer-variant-current'});
    sample.setText(current.found.variants[current.found.active].slice(0,1000));
   }

@@ -63,6 +63,7 @@ const WRITER_WORKSPACE_HINTS={
  keyshots:'teclado linhas duplicar mover cursor atalho editor',
  extendedSyntax:'sublinhado spoiler highlight sobrescrito subscrito syntax underline',
  pandocSyntax:'pandoc exportacao docx pdf epub html listas',
+ typing:'easy typing smart typography digitar tipografia aspas apostrofos reticencias travessao guillemets fractions regex tab backspace colagem paste snippets espaco',
  easyTyping:'digitar substituicao regex tab backspace colagem paste snippets espaco',
  smartTypography:'tipografia aspas apostrofos reticencias travessao frações guillemets',
  review:'languagetool corretor gramatica automático',

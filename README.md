@@ -2,6 +2,8 @@
 
 **A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
 
+**v6 integration preview:** All six requested reference areas now have original opt-in modules in [PR #25](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/pull/25): Ruby, Discord timestamps, interactive ratings, Discord subtext/block spoilers, reading time and a preview-first Linter. This is **not** full upstream feature parity or a published v6 release. See the [English integration guide](docs/V6-IMPLEMENTATION.en.md) and [Brazilian Portuguese guide](docs/V6-IMPLEMENTATION.pt-BR.md).
+
 **Latest stable:** [5.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)

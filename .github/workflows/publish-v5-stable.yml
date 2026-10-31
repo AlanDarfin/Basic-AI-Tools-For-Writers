@@ -33,7 +33,7 @@ jobs:
           if(manifest.id!=='basic-ai-tool-for-writers'||manifest.name!=='Basic AI Tool for Writers')throw Error('Plugin identity changed');
           if(manifest.version!=='5.0.0'||pkg.version!==manifest.version||versions[manifest.version]!==manifest.minAppVersion)throw Error('Invalid 5.0.0 version mapping');
           if(manifest.isDesktopOnly!==false)throw Error('Unexpected desktop-only restriction');
-          if(!/^\\d+\\.\\d+\\.\\d+$/.test(manifest.version))throw Error('Unexpected release version tag');
+          if(!/^\d+\.\d+\.\d+$/.test(manifest.version))throw Error('Unexpected release version tag');
           for(const path of ['main.js','manifest.json','styles.css','docs/V5_RELEASE.md','docs/README.pt-BR.md','README.md']){
             if(!fs.statSync(path).size)throw Error('Empty release file: '+path);
           }

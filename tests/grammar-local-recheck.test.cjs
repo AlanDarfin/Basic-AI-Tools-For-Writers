@@ -66,3 +66,43 @@ test('one localized request is wired without clearing all cached marks',()=>{
  assert.doesNotMatch(apply,/setTimeout\(\(\)=>view\.reviewFile/);
  assert.ok(src.includes('this.plugin.grammarCorrectionPaths?.has(file.path)'));
 });
+
+test('localized review calls the provider once and merges surviving findings into the UI',async()=>{
+ const main=fs.readFileSync('main.js','utf8');
+ const method=main.slice(main.indexOf(' async recheckGrammarCorrection('),main.indexOf(' renderGrammarSuggestion('));
+ const before='Erro inicial. Fim.\n\nHoje ele dizia nao alto. Depois ele foi embora.\n\nMais erro final.';
+ const start=before.indexOf('nao'),after=before.slice(0,start)+'não'+before.slice(start+3);
+ const file={path:'Novel.md'};
+ let network=0,payload='',published=[],source=after,status='',displayed=[];
+ const state={
+  writerCurrentText:async()=>source,prepareGrammarText:x=>x,
+  writerGrammarMatchIsSafe:(text,masked,m)=>Number.isInteger(m.offset)&&text.slice(m.offset,m.offset+m.length)===masked.slice(m.offset,m.offset+m.length),
+  meaningfulGrammarMatch:()=>true,
+  msg:(pt)=>pt
+ };
+ const methods=vm.runInNewContext(src+'\n({'+method+'})',state);
+ const view={
+  activeTab:'review',reviewMode:{value:'grammar'},reviewFilePath:file.path,reviewBusy:false,
+  plugin:{settings:{reviewIgnoreRules:'',reviewIgnoreWhitespace:false},
+   async checkGrammar(chunk){network++;payload=chunk;return [{offset:chunk.indexOf('dizia'),length:5,rule:{id:'TEST'}}];},
+   showReviewMarks(_file,matches){published=matches.map(x=>({offset:x.offset,length:x.length}));}},
+  reviewResults:{empty(){displayed=[];},createEl(){}},
+  reviewStatus:{setText(x){status=x;}},
+  renderGrammarSuggestion(_file,_src,m){displayed.push(m);},
+  ...methods
+ };
+ const left={offset:before.indexOf('Erro'),length:4,rule:{id:'LEFT'}};
+ const right={offset:before.indexOf('erro final'),length:4,rule:{id:'RIGHT'}};
+ const touched={offset:start,length:3,rule:{id:'FIX'}};
+ const stale=await view.recheckGrammarCorrection(file,before,after,start,start+3,start+3,[left,touched,right]);
+ assert.equal(stale,false);
+ assert.equal(network,1,'Only a single short call is issued');
+ assert.ok(payload.includes('não'));
+ assert.ok(payload.length<before.length/2,'Provider receives only edited sentence');
+ assert.deepEqual([...published.map(x=>x.offset)].sort((a,b)=>a-b),
+  [left.offset,after.indexOf('dizia'),right.offset].sort((a,b)=>a-b));
+ assert.equal(displayed.length,3);
+ assert.equal(view.grammarCheckedSource,after);
+ assert.ok(status.includes('trecho alterado atualizado'));
+ assert.equal(view.reviewBusy,false);
+});

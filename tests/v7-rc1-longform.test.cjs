@@ -74,7 +74,7 @@ test('RC version, modules, built entry point, translations and stylesheet are sy
  assert.match(main,/new WriterV7LongformRC\(this\)/);
  assert.match(main,/v7\/longform-rc\.js/);
  assert.match(main,/writerV7RCRenderStructure\(view,panel,project\)/);
- assert.match(projects,/writerV7RCRenderStructure\(this,panels\.structure,project\)/);
+ assert.match(projects,/writerV7RCRenderStructure\(this,panel,project\)/);
  assert.match(projects,/Inspecionar cena/);
  for(const selector of ['writer-v7-rc-kanban','writer-v7-rc-corkboard','writer-v7-rc-plotgrid','writer-v7-rc-pacing-row'])
   assert.ok(styles.includes(selector),selector);

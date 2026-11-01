@@ -154,7 +154,7 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>id!=='comments'||writerModuleOn(this.plugin,'comments'))){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>id!=='comments'||writerModuleOn(this.plugin,'comments'))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -165,6 +165,8 @@ class ProjectsView extends ItemView{
   if(this.activeTab==='project')this.drawProject(panels.project,project);
   if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
+  if(this.activeTab==='timeline')writerV7RenderTimeline(this,panels.timeline,project);
+  if(this.activeTab==='continuity')writerV7RenderContinuity(this,panels.continuity,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
@@ -712,6 +714,10 @@ class ProjectsView extends ItemView{
  async ensureFolder(path){let current='';for(const part of path.split('/').filter(Boolean)){current=current?current+'/'+part:part;if(!this.app.vault.getAbstractFileByPath(current))await this.app.vault.createFolder(current);}}
 
  async drawNotes(panel,project){
+  if(this.plugin.settings.v7?.compendium)return writerV7RenderCompendium(this,panel,project);
+  return await this.drawNotesLegacy(panel,project);
+ }
+ async drawNotesLegacy(panel,project){
   const root=this.notesRoot(project);
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:lfMsg('+ Pasta','+ Folder')}).addEventListener('click',()=>this.promptNotesFolder(root));
@@ -729,6 +735,12 @@ class ProjectsView extends ItemView{
    actions.createEl('button',{text:lfMsg("+ Nota","+ Note")}).addEventListener('click',()=>this.promptNote(f.path));
    actions.createEl('button',{text:lfMsg('+ Pasta','+ Folder')}).addEventListener('click',()=>this.promptNotesFolder(f.path));
    if(level>0){
+    actions.createEl('button',{text:lfMsg('Nota da pasta','Folder note')}).addEventListener('click',async()=>{
+     try{
+      const note=writerV7FolderNote(this.app,f)||await this.plugin.writerV7Worldbuilding.createFolderNote(f);
+      if(note)await this.openFile(note);
+     }catch(e){new Notice(String(e.message||e));}
+    });
     actions.createEl('button',{text:lfMsg("Renomear","Rename")}).addEventListener('click',()=>this.renameProjectItem(f));
     actions.createEl('button',{text:lfMsg('Lixeira','Trash')}).addEventListener('click',()=>this.trashProjectItem(f));
    }

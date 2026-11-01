@@ -25,7 +25,7 @@ A versão estável reúne as duas betas e a RC. Os novos recursos continuam usan
 
 **Antes de atualizar:** faça backup do cofre e do data.json. A troca dos três arquivos da release não deve substituir as configurações salvas. O diretório da comunidade do Obsidian exige aprovação separada; uma release no GitHub não garante a publicação na comunidade.
 
-**Histórico:** [5.2.0](V5_2_RELEASE.md), [6.0.1](V6_0_1_RELEASE.pt-BR.md), [7.0.0-rc.1](V7_RC1.pt-BR.md), [beta.2](V7_BETA2.pt-BR.md), [beta.1](V7_BETA1.pt-BR.md). Notas antigas continuam na pasta [docs](./).
+**Histórico:** [5.2.0](V5_2_RELEASE.md), [6.0.0-beta.4](V6_BETA4.pt-BR.md), [6.0.1](V6_0_1_RELEASE.pt-BR.md), [7.0.0-beta.1](V7_BETA1.pt-BR.md), [7.0.0-beta.2](V7_BETA2.pt-BR.md), [7.0.0-rc.1](V7_RC1.pt-BR.md). Notas antigas continuam na pasta [docs](./).
 
 ## Tudo o que o plugin oferece
 

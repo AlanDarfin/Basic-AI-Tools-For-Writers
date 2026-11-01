@@ -81,10 +81,14 @@ function writerGrammarLocalScopes(before,after,start,oldEnd,newEnd){
  if(oldSentence.kind==='sentence'&&newSentence.kind==='sentence'&&
     oldSentence.from===newSentence.from&&oldSentence.to+delta===newSentence.to)
   return {old:oldSentence,next:newSentence};
- return {
-  old:writerGrammarLocalWindow(before,start,oldEnd,16000),
-  next:writerGrammarLocalWindow(after,start,newEnd,16000)
+ const fallback=(text,finish)=>{
+  const startBounds=writerGrammarParagraphBounds(text,start);
+  const endBounds=writerGrammarParagraphBounds(text,finish);
+  const from=startBounds.from,to=Math.max(startBounds.to,endBounds.to);
+  if(to-from<=16000)return {from,to,text:text.slice(from,to),kind:'paragraph'};
+  return writerGrammarLocalWindow(text,start,finish,12000);
  };
+ return {old:fallback(before,oldEnd),next:fallback(after,newEnd)};
 }
 function writerGrammarPreserveOutside(matches,oldScope,delta){
  return (matches||[]).filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&

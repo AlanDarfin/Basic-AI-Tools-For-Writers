@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - manifest.json
+      - .github/workflows/publish-release.yml
     tags:
       - '[0-9]*.[0-9]*.[0-9]*'
       - '!*-*'
@@ -102,7 +103,7 @@ jobs:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha' 2>/dev/null || true)"
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$RELEASE_TAG" --jq ".[] | select(.ref == \"refs/tags/$RELEASE_TAG\") | .object.sha" 2>/dev/null || true)"
           if [[ -n "$existing" ]]; then
             [[ "$existing" == "$GITHUB_SHA" ]] || { echo "Existing tag points at another commit; refusing to retag"; exit 1; }
           else

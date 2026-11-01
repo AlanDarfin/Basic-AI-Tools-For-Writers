@@ -315,7 +315,8 @@ function writerV7RenderContinuity(view,panel,project){
  root.createEl('h3',{text:writerUi('Verificador de continuidade (beta)','Continuity checker (beta)')});
  root.createEl('p',{text:writerUi('Identifica eventos com datas divergentes e links inválidos. Não afirma detectar contradições semânticas.','Detects conflicting event dates and unresolved links; it does not claim to detect semantic contradictions.')});
  const checks=writerV7ContinuityChecks(view,project,writerV7ProjectNotes(view,project));
- if(!checks.length)root.createEl('p',{text:writerUi('Nenhuma inconsistência estrutural encontrada.','No structural issues detected.')});
+ const sceneChecks=writerV7RCContinuityFindings(writerV7RCSceneView(view,project));
+ if(!checks.length&&!sceneChecks.length)root.createEl('p',{text:writerUi('Nenhuma inconsistência estrutural encontrada.','No structural issues detected.')});
  for(const x of checks.slice(0,50)){
   const row=root.createDiv({cls:'writer-v7-continuity-row'});
   row.createEl('strong',{text:x.title});row.createEl('p',{text:x.detail});

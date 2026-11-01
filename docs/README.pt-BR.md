@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.0.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.0.1 estável · **Versão anterior publicada:** 7.0.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
@@ -19,9 +19,13 @@ A versão estável reúne as duas betas e a RC. Os novos recursos continuam usan
 | **Interface** | Navegação compacta em **Escrita / Universo / Projeto** e layouts responsivos para telas estreitas. |
 | **Ferramentas** | Gramática, dicionários, leitura em voz alta, snapshots, Unicode, edição e exportação opcional com Pandoc no desktop. |
 
-**[Notas completas da 7.0.0](V7_RELEASE.pt-BR.md) · [English](V7_RELEASE.en.md) · [Baixar ZIP](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
+**Manutenção 7.0.1:** [Notas em português](V7_0_1_RELEASE.pt-BR.md) · [English](V7_0_1_RELEASE.en.md) · [Release quando publicada](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1). O fluxo novo publicará só `main.js`, `manifest.json` e `styles.css`; ZIP/checksums ficarão como artefatos das Actions.
+
+**[Notas da 7.0.0](V7_RELEASE.pt-BR.md) · [English](V7_RELEASE.en.md) · [ZIP 7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
 
 **Segurança dos dados:** excluir uma série não apaga livros. Tags herdadas de Folder Notes afetam somente os filtros, não os arquivos. As fichas utilizam a API nativa de propriedades. A memória narrativa para IA continua desligada por padrão. Trocar o calendário modifica a ordenação visual, mas não altera as datas nas notas.
+
+**Segurança e privacidade:** o Pandoc continua integrado e opcional no computador. Ele usa APIs Node.js de arquivos e processos, então os alertas na análise da comunidade podem continuar. IA, gramática, TTS e dicionários online podem enviar o texto selecionado aos provedores configurados. [Detalhes](../SECURITY.md) · [Revisão da comunidade](maintenance/COMMUNITY_REVIEW.md).
 
 **Antes de atualizar:** faça backup do cofre e do data.json. A troca dos três arquivos da release não deve substituir as configurações salvas. O diretório da comunidade do Obsidian exige aprovação separada; uma release no GitHub não garante a publicação na comunidade.
 

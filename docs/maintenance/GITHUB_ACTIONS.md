@@ -1,19 +1,16 @@
-# GitHub Actions — organização após a 7.0.0
+# GitHub Actions — manutenção 7.0.1
 
-A partir de 2026-11-01, o repositório mantém apenas dois workflows ativos:
+Workflows ativos:
 
-- `.github/workflows/ci.yml`: sintaxe, fontes sincronizadas, suíte completa, CSS, versões, README bilíngue e ZIP de verificação para push na `main` e PRs para `main`.
-- `.github/workflows/publish-release.yml`: valida uma nova tag estável sem `v`, equivalente ao manifest, e publica o ZIP com checksums sem substituir assets existentes. Tags com hífen (como `-beta.1` e `-rc.1`) não disparam o fluxo estável.
+- `.github/workflows/ci.yml`: `npm ci` com lockfile, sintaxe e sincronização do bundle, testes (inclusive Pandoc/Android), CSS, versões, docs bilíngues e smoke test do ZIP.
+- `.github/workflows/publish-release.yml`: valida tags estáveis `X.Y.Z` (sem `v`), testa, gera ZIP/checksums, atesta os arquivos e publica **somente** `main.js`, `manifest.json` e `styles.css` como anexos oficiais da release.
 
-## Histórico
+ZIP e checksums ficam como artefatos da execução do GitHub Actions e têm o prazo de retenção definido pelo GitHub. Releases anteriores, incluindo a 7.0.0, não são modificadas.
 
-Foram retirados 32 pipelines históricos/duplicados, inclusive o arquivo incorreto `release-beta.yml` que tentava publicar Alan's Offline Dictionary neste repositório.
-Eles permanecem disponíveis no histórico Git anterior à limpeza, commit `6a557eb0f71fe7246bfa3f796c6027cdaa3a9aba`. Tags e releases antigas foram preservadas.
+Passos para publicar: atualizar manifesto, package, lockfile, versions, READMEs, notas e testes; revisar PR e CI; mesclar na `main`. Se `manifest.json` mudar para uma versão estável nova, a Action valida o commit, cria a tag sem `v` e publica a release automaticamente. Tags estáveis criadas manualmente também são aceitas. Se já existir uma release com a mesma tag, o workflow preserva seus anexos.
 
-**Importante:** a versão 7.0.0 já está publicada e esta manutenção não altera o código ou assets dessa release.
+**Segurança:** o Pandoc continua integrado; os alertas de sistema de arquivos e execução de processos podem persistir. Consulte [COMMUNITY_REVIEW.md](COMMUNITY_REVIEW.md).
 
-## Proteção recomendada
+**Proteção:** recomenda-se configurar ruleset da branch `main` exigindo o job `Full validation` e revisão. Esta configuração é administrativa e não é aplicada por estes arquivos.
 
-A branch `main` atualmente não é protegida. Configure Settings → Branches / Rulesets para exigir o status `Full validation` e revisão antes de mesclar PRs. Isso exige permissões administrativas.
-
-Uma próxima versão precisa atualizar `manifest.json`, `package.json`, `versions.json`, READMEs e testes antes de criar a respectiva tag.
+**Histórico:** 32 workflows antigos/duplicados foram removidos na limpeza anterior à 7.0.0; permanecem disponíveis no histórico Git.

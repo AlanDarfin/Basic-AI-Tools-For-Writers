@@ -16,10 +16,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
+          cache: npm
+      - name: Reproducible install
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Full syntax, bundle sync and regression checks
         run: npm run check
       - name: Community CSS lint
@@ -29,16 +32,16 @@ jobs:
         run: |
           set -euo pipefail
           node <<'NODE'
-          const fs=require('node:fs'),m=require('./manifest.json'),p=require('./package.json'),v=require('./versions.json');
+          const fs=require('node:fs'),m=require('./manifest.json'),p=require('./package.json'),lock=require('./package-lock.json'),v=require('./versions.json');
           if(!/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/.test(m.version))throw Error('Invalid version');
-          if(p.version!==m.version||v[m.version]!==m.minAppVersion)throw Error('Version mismatch');
+          if(p.version!==m.version||lock.version!==m.version||lock.packages[''].version!==m.version||v[m.version]!==m.minAppVersion)throw Error('Version mismatch');
           if(m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)throw Error('Unexpected plugin identity');
           if(!m.name.trim()||/\b(obsidian|plugin)\b/i.test(m.name))throw Error('Redundant name');
           if(typeof m.description!=='string'||m.description.length>250||!m.description.endsWith('.'))throw Error('Invalid description');
-          for(const file of ['README.md','docs/README.pt-BR.md']){
+          for(const file of ['README.md','docs/README.pt-BR.md']) {
             if(!fs.readFileSync(file,'utf8').includes(m.version))throw Error('Version missing from '+file);
           }
-          for(const file of ['main.js','styles.css','THIRD_PARTY_NOTICES.md']){
+          for(const file of ['main.js','styles.css','THIRD_PARTY_NOTICES.md','CONTRIBUTING.md','SECURITY.md']) {
             if(!fs.statSync(file).size)throw Error('Missing '+file);
           }
           NODE

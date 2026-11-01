@@ -8766,9 +8766,33 @@ function writerMarkCompactSettings(root){
 class DictionarySettings extends PluginSettingTab{
  constructor(app,plugin){super(app,plugin);this.plugin=plugin;this.plugin.writerSettingsTab=this;}
  display(){
-  const el=this.containerEl;el.empty();el.createEl('h2',{text:t('settings')});
-  const nav=el.createDiv({cls:'dictionary-settings-tabs'});nav.scrollLeft=this.settingsTabsScrollLeft||0;nav.addEventListener('scroll',()=>{this.settingsTabsScrollLeft=nav.scrollLeft;},{passive:true});nav.addEventListener('wheel',event=>{if(nav.scrollWidth>nav.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){nav.scrollLeft+=event.deltaY;event.preventDefault();}},{passive:false});
+  const el=this.containerEl;
+  // Full settings rebuilds (e.g. module toggles) should retain both scroll strips.
+  const previousNav=el.querySelector('.dictionary-settings-tabs');
+  const previousSubnav=el.querySelector('.dictionary-settings-subtabs');
+  if(previousNav)this.settingsTabsScrollLeft=previousNav.scrollLeft;
+  this.settingsSubtabsScrollLeft=this.settingsSubtabsScrollLeft||Object.create(null);
+  if(previousSubnav?.dataset.group)
+   this.settingsSubtabsScrollLeft[previousSubnav.dataset.group]=previousSubnav.scrollLeft;
+  el.empty();el.createEl('h2',{text:t('settings')});
+  const nav=el.createDiv({cls:'dictionary-settings-tabs'});
   const subnav=el.createDiv({cls:'dictionary-settings-subtabs'});
+  const bindHorizontalWheel=row=>row.addEventListener('wheel',event=>{
+   if(row.scrollWidth>row.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+    row.scrollLeft+=event.deltaY;
+    event.preventDefault();
+   }
+  },{passive:false});
+  bindHorizontalWheel(nav);
+  bindHorizontalWheel(subnav);
+  nav.addEventListener('scroll',()=>{
+   if(nav.isConnected)this.settingsTabsScrollLeft=nav.scrollLeft;
+  },{passive:true});
+  let buildingSubtabs=false;
+  subnav.addEventListener('scroll',()=>{
+   if(!buildingSubtabs&&subnav.isConnected&&subnav.dataset.group)
+    this.settingsSubtabsScrollLeft[subnav.dataset.group]=subnav.scrollLeft;
+  },{passive:true});
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
   this.writerSettingsObserver?.disconnect();
   if(typeof MutationObserver==='function'){
@@ -8836,11 +8860,26 @@ class DictionarySettings extends PluginSettingTab{
   const groupFor=id=>groups.find(([, ,ids])=>ids.includes(id))?.[0]||'general';
   this.lastSectionByGroup=this.lastSectionByGroup||{};
   const renderSubtabs=(group,id)=>{
-   subnav.empty();
-   for(const [key,label] of enabledSections.filter(([key])=>groupFor(key)===group)){
-    const b=subnav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':String(key===id)}});
-    b.dataset.tab=key;b.classList.toggle('is-active',key===id);
-    b.addEventListener('click',()=>showTab(key));
+   if(subnav.dataset.group!==group){
+    if(subnav.dataset.group)
+     this.settingsSubtabsScrollLeft[subnav.dataset.group]=subnav.scrollLeft;
+    buildingSubtabs=true;
+    subnav.empty();
+    subnav.dataset.group=group;
+    for(const [key,label] of enabledSections.filter(([key])=>groupFor(key)===group)){
+     const b=subnav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':String(key===id)}});
+     b.dataset.tab=key;b.classList.toggle('is-active',key===id);
+     b.addEventListener('click',()=>{if(this.activeSettingsTab!==key)showTab(key);});
+    }
+    subnav.scrollLeft=Math.max(0,this.settingsSubtabsScrollLeft[group]||0);
+    buildingSubtabs=false;
+   }else{
+    // Never recreate this horizontal strip when switching its content page.
+    for(const b of Array.from(subnav.children)){
+     const selected=b.dataset.tab===id;
+     b.classList.toggle('is-active',selected);
+     b.setAttribute('aria-selected',String(selected));
+    }
    }
    subnav.setAttribute('role','tablist');
   };
@@ -9023,6 +9062,8 @@ class DictionarySettings extends PluginSettingTab{
    });
   }
   nav.setAttribute('role','tablist');
+  // Buttons must exist before setting scrollLeft; otherwise it clamps to zero.
+  nav.scrollLeft=Math.max(0,this.settingsTabsScrollLeft||0);
   showTab(this.plugin.settingsTabV4Hint?'writingProfiles':(this.activeSettingsTab||'general'));
   this.plugin.settingsTabV4Hint=false;
  }

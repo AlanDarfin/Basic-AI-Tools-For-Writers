@@ -1,21 +1,34 @@
 # Basic AI Tool for Writers
 
-> **6.0.0-beta.4 (experimental)** adds automatic Longform footers, manual Previous/Next links for standalone notes, chapter jump search, native smart syntax insertion, compact controls, per-project tool overrides and bilingual project editor preferences. [See beta notes](docs/V6_BETA4.en.md). **Stable release remains 5.2.0**.
+**Latest stable:** [6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
-> **Beta 6.0.0-beta.3 (experimental):** Longform navigation recovers chapters from project YAML when Obsidian metadata is incomplete; Ruby renders in Live Preview with `{word|reading}` (above) and `{word|note|under}` (below), and writing settings use a cleaner compact layout. [Beta notes](docs/V6_BETA3.en.md). The stable version remains **5.2.0**.
+**Languages and interface:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
+A unified, compact writing environment for [Obsidian](https://obsidian.md): Longform-style writing projects, editing tools, local and AI dictionaries, translation, LanguageTool, Markdown syntax, writing statistics, snapshots and text-to-speech. All functionality remains opt-in where configurable.
 
-**A customizable writing workspace for [Obsidian](https://obsidian.md)** — dictionaries, translation, AI-assisted writing, LanguageTool, Longform-style projects, snapshots and everyday authoring tools in one plugin.
+## What's new in 6.0.0
 
-**v6 prerelease: 6.0.0-beta.2 (testing only).** Fixed mobile cursor scrolling and added Longform navigation by real chapter/subchapter order. [Beta 2 details](docs/V6_BETA2.en.md) · [Português](docs/V6_BETA2.pt-BR.md).
+- **One interface language everywhere:** coherent, flat, responsive layouts across plugin settings, all writing panels, Longform projects, reading/review tools, dropdowns, dialogs and mobile controls. No separate editing toolbar.
+- **Rebuilt Longform Nav:** a readable, full-width list of previous/next chapters and subchapters. Titles wrap instead of clipping, including on narrow Android screens. It uses two columns only when the navigation container itself is wide enough.
+- **Automatic navigation:** optional chapter footers in Live Preview and Reading View, without modifying notes or duplicating explicit navigation blocks.
+- **Manual navigation for any notes:** a native command to pick previous/next files, independently of Longform projects. Example:
 
-**v6 prerelease: 6.0.0-beta.1 — anterior (testing only).** All six requested reference areas now have original opt-in modules in [PR #25](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/pull/25): Ruby, Discord timestamps, interactive ratings, Discord subtext/block spoilers, reading time and a preview-first Linter. This is **not** full upstream feature parity or a published v6 release. See the [English integration guide](docs/V6-IMPLEMENTATION.en.md) and [Brazilian Portuguese guide](docs/V6-IMPLEMENTATION.pt-BR.md).
+```longform-nav
+mode: manual
+previous: "[[Notes/Previous]]"
+next: "[[Notes/Next]]"
+```
 
-**Latest stable:** [5.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+  This is the **contents of a fenced `longform-nav` block**. Previous/next are optional, and a missing file is never opened.
+- **Jump to chapter:** search chapters/subchapters of the current project with the command palette.
+- **Ruby in Live Preview and Reading View:** `{base|annotation}` places text above; `{base|annotation|under}` places it below. Selecting an annotation exposes editable source.
+- **Native smart insertion:** command dialogs for Ruby, ratings, Discord timestamps, spoilers and subtext, without a custom toolbar.
+- **Project preferences:** per-project automatic navigation, optional tool overrides, editorial review context and a manually applied preferred writing profile.
+- **More v6 tools:** Discord timestamps, interactive ratings, Discord-style syntax, reading time and a preview-first Markdown linter.
 
-**Languages:** English (this README) · [Português (Brasil)](docs/README.pt-BR.md)
+[Full release notes](docs/V6_RELEASE.en.md) · [Notas em português](docs/V6_RELEASE.pt-BR.md) · [Download 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
 
-> **v6 under design (not released):** Architecture review of six planned integrations — Advanced Ruby, Discord Timestamps, Interactive Ratings, Discord Syntax, Linter and Reading Time. The current stable version remains **5.2.0**. Read the [English v6 review](docs/V6-ARCHITECTURE.en.md) or [Portuguese technical plan](docs/V6-ARCHITECTURE.pt-BR.md).
+**Development history:** [beta.1](docs/V6_BETA_RELEASE.md), [beta.2](docs/V6_BETA2.en.md), [beta.3](docs/V6_BETA3.en.md), [beta.4](docs/V6_BETA4.en.md). The previous stable release was 5.2.0.
 
 **New in 5.2.0:** Longform remembers the **last selected project**, including when switching between its separate index/draft notes. Project details now include a vault-image **cover**, a short **synopsis/description**, and a copyright/license selector explaining *All rights reserved*, Creative Commons choices, CC0 and public domain. These details are written to the existing project's `longform` frontmatter. The settings interface now has **six grouped top-level tabs** with smaller category tabs, and Easy Typing plus Smart Typography share a single **Typing & typography** settings page. All new controls have Portuguese and English labels. See the [release notes](docs/V5_2_RELEASE.md).
 

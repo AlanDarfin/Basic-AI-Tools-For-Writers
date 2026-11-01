@@ -6196,27 +6196,33 @@ function writerBookNavManualButtons(app,sourcePath,data){
 }
 function writerBookNavRenderButtons(container,app,buttons,{manual=false,automatic=false}={}){
  if(!buttons.length)return false;
+ const label=manual?writerUi('Navegação manual','Manual navigation'):writerUi('Navegação entre capítulos','Chapter navigation');
  const root=container.createDiv({cls:'writer-v6-booknav'+(automatic?' writer-v6-booknav-auto':'')+(manual?' writer-v6-booknav-manual':'')});
  root.setAttribute('role','navigation');
- root.setAttribute('aria-label',manual?writerUi('Navegação manual','Manual navigation'):writerUi('Navegação Longform','Longform navigation'));
+ root.setAttribute('aria-label',label);
+ const heading=root.createDiv({cls:'writer-v6-booknav-heading'});
+ heading.createSpan({cls:'writer-v6-booknav-heading-text',text:label});
+ const list=root.createDiv({cls:'writer-v6-booknav-list'});
  for(const button of buttons){
-  const label=manual?writerUi(button.direction==='previous'?'Anterior':'Próximo',button.direction==='previous'?'Previous':'Next'):
+  const directionLabel=manual?writerUi(button.direction==='previous'?'Nota anterior':'Próxima nota',button.direction==='previous'?'Previous note':'Next note'):
    button.kind==='main'?
    writerUi(button.direction==='previous'?'Capítulo anterior':'Próximo capítulo',button.direction==='previous'?'Previous chapter':'Next chapter'):
    writerUi(button.direction==='previous'?'Subcapítulo anterior':'Próximo subcapítulo',button.direction==='previous'?'Previous subchapter':'Next subchapter');
-  const item=root.createEl('button',{cls:'writer-v6-booknav-item writer-v6-booknav-'+button.direction+' writer-v6-booknav-'+button.kind,attr:{type:'button','aria-label':label+': '+button.target.title}});
+  const item=list.createEl('button',{cls:'writer-v6-booknav-item writer-v6-booknav-'+button.direction+' writer-v6-booknav-'+button.kind,
+   attr:{type:'button','aria-label':directionLabel+': '+button.target.title,title:directionLabel+': '+button.target.title}});
   item.createSpan({cls:'writer-v6-booknav-arrow',text:button.direction==='previous'?'‹':'›'});
   const content=item.createSpan({cls:'writer-v6-booknav-text'});
-  content.createSpan({cls:'writer-v6-booknav-label',text:label});
+  content.createSpan({cls:'writer-v6-booknav-label',text:directionLabel});
   content.createSpan({cls:'writer-v6-booknav-title',text:button.target.title});
   item.addEventListener('click',()=>{
    const file=app.vault.getAbstractFileByPath(button.target.path);
    if(file instanceof TFile)void app.workspace.getLeaf(false).openFile(file);
-   else new Notice(writerUi('Nota não encontrada.','Note not found.'));
+   else new Notice(writerUi('Nota não encontrada no cofre.','Note not found in vault.'));
   });
  }
  return true;
 }
+
 function writerBookNavAutoAllowed(plugin,match){
  if(!match||!plugin.settings.bookNavigation?.enabled||!writerModuleOn(plugin,'bookNavigation'))return false;
  const pref=plugin.settings.projectsData?.[match.index.file.path]?.writingSettings?.navigation||'inherit';
@@ -6912,8 +6918,12 @@ class DictionaryView extends ItemView{
 function writerMarkCompactSettings(root){
  if(!root)return;
  for(const row of root.querySelectorAll('.setting-item')){
-  row.classList.toggle('writer-setting-toggle',Boolean(row.querySelector('.checkbox-container')));
-  row.classList.toggle('writer-setting-textarea',Boolean(row.querySelector('textarea')));
+  const toggle=Boolean(row.querySelector('.checkbox-container'));
+  const textarea=Boolean(row.querySelector('textarea'));
+  const field=textarea||Boolean(row.querySelector('input[type="text"],input[type="number"],input[type="search"],input[type="password"],input[type="url"],select'));
+  row.classList.toggle('writer-setting-toggle',toggle);
+  row.classList.toggle('writer-setting-textarea',textarea);
+  row.classList.toggle('writer-setting-field',field&&!toggle);
  }
 }
 class DictionarySettings extends PluginSettingTab{

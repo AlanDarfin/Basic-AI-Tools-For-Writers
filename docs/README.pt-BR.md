@@ -1,14 +1,33 @@
 # Basic AI Tool for Writers
 
-> **6.0.0-beta.4 (experimental):** navegação automática e manual entre notas avulsas, busca de capítulos, inserção inteligente de sintaxes, menus compactos e preferências por projeto. [Notas completas da beta](V6_BETA4.pt-BR.md). A versão estável continua sendo **5.2.0**.
+**Versão atual:** 6.0.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e celular · **Licença:** MIT.
 
-> **v6 pré-release: 6.0.0-beta.3 (experimental).** Navegação Longform com recuperação do índice YAML, Ruby acima/abaixo funcionando no Live Preview e menus mais compactos. [Notas da beta 3](V6_BETA3.pt-BR.md) · [English notes](V6_BETA3.en.md). A versão estável continua sendo **5.2.0**.
+**Idiomas da interface:** português brasileiro e inglês. [English README](../README.md).
 
-> **v6 pré-release: 6.0.0-beta.2 (para testes).** Corrige a rolagem do Remember Cursor no Android e adiciona o bloco de navegação Longform por capítulos e subcapítulos. [Notas da beta 2](V6_BETA2.pt-BR.md) · [English notes](V6_BETA2.en.md).
+Uma central de escrita para [Obsidian](https://obsidian.md) com interface unificada e compacta: projetos Longform, dicionários, tradução, ferramentas Markdown, IA, revisão, versões e leitura em voz alta.
 
-> **v6 pré-release: 6.0.0-beta.1 — anterior (para testes).** Os seis conjuntos de recursos solicitados já possuem módulos próprios no [PR #25](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/pull/25): Ruby, datas Discord, avaliações, sintaxe Discord, tempo de leitura e Linter com prévia. Ainda **não há paridade completa com todas as funções dos plugins de origem nem release v6**. Veja o [guia de implementação em português](V6-IMPLEMENTATION.pt-BR.md) e [em inglês](V6-IMPLEMENTATION.en.md).
+## Novidades da 6.0.0
 
-> **v6 em planejamento (não lançada):** auditoria das seis referências — Advanced Ruby, Discord Timestamps, Interactive Ratings, Discord Syntax, Linter e Reading Time. A estável continua **5.2.0**. Confira o [plano técnico v6 em português](V6-ARCHITECTURE.pt-BR.md) ou a [versão inglesa](V6-ARCHITECTURE.en.md).
+- **Todas as interfaces refeitas:** configurações, Ferramentas de escrita, Projetos/Longform, dicionário, tradução, revisão, Markdown, seletores e janelas agora compartilham controles compactos, seções discretas e abas roláveis.
+- **Longform Nav renovado:** uma lista clara de notas anteriores e próximas, com títulos inteiros e quebra automática de linha. O layout não força duas colunas em painéis estreitos.
+- **Navegação automática:** rodapé opcional em capítulos Longform no Live Preview e na leitura, sem alterar o Markdown original.
+- **Navegação manual:** escolha nota anterior/próxima em qualquer lugar do cofre, mesmo fora do Longform, usando o comando nativo. Exemplo:
+
+```longform-nav
+mode: manual
+previous: "[[Notas/Anterior]]"
+next: "[[Notas/Próxima]]"
+```
+
+- **Busca de capítulos:** encontre capítulos e subcapítulos de um projeto pela paleta de comandos.
+- **Ruby acima e abaixo:** `{base|anotação}` ou `{base|anotação|under}`, em leitura e Live Preview.
+- **Inserção inteligente:** comandos nativos para Ruby, avaliações, timestamps Discord, spoilers e subtexto.
+- **Preferências por projeto:** navegação, desativação de recursos específicos, perfil editorial para IA e perfil de escrita associado, aplicado somente quando você solicitar.
+- **Mais funções Markdown:** avaliações interativas, horários Discord, subtexto, estimativa de leitura e Linter com prévia.
+
+[Notas completas](V6_RELEASE.pt-BR.md) · [Release em inglês](V6_RELEASE.en.md) · [Baixar versão 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
+
+**Histórico:** [beta.1](V6_BETA_RELEASE.md), [beta.2](V6_BETA2.pt-BR.md), [beta.3](V6_BETA3.pt-BR.md) e [beta.4](V6_BETA4.pt-BR.md). A versão estável anterior era a 5.2.0.
 
 > **Novo na 5.2.0:** Longform lembra o **último projeto selecionado**, inclusive após reiniciar o plugin. A aba **Projeto** permite escolher uma **capa do cofre**, escrever a **sinopse/descrição** e declarar o tipo de **direitos autorais/licença**, com explicação de cada opção. Esses dados são salvos no frontmatter `longform` do índice da história. As configurações agora ficam em **seis grupos principais**, com abas menores dentro de cada grupo; Easy Typing e Smart Typography foram unidos em **Digitação e tipografia**. Veja as [notas da 5.2.0](V5_2_RELEASE.md).
 
@@ -18,11 +37,11 @@
 
 **Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
 
-[English / README principal](../README.md) · [Release estável 5.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/5.2.0)
+[English / README principal](../README.md) · [Release estável 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
 
 Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
 
-**Versão atual:** 5.2.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
+**Versão atual:** 6.0.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
 
 **Na 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
 

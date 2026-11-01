@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "6.0.0-beta.4",
+  "version": "6.0.0",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Beta: automatic/manual Longform navigation, smart Markdown dialogs, cleaner UI and project preferences.",
+  "description": "Unified bilingual writing workspace: Longform projects and manual/automatic chapter navigation, Ruby, proofreading, AI-assisted writing, typing and Markdown tools.",
   "isDesktopOnly": false
 }

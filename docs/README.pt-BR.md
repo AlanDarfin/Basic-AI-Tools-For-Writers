@@ -1,5 +1,7 @@
 # Basic AI Tool for Writers
 
+> **7.0.0-beta.2 (experimental):** novos recursos Story Studio no mesmo **Compêndio e Longform**: fichas editáveis, modelos personalizados, imagens/avatar/galeria, relações por links, quadro de cenas, capítulos recolhíveis, mapas de imagem, Timeline com trilhas/Gantt simples, diário de sessões e ligação com o Pandoc já existente. Sem duplicar dados. [Notas em português](V7_BETA2.pt-BR.md) · [English](V7_BETA2.en.md). **A versão estável permanece 6.0.1.**
+
 > **Nova beta 7.0.0-beta.1:** a antiga aba **Notas** agora é um **Compêndio** com tags livres do Obsidian, tags herdadas de notas de pasta, personagens, locais e itens, além de conexões entre notas. Há também uma **Timeline** visual, verificação inicial de continuidade, Folder Notes integrado ao explorador e modo foco. A memória narrativa para revisão por IA é **opcional e desligada por padrão**, usando apenas capítulos anteriores. O Pandoc existente continua oferecendo EPUB, PDF e DOCX no desktop. Outras ideias da v7 serão aprofundadas nas próximas betas. [Notas em português](V7_BETA1.pt-BR.md) · [English notes](V7_BETA1.en.md). **A versão estável continua sendo 6.0.1.**
 
 

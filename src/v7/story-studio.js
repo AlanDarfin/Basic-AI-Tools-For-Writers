@@ -22,7 +22,13 @@ const WRITER_V7_FIELD_LABELS={
  currency:['Moeda','Currency'],trade:['Comércio','Trade'],source:['Fonte','Source'],
  rules:['Regras','Rules'],timelineDate:['Data do evento','Event date'],
  location:['Local','Location'],relationships:['Relações (links do Obsidian)','Relationships (Obsidian links)'],
- status:['Estado','Status'],pov:['Ponto de vista','Point of view'],sceneDate:['Data da cena','Scene date']
+ status:['Estado','Status'],pov:['Ponto de vista','Point of view'],sceneDate:['Data da cena','Scene date'],
+ act:['Ato','Act'],sequence:['Sequência','Sequence'],characters:['Personagens','Characters'],
+ plotlines:['Tramas','Plotlines'],storyBeat:['Marcos narrativos','Story beats'],
+ emotion:['Emoção','Emotion'],intensity:['Intensidade (0–10)','Intensity (0–10)'],
+ conflict:['Conflito','Conflict'],setup_scenes:['Preparações (cenas)','Setups (scenes)'],
+ payoff_scenes:['Consequências (cenas)','Payoffs (scenes)'],
+ target_wordcount:['Meta de palavras','Target words']
 };
 function writerV7StudioTemplates(plugin){
  const custom=Array.isArray(plugin.settings.v7StudioTemplates)?plugin.settings.v7StudioTemplates:[];
@@ -122,7 +128,14 @@ function writerV7StudioOpenSheet(view,entry,template){
        const value=values[key]?.trim();
        if(!value)continue; // Blank fields never delete existing data.
        if(key==='relationships'||key==='members')data[key]=value.split(/,\s*/).map(writerV7StudioLinkValue).filter(Boolean);
-       else data[key]=value;
+       else if(['characters','plotlines','storyBeat','setup_scenes','payoff_scenes'].includes(key))data[key]=writerV7RCStrings(value);
+       else if(key==='intensity'){
+        const n=Number(value);if(!Number.isFinite(n)||n<0||n>10)throw Error(writerUi('Intensidade inválida (0 a 10).','Invalid intensity (0 to 10).'));
+        data[key]=n;
+       }else if(key==='target_wordcount'){
+        const n=Number(value);if(!Number.isFinite(n)||n<0||n>100000)throw Error(writerUi('Meta de palavras inválida.','Invalid word target.'));
+        data[key]=Math.floor(n);
+       }else data[key]=value;
       }
       if(related){
        const file=view.app.vault.getAbstractFileByPath(related);
@@ -203,38 +216,7 @@ function writerV7StudioScenes(view,project){
  });
 }
 function writerV7StudioRenderBoard(view,panel,project){
- const root=panel.createDiv({cls:'writer-v7-studio-board'});
- root.createEl('h3',{text:writerUi('Quadro da história','Story board')});
- root.createEl('p',{text:writerUi('Visão de planejamento das mesmas cenas Longform. A ordem, o recuo e a compilação continuam na aba Cenas.','Planning view for the existing Longform scenes. Reordering and compilation remain in Scenes.'),cls:'writer-v7-muted'});
- const cards=writerV7StudioScenes(view,project),actions=root.createDiv({cls:'writer-v7-toolbar'});
- const states=['','outline','draft','wip','revised','final'];let selected='';
- const picker=actions.createEl('select',{attr:{'aria-label':writerUi('Filtrar estado','Filter status')}});
- for(const st of states){const op=picker.createEl('option',{text:st||writerUi('Todos os estados','All statuses')});op.value=st;}
- const list=root.createDiv({cls:'writer-v7-studio-board-list'});
- const draw=()=>{
-  list.empty();
-  const shown=cards.filter(x=>!selected||x.status===selected);
-  const totals=root.querySelector('.writer-v7-studio-board-stats');
-  if(totals)totals.setText(shown.length+'/'+cards.length+' '+writerUi('cenas','scenes')+' · '+new Set(cards.map(x=>x.pov).filter(Boolean)).size+' POV');
-  for(const scene of shown){
-   const card=list.createDiv({cls:'writer-v7-studio-scene'});
-   card.createSpan({cls:'writer-v7-studio-scene-num',text:'#'+scene.position});
-   const content=card.createDiv({cls:'writer-v7-studio-scene-content'});
-   content.createEl('button',{cls:'writer-v7-studio-scene-title',text:scene.title})
-    .addEventListener('click',()=>scene.file?view.openFile(scene.file):new Notice(writerUi('Arquivo ausente','File missing')));
-   const badges=content.createDiv({cls:'writer-v7-studio-scene-badges'});
-   for(const text of [scene.status,scene.pov&&'POV: '+scene.pov,scene.location,scene.date].filter(Boolean))
-    badges.createSpan({cls:'writer-v7-tag',text:text.slice(0,70)});
-   if(scene.summary)content.createEl('p',{text:scene.summary.slice(0,300)});
-   if(scene.file)content.createEl('button',{text:writerUi('Editar ficha','Edit sheet')})
-    .addEventListener('click',()=>writerV7StudioOpenSheet(view,{
-     file:scene.file,path:scene.file.path,title:scene.title,
-     cache:view.app.metadataCache?.getFileCache?.(scene.file),tags:[]
-    },{fields:['status','pov','location','sceneDate','summary']}));
-  }
- };
- root.createEl('p',{cls:'writer-v7-studio-board-stats'});
- picker.addEventListener('change',()=>{selected=picker.value;draw();});draw();
+ return writerV7RCRenderBoard(view,panel,project);
 }
 function writerV7StudioSafeMap(m){
  if(!m||typeof m!=='object'||typeof m.image!=='string')return null;
@@ -409,7 +391,7 @@ class WriterV7StoryStudio{
   p.addCommand({id:'v7-open-session-journal',name:writerUi('História: abrir diário de sessões','Story: open session journal'),callback:()=>p.openProjects('sessions')});
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Estúdio de histórias (beta)','Story studio (beta)')});
+  panel.createEl('h3',{text:writerUi('Estúdio de histórias (RC)','Story studio (RC)')});
   panel.createEl('p',{text:writerUi('Recursos integrados às notas, Compêndio, Timeline e projetos atuais. Sem bancos de dados ou compiladores duplicados.','Tools built on current notes, Compendium, Timeline and projects. No duplicate databases or exporters.')});
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   for(const [key,pt,en] of [

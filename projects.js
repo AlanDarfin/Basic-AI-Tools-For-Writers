@@ -157,7 +157,11 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false))){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
+  &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
+  &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
+  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -169,6 +173,10 @@ class ProjectsView extends ItemView{
   if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='timeline')writerV7RenderTimeline(this,panels.timeline,project);
+  if(this.activeTab==='board')writerV7StudioRenderBoard(this,panels.board,project);
+  if(this.activeTab==='relations')writerV7StudioRenderGraph(this,panels.relations,project);
+  if(this.activeTab==='maps')writerV7StudioRenderMaps(this,panels.maps,project);
+  if(this.activeTab==='analytics')writerV7StudioRenderAnalytics(this,panels.analytics,project);
   if(this.activeTab==='continuity')writerV7RenderContinuity(this,panels.continuity,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
@@ -345,6 +353,13 @@ class ProjectsView extends ItemView{
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
   toolbar.createEl('button',{text:lfMsg("Novo rascunho Longform","New Longform draft")}).addEventListener('click',()=>this.createLinkedDraft(project));
+  toolbar.createEl('button',{text:lfMsg('Expandir tudo','Expand all')}).addEventListener('click',async()=>{
+   prefs.v7CollapsedScenes={};await this.plugin.saveSettings();await this.render();
+  });
+  toolbar.createEl('button',{text:lfMsg('Recolher tudo','Collapse all')}).addEventListener('click',async()=>{
+   prefs.v7CollapsedScenes=Object.fromEntries(this.activeScenes(project).map(x=>[x.title,true]));
+   await this.plugin.saveSettings();await this.render();
+  });
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
@@ -389,7 +404,19 @@ class ProjectsView extends ItemView{
      this.moveSceneRelative(project,data.name,name,after);
    });
    const file=this.resolveScene(project,name);
-   const titleButton=row.createEl('button',{cls:'writer-project-scene-title',attr:{
+   const titleWrapper=row.createDiv({cls:'writer-v7-scene-title-wrap'});
+   if(item.children?.length){
+    const closed=prefs.v7CollapsedScenes?.[name]===true;
+    titleWrapper.createEl('button',{cls:'writer-v7-scene-collapse',text:closed?'+':'−',
+     attr:{type:'button','aria-expanded':String(!closed),
+      'aria-label':closed?lfMsg('Expandir ','Expand ')+name:lfMsg('Recolher ','Collapse ')+name}})
+     .addEventListener('click',async()=>{
+      prefs.v7CollapsedScenes=prefs.v7CollapsedScenes||{};
+      prefs.v7CollapsedScenes[name]=!closed;
+      await this.plugin.saveSettings();await this.render();
+     });
+   }
+   const titleButton=titleWrapper.createEl('button',{cls:'writer-project-scene-title',attr:{
     'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
    }});
    if(level>0){
@@ -420,7 +447,7 @@ class ProjectsView extends ItemView{
     ])menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
     menu.showAtMouseEvent(event);
    });
-   for(const child of item.children)renderItem(child,parent,level+1);
+   if(prefs.v7CollapsedScenes?.[name]!==true)for(const child of item.children)renderItem(child,parent,level+1);
   };
   for(const item of tree)renderItem(item,panel);
   if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use + Cena.','No scenes yet. Use + Scene.')});
@@ -708,6 +735,15 @@ class ProjectsView extends ItemView{
     status.setText(lfMsg('Prévia gerada; nenhum arquivo foi modificado.','Preview generated; no files were modified.'));
    }catch(e){new Notice(lfMsg("Workflow inválido: ","Invalid workflow: ")+e.message,8000);}
   });
+  if(!this.app.isMobile&&this.plugin.settings.pandocExport?.enabled&&this.plugin.writerPandocExporter){
+   add.createEl('button',{text:lfMsg('Compilar e exportar…','Compile and export…')}).addEventListener('click',async()=>{
+    try{
+     const result=await this.compileProject(project,wf,false);
+     await this.app.workspace.getLeaf(false).openFile(result.file);
+     this.plugin.writerPandocExporter.openDialog();
+    }catch(e){new Notice(lfMsg('Falha na compilação: ','Compilation failed: ')+e.message);}
+   });
+  }
   add.createEl('button',{text:lfMsg("Compilar","Compile"),cls:'mod-cta'}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,false);status.setText(lfMsg('Criado: ','Created: ')+result.file.path);new Notice(lfMsg('Manuscrito criado sem sobrescrever o original.','Manuscript created without overwriting the original.'));}
    catch(e){new Notice(lfMsg('Falha: ','Failed: ')+e.message,8000);}

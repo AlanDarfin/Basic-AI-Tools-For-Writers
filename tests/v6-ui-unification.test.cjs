@@ -61,14 +61,14 @@ test('a real long chapter title remains in the DOM in both navigation directions
 });
 test('stable version, translations and built bundle stay synchronized',()=>{
  const manifest=require('../manifest.json'),pkg=require('../package.json'),versions=require('../versions.json');
- assert.equal(manifest.version,'6.0.0');assert.equal(pkg.version,manifest.version);
+ assert.match(manifest.version,/^6\.0\.\d+$/);assert.equal(pkg.version,manifest.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
  assert.match(main,/function writerBookNavRenderButtons/);
  assert.match(main,/writerV6ProjectPreferencesRender/);
  assert.match(main,/WriterV6SmartInsert/);
  const en=fs.readFileSync('README.md','utf8'),pt=fs.readFileSync('docs/README.pt-BR.md','utf8');
- assert.match(en,/\*\*Latest stable:\*\* \[6\.0\.0\]/);
- assert.match(pt,/\*\*Versão atual:\*\* 6\.0\.0/);
+ assert.ok(en.includes('**Latest stable:** ['+manifest.version+']'));
+ assert.ok(pt.includes('**Versão atual:** '+manifest.version));
  assert.match(en,/chapter and subchapters|chapters and subchapters|chapters\/subchapters/);
  assert.match(pt,/capítulos e subcapítulos/);
  for(const path of ['docs/V6_RELEASE.en.md','docs/V6_RELEASE.pt-BR.md'])

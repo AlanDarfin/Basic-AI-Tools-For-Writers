@@ -114,7 +114,9 @@ function writerV7TimelineEntries(view,project,records){
   if(!title)continue;
   items.push({id:String(item.id||''),title,date:String(item.date||'').slice(0,80),
    category:String(item.category||'').slice(0,100),note:String(item.note||'').slice(0,500),
-   description:String(item.description||'').slice(0,1500),source:'manual'});
+   description:String(item.description||'').slice(0,1500),
+   track:String(item.track||'').slice(0,100),branch:String(item.branch||'main').slice(0,100),
+   endDate:String(item.endDate||'').slice(0,80),milestone:item.milestone===true,source:'manual'});
  }
  for(const entry of records){
   const fm=entry.cache?.frontmatter||{};
@@ -123,9 +125,12 @@ function writerV7TimelineEntries(view,project,records){
   if(!date)continue;
   items.push({id:'note:'+entry.path,title:String(value?.title||fm.eventTitle||entry.title).slice(0,200),
    date:String(date).slice(0,80),category:String(value?.category||fm.category||'').slice(0,100),
-   note:entry.path,description:String(value?.description||fm.description||'').slice(0,1500),source:'note'});
+   note:entry.path,description:String(value?.description||fm.description||'').slice(0,1500),
+   track:String(value?.track||fm.track||'').slice(0,100),branch:String(value?.branch||fm.branch||'main').slice(0,100),
+   endDate:String(value?.endDate||fm.endDate||'').slice(0,80),
+   milestone:value?.milestone===true||fm.milestone===true,source:'note'});
  }
- return items.map((x,i)=>({...x,sortKey:writerV7TimelineDate(x.date),originalOrder:i})).sort((a,b)=>{
+ return items.map((x,i)=>({...x,sortKey:writerV7TimelineDate(x.date),endKey:writerV7TimelineDate(x.endDate),originalOrder:i})).sort((a,b)=>{
   if(a.sortKey===null&&b.sortKey===null)return a.originalOrder-b.originalOrder;
   if(a.sortKey===null)return 1;if(b.sortKey===null)return -1;
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;
@@ -188,9 +193,13 @@ function writerV7RenderCompendium(view,panel,project){
  const actions=root.createDiv({cls:'writer-v7-toolbar'});
  actions.createEl('button',{text:writerUi('+ Nota','+ Note')}).addEventListener('click',()=>view.promptNote(view.notesRoot(project)));
  actions.createEl('button',{text:writerUi('+ Pasta','+ Folder')}).addEventListener('click',()=>view.promptNotesFolder(view.notesRoot(project)));
- for(const [kind,pt,en] of [['character','+ Personagem','+ Character'],['place','+ Local','+ Place'],['item','+ Item','+ Item']]){
-  actions.createEl('button',{text:writerUi(pt,en)}).addEventListener('click',()=>writerV7CreateRecord(view,project,kind));
- }
+ const templates=writerV7StudioTemplates(view.plugin);
+ const templatesSelect=actions.createEl('select',{attr:{'aria-label':writerUi('Tipo de novo registro','New entry type')}});
+ for(const tpl of templates){const o=templatesSelect.createEl('option',{text:writerUi(tpl.pt||tpl.name,tpl.en||tpl.name)});o.value=tpl.id;}
+ actions.createEl('button',{text:writerUi('+ Registro','+ Entry')}).addEventListener('click',()=>{
+  const selected=templates.find(x=>x.id===templatesSelect.value);
+  if(selected)writerV7StudioCreate(view,project,selected);
+ });
  actions.createEl('button',{text:writerUi('Pastas','Folders')}).addEventListener('click',()=>{
   const tree=root.querySelector('.writer-v7-compendium-folders');
   if(tree)tree.open=!tree.open;
@@ -202,14 +211,15 @@ function writerV7RenderCompendium(view,panel,project){
  tagPicker.createEl('option',{text:writerUi('Todas as tags','All tags'),value:''});
  for(const tag of allTags){const opt=tagPicker.createEl('option',{text:tag});opt.value=tag;}
  const kind=controls.createEl('select',{attr:{'aria-label':writerUi('Tipo de registro','Record type')}});
- for(const [key,pt,en] of [['','Todos','All'],['character','Personagens','Characters'],['place','Locais','Places'],['item','Itens','Items'],['note','Outros','Other']]){
-  const o=kind.createEl('option',{text:writerUi(pt,en)});o.value=key;
+ const allTypes=[{id:'',pt:'Todos',en:'All'},...templates.map(t=>({id:t.id,pt:t.pt||t.name,en:t.en||t.name})),{id:'note',pt:'Outros',en:'Other'}];
+ for(const category of allTypes){
+  const o=kind.createEl('option',{text:writerUi(category.pt,category.en)});o.value=category.id;
  }
  const results=root.createDiv({cls:'writer-v7-compendium-results'});
  const update=()=>{
   results.empty();
   const q=search.value.trim().toLocaleLowerCase(),tag=tagPicker.value,type=kind.value;
-  const shown=records.filter(r=>(!tag||r.tags.includes(tag))&&(!type||writerV7Classify(r)===type)&&
+  const shown=records.filter(r=>(!tag||r.tags.includes(tag))&&(!type||(writerV7StudioKind(r,templates)?.id||'note')===type)&&
    (!q||(r.title+' '+r.folder+' '+r.tags.join(' ')).toLocaleLowerCase().includes(q))).slice(0,500);
   const stat=root.querySelector('.writer-v7-compendium-count');
   if(stat)stat.setText(shown.length+'/'+records.length+' '+writerUi('registros','entries'));
@@ -227,6 +237,7 @@ function writerV7RenderCompendium(view,panel,project){
    }
    card.createEl('button',{cls:'writer-v7-mini-action',text:'+ #',attr:{'aria-label':writerUi('Adicionar tag','Add tag')}})
     .addEventListener('click',()=>writerV7TagPrompt(view,r.file));
+   writerV7StudioAugmentEntry(view,card,r,templates,records);
    const connected=writerV7Connections(view.app,records,r);
    if(connected.length){
     const detail=card.createEl('details',{cls:'writer-v7-connections'});
@@ -253,7 +264,8 @@ function writerV7TagPrompt(view,file){
  }).open();
 }
 function writerV7TimelineEditor(view,project,existing){
- const modal=new Modal(view.app),item={date:existing?.date||'',title:existing?.title||'',category:existing?.category||'',description:existing?.description||'',note:existing?.note||''};
+ const modal=new Modal(view.app),item={date:existing?.date||'',title:existing?.title||'',category:existing?.category||'',description:existing?.description||'',note:existing?.note||'',
+  endDate:existing?.endDate||'',track:existing?.track||'',branch:existing?.branch||'main',milestone:existing?.milestone===true};
  modal.onOpen=()=>{
   modal.setTitle(existing?writerUi('Editar evento','Edit event'):writerUi('Novo evento na timeline','New timeline event'));
   const field=(pt,en,key,rows)=>{
@@ -264,6 +276,10 @@ function writerV7TimelineEditor(view,project,existing){
   field('Data ou era (AAAA-MM-DD, ano ou texto)','Date or era (YYYY-MM-DD, year or text)','date');
   field('Título','Title','title');
   field('Categoria ou tag','Category or tag','category');
+  field('Trilha','Track','track');
+  field('Ramificação (main = principal)','Branch (main = main story)','branch');
+  field('Data final (opcional)','End date (optional)','endDate');
+  new Setting(modal.contentEl).setName(writerUi('Marco importante','Milestone')).addToggle(x=>x.setValue(item.milestone).onChange(v=>item.milestone=v));
   field('Caminho da nota (opcional)','Note path (optional)','note');
   field('Descrição','Description','description',4);
   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
@@ -272,7 +288,8 @@ function writerV7TimelineEditor(view,project,existing){
     const p=view.prefs(project);
     if(!Array.isArray(p.v7Timeline))p.v7Timeline=[];
     const obj={id:existing?.id||'v7-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)};
-    for(const k of ['date','title','category','description','note'])obj[k]=String(item[k]||'').trim().slice(0,k==='description'?1500:500);
+    for(const k of ['date','title','category','description','note','track','branch','endDate'])obj[k]=String(item[k]||'').trim().slice(0,k==='description'?1500:500);
+    obj.milestone=item.milestone===true;
     if(existing){const i=p.v7Timeline.findIndex(x=>x.id===existing.id);if(i>=0)p.v7Timeline[i]=obj;}
     else p.v7Timeline.push(obj);
     await view.plugin.saveSettings();modal.close();await view.render();
@@ -281,44 +298,7 @@ function writerV7TimelineEditor(view,project,existing){
  modal.open();
 }
 function writerV7RenderTimeline(view,panel,project){
- const root=panel.createDiv({cls:'writer-v7-timeline'});
- root.createEl('h3',{text:writerUi('Linha do tempo do universo','World timeline')});
- root.createEl('p',{text:writerUi('Organize eventos com datas reais, anos fictícios ou eras. Notas com propriedades timeline.date também aparecem.','Arrange real dates, fictional years or eras. Notes with timeline.date properties appear automatically.'),cls:'writer-v7-muted'});
- const bar=root.createDiv({cls:'writer-v7-toolbar'});
- bar.createEl('button',{text:writerUi('+ Evento','+ Event')}).addEventListener('click',()=>writerV7TimelineEditor(view,project));
- const events=writerV7TimelineEntries(view,project,writerV7ProjectNotes(view,project));
- const search=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar evento ou era…','Search event or era…'),'aria-label':writerUi('Pesquisar timeline','Search timeline')}});
- const list=root.createDiv({cls:'writer-v7-timeline-list'});
- const draw=()=>{
-  list.empty();
-  const term=search.value.trim().toLocaleLowerCase();
-  const filtered=events.filter(x=>!term||(x.title+' '+x.date+' '+x.category+' '+x.description).toLocaleLowerCase().includes(term));
-  if(!filtered.length){list.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhum evento. Adicione um ou use as propriedades timeline.date numa nota.','No events yet. Create one or add timeline.date to a note.')});return;}
-  for(const event of filtered){
-   const row=list.createDiv({cls:'writer-v7-timeline-item'});
-   row.createSpan({cls:'writer-v7-timeline-date',text:event.date||'—'});
-   const info=row.createDiv({cls:'writer-v7-timeline-content'});
-   info.createEl('strong',{text:event.title});
-   if(event.category)info.createSpan({cls:'writer-v7-tag',text:event.category});
-   if(event.description)info.createEl('p',{text:event.description});
-   const actions=info.createDiv({cls:'writer-v7-inline-actions'});
-   if(event.note)actions.createEl('button',{text:writerUi('Abrir nota','Open note')}).addEventListener('click',()=>{
-    const file=view.app.vault.getAbstractFileByPath(event.note)||
-     view.app.metadataCache?.getFirstLinkpathDest?.(event.note,project.file.path);
-    if(file instanceof TFile)void view.openFile(file);else new Notice(writerUi('Nota vinculada não encontrada.','Linked note not found.'));
-   });
-   if(event.source==='manual'){
-    actions.createEl('button',{text:writerUi('Editar','Edit')}).addEventListener('click',()=>writerV7TimelineEditor(view,project,event));
-    actions.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
-     new ConfirmProjectAction(view.app,writerUi('Remover evento','Remove event'),event.title,async()=>{
-      const pref=view.prefs(project);pref.v7Timeline=(pref.v7Timeline||[]).filter(x=>x.id!==event.id);
-      await view.plugin.saveSettings();await view.render();
-     }).open();
-    });
-   }
-  }
- };
- search.addEventListener('input',draw);draw();
+ return writerV7StudioRenderTimeline(view,panel,project);
 }
 async function writerV7NarrativeContext(plugin,file){
  const cfg=plugin.settings.v7;if(!cfg?.narrativeMemory||!(file instanceof TFile))return '';
@@ -453,6 +433,7 @@ class WriterV7Worldbuilding{
     this.plugin.settings.v7[key]=value;await this.plugin.saveSettings();
     if(key==='explorerFolderNotes'||key==='folderNotes')this.scheduleExplorer();
    }));
+  this.plugin.writerV7StoryStudio?.renderSettings(section);
   new Setting(section).setName(writerUi('Limite de registros do compêndio','Compendium entry limit')).addText(x=>x.setValue(String(this.plugin.settings.v7.maxEntries)).onChange(async text=>{
    this.plugin.settings.v7.maxEntries=Math.max(100,Math.min(10000,Number(text)||3000));await this.plugin.saveSettings();
   }));

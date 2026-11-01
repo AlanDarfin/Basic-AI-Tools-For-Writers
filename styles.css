@@ -2655,3 +2655,25 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 @media(prefers-reduced-motion:reduce){
  .writer-v6-booknav .writer-v6-booknav-item{transition:none}
 }
+
+
+/* Remove the theme's generic fenced-code background around rendered Longform Nav. */
+.markdown-rendered .block-language-longform-nav,
+.markdown-preview-view .block-language-longform-nav{
+ display:block;
+ box-sizing:border-box;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+ padding:0;
+ margin:0 0 8px;
+ border:0;
+ border-radius:0;
+ background:transparent;
+ box-shadow:none;
+ overflow:visible;
+}
+.cm-editor .writer-v6-booknav,
+.markdown-rendered .writer-v6-booknav{
+ white-space:normal;
+}

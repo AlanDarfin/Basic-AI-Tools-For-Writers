@@ -61,7 +61,7 @@ test('a real long chapter title remains in the DOM in both navigation directions
 });
 test('stable version, translations and built bundle stay synchronized',()=>{
  const manifest=require('../manifest.json'),pkg=require('../package.json'),versions=require('../versions.json');
- assert.match(manifest.version,/^(6\.0\.\d+|7\.0\.0-beta\.\d+)$/);assert.equal(pkg.version,manifest.version);
+ assert.match(manifest.version,/^(6\.0\.\d+|7\.0\.0-(?:beta|rc)\.\d+)$/);assert.equal(pkg.version,manifest.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
  assert.match(main,/function writerBookNavRenderButtons/);
  assert.match(main,/writerV6ProjectPreferencesRender/);

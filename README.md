@@ -12,7 +12,7 @@ The stable v7 release consolidates two betas and a release candidate. All new pl
 
 | Area | Improvements |
 | --- | --- |
-| **Writing** | Collapsible chapter trees, touch-friendly scene movement, Cards/Kanban/List board, plotline matrix, story beat templates, pacing, and setup/payoff scene links. |
+| **Writing** | Collapsible chapter trees, automatic and manual navigation between chapters and subchapters, touch-friendly scene movement, Cards/Kanban/List board, plotline matrix, story beat templates, pacing, and setup/payoff scene links. |
 | **World** | Compendium using custom Obsidian tags, folders and Folder Notes; editable character/place/item sheets; custom templates, links, portraits, image gallery and vault image maps. |
 | **Timeline** | Event tracks, branches, milestones, simple Gantt, and per-project fictional calendar with custom month lengths and corrected cross-year date sorting. |
 | **Projects** | Book series manager that groups and reorders existing Longform project indexes **without moving files or changing chapters**. Existing goals, sessions, tasks and compilation remain available. |

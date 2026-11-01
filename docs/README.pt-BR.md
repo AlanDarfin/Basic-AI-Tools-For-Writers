@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.1.0 estável · **Versão anterior publicada:** 7.0.6 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.1.1 estável · **Versão anterior publicada:** 7.1.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Menu do LanguageTool ao passar o mouse — 7.1.1
+
+O menu flutuante de correção agora aparece após um breve tempo passando o mouse sobre uma palavra ou trecho destacado, mesmo que o cursor de texto esteja longe. Também abre ao clicar/tocar no erro ou levar o cursor de texto até ele usando as setas. O hover é suavizado para evitar aberturas repetidas e é cancelado se o mouse sair antes do tempo. No Android, o toque continua sendo o principal acionamento. Usa a configuração existente de sugestões flutuantes, sem solicitar novas análises à API. [Notas 7.1.1](V7_1_1_RELEASE.pt-BR.md) · [English](V7_1_1_RELEASE.en.md).
 
 ## Correção localizada no LanguageTool — 7.1.0
 

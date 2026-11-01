@@ -140,6 +140,9 @@ class ProjectsView extends ItemView{
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
   this.currentProject=project;
+  top.createEl('button',{text:lfMsg('Séries','Series'),cls:'writer-v7-stable-series-launch',
+   attr:{type:'button','aria-label':lfMsg('Organizar séries de livros','Organize book series')}})
+   .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
    try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
     const parsed=fm?parseYaml(fm[1]):null;
@@ -152,6 +155,32 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
+  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
+  &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
+  &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
+  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
+  &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
+  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
+  if(!allTabs.some(([id])=>id===this.activeTab))this.activeTab=allTabs[0]?.[0]||'scenes';
+  const menuGroups=[
+   {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
+   {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
+   {id:'management',pt:'Projeto',en:'Project',tabs:['project','continuity','tasks','comments']}
+  ];
+  const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
+  const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
+  for(const group of menuGroups){
+   groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
+    cls:activeGroup===group.id?'is-active':'',
+    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}})
+    .addEventListener('click',()=>{
+     if(activeGroup===group.id)return;
+     const first=allTabs.find(([id])=>group.tabs.includes(id));
+     if(first){this.activeTab=first[0];this.tabScrollLeft=0;void this.render();}
+    });
+  }
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   tabs.scrollLeft=this.tabScrollLeft||0;
   tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
@@ -161,14 +190,7 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
-  &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
-  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false)
-  &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
-  &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
-  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
-  &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
-  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false))){
+  for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===activeGroup)?.tabs.includes(id))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -6802,15 +6824,17 @@ async function writerV7AssignTag(app,file,value){
  return tag;
 }
 function writerV7TimelineDate(value){
- const str=String(value||'').trim();
+ const str=String(value??'').trim();
  if(!str)return null;
- if(/^-?\d{1,6}$/.test(str))return Number(str)*366;
- const m=/^(-?\d{1,6})-(\d\d)(?:-(\d\d))?$/.exec(str);
- if(m){
-  const mo=Number(m[2]),day=Number(m[3]||1);
-  if(mo>=1&&mo<=12&&day>=1&&day<=31)return Number(m[1])*366+mo*31+day;
- }
- return null;
+ const m=/^(-?\d{1,6})(?:-(\d\d)(?:-(\d\d))?)?$/.exec(str);
+ if(!m)return null;
+ const year=Number(m[1]);
+ if(!m[2])return year*400;
+ const leap=year%4===0&&(year%100!==0||year%400===0);
+ const months=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+ const month=Number(m[2]),day=Number(m[3]||1);
+ if(month<1||month>12||day<1||day>months[month-1])return null;
+ return year*400+months.slice(0,month-1).reduce((sum,n)=>sum+n,0)+day-1;
 }
 function writerV7TimelineEntries(view,project,records){
  const prefs=view.prefs(project),saved=Array.isArray(prefs.v7Timeline)?prefs.v7Timeline:[];
@@ -6829,7 +6853,7 @@ function writerV7TimelineEntries(view,project,records){
   const fm=entry.cache?.frontmatter||{};
   const value=fm.timeline&&typeof fm.timeline==='object'?fm.timeline:null;
   const date=value?.date||fm.eventDate||fm.timelineDate;
-  if(!date)continue;
+  if(date===undefined||date===null||date==='')continue;
   items.push({id:'note:'+entry.path,title:String(value?.title||fm.eventTitle||entry.title).slice(0,200),
    date:String(date).slice(0,80),category:String(value?.category||fm.category||'').slice(0,100),
    note:entry.path,description:String(value?.description||fm.description||'').slice(0,1500),
@@ -6837,7 +6861,9 @@ function writerV7TimelineEntries(view,project,records){
    endDate:String(value?.endDate||fm.endDate||'').slice(0,80),
    milestone:value?.milestone===true||fm.milestone===true,source:'note'});
  }
- return items.map((x,i)=>({...x,sortKey:writerV7TimelineDate(x.date),endKey:writerV7TimelineDate(x.endDate),originalOrder:i})).sort((a,b)=>{
+ const sortDate=value=>typeof writerV7CalendarSortDate==='function'
+  ?writerV7CalendarSortDate(value,prefs.v7Calendar):writerV7TimelineDate(value);
+ return items.map((x,i)=>({...x,sortKey:sortDate(x.date),endKey:sortDate(x.endDate),originalOrder:i})).sort((a,b)=>{
   if(a.sortKey===null&&b.sortKey===null)return a.originalOrder-b.originalOrder;
   if(a.sortKey===null)return 1;if(b.sortKey===null)return -1;
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;
@@ -7243,7 +7269,8 @@ async function writerV7StudioCreate(view,project,template){
 function writerV7StudioOpenSheet(view,entry,template){
  const modal=new Modal(view.app),fm=entry.cache?.frontmatter||{};
  const keys=[...new Set(['summary',...(template?.fields||[]),'status','pov'])].filter(k=>/^[\w-]{1,60}$/.test(k));
- const values=Object.fromEntries(keys.map(k=>[k,Array.isArray(fm[k])?fm[k].join(', '):String(fm[k]??'')]));
+ const initial=Object.fromEntries(keys.map(k=>[k,Array.isArray(fm[k])?fm[k].join(', '):String(fm[k]??'')]));
+ const values={...initial};
  modal.onOpen=()=>{
   modal.contentEl.addClass('writer-v7-studio-sheet');
   modal.setTitle(writerUi('Ficha: ','Sheet: ')+entry.title);
@@ -7269,8 +7296,9 @@ function writerV7StudioOpenSheet(view,entry,template){
     try{
      await view.app.fileManager.processFrontMatter(entry.file,data=>{
       for(const key of keys){
-       const value=values[key]?.trim();
-       if(!value)continue; // Blank fields never delete existing data.
+       const value=values[key]?.trim()||'';
+       if(value===(initial[key]?.trim()||''))continue;
+       if(!value){delete data[key];continue;}
        if(key==='relationships'||key==='members')data[key]=value.split(/,\s*/).map(writerV7StudioLinkValue).filter(Boolean);
        else if(['characters','plotlines','storyBeat','setup_scenes','payoff_scenes'].includes(key))data[key]=writerV7RCStrings(value);
        else if(key==='intensity'){
@@ -7285,7 +7313,7 @@ function writerV7StudioOpenSheet(view,entry,template){
        const file=view.app.vault.getAbstractFileByPath(related);
        if(file instanceof TFile){
         const current=Array.isArray(data.relationships)?data.relationships:typeof data.relationships==='string'?[data.relationships]:[];
-        const link='[['+file.basename+']]';
+        const link='[['+(view.app.metadataCache?.fileToLinktext?.(file,entry.path,true)||file.path.replace(/\.md$/i,''))+']]';
         if(!current.includes(link))data.relationships=[...current,link];
        }
       }
@@ -7605,6 +7633,13 @@ function writerV7StudioRenderTimeline(view,panel,project){
  const all=writerV7TimelineEntries(view,project,writerV7ProjectNotes(view,project));
  const toolbar=root.createDiv({cls:'writer-v7-toolbar'});
  toolbar.createEl('button',{text:writerUi('+ Evento','+ Event')}).addEventListener('click',()=>writerV7TimelineEditor(view,project));
+ toolbar.createEl('button',{text:writerUi('Calendário','Calendar')})
+  .addEventListener('click',()=>writerV7CalendarOpen(view,project));
+ const calendar=writerV7CalendarNormalize(view.prefs(project).v7Calendar);
+ root.createEl('p',{cls:'writer-v7-stable-calendar-info',
+  text:calendar.mode==='custom'
+   ?writerUi('Calendário fictício · ','Fictional calendar · ')+calendar.months.length+writerUi(' meses',' months')
+   :writerUi('Calendário gregoriano','Gregorian calendar')});
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar eventos…','Search events…'),'aria-label':writerUi('Pesquisar eventos','Search events')}});
  const branches=writerV7StudioTimelineBranches(all),branch=toolbar.createEl('select',{attr:{'aria-label':writerUi('Ramificação','Branch')}});
  for(const key of ['',...branches]){
@@ -8077,7 +8112,8 @@ function writerV7RCRenderStructure(view,panel,project){
  const choices=[
   ['plotlines',writerUi('Tramas','Plotlines'),'rcPlotlines'],
   ['beats',writerUi('Marcos narrativos','Story beats'),'rcBeats'],
-  ['pacing',writerUi('Ritmo','Pacing'),'rcPacing']
+  ['pacing',writerUi('Ritmo','Pacing'),'rcPacing'],
+  ['dependencies',writerUi('Conexões','Connections'),'stableDependencies']
  ].filter(entry=>settings[entry[2]]!==false);
  const show=()=>{
   const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:choices[0]?.[0]||'plotlines';
@@ -8086,6 +8122,7 @@ function writerV7RCRenderStructure(view,panel,project){
   for(const btn of tabs.querySelectorAll('button'))btn.classList.toggle('is-active',btn.dataset.section===active);
   if(active==='beats')writerV7RCRenderBeats(view,content,project);
   else if(active==='pacing')writerV7RCRenderPacing(view,content,project);
+  else if(active==='dependencies')writerV7StableRenderDependencies(view,content,project);
   else writerV7RCRenderPlotlines(view,content,project);
  };
  for(const [id,label] of choices){
@@ -8111,10 +8148,267 @@ class WriterV7LongformRC{
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   panel.createEl('h4',{text:writerUi('Planejamento Longform (RC)','Longform planning (RC)')});
   panel.createEl('p',{text:writerUi('Usa o índice Longform e as propriedades das cenas existentes; não cria outra organização paralela.','Uses the existing Longform index and scene properties; no parallel scene organization is created.')});
-  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis']]){
+  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies']]){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
     .onChange(async value=>{cfg[key]=value;await this.plugin.saveSettings();}));
   }
+ }
+}
+
+// v3 module: src/v7/stable.js
+/* 7.0.0 stable: opt-in, non-destructive book-series organization,
+ * story-world calendar ordering and scene setup/payoff dependencies.
+ * All content stays in the user's own vault and existing Longform index.
+ */
+const WRITER_V7_GREGORIAN_MONTHS=[
+ ['January',31],['February',28],['March',31],['April',30],
+ ['May',31],['June',30],['July',31],['August',31],
+ ['September',30],['October',31],['November',30],['December',31]
+];
+function writerV7CalendarNormalize(raw){
+ const value=raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{};
+ if(value.mode!=='custom')return {mode:'gregorian',months:WRITER_V7_GREGORIAN_MONTHS.map(([name,days])=>({name,days}))};
+ const months=Array.isArray(value.months)?value.months:[];
+ if(!months.length||months.length>24)return writerV7CalendarNormalize(null);
+ const clean=[];
+ for(const month of months){
+  const name=String(month?.name||'').trim().slice(0,45);
+  const days=Number(month?.days);
+  if(!name||!Number.isInteger(days)||days<1||days>99)return writerV7CalendarNormalize(null);
+  clean.push({name,days});
+ }
+ return {mode:'custom',months:clean};
+}
+function writerV7CalendarYearLength(config,year){
+ const c=writerV7CalendarNormalize(config);
+ if(c.mode==='custom')return c.months.reduce((sum,m)=>sum+m.days,0);
+ const leap=year%4===0&&(year%100!==0||year%400===0);
+ return leap?366:365;
+}
+function writerV7CalendarSortDate(value,rawConfig){
+ const raw=String(value??'').trim();
+ if(!raw)return null;
+ const config=writerV7CalendarNormalize(rawConfig);
+ const match=/^(-?\d{1,6})(?:-(\d\d)(?:-(\d\d))?)?$/.exec(raw);
+ if(!match)return null;
+ const year=Number(match[1]);
+ const maxYearDays=config.mode==='custom'?config.months.reduce((sum,m)=>sum+m.days,0):400;
+ if(!match[2])return year*maxYearDays;
+ const month=Number(match[2]),day=Number(match[3]||'1');
+ if(month<1||month>config.months.length)return null;
+ const monthDays=config.months[month-1].days;
+ const extra=config.mode==='gregorian'&&month===2&&writerV7CalendarYearLength(config,year)===366?1:0;
+ if(day<1||day>monthDays+extra)return null;
+ const elapsed=config.months.slice(0,month-1).reduce((sum,m)=>sum+m.days,0);
+ const leapDay=config.mode==='gregorian'&&month>2&&writerV7CalendarYearLength(config,year)===366?1:0;
+ return year*maxYearDays+elapsed+leapDay+day-1;
+}
+function writerV7CalendarParseMonths(raw){
+ const items=String(raw||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+ if(items.length<1||items.length>24)throw Error(writerUi('Defina entre 1 e 24 meses.','Define between 1 and 24 months.'));
+ const months=items.map(line=>{
+  const match=/^(.{1,45})\s*:\s*(\d{1,2})$/.exec(line);
+  if(!match)throw Error(writerUi('Use Nome:30, uma linha por mês.','Use Name:30, one line per month.'));
+  return {name:match[1].trim(),days:Number(match[2])};
+ });
+ if(months.some(m=>!m.name||m.days<1||m.days>99))throw Error(writerUi('Quantidade de dias inválida.','Invalid day count.'));
+ return months;
+}
+function writerV7CalendarOpen(view,project){
+ const modal=new Modal(view.app),prefs=view.prefs(project);
+ let config=writerV7CalendarNormalize(prefs.v7Calendar),mode=config.mode;
+ let lines=config.months.map(m=>m.name+':'+m.days).join('\n');
+ modal.onOpen=()=>{
+  modal.setTitle(writerUi('Calendário da história','Story calendar'));
+  modal.contentEl.createEl('p',{text:writerUi('Afeta somente a ordenação da Timeline deste projeto, sem mudar nenhuma data nas notas. Eras escritas livremente continuam sem ordem automática.','Only changes event sorting for this project; no note dates are changed. Free-text eras remain unsorted.')});
+  new Setting(modal.contentEl).setName(writerUi('Tipo de calendário','Calendar type')).addDropdown(d=>
+   d.addOption('gregorian',writerUi('Gregoriano','Gregorian'))
+    .addOption('custom',writerUi('Fictício (meses personalizados)','Fictional (custom months)'))
+    .setValue(mode).onChange(v=>mode=v));
+  new Setting(modal.contentEl).setName(writerUi('Meses e duração (Nome:30)','Months and lengths (Name:30)'))
+   .setDesc(writerUi('Usado somente em calendários fictícios. Máximo de 24 meses, com 1–99 dias.','Only for fictional calendars. Up to 24 months, each containing 1–99 days.'))
+   .addTextArea(t=>{t.inputEl.rows=8;t.setValue(lines).onChange(v=>lines=v);});
+  new Setting(modal.contentEl)
+   .addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+   .addButton(b=>b.setCta().setButtonText(writerUi('Aplicar','Apply')).onClick(async()=>{
+    try{
+     const next=mode==='custom'?{mode,months:writerV7CalendarParseMonths(lines)}:{mode:'gregorian'};
+     prefs.v7Calendar=next;await view.plugin.saveSettings();modal.close();await view.render();
+    }catch(e){new Notice(String(e.message||e));}
+   }));
+ };modal.open();
+}
+function writerV7SeriesSafe(settings){
+ const stored=Array.isArray(settings.v7Series)?settings.v7Series:[];
+ const ids=new Set(),output=[];
+ for(const item of stored.slice(0,100)){
+  if(!item||typeof item!=='object')continue;
+  const id=String(item.id||'').trim().slice(0,80),name=String(item.name||'').trim().slice(0,90);
+  if(!id||!name||ids.has(id))continue;
+  ids.add(id);
+  const books=Array.isArray(item.books)?item.books:[];
+  output.push({id,name,books:[...new Set(books.filter(x=>typeof x==='string'&&x.endsWith('.md')).map(x=>x.slice(0,500)))].slice(0,150)});
+ }
+ return output;
+}
+function writerV7SeriesForProject(settings,path){
+ return writerV7SeriesSafe(settings).filter(item=>item.books.includes(path));
+}
+function writerV7SeriesOpen(view){
+ const modal=new Modal(view.app),settings=view.plugin.settings;
+ const get=()=>writerV7SeriesSafe(settings);
+ const save=async(value)=>{settings.v7Series=value;await view.plugin.saveSettings();render();};
+ const projectOptions=()=>view.indexes();
+ const render=()=>{
+  if(!modal.contentEl)return;
+  modal.contentEl.empty();
+  modal.contentEl.addClass('writer-v7-stable-series');
+  modal.setTitle(writerUi('Séries de livros','Book series'));
+  modal.contentEl.createEl('p',{cls:'writer-v7-muted',text:writerUi('Agrupa índices Longform existentes. Não move, renomeia nem cria capítulos. A ordem é exclusiva da série, independente de cada livro.','Organizes existing Longform indexes. Never moves, renames or creates chapters. Series order is separate from each book.')});
+  const list=get();
+  const action=modal.contentEl.createDiv({cls:'writer-v7-toolbar'});
+  action.createEl('button',{text:writerUi('+ Série','+ Series')}).addEventListener('click',()=>{
+   new TextPrompt(view.app,writerUi('Nome da série','Series name'),async raw=>{
+    const name=String(raw||'').trim().slice(0,90);
+    if(!name)return;
+    const current=get();
+    if(current.some(s=>s.name.toLocaleLowerCase()===name.toLocaleLowerCase()))
+     return void new Notice(writerUi('Série com esse nome já existente.','Series name already exists.'));
+    current.push({id:'v7-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6),name,books:view.currentProject?[view.currentProject.file.path]:[]});
+    await save(current);
+   }).open();
+  });
+  if(!list.length)modal.contentEl.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhuma série criada.','No series yet.')});
+  const indexed=projectOptions(),available=new Map(indexed.map(p=>[p.file.path,p]));
+  for(const series of list){
+   const card=modal.contentEl.createDiv({cls:'writer-v7-stable-series-card'});
+   const head=card.createDiv({cls:'writer-v7-stable-series-head'});
+   head.createEl('strong',{text:series.name});
+   head.createEl('button',{text:writerUi('Renomear','Rename')}).addEventListener('click',()=>{
+    new TextPrompt(view.app,writerUi('Renomear série','Rename series'),async value=>{
+     const name=String(value||'').trim().slice(0,90);
+     if(!name)return;
+     const state=get();const entry=state.find(x=>x.id===series.id);
+     if(entry){entry.name=name;await save(state);}
+    }).open();
+   });
+   head.createEl('button',{text:writerUi('Excluir série','Delete series')}).addEventListener('click',()=>{
+    new ConfirmProjectAction(view.app,writerUi('Excluir somente a série?','Delete series only?'),
+     writerUi('Todos os livros e arquivos continuarão intactos.','All books and files will remain untouched.'),async()=>{
+      await save(get().filter(x=>x.id!==series.id));
+     }).open();
+   });
+   const rows=card.createDiv({cls:'writer-v7-stable-series-books'});
+   for(const [i,path] of series.books.entries()){
+    const row=rows.createDiv({cls:'writer-v7-stable-series-book'});
+    const project=available.get(path);
+    row.createEl('button',{cls:'writer-v7-stable-series-book-name',text:project?.title||path})
+     .addEventListener('click',()=>{if(project){view.selected=project.file.path;writerProjectRemember(view,view.selected);modal.close();void view.render();}});
+    for(const [label,delta] of [['↑',-1],['↓',1]]){
+     row.createEl('button',{text:label,attr:{'aria-label':(delta<0?writerUi('Subir ','Move up '):writerUi('Descer ','Move down '))+(project?.title||path)}})
+      .addEventListener('click',async()=>{
+       const state=get(),entry=state.find(x=>x.id===series.id);
+       if(!entry)return;const j=i+delta;
+       if(j<0||j>=entry.books.length)return;
+       [entry.books[i],entry.books[j]]=[entry.books[j],entry.books[i]];
+       await save(state);
+      });
+    }
+    row.createEl('button',{text:'×',attr:{'aria-label':writerUi('Retirar livro da série','Remove book from series')}}).addEventListener('click',async()=>{
+     const state=get(),entry=state.find(x=>x.id===series.id);
+     if(entry){entry.books=entry.books.filter(x=>x!==path);await save(state);}
+    });
+   }
+   const add=card.createDiv({cls:'writer-v7-toolbar'});
+   const picker=add.createEl('select',{attr:{'aria-label':writerUi('Adicionar livro à série','Add a book to series')}});
+   const availableBooks=indexed.filter(p=>!series.books.includes(p.file.path));
+   for(const p of availableBooks){const option=picker.createEl('option',{text:p.title});option.value=p.file.path;}
+   const addButton=add.createEl('button',{text:writerUi('+ Livro','+ Book')});
+   addButton.disabled=!availableBooks.length;
+   addButton.addEventListener('click',async()=>{
+    if(!availableBooks.length)return;
+    const state=get(),entry=state.find(x=>x.id===series.id);
+    if(entry&&!entry.books.includes(picker.value)){entry.books.push(picker.value);await save(state);}
+   });
+  }
+ };
+ modal.onOpen=render;
+ modal.open();
+}
+function writerV7StableSceneKey(value){
+ return String(value||'').trim().replace(/^!?\[\[/,'').replace(/\]\]$/,'')
+  .split('|')[0].split('#')[0].replace(/\.md$/i,'').toLocaleLowerCase();
+}
+function writerV7StableDependencies(scenes){
+ const nodes=scenes.filter(s=>s.file instanceof TFile),byNames=new Map(),edges=new Map(),warnings=[];
+ for(const s of nodes){
+  for(const key of [s.title,s.file.basename,s.file.path]){
+   const k=writerV7StableSceneKey(key);if(!k)continue;
+   if(!byNames.has(k))byNames.set(k,[]);
+   const found=byNames.get(k);if(!found.includes(s))found.push(s);
+  }
+ }
+ const add=(scene,raw,relation)=>{
+  const key=writerV7StableSceneKey(raw),matches=byNames.get(key)||[];
+  if(matches.length!==1){
+   warnings.push({scene:scene.title,reference:raw,reason:matches.length?writerUi('Referência ambígua','Ambiguous reference'):writerUi('Cena inexistente','Missing scene')});
+   return;
+  }
+  const target=matches[0];
+  const from=relation==='setup'?target:scene,to=relation==='setup'?scene:target;
+  if(from.file.path===to.file.path){warnings.push({scene:scene.title,reference:raw,reason:writerUi('Dependência circular da própria cena','Self-dependency')});return;}
+  const id=from.file.path+'|'+to.file.path;
+  if(!edges.has(id))edges.set(id,{from,to,types:[]});
+  const edge=edges.get(id);
+  if(!edge.types.includes(relation))edge.types.push(relation);
+  if(from.position>=to.position&&!warnings.some(x=>x.scene===scene.title&&x.reference===raw&&x.reason.includes('ordem')))
+   warnings.push({scene:scene.title,reference:raw,reason:writerUi('Verifique a ordem desta dependência','Check dependency ordering')});
+ };
+ for(const scene of scenes){
+  for(const ref of scene.setup||[])add(scene,ref,'setup');
+  for(const ref of scene.payoff||[])add(scene,ref,'payoff');
+ }
+ return {edges:[...edges.values()].slice(0,400),warnings:warnings.slice(0,100)};
+}
+function writerV7StableRenderDependencies(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-stable-dependencies'});
+ root.createEl('h3',{text:writerUi('Preparações e consequências','Setups and payoffs')});
+ root.createEl('p',{cls:'writer-v7-muted',text:writerUi('Visualização das relações entre cenas existentes. Use setup_scenes para a preparação de uma cena e payoff_scenes para as consequências. A ordem Longform continua sendo a fonte da sequência.','Visualizes links between existing scenes. setup_scenes identifies what prepares a scene; payoff_scenes identifies later outcomes. Longform order remains authoritative.')});
+ const data=writerV7StableDependencies(writerV7RCSceneView(view,project));
+ const stats=root.createEl('p',{cls:'writer-v7-muted',text:data.edges.length+' '+writerUi('conexões','connections')+' · '+data.warnings.length+' '+writerUi('avisos','warnings')});
+ if(!data.edges.length)root.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhuma dependência cadastrada nas propriedades das cenas.','No scene dependencies in note properties yet.')});
+ const list=root.createDiv({cls:'writer-v7-stable-dependency-list'});
+ for(const e of data.edges){
+  const row=list.createDiv({cls:'writer-v7-stable-dependency-row'});
+  row.createEl('button',{text:e.from.title,cls:'writer-v7-stable-dependency-source'}).addEventListener('click',()=>view.openFile(e.from.file));
+  row.createSpan({cls:'writer-v7-stable-dependency-arrow',text:'→',attr:{'aria-hidden':'true'}});
+  row.createEl('button',{text:e.to.title,cls:'writer-v7-stable-dependency-destination'}).addEventListener('click',()=>view.openFile(e.to.file));
+  if(e.types.length>1)row.createSpan({cls:'writer-v7-rc-chip',text:writerUi('Preparação + consequência','Setup + payoff')});
+ }
+ if(data.warnings.length){
+  const details=root.createEl('details',{cls:'writer-v7-stable-dependency-warnings'});
+  details.createEl('summary',{text:data.warnings.length+' '+writerUi('referências para revisar','references to review')});
+  for(const warning of data.warnings){
+   const item=details.createDiv({cls:'writer-v7-rc-continuity-row'});
+   item.createEl('strong',{text:warning.reason});
+   item.createEl('p',{text:warning.scene+' → '+warning.reference});
+  }
+ }
+}
+class WriterV7StableFeatures{
+ constructor(plugin){this.plugin=plugin;}
+ register(){
+  const p=this.plugin;
+  p.addCommand({id:'v7-open-book-series',name:writerUi('Longform: organizar séries de livros','Longform: organize book series'),callback:async()=>{
+   await p.openProjects('project');
+   const view=p.app.workspace.getLeavesOfType(PROJECT_VIEW)?.[0]?.view;
+   if(view?.root)writerV7SeriesOpen(view);
+  }});
+  p.addCommand({id:'v7-open-story-dependencies',name:writerUi('Longform: preparar e conectar cenas','Longform: scene setups and payoffs'),callback:async()=>{
+   await p.openProjects('structure');
+   const view=p.app.workspace.getLeavesOfType(PROJECT_VIEW)?.[0]?.view;
+   if(view?.root){view.writerV7RCSubtab='dependencies';await view.render();}
+  }});
  }
 }
 
@@ -8743,6 +9037,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerV7Worldbuilding=new WriterV7Worldbuilding(this);this.writerV7Worldbuilding.register();
     this.writerV7StoryStudio=new WriterV7StoryStudio(this);this.writerV7StoryStudio.register();
     this.writerV7LongformRC=new WriterV7LongformRC(this);this.writerV7LongformRC.register();
+    this.writerV7StableFeatures=new WriterV7StableFeatures(this);this.writerV7StableFeatures.register();
     this.writerV6Linter=new WriterV6Linter(this);this.writerV6Linter.register();
     this.writerWorkspaceProfiles=new WriterWorkspaceProfiles(this);this.writerWorkspaceProfiles.register();
     writerV4Register(this);

@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "7.0.0-rc.1",
+  "version": "7.0.0",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Release candidate: Longform story planning with scene inspector, corkboard/Kanban, plotline grid, beat templates, pacing, compendium, timelines and exports.",
+  "description": "Plan stories with Longform chapters, scene boards, timelines, a world compendium, writing utilities, and optional AI assistance.",
   "isDesktopOnly": false
 }

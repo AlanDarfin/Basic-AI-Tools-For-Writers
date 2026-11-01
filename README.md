@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Next maintenance release:** 7.0.1 (pending validation and publication; [release notes](docs/V7_0_1_RELEASE.en.md)) · **Latest published:** [7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
@@ -19,7 +19,9 @@ The stable v7 release consolidates two betas and a release candidate. All new pl
 | **Interface** | Compact **Writing / World / Project** navigation and responsive layouts for narrow screens. |
 | **Writing tools** | Grammar, dictionaries, TTS, snapshots, Unicode, editing tools and optional desktop Pandoc export remain integrated. |
 
-**[Full stable release notes](docs/V7_RELEASE.en.md) · [Português](docs/V7_RELEASE.pt-BR.md) · [Download 7.0.0 ZIP](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
+**Maintenance 7.0.1:** [English notes](docs/V7_0_1_RELEASE.en.md) · [Português](docs/V7_0_1_RELEASE.pt-BR.md) · [GitHub release once published](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1). The new release workflow will attach only `main.js`, `manifest.json` and `styles.css`. Convenience ZIP/checksums will be generated as Actions artifacts.
+
+**[Original 7.0.0 release notes](docs/V7_RELEASE.en.md) · [Português](docs/V7_RELEASE.pt-BR.md) · [7.0.0 ZIP](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
 
 **Data safety:** Deleting a series never deletes its manuscripts. Tags inherited from Folder Notes only affect indexing, not child files. Scene/world sheet editing uses the native frontmatter API. The AI narrative context remains opt-in and off by default. Calendar changes affect chronological display, not the actual event dates.
 
@@ -50,7 +52,9 @@ The **23 independently configurable modules** include five new writing-focused a
 - **Easy Typing:** smart Tab/Backspace, list-aware paste, optional automatic spacing and case rules, literal/opt-in regex replacements, and navigable text snippets.
 - **Smart Typography:** smart quotation marks, dashes, ellipses, arrows, comparison symbols and optional fractions. Converts text as you type or from a selected passage.
 
-**Pandoc export** is an additional, disabled-by-default desktop integration for DOCX, HTML, EPUB, ODT, PDF, LaTeX and plain text. It requires an installed Pandoc executable and may require an additional PDF engine. Export files are written to a configurable folder without changing the source note.
+**Pandoc export** remains integrated in this plugin, as an additional, disabled-by-default desktop integration for DOCX, HTML, EPUB, ODT, PDF, LaTeX and plain text. It requires an installed Pandoc executable and may require an additional PDF engine. Export files are written to a configurable folder without changing the source note.
+
+**Security disclosure:** Desktop Pandoc uses Node.js filesystem and process APIs and will continue to trigger capability warnings in community scans. The executable name is validated, mobile execution is blocked, and the integration is disabled by default. Optional AI, TTS, grammar and dictionary services may transmit content deliberately submitted to configured providers. [Security/privacy](SECURITY.md) · [Community review details](docs/maintenance/COMMUNITY_REVIEW.md).
 
 All new features can be disabled in **Settings → Basic AI Tool for Writers → Modules**. Regular Obsidian formatting is unchanged: the old experimental Editing Toolbar is **not** restored. The majority of functionality works without an external service, while AI and online TTS features may contact the providers selected by the user.
 

@@ -1,5 +1,8 @@
 # Basic AI Tool for Writers
 
+> **Early v7 beta — 7.0.0-beta.1:** The former **Notes** panel becomes a tag-driven **Compendium**, with user-defined Obsidian tags, inheritance from Folder Notes, characters/places/items, Obsidian link connections, plus a visual **Timeline** and initial **Continuity** checks. Folder Notes work in the Longform compendium and the normal file explorer, with a non-destructive "open folder note" action. A focus command and opt-in, previous-chapters-only AI review context are included. The existing desktop Pandoc exporter remains available for EPUB, PDF and DOCX. This beta is not the final v7: collapsible scene trees, deeper semantic continuity, broader world knowledge and expanded editorial exports are planned for subsequent betas. [English details](docs/V7_BETA1.en.md) · [Português](docs/V7_BETA1.pt-BR.md). **Latest stable remains 6.0.1.**
+
+
 **Latest stable:** [6.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages and interface:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).

@@ -1,5 +1,8 @@
 # Basic AI Tool for Writers
 
+> **Nova beta 7.0.0-beta.1:** a antiga aba **Notas** agora é um **Compêndio** com tags livres do Obsidian, tags herdadas de notas de pasta, personagens, locais e itens, além de conexões entre notas. Há também uma **Timeline** visual, verificação inicial de continuidade, Folder Notes integrado ao explorador e modo foco. A memória narrativa para revisão por IA é **opcional e desligada por padrão**, usando apenas capítulos anteriores. O Pandoc existente continua oferecendo EPUB, PDF e DOCX no desktop. Outras ideias da v7 serão aprofundadas nas próximas betas. [Notas em português](V7_BETA1.pt-BR.md) · [English notes](V7_BETA1.en.md). **A versão estável continua sendo 6.0.1.**
+
+
 **Versão atual:** 6.0.1 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e celular · **Licença:** MIT.
 
 **Idiomas da interface:** português brasileiro e inglês. [English README](../README.md).

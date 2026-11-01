@@ -80,9 +80,9 @@ test('release metadata and documentation agree on the current version',()=>{
  assert.equal(manifest.version,pkg.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
  if(manifest.version.includes('-')){
-  assert.ok(read('README.md').includes('Latest stable:** [5.2.0]'));
+  assert.ok(read('README.md').includes('Latest stable:** [6.0.1]'));
   assert.ok(read('README.md').includes(manifest.version));
-  assert.ok(read('docs/README.pt-BR.md').includes('Versão atual:** 5.2.0'));
+  assert.ok(read('docs/README.pt-BR.md').includes('Versão atual:** 6.0.1'));
   assert.ok(read('docs/README.pt-BR.md').includes(manifest.version));
  }else{
   assert.ok(read('README.md').includes('Latest stable:** ['+manifest.version+']'));

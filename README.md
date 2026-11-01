@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.0) · **Previous published:** [7.0.6](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.6) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.1.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.1) · **Previous published:** [7.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## LanguageTool suggestions on hover or caret — 7.1.1
+
+The floating LanguageTool correction menu now opens after a short hover on highlighted text, even if the text cursor is elsewhere. Clicking or tapping a marked error, or navigating the caret into an error with the arrow keys, opens the same menu. Hover uses a small delay and avoids repetitive reopening; moving out before the delay cancels it. Touch input remains tap-based. This uses the existing optional review-popup setting and does not perform additional network requests. [Release notes](docs/V7_1_1_RELEASE.en.md) · [Português](docs/V7_1_1_RELEASE.pt-BR.md).
 
 ## Local LanguageTool checks after accepting fixes — 7.1.0
 

@@ -1,7 +1,7 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "7.1.0",
+  "version": "7.1.1",
   "minAppVersion": "1.11.4",
   "author": "Alan",
   "description": "Plan stories with Longform chapters, scene boards, timelines, a world compendium, writing utilities, and optional AI assistance.",

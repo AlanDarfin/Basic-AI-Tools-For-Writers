@@ -1152,7 +1152,7 @@ const reviewMarkField=StateField.define({
   value=value.map(tr.changes);
   for(const effect of tr.effects)if(effect.is(setReviewMarks)){
    const marks=effect.value||[];
-   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark writer-lt-'+(m.severity||'minor'),attributes:{title:m.message||'LanguageTool'}}).range(m.from,m.to)),true);
+   value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark writer-lt-'+(m.severity||'minor'),attributes:{title:m.message||'LanguageTool','data-review-from':String(m.from),'data-review-to':String(m.to)}}).range(m.from,m.to)),true);
   }
   if(tr.docChanged)value=Decoration.none;
   return value;
@@ -9122,7 +9122,7 @@ class DictionarySettings extends PluginSettingTab{
         d.setValue(this.plugin.settings.reviewMode||'grammar').onChange(async v=>{this.plugin.settings.reviewMode=v;await this.plugin.saveSettings();});
       });
       new Setting(panel).setName(msg('Abrir nota selecionada no editor','Open selected note in editor')).setDesc(msg('Permite ver sublinhados do CodeMirror ao revisar um arquivo que ainda não está aberto.','Enables CodeMirror underlines when reviewing a note not already open.')).addToggle(x=>x.setValue(this.plugin.settings.reviewAutoOpenNote!==false).onChange(async v=>{this.plugin.settings.reviewAutoOpenNote=v;await this.plugin.saveSettings();}));
-      new Setting(panel).setName(msg('Mostrar cartão flutuante no erro','Show floating suggestion near error')).addToggle(x=>x.setValue(this.plugin.settings.reviewPopupEnabled!==false).onChange(async v=>{this.plugin.settings.reviewPopupEnabled=v;await this.plugin.saveSettings();if(!v)this.plugin.closeReviewPopup();}));
+      new Setting(panel).setName(msg('Abrir sugestões ao passar o mouse ou posicionar o cursor','Open suggestions on hover or caret')).setDesc(msg('Passe o mouse sobre uma palavra destacada ou posicione o cursor de texto dentro dela. No celular, toque no erro.','Hover over a highlighted error or place the text caret inside it. On mobile, tap the error.')).addToggle(x=>x.setValue(this.plugin.settings.reviewPopupEnabled!==false).onChange(async v=>{this.plugin.settings.reviewPopupEnabled=v;await this.plugin.saveSettings();if(!v)this.plugin.closeReviewPopup();}));
       new Setting(panel).setName(msg('Ignorar avisos de espaços e formatação','Ignore whitespace and formatting warnings')).addToggle(x=>x.setValue(this.plugin.settings.reviewIgnoreWhitespace!==false).onChange(async v=>{this.plugin.settings.reviewIgnoreWhitespace=v;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('IDs de regras ignoradas','Ignored rule IDs')).setDesc(msg('IDs do LanguageTool separados por vírgula.','Comma-separated LanguageTool rule IDs.')).addTextArea(x=>{x.inputEl.rows=3;x.setValue(this.plugin.settings.reviewIgnoreRules||'').onChange(async v=>{this.plugin.settings.reviewIgnoreRules=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(msg('Endpoint do LanguageTool','LanguageTool endpoint')).setDesc(msg('Use HTTPS. O endpoint público tem limites de uso.','Use HTTPS. The public endpoint has usage limits.')).addText(x=>x.setValue(this.plugin.settings.reviewEndpoint||'https://api.languagetool.org/v2/check').onChange(async v=>{this.plugin.settings.reviewEndpoint=v.trim();await this.plugin.saveSettings();}));
@@ -9262,11 +9262,56 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const plugin=this;
     this.registerEditorExtension(ViewPlugin.fromClass(class{
       constructor(view){
-        this.view=view;
-        this.onPointerUp=event=>{const onMark=!!event.target?.closest?.('.writer-cm-review-mark');setTimeout(()=>plugin.maybeShowReviewPopup(view,onMark),60);};
+        this.view=view;this.timer=null;this.hoverKey='';
+        // Read exact decoration offsets instead of guessing where the caret is.
+        // Hovering an underline must work even if the caret is somewhere else.
+        this.markAt=event=>{
+         const el=event.target?.closest?.('.writer-cm-review-mark');
+         if(!el||!view.dom.contains(el))return null;
+         const from=Number(el.getAttribute('data-review-from'));
+         const to=Number(el.getAttribute('data-review-to'));
+         return Number.isInteger(from)&&Number.isInteger(to)&&to>from?{from,to}:null;
+        };
+        this.schedule=(anchor,delay)=>{
+         clearTimeout(this.timer);
+         this.timer=setTimeout(()=>{
+          this.timer=null;
+          if(view.dom.isConnected)plugin.maybeShowReviewPopup(view,anchor);
+         },delay);
+        };
+        this.onPointerMove=event=>{
+         if(event.pointerType==='touch')return;
+         const mark=this.markAt(event),key=mark?mark.from+':'+mark.to:'';
+         if(key===this.hoverKey)return;
+         this.hoverKey=key;
+         clearTimeout(this.timer);this.timer=null;
+         if(mark)this.schedule({mark},170);
+        };
+        this.onPointerUp=event=>{
+         this.hoverKey='';
+         const mark=this.markAt(event);
+         this.schedule(mark?{mark}:{caret:true},70);
+        };
+        this.onKeyUp=event=>{
+         // Moving the text cursor onto an error should open the same menu.
+         // Do not open it on every typed character or modifier.
+         if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End'].includes(event.key))return;
+         this.hoverKey='';
+         this.schedule({caret:true},110);
+        };
+        this.onPointerLeave=()=>{this.hoverKey='';clearTimeout(this.timer);this.timer=null;};
+        view.dom.addEventListener('pointermove',this.onPointerMove,{passive:true});
         view.dom.addEventListener('pointerup',this.onPointerUp);
+        view.dom.addEventListener('keyup',this.onKeyUp);
+        view.dom.addEventListener('pointerleave',this.onPointerLeave);
       }
-      destroy(){this.view.dom.removeEventListener('pointerup',this.onPointerUp);}
+      destroy(){
+       clearTimeout(this.timer);
+       this.view.dom.removeEventListener('pointermove',this.onPointerMove);
+       this.view.dom.removeEventListener('pointerup',this.onPointerUp);
+       this.view.dom.removeEventListener('keyup',this.onKeyUp);
+       this.view.dom.removeEventListener('pointerleave',this.onPointerLeave);
+      }
     }));
     const saved=await this.loadData()||{};
     if(Number(saved.schemaVersion||0)<3){
@@ -9718,6 +9763,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   showReviewSuggestionMenu(file,source,match,anchor={}){
     const key=file.path+':'+match.offset+':'+match.length;
+    if(this.reviewPopup&&this.reviewPopupKey===key)return this.reviewPopup;
     this.closeReviewPopup();
     const menu=new Menu(this.app);
     const info=document.createDocumentFragment();
@@ -9767,16 +9813,22 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     };
     return menu;
   }
-  maybeShowReviewPopup(cm,onMark=false){
-    if(!this.settings.reviewPopupEnabled||!this.reviewMarks?.length)return;
+  maybeShowReviewPopup(cm,anchor={}){
+    if(this.settings.reviewPopupEnabled===false||!this.reviewMarks?.length)return;
     const leaf=this.app.workspace.getLeavesOfType('markdown').find(l=>l.view?.editor?.cm===cm);
     const file=leaf?.view?.file;
     if(!file||file.path!==this.reviewMarkedPath)return;
-    const offset=cm.state.selection.main.head;
-    const mark=this.reviewMarks.find(m=>offset>=m.from&&offset<=m.to);
-    if(!mark){this.closeReviewPopup();return;}
+    const requested=anchor.mark;
+    const caret=cm.state.selection.main.head;
+    const mark=this.reviewMarks.find(m=>requested
+     ?m.from===requested.from&&m.to===requested.to
+     :caret>=m.from&&caret<=m.to);
+    if(!mark){
+     if(anchor.caret)this.closeReviewPopup();
+     return;
+    }
     const key=file.path+':'+mark.from+':'+mark.to;
-    if(this.reviewPopupKey===key)return;
+    if(this.reviewPopup&&this.reviewPopupKey===key)return;
     const original=this.reviewMatches?.find(m=>m.offset===mark.from&&m.length===mark.to-mark.from);
     if(!original)return;
     const coords=cm.coordsAtPos(mark.from);

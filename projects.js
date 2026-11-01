@@ -138,6 +138,9 @@ class ProjectsView extends ItemView{
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
   this.currentProject=project;
+  top.createEl('button',{text:lfMsg('Séries','Series'),cls:'writer-v7-stable-series-launch',
+   attr:{type:'button','aria-label':lfMsg('Organizar séries de livros','Organize book series')}})
+   .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
    try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
     const parsed=fm?parseYaml(fm[1]):null;
@@ -150,6 +153,23 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
+  const menuGroups=[
+   {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
+   {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
+   {id:'management',pt:'Projeto',en:'Project',tabs:['project','continuity','tasks','comments']}
+  ];
+  const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
+  const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
+  for(const group of menuGroups){
+   groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
+    cls:activeGroup===group.id?'is-active':'',
+    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}})
+    .addEventListener('click',()=>{
+     if(activeGroup===group.id)return;
+     const first=allTabs.find(([id])=>group.tabs.includes(id));
+     if(first){this.activeTab=first[0];this.tabScrollLeft=0;void this.render();}
+    });
+  }
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   tabs.scrollLeft=this.tabScrollLeft||0;
   tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
@@ -159,14 +179,15 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
-  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false)
+  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
   &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
   &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
   &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
-  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false))){
+  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
+  for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===activeGroup)?.tabs.includes(id))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});

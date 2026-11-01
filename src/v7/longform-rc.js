@@ -379,14 +379,16 @@ function writerV7RCRenderStructure(view,panel,project){
  const root=panel.createDiv({cls:'writer-v7-rc-structure'});
  const tabs=root.createDiv({cls:'writer-v7-rc-structure-tabs'});
  const content=root.createDiv({cls:'writer-v7-rc-structure-body'});
+ const settings=view.plugin.settings.v7||{};
  const choices=[
-  ['plotlines',writerUi('Tramas','Plotlines')],
-  ['beats',writerUi('Marcos narrativos','Story beats')],
-  ['pacing',writerUi('Ritmo','Pacing')]
- ];
+  ['plotlines',writerUi('Tramas','Plotlines'),'rcPlotlines'],
+  ['beats',writerUi('Marcos narrativos','Story beats'),'rcBeats'],
+  ['pacing',writerUi('Ritmo','Pacing'),'rcPacing']
+ ].filter(entry=>settings[entry[2]]!==false);
  const show=()=>{
-  const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:'plotlines';
+  const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:choices[0]?.[0]||'plotlines';
   content.empty();
+  if(!choices.length)return void content.createEl('p',{text:writerUi('Habilite algum módulo de estrutura nas configurações.','Enable a structure module in settings.')});
   for(const btn of tabs.querySelectorAll('button'))btn.classList.toggle('is-active',btn.dataset.section===active);
   if(active==='beats')writerV7RCRenderBeats(view,content,project);
   else if(active==='pacing')writerV7RCRenderPacing(view,content,project);

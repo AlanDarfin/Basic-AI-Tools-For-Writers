@@ -150,11 +150,12 @@ function writerV7StudioAugmentEntry(view,card,record,templates,allRecords){
  if(summary)card.createEl('p',{cls:'writer-v7-studio-summary',text:summary.slice(0,380)});
  const bar=card.createDiv({cls:'writer-v7-studio-card-actions'});
  bar.createEl('button',{text:writerUi('Ficha','Sheet')}).addEventListener('click',()=>writerV7StudioOpenSheet(view,record,template));
- const linked=writerV7StudioLinkedTargets(view.app,record);
- if(linked.length){
+ const linked=new Set(writerV7StudioLinkedTargets(view.app,record));
+ for(const target of writerV7Connections(view.app,allRecords,record))linked.add(target.file.path);
+ if(linked.size){
   const details=card.createEl('details',{cls:'writer-v7-studio-links'});
-  details.createEl('summary',{text:linked.length+' '+writerUi('relações','relationships')});
-  for(const path of linked.slice(0,18)){
+  details.createEl('summary',{text:linked.size+' '+writerUi('conexões','connections')});
+  for(const path of [...linked].slice(0,18)){
    const target=allRecords.find(r=>r.path===path);
    if(target)details.createEl('button',{text:target.title}).addEventListener('click',()=>view.openFile(target.file));
   }

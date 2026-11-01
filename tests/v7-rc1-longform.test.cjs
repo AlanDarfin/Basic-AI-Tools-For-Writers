@@ -70,7 +70,7 @@ test('RC checks missing setup/payoff references, recognizes real title and file 
 test('RC version, modules, built entry point, translations and stylesheet are synchronized',()=>{
  const main=fs.readFileSync('main.js','utf8'),projects=fs.readFileSync('projects.js','utf8'),styles=fs.readFileSync('styles.css','utf8');
  const m=require('../manifest.json'),p=require('../package.json'),v=require('../versions.json');
- assert.ok(['7.0.0-rc.1','7.0.0','7.0.1','7.0.2','7.0.3','7.0.4'].includes(m.version));assert.equal(p.version,m.version);assert.equal(v[m.version],m.minAppVersion);
+ assert.ok(['7.0.0-rc.1','7.0.0','7.0.1','7.0.2','7.0.3','7.0.4','7.0.5'].includes(m.version));assert.equal(p.version,m.version);assert.equal(v[m.version],m.minAppVersion);
  assert.match(main,/new WriterV7LongformRC\(this\)/);
  assert.match(main,/v7\/longform-rc\.js/);
  assert.match(main,/writerV7RCRenderStructure\(view,panel,project\)/);

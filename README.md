@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.4](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.4) · **Previous published:** [7.0.3](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.3) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.0.5](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.5) · **Previous published:** [7.0.4](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.4) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Longform series header — 7.0.5
+
+The selected book's series membership now appears in a dedicated **Series** information row directly below the book selector. A **Manage** button opens the existing non-destructive book-series manager. This row no longer wraps unpredictably between header controls when switching tabs or resizing the sidebar. Multiple memberships appear together; books outside any series show **No series**. Changes made in the series manager update the row immediately. [Release notes](docs/V7_0_5_RELEASE.en.md) · [Português](docs/V7_0_5_RELEASE.pt-BR.md).
 
 ## Stable navigation and scrolling — 7.0.4
 

@@ -142,8 +142,14 @@ class ProjectsView extends ItemView{
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
   this.currentProject=project;
-  top.createEl('button',{text:lfMsg('Séries','Series'),cls:'writer-v7-stable-series-launch',
-   attr:{type:'button','aria-label':lfMsg('Organizar séries de livros','Organize book series')}})
+  // Series stays below the selector, even when the viewport or tab changes.
+  const seriesRow=this.root.createDiv({cls:'writer-project-series-row'});
+  const seriesField=seriesRow.createDiv({cls:'writer-project-series-field'});
+  seriesField.createSpan({cls:'writer-project-series-label',text:lfMsg('Série','Series')});
+  this.seriesMembershipValue=seriesField.createSpan({cls:'writer-project-series-value',attr:{'aria-live':'polite'}});
+  this.refreshSeriesMembership();
+  seriesRow.createEl('button',{text:lfMsg('Gerenciar','Manage'),cls:'writer-v7-stable-series-launch',
+   attr:{type:'button','aria-label':lfMsg('Gerenciar séries de livros','Manage book series')}})
    .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
    try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
@@ -267,6 +273,14 @@ class ProjectsView extends ItemView{
   else if(id==='continuity')writerV7RenderContinuity(this,panel,project);
   else if(id==='tasks')this.drawTasks(panel,project);
   else if(id==='comments')this.plugin.writerV4Extras?.drawComments(panel,project,this);
+ }
+ refreshSeriesMembership(){
+  if(!this.seriesMembershipValue)return;
+  const matches=writerV7SeriesForProject(this.plugin.settings,this.selected);
+  const name=matches.length?matches.map(item=>item.name).join(' · '):lfMsg('Sem série','No series');
+  this.seriesMembershipValue.setText(name);
+  this.seriesMembershipValue.setAttribute('title',name);
+  this.seriesMembershipValue.setAttribute('aria-label',lfMsg('Série do livro: ','Book series: ')+name);
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';

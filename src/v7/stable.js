@@ -100,7 +100,7 @@ function writerV7SeriesForProject(settings,path){
 function writerV7SeriesOpen(view){
  const modal=new Modal(view.app),settings=view.plugin.settings;
  const get=()=>writerV7SeriesSafe(settings);
- const save=async(value)=>{settings.v7Series=value;await view.plugin.saveSettings();render();};
+ const save=async(value)=>{settings.v7Series=value;await view.plugin.saveSettings();view.refreshSeriesMembership?.();render();};
  const projectOptions=()=>view.indexes();
  const render=()=>{
   if(!modal.contentEl)return;

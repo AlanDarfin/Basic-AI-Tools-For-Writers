@@ -1,7 +1,9 @@
 name: Publish versioned stable release
 on:
   push:
-    tags: ['[0-9]*.[0-9]*.[0-9]*']
+    tags:
+      - '[0-9]*.[0-9]*.[0-9]*'
+      - '!*-*' # Do not trigger the stable pipeline for beta/RC tags.
 permissions:
   contents: write
 concurrency:

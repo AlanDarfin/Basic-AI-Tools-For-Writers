@@ -3,7 +3,7 @@
 A partir de 2026-11-01, o repositório mantém apenas dois workflows ativos:
 
 - `.github/workflows/ci.yml`: sintaxe, fontes sincronizadas, suíte completa, CSS, versões, README bilíngue e ZIP de verificação para push na `main` e PRs para `main`.
-- `.github/workflows/publish-release.yml`: valida uma nova tag estável sem `v`, equivalente ao manifest, e publica o ZIP com checksums sem substituir assets existentes.
+- `.github/workflows/publish-release.yml`: valida uma nova tag estável sem `v`, equivalente ao manifest, e publica o ZIP com checksums sem substituir assets existentes. Tags com hífen (como `-beta.1` e `-rc.1`) não disparam o fluxo estável.
 
 ## Histórico
 

@@ -2719,3 +2719,337 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
   min-width:7px;
  }
 }
+
+
+/* ==========================================================================
+   v7 beta.1 — compendium, flexible world tags, native folder notes, timeline
+   Theme-aware, local-first, responsive; never affects other Obsidian plugins.
+   ========================================================================== */
+.writer-v7-compendium,.writer-v7-timeline,.writer-v7-continuity{
+ box-sizing:border-box;
+ min-width:0;
+ max-width:100%;
+ color:var(--text-normal);
+ font-size:var(--font-ui-small);
+}
+.writer-v7-compendium h3,.writer-v7-timeline h3,.writer-v7-continuity h3{
+ margin:3px 0 6px;
+ font-size:var(--font-ui-medium);
+ font-weight:600;
+ overflow-wrap:anywhere;
+}
+.writer-v7-section-header{
+ padding:3px 0 9px;
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.writer-v7-section-header p,.writer-v7-muted{
+ margin:3px 0 6px;
+ line-height:1.45;
+ color:var(--text-muted);
+ font-size:var(--font-ui-smaller);
+}
+.writer-v7-toolbar,.writer-v7-filters,.writer-v7-inline-actions{
+ display:flex;
+ flex-direction:row;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:7px;
+ min-width:0;
+ margin:10px 0;
+}
+.writer-v7-toolbar button,.writer-v7-inline-actions button{
+ box-sizing:border-box;
+ min-width:0;
+ min-height:35px;
+ padding:7px 11px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ font-size:var(--font-ui-small);
+ background:var(--background-secondary);
+ color:var(--text-normal);
+ box-shadow:none;
+}
+.writer-v7-toolbar button:hover,.writer-v7-inline-actions button:hover{
+ background:var(--background-modifier-hover);
+}
+.writer-v7-toolbar input,.writer-v7-filters input,.writer-v7-filters select{
+ box-sizing:border-box;
+ flex:1 1 145px;
+ min-width:0;
+ max-width:100%;
+ width:auto;
+ height:40px;
+ min-height:40px;
+ padding:0 10px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ background:var(--background-primary);
+ color:var(--text-normal);
+ line-height:normal;
+ font-size:var(--font-ui-small);
+}
+.writer-v7-filters select{padding-inline-end:30px}
+.writer-v7-compendium-count{
+ margin:8px 0;
+ color:var(--text-muted);
+ font-size:var(--font-ui-smaller);
+}
+.writer-v7-compendium-results{
+ display:flex;
+ flex-direction:column;
+ min-width:0;
+ margin:0 0 12px;
+ border-top:1px solid var(--background-modifier-border);
+}
+.writer-v7-entry{
+ box-sizing:border-box;
+ min-width:0;
+ display:flex;
+ flex-direction:column;
+ gap:4px;
+ padding:9px 2px;
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.writer-v7-entry-head{
+ display:flex;
+ min-width:0;
+ align-items:center;
+}
+.writer-v7-entry-title.writer-v7-entry-title{
+ display:block;
+ flex:1;
+ box-sizing:border-box;
+ width:100%;
+ min-width:0;
+ height:auto;
+ min-height:30px;
+ margin:0;
+ padding:2px 3px;
+ border:0;
+ border-radius:var(--radius-s);
+ background:transparent;
+ color:var(--text-normal);
+ text-align:start;
+ font-weight:600;
+ line-height:1.35;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ box-shadow:none;
+}
+.writer-v7-entry-title:hover{color:var(--text-accent)}
+.writer-v7-entry-meta{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:4px 5px;
+ min-width:0;
+ padding-inline:3px;
+}
+.writer-v7-path{
+ flex:1 1 100%;
+ min-width:0;
+ font-size:var(--font-smallest);
+ color:var(--text-muted);
+ overflow-wrap:anywhere;
+}
+.writer-v7-tag.writer-v7-tag{
+ display:inline-flex;
+ align-items:center;
+ box-sizing:border-box;
+ max-width:100%;
+ min-width:0;
+ min-height:24px;
+ width:auto;
+ padding:3px 8px;
+ margin:0;
+ border:1px solid var(--background-modifier-border);
+ border-radius:999px;
+ background:var(--background-secondary);
+ color:var(--text-accent);
+ font-size:var(--font-ui-smaller);
+ font-weight:500;
+ line-height:1.25;
+ overflow-wrap:anywhere;
+ box-shadow:none;
+}
+.writer-v7-tag:hover{background:var(--background-modifier-hover)}
+.writer-v7-mini-action.writer-v7-mini-action{
+ align-self:flex-start;
+ width:auto;
+ min-width:0;
+ min-height:26px;
+ padding:3px 9px;
+ margin:1px 0 0 3px;
+ font-size:var(--font-ui-smaller);
+ color:var(--text-muted);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ background:transparent;
+ box-shadow:none;
+}
+.writer-v7-empty{
+ padding:12px 2px;
+ margin:0;
+ color:var(--text-muted);
+ font-size:var(--font-ui-small);
+ overflow-wrap:anywhere;
+}
+.writer-v7-compendium-folders{
+ margin:15px 0 18px;
+ padding:0;
+ border-top:1px solid var(--background-modifier-border);
+ background:transparent;
+}
+.writer-v7-compendium-folders>summary{
+ padding:12px 3px;
+ font-size:var(--font-ui-small);
+ font-weight:600;
+ color:var(--text-normal);
+ cursor:pointer;
+}
+.writer-v7-compendium-folder-tree{
+ margin:5px 0 12px;
+ padding:0;
+ min-width:0;
+}
+/* Timeline is a vertical chronological ribbon: no giant boxes on a phone. */
+.writer-v7-timeline-list{
+ display:flex;
+ flex-direction:column;
+ position:relative;
+ min-width:0;
+ margin:16px 0 16px 5px;
+ padding:0 0 0 18px;
+ border-left:2px solid var(--background-modifier-border);
+}
+.writer-v7-timeline-item{
+ display:grid;
+ grid-template-columns:minmax(65px,100px) minmax(0,1fr);
+ align-items:start;
+ gap:10px;
+ position:relative;
+ padding:4px 0 16px 7px;
+ border-bottom:1px solid var(--background-modifier-border);
+ margin:0 0 13px;
+ min-width:0;
+}
+.writer-v7-timeline-item::before{
+ content:"";
+ position:absolute;
+ width:8px;
+ height:8px;
+ left:-24px;
+ top:12px;
+ border:2px solid var(--interactive-accent);
+ border-radius:50%;
+ background:var(--background-primary);
+}
+.writer-v7-timeline-date{
+ display:block;
+ box-sizing:border-box;
+ min-width:0;
+ padding:2px 0;
+ color:var(--text-accent);
+ font-size:var(--font-ui-smaller);
+ line-height:1.35;
+ overflow-wrap:anywhere;
+ font-variant-numeric:tabular-nums;
+}
+.writer-v7-timeline-content{
+ display:flex;
+ flex-direction:column;
+ align-items:flex-start;
+ gap:5px;
+ min-width:0;
+}
+.writer-v7-timeline-content>strong{
+ width:100%;
+ font-size:var(--font-ui-small);
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.writer-v7-timeline-content>p{
+ margin:0;
+ width:100%;
+ color:var(--text-muted);
+ line-height:1.45;
+ white-space:pre-wrap;
+ overflow-wrap:anywhere;
+}
+.writer-v7-timeline-content .writer-v7-inline-actions{
+ gap:4px;
+ margin:2px 0 0;
+}
+.writer-v7-timeline-content .writer-v7-inline-actions>button{
+ min-height:28px;
+ padding:5px 8px;
+ font-size:var(--font-ui-smaller);
+ background:transparent;
+}
+.writer-v7-continuity-row{
+ display:flex;
+ flex-direction:column;
+ gap:3px;
+ padding:9px 2px;
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.writer-v7-continuity-row>p{
+ color:var(--text-muted);
+ margin:0;
+ overflow-wrap:anywhere;
+}
+.writer-v7-settings .setting-item{background:transparent}
+.writer-v7-settings .setting-item-description{font-size:var(--font-ui-smaller)}
+/* Folder-note buttons are scoped to the Obsidian file explorer. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title .writer-v7-folder-open{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ float:right;
+ flex:0 0 auto;
+ box-sizing:border-box;
+ width:27px;
+ height:27px;
+ min-width:27px;
+ min-height:27px;
+ margin:0 3px;
+ padding:0;
+ border:0;
+ border-radius:var(--radius-s);
+ background:transparent;
+ color:var(--text-muted);
+ font-size:16px;
+ line-height:1;
+ box-shadow:none;
+ cursor:pointer;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title .writer-v7-folder-open:hover{
+ background:var(--background-modifier-hover);
+ color:var(--text-accent);
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title .writer-v7-folder-open:focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:1px;
+}
+.writer-v7-focus-mode .view-header{
+ opacity:.35;
+ transition:opacity .15s ease;
+}
+.writer-v7-focus-mode .view-header:hover,.writer-v7-focus-mode .view-header:focus-within{opacity:1}
+.writer-v7-focus-mode :is(.cm-content,.markdown-preview-view){
+ max-width:min(100%,900px);
+ margin-inline:auto;
+}
+@media(max-width:440px){
+ .writer-v7-toolbar{gap:5px}
+ .writer-v7-toolbar button{min-height:36px;padding:6px 9px}
+ .writer-v7-filters{display:flex;flex-direction:column;align-items:stretch}
+ .writer-v7-filters>input,.writer-v7-filters>select{flex:0 0 auto;width:100%;min-height:40px}
+ .writer-v7-timeline-item{grid-template-columns:1fr;gap:3px;padding-bottom:13px}
+ .writer-v7-timeline-date{font-weight:600}
+ .writer-v7-timeline-list{padding-inline-start:14px}
+ .writer-v7-timeline-item::before{left:-20px}
+}
+@media(prefers-reduced-motion:reduce){
+ .writer-v7-focus-mode .view-header{transition:none}
+}

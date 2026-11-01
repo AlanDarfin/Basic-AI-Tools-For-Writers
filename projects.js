@@ -157,11 +157,13 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
   &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
-  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false))){
+  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
+  &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
+  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -177,6 +179,8 @@ class ProjectsView extends ItemView{
   if(this.activeTab==='relations')writerV7StudioRenderGraph(this,panels.relations,project);
   if(this.activeTab==='maps')writerV7StudioRenderMaps(this,panels.maps,project);
   if(this.activeTab==='analytics')writerV7StudioRenderAnalytics(this,panels.analytics,project);
+  if(this.activeTab==='gallery')writerV7StudioRenderGallery(this,panels.gallery,project);
+  if(this.activeTab==='sessions')writerV7StudioRenderSessions(this,panels.sessions,project);
   if(this.activeTab==='continuity')writerV7RenderContinuity(this,panels.continuity,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);

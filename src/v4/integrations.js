@@ -202,7 +202,7 @@ class WriterV4Extras{
     }
     update(update){
      if(update.docChanged||update.selectionSet||update.viewportChanged||update.focusChanged||
-       update.transactions?.some(tr=>tr.effects?.some(effect=>refreshEffect&&effect.is(refreshEffect))))
+       update.transactions?.some(tr=>tr.effects?.some(effect=>refreshEffect&&effect?.is?.(refreshEffect))))
       this.decorations=this.mark(update.view);
     }
     destroy(){

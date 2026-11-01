@@ -31,7 +31,7 @@ test('Longform rows do not clip titles and use container rather than viewport wi
 class Node{
  constructor(tag,options={}){
   this.tag=tag;this.cls=options.cls||'';this.text=options.text||'';
-  this.children=[];this.attributes={};this.events={};
+  this.children=[];this.attributes={...(options.attr||{})};this.events={};
  }
  createDiv(options){const node=new Node('div',options);this.children.push(node);return node;}
  createEl(tag,options){const node=new Node(tag,options);this.children.push(node);return node;}

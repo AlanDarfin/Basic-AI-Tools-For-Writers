@@ -320,6 +320,7 @@ function writerV7RenderContinuity(view,panel,project){
   const row=root.createDiv({cls:'writer-v7-continuity-row'});
   row.createEl('strong',{text:x.title});row.createEl('p',{text:x.detail});
  }
+ writerV7RCRenderContinuity(view,root,project);
 }
 class WriterV7Worldbuilding{
  constructor(plugin){this.plugin=plugin;this.explorerObserver=null;this.explorerTimer=null;this.focus=false;}

@@ -388,7 +388,8 @@ function writerV7RCRenderStructure(view,panel,project){
  const choices=[
   ['plotlines',writerUi('Tramas','Plotlines'),'rcPlotlines'],
   ['beats',writerUi('Marcos narrativos','Story beats'),'rcBeats'],
-  ['pacing',writerUi('Ritmo','Pacing'),'rcPacing']
+  ['pacing',writerUi('Ritmo','Pacing'),'rcPacing'],
+  ['dependencies',writerUi('Conexões','Connections'),'stableDependencies']
  ].filter(entry=>settings[entry[2]]!==false);
  const show=()=>{
   const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:choices[0]?.[0]||'plotlines';
@@ -397,6 +398,7 @@ function writerV7RCRenderStructure(view,panel,project){
   for(const btn of tabs.querySelectorAll('button'))btn.classList.toggle('is-active',btn.dataset.section===active);
   if(active==='beats')writerV7RCRenderBeats(view,content,project);
   else if(active==='pacing')writerV7RCRenderPacing(view,content,project);
+  else if(active==='dependencies')writerV7StableRenderDependencies(view,content,project);
   else writerV7RCRenderPlotlines(view,content,project);
  };
  for(const [id,label] of choices){
@@ -422,7 +424,7 @@ class WriterV7LongformRC{
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   panel.createEl('h4',{text:writerUi('Planejamento Longform (RC)','Longform planning (RC)')});
   panel.createEl('p',{text:writerUi('Usa o índice Longform e as propriedades das cenas existentes; não cria outra organização paralela.','Uses the existing Longform index and scene properties; no parallel scene organization is created.')});
-  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis']]){
+  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies']]){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
     .onChange(async value=>{cfg[key]=value;await this.plugin.saveSettings();}));
   }

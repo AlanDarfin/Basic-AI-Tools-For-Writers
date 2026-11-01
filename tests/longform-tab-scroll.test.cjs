@@ -20,6 +20,8 @@ class Element{
  get scrollLeft(){return this._scrollLeft;}
  set scrollLeft(value){this._scrollLeft=Math.max(0,Math.min(Number(value)||0,Math.max(0,this.scrollWidth-this.clientWidth)));}
  createDiv(options={}){return this.add(options);}
+ createSpan(options={}){return this.add(options);}
+ setText(value){this.text=value;}
  createEl(_tag,options={}){return this.add(options);}
  add(options){const child=new Element(options.cls||'',options.text||'',this);this.children.push(child);return child;}
  addEventListener(name,fn){(this.listeners[name]??=[]).push(fn);}
@@ -35,12 +37,14 @@ class Element{
 }
 const TFile=class{};const noopClass=class{};
 const obsidian={ItemView:noopClass,TFile,TFolder:noopClass,Notice:noopClass,Modal:noopClass,Menu:noopClass,Setting:noopClass,parseYaml:()=>({}),stringifyYaml:()=>'',getLanguage:()=> 'pt-BR'};
-let relationsRenders=0,sessionsRenders=0;
+let relationsRenders=0,sessionsRenders=0,managerOpens=0;
 const sandbox={
  module:{exports:{}},require:id=>{if(id==='obsidian')return obsidian;throw Error('Unexpected module '+id);},
  console,setTimeout,clearTimeout,writerModuleOn:()=>true,
  writerV7StudioRenderGraph:()=>{relationsRenders++;},
- writerV7StudioRenderSessions:()=>{sessionsRenders++;}
+ writerV7StudioRenderSessions:()=>{sessionsRenders++;},
+ writerV7SeriesOpen:()=>{managerOpens++;},
+ writerV7SeriesForProject:(settings,path)=>(settings.v7Series||[]).filter(s=>(s.books||[]).includes(path))
 };
 vm.runInNewContext(fs.readFileSync('projects.js','utf8'),sandbox,{filename:'projects.js'});
 const {ProjectsView}=sandbox.module.exports;
@@ -101,4 +105,33 @@ test('group switches only refresh tab buttons, preserving the strip and group po
  assert.equal(tabs.scrollLeft,230);
  assert.equal(view.tabScrollPositions.writing,100);
  assert.equal(rerenderCount,0);
+});
+
+test('series summary stays in a separate second row when changing Longform tabs',async()=>{
+ const view=viewFixture();
+ await view.render();
+ const toolbar=view.root.querySelector('.writer-project-toolbar');
+ const row=view.root.querySelector('.writer-project-series-row');
+ const field=view.root.querySelector('.writer-project-series-value');
+ assert.ok(row&&field,'Independent series row and membership value must exist');
+ assert.equal(row.parent,view.root,'Series row must be below, not inside selector toolbar');
+ assert.ok(view.root.children.indexOf(row)>view.root.children.indexOf(toolbar));
+ assert.equal(field.text,'Sem série');
+ const manager=row.children.find(x=>x.text==='Gerenciar');
+ assert.ok(manager,'Manage button must be visible in the second row');
+ const prior=managerOpens;manager.click();assert.equal(managerOpens,prior+1);
+ view.plugin.settings.v7Series=[
+  {id:'one',name:'Bonfire Saga',books:[project.file.path]},
+  {id:'two',name:'Extra Stories',books:[project.file.path]}
+ ];
+ view.refreshSeriesMembership();
+ assert.equal(field.text,'Bonfire Saga · Extra Stories');
+ assert.equal(field.attributes.title,field.text,'Full series names accessible despite ellipsis');
+ const tabs=view.root.querySelector('.writer-project-tabs');
+ tabs.children.find(x=>x.text==='Sessões').click();
+ assert.equal(view.root.querySelector('.writer-project-series-row'),row,'Tab switch must not move or recreate series UI');
+ assert.equal(field.text,'Bonfire Saga · Extra Stories');
+ view.plugin.settings.v7Series=[];
+ view.refreshSeriesMembership();
+ assert.equal(field.text,'Sem série');
 });

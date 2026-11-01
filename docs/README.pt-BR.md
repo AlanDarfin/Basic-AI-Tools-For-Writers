@@ -1,68 +1,31 @@
 # Basic AI Tool for Writers
 
-> **Release Candidate 7.0.0-rc.1:** Longform com inspetor de cenas, Cartões/Kanban/Lista, matriz de tramas, modelos de três e cinco atos/Jornada do Herói e análise de ritmo. As ferramentas de universo anteriores permanecem integradas. [Notas da RC](V7_RC1.pt-BR.md) · [English](V7_RC1.en.md). **Versão atual:** 6.0.1 estável.
+**Versão atual:** 7.0.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
-> **7.0.0-beta.2 (experimental):** novos recursos Story Studio no mesmo **Compêndio e Longform**: fichas editáveis, modelos personalizados, imagens/avatar/galeria, relações por links, quadro de cenas, capítulos recolhíveis, mapas de imagem, Timeline com trilhas/Gantt simples, diário de sessões e ligação com o Pandoc já existente. Sem duplicar dados. [Notas em português](V7_BETA2.pt-BR.md) · [English](V7_BETA2.en.md). **A versão estável permanece 6.0.1.**
+**Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
-> **Nova beta 7.0.0-beta.1:** a antiga aba **Notas** agora é um **Compêndio** com tags livres do Obsidian, tags herdadas de notas de pasta, personagens, locais e itens, além de conexões entre notas. Há também uma **Timeline** visual, verificação inicial de continuidade, Folder Notes integrado ao explorador e modo foco. A memória narrativa para revisão por IA é **opcional e desligada por padrão**, usando apenas capítulos anteriores. O Pandoc existente continua oferecendo EPUB, PDF e DOCX no desktop. Outras ideias da v7 serão aprofundadas nas próximas betas. [Notas em português](V7_BETA1.pt-BR.md) · [English notes](V7_BETA1.en.md). **A versão estável continua sendo 6.0.1.**
+Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
 
+## Novidades da versão 7.0.0
 
-**Versão atual:** 6.0.1 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e celular · **Licença:** MIT.
+A versão estável reúne as duas betas e a RC. Os novos recursos continuam usando os arquivos Markdown e os índices Longform existentes, sem bancos de dados duplicados.
 
-**Idiomas da interface:** português brasileiro e inglês. [English README](../README.md).
+| Área | Melhorias |
+| --- | --- |
+| **Escrita** | Árvore de capítulos recolhível, reordenação por toque, Quadro em Cartões/Kanban/Lista, matriz de tramas, modelos narrativos, análise de ritmo e ligações de preparação/consequência. |
+| **Universo** | Compêndio por tags personalizadas, pastas e Folder Notes; fichas editáveis de personagens, locais e itens, templates próprios, relações, retratos, Galeria e mapas com imagens do cofre. |
+| **Timeline** | Trilhas, ramificações, marcos, Gantt simples, calendário fictício por projeto com meses personalizados e correção da ordem de datas entre anos. |
+| **Projetos** | Organizador de séries de livros que agrupa e reordena índices Longform **sem mover arquivos ou alterar capítulos**. Metas, sessões, tarefas e compilação continuam integradas. |
+| **Interface** | Navegação compacta em **Escrita / Universo / Projeto** e layouts responsivos para telas estreitas. |
+| **Ferramentas** | Gramática, dicionários, leitura em voz alta, snapshots, Unicode, edição e exportação opcional com Pandoc no desktop. |
 
-Uma central de escrita para [Obsidian](https://obsidian.md) com interface unificada e compacta: projetos Longform, dicionários, tradução, ferramentas Markdown, IA, revisão, versões e leitura em voz alta.
+**[Notas completas da 7.0.0](V7_RELEASE.pt-BR.md) · [English](V7_RELEASE.en.md) · [Baixar ZIP](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
 
-## Atualização de manutenção — 6.0.1
+**Segurança dos dados:** excluir uma série não apaga livros. Tags herdadas de Folder Notes afetam somente os filtros, não os arquivos. As fichas utilizam a API nativa de propriedades. A memória narrativa para IA continua desligada por padrão. Trocar o calendário modifica a ordenação visual, mas não altera as datas nas notas.
 
-A árvore de capítulos do Longform agora usa linhas verticais suaves para representar cada nível, sem setinhas: capítulo principal (sem linha), subcapítulo (uma linha), nota interna (duas linhas), e assim sucessivamente. Mantivemos títulos completos e os botões de movimentação alinhados no celular. Os arquivos, índices e a ordem dos capítulos não são alterados.
+**Antes de atualizar:** faça backup do cofre e do data.json. A troca dos três arquivos da release não deve substituir as configurações salvas. O diretório da comunidade do Obsidian exige aprovação separada; uma release no GitHub não garante a publicação na comunidade.
 
-[Notas de lançamento 6.0.1](V6_0_1_RELEASE.pt-BR.md) · [English](V6_0_1_RELEASE.en.md)
-
-## Novidades da 6.0.0
-
-- **Todas as interfaces refeitas:** configurações, Ferramentas de escrita, Projetos/Longform, dicionário, tradução, revisão, Markdown, seletores e janelas agora compartilham controles compactos, seções discretas e abas roláveis.
-- **Longform Nav renovado:** uma lista clara de notas anteriores e próximas, com títulos inteiros e quebra automática de linha. O layout não força duas colunas em painéis estreitos.
-- **Navegação automática:** rodapé opcional em capítulos Longform no Live Preview e na leitura, sem alterar o Markdown original.
-- **Navegação manual:** escolha nota anterior/próxima em qualquer lugar do cofre, mesmo fora do Longform, usando o comando nativo. Exemplo:
-
-```longform-nav
-mode: manual
-previous: "[[Notas/Anterior]]"
-next: "[[Notas/Próxima]]"
-```
-
-- **Busca de capítulos:** encontre capítulos e subcapítulos de um projeto pela paleta de comandos.
-- **Ruby acima e abaixo:** `{base|anotação}` ou `{base|anotação|under}`, em leitura e Live Preview.
-- **Inserção inteligente:** comandos nativos para Ruby, avaliações, timestamps Discord, spoilers e subtexto.
-- **Preferências por projeto:** navegação, desativação de recursos específicos, perfil editorial para IA e perfil de escrita associado, aplicado somente quando você solicitar.
-- **Mais funções Markdown:** avaliações interativas, horários Discord, subtexto, estimativa de leitura e Linter com prévia.
-
-[Notas completas](V6_RELEASE.pt-BR.md) · [Release em inglês](V6_RELEASE.en.md) · [Baixar versão 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
-
-**Histórico:** [beta.1](V6_BETA_RELEASE.md), [beta.2](V6_BETA2.pt-BR.md), [beta.3](V6_BETA3.pt-BR.md) e [6.0.0-beta.4](V6_BETA4.pt-BR.md). A versão estável anterior era a 5.2.0.
-
-> **Novo na 5.2.0:** Longform lembra o **último projeto selecionado**, inclusive após reiniciar o plugin. A aba **Projeto** permite escolher uma **capa do cofre**, escrever a **sinopse/descrição** e declarar o tipo de **direitos autorais/licença**, com explicação de cada opção. Esses dados são salvos no frontmatter `longform` do índice da história. As configurações agora ficam em **seis grupos principais**, com abas menores dentro de cada grupo; Easy Typing e Smart Typography foram unidos em **Digitação e tipografia**. Veja as [notas da 5.2.0](V5_2_RELEASE.md).
-
-> **Novo na 5.1.0:** busca nas configurações (inclusive com acentos), perfis rápidos de escrita (Romance, Estudos, Revisão e Markdown técnico), perfis personalizados com desfazer, diagnóstico local de atalhos e interface mais compacta para telas pequenas. Os perfis alteram somente preferências de edição, sem modificar notas, chaves de API ou dicionários. Confira as [notas da 5.1.0](V5_1_RELEASE.md).
-
-> **Novidade — v5.0.0:** navegação Keyshots, sintaxes Extended/Pandoc, Easy Typing (regex opcionais e modelos com Tab), Smart Typography e exportação Pandoc opcional no desktop. Veja as [notas de lançamento](V5_RELEASE.md) e o [guia técnico](V5-DEVELOPMENT.md).
-
-**Atualização 4.1.1:** correções para o verificador CSS do Obsidian, preservando a interface compacta no celular. Tag sem prefixo `v`.
-
-[English / README principal](../README.md) · [Release estável 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
-
-Um ambiente de escrita personalizável para o [Obsidian](https://obsidian.md), que reúne dicionário, tradução, IA, revisão gramatical, projetos inspirados no Longform, histórico de versões e ferramentas de produtividade.
-
-**Versão atual:** 6.0.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e dispositivos móveis · **Licença:** MIT.
-
-**Na 4.2.0:** o realce da linha atual no modo Máquina de Escrever agora segue diretamente o cursor do CodeMirror, inclusive no Android. A nova memória de posição salva cursor, seleção e rolagem de cada nota localmente.
-
-**Novidades da 4.3.0:** removemos a Editing Toolbar, os controles flutuantes para PC e celular, os comandos extras de formatação Markdown e suas configurações. Para formatar texto, use as ferramentas nativas do Obsidian. Os comandos independentes de escrita com IA, o modo Máquina de Escrever e a memória do cursor continuam disponíveis.
-
-**Correção da 4.3.1:** a barrinha colorida do realce no modo Máquina de Escrever fica separada das letras, com espaçamento consistente em todas as linhas, tanto no PC quanto no celular.
-
-**Para configurar:** abra **Configurações → Basic AI Tool for Writers → Posição do cursor**. Você pode ativar/desativar o recurso, escolher se deseja restaurar seleção e rolagem, definir um limite de notas (500 por padrão), limpar os registros salvos e usar comandos para restaurar ou esquecer a posição da nota atual. Links com âncoras não têm seu destino substituído pela memória. O código é uma integração independente inspirada no plugin [Remember cursor position](https://github.com/dy-sh/obsidian-remember-cursor-position), sem precisar instalá-lo.
+**Histórico:** [6.0.1](V6_0_1_RELEASE.pt-BR.md), [7.0.0-rc.1](V7_RC1.pt-BR.md), [beta.2](V7_BETA2.pt-BR.md), [beta.1](V7_BETA1.pt-BR.md). Notas antigas continuam na pasta [docs](./).
 
 ## Tudo o que o plugin oferece
 
@@ -176,7 +139,7 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 ## Instalação e atualização
 
-1. Baixe o [ZIP da 5.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.2.0/Basic-AI-Tool-for-Writers-5.2.0.zip).
+1. Baixe o [ZIP da 7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip).
 2. Extraia os arquivos **`main.js`**, **`manifest.json`** e **`styles.css`** para:
 
    ```text
@@ -207,7 +170,7 @@ Os nomes dos seus projetos, notas e fluxos personalizados permanecem no idioma e
 
 ## Desenvolvimento e documentação
 
-A distribuição normal usa o `main.js`, montado a partir dos arquivos de `src/v3/`, `src/v4/` e do gerenciador `projects.js`.
+A distribuição normal usa main.js, gerado a partir dos módulos de src/v3 até src/v7 e do gerenciador Longform em projects.js.
 
 ```sh
 npm run build

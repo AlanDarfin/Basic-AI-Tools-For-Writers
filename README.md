@@ -1,65 +1,31 @@
 # Basic AI Tool for Writers
 
-> **Release Candidate 7.0.0-rc.1:** Longform now offers a shared scene inspector, corkboard/Kanban/list, plotline matrix, three/five-act and Hero's Journey beat sheets, and chronological pacing. The v7 worldbuilding suite remains integrated. [English RC notes](docs/V7_RC1.en.md) · [Português](docs/V7_RC1.pt-BR.md). **Latest stable:** [6.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.1).
+**Latest stable:** [7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
-> **7.0.0-beta.2 (experimental)** adds Story Studio to the **existing** Compendium and Longform: wiki-style editable sheets, custom worldbuilding templates, portrait/gallery support, wikilink relationships, scene board and collapsible hierarchy, image maps, simplified Gantt/tracks/branches, session journal, and native compile-to-Pandoc handoff. No duplicate database or exporter. [Release notes](docs/V7_BETA2.en.md) · [Português](docs/V7_BETA2.pt-BR.md). **Stable stays 6.0.1.**
+**Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
-> **Early v7 beta — 7.0.0-beta.1:** The former **Notes** panel becomes a tag-driven **Compendium**, with user-defined Obsidian tags, inheritance from Folder Notes, characters/places/items, Obsidian link connections, plus a visual **Timeline** and initial **Continuity** checks. Folder Notes work in the Longform compendium and the normal file explorer, with a non-destructive "open folder note" action. A focus command and opt-in, previous-chapters-only AI review context are included. The existing desktop Pandoc exporter remains available for EPUB, PDF and DOCX. This beta is not the final v7: collapsible scene trees, deeper semantic continuity, broader world knowledge and expanded editorial exports are planned for subsequent betas. [English details](docs/V7_BETA1.en.md) · [Português](docs/V7_BETA1.pt-BR.md). **Latest stable remains 6.0.1.**
+A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
 
+## New in version 7.0.0
 
-**Latest stable:** [6.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+The stable v7 release consolidates two betas and a release candidate. All new planning features work with existing Markdown notes or Longform indexes, not a duplicate data store.
 
-**Languages and interface:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
+| Area | Improvements |
+| --- | --- |
+| **Writing** | Collapsible chapter trees, touch-friendly scene movement, Cards/Kanban/List board, plotline matrix, story beat templates, pacing, and setup/payoff scene links. |
+| **World** | Compendium using custom Obsidian tags, folders and Folder Notes; editable character/place/item sheets; custom templates, links, portraits, image gallery and vault image maps. |
+| **Timeline** | Event tracks, branches, milestones, simple Gantt, and per-project fictional calendar with custom month lengths and corrected cross-year date sorting. |
+| **Projects** | Book series manager that groups and reorders existing Longform project indexes **without moving files or changing chapters**. Existing goals, sessions, tasks and compilation remain available. |
+| **Interface** | Compact **Writing / World / Project** navigation and responsive layouts for narrow screens. |
+| **Writing tools** | Grammar, dictionaries, TTS, snapshots, Unicode, editing tools and optional desktop Pandoc export remain integrated. |
 
-A unified, compact writing environment for [Obsidian](https://obsidian.md): Longform-style writing projects, editing tools, local and AI dictionaries, translation, LanguageTool, Markdown syntax, writing statistics, snapshots and text-to-speech. All functionality remains opt-in where configurable.
+**[Full stable release notes](docs/V7_RELEASE.en.md) · [Português](docs/V7_RELEASE.pt-BR.md) · [Download 7.0.0 ZIP](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
 
-## Maintenance update — 6.0.1
+**Data safety:** Deleting a series never deletes its manuscripts. Tags inherited from Folder Notes only affect indexing, not child files. Scene/world sheet editing uses the native frontmatter API. The AI narrative context remains opt-in and off by default. Calendar changes affect chronological display, not the actual event dates.
 
-Longform project scenes now show a subtle vertical hierarchy instead of arrow badges: main chapter (no rail), subchapter (one rail), nested note (two rails), and so on. Scene titles remain readable and the drag/reorder controls stay aligned on mobile. The fix only changes the visual tree, not the underlying Longform index or its chapter order.
+**Before upgrading:** Back up your vault and plugin data.json. Replacing the three release files should not overwrite saved plugin settings. Listing in the Obsidian Community directory requires separate approval; a GitHub release does not guarantee directory publication.
 
-[6.0.1 release notes](docs/V6_0_1_RELEASE.en.md) · [Português](docs/V6_0_1_RELEASE.pt-BR.md)
-
-## What's new in 6.0.0
-
-- **One interface language everywhere:** coherent, flat, responsive layouts across plugin settings, all writing panels, Longform projects, reading/review tools, dropdowns, dialogs and mobile controls. No separate editing toolbar.
-- **Rebuilt Longform Nav:** a readable, full-width list of previous/next chapters and subchapters. Titles wrap instead of clipping, including on narrow Android screens. It uses two columns only when the navigation container itself is wide enough.
-- **Automatic navigation:** optional chapter footers in Live Preview and Reading View, without modifying notes or duplicating explicit navigation blocks.
-- **Manual navigation for any notes:** a native command to pick previous/next files, independently of Longform projects. Example:
-
-```longform-nav
-mode: manual
-previous: "[[Notes/Previous]]"
-next: "[[Notes/Next]]"
-```
-
-  This is the **contents of a fenced `longform-nav` block**. Previous/next are optional, and a missing file is never opened.
-- **Jump to chapter:** search chapters/subchapters of the current project with the command palette.
-- **Ruby in Live Preview and Reading View:** `{base|annotation}` places text above; `{base|annotation|under}` places it below. Selecting an annotation exposes editable source.
-- **Native smart insertion:** command dialogs for Ruby, ratings, Discord timestamps, spoilers and subtext, without a custom toolbar.
-- **Project preferences:** per-project automatic navigation, optional tool overrides, editorial review context and a manually applied preferred writing profile.
-- **More v6 tools:** Discord timestamps, interactive ratings, Discord-style syntax, reading time and a preview-first Markdown linter.
-
-[Full release notes](docs/V6_RELEASE.en.md) · [Notas em português](docs/V6_RELEASE.pt-BR.md) · [Download 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
-
-**Development history:** [beta.1](docs/V6_BETA_RELEASE.md), [beta.2](docs/V6_BETA2.en.md), [beta.3](docs/V6_BETA3.en.md), [6.0.0-beta.4](docs/V6_BETA4.en.md). The previous stable release was 5.2.0.
-
-**New in 5.2.0:** Longform remembers the **last selected project**, including when switching between its separate index/draft notes. Project details now include a vault-image **cover**, a short **synopsis/description**, and a copyright/license selector explaining *All rights reserved*, Creative Commons choices, CC0 and public domain. These details are written to the existing project's `longform` frontmatter. The settings interface now has **six grouped top-level tabs** with smaller category tabs, and Easy Typing plus Smart Typography share a single **Typing & typography** settings page. All new controls have Portuguese and English labels. See the [release notes](docs/V5_2_RELEASE.md).
-
-**New in 5.1.0:** Searchable plugin settings (accent-insensitive category suggestions and filtering within the current tab), four quick writing profiles (Novel, Study, Revision and Technical Markdown), up to 10 custom profile snapshots with one-step undo, a local keyboard shortcut audit, and more compact, accessible settings on narrow/mobile screens. Only editor preferences change when switching profiles—notes, API keys, prompts and dictionaries remain untouched. See [5.1.0 release notes](docs/V5_1_RELEASE.md).
-
-**New in 5.0.0:** Desktop Keyshots-style editor navigation, Extended Markdown and Pandoc-inspired syntax, Easy Typing (smart paste, Tab-out, optional regex rules and navigable snippets), Smart Typography, and optional **desktop Pandoc export**. Read the [v5 release notes](docs/V5_RELEASE.md) and [technical guide](docs/V5-DEVELOPMENT.md).
-
-> **Updated in v4.1:** complete English localization across built-in writing panels, Longform and history dialogs, with automated bilingual regression checks.
-
-> **New in v4:** hide individual features from menus without deleting their data, organize long manuscripts, review AI changes before applying them, use Obsidian's own native formatting controls, and run LanguageTool checks after a typing pause.
-
-**4.1.1 maintenance:** Addresses Obsidian 1.11.4 CSS lint warnings, keeps compact mobile settings without `:has()` selectors, and cleans up the stylesheet cascade. Existing notes and settings are unchanged.
-
-**4.2.0 introduced:** Typewriter mode now highlights the actual CodeMirror cursor line on mobile and desktop, including when Obsidian does not apply its native active-line class. The new built-in cursor memory saves each note's cursor position, optional selection and scroll offset, with local persistence and per-feature settings. No separate plugin is required.
-
-**New in 4.3.0:** The experimental Editing Toolbar, its floating desktop/mobile UI, the six extra Markdown-formatting commands and associated settings have been removed. Use Obsidian's built-in formatting commands and native mobile toolbar instead. **Independent AI writing actions remain available** through the plugin's commands and panels; typewriter line highlighting and cursor memory remain unchanged.
-
-**4.3.1 fix:** The typewriter-mode active-line accent no longer overlaps the first character. The highlight now uses a separate marker and consistent text spacing across lines on desktop and mobile. No other writing features have changed.
+**Release history:** [6.0.1](docs/V6_0_1_RELEASE.en.md), [7.0.0-rc.1](docs/V7_RC1.en.md), [beta.2](docs/V7_BETA2.en.md), [beta.1](docs/V7_BETA1.en.md). Earlier notes remain in the [docs folder](docs/).
 
 ## Contents
 
@@ -187,7 +153,7 @@ Choose **System / offline** speech when the Obsidian WebView exposes Web Speech 
 
 ## Installation and upgrade
 
-1. Download the [5.2.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/5.2.0/Basic-AI-Tool-for-Writers-5.2.0.zip).
+1. Download the [7.0.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip).
 2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
 
    ```text
@@ -221,7 +187,7 @@ Existing Markdown files, project titles, custom workflow names and the historica
 
 ## Development and documentation
 
-The Obsidian installation bundle is `main.js`; it includes the independently maintained source from `src/v3/`, `src/v4/` and the project manager in `projects.js`.
+The installation bundle contains modules maintained from src/v3 through src/v7 and the Longform project manager in projects.js. Regenerate and verify the bundle before publishing.
 
 ```sh
 npm run build     # regenerate the bundled project and v3/v4 modules

@@ -104,7 +104,9 @@ class ProjectsView extends ItemView{
   }));
   this.registerEvent(this.app.metadataCache.on('changed',file=>{
    const notes=this.currentProject&&this.notesRoot(this.currentProject)+'/';
-   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline','continuity'].includes(this.activeTab)))this.queueRender();
+   const changedScene=this.currentProject&&['scenes','board','structure','continuity','analytics'].includes(this.activeTab)
+    &&this.activeScenes(this.currentProject).some(scene=>this.resolveScene(this.currentProject,scene.title)?.path===file?.path);
+   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline','continuity'].includes(this.activeTab))||changedScene)this.queueRender();
   }));
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
@@ -157,8 +159,9 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
+  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
   &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
   &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
@@ -176,6 +179,7 @@ class ProjectsView extends ItemView{
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='timeline')writerV7RenderTimeline(this,panels.timeline,project);
   if(this.activeTab==='board')writerV7StudioRenderBoard(this,panels.board,project);
+  if(this.activeTab==='structure')writerV7RCRenderStructure(this,panels.structure,project);
   if(this.activeTab==='relations')writerV7StudioRenderGraph(this,panels.relations,project);
   if(this.activeTab==='maps')writerV7StudioRenderMaps(this,panels.maps,project);
   if(this.activeTab==='analytics')writerV7StudioRenderAnalytics(this,panels.analytics,project);
@@ -447,6 +451,10 @@ class ProjectsView extends ItemView{
      ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
      [lfMsg('Adicionar subcapítulo','Add subchapter'),'plus',()=>this.addScene(project,name)],
      [lfMsg('Renomear cena','Rename scene'),'pencil',()=>this.renameScene(project,name)],
+     [lfMsg('Inspecionar cena','Inspect scene'),'clipboard-list',()=>file?writerV7StudioOpenSheet(this,{
+      file,path:file.path,title:name,cache:this.app.metadataCache?.getFileCache?.(file),tags:[]
+     },{fields:['summary','status','act','sequence','pov','characters','location','sceneDate','plotlines','storyBeat','emotion','intensity','conflict','setup_scenes','payoff_scenes','target_wordcount']}):
+      new Notice(lfMsg('Cena não encontrada.','Scene not found.'))],
      [lfMsg('Retirar do índice (preservar arquivo)','Remove from index (keep file)'),'list-x',()=>this.removeSceneFromIndex(project,name)]
     ])menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
     menu.showAtMouseEvent(event);

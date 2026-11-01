@@ -102,7 +102,10 @@ class ProjectsView extends ItemView{
    }
    this.queueRender();
   }));
-  this.registerEvent(this.app.metadataCache.on('changed',file=>{if(file?.path===this.selected)this.queueRender();}));
+  this.registerEvent(this.app.metadataCache.on('changed',file=>{
+   const notes=this.currentProject&&this.notesRoot(this.currentProject)+'/';
+   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline','continuity'].includes(this.activeTab)))this.queueRender();
+  }));
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
  }

@@ -62,7 +62,7 @@ test('one localized request is wired without clearing all cached marks',()=>{
  assert.match(local,/checkGrammar\(masked\.slice\(scopes\.next\.from,scopes\.next\.to\)\)/);
  assert.match(local,/writerGrammarPreserveOutside\(previousMatches,scopes\.old,after\.length-before\.length\)/);
  assert.match(apply,/view\.recheckGrammarCorrection\(/);
- assert.doesNotMatch(apply,/this\.clearReviewMarks\(\);/);
+ assert.doesNotMatch(apply,/this\.closeReviewPopup\(\);this\.clearReviewMarks\(\);/);
  assert.doesNotMatch(apply,/setTimeout\(\(\)=>view\.reviewFile/);
  assert.ok(src.includes('this.plugin.grammarCorrectionPaths?.has(file.path)'));
 });

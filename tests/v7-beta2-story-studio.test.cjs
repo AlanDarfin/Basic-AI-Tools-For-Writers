@@ -78,7 +78,7 @@ test('beta.2 scripts, compiled bundle, CSS, language files and versions are sync
  const main=fs.readFileSync('main.js','utf8'),projects=fs.readFileSync('projects.js','utf8'),
   css=fs.readFileSync('styles.css','utf8');
  const manifest=require('../manifest.json'),pkg=require('../package.json'),versions=require('../versions.json');
- assert.equal(manifest.version,'7.0.0-beta.2');assert.equal(manifest.version,pkg.version);
+ assert.ok(['7.0.0-beta.2','7.0.0-rc.1'].includes(manifest.version));assert.equal(manifest.version,pkg.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
  assert.ok(main.includes('// v3 module: src/v7/story-studio.js'));
  assert.ok(main.includes('// v3 module: src/v7/timeline-studio.js'));

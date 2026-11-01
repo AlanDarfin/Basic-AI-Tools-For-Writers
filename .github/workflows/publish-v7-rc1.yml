@@ -1,0 +1,60 @@
+name: Validate and publish Basic AI 7.0.0 RC1
+on:
+  push:
+    branches: [release/v7-rc1-longform-storyline]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  release-candidate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check build, syntax, full regressions and historical features
+        run: npm run check
+      - name: Obsidian community CSS compatibility
+        run: node --test tests/css-community-lint.test.cjs
+      - name: Verify release candidate and translations
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('node:fs'),m=require('./manifest.json'),p=require('./package.json'),v=require('./versions.json');
+          if(m.version!=='7.0.0-rc.1'||m.version!==p.version||v[m.version]!==m.minAppVersion||m.isDesktopOnly!==false)
+            throw Error('RC metadata mismatch');
+          for(const file of ['README.md','docs/README.pt-BR.md','docs/V7_RC1.en.md','docs/V7_RC1.pt-BR.md'])
+            if(!fs.readFileSync(file,'utf8').includes(m.version))throw Error('Missing localized RC reference: '+file);
+          const main=fs.readFileSync('main.js','utf8'),project=fs.readFileSync('projects.js','utf8');
+          for(const needle of ['WriterV7LongformRC','writerV7RCRenderBoard','writerV7RCRenderPlotlines',
+            'writerV7RCRenderBeats','writerV7RCRenderPacing','writerV7RCContinuityFindings'])
+            if(!main.includes(needle))throw Error('Missing RC module: '+needle);
+          if(!project.includes('writerV7RCRenderStructure'))throw Error('Structure tab not integrated');
+          NODE
+      - name: Pack Obsidian install files
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -j Basic-AI-Tool-for-Writers-7.0.0-rc.1.zip main.js manifest.json styles.css
+          unzip -t Basic-AI-Tool-for-Writers-7.0.0-rc.1.zip
+          test "$(unzip -Z1 Basic-AI-Tool-for-Writers-7.0.0-rc.1.zip | wc -l)" -eq 3
+          sha256sum main.js manifest.json styles.css Basic-AI-Tool-for-Writers-7.0.0-rc.1.zip > SHA256SUMS-7.0.0-rc.1.txt
+      - name: Publish prerelease (do not mark stable)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view 7.0.0-rc.1 >/dev/null 2>&1; then
+            echo 'Release already exists. Leave it unchanged.'
+            exit 0
+          fi
+          gh release create 7.0.0-rc.1 \
+            main.js manifest.json styles.css \
+            Basic-AI-Tool-for-Writers-7.0.0-rc.1.zip SHA256SUMS-7.0.0-rc.1.txt \
+            --target "$GITHUB_SHA" \
+            --title 'Basic AI Tool for Writers 7.0.0-rc.1' \
+            --prerelease \
+            --notes-file docs/V7_RC1.en.md

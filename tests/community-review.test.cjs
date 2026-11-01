@@ -22,7 +22,7 @@ test('Pandoc never invokes a system shell',()=>{
 });
 test('stable version, lockfile and documentation agree',()=>{
  const m=require('../manifest.json'),p=require('../package.json'),l=require('../package-lock.json'),v=require('../versions.json');
- assert.equal(m.version,'7.1.0');assert.equal(p.version,m.version);assert.equal(l.version,m.version);
+ assert.equal(m.version,'7.1.1');assert.equal(p.version,m.version);assert.equal(l.version,m.version);
  assert.equal(l.packages[''].version,m.version);assert.equal(v[m.version],m.minAppVersion);assert.equal(m.isDesktopOnly,false);
  for(const file of ['README.md','docs/README.pt-BR.md','SECURITY.md','CONTRIBUTING.md','docs/maintenance/COMMUNITY_REVIEW.md'])
   assert.ok(fs.readFileSync(file,'utf8').length>0,file);

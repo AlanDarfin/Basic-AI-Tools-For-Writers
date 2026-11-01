@@ -3573,7 +3573,7 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
  padding:6px 10px;
  font-size:var(--font-ui-small);
 }
-.writer-project-root .writer-project-toolbar>.writer-v7-stable-series-launch{
+.writer-project-root .writer-project-series-row>.writer-v7-stable-series-launch{
  box-sizing:border-box;flex:0 0 auto;
  min-width:0;min-height:36px;padding:6px 10px;
  border:1px solid var(--background-modifier-border);
@@ -3756,7 +3756,7 @@ body:not(.is-mobile) .writer-project-root .writer-project-tabs.writer-project-ta
   min-height:29px;
   padding:5px 8px;
 }
-body:not(.is-mobile) .writer-project-root .writer-project-toolbar>.writer-v7-stable-series-launch{
+body:not(.is-mobile) .writer-project-root .writer-project-series-row>.writer-v7-stable-series-launch{
   min-height:32px;
   padding:5px 8px;
 }
@@ -3797,4 +3797,54 @@ body:not(.is-mobile) .writer-project-root :is(.writer-v7-toolbar,.writer-v7-inli
 .dictionary-settings-subtabs.dictionary-settings-subtabs>button{
   flex:0 0 auto;
   scroll-snap-align:none;
+}
+
+/* 7.0.5 — book series is a permanent second header row.
+   Keep it independent from the wrapping project selector toolbar. */
+.writer-project-root .writer-project-series-row{
+ display:flex;
+ flex-wrap:nowrap;
+ align-items:stretch;
+ gap:6px;
+ min-width:0;
+ width:100%;
+ margin:3px 0 8px;
+}
+.writer-project-root .writer-project-series-field{
+ display:flex;
+ flex:1 1 auto;
+ align-items:center;
+ gap:7px;
+ min-width:0;
+ min-height:34px;
+ padding:5px 9px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ background:var(--background-secondary);
+ box-sizing:border-box;
+}
+.writer-project-root .writer-project-series-label{
+ flex:0 0 auto;
+ color:var(--text-muted);
+ font-size:var(--font-ui-smaller);
+}
+.writer-project-root .writer-project-series-value{
+ flex:1 1 auto;
+ min-width:0;
+ overflow:hidden;
+ white-space:nowrap;
+ text-overflow:ellipsis;
+ color:var(--text-normal);
+ font-size:var(--font-ui-small);
+ font-weight:500;
+}
+.writer-project-root .writer-project-series-row>.writer-v7-stable-series-launch{
+ flex:0 0 auto;
+ align-self:stretch;
+ white-space:nowrap;
+ min-height:34px;
+}
+body:not(.is-mobile) .writer-project-root .writer-project-series-row{
+ gap:5px;
+ margin:2px 0 6px;
 }

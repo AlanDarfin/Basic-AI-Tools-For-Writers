@@ -9803,6 +9803,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   hideReviewMark(file,start,end){
     if(this.reviewMarkedPath!==file.path)return;
+    // A dismissed finding must not reappear from the incremental cache.
+    this.reviewMatches=this.reviewMatches.filter(m=>m.offset!==start||m.offset+m.length!==end);
     this.reviewMarks=this.reviewMarks.filter(m=>m.from!==start||m.to!==end);
     for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
   }

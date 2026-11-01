@@ -7,7 +7,7 @@ Workflows ativos:
 
 ZIP e checksums ficam como artefatos da execução do GitHub Actions e têm o prazo de retenção definido pelo GitHub. Releases anteriores, incluindo a 7.0.0, não são modificadas.
 
-Passos para publicar: atualizar manifesto, package, lockfile, versions, READMEs, notas e testes; revisar PR e CI; mesclar; criar a tag no commit validado. O push da tag dispara automaticamente a release. Se já existir uma release com a mesma tag, o workflow preserva seus anexos.
+Passos para publicar: atualizar manifesto, package, lockfile, versions, READMEs, notas e testes; revisar PR e CI; mesclar na `main`. Se `manifest.json` mudar para uma versão estável nova, a Action valida o commit, cria a tag sem `v` e publica a release automaticamente. Tags estáveis criadas manualmente também são aceitas. Se já existir uma release com a mesma tag, o workflow preserva seus anexos.
 
 **Segurança:** o Pandoc continua integrado; os alertas de sistema de arquivos e execução de processos podem persistir. Consulte [COMMUNITY_REVIEW.md](COMMUNITY_REVIEW.md).
 

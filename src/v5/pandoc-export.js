@@ -32,6 +32,13 @@ function writerPandocExportArgs(format,outputPath,resourcePath){
  if(resourcePath)args.push('--resource-path',resourcePath);
  return args;
 }
+function writerPandocExecutableAllowed(value){
+ const executable=String(value||'').trim();
+ if(!executable||/[\0\r\n]/.test(executable))return false;
+ // Only a Pandoc executable (by name or explicit path), never an arbitrary program.
+ const basename=executable.replace(/\\/g,'/').split('/').pop();
+ return /^pandoc(?:\.exe)?$/i.test(basename);
+}
 function writerPandocExportError(error,stderr){
  if(error?.code==='ENOENT')return writerUi('Pandoc não encontrado. Instale-o no computador ou configure o caminho do executável.','Pandoc was not found. Install it or configure the executable path.');
  if(error?.code==='ETIMEDOUT'||error?.killed)return writerUi('Tempo de exportação esgotado.','Pandoc export timed out.');
@@ -42,6 +49,7 @@ async function writerPandocExportRun(plugin,format){
  const cfg=plugin.settings.pandocExport;
  if(plugin.app.isMobile)throw Error(writerUi('Exportação Pandoc requer Obsidian para desktop.','Pandoc export requires desktop Obsidian.'));
  if(!cfg?.enabled)throw Error(writerUi('Ative a exportação Pandoc nas configurações.','Enable Pandoc export in settings.'));
+ if(!writerPandocExecutableAllowed(cfg.pandocPath))throw Error(writerUi('Configure um executável Pandoc válido (pandoc ou pandoc.exe).','Configure a valid Pandoc executable (pandoc or pandoc.exe).'));
  const view=plugin.app.workspace.getActiveViewOfType(MarkdownView);
  const file=view?.file;
  if(!file||file.extension!=='md'||!view.editor)throw Error(writerUi('Abra uma nota Markdown para exportar.','Open a Markdown note before exporting.'));
@@ -124,7 +132,7 @@ class WriterPandocExporter{
  }
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Exportação Pandoc (desktop)','Pandoc export (desktop)')});
-  panel.createEl('p',{text:writerUi('Requer Pandoc instalado. A exportação cria uma cópia em seu cofre. Não executa filtros Lua ou comandos de shell. PDF pode exigir um mecanismo LaTeX instalado.','Requires a local Pandoc executable. Exports into a vault folder without running shell commands or Lua filters. PDF may require an additional LaTeX engine.'),cls:'dictionary-muted'});
+  panel.createEl('p',{text:writerUi('Requer Pandoc instalado. A exportação cria uma cópia em seu cofre. Não usa um shell nem filtros Lua personalizados. O Pandoc ainda é um processo externo e pode acessar recursos locais ou remotos referenciados na nota. PDF pode exigir um mecanismo LaTeX instalado.','Requires a local Pandoc executable. Exports into a vault folder without using a shell or custom Lua filters. Pandoc is still an external process and may access local or remote resources referenced by the note. PDF may require an additional LaTeX engine.'),cls:'dictionary-muted'});
   new Setting(panel).setName(writerUi('Ativar exportação','Enable export')).addToggle(t=>t.setValue(this.cfg.enabled).onChange(async value=>{this.cfg.enabled=value;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Formato padrão','Default format')).addDropdown(d=>{
    for(const key of Object.keys(WRITER_PANDOC_EXPORT_FORMATS))d.addOption(key,key.toUpperCase());

@@ -24,6 +24,13 @@ function writerV7StudioRenderTimeline(view,panel,project){
  const all=writerV7TimelineEntries(view,project,writerV7ProjectNotes(view,project));
  const toolbar=root.createDiv({cls:'writer-v7-toolbar'});
  toolbar.createEl('button',{text:writerUi('+ Evento','+ Event')}).addEventListener('click',()=>writerV7TimelineEditor(view,project));
+ toolbar.createEl('button',{text:writerUi('Calendário','Calendar')})
+  .addEventListener('click',()=>writerV7CalendarOpen(view,project));
+ const calendar=writerV7CalendarNormalize(view.prefs(project).v7Calendar);
+ root.createEl('p',{cls:'writer-v7-stable-calendar-info',
+  text:calendar.mode==='custom'
+   ?writerUi('Calendário fictício · ','Fictional calendar · ')+calendar.months.length+writerUi(' meses',' months')
+   :writerUi('Calendário gregoriano','Gregorian calendar')});
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar eventos…','Search events…'),'aria-label':writerUi('Pesquisar eventos','Search events')}});
  const branches=writerV7StudioTimelineBranches(all),branch=toolbar.createEl('select',{attr:{'aria-label':writerUi('Ramificação','Branch')}});
  for(const key of ['',...branches]){

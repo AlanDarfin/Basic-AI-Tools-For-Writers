@@ -1,0 +1,7 @@
+node_modules/
+coverage/
+*.log
+.DS_Store
+plugin-check.zip
+Basic-AI-Tool-for-Writers-*.zip
+SHA256SUMS-*.txt

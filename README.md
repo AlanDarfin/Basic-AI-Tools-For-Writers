@@ -177,7 +177,8 @@ This repository provides manual installation files; this README does not claim t
 - **Settings → Diagnostics:** inspect the plugin version, platform, Markdown file count, active modules, LanguageTool state, configured provider count, snapshot status and Web Speech API availability. Diagnostics do **not** send network requests or display full credentials.
 - **AI providers:** cloud-based AI operations send selected text to the configured provider. You are responsible for any API costs or applicable terms.
 - **LanguageTool:** when enabled, review and automatic checks send the analyzed text to the configured LanguageTool endpoint **while Review is open**.
-- **Online TTS:** transmits text only with explicit opt-in.
+- **Online TTS:** sends the reading text to Microsoft's speech endpoint using WebSocket only after explicit opt-in.
+- **Network disclosure:** the four `requestUrl` call sites are Unicode download, LanguageTool checking, AI model discovery, and AI requests. See the [complete request-by-request disclosure](SECURITY.md#network-disclosures-four-requesturl-call-sites). Note that auto-grammar checks can send updated text while Review/Grammar is active.
 - **Stored credentials:** API keys are saved in Obsidian's `data.json` **without additional encryption**. Avoid publishing or syncing this file to untrusted devices.
 - **File safety:** review and restoration functions provide previews or backups where available. Keep regular vault backups, especially before upgrading or compiling large projects.
 

@@ -25,11 +25,12 @@ test('nested scene hierarchy is retained and controls remain fixed',()=>{
 });
 test('stable release metadata and translations are updated',()=>{
  const manifest=require('../manifest.json'),pkg=require('../package.json'),versions=require('../versions.json');
- assert.ok(manifest.version==='6.0.1'||manifest.version==='7.0.0'||/^7\.0\.0-(beta|rc)\.\d+$/.test(manifest.version));
+ assert.ok(manifest.version==='6.0.1'||/^7\.0\.\d+(?:-(beta|rc)\.\d+)?$/.test(manifest.version));
  assert.equal(pkg.version,manifest.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
  for(const file of ['README.md','docs/README.pt-BR.md','docs/V6_0_1_RELEASE.en.md','docs/V6_0_1_RELEASE.pt-BR.md'])
   assert.ok(fs.readFileSync(file,'utf8').includes('6.0.1'),file);
- assert.match(fs.readFileSync('README.md','utf8'),new RegExp('Latest stable:\\*\\* \\['+(manifest.version==='7.0.0'?'7\\.0\\.0':'6\\.0\\.1')+'\\]'));
- assert.match(fs.readFileSync('docs/README.pt-BR.md','utf8'),new RegExp('Versão atual:\\*\\* '+(manifest.version==='7.0.0'?'7\\.0\\.0':'6\\.0\\.1')));
+ const expected=/^7\.0\.\d+$/.test(manifest.version)?manifest.version:'6.0.1';
+ assert.ok(fs.readFileSync('README.md','utf8').includes('Latest stable:** ['+expected+']'));
+ assert.ok(fs.readFileSync('docs/README.pt-BR.md','utf8').includes('Versão atual:** '+expected));
 });

@@ -3342,7 +3342,7 @@ class WriterV4Extras{
     constructor(view){
      this.view=view;this.interacting=false;this.decorations=Decoration.set([]);
      this.onPointer=event=>{
-      if(event.target?.closest?.('.cm-content, .cm-gutters'))this.setInteracting(true);
+      if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
      };
      this.onKey=event=>{
       if(['Shift','Control','Alt','Meta'].includes(event.key))return;

@@ -3269,7 +3269,12 @@ class WriterV4Mentions extends EditorSuggest{
  }
 }
 class WriterV4Extras{
- constructor(plugin){this.plugin=plugin;this.lastNote=null;}
+ constructor(plugin){this.plugin=plugin;this.lastNote=null;this.typewriterActiveViews=new WeakSet();this.typewriterViews=new Set();}
+ resetTypewriterHighlights(cm=null){
+  for(const instance of this.typewriterViews){
+   if(!cm||instance.view===cm)instance.setInteracting(false);
+  }
+ }
  get config(){return this.plugin.settings.writerV4Extras;}
  getCurrentNote(){
   const app=this.plugin.app;
@@ -3281,7 +3286,14 @@ class WriterV4Extras{
  }
  register(){
   const p=this.plugin;
-  p.registerEvent(p.app.workspace.on('file-open',file=>{if(file?.extension==='md')this.lastNote=file;}));
+  p.registerEvent(p.app.workspace.on('file-open',file=>{
+   if(file?.extension==='md'){
+    this.lastNote=file;
+    // Opening another note is not user interaction with its editor.
+    const cm=p.app.workspace.getActiveViewOfType?.(MarkdownView)?.editor?.cm;
+    if(cm)this.resetTypewriterHighlights(cm);
+   }
+  }));
   this.lastNote=this.getCurrentNote();
   p.registerEvent(p.app.vault.on('rename',(file,oldPath)=>{
    if(!(file instanceof TFile))return;
@@ -3306,31 +3318,75 @@ class WriterV4Extras{
     editorCallback:editor=>this.runEditorAIAction(editor,key)});
   p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Alternar modo máquina de escrever','Toggle typewriter mode'),callback:async()=>{
    this.config.typewriter.enabled=!this.config.typewriter.enabled;
-   this.updateTypewriterClass();await p.saveSettings();
+   this.resetTypewriterHighlights();this.updateTypewriterClass();await p.saveSettings();
    new Notice(this.config.typewriter.enabled?writerUi('Modo máquina de escrever ativado.','Typewriter mode enabled.'):writerUi('Modo máquina de escrever desativado.','Typewriter mode disabled.'));
   }});
   this.updateTypewriterClass();
   if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
-    if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
+    if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||
+      !this.typewriterActiveViews.has(update.view)||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
     try{
      const pos=update.state.selection.main.head;
      update.view.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',yMargin:0})});
     }catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}
    }));
   }
-  // Explicit line decoration works even when Obsidian Mobile does not maintain .cm-activeLine.
+  // Only direct editor interaction may activate the highlight. Cursor restoration,
+  // programmatic selections and viewport measurements must never enable it.
   if(ViewPlugin?.fromClass&&Decoration?.line){
+   const owner=this;
+   const refreshEffect=typeof StateEffect!=='undefined'&&StateEffect?.define?StateEffect.define():null;
    p.registerEditorExtension(ViewPlugin.fromClass(class{
-    constructor(view){this.decorations=this.mark(view);}
+    constructor(view){
+     this.view=view;this.interacting=false;this.decorations=Decoration.set([]);
+     this.onPointer=event=>{
+      if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
+     };
+     this.onKey=event=>{
+      if(['Shift','Control','Alt','Meta'].includes(event.key))return;
+      this.setInteracting(true);
+     };
+     this.onWheel=()=>{
+      // The wheel gesture also wins over delayed Remember Cursor restoration.
+      owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(view);
+      this.setInteracting(false);
+     };
+     view.dom.addEventListener('pointerdown',this.onPointer,true);
+     view.dom.addEventListener('keydown',this.onKey,true);
+     view.dom.addEventListener('wheel',this.onWheel,{capture:true,passive:true});
+     owner.typewriterViews.add(this);
+    }
+    setInteracting(value){
+     if(value)owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(this.view);
+     const allowed=value&&writerModuleOn(owner.plugin,'typewriter')&&owner.config.typewriter.enabled===true;
+     if(this.interacting===allowed)return;
+     this.interacting=allowed;
+     if(allowed)owner.typewriterActiveViews.add(this.view);
+     else owner.typewriterActiveViews.delete(this.view);
+     this.view.dom.classList.toggle('writer-v4-typewriter-engaged',allowed);
+     if(refreshEffect&&this.view.dispatch)this.view.dispatch({effects:refreshEffect.of(null)});
+     else this.decorations=this.mark(this.view);
+    }
     mark(view){
+     if(!this.interacting||!writerModuleOn(owner.plugin,'typewriter')||!owner.config.typewriter.enabled)
+      return Decoration.set([]);
      const line=view.state.doc.lineAt(view.state.selection.main.head);
      return Decoration.set([Decoration.line({class:'writer-v4-typewriter-current-line'}).range(line.from)]);
     }
     update(update){
-     if(update.docChanged||update.selectionSet||update.viewportChanged||update.focusChanged)
+     if(update.docChanged||update.selectionSet||update.viewportChanged||update.focusChanged||
+       update.transactions?.some(tr=>tr.effects?.some(effect=>refreshEffect&&effect?.is?.(refreshEffect))))
       this.decorations=this.mark(update.view);
+    }
+    destroy(){
+     this.view.dom.removeEventListener('pointerdown',this.onPointer,true);
+     this.view.dom.removeEventListener('keydown',this.onKey,true);
+     this.view.dom.removeEventListener('wheel',this.onWheel,true);
+     this.view.dom.classList.remove('writer-v4-typewriter-engaged');
+     owner.typewriterActiveViews.delete(this.view);
+     owner.typewriterViews.delete(this);
     }
    },{decorations:value=>value.decorations}));
   }
@@ -3458,7 +3514,7 @@ class WriterV4Extras{
   panel.createEl('h3',{text:writerUi('Ferramentas integradas · v4','Integrated writing tools · v4')});
   const cfg=this.config;
   const toggle=(section,key,label)=>new Setting(panel).setName(label).addToggle(t=>t.setValue(cfg[section][key]!==false).onChange(async v=>{
-   cfg[section][key]=v;if(section==='typewriter')this.updateTypewriterClass();await this.plugin.saveSettings();
+   cfg[section][key]=v;if(section==='typewriter'){this.resetTypewriterHighlights();this.updateTypewriterClass();}await this.plugin.saveSettings();
   }));
   toggle('mention','enabled',writerUi('Menções de notas','Note mentions'));
   new Setting(panel).setName(writerUi('Símbolo de menção','Mention trigger')).addDropdown(d=>{
@@ -3701,6 +3757,15 @@ class WriterCursorMemory{
  }
  matchingView(cm){
   return this.markdownViews().find(view=>view.editor?.cm===cm||view.editor?.cm?.dom===cm?.dom)||null;
+ }
+ // Cancel only an unfinished automatic restore for the editor the user touched.
+ // Bookmarks are left intact; on the next open Remember Cursor still works.
+ cancelPendingForEditor(cm){
+  if(!cm)return;
+  for(const [view] of this.pending){
+   if(view?.editor?.cm===cm||view?.editor?.cm?.dom===cm.dom)
+    this.pending.delete(view);
+  }
  }
  capture(view){
   if(!this.active()||!view?.file||!view.editor||this.pending.has(view))return false;

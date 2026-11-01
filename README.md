@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.5](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.5) · **Previous published:** [7.0.4](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.4) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.0.6](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.6) · **Previous published:** [7.0.5](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.5) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Typewriter highlight interaction — 7.0.6
+
+The current-line marker in Typewriter mode now appears only after **real editor interaction** (pointer or keyboard), and disappears on mouse-wheel scrolling until the next interaction. Cursor/selection restoration, file opening and automatic viewport updates never activate it, and Typewriter recentering is suspended while the user scrolls. Pending Remember Cursor Position restorations are cancelled on a real editor gesture without deleting saved bookmarks. Highlights are isolated by editor pane. [Release notes](docs/V7_0_6_RELEASE.en.md) · [Português](docs/V7_0_6_RELEASE.pt-BR.md).
 
 ## Longform series header — 7.0.5
 

@@ -8846,7 +8846,7 @@ class DictionaryView extends ItemView{
    const raw=await this.plugin.checkGrammar(masked.slice(scopes.next.from,scopes.next.to));
    if(after!==await writerCurrentText(this.plugin,file))return true;
    if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return false;
-   const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
+   const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
    const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
     .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
      writerGrammarMatchIsSafe(after,masked,m)&&

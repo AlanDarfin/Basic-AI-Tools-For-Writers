@@ -346,9 +346,8 @@ class ProjectsView extends ItemView{
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
    const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
-   // Keep the grid and drag handle aligned. Indent the *title* instead: row
-   // padding is overridden by the compact Android CSS with !important.
-   row.style.setProperty('--writer-scene-indent',Math.min(4,level)*11+'px');
+   // The hierarchy is visualized inside the title, keeping drag and action
+   // controls in fixed columns even on narrow Android sidebars.
    row.dataset.depth=String(level);
    row.dataset.sceneTitle=name;
    if(item.children?.length)row.addClass('writer-project-scene-has-children');
@@ -391,8 +390,13 @@ class ProjectsView extends ItemView{
     'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
    }});
    if(level>0){
-    titleButton.createSpan({text:level===1?'↳':'↳ '+level,cls:'writer-project-scene-depth-mark',
-     attr:{title:lfMsg('Nível de recuo ','Indent level ')+level,'aria-hidden':'true'}});
+    // One slender vertical rail for each level:
+    // chapter (0), │ subchapter (1), ││ nested note (2), etc.
+    const rails=titleButton.createSpan({cls:'writer-project-scene-rails',
+     attr:{'aria-hidden':'true'}});
+    for(let depth=0;depth<level;depth++){
+     rails.createSpan({cls:'writer-project-scene-rail'});
+    }
    }
    titleButton.createSpan({text:name,cls:'writer-project-scene-title-text'});
    titleButton.addEventListener('click',()=>file?this.openFile(file):new Notice(lfMsg("Cena não encontrada: ","Scene not found: ")+name));

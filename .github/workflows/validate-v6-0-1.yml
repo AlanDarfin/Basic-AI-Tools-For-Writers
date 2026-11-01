@@ -1,0 +1,19 @@
+name: Validate Basic AI 6.0.1
+on:
+  push:
+    branches: [release/v6.0.1-longform-hierarchy]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Complete syntax, bundle and regression checks
+        run: npm run check
+      - name: Obsidian CSS lint
+        run: node --test tests/css-community-lint.test.cjs

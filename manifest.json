@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "6.0.0",
+  "version": "6.0.1",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Unified bilingual writing workspace: Longform projects and manual/automatic chapter navigation, Ruby, proofreading, AI-assisted writing, typing and Markdown tools.",
+  "description": "Bilingual Obsidian writing workspace with a refined Longform hierarchy, chapter navigation, Ruby, review, AI-assisted writing and Markdown tools.",
   "isDesktopOnly": false
 }

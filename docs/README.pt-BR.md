@@ -1,10 +1,16 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 6.0.0 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e celular · **Licença:** MIT.
+**Versão atual:** 6.0.1 estável · **Obsidian:** 1.11.4 ou superior · **Plataformas:** desktop e celular · **Licença:** MIT.
 
 **Idiomas da interface:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central de escrita para [Obsidian](https://obsidian.md) com interface unificada e compacta: projetos Longform, dicionários, tradução, ferramentas Markdown, IA, revisão, versões e leitura em voz alta.
+
+## Atualização de manutenção — 6.0.1
+
+A árvore de capítulos do Longform agora usa linhas verticais suaves para representar cada nível, sem setinhas: capítulo principal (sem linha), subcapítulo (uma linha), nota interna (duas linhas), e assim sucessivamente. Mantivemos títulos completos e os botões de movimentação alinhados no celular. Os arquivos, índices e a ordem dos capítulos não são alterados.
+
+[Notas de lançamento 6.0.1](V6_0_1_RELEASE.pt-BR.md) · [English](V6_0_1_RELEASE.en.md)
 
 ## Novidades da 6.0.0
 

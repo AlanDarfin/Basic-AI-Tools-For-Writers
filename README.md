@@ -1,10 +1,16 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
+**Latest stable:** [6.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and mobile · **License:** MIT
 
 **Languages and interface:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A unified, compact writing environment for [Obsidian](https://obsidian.md): Longform-style writing projects, editing tools, local and AI dictionaries, translation, LanguageTool, Markdown syntax, writing statistics, snapshots and text-to-speech. All functionality remains opt-in where configurable.
+
+## Maintenance update — 6.0.1
+
+Longform project scenes now show a subtle vertical hierarchy instead of arrow badges: main chapter (no rail), subchapter (one rail), nested note (two rails), and so on. Scene titles remain readable and the drag/reorder controls stay aligned on mobile. The fix only changes the visual tree, not the underlying Longform index or its chapter order.
+
+[6.0.1 release notes](docs/V6_0_1_RELEASE.en.md) · [Português](docs/V6_0_1_RELEASE.pt-BR.md)
 
 ## What's new in 6.0.0
 

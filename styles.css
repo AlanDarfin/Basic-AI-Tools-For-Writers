@@ -1435,42 +1435,6 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
  color:var(--text-muted);font-size:var(--font-ui-smaller);
  overflow-wrap:anywhere;line-height:1.45;
 }
-/* v4 beta.4 — hierarchy indication inside compact Longform scene rows.
-   Only the title is indented, so controls/grip remain consistently aligned. */
-.writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
- display:block;
- padding-inline-start:calc(4px + var(--writer-scene-indent,0px));
- text-align:start;
- min-width:0;
- white-space:normal;
- overflow-wrap:anywhere;
-}
-.writer-project-panel .writer-project-scene.writer-project-scene-actions[data-depth]:not([data-depth="0"])>.writer-project-scene-title{
- box-shadow:inset 2px 0 var(--interactive-accent);
- border-radius:var(--radius-s);
- background:var(--background-secondary);
-}
-.writer-project-scene-depth-mark{
- display:inline-flex;align-items:center;justify-content:center;
- margin-inline-end:7px;
- min-width:21px;min-height:21px;
- padding-inline:3px;
- border-radius:5px;
- color:var(--text-accent);
- background:var(--background-modifier-hover);
- font-size:var(--font-ui-smaller);
- line-height:1.2;
- vertical-align:baseline;
- font-weight:700;
- white-space:nowrap;
-}
-.writer-project-scene-title-text{display:inline;overflow-wrap:anywhere}
-.writer-project-panel .writer-project-scene.writer-project-scene-actions.writer-project-scene-has-children>.writer-project-scene-title{
- font-weight:600;
-}
-@media(max-width:380px){
- .writer-project-scene-depth-mark{margin-inline-end:4px;min-width:18px;font-size:var(--font-smallest)}
-}
 /* v4 beta.5 — compact settings switches without wasted vertical space. */
 @media(max-width:800px){
  :is(.dictionary-settings-panel,.writer-tools-v3-panel,.writer-project-root)
@@ -2676,4 +2640,82 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 .cm-editor .writer-v6-booknav,
 .markdown-rendered .writer-v6-booknav{
  white-space:normal;
+}
+
+
+/* 6.0.1 — Longform scene hierarchy: quiet vertical rails, no arrow badges.
+   Row controls remain aligned and only the title receives indentation. */
+.writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-title{
+ display:flex;
+ flex-direction:row;
+ align-items:stretch;
+ gap:0;
+ box-sizing:border-box;
+ min-width:0;
+ max-width:100%;
+ padding:6px 4px;
+ margin:0;
+ white-space:normal;
+ overflow:visible;
+ overflow-wrap:anywhere;
+ text-align:start;
+ background:transparent;
+ border:0;
+ border-radius:0;
+ box-shadow:none;
+}
+.writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-depth]:not([data-depth="0"])>.writer-project-scene-title{
+ background:transparent;
+ box-shadow:none;
+ border:0;
+ border-radius:0;
+}
+.writer-project-root .writer-project-scene-rails{
+ box-sizing:border-box;
+ display:inline-flex;
+ flex:0 0 auto;
+ align-items:stretch;
+ align-self:stretch;
+ min-height:24px;
+ min-width:0;
+ padding:0 3px 0 1px;
+ margin-inline-end:3px;
+ pointer-events:none;
+}
+.writer-project-root .writer-project-scene-rail{
+ box-sizing:border-box;
+ display:block;
+ flex:0 0 9px;
+ width:9px;
+ min-width:9px;
+ min-height:24px;
+ border-inline-start:2px solid var(--interactive-accent);
+ opacity:.42;
+ pointer-events:none;
+}
+.writer-project-root .writer-project-scene-rail:last-child{
+ opacity:.88;
+}
+.writer-project-root .writer-project-scene-title-text{
+ display:block;
+ flex:1 1 auto;
+ min-width:0;
+ max-width:100%;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ line-height:1.4;
+}
+.writer-project-root .writer-project-scene.writer-project-scene-has-children>.writer-project-scene-title .writer-project-scene-title-text{
+ font-weight:600;
+}
+@media(max-width:480px){
+ .writer-project-root .writer-project-scene-rails{
+  padding-inline-end:2px;
+  margin-inline-end:2px;
+ }
+ .writer-project-root .writer-project-scene-rail{
+  flex-basis:7px;
+  width:7px;
+  min-width:7px;
+ }
 }

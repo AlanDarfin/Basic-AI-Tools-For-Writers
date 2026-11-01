@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Next maintenance release:** 7.0.1 (pending validation and publication; [release notes](docs/V7_0_1_RELEASE.en.md)) · **Latest published:** [7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1) (prepared for release; publication pending checks) · **Previous published:** [7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 

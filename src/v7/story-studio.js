@@ -99,7 +99,8 @@ async function writerV7StudioCreate(view,project,template){
 function writerV7StudioOpenSheet(view,entry,template){
  const modal=new Modal(view.app),fm=entry.cache?.frontmatter||{};
  const keys=[...new Set(['summary',...(template?.fields||[]),'status','pov'])].filter(k=>/^[\w-]{1,60}$/.test(k));
- const values=Object.fromEntries(keys.map(k=>[k,Array.isArray(fm[k])?fm[k].join(', '):String(fm[k]??'')]));
+ const initial=Object.fromEntries(keys.map(k=>[k,Array.isArray(fm[k])?fm[k].join(', '):String(fm[k]??'')]));
+ const values={...initial};
  modal.onOpen=()=>{
   modal.contentEl.addClass('writer-v7-studio-sheet');
   modal.setTitle(writerUi('Ficha: ','Sheet: ')+entry.title);
@@ -125,8 +126,9 @@ function writerV7StudioOpenSheet(view,entry,template){
     try{
      await view.app.fileManager.processFrontMatter(entry.file,data=>{
       for(const key of keys){
-       const value=values[key]?.trim();
-       if(!value)continue; // Blank fields never delete existing data.
+       const value=values[key]?.trim()||'';
+       if(value===(initial[key]?.trim()||''))continue;
+       if(!value){delete data[key];continue;}
        if(key==='relationships'||key==='members')data[key]=value.split(/,\s*/).map(writerV7StudioLinkValue).filter(Boolean);
        else if(['characters','plotlines','storyBeat','setup_scenes','payoff_scenes'].includes(key))data[key]=writerV7RCStrings(value);
        else if(key==='intensity'){
@@ -141,7 +143,7 @@ function writerV7StudioOpenSheet(view,entry,template){
        const file=view.app.vault.getAbstractFileByPath(related);
        if(file instanceof TFile){
         const current=Array.isArray(data.relationships)?data.relationships:typeof data.relationships==='string'?[data.relationships]:[];
-        const link='[['+file.basename+']]';
+        const link='[['+(view.app.metadataCache?.fileToLinktext?.(file,entry.path,true)||file.path.replace(/\.md$/i,''))+']]';
         if(!current.includes(link))data.relationships=[...current,link];
        }
       }

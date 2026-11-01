@@ -31,7 +31,7 @@ test('stable release attaches only the 3 supported files',()=>{
  const workflow=fs.readFileSync('.github/workflows/publish-release.yml','utf8');
  assert.match(workflow,/actions\/attest-build-provenance@v3/);
  assert.match(workflow,/npm ci --ignore-scripts/);
- assert.match(workflow,/gh release create "\$GITHUB_REF_NAME" main\.js manifest\.json styles\.css/);
+ assert.match(workflow,/gh release create "\$RELEASE_TAG" main\.js manifest\.json styles\.css/);
  assert.doesNotMatch(workflow,/gh release create[^\n]*\.zip/);
  assert.match(workflow,/actions\/upload-artifact@v4/);
 });

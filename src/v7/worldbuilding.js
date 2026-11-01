@@ -238,15 +238,7 @@ function writerV7RenderCompendium(view,panel,project){
    card.createEl('button',{cls:'writer-v7-mini-action',text:'+ #',attr:{'aria-label':writerUi('Adicionar tag','Add tag')}})
     .addEventListener('click',()=>writerV7TagPrompt(view,r.file));
    writerV7StudioAugmentEntry(view,card,r,templates,records);
-   const connected=writerV7Connections(view.app,records,r);
-   if(connected.length){
-    const detail=card.createEl('details',{cls:'writer-v7-connections'});
-    detail.createEl('summary',{text:connected.length+' '+writerUi('conexões com o compêndio','compendium connections')});
-    for(const item of connected){
-     detail.createEl('button',{text:item.title+' · '+item.direction})
-      .addEventListener('click',()=>view.openFile(item.file));
-    }
-   }
+
   }
  };
  const stat=root.createEl('p',{cls:'writer-v7-compendium-count'});

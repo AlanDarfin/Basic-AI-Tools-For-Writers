@@ -159,7 +159,8 @@ Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, re
 
 - **Provedores de IA:** trechos enviados às funções de IA vão para o provedor escolhido. Os serviços podem ter custos e políticas próprias.
 - **LanguageTool:** a análise automática envia o texto ao servidor configurado, somente enquanto a revisão está ativa.
-- **TTS online:** transmite texto ao serviço somente depois do consentimento.
+- **TTS online:** envia texto ao serviço de voz da Microsoft por WebSocket, somente depois do consentimento.
+- **Quatro chamadas de rede:** download do índice Unicode, LanguageTool, listagem de modelos e IA. Consulte o [detalhamento de cada chamada e os gatilhos automáticos](../SECURITY.md#network-disclosures-four-requesturl-call-sites).
 - **Diagnóstico:** mostra versão, plataforma, recursos ativos, estado dos provedores, LanguageTool, histórico e disponibilidade da API de voz. Não faz consultas externas nem revela chaves completas.
 - **Chaves:** ficam armazenadas no `data.json` do Obsidian **sem criptografia adicional**. Não publique esse arquivo nem o sincronize com dispositivos não confiáveis.
 - **Backups:** use sempre cópias de segurança do cofre antes de mudanças grandes ou compilações.

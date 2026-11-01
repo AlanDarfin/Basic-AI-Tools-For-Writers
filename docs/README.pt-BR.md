@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.0.6 estável · **Versão anterior publicada:** 7.0.5 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.1.0 estável · **Versão anterior publicada:** 7.0.6 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Correção localizada no LanguageTool — 7.1.0
+
+Depois da primeira análise gramatical, aceitar uma correção envia ao LanguageTool **somente a sentença alterada**, ou o parágrafo caso os limites da sentença sejam incertos. As sugestões de outras partes do documento são preservadas, com seus deslocamentos ajustados quando o texto cresce ou diminui. A alteração não dispara outra chamada automática para a mesma correção. A revisão manual completa continua disponível. Uma edição simultânea inesperada exige nova verificação por segurança. [Notas 7.1.0](V7_1_0_RELEASE.pt-BR.md) · [English](V7_1_0_RELEASE.en.md).
 
 ## Destaque de linha por interação — 7.0.6
 

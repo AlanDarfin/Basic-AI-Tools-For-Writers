@@ -3565,6 +3565,76 @@ function writerAutoGrammarWindow(source,position=0,limit=12000){
  if(to<text.length&&endBreak>from&&to-endBreak<160)to=endBreak;
  return {from,to,text:text.slice(from,to),partial:true};
 }
+// Recheck the smallest reliable context after accepting one LanguageTool suggestion.
+// Match offsets remain based on the original (unmasked) document.
+function writerGrammarParagraphBounds(source,at){
+ const text=String(source||''),pos=Math.max(0,Math.min(text.length,at));
+ const breaks=/\r?\n[ \t]*\r?\n/g;
+ let from=0,to=text.length,m;
+ while((m=breaks.exec(text))!==null){
+  if(m.index+m[0].length<=pos)from=m.index+m[0].length;
+  else if(m.index>=pos){to=m.index;break;}
+ }
+ return {from,to};
+}
+function writerGrammarLocalWindow(source,start,end,limit=10000){
+ const text=String(source||''),max=Math.min(16000,Math.max(1000,limit));
+ const pos=Math.max(0,Math.min(text.length,start)),finish=Math.max(pos,Math.min(text.length,end));
+ const paragraph=writerGrammarParagraphBounds(text,pos);
+ if(finish>paragraph.to){
+  const next=writerGrammarParagraphBounds(text,finish);
+  paragraph.to=Math.max(paragraph.to,next.to);
+ }
+ let from=paragraph.from,to=paragraph.to,kind='paragraph';
+ // Use sentence boundaries only when their punctuation has an unambiguous
+ // whitespace + uppercase successor; otherwise retain the whole paragraph.
+ const split=/[.!?…][)"'”’]*\s+(?=[\p{Lu}\p{N}“"'])/gu;
+ const boundaries=[from];let m;
+ split.lastIndex=from;
+ while((m=split.exec(text))!==null&&m.index<to){
+  const boundary=split.lastIndex;
+  if(boundary>from&&boundary<to)boundaries.push(boundary);
+ }
+ boundaries.push(to);
+ for(let i=1;i<boundaries.length;i++){
+  const a=boundaries[i-1],b=boundaries[i];
+  if(a<=pos&&b>=finish&&b>a&&b-a<=max){
+   if(boundaries.length>2){from=a;to=b;kind='sentence';}
+   break;
+  }
+ }
+ if(to-from>max){
+  // Extremely long paragraphs: still never transmit a full manuscript.
+  const chunk=writerAutoGrammarWindow(text,pos,Math.max(4000,max));
+  from=Math.max(paragraph.from,chunk.from);
+  to=Math.min(paragraph.to,chunk.to);
+  kind='window';
+ }
+ return {from,to,text:text.slice(from,to),kind};
+}
+function writerGrammarLocalScopes(before,after,start,oldEnd,newEnd){
+ const oldSentence=writerGrammarLocalWindow(before,start,oldEnd);
+ const newSentence=writerGrammarLocalWindow(after,start,newEnd);
+ const delta=after.length-before.length;
+ // If the edit changes a sentence separator, recheck the encompassing
+ // paragraph so no adjacent sentence keeps an invalid cached result.
+ if(oldSentence.kind==='sentence'&&newSentence.kind==='sentence'&&
+    oldSentence.from===newSentence.from&&oldSentence.to+delta===newSentence.to)
+  return {old:oldSentence,next:newSentence};
+ const fallback=(text,finish)=>{
+  const startBounds=writerGrammarParagraphBounds(text,start);
+  const endBounds=writerGrammarParagraphBounds(text,finish);
+  const from=startBounds.from,to=Math.max(startBounds.to,endBounds.to);
+  if(to-from<=16000)return {from,to,text:text.slice(from,to),kind:'paragraph'};
+  return writerGrammarLocalWindow(text,start,finish,12000);
+ };
+ return {old:fallback(before,oldEnd),next:fallback(after,newEnd)};
+}
+function writerGrammarPreserveOutside(matches,oldScope,delta){
+ return (matches||[]).filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&
+   m.length>0&&(m.offset+m.length<=oldScope.from||m.offset>=oldScope.to))
+  .map(m=>({...m,offset:m.offset>=oldScope.to?m.offset+delta:m.offset}));
+}
 class WriterAutoGrammar{
  constructor(plugin){this.plugin=plugin;this.timer=null;this.lastRun=0;this.pendingPath=null;this.destroyed=false;}
  get config(){return this.plugin.settings.autoGrammar;}
@@ -3591,7 +3661,7 @@ class WriterAutoGrammar{
  }
  stop(){this.destroyed=true;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  schedule(file,{delay}={}){
-  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md')return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return;
   const view=this.reviewView();
   if(!view||view.reviewFilePath!==file.path)return;
   this.pendingPath=file.path;
@@ -8753,6 +8823,44 @@ class DictionaryView extends ItemView{
    if(this.plugin.autoGrammar?.pendingPath===file.path&&!this.plugin.autoGrammar.timer)this.plugin.autoGrammar.schedule(file);
   }
  }
+ async recheckGrammarCorrection(file,before,after,start,oldEnd,newEnd,previousMatches){
+  if(this.activeTab!=='review'||this.reviewMode?.value!=='grammar'||this.reviewFilePath!==file.path)return false;
+  const scopes=writerGrammarLocalScopes(before,after,start,oldEnd,newEnd);
+  const preserved=writerGrammarPreserveOutside(previousMatches,scopes.old,after.length-before.length);
+  const publish=(matches,status)=>{
+   if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return;
+   this.reviewSource=after;this.plugin.reviewSource=after;
+   this.grammarCheckedPath=file.path;this.grammarCheckedSource=after;
+   this.reviewResults.empty();
+   this.plugin.showReviewMarks(file,matches);
+   this.reviewStatus.setText(status);
+   if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
+   for(const m of matches)this.renderGrammarSuggestion(file,after,m);
+  };
+  // Keep every unaffected paragraph's findings while the small request is in flight.
+  publish(preserved,msg('Reanalisando apenas ','Rechecking only ')+
+   (scopes.next.kind==='sentence'?msg('a sentença alterada…','the changed sentence…'):msg('o trecho alterado…','the changed passage…')));
+  this.reviewBusy=true;
+  try{
+   const masked=prepareGrammarText(after);
+   const raw=await this.plugin.checkGrammar(masked.slice(scopes.next.from,scopes.next.to));
+   if(after!==await writerCurrentText(this.plugin,file))return true;
+   if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return false;
+   const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
+   const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
+    .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
+     writerGrammarMatchIsSafe(after,masked,m)&&
+     (!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(after,m))&&
+     !ignored.has(String(m.rule?.id||'').toUpperCase()));
+   const all=[...preserved,...revised].sort((a,b)=>a.offset-b.offset||a.length-b.length);
+   publish(all,all.length+' '+msg('sugestões no documento (trecho alterado atualizado)','suggestions in document (changed passage refreshed)'));
+   return false;
+  }catch(error){
+   if(after!==await writerCurrentText(this.plugin,file))return true;
+   publish(preserved,msg('Não foi possível reanalisar o trecho; outras sugestões preservadas. ','Could not recheck passage; other suggestions preserved. ')+(error.message||String(error)));
+   return false;
+  }finally{this.reviewBusy=false;}
+ }
  renderGrammarSuggestion(file,source,match,target=this.reviewResults){
   const start=match.offset,end=start+match.length;
   if(!Number.isInteger(start)||!Number.isInteger(match.length)||start<0||end>source.length||match.length<=0)return;
@@ -9536,21 +9644,37 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.reviewPopupKey=null;
   }
   async applyGrammarReplacement(file,source,match,replacement){
+    this.grammarCorrectionPaths ||=new Set();
+    if(this.grammarCorrectionPaths.has(file.path))return;
+    let needsFullReview=false,current=null;
+    this.grammarCorrectionPaths.add(file.path);
     try{
-      const current=this.app.vault.getAbstractFileByPath(file.path);
+      current=this.app.vault.getAbstractFileByPath(file.path);
       if(!(current instanceof TFile))throw new Error(msg('Arquivo não encontrado','File not found'));
       const present=await writerCurrentText(this,current);
       if(present!==source)throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
       const start=match.offset,end=start+match.length;
-      await writerSafeReplace(this,current,start,end,source.slice(start,end),replacement,msg('aceitar revisão gramatical','accept grammar correction'));
-      this.closeReviewPopup();this.clearReviewMarks();
-      new Notice(msg('Correção aplicada','Correction applied'));
       const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
-      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'){
-        if(this.settings.autoGrammar?.enabled!==false)this.autoGrammar?.schedule(current);
-        else setTimeout(()=>view.reviewFile(current),300);
+      const cached=this.reviewMarkedPath===file.path&&this.reviewSource===source&&
+       Array.isArray(this.reviewMatches)?this.reviewMatches.slice():null;
+      const auto=this.autoGrammar;
+      if(auto?.pendingPath===file.path){
+       clearTimeout(auto.timer);auto.timer=null;auto.pendingPath=null;
       }
+      const after=await writerSafeReplace(this,current,start,end,source.slice(start,end),replacement,msg('aceitar revisão gramatical','accept grammar correction'));
+      this.closeReviewPopup();
+      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'&&cached){
+       needsFullReview=await view.recheckGrammarCorrection(current,source,after,start,end,start+replacement.length,cached);
+       if(!needsFullReview&&auto)auto.lastRun=Date.now();
+      }else if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'){
+       needsFullReview=true; // No trustworthy cached offsets; use the existing full check.
+      }else this.clearReviewMarks();
+      new Notice(msg('Correção aplicada','Correction applied'));
     }catch(error){new Notice(error.message||String(error),7000);}
+    finally{
+     this.grammarCorrectionPaths.delete(file.path);
+     if(needsFullReview&&current)this.autoGrammar?.schedule(current,{delay:2000});
+    }
   }
   async createGrammarVariant(file,source,match,replacement){
     try{
@@ -9679,6 +9803,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   hideReviewMark(file,start,end){
     if(this.reviewMarkedPath!==file.path)return;
+    // A dismissed finding must not reappear from the incremental cache.
+    this.reviewMatches=this.reviewMatches.filter(m=>m.offset!==start||m.offset+m.length!==end);
     this.reviewMarks=this.reviewMarks.filter(m=>m.from!==start||m.to!==end);
     for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
   }

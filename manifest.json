@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "7.0.0-beta.2",
+  "version": "7.0.0-rc.1",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Experimental v7: tag-driven world compendium, wiki sheets and relationships, Longform board, image maps, gallery, tracks/Gantt timeline, session journal and editorial tools.",
+  "description": "Release candidate: Longform story planning with scene inspector, corkboard/Kanban, plotline grid, beat templates, pacing, compendium, timelines and exports.",
   "isDesktopOnly": false
 }

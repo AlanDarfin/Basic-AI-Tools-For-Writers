@@ -428,6 +428,7 @@ class WriterV7Worldbuilding{
     if(key==='explorerFolderNotes'||key==='folderNotes')this.scheduleExplorer();
    }));
   this.plugin.writerV7StoryStudio?.renderSettings(section);
+  this.plugin.writerV7LongformRC?.renderSettings(section);
   new Setting(section).setName(writerUi('Limite de registros do compêndio','Compendium entry limit')).addText(x=>x.setValue(String(this.plugin.settings.v7.maxEntries)).onChange(async text=>{
    this.plugin.settings.v7.maxEntries=Math.max(100,Math.min(10000,Number(text)||3000));await this.plugin.saveSettings();
   }));

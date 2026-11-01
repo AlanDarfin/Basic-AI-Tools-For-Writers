@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Maintenance in version 7.0.1
+
+The 7.0.1 maintenance release improves CI reproducibility, community release packaging and GitHub artifact provenance. The desktop-only, optional Pandoc exporter remains integrated; it uses Node.js filesystem and process APIs on desktop and is disabled on mobile. See [Security and permissions](SECURITY.md) and [Contributing](CONTRIBUTING.md).
 
 ## New in version 7.0.0
 
@@ -19,7 +23,7 @@ The stable v7 release consolidates two betas and a release candidate. All new pl
 | **Interface** | Compact **Writing / World / Project** navigation and responsive layouts for narrow screens. |
 | **Writing tools** | Grammar, dictionaries, TTS, snapshots, Unicode, editing tools and optional desktop Pandoc export remain integrated. |
 
-**[Full stable release notes](docs/V7_RELEASE.en.md) · [Português](docs/V7_RELEASE.pt-BR.md) · [Download 7.0.0 ZIP](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
+**[Full stable release notes](docs/V7_RELEASE.en.md) · [Português](docs/V7_RELEASE.pt-BR.md) · [Release 7.0.1 downloads](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1)**
 
 **Data safety:** Deleting a series never deletes its manuscripts. Tags inherited from Folder Notes only affect indexing, not child files. Scene/world sheet editing uses the native frontmatter API. The AI narrative context remains opt-in and off by default. Calendar changes affect chronological display, not the actual event dates.
 

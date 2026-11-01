@@ -81,7 +81,7 @@ function lfWordCount(text){
 }
 function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;this.tabScrollPositions=Object.create(null);this.tabGroup=null;}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
@@ -119,6 +119,10 @@ class ProjectsView extends ItemView{
  async render(){
   if(!this.root)return;
   const previousScroll=this.root.scrollTop;
+  const previousTabs=this.root.querySelector('.writer-project-tabs');
+  if(previousTabs&&this.tabGroup){
+   this.tabScrollPositions[this.tabGroup]=previousTabs.scrollLeft;
+  }
   this.root.empty();
   const indexes=this.indexes();
   const token=++this.renderToken;
@@ -170,6 +174,7 @@ class ProjectsView extends ItemView{
    {id:'management',pt:'Projeto',en:'Project',tabs:['project','continuity','tasks','comments']}
   ];
   const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
+  this.tabGroup=activeGroup;
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   for(const group of menuGroups){
    groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
@@ -178,12 +183,10 @@ class ProjectsView extends ItemView{
     .addEventListener('click',()=>{
      if(activeGroup===group.id)return;
      const first=allTabs.find(([id])=>group.tabs.includes(id));
-     if(first){this.activeTab=first[0];this.tabScrollLeft=0;void this.render();}
+     if(first){this.activeTab=first[0];void this.render();}
     });
   }
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
-  tabs.scrollLeft=this.tabScrollLeft||0;
-  tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
   tabs.addEventListener('wheel',event=>{
    if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
@@ -192,10 +195,19 @@ class ProjectsView extends ItemView{
   const panels={};
   for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===activeGroup)?.tabs.includes(id))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
-   btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
+   btn.addEventListener('click',()=>{
+    if(this.activeTab===id)return;
+    this.tabScrollPositions[activeGroup]=tabs.scrollLeft;
+    this.activeTab=id;void this.render();
+   });
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
+  // Restore only after tab buttons exist, otherwise scrollLeft gets clamped to zero.
+  tabs.scrollLeft=Math.max(0,this.tabScrollPositions[activeGroup]||0);
+  tabs.addEventListener('scroll',()=>{
+   if(tabs.isConnected)this.tabScrollPositions[activeGroup]=tabs.scrollLeft;
+  },{passive:true});
   // Rendering every hidden panel was expensive for books with many chapters.
   if(this.activeTab==='scenes')this.drawScenes(panels.scenes,project);
   if(this.activeTab==='project')this.drawProject(panels.project,project);

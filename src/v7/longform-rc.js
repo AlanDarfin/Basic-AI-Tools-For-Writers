@@ -43,7 +43,7 @@ function writerV7RCSceneView(view,project){
   const fm=scene.file?view.app.metadataCache?.getFileCache?.(scene.file)?.frontmatter||{}:{};
   const plotlines=writerV7RCStrings(fm.plotlines||fm.plotline||fm.storyArc||fm.arc);
   const beats=writerV7RCStrings(fm.storyBeat||fm.beat||fm.beatsheet);
-  const intensity=Number(fm.intensity);
+  const intensity=fm.intensity===undefined||fm.intensity===null||fm.intensity===''?NaN:Number(fm.intensity);
   const act=String(fm.act||fm.storyAct||'').trim().slice(0,80);
   const sequence=String(fm.sequence||fm.storySequence||'').trim().slice(0,80);
   const emotion=String(fm.emotion||'').trim().slice(0,80);
@@ -82,8 +82,9 @@ function writerV7RCAssignSceneProperty(view,file,key,value){
     fm.intensity=num;
    }else if(key==='storyBeat'||key==='plotlines'){
     const values=writerV7RCStrings(value);
-    if(values.length)fm[key]=values;
-    else delete fm[key];
+    const current=writerV7RCStrings(fm[key]||(key==='plotlines'?fm.plotline:fm.beat));
+    if(values.length)fm[key]=[...new Set([...current,...values])].slice(0,40);
+    else if(!current.length)delete fm[key];
    }else if(String(value||'').trim())fm[key]=String(value).trim().slice(0,100);
    else delete fm[key];
   });
@@ -258,6 +259,19 @@ function writerV7RCRenderBeats(view,panel,project){
    const buttons=row.createDiv({cls:'writer-v7-rc-beat-scenes'});
    for(const s of linked)buttons.createEl('button',{text:s.title}).addEventListener('click',()=>s.file&&view.openFile(s.file));
    row.createEl('button',{text:writerUi('Vincular','Assign')}).addEventListener('click',()=>writerV7RCAssignmentModal(view,project,'storyBeat',id));
+   if(linked.length){
+    row.createEl('button',{text:writerUi('Desvincular','Unassign')}).addEventListener('click',async()=>{
+     const scene=linked[0];
+     if(!(scene.file instanceof TFile))return;
+     try{
+      await view.app.fileManager.processFrontMatter(scene.file,fm=>{
+       const list=writerV7RCStrings(fm.storyBeat||fm.beat||fm.beatsheet);
+       fm.storyBeat=list.filter(x=>x!==id);
+      });
+      await view.render();
+     }catch(e){new Notice(String(e.message||e));}
+    });
+   }
   }
   const assigned=scenes.flatMap(s=>s.beats.map(beat=>({beat,scene:s}))).filter(x=>!known.has(x.beat));
   if(assigned.length){

@@ -102,7 +102,12 @@ class ProjectsView extends ItemView{
    }
    this.queueRender();
   }));
-  this.registerEvent(this.app.metadataCache.on('changed',file=>{if(file?.path===this.selected)this.queueRender();}));
+  this.registerEvent(this.app.metadataCache.on('changed',file=>{
+   const notes=this.currentProject&&this.notesRoot(this.currentProject)+'/';
+   const changedScene=this.currentProject&&['scenes','board','structure','continuity','analytics'].includes(this.activeTab)
+    &&this.activeScenes(this.currentProject).some(scene=>this.resolveScene(this.currentProject,scene.title)?.path===file?.path);
+   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline','continuity'].includes(this.activeTab))||changedScene)this.queueRender();
+  }));
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
  }
@@ -133,6 +138,9 @@ class ProjectsView extends ItemView{
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
   this.currentProject=project;
+  top.createEl('button',{text:lfMsg('Séries','Series'),cls:'writer-v7-stable-series-launch',
+   attr:{type:'button','aria-label':lfMsg('Organizar séries de livros','Organize book series')}})
+   .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
    try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
     const parsed=fm?parseYaml(fm[1]):null;
@@ -145,6 +153,32 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
+  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
+  &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
+  &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
+  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
+  &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
+  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
+  if(!allTabs.some(([id])=>id===this.activeTab))this.activeTab=allTabs[0]?.[0]||'scenes';
+  const menuGroups=[
+   {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
+   {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
+   {id:'management',pt:'Projeto',en:'Project',tabs:['project','continuity','tasks','comments']}
+  ];
+  const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
+  const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
+  for(const group of menuGroups){
+   groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
+    cls:activeGroup===group.id?'is-active':'',
+    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}})
+    .addEventListener('click',()=>{
+     if(activeGroup===group.id)return;
+     const first=allTabs.find(([id])=>group.tabs.includes(id));
+     if(first){this.activeTab=first[0];this.tabScrollLeft=0;void this.render();}
+    });
+  }
   const tabs=this.root.createDiv({cls:'writer-project-tabs'});
   tabs.scrollLeft=this.tabScrollLeft||0;
   tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
@@ -154,7 +188,7 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Notas","Notes")],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>id!=='comments'||writerModuleOn(this.plugin,'comments'))){
+  for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===activeGroup)?.tabs.includes(id))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -165,6 +199,15 @@ class ProjectsView extends ItemView{
   if(this.activeTab==='project')this.drawProject(panels.project,project);
   if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
+  if(this.activeTab==='timeline')writerV7RenderTimeline(this,panels.timeline,project);
+  if(this.activeTab==='board')writerV7StudioRenderBoard(this,panels.board,project);
+  if(this.activeTab==='structure')writerV7RCRenderStructure(this,panels.structure,project);
+  if(this.activeTab==='relations')writerV7StudioRenderGraph(this,panels.relations,project);
+  if(this.activeTab==='maps')writerV7StudioRenderMaps(this,panels.maps,project);
+  if(this.activeTab==='analytics')writerV7StudioRenderAnalytics(this,panels.analytics,project);
+  if(this.activeTab==='gallery')writerV7StudioRenderGallery(this,panels.gallery,project);
+  if(this.activeTab==='sessions')writerV7StudioRenderSessions(this,panels.sessions,project);
+  if(this.activeTab==='continuity')writerV7RenderContinuity(this,panels.continuity,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
   if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
@@ -340,6 +383,13 @@ class ProjectsView extends ItemView{
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
   toolbar.createEl('button',{text:lfMsg("Novo rascunho Longform","New Longform draft")}).addEventListener('click',()=>this.createLinkedDraft(project));
+  toolbar.createEl('button',{text:lfMsg('Expandir tudo','Expand all')}).addEventListener('click',async()=>{
+   prefs.v7CollapsedScenes={};await this.plugin.saveSettings();await this.render();
+  });
+  toolbar.createEl('button',{text:lfMsg('Recolher tudo','Collapse all')}).addEventListener('click',async()=>{
+   prefs.v7CollapsedScenes=Object.fromEntries(this.activeScenes(project).map(x=>[x.title,true]));
+   await this.plugin.saveSettings();await this.render();
+  });
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
@@ -384,7 +434,19 @@ class ProjectsView extends ItemView{
      this.moveSceneRelative(project,data.name,name,after);
    });
    const file=this.resolveScene(project,name);
-   const titleButton=row.createEl('button',{cls:'writer-project-scene-title',attr:{
+   const titleWrapper=row.createDiv({cls:'writer-v7-scene-title-wrap'});
+   if(item.children?.length){
+    const closed=prefs.v7CollapsedScenes?.[name]===true;
+    titleWrapper.createEl('button',{cls:'writer-v7-scene-collapse',text:closed?'+':'−',
+     attr:{type:'button','aria-expanded':String(!closed),
+      'aria-label':closed?lfMsg('Expandir ','Expand ')+name:lfMsg('Recolher ','Collapse ')+name}})
+     .addEventListener('click',async()=>{
+      prefs.v7CollapsedScenes=prefs.v7CollapsedScenes||{};
+      prefs.v7CollapsedScenes[name]=!closed;
+      await this.plugin.saveSettings();await this.render();
+     });
+   }
+   const titleButton=titleWrapper.createEl('button',{cls:'writer-project-scene-title',attr:{
     'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
    }});
    if(level>0){
@@ -411,11 +473,15 @@ class ProjectsView extends ItemView{
      ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
      [lfMsg('Adicionar subcapítulo','Add subchapter'),'plus',()=>this.addScene(project,name)],
      [lfMsg('Renomear cena','Rename scene'),'pencil',()=>this.renameScene(project,name)],
+     [lfMsg('Inspecionar cena','Inspect scene'),'clipboard-list',()=>file?writerV7StudioOpenSheet(this,{
+      file,path:file.path,title:name,cache:this.app.metadataCache?.getFileCache?.(file),tags:[]
+     },{fields:['summary','status','act','sequence','pov','characters','location','sceneDate','plotlines','storyBeat','emotion','intensity','conflict','setup_scenes','payoff_scenes','target_wordcount']}):
+      new Notice(lfMsg('Cena não encontrada.','Scene not found.'))],
      [lfMsg('Retirar do índice (preservar arquivo)','Remove from index (keep file)'),'list-x',()=>this.removeSceneFromIndex(project,name)]
     ])menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
     menu.showAtMouseEvent(event);
    });
-   for(const child of item.children)renderItem(child,parent,level+1);
+   if(prefs.v7CollapsedScenes?.[name]!==true)for(const child of item.children)renderItem(child,parent,level+1);
   };
   for(const item of tree)renderItem(item,panel);
   if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use + Cena.','No scenes yet. Use + Scene.')});
@@ -703,6 +769,15 @@ class ProjectsView extends ItemView{
     status.setText(lfMsg('Prévia gerada; nenhum arquivo foi modificado.','Preview generated; no files were modified.'));
    }catch(e){new Notice(lfMsg("Workflow inválido: ","Invalid workflow: ")+e.message,8000);}
   });
+  if(!this.app.isMobile&&this.plugin.settings.pandocExport?.enabled&&this.plugin.writerPandocExporter){
+   add.createEl('button',{text:lfMsg('Compilar e exportar…','Compile and export…')}).addEventListener('click',async()=>{
+    try{
+     const result=await this.compileProject(project,wf,false);
+     await this.app.workspace.getLeaf(false).openFile(result.file);
+     this.plugin.writerPandocExporter.openDialog();
+    }catch(e){new Notice(lfMsg('Falha na compilação: ','Compilation failed: ')+e.message);}
+   });
+  }
   add.createEl('button',{text:lfMsg("Compilar","Compile"),cls:'mod-cta'}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,false);status.setText(lfMsg('Criado: ','Created: ')+result.file.path);new Notice(lfMsg('Manuscrito criado sem sobrescrever o original.','Manuscript created without overwriting the original.'));}
    catch(e){new Notice(lfMsg('Falha: ','Failed: ')+e.message,8000);}
@@ -712,6 +787,10 @@ class ProjectsView extends ItemView{
  async ensureFolder(path){let current='';for(const part of path.split('/').filter(Boolean)){current=current?current+'/'+part:part;if(!this.app.vault.getAbstractFileByPath(current))await this.app.vault.createFolder(current);}}
 
  async drawNotes(panel,project){
+  if(this.plugin.settings.v7?.compendium)return writerV7RenderCompendium(this,panel,project);
+  return await this.drawNotesLegacy(panel,project);
+ }
+ async drawNotesLegacy(panel,project){
   const root=this.notesRoot(project);
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:lfMsg('+ Pasta','+ Folder')}).addEventListener('click',()=>this.promptNotesFolder(root));
@@ -729,6 +808,12 @@ class ProjectsView extends ItemView{
    actions.createEl('button',{text:lfMsg("+ Nota","+ Note")}).addEventListener('click',()=>this.promptNote(f.path));
    actions.createEl('button',{text:lfMsg('+ Pasta','+ Folder')}).addEventListener('click',()=>this.promptNotesFolder(f.path));
    if(level>0){
+    actions.createEl('button',{text:lfMsg('Nota da pasta','Folder note')}).addEventListener('click',async()=>{
+     try{
+      const note=writerV7FolderNote(this.app,f)||await this.plugin.writerV7Worldbuilding.createFolderNote(f);
+      if(note)await this.openFile(note);
+     }catch(e){new Notice(String(e.message||e));}
+    });
     actions.createEl('button',{text:lfMsg("Renomear","Rename")}).addEventListener('click',()=>this.renameProjectItem(f));
     actions.createEl('button',{text:lfMsg('Lixeira','Trash')}).addEventListener('click',()=>this.trashProjectItem(f));
    }

@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.0.4 estável · **Versão anterior publicada:** 7.0.3 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.0.5 estável · **Versão anterior publicada:** 7.0.4 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Séries do Longform no cabeçalho — 7.0.5
+
+O livro selecionado agora mostra sua série em uma **linha própria, logo abaixo do seletor de projetos**, junto de um botão **Gerenciar** que abre o painel existente de organização das séries. A posição não muda ao trocar de aba nem ao estreitar a lateral. Livros sem séries exibem **Sem série**; caso pertençam a várias, todas são indicadas. As mudanças realizadas no gerenciador aparecem imediatamente. [Notas 7.0.5](V7_0_5_RELEASE.pt-BR.md) · [English](V7_0_5_RELEASE.en.md).
 
 ## Navegação estável e rolagem horizontal — 7.0.4
 

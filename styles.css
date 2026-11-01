@@ -1342,13 +1342,13 @@ select:not([multiple]){
 body.writer-v4-typewriter .cm-editor .cm-line{
  padding-inline-start:10px;
 }
-body.writer-v4-typewriter .cm-editor .cm-line.writer-v4-typewriter-current-line{
+body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line{
  position:relative;
  background-color:var(--background-modifier-hover);
  opacity:1;
  border-radius:var(--radius-s);
 }
-body.writer-v4-typewriter .cm-editor .cm-line.writer-v4-typewriter-current-line::before{
+body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line::before{
  content:"";
  position:absolute;
  inset-block:0;
@@ -1363,10 +1363,10 @@ body.writer-v4-typewriter .cm-editor .cm-scroller{scroll-padding-block:40vh}
  .writer-project-scene-actions .writer-project-drag-handle{flex-basis:40px}
 }
 
-body.writer-v4-typewriter-focus .cm-editor .cm-line:not(.writer-v4-typewriter-current-line){
+body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line:not(.writer-v4-typewriter-current-line){
  opacity:.67;transition:opacity 140ms ease;
 }
-body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current-line{opacity:1}
+body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line{opacity:1}
 
 /* v4 beta.3 — Longform scene cards: restore a three-column compact row on mobile. */
 .writer-project-panel .writer-project-scene.writer-project-scene-actions{

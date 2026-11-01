@@ -25,6 +25,72 @@ function writerAutoGrammarWindow(source,position=0,limit=12000){
  if(to<text.length&&endBreak>from&&to-endBreak<160)to=endBreak;
  return {from,to,text:text.slice(from,to),partial:true};
 }
+// Recheck the smallest reliable context after accepting one LanguageTool suggestion.
+// Match offsets remain based on the original (unmasked) document.
+function writerGrammarParagraphBounds(source,at){
+ const text=String(source||''),pos=Math.max(0,Math.min(text.length,at));
+ const breaks=/\r?\n[ \t]*\r?\n/g;
+ let from=0,to=text.length,m;
+ while((m=breaks.exec(text))!==null){
+  if(m.index+m[0].length<=pos)from=m.index+m[0].length;
+  else if(m.index>=pos){to=m.index;break;}
+ }
+ return {from,to};
+}
+function writerGrammarLocalWindow(source,start,end,limit=10000){
+ const text=String(source||''),max=Math.min(16000,Math.max(1000,limit));
+ const pos=Math.max(0,Math.min(text.length,start)),finish=Math.max(pos,Math.min(text.length,end));
+ const paragraph=writerGrammarParagraphBounds(text,pos);
+ if(finish>paragraph.to){
+  const next=writerGrammarParagraphBounds(text,finish);
+  paragraph.to=Math.max(paragraph.to,next.to);
+ }
+ let from=paragraph.from,to=paragraph.to,kind='paragraph';
+ // Use sentence boundaries only when their punctuation has an unambiguous
+ // whitespace + uppercase successor; otherwise retain the whole paragraph.
+ const split=/[.!?…][”"'\)\]]*\s+(?=[\p{Lu}\p{N}“"']/gu;
+ const boundaries=[from];let m;
+ split.lastIndex=from;
+ while((m=split.exec(text))!==null&&m.index<to){
+  const boundary=split.lastIndex;
+  if(boundary>from&&boundary<to)boundaries.push(boundary);
+ }
+ boundaries.push(to);
+ for(let i=1;i<boundaries.length;i++){
+  const a=boundaries[i-1],b=boundaries[i];
+  if(a<=pos&&b>=finish&&b>a&&b-a<=max){
+   if(boundaries.length>2){from=a;to=b;kind='sentence';}
+   break;
+  }
+ }
+ if(to-from>max){
+  // Extremely long paragraphs: still never transmit a full manuscript.
+  const chunk=writerAutoGrammarWindow(text,pos,Math.max(4000,max));
+  from=Math.max(paragraph.from,chunk.from);
+  to=Math.min(paragraph.to,chunk.to);
+  kind='window';
+ }
+ return {from,to,text:text.slice(from,to),kind};
+}
+function writerGrammarLocalScopes(before,after,start,oldEnd,newEnd){
+ const oldSentence=writerGrammarLocalWindow(before,start,oldEnd);
+ const newSentence=writerGrammarLocalWindow(after,start,newEnd);
+ const delta=after.length-before.length;
+ // If the edit changes a sentence separator, recheck the encompassing
+ // paragraph so no adjacent sentence keeps an invalid cached result.
+ if(oldSentence.kind==='sentence'&&newSentence.kind==='sentence'&&
+    oldSentence.from===newSentence.from&&oldSentence.to+delta===newSentence.to)
+  return {old:oldSentence,next:newSentence};
+ return {
+  old:writerGrammarLocalWindow(before,start,oldEnd,16000),
+  next:writerGrammarLocalWindow(after,start,newEnd,16000)
+ };
+}
+function writerGrammarPreserveOutside(matches,oldScope,delta){
+ return (matches||[]).filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&
+   m.length>0&&(m.offset+m.length<=oldScope.from||m.offset>=oldScope.to))
+  .map(m=>({...m,offset:m.offset>=oldScope.to?m.offset+delta:m.offset}));
+}
 class WriterAutoGrammar{
  constructor(plugin){this.plugin=plugin;this.timer=null;this.lastRun=0;this.pendingPath=null;this.destroyed=false;}
  get config(){return this.plugin.settings.autoGrammar;}

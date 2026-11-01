@@ -69,7 +69,7 @@ test('standalone views and Longform respect optional modules and skip hidden pan
  assert.ok(main.includes("writerModuleOn(this,'translation')"));
  assert.ok(main.includes("this.refreshModuleVisibility()"));
  assert.ok(tools.includes("writerModuleOn(this.plugin,feature)"));
- assert.ok(projects.includes("this.activeTab==='scenes')this.drawScenes"));
+ assert.ok(projects.includes("if(id==='scenes')this.drawScenes(panel,project)"));
  assert.ok(projects.includes("writerModuleOn(this.plugin,'comments')"));
  assert.ok(grammar.includes("writerModuleOn(this.plugin,'review')"));
  assert.ok(integrations.includes("writerModuleOn(this.plugin,'mentions')"));

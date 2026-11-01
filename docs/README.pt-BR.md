@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.0.3 estável · **Versão anterior publicada:** 7.0.2 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.0.4 estável · **Versão anterior publicada:** 7.0.3 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Navegação estável e rolagem horizontal — 7.0.4
+
+Ao selecionar abas no Longform, o plugin agora troca **somente o conteúdo**, sem reconstruir a barra horizontal. A mudança de grupos Escrita / Universo / Projeto também preserva o elemento de navegação. As duas fileiras de abas das configurações aceitam rolagem pelo mouse/trackpad e lembram a posição em cada grupo, sem animações indesejadas. Não altera os capítulos, o Pandoc ou os controles do celular. [Notas 7.0.4](V7_0_4_RELEASE.pt-BR.md) · [English](V7_0_4_RELEASE.en.md).
 
 ## Correção da rolagem nas abas do Longform — 7.0.3
 

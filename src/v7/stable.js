@@ -166,7 +166,9 @@ function writerV7SeriesOpen(view){
    const picker=add.createEl('select',{attr:{'aria-label':writerUi('Adicionar livro à série','Add a book to series')}});
    const availableBooks=indexed.filter(p=>!series.books.includes(p.file.path));
    for(const p of availableBooks){const option=picker.createEl('option',{text:p.title});option.value=p.file.path;}
-   add.createEl('button',{text:writerUi('+ Livro','+ Book'),attr:{disabled:!availableBooks.length}}).addEventListener('click',async()=>{
+   const addButton=add.createEl('button',{text:writerUi('+ Livro','+ Book')});
+   addButton.disabled=!availableBooks.length;
+   addButton.addEventListener('click',async()=>{
     if(!availableBooks.length)return;
     const state=get(),entry=state.find(x=>x.id===series.id);
     if(entry&&!entry.books.includes(picker.value)){entry.books.push(picker.value);await save(state);}

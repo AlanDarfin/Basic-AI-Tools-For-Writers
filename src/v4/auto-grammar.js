@@ -121,7 +121,7 @@ class WriterAutoGrammar{
  }
  stop(){this.destroyed=true;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  schedule(file,{delay}={}){
-  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md')return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return;
   const view=this.reviewView();
   if(!view||view.reviewFilePath!==file.path)return;
   this.pendingPath=file.path;

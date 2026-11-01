@@ -143,7 +143,6 @@ function writerV7ContinuityChecks(view,project,records){
   });
   else dates.set(key,event);
  }
- const files=new Set(records.map(r=>r.path));
  for(const r of records){
   for(const link of (r.cache?.links||[]).slice(0,100)){
    const to=view.app.metadataCache?.getFirstLinkpathDest?.(link.link,r.path);
@@ -326,11 +325,30 @@ class WriterV7Worldbuilding{
    else new Notice(writerUi('Pasta sem nota associada.','No folder note found.'));
   }});
   p.registerEvent(p.app.workspace.on('layout-change',()=>this.scheduleExplorer()));
+  p.registerEvent(p.app.workspace.on('file-menu',(menu,file)=>{
+   if(!(file instanceof TFolder)||!p.settings.v7?.folderNotes)return;
+   const existing=writerV7FolderNote(p.app,file);
+   menu.addItem(item=>item.setTitle(existing?writerUi('Abrir nota da pasta','Open folder note'):writerUi('Criar nota da pasta','Create folder note'))
+    .setIcon('book-open').onClick(async()=>{
+     try{
+      const note=existing||await this.createFolderNote(file);
+      if(note)await p.app.workspace.getLeaf(false).openFile(note);
+     }catch(e){new Notice(String(e.message||e));}
+    }));
+  }));
   p.registerEvent(p.app.vault.on('create',()=>this.scheduleExplorer()));
   p.registerEvent(p.app.vault.on('rename',()=>this.scheduleExplorer()));
   p.registerEvent(p.app.vault.on('delete',()=>this.scheduleExplorer()));
   p.register(()=>{this.explorerObserver?.disconnect();clearTimeout(this.explorerTimer);});
   this.scheduleExplorer();
+ }
+ async createFolderNote(folder){
+  if(!(folder instanceof TFolder))return null;
+  const existing=writerV7FolderNote(this.plugin.app,folder);
+  if(existing)return existing;
+  const path=folder.path+'/'+folder.name+'.md';
+  if(this.plugin.app.vault.getAbstractFileByPath(path))throw Error(writerUi('Já existe um arquivo com esse nome.','A file with that name already exists.'));
+  return await this.plugin.app.vault.create(path,'---\ntags: []\n---\n\n# '+folder.name+'\n');
  }
  toggleFocus(){
   this.focus=!this.focus;
@@ -389,7 +407,7 @@ class WriterV7Worldbuilding{
    ['continuity','Verificador local de continuidade','Local continuity checker'],
    ['narrativeMemory','Enviar contexto de capítulos anteriores para revisão IA','Send previous-chapter context to AI review']
   ])new Setting(section).setName(writerUi(pt,en))
-   .setDesc(key==='narrativeMemory'?writerUi('Desligado por padrão. Ao revisar com IA, envia trechos anteriores ao provedor configurado. Nunca inclui capítulos futuros.','Off by default. When reviewing with AI, earlier chapter excerpts are sent to your provider. Future chapters are excluded.'):undefined)
+   .setDesc(key==='narrativeMemory'?writerUi('Desligado por padrão. Envia trechos anteriores ao provedor configurado, apenas durante a revisão.','Off by default. Previous chapter excerpts are sent to the configured provider only when reviewing.'):writerUi('Configurável; sem alterar automaticamente seus documentos.','Configurable; does not automatically modify your documents.'))
    .addToggle(toggle=>toggle.setValue(this.plugin.settings.v7[key]===true).onChange(async value=>{
     this.plugin.settings.v7[key]=value;await this.plugin.saveSettings();
     if(key==='explorerFolderNotes'||key==='folderNotes')this.scheduleExplorer();

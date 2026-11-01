@@ -20,18 +20,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
+      - name: Install exact locked toolchain
+        run: npm ci --ignore-scripts
       - name: Full syntax, bundle sync and regression checks
         run: npm run check
-      - name: Community CSS lint
-        run: node --test tests/css-community-lint.test.cjs
+      - name: Community CSS and release hygiene
+        run: node --test tests/css-community-lint.test.cjs tests/community-release.test.cjs
       - name: Metadata and bilingual documentation
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
-          const fs=require('node:fs'),m=require('./manifest.json'),p=require('./package.json'),v=require('./versions.json');
+          const fs=require('node:fs'),m=require('./manifest.json'),p=require('./package.json'),v=require('./versions.json'),l=require('./package-lock.json');
           if(!/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/.test(m.version))throw Error('Invalid version');
-          if(p.version!==m.version||v[m.version]!==m.minAppVersion)throw Error('Version mismatch');
+          if(p.version!==m.version||l.version!==m.version||v[m.version]!==m.minAppVersion)throw Error('Version mismatch');
           if(m.id!=='basic-ai-tool-for-writers'||m.isDesktopOnly!==false)throw Error('Unexpected plugin identity');
           if(!m.name.trim()||/\b(obsidian|plugin)\b/i.test(m.name))throw Error('Redundant name');
           if(typeof m.description!=='string'||m.description.length>250||!m.description.endsWith('.'))throw Error('Invalid description');
@@ -42,10 +45,7 @@ jobs:
             if(!fs.statSync(file).size)throw Error('Missing '+file);
           }
           NODE
-      - name: Package three-file smoke test
-        shell: bash
-        run: |
-          set -euo pipefail
-          zip -j plugin-check.zip main.js manifest.json styles.css
-          unzip -t plugin-check.zip
-          test "$(unzip -Z1 plugin-check.zip | wc -l)" -eq 3
+      - name: Verify clean three-file community package
+        run: node scripts/check-community-package.cjs
+      - name: Verify generated code is committed
+        run: git diff --exit-code -- main.js projects.js

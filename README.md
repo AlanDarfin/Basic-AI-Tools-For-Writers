@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.6](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.6) · **Previous published:** [7.0.5](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.5) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.0) · **Previous published:** [7.0.6](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.6) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Local LanguageTool checks after accepting fixes — 7.1.0
+
+After an initial grammar check, accepting a suggested correction rechecks only the **changed sentence**, or its paragraph when sentence boundaries are uncertain. Findings elsewhere remain cached; match offsets after the replacement are adjusted rather than sending the entire manuscript again. The automatic editor-change callback does not make a second LanguageTool request for that correction. A manual full review is still available. If the note changes concurrently, the plugin falls back to the existing safe review behavior. [Release notes](docs/V7_1_0_RELEASE.en.md) · [Português](docs/V7_1_0_RELEASE.pt-BR.md).
 
 ## Typewriter highlight interaction — 7.0.6
 

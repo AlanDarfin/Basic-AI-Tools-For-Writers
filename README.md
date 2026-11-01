@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1) · **Previous published:** [7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.0.2](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.2) · **Previous published:** [7.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Desktop compactness fix — 7.0.2
+
+Fix oversized search and context fields in the Definitions sidebar caused by inherited flex sizing. Slightly reduce desktop-only sidebar padding, tab heights and action spacing in the writing and Longform/project views. Horizontal tabs still scroll; Android touch sizing stays unchanged. No global zoom or theme override is applied. [Release notes](docs/V7_0_2_RELEASE.en.md) · [Português](docs/V7_0_2_RELEASE.pt-BR.md).
 
 ## New in version 7.0.0
 

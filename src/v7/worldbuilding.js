@@ -153,6 +153,33 @@ function writerV7ContinuityChecks(view,project,records){
  }
  return results;
 }
+function writerV7CreateRecord(view,project,kind){
+ const label=kind==='character'?writerUi('Personagem','Character'):kind==='place'?writerUi('Local','Place'):writerUi('Item','Item');
+ const tag=kind==='character'?'personagem':kind==='place'?'local':'item';
+ new TextPrompt(view.app,writerUi('Nome do registro: ','Record name: ')+label,async raw=>{
+  const name=clean(raw);
+  if(!name)return;
+  try{
+   const dir=view.notesRoot(project);
+   await view.ensureFolder(dir);
+   const path=dir+'/'+name+'.md';
+   if(view.app.vault.getAbstractFileByPath(path))throw Error(writerUi('Nota já existente.','Note already exists.'));
+   const body='---\ntags:\n  - '+tag+'\n---\n\n# '+name+'\n';
+   const file=await view.app.vault.create(path,body);
+   await view.openFile(file);await view.render();
+  }catch(error){new Notice(String(error.message||error));}
+ }).open();
+}
+function writerV7Connections(app,records,entry){
+ const links=app.metadataCache?.resolvedLinks||{},out=[];
+ for(const other of records){
+  if(other.path===entry.path)continue;
+  const forward=Number(links[entry.path]?.[other.path]||0);
+  const reverse=Number(links[other.path]?.[entry.path]||0);
+  if(forward||reverse)out.push({title:other.title,file:other.file,direction:forward?writerUi('Cita','Links to'):writerUi('Mencionado por','Linked from')});
+ }
+ return out.slice(0,15);
+}
 function writerV7RenderCompendium(view,panel,project){
  const root=panel.createDiv({cls:'writer-v7-compendium'});
  const heading=root.createDiv({cls:'writer-v7-section-header'});
@@ -161,6 +188,9 @@ function writerV7RenderCompendium(view,panel,project){
  const actions=root.createDiv({cls:'writer-v7-toolbar'});
  actions.createEl('button',{text:writerUi('+ Nota','+ Note')}).addEventListener('click',()=>view.promptNote(view.notesRoot(project)));
  actions.createEl('button',{text:writerUi('+ Pasta','+ Folder')}).addEventListener('click',()=>view.promptNotesFolder(view.notesRoot(project)));
+ for(const [kind,pt,en] of [['character','+ Personagem','+ Character'],['place','+ Local','+ Place'],['item','+ Item','+ Item']]){
+  actions.createEl('button',{text:writerUi(pt,en)}).addEventListener('click',()=>writerV7CreateRecord(view,project,kind));
+ }
  actions.createEl('button',{text:writerUi('Pastas','Folders')}).addEventListener('click',()=>{
   const tree=root.querySelector('.writer-v7-compendium-folders');
   if(tree)tree.open=!tree.open;
@@ -197,6 +227,15 @@ function writerV7RenderCompendium(view,panel,project){
    }
    card.createEl('button',{cls:'writer-v7-mini-action',text:'+ #',attr:{'aria-label':writerUi('Adicionar tag','Add tag')}})
     .addEventListener('click',()=>writerV7TagPrompt(view,r.file));
+   const connected=writerV7Connections(view.app,records,r);
+   if(connected.length){
+    const detail=card.createEl('details',{cls:'writer-v7-connections'});
+    detail.createEl('summary',{text:connected.length+' '+writerUi('conexões com o compêndio','compendium connections')});
+    for(const item of connected){
+     detail.createEl('button',{text:item.title+' · '+item.direction})
+      .addEventListener('click',()=>view.openFile(item.file));
+    }
+   }
   }
  };
  const stat=root.createEl('p',{cls:'writer-v7-compendium-count'});

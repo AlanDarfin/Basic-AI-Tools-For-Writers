@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "7.0.0-beta.1",
+  "version": "7.0.0-beta.2",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Experimental v7: worldbuilding compendium with Obsidian tags and folder notes, interactive timelines, continuity checks and native writing tools.",
+  "description": "Experimental v7: tag-driven world compendium, wiki sheets and relationships, Longform board, image maps, gallery, tracks/Gantt timeline, session journal and editorial tools.",
   "isDesktopOnly": false
 }

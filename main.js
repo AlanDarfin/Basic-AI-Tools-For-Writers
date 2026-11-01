@@ -159,7 +159,13 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false))){
+  for(const [id,name] of [['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
+  &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
+  &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
+  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
+  &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
+  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
@@ -171,6 +177,12 @@ class ProjectsView extends ItemView{
   if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
   if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
   if(this.activeTab==='timeline')writerV7RenderTimeline(this,panels.timeline,project);
+  if(this.activeTab==='board')writerV7StudioRenderBoard(this,panels.board,project);
+  if(this.activeTab==='relations')writerV7StudioRenderGraph(this,panels.relations,project);
+  if(this.activeTab==='maps')writerV7StudioRenderMaps(this,panels.maps,project);
+  if(this.activeTab==='analytics')writerV7StudioRenderAnalytics(this,panels.analytics,project);
+  if(this.activeTab==='gallery')writerV7StudioRenderGallery(this,panels.gallery,project);
+  if(this.activeTab==='sessions')writerV7StudioRenderSessions(this,panels.sessions,project);
   if(this.activeTab==='continuity')writerV7RenderContinuity(this,panels.continuity,project);
   if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
   if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
@@ -347,6 +359,13 @@ class ProjectsView extends ItemView{
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
   toolbar.createEl('button',{text:lfMsg("Novo rascunho Longform","New Longform draft")}).addEventListener('click',()=>this.createLinkedDraft(project));
+  toolbar.createEl('button',{text:lfMsg('Expandir tudo','Expand all')}).addEventListener('click',async()=>{
+   prefs.v7CollapsedScenes={};await this.plugin.saveSettings();await this.render();
+  });
+  toolbar.createEl('button',{text:lfMsg('Recolher tudo','Collapse all')}).addEventListener('click',async()=>{
+   prefs.v7CollapsedScenes=Object.fromEntries(this.activeScenes(project).map(x=>[x.title,true]));
+   await this.plugin.saveSettings();await this.render();
+  });
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
@@ -391,7 +410,19 @@ class ProjectsView extends ItemView{
      this.moveSceneRelative(project,data.name,name,after);
    });
    const file=this.resolveScene(project,name);
-   const titleButton=row.createEl('button',{cls:'writer-project-scene-title',attr:{
+   const titleWrapper=row.createDiv({cls:'writer-v7-scene-title-wrap'});
+   if(item.children?.length){
+    const closed=prefs.v7CollapsedScenes?.[name]===true;
+    titleWrapper.createEl('button',{cls:'writer-v7-scene-collapse',text:closed?'+':'−',
+     attr:{type:'button','aria-expanded':String(!closed),
+      'aria-label':closed?lfMsg('Expandir ','Expand ')+name:lfMsg('Recolher ','Collapse ')+name}})
+     .addEventListener('click',async()=>{
+      prefs.v7CollapsedScenes=prefs.v7CollapsedScenes||{};
+      prefs.v7CollapsedScenes[name]=!closed;
+      await this.plugin.saveSettings();await this.render();
+     });
+   }
+   const titleButton=titleWrapper.createEl('button',{cls:'writer-project-scene-title',attr:{
     'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
    }});
    if(level>0){
@@ -422,7 +453,7 @@ class ProjectsView extends ItemView{
     ])menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
     menu.showAtMouseEvent(event);
    });
-   for(const child of item.children)renderItem(child,parent,level+1);
+   if(prefs.v7CollapsedScenes?.[name]!==true)for(const child of item.children)renderItem(child,parent,level+1);
   };
   for(const item of tree)renderItem(item,panel);
   if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use + Cena.','No scenes yet. Use + Scene.')});
@@ -710,6 +741,15 @@ class ProjectsView extends ItemView{
     status.setText(lfMsg('Prévia gerada; nenhum arquivo foi modificado.','Preview generated; no files were modified.'));
    }catch(e){new Notice(lfMsg("Workflow inválido: ","Invalid workflow: ")+e.message,8000);}
   });
+  if(!this.app.isMobile&&this.plugin.settings.pandocExport?.enabled&&this.plugin.writerPandocExporter){
+   add.createEl('button',{text:lfMsg('Compilar e exportar…','Compile and export…')}).addEventListener('click',async()=>{
+    try{
+     const result=await this.compileProject(project,wf,false);
+     await this.app.workspace.getLeaf(false).openFile(result.file);
+     this.plugin.writerPandocExporter.openDialog();
+    }catch(e){new Notice(lfMsg('Falha na compilação: ','Compilation failed: ')+e.message);}
+   });
+  }
   add.createEl('button',{text:lfMsg("Compilar","Compile"),cls:'mod-cta'}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,false);status.setText(lfMsg('Criado: ','Created: ')+result.file.path);new Notice(lfMsg('Manuscrito criado sem sobrescrever o original.','Manuscript created without overwriting the original.'));}
    catch(e){new Notice(lfMsg('Falha: ','Failed: ')+e.message,8000);}
@@ -6773,7 +6813,9 @@ function writerV7TimelineEntries(view,project,records){
   if(!title)continue;
   items.push({id:String(item.id||''),title,date:String(item.date||'').slice(0,80),
    category:String(item.category||'').slice(0,100),note:String(item.note||'').slice(0,500),
-   description:String(item.description||'').slice(0,1500),source:'manual'});
+   description:String(item.description||'').slice(0,1500),
+   track:String(item.track||'').slice(0,100),branch:String(item.branch||'main').slice(0,100),
+   endDate:String(item.endDate||'').slice(0,80),milestone:item.milestone===true,source:'manual'});
  }
  for(const entry of records){
   const fm=entry.cache?.frontmatter||{};
@@ -6782,9 +6824,12 @@ function writerV7TimelineEntries(view,project,records){
   if(!date)continue;
   items.push({id:'note:'+entry.path,title:String(value?.title||fm.eventTitle||entry.title).slice(0,200),
    date:String(date).slice(0,80),category:String(value?.category||fm.category||'').slice(0,100),
-   note:entry.path,description:String(value?.description||fm.description||'').slice(0,1500),source:'note'});
+   note:entry.path,description:String(value?.description||fm.description||'').slice(0,1500),
+   track:String(value?.track||fm.track||'').slice(0,100),branch:String(value?.branch||fm.branch||'main').slice(0,100),
+   endDate:String(value?.endDate||fm.endDate||'').slice(0,80),
+   milestone:value?.milestone===true||fm.milestone===true,source:'note'});
  }
- return items.map((x,i)=>({...x,sortKey:writerV7TimelineDate(x.date),originalOrder:i})).sort((a,b)=>{
+ return items.map((x,i)=>({...x,sortKey:writerV7TimelineDate(x.date),endKey:writerV7TimelineDate(x.endDate),originalOrder:i})).sort((a,b)=>{
   if(a.sortKey===null&&b.sortKey===null)return a.originalOrder-b.originalOrder;
   if(a.sortKey===null)return 1;if(b.sortKey===null)return -1;
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;
@@ -6847,9 +6892,13 @@ function writerV7RenderCompendium(view,panel,project){
  const actions=root.createDiv({cls:'writer-v7-toolbar'});
  actions.createEl('button',{text:writerUi('+ Nota','+ Note')}).addEventListener('click',()=>view.promptNote(view.notesRoot(project)));
  actions.createEl('button',{text:writerUi('+ Pasta','+ Folder')}).addEventListener('click',()=>view.promptNotesFolder(view.notesRoot(project)));
- for(const [kind,pt,en] of [['character','+ Personagem','+ Character'],['place','+ Local','+ Place'],['item','+ Item','+ Item']]){
-  actions.createEl('button',{text:writerUi(pt,en)}).addEventListener('click',()=>writerV7CreateRecord(view,project,kind));
- }
+ const templates=writerV7StudioTemplates(view.plugin);
+ const templatesSelect=actions.createEl('select',{attr:{'aria-label':writerUi('Tipo de novo registro','New entry type')}});
+ for(const tpl of templates){const o=templatesSelect.createEl('option',{text:writerUi(tpl.pt||tpl.name,tpl.en||tpl.name)});o.value=tpl.id;}
+ actions.createEl('button',{text:writerUi('+ Registro','+ Entry')}).addEventListener('click',()=>{
+  const selected=templates.find(x=>x.id===templatesSelect.value);
+  if(selected)writerV7StudioCreate(view,project,selected);
+ });
  actions.createEl('button',{text:writerUi('Pastas','Folders')}).addEventListener('click',()=>{
   const tree=root.querySelector('.writer-v7-compendium-folders');
   if(tree)tree.open=!tree.open;
@@ -6861,14 +6910,15 @@ function writerV7RenderCompendium(view,panel,project){
  tagPicker.createEl('option',{text:writerUi('Todas as tags','All tags'),value:''});
  for(const tag of allTags){const opt=tagPicker.createEl('option',{text:tag});opt.value=tag;}
  const kind=controls.createEl('select',{attr:{'aria-label':writerUi('Tipo de registro','Record type')}});
- for(const [key,pt,en] of [['','Todos','All'],['character','Personagens','Characters'],['place','Locais','Places'],['item','Itens','Items'],['note','Outros','Other']]){
-  const o=kind.createEl('option',{text:writerUi(pt,en)});o.value=key;
+ const allTypes=[{id:'',pt:'Todos',en:'All'},...templates.map(t=>({id:t.id,pt:t.pt||t.name,en:t.en||t.name})),{id:'note',pt:'Outros',en:'Other'}];
+ for(const category of allTypes){
+  const o=kind.createEl('option',{text:writerUi(category.pt,category.en)});o.value=category.id;
  }
  const results=root.createDiv({cls:'writer-v7-compendium-results'});
  const update=()=>{
   results.empty();
   const q=search.value.trim().toLocaleLowerCase(),tag=tagPicker.value,type=kind.value;
-  const shown=records.filter(r=>(!tag||r.tags.includes(tag))&&(!type||writerV7Classify(r)===type)&&
+  const shown=records.filter(r=>(!tag||r.tags.includes(tag))&&(!type||(writerV7StudioKind(r,templates)?.id||'note')===type)&&
    (!q||(r.title+' '+r.folder+' '+r.tags.join(' ')).toLocaleLowerCase().includes(q))).slice(0,500);
   const stat=root.querySelector('.writer-v7-compendium-count');
   if(stat)stat.setText(shown.length+'/'+records.length+' '+writerUi('registros','entries'));
@@ -6886,15 +6936,8 @@ function writerV7RenderCompendium(view,panel,project){
    }
    card.createEl('button',{cls:'writer-v7-mini-action',text:'+ #',attr:{'aria-label':writerUi('Adicionar tag','Add tag')}})
     .addEventListener('click',()=>writerV7TagPrompt(view,r.file));
-   const connected=writerV7Connections(view.app,records,r);
-   if(connected.length){
-    const detail=card.createEl('details',{cls:'writer-v7-connections'});
-    detail.createEl('summary',{text:connected.length+' '+writerUi('conexões com o compêndio','compendium connections')});
-    for(const item of connected){
-     detail.createEl('button',{text:item.title+' · '+item.direction})
-      .addEventListener('click',()=>view.openFile(item.file));
-    }
-   }
+   writerV7StudioAugmentEntry(view,card,r,templates,records);
+
   }
  };
  const stat=root.createEl('p',{cls:'writer-v7-compendium-count'});
@@ -6912,7 +6955,8 @@ function writerV7TagPrompt(view,file){
  }).open();
 }
 function writerV7TimelineEditor(view,project,existing){
- const modal=new Modal(view.app),item={date:existing?.date||'',title:existing?.title||'',category:existing?.category||'',description:existing?.description||'',note:existing?.note||''};
+ const modal=new Modal(view.app),item={date:existing?.date||'',title:existing?.title||'',category:existing?.category||'',description:existing?.description||'',note:existing?.note||'',
+  endDate:existing?.endDate||'',track:existing?.track||'',branch:existing?.branch||'main',milestone:existing?.milestone===true};
  modal.onOpen=()=>{
   modal.setTitle(existing?writerUi('Editar evento','Edit event'):writerUi('Novo evento na timeline','New timeline event'));
   const field=(pt,en,key,rows)=>{
@@ -6923,6 +6967,10 @@ function writerV7TimelineEditor(view,project,existing){
   field('Data ou era (AAAA-MM-DD, ano ou texto)','Date or era (YYYY-MM-DD, year or text)','date');
   field('Título','Title','title');
   field('Categoria ou tag','Category or tag','category');
+  field('Trilha','Track','track');
+  field('Ramificação (main = principal)','Branch (main = main story)','branch');
+  field('Data final (opcional)','End date (optional)','endDate');
+  new Setting(modal.contentEl).setName(writerUi('Marco importante','Milestone')).addToggle(x=>x.setValue(item.milestone).onChange(v=>item.milestone=v));
   field('Caminho da nota (opcional)','Note path (optional)','note');
   field('Descrição','Description','description',4);
   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
@@ -6931,7 +6979,8 @@ function writerV7TimelineEditor(view,project,existing){
     const p=view.prefs(project);
     if(!Array.isArray(p.v7Timeline))p.v7Timeline=[];
     const obj={id:existing?.id||'v7-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8)};
-    for(const k of ['date','title','category','description','note'])obj[k]=String(item[k]||'').trim().slice(0,k==='description'?1500:500);
+    for(const k of ['date','title','category','description','note','track','branch','endDate'])obj[k]=String(item[k]||'').trim().slice(0,k==='description'?1500:500);
+    obj.milestone=item.milestone===true;
     if(existing){const i=p.v7Timeline.findIndex(x=>x.id===existing.id);if(i>=0)p.v7Timeline[i]=obj;}
     else p.v7Timeline.push(obj);
     await view.plugin.saveSettings();modal.close();await view.render();
@@ -6940,44 +6989,7 @@ function writerV7TimelineEditor(view,project,existing){
  modal.open();
 }
 function writerV7RenderTimeline(view,panel,project){
- const root=panel.createDiv({cls:'writer-v7-timeline'});
- root.createEl('h3',{text:writerUi('Linha do tempo do universo','World timeline')});
- root.createEl('p',{text:writerUi('Organize eventos com datas reais, anos fictícios ou eras. Notas com propriedades timeline.date também aparecem.','Arrange real dates, fictional years or eras. Notes with timeline.date properties appear automatically.'),cls:'writer-v7-muted'});
- const bar=root.createDiv({cls:'writer-v7-toolbar'});
- bar.createEl('button',{text:writerUi('+ Evento','+ Event')}).addEventListener('click',()=>writerV7TimelineEditor(view,project));
- const events=writerV7TimelineEntries(view,project,writerV7ProjectNotes(view,project));
- const search=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar evento ou era…','Search event or era…'),'aria-label':writerUi('Pesquisar timeline','Search timeline')}});
- const list=root.createDiv({cls:'writer-v7-timeline-list'});
- const draw=()=>{
-  list.empty();
-  const term=search.value.trim().toLocaleLowerCase();
-  const filtered=events.filter(x=>!term||(x.title+' '+x.date+' '+x.category+' '+x.description).toLocaleLowerCase().includes(term));
-  if(!filtered.length){list.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhum evento. Adicione um ou use as propriedades timeline.date numa nota.','No events yet. Create one or add timeline.date to a note.')});return;}
-  for(const event of filtered){
-   const row=list.createDiv({cls:'writer-v7-timeline-item'});
-   row.createSpan({cls:'writer-v7-timeline-date',text:event.date||'—'});
-   const info=row.createDiv({cls:'writer-v7-timeline-content'});
-   info.createEl('strong',{text:event.title});
-   if(event.category)info.createSpan({cls:'writer-v7-tag',text:event.category});
-   if(event.description)info.createEl('p',{text:event.description});
-   const actions=info.createDiv({cls:'writer-v7-inline-actions'});
-   if(event.note)actions.createEl('button',{text:writerUi('Abrir nota','Open note')}).addEventListener('click',()=>{
-    const file=view.app.vault.getAbstractFileByPath(event.note)||
-     view.app.metadataCache?.getFirstLinkpathDest?.(event.note,project.file.path);
-    if(file instanceof TFile)void view.openFile(file);else new Notice(writerUi('Nota vinculada não encontrada.','Linked note not found.'));
-   });
-   if(event.source==='manual'){
-    actions.createEl('button',{text:writerUi('Editar','Edit')}).addEventListener('click',()=>writerV7TimelineEditor(view,project,event));
-    actions.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
-     new ConfirmProjectAction(view.app,writerUi('Remover evento','Remove event'),event.title,async()=>{
-      const pref=view.prefs(project);pref.v7Timeline=(pref.v7Timeline||[]).filter(x=>x.id!==event.id);
-      await view.plugin.saveSettings();await view.render();
-     }).open();
-    });
-   }
-  }
- };
- search.addEventListener('input',draw);draw();
+ return writerV7StudioRenderTimeline(view,panel,project);
 }
 async function writerV7NarrativeContext(plugin,file){
  const cfg=plugin.settings.v7;if(!cfg?.narrativeMemory||!(file instanceof TFile))return '';
@@ -7112,10 +7124,574 @@ class WriterV7Worldbuilding{
     this.plugin.settings.v7[key]=value;await this.plugin.saveSettings();
     if(key==='explorerFolderNotes'||key==='folderNotes')this.scheduleExplorer();
    }));
+  this.plugin.writerV7StoryStudio?.renderSettings(section);
   new Setting(section).setName(writerUi('Limite de registros do compêndio','Compendium entry limit')).addText(x=>x.setValue(String(this.plugin.settings.v7.maxEntries)).onChange(async text=>{
    this.plugin.settings.v7.maxEntries=Math.max(100,Math.min(10000,Number(text)||3000));await this.plugin.saveSettings();
   }));
  }
+}
+
+// v3 module: src/v7/story-studio.js
+/* Basic AI v7 beta.2 — Story Studio.
+ * Original implementation, based on ideas (not code) from reference plugins.
+ * Uses existing Compendium, Longform, Timeline, and compile systems.
+ */
+const WRITER_V7_STUDIO_TEMPLATES=[
+ {id:'character',pt:'Personagem',en:'Character',tag:'personagem',fields:['summary','avatar','role','faction','relationships']},
+ {id:'place',pt:'Local',en:'Place',tag:'local',fields:['summary','cover','region','climate','relationships']},
+ {id:'item',pt:'Item',en:'Item',tag:'item',fields:['summary','cover','origin','relationships']},
+ {id:'group',pt:'Grupo ou facção',en:'Group or faction',tag:'grupo',fields:['summary','cover','leader','members','relationships']},
+ {id:'culture',pt:'Cultura',en:'Culture',tag:'cultura',fields:['summary','cover','language','traditions','relationships']},
+ {id:'economy',pt:'Economia',en:'Economy',tag:'economia',fields:['summary','cover','currency','trade','relationships']},
+ {id:'magic',pt:'Sistema mágico',en:'Magic system',tag:'magia',fields:['summary','cover','source','rules','relationships']},
+ {id:'event',pt:'Evento',en:'Event',tag:'evento',fields:['summary','timelineDate','location','relationships']},
+ {id:'reference',pt:'Referência',en:'Reference',tag:'referencia',fields:['summary','source','relationships']}
+];
+const WRITER_V7_FIELD_LABELS={
+ summary:['Resumo','Summary'],avatar:['Avatar','Avatar'],cover:['Imagem de capa','Cover image'],
+ role:['Papel','Role'],faction:['Facção','Faction'],region:['Região','Region'],
+ climate:['Clima','Climate'],origin:['Origem','Origin'],leader:['Líder','Leader'],
+ members:['Membros','Members'],language:['Idioma','Language'],traditions:['Tradições','Traditions'],
+ currency:['Moeda','Currency'],trade:['Comércio','Trade'],source:['Fonte','Source'],
+ rules:['Regras','Rules'],timelineDate:['Data do evento','Event date'],
+ location:['Local','Location'],relationships:['Relações (links do Obsidian)','Relationships (Obsidian links)'],
+ status:['Estado','Status'],pov:['Ponto de vista','Point of view'],sceneDate:['Data da cena','Scene date']
+};
+function writerV7StudioTemplates(plugin){
+ const custom=Array.isArray(plugin.settings.v7StudioTemplates)?plugin.settings.v7StudioTemplates:[];
+ const safe=custom.filter(t=>t&&typeof t.id==='string'&&/^[a-z][a-z0-9-]{0,40}$/.test(t.id)&&
+  typeof t.tag==='string'&&writerV7Tag(t.tag)&&Array.isArray(t.fields))
+  .slice(0,40).map(t=>({...t,fields:t.fields.filter(f=>/^[a-zA-Z][\w-]{0,50}$/.test(f)).slice(0,15)}));
+ return [...WRITER_V7_STUDIO_TEMPLATES,...safe.filter(t=>!WRITER_V7_STUDIO_TEMPLATES.some(b=>b.id===t.id))];
+}
+function writerV7StudioKind(entry,templates){
+ const tags=(entry.tags||[]).map(t=>t.toLocaleLowerCase());
+ const fm=entry.cache?.frontmatter||{};
+ const explicit=String(fm.worldType||fm.type||'').trim().toLowerCase();
+ return templates.find(t=>t.id===explicit||tags.some(tag=>tag==='#'+t.tag||tag.startsWith('#'+t.tag+'/')))||null;
+}
+function writerV7StudioFields(entry,template){
+ const fm=entry.cache?.frontmatter||{};
+ const keys=[...new Set([...(template?.fields||[]),'status','pov'])];
+ return keys.filter(key=>fm[key]!==undefined&&fm[key]!==null&&fm[key]!=='').map(key=>({
+  key,label:writerUi(...(WRITER_V7_FIELD_LABELS[key]||[key,key])),
+  text:Array.isArray(fm[key])?fm[key].map(String).join(', '):typeof fm[key]==='object'?JSON.stringify(fm[key]):String(fm[key])
+ }));
+}
+function writerV7StudioImage(app,entry){
+ const fm=entry.cache?.frontmatter||{};
+ let raw=fm.avatar||fm.cover||fm.portrait||fm.image;
+ if(Array.isArray(raw))raw=raw[0];
+ if(typeof raw!=='string')return '';
+ const link=raw.trim().replace(/^!\[\[/,'').replace(/^\[\[/,'').replace(/\]\]$/,'').split('|')[0].trim();
+ if(!link||/^(https?:|data:|javascript:|file:)/i.test(link))return '';
+ const file=app.metadataCache?.getFirstLinkpathDest?.(link,entry.path)||app.vault.getAbstractFileByPath(link);
+ if(!(file instanceof TFile)||!/^(png|jpe?g|webp|gif|avif|svg)$/i.test(file.extension))return '';
+ return app.vault.getResourcePath(file)||'';
+}
+function writerV7StudioLinkValue(text){
+ const s=String(text||'').trim();if(!s)return '';
+ return s.startsWith('[[')&&s.endsWith(']]')?s:'[['+s.replace(/[\[\]]/g,'')+']]';
+}
+function writerV7StudioLinkedTargets(app,entry){
+ const fm=entry.cache?.frontmatter||{};
+ const raw=fm.relationships||fm.relations||fm.links||[];
+ const list=Array.isArray(raw)?raw:[raw];
+ const found=new Set();
+ for(const value of list){
+  const name=String(value||'').trim().replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].trim();
+  if(!name)continue;
+  const file=app.metadataCache?.getFirstLinkpathDest?.(name,entry.path);
+  if(file instanceof TFile&&file.path!==entry.path)found.add(file.path);
+ }
+ return [...found];
+}
+async function writerV7StudioCreate(view,project,template){
+ new TextPrompt(view.app,writerUi('Novo registro: ','New record: ')+writerUi(template.pt||template.name,template.en||template.name),
+ async raw=>{
+  const name=clean(raw);
+  if(!name)return;
+  try{
+   const dir=view.notesRoot(project);
+   await view.ensureFolder(dir);
+   const target=dir+'/'+name+'.md';
+   if(view.app.vault.getAbstractFileByPath(target))throw Error(writerUi('Esta nota já existe.','That note already exists.'));
+   const yaml={tags:[template.tag],worldType:template.id,summary:''};
+   const content='---\n'+stringifyYaml(yaml)+'---\n\n# '+name+'\n';
+   const file=await view.app.vault.create(target,content);
+   view.openFile(file);await view.render();
+  }catch(e){new Notice(String(e.message||e));}
+ }).open();
+}
+function writerV7StudioOpenSheet(view,entry,template){
+ const modal=new Modal(view.app),fm=entry.cache?.frontmatter||{};
+ const keys=[...new Set(['summary',...(template?.fields||[]),'status','pov'])].filter(k=>/^[\w-]{1,60}$/.test(k));
+ const values=Object.fromEntries(keys.map(k=>[k,Array.isArray(fm[k])?fm[k].join(', '):String(fm[k]??'')]));
+ modal.onOpen=()=>{
+  modal.contentEl.addClass('writer-v7-studio-sheet');
+  modal.setTitle(writerUi('Ficha: ','Sheet: ')+entry.title);
+  modal.contentEl.createEl('p',{text:writerUi('Edita apenas os campos exibidos; preserva as demais propriedades e o texto.','Edits only listed properties and preserves all others and the note body.')});
+  for(const key of keys){
+   const label=writerUi(...(WRITER_V7_FIELD_LABELS[key]||[key,key]));
+   const set=new Setting(modal.contentEl).setName(label);
+   if(key==='summary'||key==='rules'||key==='traditions')set.addTextArea(t=>{
+    t.inputEl.rows=3;t.setValue(values[key]).onChange(v=>values[key]=v.slice(0,3000));
+   });
+   else set.addText(t=>t.setValue(values[key]).onChange(v=>values[key]=v.slice(0,1000)));
+  }
+  const records=writerV7ProjectNotes(view,view.currentProject).filter(r=>r.path!==entry.path);
+  const candidates=records.slice(0,300);
+  let related='';
+  new Setting(modal.contentEl).setName(writerUi('Vincular outra nota','Link another note')).addDropdown(d=>{
+   d.addOption('',writerUi('Selecionar nota…','Select note…'));
+   for(const record of candidates)d.addOption(record.path,record.title);
+   d.setValue('').onChange(v=>related=v);
+  });
+  new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+   .addButton(b=>b.setCta().setButtonText(writerUi('Salvar ficha','Save sheet')).onClick(async()=>{
+    try{
+     await view.app.fileManager.processFrontMatter(entry.file,data=>{
+      for(const key of keys){
+       const value=values[key]?.trim();
+       if(!value)continue; // Blank fields never delete existing data.
+       if(key==='relationships'||key==='members')data[key]=value.split(/,\s*/).map(writerV7StudioLinkValue).filter(Boolean);
+       else data[key]=value;
+      }
+      if(related){
+       const file=view.app.vault.getAbstractFileByPath(related);
+       if(file instanceof TFile){
+        const current=Array.isArray(data.relationships)?data.relationships:typeof data.relationships==='string'?[data.relationships]:[];
+        const link='[['+file.basename+']]';
+        if(!current.includes(link))data.relationships=[...current,link];
+       }
+      }
+     });
+     modal.close();await view.render();
+    }catch(e){new Notice(writerUi('Falha ao salvar: ','Save failed: ')+String(e.message||e));}
+   }));
+ };modal.open();
+}
+function writerV7StudioAugmentEntry(view,card,record,templates,allRecords){
+ const template=writerV7StudioKind(record,templates);
+ const fm=record.cache?.frontmatter||{};
+ const src=writerV7StudioImage(view.app,record);
+ if(src){
+  const img=card.createEl('img',{cls:'writer-v7-studio-thumb',attr:{src,alt:writerUi('Imagem de ','Image for ')+record.title,loading:'lazy'}});
+  img.addEventListener('error',()=>img.remove());
+ }
+ const summary=String(fm.summary||fm.description||'').trim();
+ if(summary)card.createEl('p',{cls:'writer-v7-studio-summary',text:summary.slice(0,380)});
+ const bar=card.createDiv({cls:'writer-v7-studio-card-actions'});
+ bar.createEl('button',{text:writerUi('Ficha','Sheet')}).addEventListener('click',()=>writerV7StudioOpenSheet(view,record,template));
+ const linked=new Set(writerV7StudioLinkedTargets(view.app,record));
+ for(const target of writerV7Connections(view.app,allRecords,record))linked.add(target.file.path);
+ if(linked.size){
+  const details=card.createEl('details',{cls:'writer-v7-studio-links'});
+  details.createEl('summary',{text:linked.size+' '+writerUi('conexões','connections')});
+  for(const path of [...linked].slice(0,18)){
+   const target=allRecords.find(r=>r.path===path);
+   if(target)details.createEl('button',{text:target.title}).addEventListener('click',()=>view.openFile(target.file));
+  }
+ }
+}
+function writerV7StudioRenderGraph(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-graph'});
+ root.createEl('h3',{text:writerUi('Relações do universo','World relationships')});
+ const all=writerV7ProjectNotes(view,project),templates=writerV7StudioTemplates(view.plugin);
+ root.createEl('p',{text:writerUi('As conexões usam links Markdown e a propriedade relationships das notas; não criam registros duplicados.','Connections reuse Markdown links and notes’ relationships property; no duplicate records are created.'),cls:'writer-v7-muted'});
+ const finder=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Filtrar relações…','Filter relationships…'),'aria-label':writerUi('Filtrar relações','Filter relationships')}});
+ const list=root.createDiv({cls:'writer-v7-studio-graph-list'});
+ const render=()=>{
+  list.empty();
+  const needle=finder.value.trim().toLocaleLowerCase(),links=view.app.metadataCache?.resolvedLinks||{};
+  const shown=all.filter(r=>!needle||(r.title+' '+r.tags.join(' ')).toLocaleLowerCase().includes(needle)).slice(0,100);
+  if(!shown.length)list.createEl('p',{text:writerUi('Sem registros relacionados.','No matching records.')});
+  for(const entry of shown){
+   const from=entry.path,targets=new Set(writerV7StudioLinkedTargets(view.app,entry));
+   for(const other of all){
+    if(other.path===from)continue;
+    if(Number(links[from]?.[other.path]||0)||Number(links[other.path]?.[from]||0))targets.add(other.path);
+   }
+   if(!targets.size)continue;
+   const row=list.createDiv({cls:'writer-v7-studio-graph-row'});
+   row.createEl('button',{cls:'writer-v7-studio-graph-source',text:entry.title}).addEventListener('click',()=>view.openFile(entry.file));
+   row.createSpan({text:'↔',cls:'writer-v7-studio-graph-edge'});
+   const related=row.createDiv({cls:'writer-v7-studio-graph-targets'});
+   for(const path of [...targets].slice(0,15)){
+    const item=all.find(r=>r.path===path);
+    if(item)related.createEl('button',{text:item.title,cls:'writer-v7-tag'}).addEventListener('click',()=>view.openFile(item.file));
+   }
+   row.createEl('button',{text:writerUi('Editar','Edit')}).addEventListener('click',()=>writerV7StudioOpenSheet(view,entry,writerV7StudioKind(entry,templates)));
+  }
+ };
+ finder.addEventListener('input',render);render();
+}
+function writerV7StudioScenes(view,project){
+ const flat=view.activeScenes(project);
+ return flat.map((scene,i)=>{
+  const file=view.resolveScene(project,scene.title),fm=file?view.app.metadataCache?.getFileCache?.(file)?.frontmatter||{}:{};
+  return {file,title:scene.title,indent:Math.max(0,Number(scene.indent)||0),position:i+1,
+   status:String(fm.status||fm.sceneStatus||'outline'),pov:String(fm.pov||''),location:String(fm.location||''),
+   summary:String(fm.summary||fm.synopsis||''),date:String(fm.sceneDate||'')};
+ });
+}
+function writerV7StudioRenderBoard(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-board'});
+ root.createEl('h3',{text:writerUi('Quadro da história','Story board')});
+ root.createEl('p',{text:writerUi('Visão de planejamento das mesmas cenas Longform. A ordem, o recuo e a compilação continuam na aba Cenas.','Planning view for the existing Longform scenes. Reordering and compilation remain in Scenes.'),cls:'writer-v7-muted'});
+ const cards=writerV7StudioScenes(view,project),actions=root.createDiv({cls:'writer-v7-toolbar'});
+ const states=['','outline','draft','wip','revised','final'];let selected='';
+ const picker=actions.createEl('select',{attr:{'aria-label':writerUi('Filtrar estado','Filter status')}});
+ for(const st of states){const op=picker.createEl('option',{text:st||writerUi('Todos os estados','All statuses')});op.value=st;}
+ const list=root.createDiv({cls:'writer-v7-studio-board-list'});
+ const draw=()=>{
+  list.empty();
+  const shown=cards.filter(x=>!selected||x.status===selected);
+  const totals=root.querySelector('.writer-v7-studio-board-stats');
+  if(totals)totals.setText(shown.length+'/'+cards.length+' '+writerUi('cenas','scenes')+' · '+new Set(cards.map(x=>x.pov).filter(Boolean)).size+' POV');
+  for(const scene of shown){
+   const card=list.createDiv({cls:'writer-v7-studio-scene'});
+   card.createSpan({cls:'writer-v7-studio-scene-num',text:'#'+scene.position});
+   const content=card.createDiv({cls:'writer-v7-studio-scene-content'});
+   content.createEl('button',{cls:'writer-v7-studio-scene-title',text:scene.title})
+    .addEventListener('click',()=>scene.file?view.openFile(scene.file):new Notice(writerUi('Arquivo ausente','File missing')));
+   const badges=content.createDiv({cls:'writer-v7-studio-scene-badges'});
+   for(const text of [scene.status,scene.pov&&'POV: '+scene.pov,scene.location,scene.date].filter(Boolean))
+    badges.createSpan({cls:'writer-v7-tag',text:text.slice(0,70)});
+   if(scene.summary)content.createEl('p',{text:scene.summary.slice(0,300)});
+   if(scene.file)content.createEl('button',{text:writerUi('Editar ficha','Edit sheet')})
+    .addEventListener('click',()=>writerV7StudioOpenSheet(view,{
+     file:scene.file,path:scene.file.path,title:scene.title,
+     cache:view.app.metadataCache?.getFileCache?.(scene.file),tags:[]
+    },{fields:['status','pov','location','sceneDate','summary']}));
+  }
+ };
+ root.createEl('p',{cls:'writer-v7-studio-board-stats'});
+ picker.addEventListener('change',()=>{selected=picker.value;draw();});draw();
+}
+function writerV7StudioSafeMap(m){
+ if(!m||typeof m!=='object'||typeof m.image!=='string')return null;
+ return {id:String(m.id||''),title:String(m.title||'').slice(0,100),
+ image:m.image.slice(0,400),markers:Array.isArray(m.markers)?m.markers.slice(0,400)
+  .filter(x=>x&&typeof x.note==='string').map(x=>({
+   note:x.note.slice(0,400),x:Math.max(0,Math.min(100,Number(x.x)||0)),
+   y:Math.max(0,Math.min(100,Number(x.y)||0))
+  })):[]};
+}
+function writerV7StudioImageFile(app,path){
+ const file=app.vault.getAbstractFileByPath(path);
+ return file instanceof TFile&&/^(png|jpe?g|webp|gif|avif)$/i.test(file.extension)?file:null;
+}
+function writerV7StudioRenderMaps(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-maps'});
+ root.createEl('h3',{text:writerUi('Mapas do universo','World maps')});
+ root.createEl('p',{text:writerUi('Use imagens do próprio cofre; marcadores abrem notas do Compêndio. Não são usados mapas online nem bibliotecas externas.','Use local vault images; markers open Compendium notes. No online map tiles or external libraries are loaded.'),cls:'writer-v7-muted'});
+ const prefs=view.prefs(project);if(!Array.isArray(prefs.v7StudioMaps))prefs.v7StudioMaps=[];
+ const maps=prefs.v7StudioMaps,files=view.app.vault.getFiles?.()||[],
+  images=files.filter(f=>/^(png|jpe?g|webp|gif|avif)$/i.test(f.extension)).slice(0,300);
+ const toolbar=root.createDiv({cls:'writer-v7-toolbar'}),picker=toolbar.createEl('select');
+ const select=()=>maps.find(x=>x.id===picker.value)||maps[0];
+ const updateOptions=()=>{
+  picker.empty();
+  for(const map of maps){const opt=picker.createEl('option',{text:map.title||map.image});opt.value=map.id;}
+ };
+ updateOptions();
+ toolbar.createEl('button',{text:writerUi('+ Mapa','+ Map')}).addEventListener('click',()=>{
+  if(maps.length>=30)return void new Notice(writerUi('Limite de 30 mapas.','Maximum 30 maps.'));
+  const modal=new Modal(view.app);let name='',img=images[0]?.path||'';
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Novo mapa de imagem','New image map'));
+   new Setting(modal.contentEl).setName(writerUi('Nome','Name')).addText(t=>t.onChange(x=>name=x));
+   new Setting(modal.contentEl).setName(writerUi('Imagem do cofre','Vault image')).addDropdown(d=>{
+    for(const file of images)d.addOption(file.path,file.path);
+    d.setValue(img).onChange(v=>img=v);
+   });
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Criar','Create')).setCta().onClick(async()=>{
+    if(!img||!writerV7StudioImageFile(view.app,img))return void new Notice(writerUi('Selecione uma imagem válida.','Choose a valid image.'));
+    maps.push({id:'map-'+Date.now().toString(36),title:name.trim().slice(0,100)||img,image:img,markers:[]});
+    await view.plugin.saveSettings();modal.close();await view.render();
+   }));
+  };modal.open();
+ });
+ const content=root.createDiv({cls:'writer-v7-studio-map-content'});
+ const show=()=>{
+  content.empty();
+  const map=select();
+  if(!map){content.createEl('p',{text:writerUi('Crie um mapa com uma imagem do cofre.','Create a map using a vault image.')});return;}
+  const imgFile=writerV7StudioImageFile(view.app,map.image);
+  if(!imgFile){content.createEl('p',{text:writerUi('Imagem ausente: ','Missing image: ')+map.image});return;}
+  const bar=content.createDiv({cls:'writer-v7-toolbar'});
+  const records=writerV7ProjectNotes(view,project);
+  const target=bar.createEl('select',{attr:{'aria-label':writerUi('Nota para marcar','Note to mark')}});
+  target.createEl('option',{text:writerUi('Selecionar nota para marcador…','Choose a note to mark…'),value:''});
+  for(const record of records.slice(0,300)){
+   const opt=target.createEl('option',{text:record.title});opt.value=record.path;
+  }
+  bar.createEl('button',{text:writerUi('Excluir mapa','Delete map')}).addEventListener('click',()=>{
+   new ConfirmProjectAction(view.app,writerUi('Excluir somente o mapa?','Delete map only?'),
+    writerUi('A imagem e as notas originais serão preservadas.','Original image and notes will be preserved.'),
+    async()=>{prefs.v7StudioMaps=maps.filter(x=>x.id!==map.id);await view.plugin.saveSettings();await view.render();}).open();
+  });
+  const stage=content.createDiv({cls:'writer-v7-studio-map-stage'});
+  stage.createEl('img',{attr:{src:view.app.vault.getResourcePath(imgFile),alt:map.title,loading:'lazy'}});
+  stage.addEventListener('click',async event=>{
+   if(event.target.closest?.('.writer-v7-studio-map-pin')||!target.value)return;
+   const bounds=stage.getBoundingClientRect();
+   if(!bounds.width||!bounds.height)return;
+   const x=Math.max(0,Math.min(100,Math.round((event.clientX-bounds.left)/bounds.width*10000)/100));
+   const y=Math.max(0,Math.min(100,Math.round((event.clientY-bounds.top)/bounds.height*10000)/100));
+   if(!Array.isArray(map.markers))map.markers=[];
+   if(map.markers.length>=400)return void new Notice(writerUi('Limite de marcadores.','Marker limit reached.'));
+   map.markers.push({note:target.value,x,y});await view.plugin.saveSettings();show();
+  });
+  for(const [index,marker] of (map.markers||[]).entries()){
+   const file=view.app.vault.getAbstractFileByPath(marker.note);
+   const point=stage.createEl('button',{cls:'writer-v7-studio-map-pin',text:String(index+1),
+    attr:{type:'button','aria-label':file?.basename||marker.note,title:file?.basename||marker.note}});
+   point.style.left=marker.x+'%';point.style.top=marker.y+'%';
+   point.addEventListener('click',event=>{
+    event.stopPropagation();
+    if(file instanceof TFile)view.openFile(file);
+   });
+  }
+  const markers=content.createDiv({cls:'writer-v7-studio-map-markers'});
+  for(const [index,marker] of (map.markers||[]).entries()){
+   const file=view.app.vault.getAbstractFileByPath(marker.note);
+   const row=markers.createDiv({cls:'writer-v7-studio-map-marker-row'});
+   row.createEl('button',{text:(index+1)+'. '+(file?.basename||marker.note)}).addEventListener('click',()=>{if(file instanceof TFile)view.openFile(file);});
+   row.createEl('button',{text:'×',attr:{'aria-label':writerUi('Remover marcador','Remove marker')}})
+    .addEventListener('click',async()=>{map.markers.splice(index,1);await view.plugin.saveSettings();show();});
+  }
+ };
+ picker.addEventListener('change',show);show();
+}
+function writerV7StudioRenderAnalytics(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-analytics'});
+ root.createEl('h3',{text:writerUi('Estatísticas narrativas','Narrative analytics')});
+ const scenes=writerV7StudioScenes(view,project);
+ const group=(field)=>[...scenes.reduce((m,s)=>m.set(s[field]||writerUi('(não definido)','(unset)'),1+(m.get(s[field]||writerUi('(não definido)','(unset)'))||0)),new Map()).entries()]
+  .sort((a,b)=>b[1]-a[1]);
+ root.createEl('p',{text:scenes.length+' '+writerUi('cenas','scenes')});
+ for(const [field,pt,en] of [['status','Por estado','By status'],['pov','Por ponto de vista','By viewpoint'],['location','Por local','By location']]){
+  const panelGroup=root.createEl('details',{cls:'writer-v7-studio-analytics-group'});panelGroup.open=field==='status';
+  panelGroup.createEl('summary',{text:writerUi(pt,en)});
+  for(const [label,count] of group(field).slice(0,40)){
+   const row=panelGroup.createDiv({cls:'writer-v7-studio-analytics-row'});
+   row.createSpan({text:label});row.createSpan({text:String(count),cls:'writer-v7-studio-count'});
+  }
+ }
+}
+function writerV7StudioRenderGallery(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-gallery'});
+ root.createEl('h3',{text:writerUi('Galeria de referências','Reference gallery')});
+ root.createEl('p',{text:writerUi('Mostra imagens já vinculadas às notas do Compêndio. Sem cópias e sem pasta de uploads adicional.','Displays images already linked to Compendium notes. No duplicates or additional upload folder.'),cls:'writer-v7-muted'});
+ const records=writerV7ProjectNotes(view,project);
+ const images=records.map(r=>({entry:r,url:writerV7StudioImage(view.app,r)})).filter(r=>!!r.url).slice(0,250);
+ const filter=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar imagens…','Search images…'),'aria-label':writerUi('Pesquisar imagens','Search images')}});
+ const gallery=root.createDiv({cls:'writer-v7-studio-gallery-grid'});
+ const render=()=>{
+  gallery.empty();
+  const query=filter.value.trim().toLocaleLowerCase();
+  const matched=images.filter(i=>(i.entry.title+' '+i.entry.tags.join(' ')).toLocaleLowerCase().includes(query));
+  if(!matched.length)gallery.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhuma imagem vinculada a uma ficha. Use avatar ou cover nas propriedades.','No linked images. Add an avatar or cover property to a sheet.')});
+  for(const item of matched){
+   const button=gallery.createEl('button',{cls:'writer-v7-studio-gallery-item'});
+   button.createEl('img',{attr:{src:item.url,alt:item.entry.title,loading:'lazy'}});
+   button.createSpan({text:item.entry.title});
+   button.addEventListener('click',()=>view.openFile(item.entry.file));
+  }
+ };
+ filter.addEventListener('input',render);render();
+}
+function writerV7StudioRenderSessions(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-sessions'});
+ root.createEl('h3',{text:writerUi('Diário de sessões','Session journal')});
+ root.createEl('p',{text:writerUi('Registre sessões de campanha ou reuniões de planejamento em notas Markdown comuns. Não existe um segundo sistema de tarefas ou cenas.','Keep campaign sessions or planning meetings in ordinary Markdown notes. There is no duplicate task or scene system.'),cls:'writer-v7-muted'});
+ const folder=view.notesRoot(project)+'/Sessões';
+ root.createEl('button',{text:writerUi('+ Sessão','+ Session')}).addEventListener('click',()=>{
+  new TextPrompt(view.app,writerUi('Nome da sessão','Session name'),async raw=>{
+   const name=clean(raw);if(!name)return;
+   try{
+    await view.ensureFolder(folder);
+    const target=folder+'/'+name+'.md';
+    if(view.app.vault.getAbstractFileByPath(target))throw Error(writerUi('A sessão já existe.','Session already exists.'));
+    const data={tags:['sessao'],sessionStatus:'planned'};
+    const file=await view.app.vault.create(target,'---\n'+stringifyYaml(data)+'---\n\n# '+name+'\n\n## '+writerUi('Resumo','Summary')+'\n\n');
+    view.openFile(file);await view.render();
+   }catch(e){new Notice(String(e.message||e));}
+  }).open();
+ });
+ const entries=writerV7ProjectNotes(view,project).filter(x=>x.path.startsWith(folder+'/'));
+ if(!entries.length)root.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhuma sessão cadastrada.','No sessions yet.')});
+ for(const r of entries){
+  const card=root.createDiv({cls:'writer-v7-studio-session'});
+  card.createEl('button',{text:r.title}).addEventListener('click',()=>view.openFile(r.file));
+  const status=String(r.cache?.frontmatter?.sessionStatus||'planned');
+  card.createSpan({text:status,cls:'writer-v7-tag'});
+  if(r.cache?.frontmatter?.sessionDate)card.createSpan({text:String(r.cache.frontmatter.sessionDate),cls:'writer-v7-muted'});
+ }
+}
+class WriterV7StoryStudio{
+ constructor(plugin){this.plugin=plugin;}
+ register(){
+  const p=this.plugin;
+  p.addCommand({id:'v7-open-story-board',name:writerUi('História: abrir quadro de cenas','Story: open scene board'),callback:()=>p.openProjects('board')});
+  p.addCommand({id:'v7-open-world-graph',name:writerUi('Universo: abrir relações','World: open relationships'),callback:()=>p.openProjects('relations')});
+  p.addCommand({id:'v7-open-world-maps',name:writerUi('Universo: abrir mapas','World: open maps'),callback:()=>p.openProjects('maps')});
+  p.addCommand({id:'v7-open-reference-gallery',name:writerUi('Universo: abrir galeria','World: open gallery'),callback:()=>p.openProjects('gallery')});
+  p.addCommand({id:'v7-open-session-journal',name:writerUi('História: abrir diário de sessões','Story: open session journal'),callback:()=>p.openProjects('sessions')});
+ }
+ renderSettings(panel){
+  panel.createEl('h3',{text:writerUi('Estúdio de histórias (beta)','Story studio (beta)')});
+  panel.createEl('p',{text:writerUi('Recursos integrados às notas, Compêndio, Timeline e projetos atuais. Sem bancos de dados ou compiladores duplicados.','Tools built on current notes, Compendium, Timeline and projects. No duplicate databases or exporters.')});
+  const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
+  for(const [key,pt,en] of [
+   ['studioBoard','Quadro de cenas','Scene board'],['studioRelations','Relações entre registros','Entity relationships'],
+   ['studioMaps','Mapas de imagens locais','Local image maps'],['studioAnalytics','Estatísticas narrativas','Narrative analytics'],
+   ['studioGallery','Galeria de referências','Reference gallery'],['studioSessions','Diário de sessões','Session journal']
+  ]){
+   if(cfg[key]===undefined)cfg[key]=true;
+   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await this.plugin.saveSettings();}));
+  }
+  panel.createEl('h4',{text:writerUi('Modelos próprios de fichas','Custom sheet templates')});
+  panel.createEl('p',{text:writerUi('Modelos personalizados acrescentam categorias e campos ao mesmo Compêndio. Não alteram fichas existentes.','Custom templates add categories and fields to the same Compendium without modifying existing sheets.')});
+  const templates=writerV7StudioTemplates(this.plugin);
+  for(const tpl of templates.filter(t=>!WRITER_V7_STUDIO_TEMPLATES.some(x=>x.id===t.id))){
+   const row=new Setting(panel).setName(tpl.name||tpl.id).setDesc('#'+tpl.tag+' · '+tpl.fields.join(', '));
+   row.addButton(b=>b.setButtonText(writerUi('Remover','Remove')).onClick(async()=>{
+    this.plugin.settings.v7StudioTemplates=this.plugin.settings.v7StudioTemplates.filter(x=>x.id!==tpl.id);
+    await this.plugin.saveSettings();
+    new Notice(writerUi('Modelo removido; fichas existentes foram preservadas.','Template removed; existing sheets were preserved.'));
+   }));
+  }
+  new Setting(panel).setName(writerUi('Novo modelo','New template')).addButton(b=>b.setButtonText(writerUi('Criar modelo','Create template')).onClick(()=>{
+   const modal=new Modal(this.plugin.app),draft={name:'',tag:'',fields:'summary, cover'};
+   modal.onOpen=()=>{
+    modal.setTitle(writerUi('Modelo de ficha','Sheet template'));
+    for(const [key,pt,en] of [['name','Nome','Name'],['tag','Tag principal','Main tag'],['fields','Campos separados por vírgulas','Comma-separated fields']])
+     new Setting(modal.contentEl).setName(writerUi(pt,en)).addText(t=>t.setValue(draft[key]).onChange(x=>draft[key]=x));
+    new Setting(modal.contentEl).addButton(x=>x.setButtonText(writerUi('Salvar','Save')).setCta().onClick(async()=>{
+     const name=draft.name.trim().slice(0,80),id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+     const tag=writerV7Tag(draft.tag);
+     const fields=draft.fields.split(',').map(x=>x.trim()).filter(x=>/^[a-zA-Z][\w-]{0,50}$/.test(x)).slice(0,15);
+     if(!name||!id||!tag||writerV7StudioTemplates(this.plugin).some(x=>x.id===id))
+      return void new Notice(writerUi('Nome ou tag inválida, ou modelo já existente.','Invalid name/tag or template already exists.'));
+     if(!Array.isArray(this.plugin.settings.v7StudioTemplates))this.plugin.settings.v7StudioTemplates=[];
+     this.plugin.settings.v7StudioTemplates.push({id,name,tag:tag.slice(1),fields});
+     await this.plugin.saveSettings();modal.close();
+     new Notice(writerUi('Modelo criado.','Template created.'));
+    }));
+   };modal.open();
+  }));
+ }
+}
+
+// v3 module: src/v7/timeline-studio.js
+/* v7 beta.2 — upgrade the existing v7 timeline; no duplicate event store. */
+function writerV7StudioTimelineTrack(event){
+ return String(event.track||event.category||'').trim().slice(0,100)||writerUi('Sem trilha','Unassigned');
+}
+function writerV7StudioTimelineBranches(events){
+ return [...new Set(events.map(e=>String(e.branch||'main').trim()||'main'))].sort();
+}
+function writerV7StudioGanttModel(events){
+ const dated=events.filter(e=>Number.isFinite(e.sortKey)),start=Math.min(...dated.map(e=>e.sortKey)),end=Math.max(...dated.map(e=>Number.isFinite(e.endKey)?e.endKey:e.sortKey));
+ if(!dated.length)return [];
+ const span=Math.max(1,end-start),minWidth=2;
+ return dated.slice(0,80).map(e=>{
+  const left=Math.max(0,Math.min(100,(e.sortKey-start)/span*100));
+  const right=Number.isFinite(e.endKey)?e.endKey:e.sortKey;
+  const width=Math.max(minWidth,Math.min(100-left,(right-e.sortKey)/span*100));
+  return {event:e,left,width};
+ });
+}
+function writerV7StudioRenderTimeline(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-timeline writer-v7-studio-timeline'});
+ root.createEl('h3',{text:writerUi('Timeline do universo','World timeline')});
+ root.createEl('p',{cls:'writer-v7-muted',text:writerUi('Uma única cronologia, agora com trilhas, ramificações, marcos e uma visão Gantt simplificada. Datas textuais não são convertidas à força.','A single timeline with tracks, branches, milestones and a simplified Gantt view. Textual eras are never converted to arbitrary numeric dates.')});
+ const all=writerV7TimelineEntries(view,project,writerV7ProjectNotes(view,project));
+ const toolbar=root.createDiv({cls:'writer-v7-toolbar'});
+ toolbar.createEl('button',{text:writerUi('+ Evento','+ Event')}).addEventListener('click',()=>writerV7TimelineEditor(view,project));
+ const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar eventos…','Search events…'),'aria-label':writerUi('Pesquisar eventos','Search events')}});
+ const branches=writerV7StudioTimelineBranches(all),branch=toolbar.createEl('select',{attr:{'aria-label':writerUi('Ramificação','Branch')}});
+ for(const key of ['',...branches]){
+  const option=branch.createEl('option',{text:key||writerUi('Todas as versões','All branches')});option.value=key;
+ }
+ const tracks=[...new Set(all.map(writerV7StudioTimelineTrack))].sort();
+ const track=toolbar.createEl('select',{attr:{'aria-label':writerUi('Trilha','Track')}});
+ for(const key of ['',...tracks]){
+  const option=track.createEl('option',{text:key||writerUi('Todas as trilhas','All tracks')});option.value=key;
+ }
+ const display=toolbar.createEl('select',{attr:{'aria-label':writerUi('Visualização','View mode')}});
+ for(const [value,pt,en] of [['chronology','Cronologia','Chronology'],['tracks','Trilhas','Tracks'],['gantt','Gantt simples','Simple Gantt'],['milestones','Marcos','Milestones']]){
+  const opt=display.createEl('option',{text:writerUi(pt,en)});opt.value=value;
+ }
+ const results=root.createDiv({cls:'writer-v7-studio-timeline-results'});
+ const openNote=event=>{
+  const file=view.app.vault.getAbstractFileByPath(event.note)||view.app.metadataCache?.getFirstLinkpathDest?.(event.note,project.file.path);
+  if(file instanceof TFile)view.openFile(file);else new Notice(writerUi('Nota não encontrada.','Note not found.'));
+ };
+ const row=(parent,event)=>{
+  const box=parent.createDiv({cls:'writer-v7-studio-event'});
+  box.createSpan({cls:'writer-v7-studio-event-date',text:event.date+(event.endDate?' → '+event.endDate:'')});
+  const details=box.createDiv({cls:'writer-v7-studio-event-details'});
+  details.createEl('strong',{text:event.title});
+  const chips=details.createDiv({cls:'writer-v7-studio-event-tags'});
+  for(const label of [event.milestone?writerUi('Marco','Milestone'):null,writerV7StudioTimelineTrack(event),event.branch&&event.branch!=='main'?event.branch:null].filter(Boolean))
+   chips.createSpan({cls:'writer-v7-tag',text:String(label).slice(0,80)});
+  if(event.description)details.createEl('p',{text:event.description});
+  const actions=details.createDiv({cls:'writer-v7-inline-actions'});
+  if(event.note)actions.createEl('button',{text:writerUi('Nota','Note')}).addEventListener('click',()=>openNote(event));
+  if(event.source==='manual'){
+   actions.createEl('button',{text:writerUi('Editar','Edit')}).addEventListener('click',()=>writerV7TimelineEditor(view,project,event));
+   actions.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
+    new ConfirmProjectAction(view.app,writerUi('Excluir evento','Delete event'),event.title,async()=>{
+     const p=view.prefs(project);p.v7Timeline=(p.v7Timeline||[]).filter(x=>x.id!==event.id);
+     await view.plugin.saveSettings();await view.render();
+    }).open();
+   });
+  }
+ };
+ const draw=()=>{
+  results.empty();
+  let filtered=all.filter(e=>(!branch.value||(e.branch||'main')===branch.value)&&(!track.value||writerV7StudioTimelineTrack(e)===track.value));
+  const q=search.value.trim().toLocaleLowerCase();
+  if(q)filtered=filtered.filter(e=>(e.title+' '+e.date+' '+e.track+' '+e.category+' '+e.description).toLocaleLowerCase().includes(q));
+  if(display.value==='milestones')filtered=filtered.filter(e=>e.milestone===true);
+  if(!filtered.length)return void results.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhum evento para os filtros escolhidos.','No events for these filters.')});
+  if(display.value==='gantt'){
+   const model=writerV7StudioGanttModel(filtered);
+   if(!model.length)results.createEl('p',{cls:'writer-v7-muted',text:writerUi('Use anos ou datas para desenhar barras de duração. Eventos com eras textuais continuam na cronologia.','Use numeric years or dates to draw duration bars. Textual eras remain in chronology.')});
+   for(const item of model){
+    const line=results.createDiv({cls:'writer-v7-studio-gantt-row'});
+    line.createEl('button',{text:item.event.title,cls:'writer-v7-studio-gantt-title'}).addEventListener('click',()=>item.event.source==='manual'?writerV7TimelineEditor(view,project,item.event):openNote(item.event));
+    const bg=line.createDiv({cls:'writer-v7-studio-gantt-track'});
+    const bar=bg.createDiv({cls:'writer-v7-studio-gantt-bar'});
+    bar.style.left=item.left+'%';bar.style.width=item.width+'%';
+    bg.setAttribute('aria-label',item.event.date+(item.event.endDate?' → '+item.event.endDate:''));
+   }
+   for(const e of filtered.filter(x=>!Number.isFinite(x.sortKey)))row(results,e);
+   return;
+  }
+  if(display.value==='tracks'){
+   const groups=new Map();
+   for(const e of filtered){
+    const key=writerV7StudioTimelineTrack(e);
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(e);
+   }
+   for(const [name,events] of groups){
+    const block=results.createEl('details',{cls:'writer-v7-studio-track'});block.open=true;
+    block.createEl('summary',{text:name+' ('+events.length+')'});
+    for(const e of events)row(block,e);
+   }
+   return;
+  }
+  const list=results.createDiv({cls:'writer-v7-timeline-list'});
+  for(const e of filtered)row(list,e);
+ };
+ for(const el of [search,branch,track,display])el.addEventListener(el===search?'input':'change',draw);
+ draw();
 }
 
 // END WRITER V3 MODULES
@@ -7741,6 +8317,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerV6Markup=new WriterV6Markup(this);this.writerV6Markup.register();
     this.writerV6SmartInsert=new WriterV6SmartInsert(this);this.writerV6SmartInsert.register();
     this.writerV7Worldbuilding=new WriterV7Worldbuilding(this);this.writerV7Worldbuilding.register();
+    this.writerV7StoryStudio=new WriterV7StoryStudio(this);this.writerV7StoryStudio.register();
     this.writerV6Linter=new WriterV6Linter(this);this.writerV6Linter.register();
     this.writerWorkspaceProfiles=new WriterWorkspaceProfiles(this);this.writerWorkspaceProfiles.register();
     writerV4Register(this);

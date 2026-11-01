@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.0.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.0.1 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Manutenção 7.0.1
+
+Atualização das verificações de CI, do empacotamento para a comunidade e da procedência dos arquivos publicados. O exportador Pandoc permanece integrado, opcional e exclusivo do desktop. Veja [Segurança e permissões](../SECURITY.md) e [Como contribuir](../CONTRIBUTING.md).
 
 ## Novidades da versão 7.0.0
 

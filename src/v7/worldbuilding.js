@@ -396,16 +396,18 @@ class WriterV7Worldbuilding{
   new Notice(this.focus?writerUi('Modo foco ativado.','Focus mode on.'):writerUi('Modo foco desativado.','Focus mode off.'));
  }
  scheduleExplorer(){
-  if(!this.plugin.settings.v7?.folderNotes||!this.plugin.settings.v7?.explorerFolderNotes)return;
   clearTimeout(this.explorerTimer);
   this.explorerTimer=setTimeout(()=>this.decorateExplorer(),120);
  }
  decorateExplorer(){
   const app=this.plugin.app;
-  if(app.plugins?.enabledPlugins?.has?.('folder-notes'))return; // Avoid duplicate controls from the original plugin.
+  const nativeFolderPlugin=app.plugins?.enabledPlugins?.has?.('folder-notes');
   const leaf=app.workspace.getLeavesOfType('file-explorer')?.[0];
   if(!leaf?.view?.containerEl)return;
   const el=leaf.view.containerEl;
+  if(nativeFolderPlugin||!this.plugin.settings.v7?.folderNotes||!this.plugin.settings.v7?.explorerFolderNotes){
+   el.querySelectorAll('.writer-v7-folder-open').forEach(btn=>btn.remove());return;
+  }
   if(this.explorerNode!==el){
    this.explorerObserver?.disconnect();this.explorerNode=el;
    if(typeof MutationObserver==='function'){

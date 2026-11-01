@@ -347,6 +347,56 @@ function writerV7StudioRenderAnalytics(view,panel,project){
   }
  }
 }
+function writerV7StudioRenderGallery(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-gallery'});
+ root.createEl('h3',{text:writerUi('Galeria de referências','Reference gallery')});
+ root.createEl('p',{text:writerUi('Mostra imagens já vinculadas às notas do Compêndio. Sem cópias e sem pasta de uploads adicional.','Displays images already linked to Compendium notes. No duplicates or additional upload folder.'),cls:'writer-v7-muted'});
+ const records=writerV7ProjectNotes(view,project);
+ const images=records.map(r=>({entry:r,url:writerV7StudioImage(view.app,r)})).filter(r=>!!r.url).slice(0,250);
+ const filter=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar imagens…','Search images…'),'aria-label':writerUi('Pesquisar imagens','Search images')}});
+ const gallery=root.createDiv({cls:'writer-v7-studio-gallery-grid'});
+ const render=()=>{
+  gallery.empty();
+  const query=filter.value.trim().toLocaleLowerCase();
+  const matched=images.filter(i=>(i.entry.title+' '+i.entry.tags.join(' ')).toLocaleLowerCase().includes(query));
+  if(!matched.length)gallery.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhuma imagem vinculada a uma ficha. Use avatar ou cover nas propriedades.','No linked images. Add an avatar or cover property to a sheet.')});
+  for(const item of matched){
+   const button=gallery.createEl('button',{cls:'writer-v7-studio-gallery-item'});
+   button.createEl('img',{attr:{src:item.url,alt:item.entry.title,loading:'lazy'}});
+   button.createSpan({text:item.entry.title});
+   button.addEventListener('click',()=>view.openFile(item.entry.file));
+  }
+ };
+ filter.addEventListener('input',render);render();
+}
+function writerV7StudioRenderSessions(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-studio-sessions'});
+ root.createEl('h3',{text:writerUi('Diário de sessões','Session journal')});
+ root.createEl('p',{text:writerUi('Registre sessões de campanha ou reuniões de planejamento em notas Markdown comuns. Não existe um segundo sistema de tarefas ou cenas.','Keep campaign sessions or planning meetings in ordinary Markdown notes. There is no duplicate task or scene system.'),cls:'writer-v7-muted'});
+ const folder=view.notesRoot(project)+'/Sessões';
+ root.createEl('button',{text:writerUi('+ Sessão','+ Session')}).addEventListener('click',()=>{
+  new TextPrompt(view.app,writerUi('Nome da sessão','Session name'),async raw=>{
+   const name=clean(raw);if(!name)return;
+   try{
+    await view.ensureFolder(folder);
+    const target=folder+'/'+name+'.md';
+    if(view.app.vault.getAbstractFileByPath(target))throw Error(writerUi('A sessão já existe.','Session already exists.'));
+    const data={tags:['sessao'],sessionStatus:'planned'};
+    const file=await view.app.vault.create(target,'---\n'+stringifyYaml(data)+'---\n\n# '+name+'\n\n## '+writerUi('Resumo','Summary')+'\n\n');
+    view.openFile(file);await view.render();
+   }catch(e){new Notice(String(e.message||e));}
+  }).open();
+ });
+ const entries=writerV7ProjectNotes(view,project).filter(x=>x.path.startsWith(folder+'/'));
+ if(!entries.length)root.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhuma sessão cadastrada.','No sessions yet.')});
+ for(const r of entries){
+  const card=root.createDiv({cls:'writer-v7-studio-session'});
+  card.createEl('button',{text:r.title}).addEventListener('click',()=>view.openFile(r.file));
+  const status=String(r.cache?.frontmatter?.sessionStatus||'planned');
+  card.createSpan({text:status,cls:'writer-v7-tag'});
+  if(r.cache?.frontmatter?.sessionDate)card.createSpan({text:String(r.cache.frontmatter.sessionDate),cls:'writer-v7-muted'});
+ }
+}
 class WriterV7StoryStudio{
  constructor(plugin){this.plugin=plugin;}
  register(){
@@ -354,6 +404,8 @@ class WriterV7StoryStudio{
   p.addCommand({id:'v7-open-story-board',name:writerUi('História: abrir quadro de cenas','Story: open scene board'),callback:()=>p.openProjects('board')});
   p.addCommand({id:'v7-open-world-graph',name:writerUi('Universo: abrir relações','World: open relationships'),callback:()=>p.openProjects('relations')});
   p.addCommand({id:'v7-open-world-maps',name:writerUi('Universo: abrir mapas','World: open maps'),callback:()=>p.openProjects('maps')});
+  p.addCommand({id:'v7-open-reference-gallery',name:writerUi('Universo: abrir galeria','World: open gallery'),callback:()=>p.openProjects('gallery')});
+  p.addCommand({id:'v7-open-session-journal',name:writerUi('História: abrir diário de sessões','Story: open session journal'),callback:()=>p.openProjects('sessions')});
  }
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Estúdio de histórias (beta)','Story studio (beta)')});
@@ -361,7 +413,8 @@ class WriterV7StoryStudio{
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   for(const [key,pt,en] of [
    ['studioBoard','Quadro de cenas','Scene board'],['studioRelations','Relações entre registros','Entity relationships'],
-   ['studioMaps','Mapas de imagens locais','Local image maps'],['studioAnalytics','Estatísticas narrativas','Narrative analytics']
+   ['studioMaps','Mapas de imagens locais','Local image maps'],['studioAnalytics','Estatísticas narrativas','Narrative analytics'],
+   ['studioGallery','Galeria de referências','Reference gallery'],['studioSessions','Diário de sessões','Session journal']
   ]){
    if(cfg[key]===undefined)cfg[key]=true;
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await this.plugin.saveSettings();}));

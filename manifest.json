@@ -1,9 +1,9 @@
 {
   "id": "basic-ai-tool-for-writers",
   "name": "Basic AI Tool for Writers",
-  "version": "6.0.1",
+  "version": "7.0.0-beta.1",
   "minAppVersion": "1.11.4",
   "author": "Alan",
-  "description": "Bilingual Obsidian writing workspace with a refined Longform hierarchy, chapter navigation, Ruby, review, AI-assisted writing and Markdown tools.",
+  "description": "Experimental v7: worldbuilding compendium with Obsidian tags and folder notes, interactive timelines, continuity checks and native writing tools.",
   "isDesktopOnly": false
 }

@@ -34,6 +34,15 @@ class WriterCursorMemory{
  matchingView(cm){
   return this.markdownViews().find(view=>view.editor?.cm===cm||view.editor?.cm?.dom===cm?.dom)||null;
  }
+ // Cancel only an unfinished automatic restore for the editor the user touched.
+ // Bookmarks are left intact; on the next open Remember Cursor still works.
+ cancelPendingForEditor(cm){
+  if(!cm)return;
+  for(const [view] of this.pending){
+   if(view?.editor?.cm===cm||view?.editor?.cm?.dom===cm.dom)
+    this.pending.delete(view);
+  }
+ }
  capture(view){
   if(!this.active()||!view?.file||!view.editor||this.pending.has(view))return false;
   const editor=view.editor;

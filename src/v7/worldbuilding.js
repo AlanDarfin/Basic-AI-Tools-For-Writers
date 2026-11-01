@@ -95,15 +95,17 @@ async function writerV7AssignTag(app,file,value){
  return tag;
 }
 function writerV7TimelineDate(value){
- const str=String(value||'').trim();
+ const str=String(value??'').trim();
  if(!str)return null;
- if(/^-?\d{1,6}$/.test(str))return Number(str)*366;
- const m=/^(-?\d{1,6})-(\d\d)(?:-(\d\d))?$/.exec(str);
- if(m){
-  const mo=Number(m[2]),day=Number(m[3]||1);
-  if(mo>=1&&mo<=12&&day>=1&&day<=31)return Number(m[1])*366+mo*31+day;
- }
- return null;
+ const m=/^(-?\d{1,6})(?:-(\d\d)(?:-(\d\d))?)?$/.exec(str);
+ if(!m)return null;
+ const year=Number(m[1]);
+ if(!m[2])return year*400;
+ const leap=year%4===0&&(year%100!==0||year%400===0);
+ const months=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+ const month=Number(m[2]),day=Number(m[3]||1);
+ if(month<1||month>12||day<1||day>months[month-1])return null;
+ return year*400+months.slice(0,month-1).reduce((sum,n)=>sum+n,0)+day-1;
 }
 function writerV7TimelineEntries(view,project,records){
  const prefs=view.prefs(project),saved=Array.isArray(prefs.v7Timeline)?prefs.v7Timeline:[];
@@ -122,7 +124,7 @@ function writerV7TimelineEntries(view,project,records){
   const fm=entry.cache?.frontmatter||{};
   const value=fm.timeline&&typeof fm.timeline==='object'?fm.timeline:null;
   const date=value?.date||fm.eventDate||fm.timelineDate;
-  if(!date)continue;
+  if(date===undefined||date===null||date==='')continue;
   items.push({id:'note:'+entry.path,title:String(value?.title||fm.eventTitle||entry.title).slice(0,200),
    date:String(date).slice(0,80),category:String(value?.category||fm.category||'').slice(0,100),
    note:entry.path,description:String(value?.description||fm.description||'').slice(0,1500),
@@ -130,7 +132,9 @@ function writerV7TimelineEntries(view,project,records){
    endDate:String(value?.endDate||fm.endDate||'').slice(0,80),
    milestone:value?.milestone===true||fm.milestone===true,source:'note'});
  }
- return items.map((x,i)=>({...x,sortKey:writerV7TimelineDate(x.date),endKey:writerV7TimelineDate(x.endDate),originalOrder:i})).sort((a,b)=>{
+ const sortDate=value=>typeof writerV7CalendarSortDate==='function'
+  ?writerV7CalendarSortDate(value,prefs.v7Calendar):writerV7TimelineDate(value);
+ return items.map((x,i)=>({...x,sortKey:sortDate(x.date),endKey:sortDate(x.endDate),originalOrder:i})).sort((a,b)=>{
   if(a.sortKey===null&&b.sortKey===null)return a.originalOrder-b.originalOrder;
   if(a.sortKey===null)return 1;if(b.sortKey===null)return -1;
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;

@@ -200,6 +200,7 @@ function writerV7RCRenderPlotlines(view,panel,project){
   if(viewMode.value==='grid'){
    const acts=[...new Set(scenes.map(s=>s.act||writerUi('(sem ato)','(no act)')))].sort();
    const grid=list.createDiv({cls:'writer-v7-rc-plotgrid',attr:{role:'table','aria-label':writerUi('Matriz de trama e atos','Plotlines by acts matrix')}});
+   grid.style.setProperty('--writer-rc-acts',String(acts.length));
    const header=grid.createDiv({cls:'writer-v7-rc-plotgrid-row',attr:{role:'row'}});
    header.createEl('strong',{text:writerUi('Trama','Plotline'),attr:{role:'columnheader'}});
    for(const act of acts)header.createEl('strong',{text:act,attr:{role:'columnheader'}});
@@ -313,7 +314,11 @@ function writerV7RCRenderBeats(view,panel,project){
  draw();
 }
 function writerV7RCContinuityFindings(scenes){
- const titles=new Set(scenes.map(s=>s.title.toLocaleLowerCase()));
+ const titles=new Set(scenes.flatMap(s=>[
+  s.title.toLocaleLowerCase(),
+  s.file?.path?.replace(/\.md$/i,'').toLocaleLowerCase(),
+  s.file?.basename?.toLocaleLowerCase()
+ ].filter(Boolean)));
  const results=[];
  for(const scene of scenes){
   for(const [items,label] of [[scene.setup,'setup'],[scene.payoff,'payoff']]){

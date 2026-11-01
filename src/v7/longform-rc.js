@@ -189,10 +189,36 @@ function writerV7RCRenderPlotlines(view,panel,project){
  tools.createEl('button',{text:writerUi('Adicionar cena a uma trama','Assign plotline to scene')}).addEventListener('click',()=>{
   writerV7RCAssignmentModal(view,project,'plotlines');
  });
+ const viewMode=tools.createEl('select',{attr:{'aria-label':writerUi('Visualização das tramas','Plotline view')}});
+ for(const [mode,pt,en] of [['list','Lista','List'],['grid','Matriz por atos','Act matrix']]){
+  const op=viewMode.createEl('option',{text:writerUi(pt,en)});op.value=mode;
+ }
  const list=root.createDiv({cls:'writer-v7-rc-plotlist'});
  const draw=()=>{
   list.empty();
   const term=query.value.trim().toLocaleLowerCase();
+  if(viewMode.value==='grid'){
+   const acts=[...new Set(scenes.map(s=>s.act||writerUi('(sem ato)','(no act)')))].sort();
+   const grid=list.createDiv({cls:'writer-v7-rc-plotgrid',attr:{role:'table','aria-label':writerUi('Matriz de trama e atos','Plotlines by acts matrix')}});
+   const header=grid.createDiv({cls:'writer-v7-rc-plotgrid-row',attr:{role:'row'}});
+   header.createEl('strong',{text:writerUi('Trama','Plotline'),attr:{role:'columnheader'}});
+   for(const act of acts)header.createEl('strong',{text:act,attr:{role:'columnheader'}});
+   for(const [name,items] of groups){
+    if(term&&!(name+' '+items.map(s=>s.title).join(' ')).toLocaleLowerCase().includes(term))continue;
+    const line=grid.createDiv({cls:'writer-v7-rc-plotgrid-row',attr:{role:'row'}});
+    line.createEl('strong',{text:name,attr:{role:'rowheader'}});
+    for(const act of acts){
+     const cell=line.createDiv({cls:'writer-v7-rc-plotgrid-cell',attr:{role:'cell'}});
+     const assigned=items.filter(x=>(x.act||writerUi('(sem ato)','(no act)'))===act);
+     for(const scene of assigned.slice(0,15)){
+      cell.createEl('button',{text:scene.title,attr:{title:scene.title}}).addEventListener('click',()=>scene.file&&view.openFile(scene.file));
+     }
+     if(assigned.length>15)cell.createSpan({text:'+'+(assigned.length-15)});
+     if(!assigned.length)cell.createSpan({cls:'writer-v7-muted',text:'—'});
+    }
+   }
+   return;
+  }
   for(const [name,items] of groups){
    const found=items.filter(x=>!term||(x.title+' '+name).toLocaleLowerCase().includes(term));
    if(!found.length)continue;
@@ -208,7 +234,7 @@ function writerV7RCRenderPlotlines(view,panel,project){
    }
   }
  };
- query.addEventListener('input',draw);draw();
+ query.addEventListener('input',draw);viewMode.addEventListener('change',draw);draw();
 }
 function writerV7RCAssignmentModal(view,project,field,defaultBeat=''){
  const scenes=writerV7RCSceneView(view,project).filter(s=>s.file);
@@ -315,19 +341,55 @@ function writerV7RCRenderContinuity(view,panel,project){
   row.createEl('strong',{text:item.title});row.createEl('p',{text:item.detail});
  }
 }
+function writerV7RCRenderPacing(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-rc-pacing'});
+ root.createEl('h3',{text:writerUi('Ritmo e intensidade','Pacing and intensity')});
+ root.createEl('p',{cls:'writer-v7-muted',
+ text:writerUi('Gráfico na ordem real do Longform, baseado na propriedade intensity (0–10) de cada cena. Ausências não são inventadas.','Graph follows the real Longform order, using each scene’s intensity property (0–10). Missing values are never guessed.')});
+ const scenes=writerV7RCSceneView(view,project),filters=root.createDiv({cls:'writer-v7-toolbar'});
+ const acts=[...new Set(scenes.map(x=>x.act).filter(Boolean))].sort();
+ const filter=filters.createEl('select',{attr:{'aria-label':writerUi('Filtrar ato','Filter act')}});
+ const all=filter.createEl('option',{text:writerUi('Todos os atos','All acts')});all.value='';
+ for(const act of acts){const opt=filter.createEl('option',{text:act});opt.value=act;}
+ const content=root.createDiv({cls:'writer-v7-rc-pacing-list'});
+ const draw=()=>{
+  content.empty();
+  const items=scenes.filter(x=>!filter.value||x.act===filter.value);
+  const marked=items.filter(x=>x.intensity!==null);
+  const avg=marked.length?Math.round(marked.reduce((sum,x)=>sum+x.intensity,0)/marked.length*10)/10:null;
+  content.createEl('p',{cls:'writer-v7-muted',
+   text:marked.length+'/'+items.length+' '+writerUi('cenas com intensidade definida','scenes with defined intensity')+
+    (avg===null?'':' · '+writerUi('Média ','Average ')+avg+'/10')});
+  for(const scene of items){
+   const row=content.createDiv({cls:'writer-v7-rc-pacing-row'});
+   row.createEl('button',{text:scene.title}).addEventListener('click',()=>scene.file&&view.openFile(scene.file));
+   const bar=row.createDiv({cls:'writer-v7-rc-pacing-track',
+     attr:{role:'meter','aria-label':scene.title,'aria-valuemin':'0','aria-valuemax':'10',
+      'aria-valuenow':scene.intensity===null?'0':String(scene.intensity)}});
+   if(scene.intensity!==null){
+    const inner=bar.createDiv({cls:'writer-v7-rc-pacing-fill'});
+    inner.style.width=(scene.intensity*10)+'%';
+   }
+   row.createSpan({text:scene.intensity===null?'—':scene.intensity+'/10',cls:'writer-v7-rc-pacing-value'});
+  }
+ };
+ filter.addEventListener('change',draw);draw();
+}
 function writerV7RCRenderStructure(view,panel,project){
  const root=panel.createDiv({cls:'writer-v7-rc-structure'});
  const tabs=root.createDiv({cls:'writer-v7-rc-structure-tabs'});
  const content=root.createDiv({cls:'writer-v7-rc-structure-body'});
  const choices=[
   ['plotlines',writerUi('Tramas','Plotlines')],
-  ['beats',writerUi('Marcos narrativos','Story beats')]
+  ['beats',writerUi('Marcos narrativos','Story beats')],
+  ['pacing',writerUi('Ritmo','Pacing')]
  ];
  const show=()=>{
   const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:'plotlines';
   content.empty();
   for(const btn of tabs.querySelectorAll('button'))btn.classList.toggle('is-active',btn.dataset.section===active);
   if(active==='beats')writerV7RCRenderBeats(view,content,project);
+  else if(active==='pacing')writerV7RCRenderPacing(view,content,project);
   else writerV7RCRenderPlotlines(view,content,project);
  };
  for(const [id,label] of choices){
@@ -347,12 +409,13 @@ class WriterV7LongformRC{
   };
   p.addCommand({id:'v7-rc-plotlines',name:writerUi('Longform: tramas e arcos','Longform: plotlines and arcs'),callback:()=>open('plotlines')});
   p.addCommand({id:'v7-rc-beat-sheet',name:writerUi('Longform: marcos narrativos','Longform: story beats'),callback:()=>open('beats')});
+  p.addCommand({id:'v7-rc-pacing',name:writerUi('Longform: ritmo e intensidade','Longform: pacing and intensity'),callback:()=>open('pacing')});
  }
  renderSettings(panel){
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   panel.createEl('h4',{text:writerUi('Planejamento Longform (RC)','Longform planning (RC)')});
   panel.createEl('p',{text:writerUi('Usa o índice Longform e as propriedades das cenas existentes; não cria outra organização paralela.','Uses the existing Longform index and scene properties; no parallel scene organization is created.')});
-  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates']]){
+  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis']]){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
     .onChange(async value=>{cfg[key]=value;await this.plugin.saveSettings();}));
   }

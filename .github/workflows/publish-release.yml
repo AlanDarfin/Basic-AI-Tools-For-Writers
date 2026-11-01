@@ -1,0 +1,59 @@
+name: Publish versioned stable release
+on:
+  push:
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    name: Validate and publish matching release tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate tag matches manifest and docs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs'),tag=process.env.GITHUB_REF_NAME;
+          const m=require('./manifest.json'),p=require('./package.json'),v=require('./versions.json');
+          if(!/^\d+\.\d+\.\d+$/.test(tag)||m.version!==tag||p.version!==tag||v[tag]!==m.minAppVersion)throw Error('Tag/manifest mismatch');
+          if(m.id!=='basic-ai-tool-for-writers'||/\b(obsidian|plugin)\b/i.test(m.name)||m.isDesktopOnly!==false)throw Error('Manifest policy violation');
+          for(const file of ['README.md','docs/README.pt-BR.md']){
+            if(!fs.readFileSync(file,'utf8').includes(tag))throw Error('Missing documentation: '+file);
+          }
+          NODE
+      - name: Full suite and CSS compatibility
+        run: |
+          npm run check
+          node --test tests/css-community-lint.test.cjs
+      - name: Create package and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -j "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip" main.js manifest.json styles.css
+          unzip -t "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip"
+          test "$(unzip -Z1 "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip" | wc -l)" -eq 3
+          sha256sum main.js manifest.json styles.css "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip" > "SHA256SUMS-${GITHUB_REF_NAME}.txt"
+      - name: Publish release without overwriting any existing tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release exists, preserving published assets."
+            exit 0
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            main.js manifest.json styles.css \
+            "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip" "SHA256SUMS-${GITHUB_REF_NAME}.txt" \
+            --verify-tag --title "Basic AI Tool for Writers $GITHUB_REF_NAME" \
+            --latest --generate-notes

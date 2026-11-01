@@ -45,7 +45,7 @@ function viewFixture(){
  view.lastSelected=project.file.path;view.plugin={settings:{v7:{},projectsData:{}},saveSettings:async()=>{}};
  view.app={workspace:{getActiveFile:()=>null}};
  view.indexes=()=>[project];view.prefs=()=>({});
- view.drawScenes=()=>{};view.drawProject=()=>{};
+ view.drawScenes=()=>{};view.drawProject=()=>{};view.drawNotes=async()=>{};
  return view;
 }
 test('selecting Sessions preserves the horizontally scrolled World tab strip',async()=>{

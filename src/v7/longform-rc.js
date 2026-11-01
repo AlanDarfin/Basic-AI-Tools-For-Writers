@@ -315,12 +315,38 @@ function writerV7RCRenderContinuity(view,panel,project){
   row.createEl('strong',{text:item.title});row.createEl('p',{text:item.detail});
  }
 }
+function writerV7RCRenderStructure(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-rc-structure'});
+ const tabs=root.createDiv({cls:'writer-v7-rc-structure-tabs'});
+ const content=root.createDiv({cls:'writer-v7-rc-structure-body'});
+ const choices=[
+  ['plotlines',writerUi('Tramas','Plotlines')],
+  ['beats',writerUi('Marcos narrativos','Story beats')]
+ ];
+ const show=()=>{
+  const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:'plotlines';
+  content.empty();
+  for(const btn of tabs.querySelectorAll('button'))btn.classList.toggle('is-active',btn.dataset.section===active);
+  if(active==='beats')writerV7RCRenderBeats(view,content,project);
+  else writerV7RCRenderPlotlines(view,content,project);
+ };
+ for(const [id,label] of choices){
+  const btn=tabs.createEl('button',{text:label,attr:{type:'button','aria-label':label,'data-section':id}});
+  btn.addEventListener('click',()=>{view.writerV7RCSubtab=id;show();});
+ }
+ show();
+}
 class WriterV7LongformRC{
  constructor(plugin){this.plugin=plugin;}
  register(){
   const p=this.plugin;
-  p.addCommand({id:'v7-rc-plotlines',name:writerUi('Longform: tramas e arcos','Longform: plotlines and arcs'),callback:()=>p.openProjects('plotlines')});
-  p.addCommand({id:'v7-rc-beat-sheet',name:writerUi('Longform: marcos narrativos','Longform: story beats'),callback:()=>p.openProjects('beats')});
+  const open=async sub=>{
+   await p.openProjects('structure');
+   const leaf=p.app.workspace.getLeavesOfType(PROJECT_VIEW)?.[0];
+   if(leaf?.view?.root){leaf.view.writerV7RCSubtab=sub;await leaf.view.render();}
+  };
+  p.addCommand({id:'v7-rc-plotlines',name:writerUi('Longform: tramas e arcos','Longform: plotlines and arcs'),callback:()=>open('plotlines')});
+  p.addCommand({id:'v7-rc-beat-sheet',name:writerUi('Longform: marcos narrativos','Longform: story beats'),callback:()=>open('beats')});
  }
  renderSettings(panel){
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});

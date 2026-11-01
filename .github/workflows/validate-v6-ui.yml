@@ -1,0 +1,32 @@
+name: Validate v6 stable candidate
+on:
+  push:
+    branches: [release/v6-unified-ui]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full source, package and regression validation
+        run: npm run check
+      - name: CSS compatibility with Obsidian community checks
+        run: node --test tests/css-community-lint.test.cjs
+      - name: Final UI coverage and version audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --test tests/v6-ui-unification.test.cjs
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const m=require('./manifest.json'),p=require('./package.json'),v=require('./versions.json');
+          if(m.version!=='6.0.0'||p.version!==m.version||v[m.version]!==m.minAppVersion)throw Error('Stable release metadata mismatch');
+          for(const s of ['writer-v6-booknav-heading','writer-v6-booknav-title','writer-setting-toggle','writer-setting-field','writer-v6-project-prefs']){
+            if(!fs.readFileSync('styles.css','utf8').includes(s))throw Error('Missing UI scope '+s);
+          }
+          NODE

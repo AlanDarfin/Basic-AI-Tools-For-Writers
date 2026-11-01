@@ -153,6 +153,15 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
+  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
+  &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
+  &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
+  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
+  &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
+  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
+  if(!allTabs.some(([id])=>id===this.activeTab))this.activeTab=allTabs[0]?.[0]||'scenes';
   const menuGroups=[
    {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
    {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
@@ -179,14 +188,6 @@ class ProjectsView extends ItemView{
    }
   },{passive:false});
   const panels={};
-  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
-  &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
-  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
-  &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
-  &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
-  &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)
-  &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
-  &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
   for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===activeGroup)?.tabs.includes(id))){
    const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
    btn.addEventListener('click',()=>{this.activeTab=id;this.render();});

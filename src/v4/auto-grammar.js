@@ -48,7 +48,7 @@ function writerGrammarLocalWindow(source,start,end,limit=10000){
  let from=paragraph.from,to=paragraph.to,kind='paragraph';
  // Use sentence boundaries only when their punctuation has an unambiguous
  // whitespace + uppercase successor; otherwise retain the whole paragraph.
- const split=/[.!?…][”"'\)\]]*\s+(?=[\p{Lu}\p{N}“"']/gu;
+ const split=/[.!?…][)"'”’]*\s+(?=[\p{Lu}\p{N}“"'])/gu;
  const boundaries=[from];let m;
  split.lastIndex=from;
  while((m=split.exec(text))!==null&&m.index<to){

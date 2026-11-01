@@ -3673,3 +3673,102 @@ body.writer-v4-typewriter-focus .cm-editor .cm-line.writer-v4-typewriter-current
 @media(prefers-reduced-motion:reduce){
  .writer-project-root .writer-project-nav-groups>button{transition:none}
 }
+
+/* 7.0.2 — desktop sidebar density (no CSS zoom / no mobile changes).
+   Direct fields in the vertical writing panel must NOT inherit flex-basis:100%:
+   that stretched the search input and context textarea to hundreds of pixels. */
+body:not(.is-mobile) :is(
+  .writer-tool-root.writer-tool-root,
+  .writer-tools-v3.writer-tools-v3,
+  .writer-project-root.writer-project-root
+){
+  --writer-ui-control:36px;
+  --writer-control-height:36px;
+  --writer-ui-space:6px;
+}
+body:not(.is-mobile) .writer-tool-root.writer-tool-root{
+  padding:7px 9px 0;
+  gap:5px;
+}
+body:not(.is-mobile) .writer-tool-root>.writer-tool-panel.writer-tool-panel{
+  gap:7px;
+  padding:5px 1px 12px;
+}
+body:not(.is-mobile) .writer-tool-root>.writer-tool-panel.writer-tool-panel>input[type="search"]{
+  flex:0 0 auto;
+  width:100%;
+  height:36px;
+  min-height:36px;
+}
+body:not(.is-mobile) .writer-tool-root>.writer-tool-panel.writer-tool-panel>textarea{
+  flex:0 0 auto;
+  width:100%;
+  height:82px;
+  min-height:72px;
+  resize:vertical;
+}
+body:not(.is-mobile) .writer-tool-root .writer-tool-tabs.writer-tool-tabs,
+body:not(.is-mobile) .writer-tools-v3 .writer-tools-v3-tabs.writer-tools-v3-tabs{
+  gap:3px;
+  padding-bottom:4px;
+  margin-bottom:5px;
+}
+body:not(.is-mobile) .writer-tool-root .writer-tool-tabs.writer-tool-tabs>button,
+body:not(.is-mobile) .writer-tools-v3 .writer-tools-v3-tabs.writer-tools-v3-tabs>button{
+  min-height:30px;
+  padding:5px 9px;
+  line-height:1.25;
+}
+body:not(.is-mobile) .writer-tool-root .dictionary-controls,
+body:not(.is-mobile) .writer-tool-root .dictionary-actions{
+  gap:5px;
+}
+body:not(.is-mobile) .writer-tool-root .dictionary-controls>button,
+body:not(.is-mobile) .writer-tool-root .dictionary-actions>button{
+  min-height:30px;
+  padding:5px 7px;
+}
+body:not(.is-mobile) .writer-tool-root .dictionary-card{
+  padding:9px;
+}
+body:not(.is-mobile) .writer-project-root.writer-project-root,
+body:not(.is-mobile) .writer-tools-v3.writer-tools-v3{
+  padding:8px 8px 20px;
+}
+body:not(.is-mobile) .writer-project-root .writer-project-toolbar{
+  gap:5px;
+  margin-bottom:6px;
+}
+body:not(.is-mobile) .writer-project-root .writer-project-nav-groups{
+  gap:4px;
+  margin:5px 0 4px;
+}
+body:not(.is-mobile) .writer-project-root .writer-project-nav-groups>button{
+  min-height:31px;
+  padding:5px 7px;
+}
+body:not(.is-mobile) .writer-project-root .writer-project-tabs.writer-project-tabs{
+  gap:2px;
+  padding:2px 0 4px;
+  margin-bottom:5px;
+}
+body:not(.is-mobile) .writer-project-root .writer-project-tabs.writer-project-tabs>button{
+  min-height:29px;
+  padding:5px 8px;
+}
+body:not(.is-mobile) .writer-project-root .writer-project-toolbar>.writer-v7-stable-series-launch{
+  min-height:32px;
+  padding:5px 8px;
+}
+body:not(.is-mobile) .writer-project-root .writer-v7-rc-structure-tabs>button{
+  min-height:30px;
+  padding:5px 9px;
+}
+body:not(.is-mobile) .writer-project-root :is(.writer-v7-toolbar,.writer-v7-inline-actions){
+  gap:5px;
+  margin:7px 0;
+}
+body:not(.is-mobile) .writer-project-root :is(.writer-v7-toolbar,.writer-v7-inline-actions)>button{
+  min-height:31px;
+  padding:5px 8px;
+}

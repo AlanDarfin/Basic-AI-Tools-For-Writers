@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.0.2 estável · **Versão anterior publicada:** 7.0.1 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.0.3 estável · **Versão anterior publicada:** 7.0.2 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Correção da rolagem nas abas do Longform — 7.0.3
+
+A rolagem horizontal das abas é preservada ao alternar entre Relações, Mapas, Galeria, Sessões e outras ferramentas, inclusive quando o painel é renderizado novamente. Cada grupo (Escrita, Universo e Projeto) guarda sua posição de forma independente; a posição é restaurada após a criação dos botões. Sem alterações de layout no Android ou novas permissões. [Notas da versão](V7_0_3_RELEASE.pt-BR.md) · [English](V7_0_3_RELEASE.en.md).
 
 ## Correção da interface desktop — 7.0.2
 

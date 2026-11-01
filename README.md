@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.2](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.2) · **Previous published:** [7.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.0.3](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.3) · **Previous published:** [7.0.2](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.2) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Longform navigation scroll fix — 7.0.3
+
+The Longform project's horizontal tabs now retain their position after switching tabs (including Relationships, Maps, Gallery and Sessions) and after view refreshes. Each top-level area (Writing, World, Project) remembers its own position. The scroll is restored **after** tab buttons are created, avoiding the previous reset to the left edge. No Android layout changes or new permissions. [Release notes](docs/V7_0_3_RELEASE.en.md) · [Português](docs/V7_0_3_RELEASE.pt-BR.md).
 
 ## Desktop compactness fix — 7.0.2
 

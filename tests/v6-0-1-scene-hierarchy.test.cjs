@@ -30,6 +30,6 @@ test('stable release metadata and translations are updated',()=>{
  assert.equal(versions[manifest.version],manifest.minAppVersion);
  for(const file of ['README.md','docs/README.pt-BR.md','docs/V6_0_1_RELEASE.en.md','docs/V6_0_1_RELEASE.pt-BR.md'])
   assert.ok(fs.readFileSync(file,'utf8').includes('6.0.1'),file);
- assert.match(fs.readFileSync('README.md','utf8'),/Latest stable:\*\* \[6\.0\.1\]/);
- assert.match(fs.readFileSync('docs/README.pt-BR.md','utf8'),/Versão atual:\*\* 6\.0\.1/);
+ assert.match(fs.readFileSync('README.md','utf8'),new RegExp('Latest stable:\\*\\* \\['+(manifest.version==='7.0.0'?'7\\.0\\.0':'6\\.0\\.1')+'\\]'));
+ assert.match(fs.readFileSync('docs/README.pt-BR.md','utf8'),new RegExp('Versão atual:\\*\\* '+(manifest.version==='7.0.0'?'7\\.0\\.0':'6\\.0\\.1')));
 });

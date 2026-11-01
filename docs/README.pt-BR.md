@@ -12,7 +12,7 @@ A versão estável reúne as duas betas e a RC. Os novos recursos continuam usan
 
 | Área | Melhorias |
 | --- | --- |
-| **Escrita** | Árvore de capítulos recolhível, reordenação por toque, Quadro em Cartões/Kanban/Lista, matriz de tramas, modelos narrativos, análise de ritmo e ligações de preparação/consequência. |
+| **Escrita** | Árvore de capítulos recolhível, navegação entre capítulos e subcapítulos, reordenação por toque, Quadro em Cartões/Kanban/Lista, matriz de tramas, modelos narrativos, análise de ritmo e ligações de preparação/consequência. |
 | **Universo** | Compêndio por tags personalizadas, pastas e Folder Notes; fichas editáveis de personagens, locais e itens, templates próprios, relações, retratos, Galeria e mapas com imagens do cofre. |
 | **Timeline** | Trilhas, ramificações, marcos, Gantt simples, calendário fictício por projeto com meses personalizados e correção da ordem de datas entre anos. |
 | **Projetos** | Organizador de séries de livros que agrupa e reordena índices Longform **sem mover arquivos ou alterar capítulos**. Metas, sessões, tarefas e compilação continuam integradas. |

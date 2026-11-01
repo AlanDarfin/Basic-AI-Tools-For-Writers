@@ -27,7 +27,7 @@ next: "[[Notas/Próxima]]"
 
 [Notas completas](V6_RELEASE.pt-BR.md) · [Release em inglês](V6_RELEASE.en.md) · [Baixar versão 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
 
-**Histórico:** [beta.1](V6_BETA_RELEASE.md), [beta.2](V6_BETA2.pt-BR.md), [beta.3](V6_BETA3.pt-BR.md) e [beta.4](V6_BETA4.pt-BR.md). A versão estável anterior era a 5.2.0.
+**Histórico:** [beta.1](V6_BETA_RELEASE.md), [beta.2](V6_BETA2.pt-BR.md), [beta.3](V6_BETA3.pt-BR.md) e [6.0.0-beta.4](V6_BETA4.pt-BR.md). A versão estável anterior era a 5.2.0.
 
 > **Novo na 5.2.0:** Longform lembra o **último projeto selecionado**, inclusive após reiniciar o plugin. A aba **Projeto** permite escolher uma **capa do cofre**, escrever a **sinopse/descrição** e declarar o tipo de **direitos autorais/licença**, com explicação de cada opção. Esses dados são salvos no frontmatter `longform` do índice da história. As configurações agora ficam em **seis grupos principais**, com abas menores dentro de cada grupo; Easy Typing e Smart Typography foram unidos em **Digitação e tipografia**. Veja as [notas da 5.2.0](V5_2_RELEASE.md).
 

@@ -28,7 +28,7 @@ next: "[[Notes/Next]]"
 
 [Full release notes](docs/V6_RELEASE.en.md) · [Notas em português](docs/V6_RELEASE.pt-BR.md) · [Download 6.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/6.0.0)
 
-**Development history:** [beta.1](docs/V6_BETA_RELEASE.md), [beta.2](docs/V6_BETA2.en.md), [beta.3](docs/V6_BETA3.en.md), [beta.4](docs/V6_BETA4.en.md). The previous stable release was 5.2.0.
+**Development history:** [beta.1](docs/V6_BETA_RELEASE.md), [beta.2](docs/V6_BETA2.en.md), [beta.3](docs/V6_BETA3.en.md), [6.0.0-beta.4](docs/V6_BETA4.en.md). The previous stable release was 5.2.0.
 
 **New in 5.2.0:** Longform remembers the **last selected project**, including when switching between its separate index/draft notes. Project details now include a vault-image **cover**, a short **synopsis/description**, and a copyright/license selector explaining *All rights reserved*, Creative Commons choices, CC0 and public domain. These details are written to the existing project's `longform` frontmatter. The settings interface now has **six grouped top-level tabs** with smaller category tabs, and Easy Typing plus Smart Typography share a single **Typing & typography** settings page. All new controls have Portuguese and English labels. See the [release notes](docs/V5_2_RELEASE.md).
 

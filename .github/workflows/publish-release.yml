@@ -1,6 +1,9 @@
 name: Publish versioned stable release
 on:
   push:
+    branches: [main]
+    paths:
+      - manifest.json
     tags:
       - '[0-9]*.[0-9]*.[0-9]*'
       - '!*-*'
@@ -17,64 +20,106 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '22'
           cache: npm
       - name: Reproducible install
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Validate tag, manifest and docs
+      - name: Resolve version and skip already published releases
+        id: version
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./manifest.json').version")"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Not a stable version"; exit 1; }
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "$version" ]]; then
+            echo "Tag does not match manifest"; exit 1
+          fi
+          echo "tag=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "$version" >/dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Version already released; preserving assets."
+          fi
+      - name: Validate manifest, package, lockfile and docs
+        if: steps.version.outputs.skip != 'true'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
           node <<'NODE'
-          const fs=require('node:fs'),tag=process.env.GITHUB_REF_NAME;
+          const fs=require('node:fs'),tag=process.env.RELEASE_TAG;
           const m=require('./manifest.json'),p=require('./package.json'),l=require('./package-lock.json'),v=require('./versions.json');
-          if(!/^\d+\.\d+\.\d+$/.test(tag)||m.version!==tag||p.version!==tag||l.version!==tag||v[tag]!==m.minAppVersion)throw Error('Tag/manifest/lock mismatch');
+          if(m.version!==tag||p.version!==tag||l.version!==tag||v[tag]!==m.minAppVersion)throw Error('Tag/manifest/lock mismatch');
           if(m.id!=='basic-ai-tool-for-writers'||/\b(obsidian|plugin)\b/i.test(m.name)||m.isDesktopOnly!==false)throw Error('Manifest policy violation');
           for(const file of ['README.md','docs/README.pt-BR.md']) {
             if(!fs.readFileSync(file,'utf8').includes(tag))throw Error('Missing documentation: '+file);
           }
           NODE
       - name: Full suite and CSS compatibility
+        if: steps.version.outputs.skip != 'true'
         run: |
           npm run check
           node --test tests/css-community-lint.test.cjs
-      - name: Create offline-install archive and checksums
+      - name: Create offline archive and checksums
+        if: steps.version.outputs.skip != 'true'
         shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          zip -j "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip" main.js manifest.json styles.css
-          unzip -t "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip"
-          test "$(unzip -Z1 "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip" | wc -l)" -eq 3
-          sha256sum main.js manifest.json styles.css "Basic-AI-Tool-for-Writers-${GITHUB_REF_NAME}.zip" > "SHA256SUMS-${GITHUB_REF_NAME}.txt"
-      - name: Attest provenance of release assets and offline ZIP
+          zip -j "Basic-AI-Tool-for-Writers-${RELEASE_TAG}.zip" main.js manifest.json styles.css
+          unzip -t "Basic-AI-Tool-for-Writers-${RELEASE_TAG}.zip"
+          test "$(unzip -Z1 "Basic-AI-Tool-for-Writers-${RELEASE_TAG}.zip" | wc -l)" -eq 3
+          sha256sum main.js manifest.json styles.css "Basic-AI-Tool-for-Writers-${RELEASE_TAG}.zip" > "SHA256SUMS-${RELEASE_TAG}.txt"
+      - name: Attest provenance
+        if: steps.version.outputs.skip != 'true'
         uses: actions/attest-build-provenance@v3
         with:
           subject-path: |
             main.js
             manifest.json
             styles.css
-            Basic-AI-Tool-for-Writers-${{ github.ref_name }}.zip
-      - name: Upload ZIP and checksums as a workflow artifact
+            Basic-AI-Tool-for-Writers-${{ steps.version.outputs.tag }}.zip
+      - name: Upload ZIP and checksums as workflow artifacts
+        if: steps.version.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: offline-install-${{ github.ref_name }}
+          name: offline-install-${{ steps.version.outputs.tag }}
           path: |
-            Basic-AI-Tool-for-Writers-${{ github.ref_name }}.zip
-            SHA256SUMS-${{ github.ref_name }}.txt
+            Basic-AI-Tool-for-Writers-${{ steps.version.outputs.tag }}.zip
+            SHA256SUMS-${{ steps.version.outputs.tag }}.txt
           if-no-files-found: error
-      - name: Publish only the three official plugin assets
+      - name: Create stable Git tag if needed (after validation)
+        if: steps.version.outputs.skip != 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$RELEASE_TAG" --jq '.object.sha' 2>/dev/null || true)"
+          if [[ -n "$existing" ]]; then
+            [[ "$existing" == "$GITHUB_SHA" ]] || { echo "Existing tag points at another commit; refusing to retag"; exit 1; }
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$RELEASE_TAG" -f sha="$GITHUB_SHA"
+          fi
+      - name: Publish only supported plugin release files
+        if: steps.version.outputs.skip != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "Release exists; preserving its assets."
             exit 0
           fi
-          gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css \
-            --verify-tag --title "Basic AI Tool for Writers $GITHUB_REF_NAME" \
+          gh release create "$RELEASE_TAG" main.js manifest.json styles.css \
+            --verify-tag --title "Basic AI Tool for Writers $RELEASE_TAG" \
             --latest --generate-notes

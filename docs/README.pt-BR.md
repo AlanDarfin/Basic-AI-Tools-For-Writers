@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.0.5 estável · **Versão anterior publicada:** 7.0.4 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.0.6 estável · **Versão anterior publicada:** 7.0.5 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Destaque de linha por interação — 7.0.6
+
+O realce da linha atual no modo máquina de escrever só aparece após a primeira interação real com o editor (clique/toque ou teclado). Ao usar a roda do mouse, o realce e a centralização automática ficam suspensos até nova interação. Abrir uma nota ou restaurar cursor/seleção não ativa o destaque. O Remember Cursor Position mantém os marcadores salvos, mas não substitui um gesto do usuário enquanto a restauração ainda está pendente. Cada painel do editor é independente. [Notas 7.0.6](V7_0_6_RELEASE.pt-BR.md) · [English](V7_0_6_RELEASE.en.md).
 
 ## Séries do Longform no cabeçalho — 7.0.5
 

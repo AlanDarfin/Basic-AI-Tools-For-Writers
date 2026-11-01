@@ -25,7 +25,7 @@ The stable v7 release consolidates two betas and a release candidate. All new pl
 
 **Before upgrading:** Back up your vault and plugin data.json. Replacing the three release files should not overwrite saved plugin settings. Listing in the Obsidian Community directory requires separate approval; a GitHub release does not guarantee directory publication.
 
-**Release history:** [5.2.0](docs/V5_2_RELEASE.md), [6.0.1](docs/V6_0_1_RELEASE.en.md), [7.0.0-rc.1](docs/V7_RC1.en.md), [beta.2](docs/V7_BETA2.en.md), [beta.1](docs/V7_BETA1.en.md). Earlier notes remain in the [docs folder](docs/).
+**Release history:** [5.2.0](docs/V5_2_RELEASE.md), [6.0.0-beta.4](docs/V6_BETA4.en.md), [6.0.1](docs/V6_0_1_RELEASE.en.md), [7.0.0-beta.1](docs/V7_BETA1.en.md), [7.0.0-beta.2](docs/V7_BETA2.en.md), [7.0.0-rc.1](docs/V7_RC1.en.md). Earlier notes remain in the [docs folder](docs/).
 
 ## Contents
 

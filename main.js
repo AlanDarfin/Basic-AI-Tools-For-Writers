@@ -176,56 +176,99 @@ class ProjectsView extends ItemView{
   const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
   this.tabGroup=activeGroup;
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
+  const groupButtons={};
+  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist'}});
+  const panels={};
+  const tabButtons={};
+  let rebuildingTabs=false;
+  // Keep the tab strip mounted on regular tab changes. Only the selected panel
+  // is redrawn, so horizontal scroll, focus and pointer position stay intact.
+  const switchTab=id=>{
+   if(this.activeTab===id)return;
+   this.activeTab=id;
+   for(const [key,button] of Object.entries(tabButtons)){
+    const selected=key===id;
+    button.classList.toggle('is-active',selected);
+    button.setAttribute('aria-selected',String(selected));
+   }
+   for(const [key,panel] of Object.entries(panels))
+    panel.style.display=key===id?'block':'none';
+   void this.renderProjectPanel(panels,project,++this.renderToken,id)
+    .catch(error=>console.error('[Basic AI] Could not render project tab',error));
+  };
+  const fillTabs=group=>{
+   rebuildingTabs=true;
+   tabs.empty();
+   for(const key of Object.keys(tabButtons))delete tabButtons[key];
+   for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
+    const selected=this.activeTab===id;
+    const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
+     attr:{type:'button',role:'tab','aria-selected':String(selected)}});
+    tabButtons[id]=btn;
+    btn.addEventListener('click',()=>switchTab(id));
+   }
+   tabs.scrollLeft=Math.max(0,this.tabScrollPositions[group]||0);
+   rebuildingTabs=false;
+  };
   for(const group of menuGroups){
-   groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
+   const button=groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
     cls:activeGroup===group.id?'is-active':'',
-    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}})
-    .addEventListener('click',()=>{
-     if(activeGroup===group.id)return;
-     const first=allTabs.find(([id])=>group.tabs.includes(id));
-     if(first){this.activeTab=first[0];void this.render();}
-    });
+    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
+   groupButtons[group.id]=button;
+   button.addEventListener('click',()=>{
+    if(this.tabGroup===group.id)return;
+    const first=allTabs.find(([id])=>group.tabs.includes(id));
+    if(!first)return;
+    this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
+    this.tabGroup=group.id;
+    this.activeTab=first[0];
+    for(const [key,b] of Object.entries(groupButtons)){
+     const active=key===group.id;
+     b.classList.toggle('is-active',active);
+     b.setAttribute('aria-pressed',String(active));
+    }
+    fillTabs(group.id);
+    for(const [key,panel] of Object.entries(panels))
+     panel.style.display=key===this.activeTab?'block':'none';
+    void this.renderProjectPanel(panels,project,++this.renderToken,this.activeTab)
+     .catch(error=>console.error('[Basic AI] Could not render project group',error));
+   });
   }
-  const tabs=this.root.createDiv({cls:'writer-project-tabs'});
+  for(const [id] of allTabs){
+   panels[id]=this.root.createDiv({cls:'writer-project-panel'});
+   panels[id].style.display=this.activeTab===id?'block':'none';
+  }
   tabs.addEventListener('wheel',event=>{
    if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
-  const panels={};
-  for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===activeGroup)?.tabs.includes(id))){
-   const btn=tabs.createEl('button',{text:name,cls:this.activeTab===id?'is-active':''});
-   btn.addEventListener('click',()=>{
-    if(this.activeTab===id)return;
-    this.tabScrollPositions[activeGroup]=tabs.scrollLeft;
-    this.activeTab=id;void this.render();
-   });
-   panels[id]=this.root.createDiv({cls:'writer-project-panel'});
-   panels[id].style.display=this.activeTab===id?'block':'none';
-  }
-  // Restore only after tab buttons exist, otherwise scrollLeft gets clamped to zero.
-  tabs.scrollLeft=Math.max(0,this.tabScrollPositions[activeGroup]||0);
   tabs.addEventListener('scroll',()=>{
-   if(tabs.isConnected)this.tabScrollPositions[activeGroup]=tabs.scrollLeft;
+   if(!rebuildingTabs&&tabs.isConnected)this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
   },{passive:true});
-  // Rendering every hidden panel was expensive for books with many chapters.
-  if(this.activeTab==='scenes')this.drawScenes(panels.scenes,project);
-  if(this.activeTab==='project')this.drawProject(panels.project,project);
-  if(this.activeTab==='compile')this.drawCompile(panels.compile,project);
-  if(this.activeTab==='notes')await this.drawNotes(panels.notes,project);
-  if(this.activeTab==='timeline')writerV7RenderTimeline(this,panels.timeline,project);
-  if(this.activeTab==='board')writerV7StudioRenderBoard(this,panels.board,project);
-  if(this.activeTab==='structure')writerV7RCRenderStructure(this,panels.structure,project);
-  if(this.activeTab==='relations')writerV7StudioRenderGraph(this,panels.relations,project);
-  if(this.activeTab==='maps')writerV7StudioRenderMaps(this,panels.maps,project);
-  if(this.activeTab==='analytics')writerV7StudioRenderAnalytics(this,panels.analytics,project);
-  if(this.activeTab==='gallery')writerV7StudioRenderGallery(this,panels.gallery,project);
-  if(this.activeTab==='sessions')writerV7StudioRenderSessions(this,panels.sessions,project);
-  if(this.activeTab==='continuity')writerV7RenderContinuity(this,panels.continuity,project);
-  if(this.activeTab==='tasks')this.drawTasks(panels.tasks,project);
-  if(this.activeTab==='comments')this.plugin.writerV4Extras?.drawComments(panels.comments,project,this);
-  if(this.activeTab==='project')await this.drawStats(panels.project,project,token);
+  fillTabs(activeGroup);
+  await this.renderProjectPanel(panels,project,token,this.activeTab);
   this.root.scrollTop=previousScroll;
+ }
+ async renderProjectPanel(panels,project,token,id=this.activeTab){
+  const panel=panels[id];
+  if(!panel)return;
+  panel.empty();
+  if(id==='scenes')this.drawScenes(panel,project);
+  else if(id==='project'){this.drawProject(panel,project);await this.drawStats(panel,project,token);}
+  else if(id==='compile')this.drawCompile(panel,project);
+  else if(id==='notes')await this.drawNotes(panel,project);
+  else if(id==='timeline')writerV7RenderTimeline(this,panel,project);
+  else if(id==='board')writerV7StudioRenderBoard(this,panel,project);
+  else if(id==='structure')writerV7RCRenderStructure(this,panel,project);
+  else if(id==='relations')writerV7StudioRenderGraph(this,panel,project);
+  else if(id==='maps')writerV7StudioRenderMaps(this,panel,project);
+  else if(id==='analytics')writerV7StudioRenderAnalytics(this,panel,project);
+  else if(id==='gallery')writerV7StudioRenderGallery(this,panel,project);
+  else if(id==='sessions')writerV7StudioRenderSessions(this,panel,project);
+  else if(id==='continuity')writerV7RenderContinuity(this,panel,project);
+  else if(id==='tasks')this.drawTasks(panel,project);
+  else if(id==='comments')this.plugin.writerV4Extras?.drawComments(panel,project,this);
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
@@ -8723,9 +8766,33 @@ function writerMarkCompactSettings(root){
 class DictionarySettings extends PluginSettingTab{
  constructor(app,plugin){super(app,plugin);this.plugin=plugin;this.plugin.writerSettingsTab=this;}
  display(){
-  const el=this.containerEl;el.empty();el.createEl('h2',{text:t('settings')});
-  const nav=el.createDiv({cls:'dictionary-settings-tabs'});nav.scrollLeft=this.settingsTabsScrollLeft||0;nav.addEventListener('scroll',()=>{this.settingsTabsScrollLeft=nav.scrollLeft;},{passive:true});nav.addEventListener('wheel',event=>{if(nav.scrollWidth>nav.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){nav.scrollLeft+=event.deltaY;event.preventDefault();}},{passive:false});
+  const el=this.containerEl;
+  // Full settings rebuilds (e.g. module toggles) should retain both scroll strips.
+  const previousNav=el.querySelector('.dictionary-settings-tabs');
+  const previousSubnav=el.querySelector('.dictionary-settings-subtabs');
+  if(previousNav)this.settingsTabsScrollLeft=previousNav.scrollLeft;
+  this.settingsSubtabsScrollLeft=this.settingsSubtabsScrollLeft||Object.create(null);
+  if(previousSubnav?.dataset.group)
+   this.settingsSubtabsScrollLeft[previousSubnav.dataset.group]=previousSubnav.scrollLeft;
+  el.empty();el.createEl('h2',{text:t('settings')});
+  const nav=el.createDiv({cls:'dictionary-settings-tabs'});
   const subnav=el.createDiv({cls:'dictionary-settings-subtabs'});
+  const bindHorizontalWheel=row=>row.addEventListener('wheel',event=>{
+   if(row.scrollWidth>row.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+    row.scrollLeft+=event.deltaY;
+    event.preventDefault();
+   }
+  },{passive:false});
+  bindHorizontalWheel(nav);
+  bindHorizontalWheel(subnav);
+  nav.addEventListener('scroll',()=>{
+   if(nav.isConnected)this.settingsTabsScrollLeft=nav.scrollLeft;
+  },{passive:true});
+  let buildingSubtabs=false;
+  subnav.addEventListener('scroll',()=>{
+   if(!buildingSubtabs&&subnav.isConnected&&subnav.dataset.group)
+    this.settingsSubtabsScrollLeft[subnav.dataset.group]=subnav.scrollLeft;
+  },{passive:true});
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
   this.writerSettingsObserver?.disconnect();
   if(typeof MutationObserver==='function'){
@@ -8793,11 +8860,26 @@ class DictionarySettings extends PluginSettingTab{
   const groupFor=id=>groups.find(([, ,ids])=>ids.includes(id))?.[0]||'general';
   this.lastSectionByGroup=this.lastSectionByGroup||{};
   const renderSubtabs=(group,id)=>{
-   subnav.empty();
-   for(const [key,label] of enabledSections.filter(([key])=>groupFor(key)===group)){
-    const b=subnav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':String(key===id)}});
-    b.dataset.tab=key;b.classList.toggle('is-active',key===id);
-    b.addEventListener('click',()=>showTab(key));
+   if(subnav.dataset.group!==group){
+    if(subnav.dataset.group)
+     this.settingsSubtabsScrollLeft[subnav.dataset.group]=subnav.scrollLeft;
+    buildingSubtabs=true;
+    subnav.empty();
+    subnav.dataset.group=group;
+    for(const [key,label] of enabledSections.filter(([key])=>groupFor(key)===group)){
+     const b=subnav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':String(key===id)}});
+     b.dataset.tab=key;b.classList.toggle('is-active',key===id);
+     b.addEventListener('click',()=>{if(this.activeSettingsTab!==key)showTab(key);});
+    }
+    subnav.scrollLeft=Math.max(0,this.settingsSubtabsScrollLeft[group]||0);
+    buildingSubtabs=false;
+   }else{
+    // Never recreate this horizontal strip when switching its content page.
+    for(const b of Array.from(subnav.children)){
+     const selected=b.dataset.tab===id;
+     b.classList.toggle('is-active',selected);
+     b.setAttribute('aria-selected',String(selected));
+    }
    }
    subnav.setAttribute('role','tablist');
   };
@@ -8980,6 +9062,8 @@ class DictionarySettings extends PluginSettingTab{
    });
   }
   nav.setAttribute('role','tablist');
+  // Buttons must exist before setting scrollLeft; otherwise it clamps to zero.
+  nav.scrollLeft=Math.max(0,this.settingsTabsScrollLeft||0);
   showTab(this.plugin.settingsTabV4Hint?'writingProfiles':(this.activeSettingsTab||'general'));
   this.plugin.settingsTabV4Hint=false;
  }

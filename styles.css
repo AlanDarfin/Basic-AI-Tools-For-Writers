@@ -3772,3 +3772,29 @@ body:not(.is-mobile) .writer-project-root :is(.writer-v7-toolbar,.writer-v7-inli
   min-height:31px;
   padding:5px 8px;
 }
+
+
+/* 7.0.4 — stable horizontal navigation; prevents browser scroll snapping
+   or animated jumps when tab content changes. Scoped to Basic AI panes. */
+.writer-project-root .writer-project-tabs.writer-project-tabs,
+.dictionary-settings-tabs.dictionary-settings-tabs,
+.dictionary-settings-subtabs.dictionary-settings-subtabs{
+  box-sizing:border-box;
+  display:flex;
+  flex-wrap:nowrap;
+  min-width:0;
+  max-width:100%;
+  width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  scrollbar-width:thin;
+  overscroll-behavior-x:contain;
+  scroll-behavior:auto;
+  scroll-snap-type:none;
+}
+.writer-project-root .writer-project-tabs.writer-project-tabs>button,
+.dictionary-settings-tabs.dictionary-settings-tabs>button,
+.dictionary-settings-subtabs.dictionary-settings-subtabs>button{
+  flex:0 0 auto;
+  scroll-snap-align:none;
+}

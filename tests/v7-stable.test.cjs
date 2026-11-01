@@ -64,7 +64,7 @@ test('scene setup and payoff relationships use canonical Longform notes',()=>{
 });
 test('stable release manifest, bilingual docs, new UI and bundled modules',()=>{
  const m=require('../manifest.json'),p=require('../package.json'),versions=require('../versions.json');
- assert.equal(m.version,'7.0.3');assert.equal(m.version,p.version);
+ assert.equal(m.version,'7.0.4');assert.equal(m.version,p.version);
  assert.equal(versions[m.version],m.minAppVersion);
  assert.equal(m.name,'Basic AI Tool for Writers');
  assert.doesNotMatch(m.name,/\b(obsidian|plugin)\b/i);
@@ -77,7 +77,7 @@ test('stable release manifest, bilingual docs, new UI and bundled modules',()=>{
  for(const value of ['writer-project-nav-groups','writerV7SeriesOpen(this)','writerV7RCRenderStructure'])
   assert.ok(project.includes(value),value);
  assert.ok(css.includes('.writer-project-root .writer-project-nav-groups'));
- for(const path of ['README.md','docs/README.pt-BR.md','docs/V7_0_3_RELEASE.en.md','docs/V7_0_3_RELEASE.pt-BR.md'])
+ for(const path of ['README.md','docs/README.pt-BR.md','docs/V7_0_4_RELEASE.en.md','docs/V7_0_4_RELEASE.pt-BR.md'])
   assert.ok(fs.readFileSync(path,'utf8').includes(m.version),path);
  for(const path of ['docs/V7_RELEASE.en.md','docs/V7_RELEASE.pt-BR.md'])
   assert.ok(fs.readFileSync(path,'utf8').includes('7.0.0'),path);

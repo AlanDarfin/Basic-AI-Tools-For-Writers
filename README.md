@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.0.3](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.3) · **Previous published:** [7.0.2](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.2) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.0.4](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.4) · **Previous published:** [7.0.3](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.3) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Stable navigation and scrolling — 7.0.4
+
+Changing Longform tabs now replaces **only the content panel** rather than recreating the horizontal navigation. Its position remains stable without scroll animation. Changing Writing / World / Project groups also keeps the navigation container mounted. Settings have genuinely scrollable main and secondary tab rows, with vertical mouse-wheel support and preserved horizontal offsets within each group. No change to book data, Pandoc, network permissions, or mobile UI sizing. [Release notes](docs/V7_0_4_RELEASE.en.md) · [Português](docs/V7_0_4_RELEASE.pt-BR.md).
 
 ## Longform navigation scroll fix — 7.0.3
 

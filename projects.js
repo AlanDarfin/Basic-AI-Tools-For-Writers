@@ -172,6 +172,8 @@ class ProjectsView extends ItemView{
   &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
   &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
   if(!allTabs.some(([id])=>id===this.activeTab))this.activeTab=allTabs[0]?.[0]||'scenes';
+  const tabLucide={scenes:'clapperboard',project:'settings-2',compile:'file-output',notes:'library-big',timeline:'calendar-range',board:'columns-3',structure:'list-tree',relations:'git-branch',maps:'map',gallery:'images',sessions:'clock',analytics:'chart-no-axes-column',tasks:'list-check',comments:'message-circle'};
+  const groupLucide={writing:'pen-line',world:'globe',management:'folder-kanban'};
   const menuGroups=[
    {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
    {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
@@ -206,8 +208,11 @@ class ProjectsView extends ItemView{
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
     const selected=this.activeTab===id;
-    const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
+    const btn=tabs.createEl('button',{cls:selected?'is-active':'',
      attr:{type:'button',role:'tab','aria-selected':String(selected)}});
+    const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon(glyph,tabLucide[id]||'file-text');
+    btn.createSpan({text:name});
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
@@ -215,9 +220,11 @@ class ProjectsView extends ItemView{
    rebuildingTabs=false;
   };
   for(const group of menuGroups){
-   const button=groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
-    cls:activeGroup===group.id?'is-active':'',
+   const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
     attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
+   const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+   require('obsidian').setIcon(glyph,groupLucide[group.id]||'folder');
+   button.createSpan({text:lfMsg(group.pt,group.en)});
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
     if(this.tabGroup===group.id)return;

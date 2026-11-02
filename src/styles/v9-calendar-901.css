@@ -74,14 +74,13 @@
 .writer-v83-calendar.writer-v9-calendar .writer-v901-sidebar-open svg{width:17px;height:17px;}
 @media(max-width:680px){
  .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions{
-  display:grid;grid-template-columns:repeat(4,minmax(0,max-content)) minmax(78px,1fr) max-content;
-  width:100%;gap:4px;align-items:center;
+  display:flex;flex-wrap:wrap;width:100%;gap:4px;align-items:center;
  }
  .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions .writer-v9-calendar-button{
   min-width:34px;min-height:36px;padding:5px 7px;
  }
  .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-view-select{
-  width:100%;min-width:0;max-width:none;height:36px;
+  flex:1 1 86px;width:auto;min-width:80px;max-width:none;height:36px;
  }
  .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day{
   min-height:62px;
@@ -97,16 +96,8 @@
  }
 }
 @media(max-width:390px){
- .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions{
-  grid-template-columns:repeat(4,minmax(0,max-content)) minmax(68px,1fr);
- }
  .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions>.mod-cta{
-  grid-column:4 / -1;
-  justify-self:end;
- }
- .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-view-select{
-  grid-column:1 / 4;
-  grid-row:2;
+  margin-inline-start:auto;
  }
 }
 @media(hover:none){

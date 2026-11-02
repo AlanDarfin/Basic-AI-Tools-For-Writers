@@ -5547,15 +5547,18 @@ function writerWorkspaceFilterRows(panel,query){
  return visible;
 }
 function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
- const wrap=root.createDiv({cls:'writer-v51-search'});
- const label=wrap.createEl('label',{text:writerUi('Buscar nas configurações','Search settings')});
- const input=wrap.createEl('input',{type:'search',attr:{placeholder:writerUi('Procure opções ou categorias…','Find options or categories…'),'aria-label':writerUi('Buscar configurações','Search settings')}});
- label.setAttribute('for','writer-v51-settings-search');
+ const wrap=root.createDiv({cls:'writer-v51-search writer-v901-settings-search'});
+ const field=wrap.createDiv({cls:'writer-v901-search-field'});
+ const symbol=field.createSpan({cls:'writer-v901-search-icon',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon(symbol,'search');
+ const input=field.createEl('input',{type:'search',attr:{placeholder:writerUi('Pesquisar opções, ferramentas ou categorias…','Search options, tools or categories…'),'aria-label':writerUi('Buscar configurações','Search settings')}});
  input.id='writer-v51-settings-search';
  const feedback=wrap.createDiv({cls:'writer-v51-search-results',attr:{role:'status','aria-live':'polite'}});
+ feedback.hidden=true;
  const update=()=>{
   const q=input.value.trim();
   feedback.empty();
+  feedback.hidden=!q;
   const matches=writerWorkspaceSearchSections(sections,q);
   const active=sections.find(([id])=>id===getActive());
   const categoryHit=active&&writerWorkspaceSearchNormalize(active[1]+' '+(WRITER_WORKSPACE_HINTS[active[0]]||'')).includes(writerWorkspaceSearchNormalize(q));
@@ -9620,7 +9623,7 @@ function writerV8RegisterMediaGallery(plugin){
 
 // v3 module: src/v8/finish-blocks.js
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','search','recent','favorites','quick','stats']};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','search','recent','favorites','quick','stats']};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -9628,6 +9631,8 @@ function writerV8FinishMerge(settings){
  cfg.homeOnNewTab=cfg.homeOnNewTab!==false;
  cfg.homeTitle=String(cfg.homeTitle||'').replace(/[\r\n]/g,' ').slice(0,80);
  cfg.homeIconImage=String(cfg.homeIconImage||'').trim().slice(0,600);
+ cfg.homeTitleColor=writerV9SafeHex(cfg.homeTitleColor);
+ cfg.homeIconColor=writerV9SafeHex(cfg.homeIconColor);
  cfg.homeIcon=typeof writerV8HomeIconName==='function'?writerV8HomeIconName(cfg.homeIcon):'book-open';
  cfg.captionMax=Math.max(32,Math.min(240,Math.floor(Number(cfg.captionMax)||180)));
  cfg.homeFavorites=Array.isArray(cfg.homeFavorites)?[...new Set(cfg.homeFavorites.filter(x=>typeof x==='string'&&x.length<=500))].slice(0,30):[];
@@ -9761,26 +9766,26 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  const side=entry[1]==='<'?'left':'right';
  const fields=writerV8ChatSplitFields(entry[2]);
  if(fields.length<2)return null;
- let avatar='',name='',body='',time='';
+ let avatar='',name='',body='',time='',explicitName=false;
  if(fields.length>=4){
-  [avatar,name]=fields;
+  [avatar,name]=fields;explicitName=Boolean(name);
   time=fields[fields.length-1];
   body=fields.slice(2,-1).join(' | ');
  }else if(fields.length===3&&fields[0]===''){
   name=meta.defaults[side]||lastSpeaker[side]||'';
   body=fields[1];time=fields[2];
  }else if(fields.length===3){
-  [name,body,time]=fields;
+  [name,body,time]=fields;explicitName=Boolean(name);
  }else if(fields[0]===''){
   name=meta.defaults[side]||lastSpeaker[side]||'';
   body=fields[1];
  }else{
-  [name,body]=fields;
+  [name,body]=fields;explicitName=Boolean(name);
  }
  name=(name||meta.defaults[side]||lastSpeaker[side]||'').slice(0,90);
  if(!body&&!avatar&&!name)return null;
  const profile=meta.profiles.get(writerV8ChatNameKey(name))||{};
- return {name,side,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
+ return {name,side,explicitName,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
   color:profile.color||'',body:String(body||'').slice(0,8000)};
 }
 function writerV8ChatParseLegacy(source,meta){
@@ -9796,7 +9801,7 @@ function writerV8ChatParseLegacy(source,meta){
   const side=fields.mine==='true'?'right':fields.side==='right'?'right':fields.side==='center'?'center':'left';
   const actualName=fields.name||name;
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
-  messages.push({name:actualName,side,time:fields.time||'',
+  messages.push({name:actualName,side,explicitName:true,time:fields.time||'',
     avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',
     body:textPart.slice(0,8000)});
  }
@@ -9833,21 +9838,26 @@ function writerV8ChatRender(plugin,source,element,ctx){
  if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title)root.createEl('h3',{text:data.title,cls:'writer-v8-chat-title'});
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
+ let previous=null;
  for(const msg of data.messages){
-  const row=transcript.createDiv({cls:'writer-v8-chat-row is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
-  if(msg.avatar){
+  const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
+  const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
+  if(msg.avatar&&!continuation){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
    if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});
   }
   const group=row.createDiv({cls:'writer-v8-chat-group'});
-  const headline=group.createDiv({cls:'writer-v8-chat-meta'});
-  headline.createEl('strong',{text:msg.name.slice(0,90)});
-  if(msg.time)headline.createEl('span',{text:msg.time});
+  if((msg.explicitName&&!continuation&&msg.name)||msg.time){
+   const headline=group.createDiv({cls:'writer-v8-chat-meta'});
+   if(msg.explicitName&&!continuation&&msg.name)headline.createEl('strong',{text:msg.name.slice(0,90)});
+   if(msg.time)headline.createEl('span',{text:msg.time});
+  }
   const bubble=group.createDiv({cls:'writer-v8-chat-bubble'});
   if(msg.body)void writerV8Markdown(plugin,ctx,bubble,msg.body).catch(error=>{
    console.warn('[Basic AI] chat Markdown:',error);
    bubble.empty();bubble.setText(msg.body);
   });
+  previous=msg;
  }
 }
 function writerV8RegisterFinishBlocks(plugin){
@@ -10561,6 +10571,8 @@ class WriterV8HomeView extends ItemView{
   const cfg=this.plugin.settings.v8Finish;
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
+  heading.style.setProperty('--writer-v8-home-title-color',writerV9SafeHex(cfg.homeTitleColor)||'var(--interactive-accent)');
+  heading.style.setProperty('--writer-v8-home-icon-color',writerV9SafeHex(cfg.homeIconColor)||'var(--interactive-accent)');
   const icon=heading.createSpan({cls:'writer-v8-home-title-icon'});
   const setIcon=require('obsidian').setIcon;
   const image=writerV8HomeImageURL(this.plugin,cfg.homeIconImage);
@@ -10849,6 +10861,12 @@ function writerV8FinishSettings(plugin,panel){
    drop.setValue(writerV8HomeIconName(cfg.homeIcon));
    drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
   });
+ writerV9ColorSetting(panel,'Cor do título da homepage','Homepage title color',cfg.homeTitleColor,value=>{
+  cfg.homeTitleColor=value;void plugin.saveSettings().then(refreshHome);
+ });
+ writerV9ColorSetting(panel,'Cor do ícone da homepage','Homepage icon color',cfg.homeIconColor,value=>{
+  cfg.homeIconColor=value;void plugin.saveSettings().then(refreshHome);
+ });
  new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
   .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
   .addText(input=>input.setPlaceholder('Assets/icon.png ou https://…').setValue(cfg.homeIconImage||'')
@@ -11050,14 +11068,39 @@ function writerV9ExplorerMerge(settings){
  cfg.maxResults=Math.max(20,Math.min(200,Number(cfg.maxResults)||100));
  cfg.items=cfg.items&&typeof cfg.items==='object'&&!Array.isArray(cfg.items)?cfg.items:{};
  const out={};
+ const availableIcons=new Set(writerV9AvailableIcons());
  for(const [path,raw] of Object.entries(cfg.items).slice(0,5000)){
   if(!path||path.length>600||!raw||typeof raw!=='object')continue;
-  const icon=WRITER_V9_EXPLORER_ICONS.includes(raw.icon)?raw.icon:'';
-  const color=WRITER_V9_EXPLORER_COLORS.includes(raw.color)?raw.color:'';
+  const icon=availableIcons.has(raw.icon)?raw.icon:'';
+  const color=writerV9SafeHex(raw.color);
   if(icon||color)out[path]={icon,color};
  }
  cfg.items=out;
  return cfg;
+}
+function writerV9SafeHex(value){
+ const color=String(value||'').trim();
+ return /^#[a-f0-9]{6}$/i.test(color)?color.toLowerCase():'';
+}
+function writerV9AvailableIcons(){
+ const api=require('obsidian');
+ const icons=typeof api.getIconIds==='function'?api.getIconIds():WRITER_V9_EXPLORER_ICONS;
+ return [...new Set([...WRITER_V9_EXPLORER_ICONS,...(Array.isArray(icons)?icons:[])])]
+  .filter(name=>/^[a-z0-9-]{1,60}$/.test(name)).sort();
+}
+function writerV9ColorSetting(root,pt,en,initial,onValue){
+ const setting=new Setting(root).setName(writerUi(pt,en))
+  .setDesc(writerUi('Padrão: cor de destaque do tema. Ou escolha uma cor personalizada.','Default: current theme accent. Or choose a custom color.'));
+ const input=setting.controlEl.createEl('input',{cls:'writer-v901-color-input',attr:{type:'color','aria-label':writerUi(pt,en)}});
+ const text=setting.controlEl.createEl('input',{cls:'writer-v901-color-hex',attr:{type:'text',maxlength:'7',placeholder:'#RRGGBB','aria-label':'HEX'}});
+ const fallback='#888888';
+ const set=color=>{const safe=writerV9SafeHex(color);input.value=safe||fallback;text.value=safe;onValue(safe);};
+ const initialColor=writerV9SafeHex(initial);
+ input.value=initialColor||fallback;text.value=initialColor;
+ input.addEventListener('change',()=>set(input.value));
+ text.addEventListener('change',()=>{if(!text.value.trim())set('');else if(writerV9SafeHex(text.value))set(text.value);else text.value=writerV9SafeHex(initial)||'';});
+ setting.addButton(b=>b.setButtonText(writerUi('Padrão','Default')).onClick(()=>set('')));
+ return setting;
 }
 function writerV9ExplorerPicker(plugin,file){
  const modal=new Modal(plugin.app),path=file.path;
@@ -11066,18 +11109,24 @@ function writerV9ExplorerPicker(plugin,file){
   const content=modal.contentEl;
   const item=plugin.settings.v9Explorer.items[path]||{};
   let icon=item.icon||'',color=item.color||'';
-  new Setting(content).setName(writerUi('Ícone Lucide','Lucide icon'))
-   .addDropdown(drop=>{
-    drop.addOption('',writerUi('Padrão','Default'));
-    for(const name of WRITER_V9_EXPLORER_ICONS)drop.addOption(name,name);
-    drop.setValue(icon).onChange(value=>{icon=value;});
-   });
-  new Setting(content).setName(writerUi('Cor de destaque','Accent color'))
-   .addDropdown(drop=>{
-    drop.addOption('',writerUi('Padrão','Default'));
-    for(const value of WRITER_V9_EXPLORER_COLORS.filter(Boolean))drop.addOption(value,value);
-    drop.setValue(color).onChange(value=>{color=value;});
-   });
+  const tools=content.createDiv({cls:'writer-v901-icon-picker'});
+  const search=tools.createEl('input',{attr:{type:'search',placeholder:writerUi('Pesquisar ícones Lucide…','Search Lucide icons…'),'aria-label':writerUi('Pesquisar ícones','Search icons')}});
+  const grid=tools.createDiv({cls:'writer-v901-icon-grid',attr:{role:'group','aria-label':writerUi('Selecionar ícone','Choose icon')}});
+  const icons=writerV9AvailableIcons();
+  const draw=()=>{
+   const query=search.value.trim().toLowerCase();
+   grid.empty();
+   const reset=grid.createEl('button',{cls:'writer-v901-icon-choice'+(!icon?' is-active':''),attr:{type:'button',title:writerUi('Ícone padrão','Default icon'),'aria-label':writerUi('Ícone padrão','Default icon')}});
+   require('obsidian').setIcon(reset,'rotate-ccw');
+   reset.addEventListener('click',()=>{icon='';draw();});
+   for(const name of icons.filter(n=>!query||n.includes(query)).slice(0,160)){
+    const button=grid.createEl('button',{cls:'writer-v901-icon-choice'+(icon===name?' is-active':''),attr:{type:'button',title:name,'aria-label':name,'aria-pressed':String(icon===name)}});
+    require('obsidian').setIcon(button,name);
+    button.addEventListener('click',()=>{icon=name;draw();});
+   }
+  };
+  search.addEventListener('input',draw);draw();
+  writerV9ColorSetting(content,'Cor do ícone','Icon color',color,value=>{color=value;});
   new Setting(content).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
    if(icon||color)plugin.settings.v9Explorer.items[path]={icon,color};
    else delete plugin.settings.v9Explorer.items[path];
@@ -11267,6 +11316,7 @@ function writerV9ExplorerSettings(plugin,panel){
 const WRITER_V9_SPACE_VIEWS=['cards','list','table','board'];
 const WRITER_V9_SPACE_SORTS=['name','recent','oldest'];
 const WRITER_V9_SPACE_MAX=200;
+const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
  const cfg=settings.v9Spaces={enabled:false,spaces:[],...raw};
@@ -11288,7 +11338,9 @@ function writerV9SpaceSanitize(raw){
  const groupBy=String(raw.groupBy||'status').trim().replace(/[^a-zA-Z0-9_-]/g,'').slice(0,80)||'status';
  const view=WRITER_V9_SPACE_VIEWS.includes(raw.view)?raw.view:'cards';
  const sort=WRITER_V9_SPACE_SORTS.includes(raw.sort)?raw.sort:'recent';
- return {id,name,folder,tag,property,value,groupBy,view,sort};
+ const mode=['filter','curated','folder'].includes(raw.mode)?raw.mode:'filter';
+ const includePaths=Array.isArray(raw.includePaths)?[...new Set(raw.includePaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,150):[];
+ return {id,name,folder,tag,property,value,groupBy,view,sort,mode,includePaths};
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -11301,7 +11353,9 @@ function writerV9SpaceItems(plugin,space){
  const files=plugin.app.vault.getMarkdownFiles?.()||[];
  const cache=plugin.app.metadataCache;
  return files.filter(file=>{
+  if(space.mode==='curated'&&!(space.includePaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.folder&&!(file.path===space.folder||file.path.startsWith(space.folder+'/')))return false;
+  if(space.mode==='folder')return Boolean(space.folder);
   const data=cache.getFileCache?.(file)||{};
   if(space.tag&&!writerV9SpaceTags(file,data).some(tag=>tag===space.tag.toLocaleLowerCase()||tag.startsWith(space.tag.toLocaleLowerCase()+'/')))return false;
   if(space.property){
@@ -11320,13 +11374,22 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',...(initial||{})};
+  const draft={name:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
     .setValue(draft[key]||'').onChange(value=>{draft[key]=value;}));
   };
-  field('name','Nome','Name');field('folder','Pasta (opcional)','Folder (optional)');
+  field('name','Nome','Name');
+  new Setting(root).setName(writerUi('Tipo de Space','Space type')).addDropdown(d=>{
+   for(const [id,pt,en] of [['filter','Filtros dinâmicos','Dynamic filters'],['curated','Notas escolhidas','Curated notes'],['folder','Pasta fixada','Pinned folder']])d.addOption(id,writerUi(pt,en));
+   d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
+  });
+  field('folder','Pasta (opcional)','Folder (optional)');
+  new Setting(root).setName(writerUi('Notas/pastas incluídas','Included notes/folders'))
+   .setDesc(writerUi('Uma rota por linha para Spaces de seleção manual.','One vault path per line for curated Spaces.'))
+   .addTextArea(t=>t.setValue((draft.includePaths||[]).join('\n')).onChange(value=>{draft.includePaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);}));
+
   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
@@ -11345,6 +11408,7 @@ function writerV9SpaceEditor(plugin,initial,save){
   new Setting(root).addButton(b=>b.setButtonText(writerUi('Salvar','Save')).setCta().onClick(async()=>{
    const item=writerV9SpaceSanitize({...draft,id:initial?.id||'space-'+Date.now().toString(36)});
    if(!item){status.setText(writerUi('Informe um nome válido.','Enter a valid name.'));return;}
+   if(item.mode==='folder'&&!item.folder){status.setText(writerUi('Selecione uma pasta.','Select a folder.'));return;}
    try{await save(item);modal.close();}catch(e){status.setText(String(e.message||e));}
   })).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
  };
@@ -11366,7 +11430,7 @@ function writerV9SpaceModal(plugin){
   select.value=currentId;select.addEventListener('change',()=>{currentId=select.value;filter='';refresh();});
   nav.createEl('button',{text:writerUi('Nova','New')}).addEventListener('click',()=>{
    writerV9SpaceEditor(plugin,null,async space=>{
-    plugin.settings.v9Spaces.spaces.push(space);currentId=space.id;await plugin.saveSettings();refresh();
+    plugin.settings.v9Spaces.spaces.push(space);currentId=space.id;await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();refresh();
    });
   });
   const space=plugin.settings.v9Spaces.spaces.find(s=>s.id===currentId);
@@ -11375,7 +11439,7 @@ function writerV9SpaceModal(plugin){
    writerV9SpaceEditor(plugin,space,async updated=>{
     const idx=plugin.settings.v9Spaces.spaces.findIndex(s=>s.id===space.id);
     if(idx>=0)plugin.settings.v9Spaces.spaces[idx]=updated;
-    await plugin.saveSettings();refresh();
+    await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();refresh();
    });
   });
   nav.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
@@ -11387,7 +11451,7 @@ function writerV9SpaceModal(plugin){
      .addButton(b=>b.setButtonText(writerUi('Excluir Space','Delete Space')).setWarning().onClick(async()=>{
       plugin.settings.v9Spaces.spaces=plugin.settings.v9Spaces.spaces.filter(s=>s.id!==space.id);
       currentId=plugin.settings.v9Spaces.spaces[0]?.id||'';
-      await plugin.saveSettings();confirm.close();refresh();
+      await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();confirm.close();refresh();
      }));
    };
    confirm.open();
@@ -11443,7 +11507,70 @@ function writerV9SpaceModal(plugin){
  modal.onOpen=refresh;
  modal.open();
 }
+class WriterV9SpacesSideView extends ItemView{
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.currentId='';this.query='';}
+ getViewType(){return WRITER_V9_SPACE_VIEW;}
+ getDisplayText(){return writerUi('Spaces · Coleções','Spaces · Collections');}
+ getIcon(){return 'layers';}
+ async onOpen(){this.render();}
+ render(){
+  const root=this.contentEl;root.empty();root.addClass('writer-v9-space-sidebar');
+  const cfg=this.plugin.settings.v9Spaces;
+  const heading=root.createDiv({cls:'writer-v9-space-side-head'});
+  require('obsidian').setIcon(heading.createSpan(),'layers');
+  heading.createEl('strong',{text:'Spaces'});
+  const manage=heading.createEl('button',{attr:{title:writerUi('Gerenciar Spaces','Manage Spaces'),'aria-label':writerUi('Gerenciar Spaces','Manage Spaces')}});
+  require('obsidian').setIcon(manage,'settings-2');
+  manage.addEventListener('click',()=>writerV9SpaceModal(this.plugin));
+  if(!cfg.enabled){root.createEl('p',{text:writerUi('Ative Spaces nas configurações.','Enable Spaces in settings.')});return;}
+  const nav=root.createDiv({cls:'writer-v9-space-side-nav'});
+  const space=cfg.spaces.find(x=>x.id===this.currentId)||cfg.spaces[0];
+  if(space)this.currentId=space.id;
+  for(const option of cfg.spaces){
+   const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name}});
+   require('obsidian').setIcon(button,option.mode==='folder'?'folder':option.mode==='curated'?'bookmark':'layers');
+   button.createSpan({text:option.name});
+   button.addEventListener('click',()=>{this.currentId=option.id;this.query='';this.render();});
+  }
+  if(!space){root.createEl('p',{text:writerUi('Crie uma Space para começar.','Create a Space to get started.')});return;}
+  const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',placeholder:writerUi('Pesquisar nesta Space…','Search this Space…')}});
+  search.value=this.query;
+  const body=root.createDiv({cls:'writer-v9-space-side-list'});
+  const draw=()=>{
+   body.empty();
+   const files=writerV9SpaceItems(this.plugin,space).filter(file=>file.path.toLocaleLowerCase().includes(this.query.toLocaleLowerCase()));
+   for(const file of files){
+    const button=body.createEl('button',{cls:'writer-v9-space-side-item',attr:{type:'button',title:file.path}});
+    require('obsidian').setIcon(button.createSpan(),this.plugin.settings.v9Explorer?.items?.[file.path]?.icon||'file-text');
+    button.createSpan({text:file.basename});
+    button.addEventListener('click',()=>void this.plugin.app.workspace.getLeaf('tab').openFile(file));
+   }
+   if(!files.length)body.createEl('p',{text:writerUi('Nenhuma nota encontrada.','No matching notes.')});
+  };
+  search.addEventListener('input',()=>{this.query=search.value;draw();});draw();
+  if(space.mode==='curated'){
+   const add=root.createEl('button',{cls:'writer-v9-space-side-add',text:writerUi('Adicionar nota atual','Add active note')});
+   add.addEventListener('click',async()=>{
+    const file=this.plugin.app.workspace.getActiveFile?.();
+    if(!(file instanceof TFile)){new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));return;}
+    if(!space.includePaths.includes(file.path))space.includePaths.push(file.path);
+    await this.plugin.saveSettings();this.render();
+   });
+  }
+ }
+}
 function writerV9RegisterSpaces(plugin){
+ plugin.registerView(WRITER_V9_SPACE_VIEW,leaf=>new WriterV9SpacesSideView(leaf,plugin));
+ plugin.writerV9SpacesRefresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)||[])leaf.view?.render?.();};
+ const openSidebar=async()=>{
+  const existing=plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)?.[0];
+  const leaf=existing||plugin.app.workspace.getLeftLeaf?.(false)||plugin.app.workspace.getLeaf('tab');
+  if(!leaf)return;
+  if(!existing)await leaf.setViewState({type:WRITER_V9_SPACE_VIEW,active:true});
+  plugin.app.workspace.revealLeaf?.(leaf);
+ };
+ plugin.writerV9SpacesSidebarOpen=openSidebar;
+ plugin.addCommand({id:'v9-spaces-sidebar',name:writerUi('Spaces: abrir barra lateral','Spaces: open sidebar'),callback:()=>void openSidebar()});
  plugin.writerV9SpaceOpen=()=>writerV9SpaceModal(plugin);
  plugin.addCommand({id:'v9-spaces-open',name:writerUi('Spaces: abrir coleções','Spaces: open collections'),
   callback:()=>writerV9SpaceModal(plugin)});
@@ -11452,7 +11579,7 @@ function writerV9RegisterSpaces(plugin){
   if(file instanceof TFolder){
    menu.addItem(item=>item.setTitle(writerUi('Criar Space desta pasta','Create Space from folder'))
     .setIcon('layers').onClick(()=>{
-     writerV9SpaceEditor(plugin,{folder:file.path,name:file.name,view:'cards'},async space=>{
+     writerV9SpaceEditor(plugin,{folder:file.path,name:file.name,view:'cards',mode:'folder'},async space=>{
       space.id='space-'+Date.now().toString(36);
       plugin.settings.v9Spaces.spaces.push(space);
       await plugin.saveSettings();
@@ -11467,8 +11594,142 @@ function writerV9SpacesSettings(plugin,panel){
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções virtuais filtradas por pasta, tag ou propriedades das notas, sem criar novos arquivos nem um painel lateral.','Virtual note collections filtered by folder, tags or properties, without creating files or a new sidebar.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{cfg.enabled=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Abrir Spaces na barra lateral','Open Spaces in sidebar'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open sidebar')).onClick(()=>void plugin.writerV9SpacesSidebarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))
   .addButton(button=>button.setButtonText(writerUi('Abrir Spaces','Open Spaces')).onClick(()=>writerV9SpaceModal(plugin)));
+}
+
+// v3 module: src/v9/password-lock.js
+/* Optional UX-only password gate, inspired by qing3962/password-protection.
+ * NEVER encrypts the vault. Another plugin, device user or filesystem process can read files. */
+const WRITER_V9_LOCK_DEFAULTS={enabled:false,salt:'',verifier:'',paths:[],autoLockMinutes:0};
+function writerV9LockMerge(settings){
+ const raw=settings.v9Lock&&typeof settings.v9Lock==='object'?settings.v9Lock:{};
+ const cfg=settings.v9Lock={...WRITER_V9_LOCK_DEFAULTS,...raw};
+ cfg.salt=/^[0-9a-f]{32}$/i.test(cfg.salt||'')?cfg.salt:'';
+ cfg.verifier=/^[0-9a-f]{64}$/i.test(cfg.verifier||'')?cfg.verifier:'';
+ cfg.paths=Array.isArray(cfg.paths)?[...new Set(cfg.paths.map(x=>String(x||'').trim().replace(/^\/+/,'').replace(/\/$/,'')).filter(Boolean))].slice(0,12):[];
+ if((raw.paths||[]).includes('/'))cfg.paths.unshift('/');
+ cfg.autoLockMinutes=Math.max(0,Math.min(120,Math.floor(Number(cfg.autoLockMinutes)||0)));
+ cfg.enabled=cfg.enabled===true&&Boolean(cfg.salt&&cfg.verifier);
+ return cfg;
+}
+function writerV9LockHex(bytes){return [...bytes].map(n=>n.toString(16).padStart(2,'0')).join('');}
+async function writerV9LockHash(password,salt){
+ const cryptoAPI=globalThis.crypto;
+ if(!cryptoAPI?.subtle||!cryptoAPI.getRandomValues)throw Error(writerUi('Criptografia do dispositivo indisponível.','Device cryptographic API unavailable.'));
+ const encoder=new TextEncoder();
+ const key=await cryptoAPI.subtle.importKey('raw',encoder.encode(password),'PBKDF2',false,['deriveBits']);
+ const saltBytes=new Uint8Array(salt.match(/.{2}/g).map(n=>parseInt(n,16)));
+ const bits=await cryptoAPI.subtle.deriveBits({name:'PBKDF2',salt:saltBytes,iterations:120000,hash:'SHA-256'},key,256);
+ return writerV9LockHex(new Uint8Array(bits));
+}
+function writerV9LockMatches(cfg,path){
+ return cfg.paths.some(prefix=>prefix==='/'||path===prefix||path.startsWith(prefix+'/'));
+}
+function writerV9LockRegister(plugin){
+ plugin.writerV9LockUnlockedUntil=0;
+ plugin.writerV9LockPromptOpen=false;
+ const cfg=()=>plugin.settings.v9Lock;
+ const unlocked=()=>plugin.writerV9LockUnlockedUntil===Infinity||Date.now()<plugin.writerV9LockUnlockedUntil;
+ const activate=()=>{plugin.writerV9LockUnlockedUntil=cfg().autoLockMinutes>0?Date.now()+cfg().autoLockMinutes*60000:Infinity;};
+ const verify=async password=>{
+  const hash=await writerV9LockHash(password,cfg().salt);
+  return hash===cfg().verifier;
+ };
+ const setup=()=>{
+  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Criar senha do Basic','Create Basic lock password'));
+  const root=modal.contentEl;
+  root.createEl('p',{text:writerUi('Bloqueio visual apenas: NÃO criptografa os arquivos.','Visual lock only: does NOT encrypt files.')});
+  const one=root.createEl('input',{attr:{type:'password',autocomplete:'new-password',placeholder:writerUi('Senha nova','New password')}});
+  const two=root.createEl('input',{attr:{type:'password',autocomplete:'new-password',placeholder:writerUi('Repetir senha','Repeat password')}});
+  const note=root.createEl('small');
+  const submit=async()=>{
+   if(one.value.length<8||one.value!==two.value){note.setText(writerUi('Use no mínimo 8 caracteres e confirme a senha.','Use at least 8 characters and repeat the password.'));return;}
+   try{
+    const cryptoAPI=globalThis.crypto;
+    if(!cryptoAPI?.getRandomValues)throw Error('WebCrypto unavailable');
+    const salt=writerV9LockHex(cryptoAPI.getRandomValues(new Uint8Array(16)));
+    const verifier=await writerV9LockHash(one.value,salt);
+    cfg().salt=salt;cfg().verifier=verifier;cfg().enabled=true;
+    activate();await plugin.saveSettings();modal.close();
+    plugin.writerSettingsTab?.display?.();
+   }catch(e){note.setText(String(e.message||e));}
+  };
+  new Setting(root).addButton(b=>b.setButtonText(writerUi('Definir senha','Set password')).setCta().onClick(()=>void submit()));
+  one.addEventListener('keydown',e=>{if(e.key==='Enter')two.focus();});
+  two.addEventListener('keydown',e=>{if(e.key==='Enter')void submit();});
+  modal.open();
+ };
+ const lockFile=file=>{
+  if(!cfg().enabled||!file||!writerV9LockMatches(cfg(),file.path)||unlocked()||plugin.writerV9LockPromptOpen)return;
+  plugin.writerV9LockPromptOpen=true;
+  const modal=new Modal(plugin.app);
+  let authorized=false;
+  modal.setTitle(writerUi('Nota protegida no Basic','Basic protected note'));
+  modal.contentEl.createEl('p',{text:writerUi('Insira a senha para continuar. Este bloqueio não protege arquivos fora do Obsidian.','Enter the password to continue. This lock does not protect files outside Obsidian.')});
+  const input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'current-password','aria-label':writerUi('Senha','Password')}});
+  const message=modal.contentEl.createEl('small');
+  const submit=async()=>{
+   try{
+    if(await verify(input.value)){authorized=true;activate();modal.close();return;}
+    message.setText(writerUi('Senha incorreta.','Incorrect password.'));input.value='';
+   }catch(e){message.setText(String(e.message||e));}
+  };
+  new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Desbloquear','Unlock')).setCta().onClick(()=>void submit()));
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')void submit();});
+  modal.onClose=()=>{
+   plugin.writerV9LockPromptOpen=false;input.value='';
+   if(!authorized){
+    const leaf=plugin.app.workspace.activeLeaf;
+    if(leaf?.view?.file?.path===file.path)void leaf.setViewState({type:'empty'});
+   }
+  };
+  modal.open();setTimeout(()=>input.focus(),0);
+ };
+ plugin.writerV9LockSetup=setup;
+ plugin.writerV9LockReset=()=>{
+  if(!cfg().verifier){setup();return;}
+  // Only allow replacing a password after a successful verification.
+  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Confirmar senha atual','Verify current password'));
+  const input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'current-password'}});
+  const note=modal.contentEl.createEl('small');
+  new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Continuar','Continue')).onClick(async()=>{
+   if(await verify(input.value)){modal.close();setup();}else note.setText(writerUi('Senha incorreta.','Incorrect password.'));
+  }));
+  modal.open();
+ };
+ plugin.registerEvent(plugin.app.workspace.on('file-open',file=>lockFile(file)));
+ plugin.addCommand({id:'v9-lock-protected-files',name:writerUi('Proteção: bloquear notas agora','Protection: lock notes now'),callback:()=>{
+  plugin.writerV9LockUnlockedUntil=0;
+  lockFile(plugin.app.workspace.getActiveFile?.());
+ }});
+ if(typeof plugin.app.workspace.onLayoutReady==='function')
+  plugin.app.workspace.onLayoutReady(()=>{lockFile(plugin.app.workspace.getActiveFile?.());});
+}
+function writerV9LockSettings(plugin,panel){
+ const cfg=plugin.settings.v9Lock;
+ panel.createEl('h3',{text:writerUi('Proteção por senha (visual)','Password protection (visual)')});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Não criptografa notas e não impede acesso por outros plugins, backups ou gerenciador de arquivos. Não substitui criptografia do dispositivo.','Does not encrypt notes or prevent access through other plugins, backups or the filesystem. It is not a replacement for device encryption.')});
+ new Setting(panel).setName(writerUi('Criar ou alterar senha','Create or change password'))
+  .addButton(b=>b.setButtonText(writerUi('Configurar','Configure')).onClick(()=>plugin.writerV9LockReset?.()));
+ new Setting(panel).setName(writerUi('Ativar bloqueio visual','Enable visual lock'))
+  .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{
+   if(value&&!cfg.verifier){t.setValue(false);plugin.writerV9LockSetup?.();return;}
+   cfg.enabled=value;plugin.writerV9LockUnlockedUntil=0;await plugin.saveSettings();
+  }));
+ new Setting(panel).setName(writerUi('Caminhos protegidos','Protected paths'))
+  .setDesc(writerUi('Uma pasta ou nota por linha. Use / para o cofre inteiro.','One note or folder path per line. Use / for the entire vault.'))
+  .addTextArea(t=>t.setValue(cfg.paths.join('\n')).onChange(async value=>{
+   cfg.paths=[...new Set(value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(x=>x==='/'?'/':x.replace(/^\/+|\/+$/g,'')))].slice(0,12);
+   await plugin.saveSettings();
+  }));
+ new Setting(panel).setName(writerUi('Bloquear novamente após (minutos)','Lock again after (minutes)'))
+  .setDesc(writerUi('0 = uma vez por sessão.','0 = once per session.'))
+  .addSlider(s=>s.setLimits(0,120,5).setValue(cfg.autoLockMinutes).setDynamicTooltip().onChange(async value=>{
+   cfg.autoLockMinutes=value;await plugin.saveSettings();
+  }));
 }
 
 // v3 module: src/v9/calendar-core.js

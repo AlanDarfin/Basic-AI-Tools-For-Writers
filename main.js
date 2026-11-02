@@ -11495,7 +11495,7 @@ function writerV9CalOccurrence(event,start,end){
  const [firstYear,firstMonth,firstDay]=event.date.split('-').map(Number);
  const startN=writerV9CalDayNumber(start),endN=writerV9CalDayNumber(end);
  const results=[];
- for(let dayN=Math.max(startN,a);dayN<=Math.min(endN,startN+739);dayN++){
+ for(let dayN=Math.max(startN,a);dayN<=Math.min(endN,startN+3659);dayN++){
   const date=new Date(dayN*86400000);
   const day=[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,'0'),String(date.getUTCDate()).padStart(2,'0')].join('-');
   if(until&&day>until)break;

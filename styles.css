@@ -4424,7 +4424,7 @@ body.is-mobile .writer-v8-home-grid{grid-template-columns:minmax(0,1fr);gap:10px
 .writer-v8-home-clock-digits{font-size:clamp(1.6rem,3.7vw,2.15rem);line-height:1.1;letter-spacing:-.025em;font-weight:650;font-variant-numeric:tabular-nums;}
 .writer-v8-home-clock-date{text-align:center;color:var(--text-muted);font-size:var(--font-smaller);line-height:1.35;overflow-wrap:anywhere;}
 .writer-v8-home-calendar-bar{display:flex;align-items:center;gap:3px;justify-content:space-between;margin:8px 0 7px;}
-.writer-v8-home-calendar-bar strong{font-size:var(--font-smaller);text-transform:capitalize;text-align:center;min-width:0;overflow-wrap:anywhere;}
+.writer-v8-home-calendar-bar strong{font-size:var(--font-smaller);text-align:center;min-width:0;overflow-wrap:anywhere;}
 .writer-v8-home-calendar-bar button{display:grid;place-items:center;min-width:26px;min-height:28px;padding:2px 4px;box-shadow:none;background:transparent;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);}
 .writer-v8-home-calendar-bar button:hover{background:var(--background-modifier-hover);}
 .writer-v8-home-calendar-bar .writer-v8-home-calendar-today{font-size:var(--font-smallest);padding:2px 5px;color:var(--text-muted);}

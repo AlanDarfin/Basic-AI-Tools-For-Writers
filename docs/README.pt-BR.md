@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 8.2.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 8.2.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md)
 
@@ -235,13 +235,15 @@ O conteúdo é renderizado em Markdown: imagens locais, links, **negrito**, *it�
 
 **Compatibilidade:** a sintaxe anterior com `=== Maria`, `side: left`, propriedades e `---` continua funcionando nas notas existentes. Os chats são apenas representações fictícias locais, sem conexão com serviços externos.
 
-### Homepage de escrita (inspirada no Harbor Tab e Genkan)
+### Homepage de escrita — relógio, calendário e pesquisa no topo
 
-Abra **Início: abrir painel de escrita** pela paleta de comandos ou pelo botão das **Configurações → Geral**. A página oferece busca de notas e títulos, arquivos recentes, favoritos, acesso ao Longform, quadro de cenas, revisão, estatísticas simples do cofre e três espaços para rascunhos rápidos.
+Abra **Início: abrir painel de escrita** pela paleta de comandos ou crie uma nova aba vazia no Obsidian. **Por padrão, cada nova aba vazia abre a homepage de escrita**. Você pode desativar isso em **Configurações → Basic AI Tool for Writers → Geral → Abrir homepage em toda nova aba vazia** (opção interna `homeOnNewTab`). Notas abertas, abas restauradas e painéis laterais não são substituídos. A opção separada de abrir uma homepage na inicialização do aplicativo continua disponível.
 
-Os cartões podem ser reordenados pelas setas. É possível favoritar notas pela estrela dos resultados da busca ou pelo comando **Início: favoritar nota atual**.
+No topo, o **título e ícone personalizados** aparecem acima dos atalhos. É possível escolher o nome e um dos ícones disponíveis nas configurações gerais. A **pesquisa do cofre fica sempre no topo, ao lado do relógio local e calendário mensal**, antes dos cartões reordenáveis. O calendário permite navegar entre os meses e voltar para Hoje. A hora e a data vêm do próprio dispositivo e não exigem serviços externos.
 
-Os rascunhos são armazenados localmente nas configurações e podem ser exportados como novos arquivos em `Quick Notes/*.md`, sem sobrescrever notas existentes e sem enviar conteúdo à IA. A abertura automática ao iniciar permanece **desativada por padrão**, sem tomar o lugar das abas normais do Obsidian nem interferir em outras homepages.
+**Navegador estilo Harbor:** digite um site ou endereço `https://` no campo de pesquisa e selecione **Abrir site no navegador** (ou pressione Enter). No **PC**, com o plugin principal **Web Viewer** do Obsidian ativado, o link abre em uma aba do visualizador nativo. No **Android/iOS**, é encaminhado ao navegador padrão do sistema. Se o Web Viewer estiver desligado no computador, também será usado o navegador externo. Somente URLs HTTP(S) são aceitas. Para sites sensíveis ou que exigem login, prefira o navegador dedicado em vez do Web Viewer.
+
+Os demais cartões continuam presentes: notas recentes, favoritos, atalhos do Longform, quadro de cenas, revisão, estatísticas e três rascunhos rápidos. Reordene os cartões pelas setas; marque favoritos pela estrela da pesquisa ou comando **Início: favoritar nota atual**. Rascunhos permanecem nas configurações locais e podem ser exportados em novos arquivos `Quick Notes/*.md`, sem sobrescrever notas ou enviar conteúdo à IA.
 
 ### Outras opções de escrita
 

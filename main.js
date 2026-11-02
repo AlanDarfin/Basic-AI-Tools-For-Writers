@@ -12493,6 +12493,11 @@ class DictionarySettings extends PluginSettingTab{
     ['modules',msg('Módulos','Modules')],
     ['workspaceProfiles',msg('Perfis rápidos','Quick profiles')],
     ['diagnostics',msg('Diagnóstico','Diagnostics')],
+    ['homepage',msg('Página inicial','Homepage')],
+    ['v9Toolbar',msg('Barra de formatação','Formatting toolbar')],
+    ['v9Explorer',msg('Explorador de arquivos','File explorer')],
+    ['v9Spaces',msg('Coleções locais','Local collections')],
+    ['v9Calendar',msg('Calendário','Calendar')],
     ['dictionary',msg('Dicionário','Dictionary')],
     ['translation',msg('Tradução','Translation')],
     ['assistant',msg('Chat','Chat')],
@@ -12530,7 +12535,8 @@ class DictionarySettings extends PluginSettingTab{
   const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
    complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
    snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
-   toc:'templates',tts:'tts',review:'review',reviewAI:'review'};
+   toc:'templates',tts:'tts',review:'review',reviewAI:'review',
+   homepage:'writingHome',v9Toolbar:'formatToolbar',v9Explorer:'nativeExplorer',v9Spaces:'smartSpaces',v9Calendar:'calendar'};
   const enabledSections=sections.filter(([id])=>id==='v6Markdown'
    ?['ruby','discordSyntax','ratings'].some(key=>writerModuleOn(this.plugin,key))
    :id==='v6Reading'?['timestamps','readingTime'].some(key=>writerModuleOn(this.plugin,key))
@@ -12540,6 +12546,7 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
+   ['customize',msg('Personalização','Customization'),['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','v7Worldbuilding']],
    ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode']],
@@ -12586,7 +12593,12 @@ class DictionarySettings extends PluginSettingTab{
     }
     renderSubtabs(group,id);
     panel.empty();
-    if(id==='workspaceProfiles'){
+    if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
+    }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
+    }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);
+    }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);
+    }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);
+    }else if(id==='workspaceProfiles'){
       this.plugin.writerWorkspaceProfiles.renderSettings(panel);
     }else if(id==='cursor'){
       this.plugin.writerCursorMemory.renderSettings(panel);
@@ -12684,11 +12696,6 @@ class DictionarySettings extends PluginSettingTab{
       panel.createEl('h3',{text:msg('Preferências gerais','General preferences')});
       new Setting(panel).setName(t('language')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
       panel.createEl('p',{text:msg('Configure dicionário, tradução, chat e revisão nas respectivas abas. As chaves ficam em APIs e os modelos padrão em Modelos.','Configure dictionary, translation, chat and review in their respective tabs. API keys are under APIs and default models under Models.'),cls:'dictionary-muted'});
-      writerV8FinishSettings(this.plugin,panel);
-      writerV9ToolbarSettings(this.plugin,panel);
-      writerV9ExplorerSettings(this.plugin,panel);
-      writerV9SpacesSettings(this.plugin,panel);
-      writerV9CalendarSettings(this.plugin,panel);
     }else if(id==='dictionary'){
       new Setting(panel).setName(t('dictionary')).addText(x=>x.setValue(this.plugin.settings.dictionaryFileName).onChange(async v=>{this.plugin.settings.dictionaryFileName=v.trim();this.plugin.invalidate();await this.plugin.saveSettings();}));
       new Setting(panel).setName(t('provider')).addDropdown(d=>{for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.provider).onChange(async v=>{this.plugin.settings.provider=v;await this.plugin.saveSettings();});});

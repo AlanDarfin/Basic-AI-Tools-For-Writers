@@ -32,7 +32,7 @@ class WriterV8HomeView extends ItemView{
  getDisplayText(){return writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return 'house';}
  async onOpen(){this.disposed=false;this.render();}
- async onClose(){this.disposed=true;clearTimeout(this.saveTimer);this.saveTimer=null;}
+ async onClose(){this.disposed=true;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -149,9 +149,9 @@ class WriterV8HomeView extends ItemView{
   const statuses=box.createDiv({cls:'writer-v8-home-draft-actions'});
   const save=statuses.createEl('button',{text:writerUi('Exportar para nota Markdown','Export to Markdown note')});
   const message=statuses.createSpan({cls:'writer-v8-home-muted'});
-  let index=0;
+  let index=-1;
   const pick=next=>{
-   this.plugin.settings.v8Finish.homeQuick[index]=editor.value.slice(0,12000);
+   if(index>=0)this.plugin.settings.v8Finish.homeQuick[index]=editor.value.slice(0,12000);
    index=next;editor.value=this.plugin.settings.v8Finish.homeQuick[index]||'';
    [...tabs.children].forEach((node,i)=>node.classList.toggle('is-active',i===index));
   };

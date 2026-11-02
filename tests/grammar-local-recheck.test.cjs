@@ -89,6 +89,7 @@ test('localized review calls the provider once and merges surviving findings int
   reviewResults:{empty(){displayed=[];},createEl(){}},
   reviewStatus:{setText(x){status=x;}},
   renderGrammarSuggestion(_file,_src,m){displayed.push(m);},
+  renderGrammarResults(_file,_src,matches){displayed=[...matches];},
   ...methods
  };
  const left={offset:before.indexOf('Erro'),length:4,rule:{id:'LEFT'}};

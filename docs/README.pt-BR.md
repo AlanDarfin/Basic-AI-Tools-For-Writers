@@ -1,10 +1,18 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 8.0.0 estável · **Versão anterior publicada:** 7.2.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 8.0.1 estável · **Versão anterior publicada:** 8.0.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## 8.0.1 — Dicionário de revisão, índice completo e Longform simplificado
+
+- **LanguageTool:** o item **Ir ao erro** saiu dos menus pop-up do Android e PC. Em erros ortográficos, há **Adicionar ao dicionário**, que salva palavras somente no Basic AI e evita novos avisos para elas. Gerencie a lista em **Configurações → Revisão**; nenhuma conta externa é exigida.
+- **Longform:** removida a aba **Continuidade** e sua configuração, sem excluir notas ou propriedades dos livros. As demais análises estruturais permanecem.
+- **Autocomplete:** o limite de 12 mil termos não interrompe mais a varredura após as primeiras notas. Todas as notas Markdown elegíveis ganham uma participação no orçamento de termos. As pastas excluídas permanecem excluídas, e os arquivos longos recebem amostragem limitada. Botão de reindexação e estatísticas ficam em **Configurações → Escrita → Complementos**, liberando espaço na barra lateral.
+
+[Notas da versão](V8_0_1_RELEASE.pt-BR.md) · [English release notes](V8_0_1_RELEASE.en.md).
 
 ## 8.0.0 — Performance & Polish
 

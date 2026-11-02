@@ -8677,12 +8677,34 @@ class DictionaryView extends ItemView{
   this.reviewMode=reviewControls.createEl('select',{attr:{'aria-label':msg('Modo de revisão','Review mode')}});
   for(const [id,label] of [['grammar',msg('Gramática (LanguageTool)','Grammar (LanguageTool)')],['style',msg('Estilo e fluidez (IA)','Style and flow (AI)')],['beta',msg('Leitor beta (IA)','Beta reader (AI)')]]){const opt=this.reviewMode.createEl('option',{text:label});opt.value=id;}
   this.reviewMode.value=this.plugin.settings.reviewMode||'grammar';
-  this.reviewMode.addEventListener('change',()=>{this.plugin.settings.reviewMode=this.reviewMode.value;this.plugin.saveSettings();if(this.reviewMode.value==='grammar'&&this.reviewFilePath){const file=this.app.vault.getAbstractFileByPath(this.reviewFilePath);if(file)this.plugin.autoGrammar?.schedule(file);}});
+  this.reviewMode.addEventListener('change',()=>{
+   this.plugin.settings.reviewMode=this.reviewMode.value;void this.plugin.saveSettings();
+   this.updateReviewEngineUI();
+   if(this.reviewMode.value==='grammar'&&this.plugin.settings.reviewEngine!=='external'&&this.reviewFilePath){
+    const file=this.app.vault.getAbstractFileByPath(this.reviewFilePath);
+    if(file)this.plugin.autoGrammar?.schedule(file);
+   }
+  });
+  const engineRow=reviewControls.createDiv({cls:'writer-review-engine-row'});
+  engineRow.createSpan({text:msg('Corretor','Checker'),cls:'writer-tools-muted'});
+  this.reviewEngine=engineRow.createEl('select',{attr:{'aria-label':msg('Motor do LanguageTool','LanguageTool engine')}});
+  for(const [key,label] of [['basic',msg('Integrado do Basic AI','Basic AI built-in')],['external',msg('Plugin LanguageTool externo','External LanguageTool plugin')]]){
+   const option=this.reviewEngine.createEl('option',{text:label});option.value=key;
+  }
+  this.reviewEngine.value=this.plugin.settings.reviewEngine==='external'?'external':'basic';
+  this.reviewEngine.addEventListener('change',()=>{
+   this.plugin.settings.reviewEngine=this.reviewEngine.value;
+   this.plugin.autoGrammar?.cancelPending?.();
+   this.plugin.clearReviewMarks();
+   void this.plugin.saveSettings();
+   this.updateReviewEngineUI();
+  });
   const reviewButtons=review.createDiv({cls:'writer-file-actions'});
   reviewButtons.createEl('button',{text:msg('Revisar nota ativa','Review active note')}).addEventListener('click',()=>this.reviewActiveFile());
   reviewButtons.createEl('button',{text:msg('Escolher arquivo','Choose file')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
   this.reviewStatus=review.createDiv({cls:'writer-file-status'});
   this.reviewResults=review.createDiv({cls:'writer-review-results'});
+  this.updateReviewEngineUI();
   this.applyModuleVisibility();
   let debounce;this.input.addEventListener('input',()=>{clearTimeout(debounce);this.search(this.input.value);debounce=setTimeout(()=>{if(this.input.value.trim())this.lookup();},650);});
  }
@@ -8696,7 +8718,7 @@ class DictionaryView extends ItemView{
   if(!writerModuleOn(this.plugin,mapping[id]))id=Object.keys(mapping).find(key=>writerModuleOn(this.plugin,mapping[key]))||null;
   for(const [key,p] of Object.entries(this.panels)){p.style.display=key===id?'flex':'none';this.tabs[key].classList.toggle('is-active',key===id);}
   this.activeTab=id;
-  if(id==='review'&&this.reviewMode?.value==='grammar'&&this.plugin.settings.autoGrammar?.enabled!==false){
+  if(id==='review'&&this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine!=='external'&&this.plugin.settings.autoGrammar?.enabled!==false){
    const file=this.app.workspace.getActiveFile?.();
    if(file instanceof TFile&&file.extension==='md'){
     this.reviewFilePath=file.path;this.plugin.autoGrammar?.schedule(file);
@@ -8771,6 +8793,29 @@ class DictionaryView extends ItemView{
   this.chatInput.value=(tasks[mode]||'')+'\n\n'+selection;
   await this.sendChat();
  }
+ updateReviewEngineUI(){
+  if(!this.reviewResults||!this.reviewStatus)return;
+  const external=this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine==='external';
+  if(!external){this.reviewResults.empty();this.reviewStatus.setText('');return;}
+  this.reviewResults.empty();
+  const ext=this.plugin.externalLanguageTool();
+  const ready=!!ext&&typeof ext.runDetection==='function';
+  const info=this.reviewResults.createDiv({cls:'writer-review-external'});
+  info.createEl('h4',{text:msg('LanguageTool externo','External LanguageTool')});
+  info.createEl('p',{text:ready
+   ?msg('O corretor externo controla os sublinhados e menus no editor. Use estes controles sem duplicar requisições pelo Basic.','The external checker controls underlines and menus in the editor. Use these controls without duplicate Basic requests.')
+   :msg('Instale e ative o plugin LanguageTool (wrenger). O corretor interno não fará requisições enquanto este modo estiver selecionado.','Install and enable the LanguageTool plugin (wrenger). Basic will not send requests while this mode is selected.')});
+  const actions=info.createDiv({cls:'writer-tools-v3-actions'});
+  const action=(label,fn)=>{const b=actions.createEl('button',{text:label});b.disabled=!ready;b.addEventListener('click',fn);return b;};
+  action(msg('Verificar nota/seleção','Check note/selection'),()=>this.reviewActiveFile());
+  action(msg('Limpar sugestões','Clear suggestions'),()=>this.plugin.runExternalLanguageToolCommand('clear'));
+  action(msg('Próximo erro','Next error'),()=>this.plugin.runExternalLanguageToolCommand('next'));
+  action(msg('Alternar auto-check','Toggle auto-check'),()=>this.plugin.runExternalLanguageToolCommand('toggle-auto-check'));
+  action(msg('Configurar LanguageTool','LanguageTool settings'),()=>{
+   this.app.setting?.open?.();this.app.setting?.openTabById?.('languagetool');
+  });
+  this.reviewStatus.setText(ready?msg('Controles do LanguageTool externo disponíveis.','External LanguageTool controls are ready.'):msg('LanguageTool externo não está ativo.','External LanguageTool is not enabled.'));
+ }
  async reviewActiveFile(){
   const file=this.app.workspace.getActiveFile();
   if(!(file instanceof TFile)||file.extension!=='md')return new Notice(msg('Abra uma nota Markdown ou escolha um arquivo.','Open a Markdown note or choose a file.'));
@@ -8780,6 +8825,12 @@ class DictionaryView extends ItemView{
   if(!writerModuleOn(this.plugin,'review'))return;
   if(this.reviewBusy)return;
   if(!(file instanceof TFile)||file.extension!=='md')return;
+  if(this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine==='external'){
+   this.plugin.clearReviewMarks();
+   this.reviewFilePath=file.path;this.updateReviewEngineUI();
+   if(!automatic)await this.plugin.reviewWithExternalLanguageTool(file,this);
+   return;
+  }
   this.reviewBusy=true;if(!automatic)this.reviewResults.empty();this.reviewStatus.setText((automatic?msg('Atualizando gramática de ','Updating grammar for '):msg('Analisando ','Analyzing '))+file.path+'…');
   try{
     const source=await writerCurrentText(this.plugin,file);
@@ -8824,7 +8875,7 @@ class DictionaryView extends ItemView{
   }
  }
  async recheckGrammarCorrection(file,before,after,start,oldEnd,newEnd,previousMatches){
-  if(this.activeTab!=='review'||this.reviewMode?.value!=='grammar'||this.reviewFilePath!==file.path)return false;
+  if(this.activeTab!=='review'||this.reviewMode?.value!=='grammar'||this.plugin.settings.reviewEngine==='external'||this.reviewFilePath!==file.path)return false;
   const scopes=writerGrammarLocalScopes(before,after,start,oldEnd,newEnd);
   const preserved=writerGrammarPreserveOutside(previousMatches,scopes.old,after.length-before.length);
   const publish=(matches,status)=>{

@@ -81,7 +81,7 @@ class WriterV8InlineAI{
    // CodeMirror passes the field VALUE to Facet.from's mapper, NOT EditorState.
    // Calling .field() on that value throws while creating every Markdown editor.
    provide:f=>EditorView.decorations.from(f,info=>{
-    if(!info||!Number.isInteger(info.at)||!info.text)return Decoration.none;
+    if(!info||!Number.isInteger(info.at)||info.at<0||typeof info.text!=='string'||!info.text)return Decoration.none;
     return Decoration.set([Decoration.widget({widget:new InlineWidget(info.text),side:1}).range(info.at)]);
    })
   });

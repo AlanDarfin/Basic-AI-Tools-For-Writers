@@ -1,10 +1,17 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.1.1 estável · **Versão anterior publicada:** 7.1.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 7.2.0 estável · **Versão anterior publicada:** 7.1.1 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## Ajustes antes da v8 — 7.2.0
+
+- **Máquina de escrever no Android:** toque e teclado virtual/IME passam a ativar o realce da linha atual no Live Preview. Deslizar para rolar suspende o destaque. A restauração do cursor não conta como interação; a visualização de leitura não possui cursor de edição.
+- **Ferramentas:** ao trocar entre Sugestões, Variantes, Diff e perfis, Versões e Extras, só o conteúdo muda. As abas permanecem no mesmo lugar e preservam a rolagem.
+- **LanguageTool interno:** depois da primeira análise, alterações feitas pelo editor reanalisam somente o parágrafo modificado e preservam as sugestões intactas. Aceitar uma correção continua priorizando a sentença.
+- **LanguageTool externo:** opção no painel Revisão para usar o plugin [wrenger/obsidian-languagetool](https://github.com/wrenger/obsidian-languagetool) em vez do corretor interno. Mostra ações de verificar, limpar, próximo erro, auto-check e configurações. Os sublinhados e o menu continuam sendo do plugin externo. É opcional, não inclui código de terceiros e depende de API interna do Obsidian, portanto pode exigir adaptação em atualizações. Inspirado também na lógica de revisão incremental do [Language Tool Advanced](https://github.com/DuckTapeKiller/language-tool-advanced). [Notas 7.2.0](V7_2_0_RELEASE.pt-BR.md) · [English](V7_2_0_RELEASE.en.md).
 
 ## Menu do LanguageTool ao passar o mouse — 7.1.1
 

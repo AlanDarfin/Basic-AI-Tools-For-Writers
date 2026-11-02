@@ -41,6 +41,14 @@ function writerV83StudyCards(source,file,tag='flashcards'){
    const sep=trim.indexOf('::');
    const front=trim.slice(0,sep).trim(),back=trim.slice(sep+2).trim();
    if(front&&back)cards.push({front,back});
+  }else if(/==[^=\n]+==/.test(trim)){
+   // Highlight clozes, only inside explicitly tagged study notes. Skip
+   // extended-syntax colored highlights (=={color}...) to avoid collisions.
+   const re=/==([^=\n]+)==/g;let m;
+   while((m=re.exec(trim))&&cards.length<100){
+    if(m[1].startsWith('{'))continue;
+    cards.push({front:trim.replace(m[0],'[…]'),back:trim.replace(m[0],m[1])});
+   }
   }else if(/\{\{c\d+::[^{}]+\}\}/.test(trim)){
    const re=/\{\{c\d+::([^{}]+)\}\}/g;let m;
    while((m=re.exec(trim))&&cards.length<100){
@@ -124,7 +132,8 @@ class WriterV83StudyView extends ItemView{
   }
   select.value=this.deck;
   select.addEventListener('change',()=>{this.deck=select.value;this.index=0;this.revealed=false;this.render();});
-  const due=writerV83StudyDue(this.cards,cfg.history,Date.now(),cfg.newMax,this.deck);
+  const dailyLimit=cfg.dailyMax;
+  const due=writerV83StudyDue(this.cards,cfg.history,Date.now(),cfg.newMax,this.deck).slice(0,dailyLimit);
   const today=new Date().toDateString();
   const reviewed=Object.values(cfg.history).filter(r=>r.last&&new Date(r.last).toDateString()===today).length;
   const status=root.createDiv({cls:'writer-v83-study-stats'});
@@ -176,4 +185,24 @@ function writerV83RegisterStudy(plugin){
  };
  plugin.writerStudyOpen=open;
  plugin.addCommand({id:'v83-study-open',name:writerUi('Estudos: revisar cartões','Study: review flashcards'),callback:()=>void open()});
+}
+
+function writerV83StudySettings(plugin,panel){
+ const cfg=plugin.settings.v83Study;
+ panel.createEl('h3',{text:writerUi('Estudos e revisão espaçada','Study and spaced repetition')});
+ panel.createEl('p',{text:writerUi('Cartões Markdown de notas marcadas com #flashcards. Progresso local nas configurações; não modifica o conteúdo das notas.','Markdown cards in notes tagged #flashcards. Progress is stored locally, without rewriting notes.'),cls:'dictionary-muted'});
+ new Setting(panel).setName(writerUi('Etiqueta de estudos','Study tag'))
+  .setDesc(writerUi('Sem #. Ex.: flashcards ou estudos.','Without #, e.g. flashcards or study.'))
+  .addText(input=>input.setValue(cfg.tag).onChange(async value=>{
+   cfg.tag=String(value||'flashcards').replace(/^#/,'').replace(/[\s,;]+/g,'').slice(0,80)||'flashcards';
+   await plugin.saveSettings();
+  }));
+ for(const [key,pt,en,min,max] of [['dailyMax','Cartões por sessão','Cards per session',5,100],['newMax','Cartões novos por sessão','New cards per session',1,40]]){
+  new Setting(panel).setName(writerUi(pt,en)).addText(input=>
+   input.setValue(String(cfg[key])).onChange(async value=>{
+    cfg[key]=Math.max(min,Math.min(max,Number(value)||cfg[key]));await plugin.saveSettings();
+   }));
+ }
+ new Setting(panel).setName(writerUi('Abrir área de Estudos','Open Study workspace'))
+  .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerStudyOpen?.()));
 }

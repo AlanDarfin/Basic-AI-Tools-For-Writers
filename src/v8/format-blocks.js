@@ -107,6 +107,7 @@ function writerV8RenderCard(plugin,source,element,ctx,kind){
  }
 }
 function writerV8RegisterBlocks(plugin,enabled){
+ if(typeof plugin.registerMarkdownCodeBlockProcessor!=='function')return;
  for(const type of ['writer-tabs','writer-avatar','writer-wiki']){
   plugin.registerMarkdownCodeBlockProcessor(type,(source,element,ctx)=>{
    if(!enabled()){element.createEl('pre',{text:source});return;}

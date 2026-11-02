@@ -1,6 +1,6 @@
 # Prévia da 9.0.1 · ajustes de interface, Spaces e personalização
 
-> **Em desenvolvimento na branch `fix/v9-0-1-ui-spaces-iconic`**. Não é uma release 9.0.1. O `manifest.json` permanece 9.0.0 até a aprovação dos testes e da atualização final de versão.
+> **Documento histórico da prévia.** A versão estável é a **9.0.1**. Consulte [as notas definitivas do lançamento](V9_0_1_RELEASE.pt-BR.md) para conhecer também a nova pesquisa da homepage, que ocupa a largura total e oferece seleção via setas/Enter.
 
 ## Ajustes
 

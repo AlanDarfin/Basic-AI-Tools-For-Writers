@@ -70,7 +70,8 @@ function writerV8HomeRenderCalendar(view,parent){
  const week=Array.from({length:7},(_,i)=>new Intl.DateTimeFormat(locale,{weekday:'short'}).format(new Date(2024,0,1+i)));
  const draw=()=>{
   days.empty();
-  monthTitle.setText(new Intl.DateTimeFormat(locale,{month:'long',year:'numeric'}).format(new Date(year,month,1)));
+  const heading=new Intl.DateTimeFormat(locale,{month:'long',year:'numeric'}).format(new Date(year,month,1));
+  monthTitle.setText(heading.charAt(0).toLocaleUpperCase(locale)+heading.slice(1));
   for(const label of week)days.createSpan({cls:'writer-v8-home-calendar-weekday',text:label.slice(0,3)});
   for(const day of writerV8HomeCalendarCells(year,month)){
    const cell=days.createSpan({cls:'writer-v8-home-calendar-day'+(day===now.getDate()&&month===now.getMonth()&&year===now.getFullYear()?' is-today':'')});

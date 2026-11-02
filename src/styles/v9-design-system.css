@@ -193,3 +193,23 @@
  .writer-v8-home-quick-actions>.writer-v8-home-action{min-width:0;white-space:normal;}
  .writer-v901-icon-grid{grid-template-columns:repeat(auto-fill,minmax(36px,1fr));max-height:210px;}
 }
+
+
+/* Optional Spaces sidebar: never changes Obsidian's native Explorer. */
+.writer-v9-space-sidebar{box-sizing:border-box;display:flex;flex-direction:column;gap:9px;padding:10px;min-width:0;height:100%;overflow-y:auto;}
+.writer-v9-space-side-head{display:flex;align-items:center;gap:8px;min-width:0;}
+.writer-v9-space-side-head>span{display:inline-flex;color:var(--interactive-accent);}
+.writer-v9-space-side-head>strong{flex:1 1 auto;min-width:0;}
+.writer-v9-space-side-head>button{display:flex;align-items:center;justify-content:center;width:30px;height:30px;padding:5px;background:transparent;border:0;}
+.writer-v9-space-side-head svg{width:17px;height:17px;}
+.writer-v9-space-side-nav{display:flex;gap:5px;flex-wrap:nowrap;overflow-x:auto;min-width:0;padding-bottom:4px;}
+.writer-v9-space-side-nav button{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;max-width:170px;min-height:32px;padding:5px 9px;background:transparent;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);}
+.writer-v9-space-side-nav button.is-active{background:var(--background-secondary);color:var(--text-accent);border-color:var(--interactive-accent);}
+.writer-v9-space-side-nav button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.writer-v9-space-side-nav button svg{flex:0 0 16px;width:16px;height:16px;}
+.writer-v9-space-side-list{display:flex;flex-direction:column;gap:2px;min-width:0;max-height:100%;overflow-y:auto;}
+.writer-v9-space-side-item{display:flex;gap:8px;align-items:center;width:100%;min-width:0;padding:7px 9px;text-align:start;background:transparent;border:0;border-radius:var(--radius-s);color:var(--text-normal);}
+.writer-v9-space-side-item:hover{background:var(--background-modifier-hover);}
+.writer-v9-space-side-item>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.writer-v9-space-side-item svg{width:16px;height:16px;color:var(--text-muted);}
+.writer-v9-space-side-add{width:100%;min-height:34px;}

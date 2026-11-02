@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 8.2.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 8.2.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md)
 
@@ -205,35 +205,35 @@ Use a descrição da imagem no próprio Markdown do Obsidian: `![[Imagens/porto.
 
 As legendas não alteram o conteúdo original da nota e têm limite padrão de 180 caracteres (configurável em **Configurações → Geral**). Se o plugin independente **Image Captions** estiver ativo, o Basic AI não adiciona uma segunda legenda. Para recursos avançados de alinhamento e Live Preview, utilize o plugin dedicado.
 
-### Conversas fictícias com fotos opcionais
+### Chats fictícios — mensagens rápidas por personagem
 
-Use o bloco `writer-chat` para diálogos, mensagens de celular e transcrições fictícias. **A foto só aparece se houver um campo `avatar:`**; sem ele, não haverá círculo ou imagem substituta.
+O bloco `writer-chat` agora aceita uma sintaxe curta: **<** posiciona a mensagem à esquerda, **>** à direita, e **|** separa os campos. Você pode escrever:
+
+- `< Avatar | Nome | Mensagem | Tempo` (foto local explícita)
+- `< | Nome | Mensagem | Tempo` (sem foto)
+- `< | Mensagem | Tempo` quando o nome já foi definido para aquele lado no início do bloco.
+
+As configurações iniciais funcionam assim: `[Maria=blue, João=red]` define as cores, `[Maria=Imagens/maria.webp]` define a foto padrão e `[Left=Maria, right=João]` associa os nomes a cada lado.
 
 ~~~~markdown
 ~~~writer-chat
 title: Conversa no porto
-=== Maria
-side: left
-avatar: [[Imagens/maria.webp]]
-time: 18:30
----
-Encontrou a carta?
+[Maria=blue, João=red]
+[Maria=Imagens/maria.webp]
+[Left=Maria, right=João]
 
-=== João
-side: right
-time: 18:32
----
-Sim, estava **dentro do livro antigo**.
-
-=== Maria
-side: left
-time: 18:33
----
-Então venha até o farol.
+< | Encontrou o mapa? ![[Imagens/mapa.png|240]] | 18:30
+> | **Sim!** Estava escondido no livro. | 18:31
+< Imagens/outra-foto.png | Maria | Veja também essa foto. | 18:32
+> | João | Chego em cinco minutos. | 18:34
 ~~~
 ~~~~
 
-Aceita `side: left|right|center`, `time`, `avatar: [[imagem-local.png]]` e `mine: true` para alinhar à direita. O corpo das mensagens aceita Markdown. Não depende do Chat View e não envia mensagens a nenhum serviço externo.
+Uma foto específica na mensagem substitui a imagem padrão do personagem. Se não houver nenhuma, **não aparece espaço vazio para avatar**. Cores aceitas: red, orange, yellow, green, blue, purple, pink, cyan, gray e accent (também grey), seguindo as variáveis do tema.
+
+O conteúdo é renderizado em Markdown: imagens locais, links, **negrito**, *itálico*, listas e a sintaxe estendida do Basic AI, como `++sublinhado++`, `=={blue}destaque==` e `||spoiler||`, quando os módulos estiverem ativos. O separador `|` dentro de `![[imagem.png|240]]`, links Markdown ou código inline não divide a mensagem; para escrever um pipe literal, use `\|` quando necessário. Linhas adicionais continuam na mesma mensagem até o próximo marcador lateral.
+
+**Compatibilidade:** a sintaxe anterior com `=== Maria`, `side: left`, propriedades e `---` continua funcionando nas notas existentes. Os chats são apenas representações fictícias locais, sem conexão com serviços externos.
 
 ### Homepage de escrita (inspirada no Harbor Tab e Genkan)
 

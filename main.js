@@ -8482,6 +8482,12 @@ function writerV7RCRenderPacing(view,panel,project){
 function writerV7RCRenderStructure(view,panel,project){
  const root=panel.createDiv({cls:'writer-v7-rc-structure'});
  const tabs=root.createDiv({cls:'writer-v7-rc-structure-tabs'});
+ tabs.setAttribute('role','tablist');
+ tabs.addEventListener('wheel',event=>{
+  if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+   tabs.scrollLeft+=event.deltaY;event.preventDefault();
+  }
+ },{passive:false});
  const content=root.createDiv({cls:'writer-v7-rc-structure-body'});
  const settings=view.plugin.settings.v7||{};
  const choices=[
@@ -8494,14 +8500,18 @@ function writerV7RCRenderStructure(view,panel,project){
   const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:choices[0]?.[0]||'plotlines';
   content.empty();
   if(!choices.length)return void content.createEl('p',{text:writerUi('Habilite algum módulo de estrutura nas configurações.','Enable a structure module in settings.')});
-  for(const btn of tabs.querySelectorAll('button'))btn.classList.toggle('is-active',btn.dataset.section===active);
+  for(const btn of tabs.querySelectorAll('button')){
+   const selected=btn.dataset.section===active;
+   btn.classList.toggle('is-active',selected);
+   btn.setAttribute('aria-selected',String(selected));
+  }
   if(active==='beats')writerV7RCRenderBeats(view,content,project);
   else if(active==='pacing')writerV7RCRenderPacing(view,content,project);
   else if(active==='dependencies')writerV7StableRenderDependencies(view,content,project);
   else writerV7RCRenderPlotlines(view,content,project);
  };
  for(const [id,label] of choices){
-  const btn=tabs.createEl('button',{text:label,attr:{type:'button','aria-label':label,'data-section':id}});
+  const btn=tabs.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-label':label,'data-section':id}});
   btn.addEventListener('click',()=>{view.writerV7RCSubtab=id;show();});
  }
  show();
@@ -8817,7 +8827,13 @@ class DictionaryView extends ItemView{
   const translateButton=translation.createEl('button',{text:t('translate'),cls:'mod-cta'});translateButton.addEventListener('click',()=>this.translate(this.translationInput.value));
   button(t('synonyms'),()=>this.lexical('synonyms'));
   button(t('antonyms'),()=>this.lexical('antonyms'));
-  this.context=defs.createEl('textarea',{attr:{placeholder:t('context'),'aria-label':t('context')}});
+  // Optional context should never occupy most of a sidebar by default.
+  this.context=defs.createEl('textarea',{cls:'dictionary-context-optional',attr:{
+   placeholder:t('context'),'aria-label':t('context'),rows:'2'
+  }});
+  this.context.addEventListener('input',()=>{
+   this.context.classList.toggle('has-content',!!this.context.value.trim());
+  });
   this.output=defs.createDiv({cls:'dictionary-output'});
   this.results=defs.createDiv({cls:'dictionary-results'});this.renderedWord='';
   const fileActions=translations.createDiv({cls:'writer-file-actions'});
@@ -9646,6 +9662,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
     this.registerView(PROJECT_VIEW,leaf=>new ProjectsView(leaf,this));
     this.registerView(WRITER_TOOLS_VIEW,leaf=>new WriterToolsView(leaf,this));
+    // Restore panes only after a hot reload explicitly detached them. Obsidian
+    // cannot keep plugin ItemViews alive once unregisterView is called.
+    this.app.workspace.onLayoutReady(()=>{void this.restoreHotReloadSidebars();});
     this.addCommand({id:'open-writing-projects',name:msg('Abrir projetos de escrita','Open writing projects'),callback:()=>this.openProjects()});
     this.addCommand({id:'create-writing-project',name:msg('Criar projeto de escrita','Create writing project'),callback:async()=>{await this.openProjects();this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view?.promptNewProject();}});
     this.addCommand({id:'create-writing-scene',name:msg('Criar cena no projeto','Create project scene'),callback:async()=>{await this.openProjects('scenes');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)v.addScene(v.currentProject);}});
@@ -10193,5 +10212,77 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     });
   }
   async saveSettings(){await this.saveData(this.settings);}
-  async onunload(){await this.writerCursorMemory?.stop();this.writerFinalFeatures?.stop();this.app.workspace.detachLeavesOfType(VIEW);this.app.workspace.detachLeavesOfType(PROJECT_VIEW);this.app.workspace.detachLeavesOfType(WRITER_TOOLS_VIEW);}
+  hotReloadStorageKey(){
+    // sessionStorage intentionally does not alter plugin settings or vault files.
+    return 'basic-ai:hot-reload:'+this.manifest.id+':'+this.app.vault.getName();
+  }
+  rememberHotReloadSidebars(){
+    const workspace=this.app.workspace;
+    const layout=[
+     [PROJECT_VIEW,'left'],[VIEW,'right'],[WRITER_TOOLS_VIEW,'right']
+    ];
+    const leaves=[];
+    for(const [type,fallback] of layout){
+     for(const leaf of workspace.getLeavesOfType(type)||[]){
+      const element=leaf.containerEl;
+      const side=workspace.leftSplit?.containerEl?.contains(element)?'left':
+       workspace.rightSplit?.containerEl?.contains(element)?'right':fallback;
+      leaves.push({type,side,
+       tab:typeof leaf.view?.tab==='string'?leaf.view.tab:null,
+       activeTab:typeof leaf.view?.activeTab==='string'?leaf.view.activeTab:null,
+       selected:typeof leaf.view?.selected==='string'?leaf.view.selected:null,
+       structureTab:typeof leaf.view?.writerV7RCSubtab==='string'?leaf.view.writerV7RCSubtab:null});
+     }
+    }
+    try{
+     const key=this.hotReloadStorageKey();
+     if(leaves.length)window.sessionStorage.setItem(key,JSON.stringify({timestamp:Date.now(),leaves}));
+     else window.sessionStorage.removeItem(key);
+    }catch(error){console.warn('[Basic AI] Sidebar state could not be stored',error);}
+  }
+  async restoreHotReloadSidebars(){
+    let snapshot=null;
+    try{
+     const key=this.hotReloadStorageKey();
+     const raw=window.sessionStorage.getItem(key);
+     window.sessionStorage.removeItem(key); // One-shot: never reopen user-closed panes on a normal launch.
+     if(raw)snapshot=JSON.parse(raw);
+    }catch(error){console.warn('[Basic AI] Sidebar state could not be restored',error);}
+    if(!snapshot||!Array.isArray(snapshot.leaves)||
+      !Number.isFinite(snapshot.timestamp)||Date.now()-snapshot.timestamp>120000||
+      snapshot.timestamp>Date.now())return;
+    const workspace=this.app.workspace;
+    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW]);
+    const sides=new Set();
+    for(const entry of snapshot.leaves.slice(0,6)){
+     if(!allowed.has(entry?.type)||workspace.getLeavesOfType(entry.type)?.length)continue;
+     const side=entry.side==='left'?'left':'right';
+     try{
+      // true always creates a tab: never overwrite Bookmarks or File Explorer.
+      const leaf=side==='left'?workspace.getLeftLeaf(true):workspace.getRightLeaf(true);
+      if(!leaf)continue;
+      await leaf.setViewState({type:entry.type,active:false});
+      if(entry.type===VIEW&&entry.activeTab&&typeof leaf.view?.switchTab==='function')
+       leaf.view.switchTab(entry.activeTab);
+      if(entry.type===WRITER_TOOLS_VIEW&&entry.tab&&leaf.view){
+       leaf.view.tab=entry.tab;leaf.view.render?.();
+      }
+      if(entry.type===PROJECT_VIEW&&leaf.view){
+       if(entry.selected)leaf.view.selected=entry.selected;
+       if(entry.structureTab)leaf.view.writerV7RCSubtab=entry.structureTab;
+       if(entry.activeTab){leaf.view.activeTab=entry.activeTab;await leaf.view.render?.();}
+      }
+      sides.add(side);
+     }catch(error){console.warn('[Basic AI] Could not restore sidebar',entry.type,error);}
+    }
+    // Keep restored panes available without forcing focus away from the editor.
+  }
+  async onunload(){
+    this.rememberHotReloadSidebars();
+    await this.writerCursorMemory?.stop();
+    this.writerFinalFeatures?.stop();
+    this.app.workspace.detachLeavesOfType(VIEW);
+    this.app.workspace.detachLeavesOfType(PROJECT_VIEW);
+    this.app.workspace.detachLeavesOfType(WRITER_TOOLS_VIEW);
+  }
 };

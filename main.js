@@ -1287,6 +1287,46 @@ function writerMaskMarkdown(source,keepVariants=false){
    if(!m[0].length)re.lastIndex++;
   }
  }
+ // HTML attributes and tag names are not natural language. Keep the original
+ // UTF-16 offsets (including newlines) so LanguageTool findings still point
+ // to the correct Markdown characters. Visible prose *between* tags survives.
+ const rawHtml=new Set(['script','style','svg','math','pre','code','textarea','iframe']);
+ for(let i=0;i<text.length;){
+  if(text[i]!=='<'||hidden[i]){i++;continue;}
+  let cursor=i+1,closing=false;
+  if(text[cursor]==='/'){closing=true;cursor++;}
+  if(text[cursor]==='!'){
+   const special=/^<![^>]{1,4000}>/.exec(text.slice(i,i+4002));
+   if(special){hide(i,i+special[0].length);i+=special[0].length;continue;}
+  }
+  const name=/^[A-Za-z][A-Za-z0-9:-]*/.exec(text.slice(cursor,cursor+128));
+  if(!name){i++;continue;}
+  const tag=name[0].toLowerCase();
+  cursor+=name[0].length;
+  if(!/[\s/>]/.test(text[cursor]||'')){i++;continue;}
+  let quoted=null,end=-1;
+  for(let j=cursor;j<Math.min(text.length,i+4000);j++){
+   const char=text[j];
+   if(quoted){if(char===quoted)quoted=null;}
+   else if(char==='"'||char==="'")quoted=char;
+   else if(char==='>'){end=j+1;break;}
+  }
+  if(end<0){i++;continue;}
+  hide(i,end);
+  if(!closing&&rawHtml.has(tag)&&!text.slice(i,end).endsWith('/>')){
+   const closeRe=new RegExp('<\\s*\\/\\s*'+tag+'\\s*>','ig');
+   closeRe.lastIndex=end;
+   const close=closeRe.exec(text);
+   if(close){hide(end,close.index+close[0].length);i=close.index+close[0].length;continue;}
+   // Do not leak JavaScript/CSS/code into the checker if the closing tag
+   // was omitted; an unclosed raw-HTML block runs to the end of the file.
+   hide(end,text.length);break;
+  }
+  i=end;
+ }
+ // Entities such as &nbsp; and &#160; are formatting, not spelling mistakes.
+ const entity=/&(?:[A-Za-z][A-Za-z0-9]{1,31}|#(?:[0-9]{1,8}|[xX][0-9a-fA-F]{1,8}));/g;
+ for(const match of text.matchAll(entity))hide(match.index,match.index+match[0].length);
  // A paired delimiter marks formatting, but the words between markers are prose.
  // This excludes underscores inside identifiers (foo_bar) and escaped characters.
  const emphasis=/(?<![\p{L}\p{N}\\])(\*\*|__|~~|\*|_)(?=\S)([^\r\n]*?\S)\1(?![\p{L}\p{N}])/gu;

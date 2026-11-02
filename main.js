@@ -11185,7 +11185,7 @@ function writerV9RegisterExplorer(plugin){
   refresh();
  };
  plugin.app.workspace.onLayoutReady?.(start);
- plugin.register(()=>{observer?.disconnect();clearTimeout(debounce);plugin.writerV9ExplorerRefresh=null;});
+ plugin.register?.(()=>{observer?.disconnect();clearTimeout(debounce);plugin.writerV9ExplorerRefresh=null;});
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
   if(!active())return;
   const file=plugin.app.workspace.getActiveFile?.(),folder=file?.parent||plugin.app.vault.getRoot();

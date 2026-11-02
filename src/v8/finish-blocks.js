@@ -1,6 +1,6 @@
 'use strict';
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal'],homeHidden:['activity','random','tags','goal'],homeWordGoal:500};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','recent','favorites','quick','stats','activity','random','tags','goal'],homeHidden:['activity','random','tags','goal'],homeWordGoal:500};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -17,7 +17,11 @@ function writerV8FinishMerge(settings){
  cfg.homeQuick=Array.isArray(cfg.homeQuick)?Array.from({length:3},(_,i)=>String(cfg.homeQuick[i]||'').slice(0,12000)):['','',''];
  const allowed=WRITER_V8_FINISH_DEFAULTS.homeOrder;
  const prevOrder=Array.isArray(old.homeOrder)?old.homeOrder.filter(key=>allowed.includes(key)):[];
- cfg.homeOrder=[...new Set(['calendar',...prevOrder,...allowed])];
+ const requested=prevOrder.length?prevOrder:[...allowed];
+ const index=requested.includes('calendar')?-1:requested.indexOf('continue');
+ if(index>=0)requested.splice(index+1,0,'calendar');
+ else if(!requested.includes('calendar'))requested.unshift('calendar');
+ cfg.homeOrder=[...new Set([...requested,...allowed])];
  // New widgets are off by default for existing installs; user choices persist.
  cfg.homeHidden=Array.isArray(old.homeHidden)?
   [...new Set(old.homeHidden.filter(key=>allowed.includes(key)))]:[...WRITER_V8_FINISH_DEFAULTS.homeHidden];

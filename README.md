@@ -13,7 +13,7 @@ A single, compact writing workspace for planning books, organizing a fictional w
 - **Homepage design:** centered title, icon above it on mobile or alongside it on desktop; broader Lucide options or a vault/HTTPS image; clock above the calendar at all sizes. Search stays at the top.
 - **Modular switches:** toolbar and native explorer modules can be hidden under Modules; individual controls and behaviors are configurable. Portuguese and English UI.
 
-This is an **integration preview**, not a complete fork of Make.md. Its advanced database views, formulas, rollups, Spaces and Flow editor have **not** been ported. See [v9 implementation status and migration notes](docs/V9_PREVIEW.en.md). Back up your vault before installing a preview.
+Previous stable version: **8.3.0**.\n\nThis is an **integration preview**, not a complete fork of Make.md. Its advanced database views, formulas, rollups, Spaces and Flow editor have **not** been ported. See [v9 implementation status and migration notes](docs/V9_PREVIEW.en.md). Back up your vault before installing a preview.
 
 ## Features
 

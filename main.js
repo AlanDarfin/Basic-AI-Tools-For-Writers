@@ -1471,7 +1471,7 @@ class WriterComplements extends EditorSuggest{
        terms=stored.terms;
       }else{
        const text=await this.plugin.app.vault.cachedRead(file);
-       terms=this.tokenize(writerMaskMarkdown(text.slice(0,charLimit)));
+       terms=new Map([...this.tokenize(writerMaskMarkdown(text.slice(0,charLimit)))].slice(0,256));
        if(Number.isFinite(stamp)){
         if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
         this.fileTermCache.set(file.path,{mtime:stamp,size,terms});

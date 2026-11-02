@@ -317,6 +317,12 @@ A fenced div uses an opening `::: class-name` line and a closing `:::` line. Pan
 
 For desktop Pandoc export, install Pandoc separately and enable the integration. On Android, desktop-only export is not available.
 
+## Maintenance changes for 9.0.1 (under review)
+
+- In `writer-chat`, a speaker's name appears only when explicitly included in that message. Consecutive messages from the same speaker do not repeat the header/avatar. Time is shown only if written in the message block.
+- Basic AI settings now use a compact search field with clear control and limited inline results, full-width scrolling primary/secondary tabs, and one combined **Writing & Markdown** section.
+- These changes are in the 9.0.1 draft PR, not yet part of the published 9.0.0 release. See [maintenance notes](docs/V9_0_1_MAINTENANCE.md).
+
 ## Privacy and configuration
 
 Core story planning, most editing tools, local snapshots and local formatting work without an AI account. AI, translation, online TTS and grammar providers may receive text you explicitly submit or configure for automatic checks. Review provider settings before enabling them. Back up your vault and the plugin's `data.json` before major upgrades.

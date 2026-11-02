@@ -64,3 +64,7 @@ These are **independent feature adaptations**; no upstream code is vendored. Ori
 - CI `npm run check`, CSS scan and release workflow succeed.
 - Release attaches **exactly** `main.js`, `manifest.json`, `styles.css`; no `v` prefix.
 - No untested claim of full parity with upstream or fully automated v1 migration.
+
+## 9.0.1 candidate (not released)
+
+The branch `fix/v9-0-1-ui-spaces-iconic` adds independent color controls, expanded Lucide selection, homepage layout changes, optional Spaces sidebar, and a visual-only password gate. Unlike a full Make.md implementation, this **does not add** relational properties, rollups, formulas or Flow editing. The password gate **does not encrypt notes**. See `docs/V9_0_1_PREVIEW.pt-BR.md` for the feature-by-feature status. This section describes a candidate only and does not revise the v9.0.0 release claims.

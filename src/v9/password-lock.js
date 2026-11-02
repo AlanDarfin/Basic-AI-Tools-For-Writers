@@ -63,6 +63,16 @@ function writerV9LockRegister(plugin){
  const lockFile=file=>{
   if(!cfg().enabled||!file||!writerV9LockMatches(cfg(),file.path)||unlocked()||plugin.writerV9LockPromptOpen)return;
   plugin.writerV9LockPromptOpen=true;
+  const leaf=plugin.app.workspace.activeLeaf;
+  const host=leaf?.view?.containerEl;
+  let curtain=null;
+  if(host?.createDiv){
+   curtain=host.createDiv({cls:'writer-v901-lock-curtain',attr:{role:'presentation','aria-hidden':'true'}});
+   host.addClass?.('writer-v901-lock-host');
+   const label=curtain.createDiv({cls:'writer-v901-lock-caption'});
+   const glyph=label.createSpan();require('obsidian').setIcon?.(glyph,'lock-keyhole');
+   label.createSpan({text:writerUi('Visualização bloqueada','View locked')});
+  }
   const modal=new Modal(plugin.app);
   let authorized=false;
   modal.setTitle(writerUi('Nota protegida no Basic','Basic protected note'));
@@ -79,6 +89,7 @@ function writerV9LockRegister(plugin){
   input.addEventListener('keydown',e=>{if(e.key==='Enter')void submit();});
   modal.onClose=()=>{
    plugin.writerV9LockPromptOpen=false;input.value='';
+   curtain?.remove();host?.removeClass?.('writer-v901-lock-host');
    if(!authorized){
     const leaf=plugin.app.workspace.activeLeaf;
     if(leaf?.view?.file?.path===file.path)void leaf.setViewState({type:'empty'});
@@ -94,11 +105,17 @@ function writerV9LockRegister(plugin){
   const input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'current-password'}});
   const note=modal.contentEl.createEl('small');
   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Continuar','Continue')).onClick(async()=>{
-   if(await verify(input.value)){modal.close();setup();}else note.setText(writerUi('Senha incorreta.','Incorrect password.'));
+   try{if(await verify(input.value)){modal.close();setup();}
+    else note.setText(writerUi('Senha incorreta.','Incorrect password.'));
+   }catch(e){note.setText(String(e.message||e));}
   }));
   modal.open();
  };
  plugin.registerEvent(plugin.app.workspace.on('file-open',file=>lockFile(file)));
+ if(typeof plugin.registerInterval==='function')
+  plugin.registerInterval(setInterval(()=>{
+   if(cfg().enabled&&!unlocked())lockFile(plugin.app.workspace.getActiveFile?.());
+  },15000));
  plugin.addCommand({id:'v9-lock-protected-files',name:writerUi('Proteção: bloquear notas agora','Protection: lock notes now'),callback:()=>{
   plugin.writerV9LockUnlockedUntil=0;
   lockFile(plugin.app.workspace.getActiveFile?.());

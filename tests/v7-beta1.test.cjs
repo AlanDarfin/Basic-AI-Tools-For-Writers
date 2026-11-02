@@ -75,7 +75,7 @@ test('AI narrative context is opt in and excludes the active and future chapters
 test('module integration, bilingual UI and release metadata stay aligned',()=>{
  const main=fs.readFileSync('main.js','utf8'),projects=fs.readFileSync('projects.js','utf8');
  const css=fs.readFileSync('styles.css','utf8'),m=require('../manifest.json'),p=require('../package.json'),v=require('../versions.json');
- assert.ok(['7.0.0-beta.1','7.0.0-beta.2','7.0.0-rc.1','7.0.0','7.0.1','7.0.2','7.0.3','7.0.4','7.0.5','7.0.6','7.1.0','7.1.1','7.2.0','8.0.0'].includes(m.version));assert.equal(p.version,m.version);assert.equal(v[m.version],m.minAppVersion);
+ assert.ok(['7.0.0-beta.1','7.0.0-beta.2','7.0.0-rc.1','7.0.0','7.0.1','7.0.2','7.0.3','7.0.4','7.0.5','7.0.6','7.1.0','7.1.1','7.2.0','8.0.0','8.0.1'].includes(m.version));assert.equal(p.version,m.version);assert.equal(v[m.version],m.minAppVersion);
  assert.match(main,/new WriterV7Worldbuilding\(this\)/);
  assert.match(main,/writerV7NarrativeContext\(this,targetFile\)/);
  assert.match(projects,/writerV7RenderCompendium\(this,panel,project\)/);

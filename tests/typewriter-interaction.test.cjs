@@ -124,3 +124,19 @@ test('CSS gates highlight and focus dimming by an explicitly engaged editor',()=
  assert.match(css,/body\.writer-v4-typewriter-focus \.cm-editor\.writer-v4-typewriter-engaged \.cm-line:not/);
  assert.ok(fs.readFileSync('main.js','utf8').includes('cancelPendingForEditor'));
 });
+
+test('Android tap and virtual keyboard enable the highlight without programmatic focus',()=>{
+ const a=editor();
+ assert.equal(a.widget.decorations.length,0);
+ a.dom.emit('touchstart',{target:{closest:selector=>selector==='.cm-scroller'?{}:null}});
+ assert.equal(a.widget.decorations.length,1,'A touch activates the current editor line');
+ a.dom.emit('touchmove',{});
+ assert.equal(a.widget.decorations.length,0,'Scrolling by touch suspends Typewriter mode');
+ a.dom.emit('beforeinput',{inputType:'insertText',data:'á'});
+ assert.equal(a.widget.decorations.length,1,'Virtual keyboard input re-enables it');
+ a.dom.emit('touchmove',{});
+ a.dom.emit('compositionstart',{data:''});
+ assert.equal(a.widget.decorations.length,1,'IME composition also counts as user input');
+ a.widget.destroy();
+ assert.equal(a.listeners.size,0,'Mobile gesture listeners are cleaned up');
+});

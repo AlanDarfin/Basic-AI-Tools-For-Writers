@@ -4442,4 +4442,52 @@ body.is-mobile .writer-v8-home-grid{grid-template-columns:minmax(0,1fr);gap:10px
  .writer-v8-home-clock-card{display:block;}
  .writer-v8-home-clock{margin-bottom:8px;}
 }
+
+/* v8.3 original local calendar and study views; scoped to plugin ItemViews. */
+.writer-v83-calendar,.writer-v83-study{box-sizing:border-box;min-width:0;height:100%;overflow-y:auto;padding:14px 18px 26px;background:var(--background-primary);}
+.writer-v83-cal-toolbar,.writer-v83-study-head{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
+.writer-v83-cal-toolbar h2,.writer-v83-study-head h2{margin:0 auto 0 0;font-size:var(--font-ui-large);}
+.writer-v83-cal-toolbar button,.writer-v83-cal-toolbar select,
+.writer-v83-study-head button,.writer-v83-study-decks select{min-height:34px;border-radius:var(--radius-s);padding:5px 9px;}
+.writer-v83-cal-period{margin:12px 0;font-size:var(--font-ui-medium);}
+.writer-v83-cal-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;min-width:0;}
+.writer-v83-cal-weekday{padding:4px 0;color:var(--text-muted);font-size:var(--font-smaller);text-align:center;}
+.writer-v83-cal-day{min-width:0;min-height:86px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);padding:5px;background:var(--background-secondary);}
+.writer-v83-cal-day.is-outside{background:transparent;border:0;}
+.writer-v83-cal-day.is-today{border-color:var(--interactive-accent);}
+.writer-v83-cal-date{min-width:25px;min-height:25px;padding:2px 5px;text-align:center;background:transparent;border:0;border-radius:var(--radius-s);font-size:var(--font-smaller);color:var(--text-normal);}
+.writer-v83-cal-day.is-today .writer-v83-cal-date{color:var(--text-accent);font-weight:700;}
+.writer-v83-cal-event{display:block;box-sizing:border-box;width:100%;height:auto;min-width:0;min-height:24px;margin-top:3px;padding:4px 5px;background:var(--background-modifier-hover);color:var(--text-normal);border-inline-start:3px solid var(--interactive-accent);border-radius:var(--radius-s);box-shadow:none;text-align:start;font-size:var(--font-smallest);overflow-wrap:anywhere;white-space:normal;}
+.writer-v83-cal-event:hover{background:var(--background-modifier-border-hover);}
+.writer-v83-cal-agenda{display:grid;gap:8px;}
+.writer-v83-cal-agenda-day{min-width:0;padding:10px 12px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);display:flex;flex-wrap:wrap;align-items:center;gap:8px;}
+.writer-v83-cal-agenda-day strong{min-width:120px;}
+.writer-v83-cal-agenda-day .writer-v83-cal-event{width:auto;max-width:100%;margin:0;}
+.writer-v83-cal-muted{color:var(--text-muted);font-size:var(--font-smaller);}
+.writer-v83-cal-field{display:flex;flex-direction:column;gap:4px;margin:9px 0;font-size:var(--font-ui-small);}
+.writer-v83-cal-field input,.writer-v83-cal-field select{width:100%;min-height:36px;box-sizing:border-box;padding:7px 9px;}
+.writer-v83-cal-form-actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px;}
+.writer-v83-cal-form-actions button{min-height:36px;padding:6px 12px;}
+.writer-v83-cal-status{color:var(--text-error);font-size:var(--font-smaller);}
+.writer-v83-study-decks{display:flex;align-items:center;gap:8px;margin:6px 0 11px;}
+.writer-v83-study-decks select{min-width:0;max-width:100%;}
+.writer-v83-study-stats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;color:var(--text-muted);font-size:var(--font-smaller);}
+.writer-v83-study-card{max-width:760px;margin:0 auto;min-width:0;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:var(--radius-l);padding:16px;box-sizing:border-box;}
+.writer-v83-study-source{display:flex;margin-bottom:13px;}
+.writer-v83-study-source button{max-width:100%;min-width:0;background:transparent;border:0;text-align:start;overflow-wrap:anywhere;color:var(--text-muted);font-size:var(--font-smaller);}
+.writer-v83-study-face{font-size:var(--font-text-size);line-height:1.6;overflow-wrap:anywhere;min-height:95px;}
+.writer-v83-study-answer{margin:14px 0 0;padding:13px 0;border-top:1px solid var(--background-modifier-border);overflow-wrap:anywhere;}
+.writer-v83-study-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-top:16px;}
+.writer-v83-study-choices button{min-width:0;height:auto;min-height:40px;white-space:normal;padding:7px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);}
+.writer-v83-study-empty{margin:18px 0;color:var(--text-muted);}
+.writer-v8-home-calendar-day>button{width:100%;min-width:0;min-height:25px;padding:2px;border:0;background:transparent;border-radius:var(--radius-s);color:inherit;box-shadow:none;font:inherit;}
+.writer-v8-home-calendar-day.is-today>button{color:var(--text-on-accent);}
+@media(max-width:720px){
+ .writer-v83-calendar,.writer-v83-study{padding:10px;}
+ .writer-v83-cal-day{min-height:66px;padding:3px;}
+ .writer-v83-cal-event{font-size:11px;padding:2px;min-height:25px;}
+ .writer-v83-study-card{padding:12px;}
+ .writer-v83-study-choices{grid-template-columns:repeat(2,minmax(0,1fr));}
+ .writer-v83-cal-toolbar h2{width:100%;}
+}
 /* END V8 MODULAR STYLES */

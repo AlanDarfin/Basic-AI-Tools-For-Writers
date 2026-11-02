@@ -57,6 +57,7 @@ class WriterV8HomeView extends ItemView{
  render(){
   if(this.disposed)return;
   const scroll=this.contentEl.scrollTop||0;
+  this.writerV8ClockRefresh=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish;
   // Heading first, followed by a full-width search and evenly spaced actions.

@@ -108,7 +108,7 @@ function writerV8ChatDirectives(lines){
  return {title,defaults,profiles,start};
 }
 function writerV8ChatSplitFields(value){
- const parts=[];let current='',brackets=0,codeTicks=0;
+ const parts=[];let current='',brackets=0,parentheses=0,codeTicks=0;
  const input=String(value||'');
  for(let i=0;i<input.length;i++){
   const char=input[i];
@@ -122,8 +122,10 @@ function writerV8ChatSplitFields(value){
   if(!codeTicks){
    if(char==='[')brackets++;
    else if(char===']')brackets=Math.max(0,brackets-1);
+   else if(char==='(')parentheses++;
+   else if(char===')')parentheses=Math.max(0,parentheses-1);
   }
-  if(char==='|'&&brackets===0&&codeTicks===0){parts.push(current.trim());current='';}
+  if(char==='|'&&brackets===0&&parentheses===0&&codeTicks===0){parts.push(current.trim());current='';}
   else current+=char;
  }
  parts.push(current.trim());
@@ -182,7 +184,7 @@ function writerV8ChatParse(source){
  const lines=raw.replace(/\r\n/g,'\n').split('\n');
  const meta=writerV8ChatDirectives(lines);
  const remaining=lines.slice(meta.start).join('\n');
- if(/^\s*===\s+\S/m.test(remaining))return writerV8ChatParseLegacy(remaining,meta);
+ if(/^===\s+\S/.test(remaining.trimStart()))return writerV8ChatParseLegacy(remaining,meta);
  const messages=[],lastSpeaker={left:'',right:''};
  for(const line of lines.slice(meta.start)){
   const message=writerV8ChatShortMessage(line,meta,lastSpeaker);

@@ -77,6 +77,7 @@ test('localized review calls the provider once and merges surviving findings int
  const state={
   writerCurrentText:async()=>source,prepareGrammarText:x=>x,
   writerGrammarMatchIsSafe:(text,masked,m)=>Number.isInteger(m.offset)&&text.slice(m.offset,m.offset+m.length)===masked.slice(m.offset,m.offset+m.length),
+  writerGrammarDictionaryHas:()=>false,
   meaningfulGrammarMatch:()=>true,
   msg:(pt)=>pt
  };

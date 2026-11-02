@@ -16,7 +16,7 @@ A single, compact writing workspace for planning books, organizing a fictional w
 | **Timeline** | Plan events and milestones, use tracks and branches, and optionally configure a fictional calendar. |
 | **AI writing** | Chat with note/selection context, definitions, synonyms, antonyms, translation and editable prompts; choose supported providers and models. AI is optional. |
 | **Inline AI** | Optional Inscribe-inspired continuation directly at the cursor; manual trigger, ghost text, Tab to accept, customizable prompt and per-folder profiles. Disabled by default; automatic provider requests are separately opt-in. |
-| **Review** | Use LanguageTool spelling and grammar suggestions, a local personal dictionary, automatic paragraph checks, contextual correction menus, optional external LanguageTool integration and AI-assisted revision. |
+| **Social posts** | Local fictional posts, flame reactions, metrics and nested replies for story documents. |\n| **Media gallery** | Search and filter local images, video, audio and PDFs in an embedded gallery, inspired by Media Gallery View. |\n| **Review** | Use LanguageTool spelling and grammar suggestions, a local personal dictionary, automatic paragraph checks, contextual correction menus, optional external LanguageTool integration and AI-assisted revision. |
 | **Writing tools** | Vault autocomplete, text variants, comparison before replacing text, local note snapshots, Unicode picker and abbreviations. Index management lives in the plugin settings. |
 | **Editing** | Keyshots-inspired navigation, Easy Typing, Smart Typography, Typewriter focus, remembered cursor position and note-name templates. |
 | **Markdown formatting** | Extended Markdown, Pandoc-style lists and blocks, optional Pandoc export on desktop, plus tabs, avatars and Wiki cards. |
@@ -116,6 +116,88 @@ Supported settings: `style: cards|list`, `folder: path/to/folder` (optional), `s
 ### Inline writing completion
 
 Enable **Settings → Extended Syntax → Inline AI**. Run the command **Inline AI: suggest continuation**; the suggestion appears faintly at your cursor. Press **Tab** to insert it or **Esc** to dismiss it. Turn on *Automatic suggestions* only if you want text context to be sent to your configured provider while typing. You can change the prompt, delay and per-folder rules (`Books/|creative`, `Research/|formal`, `Private/|off`). The feature uses your writing-assistant provider and model, and does not install or copy Inscribe.
+
+### Interactive tabs and character cards
+
+Use `layout: side` or `layout: right` **before the first tab** to position the tab strip vertically. Leave it out for horizontal tabs. Click/tap the rendered content to edit the Markdown, then select **Save** (or Ctrl+Enter). **Cancel** keeps the original text. The **+** button creates another tab (up to 12).
+
+~~~~markdown
+~~~writer-tabs
+layout: side
+=== Synopsis
+First chapter summary.
+
+=== Characters
+- [[Maria]]
+- [[João]]
+~~~
+~~~~
+
+Avatars can use `layout: left` or `layout: right` to place a larger portrait beside the description. Click the description to edit without having to locate the block in source mode:
+
+~~~~markdown
+~~~writer-avatar
+name: Maria
+role: Protagonist
+image: [[Images/maria.webp]]
+layout: right
+---
+**Description:** A determined explorer from the north.
+~~~
+~~~~
+
+Edits modify only the identified fenced block in the note. If its contents changed elsewhere, the plugin refuses the save instead of overwriting newer changes. Clicking Markdown links still opens those links.
+
+### Fictional social posts and Reddit-style replies
+
+The `writer-post` block is a story prop, **not a connection to a real social network**. Counts are text you author; the flame represents likes. Each `=== reply` begins a response, with `depth: 1..5` to control the threaded indentation.
+
+~~~~markdown
+~~~writer-post
+author: Maria
+handle: @maria
+avatar: [[Images/maria.webp]]
+date: 2h ago
+likes: 42
+views: 1200
+---
+A mysterious letter arrived at the harbor today.
+
+=== reply
+author: João
+handle: @joao
+depth: 1
+likes: 8
+---
+Did it have the old seal?
+
+=== reply
+author: Maria
+depth: 2
+likes: 3
+---
+Yes. **The same one**.
+~~~
+~~~~
+
+The displayed comment count on the main post defaults to the number of authored replies. Override it with `comments:` for storytelling.
+
+### Media Gallery — local vault files
+
+Inspired by [Media Gallery View](https://github.com/RobertoJarquinRR/Media-Gallery-view), `writer-media-gallery` creates a local media browser inside a Markdown note. It filters images, videos, audio and PDF files, supports search, several layouts and a preview for images/audio/video. PDFs open in Obsidian.
+
+~~~~markdown
+~~~writer-media-gallery
+path: Book/Images
+type: all
+layout: grid
+sort: name-asc
+subfolders: true
+limit: 90
+~~~
+~~~~
+
+`path` is optional and defaults to the note's folder; `type` accepts `all`, `image`, `video`, `audio` or `pdf`; `layout` accepts `grid`, `masonry` (lightweight responsive grid) or `ratio`. No external image hosting or generated PDF/audio thumbnails are required. For existing notes, use the command **Gallery: insert media block**. This is a focused, original integration rather than a complete copy of the separate plugin.
 
 ### Other writing syntax
 

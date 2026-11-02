@@ -89,6 +89,6 @@ test('documentation and bundles include all new homepage functions',()=>{
  assert.match(styles,/writer-v8-home-clock-digits/);
  for(const path of ['README.md','docs/README.pt-BR.md']){
   const md=read(path);
-  for(const piece of ['8.2.2','Web Viewer','calend','homeOnNewTab'])assert.ok(md.toLowerCase().includes(piece.toLowerCase()),path+': '+piece);
+  for(const piece of ['8.3.0','Web Viewer','calend','homeOnNewTab'])assert.ok(md.toLowerCase().includes(piece.toLowerCase()),path+': '+piece);
  }
 });

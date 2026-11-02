@@ -106,9 +106,9 @@ class ProjectsView extends ItemView{
   }));
   this.registerEvent(this.app.metadataCache.on('changed',file=>{
    const notes=this.currentProject&&this.notesRoot(this.currentProject)+'/';
-   const changedScene=this.currentProject&&['scenes','board','structure','continuity','analytics'].includes(this.activeTab)
+   const changedScene=this.currentProject&&['scenes','board','structure','analytics'].includes(this.activeTab)
     &&this.activeScenes(this.currentProject).some(scene=>this.resolveScene(this.currentProject,scene.title)?.path===file?.path);
-   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline','continuity'].includes(this.activeTab))||changedScene)this.queueRender();
+   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline'].includes(this.activeTab))||changedScene)this.queueRender();
   }));
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
@@ -165,7 +165,7 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
-  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
   &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
@@ -177,7 +177,7 @@ class ProjectsView extends ItemView{
   const menuGroups=[
    {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
    {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
-   {id:'management',pt:'Projeto',en:'Project',tabs:['project','continuity','tasks','comments']}
+   {id:'management',pt:'Projeto',en:'Project',tabs:['project','tasks','comments']}
   ];
   const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
   this.tabGroup=activeGroup;
@@ -272,7 +272,6 @@ class ProjectsView extends ItemView{
   else if(id==='analytics')writerV7StudioRenderAnalytics(this,panel,project);
   else if(id==='gallery')writerV7StudioRenderGallery(this,panel,project);
   else if(id==='sessions')writerV7StudioRenderSessions(this,panel,project);
-  else if(id==='continuity')writerV7RenderContinuity(this,panel,project);
   else if(id==='tasks')this.drawTasks(panel,project);
   else if(id==='comments')this.plugin.writerV4Extras?.drawComments(panel,project,this);
  }

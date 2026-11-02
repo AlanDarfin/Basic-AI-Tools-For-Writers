@@ -11,9 +11,10 @@ A single, compact writing workspace for planning books, organizing a fictional w
 - **Configurable formatting toolbar:** 21 Markdown actions, reorderable/optional controls, desktop enabled by default, mobile **disabled by default** and opt-in via settings. The native mobile editing toolbar is not replaced.
 - **Make.md-inspired native explorer tools:** customize vault file/folder icons and accent colors from the File Explorer context menu, inspect folders as filterable list/cards, and create/open Markdown folder indices. No extra sidebar.
 - **Homepage design:** centered title, icon above it on mobile or alongside it on desktop; broader Lucide options or a vault/HTTPS image; clock above the calendar at all sizes. Search stays at the top.
-- **Modular switches:** toolbar and native explorer modules can be hidden under Modules; individual controls and behaviors are configurable. Portuguese and English UI.
+- **Smart Spaces (opt-in):** save collections of Markdown notes filtered by folder, tag and YAML property, view as cards, list, table or grouped board. Off by default, no additional sidebar.
+- **Modular switches:** toolbar, Spaces and native explorer modules can be hidden under Modules; individual controls and behaviors are configurable. Portuguese and English UI.
 
-Previous stable version: **8.3.0**.\n\nThis is an **integration preview**, not a complete fork of Make.md. Its advanced database views, formulas, rollups, Spaces and Flow editor have **not** been ported. See [v9 implementation status and migration notes](docs/V9_PREVIEW.en.md). Back up your vault before installing a preview.
+Previous stable version: **8.3.0**.\n\nThis is an **integration preview**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 implementation status and migration notes](docs/V9_PREVIEW.en.md). Back up your vault before installing a preview.
 
 ## Features
 

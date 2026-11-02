@@ -16,7 +16,7 @@ A single, compact writing workspace for planning books, organizing a fictional w
 
 **New in 9.0.1:** full-width homepage search above everything else, a highlighted note selector with full paths and Up/Down/Enter support, improved Lucide/HEX customization, consolidated Writing and Markdown settings, compact fictional chats, optional Spaces sidebar and a **visual-only** password gate (it does **not encrypt files**). [Complete changelog](docs/V9_0_1_RELEASE.en.md).
 
-Previous stable version: **9.0.0**.
+Previous stable version: **9.0.0**. Historical milestone: **8.3.0**.
 
 This is an **independent integration**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 release notes](docs/V9_RELEASE.en.md) and [the historical compatibility audit](docs/V9_FINAL_AUDIT.md). Back up your vault before updating.
 

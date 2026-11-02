@@ -245,6 +245,8 @@ title: Conversa no porto
 ~~~
 ~~~~
 
+**A partir da manutenção 9.0.1:** nome e horário só aparecem quando escritos nos campos da mensagem. As configurações `[Left=Maria]` e `[right=João]` ainda identificam os personagens e suas cores, mas não obrigam a mostrar os nomes. Mensagens consecutivas da mesma pessoa exibem somente o balão, sem repetir nome nem avatar; o horário só aparece quando foi informado naquela mensagem.
+
 Uma foto específica na mensagem substitui a imagem padrão do personagem. Se não houver nenhuma, **não aparece espaço vazio para avatar**. Cores aceitas: red, orange, yellow, green, blue, purple, pink, cyan, gray e accent (também grey), seguindo as variáveis do tema.
 
 O conteúdo é renderizado em Markdown: imagens locais, links, **negrito**, *itálico*, listas e a sintaxe estendida do Basic AI, como `++sublinhado++`, `=={blue}destaque==` e `||spoiler||`, quando os módulos estiverem ativos. O separador `|` dentro de `![[imagem.png|240]]`, links Markdown ou código inline não divide a mensagem; para escrever um pipe literal, use `\|` quando necessário. Linhas adicionais continuam na mesma mensagem até o próximo marcador lateral.
@@ -316,6 +318,10 @@ Para um bloco personalizado, escreva `::: nome-da-classe`, adicione o conteúdo 
 4. Crie ou abra um projeto Longform para usar capítulos, compêndio e planejamento.
 
 Para exportar com Pandoc no computador, instale o programa separadamente e ative a integração. A exportação por Pandoc não funciona no Android.
+
+## Ajustes visuais da 9.0.1 (em revisão)
+
+A navegação nas configurações ganhou abas mais largas e aproveitamento de toda a largura, mantendo rolagem horizontal em telas pequenas. A busca foi compactada, com ícone, botão de limpar e resultados em lista curta. **Escrita e Markdown** passaram a uma única categoria. Veja [a manutenção 9.0.1](V9_0_1_MAINTENANCE.md); a publicação estável continua na 9.0.0 enquanto a PR é avaliada.
 
 ## Privacidade e configurações
 

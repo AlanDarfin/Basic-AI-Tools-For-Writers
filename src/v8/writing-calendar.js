@@ -253,5 +253,5 @@ function writerV83RegisterCalendar(plugin){
   await workspace.revealLeaf?.(leaf);
  };
  plugin.writerCalendarOpen=open;
- plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void open()});
+ plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void plugin.writerCalendarOpen?.()});
 }

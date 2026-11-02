@@ -4908,4 +4908,236 @@ body.is-mobile .writer-v8-home-heading{flex-direction:column;gap:5px;}
   scroll-behavior:auto;
  }
 }
+
+/* v9.0.1 — calendar accessibility and compact native-Obsidian controls.
+ * Keep day numbers plain and avoid per-slot "+" button clutter on mobile. */
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+ box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 auto;width:auto;min-width:27px;max-width:none;height:27px;min-height:27px;
+ aspect-ratio:auto;padding:0 4px;margin:0;border:0;box-shadow:none;
+ background:transparent;color:var(--text-normal);border-radius:var(--radius-s);
+ font-size:var(--font-ui-small);font-weight:500;line-height:1.3;
+ font-variant-numeric:tabular-nums;text-align:center;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button:hover,
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button:focus-visible{
+ background:var(--background-modifier-hover);
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+ background:transparent;color:var(--text-accent);font-weight:700;
+ border-radius:var(--radius-s);
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-selected{
+ border-color:var(--interactive-accent);
+ box-shadow:inset 0 0 0 1px var(--interactive-accent);
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-outside .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+ background:transparent;color:var(--text-faint);
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day{
+ cursor:pointer;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-outside{cursor:default;}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day > .writer-v9-calendar-event{
+ cursor:pointer;
+}
+/* Replace the repeated giant plus controls with an unobtrusive full-width tap target. */
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit{
+ display:block;position:relative;flex:1 1 auto;align-self:stretch;
+ width:100%;height:auto;min-height:28px;min-width:0;
+ border:1px solid transparent;border-radius:var(--radius-s);padding:0;
+ background:transparent;color:var(--text-faint);box-shadow:none;
+ cursor:crosshair;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit::after{
+ content:"+";position:absolute;inset:0;display:grid;place-items:center;
+ opacity:0;font-size:18px;line-height:1;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit:hover,
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit:focus-visible{
+ background:var(--background-modifier-hover);
+ border-color:var(--background-modifier-border);
+ cursor:pointer;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit:hover::after,
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit:focus-visible::after{
+ opacity:1;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot.is-all-day .writer-v901-slot-hit{
+ min-height:30px;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot{
+ gap:3px;padding:5px 6px;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-timegrid{
+ border-color:var(--background-modifier-border);
+}
+/* Keep the page's main action recognizable without imposing a fixed mobile width. */
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-header{
+ gap:var(--size-4-2);
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions{
+ gap:var(--size-4-1);min-width:0;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-view-select{
+ flex:0 1 auto;min-width:80px;
+}
+.writer-v83-calendar.writer-v9-calendar .writer-v901-sidebar-open svg{width:17px;height:17px;}
+@media(max-width:680px){
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions{
+  display:flex;flex-wrap:wrap;width:100%;gap:4px;align-items:center;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions .writer-v9-calendar-button{
+  min-width:34px;min-height:36px;padding:5px 7px;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-view-select{
+  flex:1 1 86px;width:auto;min-width:80px;max-width:none;height:36px;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day{
+  min-height:62px;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead{
+  justify-content:flex-end;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+  min-width:25px;height:25px;min-height:25px;font-size:13px;padding:0 2px;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot{
+  padding:3px 4px;
+ }
+}
+@media(max-width:390px){
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-actions>.mod-cta{
+  margin-inline-start:auto;
+ }
+}
+@media(hover:none){
+ /* Mobile: touchable empty slots stay large, but never display repeated plus glyphs. */
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit::after{content:none;}
+}
+
+/* 9.0.1: Obsidian-native settings navigation/search and compact consecutive chats. */
+/* Let primary/secondary tabs fill available width, but retain horizontal scrolling
+   when translated labels do not fit (mobile and 720p desktop). */
+.dictionary-settings-tabs.dictionary-settings-tabs,
+.dictionary-settings-subtabs.dictionary-settings-subtabs{
+ width:100%;max-width:100%;min-width:0;
+ display:flex;align-items:stretch;gap:4px;
+ overflow-x:auto;overflow-y:hidden;
+ justify-content:flex-start;
+ scroll-snap-type:none;scroll-behavior:auto;
+ scrollbar-width:thin;
+ padding:2px 0 6px;
+ margin-bottom:6px;
+}
+.dictionary-settings-tabs.dictionary-settings-tabs > button,
+.dictionary-settings-subtabs.dictionary-settings-subtabs > button{
+ box-sizing:border-box;flex:1 0 auto;min-width:max-content;
+ max-width:none;width:auto;min-height:36px;
+ justify-content:center;text-align:center;
+ padding:7px 12px;margin:0;
+ border-radius:var(--radius-s);
+ background:transparent;color:var(--text-muted);
+ box-shadow:none;
+}
+.dictionary-settings-tabs.dictionary-settings-tabs > button.is-active,
+.dictionary-settings-subtabs.dictionary-settings-subtabs > button.is-active{
+ color:var(--text-accent);
+ background:var(--background-modifier-hover);
+ border-color:var(--interactive-accent);
+}
+.dictionary-settings-tabs.dictionary-settings-tabs > button:hover,
+.dictionary-settings-subtabs.dictionary-settings-subtabs > button:hover{
+ background:var(--background-modifier-hover);
+ color:var(--text-normal);
+}
+/* Search now has one field (not an oversized boxed section) and a short result list. */
+.writer-v51-search.writer-v901-settings-search{
+ box-sizing:border-box;display:flex;flex-direction:column;gap:0;
+ width:100%;min-width:0;max-width:100%;
+ padding:0;margin:6px 0 12px;
+ border:0;border-radius:0;background:transparent;
+}
+.writer-v901-settings-search-field{
+ box-sizing:border-box;display:flex;align-items:center;gap:8px;
+ width:100%;min-width:0;min-height:40px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ padding:0 9px;background:var(--background-secondary);
+}
+.writer-v901-settings-search-field:focus-within{
+ border-color:var(--interactive-accent);
+}
+.writer-v901-settings-search-icon{
+ display:flex;align-items:center;justify-content:center;
+ flex:0 0 17px;color:var(--text-muted);
+}
+.writer-v901-settings-search-icon svg{width:17px;height:17px;}
+.writer-v51-search.writer-v901-settings-search .writer-v901-settings-search-field > input[type="search"]{
+ flex:1 1 auto;min-width:0;width:100%;max-width:none;
+ height:38px;min-height:38px;
+ margin:0;padding:5px 0;border:0;
+ border-radius:0;background:transparent;box-shadow:none;
+ color:var(--text-normal);
+ font-size:var(--font-ui-small);
+}
+.writer-v51-search.writer-v901-settings-search .writer-v901-settings-search-field > input[type="search"]:focus-visible{
+ outline:0;box-shadow:none;
+}
+.writer-v901-settings-search-clear{
+ display:inline-grid;place-items:center;flex:0 0 28px;
+ min-width:28px;width:28px;min-height:28px;height:28px;padding:5px;
+ border:0;background:transparent;border-radius:var(--radius-s);
+ box-shadow:none;color:var(--text-muted);
+}
+.writer-v901-settings-search-clear[hidden]{display:none;}
+.writer-v901-settings-search-clear svg{width:15px;height:15px;}
+.writer-v901-settings-search-clear:hover{background:var(--background-modifier-hover);color:var(--text-normal);}
+.writer-v51-search-results.writer-v901-settings-search-results{
+ display:flex;flex-direction:column;align-items:stretch;
+ gap:5px;width:100%;max-width:100%;
+ margin-top:5px;padding:7px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ background:var(--background-secondary);
+}
+.writer-v901-settings-search-count{
+ font-size:var(--font-ui-smaller);color:var(--text-muted);
+ padding:0 4px;line-height:1.4;
+}
+.writer-v901-settings-search-matches{
+ display:flex;flex-wrap:wrap;gap:4px;align-items:center;
+ max-height:106px;overflow-y:auto;
+}
+.writer-v51-search-results.writer-v901-settings-search-results .writer-v901-settings-search-matches > button{
+ flex:0 1 auto;max-width:100%;min-height:30px;
+ border:0;border-radius:var(--radius-s);
+ background:var(--background-primary);
+ box-shadow:none;
+ padding:5px 9px;
+ color:var(--text-normal);font-size:var(--font-ui-smaller);
+ text-align:start;
+}
+.writer-v51-search-results.writer-v901-settings-search-results .writer-v901-settings-search-matches > button:hover,
+.writer-v51-search-results.writer-v901-settings-search-results .writer-v901-settings-search-matches > button:focus-visible{
+ background:var(--background-modifier-hover);
+ outline-offset:-2px;
+}
+.writer-v901-settings-search-empty{color:var(--text-muted);font-size:var(--font-ui-smaller);}
+.writer-v8-chat-row.is-continuation{
+ margin-top:-7px;
+}
+.writer-v8-chat-row.is-continuation .writer-v8-chat-bubble{
+ margin-top:0;
+}
+@media(max-width:600px){
+ .dictionary-settings-tabs.dictionary-settings-tabs > button,
+ .dictionary-settings-subtabs.dictionary-settings-subtabs > button{
+  min-height:39px;padding:7px 10px;
+  font-size:var(--font-ui-small);
+ }
+ .writer-v51-search.writer-v901-settings-search{margin:5px 0 10px;}
+ .writer-v901-settings-search-matches{max-height:98px;}
+ .writer-v8-chat-row.is-continuation{margin-top:-8px;}
+}
 /* END V8 MODULAR STYLES */

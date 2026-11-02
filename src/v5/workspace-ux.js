@@ -91,31 +91,50 @@ function writerWorkspaceFilterRows(panel,query){
  return visible;
 }
 function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
- const wrap=root.createDiv({cls:'writer-v51-search'});
- const label=wrap.createEl('label',{text:writerUi('Buscar nas configurações','Search settings')});
- const input=wrap.createEl('input',{type:'search',attr:{placeholder:writerUi('Procure opções ou categorias…','Find options or categories…'),'aria-label':writerUi('Buscar configurações','Search settings')}});
- label.setAttribute('for','writer-v51-settings-search');
- input.id='writer-v51-settings-search';
- const feedback=wrap.createDiv({cls:'writer-v51-search-results',attr:{role:'status','aria-live':'polite'}});
+ const wrap=root.createDiv({cls:'writer-v51-search writer-v901-settings-search',attr:{role:'search'}});
+ const field=wrap.createDiv({cls:'writer-v901-settings-search-field'});
+ const icon=field.createSpan({cls:'writer-v901-settings-search-icon',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon(icon,'search');
+ const input=field.createEl('input',{attr:{type:'search',id:'writer-v51-settings-search',
+  placeholder:writerUi('Buscar configurações…','Search settings…'),
+  'aria-label':writerUi('Buscar nas configurações','Search settings'),autocomplete:'off'}});
+ const clear=field.createEl('button',{cls:'writer-v901-settings-search-clear',attr:{
+  type:'button','aria-label':writerUi('Limpar busca','Clear search'),title:writerUi('Limpar busca','Clear search')
+ }});
+ require('obsidian').setIcon(clear,'x');
+ const feedback=wrap.createDiv({cls:'writer-v51-search-results writer-v901-settings-search-results',
+  attr:{role:'status','aria-live':'polite'}});
  const update=()=>{
   const q=input.value.trim();
+  clear.hidden=!q;
   feedback.empty();
+  const panel=getPanel();
+  if(!q){writerWorkspaceFilterRows(panel,'');return;}
   const matches=writerWorkspaceSearchSections(sections,q);
   const active=sections.find(([id])=>id===getActive());
   const categoryHit=active&&writerWorkspaceSearchNormalize(active[1]+' '+(WRITER_WORKSPACE_HINTS[active[0]]||'')).includes(writerWorkspaceSearchNormalize(q));
-  const count=writerWorkspaceFilterRows(getPanel(),q&&categoryHit?'':q);
-  if(!q)return;
-  feedback.createSpan({text:writerUi('Categorias: ','Categories: ')+matches.length+' · '+writerUi('Opções nesta aba: ','Options in current tab: ')+count});
-  for(const [id,title] of matches){
-   const button=feedback.createEl('button',{text:title,attr:{type:'button'}});
+  const count=writerWorkspaceFilterRows(panel,categoryHit?'':q);
+  const label=feedback.createDiv({cls:'writer-v901-settings-search-count'});
+  label.setText(writerUi('Nesta aba: ','In this tab: ')+count+' · '+
+   writerUi('Categorias: ','Categories: ')+matches.length);
+  const links=feedback.createDiv({cls:'writer-v901-settings-search-matches'});
+  for(const [id,title] of matches.slice(0,6)){
+   const button=links.createEl('button',{text:title,attr:{type:'button',title}});
    button.addEventListener('click',()=>{onOpen(id);update();});
   }
+  if(!matches.length&&count===0)
+   links.createEl('span',{cls:'writer-v901-settings-search-empty',text:writerUi('Nenhuma configuração encontrada','No matching settings')});
  };
  input.addEventListener('input',update);
  input.addEventListener('keydown',event=>{
   if(event.key==='Escape'){input.value='';update();}
-  if(event.key==='Enter'){const first=writerWorkspaceSearchSections(sections,input.value)[0];if(first){event.preventDefault();onOpen(first[0]);update();}}
+  if(event.key==='Enter'){
+   const first=writerWorkspaceSearchSections(sections,input.value)[0];
+   if(first){event.preventDefault();onOpen(first[0]);update();}
+  }
  });
+ clear.addEventListener('click',()=>{input.value='';update();input.focus();});
+ clear.hidden=true;
  return {update,input,wrap};
 }
 function writerWorkspaceNormalizeShortcut(key){

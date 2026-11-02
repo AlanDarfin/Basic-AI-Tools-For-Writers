@@ -5547,31 +5547,50 @@ function writerWorkspaceFilterRows(panel,query){
  return visible;
 }
 function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
- const wrap=root.createDiv({cls:'writer-v51-search'});
- const label=wrap.createEl('label',{text:writerUi('Buscar nas configurações','Search settings')});
- const input=wrap.createEl('input',{type:'search',attr:{placeholder:writerUi('Procure opções ou categorias…','Find options or categories…'),'aria-label':writerUi('Buscar configurações','Search settings')}});
- label.setAttribute('for','writer-v51-settings-search');
- input.id='writer-v51-settings-search';
- const feedback=wrap.createDiv({cls:'writer-v51-search-results',attr:{role:'status','aria-live':'polite'}});
+ const wrap=root.createDiv({cls:'writer-v51-search writer-v901-settings-search',attr:{role:'search'}});
+ const field=wrap.createDiv({cls:'writer-v901-settings-search-field'});
+ const icon=field.createSpan({cls:'writer-v901-settings-search-icon',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon(icon,'search');
+ const input=field.createEl('input',{attr:{type:'search',id:'writer-v51-settings-search',
+  placeholder:writerUi('Buscar configurações…','Search settings…'),
+  'aria-label':writerUi('Buscar nas configurações','Search settings'),autocomplete:'off'}});
+ const clear=field.createEl('button',{cls:'writer-v901-settings-search-clear',attr:{
+  type:'button','aria-label':writerUi('Limpar busca','Clear search'),title:writerUi('Limpar busca','Clear search')
+ }});
+ require('obsidian').setIcon(clear,'x');
+ const feedback=wrap.createDiv({cls:'writer-v51-search-results writer-v901-settings-search-results',
+  attr:{role:'status','aria-live':'polite'}});
  const update=()=>{
   const q=input.value.trim();
+  clear.hidden=!q;
   feedback.empty();
+  const panel=getPanel();
+  if(!q){writerWorkspaceFilterRows(panel,'');return;}
   const matches=writerWorkspaceSearchSections(sections,q);
   const active=sections.find(([id])=>id===getActive());
   const categoryHit=active&&writerWorkspaceSearchNormalize(active[1]+' '+(WRITER_WORKSPACE_HINTS[active[0]]||'')).includes(writerWorkspaceSearchNormalize(q));
-  const count=writerWorkspaceFilterRows(getPanel(),q&&categoryHit?'':q);
-  if(!q)return;
-  feedback.createSpan({text:writerUi('Categorias: ','Categories: ')+matches.length+' · '+writerUi('Opções nesta aba: ','Options in current tab: ')+count});
-  for(const [id,title] of matches){
-   const button=feedback.createEl('button',{text:title,attr:{type:'button'}});
+  const count=writerWorkspaceFilterRows(panel,categoryHit?'':q);
+  const label=feedback.createDiv({cls:'writer-v901-settings-search-count'});
+  label.setText(writerUi('Nesta aba: ','In this tab: ')+count+' · '+
+   writerUi('Categorias: ','Categories: ')+matches.length);
+  const links=feedback.createDiv({cls:'writer-v901-settings-search-matches'});
+  for(const [id,title] of matches.slice(0,6)){
+   const button=links.createEl('button',{text:title,attr:{type:'button',title}});
    button.addEventListener('click',()=>{onOpen(id);update();});
   }
+  if(!matches.length&&count===0)
+   links.createEl('span',{cls:'writer-v901-settings-search-empty',text:writerUi('Nenhuma configuração encontrada','No matching settings')});
  };
  input.addEventListener('input',update);
  input.addEventListener('keydown',event=>{
   if(event.key==='Escape'){input.value='';update();}
-  if(event.key==='Enter'){const first=writerWorkspaceSearchSections(sections,input.value)[0];if(first){event.preventDefault();onOpen(first[0]);update();}}
+  if(event.key==='Enter'){
+   const first=writerWorkspaceSearchSections(sections,input.value)[0];
+   if(first){event.preventDefault();onOpen(first[0]);update();}
+  }
  });
+ clear.addEventListener('click',()=>{input.value='';update();input.focus();});
+ clear.hidden=true;
  return {update,input,wrap};
 }
 function writerWorkspaceNormalizeShortcut(key){
@@ -9761,9 +9780,10 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  const side=entry[1]==='<'?'left':'right';
  const fields=writerV8ChatSplitFields(entry[2]);
  if(fields.length<2)return null;
- let avatar='',name='',body='',time='';
+ let avatar='',name='',body='',time='',nameExplicit=false;
  if(fields.length>=4){
   [avatar,name]=fields;
+  nameExplicit=Boolean(name.trim());
   time=fields[fields.length-1];
   body=fields.slice(2,-1).join(' | ');
  }else if(fields.length===3&&fields[0]===''){
@@ -9771,16 +9791,18 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
   body=fields[1];time=fields[2];
  }else if(fields.length===3){
   [name,body,time]=fields;
+  nameExplicit=Boolean(name.trim());
  }else if(fields[0]===''){
   name=meta.defaults[side]||lastSpeaker[side]||'';
   body=fields[1];
  }else{
   [name,body]=fields;
+  nameExplicit=Boolean(name.trim());
  }
  name=(name||meta.defaults[side]||lastSpeaker[side]||'').slice(0,90);
  if(!body&&!avatar&&!name)return null;
  const profile=meta.profiles.get(writerV8ChatNameKey(name))||{};
- return {name,side,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
+ return {name,nameExplicit,side,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
   color:profile.color||'',body:String(body||'').slice(0,8000)};
 }
 function writerV8ChatParseLegacy(source,meta){
@@ -9796,7 +9818,7 @@ function writerV8ChatParseLegacy(source,meta){
   const side=fields.mine==='true'?'right':fields.side==='right'?'right':fields.side==='center'?'center':'left';
   const actualName=fields.name||name;
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
-  messages.push({name:actualName,side,time:fields.time||'',
+  messages.push({name:actualName,nameExplicit:Boolean(fields.name||name),side,time:fields.time||'',
     avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',
     body:textPart.slice(0,8000)});
  }
@@ -9833,21 +9855,31 @@ function writerV8ChatRender(plugin,source,element,ctx){
  if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title)root.createEl('h3',{text:data.title,cls:'writer-v8-chat-title'});
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
+ let previous=null;
  for(const msg of data.messages){
-  const row=transcript.createDiv({cls:'writer-v8-chat-row is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
-  if(msg.avatar){
+  const sameSpeaker=Boolean(previous&&previous.side===msg.side&&
+   writerV8ChatNameKey(previous.name)===writerV8ChatNameKey(msg.name));
+  const showName=Boolean(msg.nameExplicit&&!sameSpeaker&&msg.name);
+  const showTime=Boolean(msg.time);
+  const row=transcript.createDiv({cls:'writer-v8-chat-row is-'+msg.side+
+   (sameSpeaker?' is-continuation':'')+
+   (WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
+  if(msg.avatar&&!sameSpeaker){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
    if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});
   }
   const group=row.createDiv({cls:'writer-v8-chat-group'});
-  const headline=group.createDiv({cls:'writer-v8-chat-meta'});
-  headline.createEl('strong',{text:msg.name.slice(0,90)});
-  if(msg.time)headline.createEl('span',{text:msg.time});
+  if(showName||showTime){
+   const headline=group.createDiv({cls:'writer-v8-chat-meta'});
+   if(showName)headline.createEl('strong',{text:msg.name.slice(0,90)});
+   if(showTime)headline.createEl('span',{text:msg.time});
+  }
   const bubble=group.createDiv({cls:'writer-v8-chat-bubble'});
   if(msg.body)void writerV8Markdown(plugin,ctx,bubble,msg.body).catch(error=>{
    console.warn('[Basic AI] chat Markdown:',error);
    bubble.empty();bubble.setText(msg.body);
   });
+  previous=msg;
  }
 }
 function writerV8RegisterFinishBlocks(plugin){
@@ -10298,7 +10330,7 @@ function writerV83RegisterCalendar(plugin){
   await workspace.revealLeaf?.(leaf);
  };
  plugin.writerCalendarOpen=open;
- plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void open()});
+ plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void plugin.writerCalendarOpen?.()});
 }
 
 // v3 module: src/v8/writing-study.js
@@ -11626,10 +11658,11 @@ const WRITER_V9_CAL_REPEAT=[['none','Não repetir','Does not repeat'],['daily','
 function writerV9CalendarMerge(settings){
  const prior=settings.v9Calendar&&typeof settings.v9Calendar==='object'&&!Array.isArray(settings.v9Calendar)?settings.v9Calendar:{};
  const cfg=settings.v9Calendar={
-  defaultView:'month',showSidebar:true,showSidebarMobile:false,compactMonth:true,
+  defaultView:'month',openLocation:'tab',showSidebar:true,showSidebarMobile:false,compactMonth:true,
   startHour:7,endHour:21,maxMonthEvents:3,...prior
  };
  cfg.defaultView=WRITER_V9_CAL_VIEWS.includes(cfg.defaultView)?cfg.defaultView:'month';
+ cfg.openLocation=['tab','left','right'].includes(cfg.openLocation)?cfg.openLocation:'tab';
  cfg.showSidebar=cfg.showSidebar!==false;cfg.showSidebarMobile=cfg.showSidebarMobile===true;
  cfg.compactMonth=cfg.compactMonth!==false;
  cfg.startHour=Math.max(0,Math.min(20,Number.isFinite(Number(cfg.startHour))?Math.floor(Number(cfg.startHour)):7));
@@ -11906,7 +11939,7 @@ function writerV9CalendarMonth(view,parent,range,rows){
  const cfg=view.plugin.settings.v9Calendar;
  for(let day=firstDay;day<=lastDay;day=writerV83ShiftDay(day,1)){
   const outside=day<range.start||day>range.end;
-  const box=grid.createDiv({cls:'writer-v9-calendar-month-day'+(outside?' is-outside':'')+(day===writerV83DateOf(new Date())?' is-today':'')});
+  const box=grid.createDiv({cls:'writer-v9-calendar-month-day'+(outside?' is-outside':'')+(day===writerV83DateOf(new Date())?' is-today':'')+(day===view.anchor?' is-selected':'')});
   const header=box.createDiv({cls:'writer-v9-calendar-month-dayhead'});
   writerV9CalButton(header,String(Number(day.slice(-2))),null,()=>{
    view.anchor=day;view.mode='day';view.render();
@@ -11917,7 +11950,12 @@ function writerV9CalendarMonth(view,parent,range,rows){
   if(events.length>visible)writerV9CalButton(box,'+'+(events.length-visible),null,()=>{
    view.anchor=day;view.mode='day';view.render();
   },writerUi('Ver todos os eventos','See all events'));
-  if(!events.length&&!outside)box.addEventListener('dblclick',()=>view.edit({date:day}));
+  // Only the empty day background starts a new event; day number opens the day view.
+  // Event chips retain their existing click-to-edit behavior.
+  if(!outside){
+   box.addEventListener('click',event=>{if(event.target===box)view.edit({date:day});});
+   box.addEventListener('dblclick',event=>{if(event.target===box)event.preventDefault();});
+  }
  }
 }
 function writerV9CalendarAgenda(view,parent,range,rows){
@@ -11956,7 +11994,11 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
  for(const day of days){
   const all=board.createDiv({cls:'writer-v9-calendar-time-slot is-all-day'});
   for(const event of daily.get(day).filter(e=>!e.time))writerV9CalendarEntry(view,all,event,true);
-  writerV9CalButton(all,'','plus',()=>view.edit({date:day}),writerUi('Criar evento para o dia','Create all-day event'));
+  const allDayAdd=all.createEl('button',{cls:'writer-v901-slot-hit',attr:{
+   type:'button','aria-label':writerUi('Criar evento para o dia inteiro: ','Create all-day event: ')+
+    writerV9CalendarLabel(day,{day:'numeric',month:'long'}),title:writerUi('Criar evento','Create event')
+  }});
+  allDayAdd.addEventListener('click',()=>view.edit({date:day}));
  }
  for(let hour=cfg.startHour;hour<cfg.endHour;hour++){
   board.createDiv({cls:'writer-v9-calendar-hour-label',text:String(hour).padStart(2,'0')+':00'});
@@ -11964,9 +12006,13 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
    const cell=board.createDiv({cls:'writer-v9-calendar-time-slot'});
    for(const event of daily.get(day).filter(e=>e.time&&Number(e.time.slice(0,2))===hour))
     writerV9CalendarEntry(view,cell,event,true);
-   const add=writerV9CalButton(cell,'','plus',()=>view.edit({date:day,time:String(hour).padStart(2,'0')+':00'}),
-    writerUi('Novo evento às ','New event at ')+String(hour).padStart(2,'0')+':00');
-   add.addClass('writer-v9-calendar-hour-add');
+   const time=String(hour).padStart(2,'0')+':00';
+   const add=cell.createEl('button',{cls:'writer-v901-slot-hit',attr:{
+    type:'button',title:writerUi('Criar evento às ','Create event at ')+time,
+    'aria-label':writerUi('Novo evento em ','New event on ')+writerV9CalendarLabel(day,{day:'numeric',month:'long'})+
+      ' '+writerUi('às ','at ')+time
+   }});
+   add.addEventListener('click',()=>view.edit({date:day,time}));
   }
  }
  const other=rows.filter(e=>e.time&&(Number(e.time.slice(0,2))<cfg.startHour||Number(e.time.slice(0,2))>=cfg.endHour));
@@ -11989,6 +12035,8 @@ WriterV83CalendarView.prototype.render=function(){
   this.writerV9SidebarOpen=!this.writerV9SidebarOpen;this.render();
  },writerUi('Mostrar/ocultar painel lateral','Toggle calendar sidebar'));
  writerV9CalButton(toolbar,writerUi('Hoje','Today'),null,()=>{this.anchor=writerV83DateOf(new Date());this.render();});
+ writerV9CalButton(toolbar,'','panel-right-open',()=>void this.plugin.writerCalendarOpenIn?.('right'),
+  writerUi('Abrir na barra lateral direita','Open in right sidebar')).addClass('writer-v901-sidebar-open');
  const move=delta=>{
   if(this.mode==='month'){
    const d=new Date(this.anchor+'T12:00:00');d.setDate(1);d.setMonth(d.getMonth()+delta);
@@ -12028,6 +12076,20 @@ function writerV9CalendarSettings(plugin,panel){
    if(leaf.view instanceof WriterV83CalendarView)leaf.view.render();
   }
  };
+ new Setting(panel).setName(writerUi('Abrir o calendário em','Open calendar in'))
+  .setDesc(writerUi('O comando principal respeita este local. O botão da barra superior abre à direita.','The main command uses this location. The toolbar shortcut opens on the right.'))
+  .addDropdown(drop=>{
+   drop.addOption('tab',writerUi('Aba normal','Main tab'));
+   drop.addOption('left',writerUi('Barra lateral esquerda','Left sidebar'));
+   drop.addOption('right',writerUi('Barra lateral direita','Right sidebar'));
+   drop.setValue(cfg.openLocation).onChange(async value=>{
+    cfg.openLocation=value;await plugin.saveSettings();
+   });
+  });
+ new Setting(panel).setName(writerUi('Abrir agora','Open now')).addButton(btn=>
+  btn.setButtonText(writerUi('Aba','Tab')).onClick(()=>void plugin.writerCalendarOpenIn?.('tab')))
+  .addButton(btn=>btn.setButtonText(writerUi('Esquerda','Left')).onClick(()=>void plugin.writerCalendarOpenIn?.('left')))
+  .addButton(btn=>btn.setButtonText(writerUi('Direita','Right')).onClick(()=>void plugin.writerCalendarOpenIn?.('right')));
  new Setting(panel).setName(writerUi('Vista inicial','Default view')).addDropdown(drop=>{
   for(const [id,pt,en] of WRITER_V9_CAL_VIEW_OPTIONS)drop.addOption(id,writerUi(pt,en));
   drop.setValue(cfg.defaultView).onChange(async value=>{cfg.defaultView=value;await plugin.saveSettings();});
@@ -12061,6 +12123,62 @@ function writerV9CalendarSettings(plugin,panel){
  }
  new Setting(panel).setName(writerUi('Abrir calendário de escrita','Open writing calendar'))
   .addButton(button=>button.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
+}
+
+// v3 module: src/v9/calendar-placement.js
+/* 9.0.1: open the existing calendar ItemView in a main tab or a native
+ * Obsidian sidebar. No extra sidebar type, event store or global panel. */
+const WRITER_V901_CAL_LOCATIONS=['tab','left','right'];
+function writerV901CalendarLeafLocation(workspace,leaf){
+ const root=leaf?.getRoot?.();
+ if(root&&root===workspace.leftSplit)return 'left';
+ if(root&&root===workspace.rightSplit)return 'right';
+ return leaf?.view?.writerV901Placement||'tab';
+}
+async function writerV901CalendarOpen(plugin,placement,date){
+ if(!writerModuleOn(plugin,'calendar'))return null;
+ const workspace=plugin.app.workspace;
+ const requested=WRITER_V901_CAL_LOCATIONS.includes(placement)?placement:'tab';
+ const leaves=workspace.getLeavesOfType?.(WRITER_V83_CAL_VIEW)||[];
+ let leaf=leaves.find(item=>writerV901CalendarLeafLocation(workspace,item)===requested);
+ const created=!leaf;
+ if(!leaf){
+  if(requested==='left')leaf=workspace.getLeftLeaf?.(true);
+  else if(requested==='right')leaf=workspace.getRightLeaf?.(true);
+  else leaf=workspace.getLeaf?.('tab');
+  if(!leaf)throw Error(writerUi('Não foi possível abrir o calendário neste painel.','Cannot open the calendar in this pane.'));
+  await leaf.setViewState({type:WRITER_V83_CAL_VIEW,active:true});
+ }
+ if(!(leaf.view instanceof WriterV83CalendarView))
+  throw Error(writerUi('A visualização do calendário não está disponível.','The calendar view is unavailable.'));
+ leaf.view.writerV901Placement=requested;
+ if(created&&requested!=='tab'){
+  // A docked pane has little horizontal space; open the compact event list.
+  leaf.view.mode='agenda';
+  leaf.view.writerV9SidebarOpen=false;
+ }
+ if(writerV83Date(date)){leaf.view.anchor=date;leaf.view.render();}
+ else if(created&&requested!=='tab')leaf.view.render();
+ await workspace.revealLeaf?.(leaf);
+ return leaf;
+}
+function writerV901RegisterCalendar(plugin){
+ const safeOpen=async(placement,date)=>{
+  try{return await writerV901CalendarOpen(plugin,placement,date);}
+  catch(error){console.warn('[Basic AI] Calendar placement:',error);
+   new Notice(writerUi('Não foi possível abrir o calendário: ','Could not open calendar: ')+String(error.message||error));
+   return null;
+  }
+ };
+ plugin.writerCalendarOpen=date=>safeOpen(plugin.settings.v9Calendar?.openLocation||'tab',date);
+ plugin.writerCalendarOpenIn=(placement,date)=>safeOpen(placement,date);
+ for(const [id,pt,en,placement] of [
+  ['v901-calendar-open-tab','Calendário: abrir em aba','Calendar: open in main tab','tab'],
+  ['v901-calendar-open-left','Calendário: abrir na barra lateral esquerda','Calendar: open in left sidebar','left'],
+  ['v901-calendar-open-right','Calendário: abrir na barra lateral direita','Calendar: open in right sidebar','right']
+ ]){
+  plugin.addCommand({id,name:writerUi(pt,en),callback:()=>void plugin.writerCalendarOpenIn(placement)});
+ }
 }
 
 // END WRITER V3 MODULES
@@ -12563,9 +12681,12 @@ class DictionarySettings extends PluginSettingTab{
    ['customize',msg('Personalização','Customization'),['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','v7Worldbuilding']],
-   ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode']],
-   ['markdown',msg('Markdown','Markdown'),['extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
-   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
+   ['writing',msg('Escrita e Markdown','Writing & Markdown'),[
+    'complements','variants','typing','keyshots','cursor',
+    'extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc',
+    'integrationsV4','abbreviations','anotherName','viewMode'
+   ]],
+   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading','v6Linter']]
   ];
   const groupFor=id=>groups.find(([, ,ids])=>ids.includes(id))?.[0]||'general';
   this.lastSectionByGroup=this.lastSectionByGroup||{};
@@ -12954,6 +13075,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerView(WRITER_TOOLS_VIEW,leaf=>new WriterToolsView(leaf,this));
     writerV8RegisterHome(this);
     writerV83RegisterCalendar(this);
+    writerV901RegisterCalendar(this);
     writerV83RegisterStudy(this);
     writerV9RegisterToolbar(this);
     writerV9RegisterExplorer(this);

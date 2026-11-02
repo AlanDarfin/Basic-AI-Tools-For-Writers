@@ -10870,10 +10870,14 @@ function writerV8FinishSettings(plugin,panel){
  * No cMenu source is copied. Does not replace Obsidian's mobile toolbar. */
 const WRITER_V9_FORMAT_ACTIONS=[
  ['bold','bold','Negrito','Bold'],['italic','italic','Itálico','Italic'],
+ ['underline','underline','Sublinhado','Underline'],['superscript','superscript','Sobrescrito','Superscript'],
+ ['subscript','subscript','Subscrito','Subscript'],
  ['strike','strikethrough','Riscado','Strikethrough'],['highlight','highlighter','Realce','Highlight'],
  ['code','code','Código inline','Inline code'],['codeblock','file-code','Bloco de código','Code block'],
  ['h1','heading-1','Título 1','Heading 1'],['h2','heading-2','Título 2','Heading 2'],
- ['h3','heading-3','Título 3','Heading 3'],['quote','quote','Citação','Quote'],
+ ['h3','heading-3','Título 3','Heading 3'],['h4','heading-4','Título 4','Heading 4'],
+ ['h5','heading-5','Título 5','Heading 5'],['h6','heading-6','Título 6','Heading 6'],
+ ['quote','quote','Citação','Quote'],
  ['bullet','list','Lista','Bullet list'],['numbered','list-ordered','Lista numerada','Numbered list'],
  ['task','list-check','Tarefa','Task'],['link','link','Link','Link'],
  ['wikilink','file-symlink','Link interno','Internal link'],['callout','message-square','Callout','Callout'],
@@ -10883,13 +10887,14 @@ const WRITER_V9_FORMAT_ACTIONS=[
 ];
 const WRITER_V9_FORMAT_IDS=WRITER_V9_FORMAT_ACTIONS.map(x=>x[0]);
 const WRITER_V9_TOOLBAR_DEFAULTS={
- enabledDesktop:true,enabledMobile:false,compact:true,
- actions:['bold','italic','strike','highlight','code','h1','h2','h3','quote','bullet','numbered','task','link','wikilink','callout','table','rule','undo','redo']
+ enabledDesktop:true,enabledMobile:false,compact:true,placement:'bottom',
+ actions:['bold','italic','underline','strike','highlight','code','h1','h2','h3','quote','bullet','numbered','task','link','wikilink','callout','table','rule','undo','redo']
 };
 function writerV9ToolbarMerge(settings){
  const raw=settings.v9Toolbar&&typeof settings.v9Toolbar==='object'&&!Array.isArray(settings.v9Toolbar)?settings.v9Toolbar:{};
  const cfg=settings.v9Toolbar={...WRITER_V9_TOOLBAR_DEFAULTS,...raw};
  cfg.enabledDesktop=cfg.enabledDesktop!==false;cfg.enabledMobile=cfg.enabledMobile===true;cfg.compact=cfg.compact!==false;
+ cfg.placement=['top','bottom'].includes(cfg.placement)?cfg.placement:'bottom';
  cfg.actions=Array.isArray(cfg.actions)?[...new Set(cfg.actions.filter(x=>WRITER_V9_FORMAT_IDS.includes(x)))]:[...WRITER_V9_TOOLBAR_DEFAULTS.actions];
  return cfg;
 }
@@ -10916,6 +10921,9 @@ function writerV9Format(editor,action){
  switch(action){
  case 'bold':replacement('**','**');break;
  case 'italic':replacement('*','*');break;
+ case 'underline':replacement('<u>','</u>');break;
+ case 'superscript':replacement('<sup>','</sup>');break;
+ case 'subscript':replacement('<sub>','</sub>');break;
  case 'strike':replacement('~~','~~');break;
  case 'highlight':replacement('==','==');break;
  case 'code':replacement(String.fromCharCode(96),String.fromCharCode(96));break;
@@ -10923,6 +10931,9 @@ function writerV9Format(editor,action){
  case 'h1':perLine('# ');break;
  case 'h2':perLine('## ');break;
  case 'h3':perLine('### ');break;
+ case 'h4':perLine('#### ');break;
+ case 'h5':perLine('##### ');break;
+ case 'h6':perLine('###### ');break;
  case 'quote':perLine('> ');break;
  case 'bullet':perLine('- ');break;
  case 'numbered':perLine((line,i)=>(i+1)+'. '+line);break;
@@ -10952,7 +10963,7 @@ function writerV9RegisterToolbar(plugin){
   if(!host||!view?.editor||!writerV9ToolbarAllowed(plugin)){remove();return;}
   if(owner!==host){remove();owner=host;owner.classList.add('writer-v9-toolbar-host');}
   if(root)root.remove();
-  root=owner.createDiv({cls:'writer-v9-format-toolbar'+(cfg.compact?' is-compact':''),attr:{role:'toolbar','aria-label':writerUi('Formatação de texto','Text formatting')}});
+  root=owner.createDiv({cls:'writer-v9-format-toolbar'+(cfg.compact?' is-compact':'')+(cfg.placement==='top'?' is-top':''),attr:{role:'toolbar','aria-label':writerUi('Formatação de texto','Text formatting')}});
   for(const id of cfg.actions){
    const item=WRITER_V9_FORMAT_ACTIONS.find(x=>x[0]===id);
    if(!item)continue;
@@ -10989,12 +11000,42 @@ function writerV9ToolbarSettings(plugin,panel){
  addToggle('Ativar no computador','Enable on desktop','enabledDesktop');
  addToggle('Ativar no Android/iOS (desativado inicialmente)','Enable on mobile (off by default)','enabledMobile');
  addToggle('Botões compactos','Compact buttons','compact');
- new Setting(panel).setName(writerUi('Botões e ordem','Buttons and order'))
-  .setDesc(writerUi('IDs separados por vírgula. IDs disponíveis: ','Comma-separated IDs. Available IDs: ')+WRITER_V9_FORMAT_IDS.join(', '))
-  .addTextArea(input=>input.setValue(cfg.actions.join(', ')).onChange(async value=>{
-   cfg.actions=[...new Set(value.split(/[,;\n]/).map(x=>x.trim()).filter(x=>WRITER_V9_FORMAT_IDS.includes(x)))];
-   await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();
-  }));
+ new Setting(panel).setName(writerUi('Posição da barra','Toolbar position'))
+  .addDropdown(d=>d.addOption('bottom',writerUi('Embaixo','Bottom'))
+   .addOption('top',writerUi('Em cima','Top'))
+   .setValue(cfg.placement).onChange(async value=>{
+    cfg.placement=value;await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();
+   }));
+ const list=panel.createEl('details',{cls:'writer-v9-toolbar-list'});
+ const draw=()=>{
+  const open=list.open;list.empty();
+  list.createEl('summary',{text:writerUi('Escolher e ordenar botões','Choose and reorder buttons')});
+  list.open=open;
+  const all=[...cfg.actions,...WRITER_V9_FORMAT_IDS.filter(id=>!cfg.actions.includes(id))];
+  for(const id of all){
+   const item=WRITER_V9_FORMAT_ACTIONS.find(entry=>entry[0]===id);
+   if(!item)continue;
+   const index=cfg.actions.indexOf(id),enabled=index>=0;
+   const row=new Setting(list).setName(writerUi(item[2],item[3])).setDesc(id);
+   row.addToggle(toggle=>toggle.setValue(enabled).onChange(async value=>{
+    cfg.actions=value?[...cfg.actions,id]:cfg.actions.filter(x=>x!==id);
+    await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();draw();
+   }));
+   for(const [direction,sign] of [[-1,'↑'],[1,'↓']]){
+    row.addButton(button=>{
+     button.setButtonText(sign).setTooltip(writerUi(direction<0?'Mover para cima':'Mover para baixo',
+      direction<0?'Move up':'Move down'));
+     if(!enabled||index+direction<0||index+direction>=cfg.actions.length)button.setDisabled(true);
+     button.onClick(async()=>{
+      const next=index+direction;
+      [cfg.actions[index],cfg.actions[next]]=[cfg.actions[next],cfg.actions[index]];
+      await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();draw();
+     });
+    });
+   }
+  }
+ };
+ draw();
 }
 
 // v3 module: src/v9/native-explorer.js

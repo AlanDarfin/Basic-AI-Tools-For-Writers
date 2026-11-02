@@ -1,10 +1,19 @@
 # Basic AI Tool for Writers
 
-**Version:** 8.3.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.0.0-beta.1 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md)
 
 A single, compact writing workspace for planning books, organizing a fictional world, editing Markdown, reviewing text and optionally working with AI. Your notes remain ordinary files in your Obsidian vault.
+
+## What's new in the v9 preview
+
+- **Configurable formatting toolbar:** 21 Markdown actions, reorderable/optional controls, desktop enabled by default, mobile **disabled by default** and opt-in via settings. The native mobile editing toolbar is not replaced.
+- **Make.md-inspired native explorer tools:** customize vault file/folder icons and accent colors from the File Explorer context menu, inspect folders as filterable list/cards, and create/open Markdown folder indices. No extra sidebar.
+- **Homepage design:** centered title, icon above it on mobile or alongside it on desktop; broader Lucide options or a vault/HTTPS image; clock above the calendar at all sizes. Search stays at the top.
+- **Modular switches:** toolbar and native explorer modules can be hidden under Modules; individual controls and behaviors are configurable. Portuguese and English UI.
+
+This is an **integration preview**, not a complete fork of Make.md. Its advanced database views, formulas, rollups, Spaces and Flow editor have **not** been ported. See [v9 implementation status and migration notes](docs/V9_PREVIEW.en.md). Back up your vault before installing a preview.
 
 ## Features
 

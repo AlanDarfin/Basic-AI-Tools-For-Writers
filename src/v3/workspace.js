@@ -18,13 +18,17 @@ class WriterToolsView extends ItemView{
  }
  render(){
   if(!this.root)return;
-  const root=this.root;root.empty();
+  const root=this.root;
+  const previousTabs=root.querySelector('.writer-tools-v3-tabs');
+  if(previousTabs)this.tabScrollLeft=previousTabs.scrollLeft;
+  root.empty();
   root.createEl('h3',{text:writerUi("Ferramentas de escrita","Writing tools")});
   const active=this.app.workspace.getActiveFile();
   root.createEl('p',{text:active?.extension==='md'?active.path:writerUi('Abra uma nota Markdown para usar as ferramentas.','Open a Markdown note to use the tools.'),cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
-  tabs.scrollLeft=this.tabScrollLeft||0;
-  tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
+  tabs.addEventListener('scroll',()=>{
+   if(tabs.isConnected)this.tabScrollLeft=tabs.scrollLeft;
+  },{passive:true});
   tabs.addEventListener('wheel',event=>{
    if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
@@ -40,21 +44,37 @@ class WriterToolsView extends ItemView{
    ?['tts','unicode','projects'].some(id=>writerModuleOn(this.plugin,id))
    :writerModuleOn(this.plugin,feature));
   if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
+  const buttons={};
   for(const [id,label] of sections){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
-   btn.addEventListener('click',()=>{this.tab=id;this.render();});
+   buttons[id]=btn;
+   btn.addEventListener('click',()=>{
+    if(this.tab===id)return;
+    this.tabScrollLeft=tabs.scrollLeft;
+    this.tab=id;
+    for(const [key,button] of Object.entries(buttons))
+     button.classList.toggle('is-active',key===id);
+    // Keep the tab strip mounted, replacing ONLY the content panel.
+    this.renderSelectedTab(panel,this.app.workspace.getActiveFile());
+   });
   }
+  // Restore scroll after adding buttons; on an empty strip it clamps to zero.
+  tabs.scrollLeft=Math.max(0,this.tabScrollLeft||0);
   const panel=root.createDiv({cls:'writer-tools-v3-panel'});
-  if(this.tab==='complements')this.renderComplements(panel);
-  if(this.tab==='variants')this.renderVariants(panel);
-  if(this.tab==='reviewV4')this.renderV4(panel,active);
-  if(this.tab==='snapshots')this.renderSnapshots(panel,active);
-  if(this.tab==='extras')this.renderExtras(panel);
+  this.renderSelectedTab(panel,active);
   const footer=root.createDiv({cls:'writer-tools-footer'});
   if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
   if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
-  writerMarkCompactSettings(panel);
   this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
+ }
+ renderSelectedTab(panel,active){
+  panel.empty();
+  if(this.tab==='complements')this.renderComplements(panel);
+  else if(this.tab==='variants')this.renderVariants(panel);
+  else if(this.tab==='reviewV4')this.renderV4(panel,active);
+  else if(this.tab==='snapshots')this.renderSnapshots(panel,active);
+  else if(this.tab==='extras')this.renderExtras(panel);
+  writerMarkCompactSettings(panel);
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};

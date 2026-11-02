@@ -49,3 +49,11 @@ Their source code, images, UI assets and dependencies are **not** vendored
 into Basic AI. Basic AI does not claim to be a complete Make.md fork.
 For any future direct code reuse, original notices and applicable source
 file licenses must be preserved and reviewed separately.
+
+## v9 local calendar (Full Calendar references)
+
+- **Full Calendar (original, archived)** — Davis Haupt and community contributors. https://github.com/community-archive/obsidian-full-calendar
+- **Full Calendar Remastered** — https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar
+
+The original and Remastered calendar features and UI workflow were reviewed as **behavioral references** for the independent local Markdown calendar redesign. No FullCalendar Standard/Premium bundles, external connectors, assets or source code were copied. The Basic module does not provide Google Calendar or CalDAV sync.
+

@@ -1,10 +1,17 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.1.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.1) · **Previous published:** [7.1.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [7.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.2.0) · **Previous published:** [7.1.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## Pre-v8 maintenance — 7.2.0
+
+- **Android Typewriter:** touch and virtual keyboard / IME interactions now activate the current-line highlight in Live Preview; touch scrolling suspends it. Programmatic cursor restoration still does not activate the highlight. Reading View has no editable caret, so this editor feature is not shown there.
+- **Writing-tools navigation:** tabs (Suggestions, Variants, Diff, Versions, Extras) stay mounted while their content changes; the horizontal scrollbar no longer jumps back. Rebuilding the pane after an active-note change also restores the offset after buttons are created.
+- **Built-in LanguageTool:** after a previous grammar check, automatic checks on editing now target the changed paragraph, reusing untouched suggestions and adjusting their offsets. Accepted corrections still use sentence-first rechecks.
+- **Optional external LanguageTool:** select the external wrenger LanguageTool plugin from Basic's Review panel to disable Basic's own grammar requests and show controls for the external check, clear marks, next finding, automatic checking and its settings. Its own editor underlines and menus are retained. This optional bridge uses the plugin registry, which is not a stable Obsidian public API; availability depends on the external plugin and host version. No external code is bundled. See [release notes](docs/V7_2_0_RELEASE.en.md) · [Português](docs/V7_2_0_RELEASE.pt-BR.md).
 
 ## LanguageTool suggestions on hover or caret — 7.1.1
 

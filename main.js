@@ -10227,7 +10227,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       const element=leaf.containerEl;
       const side=workspace.leftSplit?.containerEl?.contains(element)?'left':
        workspace.rightSplit?.containerEl?.contains(element)?'right':fallback;
-      leaves.push({type,side,
+      const split=side==='left'?workspace.leftSplit:workspace.rightSplit;
+      leaves.push({type,side,visible:split?.collapsed===false,
        tab:typeof leaf.view?.tab==='string'?leaf.view.tab:null,
        activeTab:typeof leaf.view?.activeTab==='string'?leaf.view.activeTab:null,
        selected:typeof leaf.view?.selected==='string'?leaf.view.selected:null,
@@ -10253,7 +10254,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       snapshot.timestamp>Date.now())return;
     const workspace=this.app.workspace;
     const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW]);
-    const sides=new Set();
+    const visibleBySide=new Map();
     for(const entry of snapshot.leaves.slice(0,6)){
      if(!allowed.has(entry?.type)||workspace.getLeavesOfType(entry.type)?.length)continue;
      const side=entry.side==='left'?'left':'right';
@@ -10272,10 +10273,15 @@ module.exports=class AlansOfflineDictionary extends Plugin{
        if(entry.structureTab)leaf.view.writerV7RCSubtab=entry.structureTab;
        if(entry.activeTab){leaf.view.activeTab=entry.activeTab;await leaf.view.render?.();}
       }
-      sides.add(side);
+      if(entry.visible)visibleBySide.set(side,leaf);
      }catch(error){console.warn('[Basic AI] Could not restore sidebar',entry.type,error);}
     }
-    // Keep restored panes available without forcing focus away from the editor.
+    // Reveal only panes which were expanded when the plugin reloaded.
+    // Previously closed/collapsed sidebars remain closed.
+    for(const leaf of visibleBySide.values()){
+     try{await workspace.revealLeaf(leaf);}
+     catch(error){console.warn('[Basic AI] Could not reveal restored sidebar',error);}
+    }
   }
   async onunload(){
     this.rememberHotReloadSidebars();

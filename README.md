@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 8.2.2 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 8.3.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md)
 
@@ -234,6 +234,49 @@ An explicit avatar on a message overrides a speaker's default photo. Without eit
 The message body is rendered with Obsidian's Markdown renderer, including vault images, links, **bold**, *italic*, lists and the Basic AI extended syntax (such as `++underline++`, `=={blue}highlights==` and `||spoilers||`) when those modules are enabled. A `|` inside `![[image.png|240]]`, Markdown links or inline code does not split the message; escape a literal pipe as `\|` when necessary. Additional lines after a message belong to the same bubble until the next left/right message starts.
 
 The original format with `=== Maria`, `side: left`, properties and `---` is still supported for existing notes. All messages are fictional, stored in Markdown, and no external chat request is made.
+
+### Calendar and event planning (inspired by Full Calendar Remastered)
+
+Use **Calendar: open agenda** or the **Calendar** shortcut on the writing homepage. Clicking a date in the small homepage calendar opens that day in the full calendar. The standalone local calendar provides **month, week and day views**, next/previous/today navigation, creation, editing and explicit two-step deletion, event time ranges, categories and **daily, weekly, monthly and yearly** recurrence.
+
+Events are **actual Markdown notes** inside `Writing Calendar/` (created only when you save an event). The plugin stores a minimal, editable YAML frontmatter with `writerCalendar: true`, `title`, `startDate`, `startTime`, `endTime`, `repeat` and `category`; the note body remains editable in Obsidian.
+
+~~~~markdown
+---
+writerCalendar: true
+title: "Writing session"
+startDate: "2026-11-05"
+startTime: "15:00"
+endTime: "16:00"
+repeat: "weekly"
+category: "Writing"
+---
+
+Plan chapter six and review character notes.
+~~~~
+
+This is an **independent local calendar inspired by [Full Calendar Remastered](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar)**, not the original FullCalendar UI or its GPL dependencies. It does **not** import Google Calendar, CalDAV or remote ICS events; install the dedicated plugin for those advanced synchronized sources. Your own calendar notes stay within the vault.
+
+### Personalized Study and spaced repetition
+
+Open **Study: review flashcards** from the command palette or choose **Study** on the homepage. The Study area finds notes marked with `#flashcards` or the tag configured in **Settings → General → Study** and groups cards by source folder. It recognizes `Question::Answer`, reversible `Question:::Answer`, simple `==cloze==` in tagged notes, and `{{c1::cloze}}` deletions.
+
+~~~~markdown
+#flashcards
+
+What is the capital of Brazil?::Brasília
+Red:::Vermelho
+The Brazilian language is ==Portuguese==.
+A historical city is {{c1::Ouro Preto}}.
+~~~~
+
+The review workflow shows the front first, then the answer. Choose **Again (10 min)**, **Hard**, **Good** or **Easy** to schedule another review using a lightweight SM-2-style model. Configure the tag, maximum cards per session and new cards per session. Progress is saved **locally in plugin settings**, not appended to your source notes, and is separate from the data of [Spaced Repetition](https://github.com/st3v3nmw/obsidian-spaced-repetition).
+
+This is a focused native Study area rather than a full reimplementation of all Spaced Repetition features (including its complex cloze customizations and advanced note-review modes). If you already use that plugin, the two schedulers remain separate; duplicate review tracking is not synchronized.
+
+### Fuzzy homepage search
+
+The search field at the top of the homepage now uses **fuzzy ranking**: accent-insensitive matching, filename prefixes, words, paths and headings, one-character typos and short subsequences. Exact and prefix matches rank above looser matches. Results remain local to the vault; no network queries are involved. Searching for a web address still uses the existing browser behavior.
 
 ### Writing homepage — clock, calendar and a top search
 

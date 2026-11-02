@@ -4786,6 +4786,7 @@ body.is-mobile .writer-v8-home-heading{flex-direction:column;gap:5px;}
 @media(prefers-reduced-motion:reduce){
  .writer-v9-calendar-event,.writer-v9-calendar-button{transition:none;}
 }
+
 /* v9 Obsidian-native visual unification.
  * All selectors are scoped to Basic AI views, dialogs and plugin settings.
  * Respect active theme tokens, typography, accessible focus and compact displays. */
@@ -4907,5 +4908,4 @@ body.is-mobile .writer-v8-home-heading{flex-direction:column;gap:5px;}
   scroll-behavior:auto;
  }
 }
-
 /* END V8 MODULAR STYLES */

@@ -8949,14 +8949,12 @@ class DictionaryView extends ItemView{
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
        .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
-      this.reviewResults.empty();
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
       this.plugin.showReviewMarks(file,matches);
       this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found')+(window.partial?msg(' (trecho próximo ao cursor)',' (near cursor)'):''));
-      if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
-      for(const match of matches)this.renderGrammarSuggestion(file,source,match);
+      this.renderGrammarResults(file,source,matches);
     }else{
       this.plugin.clearReviewMarks();
       const mode=this.reviewMode.value;
@@ -8980,11 +8978,9 @@ class DictionaryView extends ItemView{
    if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return;
    this.reviewSource=after;this.plugin.reviewSource=after;
    this.grammarCheckedPath=file.path;this.grammarCheckedSource=after;
-   this.reviewResults.empty();
    this.plugin.showReviewMarks(file,matches);
    this.reviewStatus.setText(status);
-   if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
-   for(const m of matches)this.renderGrammarSuggestion(file,after,m);
+   this.renderGrammarResults(file,after,matches);
   };
   // Keep every unaffected paragraph's findings while the small request is in flight.
   publish(preserved,msg('Reanalisando apenas ','Rechecking only ')+
@@ -9009,6 +9005,29 @@ class DictionaryView extends ItemView{
    publish(preserved,msg('Não foi possível reanalisar o trecho; outras sugestões preservadas. ','Could not recheck passage; other suggestions preserved. ')+(error.message||String(error)));
    return false;
   }finally{this.reviewBusy=false;}
+ }
+ renderGrammarResults(file,source,matches){
+  // Reduce DOM work for long notes while keeping every CodeMirror highlight.
+  this.reviewResults.empty();
+  if(!matches.length){
+   this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
+   return;
+  }
+  const pageSize=24;
+  let index=0,more=null;
+  const appendPage=()=>{
+   more?.remove();more=null;
+   const end=Math.min(matches.length,index+pageSize);
+   while(index<end)this.renderGrammarSuggestion(file,source,matches[index++]);
+   if(index<matches.length){
+    more=this.reviewResults.createEl('button',{
+     text:msg('Mostrar mais sugestões','Show more suggestions')+' ('+(matches.length-index)+')',
+     cls:'writer-lt-show-more',attr:{type:'button'}
+    });
+    more.addEventListener('click',appendPage);
+   }
+  };
+  appendPage();
  }
  renderGrammarSuggestion(file,source,match,target=this.reviewResults){
   const start=match.offset,end=start+match.length;

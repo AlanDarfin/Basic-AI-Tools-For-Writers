@@ -12511,6 +12511,7 @@ class DictionarySettings extends PluginSettingTab{
     ['v9Toolbar',msg('Barra de formatação','Formatting toolbar')],
     ['v9Explorer',msg('Explorador de arquivos','File explorer')],
     ['v9Spaces',msg('Coleções locais','Local collections')],
+    ['v9Lock',msg('Proteção visual','Visual protection')],
     ['v9Calendar',msg('Calendário','Calendar')],
     ['dictionary',msg('Dicionário','Dictionary')],
     ['translation',msg('Tradução','Translation')],
@@ -12560,7 +12561,7 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Personalização','Customization'),['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar']],
+   ['customize',msg('Personalização','Customization'),['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar','v9Lock']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','v7Worldbuilding']],
    ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
@@ -12569,7 +12570,7 @@ class DictionarySettings extends PluginSettingTab{
   const groupIcons={general:'settings-2',customize:'palette',ai:'brain-circuit',longform:'book-open',writing:'pen-line',review:'spell-check'};
   const sectionIcons={
    general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
-   homepage:'house',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',
+   homepage:'house',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
    dictionary:'book-a',translation:'languages',assistant:'message-circle',projects:'notebook-pen',
    v7Worldbuilding:'globe',complements:'lightbulb',variants:'git-compare',
    writingProfiles:'scan-text',integrationsV4:'wrench',keyshots:'keyboard',
@@ -12627,6 +12628,7 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
     }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);
     }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);
+    }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);
     }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);
     }else if(id==='workspaceProfiles'){
       this.plugin.writerWorkspaceProfiles.renderSettings(panel);
@@ -12915,6 +12917,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV9ToolbarMerge(this.settings);
     writerV9ExplorerMerge(this.settings);
     writerV9SpacesMerge(this.settings);
+    writerV9LockMerge(this.settings);
     writerV9CalendarMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
@@ -12977,6 +12980,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV9RegisterToolbar(this);
     writerV9RegisterExplorer(this);
     writerV9RegisterSpaces(this);
+    writerV9LockRegister(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')

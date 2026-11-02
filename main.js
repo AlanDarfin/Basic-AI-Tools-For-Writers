@@ -10099,6 +10099,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     for(const event of ['create','delete'])this.registerEvent(this.app.vault.on(event,()=>this._writerV6ProjectPaths?.clear()));
     this.writerKeyshots=new WriterKeyshots(this);this.writerKeyshots.register();
     this.writerExtendedSyntax=new WriterExtendedSyntax(this);this.writerExtendedSyntax.register();
+    writerV8RegisterSocial(this);
+    writerV8RegisterMediaGallery(this);
     this.writerInlineAI=new WriterV8InlineAI(this);this.writerInlineAI.register();
     this.writerPandocSyntax=new WriterPandocSyntax(this);this.writerPandocSyntax.register();
     this.writerPandocExporter=new WriterPandocExporter(this);this.writerPandocExporter.register();

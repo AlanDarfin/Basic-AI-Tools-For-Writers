@@ -10,9 +10,10 @@ function writerV9ExplorerMerge(settings){
  cfg.maxResults=Math.max(20,Math.min(200,Number(cfg.maxResults)||100));
  cfg.items=cfg.items&&typeof cfg.items==='object'&&!Array.isArray(cfg.items)?cfg.items:{};
  const out={};
+ const availableIcons=new Set(writerV9AvailableIcons());
  for(const [path,raw] of Object.entries(cfg.items).slice(0,5000)){
   if(!path||path.length>600||!raw||typeof raw!=='object')continue;
-  const icon=writerV9AvailableIcons().includes(raw.icon)?raw.icon:'';
+  const icon=availableIcons.has(raw.icon)?raw.icon:'';
   const color=writerV9SafeHex(raw.color);
   if(icon||color)out[path]={icon,color};
  }

@@ -9642,8 +9642,8 @@ function writerV8FinishMerge(settings){
  cfg.homeOnNewTab=cfg.homeOnNewTab!==false;
  cfg.homeTitle=String(cfg.homeTitle||'').replace(/[\r\n]/g,' ').slice(0,80);
  cfg.homeIconImage=String(cfg.homeIconImage||'').trim().slice(0,600);
- cfg.homeTitleColor=writerV9SafeHex(cfg.homeTitleColor);
- cfg.homeIconColor=writerV9SafeHex(cfg.homeIconColor);
+ cfg.homeTitleColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeTitleColor||''))?String(cfg.homeTitleColor).toLowerCase():'';
+ cfg.homeIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeIconColor||''))?String(cfg.homeIconColor).toLowerCase():'';
  cfg.homeIcon=typeof writerV8HomeIconName==='function'?writerV8HomeIconName(cfg.homeIcon):'book-open';
  cfg.captionMax=Math.max(32,Math.min(240,Math.floor(Number(cfg.captionMax)||180)));
  cfg.homeFavorites=Array.isArray(cfg.homeFavorites)?[...new Set(cfg.homeFavorites.filter(x=>typeof x==='string'&&x.length<=500))].slice(0,30):[];

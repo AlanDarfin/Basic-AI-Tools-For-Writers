@@ -13877,70 +13877,78 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   rememberHotReloadSidebars(){
     const workspace=this.app.workspace;
-    const layout=[
-     [PROJECT_VIEW,'left'],[VIEW,'right'],[WRITER_TOOLS_VIEW,'right']
-    ];
+    const types=[VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW];
     const leaves=[];
-    for(const [type,fallback] of layout){
-     for(const leaf of workspace.getLeavesOfType(type)||[]){
+    for(const type of types)for(const leaf of workspace.getLeavesOfType(type)||[]){
       const element=leaf.containerEl;
-      const side=workspace.leftSplit?.containerEl?.contains(element)?'left':
-       workspace.rightSplit?.containerEl?.contains(element)?'right':fallback;
-      const split=side==='left'?workspace.leftSplit:workspace.rightSplit;
-      leaves.push({type,side,visible:split?.collapsed===false,
-       tab:typeof leaf.view?.tab==='string'?leaf.view.tab:null,
-       activeTab:typeof leaf.view?.activeTab==='string'?leaf.view.activeTab:null,
-       selected:typeof leaf.view?.selected==='string'?leaf.view.selected:null,
-       structureTab:typeof leaf.view?.writerV7RCSubtab==='string'?leaf.view.writerV7RCSubtab:null});
-     }
+      const side=workspace.leftSplit?.containerEl?.contains?.(element)?'left':
+        workspace.rightSplit?.containerEl?.contains?.(element)?'right':'tab';
+      const split=side==='left'?workspace.leftSplit:side==='right'?workspace.rightSplit:null;
+      leaves.push({type,side,visible:split?.collapsed===false,active:workspace.activeLeaf===leaf,
+        tab:typeof leaf.view?.tab==='string'?leaf.view.tab:null,
+        activeTab:typeof leaf.view?.activeTab==='string'?leaf.view.activeTab:null,
+        selected:typeof leaf.view?.selected==='string'?leaf.view.selected:null,
+        structureTab:typeof leaf.view?.writerV7RCSubtab==='string'?leaf.view.writerV7RCSubtab:null,
+        anchor:typeof leaf.view?.anchor==='string'?leaf.view.anchor:null,
+        scrollTop:Math.max(0,Math.min(200000,Number(leaf.view?.contentEl?.scrollTop)||0))});
     }
     try{
-     const key=this.hotReloadStorageKey();
-     if(leaves.length)window.sessionStorage.setItem(key,JSON.stringify({timestamp:Date.now(),leaves}));
-     else window.sessionStorage.removeItem(key);
-    }catch(error){console.warn('[Basic AI] Sidebar state could not be stored',error);}
+      const key=this.hotReloadStorageKey();
+      if(leaves.length)window.sessionStorage.setItem(key,JSON.stringify({timestamp:Date.now(),leaves:leaves.slice(0,30)}));
+      else window.sessionStorage.removeItem(key);
+    }catch(error){console.warn('[Basic AI] Pane state could not be stored',error);}
   }
   async restoreHotReloadSidebars(){
     let snapshot=null;
     try{
-     const key=this.hotReloadStorageKey();
-     const raw=window.sessionStorage.getItem(key);
-     window.sessionStorage.removeItem(key); // One-shot: never reopen user-closed panes on a normal launch.
-     if(raw)snapshot=JSON.parse(raw);
-    }catch(error){console.warn('[Basic AI] Sidebar state could not be restored',error);}
-    if(!snapshot||!Array.isArray(snapshot.leaves)||
-      !Number.isFinite(snapshot.timestamp)||Date.now()-snapshot.timestamp>120000||
-      snapshot.timestamp>Date.now())return;
+      const key=this.hotReloadStorageKey(),raw=window.sessionStorage.getItem(key);
+      window.sessionStorage.removeItem(key); // One-shot; never resurrect closed panes on normal startup.
+      if(raw)snapshot=JSON.parse(raw);
+    }catch(error){console.warn('[Basic AI] Pane state could not be restored',error);}
+    if(!snapshot||!Array.isArray(snapshot.leaves)||!Number.isFinite(snapshot.timestamp)||
+      Date.now()-snapshot.timestamp>120000||snapshot.timestamp>Date.now())return;
     const workspace=this.app.workspace;
-    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW]);
-    const visibleBySide=new Map();
-    for(const entry of snapshot.leaves.slice(0,6)){
-     if(!allowed.has(entry?.type)||workspace.getLeavesOfType(entry.type)?.length)continue;
-     const side=entry.side==='left'?'left':'right';
-     try{
-      // true always creates a tab: never overwrite Bookmarks or File Explorer.
-      const leaf=side==='left'?workspace.getLeftLeaf(true):workspace.getRightLeaf(true);
-      if(!leaf)continue;
-      await leaf.setViewState({type:entry.type,active:false});
-      if(entry.type===VIEW&&entry.activeTab&&typeof leaf.view?.switchTab==='function')
-       leaf.view.switchTab(entry.activeTab);
-      if(entry.type===WRITER_TOOLS_VIEW&&entry.tab&&leaf.view){
-       leaf.view.tab=entry.tab;leaf.view.render?.();
+    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW]);
+    const createdCounts=new Map(),visibleBySide=new Map(),activeTabs=[];
+    for(const entry of snapshot.leaves.slice(0,30)){
+      if(!allowed.has(entry?.type))continue;
+      const expected=(createdCounts.get(entry.type)||0)+1;createdCounts.set(entry.type,expected);
+      const existing=workspace.getLeavesOfType(entry.type)||[];
+      if(existing.length>=expected){
+        if(entry.active&&entry.side==='tab')activeTabs.push(existing[expected-1]);
+        continue;
       }
-      if(entry.type===PROJECT_VIEW&&leaf.view){
-       if(entry.selected)leaf.view.selected=entry.selected;
-       if(entry.structureTab)leaf.view.writerV7RCSubtab=entry.structureTab;
-       if(entry.activeTab){leaf.view.activeTab=entry.activeTab;await leaf.view.render?.();}
-      }
-      if(entry.visible)visibleBySide.set(side,leaf);
-     }catch(error){console.warn('[Basic AI] Could not restore sidebar',entry.type,error);}
+      const side=entry.side==='left'?'left':entry.side==='right'?'right':'tab';
+      try{
+        // Never replace an existing Markdown editor, Explorer or Bookmarks pane.
+        const leaf=side==='left'?workspace.getLeftLeaf?.(true):
+          side==='right'?workspace.getRightLeaf?.(true):workspace.getLeaf?.('tab');
+        if(!leaf)continue;
+        await leaf.setViewState({type:entry.type,active:false});
+        if(entry.type===VIEW&&entry.activeTab&&typeof leaf.view?.switchTab==='function')
+          leaf.view.switchTab(entry.activeTab);
+        if(entry.type===WRITER_TOOLS_VIEW&&entry.tab&&leaf.view){
+          leaf.view.tab=entry.tab;leaf.view.render?.();
+        }
+        if(entry.type===PROJECT_VIEW&&leaf.view){
+          if(entry.selected)leaf.view.selected=entry.selected;
+          if(entry.structureTab)leaf.view.writerV7RCSubtab=entry.structureTab;
+          if(entry.activeTab){leaf.view.activeTab=entry.activeTab;await leaf.view.render?.();}
+        }
+        if(entry.type===WRITER_V83_CAL_VIEW&&entry.anchor&&leaf.view){
+          leaf.view.anchor=entry.anchor;leaf.view.render?.();
+        }
+        if(entry.scrollTop&&leaf.view?.contentEl)leaf.view.contentEl.scrollTop=entry.scrollTop;
+        if(entry.active&&side==='tab')activeTabs.push(leaf);
+        if(entry.visible&&side!=='tab')visibleBySide.set(side,leaf);
+      }catch(error){console.warn('[Basic AI] Could not restore pane',entry.type,error);}
     }
-    // Reveal only panes which were expanded when the plugin reloaded.
-    // Previously closed/collapsed sidebars remain closed.
     for(const leaf of visibleBySide.values()){
-     try{await workspace.revealLeaf(leaf);}
-     catch(error){console.warn('[Basic AI] Could not reveal restored sidebar',error);}
+      try{await workspace.revealLeaf?.(leaf);}
+      catch(error){console.warn('[Basic AI] Could not reveal pane',error);}
     }
+    const active=activeTabs[activeTabs.length-1];
+    if(active)workspace.setActiveLeaf?.(active,{focus:false});
   }
   async onunload(){
     this.rememberHotReloadSidebars();

@@ -56,6 +56,6 @@ for(const name of ['src/v6/longform-navigation.js','src/v6/smart-insert.js','src
 assert.ok(fs.readFileSync('main.js','utf8').includes('writerV6ProjectReviewText(this,targetFile)'));
 assert.ok(fs.readFileSync('projects.js','utf8').includes('writerV6ProjectPreferencesRender(this,panel,project)'));
 assert.ok(fs.readFileSync('styles.css','utf8').includes('.writer-v6-smart-insert'));
-assert.ok(fs.readFileSync('README.md','utf8').includes('6.0.0-beta.4'));
-assert.ok(fs.readFileSync('docs/README.pt-BR.md','utf8').includes('6.0.0-beta.4'));
+assert.ok(fs.readFileSync('README.md','utf8').includes('Markdown formatting'));
+assert.ok(fs.readFileSync('docs/README.pt-BR.md','utf8').includes('formatação Markdown'));
 console.log('PASS v6 beta4: manual nav, project auto override, per-project tools, editorial context and safe smart insertion');

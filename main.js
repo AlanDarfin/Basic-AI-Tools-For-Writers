@@ -1958,13 +1958,17 @@ class WriterToolsView extends ItemView{
  }
  render(){
   if(!this.root)return;
-  const root=this.root;root.empty();
+  const root=this.root;
+  const previousTabs=root.querySelector('.writer-tools-v3-tabs');
+  if(previousTabs)this.tabScrollLeft=previousTabs.scrollLeft;
+  root.empty();
   root.createEl('h3',{text:writerUi("Ferramentas de escrita","Writing tools")});
   const active=this.app.workspace.getActiveFile();
   root.createEl('p',{text:active?.extension==='md'?active.path:writerUi('Abra uma nota Markdown para usar as ferramentas.','Open a Markdown note to use the tools.'),cls:'writer-tools-note-path'});
   const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
-  tabs.scrollLeft=this.tabScrollLeft||0;
-  tabs.addEventListener('scroll',()=>{this.tabScrollLeft=tabs.scrollLeft;},{passive:true});
+  tabs.addEventListener('scroll',()=>{
+   if(tabs.isConnected)this.tabScrollLeft=tabs.scrollLeft;
+  },{passive:true});
   tabs.addEventListener('wheel',event=>{
    if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
@@ -1980,21 +1984,37 @@ class WriterToolsView extends ItemView{
    ?['tts','unicode','projects'].some(id=>writerModuleOn(this.plugin,id))
    :writerModuleOn(this.plugin,feature));
   if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
+  const buttons={};
   for(const [id,label] of sections){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
-   btn.addEventListener('click',()=>{this.tab=id;this.render();});
+   buttons[id]=btn;
+   btn.addEventListener('click',()=>{
+    if(this.tab===id)return;
+    this.tabScrollLeft=tabs.scrollLeft;
+    this.tab=id;
+    for(const [key,button] of Object.entries(buttons))
+     button.classList.toggle('is-active',key===id);
+    // Keep the tab strip mounted, replacing ONLY the content panel.
+    this.renderSelectedTab(panel,this.app.workspace.getActiveFile());
+   });
   }
+  // Restore scroll after adding buttons; on an empty strip it clamps to zero.
+  tabs.scrollLeft=Math.max(0,this.tabScrollLeft||0);
   const panel=root.createDiv({cls:'writer-tools-v3-panel'});
-  if(this.tab==='complements')this.renderComplements(panel);
-  if(this.tab==='variants')this.renderVariants(panel);
-  if(this.tab==='reviewV4')this.renderV4(panel,active);
-  if(this.tab==='snapshots')this.renderSnapshots(panel,active);
-  if(this.tab==='extras')this.renderExtras(panel);
+  this.renderSelectedTab(panel,active);
   const footer=root.createDiv({cls:'writer-tools-footer'});
   if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
   if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
-  writerMarkCompactSettings(panel);
   this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
+ }
+ renderSelectedTab(panel,active){
+  panel.empty();
+  if(this.tab==='complements')this.renderComplements(panel);
+  else if(this.tab==='variants')this.renderVariants(panel);
+  else if(this.tab==='reviewV4')this.renderV4(panel,active);
+  else if(this.tab==='snapshots')this.renderSnapshots(panel,active);
+  else if(this.tab==='extras')this.renderExtras(panel);
+  writerMarkCompactSettings(panel);
  }
  renderComplements(panel){
   const opts=this.plugin.settings.complements||{};
@@ -3342,8 +3362,15 @@ class WriterV4Extras{
     constructor(view){
      this.view=view;this.interacting=false;this.decorations=Decoration.set([]);
      this.onPointer=event=>{
+      // Touch does not reliably dispatch pointerdown in Android WebView.
       if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
      };
+     this.onTouchStart=event=>{
+      if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
+     };
+     this.onTouchMove=()=>this.setInteracting(false);
+     this.onBeforeInput=()=>this.setInteracting(true);
+     this.onCompositionStart=()=>this.setInteracting(true);
      this.onKey=event=>{
       if(['Shift','Control','Alt','Meta'].includes(event.key))return;
       this.setInteracting(true);
@@ -3354,6 +3381,10 @@ class WriterV4Extras{
       this.setInteracting(false);
      };
      view.dom.addEventListener('pointerdown',this.onPointer,true);
+     view.dom.addEventListener('touchstart',this.onTouchStart,{capture:true,passive:true});
+     view.dom.addEventListener('touchmove',this.onTouchMove,{capture:true,passive:true});
+     view.dom.addEventListener('beforeinput',this.onBeforeInput,true);
+     view.dom.addEventListener('compositionstart',this.onCompositionStart,true);
      view.dom.addEventListener('keydown',this.onKey,true);
      view.dom.addEventListener('wheel',this.onWheel,{capture:true,passive:true});
      owner.typewriterViews.add(this);
@@ -3382,6 +3413,10 @@ class WriterV4Extras{
     }
     destroy(){
      this.view.dom.removeEventListener('pointerdown',this.onPointer,true);
+     this.view.dom.removeEventListener('touchstart',this.onTouchStart,true);
+     this.view.dom.removeEventListener('touchmove',this.onTouchMove,true);
+     this.view.dom.removeEventListener('beforeinput',this.onBeforeInput,true);
+     this.view.dom.removeEventListener('compositionstart',this.onCompositionStart,true);
      this.view.dom.removeEventListener('keydown',this.onKey,true);
      this.view.dom.removeEventListener('wheel',this.onWheel,true);
      this.view.dom.classList.remove('writer-v4-typewriter-engaged');
@@ -3612,13 +3647,13 @@ function writerGrammarLocalWindow(source,start,end,limit=10000){
  }
  return {from,to,text:text.slice(from,to),kind};
 }
-function writerGrammarLocalScopes(before,after,start,oldEnd,newEnd){
+function writerGrammarLocalScopes(before,after,start,oldEnd,newEnd,preferParagraph=false){
  const oldSentence=writerGrammarLocalWindow(before,start,oldEnd);
  const newSentence=writerGrammarLocalWindow(after,start,newEnd);
  const delta=after.length-before.length;
  // If the edit changes a sentence separator, recheck the encompassing
  // paragraph so no adjacent sentence keeps an invalid cached result.
- if(oldSentence.kind==='sentence'&&newSentence.kind==='sentence'&&
+ if(!preferParagraph&&oldSentence.kind==='sentence'&&newSentence.kind==='sentence'&&
     oldSentence.from===newSentence.from&&oldSentence.to+delta===newSentence.to)
   return {old:oldSentence,next:newSentence};
  const fallback=(text,finish)=>{
@@ -3629,6 +3664,15 @@ function writerGrammarLocalScopes(before,after,start,oldEnd,newEnd){
   return writerGrammarLocalWindow(text,start,finish,12000);
  };
  return {old:fallback(before,oldEnd),next:fallback(after,newEnd)};
+}
+function writerGrammarDiffSpan(before,after){
+ const old=String(before||''),next=String(after||'');
+ if(old===next)return null;
+ let start=0;
+ while(start<old.length&&start<next.length&&old.charCodeAt(start)===next.charCodeAt(start))start++;
+ let oldEnd=old.length,newEnd=next.length;
+ while(oldEnd>start&&newEnd>start&&old.charCodeAt(oldEnd-1)===next.charCodeAt(newEnd-1)){oldEnd--;newEnd--;}
+ return {start,oldEnd,newEnd};
 }
 function writerGrammarPreserveOutside(matches,oldScope,delta){
  return (matches||[]).filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&
@@ -3641,7 +3685,7 @@ class WriterAutoGrammar{
  reviewView(){
   const leaf=this.plugin.app.workspace.getLeavesOfType(VIEW)?.[0];
   const view=leaf?.view;
-  return view?.reviewMode?.value==='grammar'&&view?.activeTab==='review'?view:null;
+  return this.plugin.settings.reviewEngine!=='external'&&view?.reviewMode?.value==='grammar'&&view?.activeTab==='review'?view:null;
  }
  register(){
   this.plugin.registerEvent(this.plugin.app.workspace.on('editor-change',(editor,info)=>{
@@ -3659,9 +3703,10 @@ class WriterAutoGrammar{
   // Obsidian Plugin provides register(); minimal testing hosts may not.
   this.plugin.register?.(()=>this.stop());
  }
- stop(){this.destroyed=true;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
+ cancelPending(){clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
+ stop(){this.destroyed=true;this.cancelPending();}
  schedule(file,{delay}={}){
-  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.plugin.settings.reviewEngine==='external'||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return;
   const view=this.reviewView();
   if(!view||view.reviewFilePath!==file.path)return;
   this.pendingPath=file.path;
@@ -3685,7 +3730,20 @@ class WriterAutoGrammar{
    this.pendingPath=null;return;
   }
   this.pendingPath=null;this.lastRun=Date.now();
-  await view.reviewFile(file,{automatic:true});
+  // A known reviewed document has a trustworthy result cache. Recheck only
+  // its modified paragraph, like a per-editor incremental checker.
+  const before=view.grammarCheckedSource;
+  const cached=this.plugin.reviewMarkedPath===path&&view.grammarCheckedPath===path&&
+   typeof before==='string'&&this.plugin.reviewSource===before&&
+   Array.isArray(this.plugin.reviewMatches)?this.plugin.reviewMatches.slice():null;
+  const diff=cached?writerGrammarDiffSpan(before,source):null;
+  if(diff){
+   const scopes=writerGrammarLocalScopes(before,source,diff.start,diff.oldEnd,diff.newEnd,true);
+   if(scopes.next.text.length<=this.config.maxWindowChars){
+    const stale=await view.recheckGrammarCorrection(file,before,source,diff.start,diff.oldEnd,diff.newEnd,cached,{preferParagraph:true});
+    if(stale)this.schedule(file,{delay:1000});
+   }else await view.reviewFile(file,{automatic:true});
+  }else await view.reviewFile(file,{automatic:true});
   if(this.pendingPath){
    const next=this.plugin.app.vault.getAbstractFileByPath(this.pendingPath);
    if(next)this.schedule(next);

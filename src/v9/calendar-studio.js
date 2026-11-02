@@ -419,7 +419,15 @@ function writerV9CalendarSettings(plugin,panel){
   ['compactMonth','Mês compacto','Compact month']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(toggle=>toggle.setValue(cfg[key]).onChange(async value=>{
-   cfg[key]=value;await plugin.saveSettings();refresh();
+   cfg[key]=value;await plugin.saveSettings();
+   if(key==='showSidebar'||key==='showSidebarMobile'){
+    const mobile=writerV8HomeIsMobile(plugin);
+    if((mobile&&key==='showSidebarMobile')||(!mobile&&key==='showSidebar')){
+     for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V83_CAL_VIEW)||[])
+      if(leaf.view instanceof WriterV83CalendarView)leaf.view.writerV9SidebarOpen=value;
+    }
+   }
+   refresh();
   }));
  }
  new Setting(panel).setName(writerUi('Máximo de eventos por dia no mês','Maximum month events per day'))

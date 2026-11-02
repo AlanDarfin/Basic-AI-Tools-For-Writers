@@ -6,7 +6,7 @@ Versão: **9.0.0-beta.1**. Ainda não é um lançamento estável.
 
 | Pedido | Implementação |
 | --- | --- |
-| Barra inspirada no cMenu | 21 ações Markdown; botões opcionais e ordenáveis, modo compacto e comandos na paleta. Ativada no PC, **desativada no celular por padrão**. |
+| Barra inspirada no cMenu | 27 ações Markdown; botões opcionais e ordenáveis, modo compacto e comandos na paleta. Ativada no PC, **desativada no celular por padrão**. |
 | Smart Spaces locais (opcional) | Coleções salvas filtradas por pasta/tag/propriedade, exibidas em cartões, lista, tabela ou quadro. Desligadas inicialmente; não criam painel extra. |
 | Explorador inspirado no Make.md | Ícones Lucide, cores, menu contextual para arquivos/pastas, visualização de pastas com busca, cartões/listas e criação de índice Markdown. Nenhuma barra lateral nova. |
 | Homepage | Título centralizado, ícone transparente, mais Lucide ou imagem do cofre/HTTPS, ícone acima do título no celular ou ao lado no PC, relógio acima do calendário. |

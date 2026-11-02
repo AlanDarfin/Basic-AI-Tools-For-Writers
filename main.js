@@ -12563,10 +12563,23 @@ class DictionarySettings extends PluginSettingTab{
    ['customize',msg('Personalização','Customization'),['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','v7Worldbuilding']],
-   ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode']],
-   ['markdown',msg('Markdown','Markdown'),['extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
+   ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
    ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
   ];
+  const groupIcons={general:'settings-2',customize:'palette',ai:'brain-circuit',longform:'book-open',writing:'pen-line',review:'spell-check'};
+  const sectionIcons={
+   general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
+   homepage:'house',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',
+   dictionary:'book-a',translation:'languages',assistant:'message-circle',projects:'notebook-pen',
+   v7Worldbuilding:'globe',complements:'lightbulb',variants:'git-compare',
+   writingProfiles:'scan-text',integrationsV4:'wrench',keyshots:'keyboard',
+   extendedSyntax:'file-code',pandocSyntax:'file-text',v6Markdown:'code-xml',
+   smartInsert:'wand-sparkles',typing:'type',cursor:'mouse-pointer-2',snapshots:'history',
+   projectTasks:'list-check',bookNavigation:'book-open-check',abbreviations:'text-cursor-input',
+   anotherName:'tag',viewMode:'eye',templates:'files',unicode:'omega',toc:'list-tree',
+   tts:'volume-2',v6Reading:'clock',v6Linter:'spell-check',review:'check-check',
+   reviewAI:'scan-eye',providers:'key-round',models:'cpu',prompts:'scroll-text'
+  };
   const groupFor=id=>groups.find(([, ,ids])=>ids.includes(id))?.[0]||'general';
   this.lastSectionByGroup=this.lastSectionByGroup||{};
   const renderSubtabs=(group,id)=>{
@@ -12577,7 +12590,10 @@ class DictionarySettings extends PluginSettingTab{
     subnav.empty();
     subnav.dataset.group=group;
     for(const [key,label] of enabledSections.filter(([key])=>groupFor(key)===group)){
-     const b=subnav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':String(key===id)}});
+     const b=subnav.createEl('button',{attr:{type:'button',role:'tab','aria-selected':String(key===id)}});
+     const symbol=b.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+     require('obsidian').setIcon(symbol,sectionIcons[key]||'settings');
+     b.createSpan({text:label});
      b.dataset.tab=key;b.classList.toggle('is-active',key===id);
      b.addEventListener('click',()=>{if(this.activeSettingsTab!==key)showTab(key);});
     }
@@ -12776,7 +12792,10 @@ class DictionarySettings extends PluginSettingTab{
   };
   for(const [id,label] of groups){
    if(!enabledSections.some(([key])=>groupFor(key)===id))continue;
-   const b=nav.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-selected':'false'}});
+   const b=nav.createEl('button',{attr:{type:'button',role:'tab','aria-selected':'false'}});
+   const symbol=b.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+   require('obsidian').setIcon(symbol,groupIcons[id]||'settings');
+   b.createSpan({text:label});
    b.dataset.group=id;
    b.addEventListener('click',()=>{
     const remembered=this.lastSectionByGroup[id];

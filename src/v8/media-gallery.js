@@ -132,7 +132,10 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
 }
 function writerV8RegisterMediaGallery(plugin){
  if(typeof plugin.registerMarkdownCodeBlockProcessor==='function')
-  plugin.registerMarkdownCodeBlockProcessor('writer-media-gallery',(source,element,ctx)=>writerV8RenderMediaGallery(plugin,source,element,ctx));
+  plugin.registerMarkdownCodeBlockProcessor('writer-media-gallery',(source,element,ctx)=>{
+   if(!writerModuleOn(plugin,'mediaGallery')){element.createEl('pre',{text:source});return;}
+   writerV8RenderMediaGallery(plugin,source,element,ctx);
+  });
  plugin.addCommand?.({id:'v8-insert-media-gallery',name:writerUi('Galeria: inserir bloco de mídias','Gallery: insert media block'),
   editorCallback:editor=>editor.replaceSelection('\n```writer-media-gallery\ntype: all\nlayout: masonry\nsubfolders: true\n```\n')});
 }

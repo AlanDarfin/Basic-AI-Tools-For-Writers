@@ -9634,7 +9634,7 @@ function writerV8RegisterMediaGallery(plugin){
 
 // v3 module: src/v8/finish-blocks.js
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','search','recent','favorites','quick','stats']};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','recent','favorites','quick','stats','activity','random','tags','goal'],homeHidden:['activity','random','tags','goal'],homeWordGoal:500};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -9649,8 +9649,17 @@ function writerV8FinishMerge(settings){
  cfg.homeFavorites=Array.isArray(cfg.homeFavorites)?[...new Set(cfg.homeFavorites.filter(x=>typeof x==='string'&&x.length<=500))].slice(0,30):[];
  cfg.homeRecent=Array.isArray(cfg.homeRecent)?[...new Set(cfg.homeRecent.filter(x=>typeof x==='string'&&x.length<=500))].slice(0,16):[];
  cfg.homeQuick=Array.isArray(cfg.homeQuick)?Array.from({length:3},(_,i)=>String(cfg.homeQuick[i]||'').slice(0,12000)):['','',''];
- const allowed=WRITER_V8_FINISH_DEFAULTS.homeOrder.filter(key=>key!=='search');
- cfg.homeOrder=Array.isArray(cfg.homeOrder)?[...new Set(cfg.homeOrder.filter(x=>allowed.includes(x))),...allowed.filter(x=>!cfg.homeOrder.includes(x))]:[...allowed];
+ const allowed=WRITER_V8_FINISH_DEFAULTS.homeOrder;
+ const prevOrder=Array.isArray(old.homeOrder)?old.homeOrder.filter(key=>allowed.includes(key)):[];
+ const requested=prevOrder.length?prevOrder:[...allowed];
+ const index=requested.includes('calendar')?-1:requested.indexOf('continue');
+ if(index>=0)requested.splice(index+1,0,'calendar');
+ else if(!requested.includes('calendar'))requested.unshift('calendar');
+ cfg.homeOrder=[...new Set([...requested,...allowed])];
+ // New widgets are off by default for existing installs; user choices persist.
+ cfg.homeHidden=Array.isArray(old.homeHidden)?
+  [...new Set(old.homeHidden.filter(key=>allowed.includes(key)))]:[...WRITER_V8_FINISH_DEFAULTS.homeHidden];
+ cfg.homeWordGoal=Math.max(50,Math.min(20000,Math.round(Number(cfg.homeWordGoal)||500)));
  return cfg;
 }
 function writerV8ParseCaption(raw,src){
@@ -10534,7 +10543,19 @@ function writerV83StudySettings(plugin,panel){
 // v3 module: src/v8/writing-home.js
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['continue','recent','favorites','quick','stats'];
+const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal'];
+const WRITER_V8_HOME_CATALOG={
+ calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],
+ continue:['book-open','Continuar escrevendo','Continue writing','Retome seu projeto','Resume your project'],
+ recent:['history','Notas recentes','Recent notes','Últimas notas editadas','Recently edited notes'],
+ favorites:['star','Favoritos','Favorites','Notas fixadas por você','Your starred notes'],
+ quick:['notebook-pen','Rascunhos rápidos','Quick drafts','Três rascunhos locais','Three local draft pads'],
+ stats:['chart-no-axes-column','Resumo do cofre','Vault summary','Quantidade de notas e atividade','Note counts and activity'],
+ activity:['chart-column','Atividade semanal','Weekly activity','Notas modificadas nos últimos sete dias','Notes modified in the last seven days'],
+ random:['shuffle','Nota surpresa','Surprise note','Descubra uma nota aleatória do cofre','Discover a random vault note'],
+ tags:['tags','Tags frequentes','Popular tags','Tags mais usadas nas notas','Most-used note tags'],
+ goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note']
+};
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
  const q=String(query||'').trim().toLocaleLowerCase();
@@ -10578,6 +10599,7 @@ class WriterV8HomeView extends ItemView{
  render(){
   if(this.disposed)return;
   const scroll=this.contentEl.scrollTop||0;
+  this.writerV8ClockRefresh=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish;
   // Heading first, followed by a full-width search and evenly spaced actions.
@@ -10613,37 +10635,114 @@ class WriterV8HomeView extends ItemView{
   action('Revisão','Review','spell-check',()=>this.plugin.openReview());
   action('Calendário','Calendar','calendar-days',()=>void this.plugin.writerCalendarOpen?.());
   action('Estudos','Study','graduation-cap',()=>void this.plugin.writerStudyOpen?.());
-  // The calendar participates in the dashboard grid; search never shares its row.
+  const toolbar=this.contentEl.createDiv({cls:'writer-v903-widgets-toolbar'});
+  toolbar.createEl('strong',{text:writerUi('Meu painel','My dashboard')});
+  const add=toolbar.createEl('button',{cls:'writer-v903-widget-add',attr:{type:'button'}});
+  require('obsidian').setIcon?.(add.createSpan({cls:'writer-v903-button-icon'}),'plus');
+  add.createSpan({text:writerUi('Adicionar widgets','Add widgets')});
+  add.addEventListener('click',()=>this.manageWidgets());
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'});
-  const schedule=grid.createDiv({cls:'writer-v8-home-clock-card',attr:{role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
-  writerV8HomeRenderCalendar(this,schedule);
   const cards={
+   calendar:()=>this.renderCalendarWidget(grid),
    continue:()=>this.renderContinue(grid),
-    recent:()=>this.renderFiles(grid,'recent'),
+   recent:()=>this.renderFiles(grid,'recent'),
    favorites:()=>this.renderFiles(grid,'favorites'),
    quick:()=>this.renderQuick(grid),
-   stats:()=>this.renderStats(grid)
+   stats:()=>this.renderStats(grid),
+   activity:()=>this.renderActivity(grid),
+   random:()=>this.renderRandom(grid),
+   tags:()=>this.renderTags(grid),
+   goal:()=>this.renderGoal(grid)
   };
-  for(const key of cfg.homeOrder){if(WRITER_V8_HOME_SECTIONS.includes(key))cards[key]?.();}
+  for(const key of cfg.homeOrder){
+   if(WRITER_V8_HOME_SECTIONS.includes(key)&&!cfg.homeHidden.includes(key))cards[key]?.();
+  }
+  if(!grid.children.length){
+   const empty=grid.createDiv({cls:'writer-v903-widgets-empty'});
+   empty.createEl('p',{text:writerUi('Sua homepage está vazia. Adicione widgets para começar.','Your dashboard is empty. Add some widgets to get started.')});
+   const restore=empty.createEl('button',{text:writerUi('Adicionar widgets','Add widgets')});
+   restore.addEventListener('click',()=>this.manageWidgets());
+  }
   this.contentEl.scrollTop=scroll;
  }
- card(parent,key,pt,en){
-  const section=parent.createDiv({cls:'writer-v8-home-card',attr:{'data-section':key,role:'region','aria-label':writerUi(pt,en)}});
-  const top=section.createDiv({cls:'writer-v8-home-card-header'});
-  top.createEl('h3',{text:writerUi(pt,en)});
-  const order=this.plugin.settings.v8Finish.homeOrder,idx=order.indexOf(key);
-  const controls=top.createDiv({cls:'writer-v8-home-card-order'});
-  if(key!=='search')
-  for(const [direction,symbol,ptText,enText] of [[-1,'↑','Mover para cima','Move up'],[1,'↓','Mover para baixo','Move down']]){
-   const btn=controls.createEl('button',{text:symbol,attr:{type:'button',title:writerUi(ptText,enText),'aria-label':writerUi(ptText,enText)}});
-   btn.disabled=idx+direction<0||idx+direction>=order.length;
-   btn.addEventListener('click',()=>{
-    const other=idx+direction;
-    [order[idx],order[other]]=[order[other],order[idx]];
-    this.saveSoon();this.render();
-   });
+ setWidgetVisible(key,visible){
+  const cfg=this.plugin.settings.v8Finish;
+  if(!WRITER_V8_HOME_SECTIONS.includes(key))return;
+  cfg.homeHidden=cfg.homeHidden.filter(id=>id!==key);
+  if(!visible)cfg.homeHidden.push(key);
+  this.saveSoon();this.render();
+ }
+ moveWidget(key,direction){
+  const cfg=this.plugin.settings.v8Finish,order=cfg.homeOrder;
+  const visible=order.filter(id=>WRITER_V8_HOME_SECTIONS.includes(id)&&!cfg.homeHidden.includes(id));
+  const index=visible.indexOf(key),other=visible[index+direction];
+  if(index<0||!other)return;
+  const a=order.indexOf(key),b=order.indexOf(other);
+  [order[a],order[b]]=[order[b],order[a]];
+  this.saveSoon();this.render();
+ }
+ widgetControls(parent,key){
+  const actions=parent.createDiv({cls:'writer-v8-home-card-order writer-v903-widget-controls'});
+  const visible=this.plugin.settings.v8Finish.homeOrder.filter(id=>!this.plugin.settings.v8Finish.homeHidden.includes(id));
+  for(const [direction,icon,pt,en] of [[-1,'arrow-up','Mover para cima','Move earlier'],[1,'arrow-down','Mover para baixo','Move later']]){
+   const button=actions.createEl('button',{attr:{type:'button',title:writerUi(pt,en),'aria-label':writerUi(pt,en)}});
+   button.disabled=visible.indexOf(key)+direction<0||visible.indexOf(key)+direction>=visible.length;
+   require('obsidian').setIcon?.(button,icon);
+   button.addEventListener('click',()=>this.moveWidget(key,direction));
   }
+  const remove=actions.createEl('button',{cls:'writer-v903-widget-remove',attr:{type:'button',title:writerUi('Remover widget','Remove widget'),'aria-label':writerUi('Remover widget: ','Remove widget: ')+writerUi(WRITER_V8_HOME_CATALOG[key][1],WRITER_V8_HOME_CATALOG[key][2])}});
+  require('obsidian').setIcon?.(remove,'x');
+  remove.addEventListener('click',()=>this.setWidgetVisible(key,false));
+  return actions;
+ }
+ manageWidgets(){
+  const view=this,plugin=this.plugin,ModalClass=require('obsidian').Modal;
+  const modal=new ModalClass(this.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Widgets da homepage','Homepage widgets'));
+   const root=modal.contentEl;
+   root.empty();root.addClass('writer-v903-widget-gallery');
+   root.createEl('p',{cls:'setting-item-description',text:writerUi('Ative ou oculte painéis. Os que estiverem ativos podem ser reorganizados pelos botões de seta.','Show or hide panels. Reorder visible widgets with their arrow controls.')});
+   for(const key of WRITER_V8_HOME_SECTIONS){
+    const meta=WRITER_V8_HOME_CATALOG[key],item=root.createDiv({cls:'writer-v903-gallery-item'});
+    const glyph=item.createSpan({cls:'writer-v903-gallery-icon'});
+    require('obsidian').setIcon?.(glyph,meta[0]);
+    const summary=item.createDiv({cls:'writer-v903-gallery-description'});
+    summary.createEl('strong',{text:writerUi(meta[1],meta[2])});
+    summary.createEl('small',{text:writerUi(meta[3],meta[4])});
+    const hidden=plugin.settings.v8Finish.homeHidden.includes(key);
+    const button=item.createEl('button',{cls:'writer-v903-gallery-toggle',text:hidden?writerUi('Adicionar','Add'):writerUi('Remover','Remove'),attr:{type:'button','aria-pressed':String(!hidden)}});
+    button.addEventListener('click',()=>{
+     const visible=plugin.settings.v8Finish.homeHidden.includes(key);
+     view.setWidgetVisible(key,visible);
+     button.setText(visible?writerUi('Remover','Remove'):writerUi('Adicionar','Add'));
+     button.setAttribute('aria-pressed',String(visible));
+    });
+   }
+  };
+  modal.open();
+ }
+ card(parent,key,pt,en){
+  const section=parent.createDiv({cls:'writer-v8-home-card writer-v903-widget',attr:{'data-section':key,role:'region','aria-label':writerUi(pt,en)}});
+  const top=section.createDiv({cls:'writer-v8-home-card-header'});
+  if(key==='search'){top.createEl('h3',{text:writerUi(pt,en)});return section;}
+  const heading=top.createDiv({cls:'writer-v903-widget-heading'});
+  const symbol=heading.createSpan({cls:'writer-v903-widget-icon'});
+  require('obsidian').setIcon?.(symbol,WRITER_V8_HOME_CATALOG[key]?.[0]||'layout-dashboard');
+  heading.createEl('h3',{text:writerUi(pt,en)});
+  this.widgetControls(top,key);
   return section;
+ }
+ renderCalendarWidget(parent){
+  const shell=parent.createDiv({cls:'writer-v903-calendar-widget',attr:{'data-section':'calendar',role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
+  const hover=shell.createDiv({cls:'writer-v903-calendar-controls'});
+  const heading=hover.createDiv({cls:'writer-v903-widget-heading'});
+  const icon=heading.createSpan({cls:'writer-v903-widget-icon'});
+  require('obsidian').setIcon?.(icon,'calendar-days');
+  heading.createEl('h3',{text:writerUi('Relógio e calendário','Clock and calendar')});
+  this.widgetControls(hover,'calendar');
+  const schedule=shell.createDiv({cls:'writer-v8-home-clock-card'});
+  writerV8HomeRenderCalendar(this,schedule);
  }
  renderContinue(parent){
   const box=this.card(parent,'continue','Continuar escrevendo','Continue writing');
@@ -10800,6 +10899,90 @@ class WriterV8HomeView extends ItemView{
    item.createEl('span',{text:writerUi(pt,en)});
   }
  }
+
+ renderActivity(parent){
+  const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
+  const files=this.app.vault.getMarkdownFiles?.()||[];
+  const now=new Date(),labels=[],counts=[];
+  for(let i=6;i>=0;i--){
+   const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+   const begin=d.getTime(),end=begin+86400000;
+   labels.push(new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'}).format(d));
+   counts.push(files.filter(f=>(f.stat?.mtime||0)>=begin&&(f.stat?.mtime||0)<end).length);
+  }
+  const high=Math.max(1,...counts),chart=box.createDiv({cls:'writer-v903-activity'});
+  for(let i=0;i<7;i++){
+   const column=chart.createDiv({cls:'writer-v903-activity-day',attr:{title:labels[i]+': '+counts[i]}});
+   const bar=column.createDiv({cls:'writer-v903-activity-track'});
+   bar.createDiv({cls:'writer-v903-activity-fill'}).style.height=(counts[i]/high*100)+'%';
+   column.createEl('strong',{text:String(counts[i])});
+   column.createSpan({text:labels[i]});
+  }
+  box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Notas modificadas a cada dia.','Notes modified each day.')});
+ }
+ renderRandom(parent){
+  const box=this.card(parent,'random','Nota surpresa','Surprise note');
+  const files=this.app.vault.getMarkdownFiles?.()||[];
+  if(!files.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No notes found.')});return;}
+  let file=files[Math.floor(Math.random()*files.length)];
+  const label=box.createDiv({cls:'writer-v903-random-note'});
+  const name=label.createEl('strong',{text:file.basename});
+  const path=label.createSpan({cls:'writer-v8-home-muted',text:file.path});
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const open=actions.createEl('button',{text:writerUi('Abrir nota','Open note')});
+  open.addEventListener('click',()=>this.openFile(file));
+  const next=actions.createEl('button',{text:writerUi('Outra nota','Another note')});
+  next.addEventListener('click',()=>{
+   if(files.length>1){
+    let chosen=file;for(let attempt=0;attempt<5&&chosen.path===file.path;attempt++)chosen=files[Math.floor(Math.random()*files.length)];
+    if(chosen.path===file.path)chosen=files[(files.indexOf(file)+1)%files.length];
+    file=chosen;
+   }
+   name.setText(file.basename);path.setText(file.path);
+  });
+ }
+ renderTags(parent){
+  const box=this.card(parent,'tags','Tags frequentes','Popular tags');
+  const cache=this.app.metadataCache,counts=new Map(),files=this.app.vault.getMarkdownFiles?.()||[];
+  const obsidian=require('obsidian');
+  for(const file of files.slice(0,3000)){
+   const meta=cache?.getFileCache?.(file);
+   const tags=meta&&typeof obsidian.getAllTags==='function'?obsidian.getAllTags(meta)||[]:
+    (meta?.tags||[]).map(item=>item.tag).concat(meta?.frontmatter?.tags||[]);
+   for(const item of new Set(tags.map(tag=>String(tag||'').trim().replace(/^#/,'').toLowerCase()).filter(Boolean))){
+    counts.set(item,(counts.get(item)||0)+1);
+   }
+  }
+  const list=[...counts].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(!list.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Adicione tags às notas para ver as mais usadas.','Add tags to notes to see your top topics.')});return;}
+  const chips=box.createDiv({cls:'writer-v903-tags'});
+  for(const [tag,count] of list){
+   const item=chips.createDiv({cls:'writer-v903-tag'});
+   item.createSpan({text:'#'+tag});item.createEl('small',{text:String(count)});
+  }
+ }
+ renderGoal(parent){
+  const box=this.card(parent,'goal','Meta de palavras','Word target');
+  const cfg=this.plugin.settings.v8Finish;
+  const path=cfg.homeRecent?.[0];
+  const file=path?this.app.vault.getAbstractFileByPath(path):null;
+  const summary=box.createDiv({cls:'writer-v903-goal-summary'});
+  const count=summary.createEl('strong',{text:'—'});
+  const target=summary.createSpan({text:'/ '+cfg.homeWordGoal+' '+writerUi('palavras','words')});
+  const track=box.createDiv({cls:'writer-v903-goal-track',attr:{role:'progressbar','aria-label':writerUi('Progresso da meta','Target progress'),'aria-valuemin':'0','aria-valuemax':String(cfg.homeWordGoal),'aria-valuenow':'0'}});
+  const fill=track.createDiv({cls:'writer-v903-goal-fill'});
+  const foot=box.createEl('p',{cls:'writer-v8-home-muted',text:file?.path||writerUi('Abra uma nota Markdown para acompanhar.','Open a Markdown note to begin tracking.')});
+  if(!(file instanceof TFile)||file.extension!=='md')return;
+  Promise.resolve(this.app.vault.cachedRead(file)).then(content=>{
+   if(this.disposed||!box.isConnected)return;
+   const words=(String(content||'').match(/[^\s]+/g)||[]).length;
+   count.setText(String(words));target.setText('/ '+cfg.homeWordGoal+' '+writerUi('palavras','words'));
+   fill.style.width=Math.min(100,words/cfg.homeWordGoal*100)+'%';
+   track.setAttribute('aria-valuenow',String(Math.min(words,cfg.homeWordGoal)));
+   foot.setText(file.path);
+  }).catch(()=>{foot.setText(writerUi('Não foi possível ler a nota.','Could not read note.'));});
+ }
+
 }
 function cfgStar(list,path){return list.includes(path);}
 function writerV8HomeToggleFavorite(plugin,path){
@@ -10934,6 +11117,19 @@ function writerV8FinishSettings(plugin,panel){
    cfg.homeOnNewTab=value;await plugin.saveSettings();
   }));
  writerV83StudySettings(plugin,panel);
+ new Setting(panel).setName(writerUi('Personalizar widgets da homepage','Customize homepage widgets'))
+  .setDesc(writerUi('Adicione, remova e reorganize cartões sem apagar suas notas.','Add, remove and reorder cards without deleting notes.'))
+  .addButton(button=>button.setButtonText(writerUi('Gerenciar widgets','Manage widgets')).onClick(async()=>{
+   await plugin.writerV8HomeOpen?.();
+   plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view?.manageWidgets?.();
+  }));
+ new Setting(panel).setName(writerUi('Meta de palavras do widget','Widget word target'))
+  .setDesc(writerUi('Progresso calculado sobre a última nota Markdown aberta.','Progress measured against the latest opened Markdown note.'))
+  .addText(input=>input.setValue(String(cfg.homeWordGoal)).onChange(async value=>{
+   const number=Math.round(Number(value));
+   if(!Number.isFinite(number)||number<50)return;
+   cfg.homeWordGoal=Math.min(20000,number);await plugin.saveSettings();refreshHome();
+  }));
  new Setting(panel).setName(writerUi('Abrir calendário completo','Open full calendar'))
   .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir homepage agora','Open homepage now'))

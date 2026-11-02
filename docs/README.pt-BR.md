@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 8.0.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 8.0.4 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md)
 
@@ -12,9 +12,10 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 | --- | --- |
 | **Longform** | Livros, capítulos, subcapítulos e cenas; reordenação, quadros em cartões/lista/Kanban, compilação e séries de livros. |
 | **Planejamento** | Tramas, marcos narrativos, ritmo, conexões entre cenas, metas, sessões de escrita, tarefas e comentários. |
-| **Compêndio** | Fichas de personagens, locais, itens e categorias próprias, com notas Markdown, tags, herança de pastas, relações, imagens locais, mapas e galeria. |
+| **Compêndio** | Fichas de personagens, locais, itens e categorias próprias, com notas Markdown, tags, herança de pastas, relações, imagens locais, mapas e galeria, notas de pasta ocultas no Explorador e Overview dinâmico. |
 | **Linha do tempo** | Eventos, marcos, trilhas, ramificações e calendário fictício configurável. |
 | **IA opcional** | Chat com contexto da seleção ou nota, definições, sinônimos, antônimos, tradução, prompts editáveis e escolha de modelos/provedores. |
+| **IA inline** | Continuações de texto no cursor, inspiradas no Inscribe, com acionamento manual, sugestão fantasma, Tab para aceitar, prompt editável e perfis por pasta. Desativada por padrão; requisições automáticas são opcionais. |
 | **Revisão** | LanguageTool com verificações por parágrafo, menus de sugestões, dicionário pessoal, integração opcional com o LanguageTool externo e revisão por IA. |
 | **Ferramentas** | Autocompletar baseado no cofre, variantes, comparação antes da substituição, histórico local de notas, Unicode e abreviações. A indexação é administrada nas configurações. |
 | **Editor** | Navegação inspirada no Keyshots, Easy Typing, Smart Typography, foco de máquina de escrever, lembrança do cursor e modelos por nome de nota. |
@@ -94,6 +95,27 @@ Relacionada a [[Maria]].
 ~~~~
 
 São recursos de **apresentação**, não uma Wiki separada. Links, tags, propriedades e notas do cofre continuam funcionando normalmente.
+
+### Folder Notes e Overview dinâmico
+
+As notas de pasta aparecem por meio do botão de **livro aberto**, no extremo direito da linha da pasta no Explorador nativo. O arquivo da nota correspondente fica oculto apenas na árvore do Explorador (não é apagado). A seta continua expandindo o conteúdo da pasta. Configure em **Compêndio / Folder Notes**.
+
+Para mostrar as notas e subpastas como cartões ou lista, insira o bloco `writer-folder-overview` em qualquer nota, ou use o comando **Pasta: inserir Overview**:
+
+~~~~markdown
+~~~writer-folder-overview
+style: cards
+subfolders: true
+depth: 2
+limit: 48
+~~~
+~~~~
+
+Aceita `style: cards|list`, `folder: pasta/desejada`, `subfolders: true|false`, `depth: 0..3`, `noteOnly: true|false` e `briefMax: 32..220`. A sintaxe legada `ccard` não é substituída.
+
+### Completar texto com IA
+
+Ative em **Configurações → Extended Syntax → IA inline**. Execute **IA inline: sugerir continuação** para obter um texto discreto no cursor. Pressione **Tab** para inseri-lo ou **Esc** para descartá-lo. A geração automática é opcional e envia pequenos trechos ao provedor configurado quando ativada. É possível editar o prompt, o intervalo e regras como `Livros/|creative`, `Estudos/|formal` e `Privado/|off`. Utiliza o provedor/modelo do assistente e não copia o código do Inscribe.
 
 ### Outras opções de escrita
 

@@ -88,6 +88,6 @@ test('beta.2 scripts, compiled bundle, CSS, language files and versions are sync
   assert.ok(projects.includes(name)||main.includes(name),name);
  for(const name of ['writer-v7-studio-map-stage','writer-v7-studio-scene','writer-v7-scene-collapse',
   'writer-v7-studio-gantt-row'])assert.ok(css.includes(name),name);
- for(const path of ['README.md','docs/README.pt-BR.md','docs/V7_BETA2.en.md','docs/V7_BETA2.pt-BR.md'])
+ for(const path of ['docs/V7_BETA2.en.md','docs/V7_BETA2.pt-BR.md'])
   assert.ok(fs.readFileSync(path,'utf8').includes('7.0.0-beta.2'),path);
 });

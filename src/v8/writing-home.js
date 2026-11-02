@@ -47,8 +47,13 @@ class WriterV8HomeView extends ItemView{
   const scroll=this.contentEl.scrollTop||0;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish;
+  // The vault search is a full-width first-class section, before the hero and calendar.
+  const top=this.contentEl.createDiv({cls:'writer-v8-home-search-region'});
+  this.renderSearch(top);
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
+  heading.style.setProperty('--writer-v8-home-title-color',writerV9SafeHex(cfg.homeTitleColor)||'var(--interactive-accent)');
+  heading.style.setProperty('--writer-v8-home-icon-color',writerV9SafeHex(cfg.homeIconColor)||'var(--interactive-accent)');
   const icon=heading.createSpan({cls:'writer-v8-home-title-icon'});
   const setIcon=require('obsidian').setIcon;
   const image=writerV8HomeImageURL(this.plugin,cfg.homeIconImage);
@@ -74,12 +79,10 @@ class WriterV8HomeView extends ItemView{
   action('Revisão','Review','spell-check',()=>this.plugin.openReview());
   action('Calendário','Calendar','calendar-days',()=>void this.plugin.writerCalendarOpen?.());
   action('Estudos','Study','graduation-cap',()=>void this.plugin.writerStudyOpen?.());
-  // Search stays next to the clock regardless of card ordering.
-  const top=this.contentEl.createDiv({cls:'writer-v8-home-top'});
-  this.renderSearch(top);
-  const schedule=top.createDiv({cls:'writer-v8-home-clock-card',attr:{role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
-  writerV8HomeRenderCalendar(this,schedule);
+  // The calendar participates in the dashboard grid; search never shares its row.
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'});
+  const schedule=grid.createDiv({cls:'writer-v8-home-clock-card',attr:{role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
+  writerV8HomeRenderCalendar(this,schedule);
   const cards={
    continue:()=>this.renderContinue(grid),
     recent:()=>this.renderFiles(grid,'recent'),
@@ -119,24 +122,58 @@ class WriterV8HomeView extends ItemView{
  }
  renderSearch(parent){
   const box=this.card(parent,'search','Buscar no cofre','Search vault');
-  const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Buscar notas e títulos…','Find notes and headings…'),'aria-label':writerUi('Buscar notas','Search notes')}});
-  const results=box.createDiv({cls:'writer-v8-home-file-list',attr:{'aria-live':'polite'}});
+  box.addClass('writer-v901-home-search-card');
+  const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
+  const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
+  const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
   const files=this.app.vault.getMarkdownFiles?.()||[];
-  const draw=()=>{
-   results.empty();
-   const q=input.value.trim();
-   if(!q)return;
-   const matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
-   if(!matches.length)results.createEl('p',{text:writerUi('Nenhuma nota encontrada.','No matching notes.')});
-   for(const file of matches){
-    const row=results.createDiv({cls:'writer-v8-home-file-row'});
-    row.createEl('button',{text:file.basename,cls:'writer-v8-home-file-link'}).addEventListener('click',()=>this.openFile(file));
-    row.createEl('button',{text:cfgStar(this.plugin.settings.v8Finish.homeFavorites,file.path)?'★':'☆',
-     cls:'writer-v8-home-star',attr:{title:writerUi('Alternar favorito','Toggle favorite'),'aria-label':writerUi('Alternar favorito','Toggle favorite')}})
-     .addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();draw();});
+  let matches=[],selected=0;
+  const select=(index,scroll=false)=>{
+   if(!matches.length)return;
+   selected=(index+matches.length)%matches.length;
+   for(const [i,row] of [...results.children].entries()){
+    row.classList.toggle('is-selected',i===selected);
+    row.setAttribute('aria-current',String(i===selected));
    }
+   const target=results.children[selected];
+   if(scroll)target?.scrollIntoView?.({block:'nearest'});
+   const file=matches[selected];
+   status.setText(writerUi('Selecionada ','Selected ')+(selected+1)+' / '+matches.length+' · '+file.path+' · '+writerUi('Enter para abrir','Enter to open'));
+  };
+  const draw=(preserve=false)=>{
+   const previous=preserve?matches[selected]?.path:'';
+   results.empty();results.hidden=true;status.hidden=true;
+   const q=input.value.trim();
+   if(!q){matches=[];selected=0;return;}
+   matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
+   if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
+   else selected=0;
+   results.hidden=false;status.hidden=false;
+   if(!matches.length){
+    results.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No matching notes.')});
+    status.setText(writerUi('Tente outro termo.','Try another search term.'));
+    return;
+   }
+   for(const [index,file] of matches.entries()){
+    const row=results.createDiv({cls:'writer-v8-home-file-row writer-v901-home-result',attr:{role:'listitem',title:file.path}});
+    const open=row.createEl('button',{cls:'writer-v8-home-file-link writer-v901-home-result-open',attr:{type:'button',title:file.path,'aria-label':writerUi('Abrir nota: ','Open note: ')+file.path}});
+    const glyph=open.createSpan({cls:'writer-v901-home-result-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(glyph,'file-text');
+    const meta=open.createSpan({cls:'writer-v901-home-result-text'});
+    meta.createSpan({cls:'writer-v901-home-result-title',text:file.basename||file.name||writerUi('Sem título','Untitled')});
+    meta.createSpan({cls:'writer-v901-home-result-path',text:file.path});
+    const openHint=open.createSpan({cls:'writer-v901-home-result-arrow',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(openHint,'arrow-up-right');
+    open.addEventListener('click',()=>this.openFile(file));
+    row.addEventListener('pointerenter',()=>select(index,false));
+    const favorite=cfgStar(this.plugin.settings.v8Finish.homeFavorites,file.path);
+    row.createEl('button',{text:favorite?'★':'☆',cls:'writer-v8-home-star writer-v901-home-result-star',attr:{type:'button',title:writerUi(favorite?'Remover dos favoritos':'Adicionar aos favoritos',favorite?'Remove from favorites':'Add to favorites'),'aria-label':writerUi('Favoritar nota: ','Toggle favorite for: ')+file.path,'aria-pressed':String(favorite)}})
+     .addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();draw(true);});
+   }
+   select(selected,false);
   };
   const web=box.createDiv({cls:'writer-v8-home-web-links'});
+  web.hidden=true;
   const link=web.createEl('button',{text:writerUi('Abrir endereço web','Open web address'),attr:{type:'button'}});
   link.hidden=true;
   const open=async()=>{
@@ -147,17 +184,27 @@ class WriterV8HomeView extends ItemView{
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
-   if(event.key==='Enter'&&writerV8HomeValidURL(input.value)){event.preventDefault();void open();}
+   if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
+   if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
+   if(event.key==='Enter'){
+    const url=writerV8HomeValidURL(input.value);
+    if(url){event.preventDefault();void open();return;}
+    if(matches.length){event.preventDefault();this.openFile(matches[selected]);return;}
+   }
+   if(event.key==='Escape'&&input.value){
+    event.preventDefault();input.value='';link.hidden=true;web.hidden=true;draw();
+   }
   });
   input.addEventListener('input',()=>{
    const url=writerV8HomeValidURL(input.value);
-   link.hidden=!url;
+   link.hidden=!url;web.hidden=!url;
    if(url)link.setText(writerUi('Abrir site no navegador','Open website'));
    draw();
   });
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
   box.addEventListener('keydown',focus);
+  draw();
  }
  renderFiles(parent,kind){
   const box=this.card(parent,kind,kind==='recent'?'Notas recentes':'Favoritos',kind==='recent'?'Recent notes':'Favorites');
@@ -337,6 +384,12 @@ function writerV8FinishSettings(plugin,panel){
    drop.setValue(writerV8HomeIconName(cfg.homeIcon));
    drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
   });
+ writerV9ColorSetting(panel,'Cor do título da homepage','Homepage title color',cfg.homeTitleColor,value=>{
+  cfg.homeTitleColor=value;void plugin.saveSettings().then(refreshHome);
+ });
+ writerV9ColorSetting(panel,'Cor do ícone da homepage','Homepage icon color',cfg.homeIconColor,value=>{
+  cfg.homeIconColor=value;void plugin.saveSettings().then(refreshHome);
+ });
  new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
   .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
   .addText(input=>input.setPlaceholder('Assets/icon.png ou https://…').setValue(cfg.homeIconImage||'')

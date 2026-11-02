@@ -34,6 +34,7 @@ class WriterToolsView extends ItemView{
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
+  const tabLucide={complements:'lightbulb',variants:'git-compare',reviewV4:'scan-text',snapshots:'history',extras:'wrench'};
   const sections=[
    ['complements',writerUi("Sugestões","Suggestions"),'complements'],
    ['variants',writerUi("Variantes","Variants"),'variants'],
@@ -47,6 +48,9 @@ class WriterToolsView extends ItemView{
   const buttons={};
   for(const [id,label] of sections){
    const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
+   const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+   require('obsidian').setIcon?.(glyph,tabLucide[id]||'wrench');
+   btn.prepend?.(glyph);
    buttons[id]=btn;
    btn.addEventListener('click',()=>{
     if(this.tab===id)return;

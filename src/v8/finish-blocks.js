@@ -1,6 +1,6 @@
 'use strict';
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','search','recent','favorites','quick','stats']};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','search','recent','favorites','quick','stats']};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -8,6 +8,8 @@ function writerV8FinishMerge(settings){
  cfg.homeOnNewTab=cfg.homeOnNewTab!==false;
  cfg.homeTitle=String(cfg.homeTitle||'').replace(/[\r\n]/g,' ').slice(0,80);
  cfg.homeIconImage=String(cfg.homeIconImage||'').trim().slice(0,600);
+ cfg.homeTitleColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeTitleColor||''))?String(cfg.homeTitleColor).toLowerCase():'';
+ cfg.homeIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeIconColor||''))?String(cfg.homeIconColor).toLowerCase():'';
  cfg.homeIcon=typeof writerV8HomeIconName==='function'?writerV8HomeIconName(cfg.homeIcon):'book-open';
  cfg.captionMax=Math.max(32,Math.min(240,Math.floor(Number(cfg.captionMax)||180)));
  cfg.homeFavorites=Array.isArray(cfg.homeFavorites)?[...new Set(cfg.homeFavorites.filter(x=>typeof x==='string'&&x.length<=500))].slice(0,30):[];
@@ -141,26 +143,26 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  const side=entry[1]==='<'?'left':'right';
  const fields=writerV8ChatSplitFields(entry[2]);
  if(fields.length<2)return null;
- let avatar='',name='',body='',time='';
+ let avatar='',name='',body='',time='',explicitName=false;
  if(fields.length>=4){
-  [avatar,name]=fields;
+  [avatar,name]=fields;explicitName=Boolean(name);
   time=fields[fields.length-1];
   body=fields.slice(2,-1).join(' | ');
  }else if(fields.length===3&&fields[0]===''){
   name=meta.defaults[side]||lastSpeaker[side]||'';
   body=fields[1];time=fields[2];
  }else if(fields.length===3){
-  [name,body,time]=fields;
+  [name,body,time]=fields;explicitName=Boolean(name);
  }else if(fields[0]===''){
   name=meta.defaults[side]||lastSpeaker[side]||'';
   body=fields[1];
  }else{
-  [name,body]=fields;
+  [name,body]=fields;explicitName=Boolean(name);
  }
  name=(name||meta.defaults[side]||lastSpeaker[side]||'').slice(0,90);
  if(!body&&!avatar&&!name)return null;
  const profile=meta.profiles.get(writerV8ChatNameKey(name))||{};
- return {name,side,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
+ return {name,side,explicitName,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
   color:profile.color||'',body:String(body||'').slice(0,8000)};
 }
 function writerV8ChatParseLegacy(source,meta){
@@ -176,7 +178,7 @@ function writerV8ChatParseLegacy(source,meta){
   const side=fields.mine==='true'?'right':fields.side==='right'?'right':fields.side==='center'?'center':'left';
   const actualName=fields.name||name;
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
-  messages.push({name:actualName,side,time:fields.time||'',
+  messages.push({name:actualName,side,explicitName:true,time:fields.time||'',
     avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',
     body:textPart.slice(0,8000)});
  }
@@ -213,21 +215,26 @@ function writerV8ChatRender(plugin,source,element,ctx){
  if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title)root.createEl('h3',{text:data.title,cls:'writer-v8-chat-title'});
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
+ let previous=null;
  for(const msg of data.messages){
-  const row=transcript.createDiv({cls:'writer-v8-chat-row is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
-  if(msg.avatar){
+  const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
+  const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
+  if(msg.avatar&&!continuation){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
    if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});
   }
   const group=row.createDiv({cls:'writer-v8-chat-group'});
-  const headline=group.createDiv({cls:'writer-v8-chat-meta'});
-  headline.createEl('strong',{text:msg.name.slice(0,90)});
-  if(msg.time)headline.createEl('span',{text:msg.time});
+  if((msg.explicitName&&!continuation&&msg.name)||msg.time){
+   const headline=group.createDiv({cls:'writer-v8-chat-meta'});
+   if(msg.explicitName&&!continuation&&msg.name)headline.createEl('strong',{text:msg.name.slice(0,90)});
+   if(msg.time)headline.createEl('span',{text:msg.time});
+  }
   const bubble=group.createDiv({cls:'writer-v8-chat-bubble'});
   if(msg.body)void writerV8Markdown(plugin,ctx,bubble,msg.body).catch(error=>{
    console.warn('[Basic AI] chat Markdown:',error);
    bubble.empty();bubble.setText(msg.body);
   });
+  previous=msg;
  }
 }
 function writerV8RegisterFinishBlocks(plugin){

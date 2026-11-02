@@ -4,6 +4,7 @@
 const WRITER_V9_SPACE_VIEWS=['cards','list','table','board'];
 const WRITER_V9_SPACE_SORTS=['name','recent','oldest'];
 const WRITER_V9_SPACE_MAX=200;
+const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
  const cfg=settings.v9Spaces={enabled:false,spaces:[],...raw};
@@ -25,7 +26,9 @@ function writerV9SpaceSanitize(raw){
  const groupBy=String(raw.groupBy||'status').trim().replace(/[^a-zA-Z0-9_-]/g,'').slice(0,80)||'status';
  const view=WRITER_V9_SPACE_VIEWS.includes(raw.view)?raw.view:'cards';
  const sort=WRITER_V9_SPACE_SORTS.includes(raw.sort)?raw.sort:'recent';
- return {id,name,folder,tag,property,value,groupBy,view,sort};
+ const mode=['filter','curated','folder'].includes(raw.mode)?raw.mode:'filter';
+ const includePaths=Array.isArray(raw.includePaths)?[...new Set(raw.includePaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,150):[];
+ return {id,name,folder,tag,property,value,groupBy,view,sort,mode,includePaths};
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -38,7 +41,9 @@ function writerV9SpaceItems(plugin,space){
  const files=plugin.app.vault.getMarkdownFiles?.()||[];
  const cache=plugin.app.metadataCache;
  return files.filter(file=>{
+  if(space.mode==='curated'&&!(space.includePaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.folder&&!(file.path===space.folder||file.path.startsWith(space.folder+'/')))return false;
+  if(space.mode==='folder')return Boolean(space.folder);
   const data=cache.getFileCache?.(file)||{};
   if(space.tag&&!writerV9SpaceTags(file,data).some(tag=>tag===space.tag.toLocaleLowerCase()||tag.startsWith(space.tag.toLocaleLowerCase()+'/')))return false;
   if(space.property){
@@ -57,13 +62,22 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',...(initial||{})};
+  const draft={name:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
     .setValue(draft[key]||'').onChange(value=>{draft[key]=value;}));
   };
-  field('name','Nome','Name');field('folder','Pasta (opcional)','Folder (optional)');
+  field('name','Nome','Name');
+  new Setting(root).setName(writerUi('Tipo de Space','Space type')).addDropdown(d=>{
+   for(const [id,pt,en] of [['filter','Filtros dinâmicos','Dynamic filters'],['curated','Notas escolhidas','Curated notes'],['folder','Pasta fixada','Pinned folder']])d.addOption(id,writerUi(pt,en));
+   d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
+  });
+  field('folder','Pasta (opcional)','Folder (optional)');
+  new Setting(root).setName(writerUi('Notas/pastas incluídas','Included notes/folders'))
+   .setDesc(writerUi('Uma rota por linha para Spaces de seleção manual.','One vault path per line for curated Spaces.'))
+   .addTextArea(t=>t.setValue((draft.includePaths||[]).join('\n')).onChange(value=>{draft.includePaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);}));
+
   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
@@ -82,6 +96,7 @@ function writerV9SpaceEditor(plugin,initial,save){
   new Setting(root).addButton(b=>b.setButtonText(writerUi('Salvar','Save')).setCta().onClick(async()=>{
    const item=writerV9SpaceSanitize({...draft,id:initial?.id||'space-'+Date.now().toString(36)});
    if(!item){status.setText(writerUi('Informe um nome válido.','Enter a valid name.'));return;}
+   if(item.mode==='folder'&&!item.folder){status.setText(writerUi('Selecione uma pasta.','Select a folder.'));return;}
    try{await save(item);modal.close();}catch(e){status.setText(String(e.message||e));}
   })).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
  };
@@ -103,7 +118,7 @@ function writerV9SpaceModal(plugin){
   select.value=currentId;select.addEventListener('change',()=>{currentId=select.value;filter='';refresh();});
   nav.createEl('button',{text:writerUi('Nova','New')}).addEventListener('click',()=>{
    writerV9SpaceEditor(plugin,null,async space=>{
-    plugin.settings.v9Spaces.spaces.push(space);currentId=space.id;await plugin.saveSettings();refresh();
+    plugin.settings.v9Spaces.spaces.push(space);currentId=space.id;await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();refresh();
    });
   });
   const space=plugin.settings.v9Spaces.spaces.find(s=>s.id===currentId);
@@ -112,7 +127,7 @@ function writerV9SpaceModal(plugin){
    writerV9SpaceEditor(plugin,space,async updated=>{
     const idx=plugin.settings.v9Spaces.spaces.findIndex(s=>s.id===space.id);
     if(idx>=0)plugin.settings.v9Spaces.spaces[idx]=updated;
-    await plugin.saveSettings();refresh();
+    await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();refresh();
    });
   });
   nav.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
@@ -124,7 +139,7 @@ function writerV9SpaceModal(plugin){
      .addButton(b=>b.setButtonText(writerUi('Excluir Space','Delete Space')).setWarning().onClick(async()=>{
       plugin.settings.v9Spaces.spaces=plugin.settings.v9Spaces.spaces.filter(s=>s.id!==space.id);
       currentId=plugin.settings.v9Spaces.spaces[0]?.id||'';
-      await plugin.saveSettings();confirm.close();refresh();
+      await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();confirm.close();refresh();
      }));
    };
    confirm.open();
@@ -180,7 +195,70 @@ function writerV9SpaceModal(plugin){
  modal.onOpen=refresh;
  modal.open();
 }
+class WriterV9SpacesSideView extends ItemView{
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.currentId='';this.query='';}
+ getViewType(){return WRITER_V9_SPACE_VIEW;}
+ getDisplayText(){return writerUi('Spaces · Coleções','Spaces · Collections');}
+ getIcon(){return 'layers';}
+ async onOpen(){this.render();}
+ render(){
+  const root=this.contentEl;root.empty();root.addClass('writer-v9-space-sidebar');
+  const cfg=this.plugin.settings.v9Spaces;
+  const heading=root.createDiv({cls:'writer-v9-space-side-head'});
+  require('obsidian').setIcon(heading.createSpan(),'layers');
+  heading.createEl('strong',{text:'Spaces'});
+  const manage=heading.createEl('button',{attr:{title:writerUi('Gerenciar Spaces','Manage Spaces'),'aria-label':writerUi('Gerenciar Spaces','Manage Spaces')}});
+  require('obsidian').setIcon(manage,'settings-2');
+  manage.addEventListener('click',()=>writerV9SpaceModal(this.plugin));
+  if(!cfg.enabled){root.createEl('p',{text:writerUi('Ative Spaces nas configurações.','Enable Spaces in settings.')});return;}
+  const nav=root.createDiv({cls:'writer-v9-space-side-nav'});
+  const space=cfg.spaces.find(x=>x.id===this.currentId)||cfg.spaces[0];
+  if(space)this.currentId=space.id;
+  for(const option of cfg.spaces){
+   const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name}});
+   require('obsidian').setIcon(button,option.mode==='folder'?'folder':option.mode==='curated'?'bookmark':'layers');
+   button.createSpan({text:option.name});
+   button.addEventListener('click',()=>{this.currentId=option.id;this.query='';this.render();});
+  }
+  if(!space){root.createEl('p',{text:writerUi('Crie uma Space para começar.','Create a Space to get started.')});return;}
+  const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',placeholder:writerUi('Pesquisar nesta Space…','Search this Space…')}});
+  search.value=this.query;
+  const body=root.createDiv({cls:'writer-v9-space-side-list'});
+  const draw=()=>{
+   body.empty();
+   const files=writerV9SpaceItems(this.plugin,space).filter(file=>file.path.toLocaleLowerCase().includes(this.query.toLocaleLowerCase()));
+   for(const file of files){
+    const button=body.createEl('button',{cls:'writer-v9-space-side-item',attr:{type:'button',title:file.path}});
+    require('obsidian').setIcon(button.createSpan(),this.plugin.settings.v9Explorer?.items?.[file.path]?.icon||'file-text');
+    button.createSpan({text:file.basename});
+    button.addEventListener('click',()=>void this.plugin.app.workspace.getLeaf('tab').openFile(file));
+   }
+   if(!files.length)body.createEl('p',{text:writerUi('Nenhuma nota encontrada.','No matching notes.')});
+  };
+  search.addEventListener('input',()=>{this.query=search.value;draw();});draw();
+  if(space.mode==='curated'){
+   const add=root.createEl('button',{cls:'writer-v9-space-side-add',text:writerUi('Adicionar nota atual','Add active note')});
+   add.addEventListener('click',async()=>{
+    const file=this.plugin.app.workspace.getActiveFile?.();
+    if(!(file instanceof TFile)){new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));return;}
+    if(!space.includePaths.includes(file.path))space.includePaths.push(file.path);
+    await this.plugin.saveSettings();this.render();
+   });
+  }
+ }
+}
 function writerV9RegisterSpaces(plugin){
+ plugin.registerView(WRITER_V9_SPACE_VIEW,leaf=>new WriterV9SpacesSideView(leaf,plugin));
+ plugin.writerV9SpacesRefresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)||[])leaf.view?.render?.();};
+ const openSidebar=async()=>{
+  const existing=plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)?.[0];
+  const leaf=existing||plugin.app.workspace.getLeftLeaf?.(false)||plugin.app.workspace.getLeaf('tab');
+  if(!leaf)return;
+  if(!existing)await leaf.setViewState({type:WRITER_V9_SPACE_VIEW,active:true});
+  plugin.app.workspace.revealLeaf?.(leaf);
+ };
+ plugin.writerV9SpacesSidebarOpen=openSidebar;
+ plugin.addCommand({id:'v9-spaces-sidebar',name:writerUi('Spaces: abrir barra lateral','Spaces: open sidebar'),callback:()=>void openSidebar()});
  plugin.writerV9SpaceOpen=()=>writerV9SpaceModal(plugin);
  plugin.addCommand({id:'v9-spaces-open',name:writerUi('Spaces: abrir coleções','Spaces: open collections'),
   callback:()=>writerV9SpaceModal(plugin)});
@@ -189,7 +267,7 @@ function writerV9RegisterSpaces(plugin){
   if(file instanceof TFolder){
    menu.addItem(item=>item.setTitle(writerUi('Criar Space desta pasta','Create Space from folder'))
     .setIcon('layers').onClick(()=>{
-     writerV9SpaceEditor(plugin,{folder:file.path,name:file.name,view:'cards'},async space=>{
+     writerV9SpaceEditor(plugin,{folder:file.path,name:file.name,view:'cards',mode:'folder'},async space=>{
       space.id='space-'+Date.now().toString(36);
       plugin.settings.v9Spaces.spaces.push(space);
       await plugin.saveSettings();
@@ -204,6 +282,8 @@ function writerV9SpacesSettings(plugin,panel){
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções virtuais filtradas por pasta, tag ou propriedades das notas, sem criar novos arquivos nem um painel lateral.','Virtual note collections filtered by folder, tags or properties, without creating files or a new sidebar.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{cfg.enabled=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Abrir Spaces na barra lateral','Open Spaces in sidebar'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open sidebar')).onClick(()=>void plugin.writerV9SpacesSidebarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))
   .addButton(button=>button.setButtonText(writerUi('Abrir Spaces','Open Spaces')).onClick(()=>writerV9SpaceModal(plugin)));
 }

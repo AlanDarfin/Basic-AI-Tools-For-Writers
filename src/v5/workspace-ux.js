@@ -91,15 +91,18 @@ function writerWorkspaceFilterRows(panel,query){
  return visible;
 }
 function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
- const wrap=root.createDiv({cls:'writer-v51-search'});
- const label=wrap.createEl('label',{text:writerUi('Buscar nas configurações','Search settings')});
- const input=wrap.createEl('input',{type:'search',attr:{placeholder:writerUi('Procure opções ou categorias…','Find options or categories…'),'aria-label':writerUi('Buscar configurações','Search settings')}});
- label.setAttribute('for','writer-v51-settings-search');
+ const wrap=root.createDiv({cls:'writer-v51-search writer-v901-settings-search'});
+ const field=wrap.createDiv({cls:'writer-v901-search-field'});
+ const symbol=field.createSpan({cls:'writer-v901-search-icon',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon(symbol,'search');
+ const input=field.createEl('input',{type:'search',attr:{placeholder:writerUi('Pesquisar opções, ferramentas ou categorias…','Search options, tools or categories…'),'aria-label':writerUi('Buscar configurações','Search settings')}});
  input.id='writer-v51-settings-search';
  const feedback=wrap.createDiv({cls:'writer-v51-search-results',attr:{role:'status','aria-live':'polite'}});
+ feedback.hidden=true;
  const update=()=>{
   const q=input.value.trim();
   feedback.empty();
+  feedback.hidden=!q;
   const matches=writerWorkspaceSearchSections(sections,q);
   const active=sections.find(([id])=>id===getActive());
   const categoryHit=active&&writerWorkspaceSearchNormalize(active[1]+' '+(WRITER_WORKSPACE_HINTS[active[0]]||'')).includes(writerWorkspaceSearchNormalize(q));

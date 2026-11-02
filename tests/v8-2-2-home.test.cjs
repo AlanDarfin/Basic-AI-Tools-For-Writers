@@ -54,20 +54,23 @@ test('only attached ROOT empty tabs are eligible for automatic homepage',()=>{
 });
 test('search is rendered first next to clock, regardless of card order',()=>{
  const top=home.indexOf('this.renderSearch(top)');
- const clock=home.indexOf('writerV8HomeRenderCalendar(this,schedule)');
+ const hero=home.indexOf("const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'})");
  const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'})");
- assert.ok(top>=0&&clock>top&&grid>clock);
+ const clock=home.indexOf('writerV8HomeRenderCalendar(this,schedule)');
+ assert.ok(top>=0&&hero>top&&grid>hero&&clock>grid);
  assert.match(home,/if\(key!=='search'\)/);
  assert.match(home,/writerV8HomeValidURL\(input\.value\)/);
  assert.match(css,/\.writer-v8-home-top\{/);
  assert.match(css,/\.writer-v8-home-calendar-days/);
 });
 test('home customization and defaults survive settings migration',()=>{
- const fn=vm.runInNewContext(finish+'\n({writerV8FinishMerge})',{writerV8HomeIconName:api.writerV8HomeIconName});
+ const fn=vm.runInNewContext(finish+'\n({writerV8FinishMerge})',{writerV8HomeIconName:api.writerV8HomeIconName,writerV9SafeHex:value=>/^#[a-f0-9]{6}$/i.test(String(value))?String(value).toLowerCase():''});
  const settings={};fn.writerV8FinishMerge(settings);
  assert.equal(settings.v8Finish.homeOnNewTab,true);
  assert.equal(settings.v8Finish.homeAtStartup,false);
  assert.equal(settings.v8Finish.homeIcon,'book-open');
+ assert.equal(settings.v8Finish.homeTitleColor,'');
+ assert.equal(settings.v8Finish.homeIconColor,'');
  assert.ok(!settings.v8Finish.homeOrder.includes('search'));
  const prior={v8Finish:{homeOnNewTab:false,homeTitle:'Author workspace',homeIcon:'invalid',homeOrder:['quick','search','recent']}};
  fn.writerV8FinishMerge(prior);

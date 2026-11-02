@@ -10,14 +10,40 @@ function writerV9ExplorerMerge(settings){
  cfg.maxResults=Math.max(20,Math.min(200,Number(cfg.maxResults)||100));
  cfg.items=cfg.items&&typeof cfg.items==='object'&&!Array.isArray(cfg.items)?cfg.items:{};
  const out={};
+ const availableIcons=new Set(writerV9AvailableIcons());
  for(const [path,raw] of Object.entries(cfg.items).slice(0,5000)){
   if(!path||path.length>600||!raw||typeof raw!=='object')continue;
-  const icon=WRITER_V9_EXPLORER_ICONS.includes(raw.icon)?raw.icon:'';
-  const color=WRITER_V9_EXPLORER_COLORS.includes(raw.color)?raw.color:'';
+  const icon=availableIcons.has(raw.icon)?raw.icon:'';
+  const color=writerV9SafeHex(raw.color);
   if(icon||color)out[path]={icon,color};
  }
  cfg.items=out;
  return cfg;
+}
+function writerV9SafeHex(value){
+ const color=String(value||'').trim();
+ return /^#[a-f0-9]{6}$/i.test(color)?color.toLowerCase():'';
+}
+function writerV9AvailableIcons(){
+ let icons=WRITER_V9_EXPLORER_ICONS;
+ try{const api=typeof require==='function'?require('obsidian'):null;
+  if(typeof api?.getIconIds==='function')icons=api.getIconIds();}catch(_){}
+ return [...new Set([...WRITER_V9_EXPLORER_ICONS,...(Array.isArray(icons)?icons:[])])]
+  .filter(name=>/^[a-z0-9-]{1,60}$/.test(name)).sort();
+}
+function writerV9ColorSetting(root,pt,en,initial,onValue){
+ const setting=new Setting(root).setName(writerUi(pt,en))
+  .setDesc(writerUi('Padrão: cor de destaque do tema. Ou escolha uma cor personalizada.','Default: current theme accent. Or choose a custom color.'));
+ const input=setting.controlEl.createEl('input',{cls:'writer-v901-color-input',attr:{type:'color','aria-label':writerUi(pt,en)}});
+ const text=setting.controlEl.createEl('input',{cls:'writer-v901-color-hex',attr:{type:'text',maxlength:'7',placeholder:'#RRGGBB','aria-label':'HEX'}});
+ const fallback='#888888';
+ const set=color=>{const safe=writerV9SafeHex(color);input.value=safe||fallback;text.value=safe;onValue(safe);};
+ const initialColor=writerV9SafeHex(initial);
+ input.value=initialColor||fallback;text.value=initialColor;
+ input.addEventListener('change',()=>set(input.value));
+ text.addEventListener('change',()=>{if(!text.value.trim())set('');else if(writerV9SafeHex(text.value))set(text.value);else text.value=writerV9SafeHex(initial)||'';});
+ setting.addButton(b=>b.setButtonText(writerUi('Padrão','Default')).onClick(()=>set('')));
+ return setting;
 }
 function writerV9ExplorerPicker(plugin,file){
  const modal=new Modal(plugin.app),path=file.path;
@@ -26,18 +52,24 @@ function writerV9ExplorerPicker(plugin,file){
   const content=modal.contentEl;
   const item=plugin.settings.v9Explorer.items[path]||{};
   let icon=item.icon||'',color=item.color||'';
-  new Setting(content).setName(writerUi('Ícone Lucide','Lucide icon'))
-   .addDropdown(drop=>{
-    drop.addOption('',writerUi('Padrão','Default'));
-    for(const name of WRITER_V9_EXPLORER_ICONS)drop.addOption(name,name);
-    drop.setValue(icon).onChange(value=>{icon=value;});
-   });
-  new Setting(content).setName(writerUi('Cor de destaque','Accent color'))
-   .addDropdown(drop=>{
-    drop.addOption('',writerUi('Padrão','Default'));
-    for(const value of WRITER_V9_EXPLORER_COLORS.filter(Boolean))drop.addOption(value,value);
-    drop.setValue(color).onChange(value=>{color=value;});
-   });
+  const tools=content.createDiv({cls:'writer-v901-icon-picker'});
+  const search=tools.createEl('input',{attr:{type:'search',placeholder:writerUi('Pesquisar ícones Lucide…','Search Lucide icons…'),'aria-label':writerUi('Pesquisar ícones','Search icons')}});
+  const grid=tools.createDiv({cls:'writer-v901-icon-grid',attr:{role:'group','aria-label':writerUi('Selecionar ícone','Choose icon')}});
+  const icons=writerV9AvailableIcons();
+  const draw=()=>{
+   const query=search.value.trim().toLowerCase();
+   grid.empty();
+   const reset=grid.createEl('button',{cls:'writer-v901-icon-choice'+(!icon?' is-active':''),attr:{type:'button',title:writerUi('Ícone padrão','Default icon'),'aria-label':writerUi('Ícone padrão','Default icon')}});
+   require('obsidian').setIcon(reset,'rotate-ccw');
+   reset.addEventListener('click',()=>{icon='';draw();});
+   for(const name of icons.filter(n=>!query||n.includes(query)).slice(0,160)){
+    const button=grid.createEl('button',{cls:'writer-v901-icon-choice'+(icon===name?' is-active':''),attr:{type:'button',title:name,'aria-label':name,'aria-pressed':String(icon===name)}});
+    require('obsidian').setIcon(button,name);
+    button.addEventListener('click',()=>{icon=name;draw();});
+   }
+  };
+  search.addEventListener('input',draw);draw();
+  writerV9ColorSetting(content,'Cor do ícone','Icon color',color,value=>{color=value;});
   new Setting(content).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
    if(icon||color)plugin.settings.v9Explorer.items[path]={icon,color};
    else delete plugin.settings.v9Explorer.items[path];

@@ -1,8 +1,8 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.0.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
-[Read in English](../README.md) · [Notas da versão](V9_RELEASE.pt-BR.md)
+[Read in English](../README.md) · [Notas da versão](V9_0_1_RELEASE.pt-BR.md)
 
 Uma central compacta para escrever livros, organizar universos, editar Markdown, revisar textos e, opcionalmente, usar inteligência artificial. As notas continuam sendo arquivos normais do cofre do Obsidian.
 
@@ -11,10 +11,12 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 - **Barra de formatação configurável:** 27 ações Markdown, botões ordenáveis e opcionais, ativada inicialmente no computador e **desativada por padrão no celular**. Não substitui a barra nativa do Obsidian.
 - **Explorador nativo inspirado no Make.md:** personalize ícones e cores de notas/pastas pelo menu contextual do explorador padrão, visualize pastas em listas ou cartões com busca e crie/abra índices Markdown. Nenhuma barra lateral extra.
 - **Homepage renovada:** título centralizado, ícone acima no celular ou ao lado no PC, mais ícones Lucide ou imagem do cofre/HTTPS, relógio acima do calendário e busca no topo.
-- **Smart Spaces (opt-in):** coleções de notas Markdown filtradas por pasta, tag ou propriedade YAML, com cartões, lista, tabela e quadro agrupado. Desligadas por padrão e sem barra lateral extra.
+- **Smart Spaces (opt-in):** coleções de notas Markdown filtradas por pasta, tag ou propriedade YAML, com cartões, lista, tabela e quadro agrupado. Desligadas por padrão, com barra lateral de Spaces opcional.
 - **Configurações modulares:** possibilidade de desligar a barra de edição e as melhorias do explorador, ajustar botões individualmente e usar a interface em português ou inglês.
 
-Última versão estável anterior: **8.3.0**.
+**Novidades da 9.0.1:** pesquisa da homepage em largura total acima de todos os elementos, com seleção destacada, caminhos das notas e setas/Enter; melhorias em Lucide/HEX, Escrita e Markdown reunidos, chat compacto, Spaces na barra lateral e bloqueio visual opcional por senha (**não criptografa notas**). [Leia as notas completas](V9_0_1_RELEASE.pt-BR.md).
+
+Última versão estável anterior: **9.0.0**. Versão histórica importante: **8.3.0**.
 
 Esta é uma **integração independente**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [as notas da release v9](V9_RELEASE.pt-BR.md) e [a auditoria de compatibilidade](V9_FINAL_AUDIT.md). Faça backup do cofre antes de atualizar.
 

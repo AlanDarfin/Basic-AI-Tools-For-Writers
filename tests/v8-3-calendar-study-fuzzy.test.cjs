@@ -68,7 +68,7 @@ test('study settings preserve previous review records and bound session sizes',(
  const state={v83Study:{dailyMax:999,newMax:-1,history:{abc:{due:123}}}};
  sr.config(state);
  assert.equal(state.v83Study.dailyMax,100);
- assert.equal(state.v83Study.newMax,15);
+ assert.equal(state.v83Study.newMax,1);
  assert.equal(state.v83Study.history.abc.due,123);
 });
 test('new modules are opt-in views and do not touch CodeMirror or delete unrelated notes',()=>{

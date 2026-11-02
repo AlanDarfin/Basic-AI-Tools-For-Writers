@@ -32,7 +32,7 @@ const vmContext={TFile,TFolder,console,require:name=>name==='obsidian'?{getAllTa
   items:[{file:chapter0,path:chapter0.path,title:'Before'},{file:chapter1,path:chapter1.path,title:'Now'},{file:chapter2,path:chapter2.path,title:'Future'}]
  }),setTimeout:()=>0,clearTimeout:()=>{},Modal:class{},Setting:class{},TextPrompt:class{},ConfirmProjectAction:class{},
  Notice:class{},MarkdownView:class{},TFolder,clean:x=>x,writerModuleOn:()=>true};
-const api=vm.runInNewContext(source+'\n({writerV7Tag,writerV7TagList,writerV7FolderNote,writerV7NoteTags,writerV7InheritedTags,writerV7ProjectNotes,writerV7Classify,writerV7TimelineDate,writerV7TimelineEntries,writerV7ContinuityChecks,writerV7NarrativeContext,writerV7Connections,writerV7Merge})',vmContext);
+const api=vm.runInNewContext(source+'\n({writerV7Tag,writerV7TagList,writerV7FolderNote,writerV7NoteTags,writerV7InheritedTags,writerV7ProjectNotes,writerV7Classify,writerV7TimelineDate,writerV7TimelineEntries,writerV7NarrativeContext,writerV7Connections,writerV7Merge})',vmContext);
 const project={file:chapter1},pref={v7Timeline:[{id:'a',title:'Founding',date:'-500',category:'Era'},{id:'b',title:'Reunion',date:'400-04-11'}]};
 const plugin={app,settings:{v7:{compendium:true,maxEntries:3000,narrativeMemory:true,maxContextChars:1000},lastLongformProject:'Book/C2.md'}};
 const view={app,plugin,notesRoot:()=>notes.path,prefs:()=>pref};
@@ -63,8 +63,6 @@ test('Timeline merges manual events and YAML note events, with fictional years s
  assert.equal(api.writerV7TimelineDate('era of fire'),null);
  const timeline=api.writerV7TimelineEntries(view,project,api.writerV7ProjectNotes(view,project));
  assert.deepEqual(Array.from(timeline,x=>x.title),['Founding','Foundation','Reunion']);
- const issues=api.writerV7ContinuityChecks(view,project,api.writerV7ProjectNotes(view,project));
- assert.ok(issues.some(i=>i.title.includes('Link não resolvido')));
 });
 test('AI narrative context is opt in and excludes the active and future chapters',async()=>{
  let text=await api.writerV7NarrativeContext(plugin,chapter1);
@@ -80,7 +78,7 @@ test('module integration, bilingual UI and release metadata stay aligned',()=>{
  assert.match(main,/writerV7NarrativeContext\(this,targetFile\)/);
  assert.match(projects,/writerV7RenderCompendium\(this,panel,project\)/);
  assert.match(projects,/writerV7RenderTimeline\(this,panel,project\)/);
- assert.match(projects,/writerV7RenderContinuity\(this,panel,project\)/);
+ assert.doesNotMatch(projects,/writerV7RenderContinuity/);
  assert.match(css,/\.writer-v7-timeline-list/);
  assert.match(css,/\.writer-v7-folder-open/);
  for(const name of ['docs/V7_BETA1.en.md','docs/V7_BETA1.pt-BR.md','README.md','docs/README.pt-BR.md'])

@@ -304,6 +304,35 @@ function writerV8FinishSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Abrir a homepage de escrita ao iniciar','Open writing homepage on startup'))
   .setDesc(writerUi('Desativado por padrão; não altera a página inicial de outros plugins.','Off by default; does not alter other plugins’ home views.'))
   .addToggle(x=>x.setValue(cfg.homeAtStartup).onChange(async value=>{cfg.homeAtStartup=value;await plugin.saveSettings();}));
+ const refreshHome=()=>{
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
+   leaf.view?.render?.();
+   leaf.updateHeader?.();
+  }
+ };
+ new Setting(panel).setName(writerUi('Título da homepage','Homepage title'))
+  .setDesc(writerUi('Em branco para usar o título padrão.','Leave blank to use the default title.'))
+  .addText(input=>input.setPlaceholder(writerUi('Meu espaço de escrita','My writing space'))
+   .setValue(cfg.homeTitle||'').onChange(async value=>{
+    cfg.homeTitle=String(value||'').replace(/[\\r\\n]/g,' ').slice(0,80);
+    await plugin.saveSettings();refreshHome();
+   }));
+ new Setting(panel).setName(writerUi('Ícone da homepage','Homepage icon'))
+  .addDropdown(drop=>{
+   const labels={
+    'house':'Casa','book-open':'Livro aberto','feather':'Pena','pen-line':'Escrita',
+    'notebook-pen':'Caderno','library':'Biblioteca','sparkles':'Estrelas',
+    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis'
+   };
+   for(const icon of WRITER_V8_HOME_ICONS)drop.addOption(icon,labels[icon]||icon);
+   drop.setValue(writerV8HomeIconName(cfg.homeIcon));
+   drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
+  });
+ new Setting(panel).setName(writerUi('Abrir homepage em toda nova aba vazia','Open homepage in every new empty tab'))
+  .setDesc(writerUi('Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.','Enabled by default. Empty tabs only: never replaces notes or other views.'))
+  .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{
+   cfg.homeOnNewTab=value;await plugin.saveSettings();
+  }));
  new Setting(panel).setName(writerUi('Abrir homepage agora','Open homepage now'))
   .addButton(x=>x.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerV8HomeOpen?.()));
 }

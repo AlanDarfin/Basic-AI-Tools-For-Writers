@@ -2,7 +2,14 @@
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
 const WRITER_V8_HOME_SECTIONS=['continue','recent','favorites','quick','stats'];
-function writerV8HomeSearch(files,query,cache,max=12){return writerV83FuzzySearch(files,query,cache,max);}
+function writerV8HomeSearch(files,query,cache,max=12){
+ if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
+ const q=String(query||'').trim().toLocaleLowerCase();
+ if(!q)return [];
+ return files.filter(file=>String(file.basename||'').toLocaleLowerCase().includes(q)||
+  String(file.path||'').toLocaleLowerCase().includes(q)||
+  (cache?.getFileCache?.(file)?.headings||[]).some(h=>String(h.heading||'').toLocaleLowerCase().includes(q))).slice(0,max);
+}
 function writerV8HomeTopFiles(plugin,count=12){
  const recent=plugin.settings.v8Finish?.homeRecent||[];
  const used=new Set();

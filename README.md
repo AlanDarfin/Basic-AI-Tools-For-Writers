@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [8.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.1) · **Previous published:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [8.0.2](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.2) · **Previous published:** [8.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## 8.0.2 — Responsive buttons and persistent sidebars
+
+**Longform structure:** plotlines, story beats, pacing and connections now have readable single-line ghost-style tabs on a horizontal scroll strip; no more words broken into two lines. **Definitions:** optional context starts as a two-row field (instead of filling the mobile sidebar), expands when focused, and lexical buttons use the discreet transparent project style. The writing-tool footer and secondary actions use the same visual family. **Hot reload:** captures which Basic AI, Longform and writing-tool sidebar tabs were actually open before the plugin unloads, restores only those during an immediate reload, and preserves their selected section; previously collapsed or manually closed panes are not forcibly reopened. UI remains scoped to Basic AI without changing Obsidian's own Bookmarks or Explorer. [Release notes](docs/V8_0_2_RELEASE.en.md) · [Português](docs/V8_0_2_RELEASE.pt-BR.md).
 
 ## 8.0.1 — Personal dictionary, complete vault coverage, cleaner panels
 

@@ -10580,9 +10580,7 @@ class WriterV8HomeView extends ItemView{
   const scroll=this.contentEl.scrollTop||0;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish;
-  // The vault search is a full-width first-class section, before the hero and calendar.
-  const top=this.contentEl.createDiv({cls:'writer-v8-home-search-region'});
-  this.renderSearch(top);
+  // Heading first, followed by a full-width search and evenly spaced actions.
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
   heading.style.setProperty('--writer-v8-home-title-color',writerV9SafeHex(cfg.homeTitleColor)||'var(--interactive-accent)');
@@ -10593,7 +10591,10 @@ class WriterV8HomeView extends ItemView{
   if(image)icon.createEl('img',{attr:{src:image,alt:'',loading:'lazy'}});
   else if(typeof setIcon==='function')setIcon(icon,writerV8HomeIconName(cfg.homeIcon));
   heading.createEl('h2',{text:String(cfg.homeTitle||'').trim()||writerUi('Seu espaço de escrita','Your writing space')});
-  const commands=hero.createDiv({cls:'writer-v8-home-quick-actions'});
+  const top=this.contentEl.createDiv({cls:'writer-v8-home-search-region'});
+  this.renderSearch(top);
+  const commands=this.contentEl.createDiv({cls:'writer-v8-home-quick-actions',
+   attr:{role:'group','aria-label':writerUi('Ações rápidas','Quick actions')}});
   const action=(pt,en,icon,run)=>{
    const b=commands.createEl('button',{cls:'writer-v8-home-action',attr:{type:'button'}});
    const label=b.createSpan({cls:'writer-v8-home-action-icon'});

@@ -9542,6 +9542,8 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerBookNavigation.renderSettings(panel);
     }else if(id==='extendedSyntax'){
       this.plugin.writerExtendedSyntax.renderSettings(panel);
+      panel.createEl('hr');
+      this.plugin.writerInlineAI?.renderSettings(panel);
     }else if(id==='pandocSyntax'){
       this.plugin.writerPandocSyntax.renderSettings(panel);
       this.plugin.writerPandocExporter.renderSettings(panel);
@@ -9741,6 +9743,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerTypoMerge(this.settings);
     writerV6Merge(this.settings);
     writerV7Merge(this.settings);
+    writerV8InlineMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -9760,6 +9763,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     for(const event of ['create','delete'])this.registerEvent(this.app.vault.on(event,()=>this._writerV6ProjectPaths?.clear()));
     this.writerKeyshots=new WriterKeyshots(this);this.writerKeyshots.register();
     this.writerExtendedSyntax=new WriterExtendedSyntax(this);this.writerExtendedSyntax.register();
+    this.writerInlineAI=new WriterV8InlineAI(this);this.writerInlineAI.register();
     this.writerPandocSyntax=new WriterPandocSyntax(this);this.writerPandocSyntax.register();
     this.writerPandocExporter=new WriterPandocExporter(this);this.writerPandocExporter.register();
     this.writerEasyTyping=new WriterEasyTyping(this);this.writerEasyTyping.register();

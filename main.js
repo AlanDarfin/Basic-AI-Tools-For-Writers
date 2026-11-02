@@ -1172,7 +1172,7 @@ function prepareGrammarText(text){
 // modifications to the AI definition dictionary (Dicionario.md).
 function writerGrammarDictionaryWord(value){
  const word=String(value||'').trim().normalize('NFC');
- return /^[\\p{L}][\\p{L}\\p{M}'’-]{0,79}$/u.test(word)?word.toLocaleLowerCase():'';
+ return /^[\p{L}][\p{L}\p{M}'’-]{0,79}$/u.test(word)?word.toLocaleLowerCase():'';
 }
 function writerGrammarMatchWord(source,match){
  if(!Number.isInteger(match?.offset)||!Number.isInteger(match?.length))return '';
@@ -9314,8 +9314,8 @@ class DictionarySettings extends PluginSettingTab{
        .addTextArea(x=>{
         x.inputEl.rows=4;
         x.setPlaceholder(msg('Uma palavra por linha','One word per line'));
-        x.setValue((this.plugin.settings.reviewDictionaryWords||[]).join('\\n')).onChange(async text=>{
-         this.plugin.settings.reviewDictionaryWords=[...new Set(text.split(/[\\n,;]+/).map(writerGrammarDictionaryWord).filter(Boolean))].slice(0,2000);
+        x.setValue((this.plugin.settings.reviewDictionaryWords||[]).join('\n')).onChange(async text=>{
+         this.plugin.settings.reviewDictionaryWords=[...new Set(text.split(/[\n,;]+/).map(writerGrammarDictionaryWord).filter(Boolean))].slice(0,2000);
          await this.plugin.saveSettings();
         });
        });

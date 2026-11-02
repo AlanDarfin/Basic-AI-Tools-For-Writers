@@ -1,12 +1,12 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.0.0-beta.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
-[Read in English](../README.md)
+[Read in English](../README.md) · [Notas da versão](V9_RELEASE.pt-BR.md)
 
 Uma central compacta para escrever livros, organizar universos, editar Markdown, revisar textos e, opcionalmente, usar inteligência artificial. As notas continuam sendo arquivos normais do cofre do Obsidian.
 
-## Novidades da prévia v9
+## Novidades da v9
 
 - **Barra de formatação configurável:** 27 ações Markdown, botões ordenáveis e opcionais, ativada inicialmente no computador e **desativada por padrão no celular**. Não substitui a barra nativa do Obsidian.
 - **Explorador nativo inspirado no Make.md:** personalize ícones e cores de notas/pastas pelo menu contextual do explorador padrão, visualize pastas em listas ou cartões com busca e crie/abra índices Markdown. Nenhuma barra lateral extra.
@@ -14,9 +14,11 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 - **Smart Spaces (opt-in):** coleções de notas Markdown filtradas por pasta, tag ou propriedade YAML, com cartões, lista, tabela e quadro agrupado. Desligadas por padrão e sem barra lateral extra.
 - **Configurações modulares:** possibilidade de desligar a barra de edição e as melhorias do explorador, ajustar botões individualmente e usar a interface em português ou inglês.
 
-Última versão estável anterior: **8.3.0**.\n\nEsta é uma **prévia de integração**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [o estado da implementação v9](V9_PREVIEW.pt-BR.md). Faça backup do cofre antes de instalar uma prévia.
+Última versão estável anterior: **8.3.0**.
 
-### Calendário v9 em desenvolvimento
+Esta é uma **integração independente**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [as notas da release v9](V9_RELEASE.pt-BR.md) e [a auditoria de compatibilidade](V9_FINAL_AUDIT.md). Faça backup do cofre antes de atualizar.
+
+### Calendário v9
 
 O calendário de escrita recebeu mini-calendário e painel lateral interno responsivo, visões de 3 dias e agenda de 30 dias, horários, categorias, local, descrição e cores. A recorrência permite intervalos, data final, dias da semana, edição apenas da ocorrência ou da série e exclusão de datas específicas. Os eventos continuam sendo notas Markdown locais. **Não** há sincronização bidirecional com Google Agenda, CalDAV ou ICS.
 

@@ -16,6 +16,10 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 
 Última versão estável anterior: **8.3.0**.\n\nEsta é uma **prévia de integração**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [o estado da implementação v9](V9_PREVIEW.pt-BR.md). Faça backup do cofre antes de instalar uma prévia.
 
+### Calendário v9 em desenvolvimento
+
+O calendário de escrita recebeu mini-calendário e painel lateral interno responsivo, visões de 3 dias e agenda de 30 dias, horários, categorias, local, descrição e cores. A recorrência permite intervalos, data final, dias da semana, edição apenas da ocorrência ou da série e exclusão de datas específicas. Os eventos continuam sendo notas Markdown locais. **Não** há sincronização bidirecional com Google Agenda, CalDAV ou ICS.
+
 ## Funcionalidades
 
 | Área | O que oferece |

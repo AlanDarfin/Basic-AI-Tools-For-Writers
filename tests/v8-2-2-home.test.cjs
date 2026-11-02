@@ -54,9 +54,10 @@ test('only attached ROOT empty tabs are eligible for automatic homepage',()=>{
 });
 test('search is rendered first next to clock, regardless of card order',()=>{
  const top=home.indexOf('this.renderSearch(top)');
- const clock=home.indexOf('writerV8HomeRenderCalendar(this,schedule)');
+ const hero=home.indexOf("const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'})");
  const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'})");
- assert.ok(top>=0&&clock>top&&grid>clock);
+ const clock=home.indexOf('writerV8HomeRenderCalendar(this,schedule)');
+ assert.ok(top>=0&&hero>top&&grid>hero&&clock>grid);
  assert.match(home,/if\(key!=='search'\)/);
  assert.match(home,/writerV8HomeValidURL\(input\.value\)/);
  assert.match(css,/\.writer-v8-home-top\{/);

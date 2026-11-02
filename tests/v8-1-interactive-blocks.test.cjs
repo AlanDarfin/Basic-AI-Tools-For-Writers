@@ -75,7 +75,7 @@ test('read-only formatting modules do not add CodeMirror extensions',()=>{
  assert.match(css,/writer-v8-tabs-side/);
  assert.match(css,/writer-v8-avatar-right/);
  assert.match(css,/writer-v8-social-post\.is-depth-2/);
- assert.doesNotMatch(css,/!important|\bcolumns\s*:/);
+ assert.doesNotMatch(css,/!important|(?:^|[;{])\s*columns\s*:/m);
  for(const filename of ['README.md','docs/README.pt-BR.md']){
   const docs=read(filename);
   for(const name of ['writer-tabs','writer-avatar','writer-wiki','writer-post','writer-media-gallery'])assert.ok(docs.includes(name),filename+': '+name);

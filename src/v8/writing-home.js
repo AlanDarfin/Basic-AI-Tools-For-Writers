@@ -49,6 +49,8 @@ class WriterV8HomeView extends ItemView{
   const cfg=this.plugin.settings.v8Finish;
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
+  heading.style.setProperty('--writer-v8-home-title-color',writerV9SafeHex(cfg.homeTitleColor)||'var(--interactive-accent)');
+  heading.style.setProperty('--writer-v8-home-icon-color',writerV9SafeHex(cfg.homeIconColor)||'var(--interactive-accent)');
   const icon=heading.createSpan({cls:'writer-v8-home-title-icon'});
   const setIcon=require('obsidian').setIcon;
   const image=writerV8HomeImageURL(this.plugin,cfg.homeIconImage);

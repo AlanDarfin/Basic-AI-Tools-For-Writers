@@ -2,15 +2,7 @@
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
 const WRITER_V8_HOME_SECTIONS=['continue','recent','favorites','quick','stats'];
-function writerV8HomeSearch(files,query,cache,max=12){
- const q=String(query||'').trim().toLocaleLowerCase();
- if(!q)return [];
- return files.filter(file=>{
-  if((file.basename||'').toLocaleLowerCase().includes(q)||file.path.toLocaleLowerCase().includes(q))return true;
-  const headings=cache?.getFileCache?.(file)?.headings||[];
-  return headings.some(h=>String(h.heading||'').toLocaleLowerCase().includes(q));
- }).slice(0,max);
-}
+function writerV8HomeSearch(files,query,cache,max=12){return writerV83FuzzySearch(files,query,cache,max);}
 function writerV8HomeTopFiles(plugin,count=12){
  const recent=plugin.settings.v8Finish?.homeRecent||[];
  const used=new Set();
@@ -71,6 +63,8 @@ class WriterV8HomeView extends ItemView{
    if(v?.currentProject)v.addScene(v.currentProject);
   });
   action('Revisão','Review','spell-check',()=>this.plugin.openReview());
+  action('Calendário','Calendar','calendar-days',()=>void this.plugin.writerCalendarOpen?.());
+  action('Estudos','Study','graduation-cap',()=>void this.plugin.writerStudyOpen?.());
   // Search stays next to the clock regardless of card ordering.
   const top=this.contentEl.createDiv({cls:'writer-v8-home-top'});
   this.renderSearch(top);

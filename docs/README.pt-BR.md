@@ -13,7 +13,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 - **Homepage renovada:** título centralizado, ícone acima no celular ou ao lado no PC, mais ícones Lucide ou imagem do cofre/HTTPS, relógio acima do calendário e busca no topo.
 - **Configurações modulares:** possibilidade de desligar a barra de edição e as melhorias do explorador, ajustar botões individualmente e usar a interface em português ou inglês.
 
-Esta é uma **prévia de integração**, não um fork completo do Make.md. Bancos de dados avançados, fórmulas, rollups, Spaces e Flow Editor **ainda não foram portados**. Consulte [o estado da implementação v9](V9_PREVIEW.pt-BR.md). Faça backup do cofre antes de instalar uma prévia.
+Última versão estável anterior: **8.3.0**.\n\nEsta é uma **prévia de integração**, não um fork completo do Make.md. Bancos de dados avançados, fórmulas, rollups, Spaces e Flow Editor **ainda não foram portados**. Consulte [o estado da implementação v9](V9_PREVIEW.pt-BR.md). Faça backup do cofre antes de instalar uma prévia.
 
 ## Funcionalidades
 

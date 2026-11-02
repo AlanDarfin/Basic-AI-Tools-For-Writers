@@ -4950,7 +4950,7 @@ body.is-mobile .writer-v8-home-heading{flex-direction:column;gap:5px;}
  cursor:crosshair;
 }
 .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit::after{
- content:"+";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+ content:"+";position:absolute;inset:0;display:grid;place-items:center;
  opacity:0;font-size:18px;line-height:1;
 }
 .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-time-slot .writer-v901-slot-hit:hover,

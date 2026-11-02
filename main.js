@@ -9448,11 +9448,22 @@ module.exports=class AlansOfflineDictionary extends Plugin{
          this.hoverKey='';
          this.schedule({caret:true},110);
         };
+        this.onTouchEnd=event=>{
+         // Some Android WebViews don't dispatch pointerup to CodeMirror marks.
+         // Resolve the actual tapped document position independently of caret.
+         const touch=event.changedTouches?.[0];
+         if(!touch)return;
+         const position=view.posAtCoords?.({x:touch.clientX,y:touch.clientY});
+         const mark=plugin.reviewMarks?.find(item=>
+          Number.isInteger(position)&&position>=item.from&&position<=item.to);
+         if(mark)this.schedule({mark:{from:mark.from,to:mark.to}},90);
+        };
         this.onPointerLeave=()=>{this.hoverKey='';clearTimeout(this.timer);this.timer=null;};
         view.dom.addEventListener('pointermove',this.onPointerMove,{passive:true});
         view.dom.addEventListener('pointerup',this.onPointerUp);
         view.dom.addEventListener('keyup',this.onKeyUp);
         view.dom.addEventListener('pointerleave',this.onPointerLeave);
+        view.dom.addEventListener('touchend',this.onTouchEnd,{passive:true});
       }
       destroy(){
        clearTimeout(this.timer);
@@ -9460,6 +9471,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
        this.view.dom.removeEventListener('pointerup',this.onPointerUp);
        this.view.dom.removeEventListener('keyup',this.onKeyUp);
        this.view.dom.removeEventListener('pointerleave',this.onPointerLeave);
+       this.view.dom.removeEventListener('touchend',this.onTouchEnd);
       }
     }));
     const saved=await this.loadData()||{};
@@ -9935,10 +9947,38 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.dismissGrammarSuggestion(file,match);
     new Notice(msg('Regra ignorada. Pode reativá-la nas configurações.','Rule disabled; you can re-enable it in settings.'));
   }
+  showMobileReviewSuggestionMenu(file,source,match,key){
+    // Obsidian's native Modal is reliable on Android (no hover, mouse
+    // coordinates or tiny floating context-menu targets required).
+    const modal=new Modal(this.app);
+    modal.modalEl?.addClass('writer-lt-mobile-modal');
+    const panel=modal.contentEl;
+    panel.empty();
+    panel.createEl('h3',{text:match.rule?.description||match.shortMessage||msg('Sugestão do LanguageTool','LanguageTool suggestion')});
+    if(match.message)panel.createEl('p',{text:match.message,cls:'writer-lt-mobile-reason'});
+    const choices=panel.createDiv({cls:'writer-lt-mobile-choices'});
+    const action=(parent,label,callback,cls='')=>{
+      const button=parent.createEl('button',{text:label,cls,attr:{type:'button'}});
+      button.addEventListener('click',()=>{modal.close();Promise.resolve().then(callback).catch(error=>new Notice(error?.message||String(error)));});
+      return button;
+    };
+    const replacements=[...new Set((match.replacements||[]).map(x=>x?.value).filter(x=>typeof x==='string'))].slice(0,8);
+    if(!replacements.length)choices.createEl('p',{text:msg('Nenhuma substituição automática','No automatic replacement'),cls:'setting-item-description'});
+    for(const replacement of replacements)action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
+    const extras=panel.createDiv({cls:'writer-lt-mobile-actions'});
+    action(extras,msg('Ir ao erro','Go to error'),()=>this.jumpToReviewError(file,match.offset,match.offset+match.length));
+    action(extras,msg('Explicar com IA','Explain with AI'),()=>this.explainGrammarSuggestion(file,source,match));
+    action(extras,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
+    if(match.rule?.id)action(extras,msg('Ignorar regra','Ignore rule'),()=>this.ignoreGrammarRule(file,match));
+    modal.onClose=()=>{if(this.reviewPopup===modal){this.reviewPopup=null;this.reviewPopupKey=null;}panel.empty();};
+    this.reviewPopup=modal;this.reviewPopupKey=key;modal.open();
+    return modal;
+  }
   showReviewSuggestionMenu(file,source,match,anchor={}){
     const key=file.path+':'+match.offset+':'+match.length;
     if(this.reviewPopup&&this.reviewPopupKey===key)return this.reviewPopup;
     this.closeReviewPopup();
+    if(this.app.isMobile)return this.showMobileReviewSuggestionMenu(file,source,match,key);
     const menu=new Menu(this.app);
     const info=document.createDocumentFragment();
     const block=document.createElement('div');

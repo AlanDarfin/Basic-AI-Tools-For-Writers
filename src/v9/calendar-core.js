@@ -21,7 +21,7 @@ function writerV9CalDates(raw){
 }
 function writerV9CalWeekdays(raw){
  const parts=Array.isArray(raw)?raw:String(raw||'').split(',');
- return [...new Set(parts.map(Number).filter(n=>Number.isInteger(n)&&n>=0&&n<=6))].sort((a,b)=>a-b);
+ return [...new Set(parts.map(x=>String(x).trim()).filter(Boolean).map(Number).filter(n=>Number.isInteger(n)&&n>=0&&n<=6))].sort((a,b)=>a-b);
 }
 function writerV9CalExtras(event){
  return {

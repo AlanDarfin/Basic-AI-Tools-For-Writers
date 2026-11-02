@@ -13,7 +13,7 @@ function writerV9CalendarMerge(settings){
  cfg.defaultView=WRITER_V9_CAL_VIEWS.includes(cfg.defaultView)?cfg.defaultView:'month';
  cfg.showSidebar=cfg.showSidebar!==false;cfg.showSidebarMobile=cfg.showSidebarMobile===true;
  cfg.compactMonth=cfg.compactMonth!==false;
- cfg.startHour=Math.max(0,Math.min(20,Math.floor(Number(cfg.startHour)??7)));
+ cfg.startHour=Math.max(0,Math.min(20,Number.isFinite(Number(cfg.startHour))?Math.floor(Number(cfg.startHour)):7));
  cfg.endHour=Math.max(cfg.startHour+1,Math.min(24,Math.floor(Number(cfg.endHour)||21)));
  cfg.maxMonthEvents=Math.max(1,Math.min(5,Math.floor(Number(cfg.maxMonthEvents)||3)));
  return cfg;

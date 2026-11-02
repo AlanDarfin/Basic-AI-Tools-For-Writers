@@ -35,3 +35,25 @@ The v7 Compendium, Longform planner, timeline, folder-note affordances, scene sh
 Their JavaScript, CSS, images, bundled assets and documentation are **not** copied into, required by or redistributed with the Basic AI v7 plugin. Each reference plugin remains a separate project with its own license, maintainers, trademarks and capabilities.
 
 **Compatibility note:** the v7 Folder Notes action recognizes common folder-note naming conventions and does not replace a dedicated Folder Notes plugin. Longform-compatible scene indexing and project compilation are not complete upstream Longform implementations. Back up any related plugin data before making major changes to a vault.
+
+## v9 toolbar and Make.md-inspired native explorer
+
+- **cMenu**, by chetachiezikeuzor, is under **Mozilla Public License 2.0**.
+  https://github.com/chetachiezikeuzor/cMenu-Plugin
+- **Make.md**, by JP Cen and contributors, is under **MIT**.
+  https://github.com/Make-md/makemd
+
+The v9 toolbar and native explorer modules are **independently written
+implementations** inspired by the described workflows of these projects.
+Their source code, images, UI assets and dependencies are **not** vendored
+into Basic AI. Basic AI does not claim to be a complete Make.md fork.
+For any future direct code reuse, original notices and applicable source
+file licenses must be preserved and reviewed separately.
+
+## v9 local calendar (Full Calendar references)
+
+- **Full Calendar (original, archived)** — Davis Haupt and community contributors. https://github.com/community-archive/obsidian-full-calendar
+- **Full Calendar Remastered** — https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar
+
+The original and Remastered calendar features and UI workflow were reviewed as **behavioral references** for the independent local Markdown calendar redesign. No FullCalendar Standard/Premium bundles, external connectors, assets or source code were copied. The Basic module does not provide Google Calendar or CalDAV sync.
+

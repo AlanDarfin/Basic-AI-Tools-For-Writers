@@ -12,6 +12,9 @@ const WRITER_MODULES=[
  ['fictionalChats','Conversas fictícias','Fictional chats','Mensagens em balões com avatares opcionais.','Chat bubbles with optional avatars.'],
  ['calendar','Calendário e eventos','Calendar and events','Agenda local de eventos em notas Markdown.','Local calendar events stored in Markdown notes.'],
  ['study','Estudos e revisão espaçada','Study and spaced repetition','Baralhos e cartões locais com revisão programada.','Local decks and scheduled flashcards.'],
+ ['smartSpaces','Spaces locais','Local Spaces','Coleções virtuais por pasta, tag e propriedades com listas, quadros e tabelas.','Virtual collections from folders, tags and properties with list, board and table views.'],
+ ['formatToolbar','Barra de formatação','Formatting toolbar','Ações de Markdown no editor; desligada por padrão no celular.','Markdown actions in editor; off by default on mobile.'],
+ ['nativeExplorer','Explorador nativo avançado','Enhanced native explorer','Ícones, cores e visões de pastas sem substituir o painel padrão.','Icons, colors and folder views without replacing the original panel.'],
  ['writingHome','Página inicial de escrita','Writing homepage','Busca, favoritos, rascunhos e projetos.','Search, favorites, drafts and projects.'],
  ['socialBlocks','Posts e respostas','Posts and threaded replies','Posts fictícios em Markdown.','Local fictional social threads.'],
  ['mediaGallery','Galeria de mídias','Media gallery','Galeria local para imagens, vídeos, PDFs e áudio.','Local galleries for images, videos, PDFs and audio.'],
@@ -40,7 +43,7 @@ const WRITER_MODULES=[
  ['linter','Linter','Linter','Prévia e formatação manual com cópia de recuperação.','Previewed manual formatting with recovery copy.'],
  ['readingTime','Tempo de leitura','Reading time','Estimativa de leitura da nota e seleção.','Reading estimates for notes and selections.']
 ];
-const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,true]));
+const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,id!=='smartSpaces']));
 function writerMergeModules(settings){
  const existing=settings.visibleModules;
  settings.visibleModules={...WRITER_MODULE_DEFAULTS,...(existing&&typeof existing==='object'&&!Array.isArray(existing)?existing:{})};

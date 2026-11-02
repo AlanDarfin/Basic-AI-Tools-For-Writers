@@ -1,8 +1,20 @@
 'use strict';
 /* Homepage utilities: calendar, native Web Viewer and conservative empty-tab detection. */
-const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil'];
+const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil','book','books','bookmark','star','heart','lightbulb','brain','graduation-cap','file-text','folder','archive','palette','brush','wand-sparkles','calendar-days','clock','pencil-line','notebook','pen','library-big','layout-dashboard','globe','leaf','coffee','music','headphones','flag','compass','map','gem','trophy','shield','user','users','image','images','flame','cloud','settings'];
 function writerV8HomeIconName(value){
  return WRITER_V8_HOME_ICONS.includes(value)?value:'book-open';
+}
+function writerV8HomeImageURL(plugin,input){
+ const raw=String(input||'').trim();
+ if(!raw||raw.length>600)return '';
+ if(/^https:\/\//i.test(raw)){
+  try{const url=new URL(raw);return url.protocol==='https:'&&!url.username&&!url.password?url.href:'';}catch(_){return '';}
+ }
+ if(/^[a-z]+:/i.test(raw)||raw.includes('..')||/[\r\n]/.test(raw))return '';
+ const path=raw.replace(/^\[\[/,'').replace(/\]\]$/,'').split('|')[0].trim();
+ const file=plugin.app.metadataCache?.getFirstLinkpathDest?.(path,'')||plugin.app.vault.getAbstractFileByPath?.(path);
+ if(!(file instanceof TFile)||!/^(png|jpe?g|webp|gif|avif|svg)$/i.test(file.extension))return '';
+ return plugin.app.vault.getResourcePath?.(file)||'';
 }
 function writerV8HomeValidURL(input){
  const raw=String(input||'').trim();

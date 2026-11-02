@@ -278,7 +278,7 @@
  margin-top:5px;padding:5px 8px;color:var(--text-muted);
  font-size:var(--font-smaller);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.writer-v901-home-search-card .writer-v8-home-web-links:has(>button[hidden]){display:none;}
+ .writer-v901-home-search-card .writer-v8-home-web-links[hidden]{display:none;}
 @media(max-width:720px){
  .writer-v8-home-grid>.writer-v8-home-clock-card{grid-column:1;grid-row:auto;}
  .writer-v901-home-search-results{max-height:260px;}

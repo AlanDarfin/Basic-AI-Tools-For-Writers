@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 8.0.1 estável · **Versão anterior publicada:** 8.0.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 8.0.2 estável · **Versão anterior publicada:** 8.0.1 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## 8.0.2 — Botões responsivos e painéis persistentes
+
+**Longform:** abas de Estrutura (Tramas, Marcos narrativos, Ritmo, Conexões) têm fundo discreto, textos inteiros e rolagem horizontal; não quebram palavras em linhas estranhas. **Definições:** campo de contexto opcional agora ocupa somente duas linhas inicialmente, pode expandir ao receber foco e mantém controles com aparência nativa; Sinônimos, Antônimos e os botões secundários de Ferramentas usam o estilo transparente dos projetos. **Atualizações:** ao descarregar o plugin, as abas do Basic AI, Longform e Ferramentas que estavam abertas são registradas temporariamente e recuperadas no recarregamento imediato. Painéis recolhidos ou fechados intencionalmente não são abertos à força. A alteração não afeta Marcadores, Explorador ou outros plugins. [Notas 8.0.2](V8_0_2_RELEASE.pt-BR.md) · [English](V8_0_2_RELEASE.en.md).
 
 ## 8.0.1 — Dicionário pessoal, cofre completo e menos botões
 

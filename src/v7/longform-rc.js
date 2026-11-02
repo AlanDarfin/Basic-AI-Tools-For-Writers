@@ -383,6 +383,12 @@ function writerV7RCRenderPacing(view,panel,project){
 function writerV7RCRenderStructure(view,panel,project){
  const root=panel.createDiv({cls:'writer-v7-rc-structure'});
  const tabs=root.createDiv({cls:'writer-v7-rc-structure-tabs'});
+ tabs.setAttribute('role','tablist');
+ tabs.addEventListener('wheel',event=>{
+  if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+   tabs.scrollLeft+=event.deltaY;event.preventDefault();
+  }
+ },{passive:false});
  const content=root.createDiv({cls:'writer-v7-rc-structure-body'});
  const settings=view.plugin.settings.v7||{};
  const choices=[
@@ -395,14 +401,18 @@ function writerV7RCRenderStructure(view,panel,project){
   const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:choices[0]?.[0]||'plotlines';
   content.empty();
   if(!choices.length)return void content.createEl('p',{text:writerUi('Habilite algum módulo de estrutura nas configurações.','Enable a structure module in settings.')});
-  for(const btn of tabs.querySelectorAll('button'))btn.classList.toggle('is-active',btn.dataset.section===active);
+  for(const btn of tabs.querySelectorAll('button')){
+   const selected=btn.dataset.section===active;
+   btn.classList.toggle('is-active',selected);
+   btn.setAttribute('aria-selected',String(selected));
+  }
   if(active==='beats')writerV7RCRenderBeats(view,content,project);
   else if(active==='pacing')writerV7RCRenderPacing(view,content,project);
   else if(active==='dependencies')writerV7StableRenderDependencies(view,content,project);
   else writerV7RCRenderPlotlines(view,content,project);
  };
  for(const [id,label] of choices){
-  const btn=tabs.createEl('button',{text:label,attr:{type:'button','aria-label':label,'data-section':id}});
+  const btn=tabs.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-label':label,'data-section':id}});
   btn.addEventListener('click',()=>{view.writerV7RCSubtab=id;show();});
  }
  show();

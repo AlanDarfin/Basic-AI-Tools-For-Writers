@@ -3969,4 +3969,97 @@ body.is-mobile .writer-lt-mobile-modal .modal{
     gap:6px;
   }
 }
+
+/* 8.0.2 — Compact context and transparent native-like controls.
+   Keep styles scoped so Obsidian core, other plugins and mod-cta actions are untouched. */
+.writer-project-root .writer-v7-rc-structure-tabs.writer-v7-rc-structure-tabs{
+  display:flex;
+  flex-wrap:nowrap;
+  justify-content:flex-start;
+  gap:5px;
+  min-width:0;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  scroll-behavior:auto;
+  scroll-snap-type:none;
+  scrollbar-width:thin;
+  padding:3px 0 7px;
+}
+.writer-project-root .writer-v7-rc-structure-tabs.writer-v7-rc-structure-tabs>button{
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:center;
+  width:auto;
+  max-width:none;
+  min-width:max-content;
+  min-height:36px;
+  height:auto;
+  padding:7px 11px;
+  white-space:nowrap;
+  overflow-wrap:normal;
+  word-break:normal;
+  line-height:1.2;
+  background:transparent;
+  border:1px solid var(--background-modifier-border);
+  border-radius:var(--radius-m);
+  box-shadow:none;
+  color:var(--text-muted);
+}
+.writer-project-root .writer-v7-rc-structure-tabs>button:hover,
+.writer-tool-root .dictionary-lexical-actions>button:hover,
+.writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button:not(.mod-cta):hover{
+  background:var(--background-modifier-hover);
+  color:var(--text-normal);
+}
+.writer-project-root .writer-v7-rc-structure-tabs>button.is-active{
+  color:var(--text-accent);
+  background:var(--background-secondary);
+  border-color:var(--interactive-accent);
+}
+.writer-tool-root .writer-tool-panel>textarea.dictionary-context-optional.dictionary-context-optional{
+  box-sizing:border-box;
+  flex:0 0 auto;
+  align-self:stretch;
+  display:block;
+  width:100%;
+  min-width:0;
+  height:70px;
+  min-height:70px;
+  max-height:112px;
+  overflow-y:auto;
+  resize:vertical;
+  margin:0;
+}
+.writer-tool-root .writer-tool-panel>textarea.dictionary-context-optional:focus{
+  height:104px;
+}
+.writer-tool-root .dictionary-lexical-actions>button,
+.writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button:not(.mod-cta){
+  background:transparent;
+  color:var(--text-normal);
+  border:1px solid var(--background-modifier-border);
+  border-radius:var(--radius-m);
+  box-shadow:none;
+}
+.writer-tool-root .dictionary-lexical-actions{
+  gap:6px;
+}
+.writer-tool-root .dictionary-lexical-actions>button{
+  min-height:36px;
+  height:auto;
+  padding:6px 10px;
+  white-space:nowrap;
+  overflow-wrap:normal;
+}
+.writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button:not(.mod-cta){
+  min-height:36px;
+  padding:6px 10px;
+}
+body.is-mobile .writer-project-root .writer-v7-rc-structure-tabs>button,
+body.is-mobile .writer-tool-root .dictionary-lexical-actions>button{
+  min-height:42px;
+}
 /* END V8 MODULAR STYLES */

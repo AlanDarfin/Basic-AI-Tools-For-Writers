@@ -9746,8 +9746,9 @@ function writerV8HomeSearch(files,query,cache,max=12){
 }
 function writerV8HomeTopFiles(plugin,count=12){
  const recent=plugin.settings.v8Finish?.homeRecent||[];
+ const used=new Set();
  const paths=recent.map(path=>plugin.app.vault.getAbstractFileByPath(path))
-  .filter(f=>f instanceof TFile&&f.extension==='md');
+  .filter(f=>{if(!(f instanceof TFile)||f.extension!=='md'||used.has(f.path))return false;used.add(f.path);return true;});
  const seen=new Set(paths.map(f=>f.path));
  const last=plugin.app.vault.getMarkdownFiles?.().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0))||[];
  for(const file of last){if(paths.length>=count)break;if(!seen.has(file.path)){paths.push(file);seen.add(file.path);}}

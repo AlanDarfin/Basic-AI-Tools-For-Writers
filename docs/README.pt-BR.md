@@ -11,9 +11,10 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 - **Barra de formatação configurável:** 21 ações Markdown, botões ordenáveis e opcionais, ativada inicialmente no computador e **desativada por padrão no celular**. Não substitui a barra nativa do Obsidian.
 - **Explorador nativo inspirado no Make.md:** personalize ícones e cores de notas/pastas pelo menu contextual do explorador padrão, visualize pastas em listas ou cartões com busca e crie/abra índices Markdown. Nenhuma barra lateral extra.
 - **Homepage renovada:** título centralizado, ícone acima no celular ou ao lado no PC, mais ícones Lucide ou imagem do cofre/HTTPS, relógio acima do calendário e busca no topo.
+- **Smart Spaces (opt-in):** coleções de notas Markdown filtradas por pasta, tag ou propriedade YAML, com cartões, lista, tabela e quadro agrupado. Desligadas por padrão e sem barra lateral extra.
 - **Configurações modulares:** possibilidade de desligar a barra de edição e as melhorias do explorador, ajustar botões individualmente e usar a interface em português ou inglês.
 
-Última versão estável anterior: **8.3.0**.\n\nEsta é uma **prévia de integração**, não um fork completo do Make.md. Bancos de dados avançados, fórmulas, rollups, Spaces e Flow Editor **ainda não foram portados**. Consulte [o estado da implementação v9](V9_PREVIEW.pt-BR.md). Faça backup do cofre antes de instalar uma prévia.
+Última versão estável anterior: **8.3.0**.\n\nEsta é uma **prévia de integração**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [o estado da implementação v9](V9_PREVIEW.pt-BR.md). Faça backup do cofre antes de instalar uma prévia.
 
 ## Funcionalidades
 

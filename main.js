@@ -1412,7 +1412,7 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
 // v3 module: src/v3/complements.js
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{
- constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();}
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;}
  get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
  isExcluded(file){
   if(!file||file.extension!=='md')return true;
@@ -1429,7 +1429,7 @@ class WriterComplements extends EditorSuggest{
   }
   return m;
  }
- reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.dictionaries.clear();}
+ reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.dictionaries.clear();this.fileTermCache.clear();this.linkList=null;}
  async rebuild(){
   if(this.building)return this.building;
   const generation=++this.generation;
@@ -1441,8 +1441,21 @@ class WriterComplements extends EditorSuggest{
      const file=files[i];if(generation!==this.generation)return;
      try{
       if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
-      const text=await this.plugin.app.vault.cachedRead(file);
-      const terms=this.tokenize(writerMaskMarkdown(text));
+      // Reuse unchanged file indexes on successive vault scans. Bound the
+      // memory footprint; never trust cache entries without an mtime.
+      const stamp=file.stat?.mtime,size=file.stat?.size;
+      let stored=this.fileTermCache.get(file.path);
+      let terms;
+      if(Number.isFinite(stamp)&&stored?.mtime===stamp&&stored.size===size){
+       terms=stored.terms;
+      }else{
+       const text=await this.plugin.app.vault.cachedRead(file);
+       terms=this.tokenize(writerMaskMarkdown(text));
+       if(Number.isFinite(stamp)){
+        if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
+        this.fileTermCache.set(file.path,{mtime:stamp,size,terms});
+       }
+      }
       const remaining=Math.max(0,limit-total);
       const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
       total+=subset.size;if(total>=limit)break;
@@ -1501,9 +1514,18 @@ class WriterComplements extends EditorSuggest{
    for(const item of terms.values())add(item.word,item.word,10+Math.min(20,item.count),'Cofre');
   }
   if(this.options.dictionaries)for(const item of this.dictionaries.values())add(item.word,item.insert,85,item.source);
-  if(this.options.internalLinks)for(const file of this.plugin.app.vault.getMarkdownFiles()){
+  // A suggestion request should not enumerate a large vault for every key.
+  // Refresh link names periodically; new files appear within 10 seconds.
+  if(this.options.internalLinks){
+   const now=Date.now();
+   if(!this.linkList||now-this.linkListAt>10000){
+    this.linkList=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f));
+    this.linkListAt=now;
+   }
+   for(const file of this.linkList){
    if(this.isExcluded(file))continue;
-   add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,'Link interno');
+    add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,'Link interno');
+   }
   }
   if(this.options.frontmatter&&context.file){
    const props=this.plugin.app.metadataCache.getFileCache(context.file)?.frontmatter||{};

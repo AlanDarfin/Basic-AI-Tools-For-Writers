@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 8.1.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 8.2.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md)
 
@@ -16,7 +16,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 | **Linha do tempo** | Eventos, marcos, trilhas, ramificações e calendário fictício configurável. |
 | **IA opcional** | Chat com contexto da seleção ou nota, definições, sinônimos, antônimos, tradução, prompts editáveis e escolha de modelos/provedores. |
 | **IA inline** | Continuações de texto no cursor, inspiradas no Inscribe, com acionamento manual, sugestão fantasma, Tab para aceitar, prompt editável e perfis por pasta. Desativada por padrão; requisições automáticas são opcionais. |
-| **Posts fictícios** | Publicações com reações em chamas, métricas e comentários encadeados para histórias. |\n| **Galeria** | Pesquisa e filtros de imagens, vídeos, áudio e PDFs locais, inspirados no Media Gallery View. |\n| **Revisão** | LanguageTool com verificações por parágrafo, menus de sugestões, dicionário pessoal, integração opcional com o LanguageTool externo e revisão por IA. |
+| **Posts fictícios** | Publicações com reações em chamas, métricas e comentários encadeados para histórias. |\n| **Galeria** | Pesquisa e filtros de imagens, vídeos, áudio e PDFs locais, inspirados no Media Gallery View. |\n| **Legendas de imagens** | Descrições curtas extraídas do Markdown de imagens, sem alterar as notas. |\n| **Conversas fictícias** | Balões Markdown, alinhamento por personagem e fotos locais opcionais. |\n| **Homepage de escrita** | Busca, favoritos, rascunhos, arquivos recentes e atalhos do Longform. |\n| **Revisão** | LanguageTool com verificações por parágrafo, menus de sugestões, dicionário pessoal, integração opcional com o LanguageTool externo e revisão por IA. |
 | **Ferramentas** | Autocompletar baseado no cofre, variantes, comparação antes da substituição, histórico local de notas, Unicode e abreviações. A indexação é administrada nas configurações. |
 | **Editor** | Navegação inspirada no Keyshots, Easy Typing, Smart Typography, foco de máquina de escrever, lembrança do cursor e modelos por nome de nota. |
 | **Formatação** | Markdown estendido, sintaxe inspirada no Pandoc, exportação com Pandoc no computador e blocos de abas, avatares e Wiki. |
@@ -198,6 +198,50 @@ limit: 90
 ~~~~
 
 `path` é opcional (sem ele, usa a pasta da nota). Os tipos são `all`, `image`, `video`, `audio` e `pdf`; layouts `grid`, `masonry` (grade responsiva leve) e `ratio`. Não usa hospedagem externa nem cria miniaturas avançadas para PDF ou áudio. Há também o comando **Galeria: inserir bloco de mídias**. Trata-se de uma integração própria e simplificada, não uma cópia integral do outro plugin.
+
+### Legendas breves para imagens (inspiradas no Image Captions)
+
+Use a descrição da imagem no próprio Markdown do Obsidian: `![[Imagens/porto.webp|O porto ao amanhecer]]` ou `![O porto ao amanhecer](Imagens/porto.webp)`. A descrição aparece abaixo da imagem nas renderizações compatíveis do Modo de Leitura. `![[Imagens/porto.webp|%]]` usa o nome do arquivo como legenda.
+
+As legendas não alteram o conteúdo original da nota e têm limite padrão de 180 caracteres (configurável em **Configurações → Geral**). Se o plugin independente **Image Captions** estiver ativo, o Basic AI não adiciona uma segunda legenda. Para recursos avançados de alinhamento e Live Preview, utilize o plugin dedicado.
+
+### Conversas fictícias com fotos opcionais
+
+Use o bloco `writer-chat` para diálogos, mensagens de celular e transcrições fictícias. **A foto só aparece se houver um campo `avatar:`**; sem ele, não haverá círculo ou imagem substituta.
+
+~~~~markdown
+~~~writer-chat
+title: Conversa no porto
+=== Maria
+side: left
+avatar: [[Imagens/maria.webp]]
+time: 18:30
+---
+Encontrou a carta?
+
+=== João
+side: right
+time: 18:32
+---
+Sim, estava **dentro do livro antigo**.
+
+=== Maria
+side: left
+time: 18:33
+---
+Então venha até o farol.
+~~~
+~~~~
+
+Aceita `side: left|right|center`, `time`, `avatar: [[imagem-local.png]]` e `mine: true` para alinhar à direita. O corpo das mensagens aceita Markdown. Não depende do Chat View e não envia mensagens a nenhum serviço externo.
+
+### Homepage de escrita (inspirada no Harbor Tab e Genkan)
+
+Abra **Início: abrir painel de escrita** pela paleta de comandos ou pelo botão das **Configurações → Geral**. A página oferece busca de notas e títulos, arquivos recentes, favoritos, acesso ao Longform, quadro de cenas, revisão, estatísticas simples do cofre e três espaços para rascunhos rápidos.
+
+Os cartões podem ser reordenados pelas setas. É possível favoritar notas pela estrela dos resultados da busca ou pelo comando **Início: favoritar nota atual**.
+
+Os rascunhos são armazenados localmente nas configurações e podem ser exportados como novos arquivos em `Quick Notes/*.md`, sem sobrescrever notas existentes e sem enviar conteúdo à IA. A abertura automática ao iniciar permanece **desativada por padrão**, sem tomar o lugar das abas normais do Obsidian nem interferir em outras homepages.
 
 ### Outras opções de escrita
 

@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 8.1.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 8.2.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md)
 
@@ -16,7 +16,7 @@ A single, compact writing workspace for planning books, organizing a fictional w
 | **Timeline** | Plan events and milestones, use tracks and branches, and optionally configure a fictional calendar. |
 | **AI writing** | Chat with note/selection context, definitions, synonyms, antonyms, translation and editable prompts; choose supported providers and models. AI is optional. |
 | **Inline AI** | Optional Inscribe-inspired continuation directly at the cursor; manual trigger, ghost text, Tab to accept, customizable prompt and per-folder profiles. Disabled by default; automatic provider requests are separately opt-in. |
-| **Social posts** | Local fictional posts, flame reactions, metrics and nested replies for story documents. |\n| **Media gallery** | Search and filter local images, video, audio and PDFs in an embedded gallery, inspired by Media Gallery View. |\n| **Review** | Use LanguageTool spelling and grammar suggestions, a local personal dictionary, automatic paragraph checks, contextual correction menus, optional external LanguageTool integration and AI-assisted revision. |
+| **Social posts** | Local fictional posts, flame reactions, metrics and nested replies for story documents. |\n| **Media gallery** | Search and filter local images, video, audio and PDFs in an embedded gallery, inspired by Media Gallery View. |\n| **Image captions** | Show short captions from normal Obsidian image alt text, without changing notes. |\n| **Fictional chats** | Markdown conversation bubbles, speaker alignment and optional profile pictures from your vault. |\n| **Writing homepage** | Search, favorite notes, quick drafts, recent files and Longform shortcuts in a configurable local dashboard. |\n| **Review** | Use LanguageTool spelling and grammar suggestions, a local personal dictionary, automatic paragraph checks, contextual correction menus, optional external LanguageTool integration and AI-assisted revision. |
 | **Writing tools** | Vault autocomplete, text variants, comparison before replacing text, local note snapshots, Unicode picker and abbreviations. Index management lives in the plugin settings. |
 | **Editing** | Keyshots-inspired navigation, Easy Typing, Smart Typography, Typewriter focus, remembered cursor position and note-name templates. |
 | **Markdown formatting** | Extended Markdown, Pandoc-style lists and blocks, optional Pandoc export on desktop, plus tabs, avatars and Wiki cards. |
@@ -198,6 +198,48 @@ limit: 90
 ~~~~
 
 `path` is optional and defaults to the note's folder; `type` accepts `all`, `image`, `video`, `audio` or `pdf`; `layout` accepts `grid`, `masonry` (lightweight responsive grid) or `ratio`. No external image hosting or generated PDF/audio thumbnails are required. For existing notes, use the command **Gallery: insert media block**. This is a focused, original integration rather than a complete copy of the separate plugin.
+
+### Image captions (inspired by Image Captions)
+
+Add a short description by using ordinary Obsidian Markdown: `![[Images/harbor.webp|The harbor at dawn]]` or `![The harbor at dawn](Images/harbor.webp)`. The description appears below the image in supported Reading View rendering. `![[Images/harbor.webp|%]]` uses the image filename as its caption.
+
+Captions use the existing Markdown alt text, never change the original note and are capped at 180 characters by default (configurable in **Settings → General**). When the separate **Image Captions** plugin is enabled, Basic AI skips its own captions to avoid duplication. For more advanced alignment and Live Preview features, use that dedicated plugin.
+
+### Fictional chats with optional portraits
+
+Use `writer-chat` for scene conversations, phone messages or fictional transcripts. Only messages with an `avatar:` field display a profile image; otherwise the bubble is aligned without an empty circle. Local image paths resolve through your vault.
+
+~~~~markdown
+~~~writer-chat
+title: Harbor conversation
+=== Maria
+side: left
+avatar: [[Images/maria.webp]]
+time: 18:30
+---
+Did you find the letter?
+
+=== João
+side: right
+time: 18:32
+---
+Yes, it was **inside the old book**.
+
+=== Maria
+side: left
+time: 18:33
+---
+Then meet me by the lighthouse.
+~~~
+~~~~
+
+Message fields include `side: left|right|center`, `time`, `avatar: [[local.png]]`, and `mine: true` to align right. Each message body supports Markdown. The block works independently of the Chat View plugin and does not send messages to any external chat service.
+
+### Writing homepage (inspired by Harbor Tab and Genkan)
+
+Open **Basic AI: Home — open writing dashboard** in the command palette (or **Open homepage now** in **Settings → General**). It combines instant vault search, recent notes, favorites, quick navigation to your Longform project, the story board, review tools, simple vault stats and three quick-draft slots. The cards can be reordered with their arrow controls. Use the search star to add a note to your favorites or the command **Home: toggle current note favorite**.
+
+Quick drafts are stored in the plugin settings, locally, and can be exported to fresh `Quick Notes/*.md` files without overwriting existing notes. They are not AI chats and never send their content to any provider. **Open writing homepage on startup is disabled by default**, so this doesn't take over Obsidian's new tabs or conflict with Harbor Tab, Genkan or other homepage plugins.
 
 ### Other writing syntax
 

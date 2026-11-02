@@ -213,3 +213,15 @@
 .writer-v9-space-side-item>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .writer-v9-space-side-item svg{width:16px;height:16px;color:var(--text-muted);}
 .writer-v9-space-side-add{width:100%;min-height:34px;}
+
+/* Password protection is a local, visual-only curtain; not data encryption. */
+.writer-v901-lock-host{position:relative;}
+.writer-v901-lock-curtain{
+ position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;
+ background:var(--background-primary);color:var(--text-normal);
+}
+.writer-v901-lock-caption{display:flex;align-items:center;gap:9px;max-width:90%;padding:15px;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);
+ background:var(--background-secondary);color:var(--text-muted);
+}
+.writer-v901-lock-caption svg{width:19px;height:19px;color:var(--interactive-accent);}

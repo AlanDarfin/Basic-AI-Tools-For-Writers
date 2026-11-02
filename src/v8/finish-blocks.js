@@ -25,7 +25,7 @@ function writerV8ParseCaption(raw,src){
  if(caption==='%')caption=filename.slice(0,filename.length-ext.length);
  else if(caption==='%.%')caption=filename;
  else if(caption==='\\%')caption='%';
- if(caption===filename||caption===filename.slice(0,filename.length-ext.length))return '';
+ if(!['%','%.%','\\%'].includes(clean.join(' | ').trim())&&(caption===filename||caption===filename.slice(0,filename.length-ext.length)))return '';
  return caption;
 }
 function writerV8CaptionFromImage(img,max){

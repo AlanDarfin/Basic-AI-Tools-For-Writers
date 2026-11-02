@@ -14073,7 +14073,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   rememberHotReloadSidebars(){
     const workspace=this.app.workspace;
-    const types=[VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW];
+    const types=[PROJECT_VIEW,VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW];
     const leaves=[];
     for(const type of types)for(const leaf of workspace.getLeavesOfType(type)||[]){
       const element=leaf.containerEl;

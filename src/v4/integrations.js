@@ -167,8 +167,15 @@ class WriterV4Extras{
     constructor(view){
      this.view=view;this.interacting=false;this.decorations=Decoration.set([]);
      this.onPointer=event=>{
+      // Touch does not reliably dispatch pointerdown in Android WebView.
       if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
      };
+     this.onTouchStart=event=>{
+      if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
+     };
+     this.onTouchMove=()=>this.setInteracting(false);
+     this.onBeforeInput=()=>this.setInteracting(true);
+     this.onCompositionStart=()=>this.setInteracting(true);
      this.onKey=event=>{
       if(['Shift','Control','Alt','Meta'].includes(event.key))return;
       this.setInteracting(true);
@@ -179,6 +186,10 @@ class WriterV4Extras{
       this.setInteracting(false);
      };
      view.dom.addEventListener('pointerdown',this.onPointer,true);
+     view.dom.addEventListener('touchstart',this.onTouchStart,{capture:true,passive:true});
+     view.dom.addEventListener('touchmove',this.onTouchMove,{capture:true,passive:true});
+     view.dom.addEventListener('beforeinput',this.onBeforeInput,true);
+     view.dom.addEventListener('compositionstart',this.onCompositionStart,true);
      view.dom.addEventListener('keydown',this.onKey,true);
      view.dom.addEventListener('wheel',this.onWheel,{capture:true,passive:true});
      owner.typewriterViews.add(this);
@@ -207,6 +218,10 @@ class WriterV4Extras{
     }
     destroy(){
      this.view.dom.removeEventListener('pointerdown',this.onPointer,true);
+     this.view.dom.removeEventListener('touchstart',this.onTouchStart,true);
+     this.view.dom.removeEventListener('touchmove',this.onTouchMove,true);
+     this.view.dom.removeEventListener('beforeinput',this.onBeforeInput,true);
+     this.view.dom.removeEventListener('compositionstart',this.onCompositionStart,true);
      this.view.dom.removeEventListener('keydown',this.onKey,true);
      this.view.dom.removeEventListener('wheel',this.onWheel,true);
      this.view.dom.classList.remove('writer-v4-typewriter-engaged');

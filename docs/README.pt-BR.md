@@ -8,7 +8,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 
 ## Novidades da prévia v9
 
-- **Barra de formatação configurável:** 21 ações Markdown, botões ordenáveis e opcionais, ativada inicialmente no computador e **desativada por padrão no celular**. Não substitui a barra nativa do Obsidian.
+- **Barra de formatação configurável:** 27 ações Markdown, botões ordenáveis e opcionais, ativada inicialmente no computador e **desativada por padrão no celular**. Não substitui a barra nativa do Obsidian.
 - **Explorador nativo inspirado no Make.md:** personalize ícones e cores de notas/pastas pelo menu contextual do explorador padrão, visualize pastas em listas ou cartões com busca e crie/abra índices Markdown. Nenhuma barra lateral extra.
 - **Homepage renovada:** título centralizado, ícone acima no celular ou ao lado no PC, mais ícones Lucide ou imagem do cofre/HTTPS, relógio acima do calendário e busca no topo.
 - **Smart Spaces (opt-in):** coleções de notas Markdown filtradas por pasta, tag ou propriedade YAML, com cartões, lista, tabela e quadro agrupado. Desligadas por padrão e sem barra lateral extra.

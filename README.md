@@ -14,6 +14,8 @@ A single, compact writing workspace for planning books, organizing a fictional w
 - **Smart Spaces (opt-in):** save collections of Markdown notes filtered by folder, tag and YAML property, view as cards, list, table or grouped board. Off by default, no additional sidebar.
 - **Modular switches:** toolbar, Spaces and native explorer modules can be hidden under Modules; individual controls and behaviors are configurable. Portuguese and English UI.
 
+**9.0.1 preview on a work branch (not released):** [UI, Lucide picker, optional Spaces sidebar and visual password-lock changes](docs/V9_0_1_PREVIEW.pt-BR.md). The lock only controls access within the Basic interface; it **does not encrypt vault files**. Existing v9.0.0 behavior remains the release baseline.
+
 Previous stable version: **8.3.0**.
 
 This is an **independent integration**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 release notes](docs/V9_RELEASE.en.md) and [the historical compatibility audit](docs/V9_FINAL_AUDIT.md). Back up your vault before updating.

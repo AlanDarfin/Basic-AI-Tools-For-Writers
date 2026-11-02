@@ -48,14 +48,18 @@ function fixture(){
  const status=card.children.find(el=>el.cls.includes('writer-v901-home-search-status'));
  return {files,opened,card,input,results,status};
 }
-test('homepage search gives a full-width region before the hero, not alongside the calendar',()=>{
+test('homepage title is above full-width search and search remains above actions and calendar',()=>{
  const begin=source.indexOf('this.renderSearch(top);');
  const hero=source.indexOf("const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'})");
+ const buttons=source.indexOf("const commands=this.contentEl.createDiv({cls:'writer-v8-home-quick-actions'");
  const clock=source.indexOf('writerV8HomeRenderCalendar(this,schedule)');
- assert.ok(begin>=0&&begin<hero&&hero<clock);
+ assert.ok(hero>=0&&hero<begin&&begin<buttons&&buttons<clock);
  const css=fs.readFileSync('styles.css','utf8');
  assert.match(css,/writer-v8-home-search-region/);
  assert.match(css,/writer-v901-home-result\.is-selected/);
+ assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+ assert.match(css,/@container \(min-width:1000px\)/);
+ assert.match(css,/@container \(max-width:560px\)/);
 });
 test('search shows full paths to distinguish equally named notes',()=>{
  const f=fixture();f.input.value='sem';f.input.emit('input');

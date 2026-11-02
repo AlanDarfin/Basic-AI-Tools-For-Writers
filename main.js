@@ -210,11 +210,11 @@ class ProjectsView extends ItemView{
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
     const selected=this.activeTab===id;
-    const btn=tabs.createEl('button',{cls:selected?'is-active':'',
+    const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
      attr:{type:'button',role:'tab','aria-selected':String(selected)}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
     require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
-    btn.createSpan({text:name});
+    btn.prepend?.(glyph);
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
@@ -222,11 +222,11 @@ class ProjectsView extends ItemView{
    rebuildingTabs=false;
   };
   for(const group of menuGroups){
-   const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
+   const button=groupNav.createEl('button',{text:lfMsg(group.pt,group.en),cls:activeGroup===group.id?'is-active':'',
     attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
    const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
    require('obsidian').setIcon?.(glyph,groupLucide[group.id]||'folder');
-   button.createSpan({text:lfMsg(group.pt,group.en)});
+   button.prepend?.(glyph);
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
     if(this.tabGroup===group.id)return;
@@ -2079,10 +2079,10 @@ class WriterToolsView extends ItemView{
   if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
   const buttons={};
   for(const [id,label] of sections){
-   const btn=tabs.createEl('button',{cls:this.tab===id?'is-active':''});
+   const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
    const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
    require('obsidian').setIcon?.(glyph,tabLucide[id]||'wrench');
-   btn.createSpan({text:label});
+   btn.prepend?.(glyph);
    buttons[id]=btn;
    btn.addEventListener('click',()=>{
     if(this.tab===id)return;

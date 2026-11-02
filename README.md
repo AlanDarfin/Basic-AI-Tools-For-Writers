@@ -16,6 +16,10 @@ A single, compact writing workspace for planning books, organizing a fictional w
 
 Previous stable version: **8.3.0**.\n\nThis is an **integration preview**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 implementation status and migration notes](docs/V9_PREVIEW.en.md). Back up your vault before installing a preview.
 
+### Calendar v9 development
+
+The writing calendar now includes a responsive built-in mini-calendar/sidebar, 3-day and 30-day agenda views, timeline slots, categories, local events with locations/details, configurable colors, recurring intervals and end dates. Edit one occurrence or an entire series, and exclude selected dates. It stores ordinary Markdown event notes; it does **not** implement two-way Google Calendar, CalDAV or ICS synchronization.
+
 ## Features
 
 | Area | What you can do |

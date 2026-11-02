@@ -8,6 +8,7 @@ const WRITER_MODULES=[
  ['projects','Longform e projetos','Longform & projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
  ['bookNavigation','Navegação de capítulos Longform','Longform chapter navigation','Bloco com capítulos e subcapítulos ordenados pelo índice Longform.','Chapter and subchapter navigation based on the Longform scene order.'],
  ['tools','Ferramentas de escrita','Writing tools','Oculta a barra lateral complementar.','Hides supplementary tools pane.'],
+ ['inlineAI','Sugestões de IA inline','Inline AI suggestions','Continuações de texto com IA, desativadas por padrão.','AI text continuations, off by default.'],
  ['complements','Autocomplete','Autocomplete','Oculta sugestões locais e busca de termos.','Hides local word suggestions and indexing controls.'],
  ['variants','Variantes','Writing variants','Oculta comparações e variantes de frases.','Hides writing variants.'],
  ['diff','Diff e perfis','Diff & profiles','Oculta revisão seletiva.','Hides selective review.'],

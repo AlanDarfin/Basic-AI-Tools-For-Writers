@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 8.0.3 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 8.0.4 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md)
 
@@ -12,9 +12,10 @@ A single, compact writing workspace for planning books, organizing a fictional w
 | --- | --- |
 | **Longform** | Organize books, chapters, subchapters and scenes; reorder them, use scene cards/list/Kanban, compile manuscripts and manage book series. |
 | **Story planning** | Track plotlines, beats, pacing, scene links, goals, writing sessions, tasks and comments. |
-| **World compendium** | Keep character, place, item and custom world sheets in Markdown notes with tags, folder-note inheritance, relationships, local images, maps and galleries. |
+| **World compendium** | Keep character, place, item and custom world sheets in Markdown notes with tags, folder-note inheritance, relationships, local images, maps and galleries; Folder Notes with a hidden Explorer file and an open button, plus dynamic folder overviews. |
 | **Timeline** | Plan events and milestones, use tracks and branches, and optionally configure a fictional calendar. |
 | **AI writing** | Chat with note/selection context, definitions, synonyms, antonyms, translation and editable prompts; choose supported providers and models. AI is optional. |
+| **Inline AI** | Optional Inscribe-inspired continuation directly at the cursor; manual trigger, ghost text, Tab to accept, customizable prompt and per-folder profiles. Disabled by default; automatic provider requests are separately opt-in. |
 | **Review** | Use LanguageTool spelling and grammar suggestions, a local personal dictionary, automatic paragraph checks, contextual correction menus, optional external LanguageTool integration and AI-assisted revision. |
 | **Writing tools** | Vault autocomplete, text variants, comparison before replacing text, local note snapshots, Unicode picker and abbreviations. Index management lives in the plugin settings. |
 | **Editing** | Keyshots-inspired navigation, Easy Typing, Smart Typography, Typewriter focus, remembered cursor position and note-name templates. |
@@ -94,6 +95,27 @@ Related entry: [[Character One]].
 ~~~~
 
 These are **presentation blocks**, not a separate Wiki database. You can still use normal Markdown notes, links, tags and frontmatter for worldbuilding.
+
+### Folder Notes and dynamic overview
+
+Folder Notes appear as a book icon at the far edge of the folder row in the native file explorer. The matching note file is hidden from that explorer tree (not deleted); toggle this feature in **Settings → Compendium / Folder Notes**. Clicking the folder caret still expands its children.
+
+Add a live overview to any Markdown note with a fenced `writer-folder-overview` block. It lists notes and subfolders as cards or as a list. Use the command **Folder: insert overview**.
+
+~~~~markdown
+~~~writer-folder-overview
+style: cards
+subfolders: true
+depth: 2
+limit: 48
+~~~
+~~~~
+
+Supported settings: `style: cards|list`, `folder: path/to/folder` (optional), `subfolders: true|false`, `depth: 0..3`, `noteOnly: true|false` and `briefMax: 32..220`. Existing notes remain editable. The legacy `ccard` syntax is not replaced.
+
+### Inline writing completion
+
+Enable **Settings → Extended Syntax → Inline AI**. Run the command **Inline AI: suggest continuation**; the suggestion appears faintly at your cursor. Press **Tab** to insert it or **Esc** to dismiss it. Turn on *Automatic suggestions* only if you want text context to be sent to your configured provider while typing. You can change the prompt, delay and per-folder rules (`Books/|creative`, `Research/|formal`, `Private/|off`). The feature uses your writing-assistant provider and model, and does not install or copy Inscribe.
 
 ### Other writing syntax
 

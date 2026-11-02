@@ -341,6 +341,7 @@ class WriterV7Worldbuilding{
    if(note)void p.app.workspace.getLeaf(false).openFile(note);
    else new Notice(writerUi('Pasta sem nota associada.','No folder note found.'));
   }});
+  writerV8RegisterFolderOverview(p);
   p.registerEvent(p.app.workspace.on('layout-change',()=>this.scheduleExplorer()));
   p.registerEvent(p.app.workspace.on('file-menu',(menu,file)=>{
    if(!(file instanceof TFolder)||!p.settings.v7?.folderNotes)return;
@@ -356,7 +357,8 @@ class WriterV7Worldbuilding{
   p.registerEvent(p.app.vault.on('create',()=>this.scheduleExplorer()));
   p.registerEvent(p.app.vault.on('rename',()=>this.scheduleExplorer()));
   p.registerEvent(p.app.vault.on('delete',()=>this.scheduleExplorer()));
-  p.register?.(()=>{this.explorerObserver?.disconnect();clearTimeout(this.explorerTimer);});
+  if(typeof p.app.metadataCache?.on==='function')p.registerEvent(p.app.metadataCache.on('resolved',()=>this.scheduleExplorer()));
+  p.register?.(()=>{this.clearExplorerDecorations();this.explorerObserver?.disconnect();clearTimeout(this.explorerTimer);});
   this.scheduleExplorer();
  }
  async createFolderNote(folder){
@@ -365,7 +367,7 @@ class WriterV7Worldbuilding{
   if(existing)return existing;
   const path=folder.path+'/'+folder.name+'.md';
   if(this.plugin.app.vault.getAbstractFileByPath(path))throw Error(writerUi('Já existe um arquivo com esse nome.','A file with that name already exists.'));
-  return await this.plugin.app.vault.create(path,'---\ntags: []\n---\n\n# '+folder.name+'\n');
+  return await this.plugin.app.vault.create(path,'---\ntags: []\n---\n\n# '+folder.name+'\n\n\x60\x60\x60writer-folder-overview\nstyle: cards\nsubfolders: true\n\x60\x60\x60\n');
  }
  toggleFocus(){
   this.focus=!this.focus;
@@ -377,41 +379,64 @@ class WriterV7Worldbuilding{
   clearTimeout(this.explorerTimer);
   this.explorerTimer=setTimeout(()=>this.decorateExplorer(),120);
  }
+ clearExplorerDecorations(){
+  const el=this.explorerNode;
+  if(!el?.querySelectorAll)return;
+  el.querySelectorAll('.writer-v7-folder-open').forEach(button=>button.remove());
+  el.querySelectorAll('.writer-v7-folder-note-hidden,.writer-v7-folder-has-note').forEach(node=>{
+   node.classList.remove('writer-v7-folder-note-hidden','writer-v7-folder-has-note');
+  });
+ }
  decorateExplorer(){
   const app=this.plugin.app;
   const nativeFolderPlugin=app.plugins?.enabledPlugins?.has?.('folder-notes');
-  const leaf=app.workspace.getLeavesOfType('file-explorer')?.[0];
-  if(!leaf?.view?.containerEl)return;
-  const el=leaf.view.containerEl;
-  if(nativeFolderPlugin||!this.plugin.settings.v7?.folderNotes||!this.plugin.settings.v7?.explorerFolderNotes){
-   el.querySelectorAll('.writer-v7-folder-open').forEach(btn=>btn.remove());return;
-  }
+  const leaf=app.workspace.getLeavesOfType?.('file-explorer')?.[0];
+  const el=leaf?.view?.containerEl;
   if(this.explorerNode!==el){
-   this.explorerObserver?.disconnect();this.explorerNode=el;
-   if(typeof MutationObserver==='function'){
+   this.clearExplorerDecorations();
+   this.explorerObserver?.disconnect();
+   this.explorerNode=el;
+   if(el&&typeof MutationObserver==='function'){
     this.explorerObserver=new MutationObserver(records=>{
-     if(records.some(r=>[...r.addedNodes].some(n=>n.nodeType===1&&!n.classList?.contains('writer-v7-folder-open'))))this.scheduleExplorer();
+     if(records.some(r=>[...r.addedNodes].some(node=>
+      node.nodeType===1&&!node.classList?.contains('writer-v7-folder-open')
+     )))this.scheduleExplorer();
     });
     this.explorerObserver.observe(el,{childList:true,subtree:true});
    }
   }
+  if(!el)return;
+  if(nativeFolderPlugin||!this.plugin.settings.v7?.folderNotes||!this.plugin.settings.v7?.explorerFolderNotes){
+   this.clearExplorerDecorations();return;
+  }
+  const hiddenPaths=new Set();
   for(const title of el.querySelectorAll('.nav-folder-title[data-path]')){
-   const path=title.getAttribute('data-path'),folder=path&&app.vault.getAbstractFileByPath(path);
-   const existing=title.querySelector('.writer-v7-folder-open');
+   const path=title.getAttribute('data-path');
+   const folder=path&&app.vault.getAbstractFileByPath(path);
    const note=writerV7FolderNote(app,folder);
-   if(!note){existing?.remove();continue;}
+   const existing=title.querySelector('.writer-v7-folder-open');
+   if(!note){
+    existing?.remove();title.classList.remove('writer-v7-folder-has-note');continue;
+   }
+   hiddenPaths.add(note.path);
+   title.classList.add('writer-v7-folder-has-note');
    if(existing){existing.dataset.note=note.path;continue;}
-   const b=title.ownerDocument.createElement('button');
-   b.className='writer-v7-folder-open';b.type='button';b.dataset.note=note.path;
-   b.setAttribute('aria-label',writerUi('Abrir nota da pasta: ','Open folder note: ')+folder.name);
-   b.setAttribute('title',writerUi('Abrir nota da pasta','Open folder note'));
-   b.textContent='▤';
-   b.addEventListener('click',event=>{
+   const button=title.ownerDocument.createElement('button');
+   button.className='writer-v7-folder-open';button.type='button';button.dataset.note=note.path;
+   button.setAttribute('aria-label',writerUi('Abrir nota da pasta: ','Open folder note: ')+folder.name);
+   button.setAttribute('title',writerUi('Abrir nota da pasta','Open folder note'));
+   if(typeof require('obsidian').setIcon==='function')require('obsidian').setIcon(button,'book-open');
+   else button.textContent='📖';
+   button.addEventListener('click',event=>{
     event.preventDefault();event.stopPropagation();
-    const file=app.vault.getAbstractFileByPath(b.dataset.note);
+    const file=app.vault.getAbstractFileByPath(button.dataset.note);
     if(file instanceof TFile)void app.workspace.getLeaf(false).openFile(file);
    });
-   title.appendChild(b);
+   title.appendChild(button);
+  }
+  for(const title of el.querySelectorAll('.nav-file-title[data-path]')){
+   const item=title.closest('.nav-file')||title;
+   item.classList.toggle('writer-v7-folder-note-hidden',hiddenPaths.has(title.getAttribute('data-path')));
   }
  }
  renderSettings(panel){
@@ -422,7 +447,7 @@ class WriterV7Worldbuilding{
    ['compendium','Compêndio por tags','Tag-driven compendium'],
    ['timeline','Timeline de eventos','Event timeline'],
    ['folderNotes','Reconhecer notas de pasta','Recognize folder notes'],
-   ['explorerFolderNotes','Mostrar acesso às notas de pasta no explorador','Show folder-note action in file explorer'],
+   ['explorerFolderNotes','Ocultar notas de pasta no explorador e abrir pelo ícone','Hide folder notes in Explorer and open from its icon'],
    ['narrativeMemory','Enviar contexto de capítulos anteriores para revisão IA','Send previous-chapter context to AI review']
   ])new Setting(section).setName(writerUi(pt,en))
    .setDesc(key==='narrativeMemory'?writerUi('Desligado por padrão. Envia trechos anteriores ao provedor configurado, apenas durante a revisão.','Off by default. Previous chapter excerpts are sent to the configured provider only when reviewing.'):writerUi('Configurável; sem alterar automaticamente seus documentos.','Configurable; does not automatically modify your documents.'))

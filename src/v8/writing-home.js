@@ -1,7 +1,19 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['continue','recent','favorites','quick','stats'];
+const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal'];
+const WRITER_V8_HOME_CATALOG={
+ calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],
+ continue:['book-open','Continuar escrevendo','Continue writing','Retome seu projeto','Resume your project'],
+ recent:['history','Notas recentes','Recent notes','Últimas notas editadas','Recently edited notes'],
+ favorites:['star','Favoritos','Favorites','Notas fixadas por você','Your starred notes'],
+ quick:['notebook-pen','Rascunhos rápidos','Quick drafts','Três rascunhos locais','Three local draft pads'],
+ stats:['chart-no-axes-column','Resumo do cofre','Vault summary','Quantidade de notas e atividade','Note counts and activity'],
+ activity:['chart-column','Atividade semanal','Weekly activity','Notas modificadas nos últimos sete dias','Notes modified in the last seven days'],
+ random:['shuffle','Nota surpresa','Surprise note','Descubra uma nota aleatória do cofre','Discover a random vault note'],
+ tags:['tags','Tags frequentes','Popular tags','Tags mais usadas nas notas','Most-used note tags'],
+ goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note']
+};
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
  const q=String(query||'').trim().toLocaleLowerCase();
@@ -80,37 +92,110 @@ class WriterV8HomeView extends ItemView{
   action('Revisão','Review','spell-check',()=>this.plugin.openReview());
   action('Calendário','Calendar','calendar-days',()=>void this.plugin.writerCalendarOpen?.());
   action('Estudos','Study','graduation-cap',()=>void this.plugin.writerStudyOpen?.());
-  // The calendar participates in the dashboard grid; search never shares its row.
+  const toolbar=this.contentEl.createDiv({cls:'writer-v903-widgets-toolbar'});
+  toolbar.createEl('strong',{text:writerUi('Meu painel','My dashboard')});
+  const add=toolbar.createEl('button',{cls:'writer-v903-widget-add',attr:{type:'button'}});
+  require('obsidian').setIcon?.(add.createSpan({cls:'writer-v903-button-icon'}),'plus');
+  add.createSpan({text:writerUi('Adicionar widgets','Add widgets')});
+  add.addEventListener('click',()=>this.manageWidgets());
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'});
-  const schedule=grid.createDiv({cls:'writer-v8-home-clock-card',attr:{role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
-  writerV8HomeRenderCalendar(this,schedule);
   const cards={
+   calendar:()=>this.renderCalendarWidget(grid),
    continue:()=>this.renderContinue(grid),
-    recent:()=>this.renderFiles(grid,'recent'),
+   recent:()=>this.renderFiles(grid,'recent'),
    favorites:()=>this.renderFiles(grid,'favorites'),
    quick:()=>this.renderQuick(grid),
-   stats:()=>this.renderStats(grid)
+   stats:()=>this.renderStats(grid),
+   activity:()=>this.renderActivity(grid),
+   random:()=>this.renderRandom(grid),
+   tags:()=>this.renderTags(grid),
+   goal:()=>this.renderGoal(grid)
   };
-  for(const key of cfg.homeOrder){if(WRITER_V8_HOME_SECTIONS.includes(key))cards[key]?.();}
+  for(const key of cfg.homeOrder){
+   if(WRITER_V8_HOME_SECTIONS.includes(key)&&!cfg.homeHidden.includes(key))cards[key]?.();
+  }
+  if(!grid.children.length){
+   const empty=grid.createDiv({cls:'writer-v903-widgets-empty'});
+   empty.createEl('p',{text:writerUi('Sua homepage está vazia. Adicione widgets para começar.','Your dashboard is empty. Add some widgets to get started.')});
+   const restore=empty.createEl('button',{text:writerUi('Adicionar widgets','Add widgets')});
+   restore.addEventListener('click',()=>this.manageWidgets());
+  }
   this.contentEl.scrollTop=scroll;
  }
- card(parent,key,pt,en){
-  const section=parent.createDiv({cls:'writer-v8-home-card',attr:{'data-section':key,role:'region','aria-label':writerUi(pt,en)}});
-  const top=section.createDiv({cls:'writer-v8-home-card-header'});
-  top.createEl('h3',{text:writerUi(pt,en)});
-  const order=this.plugin.settings.v8Finish.homeOrder,idx=order.indexOf(key);
-  const controls=top.createDiv({cls:'writer-v8-home-card-order'});
-  if(key!=='search')
-  for(const [direction,symbol,ptText,enText] of [[-1,'↑','Mover para cima','Move up'],[1,'↓','Mover para baixo','Move down']]){
-   const btn=controls.createEl('button',{text:symbol,attr:{type:'button',title:writerUi(ptText,enText),'aria-label':writerUi(ptText,enText)}});
-   btn.disabled=idx+direction<0||idx+direction>=order.length;
-   btn.addEventListener('click',()=>{
-    const other=idx+direction;
-    [order[idx],order[other]]=[order[other],order[idx]];
-    this.saveSoon();this.render();
-   });
+ setWidgetVisible(key,visible){
+  const cfg=this.plugin.settings.v8Finish;
+  if(!WRITER_V8_HOME_SECTIONS.includes(key))return;
+  cfg.homeHidden=cfg.homeHidden.filter(id=>id!==key);
+  if(!visible)cfg.homeHidden.push(key);
+  this.saveSoon();this.render();
+ }
+ moveWidget(key,direction){
+  const cfg=this.plugin.settings.v8Finish,order=cfg.homeOrder;
+  const visible=order.filter(id=>WRITER_V8_HOME_SECTIONS.includes(id)&&!cfg.homeHidden.includes(id));
+  const index=visible.indexOf(key),other=visible[index+direction];
+  if(index<0||!other)return;
+  const a=order.indexOf(key),b=order.indexOf(other);
+  [order[a],order[b]]=[order[b],order[a]];
+  this.saveSoon();this.render();
+ }
+ widgetControls(parent,key){
+  const actions=parent.createDiv({cls:'writer-v8-home-card-order writer-v903-widget-controls'});
+  const visible=this.plugin.settings.v8Finish.homeOrder.filter(id=>!this.plugin.settings.v8Finish.homeHidden.includes(id));
+  for(const [direction,icon,pt,en] of [[-1,'arrow-up','Mover para cima','Move earlier'],[1,'arrow-down','Mover para baixo','Move later']]){
+   const button=actions.createEl('button',{attr:{type:'button',title:writerUi(pt,en),'aria-label':writerUi(pt,en)}});
+   button.disabled=visible.indexOf(key)+direction<0||visible.indexOf(key)+direction>=visible.length;
+   require('obsidian').setIcon?.(button,icon);
+   button.addEventListener('click',()=>this.moveWidget(key,direction));
   }
+  const remove=actions.createEl('button',{cls:'writer-v903-widget-remove',attr:{type:'button',title:writerUi('Remover widget','Remove widget'),'aria-label':writerUi('Remover widget: ','Remove widget: ')+writerUi(WRITER_V8_HOME_CATALOG[key][1],WRITER_V8_HOME_CATALOG[key][2])}});
+  require('obsidian').setIcon?.(remove,'x');
+  remove.addEventListener('click',()=>this.setWidgetVisible(key,false));
+  return actions;
+ }
+ manageWidgets(){
+  const view=this,plugin=this.plugin,ModalClass=require('obsidian').Modal;
+  const modal=new ModalClass(this.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Widgets da homepage','Homepage widgets'));
+   const root=modal.contentEl;
+   root.empty();root.addClass('writer-v903-widget-gallery');
+   root.createEl('p',{cls:'setting-item-description',text:writerUi('Ative ou oculte painéis. Os que estiverem ativos podem ser reorganizados pelos botões de seta.','Show or hide panels. Reorder visible widgets with their arrow controls.')});
+   for(const key of WRITER_V8_HOME_SECTIONS){
+    const meta=WRITER_V8_HOME_CATALOG[key],item=root.createDiv({cls:'writer-v903-gallery-item'});
+    const glyph=item.createSpan({cls:'writer-v903-gallery-icon'});
+    require('obsidian').setIcon?.(glyph,meta[0]);
+    const summary=item.createDiv({cls:'writer-v903-gallery-description'});
+    summary.createEl('strong',{text:writerUi(meta[1],meta[2])});
+    summary.createEl('small',{text:writerUi(meta[3],meta[4])});
+    const hidden=plugin.settings.v8Finish.homeHidden.includes(key);
+    const button=item.createEl('button',{cls:'writer-v903-gallery-toggle',text:hidden?writerUi('Adicionar','Add'):writerUi('Remover','Remove'),attr:{type:'button','aria-pressed':String(!hidden)}});
+    button.addEventListener('click',()=>{
+     const visible=plugin.settings.v8Finish.homeHidden.includes(key);
+     view.setWidgetVisible(key,visible);
+     button.setText(visible?writerUi('Remover','Remove'):writerUi('Adicionar','Add'));
+     button.setAttribute('aria-pressed',String(visible));
+    });
+   }
+  };
+  modal.open();
+ }
+ card(parent,key,pt,en){
+  const section=parent.createDiv({cls:'writer-v8-home-card writer-v903-widget',attr:{'data-section':key,role:'region','aria-label':writerUi(pt,en)}});
+  const top=section.createDiv({cls:'writer-v8-home-card-header'});
+  if(key==='search'){top.createEl('h3',{text:writerUi(pt,en)});return section;}
+  const heading=top.createDiv({cls:'writer-v903-widget-heading'});
+  const symbol=heading.createSpan({cls:'writer-v903-widget-icon'});
+  require('obsidian').setIcon?.(symbol,WRITER_V8_HOME_CATALOG[key]?.[0]||'layout-dashboard');
+  heading.createEl('h3',{text:writerUi(pt,en)});
+  this.widgetControls(top,key);
   return section;
+ }
+ renderCalendarWidget(parent){
+  const shell=parent.createDiv({cls:'writer-v903-calendar-widget',attr:{'data-section':'calendar',role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
+  const schedule=shell.createDiv({cls:'writer-v8-home-clock-card'});
+  writerV8HomeRenderCalendar(this,schedule);
+  const hover=shell.createDiv({cls:'writer-v903-calendar-controls'});
+  this.widgetControls(hover,'calendar');
  }
  renderContinue(parent){
   const box=this.card(parent,'continue','Continuar escrevendo','Continue writing');

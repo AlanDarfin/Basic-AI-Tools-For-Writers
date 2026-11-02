@@ -4490,4 +4490,87 @@ body.is-mobile .writer-v8-home-grid{grid-template-columns:minmax(0,1fr);gap:10px
  .writer-v83-study-choices{grid-template-columns:repeat(2,minmax(0,1fr));}
  .writer-v83-cal-toolbar h2{width:100%;}
 }
+
+/* v9: scoped toolbar, native explorer additions, and compact homepage refinements. */
+.writer-v9-toolbar-host{position:relative;}
+.writer-v9-format-toolbar{
+ position:absolute;inset-inline-end:10px;bottom:9px;z-index:12;
+ display:flex;align-items:center;gap:2px;max-width:min(92%,750px);
+ overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;
+ padding:5px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-secondary);
+ box-shadow:var(--shadow-s);scrollbar-width:thin;
+}
+.writer-v9-format-action{
+ box-shadow:none;flex:0 0 auto;display:grid;place-items:center;
+ width:34px;height:34px;min-width:34px;min-height:34px;
+ padding:5px;border:0;border-radius:var(--radius-s);
+ background:transparent;color:var(--text-muted);
+}
+.writer-v9-format-action:hover,.writer-v9-format-action:focus-visible{
+ color:var(--text-normal);background:var(--background-modifier-hover);
+ outline-offset:-2px;
+}
+.writer-v9-format-toolbar.is-compact .writer-v9-format-action{
+ width:29px;height:29px;min-width:29px;min-height:29px;
+}
+.writer-v9-format-action svg{width:17px;height:17px;}
+body.is-mobile .writer-v9-format-toolbar{
+ bottom:8px;inset-inline:8px;max-width:none;
+ padding:5px 8px;gap:3px;
+}
+body.is-mobile .writer-v9-format-action{min-height:40px;min-width:40px;}
+body.is-mobile .writer-v9-format-toolbar.is-compact .writer-v9-format-action{min-height:36px;min-width:36px;}
+.writer-v9-explorer-icon{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 15px;vertical-align:middle;margin-inline-end:5px;
+ color:var(--writer-v9-explorer-accent,var(--text-muted));
+}
+.writer-v9-explorer-icon svg{width:14px;height:14px;}
+.nav-file-title.writer-v9-explorer-accent .nav-file-title-content,
+.nav-folder-title.writer-v9-explorer-accent .nav-folder-title-content{
+ color:var(--writer-v9-explorer-accent,var(--text-normal));
+}
+.writer-v9-space{min-width:0;max-width:100%;}
+.writer-v9-space-controls{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px;}
+.writer-v9-space-controls input{min-width:145px;flex:1 1 210px;}
+.writer-v9-space-controls select,.writer-v9-space-controls button{flex:0 1 auto;min-height:34px;}
+.writer-v9-space-results{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+ max-height:min(65vh,600px);overflow-y:auto;gap:7px;
+}
+.writer-v9-space-results.is-list{display:flex;flex-direction:column;}
+.writer-v9-space-item{
+ min-width:0;min-height:55px;display:flex;align-items:center;gap:8px;
+ padding:10px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);box-shadow:none;
+ background:var(--background-secondary);color:var(--text-normal);text-align:start;
+}
+.writer-v9-space-item:hover{background:var(--background-modifier-hover);}
+.writer-v9-space-item-icon{flex:0 0 18px;display:flex;color:var(--text-muted);}
+.writer-v9-space-item-icon svg{width:18px;height:18px;}
+.writer-v9-space-item-name{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;}
+.writer-v9-space-item-sub{font-size:var(--font-smallest);color:var(--text-muted);overflow-wrap:anywhere;}
+.writer-v9-space-results:not(.is-list) .writer-v9-space-item{flex-wrap:wrap;}
+.writer-v9-space-results:not(.is-list) .writer-v9-space-item-sub{width:100%;padding-inline-start:26px;}
+/* Center the home heading; images are displayed without an icon tile. */
+.writer-v8-home-heading{justify-content:center;text-align:center;}
+.writer-v8-home-heading h2{flex:0 1 auto;text-align:center;}
+.writer-v8-home-title-icon{
+ background:transparent;border:0;border-radius:0;
+ width:40px;height:40px;overflow:hidden;
+}
+.writer-v8-home-title-icon svg{width:27px;height:27px;}
+.writer-v8-home-title-icon img{width:100%;height:100%;object-fit:contain;border-radius:var(--radius-s);}
+/* The clock occupies a complete row above the calendar, including at tablet widths. */
+.writer-v8-home .writer-v8-home-clock-card{display:flex;flex-direction:column;gap:6px;align-items:stretch;}
+.writer-v8-home-clock{margin:0 0 4px;align-items:center;}
+.writer-v8-home-calendar{min-width:0;width:100%;}
+@media (max-width:700px){
+ .writer-v8-home-heading{flex-direction:column;gap:4px;}
+ .writer-v8-home-title-icon{width:44px;height:44px;}
+ .writer-v8-home-top{grid-template-columns:minmax(0,1fr);}
+ .writer-v9-space-results{grid-template-columns:minmax(0,1fr);}
+}
+body.is-mobile .writer-v8-home-heading{flex-direction:column;gap:5px;}
 /* END V8 MODULAR STYLES */

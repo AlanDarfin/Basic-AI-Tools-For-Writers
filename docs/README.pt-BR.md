@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 8.0.5 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 8.1.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md)
 

@@ -81,10 +81,9 @@ test('manual closed panels are not recreated and stale snapshots are not used',a
  views.basic=[];views.project=[];
  await host.restoreHotReloadSidebars();
  assert.deepEqual(open.map(x=>x.type),['project','basic']);
- host.rememberHotReloadSidebars();
- const key=[...storage.keys()][0];
- const item=JSON.parse(storage.get(key));item.timestamp-=360000;
- storage.set(key,JSON.stringify(item));
+ const key=host.hotReloadStorageKey();
+ storage.set(key,JSON.stringify({timestamp:Date.now()-360000,
+  leaves:[{type:'basic',side:'right',visible:true}]}));
  await host.restoreHotReloadSidebars();
  assert.equal(open.length,2);
 });

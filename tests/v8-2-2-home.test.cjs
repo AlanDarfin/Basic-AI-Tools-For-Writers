@@ -43,7 +43,8 @@ test('only attached ROOT empty tabs are eligible for automatic homepage',()=>{
  const web={view:{getViewType:()=> 'webviewer'},getViewState:()=>({type:'webviewer'})};
  const side={view:{getViewType:()=> 'empty'},getViewState:()=>({type:'empty'})};
  const root={iterateRootLeaves:fn=>[empty,note,web].forEach(fn)};
- assert.deepEqual(api.writerV8HomeAttachedEmpty(root),[empty]);
+ assert.equal(api.writerV8HomeAttachedEmpty(root).length,1);
+ assert.equal(api.writerV8HomeAttachedEmpty(root)[0],empty);
  assert.equal(api.writerV8HomeIsRootEmpty(note),false);
  assert.equal(api.writerV8HomeIsRootEmpty(web),false);
  assert.ok(!api.writerV8HomeAttachedEmpty(root).includes(side));

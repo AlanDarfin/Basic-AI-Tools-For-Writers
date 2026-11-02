@@ -2097,10 +2097,7 @@ class WriterToolsView extends ItemView{
   new Setting(panel).setName(writerUi("Aparecer enquanto escreve","Suggest while typing")).addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(),true);
-  this.addButton(actions,writerUi("Reindexar cofre","Reindex vault"),async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice(writerUi("Índice de sugestões atualizado.","Suggestion index updated."));});
   if(writerModuleOn(this.plugin,'dictionary'))this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
-  const tracked=this.plugin.writerComplements?.cache?.size||0;
-  panel.createEl('p',{text:tracked+writerUi(' arquivo(s) no índice atual.',' file(s) in the current index.'),cls:'writer-tools-muted'});
  }
  renderVariants(panel){
   const opts=this.plugin.settings.variants||{};
@@ -2245,11 +2242,35 @@ function writerRenderV3Settings(panel,plugin,id){
   toggle('learnRanking',writerUi("Aprender sugestões escolhidas","Learn from selected suggestions"),writerUi('Ranking armazenado localmente.','Ranking stored locally.'));
   input('minChars',writerUi("Mínimo de caracteres","Minimum characters"),writerUi('Padrão: 3','Default: 3'),true);
   input('maxResults',writerUi("Número máximo de sugestões","Maximum suggestions"),writerUi('Padrão: 8','Default: 8'),true);
-  input('maxFiles',writerUi("Máximo de arquivos no índice","Maximum indexed files"),writerUi('Limita uso de memória.','Limits memory usage.'),true);
-  input('fileLimit',writerUi("Tamanho máximo por arquivo (bytes)","Maximum file size (bytes)"),writerUi('Padrão: 120000','Default: 120000'),true);
+  input('fileLimit',writerUi("Máximo de texto analisado por nota (caracteres)","Maximum sampled text per note (characters)"),writerUi('Notas grandes usam início e fim; todas as notas elegíveis são incluídas.','Large notes use beginning and end; all eligible notes are covered.'),true);
   new Setting(panel).setName(writerUi("Pastas excluídas","Excluded folders")).setDesc(writerUi("Separadas por vírgula.","Comma separated.")).addTextArea(t=>t.setValue(config.excludedFolders||'').onChange(async v=>{config.excludedFolders=v;await plugin.saveSettings();}));
   new Setting(panel).setName(writerUi("Arquivos de dicionário","Dictionary files")).setDesc(writerUi("Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.","Markdown paths separated by line. Entries may use word => insertion.")).addTextArea(t=>t.setValue(config.dictionaryPaths||'').onChange(async v=>{config.dictionaryPaths=v;await plugin.saveSettings();}));
-  new Setting(panel).setName(writerUi("Reindexar","Reindex")).addButton(b=>b.setButtonText(writerUi("Atualizar índice","Update index")).setCta().onClick(async()=>{plugin.writerComplements.reset();await plugin.writerComplements.rebuild();new Notice(writerUi("Índice atualizado.","Index updated."));}));
+  const stats=plugin.writerComplements?.indexStats;
+  const indexInfo=panel.createEl('p',{cls:'setting-item-description writer-tools-index-stats',
+   text:stats
+    ?writerUi('Arquivos Markdown elegíveis: ','Eligible Markdown notes: ')+stats.eligible+
+      writerUi(' · indexados: ',' · indexed: ')+stats.indexed+
+      writerUi(' · falhas: ',' · failures: ')+stats.failed+
+      writerUi(' · parcialmente analisados: ',' · partially sampled: ')+stats.partial
+    :writerUi('Índice ainda não criado.','Index not built yet.')});
+  new Setting(panel).setName(writerUi("Índice do cofre","Vault index"))
+   .setDesc(writerUi('Reindexe aqui; a lista de arquivos excluídos fica acima. O índice não altera notas.','Rebuild here; excluded folders are configured above. The index does not modify notes.'))
+   .addButton(b=>b.setButtonText(writerUi("Atualizar índice","Update index")).setCta().onClick(async()=>{
+    b.setDisabled(true);
+    try{
+     plugin.writerComplements.reset();
+     await plugin.writerComplements.rebuild();
+     const result=plugin.writerComplements.indexStats;
+     indexInfo.setText(result
+      ?writerUi('Arquivos elegíveis: ','Eligible notes: ')+result.eligible+
+        writerUi(' · indexados: ',' · indexed: ')+result.indexed+
+        writerUi(' · falhas: ',' · failures: ')+result.failed+
+        writerUi(' · analisados parcialmente: ',' · partially sampled: ')+result.partial
+      :writerUi('Índice indisponível.','Index unavailable.'));
+     new Notice(writerUi('Índice atualizado.','Index updated.'));
+    }catch(error){new Notice(error?.message||String(error));}
+    finally{b.setDisabled(false);}
+   }));
   new Setting(panel).setName(writerUi("Limpar aprendizado","Clear learning")).addButton(b=>b.setButtonText(writerUi("Limpar histórico","Clear history")).onClick(async()=>{config.usage={};await plugin.saveSettings();}));
  }else if(id==='variants'){
   toggle('enabled',writerUi("Ativar variantes","Enable variants"),writerUi('Usa sintaxe compatível com {{texto A|texto B}}^0.','Uses syntax compatible with {{text A|text B}}^0.'));

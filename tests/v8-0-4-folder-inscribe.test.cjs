@@ -5,7 +5,7 @@ const overview=fs.readFileSync('src/v8/folder-overview.js','utf8');
 const inline=fs.readFileSync('src/v8/inline-ai.js','utf8');
 const css=fs.readFileSync('src/styles/v8-folder-inscribe.css','utf8');
 class TFolder{constructor(path,children=[]){this.path=path;this.name=path.split('/').pop();this.children=children;}}
-class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').pop().replace(/\.md$/,'');}}
+class TFile{constructor(path){this.path=path;this.extension='md';this.name=path.split('/').pop();this.basename=this.name.replace(/\.md$/,'');}}
 const appFactory=()=>{
  const inner=new TFile('Work/Work.md'),one=new TFile('Work/Chapter.md'),nested=new TFile('Work/Writing/Scene.md');
  const dir=new TFolder('Work/Writing',[nested]);inner.parent=dir.parent=null;one.parent=null;nested.parent=dir;

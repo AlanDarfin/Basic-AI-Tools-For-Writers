@@ -49,7 +49,7 @@ class WriterToolsView extends ItemView{
   for(const [id,label] of sections){
    const btn=tabs.createEl('button',{cls:this.tab===id?'is-active':''});
    const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
-   require('obsidian').setIcon(glyph,tabLucide[id]||'wrench');
+   require('obsidian').setIcon?.(glyph,tabLucide[id]||'wrench');
    btn.createSpan({text:label});
    buttons[id]=btn;
    btn.addEventListener('click',()=>{

@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 8.2.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 8.2.1 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md)
 
@@ -205,35 +205,35 @@ Add a short description by using ordinary Obsidian Markdown: `![[Images/harbor.w
 
 Captions use the existing Markdown alt text, never change the original note and are capped at 180 characters by default (configurable in **Settings → General**). When the separate **Image Captions** plugin is enabled, Basic AI skips its own captions to avoid duplication. For more advanced alignment and Live Preview features, use that dedicated plugin.
 
-### Fictional chats with optional portraits
+### Fictional chats — fast character messages
 
-Use `writer-chat` for scene conversations, phone messages or fictional transcripts. Only messages with an `avatar:` field display a profile image; otherwise the bubble is aligned without an empty circle. Local image paths resolve through your vault.
+The `writer-chat` block now supports short lines: **<** places a message on the left, **>** on the right, and **|** separates the fields. These formats are accepted:
+
+- `< Avatar | Name | Message | Time` (explicit local portrait)
+- `< | Name | Message | Time` (no portrait)
+- `< | Message | Time` when a speaker is set for that side in the opening directives.
+
+Define speaker defaults **at the beginning of the block**: `[Maria=blue, João=red]` assigns colors, `[Maria=Imagens/maria.webp]` assigns a local avatar, and `[Left=Maria, right=João]` supplies the names when omitted.
 
 ~~~~markdown
 ~~~writer-chat
-title: Harbor conversation
-=== Maria
-side: left
-avatar: [[Images/maria.webp]]
-time: 18:30
----
-Did you find the letter?
+title: Harbor messages
+[Maria=blue, João=red]
+[Maria=Images/maria.webp]
+[Left=Maria, right=João]
 
-=== João
-side: right
-time: 18:32
----
-Yes, it was **inside the old book**.
-
-=== Maria
-side: left
-time: 18:33
----
-Then meet me by the lighthouse.
+< | Did you get the map? ![[Images/map.png|240]] | 18:30
+> | **Yes!** I found it under the table. | 18:31
+< Images/other.png | Maria | Look at this second photo. | 18:32
+> | João | I'll be there in five minutes. | 18:34
 ~~~
 ~~~~
 
-Message fields include `side: left|right|center`, `time`, `avatar: [[local.png]]`, and `mine: true` to align right. Each message body supports Markdown. The block works independently of the Chat View plugin and does not send messages to any external chat service.
+An explicit avatar on a message overrides a speaker's default photo. Without either, **no empty avatar placeholder appears**. Allowed colors: red, orange, yellow, green, blue, purple, pink, cyan, gray and accent (also grey). They follow Obsidian's theme variables rather than inserting arbitrary CSS.
+
+The message body is rendered with Obsidian's Markdown renderer, including vault images, links, **bold**, *italic*, lists and the Basic AI extended syntax (such as `++underline++`, `=={blue}highlights==` and `||spoilers||`) when those modules are enabled. A `|` inside `![[image.png|240]]`, Markdown links or inline code does not split the message; escape a literal pipe as `\|` when necessary. Additional lines after a message belong to the same bubble until the next left/right message starts.
+
+The original format with `=== Maria`, `side: left`, properties and `---` is still supported for existing notes. All messages are fictional, stored in Markdown, and no external chat request is made.
 
 ### Writing homepage (inspired by Harbor Tab and Genkan)
 

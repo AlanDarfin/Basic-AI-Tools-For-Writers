@@ -39,7 +39,7 @@ function writerV8ImagePath(app,raw,sourcePath){
  return app.vault.getResourcePath?.(file)||'';
 }
 async function writerV8Markdown(plugin,ctx,element,value){
- if(!value||!element.isConnected)return;
+ if(!value)return;
  await MarkdownRenderer.render(plugin.app,value,element,ctx.sourcePath||'',plugin);
 }
 function writerV8RenderTabs(plugin,source,element,ctx){

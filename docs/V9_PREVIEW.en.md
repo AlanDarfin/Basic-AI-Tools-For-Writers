@@ -6,7 +6,7 @@ Version: **9.0.0-beta.1**. This is not a stable release.
 
 | Requested feature | Implementation |
 | --- | --- |
-| cMenu-style toolbar | 21 Markdown actions; reorderable/optional buttons; compact mode; command-palette commands. Enabled on desktop, **disabled on mobile by default**. |
+| cMenu-style toolbar | 27 Markdown actions; reorderable/optional buttons; compact mode; command-palette commands. Enabled on desktop, **disabled on mobile by default**. |
 | Local Smart Spaces (optional) | Saved folder/tag/property filters with cards, list, table and status-board views. Disabled by default and stored in Basic settings. No additional sidebar. |
 | Make.md-inspired native explorer | Custom Lucide icons, accent colors, file/folder context menus, filterable folder browser in cards/list layouts, and Markdown folder index creation. No new sidebar. |
 | Writing homepage | Centered title, transparent icon, more Lucide options or a vault/HTTPS image, icon above the title on mobile or next to it on desktop, and clock above calendar. |

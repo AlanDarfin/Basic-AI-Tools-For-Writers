@@ -70,7 +70,7 @@ test('external reviewer uses plugin APIs and never triggers native LanguageTool'
  const from=main.indexOf('  externalLanguageTool(){'),end=main.indexOf('  async checkGrammar(text){',from);
  assert.ok(from>0&&end>from);
  const code=main.slice(from,end);
- const {externalLanguageTool,runExternalLanguageToolCommand,reviewWithExternalLanguageTool}=vm.runInNewContext('({'+code+'})',{
+ const {externalLanguageTool,runExternalLanguageToolCommand,reviewWithExternalLanguageTool}=vm.runInNewContext('new (class {'+code+'})()',{
    writerActiveEditor:()=>({cm:{state:{}}}),Notice:class{},msg:pt=>pt
  });
  const file={path:'Draft.md'};
@@ -96,7 +96,7 @@ test('external reviewer uses plugin APIs and never triggers native LanguageTool'
 });
 test('external checker missing is handled without posting any native request',async()=>{
  const idx=main.indexOf('  externalLanguageTool(){'),end=main.indexOf('  async checkGrammar(text){',idx);
- const {externalLanguageTool,reviewWithExternalLanguageTool}=vm.runInNewContext('({'+main.slice(idx,end)+'})',{
+ const {externalLanguageTool,reviewWithExternalLanguageTool}=vm.runInNewContext('new (class {'+main.slice(idx,end)+'})()',{
   writerActiveEditor:()=>({cm:{}}),Notice:class{},msg:pt=>pt
  });
  let updated=0;

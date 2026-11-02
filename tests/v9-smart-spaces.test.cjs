@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const vm=require('node:vm'),fs=require('node:fs');
 const source=fs.readFileSync('src/v9/smart-spaces.js','utf8');
 const api=vm.runInNewContext(source+'\n({merge:writerV9SpacesMerge,sanitize:writerV9SpaceSanitize,tags:writerV9SpaceTags,items:writerV9SpaceItems})',
- {Modal:class{},Setting:class{},TFile:class{},TFolder:class{},writerUi:pt=>pt});
+ {Modal:class{},Setting:class{},TFile:class{},TFolder:class{},ItemView:class{},writerUi:pt=>pt});
 test('Spaces are disabled by default and preserve safe custom collections',()=>{
  const config={};api.merge(config);
  assert.equal(config.v9Spaces.enabled,false);
@@ -43,10 +43,12 @@ test('Spaces filter by folder/tag/properties without modifying notes',()=>{
  assert.equal(api.items(plugin,space)[0].path,'Book/First.md');
  assert.equal(files.length,3);
 });
-test('new implementation is modal-only and leaves native navigation untouched',()=>{
+test('Spaces provide optional sidebar while leaving the native explorer untouched',()=>{
  const main=fs.readFileSync('main.js','utf8');
  assert.match(source,/writerV9SpaceModal/);
- assert.doesNotMatch(source,/registerView\(|detachLeavesOfType\(|registerEditorExtension\(/);
+ assert.match(source,/registerView\(/);
+ assert.match(source,/WriterV9SpacesSideView/);
+ assert.doesNotMatch(source,/detachLeavesOfType\(|registerEditorExtension\(/);
  assert.match(main,/writerV9RegisterSpaces\(this\)/);
  assert.match(main,/writerV9SpacesSettings\(this.plugin,panel\)/);
  assert.match(fs.readFileSync('styles.css','utf8'),/writer-v9-spaces-results/);

@@ -570,6 +570,19 @@ function writerV8FinishSettings(plugin,panel){
    cfg.homeOnNewTab=value;await plugin.saveSettings();
   }));
  writerV83StudySettings(plugin,panel);
+ new Setting(panel).setName(writerUi('Personalizar widgets da homepage','Customize homepage widgets'))
+  .setDesc(writerUi('Adicione, remova e reorganize cartões sem apagar suas notas.','Add, remove and reorder cards without deleting notes.'))
+  .addButton(button=>button.setButtonText(writerUi('Gerenciar widgets','Manage widgets')).onClick(async()=>{
+   await plugin.writerV8HomeOpen?.();
+   plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view?.manageWidgets?.();
+  }));
+ new Setting(panel).setName(writerUi('Meta de palavras do widget','Widget word target'))
+  .setDesc(writerUi('Progresso calculado sobre a última nota Markdown aberta.','Progress measured against the latest opened Markdown note.'))
+  .addText(input=>input.setValue(String(cfg.homeWordGoal)).onChange(async value=>{
+   const number=Math.round(Number(value));
+   if(!Number.isFinite(number)||number<50)return;
+   cfg.homeWordGoal=Math.min(20000,number);await plugin.saveSettings();refreshHome();
+  }));
  new Setting(panel).setName(writerUi('Abrir calendário completo','Open full calendar'))
   .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir homepage agora','Open homepage now'))

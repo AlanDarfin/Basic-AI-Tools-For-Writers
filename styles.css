@@ -4938,7 +4938,7 @@ body.is-mobile .writer-v8-home-heading{flex-direction:column;gap:5px;}
  cursor:pointer;
 }
 .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-outside{cursor:default;}
-.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day:has(> .writer-v9-calendar-month-dayhead) .writer-v9-calendar-event{
+.writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day > .writer-v9-calendar-event{
  cursor:pointer;
 }
 /* Replace the repeated giant plus controls with an unobtrusive full-width tap target. */

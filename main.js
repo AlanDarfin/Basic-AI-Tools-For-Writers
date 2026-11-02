@@ -1158,6 +1158,21 @@ const reviewMarkField=StateField.define({
  },
  provide:f=>EditorView.decorations.from(f)
 });
+function writerGrammarPersonalWord(source,match){
+ const category=String(match?.rule?.category?.id||'').toUpperCase();
+ const rule=String(match?.rule?.id||'').toUpperCase();
+ const issue=String(match?.rule?.issueType||'').toUpperCase();
+ if(!(/TYPOS|SPELLING|MISSPELL/.test(category+' '+issue)||/MORFOLOGIK|HUNSPELL|SPELL|ORTHOGRAPHY/.test(rule)))return '';
+ const offset=match?.offset,length=match?.length;
+ if(!Number.isInteger(offset)||!Number.isInteger(length)||length<2||length>64||offset<0)return '';
+ const word=String(source||'').slice(offset,offset+length).normalize('NFC');
+ return /^[\p{L}][\p{L}\p{M}'’\-]{1,63}$/u.test(word)?word:'';
+}
+function writerGrammarPersonalDictionaryHas(settings,source,match){
+ const word=writerGrammarPersonalWord(source,match);
+ return !!word&&Array.isArray(settings?.reviewPersonalDictionary)&&settings.reviewPersonalDictionary.some(
+  entry=>typeof entry==='string'&&entry.normalize('NFC').toLocaleLowerCase()===word.toLocaleLowerCase());
+}
 function writerGrammarSeverity(match){
  const category=String(match?.rule?.category?.id||'').toUpperCase();
  const rule=String(match?.rule?.id||'').toUpperCase();
@@ -8982,7 +8997,7 @@ class DictionaryView extends ItemView{
       if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode.value!=='grammar')return;
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
-       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerGrammarPersonalDictionaryHas(this.plugin.settings,source,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
@@ -9028,7 +9043,7 @@ class DictionaryView extends ItemView{
    const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
    const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
     .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
-     writerGrammarMatchIsSafe(after,masked,m)&&
+     writerGrammarMatchIsSafe(after,masked,m)&&!writerGrammarPersonalDictionaryHas(this.plugin.settings,after,m)&&
      (!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(after,m))&&
      !ignored.has(String(m.rule?.id||'').toUpperCase()));
    const all=[...preserved,...revised].sort((a,b)=>a.offset-b.offset||a.length-b.length);
@@ -9326,6 +9341,15 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(panel).setName(msg('Abrir nota selecionada no editor','Open selected note in editor')).setDesc(msg('Permite ver sublinhados do CodeMirror ao revisar um arquivo que ainda não está aberto.','Enables CodeMirror underlines when reviewing a note not already open.')).addToggle(x=>x.setValue(this.plugin.settings.reviewAutoOpenNote!==false).onChange(async v=>{this.plugin.settings.reviewAutoOpenNote=v;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Abrir sugestões ao passar o mouse ou posicionar o cursor','Open suggestions on hover or caret')).setDesc(msg('Passe o mouse sobre uma palavra destacada ou posicione o cursor de texto dentro dela. No celular, toque no erro.','Hover over a highlighted error or place the text caret inside it. On mobile, tap the error.')).addToggle(x=>x.setValue(this.plugin.settings.reviewPopupEnabled!==false).onChange(async v=>{this.plugin.settings.reviewPopupEnabled=v;await this.plugin.saveSettings();if(!v)this.plugin.closeReviewPopup();}));
       new Setting(panel).setName(msg('Ignorar avisos de espaços e formatação','Ignore whitespace and formatting warnings')).addToggle(x=>x.setValue(this.plugin.settings.reviewIgnoreWhitespace!==false).onChange(async v=>{this.plugin.settings.reviewIgnoreWhitespace=v;await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('Dicionário ortográfico local','Local spelling dictionary'))
+       .setDesc(msg('Uma palavra por linha. As palavras adicionadas pelo pop-up ficam somente nas configurações do Basic AI, não são enviadas ao servidor.','One word per line. Words added through the popup are stored only in Basic AI settings and are not uploaded to the server.'))
+       .addTextArea(x=>{
+        x.inputEl.rows=4;
+        x.setValue((this.plugin.settings.reviewPersonalDictionary||[]).join('\n')).onChange(async value=>{
+         this.plugin.settings.reviewPersonalDictionary=[...new Set(value.split(/[\r\n,;]+/).map(v=>v.trim().normalize('NFC')).filter(v=>/^[\p{L}][\p{L}\p{M}'’\-]{1,63}$/u.test(v)))];
+         await this.plugin.saveSettings();
+        });
+       });
       new Setting(panel).setName(msg('IDs de regras ignoradas','Ignored rule IDs')).setDesc(msg('IDs do LanguageTool separados por vírgula.','Comma-separated LanguageTool rule IDs.')).addTextArea(x=>{x.inputEl.rows=3;x.setValue(this.plugin.settings.reviewIgnoreRules||'').onChange(async v=>{this.plugin.settings.reviewIgnoreRules=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(msg('Endpoint do LanguageTool','LanguageTool endpoint')).setDesc(msg('Use HTTPS. O endpoint público tem limites de uso.','Use HTTPS. The public endpoint has usage limits.')).addText(x=>x.setValue(this.plugin.settings.reviewEndpoint||'https://api.languagetool.org/v2/check').onChange(async v=>{this.plugin.settings.reviewEndpoint=v.trim();await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Chave do LanguageTool (opcional)','LanguageTool key (optional)')).addText(x=>{x.inputEl.type='password';x.setValue(this.plugin.settings.reviewApiKey||'').onChange(async v=>{this.plugin.settings.reviewApiKey=v.trim();await this.plugin.saveSettings();});});
@@ -10000,6 +10024,28 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.dismissGrammarSuggestion(file,match);
     new Notice(msg('Regra ignorada. Pode reativá-la nas configurações.','Rule disabled; you can re-enable it in settings.'));
   }
+  async addGrammarWordToDictionary(file,source,match){
+    const word=writerGrammarPersonalWord(source,match);
+    if(!word)return;
+    const current=Array.isArray(this.settings.reviewPersonalDictionary)?this.settings.reviewPersonalDictionary:[];
+    if(!current.some(entry=>typeof entry==='string'&&entry.normalize('NFC').toLocaleLowerCase()===word.toLocaleLowerCase())){
+      this.settings.reviewPersonalDictionary=[...current,word];
+      await this.saveSettings();
+    }
+    this.closeReviewPopup();
+    // Update visible findings immediately without modifying manuscript text
+    // or sending an additional LanguageTool network request.
+    if(this.reviewMarkedPath===file.path&&this.reviewSource===source){
+      const matches=(this.reviewMatches||[]).filter(m=>!writerGrammarPersonalDictionaryHas(this.settings,source,m));
+      this.showReviewMarks(file,matches);
+      const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
+      if(view?.reviewFilePath===file.path&&view?.renderGrammarResults){
+        view.renderGrammarResults(file,source,matches);
+        view.reviewStatus?.setText(matches.length+' '+msg('sugestões encontradas','suggestions found'));
+      }
+    }
+    new Notice(msg('Palavra adicionada ao dicionário local: ','Added to local dictionary: ')+word);
+  }
   showMobileReviewSuggestionMenu(file,source,match,key){
     // Obsidian's native Modal is reliable on Android (no hover, mouse
     // coordinates or tiny floating context-menu targets required).
@@ -10019,7 +10065,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(!replacements.length)choices.createEl('p',{text:msg('Nenhuma substituição automática','No automatic replacement'),cls:'setting-item-description'});
     for(const replacement of replacements)action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
     const extras=panel.createDiv({cls:'writer-lt-mobile-actions'});
-    action(extras,msg('Ir ao erro','Go to error'),()=>this.jumpToReviewError(file,match.offset,match.offset+match.length));
+    if(writerGrammarPersonalWord(source,match))action(extras,msg('Adicionar ao dicionário','Add to dictionary'),()=>this.addGrammarWordToDictionary(file,source,match));
     action(extras,msg('Explicar com IA','Explain with AI'),()=>this.explainGrammarSuggestion(file,source,match));
     action(extras,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
     if(match.rule?.id)action(extras,msg('Ignorar regra','Ignore rule'),()=>this.ignoreGrammarRule(file,match));
@@ -10060,8 +10106,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       menu.addItem(item=>item.setTitle(msg('Criar variante','Create variant')).setIcon('layers')
         .onClick(()=>this.createGrammarVariant(file,source,match,alternatives[0])));
     }
-    menu.addItem(item=>item.setTitle(msg('Ir ao erro','Go to error')).setIcon('locate-fixed')
-      .onClick(()=>this.jumpToReviewError(file,match.offset,match.offset+match.length)));
+    if(writerGrammarPersonalWord(source,match))menu.addItem(item=>item.setTitle(msg('Adicionar ao dicionário','Add to dictionary')).setIcon('book-plus')
+      .onClick(()=>this.addGrammarWordToDictionary(file,source,match)));
     menu.addItem(item=>item.setTitle(msg('Explicar com IA','Explain with AI')).setIcon('message-square-text')
       .onClick(()=>this.explainGrammarSuggestion(file,source,match)));
     menu.addItem(item=>item.setTitle(msg('Ignorar ocorrência','Ignore this occurrence')).setIcon('x')

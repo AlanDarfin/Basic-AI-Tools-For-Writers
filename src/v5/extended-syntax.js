@@ -1,6 +1,6 @@
 'use strict';
 /* Basic AI v5: original extended Markdown implementation. */
-const WRITER_EXTENDED_DEFAULTS={enabled:true,underline:true,spoiler:true,superscript:true,subscript:true,coloredHighlight:true,customSpan:true,fencedDivs:true,livePreview:true};
+const WRITER_EXTENDED_DEFAULTS={enabled:true,underline:true,spoiler:true,superscript:true,subscript:true,coloredHighlight:true,customSpan:true,fencedDivs:true,livePreview:true,interactiveBlocks:true};
 function writerV5RefreshEditors(plugin){
  try{
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
@@ -132,6 +132,7 @@ class WriterExtendedSyntax{
  get cfg(){return this.plugin.settings.extendedSyntax;}
  active(){return writerModuleOn(this.plugin,'extendedSyntax')&&this.cfg.enabled;}
  register(){
+  writerV8RegisterBlocks(this.plugin,()=>this.active()&&this.cfg.interactiveBlocks!==false);
   this.plugin.registerMarkdownPostProcessor?.(el=>{
    if(this.active()){writerExtendedReading(el,this.cfg);writerExtendedFencedDivs(el,this.cfg);}
   });
@@ -156,7 +157,8 @@ class WriterExtendedSyntax{
    ['coloredHighlight','Destaque =={cor}texto==','Colored highlight =={color}text=='],
    ['customSpan','Span !!{classe}texto!!','Custom span !!{class}text!!'],
    ['fencedDivs','Blocos ::: classe (fechamento :::)','Fenced div ::: class (closing :::)'],
-   ['livePreview','Estilizar no Live Preview','Style in Live Preview']
+   ['livePreview','Estilizar no Live Preview','Style in Live Preview'],
+   ['interactiveBlocks','Abas, avatar e quadros Wiki','Tabs, avatar and Wiki cards']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();this.revision++;writerV5RefreshEditors(this.plugin);}));
  }
 }

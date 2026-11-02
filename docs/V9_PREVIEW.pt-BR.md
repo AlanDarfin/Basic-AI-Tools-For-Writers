@@ -7,6 +7,7 @@ Versão: **9.0.0-beta.1**. Ainda não é um lançamento estável.
 | Pedido | Implementação |
 | --- | --- |
 | Barra inspirada no cMenu | 21 ações Markdown; botões opcionais e ordenáveis, modo compacto e comandos na paleta. Ativada no PC, **desativada no celular por padrão**. |
+| Smart Spaces locais (opcional) | Coleções salvas filtradas por pasta/tag/propriedade, exibidas em cartões, lista, tabela ou quadro. Desligadas inicialmente; não criam painel extra. |
 | Explorador inspirado no Make.md | Ícones Lucide, cores, menu contextual para arquivos/pastas, visualização de pastas com busca, cartões/listas e criação de índice Markdown. Nenhuma barra lateral nova. |
 | Homepage | Título centralizado, ícone transparente, mais Lucide ou imagem do cofre/HTTPS, ícone acima do título no celular ou ao lado no PC, relógio acima do calendário. |
 | Módulos | Barra de formatação e explorador podem ser desativados, opções próprias e interface PT-BR/EN. |
@@ -19,7 +20,7 @@ A árvore original consultada tem cerca de 634 arquivos, incluindo núcleo, adap
 | --- | --- | --- |
 | Ícones e navegação | Melhorias no explorador nativo | Implementação inicial |
 | Cartões/listas de pasta | Ação contextual e overview Markdown já existente | Implementação inicial |
-| Spaces e coleções | Visualizações virtuais filtradas sem trocar o painel | Não implementado |
+| Spaces e coleções | Smart Spaces locais e opcionais; não incluem o mecanismo relacional original | Implementação parcial |
 | Bancos, relações, fórmulas e rollups | Exige modelo compatível com Markdown/propriedades | Não implementado |
 | Tabelas, quadros e calendários de banco | Aproveitar calendário e Longform; respeitar Bases | Não portado integralmente |
 | Flow e transclusões editáveis | Blocos inline do Basic são independentes | Não portado |

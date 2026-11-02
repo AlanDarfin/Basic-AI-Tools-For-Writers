@@ -86,7 +86,7 @@ test('Android popup exposes native Obsidian modal actions without mouse coordina
   open(){this.opened=true;}
   close(){this.opened=false;this.onClose?.();}
  }
- const {showMobileReviewSuggestionMenu}=vm.runInNewContext('({'+main.slice(from,to)+'})',{Modal,Notice:class{},msg:(pt)=>pt,Promise});
+ const {showMobileReviewSuggestionMenu}=vm.runInNewContext('({'+main.slice(from,to)+'})',{Modal,Notice:class{},msg:(pt)=>pt,Promise,writerGrammarMatchWord:()=> 'errado'});
  const host={app:{isMobile:true},showMobileReviewSuggestionMenu,applyGrammarReplacement:()=>{},jumpToReviewError:()=>{},
   explainGrammarSuggestion:()=>{},dismissGrammarSuggestion:()=>{},ignoreGrammarRule:()=>{}};
  const file={path:'Book.md'},match={offset:6,length:5,replacements:[{value:'correto'}],rule:{id:'SPELL'}};

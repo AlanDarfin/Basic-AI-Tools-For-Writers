@@ -11150,7 +11150,7 @@ async function writerV9CreateFolderIndex(plugin,folder){
  await plugin.app.workspace.getLeaf('tab').openFile(file);
 }
 function writerV9RegisterExplorer(plugin){
- let observer=null,debounce=null;
+ let debounce=null;
  const active=()=>writerModuleOn(plugin,'nativeExplorer')&&plugin.settings.v9Explorer.enabled;
  const refresh=()=>{
   if(debounce)clearTimeout(debounce);
@@ -11165,21 +11165,20 @@ function writerV9RegisterExplorer(plugin){
      const path=node.getAttribute('data-path')||node.closest('[data-path]')?.getAttribute('data-path');
      if(!path)continue;
      const item=plugin.settings.v9Explorer.items[path],existing=node.querySelector(':scope > .writer-v9-explorer-icon');
-     if(existing)existing.remove();
-     node.classList.remove('writer-v9-explorer-accent');
-     node.style.removeProperty('--writer-v9-explorer-accent');
-     if(!enabled||!item)continue;
-     if(plugin.settings.v9Explorer.showIcons&&item.icon){
+     const desiredIcon=enabled&&plugin.settings.v9Explorer.showIcons&&item?.icon||'';
+     if(existing?.dataset.icon!==desiredIcon)existing?.remove();
+     if(desiredIcon&&!node.querySelector(':scope > .writer-v9-explorer-icon')){
       const symbol=node.ownerDocument.createElement('span');
       symbol.className='writer-v9-explorer-icon';
+      symbol.dataset.icon=desiredIcon;
       symbol.setAttribute('aria-hidden','true');
-      require('obsidian').setIcon(symbol,item.icon);
+      require('obsidian').setIcon(symbol,desiredIcon);
       node.insertBefore(symbol,node.firstChild);
      }
-     if(plugin.settings.v9Explorer.showColor&&item.color){
-      node.classList.add('writer-v9-explorer-accent');
-      node.style.setProperty('--writer-v9-explorer-accent',item.color);
-     }
+     const desiredColor=enabled&&plugin.settings.v9Explorer.showColor&&item?.color||'';
+     node.classList.toggle('writer-v9-explorer-accent',Boolean(desiredColor));
+     if(desiredColor)node.style.setProperty('--writer-v9-explorer-accent',desiredColor);
+     else node.style.removeProperty('--writer-v9-explorer-accent');
     }
    }
   },120);
@@ -11214,20 +11213,35 @@ function writerV9RegisterExplorer(plugin){
   for(const key of keys)delete cfg.items[key];
   if(keys.length)void plugin.saveSettings();
  }));
- const start=()=>{
-  const documentRoot=plugin.app.workspace.containerEl;
-  if(typeof MutationObserver==='undefined'||!documentRoot)return;
-  observer?.disconnect();
-  observer=new MutationObserver(records=>{
-   // Avoid observing the icon nodes we add ourselves (endless update loops).
-   if(records.some(record=>Array.from(record.addedNodes).some(node=>node.nodeType===1&&
-    !node.classList?.contains('writer-v9-explorer-icon')&&!node.closest?.('.writer-v9-explorer-icon'))))refresh();
-  });
-  observer.observe(documentRoot,{childList:true,subtree:true});
-  refresh();
+ const explorerObservers=new Map();
+ const attachObservers=()=>{
+  if(typeof MutationObserver==='undefined')return;
+  const leaves=plugin.app.workspace.getLeavesOfType?.('file-explorer')||[];
+  const hosts=new Set(leaves.map(leaf=>leaf.view?.containerEl).filter(Boolean));
+  for(const [node,watcher] of explorerObservers){
+   if(!hosts.has(node)){watcher.disconnect();explorerObservers.delete(node);}
+  }
+  for(const host of hosts){
+   if(explorerObservers.has(host))continue;
+   const watcher=new MutationObserver(records=>{
+    // Only react to actual File Explorer changes, never to our own SVG/icon nodes.
+    if(records.some(record=>Array.from(record.addedNodes).some(node=>
+       node.nodeType===1&&!node.classList?.contains('writer-v9-explorer-icon')&&
+       !node.closest?.('.writer-v9-explorer-icon'))))refresh();
+   });
+   watcher.observe(host,{childList:true,subtree:true});
+   explorerObservers.set(host,watcher);
+  }
  };
+ const start=()=>{attachObservers();refresh();};
+ plugin.registerEvent(plugin.app.workspace.on('layout-change',start));
  plugin.app.workspace.onLayoutReady?.(start);
- plugin.register?.(()=>{observer?.disconnect();clearTimeout(debounce);plugin.writerV9ExplorerRefresh=null;});
+ plugin.register?.(()=>{
+  for(const watcher of explorerObservers.values())watcher.disconnect();
+  explorerObservers.clear();
+  clearTimeout(debounce);
+  plugin.writerV9ExplorerRefresh=null;
+ });
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
   if(!active())return;
   const file=plugin.app.workspace.getActiveFile?.(),folder=file?.parent||plugin.app.vault.getRoot();

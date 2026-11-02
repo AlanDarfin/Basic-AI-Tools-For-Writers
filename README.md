@@ -1,10 +1,18 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Previous published:** [7.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [8.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.1) · **Previous published:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## 8.0.1 — Review dictionary, vault index and cleaner Longform navigation
+
+- **LanguageTool popups:** the unnecessary *Go to error* entry has been replaced with **Add to dictionary** for spelling findings, both on Android and desktop. Words are stored only in the Basic AI settings, case-insensitively filtered from future reviews and editable under Review. No external account or dictionary endpoint is required.
+- **Longform:** removed the unreliable Continuity page and its settings toggle from the interface. Existing book metadata is preserved; other structural analysis features remain.
+- **Autocomplete index:** fixes scanning stopping after the first 12,000 terms. All eligible Markdown notes are now represented; the term budget is shared per file, and long documents can contribute a bounded sample rather than being silently excluded. Folder exclusions still apply. Counts and reindex actions now live exclusively in **Settings → Writing → Complements**, not the sidebar.
+
+[English release notes](docs/V8_0_1_RELEASE.en.md) · [Notas em português](docs/V8_0_1_RELEASE.pt-BR.md).
 
 ## 8.0.0 — Performance & Polish
 

@@ -7465,7 +7465,7 @@ class WriterV7Worldbuilding{
   p.registerEvent(p.app.vault.on('create',()=>this.scheduleExplorer()));
   p.registerEvent(p.app.vault.on('rename',()=>this.scheduleExplorer()));
   p.registerEvent(p.app.vault.on('delete',()=>this.scheduleExplorer()));
-  p.registerEvent(p.app.metadataCache.on('resolved',()=>this.scheduleExplorer()));
+  if(typeof p.app.metadataCache?.on==='function')p.registerEvent(p.app.metadataCache.on('resolved',()=>this.scheduleExplorer()));
   p.register?.(()=>{this.clearExplorerDecorations();this.explorerObserver?.disconnect();clearTimeout(this.explorerTimer);});
   this.scheduleExplorer();
  }

@@ -119,3 +119,77 @@
   scroll-behavior:auto;
  }
 }
+
+
+/* 9.0.1 – compact, theme-aware navigation and searchable icon/color controls */
+.writer-v8-home-heading h2{color:var(--writer-v8-home-title-color,var(--interactive-accent));}
+.writer-v8-home-title-icon{color:var(--writer-v8-home-icon-color,var(--interactive-accent));}
+.writer-v8-home-quick-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));width:100%;gap:7px;}
+.writer-v8-home-quick-actions>.writer-v8-home-action{min-width:0;width:100%;justify-content:center;text-align:center;}
+.writer-v8-home-draft-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;}
+.writer-v8-home-draft-tabs>button{min-width:0;width:100%;}
+.writer-v8-chat-row.is-continuation{margin-top:-7px;}
+.dictionary-settings .writer-v901-settings-search,.writer-v901-settings-search{
+ padding:0;margin:4px 0 10px;background:transparent;border:0;box-shadow:none;
+}
+.writer-v901-search-field{
+ box-sizing:border-box;display:flex;align-items:center;gap:9px;
+ min-height:39px;width:100%;min-width:0;padding:4px 10px;
+ background:var(--background-secondary);border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+}
+.writer-v901-search-field:focus-within{border-color:var(--interactive-accent);}
+.writer-v901-search-icon{display:flex;align-items:center;justify-content:center;color:var(--text-muted);flex:0 0 18px;}
+.writer-v901-search-icon svg{width:17px;height:17px;}
+.writer-v901-search-field input[type="search"]{
+ flex:1 1 auto;min-width:0;width:100%;min-height:28px;padding:3px 0;
+ background:transparent;border:0;box-shadow:none;
+}
+.writer-v901-search-field input[type="search"]:focus{box-shadow:none;}
+.writer-v901-settings-search .writer-v51-search-results[hidden]{display:none;}
+.writer-v901-settings-search .writer-v51-search-results{
+ padding:8px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+}
+:is(.dictionary-settings-tabs,.dictionary-settings-subtabs)>button{
+ display:inline-flex;align-items:center;justify-content:center;gap:7px;
+}
+.writer-v901-nav-icon{flex:0 0 17px;display:inline-flex;align-items:center;justify-content:center;}
+.writer-v901-nav-icon svg{width:16px;height:16px;}
+.writer-v901-icon-picker{display:flex;flex-direction:column;gap:9px;min-width:0;}
+.writer-v901-icon-picker>input[type="search"]{
+ width:100%;min-height:36px;padding:7px 10px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+}
+.writer-v901-icon-grid{
+ display:grid;grid-template-columns:repeat(auto-fill,minmax(38px,1fr));
+ gap:5px;max-height:235px;overflow-y:auto;padding:7px;min-width:0;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+ background:var(--background-secondary);
+}
+.writer-v901-icon-grid .writer-v901-icon-choice{
+ display:flex;align-items:center;justify-content:center;min-width:0;min-height:38px;
+ padding:6px;background:transparent;border:1px solid transparent;
+ border-radius:var(--radius-s);color:var(--text-normal);
+}
+.writer-v901-icon-grid .writer-v901-icon-choice:hover{background:var(--background-modifier-hover);}
+.writer-v901-icon-grid .writer-v901-icon-choice.is-active{
+ border-color:var(--interactive-accent);color:var(--text-accent);
+ background:var(--background-primary);
+}
+.writer-v901-icon-choice svg{width:21px;height:21px;}
+.setting-item-control .writer-v901-color-input{
+ flex:0 0 40px;width:40px;min-width:40px;height:32px;cursor:pointer;padding:2px;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+ background:transparent;
+}
+.setting-item-control .writer-v901-color-hex{
+ width:95px;min-width:0;max-width:110px;
+ font-family:var(--font-monospace);font-size:var(--font-smaller);
+}
+@media(max-width:520px){
+ .writer-v8-home-quick-actions{grid-template-columns:repeat(2,minmax(0,1fr));}
+ .writer-v8-home-quick-actions>.writer-v8-home-action{min-width:0;white-space:normal;}
+ .writer-v901-icon-grid{grid-template-columns:repeat(auto-fill,minmax(36px,1fr));max-height:210px;}
+}

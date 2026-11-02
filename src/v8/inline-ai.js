@@ -78,9 +78,10 @@ class WriterV8InlineAI{
     if(tr.docChanged||tr.selection||tr.selectionSet)return null;
     return current;
    },
-   provide:f=>EditorView.decorations.from(f,state=>{
-    const info=state.field(f);
-    if(!info||info.at<0||info.at>state.doc.length)return Decoration.none;
+   // CodeMirror passes the field VALUE to Facet.from's mapper, NOT EditorState.
+   // Calling .field() on that value throws while creating every Markdown editor.
+   provide:f=>EditorView.decorations.from(f,info=>{
+    if(!info||!Number.isInteger(info.at)||info.at<0||typeof info.text!=='string'||!info.text)return Decoration.none;
     return Decoration.set([Decoration.widget({widget:new InlineWidget(info.text),side:1}).range(info.at)]);
    })
   });

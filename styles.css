@@ -3969,6 +3969,7 @@ body.is-mobile .writer-lt-mobile-modal .modal{
     gap:6px;
   }
 }
+
 /* 8.0.2 — Compact context and transparent native-like controls.
    Keep styles scoped so Obsidian core, other plugins and mod-cta actions are untouched. */
 .writer-project-root .writer-v7-rc-structure-tabs.writer-v7-rc-structure-tabs{

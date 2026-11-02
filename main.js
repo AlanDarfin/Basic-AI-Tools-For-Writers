@@ -174,6 +174,8 @@ class ProjectsView extends ItemView{
   &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
   &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
   if(!allTabs.some(([id])=>id===this.activeTab))this.activeTab=allTabs[0]?.[0]||'scenes';
+  const tabLucide={scenes:'clapperboard',project:'settings-2',compile:'file-output',notes:'library-big',timeline:'calendar-range',board:'columns-3',structure:'list-tree',relations:'git-branch',maps:'map',gallery:'images',sessions:'clock',analytics:'chart-no-axes-column',tasks:'list-check',comments:'message-circle'};
+  const groupLucide={writing:'pen-line',world:'globe',management:'folder-kanban'};
   const menuGroups=[
    {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
    {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
@@ -208,8 +210,11 @@ class ProjectsView extends ItemView{
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
     const selected=this.activeTab===id;
-    const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
+    const btn=tabs.createEl('button',{cls:selected?'is-active':'',
      attr:{type:'button',role:'tab','aria-selected':String(selected)}});
+    const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon(glyph,tabLucide[id]||'file-text');
+    btn.createSpan({text:name});
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
@@ -217,9 +222,11 @@ class ProjectsView extends ItemView{
    rebuildingTabs=false;
   };
   for(const group of menuGroups){
-   const button=groupNav.createEl('button',{text:lfMsg(group.pt,group.en),
-    cls:activeGroup===group.id?'is-active':'',
+   const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
     attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
+   const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+   require('obsidian').setIcon(glyph,groupLucide[group.id]||'folder');
+   button.createSpan({text:lfMsg(group.pt,group.en)});
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
     if(this.tabGroup===group.id)return;
@@ -2059,6 +2066,7 @@ class WriterToolsView extends ItemView{
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
+  const tabLucide={complements:'lightbulb',variants:'git-compare',reviewV4:'scan-text',snapshots:'history',extras:'wrench'};
   const sections=[
    ['complements',writerUi("Sugestões","Suggestions"),'complements'],
    ['variants',writerUi("Variantes","Variants"),'variants'],
@@ -2071,7 +2079,10 @@ class WriterToolsView extends ItemView{
   if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
   const buttons={};
   for(const [id,label] of sections){
-   const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
+   const btn=tabs.createEl('button',{cls:this.tab===id?'is-active':''});
+   const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+   require('obsidian').setIcon(glyph,tabLucide[id]||'wrench');
+   btn.createSpan({text:label});
    buttons[id]=btn;
    btn.addEventListener('click',()=>{
     if(this.tab===id)return;
@@ -11083,8 +11094,9 @@ function writerV9SafeHex(value){
  return /^#[a-f0-9]{6}$/i.test(color)?color.toLowerCase():'';
 }
 function writerV9AvailableIcons(){
- const api=require('obsidian');
- const icons=typeof api.getIconIds==='function'?api.getIconIds():WRITER_V9_EXPLORER_ICONS;
+ let icons=WRITER_V9_EXPLORER_ICONS;
+ try{const api=typeof require==='function'?require('obsidian'):null;
+  if(typeof api?.getIconIds==='function')icons=api.getIconIds();}catch(_){}
  return [...new Set([...WRITER_V9_EXPLORER_ICONS,...(Array.isArray(icons)?icons:[])])]
   .filter(name=>/^[a-z0-9-]{1,60}$/.test(name)).sort();
 }

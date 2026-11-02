@@ -11176,6 +11176,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerView(PROJECT_VIEW,leaf=>new ProjectsView(leaf,this));
     this.registerView(WRITER_TOOLS_VIEW,leaf=>new WriterToolsView(leaf,this));
     writerV8RegisterHome(this);
+    writerV83RegisterCalendar(this);
+    writerV83RegisterStudy(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')

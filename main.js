@@ -10245,6 +10245,7 @@ class DictionarySettings extends PluginSettingTab{
       panel.createEl('h3',{text:msg('Preferências gerais','General preferences')});
       new Setting(panel).setName(t('language')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
       panel.createEl('p',{text:msg('Configure dicionário, tradução, chat e revisão nas respectivas abas. As chaves ficam em APIs e os modelos padrão em Modelos.','Configure dictionary, translation, chat and review in their respective tabs. API keys are under APIs and default models under Models.'),cls:'dictionary-muted'});
+      writerV8FinishSettings(this.plugin,panel);
     }else if(id==='dictionary'){
       new Setting(panel).setName(t('dictionary')).addText(x=>x.setValue(this.plugin.settings.dictionaryFileName).onChange(async v=>{this.plugin.settings.dictionaryFileName=v.trim();this.plugin.invalidate();await this.plugin.saveSettings();}));
       new Setting(panel).setName(t('provider')).addDropdown(d=>{for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.provider).onChange(async v=>{this.plugin.settings.provider=v;await this.plugin.saveSettings();});});
@@ -10427,6 +10428,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV6Merge(this.settings);
     writerV7Merge(this.settings);
     writerV8InlineMerge(this.settings);
+    writerV8FinishMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -10448,6 +10450,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.writerExtendedSyntax=new WriterExtendedSyntax(this);this.writerExtendedSyntax.register();
     writerV8RegisterSocial(this);
     writerV8RegisterMediaGallery(this);
+    writerV8RegisterFinishBlocks(this);
     this.writerInlineAI=new WriterV8InlineAI(this);this.writerInlineAI.register();
     this.writerPandocSyntax=new WriterPandocSyntax(this);this.writerPandocSyntax.register();
     this.writerPandocExporter=new WriterPandocExporter(this);this.writerPandocExporter.register();
@@ -10481,6 +10484,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerView(VIEW,leaf=>new DictionaryView(leaf,this));
     this.registerView(PROJECT_VIEW,leaf=>new ProjectsView(leaf,this));
     this.registerView(WRITER_TOOLS_VIEW,leaf=>new WriterToolsView(leaf,this));
+    writerV8RegisterHome(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')

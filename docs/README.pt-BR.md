@@ -14,6 +14,8 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 - **Smart Spaces (opt-in):** coleções de notas Markdown filtradas por pasta, tag ou propriedade YAML, com cartões, lista, tabela e quadro agrupado. Desligadas por padrão e sem barra lateral extra.
 - **Configurações modulares:** possibilidade de desligar a barra de edição e as melhorias do explorador, ajustar botões individualmente e usar a interface em português ou inglês.
 
+**Prévia 9.0.1 em uma branch de trabalho (ainda não publicada):** [correções de UI, novo seletor Lucide, painel Spaces opcional e bloqueio visual por senha](V9_0_1_PREVIEW.pt-BR.md). A senha **não criptografa os arquivos do cofre**; os recursos da 9.0.0 continuam como base estável.
+
 Última versão estável anterior: **8.3.0**.
 
 Esta é uma **integração independente**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [as notas da release v9](V9_RELEASE.pt-BR.md) e [a auditoria de compatibilidade](V9_FINAL_AUDIT.md). Faça backup do cofre antes de atualizar.

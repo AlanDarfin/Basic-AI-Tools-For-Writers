@@ -9664,7 +9664,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerView(WRITER_TOOLS_VIEW,leaf=>new WriterToolsView(leaf,this));
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
-    this.app.workspace.onLayoutReady(()=>{void this.restoreHotReloadSidebars();});
+    if(typeof this.app.workspace.onLayoutReady==='function')
+     this.app.workspace.onLayoutReady(()=>{void this.restoreHotReloadSidebars();});
+    else if(this.app.workspace.layoutReady)void this.restoreHotReloadSidebars();
     this.addCommand({id:'open-writing-projects',name:msg('Abrir projetos de escrita','Open writing projects'),callback:()=>this.openProjects()});
     this.addCommand({id:'create-writing-project',name:msg('Criar projeto de escrita','Create writing project'),callback:async()=>{await this.openProjects();this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view?.promptNewProject();}});
     this.addCommand({id:'create-writing-scene',name:msg('Criar cena no projeto','Create project scene'),callback:async()=>{await this.openProjects('scenes');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)v.addScene(v.currentProject);}});

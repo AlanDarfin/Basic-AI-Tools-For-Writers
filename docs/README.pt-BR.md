@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 7.2.0 estável · **Versão anterior publicada:** 7.1.1 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão atual:** 8.0.0 estável · **Versão anterior publicada:** 7.2.0 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
 
 **Idiomas:** português brasileiro e inglês. [English README](../README.md).
 
 Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+
+## 8.0.0 — Performance & Polish
+
+Esta atualização é dedicada à manutenção e integração visual com o Obsidian no PC e Android. **LanguageTool:** tags HTML, atributos (`align`, `center`), blocos de código HTML e entidades deixam de ser tratados como palavras. O filtro mantém as posições originais do Markdown para evitar correções deslocadas. Ao tocar em erros destacados no Android, o usuário recebe uma janela nativa com botões maiores para substituir, explicar ou ignorar sugestões. Listas extensas de revisão são exibidas em grupos de 24 itens, sem perder os sublinhados do editor. **Desempenho:** o autocomplete reutiliza índices de arquivos não modificados (cache com limite de 128 itens) e evita listar todo o cofre a cada solicitação de links internos (atualização a cada 10 segundos). **Interface:** revisão mobile mais compacta, rolagem das abas sem animações indesejadas e estilos de navegação/revisão organizados em módulos que geram o `styles.css` único da distribuição. Todas as ferramentas anteriores e o Pandoc permanecem integrados. [Notas completas](V8_0_0_RELEASE.pt-BR.md) · [English](V8_0_0_RELEASE.en.md).
 
 ## Ajustes antes da v8 — 7.2.0
 

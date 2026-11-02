@@ -1287,6 +1287,46 @@ function writerMaskMarkdown(source,keepVariants=false){
    if(!m[0].length)re.lastIndex++;
   }
  }
+ // HTML attributes and tag names are not natural language. Keep the original
+ // UTF-16 offsets (including newlines) so LanguageTool findings still point
+ // to the correct Markdown characters. Visible prose *between* tags survives.
+ const rawHtml=new Set(['script','style','svg','math','pre','code','textarea','iframe']);
+ for(let i=0;i<text.length;){
+  if(text[i]!=='<'||hidden[i]){i++;continue;}
+  let cursor=i+1,closing=false;
+  if(text[cursor]==='/'){closing=true;cursor++;}
+  if(text[cursor]==='!'){
+   const special=/^<![^>]{1,4000}>/.exec(text.slice(i,i+4002));
+   if(special){hide(i,i+special[0].length);i+=special[0].length;continue;}
+  }
+  const name=/^[A-Za-z][A-Za-z0-9:-]*/.exec(text.slice(cursor,cursor+128));
+  if(!name){i++;continue;}
+  const tag=name[0].toLowerCase();
+  cursor+=name[0].length;
+  if(!/[\s/>]/.test(text[cursor]||'')){i++;continue;}
+  let quoted=null,end=-1;
+  for(let j=cursor;j<Math.min(text.length,i+4000);j++){
+   const char=text[j];
+   if(quoted){if(char===quoted)quoted=null;}
+   else if(char==='"'||char==="'")quoted=char;
+   else if(char==='>'){end=j+1;break;}
+  }
+  if(end<0){i++;continue;}
+  hide(i,end);
+  if(!closing&&rawHtml.has(tag)&&!text.slice(i,end).endsWith('/>')){
+   const closeRe=new RegExp('<\\s*\\/\\s*'+tag+'\\s*>','ig');
+   closeRe.lastIndex=end;
+   const close=closeRe.exec(text);
+   if(close){hide(end,close.index+close[0].length);i=close.index+close[0].length;continue;}
+   // Do not leak JavaScript/CSS/code into the checker if the closing tag
+   // was omitted; an unclosed raw-HTML block runs to the end of the file.
+   hide(end,text.length);break;
+  }
+  i=end;
+ }
+ // Entities such as &nbsp; and &#160; are formatting, not spelling mistakes.
+ const entity=/&(?:[A-Za-z][A-Za-z0-9]{1,31}|#(?:[0-9]{1,8}|[xX][0-9a-fA-F]{1,8}));/g;
+ for(const match of text.matchAll(entity))hide(match.index,match.index+match[0].length);
  // A paired delimiter marks formatting, but the words between markers are prose.
  // This excludes underscores inside identifiers (foo_bar) and escaped characters.
  const emphasis=/(?<![\p{L}\p{N}\\])(\*\*|__|~~|\*|_)(?=\S)([^\r\n]*?\S)\1(?![\p{L}\p{N}])/gu;
@@ -1372,7 +1412,7 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
 // v3 module: src/v3/complements.js
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{
- constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();}
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;}
  get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
  isExcluded(file){
   if(!file||file.extension!=='md')return true;
@@ -1389,7 +1429,7 @@ class WriterComplements extends EditorSuggest{
   }
   return m;
  }
- reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.dictionaries.clear();}
+ reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.dictionaries.clear();this.fileTermCache.clear();this.linkList=null;}
  async rebuild(){
   if(this.building)return this.building;
   const generation=++this.generation;
@@ -1401,8 +1441,21 @@ class WriterComplements extends EditorSuggest{
      const file=files[i];if(generation!==this.generation)return;
      try{
       if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
-      const text=await this.plugin.app.vault.cachedRead(file);
-      const terms=this.tokenize(writerMaskMarkdown(text));
+      // Reuse unchanged file indexes on successive vault scans. Bound the
+      // memory footprint; never trust cache entries without an mtime.
+      const stamp=file.stat?.mtime,size=file.stat?.size;
+      let stored=this.fileTermCache.get(file.path);
+      let terms;
+      if(Number.isFinite(stamp)&&stored?.mtime===stamp&&stored.size===size){
+       terms=stored.terms;
+      }else{
+       const text=await this.plugin.app.vault.cachedRead(file);
+       terms=this.tokenize(writerMaskMarkdown(text));
+       if(Number.isFinite(stamp)){
+        if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
+        this.fileTermCache.set(file.path,{mtime:stamp,size,terms});
+       }
+      }
       const remaining=Math.max(0,limit-total);
       const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
       total+=subset.size;if(total>=limit)break;
@@ -1461,9 +1514,18 @@ class WriterComplements extends EditorSuggest{
    for(const item of terms.values())add(item.word,item.word,10+Math.min(20,item.count),'Cofre');
   }
   if(this.options.dictionaries)for(const item of this.dictionaries.values())add(item.word,item.insert,85,item.source);
-  if(this.options.internalLinks)for(const file of this.plugin.app.vault.getMarkdownFiles()){
+  // A suggestion request should not enumerate a large vault for every key.
+  // Refresh link names periodically; new files appear within 10 seconds.
+  if(this.options.internalLinks){
+   const now=Date.now();
+   if(!this.linkList||now-this.linkListAt>10000){
+    this.linkList=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f));
+    this.linkListAt=now;
+   }
+   for(const file of this.linkList){
    if(this.isExcluded(file))continue;
-   add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,'Link interno');
+    add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,'Link interno');
+   }
   }
   if(this.options.frontmatter&&context.file){
    const props=this.plugin.app.metadataCache.getFileCache(context.file)?.frontmatter||{};
@@ -8909,14 +8971,12 @@ class DictionaryView extends ItemView{
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
        .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
-      this.reviewResults.empty();
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
       this.plugin.showReviewMarks(file,matches);
       this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found')+(window.partial?msg(' (trecho próximo ao cursor)',' (near cursor)'):''));
-      if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
-      for(const match of matches)this.renderGrammarSuggestion(file,source,match);
+      this.renderGrammarResults(file,source,matches);
     }else{
       this.plugin.clearReviewMarks();
       const mode=this.reviewMode.value;
@@ -8940,11 +9000,9 @@ class DictionaryView extends ItemView{
    if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return;
    this.reviewSource=after;this.plugin.reviewSource=after;
    this.grammarCheckedPath=file.path;this.grammarCheckedSource=after;
-   this.reviewResults.empty();
    this.plugin.showReviewMarks(file,matches);
    this.reviewStatus.setText(status);
-   if(!matches.length)this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
-   for(const m of matches)this.renderGrammarSuggestion(file,after,m);
+   this.renderGrammarResults(file,after,matches);
   };
   // Keep every unaffected paragraph's findings while the small request is in flight.
   publish(preserved,msg('Reanalisando apenas ','Rechecking only ')+
@@ -8969,6 +9027,29 @@ class DictionaryView extends ItemView{
    publish(preserved,msg('Não foi possível reanalisar o trecho; outras sugestões preservadas. ','Could not recheck passage; other suggestions preserved. ')+(error.message||String(error)));
    return false;
   }finally{this.reviewBusy=false;}
+ }
+ renderGrammarResults(file,source,matches){
+  // Reduce DOM work for long notes while keeping every CodeMirror highlight.
+  this.reviewResults.empty();
+  if(!matches.length){
+   this.reviewResults.createEl('p',{text:msg('Nenhum problema encontrado pelo LanguageTool.','No issues found by LanguageTool.')});
+   return;
+  }
+  const pageSize=24;
+  let index=0,more=null;
+  const appendPage=()=>{
+   more?.remove();more=null;
+   const end=Math.min(matches.length,index+pageSize);
+   while(index<end)this.renderGrammarSuggestion(file,source,matches[index++]);
+   if(index<matches.length){
+    more=this.reviewResults.createEl('button',{
+     text:msg('Mostrar mais sugestões','Show more suggestions')+' ('+(matches.length-index)+')',
+     cls:'writer-lt-show-more',attr:{type:'button'}
+    });
+    more.addEventListener('click',appendPage);
+   }
+  };
+  appendPage();
  }
  renderGrammarSuggestion(file,source,match,target=this.reviewResults){
   const start=match.offset,end=start+match.length;
@@ -9408,11 +9489,22 @@ module.exports=class AlansOfflineDictionary extends Plugin{
          this.hoverKey='';
          this.schedule({caret:true},110);
         };
+        this.onTouchEnd=event=>{
+         // Some Android WebViews don't dispatch pointerup to CodeMirror marks.
+         // Resolve the actual tapped document position independently of caret.
+         const touch=event.changedTouches?.[0];
+         if(!touch)return;
+         const position=view.posAtCoords?.({x:touch.clientX,y:touch.clientY});
+         const mark=plugin.reviewMarks?.find(item=>
+          Number.isInteger(position)&&position>=item.from&&position<=item.to);
+         if(mark)this.schedule({mark:{from:mark.from,to:mark.to}},90);
+        };
         this.onPointerLeave=()=>{this.hoverKey='';clearTimeout(this.timer);this.timer=null;};
         view.dom.addEventListener('pointermove',this.onPointerMove,{passive:true});
         view.dom.addEventListener('pointerup',this.onPointerUp);
         view.dom.addEventListener('keyup',this.onKeyUp);
         view.dom.addEventListener('pointerleave',this.onPointerLeave);
+        view.dom.addEventListener('touchend',this.onTouchEnd,{passive:true});
       }
       destroy(){
        clearTimeout(this.timer);
@@ -9420,6 +9512,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
        this.view.dom.removeEventListener('pointerup',this.onPointerUp);
        this.view.dom.removeEventListener('keyup',this.onKeyUp);
        this.view.dom.removeEventListener('pointerleave',this.onPointerLeave);
+       this.view.dom.removeEventListener('touchend',this.onTouchEnd);
       }
     }));
     const saved=await this.loadData()||{};
@@ -9895,10 +9988,38 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.dismissGrammarSuggestion(file,match);
     new Notice(msg('Regra ignorada. Pode reativá-la nas configurações.','Rule disabled; you can re-enable it in settings.'));
   }
+  showMobileReviewSuggestionMenu(file,source,match,key){
+    // Obsidian's native Modal is reliable on Android (no hover, mouse
+    // coordinates or tiny floating context-menu targets required).
+    const modal=new Modal(this.app);
+    modal.modalEl?.addClass('writer-lt-mobile-modal');
+    const panel=modal.contentEl;
+    panel.empty();
+    panel.createEl('h3',{text:match.rule?.description||match.shortMessage||msg('Sugestão do LanguageTool','LanguageTool suggestion')});
+    if(match.message)panel.createEl('p',{text:match.message,cls:'writer-lt-mobile-reason'});
+    const choices=panel.createDiv({cls:'writer-lt-mobile-choices'});
+    const action=(parent,label,callback,cls='')=>{
+      const button=parent.createEl('button',{text:label,cls,attr:{type:'button'}});
+      button.addEventListener('click',()=>{modal.close();Promise.resolve().then(callback).catch(error=>new Notice(error?.message||String(error)));});
+      return button;
+    };
+    const replacements=[...new Set((match.replacements||[]).map(x=>x?.value).filter(x=>typeof x==='string'))].slice(0,8);
+    if(!replacements.length)choices.createEl('p',{text:msg('Nenhuma substituição automática','No automatic replacement'),cls:'setting-item-description'});
+    for(const replacement of replacements)action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
+    const extras=panel.createDiv({cls:'writer-lt-mobile-actions'});
+    action(extras,msg('Ir ao erro','Go to error'),()=>this.jumpToReviewError(file,match.offset,match.offset+match.length));
+    action(extras,msg('Explicar com IA','Explain with AI'),()=>this.explainGrammarSuggestion(file,source,match));
+    action(extras,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
+    if(match.rule?.id)action(extras,msg('Ignorar regra','Ignore rule'),()=>this.ignoreGrammarRule(file,match));
+    modal.onClose=()=>{if(this.reviewPopup===modal){this.reviewPopup=null;this.reviewPopupKey=null;}panel.empty();};
+    this.reviewPopup=modal;this.reviewPopupKey=key;modal.open();
+    return modal;
+  }
   showReviewSuggestionMenu(file,source,match,anchor={}){
     const key=file.path+':'+match.offset+':'+match.length;
     if(this.reviewPopup&&this.reviewPopupKey===key)return this.reviewPopup;
     this.closeReviewPopup();
+    if(this.app.isMobile)return this.showMobileReviewSuggestionMenu(file,source,match,key);
     const menu=new Menu(this.app);
     const info=document.createDocumentFragment();
     const block=document.createElement('div');

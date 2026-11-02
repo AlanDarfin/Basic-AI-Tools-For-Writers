@@ -1,0 +1,25 @@
+/* Basic AI 8: isolated, native-like horizontal navigation. */
+:is(.writer-tool-root .writer-tool-tabs,.writer-tools-v3 .writer-tools-v3-tabs,
+    .writer-project-root .writer-project-tabs,
+    .dictionary-settings-tabs,.dictionary-settings-subtabs){
+  min-width:0;
+  max-width:100%;
+  overflow-x:auto;
+  overflow-y:hidden;
+  overscroll-behavior-x:contain;
+  scroll-behavior:auto;
+  scroll-snap-type:none;
+  scrollbar-width:thin;
+}
+:is(.writer-tool-root .writer-tool-tabs,.writer-tools-v3 .writer-tools-v3-tabs,
+    .writer-project-root .writer-project-tabs,
+    .dictionary-settings-tabs,.dictionary-settings-subtabs)>button{
+  flex:0 0 auto;
+  white-space:nowrap;
+  scroll-snap-align:none;
+}
+.writer-tool-root .writer-tool-panel,
+.writer-project-root .writer-project-panel,
+.writer-tools-v3 .writer-tools-v3-panel{
+  min-width:0;
+}

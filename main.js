@@ -1455,6 +1455,10 @@ class WriterComplements extends EditorSuggest{
    const perFile=Math.max(1,Math.ceil(limit/Math.max(1,files.length)));
    const sampleChars=Math.max(1000,Number(this.options.fileLimit)||120000);
    let failed=0,truncated=0;
+   // Read from a snapshot: do not evict late-file cache entries before
+   // reaching them during a full vault traversal.
+   const previousFileTerms=this.fileTermCache;
+   const updatedFileTerms=new Map();
    if(this.options.vault!==false){
     for(let i=0;i<files.length;i++){
      const file=files[i];if(generation!==this.generation)return;
@@ -1462,7 +1466,7 @@ class WriterComplements extends EditorSuggest{
       // Reuse unchanged file indexes on successive vault scans. Bound the
       // memory footprint; never trust cache entries without an mtime.
       const stamp=file.stat?.mtime,size=file.stat?.size;
-      let stored=this.fileTermCache.get(file.path);
+      let stored=previousFileTerms.get(file.path);
       let terms;
       if(Number.isFinite(stamp)&&stored?.mtime===stamp&&stored.size===size){
        terms=stored.terms;
@@ -1470,10 +1474,10 @@ class WriterComplements extends EditorSuggest{
        const text=await this.plugin.app.vault.cachedRead(file);
        terms=this.tokenize(writerMaskMarkdown(text.slice(0,sampleChars)));
        if(text.length>sampleChars)truncated++;
-       if(Number.isFinite(stamp)){
-        if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
-        this.fileTermCache.set(file.path,{mtime:stamp,size,terms});
-       }
+      }
+      if(Number.isFinite(stamp)){
+       if(updatedFileTerms.size>=128)updatedFileTerms.delete(updatedFileTerms.keys().next().value);
+       updatedFileTerms.set(file.path,{mtime:stamp,size,terms});
       }
       const subset=new Map([...terms].slice(0,perFile));next.set(file.path,subset);
      }catch(e){failed++;console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
@@ -1481,6 +1485,7 @@ class WriterComplements extends EditorSuggest{
     }
    }
    if(generation!==this.generation)return;
+   this.fileTermCache=updatedFileTerms;
    this.cache=next;this.indexStats={eligible:files.length,indexed:next.size,failed,truncated};
    this.ready=true;this.dirty=false;
    await this.loadDictionaries();

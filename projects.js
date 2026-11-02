@@ -211,7 +211,7 @@ class ProjectsView extends ItemView{
     const btn=tabs.createEl('button',{cls:selected?'is-active':'',
      attr:{type:'button',role:'tab','aria-selected':String(selected)}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
-    require('obsidian').setIcon(glyph,tabLucide[id]||'file-text');
+    require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
     btn.createSpan({text:name});
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
@@ -223,7 +223,7 @@ class ProjectsView extends ItemView{
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
     attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
    const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
-   require('obsidian').setIcon(glyph,groupLucide[group.id]||'folder');
+   require('obsidian').setIcon?.(glyph,groupLucide[group.id]||'folder');
    button.createSpan({text:lfMsg(group.pt,group.en)});
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{

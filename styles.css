@@ -3848,3 +3848,38 @@ body:not(.is-mobile) .writer-project-root .writer-project-series-row{
  gap:5px;
  margin:2px 0 6px;
 }
+
+
+/* 7.2.0 — review engine selector and optional external LanguageTool actions */
+.dictionary-review-panel .writer-review-engine-row,
+.writer-review-engine-row{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ gap:6px;
+ min-width:0;
+ width:100%;
+ margin-top:5px;
+}
+.writer-review-engine-row>select{
+ flex:1 1 170px;
+ min-width:0;
+ max-width:100%;
+}
+.writer-review-external{
+ min-width:0;
+ overflow-wrap:anywhere;
+}
+.writer-review-external .writer-tools-v3-actions{
+ display:flex;
+ flex-wrap:wrap;
+ gap:6px;
+}
+.writer-review-external .writer-tools-v3-actions>button{
+ flex:1 1 130px;
+ min-width:0;
+}
+.writer-tools-v3 .writer-tools-v3-tabs.writer-tools-v3-tabs{
+ scroll-snap-type:none;
+ scroll-behavior:auto;
+}

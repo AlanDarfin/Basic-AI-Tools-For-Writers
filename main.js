@@ -10116,7 +10116,7 @@ function writerV83CalForm(plugin,initial,onSave,onRemove){
  modal.onOpen=()=>{
   const content=modal.contentEl;content.empty();
   content.createEl('h3',{text:initial?.path?writerUi('Editar evento','Edit event'):writerUi('Novo evento','New event')});
-  const fields={title:initial?.title||'',date:initial?.occurs||initial?.date||writerV83DateOf(new Date()),
+  const fields={title:initial?.title||'',date:initial?.date||writerV83DateOf(new Date()),
    time:initial?.time||'',endTime:initial?.endTime||'',repeat:initial?.repeat||'none',category:initial?.category||''};
   const field=(key,pt,en,type='text')=>{
    const label=content.createEl('label',{cls:'writer-v83-cal-field'});

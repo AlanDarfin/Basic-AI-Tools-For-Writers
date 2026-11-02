@@ -4407,4 +4407,39 @@ body.is-mobile .writer-v8-chat-avatar{width:29px;height:29px;min-width:29px;}
 body.is-mobile .writer-v8-chat-bubble{padding:9px 10px;}
 body.is-mobile .writer-v8-home-quick-actions>.writer-v8-home-action{min-height:42px;}
 body.is-mobile .writer-v8-home-grid{grid-template-columns:minmax(0,1fr);gap:10px;}
+
+/* 8.2.2: custom homepage heading, top search, local clock and month calendar. */
+.writer-v8-home-heading{display:flex;align-items:center;gap:11px;min-width:0;margin-bottom:10px;}
+.writer-v8-home-title-icon{flex:0 0 auto;width:34px;height:34px;display:grid;place-items:center;color:var(--text-accent);background:var(--background-secondary);border-radius:var(--radius-m);}
+.writer-v8-home-title-icon svg{width:21px;height:21px;}
+.writer-v8-home-heading h2{min-width:0;margin:0;overflow-wrap:anywhere;}
+.writer-v8-home-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,260px);gap:12px;max-width:1100px;margin:0 auto 12px;align-items:start;}
+.writer-v8-home-top>.writer-v8-home-card{min-width:0;}
+.writer-v8-home-top>.writer-v8-home-card .writer-v8-home-card-order{display:none;}
+.writer-v8-home-web-links{margin-top:8px;display:flex;gap:8px;}
+.writer-v8-home-web-links button{min-height:33px;padding:6px 12px;border:1px solid var(--background-modifier-border);background:var(--background-primary);border-radius:var(--radius-s);color:var(--text-accent);}
+.writer-v8-home-web-links button[hidden]{display:none;}
+.writer-v8-home-clock-card{min-width:0;box-sizing:border-box;padding:12px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);background:var(--background-secondary);}
+.writer-v8-home-clock{display:flex;flex-direction:column;gap:1px;align-items:center;margin-bottom:7px;}
+.writer-v8-home-clock-digits{font-size:clamp(1.6rem,3.7vw,2.15rem);line-height:1.1;letter-spacing:-.025em;font-weight:650;font-variant-numeric:tabular-nums;}
+.writer-v8-home-clock-date{text-align:center;color:var(--text-muted);font-size:var(--font-smaller);line-height:1.35;overflow-wrap:anywhere;}
+.writer-v8-home-calendar-bar{display:flex;align-items:center;gap:3px;justify-content:space-between;margin:8px 0 7px;}
+.writer-v8-home-calendar-bar strong{font-size:var(--font-smaller);text-transform:capitalize;text-align:center;min-width:0;overflow-wrap:anywhere;}
+.writer-v8-home-calendar-bar button{display:grid;place-items:center;min-width:26px;min-height:28px;padding:2px 4px;box-shadow:none;background:transparent;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);}
+.writer-v8-home-calendar-bar button:hover{background:var(--background-modifier-hover);}
+.writer-v8-home-calendar-bar .writer-v8-home-calendar-today{font-size:var(--font-smallest);padding:2px 5px;color:var(--text-muted);}
+.writer-v8-home-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px;min-width:0;}
+.writer-v8-home-calendar-day,.writer-v8-home-calendar-weekday{display:grid;place-items:center;min-width:0;min-height:25px;line-height:1.2;font-size:var(--font-smallest);font-variant-numeric:tabular-nums;text-align:center;}
+.writer-v8-home-calendar-weekday{font-weight:650;color:var(--text-muted);}
+.writer-v8-home-calendar-day.is-today{color:var(--text-on-accent);background:var(--interactive-accent);border-radius:var(--radius-s);font-weight:700;}
+@media(max-width:720px){
+ .writer-v8-home-top{grid-template-columns:minmax(0,1fr);}
+ .writer-v8-home-clock-card{display:grid;grid-template-columns:minmax(100px,1fr) minmax(180px,1.4fr);gap:12px;align-items:center;}
+ .writer-v8-home-clock{margin:0;}
+ .writer-v8-home-calendar-days{gap:1px;}
+}
+@media(max-width:380px){
+ .writer-v8-home-clock-card{display:block;}
+ .writer-v8-home-clock{margin-bottom:8px;}
+}
 /* END V8 MODULAR STYLES */

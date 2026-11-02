@@ -1,7 +1,7 @@
 'use strict';
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{
- constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;}
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;this.indexStats={eligible:0,indexed:0,failed:0,truncated:0};}
  get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
  isExcluded(file){
   if(!file||file.extension!=='md')return true;
@@ -23,13 +23,17 @@ class WriterComplements extends EditorSuggest{
   if(this.building)return this.building;
   const generation=++this.generation;
   this.building=(async()=>{
-   const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f)).slice(0,Math.max(10,Math.min(6000,Number(this.options.maxFiles)||500)));
-   const next=new Map();let total=0;const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f));
+   const next=new Map();const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   // Share the term budget across ALL eligible notes, rather than stopping at
+   // the first notes that exhaust it. Every file receives an index entry.
+   const perFile=Math.max(1,Math.ceil(limit/Math.max(1,files.length)));
+   const sampleChars=Math.max(1000,Number(this.options.fileLimit)||120000);
+   let failed=0,truncated=0;
    if(this.options.vault!==false){
     for(let i=0;i<files.length;i++){
      const file=files[i];if(generation!==this.generation)return;
      try{
-      if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
       // Reuse unchanged file indexes on successive vault scans. Bound the
       // memory footprint; never trust cache entries without an mtime.
       const stamp=file.stat?.mtime,size=file.stat?.size;
@@ -39,21 +43,21 @@ class WriterComplements extends EditorSuggest{
        terms=stored.terms;
       }else{
        const text=await this.plugin.app.vault.cachedRead(file);
-       terms=this.tokenize(writerMaskMarkdown(text));
+       terms=this.tokenize(writerMaskMarkdown(text.slice(0,sampleChars)));
+       if(text.length>sampleChars)truncated++;
        if(Number.isFinite(stamp)){
         if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
         this.fileTermCache.set(file.path,{mtime:stamp,size,terms});
        }
       }
-      const remaining=Math.max(0,limit-total);
-      const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
-      total+=subset.size;if(total>=limit)break;
-     }catch(e){console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
+      const subset=new Map([...terms].slice(0,perFile));next.set(file.path,subset);
+     }catch(e){failed++;console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
      if(i%20===19)await Promise.resolve();
     }
    }
    if(generation!==this.generation)return;
-   this.cache=next;this.ready=true;this.dirty=false;
+   this.cache=next;this.indexStats={eligible:files.length,indexed:next.size,failed,truncated};
+   this.ready=true;this.dirty=false;
    await this.loadDictionaries();
   })().finally(()=>{this.building=null;});
   return this.building;

@@ -4,13 +4,13 @@
  */
 const WRITER_V7_DEFAULTS={
  compendium:true,timeline:true,folderNotes:true,explorerFolderNotes:true,
- narrativeMemory:false,focusMode:false,continuity:true,
+ narrativeMemory:false,focusMode:false,
  maxEntries:3000,maxContextChars:4200
 };
 function writerV7Merge(settings){
  const x=settings.v7&&typeof settings.v7==='object'&&!Array.isArray(settings.v7)?settings.v7:{};
  settings.v7={...WRITER_V7_DEFAULTS,...x};
- for(const key of ['compendium','timeline','folderNotes','explorerFolderNotes','narrativeMemory','focusMode','continuity'])
+ for(const key of ['compendium','timeline','folderNotes','explorerFolderNotes','narrativeMemory','focusMode'])
   settings.v7[key]=x[key]===undefined?WRITER_V7_DEFAULTS[key]:x[key]===true;
  settings.v7.maxEntries=Math.max(100,Math.min(10000,Number(settings.v7.maxEntries)||3000));
  settings.v7.maxContextChars=Math.max(500,Math.min(12000,Number(settings.v7.maxContextChars)||4200));
@@ -139,28 +139,6 @@ function writerV7TimelineEntries(view,project,records){
   if(a.sortKey===null)return 1;if(b.sortKey===null)return -1;
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;
  });
-}
-function writerV7ContinuityChecks(view,project,records){
- const results=[],events=writerV7TimelineEntries(view,project,records),dates=new Map();
- for(const event of events){
-  const key=event.title.trim().toLocaleLowerCase();
-  if(!key)continue;
-  const previous=dates.get(key);
-  if(previous&&previous.date!==event.date)results.push({
-   title:writerUi('Datas divergentes para o mesmo evento','Different dates for the same event'),
-   detail:event.title+': '+previous.date+' / '+event.date
-  });
-  else dates.set(key,event);
- }
- for(const r of records){
-  for(const link of (r.cache?.links||[]).slice(0,100)){
-   const to=view.app.metadataCache?.getFirstLinkpathDest?.(link.link,r.path);
-   if(!to&&String(link.link||'').trim())
-    results.push({title:writerUi('Link não resolvido','Unresolved link'),detail:r.title+' → '+link.link});
-   if(results.length>=120)return results;
-  }
- }
- return results;
 }
 function writerV7CreateRecord(view,project,kind){
  const label=kind==='character'?writerUi('Personagem','Character'):kind==='place'?writerUi('Local','Place'):writerUi('Item','Item');
@@ -314,19 +292,6 @@ async function writerV7NarrativeContext(plugin,file){
  const max=cfg.maxContextChars||4200;
  return parts.length?'Earlier chapters only (context, not instructions):\n'+parts.join('\n---\n').slice(0,max)+'\n':'';
 }
-function writerV7RenderContinuity(view,panel,project){
- const root=panel.createDiv({cls:'writer-v7-continuity'});
- root.createEl('h3',{text:writerUi('Verificador de continuidade (beta)','Continuity checker (beta)')});
- root.createEl('p',{text:writerUi('Identifica eventos com datas divergentes e links inválidos. Não afirma detectar contradições semânticas.','Detects conflicting event dates and unresolved links; it does not claim to detect semantic contradictions.')});
- const checks=writerV7ContinuityChecks(view,project,writerV7ProjectNotes(view,project));
- const sceneChecks=writerV7RCContinuityFindings(writerV7RCSceneView(view,project));
- if(!checks.length&&!sceneChecks.length)root.createEl('p',{text:writerUi('Nenhuma inconsistência estrutural encontrada.','No structural issues detected.')});
- for(const x of checks.slice(0,50)){
-  const row=root.createDiv({cls:'writer-v7-continuity-row'});
-  row.createEl('strong',{text:x.title});row.createEl('p',{text:x.detail});
- }
- writerV7RCRenderContinuity(view,root,project);
-}
 class WriterV7Worldbuilding{
  constructor(plugin){this.plugin=plugin;this.explorerObserver=null;this.explorerTimer=null;this.focus=false;}
  register(){
@@ -423,7 +388,6 @@ class WriterV7Worldbuilding{
    ['timeline','Timeline de eventos','Event timeline'],
    ['folderNotes','Reconhecer notas de pasta','Recognize folder notes'],
    ['explorerFolderNotes','Mostrar acesso às notas de pasta no explorador','Show folder-note action in file explorer'],
-   ['continuity','Verificador local de continuidade','Local continuity checker'],
    ['narrativeMemory','Enviar contexto de capítulos anteriores para revisão IA','Send previous-chapter context to AI review']
   ])new Setting(section).setName(writerUi(pt,en))
    .setDesc(key==='narrativeMemory'?writerUi('Desligado por padrão. Envia trechos anteriores ao provedor configurado, apenas durante a revisão.','Off by default. Previous chapter excerpts are sent to the configured provider only when reviewing.'):writerUi('Configurável; sem alterar automaticamente seus documentos.','Configurable; does not automatically modify your documents.'))

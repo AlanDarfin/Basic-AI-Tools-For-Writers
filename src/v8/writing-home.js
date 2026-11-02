@@ -339,6 +339,12 @@ function writerV8FinishSettings(plugin,panel){
    drop.setValue(writerV8HomeIconName(cfg.homeIcon));
    drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
   });
+ writerV9ColorSetting(panel,'Cor do título da homepage','Homepage title color',cfg.homeTitleColor,value=>{
+  cfg.homeTitleColor=value;void plugin.saveSettings().then(refreshHome);
+ });
+ writerV9ColorSetting(panel,'Cor do ícone da homepage','Homepage icon color',cfg.homeIconColor,value=>{
+  cfg.homeIconColor=value;void plugin.saveSettings().then(refreshHome);
+ });
  new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
   .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
   .addText(input=>input.setPlaceholder('Assets/icon.png ou https://…').setValue(cfg.homeIconImage||'')

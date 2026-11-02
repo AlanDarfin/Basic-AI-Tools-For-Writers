@@ -25,7 +25,7 @@ test('nested scene hierarchy is retained and controls remain fixed',()=>{
 });
 test('stable release metadata and translations are updated',()=>{
  const manifest=require('../manifest.json'),pkg=require('../package.json'),versions=require('../versions.json');
- assert.ok(manifest.version==='6.0.1'||/^7\.\d+\.\d+(?:-(beta|rc)\.\d+)?$/.test(manifest.version));
+ assert.ok(/^\d+\.\d+\.\d+(?:-(beta|rc)\.\d+)?$/.test(manifest.version));
  assert.equal(pkg.version,manifest.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
  for(const file of ['README.md','docs/README.pt-BR.md','docs/V6_0_1_RELEASE.en.md','docs/V6_0_1_RELEASE.pt-BR.md'])

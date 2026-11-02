@@ -22,3 +22,19 @@ This maintenance revision removes pill-shaped day-number backgrounds, replaces r
 Commands: **Calendar: open in main tab**, **Calendar: open in left sidebar**, **Calendar: open in right sidebar**. The main calendar command respects the saved default placement.
 
 The changes are under review until desktop/Android testing and CI complete; the 9.0.0 stable release remains unchanged.
+
+## Outros ajustes da mesma manutenção (2 de novembro de 2026)
+
+- **Conversas fictícias:** nome visível apenas quando presente na própria mensagem, e não apenas herdado das definições de lado. Mensagens consecutivas do mesmo personagem ocultam o nome e o avatar repetidos. Horário visível somente quando informado.
+- **Abas das configurações:** grupos e subabas dividem o espaço horizontal livre, sem deixar grandes áreas vazias; mantêm scroll ao faltar largura.
+- **Pesquisa:** campo único compacto, ícone de busca, limpar, contagem e até seis resultados por vez, sem cartão excessivamente alto.
+- **Organização:** categoria **Escrita e Markdown** / **Writing & Markdown** reúne ferramentas de digitação, Markdown estendido, Pandoc, templates, Unicode e formatação; linter passa a Revisão e leitura.
+- **Make.md:** continuam integrados ícones/cores no explorador, visões de pastas e Smart Spaces simples. Bancos relacionais, fórmulas/rollups, Flow Editor completo e Spaces originais continuam ausentes.
+
+## Additional changes (English)
+
+- Fictional chat displays speaker name only when directly authored, hides repeated name/avatar on adjacent messages by the same speaker, and only shows explicitly authored times.
+- Settings navigation grows to use available horizontal width with overflow scrolling. Settings search is a compact, clearable field showing a limited set of results.
+- Writing and Markdown are in a single **Writing & Markdown** group; writing linter moves to Review & reading.
+- Make.md parity remains partial: native Explorer colors/icons, folder views and simple Smart Spaces are present; advanced databases, formulas, rollups, Flow and the original Spaces engine are not.
+

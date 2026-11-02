@@ -7,6 +7,7 @@ Version: **9.0.0-beta.1**. This is not a stable release.
 | Requested feature | Implementation |
 | --- | --- |
 | cMenu-style toolbar | 21 Markdown actions; reorderable/optional buttons; compact mode; command-palette commands. Enabled on desktop, **disabled on mobile by default**. |
+| Local Smart Spaces (optional) | Saved folder/tag/property filters with cards, list, table and status-board views. Disabled by default and stored in Basic settings. No additional sidebar. |
 | Make.md-inspired native explorer | Custom Lucide icons, accent colors, file/folder context menus, filterable folder browser in cards/list layouts, and Markdown folder index creation. No new sidebar. |
 | Writing homepage | Centered title, transparent icon, more Lucide options or a vault/HTTPS image, icon above the title on mobile or next to it on desktop, and clock above calendar. |
 | Independent modules | Toggle formatting toolbar and native explorer enhancements; configure individual options; PT-BR and English UI. |
@@ -19,7 +20,7 @@ The upstream Make.md repository tree contains around 634 files, including core U
 | --- | --- | --- |
 | File icons and navigation | Extend the native File Explorer | Initial implementation |
 | Folder cards/list | Native folder context action and existing Markdown folder overviews | Initial implementation |
-| Spaces, saved collections | Virtual filtered views, no replacement sidebar | Not implemented |
+| Spaces, saved collections | Optional local Smart Spaces; not Make.md's relational Spaces engine | Partially implemented |
 | Database schemas, relations, formulas, rollups | Need a Markdown/properties-compatible data model | Not implemented |
 | Database tables, boards, calendars | Reuse existing local calendar and Longform boards; avoid replacing Bases | Not fully ported |
 | Flow editor and inline transclusions | Existing Basic inline blocks remain separate | Not ported |

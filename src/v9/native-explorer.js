@@ -116,7 +116,7 @@ function writerV9RegisterExplorer(plugin){
   if(debounce)clearTimeout(debounce);
   debounce=setTimeout(()=>{
    debounce=null;
-   if(!active())return;
+   const enabled=active();
    const roots=plugin.app.workspace.getLeavesOfType?.('file-explorer')||[];
    for(const leaf of roots){
     const host=leaf.view?.containerEl;if(!host)continue;
@@ -128,7 +128,7 @@ function writerV9RegisterExplorer(plugin){
      if(existing)existing.remove();
      node.classList.remove('writer-v9-explorer-accent');
      node.style.removeProperty('--writer-v9-explorer-accent');
-     if(!item)continue;
+     if(!enabled||!item)continue;
      if(plugin.settings.v9Explorer.showIcons&&item.icon){
       const symbol=node.ownerDocument.createElement('span');
       symbol.className='writer-v9-explorer-icon';

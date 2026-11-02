@@ -12,6 +12,12 @@ Version: **9.0.0-beta.1**. This is not a stable release.
 | Writing homepage | Centered title, transparent icon, more Lucide options or a vault/HTTPS image, icon above the title on mobile or next to it on desktop, and clock above calendar. |
 | Independent modules | Toggle formatting toolbar and native explorer enhancements; configure individual options; PT-BR and English UI. |
 
+## Calendar Studio · v9
+
+The built-in calendar is redesigned around the original Full Calendar and Full Calendar Remastered workflows. Month, week, **3-day**, day and 30-day agenda modes; compact event chips, timed event slots and an integrated collapsible sidebar with mini-month, category filter and upcoming events. Event editor includes titles, all-day/timed events, category and color, location, description, repeat interval, repeat-until, weekly day selection, and occurrence exceptions. Edit/delete this occurrence or the complete series with confirmation, retaining Markdown notes. No extra Obsidian workspace sidebar is registered.
+
+**Scope:** local Markdown events only. Read-only ICS, Google Calendar OAuth, CalDAV and external sync are **not** included and should not be confused with upstream capabilities. The archived Full Calendar and the maintained Remastered edition were studied as behavioral references, not copied.
+
 ## Make.md architecture survey
 
 The upstream Make.md repository tree contains around 634 files, including core UI, Obsidian adapters, data storage and caching, Spaces, Flow editing and Maker Mode. Porting the complete project would overlap navigation, data models, styling, and dependencies. These changes are an **independent feature adaptation**, not a full fork.

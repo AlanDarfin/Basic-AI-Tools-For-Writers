@@ -28,9 +28,9 @@ function writerV8RenderPost(plugin,source,element,ctx){
  const data=writerV8SplitPost(source);
  const root=element.createDiv({cls:'writer-v8-block writer-v8-social'});
  if(!data){root.createEl('p',{text:writerUi('Post muito longo ou inválido.','Post is too long or invalid.')});return;}
- const draw=(item,replyIndex,depth)=>{
+ const draw=(item,replyIndex,depth,parent=root)=>{
   const fields=item.fields||{};
-  const post=root.createDiv({cls:'writer-v8-social-post'+(replyIndex>=0?' is-reply is-depth-'+depth:'')});
+  const post=parent.createDiv({cls:'writer-v8-social-post'+(replyIndex>=0?' is-reply is-depth-'+depth:'')});
   const heading=post.createDiv({cls:'writer-v8-social-heading'});
   const author=String(fields.author||fields.name||fields.nome||writerUi('Personagem','Character')).slice(0,100);
   const url=writerV8ImagePath(plugin.app,fields.avatar||fields.image,ctx.sourcePath);
@@ -56,10 +56,7 @@ function writerV8RenderPost(plugin,source,element,ctx){
  if(data.replies.length){
   const replies=root.createDiv({cls:'writer-v8-social-replies'});
   data.replies.forEach((reply,i)=>{
-   // Each reply is a deliberately authored fictional thread item.
-   const outer=element.ownerDocument.createElement('div');
-   // Use the existing post root for consistent safe Markdown rendering.
-   draw(reply,i,reply.depth);
+   draw(reply,i,reply.depth,replies);
   });
  }
 }

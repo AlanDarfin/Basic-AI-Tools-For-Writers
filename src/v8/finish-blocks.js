@@ -20,7 +20,7 @@ function writerV8FinishMerge(settings){
  const requested=prevOrder.length?prevOrder:[...allowed];
  const index=requested.includes('calendar')?-1:requested.indexOf('continue');
  if(index>=0)requested.splice(index+1,0,'calendar');
- else if(!requested.includes('calendar'))requested.unshift('calendar');
+ else if(!requested.includes('calendar'))requested.push('calendar');
  cfg.homeOrder=[...new Set([...requested,...allowed])];
  // New widgets are off by default for existing installs; user choices persist.
  cfg.homeHidden=Array.isArray(old.homeHidden)?

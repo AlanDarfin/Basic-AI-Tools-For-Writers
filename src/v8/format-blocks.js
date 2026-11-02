@@ -44,7 +44,9 @@ async function writerV8Markdown(plugin,ctx,element,value){
 }
 function writerV8RenderTabs(plugin,source,element,ctx){
  const tabs=writerV8SplitTabs(source);
- const root=element.createDiv({cls:'writer-v8-block writer-v8-tabs'});
+ const layout=writerV8TabLayout(source);
+ const root=element.createDiv({cls:'writer-v8-block writer-v8-tabs'+(layout==='top'?'':' writer-v8-tabs-side')+(layout==='right'?' writer-v8-tabs-right':'')});
+ const rerender=next=>writerV8RenderTabs(plugin,next,element,ctx);
  if(!tabs.length){root.createEl('p',{text:writerUi('Use === Título para iniciar cada aba (máximo 12).','Use === Title to start each tab (12 maximum).')});return;}
  const nav=root.createDiv({cls:'writer-v8-tab-list',attr:{role:'tablist','aria-label':writerUi('Abas do conteúdo','Content tabs')}});
  const pane=root.createDiv({cls:'writer-v8-tab-panels'});
@@ -61,8 +63,18 @@ function writerV8RenderTabs(plugin,source,element,ctx){
   const target=panels[index];
   if(!target.dataset.loaded){
    target.dataset.loaded='1';
-   void writerV8Markdown(plugin,ctx,target,tabs[index].content)
-    .catch(error=>{console.warn('[Basic AI] tab render failed:',error);target.createEl('p',{text:writerUi('Não foi possível renderizar esta aba.','This tab could not be rendered.')});});
+   const content=target.createDiv({cls:'writer-v8-tab-content',attr:{tabindex:'0','aria-label':writerUi('Clique para editar a aba','Click to edit tab')}});
+   if(!tabs[index].content)content.createEl('p',{cls:'writer-v8-edit-placeholder',text:writerUi('Toque aqui para escrever…','Tap here to write…')});
+   else void writerV8Markdown(plugin,ctx,content,tabs[index].content)
+    .catch(error=>{console.warn('[Basic AI] tab render failed:',error);content.createEl('p',{text:writerUi('Não foi possível renderizar esta aba.','This tab could not be rendered.')});});
+   const edit=event=>{
+    if(event?.target?.closest?.('a,button,input,textarea,select'))return;
+    if(target.querySelector('.writer-v8-inline-editor'))return;
+    writerV8InlineEditor(plugin,ctx,target,element,'writer-tabs',source,tabs[index].content,
+     value=>writerV8ReplaceTab(source,index,value),rerender);
+   };
+   content.addEventListener('click',edit);
+   content.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.ctrlKey&&!event.metaKey){event.preventDefault();edit();}});
   }
  };
  tabs.forEach((tab,i)=>{
@@ -71,12 +83,33 @@ function writerV8RenderTabs(plugin,source,element,ctx){
   buttons.push(button);panels.push(panel);
   button.addEventListener('click',()=>select(i));
   button.addEventListener('keydown',event=>{
-   const keys={ArrowRight:1,ArrowLeft:-1,Home:-i,End:tabs.length-1-i};
+   const keys={ArrowRight:1,ArrowLeft:-1,ArrowUp:-1,ArrowDown:1,Home:-i,End:tabs.length-1-i};
    if(!Object.prototype.hasOwnProperty.call(keys,event.key))return;
    event.preventDefault();
    const next=(i+keys[event.key]+tabs.length)%tabs.length;
    select(next);buttons[next].focus();
   });
+ });
+ const plus=nav.createEl('button',{text:'+',cls:'writer-v8-tab-add',attr:{type:'button','aria-label':writerUi('Adicionar nova aba','Add new tab'),title:writerUi('Adicionar nova aba','Add new tab')}});
+ plus.disabled=tabs.length>=12;
+ plus.addEventListener('click',()=>{
+  if(nav.querySelector('.writer-v8-tab-new-title'))return;
+  const input=nav.createEl('input',{cls:'writer-v8-tab-new-title',attr:{placeholder:writerUi('Nome da aba…','Tab title…'),'aria-label':writerUi('Nome da nova aba','New tab title')}});
+  input.maxLength=80;input.focus();
+  const add=async()=>{
+   const title=input.value.trim().replace(/[\r\n]/g,' ');
+   if(!title)return;
+   const next=source.replace(/\n+$/,'')+'\n=== '+title+'\n';
+   try{
+    await writerV8CommitFenced(plugin,ctx,element,'writer-tabs',source,next);
+    if(element.isConnected){element.empty();rerender(next);}
+   }catch(error){new Notice(writerUi('Erro ao criar aba: ','Unable to add tab: ')+String(error.message||error));}
+  };
+  input.addEventListener('keydown',event=>{
+   if(event.key==='Enter'){event.preventDefault();void add();}
+   if(event.key==='Escape'){event.preventDefault();input.remove();}
+  });
+  input.addEventListener('blur',()=>{if(!input.value.trim())input.remove();});
  });
  select(0);
 }
@@ -85,6 +118,8 @@ function writerV8RenderCard(plugin,source,element,ctx,kind){
  const root=element.createDiv({cls:'writer-v8-block writer-v8-'+kind});
  if(!parsed){root.createEl('p',{text:writerUi('Bloco muito grande.','Block too large.')});return;}
  const {fields,body}=parsed,title=fields.title||fields.name||fields.nome||'';
+ const layout=String(fields.layout||fields.position||'top').toLowerCase();
+ if(kind==='avatar'&&['left','right'].includes(layout))root.classList.add('writer-v8-avatar-side','writer-v8-avatar-'+layout);
  const heading=root.createDiv({cls:'writer-v8-card-heading'});
  const url=writerV8ImagePath(plugin.app,fields.image||fields.avatar||fields.cover,ctx.sourcePath);
  if(url)heading.createEl('img',{cls:'writer-v8-card-image',attr:{src:url,alt:title||writerUi('Ilustração','Illustration'),loading:'lazy'}});
@@ -94,17 +129,27 @@ function writerV8RenderCard(plugin,source,element,ctx,kind){
  const subtitle=fields.subtitle||fields.role||fields.type||fields.tipo||'';
  if(subtitle)labels.createEl('span',{text:subtitle,cls:'writer-v8-card-subtitle'});
  if(kind==='wiki'){
-  const meta=Object.entries(fields).filter(([key,value])=>value&&!['title','name','nome','type','tipo','subtitle','role','image','avatar','cover'].includes(key)).slice(0,12);
+  const meta=Object.entries(fields).filter(([key,value])=>value&&!['title','name','nome','type','tipo','subtitle','role','image','avatar','cover','layout','position'].includes(key)).slice(0,12);
   if(meta.length){
    const dl=root.createEl('dl',{cls:'writer-v8-wiki-meta'});
    for(const [key,value] of meta){dl.createEl('dt',{text:key.replace(/[_-]/g,' ')});dl.createEl('dd',{text:value});}
   }
  }
- if(body){
-  const content=root.createDiv({cls:'writer-v8-card-content'});
-  void writerV8Markdown(plugin,ctx,content,body)
-   .catch(error=>{console.warn('[Basic AI] card render failed:',error);content.createEl('p',{text:writerUi('Não foi possível renderizar o conteúdo.','Content could not be rendered.')});});
- }
+ const content=root.createDiv({cls:'writer-v8-card-content',attr:{tabindex:'0','aria-label':writerUi('Clique para editar descrição','Click to edit description')}});
+ if(body)void writerV8Markdown(plugin,ctx,content,body)
+  .catch(error=>{console.warn('[Basic AI] card render failed:',error);content.createEl('p',{text:writerUi('Não foi possível renderizar o conteúdo.','Content could not be rendered.')});});
+ else content.createEl('p',{cls:'writer-v8-edit-placeholder',text:writerUi('Toque para escrever a descrição…','Tap to write description…')});
+ const edit=event=>{
+  if(event?.target?.closest?.('a,button,input,textarea,select'))return;
+  if(root.querySelector('.writer-v8-inline-editor'))return;
+  writerV8InlineEditor(plugin,ctx,root,element,kind==='avatar'?'writer-avatar':'writer-wiki',source,body,
+   value=>source.includes('\n---\n')
+    ?source.slice(0,source.indexOf('\n---\n')+5)+value
+    :source.trimEnd()+'\n---\n'+value,
+   next=>writerV8RenderCard(plugin,next,element,ctx,kind));
+ };
+ content.addEventListener('click',edit);
+ content.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.ctrlKey&&!event.metaKey){event.preventDefault();edit();}});
 }
 function writerV8RegisterBlocks(plugin,enabled){
  if(typeof plugin.registerMarkdownCodeBlockProcessor!=='function')return;

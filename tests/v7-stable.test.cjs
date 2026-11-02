@@ -64,7 +64,7 @@ test('scene setup and payoff relationships use canonical Longform notes',()=>{
 });
 test('stable release manifest, bilingual docs, new UI and bundled modules',()=>{
  const m=require('../manifest.json'),p=require('../package.json'),versions=require('../versions.json');
- assert.equal(m.version,'8.0.5');assert.equal(m.version,p.version);
+ assert.equal(m.version,'8.1.0');assert.equal(m.version,p.version);
  assert.equal(versions[m.version],m.minAppVersion);
  assert.equal(m.name,'Basic AI Tool for Writers');
  assert.doesNotMatch(m.name,/\b(obsidian|plugin)\b/i);

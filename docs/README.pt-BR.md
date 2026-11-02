@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 8.0.5 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 8.1.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md)
 
@@ -16,7 +16,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 | **Linha do tempo** | Eventos, marcos, trilhas, ramificações e calendário fictício configurável. |
 | **IA opcional** | Chat com contexto da seleção ou nota, definições, sinônimos, antônimos, tradução, prompts editáveis e escolha de modelos/provedores. |
 | **IA inline** | Continuações de texto no cursor, inspiradas no Inscribe, com acionamento manual, sugestão fantasma, Tab para aceitar, prompt editável e perfis por pasta. Desativada por padrão; requisições automáticas são opcionais. |
-| **Revisão** | LanguageTool com verificações por parágrafo, menus de sugestões, dicionário pessoal, integração opcional com o LanguageTool externo e revisão por IA. |
+| **Posts fictícios** | Publicações com reações em chamas, métricas e comentários encadeados para histórias. |\n| **Galeria** | Pesquisa e filtros de imagens, vídeos, áudio e PDFs locais, inspirados no Media Gallery View. |\n| **Revisão** | LanguageTool com verificações por parágrafo, menus de sugestões, dicionário pessoal, integração opcional com o LanguageTool externo e revisão por IA. |
 | **Ferramentas** | Autocompletar baseado no cofre, variantes, comparação antes da substituição, histórico local de notas, Unicode e abreviações. A indexação é administrada nas configurações. |
 | **Editor** | Navegação inspirada no Keyshots, Easy Typing, Smart Typography, foco de máquina de escrever, lembrança do cursor e modelos por nome de nota. |
 | **Formatação** | Markdown estendido, sintaxe inspirada no Pandoc, exportação com Pandoc no computador e blocos de abas, avatares e Wiki. |
@@ -116,6 +116,88 @@ Aceita `style: cards|list`, `folder: pasta/desejada`, `subfolders: true|false`, 
 ### Completar texto com IA
 
 Ative em **Configurações → Extended Syntax → IA inline**. Execute **IA inline: sugerir continuação** para obter um texto discreto no cursor. Pressione **Tab** para inseri-lo ou **Esc** para descartá-lo. A geração automática é opcional e envia pequenos trechos ao provedor configurado quando ativada. É possível editar o prompt, o intervalo e regras como `Livros/|creative`, `Estudos/|formal` e `Privado/|off`. Utiliza o provedor/modelo do assistente e não copia o código do Inscribe.
+
+### Abas e cartões de personagem editáveis
+
+Antes da primeira aba, escreva `layout: side` para deixar as abas na lateral esquerda ou `layout: right` para a lateral direita. Sem esse campo, elas permanecem horizontais. Toque no conteúdo renderizado para editar o Markdown e use **Salvar** (ou Ctrl+Enter). **Cancelar** descarta as alterações. O botão **+** adiciona outra aba (até 12).
+
+~~~~markdown
+~~~writer-tabs
+layout: side
+=== Sinopse
+Resumo do primeiro capítulo.
+
+=== Personagens
+- [[Maria]]
+- [[João]]
+~~~
+~~~~
+
+Para deixar a foto maior e a descrição ao lado, use `layout: left` ou `layout: right` em `writer-avatar`. A descrição também pode ser editada ao tocar nela:
+
+~~~~markdown
+~~~writer-avatar
+name: Maria
+role: Protagonista
+image: [[Imagens/maria.webp]]
+layout: left
+---
+**Descrição:** Exploradora determinada da região norte.
+~~~
+~~~~
+
+Somente o bloco Markdown identificado é alterado ao salvar. Se o conteúdo tiver mudado por outro editor ou dispositivo, a gravação será recusada para não sobrescrever alterações recentes. Os links da descrição continuam abrindo normalmente.
+
+### Posts fictícios com respostas encadeadas
+
+O bloco `writer-post` simula uma publicação para histórias, **sem conexão com uma rede social real**. Curtidas são representadas por uma chama; comentários e visualizações são valores escritos no Markdown. Cada `=== reply` adiciona uma resposta, com `depth: 1..5` para a indentação estilo Reddit.
+
+~~~~markdown
+~~~writer-post
+author: Maria
+handle: @maria
+avatar: [[Imagens/maria.webp]]
+date: 2h
+likes: 42
+views: 1200
+---
+Uma carta misteriosa chegou ao porto hoje.
+
+=== reply
+author: João
+handle: @joao
+depth: 1
+likes: 8
+---
+Ela tinha o selo antigo?
+
+=== reply
+author: Maria
+depth: 2
+likes: 3
+---
+Sim. **Era o mesmo selo**.
+~~~
+~~~~
+
+O contador de comentários usa o número de respostas presentes no bloco; para simular outro valor, adicione `comments:`.
+
+### Galeria de mídias do cofre
+
+Inspirado no [Media Gallery View](https://github.com/RobertoJarquinRR/Media-Gallery-view), o bloco `writer-media-gallery` apresenta arquivos do próprio cofre, com filtro de imagens, vídeos, áudio e PDFs, pesquisa, layouts e pré-visualização de imagens/áudio/vídeo. PDFs são abertos pelo Obsidian.
+
+~~~~markdown
+~~~writer-media-gallery
+path: Livro/Imagens
+type: all
+layout: grid
+sort: name-asc
+subfolders: true
+limit: 90
+~~~
+~~~~
+
+`path` é opcional (sem ele, usa a pasta da nota). Os tipos são `all`, `image`, `video`, `audio` e `pdf`; layouts `grid`, `masonry` (grade responsiva leve) e `ratio`. Não usa hospedagem externa nem cria miniaturas avançadas para PDF ou áudio. Há também o comando **Galeria: inserir bloco de mídias**. Trata-se de uma integração própria e simplificada, não uma cópia integral do outro plugin.
 
 ### Outras opções de escrita
 

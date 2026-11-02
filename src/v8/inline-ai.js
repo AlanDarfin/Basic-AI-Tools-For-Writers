@@ -128,11 +128,11 @@ class WriterV8InlineAI{
   this.ext=viewExtension;
   if(plugin.registerEditorExtension&&ViewPlugin?.fromClass&&StateField?.define&&EditorView?.decorations){
    const {Prec}=require('@codemirror/state'),{keymap}=require('@codemirror/view');
-   const bindings=keymap.of([
+   const bindings=keymap?.of?.([
     {key:'Tab',run:view=>owner.accept(view)},
     {key:'Escape',run:view=>owner.dismiss(view)}
    ]);
-   plugin.registerEditorExtension([field,viewExtension,Prec?.highest?Prec.highest(bindings):bindings]);
+   plugin.registerEditorExtension(bindings?[field,viewExtension,Prec?.highest?Prec.highest(bindings):bindings]:[field,viewExtension]);
   }
   this.field=field;this.effect=stateEffect;
   plugin.addCommand({id:'v8-inline-ai-generate',name:writerUi('IA inline: sugerir continuação','Inline AI: suggest continuation'),

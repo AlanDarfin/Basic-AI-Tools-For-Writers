@@ -53,7 +53,7 @@ test('world graph uses adjacency and avoids note-by-note lookups for each search
  assert.doesNotMatch(graph,/for\(const other of all\)/);
 });
 test('styles are scoped and docs demonstrate all three block types',()=>{
- assert.match(css,/\.writer-v8-tabs/);
+ assert.match(css,/\.writer-v8-tab-list/);
  assert.match(css,/\.writer-v8-wiki-meta/);
  assert.match(css,/body\.is-mobile \.writer-v8-tab-list/);
  assert.doesNotMatch(css,/!important/);

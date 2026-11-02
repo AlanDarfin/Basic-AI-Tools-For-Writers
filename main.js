@@ -7497,7 +7497,6 @@ class WriterV7Worldbuilding{
    ['timeline','Timeline de eventos','Event timeline'],
    ['folderNotes','Reconhecer notas de pasta','Recognize folder notes'],
    ['explorerFolderNotes','Mostrar acesso às notas de pasta no explorador','Show folder-note action in file explorer'],
-   ['continuity','Verificador local de continuidade','Local continuity checker'],
    ['narrativeMemory','Enviar contexto de capítulos anteriores para revisão IA','Send previous-chapter context to AI review']
   ])new Setting(section).setName(writerUi(pt,en))
    .setDesc(key==='narrativeMemory'?writerUi('Desligado por padrão. Envia trechos anteriores ao provedor configurado, apenas durante a revisão.','Off by default. Previous chapter excerpts are sent to the configured provider only when reviewing.'):writerUi('Configurável; sem alterar automaticamente seus documentos.','Configurable; does not automatically modify your documents.'))

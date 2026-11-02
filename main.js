@@ -1169,7 +1169,7 @@ function writerReviewWord(source,match){
  const from=match?.offset,length=match?.length;
  if(!Number.isInteger(from)||!Number.isInteger(length)||length<1||length>64)return '';
  const word=String(source||'').slice(from,from+length).trim().normalize('NFC');
- return /^[\\p{L}][\\p{L}\\p{M}'’\-]{0,63}$/u.test(word)?word:'';
+ return /^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(word)?word:'';
 }
 function writerReviewIsAcceptedWord(settings,source,match){
  const word=writerReviewWord(source,match);
@@ -9360,8 +9360,8 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(panel).setName(msg('Ignorar avisos de espaços e formatação','Ignore whitespace and formatting warnings')).addToggle(x=>x.setValue(this.plugin.settings.reviewIgnoreWhitespace!==false).onChange(async v=>{this.plugin.settings.reviewIgnoreWhitespace=v;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Dicionário pessoal do corretor','Personal spelling dictionary'))
        .setDesc(msg('Uma palavra por linha. Nomes próprios e termos inventados não gerarão avisos de ortografia no Basic AI.','One word per line. Proper nouns and invented words will no longer produce spelling warnings in Basic AI.'))
-       .addTextArea(x=>{x.inputEl.rows=3;x.setValue((this.plugin.settings.reviewCustomWords||[]).join('\\n')).onChange(async v=>{
-        this.plugin.settings.reviewCustomWords=[...new Set(v.split(/\\r?\\n/).map(w=>w.trim().normalize('NFC')).filter(w=>/^[\\p{L}][\\p{L}\\p{M}'’\\-]{0,63}$/u.test(w)))].slice(0,2000);
+       .addTextArea(x=>{x.inputEl.rows=3;x.setValue((this.plugin.settings.reviewCustomWords||[]).join('\n')).onChange(async v=>{
+        this.plugin.settings.reviewCustomWords=[...new Set(v.split(/\r?\n/).map(w=>w.trim().normalize('NFC')).filter(w=>/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(w)))].slice(0,2000);
         await this.plugin.saveSettings();
        });});
       new Setting(panel).setName(msg('IDs de regras ignoradas','Ignored rule IDs')).setDesc(msg('IDs do LanguageTool separados por vírgula.','Comma-separated LanguageTool rule IDs.')).addTextArea(x=>{x.inputEl.rows=3;x.setValue(this.plugin.settings.reviewIgnoreRules||'').onChange(async v=>{this.plugin.settings.reviewIgnoreRules=v;await this.plugin.saveSettings();});});

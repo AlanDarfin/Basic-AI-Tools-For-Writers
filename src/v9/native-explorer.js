@@ -25,8 +25,9 @@ function writerV9SafeHex(value){
  return /^#[a-f0-9]{6}$/i.test(color)?color.toLowerCase():'';
 }
 function writerV9AvailableIcons(){
- const api=require('obsidian');
- const icons=typeof api.getIconIds==='function'?api.getIconIds():WRITER_V9_EXPLORER_ICONS;
+ let icons=WRITER_V9_EXPLORER_ICONS;
+ try{const api=typeof require==='function'?require('obsidian'):null;
+  if(typeof api?.getIconIds==='function')icons=api.getIconIds();}catch(_){}
  return [...new Set([...WRITER_V9_EXPLORER_ICONS,...(Array.isArray(icons)?icons:[])])]
   .filter(name=>/^[a-z0-9-]{1,60}$/.test(name)).sort();
 }

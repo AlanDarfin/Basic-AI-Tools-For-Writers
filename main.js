@@ -3871,6 +3871,8 @@ const WRITER_MODULES=[
  ['fictionalChats','Conversas fictícias','Fictional chats','Mensagens em balões com avatares opcionais.','Chat bubbles with optional avatars.'],
  ['calendar','Calendário e eventos','Calendar and events','Agenda local de eventos em notas Markdown.','Local calendar events stored in Markdown notes.'],
  ['study','Estudos e revisão espaçada','Study and spaced repetition','Baralhos e cartões locais com revisão programada.','Local decks and scheduled flashcards.'],
+ ['formatToolbar','Barra de formatação','Formatting toolbar','Ações de Markdown no editor; desligada por padrão no celular.','Markdown actions in editor; off by default on mobile.'],
+ ['nativeExplorer','Explorador nativo avançado','Enhanced native explorer','Ícones, cores e visões de pastas sem substituir o painel padrão.','Icons, colors and folder views without replacing the original panel.'],
  ['writingHome','Página inicial de escrita','Writing homepage','Busca, favoritos, rascunhos e projetos.','Search, favorites, drafts and projects.'],
  ['socialBlocks','Posts e respostas','Posts and threaded replies','Posts fictícios em Markdown.','Local fictional social threads.'],
  ['mediaGallery','Galeria de mídias','Media gallery','Galeria local para imagens, vídeos, PDFs e áudio.','Local galleries for images, videos, PDFs and audio.'],
@@ -9617,13 +9619,14 @@ function writerV8RegisterMediaGallery(plugin){
 
 // v3 module: src/v8/finish-blocks.js
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','search','recent','favorites','quick','stats']};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','search','recent','favorites','quick','stats']};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
  cfg.captions=cfg.captions!==false;cfg.homeAtStartup=cfg.homeAtStartup===true;
  cfg.homeOnNewTab=cfg.homeOnNewTab!==false;
  cfg.homeTitle=String(cfg.homeTitle||'').replace(/[\r\n]/g,' ').slice(0,80);
+ cfg.homeIconImage=String(cfg.homeIconImage||'').trim().slice(0,600);
  cfg.homeIcon=typeof writerV8HomeIconName==='function'?writerV8HomeIconName(cfg.homeIcon):'book-open';
  cfg.captionMax=Math.max(32,Math.min(240,Math.floor(Number(cfg.captionMax)||180)));
  cfg.homeFavorites=Array.isArray(cfg.homeFavorites)?[...new Set(cfg.homeFavorites.filter(x=>typeof x==='string'&&x.length<=500))].slice(0,30):[];
@@ -9857,9 +9860,21 @@ function writerV8RegisterFinishBlocks(plugin){
 
 // v3 module: src/v8/home-utilities.js
 /* Homepage utilities: calendar, native Web Viewer and conservative empty-tab detection. */
-const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil'];
+const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil','book','books','bookmark','star','heart','lightbulb','brain','graduation-cap','file-text','folder','archive','palette','brush','wand-sparkles','calendar-days','clock','pencil-line','notebook','pen','library-big','layout-dashboard','globe','leaf','coffee','music','headphones','flag','compass','map','gem','trophy','shield','user','users','image','images','flame','cloud','settings'];
 function writerV8HomeIconName(value){
  return WRITER_V8_HOME_ICONS.includes(value)?value:'book-open';
+}
+function writerV8HomeImageURL(plugin,input){
+ const raw=String(input||'').trim();
+ if(!raw||raw.length>600)return '';
+ if(/^https:\/\//i.test(raw)){
+  try{const url=new URL(raw);return url.protocol==='https:'&&!url.username&&!url.password?url.href:'';}catch(_){return '';}
+ }
+ if(/^[a-z]+:/i.test(raw)||raw.includes('..')||/[\r\n]/.test(raw))return '';
+ const path=raw.replace(/^\[\[/,'').replace(/\]\]$/,'').split('|')[0].trim();
+ const file=plugin.app.metadataCache?.getFirstLinkpathDest?.(path,'')||plugin.app.vault.getAbstractFileByPath?.(path);
+ if(!(file instanceof TFile)||!/^(png|jpe?g|webp|gif|avif|svg)$/i.test(file.extension))return '';
+ return plugin.app.vault.getResourcePath?.(file)||'';
 }
 function writerV8HomeValidURL(input){
  const raw=String(input||'').trim();
@@ -10547,7 +10562,9 @@ class WriterV8HomeView extends ItemView{
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
   const icon=heading.createSpan({cls:'writer-v8-home-title-icon'});
   const setIcon=require('obsidian').setIcon;
-  if(typeof setIcon==='function')setIcon(icon,writerV8HomeIconName(cfg.homeIcon));
+  const image=writerV8HomeImageURL(this.plugin,cfg.homeIconImage);
+  if(image)icon.createEl('img',{attr:{src:image,alt:'',loading:'lazy'}});
+  else if(typeof setIcon==='function')setIcon(icon,writerV8HomeIconName(cfg.homeIcon));
   heading.createEl('h2',{text:String(cfg.homeTitle||'').trim()||writerUi('Seu espaço de escrita','Your writing space')});
   const commands=hero.createDiv({cls:'writer-v8-home-quick-actions'});
   const action=(pt,en,icon,run)=>{
@@ -10819,12 +10836,22 @@ function writerV8FinishSettings(plugin,panel){
    const labels={
     'house':'Casa','book-open':'Livro aberto','feather':'Pena','pen-line':'Escrita',
     'notebook-pen':'Caderno','library':'Biblioteca','sparkles':'Estrelas',
-    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis'
+    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis',
+    'book':'Livro','bookmark':'Marcador','star':'Estrela','heart':'Coração','lightbulb':'Ideia',
+    'brain':'Cérebro','graduation-cap':'Estudos','file-text':'Arquivo','folder':'Pasta','archive':'Arquivo morto',
+    'palette':'Paleta','wand-sparkles':'Varinha','calendar-days':'Calendário','clock':'Relógio',
+    'globe':'Globo','leaf':'Folha','music':'Música','headphones':'Fone','flag':'Bandeira','compass':'Bússola',
+    'map':'Mapa','gem':'Gema','trophy':'Troféu','shield':'Escudo','user':'Usuário','users':'Pessoas',
+    'image':'Imagem','images':'Imagens','flame':'Chama','cloud':'Nuvem','settings':'Configurações'
    };
    for(const icon of WRITER_V8_HOME_ICONS)drop.addOption(icon,labels[icon]||icon);
    drop.setValue(writerV8HomeIconName(cfg.homeIcon));
    drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
   });
+ new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
+  .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
+  .addText(input=>input.setPlaceholder('Assets/icon.png ou https://…').setValue(cfg.homeIconImage||'')
+   .onChange(async value=>{cfg.homeIconImage=String(value||'').trim().slice(0,600);await plugin.saveSettings();refreshHome();}));
  new Setting(panel).setName(writerUi('Abrir homepage em toda nova aba vazia','Open homepage in every new empty tab'))
   .setDesc(writerUi('Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.','Enabled by default. Empty tabs only: never replaces notes or other views.'))
   .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{
@@ -10835,6 +10862,347 @@ function writerV8FinishSettings(plugin,panel){
   .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir homepage agora','Open homepage now'))
   .addButton(x=>x.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerV8HomeOpen?.()));
+}
+
+// v3 module: src/v9/context-toolbar.js
+/* v9 editing toolbar. Original implementation inspired by cMenu (MPL-2.0).
+ * No cMenu source is copied. Does not replace Obsidian's mobile toolbar. */
+const WRITER_V9_FORMAT_ACTIONS=[
+ ['bold','bold','Negrito','Bold'],['italic','italic','Itálico','Italic'],
+ ['strike','strikethrough','Riscado','Strikethrough'],['highlight','highlighter','Realce','Highlight'],
+ ['code','code','Código inline','Inline code'],['codeblock','file-code','Bloco de código','Code block'],
+ ['h1','heading-1','Título 1','Heading 1'],['h2','heading-2','Título 2','Heading 2'],
+ ['h3','heading-3','Título 3','Heading 3'],['quote','quote','Citação','Quote'],
+ ['bullet','list','Lista','Bullet list'],['numbered','list-ordered','Lista numerada','Numbered list'],
+ ['task','list-check','Tarefa','Task'],['link','link','Link','Link'],
+ ['wikilink','file-symlink','Link interno','Internal link'],['callout','message-square','Callout','Callout'],
+ ['table','table','Tabela','Table'],['rule','minus','Separador','Horizontal rule'],
+ ['footnote','asterisk','Nota de rodapé','Footnote'],['undo','undo-2','Desfazer','Undo'],
+ ['redo','redo-2','Refazer','Redo']
+];
+const WRITER_V9_FORMAT_IDS=WRITER_V9_FORMAT_ACTIONS.map(x=>x[0]);
+const WRITER_V9_TOOLBAR_DEFAULTS={
+ enabledDesktop:true,enabledMobile:false,compact:true,
+ actions:['bold','italic','strike','highlight','code','h1','h2','h3','quote','bullet','numbered','task','link','wikilink','callout','table','rule','undo','redo']
+};
+function writerV9ToolbarMerge(settings){
+ const raw=settings.v9Toolbar&&typeof settings.v9Toolbar==='object'&&!Array.isArray(settings.v9Toolbar)?settings.v9Toolbar:{};
+ const cfg=settings.v9Toolbar={...WRITER_V9_TOOLBAR_DEFAULTS,...raw};
+ cfg.enabledDesktop=cfg.enabledDesktop!==false;cfg.enabledMobile=cfg.enabledMobile===true;cfg.compact=cfg.compact!==false;
+ cfg.actions=Array.isArray(cfg.actions)?[...new Set(cfg.actions.filter(x=>WRITER_V9_FORMAT_IDS.includes(x)))]:[...WRITER_V9_TOOLBAR_DEFAULTS.actions];
+ return cfg;
+}
+function writerV9ToolbarAllowed(plugin){
+ const cfg=plugin.settings.v9Toolbar;
+ return writerModuleOn(plugin,'formatToolbar')&&(writerV8HomeIsMobile(plugin)?cfg.enabledMobile:cfg.enabledDesktop);
+}
+function writerV9Format(editor,action){
+ if(!editor)return false;
+ if(action==='undo'||action==='redo'){editor[action]?.();return true;}
+ const selected=editor.getSelection(),label=selected||writerUi('texto','text');
+ const replacement=(before,after,placeholder=label)=>{
+  editor.replaceSelection(before+placeholder+after);
+  if(!selected&&typeof editor.setSelection==='function'){
+   const end=editor.getCursor(),start={line:end.line,ch:Math.max(0,end.ch-after.length-placeholder.length)};
+   editor.setSelection(start,{line:end.line,ch:end.ch-after.length});
+  }
+ };
+ const perLine=(prefix)=>{
+  const text=selected||writerUi('Texto','Text');
+  const value=text.split('\n').map((line,i)=>typeof prefix==='function'?prefix(line,i):prefix+line).join('\n');
+  editor.replaceSelection(value);
+ };
+ switch(action){
+ case 'bold':replacement('**','**');break;
+ case 'italic':replacement('*','*');break;
+ case 'strike':replacement('~~','~~');break;
+ case 'highlight':replacement('==','==');break;
+ case 'code':replacement(String.fromCharCode(96),String.fromCharCode(96));break;
+ case 'codeblock':editor.replaceSelection('\n'+String.fromCharCode(96).repeat(3)+'\n'+(selected||'')+'\n'+String.fromCharCode(96).repeat(3)+'\n');break;
+ case 'h1':perLine('# ');break;
+ case 'h2':perLine('## ');break;
+ case 'h3':perLine('### ');break;
+ case 'quote':perLine('> ');break;
+ case 'bullet':perLine('- ');break;
+ case 'numbered':perLine((line,i)=>(i+1)+'. '+line);break;
+ case 'task':perLine('- [ ] ');break;
+ case 'link':editor.replaceSelection('['+label+'](https://)');break;
+ case 'wikilink':editor.replaceSelection('[['+label+']]');break;
+ case 'callout':editor.replaceSelection('> [!note]\n> '+(selected||writerUi('Escreva aqui','Write here')).replace(/\n/g,'\n> '));break;
+ case 'table':editor.replaceSelection('| '+writerUi('Coluna 1','Column 1')+' | '+writerUi('Coluna 2','Column 2')+' |\n| --- | --- |\n| '+(selected||'')+' | |\n');break;
+ case 'rule':editor.replaceSelection('\n---\n');break;
+ case 'footnote':editor.replaceSelection('[^1]');break;
+ default:return false;
+ }
+ editor.focus?.();
+ return true;
+}
+function writerV9RegisterToolbar(plugin){
+ const cfg=plugin.settings.v9Toolbar;
+ let owner=null,root=null,queued=null;
+ const remove=()=>{
+  if(root){root.remove();root=null;}
+  if(owner){owner.classList.remove('writer-v9-toolbar-host');owner=null;}
+ };
+ const paint=()=>{
+  queued=null;
+  const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
+  const host=view?.contentEl;
+  if(!host||!view?.editor||!writerV9ToolbarAllowed(plugin)){remove();return;}
+  if(owner!==host){remove();owner=host;owner.classList.add('writer-v9-toolbar-host');}
+  if(root)root.remove();
+  root=owner.createDiv({cls:'writer-v9-format-toolbar'+(cfg.compact?' is-compact':''),attr:{role:'toolbar','aria-label':writerUi('Formatação de texto','Text formatting')}});
+  for(const id of cfg.actions){
+   const item=WRITER_V9_FORMAT_ACTIONS.find(x=>x[0]===id);
+   if(!item)continue;
+   const button=root.createEl('button',{cls:'writer-v9-format-action',attr:{type:'button',title:writerUi(item[2],item[3]),'aria-label':writerUi(item[2],item[3])}});
+   require('obsidian').setIcon(button,item[1]);
+   // Prevent the editor from losing the selection on desktop, without blocking touch.
+   button.addEventListener('mousedown',event=>event.preventDefault());
+   button.addEventListener('click',()=>{const current=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);writerV9Format(current?.editor,id);});
+  }
+ };
+ const refresh=()=>{if(queued)return;queued=setTimeout(paint,90);};
+ plugin.writerV9ToolbarRefresh=refresh;
+ plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',refresh));
+ plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
+ if(typeof plugin.register==='function')plugin.register(()=>{clearTimeout(queued);remove();plugin.writerV9ToolbarRefresh=null;});
+ plugin.app.workspace.onLayoutReady?.(refresh);
+ for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
+  plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
+   editorCallback:editor=>{if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);}});
+ }
+ plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),
+  callback:async()=>{
+   if(writerV8HomeIsMobile(plugin))cfg.enabledMobile=!cfg.enabledMobile;
+   else cfg.enabledDesktop=!cfg.enabledDesktop;
+   await plugin.saveSettings();refresh();
+  }});
+}
+function writerV9ToolbarSettings(plugin,panel){
+ const cfg=plugin.settings.v9Toolbar;
+ panel.createEl('h3',{text:writerUi('Barra de formatação · v9','Formatting toolbar · v9')});
+ panel.createEl('p',{text:writerUi('Uma barra compacta dentro do editor, sem substituir a barra nativa do celular. Os botões podem ser reorganizados e ocultados.','A compact toolbar inside the editor. It does not replace the native mobile toolbar. Reorder or hide individual buttons.'),cls:'dictionary-muted'});
+ const addToggle=(pt,en,key)=>new Setting(panel).setName(writerUi(pt,en))
+  .addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();}));
+ addToggle('Ativar no computador','Enable on desktop','enabledDesktop');
+ addToggle('Ativar no Android/iOS (desativado inicialmente)','Enable on mobile (off by default)','enabledMobile');
+ addToggle('Botões compactos','Compact buttons','compact');
+ new Setting(panel).setName(writerUi('Botões e ordem','Buttons and order'))
+  .setDesc(writerUi('IDs separados por vírgula. IDs disponíveis: ','Comma-separated IDs. Available IDs: ')+WRITER_V9_FORMAT_IDS.join(', '))
+  .addTextArea(input=>input.setValue(cfg.actions.join(', ')).onChange(async value=>{
+   cfg.actions=[...new Set(value.split(/[,;\n]/).map(x=>x.trim()).filter(x=>WRITER_V9_FORMAT_IDS.includes(x)))];
+   await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();
+  }));
+}
+
+// v3 module: src/v9/native-explorer.js
+/* v9: Make.md-inspired file organization in the native Obsidian File Explorer.
+ * Original implementation; no Make.md source code or replacement sidebar. */
+const WRITER_V9_EXPLORER_ICONS=['file','file-text','folder','folder-open','book-open','book','notebook-pen','library','feather','pen-line','star','heart','bookmark','pin','house','briefcase','archive','box','layers','layout-grid','list','calendar','calendar-days','clock','list-check','check-circle','graduation-cap','lightbulb','brain','sparkles','wand-sparkles','image','images','music','video','film','globe','link','code','terminal','settings','user','users','message-circle','tag','hash','flag','map','compass','leaf','sun','moon-star','cloud','rocket','palette','flower-2'];
+const WRITER_V9_EXPLORER_COLORS=['','#e35d6a','#dc9b30','#60a47c','#579ec2','#9b79c5','#d378aa'];
+function writerV9ExplorerMerge(settings){
+ const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showColor:true,items:{},maxResults:100},
+  ...(settings.v9Explorer&&typeof settings.v9Explorer==='object'?settings.v9Explorer:{})};
+ cfg.enabled=cfg.enabled!==false;cfg.showIcons=cfg.showIcons!==false;cfg.showColor=cfg.showColor!==false;
+ cfg.maxResults=Math.max(20,Math.min(200,Number(cfg.maxResults)||100));
+ cfg.items=cfg.items&&typeof cfg.items==='object'&&!Array.isArray(cfg.items)?cfg.items:{};
+ const out={};
+ for(const [path,raw] of Object.entries(cfg.items).slice(0,5000)){
+  if(!path||path.length>600||!raw||typeof raw!=='object')continue;
+  const icon=WRITER_V9_EXPLORER_ICONS.includes(raw.icon)?raw.icon:'';
+  const color=WRITER_V9_EXPLORER_COLORS.includes(raw.color)?raw.color:'';
+  if(icon||color)out[path]={icon,color};
+ }
+ cfg.items=out;
+ return cfg;
+}
+function writerV9ExplorerPicker(plugin,file){
+ const modal=new Modal(plugin.app),path=file.path;
+ modal.onOpen=()=>{
+  modal.setTitle(writerUi('Personalizar: ','Customize: ')+(file.name||'/'));
+  const content=modal.contentEl;
+  const item=plugin.settings.v9Explorer.items[path]||{};
+  let icon=item.icon||'',color=item.color||'';
+  new Setting(content).setName(writerUi('Ícone Lucide','Lucide icon'))
+   .addDropdown(drop=>{
+    drop.addOption('',writerUi('Padrão','Default'));
+    for(const name of WRITER_V9_EXPLORER_ICONS)drop.addOption(name,name);
+    drop.setValue(icon).onChange(value=>{icon=value;});
+   });
+  new Setting(content).setName(writerUi('Cor de destaque','Accent color'))
+   .addDropdown(drop=>{
+    drop.addOption('',writerUi('Padrão','Default'));
+    for(const value of WRITER_V9_EXPLORER_COLORS.filter(Boolean))drop.addOption(value,value);
+    drop.setValue(color).onChange(value=>{color=value;});
+   });
+  new Setting(content).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
+   if(icon||color)plugin.settings.v9Explorer.items[path]={icon,color};
+   else delete plugin.settings.v9Explorer.items[path];
+   await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();modal.close();
+  })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
+ };
+ modal.open();
+}
+function writerV9ExplorerFolderModal(plugin,folder){
+ if(!(folder instanceof TFolder))return;
+ const modal=new Modal(plugin.app);let query='',sort='name',style='cards';
+ modal.onOpen=()=>{
+  modal.setTitle((folder.name||writerUi('Cofre','Vault'))+' · '+writerUi('Visão da pasta','Folder view'));
+  const container=modal.contentEl.createDiv({cls:'writer-v9-space'});
+  const bar=container.createDiv({cls:'writer-v9-space-controls'});
+  const input=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Filtrar notas…','Filter notes…'),'aria-label':writerUi('Filtrar notas','Filter notes')}});
+  const sortSelect=bar.createEl('select',{attr:{'aria-label':writerUi('Ordenar','Sort')}});
+  for(const [value,pt,en] of [['name','Nome','Name'],['recent','Recentes','Recently edited']]){
+   const option=sortSelect.createEl('option',{text:writerUi(pt,en)});option.value=value;
+  }
+  const toggle=bar.createEl('button',{text:writerUi('Lista / cartões','List / cards')});
+  const body=container.createDiv({cls:'writer-v9-space-results'});
+  const redraw=()=>{
+   body.empty();body.classList.toggle('is-list',style==='list');
+   const files=[];
+   const scan=(parent,depth)=>{
+    if(depth>2||files.length>=2000)return;
+    for(const child of parent.children||[]){
+     if(child instanceof TFile&&child.extension==='md')files.push(child);
+     if(child instanceof TFolder)scan(child,depth+1);
+    }
+   };
+   scan(folder,0);
+   const filtered=files.filter(file=>{
+    const cached=plugin.app.metadataCache.getFileCache(file)?.frontmatter||{};
+    return !query||file.path.toLocaleLowerCase().includes(query)||String(cached.tags||'').toLocaleLowerCase().includes(query);
+   }).sort((a,b)=>sort==='recent'?(b.stat?.mtime||0)-(a.stat?.mtime||0):a.basename.localeCompare(b.basename));
+   const max=plugin.settings.v9Explorer.maxResults;
+   for(const file of filtered.slice(0,max)){
+    const item=body.createEl('button',{cls:'writer-v9-space-item',attr:{type:'button',title:file.path}});
+    const icon=item.createSpan({cls:'writer-v9-space-item-icon'});
+    require('obsidian').setIcon(icon,plugin.settings.v9Explorer.items[file.path]?.icon||'file-text');
+    item.createSpan({text:file.basename,cls:'writer-v9-space-item-name'});
+    const relative=file.parent?.path||'';
+    if(relative!==folder.path)item.createSpan({text:relative,cls:'writer-v9-space-item-sub'});
+    item.addEventListener('click',()=>{modal.close();void plugin.app.workspace.getLeaf('tab').openFile(file);});
+   }
+   if(filtered.length>max)body.createEl('p',{text:writerUi('Exibindo os primeiros ','Showing the first ')+max+' / '+filtered.length});
+   if(!filtered.length)body.createEl('p',{text:writerUi('Nenhuma nota encontrada.','No matching notes.')});
+  };
+  input.addEventListener('input',()=>{query=input.value.trim().toLocaleLowerCase();redraw();});
+  sortSelect.addEventListener('change',()=>{sort=sortSelect.value;redraw();});
+  toggle.addEventListener('click',()=>{style=style==='list'?'cards':'list';redraw();});
+  redraw();
+ };
+ modal.open();
+}
+async function writerV9CreateFolderIndex(plugin,folder){
+ if(!(folder instanceof TFolder))return;
+ const base=folder.path?folder.path+'/':'';
+ const name=folder.name||writerUi('Índice','Index');
+ let path=base+name+'.md';
+ if(plugin.app.vault.getAbstractFileByPath(path)){
+  const file=plugin.app.vault.getAbstractFileByPath(path);
+  if(file instanceof TFile){await plugin.app.workspace.getLeaf('tab').openFile(file);return;}
+  let i=2;while(plugin.app.vault.getAbstractFileByPath(path))path=base+name+'-'+i+++'.md';
+ }
+ const title=name.replace(/[\r\n#]/g,' ').trim();
+ const file=await plugin.app.vault.create(path,'# '+title+'\n\n'+String.fromCharCode(96).repeat(3)+'writer-folder-overview\nstyle: cards\nsubfolders: false\n'+String.fromCharCode(96).repeat(3)+'\n');
+ await plugin.app.workspace.getLeaf('tab').openFile(file);
+}
+function writerV9RegisterExplorer(plugin){
+ let observer=null,debounce=null;
+ const active=()=>writerModuleOn(plugin,'nativeExplorer')&&plugin.settings.v9Explorer.enabled;
+ const refresh=()=>{
+  if(debounce)clearTimeout(debounce);
+  debounce=setTimeout(()=>{
+   debounce=null;
+   const enabled=active();
+   const roots=plugin.app.workspace.getLeavesOfType?.('file-explorer')||[];
+   for(const leaf of roots){
+    const host=leaf.view?.containerEl;if(!host)continue;
+    const targets=host.querySelectorAll('.nav-file-title, .nav-folder-title');
+    for(const node of Array.from(targets).slice(0,6000)){
+     const path=node.getAttribute('data-path')||node.closest('[data-path]')?.getAttribute('data-path');
+     if(!path)continue;
+     const item=plugin.settings.v9Explorer.items[path],existing=node.querySelector(':scope > .writer-v9-explorer-icon');
+     if(existing)existing.remove();
+     node.classList.remove('writer-v9-explorer-accent');
+     node.style.removeProperty('--writer-v9-explorer-accent');
+     if(!enabled||!item)continue;
+     if(plugin.settings.v9Explorer.showIcons&&item.icon){
+      const symbol=node.ownerDocument.createElement('span');
+      symbol.className='writer-v9-explorer-icon';
+      symbol.setAttribute('aria-hidden','true');
+      require('obsidian').setIcon(symbol,item.icon);
+      node.insertBefore(symbol,node.firstChild);
+     }
+     if(plugin.settings.v9Explorer.showColor&&item.color){
+      node.classList.add('writer-v9-explorer-accent');
+      node.style.setProperty('--writer-v9-explorer-accent',item.color);
+     }
+    }
+   }
+  },120);
+ };
+ plugin.writerV9ExplorerRefresh=refresh;
+ const fileMenu=(menu,file)=>{
+  if(!active()||!(file instanceof TFile||file instanceof TFolder))return;
+  menu.addItem(item=>item.setTitle(writerUi('Personalizar no Basic · ícone e cor','Customize in Basic · icon and color'))
+   .setIcon('palette').onClick(()=>writerV9ExplorerPicker(plugin,file)));
+  if(file instanceof TFolder){
+   menu.addItem(item=>item.setTitle(writerUi('Abrir visão da pasta','Open folder view'))
+    .setIcon('layout-grid').onClick(()=>writerV9ExplorerFolderModal(plugin,file)));
+   menu.addItem(item=>item.setTitle(writerUi('Criar/abrir índice Markdown','Create/open Markdown index'))
+    .setIcon('book-open').onClick(()=>void writerV9CreateFolderIndex(plugin,file).catch(error=>new Notice(String(error.message||error)))));
+  }
+ };
+ plugin.registerEvent(plugin.app.workspace.on('file-menu',fileMenu));
+ plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
+  if(!active())return;
+  const cfg=plugin.settings.v9Explorer,affected=Object.keys(cfg.items).filter(path=>path===old||path.startsWith(old+'/'));
+  for(const path of affected){
+   const next=file.path+path.slice(old.length);
+   cfg.items[next]=cfg.items[path];delete cfg.items[path];
+  }
+  if(affected.length)void plugin.saveSettings();
+  refresh();
+ }));
+ plugin.registerEvent(plugin.app.vault.on('delete',file=>{
+  if(!active())return;
+  const cfg=plugin.settings.v9Explorer;
+  const keys=Object.keys(cfg.items).filter(path=>path===file.path||path.startsWith(file.path+'/'));
+  for(const key of keys)delete cfg.items[key];
+  if(keys.length)void plugin.saveSettings();
+ }));
+ const start=()=>{
+  const documentRoot=plugin.app.workspace.containerEl;
+  if(typeof MutationObserver==='undefined'||!documentRoot)return;
+  observer?.disconnect();
+  observer=new MutationObserver(records=>{
+   // Avoid observing the icon nodes we add ourselves (endless update loops).
+   if(records.some(record=>Array.from(record.addedNodes).some(node=>node.nodeType===1&&
+    !node.classList?.contains('writer-v9-explorer-icon')&&!node.closest?.('.writer-v9-explorer-icon'))))refresh();
+  });
+  observer.observe(documentRoot,{childList:true,subtree:true});
+  refresh();
+ };
+ plugin.app.workspace.onLayoutReady?.(start);
+ plugin.register(()=>{observer?.disconnect();clearTimeout(debounce);plugin.writerV9ExplorerRefresh=null;});
+ plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
+  if(!active())return;
+  const file=plugin.app.workspace.getActiveFile?.(),folder=file?.parent||plugin.app.vault.getRoot();
+  writerV9ExplorerFolderModal(plugin,folder);
+ }});
+}
+function writerV9ExplorerSettings(plugin,panel){
+ const cfg=plugin.settings.v9Explorer;
+ panel.createEl('h3',{text:writerUi('Explorador nativo · v9','Native File Explorer · v9')});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Ícones e cores ficam nas configurações do Basic, sem alterar seus arquivos. Clique com o botão direito/pressione uma nota ou pasta no explorador para personalizar.','Icons and colors are stored in Basic settings, not in your files. Right-click or long-press a file or folder in the native explorer to customize.')});
+ for(const [key,pt,en] of [['enabled','Ativar extensões do explorador','Enable explorer extensions'],['showIcons','Exibir ícones personalizados','Show custom icons'],['showColor','Exibir cores personalizadas','Show custom colors']]){
+  new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{
+   cfg[key]=value;await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();
+  }));
+ }
+ new Setting(panel).setName(writerUi('Máximo de notas na visão de pasta','Maximum notes in folder view'))
+  .addSlider(s=>s.setLimits(20,200,10).setValue(cfg.maxResults).setDynamicTooltip().onChange(async value=>{cfg.maxResults=value;await plugin.saveSettings();}));
 }
 
 // END WRITER V3 MODULES
@@ -11473,6 +11841,8 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(panel).setName(t('language')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
       panel.createEl('p',{text:msg('Configure dicionário, tradução, chat e revisão nas respectivas abas. As chaves ficam em APIs e os modelos padrão em Modelos.','Configure dictionary, translation, chat and review in their respective tabs. API keys are under APIs and default models under Models.'),cls:'dictionary-muted'});
       writerV8FinishSettings(this.plugin,panel);
+      writerV9ToolbarSettings(this.plugin,panel);
+      writerV9ExplorerSettings(this.plugin,panel);
     }else if(id==='dictionary'){
       new Setting(panel).setName(t('dictionary')).addText(x=>x.setValue(this.plugin.settings.dictionaryFileName).onChange(async v=>{this.plugin.settings.dictionaryFileName=v.trim();this.plugin.invalidate();await this.plugin.saveSettings();}));
       new Setting(panel).setName(t('provider')).addDropdown(d=>{for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.provider).onChange(async v=>{this.plugin.settings.provider=v;await this.plugin.saveSettings();});});
@@ -11656,6 +12026,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV7Merge(this.settings);
     writerV8InlineMerge(this.settings);
     writerV8FinishMerge(this.settings);
+    writerV9ToolbarMerge(this.settings);
+    writerV9ExplorerMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -11714,6 +12086,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV8RegisterHome(this);
     writerV83RegisterCalendar(this);
     writerV83RegisterStudy(this);
+    writerV9RegisterToolbar(this);
+    writerV9RegisterExplorer(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')
@@ -12004,6 +12378,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
      if(this.autoGrammar)this.autoGrammar.pendingPath=null;
      this.closeReviewPopup?.();
     }
+    this.writerV9ToolbarRefresh?.();
+    this.writerV9ExplorerRefresh?.();
     if(!writerModuleOn(this,'tts'))this.writerFinalFeatures?.stop?.();
     if(!writerModuleOn(this,'typewriter')&&typeof document!=='undefined')document.body?.classList?.remove('writer-v4-typewriter','writer-v4-typewriter-focus');
   }

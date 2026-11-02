@@ -1,12 +1,12 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.0.0-beta.1 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.0.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
-[Leia em português](docs/README.pt-BR.md)
+[Leia em português](docs/README.pt-BR.md) · [Release notes](docs/V9_RELEASE.en.md)
 
 A single, compact writing workspace for planning books, organizing a fictional world, editing Markdown, reviewing text and optionally working with AI. Your notes remain ordinary files in your Obsidian vault.
 
-## What's new in the v9 preview
+## What's new in v9
 
 - **Configurable formatting toolbar:** 27 Markdown actions, reorderable/optional controls, desktop enabled by default, mobile **disabled by default** and opt-in via settings. The native mobile editing toolbar is not replaced.
 - **Make.md-inspired native explorer tools:** customize vault file/folder icons and accent colors from the File Explorer context menu, inspect folders as filterable list/cards, and create/open Markdown folder indices. No extra sidebar.
@@ -14,9 +14,11 @@ A single, compact writing workspace for planning books, organizing a fictional w
 - **Smart Spaces (opt-in):** save collections of Markdown notes filtered by folder, tag and YAML property, view as cards, list, table or grouped board. Off by default, no additional sidebar.
 - **Modular switches:** toolbar, Spaces and native explorer modules can be hidden under Modules; individual controls and behaviors are configurable. Portuguese and English UI.
 
-Previous stable version: **8.3.0**.\n\nThis is an **integration preview**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 implementation status and migration notes](docs/V9_PREVIEW.en.md). Back up your vault before installing a preview.
+Previous stable version: **8.3.0**.
 
-### Calendar v9 development
+This is an **independent integration**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 release notes](docs/V9_RELEASE.en.md) and [the historical compatibility audit](docs/V9_FINAL_AUDIT.md). Back up your vault before updating.
+
+### Calendar v9
 
 The writing calendar now includes a responsive built-in mini-calendar/sidebar, 3-day and 30-day agenda views, timeline slots, categories, local events with locations/details, configurable colors, recurring intervals and end dates. Edit one occurrence or an entire series, and exclude selected dates. It stores ordinary Markdown event notes; it does **not** implement two-way Google Calendar, CalDAV or ICS synchronization.
 

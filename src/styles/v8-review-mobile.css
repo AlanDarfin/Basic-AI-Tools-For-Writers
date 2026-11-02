@@ -1,0 +1,58 @@
+/* Basic AI 8: Obsidian-native mobile corrections and compact review cards. */
+.writer-lt-mobile-modal .modal-content{
+  min-width:0;
+  max-width:100%;
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+}
+.writer-lt-mobile-modal .writer-lt-mobile-reason{
+  color:var(--text-muted);
+  overflow-wrap:anywhere;
+}
+.writer-lt-mobile-modal .writer-lt-mobile-choices,
+.writer-lt-mobile-modal .writer-lt-mobile-actions{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:8px;
+  margin:12px 0;
+}
+.writer-lt-mobile-modal .writer-lt-mobile-choices>button,
+.writer-lt-mobile-modal .writer-lt-mobile-actions>button{
+  min-height:44px;
+  max-width:100%;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  text-align:start;
+}
+.writer-tool-root .writer-lt-show-more{
+  width:100%;
+  min-height:36px;
+  flex:0 0 auto;
+  margin:2px 0 12px;
+}
+body.is-mobile .writer-tool-root .writer-review-panel.writer-review-panel{
+  gap:8px;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));
+}
+body.is-mobile .writer-tool-root .writer-review-results.writer-review-results{
+  gap:8px;
+  padding-bottom:14px;
+}
+body.is-mobile .writer-tool-root .writer-review-results>.writer-lt-result.writer-lt-result{
+  padding:10px;
+  gap:7px;
+}
+body.is-mobile .writer-tool-root .writer-lt-result-actions>button{
+  min-height:40px;
+}
+body.is-mobile .writer-lt-mobile-modal .modal{
+  box-sizing:border-box;
+  width:min(100%,560px);
+  max-height:calc(100dvh - 32px);
+}
+@media (max-width:420px){
+  body.is-mobile .writer-tool-root .writer-review-panel .writer-file-actions.writer-file-actions{
+    grid-template-columns:minmax(0,1fr);
+    gap:6px;
+  }
+}

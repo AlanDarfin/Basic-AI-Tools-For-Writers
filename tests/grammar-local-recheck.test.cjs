@@ -58,7 +58,7 @@ test('long manuscripts never send an entire document for a local correction',()=
 test('one localized request is wired without clearing all cached marks',()=>{
  const main=fs.readFileSync('main.js','utf8');
  const apply=main.slice(main.indexOf('  async applyGrammarReplacement('),main.indexOf('  async createGrammarVariant('));
- const local=main.slice(main.indexOf(' async recheckGrammarCorrection('),main.indexOf(' renderGrammarSuggestion('));
+ const local=main.slice(main.indexOf(' async recheckGrammarCorrection('),main.indexOf(' renderGrammarResults('));
  assert.match(local,/checkGrammar\(masked\.slice\(scopes\.next\.from,scopes\.next\.to\)\)/);
  assert.match(local,/writerGrammarPreserveOutside\(previousMatches,scopes\.old,after\.length-before\.length\)/);
  assert.match(apply,/view\.recheckGrammarCorrection\(/);
@@ -69,7 +69,7 @@ test('one localized request is wired without clearing all cached marks',()=>{
 
 test('localized review calls the provider once and merges surviving findings into the UI',async()=>{
  const main=fs.readFileSync('main.js','utf8');
- const method=main.slice(main.indexOf(' async recheckGrammarCorrection('),main.indexOf(' renderGrammarSuggestion('));
+ const method=main.slice(main.indexOf(' async recheckGrammarCorrection('),main.indexOf(' renderGrammarResults('));
  const before='Erro inicial. Fim.\n\nHoje ele dizia nao alto. Depois ele foi embora.\n\nMais erro final.';
  const start=before.indexOf('nao'),after=before.slice(0,start)+'não'+before.slice(start+3);
  const file={path:'Novel.md'};

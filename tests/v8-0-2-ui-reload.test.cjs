@@ -45,7 +45,7 @@ function fixture(){
   setItem:(k,v)=>storage.set(k,v),getItem:k=>storage.get(k)??null,removeItem:k=>storage.delete(k)
  }},VIEW:'basic',PROJECT_VIEW:'project',WRITER_TOOLS_VIEW:'tools',console,Date};
  const {rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey}=
-  vm.runInNewContext('({'+methods()+'})',context);
+  vm.runInNewContext('(class HotReloadHarness {'+methods()+'}).prototype',context);
  Object.assign(host,{rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey});
  return {host,workspace,views,open,storage};
 }

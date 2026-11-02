@@ -77,8 +77,10 @@ test('stable release manifest, bilingual docs, new UI and bundled modules',()=>{
  for(const value of ['writer-project-nav-groups','writerV7SeriesOpen(this)','writerV7RCRenderStructure'])
   assert.ok(project.includes(value),value);
  assert.ok(css.includes('.writer-project-root .writer-project-nav-groups'));
- for(const path of ['README.md','docs/README.pt-BR.md','docs/V8_0_2_RELEASE.en.md','docs/V8_0_2_RELEASE.pt-BR.md'])
+ for(const path of ['README.md','docs/README.pt-BR.md'])
   assert.ok(fs.readFileSync(path,'utf8').includes(m.version),path);
- for(const path of ['docs/V7_RELEASE.en.md','docs/V7_RELEASE.pt-BR.md'])
+ for(const path of ['docs/V8_0_2_RELEASE.en.md','docs/V8_0_2_RELEASE.pt-BR.md'])
+   assert.ok(fs.readFileSync(path,'utf8').includes('8.0.2'),path);
+  for(const path of ['docs/V7_RELEASE.en.md','docs/V7_RELEASE.pt-BR.md'])
   assert.ok(fs.readFileSync(path,'utf8').includes('7.0.0'),path);
 });

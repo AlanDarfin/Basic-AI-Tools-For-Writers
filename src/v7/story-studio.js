@@ -183,24 +183,33 @@ function writerV7StudioRenderGraph(view,panel,project){
  root.createEl('p',{text:writerUi('As conexões usam links Markdown e a propriedade relationships das notas; não criam registros duplicados.','Connections reuse Markdown links and notes’ relationships property; no duplicate records are created.'),cls:'writer-v7-muted'});
  const finder=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Filtrar relações…','Filter relationships…'),'aria-label':writerUi('Filtrar relações','Filter relationships')}});
  const list=root.createDiv({cls:'writer-v7-studio-graph-list'});
+ // Build a path index and adjacency map once per view render rather than searching
+ // every note for every visible row on each keystroke (formerly O(notes²)).
+ const byPath=new Map(all.map(note=>[note.path,note]));
+ const adjacency=new Map(all.map(note=>[note.path,new Set(writerV7StudioLinkedTargets(view.app,note).filter(path=>byPath.has(path)))]));
+ const links=view.app.metadataCache?.resolvedLinks||{};
+ for(const [from,targets] of Object.entries(links)){
+  if(!byPath.has(from)||!targets||typeof targets!=='object')continue;
+  for(const [to,count] of Object.entries(targets)){
+   if(!byPath.has(to)||to===from||!Number(count))continue;
+   adjacency.get(from).add(to);adjacency.get(to).add(from);
+  }
+ }
+ const searchable=all.map(note=>({note,label:(note.title+' '+note.tags.join(' ')).toLocaleLowerCase()}));
  const render=()=>{
   list.empty();
-  const needle=finder.value.trim().toLocaleLowerCase(),links=view.app.metadataCache?.resolvedLinks||{};
-  const shown=all.filter(r=>!needle||(r.title+' '+r.tags.join(' ')).toLocaleLowerCase().includes(needle)).slice(0,100);
-  if(!shown.length)list.createEl('p',{text:writerUi('Sem registros relacionados.','No matching records.')});
-  for(const entry of shown){
-   const from=entry.path,targets=new Set(writerV7StudioLinkedTargets(view.app,entry));
-   for(const other of all){
-    if(other.path===from)continue;
-    if(Number(links[from]?.[other.path]||0)||Number(links[other.path]?.[from]||0))targets.add(other.path);
-   }
-   if(!targets.size)continue;
+  const needle=finder.value.trim().toLocaleLowerCase();
+  const shown=searchable.filter(item=>!needle||item.label.includes(needle)).slice(0,100);
+  if(!shown.length){list.createEl('p',{text:writerUi('Sem registros relacionados.','No matching records.')});return;}
+  for(const {note:entry} of shown){
+   const targets=adjacency.get(entry.path);
+   if(!targets?.size)continue;
    const row=list.createDiv({cls:'writer-v7-studio-graph-row'});
    row.createEl('button',{cls:'writer-v7-studio-graph-source',text:entry.title}).addEventListener('click',()=>view.openFile(entry.file));
    row.createSpan({text:'↔',cls:'writer-v7-studio-graph-edge'});
    const related=row.createDiv({cls:'writer-v7-studio-graph-targets'});
    for(const path of [...targets].slice(0,15)){
-    const item=all.find(r=>r.path===path);
+    const item=byPath.get(path);
     if(item)related.createEl('button',{text:item.title,cls:'writer-v7-tag'}).addEventListener('click',()=>view.openFile(item.file));
    }
    row.createEl('button',{text:writerUi('Editar','Edit')}).addEventListener('click',()=>writerV7StudioOpenSheet(view,entry,writerV7StudioKind(entry,templates)));

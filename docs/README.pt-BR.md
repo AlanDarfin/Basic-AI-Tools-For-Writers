@@ -1,241 +1,115 @@
 # Basic AI Tool for Writers
 
-**Versão atual:** 8.0.2 estável · **Versão anterior publicada:** 8.0.1 estável · **Obsidian:** 1.11.4+ · **Plataformas:** computador e Android · **Licença:** MIT
+**Versão:** 8.0.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
-**Idiomas:** português brasileiro e inglês. [English README](../README.md).
+[Read in English](../README.md)
 
-Uma central compacta de escrita com Longform, Compêndio de universos, planejamento de cenas, Timeline, dicionários, tradução, ferramentas Markdown e IA opcional.
+Uma central compacta para escrever livros, organizar universos, editar Markdown, revisar textos e, opcionalmente, usar inteligência artificial. As notas continuam sendo arquivos normais do cofre do Obsidian.
 
-## 8.0.2 — Botões responsivos e painéis persistentes
+## Funcionalidades
 
-**Longform:** abas de Estrutura (Tramas, Marcos narrativos, Ritmo, Conexões) têm fundo discreto, textos inteiros e rolagem horizontal; não quebram palavras em linhas estranhas. **Definições:** campo de contexto opcional agora ocupa somente duas linhas inicialmente, pode expandir ao receber foco e mantém controles com aparência nativa; Sinônimos, Antônimos e os botões secundários de Ferramentas usam o estilo transparente dos projetos. **Atualizações:** ao descarregar o plugin, as abas do Basic AI, Longform e Ferramentas que estavam abertas são registradas temporariamente e recuperadas no recarregamento imediato. Painéis recolhidos ou fechados intencionalmente não são abertos à força. A alteração não afeta Marcadores, Explorador ou outros plugins. [Notas 8.0.2](V8_0_2_RELEASE.pt-BR.md) · [English](V8_0_2_RELEASE.en.md).
-
-## 8.0.1 — Dicionário pessoal, cofre completo e menos botões
-
-**LanguageTool:** o menu do PC e a janela Android substituem **Ir ao erro** por **Adicionar ao dicionário** para palavras individuais. Elas ficam salvas localmente nas configurações do Basic AI e deixam de gerar avisos nas revisões seguintes, sem exigir conta premium. Você pode editar/remover palavras em *Dicionário pessoal do corretor*. **Longform:** a aba Continuidade e seu ajuste foram retirados; nenhum arquivo dos livros é alterado. **Autocomplete:** o índice não encerra mais a varredura ao esgotar o orçamento global de termos (causa dos 94 arquivos indexados). Ele visita todas as notas Markdown elegíveis com uma cota de vocabulário por nota. Arquivos grandes fornecem amostras do início e fim para evitar consumo excessivo. O botão de reindexação e estatísticas de cobertura ficam **somente nas configurações**, com a aba de ferramentas mais compacta. [Notas 8.0.1](V8_0_1_RELEASE.pt-BR.md) · [English](V8_0_1_RELEASE.en.md).
-
-## 8.0.0 — Performance & Polish
-
-Esta atualização é dedicada à manutenção e integração visual com o Obsidian no PC e Android. **LanguageTool:** tags HTML, atributos (`align`, `center`), blocos de código HTML e entidades deixam de ser tratados como palavras. O filtro mantém as posições originais do Markdown para evitar correções deslocadas. Ao tocar em erros destacados no Android, o usuário recebe uma janela nativa com botões maiores para substituir, explicar ou ignorar sugestões. Listas extensas de revisão são exibidas em grupos de 24 itens, sem perder os sublinhados do editor. **Desempenho:** o autocomplete reutiliza índices de arquivos não modificados (cache com limite de 128 itens) e evita listar todo o cofre a cada solicitação de links internos (atualização a cada 10 segundos). **Interface:** revisão mobile mais compacta, rolagem das abas sem animações indesejadas e estilos de navegação/revisão organizados em módulos que geram o `styles.css` único da distribuição. Todas as ferramentas anteriores e o Pandoc permanecem integrados. [Notas completas](V8_0_0_RELEASE.pt-BR.md) · [English](V8_0_0_RELEASE.en.md).
-
-## Ajustes antes da v8 — 7.2.0
-
-- **Máquina de escrever no Android:** toque e teclado virtual/IME passam a ativar o realce da linha atual no Live Preview. Deslizar para rolar suspende o destaque. A restauração do cursor não conta como interação; a visualização de leitura não possui cursor de edição.
-- **Ferramentas:** ao trocar entre Sugestões, Variantes, Diff e perfis, Versões e Extras, só o conteúdo muda. As abas permanecem no mesmo lugar e preservam a rolagem.
-- **LanguageTool interno:** depois da primeira análise, alterações feitas pelo editor reanalisam somente o parágrafo modificado e preservam as sugestões intactas. Aceitar uma correção continua priorizando a sentença.
-- **LanguageTool externo:** opção no painel Revisão para usar o plugin [wrenger/obsidian-languagetool](https://github.com/wrenger/obsidian-languagetool) em vez do corretor interno. Mostra ações de verificar, limpar, próximo erro, auto-check e configurações. Os sublinhados e o menu continuam sendo do plugin externo. É opcional, não inclui código de terceiros e depende de API interna do Obsidian, portanto pode exigir adaptação em atualizações. Inspirado também na lógica de revisão incremental do [Language Tool Advanced](https://github.com/DuckTapeKiller/language-tool-advanced). [Notas 7.2.0](V7_2_0_RELEASE.pt-BR.md) · [English](V7_2_0_RELEASE.en.md).
-
-## Menu do LanguageTool ao passar o mouse — 7.1.1
-
-O menu flutuante de correção agora aparece após um breve tempo passando o mouse sobre uma palavra ou trecho destacado, mesmo que o cursor de texto esteja longe. Também abre ao clicar/tocar no erro ou levar o cursor de texto até ele usando as setas. O hover é suavizado para evitar aberturas repetidas e é cancelado se o mouse sair antes do tempo. No Android, o toque continua sendo o principal acionamento. Usa a configuração existente de sugestões flutuantes, sem solicitar novas análises à API. [Notas 7.1.1](V7_1_1_RELEASE.pt-BR.md) · [English](V7_1_1_RELEASE.en.md).
-
-## Correção localizada no LanguageTool — 7.1.0
-
-Depois da primeira análise gramatical, aceitar uma correção envia ao LanguageTool **somente a sentença alterada**, ou o parágrafo caso os limites da sentença sejam incertos. As sugestões de outras partes do documento são preservadas, com seus deslocamentos ajustados quando o texto cresce ou diminui. A alteração não dispara outra chamada automática para a mesma correção. A revisão manual completa continua disponível. Uma edição simultânea inesperada exige nova verificação por segurança. [Notas 7.1.0](V7_1_0_RELEASE.pt-BR.md) · [English](V7_1_0_RELEASE.en.md).
-
-## Destaque de linha por interação — 7.0.6
-
-O realce da linha atual no modo máquina de escrever só aparece após a primeira interação real com o editor (clique/toque ou teclado). Ao usar a roda do mouse, o realce e a centralização automática ficam suspensos até nova interação. Abrir uma nota ou restaurar cursor/seleção não ativa o destaque. O Remember Cursor Position mantém os marcadores salvos, mas não substitui um gesto do usuário enquanto a restauração ainda está pendente. Cada painel do editor é independente. [Notas 7.0.6](V7_0_6_RELEASE.pt-BR.md) · [English](V7_0_6_RELEASE.en.md).
-
-## Séries do Longform no cabeçalho — 7.0.5
-
-O livro selecionado agora mostra sua série em uma **linha própria, logo abaixo do seletor de projetos**, junto de um botão **Gerenciar** que abre o painel existente de organização das séries. A posição não muda ao trocar de aba nem ao estreitar a lateral. Livros sem séries exibem **Sem série**; caso pertençam a várias, todas são indicadas. As mudanças realizadas no gerenciador aparecem imediatamente. [Notas 7.0.5](V7_0_5_RELEASE.pt-BR.md) · [English](V7_0_5_RELEASE.en.md).
-
-## Navegação estável e rolagem horizontal — 7.0.4
-
-Ao selecionar abas no Longform, o plugin agora troca **somente o conteúdo**, sem reconstruir a barra horizontal. A mudança de grupos Escrita / Universo / Projeto também preserva o elemento de navegação. As duas fileiras de abas das configurações aceitam rolagem pelo mouse/trackpad e lembram a posição em cada grupo, sem animações indesejadas. Não altera os capítulos, o Pandoc ou os controles do celular. [Notas 7.0.4](V7_0_4_RELEASE.pt-BR.md) · [English](V7_0_4_RELEASE.en.md).
-
-## Correção da rolagem nas abas do Longform — 7.0.3
-
-A rolagem horizontal das abas é preservada ao alternar entre Relações, Mapas, Galeria, Sessões e outras ferramentas, inclusive quando o painel é renderizado novamente. Cada grupo (Escrita, Universo e Projeto) guarda sua posição de forma independente; a posição é restaurada após a criação dos botões. Sem alterações de layout no Android ou novas permissões. [Notas da versão](V7_0_3_RELEASE.pt-BR.md) · [English](V7_0_3_RELEASE.en.md).
-
-## Correção da interface desktop — 7.0.2
-
-Corrigido o crescimento excessivo dos campos de pesquisa e contexto na barra lateral de Definições. Reduzidos levemente os espaçamentos, alturas de abas e botões das barras laterais de escrita e projetos/Longform apenas no computador, mantendo a rolagem das abas e o tamanho de toque do Android. Não aplicamos zoom global nem alterações ao tema. [Notas da atualização](V7_0_2_RELEASE.pt-BR.md) · [English](V7_0_2_RELEASE.en.md).
-
-## Novidades da versão 7.0.0
-
-A versão estável reúne as duas betas e a RC. Os novos recursos continuam usando os arquivos Markdown e os índices Longform existentes, sem bancos de dados duplicados.
-
-| Área | Melhorias |
+| Área | O que oferece |
 | --- | --- |
-| **Escrita** | Árvore de capítulos recolhível, navegação entre capítulos e subcapítulos, reordenação por toque, Quadro em Cartões/Kanban/Lista, matriz de tramas, modelos narrativos, análise de ritmo e ligações de preparação/consequência. |
-| **Universo** | Compêndio por tags personalizadas, pastas e Folder Notes; fichas editáveis de personagens, locais e itens, templates próprios, relações, retratos, Galeria e mapas com imagens do cofre. |
-| **Timeline** | Trilhas, ramificações, marcos, Gantt simples, calendário fictício por projeto com meses personalizados e correção da ordem de datas entre anos. |
-| **Projetos** | Organizador de séries de livros que agrupa e reordena índices Longform **sem mover arquivos ou alterar capítulos**. Metas, sessões, tarefas e compilação continuam integradas. |
-| **Interface** | Navegação compacta em **Escrita / Universo / Projeto** e layouts responsivos para telas estreitas. |
-| **Ferramentas** | Gramática, dicionários, leitura em voz alta, snapshots, Unicode, edição e exportação opcional com Pandoc no desktop. |
+| **Longform** | Livros, capítulos, subcapítulos e cenas; reordenação, quadros em cartões/lista/Kanban, compilação e séries de livros. |
+| **Planejamento** | Tramas, marcos narrativos, ritmo, conexões entre cenas, metas, sessões de escrita, tarefas e comentários. |
+| **Compêndio** | Fichas de personagens, locais, itens e categorias próprias, com notas Markdown, tags, herança de pastas, relações, imagens locais, mapas e galeria. |
+| **Linha do tempo** | Eventos, marcos, trilhas, ramificações e calendário fictício configurável. |
+| **IA opcional** | Chat com contexto da seleção ou nota, definições, sinônimos, antônimos, tradução, prompts editáveis e escolha de modelos/provedores. |
+| **Revisão** | LanguageTool com verificações por parágrafo, menus de sugestões, dicionário pessoal, integração opcional com o LanguageTool externo e revisão por IA. |
+| **Ferramentas** | Autocompletar baseado no cofre, variantes, comparação antes da substituição, histórico local de notas, Unicode e abreviações. A indexação é administrada nas configurações. |
+| **Editor** | Navegação inspirada no Keyshots, Easy Typing, Smart Typography, foco de máquina de escrever, lembrança do cursor e modelos por nome de nota. |
+| **Formatação** | Markdown estendido, sintaxe inspirada no Pandoc, exportação com Pandoc no computador e blocos de abas, avatares e Wiki. |
+| **Leitura de texto** | Vozes do sistema quando disponíveis ou TTS on-line opcional com consentimento. |
 
-**Manutenção 7.0.1:** [Notas em português](V7_0_1_RELEASE.pt-BR.md) · [English](V7_0_1_RELEASE.en.md) · [Release quando publicada](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1). O fluxo novo publicará só `main.js`, `manifest.json` e `styles.css`; ZIP/checksums ficarão como artefatos das Actions.
+A navegação por **Escrita / Universo / Projeto** foi pensada para painéis estreitos. Os módulos podem ser ativados separadamente, sem criar uma segunda base de dados para os livros.
 
-**[Notas da 7.0.0](V7_RELEASE.pt-BR.md) · [English](V7_RELEASE.en.md) · [ZIP 7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
+## Como usar a formatação Markdown
 
-**Segurança dos dados:** excluir uma série não apaga livros. Tags herdadas de Folder Notes afetam somente os filtros, não os arquivos. As fichas utilizam a API nativa de propriedades. A memória narrativa para IA continua desligada por padrão. Trocar o calendário modifica a ordenação visual, mas não altera as datas nas notas.
+Ative **Configurações → Basic AI Tool for Writers → Módulos → Extended Syntax** e a opção **Abas, avatar e quadros Wiki**. Escreva a sintaxe em uma nota Markdown e visualize a renderização no modo de leitura ou na pré-visualização compatível.
 
-**Segurança e privacidade:** o Pandoc continua integrado e opcional no computador. Ele usa APIs Node.js de arquivos e processos, então os alertas na análise da comunidade podem continuar. IA, gramática, TTS e dicionários online podem enviar o texto selecionado aos provedores configurados. [Detalhes](../SECURITY.md) · [Revisão da comunidade](maintenance/COMMUNITY_REVIEW.md).
+### Formatação no meio do texto
 
-**Antes de atualizar:** faça backup do cofre e do data.json. A troca dos três arquivos da release não deve substituir as configurações salvas. O diretório da comunidade do Obsidian exige aprovação separada; uma release no GitHub não garante a publicação na comunidade.
-
-**Histórico:** [5.2.0](V5_2_RELEASE.md), [6.0.0-beta.4](V6_BETA4.pt-BR.md), [6.0.1](V6_0_1_RELEASE.pt-BR.md), [7.0.0-beta.1](V7_BETA1.pt-BR.md), [7.0.0-beta.2](V7_BETA2.pt-BR.md), [7.0.0-rc.1](V7_RC1.pt-BR.md). Notas antigas continuam na pasta [docs](./).
-
-## Tudo o que o plugin oferece
-
-| Área | Funcionalidades |
+| Digite | Resultado |
 | --- | --- |
-| **Dicionário** | Verbete local em Markdown, busca online opcional, dicionários Yomitan, definições, sinônimos, antônimos e salvamento de resultados. |
-| **Tradução** | Seletor de idioma de origem e destino, detecção automática quando solicitada, provedor independente e prompts editáveis. |
-| **Assistente** | Chat de escrita, contexto do trecho selecionado e modelos/provedores de IA configuráveis. |
-| **Revisão** | LanguageTool, erros destacados no texto, revisão de estilo por IA, comparação Diff e aceitação seletiva. |
-| **Longform** | Projetos, capítulos e cenas hierárquicas, rascunhos, reordenação por arrastar/toque/setas, metas, sessões, notas, tarefas, comentários e compilação. |
-| **Produtividade** | Autocomplete local, variantes, snippets de abreviações, menções, Unicode, templates por nome, sumário instantâneo e máquina de escrever. |
-| **Versões** | Snapshots por nota, histórico, diferenças, restauração e backup preventivo. |
-| **Leitura** | TTS local via Web Speech quando disponível e leitura neural online com permissão. |
-| **Personalização** | 23 categorias de módulos opcionais, interface adaptada ao celular e diagnóstico integrado. |
+| `++sublinhado++` | Sublinha o texto |
+| `||segredo||` | Spoiler revelado ao clicar ou tocar |
+| `^sobrescrito^` e `~subscrito~` | Texto superior ou inferior |
+| `=={yellow}importante==` | Destaque com cor do tema |
+| `!!{destaque}texto!!` | Span com classe `writer-v5-class-destaque` |
 
-## Novidades da versão 5.0.0
+Os destaques reconhecem cores predefinidas como `yellow`, `blue`, `green`, `red`, `purple` e `accent`. Cada opção pode ser ativada ou desativada.
 
-A v5 amplia a suíte de escrita com cinco áreas de produtividade:
+### Abas dentro de uma nota
 
-- **Keyshots:** movimentar, duplicar e organizar linhas, adicionar cursores e escolher atalhos estilo VS Code/JetBrains (somente desktop).
-- **Extended Markdown Syntax:** sublinhado, spoiler, sobrescrito/subscrito, destaques coloridos, classes e blocos especiais.
-- **Pandoc Syntax:** listas especiais, definições, exemplos numerados, rótulos, blocos e índice navegável.
-- **Easy Typing:** Tab e Backspace inteligentes, colagem em listas, capitalização e espaçamento opcionais, substituições literais e regras regex opt-in, além de modelos de texto com navegação por Tab.
-- **Smart Typography:** aspas curvas, travessões, reticências, setas, comparações, frações opcionais e conversão da seleção.
+Use um bloco `writer-tabs`, separando cada aba por `=== Nome`. É possível ter até 12 abas, com Markdown no conteúdo.
 
-Também há **exportação Pandoc opcional no desktop** para DOCX, HTML, EPUB, ODT, PDF, LaTeX e texto simples. Requer o programa Pandoc instalado; PDF pode depender de um motor adicional. Os arquivos exportados são cópias, sem sobrescrever a nota.
+~~~~markdown
+~~~writer-tabs
+=== Sinopse
+Resumo da história com **Markdown**.
 
-Cada módulo continua independente e configurável, e a antiga Editing Toolbar **não voltou**.
+=== Personagens
+- [[Maria]]
+- [[João]]
 
-## Módulos opcionais
+=== Observações
+Anotações sobre o capítulo.
+~~~
+~~~~
 
-Acesse **Configurações → Basic AI Tool for Writers → Módulos** para ocultar recursos que não usa. Por exemplo, desligar **Tradutor** remove a aba e os atalhos correspondentes, sem apagar idiomas, prompts ou qualquer outro dado. É possível reativar posteriormente.
+Os botões têm rolagem horizontal e navegação pelo teclado. O texto original da nota não é alterado.
 
-As 23 categorias disponíveis são:
+### Avatar de personagem
 
-1. Dicionário e definições
-2. Tradutor
-3. Assistente de escrita
-4. Revisão e LanguageTool
-5. Longform e projetos
-6. Ferramentas de escrita
-7. Autocomplete
-8. Variantes
-9. Diff e perfis
-10. Histórico de versões
-11. Leitura em voz alta (TTS)
-12. Unicode
-13. Templates e sumário
-14. Menções
-15. Comentários
-16. Ações de escrita com IA
-17. Máquina de escrever
-18. Memória de posição do cursor
-19. Keyshots (atalhos e navegação)
-20. Sintaxe Markdown estendida
-21. Sintaxe Pandoc
-22. Easy Typing (digitação inteligente)
-23. Smart Typography (tipografia inteligente)
+A imagem deve estar no cofre e ser referenciada por um link do Obsidian.
 
-Ocultar **Histórico de versões** esconde acessos na interface, mas não remove os backups preventivos ou snapshots existentes. As configurações e dados persistem.
+~~~~markdown
+~~~writer-avatar
+name: Maria
+role: Protagonista
+image: [[Imagens/maria.webp]]
+---
+Uma personagem com **motivações próprias**.
+~~~
+~~~~
 
-## Projetos e Longform
+Se a imagem não existir, aparece a inicial do nome. O bloco não carrega imagens externas.
 
-O gerenciador é uma implementação própria inspirada no [Longform](https://github.com/kevboh/longform), com compatibilidade com alguns conceitos do índice YAML. Não é uma réplica de todos os fluxos de trabalho do plugin original.
+### Bloco estilo Wiki
 
-**Cenas e capítulos:** títulos aninhados, indicação clara dos níveis, variantes/rascunhos e movimentação por arrastar no PC, por toque no Android ou pelas setas. A lista mantém a rolagem ao mudar a ordem dos capítulos.
+O `writer-wiki` cria uma ficha com propriedades e uma descrição em Markdown após a linha `---`.
 
-**Projeto:** metas diárias e totais de palavras, contagem de palavras, sessões de escrita baseadas em alterações salvas, alertas de cenas ausentes e controle de cenas não indexadas.
+~~~~markdown
+~~~writer-wiki
+title: Porto das Cinzas
+type: Local
+image: [[Imagens/porto.webp]]
+regiao: Costa norte
+populacao: 1200
+---
+Cidade portuária famosa pelos arquivos históricos.
 
-**Notas e tarefas:** pastas de notas do projeto, notas rápidas, pesquisa, tarefas e comentários ligados a trechos da escrita — com localização, resolução, reabertura e exclusão.
+Relacionada a [[Maria]].
+~~~
+~~~~
 
-**Compilação:** etapas ordenáveis, presets e prévia. Pode concatenar o manuscrito, remover frontmatter/links/comentários, adicionar títulos e números e gerar uma nova nota. Há proteção contra caminhos perigosos e sobrescrita do texto original. Scripts JavaScript externos importados de fluxos Longform **não são executados**.
+São recursos de **apresentação**, não uma Wiki separada. Links, tags, propriedades e notas do cofre continuam funcionando normalmente.
 
-O conteúdo da aba inativa não precisa ser renderizado, reduzindo trabalho em projetos extensos.
+### Outras opções de escrita
 
-## IA, dicionário e tradução
+Para um bloco personalizado, escreva `::: nome-da-classe`, adicione o conteúdo e feche com `:::`. O módulo **Pandoc Syntax** oferece listas com letras ou algarismos romanos, listas de definição, exemplos numerados e rótulos personalizados. A antiga toolbar experimental de edição não faz parte do plugin.
 
-### Provedores compatíveis
+## Instalação e primeiros passos
 
-**OpenAI, Gemini, Grok (xAI), Claude (Anthropic), Groq Cloud, OpenRouter, Ollama** e servidores **compatíveis com a API da OpenAI**.
+1. Pegue `main.js`, `manifest.json` e `styles.css` da **mesma versão** e coloque-os juntos em `.obsidian/plugins/basic-ai-tool-for-writers/`.
+2. Ative **Basic AI Tool for Writers** nos plugins da comunidade do Obsidian.
+3. Abra os painéis pela paleta de comandos e habilite os módulos desejados nas configurações.
+4. Crie ou abra um projeto Longform para usar capítulos, compêndio e planejamento.
 
-As ferramentas podem usar provedores diferentes, conforme a configuração. Modelos remotos podem cobrar pelo uso. O Ollama local precisa estar acessível ao dispositivo: `localhost` no celular não aponta para o computador.
+Para exportar com Pandoc no computador, instale o programa separadamente e ative a integração. A exportação por Pandoc não funciona no Android.
 
-### Dicionário e sinônimos
+## Privacidade e configurações
 
-As buscas podem aproveitar dicionário Markdown local (arquivo padrão: `Dicionario.md`), fontes online configuradas e importações de dicionários compatíveis com Yomitan. Definições, sinônimos e antônimos são apresentados com Markdown; novos verbetes podem ser salvos localmente sem sobrescrever entradas existentes.
+Planejamento, grande parte das ferramentas de edição, versões locais e formatação funcionam sem conta de IA. Serviços de IA, tradução, voz on-line e gramática podem receber os textos enviados ou analisados automaticamente, conforme as configurações. Confira os provedores antes de ativá-los. Faça backup do cofre e do `data.json` antes de atualizações maiores.
 
-### Tradução
-
-Escolha o idioma de destino e, se quiser, o idioma original. Com a origem em **Automático**, o modelo tenta identificar a língua ao clicar em **Traduzir**. Também é possível editar os prompts e usar uma configuração específica de provedor para tradução.
-
-### IA para escrita
-
-Há ações para melhorar estilo, encurtar, expandir, simplificar, mudar tom, revisar diálogos, corrigir gramática, encontrar pontos fracos e explorar alternativas. A revisão seletiva apresenta o **Diff**, com proteções para a estrutura Markdown e possibilidade de aceitar ou rejeitar mudanças.
-
-## Revisão e produtividade
-
-- **LanguageTool:** sugestões de ortografia/gramática, destaque no editor, regras ignoradas opcionalmente e proteção da sintaxe Markdown.
-- **Revisão automática:** com a aba Revisão aberta em modo Gramática, aguarda uma pausa após digitar (3,5 segundos por padrão; ajustável de 2 a 15 segundos), aplica intervalos mínimos entre solicitações e descarta respostas antigas. Capítulos enormes são analisados em uma janela próxima ao cursor, com indicação de análise parcial.
-- **Autocomplete:** sugestões provenientes da nota atual, arquivos do cofre, dicionários e links; índice local, limites e pastas excluídas.
-- **Variantes:** alternativas inline, navegação entre versões de uma expressão e geração de novas propostas por IA.
-- **Snapshots:** histórico próprio em `.basic-ai-history/`, versões manuais e automáticas opcionais, diferenças e restauração segura. Históricos de plugins externos não são modificados.
-- **Formatação nativa:** use os comandos Markdown e a barra móvel do próprio Obsidian. O Basic AI mantém os **comandos independentes de escrita com IA**, mas não oferece mais barra nem comandos extras de formatação.
-- **Extras:** TTS, Unicode com pesquisa/favoritos, menções a arquivos, abreviações, títulos alternativos, preferências de visualização, templates por nome de nota, sumário instantâneo e modo máquina de escrever.
-
-## Leitura em voz alta
-
-É possível usar vozes do **sistema / navegador** quando a API Web Speech estiver exposta. Há também opção de vozes neurais online, com autorização explícita antes do envio do texto ao serviço.
-
-**Limite no Android:** mesmo com um leitor instalado no telefone, o WebView do Obsidian pode não fornecer acesso a essas vozes. O plugin não consegue garantir a leitura nativa em todos os aparelhos. O leitor online requer conexão e depende de um serviço externo que pode mudar ou ficar indisponível.
-
-## Instalação e atualização
-
-1. Baixe o [ZIP da 7.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip).
-2. Extraia os arquivos **`main.js`**, **`manifest.json`** e **`styles.css`** para:
-
-   ```text
-   <seu cofre>/.obsidian/plugins/basic-ai-tool-for-writers/
-   ```
-
-3. Ative **Basic AI Tool for Writers** em **Configurações → Plugins da comunidade**, ou recarregue o plugin após atualizar.
-4. Configure provedores e módulos como preferir.
-
-**Faça backup do cofre e da pasta do plugin antes de atualizar.** Não exclua nem sobrescreva o `data.json`: ele contém opções, prompts e chaves. Para voltar a uma versão anterior, restaure seus arquivos e o backup das configurações, se necessário.
-
-## Privacidade e segurança
-
-- **Provedores de IA:** trechos enviados às funções de IA vão para o provedor escolhido. Os serviços podem ter custos e políticas próprias.
-- **LanguageTool:** a análise automática envia o texto ao servidor configurado, somente enquanto a revisão está ativa.
-- **TTS online:** envia texto ao serviço de voz da Microsoft por WebSocket, somente depois do consentimento.
-- **Quatro chamadas de rede:** download do índice Unicode, LanguageTool, listagem de modelos e IA. Consulte o [detalhamento de cada chamada e os gatilhos automáticos](../SECURITY.md#network-disclosures-four-requesturl-call-sites).
-- **Diagnóstico:** mostra versão, plataforma, recursos ativos, estado dos provedores, LanguageTool, histórico e disponibilidade da API de voz. Não faz consultas externas nem revela chaves completas.
-- **Chaves:** ficam armazenadas no `data.json` do Obsidian **sem criptografia adicional**. Não publique esse arquivo nem o sincronize com dispositivos não confiáveis.
-- **Backups:** use sempre cópias de segurança do cofre antes de mudanças grandes ou compilações.
-
-## Idiomas da interface
-
-O Basic AI utiliza a língua configurada no Obsidian e disponibiliza sua interface em **português brasileiro e inglês**, com inglês como alternativa para os demais idiomas.
-
-**Na v4.1.0, foi concluída a revisão da tradução inglesa dos controles integrados**, incluindo Longform, compilação, variantes, snapshots, mensagens de erro, autocomplete e revisão seletiva. Um teste automatizado evita a volta de rótulos antigos sem tradução.
-
-Os nomes dos seus projetos, notas e fluxos personalizados permanecem no idioma escolhido por você. Identificadores antigos como `Padrão` e `Principal` continuam preservados internamente para não quebrar o histórico, mas aparecem com equivalentes ingleses nos seletores. A ferramenta de Tradução de textos funciona separadamente, conforme o modelo escolhido.
-
-## Desenvolvimento e documentação
-
-A distribuição normal usa main.js, gerado a partir dos módulos de src/v3 até src/v7 e do gerenciador Longform em projects.js.
-
-```sh
-npm run build
-npm run check
-```
-
-Documentos úteis:
-- [Lançamento estável da v4.1 e internacionalização](V4_1_RELEASE.md)
-- [Referência de migração v4.0](V4_RELEASE.md)
-- [Writing Suite: TTS, Unicode, templates e extras](WRITING_SUITE.md)
-- [Guia técnico da v3](V3.md)
-- [Checklist da RC1](V4_RC1_CHECKLIST.md)
-- [Histórico do README](README_HISTORY.md)
-- [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
-
-**Autor:** Alan Darfin · [Repositório](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers) · [Releases](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases) · [Reportar problemas](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/issues). A licença do projeto é MIT.
+Documentação: [Segurança e privacidade](../SECURITY.md) · [Como contribuir](../CONTRIBUTING.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md).

@@ -1,261 +1,115 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [8.0.2](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.2) · **Previous published:** [8.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Version:** 8.0.3 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
-**Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
+[Leia em português](docs/README.pt-BR.md)
 
-A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+A single, compact writing workspace for planning books, organizing a fictional world, editing Markdown, reviewing text and optionally working with AI. Your notes remain ordinary files in your Obsidian vault.
 
-## 8.0.2 — Responsive buttons and persistent sidebars
+## Features
 
-**Longform structure:** plotlines, story beats, pacing and connections now have readable single-line ghost-style tabs on a horizontal scroll strip; no more words broken into two lines. **Definitions:** optional context starts as a two-row field (instead of filling the mobile sidebar), expands when focused, and lexical buttons use the discreet transparent project style. The writing-tool footer and secondary actions use the same visual family. **Hot reload:** captures which Basic AI, Longform and writing-tool sidebar tabs were actually open before the plugin unloads, restores only those during an immediate reload, and preserves their selected section; previously collapsed or manually closed panes are not forcibly reopened. UI remains scoped to Basic AI without changing Obsidian's own Bookmarks or Explorer. [Release notes](docs/V8_0_2_RELEASE.en.md) · [Português](docs/V8_0_2_RELEASE.pt-BR.md).
-
-## 8.0.1 — Personal dictionary, complete vault coverage, cleaner panels
-
-**LanguageTool:** the desktop context menu and Android correction dialog now replace *Go to error* with **Add to dictionary** for single words. Added words are stored locally in Basic AI settings and filtered out of future LanguageTool results; they can be edited or removed in the personal spelling dictionary setting. No LanguageTool account or remote dictionary API is needed. **Longform:** the nonfunctional *Continuity* tab and setting are retired; existing manuscript data is untouched. **Autocomplete:** the old global term budget could stop indexing after the first ~94 notes. The revised scan visits every eligible Markdown note and apportions terms per note rather than stopping early. Large notes get bounded opening/ending samples. Index controls and detailed coverage statistics now live **only in plugin settings**, not the writing tools sidebar. [English release notes](docs/V8_0_1_RELEASE.en.md) · [Português](docs/V8_0_1_RELEASE.pt-BR.md).
-
-## 8.0.0 — Performance & Polish
-
-This maintenance release focuses on compatibility with Obsidian's desktop and Android UI rather than new writing features. **LanguageTool** now masks HTML tags, attributes, embedded raw blocks and entities while preserving Markdown positions, so values like `align` or `center` do not become spelling suggestions. Tapping highlighted findings on Android opens a native, touch-sized Obsidian correction dialog. Grammar reviews display long lists 24 cards at a time while keeping all editor highlights and findings available. **Performance:** autocomplete caches recently scanned file indexes (bounded to 128 entries and invalidated by mtime) and internal-link listings (10-second refresh), reducing redundant vault scanning. **UI:** mobile review cards have more compact native-like spacing; navigation strips keep scroll positions without snapping; new navigation and review styles are maintained in source modules and bundled to one Obsidian-compatible `styles.css`. Pandoc and existing writing tools remain integrated. See [full release notes](docs/V8_0_0_RELEASE.en.md) and [Português](docs/V8_0_0_RELEASE.pt-BR.md).
-
-## Pre-v8 maintenance — 7.2.0
-
-- **Android Typewriter:** touch and virtual keyboard / IME interactions now activate the current-line highlight in Live Preview; touch scrolling suspends it. Programmatic cursor restoration still does not activate the highlight. Reading View has no editable caret, so this editor feature is not shown there.
-- **Writing-tools navigation:** tabs (Suggestions, Variants, Diff, Versions, Extras) stay mounted while their content changes; the horizontal scrollbar no longer jumps back. Rebuilding the pane after an active-note change also restores the offset after buttons are created.
-- **Built-in LanguageTool:** after a previous grammar check, automatic checks on editing now target the changed paragraph, reusing untouched suggestions and adjusting their offsets. Accepted corrections still use sentence-first rechecks.
-- **Optional external LanguageTool:** select the external wrenger LanguageTool plugin from Basic's Review panel to disable Basic's own grammar requests and show controls for the external check, clear marks, next finding, automatic checking and its settings. Its own editor underlines and menus are retained. This optional bridge uses the plugin registry, which is not a stable Obsidian public API; availability depends on the external plugin and host version. No external code is bundled. See [release notes](docs/V7_2_0_RELEASE.en.md) · [Português](docs/V7_2_0_RELEASE.pt-BR.md).
-
-## LanguageTool suggestions on hover or caret — 7.1.1
-
-The floating LanguageTool correction menu now opens after a short hover on highlighted text, even if the text cursor is elsewhere. Clicking or tapping a marked error, or navigating the caret into an error with the arrow keys, opens the same menu. Hover uses a small delay and avoids repetitive reopening; moving out before the delay cancels it. Touch input remains tap-based. This uses the existing optional review-popup setting and does not perform additional network requests. [Release notes](docs/V7_1_1_RELEASE.en.md) · [Português](docs/V7_1_1_RELEASE.pt-BR.md).
-
-## Local LanguageTool checks after accepting fixes — 7.1.0
-
-After an initial grammar check, accepting a suggested correction rechecks only the **changed sentence**, or its paragraph when sentence boundaries are uncertain. Findings elsewhere remain cached; match offsets after the replacement are adjusted rather than sending the entire manuscript again. The automatic editor-change callback does not make a second LanguageTool request for that correction. A manual full review is still available. If the note changes concurrently, the plugin falls back to the existing safe review behavior. [Release notes](docs/V7_1_0_RELEASE.en.md) · [Português](docs/V7_1_0_RELEASE.pt-BR.md).
-
-## Typewriter highlight interaction — 7.0.6
-
-The current-line marker in Typewriter mode now appears only after **real editor interaction** (pointer or keyboard), and disappears on mouse-wheel scrolling until the next interaction. Cursor/selection restoration, file opening and automatic viewport updates never activate it, and Typewriter recentering is suspended while the user scrolls. Pending Remember Cursor Position restorations are cancelled on a real editor gesture without deleting saved bookmarks. Highlights are isolated by editor pane. [Release notes](docs/V7_0_6_RELEASE.en.md) · [Português](docs/V7_0_6_RELEASE.pt-BR.md).
-
-## Longform series header — 7.0.5
-
-The selected book's series membership now appears in a dedicated **Series** information row directly below the book selector. A **Manage** button opens the existing non-destructive book-series manager. This row no longer wraps unpredictably between header controls when switching tabs or resizing the sidebar. Multiple memberships appear together; books outside any series show **No series**. Changes made in the series manager update the row immediately. [Release notes](docs/V7_0_5_RELEASE.en.md) · [Português](docs/V7_0_5_RELEASE.pt-BR.md).
-
-## Stable navigation and scrolling — 7.0.4
-
-Changing Longform tabs now replaces **only the content panel** rather than recreating the horizontal navigation. Its position remains stable without scroll animation. Changing Writing / World / Project groups also keeps the navigation container mounted. Settings have genuinely scrollable main and secondary tab rows, with vertical mouse-wheel support and preserved horizontal offsets within each group. No change to book data, Pandoc, network permissions, or mobile UI sizing. [Release notes](docs/V7_0_4_RELEASE.en.md) · [Português](docs/V7_0_4_RELEASE.pt-BR.md).
-
-## Longform navigation scroll fix — 7.0.3
-
-The Longform project's horizontal tabs now retain their position after switching tabs (including Relationships, Maps, Gallery and Sessions) and after view refreshes. Each top-level area (Writing, World, Project) remembers its own position. The scroll is restored **after** tab buttons are created, avoiding the previous reset to the left edge. No Android layout changes or new permissions. [Release notes](docs/V7_0_3_RELEASE.en.md) · [Português](docs/V7_0_3_RELEASE.pt-BR.md).
-
-## Desktop compactness fix — 7.0.2
-
-Fix oversized search and context fields in the Definitions sidebar caused by inherited flex sizing. Slightly reduce desktop-only sidebar padding, tab heights and action spacing in the writing and Longform/project views. Horizontal tabs still scroll; Android touch sizing stays unchanged. No global zoom or theme override is applied. [Release notes](docs/V7_0_2_RELEASE.en.md) · [Português](docs/V7_0_2_RELEASE.pt-BR.md).
-
-## New in version 7.0.0
-
-The stable v7 release consolidates two betas and a release candidate. All new planning features work with existing Markdown notes or Longform indexes, not a duplicate data store.
-
-| Area | Improvements |
+| Area | What you can do |
 | --- | --- |
-| **Writing** | Collapsible chapter trees, automatic and manual navigation between chapters and subchapters, touch-friendly scene movement, Cards/Kanban/List board, plotline matrix, story beat templates, pacing, and setup/payoff scene links. |
-| **World** | Compendium using custom Obsidian tags, folders and Folder Notes; editable character/place/item sheets; custom templates, links, portraits, image gallery and vault image maps. |
-| **Timeline** | Event tracks, branches, milestones, simple Gantt, and per-project fictional calendar with custom month lengths and corrected cross-year date sorting. |
-| **Projects** | Book series manager that groups and reorders existing Longform project indexes **without moving files or changing chapters**. Existing goals, sessions, tasks and compilation remain available. |
-| **Interface** | Compact **Writing / World / Project** navigation and responsive layouts for narrow screens. |
-| **Writing tools** | Grammar, dictionaries, TTS, snapshots, Unicode, editing tools and optional desktop Pandoc export remain integrated. |
+| **Longform** | Organize books, chapters, subchapters and scenes; reorder them, use scene cards/list/Kanban, compile manuscripts and manage book series. |
+| **Story planning** | Track plotlines, beats, pacing, scene links, goals, writing sessions, tasks and comments. |
+| **World compendium** | Keep character, place, item and custom world sheets in Markdown notes with tags, folder-note inheritance, relationships, local images, maps and galleries. |
+| **Timeline** | Plan events and milestones, use tracks and branches, and optionally configure a fictional calendar. |
+| **AI writing** | Chat with note/selection context, definitions, synonyms, antonyms, translation and editable prompts; choose supported providers and models. AI is optional. |
+| **Review** | Use LanguageTool spelling and grammar suggestions, a local personal dictionary, automatic paragraph checks, contextual correction menus, optional external LanguageTool integration and AI-assisted revision. |
+| **Writing tools** | Vault autocomplete, text variants, comparison before replacing text, local note snapshots, Unicode picker and abbreviations. Index management lives in the plugin settings. |
+| **Editing** | Keyshots-inspired navigation, Easy Typing, Smart Typography, Typewriter focus, remembered cursor position and note-name templates. |
+| **Markdown formatting** | Extended Markdown, Pandoc-style lists and blocks, optional Pandoc export on desktop, plus tabs, avatars and Wiki cards. |
+| **Reading aloud** | System voices when available or optional online TTS with user consent. |
 
-**Maintenance 7.0.1:** [English notes](docs/V7_0_1_RELEASE.en.md) · [Português](docs/V7_0_1_RELEASE.pt-BR.md) · [GitHub release once published](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.0.1). The new release workflow will attach only `main.js`, `manifest.json` and `styles.css`. Convenience ZIP/checksums will be generated as Actions artifacts.
+The **Writing / World / Project** navigation and independent module toggles keep narrow sidebars usable. Changes to scene and world metadata use Obsidian notes and properties rather than duplicating the story database.
 
-**[Original 7.0.0 release notes](docs/V7_RELEASE.en.md) · [Português](docs/V7_RELEASE.pt-BR.md) · [7.0.0 ZIP](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip)**
+## Using Markdown formatting
 
-**Data safety:** Deleting a series never deletes its manuscripts. Tags inherited from Folder Notes only affect indexing, not child files. Scene/world sheet editing uses the native frontmatter API. The AI narrative context remains opt-in and off by default. Calendar changes affect chronological display, not the actual event dates.
+Enable **Settings → Basic AI Tool for Writers → Modules → Extended Syntax** and its **Tabs, avatar and Wiki cards** option. Write the examples in a Markdown note; view the rendered results in Reading View or supported Markdown preview.
 
-**Before upgrading:** Back up your vault and plugin data.json. Replacing the three release files should not overwrite saved plugin settings. Listing in the Obsidian Community directory requires separate approval; a GitHub release does not guarantee directory publication.
+### Inline formatting
 
-**Release history:** [5.2.0](docs/V5_2_RELEASE.md), [6.0.0-beta.4](docs/V6_BETA4.en.md), [6.0.1](docs/V6_0_1_RELEASE.en.md), [7.0.0-beta.1](docs/V7_BETA1.en.md), [7.0.0-beta.2](docs/V7_BETA2.en.md), [7.0.0-rc.1](docs/V7_RC1.en.md). Earlier notes remain in the [docs folder](docs/).
-
-## Contents
-
-- [What it does](#what-it-does)
-- [Customizable modules](#customizable-modules)
-- [Longform writing projects](#longform-writing-projects)
-- [AI, dictionaries and translation](#ai-dictionaries-and-translation)
-- [Review and writing tools](#review-and-writing-tools)
-- [Text-to-speech](#text-to-speech)
-- [Installation and upgrade](#installation-and-upgrade)
-- [Configuration and privacy](#configuration-and-privacy)
-- [Language support](#language-support)
-- [Development and documentation](#development-and-documentation)
-
-## Writing and Markdown in v5
-
-The **23 independently configurable modules** include five new writing-focused areas alongside the previous v4 toolset:
-
-- **Keyshots-inspired keyboard navigation (desktop):** move, duplicate, join and sort lines, add cursors, change selection case and choose a VS Code or JetBrains-style shortcut profile. Disable preset shortcuts if they conflict with Obsidian.
-- **Extended Markdown:** underline, spoiler, super/subscript, color highlights, custom spans and fenced divs in Reading mode and Live Preview.
-- **Pandoc-inspired Markdown:** lettered and Roman lists, definition lists, numbered examples, custom labels, fenced blocks and an in-note outline.
-- **Easy Typing:** smart Tab/Backspace, list-aware paste, optional automatic spacing and case rules, literal/opt-in regex replacements, and navigable text snippets.
-- **Smart Typography:** smart quotation marks, dashes, ellipses, arrows, comparison symbols and optional fractions. Converts text as you type or from a selected passage.
-
-**Pandoc export** remains integrated in this plugin, as an additional, disabled-by-default desktop integration for DOCX, HTML, EPUB, ODT, PDF, LaTeX and plain text. It requires an installed Pandoc executable and may require an additional PDF engine. Export files are written to a configurable folder without changing the source note.
-
-**Security disclosure:** Desktop Pandoc uses Node.js filesystem and process APIs and will continue to trigger capability warnings in community scans. The executable name is validated, mobile execution is blocked, and the integration is disabled by default. Optional AI, TTS, grammar and dictionary services may transmit content deliberately submitted to configured providers. [Security/privacy](SECURITY.md) · [Community review details](docs/maintenance/COMMUNITY_REVIEW.md).
-
-All new features can be disabled in **Settings → Basic AI Tool for Writers → Modules**. Regular Obsidian formatting is unchanged: the old experimental Editing Toolbar is **not** restored. The majority of functionality works without an external service, while AI and online TTS features may contact the providers selected by the user.
-
-## What it does
-
-| Area | Capabilities |
+| Write | Result |
 | --- | --- |
-| **Dictionary** | Local Markdown dictionary, configurable online lookup, Yomitan dictionary import, definitions, contextual synonyms and antonyms, Markdown-rendered results and optional saving of new entries. |
-| **Translation** | AI-assisted translation with source/target selectors, optional source-language detection, independent provider settings and editable prompts. |
-| **Writing assistant** | Sidebar chat, selected-text context, customizable writing prompts and model/provider choices. |
-| **Revision** | LanguageTool grammar/spelling suggestions, Markdown-aware offsets and review markers; AI style review; selective Diff before changing text. |
-| **Longform projects** | Projects, nested chapters/scenes, drag-and-drop ordering, touch-friendly movement, drafts, project notes, tasks, writing goals, sessions and compilation workflows. |
-| **Autocomplete and variants** | Local suggestions from files and dictionaries; multiple inline alternatives; AI-assisted rewriting and comparison. |
-| **Snapshots** | Separate local version history, manual and optional automatic snapshots, line-based comparison, restore safeguards and optional attachment capture. |
-| **Writing utilities** | Note mentions, chapter comments, abbreviations, Unicode picker, note-name templates, instant table of contents, alternative note subtitles, view preferences and typewriter focus mode, and per-note cursor/selection/scroll memory. |
-| **Read aloud** | Browser/system speech when available, or optional online neural TTS with explicit consent. |
-| **Customization and diagnostics** | 18 individually visible module categories, compact/mobile-friendly settings and local diagnostics. |
+| `++underlined++` | Underlined text |
+| `||hidden information||` | Click/tap-to-reveal spoiler |
+| `^superscript^` and `~subscript~` | Raised/lowered text |
+| `=={yellow}important==` | Highlight using a theme color |
+| `!!{important}text!!` | Span with the scoped class `writer-v5-class-important` |
 
-## Customizable modules
+Only supported color names are styled by default (for example `yellow`, `blue`, `green`, `red`, `purple` or `accent`). Extended features can be switched off individually.
 
-Open **Settings → Basic AI Tool for Writers → Modules** and disable anything you do not need. The related tabs, menu entries and shortcuts are hidden, leaving more room for the tools you use. **Disabling visibility does not delete notes, project data, prompts, comments or saved history**; re-enable the module whenever you want.
+### Tabs inside a note
 
-The available categories are:
+Use a fenced `writer-tabs` block. Begin each tab with `=== Title`; each tab body supports Markdown. There can be up to 12 tabs.
 
-| Module | What you can hide |
-| --- | --- |
-| Dictionary & definitions | Dictionary and lexical lookup |
-| Translator | Translation sidebar and translation actions |
-| Writing assistant | Chat and assistant shortcuts |
-| Review & LanguageTool | Grammar and AI review interface |
-| Longform & projects | Project workspace and shortcuts |
-| Writing tools | Supplementary writing sidebar |
-| Autocomplete | Local completion and indexing controls |
-| Writing variants | Alternative wordings and variants |
-| Diff & profiles | Selective AI revision and writing profiles |
-| Version history | Snapshot access shortcuts, **not** existing safety backups |
-| Text to speech | Read-aloud controls |
-| Unicode | Unicode character picker |
-| Templates & table of contents | Template and TOC authoring tools |
-| Mentions | Note mention suggestions |
-| Comments | Comments tab in the project workspace |
-| AI writing actions | Contextual rewriting actions |
-| Typewriter | Typewriter/focus mode |
+~~~~markdown
+~~~writer-tabs
+=== Synopsis
+A short overview of the story.
 
-Hiding a module is an interface preference, not a destructive uninstall. Existing Obsidian commands/hotkeys are kept compatible, while hidden functions are guarded where applicable.
+=== Characters
+- [[Character One]]
+- [[Character Two]]
 
-## Longform writing projects
+=== Notes
+**Themes:** memory and choice.
+~~~
+~~~~
 
-The independently implemented project manager is inspired by [Longform](https://github.com/kevboh/longform) and supports compatible project-index concepts; it is **not a complete replacement for every upstream Longform workflow**.
+Tabs are horizontally scrollable and keyboard accessible. Switching tabs does not alter the underlying note.
 
-- **Chapters and scenes:** nested hierarchy, visual indentation, project/draft selection, file creation, moving by drag-and-drop on desktop or touch selection on mobile, plus up/down buttons. Chapter reordering preserves the sidebar scroll position.
-- **Project management:** scene folders, word counts, daily/project goals, saved-file-based writing-session tracking, missing-scene warnings and safe handling of unindexed scenes.
-- **Notes and tasks:** project note folders, quick notes, search, task tracking and comments attached to selected passages (locate, resolve/reopen and delete).
-- **Compilation:** editable workflow steps, named presets, preview without writing files and safe Markdown output using a new file name. Supported built-in operations include frontmatter cleanup, link/comment removal, titles/numbering and concatenation.
-- **Safety:** backups of project indexes, path validation, no automatic overwrite of existing manuscripts and **no execution of imported third-party JavaScript workflow steps**.
+### Character avatar card
 
-Only the selected project tab is rendered when possible, reducing unnecessary work in books with many chapters.
+Use an image stored inside your vault, referenced as an Obsidian link.
 
-## AI, dictionaries and translation
-
-### Supported AI providers
-
-**OpenAI, Gemini, Grok (xAI), Claude (Anthropic), Groq Cloud, OpenRouter, Ollama**, and **custom OpenAI-compatible endpoints**.
-
-Choose models and providers separately where supported (for example, dictionary, translation and writing assistant). Configure API keys and optional system prompts in the plugin settings. Remote providers may charge for requests. A local Ollama installation requires a reachable endpoint; a phone's `localhost` is not your desktop PC.
-
-### Dictionary and synonyms
-
-Look up terms in a local Markdown dictionary (default file: `Dicionario.md`), use configured online sources, import compatible Yomitan dictionaries and request definitions, synonyms or antonyms. Generated entries are rendered as Markdown and can be stored locally without overwriting existing entries.
-
-### Translation
-
-Select a target language and optionally a source language. Leaving the source on **Automatic** lets the configured AI provider infer it when you press **Translate**. Translation prompts are editable, and the translator can be hidden entirely in **Modules** if you do not use it.
-
-### AI writing actions
-
-Commands cover improving style, shortening or expanding passages, simplifying, adjusting tone, dialogue polish, grammar correction, critique and alternative approaches. The selective revision flow lets you compare the proposal with the original and choose what to accept, while retaining Markdown-aware safeguards.
-
-## Review and writing tools
-
-- **LanguageTool:** grammar and spelling suggestions in the review panel, optional ignored rules, Markdown syntax masking and markers aligned with the original text.
-- **Automatic rechecking:** while the Review tab is open in grammar mode, checks run after a typing pause (3.5 seconds by default, configurable from 2–15 seconds), with rate limiting and safeguards against stale responses. Large notes are reviewed in a bounded window near the cursor; the panel indicates partial coverage.
-- **Writing variants:** create and cycle through inline alternatives, generate new variants with AI and optionally snapshot before replacing original text.
-- **Local autocomplete:** index the current note, vault notes, custom dictionaries and internal links, with exclusions, limits and optional ranking of frequently used choices.
-- **Version history:** snapshots stored separately under `.basic-ai-history/`, optional automatic saving, Diff and safe restoration. Existing history from unrelated snapshot plugins is not modified.
-- **Native formatting:** use Obsidian's built-in Markdown editor actions and mobile toolbar. Basic AI still provides separate **AI writing commands** for selected passages, without adding a competing formatting toolbar or Markdown-formatting commands.
-- **Other tools:** note mentions, Unicode favorites and search, text abbreviations, property-driven alternate titles/view modes, templates by note name, instant TOC and typewriter mode.
-
-## Typewriter and cursor memory (4.2)
-
-**Typewriter:** Turn on Typewriter mode from the Integrated Tools settings or the command palette. The active line receives a theme-aware highlight even on mobile. Enable **Dim unfocused lines** if you want all other lines subdued.
-
-**Remember cursor position:** In **Settings → Basic AI Tool for Writers → Cursor position**, toggle cursor memory, restore selection, and restore scroll independently. Bookmarks are saved locally with the plugin settings, limited to 500 notes by default (configurable up to 2,000). Reopening a Markdown note restores the stored position where possible; heading links are not overridden. You can forget the current note position using a command, or clear all saved bookmarks in Settings. This is an independent implementation inspired by [Remember cursor position](https://github.com/dy-sh/obsidian-remember-cursor-position), not copied code and no external plugin dependency.
-
-## Text-to-speech
-
-Choose **System / offline** speech when the Obsidian WebView exposes Web Speech voices, or explicitly enable **online neural speech** if you want that service. Available voice selection, language, rate and read-selection options depend on the engine.
-
-**Android limitation:** a phone can have system TTS installed while Obsidian's WebView exposes no native speech voices. The plugin cannot guarantee native Android TTS access. Online synthesis sends the text to a third-party service **only when explicitly allowed**, needs connectivity and can become unavailable.
-
-## Installation and upgrade
-
-1. Download the [7.0.0 ZIP release](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/download/7.0.0/Basic-AI-Tool-for-Writers-7.0.0.zip).
-2. Extract **`main.js`**, **`manifest.json`** and **`styles.css`** to:
-
-   ```text
-   <your vault>/.obsidian/plugins/basic-ai-tool-for-writers/
-   ```
-
-3. Enable **Basic AI Tool for Writers** in **Obsidian → Settings → Community plugins**, or reload it after an update.
-4. Open **Settings → Basic AI Tool for Writers** to configure providers and show/hide modules.
-
-**Updating from v2/v3/beta/RC:** back up your vault and plugin directory first. Replace the three distribution files, **never delete or overwrite `data.json`** (it holds settings and API credentials). If needed, restore your backed-up settings and previous release files to roll back.
-
-This repository provides manual installation files; this README does not claim the plugin is available in Obsidian's community plugin directory.
-
-## Configuration and privacy
-
-- **Settings → Modules:** hide unused features. Your saved data remains intact.
-- **Settings → Diagnostics:** inspect the plugin version, platform, Markdown file count, active modules, LanguageTool state, configured provider count, snapshot status and Web Speech API availability. Diagnostics do **not** send network requests or display full credentials.
-- **AI providers:** cloud-based AI operations send selected text to the configured provider. You are responsible for any API costs or applicable terms.
-- **LanguageTool:** when enabled, review and automatic checks send the analyzed text to the configured LanguageTool endpoint **while Review is open**.
-- **Online TTS:** sends the reading text to Microsoft's speech endpoint using WebSocket only after explicit opt-in.
-- **Network disclosure:** the four `requestUrl` call sites are Unicode download, LanguageTool checking, AI model discovery, and AI requests. See the [complete request-by-request disclosure](SECURITY.md#network-disclosures-four-requesturl-call-sites). Note that auto-grammar checks can send updated text while Review/Grammar is active.
-- **Stored credentials:** API keys are saved in Obsidian's `data.json` **without additional encryption**. Avoid publishing or syncing this file to untrusted devices.
-- **File safety:** review and restoration functions provide previews or backups where available. Keep regular vault backups, especially before upgrading or compiling large projects.
-
-## Language support
-
-The English interface has been reviewed for v4.1.0. The built-in interface supports **English** and **Portuguese (Brazil)**, following the Obsidian interface language. The **v4.1.0 localization pass** covers Longform project controls, compilation workflows, scene actions, variant dialogs, snapshot/version history, autocomplete settings, selective Diff and user-facing error messages. English is the fallback for other locales.
-
-Existing Markdown files, project titles, custom workflow names and the historical `Padrão` / `Principal` storage identifiers remain unchanged for compatibility, while built-in labels are translated for display. The text translation feature independently supports multiple input and output languages through your configured AI model.
-
-**What's new in v4.1:** the missing English labels and messages were translated without altering saved project identifiers, while automatic localization regression tests were added.
-
-## Development and documentation
-
-The installation bundle contains modules maintained from src/v3 through src/v7 and the Longform project manager in projects.js. Regenerate and verify the bundle before publishing.
-
-```sh
-npm run build     # regenerate the bundled project and v3/v4 modules
-npm run check     # source synchronization, syntax and regression tests
-```
-
-Documentation:
-- [v4.1.0 stable release and migration guide](docs/V4_RELEASE.md)
-- [Writing Suite — utilities, TTS, templates and Unicode](docs/WRITING_SUITE.md)
-- [v3 autocomplete, variants and snapshots](docs/V3.md)
-- [v4 release candidate checklist](docs/V4_RC1_CHECKLIST.md)
-- [Historical README and earlier versions](docs/README_HISTORY.md)
-- [Third-party notices and inspiration](THIRD_PARTY_NOTICES.md)
-
-For questions or bug reports: [GitHub Issues](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/issues) · [Releases](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases) · [Repository](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers).
-
+~~~~markdown
+~~~writer-avatar
+name: Maria
+role: Protagonist
+image: [[Images/maria.webp]]
 ---
+A character with **her own motivations** and backstory.
+~~~
+~~~~
 
-**Author:** Alan Darfin. Independently implemented features are inspired by community plugins such as Longform, Various Complements, VariantEditor and Note Snapshots; see [third-party notices](THIRD_PARTY_NOTICES.md) for attribution and compatibility limitations. Licensed under the repository's [MIT license](LICENSE.md).
+If the image cannot be found, the card shows a letter placeholder. External image URLs are intentionally not loaded by this block.
+
+### Wiki-style entry
+
+Use `writer-wiki` to make a compact infobox with properties and Markdown below the separator.
+
+~~~~markdown
+~~~writer-wiki
+title: Ashen Harbor
+type: Location
+image: [[Images/harbor.webp]]
+region: Northern coast
+population: 1200
+---
+A port city known for its archives.
+
+Related entry: [[Character One]].
+~~~
+~~~~
+
+These are **presentation blocks**, not a separate Wiki database. You can still use normal Markdown notes, links, tags and frontmatter for worldbuilding.
+
+### Other writing syntax
+
+A fenced div uses an opening `::: class-name` line and a closing `:::` line. Pandoc-style formatting includes alphabetic/Roman-numbered lists, definition lists, numbered examples and custom labels; use the **Pandoc Syntax** module to enable those features. The retired editing toolbar is not part of the plugin.
+
+## Getting started
+
+1. Download `main.js`, `manifest.json` and `styles.css` from the **same release**. Keep the three files together in `.obsidian/plugins/basic-ai-tool-for-writers/`.
+2. Enable **Basic AI Tool for Writers** in Obsidian's community plugins settings.
+3. Open a sidebar from the command palette and enable only the modules you need in plugin settings.
+4. Create a Longform project or open an existing one to use chapters, compendium and story planning.
+
+For desktop Pandoc export, install Pandoc separately and enable the integration. On Android, desktop-only export is not available.
+
+## Privacy and configuration
+
+Core story planning, most editing tools, local snapshots and local formatting work without an AI account. AI, translation, online TTS and grammar providers may receive text you explicitly submit or configure for automatic checks. Review provider settings before enabling them. Back up your vault and the plugin's `data.json` before major upgrades.
+
+Documentation: [Security and privacy](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Third-party acknowledgements](THIRD_PARTY_NOTICES.md).

@@ -79,16 +79,12 @@ test('release metadata and documentation agree on the current version',()=>{
  const versions=JSON.parse(read('versions.json'));
  assert.equal(manifest.version,pkg.version);
  assert.equal(versions[manifest.version],manifest.minAppVersion);
- if(manifest.version.includes('-')){
-  assert.ok(read('README.md').includes('Latest stable:** [6.0.1]'));
-  assert.ok(read('README.md').includes(manifest.version));
-  assert.ok(read('docs/README.pt-BR.md').includes('Versão atual:** 6.0.1'));
-  assert.ok(read('docs/README.pt-BR.md').includes(manifest.version));
- }else{
-  assert.ok(read('README.md').includes('Latest stable:** ['+manifest.version+']'));
-  assert.ok(read('docs/README.pt-BR.md').includes('Versão atual:** '+manifest.version));
- }
- assert.match(read('README.md'),/English.*interface/i);
- assert.match(read('docs/README.pt-BR.md'),/inglês/i);
+ const english=read('README.md'),portuguese=read('docs/README.pt-BR.md');
+ assert.ok(english.includes(manifest.version),'English README must identify the current version');
+ assert.ok(portuguese.includes(manifest.version),'Portuguese README must identify the current version');
+ assert.match(english,/\[Leia em português\]\(docs\/README\.pt-BR\.md\)/);
+ assert.match(portuguese,/\[Read in English\]\(\.\.\/README\.md\)/);
+ assert.ok(english.includes('writer-tabs')&&portuguese.includes('writer-wiki'));
+
 });
 console.log(passed+' localization checks passed.');

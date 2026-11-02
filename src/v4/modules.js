@@ -10,6 +10,8 @@ const WRITER_MODULES=[
  ['tools','Ferramentas de escrita','Writing tools','Oculta a barra lateral complementar.','Hides supplementary tools pane.'],
  ['imageCaptions','Legendas de imagens','Image captions','Descrições breves em imagens Markdown.','Short descriptions below Markdown images.'],
  ['fictionalChats','Conversas fictícias','Fictional chats','Mensagens em balões com avatares opcionais.','Chat bubbles with optional avatars.'],
+ ['calendar','Calendário e eventos','Calendar and events','Agenda local de eventos em notas Markdown.','Local calendar events stored in Markdown notes.'],
+ ['study','Estudos e revisão espaçada','Study and spaced repetition','Baralhos e cartões locais com revisão programada.','Local decks and scheduled flashcards.'],
  ['writingHome','Página inicial de escrita','Writing homepage','Busca, favoritos, rascunhos e projetos.','Search, favorites, drafts and projects.'],
  ['socialBlocks','Posts e respostas','Posts and threaded replies','Posts fictícios em Markdown.','Local fictional social threads.'],
  ['mediaGallery','Galeria de mídias','Media gallery','Galeria local para imagens, vídeos, PDFs e áudio.','Local galleries for images, videos, PDFs and audio.'],

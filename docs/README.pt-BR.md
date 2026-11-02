@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 8.2.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 8.3.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md)
 
@@ -234,6 +234,49 @@ Uma foto específica na mensagem substitui a imagem padrão do personagem. Se n�
 O conteúdo é renderizado em Markdown: imagens locais, links, **negrito**, *itálico*, listas e a sintaxe estendida do Basic AI, como `++sublinhado++`, `=={blue}destaque==` e `||spoiler||`, quando os módulos estiverem ativos. O separador `|` dentro de `![[imagem.png|240]]`, links Markdown ou código inline não divide a mensagem; para escrever um pipe literal, use `\|` quando necessário. Linhas adicionais continuam na mesma mensagem até o próximo marcador lateral.
 
 **Compatibilidade:** a sintaxe anterior com `=== Maria`, `side: left`, propriedades e `---` continua funcionando nas notas existentes. Os chats são apenas representações fictícias locais, sem conexão com serviços externos.
+
+### Calendário e planejamento de eventos (inspirado no Full Calendar Remastered)
+
+Abra **Calendário: abrir agenda** na paleta de comandos ou use o atalho **Calendário** da homepage. Ao tocar em um dia no calendário pequeno da homepage, você abre essa data na agenda completa. O calendário local oferece visualização por **mês, semana ou dia**, navegação entre datas, criação e edição de eventos, exclusão com confirmação em duas etapas, horário, categoria e **repetições diária, semanal, mensal e anual**.
+
+Cada evento é uma **nota Markdown real** na pasta `Writing Calendar/`, criada apenas após salvar o evento. O frontmatter usa `writerCalendar: true`, `title`, `startDate`, `startTime`, `endTime`, `repeat` e `category`. O corpo da nota continua editável normalmente no Obsidian.
+
+~~~~markdown
+---
+writerCalendar: true
+title: "Sessão de escrita"
+startDate: "2026-11-05"
+startTime: "15:00"
+endTime: "16:00"
+repeat: "weekly"
+category: "Escrita"
+---
+
+Planejar o capítulo seis e revisar os personagens.
+~~~~
+
+Esta é uma integração **local e independente inspirada no [Full Calendar Remastered](https://github.com/obsidian-full-calendar-remastered/plugin-full-calendar)**, sem copiar a interface FullCalendar nem suas dependências GPL. Não sincroniza Google Calendar, CalDAV ou ICS remoto: para essas fontes, utilize o plugin especializado. Os eventos locais ficam dentro do cofre.
+
+### Estudos personalizados e revisão espaçada
+
+Abra **Estudos: revisar cartões** pela paleta ou o atalho **Estudos** na homepage. A área de Estudos procura notas identificadas com `#flashcards` (ou outra etiqueta definida em **Configurações → Geral → Estudos**) e organiza os cartões pela pasta de origem. Aceita `Pergunta::Resposta`, `Pergunta:::Resposta` (dois sentidos), `==lacuna==` simples em notas marcadas e `{{c1::lacuna}}`.
+
+~~~~markdown
+#flashcards
+
+Qual a capital do Brasil?::Brasília
+Vermelho:::Red
+O idioma predominante do Brasil é ==português==.
+Uma cidade histórica é {{c1::Ouro Preto}}.
+~~~~
+
+Durante a revisão, veja a pergunta, revele a resposta e escolha **De novo (10 min)**, **Difícil**, **Bom** ou **Fácil**. Um agendamento inspirado em SM-2 define a próxima revisão. Nas configurações, personalize a etiqueta, o máximo de cartões por sessão e quantos cartões novos serão apresentados.
+
+O histórico é salvo **localmente nas configurações do plugin**, sem alterar o texto original. Ele não compartilha o agendamento com o [Spaced Repetition](https://github.com/st3v3nmw/obsidian-spaced-repetition). Esta é uma implementação própria e focada, não uma cópia integral de todas as opções avançadas de cloze e revisão de notas do original.
+
+### Pesquisa fuzzy na homepage
+
+A busca do topo da homepage agora utiliza **fuzzy search**, com tolerância a acentos, prioridade para títulos e prefixos, correspondências em palavras, caminhos e títulos internos, pequenos erros de digitação e sequências aproximadas. Os resultados são ranqueados por relevância, sem envio do conteúdo do cofre pela internet. Endereços web continuam abrindo no navegador conforme as configurações da homepage.
 
 ### Homepage de escrita — relógio, calendário e pesquisa no topo
 

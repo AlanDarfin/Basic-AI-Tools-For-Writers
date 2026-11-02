@@ -76,7 +76,11 @@ function writerV8HomeRenderCalendar(view,parent){
   for(const day of writerV8HomeCalendarCells(year,month)){
    const cell=days.createSpan({cls:'writer-v8-home-calendar-day'+(day===now.getDate()&&month===now.getMonth()&&year===now.getFullYear()?' is-today':'')});
    if(day===null)cell.setAttribute('aria-hidden','true');
-   else{cell.setText(String(day));if(day===now.getDate()&&month===now.getMonth()&&year===now.getFullYear())cell.setAttribute('aria-current','date');}
+   else{
+    const button=cell.createEl('button',{text:String(day),attr:{type:'button','aria-label':String(day)}});
+    button.addEventListener('click',()=>void view.plugin.writerCalendarOpen?.(writerV83DateOf(new Date(year,month,day))));
+    if(day===now.getDate()&&month===now.getMonth()&&year===now.getFullYear())cell.setAttribute('aria-current','date');
+   }
   }
  };
  const refresh=()=>{

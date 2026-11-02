@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [7.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.2.0) · **Previous published:** [7.1.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.1.1) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Previous published:** [7.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## 8.0.0 — Performance & Polish
+
+This maintenance release focuses on compatibility with Obsidian's desktop and Android UI rather than new writing features. **LanguageTool** now masks HTML tags, attributes, embedded raw blocks and entities while preserving Markdown positions, so values like `align` or `center` do not become spelling suggestions. Tapping highlighted findings on Android opens a native, touch-sized Obsidian correction dialog. Grammar reviews display long lists 24 cards at a time while keeping all editor highlights and findings available. **Performance:** autocomplete caches recently scanned file indexes (bounded to 128 entries and invalidated by mtime) and internal-link listings (10-second refresh), reducing redundant vault scanning. **UI:** mobile review cards have more compact native-like spacing; navigation strips keep scroll positions without snapping; new navigation and review styles are maintained in source modules and bundled to one Obsidian-compatible `styles.css`. Pandoc and existing writing tools remain integrated. See [full release notes](docs/V8_0_0_RELEASE.en.md) and [Português](docs/V8_0_0_RELEASE.pt-BR.md).
 
 ## Pre-v8 maintenance — 7.2.0
 

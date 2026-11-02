@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 8.2.1 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 8.2.2 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md)
 
@@ -235,11 +235,15 @@ The message body is rendered with Obsidian's Markdown renderer, including vault 
 
 The original format with `=== Maria`, `side: left`, properties and `---` is still supported for existing notes. All messages are fictional, stored in Markdown, and no external chat request is made.
 
-### Writing homepage (inspired by Harbor Tab and Genkan)
+### Writing homepage — clock, calendar and a top search
 
-Open **Basic AI: Home — open writing dashboard** in the command palette (or **Open homepage now** in **Settings → General**). It combines instant vault search, recent notes, favorites, quick navigation to your Longform project, the story board, review tools, simple vault stats and three quick-draft slots. The cards can be reordered with their arrow controls. Use the search star to add a note to your favorites or the command **Home: toggle current note favorite**.
+Open **Home: open writing dashboard** from the command palette, or create a new empty Obsidian tab. **New empty tabs open the writing homepage by default**. Disable this behavior in **Settings → Basic AI Tool for Writers → General → Open homepage in every new empty tab** (the stored option is `homeOnNewTab`). Existing notes, restored views and side panels are never replaced. You can separately choose whether to open the homepage on application startup.
 
-Quick drafts are stored in the plugin settings, locally, and can be exported to fresh `Quick Notes/*.md` files without overwriting existing notes. They are not AI chats and never send their content to any provider. **Open writing homepage on startup is disabled by default**, so this doesn't take over Obsidian's new tabs or conflict with Harbor Tab, Genkan or other homepage plugins.
+At the top, a **personalized title and icon** appear above the action shortcuts. Choose the name and one of the built-in Lucide icons in **General**. The main vault search always stays beside the **live local clock and monthly calendar**, above all reorderable cards. The calendar supports previous/next month and a Today button; it displays your device's local date and time, without an external service.
+
+**Harbor-style web links:** type a website or a full `https://` URL into the search field and choose **Open website** (or press Enter). On **desktop**, if Obsidian's built-in **Web Viewer** core plugin is enabled, the site opens in a native Web Viewer tab. On **Android/iOS**, the URL opens through the system browser. With Web Viewer disabled on desktop, it also uses the external browser. Only HTTP(S) addresses are accepted; the homepage does not make background network requests. Avoid opening sensitive/login websites in Obsidian's Web Viewer, as Obsidian recommends a dedicated browser for those. 
+
+Other homepage cards: recent notes, favorites, Longform project shortcuts, story board, review tools, vault stats and three quick-draft slots. Reorder the cards using their arrows. Mark favorites using the search star or **Home: toggle current note favorite**. Quick drafts stay in local settings and export to fresh `Quick Notes/*.md` files without overwriting existing notes. They are not sent to AI providers.
 
 ### Other writing syntax
 

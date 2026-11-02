@@ -1,7 +1,7 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['continue','search','recent','favorites','quick','stats'];
+const WRITER_V8_HOME_SECTIONS=['continue','recent','favorites','quick','stats'];
 function writerV8HomeSearch(files,query,cache,max=12){
  const q=String(query||'').trim().toLocaleLowerCase();
  if(!q)return [];
@@ -30,10 +30,10 @@ function writerV8HomeStats(plugin){
 class WriterV8HomeView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.disposed=false;this.saveTimer=null;}
  getViewType(){return WRITER_V8_HOME_VIEW;}
- getDisplayText(){return writerUi('Início · Escrita','Home · Writing');}
- getIcon(){return 'house';}
- async onOpen(){this.disposed=false;this.render();}
- async onClose(){this.disposed=true;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
+ getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
+ getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
+ async onOpen(){this.disposed=false;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
+ async onClose(){this.disposed=true;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -49,8 +49,11 @@ class WriterV8HomeView extends ItemView{
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish;
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
-  hero.createEl('h2',{text:writerUi('Seu espaço de escrita','Your writing space')});
-  hero.createEl('p',{text:new Date().toLocaleDateString(writerUi('pt-BR','en-US'),{weekday:'long',day:'numeric',month:'long'}),cls:'writer-v8-home-date'});
+  const heading=hero.createDiv({cls:'writer-v8-home-heading'});
+  const icon=heading.createSpan({cls:'writer-v8-home-title-icon'});
+  const setIcon=require('obsidian').setIcon;
+  if(typeof setIcon==='function')setIcon(icon,writerV8HomeIconName(cfg.homeIcon));
+  heading.createEl('h2',{text:String(cfg.homeTitle||'').trim()||writerUi('Seu espaço de escrita','Your writing space')});
   const commands=hero.createDiv({cls:'writer-v8-home-quick-actions'});
   const action=(pt,en,icon,run)=>{
    const b=commands.createEl('button',{cls:'writer-v8-home-action',attr:{type:'button'}});
@@ -68,16 +71,20 @@ class WriterV8HomeView extends ItemView{
    if(v?.currentProject)v.addScene(v.currentProject);
   });
   action('Revisão','Review','spell-check',()=>this.plugin.openReview());
+  // Search stays next to the clock regardless of card ordering.
+  const top=this.contentEl.createDiv({cls:'writer-v8-home-top'});
+  this.renderSearch(top);
+  const schedule=top.createDiv({cls:'writer-v8-home-clock-card',attr:{role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
+  writerV8HomeRenderCalendar(this,schedule);
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'});
   const cards={
    continue:()=>this.renderContinue(grid),
-   search:()=>this.renderSearch(grid),
-   recent:()=>this.renderFiles(grid,'recent'),
+    recent:()=>this.renderFiles(grid,'recent'),
    favorites:()=>this.renderFiles(grid,'favorites'),
    quick:()=>this.renderQuick(grid),
    stats:()=>this.renderStats(grid)
   };
-  for(const key of cfg.homeOrder){if(WRITER_V8_HOME_SECTIONS.includes(key))cards[key]();}
+  for(const key of cfg.homeOrder){if(WRITER_V8_HOME_SECTIONS.includes(key))cards[key]?.();}
   this.contentEl.scrollTop=scroll;
  }
  card(parent,key,pt,en){
@@ -86,6 +93,7 @@ class WriterV8HomeView extends ItemView{
   top.createEl('h3',{text:writerUi(pt,en)});
   const order=this.plugin.settings.v8Finish.homeOrder,idx=order.indexOf(key);
   const controls=top.createDiv({cls:'writer-v8-home-card-order'});
+  if(key!=='search')
   for(const [direction,symbol,ptText,enText] of [[-1,'↑','Mover para cima','Move up'],[1,'↓','Mover para baixo','Move down']]){
    const btn=controls.createEl('button',{text:symbol,attr:{type:'button',title:writerUi(ptText,enText),'aria-label':writerUi(ptText,enText)}});
    btn.disabled=idx+direction<0||idx+direction>=order.length;
@@ -125,7 +133,25 @@ class WriterV8HomeView extends ItemView{
      .addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();draw();});
    }
   };
-  input.addEventListener('input',draw);
+  const web=box.createDiv({cls:'writer-v8-home-web-links'});
+  const link=web.createEl('button',{text:writerUi('Abrir endereço web','Open web address'),attr:{type:'button'}});
+  link.hidden=true;
+  const open=async()=>{
+   link.disabled=true;
+   try{await writerV8HomeOpenURL(this.plugin,input.value);}
+   catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   finally{link.disabled=false;}
+  };
+  link.addEventListener('click',()=>void open());
+  input.addEventListener('keydown',event=>{
+   if(event.key==='Enter'&&writerV8HomeValidURL(input.value)){event.preventDefault();void open();}
+  });
+  input.addEventListener('input',()=>{
+   const url=writerV8HomeValidURL(input.value);
+   link.hidden=!url;
+   if(url)link.setText(writerUi('Abrir site no navegador','Open website'));
+   draw();
+  });
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
   box.addEventListener('keydown',focus);
@@ -232,8 +258,39 @@ function writerV8RegisterHome(plugin){
   cfg.homeRecent=cfg.homeRecent.map(p=>p===old?file.path:p);
  }));
  plugin.register?.(()=>clearTimeout(timer));
+ // Reconcile only ATTACHED, empty root tabs; never touch existing notes,
+ // settings, sidebars, restored sessions or the native Web Viewer.
+ let tabTimer=null,tabBusy=false;
+ const populateEmptyTabs=()=>{
+  if(tabBusy||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
+  tabBusy=true;
+  try{
+   for(const leaf of writerV8HomeAttachedEmpty(plugin.app.workspace)){
+    // Convert exactly one empty leaf, and never open another new tab here.
+    if(leaf.__writerV8HomeConverting)continue;
+    leaf.__writerV8HomeConverting=true;
+    Promise.resolve(leaf.setViewState({type:WRITER_V8_HOME_VIEW,active:false}))
+     .catch(error=>console.warn('[Basic AI] New-tab homepage:',error))
+     .finally(()=>{leaf.__writerV8HomeConverting=false;});
+   }
+  }finally{tabBusy=false;}
+ };
+ const schedule=()=>{
+  if(!plugin.settings?.v8Finish?.homeOnNewTab)return;
+  clearTimeout(tabTimer);
+  tabTimer=setTimeout(()=>{tabTimer=null;populateEmptyTabs();},85);
+ };
+ if(typeof plugin.app.workspace.on==='function'){
+  plugin.registerEvent(plugin.app.workspace.on('layout-change',schedule));
+  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',leaf=>{
+   if(writerV8HomeIsRootEmpty(leaf))schedule();
+  }));
+ }
+ plugin.register?.(()=>clearTimeout(tabTimer));
  if(plugin.settings.v8Finish.homeAtStartup&&typeof plugin.app.workspace.onLayoutReady==='function')
   plugin.app.workspace.onLayoutReady(()=>{if(writerModuleOn(plugin,'writingHome'))void open();});
+ if(typeof plugin.app.workspace.onLayoutReady==='function')
+  plugin.app.workspace.onLayoutReady(()=>{if(plugin.settings.v8Finish.homeOnNewTab)schedule();});
 }
 function writerV8FinishSettings(plugin,panel){
  const cfg=plugin.settings.v8Finish;
@@ -247,6 +304,35 @@ function writerV8FinishSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Abrir a homepage de escrita ao iniciar','Open writing homepage on startup'))
   .setDesc(writerUi('Desativado por padrão; não altera a página inicial de outros plugins.','Off by default; does not alter other plugins’ home views.'))
   .addToggle(x=>x.setValue(cfg.homeAtStartup).onChange(async value=>{cfg.homeAtStartup=value;await plugin.saveSettings();}));
+ const refreshHome=()=>{
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
+   leaf.view?.render?.();
+   leaf.updateHeader?.();
+  }
+ };
+ new Setting(panel).setName(writerUi('Título da homepage','Homepage title'))
+  .setDesc(writerUi('Em branco para usar o título padrão.','Leave blank to use the default title.'))
+  .addText(input=>input.setPlaceholder(writerUi('Meu espaço de escrita','My writing space'))
+   .setValue(cfg.homeTitle||'').onChange(async value=>{
+    cfg.homeTitle=String(value||'').replace(/[\\r\\n]/g,' ').slice(0,80);
+    await plugin.saveSettings();refreshHome();
+   }));
+ new Setting(panel).setName(writerUi('Ícone da homepage','Homepage icon'))
+  .addDropdown(drop=>{
+   const labels={
+    'house':'Casa','book-open':'Livro aberto','feather':'Pena','pen-line':'Escrita',
+    'notebook-pen':'Caderno','library':'Biblioteca','sparkles':'Estrelas',
+    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis'
+   };
+   for(const icon of WRITER_V8_HOME_ICONS)drop.addOption(icon,labels[icon]||icon);
+   drop.setValue(writerV8HomeIconName(cfg.homeIcon));
+   drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
+  });
+ new Setting(panel).setName(writerUi('Abrir homepage em toda nova aba vazia','Open homepage in every new empty tab'))
+  .setDesc(writerUi('Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.','Enabled by default. Empty tabs only: never replaces notes or other views.'))
+  .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{
+   cfg.homeOnNewTab=value;await plugin.saveSettings();
+  }));
  new Setting(panel).setName(writerUi('Abrir homepage agora','Open homepage now'))
   .addButton(x=>x.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerV8HomeOpen?.()));
 }

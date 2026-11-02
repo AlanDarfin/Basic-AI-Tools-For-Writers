@@ -72,7 +72,7 @@ test('settings search is compact with icon, clear action and bounded results',()
  assert.match(ux,/writer-v901-settings-search-clear/);
  assert.match(ux,/matches\.slice\(0,6\)/);
  assert.match(ux,/input\.value='';update\(\);input\.focus\(\)/);
- assert.match(ux,/aria-live:'polite'/);
+ assert.match(ux,/'aria-live':'polite'/);
  assert.doesNotMatch(ux,/label=wrap\.createEl\('label',\{text:writerUi\('Buscar nas configurações'/);
  assert.match(style,/\.writer-v51-search\.writer-v901-settings-search\{/);
  assert.match(style,/border:0;border-radius:0;background:transparent/);

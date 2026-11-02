@@ -75,7 +75,7 @@ test('localized review calls the provider once and merges surviving findings int
  const file={path:'Novel.md'};
  let network=0,payload='',published=[],source=after,status='',displayed=[];
  const state={
-  writerCurrentText:async()=>source,prepareGrammarText:x=>x,
+  writerCurrentText:async()=>source,prepareGrammarText:x=>x,writerGrammarPersonalDictionaryHas:()=>false,
   writerGrammarMatchIsSafe:(text,masked,m)=>Number.isInteger(m.offset)&&text.slice(m.offset,m.offset+m.length)===masked.slice(m.offset,m.offset+m.length),
   meaningfulGrammarMatch:()=>true,
   msg:(pt)=>pt

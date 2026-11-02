@@ -52,12 +52,13 @@ test('only attached ROOT empty tabs are eligible for automatic homepage',()=>{
  assert.match(home,/workspace\.on\('active-leaf-change',leaf=>/);
  assert.match(home,/__writerV8HomeConverting/);
 });
-test('search is rendered first next to clock, regardless of card order',()=>{
+test('custom title precedes full-width search and balanced actions',()=>{
  const top=home.indexOf('this.renderSearch(top)');
  const hero=home.indexOf("const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'})");
+ const buttons=home.indexOf("const commands=this.contentEl.createDiv({cls:'writer-v8-home-quick-actions'");
  const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'})");
  const clock=home.indexOf('writerV8HomeRenderCalendar(this,schedule)');
- assert.ok(top>=0&&hero>top&&grid>hero&&clock>grid);
+ assert.ok(hero>=0&&top>hero&&buttons>top&&grid>buttons&&clock>grid);
  assert.match(home,/if\(key!=='search'\)/);
  assert.match(home,/writerV8HomeValidURL\(input\.value\)/);
  assert.match(css,/\.writer-v8-home-top\{/);

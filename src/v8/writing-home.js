@@ -334,6 +334,9 @@ function writerV8FinishSettings(plugin,panel){
   .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{
    cfg.homeOnNewTab=value;await plugin.saveSettings();
   }));
+ writerV83StudySettings(plugin,panel);
+ new Setting(panel).setName(writerUi('Abrir calendário completo','Open full calendar'))
+  .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir homepage agora','Open homepage now'))
   .addButton(x=>x.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerV8HomeOpen?.()));
 }

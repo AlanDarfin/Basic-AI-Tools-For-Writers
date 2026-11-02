@@ -4153,8 +4153,9 @@ body.is-mobile .writer-v8-card-content{padding:0 12px 12px;}
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title.writer-v7-folder-has-note .writer-v7-folder-open{
  position:absolute;
  inset-inline-end:4px;
- top:50%;
- transform:translateY(-50%);
+ top:0;
+ bottom:0;
+ margin-block:auto;
  float:none;
  margin:0;
  display:inline-flex;

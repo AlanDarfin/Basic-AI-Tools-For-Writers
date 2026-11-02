@@ -23,13 +23,20 @@ class WriterComplements extends EditorSuggest{
   if(this.building)return this.building;
   const generation=++this.generation;
   this.building=(async()=>{
-   const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f)).slice(0,Math.max(10,Math.min(6000,Number(this.options.maxFiles)||500)));
-   const next=new Map();let total=0;const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   const all=this.plugin.app.vault.getMarkdownFiles();
+   // Every eligible Markdown note receives a share of the vocabulary budget.
+   // The old implementation stopped after ~94 notes as soon as it hit 12000
+   // distinct terms, leaving the rest of a large vault unindexed.
+   const files=all.filter(f=>!this.isExcluded(f));
+   const next=new Map(),limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   const perFileQuota=Math.max(8,Math.ceil(limit/Math.max(1,files.length)));
+   let failed=0,partial=0;
    if(this.options.vault!==false){
     for(let i=0;i<files.length;i++){
      const file=files[i];if(generation!==this.generation)return;
      try{
-      if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
+      // Large manuscripts still participate: sample from both the opening
+      // and ending. This bounds tokenization work without dropping the note.
       // Reuse unchanged file indexes on successive vault scans. Bound the
       // memory footprint; never trust cache entries without an mtime.
       const stamp=file.stat?.mtime,size=file.stat?.size;
@@ -39,21 +46,25 @@ class WriterComplements extends EditorSuggest{
        terms=stored.terms;
       }else{
        const text=await this.plugin.app.vault.cachedRead(file);
-       terms=this.tokenize(writerMaskMarkdown(text));
+       const cap=Math.max(1000,Number(this.options.fileLimit)||120000);
+       const excerpt=text.length>cap?text.slice(0,Math.floor(cap/2))+'\n'+text.slice(-Math.ceil(cap/2)):text;
+       if(text.length>cap)partial++;
+       terms=this.tokenize(writerMaskMarkdown(excerpt));
        if(Number.isFinite(stamp)){
         if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
         this.fileTermCache.set(file.path,{mtime:stamp,size,terms});
        }
       }
-      const remaining=Math.max(0,limit-total);
-      const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
-      total+=subset.size;if(total>=limit)break;
-     }catch(e){console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
+      const subset=new Map([...terms].slice(0,perFileQuota));
+      next.set(file.path,subset);
+     }catch(e){failed++;console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
      if(i%20===19)await Promise.resolve();
     }
    }
    if(generation!==this.generation)return;
-   this.cache=next;this.ready=true;this.dirty=false;
+   this.cache=next;
+   this.indexStats={vaultMarkdown:all.length,eligible:files.length,indexed:next.size,failed,partial};
+   this.ready=true;this.dirty=false;
    await this.loadDictionaries();
   })().finally(()=>{this.building=null;});
   return this.building;

@@ -106,9 +106,9 @@ class ProjectsView extends ItemView{
   }));
   this.registerEvent(this.app.metadataCache.on('changed',file=>{
    const notes=this.currentProject&&this.notesRoot(this.currentProject)+'/';
-   const changedScene=this.currentProject&&['scenes','board','structure','continuity','analytics'].includes(this.activeTab)
+   const changedScene=this.currentProject&&['scenes','board','structure','analytics'].includes(this.activeTab)
     &&this.activeScenes(this.currentProject).some(scene=>this.resolveScene(this.currentProject,scene.title)?.path===file?.path);
-   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline','continuity'].includes(this.activeTab))||changedScene)this.queueRender();
+   if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline'].includes(this.activeTab))||changedScene)this.queueRender();
   }));
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
@@ -165,7 +165,7 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
-  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['continuity',lfMsg('Continuidade','Continuity')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)&&(id!=='continuity'||this.plugin.settings.v7?.continuity!==false)
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
   &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
@@ -177,7 +177,7 @@ class ProjectsView extends ItemView{
   const menuGroups=[
    {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
    {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
-   {id:'management',pt:'Projeto',en:'Project',tabs:['project','continuity','tasks','comments']}
+   {id:'management',pt:'Projeto',en:'Project',tabs:['project','tasks','comments']}
   ];
   const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
   this.tabGroup=activeGroup;
@@ -272,7 +272,6 @@ class ProjectsView extends ItemView{
   else if(id==='analytics')writerV7StudioRenderAnalytics(this,panel,project);
   else if(id==='gallery')writerV7StudioRenderGallery(this,panel,project);
   else if(id==='sessions')writerV7StudioRenderSessions(this,panel,project);
-  else if(id==='continuity')writerV7RenderContinuity(this,panel,project);
   else if(id==='tasks')this.drawTasks(panel,project);
   else if(id==='comments')this.plugin.writerV4Extras?.drawComments(panel,project,this);
  }
@@ -1166,6 +1165,19 @@ function writerGrammarSeverity(match){
  if(['STYLE','REDUNDANCY','COLLOQUIALISMS','SYNONYMS'].includes(category))return 'style';
  return 'minor';
 }
+function writerReviewWord(source,match){
+ const from=match?.offset,length=match?.length;
+ if(!Number.isInteger(from)||!Number.isInteger(length)||length<1||length>64)return '';
+ const word=String(source||'').slice(from,from+length).trim().normalize('NFC');
+ return /^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(word)?word:'';
+}
+function writerReviewIsAcceptedWord(settings,source,match){
+ const word=writerReviewWord(source,match);
+ if(!word)return false;
+ const key=word.toLocaleLowerCase();
+ return (Array.isArray(settings?.reviewCustomWords)?settings.reviewCustomWords:[])
+  .some(value=>typeof value==='string'&&value.normalize('NFC').toLocaleLowerCase()===key);
+}
 function prepareGrammarText(text){
  return writerMaskMarkdown(text);
 }
@@ -1206,7 +1218,7 @@ function withoutFrontmatter(text){
  return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
 }
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
-const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewAutoOpenNote:true,reviewPopupEnabled:true};
+const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewCustomWords:[],reviewAutoOpenNote:true,reviewPopupEnabled:true};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
 function parseDictionary(text) {
   const entries=[]; let word=null, lines=[];
@@ -1434,13 +1446,20 @@ class WriterComplements extends EditorSuggest{
   if(this.building)return this.building;
   const generation=++this.generation;
   this.building=(async()=>{
-   const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f)).slice(0,Math.max(10,Math.min(6000,Number(this.options.maxFiles)||500)));
-   const next=new Map();let total=0;const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   const all=this.plugin.app.vault.getMarkdownFiles();
+   // Every eligible Markdown note receives a share of the vocabulary budget.
+   // The old implementation stopped after ~94 notes as soon as it hit 12000
+   // distinct terms, leaving the rest of a large vault unindexed.
+   const files=all.filter(f=>!this.isExcluded(f));
+   const next=new Map(),limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   const perFileQuota=Math.max(8,Math.ceil(limit/Math.max(1,files.length)));
+   let failed=0,partial=0;
    if(this.options.vault!==false){
     for(let i=0;i<files.length;i++){
      const file=files[i];if(generation!==this.generation)return;
      try{
-      if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
+      // Large manuscripts still participate: sample from both the opening
+      // and ending. This bounds tokenization work without dropping the note.
       // Reuse unchanged file indexes on successive vault scans. Bound the
       // memory footprint; never trust cache entries without an mtime.
       const stamp=file.stat?.mtime,size=file.stat?.size;
@@ -1450,21 +1469,25 @@ class WriterComplements extends EditorSuggest{
        terms=stored.terms;
       }else{
        const text=await this.plugin.app.vault.cachedRead(file);
-       terms=this.tokenize(writerMaskMarkdown(text));
+       const cap=Math.max(1000,Number(this.options.fileLimit)||120000);
+       const excerpt=text.length>cap?text.slice(0,Math.floor(cap/2))+'\n'+text.slice(-Math.ceil(cap/2)):text;
+       if(text.length>cap)partial++;
+       terms=this.tokenize(writerMaskMarkdown(excerpt));
        if(Number.isFinite(stamp)){
         if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
         this.fileTermCache.set(file.path,{mtime:stamp,size,terms});
        }
       }
-      const remaining=Math.max(0,limit-total);
-      const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
-      total+=subset.size;if(total>=limit)break;
-     }catch(e){console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
+      const subset=new Map([...terms].slice(0,perFileQuota));
+      next.set(file.path,subset);
+     }catch(e){failed++;console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
      if(i%20===19)await Promise.resolve();
     }
    }
    if(generation!==this.generation)return;
-   this.cache=next;this.ready=true;this.dirty=false;
+   this.cache=next;
+   this.indexStats={vaultMarkdown:all.length,eligible:files.length,indexed:next.size,failed,partial};
+   this.ready=true;this.dirty=false;
    await this.loadDictionaries();
   })().finally(()=>{this.building=null;});
   return this.building;
@@ -2086,10 +2109,7 @@ class WriterToolsView extends ItemView{
   new Setting(panel).setName(writerUi("Aparecer enquanto escreve","Suggest while typing")).addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(),true);
-  this.addButton(actions,writerUi("Reindexar cofre","Reindex vault"),async()=>{this.plugin.writerComplements.reset();await this.plugin.writerComplements.rebuild();new Notice(writerUi("Índice de sugestões atualizado.","Suggestion index updated."));});
   if(writerModuleOn(this.plugin,'dictionary'))this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
-  const tracked=this.plugin.writerComplements?.cache?.size||0;
-  panel.createEl('p',{text:tracked+writerUi(' arquivo(s) no índice atual.',' file(s) in the current index.'),cls:'writer-tools-muted'});
  }
  renderVariants(panel){
   const opts=this.plugin.settings.variants||{};
@@ -2234,11 +2254,35 @@ function writerRenderV3Settings(panel,plugin,id){
   toggle('learnRanking',writerUi("Aprender sugestões escolhidas","Learn from selected suggestions"),writerUi('Ranking armazenado localmente.','Ranking stored locally.'));
   input('minChars',writerUi("Mínimo de caracteres","Minimum characters"),writerUi('Padrão: 3','Default: 3'),true);
   input('maxResults',writerUi("Número máximo de sugestões","Maximum suggestions"),writerUi('Padrão: 8','Default: 8'),true);
-  input('maxFiles',writerUi("Máximo de arquivos no índice","Maximum indexed files"),writerUi('Limita uso de memória.','Limits memory usage.'),true);
-  input('fileLimit',writerUi("Tamanho máximo por arquivo (bytes)","Maximum file size (bytes)"),writerUi('Padrão: 120000','Default: 120000'),true);
+  input('fileLimit',writerUi("Máximo de texto analisado por nota (caracteres)","Maximum sampled text per note (characters)"),writerUi('Notas grandes usam início e fim; todas as notas elegíveis são incluídas.','Large notes use beginning and end; all eligible notes are covered.'),true);
   new Setting(panel).setName(writerUi("Pastas excluídas","Excluded folders")).setDesc(writerUi("Separadas por vírgula.","Comma separated.")).addTextArea(t=>t.setValue(config.excludedFolders||'').onChange(async v=>{config.excludedFolders=v;await plugin.saveSettings();}));
   new Setting(panel).setName(writerUi("Arquivos de dicionário","Dictionary files")).setDesc(writerUi("Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.","Markdown paths separated by line. Entries may use word => insertion.")).addTextArea(t=>t.setValue(config.dictionaryPaths||'').onChange(async v=>{config.dictionaryPaths=v;await plugin.saveSettings();}));
-  new Setting(panel).setName(writerUi("Reindexar","Reindex")).addButton(b=>b.setButtonText(writerUi("Atualizar índice","Update index")).setCta().onClick(async()=>{plugin.writerComplements.reset();await plugin.writerComplements.rebuild();new Notice(writerUi("Índice atualizado.","Index updated."));}));
+  const stats=plugin.writerComplements?.indexStats;
+  const indexInfo=panel.createEl('p',{cls:'setting-item-description writer-tools-index-stats',
+   text:stats
+    ?writerUi('Arquivos Markdown elegíveis: ','Eligible Markdown notes: ')+stats.eligible+
+      writerUi(' · indexados: ',' · indexed: ')+stats.indexed+
+      writerUi(' · falhas: ',' · failures: ')+stats.failed+
+      writerUi(' · parcialmente analisados: ',' · partially sampled: ')+stats.partial
+    :writerUi('Índice ainda não criado.','Index not built yet.')});
+  new Setting(panel).setName(writerUi("Índice do cofre","Vault index"))
+   .setDesc(writerUi('Reindexe aqui; a lista de arquivos excluídos fica acima. O índice não altera notas.','Rebuild here; excluded folders are configured above. The index does not modify notes.'))
+   .addButton(b=>b.setButtonText(writerUi("Atualizar índice","Update index")).setCta().onClick(async()=>{
+    b.setDisabled(true);
+    try{
+     plugin.writerComplements.reset();
+     await plugin.writerComplements.rebuild();
+     const result=plugin.writerComplements.indexStats;
+     indexInfo.setText(result
+      ?writerUi('Arquivos elegíveis: ','Eligible notes: ')+result.eligible+
+        writerUi(' · indexados: ',' · indexed: ')+result.indexed+
+        writerUi(' · falhas: ',' · failures: ')+result.failed+
+        writerUi(' · analisados parcialmente: ',' · partially sampled: ')+result.partial
+      :writerUi('Índice indisponível.','Index unavailable.'));
+     new Notice(writerUi('Índice atualizado.','Index updated.'));
+    }catch(error){new Notice(error?.message||String(error));}
+    finally{b.setDisabled(false);}
+   }));
   new Setting(panel).setName(writerUi("Limpar aprendizado","Clear learning")).addButton(b=>b.setButtonText(writerUi("Limpar histórico","Clear history")).onClick(async()=>{config.usage={};await plugin.saveSettings();}));
  }else if(id==='variants'){
   toggle('enabled',writerUi("Ativar variantes","Enable variants"),writerUi('Usa sintaxe compatível com {{texto A|texto B}}^0.','Uses syntax compatible with {{text A|text B}}^0.'));
@@ -7065,13 +7109,13 @@ class WriterV6SmartInsert{
  */
 const WRITER_V7_DEFAULTS={
  compendium:true,timeline:true,folderNotes:true,explorerFolderNotes:true,
- narrativeMemory:false,focusMode:false,continuity:true,
+ narrativeMemory:false,focusMode:false,
  maxEntries:3000,maxContextChars:4200
 };
 function writerV7Merge(settings){
  const x=settings.v7&&typeof settings.v7==='object'&&!Array.isArray(settings.v7)?settings.v7:{};
  settings.v7={...WRITER_V7_DEFAULTS,...x};
- for(const key of ['compendium','timeline','folderNotes','explorerFolderNotes','narrativeMemory','focusMode','continuity'])
+ for(const key of ['compendium','timeline','folderNotes','explorerFolderNotes','narrativeMemory','focusMode'])
   settings.v7[key]=x[key]===undefined?WRITER_V7_DEFAULTS[key]:x[key]===true;
  settings.v7.maxEntries=Math.max(100,Math.min(10000,Number(settings.v7.maxEntries)||3000));
  settings.v7.maxContextChars=Math.max(500,Math.min(12000,Number(settings.v7.maxContextChars)||4200));
@@ -7484,7 +7528,6 @@ class WriterV7Worldbuilding{
    ['timeline','Timeline de eventos','Event timeline'],
    ['folderNotes','Reconhecer notas de pasta','Recognize folder notes'],
    ['explorerFolderNotes','Mostrar acesso às notas de pasta no explorador','Show folder-note action in file explorer'],
-   ['continuity','Verificador local de continuidade','Local continuity checker'],
    ['narrativeMemory','Enviar contexto de capítulos anteriores para revisão IA','Send previous-chapter context to AI review']
   ])new Setting(section).setName(writerUi(pt,en))
    .setDesc(key==='narrativeMemory'?writerUi('Desligado por padrão. Envia trechos anteriores ao provedor configurado, apenas durante a revisão.','Off by default. Previous chapter excerpts are sent to the configured provider only when reviewing.'):writerUi('Configurável; sem alterar automaticamente seus documentos.','Configurable; does not automatically modify your documents.'))
@@ -8970,7 +9013,7 @@ class DictionaryView extends ItemView{
       if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode.value!=='grammar')return;
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
-       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerReviewIsAcceptedWord(this.plugin.settings,source,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
@@ -9017,6 +9060,7 @@ class DictionaryView extends ItemView{
    const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
     .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
      writerGrammarMatchIsSafe(after,masked,m)&&
+     !writerReviewIsAcceptedWord(this.plugin.settings,after,m)&&
      (!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(after,m))&&
      !ignored.has(String(m.rule?.id||'').toUpperCase()));
    const all=[...preserved,...revised].sort((a,b)=>a.offset-b.offset||a.length-b.length);
@@ -9314,6 +9358,12 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(panel).setName(msg('Abrir nota selecionada no editor','Open selected note in editor')).setDesc(msg('Permite ver sublinhados do CodeMirror ao revisar um arquivo que ainda não está aberto.','Enables CodeMirror underlines when reviewing a note not already open.')).addToggle(x=>x.setValue(this.plugin.settings.reviewAutoOpenNote!==false).onChange(async v=>{this.plugin.settings.reviewAutoOpenNote=v;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Abrir sugestões ao passar o mouse ou posicionar o cursor','Open suggestions on hover or caret')).setDesc(msg('Passe o mouse sobre uma palavra destacada ou posicione o cursor de texto dentro dela. No celular, toque no erro.','Hover over a highlighted error or place the text caret inside it. On mobile, tap the error.')).addToggle(x=>x.setValue(this.plugin.settings.reviewPopupEnabled!==false).onChange(async v=>{this.plugin.settings.reviewPopupEnabled=v;await this.plugin.saveSettings();if(!v)this.plugin.closeReviewPopup();}));
       new Setting(panel).setName(msg('Ignorar avisos de espaços e formatação','Ignore whitespace and formatting warnings')).addToggle(x=>x.setValue(this.plugin.settings.reviewIgnoreWhitespace!==false).onChange(async v=>{this.plugin.settings.reviewIgnoreWhitespace=v;await this.plugin.saveSettings();}));
+      new Setting(panel).setName(msg('Dicionário pessoal do corretor','Personal spelling dictionary'))
+       .setDesc(msg('Uma palavra por linha. Nomes próprios e termos inventados não gerarão avisos de ortografia no Basic AI.','One word per line. Proper nouns and invented words will no longer produce spelling warnings in Basic AI.'))
+       .addTextArea(x=>{x.inputEl.rows=3;x.setValue((this.plugin.settings.reviewCustomWords||[]).join('\n')).onChange(async v=>{
+        this.plugin.settings.reviewCustomWords=[...new Set(v.split(/\r?\n/).map(w=>w.trim().normalize('NFC')).filter(w=>/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(w)))].slice(0,2000);
+        await this.plugin.saveSettings();
+       });});
       new Setting(panel).setName(msg('IDs de regras ignoradas','Ignored rule IDs')).setDesc(msg('IDs do LanguageTool separados por vírgula.','Comma-separated LanguageTool rule IDs.')).addTextArea(x=>{x.inputEl.rows=3;x.setValue(this.plugin.settings.reviewIgnoreRules||'').onChange(async v=>{this.plugin.settings.reviewIgnoreRules=v;await this.plugin.saveSettings();});});
       new Setting(panel).setName(msg('Endpoint do LanguageTool','LanguageTool endpoint')).setDesc(msg('Use HTTPS. O endpoint público tem limites de uso.','Use HTTPS. The public endpoint has usage limits.')).addText(x=>x.setValue(this.plugin.settings.reviewEndpoint||'https://api.languagetool.org/v2/check').onChange(async v=>{this.plugin.settings.reviewEndpoint=v.trim();await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Chave do LanguageTool (opcional)','LanguageTool key (optional)')).addText(x=>{x.inputEl.type='password';x.setValue(this.plugin.settings.reviewApiKey||'').onChange(async v=>{this.plugin.settings.reviewApiKey=v.trim();await this.plugin.saveSettings();});});
@@ -9988,6 +10038,26 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.dismissGrammarSuggestion(file,match);
     new Notice(msg('Regra ignorada. Pode reativá-la nas configurações.','Rule disabled; you can re-enable it in settings.'));
   }
+  async addGrammarWord(file,source,match){
+    const word=writerReviewWord(source,match);
+    if(!word)return new Notice(msg('Esta sugestão não é uma palavra individual.','This finding is not a single word.'));
+    const words=Array.isArray(this.settings.reviewCustomWords)?this.settings.reviewCustomWords:[];
+    if(!words.some(item=>String(item).normalize('NFC').toLocaleLowerCase()===word.toLocaleLowerCase())){
+     this.settings.reviewCustomWords=[...words,word].slice(-2000);
+     await this.saveSettings();
+    }
+    this.closeReviewPopup();
+    if(this.reviewMarkedPath===file.path&&this.reviewSource===source){
+     const remaining=this.reviewMatches.filter(m=>!writerReviewIsAcceptedWord(this.settings,source,m));
+     this.showReviewMarks(file,remaining);
+     const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
+     if(view?.reviewFilePath===file.path&&view.reviewResults){
+      view.renderGrammarResults(file,source,remaining);
+      view.reviewStatus?.setText?.(remaining.length+' '+msg('sugestões encontradas','suggestions found'));
+     }
+    }
+    new Notice(msg('Palavra adicionada ao dicionário pessoal: ','Added to personal dictionary: ')+word);
+  }
   showMobileReviewSuggestionMenu(file,source,match,key){
     // Obsidian's native Modal is reliable on Android (no hover, mouse
     // coordinates or tiny floating context-menu targets required).
@@ -10007,7 +10077,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(!replacements.length)choices.createEl('p',{text:msg('Nenhuma substituição automática','No automatic replacement'),cls:'setting-item-description'});
     for(const replacement of replacements)action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
     const extras=panel.createDiv({cls:'writer-lt-mobile-actions'});
-    action(extras,msg('Ir ao erro','Go to error'),()=>this.jumpToReviewError(file,match.offset,match.offset+match.length));
+    if(writerReviewWord(source,match))action(extras,msg('Adicionar ao dicionário','Add to dictionary'),()=>this.addGrammarWord(file,source,match));
     action(extras,msg('Explicar com IA','Explain with AI'),()=>this.explainGrammarSuggestion(file,source,match));
     action(extras,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
     if(match.rule?.id)action(extras,msg('Ignorar regra','Ignore rule'),()=>this.ignoreGrammarRule(file,match));
@@ -10048,8 +10118,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       menu.addItem(item=>item.setTitle(msg('Criar variante','Create variant')).setIcon('layers')
         .onClick(()=>this.createGrammarVariant(file,source,match,alternatives[0])));
     }
-    menu.addItem(item=>item.setTitle(msg('Ir ao erro','Go to error')).setIcon('locate-fixed')
-      .onClick(()=>this.jumpToReviewError(file,match.offset,match.offset+match.length)));
+    if(writerReviewWord(source,match))menu.addItem(item=>item.setTitle(msg('Adicionar ao dicionário','Add to dictionary')).setIcon('book-plus')
+      .onClick(()=>this.addGrammarWord(file,source,match)));
     menu.addItem(item=>item.setTitle(msg('Explicar com IA','Explain with AI')).setIcon('message-square-text')
       .onClick(()=>this.explainGrammarSuggestion(file,source,match)));
     menu.addItem(item=>item.setTitle(msg('Ignorar ocorrência','Ignore this occurrence')).setIcon('x')

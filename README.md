@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Previous published:** [7.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [8.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.1) · **Previous published:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## 8.0.1 — Personal dictionary, complete vault coverage, cleaner panels
+
+**LanguageTool:** the desktop context menu and Android correction dialog now replace *Go to error* with **Add to dictionary** for single words. Added words are stored locally in Basic AI settings and filtered out of future LanguageTool results; they can be edited or removed in the personal spelling dictionary setting. No LanguageTool account or remote dictionary API is needed. **Longform:** the nonfunctional *Continuity* tab and setting are retired; existing manuscript data is untouched. **Autocomplete:** the old global term budget could stop indexing after the first ~94 notes. The revised scan visits every eligible Markdown note and apportions terms per note rather than stopping early. Large notes get bounded opening/ending samples. Index controls and detailed coverage statistics now live **only in plugin settings**, not the writing tools sidebar. [English release notes](docs/V8_0_1_RELEASE.en.md) · [Português](docs/V8_0_1_RELEASE.pt-BR.md).
 
 ## 8.0.0 — Performance & Polish
 

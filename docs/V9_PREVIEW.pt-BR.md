@@ -36,3 +36,9 @@ Executar npm run build, npm run check e npm test. Testar seleção de texto, tec
 **Limite conhecido:** banco relacional, Spaces, fórmulas, rollups e Flow Editor do Make.md não estão presentes. Guarde backup do cofre e não remova o Make.md supondo equivalência.
 
 Última versão estável anterior: 8.3.0.
+## Calendário Studio · v9
+
+O calendário do Basic foi redesenhado com base nos fluxos do Full Calendar original e do Remastered: visões **mês, semana, 3 dias, dia e agenda de 30 dias**, células compactas, horários e painel lateral interno recolhível com mini-calendário, categorias e próximos eventos. O editor possui local, descrição, cor, intervalo de repetição, data-limite, dias da semana, exclusões e edição/exclusão de uma ocorrência ou da série. Os eventos continuam sendo arquivos Markdown; nenhuma nova barra lateral do Obsidian foi criada.
+
+**Limite:** apenas eventos Markdown locais. Não há ICS remoto, login Google Calendar ou sincronização CalDAV. As duas versões de Full Calendar foram referências de comportamento, sem cópia de código.
+

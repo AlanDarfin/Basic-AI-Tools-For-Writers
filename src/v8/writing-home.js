@@ -192,10 +192,14 @@ class WriterV8HomeView extends ItemView{
  }
  renderCalendarWidget(parent){
   const shell=parent.createDiv({cls:'writer-v903-calendar-widget',attr:{'data-section':'calendar',role:'region','aria-label':writerUi('Relógio e calendário','Clock and calendar')}});
+  const hover=shell.createDiv({cls:'writer-v903-calendar-controls'});
+  const heading=hover.createDiv({cls:'writer-v903-widget-heading'});
+  const icon=heading.createSpan({cls:'writer-v903-widget-icon'});
+  require('obsidian').setIcon?.(icon,'calendar-days');
+  heading.createEl('h3',{text:writerUi('Relógio e calendário','Clock and calendar')});
+  this.widgetControls(hover,'calendar');
   const schedule=shell.createDiv({cls:'writer-v8-home-clock-card'});
   writerV8HomeRenderCalendar(this,schedule);
-  const hover=shell.createDiv({cls:'writer-v903-calendar-controls'});
-  this.widgetControls(hover,'calendar');
  }
  renderContinue(parent){
   const box=this.card(parent,'continue','Continuar escrevendo','Continue writing');
@@ -400,7 +404,7 @@ class WriterV8HomeView extends ItemView{
   const obsidian=require('obsidian');
   for(const file of files.slice(0,3000)){
    const meta=cache?.getFileCache?.(file);
-   const tags=typeof obsidian.getAllTags==='function'?obsidian.getAllTags(meta)||[]:
+   const tags=meta&&typeof obsidian.getAllTags==='function'?obsidian.getAllTags(meta)||[]:
     (meta?.tags||[]).map(item=>item.tag).concat(meta?.frontmatter?.tags||[]);
    for(const item of new Set(tags.map(tag=>String(tag||'').trim().replace(/^#/,'').toLowerCase()).filter(Boolean))){
     counts.set(item,(counts.get(item)||0)+1);

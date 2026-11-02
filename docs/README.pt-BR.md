@@ -1,12 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.0.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.0.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
-[Read in English](../README.md) · [Notas da versão](V9_0_1_RELEASE.pt-BR.md)
+[Read in English](../README.md) · [Notas da versão](V9_0_2_RELEASE.pt-BR.md)
 
 Uma central compacta para escrever livros, organizar universos, editar Markdown, revisar textos e, opcionalmente, usar inteligência artificial. As notas continuam sendo arquivos normais do cofre do Obsidian.
 
 ## Novidades da v9
+
+**Correção 9.0.2:** o título e o ícone ficam **acima** da pesquisa em largura total. Os seis botões rápidos são distribuídos de forma uniforme: 6 em uma linha no painel largo, 3 × 2 no médio e 2 × 3 no estreito, considerando a largura real do painel. [Notas da 9.0.2](V9_0_2_RELEASE.pt-BR.md).
 
 - **Barra de formatação configurável:** 27 ações Markdown, botões ordenáveis e opcionais, ativada inicialmente no computador e **desativada por padrão no celular**. Não substitui a barra nativa do Obsidian.
 - **Explorador nativo inspirado no Make.md:** personalize ícones e cores de notas/pastas pelo menu contextual do explorador padrão, visualize pastas em listas ou cartões com busca e crie/abra índices Markdown. Nenhuma barra lateral extra.
@@ -16,7 +18,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 
 **Novidades da 9.0.1:** pesquisa da homepage em largura total acima de todos os elementos, com seleção destacada, caminhos das notas e setas/Enter; melhorias em Lucide/HEX, Escrita e Markdown reunidos, chat compacto, Spaces na barra lateral e bloqueio visual opcional por senha (**não criptografa notas**). [Leia as notas completas](V9_0_1_RELEASE.pt-BR.md).
 
-Última versão estável anterior: **9.0.0**. Versão histórica importante: **8.3.0**.
+Última versão estável anterior: **9.0.1**. Versão histórica importante: **8.3.0**.
 
 Esta é uma **integração independente**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [as notas da release v9](V9_RELEASE.pt-BR.md) e [a auditoria de compatibilidade](V9_FINAL_AUDIT.md). Faça backup do cofre antes de atualizar.
 

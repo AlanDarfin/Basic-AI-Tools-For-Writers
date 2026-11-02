@@ -7,10 +7,11 @@ const WRITER_V9_CAL_REPEAT=[['none','Não repetir','Does not repeat'],['daily','
 function writerV9CalendarMerge(settings){
  const prior=settings.v9Calendar&&typeof settings.v9Calendar==='object'&&!Array.isArray(settings.v9Calendar)?settings.v9Calendar:{};
  const cfg=settings.v9Calendar={
-  defaultView:'month',showSidebar:true,showSidebarMobile:false,compactMonth:true,
+  defaultView:'month',openLocation:'tab',showSidebar:true,showSidebarMobile:false,compactMonth:true,
   startHour:7,endHour:21,maxMonthEvents:3,...prior
  };
  cfg.defaultView=WRITER_V9_CAL_VIEWS.includes(cfg.defaultView)?cfg.defaultView:'month';
+ cfg.openLocation=['tab','left','right'].includes(cfg.openLocation)?cfg.openLocation:'tab';
  cfg.showSidebar=cfg.showSidebar!==false;cfg.showSidebarMobile=cfg.showSidebarMobile===true;
  cfg.compactMonth=cfg.compactMonth!==false;
  cfg.startHour=Math.max(0,Math.min(20,Number.isFinite(Number(cfg.startHour))?Math.floor(Number(cfg.startHour)):7));
@@ -287,7 +288,7 @@ function writerV9CalendarMonth(view,parent,range,rows){
  const cfg=view.plugin.settings.v9Calendar;
  for(let day=firstDay;day<=lastDay;day=writerV83ShiftDay(day,1)){
   const outside=day<range.start||day>range.end;
-  const box=grid.createDiv({cls:'writer-v9-calendar-month-day'+(outside?' is-outside':'')+(day===writerV83DateOf(new Date())?' is-today':'')});
+  const box=grid.createDiv({cls:'writer-v9-calendar-month-day'+(outside?' is-outside':'')+(day===writerV83DateOf(new Date())?' is-today':'')+(day===view.anchor?' is-selected':'')});
   const header=box.createDiv({cls:'writer-v9-calendar-month-dayhead'});
   writerV9CalButton(header,String(Number(day.slice(-2))),null,()=>{
    view.anchor=day;view.mode='day';view.render();
@@ -298,7 +299,12 @@ function writerV9CalendarMonth(view,parent,range,rows){
   if(events.length>visible)writerV9CalButton(box,'+'+(events.length-visible),null,()=>{
    view.anchor=day;view.mode='day';view.render();
   },writerUi('Ver todos os eventos','See all events'));
-  if(!events.length&&!outside)box.addEventListener('dblclick',()=>view.edit({date:day}));
+  // Only the empty day background starts a new event; day number opens the day view.
+  // Event chips retain their existing click-to-edit behavior.
+  if(!outside){
+   box.addEventListener('click',event=>{if(event.target===box)view.edit({date:day});});
+   box.addEventListener('dblclick',event=>{if(event.target===box)event.preventDefault();});
+  }
  }
 }
 function writerV9CalendarAgenda(view,parent,range,rows){
@@ -337,7 +343,11 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
  for(const day of days){
   const all=board.createDiv({cls:'writer-v9-calendar-time-slot is-all-day'});
   for(const event of daily.get(day).filter(e=>!e.time))writerV9CalendarEntry(view,all,event,true);
-  writerV9CalButton(all,'','plus',()=>view.edit({date:day}),writerUi('Criar evento para o dia','Create all-day event'));
+  const allDayAdd=all.createEl('button',{cls:'writer-v901-slot-hit',attr:{
+   type:'button','aria-label':writerUi('Criar evento para o dia inteiro: ','Create all-day event: ')+
+    writerV9CalendarLabel(day,{day:'numeric',month:'long'}),title:writerUi('Criar evento','Create event')
+  }});
+  allDayAdd.addEventListener('click',()=>view.edit({date:day}));
  }
  for(let hour=cfg.startHour;hour<cfg.endHour;hour++){
   board.createDiv({cls:'writer-v9-calendar-hour-label',text:String(hour).padStart(2,'0')+':00'});
@@ -345,9 +355,13 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
    const cell=board.createDiv({cls:'writer-v9-calendar-time-slot'});
    for(const event of daily.get(day).filter(e=>e.time&&Number(e.time.slice(0,2))===hour))
     writerV9CalendarEntry(view,cell,event,true);
-   const add=writerV9CalButton(cell,'','plus',()=>view.edit({date:day,time:String(hour).padStart(2,'0')+':00'}),
-    writerUi('Novo evento às ','New event at ')+String(hour).padStart(2,'0')+':00');
-   add.addClass('writer-v9-calendar-hour-add');
+   const time=String(hour).padStart(2,'0')+':00';
+   const add=cell.createEl('button',{cls:'writer-v901-slot-hit',attr:{
+    type:'button',title:writerUi('Criar evento às ','Create event at ')+time,
+    'aria-label':writerUi('Novo evento em ','New event on ')+writerV9CalendarLabel(day,{day:'numeric',month:'long'})+
+      ' '+writerUi('às ','at ')+time
+   }});
+   add.addEventListener('click',()=>view.edit({date:day,time}));
   }
  }
  const other=rows.filter(e=>e.time&&(Number(e.time.slice(0,2))<cfg.startHour||Number(e.time.slice(0,2))>=cfg.endHour));
@@ -370,6 +384,8 @@ WriterV83CalendarView.prototype.render=function(){
   this.writerV9SidebarOpen=!this.writerV9SidebarOpen;this.render();
  },writerUi('Mostrar/ocultar painel lateral','Toggle calendar sidebar'));
  writerV9CalButton(toolbar,writerUi('Hoje','Today'),null,()=>{this.anchor=writerV83DateOf(new Date());this.render();});
+ writerV9CalButton(toolbar,'','panel-right-open',()=>void this.plugin.writerCalendarOpenIn?.('right'),
+  writerUi('Abrir na barra lateral direita','Open in right sidebar')).addClass('writer-v901-sidebar-open');
  const move=delta=>{
   if(this.mode==='month'){
    const d=new Date(this.anchor+'T12:00:00');d.setDate(1);d.setMonth(d.getMonth()+delta);
@@ -409,6 +425,20 @@ function writerV9CalendarSettings(plugin,panel){
    if(leaf.view instanceof WriterV83CalendarView)leaf.view.render();
   }
  };
+ new Setting(panel).setName(writerUi('Abrir o calendário em','Open calendar in'))
+  .setDesc(writerUi('O comando principal respeita este local. O botão da barra superior abre à direita.','The main command uses this location. The toolbar shortcut opens on the right.'))
+  .addDropdown(drop=>{
+   drop.addOption('tab',writerUi('Aba normal','Main tab'));
+   drop.addOption('left',writerUi('Barra lateral esquerda','Left sidebar'));
+   drop.addOption('right',writerUi('Barra lateral direita','Right sidebar'));
+   drop.setValue(cfg.openLocation).onChange(async value=>{
+    cfg.openLocation=value;await plugin.saveSettings();
+   });
+  });
+ new Setting(panel).setName(writerUi('Abrir agora','Open now')).addButton(btn=>
+  btn.setButtonText(writerUi('Aba','Tab')).onClick(()=>void plugin.writerCalendarOpenIn?.('tab')))
+  .addButton(btn=>btn.setButtonText(writerUi('Esquerda','Left')).onClick(()=>void plugin.writerCalendarOpenIn?.('left')))
+  .addButton(btn=>btn.setButtonText(writerUi('Direita','Right')).onClick(()=>void plugin.writerCalendarOpenIn?.('right')));
  new Setting(panel).setName(writerUi('Vista inicial','Default view')).addDropdown(drop=>{
   for(const [id,pt,en] of WRITER_V9_CAL_VIEW_OPTIONS)drop.addOption(id,writerUi(pt,en));
   drop.setValue(cfg.defaultView).onChange(async value=>{cfg.defaultView=value;await plugin.saveSettings();});

@@ -59,7 +59,7 @@ test('custom title precedes full-width search and balanced actions',()=>{
  const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'})");
  const clock=home.indexOf('writerV8HomeRenderCalendar(this,schedule)');
  assert.ok(hero>=0&&top>hero&&buttons>top&&grid>buttons&&clock>grid);
- assert.match(home,/if\(key!=='search'\)/);
+ assert.match(home,/if\(key==='search'\)/);
  assert.match(home,/writerV8HomeValidURL\(input\.value\)/);
  assert.match(css,/\.writer-v8-home-top\{/);
  assert.match(css,/\.writer-v8-home-calendar-days/);

@@ -51,7 +51,9 @@ class WriterV8HomeView extends ItemView{
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
   const icon=heading.createSpan({cls:'writer-v8-home-title-icon'});
   const setIcon=require('obsidian').setIcon;
-  if(typeof setIcon==='function')setIcon(icon,writerV8HomeIconName(cfg.homeIcon));
+  const image=writerV8HomeImageURL(this.plugin,cfg.homeIconImage);
+  if(image)icon.createEl('img',{attr:{src:image,alt:'',loading:'lazy'}});
+  else if(typeof setIcon==='function')setIcon(icon,writerV8HomeIconName(cfg.homeIcon));
   heading.createEl('h2',{text:String(cfg.homeTitle||'').trim()||writerUi('Seu espaço de escrita','Your writing space')});
   const commands=hero.createDiv({cls:'writer-v8-home-quick-actions'});
   const action=(pt,en,icon,run)=>{
@@ -323,12 +325,22 @@ function writerV8FinishSettings(plugin,panel){
    const labels={
     'house':'Casa','book-open':'Livro aberto','feather':'Pena','pen-line':'Escrita',
     'notebook-pen':'Caderno','library':'Biblioteca','sparkles':'Estrelas',
-    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis'
+    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis',
+    'book':'Livro','bookmark':'Marcador','star':'Estrela','heart':'Coração','lightbulb':'Ideia',
+    'brain':'Cérebro','graduation-cap':'Estudos','file-text':'Arquivo','folder':'Pasta','archive':'Arquivo morto',
+    'palette':'Paleta','wand-sparkles':'Varinha','calendar-days':'Calendário','clock':'Relógio',
+    'globe':'Globo','leaf':'Folha','music':'Música','headphones':'Fone','flag':'Bandeira','compass':'Bússola',
+    'map':'Mapa','gem':'Gema','trophy':'Troféu','shield':'Escudo','user':'Usuário','users':'Pessoas',
+    'image':'Imagem','images':'Imagens','flame':'Chama','cloud':'Nuvem','settings':'Configurações'
    };
    for(const icon of WRITER_V8_HOME_ICONS)drop.addOption(icon,labels[icon]||icon);
    drop.setValue(writerV8HomeIconName(cfg.homeIcon));
    drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
   });
+ new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
+  .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
+  .addText(input=>input.setPlaceholder('Assets/icon.png ou https://…').setValue(cfg.homeIconImage||'')
+   .onChange(async value=>{cfg.homeIconImage=String(value||'').trim().slice(0,600);await plugin.saveSettings();refreshHome();}));
  new Setting(panel).setName(writerUi('Abrir homepage em toda nova aba vazia','Open homepage in every new empty tab'))
   .setDesc(writerUi('Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.','Enabled by default. Empty tabs only: never replaces notes or other views.'))
   .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{

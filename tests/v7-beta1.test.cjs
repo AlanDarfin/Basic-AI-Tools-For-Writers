@@ -80,7 +80,7 @@ test('module integration, bilingual UI and release metadata stay aligned',()=>{
  assert.match(main,/writerV7NarrativeContext\(this,targetFile\)/);
  assert.match(projects,/writerV7RenderCompendium\(this,panel,project\)/);
  assert.match(projects,/writerV7RenderTimeline\(this,panel,project\)/);
- assert.match(projects,/writerV7RenderContinuity\(this,panel,project\)/);
+ assert.doesNotMatch(projects,/else if\(id==='continuity'\)/);
  assert.match(css,/\.writer-v7-timeline-list/);
  assert.match(css,/\.writer-v7-folder-open/);
  for(const name of ['docs/V7_BETA1.en.md','docs/V7_BETA1.pt-BR.md','README.md','docs/README.pt-BR.md'])

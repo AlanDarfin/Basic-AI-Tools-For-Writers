@@ -1,10 +1,14 @@
 # Basic AI Tool for Writers
 
-**Latest stable:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Previous published:** [7.2.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/7.2.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
+**Latest stable:** [8.0.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.1) · **Previous published:** [8.0.0](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/8.0.0) · **Obsidian:** 1.11.4+ · **Platforms:** desktop and Android · **License:** MIT
 
 **Languages:** English and Brazilian Portuguese. [Leia em português](docs/README.pt-BR.md).
 
 A compact writing workspace with Longform-compatible book organization, world compendium, scene planning, timelines, dictionaries, translation, Markdown tools, and optional AI writing and review.
+
+## 8.0.1 — Review dictionary, vault index and Longform cleanup
+
+**LanguageTool:** the highlight popup no longer has a redundant “Go to error” action; it offers **Add to dictionary** for individual words on Android and desktop. This is a local, editable proofreader ignore-list in **Settings → Review**, separate from `Dicionario.md`; it prevents matching spelling suggestions from resurfacing. **Longform:** the discontinued Continuity tab and related setting have been removed, keeping project chapters, dependencies and other tools intact. **Autocomplete:** the index now visits *every eligible Markdown file*, assigning a bounded word budget to each rather than stopping after the first 12,000 words. Large notes contribute a bounded excerpt instead of being skipped. Reindex controls, coverage counts and indexing limits live only under **Settings → Writing → Complements**; the writing sidebar is less crowded. See [release notes](docs/V8_0_1_RELEASE.en.md) · [Português](docs/V8_0_1_RELEASE.pt-BR.md).
 
 ## 8.0.0 — Performance & Polish
 

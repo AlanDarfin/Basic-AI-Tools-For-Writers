@@ -8874,9 +8874,9 @@ class DictionaryView extends ItemView{
    if(this.plugin.autoGrammar?.pendingPath===file.path&&!this.plugin.autoGrammar.timer)this.plugin.autoGrammar.schedule(file);
   }
  }
- async recheckGrammarCorrection(file,before,after,start,oldEnd,newEnd,previousMatches){
+ async recheckGrammarCorrection(file,before,after,start,oldEnd,newEnd,previousMatches,{preferParagraph=false}={}){
   if(this.activeTab!=='review'||this.reviewMode?.value!=='grammar'||this.plugin.settings.reviewEngine==='external'||this.reviewFilePath!==file.path)return false;
-  const scopes=writerGrammarLocalScopes(before,after,start,oldEnd,newEnd);
+  const scopes=writerGrammarLocalScopes(before,after,start,oldEnd,newEnd,preferParagraph);
   const preserved=writerGrammarPreserveOutside(previousMatches,scopes.old,after.length-before.length);
   const publish=(matches,status)=>{
    if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return;

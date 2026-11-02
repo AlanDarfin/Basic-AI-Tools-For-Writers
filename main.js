@@ -12639,6 +12639,7 @@ class DictionarySettings extends PluginSettingTab{
       writerV9ToolbarSettings(this.plugin,panel);
       writerV9ExplorerSettings(this.plugin,panel);
       writerV9SpacesSettings(this.plugin,panel);
+      writerV9CalendarSettings(this.plugin,panel);
     }else if(id==='dictionary'){
       new Setting(panel).setName(t('dictionary')).addText(x=>x.setValue(this.plugin.settings.dictionaryFileName).onChange(async v=>{this.plugin.settings.dictionaryFileName=v.trim();this.plugin.invalidate();await this.plugin.saveSettings();}));
       new Setting(panel).setName(t('provider')).addDropdown(d=>{for(const [k,v] of AI_PROVIDERS)d.addOption(k,v);d.setValue(this.plugin.settings.provider).onChange(async v=>{this.plugin.settings.provider=v;await this.plugin.saveSettings();});});
@@ -12825,6 +12826,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV9ToolbarMerge(this.settings);
     writerV9ExplorerMerge(this.settings);
     writerV9SpacesMerge(this.settings);
+    writerV9CalendarMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);

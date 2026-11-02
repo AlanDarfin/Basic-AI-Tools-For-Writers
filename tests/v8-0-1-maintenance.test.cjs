@@ -29,7 +29,7 @@ test('adding a word persists it and clears all matching existing findings, but n
  const code=section('  async addReviewDictionaryWord(','  async ignoreGrammarRule(');
  let saved=0,notice='',published=null,cards=null;
  const {addReviewDictionaryWord}=vm.runInNewContext('({'+code+'})',{
-  writerGrammarMatchWord,msg:(pt)=>pt,Notice:class{constructor(value){notice=value;}}
+  writerGrammarMatchWord,writerGrammarDictionaryWord,msg:(pt)=>pt,Notice:class{constructor(value){notice=value;}}
  });
  const src='Guaiani encontrou um amigo. Guaiani chegou.';
  const word=src.indexOf('Guaiani'),last=src.lastIndexOf('Guaiani');

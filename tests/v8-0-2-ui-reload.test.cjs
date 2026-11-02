@@ -43,7 +43,7 @@ function fixture(){
  const host={manifest:{id:'basic-ai-tool-for-writers'},app:{vault:{getName:()=> 'TestVault'},workspace}};
  const context={window:{sessionStorage:{
   setItem:(k,v)=>storage.set(k,v),getItem:k=>storage.get(k)??null,removeItem:k=>storage.delete(k)
- }},VIEW:'basic',PROJECT_VIEW:'project',WRITER_TOOLS_VIEW:'tools',console,Date};
+ }},VIEW:'basic',PROJECT_VIEW:'project',WRITER_TOOLS_VIEW:'tools',WRITER_V8_HOME_VIEW:'home',WRITER_V83_CAL_VIEW:'calendar',WRITER_V83_STUDY_VIEW:'study',WRITER_V9_SPACE_VIEW:'spaces',console,Date};
  const {rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey}=
   vm.runInNewContext('(class HotReloadHarness {'+methods()+'}).prototype',context);
  Object.assign(host,{rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey});

@@ -16,7 +16,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 
 **Novidades da 9.0.1:** pesquisa da homepage em largura total acima de todos os elementos, com seleção destacada, caminhos das notas e setas/Enter; melhorias em Lucide/HEX, Escrita e Markdown reunidos, chat compacto, Spaces na barra lateral e bloqueio visual opcional por senha (**não criptografa notas**). [Leia as notas completas](V9_0_1_RELEASE.pt-BR.md).
 
-Última versão estável anterior: **9.0.0**.
+Última versão estável anterior: **9.0.0**. Versão histórica importante: **8.3.0**.
 
 Esta é uma **integração independente**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [as notas da release v9](V9_RELEASE.pt-BR.md) e [a auditoria de compatibilidade](V9_FINAL_AUDIT.md). Faça backup do cofre antes de atualizar.
 

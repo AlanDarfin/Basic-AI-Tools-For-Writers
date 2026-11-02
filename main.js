@@ -1248,7 +1248,7 @@ class MarkdownVaultPicker extends FuzzySuggestModal{
 /* Basic AI v3 editor core. Local helpers with original source offsets. */
 const WRITER_V3_DEFAULTS={
  schemaVersion:3,
- complements:{enabled:true,automatic:true,currentFile:true,vault:true,dictionaries:true,internalLinks:true,frontmatter:false,minChars:3,maxResults:8,caseSensitive:false,excludedFolders:'.obsidian,.trash,.note-snapshots,.basic-ai-history',dictionaryPaths:'',useLocalDictionary:false,indexLimit:12000,fileLimit:120000,maxFiles:3000,matchMiddle:false,learnRanking:true,usage:{}},
+ complements:{enabled:true,automatic:true,currentFile:true,vault:true,dictionaries:true,internalLinks:true,frontmatter:false,minChars:3,maxResults:8,caseSensitive:false,excludedFolders:'.obsidian,.trash,.note-snapshots,.basic-ai-history',dictionaryPaths:'',useLocalDictionary:false,indexLimit:120000,fileLimit:120000,maxFiles:3000,matchMiddle:false,learnRanking:true,usage:{}},
  variants:{enabled:true,decorate:true,offerInReview:true,snapshotBeforeCommit:true,confirmAll:true,defaultAlternatives:2,aiPrompt:'Suggest 3 stylistically distinct, natural rewrites of the passage in the original language. Preserve meaning, voice, tense and Markdown. Return only the alternatives, one per line, without numbering. Passage:'},
  snapshots:{enabled:true,store:'.basic-ai-history',automatic:false,autoDelaySeconds:300,includeAttachments:false,snapshotBeforeRewrite:true,snapshotBeforeRestore:true,maxPerNote:0,retentionDays:0,identityMap:{},showDiffContext:3}
 };
@@ -1258,6 +1258,9 @@ function writerMergeV3(settings){
   if(name==='schemaVersion')continue;
   base[name]={...values,...(base[name]&&typeof base[name]==='object'&&!Array.isArray(base[name])?base[name]:{})};
  }
+ // The old 12k global index cap missed files. Migrate the former default
+ // to a distributed 120k budget; explicit smaller nondefault limits survive.
+ if(Number(base.complements.indexLimit)===12000)base.complements.indexLimit=120000;
  base.schemaVersion=3;return base;
 }
 function writerUi(pt,en){try{return (require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}}

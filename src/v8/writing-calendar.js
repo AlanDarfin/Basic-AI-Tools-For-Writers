@@ -157,7 +157,13 @@ class WriterV83CalendarView extends ItemView{
    const file=this.app.vault.getAbstractFileByPath(old.path);
    if(!(file instanceof TFile))throw Error('Event note no longer exists.');
    await this.app.vault.process(file,text=>{
-    if(!writerV83CalParse(text,file.path))throw Error('This is not a Basic AI calendar event.');
+    const latest=writerV83CalParse(text,file.path);
+    if(!latest)throw Error('This is not a Basic AI calendar event.');
+    // Reject stale saves from another device or editor rather than silently
+    // overwriting a calendar event changed since the modal was opened.
+    for(const key of ['title','date','time','endTime','repeat','category']){
+     if(latest[key]!==old[key])throw Error(writerUi('Evento alterado em outro lugar. Reabra para editar.','Event changed elsewhere. Reopen it before editing.'));
+    }
     const body=text.replace(/^---[\s\S]*?\n---\s*/,'');
     return writerV83CalFormat(event,body);
    });

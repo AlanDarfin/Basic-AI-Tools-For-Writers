@@ -86,5 +86,6 @@ test('favorite buttons remain available and do not open notes',()=>{
  const star=f.results.children[0].children[1];
  star.emit('click');
  assert.equal(f.opened.length,0);
- assert.ok(f.card.children[1].children.length>0);
+ assert.equal(f.results.children.length,3);
+ assert.equal(f.results.children[0].children[1].attrs['aria-pressed'],'true');
 });

@@ -63,11 +63,13 @@ test('search is rendered first next to clock, regardless of card order',()=>{
  assert.match(css,/\.writer-v8-home-calendar-days/);
 });
 test('home customization and defaults survive settings migration',()=>{
- const fn=vm.runInNewContext(finish+'\n({writerV8FinishMerge})',{writerV8HomeIconName:api.writerV8HomeIconName});
+ const fn=vm.runInNewContext(finish+'\n({writerV8FinishMerge})',{writerV8HomeIconName:api.writerV8HomeIconName,writerV9SafeHex:value=>/^#[a-f0-9]{6}$/i.test(String(value))?String(value).toLowerCase():''});
  const settings={};fn.writerV8FinishMerge(settings);
  assert.equal(settings.v8Finish.homeOnNewTab,true);
  assert.equal(settings.v8Finish.homeAtStartup,false);
  assert.equal(settings.v8Finish.homeIcon,'book-open');
+ assert.equal(settings.v8Finish.homeTitleColor,'');
+ assert.equal(settings.v8Finish.homeIconColor,'');
  assert.ok(!settings.v8Finish.homeOrder.includes('search'));
  const prior={v8Finish:{homeOnNewTab:false,homeTitle:'Author workspace',homeIcon:'invalid',homeOrder:['quick','search','recent']}};
  fn.writerV8FinishMerge(prior);

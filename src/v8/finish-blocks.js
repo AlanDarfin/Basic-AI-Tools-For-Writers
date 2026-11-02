@@ -141,9 +141,10 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  const side=entry[1]==='<'?'left':'right';
  const fields=writerV8ChatSplitFields(entry[2]);
  if(fields.length<2)return null;
- let avatar='',name='',body='',time='';
+ let avatar='',name='',body='',time='',nameExplicit=false;
  if(fields.length>=4){
   [avatar,name]=fields;
+  nameExplicit=Boolean(name.trim());
   time=fields[fields.length-1];
   body=fields.slice(2,-1).join(' | ');
  }else if(fields.length===3&&fields[0]===''){
@@ -151,16 +152,18 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
   body=fields[1];time=fields[2];
  }else if(fields.length===3){
   [name,body,time]=fields;
+  nameExplicit=Boolean(name.trim());
  }else if(fields[0]===''){
   name=meta.defaults[side]||lastSpeaker[side]||'';
   body=fields[1];
  }else{
   [name,body]=fields;
+  nameExplicit=Boolean(name.trim());
  }
  name=(name||meta.defaults[side]||lastSpeaker[side]||'').slice(0,90);
  if(!body&&!avatar&&!name)return null;
  const profile=meta.profiles.get(writerV8ChatNameKey(name))||{};
- return {name,side,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
+ return {name,nameExplicit,side,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
   color:profile.color||'',body:String(body||'').slice(0,8000)};
 }
 function writerV8ChatParseLegacy(source,meta){
@@ -176,7 +179,7 @@ function writerV8ChatParseLegacy(source,meta){
   const side=fields.mine==='true'?'right':fields.side==='right'?'right':fields.side==='center'?'center':'left';
   const actualName=fields.name||name;
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
-  messages.push({name:actualName,side,time:fields.time||'',
+  messages.push({name:actualName,nameExplicit:Boolean(fields.name||name),side,time:fields.time||'',
     avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',
     body:textPart.slice(0,8000)});
  }
@@ -213,21 +216,31 @@ function writerV8ChatRender(plugin,source,element,ctx){
  if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title)root.createEl('h3',{text:data.title,cls:'writer-v8-chat-title'});
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
+ let previous=null;
  for(const msg of data.messages){
-  const row=transcript.createDiv({cls:'writer-v8-chat-row is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
-  if(msg.avatar){
+  const sameSpeaker=Boolean(previous&&previous.side===msg.side&&
+   writerV8ChatNameKey(previous.name)===writerV8ChatNameKey(msg.name));
+  const showName=Boolean(msg.nameExplicit&&!sameSpeaker&&msg.name);
+  const showTime=Boolean(msg.time);
+  const row=transcript.createDiv({cls:'writer-v8-chat-row is-'+msg.side+
+   (sameSpeaker?' is-continuation':'')+
+   (WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
+  if(msg.avatar&&!sameSpeaker){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
    if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});
   }
   const group=row.createDiv({cls:'writer-v8-chat-group'});
-  const headline=group.createDiv({cls:'writer-v8-chat-meta'});
-  headline.createEl('strong',{text:msg.name.slice(0,90)});
-  if(msg.time)headline.createEl('span',{text:msg.time});
+  if(showName||showTime){
+   const headline=group.createDiv({cls:'writer-v8-chat-meta'});
+   if(showName)headline.createEl('strong',{text:msg.name.slice(0,90)});
+   if(showTime)headline.createEl('span',{text:msg.time});
+  }
   const bubble=group.createDiv({cls:'writer-v8-chat-bubble'});
   if(msg.body)void writerV8Markdown(plugin,ctx,bubble,msg.body).catch(error=>{
    console.warn('[Basic AI] chat Markdown:',error);
    bubble.empty();bubble.setText(msg.body);
   });
+  previous=msg;
  }
 }
 function writerV8RegisterFinishBlocks(plugin){

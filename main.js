@@ -7096,13 +7096,13 @@ class WriterV6SmartInsert{
  */
 const WRITER_V7_DEFAULTS={
  compendium:true,timeline:true,folderNotes:true,explorerFolderNotes:true,
- narrativeMemory:false,focusMode:false,continuity:true,
+ narrativeMemory:false,focusMode:false,
  maxEntries:3000,maxContextChars:4200
 };
 function writerV7Merge(settings){
  const x=settings.v7&&typeof settings.v7==='object'&&!Array.isArray(settings.v7)?settings.v7:{};
  settings.v7={...WRITER_V7_DEFAULTS,...x};
- for(const key of ['compendium','timeline','folderNotes','explorerFolderNotes','narrativeMemory','focusMode','continuity'])
+ for(const key of ['compendium','timeline','folderNotes','explorerFolderNotes','narrativeMemory','focusMode'])
   settings.v7[key]=x[key]===undefined?WRITER_V7_DEFAULTS[key]:x[key]===true;
  settings.v7.maxEntries=Math.max(100,Math.min(10000,Number(settings.v7.maxEntries)||3000));
  settings.v7.maxContextChars=Math.max(500,Math.min(12000,Number(settings.v7.maxContextChars)||4200));
@@ -7515,7 +7515,6 @@ class WriterV7Worldbuilding{
    ['timeline','Timeline de eventos','Event timeline'],
    ['folderNotes','Reconhecer notas de pasta','Recognize folder notes'],
    ['explorerFolderNotes','Mostrar acesso às notas de pasta no explorador','Show folder-note action in file explorer'],
-   ['continuity','Verificador local de continuidade','Local continuity checker'],
    ['narrativeMemory','Enviar contexto de capítulos anteriores para revisão IA','Send previous-chapter context to AI review']
   ])new Setting(section).setName(writerUi(pt,en))
    .setDesc(key==='narrativeMemory'?writerUi('Desligado por padrão. Envia trechos anteriores ao provedor configurado, apenas durante a revisão.','Off by default. Previous chapter excerpts are sent to the configured provider only when reviewing.'):writerUi('Configurável; sem alterar automaticamente seus documentos.','Configurable; does not automatically modify your documents.'))

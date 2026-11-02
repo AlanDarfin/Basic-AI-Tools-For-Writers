@@ -173,6 +173,7 @@ class WriterV8HomeView extends ItemView{
    select(selected,false);
   };
   const web=box.createDiv({cls:'writer-v8-home-web-links'});
+  web.hidden=true;
   const link=web.createEl('button',{text:writerUi('Abrir endereço web','Open web address'),attr:{type:'button'}});
   link.hidden=true;
   const open=async()=>{
@@ -191,12 +192,12 @@ class WriterV8HomeView extends ItemView{
     if(matches.length){event.preventDefault();this.openFile(matches[selected]);return;}
    }
    if(event.key==='Escape'&&input.value){
-    event.preventDefault();input.value='';link.hidden=true;draw();
+    event.preventDefault();input.value='';link.hidden=true;web.hidden=true;draw();
    }
   });
   input.addEventListener('input',()=>{
    const url=writerV8HomeValidURL(input.value);
-   link.hidden=!url;
+   link.hidden=!url;web.hidden=!url;
    if(url)link.setText(writerUi('Abrir site no navegador','Open website'));
    draw();
   });

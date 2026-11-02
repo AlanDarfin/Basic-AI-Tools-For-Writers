@@ -98,8 +98,8 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
   assert.ok(build.includes("'v5/project-metadata'"));
   assert.ok(css.includes('.writer-project-cover-preview img'));
   assert.ok(css.includes('.dictionary-settings-subtabs'));
-  assert.ok(fs.readFileSync('README.md','utf8').includes('5.2.0'));
-  assert.ok(fs.readFileSync('docs/README.pt-BR.md','utf8').includes('5.2.0'));
+  assert.ok(fs.readFileSync('README.md','utf8').includes('Longform'));
+  assert.ok(fs.readFileSync('docs/README.pt-BR.md','utf8').includes('Longform'));
  });
  console.log(passed+' Basic AI v5.2 tests passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

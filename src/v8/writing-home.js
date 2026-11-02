@@ -352,6 +352,90 @@ class WriterV8HomeView extends ItemView{
    item.createEl('span',{text:writerUi(pt,en)});
   }
  }
+
+ renderActivity(parent){
+  const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
+  const files=this.app.vault.getMarkdownFiles?.()||[];
+  const now=new Date(),labels=[],counts=[];
+  for(let i=6;i>=0;i--){
+   const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+   const begin=d.getTime(),end=begin+86400000;
+   labels.push(new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'}).format(d));
+   counts.push(files.filter(f=>(f.stat?.mtime||0)>=begin&&(f.stat?.mtime||0)<end).length);
+  }
+  const high=Math.max(1,...counts),chart=box.createDiv({cls:'writer-v903-activity'});
+  for(let i=0;i<7;i++){
+   const column=chart.createDiv({cls:'writer-v903-activity-day',attr:{title:labels[i]+': '+counts[i]}});
+   const bar=column.createDiv({cls:'writer-v903-activity-track'});
+   bar.createDiv({cls:'writer-v903-activity-fill'}).style.height=(counts[i]/high*100)+'%';
+   column.createEl('strong',{text:String(counts[i])});
+   column.createSpan({text:labels[i]});
+  }
+  box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Notas modificadas a cada dia.','Notes modified each day.')});
+ }
+ renderRandom(parent){
+  const box=this.card(parent,'random','Nota surpresa','Surprise note');
+  const files=this.app.vault.getMarkdownFiles?.()||[];
+  if(!files.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No notes found.')});return;}
+  let file=files[Math.floor(Math.random()*files.length)];
+  const label=box.createDiv({cls:'writer-v903-random-note'});
+  const name=label.createEl('strong',{text:file.basename});
+  const path=label.createSpan({cls:'writer-v8-home-muted',text:file.path});
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const open=actions.createEl('button',{text:writerUi('Abrir nota','Open note')});
+  open.addEventListener('click',()=>this.openFile(file));
+  const next=actions.createEl('button',{text:writerUi('Outra nota','Another note')});
+  next.addEventListener('click',()=>{
+   if(files.length>1){
+    let chosen=file;for(let attempt=0;attempt<5&&chosen.path===file.path;attempt++)chosen=files[Math.floor(Math.random()*files.length)];
+    if(chosen.path===file.path)chosen=files[(files.indexOf(file)+1)%files.length];
+    file=chosen;
+   }
+   name.setText(file.basename);path.setText(file.path);
+  });
+ }
+ renderTags(parent){
+  const box=this.card(parent,'tags','Tags frequentes','Popular tags');
+  const cache=this.app.metadataCache,counts=new Map(),files=this.app.vault.getMarkdownFiles?.()||[];
+  const obsidian=require('obsidian');
+  for(const file of files.slice(0,3000)){
+   const meta=cache?.getFileCache?.(file);
+   const tags=typeof obsidian.getAllTags==='function'?obsidian.getAllTags(meta)||[]:
+    (meta?.tags||[]).map(item=>item.tag).concat(meta?.frontmatter?.tags||[]);
+   for(const item of new Set(tags.map(tag=>String(tag||'').trim().replace(/^#/,'').toLowerCase()).filter(Boolean))){
+    counts.set(item,(counts.get(item)||0)+1);
+   }
+  }
+  const list=[...counts].sort((a,b)=>b[1]-a[1]).slice(0,10);
+  if(!list.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Adicione tags às notas para ver as mais usadas.','Add tags to notes to see your top topics.')});return;}
+  const chips=box.createDiv({cls:'writer-v903-tags'});
+  for(const [tag,count] of list){
+   const item=chips.createDiv({cls:'writer-v903-tag'});
+   item.createSpan({text:'#'+tag});item.createEl('small',{text:String(count)});
+  }
+ }
+ renderGoal(parent){
+  const box=this.card(parent,'goal','Meta de palavras','Word target');
+  const cfg=this.plugin.settings.v8Finish;
+  const path=cfg.homeRecent?.[0];
+  const file=path?this.app.vault.getAbstractFileByPath(path):null;
+  const summary=box.createDiv({cls:'writer-v903-goal-summary'});
+  const count=summary.createEl('strong',{text:'—'});
+  const target=summary.createSpan({text:'/ '+cfg.homeWordGoal+' '+writerUi('palavras','words')});
+  const track=box.createDiv({cls:'writer-v903-goal-track',attr:{role:'progressbar','aria-label':writerUi('Progresso da meta','Target progress'),'aria-valuemin':'0','aria-valuemax':String(cfg.homeWordGoal),'aria-valuenow':'0'}});
+  const fill=track.createDiv({cls:'writer-v903-goal-fill'});
+  const foot=box.createEl('p',{cls:'writer-v8-home-muted',text:file?.path||writerUi('Abra uma nota Markdown para acompanhar.','Open a Markdown note to begin tracking.')});
+  if(!(file instanceof TFile)||file.extension!=='md')return;
+  Promise.resolve(this.app.vault.cachedRead(file)).then(content=>{
+   if(this.disposed||!box.isConnected)return;
+   const words=(String(content||'').match(/[^\s]+/g)||[]).length;
+   count.setText(String(words));target.setText('/ '+cfg.homeWordGoal+' '+writerUi('palavras','words'));
+   fill.style.width=Math.min(100,words/cfg.homeWordGoal*100)+'%';
+   track.setAttribute('aria-valuenow',String(Math.min(words,cfg.homeWordGoal)));
+   foot.setText(file.path);
+  }).catch(()=>{foot.setText(writerUi('Não foi possível ler a nota.','Could not read note.'));});
+ }
+
 }
 function cfgStar(list,path){return list.includes(path);}
 function writerV8HomeToggleFavorite(plugin,path){

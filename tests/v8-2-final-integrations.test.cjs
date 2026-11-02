@@ -43,7 +43,7 @@ test('fictional chat parses Markdown message boundaries with optional avatars',(
  assert.equal(chat.messages[1].avatar,'');
  assert.equal(chat.messages[1].side,'right');
  assert.equal(fm.writerV8ChatParse('x'.repeat(40000)),null);
- assert.match(src,/if\(msg\.avatar\)/);
+ assert.match(src,/if\(msg\.avatar&&!sameSpeaker\)/);
  assert.match(src,/writerV8ImagePath\(plugin\.app,msg\.avatar,ctx\.sourcePath\)/);
 });
 test('home dashboard search respects headings and bookmarks remain local',()=>{

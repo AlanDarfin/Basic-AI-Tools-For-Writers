@@ -4,7 +4,7 @@
 .writer-v83-cal-toolbar h2,.writer-v83-study-head h2{margin:0 auto 0 0;font-size:var(--font-ui-large);}
 .writer-v83-cal-toolbar button,.writer-v83-cal-toolbar select,
 .writer-v83-study-head button,.writer-v83-study-decks select{min-height:34px;border-radius:var(--radius-s);padding:5px 9px;}
-.writer-v83-cal-period{margin:12px 0;font-size:var(--font-ui-medium);text-transform:capitalize;}
+.writer-v83-cal-period{margin:12px 0;font-size:var(--font-ui-medium);}
 .writer-v83-cal-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;min-width:0;}
 .writer-v83-cal-weekday{padding:4px 0;color:var(--text-muted);font-size:var(--font-smaller);text-align:center;}
 .writer-v83-cal-day{min-width:0;min-height:86px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);padding:5px;background:var(--background-secondary);}

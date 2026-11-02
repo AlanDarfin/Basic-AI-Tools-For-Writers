@@ -120,7 +120,7 @@ function writerV9LockSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Caminhos protegidos','Protected paths'))
   .setDesc(writerUi('Uma pasta ou nota por linha. Use / para o cofre inteiro.','One note or folder path per line. Use / for the entire vault.'))
   .addTextArea(t=>t.setValue(cfg.paths.join('\n')).onChange(async value=>{
-   cfg.paths=[...new Set(value.split(/\r?\n/).map(x=>x.trim().replace(/^\/+|\/+$/g,'')).map(x=>x||'/'))].slice(0,12);
+   cfg.paths=[...new Set(value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(x=>x==='/'?'/':x.replace(/^\/+|\/+$/g,'')))].slice(0,12);
    await plugin.saveSettings();
   }));
  new Setting(panel).setName(writerUi('Bloquear novamente após (minutos)','Lock again after (minutes)'))

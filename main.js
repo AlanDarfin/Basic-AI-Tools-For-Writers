@@ -1434,13 +1434,18 @@ class WriterComplements extends EditorSuggest{
   if(this.building)return this.building;
   const generation=++this.generation;
   this.building=(async()=>{
-   const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f)).slice(0,Math.max(10,Math.min(6000,Number(this.options.maxFiles)||500)));
-   const next=new Map();let total=0;const limit=Math.max(1000,Number(this.options.indexLimit)||12000);
+   // Share the word budget across *every* eligible Markdown file. The
+   // previous global early break silently omitted later notes in large vaults.
+   const files=this.plugin.app.vault.getMarkdownFiles().filter(f=>!this.isExcluded(f));
+   const next=new Map();
+   const limit=Math.max(12000,Math.min(300000,Number(this.options.indexLimit)||120000));
+   const perFile=Math.max(8,Math.min(256,Math.floor(limit/Math.max(1,files.length))));
+   const charLimit=Math.max(1000,Math.min(500000,Number(this.options.fileLimit)||120000));
    if(this.options.vault!==false){
     for(let i=0;i<files.length;i++){
      const file=files[i];if(generation!==this.generation)return;
      try{
-      if(file.stat?.size>Number(this.options.fileLimit||120000))continue;
+      // Large books are indexed from a bounded excerpt, not excluded.
       // Reuse unchanged file indexes on successive vault scans. Bound the
       // memory footprint; never trust cache entries without an mtime.
       const stamp=file.stat?.mtime,size=file.stat?.size;
@@ -1450,21 +1455,22 @@ class WriterComplements extends EditorSuggest{
        terms=stored.terms;
       }else{
        const text=await this.plugin.app.vault.cachedRead(file);
-       terms=this.tokenize(writerMaskMarkdown(text));
+       terms=this.tokenize(writerMaskMarkdown(text.slice(0,charLimit)));
        if(Number.isFinite(stamp)){
         if(this.fileTermCache.size>=128)this.fileTermCache.delete(this.fileTermCache.keys().next().value);
         this.fileTermCache.set(file.path,{mtime:stamp,size,terms});
        }
       }
-      const remaining=Math.max(0,limit-total);
-      const subset=new Map([...terms].slice(0,remaining));next.set(file.path,subset);
-      total+=subset.size;if(total>=limit)break;
+      next.set(file.path,new Map([...terms].slice(0,perFile)));
      }catch(e){console.warn('[Basic AI] autocomplete index:',file.path,e.message);}
      if(i%20===19)await Promise.resolve();
     }
    }
    if(generation!==this.generation)return;
-   this.cache=next;this.ready=true;this.dirty=false;
+   this.cache=next;this.indexStats={eligible:files.length,indexed:next.size,
+    terms:[...next.values()].reduce((sum,items)=>sum+items.size,0),
+    sampledChars:charLimit};
+   this.ready=true;this.dirty=false;
    await this.loadDictionaries();
   })().finally(()=>{this.building=null;});
   return this.building;

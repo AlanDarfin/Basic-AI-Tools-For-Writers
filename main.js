@@ -9553,6 +9553,31 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     return {language:result.detected_language,confidence:result.confidence,source:'Obsidian Translate'};
   }
 
+  externalLanguageTool(){
+    // The host's plugin registry is not a stable API; keep this integration optional.
+    return this.app.plugins?.plugins?.languagetool||null;
+  }
+  runExternalLanguageToolCommand(command){
+    const ext=this.externalLanguageTool();
+    if(!ext)return new Notice(msg('Ative o plugin LanguageTool nos plugins da comunidade.','Enable LanguageTool in Community Plugins.'));
+    if(!['clear','next','toggle-auto-check'].includes(command))return;
+    if(!this.app.commands?.executeCommandById?.('languagetool:'+command))
+     new Notice(msg('Comando do plugin externo indisponível.','External plugin command unavailable.'));
+  }
+  async reviewWithExternalLanguageTool(file,view){
+    const ext=this.externalLanguageTool();
+    if(!ext||typeof ext.runDetection!=='function'){view.updateReviewEngineUI();return;}
+    const editor=writerActiveEditor(this,file),cm=editor?.cm;
+    if(!cm){view.reviewStatus.setText(msg('Abra esta nota no editor para usar o corretor externo.','Open the note in an editor to use the external checker.'));return;}
+    if(view.reviewBusy)return;
+    view.reviewBusy=true;view.reviewStatus.setText(msg('Verificando pelo LanguageTool externo…','Checking with external LanguageTool…'));
+    try{
+     const found=await ext.runDetection(cm);
+     if(this.settings.reviewEngine!=='external'||view.reviewFilePath!==file.path)return;
+     view.reviewStatus.setText(found?msg('Sugestões disponíveis no editor.','Suggestions available in the editor.'):msg('Verificação concluída. Confira os sublinhados no editor.','Check completed. See editor underlines.'));
+    }catch(error){view.reviewStatus.setText(msg('Falha do corretor externo: ','External checker error: ')+(error?.message||String(error)));}
+    finally{view.reviewBusy=false;}
+  }
   async checkGrammar(text){
     const endpoint=this.settings.reviewEndpoint?.trim()||'https://api.languagetool.org/v2/check';
     const url=new URL(endpoint);

@@ -27,6 +27,7 @@ class FakeEl{
  }
  createDiv(props={}){return this.createEl('div',props);}
  createSpan(props={}){return this.createEl('span',props);}
+ addClass(name){this.classList.add(name);return this;}
  empty(){for(const child of this.children)child.parentNode=null;this.children=[];}
  remove(){if(this.parentNode){this.parentNode.children=this.parentNode.children.filter(x=>x!==this);this.parentNode=null;}}
 }
@@ -62,14 +63,14 @@ function mock(station='lofi',{webview=true,files=[]}={}){
   async saveSettings(){}};
  const globals={console,URL,Audio:FakeAudio,document:doc,setTimeout,clearTimeout,require:()=>({setIcon:()=>{}}),
   writerUi:(_pt,en)=>en,Notice:class {},Modal:class {},Setting:class {}};
- const Player=vm.runInNewContext(source+'\nWriterV91SoundPlayer',globals);
- return {player:new Player(plugin),doc,opened,plugin,executed,messages};
+ const components=vm.runInNewContext(source+'\n({WriterV91SoundPlayer,writerV91HomeSoundscape})',globals);
+ return {player:new components.WriterV91SoundPlayer(plugin),renderWidget:components.writerV91HomeSoundscape,doc,opened,plugin,executed,messages};
 }
 test('radio opens a persistent inline Chromium mini player; no workspace tabs',async()=>{
  const {player,opened}=mock();
  await player.play();
  assert.equal(player.webOpen,true);
- assert.equal(player.miniVisible,true);
+ assert.equal(player.miniVisible,false);
  assert.equal(player.playing,false,'Webview page load is not confirmed audio playback');
  assert.equal(player.guest.tagName,'WEBVIEW');
  assert.match(player.webUrl,/^https:\/\/m\.youtube\.com\/watch\?v=jfKfPfyJRdk/);
@@ -78,8 +79,10 @@ test('radio opens a persistent inline Chromium mini player; no workspace tabs',a
  assert.equal(player.miniVisible,false);
  assert.equal(player.webOpen,true,'minimization must not detach playback guest');
  await player.play();
- assert.equal(player.miniVisible,true);
- assert.equal(player.guest,guest,'reopen without restarting radio');
+ assert.equal(player.miniVisible,false,'Play should never reveal video');
+ assert.equal(player.guest,guest,'repeated Play must not restart radio');
+ player.showMiniPlayer();assert.equal(player.miniVisible,true,'only the separate video button reveals it');
+ player.hideMiniPlayer();assert.equal(player.miniVisible,false);
  player.pause();
  assert.equal(player.webOpen,false);
  assert.equal(player.miniVisible,false);
@@ -92,7 +95,7 @@ test('when Electron webview unavailable, show visible iframe inside the same min
  assert.match(player.webUrl,/^https:\/\/www\.youtube\.com\/embed\/jfKfPfyJRdk/);
  assert.equal(player.guest.attributes.allow.includes('autoplay'),true);
  assert.equal(player.guest.attributes.referrerpolicy,'strict-origin-when-cross-origin');
- assert.equal(player.miniVisible,true);
+ assert.equal(player.miniVisible,false);
  assert.equal(opened.length,0);
  player.toggle();assert.equal(player.webOpen,false);
 });
@@ -114,7 +117,7 @@ test('playlist station next updates mini player and preserves controls',async()=
  player.next();await new Promise(resolve=>setImmediate(resolve));
  assert.equal(player.label,'Two');
  assert.match(player.webUrl,/FbxLnvWVSrk/);
- assert.equal(player.miniVisible,true);
+ assert.equal(player.miniVisible,false);
 });
 test('local files still play and pause with HTMLAudioElement without embedded web guest',async()=>{
  const file={path:'Music/track.mp3',extension:'mp3',basename:'track'};
@@ -209,4 +212,58 @@ test('volume is enabled in both status bar and homepage and has mini player slid
  assert.match(source,/writer-v91-mini-volume/);
  assert.match(source,/writerV91SoundWebVolumeScript/);
  assert.match(source,/this\.syncRadioVolume\(\)/);
+});
+
+
+test('Play, next and station change keep radio in background until Show is clicked',async()=>{
+ const {player,plugin}=mock();
+ plugin.settings.v91Sound.customPlaylists=[{id:'custom',name:'Custom',tracks:[
+  {id:'jfKfPfyJRdk',name:'One'},{id:'FbxLnvWVSrk',name:'Two'}]}];
+ plugin.settings.v91Sound.station='custom:custom';
+ await player.play();
+ assert.equal(player.webOpen,true);
+ assert.equal(player.miniVisible,false);
+ player.next();await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(player.miniVisible,false,'next track must not show popup');
+ player.showMiniPlayer();assert.equal(player.miniVisible,true);
+ player.hideMiniPlayer();assert.equal(player.miniVisible,false);
+ await player.changeStation('jazz');
+ assert.equal(player.webOpen,true);
+ assert.equal(player.miniVisible,false,'station changes must not show popup');
+ player.pause();
+ assert.equal(player.webOpen,false);
+});
+test('mobile widget retains regular dashboard card with friendly compatibility notice',()=>{
+ const {plugin,doc,renderWidget}=mock();
+ plugin.app.isMobile=true;
+ const view={plugin,card:(_parent,key)=>{const card=doc.body.createDiv();card.setAttribute('data-section',key);return card;}};
+ const card=renderWidget(view,doc.body);
+ assert.ok(card);
+ assert.equal(card.getAttribute('data-section'),'soundscape');
+ assert.ok(card.classes.has('writer-v91-sound-widget'));
+ assert.equal(card.children.length,1);
+ assert.match(card.children[0].textContent,/unavailable on mobile/i);
+});
+test('desktop widget keeps its card and controls stable across play and stop',async()=>{
+ const {player,plugin,doc,renderWidget}=mock();
+ plugin.writerV91Sound=player;
+ const view={plugin,card:(_parent,key)=>{const card=doc.body.createDiv();card.setAttribute('data-section',key);return card;}};
+ const card=renderWidget(view,doc.body);
+ const original=card.children.slice(),count=original.length;
+ assert.ok(count>=3);
+ await player.play();
+ assert.equal(player.miniVisible,false);
+ assert.equal(card.children.length,count,'do not rebuild card on Play');
+ assert.ok(original.every((child,i)=>card.children[i]===child));
+ player.pause();
+ assert.equal(card.children.length,count,'do not rebuild card on Stop');
+ await player.changeStation('my-music');
+ assert.equal(card.children.length,count,'library control must remain mounted');
+});
+test('a temporarily unavailable player still yields a stable widget',()=>{
+ const {plugin,doc,renderWidget}=mock();
+ const view={plugin,card:(_parent,key)=>{const card=doc.body.createDiv();card.setAttribute('data-section',key);return card;}};
+ const card=renderWidget(view,doc.body);
+ assert.equal(card.getAttribute('data-section'),'soundscape');
+ assert.match(card.children[0].textContent,/unavailable in this session/i);
 });

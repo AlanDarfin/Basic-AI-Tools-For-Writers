@@ -84,7 +84,7 @@ test('published bundle, source and documentation all include final writing featu
  for(const marker of ['writerV8FinishMerge','writerV8RegisterFinishBlocks','writerV8RegisterHome','writer-chat','writer-v8-caption'])assert.ok(bundle.includes(marker),marker);
  for(const path of ['README.md','docs/README.pt-BR.md']){
   const docs=read(path);
-  for(const feature of ['writer-chat','Image Captions','8.3.0','writer-post','writer-tabs','writer-media-gallery'])assert.ok(docs.includes(feature),path+': '+feature);
+  for(const feature of ['writer-chat','Image Captions','Soundscapes','writer-post','writer-tabs','writer-media-gallery'])assert.ok(docs.includes(feature),path+': '+feature);
  }
  assert.match(read('scripts/build-v3.js'),/v8\/finish-blocks/);
  assert.match(read('scripts/build-v3.js'),/v8\/writing-home/);

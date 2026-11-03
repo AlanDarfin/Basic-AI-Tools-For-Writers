@@ -13682,6 +13682,7 @@ function writerV91RegisterClick(plugin){
  if(plugin.app.isMobile)return;
  plugin.writerV91Click=new WriterV91ClickClack(plugin);plugin.writerV91Click.init();
 }
+
 // v3 module: src/v9/explorer-flex.js
 /* v9.1 Flexplorer-style organization atop the existing native explorer.
  * Own state; no private Obsidian patching, no duplicated file sidebar. */
@@ -14919,6 +14920,7 @@ function writerV92ExplorerSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Limite da descrição','Preview length')).addSlider(s=>s.setLimits(40,280,10)
   .setValue(cfg.previewMax).setDynamicTooltip().onChange(async v=>{cfg.previewMax=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
 }
+
 // v3 module: src/v9/interactive-widgets.js
 /* v9.2.0: independent writing widgets inspired by Meta Bind, Multi Column Markdown,
  * Progressbar and Obsidian Widgets. No GPL code is copied or bundled. */

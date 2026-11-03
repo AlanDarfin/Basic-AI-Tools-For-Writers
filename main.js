@@ -13688,6 +13688,7 @@ function writerV91HomeSoundscape(view,parent){
   update();
   library.style.display=player.cfg.station==='my-music'?'':'none';
  });
+ return card;
 }
 function writerV91SoundPlaylistEditor(plugin,initial,done){
  const modal=new Modal(plugin.app);

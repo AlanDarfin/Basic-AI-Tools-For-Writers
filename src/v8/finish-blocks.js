@@ -6,7 +6,7 @@ function writerV8FinishMerge(settings){
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
  cfg.captions=cfg.captions!==false;cfg.homeAtStartup=cfg.homeAtStartup===true;
  cfg.homeOnNewTab=cfg.homeOnNewTab!==false;
- cfg.homeTitle=String(cfg.homeTitle||'').replace(/[\r\n]/g,' ').slice(0,80);
+ cfg.homeTitle=writerV8HomeTitleClean(cfg.homeTitle);
  cfg.homeIconImage=String(cfg.homeIconImage||'').trim().slice(0,600);
  cfg.homeTitleColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeTitleColor||''))?String(cfg.homeTitleColor).toLowerCase():'';
  cfg.homeIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeIconColor||''))?String(cfg.homeIconColor).toLowerCase():'';

@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.1.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.1.2 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party credits](THIRD_PARTY_NOTICES.md)
 
@@ -25,6 +25,7 @@ A single, compact writing workspace for planning books, organizing a fictional w
 | **Typewriter sound effects** | Click Clack-style key sounds for the Markdown editor on desktop, with volume, keyboard sound categories and optional locally installed WAV sound schemes. |
 | **Native Flexplorer tools** | Pin/unpin, hide/reveal items, per-folder sorting, custom file order via Alt + drag, and glob-based hide patterns, in the original Explorer pane. |
 | **AI conversations** | A dialogue-style assistant with aligned message bubbles, file attachments, Markdown responses, and consistent provider, model and prompt settings. |
+| **Virtual Content & BookNav** | Display live Markdown templates in headers, footers, sections (Reading View) or a sidebar using folder, tag and property rules. Show Longform chapter navigation automatically without writing blocks into notes. |
 
 The **Writing / World / Project** navigation and independent module toggles keep narrow sidebars usable. Changes to scene and world metadata use Obsidian notes and properties rather than duplicating the story database.
 
@@ -41,6 +42,24 @@ To play your own recordings, place compatible audio files in a vault folder such
 **Click Clack (desktop):** Go to **Settings → Writing & Markdown → Typewriter sounds**, enable the sounds and adjust their volume. The built-in generated clicks work without downloading assets. If you already have compatible Click Clack WAV sound packs in the plugin's *resources* folder, rescan to make them selectable. Sounds respond to typing in the Markdown editor only, not in settings or other text fields.
 
 **Flexplorer:** Open the context menu of a folder in the native Obsidian File Explorer and select **Sort this folder** → **Custom order**. Use **Alt + drag** to rearrange its files; ordinary native drag-and-drop remains available. Context menus also offer **Pin in explorer** and **Hide in explorer**. In **Settings → Customization → File explorer**, a glob such as *Templates/*** hides matching Explorer items (never deletes the files). **Show hidden items** reveals them for editing. These enhancements coexist with the existing Basic icon, color and folder-overview controls.
+
+### Virtual Content and automatic BookNav
+
+**Automatic chapter navigation.** Open **Settings → Longform → Virtual Content** and turn on **Automatic BookNav in Longform projects**. Longform chapters and subchapters show next/previous navigation automatically in Reading View and Live Preview. BookNav follows the project's scene order, honors each project's navigation preference, and does not add any text to the Markdown file. An existing `longform-nav` block still takes priority. If you want navigation only in certain notes or in another position, turn off global automatic BookNav and create a rule with **Automatic BookNav (Longform)** as its source.
+
+**Dynamic templates.** Create a rule in the same settings area. Match notes by folder, tag or frontmatter property; combine conditions with **AND** or **OR**, include nested folders/tags, or negate a condition. Select the destination (**Header**, **Footer**, **Sidebar**, or **Section start/end**) and type Markdown or reference a template note in your vault. The section options are available in Reading View; generic headers and footers also appear in Live Preview.
+
+Example: for notes in `Characters/`, set a folder condition and use this Markdown as the rule content:
+
+```markdown
+> [!info] Character file
+> You are viewing **{{file.name}}**.
+> Folder: `{{file.folder}}`
+```
+
+Another example: set the source to **Automatic BookNav**, location to **Footer**, and folder to `My Book/Chapters` (including subfolders). The navigator will follow the Longform index when the note belongs to the project. If the project is reordered, the virtual navigation updates; manual standalone notes are still supported through the existing `longform-nav` syntax.
+
+Use the **Virtual Content: open sidebar** command for matching sidebar rules. Independent sidebar tabs can be enabled per rule. Rules can be disabled, edited, removed or reordered without modifying the matching files. Markdown from source notes may include third-party syntax; support for Dataview or Bases rendering depends on those separate plugins and the active view mode.
 
 ## Using Markdown formatting
 

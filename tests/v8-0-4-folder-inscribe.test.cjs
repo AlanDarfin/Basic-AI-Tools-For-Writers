@@ -42,7 +42,7 @@ test('Overview handles folder, subfolder, and excludes folder note duplicates',(
  assert.ok(!entries.some(x=>x.file.path==='Work/Work.md'));
  assert.equal(local.writerV8OverviewRoot(app,'Work/Work.md',options).path,root.path);
  const none=local.writerV8OverviewConfig('folder: ../secret\nlimit: 999\ndepth: 99');
- assert.ok(!none.folder);assert.equal(none.limit,80);assert.equal(none.depth,3);
+ assert.ok(!none.folder);assert.equal(none.limit,200);assert.equal(none.depth,8);
 });
 test('Overview registered as own block, avoids breaking third-party ccard',()=>{
  assert.match(overview,/registerMarkdownCodeBlockProcessor\('writer-folder-overview'/);

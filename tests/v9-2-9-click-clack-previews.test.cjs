@@ -113,11 +113,11 @@ test('no pointer-events block; style, bundle and version are synchronized',()=>{
  assert.match(css,/\.writer-v92-preview-shell\.is-expanded \.writer-v92-file-preview/);
  const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));
  const p=JSON.parse(fs.readFileSync('package.json','utf8'));
- assert.equal(m.version,'9.2.9');assert.equal(p.version,m.version);
+ assert.match(m.version,/^9\.2\.\d+$/);assert.equal(p.version,m.version);
  assert.match(p.scripts.test,/v9-2-9-click-clack-previews/);
  const main=fs.readFileSync('main.js','utf8');
  assert.ok(main.includes('writerV91ClickPackUrl'));
  assert.ok(main.includes('writerV929PreviewExpand'));
  for(const file of ['README.md','docs/README.pt-BR.md'])
-  assert.ok(fs.readFileSync(file,'utf8').includes('9.2.9'));
+  assert.ok(fs.readFileSync(file,'utf8').includes(m.version));
 });

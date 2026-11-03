@@ -4787,6 +4787,69 @@ body.is-mobile .writer-v8-home-heading{flex-direction:column;gap:5px;}
  .writer-v9-calendar-event,.writer-v9-calendar-button{transition:none;}
 }
 
+/* 9.0.4: On mobile, the day TILE is the accent, not a pill behind its date. */
+@media (max-width:680px){
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day{
+  position:relative;align-items:stretch;min-height:63px;padding:6px 5px;gap:4px;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today{
+  background:var(--interactive-accent);border-color:var(--interactive-accent);
+  color:var(--text-on-accent);
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead{
+  justify-content:flex-start;align-items:flex-start;min-height:26px;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button,
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+  display:inline-flex;align-items:flex-start;justify-content:flex-start;
+  margin:0;padding:2px 3px;min-width:0;width:auto;min-height:24px;height:auto;
+  border:0;border-radius:0;background:transparent;box-shadow:none;
+  color:inherit;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+  color:var(--text-on-accent);font-weight:700;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button:hover{
+  background:transparent;
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today>.writer-v9-calendar-button{
+  color:var(--text-on-accent);
+ }
+ .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today .writer-v9-calendar-event{
+  border:1px solid var(--text-on-accent);color:var(--text-on-accent);
+ }
+}
+/* Native Obsidian mobile may have a wide viewport on tablets. */
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day{
+ position:relative;align-items:stretch;padding:6px 5px;gap:4px;
+}
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today{
+ background:var(--interactive-accent);border-color:var(--interactive-accent);
+ color:var(--text-on-accent);
+}
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead{
+ justify-content:flex-start;align-items:flex-start;min-height:26px;
+}
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button,
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+ display:inline-flex;align-items:flex-start;justify-content:flex-start;
+ margin:0;padding:2px 3px;min-width:0;min-height:24px;width:auto;height:auto;
+ border:0;border-radius:0;background:transparent;box-shadow:none;
+ color:inherit;font-weight:500;line-height:1.2;font-variant-numeric:tabular-nums;
+}
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today .writer-v9-calendar-month-dayhead .writer-v9-calendar-button{
+ color:var(--text-on-accent);font-weight:700;
+}
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-dayhead .writer-v9-calendar-button:hover{
+ background:transparent;
+}
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today>.writer-v9-calendar-button{
+ color:var(--text-on-accent);
+}
+body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month-day.is-today .writer-v9-calendar-event{
+ border:1px solid var(--text-on-accent);color:var(--text-on-accent);
+}
+
 /* v9 Obsidian-native visual unification.
  * All selectors are scoped to Basic AI views, dialogs and plugin settings.
  * Respect active theme tokens, typography, accessible focus and compact displays. */

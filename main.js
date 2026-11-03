@@ -16646,8 +16646,24 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   async saveSettings(){await this.saveData(this.settings);}
   hotReloadStorageKey(){
-    // sessionStorage intentionally does not alter plugin settings or vault files.
+    // A short-lived, one-shot snapshot for a plugin reload, not persistent layout settings.
     return 'basic-ai:hot-reload:'+this.manifest.id+':'+this.app.vault.getName();
+  }
+  hotReloadPanePosition(leaf,side){
+    if(side!=='left'&&side!=='right')return null;
+    const workspace=this.app.workspace;
+    const dock=side==='left'?workspace.leftSplit:workspace.rightSplit;
+    const groups=Array.isArray(dock?.children)?dock.children:[];
+    const parent=leaf?.parent;
+    const tabs=Array.isArray(parent?.children)?parent.children:[];
+    const groupIndex=groups.indexOf(parent);
+    const tabIndex=tabs.indexOf(leaf);
+    if(groupIndex<0||tabIndex<0)return null; // Mobile drawers may not expose tab groups.
+    const typeOf=item=>{
+      try{return String(item?.getViewState?.()?.type||item?.view?.getViewType?.()||'');}
+      catch(_){return '';}
+    };
+    return {groupIndex,tabIndex,groupTypes:tabs.map(typeOf).filter(Boolean).slice(0,24)};
   }
   rememberHotReloadSidebars(){
     const workspace=this.app.workspace;
@@ -16658,7 +16674,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       const side=workspace.leftSplit?.containerEl?.contains?.(element)?'left':
         workspace.rightSplit?.containerEl?.contains?.(element)?'right':'tab';
       const split=side==='left'?workspace.leftSplit:side==='right'?workspace.rightSplit:null;
+      const position=this.hotReloadPanePosition(leaf,side);
       leaves.push({type,side,visible:split?.collapsed===false,active:workspace.activeLeaf===leaf,
+        ...(position||{}),
         tab:typeof leaf.view?.tab==='string'?leaf.view.tab:null,
         activeTab:typeof leaf.view?.activeTab==='string'?leaf.view.activeTab:null,
         selected:typeof leaf.view?.selected==='string'?leaf.view.selected:null,
@@ -16672,32 +16690,86 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       else window.sessionStorage.removeItem(key);
     }catch(error){console.warn('[Basic AI] Pane state could not be stored',error);}
   }
+  hotReloadCreateLeaf(entry,groupsByPosition){
+    const workspace=this.app.workspace;
+    const side=entry.side;
+    if(side==='tab')return workspace.getLeaf?.('tab')||null;
+    const dock=side==='left'?workspace.leftSplit:workspace.rightSplit;
+    const groups=Array.isArray(dock?.children)?dock.children:null;
+    const savedIndex=Number.isInteger(entry.groupIndex)&&entry.groupIndex>=0&&entry.groupIndex<50?entry.groupIndex:0;
+    const tabIndex=Number.isInteger(entry.tabIndex)&&entry.tabIndex>=0&&entry.tabIndex<50?entry.tabIndex:0;
+    const groupKey=side+':'+savedIndex;
+    if(groups&&typeof workspace.createLeafInParent==='function'){
+      let parent=groupsByPosition.get(groupKey);
+      if(!groups.includes(parent))parent=null;
+      if(!parent){
+        // Find a surviving tab from the original group (Explorer, Bookmarks, etc.).
+        // Never select an unrelated group merely because its index shifted.
+        const saved=new Set(Array.isArray(entry.groupTypes)?
+          entry.groupTypes.filter(value=>typeof value==='string'&&value.length<100).slice(0,24):[]);
+        let score=0;
+        for(let i=0;i<groups.length;i++){
+          const candidate=groups[i];
+          const overlap=(Array.isArray(candidate?.children)?candidate.children:[]).reduce((n,leaf)=>{
+            let type='';
+            try{type=leaf?.getViewState?.()?.type||leaf?.view?.getViewType?.()||'';}catch(_){}
+            return n+(saved.has(type)?1:0);
+          },0);
+          const weight=overlap*100-Math.abs(i-savedIndex);
+          if(overlap>0&&weight>score){score=weight;parent=candidate;}
+        }
+      }
+      if(parent){
+        // Insert into the ORIGINAL tab strip, without replacing its existing tabs.
+        const index=Math.min(tabIndex,Array.isArray(parent.children)?parent.children.length:0);
+        const leaf=workspace.createLeafInParent(parent,index);
+        if(leaf)return leaf;
+      }
+      // Original tab group disappeared during unload: recreate at its old vertical
+      // index instead of appending a new panel at the bottom with getLeftLeaf(true).
+      const index=Math.min(savedIndex,groups.length);
+      const leaf=workspace.createLeafInParent(dock,index);
+      if(leaf){
+        if(leaf.parent)groupsByPosition.set(groupKey,leaf.parent);
+        return leaf;
+      }
+    }
+    // Compatibility fallback for older/mobile workspaces without this public API.
+    return (side==='left'?workspace.getLeftLeaf?.(true):workspace.getRightLeaf?.(true))||null;
+  }
   async restoreHotReloadSidebars(){
     let snapshot=null;
     try{
       const key=this.hotReloadStorageKey(),raw=window.sessionStorage.getItem(key);
-      window.sessionStorage.removeItem(key); // One-shot; never resurrect closed panes on normal startup.
+      window.sessionStorage.removeItem(key); // One-shot; do not reopen manually closed panes.
       if(raw)snapshot=JSON.parse(raw);
     }catch(error){console.warn('[Basic AI] Pane state could not be restored',error);}
     if(!snapshot||!Array.isArray(snapshot.leaves)||!Number.isFinite(snapshot.timestamp)||
       Date.now()-snapshot.timestamp>120000||snapshot.timestamp>Date.now())return;
     const workspace=this.app.workspace;
     const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content','writer-session-draft']);
-    const createdCounts=new Map(),visibleBySide=new Map(),activeTabs=[];
-    for(const entry of snapshot.leaves.slice(0,30)){
-      if(!allowed.has(entry?.type))continue;
-      const expected=(createdCounts.get(entry.type)||0)+1;createdCounts.set(entry.type,expected);
-      const existing=workspace.getLeavesOfType(entry.type)||[];
-      if(existing.length>=expected){
-        if(entry.active&&entry.side==='tab')activeTabs.push(existing[expected-1]);
+    const rank=side=>side==='left'?0:side==='right'?1:2;
+    // Restore top-to-bottom groups and their tabs in their original order.
+    const entries=snapshot.leaves.slice(0,30).map((value,index)=>({...value,index}))
+      .filter(entry=>allowed.has(entry?.type))
+      .sort((a,b)=>rank(a.side)-rank(b.side)||
+        (Number.isInteger(a.groupIndex)?a.groupIndex:0)-(Number.isInteger(b.groupIndex)?b.groupIndex:0)||
+        (Number.isInteger(a.tabIndex)?a.tabIndex:0)-(Number.isInteger(b.tabIndex)?b.tabIndex:0)||a.index-b.index);
+    const claimed=new Set(),groupsByPosition=new Map(),visibleBySide=new Map(),activeTabs=[];
+    for(const entry of entries){
+      const side=entry.side==='left'?'left':entry.side==='right'?'right':'tab';
+      const existing=(workspace.getLeavesOfType(entry.type)||[]).find(leaf=>!claimed.has(leaf));
+      if(existing){
+        claimed.add(existing);
+        if(entry.active&&side==='tab')activeTabs.push(existing);
+        // A view that Obsidian already restored must NEVER be moved or duplicated.
         continue;
       }
-      const side=entry.side==='left'?'left':entry.side==='right'?'right':'tab';
+      let leaf=null;
       try{
-        // Never replace an existing Markdown editor, Explorer or Bookmarks pane.
-        const leaf=side==='left'?workspace.getLeftLeaf?.(true):
-          side==='right'?workspace.getRightLeaf?.(true):workspace.getLeaf?.('tab');
+        leaf=this.hotReloadCreateLeaf({...entry,side},groupsByPosition);
         if(!leaf)continue;
+        claimed.add(leaf);
         await leaf.setViewState({type:entry.type,active:false});
         if(entry.type===VIEW&&entry.activeTab&&typeof leaf.view?.switchTab==='function')
           leaf.view.switchTab(entry.activeTab);
@@ -16715,7 +16787,11 @@ module.exports=class AlansOfflineDictionary extends Plugin{
         if(entry.scrollTop&&leaf.view?.contentEl)leaf.view.contentEl.scrollTop=entry.scrollTop;
         if(entry.active&&side==='tab')activeTabs.push(leaf);
         if(entry.visible&&side!=='tab')visibleBySide.set(side,leaf);
-      }catch(error){console.warn('[Basic AI] Could not restore pane',entry.type,error);}
+      }catch(error){
+        console.warn('[Basic AI] Could not restore pane',entry.type,error);
+        // A failed view setup must not leave a blank split behind.
+        if(leaf)try{leaf.detach?.();}catch(_){}
+      }
     }
     for(const leaf of visibleBySide.values()){
       try{await workspace.revealLeaf?.(leaf);}

@@ -1,0 +1,148 @@
+/* 9.3.0 — aligned folder image previews, visual metadata, title icons, Flow & slash. */
+/* One preview pattern for folder notes and ordinary Markdown notes. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-file > .writer-v92-preview-shell.has-image,
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell.has-image{
+ display:flex;flex-direction:column;align-items:flex-start;gap:7px;
+ width:calc(100% - 40px);max-width:min(250px,calc(100% - 40px));
+ padding:7px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-secondary);
+ box-sizing:border-box;
+ pointer-events:auto;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file > .writer-v92-preview-shell.has-image .writer-v92-preview-image,
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell.has-image .writer-v92-preview-image{
+ order:-1;
+ display:block;
+ width:100%;height:auto;
+ min-width:0;max-width:100%;
+ max-height:150px;
+ aspect-ratio:16/9;
+ object-fit:cover;
+ object-position:center;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ box-sizing:border-box;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell.has-image .writer-v92-file-preview{
+ width:100%;max-width:100%;min-width:0;flex:1 1 auto;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file > .writer-v92-preview-shell.has-image,
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell.has-image{
+ width:calc(100% - 38px);max-width:min(240px,calc(100% - 38px));
+ padding:7px;margin-block:6px 9px;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell.has-image .writer-v92-preview-image{
+ width:100%;height:auto;max-height:142px;aspect-ratio:16/9;
+}
+/* The note's existing inline title is preserved; only a decorative icon is prepended. */
+.markdown-source-view .inline-title.writer-v93-has-title-icon,
+.markdown-preview-view .inline-title.writer-v93-has-title-icon{
+ display:flex;align-items:center;gap:.38em;min-width:0;
+}
+.writer-v93-title-icon{
+ display:inline-flex;flex:none;align-items:center;justify-content:center;
+ color:var(--interactive-accent);line-height:0;
+}
+.writer-v93-title-icon svg{width:.85em;height:.85em;stroke-width:1.75;}
+/* Note-local covers/banners: the original YAML is neither hidden nor modified. */
+.writer-v93-pretty-banner,
+.writer-v93-pretty-cover{
+ width:100%;max-width:100%;
+ overflow:hidden;
+ margin-block:7px 12px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-secondary);
+}
+.writer-v93-pretty-banner img{
+ display:block;width:100%;height:clamp(92px,18vw,180px);
+ object-fit:cover;object-position:center;
+}
+.writer-v93-pretty-cover{
+ display:flex;align-items:center;justify-content:center;
+ width:min(100%,210px);
+ padding:5px;
+}
+.writer-v93-pretty-cover img{
+ display:block;width:100%;max-height:245px;object-fit:contain;
+ border-radius:var(--radius-s);
+}
+.metadata-container .metadata-property.writer-v93-property-hidden{display:none;}
+.metadata-container .metadata-property.writer-v93-property-hidden:focus-within{display:flex;}
+.metadata-container .metadata-property.writer-v93-property-colored .multi-select-pill,
+.metadata-container .metadata-property.writer-v93-property-colored .metadata-input-longtext{
+ background:var(--writer-v93-property-bg,var(--background-secondary));
+ border-radius:var(--radius-s);
+}
+.metadata-container .metadata-property.writer-v93-property-colored .multi-select-pill{
+ color:var(--text-normal);border:1px solid var(--background-modifier-border);
+}
+.writer-v93-meta-progress{
+ display:block;flex:1 0 100%;
+ width:calc(100% - 8px);min-height:6px;height:6px;
+ margin:5px 4px 6px;
+ border:0;accent-color:var(--interactive-accent);
+}
+.writer-v93-meta-select{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:none;width:30px;min-width:30px;height:30px;
+ border:0;border-radius:var(--radius-s);
+ color:var(--text-muted);background:transparent;
+}
+.writer-v93-meta-select svg{width:16px;height:16px;}
+.writer-v93-meta-select:hover{background:var(--background-modifier-hover);}
+/* Flow: horizontal Kanban desktop, vertically stacked mobile, touch arrows. */
+.writer-v93-flow{min-width:0;max-width:100%;margin:10px 0;}
+.writer-v93-flow-heading{display:flex;align-items:baseline;gap:12px;margin-bottom:9px;flex-wrap:wrap;}
+.writer-v93-flow-heading strong{font-size:var(--font-ui-medium);}
+.writer-v93-flow-heading span{color:var(--text-muted);font-size:var(--font-ui-smaller);}
+.writer-v93-flow-columns{
+ display:grid;grid-auto-flow:column;grid-auto-columns:minmax(205px,1fr);
+ gap:10px;overflow-x:auto;overscroll-behavior-x:contain;
+ padding:4px 4px 9px;min-width:0;scrollbar-width:thin;
+}
+.writer-v93-flow-column{
+ display:flex;flex-direction:column;gap:7px;min-width:0;
+ min-height:80px;padding:8px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-secondary);
+}
+.writer-v93-flow-column-header{display:flex;justify-content:space-between;gap:8px;padding:2px 3px 6px;}
+.writer-v93-flow-column-header strong{font-size:var(--font-ui-small);}
+.writer-v93-flow-column-header span{font-size:var(--font-ui-smaller);color:var(--text-muted);}
+.writer-v93-flow-card{
+ display:flex;align-items:center;justify-content:space-between;gap:7px;
+ padding:9px 8px;min-width:0;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);background:var(--background-primary);
+ cursor:grab;
+}
+.writer-v93-flow-card-label{min-width:0;flex:1;overflow-wrap:anywhere;}
+.writer-v93-flow-card-actions{display:flex;align-items:center;flex:none;gap:2px;}
+.writer-v93-flow-card-actions button{
+ width:28px;height:28px;min-width:28px;
+ display:grid;place-items:center;padding:5px;
+ background:transparent;color:var(--text-muted);
+}
+.writer-v93-flow-card-actions button svg{width:16px;height:16px;}
+.writer-v93-flow-card-actions button:disabled{opacity:.25;}
+.writer-v93-slash-icon{display:inline-flex;vertical-align:middle;margin-inline-end:8px;}
+.writer-v93-slash-icon svg{width:17px;height:17px;}
+.writer-v93-slash-option{
+ display:flex;align-items:center;gap:8px;width:100%;text-align:start;
+ border-radius:var(--radius-s);margin:3px 0;padding:8px;
+ background:var(--background-secondary);
+}
+.writer-v93-slash-option span:first-child svg{width:18px;height:18px;}
+body.is-mobile .writer-v93-flow-columns{
+ grid-auto-flow:row;grid-auto-columns:auto;grid-template-columns:minmax(0,1fr);
+ overflow-x:visible;gap:9px;padding:0;
+}
+body.is-mobile .writer-v93-flow-card-actions button{width:40px;height:40px;min-width:40px;}
+@media(max-width:720px){
+ .writer-v93-pretty-banner img{height:120px;}
+ .writer-v93-pretty-cover{width:min(100%,175px);}
+}

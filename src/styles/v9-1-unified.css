@@ -213,14 +213,12 @@
  z-index:100;
  opacity:1;
  visibility:visible;
- transform:translateY(0);
- transition:opacity .12s ease,transform .12s ease,visibility .12s ease;
+ transition:opacity .12s ease,visibility .12s ease;
 }
 .writer-v91-mini-player.is-collapsed{
  opacity:0;
  visibility:hidden;
  pointer-events:none;
- transform:translateY(10px);
 }
 .writer-v91-mini-head{
  display:flex;

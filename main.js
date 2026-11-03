@@ -14253,7 +14253,7 @@ function writerV92ExplorerRegister(plugin){
   }
  };
  plugin.registerEvent(plugin.app.workspace.on('file-menu',menu));
- plugin.registerEvent(plugin.app.metadataCache.on('changed',file=>{
+ if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',file=>{
   if(file?.extension==='md')previewCache.delete(file.path);
   refresh();
  }));

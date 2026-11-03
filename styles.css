@@ -5657,6 +5657,7 @@ body.is-mobile .writer-v8-home .writer-v8-home-title-icon svg{width:44px;height:
  .writer-v912-sidebar{padding:8px;}
  .writer-v912-sidebar-card{padding:9px;}
 }
+
 /* 9.2.0 — Explorer favorite + preview, interactive notes, research, sessions. */
 .nav-file-title.writer-v92-is-favorite>.writer-v92-favorite{
  display:inline-flex;align-items:center;justify-content:center;

@@ -65,12 +65,12 @@ function writerV8HomeStats(plugin){
   projects:plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.length||0};
 }
 class WriterV8HomeView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.disposed=false;this.saveTimer=null;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.disposed=false;this.saveTimer=null;this.widgetResizeObserver=null;}
  getViewType(){return WRITER_V8_HOME_VIEW;}
  getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
  async onOpen(){this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
- async onClose(){this.disposed=true;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
+ async onClose(){this.disposed=true;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -84,6 +84,7 @@ class WriterV8HomeView extends ItemView{
   if(this.disposed)return;
   const scroll=this.contentEl.scrollTop||0;
   this.writerV8ClockRefresh=null;
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish;
   // Heading first, followed by a full-width search and evenly spaced actions.
@@ -125,11 +126,7 @@ class WriterV8HomeView extends ItemView{
   require('obsidian').setIcon?.(add.createSpan({cls:'writer-v903-button-icon'}),'plus');
   add.createSpan({text:writerUi('Adicionar widgets','Add widgets')});
   add.addEventListener('click',()=>this.manageWidgets());
-  const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v924-masonry'});
-  const columns=[grid.createDiv({cls:'writer-v924-column'}),grid.createDiv({cls:'writer-v924-column'})];
-  const heights=[0,0];
-  // Approximate content heights let small cards share a column beside taller ones.
-  const weights={calendar:4.6,soundscape:1.5,continue:1.4,recent:3.1,favorites:2.8,quick:3.3,stats:1.15,activity:1.8,random:1.5,tags:2.3,goal:1.4,gallery:2.5,quotes:1.5,today:1.7};
+  const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'});
   const cards={
    calendar:p=>this.renderCalendarWidget(p),
    soundscape:p=>writerV91HomeSoundscape(this,p),
@@ -148,12 +145,12 @@ class WriterV8HomeView extends ItemView{
   };
   for(const key of cfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||cfg.homeHidden.includes(key))continue;
-   const i=heights[0]<=heights[1]?0:1;
-   cards[key]?.(columns[i]);
-   heights[i]+=weights[key]||2;
+   cards[key]?.(grid);
+   const card=[...grid.children].find(el=>el.getAttribute('data-section')===key);
+   if(card)card.dataset.widgetSize=cfg.homeWidgetSizes?.[key]||'normal';
   }
+  this.installWidgetGrid(grid);
   this.installWidgetDragging(grid);
-  if(!columns[1].children.length)columns[1].remove();
   if(!grid.querySelector('[data-section]')){
    const empty=grid.createDiv({cls:'writer-v903-widgets-empty'});
    empty.createEl('p',{text:writerUi('Sua homepage está vazia. Adicione widgets para começar.','Your dashboard is empty. Add some widgets to get started.')});
@@ -161,6 +158,40 @@ class WriterV8HomeView extends ItemView{
    restore.addEventListener('click',()=>this.manageWidgets());
   }
   this.contentEl.scrollTop=scroll;
+ }
+ installWidgetGrid(grid){
+  const update=()=>{
+   if(this.disposed||!grid.isConnected)return;
+   const gap=parseFloat(getComputedStyle(grid).rowGap)||10;
+   const row=8;
+   for(const card of grid.querySelectorAll('[data-section]')){
+    const height=card.getBoundingClientRect().height;
+    if(height>0)card.style.gridRowEnd='span '+Math.max(1,Math.ceil((height+gap)/(row+gap)));
+   }
+  };
+  // Each widget uses its own measured height, so short widgets fill available space.
+  if(typeof ResizeObserver==='function'){
+   this.widgetResizeObserver=new ResizeObserver(()=>requestAnimationFrame(update));
+   for(const card of grid.querySelectorAll('[data-section]'))this.widgetResizeObserver.observe(card);
+   this.widgetResizeObserver.observe(grid);
+  }
+  requestAnimationFrame(update);
+ }
+ setWidgetSize(key,size){
+  if(!WRITER_V8_HOME_SECTIONS.includes(key)||!['compact','normal','wide'].includes(size))return;
+  const cfg=this.plugin.settings.v8Finish;
+  cfg.homeWidgetSizes=cfg.homeWidgetSizes||{};
+  cfg.homeWidgetSizes[key]=size;
+  this.saveSoon();this.render();
+ }
+ reorderWidget(source,target,after=false){
+  if(!source||!target||source===target)return;
+  const order=this.plugin.settings.v8Finish.homeOrder;
+  const old=order.indexOf(source);
+  if(old<0||!order.includes(target))return;
+  order.splice(old,1);
+  order.splice(order.indexOf(target)+(after?1:0),0,source);
+  this.saveSoon();this.render();
  }
  setWidgetVisible(key,visible){
   const cfg=this.plugin.settings.v8Finish;
@@ -190,6 +221,10 @@ class WriterV8HomeView extends ItemView{
     popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(icon).onClick(()=>this.moveWidget(key,direction)));
    }
    popup.addSeparator();
+   for(const [size,pt,en] of [['compact','Compacto','Compact'],['normal','Normal','Normal'],['wide','Largo','Wide']]){
+    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.plugin.settings.v8Finish.homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
+   }
+   popup.addSeparator();
    popup.addItem(item=>item.setTitle(writerUi('Remover widget','Remove widget')).setIcon('x').onClick(()=>this.setWidgetVisible(key,false)));
    popup.showAtMouseEvent(event);
   });
@@ -197,8 +232,8 @@ class WriterV8HomeView extends ItemView{
  }
  installWidgetDragging(grid){
   const cards=[...grid.querySelectorAll('[data-section]')];
-  let dragged=null;
-  const clear=()=>cards.forEach(card=>card.classList.remove('writer-v924-drop-before','writer-v924-drop-after','writer-v924-dragging'));
+  let dragged=null,selected=null;
+  const clear=()=>cards.forEach(card=>card.classList.remove('writer-v924-drop-before','writer-v924-drop-after','writer-v924-dragging','writer-v925-selected'));
   for(const card of cards){
    const key=card.getAttribute('data-section');
    const grip=card.querySelector('.writer-v924-drag-handle');
@@ -211,21 +246,32 @@ class WriterV8HomeView extends ItemView{
    card.addEventListener('dragover',event=>{
     if(!dragged||dragged===key)return;
     event.preventDefault();
-    const after=event.clientY>card.getBoundingClientRect().top+card.getBoundingClientRect().height/2;
+    const bounds=card.getBoundingClientRect();
+    const after=event.clientY>bounds.top+bounds.height/2;
     clear();card.classList.add(after?'writer-v924-drop-after':'writer-v924-drop-before');
     if(event.dataTransfer)event.dataTransfer.dropEffect='move';
    });
    card.addEventListener('drop',event=>{
     if(!dragged||dragged===key)return;
     event.preventDefault();
-    const after=event.clientY>card.getBoundingClientRect().top+card.getBoundingClientRect().height/2;
-    const order=this.plugin.settings.v8Finish.homeOrder;
-    const old=order.indexOf(dragged);
-    if(old<0)return;
-    order.splice(old,1);
-    const target=order.indexOf(key);
-    order.splice(target+(after?1:0),0,dragged);
-    dragged=null;clear();this.saveSoon();this.render();
+    const bounds=card.getBoundingClientRect();
+    this.reorderWidget(dragged,key,event.clientY>bounds.top+bounds.height/2);
+    dragged=null;clear();
+   });
+   // Tap a grip, then tap another widget: works on touch and keyboard.
+   grip.addEventListener('click',event=>{
+    event.preventDefault();
+    if(selected===key){selected=null;clear();return;}
+    selected=key;clear();card.classList.add('writer-v925-selected');
+   });
+   grip.addEventListener('keydown',event=>{
+    if(event.key==='Escape'){selected=null;clear();}
+   });
+   card.addEventListener('click',event=>{
+    if(!selected||selected===key||event.target.closest('.writer-v903-widget-controls'))return;
+    // Only use the heading, avoiding accidental moves while editing widget contents.
+    if(!event.target.closest('.writer-v903-widget-heading,.writer-v903-calendar-controls'))return;
+    this.reorderWidget(selected,key,false);selected=null;
    });
   }
  }

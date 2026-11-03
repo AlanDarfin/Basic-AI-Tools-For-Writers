@@ -129,7 +129,7 @@ function writerV92ExplorerRegister(plugin){
  const active=()=>writerModuleOn(plugin,'nativeExplorer')&&plugin.settings.v9Explorer?.enabled!==false;
  const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,120);};
  const requestRead=source=>{
-  if(!source||cached.has(source.path)||queued.has(source.path))return;
+  if(!source||typeof plugin.app.vault.cachedRead!=='function'||cached.has(source.path)||queued.has(source.path))return;
   queued.add(source.path);queue.push(source);pump();
  };
  const pump=()=>{
@@ -143,7 +143,7 @@ function writerV92ExplorerRegister(plugin){
       content:text.slice(0,30000)});
      if(cached.size>1200)cached.delete(cached.keys().next().value);
     }
-   }).catch(error=>console.warn('[Basic AI] File preview:',source.path,error))
+   }).catch(error=>{cached.set(source.path,{mtime:source.stat?.mtime||0,content:''});console.warn('[Basic AI] File preview:',source.path,error);})
     .finally(()=>{queued.delete(source.path);--reading;schedule();pump();});
   }
  };

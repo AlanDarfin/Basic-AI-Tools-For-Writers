@@ -4,7 +4,7 @@
 
 **Version:** 9.2.6 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
-[Português (Brasil)](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
+[Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
@@ -83,7 +83,7 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 
 ## Markdown renderers
 
-The plugin also recognizes independent Markdown code blocks. The preferred short names are shown below; several older `writer-` names remain accepted for compatibility.
+The plugin also recognizes independent Markdown code blocks. The preferred short names are shown below; legacy aliases such as `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat` and `writer-media-gallery` remain accepted for compatibility.
 
 | Code block | Purpose |
 | --- | --- |

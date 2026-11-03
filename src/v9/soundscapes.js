@@ -31,6 +31,26 @@ function writerV91VideoId(input){
  }catch(_){}
  return '';
 }
+function writerV91SoundVolume(value){
+ const number=Number(value);
+ return Number.isFinite(number)?Math.round(Math.max(0,Math.min(100,number))):25;
+}
+// The Webview executes this fixed, narrowly scoped code only on our YouTube guest.
+// The numeric volume is sanitized before being embedded in the script.
+function writerV91SoundWebVolumeScript(level){
+ const volume=writerV91SoundVolume(level)/100;
+ return '(()=>{'+
+  'const volume='+JSON.stringify(volume)+';'+
+  'const apply=()=>{const video=document.querySelector("video");'+
+  'if(!video)return false;video.volume=volume;video.muted=volume===0;return true;};'+
+  'const key="__basicWriterSoundVolume";'+
+  'try{window[key]?.disconnect?.();}catch(_){}'+
+  'if(apply())return true;'+
+  'const observer=new MutationObserver(()=>{if(apply())observer.disconnect();});'+
+  'observer.observe(document.documentElement||document,{subtree:true,childList:true});'+
+  'window[key]=observer;return false;'+
+ '})()';
+}
 function writerV91SoundMerge(settings){
  const raw=settings.v91Sound&&typeof settings.v91Sound==='object'?settings.v91Sound:{};
  const cfg=settings.v91Sound={
@@ -122,6 +142,13 @@ class WriterV91SoundPlayer{
   hide.addEventListener('click',()=>this.hideMiniPlayer());
   stop.addEventListener('click',()=>this.pause());
   const body=panel.createDiv({cls:'writer-v91-mini-video'});
+  const miniVolume=panel.createDiv({cls:'writer-v91-mini-volume'});
+  miniVolume.createSpan({text:writerUi('Volume','Volume')});
+  const slider=miniVolume.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'1',
+   'aria-label':writerUi('Volume do mini player','Mini player volume')}});
+  slider.value=String(this.cfg.volume);
+  slider.addEventListener('input',()=>void this.setVolume(slider.value));
+  this.miniVolume=slider;
   const helper=panel.createDiv({cls:'writer-v91-mini-help'});
   const switchMode=panel.createEl('button',{cls:'writer-v91-mini-switch',text:writerUi('Alternar player','Switch player'),attr:{type:'button'}});
   switchMode.addEventListener('click',()=>{
@@ -139,6 +166,7 @@ class WriterV91SoundPlayer{
    this.ensureDock();this.dockOpen=true;
    this.dock.classList.remove('is-collapsed');
    this.dockTitle.setText(this.label);
+   if(this.miniVolume)this.miniVolume.value=String(this.cfg.volume);
    this.emit();
   }catch(error){
    console.warn('[Basic AI] Soundscapes mini player:',error);
@@ -164,12 +192,16 @@ class WriterV91SoundPlayer{
    if(this.webTimer){clearTimeout(this.webTimer);this.webTimer=null;}
    this.frameHost.empty();
    const frame=this.frameHost.createEl('iframe',{cls:'writer-v91-mini-iframe',attr:{
-    src:'https://www.youtube.com/embed/'+id+'?autoplay=1&controls=1&playsinline=1&rel=0',
+    src:'https://www.youtube.com/embed/'+id+'?autoplay=1&controls=1&playsinline=1&rel=0&enablejsapi=1',
     title:this.label,referrerpolicy:'strict-origin-when-cross-origin',
     allow:'autoplay; encrypted-media; picture-in-picture; fullscreen',
     allowfullscreen:'',loading:'eager'
    }});
    this.guest=frame;this.webUrl=frame.getAttribute('src');
+   frame.addEventListener('load',()=>{
+    if(seq===this.radioGeneration&&this.guest===frame)this.syncRadioVolume();
+   });
+   this.syncRadioVolume();
    this.dockHelp.setText(writerUi(
     'Player incorporado. Se o YouTube bloquear este vídeo (erro 153), alterne o player ou escolha outra estação.',
     'Embedded player. If YouTube blocks the video (error 153), switch player or choose another station.'
@@ -199,8 +231,15 @@ class WriterV91SoundPlayer{
   });
   web.addEventListener('render-process-gone',fallback);
   web.addEventListener('dom-ready',()=>{
-   if(seq!==this.radioGeneration)return;
+   if(seq!==this.radioGeneration||this.guest!==web)return;
    if(this.webTimer){clearTimeout(this.webTimer);this.webTimer=null;}
+   this.syncRadioVolume();
+  });
+  web.addEventListener('did-finish-load',()=>{
+   if(seq===this.radioGeneration&&this.guest===web)this.syncRadioVolume();
+  });
+  web.addEventListener('did-navigate-in-page',()=>{
+   if(seq===this.radioGeneration&&this.guest===web)this.syncRadioVolume();
   });
   // On some Electron builds the tag exists but never initializes.
   this.webTimer=setTimeout(()=>{
@@ -296,9 +335,41 @@ class WriterV91SoundPlayer{
   if(this.playing||this.webOpen)void this.loadCurrent();else{this.releaseMedia();this.emit();}
  }
  prev(){this.next(-1);}
+ // The radio is remote media: updating the local Audio element alone cannot change it.
+ // Use Electron's guest JavaScript for Webview and YouTube's iframe commands otherwise.
+ syncRadioVolume(){
+  const guest=this.guest,level=writerV91SoundVolume(this.cfg.volume);
+  if(!guest?.isConnected||!this.webUrl)return;
+  if(guest.tagName?.toLowerCase()==='webview'){
+   if(typeof guest.executeJavaScript!=='function')return;
+   // Restrict interaction to the station's original YouTube guest.
+   if(typeof guest.getURL==='function'){
+    try{
+     const host=new URL(guest.getURL()).hostname.toLowerCase();
+     if(!['m.youtube.com','www.youtube.com','youtube.com','music.youtube.com'].includes(host))return;
+    }catch(_){return;}
+   }
+   try{
+    const task=guest.executeJavaScript(writerV91SoundWebVolumeScript(level));
+    Promise.resolve(task).catch(error=>{
+     if(this.guest===guest)console.warn('[Basic AI] Soundscapes Webview volume:',error);
+    });
+   }catch(error){console.warn('[Basic AI] Soundscapes Webview volume:',error);}
+  }else if(guest.tagName?.toLowerCase()==='iframe'){
+   const destination='https://www.youtube.com',receiver=guest.contentWindow;
+   if(typeof receiver?.postMessage!=='function')return;
+   const send=(func,args=[])=>receiver.postMessage(JSON.stringify({event:'command',func,args}),destination);
+   try{
+    send(level===0?'mute':'unMute');
+    send('setVolume',[level]);
+   }catch(error){console.warn('[Basic AI] Soundscapes iframe volume:',error);}
+  }
+ }
  async setVolume(value){
-  this.cfg.volume=Math.max(0,Math.min(100,Number(value)||0));
+  this.cfg.volume=writerV91SoundVolume(value);
   if(this.audio)this.audio.volume=this.cfg.volume/100;
+  if(this.miniVolume)this.miniVolume.value=String(this.cfg.volume);
+  this.syncRadioVolume();
   this.emit();
   await this.plugin.saveSettings();
  }
@@ -323,8 +394,8 @@ class WriterV91SoundPlayer{
    mini.title=writerUi('Exibir mini player sem reiniciar a rádio','Show mini player without restarting radio');
    play.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
     active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
-   volume.disabled=!local;
-   volume.title=local?'':writerUi('Ajuste o volume dentro do mini player','Adjust volume inside the mini player');
+   volume.disabled=!this.cfg.enabled;
+   volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');
    next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',active);
    select.title=this.label;
    root.toggleClass?.('is-disabled',!this.cfg.enabled);
@@ -395,8 +466,8 @@ function writerV91HomeSoundscape(view,parent){
   toggle.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
   const multi=player.tracks.length>1;back.disabled=!multi;forward.disabled=!multi;
-  slider.value=String(player.cfg.volume);slider.disabled=!local;
-  slider.title=local?'':writerUi('Ajuste o volume dentro do mini player','Adjust volume inside the mini player');
+  slider.value=String(player.cfg.volume);slider.disabled=!player.cfg.enabled;
+  slider.title=writerUi('Volume do Soundscapes','Soundscapes volume');
   heading.textContent=player.label;
   detail.textContent=local?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('YouTube no mini player integrado','YouTube in integrated mini player');
   const id=player.videoId;
@@ -440,8 +511,8 @@ function writerV91SoundSettings(plugin,panel){
  const cfg=plugin.settings.v91Sound;
  panel.createEl('h3',{text:'Soundscapes'});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'As rádios abrem um mini player dentro do Obsidian, sem criar abas. Recolher preserva a reprodução; Parar encerra a rádio. Usa Webview do Chromium quando disponível, com fallback para iframe do YouTube. Alguns vídeos podem bloquear incorporação (erro 153). Minha Música continua local.',
-  'Radio stations open an in-app mini player without tabs. Hiding keeps playback running; Stop ends the radio. Chromium Webview is preferred, with YouTube iframe fallback. Some videos block embedding (error 153). My Music stays local.'
+  'As rádios abrem um mini player dentro do Obsidian, sem criar abas. O volume é controlado pelo mesmo slider na Homepage, na barra de status e no mini player. Recolher preserva a reprodução; Parar encerra a rádio. Alguns vídeos podem bloquear incorporação (erro 153). Minha Música continua local.',
+  'Radio stations open an in-app mini player without tabs. The same volume setting is shared by the Homepage, status bar and mini player sliders. Hiding keeps playback running; Stop ends the radio. Some videos block embedding (error 153). My Music stays local.'
  )});
  if(plugin.app.isMobile){
   panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Rádios e reprodução estão disponíveis apenas no computador.','Radio playback is desktop-only.')});return;

@@ -62,7 +62,7 @@ function writerV91SoundAudioFiles(plugin){
 }
 class WriterV91SoundPlayer{
  constructor(plugin){
-  this.plugin=plugin;this.audio=null;this.webLeaf=null;this.webUrl='';this.playing=false;this.trackIndex=0;
+  this.plugin=plugin;this.audio=null;this.dock=null;this.frameHost=null;this.guest=null;this.webUrl='';this.dockOpen=false;this.radioGeneration=0;this.playing=false;this.trackIndex=0;
   this.shuffleOrder=[];this.subscribers=new Set();this.status=null;this.host=null;
  }
  get cfg(){return this.plugin.settings.v91Sound;}
@@ -77,13 +77,8 @@ class WriterV91SoundPlayer{
  get track(){const tracks=this.tracks;return tracks[Math.min(Math.max(0,this.trackIndex),tracks.length-1)]||null;}
  get label(){return this.track?.basename||this.track?.name||this.station?.[1]||'Soundscapes';}
  get videoId(){return this.cfg.station==='my-music'?'':this.track?.id||'';}
- get webOpen(){
-  if(!this.webLeaf||!this.webUrl)return false;
-  const leaves=this.plugin.app.workspace.getLeavesOfType?.('webviewer');
-  if(Array.isArray(leaves)&&!leaves.includes(this.webLeaf))return false;
-  const state=this.webLeaf.getViewState?.();
-  return state?.type==='webviewer'&&state?.state?.url===this.webUrl;
- }
+ get webOpen(){return Boolean(this.guest?.isConnected&&this.webUrl);}
+ get miniVisible(){return Boolean(this.dock?.isConnected&&this.dockOpen);}
  subscribe(node,callback){this.subscribers.add({node,callback});callback();return()=>{for(const s of this.subscribers)if(s.node===node&&s.callback===callback)this.subscribers.delete(s);};}
  emit(){
   for(const entry of this.subscribers){
@@ -96,6 +91,7 @@ class WriterV91SoundPlayer{
   this.status=this.plugin.addStatusBarItem?.();
   if(this.status){this.status.addClass('writer-v91-sound-status');this.renderStatus();}
   this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Soundscapes: reproduzir ou pausar','Soundscapes: play or pause'),callback:()=>this.toggle()});
+  this.plugin.addCommand({id:'v91-sound-mini-player',name:writerUi('Soundscapes: mostrar mini player','Soundscapes: show mini player'),callback:()=>this.showMiniPlayer()});
   this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Soundscapes: próxima faixa','Soundscapes: next track'),callback:()=>this.next()});
   this.plugin.addCommand({id:'v91-sound-library',name:writerUi('Soundscapes: abrir Minha Música','Soundscapes: open My Music'),callback:()=>this.libraryModal()});
   this.plugin.register?.(()=>this.destroy());
@@ -109,40 +105,123 @@ class WriterV91SoundPlayer{
   this.audio.addEventListener('ended',()=>this.next());
   this.audio.addEventListener('error',()=>{this.playing=false;this.emit();new Notice(writerUi('Não foi possível reproduzir o arquivo de áudio.','Could not play this audio file.'));});
  }
- // Native Web Viewer avoids YouTube embed error 153 from app:// iframes.
+ // Desktop-only in-app mini player. Never create or reveal a workspace leaf.
+ ensureDock(){
+  if(this.dock?.isConnected)return this.dock;
+  const doc=this.plugin.app.workspace.containerEl?.ownerDocument||document;
+  if(!doc?.body)throw new Error('Document body unavailable');
+  const panel=doc.body.createDiv({cls:'writer-v91-mini-player is-collapsed'});
+  panel.setAttribute('role','region');
+  panel.setAttribute('aria-label',writerUi('Mini player Soundscapes','Soundscapes mini player'));
+  const head=panel.createDiv({cls:'writer-v91-mini-head'});
+  const title=head.createSpan({cls:'writer-v91-mini-title',text:this.label});
+  const hide=head.createEl('button',{attr:{type:'button','aria-label':writerUi('Recolher sem parar','Hide without stopping')}});
+  const stop=head.createEl('button',{attr:{type:'button','aria-label':writerUi('Parar reprodução','Stop playback')}});
+  require('obsidian').setIcon(hide,'minus');
+  require('obsidian').setIcon(stop,'square');
+  hide.addEventListener('click',()=>this.hideMiniPlayer());
+  stop.addEventListener('click',()=>this.pause());
+  const body=panel.createDiv({cls:'writer-v91-mini-video'});
+  const helper=panel.createDiv({cls:'writer-v91-mini-help'});
+  const switchMode=panel.createEl('button',{cls:'writer-v91-mini-switch',text:writerUi('Alternar player','Switch player'),attr:{type:'button'}});
+  switchMode.addEventListener('click',()=>{
+   if(!this.webOpen)return;
+   const next=this.guest?.tagName?.toLowerCase()==='webview'?'iframe':'webview';
+   this.mountRadio(this.videoId,next);
+  });
+  this.dock=panel;this.frameHost=body;this.dockTitle=title;
+  this.dockHelp=helper;this.dockSwitch=switchMode;
+  return panel;
+ }
+ showMiniPlayer(){
+  if(this.plugin.app.isMobile||!this.cfg.enabled)return;
+  try{
+   this.ensureDock();this.dockOpen=true;
+   this.dock.classList.remove('is-collapsed');
+   this.dockTitle.setText(this.label);
+   this.emit();
+  }catch(error){
+   console.warn('[Basic AI] Soundscapes mini player:',error);
+   new Notice(writerUi('Não foi possível criar o mini player.','Could not create mini player.'));
+  }
+ }
+ hideMiniPlayer(){
+  this.dockOpen=false;
+  this.dock?.classList.add('is-collapsed');
+  // Keep the guest in the DOM to preserve playback while the panel is hidden.
+  this.emit();
+ }
+ mountRadio(rawId,preferred='auto'){
+  const id=writerV91VideoId(rawId);
+  if(!id||!this.frameHost)return false;
+  const seq=++this.radioGeneration,doc=this.frameHost.ownerDocument;
+  this.frameHost.empty();this.guest=null;this.webUrl='';
+  if(this.dockSwitch)this.dockSwitch.disabled=false;
+  const watchUrl='https://m.youtube.com/watch?v='+id+'&autoplay=1&playsinline=1';
+  const useFallback=()=>{
+   if(seq!==this.radioGeneration||!this.frameHost?.isConnected)return;
+   this.frameHost.empty();
+   const frame=this.frameHost.createEl('iframe',{cls:'writer-v91-mini-iframe',attr:{
+    src:'https://www.youtube.com/embed/'+id+'?autoplay=1&controls=1&playsinline=1&rel=0',
+    title:this.label,referrerpolicy:'strict-origin-when-cross-origin',
+    allow:'autoplay; encrypted-media; picture-in-picture; fullscreen',
+    allowfullscreen:'',loading:'eager'
+   }});
+   this.guest=frame;this.webUrl=frame.getAttribute('src');
+   this.dockHelp.setText(writerUi(
+    'Player incorporado. Se o YouTube bloquear este vídeo (erro 153), alterne o player ou escolha outra estação.',
+    'Embedded player. If YouTube blocks the video (error 153), switch player or choose another station.'
+   ));
+   this.emit();
+  };
+  if(preferred==='iframe'){useFallback();return true;}
+  let web;
+  try{web=doc.createElement('webview');}catch(error){console.warn('[Basic AI] Webview element:',error);}
+  // Webviews are not exposed on all desktop builds; do not change Electron security settings.
+  if(!web||typeof web.loadURL!=='function'){useFallback();return true;}
+  web.className='writer-v91-mini-webview';
+  web.setAttribute('src',watchUrl);
+  this.frameHost.appendChild(web);
+  this.guest=web;this.webUrl=watchUrl;
+  this.dockHelp.setText(writerUi(
+   'YouTube dentro do mini player. Use os controles do vídeo. Recolher mantém a rádio ativa.',
+   'YouTube inside the mini player. Use video controls. Hiding keeps the radio active.'
+  ));
+  const fallback=event=>{
+   if(seq!==this.radioGeneration||this.guest!==web)return;
+   console.warn('[Basic AI] Soundscapes webview:',event?.errorDescription||event?.type||event);
+   useFallback();
+  };
+  web.addEventListener('did-fail-load',event=>{
+   if(event.errorCode!==-3)fallback(event);
+  });
+  web.addEventListener('render-process-gone',fallback);
+  this.emit();
+  return true;
+ }
  async openRadio(){
   const id=writerV91VideoId(this.videoId);
-  if(!id){new Notice(writerUi('Esta rádio não possui um vídeo válido.','This station has no valid video.'));return;}
-  const url='https://www.youtube.com/watch?v='+id+'&autoplay=1';
-  const workspace=this.plugin.app.workspace;
-  try{
-   const leaf=this.webOpen?this.webLeaf:workspace.getLeaf('tab');
-   if(!leaf?.setViewState)throw new Error('Web Viewer unavailable');
-   await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
-   this.webLeaf=leaf;this.webUrl=url;
-   await workspace.revealLeaf?.(leaf);
-  }catch(error){
-   console.warn('[Basic AI] Soundscapes Web Viewer:',error);
-   this.webLeaf=null;this.webUrl='';
-   try{window.open(url);}catch(fallbackError){console.warn('[Basic AI] Soundscapes URL:',fallbackError);}
-   new Notice(writerUi('Visualizador Web indisponível. Abrindo o YouTube no navegador.','Web Viewer unavailable. Opening YouTube in your browser.'));
-  }
-  // Opening the webpage does not prove that autoplay was accepted.
+  if(!id){new Notice(writerUi('Rádio sem vídeo válido.','Radio has no valid video.'));return;}
+  this.showMiniPlayer();
+  if(!this.dock)return;
+  if(!this.mountRadio(id))return;
+  // Opening an embedded video is not proof of real playback.
   this.playing=false;this.emit();
  }
  closeRadio(){
-  if(this.webOpen){
-   try{this.webLeaf.detach();}catch(error){console.warn('[Basic AI] Soundscapes tab:',error);}
-  }
-  this.webLeaf=null;this.webUrl='';
+  ++this.radioGeneration;
+  this.frameHost?.empty();
+  this.guest=null;this.webUrl='';
+  if(this.dockSwitch)this.dockSwitch.disabled=true;
+  this.hideMiniPlayer();
  }
- releaseMedia(keepRadio=false){
+ releaseMedia(){
   if(this.audio){this.audio.pause();this.audio.removeAttribute('src');this.audio.load();}
-  if(!keepRadio)this.closeRadio();
+  this.closeRadio();
  }
  async loadCurrent(){
   const local=this.cfg.station==='my-music';
-  this.releaseMedia(!local);
+  this.releaseMedia();
   const item=this.track;
   if(!item){
    this.playing=false;this.emit();
@@ -155,7 +234,7 @@ class WriterV91SoundPlayer{
    this.audio.volume=this.cfg.volume/100;
    try{await this.audio.play();this.playing=true;}
    catch(error){
-    this.playing=false;console.warn('[Basic AI] Local audio playback:',error);
+    this.playing=false;console.warn('[Basic AI] Local audio:',error);
     new Notice(writerUi('Não foi possível iniciar este áudio.','Could not start this audio.'));
    }
   }else await this.openRadio();
@@ -164,7 +243,7 @@ class WriterV91SoundPlayer{
  async play(){
   if(this.plugin.app.isMobile||!this.cfg.enabled)return;
   if(this.cfg.station!=='my-music'){
-   if(this.webOpen){await this.plugin.app.workspace.revealLeaf?.(this.webLeaf);return;}
+   if(this.webOpen){this.showMiniPlayer();return;}
    await this.loadCurrent();return;
   }
   if(this.playing)return;
@@ -267,7 +346,7 @@ class WriterV91SoundPlayer{
   };
   modal.open();
  }
- destroy(){this.pause();this.releaseMedia();this.subscribers.clear();this.status?.remove();}
+ destroy(){this.pause();this.dock?.remove();this.dock=null;this.subscribers.clear();this.status?.remove();}
 }
 function writerV91HomeSoundscape(view,parent){
  if(view.plugin.app.isMobile)return;

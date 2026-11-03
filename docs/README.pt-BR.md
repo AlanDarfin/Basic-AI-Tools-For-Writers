@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.1.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.1.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
 
@@ -25,6 +25,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 | **Sons da máquina de escrever** | Sons de teclas no editor Markdown no estilo Click Clack, com volume, sons diferentes por tecla e esquemas WAV locais opcionais, somente no computador. |
 | **Explorador Flexplorer** | Fixar e desafixar, ocultar e revelar itens, ordenar individualmente por pasta, reordenar com Alt + arrastar e usar padrões glob no explorador nativo. |
 | **Conversas com IA** | Assistente com balões alinhados como os blocos de diálogo, anexos Markdown, respostas formatadas e configurações de provedores, modelos e prompts mais uniformes. |
+| **Conteúdo virtual e BookNav** | Renderize modelos Markdown no cabeçalho, rodapé, seções (modo Leitura) ou lateral, usando regras por pasta, tag e propriedades. Navegue automaticamente entre capítulos Longform sem inserir blocos nas notas. |
 
 A navegação por **Escrita / Universo / Projeto** foi pensada para painéis estreitos. Os módulos podem ser ativados separadamente, sem criar uma segunda base de dados para os livros.
 
@@ -41,6 +42,24 @@ Para tocar arquivos próprios, coloque áudios em uma pasta do cofre, como *Musi
 **Click Clack (PC):** Em **Configurações → Escrita e Markdown → Sons da máquina de escrever**, ative os efeitos e ajuste o volume. Os cliques integrados são gerados localmente, sem baixar pacotes. Caso tenha pacotes WAV compatíveis com o Click Clack na pasta *resources* do plugin, use a opção de recarregar para selecioná-los. Os efeitos são acionados apenas durante a digitação no editor Markdown.
 
 **Flexplorer:** No menu de contexto de uma pasta do explorador nativo, selecione **Ordenação desta pasta** → **Ordem personalizada**. Use **Alt + arrastar** para reorganizar notas da mesma pasta, sem substituir o arrastar padrão do Obsidian. Os menus também oferecem **Fixar no explorador** e **Ocultar no explorador**. Em **Configurações → Personalização → Explorador de arquivos**, padrões como *Templates/*** apenas ocultam itens na interface, sem apagar arquivos; **Exibir itens ocultos** permite visualizá-los. Os ícones, cores e visões de pastas do Basic continuam disponíveis.
+
+### Conteúdo virtual e BookNav automático
+
+**Navegação automática.** Entre em **Configurações → Longform → Conteúdo virtual** e ative **BookNav automático em projetos Longform**. Capítulos e subcapítulos passam a mostrar os botões de anterior/próximo no modo Leitura e no Live Preview. A navegação segue a ordem das cenas do projeto, respeita as preferências individuais de navegação e não escreve nada no Markdown. Um bloco `longform-nav` já existente continua tendo prioridade. Para escolher uma pasta ou uma posição específica, desative o BookNav global e crie uma regra cuja fonte seja **BookNav automático (Longform)**.
+
+**Modelos dinâmicos.** Crie uma regra nas mesmas configurações. Combine pasta, tag ou propriedade YAML por **E/OU**, inclua subpastas/subtags ou inverta uma condição. Escolha a posição (**Cabeçalho**, **Rodapé**, **Lateral** ou **Início/Fim de seção**) e digite Markdown ou selecione uma nota modelo do cofre. As opções de seção funcionam no modo Leitura; cabeçalhos e rodapés gerais também aparecem no Live Preview.
+
+Exemplo: para notas na pasta `Personagens/`, crie uma condição por pasta e use este conteúdo:
+
+```markdown
+> [!info] Ficha de personagem
+> Você está lendo **{{file.name}}**.
+> Pasta: `{{file.folder}}`
+```
+
+Outro exemplo: escolha **BookNav automático** como fonte, **Rodapé** como posição e a pasta `Meu Livro/Capítulos` (incluindo subpastas). A navegação acompanha o índice Longform quando a nota pertence ao projeto. Reorganizar capítulos atualiza os botões sem inserir blocos nos arquivos. A navegação manual de notas avulsas continua disponível com `longform-nav`.
+
+Use o comando **Conteúdo virtual: abrir na lateral** para visualizar as regras laterais. Cada regra pode ter sua própria aba dentro desse painel. Você pode ativar, editar, excluir e reordenar regras sem alterar as notas atingidas. Notas modelo também podem conter sintaxe de outros plugins, mas a renderização de Dataview ou Bases depende dessas integrações e do modo de visualização utilizado.
 
 ## Como usar a formatação Markdown
 

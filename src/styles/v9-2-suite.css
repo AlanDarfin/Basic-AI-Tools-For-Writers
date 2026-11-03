@@ -1,31 +1,160 @@
-/* 9.2.0 — Explorer favorite + preview, interactive notes, research, sessions. */
-.nav-file-title.writer-v92-is-favorite>.writer-v92-favorite{
- display:inline-flex;align-items:center;justify-content:center;
- width:16px;height:16px;flex:none;
- color:var(--interactive-accent);margin-inline-end:5px;
+/* 9.2.1 — Native file explorer: aligned favorites, readable previews and local thumbnails. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.writer-v92-has-favorite{
+ position:relative;
+ padding-inline-end:38px;
+ min-width:0;
+ box-sizing:border-box;
 }
-.nav-file-title.writer-v92-is-favorite>.writer-v92-favorite svg{
- width:15px;height:15px;fill:currentColor;stroke:currentColor;
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title .writer-v92-favorite{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ position:absolute;
+ inset-inline-end:4px;
+ top:2px;
+ z-index:2;
+ width:28px;
+ height:28px;
+ min-width:28px;
+ min-height:28px;
+ padding:5px;
+ margin:0;
+ border:0;
+ border-radius:var(--radius-s);
+ background:transparent;
+ box-shadow:none;
+ color:var(--text-muted);
+ opacity:0;
+ cursor:pointer;
+ transition:color .15s ease,opacity .15s ease,background-color .15s ease;
 }
-.nav-file-title.writer-v92-is-favorite>.writer-v92-favorite svg [fill="none"]{
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title:hover > .writer-v92-favorite,
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title:focus-within > .writer-v92-favorite,
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.writer-v92-is-favorite > .writer-v92-favorite{
+ opacity:1;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title .writer-v92-favorite:hover,
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title .writer-v92-favorite:focus-visible{
+ background:var(--background-modifier-hover);
+ color:var(--interactive-accent);
+ opacity:1;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-favorite svg{
+ display:block;
+ width:17px;
+ height:17px;
+ stroke:currentColor;
+ stroke-width:1.9;
+ fill:none;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-is-favorite .writer-v92-favorite{
+ color:var(--interactive-accent);
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-is-favorite .writer-v92-favorite svg{
+ stroke:currentColor;
  fill:currentColor;
 }
-.nav-file-title.writer-v92-is-favorite>.writer-v92-favorite svg [stroke="none"]{
- stroke:currentColor;
-}
-.nav-file-title.writer-v92-has-preview,
-.nav-folder-title.writer-v92-has-preview{
- display:flex;align-items:center;flex-wrap:wrap;
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title.writer-v92-has-preview,
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title.writer-v92-has-preview{
+ display:flex;
+ flex-wrap:wrap;
+ align-items:center;
+ align-content:start;
+ row-gap:0;
  min-width:0;
+ height:auto;
+ box-sizing:border-box;
 }
-.writer-v92-file-preview{
- display:block;flex-basis:100%;min-width:0;
- font-size:var(--font-ui-smaller);
- line-height:1.35;color:var(--text-muted);
- overflow:hidden;text-overflow:ellipsis;
- white-space:nowrap;
- padding-inline-start:20px;padding-block:1px 3px;
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell{
+ display:flex;
+ align-items:center;
+ flex:0 0 100%;
+ gap:8px;
+ box-sizing:border-box;
+ min-width:0;
+ max-width:100%;
+ margin:3px 0 2px;
+ padding:0 2px 0 0;
  pointer-events:none;
+ font-weight:400;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title .writer-v92-preview-shell{
+ padding-inline-start:20px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title:has(> .writer-v9-explorer-icon) > .writer-v92-preview-shell{
+ padding-inline-start:21px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-file-preview{
+ flex:1 1 auto;
+ min-width:0;
+ max-width:100%;
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:var(--writer-v92-preview-lines,2);
+ overflow:hidden;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ text-overflow:ellipsis;
+ font-size:var(--font-ui-smaller);
+ font-weight:400;
+ line-height:1.45;
+ color:var(--text-muted);
+ padding:0;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-image{
+ display:block;
+ flex:0 0 auto;
+ width:var(--writer-v92-preview-image-size,62px);
+ height:var(--writer-v92-preview-image-size,62px);
+ min-width:0;
+ object-fit:cover;
+ object-position:center;
+ background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v921-preview-toggle{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ min-width:28px;
+ min-height:28px;
+ border:0;
+ background:transparent;
+ color:var(--text-muted);
+ padding:4px;
+ border-radius:var(--radius-s);
+ cursor:pointer;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v921-preview-toggle.is-active,
+.workspace-leaf-content[data-type="file-explorer"] .writer-v921-preview-toggle:hover{
+ color:var(--text-normal);
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v921-preview-toggle svg{
+ width:18px;
+ height:18px;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-title .writer-v92-favorite{
+ width:36px;
+ min-width:36px;
+ height:36px;
+ min-height:36px;
+ top:0;
+ opacity:.7;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-title.writer-v92-has-favorite{
+ padding-inline-end:43px;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-title.writer-v92-is-favorite .writer-v92-favorite{
+ opacity:1;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell{
+ margin-block:3px 5px;
+ gap:6px;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-image{
+ width:min(var(--writer-v92-preview-image-size,62px),68px);
+ height:min(var(--writer-v92-preview-image-size,62px),68px);
 }
 .writer-v92-columns{
  display:grid;grid-template-columns:repeat(var(--writer-v92-columns,2),minmax(0,1fr));

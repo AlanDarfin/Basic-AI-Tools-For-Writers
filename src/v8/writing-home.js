@@ -832,7 +832,7 @@ function writerV8FinishSettings(plugin,panel){
  });
  new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
   .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
-  .addText(input=>input.setPlaceholder('Assets/icon.png ou https://…').setValue(cfg.homeIconImage||'')
+  .addText(input=>input.setPlaceholder(writerUi('Imagens/ícone.png ou https://…','Assets/icon.png or https://…')).setValue(cfg.homeIconImage||'')
    .onChange(async value=>{cfg.homeIconImage=String(value||'').trim().slice(0,600);await plugin.saveSettings();refreshHome();}));
  new Setting(panel).setName(writerUi('Abrir homepage em toda nova aba vazia','Open homepage in every new empty tab'))
   .setDesc(writerUi('Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.','Enabled by default. Empty tabs only: never replaces notes or other views.'))

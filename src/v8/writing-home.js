@@ -326,17 +326,93 @@ class WriterV8HomeView extends ItemView{
   draw();
  }
  renderFiles(parent,kind){
-  const box=this.card(parent,kind,kind==='recent'?'Notas recentes':'Favoritos',kind==='recent'?'Recent notes':'Favorites');
-  const paths=kind==='recent'?writerV8HomeTopFiles(this.plugin,9):
+  const recent=kind==='recent',box=this.card(parent,kind,recent?'Notas recentes':'Favoritos',recent?'Recent notes':'Favorites');
+  const files=recent?writerV8HomeTopFiles(this.plugin,12):
    this.plugin.settings.v8Finish.homeFavorites.map(path=>this.app.vault.getAbstractFileByPath(path)).filter(file=>file instanceof TFile);
-  const list=box.createDiv({cls:'writer-v8-home-file-list'});
-  if(!paths.length)list.createEl('p',{text:writerUi('Use a estrela da pesquisa ou o comando de favoritar nota.','Use the star in search or the favorite-note command.'),cls:'writer-v8-home-muted'});
-  for(const file of paths){
-   const row=list.createDiv({cls:'writer-v8-home-file-row'});
-   row.createEl('button',{cls:'writer-v8-home-file-link',text:file.basename}).addEventListener('click',()=>this.openFile(file));
-   if(kind==='favorites')row.createEl('button',{text:'★',cls:'writer-v8-home-star',attr:{'aria-label':writerUi('Remover favorito','Remove favorite')}})
-    .addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();this.render();});
-  }
+  this.renderNoteRows(box,files,kind);
+ }
+ renderToday(parent){
+  const box=this.card(parent,'today','Editadas hoje','Edited today'),midnight=new Date();
+  midnight.setHours(0,0,0,0);
+  const files=(this.app.vault.getMarkdownFiles?.()||[])
+   .filter(file=>(file.stat?.mtime||0)>=midnight.getTime())
+   .sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0)).slice(0,24);
+  this.renderNoteRows(box,files,'today');
+ }
+ renderNoteRows(box,files,kind){
+  const wrap=box.createDiv({cls:'writer-v905-note-widget'});
+  const search=wrap.createEl('input',{cls:'writer-v905-note-filter',attr:{
+   type:'search',autocomplete:'off',placeholder:writerUi('Filtrar notas deste painel…','Filter notes in this widget…'),
+   'aria-label':writerUi('Filtrar notas','Filter notes')}});
+  if(files.length<5)search.hidden=true;
+  const list=wrap.createDiv({cls:'writer-v8-home-file-list writer-v905-note-list',
+   attr:{role:'list','aria-label':writerUi('Notas para abrir','Notes to open')}});
+  const status=wrap.createDiv({cls:'writer-v905-note-status',
+   attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
+  let visible=[],selected=0;
+  const select=(index,moveFocus=false)=>{
+   if(!visible.length)return;
+   selected=(index+visible.length)%visible.length;
+   const rows=[...list.children];
+   rows.forEach((row,i)=>{row.classList.toggle('is-selected',i===selected);row.setAttribute('aria-current',String(i===selected));});
+   status.setText(writerUi('Selecionada: ','Selected: ')+visible[selected].path+' · '+writerUi('Enter para abrir','Enter to open'));
+   if(moveFocus){rows[selected]?.querySelector?.('.writer-v905-note-open')?.focus?.();
+    rows[selected]?.scrollIntoView?.({block:'nearest'});}
+  };
+  const draw=()=>{
+   const previous=visible[selected]?.path,query=search.value.trim().toLocaleLowerCase();
+   visible=files.filter(file=>!query||(file.basename||'').toLocaleLowerCase().includes(query)||
+    file.path.toLocaleLowerCase().includes(query));
+   selected=Math.max(0,visible.findIndex(f=>f.path===previous));
+   list.empty();status.empty();
+   if(!visible.length){
+    list.createEl('p',{cls:'writer-v8-home-muted',text:files.length?
+     writerUi('Nenhuma nota corresponde ao filtro.','No notes match your filter.'):
+     kind==='today'?writerUi('Nenhuma nota editada hoje.','No notes edited today.'):
+     writerUi('Nenhuma nota para mostrar.','No notes to show.')});
+    return;
+   }
+   for(const [index,file] of visible.entries()){
+    const row=list.createDiv({cls:'writer-v8-home-file-row writer-v905-note-row',attr:{role:'listitem',title:file.path}});
+    const open=row.createEl('button',{cls:'writer-v8-home-file-link writer-v905-note-open',
+     attr:{type:'button','aria-label':writerUi('Abrir nota: ','Open note: ')+file.path,title:file.path}});
+    const icon=open.createSpan({cls:'writer-v905-note-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(icon,'file-text');
+    const labels=open.createSpan({cls:'writer-v905-note-labels'});
+    labels.createSpan({cls:'writer-v905-note-title',text:file.basename||file.name||writerUi('Sem título','Untitled')});
+    const sub=labels.createSpan({cls:'writer-v905-note-path',text:file.path});
+    if(file.stat?.mtime){
+     const date=new Date(file.stat.mtime);
+     if(Number.isFinite(date.getTime()))sub.setAttribute('title',writerUi('Editada: ','Edited: ')+date.toLocaleString(writerUi('pt-BR','en-US')));
+    }
+    const arrow=open.createSpan({cls:'writer-v905-note-arrow',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(arrow,'arrow-up-right');
+    open.addEventListener('pointerenter',()=>select(index));
+    open.addEventListener('focus',()=>select(index));
+    open.addEventListener('click',()=>this.openFile(file));
+    open.addEventListener('keydown',event=>{
+     if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+      event.preventDefault();select(selected+(event.key==='ArrowDown'?1:-1),true);
+     }
+    });
+    if(kind==='favorites'){
+     const remove=row.createEl('button',{cls:'writer-v905-note-favorite',
+      attr:{type:'button','aria-label':writerUi('Remover favorito: ','Remove favorite: ')+file.path}});
+     require('obsidian').setIcon?.(remove,'star-off');
+     remove.addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();this.render();});
+    }
+   }
+   select(selected);
+  };
+  search.addEventListener('input',draw);
+  search.addEventListener('keydown',event=>{
+   if((event.key==='ArrowDown'||event.key==='ArrowUp')&&visible.length){
+    event.preventDefault();select(selected+(event.key==='ArrowDown'?1:-1),true);
+   }else if(event.key==='Enter'&&visible.length){
+    event.preventDefault();this.openFile(visible[selected]);
+   }else if(event.key==='Escape'&&search.value){search.value='';draw();}
+  });
+  draw();
  }
  renderQuick(parent){
   const box=this.card(parent,'quick','Rascunhos rápidos','Quick drafts');

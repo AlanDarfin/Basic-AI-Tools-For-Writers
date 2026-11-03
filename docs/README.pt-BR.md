@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.2.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
 
@@ -60,6 +60,12 @@ Exemplo: para notas na pasta `Personagens/`, crie uma condição por pasta e use
 Outro exemplo: escolha **BookNav automático** como fonte, **Rodapé** como posição e a pasta `Meu Livro/Capítulos` (incluindo subpastas). A navegação acompanha o índice Longform quando a nota pertence ao projeto. Reorganizar capítulos atualiza os botões sem inserir blocos nos arquivos. A navegação manual de notas avulsas continua disponível com `longform-nav`.
 
 Use o comando **Conteúdo virtual: abrir na lateral** para visualizar as regras laterais. Cada regra pode ter sua própria aba dentro desse painel. Você pode ativar, editar, excluir e reordenar regras sem alterar as notas atingidas. Notas modelo também podem conter sintaxe de outros plugins, mas a renderização de Dataview ou Bases depende dessas integrações e do modo de visualização utilizado.
+
+### 9.2.2 — alinhamento do chat, descrições e ícones no estilo Iconic
+
+- **Chat com IA:** as mensagens do usuário ficam alinhadas à direita; as mensagens do assistente permanecem à esquerda, também no Android. A configuração das chaves de API não foi alterada.
+- **Explorador:** a descrição e as miniaturas locais agora ficam em uma **linha separada abaixo do nome da pasta ou nota**. Isso evita juntar palavras como “TrabalhoTeste” e mantém o livrinho das Folder Notes e o botão de favorito.
+- **Ícones personalizáveis:** o ícone da homepage, dos favoritos e as escolhas por nota/pasta usam uma única galeria visual de ícones Lucide: pesquisa, prévia ampliada, opções fixadas e recentes, cor HEX personalizada e layout compacto. A homepage continua aceitando imagens do cofre ou HTTPS como alternativa.
 
 ### Aprimoramentos do explorador no celular · 9.2.1
 

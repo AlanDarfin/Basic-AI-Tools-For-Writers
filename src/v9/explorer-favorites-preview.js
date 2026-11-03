@@ -8,7 +8,7 @@ function writerV92ExplorerMerge(settings){
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
   previewVisible:true,showImage:true,previewLines:2,previewImageSize:62,
-  folderDescriptionKey:'description',noteDescriptionKey:'description',
+  folderDescriptionKey:'description',noteDescriptionKey:'description',favoriteIconColor:'',
   ...old
  };
  cfg.favoritesEnabled=cfg.favoritesEnabled!==false;
@@ -17,6 +17,7 @@ function writerV92ExplorerMerge(settings){
  cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||2)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
  cfg.favoriteIcon=/^[a-z][a-z0-9-]{0,38}$/.test(cfg.favoriteIcon)?cfg.favoriteIcon:'star';
+ cfg.favoriteIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.favoriteIconColor||''))?cfg.favoriteIconColor:'';
  cfg.previewMode=['off','folder','all'].includes(cfg.previewMode)?cfg.previewMode:'folder';
  cfg.previewMax=Math.max(40,Math.min(280,Math.round(Number(cfg.previewMax)||135)));
  cfg.folderDescriptionKey=/^[\w-]{1,50}$/.test(cfg.folderDescriptionKey)?cfg.folderDescriptionKey:'description';
@@ -200,6 +201,8 @@ function writerV92ExplorerRegister(plugin){
    button.replaceChildren();require('obsidian').setIcon(button,cfg.favoriteIcon);
    button.dataset.icon=cfg.favoriteIcon;
   }
+  if(cfg.favoriteIconColor)node.style.setProperty('--writer-v92-favorite-color',cfg.favoriteIconColor);
+  else node.style.removeProperty('--writer-v92-favorite-color');
   node.classList.add('writer-v92-has-favorite');
   node.classList.toggle('writer-v92-is-favorite',favorite);
  };
@@ -209,7 +212,13 @@ function writerV92ExplorerRegister(plugin){
   const source=show?writerV921PreviewSource(plugin,item):null;
   const folder=item instanceof TFolder;
   const allowed=show&&source&&(folder||cfg.previewMode==='all');
-  const existing=node.querySelector(':scope > .writer-v92-preview-shell');
+  // The title is an Obsidian flex row. Adding preview text *inside* that row
+  // concatenates folder names with descriptions on mobile. Put previews beside
+  // the title as a sibling, before the nested folder children.
+  const oldInline=node.querySelector(':scope > .writer-v92-preview-shell');
+  oldInline?.remove();
+  const existing=node.nextElementSibling?.classList?.contains('writer-v92-preview-shell')
+   ?node.nextElementSibling:null;
   if(!allowed){
    existing?.remove();
    node.classList.remove('writer-v92-has-preview');
@@ -228,9 +237,9 @@ function writerV92ExplorerRegister(plugin){
   if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
   let shell=existing;
   if(!shell){
-   shell=node.ownerDocument.createElement('span');
+   shell=node.ownerDocument.createElement('div');
    shell.className='writer-v92-preview-shell';
-   node.appendChild(shell);
+   node.insertAdjacentElement('afterend',shell);
   }
   shell.style.setProperty('--writer-v92-preview-lines',String(cfg.previewLines));
   shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
@@ -334,6 +343,7 @@ function writerV92ExplorerRegister(plugin){
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
    host.querySelectorAll('.writer-v92-favorite, .writer-v92-preview-shell, .writer-v921-preview-toggle').forEach(x=>x.remove());
+   host.querySelectorAll('.nav-file-title,.nav-folder-title').forEach(node=>node.style.removeProperty('--writer-v92-favorite-color'));
    host.querySelectorAll('.writer-v92-has-favorite,.writer-v92-is-favorite,.writer-v92-has-preview').forEach(x=>
     x.classList.remove('writer-v92-has-favorite','writer-v92-is-favorite','writer-v92-has-preview'));
   }
@@ -345,13 +355,16 @@ function writerV92ExplorerSettings(plugin,panel){
  panel.createEl('h3',{text:writerUi('Favoritos e prévias no explorador','Explorer favorites & previews')});
  new Setting(panel).setName(writerUi('Favoritos no explorador','Explorer favorites')).addToggle(t=>t.setValue(cfg.favoritesEnabled)
   .onChange(async v=>{cfg.favoritesEnabled=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
- new Setting(panel).setName(writerUi('Ícone de favorito (preenchido)','Favorite icon (filled)'))
-  .setDesc(writerUi('Ícone à direita: contorno no hover, preenchido quando favoritado.','Right-aligned: outlined on hover, filled when favorited.'))
-  .addDropdown(d=>{
-   for(const icon of WRITER_V92_FAVORITE_ICONS)d.addOption(icon,icon);
-   if(!WRITER_V92_FAVORITE_ICONS.includes(cfg.favoriteIcon))d.addOption(cfg.favoriteIcon,cfg.favoriteIcon);
-   d.setValue(cfg.favoriteIcon).onChange(async v=>{cfg.favoriteIcon=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();});
-  });
+ writerV922IconSetting(plugin,panel,{
+  pt:'Ícone de favorito',en:'Favorite icon',value:cfg.favoriteIcon,color:cfg.favoriteIconColor,
+  defaultIcon:'star',
+  description:writerUi('Pesquise ícones Lucide, salve seus preferidos e escolha também uma cor personalizada.',
+   'Search Lucide icons, pin favorites and select a custom accent color.'),
+  onApply:async(icon,color)=>{
+   cfg.favoriteIcon=icon||'star';cfg.favoriteIconColor=color;
+   await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }
+ });
  new Setting(panel).setName(writerUi('Prévia de descrição','Description preview'))
   .setDesc(writerUi('Desligado; somente folder notes; ou folder notes e todas as notas Markdown.','Off; folder notes only; or folder notes plus all Markdown notes.'))
   .addDropdown(d=>d.addOption('off',writerUi('Desativado','Off'))

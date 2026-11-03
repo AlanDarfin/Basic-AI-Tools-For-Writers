@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.2.1 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.2.2 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party credits](THIRD_PARTY_NOTICES.md)
 
@@ -60,6 +60,12 @@ Example: for notes in `Characters/`, set a folder condition and use this Markdow
 Another example: set the source to **Automatic BookNav**, location to **Footer**, and folder to `My Book/Chapters` (including subfolders). The navigator will follow the Longform index when the note belongs to the project. If the project is reordered, the virtual navigation updates; manual standalone notes are still supported through the existing `longform-nav` syntax.
 
 Use the **Virtual Content: open sidebar** command for matching sidebar rules. Independent sidebar tabs can be enabled per rule. Rules can be disabled, edited, removed or reordered without modifying the matching files. Markdown from source notes may include third-party syntax; support for Dataview or Bases rendering depends on those separate plugins and the active view mode.
+
+### 9.2.2 — chat alignment, Explorer descriptions and Iconic-style settings
+
+- **AI chat:** the user's message bubble aligns to the right while the assistant remains on the left, including on Android. AI provider settings and API keys are unchanged.
+- **Explorer previews:** descriptions and local image thumbnails now appear in a **separate row below** the native file or folder title, preserving the native chevron, folder-note button and favorite action. This fixes concatenated text such as a folder named “Work” appearing as “WorkTest”.
+- **Consistent icon customization:** the homepage icon, favorite symbol and per-file/per-folder icons all use a shared visual Lucide gallery with search, large preview, favorite/recent icon lists, a custom HEX color and theme-aware styling. The homepage still supports a vault image or HTTPS image as an alternative icon.
 
 ### Mobile Explorer polish · 9.2.1
 

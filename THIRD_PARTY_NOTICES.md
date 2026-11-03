@@ -99,3 +99,7 @@ The following projects inspired independently authored Basic AI features. No sou
 - File Preview — https://github.com/xhuajin/obsidian-file-preview (MIT)
 
 These are limited independent implementations, not full upstream forks or API-compatible replacements. Zotero quotes use explicit highlights from local Markdown imports only. Session drafts do not automatically delete files.
+
+### Click Clack sound packs (optional download)
+
+Basic AI Tool for Writers offers an opt-in catalog of 13 original Click Clack WAV sound schemes. Audio is never bundled; files are downloaded on request from [Acylation/obsidian-click-clack](https://github.com/Acylation/obsidian-click-clack), revision 6d5b7f0 (release 0.1.2). The upstream code is MIT licensed and credits Writemonkey 3 as the origin of the sound schemes. Users should verify original sample rights before redistributing the audio.

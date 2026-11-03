@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.2.8 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.9 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -74,11 +74,13 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 - **Flexplorer:** fixe ou oculte itens, organize pastas, defina ordem personalizada e aplique padrões glob para visibilidade, sem excluir os arquivos.
 - **Interface compacta:** abas roláveis, menus consistentes e módulos que podem ser ligados e desligados para aproveitar telas menores.
 
+**Descrições no explorador:** prévias longas de pastas e notas ficam compactas. Ao manter o mouse sobre a descrição por **1,5 segundo**, o texto se expande; ao sair, volta ao tamanho normal. Foco pelo teclado também expande as descrições.
+
 ### Áudio e acessibilidade
 
 - **Soundscapes (PC):** as rádios e playlists personalizadas abrem o YouTube no **Visualizador Web** nativo do Obsidian, evitando erros dos iframes ocultos. O botão no widget ou na barra de estado abre/fecha a aba; use o player do YouTube para dar play, pausar ou ajustar o volume. **Minha Música** reproduz arquivos locais do cofre diretamente, com os controles no widget. Se o Visualizador Web estiver desligado, o vídeo abre no navegador.
 - **Image Captions:** legendas opcionais de imagens a partir do texto alternativo do Markdown, sem reescrever arquivos.
-- **Click Clack (PC):** sons opcionais de digitação e pacotes locais de áudio.
+- **Click Clack (PC):** sons de digitação com catálogo dos **13 pacotes originais** (Cherry MX, IBM, Olympia, Quill e outros), disponíveis para download individual ou em lote nas configurações. Pacotes instalados funcionam offline e nenhum áudio é baixado automaticamente.
 - **Leitura em voz alta (TTS):** vozes do sistema, quando disponíveis, ou vozes online com autorização, com idioma, velocidade, tom e seleção de voz. A leitura online envia texto ao serviço escolhido apenas quando ativada.
 - **Teclado e toque:** visualizações com botões, menus e alternativas acessíveis ao arrastar e soltar.
 

@@ -5,15 +5,15 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-test('all four network request call sites are inventoried in security disclosures',()=>{
+test('all five network request call sites are inventoried in security disclosures',()=>{
  const bundle=read('main.js');
  const hits=bundle.match(/\brequestUrl\s*\(/g)||[];
- assert.equal(hits.length,4,'Update SECURITY.md and this inventory if requestUrl call sites change');
- for(const fragment of ['UnicodeData.txt','api.languagetool.org/v2/check','/v1/models','/v1/chat/completions']){
+ assert.equal(hits.length,5,'Update SECURITY.md and this inventory if requestUrl call sites change');
+ for(const fragment of ['UnicodeData.txt','api.languagetool.org/v2/check','/v1/models','/v1/chat/completions','Acylation/obsidian-click-clack']){
    assert(bundle.includes(fragment),'Missing expected network functionality: '+fragment);
  }
  const security=read('SECURITY.md');
- for(const fragment of ['Unicode index download','LanguageTool grammar check','AI model discovery','AI requests','speech.platform.bing.com','auto-check is enabled']){
+ for(const fragment of ['Unicode index download','LanguageTool grammar check','AI model discovery','AI requests','speech.platform.bing.com','auto-check is enabled','Click Clack sound pack download']){
    assert(security.includes(fragment),'Missing disclosure: '+fragment);
  }
 });

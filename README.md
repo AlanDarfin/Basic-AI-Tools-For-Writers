@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.2.8 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.2.9 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -74,11 +74,13 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 - **Flexplorer:** pin or hide items, sort folders, define custom ordering and apply glob-based visibility rules without deleting files.
 - **Compact UI:** scrollable tab strips, consistent tool menus and configurable modules help on smaller screens.
 
+**Explorer description previews:** folder-note and Markdown-note summaries remain compact, but holding the mouse over a long description for **1.5 seconds** expands it in place. Moving the pointer away collapses it. Keyboard focus also expands long descriptions.
+
 ### Audio and accessibility
 
 - **Soundscapes (desktop):** ambient YouTube radio, custom stations and local vault music; shared controls in the status bar and homepage widget.
 - **Image Captions:** optionally display captions from Markdown image alt text, without rewriting the files.
-- **Click Clack (desktop):** optional typing sounds and locally installed sound schemes.
+- **Click Clack (desktop):** optional typing sounds with **13 downloadable sound packs** from the original Click Clack project (Cherry MX, IBM, Olympia, Quill and more). Browse the catalog in Settings to download one pack or all 13, then choose the installed scheme. Downloads are always opt-in; installed sounds work offline.
 - **Text-to-speech:** system voices where supported or opt-in online voices, with language, speed, pitch and voice preferences. Online reading sends selected text to the chosen service only when enabled.
 - **Keyboard and touch:** most views include buttons, menus and touch-compatible alternatives to dragging.
 

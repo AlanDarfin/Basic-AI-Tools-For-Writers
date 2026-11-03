@@ -39,9 +39,9 @@ test('widget actions support hiding, readding, and skipping hidden panels when m
 test('home has calendar in the widget grid and keeps search outside it',()=>{
  const search=home.indexOf('this.renderSearch(top)');
  const toolbar=home.indexOf("const toolbar=this.contentEl.createDiv({cls:'writer-v903-widgets-toolbar'})");
- const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'})");
+ const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'})");
  assert.ok(search>=0&&search<toolbar&&toolbar<grid);
- assert.match(home,/calendar:\(\)=>this\.renderCalendarWidget\(grid\)/);
+ assert.match(home,/calendar:p=>this\.renderCalendarWidget\(p\)/);
  assert.match(home,/!cfg\.homeHidden\.includes\(key\)/);
  for(const name of ['renderActivity','renderRandom','renderTags','renderGoal','manageWidgets'])assert.ok(home.includes(name+'('),name);
 });

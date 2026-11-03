@@ -1,36 +1,10 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.0.5 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.1.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
-[Read in English](../README.md) · [Notas da versão](V9_0_5_RELEASE.pt-BR.md)
+[Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
 
 Uma central compacta para escrever livros, organizar universos, editar Markdown, revisar textos e, opcionalmente, usar inteligência artificial. As notas continuam sendo arquivos normais do cofre do Obsidian.
-
-## Novidades da v9
-
-**9.0.5:** listas de notas recentes e favoritos compactas, com caminho e navegação por teclado; novos widgets opcionais de **galeria de imagens**, **citações aleatórias** e **notas editadas hoje**; título e ícone maiores. Blocos Markdown agora usam `tabs`, `avatar`, `wiki`, `post`, `chat`, `media-gallery` e `folder-overview`; os nomes antigos `writer-*` continuam compatíveis. [Notas completas](V9_0_5_RELEASE.pt-BR.md).
-
-**Correção 9.0.4:** no calendário mobile, os dias deixam de ter números dentro de círculos, passam a exibir o número no canto superior esquerdo e o dia atual recebe a accent color no quadrado inteiro. [Notas da 9.0.4](V9_0_4_RELEASE.pt-BR.md).
-
-**Novidades da 9.0.3:** homepage com galeria de widgets, opções de adicionar/remover/reordenar cartões, novos painéis opcionais de atividade semanal, nota surpresa, tags e meta de palavras, ícones Lucide mais alinhados e restauração ampliada das abas durante atualizações. [Notas da 9.0.3](V9_0_3_RELEASE.pt-BR.md).
-
-**Correção 9.0.2:** o título e o ícone ficam **acima** da pesquisa em largura total. Os seis botões rápidos são distribuídos de forma uniforme: 6 em uma linha no painel largo, 3 × 2 no médio e 2 × 3 no estreito, considerando a largura real do painel. [Notas da 9.0.2](V9_0_2_RELEASE.pt-BR.md).
-
-- **Barra de formatação configurável:** 27 ações Markdown, botões ordenáveis e opcionais, ativada inicialmente no computador e **desativada por padrão no celular**. Não substitui a barra nativa do Obsidian.
-- **Explorador nativo inspirado no Make.md:** personalize ícones e cores de notas/pastas pelo menu contextual do explorador padrão, visualize pastas em listas ou cartões com busca e crie/abra índices Markdown. Nenhuma barra lateral extra.
-- **Homepage renovada:** título centralizado, ícone acima no celular ou ao lado no PC, mais ícones Lucide ou imagem do cofre/HTTPS, relógio acima do calendário e busca no topo.
-- **Smart Spaces (opt-in):** coleções de notas Markdown filtradas por pasta, tag ou propriedade YAML, com cartões, lista, tabela e quadro agrupado. Desligadas por padrão, com barra lateral de Spaces opcional.
-- **Configurações modulares:** possibilidade de desligar a barra de edição e as melhorias do explorador, ajustar botões individualmente e usar a interface em português ou inglês.
-
-**Novidades da 9.0.1:** pesquisa da homepage em largura total acima de todos os elementos, com seleção destacada, caminhos das notas e setas/Enter; melhorias em Lucide/HEX, Escrita e Markdown reunidos, chat compacto, Spaces na barra lateral e bloqueio visual opcional por senha (**não criptografa notas**). [Leia as notas completas](V9_0_1_RELEASE.pt-BR.md).
-
-Última versão estável anterior: **9.0.4**. Versão histórica importante: **8.3.0**.
-
-Esta é uma **integração independente**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [as notas da release v9](V9_RELEASE.pt-BR.md) e [a auditoria de compatibilidade](V9_FINAL_AUDIT.md). Faça backup do cofre antes de atualizar.
-
-### Calendário v9
-
-O calendário de escrita recebeu mini-calendário e painel lateral interno responsivo, visões de 3 dias e agenda de 30 dias, horários, categorias, local, descrição e cores. A recorrência permite intervalos, data final, dias da semana, edição apenas da ocorrência ou da série e exclusão de datas específicas. Os eventos continuam sendo notas Markdown locais. **Não** há sincronização bidirecional com Google Agenda, CalDAV ou ICS.
 
 ## Funcionalidades
 
@@ -47,8 +21,26 @@ O calendário de escrita recebeu mini-calendário e painel lateral interno respo
 | **Editor** | Navegação inspirada no Keyshots, Easy Typing, Smart Typography, foco de máquina de escrever, lembrança do cursor e modelos por nome de nota. |
 | **Formatação** | Markdown estendido, sintaxe inspirada no Pandoc, exportação com Pandoc no computador e blocos de abas, avatares e Wiki. |
 | **Leitura de texto** | Vozes do sistema quando disponíveis ou TTS on-line opcional com consentimento. |
+| **Soundscapes no PC** | Rádios de ambiente via YouTube, playlists personalizadas, músicas do cofre, player compacto na barra inferior e widget de homepage com seleção de rádio, prévia, controles e volume. |
+| **Sons da máquina de escrever** | Sons de teclas no editor Markdown no estilo Click Clack, com volume, sons diferentes por tecla e esquemas WAV locais opcionais, somente no computador. |
+| **Explorador Flexplorer** | Fixar e desafixar, ocultar e revelar itens, ordenar individualmente por pasta, reordenar com Alt + arrastar e usar padrões glob no explorador nativo. |
+| **Conversas com IA** | Assistente com balões alinhados como os blocos de diálogo, anexos Markdown, respostas formatadas e configurações de provedores, modelos e prompts mais uniformes. |
 
 A navegação por **Escrita / Universo / Projeto** foi pensada para painéis estreitos. Os módulos podem ser ativados separadamente, sem criar uma segunda base de dados para os livros.
+
+### Áudio ambiente, teclas sonoras e explorador
+
+**Soundscapes (PC):** Abra **Configurações → Personalização → Soundscapes** e escolha uma rádio como *Lofi beats*, *Ocean waves* ou *ChillSynth FM*. Reproduza e pause pela barra inferior ou adicione o widget **Rádio de escrita** na homepage em **Adicionar widgets**. Ambos compartilham a rádio, o estado da reprodução e o volume. O widget exibe o nome e uma imagem de prévia quando disponível. As rádios usam o YouTube e exigem internet.
+
+**Rádios personalizadas:** Nas configurações de Soundscapes, crie uma playlist e insira uma faixa por linha, com título e URL do YouTube. Exemplo:
+
+Rádio de foco | https://www.youtube.com/watch?v=jfKfPfyJRdk
+
+Para tocar arquivos próprios, coloque áudios em uma pasta do cofre, como *Music*, configure **Pasta de músicas do cofre** para *Music* e escolha **Minha música**. A biblioteca reconhece MP3, WAV, OGG, M4A e FLAC, conforme o suporte do sistema de reprodução do desktop. A reprodução funciona apenas no computador e os arquivos locais não são enviados ao YouTube.
+
+**Click Clack (PC):** Em **Configurações → Escrita e Markdown → Sons da máquina de escrever**, ative os efeitos e ajuste o volume. Os cliques integrados são gerados localmente, sem baixar pacotes. Caso tenha pacotes WAV compatíveis com o Click Clack na pasta *resources* do plugin, use a opção de recarregar para selecioná-los. Os efeitos são acionados apenas durante a digitação no editor Markdown.
+
+**Flexplorer:** No menu de contexto de uma pasta do explorador nativo, selecione **Ordenação desta pasta** → **Ordem personalizada**. Use **Alt + arrastar** para reorganizar notas da mesma pasta, sem substituir o arrastar padrão do Obsidian. Os menus também oferecem **Fixar no explorador** e **Ocultar no explorador**. Em **Configurações → Personalização → Explorador de arquivos**, padrões como *Templates/*** apenas ocultam itens na interface, sem apagar arquivos; **Exibir itens ocultos** permite visualizá-los. Os ícones, cores e visões de pastas do Basic continuam disponíveis.
 
 ## Como usar a formatação Markdown
 

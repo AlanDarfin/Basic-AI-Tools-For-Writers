@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.1.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
 
@@ -26,6 +26,13 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 | **Explorador Flexplorer** | Fixar e desafixar, ocultar e revelar itens, ordenar individualmente por pasta, reordenar com Alt + arrastar e usar padrões glob no explorador nativo. |
 | **Conversas com IA** | Assistente com balões alinhados como os blocos de diálogo, anexos Markdown, respostas formatadas e configurações de provedores, modelos e prompts mais uniformes. |
 | **Conteúdo virtual e BookNav** | Renderize modelos Markdown no cabeçalho, rodapé, seções (modo Leitura) ou lateral, usando regras por pasta, tag e propriedades. Navegue automaticamente entre capítulos Longform sem inserir blocos nas notas. |
+| **Favoritos e File Preview** | Ícone preenchido personalizável no explorador, descrições nas Folder Notes e prévias das notas opcionais. |
+| **Colunas Markdown** | Blocos responsivos em múltiplas colunas com conteúdo Markdown. |
+| **Propriedades interativas** | Toggles, campos de texto/número, sliders, seletores e botões seguros ligados ao YAML. |
+| **Progresso e widgets** | Barras manuais/temporais, relógios, citações, contagens regressivas e contadores. |
+| **Referências Zotero** | Indexa notas importadas e Better BibTeX e usa seus trechos no widget de citações. |
+| **Estilos das notas** | Estilos reversíveis de H1–H6, tipografia, listas, citações e perfis salvos. |
+| **Notas de sessão** | Rascunhos da sessão, fora do cofre até exportação Markdown. |
 
 A navegação por **Escrita / Universo / Projeto** foi pensada para painéis estreitos. Os módulos podem ser ativados separadamente, sem criar uma segunda base de dados para os livros.
 
@@ -60,6 +67,105 @@ Exemplo: para notas na pasta `Personagens/`, crie uma condição por pasta e use
 Outro exemplo: escolha **BookNav automático** como fonte, **Rodapé** como posição e a pasta `Meu Livro/Capítulos` (incluindo subpastas). A navegação acompanha o índice Longform quando a nota pertence ao projeto. Reorganizar capítulos atualiza os botões sem inserir blocos nos arquivos. A navegação manual de notas avulsas continua disponível com `longform-nav`.
 
 Use o comando **Conteúdo virtual: abrir na lateral** para visualizar as regras laterais. Cada regra pode ter sua própria aba dentro desse painel. Você pode ativar, editar, excluir e reordenar regras sem alterar as notas atingidas. Notas modelo também podem conter sintaxe de outros plugins, mas a renderização de Dataview ou Bases depende dessas integrações e do modo de visualização utilizado.
+
+### Favoritos e File Preview — explorador nativo
+
+Os favoritos são compartilhados com a homepage. Clique no ícone ao lado da nota ou use o menu de contexto: notas favoritas recebem um **ícone completamente preenchido** no explorador. Escolha o ícone Lucide e a cor em **Configurações → Personalização → Favoritos e prévias**.
+
+A prévia oferece exatamente três modos: **Desativada**, **Somente Folder Notes** ou **Todas as notas + Folder Notes**. A Folder Note mostra a propriedade `description` diretamente abaixo da pasta correspondente, inclusive nas pastas com índice existente. A descrição pode ser escrita nas propriedades YAML ou pelo menu da pasta em **Editar descrição da Folder Note**. As notas comuns mostram primeiro `description` ou `summary` e, no modo de todas as notas, um trecho do corpo Markdown como alternativa. É possível definir o comprimento da prévia ou desativá-la.
+
+Exemplo de Folder Note:
+
+```markdown
+---
+description: "Cenas e resumos do segundo ato."
+---
+
+# Ato 2
+```
+
+### Colunas, progresso, widgets e propriedades interativas
+
+Os módulos podem ser ativados em **Configurações → Escrita e Markdown → Blocos e colunas**. São extensões de Markdown que dispensam instalar separadamente os plugins usados como referência.
+
+**Colunas responsivas:** use o bloco `columns` (ou `multi-column`) com um separador. No celular, as colunas ficam empilhadas.
+
+```text
+~~~columns
+columns: 2
+gap: 16
+---
+### Rascunho
+Primeira coluna com **Markdown comum**.
+--- column ---
+### Revisão
+Segunda coluna, com listas e links.
+~~~
+```
+
+**Barras de progresso:** `progressbar` aceita `manual`, `day-year`, `day-month`, `day-week`, `month` e `day-custom`. O `id` permite salvar um valor manual com botões:
+
+```text
+~~~progressbar
+kind: manual
+id: meu-livro
+name: "Rascunho: {percentage}"
+value: 12
+min: 0
+max: 25
+button: true
+~~~
+```
+
+**Widgets nas notas:** use um bloco `widgets` com `type: clock`, `quote`, `countdown` ou `counter`. Contadores guardam valores locais; relógios e contagens atualizam enquanto visíveis.
+
+```text
+~~~widgets
+type: countdown
+date: 2027-01-01 00:00:00
+to: Meta do manuscrito
+~~~
+```
+
+**Propriedades estilo Meta Bind:** use `meta-bind` com uma lista de `fields` ou a sintaxe inline de modo Leitura `INPUT[toggle:done]` e `VIEW[done]`. Campos: toggle, text, number, date, slider e select. O bloco `meta-bind-button` pode definir, inverter ou incrementar uma propriedade. Não são executados scripts ou ações arbitrárias.
+
+```text
+~~~meta-bind
+fields:
+  - key: done
+    label: Concluído
+    type: toggle
+  - key: progress
+    label: Progresso
+    type: slider
+    min: 0
+    max: 100
+~~~
+```
+
+### Zotero e integração com o widget de citações
+
+Em **Configurações → Longform → Zotero e referências**, escolha a pasta com notas de referências já importadas do Zotero e, se desejar, um arquivo `.bib` gerado pelo Better BibTeX dentro do cofre. O Basic indexa chaves de citação, autor, título, ano e trechos destacados. Use **Zotero: inserir citação da biblioteca local** para escolher uma referência ou um bloco `zotero` / `bibliography` para listá-las.
+
+Uma nota importada com estas propriedades já permite preencher o widget de citações:
+
+```markdown
+---
+citekey: exemplo2026
+title: Obra de exemplo
+author: Autor Exemplo
+year: 2026
+quote: "Uma citação curta que registrei nas minhas próprias notas."
+---
+```
+
+O widget **Citação aleatória** pode usar **Apenas manuais**, **Preferir Zotero** ou **Misturar Zotero e citações manuais**. Quando houver origem, **Abrir referência** abre a nota. O Zotero e o Better BibTeX são aplicativos separados: esta integração **não lê diretamente o banco de dados do Zotero nem reproduz toda a importação de PDFs/anotações e os recursos avançados do plugin externo Zotero Integration**. Importe ou sincronize as notas/exportações com o cofre antes.
+
+### StyleMate e notas de sessão
+
+**Estilos das notas:** em **Configurações → Personalização → Estilos das notas**, ajuste tamanho e altura do texto, espaçamento, recuo das listas, cores dos links e citações, além de cores e tamanhos dos títulos H1–H6. Salve perfis, copie CSS ou ative o modo de impressão PDF em preto e branco. O estilo é reversível e não modifica as notas.
+
+**Notas de sessão:** o comando **Notas de sessão: abrir painel** cria rascunhos temporários ou da sessão. Eles ficam no armazenamento da sessão do aplicativo, fora do cofre, até você usar **Exportar Markdown**. Excluir pede confirmação; descartar rascunhos temporários ao trocar de nota é opcional e vem desligado. Exporte textos importantes antes de encerrar a sessão do aplicativo.
 
 ## Como usar a formatação Markdown
 

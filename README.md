@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.1.2 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.2.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party credits](THIRD_PARTY_NOTICES.md)
 
@@ -26,6 +26,13 @@ A single, compact writing workspace for planning books, organizing a fictional w
 | **Native Flexplorer tools** | Pin/unpin, hide/reveal items, per-folder sorting, custom file order via Alt + drag, and glob-based hide patterns, in the original Explorer pane. |
 | **AI conversations** | A dialogue-style assistant with aligned message bubbles, file attachments, Markdown responses, and consistent provider, model and prompt settings. |
 | **Virtual Content & BookNav** | Display live Markdown templates in headers, footers, sections (Reading View) or a sidebar using folder, tag and property rules. Show Longform chapter navigation automatically without writing blocks into notes. |
+| **Favorites & File Preview** | Configurable filled favorite icon in Explorer; Folder Note descriptions and configurable all-note excerpts. |
+| **Markdown columns** | Responsive multi-column blocks with normal Markdown content. |
+| **Interactive properties** | Frontmatter-bound toggles, text/number fields, sliders, selects and safe buttons. |
+| **Progress & note widgets** | Manual/date progress bars, clocks, quotes, countdowns and counters. |
+| **Zotero references** | Locally index imported Zotero/Better BibTeX notes and add their excerpts to homepage quotes. |
+| **Note styling** | Reversible H1–H6, typography, list and callout styling with presets. |
+| **Session Notes** | Private, session-local scratch notes with explicit Markdown export. |
 
 The **Writing / World / Project** navigation and independent module toggles keep narrow sidebars usable. Changes to scene and world metadata use Obsidian notes and properties rather than duplicating the story database.
 
@@ -60,6 +67,106 @@ Example: for notes in `Characters/`, set a folder condition and use this Markdow
 Another example: set the source to **Automatic BookNav**, location to **Footer**, and folder to `My Book/Chapters` (including subfolders). The navigator will follow the Longform index when the note belongs to the project. If the project is reordered, the virtual navigation updates; manual standalone notes are still supported through the existing `longform-nav` syntax.
 
 Use the **Virtual Content: open sidebar** command for matching sidebar rules. Independent sidebar tabs can be enabled per rule. Rules can be disabled, edited, removed or reordered without modifying the matching files. Markdown from source notes may include third-party syntax; support for Dataview or Bases rendering depends on those separate plugins and the active view mode.
+
+### Favorites and File Preview — native explorer
+
+Favorites are shared with the homepage. Click the favorite icon beside a file, or use the file's context menu; favorite notes display a **solid, filled icon** in the native Explorer. Choose a Lucide icon and its accent color in **Settings → Customization → Favorites & previews**.
+
+The preview selector has exactly three modes: **Off**, **Folder Notes only**, or **All notes + Folder Notes**. Folder Notes display their `description` property directly under the matching folder in Explorer, including folders with existing index notes. Their descriptions can be edited in YAML properties or via **Edit Folder Note description** on the folder's context menu. Regular notes show a `description` or `summary` property first, otherwise an excerpt from their Markdown body when full previews are enabled. Customize preview length and turn previews off independently.
+
+Example Folder Note:
+
+```markdown
+---
+description: "Scenes and outlines for the second act."
+---
+
+# Act 2
+
+```
+
+### Columns, progress bars, widgets and interactive fields
+
+These modules are optional in **Settings → Writing & Markdown → Blocks & columns**. They extend normal Markdown without requiring the source plugins.
+
+**Responsive columns:** use `columns` (or `multi-column`) with a simple delimiter. Columns stack on narrow screens.
+
+```text
+~~~columns
+columns: 2
+gap: 16
+---
+### Draft
+First column with **normal Markdown**.
+--- column ---
+### Revision
+Second column, with lists or links.
+~~~
+```
+
+**Progress bars:** `progressbar` supports `manual`, `day-year`, `day-month`, `day-week`, `month` and `day-custom`. Provide an `id` to save a manual value and use increment/decrement buttons:
+
+```text
+~~~progressbar
+kind: manual
+id: book-draft
+name: "Draft: {percentage}"
+value: 12
+min: 0
+max: 25
+button: true
+~~~
+```
+
+**Widgets inside notes:** use a `widgets` block with `type: clock`, `quote`, `countdown` or `counter`. Counters retain local values; clocks and countdowns update while visible.
+
+```text
+~~~widgets
+type: countdown
+date: 2027-01-01 00:00:00
+to: Manuscript milestone
+~~~
+```
+
+**Meta Bind-style properties:** use a `meta-bind` block with `fields`, or the Reading mode inline syntax `INPUT[toggle:done]` and `VIEW[done]`. Input types include toggle, text, number, date, slider and select. A `meta-bind-button` block can set, toggle or increment a named property; arbitrary JavaScript actions are not executed.
+
+```text
+~~~meta-bind
+fields:
+  - key: done
+    label: Finished
+    type: toggle
+  - key: progress
+    label: Progress
+    type: slider
+    min: 0
+    max: 100
+~~~
+```
+
+### Zotero references and the homepage quotes widget
+
+In **Settings → Longform → Zotero & references**, configure a folder containing Markdown literature notes imported from Zotero, and optionally a Better BibTeX `.bib` file in the vault. The Basic module indexes local citation keys, author/title/year metadata, and quoted highlights. Use **Zotero: insert citation from local library** to choose a reference, or a `zotero` / `bibliography` Markdown block to display references.
+
+A Markdown reference note with frontmatter like this is enough to populate the quotes widget:
+
+```markdown
+---
+citekey: example2026
+title: Example work
+author: Sample Author
+year: 2026
+quote: "A short example quotation from my own notes."
+---
+```
+
+The homepage's **Random quote** widget can use **Manual**, **Prefer Zotero** or **Mix Zotero and manual**. When an imported quote is selected, **Open reference** takes you to its source note. Zotero itself and Better BibTeX are separate applications; this integration **does not directly read Zotero's database, import PDFs/annotations over its API, or reproduce the external Zotero Integration plugin's full feature set**. Import or sync your Zotero notes/exports to the vault first.
+
+### Note styling and Session Notes
+
+**Note styles (StyleMate-inspired):** under **Settings → Customization → Note styles**, adjust text size, line height, paragraph spacing, list indent, links, quotation colors and all six heading sizes/colors. Save and apply local style presets, copy the generated CSS, or enable black-and-white PDF print mode. Changes are reversible and do not alter your Markdown files.
+
+**Session Notes:** open **Session Notes: open panel** to create temporary scratch or session-local writing tabs. They live in the application's session storage, not in the vault, until you select **Export Markdown**. Deleting a scratch note asks for confirmation; optional auto-discard on switching temporary notes is disabled by default. Export important drafts before ending your app session.
 
 ## Using Markdown formatting
 

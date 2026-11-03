@@ -83,3 +83,25 @@ YouTube player.
   https://github.com/Signynt/virtual-content
 
 The Basic AI virtual-content module is an **independent implementation** inspired by folder/tag/property matching, dynamic header/footer/sidebar templates and non-destructive rendering. No source code or assets from Virtual Content are vendored. The built-in Longform BookNav implementation is reused rather than replaced. Dataview and Obsidian Bases remain separate optional integrations; this module does not execute user-supplied JavaScript or dynamic Dataview queries itself.
+
+## v9.2.0 integrations — behavioral references
+
+- **Favorite Note** by mahmudz — MIT. https://github.com/mahmudz/obsidian-favorite-plugin
+- **Multi-Column Markdown** by ckRobinson — GPL-3.0. https://github.com/ckRobinson/multi-column-markdown
+- **Meta Bind** by mProjectsCode — GPL-3.0. https://github.com/mProjectsCode/obsidian-meta-bind-plugin
+- **ProgressBar** by zwpaper — Apache-2.0. https://github.com/zwpaper/obsidian-progressbar
+- **Obsidian Widgets** by rafaelveiga — GPL-3.0. https://github.com/rafaelveiga/obsidian-widgets
+- **Zotero Integration** (community archive) — GPL-3.0. https://github.com/community-archive/obsidian-zotero-integration
+- **StyleMate** by droidstreamer — MIT. https://github.com/droidstreamer/stylemate
+- **Session Notes** by tabibyte — MIT. https://github.com/tabibyte/session-notes
+- **File Preview** by xhuajin — MIT. https://github.com/xhuajin/obsidian-file-preview
+
+These repositories informed workflows, user-facing Markdown syntax and feature design.
+**No code, visual assets or bundles from these plugins are included or redistributed.**
+The Basic AI v9.2 integration modules are original, narrower implementations with
+independent settings, and are not claiming full upstream feature parity.
+Zotero exports must already be locally available in the vault; no Zotero database
+or application-specific IPC access is performed. Meta Bind-style buttons only
+modify expressly named local properties, and do not execute arbitrary JavaScript.
+Temporary notes are stored in session memory/storage and can be explicitly
+exported to the vault. GPL-licensed projects are referenced for behavior only.

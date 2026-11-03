@@ -138,7 +138,7 @@ async function writerV9CreateFolderIndex(plugin,folder){
   let i=2;while(plugin.app.vault.getAbstractFileByPath(path))path=base+name+'-'+i+++'.md';
  }
  const title=name.replace(/[\r\n#]/g,' ').trim();
- const file=await plugin.app.vault.create(path,'# '+title+'\n\n'+String.fromCharCode(96).repeat(3)+'folder-overview\nstyle: cards\nsubfolders: false\n'+String.fromCharCode(96).repeat(3)+'\n');
+ const file=await plugin.app.vault.create(path,'---\ndescription: ""\n---\n\n# '+title+'\n\n'+String.fromCharCode(96).repeat(3)+'folder-overview\nstyle: cards\nsubfolders: false\n'+String.fromCharCode(96).repeat(3)+'\n');
  await plugin.app.workspace.getLeaf('tab').openFile(file);
 }
 function writerV9RegisterExplorer(plugin){

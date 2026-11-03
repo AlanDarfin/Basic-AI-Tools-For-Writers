@@ -24,7 +24,7 @@ test('9.1 version and assembled runtime',()=>{
  assert.match(main,/writerV91RegisterSound\(this\)/);
  assert.match(main,/writerV91RegisterClick\(this\)/);
  assert.match(main,/writerV91FlexRegister\(this\)/);
- assert.match(main,/writerV91HomeSoundscape\(this,grid\)/);
+ assert.match(main,/writerV91HomeSoundscape\(this,p\)/);
  assert.match(main,/writer-v91-ai-chat-row/);
 });
 test('Soundscapes original preset radio IDs, YouTube URL restrictions and safe settings migration',()=>{

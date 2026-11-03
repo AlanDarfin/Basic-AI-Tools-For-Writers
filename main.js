@@ -9647,6 +9647,14 @@ function writerV8RegisterMediaGallery(plugin){
 
 // v3 module: src/v8/finish-blocks.js
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
+/* Use one Unicode-safe sanitizer for initial settings and the live settings input.
+ * Never double-escape regex character classes: /[\\r\\n]/ strips lowercase r and n. */
+function writerV8HomeTitleClean(value){
+ return String(value??'')
+  .replace(/[\r\n\u2028\u2029]+/g,' ')
+  .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
+  .slice(0,80);
+}
 const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'],homeHidden:['activity','random','tags','goal','gallery','quotes','today'],homeWordGoal:500,homeQuotes:''};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
@@ -9908,14 +9916,6 @@ function writerV8RegisterFinishBlocks(plugin){
 // v3 module: src/v8/home-utilities.js
 /* Homepage utilities: calendar, native Web Viewer and conservative empty-tab detection. */
 const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil','book','books','bookmark','star','heart','lightbulb','brain','graduation-cap','file-text','folder','archive','palette','brush','wand-sparkles','calendar-days','clock','pencil-line','notebook','pen','library-big','layout-dashboard','globe','leaf','coffee','music','headphones','flag','compass','map','gem','trophy','shield','user','users','image','images','flame','cloud','settings'];
-/* Use one Unicode-safe sanitizer for initial settings and the live settings input.
- * Never double-escape regex character classes: /[\\r\\n]/ strips lowercase r and n. */
-function writerV8HomeTitleClean(value){
- return String(value??'')
-  .replace(/[\r\n\u2028\u2029]+/g,' ')
-  .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
-  .slice(0,80);
-}
 function writerV8HomeIconName(value){
  const name=String(value||'').trim();
  if(WRITER_V8_HOME_ICONS.includes(name))return name;

@@ -212,13 +212,13 @@ class WriterFinalFeatures{
  }
  async applyTemplateToCurrent(){
   const file=this.plugin.app.workspace.getActiveFile();
-  if(!(file instanceof TFile))return new Notice('Open a Markdown note.');
+  if(!(file instanceof TFile))return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   const applied=await this.applyTemplate(file,true);
-  new Notice(applied?'Template applied.':'No applicable template, or note is not empty.');
+  new Notice(applied?writerUi('Modelo aplicado.','Template applied.'):writerUi('Nenhum modelo aplicável ou a nota não está vazia.','No applicable template, or note is not empty.'));
  }
  async insertToc(){
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-  if(!view)return new Notice('Open a Markdown note.');
+  if(!view)return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   view.editor.replaceSelection('\n'+String.fromCharCode(96,96,96)+'insta-toc\n'+String.fromCharCode(96,96,96)+'\n');
  }
  async renderToc(el,path,source=''){
@@ -244,7 +244,7 @@ class WriterFinalFeatures{
    stack[stack.length-1].children.push(node);stack.push(node);
   }
   const wrap=el.createDiv({cls:'writer-insta-toc-rendered'});
-  if(!nodes.length){wrap.createEl('p',{text:'No headings found.'});return;}
+  if(!nodes.length){wrap.createEl('p',{text:writerUi('Nenhum título encontrado.','No headings found.')});return;}
   const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
   const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
   const openAt=async node=>{
@@ -313,7 +313,7 @@ class WriterFinalFeatures{
   await this.plugin.app.vault.adapter.write(path,response.text);
   this.unicodeIndex=null;
   const list=await this.loadUnicodeIndex();
-  new Notice('Unicode index ready: '+list.length+' characters.');
+  new Notice(writerUi('Índice Unicode pronto: ','Unicode index ready: ')+list.length+writerUi(' caracteres.',' characters.'));
   return list;
  }
  async unicodePicker(){
@@ -349,7 +349,7 @@ class WriterFinalFeatures{
    let visible=[];
    const insert=entry=>{
     if(editor)editor.replaceSelection(entry.char);
-    else if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText)navigator.clipboard.writeText(entry.char).catch(()=>new Notice('Copy failed.'));
+    else if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText)navigator.clipboard.writeText(entry.char).catch(()=>new Notice(writerUi('Falha ao copiar.','Copy failed.')));
     cfg.recent=[entry.char,...(cfg.recent||[]).filter(c=>c!==entry.char)].slice(0,30);
     this.plugin.saveSettings();modal.close();
    };
@@ -427,8 +427,8 @@ class WriterFinalFeatures{
     .addText(t=>t.setPlaceholder('Expansion').onChange(v=>expansion=v))
     .addButton(b=>b.setButtonText('Add').onClick(async()=>{
      const key=word.trim();
-     if(!key||!expansion.trim()||/\s/.test(key))return new Notice('Please enter a word without spaces and a replacement.');
-     if(entries[key])return new Notice('This abbreviation already exists.');
+     if(!key||!expansion.trim()||/\s/.test(key))return new Notice(writerUi('Informe uma abreviação sem espaços e sua substituição.','Please enter a word without spaces and a replacement.'));
+     if(entries[key])return new Notice(writerUi('Esta abreviação já existe.','This abbreviation already exists.'));
      entries[key]={value:expansion,isEnabled:true,isCaseSensitive:false};
      await this.plugin.saveSettings();paint();
     }));
@@ -448,7 +448,7 @@ class WriterFinalFeatures{
      row.addExtraButton(b=>b.setIcon('pencil').setTooltip('Rename abbreviation').onClick(()=>{
       new TextPrompt(this.plugin.app,'Rename abbreviation',async name=>{
        const newName=name.trim();
-       if(!newName||/\s/.test(newName)||entries[newName])return new Notice('Invalid or duplicate abbreviation.');
+       if(!newName||/\s/.test(newName)||entries[newName])return new Notice(writerUi('Abreviação inválida ou duplicada.','Invalid or duplicate abbreviation.'));
        entries[newName]=entry;delete entries[key];await this.plugin.saveSettings();paint();
       },key).open();
      }));
@@ -499,7 +499,7 @@ class WriterFinalFeatures{
  }
  async speakActive(){
   const cfg=this.cfg.tts;
-  if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
+  if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice(writerUi('Ative a leitura de texto nas configurações.','Enable text-to-speech in settings.'));
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
   const workspace=this.plugin.app.workspace;
@@ -509,18 +509,18 @@ class WriterFinalFeatures{
    ||leaves.find(leaf=>leaf.view?.file?.path===file?.path&&leaf.view?.editor)?.view
    ||leaves.find(leaf=>leaf.view?.file?.extension==='md'&&leaf.view?.editor)?.view;
   const note= view?.file||file;
-  if(!note||note.extension!=='md')return new Notice('Open a Markdown note.');
+  if(!note||note.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   this.lastFile=note;
   const selected=view?.editor?.getSelection?.()||'';
   const raw=selected&&cfg.readSelection?selected:
     (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
   const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
-  if(!text)return new Notice('No readable text.');
+  if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
   const engine=cfg.engine||'system';
   if(engine==='edge'){
-   if(!cfg.allowOnline)return new Notice('Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.');
-   if(typeof WebSocket==='undefined')return new Notice('Online voice requires WebSocket support.');
+   if(!cfg.allowOnline)return new Notice(writerUi('Ative o envio de texto à Microsoft nas configurações de voz antes de usar vozes online.','Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.'));
+   if(typeof WebSocket==='undefined')return new Notice(writerUi('A voz online requer suporte a WebSocket.','Online voice requires WebSocket support.'));
    this.stop();
    const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
    const selectedVoice=cfg.edgeVoice||WRITER_EDGE_VOICES[lang]||WRITER_EDGE_VOICES[lang.split('-')[0]==='pt'?'pt-BR':'en-US'];
@@ -619,7 +619,7 @@ function writerRenderFinalSettings(panel,plugin,section){
   new Setting(panel).setName('Offline Unicode index').setDesc('Download UnicodeData.txt from unicode.org once. Search works offline afterward.').addButton(b=>b.setButtonText('Download / update').onClick(async()=>{
    b.setDisabled(true).setButtonText('Downloading…');
    try{await plugin.writerFinalFeatures.downloadUnicode();}
-   catch(e){new Notice('Unicode index: '+e.message);}
+   catch(e){new Notice(writerUi('Índice Unicode: ','Unicode index: ')+e.message);}
    finally{b.setDisabled(false).setButtonText('Download / update');}
   }));
  }

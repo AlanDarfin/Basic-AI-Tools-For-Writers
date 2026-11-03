@@ -9653,7 +9653,7 @@ function writerV8FinishMerge(settings){
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
  cfg.captions=cfg.captions!==false;cfg.homeAtStartup=cfg.homeAtStartup===true;
  cfg.homeOnNewTab=cfg.homeOnNewTab!==false;
- cfg.homeTitle=String(cfg.homeTitle||'').replace(/[\r\n]/g,' ').slice(0,80);
+ cfg.homeTitle=writerV8HomeTitleClean(cfg.homeTitle);
  cfg.homeIconImage=String(cfg.homeIconImage||'').trim().slice(0,600);
  cfg.homeTitleColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeTitleColor||''))?String(cfg.homeTitleColor).toLowerCase():'';
  cfg.homeIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.homeIconColor||''))?String(cfg.homeIconColor).toLowerCase():'';
@@ -9908,6 +9908,14 @@ function writerV8RegisterFinishBlocks(plugin){
 // v3 module: src/v8/home-utilities.js
 /* Homepage utilities: calendar, native Web Viewer and conservative empty-tab detection. */
 const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil','book','books','bookmark','star','heart','lightbulb','brain','graduation-cap','file-text','folder','archive','palette','brush','wand-sparkles','calendar-days','clock','pencil-line','notebook','pen','library-big','layout-dashboard','globe','leaf','coffee','music','headphones','flag','compass','map','gem','trophy','shield','user','users','image','images','flame','cloud','settings'];
+/* Use one Unicode-safe sanitizer for initial settings and the live settings input.
+ * Never double-escape regex character classes: /[\\r\\n]/ strips lowercase r and n. */
+function writerV8HomeTitleClean(value){
+ return String(value??'')
+  .replace(/[\r\n\u2028\u2029]+/g,' ')
+  .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
+  .slice(0,80);
+}
 function writerV8HomeIconName(value){
  const name=String(value||'').trim();
  if(WRITER_V8_HOME_ICONS.includes(name))return name;
@@ -11283,7 +11291,7 @@ function writerV8FinishSettings(plugin,panel){
   .setDesc(writerUi('Em branco para usar o título padrão.','Leave blank to use the default title.'))
   .addText(input=>input.setPlaceholder(writerUi('Meu espaço de escrita','My writing space'))
    .setValue(cfg.homeTitle||'').onChange(async value=>{
-    cfg.homeTitle=String(value||'').replace(/[\\r\\n]/g,' ').slice(0,80);
+    cfg.homeTitle=writerV8HomeTitleClean(value);
     await plugin.saveSettings();refreshHome();
    }));
  writerV922IconSetting(plugin,panel,{

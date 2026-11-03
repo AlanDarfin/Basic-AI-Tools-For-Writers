@@ -42,11 +42,11 @@ async function writerV8Markdown(plugin,ctx,element,value){
  if(!value)return;
  await MarkdownRenderer.render(plugin.app,value,element,ctx.sourcePath||'',plugin);
 }
-function writerV8RenderTabs(plugin,source,element,ctx){
+function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
  const tabs=writerV8SplitTabs(source);
  const layout=writerV8TabLayout(source);
  const root=element.createDiv({cls:'writer-v8-block writer-v8-tabs'+(layout==='top'?'':' writer-v8-tabs-side')+(layout==='right'?' writer-v8-tabs-right':'')});
- const rerender=next=>writerV8RenderTabs(plugin,next,element,ctx);
+ const rerender=next=>writerV8RenderTabs(plugin,next,element,ctx,fenceType);
  if(!tabs.length){root.createEl('p',{text:writerUi('Use === Título para iniciar cada aba (máximo 12).','Use === Title to start each tab (12 maximum).')});return;}
  const nav=root.createDiv({cls:'writer-v8-tab-list',attr:{role:'tablist','aria-label':writerUi('Abas do conteúdo','Content tabs')}});
  const pane=root.createDiv({cls:'writer-v8-tab-panels'});
@@ -70,7 +70,7 @@ function writerV8RenderTabs(plugin,source,element,ctx){
    const edit=event=>{
     if(event?.target?.closest?.('a,button,input,textarea,select'))return;
     if(target.querySelector('.writer-v8-inline-editor'))return;
-    writerV8InlineEditor(plugin,ctx,target,element,'writer-tabs',source,tabs[index].content,
+    writerV8InlineEditor(plugin,ctx,target,element,fenceType,source,tabs[index].content,
      value=>writerV8ReplaceTab(source,index,value),rerender);
    };
    content.addEventListener('click',edit);
@@ -101,7 +101,7 @@ function writerV8RenderTabs(plugin,source,element,ctx){
    if(!title)return;
    const next=source.replace(/\n+$/,'')+'\n=== '+title+'\n';
    try{
-    await writerV8CommitFenced(plugin,ctx,element,'writer-tabs',source,next);
+    await writerV8CommitFenced(plugin,ctx,element,fenceType,source,next);
     if(element.isConnected){element.empty();rerender(next);}
    }catch(error){new Notice(writerUi('Erro ao criar aba: ','Unable to add tab: ')+String(error.message||error));}
   };
@@ -113,7 +113,7 @@ function writerV8RenderTabs(plugin,source,element,ctx){
  });
  select(0);
 }
-function writerV8RenderCard(plugin,source,element,ctx,kind){
+function writerV8RenderCard(plugin,source,element,ctx,kind,fenceType=kind==='avatar'?'writer-avatar':'writer-wiki'){
  const parsed=writerV8ReadCard(source);
  const root=element.createDiv({cls:'writer-v8-block writer-v8-'+kind});
  if(!parsed){root.createEl('p',{text:writerUi('Bloco muito grande.','Block too large.')});return;}
@@ -142,22 +142,23 @@ function writerV8RenderCard(plugin,source,element,ctx,kind){
  const edit=event=>{
   if(event?.target?.closest?.('a,button,input,textarea,select'))return;
   if(root.querySelector('.writer-v8-inline-editor'))return;
-  writerV8InlineEditor(plugin,ctx,root,element,kind==='avatar'?'writer-avatar':'writer-wiki',source,body,
+  writerV8InlineEditor(plugin,ctx,root,element,fenceType,source,body,
    value=>source.includes('\n---\n')
     ?source.slice(0,source.indexOf('\n---\n')+5)+value
     :source.trimEnd()+'\n---\n'+value,
-   next=>writerV8RenderCard(plugin,next,element,ctx,kind));
+   next=>writerV8RenderCard(plugin,next,element,ctx,kind,fenceType));
  };
  content.addEventListener('click',edit);
  content.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.ctrlKey&&!event.metaKey){event.preventDefault();edit();}});
 }
 function writerV8RegisterBlocks(plugin,enabled){
  if(typeof plugin.registerMarkdownCodeBlockProcessor!=='function')return;
- for(const type of ['writer-tabs','writer-avatar','writer-wiki']){
+ for(const type of ['tabs','avatar','wiki','writer-tabs','writer-avatar','writer-wiki']){
   plugin.registerMarkdownCodeBlockProcessor(type,(source,element,ctx)=>{
    if(!enabled()){element.createEl('pre',{text:source});return;}
-   if(type==='writer-tabs')writerV8RenderTabs(plugin,source,element,ctx);
-   else writerV8RenderCard(plugin,source,element,ctx,type==='writer-avatar'?'avatar':'wiki');
+   const kind=type.replace(/^writer-/,'');
+   if(kind==='tabs')writerV8RenderTabs(plugin,source,element,ctx,type);
+   else writerV8RenderCard(plugin,source,element,ctx,kind,type);
   });
  }
 }

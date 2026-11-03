@@ -1,7 +1,29 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal'];
+const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
+const WRITER_V8_HOME_ORIGINAL_QUOTES=[
+ ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
+ ['Uma boa ideia cresce quando ganha espaço na página.',''],
+ ['Escreva primeiro. Descubra o caminho durante a revisão.',''],
+ ['Histórias se constroem uma palavra de cada vez.',''],
+ ['Às vezes uma cena pequena muda o rumo de um livro inteiro.',''],
+ ['O próximo capítulo começa com uma única linha.','']
+];
+function writerV8HomeQuoteChoices(value){
+ const lines=String(value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,80);
+ const choices=lines.map(line=>{
+  const parts=line.split(/\s+\|\s+/);
+  return [String(parts[0]||'').slice(0,440),String(parts.slice(1).join(' | ')||'').slice(0,80)];
+ }).filter(row=>row[0]);
+ return choices.length?choices:WRITER_V8_HOME_ORIGINAL_QUOTES;
+}
+function writerV8HomePick(items,previous=''){
+ if(!Array.isArray(items)||!items.length)return null;
+ if(items.length===1)return items[0];
+ const others=items.filter(item=>(typeof item==='string'?item:item?.path||item?.[0])!==previous);
+ return (others.length?others:items)[Math.floor(Math.random()*(others.length?others:items).length)];
+}
 const WRITER_V8_HOME_CATALOG={
  calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],
  continue:['book-open','Continuar escrevendo','Continue writing','Retome seu projeto','Resume your project'],
@@ -12,7 +34,10 @@ const WRITER_V8_HOME_CATALOG={
  activity:['chart-column','Atividade semanal','Weekly activity','Notas modificadas nos últimos sete dias','Notes modified in the last seven days'],
  random:['shuffle','Nota surpresa','Surprise note','Descubra uma nota aleatória do cofre','Discover a random vault note'],
  tags:['tags','Tags frequentes','Popular tags','Tags mais usadas nas notas','Most-used note tags'],
- goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note']
+ goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note'],
+ gallery:['images','Galeria do cofre','Vault gallery','Foto aleatória dos arquivos locais','A random image from your local vault'],
+ quotes:['quote','Citação do dia','Random quote','Citação diferente ao abrir a homepage','A fresh quote every time you open home'],
+ today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today']
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -43,7 +68,7 @@ class WriterV8HomeView extends ItemView{
  getViewType(){return WRITER_V8_HOME_VIEW;}
  getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
- async onOpen(){this.disposed=false;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
+ async onOpen(){this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
  async onClose(){this.disposed=true;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
@@ -110,7 +135,10 @@ class WriterV8HomeView extends ItemView{
    activity:()=>this.renderActivity(grid),
    random:()=>this.renderRandom(grid),
    tags:()=>this.renderTags(grid),
-   goal:()=>this.renderGoal(grid)
+   goal:()=>this.renderGoal(grid),
+   gallery:()=>this.renderGallery(grid),
+   quotes:()=>this.renderQuotes(grid),
+   today:()=>this.renderToday(grid)
   };
   for(const key of cfg.homeOrder){
    if(WRITER_V8_HOME_SECTIONS.includes(key)&&!cfg.homeHidden.includes(key))cards[key]?.();
@@ -298,17 +326,93 @@ class WriterV8HomeView extends ItemView{
   draw();
  }
  renderFiles(parent,kind){
-  const box=this.card(parent,kind,kind==='recent'?'Notas recentes':'Favoritos',kind==='recent'?'Recent notes':'Favorites');
-  const paths=kind==='recent'?writerV8HomeTopFiles(this.plugin,9):
+  const recent=kind==='recent',box=this.card(parent,kind,recent?'Notas recentes':'Favoritos',recent?'Recent notes':'Favorites');
+  const files=recent?writerV8HomeTopFiles(this.plugin,12):
    this.plugin.settings.v8Finish.homeFavorites.map(path=>this.app.vault.getAbstractFileByPath(path)).filter(file=>file instanceof TFile);
-  const list=box.createDiv({cls:'writer-v8-home-file-list'});
-  if(!paths.length)list.createEl('p',{text:writerUi('Use a estrela da pesquisa ou o comando de favoritar nota.','Use the star in search or the favorite-note command.'),cls:'writer-v8-home-muted'});
-  for(const file of paths){
-   const row=list.createDiv({cls:'writer-v8-home-file-row'});
-   row.createEl('button',{cls:'writer-v8-home-file-link',text:file.basename}).addEventListener('click',()=>this.openFile(file));
-   if(kind==='favorites')row.createEl('button',{text:'★',cls:'writer-v8-home-star',attr:{'aria-label':writerUi('Remover favorito','Remove favorite')}})
-    .addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();this.render();});
-  }
+  this.renderNoteRows(box,files,kind);
+ }
+ renderToday(parent){
+  const box=this.card(parent,'today','Editadas hoje','Edited today'),midnight=new Date();
+  midnight.setHours(0,0,0,0);
+  const files=(this.app.vault.getMarkdownFiles?.()||[])
+   .filter(file=>(file.stat?.mtime||0)>=midnight.getTime())
+   .sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0)).slice(0,24);
+  this.renderNoteRows(box,files,'today');
+ }
+ renderNoteRows(box,files,kind){
+  const wrap=box.createDiv({cls:'writer-v905-note-widget'});
+  const search=wrap.createEl('input',{cls:'writer-v905-note-filter',attr:{
+   type:'search',autocomplete:'off',placeholder:writerUi('Filtrar notas deste painel…','Filter notes in this widget…'),
+   'aria-label':writerUi('Filtrar notas','Filter notes')}});
+  if(files.length<5)search.hidden=true;
+  const list=wrap.createDiv({cls:'writer-v8-home-file-list writer-v905-note-list',
+   attr:{role:'list','aria-label':writerUi('Notas para abrir','Notes to open')}});
+  const status=wrap.createDiv({cls:'writer-v905-note-status',
+   attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
+  let visible=[],selected=0;
+  const select=(index,moveFocus=false)=>{
+   if(!visible.length)return;
+   selected=(index+visible.length)%visible.length;
+   const rows=[...list.children];
+   rows.forEach((row,i)=>{row.classList.toggle('is-selected',i===selected);row.setAttribute('aria-current',String(i===selected));});
+   status.setText(writerUi('Selecionada: ','Selected: ')+visible[selected].path+' · '+writerUi('Enter para abrir','Enter to open'));
+   if(moveFocus){rows[selected]?.querySelector?.('.writer-v905-note-open')?.focus?.();
+    rows[selected]?.scrollIntoView?.({block:'nearest'});}
+  };
+  const draw=()=>{
+   const previous=visible[selected]?.path,query=search.value.trim().toLocaleLowerCase();
+   visible=files.filter(file=>!query||(file.basename||'').toLocaleLowerCase().includes(query)||
+    file.path.toLocaleLowerCase().includes(query));
+   selected=Math.max(0,visible.findIndex(f=>f.path===previous));
+   list.empty();status.empty();
+   if(!visible.length){
+    list.createEl('p',{cls:'writer-v8-home-muted',text:files.length?
+     writerUi('Nenhuma nota corresponde ao filtro.','No notes match your filter.'):
+     kind==='today'?writerUi('Nenhuma nota editada hoje.','No notes edited today.'):
+     writerUi('Nenhuma nota para mostrar.','No notes to show.')});
+    return;
+   }
+   for(const [index,file] of visible.entries()){
+    const row=list.createDiv({cls:'writer-v8-home-file-row writer-v905-note-row',attr:{role:'listitem',title:file.path}});
+    const open=row.createEl('button',{cls:'writer-v8-home-file-link writer-v905-note-open',
+     attr:{type:'button','aria-label':writerUi('Abrir nota: ','Open note: ')+file.path,title:file.path}});
+    const icon=open.createSpan({cls:'writer-v905-note-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(icon,'file-text');
+    const labels=open.createSpan({cls:'writer-v905-note-labels'});
+    labels.createSpan({cls:'writer-v905-note-title',text:file.basename||file.name||writerUi('Sem título','Untitled')});
+    const sub=labels.createSpan({cls:'writer-v905-note-path',text:file.path});
+    if(file.stat?.mtime){
+     const date=new Date(file.stat.mtime);
+     if(Number.isFinite(date.getTime()))sub.setAttribute('title',writerUi('Editada: ','Edited: ')+date.toLocaleString(writerUi('pt-BR','en-US')));
+    }
+    const arrow=open.createSpan({cls:'writer-v905-note-arrow',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(arrow,'arrow-up-right');
+    open.addEventListener('pointerenter',()=>select(index));
+    open.addEventListener('focus',()=>select(index));
+    open.addEventListener('click',()=>this.openFile(file));
+    open.addEventListener('keydown',event=>{
+     if(event.key==='ArrowDown'||event.key==='ArrowUp'){
+      event.preventDefault();select(selected+(event.key==='ArrowDown'?1:-1),true);
+     }
+    });
+    if(kind==='favorites'){
+     const remove=row.createEl('button',{cls:'writer-v905-note-favorite',
+      attr:{type:'button','aria-label':writerUi('Remover favorito: ','Remove favorite: ')+file.path}});
+     require('obsidian').setIcon?.(remove,'star-off');
+     remove.addEventListener('click',()=>{writerV8HomeToggleFavorite(this.plugin,file.path);this.saveSoon();this.render();});
+    }
+   }
+   select(selected);
+  };
+  search.addEventListener('input',draw);
+  search.addEventListener('keydown',event=>{
+   if((event.key==='ArrowDown'||event.key==='ArrowUp')&&visible.length){
+    event.preventDefault();select(selected+(event.key==='ArrowDown'?1:-1),true);
+   }else if(event.key==='Enter'&&visible.length){
+    event.preventDefault();this.openFile(visible[selected]);
+   }else if(event.key==='Escape'&&search.value){search.value='';draw();}
+  });
+  draw();
  }
  renderQuick(parent){
   const box=this.card(parent,'quick','Rascunhos rápidos','Quick drafts');
@@ -358,6 +462,57 @@ class WriterV8HomeView extends ItemView{
   }
  }
 
+ renderGallery(parent){
+  const box=this.card(parent,'gallery','Galeria do cofre','Vault gallery');
+  const images=(this.app.vault.getFiles?.()||[])
+   .filter(file=>/^(png|jpe?g|webp|gif|avif)$/i.test(file.extension||'')).slice(0,5000);
+  if(!images.length){
+   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Adicione imagens ao cofre para usar a galeria.','Add images to your vault to populate the gallery.')});
+   return;
+  }
+  const previous=this.homeGalleryImage?.path;
+  let file=images.find(item=>item.path===previous)||writerV8HomePick(images);
+  this.homeGalleryImage=file;
+  const picture=box.createDiv({cls:'writer-v905-gallery-frame'});
+  const img=picture.createEl('img',{attr:{src:this.app.vault.getResourcePath(file),
+   alt:file.basename||file.name||writerUi('Imagem do cofre','Vault image'),loading:'lazy',decoding:'async'}});
+  const name=box.createDiv({cls:'writer-v905-gallery-name',text:file.basename||file.name});
+  const path=box.createDiv({cls:'writer-v905-gallery-path',text:file.path});
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const open=actions.createEl('button',{text:writerUi('Abrir imagem','Open image')});
+  open.addEventListener('click',()=>this.openFile(file));
+  const shuffle=actions.createEl('button',{text:writerUi('Outra imagem','Shuffle image')});
+  shuffle.addEventListener('click',()=>{
+   const picked=writerV8HomePick(images,file.path);
+   if(!picked)return;
+   file=picked;this.homeGalleryImage=file;
+   img.src=this.app.vault.getResourcePath(file);
+   img.alt=file.basename||file.name||'';
+   name.setText(file.basename||file.name);path.setText(file.path);
+  });
+ }
+ renderQuotes(parent){
+  const box=this.card(parent,'quotes','Citação aleatória','Random quote');
+  const options=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
+  if(!this.homeQuote)this.homeQuote=writerV8HomePick(options,this.homeQuotePrevious);
+  let current=this.homeQuote||options[0];
+  const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
+  const quote=body.createEl('p',{text:current[0]});
+  const author=box.createDiv({cls:'writer-v905-quote-author'});
+  const update=()=>{
+   quote.setText(current[0]);
+   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
+  };
+  update();
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
+  next.addEventListener('click',()=>{
+   this.homeQuotePrevious=current[0];
+   current=writerV8HomePick(options,current[0])||current;
+   this.homeQuote=current;
+   update();
+  });
+ }
  renderActivity(parent){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
   const files=this.app.vault.getMarkdownFiles?.()||[];
@@ -454,7 +609,11 @@ function writerV8RegisterHome(plugin){
  plugin.registerView?.(WRITER_V8_HOME_VIEW,leaf=>new WriterV8HomeView(leaf,plugin));
  const open=async()=>{
   const workspace=plugin.app.workspace,existing=workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0];
-  if(existing){workspace.setActiveLeaf?.(existing,{focus:true});return;}
+  if(existing){
+   // Opening an already present Home tab is a new visit, not an incidental rerender.
+   if(existing.view){existing.view.homeQuote=null;existing.view.homeGalleryImage=null;existing.view.render?.();}
+   workspace.setActiveLeaf?.(existing,{focus:true});return;
+  }
   const leaf=workspace.getLeaf?.('tab')||workspace.getLeaf?.(true);
   if(leaf)await leaf.setViewState({type:WRITER_V8_HOME_VIEW,active:true});
  };
@@ -580,6 +739,15 @@ function writerV8FinishSettings(plugin,panel){
   .addButton(button=>button.setButtonText(writerUi('Gerenciar widgets','Manage widgets')).onClick(async()=>{
    await plugin.writerV8HomeOpen?.();
    plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view?.manageWidgets?.();
+  }));
+ new Setting(panel).setName(writerUi('Citações da homepage','Homepage quotes'))
+  .setDesc(writerUi('Uma citação por linha. Opcional: frase | autor. Em branco usa frases originais do Basic. O sorteio muda ao abrir a homepage.','One quote per line. Optional: quote | author. Empty uses original Basic quotes. A new quote is chosen when opening the homepage.'))
+  .addTextArea(input=>input.setValue(cfg.homeQuotes||'').onChange(async value=>{
+   cfg.homeQuotes=String(value||'').slice(0,12000);
+   await plugin.saveSettings();
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
+    if(leaf.view){leaf.view.homeQuote=null;leaf.view.render?.();}
+   }
   }));
  new Setting(panel).setName(writerUi('Meta de palavras do widget','Widget word target'))
   .setDesc(writerUi('Progresso calculado sobre a última nota Markdown aberta.','Progress measured against the latest opened Markdown note.'))

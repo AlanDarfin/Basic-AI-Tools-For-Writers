@@ -1,6 +1,6 @@
 'use strict';
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','recent','favorites','quick','stats','activity','random','tags','goal'],homeHidden:['activity','random','tags','goal'],homeWordGoal:500};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'],homeHidden:['activity','random','tags','goal','gallery','quotes','today'],homeWordGoal:500,homeQuotes:''};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -26,6 +26,7 @@ function writerV8FinishMerge(settings){
  cfg.homeHidden=Array.isArray(old.homeHidden)?
   [...new Set(old.homeHidden.filter(key=>allowed.includes(key)))]:[...WRITER_V8_FINISH_DEFAULTS.homeHidden];
  cfg.homeWordGoal=Math.max(50,Math.min(20000,Math.round(Number(cfg.homeWordGoal)||500)));
+ cfg.homeQuotes=String(cfg.homeQuotes||'').slice(0,12000);
  return cfg;
 }
 function writerV8ParseCaption(raw,src){

@@ -421,3 +421,11 @@ For desktop Pandoc export, install Pandoc separately and enable the integration.
 Core story planning, most editing tools, local snapshots and local formatting work without an AI account. AI, translation, online TTS and grammar providers may receive text you explicitly submit or configure for automatic checks. Review provider settings before enabling them. Back up your vault and the plugin's `data.json` before major upgrades.
 
 Documentation: [Security and privacy](SECURITY.md) · [Contributing](CONTRIBUTING.md) · [Third-party acknowledgements](THIRD_PARTY_NOTICES.md).
+
+
+### Homepage dashboard — 9.2.5
+
+- Responsive masonry-style widget grid: cards use their measured content height to fill space beside taller widgets.
+- Widget options now offer **Compact**, **Normal**, and **Wide** sizes. Wide widgets occupy both columns on desktop and return to one column on mobile.
+- Reorder widgets by dragging the handle on desktop or by selecting a widget handle and then another widget heading on touch devices. The existing menu retains Move earlier/later commands for accessible fallback.
+- Layout preferences, hidden widgets, and widget order remain saved under the existing homepage settings. No notes are modified.

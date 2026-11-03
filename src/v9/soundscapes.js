@@ -295,6 +295,7 @@ class WriterV91SoundPlayer{
   const select=root.createEl('select',{cls:'writer-v91-sound-select',attr:{'aria-label':writerUi('Escolher rádio','Choose radio')}});
   const play=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
   const next=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
+  const mini=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
   const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
   for(const [id,label] of writerV91SoundStationOptions(this.plugin)){
    const option=select.createEl('option',{text:label});option.value=id;
@@ -303,11 +304,14 @@ class WriterV91SoundPlayer{
   const update=()=>{
    select.value=this.cfg.station;volume.value=String(this.cfg.volume);
    const local=this.cfg.station==='my-music',active=local?this.playing:this.webOpen;
-   play.empty();require('obsidian').setIcon(play,local?(active?'pause':'play'):(active?'x':'external-link'));
+   play.empty();require('obsidian').setIcon(play,local?(active?'pause':'play'):(active?'square':'play'));
+   mini.empty();require('obsidian').setIcon(mini,'picture-in-picture-2');
+   mini.disabled=local||!active;
+   mini.title=writerUi('Exibir mini player sem reiniciar a rádio','Show mini player without restarting radio');
    play.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
-    active?writerUi('Fechar aba do YouTube','Close YouTube tab'):writerUi('Abrir rádio no Visualizador Web','Open radio in Web Viewer'));
+    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
    volume.disabled=!local;
-   volume.title=local?'':writerUi('Controle o volume na aba do YouTube','Adjust volume in the YouTube tab');
+   volume.title=local?'':writerUi('Ajuste o volume dentro do mini player','Adjust volume inside the mini player');
    next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',active);
    select.title=this.label;
    root.toggleClass?.('is-disabled',!this.cfg.enabled);
@@ -315,6 +319,7 @@ class WriterV91SoundPlayer{
   select.addEventListener('change',()=>void this.changeStation(select.value));
   play.addEventListener('click',()=>this.toggle());
   next.addEventListener('click',()=>this.next());
+  mini.addEventListener('click',()=>this.showMiniPlayer());
   volume.addEventListener('input',()=>void this.setVolume(volume.value));
   this.subscribe(root,update);
  }
@@ -362,23 +367,25 @@ function writerV91HomeSoundscape(view,parent){
  const back=controls.createEl('button',{attr:{type:'button','aria-label':writerUi('Anterior','Previous')}});
  const toggle=controls.createEl('button',{cls:'writer-v91-sound-toggle',attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
  const forward=controls.createEl('button',{attr:{type:'button','aria-label':writerUi('Próximo','Next')}});
+ const mini=controls.createEl('button',{attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
  const slider=controls.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
  for(const [id,name] of writerV91SoundStationOptions(view.plugin)){
   const option=select.createEl('option',{text:name});option.value=id;
  }
- require('obsidian').setIcon(back,'skip-back');require('obsidian').setIcon(forward,'skip-forward');
+ require('obsidian').setIcon(back,'skip-back');require('obsidian').setIcon(forward,'skip-forward');require('obsidian').setIcon(mini,'picture-in-picture-2');
  const update=()=>{
   if(!card.isConnected)return;
   select.value=player.cfg.station;
   const local=player.cfg.station==='my-music',active=local?player.playing:player.webOpen;
-  toggle.empty();require('obsidian').setIcon(toggle,local?(active?'pause':'play'):(active?'x':'external-link'));
+  toggle.empty();require('obsidian').setIcon(toggle,local?(active?'pause':'play'):(active?'square':'play'));
+  mini.disabled=local||!active;
   toggle.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
-   active?writerUi('Fechar aba do YouTube','Close YouTube tab'):writerUi('Abrir rádio no Visualizador Web','Open radio in Web Viewer'));
+   active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
   const multi=player.tracks.length>1;back.disabled=!multi;forward.disabled=!multi;
   slider.value=String(player.cfg.volume);slider.disabled=!local;
-  slider.title=local?'':writerUi('Volume disponível na aba do YouTube','Volume available in the YouTube tab');
+  slider.title=local?'':writerUi('Ajuste o volume dentro do mini player','Adjust volume inside the mini player');
   heading.textContent=player.label;
-  detail.textContent=local?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('Use os controles na aba do YouTube','Use controls in the YouTube tab');
+  detail.textContent=local?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('YouTube no mini player integrado','YouTube in integrated mini player');
   const id=player.videoId;
   thumbnail.style.display=id?'':'none';
   if(id)thumbnail.src='https://i.ytimg.com/vi/'+id+'/mqdefault.jpg';
@@ -388,6 +395,7 @@ function writerV91HomeSoundscape(view,parent){
  back.addEventListener('click',()=>player.prev());
  toggle.addEventListener('click',()=>player.toggle());
  forward.addEventListener('click',()=>player.next());
+ mini.addEventListener('click',()=>player.showMiniPlayer());
  slider.addEventListener('input',()=>void player.setVolume(slider.value));
  player.subscribe(card,update);
  if(player.cfg.station==='my-music')card.createEl('button',{text:writerUi('Abrir biblioteca','Open library'),cls:'writer-v91-library-link'}).addEventListener('click',()=>player.libraryModal());
@@ -419,8 +427,8 @@ function writerV91SoundSettings(plugin,panel){
  const cfg=plugin.settings.v91Sound;
  panel.createEl('h3',{text:'Soundscapes'});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'As rádios abrem vídeos no Visualizador Web nativo. Controle reprodução e volume na aba do YouTube; o botão fecha a aba para interromper. Minha Música usa o player local.',
-  'Radio stations open in the native Web Viewer. Control playback and volume in the YouTube tab; the button closes the tab to stop. My Music uses the local player.'
+  'As rádios abrem um mini player dentro do Obsidian, sem criar abas. Recolher preserva a reprodução; Parar encerra a rádio. Usa Webview do Chromium quando disponível, com fallback para iframe do YouTube. Alguns vídeos podem bloquear incorporação (erro 153). Minha Música continua local.',
+  'Radio stations open an in-app mini player without tabs. Hiding keeps playback running; Stop ends the radio. Chromium Webview is preferred, with YouTube iframe fallback. Some videos block embedding (error 153). My Music stays local.'
  )});
  if(plugin.app.isMobile){
   panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Rádios e reprodução estão disponíveis apenas no computador.','Radio playback is desktop-only.')});return;

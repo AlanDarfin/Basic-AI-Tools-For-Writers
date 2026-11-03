@@ -1,7 +1,7 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
@@ -26,6 +26,7 @@ function writerV8HomePick(items,previous=''){
 }
 const WRITER_V8_HOME_CATALOG={
  calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],
+ soundscape:['headphones','Rádio de escrita','Writing radio','Rádios e música local no computador','Desktop radio and local music'],
  continue:['book-open','Continuar escrevendo','Continue writing','Retome seu projeto','Resume your project'],
  recent:['history','Notas recentes','Recent notes','Últimas notas editadas','Recently edited notes'],
  favorites:['star','Favoritos','Favorites','Notas fixadas por você','Your starred notes'],
@@ -127,6 +128,7 @@ class WriterV8HomeView extends ItemView{
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'});
   const cards={
    calendar:()=>this.renderCalendarWidget(grid),
+   soundscape:()=>writerV91HomeSoundscape(this,grid),
    continue:()=>this.renderContinue(grid),
    recent:()=>this.renderFiles(grid,'recent'),
    favorites:()=>this.renderFiles(grid,'favorites'),

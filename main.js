@@ -12768,6 +12768,784 @@ function writerV9CalendarSettings(plugin,panel){
   .addButton(button=>button.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
 }
 
+// v3 module: src/v9/soundscapes.js
+/* v9.1: Desktop Soundscapes integration inspired by MIT-licensed
+ * andrewmcgivery/obsidian-soundscapes. Network radio uses YouTube embeds;
+ * vault audio stays local. No media, video, or audio is bundled. */
+const WRITER_V91_RADIOS=[
+ ['lofi','Lofi beats','jfKfPfyJRdk'],['spa','Spa atmosphere','FbxLnvWVSrk'],
+ ['sims','The Sims soundtrack','wKnkQdsITUE'],['thunder','Thunderstorm','nDq6TstdEi8'],
+ ['fire','Cozy fireplace','rCYzRXLWcIg'],['birds','Birds chirping','mFjU4JuJgnM'],
+ ['ocean','Ocean waves','bn9F19Hi1Lk'],['jazz','Relaxing jazz','0u34Pb25BNg'],
+ ['coffeeshop','Coffee shop ambience','uiMXGIG_DQo'],
+ ['animalcrossing','Animal Crossing','eKEAmOUFYJg'],
+ ['yakuzabar','Yakuza bar ambience','Q0GtyZbHJDM'],
+ ['nintendo','Calm Nintendo music','sA0qrPOMy2Y'],
+ ['skycotl','Sky: Children of the Light','87etrUp83Yc'],
+ ['vtmbloodlines','VTM Bloodlines ambience','pCZxb43L_Ag'],
+ ['chillsynth','ChillSynth FM','UedTcufyrHc'],
+ ['peacefulpiano','Peaceful piano','TtkFsfOP9QI'],
+ ['synthwave','Synthwave radio','4xDzrJKXOOY']
+];
+function writerV91VideoId(input){
+ const text=String(input||'').trim();
+ if(/^[a-zA-Z0-9_-]{11}$/.test(text))return text;
+ try{
+  const url=new URL(text);
+  const hostname=url.hostname.toLowerCase();
+  if(hostname==='youtu.be')return writerV91VideoId(url.pathname.slice(1).split('/')[0]);
+  if(['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','www.youtube-nocookie.com'].includes(hostname)){
+   if(url.pathname==='/watch')return writerV91VideoId(url.searchParams.get('v')||'');
+   if(/^\/(embed|live|shorts)\//.test(url.pathname))return writerV91VideoId(url.pathname.split('/')[2]||'');
+  }
+ }catch(_){}
+ return '';
+}
+function writerV91SoundMerge(settings){
+ const raw=settings.v91Sound&&typeof settings.v91Sound==='object'?settings.v91Sound:{};
+ const cfg=settings.v91Sound={
+  enabled:true,station:'lofi',volume:25,autoplay:false,musicFolder:'',shuffle:false,customPlaylists:[],...raw
+ };
+ cfg.enabled=cfg.enabled!==false;cfg.autoplay=cfg.autoplay===true;cfg.shuffle=cfg.shuffle===true;
+ cfg.volume=Math.max(0,Math.min(100,Math.round(Number(cfg.volume)||0)));
+ cfg.musicFolder=String(cfg.musicFolder||'').replace(/^\/+|\/+$/g,'').slice(0,500);
+ cfg.customPlaylists=Array.isArray(cfg.customPlaylists)?cfg.customPlaylists.slice(0,30).map((entry,i)=>({
+  id:String(entry?.id||('playlist-'+i)).replace(/[^a-z0-9_-]/gi,'').slice(0,60),
+  name:String(entry?.name||'Playlist').trim().slice(0,90),
+  tracks:(Array.isArray(entry?.tracks)?entry.tracks:[]).slice(0,120).map(track=>({
+   name:String(track?.name||'YouTube').trim().slice(0,120),id:writerV91VideoId(track?.id)
+  })).filter(track=>track.id)
+ })).filter(entry=>entry.id&&entry.tracks.length):[];
+ const choices=new Set([...WRITER_V91_RADIOS.map(r=>r[0]),'my-music',...cfg.customPlaylists.map(p=>'custom:'+p.id)]);
+ if(!choices.has(cfg.station))cfg.station='lofi';
+ return cfg;
+}
+function writerV91SoundStationOptions(plugin){
+ return [...WRITER_V91_RADIOS.map(([id,name])=>[id,name]),...plugin.settings.v91Sound.customPlaylists.map(p=>['custom:'+p.id,p.name]),['my-music',writerUi('Minha música','My Music')]];
+}
+function writerV91SoundAudioFiles(plugin){
+ const folder=plugin.settings.v91Sound.musicFolder;
+ const prefix=folder?folder+'/':'';
+ return (plugin.app.vault.getFiles?.()||[]).filter(file=>
+  ['mp3','wav','ogg','m4a','flac'].includes(String(file.extension||'').toLowerCase())&&
+  (!folder||file.path.startsWith(prefix))).sort((a,b)=>a.path.localeCompare(b.path));
+}
+class WriterV91SoundPlayer{
+ constructor(plugin){
+  this.plugin=plugin;this.audio=null;this.frame=null;this.playing=false;this.trackIndex=0;
+  this.shuffleOrder=[];this.subscribers=new Set();this.status=null;this.host=null;
+ }
+ get cfg(){return this.plugin.settings.v91Sound;}
+ get station(){return writerV91SoundStationOptions(this.plugin).find(x=>x[0]===this.cfg.station);}
+ get playlist(){return this.cfg.customPlaylists.find(p=>'custom:'+p.id===this.cfg.station);}
+ get tracks(){
+  if(this.cfg.station==='my-music')return writerV91SoundAudioFiles(this.plugin);
+  if(this.playlist)return this.playlist.tracks;
+  const preset=WRITER_V91_RADIOS.find(x=>x[0]===this.cfg.station)||WRITER_V91_RADIOS[0];
+  return [{name:preset[1],id:preset[2]}];
+ }
+ get track(){const tracks=this.tracks;return tracks[Math.min(Math.max(0,this.trackIndex),tracks.length-1)]||null;}
+ get label(){return this.track?.basename||this.track?.name||this.station?.[1]||'Soundscapes';}
+ get videoId(){return this.cfg.station==='my-music'?'':this.track?.id||'';}
+ subscribe(node,callback){this.subscribers.add({node,callback});callback();return()=>{for(const s of this.subscribers)if(s.node===node&&s.callback===callback)this.subscribers.delete(s);};}
+ emit(){
+  for(const entry of this.subscribers){
+   if(!entry.node.isConnected){this.subscribers.delete(entry);continue;}
+   try{entry.callback();}catch(error){console.warn('[Basic AI] Soundscapes UI:',error);}
+  }
+ }
+ init(){
+  if(this.plugin.app.isMobile)return;
+  this.status=this.plugin.addStatusBarItem?.();
+  if(this.status){this.status.addClass('writer-v91-sound-status');this.renderStatus();}
+  this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Soundscapes: reproduzir ou pausar','Soundscapes: play or pause'),callback:()=>this.toggle()});
+  this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Soundscapes: próxima faixa','Soundscapes: next track'),callback:()=>this.next()});
+  this.plugin.addCommand({id:'v91-sound-library',name:writerUi('Soundscapes: abrir Minha Música','Soundscapes: open My Music'),callback:()=>this.libraryModal()});
+  this.plugin.register?.(()=>this.destroy());
+  if(this.cfg.autoplay&&this.cfg.enabled)this.plugin.app.workspace.onLayoutReady?.(()=>this.play());
+ }
+ ensureAudio(){
+  if(this.audio)return;
+  this.audio=new Audio();this.audio.preload='metadata';this.audio.volume=this.cfg.volume/100;
+  this.audio.addEventListener('ended',()=>this.next());
+  this.audio.addEventListener('error',()=>{this.playing=false;this.emit();new Notice(writerUi('Não foi possível reproduzir o arquivo de áudio.','Could not play this audio file.'));});
+ }
+ ensureFrame(){
+  if(this.frame)return;
+  this.host=document.body.createDiv({cls:'writer-v91-sound-frame-host'});
+  this.frame=this.host.createEl('iframe',{attr:{
+   title:'Soundscapes YouTube player',allow:'autoplay; encrypted-media',referrerpolicy:'strict-origin-when-cross-origin'
+  }});
+ }
+ youtubeCommand(func,args=[]){
+  try{this.frame?.contentWindow?.postMessage(JSON.stringify({event:'command',func,args}),'https://www.youtube-nocookie.com');}
+  catch(error){console.warn('[Basic AI] YouTube player:',error);}
+ }
+ releaseMedia(){
+  if(this.audio){this.audio.pause();this.audio.removeAttribute('src');this.audio.load();}
+  if(this.frame){this.frame.remove();this.frame=null;}
+  if(this.host){this.host.remove();this.host=null;}
+ }
+ async loadCurrent(){
+  this.releaseMedia();
+  const item=this.track;
+  if(!item){this.playing=false;this.emit();return;}
+  if(this.cfg.station==='my-music'){
+   this.ensureAudio();this.audio.src=this.plugin.app.vault.getResourcePath(item);
+   this.audio.volume=this.cfg.volume/100;
+   try{await this.audio.play();this.playing=true;}
+   catch(error){this.playing=false;console.warn('[Basic AI] Local audio playback:',error);}
+  }else{
+   this.ensureFrame();
+   this.frame.src='https://www.youtube-nocookie.com/embed/'+this.videoId+'?enablejsapi=1&autoplay=1&playsinline=1&controls=0';
+   this.frame.addEventListener('load',()=>{this.youtubeCommand('setVolume',[this.cfg.volume]);this.youtubeCommand('playVideo');},{once:true});
+   this.playing=true;
+  }
+  this.emit();
+ }
+ async play(){
+  if(this.plugin.app.isMobile||!this.cfg.enabled)return;
+  if(this.playing)return;
+  if(this.cfg.station==='my-music'){
+   this.ensureAudio();
+   if(this.audio.src){try{await this.audio.play();this.playing=true;}catch(error){console.warn('[Basic AI] Audio:',error);}}
+   else await this.loadCurrent();
+  }else if(this.frame){this.youtubeCommand('playVideo');this.playing=true;}
+  else await this.loadCurrent();
+  this.emit();
+ }
+ pause(){if(this.audio)this.audio.pause();this.youtubeCommand('pauseVideo');this.playing=false;this.emit();}
+ toggle(){if(this.playing)this.pause();else void this.play();}
+ async changeStation(id){
+  if(!writerV91SoundStationOptions(this.plugin).some(x=>x[0]===id))return;
+  const resume=this.playing;this.cfg.station=id;this.trackIndex=0;this.releaseMedia();
+  this.playing=false;await this.plugin.saveSettings();this.emit();
+  if(resume)await this.play();
+ }
+ next(delta=1){
+  const len=this.tracks.length;if(!len){this.pause();return;}
+  if(len===1){if(this.cfg.station==='my-music')void this.loadCurrent();return;}
+  if(this.cfg.shuffle&&delta>0&&this.cfg.station==='my-music')
+   this.trackIndex=(this.trackIndex+1+Math.floor(Math.random()*(len-1)))%len;
+  else this.trackIndex=(this.trackIndex+delta+len)%len;
+  if(this.playing)void this.loadCurrent();else{this.releaseMedia();this.emit();}
+ }
+ prev(){this.next(-1);}
+ async setVolume(value){
+  this.cfg.volume=Math.max(0,Math.min(100,Number(value)||0));
+  if(this.audio)this.audio.volume=this.cfg.volume/100;
+  this.youtubeCommand('setVolume',[this.cfg.volume]);this.emit();
+  await this.plugin.saveSettings();
+ }
+ renderStatus(){
+  if(!this.status)return;
+  const root=this.status;root.empty();
+  const select=root.createEl('select',{cls:'writer-v91-sound-select',attr:{'aria-label':writerUi('Escolher rádio','Choose radio')}});
+  const play=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
+  const next=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
+  const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
+  for(const [id,label] of writerV91SoundStationOptions(this.plugin)){
+   const option=select.createEl('option',{text:label});option.value=id;
+  }
+  select.value=this.cfg.station;
+  const update=()=>{
+   select.value=this.cfg.station;volume.value=String(this.cfg.volume);
+   play.empty();require('obsidian').setIcon(play,this.playing?'pause':'play');
+   next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',this.playing);
+   select.title=this.label;
+   root.toggleClass?.('is-disabled',!this.cfg.enabled);
+  };
+  select.addEventListener('change',()=>void this.changeStation(select.value));
+  play.addEventListener('click',()=>this.toggle());
+  next.addEventListener('click',()=>this.next());
+  volume.addEventListener('input',()=>void this.setVolume(volume.value));
+  this.subscribe(root,update);
+ }
+ libraryModal(){
+  if(this.plugin.app.isMobile)return;
+  const modal=new Modal(this.plugin.app);
+  let query='';
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Minha música','My Music'));
+   const root=modal.contentEl.createDiv({cls:'writer-v91-music-library'});
+   const search=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Pesquisar MP3 e outros áudios…','Search MP3 and other audio…')}});
+   const list=root.createDiv({cls:'writer-v91-music-results'});
+   const render=()=>{
+    list.empty();const tracks=writerV91SoundAudioFiles(this.plugin);
+    const matches=tracks.filter(t=>t.path.toLowerCase().includes(query.toLowerCase())).slice(0,400);
+    if(!matches.length)list.createEl('p',{text:writerUi('Nenhuma música encontrada na pasta configurada.','No audio files found in the configured folder.')});
+    for(const file of matches){
+     const item=list.createEl('button',{cls:'writer-v91-music-item',attr:{type:'button'}});
+     require('obsidian').setIcon(item.createSpan(),'music');
+     item.createSpan({text:file.basename});item.createEl('small',{text:file.path});
+     item.addEventListener('click',async()=>{
+      await this.changeStation('my-music');
+      this.trackIndex=tracks.findIndex(x=>x.path===file.path);
+      await this.loadCurrent();modal.close();
+     });
+    }
+   };
+   search.addEventListener('input',()=>{query=search.value;render();});render();
+  };
+  modal.open();
+ }
+ destroy(){this.pause();this.releaseMedia();this.subscribers.clear();this.status?.remove();}
+}
+function writerV91HomeSoundscape(view,parent){
+ if(view.plugin.app.isMobile)return;
+ const player=view.plugin.writerV91Sound;if(!player)return;
+ const card=view.card(parent,'soundscape','Soundscapes · rádio','Soundscapes · radio');
+ card.addClass('writer-v91-sound-widget');
+ const preview=card.createDiv({cls:'writer-v91-sound-preview'});
+ const thumbnail=preview.createEl('img',{attr:{alt:'',loading:'lazy'}});
+ const description=preview.createDiv();
+ const heading=description.createEl('strong');const detail=description.createEl('small');
+ const controls=card.createDiv({cls:'writer-v91-sound-controls'});
+ const select=controls.createEl('select',{attr:{'aria-label':writerUi('Escolher rádio','Choose radio')}});
+ const back=controls.createEl('button',{attr:{type:'button','aria-label':writerUi('Anterior','Previous')}});
+ const toggle=controls.createEl('button',{cls:'writer-v91-sound-toggle',attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
+ const forward=controls.createEl('button',{attr:{type:'button','aria-label':writerUi('Próximo','Next')}});
+ const slider=controls.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
+ for(const [id,name] of writerV91SoundStationOptions(view.plugin)){
+  const option=select.createEl('option',{text:name});option.value=id;
+ }
+ require('obsidian').setIcon(back,'skip-back');require('obsidian').setIcon(forward,'skip-forward');
+ const update=()=>{
+  if(!card.isConnected)return;
+  select.value=player.cfg.station;
+  toggle.empty();require('obsidian').setIcon(toggle,player.playing?'pause':'play');
+  const multi=player.tracks.length>1;back.disabled=!multi;forward.disabled=!multi;
+  slider.value=String(player.cfg.volume);
+  heading.textContent=player.label;
+  detail.textContent=player.cfg.station==='my-music'?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('Reprodução pelo YouTube','Streamed via YouTube');
+  const id=player.videoId;
+  thumbnail.style.display=id?'':'none';
+  if(id)thumbnail.src='https://i.ytimg.com/vi/'+id+'/mqdefault.jpg';
+  card.classList.toggle('is-playing',player.playing);
+ };
+ select.addEventListener('change',()=>void player.changeStation(select.value));
+ back.addEventListener('click',()=>player.prev());
+ toggle.addEventListener('click',()=>player.toggle());
+ forward.addEventListener('click',()=>player.next());
+ slider.addEventListener('input',()=>void player.setVolume(slider.value));
+ player.subscribe(card,update);
+ if(player.cfg.station==='my-music')card.createEl('button',{text:writerUi('Abrir biblioteca','Open library'),cls:'writer-v91-library-link'}).addEventListener('click',()=>player.libraryModal());
+}
+function writerV91SoundPlaylistEditor(plugin,initial,done){
+ const modal=new Modal(plugin.app);
+ modal.onOpen=()=>{
+  modal.setTitle(writerUi('Playlist personalizada','Custom soundscape'));
+  const content=modal.contentEl;
+  const name=content.createEl('input',{attr:{type:'text',placeholder:writerUi('Nome da playlist','Playlist name'),maxlength:'90'}});
+  name.value=initial?.name||'';
+  content.createEl('p',{text:writerUi('Uma faixa por linha: Nome | link do YouTube','One track per line: Title | YouTube URL')});
+  const textarea=content.createEl('textarea',{attr:{rows:'9',placeholder:'Lofi | https://www.youtube.com/watch?v=jfKfPfyJRdk'}});
+  textarea.value=(initial?.tracks||[]).map(t=>t.name+' | https://www.youtube.com/watch?v='+t.id).join('\n');
+  const error=content.createEl('small');
+  new Setting(content).addButton(b=>b.setButtonText(writerUi('Salvar playlist','Save playlist')).setCta().onClick(()=>{
+   const tracks=textarea.value.split(/\r?\n/).map(line=>{
+    const chunks=line.split(/\s+\|\s+/),id=writerV91VideoId(chunks.pop());
+    return {name:(chunks.join(' | ')||'YouTube').trim().slice(0,120),id};
+   }).filter(t=>t.id).slice(0,120);
+   if(!name.value.trim()||!tracks.length){error.setText(writerUi('Informe um nome e ao menos um link válido.','Add a name and at least one valid URL.'));return;}
+   done({id:initial?.id||'p'+Date.now().toString(36),name:name.value.trim().slice(0,90),tracks});
+   modal.close();
+  }));
+ };
+ modal.open();
+}
+function writerV91SoundSettings(plugin,panel){
+ const cfg=plugin.settings.v91Sound;
+ panel.createEl('h3',{text:'Soundscapes'});
+ if(plugin.app.isMobile){
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Rádios e reprodução estão disponíveis apenas no computador.','Radio playback is desktop-only.')});return;
+ }
+ new Setting(panel).setName(writerUi('Ativar Soundscapes','Enable Soundscapes')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{
+  cfg.enabled=v;if(!v)plugin.writerV91Sound.pause();await plugin.saveSettings();plugin.writerV91Sound.emit();
+ }));
+ new Setting(panel).setName(writerUi('Rádio selecionada','Selected radio')).addDropdown(d=>{
+  for(const [id,label] of writerV91SoundStationOptions(plugin))d.addOption(id,label);
+  d.setValue(cfg.station).onChange(v=>void plugin.writerV91Sound.changeStation(v));
+ });
+ new Setting(panel).setName(writerUi('Volume','Volume')).addSlider(s=>s.setLimits(0,100,5).setDynamicTooltip().setValue(cfg.volume).onChange(v=>void plugin.writerV91Sound.setVolume(v)));
+ new Setting(panel).setName(writerUi('Reproduzir ao iniciar','Play on startup')).addToggle(t=>t.setValue(cfg.autoplay).onChange(async v=>{cfg.autoplay=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Pasta de músicas do cofre','Vault music folder'))
+  .setDesc(writerUi('Deixe vazio para pesquisar áudios em todo o cofre.','Leave blank to search audio throughout the vault.'))
+  .addText(t=>t.setPlaceholder('Music').setValue(cfg.musicFolder).onChange(async v=>{cfg.musicFolder=v.trim();await plugin.saveSettings();plugin.writerV91Sound.emit();}));
+ new Setting(panel).setName(writerUi('Reprodução aleatória','Shuffle My Music')).addToggle(t=>t.setValue(cfg.shuffle).onChange(async v=>{cfg.shuffle=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Biblioteca de músicas','Music library')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>plugin.writerV91Sound.libraryModal()));
+ panel.createEl('h4',{text:writerUi('Playlists personalizadas','Custom playlists')});
+ for(const list of cfg.customPlaylists){
+  const row=new Setting(panel).setName(list.name).setDesc(list.tracks.length+' '+writerUi('faixas','tracks'));
+  row.addButton(b=>b.setButtonText(writerUi('Editar','Edit')).onClick(()=>writerV91SoundPlaylistEditor(plugin,list,async next=>{
+   cfg.customPlaylists[cfg.customPlaylists.indexOf(list)]=next;await plugin.saveSettings();plugin.writerSettingsTab?.display();
+  })));
+  row.addButton(b=>b.setButtonText(writerUi('Remover','Remove')).onClick(async()=>{
+   cfg.customPlaylists=cfg.customPlaylists.filter(x=>x!==list);
+   if(cfg.station==='custom:'+list.id)await plugin.writerV91Sound.changeStation('lofi');
+   await plugin.saveSettings();plugin.writerSettingsTab?.display();
+  }));
+ }
+ new Setting(panel).setName(writerUi('Adicionar playlist','Add playlist')).addButton(b=>b.setButtonText(writerUi('Criar','Create')).onClick(()=>writerV91SoundPlaylistEditor(plugin,null,async item=>{
+  cfg.customPlaylists.push(item);await plugin.saveSettings();plugin.writerSettingsTab?.display();
+ })));
+}
+function writerV91RegisterSound(plugin){
+ if(plugin.app.isMobile)return;
+ plugin.writerV91Sound=new WriterV91SoundPlayer(plugin);
+ plugin.writerV91Sound.init();
+}
+
+// v3 module: src/v9/click-clack.js
+/* v9.1 desktop Click Clack integration inspired by Acylation/obsidian-click-clack.
+ * Supports local WAV schemes compatible with the original pack manifests.
+ * Generated fallback clicks require no bundled or downloaded audio assets. */
+const WRITER_V91_KEYS=['key','key2','space','enter','delete'];
+function writerV91ClickMerge(settings){
+ const raw=settings.v91Click&&typeof settings.v91Click==='object'?settings.v91Click:{};
+ const cfg=settings.v91Click={enabled:false,volume:35,scheme:'generated',...raw};
+ cfg.enabled=cfg.enabled===true;cfg.volume=Math.max(0,Math.min(100,Math.round(Number(cfg.volume)||0)));
+ cfg.scheme=String(cfg.scheme||'generated').slice(0,120);
+ return cfg;
+}
+function writerV91ClickCategory(event){
+ if(!event||event.ctrlKey||event.metaKey||event.altKey)return '';
+ if(event.key===' '||event.code==='Space')return 'space';
+ if(event.key==='Enter')return 'enter';
+ if(event.key==='Backspace'||event.key==='Delete')return 'delete';
+ if(event.key==='Tab')return 'key2';
+ if(event.key?.length===1)return 'key';
+ return '';
+}
+class WriterV91ClickClack{
+ constructor(plugin){this.plugin=plugin;this.context=null;this.samples={};this.schemes=[];this.loading=false;this.activeScheme='generated';}
+ get cfg(){return this.plugin.settings.v91Click;}
+ get baseDirs(){
+  const config=this.plugin.app.vault.configDir||'.obsidian';
+  return [
+   config+'/plugins/'+this.plugin.manifest.id+'/resources',
+   config+'/plugins/click-clack/resources'
+  ];
+ }
+ async listSchemes(){
+  if(this.plugin.app.isMobile)return [];
+  const adapter=this.plugin.app.vault.adapter,schemes=[];
+  for(const base of this.baseDirs){
+   if(!(await adapter.exists(base)))continue;
+   const entries=await adapter.list(base);
+   for(const folder of entries.folders||[]){
+    const manifestPath=folder+'/manifest.json';
+    if(!(await adapter.exists(manifestPath)))continue;
+    try{
+     const data=JSON.parse(await adapter.read(manifestPath));
+     const files={};
+     if(!WRITER_V91_KEYS.every(key=>{
+      const filename=data[key];
+      if(typeof filename!=='string'||! /^[a-zA-Z0-9_.-]+\.wav$/i.test(filename)||filename.includes('..'))return false;
+      files[key]=folder+'/'+filename;return true;
+     }))continue;
+     schemes.push({id:folder,name:String(data.caption||data.id||folder.split('/').pop()).slice(0,90),files});
+    }catch(error){console.warn('[Basic AI] Ignoring invalid Click Clack scheme:',error);}
+   }
+  }
+  this.schemes=schemes;
+  return schemes;
+ }
+ async load(){
+  if(this.plugin.app.isMobile)return;
+  const key=this.cfg.scheme;
+  if(key==='generated'){this.samples={};this.activeScheme='generated';return;}
+  if(this.loading)return;
+  this.loading=true;
+  try{
+   if(!this.schemes.length)await this.listSchemes();
+   const scheme=this.schemes.find(x=>x.id===key);
+   if(!scheme){this.samples={};this.activeScheme='generated';return;}
+   const ctx=this.getContext(),buffers={};
+   const adapter=this.plugin.app.vault.adapter;
+   if(!ctx)return;
+   for(const kind of WRITER_V91_KEYS){
+    const binary=await adapter.readBinary(scheme.files[kind]);
+    buffers[kind]=await ctx.decodeAudioData(binary.slice(0));
+   }
+   this.samples=buffers;this.activeScheme=key;
+  }catch(error){
+   this.samples={};this.activeScheme='generated';console.warn('[Basic AI] Click Clack sound pack:',error);
+   new Notice(writerUi('Falha ao carregar o pacote de sons; usando clique gerado.','Could not load sound scheme; using generated clicks.'));
+  }finally{this.loading=false;}
+ }
+ getContext(){
+  if(!this.context){
+   const Context=window.AudioContext||window.webkitAudioContext;
+   if(Context)this.context=new Context();
+  }
+  return this.context;
+ }
+ play(kind){
+  if(this.plugin.app.isMobile||!writerModuleOn(this.plugin,'typewriter')||!this.cfg.enabled)return;
+  const ctx=this.getContext();if(!ctx)return;
+  if(ctx.state==='suspended')void ctx.resume().catch(()=>{});
+  const volume=Math.min(.7,this.cfg.volume/100*.38);
+  if(!volume)return;
+  const preset=this.samples[kind]||this.samples.key;
+  if(preset){
+   const source=ctx.createBufferSource(),gain=ctx.createGain();
+   source.buffer=preset;source.playbackRate.value=.97+Math.random()*.06;
+   gain.gain.value=volume;source.connect(gain);gain.connect(ctx.destination);
+   source.start();return;
+  }
+  // Self-contained short mechanical/transient fallback; no downloadable files.
+  const now=ctx.currentTime;
+  const length=kind==='enter'?.095:kind==='space'?.065:.04;
+  const sample=ctx.createBuffer(1,Math.max(1,Math.round(ctx.sampleRate*length)),ctx.sampleRate);
+  const data=sample.getChannelData(0);
+  const freq=kind==='delete'?910:kind==='enter'?610:kind==='space'?380:760;
+  let previous=0;
+  for(let i=0;i<data.length;i++){
+   const t=i/ctx.sampleRate,env=Math.exp(-t*(kind==='enter'?54:85));
+   previous=previous*.62+(Math.random()*2-1)*.38;
+   data[i]=(previous*.8+Math.sin(2*Math.PI*freq*t)*.2)*env;
+  }
+  const source=ctx.createBufferSource(),gain=ctx.createGain();
+  source.buffer=sample;gain.gain.value=volume;
+  source.connect(gain);gain.connect(ctx.destination);source.start(now);
+ }
+ init(){
+  if(this.plugin.app.isMobile)return;
+  void this.listSchemes().then(()=>this.load()).catch(error=>console.warn('[Basic AI] Click Clack:',error));
+  this.plugin.registerDomEvent(this.plugin.app.workspace.containerEl,'keydown',event=>{
+   if(!this.cfg.enabled||!event.target?.closest?.('.cm-editor'))return;
+   const kind=writerV91ClickCategory(event);if(!kind)return;
+   this.play(kind==='key'&&Math.random()>.75?'key2':kind);
+  });
+  this.plugin.addCommand({id:'v91-click-clack-toggle',name:writerUi('Máquina de escrever: alternar sons','Typewriter: toggle typing sounds'),callback:async()=>{
+   this.cfg.enabled=!this.cfg.enabled;await this.plugin.saveSettings();
+   new Notice(this.cfg.enabled?writerUi('Som de teclado ativado.','Typing sounds enabled.'):writerUi('Som de teclado desativado.','Typing sounds disabled.'));
+  }});
+  this.plugin.register?.(()=>{this.samples={};if(this.context){void this.context.close().catch(()=>{});this.context=null;}});
+ }
+}
+function writerV91ClickSettings(plugin,panel){
+ panel.createEl('h3',{text:writerUi('Sons da máquina de escrever','Typewriter key sounds')});
+ if(plugin.app.isMobile){
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Os sons de teclado só estão disponíveis no computador.','Keyboard sounds are only available on desktop.')});
+  return;
+ }
+ const cfg=plugin.settings.v91Click;
+ new Setting(panel).setName(writerUi('Ativar sons de digitação','Enable typing sounds'))
+  .setDesc(writerUi('Sons somente ao digitar no editor Markdown.','Sounds only while typing in the Markdown editor.'))
+  .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Volume dos sons','Sound volume'))
+  .addSlider(s=>s.setLimits(0,100,5).setDynamicTooltip().setValue(cfg.volume)
+   .onChange(async v=>{cfg.volume=v;await plugin.saveSettings();}));
+ const choices=plugin.writerV91Click?.schemes||[];
+ new Setting(panel).setName(writerUi('Esquema sonoro','Sound scheme'))
+  .setDesc(writerUi('Compatível com os arquivos WAV e manifestos dos pacotes Click Clack.','Supports Click Clack WAV packs and manifest files.'))
+  .addDropdown(drop=>{
+   drop.addOption('generated',writerUi('Cliques integrados','Built-in clicks'));
+   for(const scheme of choices)drop.addOption(scheme.id,scheme.name);
+   drop.setValue(choices.some(x=>x.id===cfg.scheme)?cfg.scheme:'generated');
+   drop.onChange(async v=>{cfg.scheme=v;await plugin.saveSettings();await plugin.writerV91Click.load();});
+  });
+ new Setting(panel).setName(writerUi('Recarregar pacotes locais','Rescan local sound packs'))
+  .addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(async()=>{
+   await plugin.writerV91Click.listSchemes();plugin.writerSettingsTab?.display();
+  }));
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+  'Pacotes podem ficar na pasta resources deste plugin ou na instalação local do Click Clack. Nenhum áudio externo é baixado automaticamente.',
+  'Sound packs can live in this plugin’s resources folder or in a local Click Clack installation. No third-party sound files are downloaded automatically.'
+ )});
+}
+function writerV91RegisterClick(plugin){
+ if(plugin.app.isMobile)return;
+ plugin.writerV91Click=new WriterV91ClickClack(plugin);plugin.writerV91Click.init();
+}
+
+// v3 module: src/v9/explorer-flex.js
+/* v9.1 Flexplorer-style organization atop the existing native explorer.
+ * Own state; no private Obsidian patching, no duplicated file sidebar. */
+const WRITER_V91_FLEX_SORTS=[
+ ['native','Padrão do Obsidian','Obsidian default'],
+ ['name','Nome A–Z','Name A–Z'],
+ ['name-desc','Nome Z–A','Name Z–A'],
+ ['modified','Modificação recente','Recently modified'],
+ ['created','Criação recente','Recently created'],
+ ['custom','Ordem personalizada','Custom order']
+];
+function writerV91FlexMerge(settings){
+ const raw=settings.v91Flex&&typeof settings.v91Flex==='object'?settings.v91Flex:{};
+ const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,
+  patterns:'',pinned:[],hidden:[],folders:{},...raw};
+ cfg.enabled=cfg.enabled!==false;cfg.showHidden=cfg.showHidden===true;
+ cfg.dragReorder=cfg.dragReorder!==false;
+ cfg.patterns=String(cfg.patterns||'').slice(0,3000);
+ for(const field of ['pinned','hidden'])
+  cfg[field]=Array.isArray(cfg[field])?[...new Set(cfg[field].filter(s=>typeof s==='string'&&s.length<600))].slice(0,3000):[];
+ cfg.folders=cfg.folders&&typeof cfg.folders==='object'&&!Array.isArray(cfg.folders)?cfg.folders:{};
+ const output={};
+ for(const [path,folder] of Object.entries(cfg.folders).slice(0,3000)){
+  if(typeof path!=='string'||path.length>600||!folder||typeof folder!=='object')continue;
+  const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===folder.sort)?folder.sort:'native';
+  const order=Array.isArray(folder.order)?[...new Set(folder.order.filter(v=>typeof v==='string'&&v.length<300))].slice(0,3000):[];
+  output[path]={sort,order};
+ }
+ cfg.folders=output;
+ return cfg;
+}
+function writerV91FlexGlob(glob){
+ let s=String(glob||'').trim(),source='';
+ if(!s||s.length>250)return null;
+ const anchor=s.startsWith('/');if(anchor)s=s.slice(1);
+ const slash=s.includes('/');
+ for(let i=0;i<s.length;i++){
+  const ch=s[i];
+  if(ch==='*'){
+   if(s[i+1]==='*'){
+    i++;
+    if(s[i+1]==='/'){source+='(?:[^/]+/)*';i++;}
+    else source+='.*';
+   }else source+='[^/]*';
+  }else if(ch==='?')source+='[^/]';
+  else source+='\\^$.|+()[]{}'.includes(ch)?'\\'+ch:ch;
+ }
+ try{return new RegExp('^'+(!anchor&&!slash?'(?:[^/]*/)*':'')+source+'$','i');}catch(_){return null;}
+}
+function writerV91FlexPatterns(cfg){
+ return cfg.patterns.split(/\r?\n/).map(writerV91FlexGlob).filter(Boolean).slice(0,40);
+}
+function writerV91FlexIsHidden(cfg,path,patterns){
+ return cfg.hidden.includes(path)||patterns.some(re=>re.test(path));
+}
+function writerV91FlexNodePath(node){
+ return node.querySelector('.nav-file-title[data-path], .nav-folder-title[data-path]')?.getAttribute('data-path')||
+  node.getAttribute('data-path')||node.querySelector('.nav-file-title, .nav-folder-title')?.getAttribute('data-path')||'';
+}
+function writerV91FlexSortGroup(plugin,container,patterns){
+ const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
+  node.classList?.contains('nav-file')||node.classList?.contains('nav-folder'));
+ if(!children.length)return;
+ const dir=container.closest('.nav-folder')?.querySelector(':scope > .nav-folder-title[data-path]')?.getAttribute('data-path')||'';
+ const folder=cfg.folders[dir]||{sort:'native',order:[]};
+ const pinned=new Set(cfg.pinned);
+ const rows=children.map((node,index)=>{
+  const path=writerV91FlexNodePath(node);
+  const file=plugin.app.vault.getAbstractFileByPath(path);
+  const title=node.querySelector('.nav-file-title, .nav-folder-title');
+  const isHidden=path&&writerV91FlexIsHidden(cfg,path,patterns);
+  node.classList.toggle('writer-v91-flex-hidden',Boolean(cfg.enabled&&isHidden&&!cfg.showHidden));
+  node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
+  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&pinned.has(path)));
+  if(title){
+   const prior=title.querySelector(':scope > .writer-v91-flex-indicator');prior?.remove();
+   if(cfg.enabled&&pinned.has(path)){
+    const icon=title.ownerDocument.createElement('span');icon.className='writer-v91-flex-indicator';
+    icon.setAttribute('aria-hidden','true');require('obsidian').setIcon(icon,'pin');title.appendChild(icon);
+   }
+  }
+  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned:pinned.has(path)};
+ });
+ if(!cfg.enabled||folder.sort==='native')return;
+ const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+ const priority=folder.order;
+ rows.sort((a,b)=>{
+  if(a.pinned!==b.pinned)return a.pinned?-1:1;
+  if(folder.sort==='custom'){
+   const ia=priority.indexOf(a.name),ib=priority.indexOf(b.name);
+   if(ia>=0&&ib>=0)return ia-ib;
+   if(ia>=0)return -1;if(ib>=0)return 1;
+   return a.index-b.index;
+  }
+  if(folder.sort==='modified'||folder.sort==='created'){
+   const prop=folder.sort==='modified'?'mtime':'ctime';
+   const diff=(b.file?.stat?.[prop]||0)-(a.file?.stat?.[prop]||0);
+   if(diff)return diff;
+  }
+  const delta=collator.compare(a.name,b.name);
+  return folder.sort==='name-desc'?-delta:delta;
+ });
+ // Change the DOM only when necessary. Repeated sorting must be idempotent
+ // to avoid a MutationObserver feedback loop or jumps in editor scroll.
+ const actual=Array.from(container.children).filter(node=>rows.some(r=>r.node===node));
+ if(rows.some((row,index)=>actual[index]!==row.node)){
+  for(const row of rows)container.appendChild(row.node);
+ }
+ if(folder.sort==='custom'&&cfg.dragReorder){
+  for(const row of rows){
+   const title=row.title;if(!title)continue;
+   title.draggable=true;
+   title.dataset.writerFlexPath=row.path;
+  }
+ }
+}
+function writerV91FlexFolderPath(file){
+ return file?.parent?.path||'';
+}
+function writerV91FlexReorder(plugin,path,target,direction){
+ const cfg=plugin.settings.v91Flex;
+ const file=plugin.app.vault.getAbstractFileByPath(path);
+ const other=plugin.app.vault.getAbstractFileByPath(target);
+ if(!file||!other||file.parent?.path!==other.parent?.path||path===target)return;
+ const dir=writerV91FlexFolderPath(file),parent=file.parent;
+ const record=cfg.folders[dir]||{sort:'custom',order:[]};
+ const original=(parent?.children||[]).map(f=>f.name);
+ const order=[...new Set([...record.order.filter(n=>original.includes(n)),...original])];
+ const from=order.indexOf(file.name),to=order.indexOf(other.name);
+ if(from<0||to<0)return;
+ order.splice(from,1);order.splice(to+(direction==='after'&&from>to?1:direction==='after'&&from<to?0:0),0,file.name);
+ cfg.folders[dir]={sort:'custom',order};
+ void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+}
+function writerV91FlexSetSort(plugin,folder,sort){
+ const cfg=plugin.settings.v91Flex,key=folder?.path||'';
+ const record=cfg.folders[key]||{sort:'native',order:[]};
+ record.sort=sort;
+ if(sort==='custom'&&!record.order.length)
+  record.order=(folder?.children||[]).map(f=>f.name);
+ cfg.folders[key]=record;void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+}
+function writerV91FlexRegister(plugin){
+ const cfg=plugin.settings.v91Flex;
+ let timer=null,observer=null,lastDrag='';
+ const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
+ const scan=()=>{
+  const patterns=writerV91FlexPatterns(cfg);
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   const host=leaf.view?.containerEl;if(!host)continue;
+   for(const group of host.querySelectorAll('.nav-folder-children'))writerV91FlexSortGroup(plugin,group,patterns);
+  }
+ };
+ const refresh=()=>{clearTimeout(timer);timer=setTimeout(scan,140);};
+ plugin.writerV91FlexRefresh=refresh;
+ const menu=(menu,file)=>{
+  if(!active()||!(file instanceof TFile||file instanceof TFolder))return;
+  const path=file.path;
+  menu.addSeparator?.();
+  menu.addItem(item=>item.setTitle(cfg.pinned.includes(path)?writerUi('Desafixar no explorador','Unpin in explorer'):writerUi('Fixar no explorador','Pin in explorer'))
+   .setIcon('pin').onClick(async()=>{
+    cfg.pinned=cfg.pinned.includes(path)?cfg.pinned.filter(p=>p!==path):[...cfg.pinned,path];
+    await plugin.saveSettings();refresh();
+   }));
+  menu.addItem(item=>item.setTitle(cfg.hidden.includes(path)?writerUi('Reexibir no explorador','Unhide in explorer'):writerUi('Ocultar no explorador','Hide in explorer'))
+   .setIcon('eye-off').onClick(async()=>{
+    cfg.hidden=cfg.hidden.includes(path)?cfg.hidden.filter(p=>p!==path):[...cfg.hidden,path];
+    await plugin.saveSettings();refresh();
+   }));
+  if(file instanceof TFolder){
+   menu.addItem(item=>item.setTitle(writerUi('Ordenação desta pasta','Sort this folder')).setIcon('list-ordered')
+    .onClick(()=>{
+     const modal=new Modal(plugin.app);
+     modal.onOpen=()=>{
+      modal.setTitle(writerUi('Ordenar: ','Sort: ')+(file.name||writerUi('Cofre','Vault')));
+      for(const [id,pt,en] of WRITER_V91_FLEX_SORTS){
+       const button=modal.contentEl.createEl('button',{cls:'writer-v91-flex-sort-option',text:writerUi(pt,en),attr:{type:'button'}});
+       button.addEventListener('click',()=>{writerV91FlexSetSort(plugin,file,id);modal.close();});
+      }
+     };modal.open();
+    }));
+  }
+  const dir=writerV91FlexFolderPath(file);
+  if(cfg.folders[dir]?.sort==='custom'&&file.parent){
+   for(const [direction,pt,en] of [['before','Mover para cima','Move earlier'],['after','Mover para baixo','Move later']]){
+    menu.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(direction==='before'?'arrow-up':'arrow-down').onClick(()=>{
+     const list=cfg.folders[dir].order;
+     const name=file.name,index=list.indexOf(name),other=list[index+(direction==='before'?-1:1)];
+     if(!other)return;
+     const target=file.parent.children?.find(f=>f.name===other);
+     if(target)writerV91FlexReorder(plugin,file.path,target.path,'before');
+    }));
+   }
+  }
+ };
+ plugin.registerEvent(plugin.app.workspace.on('file-menu',menu));
+ plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
+ plugin.registerEvent(plugin.app.vault.on('create',refresh));
+ plugin.registerEvent(plugin.app.vault.on('delete',file=>{
+  const old=file.path;cfg.pinned=cfg.pinned.filter(path=>path!==old&&!path.startsWith(old+'/'));
+  cfg.hidden=cfg.hidden.filter(path=>path!==old&&!path.startsWith(old+'/'));
+  for(const key of Object.keys(cfg.folders))if(key===old||key.startsWith(old+'/'))delete cfg.folders[key];
+  void plugin.saveSettings();refresh();
+ }));
+ plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
+  const swap=p=>p===old||p.startsWith(old+'/')?file.path+p.slice(old.length):p;
+  cfg.pinned=cfg.pinned.map(swap);cfg.hidden=cfg.hidden.map(swap);
+  cfg.folders=Object.fromEntries(Object.entries(cfg.folders).map(([key,v])=>[swap(key),v]));
+  if(file.parent&&file.parent.path===old.split('/').slice(0,-1).join('/')){
+   const record=cfg.folders[file.parent.path];
+   if(record)record.order=record.order.map(name=>name===old.split('/').pop()?file.name:name);
+  }
+  void plugin.saveSettings();refresh();
+ }));
+ plugin.registerEvent(plugin.app.vault.on('modify',refresh));
+ // Keep native drag-and-drop untouched except for Alt+drag between items
+ // in a folder explicitly configured for custom sorting.
+ const container=plugin.app.workspace.containerEl;
+ const start=event=>{
+  if(!active()||!cfg.dragReorder||!event.altKey)return;
+  const node=event.target?.closest?.('.nav-file, .nav-folder');
+  const path=node&&writerV91FlexNodePath(node);
+  const file=plugin.app.vault.getAbstractFileByPath(path||'');
+  if(!file||cfg.folders[writerV91FlexFolderPath(file)]?.sort!=='custom')return;
+  lastDrag=path;event.dataTransfer?.setData('text/x-writer-flexplorer',path);
+  if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+  event.stopPropagation();
+ };
+ const over=event=>{
+  if(!lastDrag)return;
+  const node=event.target?.closest?.('.nav-file, .nav-folder');
+  const target=node&&writerV91FlexNodePath(node);
+  const a=plugin.app.vault.getAbstractFileByPath(lastDrag),b=plugin.app.vault.getAbstractFileByPath(target||'');
+  if(a&&b&&a.parent?.path===b.parent?.path){event.preventDefault();event.stopPropagation();}
+ };
+ const drop=event=>{
+  if(!lastDrag)return;
+  const node=event.target?.closest?.('.nav-file, .nav-folder');
+  const target=node&&writerV91FlexNodePath(node),source=lastDrag;lastDrag='';
+  if(!target||target===source)return;
+  event.preventDefault();event.stopPropagation();writerV91FlexReorder(plugin,source,target,'before');
+ };
+ const end=()=>{lastDrag='';};
+ plugin.registerDomEvent(container,'dragstart',start,true);
+ plugin.registerDomEvent(container,'dragover',over,true);
+ plugin.registerDomEvent(container,'drop',drop,true);
+ plugin.registerDomEvent(container,'dragend',end,true);
+ const attach=()=>{
+  observer?.disconnect();observer=new MutationObserver(records=>{
+   if(records.some(record=>record.addedNodes.length||record.removedNodes.length))refresh();
+  });
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   if(leaf.view?.containerEl)observer.observe(leaf.view.containerEl,{childList:true,subtree:true});
+  }
+  refresh();
+ };
+ plugin.app.workspace.onLayoutReady?.(attach);
+ plugin.registerEvent(plugin.app.workspace.on('layout-change',attach));
+ plugin.addCommand({id:'v91-flex-show-hidden',name:writerUi('Explorador: mostrar ou ocultar arquivos escondidos','Explorer: toggle hidden files'),callback:async()=>{
+  cfg.showHidden=!cfg.showHidden;await plugin.saveSettings();refresh();
+ }});
+ plugin.register?.(()=>{clearTimeout(timer);observer?.disconnect();plugin.writerV91FlexRefresh=null;});
+}
+function writerV91FlexSettings(plugin,panel){
+ const cfg=plugin.settings.v91Flex;
+ panel.createEl('h3',{text:'Flexplorer'});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+  'Organize o explorador nativo por pasta, fixe itens, oculte arquivos e escolha uma ordem manual. Clique com o botão direito ou pressione e segure para ver as opções. Alt + arrastar reordena itens da mesma pasta em modo personalizado.',
+  'Sort native Explorer folders individually, pin files, hide items and set custom order. Right-click or long-press for file actions. Alt + drag reorders items within custom-sorted folders.'
+ )});
+ for(const [key,pt,en] of [
+  ['enabled','Ativar organização avançada','Enable enhanced organization'],
+  ['showHidden','Exibir itens ocultos','Show hidden items'],
+  ['dragReorder','Permitir Alt + arrastar para ordenar','Allow Alt + drag to reorder']
+ ]){
+  new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{
+   cfg[key]=v;await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+  }));
+ }
+ new Setting(panel).setName(writerUi('Padrões de ocultação','Hide patterns'))
+  .setDesc(writerUi('Um padrão por linha; suporta * e **. Apenas oculta na interface, não exclui arquivos.','One glob per line; supports * and **. Only hides in Explorer, never deletes files.'))
+  .addTextArea(t=>{t.inputEl.rows=4;t.setPlaceholder('Templates/**\n*.bak').setValue(cfg.patterns)
+   .onChange(async value=>{cfg.patterns=value.slice(0,3000);await plugin.saveSettings();plugin.writerV91FlexRefresh?.();});});
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
@@ -12812,6 +13590,7 @@ class DictionaryView extends ItemView{
   this.translateFileButton.addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.translateVaultFile(file)).open());
   this.fileTranslationStatus=translations.createDiv({cls:'writer-file-status'});
   this.translationOutput=translations.createDiv({cls:'dictionary-output'});
+  chat.addClass('writer-v91-ai-dialogue');
   const header=chat.createDiv({cls:'writer-chat-header'});header.createEl('strong',{text:msg('Assistente de escrita','Writing assistant')});
   header.createEl('button',{text:msg('Limpar','Clear')}).addEventListener('click',()=>{this.chatHistory=[];this.chatMessages.empty();});
   this.chatMessages=chat.createDiv({cls:'writer-chat-messages'});this.chatHistory=this.chatHistory||[];
@@ -12875,7 +13654,19 @@ class DictionaryView extends ItemView{
    }
   }
  }
- async addChat(role,value){const bubble=this.chatMessages.createDiv({cls:'writer-chat-bubble writer-chat-'+role});bubble.createEl('small',{text:role==='user'?msg('Você','You'):'AI'});const body=bubble.createDiv({cls:'markdown-rendered'});if(role==='assistant')await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);else body.setText(value);this.chatMessages.scrollTop=this.chatMessages.scrollHeight;return bubble;}
+ async addChat(role,value){
+  const side=role==='user'?'right':'left';
+  const row=this.chatMessages.createDiv({cls:'writer-v8-chat-row writer-v91-ai-chat-row is-'+side});
+  const group=row.createDiv({cls:'writer-v8-chat-group'});
+  const meta=group.createDiv({cls:'writer-v8-chat-meta'});
+  meta.createSpan({text:role==='user'?msg('Você','You'):msg('Assistente','Assistant')});
+  const bubble=group.createDiv({cls:'writer-v8-chat-bubble writer-chat-bubble writer-chat-'+role});
+  const body=bubble.createDiv({cls:'markdown-rendered'});
+  if(role==='assistant')await MarkdownRenderer.render(this.app,value,body,this.plugin.dictionaryPath(),this);
+  else body.setText(value);
+  this.chatMessages.scrollTop=this.chatMessages.scrollHeight;
+  return row;
+ }
 
  async translateVaultFile(file){
   if(!writerModuleOn(this.plugin,'translation'))return;
@@ -13213,6 +14004,7 @@ class DictionarySettings extends PluginSettingTab{
     ['workspaceProfiles',msg('Perfis rápidos','Quick profiles')],
     ['diagnostics',msg('Diagnóstico','Diagnostics')],
     ['homepage',msg('Página inicial','Homepage')],
+    ['soundscapes','Soundscapes'],
     ['v9Toolbar',msg('Barra de formatação','Formatting toolbar')],
     ['v9Explorer',msg('Explorador de arquivos','File explorer')],
     ['v9Spaces',msg('Coleções locais','Local collections')],
@@ -13233,6 +14025,7 @@ class DictionarySettings extends PluginSettingTab{
     ['v6Markdown',msg('Ruby, Discord e avaliações','Ruby, Discord & ratings')],
     ['smartInsert',msg('Inserção inteligente','Smart insertion')],
     ['typing',msg('Digitação e tipografia','Typing & typography')],
+    ['clickClack',msg('Sons da máquina de escrever','Typewriter sounds')],
     ['cursor',msg('Posição do cursor','Cursor position')],
     ['snapshots',msg('Versões','Versions')],
     ['projectTasks',msg('Tarefas','Tasks')],
@@ -13256,7 +14049,7 @@ class DictionarySettings extends PluginSettingTab{
    complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
    snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review',
-   homepage:'writingHome',v9Toolbar:'formatToolbar',v9Explorer:'nativeExplorer',v9Spaces:'smartSpaces',v9Calendar:'calendar'};
+   homepage:'writingHome',soundscapes:'soundscapes',clickClack:'typewriter',v9Toolbar:'formatToolbar',v9Explorer:'nativeExplorer',v9Spaces:'smartSpaces',v9Calendar:'calendar'};
   const enabledSections=sections.filter(([id])=>id==='v6Markdown'
    ?['ruby','discordSyntax','ratings'].some(key=>writerModuleOn(this.plugin,key))
    :id==='v6Reading'?['timestamps','readingTime'].some(key=>writerModuleOn(this.plugin,key))
@@ -13266,21 +14059,21 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Personalização','Customization'),['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar','v9Lock']],
+   ['customize',msg('Personalização','Customization'),['homepage','soundscapes','v9Toolbar','v9Explorer','v9Spaces','v9Calendar','v9Lock']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','v7Worldbuilding']],
-   ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','keyshots','typing','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
+   ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
    ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
   ];
   const groupIcons={general:'settings-2',customize:'palette',ai:'brain-circuit',longform:'book-open',writing:'pen-line',review:'spell-check'};
   const sectionIcons={
    general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
-   homepage:'house',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
+   homepage:'house',soundscapes:'headphones',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
    dictionary:'book-a',translation:'languages',assistant:'message-circle',projects:'notebook-pen',
    v7Worldbuilding:'globe',complements:'lightbulb',variants:'git-compare',
    writingProfiles:'scan-text',integrationsV4:'wrench',keyshots:'keyboard',
    extendedSyntax:'file-code',pandocSyntax:'file-text',v6Markdown:'code-xml',
-   smartInsert:'wand-sparkles',typing:'type',cursor:'mouse-pointer-2',snapshots:'history',
+   smartInsert:'wand-sparkles',typing:'type',clickClack:'keyboard',cursor:'mouse-pointer-2',snapshots:'history',
    projectTasks:'list-check',bookNavigation:'book-open-check',abbreviations:'text-cursor-input',
    anotherName:'tag',viewMode:'eye',templates:'files',unicode:'omega',toc:'list-tree',
    tts:'volume-2',v6Reading:'clock',v6Linter:'spell-check',review:'check-check',
@@ -13329,9 +14122,11 @@ class DictionarySettings extends PluginSettingTab{
     }
     renderSubtabs(group,id);
     panel.empty();
+    panel.classList.toggle('writer-v91-ai-settings',groupFor(id)==='ai');
     if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
+    }else if(id==='soundscapes'){writerV91SoundSettings(this.plugin,panel);
     }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
-    }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);
+    }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);
     }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);
     }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);
     }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);
@@ -13339,6 +14134,8 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerWorkspaceProfiles.renderSettings(panel);
     }else if(id==='cursor'){
       this.plugin.writerCursorMemory.renderSettings(panel);
+    }else if(id==='clickClack'){
+      writerV91ClickSettings(this.plugin,panel);
     }else if(id==='projectTasks'){
       const cfg=this.plugin.settings.longformTasksOptions||(this.plugin.settings.longformTasksOptions={autoSort:true,hideCompleted:false,showDueDates:true,showTooltips:true});
       panel.createEl('h3',{text:msg('Tarefas dos projetos Longform','Longform project tasks')});
@@ -13624,6 +14421,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV9SpacesMerge(this.settings);
     writerV9LockMerge(this.settings);
     writerV9CalendarMerge(this.settings);
+    writerV91SoundMerge(this.settings);
+    writerV91ClickMerge(this.settings);
+    writerV91FlexMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -13686,6 +14486,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV9RegisterExplorer(this);
     writerV9RegisterSpaces(this);
     writerV9LockRegister(this);
+    writerV91RegisterSound(this);
+    writerV91RegisterClick(this);
+    writerV91FlexRegister(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')

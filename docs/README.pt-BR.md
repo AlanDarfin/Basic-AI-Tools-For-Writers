@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.2.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
 
@@ -60,6 +60,13 @@ Exemplo: para notas na pasta `Personagens/`, crie uma condição por pasta e use
 Outro exemplo: escolha **BookNav automático** como fonte, **Rodapé** como posição e a pasta `Meu Livro/Capítulos` (incluindo subpastas). A navegação acompanha o índice Longform quando a nota pertence ao projeto. Reorganizar capítulos atualiza os botões sem inserir blocos nos arquivos. A navegação manual de notas avulsas continua disponível com `longform-nav`.
 
 Use o comando **Conteúdo virtual: abrir na lateral** para visualizar as regras laterais. Cada regra pode ter sua própria aba dentro desse painel. Você pode ativar, editar, excluir e reordenar regras sem alterar as notas atingidas. Notas modelo também podem conter sintaxe de outros plugins, mas a renderização de Dataview ou Bases depende dessas integrações e do modo de visualização utilizado.
+
+### 9.2.3 — título completo da homepage e favoritos centralizados
+
+- Corrige a expressão regular do título que removia as letras minúsculas **r** e **n** durante a digitação. Agora, a mesma função de limpeza é utilizada nas configurações e na inicialização, removendo somente quebras de linha reais e caracteres de controle, sem apagar letras, acentos ou símbolos. Títulos já salvos incorretamente precisam ser digitados novamente uma vez.
+- Centraliza a estrela verticalmente pela altura real da linha do explorador, sem depender de um deslocamento fixo. Funciona em linhas compactas no PC e mantém a área de toque maior no Android.
+- Aumenta o ícone da homepage no PC para combinar melhor com o título, mantém o layout do celular e retira o espaçamento negativo entre letras.
+- Adiciona testes que cobrem o alfabeto completo, maiúsculas, minúsculas, acentos, emojis e sincronização dos arquivos gerados.
 
 ### 9.2.2 — alinhamento do chat, descrições e ícones no estilo Iconic
 

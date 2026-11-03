@@ -10,7 +10,7 @@ test('9.2.2 manifest and package versions match',()=>{
  const pkg=JSON.parse(read('package.json'));
  const lock=JSON.parse(read('package-lock.json'));
  const versions=JSON.parse(read('versions.json'));
- assert.equal(manifest.version,'9.2.2');
+ assert.match(manifest.version,/^9\.2\.[0-9]+$/);
  assert.equal(pkg.version,manifest.version);
  assert.equal(lock.version,manifest.version);
  assert.equal(lock.packages[''].version,manifest.version);

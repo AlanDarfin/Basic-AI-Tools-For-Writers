@@ -63,7 +63,7 @@ test('folder index creates ordinary Markdown only after explicit command',async(
   workspace:{getLeaf:()=>({openFile:async()=>{}})}}};
  await ex.folderIndex(plugin,folder);
  assert.equal(writes[0][0],'Stories/Book/Book.md');
- assert.match(writes[0][1],/writer-folder-overview/);
+ assert.match(writes[0][1],/```folder-overview/);
 });
 test('homepage icon accepts trusted vault images and HTTPS but rejects protocols',()=>{
  const file=Object.assign(new TFile(),{extension:'png'});

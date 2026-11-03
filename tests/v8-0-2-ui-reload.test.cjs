@@ -44,9 +44,9 @@ function fixture(){
  const context={window:{sessionStorage:{
   setItem:(k,v)=>storage.set(k,v),getItem:k=>storage.get(k)??null,removeItem:k=>storage.delete(k)
  }},VIEW:'basic',PROJECT_VIEW:'project',WRITER_TOOLS_VIEW:'tools',WRITER_V8_HOME_VIEW:'home',WRITER_V83_CAL_VIEW:'calendar',WRITER_V83_STUDY_VIEW:'study',WRITER_V9_SPACE_VIEW:'spaces',WRITER_V912_VIRTUAL_VIEW:'virtual',console,Date};
- const {rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey}=
+ const {rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey,hotReloadPanePosition,hotReloadCreateLeaf}=
   vm.runInNewContext('(class HotReloadHarness {'+methods()+'}).prototype',context);
- Object.assign(host,{rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey});
+ Object.assign(host,{rememberHotReloadSidebars,restoreHotReloadSidebars,hotReloadStorageKey,hotReloadPanePosition,hotReloadCreateLeaf});
  return {host,workspace,views,open,storage};
 }
 test('captures only currently open Basic AI plugin panes and their tabs',()=>{

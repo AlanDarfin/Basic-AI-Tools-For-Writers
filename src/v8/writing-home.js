@@ -22,7 +22,7 @@ function writerV8HomePick(items,previous=''){
  if(!Array.isArray(items)||!items.length)return null;
  if(items.length===1)return items[0];
  const others=items.filter(item=>(typeof item==='string'?item:item?.path||item?.[0])!==previous);
- return (others.length?others:items)[Math.floor(Math.random()*(others.length?others:items).length)]];
+ return (others.length?others:items)[Math.floor(Math.random()*(others.length?others:items).length)];
 }
 const WRITER_V8_HOME_CATALOG={
  calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],

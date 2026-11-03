@@ -736,6 +736,15 @@ function writerV8FinishSettings(plugin,panel){
    await plugin.writerV8HomeOpen?.();
    plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view?.manageWidgets?.();
   }));
+ new Setting(panel).setName(writerUi('Citações da homepage','Homepage quotes'))
+  .setDesc(writerUi('Uma citação por linha. Opcional: frase | autor. Em branco usa frases originais do Basic. O sorteio muda ao abrir a homepage.','One quote per line. Optional: quote | author. Empty uses original Basic quotes. A new quote is chosen when opening the homepage.'))
+  .addTextArea(input=>input.setValue(cfg.homeQuotes||'').onChange(async value=>{
+   cfg.homeQuotes=String(value||'').slice(0,12000);
+   await plugin.saveSettings();
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
+    if(leaf.view){leaf.view.homeQuote=null;leaf.view.render?.();}
+   }
+  }));
  new Setting(panel).setName(writerUi('Meta de palavras do widget','Widget word target'))
   .setDesc(writerUi('Progresso calculado sobre a última nota Markdown aberta.','Progress measured against the latest opened Markdown note.'))
   .addText(input=>input.setValue(String(cfg.homeWordGoal)).onChange(async value=>{

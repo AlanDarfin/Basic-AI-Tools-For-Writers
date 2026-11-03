@@ -119,5 +119,5 @@ test('no pointer-events block; style, bundle and version are synchronized',()=>{
  assert.ok(main.includes('writerV91ClickPackUrl'));
  assert.ok(main.includes('writerV929PreviewExpand'));
  for(const file of ['README.md','docs/README.pt-BR.md'])
-  assert.ok(fs.readFileSync(file,'utf8').includes('9.2.9'));
+  assert.ok(fs.readFileSync(file,'utf8').includes(m.version));
 });

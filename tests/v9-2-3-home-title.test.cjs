@@ -63,8 +63,8 @@ test('no other double-escaped CR/LF character class in original compiled source'
 
 test('favorite icon follows real row center at PC and Android sizes',()=>{
  const css=read('src/styles/v9-2-3-home-title-favorites.css');
- assert.match(css,/\.nav-file-title \.writer-v92-favorite\s*\{[^}]*top:50%;[^}]*transform:translateY\(-50%\)/s);
- assert.match(css,/body\.is-mobile[^{]*\.writer-v92-favorite\s*\{[^}]*top:50%;[^}]*transform:translateY\(-50%\)/s);
+ assert.match(css,/\.nav-file-title \.writer-v92-favorite\s*\{[^}]*top:0;[^}]*bottom:0;[^}]*margin-block:auto/s);
+ assert.match(css,/body\.is-mobile[^{]*\.writer-v92-favorite\s*\{[^}]*top:0;[^}]*bottom:0;[^}]*margin-block:auto/s);
  assert.match(css,/height:24px/);
  assert.match(css,/height:36px/);
  assert.match(css,/align-items:center/);
@@ -72,7 +72,7 @@ test('favorite icon follows real row center at PC and Android sizes',()=>{
 
 test('desktop icon is visually larger, text cannot be masked, and mobile layout stays separate',()=>{
  const css=read('src/styles/v9-2-3-home-title-favorites.css');
- assert.match(css,/\.writer-v8-home-heading h2\s*\{[^}]*text-transform:none;[^}]*letter-spacing:normal;[^}]*overflow:visible/s);
+ assert.match(css,/\.writer-v8-home-heading h2\s*\{[^}]*font-variant:normal;[^}]*letter-spacing:normal;[^}]*overflow:visible/s);
  assert.match(css,/body:not\(\.is-mobile\) \.writer-v8-home \.writer-v8-home-title-icon svg\s*\{[^}]*width:53px;[^}]*height:53px;/s);
  assert.match(css,/@media\(min-width:701px\)/);
  assert.match(read('styles.css'),/9\.2\.3: Home heading proportions/);

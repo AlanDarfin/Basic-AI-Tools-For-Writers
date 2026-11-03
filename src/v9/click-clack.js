@@ -115,7 +115,7 @@ class WriterV91ClickClack{
  init(){
   if(this.plugin.app.isMobile)return;
   void this.listSchemes().then(()=>this.load()).catch(error=>console.warn('[Basic AI] Click Clack:',error));
-  this.plugin.registerDomEvent(this.plugin.app.workspace.containerEl,'keydown',event=>{
+  this.plugin.registerDomEvent?.(this.plugin.app.workspace.containerEl,'keydown',event=>{
    if(!this.cfg.enabled||!event.target?.closest?.('.cm-editor'))return;
    const kind=writerV91ClickCategory(event);if(!kind)return;
    this.play(kind==='key'&&Math.random()>.75?'key2':kind);

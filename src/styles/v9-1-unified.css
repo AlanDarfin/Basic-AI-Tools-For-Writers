@@ -100,7 +100,13 @@
  padding:14px 10px;scrollbar-width:thin;
 }
 .writer-v91-ai-chat-row{display:flex;width:100%;min-width:0;align-items:flex-start;}
-.writer-v91-ai-chat-row.is-right{justify-content:flex-end;}
+.writer-v91-ai-chat-row.is-right{
+ flex-direction:row;
+ justify-content:flex-end;
+}
+.writer-v91-ai-chat-row.is-right .writer-v8-chat-group{
+ margin-inline-start:auto;
+}
 .writer-v91-ai-chat-row.is-left{justify-content:flex-start;}
 .writer-v91-ai-chat-row .writer-v8-chat-group{
  display:flex;flex-direction:column;gap:4px;

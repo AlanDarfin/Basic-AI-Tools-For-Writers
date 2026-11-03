@@ -16,8 +16,8 @@ test('9.1 version and assembled runtime',()=>{
  const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
  const manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'),'utf8'));
  const versions=JSON.parse(fs.readFileSync(path.join(root,'versions.json'),'utf8'));
- assert.equal(pkg.version,'9.1.0');assert.equal(manifest.version,'9.1.0');
- assert.equal(versions['9.1.0'],'1.11.4');
+ assert.equal(pkg.version,manifest.version);assert.match(manifest.version,/^9\.1\.[0-9]+$/);
+ assert.equal(versions[manifest.version],'1.11.4');
  const main=fs.readFileSync(path.join(root,'main.js'),'utf8');
  for(const name of ['soundscapes','click-clack','explorer-flex'])
   assert.ok(main.includes('// v3 module: src/v9/'+name+'.js'),name+' missing from main.js');

@@ -63,7 +63,7 @@ test('Flexplorer hide globs, pinning and folder sorting are independent of vault
  assert.ok(m.writerV91FlexIsHidden(cfg,'old.bak',patterns));
  assert.ok(!m.writerV91FlexIsHidden(cfg,'Notes/readme.md',patterns));
  assert.deepEqual(Array.from(cfg.folders.Notes.order),['c.md','b.md']);
- assert.equal(m.writerV91FlexGlob('').toString(),'null');
+ assert.equal(m.writerV91FlexGlob(''),null);
 });
 test('Desktop-only sections and README feature documentation in both languages',()=>{
  const sound=fs.readFileSync(path.join(root,'src/v9/soundscapes.js'),'utf8');

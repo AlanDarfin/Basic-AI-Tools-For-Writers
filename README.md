@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.2.2 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.2.3 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party credits](THIRD_PARTY_NOTICES.md)
 
@@ -60,6 +60,13 @@ Example: for notes in `Characters/`, set a folder condition and use this Markdow
 Another example: set the source to **Automatic BookNav**, location to **Footer**, and folder to `My Book/Chapters` (including subfolders). The navigator will follow the Longform index when the note belongs to the project. If the project is reordered, the virtual navigation updates; manual standalone notes are still supported through the existing `longform-nav` syntax.
 
 Use the **Virtual Content: open sidebar** command for matching sidebar rules. Independent sidebar tabs can be enabled per rule. Rules can be disabled, edited, removed or reordered without modifying the matching files. Markdown from source notes may include third-party syntax; support for Dataview or Bases rendering depends on those separate plugins and the active view mode.
+
+### 9.2.3 — accurate homepage titles and centered favorite symbols
+
+- Fixes a title-entry regex that accidentally removed lowercase **r** and **n** when editing the homepage title. A shared Unicode-aware sanitizer now removes only actual line separators and control characters, retaining every normal letter, accent and symbol. Re-enter any previously damaged title once, because deleted characters cannot be recovered from saved preferences.
+- Centers the favorite icon vertically using the actual height of the Explorer item instead of a fixed offset, working with themes that use compact file rows on desktop and with larger touch targets on mobile.
+- Enlarges the desktop homepage Lucide/icon image to visually match its title, preserves mobile layout, and removes tight negative title tracking to improve glyph readability.
+- Regression tests cover full alphabet case preservation, accented text, emojis, and code/asset bundle synchronization.
 
 ### 9.2.2 — chat alignment, Explorer descriptions and Iconic-style settings
 

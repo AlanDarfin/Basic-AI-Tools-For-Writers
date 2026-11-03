@@ -1,12 +1,14 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.0.4 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.0.5 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
-[Read in English](../README.md) · [Notas da versão](V9_0_4_RELEASE.pt-BR.md)
+[Read in English](../README.md) · [Notas da versão](V9_0_5_RELEASE.pt-BR.md)
 
 Uma central compacta para escrever livros, organizar universos, editar Markdown, revisar textos e, opcionalmente, usar inteligência artificial. As notas continuam sendo arquivos normais do cofre do Obsidian.
 
 ## Novidades da v9
+
+**9.0.5:** listas de notas recentes e favoritos compactas, com caminho e navegação por teclado; novos widgets opcionais de **galeria de imagens**, **citações aleatórias** e **notas editadas hoje**; título e ícone maiores. Blocos Markdown agora usam `tabs`, `avatar`, `wiki`, `post`, `chat`, `media-gallery` e `folder-overview`; os nomes antigos `writer-*` continuam compatíveis. [Notas completas](V9_0_5_RELEASE.pt-BR.md).
 
 **Correção 9.0.4:** no calendário mobile, os dias deixam de ter números dentro de círculos, passam a exibir o número no canto superior esquerdo e o dia atual recebe a accent color no quadrado inteiro. [Notas da 9.0.4](V9_0_4_RELEASE.pt-BR.md).
 
@@ -22,7 +24,7 @@ Uma central compacta para escrever livros, organizar universos, editar Markdown,
 
 **Novidades da 9.0.1:** pesquisa da homepage em largura total acima de todos os elementos, com seleção destacada, caminhos das notas e setas/Enter; melhorias em Lucide/HEX, Escrita e Markdown reunidos, chat compacto, Spaces na barra lateral e bloqueio visual opcional por senha (**não criptografa notas**). [Leia as notas completas](V9_0_1_RELEASE.pt-BR.md).
 
-Última versão estável anterior: **9.0.3**. Versão histórica importante: **8.3.0**.
+Última versão estável anterior: **9.0.4**. Versão histórica importante: **8.3.0**.
 
 Esta é uma **integração independente**, não um fork completo do Make.md. Bancos de dados relacionais, fórmulas, rollups, o mecanismo completo de Spaces e o Flow Editor do Make.md **não foram portados**; as Smart Spaces são uma alternativa local simplificada. Consulte [as notas da release v9](V9_RELEASE.pt-BR.md) e [a auditoria de compatibilidade](V9_FINAL_AUDIT.md). Faça backup do cofre antes de atualizar.
 

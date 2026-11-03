@@ -249,7 +249,7 @@ function writerV8ChatRender(plugin,source,element,ctx){
 }
 function writerV8RegisterFinishBlocks(plugin){
  if(typeof plugin.registerMarkdownCodeBlockProcessor==='function')
-  plugin.registerMarkdownCodeBlockProcessor('writer-chat',(source,element,ctx)=>{
+  for(const type of ['chat','writer-chat'])plugin.registerMarkdownCodeBlockProcessor(type,(source,element,ctx)=>{
    if(!writerModuleOn(plugin,'fictionalChats')){element.createEl('pre',{text:source});return;}
    writerV8ChatRender(plugin,source,element,ctx);
   });

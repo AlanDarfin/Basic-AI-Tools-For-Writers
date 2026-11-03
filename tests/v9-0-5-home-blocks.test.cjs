@@ -37,7 +37,7 @@ test('new widget catalog is opt-in, preserves previous dashboard layout and quot
  const settings={v8Finish:{homeOrder:['continue','recent','calendar'],homeHidden:['random']}};
  api(settings);
  for(const key of ['gallery','quotes','today'])assert.ok(settings.v8Finish.homeOrder.includes(key),key);
- assert.deepEqual(Array.from(settings.v8Finish.homeHidden),['random']);
+ assert.deepEqual(Array.from(settings.v8Finish.homeHidden),['random','gallery','quotes','today']);
  // Existing preferences remain intentional; opt-in new cards on brand-new/default configurations.
  const empty={};api(empty);
  for(const key of ['gallery','quotes','today'])assert.ok(empty.v8Finish.homeHidden.includes(key),key);

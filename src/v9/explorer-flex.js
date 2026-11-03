@@ -73,8 +73,10 @@ function writerV91FlexSortGroup(plugin,container,patterns){
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&pinned.has(path)));
   if(title){
-   const prior=title.querySelector(':scope > .writer-v91-flex-indicator');prior?.remove();
-   if(cfg.enabled&&pinned.has(path)){
+   const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
+   const wanted=cfg.enabled&&pinned.has(path);
+   if(prior&&!wanted)prior.remove();
+   if(wanted&&!prior){
     const icon=title.ownerDocument.createElement('span');icon.className='writer-v91-flex-indicator';
     icon.setAttribute('aria-hidden','true');require('obsidian').setIcon(icon,'pin');title.appendChild(icon);
    }
@@ -128,7 +130,9 @@ function writerV91FlexReorder(plugin,path,target,direction){
  const order=[...new Set([...record.order.filter(n=>original.includes(n)),...original])];
  const from=order.indexOf(file.name),to=order.indexOf(other.name);
  if(from<0||to<0)return;
- order.splice(from,1);order.splice(to+(direction==='after'&&from>to?1:direction==='after'&&from<to?0:0),0,file.name);
+ order.splice(from,1);
+ const targetIndex=order.indexOf(other.name);
+ order.splice(targetIndex+(direction==='after'?1:0),0,file.name);
  cfg.folders[dir]={sort:'custom',order};
  void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
@@ -188,7 +192,7 @@ function writerV91FlexRegister(plugin){
      const name=file.name,index=list.indexOf(name),other=list[index+(direction==='before'?-1:1)];
      if(!other)return;
      const target=file.parent.children?.find(f=>f.name===other);
-     if(target)writerV91FlexReorder(plugin,file.path,target.path,'before');
+     if(target)writerV91FlexReorder(plugin,file.path,target.path,direction);
     }));
    }
   }

@@ -50,7 +50,7 @@ function writerV92FolderNote(app,folder){
  }
  return null;
 }
-function writerV92PreviewValue(plugin,file){
+function writerV92PreviewValue(plugin,file,full=false){
  const cfg=plugin.settings.v92Explorer;
  if(cfg.previewMode==='off')return '';
  const folder=file instanceof TFolder;
@@ -61,7 +61,7 @@ function writerV92PreviewValue(plugin,file){
  const key=folder?cfg.folderDescriptionKey:cfg.noteDescriptionKey;
  const raw=front[key]??front.summary??front.brief;
  const value=Array.isArray(raw)?raw.join(', '):typeof raw==='string'?raw:'';
- return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,cfg.previewMax);
+ return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,full?4000:cfg.previewMax);
 }
 
 /* Preview images come from local vault files only; external URLs are never requested. */
@@ -124,6 +124,57 @@ function writerV921PreviewImage(plugin,source,content){
  return null;
 }
 
+/* Keep previews compact. After 1.5s hover, show the full safe plain text;
+ * mouseleave restores the excerpt, and keyboard focus also expands it. */
+function writerV929PreviewExpand(shell,shortText,fullText){
+ const label=shell.querySelector(':scope > .writer-v92-file-preview');
+ if(!label)return;
+ const long=String(fullText||'');
+ const truncated=long.length>shortText.length||label.scrollHeight>label.clientHeight+1;
+ const expanded=shell.classList.contains('is-expanded');
+ shell.dataset.previewShort=shortText; shell.dataset.previewFull=long;
+ shell.dataset.expandable=String(truncated);
+ shell.classList.toggle('is-expandable',truncated);
+ if(!truncated)shell.classList.remove('is-expanded');
+ if(truncated){
+  shell.setAttribute('tabindex','0');shell.setAttribute('role','button');
+  shell.setAttribute('aria-label',writerUi('Expandir descrição','Expand description'));
+  shell.setAttribute('aria-expanded',String(expanded));
+ }else{
+  shell.removeAttribute('tabindex');shell.removeAttribute('role');
+  shell.removeAttribute('aria-expanded');shell.removeAttribute('aria-label');
+ }
+ label.textContent=truncated&&expanded?long:shortText;
+ if(shell.dataset.hoverListeners==='ready')return;
+ shell.dataset.hoverListeners='ready';
+ let timer=null;
+ const open=()=>{
+  if(shell.dataset.expandable!=='true'||!shell.isConnected)return;
+  shell.classList.add('is-expanded');shell.setAttribute('aria-expanded','true');
+  const target=shell.querySelector(':scope > .writer-v92-file-preview');
+  if(target)target.textContent=shell.dataset.previewFull;
+ };
+ const close=()=>{
+  clearTimeout(timer);timer=null;
+  shell.classList.remove('is-expanded');shell.setAttribute('aria-expanded','false');
+  const target=shell.querySelector(':scope > .writer-v92-file-preview');
+  if(target)target.textContent=shell.dataset.previewShort;
+ };
+ shell.addEventListener('mouseenter',()=>{
+  if(shell.dataset.expandable!=='true')return;
+  clearTimeout(timer);timer=setTimeout(open,1500);
+ });
+ shell.addEventListener('mouseleave',close);
+ shell.addEventListener('focus',open);
+ shell.addEventListener('blur',close);
+ shell.addEventListener('keydown',event=>{
+  if(event.key==='Enter'||event.key===' '){
+   if(shell.dataset.expandable!=='true')return;
+   event.preventDefault();event.stopPropagation();
+   if(shell.classList.contains('is-expanded'))close();else open();
+  }else if(event.key==='Escape')close();
+ });
+}
 function writerV92ExplorerRegister(plugin){
  let timer=null,reading=0;
  const cached=new Map(),queued=new Set(),queue=[];
@@ -225,6 +276,7 @@ function writerV92ExplorerRegister(plugin){
    return;
   }
   const fromYaml=writerV92PreviewValue(plugin,item);
+  const fullYaml=fromYaml?writerV92PreviewValue(plugin,item,true):'';
   const read=cached.get(source.path);
   const stable=read&&read.mtime===(source.stat?.mtime||0);
   if(read&&!stable)cached.delete(source.path);
@@ -232,6 +284,7 @@ function writerV92ExplorerRegister(plugin){
   const excerpt=stable&&cfg.previewMode==='all'&&!fromYaml?
    writerV921PreviewBody(read.content,cfg.previewMax):'';
   const description=fromYaml||excerpt;
+  const fullDescription=fullYaml||(excerpt&&stable?writerV921PreviewBody(read.content,4000):'');
   const image=cfg.showImage?writerV921PreviewImage(plugin,source,stable?read.content:''):null;
   const imagePath=image?.path||'';
   if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
@@ -251,8 +304,9 @@ function writerV92ExplorerRegister(plugin){
     shell.appendChild(label);
    }
    if(label.textContent!==description)label.textContent=description;
-   label.title=description;
-  }else label?.remove();
+   label.removeAttribute('title');
+   writerV929PreviewExpand(shell,description,fullDescription);
+  }else{label?.remove();shell.classList.remove('is-expanded','is-expandable');}
   let thumbnail=shell.querySelector(':scope > .writer-v92-preview-image');
   if(imagePath){
    if(!thumbnail){

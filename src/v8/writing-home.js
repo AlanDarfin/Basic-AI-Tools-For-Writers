@@ -1,7 +1,29 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal'];
+const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
+const WRITER_V8_HOME_ORIGINAL_QUOTES=[
+ ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
+ ['Uma boa ideia cresce quando ganha espaço na página.',''],
+ ['Escreva primeiro. Descubra o caminho durante a revisão.',''],
+ ['Histórias se constroem uma palavra de cada vez.',''],
+ ['Às vezes uma cena pequena muda o rumo de um livro inteiro.',''],
+ ['O próximo capítulo começa com uma única linha.','']
+];
+function writerV8HomeQuoteChoices(value){
+ const lines=String(value||'').split(/\r?\n/).map(s=>s.trim()).filter(Boolean).slice(0,80);
+ const choices=lines.map(line=>{
+  const parts=line.split(/\s+\|\s+/);
+  return [String(parts[0]||'').slice(0,440),String(parts.slice(1).join(' | ')||'').slice(0,80)];
+ }).filter(row=>row[0]);
+ return choices.length?choices:WRITER_V8_HOME_ORIGINAL_QUOTES;
+}
+function writerV8HomePick(items,previous=''){
+ if(!Array.isArray(items)||!items.length)return null;
+ if(items.length===1)return items[0];
+ const others=items.filter(item=>(typeof item==='string'?item:item?.path||item?.[0])!==previous);
+ return (others.length?others:items)[Math.floor(Math.random()*(others.length?others:items).length)]];
+}
 const WRITER_V8_HOME_CATALOG={
  calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],
  continue:['book-open','Continuar escrevendo','Continue writing','Retome seu projeto','Resume your project'],
@@ -12,7 +34,10 @@ const WRITER_V8_HOME_CATALOG={
  activity:['chart-column','Atividade semanal','Weekly activity','Notas modificadas nos últimos sete dias','Notes modified in the last seven days'],
  random:['shuffle','Nota surpresa','Surprise note','Descubra uma nota aleatória do cofre','Discover a random vault note'],
  tags:['tags','Tags frequentes','Popular tags','Tags mais usadas nas notas','Most-used note tags'],
- goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note']
+ goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note'],
+ gallery:['images','Galeria do cofre','Vault gallery','Foto aleatória dos arquivos locais','A random image from your local vault'],
+ quotes:['quote','Citação do dia','Random quote','Citação diferente ao abrir a homepage','A fresh quote every time you open home'],
+ today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today']
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -43,7 +68,7 @@ class WriterV8HomeView extends ItemView{
  getViewType(){return WRITER_V8_HOME_VIEW;}
  getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
- async onOpen(){this.disposed=false;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
+ async onOpen(){this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
  async onClose(){this.disposed=true;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
@@ -110,7 +135,10 @@ class WriterV8HomeView extends ItemView{
    activity:()=>this.renderActivity(grid),
    random:()=>this.renderRandom(grid),
    tags:()=>this.renderTags(grid),
-   goal:()=>this.renderGoal(grid)
+   goal:()=>this.renderGoal(grid),
+   gallery:()=>this.renderGallery(grid),
+   quotes:()=>this.renderQuotes(grid),
+   today:()=>this.renderToday(grid)
   };
   for(const key of cfg.homeOrder){
    if(WRITER_V8_HOME_SECTIONS.includes(key)&&!cfg.homeHidden.includes(key))cards[key]?.();

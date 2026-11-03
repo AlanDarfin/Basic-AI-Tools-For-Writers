@@ -15574,7 +15574,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   rememberHotReloadSidebars(){
     const workspace=this.app.workspace;
-    const types=[PROJECT_VIEW,VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content',WRITER_V92_SESSION_VIEW];
+    const types=[PROJECT_VIEW,VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content','writer-session-draft'];
     const leaves=[];
     for(const type of types)for(const leaf of workspace.getLeavesOfType(type)||[]){
       const element=leaf.containerEl;
@@ -15605,7 +15605,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(!snapshot||!Array.isArray(snapshot.leaves)||!Number.isFinite(snapshot.timestamp)||
       Date.now()-snapshot.timestamp>120000||snapshot.timestamp>Date.now())return;
     const workspace=this.app.workspace;
-    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content',WRITER_V92_SESSION_VIEW]);
+    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content','writer-session-draft']);
     const createdCounts=new Map(),visibleBySide=new Map(),activeTabs=[];
     for(const entry of snapshot.leaves.slice(0,30)){
       if(!allowed.has(entry?.type))continue;

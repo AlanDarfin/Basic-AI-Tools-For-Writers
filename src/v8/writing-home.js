@@ -721,7 +721,7 @@ function writerV8FinishSettings(plugin,panel){
   .setDesc(writerUi('Em branco para usar o título padrão.','Leave blank to use the default title.'))
   .addText(input=>input.setPlaceholder(writerUi('Meu espaço de escrita','My writing space'))
    .setValue(cfg.homeTitle||'').onChange(async value=>{
-    cfg.homeTitle=String(value||'').replace(/[\\r\\n]/g,' ').slice(0,80);
+    cfg.homeTitle=writerV8HomeTitleClean(value);
     await plugin.saveSettings();refreshHome();
    }));
  writerV922IconSetting(plugin,panel,{

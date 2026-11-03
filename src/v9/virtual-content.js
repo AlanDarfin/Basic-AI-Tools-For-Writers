@@ -143,7 +143,7 @@ async function writerV912VirtualRender(plugin,data,host,component,file){
  return true;
 }
 function writerV912VirtualSectionTarget(root,rule){
- const heading=rule.section.trim().toLocaleLowerCase();
+ const heading=rule.section.replace(/^#{1,6}\s*/, '').trim().toLocaleLowerCase();
  if(!heading)return null;
  const selector=rule.sectionLevel?'h'+rule.sectionLevel:'h1,h2,h3,h4,h5,h6';
  const found=[...root.querySelectorAll(selector)].find(node=>
@@ -151,6 +151,8 @@ function writerV912VirtualSectionTarget(root,rule){
  if(!found)return null;
  if(rule.location==='section-start')return {position:'after',node:found};
  // Bottom of the section, before the next heading of equal/higher importance.
+ const section=found.closest?.('.markdown-preview-section');
+ if(section)return {position:'after',node:section};
  const level=Number(found.tagName.slice(1));
  let current=found;
  while(current.nextElementSibling){
@@ -175,13 +177,15 @@ function writerV912VirtualPlace(root,node,rule,reading){
  location.node.after(node);return true;
 }
 class WriterV912VirtualSideView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.run=0;this.current='';}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.run=0;this.current='';this.components=[];}
  getViewType(){return WRITER_V912_VIRTUAL_VIEW;}
  getDisplayText(){return writerUi('Conteúdo virtual','Virtual Content');}
  getIcon(){return 'panels-top-left';}
  async onOpen(){await this.render();}
  async render(){
   const ticket=++this.run,plugin=this.plugin,root=this.contentEl;
+  for(const comp of this.components)try{comp.unload();}catch(_){}
+  this.components=[];
   root.empty();root.addClass('writer-v912-sidebar');
   const head=root.createDiv({cls:'writer-v912-sidebar-heading'});
   head.createEl('strong',{text:writerUi('Conteúdo virtual','Virtual Content')});
@@ -214,12 +218,12 @@ class WriterV912VirtualSideView extends ItemView{
    if(chosen.rules.length>1)card.createEl('h4',{text:rule.name});
    const holder=card.createDiv({cls:'markdown-rendered writer-v912-sidebar-content'});
    const component=new (require('obsidian').Component)();component.load();
-   this.addChild(component);
+   this.components.push(component);
    await writerV912VirtualRender(plugin,data,holder,component,file);
    if(ticket!==this.run)return;
   }
  }
- async onClose(){this.run++;}
+ async onClose(){this.run++;for(const comp of this.components)try{comp.unload();}catch(_){}this.components=[];}
 }
 class WriterV912VirtualContent{
  constructor(plugin){this.plugin=plugin;this.timer=null;this.generation=0;this.mounted=new Map();}
@@ -370,7 +374,7 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
    d.setValue(data.location).onChange(v=>{data.location=v;extraLocation();});
   });
   const sectionRow=new Setting(content).setName(writerUi('Título da seção','Section heading'))
-   .addText(t=>t.setPlaceholder('## Chapter').setValue(data.section).onChange(v=>{data.section=v.slice(0,120);}));
+   .addText(t=>t.setPlaceholder('Chapter').setValue(data.section).onChange(v=>{data.section=v.slice(0,120);}));
   const levelRow=new Setting(content).setName(writerUi('Nível do título','Heading level'))
    .addDropdown(d=>{for(let i=0;i<=6;i++)d.addOption(String(i),i?('H'+i):writerUi('Qualquer','Any'));
     d.setValue(String(data.sectionLevel)).onChange(v=>{data.sectionLevel=Number(v);});});

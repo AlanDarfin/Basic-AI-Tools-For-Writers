@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.2.7 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.8 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -76,7 +76,7 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 
 ### Áudio e acessibilidade
 
-- **Soundscapes (PC):** rádios ambiente do YouTube, estações personalizadas e músicas locais do cofre, com controles na barra de estado e na homepage.
+- **Soundscapes (PC):** as rádios e playlists personalizadas abrem o YouTube no **Visualizador Web** nativo do Obsidian, evitando erros dos iframes ocultos. O botão no widget ou na barra de estado abre/fecha a aba; use o player do YouTube para dar play, pausar ou ajustar o volume. **Minha Música** reproduz arquivos locais do cofre diretamente, com os controles no widget. Se o Visualizador Web estiver desligado, o vídeo abre no navegador.
 - **Image Captions:** legendas opcionais de imagens a partir do texto alternativo do Markdown, sem reescrever arquivos.
 - **Click Clack (PC):** sons opcionais de digitação e pacotes locais de áudio.
 - **Leitura em voz alta (TTS):** vozes do sistema, quando disponíveis, ou vozes online com autorização, com idioma, velocidade, tom e seleção de voz. A leitura online envia texto ao serviço escolhido apenas quando ativada.

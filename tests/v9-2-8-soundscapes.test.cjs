@@ -53,3 +53,12 @@ test('vault audio uses HTMLAudioElement for play and pause',async()=>{
  assert.equal(player.playing,true);assert.equal(player.audio.src,'app://vault/Music/track.mp3');
  assert.equal(leaves.length,0);player.pause();assert.equal(player.playing,false);
 });
+
+test('unavailable native Web Viewer gracefully falls back to URL opening',async()=>{
+ const {player,workspace,revealed}=build();
+ workspace.getLeaf=()=>({async setViewState(){throw new Error('webviewer disabled');}});
+ await player.play();
+ assert.equal(player.webOpen,false);
+ assert.equal(player.playing,false);
+ assert.ok(revealed.some(item=>typeof item==='string'&&item.startsWith('https://www.youtube.com/watch?v=')));
+});

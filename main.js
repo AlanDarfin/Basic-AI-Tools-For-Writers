@@ -13216,7 +13216,7 @@ class WriterV91ClickClack{
  init(){
   if(this.plugin.app.isMobile)return;
   void this.listSchemes().then(()=>this.load()).catch(error=>console.warn('[Basic AI] Click Clack:',error));
-  this.plugin.registerDomEvent(this.plugin.app.workspace.containerEl,'keydown',event=>{
+  this.plugin.registerDomEvent?.(this.plugin.app.workspace.containerEl,'keydown',event=>{
    if(!this.cfg.enabled||!event.target?.closest?.('.cm-editor'))return;
    const kind=writerV91ClickCategory(event);if(!kind)return;
    this.play(kind==='key'&&Math.random()>.75?'key2':kind);
@@ -13511,12 +13511,13 @@ function writerV91FlexRegister(plugin){
   event.preventDefault();event.stopPropagation();writerV91FlexReorder(plugin,source,target,'before');
  };
  const end=()=>{lastDrag='';};
- plugin.registerDomEvent(container,'dragstart',start,true);
- plugin.registerDomEvent(container,'dragover',over,true);
- plugin.registerDomEvent(container,'drop',drop,true);
- plugin.registerDomEvent(container,'dragend',end,true);
+ plugin.registerDomEvent?.(container,'dragstart',start,true);
+ plugin.registerDomEvent?.(container,'dragover',over,true);
+ plugin.registerDomEvent?.(container,'drop',drop,true);
+ plugin.registerDomEvent?.(container,'dragend',end,true);
  const attach=()=>{
-  observer?.disconnect();observer=new MutationObserver(records=>{
+  observer?.disconnect();if(typeof MutationObserver==='undefined'){refresh();return;}
+  observer=new MutationObserver(records=>{
    if(records.some(record=>record.addedNodes.length||record.removedNodes.length))refresh();
   });
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){

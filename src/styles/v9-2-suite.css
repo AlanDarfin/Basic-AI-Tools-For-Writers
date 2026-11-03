@@ -81,7 +81,7 @@
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title .writer-v92-preview-shell{
  padding-inline-start:20px;
 }
-.workspace-leaf-content[data-type="file-explorer"] .nav-file-title:has(> .writer-v9-explorer-icon) > .writer-v92-preview-shell{
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title > .writer-v9-explorer-icon ~ .writer-v92-preview-shell{
  padding-inline-start:21px;
 }
 .workspace-leaf-content[data-type="file-explorer"] .writer-v92-file-preview{

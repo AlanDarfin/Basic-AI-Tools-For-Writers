@@ -193,10 +193,14 @@ function writerBookNavRenderButtons(container,app,buttons,{manual=false,automati
  return true;
 }
 
-function writerBookNavAutoAllowed(plugin,match){
+function writerBookNavAutoAllowed(plugin,match,currentPath=''){
  if(!match||!plugin.settings.bookNavigation?.enabled||!writerModuleOn(plugin,'bookNavigation'))return false;
+ // A matching virtual BookNav rule owns its placement: avoid a second footer.
+ if(currentPath&&typeof writerV912HasBookNavRule==='function'&&writerV912HasBookNavRule(plugin,currentPath))return false;
  const pref=plugin.settings.projectsData?.[match.index.file.path]?.writingSettings?.navigation||'inherit';
- return pref==='on'||(pref!=='off'&&plugin.settings.bookNavigation.auto===true);
+ const virtual=plugin.settings.v912Virtual;
+ const dynamic=virtual?.enabled===true&&virtual?.autoBookNav===true&&writerModuleOn(plugin,'virtualContent');
+ return pref==='on'||(pref!=='off'&&(plugin.settings.bookNavigation.auto===true||dynamic));
 }
 function writerBookNavHasSourceBlock(text){
  return /^ {0,3}(?:\x60{3,}|~{3,})longform-nav(?:\s|$)/mi.test(String(text||''));
@@ -221,7 +225,7 @@ function writerBookNavRender(container,app,sourcePath,options,resolvedMatch){
  return writerBookNavRenderButtons(container,app,buttons);
 }
 class WriterBookNavigation{
- constructor(plugin){this.plugin=plugin;}
+ constructor(plugin){this.plugin=plugin;this.revision=0;}
  get cfg(){return this.plugin.settings.bookNavigation;}
  register(){
   const plugin=this.plugin;
@@ -290,6 +294,7 @@ class WriterBookNavigation{
   const plugin=this.plugin,owner=this;
   const effect=require('@codemirror/state').StateEffect.define();
   const refreshEditors=()=>{
+   owner.revision++;
    for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[]){
     try{leaf.view?.editor?.cm?.dispatch({effects:effect.of(null)});}catch(_){}
    }
@@ -303,7 +308,7 @@ class WriterBookNavigation{
     root.querySelectorAll('.writer-v6-booknav-preview-auto').forEach(x=>x.remove());
     if(!(file instanceof TFile)||!owner.cfg.enabled)continue;
     const match=await writerBookNavFindProjectAsync(plugin.app,file.path,plugin.settings.lastLongformProject);
-    if(!root.isConnected||!writerBookNavAutoAllowed(plugin,match))continue;
+    if(!root.isConnected||!writerBookNavAutoAllowed(plugin,match,file.path))continue;
     const noteText=view?.editor?.getValue?.()||await plugin.app.vault.cachedRead(file);
     if(writerBookNavHasSourceBlock(noteText))continue;
     const buttons=writerBookNavButtons(writerBookNavTargets(match.items,file.path),owner.cfg);
@@ -325,13 +330,13 @@ class WriterBookNavigation{
     if(!path||!owner.cfg.enabled||writerBookNavHasSourceBlock(source)){
      this.key='';this.buttons=[];this.decorations=Decoration.none;return;
     }
-    const key=path+'|'+source.length+'|'+writerBookNavHasSourceBlock(source)+'|'+String(owner.cfg.auto);
+    const key=path+'|'+source.length+'|'+writerBookNavHasSourceBlock(source)+'|'+String(owner.cfg.auto)+'|'+String(owner.revision)+'|'+String(plugin.settings.lastLongformProject||'');
     if(key===this.key)return;
     this.key=key;
     const current=key;
     void writerBookNavFindProjectAsync(plugin.app,path,plugin.settings.lastLongformProject).then(match=>{
      if(current!==this.key)return;
-     const targets=match&&writerBookNavAutoAllowed(plugin,match)?writerBookNavTargets(match.items,path):null;
+     const targets=match&&writerBookNavAutoAllowed(plugin,match,path)?writerBookNavTargets(match.items,path):null;
      this.buttons=targets?writerBookNavButtons(targets,owner.cfg):[];
      try{this.view.dispatch({effects:effect.of(null)});}catch(_){}
     }).catch(e=>console.warn('[Basic AI] Automatic navigation:',e));
@@ -358,7 +363,7 @@ class WriterBookNavigation{
   const root=panel.createDiv({cls:'writer-v6-settings-clean'});
   const section=root.createDiv({cls:'writer-v6-settings-section'});
   section.createEl('h3',{text:writerUi('Navegação Longform','Longform navigation')});
-  section.createEl('p',{cls:'dictionary-muted',text:writerUi('Use ~~~longform-nav. A navegação acompanha a ordem real dos capítulos e subcapítulos do índice, inclusive em projetos cuja lista só apareça após carregar o YAML.','Insert ~~~longform-nav. Navigation follows the actual chapter and subchapter order, including projects whose scene list requires loading the YAML.')});
+  section.createEl('p',{cls:'dictionary-muted',text:writerUi('Use ~~~longform-nav para navegação manual ou ative Conteúdo virtual para navegar automaticamente entre capítulos e subcapítulos, sem editar as notas.','Use ~~~longform-nav for manual navigation or enable Virtual Content to show automatic chapter and subchapter navigation without editing notes.')});
   for(const [key,pt,en] of [['enabled','Ativar navegação','Enable navigation'],['showMain','Exibir capítulos principais','Show main chapters'],['showSub','Exibir subcapítulos','Show subchapters'],['auto','Adicionar automaticamente ao fim das notas','Automatically add to note ends']])
    new Setting(section).setName(writerUi(pt,en)).addToggle(toggle=>toggle.setValue(this.cfg[key]!==false).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();this.refreshAutomatic?.();}));
  }

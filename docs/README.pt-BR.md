@@ -83,7 +83,7 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 
 ## Blocos Markdown
 
-O plugin reconhece blocos de código independentes. Os nomes curtos abaixo são os recomendados; diversos nomes antigos iniciados com `writer-` continuam aceitos por compatibilidade.
+O plugin reconhece blocos de código independentes. Os nomes curtos abaixo são os recomendados; os nomes antigos `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat` e `writer-media-gallery` continuam aceitos por compatibilidade.
 
 | Bloco | Função |
 | --- | --- |

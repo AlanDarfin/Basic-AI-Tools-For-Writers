@@ -609,7 +609,11 @@ function writerV8RegisterHome(plugin){
  plugin.registerView?.(WRITER_V8_HOME_VIEW,leaf=>new WriterV8HomeView(leaf,plugin));
  const open=async()=>{
   const workspace=plugin.app.workspace,existing=workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0];
-  if(existing){workspace.setActiveLeaf?.(existing,{focus:true});return;}
+  if(existing){
+   // Opening an already present Home tab is a new visit, not an incidental rerender.
+   if(existing.view){existing.view.homeQuote=null;existing.view.homeGalleryImage=null;existing.view.render?.();}
+   workspace.setActiveLeaf?.(existing,{focus:true});return;
+  }
   const leaf=workspace.getLeaf?.('tab')||workspace.getLeaf?.(true);
   if(leaf)await leaf.setViewState({type:WRITER_V8_HOME_VIEW,active:true});
  };

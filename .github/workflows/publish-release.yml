@@ -5,6 +5,15 @@ on:
     branches: [main]
     paths:
       - manifest.json
+      - package.json
+      - package-lock.json
+      - main.js
+      - styles.css
+      - README.md
+      - docs/README.pt-BR.md
+      - src/**
+      - scripts/**
+      - tests/**
       - .github/workflows/publish-release.yml
     tags:
       - '[0-9]*.[0-9]*.[0-9]*'

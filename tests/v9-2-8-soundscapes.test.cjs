@@ -39,9 +39,17 @@ class FakeAudio{
  load(){}
 }
 function mock(station='lofi',{webview=true,files=[]}={}){
+ const executed=[],messages=[];
  const doc={createElement(tag){
   const element=new FakeEl(tag,this);
-  if(tag==='webview'&&webview)element.loadURL=async()=>{};
+  if(tag==='webview'&&webview){
+   element.loadURL=async()=>{};
+   element.getURL=()=>element.getAttribute('src');
+   element.executeJavaScript=async code=>{executed.push(code);return true;};
+  }
+  if(tag==='iframe')element.contentWindow={
+   postMessage:(data,origin)=>messages.push({data:JSON.parse(data),origin})
+  };
   return element;
  }};
  doc.body=doc.createElement('body');
@@ -55,7 +63,7 @@ function mock(station='lofi',{webview=true,files=[]}={}){
  const globals={console,URL,Audio:FakeAudio,document:doc,setTimeout,clearTimeout,require:()=>({setIcon:()=>{}}),
   writerUi:(_pt,en)=>en,Notice:class {},Modal:class {},Setting:class {}};
  const Player=vm.runInNewContext(source+'\nWriterV91SoundPlayer',globals);
- return {player:new Player(plugin),doc,opened,plugin};
+ return {player:new Player(plugin),doc,opened,plugin,executed,messages};
 }
 test('radio opens a persistent inline Chromium mini player; no workspace tabs',async()=>{
  const {player,opened}=mock();
@@ -136,4 +144,69 @@ test('a nonresponsive Webview automatically falls back to the inline iframe',asy
  guest.events['dom-ready']();
  assert.equal(player.guest.tagName,'WEBVIEW','ready guests remain active');
  player.pause();
+});
+
+test('desktop Chromium guest receives volume updates and applies saved volume on dom-ready',async()=>{
+ const {player,executed}=mock();
+ await player.play();
+ const web=player.guest;
+ await player.setVolume(68);
+ assert.equal(player.cfg.volume,68);
+ assert.ok(executed.some(code=>code.includes('const volume=0.68;')));
+ assert.ok(executed.some(code=>code.includes('video.volume=volume;')));
+ assert.ok(executed.some(code=>code.includes('video.muted=volume===0;')));
+ const count=executed.length;
+ web.events['dom-ready']();
+ assert.ok(executed.length>count,'dom-ready must restore chosen volume');
+ const second=executed.length;
+ web.events['did-navigate-in-page']();
+ assert.ok(executed.length>second,'video navigation must restore volume');
+ const last=executed.length;
+ player.hideMiniPlayer();
+ assert.equal(player.webOpen,true);
+ await player.setVolume(22);
+ assert.ok(executed.length>last,'volume works while mini player is minimized');
+ assert.ok(executed.at(-1).includes('const volume=0.22;'));
+ player.pause();
+});
+test('iframe YouTube JS API receives setVolume and mute/unMute commands on change and load',async()=>{
+ const {player,messages}=mock('lofi',{webview:false});
+ await player.play();
+ const frame=player.guest;
+ assert.match(frame.getAttribute('src'),/enablejsapi=1/);
+ assert.ok(messages.some(entry=>entry.data.func==='setVolume'&&entry.data.args[0]===35));
+ assert.ok(messages.every(entry=>entry.origin==='https://www.youtube.com'));
+ await player.setVolume(0);
+ assert.ok(messages.some(entry=>entry.data.func==='mute'));
+ assert.equal(messages.at(-1).data.args[0],0);
+ await player.setVolume(78);
+ assert.ok(messages.some(entry=>entry.data.func==='unMute'));
+ assert.equal(messages.at(-1).data.args[0],78);
+ const count=messages.length;
+ frame.events.load();
+ assert.ok(messages.length>count,'iframe load must restore the chosen volume');
+ player.pause();
+});
+test('new stations retain configured volume on a freshly loaded web guest',async()=>{
+ const {player,plugin,executed}=mock();
+ await player.setVolume(53);
+ await player.play();
+ const previous=player.guest;
+ previous.events['dom-ready']();
+ assert.ok(executed.some(x=>x.includes('const volume=0.53;')));
+ await player.changeStation('jazz');
+ const current=player.guest;
+ assert.notEqual(previous,current);
+ current.events['dom-ready']();
+ assert.ok(executed.at(-1).includes('const volume=0.53;'));
+ assert.equal(plugin.settings.v91Sound.volume,53);
+ player.pause();
+});
+test('volume is enabled in both status bar and homepage and has mini player slider',()=>{
+ assert.doesNotMatch(source,/volume\.disabled=!local|slider\.disabled=!local/);
+ assert.match(source,/volume\.disabled=!this\.cfg\.enabled/);
+ assert.match(source,/slider\.disabled=!player\.cfg\.enabled/);
+ assert.match(source,/writer-v91-mini-volume/);
+ assert.match(source,/writerV91SoundWebVolumeScript/);
+ assert.match(source,/this\.syncRadioVolume\(\)/);
 });

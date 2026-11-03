@@ -72,7 +72,7 @@ test('quick drafts are local and persist across switches; export chooses a new p
 test('dashboard does not replace new tabs by default or add editor extensions',()=>{
  assert.match(home,/if\(plugin\.settings\.v8Finish\.homeAtStartup/);
  assert.match(src,/plugin\.registerMarkdownPostProcessor/);
- assert.match(src,/registerMarkdownCodeBlockProcessor\('writer-chat'/);
+ assert.match(src,/\['chat','writer-chat'\]/);
  assert.doesNotMatch(home,/registerEditorExtension/);
  assert.doesNotMatch(src,/registerEditorExtension/);
  assert.match(css,/body\.is-mobile \.writer-v8-chat/);

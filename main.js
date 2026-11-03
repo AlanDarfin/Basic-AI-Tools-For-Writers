@@ -14859,8 +14859,8 @@ class WriterV92Zotero{
    editorCallback:editor=>void this.chooseCitation(editor)});
   plugin.addCommand({id:'v92-reindex-zotero',name:writerUi('Zotero: atualizar referências e citações','Zotero: refresh references and quotes'),
    callback:()=>void this.index()});
-  plugin.registerMarkdownCodeBlockProcessor('zotero',(source,el,ctx)=>this.renderReferences(source,el,ctx));
-  plugin.registerMarkdownCodeBlockProcessor('bibliography',(source,el,ctx)=>this.renderReferences(source,el,ctx));
+  plugin.registerMarkdownCodeBlockProcessor?.('zotero',(source,el,ctx)=>this.renderReferences(source,el,ctx));
+  plugin.registerMarkdownCodeBlockProcessor?.('bibliography',(source,el,ctx)=>this.renderReferences(source,el,ctx));
   if(typeof plugin.app.metadataCache?.on==='function')
    plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>this.schedule()));
   for(const event of ['create','modify','delete','rename'])

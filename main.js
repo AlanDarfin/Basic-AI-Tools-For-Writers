@@ -14534,6 +14534,9 @@ class DictionarySettings extends PluginSettingTab{
     ['projectTasks',msg('Tarefas','Tasks')],
     ['bookNavigation',msg('Navegação Longform','Longform navigation')],
     ['virtualContent',msg('Conteúdo virtual','Virtual Content')],
+    ['writingWidgets',msg('Widgets, colunas e progresso','Widgets, columns & progress')],
+    ['research',msg('Zotero e estilos de leitura','Zotero & reading styles')],
+    ['sessionDrafts',msg('Rascunhos temporários','Temporary drafts')],
     ['abbreviations',msg('Abreviações','Abbreviations')],
     ['anotherName',msg('Outro nome','Another name')],
     ['viewMode',msg('Modo de visualização','View mode')],
@@ -14551,7 +14554,7 @@ class DictionarySettings extends PluginSettingTab{
   ];
   const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
    complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
-   snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',virtualContent:'virtualContent',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
+   snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',virtualContent:'virtualContent',writingWidgets:'writingWidgets',research:'zoteroIntegration',sessionDrafts:'sessionNotes',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review',
    homepage:'writingHome',soundscapes:'soundscapes',clickClack:'typewriter',v9Toolbar:'formatToolbar',v9Explorer:'nativeExplorer',v9Spaces:'smartSpaces',v9Calendar:'calendar'};
   const enabledSections=sections.filter(([id])=>id==='v6Markdown'
@@ -14563,16 +14566,16 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Personalização','Customization'),['homepage','soundscapes','v9Toolbar','v9Explorer','v9Spaces','v9Calendar','v9Lock']],
+   ['customize',msg('Personalização','Customization'),['homepage','soundscapes','v9Toolbar','v9Explorer','v9Spaces','v9Calendar','v9Lock','research']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
-   ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
+   ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','writingWidgets','sessionDrafts','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
    ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
   ];
   const groupIcons={general:'settings-2',customize:'palette',ai:'brain-circuit',longform:'book-open',writing:'pen-line',review:'spell-check'};
   const sectionIcons={
    general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
-   homepage:'house',soundscapes:'headphones',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
+   homepage:'house',soundscapes:'headphones',writingWidgets:'columns-3',research:'book-marked',sessionDrafts:'notebook-pen',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
    dictionary:'book-a',translation:'languages',assistant:'message-circle',projects:'notebook-pen',
    v7Worldbuilding:'globe',complements:'lightbulb',variants:'git-compare',
    writingProfiles:'scan-text',integrationsV4:'wrench',keyshots:'keyboard',
@@ -14630,7 +14633,7 @@ class DictionarySettings extends PluginSettingTab{
     if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
     }else if(id==='soundscapes'){writerV91SoundSettings(this.plugin,panel);
     }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
-    }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);
+    }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);writerV92ExplorerSettings(this.plugin,panel);
     }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);
     }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);
     }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);
@@ -14714,6 +14717,12 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerBookNavigation.renderSettings(panel);
     }else if(id==='virtualContent'){
       writerV912VirtualSettings(this.plugin,panel);
+    }else if(id==='writingWidgets'){
+      writerV92BlockSettings(this.plugin,panel);
+    }else if(id==='research'){
+      writerV92ResearchSettings(this.plugin,panel);
+    }else if(id==='sessionDrafts'){
+      writerV92SessionSettings(this.plugin,panel);
     }else if(id==='extendedSyntax'){
       this.plugin.writerExtendedSyntax.renderSettings(panel);
       panel.createEl('hr');
@@ -14931,6 +14940,10 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV91ClickMerge(this.settings);
     writerV91FlexMerge(this.settings);
     writerV912VirtualMerge(this.settings);
+    writerV92ExplorerMerge(this.settings);
+    writerV92BlocksMerge(this.settings);
+    writerV92ResearchMerge(this.settings);
+    writerV92SessionMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -14997,6 +15010,10 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV91RegisterClick(this);
     writerV91FlexRegister(this);
     writerV912VirtualRegister(this);
+    writerV92ExplorerRegister(this);
+    writerV92RegisterBlocks(this);
+    writerV92ResearchRegister(this);
+    writerV92SessionRegister(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')
@@ -15557,7 +15574,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   rememberHotReloadSidebars(){
     const workspace=this.app.workspace;
-    const types=[PROJECT_VIEW,VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content'];
+    const types=[PROJECT_VIEW,VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content',WRITER_V92_SESSION_VIEW];
     const leaves=[];
     for(const type of types)for(const leaf of workspace.getLeavesOfType(type)||[]){
       const element=leaf.containerEl;
@@ -15588,7 +15605,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(!snapshot||!Array.isArray(snapshot.leaves)||!Number.isFinite(snapshot.timestamp)||
       Date.now()-snapshot.timestamp>120000||snapshot.timestamp>Date.now())return;
     const workspace=this.app.workspace;
-    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content']);
+    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,'writer-virtual-content',WRITER_V92_SESSION_VIEW]);
     const createdCounts=new Map(),visibleBySide=new Map(),activeTabs=[];
     for(const entry of snapshot.leaves.slice(0,30)){
       if(!allowed.has(entry?.type))continue;

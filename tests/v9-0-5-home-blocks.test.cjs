@@ -53,7 +53,7 @@ test('all seven presentation fences have short aliases and existing writer names
  ]){assert.ok(source.includes("'"+short+"'"),short);assert.ok(source.includes("'"+legacy+"'"),legacy);}
  assert.match(f,/editor\.replaceSelection\('/);
  assert.match(f,/folder-overview/);
- assert.match(media,/editor\.replaceSelection\('\n\x60\x60\x60media-gallery/);
+ assert.match(media,/media-gallery\\ntype: all/);
 });
 test('inline editors preserve exactly the new or legacy fenced name when saving',()=>{
  const type=vm.runInNewContext(editable+'\nwriterV8FenceReplace',{

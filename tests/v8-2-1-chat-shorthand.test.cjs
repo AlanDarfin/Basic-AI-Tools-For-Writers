@@ -75,7 +75,7 @@ test('bundle, CSS and localized README document both formats',()=>{
  assert.match(css,/writer-v8-chat-row\.is-color-red/);
  for(const path of ['README.md','docs/README.pt-BR.md']){
   const doc=read(path);
-  for(const bit of ['8.3.0','[Left=Maria, right=João]','[Maria=blue','=== Maria'])
+  for(const bit of ['Soundscapes','[Left=Maria, right=João]','[Maria=blue','=== Maria'])
    assert.ok(doc.includes(bit),path+' missing '+bit);
  }
 });

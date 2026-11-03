@@ -125,7 +125,8 @@ function writerV8RegisterFolderOverview(plugin){
    ctx.addChild(observer);
   }
  };
+ plugin.registerMarkdownCodeBlockProcessor('folder-overview',render);
  plugin.registerMarkdownCodeBlockProcessor('writer-folder-overview',render);
  plugin.addCommand?.({id:'v8-insert-folder-overview',name:writerUi('Pasta: inserir Overview','Folder: insert overview'),
-  editorCallback:editor=>editor.replaceSelection('\n\x60\x60\x60writer-folder-overview\nstyle: cards\nsubfolders: true\n\x60\x60\x60\n')});
+  editorCallback:editor=>editor.replaceSelection('\n\x60\x60\x60folder-overview\nstyle: cards\nsubfolders: true\n\x60\x60\x60\n')});
 }

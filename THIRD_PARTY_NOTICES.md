@@ -76,3 +76,10 @@ Users are responsible for using legal media streams and their own vault audio.
 The Basic player is not a complete replacement for all upstream settings and
 operating-system media integrations; it works with vault media and an embedded
 YouTube player.
+
+## v9.1.2 Virtual Content reference
+
+- **Virtual Content**, by Signynt and contributors, is MIT-licensed.
+  https://github.com/Signynt/virtual-content
+
+The Basic AI virtual-content module is an **independent implementation** inspired by folder/tag/property matching, dynamic header/footer/sidebar templates and non-destructive rendering. No source code or assets from Virtual Content are vendored. The built-in Longform BookNav implementation is reused rather than replaced. Dataview and Obsidian Bases remain separate optional integrations; this module does not execute user-supplied JavaScript or dynamic Dataview queries itself.

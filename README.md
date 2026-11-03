@@ -100,7 +100,7 @@ The plugin also recognizes independent Markdown code blocks. The preferred short
 
 For example, add an interactive character card or a note with multiple sections:
 
-~~~markdown
+~~~~markdown
 ~~~wiki
 title: The Northern Archive
 type: Location
@@ -118,7 +118,7 @@ A summary of the scene.
 - [[Character One]]
 - [[Character Two]]
 ~~~
-~~~
+~~~~
 
 Markdown renderers are presentation and editing helpers, not substitutes for independent services or plugins. Availability varies with the corresponding module toggle and view mode.
 

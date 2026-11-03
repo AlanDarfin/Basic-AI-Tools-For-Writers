@@ -5661,7 +5661,7 @@ body.is-mobile .writer-v8-home .writer-v8-home-title-icon svg{width:44px;height:
 /* 9.2.0 — native Explorer enhancements, interactive Markdown, Zotero, styles and session notes. */
 .nav-file-title.writer-v92-is-favorite{position:relative;}
 .nav-file-title .writer-v92-favorite-icon{
- position:absolute;right:3px;top:50%;transform:translateY(-50%);
+ position:absolute;right:3px;top:3px;
  display:grid;place-items:center;box-sizing:border-box;
  width:23px;height:23px;padding:3px;
  border:0;border-radius:var(--radius-s);

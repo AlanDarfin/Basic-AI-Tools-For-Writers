@@ -6264,4 +6264,60 @@ body.is-mobile .writer-v924-masonry>.writer-v924-column{width:100%;flex:none;gap
 @media(prefers-reduced-motion:reduce){
  .writer-v924-masonry .writer-v924-dragging{transition:none;}
 }
+
+/* 9.2.5 — measured masonry grid: height-aware placement without fixed columns. */
+.writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ grid-auto-rows:8px;
+ grid-auto-flow:row dense;
+ gap:10px 12px;
+ align-items:start;
+ max-width:1100px;
+}
+.writer-v925-grid>[data-section]{
+ grid-column:span 1;
+ align-self:start;
+ min-width:0;
+ width:100%;
+ box-sizing:border-box;
+ margin:0;
+}
+.writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 2;}
+.writer-v925-grid>[data-section][data-widget-size="compact"]{
+ padding:9px;
+}
+.writer-v925-grid>[data-section][data-widget-size="compact"] .writer-v903-widget-heading{
+ margin-bottom:5px;
+}
+.writer-v925-grid .writer-v924-drag-handle{cursor:grab;touch-action:manipulation;}
+.writer-v925-grid .writer-v924-drag-handle:active{cursor:grabbing;}
+.writer-v925-grid .writer-v925-selected{
+ outline:2px dashed var(--interactive-accent);
+ outline-offset:2px;
+}
+.writer-v925-grid .writer-v924-dragging{opacity:.5;}
+.writer-v925-grid .writer-v924-drop-before{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:2px;
+ border-top:3px solid var(--interactive-accent);
+}
+.writer-v925-grid .writer-v924-drop-after{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:2px;
+ border-bottom:3px solid var(--interactive-accent);
+}
+@media(max-width:720px){
+ .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+  grid-template-columns:minmax(0,1fr);
+  gap:10px;
+ }
+ .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
+}
+body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ grid-template-columns:minmax(0,1fr);
+ gap:10px;
+}
+body.is-mobile .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
+
 /* END V8 MODULAR STYLES */

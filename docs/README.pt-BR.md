@@ -2,11 +2,22 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.2.13 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.3.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
+
+### Propriedades visuais, Flow e Spaces independentes (9.3.0)
+
+- **Prévia de imagem:** a imagem embaixo do ícone de Folder Notes agora usa o mesmo cartão com borda e proporção 16:9 das prévias de notas, adaptado ao celular.
+- **Ícones no título:** o ícone e a cor configurados no Explorador do Basic aparecem antes do título da nota, sem alterar o Markdown.
+- **Propriedades visuais (inspiradas no Pretty Properties):** capas e banners locais, cores por valor YAML, ocultação de campos, progresso numérico e botões de seleção. Configuração em **Personalização → Propriedades visuais**.
+- **Flow beta:** quadros Markdown interativos com cartões arrastáveis e botões de mover no mobile. As mudanças são salvas nas configurações do Basic, **sem modificar o texto original da nota**.
+- **Comandos com /:** catálogo opcional de inserção de títulos, tarefas, avisos, links, Overview, Flow, abas, galeria e progresso. Começa desligado para evitar conflitos, e também existe comando na paleta.
+- **Spaces independentes:** cada Space guarda pastas ocultas, fixados, padrões e ordenação próprios. Selecionar **Geral** restaura as regras globais, sem apagar ou mover arquivos.
+
+Esta é a **primeira etapa de integração**, desenvolvida originalmente com base nas ideias do [Pretty Properties](https://github.com/anareaty/pretty-properties) e do [Make.md](https://github.com/Make-md/makemd). Não é um port completo: templates Handlebars avançados e o editor Flow completo ainda não foram integrados.
 
 ## Funcionalidades
 
@@ -85,7 +96,7 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 - **Teclado e toque:** visualizações com botões, menus e alternativas acessíveis ao arrastar e soltar.
 
 
-**Overview de pastas (9.2.13):** itens com apenas o ícone e o nome, seis visualizações (cartões, lista aninhada, compacto, grade de ícones, tabela e quadro), ordenação por nome, data, tamanho ou tipo e busca. No Android, a seta expande/recolhe subpastas e o nome abre a pasta. Resumos opcionais ignoram metadados técnicos de Folder Notes.
+**Overview de pastas (9.3.0):** itens com apenas o ícone e o nome, seis visualizações (cartões, lista aninhada, compacto, grade de ícones, tabela e quadro), ordenação por nome, data, tamanho ou tipo e busca. No Android, a seta expande/recolhe subpastas e o nome abre a pasta. Resumos opcionais ignoram metadados técnicos de Folder Notes.
 
 **Exemplos completos de todos os blocos Markdown:** [Guia em português](BLOCKS.pt-BR.md) · [English block guide](BLOCKS.en.md).
 

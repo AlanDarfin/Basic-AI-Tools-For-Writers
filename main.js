@@ -13395,6 +13395,34 @@ function writerV91RegisterSound(plugin){
  * Supports local WAV schemes compatible with the original pack manifests.
  * Generated fallback clicks require no bundled or downloaded audio assets. */
 const WRITER_V91_KEYS=['key','key2','space','enter','delete'];
+/* 13 opt-in sound packs from Acylation/obsidian-click-clack (MIT), tag 0.1.2.
+ * Downloaded on request from a pinned source revision, never bundled. */
+const WRITER_V91_CLICK_PACKS=[
+ ['alps-style-switch','ALPS Style Switch'],
+ ['cherry-mx-black','Cherry MX Black'],
+ ['cherry-mx-blue','Cherry MX Blue'],
+ ['cherry-mx-brown','Cherry MX Brown'],
+ ['cherry-mx-red','Cherry MX Red'],
+ ['click-keyboard','Click keyboard'],
+ ['ibm-keyboard','IBM keyboard'],
+ ['ibm-selectric','IBM Selectric'],
+ ['old-typewriter','Old typewriter'],
+ ['olympia-regina-de-luxe','Olympia Regina De Luxe'],
+ ['quill','Quill'],
+ ['subtle-clicks','Subtle clicks'],
+ ['synapses','Synapses']
+];
+const WRITER_V91_CLICK_SOURCE='https://raw.githubusercontent.com/Acylation/obsidian-click-clack/6d5b7f0f953e251e7c164129b81d700b2ac8362d/resources/';
+function writerV91ClickPackUrl(id,kind){
+ if(!WRITER_V91_CLICK_PACKS.some(pack=>pack[0]===id)||!WRITER_V91_KEYS.includes(kind))return '';
+ return WRITER_V91_CLICK_SOURCE+id+'/'+kind+'.wav';
+}
+function writerV91ClickValidWav(data){
+ if(!(data instanceof ArrayBuffer)||data.byteLength<44||data.byteLength>4000000)return false;
+ const bytes=new Uint8Array(data);
+ const tag=(offset,value)=>[...value].every((character,i)=>bytes[offset+i]===character.charCodeAt(0));
+ return tag(0,'RIFF')&&tag(8,'WAVE');
+}
 function writerV91ClickMerge(settings){
  const raw=settings.v91Click&&typeof settings.v91Click==='object'?settings.v91Click:{};
  const cfg=settings.v91Click={enabled:false,volume:35,scheme:'generated',...raw};
@@ -13412,7 +13440,7 @@ function writerV91ClickCategory(event){
  return '';
 }
 class WriterV91ClickClack{
- constructor(plugin){this.plugin=plugin;this.context=null;this.samples={};this.schemes=[];this.loading=false;this.activeScheme='generated';}
+ constructor(plugin){this.plugin=plugin;this.context=null;this.samples={};this.schemes=[];this.loading=false;this.downloading=false;this.activeScheme='generated';}
  get cfg(){return this.plugin.settings.v91Click;}
  get baseDirs(){
   const config=this.plugin.app.vault.configDir||'.obsidian';
@@ -13467,6 +13495,101 @@ class WriterV91ClickClack{
    this.samples={};this.activeScheme='generated';console.warn('[Basic AI] Click Clack sound pack:',error);
    new Notice(writerUi('Falha ao carregar o pacote de sons; usando clique gerado.','Could not load sound scheme; using generated clicks.'));
   }finally{this.loading=false;}
+ }
+ get resourceDir(){return this.baseDirs[0];}
+ async downloadPack(id,{activate=true,quiet=false}={}){
+  const pack=WRITER_V91_CLICK_PACKS.find(entry=>entry[0]===id);
+  if(this.plugin.app.isMobile||!pack||this.downloading)return false;
+  const adapter=this.plugin.app.vault.adapter,base=this.resourceDir,folder=base+'/'+id;
+  this.downloading=true;let created=false;
+  try{
+   if(await adapter.exists(folder)){
+    if(await adapter.exists(folder+'/manifest.json')){
+     await this.listSchemes();if(activate)await this.selectPack(folder);
+     return true;
+    }
+    throw new Error('Sound pack folder exists but is incomplete: '+folder);
+   }
+   // Fetch all 5 WAVs before any filesystem writes. Manifest is saved last.
+   const audio={};
+   for(const key of WRITER_V91_KEYS){
+    const response=await requestUrl({url:writerV91ClickPackUrl(id,key),throw:false});
+    if(response.status!==200||!writerV91ClickValidWav(response.arrayBuffer))
+     throw new Error('Missing or invalid WAV: '+id+'/'+key+'.wav');
+    audio[key]=response.arrayBuffer;
+   }
+   if(!(await adapter.exists(base)))await adapter.mkdir(base);
+   await adapter.mkdir(folder);created=true;
+   for(const key of WRITER_V91_KEYS)await adapter.writeBinary(folder+'/'+key+'.wav',audio[key]);
+   const manifest={id,caption:pack[1]};
+   for(const key of WRITER_V91_KEYS)manifest[key]=key+'.wav';
+   await adapter.write(folder+'/manifest.json',JSON.stringify(manifest,null,2)+'\n');
+   await this.listSchemes();
+   if(activate)await this.selectPack(folder);
+   if(!quiet)new Notice(writerUi('Pacote instalado: ','Sound pack installed: ')+pack[1]);
+   return true;
+  }catch(error){
+   console.warn('[Basic AI] Click Clack download:',error);
+   if(created)try{await adapter.rmdir(folder,true);}catch(cleanupError){console.warn('[Basic AI] Click Clack cleanup:',cleanupError);}
+   if(!quiet)new Notice(writerUi('Falha ao baixar o pacote: ','Could not download pack: ')+pack[1]);
+   return false;
+  }finally{this.downloading=false;}
+ }
+ async selectPack(id){
+  this.cfg.scheme=id;
+  await this.plugin.saveSettings();await this.load();
+  this.plugin.writerSettingsTab?.display();
+ }
+ openPackManager(){
+  if(this.plugin.app.isMobile)return;
+  const modal=new Modal(this.plugin.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Pacotes de sons do Click Clack','Click Clack sound packs'));
+   const root=modal.contentEl;root.empty();
+   root.createEl('p',{cls:'dictionary-muted',text:writerUi(
+    '13 pacotes do Click Clack original. Os arquivos são baixados do GitHub apenas com sua autorização e funcionam offline depois.',
+    '13 original Click Clack packs. Files download from GitHub only on request and work offline afterward.'
+   )});
+   const status=root.createEl('p',{cls:'dictionary-muted',attr:{role:'status','aria-live':'polite'}});
+   const actions=root.createDiv({cls:'writer-v91-click-actions'});
+   const list=root.createDiv({cls:'writer-v91-click-catalog'});
+   const installAll=actions.createEl('button',{text:writerUi('Baixar todos','Download all'),attr:{type:'button'}});
+   const render=()=>{
+    list.empty();
+    for(const [id,name] of WRITER_V91_CLICK_PACKS){
+     const installed=this.schemes.find(s=>s.id===this.resourceDir+'/'+id)||
+      this.schemes.find(s=>s.id===this.baseDirs[1]+'/'+id);
+     new Setting(list).setName(name).setDesc(installed?
+      writerUi('Instalado','Installed'):writerUi('Disponível para download','Available for download'))
+      .addButton(button=>button.setButtonText(installed?writerUi('Usar','Use'):writerUi('Baixar','Download'))
+       .setDisabled(this.downloading).onClick(async()=>{
+        if(this.downloading)return;
+        if(installed){await this.selectPack(installed.id);modal.close();return;}
+        status.setText(writerUi('Baixando: ','Downloading: ')+name);
+        const ok=await this.downloadPack(id);
+        status.setText(ok?writerUi('Pacote instalado.','Pack installed.'):writerUi('Falha no download.','Download failed.'));
+        render();
+       }));
+    }
+   };
+   installAll.addEventListener('click',async()=>{
+    if(this.downloading)return;
+    installAll.disabled=true;
+    try{
+     let completed=0,failed=0;
+     for(const [id,name] of WRITER_V91_CLICK_PACKS){
+      if(this.schemes.some(s=>s.id===this.resourceDir+'/'+id||s.id===this.baseDirs[1]+'/'+id))continue;
+      status.setText(writerUi('Baixando: ','Downloading: ')+name);
+      if(await this.downloadPack(id,{activate:false,quiet:true}))completed++;else failed++;
+     }
+     status.setText(writerUi('Pacotes baixados: ','Downloaded: ')+completed+
+      (failed?' · '+writerUi('falhas: ','failures: ')+failed:''));
+     this.plugin.writerSettingsTab?.display();
+    }finally{installAll.disabled=false;render();}
+   });
+   render();
+  };
+  modal.open();
  }
  getContext(){
   if(!this.context){
@@ -13541,20 +13664,24 @@ function writerV91ClickSettings(plugin,panel){
    drop.setValue(choices.some(x=>x.id===cfg.scheme)?cfg.scheme:'generated');
    drop.onChange(async v=>{cfg.scheme=v;await plugin.saveSettings();await plugin.writerV91Click.load();});
   });
+ new Setting(panel).setName(writerUi('Baixar pacotes do Click Clack','Download Click Clack sound packs'))
+  .setDesc(writerUi('Escolha entre os 13 pacotes originais ou instale todos. Download sob demanda.',
+   'Choose from 13 original packs or install all. On-demand downloads.'))
+  .addButton(b=>b.setButtonText(writerUi('Ver pacotes','Browse packs')).setCta()
+   .onClick(()=>plugin.writerV91Click.openPackManager()));
  new Setting(panel).setName(writerUi('Recarregar pacotes locais','Rescan local sound packs'))
   .addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(async()=>{
    await plugin.writerV91Click.listSchemes();plugin.writerSettingsTab?.display();
   }));
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Pacotes podem ficar na pasta resources deste plugin ou na instalação local do Click Clack. Nenhum áudio externo é baixado automaticamente.',
-  'Sound packs can live in this plugin’s resources folder or in a local Click Clack installation. No third-party sound files are downloaded automatically.'
+  'Pacotes ficam na pasta resources deste plugin ou na instalação do Click Clack. Nada é baixado automaticamente.',
+  'Packs live in this plugin’s resources folder or a Click Clack installation. Nothing downloads automatically.'
  )});
 }
 function writerV91RegisterClick(plugin){
  if(plugin.app.isMobile)return;
  plugin.writerV91Click=new WriterV91ClickClack(plugin);plugin.writerV91Click.init();
 }
-
 // v3 module: src/v9/explorer-flex.js
 /* v9.1 Flexplorer-style organization atop the existing native explorer.
  * Own state; no private Obsidian patching, no duplicated file sidebar. */
@@ -14386,7 +14513,7 @@ function writerV92FolderNote(app,folder){
  }
  return null;
 }
-function writerV92PreviewValue(plugin,file){
+function writerV92PreviewValue(plugin,file,full=false){
  const cfg=plugin.settings.v92Explorer;
  if(cfg.previewMode==='off')return '';
  const folder=file instanceof TFolder;
@@ -14397,7 +14524,7 @@ function writerV92PreviewValue(plugin,file){
  const key=folder?cfg.folderDescriptionKey:cfg.noteDescriptionKey;
  const raw=front[key]??front.summary??front.brief;
  const value=Array.isArray(raw)?raw.join(', '):typeof raw==='string'?raw:'';
- return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,cfg.previewMax);
+ return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,full?4000:cfg.previewMax);
 }
 
 /* Preview images come from local vault files only; external URLs are never requested. */
@@ -14460,6 +14587,57 @@ function writerV921PreviewImage(plugin,source,content){
  return null;
 }
 
+/* Keep previews compact. After 1.5s hover, show the full safe plain text;
+ * mouseleave restores the excerpt, and keyboard focus also expands it. */
+function writerV929PreviewExpand(shell,shortText,fullText){
+ const label=shell.querySelector(':scope > .writer-v92-file-preview');
+ if(!label)return;
+ const long=String(fullText||'');
+ const truncated=long.length>shortText.length||label.scrollHeight>label.clientHeight+1;
+ const expanded=shell.classList.contains('is-expanded');
+ shell.dataset.previewShort=shortText; shell.dataset.previewFull=long;
+ shell.dataset.expandable=String(truncated);
+ shell.classList.toggle('is-expandable',truncated);
+ if(!truncated)shell.classList.remove('is-expanded');
+ if(truncated){
+  shell.setAttribute('tabindex','0');shell.setAttribute('role','button');
+  shell.setAttribute('aria-label',writerUi('Expandir descrição','Expand description'));
+  shell.setAttribute('aria-expanded',String(expanded));
+ }else{
+  shell.removeAttribute('tabindex');shell.removeAttribute('role');
+  shell.removeAttribute('aria-expanded');shell.removeAttribute('aria-label');
+ }
+ label.textContent=truncated&&expanded?long:shortText;
+ if(shell.dataset.hoverListeners==='ready')return;
+ shell.dataset.hoverListeners='ready';
+ let timer=null;
+ const open=()=>{
+  if(shell.dataset.expandable!=='true'||!shell.isConnected)return;
+  shell.classList.add('is-expanded');shell.setAttribute('aria-expanded','true');
+  const target=shell.querySelector(':scope > .writer-v92-file-preview');
+  if(target)target.textContent=shell.dataset.previewFull;
+ };
+ const close=()=>{
+  clearTimeout(timer);timer=null;
+  shell.classList.remove('is-expanded');shell.setAttribute('aria-expanded','false');
+  const target=shell.querySelector(':scope > .writer-v92-file-preview');
+  if(target)target.textContent=shell.dataset.previewShort;
+ };
+ shell.addEventListener('mouseenter',()=>{
+  if(shell.dataset.expandable!=='true')return;
+  clearTimeout(timer);timer=setTimeout(open,1500);
+ });
+ shell.addEventListener('mouseleave',close);
+ shell.addEventListener('focus',open);
+ shell.addEventListener('blur',close);
+ shell.addEventListener('keydown',event=>{
+  if(event.key==='Enter'||event.key===' '){
+   if(shell.dataset.expandable!=='true')return;
+   event.preventDefault();event.stopPropagation();
+   if(shell.classList.contains('is-expanded'))close();else open();
+  }else if(event.key==='Escape')close();
+ });
+}
 function writerV92ExplorerRegister(plugin){
  let timer=null,reading=0;
  const cached=new Map(),queued=new Set(),queue=[];
@@ -14561,6 +14739,7 @@ function writerV92ExplorerRegister(plugin){
    return;
   }
   const fromYaml=writerV92PreviewValue(plugin,item);
+  const fullYaml=fromYaml?writerV92PreviewValue(plugin,item,true):'';
   const read=cached.get(source.path);
   const stable=read&&read.mtime===(source.stat?.mtime||0);
   if(read&&!stable)cached.delete(source.path);
@@ -14568,6 +14747,7 @@ function writerV92ExplorerRegister(plugin){
   const excerpt=stable&&cfg.previewMode==='all'&&!fromYaml?
    writerV921PreviewBody(read.content,cfg.previewMax):'';
   const description=fromYaml||excerpt;
+  const fullDescription=fullYaml||(excerpt&&stable?writerV921PreviewBody(read.content,4000):'');
   const image=cfg.showImage?writerV921PreviewImage(plugin,source,stable?read.content:''):null;
   const imagePath=image?.path||'';
   if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
@@ -14587,8 +14767,9 @@ function writerV92ExplorerRegister(plugin){
     shell.appendChild(label);
    }
    if(label.textContent!==description)label.textContent=description;
-   label.title=description;
-  }else label?.remove();
+   label.removeAttribute('title');
+   writerV929PreviewExpand(shell,description,fullDescription);
+  }else{label?.remove();shell.classList.remove('is-expanded','is-expandable');}
   let thumbnail=shell.querySelector(':scope > .writer-v92-preview-image');
   if(imagePath){
    if(!thumbnail){
@@ -14738,7 +14919,6 @@ function writerV92ExplorerSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Limite da descrição','Preview length')).addSlider(s=>s.setLimits(40,280,10)
   .setValue(cfg.previewMax).setDynamicTooltip().onChange(async v=>{cfg.previewMax=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
 }
-
 // v3 module: src/v9/interactive-widgets.js
 /* v9.2.0: independent writing widgets inspired by Meta Bind, Multi Column Markdown,
  * Progressbar and Obsidian Widgets. No GPL code is copied or bundled. */

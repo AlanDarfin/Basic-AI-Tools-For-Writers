@@ -978,7 +978,7 @@ class ProjectsView extends ItemView{
   let title='',parent=active?.parent?.path||'',format='scenes';
   modal.onOpen=()=>{
    modal.setTitle(lfMsg("Novo projeto de escrita","New writing project"));
-   new Setting(modal.contentEl).setName('Nome').addText(t=>t.setPlaceholder(lfMsg('Meu livro','My book')).onChange(v=>title=v));
+   new Setting(modal.contentEl).setName(lfMsg('Nome','Name')).addText(t=>t.setPlaceholder(lfMsg('Meu livro','My book')).onChange(v=>title=v));
    new Setting(modal.contentEl).setName(lfMsg('Pasta no cofre','Vault folder')).setDesc(lfMsg('Caminho relativo ao cofre','Path relative to the vault')).addText(t=>t.setValue(parent).onChange(v=>parent=v));
    new Setting(modal.contentEl).setName(lfMsg('Tipo','Type')).addDropdown(d=>d.addOption('scenes',lfMsg('Várias cenas','Multiple scenes')).addOption('single',lfMsg('Nota única','Single note')).onChange(v=>format=v));
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg("Criar projeto","Create project")).setCta().onClick(async()=>{
@@ -2604,8 +2604,8 @@ class WriterFinalFeatures{
   };
   draw(nodes,list);
   const all=()=>[...list.querySelectorAll('details')];
-  toolbar.createEl('button',{text:'Expand all',attr:{'aria-label':'Expand all headings'}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
-  toolbar.createEl('button',{text:'Collapse all',attr:{'aria-label':'Collapse all headings'}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
+  toolbar.createEl('button',{text:writerUi('Expandir tudo','Expand all'),attr:{'aria-label':writerUi('Expandir todos os títulos','Expand all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
+  toolbar.createEl('button',{text:writerUi('Recolher tudo','Collapse all'),attr:{'aria-label':writerUi('Recolher todos os títulos','Collapse all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
  }
  unicodePath(){
   const base=this.plugin.manifest.dir||this.plugin.app.vault.configDir+'/plugins/'+this.plugin.manifest.id;
@@ -2743,13 +2743,13 @@ class WriterFinalFeatures{
  async editAbbreviations(){
   const modal=new Modal(this.plugin.app),entries=this.cfg.abbreviations.entries;
   modal.onOpen=()=>{
-   modal.setTitle('Abbreviations');
+   modal.setTitle(writerUi('Abreviações','Abbreviations'));
    const create=modal.contentEl.createDiv({cls:'writer-abbr-add'});
    let word='',expansion='';
-   new Setting(create).setName('Add abbreviation')
-    .addText(t=>t.setPlaceholder('Abbreviation').onChange(v=>word=v))
-    .addText(t=>t.setPlaceholder('Expansion').onChange(v=>expansion=v))
-    .addButton(b=>b.setButtonText('Add').onClick(async()=>{
+   new Setting(create).setName(writerUi('Adicionar abreviação','Add abbreviation'))
+    .addText(t=>t.setPlaceholder(writerUi('Abreviação','Abbreviation')).onChange(v=>word=v))
+    .addText(t=>t.setPlaceholder(writerUi('Substituição','Expansion')).onChange(v=>expansion=v))
+    .addButton(b=>b.setButtonText(writerUi('Adicionar','Add')).onClick(async()=>{
      const key=word.trim();
      if(!key||!expansion.trim()||/\s/.test(key))return new Notice(writerUi('Informe uma abreviação sem espaços e sua substituição.','Please enter a word without spaces and a replacement.'));
      if(entries[key])return new Notice(writerUi('Esta abreviação já existe.','This abbreviation already exists.'));

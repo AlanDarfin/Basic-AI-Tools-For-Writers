@@ -119,7 +119,11 @@ class WriterV92Zotero{
    if(quotes.length>=this.cfg.maxQuotes)continue;
    try{
     const note=await plugin.app.vault.cachedRead(file);
-    quotes.push(...writerV92ZoteroExtract(note,meta,Math.min(12,this.cfg.maxQuotes-quotes.length)));
+    const found=writerV92ZoteroExtract(note,meta,Math.min(12,this.cfg.maxQuotes-quotes.length));
+    quotes.push(...(this.cfg.includeBlockquotes?found:found.filter(x=>{
+     const fm=plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter||{};
+     return Boolean(fm.quote||fm.quotes||fm.highlights||fm.annotations||fm.excerpt);
+    })));
    }catch(_){}
   }
   if(this.cfg.bibFile){

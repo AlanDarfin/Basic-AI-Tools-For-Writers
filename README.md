@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.1.2 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.2.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party credits](THIRD_PARTY_NOTICES.md)
 
@@ -60,6 +60,65 @@ Example: for notes in `Characters/`, set a folder condition and use this Markdow
 Another example: set the source to **Automatic BookNav**, location to **Footer**, and folder to `My Book/Chapters` (including subfolders). The navigator will follow the Longform index when the note belongs to the project. If the project is reordered, the virtual navigation updates; manual standalone notes are still supported through the existing `longform-nav` syntax.
 
 Use the **Virtual Content: open sidebar** command for matching sidebar rules. Independent sidebar tabs can be enabled per rule. Rules can be disabled, edited, removed or reordered without modifying the matching files. Markdown from source notes may include third-party syntax; support for Dataview or Bases rendering depends on those separate plugins and the active view mode.
+
+### Favorite notes and file previews
+
+The native File Explorer now shares favorites with the homepage. Right-click a note and choose **Add to favorites**. Favorite icons are filled, and their symbol can be changed under **Settings → Customization → File Explorer**. The same page offers description previews: **Off**, **Folder notes only** (default), or **All Markdown notes and folder notes**.
+
+For a folder named `Characters`, create its folder note `Characters/Characters.md` and add:
+
+```yaml
+---
+description: Profiles, relationships and character arcs.
+---
+```
+
+That description appears below the folder title. When **All** is enabled, ordinary Markdown notes with a `description` frontmatter property also display a preview. Both property names and preview length are configurable.
+
+### Columns, progress bars and interactive widgets
+
+Use the following Markdown blocks:
+
+`````markdown
+```columns
+columns: 2
+## Draft
+Left column.
+--- end-column ---
+## Notes
+Right column.
+```
+
+```progressbar
+kind: manual
+name: Writing goal: {percentage}
+value: 30
+min: 0
+max: 100
+```
+
+```widgets
+type: countdown
+date: 2027-01-01 00:00:00
+to: Publication day
+```
+
+```meta-field
+property: done
+type: toggle
+label: Completed
+```
+`````
+
+The supported `widgets` types are **clock**, **quote**, **countdown** and **counter**. `progressbar` supports manual, year, month, week and custom date ranges. `meta-field` safely updates a single YAML frontmatter property using Obsidian's file manager, with **toggle**, **text**, **number**, **select** and read-only **view** fields. These are lightweight independent renderers, **not** full drop-in replacements for Multi-Column Markdown or Meta Bind.
+
+### Zotero highlights and quote widget
+
+In **Settings → Customization → Zotero & reading styles**, enable **Use Zotero highlights in quote widget** and set the folder/tag containing your previously imported Zotero notes. The homepage quote widget can pick explicit Markdown highlights and open the source note. Bibliographic abstracts and ordinary prose are never represented as quotations. This is a local-note integration; a full Zotero API connection, Better BibTeX import, citation insertion, and PDF annotation import still require the external Zotero Integration plugin.
+
+### Reading styles and session drafts
+
+The same Zotero & reading styles settings offer optional note font size, line height, reading width and heading color without changing the Markdown. Use **Session: new temporary draft** from the command palette to open an in-memory scratch note. Session drafts disappear when Obsidian closes unless you click **Save as note**. The Basic implementation never automatically deletes vault files.
 
 ## Using Markdown formatting
 

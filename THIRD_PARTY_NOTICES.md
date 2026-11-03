@@ -83,3 +83,19 @@ YouTube player.
   https://github.com/Signynt/virtual-content
 
 The Basic AI virtual-content module is an **independent implementation** inspired by folder/tag/property matching, dynamic header/footer/sidebar templates and non-destructive rendering. No source code or assets from Virtual Content are vendored. The built-in Longform BookNav implementation is reused rather than replaced. Dataview and Obsidian Bases remain separate optional integrations; this module does not execute user-supplied JavaScript or dynamic Dataview queries itself.
+
+## v9.2.0 reference projects
+
+The following projects inspired independently authored Basic AI features. No source code or assets from them were copied or bundled.
+
+- Favorite Note — https://github.com/mahmudz/obsidian-favorite-plugin (MIT)
+- Multi-Column Markdown — https://github.com/ckRobinson/multi-column-markdown (GPL-3.0)
+- Meta Bind — https://github.com/mProjectsCode/obsidian-meta-bind-plugin (GPL-3.0)
+- ProgressBar — https://github.com/zwpaper/obsidian-progressbar (Apache-2.0)
+- Obsidian Widgets — https://github.com/rafaelveiga/obsidian-widgets (GPL-3.0)
+- Zotero Integration — https://github.com/community-archive/obsidian-zotero-integration (GPL-3.0)
+- StyleMate — https://github.com/droidstreamer/stylemate (MIT)
+- Session Notes — https://github.com/tabibyte/session-notes (MIT)
+- File Preview — https://github.com/xhuajin/obsidian-file-preview (MIT)
+
+These are limited independent implementations, not full upstream forks or API-compatible replacements. Zotero quotes use explicit highlights from local Markdown imports only. Session drafts do not automatically delete files.

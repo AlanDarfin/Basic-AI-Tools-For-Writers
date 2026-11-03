@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.1.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
 
@@ -60,6 +60,65 @@ Exemplo: para notas na pasta `Personagens/`, crie uma condição por pasta e use
 Outro exemplo: escolha **BookNav automático** como fonte, **Rodapé** como posição e a pasta `Meu Livro/Capítulos` (incluindo subpastas). A navegação acompanha o índice Longform quando a nota pertence ao projeto. Reorganizar capítulos atualiza os botões sem inserir blocos nos arquivos. A navegação manual de notas avulsas continua disponível com `longform-nav`.
 
 Use o comando **Conteúdo virtual: abrir na lateral** para visualizar as regras laterais. Cada regra pode ter sua própria aba dentro desse painel. Você pode ativar, editar, excluir e reordenar regras sem alterar as notas atingidas. Notas modelo também podem conter sintaxe de outros plugins, mas a renderização de Dataview ou Bases depende dessas integrações e do modo de visualização utilizado.
+
+### Favoritos e prévias no explorador
+
+Os favoritos da homepage também aparecem no explorador de arquivos, com ícone **preenchido e personalizável**. Clique com o botão direito em uma nota para adicioná-la ou removê-la. Em **Configurações → Personalização → Explorador de arquivos**, escolha a exibição de descrições: **Desativado**, **Somente folder notes** (padrão) ou **Todas as notas + folder notes**.
+
+Exemplo de frontmatter na folder note `Personagens/Personagens.md`:
+
+```yaml
+---
+description: Perfis, relacionamentos e arcos dos personagens.
+---
+```
+
+A descrição aparece abaixo da pasta. No modo **Todas**, notas comuns com `description` também mostram a prévia. As propriedades e o limite de caracteres são configuráveis.
+
+### Colunas, progresso, widgets e campos YAML
+
+Exemplos de blocos Markdown:
+
+````markdown
+```columns
+columns: 2
+## Rascunho
+Primeira coluna.
+--- end-column ---
+## Notas
+Segunda coluna.
+```
+
+```progressbar
+kind: manual
+name: Meta de escrita: {percentage}
+value: 30
+min: 0
+max: 100
+```
+
+```widgets
+type: countdown
+date: 2027-01-01 00:00:00
+to: Data de publicação
+```
+
+```meta-field
+property: done
+type: toggle
+label: Concluído
+```
+````
+
+O bloco `widgets` aceita **clock**, **quote**, **countdown** e **counter**. O `progressbar` suporta progresso manual e períodos de ano, mês, semana ou datas personalizadas. O `meta-field` atualiza uma propriedade YAML pelo gerenciador de arquivos do Obsidian, com tipos **toggle**, **text**, **number**, **select** e **view** (somente leitura). São implementações independentes e leves, **não** substituições completas de Multi-Column Markdown e Meta Bind.
+
+### Destaques Zotero e widget de citações
+
+Em **Configurações → Personalização → Zotero e estilos de leitura**, ative **Usar destaques Zotero no widget de citações** e informe a pasta/tag das notas já importadas do Zotero. A homepage seleciona trechos explicitamente marcados como destaque e permite abrir a nota de origem. Resumos e texto comum não são tratados como citações. Não há conexão direta com a biblioteca Zotero; a importação de PDF, Better BibTeX e referências bibliográficas completas depende do plugin Zotero Integration.
+
+### Estilo de leitura e rascunhos temporários
+
+Personalize tamanho da fonte, altura da linha, largura e cor dos títulos sem alterar o Markdown. Use **Sessão: criar rascunho temporário** na paleta para abrir um rascunho em memória. Ele desaparece ao encerrar o Obsidian, salvo se clicar em **Salvar como nota**. Nenhum arquivo existente é excluído automaticamente.
 
 ## Como usar a formatação Markdown
 

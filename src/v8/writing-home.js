@@ -507,6 +507,26 @@ class WriterV8HomeView extends ItemView{
   };
   update();
   const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const zoteroSource=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
+  zoteroSource.hidden=true;
+  const syncZotero=async()=>{
+   if(!this.plugin.writerV92Research?.quotes)return;
+   const entries=await this.plugin.writerV92Research.quotes();
+   if(!box.isConnected||!entries.length)return;
+   const list=entries.map(([text,by,path,title])=>[text,by,path,title]);
+   let selected=writerV8HomePick(list,current[0])||list[0];
+   const set=entry=>{
+    current=entry;this.homeQuote=entry;
+    update();zoteroSource.hidden=false;
+    zoteroSource.onclick=()=>{
+     const file=this.app.vault.getAbstractFileByPath(entry[2]);
+     if(file instanceof TFile)this.openFile(file);
+    };
+   };
+   set(selected);
+   next.onclick=()=>set(writerV8HomePick(list,current[0])||list[0]);
+  };
+  void syncZotero().catch(error=>console.warn('[Basic AI] Zotero quote widget:',error));
   const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
   next.addEventListener('click',()=>{
    this.homeQuotePrevious=current[0];

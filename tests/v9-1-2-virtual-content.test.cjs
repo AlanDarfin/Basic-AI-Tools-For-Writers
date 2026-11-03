@@ -36,9 +36,9 @@ const api=vm.runInNewContext(nav+'\n'+source+'\n({writerV912VirtualMerge,writerV
 const rule=(obj={})=>api.writerV912VirtualRule({name:'Example',conditions:[{type:'folder',value:'Novel/Scenes'}],...obj},0);
 test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and documentation agree',()=>{
  const manifest=JSON.parse(read('manifest.json')),pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json')),versions=JSON.parse(read('versions.json'));
- for(const x of [pkg.version,lock.version,lock.packages[''].version])assert.equal(x,'9.1.2');
- assert.equal(manifest.version,'9.1.2');
- assert.equal(versions['9.1.2'],'1.11.4');
+ for(const x of [pkg.version,lock.version,lock.packages[''].version])assert.equal(x,manifest.version);
+ assert.match(manifest.version,/^9\.[12]\.[0-9]+$/);
+ assert.equal(versions[manifest.version],'1.11.4');
  const main=read('main.js');
  assert.match(main,/\/\/ v3 module: src\/v9\/virtual-content\.js/);
  assert.match(main,/writerV912VirtualRegister\(this\)/);
@@ -49,7 +49,7 @@ test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and docume
  assert.match(read('scripts/build-css.js'),/v9-1-2-virtual-content\.css/);
  for(const doc of ['README.md','docs/README.pt-BR.md']){
   const text=read(doc);
-  assert.match(text,/9\.1\.2/);
+  assert.ok(text.includes(manifest.version));
   assert.match(text,/Virtual Content|Conteúdo virtual/);
   assert.match(text,/BookNav/);
   assert.doesNotMatch(text,/^## (What's new|Novidades da)/m);

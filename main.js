@@ -9909,7 +9909,11 @@ function writerV8RegisterFinishBlocks(plugin){
 /* Homepage utilities: calendar, native Web Viewer and conservative empty-tab detection. */
 const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil','book','books','bookmark','star','heart','lightbulb','brain','graduation-cap','file-text','folder','archive','palette','brush','wand-sparkles','calendar-days','clock','pencil-line','notebook','pen','library-big','layout-dashboard','globe','leaf','coffee','music','headphones','flag','compass','map','gem','trophy','shield','user','users','image','images','flame','cloud','settings'];
 function writerV8HomeIconName(value){
- return WRITER_V8_HOME_ICONS.includes(value)?value:'book-open';
+ const name=String(value||'').trim();
+ if(WRITER_V8_HOME_ICONS.includes(name))return name;
+ if(/^[a-z][a-z0-9-]{0,59}$/.test(name)&&
+    typeof writerV9AvailableIcons==='function'&&writerV9AvailableIcons().includes(name))return name;
+ return 'book-open';
 }
 function writerV8HomeImageURL(plugin,input){
  const raw=String(input||'').trim();
@@ -11282,28 +11286,19 @@ function writerV8FinishSettings(plugin,panel){
     cfg.homeTitle=String(value||'').replace(/[\\r\\n]/g,' ').slice(0,80);
     await plugin.saveSettings();refreshHome();
    }));
- new Setting(panel).setName(writerUi('Ícone da homepage','Homepage icon'))
-  .addDropdown(drop=>{
-   const labels={
-    'house':'Casa','book-open':'Livro aberto','feather':'Pena','pen-line':'Escrita',
-    'notebook-pen':'Caderno','library':'Biblioteca','sparkles':'Estrelas',
-    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis',
-    'book':'Livro','bookmark':'Marcador','star':'Estrela','heart':'Coração','lightbulb':'Ideia',
-    'brain':'Cérebro','graduation-cap':'Estudos','file-text':'Arquivo','folder':'Pasta','archive':'Arquivo morto',
-    'palette':'Paleta','wand-sparkles':'Varinha','calendar-days':'Calendário','clock':'Relógio',
-    'globe':'Globo','leaf':'Folha','music':'Música','headphones':'Fone','flag':'Bandeira','compass':'Bússola',
-    'map':'Mapa','gem':'Gema','trophy':'Troféu','shield':'Escudo','user':'Usuário','users':'Pessoas',
-    'image':'Imagem','images':'Imagens','flame':'Chama','cloud':'Nuvem','settings':'Configurações'
-   };
-   for(const icon of WRITER_V8_HOME_ICONS)drop.addOption(icon,labels[icon]||icon);
-   drop.setValue(writerV8HomeIconName(cfg.homeIcon));
-   drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
-  });
+ writerV922IconSetting(plugin,panel,{
+  pt:'Ícone da homepage',en:'Homepage icon',
+  value:writerV8HomeIconName(cfg.homeIcon),color:cfg.homeIconColor,defaultIcon:'book-open',
+  description:writerUi('Pesquise todos os ícones Lucide, favorite opções e personalize a cor.',
+   'Search all Lucide icons, pin favorite choices and customize the color.'),
+  onApply:async(icon,color)=>{
+   cfg.homeIcon=writerV8HomeIconName(icon);
+   cfg.homeIconColor=color;
+   await plugin.saveSettings();refreshHome();
+  }
+ });
  writerV9ColorSetting(panel,'Cor do título da homepage','Homepage title color',cfg.homeTitleColor,value=>{
   cfg.homeTitleColor=value;void plugin.saveSettings().then(refreshHome);
- });
- writerV9ColorSetting(panel,'Cor do ícone da homepage','Homepage icon color',cfg.homeIconColor,value=>{
-  cfg.homeIconColor=value;void plugin.saveSettings().then(refreshHome);
  });
  new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
   .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))
@@ -11563,38 +11558,144 @@ function writerV9ColorSetting(root,pt,en,initial,onValue){
  setting.addButton(b=>b.setButtonText(writerUi('Padrão','Default')).onClick(()=>set('')));
  return setting;
 }
-function writerV9ExplorerPicker(plugin,file){
- const modal=new Modal(plugin.app),path=file.path;
+
+/* Shared Iconic-style icon gallery used by all configurable Lucide icon settings.
+ * Runs locally against Obsidian's icon registry; no external icon fetches. */
+function writerV922IconLibrary(plugin){
+ const available=writerV9AvailableIcons(),favorites=plugin.settings.v922IconFavorites||[],
+  recent=plugin.settings.v922IconRecent||[];
+ return {available,favorites:writerV922ValidIconList(favorites,available),recent:writerV922ValidIconList(recent,available)};
+}
+function writerV922ValidIconList(list,available){
+ const valid=new Set(available);
+ return Array.isArray(list)?[...new Set(list.filter(icon=>typeof icon==='string'&&valid.has(icon)))].slice(0,24):[];
+}
+function writerV922OpenIconPicker(plugin,options){
+ const modal=new Modal(plugin.app);
+ const library=writerV922IconLibrary(plugin);
+ const icons=library.available;
+ const previous=String(options.value||'');
+ let chosen=icons.includes(previous)?previous:(options.allowNone?'':options.defaultIcon||'file-text');
+ let color=writerV9SafeHex(options.color);
+ let tab='all',query='';
  modal.onOpen=()=>{
-  modal.setTitle(writerUi('Personalizar: ','Customize: ')+(file.name||'/'));
+  modal.setTitle(options.title||writerUi('Escolher ícone','Choose icon'));
   const content=modal.contentEl;
-  const item=plugin.settings.v9Explorer.items[path]||{};
-  let icon=item.icon||'',color=item.color||'';
-  const tools=content.createDiv({cls:'writer-v901-icon-picker'});
-  const search=tools.createEl('input',{attr:{type:'search',placeholder:writerUi('Pesquisar ícones Lucide…','Search Lucide icons…'),'aria-label':writerUi('Pesquisar ícones','Search icons')}});
-  const grid=tools.createDiv({cls:'writer-v901-icon-grid',attr:{role:'group','aria-label':writerUi('Selecionar ícone','Choose icon')}});
-  const icons=writerV9AvailableIcons();
-  const draw=()=>{
-   const query=search.value.trim().toLowerCase();
-   grid.empty();
-   const reset=grid.createEl('button',{cls:'writer-v901-icon-choice'+(!icon?' is-active':''),attr:{type:'button',title:writerUi('Ícone padrão','Default icon'),'aria-label':writerUi('Ícone padrão','Default icon')}});
-   require('obsidian').setIcon(reset,'rotate-ccw');
-   reset.addEventListener('click',()=>{icon='';draw();});
-   for(const name of icons.filter(n=>!query||n.includes(query)).slice(0,160)){
-    const button=grid.createEl('button',{cls:'writer-v901-icon-choice'+(icon===name?' is-active':''),attr:{type:'button',title:name,'aria-label':name,'aria-pressed':String(icon===name)}});
-    require('obsidian').setIcon(button,name);
-    button.addEventListener('click',()=>{icon=name;draw();});
-   }
+  content.addClass('writer-v922-iconic-modal');
+  const preview=content.createDiv({cls:'writer-v922-iconic-preview'});
+  const previewGlyph=preview.createSpan({cls:'writer-v922-iconic-big'});
+  const details=preview.createDiv({cls:'writer-v922-iconic-details'});
+  details.createEl('strong',{text:writerUi('Ícone selecionado','Selected icon')});
+  const selectedName=details.createEl('code');
+  const setPreview=()=>{
+   previewGlyph.empty();
+   require('obsidian').setIcon?.(previewGlyph,chosen||'minus');
+   selectedName.setText(chosen||writerUi('Padrão do Obsidian','Obsidian default'));
+   previewGlyph.style.color=color||'var(--interactive-accent)';
   };
-  search.addEventListener('input',draw);draw();
-  writerV9ColorSetting(content,'Cor do ícone','Icon color',color,value=>{color=value;});
-  new Setting(content).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
-   if(icon||color)plugin.settings.v9Explorer.items[path]={icon,color};
-   else delete plugin.settings.v9Explorer.items[path];
-   await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();modal.close();
+  const toolbar=content.createDiv({cls:'writer-v922-iconic-tools'});
+  const input=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Pesquisar entre todos os ícones…','Search all icons…'),'aria-label':writerUi('Pesquisar ícones','Search icons')}});
+  const pin=toolbar.createEl('button',{cls:'writer-v922-iconic-pin',attr:{type:'button'}});
+  const setPin=()=>{
+   const pinned=library.favorites.includes(chosen);
+   pin.empty();require('obsidian').setIcon?.(pin,pinned?'star':'star-off');
+   pin.title=writerUi(pinned?'Desafixar ícone':'Fixar ícone',pinned?'Unpin icon':'Pin icon');
+   pin.setAttribute('aria-label',pin.title);pin.disabled=!chosen;
+  };
+  const tabs=content.createDiv({cls:'writer-v922-iconic-tabs',attr:{role:'tablist'}});
+  const buttons={};
+  for(const [key,pt,en,icon] of [['all','Todos','All','grid-2x2'],['favorites','Favoritos','Favorites','star'],['recent','Recentes','Recent','clock']]){
+   const button=tabs.createEl('button',{attr:{type:'button',role:'tab'}});
+   const glyph=button.createSpan();require('obsidian').setIcon?.(glyph,icon);
+   button.createSpan({text:writerUi(pt,en)});buttons[key]=button;
+   button.addEventListener('click',()=>{tab=key;draw();});
+  }
+  const info=content.createEl('p',{cls:'writer-v922-iconic-count'});
+  const grid=content.createDiv({cls:'writer-v922-iconic-grid',attr:{role:'group','aria-label':writerUi('Ícones disponíveis','Available icons')}});
+  const select=name=>{chosen=name;setPreview();setPin();draw();};
+  const draw=()=>{
+   for(const [key,button] of Object.entries(buttons)){
+    button.classList.toggle('is-active',key===tab);
+    button.setAttribute('aria-selected',String(key===tab));
+   }
+   const pool=tab==='favorites'?library.favorites:tab==='recent'?library.recent:icons;
+   const normalized=query.trim().toLocaleLowerCase();
+   const matches=normalized?pool.filter(icon=>icon.includes(normalized)):pool;
+   info.setText(matches.length+' '+writerUi('ícones encontrados','icons found'));
+   grid.empty();
+   if(options.allowNone&&tab==='all'&&!normalized){
+    const none=grid.createEl('button',{cls:'writer-v922-iconic-choice'+(!chosen?' is-active':''),attr:{type:'button',title:writerUi('Ícone padrão','Default icon'),'aria-label':writerUi('Ícone padrão','Default icon'),'aria-pressed':String(!chosen)}});
+    require('obsidian').setIcon?.(none,'rotate-ccw');none.addEventListener('click',()=>select(''));
+   }
+   for(const name of matches.slice(0,240)){
+    const button=grid.createEl('button',{cls:'writer-v922-iconic-choice'+(chosen===name?' is-active':''),attr:{type:'button',title:name,'aria-label':name,'aria-pressed':String(chosen===name)}});
+    require('obsidian').setIcon?.(button,name);
+    button.addEventListener('click',()=>select(name));
+   }
+   if(!matches.length)grid.createEl('p',{cls:'writer-v922-iconic-empty',text:writerUi('Nenhum ícone encontrado.','No icons found.')});
+  };
+  input.addEventListener('input',()=>{query=input.value;draw();});
+  pin.addEventListener('click',()=>{
+   if(!chosen)return;
+   const i=library.favorites.indexOf(chosen);
+   if(i>=0)library.favorites.splice(i,1);else library.favorites.unshift(chosen);
+   plugin.settings.v922IconFavorites=[...library.favorites].slice(0,24);
+   void plugin.saveSettings();
+   setPin();if(tab==='favorites')draw();
+  });
+  setPreview();setPin();draw();
+  writerV9ColorSetting(content,'Cor do ícone','Icon color',color,value=>{color=value;setPreview();});
+  const actions=content.createDiv({cls:'writer-v922-iconic-actions'});
+  new Setting(actions).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
+   const current=chosen||'';
+   if(current&&!icons.includes(current))return;
+   const recents=[current,...library.recent].filter(Boolean);
+   plugin.settings.v922IconRecent=[...new Set(recents)].slice(0,24);
+   await options.onApply(current,color);
+   await plugin.saveSettings();
+   modal.close();
   })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
+  input.focus();
  };
  modal.open();
+}
+function writerV922IconSetting(plugin,panel,{pt,en,value,color='',defaultIcon='star',description='',onApply}){
+ const setting=new Setting(panel).setName(writerUi(pt,en));
+ if(description)setting.setDesc(description);
+ const preview=setting.controlEl.createEl('button',{cls:'writer-v922-iconic-setting',attr:{type:'button'}});
+ const glyph=preview.createSpan({cls:'writer-v922-iconic-setting-glyph'});
+ const name=preview.createSpan({cls:'writer-v922-iconic-setting-label'});
+ const icon=value||defaultIcon;
+ require('obsidian').setIcon?.(glyph,icon);
+ glyph.style.color=writerV9SafeHex(color)||'var(--interactive-accent)';
+ name.setText(icon);
+ const more=preview.createSpan({cls:'writer-v922-iconic-setting-arrow'});
+ require('obsidian').setIcon?.(more,'chevrons-up-down');
+ preview.setAttribute('aria-label',writerUi(pt,en)+': '+icon);
+ preview.addEventListener('click',()=>writerV922OpenIconPicker(plugin,{
+  title:writerUi(pt,en),value:icon,color,defaultIcon,allowNone:false,
+  onApply:async(newIcon,newColor)=>{
+   await onApply(newIcon,newColor);
+   glyph.empty();require('obsidian').setIcon?.(glyph,newIcon||defaultIcon);
+   glyph.style.color=newColor||'var(--interactive-accent)';
+   name.setText(newIcon||defaultIcon);
+   preview.setAttribute('aria-label',writerUi(pt,en)+': '+(newIcon||defaultIcon));
+   value=newIcon;color=newColor;
+  }
+ }));
+ return setting;
+}
+function writerV9ExplorerPicker(plugin,file){
+ const path=file.path,item=plugin.settings.v9Explorer.items[path]||{};
+ writerV922OpenIconPicker(plugin,{
+  title:writerUi('Personalizar: ','Customize: ')+(file.name||'/'),
+  value:item.icon||'',color:item.color||'',allowNone:true,defaultIcon:'file-text',
+  onApply:async(icon,color)=>{
+   if(icon||color)plugin.settings.v9Explorer.items[path]={icon,color};
+   else delete plugin.settings.v9Explorer.items[path];
+   plugin.writerV9ExplorerRefresh?.();
+  }
+ });
 }
 function writerV9ExplorerFolderModal(plugin,folder){
  if(!(folder instanceof TFolder))return;
@@ -14084,7 +14185,7 @@ function writerV92ExplorerMerge(settings){
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
   previewVisible:true,showImage:true,previewLines:2,previewImageSize:62,
-  folderDescriptionKey:'description',noteDescriptionKey:'description',
+  folderDescriptionKey:'description',noteDescriptionKey:'description',favoriteIconColor:'',
   ...old
  };
  cfg.favoritesEnabled=cfg.favoritesEnabled!==false;
@@ -14093,6 +14194,7 @@ function writerV92ExplorerMerge(settings){
  cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||2)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
  cfg.favoriteIcon=/^[a-z][a-z0-9-]{0,38}$/.test(cfg.favoriteIcon)?cfg.favoriteIcon:'star';
+ cfg.favoriteIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.favoriteIconColor||''))?cfg.favoriteIconColor:'';
  cfg.previewMode=['off','folder','all'].includes(cfg.previewMode)?cfg.previewMode:'folder';
  cfg.previewMax=Math.max(40,Math.min(280,Math.round(Number(cfg.previewMax)||135)));
  cfg.folderDescriptionKey=/^[\w-]{1,50}$/.test(cfg.folderDescriptionKey)?cfg.folderDescriptionKey:'description';
@@ -14276,6 +14378,8 @@ function writerV92ExplorerRegister(plugin){
    button.replaceChildren();require('obsidian').setIcon(button,cfg.favoriteIcon);
    button.dataset.icon=cfg.favoriteIcon;
   }
+  if(cfg.favoriteIconColor)node.style.setProperty('--writer-v92-favorite-color',cfg.favoriteIconColor);
+  else node.style.removeProperty('--writer-v92-favorite-color');
   node.classList.add('writer-v92-has-favorite');
   node.classList.toggle('writer-v92-is-favorite',favorite);
  };
@@ -14285,7 +14389,13 @@ function writerV92ExplorerRegister(plugin){
   const source=show?writerV921PreviewSource(plugin,item):null;
   const folder=item instanceof TFolder;
   const allowed=show&&source&&(folder||cfg.previewMode==='all');
-  const existing=node.querySelector(':scope > .writer-v92-preview-shell');
+  // The title is an Obsidian flex row. Adding preview text *inside* that row
+  // concatenates folder names with descriptions on mobile. Put previews beside
+  // the title as a sibling, before the nested folder children.
+  const oldInline=node.querySelector(':scope > .writer-v92-preview-shell');
+  oldInline?.remove();
+  const existing=node.nextElementSibling?.classList?.contains('writer-v92-preview-shell')
+   ?node.nextElementSibling:null;
   if(!allowed){
    existing?.remove();
    node.classList.remove('writer-v92-has-preview');
@@ -14304,9 +14414,9 @@ function writerV92ExplorerRegister(plugin){
   if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
   let shell=existing;
   if(!shell){
-   shell=node.ownerDocument.createElement('span');
+   shell=node.ownerDocument.createElement('div');
    shell.className='writer-v92-preview-shell';
-   node.appendChild(shell);
+   node.insertAdjacentElement('afterend',shell);
   }
   shell.style.setProperty('--writer-v92-preview-lines',String(cfg.previewLines));
   shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
@@ -14410,6 +14520,7 @@ function writerV92ExplorerRegister(plugin){
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
    host.querySelectorAll('.writer-v92-favorite, .writer-v92-preview-shell, .writer-v921-preview-toggle').forEach(x=>x.remove());
+   host.querySelectorAll('.nav-file-title,.nav-folder-title').forEach(node=>node.style.removeProperty('--writer-v92-favorite-color'));
    host.querySelectorAll('.writer-v92-has-favorite,.writer-v92-is-favorite,.writer-v92-has-preview').forEach(x=>
     x.classList.remove('writer-v92-has-favorite','writer-v92-is-favorite','writer-v92-has-preview'));
   }
@@ -14421,13 +14532,16 @@ function writerV92ExplorerSettings(plugin,panel){
  panel.createEl('h3',{text:writerUi('Favoritos e prévias no explorador','Explorer favorites & previews')});
  new Setting(panel).setName(writerUi('Favoritos no explorador','Explorer favorites')).addToggle(t=>t.setValue(cfg.favoritesEnabled)
   .onChange(async v=>{cfg.favoritesEnabled=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
- new Setting(panel).setName(writerUi('Ícone de favorito (preenchido)','Favorite icon (filled)'))
-  .setDesc(writerUi('Ícone à direita: contorno no hover, preenchido quando favoritado.','Right-aligned: outlined on hover, filled when favorited.'))
-  .addDropdown(d=>{
-   for(const icon of WRITER_V92_FAVORITE_ICONS)d.addOption(icon,icon);
-   if(!WRITER_V92_FAVORITE_ICONS.includes(cfg.favoriteIcon))d.addOption(cfg.favoriteIcon,cfg.favoriteIcon);
-   d.setValue(cfg.favoriteIcon).onChange(async v=>{cfg.favoriteIcon=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();});
-  });
+ writerV922IconSetting(plugin,panel,{
+  pt:'Ícone de favorito',en:'Favorite icon',value:cfg.favoriteIcon,color:cfg.favoriteIconColor,
+  defaultIcon:'star',
+  description:writerUi('Pesquise ícones Lucide, salve seus preferidos e escolha também uma cor personalizada.',
+   'Search Lucide icons, pin favorites and select a custom accent color.'),
+  onApply:async(icon,color)=>{
+   cfg.favoriteIcon=icon||'star';cfg.favoriteIconColor=color;
+   await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }
+ });
  new Setting(panel).setName(writerUi('Prévia de descrição','Description preview'))
   .setDesc(writerUi('Desligado; somente folder notes; ou folder notes e todas as notas Markdown.','Off; folder notes only; or folder notes plus all Markdown notes.'))
   .addDropdown(d=>d.addOption('off',writerUi('Desativado','Off'))

@@ -14314,6 +14314,7 @@ function writerV92ExplorerSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Priorizar propriedades description / summary','Prefer description / summary properties'))
   .addToggle(t=>t.setValue(cfg.preferDescription).onChange(async v=>{cfg.preferDescription=v;await save();}));
 }
+
 // v3 module: src/v9/markdown-interactive.js
 /* 9.2.0 — original Markdown layout and interaction extensions, behavior inspired by
  * Multi-Column Markdown, Meta Bind, ProgressBar and Obsidian Widgets.
@@ -14682,6 +14683,7 @@ function writerV92MarkdownSettings(plugin,panel){
   'Use columns, progressbar, widgets, meta-bind and meta-bind-button code blocks. In Reading mode, INPUT[toggle:done] and VIEW[done] can read and edit frontmatter properties. No arbitrary script execution or actions.'
  )});
 }
+
 // v3 module: src/v9/zotero-quotes.js
 /* 9.2.0 — Zotero-aware local literature index and homepage quote bridge.
  * Designed to read already imported Zotero Markdown/Better BibTeX exports.
@@ -14929,6 +14931,7 @@ function writerV92ZoteroSettings(plugin,panel){
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Referências: ','References: ')+(count?.entries?.length||0)+
   ' · '+writerUi('Trechos: ','Quotes: ')+(count?.quotes?.length||0)});
 }
+
 // v3 module: src/v9/style-session.js
 /* 9.2.0 — independent local StyleMate-style controls and non-destructive Session Notes.
  * Styling is reversible via a single scoped sheet. Session notes exist outside vault
@@ -15206,6 +15209,7 @@ function writerV92SessionSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Abrir notas de sessão','Open Session Notes'))
   .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open panel')).onClick(()=>void plugin.writerV92Sessions?.open()));
 }
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}

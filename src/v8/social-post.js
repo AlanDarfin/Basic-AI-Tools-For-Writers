@@ -62,7 +62,7 @@ function writerV8RenderPost(plugin,source,element,ctx){
 }
 function writerV8RegisterSocial(plugin){
  if(typeof plugin.registerMarkdownCodeBlockProcessor!=='function')return;
- plugin.registerMarkdownCodeBlockProcessor('writer-post',(source,element,ctx)=>{
+ for(const type of ['post','writer-post'])plugin.registerMarkdownCodeBlockProcessor(type,(source,element,ctx)=>{
   if(!writerModuleOn(plugin,'socialBlocks')){element.createEl('pre',{text:source});return;}
   writerV8RenderPost(plugin,source,element,ctx);
  });

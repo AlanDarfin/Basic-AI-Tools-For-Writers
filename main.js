@@ -13070,7 +13070,7 @@ function writerV91SoundAudioFiles(plugin){
 }
 class WriterV91SoundPlayer{
  constructor(plugin){
-  this.plugin=plugin;this.audio=null;this.frame=null;this.playing=false;this.trackIndex=0;
+  this.plugin=plugin;this.audio=null;this.webLeaf=null;this.webUrl='';this.playing=false;this.trackIndex=0;
   this.shuffleOrder=[];this.subscribers=new Set();this.status=null;this.host=null;
  }
  get cfg(){return this.plugin.settings.v91Sound;}
@@ -13085,6 +13085,13 @@ class WriterV91SoundPlayer{
  get track(){const tracks=this.tracks;return tracks[Math.min(Math.max(0,this.trackIndex),tracks.length-1)]||null;}
  get label(){return this.track?.basename||this.track?.name||this.station?.[1]||'Soundscapes';}
  get videoId(){return this.cfg.station==='my-music'?'':this.track?.id||'';}
+ get webOpen(){
+  if(!this.webLeaf||!this.webUrl)return false;
+  const leaves=this.plugin.app.workspace.getLeavesOfType?.('webviewer');
+  if(Array.isArray(leaves)&&!leaves.includes(this.webLeaf))return false;
+  const state=this.webLeaf.getViewState?.();
+  return state?.type==='webviewer'&&state?.state?.url===this.webUrl;
+ }
  subscribe(node,callback){this.subscribers.add({node,callback});callback();return()=>{for(const s of this.subscribers)if(s.node===node&&s.callback===callback)this.subscribers.delete(s);};}
  emit(){
   for(const entry of this.subscribers){
@@ -13105,58 +13112,94 @@ class WriterV91SoundPlayer{
  ensureAudio(){
   if(this.audio)return;
   this.audio=new Audio();this.audio.preload='metadata';this.audio.volume=this.cfg.volume/100;
+  this.audio.addEventListener('play',()=>{this.playing=true;this.emit();});
+  this.audio.addEventListener('pause',()=>{this.playing=false;this.emit();});
   this.audio.addEventListener('ended',()=>this.next());
   this.audio.addEventListener('error',()=>{this.playing=false;this.emit();new Notice(writerUi('Não foi possível reproduzir o arquivo de áudio.','Could not play this audio file.'));});
  }
- ensureFrame(){
-  if(this.frame)return;
-  this.host=document.body.createDiv({cls:'writer-v91-sound-frame-host'});
-  this.frame=this.host.createEl('iframe',{attr:{
-   title:'Soundscapes YouTube player',allow:'autoplay; encrypted-media',referrerpolicy:'strict-origin-when-cross-origin'
-  }});
+ // Native Web Viewer avoids YouTube embed error 153 from app:// iframes.
+ async openRadio(){
+  const id=writerV91VideoId(this.videoId);
+  if(!id){new Notice(writerUi('Esta rádio não possui um vídeo válido.','This station has no valid video.'));return;}
+  const url='https://www.youtube.com/watch?v='+id+'&autoplay=1';
+  const workspace=this.plugin.app.workspace;
+  try{
+   const leaf=this.webOpen?this.webLeaf:workspace.getLeaf('tab');
+   if(!leaf?.setViewState)throw new Error('Web Viewer unavailable');
+   await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+   this.webLeaf=leaf;this.webUrl=url;
+   await workspace.revealLeaf?.(leaf);
+  }catch(error){
+   console.warn('[Basic AI] Soundscapes Web Viewer:',error);
+   this.webLeaf=null;this.webUrl='';
+   try{window.open(url);}catch(fallbackError){console.warn('[Basic AI] Soundscapes URL:',fallbackError);}
+   new Notice(writerUi('Visualizador Web indisponível. Abrindo o YouTube no navegador.','Web Viewer unavailable. Opening YouTube in your browser.'));
+  }
+  // Opening the webpage does not prove that autoplay was accepted.
+  this.playing=false;this.emit();
  }
- youtubeCommand(func,args=[]){
-  try{this.frame?.contentWindow?.postMessage(JSON.stringify({event:'command',func,args}),'https://www.youtube-nocookie.com');}
-  catch(error){console.warn('[Basic AI] YouTube player:',error);}
+ closeRadio(){
+  if(this.webOpen){
+   try{this.webLeaf.detach();}catch(error){console.warn('[Basic AI] Soundscapes tab:',error);}
+  }
+  this.webLeaf=null;this.webUrl='';
  }
- releaseMedia(){
+ releaseMedia(keepRadio=false){
   if(this.audio){this.audio.pause();this.audio.removeAttribute('src');this.audio.load();}
-  if(this.frame){this.frame.remove();this.frame=null;}
-  if(this.host){this.host.remove();this.host=null;}
+  if(!keepRadio)this.closeRadio();
  }
  async loadCurrent(){
-  this.releaseMedia();
+  const local=this.cfg.station==='my-music';
+  this.releaseMedia(!local);
   const item=this.track;
-  if(!item){this.playing=false;this.emit();return;}
-  if(this.cfg.station==='my-music'){
+  if(!item){
+   this.playing=false;this.emit();
+   new Notice(local?writerUi('Nenhum áudio encontrado na pasta configurada.','No audio found in the configured folder.'):
+    writerUi('Nenhuma faixa disponível.','No track available.'));
+   return;
+  }
+  if(local){
    this.ensureAudio();this.audio.src=this.plugin.app.vault.getResourcePath(item);
    this.audio.volume=this.cfg.volume/100;
    try{await this.audio.play();this.playing=true;}
-   catch(error){this.playing=false;console.warn('[Basic AI] Local audio playback:',error);}
-  }else{
-   this.ensureFrame();
-   this.frame.src='https://www.youtube-nocookie.com/embed/'+this.videoId+'?enablejsapi=1&autoplay=1&playsinline=1&controls=0';
-   this.frame.addEventListener('load',()=>{this.youtubeCommand('setVolume',[this.cfg.volume]);this.youtubeCommand('playVideo');},{once:true});
-   this.playing=true;
-  }
+   catch(error){
+    this.playing=false;console.warn('[Basic AI] Local audio playback:',error);
+    new Notice(writerUi('Não foi possível iniciar este áudio.','Could not start this audio.'));
+   }
+  }else await this.openRadio();
   this.emit();
  }
  async play(){
   if(this.plugin.app.isMobile||!this.cfg.enabled)return;
+  if(this.cfg.station!=='my-music'){
+   if(this.webOpen){await this.plugin.app.workspace.revealLeaf?.(this.webLeaf);return;}
+   await this.loadCurrent();return;
+  }
   if(this.playing)return;
-  if(this.cfg.station==='my-music'){
-   this.ensureAudio();
-   if(this.audio.src){try{await this.audio.play();this.playing=true;}catch(error){console.warn('[Basic AI] Audio:',error);}}
-   else await this.loadCurrent();
-  }else if(this.frame){this.youtubeCommand('playVideo');this.playing=true;}
-  else await this.loadCurrent();
+  this.ensureAudio();
+  if(this.audio.src){
+   try{await this.audio.play();this.playing=true;}
+   catch(error){
+    this.playing=false;console.warn('[Basic AI] Local audio:',error);
+    new Notice(writerUi('Não foi possível iniciar este áudio.','Could not start this audio.'));
+   }
+  }else await this.loadCurrent();
   this.emit();
  }
- pause(){if(this.audio)this.audio.pause();this.youtubeCommand('pauseVideo');this.playing=false;this.emit();}
- toggle(){if(this.playing)this.pause();else void this.play();}
+ pause(){
+  if(this.audio)this.audio.pause();
+  this.closeRadio();
+  this.playing=false;this.emit();
+ }
+ toggle(){
+  if(this.cfg.station==='my-music'){
+   if(this.playing)this.pause();else void this.play();
+  }else if(this.webOpen)this.pause();
+  else void this.play();
+ }
  async changeStation(id){
   if(!writerV91SoundStationOptions(this.plugin).some(x=>x[0]===id))return;
-  const resume=this.playing;this.cfg.station=id;this.trackIndex=0;this.releaseMedia();
+  const resume=this.playing||this.webOpen;this.cfg.station=id;this.trackIndex=0;this.releaseMedia();
   this.playing=false;await this.plugin.saveSettings();this.emit();
   if(resume)await this.play();
  }
@@ -13166,13 +13209,13 @@ class WriterV91SoundPlayer{
   if(this.cfg.shuffle&&delta>0&&this.cfg.station==='my-music')
    this.trackIndex=(this.trackIndex+1+Math.floor(Math.random()*(len-1)))%len;
   else this.trackIndex=(this.trackIndex+delta+len)%len;
-  if(this.playing)void this.loadCurrent();else{this.releaseMedia();this.emit();}
+  if(this.playing||this.webOpen)void this.loadCurrent();else{this.releaseMedia();this.emit();}
  }
  prev(){this.next(-1);}
  async setVolume(value){
   this.cfg.volume=Math.max(0,Math.min(100,Number(value)||0));
   if(this.audio)this.audio.volume=this.cfg.volume/100;
-  this.youtubeCommand('setVolume',[this.cfg.volume]);this.emit();
+  this.emit();
   await this.plugin.saveSettings();
  }
  renderStatus(){
@@ -13188,8 +13231,13 @@ class WriterV91SoundPlayer{
   select.value=this.cfg.station;
   const update=()=>{
    select.value=this.cfg.station;volume.value=String(this.cfg.volume);
-   play.empty();require('obsidian').setIcon(play,this.playing?'pause':'play');
-   next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',this.playing);
+   const local=this.cfg.station==='my-music',active=local?this.playing:this.webOpen;
+   play.empty();require('obsidian').setIcon(play,local?(active?'pause':'play'):(active?'x':'external-link'));
+   play.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
+    active?writerUi('Fechar aba do YouTube','Close YouTube tab'):writerUi('Abrir rádio no Visualizador Web','Open radio in Web Viewer'));
+   volume.disabled=!local;
+   volume.title=local?'':writerUi('Controle o volume na aba do YouTube','Adjust volume in the YouTube tab');
+   next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',active);
    select.title=this.label;
    root.toggleClass?.('is-disabled',!this.cfg.enabled);
   };
@@ -13251,15 +13299,19 @@ function writerV91HomeSoundscape(view,parent){
  const update=()=>{
   if(!card.isConnected)return;
   select.value=player.cfg.station;
-  toggle.empty();require('obsidian').setIcon(toggle,player.playing?'pause':'play');
+  const local=player.cfg.station==='my-music',active=local?player.playing:player.webOpen;
+  toggle.empty();require('obsidian').setIcon(toggle,local?(active?'pause':'play'):(active?'x':'external-link'));
+  toggle.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
+   active?writerUi('Fechar aba do YouTube','Close YouTube tab'):writerUi('Abrir rádio no Visualizador Web','Open radio in Web Viewer'));
   const multi=player.tracks.length>1;back.disabled=!multi;forward.disabled=!multi;
-  slider.value=String(player.cfg.volume);
+  slider.value=String(player.cfg.volume);slider.disabled=!local;
+  slider.title=local?'':writerUi('Volume disponível na aba do YouTube','Volume available in the YouTube tab');
   heading.textContent=player.label;
-  detail.textContent=player.cfg.station==='my-music'?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('Reprodução pelo YouTube','Streamed via YouTube');
+  detail.textContent=local?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('Use os controles na aba do YouTube','Use controls in the YouTube tab');
   const id=player.videoId;
   thumbnail.style.display=id?'':'none';
   if(id)thumbnail.src='https://i.ytimg.com/vi/'+id+'/mqdefault.jpg';
-  card.classList.toggle('is-playing',player.playing);
+  card.classList.toggle('is-playing',active);
  };
  select.addEventListener('change',()=>void player.changeStation(select.value));
  back.addEventListener('click',()=>player.prev());
@@ -13295,6 +13347,10 @@ function writerV91SoundPlaylistEditor(plugin,initial,done){
 function writerV91SoundSettings(plugin,panel){
  const cfg=plugin.settings.v91Sound;
  panel.createEl('h3',{text:'Soundscapes'});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+  'As rádios abrem vídeos no Visualizador Web nativo. Controle reprodução e volume na aba do YouTube; o botão fecha a aba para interromper. Minha Música usa o player local.',
+  'Radio stations open in the native Web Viewer. Control playback and volume in the YouTube tab; the button closes the tab to stop. My Music uses the local player.'
+ )});
  if(plugin.app.isMobile){
   panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Rádios e reprodução estão disponíveis apenas no computador.','Radio playback is desktop-only.')});return;
  }

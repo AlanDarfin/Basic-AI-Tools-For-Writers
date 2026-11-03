@@ -5340,11 +5340,6 @@ body.is-mobile .writer-v8-home .writer-v8-home-title-icon svg{width:44px;height:
 
 /* 9.1 — sound player, Flexplorer and dialogue-style AI. Desktop-first,
    theme-aware and intentionally compact for 720p screens. */
-.writer-v91-sound-frame-host{
- position:fixed;inset:auto auto 0 -9999px;width:1px;height:1px;overflow:hidden;
- opacity:0;pointer-events:none;
-}
-.writer-v91-sound-frame-host iframe{width:1px;height:1px;border:0;display:block;}
 .status-bar .writer-v91-sound-status{
  display:flex;align-items:center;gap:5px;min-width:0;max-width:min(430px,52vw);
  padding-inline:5px;
@@ -5391,6 +5386,7 @@ body.is-mobile .writer-v8-home .writer-v8-home-title-icon svg{width:44px;height:
 .writer-v91-sound-controls .writer-v91-sound-toggle{
  background:var(--interactive-accent);color:var(--text-on-accent);
 }
+.writer-v91-sound-controls input[type="range"]:disabled{opacity:.4;cursor:not-allowed;}
 .writer-v91-sound-controls input[type="range"]{flex:1 1 84px;max-width:130px;min-width:70px;accent-color:var(--interactive-accent);}
 .writer-v91-library-link{
  display:block;margin-top:10px;background:transparent;color:var(--text-accent);

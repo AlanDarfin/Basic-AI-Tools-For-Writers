@@ -88,7 +88,7 @@ test('new modules are opt-in views and do not touch CodeMirror or delete unrelat
 test('release documentation preserves previous blocks, home and new study features',()=>{
  for(const name of ['README.md','docs/README.pt-BR.md']){
   const content=read(name);
-  for(const key of ['8.3.0','writer-tabs','writer-avatar','writer-wiki','writer-post',
+  for(const key of ['9.1.0','writer-tabs','writer-avatar','writer-wiki','writer-post',
     'writer-media-gallery','writer-chat','#flashcards','Full Calendar','fuzzy']){
    assert.ok(content.toLowerCase().includes(key.toLowerCase()),name+' missing '+key);
   }

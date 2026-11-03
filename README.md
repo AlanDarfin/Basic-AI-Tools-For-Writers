@@ -1,36 +1,10 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.0.5 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.1.0 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
-[Leia em português](docs/README.pt-BR.md) · [Release notes](docs/V9_0_5_RELEASE.en.md)
+[Leia em português](docs/README.pt-BR.md) · [Third-party credits](THIRD_PARTY_NOTICES.md)
 
 A single, compact writing workspace for planning books, organizing a fictional world, editing Markdown, reviewing text and optionally working with AI. Your notes remain ordinary files in your Obsidian vault.
-
-## What's new in v9
-
-**9.0.5:** compact and keyboard-navigable Recent/Favorites note lists with vault paths, new opt-in **Vault gallery**, **Random quote** and **Edited today** widgets, more prominent homepage heading and icon. New short Markdown fences: `tabs`, `avatar`, `wiki`, `post`, `chat`, `media-gallery`, `folder-overview` (all `writer-*` aliases still render). [Full release notes](docs/V9_0_5_RELEASE.en.md).
-
-**9.0.4 mobile calendar polish:** date numbers now appear at the top-left with no circular background, while today's full cell uses the Obsidian accent color. [Release notes](docs/V9_0_4_RELEASE.en.md).
-
-**New in 9.0.3:** customizable homepage widget gallery with show/hide/reorder controls; optional weekly activity, surprise note, popular tags and word target cards; refined Lucide icon alignment; improved hot-reload recovery for homepage, calendar, study, Spaces and writing tabs. [9.0.3 release notes](docs/V9_0_3_RELEASE.en.md).
-
-**New in 9.0.2:** the homepage heading and icon now sit **above** the full-width search; six quick actions occupy balanced rows (6 across on wide panels, 3 × 2 on medium panels and 2 × 3 on narrow panels), using panel-width responsive rules. [9.0.2 release notes](docs/V9_0_2_RELEASE.en.md).
-
-- **Configurable formatting toolbar:** 27 Markdown actions, reorderable/optional controls, desktop enabled by default, mobile **disabled by default** and opt-in via settings. The native mobile editing toolbar is not replaced.
-- **Make.md-inspired native explorer tools:** customize vault file/folder icons and accent colors from the File Explorer context menu, inspect folders as filterable list/cards, and create/open Markdown folder indices. No extra sidebar.
-- **Homepage design:** centered title, icon above it on mobile or alongside it on desktop; broader Lucide options or a vault/HTTPS image; clock above the calendar at all sizes. Search stays at the top.
-- **Smart Spaces (opt-in):** save collections of Markdown notes filtered by folder, tag and YAML property, view as cards, list, table or grouped board. Off by default, optional independent Spaces sidebar.
-- **Modular switches:** toolbar, Spaces and native explorer modules can be hidden under Modules; individual controls and behaviors are configurable. Portuguese and English UI.
-
-**New in 9.0.1:** full-width homepage search above everything else, a highlighted note selector with full paths and Up/Down/Enter support, improved Lucide/HEX customization, consolidated Writing and Markdown settings, compact fictional chats, optional Spaces sidebar and a **visual-only** password gate (it does **not encrypt files**). [Complete changelog](docs/V9_0_1_RELEASE.en.md).
-
-Previous stable version: **9.0.4**. Historical milestone: **8.3.0**.
-
-This is an **independent integration**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 release notes](docs/V9_RELEASE.en.md) and [the historical compatibility audit](docs/V9_FINAL_AUDIT.md). Back up your vault before updating.
-
-### Calendar v9
-
-The writing calendar now includes a responsive built-in mini-calendar/sidebar, 3-day and 30-day agenda views, timeline slots, categories, local events with locations/details, configurable colors, recurring intervals and end dates. Edit one occurrence or an entire series, and exclude selected dates. It stores ordinary Markdown event notes; it does **not** implement two-way Google Calendar, CalDAV or ICS synchronization.
 
 ## Features
 
@@ -47,8 +21,26 @@ The writing calendar now includes a responsive built-in mini-calendar/sidebar, 3
 | **Editing** | Keyshots-inspired navigation, Easy Typing, Smart Typography, Typewriter focus, remembered cursor position and note-name templates. |
 | **Markdown formatting** | Extended Markdown, Pandoc-style lists and blocks, optional Pandoc export on desktop, plus tabs, avatars and Wiki cards. |
 | **Reading aloud** | System voices when available or optional online TTS with user consent. |
+| **Desktop Soundscapes** | Ambient radio presets streamed from YouTube, customizable playlists, local vault audio, a compact bottom status player, and a playable homepage widget with station, artwork preview, transport and volume controls. |
+| **Typewriter sound effects** | Click Clack-style key sounds for the Markdown editor on desktop, with volume, keyboard sound categories and optional locally installed WAV sound schemes. |
+| **Native Flexplorer tools** | Pin/unpin, hide/reveal items, per-folder sorting, custom file order via Alt + drag, and glob-based hide patterns, in the original Explorer pane. |
+| **AI conversations** | A dialogue-style assistant with aligned message bubbles, file attachments, Markdown responses, and consistent provider, model and prompt settings. |
 
 The **Writing / World / Project** navigation and independent module toggles keep narrow sidebars usable. Changes to scene and world metadata use Obsidian notes and properties rather than duplicating the story database.
+
+### Ambient audio, typing sounds and the file explorer
+
+**Soundscapes (desktop):** Open **Settings → Customization → Soundscapes** and choose a radio such as *Lofi beats*, *Ocean waves* or *ChillSynth FM*. Play or pause from the status bar at the bottom of the window, or add the **Writing radio** widget from the homepage's **Add widgets** gallery. Both controls share the same station, playback state and volume. The widget shows the station title and a thumbnail preview where available. Video radios use YouTube and require an internet connection.
+
+**Custom stations:** Add a playlist in Soundscapes settings and enter a title and YouTube URL per line. For example:
+
+Focus radio | https://www.youtube.com/watch?v=jfKfPfyJRdk
+
+To play your own recordings, place compatible audio files in a vault folder such as *Music*, set **Vault music folder** to *Music* and choose **My Music**. The audio library supports MP3, WAV, OGG, M4A and FLAC where the desktop playback engine supports the format. Audio playback is desktop-only and nothing is uploaded from the vault to YouTube.
+
+**Click Clack (desktop):** Go to **Settings → Writing & Markdown → Typewriter sounds**, enable the sounds and adjust their volume. The built-in generated clicks work without downloading assets. If you already have compatible Click Clack WAV sound packs in the plugin's *resources* folder, rescan to make them selectable. Sounds respond to typing in the Markdown editor only, not in settings or other text fields.
+
+**Flexplorer:** Open the context menu of a folder in the native Obsidian File Explorer and select **Sort this folder** → **Custom order**. Use **Alt + drag** to rearrange its files; ordinary native drag-and-drop remains available. Context menus also offer **Pin in explorer** and **Hide in explorer**. In **Settings → Customization → File explorer**, a glob such as *Templates/*** hides matching Explorer items (never deletes the files). **Show hidden items** reveals them for editing. These enhancements coexist with the existing Basic icon, color and folder-overview controls.
 
 ## Using Markdown formatting
 

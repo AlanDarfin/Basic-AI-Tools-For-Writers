@@ -52,14 +52,14 @@ class WriterFinalFeatures{
   }));
   if(p.registerMarkdownCodeBlockProcessor)p.registerMarkdownCodeBlockProcessor('insta-toc',async(source,el,ctx)=>this.renderToc(el,ctx.sourcePath,source));
   const commands=[
-   ['writer-insert-unicode','Unicode: Search and insert',()=>this.unicodePicker()],
-   ['writer-tts-read','Read selection or current note aloud',()=>this.speakActive()],
-   ['writer-tts-pause','Pause speech',()=>this.pause()],
-   ['writer-tts-resume','Resume speech',()=>this.resume()],
-   ['writer-tts-stop','Stop speech',()=>this.stop()],
-   ['writer-insert-toc','Insert instant table of contents',()=>this.insertToc()],
-   ['writer-abbreviations','Edit abbreviations',()=>this.editAbbreviations()],
-   ['writer-insert-template','Insert note-name template',()=>this.applyTemplateToCurrent()]
+   ['writer-insert-unicode',writerUi('Unicode: pesquisar e inserir','Unicode: Search and insert'),()=>this.unicodePicker()],
+   ['writer-tts-read',writerUi('Ler seleção ou nota atual em voz alta','Read selection or current note aloud'),()=>this.speakActive()],
+   ['writer-tts-pause',writerUi('Pausar leitura','Pause speech'),()=>this.pause()],
+   ['writer-tts-resume',writerUi('Retomar leitura','Resume speech'),()=>this.resume()],
+   ['writer-tts-stop',writerUi('Parar leitura','Stop speech'),()=>this.stop()],
+   ['writer-insert-toc',writerUi('Inserir sumário instantâneo','Insert instant table of contents'),()=>this.insertToc()],
+   ['writer-abbreviations',writerUi('Editar abreviações','Edit abbreviations'),()=>this.editAbbreviations()],
+   ['writer-insert-template',writerUi('Inserir modelo pelo nome da nota','Insert note-name template'),()=>this.applyTemplateToCurrent()]
   ];
   for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
   // Voices can arrive asynchronously. Android WebView may not expose Web Speech.
@@ -560,13 +560,15 @@ class WriterFinalFeatures{
 
 };
 function writerRenderFinalSettings(panel,plugin,section){
+ const labelMap={"Abbreviations":"Abreviações","Another name":"Nome alternativo","View mode":"Modo de visualização","Templates by note name":"Modelos por nome da nota","Unicode search":"Busca Unicode","Instant TOC":"Sumário instantâneo","Text to speech":"Leitura em voz alta","Enabled":"Ativado","Expand on punctuation or space (instead of space only)":"Expandir ao digitar pontuação ou espaço","Edit abbreviations":"Editar abreviações","Frontmatter property":"Propriedade do frontmatter","View mode frontmatter property":"Propriedade do modo de visualização","Templates folder":"Pasta de modelos","Date format (e.g. YYYY-MM-DD)":"Formato de data (ex.: AAAA-MM-DD)","Time format (e.g. HH:mm)":"Formato de hora (ex.: HH:mm)","Apply templates on note creation":"Aplicar modelos ao criar notas","Apply templates when a note is renamed to match":"Aplicar modelos ao renomear notas compatíveis","Case-sensitive title matching":"Diferenciar maiúsculas e minúsculas no título","Original matching rules":"Regras de correspondência","The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.":"A primeira regra correspondente aplica um modelo. Sem regras, permanece a busca pelo nome exato.","Rule ":"Regra ","Starts with":"Começa com","Contains":"Contém","Ends with":"Termina com","Name fragment":"Trecho do nome","Select template":"Selecionar modelo","Delete rule":"Excluir regra","Add matching rule":"Adicionar regra","Add":"Adicionar","Legacy exact-name fallback":"Compatibilidade com nome exato","If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty.":"Se não houver regras, procurar Templates/<nome da nota>.md e aplicar somente em notas vazias.","Unicode picker":"Seletor Unicode","Search":"Pesquisar","Max results":"Máximo de resultados","Offline Unicode index":"Índice Unicode offline","Download UnicodeData.txt from unicode.org once. Search works offline afterward.":"Baixe UnicodeData.txt do unicode.org uma vez; depois a busca funciona offline.","Download / update":"Baixar / atualizar","Downloading…":"Baixando…","Max heading level":"Nível máximo de títulos","Numbered table of contents":"Sumário numerado","Start folded":"Iniciar recolhido","Voice engine":"Mecanismo de voz","System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.":"Vozes do sistema funcionam offline. Vozes online do Edge funcionam sem motor de voz no Linux, mas enviam texto à Microsoft e exigem internet.","System / offline (Web Speech)":"Sistema / offline (Web Speech)","Microsoft Edge neural / online":"Microsoft Edge neural / online","Allow online text processing":"Permitir processamento online de texto","OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.":"Desativado por padrão. Com Edge, o texto selecionado ou a nota é enviada à Microsoft para gerar a voz. O serviço não oficial pode mudar.","Speech language":"Idioma da leitura","Edge online voice":"Voz online do Edge","High-quality online voices; independent of installed Linux voices.":"Vozes online de alta qualidade, independentes das vozes instaladas no Linux.","Auto by language":"Automático conforme idioma","Prefer selected text":"Preferir texto selecionado","Maximum characters per playback":"Máximo de caracteres por leitura","Speaking speed":"Velocidade da fala","Pitch (system voice)":"Tom (voz do sistema)","Volume (system voice)":"Volume (voz do sistema)","Speech":"Leitura","Read":"Ler","Pause":"Pausar","Resume":"Retomar","Stop":"Parar","Open":"Abrir","Ready":"Pronto"};
+ const translateLabel=value=>writerUi(labelMap[value]||value,value);
  const sectionMap={abbreviations:'Abbreviations',anotherName:'Another name',viewMode:'View mode',templates:'Templates by note name',unicode:'Unicode search',toc:'Instant TOC',tts:'Text to speech'};
  const cfg=plugin.settings.finalSuite[section];
- panel.createEl('h3',{text:sectionMap[section]||section});
- const bool=(field,label)=>new Setting(panel).setName(label).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
- const str=(field,label)=>new Setting(panel).setName(label).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
+ panel.createEl('h3',{text:translateLabel(sectionMap[section]||section)});
+ const bool=(field,label)=>new Setting(panel).setName(translateLabel(label)).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
+ const str=(field,label)=>new Setting(panel).setName(translateLabel(label)).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
  bool('enabled','Enabled');
- if(section==='abbreviations'){bool('expandAtWordBoundary','Expand on punctuation or space (instead of space only)');new Setting(panel).setName('Edit abbreviations').addButton(b=>b.setButtonText('Open').onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
+ if(section==='abbreviations'){bool('expandAtWordBoundary','Expand on punctuation or space (instead of space only)');new Setting(panel).setName(translateLabel('Edit abbreviations')).addButton(b=>b.setButtonText(translateLabel('Open')).onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
  if(section==='anotherName')str('property','Frontmatter property');
  if(section==='viewMode')str('property','View mode frontmatter property');
  if(section==='templates'){
@@ -576,7 +578,7 @@ function writerRenderFinalSettings(panel,plugin,section){
   bool('applyOnCreate','Apply templates on note creation');
   bool('templateOnRename','Apply templates when a note is renamed to match');
   bool('caseSensitive','Case-sensitive title matching');
-  new Setting(panel).setName('Original matching rules').setDesc('The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.').setHeading();
+  new Setting(panel).setName(translateLabel('Original matching rules')).setDesc(translateLabel('The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.')).setHeading();
   const container=panel.createDiv({cls:'writer-template-matcher-list'});
   const templates=plugin.app.vault.getMarkdownFiles().filter(file=>{
    const folder=String(cfg.folder||'Templates').replace(/^\/+|\/+$/g,'');
@@ -588,50 +590,50 @@ function writerRenderFinalSettings(panel,plugin,section){
    for(let index=0;index<matchers.length;index++){
     const rule=matchers[index];
     const row=new Setting(container).setClass('writer-template-matcher');
-    row.setName('Rule '+(index+1));
+    row.setName(translateLabel('Rule ')+(index+1));
     row.addDropdown(d=>{
-     for(const [key,label] of [['prefix','Starts with'],['contains','Contains'],['suffix','Ends with']])d.addOption(key,label);
+     for(const [key,label] of [['prefix','Starts with'],['contains','Contains'],['suffix','Ends with']])d.addOption(key,translateLabel(label));
      d.setValue(rule.matchMethod||'prefix').onChange(async value=>{rule.matchMethod=value;await plugin.saveSettings();});
     });
-    row.addText(t=>t.setPlaceholder('Name fragment').setValue(rule.matchString||'').onChange(async value=>{rule.matchString=value;await plugin.saveSettings();}));
+    row.addText(t=>t.setPlaceholder(translateLabel('Name fragment')).setValue(rule.matchString||'').onChange(async value=>{rule.matchString=value;await plugin.saveSettings();}));
     row.addDropdown(d=>{
      d.addOption('','Select template');
      for(const file of templates)d.addOption(file.path,file.path);
      if(rule.templatePath&&!templates.some(f=>f.path===rule.templatePath))d.addOption(rule.templatePath,rule.templatePath+' (missing)');
      d.setValue(rule.templatePath||'').onChange(async value=>{rule.templatePath=value;await plugin.saveSettings();});
     });
-    row.addExtraButton(b=>b.setIcon('trash').setTooltip('Delete rule').onClick(async()=>{
+    row.addExtraButton(b=>b.setIcon('trash').setTooltip(translateLabel('Delete rule')).onClick(async()=>{
      matchers.splice(index,1);
      await plugin.saveSettings();render();
     }));
    }
   };
-  new Setting(panel).setName('Add matching rule').addButton(b=>b.setButtonText('Add').setIcon('plus').onClick(async()=>{
+  new Setting(panel).setName(translateLabel('Add matching rule')).addButton(b=>b.setButtonText(translateLabel('Add')).setIcon('plus').onClick(async()=>{
    cfg.matchers.push({matchMethod:'prefix',matchString:'',templatePath:''});
    await plugin.saveSettings();render();
   }));
   render();
-  new Setting(panel).setName('Legacy exact-name fallback').setDesc('If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty.').addToggle(t=>t.setValue(cfg.onlyNew!==false).onChange(async value=>{cfg.onlyNew=value;await plugin.saveSettings();}));
+  new Setting(panel).setName(translateLabel('Legacy exact-name fallback')).setDesc(translateLabel('If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty.')).addToggle(t=>t.setValue(cfg.onlyNew!==false).onChange(async value=>{cfg.onlyNew=value;await plugin.saveSettings();}));
  }
  if(section==='unicode'){
-  new Setting(panel).setName('Unicode picker').addButton(b=>b.setButtonText('Search').onClick(()=>plugin.writerFinalFeatures.unicodePicker()));
+  new Setting(panel).setName(translateLabel('Unicode picker')).addButton(b=>b.setButtonText(translateLabel('Search')).onClick(()=>plugin.writerFinalFeatures.unicodePicker()));
   str('maxResults','Max results');
-  new Setting(panel).setName('Offline Unicode index').setDesc('Download UnicodeData.txt from unicode.org once. Search works offline afterward.').addButton(b=>b.setButtonText('Download / update').onClick(async()=>{
-   b.setDisabled(true).setButtonText('Downloading…');
+  new Setting(panel).setName(translateLabel('Offline Unicode index')).setDesc(translateLabel('Download UnicodeData.txt from unicode.org once. Search works offline afterward.')).addButton(b=>b.setButtonText(translateLabel('Download / update')).onClick(async()=>{
+   b.setDisabled(true).setButtonText(translateLabel('Downloading…'));
    try{await plugin.writerFinalFeatures.downloadUnicode();}
    catch(e){new Notice(writerUi('Índice Unicode: ','Unicode index: ')+e.message);}
-   finally{b.setDisabled(false).setButtonText('Download / update');}
+   finally{b.setDisabled(false).setButtonText(translateLabel('Download / update'));}
   }));
  }
  if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
-  new Setting(panel).setName('Voice engine').setDesc('System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.').addDropdown(d=>{
+  new Setting(panel).setName(translateLabel('Voice engine')).setDesc(translateLabel('System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.')).addDropdown(d=>{
    d.addOption('system','System / offline (Web Speech)');
    d.addOption('edge','Microsoft Edge neural / online');
    d.setValue(cfg.engine||'system').onChange(async value=>{cfg.engine=value;plugin.writerFinalFeatures.stop();await plugin.saveSettings();});
   });
-  new Setting(panel).setName('Allow online text processing').setDesc('OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.').addToggle(t=>t.setValue(!!cfg.allowOnline).onChange(async value=>{cfg.allowOnline=value;if(!value)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
-  new Setting(panel).setName('Speech language').addDropdown(d=>{
+  new Setting(panel).setName(translateLabel('Allow online text processing')).setDesc(translateLabel('OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.')).addToggle(t=>t.setValue(!!cfg.allowOnline).onChange(async value=>{cfg.allowOnline=value;if(!value)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
+  new Setting(panel).setName(translateLabel('Speech language')).addDropdown(d=>{
    for(const [key,name] of [['auto','Auto'],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es-ES','Español'],['fr-FR','Français'],['de-DE','Deutsch'],['it-IT','Italiano'],['ja-JP','日本語'],['zh-CN','中文']])d.addOption(key,name);
    d.setValue(cfg.language).onChange(async value=>{cfg.language=value;await plugin.saveSettings();});
   });
@@ -644,7 +646,7 @@ function writerRenderFinalSettings(panel,plugin,section){
    d.setValue(cfg.voice||'').onChange(async value=>{cfg.voice=value;await plugin.saveSettings();});
   });
   new Setting(panel).setName(writerUi('Verificar vozes disponíveis','Check available voices')).addButton(b=>b.setButtonText(writerUi('Atualizar lista','Refresh list')).onClick(()=>system.refreshVoiceSelectors()));
-  new Setting(panel).setName('Edge online voice').setDesc('High-quality online voices; independent of installed Linux voices.').addDropdown(d=>{
+  new Setting(panel).setName(translateLabel('Edge online voice')).setDesc(translateLabel('High-quality online voices; independent of installed Linux voices.')).addDropdown(d=>{
    d.addOption('','Auto by language');
    for(const [lang,voice] of Object.entries(WRITER_EDGE_VOICES))d.addOption(voice,lang+' · '+voice.split('-').slice(2).join('-'));
    d.setValue(cfg.edgeVoice||'').onChange(async value=>{cfg.edgeVoice=value;await plugin.saveSettings();});
@@ -652,10 +654,10 @@ function writerRenderFinalSettings(panel,plugin,section){
   bool('readSelection','Prefer selected text');
   str('maxCharacters','Maximum characters per playback');
   for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch (system voice)',.5,2,.1],['volume','Volume (system voice)',0,1,.1]]){
-   new Setting(panel).setName(label).addSlider(slider=>slider.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
+   new Setting(panel).setName(translateLabel(label)).addSlider(slider=>slider.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
   }
-  new Setting(panel).setName('Speech').addButton(b=>b.setButtonText('Read').onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText('Pause').onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText('Resume').onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText('Stop').onClick(()=>plugin.writerFinalFeatures.stop()));
-  panel.createDiv({cls:'writer-tts-current-status',text:'Ready'});
+  new Setting(panel).setName(translateLabel('Speech')).addButton(b=>b.setButtonText(translateLabel('Read')).onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText(translateLabel('Pause')).onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText(translateLabel('Resume')).onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText(translateLabel('Stop')).onClick(()=>plugin.writerFinalFeatures.stop()));
+  panel.createDiv({cls:'writer-tts-current-status',text:translateLabel('Ready')});
 
  }
 }

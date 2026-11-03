@@ -2,7 +2,11 @@
 /* Homepage utilities: calendar, native Web Viewer and conservative empty-tab detection. */
 const WRITER_V8_HOME_ICONS=['house','book-open','feather','pen-line','notebook-pen','library','sparkles','sun','moon-star','flower-2','rocket','pencil','book','books','bookmark','star','heart','lightbulb','brain','graduation-cap','file-text','folder','archive','palette','brush','wand-sparkles','calendar-days','clock','pencil-line','notebook','pen','library-big','layout-dashboard','globe','leaf','coffee','music','headphones','flag','compass','map','gem','trophy','shield','user','users','image','images','flame','cloud','settings'];
 function writerV8HomeIconName(value){
- return WRITER_V8_HOME_ICONS.includes(value)?value:'book-open';
+ const name=String(value||'').trim();
+ if(WRITER_V8_HOME_ICONS.includes(name))return name;
+ if(/^[a-z][a-z0-9-]{0,59}$/.test(name)&&
+    typeof writerV9AvailableIcons==='function'&&writerV9AvailableIcons().includes(name))return name;
+ return 'book-open';
 }
 function writerV8HomeImageURL(plugin,input){
  const raw=String(input||'').trim();

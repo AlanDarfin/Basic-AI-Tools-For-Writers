@@ -462,6 +462,57 @@ class WriterV8HomeView extends ItemView{
   }
  }
 
+ renderGallery(parent){
+  const box=this.card(parent,'gallery','Galeria do cofre','Vault gallery');
+  const images=(this.app.vault.getFiles?.()||[])
+   .filter(file=>/^(png|jpe?g|webp|gif|avif)$/i.test(file.extension||'')).slice(0,5000);
+  if(!images.length){
+   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Adicione imagens ao cofre para usar a galeria.','Add images to your vault to populate the gallery.')});
+   return;
+  }
+  const previous=this.homeGalleryImage?.path;
+  let file=images.find(item=>item.path===previous)||writerV8HomePick(images);
+  this.homeGalleryImage=file;
+  const picture=box.createDiv({cls:'writer-v905-gallery-frame'});
+  const img=picture.createEl('img',{attr:{src:this.app.vault.getResourcePath(file),
+   alt:file.basename||file.name||writerUi('Imagem do cofre','Vault image'),loading:'lazy',decoding:'async'}});
+  const name=box.createDiv({cls:'writer-v905-gallery-name',text:file.basename||file.name});
+  const path=box.createDiv({cls:'writer-v905-gallery-path',text:file.path});
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const open=actions.createEl('button',{text:writerUi('Abrir imagem','Open image')});
+  open.addEventListener('click',()=>this.openFile(file));
+  const shuffle=actions.createEl('button',{text:writerUi('Outra imagem','Shuffle image')});
+  shuffle.addEventListener('click',()=>{
+   const picked=writerV8HomePick(images,file.path);
+   if(!picked)return;
+   file=picked;this.homeGalleryImage=file;
+   img.src=this.app.vault.getResourcePath(file);
+   img.alt=file.basename||file.name||'';
+   name.setText(file.basename||file.name);path.setText(file.path);
+  });
+ }
+ renderQuotes(parent){
+  const box=this.card(parent,'quotes','Citação aleatória','Random quote');
+  const options=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
+  if(!this.homeQuote)this.homeQuote=writerV8HomePick(options,this.homeQuotePrevious);
+  let current=this.homeQuote||options[0];
+  const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
+  const quote=body.createEl('p',{text:current[0]});
+  const author=box.createDiv({cls:'writer-v905-quote-author'});
+  const update=()=>{
+   quote.setText(current[0]);
+   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
+  };
+  update();
+  const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
+  next.addEventListener('click',()=>{
+   this.homeQuotePrevious=current[0];
+   current=writerV8HomePick(options,current[0])||current;
+   this.homeQuote=current;
+   update();
+  });
+ }
  renderActivity(parent){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
   const files=this.app.vault.getMarkdownFiles?.()||[];

@@ -14721,7 +14721,7 @@ function writerV92ZoteroMeta(file,cache){
  return {path:file.path,key,title:writerV92ZoteroClean(title,200),author:writerV92ZoteroClean(author,120),
   year:writerV92ZoteroClean(year,30),url,basename:file.basename};
 }
-function writerV92ZoteroExtract(raw,meta,max=8){
+function writerV92ZoteroExtract(raw,meta,max=8,includeBlockquotes=true){
  const text=String(raw||'').slice(0,25000),quotes=[];
  const add=(value)=>{
   const cleaned=writerV92ZoteroClean(value,460);
@@ -14741,7 +14741,7 @@ function writerV92ZoteroExtract(raw,meta,max=8){
   }catch(_){}
  }
  const block=text.replace(/^---[\s\S]*?---\s*/,'');
- for(const line of block.split(/\r?\n/)){
+ if(includeBlockquotes)for(const line of block.split(/\r?\n/)){
   const m=/^\s*>\s*(?!\[!)(.+)/.exec(line);
   if(m)add(m[1]);
   if(quotes.length>=max)break;
@@ -14805,11 +14805,7 @@ class WriterV92Zotero{
    if(quotes.length>=this.cfg.maxQuotes)continue;
    try{
     const note=await plugin.app.vault.cachedRead(file);
-    const found=writerV92ZoteroExtract(note,meta,Math.min(12,this.cfg.maxQuotes-quotes.length));
-    quotes.push(...(this.cfg.includeBlockquotes?found:found.filter(x=>{
-     const fm=plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter||{};
-     return Boolean(fm.quote||fm.quotes||fm.highlights||fm.annotations||fm.excerpt);
-    })));
+    quotes.push(...writerV92ZoteroExtract(note,meta,Math.min(12,this.cfg.maxQuotes-quotes.length),this.cfg.includeBlockquotes));
    }catch(_){}
   }
   if(this.cfg.bibFile){

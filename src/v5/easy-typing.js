@@ -146,7 +146,7 @@ class WriterEasyTyping{
   }});
   p.addCommand({id:'v5-easy-toggle',name:writerUi('Easy Typing: alternar assistentes','Easy Typing: toggle helpers'),callback:async()=>{
    this.cfg.enabled=!this.cfg.enabled;await p.saveSettings();
-   new Notice('Easy Typing: '+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
+   new Notice(writerUi('Digitação fácil: ','Easy Typing: ')+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
   }});
   const {keymap,EditorView}=require('@codemirror/view');
   const bindings=[

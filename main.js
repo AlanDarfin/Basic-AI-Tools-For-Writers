@@ -13235,7 +13235,7 @@ function writerV91SoundAudioFiles(plugin){
 }
 class WriterV91SoundPlayer{
  constructor(plugin){
-  this.plugin=plugin;this.audio=null;this.dock=null;this.frameHost=null;this.guest=null;this.webUrl='';this.dockOpen=false;this.radioGeneration=0;this.playing=false;this.trackIndex=0;
+  this.plugin=plugin;this.audio=null;this.dock=null;this.frameHost=null;this.guest=null;this.webUrl='';this.dockOpen=false;this.radioGeneration=0;this.webTimer=null;this.playing=false;this.trackIndex=0;
   this.shuffleOrder=[];this.subscribers=new Set();this.status=null;this.host=null;
  }
  get cfg(){return this.plugin.settings.v91Sound;}
@@ -13328,11 +13328,13 @@ class WriterV91SoundPlayer{
   const id=writerV91VideoId(rawId);
   if(!id||!this.frameHost)return false;
   const seq=++this.radioGeneration,doc=this.frameHost.ownerDocument;
+  if(this.webTimer){clearTimeout(this.webTimer);this.webTimer=null;}
   this.frameHost.empty();this.guest=null;this.webUrl='';
   if(this.dockSwitch)this.dockSwitch.disabled=false;
   const watchUrl='https://m.youtube.com/watch?v='+id+'&autoplay=1&playsinline=1';
   const useFallback=()=>{
    if(seq!==this.radioGeneration||!this.frameHost?.isConnected)return;
+   if(this.webTimer){clearTimeout(this.webTimer);this.webTimer=null;}
    this.frameHost.empty();
    const frame=this.frameHost.createEl('iframe',{cls:'writer-v91-mini-iframe',attr:{
     src:'https://www.youtube.com/embed/'+id+'?autoplay=1&controls=1&playsinline=1&rel=0',
@@ -13369,6 +13371,16 @@ class WriterV91SoundPlayer{
    if(event.errorCode!==-3)fallback(event);
   });
   web.addEventListener('render-process-gone',fallback);
+  web.addEventListener('dom-ready',()=>{
+   if(seq!==this.radioGeneration)return;
+   if(this.webTimer){clearTimeout(this.webTimer);this.webTimer=null;}
+  });
+  // On some Electron builds the tag exists but never initializes.
+  this.webTimer=setTimeout(()=>{
+   this.webTimer=null;
+   if(seq===this.radioGeneration&&this.guest===web)fallback({type:'webview-timeout'});
+  },9000);
+  this.webTimer?.unref?.();
   this.emit();
   return true;
  }
@@ -13383,6 +13395,7 @@ class WriterV91SoundPlayer{
  }
  closeRadio(){
   ++this.radioGeneration;
+  if(this.webTimer){clearTimeout(this.webTimer);this.webTimer=null;}
   this.frameHost?.empty();
   this.guest=null;this.webUrl='';
   if(this.dockSwitch)this.dockSwitch.disabled=true;

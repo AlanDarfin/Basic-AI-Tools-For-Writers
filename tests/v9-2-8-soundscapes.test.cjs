@@ -52,7 +52,7 @@ function mock(station='lofi',{webview=true,files=[]}={}){
  const plugin={app:{workspace,isMobile:false,vault:{getFiles:()=>files,getResourcePath:file=>'app://vault/'+file.path}},
   settings:{v91Sound:{enabled:true,station,volume:35,customPlaylists:[],shuffle:false,musicFolder:''}},
   async saveSettings(){}};
- const globals={console,URL,Audio:FakeAudio,document:doc,require:()=>({setIcon:()=>{}}),
+ const globals={console,URL,Audio:FakeAudio,document:doc,setTimeout,clearTimeout,require:()=>({setIcon:()=>{}}),
   writerUi:(_pt,en)=>en,Notice:class {},Modal:class {},Setting:class {}};
  const Player=vm.runInNewContext(source+'\nWriterV91SoundPlayer',globals);
  return {player:new Player(plugin),doc,opened,plugin};
@@ -122,4 +122,18 @@ test('inline-only UI, no fallback to opening browser or Obsidian workspace tabs'
  assert.match(source,/function writerV91HomeSoundscape/);
  assert.match(source,/v91-sound-mini-player/);
  assert.match(source,/is-collapsed/);
+});
+
+test('a nonresponsive Webview automatically falls back to the inline iframe',async()=>{
+ const {player}=mock();
+ await player.play();
+ const guest=player.guest;
+ assert.equal(guest.tagName,'WEBVIEW');
+ // The live 9-second watchdog handles unavailable Electron Chromium guests.
+ assert.match(source,/webview-timeout/);
+ assert.match(source,/9000/);
+ assert.equal(typeof guest.events['dom-ready'],'function');
+ guest.events['dom-ready']();
+ assert.equal(player.guest.tagName,'WEBVIEW','ready guests remain active');
+ player.pause();
 });

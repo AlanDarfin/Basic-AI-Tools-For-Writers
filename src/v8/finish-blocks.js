@@ -1,5 +1,13 @@
 'use strict';
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
+/* Use one Unicode-safe sanitizer for initial settings and the live settings input.
+ * Never double-escape regex character classes: /[\\r\\n]/ strips lowercase r and n. */
+function writerV8HomeTitleClean(value){
+ return String(value??'')
+  .replace(/[\r\n\u2028\u2029]+/g,' ')
+  .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
+  .slice(0,80);
+}
 const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'],homeHidden:['activity','random','tags','goal','gallery','quotes','today'],homeWordGoal:500,homeQuotes:''};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};

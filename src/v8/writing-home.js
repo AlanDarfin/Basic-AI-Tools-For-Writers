@@ -495,18 +495,25 @@ class WriterV8HomeView extends ItemView{
  }
  renderQuotes(parent){
   const box=this.card(parent,'quotes','Citação aleatória','Random quote');
-  const options=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
+  const options=typeof writerV92ZoteroQuotesForHome==='function'?writerV92ZoteroQuotesForHome(this.plugin):writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
   if(!this.homeQuote)this.homeQuote=writerV8HomePick(options,this.homeQuotePrevious);
   let current=this.homeQuote||options[0];
   const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
   const quote=body.createEl('p',{text:current[0]});
   const author=box.createDiv({cls:'writer-v905-quote-author'});
+  let openSource=null;
   const update=()=>{
    quote.setText(current[0]);
    author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
+   if(openSource)openSource.style.display=current[2]?'':'none';
   };
-  update();
   const actions=box.createDiv({cls:'writer-v903-widget-actions'});
+  openSource=actions.createEl('button',{text:writerUi('Abrir referência','Open reference'),attr:{type:'button'}});
+  openSource.addEventListener('click',()=>{
+   const file=this.app.vault.getAbstractFileByPath(current[2]||'');
+   if(file instanceof TFile)void this.app.workspace.getLeaf('tab').openFile(file);
+  });
+  update();
   const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
   next.addEventListener('click',()=>{
    this.homeQuotePrevious=current[0];
@@ -605,7 +612,7 @@ function writerV8HomeToggleFavorite(plugin,path){
  const i=list.indexOf(path);
  if(i>=0)list.splice(i,1);
  else list.unshift(path);
- plugin.settings.v8Finish.homeFavorites=list.slice(0,30);
+ plugin.settings.v8Finish.homeFavorites=list.slice(0,500);
 }
 function writerV8RegisterHome(plugin){
  plugin.registerView?.(WRITER_V8_HOME_VIEW,leaf=>new WriterV8HomeView(leaf,plugin));

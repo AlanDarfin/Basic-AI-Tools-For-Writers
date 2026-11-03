@@ -253,8 +253,16 @@ class WriterV91SoundPlayer{
  async openRadio(){
   const id=writerV91VideoId(this.videoId);
   if(!id){new Notice(writerUi('Rádio sem vídeo válido.','Radio has no valid video.'));return;}
-  this.showMiniPlayer();
-  if(!this.dock)return;
+  // Playback and the video popup are independent: only the explicit
+  // "Show mini player" action may open the video UI.
+  try{
+   this.ensureDock();
+   this.hideMiniPlayer();
+  }catch(error){
+   console.warn('[Basic AI] Soundscapes background player:',error);
+   new Notice(writerUi('Não foi possível iniciar o player em segundo plano.','Could not start the background player.'));
+   return;
+  }
   if(!this.mountRadio(id))return;
   // Opening an embedded video is not proof of real playback.
   this.playing=false;this.emit();
@@ -295,7 +303,8 @@ class WriterV91SoundPlayer{
  async play(){
   if(this.plugin.app.isMobile||!this.cfg.enabled)return;
   if(this.cfg.station!=='my-music'){
-   if(this.webOpen){this.showMiniPlayer();return;}
+   // Play never opens a popup or forces a hidden guest into view.
+   if(this.webOpen)return;
    await this.loadCurrent();return;
   }
   if(this.playing)return;
@@ -438,10 +447,22 @@ class WriterV91SoundPlayer{
  destroy(){this.pause();this.dock?.remove();this.dock=null;this.subscribers.clear();this.status?.remove();}
 }
 function writerV91HomeSoundscape(view,parent){
- if(view.plugin.app.isMobile)return;
- const player=view.plugin.writerV91Sound;if(!player)return;
+ // All home widgets exist independent of playback and platform. In particular,
+ // mobile retains the same configurable/reorderable card instead of omitting it.
  const card=view.card(parent,'soundscape','Soundscapes · rádio','Soundscapes · radio');
  card.addClass('writer-v91-sound-widget');
+ if(view.plugin.app.isMobile){
+  card.createEl('p',{cls:'writer-v8-home-muted writer-v91-sound-unavailable',
+   text:writerUi('A reprodução do Soundscapes não está disponível no celular devido às limitações de áudio e Webview do Obsidian mobile.',
+    'Soundscapes playback is unavailable on mobile due to Obsidian mobile audio and Webview limitations.')});
+  return card;
+ }
+ const player=view.plugin.writerV91Sound;
+ if(!player){
+  card.createEl('p',{cls:'writer-v8-home-muted writer-v91-sound-unavailable',
+   text:writerUi('O player Soundscapes não está disponível nesta sessão.','Soundscapes player is unavailable in this session.')});
+  return card;
+ }
  const preview=card.createDiv({cls:'writer-v91-sound-preview'});
  const thumbnail=preview.createEl('img',{attr:{alt:'',loading:'lazy'}});
  const description=preview.createDiv();
@@ -461,7 +482,11 @@ function writerV91HomeSoundscape(view,parent){
   if(!card.isConnected)return;
   select.value=player.cfg.station;
   const local=player.cfg.station==='my-music',active=local?player.playing:player.webOpen;
-  toggle.empty();require('obsidian').setIcon(toggle,local?(active?'pause':'play'):(active?'square':'play'));
+  const icon=local?(active?'pause':'play'):(active?'square':'play');
+  if(toggle.dataset.soundIcon!==icon){
+   require('obsidian').setIcon(toggle,icon);
+   toggle.dataset.soundIcon=icon;
+  }
   mini.disabled=local||!active;
   toggle.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
@@ -472,7 +497,10 @@ function writerV91HomeSoundscape(view,parent){
   detail.textContent=local?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('YouTube no mini player integrado','YouTube in integrated mini player');
   const id=player.videoId;
   thumbnail.style.display=id?'':'none';
-  if(id)thumbnail.src='https://i.ytimg.com/vi/'+id+'/mqdefault.jpg';
+  if(id&&thumbnail.dataset.soundVideo!==id){
+   thumbnail.dataset.soundVideo=id;
+   thumbnail.src='https://i.ytimg.com/vi/'+id+'/mqdefault.jpg';
+  }
   card.classList.toggle('is-playing',active);
  };
  select.addEventListener('change',()=>void player.changeStation(select.value));
@@ -481,8 +509,13 @@ function writerV91HomeSoundscape(view,parent){
  forward.addEventListener('click',()=>player.next());
  mini.addEventListener('click',()=>player.showMiniPlayer());
  slider.addEventListener('input',()=>void player.setVolume(slider.value));
- player.subscribe(card,update);
- if(player.cfg.station==='my-music')card.createEl('button',{text:writerUi('Abrir biblioteca','Open library'),cls:'writer-v91-library-link'}).addEventListener('click',()=>player.libraryModal());
+ const library=card.createEl('button',{text:writerUi('Abrir biblioteca','Open library'),cls:'writer-v91-library-link'});
+ library.addEventListener('click',()=>player.libraryModal());
+ player.subscribe(card,()=>{
+  update();
+  library.style.display=player.cfg.station==='my-music'?'':'none';
+ });
+ return card;
 }
 function writerV91SoundPlaylistEditor(plugin,initial,done){
  const modal=new Modal(plugin.app);

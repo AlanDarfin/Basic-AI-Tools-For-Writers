@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.2.12 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.13 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -78,14 +78,14 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 
 ### Áudio e acessibilidade
 
-- **Soundscapes (PC):** rádios e playlists do YouTube agora usam um **mini player flutuante dentro do Obsidian**, sem abrir abas. É possível recolher sem interromper a rádio ou usar **Parar** para descarregá-la. O mini player tenta utilizar Webview do Chromium e, quando indisponível, recorre a um iframe visível do YouTube. O volume das rádios agora pode ser ajustado pelo slider da Homepage, da barra de status ou do próprio mini player, assim como o áudio local. A configuração é reaplicada ao carregar o vídeo ou trocar de estação. Algumas transmissões podem bloquear incorporação (erro 153). **Minha Música** continua usando o player local, com controles próprios.
+- **Soundscapes (PC):** rádios e playlists do YouTube agora **começam a tocar em segundo plano** ao clicar em Play, sem abrir popup ou aba. O mini player de vídeo aparece **somente** ao clicar no botão de exibi-lo ou usar o comando correspondente. É possível recolher sem interromper a rádio ou usar **Parar** para descarregá-la. O widget da Homepage permanece visível durante Play e Stop; no celular ele fica na grade normalmente, mas apresenta um aviso de indisponibilidade por limitações do Obsidian mobile. O mini player tenta utilizar Webview do Chromium e, quando indisponível, recorre a um iframe visível do YouTube. O volume das rádios agora pode ser ajustado pelo slider da Homepage, da barra de status ou do próprio mini player, assim como o áudio local. A configuração é reaplicada ao carregar o vídeo ou trocar de estação. Algumas transmissões podem bloquear incorporação (erro 153). **Minha Música** continua usando o player local, com controles próprios.
 - **Image Captions:** legendas opcionais de imagens a partir do texto alternativo do Markdown, sem reescrever arquivos.
 - **Click Clack (PC):** sons de digitação com catálogo dos **13 pacotes originais** (Cherry MX, IBM, Olympia, Quill e outros), disponíveis para download individual ou em lote nas configurações. Pacotes instalados funcionam offline e nenhum áudio é baixado automaticamente.
 - **Leitura em voz alta (TTS):** vozes do sistema, quando disponíveis, ou vozes online com autorização, com idioma, velocidade, tom e seleção de voz. A leitura online envia texto ao serviço escolhido apenas quando ativada.
 - **Teclado e toque:** visualizações com botões, menus e alternativas acessíveis ao arrastar e soltar.
 
 
-**Overview de pastas (9.2.12):** itens com apenas o ícone e o nome, seis visualizações (cartões, lista aninhada, compacto, grade de ícones, tabela e quadro), ordenação por nome, data, tamanho ou tipo e busca. No Android, a seta expande/recolhe subpastas e o nome abre a pasta. Resumos opcionais ignoram metadados técnicos de Folder Notes.
+**Overview de pastas (9.2.13):** itens com apenas o ícone e o nome, seis visualizações (cartões, lista aninhada, compacto, grade de ícones, tabela e quadro), ordenação por nome, data, tamanho ou tipo e busca. No Android, a seta expande/recolhe subpastas e o nome abre a pasta. Resumos opcionais ignoram metadados técnicos de Folder Notes.
 
 **Exemplos completos de todos os blocos Markdown:** [Guia em português](BLOCKS.pt-BR.md) · [English block guide](BLOCKS.en.md).
 

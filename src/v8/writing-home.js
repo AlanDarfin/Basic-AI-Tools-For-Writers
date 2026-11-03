@@ -125,27 +125,36 @@ class WriterV8HomeView extends ItemView{
   require('obsidian').setIcon?.(add.createSpan({cls:'writer-v903-button-icon'}),'plus');
   add.createSpan({text:writerUi('Adicionar widgets','Add widgets')});
   add.addEventListener('click',()=>this.manageWidgets());
-  const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'});
+  const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v924-masonry'});
+  const columns=[grid.createDiv({cls:'writer-v924-column'}),grid.createDiv({cls:'writer-v924-column'})];
+  const heights=[0,0];
+  // Approximate content heights let small cards share a column beside taller ones.
+  const weights={calendar:4.6,soundscape:1.5,continue:1.4,recent:3.1,favorites:2.8,quick:3.3,stats:1.15,activity:1.8,random:1.5,tags:2.3,goal:1.4,gallery:2.5,quotes:1.5,today:1.7};
   const cards={
-   calendar:()=>this.renderCalendarWidget(grid),
-   soundscape:()=>writerV91HomeSoundscape(this,grid),
-   continue:()=>this.renderContinue(grid),
-   recent:()=>this.renderFiles(grid,'recent'),
-   favorites:()=>this.renderFiles(grid,'favorites'),
-   quick:()=>this.renderQuick(grid),
-   stats:()=>this.renderStats(grid),
-   activity:()=>this.renderActivity(grid),
-   random:()=>this.renderRandom(grid),
-   tags:()=>this.renderTags(grid),
-   goal:()=>this.renderGoal(grid),
-   gallery:()=>this.renderGallery(grid),
-   quotes:()=>this.renderQuotes(grid),
-   today:()=>this.renderToday(grid)
+   calendar:p=>this.renderCalendarWidget(p),
+   soundscape:p=>writerV91HomeSoundscape(this,p),
+   continue:p=>this.renderContinue(p),
+   recent:p=>this.renderFiles(p,'recent'),
+   favorites:p=>this.renderFiles(p,'favorites'),
+   quick:p=>this.renderQuick(p),
+   stats:p=>this.renderStats(p),
+   activity:p=>this.renderActivity(p),
+   random:p=>this.renderRandom(p),
+   tags:p=>this.renderTags(p),
+   goal:p=>this.renderGoal(p),
+   gallery:p=>this.renderGallery(p),
+   quotes:p=>this.renderQuotes(p),
+   today:p=>this.renderToday(p)
   };
   for(const key of cfg.homeOrder){
-   if(WRITER_V8_HOME_SECTIONS.includes(key)&&!cfg.homeHidden.includes(key))cards[key]?.();
+   if(!WRITER_V8_HOME_SECTIONS.includes(key)||cfg.homeHidden.includes(key))continue;
+   const i=heights[0]<=heights[1]?0:1;
+   cards[key]?.(columns[i]);
+   heights[i]+=weights[key]||2;
   }
-  if(!grid.children.length){
+  this.installWidgetDragging(grid);
+  if(!columns[1].children.length)columns[1].remove();
+  if(!grid.querySelector('[data-section]')){
    const empty=grid.createDiv({cls:'writer-v903-widgets-empty'});
    empty.createEl('p',{text:writerUi('Sua homepage está vazia. Adicione widgets para começar.','Your dashboard is empty. Add some widgets to get started.')});
    const restore=empty.createEl('button',{text:writerUi('Adicionar widgets','Add widgets')});
@@ -171,17 +180,54 @@ class WriterV8HomeView extends ItemView{
  }
  widgetControls(parent,key){
   const actions=parent.createDiv({cls:'writer-v8-home-card-order writer-v903-widget-controls'});
-  const visible=this.plugin.settings.v8Finish.homeOrder.filter(id=>!this.plugin.settings.v8Finish.homeHidden.includes(id));
-  for(const [direction,icon,pt,en] of [[-1,'arrow-up','Mover para cima','Move earlier'],[1,'arrow-down','Mover para baixo','Move later']]){
-   const button=actions.createEl('button',{attr:{type:'button',title:writerUi(pt,en),'aria-label':writerUi(pt,en)}});
-   button.disabled=visible.indexOf(key)+direction<0||visible.indexOf(key)+direction>=visible.length;
-   require('obsidian').setIcon?.(button,icon);
-   button.addEventListener('click',()=>this.moveWidget(key,direction));
-  }
-  const remove=actions.createEl('button',{cls:'writer-v903-widget-remove',attr:{type:'button',title:writerUi('Remover widget','Remove widget'),'aria-label':writerUi('Remover widget: ','Remove widget: ')+writerUi(WRITER_V8_HOME_CATALOG[key][1],WRITER_V8_HOME_CATALOG[key][2])}});
-  require('obsidian').setIcon?.(remove,'x');
-  remove.addEventListener('click',()=>this.setWidgetVisible(key,false));
+  const handle=actions.createEl('button',{cls:'writer-v924-drag-handle',attr:{type:'button',draggable:'true',title:writerUi('Arraste para reorganizar','Drag to rearrange'),'aria-label':writerUi('Arraste para reorganizar','Drag to rearrange')}});
+  require('obsidian').setIcon?.(handle,'grip-vertical');
+  const menu=actions.createEl('button',{cls:'writer-v924-widget-menu',attr:{type:'button',title:writerUi('Opções do widget','Widget options'),'aria-label':writerUi('Opções do widget','Widget options')}});
+  require('obsidian').setIcon?.(menu,'ellipsis');
+  menu.addEventListener('click',event=>{
+   const popup=new (require('obsidian').Menu)();
+   for(const [direction,icon,pt,en] of [[-1,'arrow-up','Mover para cima','Move earlier'],[1,'arrow-down','Mover para baixo','Move later']]){
+    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(icon).onClick(()=>this.moveWidget(key,direction)));
+   }
+   popup.addSeparator();
+   popup.addItem(item=>item.setTitle(writerUi('Remover widget','Remove widget')).setIcon('x').onClick(()=>this.setWidgetVisible(key,false)));
+   popup.showAtMouseEvent(event);
+  });
   return actions;
+ }
+ installWidgetDragging(grid){
+  const cards=[...grid.querySelectorAll('[data-section]')];
+  let dragged=null;
+  const clear=()=>cards.forEach(card=>card.classList.remove('writer-v924-drop-before','writer-v924-drop-after','writer-v924-dragging'));
+  for(const card of cards){
+   const key=card.getAttribute('data-section');
+   const grip=card.querySelector('.writer-v924-drag-handle');
+   if(!grip)continue;
+   grip.addEventListener('dragstart',event=>{
+    dragged=key;card.classList.add('writer-v924-dragging');
+    if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',key);}
+   });
+   grip.addEventListener('dragend',()=>{dragged=null;clear();});
+   card.addEventListener('dragover',event=>{
+    if(!dragged||dragged===key)return;
+    event.preventDefault();
+    const after=event.clientY>card.getBoundingClientRect().top+card.getBoundingClientRect().height/2;
+    clear();card.classList.add(after?'writer-v924-drop-after':'writer-v924-drop-before');
+    if(event.dataTransfer)event.dataTransfer.dropEffect='move';
+   });
+   card.addEventListener('drop',event=>{
+    if(!dragged||dragged===key)return;
+    event.preventDefault();
+    const after=event.clientY>card.getBoundingClientRect().top+card.getBoundingClientRect().height/2;
+    const order=this.plugin.settings.v8Finish.homeOrder;
+    const old=order.indexOf(dragged);
+    if(old<0)return;
+    order.splice(old,1);
+    const target=order.indexOf(key);
+    order.splice(target+(after?1:0),0,dragged);
+    dragged=null;clear();this.saveSoon();this.render();
+   });
+  }
  }
  manageWidgets(){
   const view=this,plugin=this.plugin,ModalClass=require('obsidian').Modal;
@@ -190,7 +236,7 @@ class WriterV8HomeView extends ItemView{
    modal.setTitle(writerUi('Widgets da homepage','Homepage widgets'));
    const root=modal.contentEl;
    root.empty();root.addClass('writer-v903-widget-gallery');
-   root.createEl('p',{cls:'setting-item-description',text:writerUi('Ative ou oculte painéis. Os que estiverem ativos podem ser reorganizados pelos botões de seta.','Show or hide panels. Reorder visible widgets with their arrow controls.')});
+   root.createEl('p',{cls:'setting-item-description',text:writerUi('Ative ou oculte painéis. Arraste pela alça no cabeçalho para reorganizar; use o menu para mover sem arrastar.','Show or hide panels. Drag the header handle to reorder, or use the menu for keyboard-friendly movement.')});
    for(const key of WRITER_V8_HOME_SECTIONS){
     const meta=WRITER_V8_HOME_CATALOG[key],item=root.createDiv({cls:'writer-v903-gallery-item'});
     const glyph=item.createSpan({cls:'writer-v903-gallery-icon'});

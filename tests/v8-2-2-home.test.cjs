@@ -56,7 +56,7 @@ test('custom title precedes full-width search and balanced actions',()=>{
  const top=home.indexOf('this.renderSearch(top)');
  const hero=home.indexOf("const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'})");
  const buttons=home.indexOf("const commands=this.contentEl.createDiv({cls:'writer-v8-home-quick-actions'");
- const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'})");
+ const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'})");
  const clock=home.indexOf('writerV8HomeRenderCalendar(this,schedule)');
  assert.ok(hero>=0&&top>hero&&buttons>top&&grid>buttons&&clock>grid);
  assert.match(home,/if\(key==='search'\)/);

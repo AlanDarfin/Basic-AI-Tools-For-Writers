@@ -3884,6 +3884,7 @@ const WRITER_MODULES=[
  ['study','Estudos e revisão espaçada','Study and spaced repetition','Baralhos e cartões locais com revisão programada.','Local decks and scheduled flashcards.'],
  ['smartSpaces','Spaces locais','Local Spaces','Coleções virtuais por pasta, tag e propriedades com listas, quadros e tabelas.','Virtual collections from folders, tags and properties with list, board and table views.'],
  ['formatToolbar','Barra de formatação','Formatting toolbar','Ações de Markdown no editor; desligada por padrão no celular.','Markdown actions in editor; off by default on mobile.'],
+ ['soundscapes','Soundscapes e rádio','Soundscapes & radio','Rádio e música local com controle inferior e widget na homepage (PC).','Radio and local music with status bar controls and a homepage widget (desktop).'],
  ['nativeExplorer','Explorador nativo avançado','Enhanced native explorer','Ícones, cores e visões de pastas sem substituir o painel padrão.','Icons, colors and folder views without replacing the original panel.'],
  ['writingHome','Página inicial de escrita','Writing homepage','Busca, favoritos, rascunhos e projetos.','Search, favorites, drafts and projects.'],
  ['socialBlocks','Posts e respostas','Posts and threaded replies','Posts fictícios em Markdown.','Local fictional social threads.'],
@@ -9636,7 +9637,7 @@ function writerV8RegisterMediaGallery(plugin){
 
 // v3 module: src/v8/finish-blocks.js
 /* v8.2: reader-only captions and narrative chats. Original implementation, no dependency on upstream plugins. */
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'],homeHidden:['activity','random','tags','goal','gallery','quotes','today'],homeWordGoal:500,homeQuotes:''};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'],homeHidden:['activity','random','tags','goal','gallery','quotes','today'],homeWordGoal:500,homeQuotes:''};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -10548,7 +10549,7 @@ function writerV83StudySettings(plugin,panel){
 // v3 module: src/v8/writing-home.js
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
@@ -10573,6 +10574,7 @@ function writerV8HomePick(items,previous=''){
 }
 const WRITER_V8_HOME_CATALOG={
  calendar:['calendar-days','Relógio e calendário','Clock and calendar','Mês atual e acesso à agenda','Current month and calendar'],
+ soundscape:['headphones','Rádio de escrita','Writing radio','Rádios e música local no computador','Desktop radio and local music'],
  continue:['book-open','Continuar escrevendo','Continue writing','Retome seu projeto','Resume your project'],
  recent:['history','Notas recentes','Recent notes','Últimas notas editadas','Recently edited notes'],
  favorites:['star','Favoritos','Favorites','Notas fixadas por você','Your starred notes'],
@@ -10674,6 +10676,7 @@ class WriterV8HomeView extends ItemView{
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid'});
   const cards={
    calendar:()=>this.renderCalendarWidget(grid),
+   soundscape:()=>writerV91HomeSoundscape(this,grid),
    continue:()=>this.renderContinue(grid),
    recent:()=>this.renderFiles(grid,'recent'),
    favorites:()=>this.renderFiles(grid,'favorites'),
@@ -13336,8 +13339,10 @@ function writerV91FlexSortGroup(plugin,container,patterns){
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&pinned.has(path)));
   if(title){
-   const prior=title.querySelector(':scope > .writer-v91-flex-indicator');prior?.remove();
-   if(cfg.enabled&&pinned.has(path)){
+   const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
+   const wanted=cfg.enabled&&pinned.has(path);
+   if(prior&&!wanted)prior.remove();
+   if(wanted&&!prior){
     const icon=title.ownerDocument.createElement('span');icon.className='writer-v91-flex-indicator';
     icon.setAttribute('aria-hidden','true');require('obsidian').setIcon(icon,'pin');title.appendChild(icon);
    }
@@ -13391,7 +13396,9 @@ function writerV91FlexReorder(plugin,path,target,direction){
  const order=[...new Set([...record.order.filter(n=>original.includes(n)),...original])];
  const from=order.indexOf(file.name),to=order.indexOf(other.name);
  if(from<0||to<0)return;
- order.splice(from,1);order.splice(to+(direction==='after'&&from>to?1:direction==='after'&&from<to?0:0),0,file.name);
+ order.splice(from,1);
+ const targetIndex=order.indexOf(other.name);
+ order.splice(targetIndex+(direction==='after'?1:0),0,file.name);
  cfg.folders[dir]={sort:'custom',order};
  void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
@@ -13451,7 +13458,7 @@ function writerV91FlexRegister(plugin){
      const name=file.name,index=list.indexOf(name),other=list[index+(direction==='before'?-1:1)];
      if(!other)return;
      const target=file.parent.children?.find(f=>f.name===other);
-     if(target)writerV91FlexReorder(plugin,file.path,target.path,'before');
+     if(target)writerV91FlexReorder(plugin,file.path,target.path,direction);
     }));
    }
   }

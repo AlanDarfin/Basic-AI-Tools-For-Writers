@@ -724,28 +724,19 @@ function writerV8FinishSettings(plugin,panel){
     cfg.homeTitle=String(value||'').replace(/[\\r\\n]/g,' ').slice(0,80);
     await plugin.saveSettings();refreshHome();
    }));
- new Setting(panel).setName(writerUi('Ícone da homepage','Homepage icon'))
-  .addDropdown(drop=>{
-   const labels={
-    'house':'Casa','book-open':'Livro aberto','feather':'Pena','pen-line':'Escrita',
-    'notebook-pen':'Caderno','library':'Biblioteca','sparkles':'Estrelas',
-    'sun':'Sol','moon-star':'Lua','flower-2':'Flor','rocket':'Foguete','pencil':'Lápis',
-    'book':'Livro','bookmark':'Marcador','star':'Estrela','heart':'Coração','lightbulb':'Ideia',
-    'brain':'Cérebro','graduation-cap':'Estudos','file-text':'Arquivo','folder':'Pasta','archive':'Arquivo morto',
-    'palette':'Paleta','wand-sparkles':'Varinha','calendar-days':'Calendário','clock':'Relógio',
-    'globe':'Globo','leaf':'Folha','music':'Música','headphones':'Fone','flag':'Bandeira','compass':'Bússola',
-    'map':'Mapa','gem':'Gema','trophy':'Troféu','shield':'Escudo','user':'Usuário','users':'Pessoas',
-    'image':'Imagem','images':'Imagens','flame':'Chama','cloud':'Nuvem','settings':'Configurações'
-   };
-   for(const icon of WRITER_V8_HOME_ICONS)drop.addOption(icon,labels[icon]||icon);
-   drop.setValue(writerV8HomeIconName(cfg.homeIcon));
-   drop.onChange(async value=>{cfg.homeIcon=writerV8HomeIconName(value);await plugin.saveSettings();refreshHome();});
-  });
+ writerV922IconSetting(plugin,panel,{
+  pt:'Ícone da homepage',en:'Homepage icon',
+  value:writerV8HomeIconName(cfg.homeIcon),color:cfg.homeIconColor,defaultIcon:'book-open',
+  description:writerUi('Pesquise todos os ícones Lucide, favorite opções e personalize a cor.',
+   'Search all Lucide icons, pin favorite choices and customize the color.'),
+  onApply:async(icon,color)=>{
+   cfg.homeIcon=writerV8HomeIconName(icon);
+   cfg.homeIconColor=color;
+   await plugin.saveSettings();refreshHome();
+  }
+ });
  writerV9ColorSetting(panel,'Cor do título da homepage','Homepage title color',cfg.homeTitleColor,value=>{
   cfg.homeTitleColor=value;void plugin.saveSettings().then(refreshHome);
- });
- writerV9ColorSetting(panel,'Cor do ícone da homepage','Homepage icon color',cfg.homeIconColor,value=>{
-  cfg.homeIconColor=value;void plugin.saveSettings().then(refreshHome);
  });
  new Setting(panel).setName(writerUi('Imagem do ícone (cofre ou HTTPS)','Icon image (vault or HTTPS)'))
   .setDesc(writerUi('Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.','Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host.'))

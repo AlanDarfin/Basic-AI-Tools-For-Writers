@@ -14038,6 +14038,7 @@ class DictionarySettings extends PluginSettingTab{
     ['snapshots',msg('Versões','Versions')],
     ['projectTasks',msg('Tarefas','Tasks')],
     ['bookNavigation',msg('Navegação Longform','Longform navigation')],
+    ['virtualContent',msg('Conteúdo virtual','Virtual Content')],
     ['abbreviations',msg('Abreviações','Abbreviations')],
     ['anotherName',msg('Outro nome','Another name')],
     ['viewMode',msg('Modo de visualização','View mode')],
@@ -14055,7 +14056,7 @@ class DictionarySettings extends PluginSettingTab{
   ];
   const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
    complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
-   snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
+   snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',virtualContent:'virtualContent',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
    toc:'templates',tts:'tts',review:'review',reviewAI:'review',
    homepage:'writingHome',soundscapes:'soundscapes',clickClack:'typewriter',v9Toolbar:'formatToolbar',v9Explorer:'nativeExplorer',v9Spaces:'smartSpaces',v9Calendar:'calendar'};
   const enabledSections=sections.filter(([id])=>id==='v6Markdown'
@@ -14069,7 +14070,7 @@ class DictionarySettings extends PluginSettingTab{
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
    ['customize',msg('Personalização','Customization'),['homepage','soundscapes','v9Toolbar','v9Explorer','v9Spaces','v9Calendar','v9Lock']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
-   ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','v7Worldbuilding']],
+   ['longform',msg('Longform','Longform'),['projects','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
    ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
    ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
   ];
@@ -14082,7 +14083,7 @@ class DictionarySettings extends PluginSettingTab{
    writingProfiles:'scan-text',integrationsV4:'wrench',keyshots:'keyboard',
    extendedSyntax:'file-code',pandocSyntax:'file-text',v6Markdown:'code-xml',
    smartInsert:'wand-sparkles',typing:'type',clickClack:'keyboard',cursor:'mouse-pointer-2',snapshots:'history',
-   projectTasks:'list-check',bookNavigation:'book-open-check',abbreviations:'text-cursor-input',
+   projectTasks:'list-check',bookNavigation:'book-open-check',virtualContent:'panels-top-left',abbreviations:'text-cursor-input',
    anotherName:'tag',viewMode:'eye',templates:'files',unicode:'omega',toc:'list-tree',
    tts:'volume-2',v6Reading:'clock',v6Linter:'spell-check',review:'check-check',
    reviewAI:'scan-eye',providers:'key-round',models:'cpu',prompts:'scroll-text'
@@ -14216,6 +14217,8 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerV6Linter.renderSettings(panel);
     }else if(id==='bookNavigation'){
       this.plugin.writerBookNavigation.renderSettings(panel);
+    }else if(id==='virtualContent'){
+      writerV912VirtualSettings(this.plugin,panel);
     }else if(id==='extendedSyntax'){
       this.plugin.writerExtendedSyntax.renderSettings(panel);
       panel.createEl('hr');
@@ -14432,6 +14435,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV91SoundMerge(this.settings);
     writerV91ClickMerge(this.settings);
     writerV91FlexMerge(this.settings);
+    writerV912VirtualMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -14497,6 +14501,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV91RegisterSound(this);
     writerV91RegisterClick(this);
     writerV91FlexRegister(this);
+    writerV912VirtualRegister(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')
@@ -15057,7 +15062,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   rememberHotReloadSidebars(){
     const workspace=this.app.workspace;
-    const types=[PROJECT_VIEW,VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW];
+    const types=[PROJECT_VIEW,VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,WRITER_V912_VIRTUAL_VIEW];
     const leaves=[];
     for(const type of types)for(const leaf of workspace.getLeavesOfType(type)||[]){
       const element=leaf.containerEl;
@@ -15088,7 +15093,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(!snapshot||!Array.isArray(snapshot.leaves)||!Number.isFinite(snapshot.timestamp)||
       Date.now()-snapshot.timestamp>120000||snapshot.timestamp>Date.now())return;
     const workspace=this.app.workspace;
-    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW]);
+    const allowed=new Set([VIEW,PROJECT_VIEW,WRITER_TOOLS_VIEW,WRITER_V8_HOME_VIEW,WRITER_V83_CAL_VIEW,WRITER_V83_STUDY_VIEW,WRITER_V9_SPACE_VIEW,WRITER_V912_VIRTUAL_VIEW]);
     const createdCounts=new Map(),visibleBySide=new Map(),activeTabs=[];
     for(const entry of snapshot.leaves.slice(0,30)){
       if(!allowed.has(entry?.type))continue;

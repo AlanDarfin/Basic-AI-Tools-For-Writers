@@ -135,7 +135,7 @@ function writerV92RenderWidget(plugin,source,el,ctx){
   for(const [text,change] of [['−',-delta],['+',delta],['↺',null]]){
    host.createEl('button',{text,attr:{type:'button'}}).addEventListener('click',()=>{
     values[id]=change===null?writerV92Clamp(options.startvalue,-1e8,1e8,0):
-     writerV92Clamp((values[id]??Number(options.startvalue)||0)+change,-1e8,1e8,0);
+     writerV92Clamp((values[id]??(Number(options.startvalue)||0))+change,-1e8,1e8,0);
     void plugin.saveSettings();draw();
    });
   }

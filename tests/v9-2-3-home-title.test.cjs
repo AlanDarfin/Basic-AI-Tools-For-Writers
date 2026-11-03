@@ -7,7 +7,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const utils=read('src/v8/home-utilities.js');
 const finish=read('src/v8/finish-blocks.js');
 const home=read('src/v8/writing-home.js');
-const clean=vm.runInNewContext(utils+'\nwriterV8HomeTitleClean',{});
+const clean=vm.runInNewContext(utils+'\n'+finish+'\nwriterV8HomeTitleClean',{});
 const merge=vm.runInNewContext(utils+'\n'+finish+'\nwriterV8FinishMerge',{});
 
 test('9.2.3 matches manifest, package and versions records',()=>{

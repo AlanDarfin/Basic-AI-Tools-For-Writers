@@ -7,10 +7,15 @@ function writerV92ExplorerMerge(settings){
  const old=settings.v92Explorer&&typeof settings.v92Explorer==='object'?settings.v92Explorer:{};
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
+  previewVisible:true,showImage:true,previewLines:2,previewImageSize:62,
   folderDescriptionKey:'description',noteDescriptionKey:'description',
   ...old
  };
  cfg.favoritesEnabled=cfg.favoritesEnabled!==false;
+ cfg.previewVisible=cfg.previewVisible!==false;
+ cfg.showImage=cfg.showImage!==false;
+ cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||2)));
+ cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
  cfg.favoriteIcon=/^[a-z][a-z0-9-]{0,38}$/.test(cfg.favoriteIcon)?cfg.favoriteIcon:'star';
  cfg.previewMode=['off','folder','all'].includes(cfg.previewMode)?cfg.previewMode:'folder';
  cfg.previewMax=Math.max(40,Math.min(280,Math.round(Number(cfg.previewMax)||135)));
@@ -57,48 +62,226 @@ function writerV92PreviewValue(plugin,file){
  const value=Array.isArray(raw)?raw.join(', '):typeof raw==='string'?raw:'';
  return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,cfg.previewMax);
 }
+
+/* Preview images come from local vault files only; external URLs are never requested. */
+function writerV921PreviewSource(plugin,item){
+ if(item instanceof TFolder)return writerV92FolderNote(plugin.app,item);
+ return item instanceof TFile&&item.extension==='md'?item:null;
+}
+function writerV921ResolveImage(plugin,source,raw){
+ let link=String(raw||'').trim();
+ if(!link)return null;
+ link=link.replace(/^!\[\[/,'').replace(/^\[\[/,'').replace(/\]\]$/,'');
+ const md=link.match(/^!?\[[^\]]*\]\(([^)]+)\)$/);
+ if(md)link=md[1];
+ link=link.split('|')[0].split('#')[0].trim().replace(/^<|>$/g,'');
+ if(/^https?:\/\//i.test(link)||/^[a-z][\w+.-]*:/i.test(link)||link.startsWith('//'))return null;
+ try{link=decodeURIComponent(link);}catch(_){}
+ if(!link||link.includes('\0')||link.length>500)return null;
+ const linked=plugin.app.metadataCache?.getFirstLinkpathDest?.(link,source.path);
+ const direct=plugin.app.vault.getAbstractFileByPath(link.replace(/^\//,''));
+ const relative=plugin.app.vault.getAbstractFileByPath((source.parent?.path?source.parent.path+'/':'')+link);
+ const file=[linked,direct,relative].find(x=>x instanceof TFile&&/^(png|jpe?g|webp|gif|avif|bmp)$/i.test(x.extension||''));
+ return file||null;
+}
+function writerV921PreviewBody(raw,max){
+ const content=String(raw||'').replace(/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/,'')
+  .replace(/^\s*~~~[\s\S]*?^\s*~~~\s*$/gm,'')
+  .replace(/^\s*\x60{3}[\s\S]*?^\s*\x60{3}\s*$/gm,'');
+ const lines=content.split(/\r?\n/);
+ const relevant=[];
+ for(const line of lines){
+  let clean=line.trim();
+  if(!clean&&relevant.length)break;
+  if(!clean||/^(?:#{1,6}\s|!?\[\[|!\[|[-*+]\s+\[[x ]\]\s*$|---+$)/.test(clean))continue;
+  clean=clean.replace(/!\[\[[^\]]+\]\]/g,'').replace(/!\[[^\]]*\]\([^)]*\)/g,'')
+   .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(_m,t,alias)=>alias||t)
+   .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+   .replace(/^[>\-*+\d.\s]+/,'').replace(/[*_\x60~]/g,'').trim();
+  if(clean){relevant.push(clean);if(relevant.join(' ').length>max+100)break;}
+ }
+ return relevant.join(' ').replace(/\s+/g,' ').trim().slice(0,max);
+}
+function writerV921PreviewImage(plugin,source,content){
+ const front=plugin.app.metadataCache?.getFileCache?.(source)?.frontmatter||{};
+ for(const key of ['cover','image','thumbnail','banner']){
+  const raw=Array.isArray(front[key])?front[key][0]:front[key];
+  const file=writerV921ResolveImage(plugin,source,raw);
+  if(file)return file;
+ }
+ const embeds=plugin.app.metadataCache?.getFileCache?.(source)?.embeds||[];
+ for(const embed of embeds.slice(0,32)){
+  const file=writerV921ResolveImage(plugin,source,embed.link);
+  if(file)return file;
+ }
+ const rx=/!\[\[([^\]]+)\]\]|!\[[^\]]*\]\(([^)]+)\)/g;
+ let match,count=0;
+ while((match=rx.exec(String(content||'')))&&count++<48){
+  const file=writerV921ResolveImage(plugin,source,match[1]||match[2]);
+  if(file)return file;
+ }
+ return null;
+}
+
 function writerV92ExplorerRegister(plugin){
- let timer=null;
- const refresh=()=>{
+ let timer=null,reading=0;
+ const cached=new Map(),queued=new Set(),queue=[];
+ const active=()=>writerModuleOn(plugin,'nativeExplorer')&&plugin.settings.v9Explorer?.enabled!==false;
+ const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,120);};
+ const requestRead=source=>{
+  if(!source||typeof plugin.app.vault.cachedRead!=='function'||cached.has(source.path)||queued.has(source.path))return;
+  queued.add(source.path);queue.push(source);pump();
+ };
+ const pump=()=>{
+  while(reading<5&&queue.length){
+   const source=queue.shift();
+   if(!source||!queued.has(source.path))continue;
+   ++reading;
+   Promise.resolve().then(()=>plugin.app.vault.cachedRead(source)).then(text=>{
+    if(typeof text==='string'){
+     cached.set(source.path,{mtime:source.stat?.mtime||0,
+      content:text.slice(0,30000)});
+     if(cached.size>1200)cached.delete(cached.keys().next().value);
+    }
+   }).catch(error=>{cached.set(source.path,{mtime:source.stat?.mtime||0,content:''});console.warn('[Basic AI] File preview:',source.path,error);})
+    .finally(()=>{queued.delete(source.path);--reading;schedule();pump();});
+  }
+ };
+ const drawToggle=(host,enabled)=>{
+  const bar=host.querySelector('.nav-header > .nav-buttons-container')||
+    host.querySelector('.nav-buttons-container');
+  if(!bar)return;
+  let button=bar.querySelector('.writer-v921-preview-toggle');
+  if(!button){
+   button=host.ownerDocument.createElement('button');
+   button.className='clickable-icon nav-action-button writer-v921-preview-toggle';
+   button.type='button';
+   button.addEventListener('click',async event=>{
+    event.preventDefault();event.stopPropagation();
+    const cfg=plugin.settings.v92Explorer;
+    cfg.previewVisible=!cfg.previewVisible;
+    // Update instantly: never change the underlying preview mode.
+    refresh();await plugin.saveSettings();
+   });
+   bar.appendChild(button);
+  }
+  const visible=enabled&&plugin.settings.v92Explorer.previewVisible&&plugin.settings.v92Explorer.previewMode!=='off';
+  const title=writerUi(visible?'Ocultar prévias de notas e pastas':'Mostrar prévias de notas e pastas',
+   visible?'Hide note and folder previews':'Show note and folder previews');
+  button.title=title;button.setAttribute('aria-label',title);
+  button.setAttribute('aria-pressed',String(visible));
+  button.classList.toggle('is-active',visible);
+  button.replaceChildren();
+  require('obsidian').setIcon(button,visible?'captions':'captions-off');
+ };
+ const drawFavorite=(node,file,enabled)=>{
   const cfg=plugin.settings.v92Explorer;
-  const active=writerModuleOn(plugin,'nativeExplorer');
+  const canUse=enabled&&cfg.favoritesEnabled&&file instanceof TFile&&file.extension==='md';
+  let button=node.querySelector(':scope > .writer-v92-favorite');
+  if(!canUse){button?.remove();node.classList.remove('writer-v92-has-favorite','writer-v92-is-favorite');return;}
+  if(!button){
+   button=node.ownerDocument.createElement('button');
+   button.className='writer-v92-favorite';
+   button.type='button';
+   for(const name of ['pointerdown','mousedown'])button.addEventListener(name,event=>event.stopPropagation());
+   button.addEventListener('click',event=>{
+    event.preventDefault();event.stopPropagation();
+    void writerV92ToggleFavorite(plugin,button.dataset.path);
+   });
+   node.appendChild(button);
+  }
+  button.dataset.path=file.path;
+  const favorite=writerV92Favorite(plugin,file.path);
+  const label=writerUi(favorite?'Remover dos favoritos: ':'Adicionar aos favoritos: ',
+   favorite?'Remove favorite: ':'Add favorite: ')+file.basename;
+  button.setAttribute('aria-label',label);button.title=label;
+  button.setAttribute('aria-pressed',String(favorite));
+  if(button.dataset.icon!==cfg.favoriteIcon){
+   button.replaceChildren();require('obsidian').setIcon(button,cfg.favoriteIcon);
+   button.dataset.icon=cfg.favoriteIcon;
+  }
+  node.classList.add('writer-v92-has-favorite');
+  node.classList.toggle('writer-v92-is-favorite',favorite);
+ };
+ const drawPreview=(node,item,enabled)=>{
+  const cfg=plugin.settings.v92Explorer;
+  const show=enabled&&cfg.previewVisible&&cfg.previewMode!=='off';
+  const source=show?writerV921PreviewSource(plugin,item):null;
+  const folder=item instanceof TFolder;
+  const allowed=show&&source&&(folder||cfg.previewMode==='all');
+  const existing=node.querySelector(':scope > .writer-v92-preview-shell');
+  if(!allowed){
+   existing?.remove();
+   node.classList.remove('writer-v92-has-preview');
+   return;
+  }
+  const fromYaml=writerV92PreviewValue(plugin,item);
+  const read=cached.get(source.path);
+  const stable=read&&read.mtime===(source.stat?.mtime||0);
+  if(read&&!stable)cached.delete(source.path);
+  if((cfg.showImage||!fromYaml)&&!stable)requestRead(source);
+  const excerpt=stable&&cfg.previewMode==='all'&&!fromYaml?
+   writerV921PreviewBody(read.content,cfg.previewMax):'';
+  const description=fromYaml||excerpt;
+  const image=cfg.showImage?writerV921PreviewImage(plugin,source,stable?read.content:''):null;
+  const imagePath=image?.path||'';
+  if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
+  let shell=existing;
+  if(!shell){
+   shell=node.ownerDocument.createElement('span');
+   shell.className='writer-v92-preview-shell';
+   node.appendChild(shell);
+  }
+  shell.style.setProperty('--writer-v92-preview-lines',String(cfg.previewLines));
+  shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
+  shell.classList.toggle('has-image',Boolean(imagePath));
+  let label=shell.querySelector(':scope > .writer-v92-file-preview');
+  if(description){
+   if(!label){
+    label=node.ownerDocument.createElement('span');label.className='writer-v92-file-preview';
+    shell.appendChild(label);
+   }
+   if(label.textContent!==description)label.textContent=description;
+   label.title=description;
+  }else label?.remove();
+  let thumbnail=shell.querySelector(':scope > .writer-v92-preview-image');
+  if(imagePath){
+   if(!thumbnail){
+    thumbnail=node.ownerDocument.createElement('img');
+    thumbnail.className='writer-v92-preview-image';
+    thumbnail.alt='';
+    thumbnail.loading='lazy';
+    thumbnail.decoding='async';
+    shell.appendChild(thumbnail);
+   }
+   if(thumbnail.dataset.path!==imagePath){
+    thumbnail.dataset.path=imagePath;
+    thumbnail.src=plugin.app.vault.getResourcePath(image);
+   }
+  }else thumbnail?.remove();
+  node.classList.add('writer-v92-has-preview');
+ };
+ const refresh=()=>{
+  const enabled=active();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
-   const host=leaf.view?.containerEl;
-   if(!host)continue;
+   const host=leaf.view?.containerEl;if(!host)continue;
+   drawToggle(host,enabled);
    for(const node of Array.from(host.querySelectorAll('.nav-file-title, .nav-folder-title')).slice(0,6000)){
     const path=node.getAttribute('data-path')||node.closest('[data-path]')?.getAttribute('data-path');
     if(!path)continue;
-    const file=plugin.app.vault.getAbstractFileByPath(path);
-    if(!(file instanceof TFile||file instanceof TFolder))continue;
-    const fav=active&&cfg.favoritesEnabled&&file instanceof TFile&&writerV92Favorite(plugin,path);
-    const icon=node.querySelector(':scope > .writer-v92-favorite');
-    if(icon?.dataset.icon!==(fav?cfg.favoriteIcon:''))icon?.remove();
-    if(fav&&!node.querySelector(':scope > .writer-v92-favorite')){
-     const badge=node.ownerDocument.createElement('span');
-     badge.className='writer-v92-favorite';
-     badge.dataset.icon=cfg.favoriteIcon;
-     badge.setAttribute('aria-hidden','true');
-     require('obsidian').setIcon(badge,cfg.favoriteIcon);
-     node.insertBefore(badge,node.firstChild);
-    }
-    node.classList.toggle('writer-v92-is-favorite',!!fav);
-    const description=active?writerV92PreviewValue(plugin,file):'';
-    const existing=node.querySelector(':scope > .writer-v92-file-preview');
-    if(existing&&existing.textContent!==description)existing.remove();
-    if(description&&!node.querySelector(':scope > .writer-v92-file-preview')){
-     const span=node.ownerDocument.createElement('span');
-     span.className='writer-v92-file-preview';
-     span.textContent=description;span.title=description;
-     node.appendChild(span);
-    }
-    node.classList.toggle('writer-v92-has-preview',Boolean(description));
+    const item=plugin.app.vault.getAbstractFileByPath(path);
+    if(!(item instanceof TFile||item instanceof TFolder))continue;
+    drawFavorite(node,item,enabled);drawPreview(node,item,enabled);
    }
   }
  };
- const schedule=()=>{clearTimeout(timer);timer=setTimeout(refresh,120);};
  plugin.writerV92Explorer={refresh,schedule};
  plugin.addCommand?.({id:'v92-toggle-favorite',name:writerUi('Favoritos: alternar nota ativa','Favorites: toggle active note'),callback:()=>{
   const file=plugin.app.workspace.getActiveFile?.();if(file instanceof TFile)void writerV92ToggleFavorite(plugin,file.path);
+ }});
+ plugin.addCommand?.({id:'v921-toggle-previews',name:writerUi('Explorador: mostrar/ocultar prévias','Explorer: show/hide previews'),callback:async()=>{
+  const cfg=plugin.settings.v92Explorer;cfg.previewVisible=!cfg.previewVisible;
+  refresh();await plugin.saveSettings();
  }});
  plugin.registerEvent(plugin.app.workspace.on('file-menu',(menu,file)=>{
   if(!(file instanceof TFile)||!writerModuleOn(plugin,'nativeExplorer'))return;
@@ -108,19 +291,25 @@ function writerV92ExplorerRegister(plugin){
    .setIcon(plugin.settings.v92Explorer.favoriteIcon)
    .onClick(()=>void writerV92ToggleFavorite(plugin,file.path)));
  }));
- for(const name of ['layout-change','file-open'])plugin.registerEvent(plugin.app.workspace.on(name,schedule));
+ for(const name of ['layout-change','file-open'])plugin.registerEvent(plugin.app.workspace.on(name,()=>{
+  attach();schedule();
+ }));
  for(const name of ['rename','delete','create','modify'])plugin.registerEvent(plugin.app.vault.on(name,(file,old)=>{
   if(name==='rename'&&old){
    const list=plugin.settings.v8Finish.homeFavorites;
    const index=list.indexOf(old);if(index>=0){list[index]=file.path;void plugin.saveSettings();}
+   cached.delete(old);
   }
   if(name==='delete'){
    const list=plugin.settings.v8Finish.homeFavorites;
    const index=list.indexOf(file.path);if(index>=0){list.splice(index,1);void plugin.saveSettings();}
   }
+  if(file?.path)cached.delete(file.path);
   schedule();
  }));
- if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',schedule));
+ if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',file=>{
+  if(file?.path)cached.delete(file.path);schedule();
+ }));
  const observers=new Map();
  const attach=()=>{
   if(typeof MutationObserver==='undefined')return;
@@ -129,15 +318,27 @@ function writerV92ExplorerRegister(plugin){
   for(const root of roots){
    if(observers.has(root))continue;
    const observer=new MutationObserver(records=>{
-    if(records.some(record=>[...record.addedNodes].some(n=>n.nodeType===1&&!n.closest?.('.writer-v92-favorite, .writer-v92-file-preview')&&
-      !n.classList?.contains('writer-v92-favorite')&&!n.classList?.contains('writer-v92-file-preview'))))schedule();
+    if(records.some(record=>[...record.addedNodes].some(n=>n.nodeType===1&&
+      !n.closest?.('.writer-v92-favorite, .writer-v92-preview-shell, .writer-v921-preview-toggle')&&
+      !n.classList?.contains('writer-v92-favorite')&&!n.classList?.contains('writer-v92-preview-shell')&&
+      !n.classList?.contains('writer-v921-preview-toggle'))))schedule();
    });
    observer.observe(root,{childList:true,subtree:true});observers.set(root,observer);
   }
  };
- plugin.registerEvent(plugin.app.workspace.on('layout-change',attach));
  plugin.app.workspace.onLayoutReady?.(()=>{attach();schedule();});
- plugin.register?.(()=>{clearTimeout(timer);for(const observer of observers.values())observer.disconnect();observers.clear();plugin.writerV92Explorer=null;});
+ plugin.register?.(()=>{
+  clearTimeout(timer);queue.length=0;queued.clear();cached.clear();
+  for(const observer of observers.values())observer.disconnect();
+  observers.clear();
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   const host=leaf.view?.containerEl;if(!host)continue;
+   host.querySelectorAll('.writer-v92-favorite, .writer-v92-preview-shell, .writer-v921-preview-toggle').forEach(x=>x.remove());
+   host.querySelectorAll('.writer-v92-has-favorite,.writer-v92-is-favorite,.writer-v92-has-preview').forEach(x=>
+    x.classList.remove('writer-v92-has-favorite','writer-v92-is-favorite','writer-v92-has-preview'));
+  }
+  plugin.writerV92Explorer=null;
+ });
 }
 function writerV92ExplorerSettings(plugin,panel){
  const cfg=plugin.settings.v92Explorer;
@@ -145,7 +346,7 @@ function writerV92ExplorerSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Favoritos no explorador','Explorer favorites')).addToggle(t=>t.setValue(cfg.favoritesEnabled)
   .onChange(async v=>{cfg.favoritesEnabled=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
  new Setting(panel).setName(writerUi('Ícone de favorito (preenchido)','Favorite icon (filled)'))
-  .setDesc(writerUi('Escolha o ícone que aparece nas notas favoritas.','Choose the icon shown on favorite notes.'))
+  .setDesc(writerUi('Ícone à direita: contorno no hover, preenchido quando favoritado.','Right-aligned: outlined on hover, filled when favorited.'))
   .addDropdown(d=>{
    for(const icon of WRITER_V92_FAVORITE_ICONS)d.addOption(icon,icon);
    if(!WRITER_V92_FAVORITE_ICONS.includes(cfg.favoriteIcon))d.addOption(cfg.favoriteIcon,cfg.favoriteIcon);
@@ -167,6 +368,23 @@ function writerV92ExplorerSettings(plugin,panel){
   .addText(t=>t.setValue(cfg.noteDescriptionKey).onChange(async v=>{
    cfg.noteDescriptionKey=/^[\w-]{1,50}$/.test(v)?v:'description';
    await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Mostrar prévias agora','Show previews now'))
+  .addToggle(t=>t.setValue(cfg.previewVisible).onChange(async v=>{
+   cfg.previewVisible=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Miniatura da primeira imagem','Preview first image'))
+  .setDesc(writerUi('Usa capa, thumbnail ou primeira imagem local incorporada à nota.','Uses the local cover, thumbnail or first embedded image from the note.'))
+  .addToggle(t=>t.setValue(cfg.showImage).onChange(async v=>{
+   cfg.showImage=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Linhas da descrição','Description lines'))
+  .addSlider(t=>t.setLimits(1,4,1).setValue(cfg.previewLines).setDynamicTooltip().onChange(async v=>{
+   cfg.previewLines=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Tamanho da miniatura','Thumbnail size'))
+  .addSlider(t=>t.setLimits(40,96,4).setValue(cfg.previewImageSize).setDynamicTooltip().onChange(async v=>{
+   cfg.previewImageSize=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
  new Setting(panel).setName(writerUi('Limite da descrição','Preview length')).addSlider(s=>s.setLimits(40,280,10)
   .setValue(cfg.previewMax).setDynamicTooltip().onChange(async v=>{cfg.previewMax=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));

@@ -626,6 +626,7 @@ function writerV8HomeToggleFavorite(plugin,path){
  if(i>=0)list.splice(i,1);
  else list.unshift(path);
  plugin.settings.v8Finish.homeFavorites=list.slice(0,30);
+ plugin.writerV92Explorer?.schedule?.();
 }
 function writerV8RegisterHome(plugin){
  plugin.registerView?.(WRITER_V8_HOME_VIEW,leaf=>new WriterV8HomeView(leaf,plugin));

@@ -15,11 +15,11 @@ const plugin={settings:{v8Finish:{homeFavorites:['Novel/Chapter.md']}},app:{vaul
 const context={TFile,TFolder,Date,Set,Map,Number,String,Object,Array,Math,RegExp,console,writerUi:(a,b)=>b,
  writerModuleOn:()=>true,writerV7FolderNote:()=>folderNote,WRITER_V8_HOME_VIEW:'home',
  ItemView:class{},Setting:class{},MarkdownRenderer:{render:async()=>{}},require:()=>({setIcon:()=>{}})};
-const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92SessionMerge})',context);
-test('9.2.0 metadata, modules and CSS',()=>{
+const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV921PreviewSource,writerV921PreviewBody,writerV921ResolveImage,writerV921PreviewImage,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92SessionMerge})',context);
+test('9.2.x metadata, modules and CSS',()=>{
  const manifest=JSON.parse(read('manifest.json')),pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json')),versions=JSON.parse(read('versions.json'));
- assert.equal(manifest.version,'9.2.0');assert.equal(pkg.version,'9.2.0');assert.equal(lock.version,'9.2.0');
- assert.equal(versions['9.2.0'],'1.11.4');
+ assert.equal(manifest.version,'9.2.1');assert.equal(pkg.version,manifest.version);assert.equal(lock.version,manifest.version);
+ assert.equal(versions[manifest.version],'1.11.4');
  const main=read('main.js'),css=read('styles.css');
  for(const path of files)assert.ok(main.includes('// v3 module: '+path));
  for(const name of ['writerV92ExplorerRegister(this)','writerV92RegisterBlocks(this)','writerV92ResearchRegister(this)','writerV92SessionRegister(this)'])assert.ok(main.includes(name));
@@ -68,4 +68,35 @@ test('blocks do not execute arbitrary JS actions',()=>{
  assert.match(src,/processFrontMatter/);
  assert.doesNotMatch(src,/eval\(|new Function\(/);
  for(const type of ['columns','progressbar','widgets','meta-field'])assert.ok(src.includes("register('"+type+"'"));
+});
+
+test('9.2.1 Explorer has a right-aligned interactive favorite and bottom preview toggle',()=>{
+ const src=read('src/v9/explorer-favorites-preview.js'),css=read('src/styles/v9-2-suite.css');
+ assert.match(src,/writer-v921-preview-toggle/);
+ assert.match(src,/nav-header > \.nav-buttons-container/);
+ assert.match(src,/aria-pressed/);
+ assert.match(src,/writerV92ToggleFavorite\(plugin,button\.dataset\.path\)/);
+ assert.match(css,/inset-inline-end:4px/);
+ assert.match(css,/writer-v92-is-favorite .*writer-v92-favorite svg/);
+ assert.match(css,/body\.is-mobile[\s\S]*writer-v92-favorite/);
+ assert.match(src,/previewVisible/);
+ assert.match(src,/previewLines/);
+ assert.match(src,/previewImageSize/);
+});
+test('9.2.1 first embedded local image and YAML cover resolve with safe resource paths',()=>{
+ const image=new TFile('Novel/cover.png');image.extension='png';
+ const old=vault.getAbstractFileByPath;
+ vault.getAbstractFileByPath=path=>path===image.path?image:old(path);
+ try{
+  const resolved=api.writerV921ResolveImage(plugin,folderNote,'![[cover.png|100]]');
+  assert.equal(resolved.path,'Novel/cover.png');
+  assert.equal(api.writerV921ResolveImage(plugin,folderNote,'https://example.com/image.png'),null);
+  assert.equal(api.writerV921PreviewImage(plugin,folderNote,'# Hello\n![[cover.png]]').path,image.path);
+ }finally{vault.getAbstractFileByPath=old;}
+});
+test('9.2.1 excerpt removes frontmatter and embedded image markup',()=>{
+ const excerpt=api.writerV921PreviewBody('---\ndescription: test\n---\n# Heading\n\nFirst **paragraph** with a [[Link|label]].\n\n![[image.png]]',100);
+ assert.ok(excerpt.includes('First paragraph with a label'));
+ assert.ok(!excerpt.includes('description:'));
+ assert.ok(!excerpt.includes('image.png'));
 });

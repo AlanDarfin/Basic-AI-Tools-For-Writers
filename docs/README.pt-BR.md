@@ -1,6 +1,6 @@
 # Basic AI Tool for Writers
 
-**Versão:** 9.2.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md)
 
@@ -60,6 +60,12 @@ Exemplo: para notas na pasta `Personagens/`, crie uma condição por pasta e use
 Outro exemplo: escolha **BookNav automático** como fonte, **Rodapé** como posição e a pasta `Meu Livro/Capítulos` (incluindo subpastas). A navegação acompanha o índice Longform quando a nota pertence ao projeto. Reorganizar capítulos atualiza os botões sem inserir blocos nos arquivos. A navegação manual de notas avulsas continua disponível com `longform-nav`.
 
 Use o comando **Conteúdo virtual: abrir na lateral** para visualizar as regras laterais. Cada regra pode ter sua própria aba dentro desse painel. Você pode ativar, editar, excluir e reordenar regras sem alterar as notas atingidas. Notas modelo também podem conter sintaxe de outros plugins, mas a renderização de Dataview ou Bases depende dessas integrações e do modo de visualização utilizado.
+
+### Aprimoramentos do explorador no celular · 9.2.1
+
+Agora o botão de favorito fica **à direita**, alinhado ao livrinho de abrir Folder Notes (o livrinho permanece nas linhas de pasta). O ícone vazio surge ao passar o mouse ou receber foco e permanece acessível ao toque no celular; quando a nota é favoritada, fica **preenchido**.
+
+As prévias exibem **1–4 linhas** de descrição e opcionalmente uma **miniatura da primeira imagem local incorporada** à nota ou de uma propriedade YAML `cover`, `image`, `thumbnail` ou `banner`. O tamanho da miniatura é configurável. Quando o modo de todas as notas está ativo, pode aparecer um trecho do corpo da nota mesmo sem propriedade de descrição. O **botão de legendas na barra do explorador** (na parte inferior no celular) alterna entre mostrar e esconder prévias sem alterar o modo salvo.
 
 ### Favoritos e prévias no explorador
 

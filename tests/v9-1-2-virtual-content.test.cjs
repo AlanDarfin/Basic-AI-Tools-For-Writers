@@ -49,7 +49,7 @@ test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and docume
  assert.match(read('scripts/build-css.js'),/v9-1-2-virtual-content\.css/);
  for(const doc of ['README.md','docs/README.pt-BR.md']){
   const text=read(doc);
-  assert.match(text,/9\.1\.2/);
+  assert.ok(text.includes(manifest.version));
   assert.match(text,/Virtual Content|Conteúdo virtual/);
   assert.match(text,/BookNav/);
   assert.doesNotMatch(text,/^## (What's new|Novidades da)/m);

@@ -2536,13 +2536,13 @@ class WriterFinalFeatures{
  }
  async applyTemplateToCurrent(){
   const file=this.plugin.app.workspace.getActiveFile();
-  if(!(file instanceof TFile))return new Notice('Open a Markdown note.');
+  if(!(file instanceof TFile))return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   const applied=await this.applyTemplate(file,true);
-  new Notice(applied?'Template applied.':'No applicable template, or note is not empty.');
+  new Notice(applied?writerUi('Modelo aplicado.','Template applied.'):writerUi('Nenhum modelo aplicável ou a nota não está vazia.','No applicable template, or note is not empty.'));
  }
  async insertToc(){
   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-  if(!view)return new Notice('Open a Markdown note.');
+  if(!view)return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   view.editor.replaceSelection('\n'+String.fromCharCode(96,96,96)+'insta-toc\n'+String.fromCharCode(96,96,96)+'\n');
  }
  async renderToc(el,path,source=''){
@@ -2568,7 +2568,7 @@ class WriterFinalFeatures{
    stack[stack.length-1].children.push(node);stack.push(node);
   }
   const wrap=el.createDiv({cls:'writer-insta-toc-rendered'});
-  if(!nodes.length){wrap.createEl('p',{text:'No headings found.'});return;}
+  if(!nodes.length){wrap.createEl('p',{text:writerUi('Nenhum título encontrado.','No headings found.')});return;}
   const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
   const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
   const openAt=async node=>{
@@ -2637,7 +2637,7 @@ class WriterFinalFeatures{
   await this.plugin.app.vault.adapter.write(path,response.text);
   this.unicodeIndex=null;
   const list=await this.loadUnicodeIndex();
-  new Notice('Unicode index ready: '+list.length+' characters.');
+  new Notice(writerUi('Índice Unicode pronto: ','Unicode index ready: ')+list.length+writerUi(' caracteres.',' characters.'));
   return list;
  }
  async unicodePicker(){
@@ -2673,7 +2673,7 @@ class WriterFinalFeatures{
    let visible=[];
    const insert=entry=>{
     if(editor)editor.replaceSelection(entry.char);
-    else if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText)navigator.clipboard.writeText(entry.char).catch(()=>new Notice('Copy failed.'));
+    else if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText)navigator.clipboard.writeText(entry.char).catch(()=>new Notice(writerUi('Falha ao copiar.','Copy failed.')));
     cfg.recent=[entry.char,...(cfg.recent||[]).filter(c=>c!==entry.char)].slice(0,30);
     this.plugin.saveSettings();modal.close();
    };
@@ -2751,8 +2751,8 @@ class WriterFinalFeatures{
     .addText(t=>t.setPlaceholder('Expansion').onChange(v=>expansion=v))
     .addButton(b=>b.setButtonText('Add').onClick(async()=>{
      const key=word.trim();
-     if(!key||!expansion.trim()||/\s/.test(key))return new Notice('Please enter a word without spaces and a replacement.');
-     if(entries[key])return new Notice('This abbreviation already exists.');
+     if(!key||!expansion.trim()||/\s/.test(key))return new Notice(writerUi('Informe uma abreviação sem espaços e sua substituição.','Please enter a word without spaces and a replacement.'));
+     if(entries[key])return new Notice(writerUi('Esta abreviação já existe.','This abbreviation already exists.'));
      entries[key]={value:expansion,isEnabled:true,isCaseSensitive:false};
      await this.plugin.saveSettings();paint();
     }));
@@ -2772,7 +2772,7 @@ class WriterFinalFeatures{
      row.addExtraButton(b=>b.setIcon('pencil').setTooltip('Rename abbreviation').onClick(()=>{
       new TextPrompt(this.plugin.app,'Rename abbreviation',async name=>{
        const newName=name.trim();
-       if(!newName||/\s/.test(newName)||entries[newName])return new Notice('Invalid or duplicate abbreviation.');
+       if(!newName||/\s/.test(newName)||entries[newName])return new Notice(writerUi('Abreviação inválida ou duplicada.','Invalid or duplicate abbreviation.'));
        entries[newName]=entry;delete entries[key];await this.plugin.saveSettings();paint();
       },key).open();
      }));
@@ -2823,7 +2823,7 @@ class WriterFinalFeatures{
  }
  async speakActive(){
   const cfg=this.cfg.tts;
-  if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice('Enable text-to-speech in settings.');
+  if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice(writerUi('Ative a leitura de texto nas configurações.','Enable text-to-speech in settings.'));
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
   const workspace=this.plugin.app.workspace;
@@ -2833,18 +2833,18 @@ class WriterFinalFeatures{
    ||leaves.find(leaf=>leaf.view?.file?.path===file?.path&&leaf.view?.editor)?.view
    ||leaves.find(leaf=>leaf.view?.file?.extension==='md'&&leaf.view?.editor)?.view;
   const note= view?.file||file;
-  if(!note||note.extension!=='md')return new Notice('Open a Markdown note.');
+  if(!note||note.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   this.lastFile=note;
   const selected=view?.editor?.getSelection?.()||'';
   const raw=selected&&cfg.readSelection?selected:
     (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
   const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
-  if(!text)return new Notice('No readable text.');
+  if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
   const engine=cfg.engine||'system';
   if(engine==='edge'){
-   if(!cfg.allowOnline)return new Notice('Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.');
-   if(typeof WebSocket==='undefined')return new Notice('Online voice requires WebSocket support.');
+   if(!cfg.allowOnline)return new Notice(writerUi('Ative o envio de texto à Microsoft nas configurações de voz antes de usar vozes online.','Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.'));
+   if(typeof WebSocket==='undefined')return new Notice(writerUi('A voz online requer suporte a WebSocket.','Online voice requires WebSocket support.'));
    this.stop();
    const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
    const selectedVoice=cfg.edgeVoice||WRITER_EDGE_VOICES[lang]||WRITER_EDGE_VOICES[lang.split('-')[0]==='pt'?'pt-BR':'en-US'];
@@ -2943,7 +2943,7 @@ function writerRenderFinalSettings(panel,plugin,section){
   new Setting(panel).setName('Offline Unicode index').setDesc('Download UnicodeData.txt from unicode.org once. Search works offline afterward.').addButton(b=>b.setButtonText('Download / update').onClick(async()=>{
    b.setDisabled(true).setButtonText('Downloading…');
    try{await plugin.writerFinalFeatures.downloadUnicode();}
-   catch(e){new Notice('Unicode index: '+e.message);}
+   catch(e){new Notice(writerUi('Índice Unicode: ','Unicode index: ')+e.message);}
    finally{b.setDisabled(false).setButtonText('Download / update');}
   }));
  }
@@ -5066,7 +5066,7 @@ class WriterEasyTyping{
   }});
   p.addCommand({id:'v5-easy-toggle',name:writerUi('Easy Typing: alternar assistentes','Easy Typing: toggle helpers'),callback:async()=>{
    this.cfg.enabled=!this.cfg.enabled;await p.saveSettings();
-   new Notice('Easy Typing: '+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
+   new Notice(writerUi('Digitação fácil: ','Easy Typing: ')+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
   }});
   const {keymap,EditorView}=require('@codemirror/view');
   const bindings=[
@@ -16105,21 +16105,21 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.addCommand({id:'open-project-notes',name:msg('Abrir notas do projeto','Open project notes'),callback:()=>this.openProjects('notes')});
     this.addCommand({id:'new-project-note',name:msg('Criar nota rápida do projeto','Create quick project note'),callback:async()=>{await this.openProjects('notes');const v=this.app.workspace.getLeavesOfType(PROJECT_VIEW)[0]?.view;if(v?.currentProject)v.promptNote(v.notesRoot(v.currentProject));}});
     const v3Commands=[
-      ['open-writing-tools','Abrir ferramentas de escrita',()=>this.openWritingTools()],
-      ['show-complements','Mostrar sugestões de palavras',()=>this.writerComplements.manual()],
-      ['reindex-complements','Reindexar palavras do cofre',async()=>{this.writerComplements.reset();await this.writerComplements.rebuild();new Notice(msg('Índice atualizado.','Index updated.'));}],
-      ['toggle-complements','Ativar ou desativar autocomplete',async()=>{this.settings.complements.enabled=!this.settings.complements.enabled;await this.saveSettings();new Notice('Autocomplete: '+(this.settings.complements.enabled?'ativo':'desativado'));}],
-      ['create-writing-variant','Criar variante da seleção',()=>this.writerVariants.createFromSelection()],
-      ['edit-writing-variant','Editar variante sob o cursor',()=>this.writerVariants.open()],
-      ['previous-writing-variant','Variante anterior',()=>this.writerVariants.step(-1)],
-      ['next-writing-variant','Próxima variante',()=>this.writerVariants.step(1)],
-      ['commit-writing-variant','Confirmar variante escolhida',()=>this.writerVariants.commit()],
-      ['commit-all-writing-variants','Confirmar todas as variantes',()=>this.writerVariants.commitAll()],
-      ['ai-writing-variants','Gerar alternativas com IA',()=>this.writerVariants.aiAlternatives()],
-      ['save-note-snapshot','Salvar versão da nota atual',async()=>{const file=this.app.workspace.getActiveFile();if(!(file instanceof TFile))return new Notice(msg('Abra uma nota Markdown.','Open a Markdown note.'));await this.writerSnapshots.create(file,'Manual');new Notice('Versão salva.');}],
-      ['open-note-snapshots','Abrir histórico de versões',async()=>{const file=this.app.workspace.getActiveFile();if(file)await this.writerSnapshots.showHistory(file);}],
-      ['open-variants-tools','Abrir variantes na barra lateral',()=>this.openWritingTools('variants')],
-      ['open-snapshots-tools','Abrir versões na barra lateral',()=>this.openWritingTools('snapshots')]
+      ['open-writing-tools',msg('Abrir ferramentas de escrita','Open writing tools'),()=>this.openWritingTools()],
+      ['show-complements',msg('Mostrar sugestões de palavras','Show word suggestions'),()=>this.writerComplements.manual()],
+      ['reindex-complements',msg('Reindexar palavras do cofre','Reindex vault words'),async()=>{this.writerComplements.reset();await this.writerComplements.rebuild();new Notice(msg('Índice atualizado.','Index updated.'));}],
+      ['toggle-complements',msg('Ativar ou desativar autocomplete','Toggle autocomplete'),async()=>{this.settings.complements.enabled=!this.settings.complements.enabled;await this.saveSettings();new Notice(msg('Autocompletar: ','Autocomplete: ')+(this.settings.complements.enabled?msg('ativado','enabled'):msg('desativado','disabled')));}],
+      ['create-writing-variant',msg('Criar variante da seleção','Create variant from selection'),()=>this.writerVariants.createFromSelection()],
+      ['edit-writing-variant',msg('Editar variante sob o cursor','Edit variant at cursor'),()=>this.writerVariants.open()],
+      ['previous-writing-variant',msg('Variante anterior','Previous variant'),()=>this.writerVariants.step(-1)],
+      ['next-writing-variant',msg('Próxima variante','Next variant'),()=>this.writerVariants.step(1)],
+      ['commit-writing-variant',msg('Confirmar variante escolhida','Accept selected variant'),()=>this.writerVariants.commit()],
+      ['commit-all-writing-variants',msg('Confirmar todas as variantes','Accept all variants'),()=>this.writerVariants.commitAll()],
+      ['ai-writing-variants',msg('Gerar alternativas com IA','Generate AI alternatives'),()=>this.writerVariants.aiAlternatives()],
+      ['save-note-snapshot',msg('Salvar versão da nota atual','Save note snapshot'),async()=>{const file=this.app.workspace.getActiveFile();if(!(file instanceof TFile))return new Notice(msg('Abra uma nota Markdown.','Open a Markdown note.'));await this.writerSnapshots.create(file,'Manual');new Notice(msg('Versão salva.','Snapshot saved.'));}],
+      ['open-note-snapshots',msg('Abrir histórico de versões','Open snapshot history'),async()=>{const file=this.app.workspace.getActiveFile();if(file)await this.writerSnapshots.showHistory(file);}],
+      ['open-variants-tools',msg('Abrir variantes na barra lateral','Open variants in sidebar'),()=>this.openWritingTools('variants')],
+      ['open-snapshots-tools',msg('Abrir versões na barra lateral','Open snapshots in sidebar'),()=>this.openWritingTools('snapshots')]
     ];
     for(const [id,name,callback] of v3Commands)this.addCommand({id,name:'Basic AI: '+name,callback:async()=>{try{await callback();}catch(e){new Notice(e.message||String(e),7000);}}});
     this.addSettingTab(new DictionarySettings(this.app,this));
@@ -16130,7 +16130,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     };
     this.refreshModuleVisibility();
     this.addCommand({id:'open-dictionary-view',name:msg('Abrir Basic AI Tool for Writers','Open Basic AI Tool for Writers'),callback:()=>this.activateView()});
-    this.addCommand({id:'search-selected-word',name:t('lookup'),editorCallback:async editor=>{const term=editor.getSelection().trim();if(!term){new Notice('Select a word first.');return;}await this.activateView();const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;if(view?.input){view.input.value=term;await view.search(term);await view.lookup();}}});
+    this.addCommand({id:'search-selected-word',name:t('lookup'),editorCallback:async editor=>{const term=editor.getSelection().trim();if(!term){new Notice(msg('Selecione uma palavra primeiro.','Select a word first.'));return;}await this.activateView();const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;if(view?.input){view.input.value=term;await view.search(term);await view.lookup();}}});
     this.addCommand({id:'open-translation-tab',name:msg('Abrir tradutor','Open translator'),callback:async()=>{await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('translation');}});
     this.addCommand({id:'open-definitions-tab',name:msg('Abrir definições','Open definitions'),callback:async()=>{await this.activateView();this.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');}});
     this.addCommand({id:'open-writing-review',name:msg('Abrir revisão de escrita','Open writing review'),callback:()=>this.openReview()});

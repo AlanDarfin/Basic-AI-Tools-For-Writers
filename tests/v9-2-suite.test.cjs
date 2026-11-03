@@ -18,7 +18,7 @@ const context={TFile,TFolder,Date,Set,Map,Number,String,Object,Array,Math,RegExp
 const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV921PreviewSource,writerV921PreviewBody,writerV921ResolveImage,writerV921PreviewImage,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92SessionMerge})',context);
 test('9.2.x metadata, modules and CSS',()=>{
  const manifest=JSON.parse(read('manifest.json')),pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json')),versions=JSON.parse(read('versions.json'));
- assert.equal(manifest.version,'9.2.1');assert.equal(pkg.version,manifest.version);assert.equal(lock.version,manifest.version);
+ assert.equal(manifest.version,'9.2.2');assert.equal(pkg.version,manifest.version);assert.equal(lock.version,manifest.version);
  assert.equal(versions[manifest.version],'1.11.4');
  const main=read('main.js'),css=read('styles.css');
  for(const path of files)assert.ok(main.includes('// v3 module: '+path));

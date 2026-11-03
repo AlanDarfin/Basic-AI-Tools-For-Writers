@@ -6240,9 +6240,6 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-titl
   object-fit:contain;
  }
 }
-/* END V8 MODULAR STYLES */
-
-
 /* 9.2.4 — balanced dashboard columns and accessible drag handles. */
 .writer-v8-home .writer-v8-home-grid.writer-v924-masonry{
  display:flex;align-items:flex-start;gap:12px;max-width:1100px;
@@ -6266,3 +6263,5 @@ body.is-mobile .writer-v924-masonry>.writer-v924-column{width:100%;flex:none;gap
 @media(prefers-reduced-motion:reduce){
  .writer-v924-masonry .writer-v924-dragging{transition:none;}
 }
+
+/* END V8 MODULAR STYLES */

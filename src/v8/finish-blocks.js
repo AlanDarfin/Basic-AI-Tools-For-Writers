@@ -23,8 +23,10 @@ function writerV8FinishMerge(settings){
  else if(!requested.includes('calendar'))requested.push('calendar');
  cfg.homeOrder=[...new Set([...requested,...allowed])];
  // New widgets are off by default for existing installs; user choices persist.
+ const newWidgets=['gallery','quotes','today'];
  cfg.homeHidden=Array.isArray(old.homeHidden)?
-  [...new Set(old.homeHidden.filter(key=>allowed.includes(key)))]:[...WRITER_V8_FINISH_DEFAULTS.homeHidden];
+  [...new Set([...old.homeHidden.filter(key=>allowed.includes(key)),...newWidgets.filter(key=>!prevOrder.includes(key))])]:
+  [...WRITER_V8_FINISH_DEFAULTS.homeHidden];
  cfg.homeWordGoal=Math.max(50,Math.min(20000,Math.round(Number(cfg.homeWordGoal)||500)));
  cfg.homeQuotes=String(cfg.homeQuotes||'').slice(0,12000);
  return cfg;

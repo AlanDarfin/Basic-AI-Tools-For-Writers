@@ -53,8 +53,8 @@ test('reordering and sizing persist without changing hidden widgets',()=>{
 });
 
 test('dashboard interactions are bilingual, with an alternative to dragging',()=>{
- assert.match(home,/writerUi\('Compacto','Compact'\)/);
- assert.match(home,/writerUi\('Largo','Wide'\)/);
+ assert.ok(home.includes("['compact','Compacto','Compact']"));
+ assert.ok(home.includes("['wide','Largo','Wide']"));
  assert.match(home,/writerUi\('Remover widget','Remove widget'\)/);
  assert.match(home,/Mover para cima','Move earlier/);
  assert.match(home,/grip\.addEventListener\('click'/);

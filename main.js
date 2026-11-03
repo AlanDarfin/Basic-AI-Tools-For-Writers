@@ -16722,17 +16722,21 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       if(parent){
         // Insert into the ORIGINAL tab strip, without replacing its existing tabs.
         const index=Math.min(tabIndex,Array.isArray(parent.children)?parent.children.length:0);
-        const leaf=workspace.createLeafInParent(parent,index);
-        if(leaf)return leaf;
+        try{
+          const leaf=workspace.createLeafInParent(parent,index);
+          if(leaf)return leaf;
+        }catch(error){console.warn('[Basic AI] Could not reuse original tab group',error);}
       }
       // Original tab group disappeared during unload: recreate at its old vertical
       // index instead of appending a new panel at the bottom with getLeftLeaf(true).
       const index=Math.min(savedIndex,groups.length);
-      const leaf=workspace.createLeafInParent(dock,index);
-      if(leaf){
-        if(leaf.parent)groupsByPosition.set(groupKey,leaf.parent);
-        return leaf;
-      }
+      try{
+        const leaf=workspace.createLeafInParent(dock,index);
+        if(leaf){
+          if(leaf.parent)groupsByPosition.set(groupKey,leaf.parent);
+          return leaf;
+        }
+      }catch(error){console.warn('[Basic AI] Could not rebuild sidebar group',error);}
     }
     // Compatibility fallback for older/mobile workspaces without this public API.
     return (side==='left'?workspace.getLeftLeaf?.(true):workspace.getRightLeaf?.(true))||null;

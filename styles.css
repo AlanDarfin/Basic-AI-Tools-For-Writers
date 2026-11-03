@@ -6162,9 +6162,11 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
 /* 9.2.3: Home heading proportions and optical alignment in native Explorer. */
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title .writer-v92-favorite{
  /* Center against the real title row height (which varies by theme and density).
-    Fixed top offsets displaced the icon when the row was shorter than 28px. */
- top:50%;
- transform:translateY(-50%);
+    Fixed top offsets displaced the icon when the row was shorter than 28px.
+    Auto block margins center it without scaling or transforms. */
+ top:0;
+ bottom:0;
+ margin-block:auto;
  inset-inline-end:3px;
  width:24px;
  min-width:24px;
@@ -6185,8 +6187,9 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
  vertical-align:middle;
 }
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-title .writer-v92-favorite{
- top:50%;
- transform:translateY(-50%);
+ top:0;
+ bottom:0;
+ margin-block:auto;
  inset-inline-end:3px;
  width:36px;
  min-width:36px;
@@ -6205,7 +6208,6 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-titl
  font-family:var(--font-interface);
  font-variant:normal;
  font-variant-ligatures:normal;
- text-transform:none;
  letter-spacing:normal;
  line-height:1.25;
  overflow:visible;

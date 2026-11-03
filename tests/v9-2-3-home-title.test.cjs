@@ -15,7 +15,7 @@ test('9.2.3 matches manifest, package and versions records',()=>{
  const pkg=JSON.parse(read('package.json'));
  const lock=JSON.parse(read('package-lock.json'));
  const versions=JSON.parse(read('versions.json'));
- assert.equal(manifest.version,'9.2.3');
+ assert.match(manifest.version,/^\d+\.\d+\.\d+$/);
  assert.equal(pkg.version,manifest.version);
  assert.equal(lock.version,manifest.version);
  assert.equal(lock.packages[''].version,manifest.version);

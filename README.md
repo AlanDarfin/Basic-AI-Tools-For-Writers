@@ -2,11 +2,22 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.2.13 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.3.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
+
+### Visual properties, Flow and independent Spaces (9.3.0)
+
+- **Folder and note previews:** folder-note images now use the same bordered, responsive 16:9 card appearance as ordinary Markdown previews.
+- **Inline note icons:** custom icons and colors chosen in Basic's File Explorer appear beside inline note titles, without changing note text.
+- **Visual properties (Pretty Properties-inspired):** vault-local cover/banner previews, colors for selected metadata values, hidden and empty-property rules, numeric progress indicators, and quick selection buttons. Configure under **Customization → Visual properties**.
+- **Flow beta:** interactive Markdown boards with draggable cards and touch-friendly move arrows. Positions are persisted in Basic settings, **not written into the underlying note**.
+- **Slash quick insert:** optional suggestions after typing `/` for headings, tasks, callouts, note links, Overview, Flow, tabs, gallery and progress. Opt-in to avoid conflicts; an insert catalog is always available through the command palette.
+- **Independent Spaces:** each active Space has its own hidden and pinned items, hide patterns and folder sorting. Selecting **Global** restores global Explorer settings without deleting or moving files.
+
+These are **initial, independently implemented feature subsets**, not complete ports of [Pretty Properties](https://github.com/anareaty/pretty-properties) or [Make.md](https://github.com/Make-md/makemd). Advanced Handlebars templates and the full Make.md Flow editor are not part of this release.
 
 ## Features
 
@@ -85,7 +96,7 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 - **Keyboard and touch:** most views include buttons, menus and touch-compatible alternatives to dragging.
 
 
-**Folder Overview (9.2.13):** icon-only entries now support card, nested list, compact, icon grid, table and board views. Sort by name, modification, creation, size or type; filter items and navigate subfolders on mobile with separate expand/open buttons. Optional summaries hide folder-note technical metadata.
+**Folder Overview (9.3.0):** icon-only entries now support card, nested list, compact, icon grid, table and board views. Sort by name, modification, creation, size or type; filter items and navigate subfolders on mobile with separate expand/open buttons. Optional summaries hide folder-note technical metadata.
 
 **Complete copy-ready examples for every Markdown code block:** [English block guide](docs/BLOCKS.en.md) · [Guia em português](docs/BLOCKS.pt-BR.md).
 

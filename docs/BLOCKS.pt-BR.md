@@ -379,3 +379,26 @@ next: "[[Escrita/Capítulo 03]]"
 Verifique a grafia do nome entre as crases, o módulo habilitado e o modo de leitura do Obsidian. Em \`folder-overview\` e \`media-gallery\`, \`folder\`/\`path\` são caminhos **dentro do cofre**, e não caminhos absolutos do computador. Imagens locais precisam existir no cofre. No Android, o Overview em **lista** oferece dois alvos de toque: a seta expande/recolhe as subpastas e o nome abre a pasta.
 
 Todos os exemplos documentam funções existentes no Basic, sem exigir a instalação do Make.md.
+
+## 14. Quadro Flow (beta)
+
+O novo bloco `flow` usa um `id:` exclusivo e seções `=== Coluna`, cada uma com cartões na forma de lista Markdown iniciada por `- `. No desktop os cartões podem ser arrastados; no celular há setas para movê-los. **As alterações de coluna são salvas nas configurações do Basic, não no Markdown da nota.** Para mudar o texto, edite o bloco original.
+
+~~~~markdown
+~~~flow
+id: enredo-do-livro
+=== Ideias
+- Criar o protagonista
+- Planejar a cidade
+=== Escrevendo
+- Escrever o capítulo um
+=== Revisando
+- Conferir diálogos
+~~~
+~~~~
+
+### Inserção rápida com /
+
+Ative as sugestões em Configurações → Flow e atalhos /. Digite `/flo` para procurar Flow ou `/over` para Overview. O recurso começa desligado para não conflitar com outros menus. Há também o comando **Escrita: catálogo de inserção rápida** na paleta.
+
+Ações disponíveis: título, tarefa, aviso, separador, link, Overview, Flow, abas, galeria, progresso e data.

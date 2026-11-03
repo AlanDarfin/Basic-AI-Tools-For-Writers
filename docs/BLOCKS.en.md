@@ -368,3 +368,26 @@ next: "[[Writing/Chapter 03]]"
 If you see raw code instead of a widget, check the spelling of the fence, the module toggle, and Obsidian's Reading View / Live Preview. For \`folder-overview\` and \`media-gallery\`, paths refer to **vault folders**, not operating-system absolute paths. For local images, the linked file must exist in the vault. On phones, the Overview **list tree** has separate touch targets: tap the chevron to collapse/expand, or the folder name to navigate into it.
 
 All examples above use only the plugin's current renderer syntax; no external Make.md dependency is required.
+
+## 14. Flow board (beta)
+
+The new `flow` block accepts one unique `id:` and multiple `=== Column` sections, each with markdown-list cards beginning with `- `. The rendered board is interactive: drag cards between columns on desktop or use arrow buttons on mobile. **The board saves the movement in Basic settings, not inside the note text.** Change the original markdown to edit card text.
+
+~~~~markdown
+~~~flow
+id: plot-flow
+=== Ideas
+- Introduce the protagonist
+- Add the first location
+=== Drafting
+- Write chapter one
+=== Editing
+- Check dialogue
+~~~
+~~~~
+
+### Slash quick insert
+
+Enable slash suggestions in Settings → Flow & slash commands, then type `/flo` in an editor to suggest Flow, or `/over` for Folder Overview. This is opt-in to avoid conflict with other slash menus. Alternatively use the command-palette action **Writing: quick insert catalog**.
+
+Included insert actions: heading, task, callout, divider, note link, folder overview, Flow board, tabs, gallery, progress bar and date.

@@ -245,12 +245,13 @@ function writerV91FlexRegister(plugin){
   event.preventDefault();event.stopPropagation();writerV91FlexReorder(plugin,source,target,'before');
  };
  const end=()=>{lastDrag='';};
- plugin.registerDomEvent(container,'dragstart',start,true);
- plugin.registerDomEvent(container,'dragover',over,true);
- plugin.registerDomEvent(container,'drop',drop,true);
- plugin.registerDomEvent(container,'dragend',end,true);
+ plugin.registerDomEvent?.(container,'dragstart',start,true);
+ plugin.registerDomEvent?.(container,'dragover',over,true);
+ plugin.registerDomEvent?.(container,'drop',drop,true);
+ plugin.registerDomEvent?.(container,'dragend',end,true);
  const attach=()=>{
-  observer?.disconnect();observer=new MutationObserver(records=>{
+  observer?.disconnect();if(typeof MutationObserver==='undefined'){refresh();return;}
+  observer=new MutationObserver(records=>{
    if(records.some(record=>record.addedNodes.length||record.removedNodes.length))refresh();
   });
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){

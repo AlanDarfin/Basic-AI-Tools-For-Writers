@@ -23,11 +23,11 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 - **Linha do tempo:** eventos, marcos, trilhas narrativas e ramificações; calendário fictício configurável.
 - **Folder Notes:** abra a nota associada a uma pasta pelo Explorador nativo e mostre visões dinâmicas de seu conteúdo, com cartões e links.
 - **Smart Spaces:** coleções virtuais de notas baseadas em pastas, tags e propriedades, exibidas como listas, quadros ou tabelas.
-- **Conteúdo Virtual:** exiba modelos Markdown em cabeçalhos, rodapés, seções de leitura ou painéis laterais sem modificar as notas. Crie regras por pastas, tags e frontmatter.
+- **Conteúdo virtual (Virtual Content):** exiba modelos Markdown em cabeçalhos, rodapés, seções de leitura ou painéis laterais sem modificar as notas. Crie regras por pastas, tags e frontmatter.
 
 ### Homepage de escrita personalizável
 
-A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia, com opção para desativar esse comportamento.
+A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia (preferência `homeOnNewTab`), com opção para desativar esse comportamento. Links externos podem abrir no **Web Viewer** nativo do PC ou no navegador do celular.
 
 Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (computador), **continuar escrevendo**, **notas recentes**, **favoritos**, **rascunhos rápidos**, **resumo do cofre**, **atividade semanal**, **nota aleatória**, **tags**, **meta de palavras**, **galeria de fotos**, **citações** e **visão do dia**.
 
@@ -36,7 +36,7 @@ Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (comput
 - **Reorganização:** arraste pela alça no computador; em telas de toque, selecione uma alça e depois o cabeçalho de outro widget. O menu também oferece movimentos para antes/depois.
 - **Personalização local:** adicione, oculte ou reorganize os widgets; a ordem, os tamanhos, a visibilidade e os rascunhos são salvos nas configurações.
 
-### Edição, formatação e navegação
+### Edição e formatação Markdown e navegação
 
 - **Keyshots:** atalhos de navegação e edição pelo teclado.
 - **Easy Typing e Smart Typography:** auxílio automático para digitação, espaçamento, símbolos e tipografia.
@@ -54,15 +54,15 @@ Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (comput
 - **Modos de revisão:** análise de gramática, estilo e trechos inteiros, com explicações e sugestões opcionais de IA.
 - **Dicionário e tradução:** definições, sinônimos, antônimos, explicações contextuais e tradução de seleções ou arquivos Markdown. Motores de tradução e detecção do idioma de origem são configuráveis.
 - **Assistente:** chat com contexto opcional da nota ou seleção, anexos, prompts editáveis e configuração de modelos.
-- **IA inline:** continuação opcional diretamente no cursor, prévia antes de aceitar, prompts personalizados e perfis por pasta.
+- **IA inline (baseada no Inscribe):** continuação opcional diretamente no cursor, prévia antes de aceitar, prompts personalizados e perfis por pasta.
 - **Provedores:** integração configurável com OpenAI, Gemini, Groq, Claude, Ollama, OpenRouter e endpoints personalizados compatíveis. As chaves são fornecidas pelo usuário; as funções básicas não exigem IA.
 
 A interface acompanha o idioma **português ou inglês** do Obsidian (inglês como padrão). Acesso à internet, chamadas de IA e serviços externos dependem de cada módulo e de sua configuração.
 
 ### Calendário, estudos e sessões
 
-- **Calendário de escrita:** criação e edição de eventos, navegação por datas, visualização própria ou na barra lateral e gerenciamento de agendas compatíveis com Markdown.
-- **Repetição espaçada:** baralhos de estudo e agendamento de revisões a partir de notas locais.
+- **Calendário de escrita (inspirado no Full Calendar):** criação e edição de eventos, navegação por datas, visualização própria ou na barra lateral e gerenciamento de agendas compatíveis com Markdown.
+- **Repetição espaçada:** baralhos de estudo e revisões a partir de notas locais, inclusive conteúdo marcado com `#flashcards`.
 - **Sessões temporárias:** escreva em rascunhos mantidos na memória e salve explicitamente em uma nota quando necessário. Rascunhos não salvos desaparecem ao fechar o Obsidian.
 - **Tarefas e metas:** tarefas de projetos, indicadores de progresso e métricas de escrita.
 
@@ -77,13 +77,14 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 ### Áudio e acessibilidade
 
 - **Soundscapes (PC):** rádios ambiente do YouTube, estações personalizadas e músicas locais do cofre, com controles na barra de estado e na homepage.
+- **Image Captions:** legendas opcionais de imagens a partir do texto alternativo do Markdown, sem reescrever arquivos.
 - **Click Clack (PC):** sons opcionais de digitação e pacotes locais de áudio.
 - **Leitura em voz alta (TTS):** vozes do sistema, quando disponíveis, ou vozes online com autorização, com idioma, velocidade, tom e seleção de voz. A leitura online envia texto ao serviço escolhido apenas quando ativada.
 - **Teclado e toque:** visualizações com botões, menus e alternativas acessíveis ao arrastar e soltar.
 
 ## Blocos Markdown
 
-O plugin reconhece blocos de código independentes. Os nomes curtos abaixo são os recomendados; os nomes antigos `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat` e `writer-media-gallery` continuam aceitos por compatibilidade.
+O plugin reconhece blocos de código independentes. Os nomes curtos abaixo são os recomendados; os nomes antigos `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat`, `writer-folder-overview` e `writer-media-gallery` continuam aceitos por compatibilidade.
 
 | Bloco | Função |
 | --- | --- |
@@ -119,6 +120,8 @@ Um resumo da cena.
 - [[Personagem Dois]]
 ~~~
 ~~~~
+
+**Sintaxe de chat fictício:** em um bloco `chat`, use `[Left=Maria, right=João]` para definir os participantes. Para cores e avatares, use `[Maria=blue]`. Abas também aceitam títulos como `=== Maria`. Essas formas são visuais e locais, sem conexão com aplicativos de mensagens.
 
 Os blocos complementam o Markdown, sem substituir integralmente outros plugins ou serviços. A disponibilidade depende dos módulos ativados e do modo de visualização.
 

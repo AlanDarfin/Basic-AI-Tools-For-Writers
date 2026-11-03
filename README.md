@@ -1,12 +1,14 @@
 # Basic AI Tool for Writers
 
-**Version:** 9.0.4 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
+**Version:** 9.0.5 · **Requires:** Obsidian 1.11.4+ · **Desktop and Android** · **License:** MIT
 
-[Leia em português](docs/README.pt-BR.md) · [Release notes](docs/V9_0_4_RELEASE.en.md)
+[Leia em português](docs/README.pt-BR.md) · [Release notes](docs/V9_0_5_RELEASE.en.md)
 
 A single, compact writing workspace for planning books, organizing a fictional world, editing Markdown, reviewing text and optionally working with AI. Your notes remain ordinary files in your Obsidian vault.
 
 ## What's new in v9
+
+**9.0.5:** compact and keyboard-navigable Recent/Favorites note lists with vault paths, new opt-in **Vault gallery**, **Random quote** and **Edited today** widgets, more prominent homepage heading and icon. New short Markdown fences: `tabs`, `avatar`, `wiki`, `post`, `chat`, `media-gallery`, `folder-overview` (all `writer-*` aliases still render). [Full release notes](docs/V9_0_5_RELEASE.en.md).
 
 **9.0.4 mobile calendar polish:** date numbers now appear at the top-left with no circular background, while today's full cell uses the Obsidian accent color. [Release notes](docs/V9_0_4_RELEASE.en.md).
 
@@ -22,7 +24,7 @@ A single, compact writing workspace for planning books, organizing a fictional w
 
 **New in 9.0.1:** full-width homepage search above everything else, a highlighted note selector with full paths and Up/Down/Enter support, improved Lucide/HEX customization, consolidated Writing and Markdown settings, compact fictional chats, optional Spaces sidebar and a **visual-only** password gate (it does **not encrypt files**). [Complete changelog](docs/V9_0_1_RELEASE.en.md).
 
-Previous stable version: **9.0.3**. Historical milestone: **8.3.0**.
+Previous stable version: **9.0.4**. Historical milestone: **8.3.0**.
 
 This is an **independent integration**, not a complete fork of Make.md. Make.md's relational databases, formulas, rollups, full Spaces engine and Flow editor have **not** been ported; the local Smart Spaces are a simplified alternative. See [v9 release notes](docs/V9_RELEASE.en.md) and [the historical compatibility audit](docs/V9_FINAL_AUDIT.md). Back up your vault before updating.
 

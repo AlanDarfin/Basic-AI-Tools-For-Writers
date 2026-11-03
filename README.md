@@ -27,7 +27,7 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 ### Customizable writing homepage
 
-The homepage provides a compact dashboard with configurable title, icon, theme accents and fuzzy vault search. It can open when a new empty tab appears, with an option to disable this behavior.
+The homepage provides a compact dashboard with configurable title, icon, theme accents and fuzzy vault search. It can open when a new empty tab appears (the `homeOnNewTab` preference), with an option to disable this behavior. Desktop web links can use Obsidian's native **Web Viewer**; mobile links use the system browser.
 
 Available widgets include a **clock and calendar**, **Soundscapes radio** (desktop), **continue writing**, **recent notes**, **favorites**, **quick drafts**, **vault summary**, **weekly activity**, **random note**, **tags**, **word goal**, **vault photo gallery**, **quotes** and **today's overview**.
 
@@ -36,7 +36,7 @@ Available widgets include a **clock and calendar**, **Soundscapes radio** (deskt
 - **Reordering:** drag the handle on desktop; on touch devices, select a handle and then another widget heading. The widget menu also has earlier/later commands.
 - **Personal settings:** add, hide and rearrange widgets; order, sizes, hidden items and quick drafts are saved locally.
 
-### Editing, formatting and navigation
+### Editing, Markdown formatting and navigation
 
 - **Keyshots-style editing:** keyboard navigation and editing actions.
 - **Easy Typing & Smart Typography:** automatic writing assistance for spacing, symbols and typographic details.
@@ -54,15 +54,15 @@ Available widgets include a **clock and calendar**, **Soundscapes radio** (deskt
 - **Review modes:** review wording, grammar, style and entire passages, with optional AI explanations and suggested revisions.
 - **Dictionary & translation:** definitions, synonyms, antonyms, contextual explanations and translation of selections or Markdown notes. Translation engines and automatic source-language detection are configurable.
 - **Assistant:** chat with optional note or selection context, attachments, editable task prompts and model settings.
-- **Inline AI:** optional completion at the cursor, preview before accepting, customizable prompts and per-folder profiles.
+- **Inline AI (Inscribe-inspired):** optional completion at the cursor, preview before accepting, customizable prompts and per-folder profiles.
 - **Providers:** support for configured OpenAI, Gemini, Groq, Claude, Ollama, OpenRouter and compatible custom endpoints. API keys are supplied by the user; basic writing features do not require one.
 
 The interface follows Obsidian's **Portuguese or English** language setting (English fallback). Internet access, AI calls and external services depend on the enabled feature and its configuration.
 
 ### Calendar, study and sessions
 
-- **Writing calendar:** create and edit events, navigate dates, use a dedicated view or sidebar and manage compatible Markdown-based schedules.
-- **Spaced repetition:** study decks and review scheduling built around local vault notes.
+- **Writing calendar (Full Calendar-inspired):** create and edit events, navigate dates, use a dedicated view or sidebar and manage compatible Markdown-based schedules.
+- **Spaced repetition:** study decks and review scheduling built around local vault notes, including `#flashcards`-style study content.
 - **Temporary sessions:** create in-memory writing drafts, then explicitly save them as Markdown notes when needed. Unsaved session drafts do not survive closing Obsidian.
 - **Tasks and goals:** project tasks, progress indicators and writing metrics.
 
@@ -77,13 +77,14 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 ### Audio and accessibility
 
 - **Soundscapes (desktop):** ambient YouTube radio, custom stations and local vault music; shared controls in the status bar and homepage widget.
+- **Image Captions:** optionally display captions from Markdown image alt text, without rewriting the files.
 - **Click Clack (desktop):** optional typing sounds and locally installed sound schemes.
 - **Text-to-speech:** system voices where supported or opt-in online voices, with language, speed, pitch and voice preferences. Online reading sends selected text to the chosen service only when enabled.
 - **Keyboard and touch:** most views include buttons, menus and touch-compatible alternatives to dragging.
 
 ## Markdown renderers
 
-The plugin also recognizes independent Markdown code blocks. The preferred short names are shown below; legacy aliases such as `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat` and `writer-media-gallery` remain accepted for compatibility.
+The plugin also recognizes independent Markdown code blocks. The preferred short names are shown below; legacy aliases such as `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat`, `writer-folder-overview` and `writer-media-gallery` remain accepted for compatibility.
 
 | Code block | Purpose |
 | --- | --- |
@@ -119,6 +120,8 @@ A summary of the scene.
 - [[Character Two]]
 ~~~
 ~~~~
+
+**Fictional chat syntax:** add a `chat` block with `[Left=Maria, right=João]` to set the speakers. For color and avatar shorthand, use `[Maria=blue]`. Tab sections can use headings such as `=== Maria`. These formats only render local story content; they are not messaging services.
 
 Markdown renderers are presentation and editing helpers, not substitutes for independent services or plugins. Availability varies with the corresponding module toggle and view mode.
 

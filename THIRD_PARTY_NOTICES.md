@@ -57,3 +57,22 @@ file licenses must be preserved and reviewed separately.
 
 The original and Remastered calendar features and UI workflow were reviewed as **behavioral references** for the independent local Markdown calendar redesign. No FullCalendar Standard/Premium bundles, external connectors, assets or source code were copied. The Basic module does not provide Google Calendar or CalDAV sync.
 
+## v9.1 desktop audio and explorer references
+
+- **Soundscapes** — Andrew McGivery and contributors. MIT.
+  https://github.com/andrewmcgivery/obsidian-soundscapes
+- **Click Clack** — Acylation and contributors. MIT.
+  https://github.com/Acylation/obsidian-click-clack
+- **Flexplorer** — kh4f and contributors. MIT.
+  https://github.com/kh4f/flexplorer
+
+The v9.1 radio selection, desktop playback controls, WAV sound-pack
+compatibility, and native Explorer enhancements are independently implemented
+using upstream public behavior and user interfaces as references. The original
+YouTube radio identifiers are documented playlist references; videos and audio
+are never redistributed. No upstream WAV files, recordings, artwork, plugin
+bundles, or proprietary browser assets are copied or shipped with Basic AI.
+Users are responsible for using legal media streams and their own vault audio.
+The Basic player is not a complete replacement for all upstream settings and
+operating-system media integrations; it works with vault media and an embedded
+YouTube player.

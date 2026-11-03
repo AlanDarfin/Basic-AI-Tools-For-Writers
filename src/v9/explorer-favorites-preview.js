@@ -120,7 +120,7 @@ function writerV92ExplorerRegister(plugin){
   }
   schedule();
  }));
- plugin.registerEvent(plugin.app.metadataCache.on('changed',schedule));
+ if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',schedule));
  const observers=new Map();
  const attach=()=>{
   if(typeof MutationObserver==='undefined')return;

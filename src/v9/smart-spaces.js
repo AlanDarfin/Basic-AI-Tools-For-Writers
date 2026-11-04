@@ -149,7 +149,7 @@ function writerV9SpaceModal(plugin){
   select.value=currentId;select.addEventListener('change',()=>{currentId=select.value;filter='';refresh();});
   nav.createEl('button',{text:writerUi('Nova','New')}).addEventListener('click',()=>{
    writerV9SpaceEditor(plugin,null,async space=>{
-    plugin.settings.v9Spaces.spaces.push(space);currentId=space.id;await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();refresh();
+    plugin.settings.v9Spaces.spaces.push(space);currentId=space.id;await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();refresh();
    });
   });
   const space=plugin.settings.v9Spaces.spaces.find(s=>s.id===currentId);
@@ -158,7 +158,7 @@ function writerV9SpaceModal(plugin){
    writerV9SpaceEditor(plugin,space,async updated=>{
     const idx=plugin.settings.v9Spaces.spaces.findIndex(s=>s.id===space.id);
     if(idx>=0)plugin.settings.v9Spaces.spaces[idx]=updated;
-    await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();refresh();
+    await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();refresh();
    });
   });
   nav.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
@@ -171,7 +171,7 @@ function writerV9SpaceModal(plugin){
       plugin.settings.v9Spaces.spaces=plugin.settings.v9Spaces.spaces.filter(s=>s.id!==space.id);
       if(plugin.settings.v9Spaces.activeId===space.id)plugin.settings.v9Spaces.activeId='';
       currentId=plugin.settings.v9Spaces.spaces[0]?.id||'';
-      await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();confirm.close();refresh();
+      await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();confirm.close();refresh();
      }));
    };
    confirm.open();
@@ -248,7 +248,8 @@ class WriterV9SpacesSideView extends ItemView{
   if(space)this.currentId=space.id;
   for(const option of cfg.spaces){
    const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name}});
-   require('obsidian').setIcon(button,option.mode==='folder'?'folder':option.mode==='curated'?'bookmark':'layers');
+   require('obsidian').setIcon(button,option.icon||'layers');
+   if(option.iconColor)button.style.setProperty('--writer-v9216-space-color',option.iconColor);
    button.createSpan({text:option.name});
    button.addEventListener('click',()=>{this.currentId=option.id;this.query='';void writerV9215SelectSpace(this.plugin,option.id).then(()=>this.render());});
   }
@@ -313,9 +314,17 @@ function writerV9RegisterSpaces(plugin){
 function writerV9SpacesSettings(plugin,panel){
  const cfg=plugin.settings.v9Spaces;
  panel.createEl('h3',{text:writerUi('Spaces · coleções locais','Spaces · local collections')});
- panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções virtuais filtradas por pasta, tag ou propriedades das notas, sem criar novos arquivos nem um painel lateral.','Virtual note collections filtered by folder, tags or properties, without creating files or a new sidebar.')});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com ícones e barra inferior no explorador. Ocultar itens em um Space não os oculta nos demais.','Collections by folder, tag or properties, with icons and a bottom explorer switcher. Hiding items in one Space does not hide them in others.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
-  .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{cfg.enabled=value;await plugin.saveSettings();}));
+  .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{
+    cfg.enabled=value;if(!value)cfg.activeId='';
+    await plugin.saveSettings();
+    plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();plugin.writerV9SpacesRefresh?.();
+   }));
+ new Setting(panel).setName(writerUi('Barra de Spaces no rodapé do explorador','Space switcher at the bottom of File Explorer'))
+  .addToggle(t=>t.setValue(cfg.dock).onChange(async value=>{
+   cfg.dock=value;await plugin.saveSettings();plugin.writerV9216SpacesDockRefresh?.();
+  }));
  new Setting(panel).setName(writerUi('Space ativo','Active Space')).addDropdown(drop=>{
    drop.addOption('',writerUi('Todo o cofre','Entire vault'));
    for(const space of cfg.spaces)drop.addOption(space.id,space.name);

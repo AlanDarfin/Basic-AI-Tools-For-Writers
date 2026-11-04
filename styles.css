@@ -8139,4 +8139,105 @@ body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
  text-align:end;
  white-space:nowrap;
 }
+
+
+/* 10.4.6 — LanguageTool compact corrections; limited to review menus. */
+.menu.writer-v406-lt-compact{
+ box-sizing:border-box;
+ min-width:min(260px,calc(100vw - 24px));
+ max-width:min(310px,calc(100vw - 24px));
+ max-height:min(420px,70dvh);
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ padding:4px;
+ scrollbar-width:thin;
+}
+body:not(.is-mobile) .menu.writer-v406-lt-compact .menu-item{
+ display:flex;
+ min-height:28px;
+ height:auto;
+ padding:4px 7px;
+ align-items:center;
+ gap:6px;
+ border-radius:var(--radius-s);
+ font-size:var(--font-ui-smaller);
+ line-height:1.25;
+}
+.menu.writer-v406-lt-compact .menu-item-icon{
+ width:16px;min-width:16px;height:16px;
+ margin:0 4px 0 0;
+ display:flex;align-items:center;justify-content:center;
+}
+.menu.writer-v406-lt-compact .menu-item-icon svg{
+ width:14px;height:14px;
+}
+.menu.writer-v406-lt-compact .menu-item-title{
+ min-width:0;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ white-space:nowrap;
+}
+.menu.writer-v406-lt-compact .menu-item-title:focus-visible{
+ outline:2px solid var(--interactive-accent);
+}
+.menu.writer-v406-lt-compact .menu-separator{
+ margin:4px 2px;
+}
+.menu.writer-v406-lt-compact .writer-lt-menu-info{
+ max-width:270px;
+ gap:3px;
+ padding:5px;
+}
+.writer-review-floating.writer-review-floating{
+ width:min(315px,calc(100vw - 20px));
+ max-height:min(380px,70dvh);
+ padding:9px;
+}
+.writer-review-floating .writer-lt-choices{
+ display:flex;
+ flex-wrap:wrap;
+ gap:4px;
+ margin:4px 0 6px;
+}
+.writer-review-floating .writer-lt-choices>.writer-lt-choice{
+ min-width:0;
+ width:auto;
+ min-height:28px;
+ height:auto;
+ padding:4px 7px;
+ border-radius:var(--radius-s);
+ font-size:var(--font-ui-smaller);
+ line-height:1.2;
+}
+.writer-review-floating .writer-lt-result-actions{
+ display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:4px;
+}
+.writer-review-floating .writer-lt-result-actions>button{
+ min-width:0;
+ width:100%;
+ min-height:30px;
+ padding:5px 6px;
+ font-size:var(--font-ui-smaller);
+ line-height:1.25;
+}
+.writer-review-floating .writer-lt-menu-title{
+ font-size:var(--font-ui-smaller);
+}
+body.is-mobile .menu.writer-v406-lt-compact{
+ max-width:calc(100vw - 16px);
+ max-height:62dvh;
+}
+body.is-mobile .menu.writer-v406-lt-compact .menu-item{
+ min-height:38px;
+ padding:7px 9px;
+}
+body.is-mobile .writer-review-floating .writer-lt-choices>.writer-lt-choice{
+ min-height:38px;
+ padding:7px 9px;
+}
+body.is-mobile .writer-review-floating .writer-lt-result-actions>button{
+ min-height:40px;
+}
 /* END V8 MODULAR STYLES */

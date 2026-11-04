@@ -3477,6 +3477,105 @@ class WriterV4Mentions extends EditorSuggest{
   editor.replaceRange(replacement,start,end);
  }
 }
+/* Review-mode guard: popup actions are not user caret navigation.
+ * Do not let delayed Remember Cursor or Typewriter recenter the editor after
+ * a LanguageTool correction. Explicit typing/arrow keys re-enable tracking. */
+function writerV406ReviewGuard(plugin){
+ let pauseUntil=0,keyboardUntil=0,scrollLock=null,lastReviewPopup=null;
+ const now=()=>Date.now();
+ const reviewSelectors='.writer-review-floating,.writer-lt-mobile-modal,.writer-v406-lt-compact';
+ const editorFor=()=>plugin.app?.workspace?.getActiveViewOfType?.(MarkdownView)?.editor?.cm||null;
+ const isReviewElement=node=>!!node?.closest?.(reviewSelectors);
+ const openReview=()=>{
+  if(plugin.reviewPopup)return true;
+  return typeof document!=='undefined'&&!!document.querySelector?.(reviewSelectors);
+ };
+ const isSuspended=()=>{
+  if(now()<keyboardUntil)return false;
+  return now()<pauseUntil||openReview();
+ };
+ const pause=(ms=650)=>{
+  keyboardUntil=0;pauseUntil=Math.max(pauseUntil,now()+ms);
+  const cm=editorFor();
+  plugin.writerV4Extras?.resetTypewriterHighlights?.(cm||null);
+  plugin.writerCursorMemory?.cancelPendingForEditor?.(cm);
+ };
+ const typing=()=>{
+  pauseUntil=0;keyboardUntil=now()+1800;scrollLock=null;
+ };
+ const captureScroll=()=>{
+  const cm=editorFor();
+  const scrollDOM=cm?.scrollDOM||cm?.dom?.querySelector?.('.cm-scroller');
+  if(!scrollDOM)return;
+  scrollLock={cm,scrollDOM,top:scrollDOM.scrollTop,left:scrollDOM.scrollLeft,
+   until:now()+1200};
+  pause(1200);
+ };
+ const applyScroll=(cm)=>{
+  const lock=scrollLock;
+  if(!lock||lock.cm!==cm||now()>lock.until){if(lock&&now()>lock.until)scrollLock=null;return false;}
+  const restore=()=>{
+   if(scrollLock!==lock||now()>lock.until)return;
+   if(Math.abs(lock.scrollDOM.scrollTop-lock.top)>1)lock.scrollDOM.scrollTop=lock.top;
+   if(Math.abs(lock.scrollDOM.scrollLeft-lock.left)>1)lock.scrollDOM.scrollLeft=lock.left;
+  };
+  if(typeof requestAnimationFrame==='function')requestAnimationFrame(restore);
+  else setTimeout(restore,0);
+  return true;
+ };
+ const markMenu=menu=>{
+  if(!menu?.classList?.contains?.('menu')||menu.classList.contains('writer-v406-lt-compact'))return false;
+  const hasInfo=Boolean(menu.querySelector?.('.writer-lt-menu-info'));
+  const text=String(menu.textContent||'').slice(0,2000);
+  if(!hasInfo&&!/(?:Adicionar ao dicion[aá]rio|Add to dictionary|Ignorar ocorr[eê]ncia|Ignore occurrence|Ignorar esta regra|Disable rule|Explicar com IA|Explain with AI)/i.test(text))return false;
+  menu.classList.add('writer-v406-lt-compact');
+  pause(900);return true;
+ };
+ const inspect=()=>{
+  if(typeof document==='undefined')return;
+  for(const menu of document.querySelectorAll?.('.menu')||[])markMenu(menu);
+  const popup=document.querySelector?.('.writer-review-floating,.writer-lt-mobile-modal')||null;
+  if(popup&&popup!==lastReviewPopup)pause(750);
+  lastReviewPopup=popup;
+ };
+ const onPointer=event=>{
+  if(isReviewElement(event.target)){
+   if(event.type==='pointerdown'||event.type==='mousedown'||event.type==='touchstart')captureScroll();
+   else pause(450);
+  }else if(event.target?.closest?.('.cm-editor,.cm-scroller')&&
+    (event.type==='pointerdown'||event.type==='mousedown'||event.type==='touchstart'||event.type==='wheel')){
+   pause(750);scrollLock=null;
+  }
+ };
+ const onKey=event=>{
+  const inEditor=Boolean(event.target?.closest?.('.cm-editor'));
+  if(!inEditor)return;
+  if(event.isComposing)return;
+  const key=event.key||'';
+  if(key.startsWith('Arrow')||key==='Home'||key==='End'||key==='PageDown'||key==='PageUp'||
+   key==='Backspace'||key==='Delete'||key==='Enter'||key==='Tab'||
+   (key.length===1&&!event.altKey&&!event.metaKey&&!event.ctrlKey)){
+   typing();
+  }
+ };
+ const onBeforeInput=event=>{
+  if(event.target?.closest?.('.cm-editor'))typing();
+ };
+ if(typeof document!=='undefined'&&typeof plugin.registerDomEvent==='function'){
+  for(const event of ['pointermove','pointerdown','mousedown','touchstart','wheel'])
+   plugin.registerDomEvent(document,event,onPointer,true);
+  plugin.registerDomEvent(document,'keydown',onKey,true);
+  plugin.registerDomEvent(document,'beforeinput',onBeforeInput,true);
+  if(typeof MutationObserver!=='undefined'){
+   const observer=new MutationObserver(inspect);
+   observer.observe(document.body||document.documentElement,{subtree:true,childList:true});
+   plugin.register?.(()=>observer.disconnect());
+  }
+  inspect();
+ }
+ return {isSuspended,pause,typing,captureScroll,applyScroll,markMenu};
+}
+
 class WriterV4Extras{
  constructor(plugin){this.plugin=plugin;this.lastNote=null;this.typewriterActiveViews=new WeakSet();this.typewriterViews=new Set();}
  resetTypewriterHighlights(cm=null){
@@ -3495,6 +3594,9 @@ class WriterV4Extras{
  }
  register(){
   const p=this.plugin;
+  p.writerV4Extras=this;
+  if(!p.writerReviewInteractionGuard)p.writerReviewInteractionGuard=writerV406ReviewGuard(p);
+  p.register?.(()=>{if(p.writerReviewInteractionGuard)p.writerReviewInteractionGuard=null;});
   p.registerEvent(p.app.workspace.on('file-open',file=>{
    if(file?.extension==='md'){
     this.lastNote=file;
@@ -3534,6 +3636,11 @@ class WriterV4Extras{
   if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
+    const guard=this.plugin.writerReviewInteractionGuard;
+    if(guard?.isSuspended?.()){
+     if(update.docChanged)guard.applyScroll?.(update.view);
+     return;
+    }
     if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||
       !this.typewriterActiveViews.has(update.view)||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
     try{
@@ -3551,17 +3658,28 @@ class WriterV4Extras{
     constructor(view){
      this.view=view;this.interacting=false;this.decorations=Decoration.set([]);
      this.onPointer=event=>{
-      // Touch does not reliably dispatch pointerdown in Android WebView.
-      if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
+      // Pointer inspection and text selection must never enable typewriter
+      // scroll locking; only keyboard typing/navigation can engage it.
+      if(event.target?.closest?.('.cm-scroller')){
+       owner.plugin.writerReviewInteractionGuard?.pause?.(650);
+       this.setInteracting(false);
+      }
      };
      this.onTouchStart=event=>{
-      if(event.target?.closest?.('.cm-scroller'))this.setInteracting(true);
+      if(event.target?.closest?.('.cm-scroller')){
+       owner.plugin.writerReviewInteractionGuard?.pause?.(650);
+       this.setInteracting(false);
+      }
      };
      this.onTouchMove=()=>this.setInteracting(false);
-     this.onBeforeInput=()=>this.setInteracting(true);
-     this.onCompositionStart=()=>this.setInteracting(true);
+     this.onBeforeInput=()=>{owner.plugin.writerReviewInteractionGuard?.typing?.();this.setInteracting(true);};
+     this.onCompositionStart=()=>{owner.plugin.writerReviewInteractionGuard?.typing?.();this.setInteracting(true);};
      this.onKey=event=>{
-      if(['Shift','Control','Alt','Meta'].includes(event.key))return;
+      const key=event.key||'';
+      if(['Shift','Control','Alt','Meta'].includes(key))return;
+      if(!(key.startsWith('Arrow')||['Home','End','PageUp','PageDown','Backspace','Delete','Enter','Tab'].includes(key)||
+       (key.length===1&&!event.ctrlKey&&!event.altKey&&!event.metaKey)))return;
+      owner.plugin.writerReviewInteractionGuard?.typing?.();
       this.setInteracting(true);
      };
      this.onWheel=()=>{
@@ -3580,7 +3698,8 @@ class WriterV4Extras{
     }
     setInteracting(value){
      if(value)owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(this.view);
-     const allowed=value&&writerModuleOn(owner.plugin,'typewriter')&&owner.config.typewriter.enabled===true;
+     const allowed=value&&!owner.plugin.writerReviewInteractionGuard?.isSuspended?.()&&
+      writerModuleOn(owner.plugin,'typewriter')&&owner.config.typewriter.enabled===true;
      if(this.interacting===allowed)return;
      this.interacting=allowed;
      if(allowed)owner.typewriterActiveViews.add(this.view);
@@ -4103,7 +4222,7 @@ class WriterCursorMemory{
   }
  }
  capture(view){
-  if(!this.active()||!view?.file||!view.editor||this.pending.has(view))return false;
+  if(!this.active()||this.plugin.writerReviewInteractionGuard?.isSuspended?.()||!view?.file||!view.editor||this.pending.has(view))return false;
   const editor=view.editor;
   if(typeof editor.getCursor!=='function'||typeof editor.lineCount!=='function')return false;
   const head=writerCursorClamp(editor.getCursor('head'),editor);
@@ -4143,7 +4262,7 @@ class WriterCursorMemory{
  }
  restoreScrollIntoView(view,head,bookmark){
   const editor=view?.editor,cm=editor?.cm;
-  if(this.cfg.restoreScroll===false||!editor)return;
+  if(this.cfg.restoreScroll===false||!editor||this.plugin.writerReviewInteractionGuard?.isSuspended?.())return;
   // The stored pixel offset alone is unreliable on Android: a CM6 viewport may
   // not have measured its rows when file-open fires, or the virtual keyboard
   // may resize the scroll container after the initial scrollTo().
@@ -4160,13 +4279,14 @@ class WriterCursorMemory{
   }catch(error){console.warn('[Basic AI] Cursor scroll restore:',error);}
  }
  restore(view){
-  if(!this.active()||!view?.file?.path||!view.editor||this.isAnchored(view))return;
+  if(!this.active()||this.plugin.writerReviewInteractionGuard?.isSuspended?.()||!view?.file?.path||!view.editor||this.isAnchored(view))return;
   const path=view.file.path,bookmark=this.entries[path];
   if(!bookmark||this.pending.has(view))return;
   const editor=view.editor,initial=editor.getCursor?.('head');
   if(!initial||typeof editor.lineCount!=='function')return;
   this.pending.set(view,path);
-  const stillValid=()=>this.pending.get(view)===path&&view.file?.path===path&&!this.isAnchored(view);
+  const stillValid=()=>this.pending.get(view)===path&&view.file?.path===path&&!this.isAnchored(view)&&
+   !this.plugin.writerReviewInteractionGuard?.isSuspended?.();
   // Allow Obsidian to attach the editor and load the document before resetting
   // selection, then recenter after the layout and mobile keyboard settle.
   this.timer(()=>{

@@ -183,9 +183,9 @@ function writerV9215FlowSettings(plugin,panel){
   ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
+ }
  new Setting(panel).setName(writerUi('Máximo de notas por painel Flow','Maximum notes per Flow panel'))
   .addSlider(sl=>sl.setLimits(5,80,5).setValue(cfg.maxItems).setDynamicTooltip().onChange(async value=>{
    cfg.maxItems=value;await plugin.saveSettings();
   }));
- }
 }

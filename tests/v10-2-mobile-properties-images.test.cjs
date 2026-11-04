@@ -32,7 +32,7 @@ test('Chat parses speaker bubble color independently of name color and transpare
  assert.equal(chat.messages[0].bubbleColor,'green');
  assert.equal(api.writerV8ChatFakeAudio('[áudio:0:02:teste]').transcript,'teste');
  const css=read('styles.css');
- assert.match(css,/writer-v8-chat-transcript-text::before/);
+ assert.ok(css.includes('.writer-v8-chat .writer-v8-chat-voice-toggle{'));
  assert.match(css,/is-background-transparent/);
 });
 test('Preview supports banner and secure direct HTTPS links with privacy switch',()=>{

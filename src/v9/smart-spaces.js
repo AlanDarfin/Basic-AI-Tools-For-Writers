@@ -426,10 +426,27 @@ class WriterV9SpacesSideView extends ItemView{
   if(!space){root.createEl('p',{text:writerUi('Crie uma Space para começar.','Create a Space to get started.')});return;}
   const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',placeholder:writerUi('Pesquisar nesta Space…','Search this Space…')}});
   search.value=this.query;
+  const sidebarTools=root.createDiv({cls:'writer-v1042-space-side-tools'});
+  const quick=(pt,en,icon,handler)=>{
+   const button=sidebarTools.createEl('button',{attr:{type:'button','aria-label':writerUi(pt,en),title:writerUi(pt,en)}});
+   require('obsidian').setIcon(button,icon);button.addEventListener('click',handler);
+   return button;
+  };
+  quick('Nova Space','New Space','plus',()=>writerV9SpaceEditor(this.plugin,null,async created=>{
+   cfg.spaces.push(created);await this.plugin.saveSettings();
+   await writerV9215SelectSpace(this.plugin,created.id);this.currentId=created.id;this.render();
+  }));
+  quick('Biblioteca Longform','Longform bookshelf','library',()=>this.plugin.writerV10OpenBookshelf?.());
+  quick('Ordenação da pasta atual','Sort current note folder','list-ordered',()=>{
+   const folder=this.plugin.app.workspace.getActiveFile?.()?.parent||this.plugin.app.vault.getRoot?.();
+   if(folder)writerV93FlexSortModal(this.plugin,folder);
+  });
+  const summary=sidebarTools.createSpan({cls:'writer-v1042-space-count'});
   const body=root.createDiv({cls:'writer-v9-space-side-list'});
   const draw=()=>{
    body.empty();
    const files=writerV9SpaceItems(this.plugin,space).filter(file=>file.path.toLocaleLowerCase().includes(this.query.toLocaleLowerCase()));
+   summary.setText(files.length+' '+writerUi('notas','notes'));
    for(const file of files){
     const button=body.createEl('button',{cls:'writer-v9-space-side-item',attr:{type:'button',title:file.path}});
     require('obsidian').setIcon(button.createSpan(),this.plugin.settings.v9Explorer?.items?.[file.path]?.icon||'file-text');

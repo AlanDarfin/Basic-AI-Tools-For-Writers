@@ -5,11 +5,16 @@ function writerV9215PrettyMerge(settings){
  const raw=settings.v9215Pretty&&typeof settings.v9215Pretty==='object'?settings.v9215Pretty:{};
  const cfg=settings.v9215Pretty={enabled:true,banner:true,cover:true,icon:true,
   hidden:[],hideEmpty:false,reveal:false,progressKeys:'progress,completion',
-  dateKeys:'due,date',colors:'',templates:'',...raw};
- for(const key of ['enabled','banner','cover','icon'])cfg[key]=cfg[key]!==false;
+  dateKeys:'due,date',colors:'',templates:'',tagColors:'',search:true,dueColors:true,dueSoonDays:3,
+  coverShape:'rounded',coverPosition:'right',bannerPosition:'center',...raw};
+ for(const key of ['enabled','banner','cover','icon','search','dueColors'])cfg[key]=cfg[key]!==false;
+ cfg.coverShape=['rounded','square','circle'].includes(cfg.coverShape)?cfg.coverShape:'rounded';
+ cfg.coverPosition=['left','right','center'].includes(cfg.coverPosition)?cfg.coverPosition:'right';
+ cfg.bannerPosition=['top','center','bottom'].includes(cfg.bannerPosition)?cfg.bannerPosition:'center';
+ cfg.dueSoonDays=Math.max(1,Math.min(30,Math.round(Number(cfg.dueSoonDays)||3)));
  cfg.hidden=Array.isArray(cfg.hidden)?[...new Set(cfg.hidden.map(x=>String(x).trim().toLowerCase()).filter(Boolean))].slice(0,80):[];
  cfg.hideEmpty=cfg.hideEmpty===true;cfg.reveal=cfg.reveal===true;
- for(const key of ['progressKeys','dateKeys','colors','templates'])cfg[key]=String(cfg[key]||'').slice(0,5000);
+ for(const key of ['progressKeys','dateKeys','colors','templates','tagColors'])cfg[key]=String(cfg[key]||'').slice(0,5000);
  return cfg;
 }
 function writerV9215PrettyImage(app,source,raw){
@@ -51,14 +56,17 @@ function writerV9215PrettyDecorateIcon(node,name){
 function writerV9215PrettyRenderLeaf(plugin,leaf){
  const cfg=plugin.settings.v9215Pretty,host=leaf.view?.containerEl,file=leaf.view?.file;
  if(!host)return;
- for(const el of host.querySelectorAll('.writer-v9215-pretty-banner,.writer-v9215-pretty-cover,.writer-v9215-pretty-icon,.writer-v9215-property-progress,.writer-v9215-property-caption'))el.remove();
+ for(const el of host.querySelectorAll('.writer-v9215-pretty-banner,.writer-v9215-pretty-cover,.writer-v9215-pretty-icon,.writer-v9215-property-progress,.writer-v9215-property-caption,.writer-v9216-pretty-search'))el.remove();
  for(const row of host.querySelectorAll('.metadata-property')){
-  row.classList.remove('writer-v9215-property-hidden','writer-v9215-property-colored');
+  row.classList.remove('writer-v9215-property-hidden','writer-v9215-property-colored','writer-v9216-search-hidden','writer-v9216-date-overdue','writer-v9216-date-soon');
   row.style.removeProperty('--writer-v9215-prop-color');
+ }
+ for(const tag of host.querySelectorAll('.writer-v9216-tag-colored')){
+  tag.classList.remove('writer-v9216-tag-colored');tag.style.removeProperty('--writer-v9216-tag-color');
  }
  if(!cfg.enabled||!(file instanceof TFile)||file.extension!=='md')return;
  const fm=plugin.app.metadataCache.getFileCache?.(file)?.frontmatter||{};
- const colors=writerV9215PrettyPairs(cfg.colors),templates=writerV9215PrettyPairs(cfg.templates);
+ const colors=writerV9215PrettyPairs(cfg.colors),templates=writerV9215PrettyPairs(cfg.templates),tagColors=writerV9215PrettyPairs(cfg.tagColors);
  const progressKeys=new Set(cfg.progressKeys.split(',').map(x=>x.trim().toLowerCase()));
  const dateKeys=new Set(cfg.dateKeys.split(',').map(x=>x.trim().toLowerCase()));
  const target=host.querySelector('.inline-title');
@@ -67,7 +75,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   if(url){
    const banner=host.ownerDocument.createElement('img');
    banner.className='writer-v9215-pretty-banner';banner.src=url;banner.alt='';
-   banner.loading='lazy';banner.decoding='async';
+   banner.loading='lazy';banner.decoding='async';banner.style.objectPosition='center '+cfg.bannerPosition;
    const insertion=target||host.querySelector('.metadata-container');
    insertion?.parentNode?.insertBefore(banner,insertion);
   }
@@ -85,6 +93,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
    const cover=host.ownerDocument.createElement('img');
    cover.className='writer-v9215-pretty-cover';cover.src=url;cover.alt='';
    cover.loading='lazy';cover.decoding='async';
+   cover.classList.add('is-'+cfg.coverShape,'at-'+cfg.coverPosition);
    metadata.parentNode?.insertBefore(cover,metadata.nextSibling);
   }
  }
@@ -99,8 +108,9 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
    row.style.setProperty('--writer-v9215-prop-color',color);
   }
   const surface=row.querySelector('.metadata-property-value')||row;
-  if(progressKeys.has(key)&&Number.isFinite(Number(value))&&!empty){
-   const amount=Math.max(0,Math.min(100,Number(value)));
+  const number=typeof value==='string'?Number(value.trim().replace(/%$/,'')):Number(value);
+  if(progressKeys.has(key)&&Number.isFinite(number)&&!empty){
+   const amount=Math.max(0,Math.min(100,number));
    const bar=row.ownerDocument.createElement('div');bar.className='writer-v9215-property-progress';
    bar.setAttribute('role','progressbar');bar.setAttribute('aria-label',key);
    bar.setAttribute('aria-valuemin','0');bar.setAttribute('aria-valuemax','100');
@@ -114,11 +124,45 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
    const stamp=Date.parse(text);
    if(Number.isFinite(stamp))caption=new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{dateStyle:'medium',timeZone:'UTC'}).format(new Date(stamp));
   }
+  if(cfg.dueColors&&dateKeys.has(key)&&/^d{4}-dd-dd/.test(text)){
+   const date=Date.parse(text.slice(0,10)+'T00:00:00Z');
+   if(Number.isFinite(date)){
+    const now=new Date(),today=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
+    const days=Math.round((date-today)/86400000);
+    if(days<0)row.classList.add('writer-v9216-date-overdue');
+    else if(days<=cfg.dueSoonDays)row.classList.add('writer-v9216-date-soon');
+   }
+  }
+  if(key==='tags'&&Object.keys(tagColors).length){
+   for(const tag of row.querySelectorAll('.multi-select-pill,.tag')){
+    const tagName=String(tag.textContent||'').trim().replace(/^#/,'').toLowerCase();
+    const color=tagColors[tagName];
+    if(/^#[da-f]{6}$/i.test(color||'')){
+     tag.classList.add('writer-v9216-tag-colored');
+     tag.style.setProperty('--writer-v9216-tag-color',color);
+    }
+   }
+  }
   if(caption&&caption!==text){
    const label=row.ownerDocument.createElement('small');
    label.className='writer-v9215-property-caption';label.textContent=caption;
    surface.appendChild(label);
   }
+ }
+ const metadata=host.querySelector('.metadata-container');
+ if(cfg.search&&metadata&&metadata.querySelector('.metadata-property')){
+  const input=metadata.ownerDocument.createElement('input');
+  input.className='writer-v9216-pretty-search';input.type='search';
+  input.placeholder=writerUi('Filtrar propriedades…','Filter properties…');
+  input.setAttribute('aria-label',input.placeholder);
+  metadata.insertBefore(input,metadata.firstChild);
+  input.addEventListener('input',()=>{
+   const query=input.value.trim().toLocaleLowerCase();
+   for(const row of metadata.querySelectorAll('.metadata-property')){
+    const property=writerV9215PrettyKey(row);
+    row.classList.toggle('writer-v9216-search-hidden',Boolean(query&&!property.includes(query)));
+   }
+  });
  }
 }
 function writerV9215PrettyImagePicker(plugin,key){
@@ -182,12 +226,29 @@ function writerV9215PrettySettings(plugin,panel){
  toggle('icon','Mostrar ícone do YAML','Show YAML note icon');
  toggle('hideEmpty','Ocultar campos vazios','Hide empty fields');
  toggle('reveal','Revelar campos escondidos','Reveal hidden fields');
+ toggle('search','Pesquisa rápida nas propriedades','Property quick search');
+ toggle('dueColors','Destacar datas próximas e vencidas','Highlight approaching and past dates');
+ const dropdown=(key,pt,en,items)=>new Setting(panel).setName(writerUi(pt,en)).addDropdown(d=>{
+  for(const [id,ptLabel,enLabel] of items)d.addOption(id,writerUi(ptLabel,enLabel));
+  d.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();plugin.writerV9215PrettyRefresh?.();});
+ });
+ dropdown('coverShape','Formato da capa','Cover shape',[
+  ['rounded','Arredondado','Rounded'],['square','Quadrado','Square'],['circle','Circular','Circular']]);
+ dropdown('coverPosition','Posição da capa','Cover position',[
+  ['left','Esquerda','Left'],['right','Direita','Right'],['center','Centro','Center']]);
+ dropdown('bannerPosition','Posição da imagem do banner','Banner image position',[
+  ['top','Topo','Top'],['center','Centro','Center'],['bottom','Inferior','Bottom']]);
+ new Setting(panel).setName(writerUi('Avisar com antecedência (dias)','Due soon threshold (days)'))
+  .addSlider(sl=>sl.setLimits(1,30,1).setValue(cfg.dueSoonDays).setDynamicTooltip().onChange(async value=>{
+   cfg.dueSoonDays=value;await plugin.saveSettings();plugin.writerV9215PrettyRefresh?.();
+  }));
  const list=(key,pt,en,desc)=>new Setting(panel).setName(writerUi(pt,en)).setDesc(desc).addTextArea(t=>t.setValue(Array.isArray(cfg[key])?cfg[key].join('\n'):cfg[key]).onChange(async value=>{
   cfg[key]=key==='hidden'?value.split(/\r?\n/).map(x=>x.trim().toLowerCase()).filter(Boolean):value;
   await plugin.saveSettings();plugin.writerV9215PrettyRefresh?.();
  }));
  list('hidden','Campos ocultos','Hidden properties',writerUi('Uma chave YAML por linha','One YAML key per line'));
  list('colors','Cores por propriedade','Property colors','status=#70a783');
+ list('tagColors','Cores por tag','Tag colors','book=#70a783');
  list('progressKeys','Propriedades de progresso','Progress properties','progress,completion');
  list('dateKeys','Datas formatadas','Formatted dates','due,date');
  list('templates','Modelos de exibição','Display templates','status=Status: {value}');

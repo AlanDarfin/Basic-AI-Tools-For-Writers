@@ -279,23 +279,30 @@ function writerV8ChatParse(source){
  const meta=writerV8ChatDirectives(lines);
  const remaining=lines.slice(meta.start).join('\n');
  if(/^===\s+\S/.test(remaining.trimStart()))return writerV8ChatParseLegacy(remaining,meta);
- const messages=[],lastSpeaker={left:'',right:''};
+ const messages=[],lastSpeaker={left:'',right:''};let messageCount=0;
  for(const line of lines.slice(meta.start)){
+  const divider=writerV8ChatDivider(line);
+  if(divider){
+   if(messages.length&&messages.length<100)messages.push(divider);
+   continue;
+  }
   const message=writerV8ChatShortMessage(line,meta,lastSpeaker);
   if(message){
-   if(messages.length>=50)break;
+   if(messageCount>=50)break;
+   messageCount++;
    if(message.name)lastSpeaker[message.side]=message.name;
    messages.push(message);continue;
   }
-  // Non-message lines belong to the previous bubble: lists, images, links and
-  // extended Markdown must be passed verbatim to Obsidian's renderer.
+  // Multiline markdown stays inside the preceding bubble. A divider does not
+  // become a bubble and must never absorb later unprefixed paragraphs.
   if(messages.length){
    const last=messages[messages.length-1];
-   if(last.body.length+line.length<8000)last.body+='\n'+line;
+   if(last.type!=='divider'&&last.body.length+line.length<8000)last.body+='\n'+line;
   }
  }
- for(const message of messages)message.body=writerV8ChatExpandBreaks(message.body.trim());
- return {title:meta.title,messages,options:meta.options};
+ for(const message of messages)if(message.type!=='divider')
+  message.body=writerV8ChatExpandBreaks(message.body.trim());
+ return {title:meta.title,groupImage:meta.groupImage,messages,options:meta.options};
 }
 function writerV8ChatRender(plugin,source,element,ctx){
  const data=writerV8ChatParse(source);

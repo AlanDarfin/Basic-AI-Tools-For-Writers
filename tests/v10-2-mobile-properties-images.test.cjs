@@ -70,6 +70,56 @@ test('Alignment syntax does not conflict with Markdown pipes, paths, or normal p
  }
  const cfg=api.writerV102AlignMerge({});assert.equal(cfg.enabled,true);
 });
+test('Short suffixes work with native Markdown headings, normal text and legacy notation',()=>{
+ const api=expose('src/v10/inline-alignment.js',['writerV102AlignToken','writerV102AlignApply']);
+ for(const [line,side] of [['# Chapter {c}','center'],['## Subtitle {r}','right'],
+  ['###### Notes {l}','left'],['Text **bold** {c}','center'],
+  ['# ::c: Old heading','center'],['::c[old text]','center']]){
+  assert.equal(api.writerV102AlignToken(line)?.side,side,line);
+ }
+ for(const line of ['# Normal heading','Some text {unknown}','line [link](here)','|table|',
+   '\x60{c}\x60','Body with {c} not at end']){
+  assert.equal(api.writerV102AlignToken(line),null,line);
+ }
+ const lines=['# Chapter','## Section {r}','::c: # Old heading'];
+ let cursor={line:0,ch:0};
+ const editor={
+  getCursor:()=>cursor,getLine:n=>lines[n],
+  replaceRange:(text,from)=>{lines[from.line]=text;}
+ };
+ api.writerV102AlignApply(editor,'c');
+ assert.equal(lines[0],'# Chapter {c}');
+ api.writerV102AlignApply(editor,'r');
+ assert.equal(lines[0],'# Chapter {r}');
+ api.writerV102AlignApply(editor,null);
+ assert.equal(lines[0],'# Chapter');
+ cursor={line:1,ch:0};api.writerV102AlignApply(editor,'l');
+ assert.equal(lines[1],'## Section {l}');
+ cursor={line:2,ch:0};api.writerV102AlignApply(editor,'r');
+ assert.equal(lines[2],'# Old heading {r}');
+});
+test('Reading View applies heading suffix without losing semantics and overrides snippet heading CSS',()=>{
+ const nodes=[{nodeValue:'Heading {l}',parentElement:{closest:()=>null}}];
+ const classes=[];
+ const applied=[];
+ const heading={
+  tagName:'H2',textContent:'Heading {l}',closest:()=>null,
+  classList:{add:(...classesToAdd)=>classes.push(...classesToAdd)},
+  style:{setProperty:(...args)=>applied.push(args)}
+ };
+ const document={createTreeWalker:()=>({
+  currentNode:null,index:0,nextNode(){
+   if(this.index>=nodes.length)return false;
+   this.currentNode=nodes[this.index++];return true;
+  }
+ })};
+ const api=expose('src/v10/inline-alignment.js',['writerV102AlignReading'],
+  {document,NodeFilter:{SHOW_TEXT:4}});
+ api.writerV102AlignReading({querySelectorAll:()=>[heading]});
+ assert.equal(nodes[0].nodeValue,'Heading');
+ assert.ok(classes.includes('writer-v102-align-left'));
+ assert.deepEqual(Array.from(applied[0]),['text-align','left','important']);
+});
 test('Native Explorer and voice-note CSS corrections are present in the distributed styles',()=>{
  const css=read('styles.css'),source=read('src/v9/explorer-flex.js');
  assert.ok(css.includes('.writer-v8-chat .writer-v8-chat-voice-toggle{'));

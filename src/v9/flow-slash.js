@@ -3,8 +3,10 @@
  * No private Obsidian APIs and no dependency on Make.md. */
 function writerV9215FlowMerge(settings){
  const raw=settings.v9215Flow&&typeof settings.v9215Flow==='object'?settings.v9215Flow:{};
- const cfg=settings.v9215Flow={enabled:true,slash:true,embeds:true,flowBlocks:true,maxItems:30,...raw};
- for(const key of ['enabled','slash','embeds','flowBlocks'])cfg[key]=cfg[key]!==false;
+ const cfg=settings.v9215Flow={enabled:true,slash:true,embeds:true,flowBlocks:true,
+  flowArrange:true,flowPreviews:true,defaultLayout:'cards',maxItems:30,...raw};
+ for(const key of ['enabled','slash','embeds','flowBlocks','flowArrange','flowPreviews'])cfg[key]=cfg[key]!==false;
+ cfg.defaultLayout=['cards','list','board'].includes(cfg.defaultLayout)?cfg.defaultLayout:'cards';
  cfg.maxItems=Math.max(5,Math.min(80,Math.round(Number(cfg.maxItems)||30)));
  return cfg;
 }
@@ -110,6 +112,7 @@ async function writerV9216FlowOpenEditor(plugin,file,mount,button){
 }
 /* Local note collections from a Markdown ~~~flow block: one note link per line. */
 function writerV9216FlowBlock(plugin,source,root,ctx){
+ if(typeof writerV93FlowComposer==='function')return writerV93FlowComposer(plugin,source,root,ctx);
  const cfg=plugin.settings.v9215Flow;
  if(!cfg.enabled||!cfg.flowBlocks)return;
  const rows=String(source||'').split(/\r?\n/).map(s=>s.trim())
@@ -180,10 +183,18 @@ function writerV9215FlowSettings(plugin,panel){
   ['enabled','Ativar Flow e comandos rápidos','Enable Flow and slash commands'],
   ['slash','Menu de comandos /','Slash command menu'],
   ['embeds','Edição de notas incorporadas','Editable embedded notes'],
-  ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections']
+  ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections'],
+  ['flowArrange','Organizar cartões Flow e salvar no Markdown','Arrange Flow cards and save to Markdown'],
+  ['flowPreviews','Prévia do texto nos cartões Flow','Flow card text previews']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
  }
+ new Setting(panel).setName(writerUi('Layout padrão dos painéis Flow','Default Flow panel layout'))
+  .addDropdown(drop=>{
+   for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board']])
+    drop.addOption(id,writerUi(pt,en));
+   drop.setValue(cfg.defaultLayout).onChange(async value=>{cfg.defaultLayout=value;await plugin.saveSettings();});
+  });
  new Setting(panel).setName(writerUi('Máximo de notas por painel Flow','Maximum notes per Flow panel'))
   .addSlider(sl=>sl.setLimits(5,80,5).setValue(cfg.maxItems).setDynamicTooltip().onChange(async value=>{
    cfg.maxItems=value;await plugin.saveSettings();

@@ -309,10 +309,26 @@ function writerV8ChatRender(plugin,source,element,ctx){
  const opts=data?.options||{density:'normal',bubbles:'soft',avatars:true,width:'normal'};
  const root=element.createDiv({cls:'writer-v8-block writer-v8-chat is-density-'+opts.density+' is-bubbles-'+opts.bubbles+' is-width-'+opts.width});
  if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
- if(data.title)root.createEl('h3',{text:data.title,cls:'writer-v8-chat-title'});
+ if(data.title||data.groupImage){
+  const heading=root.createDiv({cls:'writer-v8-chat-heading'});
+  const url=writerV8ImagePath(plugin.app,data.groupImage,ctx.sourcePath);
+  if(url)heading.createEl('img',{cls:'writer-v8-chat-group-photo',
+   attr:{src:url,alt:data.title||writerUi('Imagem do grupo','Group photo'),loading:'lazy',decoding:'async'}});
+  if(data.title)heading.createEl('h3',{text:data.title,cls:'writer-v8-chat-title'});
+  if(!heading.childElementCount)heading.remove();
+ }
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
  let previous=null;
  for(const msg of data.messages){
+  if(msg.type==='divider'){
+   const divider=transcript.createDiv({cls:'writer-v8-chat-divider'+(msg.text?' is-labeled':''),
+    attr:{role:'separator'}});
+   if(msg.text)divider.createSpan({cls:'writer-v8-chat-divider-label',text:msg.text});
+   // A divider breaks speaker grouping, even when the next message is from
+   // the same person. Their avatar and explicit name can appear again.
+   previous=null;
+   continue;
+  }
   const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
   const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
   if(opts.avatars&&msg.avatar&&!continuation){

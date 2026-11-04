@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
 const expose=(path,names,extras={})=>vm.runInNewContext(read(path)+'\n({'+names.join(',')+'})',
- {console,Date,Math,Map,Set,Uint8Array,writerUi:(pt,en)=>en,...extras});
+ {console,Date,Math,Map,Set,Uint8Array,ItemView:class{},writerUi:(pt,en)=>en,...extras});
 test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
  const a=expose('src/v10/bookshelf.js',['writerV10BookshelfMerge','writerV10BookRecord','writerV10BookshelfSort','writerV10BookState']);
  const settings={v10Bookshelf:{library:{'Books/Index.md':{favorite:true,shelf:'Sci-fi',progress:64,status:'reading'}},sort:'progress'}};

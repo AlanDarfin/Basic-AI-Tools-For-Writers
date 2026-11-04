@@ -2,9 +2,9 @@
 
 Este guia apresenta **exemplos prontos para copiar** de cada bloco de código renderizado pelo plugin, incluindo suas opções disponíveis. Cole cada exemplo em uma nota do Obsidian e abra a Visualização de leitura ou a Prévia ao vivo. Ative o módulo correspondente nas configurações.
 
-Os nomes curtos são recomendados. Os aliases antigos \`writer-tabs\`, \`writer-avatar\`, \`writer-wiki\`, \`writer-post\`, \`writer-chat\`, \`writer-media-gallery\` e \`writer-folder-overview\` ainda funcionam. Os exemplos usam caminhos fictícios; substitua-os pelas pastas e notas reais do seu cofre.
+Os nomes curtos são recomendados. Os aliases antigos `writer-tabs`, `writer-avatar`, `writer-wiki`, `writer-post`, `writer-chat`, `writer-media-gallery` e `writer-folder-overview` ainda funcionam. Os exemplos usam caminhos fictícios; substitua-os pelas pastas e notas reais do seu cofre.
 
-## 1. Overview de pastas (\`folder-overview\`)
+## 1. Overview de pastas (`folder-overview`)
 
 Mostra notas e subpastas em seis modos, com ordenação, filtro, navegação, ícones personalizados do Explorador e suporte ao toque. **Não são exibidas miniaturas:** cada item usa somente o ícone de sua pasta ou nota, junto com o título. Descrições são opcionais e vêm desativadas por padrão.
 
@@ -29,20 +29,20 @@ controls: true
 
 | Campo | Valores e significado |
 | --- | --- |
-| \`folder\` | Caminho da pasta no cofre (opcional). Sem ele, usa a pasta ligada à nota atual ou a pasta da própria nota. |
-| \`style\` / \`view\` / \`layout\` | \`cards\` (cartões), \`list\` (árvore de lista), \`compact\` (linhas densas), \`grid\` (grade de ícones), \`table\` (tabela), \`board\` (quadro com pastas e notas). |
-| \`sort\` | \`name-asc\`, \`name-desc\`, \`modified-desc\`, \`modified-asc\`, \`created-desc\`, \`created-asc\`, \`size-desc\`, \`size-asc\`, \`type\`. |
-| \`folderFirst\` | \`true\`: pastas antes de notas; \`false\`: mistura os tipos na ordenação. |
-| \`subfolders\` | \`true\` percorre subpastas; \`false\` mostra apenas os itens diretos. Pastas permanecem clicáveis nos dois casos. |
-| \`depth\` | De 0 a 8 níveis adicionais de subpastas (padrão: 2). |
-| \`limit\` | De 1 a 200 itens no total. |
-| \`noteOnly\` | \`true\`: mostra apenas notas, mas ainda pode pesquisar dentro de subpastas. |
-| \`showBrief\` | \`true\` exibe o resumo textual, quando existir; padrão \`false\`. |
-| \`briefMax\` | Máximo de 32 a 400 caracteres no resumo. Campos técnicos da Folder Note são ignorados. |
-| \`showPath\` | Mostra o caminho em cartões aninhados, quando aplicável. |
-| \`controls\` | Mostra os seletores de visualização e ordenação e o campo de pesquisa. |
+| `folder` | Caminho da pasta no cofre (opcional). Sem ele, usa a pasta ligada à nota atual ou a pasta da própria nota. |
+| `style` / `view` / `layout` | `cards` (cartões), `list` (árvore de lista), `compact` (linhas densas), `grid` (grade de ícones), `table` (tabela), `board` (quadro com pastas e notas). |
+| `sort` | `name-asc`, `name-desc`, `modified-desc`, `modified-asc`, `created-desc`, `created-asc`, `size-desc`, `size-asc`, `type`. |
+| `folderFirst` | `true`: pastas antes de notas; `false`: mistura os tipos na ordenação. |
+| `subfolders` | `true` percorre subpastas; `false` mostra apenas os itens diretos. Pastas permanecem clicáveis nos dois casos. |
+| `depth` | De 0 a 8 níveis adicionais de subpastas (padrão: 2). |
+| `limit` | De 1 a 200 itens no total. |
+| `noteOnly` | `true`: mostra apenas notas, mas ainda pode pesquisar dentro de subpastas. |
+| `showBrief` | `true` exibe o resumo textual, quando existir; padrão `false`. |
+| `briefMax` | Máximo de 32 a 400 caracteres no resumo. Campos técnicos da Folder Note são ignorados. |
+| `showPath` | Mostra o caminho em cartões aninhados, quando aplicável. |
+| `controls` | Mostra os seletores de visualização e ordenação e o campo de pesquisa. |
 
-As opções \`card\` e \`strip\` continuam aceitas como aliases de \`cards\` e \`list\`. A ordenação é aplicada dentro de cada pasta para preservar a hierarquia. Os seletores visuais alteram somente aquela instância, sem reescrever o bloco original; configure os campos no Markdown para salvar um padrão.
+As opções `card` e `strip` continuam aceitas como aliases de `cards` e `list`. A ordenação é aplicada dentro de cada pasta para preservar a hierarquia. Os seletores visuais alteram somente aquela instância, sem reescrever o bloco original; configure os campos no Markdown para salvar um padrão.
 
 **Lista com subpastas no Android/PC:** toque na seta à direita para expandir/recolher os itens aninhados ou toque no nome da pasta para navegar até ela.
 
@@ -74,11 +74,11 @@ limit: 50
 ~~~
 ~~~~
 
-Para usar só os ícones maiores, experimente \`style: grid\`. Para separar pastas e notas em colunas, use \`style: board\`.
+Para usar só os ícones maiores, experimente `style: grid`. Para separar pastas e notas em colunas, use `style: board`.
 
-## 2. Abas (\`tabs\`)
+## 2. Abas (`tabs`)
 
-Cada \`=== Nome\` cria uma aba, até o limite de 12. \`layout: top\` (padrão), \`left\`, \`right\` ou \`side\` organiza a navegação. O conteúdo aceita Markdown e edição pela prévia.
+Cada `=== Nome` cria uma aba, até o limite de 12. `layout: top` (padrão), `left`, `right` ou `side` organiza a navegação. O conteúdo aceita Markdown e edição pela prévia.
 
 ~~~~markdown
 ~~~tabs
@@ -97,9 +97,9 @@ O grupo chega à cidade.
 ~~~
 ~~~~
 
-## 3. Wiki / caixa de informação (\`wiki\`)
+## 3. Wiki / caixa de informação (`wiki`)
 
-Os campos \`chave: valor\` vêm antes de \`---\`; depois fica o corpo em Markdown. \`title\`/\`name\`/\`nome\`, \`subtitle\`/\`role\`/\`type\`/\`tipo\`, \`image\`/\`cover\`/\`avatar\` são especiais. Outros campos são exibidos como metadados, até 12 campos. Imagens devem existir no cofre.
+Os campos `chave: valor` vêm antes de `---`; depois fica o corpo em Markdown. `title`/`name`/`nome`, `subtitle`/`role`/`type`/`tipo`, `image`/`cover`/`avatar` são especiais. Outros campos são exibidos como metadados, até 12 campos. Imagens devem existir no cofre.
 
 ~~~~markdown
 ~~~wiki
@@ -118,9 +118,9 @@ Um arquivo que conserva mapas e manuscritos antigos.
 ~~~
 ~~~~
 
-## 4. Avatar / cartão de personagem (\`avatar\`)
+## 4. Avatar / cartão de personagem (`avatar`)
 
-Aceita os mesmos campos de título e imagem. \`layout: left\` ou \`right\` coloca a imagem ao lado do texto; \`top\` usa o layout tradicional. Sem imagem, aparece a inicial.
+Aceita os mesmos campos de título e imagem. `layout: left` ou `right` coloca a imagem ao lado do texto; `top` usa o layout tradicional. Sem imagem, aparece a inicial.
 
 ~~~~markdown
 ~~~avatar
@@ -136,9 +136,9 @@ layout: right
 ~~~
 ~~~~
 
-## 5. Publicação fictícia (\`post\`)
+## 5. Publicação fictícia (`post`)
 
-Campos aceitos: \`author\`/\`name\`/\`nome\`, \`handle\`/\`username\`, \`date\`/\`time\`, \`avatar\`/\`image\`, \`likes\`/\`flames\`, \`views\`, \`comments\`. Escreva \`=== reply\` para iniciar uma resposta. \`depth\` ou \`level\` indica o recuo da resposta, de 1 a 5.
+Campos aceitos: `author`/`name`/`nome`, `handle`/`username`, `date`/`time`, `avatar`/`image`, `likes`/`flames`, `views`, `comments`. Escreva `=== reply` para iniciar uma resposta. `depth` ou `level` indica o recuo da resposta, de 1 a 5.
 
 ~~~~markdown
 ~~~post
@@ -169,9 +169,9 @@ Claro!
 
 As publicações são fictícias e locais, sem conexão com redes sociais.
 
-## 6. Conversa fictícia (\`chat\`)
+## 6. Conversa fictícia (`chat`)
 
-\`<\` indica mensagem à esquerda; \`>\` indica à direita. Separe avatar, nome, mensagem e hora usando \`|\`. As diretivas entre colchetes configuram os nomes padrão, as cores ou imagens locais dos avatares. Mensagens consecutivas do mesmo personagem não repetem os cabeçalhos desnecessariamente.
+`<` indica mensagem à esquerda; `>` indica à direita. Separe avatar, nome, mensagem e hora usando `|`. As diretivas entre colchetes configuram os nomes padrão, as cores ou imagens locais dos avatares. Mensagens consecutivas do mesmo personagem não repetem os cabeçalhos desnecessariamente.
 
 ~~~~markdown
 ~~~chat
@@ -186,7 +186,7 @@ title: Expedição ao arquivo
 ~~~
 ~~~~
 
-Sintaxes curtas aceitas: \`< Mira | Olá\`, \`> Jonas | Oi | 10:00\`. A sintaxe antiga com seções \`=== Personagem\` também é aceita e pode conter \`avatar\`, \`time\`, \`side\` e \`mine\` antes de \`---\`.
+Sintaxes curtas aceitas: `< Mira | Olá`, `> Jonas | Oi | 10:00`. A sintaxe antiga com seções `=== Personagem` também é aceita e pode conter `avatar`, `time`, `side` e `mine` antes de `---`.
 
 
 **Áudio falso:** use `[audio:0:15]` ou `[voice:1:09]` como o conteúdo inteiro da mensagem. O botão anima as ondas de som, **sem tocar, gravar nem enviar áudio real**. Exemplo: `< | [audio:0:15] | 10:00`.
@@ -209,9 +209,9 @@ Novo parágrafo:
 ~~~
 ~~~~
 
-## 7. Galeria de mídias (\`media-gallery\`)
+## 7. Galeria de mídias (`media-gallery`)
 
-Use \`path\` ou \`folder\` para o diretório do cofre; \`type\` pode ser \`all\`, \`image\`, \`video\`, \`audio\` ou \`pdf\`. \`layout\`: \`masonry\`, \`grid\`, \`ratio\`. \`sort\`: \`name-asc\`, \`name-desc\`, \`mtime-desc\`, \`mtime-asc\`, \`size-desc\`, \`size-asc\`. \`subfolders\` permite pesquisar em pastas internas; \`limit\` vai de 1 a 150.
+Use `path` ou `folder` para o diretório do cofre; `type` pode ser `all`, `image`, `video`, `audio` ou `pdf`. `layout`: `masonry`, `grid`, `ratio`. `sort`: `name-asc`, `name-desc`, `mtime-desc`, `mtime-asc`, `size-desc`, `size-asc`. `subfolders` permite pesquisar em pastas internas; `limit` vai de 1 a 150.
 
 ~~~~markdown
 ~~~media-gallery
@@ -224,9 +224,9 @@ limit: 90
 ~~~
 ~~~~
 
-## 8. Colunas Markdown (\`columns\`)
+## 8. Colunas Markdown (`columns`)
 
-Configure de 1 a 4 colunas com \`columns:\`. Separe os conteúdos com \`--- end-column ---\`, \`--- column-end ---\`, \`--- column-break ---\` ou \`:::columnbreak\`.
+Configure de 1 a 4 colunas com `columns:`. Separe os conteúdos com `--- end-column ---`, `--- column-end ---`, `--- column-break ---` ou `:::columnbreak`.
 
 ~~~~markdown
 ~~~columns
@@ -245,9 +245,9 @@ columns: 3
 ~~~
 ~~~~
 
-## 9. Barra de progresso (\`progressbar\`)
+## 9. Barra de progresso (`progressbar`)
 
-**Progresso manual:** \`kind: manual\` recebe \`min\`, \`max\`, \`value\`, \`name\`. Para os botões +/−, defina \`id\` (identificador persistente) e \`button: true\`. O título pode usar \`{min}\`, \`{max}\`, \`{value}\`, \`{percentage}\`.
+**Progresso manual:** `kind: manual` recebe `min`, `max`, `value`, `name`. Para os botões +/−, defina `id` (identificador persistente) e `button: true`. O título pode usar `{min}`, `{max}`, `{value}`, `{percentage}`.
 
 ~~~~markdown
 ~~~progressbar
@@ -261,7 +261,7 @@ button: true
 ~~~
 ~~~~
 
-**Progresso por calendário:** \`kind: day-year\`, \`day-month\`, \`day-week\`, \`month\` calculam automaticamente. Para um intervalo personalizado, use \`day-custom\` e datas ISO em \`min\`/\`max\`.
+**Progresso por calendário:** `kind: day-year`, `day-month`, `day-week`, `month` calculam automaticamente. Para um intervalo personalizado, use `day-custom` e datas ISO em `min`/`max`.
 
 ~~~~markdown
 ~~~progressbar
@@ -272,11 +272,11 @@ max: 2026-12-31
 ~~~
 ~~~~
 
-## 10. Widgets (\`widgets\`)
+## 10. Widgets (`widgets`)
 
-Um bloco renderiza **um** tipo entre \`clock\`, \`quote\`, \`countdown\`, \`counter\`.
+Um bloco renderiza **um** tipo entre `clock`, `quote`, `countdown`, `counter`.
 
-**Relógio:** \`format: 12hr\` ou \`24hr\`; \`hideseconds: true\` oculta segundos.
+**Relógio:** `format: 12hr` ou `24hr`; `hideseconds: true` oculta segundos.
 
 ~~~~markdown
 ~~~widgets
@@ -286,7 +286,7 @@ hideseconds: true
 ~~~
 ~~~~
 
-**Citação:** use \`quote\` e \`author\`.
+**Citação:** use `quote` e `author`.
 
 ~~~~markdown
 ~~~widgets
@@ -296,7 +296,7 @@ author: Exemplo
 ~~~
 ~~~~
 
-**Contagem regressiva:** \`date\` define a data final; \`to\` identifica o evento; \`completedlabel\` é exibido quando o prazo termina.
+**Contagem regressiva:** `date` define a data final; `to` identifica o evento; `completedlabel` é exibido quando o prazo termina.
 
 ~~~~markdown
 ~~~widgets
@@ -307,7 +307,7 @@ completedlabel: Meta concluída
 ~~~
 ~~~~
 
-**Contador:** \`id\` identifica o valor salvo nas configurações; \`startvalue\` é o início; \`increment\` é o passo; \`text\` é o rótulo.
+**Contador:** `id` identifica o valor salvo nas configurações; `startvalue` é o início; `increment` é o passo; `text` é o rótulo.
 
 ~~~~markdown
 ~~~widgets
@@ -319,9 +319,9 @@ text: Sessões concluídas
 ~~~
 ~~~~
 
-## 11. Campo YAML interativo (\`meta-field\`)
+## 11. Campo YAML interativo (`meta-field`)
 
-\`property\` indica uma propriedade do frontmatter; \`type\` pode ser \`view\` (somente leitura), \`toggle\`, \`text\`, \`number\` ou \`select\`; \`label\` é o nome exibido. \`options\` define escolhas separadas por \`|\` para \`select\`. Apenas a propriedade especificada da nota atual é alterada.
+`property` indica uma propriedade do frontmatter; `type` pode ser `view` (somente leitura), `toggle`, `text`, `number` ou `select`; `label` é o nome exibido. `options` define escolhas separadas por `|` para `select`. Apenas a propriedade especificada da nota atual é alterada.
 
 **Caixa de marcação:**
 
@@ -362,9 +362,9 @@ label: Autor (somente leitura)
 ~~~
 ~~~~
 
-## 12. Sumário instantâneo (\`insta-toc\`)
+## 12. Sumário instantâneo (`insta-toc`)
 
-Gera um índice a partir dos títulos **da nota atual**. \`maxDepth\` varia de 1 a 6. \`numbered\` define lista numerada; \`folded\` recolhe as seções inicialmente.
+Gera um índice a partir dos títulos **da nota atual**. `maxDepth` varia de 1 a 6. `numbered` define lista numerada; `folded` recolhe as seções inicialmente.
 
 ~~~~markdown
 ~~~insta-toc
@@ -374,9 +374,9 @@ folded: false
 ~~~
 ~~~~
 
-## 13. Navegação entre notas e capítulos (\`longform-nav\`)
+## 13. Navegação entre notas e capítulos (`longform-nav`)
 
-Com o bloco vazio, a navegação procura os capítulos anterior e próximo na ordem do projeto Longform atual. Para notas comuns fora de um projeto, use \`mode: manual\` e preencha \`previous\`/\`next\` com links válidos do cofre.
+Com o bloco vazio, a navegação procura os capítulos anterior e próximo na ordem do projeto Longform atual. Para notas comuns fora de um projeto, use `mode: manual` e preencha `previous`/`next` com links válidos do cofre.
 
 **Modo automático:**
 
@@ -395,8 +395,62 @@ next: "[[Escrita/Capítulo 03]]"
 ~~~
 ~~~~
 
+## 14. Linha do tempo narrativa (`timeline` / `timeline-labeled`)
+
+O Basic aceita os dois formatos do Timeline original do George-debug. Preserva as classes entre colchetes (`line-2` a `line-5`, `body-2` a `body-4` e parte das `active-color-*`). Datas podem ser textuais, inclusive eras fictícias.
+
+**Sintaxe original com três linhas + por evento:**
+
+~~~~markdown
+~~~timeline
+[line-3, body-2, active-color-interactive-accent]
+layout: vertical
+theme: classic
+
++ 2030
++ Primeiro encontro
++ Uma descrição em **Markdown** com [[Links]].
+
++ No inverno seguinte
++ Novas descobertas
++ O enredo avança.
+~~~
+~~~~
+
+**Formato expandido, com fotos e visualização horizontal:**
+
+~~~~markdown
+~~~timeline-labeled
+layout: horizontal
+theme: editorial
+density: comfortable
+sort: source
+controls: true
+
+date: 2030-04-01
+title: Primeiro encontro
+group: Parte I
+icon: sparkles
+color: #b278c8
+image: [[Imagens/encontro.webp]]
+link: [[Capítulos/Primeiro encontro]]
+content:
+O evento aceita **Markdown**, listas e links internos.
+
+---
+date: 2030-06-08
+title: Partida
+group: Parte II
+image: [[Imagens/partida.jpg]]
+content:
+Mais um momento na mesma linha do tempo.
+~~~
+~~~~
+
+Opções: `layout` (`vertical` ou `horizontal`), `theme` (`classic`, `cards`, `minimal`, `compact`, `editorial`), `density` (`normal`, `compact`, `comfortable`), `sort` (`source`, `asc`, `desc`), `controls` (`true` ou `false`), `color` (hexadecimal de seis dígitos), `line` (2–5), `body` (2–4). Cada evento pode usar `date`, `title`, `content`, `group`, `image`, `color`, `icon`, `link`. Fotos e notas de destino precisam existir **dentro do cofre**. A barra oferece busca, filtro de trilhas, mudança de orientação e rolagem horizontal. A timeline do projeto Longform continua independente.
+
 ## Se um bloco não funcionar
 
-Verifique a grafia do nome entre as crases, o módulo habilitado e o modo de leitura do Obsidian. Em \`folder-overview\` e \`media-gallery\`, \`folder\`/\`path\` são caminhos **dentro do cofre**, e não caminhos absolutos do computador. Imagens locais precisam existir no cofre. No Android, o Overview em **lista** oferece dois alvos de toque: a seta expande/recolhe as subpastas e o nome abre a pasta.
+Verifique a grafia do nome entre as crases, o módulo habilitado e o modo de leitura do Obsidian. Em `folder-overview` e `media-gallery`, `folder`/`path` são caminhos **dentro do cofre**, e não caminhos absolutos do computador. Imagens locais precisam existir no cofre. No Android, o Overview em **lista** oferece dois alvos de toque: a seta expande/recolhe as subpastas e o nome abre a pasta.
 
 Todos os exemplos documentam funções existentes no Basic, sem exigir a instalação do Make.md.

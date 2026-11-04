@@ -189,24 +189,28 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  shell.addEventListener('mouseleave',()=>{if(!touchLocked)close();});
  // Mobile: a long press reveals the full description. Scrolling cancels the timer;
  // we do not suppress Obsidian's native context menu or prevent touch scrolling.
- shell.addEventListener('touchstart',event=>{
+ shell.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='mouse'||event.isPrimary===false)return;
   if(shell.dataset.expandable!=='true'||shell.dataset.holdMs==='0')return;
-  const touch=event.touches?.[0];if(!touch)return;
-  touchStart={x:touch.clientX,y:touch.clientY};
+  touchStart={id:event.pointerId,x:event.clientX,y:event.clientY};
   clearTimeout(timer);
   const delay=Math.max(400,Math.min(1500,Number(shell.dataset.holdMs)||650));
   timer=setTimeout(()=>{touchLocked=true;skipClick=true;open();},delay);
  },{passive:true});
- shell.addEventListener('touchmove',event=>{
+ shell.addEventListener('pointermove',event=>{
+  if(event.pointerId!==touchStart?.id)return;
   if(!touchStart)return;
-  const touch=event.touches?.[0];if(!touch)return;
-  if(Math.hypot(touch.clientX-touchStart.x,touch.clientY-touchStart.y)>12){
+  if(Math.hypot(event.clientX-touchStart.x,event.clientY-touchStart.y)>12){
    clearTimeout(timer);timer=null;touchStart=null;
   }
  },{passive:true});
  const stopTouch=()=>{clearTimeout(timer);timer=null;touchStart=null;};
- shell.addEventListener('touchend',stopTouch,{passive:true});
- shell.addEventListener('touchcancel',stopTouch,{passive:true});
+ shell.addEventListener('pointerup',stopTouch,{passive:true});
+ shell.addEventListener('pointercancel',stopTouch,{passive:true});
+ shell.addEventListener('contextmenu',event=>{
+  if(!touchLocked)return;
+  event.preventDefault();event.stopPropagation();
+ });
  shell.addEventListener('click',event=>{
   if(shell.dataset.expandable!=='true'||!touchLocked)return;
   event.preventDefault();event.stopPropagation();

@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.4.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.5.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -107,6 +107,14 @@ layout: cards
 
 **Exemplos completos de todos os blocos Markdown:** [Guia em português](BLOCKS.pt-BR.md) · [English block guide](BLOCKS.en.md).
 
+
+### 9.5.0 · Timelines em blocos e comportamento das propriedades
+
+- **Filtro de propriedades:** a pesquisa opcional foi movida para dentro da lista de propriedades recolhível do Obsidian; o filtro desaparece ao fechar Propriedades tanto na Prévia ao vivo quanto na leitura, preservando o texto ao atualizar o painel.
+- **Timelines Markdown:** aceitam os formatos originais `timeline` (três linhas iniciadas por `+`) e `timeline-labeled` (`date/title/content`), além de `layout: horizontal|vertical`, temas (`classic`, `cards`, `minimal`, `compact`, `editorial`), fotos locais, ícones, cores, links, grupos, busca e troca de orientação.
+- **Longform independente:** a cronologia de projetos e seus eventos, ramificações, Gantt e calendário fictício permanecem intactos. O bloco tem um módulo separado em Configurações → Módulos → Timelines em Markdown.
+- **Exemplos prontos:** [Português](BLOCKS.pt-BR.md) · [English](BLOCKS.en.md). O bloco não exige rede nem o plugin Timeline externo.
+
 ## Blocos Markdown
 
 O plugin reconhece blocos de código independentes. Os nomes curtos abaixo são os recomendados; os nomes antigos `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat`, `writer-folder-overview` e `writer-media-gallery` continuam aceitos por compatibilidade.
@@ -123,6 +131,7 @@ O plugin reconhece blocos de código independentes. Os nomes curtos abaixo são 
 | `widgets` | Relógio, citação, contagem regressiva e contador |
 | `meta-field` | Visualização ou edição controlada de uma propriedade YAML |
 | `insta-toc` / `longform-nav` | Sumário e navegação por capítulos |
+| `timeline` / `timeline-labeled` | Cronologias com temas, fotos e visualização horizontal ou vertical |
 
 Exemplo de ficha de mundo e nota com abas:
 

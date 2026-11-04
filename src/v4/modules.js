@@ -7,6 +7,7 @@ const WRITER_MODULES=[
  ['review','Revisão e LanguageTool','Review & LanguageTool','Oculta revisão gramatical, estilo e leitor beta.','Hides grammar, style and beta reader.'],
  ['projects','Longform e projetos','Longform & projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
  ['writingWidgets','Widgets e blocos interativos','Widgets & interactive blocks','Colunas, progresso, campos YAML e widgets.','Columns, progress, YAML fields and widgets.'],
+ ['timelineBlocks','Timelines em Markdown','Markdown timelines','Cronologias verticais e horizontais, temas, imagens e filtros.','Vertical and horizontal timelines, themes, images and filters.'],
  ['zoteroIntegration','Integração de citações Zotero','Zotero quote integration','Destaques de notas importadas como citações.','Imported-note highlights as quotes.'],
  ['styleMate','Estilos de leitura','Reading styles','Tipografia e largura personalizadas por nota.','Scoped note typography and width.'],
  ['sessionNotes','Rascunhos de sessão','Session drafts','Rascunhos temporários em memória.','Ephemeral in-memory drafts.'],

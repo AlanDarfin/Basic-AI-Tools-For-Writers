@@ -103,3 +103,14 @@ These are limited independent implementations, not full upstream forks or API-co
 ### Click Clack sound packs (optional download)
 
 Basic AI Tool for Writers offers an opt-in catalog of 13 original Click Clack WAV sound schemes. Audio is never bundled; files are downloaded on request from [Acylation/obsidian-click-clack](https://github.com/Acylation/obsidian-click-clack), revision 6d5b7f0 (release 0.1.2). The upstream code is MIT licensed and credits Writemonkey 3 as the origin of the sound schemes. Users should verify original sample rights before redistributing the audio.
+
+
+## v9.5 Timeline blocks
+
+- **Timeline**, by George Butco (George-debug) and contributors. MIT.
+  https://github.com/George-debug/obsidian-timeline
+
+The `timeline` and `timeline-labeled` Markdown syntax is based on the
+public original README. Basic's rendering, parsing, horizontal/vertical
+layout, themes, photos, icons and optional controls are independently
+implemented. No upstream JavaScript, CSS or images were copied.

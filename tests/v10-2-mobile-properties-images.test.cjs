@@ -60,7 +60,9 @@ test('Image source integration filters to safe providers, supports Wikimedia wit
 });
 test('Alignment syntax does not conflict with Markdown pipes, paths, or normal prose',()=>{
  const api=expose('src/v10/inline-alignment.js',['writerV102AlignToken','writerV102AlignMerge']);
- assert.equal(api.writerV102AlignToken('::c: hello **bold**').side,'center');\n assert.equal(api.writerV102AlignToken('::c: hello **bold**').legacy,false);\n assert.equal(api.writerV102AlignToken('::c[legacy]').legacy,true);
+ assert.equal(api.writerV102AlignToken('::c: hello **bold**').side,'center');
+ assert.equal(api.writerV102AlignToken('::c: hello **bold**').legacy,false);
+ assert.equal(api.writerV102AlignToken('::c[legacy]').legacy,true);
  assert.equal(api.writerV102AlignToken('::right: text').side,'right');
  assert.equal(api.writerV102AlignToken('::l: text').side,'left');
  for(const value of ['::c: ','a | b','/italic/','\\literal\\','this is ::c[not standalone]','\`\`\`','::c[]']){

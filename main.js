@@ -17243,7 +17243,8 @@ class WriterV931PomodoroController{
   }
   const ws=this.plugin.app.workspace;
   const previous=ws.getLeavesOfType?.(WRITER_V931_POMODORO_VIEW)?.[0];
-  const leaf=previous||ws.getRightLeaf?.(false);
+  // Split a new leaf instead of taking over an already-open sidebar panel.
+  const leaf=previous||ws.getRightLeaf?.(true);
   if(!leaf)return;
   if(!previous)await leaf.setViewState({type:WRITER_V931_POMODORO_VIEW,active:true});
   await ws.revealLeaf?.(leaf);

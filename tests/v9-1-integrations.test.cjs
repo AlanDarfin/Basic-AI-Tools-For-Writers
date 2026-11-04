@@ -65,6 +65,18 @@ test('Flexplorer hide globs, pinning and folder sorting are independent of vault
  assert.deepEqual(Array.from(cfg.folders.Notes.order),['c.md','b.md']);
  assert.equal(m.writerV91FlexGlob(''),null);
 });
+test('Native Explorer sorts persisted custom order and hides folder descendants',()=>{
+ const {exposed:m}=moduleUnderTest('explorer-flex.js',['writerV91FlexMerge','writerV91FlexIsHidden','writerV104FlexNativeSort']);
+ const settings={v91Flex:{perSpaceSorting:false,perSpacePins:false,folders:{Notes:{sort:'custom',order:['three.md','one.md','two.md']}},hidden:['Secrets']}};
+ const cfg=m.writerV91FlexMerge(settings);
+ assert.equal(m.writerV91FlexIsHidden(cfg,'Secrets/nested/deep.md',[]),true);
+ assert.equal(m.writerV91FlexIsHidden(cfg,'Public.md',[]),false);
+ const files=['one.md','two.md','three.md'].map(name=>({file:{name,path:'Notes/'+name}}));
+ const plugin={settings:{v91Flex:cfg}};
+ const sorted=m.writerV104FlexNativeSort(plugin,{path:'Notes'},files);
+ assert.deepEqual(Array.from(sorted,x=>x.file.name),['three.md','one.md','two.md']);
+ assert.deepEqual(Array.from(files,x=>x.file.name),['one.md','two.md','three.md']);
+});
 test('Desktop-only sections and README feature documentation in both languages',()=>{
  const sound=fs.readFileSync(path.join(root,'src/v9/soundscapes.js'),'utf8');
  const clicks=fs.readFileSync(path.join(root,'src/v9/click-clack.js'),'utf8');

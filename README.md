@@ -2,12 +2,18 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.3 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.4 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.4 — context menus, double-press hotkeys and Homepage navigation
+
+- **Editor context menu:** AI actions are grouped into lookup/translation and writing/revision submenus where Obsidian's menu API supports it; the Basic's extra text-formatting and alignment actions are available inside Obsidian's existing **Format** submenu. Native and third-party actions remain intact if they cannot be safely grouped.
+- **Configurable double-press keys:** replace the single Double Shift configuration with a dedicated expandable shortcut manager. Add multiple key-to-command bindings, choose a command from a searchable list, set editing contexts, and remove or disable individual bindings. Existing Double Shift preferences migrate automatically. Letters/digits/Tab/Space cannot trigger while editing text.
+- **Homepage:** on desktop, the search field gains focus when the Homepage opens (not on every rerender). Opening a note from search, recent notes or widgets replaces the Homepage in the same tab instead of creating a new tab; mobile does not autofocus.
 
 ## Version 10.4.3 — root sorting and a single native control
 

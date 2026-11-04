@@ -97,7 +97,7 @@ test('Moving up changes only saved order and never reparents explorer nodes',()=
   ['one.md','two.md','three.md']);
  assert.equal(byPath['Notes/two.md'].path,'Notes/two.md');
  assert.equal(refreshes,1);
- assert.doesNotMatch(source,/container\\.appendChild\\(row\\.node\\)/);
+ assert.doesNotMatch(source,/container\.appendChild\(row\.node\)/);
  assert.match(source,/writerFlexOrderHost/);
 });
 test('Desktop-only sections and README feature documentation in both languages',()=>{

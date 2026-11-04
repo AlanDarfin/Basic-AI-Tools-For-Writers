@@ -101,7 +101,7 @@ function writerV8ChatNameKey(name){
 }
 function writerV8ChatDirectives(lines){
  const profiles=new Map(),defaults={left:'',right:''};
- let title='',groupImage='',start=0,options={density:'normal',bubbles:'soft',avatars:true,width:'normal'};
+ let title='',groupImage='',start=0,options={density:'normal',bubbles:'soft',avatars:true,width:'normal',background:'default',bubbleColor:''};
  for(let i=0;i<lines.length;i++){
   const line=lines[i].trim();
   if(!line){start=i+1;continue;}
@@ -110,13 +110,15 @@ function writerV8ChatDirectives(lines){
   // Conversation image is independent from individual participants' avatars.
   const groupPhoto=/^(?:group[-_ ]?(?:image|photo|avatar)|title[-_ ]?image|chat[-_ ]?image):[ \t]*(.+)$/i.exec(line);
   if(groupPhoto){groupImage=groupPhoto[1].trim().slice(0,450);start=i+1;continue;}
-  const opt=/^(density|bubbles|avatars|width):\s*(\S+)\s*$/i.exec(line);
+  const opt=/^(density|bubbles|avatars|width|background|bubble-color|cor-balao):\s*(\S+)\s*$/i.exec(line);
   if(opt){
    const k=opt[1].toLowerCase(),value=opt[2].toLowerCase();
    if(k==='density'&&['compact','normal','relaxed'].includes(value))options.density=value;
    if(k==='bubbles'&&['soft','round','square'].includes(value))options.bubbles=value;
    if(k==='avatars'&&['on','off'].includes(value))options.avatars=value==='on';
    if(k==='width'&&['normal','wide'].includes(value))options.width=value;
+    if(k==='background'&&['transparent','default','none'].includes(value))options.background=value==='none'?'transparent':value;
+    if(['bubble-color','cor-balao'].includes(k)&&WRITER_V8_CHAT_COLORS.has(value))options.bubbleColor=value==='grey'?'gray':value;
    start=i+1;continue;
   }
   if(line.startsWith('[')&&line.endsWith(']')){
@@ -140,9 +142,13 @@ function writerV8ChatDirectives(lines){
     const pivot=raw.indexOf('='),name=raw.slice(0,pivot).trim(),value=raw.slice(pivot+1).trim();
     const key=writerV8ChatNameKey(name);
     if(key==='left'||key==='right'){defaults[key]=value.slice(0,90);continue;}
-    const profile=profiles.get(key)||{color:'',avatar:''};
+    const profile=profiles.get(key)||{color:'',avatar:'',bubbleColor:''};
     const color=value.toLowerCase();
     if(WRITER_V8_CHAT_COLORS.has(color))profile.color=color==='grey'?'gray':color;
+    else if(/^(?:bubble|balloon|bal[aã]o):s*([a-z]+)$/i.test(value)){
+     const named=RegExp.$1.toLowerCase();
+     if(WRITER_V8_CHAT_COLORS.has(named))profile.bubbleColor=named==='grey'?'gray':named;
+    }
     else if(/^(?:!?\[\[.+\]\]|[^<>:"|?*\r\n]+\.(?:png|jpe?g|webp|gif|svg|avif|bmp))$/i.test(value))
       profile.avatar=value.slice(0,450);
     profiles.set(key,profile);
@@ -207,7 +213,7 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  if(!body&&!avatar&&!name)return null;
  const profile=meta.profiles.get(writerV8ChatNameKey(name))||{};
  return {name,side,explicitName,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
-  color:profile.color||'',body:String(body||'').slice(0,8000)};
+  color:profile.color||'',bubbleColor:profile.bubbleColor||'',body:String(body||'').slice(0,8000)};
 }
 
 /* Fake voice notes are illustrative animations: never open audio files or the microphone. */
@@ -271,14 +277,14 @@ function writerV8ChatParseLegacy(source,meta){
   const textPart=headerEnd?content.slice(headerEnd.index+headerEnd[0].length).trim():content;
   const fields={};
   if(headerEnd)for(const line of header.split('\n')){
-   const m=/^(avatar|image|time|side|mine|name):\s*(.*)$/i.exec(line.trim());
+   const m=/^(avatar|image|time|side|mine|name|bubble):\s*(.*)$/i.exec(line.trim());
    if(m)fields[m[1].toLowerCase()]=m[2].trim().slice(0,500);
   }
   const side=fields.mine==='true'?'right':fields.side==='right'?'right':fields.side==='center'?'center':'left';
   const actualName=fields.name||name;
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
   const base={name:actualName,side,explicitName:true,time:fields.time||'',
-   avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||''};
+   avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',bubbleColor:WRITER_V8_CHAT_COLORS.has(String(fields.bubble||'').toLowerCase())?String(fields.bubble).toLowerCase():profile.bubbleColor||''};
   let body=[];const parts=[];
   for(const line of textPart.split('\n')){
    const divider=writerV8ChatDivider(line);
@@ -326,8 +332,10 @@ function writerV8ChatParse(source){
 }
 function writerV8ChatRender(plugin,source,element,ctx){
  const data=writerV8ChatParse(source);
- const opts=data?.options||{density:'normal',bubbles:'soft',avatars:true,width:'normal'};
- const root=element.createDiv({cls:'writer-v8-block writer-v8-chat is-density-'+opts.density+' is-bubbles-'+opts.bubbles+' is-width-'+opts.width});
+ const opts=data?.options||{density:'normal',bubbles:'soft',avatars:true,width:'normal',background:'default',bubbleColor:''};
+ const root=element.createDiv({cls:'writer-v8-block writer-v8-chat is-density-'+opts.density+' is-bubbles-'+opts.bubbles+
+  ' is-width-'+opts.width+' is-background-'+(opts.background==='transparent'?'transparent':'default')+
+  (WRITER_V8_CHAT_COLORS.has(opts.bubbleColor)?' is-chat-bubble-'+opts.bubbleColor:'')});
  if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title||data.groupImage){
   const heading=root.createDiv({cls:'writer-v8-chat-heading'});
@@ -350,7 +358,7 @@ function writerV8ChatRender(plugin,source,element,ctx){
    continue;
   }
   const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
-  const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
+  const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:'')+(WRITER_V8_CHAT_COLORS.has(msg.bubbleColor)?' is-bubble-color-'+msg.bubbleColor:''),attr:{role:'listitem'}});
   if(opts.avatars&&msg.avatar&&!continuation){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
    if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});

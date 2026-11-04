@@ -32,7 +32,7 @@ function makeFixture(){
     return node;
    }},
    dataset:{},classList:{toggle(name,on){on?classes.add(name):classes.delete(name);}},
-   querySelector:()=>title.action||null,
+   querySelector:selector=>selector.includes('writer-v93-reorder-actions')?title.action||null:null,
    appendChild(node){title.action=node;},
    get actionCount(){return this.action?.children.length||0;},
    classes

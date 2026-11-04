@@ -32,7 +32,7 @@ test('Pretty Properties sanitizes settings and stays native and local',()=>{
  assert.equal(helpers.writerV9215PrettyPairs('status=#aabbcc').status,'#aabbcc');
  assert.match(src,/processFrontMatter/);
  assert.match(src,/writerV9215PrettyImage/);
- assert.match(src,/writerV9215-property-progress/);
+ assert.match(src,/writer-v9215-property-progress/);
  assert.doesNotMatch(src,/fetch\s*\(/);
 });
 test('slash actions and Flow preserve editable note files',()=>{

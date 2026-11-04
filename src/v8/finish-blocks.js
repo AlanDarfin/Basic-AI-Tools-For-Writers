@@ -223,7 +223,6 @@ function writerV8ChatExpandBreaks(value){
  return String(value||'').replace(/(\\+)n/g,(_match,slashes)=>
   '\\'.repeat(Math.floor(slashes.length/2))+(slashes.length%2?'\n':'n'));
 }
-let writerV8ChatTranscriptSerial=0;
 function writerV8ChatRenderFakeAudio(bubble,voice){
  const label=writerUi('Áudio falso: animação sem som ou gravação real','Fake voice note: animation without sound or recording');
  const player=bubble.createDiv({cls:'writer-v8-chat-fake-audio',attr:{role:'group','aria-label':label}});
@@ -244,21 +243,10 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  // No transcript is inferred or fetched: the author provides the text after
  // the duration. Plain text avoids executing arbitrary HTML from the vault.
  if(!voice.transcript)return;
- const transcriptId='writer-v8-voice-transcript-'+(++writerV8ChatTranscriptSerial);
- const toggle=bubble.createEl('button',{cls:'writer-v8-chat-transcript-toggle',
-  attr:{type:'button','aria-expanded':'false','aria-controls':transcriptId}});
- const body=bubble.createDiv({cls:'writer-v8-chat-transcript-text',
-  attr:{id:transcriptId,role:'region','aria-label':writerUi('Transcrição do áudio fictício','Fictional voice note transcript')}});
+ // The author-supplied fictional transcript is visible immediately.
+ const body=player.createDiv({cls:'writer-v8-chat-transcript-text',
+  attr:{role:'note','aria-label':writerUi('Transcrição escrita','Written transcript')}});
  body.setText(voice.transcript);
- body.hidden=true;
- const show=expanded=>{
-  body.hidden=!expanded;
-  toggle.setAttribute('aria-expanded',String(expanded));
-  toggle.setText(expanded?writerUi('Ocultar transcrição','Hide transcript'):
-   writerUi('Ver transcrição','View transcript'));
- };
- show(false);
- toggle.addEventListener('click',()=>show(body.hidden));
 }
 /* Standalone --- separates messages; --- label --- places text between rules. */
 function writerV8ChatDivider(line){

@@ -1,17 +1,19 @@
 /* 9.5 — Native properties collapse and rich markdown timelines. */
 /* The search input lives inside the native collapsible .metadata-properties
    region; this fallback also handles themes that keep that region visible. */
-.metadata-container.is-collapsed .writer-v9216-pretty-search,
-.metadata-container[aria-expanded="false"] .writer-v9216-pretty-search,
-.metadata-container .metadata-properties[hidden] .writer-v9216-pretty-search{
- display:none;
-}
 .metadata-container .metadata-properties > .writer-v9216-pretty-search{
  display:block;
  box-sizing:border-box;
  min-width:0;
  width:100%;
  margin:0 0 8px;
+}
+/* Keep these state rules after the normal input styling (equal specificity
+   in many themes) so the collapsed state always has precedence. */
+.metadata-container.is-collapsed .writer-v9216-pretty-search,
+.metadata-container[aria-expanded="false"] .writer-v9216-pretty-search,
+.metadata-container .metadata-properties[hidden] .writer-v9216-pretty-search{
+ display:none;
 }
 .writer-v95-timeline{
  --writer-v95-accent:var(--interactive-accent);

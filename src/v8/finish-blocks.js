@@ -8,7 +8,7 @@ function writerV8HomeTitleClean(value){
   .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
   .slice(0,80);
 }
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'],homeHidden:['activity','random','tags','goal','gallery','quotes','today'],homeWordGoal:500,homeQuotes:''};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','books'],homeWordGoal:500,homeQuotes:''};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -32,7 +32,7 @@ function writerV8FinishMerge(settings){
  else if(!requested.includes('calendar'))requested.push('calendar');
  cfg.homeOrder=[...new Set([...requested,...allowed])];
  // New widgets are off by default for existing installs; user choices persist.
- const newWidgets=['gallery','quotes','today'];
+ const newWidgets=['gallery','quotes','today','books'];
  cfg.homeHidden=Array.isArray(old.homeHidden)?
   [...new Set([...old.homeHidden.filter(key=>allowed.includes(key)),...newWidgets.filter(key=>!prevOrder.includes(key))])]:
   [...WRITER_V8_FINISH_DEFAULTS.homeHidden];

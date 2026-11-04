@@ -148,5 +148,5 @@ body.is-mobile .writer-v8-home-grid{grid-template-columns:minmax(0,1fr);gap:10px
 .writer-v8-chat-fake-audio.is-animating .writer-v8-chat-wave-bar{animation:writer-v8-fake-wave 800ms ease-in-out infinite alternate;}
 .writer-v8-chat-fake-audio.is-animating .writer-v8-chat-wave-bar:nth-child(3n){animation-delay:180ms;}
 .writer-v8-chat-fake-audio.is-animating .writer-v8-chat-wave-bar:nth-child(5n){animation-delay:370ms;}
-@keyframes writer-v8-fake-wave{to{transform:scaleY(.35);opacity:.5;}}
+@keyframes writer-v8-fake-wave{to{opacity:.35;}}
 @media (prefers-reduced-motion:reduce){.writer-v8-chat-fake-audio.is-animating .writer-v8-chat-wave-bar{animation:none;}}

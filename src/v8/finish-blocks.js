@@ -371,7 +371,7 @@ function writerV8ChatRender(plugin,source,element,ctx){
   }
   const bubble=group.createDiv({cls:'writer-v8-chat-bubble'});
   const fakeAudio=writerV8ChatFakeAudio(msg.body);
-  if(fakeAudio)writerV8ChatRenderFakeAudio(bubble,fakeAudio);
+  if(fakeAudio){bubble.classList.add('is-fake-audio');writerV8ChatRenderFakeAudio(bubble,fakeAudio);}
   else if(msg.body)void writerV8Markdown(plugin,ctx,bubble,msg.body).catch(error=>{
    console.warn('[Basic AI] chat Markdown:',error);
    bubble.empty();bubble.setText(msg.body);

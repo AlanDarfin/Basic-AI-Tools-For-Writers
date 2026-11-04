@@ -7666,4 +7666,63 @@ body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-act
  height:18px;
 }
 body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
+
+
+/* 10.4: centering and optical balance for the fictional voice-note controls. */
+.writer-v8-chat .writer-v8-chat-voice-toggle{
+ box-sizing:border-box;
+ display:grid;
+ place-items:center;
+ width:32px;
+ height:32px;
+ min-width:32px;
+ min-height:32px;
+ flex:0 0 32px;
+ padding:0;
+ line-height:1;
+ text-align:center;
+}
+.writer-v8-chat .writer-v8-chat-voice-toggle svg{
+ display:block;
+ width:16px;
+ height:16px;
+ margin:0;
+ padding:0;
+ align-self:center;
+ justify-self:center;
+ transform:none;
+}
+.writer-v8-chat .writer-v8-chat-voice-toggle svg.lucide-play{transform:translateX(1px);}
+
+/* Make hiding reliable even if native Explorer CSS sets explicit tree display. */
+.workspace-leaf-content[data-type="file-explorer"] .tree-item.writer-v91-flex-hidden,
+.workspace-leaf-content[data-type="file-explorer"] .nav-file.writer-v91-flex-hidden,
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder.writer-v91-flex-hidden{
+ display:none;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v91-flex-revealed{
+ opacity:.55;
+}
+.workspace-leaf-content[data-type="file-explorer"] .tree-item[data-writer-flex-drop]{
+ position:relative;
+}
+.workspace-leaf-content[data-type="file-explorer"] .tree-item[data-writer-flex-drop="before"]::before,
+.workspace-leaf-content[data-type="file-explorer"] .tree-item[data-writer-flex-drop="after"]::after{
+ content:"";
+ position:absolute;
+ inset-inline:3px;
+ height:2px;
+ border-radius:4px;
+ background:var(--interactive-accent);
+ z-index:2;
+ pointer-events:none;
+}
+.workspace-leaf-content[data-type="file-explorer"] .tree-item[data-writer-flex-drop="before"]::before{top:-1px;}
+.workspace-leaf-content[data-type="file-explorer"] .tree-item[data-writer-flex-drop="after"]::after{bottom:-1px;}
+.writer-v104-space-active{
+ margin-inline-start:auto;
+ color:var(--text-accent);
+ font-size:var(--font-ui-smaller);
+ font-weight:var(--font-semibold);
+}
 /* END V8 MODULAR STYLES */

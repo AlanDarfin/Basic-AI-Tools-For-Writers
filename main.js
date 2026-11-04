@@ -12574,8 +12574,8 @@ function writerV9ExplorerSettings(plugin,panel){
 /* v9 smart spaces: original local-first implementation of Make-inspired
  * saved filtered collections. Does not create a new pane or copy Make.md code. */
 const WRITER_V9_SPACE_VIEWS=['cards','list','table','board'];
-const WRITER_V9_SPACE_SORTS=['name','recent','oldest'];
-const WRITER_V9_SPACE_MAX=200;
+const WRITER_V9_SPACE_SORTS=['name','recent','oldest','manual'];
+const WRITER_V9_SPACE_MAX=5000; // Paginated results; search no longer silently omits notes after 200.
 const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
@@ -12707,9 +12707,20 @@ function writerV9SpaceItems(plugin,space){
   }
   return true;
  }).sort((a,b)=>{
-  const pinA=space.pinnedPaths?.includes(a.path),pinB=space.pinnedPaths?.includes(b.path);
+  const pin=(file)=>(space.pinnedPaths||[]).some(p=>p===file.path||file.path.startsWith(p.replace(/\/$/,'')+'/'));
+  const pinA=pin(a),pinB=pin(b);
   if(Boolean(pinA)!==Boolean(pinB))return pinA?-1:1;
-  if(space.sort==='name')return a.basename.localeCompare(b.basename);
+  if(space.sort==='manual'){
+   const order=space.includePaths||[];
+   const rank=file=>{
+    const n=order.findIndex(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/'));
+    return n<0?Number.MAX_SAFE_INTEGER:n;
+   };
+   const ar=rank(a),br=rank(b);
+   if(ar!==br)return ar-br;
+   return a.basename.localeCompare(b.basename,undefined,{numeric:true});
+  }
+  if(space.sort==='name')return a.basename.localeCompare(b.basename,undefined,{numeric:true});
   if(space.sort==='oldest')return (a.stat?.mtime||0)-(b.stat?.mtime||0);
   return (b.stat?.mtime||0)-(a.stat?.mtime||0);
  }).slice(0,WRITER_V9_SPACE_MAX);
@@ -12731,6 +12742,15 @@ function writerV9SpaceEditor(plugin,initial,save){
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
   field('folder','Pasta (opcional)','Folder (optional)');
+  new Setting(root).setName(writerUi('Usar pasta da nota aberta','Use the current note folder'))
+   .setDesc(writerUi('Preenche a pasta sem mover arquivos.','Sets the folder path without moving files.'))
+   .addButton(b=>b.setButtonText(writerUi('Selecionar pasta atual','Use current folder')).onClick(()=>{
+    const current=plugin.app.workspace.getActiveFile?.();
+    if(!current?.parent){new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));return;}
+    draft.folder=current.parent.path||'';
+    modal.close();writerV9SpaceEditor(plugin,draft,save);
+   }));
+
   new Setting(root).setName(writerUi('Notas/pastas incluídas','Included notes/folders'))
    .setDesc(writerUi('Uma rota por linha para Spaces de seleção manual.','One vault path per line for curated Spaces.'))
    .addTextArea(t=>t.setValue((draft.includePaths||[]).join('\n')).onChange(value=>{draft.includePaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);}));
@@ -12755,6 +12775,14 @@ function writerV9SpaceEditor(plugin,initial,save){
      draft.homeWidgetSizes={...(global?.homeWidgetSizes||{})};
     }
    }));
+  new Setting(root).setName(writerUi('Incluir nota aberta','Include currently open note'))
+   .setDesc(writerUi('Adiciona a rota à seleção manual sem mover a nota.','Adds its path to the curated selection without moving the note.'))
+   .addButton(b=>b.setButtonText(writerUi('Adicionar nota','Add note')).onClick(()=>{
+    const file=plugin.app.workspace.getActiveFile?.();
+    if(!file){new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));return;}
+    draft.includePaths=[...new Set([...(draft.includePaths||[]),file.path])];
+    modal.close();writerV9SpaceEditor(plugin,draft,save);
+   }));
   const options=(key,pt,en,values)=>{
    new Setting(root).setName(writerUi(pt,en)).addDropdown(d=>{
     for(const [id,ptLabel,enLabel] of values)d.addOption(id,writerUi(ptLabel,enLabel));
@@ -12764,7 +12792,7 @@ function writerV9SpaceEditor(plugin,initial,save){
   options('view','Visualização','View',
    [['cards','Cartões','Cards'],['list','Lista','List'],['table','Tabela','Table'],['board','Quadro','Board']]);
   options('sort','Ordenação','Sort',
-   [['recent','Mais recente','Most recent'],['name','Nome','Name'],['oldest','Mais antigo','Oldest']]);
+   [['recent','Mais recente','Most recent'],['name','Nome','Name'],['oldest','Mais antigo','Oldest'],['manual','Ordem de inclusão','Included path order']]);
   const status=root.createEl('p',{cls:'writer-v9-space-message'});
   new Setting(root).addButton(b=>b.setButtonText(writerUi('Salvar','Save')).setCta().onClick(async()=>{
    const item=writerV9SpaceSanitize({...draft,id:initial?.id||'space-'+Date.now().toString(36)});
@@ -12796,7 +12824,11 @@ function writerV9SpaceModal(plugin){
   for(const option of cfg.spaces){const el=select.createEl('option',{text:option.name});el.value=option.id;}
   if(!cfg.spaces.some(x=>x.id===currentId))currentId=cfg.spaces[0]?.id||'';
   select.value=currentId;
-  select.addEventListener('change',()=>{currentId=select.value;query='';page=0;refresh();});
+  select.addEventListener('change',async()=>{
+   currentId=select.value;query='';page=0;
+   // Selecting a Space now actually activates its own sorting, pins and widgets.
+   await writerV9215SelectSpace(plugin,currentId);refresh();
+  });
   const action=(target,label,symbol,callback)=>{
    const button=target.createEl('button',{cls:'writer-v102-spaces-action',
     attr:{type:'button',title:label,'aria-label':label}});
@@ -12847,6 +12879,8 @@ function writerV9SpaceModal(plugin){
   const symbol=icon(name,space.icon||'layers');
   if(space.iconColor)symbol.style.color=space.iconColor;
   name.createEl('strong',{text:space.name});
+  const activated=cfg.activeId===space.id;
+  if(activated)intro.createSpan({cls:'writer-v104-space-active',text:writerUi('Ativo','Active')});
   const source=space.mode==='folder'?writerUi('Pasta','Folder'):
    space.mode==='curated'?writerUi('Selecionadas','Curated'):writerUi('Filtros','Filters');
   intro.createSpan({cls:'writer-v102-spaces-source',text:source+(space.folder?' · '+space.folder:'')});
@@ -13008,6 +13042,26 @@ function writerV9RegisterSpaces(plugin){
   callback:()=>writerV9SpaceModal(plugin)});
  plugin.registerEvent(plugin.app.workspace.on('file-menu',(menu,file)=>{
   if(!writerModuleOn(plugin,'smartSpaces')||!plugin.settings.v9Spaces.enabled)return;
+  if(file instanceof TFile&&file.extension==='md'&&plugin.settings.v9Spaces.spaces.length){
+   menu.addItem(item=>item.setTitle(writerUi('Adicionar nota a uma Space','Add note to a Space'))
+    .setIcon('layers').onClick(()=>{
+     const picker=new Modal(plugin.app);
+     picker.onOpen=()=>{
+      picker.setTitle(writerUi('Adicionar à Space','Add to Space'));
+      for(const space of plugin.settings.v9Spaces.spaces){
+       new Setting(picker.contentEl).setName(space.name)
+        .addButton(button=>button.setButtonText(writerUi('Adicionar','Add')).onClick(async()=>{
+         space.includePaths=[...new Set([...(space.includePaths||[]),file.path])];
+         // A dynamic Space keeps its filters; only curated Spaces use explicit inclusion.
+         if(space.mode!=='curated'){
+          new Notice(writerUi('A nota foi guardada na seleção, mas a Space usa filtros.','Note saved to the selection, but the Space uses filters.'));
+         }
+         await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();picker.close();
+        }));
+      }
+     };picker.open();
+    }));
+  }
   if(file instanceof TFolder){
    menu.addItem(item=>item.setTitle(writerUi('Criar Space desta pasta','Create Space from folder'))
     .setIcon('layers').onClick(()=>{
@@ -14934,10 +14988,13 @@ function writerV91FlexMerge(settings){
  const raw=settings.v91Flex&&typeof settings.v91Flex==='object'?settings.v91Flex:{};
  const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,mobileReorder:true,
   perSpaceSorting:true,perSpacePins:true,yamlSorting:false,sortSpecCompat:true,
+  nativeSortIntegration:true,dragRequiresAlt:false,
   pinEnabled:true,hideEnabled:true,sortEnabled:true,defaultSortProperty:'sort_order',
   patterns:'',pinned:[],hidden:[],folders:{},...raw};
  cfg.enabled=cfg.enabled!==false;cfg.showHidden=cfg.showHidden===true;
  cfg.dragReorder=cfg.dragReorder!==false;
+ cfg.nativeSortIntegration=cfg.nativeSortIntegration!==false;
+ cfg.dragRequiresAlt=cfg.dragRequiresAlt===true;
  for(const key of ['mobileReorder','perSpaceSorting','perSpacePins','pinEnabled','hideEnabled','sortEnabled'])cfg[key]=cfg[key]!==false;
  cfg.yamlSorting=cfg.yamlSorting===true;cfg.sortSpecCompat=cfg.sortSpecCompat!==false;
  cfg.defaultSortProperty=String(cfg.defaultSortProperty||'sort_order').replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
@@ -14977,12 +15034,40 @@ function writerV91FlexPatterns(cfg){
  return cfg.patterns.split(/\r?\n/).map(writerV91FlexGlob).filter(Boolean).slice(0,40);
 }
 function writerV91FlexIsHidden(cfg,path,patterns,plugin){
- if(cfg.hideEnabled===false)return false;
- return cfg.hidden.includes(path)||patterns.some(re=>re.test(path));
+ if(cfg.hideEnabled===false||!path)return false;
+ const blocked=(cfg.hidden||[]).some(rule=>path===rule||path.startsWith(rule.replace(/\/$/,'')+'/'));
+ return blocked||(patterns||[]).some(re=>re.test(path));
 }
-function writerV91FlexNodePath(node){
- return node.querySelector('.nav-file-title[data-path], .nav-folder-title[data-path]')?.getAttribute('data-path')||
-  node.getAttribute('data-path')||node.querySelector('.nav-file-title, .nav-folder-title')?.getAttribute('data-path')||'';
+function writerV91FlexNodePath(node,view){
+ if(!node)return '';
+ const mapFile=view?.files?.get?.(node);
+ if(mapFile?.path)return mapFile.path;
+ const raw=node.getAttribute?.('data-path')||
+  node.querySelector?.(':scope > .nav-file-title[data-path], :scope > .nav-folder-title[data-path], :scope > .tree-item-self[data-path], .nav-file-title[data-path], .nav-folder-title[data-path]')?.getAttribute('data-path');
+ if(raw)return raw;
+ const title=node.querySelector?.('.nav-file-title, .nav-folder-title, .tree-item-self');
+ const path=title?.getAttribute?.('data-path')||title?.querySelector?.('[data-path]')?.getAttribute('data-path');
+ if(path)return path;
+ if(view?.fileItems)for(const [name,item] of Object.entries(view.fileItems)){
+  if(item?.el===node)return item.file?.path||name;
+ }
+ return '';
+}
+function writerV104FlexNativeSort(plugin,folder,items){
+ if(!Array.isArray(items)||!folder)return items;
+ const dir=folder.path==='/'?'':String(folder.path||'');
+ const cfg=plugin.settings.v91Flex,record=writerV93FlexRecord(plugin,dir);
+ if(!cfg.enabled||cfg.sortEnabled===false||record.sort==='native'&&cfg.pinEnabled===false)return items;
+ const rows=items.map((source,index)=>{
+  const file=source?.file||source;
+  return {source,file,index,path:file?.path||'',name:file?.name||'',
+   pinned:writerV93FlexPinned(plugin,file?.path||'')};
+ });
+ if(rows.some(row=>!row.file?.name))return items;
+ if(record.sort==='native'&&!rows.some(row=>row.pinned))return items;
+ const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+ rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,record,collator));
+ return rows.map(row=>row.source);
 }
 /* Supports a small, explicit subset of the Custom Sorting YAML syntax. */
 function writerV93FlexParseSortSpec(raw){
@@ -15097,16 +15182,24 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
 
 function writerV91FlexSortGroup(plugin,container,patterns){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
-  node.classList?.contains('nav-file')||node.classList?.contains('nav-folder'));
+  node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
  if(!children.length)return;
- const dir=container.closest('.nav-folder')?.querySelector(':scope > .nav-folder-title[data-path]')?.getAttribute('data-path')||'';
+ const parentNode=container.closest('.nav-folder');
+ const dir=parentNode?writerV91FlexNodePath(parentNode,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view):'';
  const folder=writerV93FlexRecord(plugin,dir);
  const rows=children.map((node,index)=>{
-  const path=writerV91FlexNodePath(node);
+  const path=writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
   const file=plugin.app.vault.getAbstractFileByPath(path);
   const title=node.querySelector('.nav-file-title, .nav-folder-title');
   const isHidden=path&&writerV91FlexIsHidden(cfg,path,patterns,plugin);
-  node.classList.toggle('writer-v91-flex-hidden',Boolean(cfg.enabled&&isHidden&&!cfg.showHidden));
+  const conceal=Boolean(cfg.enabled&&isHidden&&!cfg.showHidden);
+  node.classList.toggle('writer-v91-flex-hidden',conceal);
+  // Native file explorer styles may override simple CSS classes, so also set
+  // a scoped inline display value. Never touch vault contents or file paths.
+  if(conceal){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
+  else if(node.dataset.writerFlexConcealed==='true'){
+   delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');
+  }
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
@@ -15237,16 +15330,48 @@ function writerV93FlexSortModal(plugin,folder){
 
 function writerV91FlexRegister(plugin){
  const cfg=plugin.settings.v91Flex;
- let timer=null,observer=null,lastDrag='';
+ let timer=null,observer=null,lastDrag='',dropNode=null;
+ const patched=new Map();
  const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
+ const patchView=view=>{
+  if(!view||patched.has(view)||!cfg.nativeSortIntegration)return;
+  const previous=view.getSortedFolderItems;
+  if(typeof previous!=='function')return;
+  const adapter=function(folder){
+   const result=previous.apply(this,arguments);
+   return writerV104FlexNativeSort(plugin,folder,result);
+  };
+  view.getSortedFolderItems=adapter;
+  patched.set(view,{previous,adapter});
+ };
  const scan=()=>{
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   for(const group of host.querySelectorAll('.nav-files-container, .nav-folder-children'))writerV91FlexSortGroup(plugin,group,patterns);
+   patchView(leaf.view);
+   const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
+   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns);
+   // Sync items even if their native wrapper differs from older Obsidian DOM.
+   for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
+    const path=writerV91FlexNodePath(node,leaf.view);
+    if(!path)continue;
+    const hidden=cfg.enabled&&writerV91FlexIsHidden(cfg,path,patterns,plugin)&&!cfg.showHidden;
+    node.classList.toggle('writer-v91-flex-hidden',hidden);
+    node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&writerV91FlexIsHidden(cfg,path,patterns,plugin));
+    if(hidden){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
+    else if(node.dataset.writerFlexConcealed==='true'){delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');}
+   }
   }
  };
- const refresh=()=>{clearTimeout(timer);timer=setTimeout(scan,140);};
+ const refresh=()=>{
+  clearTimeout(timer);timer=setTimeout(()=>{
+   scan();
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+    if(active()&&cfg.nativeSortIntegration)try{leaf.view?.sort?.();}catch(_){}
+   }
+  },100);
+ };
+ const refreshDom=()=>{clearTimeout(timer);timer=setTimeout(scan,90);};
  plugin.writerV91FlexRefresh=refresh;
  const menu=(menu,file)=>{
   if(!active()||!(file instanceof TFile||file instanceof TFolder))return;
@@ -15326,30 +15451,41 @@ function writerV91FlexRegister(plugin){
  // in a folder explicitly configured for custom sorting.
  const container=plugin.app.workspace.containerEl;
  const start=event=>{
-  if(!active()||cfg.sortEnabled===false||!cfg.dragReorder||!event.altKey)return;
-  const node=event.target?.closest?.('.nav-file, .nav-folder');
-  const path=node&&writerV91FlexNodePath(node);
+  if(!active()||cfg.sortEnabled===false||!cfg.dragReorder||cfg.dragRequiresAlt&&!event.altKey)return;
+  const node=event.target?.closest?.('.nav-file, .nav-folder, .tree-item');
+  const path=node&&writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
   const file=plugin.app.vault.getAbstractFileByPath(path||'');
   if(!file||writerV93FlexRecord(plugin,writerV91FlexFolderPath(file))?.sort!=='custom')return;
   lastDrag=path;event.dataTransfer?.setData('text/x-writer-flexplorer',path);
   if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
-  event.stopPropagation();
+  event.stopImmediatePropagation?.();event.stopPropagation();
  };
  const over=event=>{
   if(!lastDrag)return;
   const node=event.target?.closest?.('.nav-file, .nav-folder');
-  const target=node&&writerV91FlexNodePath(node);
+  const target=node&&writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
   const a=plugin.app.vault.getAbstractFileByPath(lastDrag),b=plugin.app.vault.getAbstractFileByPath(target||'');
-  if(a&&b&&a.parent?.path===b.parent?.path){event.preventDefault();event.stopPropagation();}
+  if(dropNode&&dropNode!==node){delete dropNode.dataset.writerFlexDrop;dropNode=null;}
+  if(a&&b&&a.parent?.path===b.parent?.path){
+   event.preventDefault();event.stopImmediatePropagation?.();event.stopPropagation();
+   const rect=node.getBoundingClientRect?.();
+   dropNode=node;
+   node.dataset.writerFlexDrop=rect&&event.clientY>rect.top+rect.height/2?'after':'before';
+  }
  };
  const drop=event=>{
   if(!lastDrag)return;
   const node=event.target?.closest?.('.nav-file, .nav-folder');
-  const target=node&&writerV91FlexNodePath(node),source=lastDrag;lastDrag='';
+  const target=node&&writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view),source=lastDrag;
+  const side=dropNode?.dataset.writerFlexDrop==='after'?'after':'before';
+  lastDrag='';if(dropNode){delete dropNode.dataset.writerFlexDrop;dropNode=null;}
   if(!target||target===source)return;
-  event.preventDefault();event.stopPropagation();writerV91FlexReorder(plugin,source,target,'before');
+  const a=plugin.app.vault.getAbstractFileByPath(source),b=plugin.app.vault.getAbstractFileByPath(target);
+  if(!a||!b||a.parent?.path!==b.parent?.path)return;
+  event.preventDefault();event.stopImmediatePropagation?.();event.stopPropagation();
+  writerV91FlexReorder(plugin,source,target,side);
  };
- const end=()=>{lastDrag='';};
+ const end=()=>{lastDrag='';if(dropNode){delete dropNode.dataset.writerFlexDrop;dropNode=null;}};
  plugin.registerDomEvent?.(container,'dragstart',start,true);
  plugin.registerDomEvent?.(container,'dragover',over,true);
  plugin.registerDomEvent?.(container,'drop',drop,true);
@@ -15357,7 +15493,7 @@ function writerV91FlexRegister(plugin){
  const attach=()=>{
   observer?.disconnect();if(typeof MutationObserver==='undefined'){refresh();return;}
   observer=new MutationObserver(records=>{
-   if(records.some(record=>record.addedNodes.length||record.removedNodes.length))refresh();
+   if(records.some(record=>record.addedNodes.length||record.removedNodes.length))refreshDom();
   });
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    if(leaf.view?.containerEl)observer.observe(leaf.view.containerEl,{childList:true,subtree:true});
@@ -15385,14 +15521,18 @@ function writerV91FlexRegister(plugin){
  plugin.addCommand({id:'v91-flex-show-hidden',name:writerUi('Explorador: mostrar ou ocultar arquivos escondidos','Explorer: toggle hidden files'),callback:async()=>{
   cfg.showHidden=!cfg.showHidden;await plugin.saveSettings();refresh();
  }});
- plugin.register?.(()=>{clearTimeout(timer);observer?.disconnect();plugin.writerV91FlexRefresh=null;});
+ plugin.register?.(()=>{
+  clearTimeout(timer);observer?.disconnect();
+  for(const [view,entry] of patched)if(view.getSortedFolderItems===entry.adapter)view.getSortedFolderItems=entry.previous;
+  patched.clear();plugin.writerV91FlexRefresh=null;
+ });
 }
 function writerV91FlexSettings(plugin,panel){
  const cfg=plugin.settings.v91Flex;
  panel.createEl('h3',{text:'Flexplorer'});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Organize o explorador nativo por pasta, fixe itens, oculte arquivos e escolha uma ordem manual. Clique com o botão direito ou pressione e segure para ver as opções. Alt + arrastar reordena itens da mesma pasta em modo personalizado.',
-  'Sort native Explorer folders individually, pin files, hide items and set custom order. Right-click or long-press for file actions. Alt + drag reorders items within custom-sorted folders.'
+  'Organize o explorador nativo por pasta, fixe itens, oculte arquivos e escolha uma ordem manual. Clique com o botão direito ou pressione e segure para ver as opções. Arrastar reordena itens da mesma pasta em modo personalizado; Alt é opcional.',
+  'Sort native Explorer folders individually, pin files, hide items and set custom order. Right-click or long-press for file actions. Drag reorders files in custom-sorted folders; Alt is optional.'
  )});
  for(const [key,pt,en] of [
   ['enabled','Ativar organização avançada','Enable enhanced organization'],
@@ -15400,7 +15540,9 @@ function writerV91FlexSettings(plugin,panel){
   ['pinEnabled','Ativar itens fixados','Enable pinned items'],
   ['hideEnabled','Ativar ocultação de arquivos','Enable file hiding'],
   ['showHidden','Exibir itens ocultos','Show hidden items'],
-  ['dragReorder','Permitir Alt + arrastar para ordenar','Allow Alt + drag to reorder'],
+  ['dragReorder','Arrastar para reordenar manualmente','Drag to reorder manually'],
+  ['dragRequiresAlt','Exigir Alt ao arrastar (opcional)','Require Alt while dragging (optional)'],
+  ['nativeSortIntegration','Integrar ordenação nativa do explorador','Use native Explorer sorting integration'],
   ['mobileReorder','Setas de ordenação no celular','Mobile sorting arrows'],
   ['perSpaceSorting','Ordenação independente por Space','Independent sorting per Space'],
   ['perSpacePins','Itens fixados independentes por Space','Independent pins per Space'],
@@ -18875,9 +19017,11 @@ function writerV101SpaceHistorySettings(plugin,panel){
 /* v10.1 local writing utilities: no third-party executables, no hidden writes. */
 function writerV101SuiteMerge(settings){
  const old=settings.v101Suite&&typeof settings.v101Suite==='object'?settings.v101Suite:{};
- const cfg=settings.v101Suite={enabled:true,readingProgress:true,yamlValidation:true,tableFilter:true,csvExport:true,footnotes:true,
+ const cfg=settings.v101Suite={enabled:true,readingProgress:true,readingProgressHeight:3,readingProgressColor:'',yamlValidation:true,tableFilter:true,csvExport:true,footnotes:true,
   bulkProperties:false,batchMax:60, ...old};
  cfg.batchMax=Math.max(1,Math.min(100,Math.floor(Number(cfg.batchMax)||60)));
+ cfg.readingProgressHeight=Math.max(2,Math.min(10,Math.round(Number(cfg.readingProgressHeight)||3)));
+ cfg.readingProgressColor=/^#[0-9a-f]{6}$/i.test(cfg.readingProgressColor||'')?cfg.readingProgressColor:'';
  return cfg;
 }
 function writerV101YamlValidate(text,parse){
@@ -19019,6 +19163,9 @@ function writerV101ReadingProgressRegister(plugin){
     fill.style.cssText='height:100%;width:0%;background:var(--interactive-accent);transition:width 90ms linear;';
     track.appendChild(fill);host.appendChild(track);
    }
+   const style=plugin.settings.v101Suite;
+   track.style.height=(style?.readingProgressHeight||3)+'px';
+   track.firstElementChild.style.backgroundColor=style?.readingProgressColor||'var(--interactive-accent)';
    const maximum=Math.max(0,scroller.scrollHeight-scroller.clientHeight);
    const value=maximum?Math.min(100,Math.max(0,Math.round(100*scroller.scrollTop/maximum))):100;
    track.setAttribute('aria-valuenow',String(value));
@@ -19089,6 +19236,15 @@ function writerV101EnhancementsSettings(plugin,panel){
   ['footnotes','Inserir notas de rodapé','Insert footnotes'],
   ['bulkProperties','Permitir editar propriedades em lote (desligado inicialmente)','Allow batch property edits (off by default)']
  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Espessura da barra de leitura','Reading bar thickness'))
+  .addSlider(slider=>slider.setLimits(2,10,1).setDynamicTooltip().setValue(cfg.readingProgressHeight||3)
+   .onChange(async value=>{cfg.readingProgressHeight=value;await plugin.saveSettings();plugin.writerV101ReadingProgressRefresh?.();}));
+ new Setting(panel).setName(writerUi('Cor da barra de leitura','Reading bar color'))
+  .setDesc(writerUi('Hexadecimal (#RRGGBB) ou deixe vazio para usar a cor de destaque.','Hex color (#RRGGBB), or leave blank to use accent color.'))
+  .addText(field=>field.setPlaceholder('#ff8800').setValue(cfg.readingProgressColor||'')
+   .onChange(async value=>{if(value&&!/^#[0-9a-f]{6}$/i.test(value))return;
+    cfg.readingProgressColor=value;await plugin.saveSettings();plugin.writerV101ReadingProgressRefresh?.();
+   }));
  new Setting(panel).setName(writerUi('Limite de notas por operação','Maximum notes per operation'))
   .addSlider(s=>s.setLimits(1,100,1).setDynamicTooltip().setValue(cfg.batchMax)
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));

@@ -6550,4 +6550,51 @@ body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
  gap:10px;
 }
 body.is-mobile .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
+/* 9.2.14 — File previews use the same wide, clipped image language as note previews. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell,
+.workspace-leaf-content[data-type="file-explorer"] .nav-file > .writer-v92-preview-shell{
+ display:flex;
+ flex-direction:column;
+ align-items:flex-start;
+ gap:7px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-file-preview{
+ width:100%;
+ flex:none;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-preview-image{
+ display:block;
+ width:min(100%,180px);
+ height:auto;
+ aspect-ratio:16/9;
+ flex:none;
+ object-fit:cover;
+ object-position:center;
+ border-radius:var(--radius-m);
+ border:1px solid var(--background-modifier-border);
+ background:var(--background-secondary);
+ box-shadow:0 1px 3px rgba(0,0,0,.12);
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-preview-image{
+ width:min(100%,160px);
+ height:auto;
+ aspect-ratio:16/9;
+}
+.markdown-source-view .inline-title:has(> .writer-v9-inline-title-icon),
+.markdown-preview-view .inline-title:has(> .writer-v9-inline-title-icon){
+ display:flex;
+ align-items:center;
+ gap:.42em;
+}
+.inline-title > .writer-v9-inline-title-icon{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ flex:0 0 auto;
+ width:1em;
+ height:1em;
+ color:var(--text-accent);
+}
+.inline-title > .writer-v9-inline-title-icon svg{width:100%;height:100%;}
+
 /* END V8 MODULAR STYLES */

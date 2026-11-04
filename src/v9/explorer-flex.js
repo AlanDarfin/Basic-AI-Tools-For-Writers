@@ -60,8 +60,7 @@ function writerV91FlexPatterns(cfg){
 }
 function writerV91FlexIsHidden(cfg,path,patterns,plugin){
  if(cfg.hideEnabled===false)return false;
- return cfg.hidden.includes(path)||patterns.some(re=>re.test(path))||
-  Boolean(plugin&&writerV9215SpaceHidden(plugin,path));
+ return cfg.hidden.includes(path)||patterns.some(re=>re.test(path));
 }
 function writerV91FlexNodePath(node){
  return node.querySelector('.nav-file-title[data-path], .nav-folder-title[data-path]')?.getAttribute('data-path')||
@@ -345,14 +344,13 @@ function writerV91FlexRegister(plugin){
     if(scopedPins)scopedPins.pinnedPaths=next;else cfg.pinned=next;
     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
-  const space=writerV9215ActiveSpace(plugin);
-  const hidden=space?space.hiddenPaths:cfg.hidden;
+  const hidden=cfg.hidden;
   if(cfg.hideEnabled!==false)menu.addItem(item=>item.setTitle(hidden.includes(path)?
-   writerUi(space?'Reexibir neste Space':'Reexibir no explorador',space?'Unhide in this Space':'Unhide in explorer'):
-   writerUi(space?'Ocultar neste Space':'Ocultar no explorador',space?'Hide in this Space':'Hide in explorer'))
+   writerUi('Reexibir no explorador','Unhide in explorer'):
+   writerUi('Ocultar no explorador','Hide in explorer'))
    .setIcon('eye-off').onClick(async()=>{
     const next=hidden.includes(path)?hidden.filter(p=>p!==path):[...hidden,path];
-    if(space)space.hiddenPaths=next;else cfg.hidden=next;
+    cfg.hidden=next;
     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
   if(cfg.sortEnabled!==false&&file instanceof TFolder){

@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.2.14 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.15 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -79,7 +79,9 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 ### Áudio e acessibilidade
 
 - **Soundscapes (PC):** rádios e playlists do YouTube agora **começam a tocar em segundo plano** ao clicar em Play, sem abrir popup ou aba. O mini player de vídeo aparece **somente** ao clicar no botão de exibi-lo ou usar o comando correspondente. É possível recolher sem interromper a rádio ou usar **Parar** para descarregá-la. O widget da Homepage permanece visível durante Play e Stop; no celular ele fica na grade normalmente, mas apresenta um aviso de indisponibilidade por limitações do Obsidian mobile. O mini player tenta utilizar Webview do Chromium e, quando indisponível, recorre a um iframe visível do YouTube. O volume das rádios agora pode ser ajustado pelo slider da Homepage, da barra de status ou do próprio mini player, assim como o áudio local. A configuração é reaplicada ao carregar o vídeo ou trocar de estação. Algumas transmissões podem bloquear incorporação (erro 153). **Minha Música** continua usando o player local, com controles próprios.
-- **Prévia e títulos:** as imagens abaixo das folder notes agora aparecem como miniaturas horizontais 16:9, também no celular. O ícone personalizado de cada nota no explorador aparece antes do título nativo, sem alterar o Markdown. **Spaces** agora permite ocultar caminhos de notas/pastas de forma independente por coleção; o filtro ainda não oculta esses caminhos no explorador nativo. Pretty Properties, Flow do Make.md e comandos com / seguem em planejamento e ainda não foram implementados.
+- **Prévias e títulos na 9.2.15:** miniaturas quadradas novamente compactas, à direita da descrição, logo abaixo da ação de folder note. Ícones personalizados ao lado do título nativo herdam a cor do texto e ficam alinhados. Em **Spaces**, o Space ativo tem caminhos ocultos próprios, também aplicados ao explorador nativo; os filtros globais continuam globais.
+- **Propriedades visuais (primeira etapa):** capa, banner e ícone por YAML local; ocultar campos específicos ou vazios; cores de propriedades, barras de progresso, datas formatadas e modelos de texto seguros. A seleção de imagens usa o YAML nativo do Obsidian e não busca imagens externas.
+- **Flow e menu / (primeira etapa):** digite `/` para inserir títulos, listas, citações, callouts, tabelas, datas e notas incorporadas. Na visualização, notas Markdown incorporadas podem ser editadas no próprio bloco, com verificação de conflitos. A edição avançada completa de blocos do Make.md ainda não foi integrada.
 - **Image Captions:** legendas opcionais de imagens a partir do texto alternativo do Markdown, sem reescrever arquivos.
 - **Click Clack (PC):** sons de digitação com catálogo dos **13 pacotes originais** (Cherry MX, IBM, Olympia, Quill e outros), disponíveis para download individual ou em lote nas configurações. Pacotes instalados funcionam offline e nenhum áudio é baixado automaticamente.
 - **Leitura em voz alta (TTS):** vozes do sistema, quando disponíveis, ou vozes online com autorização, com idioma, velocidade, tom e seleção de voz. A leitura online envia texto ao serviço escolhido apenas quando ativada.

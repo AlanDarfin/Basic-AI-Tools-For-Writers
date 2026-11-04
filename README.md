@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.5.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.5.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -156,6 +156,8 @@ A summary of the scene.
 ~~~~
 
 **9.5.1 · Fictional chat dividers and group photo:** in `chat` blocks, use a standalone `---` between messages for a simple divider or `--- Two hours later ---` for a labeled separator. Set `group-image: [[Images/group.webp]]` next to `title:` to show a local group portrait in the conversation header. Per-speaker avatars and fake audio are unchanged. See [full examples](docs/BLOCKS.en.md).
+
+**9.5.2 · Fictional voice note transcripts:** optional manually supplied text in `[audio:0:15:I'll be there soon.]`, `[voice:0:15:...]` or `[áudio:0:15:...]` appears behind a **View transcript** toggle, without audio playback or microphone access. Silent voice notes without transcriptions continue to work. The transcript is plain text and remains inside the fictional message. See the [block guide](docs/BLOCKS.en.md).
 
 **Fictional chat syntax:** add a `chat` block with `[Left=Maria, right=João]` to set the speakers. For color and avatar shorthand, use `[Maria=blue]`. Tab sections can use headings such as `=== Maria`. These formats only render local story content; they are not messaging services.
 

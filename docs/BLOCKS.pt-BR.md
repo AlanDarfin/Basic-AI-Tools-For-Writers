@@ -198,6 +198,18 @@ Sintaxes curtas aceitas: `< Mira | Olá`, `> Jonas | Oi | 10:00`. A sintaxe anti
 
 **Áudio falso:** use `[audio:0:15]` ou `[voice:1:09]` como o conteúdo inteiro da mensagem. O botão anima as ondas de som, **sem tocar, gravar nem enviar áudio real**. Exemplo: `< | [audio:0:15] | 10:00`.
 
+**Transcrição do áudio fictício (9.5.2):** acrescente `:texto` depois da duração: `[áudio:0:15:Estou chegando agora, abram o portão!]`. O áudio continua visual e sem som, mas surge um botão **Ver transcrição** para mostrar/ocultar o texto. O conteúdo é exibido como texto simples (sem executar HTML), aceita dois-pontos e `\\n` para várias linhas. A transcrição é **escrita por você**, não é gerada automaticamente.
+
+~~~~markdown
+~~~chat
+title: Grupo da expedição
+group-image: [[Imagens/grupo.webp]]
+[Left=Lia, Right=Davi]
+< | Lia | [áudio:0:15:Estou chegando agora.\\nGuardem um lugar para mim!] | 10:01
+> | Davi | [audio:0:08:Estamos esperando você!] | 10:02
+~~~
+~~~~
+
 **Quebras de linha:** linhas consecutivas e linhas vazias depois da mensagem permanecem no mesmo balão como Markdown. Também é possível usar `\\n` dentro do campo para quebrar a linha; `\\\\n` mantém a barra e o n.
 
 **Estilos opcionais antes das mensagens:** `density: compact|normal|relaxed`, `bubbles: soft|round|square`, `avatars: on|off`, `width: normal|wide`. As cores, avatares e nomes padrão continuam funcionando.

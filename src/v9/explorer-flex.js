@@ -16,13 +16,14 @@ function writerV91FlexMerge(settings){
  const raw=settings.v91Flex&&typeof settings.v91Flex==='object'?settings.v91Flex:{};
  const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,mobileReorder:true,
   perSpaceSorting:true,perSpacePins:true,yamlSorting:false,sortSpecCompat:true,
-  nativeSortIntegration:true,dragRequiresAlt:false,
+  nativeSortIntegration:true,dragRequiresAlt:false,manualGlobal:false,manualFolders:{},
   pinEnabled:true,hideEnabled:true,sortEnabled:true,defaultSortProperty:'sort_order',
   patterns:'',pinned:[],hidden:[],folders:{},...raw};
  cfg.enabled=cfg.enabled!==false;cfg.showHidden=cfg.showHidden===true;
  cfg.dragReorder=cfg.dragReorder!==false;
  cfg.nativeSortIntegration=cfg.nativeSortIntegration!==false;
  cfg.dragRequiresAlt=cfg.dragRequiresAlt===true;
+ cfg.manualGlobal=cfg.manualGlobal===true;
  for(const key of ['mobileReorder','perSpaceSorting','perSpacePins','pinEnabled','hideEnabled','sortEnabled'])cfg[key]=cfg[key]!==false;
  cfg.yamlSorting=cfg.yamlSorting===true;cfg.sortSpecCompat=cfg.sortSpecCompat!==false;
  cfg.defaultSortProperty=String(cfg.defaultSortProperty||'sort_order').replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
@@ -38,6 +39,14 @@ function writerV91FlexMerge(settings){
   output[path==='/'?'':path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60),foldersFirst:folder.foldersFirst===true};
  }
  cfg.folders=output;
+ const globalOrders={};
+ const rawGlobal=cfg.manualFolders&&typeof cfg.manualFolders==='object'&&!Array.isArray(cfg.manualFolders)?cfg.manualFolders:{};
+ for(const [dir,record] of Object.entries(rawGlobal).slice(0,3000)){
+  if(typeof dir!=='string'||dir.length>600||!record||typeof record!=='object')continue;
+  const order=Array.isArray(record.order)?[...new Set(record.order.filter(x=>typeof x==='string'&&x.length<600))].slice(0,3000):[];
+  globalOrders[writerV324FolderKey(dir)]={sort:'custom',order,property:'',foldersFirst:false};
+ }
+ cfg.manualFolders=globalOrders;
  return cfg;
 }
 function writerV91FlexGlob(glob){
@@ -138,6 +147,7 @@ function writerV93FlexParseSortSpec(raw){
 function writerV93FlexRecord(plugin,dir){
  dir=writerV324FolderKey(dir);
  const cfg=plugin.settings.v91Flex;
+ if(cfg.manualGlobal)return cfg.manualFolders?.[dir]||{sort:'custom',order:[],property:'',foldersFirst:false};
  const space=cfg.perSpaceSorting&&typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
  if(space?.folderSorts?.[dir])return space.folderSorts[dir];
  if(cfg.folders[dir])return cfg.folders[dir];
@@ -348,7 +358,9 @@ function writerV91FlexFolderPath(file){
 }
 function writerV93FlexStore(plugin,dir){
  dir=writerV324FolderKey(dir);
- const cfg=plugin.settings.v91Flex,space=cfg.perSpaceSorting?writerV9215ActiveSpace(plugin):null;
+ const cfg=plugin.settings.v91Flex;
+ if(cfg.manualGlobal)return cfg.manualFolders||(cfg.manualFolders={});
+ const space=cfg.perSpaceSorting?writerV9215ActiveSpace(plugin):null;
  if(space){space.folderSorts=space.folderSorts||{};return space.folderSorts;}
  return cfg.folders;
 }

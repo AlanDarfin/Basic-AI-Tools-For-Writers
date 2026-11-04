@@ -35,12 +35,13 @@ const View=vm.runInNewContext(source+'\nWriterV8HomeView',{
 function fixture(){
  const files=[new TFile('Journal/Sem título.md'),new TFile('Book/Sem título.md'),new TFile('Book/Semanário.md')];
  const opened=[];
+ const leaf={openFile:file=>opened.push(file.path)};
  const plugin={settings:{v8Finish:{homeOrder:['continue','recent'],homeFavorites:[]}},app:{
   vault:{getMarkdownFiles:()=>files},
-  workspace:{getLeaf:()=>({openFile:file=>opened.push(file.path)})},
+  workspace:{activeLeaf:leaf,getLeaf:()=>{throw Error('Homepage must not open a new tab');}},
   metadataCache:{getFileCache:()=>({})}
  }};
- const view=Object.create(View.prototype);view.app=plugin.app;view.plugin=plugin;
+ const view=Object.create(View.prototype);view.app=plugin.app;view.plugin=plugin;view.leaf=leaf;
  view.saveSoon=()=>{};
  const root=new Element('div');view.renderSearch(root);
  const card=root.children[0],input=card.children.find(el=>el.tag==='input');

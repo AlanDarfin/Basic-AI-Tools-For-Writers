@@ -2,13 +2,19 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.4 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.4 — Menus, atalhos por tecla dupla e homepage
+
+- **Menu de contexto:** ferramentas de IA agrupadas em submenus de consulta/tradução e escrita/revisão quando o Obsidian permite; formatação extra e alinhamento do Basic dentro do menu **Formatar** nativo. Ações nativas ou de outros plugins não são removidas caso não possam ser agrupadas com segurança.
+- **Teclas pressionadas duas vezes:** novo gerenciador expansível com várias teclas, escolha pesquisável do comando, contexto de execução, ativação individual e remoção. O antigo duplo Shift é migrado automaticamente. Letras, números, Tab e Espaço não disparam atalhos durante a digitação.
+- **Homepage:** no computador, a caixa de pesquisa recebe o foco ao abrir a homepage (sem roubar o foco a cada atualização). Abrir uma nota pela pesquisa, recentes ou widgets substitui a homepage na mesma aba; o celular não ativa o teclado automaticamente.
 
 ## Atualização 10.4.3 — Ordenação da raiz e botão nativo
 

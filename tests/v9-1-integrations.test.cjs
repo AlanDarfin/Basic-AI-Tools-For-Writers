@@ -155,7 +155,7 @@ test('Root reorder changes saved order only, without moving or deleting files',(
  assert.deepEqual(root.children.map(x=>x.path),['alpha.md','zeta.md']);
  assert.equal(refreshes,1);
  assert.doesNotMatch(source,/container\\.appendChild\\(row\\.node\\)/);
- assert.doesNotMatch(source,/setTitle\\(writerUi\\('Mover para cima'/);
+ assert.equal(source.includes("setTitle(writerUi('Mover para cima'"),false);
 });
 test('Desktop-only sections and README feature documentation in both languages',()=>{
  const sound=fs.readFileSync(path.join(root,'src/v9/soundscapes.js'),'utf8');

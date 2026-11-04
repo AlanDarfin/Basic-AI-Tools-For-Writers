@@ -217,7 +217,7 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  return ['name-desc','number-desc','property-desc'].includes(mode)?-delta:delta;
 }
 
-function writerV91FlexSortGroup(plugin,container,patterns){
+function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
  if(!children.length)return;
@@ -270,17 +270,29 @@ function writerV91FlexSortGroup(plugin,container,patterns){
  }
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
  rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
- // Never reparent native tree items with appendChild: Obsidian owns the tree
- // and may recycle/detach those nodes, making a moved file disappear until reload.
- // CSS order changes only presentation while keeping native file identity intact.
- if(!container.dataset.writerFlexOrderHost){
-  container.dataset.writerFlexOrderHost='1';
-  container.dataset.writerFlexPreviousDisplay=container.style.display||'';
-  container.dataset.writerFlexPreviousDirection=container.style.flexDirection||'';
+ // With a native sorted list, do not impose a second CSS order on its DOM.
+ // The CSS fallback is retained for Obsidian versions without this method.
+ if(nativePatched){
+  if(container.dataset.writerFlexOrderHost==='1'){
+   container.style.display=container.dataset.writerFlexPreviousDisplay||'';
+   container.style.flexDirection=container.dataset.writerFlexPreviousDirection||'';
+   delete container.dataset.writerFlexOrderHost;
+   delete container.dataset.writerFlexPreviousDisplay;
+   delete container.dataset.writerFlexPreviousDirection;
+  }
+  for(const row of rows)if(row.node.dataset.writerFlexOrdered==='1'){
+   row.node.style.removeProperty('order');delete row.node.dataset.writerFlexOrdered;
+  }
+ }else{
+  if(!container.dataset.writerFlexOrderHost){
+   container.dataset.writerFlexOrderHost='1';
+   container.dataset.writerFlexPreviousDisplay=container.style.display||'';
+   container.dataset.writerFlexPreviousDirection=container.style.flexDirection||'';
+  }
+  container.style.display='flex';
+  container.style.flexDirection='column';
+  rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  }
- container.style.display='flex';
- container.style.flexDirection='column';
- rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  if(folder.sort==='custom'&&cfg.mobileReorder){
   rows.forEach((row,index)=>{
    const title=row.title;if(!title)return;
@@ -384,29 +396,93 @@ function writerV93FlexSortModal(plugin,folder){
  modal.open();
 }
 
+/* Keep the original Obsidian sorting control. Extend its menu, rather than
+ * adding a second toolbar button or file context-menu entries. */
+function writerV1043IsSortButton(event){
+ const button=event?.target?.closest?.('.nav-action-button');
+ if(!button||!button.closest?.('[data-type="file-explorer"]'))return false;
+ const label=String(button.getAttribute('aria-label')||button.getAttribute('title')||'').toLowerCase();
+ return /sort|orden|ordem|tri|排序|sortier/.test(label)||
+  Boolean(button.querySelector('.lucide-arrow-up-narrow-wide,.lucide-arrow-down-wide-narrow'));
+}
+function writerV1043GlobalSortingMenu(plugin,menu){
+ const cfg=plugin.settings.v91Flex;
+ if(!cfg.enabled||cfg.sortEnabled===false)return;
+ const set=async mode=>{
+  cfg.globalSortMode=mode;
+  await plugin.saveSettings();
+  plugin.writerV91FlexRefresh?.();
+ };
+ menu.addSeparator?.();
+ for(const [mode,pt,en,icon] of [
+  ['custom','Ordenação manual (Basic)','Manual sorting (Basic)','list-ordered'],
+  ['number','Número no título (Basic)','Number in title (Basic)','list-ordered'],
+  ['property','Propriedade YAML (Basic)','YAML property (Basic)','list-filter'],
+  ['folders-first','Pastas primeiro (Basic)','Folders first (Basic)','folder-tree']
+ ]){
+  menu.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(icon)
+   .setChecked?.(cfg.globalSortMode===mode).onClick(()=>void set(mode)));
+ }
+ menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
+  .setIcon('rotate-ccw').onClick(()=>void set('native')));
+}
 function writerV91FlexRegister(plugin){
  const cfg=plugin.settings.v91Flex;
  let timer=null,observer=null,lastDrag='',dropNode=null;
  const patched=new Map();
  const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
  const patchView=view=>{
-  if(!view||patched.has(view)||!cfg.nativeSortIntegration)return;
-  const previous=view.getSortedFolderItems;
-  if(typeof previous!=='function')return;
+  if(!view||!cfg.nativeSortIntegration)return false;
+  let owner=view;
+  while(owner&&!Object.prototype.hasOwnProperty.call(owner,'getSortedFolderItems'))
+   owner=Object.getPrototypeOf(owner);
+  if(!owner||typeof owner.getSortedFolderItems!=='function')return false;
+  if(patched.has(owner))return true;
+  const previous=owner.getSortedFolderItems;
   const adapter=function(folder){
    const result=previous.apply(this,arguments);
    return writerV104FlexNativeSort(plugin,folder,result);
   };
-  view.getSortedFolderItems=adapter;
-  patched.set(view,{previous,adapter});
+  try{owner.getSortedFolderItems=adapter;}catch(_){return false;}
+  if(owner.getSortedFolderItems!==adapter)return false;
+  let setOwner=view;
+  while(setOwner&&!Object.prototype.hasOwnProperty.call(setOwner,'setSortOrder'))
+   setOwner=Object.getPrototypeOf(setOwner);
+  let originalSet=null,wrappedSet=null;
+  if(setOwner&&typeof setOwner.setSortOrder==='function'){
+   originalSet=setOwner.setSortOrder;
+   wrappedSet=function(mode){
+    const result=originalSet.apply(this,arguments);
+    if(cfg.globalSortMode!=='native'){
+     cfg.globalSortMode='native';
+     void plugin.saveSettings();
+     plugin.writerV91FlexRefresh?.();
+    }
+    return result;
+   };
+   try{setOwner.setSortOrder=wrappedSet;}catch(_){wrappedSet=null;}
+  }
+  patched.set(owner,{previous,adapter,setOwner,originalSet,wrappedSet});
+  return true;
  };
+ let menuPrototype=null,originalMenuShow=null,wrappedMenuShow=null;
+ if(typeof Menu!=='undefined'&&Menu?.prototype&&typeof Menu.prototype.showAtMouseEvent==='function'){
+  menuPrototype=Menu.prototype;
+  originalMenuShow=menuPrototype.showAtMouseEvent;
+  wrappedMenuShow=function(event){
+   if(writerV1043IsSortButton(event))writerV1043GlobalSortingMenu(plugin,this);
+   return originalMenuShow.apply(this,arguments);
+  };
+  try{menuPrototype.showAtMouseEvent=wrappedMenuShow;}catch(_){wrappedMenuShow=null;}
+ }
+
  const scan=()=>{
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   patchView(leaf.view);
+   const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
-   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns);
+   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
    // Sync items even if their native wrapper differs from older Obsidian DOM.
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);
@@ -579,7 +655,13 @@ function writerV91FlexRegister(plugin){
  }});
  plugin.register?.(()=>{
   clearTimeout(timer);observer?.disconnect();
-  for(const [view,entry] of patched)if(view.getSortedFolderItems===entry.adapter)view.getSortedFolderItems=entry.previous;
+  for(const [owner,entry] of patched){
+   if(owner.getSortedFolderItems===entry.adapter)owner.getSortedFolderItems=entry.previous;
+   if(entry.wrappedSet&&entry.setOwner?.setSortOrder===entry.wrappedSet)
+    entry.setOwner.setSortOrder=entry.originalSet;
+  }
+  if(menuPrototype&&wrappedMenuShow&&menuPrototype.showAtMouseEvent===wrappedMenuShow)
+   menuPrototype.showAtMouseEvent=originalMenuShow;
   patched.clear();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;

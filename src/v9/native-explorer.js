@@ -112,11 +112,11 @@ function writerV922OpenIconPicker(plugin,options){
    info.setText(matches.length+' '+writerUi('ícones encontrados','icons found'));
    grid.empty();
    if(options.allowNone&&tab==='all'&&!normalized){
-    const none=grid.createEl('button',{cls:'writer-v922-iconic-choice'+(!chosen?' is-active':''),attr:{type:'button',title:writerUi('Ícone padrão','Default icon'),'aria-label':writerUi('Ícone padrão','Default icon'),'aria-pressed':String(!chosen)}});
+    const none=grid.createEl('button',{cls:'writer-v922-iconic-choice'+(!chosen?' is-active':''),attr:{type:'button','aria-label':writerUi('Ícone padrão','Default icon'),'aria-pressed':String(!chosen)}});
     require('obsidian').setIcon?.(none,'rotate-ccw');none.addEventListener('click',()=>select(''));
    }
    for(const name of matches.slice(0,240)){
-    const button=grid.createEl('button',{cls:'writer-v922-iconic-choice'+(chosen===name?' is-active':''),attr:{type:'button',title:name,'aria-label':name,'aria-pressed':String(chosen===name)}});
+    const button=grid.createEl('button',{cls:'writer-v922-iconic-choice'+(chosen===name?' is-active':''),attr:{type:'button','aria-label':name,'aria-pressed':String(chosen===name)}});
     require('obsidian').setIcon?.(button,name);
     button.addEventListener('click',()=>select(name));
    }

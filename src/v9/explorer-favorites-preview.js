@@ -204,7 +204,8 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  if(!truncated)shell.classList.remove('is-expanded');
  if(truncated){
   shell.setAttribute('tabindex','0');shell.setAttribute('role','button');
-  shell.setAttribute('aria-label',writerUi('Expandir descrição','Expand description'));
+  // Keep the description keyboard-accessible without a redundant hover tooltip.
+  shell.removeAttribute('aria-label');shell.removeAttribute('title');
   shell.setAttribute('aria-expanded',String(expanded));
  }else{
   shell.removeAttribute('tabindex');shell.removeAttribute('role');

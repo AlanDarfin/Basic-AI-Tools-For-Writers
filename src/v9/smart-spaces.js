@@ -123,7 +123,6 @@ function writerV9SpaceItems(plugin,space){
  const files=plugin.app.vault.getMarkdownFiles?.()||[];
  const cache=plugin.app.metadataCache;
  return files.filter(file=>{
-  if((space.hiddenPaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.mode==='curated'&&!(space.includePaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.folder&&!(file.path===space.folder||file.path.startsWith(space.folder+'/')))return false;
   if(space.mode==='folder')return Boolean(space.folder);
@@ -164,11 +163,6 @@ function writerV9SpaceEditor(plugin,initial,save){
    .setDesc(writerUi('Uma rota por linha para Spaces de seleção manual.','One vault path per line for curated Spaces.'))
    .addTextArea(t=>t.setValue((draft.includePaths||[]).join('\n')).onChange(value=>{draft.includePaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);}));
 
-  new Setting(root).setName(writerUi('Ocultar somente neste Space','Hide only in this Space'))
-   .setDesc(writerUi('Uma pasta ou nota por linha. Outros Spaces não serão afetados.','One note or folder path per line. Other Spaces are unaffected.'))
-   .addTextArea(t=>t.setValue((draft.hiddenPaths||[]).join('\n')).onChange(value=>{
-    draft.hiddenPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-   }));
   new Setting(root).setName(writerUi('Fixar somente neste Space','Pin only in this Space'))
    .setDesc(writerUi('Uma nota ou pasta por linha. Cada Space mantém seus itens fixados.','One file or folder path per line. Each Space has independent pinned items.'))
    .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{

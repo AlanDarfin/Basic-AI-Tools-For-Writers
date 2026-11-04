@@ -8,20 +8,17 @@ const flexSource=read('src/v9/explorer-flex.js');
 const sandbox={ItemView:class {}};
 const scope=vm.runInNewContext(spaceSource+'\n'+flexSource+
  '\n({writerV9SpacesMerge,writerV9215ActiveSpace,writerV9215SpaceHidden,writerV91FlexIsHidden})',sandbox);
-test('Space explorer visibility is isolated to its active Space',()=>{
+test('Explorer hiding is global rather than per Space',()=>{
  const cfg={v9Spaces:{enabled:true,activeId:'first',spaces:[
   {id:'first',name:'First',hiddenPaths:['Writing/Drafts']},
   {id:'second',name:'Second',hiddenPaths:[]}
  ]}};
  scope.writerV9SpacesMerge(cfg);
  const plugin={settings:cfg};
- assert.equal(scope.writerV9215SpaceHidden(plugin,'Writing/Drafts/chapter.md'),true);
- assert.equal(scope.writerV91FlexIsHidden({hidden:[]},'Writing/Drafts/chapter.md',[],plugin),true);
- cfg.v9Spaces.activeId='second';
- assert.equal(scope.writerV9215SpaceHidden(plugin,'Writing/Drafts/chapter.md'),false);
  assert.equal(scope.writerV91FlexIsHidden({hidden:[]},'Writing/Drafts/chapter.md',[],plugin),false);
- cfg.v9Spaces.activeId='';
- assert.equal(scope.writerV9215SpaceHidden(plugin,'Writing/Drafts/chapter.md'),false);
+ assert.equal(scope.writerV91FlexIsHidden({hidden:['Writing/Drafts/chapter.md']},'Writing/Drafts/chapter.md',[],plugin),true);
+ cfg.v9Spaces.activeId='second';
+ assert.equal(scope.writerV91FlexIsHidden({hidden:[]},'Writing/Drafts/chapter.md',[],plugin),false);
 });
 test('Pretty Properties sanitizes settings and stays native and local',()=>{
  const src=read('src/v9/pretty-properties.js');

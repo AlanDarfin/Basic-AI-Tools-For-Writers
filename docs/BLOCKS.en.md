@@ -580,3 +580,15 @@ Align Markdown text by wrapping a single line without code fences:
 ~~~~
 
 Long aliases: ::left, ::center, ::right.
+
+## Inline text alignment (10.3.0)
+
+Use a separate Markdown line for each aligned paragraph. This punctuation avoids conflicts with Obsidian's link tokenization:
+
+```md
+::l: Left-aligned text
+::c: Centered **text**
+::r: Right-aligned text
+```
+
+Existing `::c[text]` notes remain supported for compatibility, but new commands insert colon syntax.

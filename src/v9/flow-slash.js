@@ -3,8 +3,9 @@
  * No private Obsidian APIs and no dependency on Make.md. */
 function writerV9215FlowMerge(settings){
  const raw=settings.v9215Flow&&typeof settings.v9215Flow==='object'?settings.v9215Flow:{};
- const cfg=settings.v9215Flow={enabled:true,slash:true,embeds:true,...raw};
- for(const key of ['enabled','slash','embeds'])cfg[key]=cfg[key]!==false;
+ const cfg=settings.v9215Flow={enabled:true,slash:true,embeds:true,flowBlocks:true,maxItems:30,...raw};
+ for(const key of ['enabled','slash','embeds','flowBlocks'])cfg[key]=cfg[key]!==false;
+ cfg.maxItems=Math.max(5,Math.min(80,Math.round(Number(cfg.maxItems)||30)));
  return cfg;
 }
 function writerV9215SlashActions(){
@@ -20,6 +21,13 @@ function writerV9215SlashActions(){
   {id:'divider',pt:'Separador',en:'Divider',keys:'hr rule divider',text:'---\n'},
   {id:'code',pt:'Código',en:'Code block',keys:'code fence',text:"~~~\n\n~~~"},
   {id:'table',pt:'Tabela',en:'Table',keys:'table grid',text:"| Coluna 1 | Coluna 2 |\n| --- | --- |\n|  |  |"},
+  {id:'tip',pt:'Dica',en:'Tip callout',keys:'tip callout',text:"> [!tip]\n> "},
+  {id:'warning',pt:'Aviso',en:'Warning callout',keys:'warning alert callout',text:"> [!warning]\n> "},
+  {id:'important',pt:'Importante',en:'Important callout',keys:'important callout',text:"> [!important]\n> "},
+  {id:'link',pt:'Link Markdown',en:'Markdown link',keys:'link url',text:"[texto](https://)"},
+  {id:'highlight',pt:'Realce',en:'Highlight',keys:'mark highlight',text:"==texto=="},
+  {id:'formula',pt:'Fórmula',en:'Math formula',keys:'math formula latex',text:"$$\n\n$$"},
+  {id:'flowboard',pt:'Painel Flow',en:'Flow panel',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
   {id:'flow',pt:'Flow: incorporar nota',en:'Flow: embed note',keys:'embed inline edit note flow',text:''}
  ];
@@ -65,6 +73,69 @@ class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
   editor.focus();
  }
 }
+/* Shared Flow editor: check actual vault content before overwriting. */
+async function writerV9216FlowOpenEditor(plugin,file,mount,button){
+ const existing=mount.querySelector(':scope > .writer-v9215-flow-editor');
+ if(existing){existing.remove();button.setAttribute('aria-expanded','false');return;}
+ button.disabled=true;
+ try{
+  const baseline=file.stat?.mtime||0,original=await plugin.app.vault.cachedRead(file);
+  if(!mount.isConnected)return;
+  const box=mount.ownerDocument.createElement('div');box.className='writer-v9215-flow-editor';
+  const textarea=mount.ownerDocument.createElement('textarea');textarea.value=original;
+  textarea.setAttribute('aria-label',writerUi('Conteúdo de ','Content of ')+file.basename);
+  const actions=mount.ownerDocument.createElement('div');actions.className='writer-v9215-flow-actions';
+  const save=mount.ownerDocument.createElement('button');save.type='button';save.textContent=writerUi('Salvar','Save');
+  const cancel=mount.ownerDocument.createElement('button');cancel.type='button';cancel.textContent=writerUi('Cancelar','Cancel');
+  actions.append(save,cancel);box.append(textarea,actions);mount.appendChild(box);
+  button.setAttribute('aria-expanded','true');
+  cancel.addEventListener('click',()=>{box.remove();button.setAttribute('aria-expanded','false');});
+  save.addEventListener('click',async()=>{
+   save.disabled=true;
+   try{
+    const fresh=await plugin.app.vault.read(file);
+    if((file.stat?.mtime||0)!==baseline||fresh!==original){
+     new Notice(writerUi('A nota mudou em outra janela. Abra-a antes de salvar, para não perder alterações.','The note changed elsewhere. Open it before saving to avoid overwriting changes.'));
+     return;
+    }
+    if(textarea.value!==original)await plugin.app.vault.modify(file,textarea.value);
+    box.remove();button.setAttribute('aria-expanded','false');
+    new Notice(writerUi('Nota incorporada salva.','Embedded note saved.'));
+   }catch(error){new Notice(String(error.message||error));}
+   finally{save.disabled=false;}
+  });
+  textarea.focus();
+ }catch(error){new Notice(String(error.message||error));}
+ finally{button.disabled=false;}
+}
+/* Local note collections from a Markdown ~~~flow block: one note link per line. */
+function writerV9216FlowBlock(plugin,source,root,ctx){
+ const cfg=plugin.settings.v9215Flow;
+ if(!cfg.enabled||!cfg.flowBlocks)return;
+ const rows=String(source||'').split(/\r?\n/).map(s=>s.trim())
+  .filter(s=>s&&!s.startsWith('#')).slice(0,cfg.maxItems);
+ root.classList.add('writer-v9216-flow-board');
+ if(!rows.length){root.createEl('p',{text:writerUi('Adicione caminhos de notas, um por linha.','Add note paths, one per line.')});return;}
+ for(const row of rows){
+  const link=row.replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
+  const file=plugin.app.metadataCache?.getFirstLinkpathDest?.(link,ctx.sourcePath||'')||
+   plugin.app.vault.getAbstractFileByPath(link);
+  if(!(file instanceof TFile)||file.extension!=='md')continue;
+  const card=root.createDiv({cls:'writer-v9216-flow-card'});
+  const head=card.createDiv({cls:'writer-v9216-flow-head'});
+  const title=head.createEl('button',{cls:'writer-v9216-flow-open',text:file.basename,attr:{type:'button'}});
+  title.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
+  if(cfg.embeds){
+   const edit=head.createEl('button',{cls:'writer-v9216-flow-edit',text:writerUi('Editar','Edit'),attr:{type:'button'}});
+   edit.addEventListener('click',()=>void writerV9216FlowOpenEditor(plugin,file,card,edit));
+  }
+  const text=card.createDiv({cls:'writer-v9216-flow-excerpt'});
+  void plugin.app.vault.cachedRead(file).then(raw=>{
+   if(card.isConnected)text.textContent=writerV921PreviewBody(raw,180)||writerUi('Nota sem texto de prévia.','No preview text.');
+  }).catch(()=>{text.textContent=writerUi('Prévia indisponível.','Preview unavailable.');});
+ }
+}
+
 function writerV9215FlowDecorateEmbed(plugin,element,context){
  const cfg=plugin.settings.v9215Flow;
  if(!cfg.enabled||!cfg.embeds)return;
@@ -81,38 +152,9 @@ function writerV9215FlowDecorateEmbed(plugin,element,context){
   button.textContent=writerUi('Editar aqui','Edit inline');
   button.setAttribute('aria-label',writerUi('Editar nota incorporada','Edit embedded note')+': '+file.basename);
   embed.appendChild(button);
-  button.addEventListener('click',async event=>{
+  button.addEventListener('click',event=>{
    event.preventDefault();event.stopPropagation();
-   const existing=embed.querySelector(':scope > .writer-v9215-flow-editor');
-   if(existing){existing.remove();button.setAttribute('aria-expanded','false');return;}
-   button.disabled=true;
-   try{
-    const baseline=file.stat?.mtime||0,original=await plugin.app.vault.cachedRead(file);
-    if(!embed.isConnected)return;
-    const box=embed.ownerDocument.createElement('div');box.className='writer-v9215-flow-editor';
-    const textarea=embed.ownerDocument.createElement('textarea');textarea.value=original;
-    textarea.setAttribute('aria-label',writerUi('Conteúdo de ','Content of ')+file.basename);
-    const actions=embed.ownerDocument.createElement('div');actions.className='writer-v9215-flow-actions';
-    const save=embed.ownerDocument.createElement('button');save.type='button';save.textContent=writerUi('Salvar','Save');
-    const cancel=embed.ownerDocument.createElement('button');cancel.type='button';cancel.textContent=writerUi('Cancelar','Cancel');
-    actions.append(save,cancel);box.append(textarea,actions);embed.appendChild(box);
-    button.setAttribute('aria-expanded','true');
-    cancel.addEventListener('click',()=>{box.remove();button.setAttribute('aria-expanded','false');});
-    save.addEventListener('click',async()=>{
-     if((file.stat?.mtime||0)!==baseline){
-      new Notice(writerUi('Nota alterada em outro lugar. Abra-a antes de salvar para evitar perda de dados.','Note changed elsewhere. Open it before saving to avoid data loss.'));
-      return;
-     }
-     save.disabled=true;
-     try{
-      await plugin.app.vault.modify(file,textarea.value);
-      box.remove();button.setAttribute('aria-expanded','false');
-      new Notice(writerUi('Nota incorporada salva.','Embedded note saved.'));
-     }catch(error){new Notice(String(error.message||error));save.disabled=false;}
-    });
-    textarea.focus();
-   }catch(error){new Notice(String(error.message||error));}
-   finally{button.disabled=false;}
+   void writerV9216FlowOpenEditor(plugin,file,embed,button);
   });
  }
 }
@@ -121,6 +163,10 @@ function writerV9215FlowRegister(plugin){
   plugin.registerEditorSuggest(new WriterV9215SlashSuggest(plugin.app,plugin));
  if(typeof plugin.registerMarkdownPostProcessor==='function')
   plugin.registerMarkdownPostProcessor((element,context)=>writerV9215FlowDecorateEmbed(plugin,element,context),90);
+ if(typeof plugin.registerMarkdownCodeBlockProcessor==='function'){
+  for(const id of ['flow','writer-flow'])
+   plugin.registerMarkdownCodeBlockProcessor(id,(source,root,context)=>writerV9216FlowBlock(plugin,source,root,context));
+ }
  plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Flow: ativar/desativar edição de notas incorporadas','Flow: toggle inline embed editing'),callback:async()=>{
   plugin.settings.v9215Flow.embeds=!plugin.settings.v9215Flow.embeds;
   await plugin.saveSettings();
@@ -133,7 +179,8 @@ function writerV9215FlowSettings(plugin,panel){
  for(const [key,pt,en] of [
   ['enabled','Ativar Flow e comandos rápidos','Enable Flow and slash commands'],
   ['slash','Menu de comandos /','Slash command menu'],
-  ['embeds','Edição de notas incorporadas','Editable embedded notes']
+  ['embeds','Edição de notas incorporadas','Editable embedded notes'],
+  ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
  }

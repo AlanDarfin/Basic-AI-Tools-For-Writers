@@ -16,13 +16,14 @@ function writerV91FlexMerge(settings){
  const raw=settings.v91Flex&&typeof settings.v91Flex==='object'?settings.v91Flex:{};
  const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,mobileReorder:true,
   perSpaceSorting:true,perSpacePins:true,yamlSorting:false,sortSpecCompat:true,
-  nativeSortIntegration:true,dragRequiresAlt:false,
+  nativeSortIntegration:true,dragRequiresAlt:false,globalSortMode:'',
   pinEnabled:true,hideEnabled:true,sortEnabled:true,defaultSortProperty:'sort_order',
   patterns:'',pinned:[],hidden:[],folders:{},...raw};
  cfg.enabled=cfg.enabled!==false;cfg.showHidden=cfg.showHidden===true;
  cfg.dragReorder=cfg.dragReorder!==false;
  cfg.nativeSortIntegration=cfg.nativeSortIntegration!==false;
  cfg.dragRequiresAlt=cfg.dragRequiresAlt===true;
+ cfg.globalSortMode=WRITER_V91_FLEX_SORTS.some(row=>row[0]===cfg.globalSortMode)?cfg.globalSortMode:'';
  for(const key of ['mobileReorder','perSpaceSorting','perSpacePins','pinEnabled','hideEnabled','sortEnabled'])cfg[key]=cfg[key]!==false;
  cfg.yamlSorting=cfg.yamlSorting===true;cfg.sortSpecCompat=cfg.sortSpecCompat!==false;
  cfg.defaultSortProperty=String(cfg.defaultSortProperty||'sort_order').replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
@@ -35,7 +36,7 @@ function writerV91FlexMerge(settings){
   if(typeof path!=='string'||path.length>600||!folder||typeof folder!=='object')continue;
   const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===folder.sort)?folder.sort:'native';
   const order=Array.isArray(folder.order)?[...new Set(folder.order.filter(v=>typeof v==='string'&&v.length<300))].slice(0,3000):[];
-  output[path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60),foldersFirst:folder.foldersFirst===true};
+  output[path==='/'?'':path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60),foldersFirst:folder.foldersFirst===true};
  }
  cfg.folders=output;
  return cfg;
@@ -81,9 +82,10 @@ function writerV91FlexNodePath(node,view){
  }
  return '';
 }
+function writerV1043RootKey(path){return !path||path==='/'?'':String(path);}
 function writerV104FlexNativeSort(plugin,folder,items){
  if(!Array.isArray(items)||!folder)return items;
- const dir=folder.path==='/'?'':String(folder.path||'');
+ const dir=writerV1043RootKey(folder.path);
  const cfg=plugin.settings.v91Flex,record=writerV93FlexRecord(plugin,dir);
  if(!cfg.enabled||cfg.sortEnabled===false||record.sort==='native'&&cfg.pinEnabled===false)return items;
  const rows=items.map((source,index)=>{
@@ -136,10 +138,17 @@ function writerV93FlexParseSortSpec(raw){
  return recognized?record:null;
 }
 function writerV93FlexRecord(plugin,dir){
+ dir=writerV1043RootKey(dir);
  const cfg=plugin.settings.v91Flex;
  const space=cfg.perSpaceSorting&&typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
- if(space?.folderSorts?.[dir])return space.folderSorts[dir];
- if(cfg.folders[dir])return cfg.folders[dir];
+ const saved=space?.folderSorts?.[dir]||cfg.folders[dir]||
+  (!dir?(space?.folderSorts?.['/']||cfg.folders['/']):null);
+ if(cfg.globalSortMode){
+  const mode=cfg.globalSortMode;
+  return {...(saved||{sort:'native',order:[],property:'',foldersFirst:false}),
+   sort:mode,foldersFirst:mode==='folders-first'};
+ }
+ if(saved)return saved;
  if(!cfg.yamlSorting)return {sort:'native',order:[],property:'',foldersFirst:false};
  const folder=plugin.app.vault.getAbstractFileByPath(dir);
  const note=folder&&typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,folder):null;
@@ -208,7 +217,7 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  return ['name-desc','number-desc','property-desc'].includes(mode)?-delta:delta;
 }
 
-function writerV91FlexSortGroup(plugin,container,patterns){
+function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
  if(!children.length)return;
@@ -261,17 +270,29 @@ function writerV91FlexSortGroup(plugin,container,patterns){
  }
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
  rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
- // Never reparent native tree items with appendChild: Obsidian owns the tree
- // and may recycle/detach those nodes, making a moved file disappear until reload.
- // CSS order changes only presentation while keeping native file identity intact.
- if(!container.dataset.writerFlexOrderHost){
-  container.dataset.writerFlexOrderHost='1';
-  container.dataset.writerFlexPreviousDisplay=container.style.display||'';
-  container.dataset.writerFlexPreviousDirection=container.style.flexDirection||'';
+ // With a native sorted list, do not impose a second CSS order on its DOM.
+ // The CSS fallback is retained for Obsidian versions without this method.
+ if(nativePatched){
+  if(container.dataset.writerFlexOrderHost==='1'){
+   container.style.display=container.dataset.writerFlexPreviousDisplay||'';
+   container.style.flexDirection=container.dataset.writerFlexPreviousDirection||'';
+   delete container.dataset.writerFlexOrderHost;
+   delete container.dataset.writerFlexPreviousDisplay;
+   delete container.dataset.writerFlexPreviousDirection;
+  }
+  for(const row of rows)if(row.node.dataset.writerFlexOrdered==='1'){
+   row.node.style.removeProperty('order');delete row.node.dataset.writerFlexOrdered;
+  }
+ }else{
+  if(!container.dataset.writerFlexOrderHost){
+   container.dataset.writerFlexOrderHost='1';
+   container.dataset.writerFlexPreviousDisplay=container.style.display||'';
+   container.dataset.writerFlexPreviousDirection=container.style.flexDirection||'';
+  }
+  container.style.display='flex';
+  container.style.flexDirection='column';
+  rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  }
- container.style.display='flex';
- container.style.flexDirection='column';
- rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  if(folder.sort==='custom'&&cfg.mobileReorder){
   rows.forEach((row,index)=>{
    const title=row.title;if(!title)return;
@@ -308,9 +329,10 @@ function writerV91FlexSortGroup(plugin,container,patterns){
  }
 }
 function writerV91FlexFolderPath(file){
- return file?.parent?.path||'';
+ return writerV1043RootKey(file?.parent?.path);
 }
 function writerV93FlexStore(plugin,dir){
+ dir=writerV1043RootKey(dir);
  const cfg=plugin.settings.v91Flex,space=cfg.perSpaceSorting?writerV9215ActiveSpace(plugin):null;
  if(space){space.folderSorts=space.folderSorts||{};return space.folderSorts;}
  return cfg.folders;
@@ -323,9 +345,15 @@ function writerV91FlexReorder(plugin,path,target,direction){
  const dir=writerV91FlexFolderPath(file),parent=file.parent;
  const store=writerV93FlexStore(plugin,dir);
  const record=store[dir]||{sort:'custom',order:[]};
- const original=(parent?.children||[]).map(f=>f.name);
- const existing=new Set(original);
- const order=[...new Set([...(record.order||[]).filter(n=>existing.has(n)),...original])];
+ // Start from the order currently visible to the user, not the vault's
+ // physical children array (which may have a different creation order).
+ const view=plugin.app.workspace?.getLeavesOfType?.('file-explorer')?.[0]?.view;
+ let visible=[];
+ try{visible=(view?.getSortedFolderItems?.(parent)||[]).map(item=>item?.file?.name||item?.name).filter(Boolean);}catch(_){}
+ const available=(parent?.children||[]).map(f=>f.name);
+ const existing=new Set(available);
+ const initial=[...new Set([...visible.filter(n=>existing.has(n)),...available])];
+ const order=[...new Set([...(record.order||[]).filter(n=>existing.has(n)),...initial])];
  const from=order.indexOf(file.name),to=order.indexOf(other.name);
  if(from<0||to<0)return;
  order.splice(from,1);
@@ -335,7 +363,7 @@ function writerV91FlexReorder(plugin,path,target,direction){
  void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
 function writerV91FlexSetSort(plugin,folder,sort){
- const key=folder?.path||'',store=writerV93FlexStore(plugin,key);
+ const key=writerV1043RootKey(folder?.path),store=writerV93FlexStore(plugin,key);
  const record={...(store[key]||writerV93FlexRecord(plugin,key))};
  record.sort=sort;
  if(sort==='custom'&&!record.order.length)
@@ -343,7 +371,7 @@ function writerV91FlexSetSort(plugin,folder,sort){
  store[key]=record;void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
 function writerV93FlexSortModal(plugin,folder){
- const cfg=plugin.settings.v91Flex,key=folder?.path||'';
+ const cfg=plugin.settings.v91Flex,key=writerV1043RootKey(folder?.path);
  const store=writerV93FlexStore(plugin,key),existing=writerV93FlexRecord(plugin,key);
  const model={sort:existing.sort||'native',property:existing.property||cfg.defaultSortProperty,
   order:[...(existing.order||[])],foldersFirst:existing.foldersFirst===true};
@@ -374,29 +402,110 @@ function writerV93FlexSortModal(plugin,folder){
  modal.open();
 }
 
+/* Keep the original Obsidian sorting control. Extend its menu, rather than
+ * adding a second toolbar button or file context-menu entries. */
+function writerV1043IsSortButton(event){
+ const button=event?.target?.closest?.('.nav-action-button');
+ if(!button||!button.closest?.('[data-type="file-explorer"]'))return false;
+ const label=String(button.getAttribute('aria-label')||button.getAttribute('title')||'').toLowerCase();
+ return /sort|orden|ordem|tri|排序|sortier/.test(label)||
+  Boolean(button.querySelector('.lucide-arrow-up-narrow-wide,.lucide-arrow-down-wide-narrow'));
+}
+function writerV1043OpenNativeSortMenu(plugin){
+ const view=plugin.app.workspace?.getLeavesOfType?.('file-explorer')?.[0]?.view;
+ const elements=view?.containerEl?.querySelectorAll?.('.nav-action-button')||[];
+ for(const button of elements){
+  if(writerV1043IsSortButton({target:button})){
+   button.click?.();return true;
+  }
+ }
+ new Notice(writerUi('Abra o explorador e toque no botão nativo de ordenação.','Open File Explorer and use its native sorting button.'));
+ return false;
+}
+function writerV1043GlobalSortingMenu(plugin,menu){
+ const cfg=plugin.settings.v91Flex;
+ if(!cfg.enabled||cfg.sortEnabled===false)return;
+ if(cfg.globalSortMode&&cfg.globalSortMode!=='native'){
+  for(const item of menu.items||[])if(item?.checked===true)item.setChecked?.(false);
+ }
+ const set=async mode=>{
+  cfg.globalSortMode=mode;
+  await plugin.saveSettings();
+  plugin.writerV91FlexRefresh?.();
+ };
+ menu.addSeparator?.();
+ for(const [mode,pt,en,icon] of [
+  ['custom','Ordenação manual (Basic)','Manual sorting (Basic)','list-ordered'],
+  ['number','Número no título (Basic)','Number in title (Basic)','list-ordered'],
+  ['property','Propriedade YAML (Basic)','YAML property (Basic)','list-filter'],
+  ['folders-first','Pastas primeiro (Basic)','Folders first (Basic)','folder-tree']
+ ]){
+  menu.addItem(item=>{
+   item.setTitle(writerUi(pt,en)).setIcon(icon);
+   item.setChecked?.(cfg.globalSortMode===mode);
+   item.onClick(()=>void set(mode));
+  });
+ }
+ menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
+  .setIcon('rotate-ccw').onClick(()=>void set('native')));
+}
 function writerV91FlexRegister(plugin){
  const cfg=plugin.settings.v91Flex;
  let timer=null,observer=null,lastDrag='',dropNode=null;
  const patched=new Map();
  const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
  const patchView=view=>{
-  if(!view||patched.has(view)||!cfg.nativeSortIntegration)return;
-  const previous=view.getSortedFolderItems;
-  if(typeof previous!=='function')return;
+  if(!view||!cfg.nativeSortIntegration)return false;
+  let owner=view;
+  while(owner&&!Object.prototype.hasOwnProperty.call(owner,'getSortedFolderItems'))
+   owner=Object.getPrototypeOf(owner);
+  if(!owner||typeof owner.getSortedFolderItems!=='function')return false;
+  if(patched.has(owner))return true;
+  const previous=owner.getSortedFolderItems;
   const adapter=function(folder){
    const result=previous.apply(this,arguments);
    return writerV104FlexNativeSort(plugin,folder,result);
   };
-  view.getSortedFolderItems=adapter;
-  patched.set(view,{previous,adapter});
+  try{owner.getSortedFolderItems=adapter;}catch(_){return false;}
+  if(owner.getSortedFolderItems!==adapter)return false;
+  let setOwner=view;
+  while(setOwner&&!Object.prototype.hasOwnProperty.call(setOwner,'setSortOrder'))
+   setOwner=Object.getPrototypeOf(setOwner);
+  let originalSet=null,wrappedSet=null;
+  if(setOwner&&typeof setOwner.setSortOrder==='function'){
+   originalSet=setOwner.setSortOrder;
+   wrappedSet=function(mode){
+    const result=originalSet.apply(this,arguments);
+    if(cfg.globalSortMode!=='native'){
+     cfg.globalSortMode='native';
+     void plugin.saveSettings();
+     plugin.writerV91FlexRefresh?.();
+    }
+    return result;
+   };
+   try{setOwner.setSortOrder=wrappedSet;}catch(_){wrappedSet=null;}
+  }
+  patched.set(owner,{previous,adapter,setOwner,originalSet,wrappedSet});
+  return true;
  };
+ let menuPrototype=null,originalMenuShow=null,wrappedMenuShow=null;
+ if(typeof Menu!=='undefined'&&Menu?.prototype&&typeof Menu.prototype.showAtMouseEvent==='function'){
+  menuPrototype=Menu.prototype;
+  originalMenuShow=menuPrototype.showAtMouseEvent;
+  wrappedMenuShow=function(event){
+   if(writerV1043IsSortButton(event))writerV1043GlobalSortingMenu(plugin,this);
+   return originalMenuShow.apply(this,arguments);
+  };
+  try{menuPrototype.showAtMouseEvent=wrappedMenuShow;}catch(_){wrappedMenuShow=null;}
+ }
+
  const scan=()=>{
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   patchView(leaf.view);
+   const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
-   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns);
+   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
    // Sync items even if their native wrapper differs from older Obsidian DOM.
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);
@@ -442,22 +551,7 @@ function writerV91FlexRegister(plugin){
     cfg.hidden=next;
     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
-  if(cfg.sortEnabled!==false&&file instanceof TFolder){
-   menu.addItem(item=>item.setTitle(writerUi('Ordenação desta pasta','Sort this folder')).setIcon('list-ordered')
-    .onClick(()=>writerV93FlexSortModal(plugin,file)));
-  }
-  const dir=writerV91FlexFolderPath(file);
-  if(cfg.sortEnabled!==false&&writerV93FlexRecord(plugin,dir)?.sort==='custom'&&file.parent){
-   for(const [direction,pt,en] of [['before','Mover para cima','Move earlier'],['after','Mover para baixo','Move later']]){
-    menu.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(direction==='before'?'arrow-up':'arrow-down').onClick(()=>{
-     const list=writerV93FlexRecord(plugin,dir).order;
-     const name=file.name,index=list.indexOf(name),other=list[index+(direction==='before'?-1:1)];
-     if(!other)return;
-     const target=file.parent.children?.find(f=>f.name===other);
-     if(target)writerV91FlexReorder(plugin,file.path,target.path,direction);
-    }));
-   }
-  }
+
  };
  plugin.registerEvent(plugin.app.workspace.on('file-menu',menu));
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
@@ -482,11 +576,12 @@ function writerV91FlexRegister(plugin){
    space.folderSorts=Object.fromEntries(Object.entries(space.folderSorts||{}).map(([key,v])=>[swap(key),v]));
   }
   cfg.folders=Object.fromEntries(Object.entries(cfg.folders).map(([key,v])=>[swap(key),v]));
-  if(file.parent&&file.parent.path===old.split('/').slice(0,-1).join('/')){
-   const record=cfg.folders[file.parent.path];
+  if(file.parent&&writerV1043RootKey(file.parent.path)===writerV1043RootKey(old.split('/').slice(0,-1).join('/'))){
+   const folderKey=writerV1043RootKey(file.parent.path);
+   const record=cfg.folders[folderKey];
    if(record)record.order=record.order.map(name=>name===old.split('/').pop()?file.name:name);
    for(const space of plugin.settings.v9Spaces?.spaces||[]){
-    const local=space.folderSorts?.[file.parent.path];
+    const local=space.folderSorts?.[folderKey];
     if(local)local.order=local.order.map(name=>name===old.split('/').pop()?file.name:name);
    }
   }
@@ -569,7 +664,13 @@ function writerV91FlexRegister(plugin){
  }});
  plugin.register?.(()=>{
   clearTimeout(timer);observer?.disconnect();
-  for(const [view,entry] of patched)if(view.getSortedFolderItems===entry.adapter)view.getSortedFolderItems=entry.previous;
+  for(const [owner,entry] of patched){
+   if(owner.getSortedFolderItems===entry.adapter)owner.getSortedFolderItems=entry.previous;
+   if(entry.wrappedSet&&entry.setOwner?.setSortOrder===entry.wrappedSet)
+    entry.setOwner.setSortOrder=entry.originalSet;
+  }
+  if(menuPrototype&&wrappedMenuShow&&menuPrototype.showAtMouseEvent===wrappedMenuShow)
+   menuPrototype.showAtMouseEvent=originalMenuShow;
   patched.clear();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
@@ -591,8 +692,8 @@ function writerV91FlexSettings(plugin,panel){
  const cfg=plugin.settings.v91Flex;
  panel.createEl('h3',{text:'Flexplorer'});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Organize o explorador nativo por pasta, fixe itens, oculte arquivos e escolha uma ordem manual. Clique com o botão direito ou pressione e segure para ver as opções. Arrastar reordena itens da mesma pasta em modo personalizado; Alt é opcional.',
-  'Sort native Explorer folders individually, pin files, hide items and set custom order. Right-click or long-press for file actions. Drag reorders files in custom-sorted folders; Alt is optional.'
+  'Use o botão nativo Ordenar, no topo do explorador, para aplicar uma ordem a todas as pastas. Use arrastar para escolher a ordem manual; o menu de contexto mantém os comandos de fixar e ocultar.',
+  'Use Obsidian’s native Sort button to choose an order for all folders. Drag to arrange items in manual mode; file context menus retain pin and hide actions.'
  )});
  for(const [key,pt,en] of [
   ['enabled','Ativar organização avançada','Enable enhanced organization'],
@@ -619,9 +720,9 @@ function writerV91FlexSettings(plugin,panel){
    cfg.defaultSortProperty=value.replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
    await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
   }));
- new Setting(panel).setName(writerUi('Ordenação da raiz do cofre','Vault root sorting'))
-  .addButton(button=>button.setButtonText(writerUi('Configurar','Configure'))
-   .onClick(()=>writerV93FlexSortModal(plugin,null)));
+ new Setting(panel).setName(writerUi('Ordem global no explorador','Global Explorer sorting'))
+  .setDesc(writerUi('Use o botão nativo de ordenação no topo do explorador. Escolhas nele valem para a raiz e todas as subpastas, incluindo modo manual do Basic.',
+   'Use Obsidian’s sorting button at the top of the File Explorer. Selecting a mode there applies it to the vault root and all subfolders, including Basic manual sorting.'));
  new Setting(panel).setName(writerUi('Padrões de ocultação','Hide patterns'))
   .setDesc(writerUi('Um padrão por linha; suporta * e **. Apenas oculta na interface, não exclui arquivos.','One glob per line; supports * and **. Only hides in Explorer, never deletes files.'))
   .addTextArea(t=>{t.inputEl.rows=4;t.setPlaceholder('Templates/**\n*.bak').setValue(cfg.patterns)

@@ -552,8 +552,8 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-sp
 /* Explorer arrows are an opt-in editing overlay, not part of every row.
    Keep the mobile tree at Obsidian's normal compact height. */
 .writer-v93-reorder-actions{display:none;align-items:center;gap:2px;flex:0 0 auto;}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"].writer-v1047-mobile-reorder-on
- .writer-v93-reorder-actions{
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
+ .writer-v1047-reorder-title > .writer-v93-reorder-actions{
  display:inline-flex;
  position:absolute;
  top:50%;inset-inline-end:38px;
@@ -573,7 +573,7 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-re
  width:16px;height:16px;
 }
 .writer-v93-reorder-action:disabled{opacity:.3;}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"].writer-v1047-mobile-reorder-on
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
  :is(.nav-file-title,.nav-folder-title).writer-v1047-reorder-title{
  position:relative;
  box-sizing:border-box;
@@ -598,8 +598,8 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-folder-ti
  text-overflow:ellipsis;
  white-space:nowrap;
 }
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"].writer-v1047-mobile-reorder-on
- .writer-v93-reorder-action:focus-visible{
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
+ .writer-v1047-reorder-title .writer-v93-reorder-action:focus-visible{
  outline:2px solid var(--interactive-accent);
  outline-offset:1px;
 }

@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.5.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.5.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -154,6 +154,8 @@ Um resumo da cena.
 - [[Personagem Dois]]
 ~~~
 ~~~~
+
+**9.5.1 · Separadores e foto do grupo no chat:** em blocos `chat`, coloque `---` entre as mensagens para uma divisão simples ou `--- Duas horas depois ---` para centralizar uma legenda. Defina `group-image: [[Imagens/grupo.webp]]` junto de `title:` para mostrar a foto do grupo ao lado do título. Avatares individuais e áudios falsos permanecem iguais. Veja os [exemplos completos](BLOCKS.pt-BR.md).
 
 **Sintaxe de chat fictício:** em um bloco `chat`, use `[Left=Maria, right=João]` para definir os participantes. Para cores e avatares, use `[Maria=blue]`. Abas também aceitam títulos como `=== Maria`. Essas formas são visuais e locais, sem conexão com aplicativos de mensagens.
 

@@ -232,7 +232,7 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  return ['name-desc','number-desc','property-desc'].includes(mode)?-delta:delta;
 }
 
-function writerV91FlexSortGroup(plugin,container,patterns){
+function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
  if(!children.length)return;
@@ -285,17 +285,29 @@ function writerV91FlexSortGroup(plugin,container,patterns){
  }
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
  rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
- // Never reparent native tree items with appendChild: Obsidian owns the tree
- // and may recycle/detach those nodes, making a moved file disappear until reload.
- // CSS order changes only presentation while keeping native file identity intact.
- if(!container.dataset.writerFlexOrderHost){
-  container.dataset.writerFlexOrderHost='1';
-  container.dataset.writerFlexPreviousDisplay=container.style.display||'';
-  container.dataset.writerFlexPreviousDirection=container.style.flexDirection||'';
+ // When the native sorting hook is active, let Obsidian render the correct
+ // ordering itself; CSS-order is a fallback only on unsupported versions.
+ if(nativePatched){
+  if(container.dataset.writerFlexOrderHost==='1'){
+   container.style.display=container.dataset.writerFlexPreviousDisplay||'';
+   container.style.flexDirection=container.dataset.writerFlexPreviousDirection||'';
+   delete container.dataset.writerFlexOrderHost;
+   delete container.dataset.writerFlexPreviousDisplay;
+   delete container.dataset.writerFlexPreviousDirection;
+  }
+  for(const row of rows)if(row.node.dataset.writerFlexOrdered==='1'){
+   row.node.style.removeProperty('order');delete row.node.dataset.writerFlexOrdered;
+  }
+ }else{
+  if(!container.dataset.writerFlexOrderHost){
+   container.dataset.writerFlexOrderHost='1';
+   container.dataset.writerFlexPreviousDisplay=container.style.display||'';
+   container.dataset.writerFlexPreviousDirection=container.style.flexDirection||'';
+  }
+  container.style.display='flex';
+  container.style.flexDirection='column';
+  rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  }
- container.style.display='flex';
- container.style.flexDirection='column';
- rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  if(folder.sort==='custom'&&cfg.mobileReorder){
   rows.forEach((row,index)=>{
    const title=row.title;if(!title)return;
@@ -404,29 +416,39 @@ function writerV93FlexSortModal(plugin,folder){
  modal.open();
 }
 
+/* Patch the native explorer prototype, as Manual Sorting 3.2.4 does,
+ * rather than patching a single leaf instance. No private file operations. */
+function writerV324PatchNativeExplorer(plugin,view,patched){
+ if(!view||!plugin.settings.v91Flex?.nativeSortIntegration)return false;
+ let target=view;
+ while(target&&!Object.prototype.hasOwnProperty.call(target,'getSortedFolderItems'))target=Object.getPrototypeOf(target);
+ if(!target||typeof target.getSortedFolderItems!=='function')return false;
+ if(patched.has(target))return true;
+ const previous=target.getSortedFolderItems;
+ const adapter=function(folder,bypass){
+  const rows=previous.apply(this,arguments);
+  // The unmodified order can be requested for initial reconciliation.
+  if(bypass===true||!plugin.settings.v91Flex?.enabled)return rows;
+  return writerV104FlexNativeSort(plugin,folder,rows);
+ };
+ try{target.getSortedFolderItems=adapter;}catch(_){return false;}
+ if(target.getSortedFolderItems!==adapter)return false;
+ patched.set(target,{previous,adapter});
+ return true;
+}
 function writerV91FlexRegister(plugin){
  const cfg=plugin.settings.v91Flex;
  let timer=null,observer=null,lastDrag='',dropNode=null;
  const patched=new Map();
  const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
- const patchView=view=>{
-  if(!view||patched.has(view)||!cfg.nativeSortIntegration)return;
-  const previous=view.getSortedFolderItems;
-  if(typeof previous!=='function')return;
-  const adapter=function(folder){
-   const result=previous.apply(this,arguments);
-   return writerV104FlexNativeSort(plugin,folder,result);
-  };
-  view.getSortedFolderItems=adapter;
-  patched.set(view,{previous,adapter});
- };
+ const patchView=view=>writerV324PatchNativeExplorer(plugin,view,patched);
  const scan=()=>{
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   patchView(leaf.view);
+   const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
-   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns);
+   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
    // Sync items even if their native wrapper differs from older Obsidian DOM.
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);
@@ -598,7 +620,7 @@ function writerV91FlexRegister(plugin){
  }});
  plugin.register?.(()=>{
   clearTimeout(timer);observer?.disconnect();
-  for(const [view,entry] of patched)if(view.getSortedFolderItems===entry.adapter)view.getSortedFolderItems=entry.previous;
+  for(const [target,entry] of patched)if(target.getSortedFolderItems===entry.adapter)target.getSortedFolderItems=entry.previous;
   patched.clear();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;

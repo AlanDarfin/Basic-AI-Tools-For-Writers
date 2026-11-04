@@ -246,15 +246,32 @@ function writerV91FlexSortGroup(plugin,container,patterns){
   }
   return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned:writerV93FlexPinned(plugin,path)};
  });
- if(!cfg.enabled||cfg.sortEnabled===false||(folder.sort==='native'&&!rows.some(row=>row.pinned)))return;
+ if(!cfg.enabled||cfg.sortEnabled===false||(folder.sort==='native'&&!rows.some(row=>row.pinned))){
+  if(container.dataset.writerFlexOrderHost==='1'){
+   container.style.display=container.dataset.writerFlexPreviousDisplay||'';
+   container.style.flexDirection=container.dataset.writerFlexPreviousDirection||'';
+   delete container.dataset.writerFlexOrderHost;
+   delete container.dataset.writerFlexPreviousDisplay;
+   delete container.dataset.writerFlexPreviousDirection;
+  }
+  for(const row of rows)if(row.node.dataset.writerFlexOrdered==='1'){
+   row.node.style.removeProperty('order');delete row.node.dataset.writerFlexOrdered;
+  }
+  return;
+ }
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
  rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
- // Change the DOM only when necessary. Repeated sorting must be idempotent
- // to avoid a MutationObserver feedback loop or jumps in editor scroll.
- const actual=Array.from(container.children).filter(node=>rows.some(r=>r.node===node));
- if(rows.some((row,index)=>actual[index]!==row.node)){
-  for(const row of rows)container.appendChild(row.node);
+ // Never reparent native tree items with appendChild: Obsidian owns the tree
+ // and may recycle/detach those nodes, making a moved file disappear until reload.
+ // CSS order changes only presentation while keeping native file identity intact.
+ if(!container.dataset.writerFlexOrderHost){
+  container.dataset.writerFlexOrderHost='1';
+  container.dataset.writerFlexPreviousDisplay=container.style.display||'';
+  container.dataset.writerFlexPreviousDirection=container.style.flexDirection||'';
  }
+ container.style.display='flex';
+ container.style.flexDirection='column';
+ rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  if(folder.sort==='custom'&&cfg.mobileReorder){
   rows.forEach((row,index)=>{
    const title=row.title;if(!title)return;
@@ -307,7 +324,8 @@ function writerV91FlexReorder(plugin,path,target,direction){
  const store=writerV93FlexStore(plugin,dir);
  const record=store[dir]||{sort:'custom',order:[]};
  const original=(parent?.children||[]).map(f=>f.name);
- const order=[...new Set([...record.order.filter(n=>original.includes(n)),...original])];
+ const existing=new Set(original);
+ const order=[...new Set([...(record.order||[]).filter(n=>existing.has(n)),...original])];
  const from=order.indexOf(file.name),to=order.indexOf(other.name);
  if(from<0||to<0)return;
  order.splice(from,1);
@@ -552,7 +570,21 @@ function writerV91FlexRegister(plugin){
  plugin.register?.(()=>{
   clearTimeout(timer);observer?.disconnect();
   for(const [view,entry] of patched)if(view.getSortedFolderItems===entry.adapter)view.getSortedFolderItems=entry.previous;
-  patched.clear();plugin.writerV91FlexRefresh=null;
+  patched.clear();
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   const host=leaf.view?.containerEl;if(!host)continue;
+   for(const container of host.querySelectorAll('[data-writer-flex-order-host="1"]')){
+    container.style.display=container.dataset.writerFlexPreviousDisplay||'';
+    container.style.flexDirection=container.dataset.writerFlexPreviousDirection||'';
+    delete container.dataset.writerFlexOrderHost;
+    delete container.dataset.writerFlexPreviousDisplay;
+    delete container.dataset.writerFlexPreviousDirection;
+   }
+   for(const node of host.querySelectorAll('[data-writer-flex-ordered="1"]')){
+    node.style.removeProperty('order');delete node.dataset.writerFlexOrdered;
+   }
+  }
+  plugin.writerV91FlexRefresh=null;
  });
 }
 function writerV91FlexSettings(plugin,panel){

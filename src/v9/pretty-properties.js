@@ -58,6 +58,9 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
  const cfg=plugin.settings.v9215Pretty,host=leaf.view?.containerEl,file=leaf.view?.file;
  if(!host)return;
  for(const el of host.querySelectorAll('.writer-v9215-pretty-banner,.writer-v9215-pretty-cover,.writer-v9215-pretty-icon,.writer-v9215-property-progress,.writer-v9215-property-caption,.writer-v9216-pretty-search'))el.remove();
+ for(const title of host.querySelectorAll('.inline-title.writer-v93-title-icon-host')){
+  if(!title.querySelector(':scope > .writer-v9-inline-title-icon'))title.classList.remove('writer-v93-title-icon-host');
+ }
  for(const row of host.querySelectorAll('.metadata-property')){
   row.classList.remove('writer-v9215-property-hidden','writer-v9215-property-colored','writer-v9216-search-hidden','writer-v9216-date-overdue','writer-v9216-date-soon');
   row.style.removeProperty('--writer-v9215-prop-color');
@@ -86,6 +89,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   span.className='writer-v9215-pretty-icon';span.setAttribute('aria-hidden','true');
   writerV9215PrettyDecorateIcon(span,fm.icon);
   target.insertBefore(span,target.firstChild);
+  target.classList.add('writer-v93-title-icon-host');
  }
  if(cfg.cover&&fm.cover){
   const url=writerV9215PrettyImage(plugin.app,file,fm.cover);

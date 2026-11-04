@@ -77,7 +77,7 @@ test('disabling mobile reorder settings and desktop views never show arrows',()=
  assert.equal(f.writerV1047MobileReorderVisible(x.plugin),false);
 });
 test('compact mobile presentation preserves preview shells and passes Obsidian CSS lint rules',()=>{
- assert.match(css,/writer-v1047-mobile-reorder-on/);
+ assert.match(css,/writer-v1047-reorder-title > \.writer-v93-reorder-actions/);
  assert.match(css,/writer-v1047-reorder-title/);
  assert.match(css,/position:absolute/);
  assert.match(css,/\.writer-v93-reorder-actions\{display:none/);

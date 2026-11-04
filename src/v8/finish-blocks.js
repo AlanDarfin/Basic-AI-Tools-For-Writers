@@ -8,7 +8,7 @@ function writerV8HomeTitleClean(value){
   .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
   .slice(0,80);
 }
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','books'],homeWordGoal:500,homeQuotes:''};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','books'],homeWordGoal:500,homeQuotes:'',homePresets:[]};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -38,6 +38,13 @@ function writerV8FinishMerge(settings){
   [...WRITER_V8_FINISH_DEFAULTS.homeHidden];
  cfg.homeWordGoal=Math.max(50,Math.min(20000,Math.round(Number(cfg.homeWordGoal)||500)));
  cfg.homeQuotes=String(cfg.homeQuotes||'').slice(0,12000);
+ cfg.homePresets=(Array.isArray(cfg.homePresets)?cfg.homePresets:[]).slice(0,12).map(raw=>({
+  name:String(raw?.name||'').trim().slice(0,60),
+  order:Array.isArray(raw?.order)?[...new Set(raw.order.filter(key=>allowed.includes(key)))]:[],
+  hidden:Array.isArray(raw?.hidden)?[...new Set(raw.hidden.filter(key=>allowed.includes(key)))]:[],
+  sizes:Object.fromEntries(Object.entries(raw?.sizes&&typeof raw.sizes==='object'?raw.sizes:{})
+   .filter(([key,size])=>allowed.includes(key)&&['compact','normal','wide'].includes(size)))
+ })).filter(p=>p.name);
  return cfg;
 }
 function writerV8ParseCaption(raw,src){

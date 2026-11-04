@@ -8,9 +8,9 @@ const WRITER_V8_MEDIA_EXT={
   document:['txt','rtf','doc','docx','odt','epub','csv','tsv','json','jsonc','yaml','yml','xml','html','css','md','toml']
 };
 function writerV8MediaConfig(source){
- const conf={path:'',type:'all',layout:'masonry',sort:'name-asc',subfolders:true,limit:90};
+ const conf={path:'',type:'all',layout:'masonry',sort:'name-asc',subfolders:true,limit:90,pageSize:24};
  for(const line of String(source||'').slice(0,3000).split(/\r?\n/)){
-  const match=/^\s*(path|folder|type|layout|sort|subfolders|limit):\s*(.*?)\s*$/i.exec(line);
+  const match=/^\s*(path|folder|type|layout|sort|subfolders|limit|pageSize):\s*(.*?)\s*$/i.exec(line);
   if(!match)continue;
   const key=match[1].toLowerCase(),value=match[2].replace(/^['"]|['"]$/g,'');
   if(key==='path'||key==='folder')conf.path=value.slice(0,400);
@@ -18,7 +18,8 @@ function writerV8MediaConfig(source){
   if(key==='layout'&&['masonry','grid','ratio'].includes(value))conf.layout=value;
   if(key==='sort'&&['name-asc','name-desc','mtime-desc','mtime-asc','size-desc','size-asc'].includes(value))conf.sort=value;
   if(key==='subfolders')conf.subfolders=value==='true';
-  if(key==='limit')conf.limit=Math.max(1,Math.min(150,Number(value)||90));
+  if(key==='limit')conf.limit=Math.max(1,Math.min(500,Number(value)||90));
+  if(key==='pagesize'||key==='pageSize')conf.pageSize=Math.max(8,Math.min(60,Number(value)||24));
  }
  return conf;
 }
@@ -92,6 +93,21 @@ function writerV8MediaOpen(plugin,items,index){
  modal.onClose=()=>{modal.contentEl.querySelectorAll('video, audio').forEach(media=>media.pause());};
  modal.open();
 }
+function writerV101MediaExcerpt(plugin,file,container){
+ if(!file||Number(file.stat?.size||0)>200000)return;
+ if(!['txt','md','csv','tsv','json','jsonc','yaml','yml','xml','html','css','toml'].includes(file.extension))return;
+ const preview=container.createDiv({cls:'writer-v101-media-excerpt'});
+ const show=()=>{
+  void plugin.app.vault.cachedRead(file).then(text=>{
+   if(preview.isConnected)preview.setText(String(text).replace(/^---\s*\r?\n[\s\S]*?\n---\s*\r?\n/,'').trim().slice(0,230));
+  }).catch(()=>{if(preview.isConnected)preview.setText('');});
+ };
+ if(typeof IntersectionObserver==='function'){
+  const io=new IntersectionObserver(entries=>{if(!entries.some(e=>e.isIntersecting))return;io.disconnect();show();},{rootMargin:'160px'});
+  io.observe(preview);const cleanup=()=>io.disconnect();
+  if(typeof plugin.register==='function')plugin.register(cleanup);
+ }else show();
+}
 function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const cfg=writerV8MediaConfig(source);
  const root=writerV8MediaRoot(plugin,ctx.sourcePath,cfg);
@@ -100,43 +116,94 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const all=writerV8MediaFiles(plugin.app,root,cfg);
  const header=host.createDiv({cls:'writer-v8-media-header'});
  header.createEl('strong',{text:root.name||writerUi('Galeria','Gallery')});
-  header.createSpan({cls:'writer-v8-media-count',text:String(all.length)});
+ const count=header.createSpan({cls:'writer-v8-media-count',text:String(all.length)});
  const search=header.createEl('input',{attr:{type:'search',placeholder:writerUi('Filtrar mídias…','Filter media…'),'aria-label':writerUi('Filtrar mídias','Filter media')}});
  const tabs=host.createDiv({cls:'writer-v8-media-filters'});
+ const tools=host.createDiv({cls:'writer-v101-media-tools'});
+ const toggle=tools.createEl('button',{text:writerUi('Selecionar vários','Select multiple'),attr:{type:'button','aria-pressed':'false'}});
+ const copy=tools.createEl('button',{text:writerUi('Copiar links','Copy links'),attr:{type:'button'}});
+ const selectedPaths=new Set();let multi=false;
  const grid=host.createDiv({cls:'writer-v8-media-grid writer-v8-media-'+cfg.layout});
- let selected=cfg.type;
+ const pages=host.createDiv({cls:'writer-v101-media-pages'});
+ let selected=cfg.type,page=0;
  const buttons=[];
  const render=()=>{
-  grid.empty();
+  grid.empty();pages.empty();
   const query=search.value.trim().toLocaleLowerCase();
   const matching=all.filter(x=>(selected==='all'||x.kind===selected)&&(!query||x.file.path.toLocaleLowerCase().includes(query)));
+  count.setText(matching.length+' / '+all.length);
   buttons.forEach(({type,button})=>{button.classList.toggle('is-active',type===selected);button.setAttribute('aria-pressed',String(type===selected));});
-  for(const item of matching){
+  toggle.setAttribute('aria-pressed',String(multi));copy.disabled=!selectedPaths.size;
+  const size=cfg.pageSize||24,last=Math.max(0,Math.ceil(matching.length/size)-1);
+  page=Math.max(0,Math.min(page,last));
+  const visible=matching.slice(page*size,page*size+size);
+  for(const item of visible){
    const tile=grid.createEl('button',{cls:'writer-v8-media-item',attr:{type:'button',title:item.file.path}});
+   tile.classList.toggle('is-selected',selectedPaths.has(item.file.path));
+   tile.setAttribute('aria-pressed',String(multi&&selectedPaths.has(item.file.path)));
    if(item.kind==='image'){
     tile.createEl('img',{attr:{src:plugin.app.vault.getResourcePath(item.file),alt:item.file.basename||item.file.name,loading:'lazy',decoding:'async'}});
+   }else if(item.kind==='video'){
+    tile.createEl('video',{cls:'writer-v101-media-video-thumb',attr:{src:plugin.app.vault.getResourcePath(item.file),preload:'metadata',muted:'',playsinline:''}});
+   }else if(item.kind==='pdf'){
+    const preview=tile.createDiv({cls:'writer-v101-media-pdf-thumb'});
+    const icon=preview.createSpan();
+    require('obsidian').setIcon?.(icon,'file-search');
+    preview.createSpan({text:'PDF'});
    }else{
     const glyph=tile.createDiv({cls:'writer-v8-media-glyph'});
     const obs=typeof require==='function'?require('obsidian'):null;
-    const icon=item.kind==='video'?'film':item.kind==='audio'?'music':item.kind==='document'?'file-code-2':'file-text';
+    const icon=item.kind==='audio'?'music':item.kind==='document'?'file-code-2':'file-text';
     if(typeof obs?.setIcon==='function')obs.setIcon(glyph,icon);
     else glyph.textContent=item.kind.toUpperCase();
+    if(item.kind==='document')writerV101MediaExcerpt(plugin,item.file,tile);
    }
    tile.createSpan({cls:'writer-v8-media-filename',text:item.file.basename||item.file.name});
-   tile.addEventListener('click',()=>writerV8MediaOpen(plugin,matching,matching.indexOf(item)));
+   if(multi)tile.createSpan({cls:'writer-v101-media-selection',text:selectedPaths.has(item.file.path)?'✓':'○'});
+   tile.addEventListener('click',()=>{
+    if(multi){
+     if(selectedPaths.has(item.file.path))selectedPaths.delete(item.file.path);
+     else if(selectedPaths.size<200)selectedPaths.add(item.file.path);
+     render();
+    }else writerV8MediaOpen(plugin,matching,matching.indexOf(item));
+   });
   }
   if(!matching.length)grid.createEl('p',{text:writerUi('Nenhuma mídia encontrada.','No media found.')});
+  if(last){
+   const prev=pages.createEl('button',{text:writerUi('Anterior','Previous'),attr:{type:'button'}});prev.disabled=page===0;
+   prev.addEventListener('click',()=>{page--;render();});
+   pages.createSpan({text:(page+1)+' / '+(last+1)});
+   const next=pages.createEl('button',{text:writerUi('Próxima','Next'),attr:{type:'button'}});next.disabled=page===last;
+   next.addEventListener('click',()=>{page++;render();});
+  }
  };
+ toggle.addEventListener('click',()=>{multi=!multi;if(!multi)selectedPaths.clear();render();});
+ copy.addEventListener('click',async()=>{
+  const links=[...selectedPaths].map(path=>'[['+path.replace(/\]\]/g,'')+']]').join('\n');
+  if(!links)return;
+  try{if(!globalThis.navigator?.clipboard?.writeText)throw Error('Clipboard unavailable');
+   await globalThis.navigator.clipboard.writeText(links);
+   new Notice(writerUi('Links copiados.','Links copied.'));
+  }catch(_){
+   const dialog=new Modal(plugin.app);
+   dialog.setTitle(writerUi('Copiar links de mídia','Copy media links'));
+   dialog.onOpen=()=>{
+    const textarea=dialog.contentEl.createEl('textarea',{cls:'writer-v101-media-links'});
+    textarea.value=links;textarea.focus();textarea.select();
+   };
+   dialog.open();
+  }
+ });
  const categories=['all','image','video','audio','pdf','document'];
  for(const type of categories){
   if(cfg.type!=='all'&&type!==cfg.type)continue;
   const label={all:writerUi('Tudo','All'),image:writerUi('Imagens','Images'),video:writerUi('Vídeos','Videos'),audio:writerUi('Áudio','Audio'),pdf:'PDF',document:writerUi('Documentos','Documents')}[type];
   const button=tabs.createEl('button',{text:label,attr:{type:'button','aria-pressed':'false'}});
-  button.addEventListener('click',()=>{selected=type;render();});
-  buttons.push({type,button});
+  button.addEventListener('click',()=>{selected=type;page=0;render();});buttons.push({type,button});
  }
- search.addEventListener('input',render);render();
+ search.addEventListener('input',()=>{page=0;render();});render();
 }
+
 function writerV8RegisterMediaGallery(plugin){
  if(typeof plugin.registerMarkdownCodeBlockProcessor==='function')
   for(const type of ['media-gallery','writer-media-gallery'])plugin.registerMarkdownCodeBlockProcessor(type,(source,element,ctx)=>{

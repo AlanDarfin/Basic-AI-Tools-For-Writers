@@ -1,14 +1,16 @@
 'use strict';
 /* v10: small, opt-in integrations, with original vault files and native UI. */
-const WRITER_V10_TEXT_EXT=new Set(['txt','md','json','jsonc','yaml','yml','csv','tsv','xml','html','htm','css','js','jsx','ts','tsx','py','sh','fish','toml','ini','cfg','conf','log','sql','svg','tex','bib','gitignore','properties']);
+const WRITER_V10_TEXT_EXT=new Set(['txt','md','json','jsonc','yaml','yml','csv','tsv','xml','html','htm','css','js','jsx','ts','tsx','py','sh','fish','toml','ini','cfg','conf','log','sql','svg','tex','bib','gitignore','properties','rs','go','java','kt','kts','swift','c','h','cpp','hpp','cs','php','rb','lua','dart','scss','less','vue','svelte','sql','ps1','bat','cmd','dockerfile','r','jl','gradle','graphql','mdx','diff','patch','gitconfig']);
 function writerV10EditableText(file){
  return file instanceof TFile && WRITER_V10_TEXT_EXT.has(String(file.extension||'').toLowerCase()) &&
   Number(file.stat?.size||0)<=512*1024;
 }
 function writerV10ToolboxMerge(settings){
  const old=settings.v10Tools&&typeof settings.v10Tools==='object'?settings.v10Tools:{};
- const cfg=settings.v10Tools={enabled:true,textEditor:true,doubleShift:false,doubleShiftDelay:320,tableSorting:true,jsonFormatting:true,quickCallout:true,...old};
+ const cfg=settings.v10Tools={enabled:true,textEditor:true,doubleShift:false,doubleShiftDelay:320,tableSorting:true,jsonFormatting:true,quickCallout:true,doubleShiftCode:'either',doubleShiftContext:'all',doubleShiftIgnoreModal:true, ...old};
  cfg.doubleShiftDelay=Math.max(200,Math.min(650,Number(cfg.doubleShiftDelay)||320));
+ cfg.doubleShiftCode=['either','same','left','right'].includes(cfg.doubleShiftCode)?cfg.doubleShiftCode:'either';
+ cfg.doubleShiftContext=['all','nonText','editorOnly'].includes(cfg.doubleShiftContext)?cfg.doubleShiftContext:'all';
  return cfg;
 }
 async function writerV10OpenTextFile(plugin,file){
@@ -24,6 +26,23 @@ async function writerV10OpenTextFile(plugin,file){
  const area=modal.contentEl.createEl('textarea',{cls:'writer-v10-text-editor',
   attr:{spellcheck:'false','aria-label':writerUi('Conteúdo do arquivo de texto','Text file contents')}});
  area.value=initial;
+ area.setAttribute('wrap','off');
+ const meta=modal.contentEl.createDiv({cls:'writer-v101-code-status'});
+ const updateStatus=()=>{
+  const at=area.selectionStart||0;
+  const before=area.value.slice(0,at);
+  meta.setText(file.extension.toUpperCase()+' · '+(before.split('\n').length)+':'+(before.length-before.lastIndexOf('\n'))+' · '+area.value.split('\n').length+' '+writerUi('linhas','lines'));
+ };
+ area.addEventListener('input',updateStatus);
+ area.addEventListener('click',updateStatus);
+ area.addEventListener('keyup',updateStatus);
+ area.addEventListener('keydown',event=>{
+  if(event.key!=='Tab'||event.ctrlKey||event.metaKey||event.altKey)return;
+  event.preventDefault();
+  const start=area.selectionStart,end=area.selectionEnd;
+  area.setRangeText('  ',start,end,'end');updateStatus();
+ });
+ updateStatus();
  const bar=modal.contentEl.createDiv({cls:'writer-v10-editor-actions'});
  bar.createEl('span',{cls:'setting-item-description',text:writerUi('Texto simples · grava apenas ao clicar em Salvar.','Plain text · saved only after pressing Save.')});
  const save=bar.createEl('button',{cls:'mod-cta',text:writerUi('Salvar arquivo','Save file'),attr:{type:'button'}});
@@ -93,18 +112,30 @@ function writerV10RegisterToolbox(plugin){
    }
    return true;
   }});
- let previousShift=0,dirty=false;
+ let previousShift=0,previousCode='',dirty=false;
+ const isTextTarget=target=>Boolean(target?.closest?.('input, textarea, [contenteditable="true"], .cm-editor'))||
+  Boolean(target?.isContentEditable);
  const handler=event=>{
   if(!plugin.settings.v10Tools?.enabled||!plugin.settings.v10Tools.doubleShift||event.repeat)return;
+  const cfg=plugin.settings.v10Tools;
+  if(cfg.doubleShiftIgnoreModal!==false&&event.target?.closest?.('.modal-container, .suggestion-container')){previousShift=0;return;}
+  const editorTarget=isTextTarget(event.target);
+  if((cfg.doubleShiftContext==='nonText'&&editorTarget)||(cfg.doubleShiftContext==='editorOnly'&&!editorTarget)){
+   previousShift=0;return;
+  }
+  if(event.isComposing){previousShift=0;return;}
   if(event.key==='Shift'&&!event.altKey&&!event.ctrlKey&&!event.metaKey){
    if(dirty){previousShift=0;dirty=false;return;}
-   const now=Date.now(),delay=plugin.settings.v10Tools.doubleShiftDelay;
-   if(previousShift&&now-previousShift<=delay){
-    previousShift=0;event.preventDefault();
+   const code=event.code||'';
+   const mode=cfg.doubleShiftCode||'either';
+   if((mode==='left'&&code==='ShiftRight')||(mode==='right'&&code==='ShiftLeft')){previousShift=0;return;}
+   const now=Date.now(),delay=cfg.doubleShiftDelay;
+   if(previousShift&&now-previousShift<=delay&&(mode!=='same'||code===previousCode)){
+    previousShift=0;previousCode='';event.preventDefault();
     plugin.app.commands?.executeCommandById?.('app:open-command-palette');
-   }else previousShift=now;
+   }else {previousShift=now;previousCode=code;}
   }else if(event.key!=='Shift'){
-   previousShift=0;dirty=true;
+   previousShift=0;previousCode='';dirty=true;
   }
  };
  const released=event=>{if(event.key==='Shift')dirty=false;};
@@ -128,4 +159,14 @@ function writerV10ToolboxSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Intervalo do duplo Shift (ms)','Double Shift interval (ms)'))
   .addSlider(s=>s.setLimits(200,650,25).setDynamicTooltip().setValue(cfg.doubleShiftDelay)
    .onChange(async v=>{cfg.doubleShiftDelay=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Teclas do duplo Shift','Double Shift keys')).addDropdown(d=>{
+  for(const [id,pt,en] of [['either','Qualquer Shift','Either Shift'],['same','Duas vezes o mesmo Shift','Same Shift twice'],['left','Somente Shift esquerdo','Left Shift only'],['right','Somente Shift direito','Right Shift only']])d.addOption(id,writerUi(pt,en));
+  d.setValue(cfg.doubleShiftCode).onChange(async v=>{cfg.doubleShiftCode=v;await plugin.saveSettings();});
+ });
+ new Setting(panel).setName(writerUi('Contexto do duplo Shift','Double Shift context')).addDropdown(d=>{
+  for(const [id,pt,en] of [['all','Qualquer local','Anywhere'],['nonText','Fora de editores','Outside text editors'],['editorOnly','Somente editores','Inside editors only']])d.addOption(id,writerUi(pt,en));
+  d.setValue(cfg.doubleShiftContext).onChange(async v=>{cfg.doubleShiftContext=v;await plugin.saveSettings();});
+ });
+ new Setting(panel).setName(writerUi('Ignorar Shift em janelas e sugestões','Ignore Shift in dialogs and suggestions'))
+  .addToggle(t=>t.setValue(cfg.doubleShiftIgnoreModal!==false).onChange(async v=>{cfg.doubleShiftIgnoreModal=v;await plugin.saveSettings();}));
 }

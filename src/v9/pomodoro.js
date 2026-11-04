@@ -19,7 +19,7 @@ function writerV931PomodoroMerge(settings){
  const cfg=settings.v931Pomodoro={enabled:true,sidebar:true,statusBar:true,focusMinutes:25,shortMinutes:5,longMinutes:15,
   longEvery:4,autoAdvance:false,notify:true,sound:false,logDaily:false,dailyFolder:'',
   task:'',mode:'focus',remaining:1500,running:false,endsAt:0,completed:0,today:'',
-  todayCompleted:0,...raw};
+  todayCompleted:0,focusHistory:[],analytics:true,...raw};
  for(const key of ['enabled','sidebar','statusBar','notify'])cfg[key]=cfg[key]!==false;
  for(const key of ['autoAdvance','sound','logDaily'])cfg[key]=cfg[key]===true;
  for(const key of ['focusMinutes','shortMinutes','longMinutes']){
@@ -41,6 +41,11 @@ function writerV931PomodoroMerge(settings){
   if(cfg.remaining<=0)cfg.remaining=writerV931PomodoroDuration(cfg,cfg.mode);
  }
  cfg.today=typeof cfg.today==='string'?cfg.today:'';
+ cfg.analytics=cfg.analytics!==false;
+ cfg.focusHistory=(Array.isArray(cfg.focusHistory)?cfg.focusHistory:[]).slice(-730).map(x=>({
+  end:Number(x?.end)||0,minutes:Math.max(1,Math.min(180,Number(x?.minutes)||25)),
+  task:String(x?.task||'').slice(0,180)
+ })).filter(x=>x.end>0);
  return cfg;
 }
 function writerV931PomodoroRemaining(cfg,now=Date.now()){
@@ -58,6 +63,7 @@ class WriterV931PomodoroView extends require('obsidian').ItemView{
   root.empty();root.addClass('writer-v931-pomodoro');
   const plugin=this.plugin,timer=plugin.writerV931Pomodoro,cfg=plugin.settings.v931Pomodoro;
   root.createEl('h3',{text:writerUi('Pomodoro · Foco','Pomodoro · Focus')});
+  root.createDiv({cls:'writer-v101-focus-summary'});
   if(!cfg.enabled){
    root.createEl('p',{text:writerUi('Ative o Pomodoro nas configurações do Basic.','Enable Pomodoro in Basic settings.')});
    return;
@@ -105,6 +111,8 @@ class WriterV931PomodoroView extends require('obsidian').ItemView{
   require('obsidian').setIcon(this.play.glyph,cfg.running?'pause':'play');
   this.count.textContent=writerUi('Sessões de foco concluídas hoje: ','Focus sessions completed today: ')+
    (cfg.today===writerV931PomodoroToday()?cfg.todayCompleted:0);
+  const chart=this.contentEl.querySelector?.('.writer-v101-focus-summary');
+  if(chart)writerV101PomodoroAnalytics(chart,cfg);
  }
 }
 class WriterV931PomodoroController{
@@ -147,6 +155,9 @@ class WriterV931PomodoroController{
   this.today();
   if(previous==='focus'){
    cfg.completed++;cfg.todayCompleted++;
+   cfg.focusHistory=Array.isArray(cfg.focusHistory)?cfg.focusHistory:[];
+   cfg.focusHistory.push({end:endedAt,minutes:cfg.focusMinutes,task:cfg.task});
+   cfg.focusHistory=cfg.focusHistory.slice(-730);
    if(cfg.logDaily)await this.logFocus(endedAt);
   }
   cfg.mode=previous==='focus'?(cfg.completed%cfg.longEvery===0?'long':'short'):'focus';
@@ -248,6 +259,38 @@ function writerV931PomodoroRegister(plugin){
  plugin.register?.(()=>{manager.views.clear();manager.status=null;plugin.writerV931Pomodoro=null;});
  manager.render();
 }
+function writerV101PomodoroSummary(history,now=Date.now()){
+ const days=Array.from({length:7},(_,i)=>writerV931PomodoroToday(new Date(now-(6-i)*86400000)));
+ const counts=days.map(day=>(history||[]).filter(x=>writerV931PomodoroToday(new Date(x.end))===day)
+  .reduce((sum,x)=>sum+(Number(x.minutes)||0),0));
+ const tasks=new Map();
+ for(const row of history||[])if(Number(row.end)>=now-30*86400000){
+  const task=String(row.task||'').trim()||'—';
+  tasks.set(task,(tasks.get(task)||0)+1);
+ }
+ return {days,counts,total:counts.reduce((a,b)=>a+b,0),
+  tasks:[...tasks].sort((a,b)=>b[1]-a[1]).slice(0,6)};
+}
+function writerV101PomodoroAnalytics(root,cfg){
+ root.empty();
+ if(cfg.analytics===false)return;
+ const data=writerV101PomodoroSummary(cfg.focusHistory||[]);
+ root.createEl('h4',{text:writerUi('Atividade dos últimos sete dias','Activity during the last seven days')});
+ root.createEl('small',{text:data.total+' '+writerUi('minutos de foco','focus minutes')});
+ const bars=root.createDiv({cls:'writer-v101-focus-bars'}),max=Math.max(1,...data.counts);
+ for(let i=0;i<data.days.length;i++){
+  const item=bars.createDiv({cls:'writer-v101-focus-day'});
+  const bar=item.createDiv({cls:'writer-v101-focus-bar',
+   attr:{role:'img','aria-label':data.days[i]+': '+data.counts[i]+' '+writerUi('minutos','minutes')}});
+  bar.style.height=Math.round(100*data.counts[i]/max)+'%';
+  item.createEl('small',{text:data.days[i].slice(5)});
+ }
+ if(data.tasks.length){
+  const tasks=root.createEl('details');
+  tasks.createEl('summary',{text:writerUi('Focos por tarefa (30 dias)','Focus sessions by task (30 days)')});
+  for(const [task,count] of data.tasks)tasks.createEl('p',{text:task+' · '+count});
+ }
+}
 function writerV931PomodoroSettings(plugin,panel){
  const cfg=plugin.settings.v931Pomodoro;
  panel.createEl('h3',{text:writerUi('Pomodoro · Foco','Pomodoro · Focus')});
@@ -269,7 +312,8 @@ function writerV931PomodoroSettings(plugin,panel){
   ['autoAdvance','Iniciar próxima etapa automaticamente','Auto-start next phase'],
   ['notify','Avisar quando terminar','Notify when finished'],
   ['sound','Som de conclusão (quando permitido)','Completion sound (when allowed)'],
-  ['logDaily','Registrar foco em nota diária existente','Log focus to existing daily note']
+  ['logDaily','Registrar foco em nota diária existente','Log focus to existing daily note'],
+   ['analytics','Estatísticas de foco locais','Local focus analytics']
  ])toggle(key,pt,en);
  for(const [key,pt,en,max] of [
   ['focusMinutes','Duração do foco (minutos)','Focus duration (minutes)',180],
@@ -291,6 +335,24 @@ function writerV931PomodoroSettings(plugin,panel){
    const tmp={v931Pomodoro:{...cfg,dailyFolder:value}};
    writerV931PomodoroMerge(tmp);cfg.dailyFolder=tmp.v931Pomodoro.dailyFolder;
    await plugin.saveSettings();
+  }));
+ const summary=writerV101PomodoroSummary(cfg.focusHistory||[]);
+ panel.createEl('p',{text:writerUi('Minutos de foco na semana: ','Focus minutes this week: ')+summary.total});
+ new Setting(panel).setName(writerUi('Exportar relatório de foco','Export focus report'))
+  .addButton(btn=>btn.setButtonText(writerUi('Criar CSV','Create CSV')).onClick(async()=>{
+   try{
+    const folder='Writing Focus';
+    if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
+    const header='date,minutes,task\r\n';
+    const lines=(cfg.focusHistory||[]).map(row=>{
+     const clean=String(row.task||'').replace(/[\r\n]/g,' ').replace(/"/g,'""');
+     return writerV931PomodoroToday(new Date(row.end))+','+row.minutes+',"'+(/^[=+\-@]/.test(clean)?"'":'')+clean+'"';
+    });
+    let path=folder+'/focus-report.csv',i=2;
+    while(plugin.app.vault.getAbstractFileByPath(path))path=folder+'/focus-report-'+i+++'.csv';
+    await plugin.app.vault.create(path,header+lines.join('\r\n')+'\r\n');
+    new Notice(writerUi('Relatório criado: ','Report created: ')+path);
+   }catch(error){new Notice(String(error.message||error));}
   }));
  new Setting(panel).setName(writerUi('Abrir painel Pomodoro','Open Pomodoro sidebar'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerV931Pomodoro?.open()));

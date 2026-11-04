@@ -21,6 +21,28 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 See the [v10 feature-by-feature audit](docs/V10_REVIEW.en.md), [current/legacy block guide](docs/BLOCKS.en.md) and [Portuguese documentation](docs/README.pt-BR.md). These are independent integrations inspired by other plugins, not claims of full upstream equivalence.
 
+
+## Expanded writing workflows · 10.1.0
+
+This update extends the existing v10 foundation **without rewriting projects, migrating notes destructively or removing legacy syntax**. Settings and features are bilingual (PT/EN), and optional actions remain opt-in where they change many files or rearrange the workspace.
+
+- **Longform:** less disruptive chapter-panel scroll and focus, desktop drag handle and a touch-hold-to-select destination workflow on mobile.
+- **Bookshelf:** local reading progress (0–100%), planned/reading/paused/finished statuses, shelf/genre labels, favorites, filtering, series/progress ordering and pagination. Progress is a manual book record, not inferred from chapter count.
+- **Spaces/Workspace:** per-Space versioned layout checkpoints with restore, JSON export/import, bounded history and preservation of the previous layout before overwrites. Layout switching may reorder tabs; confirm before restoring.
+- **Flow/Explorer:** graph layout and note dependencies using \`after:[[Note]]\`, cycle-bounded depth, and expanded sorting-spec patterns/numeric and property descending options.
+- **Media Gallery:** incremental pages, multi-selection, copying vault links, lightweight document excerpts, video metadata previews, and native PDF/document opening. Full PDF page rasterization and office document editing are not included.
+- **Files/Enhancement Suite:** extended source file extensions, editing status (line/column), Tab indentation, YAML validation, filtered Markdown table preview, guarded CSV export, footnotes and opt-in batch frontmatter edits backed by Snapshots.
+- **DoubleShift:** choose same/left/right/either Shift, trigger context and modal exclusions; feature stays disabled until enabled.
+- **Timelines:** eras, dependencies, dependency ordering and paginated event rendering.
+- **LanguageTool:** book-local accepted words, optional additions from suggestion menus, and clamped popup position; other projects retain their own dictionaries.
+- **Homepage:** named widget layout presets, keyboard arrows on widget handles and explicit Books widget metadata.
+- **Calendar:** offline import and export of local \`.ics\` files with confirmation and duplicate detection. **No live Google Calendar synchronization.**
+- **Study and Pomodoro:** configurable repetition intervals, review forecast and remembered deck; focus history, weekly chart, task counts and CSV report.
+- **Cursor and audio:** mobile cursor restoration retries that stop upon interaction; chunked native TTS and optional Soundscapes audio focus. Native TTS availability still depends on the WebView.
+- **Markdown:** extended source editing and editorial commands, keeping existing Pandoc, Keyshots, variants, typewriter and syntax tools.
+
+See the [complete v10.1 feature/compatibility review](docs/V10_1_ALL_FOLLOWUPS.en.md) and [current and legacy blocks](docs/BLOCKS.en.md). Most new actions are available in their existing settings tabs and via the command palette.
+
 ## Features
 
 ### Books, chapters and story planning

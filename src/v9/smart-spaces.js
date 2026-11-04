@@ -81,6 +81,8 @@ function writerV10SpaceSaveLayout(plugin,space){
  try{
   const snapshot=JSON.stringify(layout);
   if(snapshot.length>120000)return false;
+  if(typeof writerV101SpaceBeforeOverwrite==='function' &&
+   space.layoutSnapshot && JSON.stringify(space.layoutSnapshot)!==snapshot)writerV101SpaceBeforeOverwrite(plugin,space);
   space.layoutSnapshot=JSON.parse(snapshot);return true;
  }catch(_){return false;}
 }

@@ -9,6 +9,28 @@
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Fluxos de escrita ampliados · 10.1.0
+
+Esta atualização amplia a base da v10 **sem reescrever projetos, migrar notas de forma destrutiva ou retirar sintaxes antigas**. Configurações e novos recursos usam textos PT/EN; operações que alteram muitos arquivos ou reorganizam painéis são opcionais.
+
+- **Longform:** rolagem e foco de capítulos preservados, alça para arrastar no PC e toque prolongado para escolher destino no celular.
+- **Biblioteca:** progresso de leitura manual (0–100%), estado planejado/lendo/pausado/concluído, estantes e gêneros, favoritos, filtros, ordenação por série/progresso e paginação. Progresso não é inferido pelo número de capítulos.
+- **Spaces/Workspace:** checkpoints versionados por Space, restauração, importar/exportar JSON, limite de histórico e preservação do layout anterior ao substituir. A restauração pode reorganizar abas.
+- **Flow/Explorador:** modo grafo e dependências entre notas com \`after:[[Nota]]\`, profundidade limitada para ciclos, sorting-spec com novos padrões e ordenação decrescente por números/propriedades.
+- **Gallery:** paginação, seleção múltipla, cópia de links internos, previews leves de documentos, prévias de vídeo e abertura nativa de PDF/documentos. Não há renderização completa de páginas PDF nem edição DOCX.
+- **Arquivos/Enhancement Suite:** mais extensões de texto, número de linha/coluna, Tab com espaços, validação YAML, filtro visual de tabelas, CSV protegido, notas de rodapé e edição de frontmatter em lote com confirmação e snapshots.
+- **DoubleShift:** usar o mesmo Shift, esquerdo, direito ou qualquer um; filtros de contexto e exclusão de janelas. Continua inicialmente desativado.
+- **Timeline:** eras, dependências, ordenação e paginação de eventos.
+- **LanguageTool:** palavras aceitas por livro, adição nos menus de sugestão e posição de popup mais contida.
+- **Homepage:** presets nomeados de widgets, reorganização com setas do teclado e widget de livros.
+- **Calendário:** importar e exportar arquivos locais \`.ics\` de forma offline, com confirmação e identificação de duplicatas. **Não é sincronização online com Google Calendar.**
+- **Estudos/Pomodoro:** agendamento de revisões ajustável, previsão e último baralho lembrado; histórico de foco, gráfico semanal, relatórios por tarefa e CSV.
+- **Cursor e áudio:** tentativas adicionais de rolagem no Android que param com interação do usuário; TTS nativo em trechos e foco de áudio com Soundscapes opcional. A disponibilidade da voz depende do WebView.
+- **Markdown:** ampliação de edição e utilitários, preservando as ferramentas Pandoc, Keyshots, variantes, máquina de escrever e sintaxes antigas.
+
+Consulte a [revisão de funções e compatibilidade da 10.1](V10_1_ALL_FOLLOWUPS.pt-BR.md) e o [guia de blocos atuais e legados](BLOCKS.pt-BR.md). As ações novas estão nas abas existentes e na paleta de comandos.
+
 ## Versão 10.0.0 — consolidação sem reescrita
 
 - **Áudio do chat fictício:** se houver uma transcrição escrita, ela aparece automaticamente abaixo da animação, sem botão de mostrar/ocultar. Não há reconhecimento de voz.

@@ -7,7 +7,7 @@ const WRITER_FINAL_DEFAULTS={
  templates:{enabled:true,folder:"Templates",caseSensitive:true,matchCase:true,onlyNew:true,applyOnCreate:true,templateOnRename:false,dateFormat:"YYYY-MM-DD",timeFormat:"HH:mm",matchers:[]},
  unicode:{enabled:true,favorites:["—","…","«","»","“","”","•","→","←","✓","★","≈","≠","∞"],recent:[],maxResults:40},
  toc:{enabled:true,codeBlock:"insta-toc",maxDepth:6,folded:false,numbered:false},
- tts:{enabled:true,engine:"system",allowOnline:false,language:"auto",edgeVoice:"",rate:1,pitch:1,volume:1,voice:"",readSelection:true,maxCharacters:12000}
+ tts:{enabled:true,engine:"system",allowOnline:false,language:"auto",edgeVoice:"",rate:1,pitch:1,volume:1,voice:"",readSelection:true,maxCharacters:12000,chunkSize:700,pauseMusic:true,resumeMusic:false}
 };
 function writerFinalMerge(plugin){
  const current=plugin.settings.finalSuite||{};
@@ -29,8 +29,21 @@ function writerFinalMerge(plugin){
  plugin.settings.finalSuite=current;
  return current;
 }
+function writerV101TtsChunks(source,limit=700){
+ const chunks=[],max=Math.max(100,Math.min(1600,Math.floor(Number(limit)||700)));
+ let remaining=String(source||'').trim();
+ while(remaining.length>max){
+  const part=remaining.slice(0,max+1);
+  const cuts=[part.lastIndexOf('. '),part.lastIndexOf('? '),part.lastIndexOf('! '),
+   part.lastIndexOf('; '),part.lastIndexOf('\n'),part.lastIndexOf(' ')].filter(x=>x>=max*.55);
+  const cut=cuts.length?Math.max(...cuts)+1:max;
+  chunks.push(remaining.slice(0,cut).trim());remaining=remaining.slice(cut).trimStart();
+ }
+ if(remaining)chunks.push(remaining);
+ return chunks;
+}
 class WriterFinalFeatures{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsStatus='idle';this.ttsMessage='';}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsRunId=0;this.soundscapePausedByTts=false;this.ttsStatus='idle';this.ttsMessage='';}
  get cfg(){return this.plugin.settings.finalSuite;}
  register(){
   const p=this.plugin;
@@ -463,10 +476,19 @@ class WriterFinalFeatures{
  }
  onTtsState(status,message=''){
   this.ttsStatus=status;this.ttsMessage=message;
+  if((status==='idle'||status==='error')&&this.soundscapePausedByTts){
+   this.soundscapePausedByTts=false;
+   if(this.cfg.tts.resumeMusic===true)void this.plugin.writerV91Sound?.play?.();
+  }
   if(typeof document!=='undefined')document.querySelectorAll('.writer-tts-current-status').forEach(node=>{
    node.textContent=({idle:'Ready',loading:'Generating online speech…',playing:'Reading aloud',paused:'Paused',error:'Speech unavailable'}[status]||status)+(message?' · '+message:'');
   });
   if(status==='error')new Notice(message||'Online speech service unavailable.',6500);
+ }
+ prepareAudioFocus(){
+  const sound=this.plugin.writerV91Sound;
+  if(!this.cfg.tts.pauseMusic||!sound||!(sound.playing||sound.webOpen))return;
+  this.soundscapePausedByTts=true;sound.pause?.();
  }
  getEdgePlayer(){
   if(!this.edgePlayer){
@@ -521,7 +543,7 @@ class WriterFinalFeatures{
   if(engine==='edge'){
    if(!cfg.allowOnline)return new Notice(writerUi('Ative o envio de texto à Microsoft nas configurações de voz antes de usar vozes online.','Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.'));
    if(typeof WebSocket==='undefined')return new Notice(writerUi('A voz online requer suporte a WebSocket.','Online voice requires WebSocket support.'));
-   this.stop();
+   this.stop();this.prepareAudioFocus();
    const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
    const selectedVoice=cfg.edgeVoice||WRITER_EDGE_VOICES[lang]||WRITER_EDGE_VOICES[lang.split('-')[0]==='pt'?'pt-BR':'en-US'];
    try{await this.getEdgePlayer().start(text,selectedVoice,cfg.rate);}
@@ -530,19 +552,27 @@ class WriterFinalFeatures{
   }
   if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')
    return new Notice(writerUi('O WebView do Android não expõe a voz nativa do sistema. Use o mecanismo online somente se autorizar o envio do texto.','This WebView does not expose native text-to-speech. Use online speech only after allowing text to be sent.'),8000);
-  this.stop();
-  const utterance=new SpeechSynthesisUtterance(text);
-  const lang=cfg.language;
-  utterance.lang=lang==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):lang;
-  utterance.rate=Number(cfg.rate)||1;utterance.pitch=Number(cfg.pitch)||1;utterance.volume=Number(cfg.volume)||1;
+  this.stop();this.prepareAudioFocus();
+  const run=++this.ttsRunId,chunks=writerV101TtsChunks(text,cfg.chunkSize||700);
+  const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
   const voices=this.systemVoices();
-  const requested=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>String(v.lang||'').toLowerCase().startsWith(utterance.lang.toLowerCase().slice(0,2)));
-  if(requested)utterance.voice=requested;
-  utterance.onstart=()=>this.onTtsState('playing');
-  utterance.onend=()=>{this.speaking=false;this.onTtsState('idle');};
-  utterance.onerror=event=>this.onTtsState('error',event.error||'System voice failed.');
-  try{speechSynthesis.speak(utterance);this.speaking=true;}
-  catch(error){this.speaking=false;this.onTtsState('error',writerUi('Não foi possível usar o mecanismo local: ','Cannot use system TTS: ')+String(error?.message||error));}
+  const requested=voices.find(v=>v.voiceURI===cfg.voice)||
+   voices.find(v=>String(v.lang||'').toLowerCase().startsWith(lang.toLowerCase().slice(0,2)));
+  let index=0;
+  const next=()=>{
+   if(run!==this.ttsRunId)return;
+   if(index>=chunks.length){this.speaking=false;this.onTtsState('idle');return;}
+   const utterance=new SpeechSynthesisUtterance(chunks[index++]);
+   utterance.lang=lang;utterance.rate=Number(cfg.rate)||1;
+   utterance.pitch=Number(cfg.pitch)||1;utterance.volume=Number(cfg.volume)||1;
+   if(requested)utterance.voice=requested;
+   utterance.onstart=()=>{if(run===this.ttsRunId)this.onTtsState('playing',index+' / '+chunks.length);};
+   utterance.onend=next;
+   utterance.onerror=event=>{if(run===this.ttsRunId){this.speaking=false;this.onTtsState('error',event.error||'System voice failed.');}};
+   try{speechSynthesis.speak(utterance);this.speaking=true;}
+   catch(error){this.speaking=false;this.onTtsState('error',String(error?.message||error));}
+  };
+  next();
  }
  pause(){
   if(this.cfg.tts.engine==='edge')this.edgePlayer?.pause();
@@ -553,6 +583,7 @@ class WriterFinalFeatures{
   else if(typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
  }
  stop(){
+  this.ttsRunId=(this.ttsRunId||0)+1;
   this.edgePlayer?.stop();
   if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
   this.speaking=false;this.onTtsState('idle');
@@ -656,6 +687,14 @@ function writerRenderFinalSettings(panel,plugin,section){
   for(const [field,label,min,max,step] of [['rate','Speaking speed',.5,2,.1],['pitch','Pitch (system voice)',.5,2,.1],['volume','Volume (system voice)',0,1,.1]]){
    new Setting(panel).setName(translateLabel(label)).addSlider(slider=>slider.setLimits(min,max,step).setValue(Number(cfg[field])).onChange(async value=>{cfg[field]=value;await plugin.saveSettings();}));
   }
+  new Setting(panel).setName(writerUi('Tamanho dos trechos de leitura','Speech chunk size'))
+   .setDesc(writerUi('Pedaços menores evitam travamentos de Web Speech no Android.','Shorter chunks can reduce Web Speech stalls on Android.'))
+   .addSlider(x=>x.setLimits(250,1200,50).setDynamicTooltip().setValue(cfg.chunkSize||700)
+    .onChange(async v=>{cfg.chunkSize=v;await plugin.saveSettings();}));
+  for(const [key,pt,en] of [['pauseMusic','Pausar Soundscapes ao falar','Pause Soundscapes while speaking'],
+   ['resumeMusic','Retomar Soundscapes ao terminar','Resume Soundscapes after speech']])
+   new Setting(panel).setName(writerUi(pt,en)).addToggle(x=>x.setValue(cfg[key]===true)
+    .onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
   new Setting(panel).setName(translateLabel('Speech')).addButton(b=>b.setButtonText(translateLabel('Read')).onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText(translateLabel('Pause')).onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText(translateLabel('Resume')).onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText(translateLabel('Stop')).onClick(()=>plugin.writerFinalFeatures.stop()));
   panel.createDiv({cls:'writer-tts-current-status',text:translateLabel('Ready')});
 

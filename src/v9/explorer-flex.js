@@ -78,18 +78,26 @@ function writerV93FlexParseSortSpec(raw){
   if(/^folders-first$/i.test(line)){record.foldersFirst=true;recognized=true;continue;}
   const meta=/^by-metadata:\s*([\w-]{1,60})$/i.exec(line);
   if(meta){record.sort='property';record.property=meta[1];recognized=true;continue;}
+  const group=/^(?:group|match-(prefix|suffix|contains|exact)):\s*(.+)$/i.exec(line);
+  if(group){
+   const value=group[2].trim();
+   if(!value||value.length>150||/[\x00-\x1f]/.test(value))continue;
+   const kind=group[1].toLowerCase();
+   record.order.push(kind==='prefix'?value+'*':kind==='suffix'?'*'+value:kind==='contains'?'*'+value+'*':value);
+   recognized=true;continue;
+  }
   const command=/^order-(asc|desc):\s*(.+)$/i.exec(line);
   if(!command)continue;
   const direction=command[1],value=command[2].trim(),lower=value.toLowerCase();
   if(['a-z','name','alphabetical'].includes(lower)){
    record.sort=direction==='desc'?'name-desc':'name';recognized=true;
   }else if(['number','numeric','\\d+'].includes(lower)){
-   record.sort='number';recognized=true;
+   record.sort=direction==='desc'?'number-desc':'number';recognized=true;
   }else if(['modified','created'].includes(lower)){
    if(direction==='desc'){record.sort=lower;recognized=true;}
   }else if(lower.startsWith('by-metadata:')){
    const key=lower.slice('by-metadata:'.length).trim();
-   if(/^[\w-]{1,60}$/.test(key)){record.sort='property';record.property=key;recognized=true;}
+   if(/^[\w-]{1,60}$/.test(key)){record.sort=direction==='desc'?'property-desc':'property';record.property=key;recognized=true;}
   }else if(!/[:\x00-\x1f]/.test(value)&&value.length<=250){
    record.order.push(value);recognized=true;
   }
@@ -147,27 +155,27 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
   const ia=writerV93FlexOrderIndex(a.name,record.order||[]),ib=writerV93FlexOrderIndex(b.name,record.order||[]);
   return ia!==ib?ia-ib:a.index-b.index;
  }
- if(mode==='number'){
+ if(mode==='number'||mode==='number-desc'){
   const na=writerV93FlexNumber(a.name),nb=writerV93FlexNumber(b.name);
-  if(na!==nb)return na-nb;
+  if(na!==nb)return mode==='number-desc'?nb-na:na-nb;
  }
  if(mode==='folders-first'){
   const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
   if(af!==bf)return af?-1:1;
  }
- if(mode==='property'){
+ if(mode==='property'||mode==='property-desc'){
   const key=record.property||plugin.settings.v91Flex.defaultSortProperty;
   const av=writerV93FlexMeta(plugin,a,key),bv=writerV93FlexMeta(plugin,b,key);
   if(av!==''&&bv!==''&&Number.isFinite(Number(av))&&Number.isFinite(Number(bv))&&Number(av)!==Number(bv))
-   return Number(av)-Number(bv);
-  const delta=collator.compare(String(av),String(bv));if(delta)return delta;
+   return (Number(av)-Number(bv))*(mode==='property-desc'?-1:1);
+  const delta=collator.compare(String(av),String(bv));if(delta)return mode==='property-desc'?-delta:delta;
  }
  if(mode==='modified'||mode==='created'){
   const prop=mode==='modified'?'mtime':'ctime';
   const delta=(b.file?.stat?.[prop]||0)-(a.file?.stat?.[prop]||0);if(delta)return delta;
  }
  const delta=collator.compare(a.name,b.name);
- return mode==='name-desc'?-delta:delta;
+ return ['name-desc','number-desc','property-desc'].includes(mode)?-delta:delta;
 }
 
 function writerV91FlexSortGroup(plugin,container,patterns){
@@ -465,7 +473,7 @@ function writerV91FlexSettings(plugin,panel){
   ['perSpaceSorting','Ordenação independente por Space','Independent sorting per Space'],
   ['perSpacePins','Itens fixados independentes por Space','Independent pins per Space'],
   ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules'],
-  ['sortSpecCompat','Compatibilidade com sorting-spec (regras simples)','sorting-spec compatibility (simple rules)']
+  ['sortSpecCompat','Compatibilidade com sorting-spec (regras ampliadas)','sorting-spec compatibility (simple rules)']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{
    cfg[key]=v;await plugin.saveSettings();plugin.writerV91FlexRefresh?.();

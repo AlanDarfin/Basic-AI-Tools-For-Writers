@@ -120,13 +120,29 @@ class WriterCursorMemory{
     const anchor=this.cfg.restoreSelection?writerCursorClamp(bookmark.anchor||bookmark.head,editor):head;
     editor.setSelection(anchor,head);
     this.restoreScrollIntoView(view,head,bookmark);
-    const finish=()=>{
-     if(!stillValid())return;
-     if(!writerCursorSame(editor.getCursor?.('head'),head)){this.pending.delete(view);return;}
-     this.restoreScrollIntoView(view,head,bookmark);
-     this.pending.delete(view);
+    const mobile=this.plugin.app.isMobile,dom=editor.cm?.dom;
+    const cancel=()=>this.pending.delete(view);
+    // Real touch/typing wins over delayed automatic mobile scroll restoration.
+    if(mobile&&dom){
+     dom.addEventListener('touchstart',cancel,{once:true,passive:true});
+     dom.addEventListener('pointerdown',cancel,{once:true,passive:true});
+    }
+    const cleanup=()=>{
+     if(!dom)return;
+     dom.removeEventListener?.('touchstart',cancel);
+     dom.removeEventListener?.('pointerdown',cancel);
     };
-    this.timer(finish,this.plugin.app.isMobile?380:110);
+    const attempts=mobile?[130,460,850]:[110];
+    for(const [index,delay] of attempts.entries())this.timer(()=>{
+     if(!stillValid()){if(index===attempts.length-1)cleanup();return;}
+     if(!writerCursorSame(editor.getCursor?.('head'),head)){
+      this.pending.delete(view);cleanup();return;
+     }
+     // Mobile CodeMirror measures wrapped lines asynchronously, especially
+     // after a keyboard resize; retry only while the user has not interacted.
+     this.restoreScrollIntoView(view,head,bookmark);
+     if(index===attempts.length-1){this.pending.delete(view);cleanup();}
+    },delay);
    }catch(e){
     this.pending.delete(view);
     console.warn('[Basic AI] Restore cursor:',e);

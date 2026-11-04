@@ -4,7 +4,7 @@
  * Longform's independent project timeline and event store remain unchanged. */
 const WRITER_V95_TIMELINE_OPTIONS={
  layout:'vertical',theme:'classic',density:'normal',sort:'source',controls:true,
- line:3,body:2,accent:''
+ line:3,body:2,accent:'',maxEvents:80,pageSize:30
 };
 const WRITER_V95_TIMELINE_THEMES=['classic','cards','minimal','compact','editorial'];
 const WRITER_V95_TIMELINE_ACCENTS={
@@ -22,12 +22,14 @@ function writerV95TimelineConfigOption(cfg,key,value){
   if(['horizontal','vertical'].includes(val))cfg.layout=val;
  }else if(name==='theme'&&WRITER_V95_TIMELINE_THEMES.includes(val))cfg.theme=val;
  else if(name==='density'&&['normal','compact','comfortable'].includes(val))cfg.density=val;
- else if(name==='sort'&&['source','asc','desc'].includes(val))cfg.sort=val;
+ else if(name==='sort'&&['source','asc','desc','dependencies'].includes(val))cfg.sort=val;
  else if(['controls','toolbar'].includes(name)&&['true','false','on','off','yes','no'].includes(val))
   cfg.controls=['true','on','yes'].includes(val);
  else if(name==='color'&&/^#[0-9a-f]{6}$/i.test(value.trim()))cfg.accent=value.trim();
  else if(name==='line'&&/^[2-5]$/.test(val))cfg.line=Number(val);
  else if(name==='body'&&/^[2-4]$/.test(val))cfg.body=Number(val);
+ else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Number(val)||80));
+ else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Number(val)||30));
 }
 function writerV95TimelineCleanEvent(raw){
  const e=raw||{};
@@ -39,7 +41,10 @@ function writerV95TimelineCleanEvent(raw){
   icon:String(e.icon||'').trim().slice(0,45),
   color:/^#[0-9a-f]{6}$/i.test(String(e.color||''))?String(e.color):'',
   group:String(e.group||e.track||'').trim().slice(0,80),
-  link:String(e.link||'').trim().slice(0,350)
+  link:String(e.link||'').trim().slice(0,350),
+  id:String(e.id||'').trim().slice(0,80),
+  after:String(e.after||e.depends||'').trim().slice(0,120),
+  era:String(e.era||'').trim().slice(0,80)
  };
  return result.date||result.title||result.content?result:null;
 }
@@ -51,7 +56,7 @@ function writerV95TimelineLegacy(lines){
   // Optional per-event attributes at the beginning of the content.
   const body=item.content.split('\n'),remaining=[];
   for(const row of body){
-   const m=/^\s*(image|icon|color|group|track|link):\s*(.+)\s*$/i.exec(row);
+   const m=/^\s*(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
    if(m){item[m[1].toLowerCase()]=m[2].trim();continue;}
    remaining.push(row);
   }
@@ -68,13 +73,13 @@ function writerV95TimelineLegacy(lines){
   if(parts.length===3)extra.push(line);
  }
  push();
- return events.slice(0,80);
+ return events.slice(0,250);
 }
 function writerV95TimelineLabeled(lines){
  const events=[];let current=null,content=false;
  const push=()=>{const clean=writerV95TimelineCleanEvent(current);if(clean)events.push(clean);current=null;content=false;};
  const keys={date:'date',time:'date',when:'date',title:'title',content:'content',description:'content',
-  image:'image',photo:'image',icon:'icon',color:'color',group:'group',track:'group',link:'link'};
+  image:'image',photo:'image',icon:'icon',color:'color',group:'group',track:'group',link:'link',id:'id',after:'after',depends:'after',era:'era'};
  for(const line of lines){
   if(/^\s*---\s*$/.test(line)){if(current)push();continue;}
   const m=/^\s*([a-z][a-z-]*):\s*(.*)$/i.exec(line);
@@ -91,7 +96,7 @@ function writerV95TimelineLabeled(lines){
   }
  }
  if(current)push();
- return events.slice(0,80);
+ return events.slice(0,250);
 }
 function writerV95TimelineSortKey(date){
  const text=String(date||'').trim();
@@ -119,19 +124,33 @@ function writerV95TimelineParse(source,format='timeline'){
    }
    begin++;continue;
   }
-  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body):\s*(.*)$/i.exec(line);
+  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body|max-events|page-size):\s*(.*)$/i.exec(line);
   if(option){writerV95TimelineConfigOption(cfg,option[1],option[2]);begin++;continue;}
   break;
  }
  const body=lines.slice(begin);
  const labeled=format==='timeline-labeled'||/^\s*(?:date|time|when):/i.test(body.find(x=>x.trim())||'');
  let events=labeled?writerV95TimelineLabeled(body):writerV95TimelineLegacy(body);
- if(cfg.sort!=='source'){
+ if(cfg.sort==='dependencies')events=writerV101TimelineDependencies(events);
+ else if(cfg.sort!=='source'){
   events=events.map((event,index)=>({...event,_order:index,_sort:writerV95TimelineSortKey(event.date)}))
    .sort((a,b)=>a._sort===null||b._sort===null?a._order-b._order:
     (cfg.sort==='asc'?1:-1)*(a._sort-b._sort)||a._order-b._order);
  }
- return {config:cfg,events};
+ return {config:cfg,events:events.slice(0,cfg.maxEvents)};
+}
+function writerV101TimelineDependencies(events){
+ const keys=new Map(events.map((e,i)=>[String(e.id||e.title||i).toLocaleLowerCase(),i]));
+ const output=[],state=new Uint8Array(events.length);
+ const visit=index=>{
+  if(state[index]===2||state[index]===1)return;
+  state[index]=1;
+  const parent=keys.get(String(events[index].after||'').toLocaleLowerCase());
+  if(parent!==undefined&&parent!==index)visit(parent);
+  state[index]=2;output.push(events[index]);
+ };
+ events.forEach((_,i)=>visit(i));
+ return output;
 }
 function writerV95TimelineLink(plugin,ctx,raw){
  const text=String(raw||'').trim().replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0];
@@ -155,7 +174,7 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  }
  const groups=[...new Set(parsed.events.map(e=>e.group).filter(Boolean))];
  const bar=cfg.controls?root.createDiv({cls:'writer-v95-timeline-toolbar'}):null;
- let layout=cfg.layout,query='',group='';
+ let layout=cfg.layout,query='',group='',page=0;
  if(bar){
   const orient=bar.createEl('button',{cls:'writer-v95-timeline-orientation',attr:{type:'button'}});
   const setOrientation=()=>{orient.textContent=layout==='vertical'?writerUi('Horizontal','Horizontal'):writerUi('Vertical','Vertical');orient.setAttribute('aria-label',writerUi('Mudar orientação','Switch orientation'));};
@@ -167,13 +186,13 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    setOrientation();
   });
   const search=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar eventos…','Search events…'),'aria-label':writerUi('Buscar eventos','Search events')}});
-  search.addEventListener('input',()=>{query=search.value.trim().toLocaleLowerCase();draw();});
+  search.addEventListener('input',()=>{query=search.value.trim().toLocaleLowerCase();page=0;draw();});
   if(groups.length){
    const select=bar.createEl('select',{attr:{'aria-label':writerUi('Filtrar trilha','Filter track')}});
    for(const name of ['',...groups]){
     const option=select.createEl('option',{text:name||writerUi('Todas as trilhas','All tracks')});option.value=name;
    }
-   select.addEventListener('change',()=>{group=select.value;draw();});
+   select.addEventListener('change',()=>{group=select.value;page=0;draw();});
   }
  }
  const list=root.createDiv({cls:'writer-v95-timeline-items',attr:{role:'list','aria-label':writerUi('Linha do tempo','Timeline')}});
@@ -187,12 +206,15 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    else list.scrollBy({top:dir*Math.max(240,list.clientHeight*.7),behavior:'smooth'});
   });
  }
+ const pager=root.createDiv({cls:'writer-v101-timeline-pager'});
  function draw(){
-  list.empty();
+  list.empty();pager.empty();
   const filtered=parsed.events.filter(e=>(!group||e.group===group)&&
    (!query||(e.date+' '+e.title+' '+e.content+' '+e.group).toLocaleLowerCase().includes(query)));
   if(!filtered.length){list.createEl('p',{cls:'writer-v95-empty',text:writerUi('Nenhum evento encontrado.','No matching events.')});return;}
-  for(const event of filtered){
+  const maxPage=Math.max(0,Math.ceil(filtered.length/cfg.pageSize)-1);
+  page=Math.min(page,maxPage);
+  for(const event of filtered.slice(page*cfg.pageSize,page*cfg.pageSize+cfg.pageSize)){
    const card=list.createDiv({cls:'writer-v95-timeline-event',attr:{role:'listitem'}});
    if(event.color)card.style.setProperty('--writer-v95-event-accent',event.color);
    const marker=card.createDiv({cls:'writer-v95-timeline-marker',attr:{'aria-hidden':'true'}});
@@ -203,6 +225,8 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    if(event.date)info.createSpan({cls:'writer-v95-timeline-date',text:event.date});
    if(event.title)info.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});
    if(event.group)info.createSpan({cls:'writer-v95-timeline-group',text:event.group});
+   if(event.era)info.createSpan({cls:'writer-v101-timeline-era',text:event.era});
+   if(event.after)info.createSpan({cls:'writer-v101-timeline-after',text:writerUi('Depois de: ','After: ')+event.after});
    if(event.image){
     const image=writerV8ImagePath(plugin.app,event.image,ctx.sourcePath);
     if(image)info.createEl('img',{cls:'writer-v95-timeline-image',attr:{src:image,alt:event.title||writerUi('Imagem do evento','Event photo'),loading:'lazy',decoding:'async'}});
@@ -218,6 +242,13 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     if(file)info.createEl('button',{cls:'writer-v95-timeline-link',text:writerUi('Abrir nota','Open note'),attr:{type:'button'}})
      .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
    }
+  }
+  if(maxPage>0){
+   const previous=pager.createEl('button',{text:writerUi('Anterior','Previous')});previous.disabled=page===0;
+   previous.addEventListener('click',()=>{page--;draw();});
+   pager.createSpan({text:(page+1)+' / '+(maxPage+1)});
+   const next=pager.createEl('button',{text:writerUi('Próxima','Next')});next.disabled=page>=maxPage;
+   next.addEventListener('click',()=>{page++;draw();});
   }
  }
  draw();

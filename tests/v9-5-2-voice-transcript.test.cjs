@@ -67,6 +67,6 @@ test('shipped bundle, styles and documentation include transcription and no exte
   assert.ok(doc.includes('[áudio:0:15:')||doc.includes('[audio:0:15:'));
  }
  for(const path of ['manifest.json','package.json','README.md','docs/README.pt-BR.md']){
-  assert.match(fs.readFileSync(path,'utf8'),/10\.0\.0/);
+  assert.ok(fs.readFileSync(path,'utf8').includes(require('../manifest.json').version));
  }
 });

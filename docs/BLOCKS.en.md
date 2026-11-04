@@ -493,3 +493,63 @@ subfolders: true
 ## 17. Fictional audio: always-visible written transcription
 
 With [audio:0:15:Written text] or [áudio:0:15:Texto escrito], the supplied text appears immediately and safely below the simulated waveform. There is no transcript toggle. It is not real audio transcription or playback. Older chat, writer-chat, --- and --- label --- syntax remains supported.
+
+
+## 18. Version 10.1 additions and compatibility
+
+**Bookshelf:** the \`bookshelf\` and legacy \`writer-bookshelf\` renderers still accept \`sort: title|recent|chapters\`. They now also accept \`sort: progress|series\`. The library modal provides filters for shelf, reading status and favorites. You can edit progress (0–100%) or assign a shelf directly from a book card. Existing project Markdown is never modified by these book records.
+
+**Media Gallery:** keep \`media-gallery\` (or legacy \`writer-media-gallery\`), optionally set \`pageSize: 24\` and \`limit: 200\`; the UI paginates rather than showing every item. Use **Select multiple → Copy links** for Obsidian wikilinks. Text file excerpts are read locally, while PDFs use Obsidian's native handler.
+
+~~~~markdown
+~~~media-gallery
+folder: Books/Research
+type: all
+layout: grid
+sort: mtime-desc
+limit: 200
+pageSize: 24
+subfolders: true
+~~~
+~~~~
+
+**Flow graph:** retain \`flow\` / \`writer-flow\` and add \`layout: graph\`. A note can declare a dependency using a line such as \`[[Draft/Chapter 2]] | after:[[Draft/Chapter 1]]\`. Basic renders the dependency as depth and lets you change it from the card. It does not execute a graph pipeline.
+
+~~~~markdown
+~~~flow
+layout: graph
+[[Draft/Chapter 1]]
+[[Draft/Chapter 2]] | after:[[Draft/Chapter 1]]
+[[Draft/Chapter 3]] | after:[[Draft/Chapter 2]]
+~~~
+~~~~
+
+**Timeline:** in \`timeline-labeled\` or legacy \`timeline\`, use \`sort: dependencies\`, \`max-events: 150\` and \`page-size: 30\`, plus event properties \`id\`, \`after\` and \`era\`. The previous maximum (80) remains the default; you can raise it to 250 explicitly. Dependency ordering is display-only.
+
+~~~~markdown
+~~~timeline-labeled
+layout: horizontal
+theme: cards
+sort: dependencies
+max-events: 150
+page-size: 30
+
+date: 2040
+title: The founding
+id: founding
+era: First Age
+content:
+The settlement begins.
+
+---
+date: 2041
+title: The journey
+id: journey
+after: founding
+era: First Age
+content:
+The story continues.
+~~~
+~~~~
+
+**Not a code-fence renderer:** importing/exporting ICS, filtering Markdown tables, validating YAML, editing batch properties, changing DoubleShift shortcuts, managing Space history, and saving dashboard presets are commands or settings, not Markdown fences.

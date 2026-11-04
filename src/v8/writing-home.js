@@ -38,7 +38,8 @@ const WRITER_V8_HOME_CATALOG={
  goal:['target','Meta de palavras','Word target','Progresso de uma nota recente','Progress for a recent note'],
  gallery:['images','Galeria do cofre','Vault gallery','Foto aleatória dos arquivos locais','A random image from your local vault'],
  quotes:['quote','Citação do dia','Random quote','Citação diferente ao abrir a homepage','A fresh quote every time you open home'],
- today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today']
+ today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today'],
+ books:['library-big','Meus livros','My books','Visualização dos livros Longform','Longform bookshelf']
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -247,6 +248,11 @@ class WriterV8HomeView extends ItemView{
    const key=card.getAttribute('data-section');
    const grip=card.querySelector('.writer-v924-drag-handle');
    if(!grip)continue;
+   grip.addEventListener('keydown',event=>{
+    if(!['ArrowUp','ArrowDown'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
+    event.preventDefault();this.moveWidget(key,event.key==='ArrowUp'?-1:1);
+   });
+   grip.setAttribute('aria-keyshortcuts','ArrowUp ArrowDown');
    grip.addEventListener('dragstart',event=>{
     dragged=key;card.classList.add('writer-v924-dragging');
     if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',key);}
@@ -292,6 +298,39 @@ class WriterV8HomeView extends ItemView{
    const root=modal.contentEl;
    root.empty();root.addClass('writer-v903-widget-gallery');
    root.createEl('p',{cls:'setting-item-description',text:writerUi('Ative ou oculte painéis. Arraste pela alça no cabeçalho para reorganizar; use o menu para mover sem arrastar.','Show or hide panels. Drag the header handle to reorder, or use the menu for keyboard-friendly movement.')});
+    const presets=plugin.settings.v8Finish.homePresets||(plugin.settings.v8Finish.homePresets=[]);
+    const section=root.createDiv({cls:'writer-v101-home-presets'});
+    section.createEl('h4',{text:writerUi('Presets do painel','Dashboard presets')});
+    const picker=section.createEl('select',{attr:{'aria-label':writerUi('Preset de widgets','Widget preset')}});
+    picker.createEl('option',{text:writerUi('Selecione um preset','Choose preset'),value:''});
+    for(const item of presets){const option=picker.createEl('option',{text:item.name});option.value=item.name;}
+    let inputName='';
+    const input=section.createEl('input',{attr:{type:'text',maxlength:'60',placeholder:writerUi('Nome do preset','Preset name')}});
+    input.addEventListener('input',()=>{inputName=input.value.slice(0,60).trim();});
+    const save=section.createEl('button',{text:writerUi('Salvar preset atual','Save current layout')});
+    save.addEventListener('click',async()=>{
+     if(!inputName)return;
+     const prefs=view.widgetPreferences();
+     const record={name:inputName,order:[...prefs.homeOrder],hidden:[...prefs.homeHidden],sizes:{...prefs.homeWidgetSizes}};
+     const at=presets.findIndex(x=>x.name===inputName);
+     if(at>=0)presets[at]=record;else presets.push(record);
+     plugin.settings.v8Finish.homePresets=presets.slice(-12);
+     await plugin.saveSettings();modal.onOpen();
+    });
+    const apply=section.createEl('button',{text:writerUi('Aplicar','Apply')});
+    apply.addEventListener('click',()=>{
+     const preset=presets.find(x=>x.name===picker.value);if(!preset)return;
+     const prefs=view.widgetPreferences();
+     prefs.homeOrder=[...new Set([...preset.order,...WRITER_V8_HOME_SECTIONS])];
+     prefs.homeHidden=[...preset.hidden];
+     prefs.homeWidgetSizes={...preset.sizes};
+     view.saveSoon();view.render();modal.close();
+    });
+    const remove=section.createEl('button',{text:writerUi('Excluir preset','Delete preset')});
+    remove.addEventListener('click',async()=>{
+     const at=presets.findIndex(x=>x.name===picker.value);if(at<0)return;
+     presets.splice(at,1);await plugin.saveSettings();modal.onOpen();
+    });
    for(const key of WRITER_V8_HOME_SECTIONS){
     const meta=WRITER_V8_HOME_CATALOG[key],item=root.createDiv({cls:'writer-v903-gallery-item'});
     const glyph=item.createSpan({cls:'writer-v903-gallery-icon'});

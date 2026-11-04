@@ -3,10 +3,17 @@
 const WRITER_V83_STUDY_VIEW='writer-study-view';
 function writerV83StudyConfig(settings){
  const old=settings.v83Study&&typeof settings.v83Study==='object'?settings.v83Study:{};
- const cfg=settings.v83Study={...{tag:'flashcards',dailyMax:30,newMax:15,history:{}},...old};
+ const cfg=settings.v83Study={...{tag:'flashcards',dailyMax:30,newMax:15,learningMinutes:10,graduatingDays:1,secondIntervalDays:6,intervalModifier:1,easyBonus:1.3,maxIntervalDays:3650,lastDeck:'',history:{}},...old};
  cfg.tag=String(cfg.tag||'flashcards').replace(/^#/,'').slice(0,80);
  cfg.dailyMax=Math.max(5,Math.min(100,Math.floor(Number(cfg.dailyMax)||30)));
  cfg.newMax=Math.max(1,Math.min(40,Math.floor(Number(cfg.newMax)||15)));
+ cfg.learningMinutes=Math.max(1,Math.min(120,Number(cfg.learningMinutes)||10));
+ cfg.graduatingDays=Math.max(1,Math.min(30,Number(cfg.graduatingDays)||1));
+ cfg.secondIntervalDays=Math.max(1,Math.min(90,Number(cfg.secondIntervalDays)||6));
+ cfg.intervalModifier=Math.max(.5,Math.min(2,Number(cfg.intervalModifier)||1));
+ cfg.easyBonus=Math.max(1,Math.min(2,Number(cfg.easyBonus)||1.3));
+ cfg.maxIntervalDays=Math.max(7,Math.min(36500,Number(cfg.maxIntervalDays)||3650));
+ cfg.lastDeck=String(cfg.lastDeck||'').slice(0,500);
  cfg.history=cfg.history&&typeof cfg.history==='object'&&!Array.isArray(cfg.history)?cfg.history:{};
  return cfg;
 }
@@ -60,21 +67,22 @@ function writerV83StudyCards(source,file,tag='flashcards'){
  return cards.map(card=>({...card,path:file.path,deck:file.parent?.path||'',
   id:writerV83StudyHash(file.path+'|'+card.front+'|'+card.back)}));
 }
-function writerV83StudySchedule(previous,grade,now=Date.now()){
+function writerV83StudySchedule(previous,grade,now=Date.now(),config={}){
  const old=previous&&typeof previous==='object'?previous:{ease:2.5,interval:0,reps:0};
  let ease=Math.max(1.3,Math.min(3.2,Number(old.ease)||2.5));
  let reps=Math.max(0,Number(old.reps)||0),interval=Math.max(0,Number(old.interval)||0);
  const rating=Math.max(0,Math.min(5,Number(grade)||0));
  if(rating<=1){reps=0;interval=0;}
- else if(rating===2){interval=Math.max(1,Math.round(interval*1.2));reps++;}
+ else if(rating===2){interval=Math.max(1,Math.round(interval*1.2*(Number(config.intervalModifier)||1)));reps++;}
  else{
-  if(reps===0)interval=1;
-  else if(reps===1)interval=6;
-  else interval=Math.max(1,Math.round(interval*(rating===5?ease*1.3:ease)));
+  if(reps===0)interval=Number(config.graduatingDays)||1;
+  else if(reps===1)interval=Number(config.secondIntervalDays)||6;
+  else interval=Math.max(1,Math.round(interval*(rating===5?ease*(Number(config.easyBonus)||1.3):ease)*(Number(config.intervalModifier)||1)));
   reps++;
  }
  ease=Math.max(1.3,Math.min(3.2,ease+(.1-(5-rating)*(.08+(5-rating)*.02))));
- const due=rating<=1?now+10*60*1000:now+interval*86400000;
+ interval=Math.max(0,Math.min(Number(config.maxIntervalDays)||3650,interval));
+ const due=rating<=1?now+(Number(config.learningMinutes)||10)*60*1000:now+interval*86400000;
  return {ease:Number(ease.toFixed(3)),interval,reps,due,last:now};
 }
 async function writerV83StudyLoad(plugin){
@@ -106,7 +114,7 @@ function writerV83StudyDue(cards,history,now=Date.now(),maxNew=15,deck=''){
  }).sort((a,b)=>(history[a.id]?.due||0)-(history[b.id]?.due||0));
 }
 class WriterV83StudyView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.cards=[];this.deck='';this.index=0;this.revealed=false;this.disposed=false;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.cards=[];this.deck=plugin.settings?.v83Study?.lastDeck||'';this.index=0;this.revealed=false;this.disposed=false;}
  getViewType(){return WRITER_V83_STUDY_VIEW;}
  getDisplayText(){return writerUi('Estudos · Revisão','Study · Review');}
  getIcon(){return 'graduation-cap';}
@@ -131,7 +139,7 @@ class WriterV83StudyView extends ItemView{
    const option=select.createEl('option',{text:label});option.value=value;
   }
   select.value=this.deck;
-  select.addEventListener('change',()=>{this.deck=select.value;this.index=0;this.revealed=false;this.render();});
+  select.addEventListener('change',()=>{this.deck=select.value;cfg.lastDeck=this.deck;void this.plugin.saveSettings();this.index=0;this.revealed=false;this.render();});
   const dailyLimit=cfg.dailyMax;
   const due=writerV83StudyDue(this.cards,cfg.history,Date.now(),cfg.newMax,this.deck).slice(0,dailyLimit);
   const today=new Date().toDateString();
@@ -140,6 +148,12 @@ class WriterV83StudyView extends ItemView{
   status.createSpan({text:writerUi('Pendentes: ','Due: ')+due.length});
   status.createSpan({text:writerUi('Revisados hoje: ','Reviewed today: ')+reviewed});
   status.createSpan({text:writerUi('Total: ','Total: ')+this.cards.length});
+  const week=Array.from({length:7},(_,day)=>{
+   const from=Date.now()+day*86400000,to=from+86400000;
+   return Object.values(cfg.history).filter(record=>Number(record.due)>=from&&Number(record.due)<to).length;
+  });
+  const weekBox=root.createDiv({cls:'writer-v101-study-forecast'});
+  weekBox.createSpan({text:writerUi('Próximos 7 dias: ','Next 7 days: ')+week.join(' · ')});
   if(!due.length){
    root.createEl('p',{text:this.cards.length?writerUi('Tudo revisado por enquanto.','All caught up for now.'):writerUi('Adicione #flashcards e cartões Pergunta::Resposta às suas notas para começar.','Add #flashcards and Question::Answer to notes to begin.'),cls:'writer-v83-study-empty'});
    return;
@@ -165,7 +179,7 @@ class WriterV83StudyView extends ItemView{
     button.addEventListener('click',async()=>{
      choices.querySelectorAll('button').forEach(b=>b.disabled=true);
      try{
-      cfg.history[card.id]=writerV83StudySchedule(cfg.history[card.id],value);
+      cfg.history[card.id]=writerV83StudySchedule(cfg.history[card.id],value,Date.now(),cfg);
       await this.plugin.saveSettings();
       this.index=0;this.revealed=false;this.render();
      }catch(error){new Notice(String(error));choices.querySelectorAll('button').forEach(b=>b.disabled=false);}
@@ -203,6 +217,18 @@ function writerV83StudySettings(plugin,panel){
     cfg[key]=Math.max(min,Math.min(max,Number(value)||cfg[key]));await plugin.saveSettings();
    }));
  }
+ panel.createEl('h4',{text:writerUi('Agendamento de revisão','Review scheduling')});
+ for(const [key,pt,en,min,max,step] of [
+  ['learningMinutes','Repetição após erro (minutos)','Retry after lapse (minutes)',1,120,1],
+  ['graduatingDays','Primeiro intervalo (dias)','First interval (days)',1,30,1],
+  ['secondIntervalDays','Segundo intervalo (dias)','Second interval (days)',1,90,1],
+  ['intervalModifier','Multiplicador dos intervalos','Interval multiplier',.5,2,.05],
+  ['easyBonus','Bônus de resposta fácil','Easy-answer bonus',1,2,.05],
+  ['maxIntervalDays','Limite de intervalo (dias)','Maximum interval (days)',7,36500,7]
+ ])new Setting(panel).setName(writerUi(pt,en)).addSlider(slider=>
+  slider.setLimits(min,max,step).setDynamicTooltip().setValue(cfg[key]).onChange(async v=>{
+   cfg[key]=v;await plugin.saveSettings();
+  }));
  new Setting(panel).setName(writerUi('Abrir área de Estudos','Open Study workspace'))
   .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerStudyOpen?.()));
 }

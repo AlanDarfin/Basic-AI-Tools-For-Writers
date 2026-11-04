@@ -2,13 +2,20 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.1 — Alinhamento de títulos e texto
+
+- Agora o alinhamento funciona em **títulos Markdown (H1–H6)** e parágrafos sem eliminar `#` e seus níveis. Basta acrescentar `# Capítulo {c}`, `## Subtítulo {r}` ou `Texto {l}`. O marcador desaparece no modo de leitura e pode ser ocultado no Live Preview fora da linha ativa.
+- Os comandos Esquerda, Centro e Direita continuam disponíveis, com um novo **Alternar alinhamento da linha ou título**. Configure um atalho no PC ou adicione o comando à barra móvel do Obsidian para não precisar digitar marcadores.
+- As sintaxes antigas `::c: texto` e `::c[texto]` continuam reconhecidas; usar um comando converte o formato para o novo.
+- Títulos com alinhamento explícito prevalecem sobre snippets que centralizam todos os cabeçalhos, sem alterar outros títulos.
 
 ## Atualização 10.4.0 — Explorador, Spaces e áudio
 

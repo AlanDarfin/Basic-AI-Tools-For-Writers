@@ -11,13 +11,13 @@ function writerV102AlignMerge(settings){
 function writerV102AlignToken(raw){
  const text=String(raw||'');
  // Colon delimiters avoid Obsidian's inline link parsers altogether.
- const modern=/^([ \\t]*)::(left|center|right|l|c|r):[ \\t]+([^\\n]{1,5000}?)[ \\t]*$/i.exec(text);
- const legacy=modern?null:/^([ \\t]*)::(left|center|right|l|c|r)\\[([^\\n]{1,5000})\\][ \\t]*$/i.exec(text);
+ const modern=/^([ \t]*)::(left|center|right|l|c|r):[ \t]+([^\n]{1,5000}?)[ \t]*$/i.exec(text);
+ const legacy=modern?null:/^([ \t]*)::(left|center|right|l|c|r)\[([^\n]{1,5000})\][ \t]*$/i.exec(text);
  const match=modern||legacy;
  if(!match)return null;
  const word=match[2].toLowerCase();
  const side=word==='left'||word==='l'?'left':word==='right'||word==='r'?'right':'center';
- const prefix=modern?/^([ \\t]*)::(left|center|right|l|c|r):[ \\t]+/i.exec(text)[0].length:
+ const prefix=modern?/^([ \t]*)::(left|center|right|l|c|r):[ \t]+/i.exec(text)[0].length:
    match[1].length+2+match[2].length+1;
  const suffix=legacy?1:0;
  const inner=match[3].trimEnd();
@@ -35,17 +35,17 @@ function writerV102AlignReading(root){
   const texts=[];while(walker.nextNode()&&texts.length<250)texts.push(walker.currentNode);
   if(!texts.length||texts.length>=250)continue;
   const first=texts[0],last=texts[texts.length-1];
-  const begin=token.legacy?/^(\\s*)::(left|center|right|l|c|r)\\[/i:
-   /^(\\s*)::(left|center|right|l|c|r):[ \\t]+/i;
+  const begin=token.legacy?/^(\s*)::(left|center|right|l|c|r)\[/i:
+   /^(\s*)::(left|center|right|l|c|r):[ \t]+/i;
   const open=begin.exec(first.nodeValue||'');
-  if(!open||(token.legacy&&!/\\]\\s*$/.test(last.nodeValue||'')))continue;
+  if(!open||(token.legacy&&!/\]\s*$/.test(last.nodeValue||'')))continue;
   if(first===last){
    const original=first.nodeValue;
    first.nodeValue=original.slice(open[0].length);
-   if(token.legacy)first.nodeValue=first.nodeValue.replace(/\\]\\s*$/,'');
+   if(token.legacy)first.nodeValue=first.nodeValue.replace(/\]\s*$/,'');
   }else{
    first.nodeValue=first.nodeValue.slice(open[0].length);
-   if(token.legacy)last.nodeValue=last.nodeValue.replace(/\\]\\s*$/,'');
+   if(token.legacy)last.nodeValue=last.nodeValue.replace(/\]\s*$/,'');
   }
   p.classList.add('writer-v102-align-processed','writer-v102-align-'+token.side);
  }

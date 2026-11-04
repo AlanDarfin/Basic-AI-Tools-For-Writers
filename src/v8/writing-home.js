@@ -75,6 +75,15 @@ class WriterV8HomeView extends ItemView{
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
  }
+ widgetPreferences(){
+  const global=this.plugin.settings.v8Finish;
+  const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(this.plugin):null;
+  if(!space?.homeWidgetsEnabled)return global;
+  if(!space.homeOrder?.length)space.homeOrder=[...global.homeOrder];
+  if(!Array.isArray(space.homeHidden))space.homeHidden=[...global.homeHidden];
+  if(!space.homeWidgetSizes)space.homeWidgetSizes={...global.homeWidgetSizes};
+  return space;
+ }
  openFile(file){
   if(!(file instanceof TFile))return;
   const leaf=this.app.workspace.getLeaf?.('tab')||this.app.workspace.getLeaf?.(true);
@@ -86,7 +95,7 @@ class WriterV8HomeView extends ItemView{
   this.writerV8ClockRefresh=null;
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
-  const cfg=this.plugin.settings.v8Finish;
+  const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
   // Heading first, followed by a full-width search and evenly spaced actions.
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
@@ -143,11 +152,11 @@ class WriterV8HomeView extends ItemView{
    quotes:p=>this.renderQuotes(p),
    today:p=>this.renderToday(p)
   };
-  for(const key of cfg.homeOrder){
-   if(!WRITER_V8_HOME_SECTIONS.includes(key)||cfg.homeHidden.includes(key))continue;
+  for(const key of widgetCfg.homeOrder){
+   if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
    cards[key]?.(grid);
    const card=[...grid.children].find(el=>el.getAttribute('data-section')===key);
-   if(card)card.dataset.widgetSize=cfg.homeWidgetSizes?.[key]||'normal';
+   if(card)card.dataset.widgetSize=widgetCfg.homeWidgetSizes?.[key]||'normal';
   }
   this.installWidgetGrid(grid);
   this.installWidgetDragging(grid);
@@ -179,14 +188,14 @@ class WriterV8HomeView extends ItemView{
  }
  setWidgetSize(key,size){
   if(!WRITER_V8_HOME_SECTIONS.includes(key)||!['compact','normal','wide'].includes(size))return;
-  const cfg=this.plugin.settings.v8Finish;
+  const cfg=this.widgetPreferences();
   cfg.homeWidgetSizes=cfg.homeWidgetSizes||{};
   cfg.homeWidgetSizes[key]=size;
   this.saveSoon();this.render();
  }
  reorderWidget(source,target,after=false){
   if(!source||!target||source===target)return;
-  const order=this.plugin.settings.v8Finish.homeOrder;
+  const order=this.widgetPreferences().homeOrder;
   const old=order.indexOf(source);
   if(old<0||!order.includes(target))return;
   order.splice(old,1);
@@ -194,14 +203,14 @@ class WriterV8HomeView extends ItemView{
   this.saveSoon();this.render();
  }
  setWidgetVisible(key,visible){
-  const cfg=this.plugin.settings.v8Finish;
+  const cfg=this.widgetPreferences();
   if(!WRITER_V8_HOME_SECTIONS.includes(key))return;
   cfg.homeHidden=cfg.homeHidden.filter(id=>id!==key);
   if(!visible)cfg.homeHidden.push(key);
   this.saveSoon();this.render();
  }
  moveWidget(key,direction){
-  const cfg=this.plugin.settings.v8Finish,order=cfg.homeOrder;
+  const cfg=this.widgetPreferences(),order=cfg.homeOrder;
   const visible=order.filter(id=>WRITER_V8_HOME_SECTIONS.includes(id)&&!cfg.homeHidden.includes(id));
   const index=visible.indexOf(key),other=visible[index+direction];
   if(index<0||!other)return;
@@ -222,7 +231,7 @@ class WriterV8HomeView extends ItemView{
    }
    popup.addSeparator();
    for(const [size,pt,en] of [['compact','Compacto','Compact'],['normal','Normal','Normal'],['wide','Largo','Wide']]){
-    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.plugin.settings.v8Finish.homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
+    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.widgetPreferences().homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
    }
    popup.addSeparator();
    popup.addItem(item=>item.setTitle(writerUi('Remover widget','Remove widget')).setIcon('x').onClick(()=>this.setWidgetVisible(key,false)));
@@ -290,7 +299,7 @@ class WriterV8HomeView extends ItemView{
     const summary=item.createDiv({cls:'writer-v903-gallery-description'});
     summary.createEl('strong',{text:writerUi(meta[1],meta[2])});
     summary.createEl('small',{text:writerUi(meta[3],meta[4])});
-    const hidden=plugin.settings.v8Finish.homeHidden.includes(key);
+    const hidden=view.widgetPreferences().homeHidden.includes(key);
     const button=item.createEl('button',{cls:'writer-v903-gallery-toggle',text:hidden?writerUi('Adicionar','Add'):writerUi('Remover','Remove'),attr:{type:'button','aria-pressed':String(!hidden)}});
     button.addEventListener('click',()=>{
      const visible=plugin.settings.v8Finish.homeHidden.includes(key);

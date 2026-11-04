@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.2.16 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.3.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -70,6 +70,7 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 **Exemplo de painel Flow** (cada linha aponta para uma nota Markdown existente no cofre):
 
 ```flow
+layout: cards
 [[Capítulo 1]]
 [[Capítulo 2]]
 ```
@@ -87,10 +88,12 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 ### Áudio e acessibilidade
 
 - **Soundscapes (PC):** rádios e playlists do YouTube agora **começam a tocar em segundo plano** ao clicar em Play, sem abrir popup ou aba. O mini player de vídeo aparece **somente** ao clicar no botão de exibi-lo ou usar o comando correspondente. É possível recolher sem interromper a rádio ou usar **Parar** para descarregá-la. O widget da Homepage permanece visível durante Play e Stop; no celular ele fica na grade normalmente, mas apresenta um aviso de indisponibilidade por limitações do Obsidian mobile. O mini player tenta utilizar Webview do Chromium e, quando indisponível, recorre a um iframe visível do YouTube. O volume das rádios agora pode ser ajustado pelo slider da Homepage, da barra de status ou do próprio mini player, assim como o áudio local. A configuração é reaplicada ao carregar o vídeo ou trocar de estação. Algumas transmissões podem bloquear incorporação (erro 153). **Minha Música** continua usando o player local, com controles próprios.
-- **Prévias restauradas — 9.2.16:** Folder Notes exibem a propriedade `description` (ou `summary`/`brief`) mesmo durante o carregamento do cache; caso não exista, mostram o trecho inicial. Notas comuns exibem **o início do Markdown**, nunca o campo `description`, quando o modo **Todas as notas + Folder Notes** está ativado. Miniatura quadrada à direita da descrição, abaixo do botão de Folder Note. O ícone do título mantém a cor do próprio título.
-- **Spaces no rodapé do explorador:** barra compacta para alternar entre cofre inteiro e Spaces, criar coleções, gerenciar ícones e cores pelo seletor do Basic, renomear, configurar ou remover sem apagar notas. O Space ativo mantém suas próprias pastas/notas ocultas. Para usar, ative o módulo Spaces em **Personalização → Coleções locais**; a barra pode ser ocultada.
-- **Pretty Properties:** capas locais com formato e posição ajustáveis, banners alinhados, ícones YAML, campos ocultos, pesquisa rápida, cores por propriedade e por tag, progresso, datas formatadas, destaque de prazos e modelos de exibição. Em **Personalização → Propriedades visuais**. É uma integração própria e gradual, não uma cópia de todas as funções do plugin original.
-- **Flow e comandos `/`:** menu com estruturas de Markdown, callouts, destaques, links, fórmulas e incorporação de notas. Em leitura, notas incorporadas são editáveis com verificação do conteúdo atual antes de salvar. O bloco `flow` organiza notas como cartões com prévias e edição no próprio cartão. Configurações em **Escrita e Markdown → Flow e comandos /**. A edição avançada estrutural do Make.md ainda está em evolução.
+- **Prévias e ícones:** descrições de Folder Notes, trechos iniciais das notas, miniaturas compactas à direita e expansão do texto por mouse ou toque prolongado no Android. A duração do toque é configurável. Ícones decorativos do título foram alinhados e mantidos fora do cursor de edição. Ícones dos controles do explorador são maiores no celular.
+- **Spaces independentes:** coleções por pasta, tag ou propriedade; seus próprios arquivos ocultos/fixados, ordenação por pasta, visualização em lista/cartões/quadro/tabela e configurações dos widgets da homepage (visibilidade, tamanho, ordem). A barra de Spaces permite mudar, criar, renomear, configurar, trocar ícone e cor, reorganizar ou remover coleções sem apagar notas. Há um botão próprio de gerenciamento no explorador. Em **Personalização → Coleções locais**, desligue separadamente a barra, o ícone ou o painel lateral.
+- **Flexplorer + Custom Sorting:** ordenação nativa, nome, data, números no título, pastas primeiro, propriedades YAML e ordem manual por nomes/padrões `*` e `?`. Escolha o modo por pasta, inclusive na raiz. Opcionalmente use `basic_sort`, `basic_sort_field` e `basic_sort_order` na Folder Note. Reorganize no PC com Alt + arrastar e no celular pelos botões de subir/descer. Ordenação, fixação e ocultação possuem controles próprios.
+- **Pretty Properties:** capas, banners, ícones, campo oculto, tags e propriedades coloridas, datas, prazos, progresso e modelos seguros, agora com controles separados para ativar ou desativar partes.
+- **Flow:** menu rápido com `/`, notas incorporadas editáveis com proteção contra mudanças concorrentes e compositor de cartões Markdown. O bloco `flow` oferece layouts cartões/lista/quadro, adicionar/remover links, reorganizar por arrastar e pelos botões mobile e salva somente a lista dentro do bloco. Notas originais não são apagadas. Recursos Flow, prévias e ordenação são opcionais.
+- **Próxima versão principal (v10):** reestruturação das configurações e navegação entre módulos; esta versão 9.3.0 prioriza funcionamento e correções de UX.
 - **Image Captions:** legendas opcionais de imagens a partir do texto alternativo do Markdown, sem reescrever arquivos.
 - **Click Clack (PC):** sons de digitação com catálogo dos **13 pacotes originais** (Cherry MX, IBM, Olympia, Quill e outros), disponíveis para download individual ou em lote nas configurações. Pacotes instalados funcionam offline e nenhum áudio é baixado automaticamente.
 - **Leitura em voz alta (TTS):** vozes do sistema, quando disponíveis, ou vozes online com autorização, com idioma, velocidade, tom e seleção de voz. A leitura online envia texto ao serviço escolhido apenas quando ativada.

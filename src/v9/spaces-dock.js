@@ -148,7 +148,10 @@ function writerV9216SpaceDockRegister(plugin){
   }
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   const bar=host.querySelector('.nav-buttons-container, .nav-action-buttons, .nav-header .nav-buttons-container, .nav-header');
+   const bar=host.querySelector('.nav-action-buttons')||
+     host.querySelector('.nav-buttons-container')||
+     host.querySelector('.nav-header .nav-buttons-container')||
+     host.querySelector('.nav-header');
    if(!bar)continue;
    current.add(bar);actions.add(bar);
    let control=bar.querySelector(':scope > .writer-v93-space-manage-action');
@@ -158,7 +161,8 @@ function writerV9216SpaceDockRegister(plugin){
     control.type='button';
     control.setAttribute('aria-label',writerUi('Gerenciar Spaces','Manage Spaces'));
     control.title=writerUi('Gerenciar Spaces','Manage Spaces');
-    require('obsidian').setIcon(control,'layers-3');
+    const obs=require('obsidian');
+     obs.setIcon(control,obs.getIcon?.('layers-3')?'layers-3':'layers');
     control.addEventListener('click',event=>{
      event.stopPropagation();event.preventDefault();void openManager();
     });
@@ -202,6 +206,7 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const refresh=()=>{clearTimeout(timer);timer=setTimeout(attach,100);};
  plugin.writerV9216SpacesDockRefresh=refresh;
+ plugin.addCommand?.({id:'v93-spaces-manage',name:writerUi('Spaces: gerenciar pelo explorador','Spaces: manage from File Explorer'),callback:()=>void openManager()});
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  plugin.register?.(()=>{

@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.4.4 plugin artifacts'
+            git commit -m 'build: synchronize 10.4.5 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.4.4"
+          test "$VERSION" = "10.4.5"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic AI Tool for Writers $VERSION" \
-            --notes "10.4.4: Organized AI and formatting context menus, configurable double-press keyboard commands, desktop Homepage search autofocus and same-tab navigation to notes. Includes PT/EN docs and new regression tests."
+            --notes "10.4.5: Fix duplicate AI editor context commands by organizing late-added menu entries into Lookup and Writing submenus with distinct Lucide icons. Expand narrative timelines with all original George-debug line-2..5 and body-2..4 styles, 11 accent presets, distinct Minimal/Compact designs, Poster/Glass/Terminal themes, live selectors and bilingual documentation."

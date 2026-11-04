@@ -86,7 +86,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
  }
  if(cfg.icon&&fm.icon&&target&&!target.querySelector('.writer-v9-inline-title-icon')){
   const span=host.ownerDocument.createElement('span');
-  span.className='writer-v9215-pretty-icon';span.setAttribute('aria-hidden','true');
+  span.className='writer-v9215-pretty-icon';span.setAttribute('aria-hidden','true');span.setAttribute('contenteditable','false');
   writerV9215PrettyDecorateIcon(span,fm.icon);
   target.insertBefore(span,target.firstChild);
   target.classList.add('writer-v93-title-icon-host');

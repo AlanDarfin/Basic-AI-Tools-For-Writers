@@ -7,8 +7,9 @@ const WRITER_V9_SPACE_MAX=200;
 const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
- const cfg=settings.v9Spaces={enabled:false,activeId:'',spaces:[],...raw};
+ const cfg=settings.v9Spaces={enabled:false,dock:true,activeId:'',spaces:[],...raw};
  cfg.enabled=cfg.enabled===true;
+ cfg.dock=cfg.dock!==false;
  cfg.spaces=Array.isArray(cfg.spaces)?cfg.spaces.map(writerV9SpaceSanitize).filter(Boolean).slice(0,40):[];
  const seen=new Set();
  cfg.spaces=cfg.spaces.filter(space=>{if(seen.has(space.id))return false;seen.add(space.id);return true;});
@@ -30,7 +31,9 @@ function writerV9SpaceSanitize(raw){
  const mode=['filter','curated','folder'].includes(raw.mode)?raw.mode:'filter';
  const includePaths=Array.isArray(raw.includePaths)?[...new Set(raw.includePaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,150):[];
  const hiddenPaths=Array.isArray(raw.hiddenPaths)?[...new Set(raw.hiddenPaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,300):[];
- return {id,name,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths};
+ const icon=/^[a-z][a-z0-9-]{0,60}$/.test(raw.icon||'')?raw.icon:'layers';
+ const iconColor=/^#[\da-f]{6}$/i.test(raw.iconColor||'')?raw.iconColor:'';
+ return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths};
 }
 /* Space state changes only affect views, never the vault contents. */
 function writerV9215ActiveSpace(plugin){
@@ -49,6 +52,7 @@ async function writerV9215SelectSpace(plugin,id){
  await plugin.saveSettings();
  plugin.writerV91FlexRefresh?.();
  plugin.writerV9SpacesRefresh?.();
+ plugin.writerV9216SpacesDockRefresh?.();
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -83,13 +87,14 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],...(initial||{})};
+  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
     .setValue(draft[key]||'').onChange(value=>{draft[key]=value;}));
   };
   field('name','Nome','Name');
+  writerV922IconSetting(plugin,root,{pt:'Ícone do Space',en:'Space icon',value:draft.icon,color:draft.iconColor,defaultIcon:'layers',onApply:async(icon,color)=>{draft.icon=icon||'layers';draft.iconColor=color;}});
   new Setting(root).setName(writerUi('Tipo de Space','Space type')).addDropdown(d=>{
    for(const [id,pt,en] of [['filter','Filtros dinâmicos','Dynamic filters'],['curated','Notas escolhidas','Curated notes'],['folder','Pasta fixada','Pinned folder']])d.addOption(id,writerUi(pt,en));
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});

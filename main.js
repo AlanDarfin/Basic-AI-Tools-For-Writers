@@ -19237,7 +19237,7 @@ class DictionaryView extends ItemView{
       if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode.value!=='grammar')return;
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
-       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerReviewIsAcceptedWord(this.plugin.settings,source,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerReviewIsAcceptedWord(this.plugin.settings,source,m)&&!writerV101ProjectAcceptedWord(this.plugin,file,source,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
@@ -19284,7 +19284,7 @@ class DictionaryView extends ItemView{
    const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
     .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
      writerGrammarMatchIsSafe(after,masked,m)&&
-     !writerReviewIsAcceptedWord(this.plugin.settings,after,m)&&
+     !writerReviewIsAcceptedWord(this.plugin.settings,after,m)&&!writerV101ProjectAcceptedWord(this.plugin,file,after,m)&&
      (!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(after,m))&&
      !ignored.has(String(m.rule?.id||'').toUpperCase()));
    const all=[...preserved,...revised].sort((a,b)=>a.offset-b.offset||a.length-b.length);
@@ -19586,11 +19586,11 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='v9Pretty'){writerV9215PrettySettings(this.plugin,panel);
     }else if(id==='v9Flow'){writerV9215FlowSettings(this.plugin,panel);
     }else if(id==='v9Pomodoro'){writerV931PomodoroSettings(this.plugin,panel);
-    }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);
+    }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);writerV101SpaceHistorySettings(this.plugin,panel);
     }else if(id==='v10Bookshelf'){writerV10BookshelfSettings(this.plugin,panel);
-    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);
+    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);writerV101EnhancementsSettings(this.plugin,panel);
     }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);
-    }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);
+    }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);writerV101CalendarExchangeSettings(this.plugin,panel);
     }else if(id==='workspaceProfiles'){
       this.plugin.writerWorkspaceProfiles.renderSettings(panel);
     }else if(id==='cursor'){
@@ -19903,6 +19903,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV931PomodoroMerge(this.settings);
     writerV10BookshelfMerge(this.settings);
     writerV10ToolboxMerge(this.settings);
+    writerV101SpaceHistoryMerge(this.settings);
+    writerV101SuiteMerge(this.settings);
+    writerV101CalendarExchangeMerge(this.settings);
     writerWorkspaceMerge(this.settings);
     writerAutoGrammarSettings(this.settings);
     this.autoGrammar=new WriterAutoGrammar(this);
@@ -19979,6 +19982,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV92SessionRegister(this);
     writerV10RegisterBookshelf(this);
     writerV10RegisterToolbox(this);
+    writerV101RegisterSpaceHistory(this);
+    writerV101RegisterEnhancements(this);
+    writerV101RegisterCalendarExchange(this);
     // Restore panes only after a hot reload explicitly detached them. Obsidian
     // cannot keep plugin ItemViews alive once unregisterView is called.
     if(typeof this.app.workspace.onLayoutReady==='function')
@@ -20418,6 +20424,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     for(const replacement of replacements)action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
     const extras=panel.createDiv({cls:'writer-lt-mobile-actions'});
     if(writerReviewWord(source,match))action(extras,msg('Adicionar ao dicionário','Add to dictionary'),()=>this.addGrammarWord(file,source,match));
+    if(writerReviewWord(source,match))action(extras,msg('Adicionar ao dicionário deste livro','Add to this book dictionary'),()=>writerV101ProjectAddWord(this,file,writerReviewWord(source,match)));
     action(extras,msg('Explicar com IA','Explain with AI'),()=>this.explainGrammarSuggestion(file,source,match));
     action(extras,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
     if(match.rule?.id)action(extras,msg('Ignorar regra','Ignore rule'),()=>this.ignoreGrammarRule(file,match));
@@ -20460,6 +20467,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     }
     if(writerReviewWord(source,match))menu.addItem(item=>item.setTitle(msg('Adicionar ao dicionário','Add to dictionary')).setIcon('book-plus')
       .onClick(()=>this.addGrammarWord(file,source,match)));
+    if(writerReviewWord(source,match))menu.addItem(item=>item.setTitle(msg('Adicionar ao dicionário do livro','Add to book dictionary')).setIcon('book-marked')
+      .onClick(()=>writerV101ProjectAddWord(this,file,writerReviewWord(source,match))));
     menu.addItem(item=>item.setTitle(msg('Explicar com IA','Explain with AI')).setIcon('message-square-text')
       .onClick(()=>this.explainGrammarSuggestion(file,source,match)));
     menu.addItem(item=>item.setTitle(msg('Ignorar ocorrência','Ignore this occurrence')).setIcon('x')
@@ -20497,8 +20506,11 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const original=this.reviewMatches?.find(m=>m.offset===mark.from&&m.length===mark.to-mark.from);
     if(!original)return;
     const coords=cm.coordsAtPos(mark.from);
-    const x=Math.round((coords?.left??window.innerWidth/2)+10);
-    const y=Math.round((coords?.bottom??window.innerHeight/2)+6);
+    const viewport=window.visualViewport;
+    const left=viewport?.offsetLeft||0,top=viewport?.offsetTop||0;
+    const width=viewport?.width||window.innerWidth,height=viewport?.height||window.innerHeight;
+    const x=Math.max(left+8,Math.min(left+Math.max(8,width-24),Math.round((coords?.left??width/2)+10)));
+    const y=Math.max(top+8,Math.min(top+Math.max(8,height-24),Math.round((coords?.bottom??height/2)+6)));
     this.showReviewSuggestionMenu(file,this.reviewSource,original,{position:{x,y}});
   }
   reviewEditors(file){

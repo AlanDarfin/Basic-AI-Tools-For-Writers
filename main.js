@@ -15951,7 +15951,8 @@ function writerV9215PrettyRegister(plugin){
  };
  plugin.writerV9215PrettyRefresh=refresh;
  for(const event of ['file-open','layout-change'])plugin.registerEvent(plugin.app.workspace.on(event,refresh));
- plugin.registerEvent(plugin.app.metadataCache.on('changed',refresh));
+ if(typeof plugin.app.metadataCache?.on==='function')
+  plugin.registerEvent(plugin.app.metadataCache.on('changed',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  for(const [id,key,pt,en] of [
   ['cover','cover','Propriedades: escolher capa da nota','Properties: choose note cover'],
@@ -16114,8 +16115,10 @@ function writerV9215FlowDecorateEmbed(plugin,element,context){
  }
 }
 function writerV9215FlowRegister(plugin){
- plugin.registerEditorSuggest(new WriterV9215SlashSuggest(plugin.app,plugin));
- plugin.registerMarkdownPostProcessor((element,context)=>writerV9215FlowDecorateEmbed(plugin,element,context),90);
+ if(typeof plugin.registerEditorSuggest==='function')
+  plugin.registerEditorSuggest(new WriterV9215SlashSuggest(plugin.app,plugin));
+ if(typeof plugin.registerMarkdownPostProcessor==='function')
+  plugin.registerMarkdownPostProcessor((element,context)=>writerV9215FlowDecorateEmbed(plugin,element,context),90);
  plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Flow: ativar/desativar edição de notas incorporadas','Flow: toggle inline embed editing'),callback:async()=>{
   plugin.settings.v9215Flow.embeds=!plugin.settings.v9215Flow.embeds;
   await plugin.saveSettings();

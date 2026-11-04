@@ -697,3 +697,44 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-sp
  width:27px;
  height:27px;
 }
+/* 9.3.1 — Preview toggle inherits the same neutral pictogram color as neighbors. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle,
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle.is-active,
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle[aria-pressed="true"]{
+ color:var(--text-muted);
+ background:transparent;
+ opacity:1;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v921-preview-toggle svg{
+ color:inherit;
+ stroke:currentColor;
+}
+/* Folder descriptions show up to three lines, while ordinary note excerpts
+   honor the configured line limit. '...' only appears for measured overflow. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell.writer-v93-folder-description:not(.is-expanded) .writer-v92-file-preview{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:3;
+ overflow:hidden;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-file-preview{
+ position:relative;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell:not(.is-expanded) .writer-v92-file-preview.writer-v931-truncated::after{
+ content:"...";
+ display:block;
+ position:absolute;
+ inset-inline-end:0;
+ bottom:0;
+ min-width:1.8em;
+ height:1.45em;
+ padding-inline-start:.45em;
+ box-sizing:border-box;
+ text-align:end;
+ color:inherit;
+ background:linear-gradient(to right,transparent,var(--background-secondary) 45%);
+ pointer-events:none;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell.is-expanded .writer-v92-file-preview::after{
+ content:none;
+}

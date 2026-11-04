@@ -2,12 +2,19 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.1 — heading alignment and easier controls
+
+- Align **headings (H1–H6) and paragraphs** while preserving native Markdown. Use a short end-of-line suffix: `# Chapter {c}`, `## Subtitle {r}` or `Text {l}`. Suffixes are hidden in Reading View, and outside the active Live Preview line when enabled.
+- Use Left, Center, Right or the new **Cycle line or heading alignment** command. Assign them to desktop hotkeys or add them to the Obsidian mobile toolbar; they operate on the current line and preserve heading markers.
+- Legacy `::c: text` and `::c[text]` remain supported. Commands can convert old notation into the short suffix without losing Markdown headings.
+- Explicitly aligned headings override blanket heading-centering CSS snippets while unmarked headings retain your usual style.
 
 ## Version 10.4.0 — native Explorer sorting, Spaces and audio polish
 

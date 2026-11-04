@@ -437,10 +437,7 @@ class WriterV9SpacesSideView extends ItemView{
    await writerV9215SelectSpace(this.plugin,created.id);this.currentId=created.id;this.render();
   }));
   quick('Biblioteca Longform','Longform bookshelf','library',()=>this.plugin.writerV10OpenBookshelf?.());
-  quick('Ordenação da pasta atual','Sort current note folder','list-ordered',()=>{
-   const folder=this.plugin.app.workspace.getActiveFile?.()?.parent||this.plugin.app.vault.getRoot?.();
-   if(folder)writerV93FlexSortModal(this.plugin,folder);
-  });
+  quick('Ordenação global','Global sorting','list-ordered',()=>writerV1043OpenNativeSortMenu(this.plugin));
   const summary=sidebarTools.createSpan({cls:'writer-v1042-space-count'});
   const body=root.createDiv({cls:'writer-v9-space-side-list'});
   const draw=()=>{
@@ -494,10 +491,8 @@ function writerV9RegisterSpaces(plugin){
   item('Gerenciar Spaces','Manage Spaces','layers',()=>writerV9SpaceModal(plugin));
   item('Abrir biblioteca Longform','Open Longform bookshelf','library',
    ()=>plugin.writerV10OpenBookshelf?.());
-  item('Ordenar pasta da nota atual','Sort current note folder','list-ordered',()=>{
-   const folder=plugin.app.workspace.getActiveFile?.()?.parent||plugin.app.vault.getRoot?.();
-   if(folder&&typeof writerV93FlexSortModal==='function')writerV93FlexSortModal(plugin,folder);
-  });
+  item('Ordenação global do explorador','Global Explorer sorting','list-ordered',
+   ()=>writerV1043OpenNativeSortMenu(plugin));
   item('Mostrar / ocultar arquivos escondidos','Show / hide hidden files','eye',async()=>{
    const flex=plugin.settings.v91Flex;
    if(!flex)return;
@@ -531,11 +526,8 @@ function writerV9RegisterSpaces(plugin){
    void writerV9215SelectSpace(plugin,spaces[(index<0?0:index+spaces.length-1)%spaces.length].id);
   }});
  plugin.addCommand({id:'v1042-current-folder-sorting',
-  name:writerUi('Explorador: ordenar pasta da nota atual','Explorer: sort current note folder'),
-  callback:()=>{
-   const folder=plugin.app.workspace.getActiveFile?.()?.parent||plugin.app.vault.getRoot?.();
-   if(folder)writerV93FlexSortModal(plugin,folder);
-  }});
+  name:writerUi('Explorador: abrir ordenação global','Explorer: open global sorting'),
+  callback:()=>writerV1043OpenNativeSortMenu(plugin)});
  plugin.addCommand({id:'v1042-spaces-quick-pin',
   name:writerUi('Spaces: fixar ou desafixar nota atual','Spaces: pin or unpin current note'),
   callback:async()=>{

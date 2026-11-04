@@ -32,7 +32,7 @@ test('Chat parses speaker bubble color independently of name color and transpare
  assert.equal(chat.messages[0].bubbleColor,'green');
  assert.equal(api.writerV8ChatFakeAudio('[áudio:0:02:teste]').transcript,'teste');
  const css=read('styles.css');
- assert.ok(css.includes('.writer-v8-chat .writer-v8-chat-voice-toggle{'));
+ assert.match(css,/writer-v8-chat-transcript-text::before/);
  assert.match(css,/is-background-transparent/);
 });
 test('Preview supports banner and secure direct HTTPS links with privacy switch',()=>{
@@ -72,7 +72,7 @@ test('Alignment syntax does not conflict with Markdown pipes, paths, or normal p
 });
 test('Native Explorer and voice-note CSS corrections are present in the distributed styles',()=>{
  const css=read('styles.css'),source=read('src/v9/explorer-flex.js');
- assert.match(css,/writer-v8-chat \\.writer-v8-chat-voice-toggle\\s*\\{/);
+ assert.ok(css.includes('.writer-v8-chat .writer-v8-chat-voice-toggle{'));
  assert.match(css,/place-items:center/);
  assert.match(css,/writer-v91-flex-hidden/);
  assert.match(source,/getSortedFolderItems/);

@@ -36,11 +36,11 @@ test('new widget catalog is opt-in, preserves previous dashboard layout and quot
  const api=vm.runInNewContext(finish+'\nwriterV8FinishMerge',{writerV8HomeIconName:()=> 'book-open'});
  const settings={v8Finish:{homeOrder:['continue','recent','calendar'],homeHidden:['random']}};
  api(settings);
- for(const key of ['gallery','quotes','today'])assert.ok(settings.v8Finish.homeOrder.includes(key),key);
- assert.deepEqual(Array.from(settings.v8Finish.homeHidden),['random','gallery','quotes','today']);
+ for(const key of ['gallery','quotes','today','books'])assert.ok(settings.v8Finish.homeOrder.includes(key),key);
+ assert.deepEqual(Array.from(settings.v8Finish.homeHidden),['random','gallery','quotes','today','books']);
  // Existing preferences remain intentional; opt-in new cards on brand-new/default configurations.
  const empty={};api(empty);
- for(const key of ['gallery','quotes','today'])assert.ok(empty.v8Finish.homeHidden.includes(key),key);
+ for(const key of ['gallery','quotes','today','books'])assert.ok(empty.v8Finish.homeHidden.includes(key),key);
  assert.equal(empty.v8Finish.homeQuotes,'');
 });
 test('all seven presentation fences have short aliases and existing writer names still render',()=>{

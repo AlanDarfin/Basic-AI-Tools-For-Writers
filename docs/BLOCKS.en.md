@@ -581,14 +581,19 @@ Align Markdown text by wrapping a single line without code fences:
 
 Long aliases: ::left, ::center, ::right.
 
-## Inline text alignment (10.3.0)
+## Inline text and heading alignment (10.4.1)
 
-Use a separate Markdown line for each aligned paragraph. This punctuation avoids conflicts with Obsidian's link tokenization:
+Use a short suffix at the **end of the line**, keeping the real Markdown heading marker.
 
-```md
-::l: Left-aligned text
-::c: Centered **text**
-::r: Right-aligned text
-```
+~~~md
+# Main title {c}
+## Right-aligned subtitle {r}
+### Left-aligned section {l}
+Centered **bold** paragraph {c}
+~~~
 
-Existing `::c[text]` notes remain supported for compatibility, but new commands insert colon syntax.
+- {l} = left, {c} = center, {r} = right.
+- Suffixes are hidden in Reading View and may be hidden outside the active Live Preview line.
+- For a one-tap solution, use the **Align left**, **Center text or heading**, **Align right**, or **Cycle line or heading alignment** commands. Assign a desktop hotkey or add them to the Obsidian mobile toolbar. Commands format the current line while preserving H1–H6.
+- The former ::l: / ::c: / ::r: and bracket syntax (for example, ::c[text]) remain recognized for existing notes.
+

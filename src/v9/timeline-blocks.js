@@ -49,11 +49,10 @@ function writerV95TimelineLegacy(lines){
   if(parts.length!==3)return;
   const item={date:parts[0],title:parts[1],content:[parts[2],...extra].join('\n').trim()};
   // Optional per-event attributes at the beginning of the content.
-  const body=item.content.split('\n'),remaining=[];let prefix=true;
+  const body=item.content.split('\n'),remaining=[];
   for(const row of body){
    const m=/^\s*(image|icon|color|group|track|link):\s*(.+)\s*$/i.exec(row);
-   if(prefix&&m){item[m[1].toLowerCase()]=m[2].trim();continue;}
-   if(row.trim())prefix=false;
+   if(m){item[m[1].toLowerCase()]=m[2].trim();continue;}
    remaining.push(row);
   }
   item.content=remaining.join('\n').trim();

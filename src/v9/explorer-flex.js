@@ -142,6 +142,11 @@ function writerV91FlexSortGroup(plugin,container,patterns){
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
+   if(!cfg.enabled||folder.sort!=='custom'||!cfg.mobileReorder)
+    title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
+   if((!cfg.enabled||folder.sort!=='custom')&&title.dataset.writerFlexPath){
+    title.draggable=false;delete title.dataset.writerFlexPath;
+   }
    const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
    const wanted=cfg.enabled&&writerV93FlexPinned(plugin,path);
    if(prior&&!wanted)prior.remove();
@@ -160,6 +165,33 @@ function writerV91FlexSortGroup(plugin,container,patterns){
  const actual=Array.from(container.children).filter(node=>rows.some(r=>r.node===node));
  if(rows.some((row,index)=>actual[index]!==row.node)){
   for(const row of rows)container.appendChild(row.node);
+ }
+ if(folder.sort==='custom'&&cfg.mobileReorder){
+  rows.forEach((row,index)=>{
+   const title=row.title;if(!title)return;
+   const prev=rows[index-1]?.path||'',next=rows[index+1]?.path||'';
+   let actions=title.querySelector(':scope > .writer-v93-reorder-actions');
+   if(actions?.dataset.prev===prev&&actions?.dataset.next===next)return;
+   actions?.remove();
+   actions=title.ownerDocument.createElement('span');
+   actions.className='writer-v93-reorder-actions';
+   actions.dataset.prev=prev;actions.dataset.next=next;
+   for(const [target,position,icon,pt,en] of [
+    [prev,'before','arrow-up','Mover para cima','Move earlier'],
+    [next,'after','arrow-down','Mover para baixo','Move later']
+   ]){
+    const button=title.ownerDocument.createElement('button');
+    button.type='button';button.className='writer-v93-reorder-action';
+    button.disabled=!target;button.setAttribute('aria-label',writerUi(pt,en)+': '+row.name);
+    require('obsidian').setIcon(button,icon);
+    button.addEventListener('click',event=>{
+     event.preventDefault();event.stopPropagation();
+     if(target)writerV91FlexReorder(plugin,row.path,target,position);
+    });
+    actions.appendChild(button);
+   }
+   title.appendChild(actions);
+  });
  }
  if(folder.sort==='custom'&&cfg.dragReorder){
   for(const row of rows){
@@ -293,18 +325,30 @@ function writerV91FlexRegister(plugin){
  plugin.registerEvent(plugin.app.vault.on('delete',file=>{
   const old=file.path;cfg.pinned=cfg.pinned.filter(path=>path!==old&&!path.startsWith(old+'/'));
   cfg.hidden=cfg.hidden.filter(path=>path!==old&&!path.startsWith(old+'/'));
-  for(const space of plugin.settings.v9Spaces?.spaces||[])space.hiddenPaths=space.hiddenPaths.filter(path=>path!==old&&!path.startsWith(old+'/'));
+  for(const space of plugin.settings.v9Spaces?.spaces||[]){
+   space.hiddenPaths=space.hiddenPaths.filter(path=>path!==old&&!path.startsWith(old+'/'));
+   space.pinnedPaths=(space.pinnedPaths||[]).filter(path=>path!==old&&!path.startsWith(old+'/'));
+   for(const key of Object.keys(space.folderSorts||{}))if(key===old||key.startsWith(old+'/'))delete space.folderSorts[key];
+  }
   for(const key of Object.keys(cfg.folders))if(key===old||key.startsWith(old+'/'))delete cfg.folders[key];
   void plugin.saveSettings();refresh();
  }));
  plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
   const swap=p=>p===old||p.startsWith(old+'/')?file.path+p.slice(old.length):p;
   cfg.pinned=cfg.pinned.map(swap);cfg.hidden=cfg.hidden.map(swap);
-  for(const space of plugin.settings.v9Spaces?.spaces||[])space.hiddenPaths=space.hiddenPaths.map(swap);
+  for(const space of plugin.settings.v9Spaces?.spaces||[]){
+   space.hiddenPaths=space.hiddenPaths.map(swap);
+   space.pinnedPaths=(space.pinnedPaths||[]).map(swap);
+   space.folderSorts=Object.fromEntries(Object.entries(space.folderSorts||{}).map(([key,v])=>[swap(key),v]));
+  }
   cfg.folders=Object.fromEntries(Object.entries(cfg.folders).map(([key,v])=>[swap(key),v]));
   if(file.parent&&file.parent.path===old.split('/').slice(0,-1).join('/')){
    const record=cfg.folders[file.parent.path];
    if(record)record.order=record.order.map(name=>name===old.split('/').pop()?file.name:name);
+   for(const space of plugin.settings.v9Spaces?.spaces||[]){
+    const local=space.folderSorts?.[file.parent.path];
+    if(local)local.order=local.order.map(name=>name===old.split('/').pop()?file.name:name);
+   }
   }
   void plugin.saveSettings();refresh();
  }));
@@ -368,12 +412,24 @@ function writerV91FlexSettings(plugin,panel){
  for(const [key,pt,en] of [
   ['enabled','Ativar organização avançada','Enable enhanced organization'],
   ['showHidden','Exibir itens ocultos','Show hidden items'],
-  ['dragReorder','Permitir Alt + arrastar para ordenar','Allow Alt + drag to reorder']
+  ['dragReorder','Permitir Alt + arrastar para ordenar','Allow Alt + drag to reorder'],
+  ['mobileReorder','Setas de ordenação no celular','Mobile sorting arrows'],
+  ['perSpaceSorting','Ordenação independente por Space','Independent sorting per Space'],
+  ['perSpacePins','Itens fixados independentes por Space','Independent pins per Space'],
+  ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{
    cfg[key]=v;await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
   }));
  }
+ new Setting(panel).setName(writerUi('Propriedade YAML padrão','Default YAML sorting property'))
+  .addText(t=>t.setValue(cfg.defaultSortProperty).onChange(async value=>{
+   cfg.defaultSortProperty=value.replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
+   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+  }));
+ new Setting(panel).setName(writerUi('Ordenação da raiz do cofre','Vault root sorting'))
+  .addButton(button=>button.setButtonText(writerUi('Configurar','Configure'))
+   .onClick(()=>writerV93FlexSortModal(plugin,null)));
  new Setting(panel).setName(writerUi('Padrões de ocultação','Hide patterns'))
   .setDesc(writerUi('Um padrão por linha; suporta * e **. Apenas oculta na interface, não exclui arquivos.','One glob per line; supports * and **. Only hides in Explorer, never deletes files.'))
   .addTextArea(t=>{t.inputEl.rows=4;t.setPlaceholder('Templates/**\n*.bak').setValue(cfg.patterns)

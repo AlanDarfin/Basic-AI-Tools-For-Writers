@@ -60,10 +60,10 @@ test('Image source integration filters to safe providers, supports Wikimedia wit
 });
 test('Alignment syntax does not conflict with Markdown pipes, paths, or normal prose',()=>{
  const api=expose('src/v10/inline-alignment.js',['writerV102AlignToken','writerV102AlignMerge']);
- assert.equal(api.writerV102AlignToken('::c[hello **bold**]').side,'center');
- assert.equal(api.writerV102AlignToken('::right[text]').side,'right');
- assert.equal(api.writerV102AlignToken('::l[text]').side,'left');
- for(const value of ['a | b','/italic/','\\literal\\','this is ::c[not standalone]','\`\`\`','::c[]']){
+ assert.equal(api.writerV102AlignToken('::c: hello **bold**').side,'center');\n assert.equal(api.writerV102AlignToken('::c: hello **bold**').legacy,false);\n assert.equal(api.writerV102AlignToken('::c[legacy]').legacy,true);
+ assert.equal(api.writerV102AlignToken('::right: text').side,'right');
+ assert.equal(api.writerV102AlignToken('::l: text').side,'left');
+ for(const value of ['::c: ','a | b','/italic/','\\literal\\','this is ::c[not standalone]','\`\`\`','::c[]']){
   assert.equal(api.writerV102AlignToken(value),null,value);
  }
  const cfg=api.writerV102AlignMerge({});assert.equal(cfg.enabled,true);
@@ -73,7 +73,7 @@ test('Release wiring: bundled code, bilingual docs, CSS and version synchronize'
  for(const p of ['v10/image-inserter','v10/inline-alignment'])assert.ok(build.includes(p));
  for(const name of ['writerV102ImagesRegister(this)','writerV102AlignRegister(this)',
   'writerV102ImagesMerge(this.settings)','writerV102AlignMerge(this.settings)'])assert.ok(main.includes(name),name);
- assert.equal(manifest.version,'10.2.0');
+ assert.equal(manifest.version,'10.3.0');
  assert.match(css,/writer-v102-image-grid/);assert.doesNotMatch(css,/:has\s*\(|!important/);
  for(const p of ['README.md','docs/README.pt-BR.md'])assert.ok(read(p).includes('10.2.0'));
 });

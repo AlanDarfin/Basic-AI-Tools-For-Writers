@@ -24,10 +24,12 @@ test('title icon shares native explorer setting and does not rewrite notes',()=>
  assert.match(src,/file-open/);
  assert.match(src,/writerV9ExplorerRefresh/);
 });
-test('preview image is wide below description, mobile-safe',()=>{
+test('preview restores square thumbnail to right side on mobile',()=>{
  const css=read('src/styles/v9-2-2-iconic-fixes.css');
- assert.match(css,/9\.2\.14/);
- assert.match(css,/flex-direction:column/);
- assert.match(css,/aspect-ratio:16\/9/);
+ assert.match(css,/9\.2\.15/);
+ assert.match(css,/flex-direction:row/);
+ assert.match(css,/aspect-ratio:1/);
+ assert.match(css,/margin-inline-start:auto/);
+ assert.match(css,/color:inherit/);
  assert.match(css,/body\.is-mobile/);
 });

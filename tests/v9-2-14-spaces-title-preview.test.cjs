@@ -4,17 +4,16 @@ const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
 const source=read('src/v9/smart-spaces.js');
 const scope=vm.runInNewContext(source+'\n({writerV9SpaceSanitize,writerV9SpaceItems})',{ItemView:class{}});
-test('hidden paths are isolated to each Space and exclude descendants',()=>{
+test('per-Space hiding is deprecated and no longer filters notes',()=>{
  const a=scope.writerV9SpaceSanitize({id:'a',name:'Writing',hiddenPaths:['Private','Draft.md']});
  const b=scope.writerV9SpaceSanitize({id:'b',name:'All'});
- assert.deepEqual(Array.from(a.hiddenPaths),['Private','Draft.md']);
- assert.equal(b.hiddenPaths.length,0);
  const files=['Private/one.md','Draft.md','Public/one.md'].map(path=>({
   path,basename:path.split('/').pop(),stat:{mtime:1}
  }));
  const plugin={app:{vault:{getMarkdownFiles:()=>files},metadataCache:{getFileCache:()=>({})}}};
- assert.deepEqual(Array.from(scope.writerV9SpaceItems(plugin,a),f=>f.path),['Public/one.md']);
+ assert.equal(scope.writerV9SpaceItems(plugin,a).length,3);
  assert.equal(scope.writerV9SpaceItems(plugin,b).length,3);
+ assert.doesNotMatch(source,/Ocultar somente neste Space/);
 });
 test('title icon shares native explorer setting and does not rewrite notes',()=>{
  const src=read('src/v9/native-explorer.js');

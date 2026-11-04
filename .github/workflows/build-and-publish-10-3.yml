@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.4.1 plugin artifacts'
+            git commit -m 'build: synchronize 10.4.2 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.4.1"
+          test "$VERSION" = "10.4.2"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic AI Tool for Writers $VERSION" \
-            --notes "10.4.1: Align real Markdown headings H1-H6 and paragraphs with simple {c}, {r}, {l} suffixes or editor commands. Adds cycle-alignment command for mobile toolbar and desktop hotkeys, preserves older ::c: notation, and avoids conflicts with custom heading CSS."
+            --notes "10.4.2: Safe native Explorer manual ordering without DOM reparenting; responsive mobile Spaces sidebar with quick actions; improved searchable and sortable Longform bookshelf; randomized fictional audio waveforms; command-palette and ribbon shortcuts; PT/EN documentation and regression tests."

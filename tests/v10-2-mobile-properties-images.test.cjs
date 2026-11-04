@@ -128,6 +128,24 @@ test('Native Explorer and voice-note CSS corrections are present in the distribu
  assert.match(source,/getSortedFolderItems/);
  assert.match(source,/writerFlexConcealed/);
 });
+test('Spaces, bookshelf, command palette and fictional voice-note layout are wired',()=>{
+ const spaces=read('src/v9/smart-spaces.js'),books=read('src/v10/bookshelf.js');
+ const chat=read('src/v8/finish-blocks.js'),flex=read('src/v9/explorer-flex.js');
+ const css=read('styles.css');
+ for(const label of ['v1042-open-quick-actions','v1042-spaces-next',
+  'v1042-spaces-previous','v1042-current-folder-sorting','v1042-spaces-quick-pin']){
+  assert.ok(spaces.includes(label),label);
+ }
+ assert.match(spaces,/writer-v1042-space-side-tools/);
+ assert.match(css,/writer-v9-space-side-nav/);
+ assert.match(css,/writer-v1042-bookshelf-modal/);
+ assert.match(books,/writer-v1042-bookshelf-sort/);
+ assert.match(books,/addRibbonIcon/);
+ assert.match(chat,/Math\.random\(\)/);
+ assert.match(chat,/bar\.style\.height/);
+ assert.match(flex,/writerFlexOrderHost/);
+ assert.doesNotMatch(flex,/container\.appendChild\(row\.node\)/);
+});
 test('Release wiring: bundled code, bilingual docs, CSS and version synchronize',()=>{
  const main=read('main.js'),build=read('scripts/build-v3.js'),css=read('styles.css'),manifest=JSON.parse(read('manifest.json'));
  for(const p of ['v10/image-inserter','v10/inline-alignment'])assert.ok(build.includes(p));

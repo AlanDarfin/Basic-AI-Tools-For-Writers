@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.2.16 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.3.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -70,6 +70,7 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 **Flow panel example** (each line references an existing Markdown note in your vault):
 
 ```flow
+layout: cards
 [[Chapter 1]]
 [[Chapter 2]]
 ```
@@ -87,10 +88,12 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 ### Audio and accessibility
 
 - **Soundscapes (desktop):** ambient YouTube radio and custom stations **start in the background** when Play is pressed, without showing a popup or opening a tab. The compact floating video player opens **only** when the Show mini player button or command is used. It can be hidden without stopping playback, or stopped to unload it. The Homepage widget remains visible in both playing and stopped states; on mobile it stays in the dashboard and shows a compatibility notice instead of disappearing. It prefers Chromium's embedded Webview when available and falls back to a visible YouTube iframe if that is unavailable. The volume sliders on the homepage, status bar and mini player all control radio audio using the embedded player API; the same setting also controls local music. Radio volume is re-applied after the video loads or a station changes. Some videos may reject embedding (YouTube error 153). **My Music** continues to play local vault audio directly, with play/pause and volume controls.
-- **Explorer previews — 9.2.16:** Folder Notes retain their `description` (or `summary`/`brief`) while the metadata cache loads, with opening-text fallback. When **All notes + Folder Notes** is enabled, regular Markdown notes always show **opening note content**, not the `description` field. Compact square thumbnails stay on the right below the folder-note book action; inline-title icons inherit title text color.
-- **Native-explorer Space dock:** a compact bottom switcher lets you change Spaces, create, rename, configure, choose icons and colors through Basic's shared icon gallery, or delete collections without deleting vault files. Every active Space maintains its own hidden note/folder paths. Enable Spaces in **Customization → Local collections** and optionally hide the dock.
-- **Pretty Properties:** local covers with shape and position options, aligned banners, YAML icons, hidden fields, quick property search, property/tag colors, progress, formatted dates, deadline highlights and safe display templates. Settings live in **Customization → Visual properties**. This is an original, staged implementation, not complete feature parity with the original plugin.
-- **Flow and `/` commands:** insert Markdown structures, callouts, highlighting, links, formulas and embedded notes. In reading view, embedded notes can be edited with a fresh-content guard before saving. The `flow` code block displays note cards with previews and inline editing. Settings live in **Writing & Markdown → Flow and slash commands**. Full Make.md-style block editing remains a future phase.
+- **Explorer previews and icons:** Folder Note descriptions, opening Markdown excerpts, compact right-side images, and delayed hover or Android long-press expansion with a configurable duration. Inline-title decorations are aligned and non-editable; mobile explorer action icons are larger.
+- **Independent Spaces:** collections by folder, tag or property with separate hidden/pinned paths, per-folder sorting, list/cards/board/table views and homepage widget configuration (visibility, sizes, ordering). The Space bar switches, creates, renames, configures, changes icons/colors, reorders and removes collections without deleting notes. The explorer also has a dedicated Manage Spaces action. Under **Customization → Local collections**, the dock, icon and sidebar are separately toggleable.
+- **Flexplorer + Custom Sorting:** native, name, date, number-in-title, folders-first, YAML property and manual name/glob (`*`, `?`) ordering. Configure each folder or the vault root. Optional Folder Note frontmatter uses `basic_sort`, `basic_sort_field` and `basic_sort_order`. Desktop Alt+drag and mobile up/down controls rearrange custom-sorted folders. Sorting, pinning and hiding have independent switches.
+- **Pretty Properties:** covers, banners, icons, hidden fields, custom property/tag colors, dates, due highlighting, progress and safe templates, with independent switches for visual modules.
+- **Flow:** `/` menu, editable embedded notes with concurrent-edit protection, and a Markdown-native Flow composer. `flow` code blocks provide cards/list/board layouts, add/remove links, drag or mobile buttons to reorder, and save only the fenced block list. Linked note contents are not deleted. Flow, previews and arranging are separately configurable.
+- **Looking toward v10:** a focused reorganization of settings and module navigation; 9.3.0 prioritizes functionality and interaction stability.
 - **Image Captions:** optionally display captions from Markdown image alt text, without rewriting the files.
 - **Click Clack (desktop):** optional typing sounds with **13 downloadable sound packs** from the original Click Clack project (Cherry MX, IBM, Olympia, Quill and more). Browse the catalog in Settings to download one pack or all 13, then choose the installed scheme. Downloads are always opt-in; installed sounds work offline.
 - **Text-to-speech:** system voices where supported or opt-in online voices, with language, speed, pitch and voice preferences. Online reading sends selected text to the chosen service only when enabled.

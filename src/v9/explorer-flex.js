@@ -15,13 +15,13 @@ const WRITER_V91_FLEX_SORTS=[
 function writerV91FlexMerge(settings){
  const raw=settings.v91Flex&&typeof settings.v91Flex==='object'?settings.v91Flex:{};
  const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,mobileReorder:true,
-  perSpaceSorting:true,perSpacePins:true,yamlSorting:false,
+  perSpaceSorting:true,perSpacePins:true,yamlSorting:false,sortSpecCompat:true,
   pinEnabled:true,hideEnabled:true,sortEnabled:true,defaultSortProperty:'sort_order',
   patterns:'',pinned:[],hidden:[],folders:{},...raw};
  cfg.enabled=cfg.enabled!==false;cfg.showHidden=cfg.showHidden===true;
  cfg.dragReorder=cfg.dragReorder!==false;
  for(const key of ['mobileReorder','perSpaceSorting','perSpacePins','pinEnabled','hideEnabled','sortEnabled'])cfg[key]=cfg[key]!==false;
- cfg.yamlSorting=cfg.yamlSorting===true;
+ cfg.yamlSorting=cfg.yamlSorting===true;cfg.sortSpecCompat=cfg.sortSpecCompat!==false;
  cfg.defaultSortProperty=String(cfg.defaultSortProperty||'sort_order').replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
  cfg.patterns=String(cfg.patterns||'').slice(0,3000);
  for(const field of ['pinned','hidden'])
@@ -32,7 +32,7 @@ function writerV91FlexMerge(settings){
   if(typeof path!=='string'||path.length>600||!folder||typeof folder!=='object')continue;
   const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===folder.sort)?folder.sort:'native';
   const order=Array.isArray(folder.order)?[...new Set(folder.order.filter(v=>typeof v==='string'&&v.length<300))].slice(0,3000):[];
-  output[path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60)};
+  output[path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60),foldersFirst:folder.foldersFirst===true};
  }
  cfg.folders=output;
  return cfg;
@@ -67,18 +67,54 @@ function writerV91FlexNodePath(node){
  return node.querySelector('.nav-file-title[data-path], .nav-folder-title[data-path]')?.getAttribute('data-path')||
   node.getAttribute('data-path')||node.querySelector('.nav-file-title, .nav-folder-title')?.getAttribute('data-path')||'';
 }
+/* Supports a small, explicit subset of the Custom Sorting YAML syntax. */
+function writerV93FlexParseSortSpec(raw){
+ if(typeof raw!=='string'||!raw.trim())return null;
+ const record={sort:'native',order:[],property:'',foldersFirst:false};
+ let recognized=false;
+ for(const source of raw.split(/\r?\n/).slice(0,100)){
+  const line=source.trim();
+  if(!line||line.startsWith('#'))continue;
+  if(/^folders-first$/i.test(line)){record.foldersFirst=true;recognized=true;continue;}
+  const meta=/^by-metadata:\s*([\w-]{1,60})$/i.exec(line);
+  if(meta){record.sort='property';record.property=meta[1];recognized=true;continue;}
+  const command=/^order-(asc|desc):\s*(.+)$/i.exec(line);
+  if(!command)continue;
+  const direction=command[1],value=command[2].trim(),lower=value.toLowerCase();
+  if(['a-z','name','alphabetical'].includes(lower)){
+   record.sort=direction==='desc'?'name-desc':'name';recognized=true;
+  }else if(['number','numeric','\\d+'].includes(lower)){
+   record.sort='number';recognized=true;
+  }else if(['modified','created'].includes(lower)){
+   if(direction==='desc'){record.sort=lower;recognized=true;}
+  }else if(lower.startsWith('by-metadata:')){
+   const key=lower.slice('by-metadata:'.length).trim();
+   if(/^[\w-]{1,60}$/.test(key)){record.sort='property';record.property=key;recognized=true;}
+  }else if(!/[:\x00-\x1f]/.test(value)&&value.length<=250){
+   record.order.push(value);recognized=true;
+  }
+ }
+ if(record.order.length)record.sort='custom';
+ return recognized?record:null;
+}
 function writerV93FlexRecord(plugin,dir){
  const cfg=plugin.settings.v91Flex;
  const space=cfg.perSpaceSorting&&typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
  if(space?.folderSorts?.[dir])return space.folderSorts[dir];
  if(cfg.folders[dir])return cfg.folders[dir];
- if(!cfg.yamlSorting)return {sort:'native',order:[],property:''};
+ if(!cfg.yamlSorting)return {sort:'native',order:[],property:'',foldersFirst:false};
  const folder=plugin.app.vault.getAbstractFileByPath(dir);
  const note=folder&&typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,folder):null;
  const fm=note&&plugin.app.metadataCache?.getFileCache?.(note)?.frontmatter||{};
+ const basic=WRITER_V91_FLEX_SORTS.some(row=>row[0]===fm.basic_sort)||Array.isArray(fm.basic_sort_order);
+ if(!basic&&cfg.sortSpecCompat){
+  const parsed=writerV93FlexParseSortSpec(fm['sorting-spec']);
+  if(parsed)return parsed;
+ }
  const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===fm.basic_sort)?fm.basic_sort:'native';
  return {sort,order:Array.isArray(fm.basic_sort_order)?fm.basic_sort_order.slice(0,1000):[],
-  property:String(fm.basic_sort_field||'').replace(/[^\w-]/g,'').slice(0,60)};
+  property:String(fm.basic_sort_field||'').replace(/[^\w-]/g,'').slice(0,60),
+  foldersFirst:fm.basic_folders_first===true};
 }
 function writerV93FlexPinned(plugin,path){
  const cfg=plugin.settings.v91Flex;
@@ -101,6 +137,10 @@ function writerV93FlexMeta(plugin,row,key){
 }
 function writerV93FlexCompare(plugin,a,b,record,collator){
  if(a.pinned!==b.pinned)return a.pinned?-1:1;
+ if(record.foldersFirst){
+  const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
+  if(af!==bf)return af?-1:1;
+ }
  const mode=record.sort;
  if(mode==='native')return a.index-b.index;
  if(mode==='custom'){
@@ -242,7 +282,7 @@ function writerV93FlexSortModal(plugin,folder){
  const cfg=plugin.settings.v91Flex,key=folder?.path||'';
  const store=writerV93FlexStore(plugin,key),existing=writerV93FlexRecord(plugin,key);
  const model={sort:existing.sort||'native',property:existing.property||cfg.defaultSortProperty,
-  order:[...(existing.order||[])]};
+  order:[...(existing.order||[])],foldersFirst:existing.foldersFirst===true};
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(writerUi('Ordenação: ','Sorting: ')+(folder?.name||writerUi('Cofre','Vault')));
@@ -253,6 +293,8 @@ function writerV93FlexSortModal(plugin,folder){
   });
   new Setting(root).setName(writerUi('Propriedade YAML para ordenar','YAML property to sort'))
    .addText(text=>text.setValue(model.property).onChange(value=>{model.property=value.replace(/[^\w-]/g,'').slice(0,60);}));
+  new Setting(root).setName(writerUi('Pastas primeiro (nesta pasta)','Folders first (this folder)'))
+   .addToggle(t=>t.setValue(model.foldersFirst).onChange(value=>{model.foldersFirst=value;}));
   new Setting(root).setName(writerUi('Ordem manual e padrões','Manual order and patterns'))
    .setDesc(writerUi('Um nome por linha; aceita * e ?. Os demais itens ficam no fim.','One name per line; accepts * and ?. Unlisted items stay last.'))
    .addTextArea(text=>text.setValue(model.order.join('\n')).onChange(value=>{
@@ -261,7 +303,7 @@ function writerV93FlexSortModal(plugin,folder){
   new Setting(root).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
    if(model.sort==='custom'&&!model.order.length)
     model.order=(folder?.children||plugin.app.vault.getRoot?.()?.children||[]).map(x=>x.name);
-   store[key]={sort:model.sort,property:model.property,order:model.order};
+   store[key]={sort:model.sort,property:model.property,order:model.order,foldersFirst:model.foldersFirst};
    await plugin.saveSettings();plugin.writerV91FlexRefresh?.();modal.close();
   })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
  };
@@ -422,12 +464,14 @@ function writerV91FlexSettings(plugin,panel){
   ['mobileReorder','Setas de ordenação no celular','Mobile sorting arrows'],
   ['perSpaceSorting','Ordenação independente por Space','Independent sorting per Space'],
   ['perSpacePins','Itens fixados independentes por Space','Independent pins per Space'],
-  ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules']
+  ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules'],
+  ['sortSpecCompat','Compatibilidade com sorting-spec (regras simples)','sorting-spec compatibility (simple rules)']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{
    cfg[key]=v;await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
   }));
  }
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Com regras YAML ativadas, Basic interpreta basic_sort e um subconjunto do sorting-spec: A–Z/Z–A, números, pastas primeiro, metadados e padrões manuais.','With YAML sorting enabled, Basic supports basic_sort and a subset of sorting-spec: alphabetical order, numbers, folders first, metadata and manual patterns.')});
  new Setting(panel).setName(writerUi('Propriedade YAML padrão','Default YAML sorting property'))
   .addText(t=>t.setValue(cfg.defaultSortProperty).onChange(async value=>{
    cfg.defaultSortProperty=value.replace(/[^\w-]/g,'').slice(0,60)||'sort_order';

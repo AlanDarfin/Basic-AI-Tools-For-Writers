@@ -4,9 +4,10 @@
 const WRITER_V9_EXPLORER_ICONS=['file','file-text','folder','folder-open','book-open','book','notebook-pen','library','feather','pen-line','star','heart','bookmark','pin','house','briefcase','archive','box','layers','layout-grid','list','calendar','calendar-days','clock','list-check','check-circle','graduation-cap','lightbulb','brain','sparkles','wand-sparkles','image','images','music','video','film','globe','link','code','terminal','settings','user','users','message-circle','tag','hash','flag','map','compass','leaf','sun','moon-star','cloud','rocket','palette','flower-2'];
 const WRITER_V9_EXPLORER_COLORS=['','#e35d6a','#dc9b30','#60a47c','#579ec2','#9b79c5','#d378aa'];
 function writerV9ExplorerMerge(settings){
- const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showColor:true,items:{},maxResults:100},
+ const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showTitleIcons:true,showColor:true,items:{},maxResults:100},
   ...(settings.v9Explorer&&typeof settings.v9Explorer==='object'?settings.v9Explorer:{})};
  cfg.enabled=cfg.enabled!==false;cfg.showIcons=cfg.showIcons!==false;cfg.showColor=cfg.showColor!==false;
+ cfg.showTitleIcons=cfg.showTitleIcons!==false;
  cfg.maxResults=Math.max(20,Math.min(200,Number(cfg.maxResults)||100));
  cfg.items=cfg.items&&typeof cfg.items==='object'&&!Array.isArray(cfg.items)?cfg.items:{};
  const out={};
@@ -284,7 +285,7 @@ function writerV9RegisterExplorer(plugin){
  // Decorate the actual Obsidian inline title with the same per-file icon.
  // This is presentation only: never rewrite Markdown or frontmatter.
  const refreshInlineTitles=()=>{
-  const enabled=active()&&plugin.settings.v9Explorer.showIcons;
+  const enabled=active()&&plugin.settings.v9Explorer.showIcons&&plugin.settings.v9Explorer.showTitleIcons;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
    const file=leaf.view?.file,host=leaf.view?.containerEl;
    if(!host)continue;
@@ -379,7 +380,7 @@ function writerV9ExplorerSettings(plugin,panel){
  const cfg=plugin.settings.v9Explorer;
  panel.createEl('h3',{text:writerUi('Explorador nativo · v9','Native File Explorer · v9')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Ícones e cores ficam nas configurações do Basic, sem alterar seus arquivos. Clique com o botão direito/pressione uma nota ou pasta no explorador para personalizar.','Icons and colors are stored in Basic settings, not in your files. Right-click or long-press a file or folder in the native explorer to customize.')});
- for(const [key,pt,en] of [['enabled','Ativar extensões do explorador','Enable explorer extensions'],['showIcons','Exibir ícones personalizados','Show custom icons'],['showColor','Exibir cores personalizadas','Show custom colors']]){
+ for(const [key,pt,en] of [['enabled','Ativar extensões do explorador','Enable explorer extensions'],['showIcons','Exibir ícones personalizados','Show custom icons'],['showTitleIcons','Ícones antes do título da nota','Icons before note titles'],['showColor','Exibir cores personalizadas','Show custom colors']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{
    cfg[key]=value;await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();plugin.writerV9InlineTitleRefresh?.();
   }));

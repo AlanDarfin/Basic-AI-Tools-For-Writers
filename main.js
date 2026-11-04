@@ -14924,18 +14924,26 @@ function writerV93FlexParseSortSpec(raw){
   if(/^folders-first$/i.test(line)){record.foldersFirst=true;recognized=true;continue;}
   const meta=/^by-metadata:\s*([\w-]{1,60})$/i.exec(line);
   if(meta){record.sort='property';record.property=meta[1];recognized=true;continue;}
+  const group=/^(?:group|match-(prefix|suffix|contains|exact)):\s*(.+)$/i.exec(line);
+  if(group){
+   const value=group[2].trim();
+   if(!value||value.length>150||/[\x00-\x1f]/.test(value))continue;
+   const kind=group[1].toLowerCase();
+   record.order.push(kind==='prefix'?value+'*':kind==='suffix'?'*'+value:kind==='contains'?'*'+value+'*':value);
+   recognized=true;continue;
+  }
   const command=/^order-(asc|desc):\s*(.+)$/i.exec(line);
   if(!command)continue;
   const direction=command[1],value=command[2].trim(),lower=value.toLowerCase();
   if(['a-z','name','alphabetical'].includes(lower)){
    record.sort=direction==='desc'?'name-desc':'name';recognized=true;
   }else if(['number','numeric','\\d+'].includes(lower)){
-   record.sort='number';recognized=true;
+   record.sort=direction==='desc'?'number-desc':'number';recognized=true;
   }else if(['modified','created'].includes(lower)){
    if(direction==='desc'){record.sort=lower;recognized=true;}
   }else if(lower.startsWith('by-metadata:')){
    const key=lower.slice('by-metadata:'.length).trim();
-   if(/^[\w-]{1,60}$/.test(key)){record.sort='property';record.property=key;recognized=true;}
+   if(/^[\w-]{1,60}$/.test(key)){record.sort=direction==='desc'?'property-desc':'property';record.property=key;recognized=true;}
   }else if(!/[:\x00-\x1f]/.test(value)&&value.length<=250){
    record.order.push(value);recognized=true;
   }
@@ -14993,27 +15001,27 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
   const ia=writerV93FlexOrderIndex(a.name,record.order||[]),ib=writerV93FlexOrderIndex(b.name,record.order||[]);
   return ia!==ib?ia-ib:a.index-b.index;
  }
- if(mode==='number'){
+ if(mode==='number'||mode==='number-desc'){
   const na=writerV93FlexNumber(a.name),nb=writerV93FlexNumber(b.name);
-  if(na!==nb)return na-nb;
+  if(na!==nb)return mode==='number-desc'?nb-na:na-nb;
  }
  if(mode==='folders-first'){
   const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
   if(af!==bf)return af?-1:1;
  }
- if(mode==='property'){
+ if(mode==='property'||mode==='property-desc'){
   const key=record.property||plugin.settings.v91Flex.defaultSortProperty;
   const av=writerV93FlexMeta(plugin,a,key),bv=writerV93FlexMeta(plugin,b,key);
   if(av!==''&&bv!==''&&Number.isFinite(Number(av))&&Number.isFinite(Number(bv))&&Number(av)!==Number(bv))
-   return Number(av)-Number(bv);
-  const delta=collator.compare(String(av),String(bv));if(delta)return delta;
+   return (Number(av)-Number(bv))*(mode==='property-desc'?-1:1);
+  const delta=collator.compare(String(av),String(bv));if(delta)return mode==='property-desc'?-delta:delta;
  }
  if(mode==='modified'||mode==='created'){
   const prop=mode==='modified'?'mtime':'ctime';
   const delta=(b.file?.stat?.[prop]||0)-(a.file?.stat?.[prop]||0);if(delta)return delta;
  }
  const delta=collator.compare(a.name,b.name);
- return mode==='name-desc'?-delta:delta;
+ return ['name-desc','number-desc','property-desc'].includes(mode)?-delta:delta;
 }
 
 function writerV91FlexSortGroup(plugin,container,patterns){
@@ -15311,7 +15319,7 @@ function writerV91FlexSettings(plugin,panel){
   ['perSpaceSorting','Ordenação independente por Space','Independent sorting per Space'],
   ['perSpacePins','Itens fixados independentes por Space','Independent pins per Space'],
   ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules'],
-  ['sortSpecCompat','Compatibilidade com sorting-spec (regras simples)','sorting-spec compatibility (simple rules)']
+  ['sortSpecCompat','Compatibilidade com sorting-spec (regras ampliadas)','sorting-spec compatibility (simple rules)']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{
    cfg[key]=v;await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
@@ -17120,7 +17128,7 @@ function writerV93FlowParse(source,cfg){
  const options=[],items=[];let layout=cfg.defaultLayout||'cards';
  for(const line of String(source||'').split(/\r?\n/)){
   const trimmed=line.trim();
-  if(/^layout:\s*(cards|list|board)$/i.test(trimmed)){
+  if(/^layout:\s*(cards|list|board|graph)$/i.test(trimmed)){
    layout=trimmed.split(':')[1].trim().toLowerCase();options.push('layout: '+layout);
   }else if(!trimmed||trimmed.startsWith('#'))options.push(line);
   else items.push(trimmed);
@@ -17130,6 +17138,25 @@ function writerV93FlowParse(source,cfg){
 function writerV93FlowSerialize(parsed){return [...parsed.options,...parsed.items].join('\n').trim();}
 function writerV93FlowLink(raw){
  return String(raw||'').replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
+}
+function writerV101FlowLinkDependency(raw){
+ const text=String(raw||'');
+ const dep=/(?:^|\s+\|\s*)after:\s*(!?\[\[[^\]]+\]\]|[^\s|]+)/i.exec(text);
+ return dep?writerV93FlowLink(dep[1]):'';
+}
+function writerV101FlowDepths(items){
+ const names=items.map(raw=>writerV93FlowLink(raw));
+ const index=new Map(names.map((name,i)=>[name.toLowerCase(),i]));
+ const depths=items.map(()=>0),state=items.map(()=>0);
+ const depth=i=>{
+  if(state[i]===2)return depths[i];
+  if(state[i]===1)return 0;
+  state[i]=1;
+  const dep=writerV101FlowLinkDependency(items[i]).toLowerCase(),parent=index.get(dep);
+  depths[i]=parent===undefined||parent===i?0:Math.min(5,depth(parent)+1);
+  state[i]=2;return depths[i];
+ };
+ items.forEach((_,i)=>depth(i));return depths;
 }
 function writerV93FlowLocateBlock(raw,source,hint){
  const nl=raw.includes('\r\n')?'\r\n':'\n',lines=raw.split(/\r?\n/),found=[];
@@ -17174,7 +17201,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  const persist=next=>void writerV93FlowPersist(plugin,ctx,root,source,next);
  if(cfg.flowArrange){
   const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel Flow','Flow panel layout')}});
-  for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board']]){
+  for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board'],['graph','Grafo','Graph']]){
    const option=select.createEl('option',{text:writerUi(pt,en)});option.value=id;
   }
   select.value=model.layout;
@@ -17199,6 +17226,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
   });
  }
  const list=root.createDiv({cls:'writer-v93-flow-items'});
+ const depths=writerV101FlowDepths(model.items);
  if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco Flow.','Put one note per line inside the Flow block.')});return;}
  const reorder=(from,to)=>{
   if(!cfg.flowArrange||from===to||from<0||to<0||from>=model.items.length||to>=model.items.length)return;
@@ -17210,6 +17238,10 @@ function writerV93FlowComposer(plugin,source,root,ctx){
   const file=plugin.app.metadataCache?.getFirstLinkpathDest?.(path,ctx.sourcePath||'')||
    plugin.app.vault.getAbstractFileByPath(path);
   const card=list.createDiv({cls:'writer-v9216-flow-card'});
+  if(model.layout==='graph'){
+   card.dataset.depth=String(depths[index]);card.style.setProperty('--writer-v101-flow-depth',String(depths[index]));
+   card.style.gridColumn=String(depths[index]+1);
+  }
   const heading=card.createDiv({cls:'writer-v9216-flow-head'});
   if(!(file instanceof TFile)||file.extension!=='md'){
    heading.createSpan({text:path||raw});
@@ -17227,6 +17259,21 @@ function writerV93FlowComposer(plugin,source,root,ctx){
      if(card.isConnected)summary.textContent=writerV921PreviewBody(rawText,180)||writerUi('Sem prévia.','No preview.');
     }).catch(()=>{if(card.isConnected)summary.textContent=writerUi('Prévia indisponível.','Preview unavailable.');});
    }
+  }
+  if(model.layout==='graph'&&cfg.flowArrange){
+   const depends=card.createDiv({cls:'writer-v101-flow-depends'});
+   const selector=depends.createEl('select',{attr:{'aria-label':writerUi('Depende da nota','Depends on note')}});
+   const current=writerV101FlowLinkDependency(raw);
+   const empty=selector.createEl('option',{text:writerUi('Sem dependência','No dependency')});empty.value='';
+   for(const item of model.items){
+    const candidate=writerV93FlowLink(item);if(candidate===path)continue;
+    const option=selector.createEl('option',{text:candidate});option.value=candidate;
+   }
+   selector.value=current;
+   selector.addEventListener('change',()=>{
+    const next=writerV93FlowLink(raw)+(selector.value?' | after:[['+selector.value+']]':'');
+    const items=model.items.slice();items[index]=next;persist({...model,items});
+   });
   }
   if(!cfg.flowArrange)return;
   const actions=card.createDiv({cls:'writer-v93-flow-actions'});
@@ -17480,7 +17527,7 @@ function writerV931PomodoroMerge(settings){
  const cfg=settings.v931Pomodoro={enabled:true,sidebar:true,statusBar:true,focusMinutes:25,shortMinutes:5,longMinutes:15,
   longEvery:4,autoAdvance:false,notify:true,sound:false,logDaily:false,dailyFolder:'',
   task:'',mode:'focus',remaining:1500,running:false,endsAt:0,completed:0,today:'',
-  todayCompleted:0,...raw};
+  todayCompleted:0,focusHistory:[],analytics:true,...raw};
  for(const key of ['enabled','sidebar','statusBar','notify'])cfg[key]=cfg[key]!==false;
  for(const key of ['autoAdvance','sound','logDaily'])cfg[key]=cfg[key]===true;
  for(const key of ['focusMinutes','shortMinutes','longMinutes']){
@@ -17502,6 +17549,11 @@ function writerV931PomodoroMerge(settings){
   if(cfg.remaining<=0)cfg.remaining=writerV931PomodoroDuration(cfg,cfg.mode);
  }
  cfg.today=typeof cfg.today==='string'?cfg.today:'';
+ cfg.analytics=cfg.analytics!==false;
+ cfg.focusHistory=(Array.isArray(cfg.focusHistory)?cfg.focusHistory:[]).slice(-730).map(x=>({
+  end:Number(x?.end)||0,minutes:Math.max(1,Math.min(180,Number(x?.minutes)||25)),
+  task:String(x?.task||'').slice(0,180)
+ })).filter(x=>x.end>0);
  return cfg;
 }
 function writerV931PomodoroRemaining(cfg,now=Date.now()){
@@ -17519,6 +17571,7 @@ class WriterV931PomodoroView extends require('obsidian').ItemView{
   root.empty();root.addClass('writer-v931-pomodoro');
   const plugin=this.plugin,timer=plugin.writerV931Pomodoro,cfg=plugin.settings.v931Pomodoro;
   root.createEl('h3',{text:writerUi('Pomodoro · Foco','Pomodoro · Focus')});
+  root.createDiv({cls:'writer-v101-focus-summary'});
   if(!cfg.enabled){
    root.createEl('p',{text:writerUi('Ative o Pomodoro nas configurações do Basic.','Enable Pomodoro in Basic settings.')});
    return;
@@ -17566,6 +17619,8 @@ class WriterV931PomodoroView extends require('obsidian').ItemView{
   require('obsidian').setIcon(this.play.glyph,cfg.running?'pause':'play');
   this.count.textContent=writerUi('Sessões de foco concluídas hoje: ','Focus sessions completed today: ')+
    (cfg.today===writerV931PomodoroToday()?cfg.todayCompleted:0);
+  const chart=this.contentEl.querySelector?.('.writer-v101-focus-summary');
+  if(chart)writerV101PomodoroAnalytics(chart,cfg);
  }
 }
 class WriterV931PomodoroController{
@@ -17608,6 +17663,9 @@ class WriterV931PomodoroController{
   this.today();
   if(previous==='focus'){
    cfg.completed++;cfg.todayCompleted++;
+   cfg.focusHistory=Array.isArray(cfg.focusHistory)?cfg.focusHistory:[];
+   cfg.focusHistory.push({end:endedAt,minutes:cfg.focusMinutes,task:cfg.task});
+   cfg.focusHistory=cfg.focusHistory.slice(-730);
    if(cfg.logDaily)await this.logFocus(endedAt);
   }
   cfg.mode=previous==='focus'?(cfg.completed%cfg.longEvery===0?'long':'short'):'focus';
@@ -17709,6 +17767,38 @@ function writerV931PomodoroRegister(plugin){
  plugin.register?.(()=>{manager.views.clear();manager.status=null;plugin.writerV931Pomodoro=null;});
  manager.render();
 }
+function writerV101PomodoroSummary(history,now=Date.now()){
+ const days=Array.from({length:7},(_,i)=>writerV931PomodoroToday(new Date(now-(6-i)*86400000)));
+ const counts=days.map(day=>(history||[]).filter(x=>writerV931PomodoroToday(new Date(x.end))===day)
+  .reduce((sum,x)=>sum+(Number(x.minutes)||0),0));
+ const tasks=new Map();
+ for(const row of history||[])if(Number(row.end)>=now-30*86400000){
+  const task=String(row.task||'').trim()||'—';
+  tasks.set(task,(tasks.get(task)||0)+1);
+ }
+ return {days,counts,total:counts.reduce((a,b)=>a+b,0),
+  tasks:[...tasks].sort((a,b)=>b[1]-a[1]).slice(0,6)};
+}
+function writerV101PomodoroAnalytics(root,cfg){
+ root.empty();
+ if(cfg.analytics===false)return;
+ const data=writerV101PomodoroSummary(cfg.focusHistory||[]);
+ root.createEl('h4',{text:writerUi('Atividade dos últimos sete dias','Activity during the last seven days')});
+ root.createEl('small',{text:data.total+' '+writerUi('minutos de foco','focus minutes')});
+ const bars=root.createDiv({cls:'writer-v101-focus-bars'}),max=Math.max(1,...data.counts);
+ for(let i=0;i<data.days.length;i++){
+  const item=bars.createDiv({cls:'writer-v101-focus-day'});
+  const bar=item.createDiv({cls:'writer-v101-focus-bar',
+   attr:{role:'img','aria-label':data.days[i]+': '+data.counts[i]+' '+writerUi('minutos','minutes')}});
+  bar.style.height=Math.round(100*data.counts[i]/max)+'%';
+  item.createEl('small',{text:data.days[i].slice(5)});
+ }
+ if(data.tasks.length){
+  const tasks=root.createEl('details');
+  tasks.createEl('summary',{text:writerUi('Focos por tarefa (30 dias)','Focus sessions by task (30 days)')});
+  for(const [task,count] of data.tasks)tasks.createEl('p',{text:task+' · '+count});
+ }
+}
 function writerV931PomodoroSettings(plugin,panel){
  const cfg=plugin.settings.v931Pomodoro;
  panel.createEl('h3',{text:writerUi('Pomodoro · Foco','Pomodoro · Focus')});
@@ -17730,7 +17820,8 @@ function writerV931PomodoroSettings(plugin,panel){
   ['autoAdvance','Iniciar próxima etapa automaticamente','Auto-start next phase'],
   ['notify','Avisar quando terminar','Notify when finished'],
   ['sound','Som de conclusão (quando permitido)','Completion sound (when allowed)'],
-  ['logDaily','Registrar foco em nota diária existente','Log focus to existing daily note']
+  ['logDaily','Registrar foco em nota diária existente','Log focus to existing daily note'],
+   ['analytics','Estatísticas de foco locais','Local focus analytics']
  ])toggle(key,pt,en);
  for(const [key,pt,en,max] of [
   ['focusMinutes','Duração do foco (minutos)','Focus duration (minutes)',180],
@@ -17753,6 +17844,24 @@ function writerV931PomodoroSettings(plugin,panel){
    writerV931PomodoroMerge(tmp);cfg.dailyFolder=tmp.v931Pomodoro.dailyFolder;
    await plugin.saveSettings();
   }));
+ const summary=writerV101PomodoroSummary(cfg.focusHistory||[]);
+ panel.createEl('p',{text:writerUi('Minutos de foco na semana: ','Focus minutes this week: ')+summary.total});
+ new Setting(panel).setName(writerUi('Exportar relatório de foco','Export focus report'))
+  .addButton(btn=>btn.setButtonText(writerUi('Criar CSV','Create CSV')).onClick(async()=>{
+   try{
+    const folder='Writing Focus';
+    if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
+    const header='date,minutes,task\r\n';
+    const lines=(cfg.focusHistory||[]).map(row=>{
+     const clean=String(row.task||'').replace(/[\r\n]/g,' ').replace(/"/g,'""');
+     return writerV931PomodoroToday(new Date(row.end))+','+row.minutes+',"'+(/^[=+\-@]/.test(clean)?"'":'')+clean+'"';
+    });
+    let path=folder+'/focus-report.csv',i=2;
+    while(plugin.app.vault.getAbstractFileByPath(path))path=folder+'/focus-report-'+i+++'.csv';
+    await plugin.app.vault.create(path,header+lines.join('\r\n')+'\r\n');
+    new Notice(writerUi('Relatório criado: ','Report created: ')+path);
+   }catch(error){new Notice(String(error.message||error));}
+  }));
  new Setting(panel).setName(writerUi('Abrir painel Pomodoro','Open Pomodoro sidebar'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerV931Pomodoro?.open()));
 }
@@ -17763,7 +17872,7 @@ function writerV931PomodoroSettings(plugin,panel){
  * Longform's independent project timeline and event store remain unchanged. */
 const WRITER_V95_TIMELINE_OPTIONS={
  layout:'vertical',theme:'classic',density:'normal',sort:'source',controls:true,
- line:3,body:2,accent:''
+ line:3,body:2,accent:'',maxEvents:80,pageSize:30
 };
 const WRITER_V95_TIMELINE_THEMES=['classic','cards','minimal','compact','editorial'];
 const WRITER_V95_TIMELINE_ACCENTS={
@@ -17781,12 +17890,14 @@ function writerV95TimelineConfigOption(cfg,key,value){
   if(['horizontal','vertical'].includes(val))cfg.layout=val;
  }else if(name==='theme'&&WRITER_V95_TIMELINE_THEMES.includes(val))cfg.theme=val;
  else if(name==='density'&&['normal','compact','comfortable'].includes(val))cfg.density=val;
- else if(name==='sort'&&['source','asc','desc'].includes(val))cfg.sort=val;
+ else if(name==='sort'&&['source','asc','desc','dependencies'].includes(val))cfg.sort=val;
  else if(['controls','toolbar'].includes(name)&&['true','false','on','off','yes','no'].includes(val))
   cfg.controls=['true','on','yes'].includes(val);
  else if(name==='color'&&/^#[0-9a-f]{6}$/i.test(value.trim()))cfg.accent=value.trim();
  else if(name==='line'&&/^[2-5]$/.test(val))cfg.line=Number(val);
  else if(name==='body'&&/^[2-4]$/.test(val))cfg.body=Number(val);
+ else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Number(val)||80));
+ else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Number(val)||30));
 }
 function writerV95TimelineCleanEvent(raw){
  const e=raw||{};
@@ -17798,7 +17909,10 @@ function writerV95TimelineCleanEvent(raw){
   icon:String(e.icon||'').trim().slice(0,45),
   color:/^#[0-9a-f]{6}$/i.test(String(e.color||''))?String(e.color):'',
   group:String(e.group||e.track||'').trim().slice(0,80),
-  link:String(e.link||'').trim().slice(0,350)
+  link:String(e.link||'').trim().slice(0,350),
+  id:String(e.id||'').trim().slice(0,80),
+  after:String(e.after||e.depends||'').trim().slice(0,120),
+  era:String(e.era||'').trim().slice(0,80)
  };
  return result.date||result.title||result.content?result:null;
 }
@@ -17810,7 +17924,7 @@ function writerV95TimelineLegacy(lines){
   // Optional per-event attributes at the beginning of the content.
   const body=item.content.split('\n'),remaining=[];
   for(const row of body){
-   const m=/^\s*(image|icon|color|group|track|link):\s*(.+)\s*$/i.exec(row);
+   const m=/^\s*(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
    if(m){item[m[1].toLowerCase()]=m[2].trim();continue;}
    remaining.push(row);
   }
@@ -17827,13 +17941,13 @@ function writerV95TimelineLegacy(lines){
   if(parts.length===3)extra.push(line);
  }
  push();
- return events.slice(0,80);
+ return events.slice(0,250);
 }
 function writerV95TimelineLabeled(lines){
  const events=[];let current=null,content=false;
  const push=()=>{const clean=writerV95TimelineCleanEvent(current);if(clean)events.push(clean);current=null;content=false;};
  const keys={date:'date',time:'date',when:'date',title:'title',content:'content',description:'content',
-  image:'image',photo:'image',icon:'icon',color:'color',group:'group',track:'group',link:'link'};
+  image:'image',photo:'image',icon:'icon',color:'color',group:'group',track:'group',link:'link',id:'id',after:'after',depends:'after',era:'era'};
  for(const line of lines){
   if(/^\s*---\s*$/.test(line)){if(current)push();continue;}
   const m=/^\s*([a-z][a-z-]*):\s*(.*)$/i.exec(line);
@@ -17850,7 +17964,7 @@ function writerV95TimelineLabeled(lines){
   }
  }
  if(current)push();
- return events.slice(0,80);
+ return events.slice(0,250);
 }
 function writerV95TimelineSortKey(date){
  const text=String(date||'').trim();
@@ -17878,19 +17992,33 @@ function writerV95TimelineParse(source,format='timeline'){
    }
    begin++;continue;
   }
-  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body):\s*(.*)$/i.exec(line);
+  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body|max-events|page-size):\s*(.*)$/i.exec(line);
   if(option){writerV95TimelineConfigOption(cfg,option[1],option[2]);begin++;continue;}
   break;
  }
  const body=lines.slice(begin);
  const labeled=format==='timeline-labeled'||/^\s*(?:date|time|when):/i.test(body.find(x=>x.trim())||'');
  let events=labeled?writerV95TimelineLabeled(body):writerV95TimelineLegacy(body);
- if(cfg.sort!=='source'){
+ if(cfg.sort==='dependencies')events=writerV101TimelineDependencies(events);
+ else if(cfg.sort!=='source'){
   events=events.map((event,index)=>({...event,_order:index,_sort:writerV95TimelineSortKey(event.date)}))
    .sort((a,b)=>a._sort===null||b._sort===null?a._order-b._order:
     (cfg.sort==='asc'?1:-1)*(a._sort-b._sort)||a._order-b._order);
  }
- return {config:cfg,events};
+ return {config:cfg,events:events.slice(0,cfg.maxEvents)};
+}
+function writerV101TimelineDependencies(events){
+ const keys=new Map(events.map((e,i)=>[String(e.id||e.title||i).toLocaleLowerCase(),i]));
+ const output=[],state=new Uint8Array(events.length);
+ const visit=index=>{
+  if(state[index]===2||state[index]===1)return;
+  state[index]=1;
+  const parent=keys.get(String(events[index].after||'').toLocaleLowerCase());
+  if(parent!==undefined&&parent!==index)visit(parent);
+  state[index]=2;output.push(events[index]);
+ };
+ events.forEach((_,i)=>visit(i));
+ return output;
 }
 function writerV95TimelineLink(plugin,ctx,raw){
  const text=String(raw||'').trim().replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0];
@@ -17914,7 +18042,7 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  }
  const groups=[...new Set(parsed.events.map(e=>e.group).filter(Boolean))];
  const bar=cfg.controls?root.createDiv({cls:'writer-v95-timeline-toolbar'}):null;
- let layout=cfg.layout,query='',group='';
+ let layout=cfg.layout,query='',group='',page=0;
  if(bar){
   const orient=bar.createEl('button',{cls:'writer-v95-timeline-orientation',attr:{type:'button'}});
   const setOrientation=()=>{orient.textContent=layout==='vertical'?writerUi('Horizontal','Horizontal'):writerUi('Vertical','Vertical');orient.setAttribute('aria-label',writerUi('Mudar orientação','Switch orientation'));};
@@ -17926,13 +18054,13 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    setOrientation();
   });
   const search=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar eventos…','Search events…'),'aria-label':writerUi('Buscar eventos','Search events')}});
-  search.addEventListener('input',()=>{query=search.value.trim().toLocaleLowerCase();draw();});
+  search.addEventListener('input',()=>{query=search.value.trim().toLocaleLowerCase();page=0;draw();});
   if(groups.length){
    const select=bar.createEl('select',{attr:{'aria-label':writerUi('Filtrar trilha','Filter track')}});
    for(const name of ['',...groups]){
     const option=select.createEl('option',{text:name||writerUi('Todas as trilhas','All tracks')});option.value=name;
    }
-   select.addEventListener('change',()=>{group=select.value;draw();});
+   select.addEventListener('change',()=>{group=select.value;page=0;draw();});
   }
  }
  const list=root.createDiv({cls:'writer-v95-timeline-items',attr:{role:'list','aria-label':writerUi('Linha do tempo','Timeline')}});
@@ -17946,12 +18074,15 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    else list.scrollBy({top:dir*Math.max(240,list.clientHeight*.7),behavior:'smooth'});
   });
  }
+ const pager=root.createDiv({cls:'writer-v101-timeline-pager'});
  function draw(){
-  list.empty();
+  list.empty();pager.empty();
   const filtered=parsed.events.filter(e=>(!group||e.group===group)&&
    (!query||(e.date+' '+e.title+' '+e.content+' '+e.group).toLocaleLowerCase().includes(query)));
   if(!filtered.length){list.createEl('p',{cls:'writer-v95-empty',text:writerUi('Nenhum evento encontrado.','No matching events.')});return;}
-  for(const event of filtered){
+  const maxPage=Math.max(0,Math.ceil(filtered.length/cfg.pageSize)-1);
+  page=Math.min(page,maxPage);
+  for(const event of filtered.slice(page*cfg.pageSize,page*cfg.pageSize+cfg.pageSize)){
    const card=list.createDiv({cls:'writer-v95-timeline-event',attr:{role:'listitem'}});
    if(event.color)card.style.setProperty('--writer-v95-event-accent',event.color);
    const marker=card.createDiv({cls:'writer-v95-timeline-marker',attr:{'aria-hidden':'true'}});
@@ -17962,6 +18093,8 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    if(event.date)info.createSpan({cls:'writer-v95-timeline-date',text:event.date});
    if(event.title)info.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});
    if(event.group)info.createSpan({cls:'writer-v95-timeline-group',text:event.group});
+   if(event.era)info.createSpan({cls:'writer-v101-timeline-era',text:event.era});
+   if(event.after)info.createSpan({cls:'writer-v101-timeline-after',text:writerUi('Depois de: ','After: ')+event.after});
    if(event.image){
     const image=writerV8ImagePath(plugin.app,event.image,ctx.sourcePath);
     if(image)info.createEl('img',{cls:'writer-v95-timeline-image',attr:{src:image,alt:event.title||writerUi('Imagem do evento','Event photo'),loading:'lazy',decoding:'async'}});
@@ -17977,6 +18110,13 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     if(file)info.createEl('button',{cls:'writer-v95-timeline-link',text:writerUi('Abrir nota','Open note'),attr:{type:'button'}})
      .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
    }
+  }
+  if(maxPage>0){
+   const previous=pager.createEl('button',{text:writerUi('Anterior','Previous')});previous.disabled=page===0;
+   previous.addEventListener('click',()=>{page--;draw();});
+   pager.createSpan({text:(page+1)+' / '+(maxPage+1)});
+   const next=pager.createEl('button',{text:writerUi('Próxima','Next')});next.disabled=page>=maxPage;
+   next.addEventListener('click',()=>{page++;draw();});
   }
  }
  draw();
@@ -18009,10 +18149,35 @@ function writerV95RegisterTimelineBlocks(plugin){
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
- const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',...old};
- cfg.sort=['title','recent','chapters'].includes(cfg.sort)?cfg.sort:'title';
+ const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},...old};
+ cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
+ const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
+ cfg.library=Object.fromEntries(Object.entries(library).slice(0,500).filter(([path])=>typeof path==='string'&&path.length<=500)
+  .map(([path,item])=>[path,writerV10BookRecord(item)]));
  return cfg;
+}
+function writerV10BookRecord(raw){
+ const r=raw&&typeof raw==='object'?raw:{};
+ return {favorite:r.favorite===true,shelf:String(r.shelf||'').trim().slice(0,60),
+  status:['planned','reading','paused','finished'].includes(r.status)?r.status:'planned',
+  progress:Math.max(0,Math.min(100,Math.round(Number(r.progress)||0)))};
+}
+function writerV10BookState(plugin,project){
+ const meta=project.meta||{},existing=plugin.settings.v10Bookshelf?.library?.[project.file.path];
+ const record=writerV10BookRecord(existing);
+ if(!existing){
+  record.shelf=String(meta.genre||meta.category||'').trim().slice(0,60);
+  if(['planned','reading','paused','finished'].includes(String(meta.status||'')))record.status=meta.status;
+  const fromMeta=Number(meta.readingProgress||meta.progress);
+  if(Number.isFinite(fromMeta))record.progress=Math.max(0,Math.min(100,Math.round(fromMeta)));
+ }
+ return record;
+}
+async function writerV10BookSaveState(plugin,project,record){
+ const cfg=plugin.settings.v10Bookshelf;
+ cfg.library[project.file.path]=writerV10BookRecord(record);
+ await plugin.saveSettings();
 }
 function writerV10BookshelfProjects(plugin){
  return (plugin.app.vault.getMarkdownFiles?.()||[])
@@ -18028,15 +18193,18 @@ function writerV10BookWordProgress(plugin,project){
  const completed=entries.filter(s=>/^(?:done|complete|finished)$/i.test(String(s.status||''))).length;
  return {chapters:entries.length,completed};
 }
-function writerV10BookshelfSort(projects,sort){
+function writerV10BookshelfSort(projects,sort,plugin){
  const books=projects.slice();
  const title=(a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'});
  if(sort==='recent')return books.sort((a,b)=>(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0)||title(a,b));
  if(sort==='chapters')return books.sort((a,b)=>(b.scenes?.length||0)-(a.scenes?.length||0)||title(a,b));
+ if(sort==='progress'&&plugin)return books.sort((a,b)=>writerV10BookState(plugin,b).progress-writerV10BookState(plugin,a).progress||title(a,b));
+ if(sort==='series')return books.sort((a,b)=>String(a.meta?.series||'').localeCompare(String(b.meta?.series||''))||title(a,b));
  return books.sort(title);
 }
-function writerV10BookshelfCard(plugin,parent,project,compact=false){
- const btn=parent.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),
+function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{}){
+ const card=parent.createDiv({cls:'writer-v10-book-card'});
+ const btn=card.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),
   attr:{type:'button','aria-label':writerUi('Abrir livro: ','Open book: ')+project.title}});
  const cover=btn.createDiv({cls:'writer-v10-book-cover'});
  const image=writerV10BookCover(plugin,project);
@@ -18046,39 +18214,93 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false){
  data.createEl('strong',{text:project.title});
  const series=String(project.meta?.series||project.meta?.subtitle||'').slice(0,100);
  if(series&&!compact)data.createSpan({cls:'writer-v10-book-series',text:series});
- const progress=writerV10BookWordProgress(plugin,project);
- if(plugin.settings.v10Bookshelf?.showProgress!==false)
-  data.createSpan({cls:'writer-v10-book-count',text:progress.chapters+' '+writerUi('capítulos','chapters')});
+ const count=writerV10BookWordProgress(plugin,project),record=writerV10BookState(plugin,project);
+ if(plugin.settings.v10Bookshelf?.showProgress!==false){
+  data.createSpan({cls:'writer-v10-book-count',text:count.chapters+' '+writerUi('capítulos','chapters')+' · '+record.progress+'%'});
+  const bar=data.createEl('progress',{cls:'writer-v10-reading-progress',attr:{max:'100',value:String(record.progress),'aria-label':writerUi('Progresso de leitura','Reading progress')}});
+ }
  btn.addEventListener('click',async()=>{
   await plugin.openProjects('project');
   const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
   if(view){view.selected=project.file.path;await view.render?.();}
  });
- return btn;
+ const actions=card.createDiv({cls:'writer-v10-book-actions'});
+ const favorite=actions.createEl('button',{attr:{type:'button','aria-pressed':String(record.favorite),
+  'aria-label':writerUi('Favoritar livro','Favorite book')}});
+ require('obsidian').setIcon?.(favorite,record.favorite?'star':'star-off');
+ favorite.addEventListener('click',async()=>{
+  await writerV10BookSaveState(plugin,project,{...record,favorite:!record.favorite});
+  redraw();
+ });
+ if(!compact){
+  const stat=actions.createEl('select',{attr:{'aria-label':writerUi('Estado da leitura','Reading status')}});
+  for(const [value,pt,en] of [['planned','Planejado','Planned'],['reading','Lendo','Reading'],['paused','Pausado','Paused'],['finished','Concluído','Finished']]){
+   const opt=stat.createEl('option',{text:writerUi(pt,en)});opt.value=value;
+  }
+  stat.value=record.status;
+  stat.addEventListener('change',async()=>{const progress=stat.value==='finished'?100:record.progress;
+   await writerV10BookSaveState(plugin,project,{...record,status:stat.value,progress});redraw();
+  });
+  const percent=actions.createEl('input',{attr:{type:'number',min:'0',max:'100',step:'5',value:String(record.progress),
+   'aria-label':writerUi('Progresso de leitura em porcentagem','Reading progress percent')}});
+  percent.addEventListener('change',async()=>{
+   await writerV10BookSaveState(plugin,project,{...record,progress:Math.max(0,Math.min(100,Number(percent.value)||0))});redraw();
+  });
+  const shelf=actions.createEl('input',{attr:{type:'text',value:record.shelf,placeholder:writerUi('Estante / gênero','Shelf / genre'),
+   maxlength:'60','aria-label':writerUi('Estante deste livro','Book shelf')}});
+  shelf.addEventListener('change',async()=>{await writerV10BookSaveState(plugin,project,{...record,shelf:shelf.value});redraw();});
+ }
+ return card;
 }
 function writerV10RenderBookshelf(plugin,target,opts={}){
  const config=plugin.settings.v10Bookshelf||{};
  const wrapper=target.createDiv({cls:'writer-v10-bookshelf'+(opts.compact?' is-widget':'')});
- const projects=writerV10BookshelfSort(writerV10BookshelfProjects(plugin),opts.sort||config.sort);
+ const projects=writerV10BookshelfSort(writerV10BookshelfProjects(plugin),opts.sort||config.sort,plugin);
  if(!projects.length){
-  wrapper.createEl('p',{cls:'setting-item-description',text:writerUi('Nenhum índice Longform encontrado. Crie um livro em Projetos.','No Longform indices found. Create a book in Projects.')});
-  return wrapper;
+  wrapper.createEl('p',{cls:'setting-item-description',text:writerUi('Nenhum índice Longform encontrado. Crie um livro em Projetos.','No Longform indices found. Create a book in Projects.')});return wrapper;
  }
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
- if(opts.compact)search.setAttribute('aria-label',writerUi('Filtrar livros do widget','Filter widget books'));
+ let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
+ const shelfNames=[...new Set(projects.map(p=>writerV10BookState(plugin,p).shelf).filter(Boolean))].sort();
+ if(!opts.compact){
+  const favorite=toolbar.createEl('button',{text:writerUi('Favoritos','Favorites'),attr:{type:'button','aria-pressed':'false'}});
+  favorite.addEventListener('click',()=>{onlyFavorites=!onlyFavorites;favorite.setAttribute('aria-pressed',String(onlyFavorites));page=0;draw();});
+  const status=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar estado de leitura','Filter reading status')}});
+  for(const [key,pt,en] of [['','Todos os estados','All statuses'],['planned','Planejados','Planned'],['reading','Lendo','Reading'],['paused','Pausados','Paused'],['finished','Concluídos','Finished']]){
+   const option=status.createEl('option',{text:writerUi(pt,en)});option.value=key;
+  }
+  status.addEventListener('change',()=>{statusFilter=status.value;page=0;draw();});
+  const shelf=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar estante','Filter shelf')}});
+  for(const value of ['',...shelfNames]){const opt=shelf.createEl('option',{text:value||writerUi('Todas as estantes','All shelves')});opt.value=value;}
+  shelf.addEventListener('change',()=>{shelfFilter=shelf.value;page=0;draw();});
+ }
  const grid=wrapper.createDiv({cls:'writer-v10-bookshelf-grid'});
+ const pagination=wrapper.createDiv({cls:'writer-v10-bookshelf-pages'});
  const draw=()=>{
-  grid.empty();
-  const q=search.value.trim().toLocaleLowerCase();
-  const list=projects.filter(p=>p.title.toLocaleLowerCase().includes(q)||
-   String(p.meta?.series||'').toLocaleLowerCase().includes(q)).slice(0,opts.compact?8:120);
-  count.setText(list.length+' '+writerUi('livros','books'));
-  for(const p of list)writerV10BookshelfCard(plugin,grid,p,opts.compact);
-  if(!list.length)grid.createEl('p',{text:writerUi('Nenhum livro encontrado.','No books found.')});
+  grid.empty();pagination.empty();
+  const query=search.value.trim().toLocaleLowerCase();
+  const items=projects.filter(p=>{
+   const record=writerV10BookState(plugin,p);
+   return (!onlyFavorites||record.favorite)&&(!statusFilter||record.status===statusFilter)&&
+    (!shelfFilter||record.shelf===shelfFilter)&&(!query||
+     (p.title+' '+String(p.meta?.series||'')+' '+record.shelf).toLocaleLowerCase().includes(query));
+  });
+  count.setText(items.length+' '+writerUi('livros','books'));
+  const size=opts.compact?8:30,maxPage=Math.max(0,Math.ceil(items.length/size)-1);
+  page=Math.min(page,maxPage);
+  for(const p of items.slice(page*size,page*size+size))writerV10BookshelfCard(plugin,grid,p,opts.compact,draw);
+  if(!items.length)grid.createEl('p',{text:writerUi('Nenhum livro encontrado.','No books found.')});
+  if(maxPage){
+   const previous=pagination.createEl('button',{text:writerUi('Anterior','Previous')});previous.disabled=page===0;
+   previous.addEventListener('click',()=>{page--;draw();});
+   pagination.createSpan({text:(page+1)+' / '+(maxPage+1)});
+   const next=pagination.createEl('button',{text:writerUi('Próxima','Next')});next.disabled=page>=maxPage;
+   next.addEventListener('click',()=>{page++;draw();});
+  }
  };
- search.addEventListener('input',draw);draw();
+ search.addEventListener('input',()=>{page=0;draw();});draw();
  return wrapper;
 }
 function writerV10OpenBookshelf(plugin){
@@ -18120,7 +18342,7 @@ function writerV10BookshelfSettings(plugin,panel){
  toggle('showWidget','Permitir widget de livros na homepage','Allow bookshelf homepage widget');
  toggle('showProgress','Mostrar contagem de capítulos','Show chapter count');
  new Setting(panel).setName(writerUi('Ordem padrão','Default order')).addDropdown(d=>{
-  for(const [value,pt,en] of [['title','Título','Title'],['recent','Atualização','Recent'],['chapters','Capítulos','Chapters']])d.addOption(value,writerUi(pt,en));
+  for(const [value,pt,en] of [['title','Título','Title'],['recent','Atualização','Recent'],['chapters','Capítulos','Chapters'],['progress','Progresso','Progress'],['series','Série','Series']])d.addOption(value,writerUi(pt,en));
   d.setValue(cfg.sort||'title').onChange(async value=>{cfg.sort=value;await plugin.saveSettings();});
  });
  new Setting(panel).setName(writerUi('Biblioteca','Bookshelf')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV10OpenBookshelf(plugin)));
@@ -18128,15 +18350,17 @@ function writerV10BookshelfSettings(plugin,panel){
 
 // v3 module: src/v10/toolbox.js
 /* v10: small, opt-in integrations, with original vault files and native UI. */
-const WRITER_V10_TEXT_EXT=new Set(['txt','md','json','jsonc','yaml','yml','csv','tsv','xml','html','htm','css','js','jsx','ts','tsx','py','sh','fish','toml','ini','cfg','conf','log','sql','svg','tex','bib','gitignore','properties']);
+const WRITER_V10_TEXT_EXT=new Set(['txt','md','json','jsonc','yaml','yml','csv','tsv','xml','html','htm','css','js','jsx','ts','tsx','py','sh','fish','toml','ini','cfg','conf','log','sql','svg','tex','bib','gitignore','properties','rs','go','java','kt','kts','swift','c','h','cpp','hpp','cs','php','rb','lua','dart','scss','less','vue','svelte','sql','ps1','bat','cmd','dockerfile','r','jl','gradle','graphql','mdx','diff','patch','gitconfig']);
 function writerV10EditableText(file){
  return file instanceof TFile && WRITER_V10_TEXT_EXT.has(String(file.extension||'').toLowerCase()) &&
   Number(file.stat?.size||0)<=512*1024;
 }
 function writerV10ToolboxMerge(settings){
  const old=settings.v10Tools&&typeof settings.v10Tools==='object'?settings.v10Tools:{};
- const cfg=settings.v10Tools={enabled:true,textEditor:true,doubleShift:false,doubleShiftDelay:320,tableSorting:true,jsonFormatting:true,quickCallout:true,...old};
+ const cfg=settings.v10Tools={enabled:true,textEditor:true,doubleShift:false,doubleShiftDelay:320,tableSorting:true,jsonFormatting:true,quickCallout:true,doubleShiftCode:'either',doubleShiftContext:'all',doubleShiftIgnoreModal:true, ...old};
  cfg.doubleShiftDelay=Math.max(200,Math.min(650,Number(cfg.doubleShiftDelay)||320));
+ cfg.doubleShiftCode=['either','same','left','right'].includes(cfg.doubleShiftCode)?cfg.doubleShiftCode:'either';
+ cfg.doubleShiftContext=['all','nonText','editorOnly'].includes(cfg.doubleShiftContext)?cfg.doubleShiftContext:'all';
  return cfg;
 }
 async function writerV10OpenTextFile(plugin,file){
@@ -18152,6 +18376,23 @@ async function writerV10OpenTextFile(plugin,file){
  const area=modal.contentEl.createEl('textarea',{cls:'writer-v10-text-editor',
   attr:{spellcheck:'false','aria-label':writerUi('Conteúdo do arquivo de texto','Text file contents')}});
  area.value=initial;
+ area.setAttribute('wrap','off');
+ const meta=modal.contentEl.createDiv({cls:'writer-v101-code-status'});
+ const updateStatus=()=>{
+  const at=area.selectionStart||0;
+  const before=area.value.slice(0,at);
+  meta.setText(file.extension.toUpperCase()+' · '+(before.split('\n').length)+':'+(before.length-before.lastIndexOf('\n'))+' · '+area.value.split('\n').length+' '+writerUi('linhas','lines'));
+ };
+ area.addEventListener('input',updateStatus);
+ area.addEventListener('click',updateStatus);
+ area.addEventListener('keyup',updateStatus);
+ area.addEventListener('keydown',event=>{
+  if(event.key!=='Tab'||event.ctrlKey||event.metaKey||event.altKey)return;
+  event.preventDefault();
+  const start=area.selectionStart,end=area.selectionEnd;
+  area.setRangeText('  ',start,end,'end');updateStatus();
+ });
+ updateStatus();
  const bar=modal.contentEl.createDiv({cls:'writer-v10-editor-actions'});
  bar.createEl('span',{cls:'setting-item-description',text:writerUi('Texto simples · grava apenas ao clicar em Salvar.','Plain text · saved only after pressing Save.')});
  const save=bar.createEl('button',{cls:'mod-cta',text:writerUi('Salvar arquivo','Save file'),attr:{type:'button'}});
@@ -18221,18 +18462,30 @@ function writerV10RegisterToolbox(plugin){
    }
    return true;
   }});
- let previousShift=0,dirty=false;
+ let previousShift=0,previousCode='',dirty=false;
+ const isTextTarget=target=>Boolean(target?.closest?.('input, textarea, [contenteditable="true"], .cm-editor'))||
+  Boolean(target?.isContentEditable);
  const handler=event=>{
   if(!plugin.settings.v10Tools?.enabled||!plugin.settings.v10Tools.doubleShift||event.repeat)return;
+  const cfg=plugin.settings.v10Tools;
+  if(cfg.doubleShiftIgnoreModal!==false&&event.target?.closest?.('.modal-container, .suggestion-container')){previousShift=0;return;}
+  const editorTarget=isTextTarget(event.target);
+  if((cfg.doubleShiftContext==='nonText'&&editorTarget)||(cfg.doubleShiftContext==='editorOnly'&&!editorTarget)){
+   previousShift=0;return;
+  }
+  if(event.isComposing){previousShift=0;return;}
   if(event.key==='Shift'&&!event.altKey&&!event.ctrlKey&&!event.metaKey){
    if(dirty){previousShift=0;dirty=false;return;}
-   const now=Date.now(),delay=plugin.settings.v10Tools.doubleShiftDelay;
-   if(previousShift&&now-previousShift<=delay){
-    previousShift=0;event.preventDefault();
+   const code=event.code||'';
+   const mode=cfg.doubleShiftCode||'either';
+   if((mode==='left'&&code==='ShiftRight')||(mode==='right'&&code==='ShiftLeft')){previousShift=0;return;}
+   const now=Date.now(),delay=cfg.doubleShiftDelay;
+   if(previousShift&&now-previousShift<=delay&&(mode!=='same'||code===previousCode)){
+    previousShift=0;previousCode='';event.preventDefault();
     plugin.app.commands?.executeCommandById?.('app:open-command-palette');
-   }else previousShift=now;
+   }else {previousShift=now;previousCode=code;}
   }else if(event.key!=='Shift'){
-   previousShift=0;dirty=true;
+   previousShift=0;previousCode='';dirty=true;
   }
  };
  const released=event=>{if(event.key==='Shift')dirty=false;};
@@ -18256,6 +18509,487 @@ function writerV10ToolboxSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Intervalo do duplo Shift (ms)','Double Shift interval (ms)'))
   .addSlider(s=>s.setLimits(200,650,25).setDynamicTooltip().setValue(cfg.doubleShiftDelay)
    .onChange(async v=>{cfg.doubleShiftDelay=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Teclas do duplo Shift','Double Shift keys')).addDropdown(d=>{
+  for(const [id,pt,en] of [['either','Qualquer Shift','Either Shift'],['same','Duas vezes o mesmo Shift','Same Shift twice'],['left','Somente Shift esquerdo','Left Shift only'],['right','Somente Shift direito','Right Shift only']])d.addOption(id,writerUi(pt,en));
+  d.setValue(cfg.doubleShiftCode).onChange(async v=>{cfg.doubleShiftCode=v;await plugin.saveSettings();});
+ });
+ new Setting(panel).setName(writerUi('Contexto do duplo Shift','Double Shift context')).addDropdown(d=>{
+  for(const [id,pt,en] of [['all','Qualquer local','Anywhere'],['nonText','Fora de editores','Outside text editors'],['editorOnly','Somente editores','Inside editors only']])d.addOption(id,writerUi(pt,en));
+  d.setValue(cfg.doubleShiftContext).onChange(async v=>{cfg.doubleShiftContext=v;await plugin.saveSettings();});
+ });
+ new Setting(panel).setName(writerUi('Ignorar Shift em janelas e sugestões','Ignore Shift in dialogs and suggestions'))
+  .addToggle(t=>t.setValue(cfg.doubleShiftIgnoreModal!==false).onChange(async v=>{cfg.doubleShiftIgnoreModal=v;await plugin.saveSettings();}));
+}
+
+// v3 module: src/v10/space-history.js
+/* Workspace snapshots supplement existing Spaces without moving notes or running code. */
+function writerV101SpaceHistoryMerge(settings){
+ const raw=settings.v101SpaceHistory&&typeof settings.v101SpaceHistory==='object'?settings.v101SpaceHistory:{};
+ const cfg={maxPerSpace:5,history:{}};
+ cfg.maxPerSpace=Math.max(2,Math.min(10,Math.floor(Number(raw.maxPerSpace)||5)));
+ if(raw.history&&typeof raw.history==='object'&&!Array.isArray(raw.history)){
+  for(const [id,items] of Object.entries(raw.history).slice(0,40)){
+   if(!/^[a-z0-9_-]{1,72}$/i.test(id)||!Array.isArray(items))continue;
+   cfg.history[id]=items.slice(-cfg.maxPerSpace).map(writerV101SpaceHistoryEntry).filter(Boolean);
+  }
+ }
+ settings.v101SpaceHistory=cfg;return cfg;
+}
+function writerV101SpaceHistoryEntry(raw){
+ if(!raw||typeof raw!=='object'||!raw.layout||typeof raw.layout!=='object'||Array.isArray(raw.layout))return null;
+ try{
+  const layout=JSON.stringify(raw.layout);
+  if(layout.length>120000||!layout.length)return null;
+  return {name:String(raw.name||'Snapshot').trim().slice(0,70),at:Math.max(0,Number(raw.at)||0),layout:JSON.parse(layout)};
+ }catch(_){return null;}
+}
+function writerV101SpaceSnapshotFingerprint(layout){
+ try{return JSON.stringify(layout)||'';}catch(_){return '';}
+}
+function writerV101SpaceHistoryRemember(plugin,space,layout,name){
+ const cfg=plugin.settings.v101SpaceHistory;
+ if(!space||!cfg)return false;
+ const clean=writerV101SpaceHistoryEntry({name,at:Date.now(),layout});
+ if(!clean)return false;
+ const items=cfg.history[space.id]||(cfg.history[space.id]=[]);
+ const value=writerV101SpaceSnapshotFingerprint(clean.layout);
+ if(items.length&&writerV101SpaceSnapshotFingerprint(items[items.length-1].layout)===value)return false;
+ items.push(clean);cfg.history[space.id]=items.slice(-cfg.maxPerSpace);
+ return true;
+}
+function writerV101SpaceBeforeOverwrite(plugin,space){
+ if(space?.layoutSnapshot)writerV101SpaceHistoryRemember(plugin,space,space.layoutSnapshot,
+  writerUi('Layout anterior','Previous layout'));
+}
+function writerV101SpaceLayoutSummary(layout){
+ const types=[];
+ const scan=(node,depth)=>{
+  if(depth>15||!node||typeof node!=='object'||types.length>=150)return;
+  if(typeof node.type==='string'&&node.type.length<=90)types.push(node.type);
+  for(const value of Object.values(node)){
+   if(Array.isArray(value))for(const child of value.slice(0,30))scan(child,depth+1);
+   else if(value&&typeof value==='object')scan(value,depth+1);
+  }
+ };
+ scan(layout,0);
+ return {panes:types.filter(t=>t==='leaf').length,types:new Set(types).size};
+}
+function writerV101SpaceRestoreHistory(plugin,space,entry){
+ if(!space||!entry)return Promise.resolve(false);
+ const next=writerV101SpaceHistoryEntry(entry);
+ if(!next)return Promise.resolve(false);
+ const previous=space.layoutSnapshot;
+ space.layoutSnapshot=next.layout;
+ return Promise.resolve(writerV10SpaceRestoreLayout(plugin,space)).then(async ok=>{
+  if(!ok){space.layoutSnapshot=previous;return false;}
+  if(previous)writerV101SpaceHistoryRemember(plugin,space,previous,writerUi('Antes da restauração','Before restore'));
+  await plugin.saveSettings();return true;
+ });
+}
+function writerV101SpaceHistoryModal(plugin){
+ const space=writerV9215ActiveSpace(plugin);
+ if(!space){new Notice(writerUi('Selecione um Space ativo para gerenciar layouts.','Select an active Space to manage layouts.'));return;}
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Histórico de layouts · ','Layout history · ')+space.name);
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Snapshots locais; restaurar pode reorganizar suas abas. Suas notas não são alteradas.','Local snapshots; restoring may rearrange tabs. Notes are never modified.')});
+  new Setting(root).setName(writerUi('Guardar ponto de restauração','Create restore point'))
+   .addButton(button=>button.setButtonText(writerUi('Guardar atual','Save current')).onClick(async()=>{
+    const layout=plugin.app.workspace.getLayout?.();
+    if(!writerV101SpaceHistoryRemember(plugin,space,layout,writerUi('Manual','Manual'))){
+     new Notice(writerUi('Nenhuma mudança no layout ou layout inválido.','Layout unchanged or invalid.'));return;
+    }
+    await plugin.saveSettings();modal.onOpen();
+   }));
+  const items=plugin.settings.v101SpaceHistory.history[space.id]||[];
+  for(let i=items.length-1;i>=0;i--){
+   const entry=items[i],summary=writerV101SpaceLayoutSummary(entry.layout);
+   new Setting(root).setName(entry.name||writerUi('Layout salvo','Saved layout'))
+    .setDesc(new Date(entry.at||Date.now()).toLocaleString()+' · '+summary.panes+' '+writerUi('painéis','panes'))
+    .addButton(button=>button.setButtonText(writerUi('Restaurar','Restore')).onClick(async()=>{
+     if(await writerV101SpaceRestoreHistory(plugin,space,entry)){modal.close();}
+     else new Notice(writerUi('Não foi possível restaurar o layout.','Could not restore the layout.'));
+    }))
+    .addExtraButton(button=>button.setIcon('trash-2').setTooltip(writerUi('Excluir checkpoint','Delete checkpoint')).onClick(async()=>{
+     items.splice(i,1);await plugin.saveSettings();modal.onOpen();
+    }));
+  }
+  if(!items.length)root.createEl('p',{text:writerUi('Nenhum checkpoint salvo ainda.','No saved checkpoints yet.')});
+  new Setting(root).setName(writerUi('Exportar backup deste Space','Export Space backup'))
+   .setDesc(writerUi('Copie o JSON e guarde em uma nota ou arquivo seguro.','Copy the JSON to a note or a safe file.'))
+   .addButton(button=>button.setButtonText(writerUi('Gerar backup','Generate backup')).onClick(()=>{
+    const snapshot=writerV101SpaceHistoryEntry({layout:space.layoutSnapshot,name:space.name,at:Date.now()});
+    if(!snapshot){new Notice(writerUi('Salve um layout antes de exportar.','Save a layout before exporting.'));return;}
+    const data=JSON.stringify({format:'basic-ai-space-layout-v1',space:space.name,...snapshot},null,2);
+    const area=root.createEl('textarea',{cls:'writer-v101-space-json',attr:{readOnly:'', 'aria-label':writerUi('Backup JSON','Backup JSON')}});
+    area.value=data;area.focus();area.select();
+   }));
+  const importWrap=root.createDiv({cls:'writer-v101-space-import'});
+  new Setting(importWrap).setName(writerUi('Importar um backup','Import a backup'))
+   .setDesc(writerUi('Aceita somente backups exportados pela biblioteca de layouts.','Only accepts layout backups exported here.'));
+  const area=importWrap.createEl('textarea',{cls:'writer-v101-space-json',attr:{placeholder:writerUi('Cole aqui o JSON do backup','Paste backup JSON here'),'aria-label':writerUi('JSON para importar','JSON to import')}});
+  new Setting(importWrap).addButton(button=>button.setButtonText(writerUi('Importar para este Space','Import into this Space')).onClick(async()=>{
+   try{
+    if(area.value.length>130000)throw Error('Backup too large');
+    const obj=JSON.parse(area.value);
+    if(obj.format!=='basic-ai-space-layout-v1')throw Error('Unsupported backup');
+    const clean=writerV101SpaceHistoryEntry(obj);
+    if(!clean)throw Error('Invalid layout');
+    if(space.layoutSnapshot)writerV101SpaceHistoryRemember(plugin,space,space.layoutSnapshot,
+     writerUi('Antes de importar','Before import'));
+    space.layoutSnapshot=clean.layout;await plugin.saveSettings();modal.onOpen();
+    new Notice(writerUi('Backup importado; use Restaurar para aplicá-lo.','Backup imported; use Restore to apply it.'));
+   }catch(error){new Notice(writerUi('Backup inválido: ','Invalid backup: ')+String(error.message||error));}
+  }));
+ };
+ modal.open();
+}
+function writerV101RegisterSpaceHistory(plugin){
+ plugin.addCommand?.({id:'v101-space-layout-history',name:writerUi('Spaces: histórico e backups de layout','Spaces: layout history and backups'),
+  callback:()=>writerV101SpaceHistoryModal(plugin)});
+}
+function writerV101SpaceHistorySettings(plugin,panel){
+ new Setting(panel).setName(writerUi('Histórico e backups por Space','Space layout history & backups'))
+  .setDesc(writerUi('Crie checkpoints, restaure versões, importe ou exporte seu layout.','Checkpoint, restore, import or export layouts.'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir histórico','Open history')).onClick(()=>writerV101SpaceHistoryModal(plugin)));
+ new Setting(panel).setName(writerUi('Checkpoints por Space','Checkpoints per Space'))
+  .addDropdown(drop=>{
+   for(const number of [2,3,5,8,10])drop.addOption(String(number),String(number));
+   drop.setValue(String(plugin.settings.v101SpaceHistory.maxPerSpace)).onChange(async value=>{
+    const cfg=plugin.settings.v101SpaceHistory;cfg.maxPerSpace=Number(value);
+    for(const items of Object.values(cfg.history))if(items.length>cfg.maxPerSpace)items.splice(0,items.length-cfg.maxPerSpace);
+    await plugin.saveSettings();
+   });
+  });
+}
+
+// v3 module: src/v10/enhancements.js
+/* v10.1 local writing utilities: no third-party executables, no hidden writes. */
+function writerV101SuiteMerge(settings){
+ const old=settings.v101Suite&&typeof settings.v101Suite==='object'?settings.v101Suite:{};
+ const cfg=settings.v101Suite={enabled:true,yamlValidation:true,tableFilter:true,csvExport:true,footnotes:true,
+  bulkProperties:false,batchMax:60, ...old};
+ cfg.batchMax=Math.max(1,Math.min(100,Math.floor(Number(cfg.batchMax)||60)));
+ return cfg;
+}
+function writerV101YamlValidate(text,parse){
+ const source=String(text||'').trim().replace(/^---\r?\n/,'').replace(/\r?\n---\s*$/,'');
+ if(!source||source.length>100000)return {valid:false,error:'Empty or oversized YAML'};
+ try{
+  const value=parse(source);
+  return {valid:true,value,keys:value&&typeof value==='object'&&!Array.isArray(value)?Object.keys(value):[]};
+ }catch(error){return {valid:false,error:String(error.message||error).slice(0,300)};}
+}
+function writerV101TableSplit(line){
+ return String(line||'').trim().replace(/^\||\|$/g,'').split(/(?<!\\)\|/).map(s=>s.trim().replace(/\\\|/g,'|'));
+}
+function writerV101TableParse(raw){
+ const rows=String(raw||'').trim().split(/\r?\n/);
+ if(rows.length<3||!rows[0].includes('|')||!rows[1].includes('|'))return null;
+ const header=writerV101TableSplit(rows[0]),separator=writerV101TableSplit(rows[1]);
+ if(!header.length||header.length>30||header.length!==separator.length||
+  !separator.every(x=>/^:?-{3,}:?$/.test(x)))return null;
+ const body=rows.slice(2).filter(row=>row.includes('|')).map(writerV101TableSplit).slice(0,1000);
+ return {headers:header,rows:body.map(row=>header.map((_,i)=>row[i]||''))};
+}
+function writerV101CsvCell(text){
+ let value=String(text??'');
+ // Spreadsheet software can execute formulas from CSV. Prefix formula-looking cells.
+ if(/^[\s]*[=+\-@\t\r]/.test(value))value="'"+value;
+ return '"'+value.replace(/"/g,'""')+'"';
+}
+function writerV101TableCsv(table){
+ return [table.headers,...table.rows].map(row=>row.map(writerV101CsvCell).join(',')).join('\r\n')+'\r\n';
+}
+function writerV101TableFilterModal(plugin,selection){
+ const data=writerV101TableParse(selection);
+ if(!data){new Notice(writerUi('Selecione uma tabela Markdown válida.','Select a valid Markdown table.'));return;}
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Filtrar tabela (sem alterar a nota)','Filter table (read-only)'));
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();
+  root.addClass('writer-v101-table-modal');
+  const bar=root.createDiv({cls:'writer-v101-table-controls'});
+  const col=bar.createEl('select',{attr:{'aria-label':writerUi('Coluna','Column')}});
+  for(let i=0;i<data.headers.length;i++){const option=col.createEl('option',{text:data.headers[i]});option.value=String(i);}
+  const query=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar valor…','Find value…'),'aria-label':writerUi('Filtrar valores','Filter values')}});
+  const tableHost=root.createDiv({cls:'writer-v101-table-scroll'});
+  const draw=()=>{
+   tableHost.empty();
+   const filtered=data.rows.filter(row=>String(row[Number(col.value)]||'').toLocaleLowerCase().includes(query.value.trim().toLocaleLowerCase()));
+   const stats=root.querySelector('.writer-v101-table-count')||root.createEl('small',{cls:'writer-v101-table-count'});
+   stats.setText(filtered.length+' / '+data.rows.length+' '+writerUi('linhas','rows'));
+   const table=tableHost.createEl('table');
+   const head=table.createEl('thead').createEl('tr');
+   for(const label of data.headers)head.createEl('th',{text:label});
+   const tbody=table.createEl('tbody');
+   for(const row of filtered.slice(0,100))for(const _ of [0]){
+    const tr=tbody.createEl('tr');for(const cell of row)tr.createEl('td',{text:cell});
+   }
+  };
+  col.addEventListener('change',draw);query.addEventListener('input',draw);draw();
+ };
+ modal.open();
+}
+function writerV101BulkPropertiesModal(plugin){
+ const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+ const active=plugin.app.workspace.getActiveFile?.();
+ const candidates=(space&&typeof writerV9SpaceItems==='function'?writerV9SpaceItems(plugin,space):[active]).filter(f=>f instanceof TFile&&f.extension==='md');
+ const files=candidates.slice(0,plugin.settings.v101Suite.batchMax);
+ if(!files.length){new Notice(writerUi('Abra uma nota Markdown ou selecione um Space com notas.','Open a Markdown note or a Space containing notes.'));return;}
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Editar propriedades em lote','Bulk property edits'));
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();
+  root.createEl('p',{text:space?
+   writerUi('Space ativo: ','Active Space: ')+space.name+' · '+files.length+' '+writerUi('notas','notes'):
+   writerUi('Somente a nota atual.','Current note only.'),
+   cls:'setting-item-description'});
+  let key='',value='',confirmed=false,include=true;
+  new Setting(root).setName(writerUi('Propriedade (chave YAML)','YAML property key'))
+   .addText(t=>t.setPlaceholder('status').onChange(v=>key=v.trim()));
+  new Setting(root).setName(writerUi('Novo valor (texto)','New value (text)'))
+   .addText(t=>t.setPlaceholder(writerUi('Rascunho','Draft')).onChange(v=>value=v));
+  new Setting(root).setName(writerUi('Confirmo a alteração nas notas listadas','I confirm editing the listed notes'))
+   .addToggle(t=>t.setValue(false).onChange(v=>confirmed=v));
+  const preview=root.createEl('details');
+  preview.createEl('summary',{text:writerUi('Notas que serão modificadas','Notes to be changed')});
+  const list=preview.createEl('ul');
+  for(const f of files.slice(0,60))list.createEl('li',{text:f.path});
+  new Setting(root).addButton(btn=>btn.setButtonText(writerUi('Aplicar com backup','Apply with backup')).setWarning().onClick(async()=>{
+   if(!confirmed||!plugin.settings.v101Suite.bulkProperties){
+    new Notice(writerUi('Confirme a operação e ative as alterações em lote nas configurações.','Confirm and enable bulk edits in settings.'));return;
+   }
+   if(!/^[A-Za-z_][A-Za-z0-9_-]{0,63}$/.test(key)||value.length>2000||
+    ['__proto__','constructor','prototype'].includes(key)){
+    new Notice(writerUi('Chave YAML ou valor inválido.','Invalid YAML key or value.'));return;
+   }
+   btn.setDisabled(true);let done=0;
+   const app=plugin.app;
+   try{
+    for(const file of files){
+     if(plugin.writerSnapshots?.create)await plugin.writerSnapshots.create(file,'Before bulk property edit');
+     await app.fileManager.processFrontMatter(file,fm=>{fm[key]=value;});
+     done++;
+    }
+    modal.close();new Notice(done+' '+writerUi('notas atualizadas com snapshots.','notes updated with snapshots.'));
+   }catch(error){
+    new Notice(writerUi('Interrompido após ','Stopped after ')+done+': '+String(error.message||error));
+   }finally{btn.setDisabled(false);}
+  }));
+ };
+ modal.open();
+}
+async function writerV101ExportCsv(plugin,table,sourceFile){
+ const name=(sourceFile?.basename||'table').replace(/[^\p{L}\p{N} _-]+/gu,'').slice(0,60)||'table';
+ const folder=sourceFile?.parent?.path||'';
+ let path=(folder?folder+'/':'')+name+' - table.csv',index=2;
+ while(plugin.app.vault.getAbstractFileByPath(path))path=(folder?folder+'/':'')+name+' - table '+index+++'.csv';
+ const file=await plugin.app.vault.create(path,writerV101TableCsv(table));
+ new Notice(writerUi('CSV criado: ','CSV created: ')+file.path);
+}
+function writerV101RegisterEnhancements(plugin){
+ const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
+ plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
+  if(!active('yamlValidation')||!editor.getSelection().trim())return false;
+  if(checking)return true;
+  const parse=require('obsidian').parseYaml;
+  const result=writerV101YamlValidate(editor.getSelection(),parse);
+  new Notice(result.valid?writerUi('YAML válido.','Valid YAML.')+' '+result.keys.length+' '+writerUi('chaves','keys'):
+   writerUi('YAML inválido: ','Invalid YAML: ')+result.error);
+  return true;
+ }});
+ plugin.addCommand({id:'v101-preview-table-filter',name:writerUi('Tabela: filtrar seleção','Table: filter selection'),editorCheckCallback:(checking,editor)=>{
+  if(!active('tableFilter')||!writerV101TableParse(editor.getSelection()))return false;
+  if(!checking)writerV101TableFilterModal(plugin,editor.getSelection());return true;
+ }});
+ plugin.addCommand({id:'v101-export-table-csv',name:writerUi('Tabela: exportar seleção para CSV','Table: export selection to CSV'),editorCheckCallback:(checking,editor,view)=>{
+  const data=writerV101TableParse(editor.getSelection());
+  if(!active('csvExport')||!data)return false;
+  if(!checking)void writerV101ExportCsv(plugin,data,view?.file).catch(error=>new Notice(String(error.message||error)));
+  return true;
+ }});
+ plugin.addCommand({id:'v101-insert-footnote',name:writerUi('Markdown: inserir nota de rodapé','Markdown: insert footnote'),editorCheckCallback:(checking,editor)=>{
+  if(!active('footnotes'))return false;
+  if(!checking){const label='note-'+Date.now().toString(36);
+   const text=editor.getSelection()||writerUi('Texto de referência','Reference text');
+   editor.replaceSelection('[^'+label+']\n\n[^'+label+']: '+text.replace(/\r?\n/g,' '));
+  }
+  return true;
+ }});
+ plugin.addCommand({id:'v101-bulk-yaml',name:writerUi('Propriedades: editar notas do Space em lote','Properties: batch edit Space notes'),callback:()=>{
+  if(!plugin.settings.v101Suite?.enabled||!plugin.settings.v101Suite.bulkProperties){
+   new Notice(writerUi('Ative edição em lote nas configurações.','Enable batch editing in settings.'));return;
+  }
+  writerV101BulkPropertiesModal(plugin);
+ }});
+}
+function writerV101EnhancementsSettings(plugin,panel){
+ const cfg=plugin.settings.v101Suite;
+ panel.createEl('h3',{text:writerUi('Ferramentas editoriais avançadas','Advanced editorial tools')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Comandos locais para seleção, sem sobrescrever a nota; alterações em lote exigem confirmação e snapshots.','Local selection commands; batch writes require confirmation and snapshots.')});
+ for(const [key,pt,en] of [
+  ['enabled','Ativar ferramentas extras','Enable additional tools'],
+  ['yamlValidation','Validação de YAML','YAML validation'],
+  ['tableFilter','Filtro de tabelas somente leitura','Read-only table filtering'],
+  ['csvExport','Exportar seleção de tabela para CSV','Export selected table as CSV'],
+  ['footnotes','Inserir notas de rodapé','Insert footnotes'],
+  ['bulkProperties','Permitir editar propriedades em lote (desligado inicialmente)','Allow batch property edits (off by default)']
+ ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Limite de notas por operação','Maximum notes per operation'))
+  .addSlider(s=>s.setLimits(1,100,1).setDynamicTooltip().setValue(cfg.batchMax)
+   .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
+}
+
+// v3 module: src/v10/calendar-exchange.js
+/* RFC 5545 subset for offline .ics import/export; never connects to remote calendars. */
+function writerV101CalendarExchangeMerge(settings){
+ const old=settings.v101CalendarExchange&&typeof settings.v101CalendarExchange==='object'?settings.v101CalendarExchange:{};
+ const cfg=settings.v101CalendarExchange={enabled:true,maxImport:150, ...old};
+ cfg.maxImport=Math.max(10,Math.min(300,Number(cfg.maxImport)||150));
+ return cfg;
+}
+function writerV101IcsUnescape(raw){
+ return String(raw||'').replace(/\\n/gi,'\n').replace(/\\,/g,',').replace(/\\;/g,';').replace(/\\\\/g,'\\');
+}
+function writerV101IcsDate(value){
+ const m=/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})?(Z)?)?$/.exec(String(value||''));
+ if(!m)return null;
+ const day=m[1]+'-'+m[2]+'-'+m[3],time=m[4]?m[4]+':'+m[5]:'';
+ if(typeof writerV83Date==='function'&&!writerV83Date(day))return null;
+ if(m[7]){
+  const date=new Date(Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]),Number(m[4]),Number(m[5]),Number(m[6]||0)));
+  if(!Number.isFinite(date.getTime()))return null;
+  return {date:writerV83DateOf(date),time:String(date.getHours()).padStart(2,'0')+':'+String(date.getMinutes()).padStart(2,'0')};
+ }
+ return {date:day,time};
+}
+function writerV101IcsParse(text,limit=150){
+ const raw=String(text||'');
+ if(raw.length>500000||!raw.includes('BEGIN:VCALENDAR'))return [];
+ const lines=raw.replace(/\r\n[ \t]/g,'').replace(/\r/g,'').split('\n');
+ let current=null;const events=[];
+ for(const line of lines){
+  if(line.trim()==='BEGIN:VEVENT'){current={};continue;}
+  if(line.trim()==='END:VEVENT'){
+   if(current){
+    const from=writerV101IcsDate(current.DTSTART);
+    if(from&&current.SUMMARY){
+     const to=writerV101IcsDate(current.DTEND);
+     const type=/FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)/i.exec(current.RRULE||'')?.[1]?.toLowerCase()||'none';
+     events.push({title:writerV101IcsUnescape(current.SUMMARY).slice(0,160),
+      date:from.date,time:from.time,endTime:to?.date===from.date?to.time:'',
+      repeat:type,description:writerV101IcsUnescape(current.DESCRIPTION||'').slice(0,2000),
+      uid:String(current.UID||'').slice(0,250)});
+    }
+   }
+   current=null;if(events.length>=limit)break;continue;
+  }
+  if(!current)continue;
+  const m=/^([A-Z-]+)(?:;[^:]*)?:(.*)$/.exec(line);
+  if(m&&['SUMMARY','DTSTART','DTEND','RRULE','DESCRIPTION','UID'].includes(m[1]))current[m[1]]=m[2];
+ }
+ return events;
+}
+function writerV101IcsEscape(value){
+ return String(value||'').replace(/\\/g,'\\\\').replace(/\r?\n/g,'\\n').replace(/,/g,'\\,').replace(/;/g,'\\;').slice(0,10000);
+}
+function writerV101IcsEncodeDate(date,time){
+ return String(date||'').replace(/-/g,'')+(time?'T'+String(time).replace(':','')+'00':'');
+}
+function writerV101IcsExport(events){
+ const lines=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Basic AI Tool for Writers//Calendar Exchange//EN','CALSCALE:GREGORIAN'];
+ for(const event of events.slice(0,900)){
+  if(!event.date||!event.title)continue;
+  const uid='basic-ai-'+String(event.path||event.title+'-'+event.date).replace(/[^a-zA-Z0-9-]/g,'-').slice(0,170)+'@local';
+  lines.push('BEGIN:VEVENT','UID:'+uid,'SUMMARY:'+writerV101IcsEscape(event.title),
+   (event.time?'DTSTART:':'DTSTART;VALUE=DATE:')+writerV101IcsEncodeDate(event.date,event.time));
+  // Set a valid one-hour default for timed events; one-day for all-day dates.
+  if(event.time){
+   const [h,m]=event.time.split(':').map(Number);
+   const end=event.endTime||String((h+1)%24).padStart(2,'0')+':'+String(m).padStart(2,'0');
+   lines.push('DTEND:'+writerV101IcsEncodeDate(event.date,end));
+  }
+  if(['daily','weekly','monthly','yearly'].includes(event.repeat))lines.push('RRULE:FREQ='+event.repeat.toUpperCase());
+  lines.push('END:VEVENT');
+ }
+ lines.push('END:VCALENDAR');
+ return lines.join('\r\n')+'\r\n';
+}
+async function writerV101IcsSave(plugin,text,pathPrefix){
+ const folder=WRITER_V83_CAL_FOLDER;
+ if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
+ const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+ let path=folder+'/'+pathPrefix+'-'+stamp+'.ics',i=2;
+ while(plugin.app.vault.getAbstractFileByPath(path))path=folder+'/'+pathPrefix+'-'+stamp+'-'+i+++'.ics';
+ return plugin.app.vault.create(path,text);
+}
+async function writerV101IcsImport(plugin,source){
+ const text=await plugin.app.vault.read(source);
+ const events=writerV101IcsParse(text,plugin.settings.v101CalendarExchange.maxImport);
+ if(!events.length){new Notice(writerUi('Nenhum evento válido encontrado.','No valid events found.'));return;}
+ const folder=WRITER_V83_CAL_FOLDER,modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Importar eventos do ICS','Import ICS calendar events'));
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();
+  root.createEl('p',{text:events.length+' '+writerUi('eventos serão importados como notas Markdown novas. Notas existentes nunca são substituídas.','events will be imported as new Markdown notes. Existing notes are never overwritten.')});
+  root.createEl('small',{text:events.slice(0,12).map(e=>e.date+' · '+e.title).join('\n'),cls:'writer-v101-ics-preview'});
+  new Setting(root).addButton(btn=>btn.setButtonText(writerUi('Criar eventos','Create events')).setCta().onClick(async()=>{
+   btn.setDisabled(true);let count=0;
+   try{
+    if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
+    const existing=await writerV83CalEvents(plugin);
+    const signatures=new Set(existing.map(e=>e.title+'|'+e.date+'|'+e.time));
+    for(const event of events){
+     const signature=event.title+'|'+event.date+'|'+event.time;
+     if(signatures.has(signature))continue;
+     const valid=writerV83CalValid(event);if(!valid)continue;
+     let path=folder+'/'+event.date+'-ics-event.md',n=2;
+     while(plugin.app.vault.getAbstractFileByPath(path))path=folder+'/'+event.date+'-ics-event-'+n+++'.md';
+     const body=(event.description||'').replace(/^---/gm,'\\---');
+     await plugin.app.vault.create(path,writerV83CalFormat(valid,body));
+     signatures.add(signature);count++;
+    }
+    modal.close();new Notice(count+' '+writerUi('novos eventos importados.','new events imported.'));
+   }catch(error){new Notice(writerUi('Importação interrompida após ','Import stopped after ')+count+': '+String(error.message||error));}
+   finally{btn.setDisabled(false);}
+  }));
+ };
+ modal.open();
+}
+function writerV101IcsChoose(plugin){
+ const files=plugin.app.vault.getFiles?.().filter(f=>String(f.extension).toLowerCase()==='ics'&&Number(f.stat?.size||0)<500000)||[];
+ if(!files.length){new Notice(writerUi('Coloque um arquivo .ics no cofre para importá-lo.','Place a .ics file in your vault to import it.'));return;}
+ const ModalClass=require('obsidian').FuzzySuggestModal;
+ const modal=new (class extends ModalClass{
+  getItems(){return files;}
+  getItemText(file){return file.path;}
+  onChooseItem(file){void writerV101IcsImport(plugin,file).catch(error=>new Notice(String(error.message||error)));}
+ })(plugin.app);
+ modal.setPlaceholder(writerUi('Escolha um arquivo ICS do cofre…','Choose an ICS file from the vault…'));modal.open();
+}
+function writerV101RegisterCalendarExchange(plugin){
+ plugin.addCommand({id:'v101-calendar-import-ics',name:writerUi('Calendário: importar arquivo ICS local','Calendar: import local ICS file'),
+  callback:()=>writerV101IcsChoose(plugin)});
+ plugin.addCommand({id:'v101-calendar-export-ics',name:writerUi('Calendário: exportar agenda para ICS','Calendar: export schedule to ICS'),
+  callback:async()=>{
+   const events=await writerV83CalEvents(plugin);
+   if(!events.length){new Notice(writerUi('Nenhum evento para exportar.','No events to export.'));return;}
+   try{const file=await writerV101IcsSave(plugin,writerV101IcsExport(events),'calendar-export');
+    new Notice(writerUi('ICS criado em ','ICS created at ')+file.path);}
+   catch(error){new Notice(String(error.message||error));}
+  }});
+}
+function writerV101CalendarExchangeSettings(plugin,panel){
+ const cfg=plugin.settings.v101CalendarExchange;
+ panel.createEl('h3',{text:writerUi('Intercâmbio de calendário (.ics)','Calendar exchange (.ics)')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Importação/exportação manual e offline. Não sincroniza Google Calendar ou outros serviços online.','Manual offline import/export; does not sync Google Calendar or online services.')});
+ new Setting(panel).setName(writerUi('Limite de importação por vez','Events per import'))
+  .addSlider(s=>s.setLimits(10,300,10).setDynamicTooltip().setValue(cfg.maxImport)
+   .onChange(async v=>{cfg.maxImport=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Importar ICS','Import ICS'))
+  .addButton(b=>b.setButtonText(writerUi('Escolher arquivo','Choose file')).onClick(()=>writerV101IcsChoose(plugin)));
+ new Setting(panel).setName(writerUi('Exportar agenda','Export calendar'))
+  .addButton(b=>b.setButtonText(writerUi('Exportar','Export')).onClick(()=>plugin.app.commands.executeCommandById(plugin.manifest.id+':v101-calendar-export-ics')));
 }
 
 // END WRITER V3 MODULES

@@ -36,7 +36,8 @@ test('the Explorer preview is outside the folder or file title row',()=>{
  assert.match(css,/\.nav-folder > \.writer-v92-preview-shell/);
  assert.match(css,/\.nav-file > \.writer-v92-preview-shell/);
  assert.match(css,/flex-wrap:nowrap/);
- assert.match(source,/const fromYaml=writerV92PreviewValue\(plugin,item\)/);
+ assert.match(source,/writerV9216FolderDescription\(plugin,item,body,false\)/);
+  assert.match(source,/writerV921PreviewBody\(body,cfg.previewMax\)/);
  assert.match(source,/writerV921PreviewImage\(plugin,source/);
  assert.match(source,/writer-v92-favorite/);
 });

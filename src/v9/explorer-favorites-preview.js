@@ -178,7 +178,7 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  shell.dataset.previewShort=shortText; shell.dataset.previewFull=long;
  shell.dataset.expandable=String(truncated);
  shell.classList.toggle('is-expandable',truncated);
- label.classList.toggle('writer-v931-truncated',truncated&&!expanded);
+ label.classList?.toggle('writer-v931-truncated',truncated&&!expanded);
  if(!truncated)shell.classList.remove('is-expanded');
  if(truncated){
   shell.setAttribute('tabindex','0');shell.setAttribute('role','button');
@@ -196,13 +196,13 @@ function writerV929PreviewExpand(shell,shortText,fullText){
   if(shell.dataset.expandable!=='true'||!shell.isConnected)return;
   shell.classList.add('is-expanded');shell.setAttribute('aria-expanded','true');
   const target=shell.querySelector(':scope > .writer-v92-file-preview');
-  if(target){target.textContent=shell.dataset.previewFull;target.classList.remove('writer-v931-truncated');}
+  if(target){target.textContent=shell.dataset.previewFull;target.classList?.remove('writer-v931-truncated');}
  };
  const close=()=>{
   clearTimeout(timer);timer=null;touchLocked=false;
   shell.classList.remove('is-expanded');shell.setAttribute('aria-expanded','false');
   const target=shell.querySelector(':scope > .writer-v92-file-preview');
-  if(target){target.textContent=shell.dataset.previewShort;target.classList.toggle('writer-v931-truncated',shell.dataset.expandable==='true');}
+  if(target){target.textContent=shell.dataset.previewShort;target.classList?.toggle('writer-v931-truncated',shell.dataset.expandable==='true');}
  };
  shell.addEventListener('mouseenter',()=>{
   if(shell.dataset.expandable!=='true'||shell.dataset.hoverEnabled==='false')return;

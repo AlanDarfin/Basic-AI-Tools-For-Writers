@@ -63,7 +63,7 @@ function writerV92PreviewValue(plugin,file,full=false){
  if(!(source instanceof TFile))return '';
  const front=plugin.app.metadataCache?.getFileCache?.(source)?.frontmatter||{};
  const key=folder?cfg.folderDescriptionKey:cfg.noteDescriptionKey;
- const raw=front[key]??front.summary??front.brief;
+ const raw=front[key];
  const value=Array.isArray(raw)?raw.join(', '):typeof raw==='string'?raw:'';
  return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,full?4000:cfg.previewMax);
 }
@@ -78,7 +78,7 @@ function writerV9216FolderDescription(plugin,folder,body,full=false){
    try{
     const obj=require('obsidian').parseYaml?.(front[1])||{};
     const key=plugin.settings.v92Explorer.folderDescriptionKey;
-    const value=obj[key]??obj.summary??obj.brief;
+    const value=obj[key];
     const text=Array.isArray(value)?value.join(', '):typeof value==='string'?value:'';
     if(text.trim())return text.replace(/\s+/g,' ').trim().slice(0,full?4000:plugin.settings.v92Explorer.previewMax);
    }catch(_){}

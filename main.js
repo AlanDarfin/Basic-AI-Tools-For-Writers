@@ -11160,8 +11160,19 @@ class WriterV8HomeView extends ItemView{
  getViewType(){return WRITER_V8_HOME_VIEW;}
  getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
- async onOpen(){this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
- async onClose(){this.disposed=true;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
+ async onOpen(){
+  this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;
+  this.render();
+  // Desktop-only: focus the search once when this view opens, not on every rerender.
+  if(!writerV8HomeIsMobile(this.plugin)){
+   this.homeFocusTimer=setTimeout(()=>{
+    if(!this.disposed&&this.app.workspace.activeLeaf===this.leaf&&this.homeSearchInput?.isConnected)
+     this.homeSearchInput.focus({preventScroll:true});
+   },0);
+  }
+  this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);
+ }
+ async onClose(){this.disposed=true;clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;this.homeSearchInput=null;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -11177,7 +11188,8 @@ class WriterV8HomeView extends ItemView{
  }
  openFile(file){
   if(!(file instanceof TFile))return;
-  const leaf=this.app.workspace.getLeaf?.('tab')||this.app.workspace.getLeaf?.(true);
+  // Replace the Homepage in the same leaf instead of opening another tab.
+  const leaf=this.leaf||this.app.workspace.activeLeaf;
   if(leaf)void leaf.openFile(file);
  }
  render(){
@@ -11475,6 +11487,7 @@ class WriterV8HomeView extends ItemView{
   const box=this.card(parent,'search','Buscar no cofre','Search vault');
   box.addClass('writer-v901-home-search-card');
   const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
+  this.homeSearchInput=input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
   const files=this.app.vault.getMarkdownFiles?.()||[];
@@ -12090,8 +12103,124 @@ function writerV9Format(editor,action){
  editor.focus?.();
  return true;
 }
+/* Unified editor context menu. Keep Obsidian's own format menu and callbacks.
+ * MenuItem.setSubmenu is not public API; fail open (leave native items intact)
+ * if a future Obsidian version does not expose it. */
+const WRITER_V1044_AI_MENU=[
+ {key:'meaning',names:['Significado','Meaning','Definition','Definição']},
+ {key:'synonyms',names:['Sinônimos','Synonyms']},
+ {key:'antonyms',names:['Antônimos','Antonyms']},
+ {key:'translate',names:['Tradução','Translate','Traduzir']},
+ {key:'rewrite',names:['Reescrever','Rewrite','Rewrite selection']},
+ {key:'smart',names:['Inserção inteligente…','Inserção inteligente...','Smart insertion…','Smart insertion...']}
+];
+function writerV1044MenuTitle(item){
+ const value=item?.title||item?.dom?.querySelector?.('.menu-item-title')?.textContent||'';
+ return typeof value==='string'?value.trim():'';
+}
+function writerV1044AiKey(title){
+ const norm=String(title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\u2026/g,'...');
+ for(const entry of WRITER_V1044_AI_MENU){
+  if(entry.names.some(name=>name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\u2026/g,'...')===norm))
+   return entry.key;
+ }
+ return '';
+}
+function writerV1044MenuAdd(parent,title,icon,callback,section){
+ parent.addItem(item=>{
+  item.setTitle(title).setIcon(icon);
+  if(section)item.setSection?.(section);
+  item.onClick(callback);
+ });
+}
+function writerV1044ContextMenus(plugin){
+ plugin.registerEvent?.(plugin.app.workspace.on('editor-menu',(menu,editor)=>{
+  if(!editor||!menu?.addItem||!plugin.settings.v9Toolbar)return;
+  const cfg=plugin.settings.v9Toolbar;
+  const items=Array.isArray(menu.items)?menu.items:[];
+  const format=items.find(item=>/^(formatar|format)$/i.test(writerV1044MenuTitle(item)));
+  let formatMenu=null;
+  if(format&&typeof format.setSubmenu==='function'){
+   // Returns the current submenu if present; does not replace built-ins.
+   try{formatMenu=format.submenu||format.setSubmenu();}catch(_){}
+  }
+  const addFormat=parent=>{
+   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
+    if(!['underline','superscript','subscript','highlight','codeblock',
+     'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
+    writerV1044MenuAdd(parent,writerUi(pt,en),icon,()=>{
+     if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
+    },'basic-format');
+   }
+   if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
+    for(const [side,icon,pt,en] of [
+     ['l','align-left','Alinhar à esquerda','Align left'],
+     ['c','align-center','Centralizar linha/título','Center line/heading'],
+     ['r','align-right','Alinhar à direita','Align right']]){
+     writerV1044MenuAdd(parent,writerUi(pt,en),icon,()=>writerV102AlignApply(editor,side),'basic-align');
+    }
+   }
+  };
+  if(formatMenu)addFormat(formatMenu);
+  else{
+   // Compatibility fallback when Obsidian's private submenu cannot be extended.
+   menu.addItem(item=>{
+    item.setTitle(writerUi('Formatação do Basic','Basic formatting')).setIcon('type');
+    if(typeof item.setSubmenu==='function')addFormat(item.setSubmenu());
+    else item.onClick(event=>{
+     const submenu=new Menu(plugin.app);addFormat(submenu);
+     submenu.showAtMouseEvent?.(event);
+    });
+   });
+  }
+  // Move only Basic's own legacy AI entries, preserving original callbacks.
+  // Unknown third-party items, native actions and unsupported menu internals stay intact.
+  const groups={lookup:[],writing:[]};
+  for(const old of [...items]){
+   const key=writerV1044AiKey(writerV1044MenuTitle(old));
+   if(!key||typeof old.callback!=='function')continue;
+   const index=items.indexOf(old);
+   if(index<0)continue;
+   items.splice(index,1);
+   (['meaning','synonyms','antonyms','translate'].includes(key)?groups.lookup:groups.writing)
+    .push({old,key,title:writerV1044MenuTitle(old)});
+  }
+  if(!groups.lookup.length&&!groups.writing.length)return;
+  menu.addItem(item=>{
+   item.setTitle(writerUi('IA · Ferramentas','AI · Tools')).setIcon('sparkles').setSection?.('basic-ai');
+   if(typeof item.setSubmenu!=='function'){
+    item.onClick(event=>{
+     const fallback=new Menu(plugin.app);
+     for(const entry of [...groups.lookup,...groups.writing])
+      writerV1044MenuAdd(fallback,entry.title,'sparkles',()=>entry.old.callback.call(entry.old,event));
+     fallback.showAtMouseEvent?.(event);
+    });
+    return;
+   }
+   const ai=item.setSubmenu();
+   for(const [group,title,icon] of [
+    [groups.lookup,writerUi('Pesquisar e traduzir','Lookup & translate'),'search'],
+    [groups.writing,writerUi('Escrever e revisar','Writing & revision'),'pencil']]){
+    if(!group.length)continue;
+    ai.addItem(sub=>{
+     sub.setTitle(title).setIcon(icon);
+     if(typeof sub.setSubmenu==='function'){
+      const nested=sub.setSubmenu();
+      for(const entry of group)writerV1044MenuAdd(nested,entry.title,'sparkles',
+       event=>entry.old.callback.call(entry.old,event));
+     }else{
+      for(const entry of group)writerV1044MenuAdd(ai,entry.title,'sparkles',
+       event=>entry.old.callback.call(entry.old,event));
+     }
+    });
+   }
+  });
+ }));
+}
+
 function writerV9RegisterToolbar(plugin){
  const cfg=plugin.settings.v9Toolbar;
+ writerV1044ContextMenus(plugin);
  let owner=null,root=null,queued=null;
  const remove=()=>{
   if(root){root.remove();root=null;}
@@ -18941,12 +19070,65 @@ function writerV10EditableText(file){
  return file instanceof TFile && WRITER_V10_TEXT_EXT.has(String(file.extension||'').toLowerCase()) &&
   Number(file.stat?.size||0)<=512*1024;
 }
+const WRITER_V1044_DOUBLE_KEYS=[
+ ['Shift','Shift'],['ShiftLeft','Shift esquerdo'],['ShiftRight','Shift direito'],
+ ['Control','Ctrl'],['Alt','Alt'],['Meta','Meta / Super'],
+ ['Escape','Esc'],['Tab','Tab'],['Space','Espaço'],
+ ...Array.from({length:12},(_,i)=>['F'+(i+1),'F'+(i+1)]),
+ ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter=>['Key'+letter,letter]),
+ ...'0123456789'.split('').map(digit=>['Digit'+digit,digit])
+];
+function writerV1044DoubleKeyNormalize(entry,index){
+ if(!entry||typeof entry!=='object')return null;
+ const key=String(entry.key||'').slice(0,32);
+ if(!WRITER_V1044_DOUBLE_KEYS.some(row=>row[0]===key))return null;
+ const command=String(entry.command||'app:open-command-palette').trim().slice(0,200);
+ if(!/^[\w.:-]{1,200}$/.test(command))return null;
+ const context=['all','nonText','editorOnly'].includes(entry.context)?entry.context:'nonText';
+ return {id:String(entry.id||'double-'+index).replace(/[^\w-]/g,'').slice(0,50)||'double-'+index,
+  key,command,context,enabled:entry.enabled!==false};
+}
+function writerV1044DoubleKeyCode(event){
+ if(!event)return '';
+ const code=String(event.code||''),key=String(event.key||'');
+ if(['Shift','Control','Alt','Meta'].includes(key))return code.startsWith(key)?code:key;
+ if(code==='Space'||key===' ')return 'Space';
+ if(code==='Escape'||key==='Escape')return 'Escape';
+ if(code==='Tab'||key==='Tab')return 'Tab';
+ if(/^F(?:[1-9]|1[0-2])$/.test(code))return code;
+ if(/^Key[A-Z]$/.test(code)||/^Digit\d$/.test(code))return code;
+ return '';
+}
+function writerV1044DoubleKeyMatch(rule,code){
+ return rule?.key===code||
+  (rule?.key==='Shift'&&/^Shift(?:Left|Right)?$/.test(code))||
+  (rule?.key==='Control'&&/^Control(?:Left|Right)?$/.test(code))||
+  (rule?.key==='Alt'&&/^Alt(?:Left|Right)?$/.test(code))||
+  (rule?.key==='Meta'&&/^Meta(?:Left|Right)?$/.test(code));
+}
+function writerV1044DoubleKeyIsText(key){
+ return /^Key[A-Z]$|^Digit[0-9]$|^Space$|^Tab$/.test(key);
+}
 function writerV10ToolboxMerge(settings){
  const old=settings.v10Tools&&typeof settings.v10Tools==='object'?settings.v10Tools:{};
- const cfg=settings.v10Tools={enabled:true,textEditor:true,doubleShift:false,doubleShiftDelay:320,tableSorting:true,jsonFormatting:true,quickCallout:true,doubleShiftCode:'either',doubleShiftContext:'all',doubleShiftIgnoreModal:true, ...old};
+ const cfg=settings.v10Tools={enabled:true,textEditor:true,doubleShift:false,doubleShiftDelay:320,
+  tableSorting:true,jsonFormatting:true,quickCallout:true,doubleShiftCode:'either',
+  doubleShiftContext:'all',doubleShiftIgnoreModal:true,doublePressEnabled:undefined,
+  doublePressBindings:undefined,...old};
  cfg.doubleShiftDelay=Math.max(200,Math.min(650,Number(cfg.doubleShiftDelay)||320));
  cfg.doubleShiftCode=['either','same','left','right'].includes(cfg.doubleShiftCode)?cfg.doubleShiftCode:'either';
  cfg.doubleShiftContext=['all','nonText','editorOnly'].includes(cfg.doubleShiftContext)?cfg.doubleShiftContext:'all';
+ // Migrate the old double Shift shortcut without changing it for existing users.
+ if(cfg.doublePressEnabled===undefined)cfg.doublePressEnabled=cfg.doubleShift===true;
+ if(!Array.isArray(cfg.doublePressBindings)){
+  const shift=cfg.doubleShiftCode==='left'?'ShiftLeft':cfg.doubleShiftCode==='right'?'ShiftRight':'Shift';
+  cfg.doublePressBindings=[{id:'legacy-shift',key:shift,command:'app:open-command-palette',
+   context:cfg.doubleShiftContext,enabled:true}];
+ }
+ cfg.doublePressBindings=cfg.doublePressBindings
+  .slice(0,20).map(writerV1044DoubleKeyNormalize).filter(Boolean);
+ // Do not accidentally re-create removed bindings on the next load.
+ cfg.doublePressEnabled=cfg.doublePressEnabled===true;
  return cfg;
 }
 async function writerV10OpenTextFile(plugin,file){
@@ -19048,63 +19230,165 @@ function writerV10RegisterToolbox(plugin){
    }
    return true;
   }});
- let previousShift=0,previousCode='',dirty=false;
- const isTextTarget=target=>Boolean(target?.closest?.('input, textarea, [contenteditable="true"], .cm-editor'))||
+ let pending=null,pressed=new Set();
+ const isTextTarget=target=>Boolean(target?.closest?.('input,textarea,[contenteditable="true"],.cm-editor'))||
   Boolean(target?.isContentEditable);
+ const reset=()=>{pending=null;};
  const handler=event=>{
-  if(!plugin.settings.v10Tools?.enabled||!plugin.settings.v10Tools.doubleShift||event.repeat)return;
   const cfg=plugin.settings.v10Tools;
-  if(cfg.doubleShiftIgnoreModal!==false&&event.target?.closest?.('.modal-container, .suggestion-container')){previousShift=0;return;}
-  const editorTarget=isTextTarget(event.target);
-  if((cfg.doubleShiftContext==='nonText'&&editorTarget)||(cfg.doubleShiftContext==='editorOnly'&&!editorTarget)){
-   previousShift=0;return;
+  if(!cfg?.enabled||!cfg.doublePressEnabled||event.repeat)return;
+  if(event.isComposing){reset();return;}
+  const code=writerV1044DoubleKeyCode(event);
+  if(!code){reset();return;}
+  // Keep double-tap shortcuts independent of modifier key combinations.
+  const modifier=/^(Shift|Control|Alt|Meta)/.test(code);
+  if((!modifier&&(event.shiftKey||event.altKey||event.ctrlKey||event.metaKey))||
+     (modifier&&['Shift','Control','Alt','Meta'].some(name=>name!==event.key&&event[name==='Control'?'ctrlKey':name.toLowerCase()+'Key']))){
+   reset();return;
   }
-  if(event.isComposing){previousShift=0;return;}
-  if(event.key==='Shift'&&!event.altKey&&!event.ctrlKey&&!event.metaKey){
-   if(dirty){previousShift=0;dirty=false;return;}
-   const code=event.code||'';
-   const mode=cfg.doubleShiftCode||'either';
-   if((mode==='left'&&code==='ShiftRight')||(mode==='right'&&code==='ShiftLeft')){previousShift=0;return;}
-   const now=Date.now(),delay=cfg.doubleShiftDelay;
-   if(previousShift&&now-previousShift<=delay&&(mode!=='same'||code===previousCode)){
-    previousShift=0;previousCode='';event.preventDefault();
-    plugin.app.commands?.executeCommandById?.('app:open-command-palette');
-   }else {previousShift=now;previousCode=code;}
-  }else if(event.key!=='Shift'){
-   previousShift=0;previousCode='';dirty=true;
+  const target=event.target,editing=isTextTarget(target);
+  if(cfg.doubleShiftIgnoreModal!==false&&target?.closest?.('.modal-container,.suggestion-container')){
+   reset();return;
+  }
+  if(pressed.has(code))return;
+  pressed.add(code);
+  const rules=(cfg.doublePressBindings||[]).filter(rule=>
+   rule.enabled!==false&&writerV1044DoubleKeyMatch(rule,code)&&
+   (rule.context!=='nonText'||!editing)&&(rule.context!=='editorOnly'||editing)&&
+   !(editing&&writerV1044DoubleKeyIsText(code)));
+  if(!rules.length){reset();return;}
+  const now=Date.now();
+  const rule=rules[0];
+  if(pending&&pending.id===rule.id&&pending.released&&now-pending.at<=cfg.doubleShiftDelay&&
+     (cfg.doubleShiftCode!=='same'||rule.key!=='Shift'||pending.code===code)){
+   reset();
+   const success=plugin.app.commands?.executeCommandById?.(rule.command);
+   if(success!==false){event.preventDefault?.();event.stopPropagation?.();}
+  }else{
+   pending={id:rule.id,code,at:now,released:false};
   }
  };
- const released=event=>{if(event.key==='Shift')dirty=false;};
+ const released=event=>{
+  const code=writerV1044DoubleKeyCode(event);
+  pressed.delete(code);
+  if(pending&&pending.code===code)pending.released=true;
+ };
  if(typeof document!=='undefined'&&typeof plugin.registerDomEvent==='function'){
   plugin.registerDomEvent(document,'keydown',handler,true);
   plugin.registerDomEvent(document,'keyup',released,true);
+  plugin.registerEvent?.(plugin.app.workspace.on('active-leaf-change',reset));
  }
+
+}
+function writerV1044CommandPicker(plugin,selected){
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Escolher comando','Choose command'));
+ const root=modal.contentEl;
+ const input=root.createEl('input',{attr:{type:'search',
+  placeholder:writerUi('Buscar comando…','Search commands…'),
+  'aria-label':writerUi('Buscar comando','Search command')}});
+ const list=root.createDiv({cls:'writer-v1044-command-options'});
+ const commands=Object.entries(plugin.app.commands?.commands||{})
+  .filter(([id,entry])=>entry?.name&&typeof id==='string')
+  .map(([id,entry])=>({id,name:String(entry.name)}))
+  .sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
+ const render=()=>{
+  list.empty();
+  const q=input.value.trim().toLocaleLowerCase();
+  const matches=commands.filter(c=>!q||c.name.toLocaleLowerCase().includes(q)||c.id.toLowerCase().includes(q)).slice(0,70);
+  if(!matches.length)list.createEl('p',{text:writerUi('Nenhum comando encontrado.','No matching commands.')});
+  for(const c of matches){
+   const button=list.createEl('button',{cls:'writer-v1044-command-option',attr:{type:'button'}});
+   button.createEl('span',{text:c.name});
+   button.createEl('small',{text:c.id});
+   button.addEventListener('click',()=>{selected(c.id,c.name);modal.close();});
+  }
+ };
+ input.addEventListener('input',render);
+ // Text field covers commands not yet registered in app.commands.
+ const custom=new Setting(root).setName(writerUi('ID de comando personalizado','Custom command ID'))
+  .addText(field=>field.setPlaceholder('app:open-command-palette').onChange(()=>{}))
+  .addButton(button=>button.setButtonText(writerUi('Usar ID','Use ID')).onClick(()=>{
+   const id=custom.controlEl.querySelector('input')?.value.trim()||'';
+   if(!/^[\w.:-]{1,200}$/.test(id))return;
+   selected(id,id);modal.close();
+  }));
+ modal.onOpen=()=>{render();input.focus();};
+ modal.open();
+}
+function writerV1044DoubleKeySettings(plugin,panel){
+ const cfg=plugin.settings.v10Tools;
+ const section=panel.createEl('details',{cls:'writer-v1044-double-keys'});
+ section.createEl('summary',{text:writerUi('Atalhos por tecla pressionada duas vezes','Double-press key shortcuts')});
+ section.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Adicione teclas e escolha um comando da paleta para cada uma. Letras, números, Tab e Espaço não disparam enquanto você digita, evitando alterações acidentais nas notas.',
+  'Add keys and assign a command to each. Letters, numbers, Tab and Space never trigger while typing, preventing accidental edits.')});
+ new Setting(section).setName(writerUi('Ativar atalhos de tecla dupla','Enable double-press shortcuts'))
+  .addToggle(t=>t.setValue(cfg.doublePressEnabled===true).onChange(async v=>{cfg.doublePressEnabled=v;await plugin.saveSettings();}));
+ new Setting(section).setName(writerUi('Intervalo entre toques (ms)','Time between taps (ms)'))
+  .addSlider(sl=>sl.setLimits(200,650,25).setDynamicTooltip().setValue(cfg.doubleShiftDelay)
+   .onChange(async v=>{cfg.doubleShiftDelay=v;await plugin.saveSettings();}));
+ new Setting(section).setName(writerUi('Ignorar em janelas e sugestões','Ignore in dialogs and suggestions'))
+  .addToggle(t=>t.setValue(cfg.doubleShiftIgnoreModal!==false).onChange(async v=>{
+   cfg.doubleShiftIgnoreModal=v;await plugin.saveSettings();
+  }));
+ const rows=section.createDiv({cls:'writer-v1044-double-key-list'});
+ const draw=()=>{
+  rows.empty();
+  for(const [index,rule] of cfg.doublePressBindings.entries()){
+   const row=rows.createDiv({cls:'writer-v1044-double-key-rule'});
+   const keySetting=new Setting(row).setName(writerUi('Tecla','Key')+' '+(index+1));
+   keySetting.addDropdown(drop=>{
+    for(const [id,label] of WRITER_V1044_DOUBLE_KEYS)drop.addOption(id,label);
+    drop.setValue(rule.key).onChange(async v=>{
+     rule.key=v;
+     if(writerV1044DoubleKeyIsText(v))rule.context='nonText';
+     await plugin.saveSettings();draw();
+    });
+   });
+   new Setting(row).setName(writerUi('Comando','Command'))
+    .setDesc(plugin.app.commands?.commands?.[rule.command]?.name||rule.command)
+    .addButton(button=>button.setButtonText(writerUi('Escolher…','Choose…')).onClick(()=>
+     writerV1044CommandPicker(plugin,async id=>{rule.command=id;await plugin.saveSettings();draw();})));
+   new Setting(row).setName(writerUi('Onde funciona','Where active'))
+    .addDropdown(drop=>{
+     for(const [id,pt,en] of [['all','Qualquer local','Anywhere'],
+      ['nonText','Fora de campos de texto','Outside text fields'],
+      ['editorOnly','Somente editores','Text editors only']])drop.addOption(id,writerUi(pt,en));
+     drop.setValue(rule.context).onChange(async v=>{rule.context=v;await plugin.saveSettings();});
+    });
+   new Setting(row).setName(writerUi('Ativo','Enabled'))
+    .addToggle(t=>t.setValue(rule.enabled!==false).onChange(async v=>{rule.enabled=v;await plugin.saveSettings();}))
+    .addExtraButton(button=>button.setIcon('trash-2')
+     .setTooltip(writerUi('Remover atalho','Remove shortcut')).onClick(async()=>{
+      cfg.doublePressBindings.splice(index,1);await plugin.saveSettings();draw();
+     }));
+  }
+ };
+ draw();
+ new Setting(section).setName(writerUi('Novo atalho','New shortcut')).addButton(button=>
+  button.setButtonText(writerUi('Adicionar tecla','Add key')).setCta().onClick(async()=>{
+   if(cfg.doublePressBindings.length>=20)return;
+   cfg.doublePressBindings.push({id:'key-'+Date.now(),key:'Control',
+    command:'app:open-command-palette',context:'all',enabled:true});
+   await plugin.saveSettings();draw();section.open=true;
+  }));
 }
 function writerV10ToolboxSettings(plugin,panel){
  const cfg=plugin.settings.v10Tools;
- panel.createEl('h3',{text:writerUi('Ferramentas de arquivos e atalhos','File tools & shortcuts')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi('As funções são opcionais e reutilizam o cofre. Arquivos binários são somente visualizados pelo aplicativo nativo.','Features are optional and use your vault. Binary files remain handled by their native viewer.')});
+ panel.createEl('h3',{text:writerUi('Ferramentas de arquivos','File tools')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Ferramentas de edição de arquivos e comandos Markdown. Os atalhos por tecla dupla são configurados separadamente abaixo.',
+  'File editing and Markdown commands. Double-press shortcuts are configured separately below.')});
  for(const [key,pt,en] of [
   ['enabled','Ativar extras da v10','Enable v10 tools'],
   ['textEditor','Permitir edição de arquivos de texto (até 512 KiB)','Allow text-file edits (up to 512 KiB)'],
   ['tableSorting','Ordenar linhas de tabelas Markdown','Sort Markdown table rows'],
   ['jsonFormatting','Formatar JSON selecionado','Format selected JSON'],
-  ['quickCallout','Inserir callouts por comando','Insert callouts via command'],
-  ['doubleShift','Pressionar Shift duas vezes para comandos','Double Shift opens command palette']
- ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true||cfg[key]!==false&&key!=='doubleShift').onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Intervalo do duplo Shift (ms)','Double Shift interval (ms)'))
-  .addSlider(s=>s.setLimits(200,650,25).setDynamicTooltip().setValue(cfg.doubleShiftDelay)
-   .onChange(async v=>{cfg.doubleShiftDelay=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Teclas do duplo Shift','Double Shift keys')).addDropdown(d=>{
-  for(const [id,pt,en] of [['either','Qualquer Shift','Either Shift'],['same','Duas vezes o mesmo Shift','Same Shift twice'],['left','Somente Shift esquerdo','Left Shift only'],['right','Somente Shift direito','Right Shift only']])d.addOption(id,writerUi(pt,en));
-  d.setValue(cfg.doubleShiftCode).onChange(async v=>{cfg.doubleShiftCode=v;await plugin.saveSettings();});
- });
- new Setting(panel).setName(writerUi('Contexto do duplo Shift','Double Shift context')).addDropdown(d=>{
-  for(const [id,pt,en] of [['all','Qualquer local','Anywhere'],['nonText','Fora de editores','Outside text editors'],['editorOnly','Somente editores','Inside editors only']])d.addOption(id,writerUi(pt,en));
-  d.setValue(cfg.doubleShiftContext).onChange(async v=>{cfg.doubleShiftContext=v;await plugin.saveSettings();});
- });
- new Setting(panel).setName(writerUi('Ignorar Shift em janelas e sugestões','Ignore Shift in dialogs and suggestions'))
-  .addToggle(t=>t.setValue(cfg.doubleShiftIgnoreModal!==false).onChange(async v=>{cfg.doubleShiftIgnoreModal=v;await plugin.saveSettings();}));
+  ['quickCallout','Inserir callouts por comando','Insert callouts via command']
+ ])new Setting(panel).setName(writerUi(pt,en))
+  .addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ writerV1044DoubleKeySettings(plugin,panel);
 }
 
 // v3 module: src/v10/space-history.js

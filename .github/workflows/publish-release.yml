@@ -51,9 +51,12 @@ jobs:
             echo "Tag does not match manifest"; exit 1
           fi
           echo "tag=$version" >> "$GITHUB_OUTPUT"
-          if gh release view "$version" >/dev/null 2>&1; then
+          # A previous API 5xx can leave a draft or asset-less release.
+          # Only skip a fully published release containing every install file.
+          complete="$(gh release view "$version" --json isDraft,assets --jq '(.isDraft|not) and ([.assets[].name] | (index("main.js") != null) and (index("manifest.json") != null) and (index("styles.css") != null))' 2>/dev/null || true)"
+          if [[ "$complete" == "true" ]]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "Version already released; preserving assets."
+            echo "Version already published with all three assets; preserving assets."
           fi
       - name: Validate manifest, package, lockfile and docs
         if: steps.version.outputs.skip != 'true'
@@ -115,7 +118,15 @@ jobs:
           set -euo pipefail
           existing="$(gh api "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/$RELEASE_TAG" --jq ".[] | select(.ref == \"refs/tags/$RELEASE_TAG\") | .object.sha" 2>/dev/null || true)"
           if [[ -n "$existing" ]]; then
-            [[ "$existing" == "$GITHUB_SHA" ]] || { echo "Existing tag points at another commit; refusing to retag"; exit 1; }
+            if [[ "$existing" != "$GITHUB_SHA" ]]; then
+              # Recovery commits may change workflows/tests but never retag.
+              # Proceed only if the validated distributable bytes match the tag.
+              for file in main.js manifest.json styles.css; do
+                tagged="$(gh api "repos/$GITHUB_REPOSITORY/contents/$file?ref=$RELEASE_TAG" --jq .sha)"
+                current="$(git hash-object "$file")"
+                [[ "$tagged" == "$current" ]] || { echo "Existing tag differs in $file; refusing to publish"; exit 1; }
+              done
+            fi
           else
             gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$RELEASE_TAG" -f sha="$GITHUB_SHA"
           fi
@@ -127,10 +138,22 @@ jobs:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release exists; preserving its assets."
-            exit 0
-          fi
-          gh release create "$RELEASE_TAG" main.js manifest.json styles.css \
-            --verify-tag --title "Basic AI Tool for Writers $RELEASE_TAG" \
-            --latest --generate-notes
+          # Retry transient GitHub API errors, including a failed creation that
+          # left an unpublished draft or a release missing its install files.
+          for attempt in 1 2 3; do
+            if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+              if gh release upload "$RELEASE_TAG" main.js manifest.json styles.css --clobber \
+                && gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest; then
+                echo "Release repaired/published with all three install files."
+                exit 0
+              fi
+            elif gh release create "$RELEASE_TAG" main.js manifest.json styles.css \
+              --verify-tag --title "Basic AI Tool for Writers $RELEASE_TAG" \
+              --latest --generate-notes; then
+              echo "Release published."
+              exit 0
+            fi
+            sleep "$((attempt*3))"
+          done
+          echo "Could not publish or repair release after retries." >&2
+          exit 1

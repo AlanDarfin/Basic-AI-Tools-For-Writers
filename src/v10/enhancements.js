@@ -2,9 +2,11 @@
 /* v10.1 local writing utilities: no third-party executables, no hidden writes. */
 function writerV101SuiteMerge(settings){
  const old=settings.v101Suite&&typeof settings.v101Suite==='object'?settings.v101Suite:{};
- const cfg=settings.v101Suite={enabled:true,readingProgress:true,yamlValidation:true,tableFilter:true,csvExport:true,footnotes:true,
+ const cfg=settings.v101Suite={enabled:true,readingProgress:true,readingProgressHeight:3,readingProgressColor:'',yamlValidation:true,tableFilter:true,csvExport:true,footnotes:true,
   bulkProperties:false,batchMax:60, ...old};
  cfg.batchMax=Math.max(1,Math.min(100,Math.floor(Number(cfg.batchMax)||60)));
+ cfg.readingProgressHeight=Math.max(2,Math.min(10,Math.round(Number(cfg.readingProgressHeight)||3)));
+ cfg.readingProgressColor=/^#[0-9a-f]{6}$/i.test(cfg.readingProgressColor||'')?cfg.readingProgressColor:'';
  return cfg;
 }
 function writerV101YamlValidate(text,parse){
@@ -146,6 +148,9 @@ function writerV101ReadingProgressRegister(plugin){
     fill.style.cssText='height:100%;width:0%;background:var(--interactive-accent);transition:width 90ms linear;';
     track.appendChild(fill);host.appendChild(track);
    }
+   const style=plugin.settings.v101Suite;
+   track.style.height=(style?.readingProgressHeight||3)+'px';
+   track.firstElementChild.style.backgroundColor=style?.readingProgressColor||'var(--interactive-accent)';
    const maximum=Math.max(0,scroller.scrollHeight-scroller.clientHeight);
    const value=maximum?Math.min(100,Math.max(0,Math.round(100*scroller.scrollTop/maximum))):100;
    track.setAttribute('aria-valuenow',String(value));
@@ -216,6 +221,15 @@ function writerV101EnhancementsSettings(plugin,panel){
   ['footnotes','Inserir notas de rodapé','Insert footnotes'],
   ['bulkProperties','Permitir editar propriedades em lote (desligado inicialmente)','Allow batch property edits (off by default)']
  ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Espessura da barra de leitura','Reading bar thickness'))
+  .addSlider(slider=>slider.setLimits(2,10,1).setDynamicTooltip().setValue(cfg.readingProgressHeight||3)
+   .onChange(async value=>{cfg.readingProgressHeight=value;await plugin.saveSettings();plugin.writerV101ReadingProgressRefresh?.();}));
+ new Setting(panel).setName(writerUi('Cor da barra de leitura','Reading bar color'))
+  .setDesc(writerUi('Hexadecimal (#RRGGBB) ou deixe vazio para usar a cor de destaque.','Hex color (#RRGGBB), or leave blank to use accent color.'))
+  .addText(field=>field.setPlaceholder('#ff8800').setValue(cfg.readingProgressColor||'')
+   .onChange(async value=>{if(value&&!/^#[0-9a-f]{6}$/i.test(value))return;
+    cfg.readingProgressColor=value;await plugin.saveSettings();plugin.writerV101ReadingProgressRefresh?.();
+   }));
  new Setting(panel).setName(writerUi('Limite de notas por operação','Maximum notes per operation'))
   .addSlider(s=>s.setLimits(1,100,1).setDynamicTooltip().setValue(cfg.batchMax)
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));

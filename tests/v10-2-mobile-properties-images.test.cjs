@@ -70,12 +70,20 @@ test('Alignment syntax does not conflict with Markdown pipes, paths, or normal p
  }
  const cfg=api.writerV102AlignMerge({});assert.equal(cfg.enabled,true);
 });
+test('Native Explorer and voice-note CSS corrections are present in the distributed styles',()=>{
+ const css=read('styles.css'),source=read('src/v9/explorer-flex.js');
+ assert.ok(css.includes('.writer-v8-chat .writer-v8-chat-voice-toggle{'));
+ assert.match(css,/place-items:center/);
+ assert.match(css,/writer-v91-flex-hidden/);
+ assert.match(source,/getSortedFolderItems/);
+ assert.match(source,/writerFlexConcealed/);
+});
 test('Release wiring: bundled code, bilingual docs, CSS and version synchronize',()=>{
  const main=read('main.js'),build=read('scripts/build-v3.js'),css=read('styles.css'),manifest=JSON.parse(read('manifest.json'));
  for(const p of ['v10/image-inserter','v10/inline-alignment'])assert.ok(build.includes(p));
  for(const name of ['writerV102ImagesRegister(this)','writerV102AlignRegister(this)',
   'writerV102ImagesMerge(this.settings)','writerV102AlignMerge(this.settings)'])assert.ok(main.includes(name),name);
- assert.equal(manifest.version,'10.3.0');
+ assert.equal(manifest.version,'10.4.0');
  assert.match(css,/writer-v102-image-grid/);assert.doesNotMatch(css,/:has\s*\(|!important/);
  for(const p of ['README.md','docs/README.pt-BR.md'])assert.ok(read(p).includes('10.2.0'));
 });

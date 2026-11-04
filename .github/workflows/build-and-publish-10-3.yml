@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - main
-      - fix/desktop-explorer-mobile-spaces-manual-sorting
 permissions:
   contents: write
 concurrency:
@@ -30,17 +29,6 @@ jobs:
         run: npm run check
       - name: Check community CSS
         run: node --test tests/css-community-lint.test.cjs
-      - name: Commit generated bundle on preview branch
-        if: github.ref == 'refs/heads/fix/desktop-explorer-mobile-spaces-manual-sorting'
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add main.js styles.css projects.js
-          if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.3.0 distributable files'
-            git push origin HEAD:fix/desktop-explorer-mobile-spaces-manual-sorting
-          fi
       - name: Synchronize generated bundle on main
         if: github.ref == 'refs/heads/main'
         shell: bash
@@ -49,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.3.0 plugin artifacts'
+            git commit -m 'build: synchronize 10.4.0 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -60,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.3.0"
+          test "$VERSION" = "10.4.0"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -74,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic AI Tool for Writers $VERSION" \
-            --notes "Alignment syntax ::l: / ::c: / ::r: fixes link conflicts; explorer popup and toolbar polish; mobile Spaces shortcut; global-only hiding; manual sorting commands; optional reading progress."
+            --notes "10.4.0: Reliable global Explorer hiding and native custom sorting (with guarded fallback), drag-and-drop order indicators, Space activation and curated ordering, centered fictional audio play/pause, customizable reading progress, PT/EN docs and regression coverage."

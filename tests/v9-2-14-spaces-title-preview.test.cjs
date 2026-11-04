@@ -15,6 +15,17 @@ test('per-Space hiding is deprecated and no longer filters notes',()=>{
  assert.equal(scope.writerV9SpaceItems(plugin,b).length,3);
  assert.doesNotMatch(source,/Ocultar somente neste Space/);
 });
+test('Spaces can use manual curated ordering and search beyond old 200-note cap',()=>{
+ const items=Array.from({length:250},(_,i)=>({path:'Notes/'+String(i).padStart(3,'0')+'.md',
+  basename:String(i).padStart(3,'0'),stat:{mtime:i}}));
+ const plugin={app:{vault:{getMarkdownFiles:()=>items},metadataCache:{getFileCache:()=>({})}}};
+ const space=scope.writerV9SpaceSanitize({name:'Manual',mode:'curated',sort:'manual',
+  includePaths:['Notes/249.md','Notes/001.md','Notes']});
+ const result=Array.from(scope.writerV9SpaceItems(plugin,space),item=>item.path);
+ assert.equal(result.length,250);
+ assert.equal(result[0],'Notes/249.md');
+ assert.equal(result[1],'Notes/001.md');
+});
 test('title icon shares native explorer setting and does not rewrite notes',()=>{
  const src=read('src/v9/native-explorer.js');
  assert.match(src,/writer-v9-inline-title-icon/);

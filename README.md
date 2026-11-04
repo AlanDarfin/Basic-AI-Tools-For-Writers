@@ -2,12 +2,20 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.3.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.0 — native Explorer sorting, Spaces and audio polish
+
+- **Explorer:** custom folder order is now applied through a guarded native sorting adapter when supported; a DOM fallback remains for other versions. Global hiding also covers folder descendants and is synchronized on native explorer renders.
+- **Manual sorting:** drag notes/folders into position inside a custom-sorted folder without requiring Alt by default; an optional Alt modifier and a drop indicator are available. Existing mobile arrow controls remain available.
+- **Spaces:** selecting a Space activates its independent state, curated collections can sort by inclusion order, and the manager searches up to 5,000 results with pagination. Add the current note from the note context menu.
+- **Fictional chat:** center the play/pause icon inside voice-note circles.
+- **Enhancement Suite:** choose the thickness and accent/hex color of the existing Reading View progress line.
 
 ## Version 10.3.0 — Explorer, Spaces and alignment fixes
 

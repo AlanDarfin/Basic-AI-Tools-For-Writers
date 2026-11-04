@@ -448,6 +448,22 @@ function writerV91FlexRegister(plugin){
  };
  plugin.app.workspace.onLayoutReady?.(attach);
  plugin.registerEvent(plugin.app.workspace.on('layout-change',attach));
+ plugin.addCommand({id:'v103-manual-sort-active-folder',name:writerUi('Explorador: ativar ordenação manual nesta pasta','Explorer: enable manual sorting in this folder'),callback:()=>{
+  const folder=plugin.app.workspace.getActiveFile?.()?.parent||plugin.app.vault.getRoot?.();
+  if(folder)writerV91FlexSetSort(plugin,folder,'custom');
+ }});
+ plugin.addCommand({id:'v103-manual-sort-reset',name:writerUi('Explorador: redefinir ordem manual nesta pasta','Explorer: reset manual order in this folder'),callback:async()=>{
+  const folder=plugin.app.workspace.getActiveFile?.()?.parent||plugin.app.vault.getRoot?.();
+  if(!folder)return;
+  const key=folder.path||'',store=writerV93FlexStore(plugin,key);
+  const record={...(store[key]||writerV93FlexRecord(plugin,key))};
+  record.order=[];record.sort='native';store[key]=record;
+  await plugin.saveSettings();refresh();
+ }});
+ plugin.addCommand({id:'v103-manual-sort-toggle-drag',name:writerUi('Explorador: ativar ou desativar arraste manual','Explorer: toggle manual dragging'),callback:async()=>{
+  cfg.dragReorder=!cfg.dragReorder;await plugin.saveSettings();
+  new Notice(writerUi(cfg.dragReorder?'Arraste manual ativado.':'Arraste manual desativado.',cfg.dragReorder?'Manual dragging enabled.':'Manual dragging disabled.'));
+ }});
  plugin.addCommand({id:'v91-flex-show-hidden',name:writerUi('Explorador: mostrar ou ocultar arquivos escondidos','Explorer: toggle hidden files'),callback:async()=>{
   cfg.showHidden=!cfg.showHidden;await plugin.saveSettings();refresh();
  }});

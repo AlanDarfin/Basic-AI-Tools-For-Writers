@@ -39,7 +39,7 @@ function writerV9SpaceSanitize(raw){
   if(typeof path!=='string'||path.length>500||!record||typeof record!=='object')continue;
   const sort=typeof record.sort==='string'?record.sort:'native';
   const order=Array.isArray(record.order)?[...new Set(record.order.filter(n=>typeof n==='string'&&n.length<300))].slice(0,1000):[];
-  folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60)};
+  folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60),foldersFirst:record.foldersFirst===true};
  }
  const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
  const homeWidgetsEnabled=raw.homeWidgetsEnabled===true;

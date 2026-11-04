@@ -43,13 +43,14 @@ function writerV102AlignReading(root){
  if(!root?.querySelectorAll||typeof document==='undefined'||typeof NodeFilter==='undefined')return;
  const blocks=[...root.querySelectorAll('p,h1,h2,h3,h4,h5,h6')].slice(0,1500);
  for(let block of blocks){
-  if(block.closest('pre,code,table,script,style,textarea,.cm-editor,.writer-v102-align-processed'))continue;
+  if(block.closest('pre,code,table,script,style,textarea,.cm-editor,.writer-v102-align-processed,.writer-v8-chat,.writer-v8-home,.writer-v102-spaces-manager'))continue;
   const token=writerV102AlignToken(block.textContent||'');
   if(!token)continue;
   const walker=document.createTreeWalker(block,NodeFilter.SHOW_TEXT);
   const texts=[];while(walker.nextNode()&&texts.length<250)texts.push(walker.currentNode);
   if(!texts.length||texts.length>=250)continue;
   const first=texts[0],last=texts[texts.length-1];
+  if(first.parentElement?.closest?.('code,pre')||last.parentElement?.closest?.('code,pre'))continue;
   if(token.format==='suffix'){
    // Only remove the author's dedicated suffix; preserve inline links/emphasis.
    if(!/[ \t]+\{(?:left|center|right|l|c|r)\}[ \t]*$/i.test(last.nodeValue||''))continue;

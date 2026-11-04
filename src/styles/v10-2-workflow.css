@@ -201,3 +201,151 @@ body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
  font-size:var(--font-ui-smaller);
  font-weight:var(--font-semibold);
 }
+
+
+/* 10.4.2 — Spaces sidebar: the tab strip must not collapse beneath the list. */
+.writer-v9-space-sidebar{
+ box-sizing:border-box;
+ display:flex;
+ flex-direction:column;
+ min-height:0;
+ height:100%;
+ overflow:hidden;
+}
+.writer-v9-space-sidebar .writer-v9-space-side-head,
+.writer-v9-space-sidebar .writer-v9-space-side-nav,
+.writer-v9-space-sidebar .writer-v9-spaces-search,
+.writer-v9-space-sidebar .writer-v9-space-side-add{flex-shrink:0;}
+.writer-v9-space-sidebar .writer-v9-space-side-head{min-height:40px;}
+.writer-v9-space-sidebar .writer-v9-space-side-nav{
+ min-height:46px;
+ max-height:60px;
+ display:flex;
+ flex-direction:row;
+ align-items:center;
+ gap:6px;
+ overflow-x:auto;
+ overflow-y:hidden;
+ padding-block:4px 8px;
+ scroll-snap-type:x proximity;
+}
+.writer-v9-space-sidebar .writer-v9-space-side-nav button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:flex-start;
+ min-height:36px;
+ flex:0 0 auto;
+ scroll-snap-align:start;
+}
+.writer-v9-space-sidebar .writer-v9-spaces-search{
+ box-sizing:border-box;
+ display:block;
+ width:100%;
+ min-width:0;
+ min-height:36px;
+}
+.writer-v9-space-sidebar .writer-v9-space-side-list{
+ flex:1 1 auto;
+ min-height:60px;
+ max-height:none;
+ overflow-x:hidden;
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ scrollbar-width:thin;
+}
+.writer-v9-space-sidebar .writer-v9-space-side-item{
+ display:flex;
+ justify-content:flex-start;
+ text-align:start;
+ align-items:center;
+ min-height:38px;
+ width:100%;
+ gap:10px;
+ border-radius:var(--radius-s);
+}
+.writer-v9-space-sidebar .writer-v9-space-side-item > span:last-child{
+ flex:1 1 auto;
+ min-width:0;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ white-space:nowrap;
+}
+
+/* Bookshelf: accessible single-column cards and controls on narrow screens. */
+.modal.writer-v1042-bookshelf-modal{
+ width:min(94vw,880px);
+ max-width:94vw;
+ max-height:90vh;
+}
+.writer-v1042-bookshelf-modal .modal-content{min-width:0;overflow-x:hidden;overflow-y:auto;}
+.writer-v10-bookshelf .writer-v10-bookshelf-toolbar{
+ display:flex;
+ align-items:stretch;
+ justify-content:flex-start;
+ gap:8px;
+}
+.writer-v10-bookshelf .writer-v10-bookshelf-toolbar .writer-v1042-bookshelf-search{
+ flex:1 1 12rem;
+ max-width:none;
+ min-width:min(100%,10rem);
+}
+.writer-v10-bookshelf .writer-v10-bookshelf-toolbar .writer-v1042-bookshelf-sort{
+ flex:0 1 10rem;
+ min-width:0;
+}
+.writer-v10-bookshelf .writer-v10-book-info,
+.writer-v10-bookshelf .writer-v10-book-card{min-width:0;}
+.writer-v10-bookshelf .writer-v10-book-info strong{
+ display:block;
+ white-space:normal;
+ overflow:visible;
+ text-overflow:clip;
+ overflow-wrap:anywhere;
+ line-height:1.35;
+}
+.writer-v10-bookshelf .writer-v10-book-cover{flex-shrink:0;}
+@media(max-width:700px){
+ .modal.writer-v1042-bookshelf-modal{width:calc(100vw - 16px);max-width:calc(100vw - 16px);max-height:86vh;}
+ .writer-v1042-bookshelf-modal .modal-content{padding-inline:12px;}
+ .writer-v1042-bookshelf-modal .writer-v10-bookshelf-grid{grid-template-columns:minmax(0,1fr);}
+ .writer-v1042-bookshelf-modal .writer-v10-book{min-height:6rem;gap:12px;}
+ .writer-v1042-bookshelf-modal .writer-v10-book-cover{flex:0 0 64px;height:90px;}
+ .writer-v1042-bookshelf-modal .writer-v10-book-actions{
+  display:grid;
+  grid-template-columns:40px minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+ }
+ .writer-v1042-bookshelf-modal .writer-v10-book-actions > button{grid-column:1;}
+ .writer-v1042-bookshelf-modal .writer-v10-book-actions > select{
+  grid-column:2;
+  width:100%;
+  min-width:0;
+ }
+ .writer-v1042-bookshelf-modal .writer-v10-book-actions > input[type="number"]{
+  grid-column:1;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+ }
+ .writer-v1042-bookshelf-modal .writer-v10-book-actions > input[type="text"]{
+  grid-column:2;
+  width:100%;
+  min-width:0;
+  box-sizing:border-box;
+ }
+ .writer-v1042-bookshelf-modal .writer-v10-bookshelf-toolbar .writer-v1042-bookshelf-sort{
+  flex:1 1 8rem;
+ }
+}
+
+/* Subtitle support without altering real note headings or blocks. */
+.markdown-preview-view .markdown-preview-sizer > :is(.another-name,.inline-subtitle,.note-subtitle),
+.markdown-source-view .inline-subtitle,
+.markdown-source-view .another-name{
+ display:block;
+ width:100%;
+ min-width:0;
+ text-align:center;
+ color:var(--text-muted);
+}

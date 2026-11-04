@@ -142,6 +142,10 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const attachManageAction=()=>{
   const current=new Set();
+  if(cfg.manageIcon===false){
+   for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
+   actions.clear();return;
+  }
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
    const bar=host.querySelector('.nav-buttons-container, .nav-action-buttons, .nav-header .nav-buttons-container, .nav-header');

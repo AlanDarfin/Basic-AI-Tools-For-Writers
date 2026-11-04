@@ -31,14 +31,31 @@ function writerV9SpaceSanitize(raw){
  const mode=['filter','curated','folder'].includes(raw.mode)?raw.mode:'filter';
  const includePaths=Array.isArray(raw.includePaths)?[...new Set(raw.includePaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,150):[];
  const hiddenPaths=Array.isArray(raw.hiddenPaths)?[...new Set(raw.hiddenPaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,300):[];
+ const pinnedPaths=Array.isArray(raw.pinnedPaths)?[...new Set(raw.pinnedPaths.filter(x=>typeof x==='string'&&x.length<500))].slice(0,300):[];
+ const sourceSort=raw.folderSorts&&typeof raw.folderSorts==='object'&&!Array.isArray(raw.folderSorts)?raw.folderSorts:{};
+ const folderSorts={};
+ for(const [path,record] of Object.entries(sourceSort).slice(0,250)){
+  if(typeof path!=='string'||path.length>500||!record||typeof record!=='object')continue;
+  const sort=typeof record.sort==='string'?record.sort:'native';
+  const order=Array.isArray(record.order)?[...new Set(record.order.filter(n=>typeof n==='string'&&n.length<300))].slice(0,1000):[];
+  folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60)};
+ }
  const icon=/^[a-z][a-z0-9-]{0,60}$/.test(raw.icon||'')?raw.icon:'layers';
  const iconColor=/^#[\da-f]{6}$/i.test(raw.iconColor||'')?raw.iconColor:'';
- return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths};
+ return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts};
 }
 /* Space state changes only affect views, never the vault contents. */
 function writerV9215ActiveSpace(plugin){
  const cfg=plugin.settings.v9Spaces;
  return cfg?.enabled&&cfg.activeId?cfg.spaces.find(space=>space.id===cfg.activeId)||null:null;
+}
+function writerV93SpacePinned(plugin,path){
+ const space=writerV9215ActiveSpace(plugin);
+ return Boolean(space?.pinnedPaths?.includes(path));
+}
+function writerV93SpaceSortRecord(plugin,dir){
+ const space=writerV9215ActiveSpace(plugin);
+ return space?.folderSorts?.[dir]||null;
 }
 function writerV9215SpaceHidden(plugin,path){
  const space=writerV9215ActiveSpace(plugin);
@@ -78,6 +95,8 @@ function writerV9SpaceItems(plugin,space){
   }
   return true;
  }).sort((a,b)=>{
+  const pinA=space.pinnedPaths?.includes(a.path),pinB=space.pinnedPaths?.includes(b.path);
+  if(Boolean(pinA)!==Boolean(pinB))return pinA?-1:1;
   if(space.sort==='name')return a.basename.localeCompare(b.basename);
   if(space.sort==='oldest')return (a.stat?.mtime||0)-(b.stat?.mtime||0);
   return (b.stat?.mtime||0)-(a.stat?.mtime||0);
@@ -87,7 +106,7 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],...(initial||{})};
+  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
@@ -108,6 +127,11 @@ function writerV9SpaceEditor(plugin,initial,save){
    .setDesc(writerUi('Uma pasta ou nota por linha. Outros Spaces não serão afetados.','One note or folder path per line. Other Spaces are unaffected.'))
    .addTextArea(t=>t.setValue((draft.hiddenPaths||[]).join('\n')).onChange(value=>{
     draft.hiddenPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   }));
+  new Setting(root).setName(writerUi('Fixar somente neste Space','Pin only in this Space'))
+   .setDesc(writerUi('Uma nota ou pasta por linha. Cada Space mantém seus itens fixados.','One file or folder path per line. Each Space has independent pinned items.'))
+   .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
+    draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');

@@ -148,7 +148,8 @@ function writerV9215PrettyRegister(plugin){
  };
  plugin.writerV9215PrettyRefresh=refresh;
  for(const event of ['file-open','layout-change'])plugin.registerEvent(plugin.app.workspace.on(event,refresh));
- plugin.registerEvent(plugin.app.metadataCache.on('changed',refresh));
+ if(typeof plugin.app.metadataCache?.on==='function')
+  plugin.registerEvent(plugin.app.metadataCache.on('changed',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  for(const [id,key,pt,en] of [
   ['cover','cover','Propriedades: escolher capa da nota','Properties: choose note cover'],

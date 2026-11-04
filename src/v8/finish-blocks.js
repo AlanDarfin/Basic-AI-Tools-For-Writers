@@ -242,22 +242,35 @@ function writerV8ChatDivider(line){
 }
 function writerV8ChatParseLegacy(source,meta){
  const sections=source.split(/^===\s+(.{1,90})\s*$/m),messages=[];
- for(let i=1;i+1<sections.length&&messages.length<50;i+=2){
+ for(let i=1;i+1<sections.length&&messages.length<100;i+=2){
   const name=sections[i].trim(),content=sections[i+1].trim();
-  const split=content.split(/^---\s*$/m),header=split[0],textPart=split.length>1?split.slice(1).join('---').trim():content;
+  // The first bare --- is the legacy message header/body boundary; later
+  // standalone dividers belong to the transcript, not the message text.
+  const headerEnd=/^---[ \t]*$/m.exec(content);
+  const header=headerEnd?content.slice(0,headerEnd.index):content;
+  const textPart=headerEnd?content.slice(headerEnd.index+headerEnd[0].length).trim():content;
   const fields={};
-  if(split.length>1)for(const line of header.split('\n')){
+  if(headerEnd)for(const line of header.split('\n')){
    const m=/^(avatar|image|time|side|mine|name):\s*(.*)$/i.exec(line.trim());
    if(m)fields[m[1].toLowerCase()]=m[2].trim().slice(0,500);
   }
   const side=fields.mine==='true'?'right':fields.side==='right'?'right':fields.side==='center'?'center':'left';
   const actualName=fields.name||name;
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
-  messages.push({name:actualName,side,explicitName:true,time:fields.time||'',
-    avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',
-    body:textPart.slice(0,8000)});
+  const base={name:actualName,side,explicitName:true,time:fields.time||'',
+   avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||''};
+  let body=[];const parts=[];
+  for(const line of textPart.split('\n')){
+   const divider=writerV8ChatDivider(line);
+   if(divider){
+    if(body.length){parts.push({...base,body:body.join('\n').trim().slice(0,8000)});body=[];}
+    parts.push(divider);
+   }else body.push(line);
+  }
+  if(body.length||!parts.length)parts.push({...base,body:body.join('\n').trim().slice(0,8000)});
+  messages.push(...parts.slice(0,100-messages.length));
  }
- return {title:meta.title,messages,options:meta.options};
+ return {title:meta.title,groupImage:meta.groupImage,messages,options:meta.options};
 }
 function writerV8ChatParse(source){
  const raw=String(source||'');

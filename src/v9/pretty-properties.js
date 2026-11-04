@@ -109,7 +109,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   if(!title.querySelector(':scope > .writer-v9-inline-title-icon'))title.classList.remove('writer-v93-title-icon-host');
  }
  for(const row of host.querySelectorAll('.metadata-property')){
-  row.classList.remove('writer-v9215-property-hidden','writer-v9215-property-colored','writer-v9216-search-hidden','writer-v9216-date-overdue','writer-v9216-date-soon','writer-v102-property-has-icon');
+  row.classList.remove('writer-v9215-property-hidden','writer-v9215-property-colored','writer-v9216-search-hidden','writer-v9216-date-overdue','writer-v9216-date-soon','writer-v102-property-has-icon','writer-v102-property-action-host');
   row.style.removeProperty('--writer-v9215-prop-color');
  }
  for(const tag of host.querySelectorAll('.writer-v9216-tag-colored')){
@@ -165,6 +165,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
     row.classList.add('writer-v102-property-has-icon');
    }
    if(cfg.propertyActions){
+    row.classList.add('writer-v102-property-action-host');
     const button=row.ownerDocument.createElement('button');
     button.type='button';button.className='writer-v102-property-actions';
     button.setAttribute('title',writerUi('Opções da propriedade ','Property options ')+key);

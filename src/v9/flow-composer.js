@@ -5,7 +5,7 @@ function writerV93FlowParse(source,cfg){
  const options=[],items=[];let layout=cfg.defaultLayout||'cards';
  for(const line of String(source||'').split(/\r?\n/)){
   const trimmed=line.trim();
-  if(/^layout:\s*(cards|list|board)$/i.test(trimmed)){
+  if(/^layout:\s*(cards|list|board|graph)$/i.test(trimmed)){
    layout=trimmed.split(':')[1].trim().toLowerCase();options.push('layout: '+layout);
   }else if(!trimmed||trimmed.startsWith('#'))options.push(line);
   else items.push(trimmed);
@@ -15,6 +15,25 @@ function writerV93FlowParse(source,cfg){
 function writerV93FlowSerialize(parsed){return [...parsed.options,...parsed.items].join('\n').trim();}
 function writerV93FlowLink(raw){
  return String(raw||'').replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
+}
+function writerV101FlowLinkDependency(raw){
+ const text=String(raw||'');
+ const dep=/(?:^|\s+\|\s*)after:\s*(!?\[\[[^\]]+\]\]|[^\s|]+)/i.exec(text);
+ return dep?writerV93FlowLink(dep[1]):'';
+}
+function writerV101FlowDepths(items){
+ const names=items.map(raw=>writerV93FlowLink(raw));
+ const index=new Map(names.map((name,i)=>[name.toLowerCase(),i]));
+ const depths=items.map(()=>0),state=items.map(()=>0);
+ const depth=i=>{
+  if(state[i]===2)return depths[i];
+  if(state[i]===1)return 0;
+  state[i]=1;
+  const dep=writerV101FlowLinkDependency(items[i]).toLowerCase(),parent=index.get(dep);
+  depths[i]=parent===undefined||parent===i?0:Math.min(5,depth(parent)+1);
+  state[i]=2;return depths[i];
+ };
+ items.forEach((_,i)=>depth(i));return depths;
 }
 function writerV93FlowLocateBlock(raw,source,hint){
  const nl=raw.includes('\r\n')?'\r\n':'\n',lines=raw.split(/\r?\n/),found=[];
@@ -59,7 +78,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  const persist=next=>void writerV93FlowPersist(plugin,ctx,root,source,next);
  if(cfg.flowArrange){
   const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel Flow','Flow panel layout')}});
-  for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board']]){
+  for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board'],['graph','Grafo','Graph']]){
    const option=select.createEl('option',{text:writerUi(pt,en)});option.value=id;
   }
   select.value=model.layout;
@@ -84,6 +103,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
   });
  }
  const list=root.createDiv({cls:'writer-v93-flow-items'});
+ const depths=writerV101FlowDepths(model.items);
  if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco Flow.','Put one note per line inside the Flow block.')});return;}
  const reorder=(from,to)=>{
   if(!cfg.flowArrange||from===to||from<0||to<0||from>=model.items.length||to>=model.items.length)return;
@@ -95,6 +115,10 @@ function writerV93FlowComposer(plugin,source,root,ctx){
   const file=plugin.app.metadataCache?.getFirstLinkpathDest?.(path,ctx.sourcePath||'')||
    plugin.app.vault.getAbstractFileByPath(path);
   const card=list.createDiv({cls:'writer-v9216-flow-card'});
+  if(model.layout==='graph'){
+   card.dataset.depth=String(depths[index]);card.style.setProperty('--writer-v101-flow-depth',String(depths[index]));
+   card.style.gridColumn=String(depths[index]+1);
+  }
   const heading=card.createDiv({cls:'writer-v9216-flow-head'});
   if(!(file instanceof TFile)||file.extension!=='md'){
    heading.createSpan({text:path||raw});
@@ -112,6 +136,21 @@ function writerV93FlowComposer(plugin,source,root,ctx){
      if(card.isConnected)summary.textContent=writerV921PreviewBody(rawText,180)||writerUi('Sem prévia.','No preview.');
     }).catch(()=>{if(card.isConnected)summary.textContent=writerUi('Prévia indisponível.','Preview unavailable.');});
    }
+  }
+  if(model.layout==='graph'&&cfg.flowArrange){
+   const depends=card.createDiv({cls:'writer-v101-flow-depends'});
+   const selector=depends.createEl('select',{attr:{'aria-label':writerUi('Depende da nota','Depends on note')}});
+   const current=writerV101FlowLinkDependency(raw);
+   const empty=selector.createEl('option',{text:writerUi('Sem dependência','No dependency')});empty.value='';
+   for(const item of model.items){
+    const candidate=writerV93FlowLink(item);if(candidate===path)continue;
+    const option=selector.createEl('option',{text:candidate});option.value=candidate;
+   }
+   selector.value=current;
+   selector.addEventListener('change',()=>{
+    const next=writerV93FlowLink(raw)+(selector.value?' | after:[['+selector.value+']]':'');
+    const items=model.items.slice();items[index]=next;persist({...model,items});
+   });
   }
   if(!cfg.flowArrange)return;
   const actions=card.createDiv({cls:'writer-v93-flow-actions'});

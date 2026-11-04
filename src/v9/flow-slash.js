@@ -18,10 +18,8 @@ function writerV9215SlashActions(){
   {id:'quote',pt:'Citação',en:'Quote',keys:'quote blockquote',text:'> '},
   {id:'callout',pt:'Bloco de destaque',en:'Callout',keys:'callout note',text:'> [!note]\n> '},
   {id:'divider',pt:'Separador',en:'Divider',keys:'hr rule divider',text:'---\n'},
-  {id:'code',pt:'Código',en:'Code block',keys:'code fence',text:'``\n\n``'},
-  {id:'table',pt:'Tabela',en:'Table',keys:'table grid',text:'| Coluna 1 | Coluna 2 |
-| --- | --- |
-|  |  |'},
+  {id:'code',pt:'Código',en:'Code block',keys:'code fence',text:"~~~\n\n~~~"},
+  {id:'table',pt:'Tabela',en:'Table',keys:'table grid',text:"| Coluna 1 | Coluna 2 |\n| --- | --- |\n|  |  |"},
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
   {id:'flow',pt:'Flow: incorporar nota',en:'Flow: embed note',keys:'embed inline edit note flow',text:''}
  ];
@@ -32,7 +30,7 @@ class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
   const cfg=this.plugin.settings.v9215Flow;
   if(!cfg.enabled||!cfg.slash||!(file instanceof TFile))return null;
   const head=editor.getLine(cursor.line).slice(0,cursor.ch);
-  const found=/(?:^|s)/([p{L}d_-]*)$/u.exec(head);
+  const found=/(?:^|[ ])[/]([^ ]*)$/u.exec(head);
   if(!found)return null;
   const from=cursor.ch-found[1].length-1;
   return {start:{line:cursor.line,ch:from},end:cursor,query:found[1]};
@@ -60,12 +58,10 @@ class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
    modal.setPlaceholder(writerUi('Escolha a nota para incorporar…','Choose the note to embed…'));
    modal.open();return;
   }
-  let text=action.id==='date'?new Date().toISOString().slice(0,10):action.text;
-  if(action.id==='code')text='~~~
-
-~~~';
+  const today=new Date();
+  const yyyy=today.getFullYear(),mm=String(today.getMonth()+1).padStart(2,'0'),dd=String(today.getDate()).padStart(2,'0');
+  const text=action.id==='date'?[yyyy,mm,dd].join('-'):action.text;
   editor.replaceRange(text,ctx.start,ctx.end);
-  editor.setCursor({line:position.line,ch:position.ch+text.length});
   editor.focus();
  }
 }

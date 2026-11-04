@@ -349,3 +349,43 @@ body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
  text-align:center;
  color:var(--text-muted);
 }
+
+
+/* Spaces sidebar quick actions: compact, reachable, consistent with Obsidian. */
+.writer-v9-space-sidebar .writer-v1042-space-side-tools{
+ display:flex;
+ align-items:center;
+ gap:6px;
+ flex:0 0 auto;
+ min-width:0;
+ min-height:38px;
+}
+.writer-v9-space-sidebar .writer-v1042-space-side-tools button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ flex:0 0 36px;
+ width:36px;
+ height:36px;
+ min-height:36px;
+ min-width:36px;
+ padding:7px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);
+ background:transparent;
+ color:var(--text-muted);
+ box-shadow:none;
+}
+.writer-v9-space-sidebar .writer-v1042-space-side-tools button:focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:1px;
+}
+.writer-v9-space-sidebar .writer-v1042-space-side-tools button svg{width:18px;height:18px;}
+.writer-v9-space-sidebar .writer-v1042-space-count{
+ flex:1 1 auto;
+ min-width:0;
+ font-size:var(--font-ui-smaller);
+ color:var(--text-muted);
+ text-align:end;
+ white-space:nowrap;
+}

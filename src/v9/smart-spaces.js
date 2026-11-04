@@ -212,6 +212,7 @@ function writerV9SpaceEditor(plugin,initial,save){
 function writerV9SpaceModal(plugin){
  if(!plugin.settings.v9Spaces.enabled||!writerModuleOn(plugin,'smartSpaces'))return;
  const modal=new Modal(plugin.app),cfg=plugin.settings.v9Spaces;
+ modal.modalEl?.addClass('writer-v102-spaces-modal');
  let currentId=cfg.activeId||cfg.spaces[0]?.id||'',query='',page=0;
  const icon=(target,name)=>{
   const targetIcon=target.createSpan({cls:'writer-v102-space-icon'});

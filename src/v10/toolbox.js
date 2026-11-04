@@ -108,7 +108,7 @@ function writerV10RegisterToolbox(plugin){
   }
  };
  const released=event=>{if(event.key==='Shift')dirty=false;};
- if(typeof document!=='undefined'){
+ if(typeof document!=='undefined'&&typeof plugin.registerDomEvent==='function'){
   plugin.registerDomEvent(document,'keydown',handler,true);
   plugin.registerDomEvent(document,'keyup',released,true);
  }

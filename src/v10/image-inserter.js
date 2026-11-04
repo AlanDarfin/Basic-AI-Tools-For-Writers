@@ -12,7 +12,7 @@ function writerV102ImagesMerge(settings){
  cfg.folder=String(cfg.folder||'Writing Images').split('/').filter(x=>x&&x!=='.'&&x!=='..')
   .map(x=>x.replace(/[\\:*?"<>|]/g,'').trim()).filter(Boolean).slice(0,6).join('/').slice(0,180)||'Writing Images';
  cfg.property=/^[A-Za-z_][\w-]{0,63}$/.test(String(cfg.property))?cfg.property:'banner';
- cfg.width=Math.max(0,Math.min(1600,Math.round(Number(cfg.width)||420)));
+ cfg.width=Math.max(0,Math.min(1600,Math.round(Number(cfg.width??420)||0)));
  for(const key of ['pexelsKey','pixabayKey','unsplashKey'])cfg[key]=String(cfg[key]||'').trim().slice(0,300);
  cfg.credits=cfg.credits!==false;
  return cfg;
@@ -147,8 +147,9 @@ async function writerV102ImageInsert(plugin,image,mode,file,editor){
 function writerV102ImageModal(plugin,mode='editor',file=null,editor=null){
  if(!plugin.settings.v102Images?.enabled)return;
  const modal=new Modal(plugin.app),cfg=plugin.settings.v102Images;
+ modal.modalEl?.addClass('writer-v102-image-modal-host');
  let page=1,query='',result=[],loading=false;
- modal.setTitle(writerUi(mode==='frontmatter'?'Escolher imagem do banner':'Inserir imagem','Choose banner image'===null?'':'Insert image'));
+ modal.setTitle(mode==='frontmatter'?writerUi('Escolher imagem do banner','Choose banner image'):writerUi('Inserir imagem','Insert image'));
  modal.onOpen=()=>{
   const root=modal.contentEl;root.empty();root.addClass('writer-v102-image-modal');
   const top=root.createDiv({cls:'writer-v102-image-tools'});

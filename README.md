@@ -2,11 +2,24 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.5.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.0.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
+
+
+## Version 10.0.0 — consolidation, not a rewrite
+
+- **Fictional chat audio:** if a written transcription is present, it appears immediately below the animation, with no show/hide button. This is not speech recognition.
+- **Longform bookshelf:** a visual library of existing Longform book indices and covers, a compact **Books** homepage widget, and a Markdown bookshelf block. Chapter counts are not reading progress.
+- **Spaces:** optionally save and restore pane layouts per Space; automatic saving and restoration are separate and off by default. Existing filters, icons, sorting, independent widgets and dock remain intact.
+- **Gallery:** adds **Documents** to existing image, video, audio and PDF types. DOCX/EPUB open using the app's native handler, not as editable rich-text files.
+- **Text editor:** explicit Save, conflict detection and 512 KiB limit for supported source and plain-text formats; binary files are not edited.
+- **Writing utilities:** opt-in Double Shift to launch the command palette; table-row sorting, JSON selection formatting and callout insertion.
+- **Settings:** groups are now General, Customization, Workflow, AI & Dictionary, Longform, Writing & Markdown, and Review & Reading.
+
+See the [v10 feature-by-feature audit](docs/V10_REVIEW.en.md), [current/legacy block guide](docs/BLOCKS.en.md) and [Portuguese documentation](docs/README.pt-BR.md). These are independent integrations inspired by other plugins, not claims of full upstream equivalence.
 
 ## Features
 
@@ -108,7 +121,7 @@ layout: cards
 **Complete copy-ready examples for every Markdown code block:** [English block guide](docs/BLOCKS.en.md) · [Guia em português](docs/BLOCKS.pt-BR.md).
 
 
-### 9.5.0 · Timeline blocks and properties behavior
+### Timeline blocks and properties behavior
 
 - **Properties filter:** the optional search field is now inside Obsidian's native collapsible properties list; collapsing Properties hides the filter in Live Preview and Reading mode, and refreshes preserve its current search query.
 - **Markdown timelines:** support the original `timeline` (`+` triplets) and `timeline-labeled` (`date/title/content`) syntax as well as expanded `layout: horizontal|vertical`, themes (`classic`, `cards`, `minimal`, `compact`, `editorial`), accent colors, local vault photos, Lucide icons, links, event groups, orientation switching and filtering.
@@ -157,7 +170,7 @@ A summary of the scene.
 
 **9.5.1 · Fictional chat dividers and group photo:** in `chat` blocks, use a standalone `---` between messages for a simple divider or `--- Two hours later ---` for a labeled separator. Set `group-image: [[Images/group.webp]]` next to `title:` to show a local group portrait in the conversation header. Per-speaker avatars and fake audio are unchanged. See [full examples](docs/BLOCKS.en.md).
 
-**9.5.2 · Fictional voice note transcripts:** optional manually supplied text in `[audio:0:15:I'll be there soon.]`, `[voice:0:15:...]` or `[áudio:0:15:...]` appears behind a **View transcript** toggle, without audio playback or microphone access. Silent voice notes without transcriptions continue to work. The transcript is plain text and remains inside the fictional message. See the [block guide](docs/BLOCKS.en.md).
+**10.0.0 · Fictional voice note transcripts:** optional manually supplied text in `[audio:0:15:I'll be there soon.]`, `[voice:0:15:...]` or `[áudio:0:15:...]` appears behind a **View transcript** toggle, without audio playback or microphone access. Silent voice notes without transcriptions continue to work. The transcript is plain text and remains inside the fictional message. See the [block guide](docs/BLOCKS.en.md).
 
 **Fictional chat syntax:** add a `chat` block with `[Left=Maria, right=João]` to set the speakers. For color and avatar shorthand, use `[Maria=blue]`. Tab sections can use headings such as `=== Maria`. These formats only render local story content; they are not messaging services.
 

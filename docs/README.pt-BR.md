@@ -2,11 +2,24 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.5.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
+
+
+## Versão 10.0.0 — consolidação sem reescrita
+
+- **Áudio do chat fictício:** se houver uma transcrição escrita, ela aparece automaticamente abaixo da animação, sem botão de mostrar/ocultar. Não há reconhecimento de voz.
+- **Biblioteca Longform:** capas e índices de livros existentes, widget compacto **Meus livros** e bloco Markdown bookshelf. A contagem de capítulos não é progresso de leitura.
+- **Spaces:** salvar e restaurar layouts de painéis por Space opcionalmente; salvamento e restauração automáticos são independentes e começam desligados. Mantidos filtros, ícones, ordenação, widgets e dock por Space.
+- **Gallery:** adiciona **Documentos** às categorias imagens, vídeos, áudio e PDF. DOCX/EPUB são encaminhados ao visualizador do aplicativo; não são arquivos de texto editáveis.
+- **Editor de texto:** salvamento explícito, detecção de conflitos e limite de 512 KiB para formatos de texto e código suportados; não edita binários.
+- **Ferramentas de escrita:** duplo Shift opcional para abrir a paleta, ordenar linhas de tabelas Markdown, formatar JSON selecionado e inserir callouts.
+- **Configurações:** organizadas em Geral, Personalização, Fluxo de trabalho, IA e dicionário, Longform, Escrita e Markdown e Revisão e leitura.
+
+Veja a [auditoria de cada integração](V10_REVIEW.pt-BR.md), o [guia de blocos atuais e legados](BLOCKS.pt-BR.md) e a [documentação em inglês](../README.md). São integrações próprias inspiradas em outros plugins, e não promessa de equivalência integral.
 
 ## Funcionalidades
 
@@ -108,7 +121,7 @@ layout: cards
 **Exemplos completos de todos os blocos Markdown:** [Guia em português](BLOCKS.pt-BR.md) · [English block guide](BLOCKS.en.md).
 
 
-### 9.5.0 · Timelines em blocos e comportamento das propriedades
+### Timelines em blocos e comportamento das propriedades
 
 - **Filtro de propriedades:** a pesquisa opcional foi movida para dentro da lista de propriedades recolhível do Obsidian; o filtro desaparece ao fechar Propriedades tanto na Prévia ao vivo quanto na leitura, preservando o texto ao atualizar o painel.
 - **Timelines Markdown:** aceitam os formatos originais `timeline` (três linhas iniciadas por `+`) e `timeline-labeled` (`date/title/content`), além de `layout: horizontal|vertical`, temas (`classic`, `cards`, `minimal`, `compact`, `editorial`), fotos locais, ícones, cores, links, grupos, busca e troca de orientação.
@@ -157,7 +170,7 @@ Um resumo da cena.
 
 **9.5.1 · Separadores e foto do grupo no chat:** em blocos `chat`, coloque `---` entre as mensagens para uma divisão simples ou `--- Duas horas depois ---` para centralizar uma legenda. Defina `group-image: [[Imagens/grupo.webp]]` junto de `title:` para mostrar a foto do grupo ao lado do título. Avatares individuais e áudios falsos permanecem iguais. Veja os [exemplos completos](BLOCKS.pt-BR.md).
 
-**9.5.2 · Transcrições de áudios fictícios:** o formato `[áudio:0:15:Estou chegando agora.]` aceita uma transcrição escrita pelo autor, exibida por um botão **Ver transcrição**, sem tocar ou gravar áudio real. Os áudios sem transcrição continuam funcionando normalmente. O texto aparece dentro da mensagem fictícia. Veja o [guia de blocos](BLOCKS.pt-BR.md).
+**10.0.0 · Transcrições de áudios fictícios:** o formato `[áudio:0:15:Estou chegando agora.]` aceita uma transcrição escrita pelo autor, exibida por um botão **Ver transcrição**, sem tocar ou gravar áudio real. Os áudios sem transcrição continuam funcionando normalmente. O texto aparece dentro da mensagem fictícia. Veja o [guia de blocos](BLOCKS.pt-BR.md).
 
 **Sintaxe de chat fictício:** em um bloco `chat`, use `[Left=Maria, right=João]` para definir os participantes. Para cores e avatares, use `[Maria=blue]`. Abas também aceitam títulos como `=== Maria`. Essas formas são visuais e locais, sem conexão com aplicativos de mensagens.
 

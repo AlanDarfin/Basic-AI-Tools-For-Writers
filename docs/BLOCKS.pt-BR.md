@@ -504,3 +504,63 @@ subfolders: true
 ## 17. Áudio fictício: transcrição escrita sempre visível
 
 Com [áudio:0:15:Texto escrito] ou [audio:0:15:Written text], o conteúdo fornecido aparece imediatamente, como texto seguro, abaixo da onda simulada, sem botão para expandir. Não há transcrição nem reprodução real de áudio. Os formatos antigos chat, writer-chat, --- e --- texto --- permanecem válidos.
+
+
+## 18. Adições da versão 10.1 e compatibilidade
+
+**Biblioteca:** os blocos \`bookshelf\` e \`writer-bookshelf\` continuam aceitando \`sort: title|recent|chapters\` e passam a aceitar \`sort: progress|series\`. Na biblioteca, filtre por estante, estado de leitura e favoritos. A porcentagem (0–100%) e a estante podem ser editadas no cartão. Essas opções não alteram o Markdown do projeto.
+
+**Media Gallery:** mantenha \`media-gallery\` ou \`writer-media-gallery\`. Use \`pageSize: 24\` e \`limit: 200\` para navegar por páginas. A função **Selecionar vários → Copiar links** gera wikilinks do Obsidian. Excertos de documentos de texto são locais; PDFs abrem pelo Obsidian.
+
+~~~~markdown
+~~~media-gallery
+folder: Livros/Pesquisa
+type: all
+layout: grid
+sort: mtime-desc
+limit: 200
+pageSize: 24
+subfolders: true
+~~~
+~~~~
+
+**Flow em grafo:** use \`flow\` ou \`writer-flow\` com \`layout: graph\`. Uma nota pode apontar dependência pela linha \`[[Rascunho/Capítulo 2]] | after:[[Rascunho/Capítulo 1]]\`. O Basic organiza os cartões pela profundidade e permite editar a dependência. Não executa scripts ou workflows externos.
+
+~~~~markdown
+~~~flow
+layout: graph
+[[Rascunho/Capítulo 1]]
+[[Rascunho/Capítulo 2]] | after:[[Rascunho/Capítulo 1]]
+[[Rascunho/Capítulo 3]] | after:[[Rascunho/Capítulo 2]]
+~~~
+~~~~
+
+**Timeline:** use \`sort: dependencies\`, \`max-events: 150\` e \`page-size: 30\`, além de \`id\`, \`after\` e \`era\` nos eventos. O limite antigo de 80 permanece como padrão; agora pode aumentar até 250 explicitamente. Dependências influenciam somente a ordem visual.
+
+~~~~markdown
+~~~timeline-labeled
+layout: horizontal
+theme: cards
+sort: dependencies
+max-events: 150
+page-size: 30
+
+date: 2040
+title: Fundação
+id: fundacao
+era: Primeira Era
+content:
+A cidade surge.
+
+---
+date: 2041
+title: A jornada
+id: jornada
+after: fundacao
+era: Primeira Era
+content:
+A história continua.
+~~~
+~~~~
+
+**Não são blocos Markdown:** importar/exportar ICS, filtrar tabelas, validar YAML, editar propriedades em lote, configurar DoubleShift, gerenciar histórico de Spaces e salvar presets de widgets são comandos e configurações.

@@ -253,7 +253,7 @@ class ProjectsView extends ItemView{
   }
   for(const [id] of allTabs){
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
-   panels[id].dataset.tab=id;
+   panels[id].setAttribute?.('data-tab',id);
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
   tabs.addEventListener('wheel',event=>{
@@ -19239,7 +19239,7 @@ class DictionaryView extends ItemView{
       if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode.value!=='grammar')return;
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
-       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerReviewIsAcceptedWord(this.plugin.settings,source,m)&&!writerV101ProjectAcceptedWord(this.plugin,file,source,m)&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
+       .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerReviewIsAcceptedWord(this.plugin.settings,source,m)&&(typeof writerV101ProjectAcceptedWord!=='function'||!writerV101ProjectAcceptedWord(this.plugin,file,source,m))&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
@@ -19286,7 +19286,7 @@ class DictionaryView extends ItemView{
    const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
     .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
      writerGrammarMatchIsSafe(after,masked,m)&&
-     !writerReviewIsAcceptedWord(this.plugin.settings,after,m)&&!writerV101ProjectAcceptedWord(this.plugin,file,after,m)&&
+     !writerReviewIsAcceptedWord(this.plugin.settings,after,m)&&(typeof writerV101ProjectAcceptedWord!=='function'||!writerV101ProjectAcceptedWord(this.plugin,file,after,m))&&
      (!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(after,m))&&
      !ignored.has(String(m.rule?.id||'').toUpperCase()));
    const all=[...preserved,...revised].sort((a,b)=>a.offset-b.offset||a.length-b.length);
@@ -20426,7 +20426,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     for(const replacement of replacements)action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
     const extras=panel.createDiv({cls:'writer-lt-mobile-actions'});
     if(writerReviewWord(source,match))action(extras,msg('Adicionar ao dicionário','Add to dictionary'),()=>this.addGrammarWord(file,source,match));
-    if(writerReviewWord(source,match))action(extras,msg('Adicionar ao dicionário deste livro','Add to this book dictionary'),()=>writerV101ProjectAddWord(this,file,writerReviewWord(source,match)));
+    if(writerReviewWord(source,match)&&typeof writerV101ProjectAddWord==='function'&&typeof writerV6ProjectContext==='function'&&writerV6ProjectContext(this,file.path)?.indexPath)action(extras,msg('Adicionar ao dicionário deste livro','Add to this book dictionary'),()=>writerV101ProjectAddWord(this,file,writerReviewWord(source,match)));
     action(extras,msg('Explicar com IA','Explain with AI'),()=>this.explainGrammarSuggestion(file,source,match));
     action(extras,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
     if(match.rule?.id)action(extras,msg('Ignorar regra','Ignore rule'),()=>this.ignoreGrammarRule(file,match));
@@ -20469,7 +20469,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     }
     if(writerReviewWord(source,match))menu.addItem(item=>item.setTitle(msg('Adicionar ao dicionário','Add to dictionary')).setIcon('book-plus')
       .onClick(()=>this.addGrammarWord(file,source,match)));
-    if(writerReviewWord(source,match))menu.addItem(item=>item.setTitle(msg('Adicionar ao dicionário do livro','Add to book dictionary')).setIcon('book-marked')
+    if(writerReviewWord(source,match)&&typeof writerV101ProjectAddWord==='function'&&typeof writerV6ProjectContext==='function'&&writerV6ProjectContext(this,file.path)?.indexPath)menu.addItem(item=>item.setTitle(msg('Adicionar ao dicionário do livro','Add to book dictionary')).setIcon('book-marked')
       .onClick(()=>writerV101ProjectAddWord(this,file,writerReviewWord(source,match))));
     menu.addItem(item=>item.setTitle(msg('Explicar com IA','Explain with AI')).setIcon('message-square-text')
       .onClick(()=>this.explainGrammarSuggestion(file,source,match)));

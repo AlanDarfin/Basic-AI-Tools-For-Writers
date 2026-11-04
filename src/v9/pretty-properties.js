@@ -26,7 +26,7 @@ function writerV9215PrettyMerge(settings){
  for(const key of ['progressKeys','dateKeys','colors','templates','tagColors'])cfg[key]=String(cfg[key]||'').slice(0,5000);
  return cfg;
 }
-function writerV9215PrettyImage(app,source,raw){
+function writerV9215PrettyImage(app,source,raw,allowRemote=false){
  let ref=Array.isArray(raw)?raw[0]:raw;
  if(typeof ref!=='string'||!ref.trim())return '';
  ref=ref.trim().replace(/^!?\[\[|\]\]$/g,'');
@@ -35,7 +35,9 @@ function writerV9215PrettyImage(app,source,raw){
  ref=ref.split('|')[0].split('#')[0].trim();
  try{ref=decodeURIComponent(ref);}catch(_){}
  // Keep decoration offline/private; never download remote frontmatter URLs.
- if(/^(?:https?:|data:|file:)/i.test(ref))return '';
+ if(/^https?:\/\//i.test(ref))return allowRemote&&typeof writerV102PreviewRemoteUrl==='function'?
+  writerV102PreviewRemoteUrl(ref):'';
+ if(/^(?:data:|file:|javascript:)/i.test(ref))return '';
  const file=app.vault.getAbstractFileByPath(ref)||
   app.metadataCache.getFirstLinkpathDest?.(ref,source.path);
  if(!file||!file.path||file.extension==='md')return '';
@@ -123,7 +125,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
  const dateKeys=new Set(cfg.dateKeys.split(',').map(x=>x.trim().toLowerCase()));
  const target=host.querySelector('.inline-title');
  if(cfg.banner&&fm.banner){
-  const url=writerV9215PrettyImage(plugin.app,file,fm.banner);
+  const url=writerV9215PrettyImage(plugin.app,file,fm.banner,plugin.settings.v92Explorer?.previewRemoteImages!==false);
   if(url){
    const banner=host.ownerDocument.createElement('img');
    banner.className='writer-v9215-pretty-banner';banner.src=url;banner.alt='';
@@ -140,7 +142,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   target.classList.add('writer-v93-title-icon-host');
  }
  if(cfg.cover&&fm.cover){
-  const url=writerV9215PrettyImage(plugin.app,file,fm.cover);
+  const url=writerV9215PrettyImage(plugin.app,file,fm.cover,plugin.settings.v92Explorer?.previewRemoteImages!==false);
   const metadata=host.querySelector('.metadata-container');
   if(url&&metadata){
    const cover=host.ownerDocument.createElement('img');

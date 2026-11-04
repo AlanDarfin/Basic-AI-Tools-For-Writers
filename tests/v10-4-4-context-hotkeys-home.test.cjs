@@ -34,48 +34,64 @@ test('Double-key settings migrate old Shift and support multiple mapped keys',()
  assert.equal(next.doublePressBindings[1].context,'nonText');
  assert.equal(api.writerV10ToolboxMerge(more).doublePressBindings.length,2);
 });
-test('Context action grouping preserves callbacks and extends native Format submenu',()=>{
- const callbacks=[];
- const formatMenu={items:[],addItem(fn){const item=makeItem();fn(item);this.items.push(item);}};
- function makeItem(title){
-  return {title,callback:()=>{callbacks.push(title);},
-   setTitle(value){this.title=value;return this;},setIcon(){return this;},
-   setSection(){return this;},onClick(fn){this.callback=fn;return this;},
-   setSubmenu(){return this.submenu||(this.submenu={items:[],addItem(fn){const it=makeItem();fn(it);this.items.push(it);}});}
-  };
+test('AI context menu groups all actions after later subscribers add them and preserves clicks',()=>{
+ const clicks=[],icons=[];
+ class Menu{
+  constructor(){this.items=[];}
+  addItem(fn){const item=makeItem();fn(item);this.items.push(item);}
+  showAtMouseEvent(){this.shown=true;}
  }
- const format=makeItem('Format');format.submenu=formatMenu;
- const lookup=makeItem('Significado'),translate=makeItem('Tradução'),rewrite=makeItem('Reescrever');
- const foreign=makeItem('Custom plugin action');
- const main={items:[format,lookup,translate,rewrite,foreign],addItem(fn){
-  const item=makeItem();fn(item);this.items.push(item);
- }};
- const api=expose('src/v9/context-toolbar.js',[
-  'writerV1044ContextMenus','writerV1044AiKey'],{
-  writerModuleOn:()=>true,writerV102AlignApply:()=>{},Menu:function(){}
- });
+ function makeItem(title,callback){
+  const item={title,callback,dom:{remove(){item.removed=true;},click(){clicks.push(title);}},
+   setTitle(value){this.title=value;return this;},
+   setIcon(icon){this.icon=icon;icons.push(icon);return this;},
+   setSection(){return this;},onClick(fn){this.callback=fn;return this;},
+   setSubmenu(){return this.submenu||(this.submenu=new Menu());}};
+  return item;
+ }
+ const api=expose('src/v9/context-toolbar.js',
+  ['writerV1044ContextMenus','writerV1044AiKey'],{
+   writerModuleOn:()=>true,writerV102AlignApply:()=>{},Menu,
+   writerUi:(pt,en)=>en
+  });
+ const plugin={app:{workspace:{on:(_,fn)=>{plugin.editorMenuHandler=fn;return fn;}}},
+  settings:{v9Toolbar:{enabledDesktop:true},v102Align:{enabled:true}},
+  registerEvent:()=>{},register:()=>{}};
+ api.writerV1044ContextMenus(plugin);
+ const menu=new Menu();
+ const editor={getSelection:()=>'',replaceSelection:()=>{},focus:()=>{}};
+ plugin.editorMenuHandler(menu,editor);
+ // Simulates legacy Basic and other handlers, registered after the organizer.
+ const format=makeItem('Format');format.submenu=new Menu();menu.items.push(format);
+ const originals=['Traduzir','Significado','Sinônimos','Antônimos','Reescrever']
+  .map(label=>makeItem(label));
+ menu.items.push(...originals,makeItem('Custom plugin action'));
+ assert.equal(menu.items.some(item=>item.title==='Traduzir'),true);
+ menu.showAtMouseEvent({});
+ assert.equal(menu.items.includes(format),true);
+ assert.ok(menu.items.some(item=>item.title==='Custom plugin action'));
+ for(const label of ['Traduzir','Significado','Sinônimos','Antônimos','Reescrever'])
+  assert.equal(menu.items.some(item=>item.title===label),false,label);
+ const grouped=menu.items.find(item=>item.title==='AI · Tools');
+ assert.ok(grouped);
+ const sections=grouped.submenu.items;
+ assert.deepEqual(Array.from(sections,item=>item.title),['Lookup & translate','Writing & revision']);
+ const actions=sections.flatMap(section=>section.submenu.items);
+ assert.equal(actions.length,5);
+ assert.ok(actions.some(x=>x.title==='Translate'&&x.icon==='languages')===false);
+ assert.ok(actions.some(x=>x.title==='Traduzir'&&x.icon==='languages'));
+ assert.ok(actions.some(x=>x.title==='Significado'&&x.icon==='book-open'));
+ assert.ok(actions.some(x=>x.title==='Sinônimos'&&x.icon==='list-tree'));
+ assert.ok(actions.some(x=>x.title==='Antônimos'&&x.icon==='arrow-left-right'));
+ assert.ok(actions.some(x=>x.title==='Reescrever'&&x.icon==='pencil-line'));
+ actions.find(item=>item.title==='Traduzir').callback?.();
+ assert.deepEqual(clicks,['Traduzir']);
+ assert.ok(format.submenu.items.some(item=>item.title==='Underline'));
+ assert.ok(format.submenu.items.some(item=>item.title==='Center line/heading'));
+ const count=actions.length;menu.showAtMouseEvent({});
+ assert.equal(sections.flatMap(x=>x.submenu.items).length,count);
  assert.equal(api.writerV1044AiKey('Sinônimos'),'synonyms');
  assert.equal(api.writerV1044AiKey('Adicionar link'),'');
- let callback;
- const plugin={app:{workspace:{on:(name,fn)=>{assert.equal(name,'editor-menu');callback=fn;return fn;}}},
-  settings:{v9Toolbar:{enabledDesktop:true},v102Align:{enabled:true}},
-  registerEvent:()=>{}};
- api.writerV1044ContextMenus(plugin);
- callback(main,{getSelection:()=>'',replaceSelection:()=>{},focus:()=>{}});
- assert.equal(main.items.includes(format),true);
- assert.equal(main.items.includes(foreign),true);
- assert.equal(main.items.includes(lookup),false);
- assert.equal(main.items.includes(translate),false);
- assert.ok(formatMenu.items.some(item=>item.title==='Underline'));
- assert.ok(formatMenu.items.some(item=>item.title==='Center line/heading'));
- const ai=main.items.find(item=>item.title==='AI · Tools');
- assert.ok(ai);
- const sections=ai.submenu.items;
- assert.equal(sections.length,2);
- const actions=sections.flatMap(section=>section.submenu.items);
- assert.equal(actions.length,3);
- actions.find(x=>x.title==='Significado').callback?.();
- assert.deepEqual(callbacks,['Significado']);
 });
 test('Homepage focuses search on desktop and replaces its own leaf',()=>{
  const code=source('src/v8/writing-home.js');

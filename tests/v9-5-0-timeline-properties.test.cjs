@@ -51,6 +51,42 @@ test('Invalid themes, colors and limits fail safely without code evaluation',()=
  const many=Array.from({length:90},(_,i)=>'+ '+i+'\n+ Event '+i+'\n+ Content').join('\n');
  assert.equal(api.writerV95TimelineParse(many).events.length,80);
 });
+test('All original line/body presets and 11 accent colors are supported',()=>{
+ const originalColors=[
+  'background-modifier-success','background-modifier-error','background-modifier-error-hover',
+  'text-accent','text-accent-hover','text-error','text-error-hover','text-selection',
+  'interactive-accent','interactive-accent-hover','interactive-success'
+ ];
+ for(let line=2;line<=5;line++)for(let body=2;body<=4;body++){
+  const data=api.writerV95TimelineParse(
+   '[line-'+line+', body-'+body+']\n+ 2026\n+ Event\n+ Body');
+  assert.equal(data.config.line,line);
+  assert.equal(data.config.body,body);
+ }
+ for(const color of originalColors){
+  const parsed=api.writerV95TimelineParse(
+   '[active-color-'+color+']\n+ 2026\n+ Event\n+ Body');
+  assert.equal(parsed.config.accent,'var(--'+color+')',color);
+ }
+ const flags=api.writerV95TimelineParse(
+  '[spaced-lines, hide-titles]\n+ 2026\n+ Test\n+ Body');
+ assert.equal(flags.config.spacedLines,true);
+ assert.equal(flags.config.hideTitles,true);
+});
+test('Timeline themes have distinct CSS, in both layout orientations',()=>{
+ const css=fs.readFileSync('src/styles/v9-5-timeline.css','utf8');
+ const js=fs.readFileSync('src/v9/timeline-blocks.js','utf8');
+ for(const theme of ['minimal','compact','poster','glass','terminal']){
+  assert.match(css,new RegExp('is-theme-'+theme));
+  assert.ok(api.writerV95TimelineParse('theme: '+theme+'\n+ 2026\n+ Event\n+ Body').config.theme===theme);
+ }
+ for(const type of [2,3,4,5])assert.ok(css.includes('.is-line-'+type));
+ for(const type of [2,3,4])assert.ok(css.includes('.is-body-'+type));
+ assert.match(css,/is-theme-minimal \.writer-v95-timeline-event-body/);
+ assert.match(css,/is-theme-compact \.writer-v95-timeline-head/);
+ assert.ok(js.includes('writer-v105-timeline-selector'));
+ assert.ok(js.includes('is-layout-horizontal'));
+});
 test('Property search lives inside native collapsible properties and preserves the filter',()=>{
  const js=fs.readFileSync('src/v9/pretty-properties.js','utf8');
  const css=fs.readFileSync('src/styles/v9-5-timeline.css','utf8');

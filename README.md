@@ -2,12 +2,19 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.4 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.5 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.5 — timeline visual presets and complete AI context grouping
+
+- **Context menu:** organize AI tools at menu-display time, after other editors have registered actions, so Translate, Meaning, Synonyms, Antonyms and Rewrite appear under **AI · Tools** instead of duplicating in the root. Lookup/Translation and Writing/Revision have distinct Lucide icons; original actions and other plugins are kept.
+- **Timeline:** restore visual distinctions from George-debug's original `line-2` to `line-5` and `body-2` to `body-4` styles (rings, solid dots, dashed rails, diamonds, panel/flag/accent borders), including all eleven upstream `active-color-*` tokens and `spaced-lines` / `hide-titles`.
+- **Named themes:** Minimal is now open, unboxed prose; Compact uses dense rows with inline date and title. Cards, Classic and Editorial remain, joined by Poster, Glass and Terminal. The Timeline toolbar offers live theme, line and card selectors without changing the Markdown source.
+- **Compatibility:** preserves image events, horizontal/vertical layouts, metadata links, groups, search and old code fences. Includes automated syntax and regression tests.
 
 ## Version 10.4.4 — context menus, double-press hotkeys and Homepage navigation
 

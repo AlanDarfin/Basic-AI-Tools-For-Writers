@@ -2,13 +2,20 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.4 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.5 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.5 — timeline e menu de IA corrigidos
+
+- **Menu de contexto:** organiza os comandos quando o menu abre, depois que os demais módulos registram seus itens. Traduzir, Significado, Sinônimos, Antônimos e Reescrever passam a aparecer dentro de **IA · Ferramentas**, nos grupos Consulta/Tradução e Escrita/Revisão, com ícones Lucide distintos e sem duplicação na raiz.
+- **Timeline:** recupera as diferenças visuais originais entre `line-2` e `line-5` e entre `body-2` e `body-4` (marcadores vazados, sólidos, tracejados e em losango; cartões lisos, com bandeira ou faixa colorida). Inclui as onze cores `active-color-*` originais e `spaced-lines` / `hide-titles`.
+- **Temas:** Minimal ficou aberto, sem cartões e com espaço de leitura; Compact usa linhas densas, data e título lado a lado. Classic, Cards e Editorial continuam; Poster, Glass e Terminal são novos. A barra da timeline permite alterar tema, linha e cartão visualmente sem modificar o Markdown.
+- **Compatibilidade:** preservados fotos, eventos, orientação horizontal/vertical, filtros, busca, links e sintaxes anteriores; adicionados testes de regressão.
 
 ## Atualização 10.4.4 — Menus, atalhos por tecla dupla e homepage
 

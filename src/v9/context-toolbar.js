@@ -112,89 +112,117 @@ function writerV1044MenuAdd(parent,title,icon,callback,section){
   item.onClick(callback);
  });
 }
-function writerV1044ContextMenus(plugin){
- plugin.registerEvent?.(plugin.app.workspace.on('editor-menu',(menu,editor)=>{
-  if(!editor||!menu?.addItem||!plugin.settings.v9Toolbar)return;
-  const cfg=plugin.settings.v9Toolbar;
-  const items=Array.isArray(menu.items)?menu.items:[];
-  const format=items.find(item=>/^(formatar|format)$/i.test(writerV1044MenuTitle(item)));
-  let formatMenu=null;
-  if(format&&typeof format.setSubmenu==='function'){
-   // Returns the current submenu if present; does not replace built-ins.
-   try{formatMenu=format.submenu||format.setSubmenu();}catch(_){}
+const WRITER_V1045_AI_ICONS={
+ translate:'languages',meaning:'book-open',synonyms:'list-tree',
+ antonyms:'arrow-left-right',rewrite:'pencil-line',smart:'wand-sparkles'
+};
+function writerV1045OrganizeEditorMenu(plugin,menu,editor){
+ if(!menu||menu.__writerV1045Organized||!editor||typeof menu.addItem!=='function')return;
+ menu.__writerV1045Organized=true;
+ const items=Array.isArray(menu.items)?menu.items:null;
+ if(!items)return; // Obsidian changed internals: do not risk breaking native actions.
+ const format=items.find(item=>/^(formatar|format)$/i.test(writerV1044MenuTitle(item)));
+ let formatMenu=format?.submenu||null;
+ if(!formatMenu&&typeof format?.setSubmenu==='function'){
+  try{formatMenu=format.setSubmenu();}catch(_){}
+ }
+ const addFormat=parent=>{
+  const existing=new Set((parent.items||[]).map(item=>writerV1044MenuTitle(item)));
+  for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
+   if(!['underline','superscript','subscript','highlight','codeblock',
+    'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
+   const title=writerUi(pt,en);
+   if(existing.has(title))continue;
+   writerV1044MenuAdd(parent,title,icon,()=>{
+    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
+   },'basic-format');
   }
-  const addFormat=parent=>{
-   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
-    if(!['underline','superscript','subscript','highlight','codeblock',
-     'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
-    writerV1044MenuAdd(parent,writerUi(pt,en),icon,()=>{
-     if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
-    },'basic-format');
+  if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
+   for(const [side,icon,pt,en] of [
+    ['l','align-left','Alinhar à esquerda','Align left'],
+    ['c','align-center','Centralizar linha/título','Center line/heading'],
+    ['r','align-right','Alinhar à direita','Align right']]){
+    const title=writerUi(pt,en);
+    if(existing.has(title))continue;
+    writerV1044MenuAdd(parent,title,icon,()=>writerV102AlignApply(editor,side),'basic-align');
    }
-   if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
-    for(const [side,icon,pt,en] of [
-     ['l','align-left','Alinhar à esquerda','Align left'],
-     ['c','align-center','Centralizar linha/título','Center line/heading'],
-     ['r','align-right','Alinhar à direita','Align right']]){
-     writerV1044MenuAdd(parent,writerUi(pt,en),icon,()=>writerV102AlignApply(editor,side),'basic-align');
+  }
+ };
+ if(formatMenu)addFormat(formatMenu);
+ else menu.addItem(item=>{
+  item.setTitle(writerUi('Formatação do Basic','Basic formatting')).setIcon('type');
+  if(typeof item.setSubmenu==='function')addFormat(item.setSubmenu());
+  else item.onClick?.(event=>{
+   const sub=new Menu(plugin.app);addFormat(sub);sub.showAtMouseEvent?.(event);
+  });
+ });
+ // Group after all editor-menu listeners have run. Older Basic handlers are
+ // often added after this module and their MenuItems have no .callback field.
+ const grouped={lookup:[],writing:[]};
+ for(const old of [...items]){
+  const title=writerV1044MenuTitle(old),key=writerV1044AiKey(title);
+  if(!key)continue;
+  const clickable=typeof old.callback==='function'||typeof old.dom?.click==='function';
+  if(!clickable)continue;
+  const section=['meaning','synonyms','antonyms','translate'].includes(key)?'lookup':'writing';
+  grouped[section].push({old,title,key});
+ }
+ if(!grouped.lookup.length&&!grouped.writing.length)return;
+ const groups=Object.entries(grouped).filter(([,list])=>list.length);
+ let moved=0;
+ menu.addItem(top=>{
+  top.setTitle(writerUi('IA · Ferramentas','AI · Tools')).setIcon('brain-circuit');
+  top.setSection?.('basic-ai');
+  if(typeof top.setSubmenu!=='function')return; // Keep legacy root actions untouched.
+  const ai=top.setSubmenu();
+  for(const [group,entries] of groups){
+   const label=group==='lookup'?writerUi('Pesquisar e traduzir','Lookup & translate'):
+    writerUi('Escrever e revisar','Writing & revision');
+   const groupIcon=group==='lookup'?'book-open-check':'pencil-ruler';
+   ai.addItem(groupItem=>{
+    groupItem.setTitle(label).setIcon(groupIcon);
+    const target=typeof groupItem.setSubmenu==='function'?groupItem.setSubmenu():ai;
+    for(const entry of entries){
+     writerV1044MenuAdd(target,entry.title,WRITER_V1045_AI_ICONS[entry.key]||'sparkles',event=>{
+      if(typeof entry.old.callback==='function')entry.old.callback.call(entry.old,event);
+      else entry.old.dom?.click?.();
+     },'basic-ai-'+group);
+     const index=items.indexOf(entry.old);
+     if(index>=0)items.splice(index,1);
+     entry.old.dom?.remove?.();
+     moved++;
     }
-   }
-  };
-  if(formatMenu)addFormat(formatMenu);
-  else{
-   // Compatibility fallback when Obsidian's private submenu cannot be extended.
-   menu.addItem(item=>{
-    item.setTitle(writerUi('Formatação do Basic','Basic formatting')).setIcon('type');
-    if(typeof item.setSubmenu==='function')addFormat(item.setSubmenu());
-    else item.onClick(event=>{
-     const submenu=new Menu(plugin.app);addFormat(submenu);
-     submenu.showAtMouseEvent?.(event);
-    });
    });
   }
-  // Move only Basic's own legacy AI entries, preserving original callbacks.
-  // Unknown third-party items, native actions and unsupported menu internals stay intact.
-  const groups={lookup:[],writing:[]};
-  for(const old of [...items]){
-   const key=writerV1044AiKey(writerV1044MenuTitle(old));
-   if(!key||typeof old.callback!=='function')continue;
-   const index=items.indexOf(old);
-   if(index<0)continue;
-   items.splice(index,1);
-   (['meaning','synonyms','antonyms','translate'].includes(key)?groups.lookup:groups.writing)
-    .push({old,key,title:writerV1044MenuTitle(old)});
-  }
-  if(!groups.lookup.length&&!groups.writing.length)return;
-  menu.addItem(item=>{
-   item.setTitle(writerUi('IA · Ferramentas','AI · Tools')).setIcon('sparkles').setSection?.('basic-ai');
-   if(typeof item.setSubmenu!=='function'){
-    item.onClick(event=>{
-     const fallback=new Menu(plugin.app);
-     for(const entry of [...groups.lookup,...groups.writing])
-      writerV1044MenuAdd(fallback,entry.title,'sparkles',()=>entry.old.callback.call(entry.old,event));
-     fallback.showAtMouseEvent?.(event);
-    });
-    return;
-   }
-   const ai=item.setSubmenu();
-   for(const [group,title,icon] of [
-    [groups.lookup,writerUi('Pesquisar e traduzir','Lookup & translate'),'search'],
-    [groups.writing,writerUi('Escrever e revisar','Writing & revision'),'pencil']]){
-    if(!group.length)continue;
-    ai.addItem(sub=>{
-     sub.setTitle(title).setIcon(icon);
-     if(typeof sub.setSubmenu==='function'){
-      const nested=sub.setSubmenu();
-      for(const entry of group)writerV1044MenuAdd(nested,entry.title,'sparkles',
-       event=>entry.old.callback.call(entry.old,event));
-     }else{
-      for(const entry of group)writerV1044MenuAdd(ai,entry.title,'sparkles',
-       event=>entry.old.callback.call(entry.old,event));
-     }
-    });
-   }
-  });
+ });
+ if(!moved)return;
+}
+function writerV1044ContextMenus(plugin){
+ // Register early to identify which menus belong to our editor, but finalize
+ // at display time, *after* every other editor-menu subscriber has added items.
+ plugin.registerEvent?.(plugin.app.workspace.on('editor-menu',(menu,editor)=>{
+  if(!plugin.settings.v9Toolbar||!editor)return;
+  menu.__writerV1045Editor=editor;
  }));
+ if(typeof Menu==='undefined'||!Menu?.prototype)return;
+ const prototype=Menu.prototype,patches=[];
+ for(const key of ['showAtMouseEvent','showAtPosition','showAtCoordinates']){
+  const original=prototype[key];
+  if(typeof original!=='function')continue;
+  const replacement=function(){
+   if(this.__writerV1045Editor&&!this.__writerV1045Organized)
+    writerV1045OrganizeEditorMenu(plugin,this,this.__writerV1045Editor);
+   return original.apply(this,arguments);
+  };
+  try{prototype[key]=replacement;
+   if(prototype[key]===replacement)patches.push([key,original,replacement]);
+  }catch(_){}
+ }
+ plugin.register?.(()=>{
+  for(const [key,original,replacement] of patches){
+   if(prototype[key]===replacement)prototype[key]=original;
+  }
+ });
 }
 
 function writerV9RegisterToolbar(plugin){

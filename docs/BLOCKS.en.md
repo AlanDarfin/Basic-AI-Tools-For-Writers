@@ -405,7 +405,7 @@ next: "[[Writing/Chapter 03]]"
 
 ## 14. Narrative timelines (`timeline` / `timeline-labeled`)
 
-Both the original George-debug Timeline block formats work in Basic. The original bracket presets (`line-2` through `line-5`, `body-2` through `body-4` and selected `active-color-*` presets) are supported. Dates can be text such as “Before the war”; they are not forced into Gregorian dates.
+Both the original George-debug Timeline block formats work in Basic. The original bracket presets (`line-2` through `line-5`, `body-2` through `body-4` and all 11 original `active-color-*` presets) are supported. Dates can be text such as “Before the war”; they are not forced into Gregorian dates.
 
 **Original three-plus syntax:**
 
@@ -455,7 +455,9 @@ A second moment on the same interactive timeline.
 ~~~
 ~~~~
 
-Options: `layout` (`vertical` or `horizontal`), `theme` (`classic`, `cards`, `minimal`, `compact`, `editorial`), `density` (`normal`, `compact`, `comfortable`), `sort` (`source`, `asc`, `desc`), `controls` (`true` or `false`), `color` (six-digit hexadecimal), `line` (2–5), `body` (2–4). Event fields: `date`, `title`, `content`, `group`, `image`, `color`, `icon`, `link`. Images and linked notes resolve **only from your vault**. Search, group filtering, orientation switching, horizontal scrolling and keyboard-friendly controls are available without rewriting the note. The plugin's Longform project timeline remains independent.
+Options: `layout` (`vertical` or `horizontal`), `theme` (`classic`, `cards`, `minimal`, `compact`, `editorial`, `poster`, `glass`, `terminal`), `density` (`normal`, `compact`, `comfortable`), `sort` (`source`, `asc`, `desc`), `controls` (`true` or `false`), `color` (six-digit hexadecimal), `line` (2–5), `body` (2–4). Event fields: `date`, `title`, `content`, `group`, `image`, `color`, `icon`, `link`. Images and linked notes resolve **only from your vault**. Search, group filtering, orientation switching, horizontal scrolling and keyboard-friendly controls are available without rewriting the note. The plugin's Longform project timeline remains independent.
+
+Original line styles: `line: 2` uses a hollow ring, `line: 3` a solid dot, `line: 4` a dashed rail and target-shaped marker, and `line: 5` a diamond. Original card styles: `body: 2` is a panel, `body: 3` a colorful arrow banner, and `body: 4` a side accent strip. The original `spaced-lines`, `hide-titles`, and all 11 `active-color-*` presets are supported. The timeline toolbar lets you try themes, lines and cards; edit the Markdown block to save a choice. Minimal has unboxed prose and airy dividers, while Compact has dense rows with dates and titles aligned side by side.
 
 ## Troubleshooting
 

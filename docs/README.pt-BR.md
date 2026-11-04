@@ -2,13 +2,21 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.7 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.8 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.8 — Barra de formatação avançada e pesquisa de opções
+
+- **Toolbar:** além dos botões Markdown anteriores, há recuo, retirar recuo, alinhamentos esquerda/centro/direita e justificado, cor do texto e cor de destaque. No celular a barra continua opcional e não substitui a barra nativa do Obsidian.
+- **Personalização inspirada no Editing Toolbar:** escolha comandos da paleta (inclusive de plugins instalados), altere nome e ícone Lucide de cada botão, crie grupos com submenus e reordene com arraste ou setas. Há estilos Mínima, Compacta e Confortável, nomes nos botões, ajuste de tamanho e cores.
+- **Posição:** embaixo, em cima ou acompanhar o cursor no PC (no celular, o último modo usa a posição inferior).
+- **Pesquisa de configurações:** busca por opção específica, não apenas pelo nome da aba. Inclui as configurações visíveis, outras abas já visitadas e os botões de formatação mesmo com a lista recolhida. O termo `subescrito` encontra `Subscrito`; tocar no resultado abre a seção e destaca o controle.
+- **Visual das configurações:** campo de busca mais discreto, resultados compactos, abas com rolagem horizontal e campos adaptados para telas estreitas.
 
 ## Atualização 10.4.7 — Explorador compacto no celular
 

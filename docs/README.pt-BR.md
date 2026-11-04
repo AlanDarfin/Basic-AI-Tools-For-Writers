@@ -2,13 +2,21 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.3.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.0 — Explorador, Spaces e áudio
+
+- **Explorador:** a ordenação personalizada passa a integrar a listagem nativa quando disponível, com fallback para outras versões; a ocultação global agora inclui arquivos dentro das pastas ocultas.
+- **Ordenação manual:** arraste itens de uma mesma pasta no modo personalizado; exigir Alt é opcional, e o local de soltar tem indicação visual. As setas do celular continuam disponíveis.
+- **Spaces:** selecionar uma Space a ativa; seleção manual pode seguir a ordem das notas incluídas, e a busca lista até 5.000 notas com paginação. É possível adicionar a nota atual pelo menu.
+- **Chat:** ícone de play/pause centralizado no círculo do áudio fictício.
+- **Revisão e leitura:** controle de espessura e cor da barra de progresso de leitura.
 
 ## Atualização 10.3.0 — Explorador, Spaces e alinhamento
 

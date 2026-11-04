@@ -129,8 +129,8 @@ class WriterCursorMemory{
     }
     const cleanup=()=>{
      if(!dom)return;
-     dom.removeEventListener('touchstart',cancel);
-     dom.removeEventListener('pointerdown',cancel);
+     dom.removeEventListener?.('touchstart',cancel);
+     dom.removeEventListener?.('pointerdown',cancel);
     };
     const attempts=mobile?[130,460,850]:[110];
     for(const [index,delay] of attempts.entries())this.timer(()=>{

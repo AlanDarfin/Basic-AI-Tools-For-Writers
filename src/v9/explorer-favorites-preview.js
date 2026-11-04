@@ -7,7 +7,7 @@ function writerV92ExplorerMerge(settings){
  const old=settings.v92Explorer&&typeof settings.v92Explorer==='object'?settings.v92Explorer:{};
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
-  previewVisible:true,showImage:true,previewLines:2,previewImageSize:62,
+  previewVisible:true,showImage:true,previewLines:3,previewImageSize:62,
   previewTouchExpand:true,previewHoldMs:650,folderDescriptions:true,noteExcerpts:true,hoverExpand:true,
   folderDescriptionKey:'description',noteDescriptionKey:'description',favoriteIconColor:'',
   ...old
@@ -18,7 +18,7 @@ function writerV92ExplorerMerge(settings){
  cfg.previewTouchExpand=cfg.previewTouchExpand!==false;
  for(const key of ['folderDescriptions','noteExcerpts','hoverExpand'])cfg[key]=cfg[key]!==false;
  cfg.previewHoldMs=Math.max(400,Math.min(1500,Number(cfg.previewHoldMs)||650));
- cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||2)));
+ cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||3)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
  cfg.favoriteIcon=/^[a-z][a-z0-9-]{0,38}$/.test(cfg.favoriteIcon)?cfg.favoriteIcon:'star';
  cfg.favoriteIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.favoriteIconColor||''))?cfg.favoriteIconColor:'';
@@ -155,13 +155,30 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  if(!label)return;
  const long=String(fullText||'');
  const wasExpanded=shell.classList.contains('is-expanded');
- const truncated=long.length>shortText.length||
+ // CSS line-clamping can hide overflow from scrollHeight in Android WebView.
+ let truncated=long.length>shortText.length||
   (!wasExpanded&&label.scrollHeight>label.clientHeight+1)||
   (wasExpanded&&shell.dataset.expandable==='true');
+ if(!truncated&&!wasExpanded&&label.clientWidth&&label.clientHeight&&typeof label.cloneNode==='function'){
+  const copy=label.cloneNode(false);
+  copy.textContent=shortText;
+  copy.style.position='absolute';
+  copy.style.visibility='hidden';
+  copy.style.pointerEvents='none';
+  copy.style.display='block';
+  copy.style.width=label.clientWidth+'px';
+  copy.style.maxHeight='none';
+  copy.style.webkitLineClamp='unset';
+  copy.style.overflow='visible';
+  shell.appendChild(copy);
+  truncated=copy.getBoundingClientRect().height>label.clientHeight+1;
+  copy.remove();
+ }
  const expanded=shell.classList.contains('is-expanded');
  shell.dataset.previewShort=shortText; shell.dataset.previewFull=long;
  shell.dataset.expandable=String(truncated);
  shell.classList.toggle('is-expandable',truncated);
+ label.classList.toggle('writer-v931-truncated',truncated&&!expanded);
  if(!truncated)shell.classList.remove('is-expanded');
  if(truncated){
   shell.setAttribute('tabindex','0');shell.setAttribute('role','button');
@@ -179,13 +196,13 @@ function writerV929PreviewExpand(shell,shortText,fullText){
   if(shell.dataset.expandable!=='true'||!shell.isConnected)return;
   shell.classList.add('is-expanded');shell.setAttribute('aria-expanded','true');
   const target=shell.querySelector(':scope > .writer-v92-file-preview');
-  if(target)target.textContent=shell.dataset.previewFull;
+  if(target){target.textContent=shell.dataset.previewFull;target.classList.remove('writer-v931-truncated');}
  };
  const close=()=>{
   clearTimeout(timer);timer=null;touchLocked=false;
   shell.classList.remove('is-expanded');shell.setAttribute('aria-expanded','false');
   const target=shell.querySelector(':scope > .writer-v92-file-preview');
-  if(target)target.textContent=shell.dataset.previewShort;
+  if(target){target.textContent=shell.dataset.previewShort;target.classList.toggle('writer-v931-truncated',shell.dataset.expandable==='true');}
  };
  shell.addEventListener('mouseenter',()=>{
   if(shell.dataset.expandable!=='true'||shell.dataset.hoverEnabled==='false')return;

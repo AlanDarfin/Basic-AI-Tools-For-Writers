@@ -94,12 +94,15 @@ function writerV8ChatNameKey(name){
 }
 function writerV8ChatDirectives(lines){
  const profiles=new Map(),defaults={left:'',right:''};
- let title='',start=0,options={density:'normal',bubbles:'soft',avatars:true,width:'normal'};
+ let title='',groupImage='',start=0,options={density:'normal',bubbles:'soft',avatars:true,width:'normal'};
  for(let i=0;i<lines.length;i++){
   const line=lines[i].trim();
   if(!line){start=i+1;continue;}
   const heading=/^title:\s*(.+)$/i.exec(line);
   if(heading){title=heading[1].trim().slice(0,100);start=i+1;continue;}
+  // Conversation image is independent from individual participants' avatars.
+  const groupPhoto=/^(?:group[-_ ]?(?:image|photo|avatar)|title[-_ ]?image|chat[-_ ]?image):[ \t]*(.+)$/i.exec(line);
+  if(groupPhoto){groupImage=groupPhoto[1].trim().slice(0,450);start=i+1;continue;}
   const opt=/^(density|bubbles|avatars|width):\s*(\S+)\s*$/i.exec(line);
   if(opt){
    const k=opt[1].toLowerCase(),value=opt[2].toLowerCase();
@@ -141,7 +144,7 @@ function writerV8ChatDirectives(lines){
   }
   break;
  }
- return {title,defaults,profiles,start,options};
+ return {title,groupImage,defaults,profiles,start,options};
 }
 function writerV8ChatSplitFields(value){
  const parts=[];let current='',brackets=0,parentheses=0,codeTicks=0;
@@ -232,6 +235,11 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  button.addEventListener('click',()=>update(!player.classList.contains('is-animating')));
 }
 
+/* Standalone --- separates messages; --- label --- places text between rules. */
+function writerV8ChatDivider(line){
+ const match=/^[ \t]{0,3}---(?:[ \t]+([^\r\n]{1,120}?)[ \t]+---)?[ \t]*$/.exec(String(line||''));
+ return match?{type:'divider',text:String(match[1]||'').trim().slice(0,120)}:null;
+}
 function writerV8ChatParseLegacy(source,meta){
  const sections=source.split(/^===\s+(.{1,90})\s*$/m),messages=[];
  for(let i=1;i+1<sections.length&&messages.length<50;i+=2){

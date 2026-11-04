@@ -163,18 +163,25 @@ This is fictional, locally rendered content; there is no network posting.
 ~~~~markdown
 ~~~chat
 title: Archive expedition
+group-image: [[Images/Expedition.webp]]
 [Left=Mira, right=Jonas]
 [Mira=blue, Jonas=green]
 [Mira=[[Characters/Mira.png]]]
 < | Mira | We found the entrance. | 09:41
+---
 > | Jonas | I'll bring the supplies. | 09:42
-< | | Check the map first. | 09:43
+--- Two hours later ---
+< | | Check the map first. | 11:43
 > | | Understood.
 ~~~
 ~~~~
 
 A simpler valid format is `< Mira | Hello` or `> Jonas | Hi | 10:00`. Legacy `=== Speaker` sections remain supported with `avatar`, `time`, `side` or `mine` fields before `---`.
 
+
+**Chat dividers:** write `---` on its own line **between messages** for a simple dividing line. Write `--- Two hours later ---` or `--- 14:30 ---` to center an elapsed-time or timestamp label. Dividers render outside the message bubbles and reset consecutive-speaker grouping. In the older `=== Speaker` format, the **first** plain `---` after a legacy header still separates metadata from the body; later dividers render in the transcript.
+
+**Group photo:** add `group-image: [[Images/Expedition.webp]]` just below `title:` for a circular image beside the conversation title. `group-photo:` and `group-avatar:` are also accepted. Image paths resolve only to files in the vault; remote images are ignored. The group image is independent of participant avatars and remains visible with `avatars: off`.
 
 **New fictional voice notes:** use `[audio:0:15]` or `[voice:1:09]` as the entire message body. The play/pause button animates a waveform but **does not produce audio, record, or upload anything**. Example: `< | [audio:0:15] | 10:00`.
 

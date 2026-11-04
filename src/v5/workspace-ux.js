@@ -81,11 +81,12 @@ function writerWorkspaceSearchSections(sections,query){
  }).slice(0,12);
 }
 function writerWorkspaceFilterRows(panel,query){
- const q=writerWorkspaceSearchNormalize(query);
+ const terms=writerV1048SearchWords(query);
  let visible=0;
- for(const row of panel.querySelectorAll('.setting-item')){
-  const hay=writerWorkspaceSearchNormalize(row.textContent||'');
-  row.hidden=Boolean(q&&!q.split(/\s+/).every(t=>hay.includes(t)));
+ for(const row of panel?.querySelectorAll?.('.setting-item')||[]){
+  const hay=writerWorkspaceSearchNormalize(row.textContent||'')
+   .replace(/\bsubescrito\b/g,'subscrito').replace(/\bsuperescrito\b/g,'sobrescrito');
+  row.hidden=Boolean(terms.length&&!terms.every(term=>hay.includes(term)));
   if(!row.hidden)visible++;
  }
  return visible;

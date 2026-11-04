@@ -74,8 +74,8 @@ test('Context action grouping preserves callbacks and extends native Format subm
  assert.equal(sections.length,2);
  const actions=sections.flatMap(section=>section.submenu.items);
  assert.equal(actions.length,3);
- actions.find(x=>x.title==='Meaning').callback?.();
- assert.ok(callbacks.length>=0);
+ actions.find(x=>x.title==='Significado').callback?.();
+ assert.deepEqual(callbacks,['Significado']);
 });
 test('Homepage focuses search on desktop and replaces its own leaf',()=>{
  const code=source('src/v8/writing-home.js');

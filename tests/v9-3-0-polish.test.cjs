@@ -30,7 +30,7 @@ test('Title icons do not affect editable title baseline and toolbar icons are si
  assert.match(source,/writer-v93-title-icon-host/);
  assert.match(source,/title\.classList\.toggle/);
  assert.match(css,/\.inline-title\.writer-v93-title-icon-host/);
- const titleRule=css.slice(css.indexOf('/* 9.3.2 — Place note icons'));
+ const titleRule=css.slice(css.indexOf('/* 9.3.2 — Place note icons'),css.indexOf('/* Folder Note previews are the YAML description'));
  assert.match(titleRule,/position:static/);
  assert.match(titleRule,/padding-inline-start:0/);
  assert.match(titleRule,/vertical-align:-\.13em/);

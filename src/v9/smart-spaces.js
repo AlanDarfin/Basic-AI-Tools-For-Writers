@@ -7,7 +7,7 @@ const WRITER_V9_SPACE_MAX=200;
 const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
- const cfg=settings.v9Spaces={enabled:false,dock:true,manageIcon:true,sidebar:true,activeId:'',spaces:[],...raw};
+ const cfg=settings.v9Spaces={enabled:false,dock:true,manageIcon:true,sidebar:true,autoSaveLayouts:false,restoreLayoutsOnSwitch:false,activeId:'',spaces:[],...raw};
  cfg.enabled=cfg.enabled===true;
  cfg.dock=cfg.dock!==false;
  cfg.manageIcon=cfg.manageIcon!==false;cfg.sidebar=cfg.sidebar!==false;
@@ -41,7 +41,7 @@ function writerV9SpaceSanitize(raw){
   const order=Array.isArray(record.order)?[...new Set(record.order.filter(n=>typeof n==='string'&&n.length<300))].slice(0,1000):[];
   folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60),foldersFirst:record.foldersFirst===true};
  }
- const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
+ const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'];
  const homeWidgetsEnabled=raw.homeWidgetsEnabled===true;
  const homeOrder=Array.isArray(raw.homeOrder)?[...new Set(raw.homeOrder.filter(key=>widgetKeys.includes(key)))]:[];
  const homeHidden=Array.isArray(raw.homeHidden)?[...new Set(raw.homeHidden.filter(key=>widgetKeys.includes(key)))]:[];
@@ -49,7 +49,14 @@ function writerV9SpaceSanitize(raw){
   .filter(([key,value])=>widgetKeys.includes(key)&&['compact','normal','wide'].includes(value)));
  const icon=/^[a-z][a-z0-9-]{0,60}$/.test(raw.icon||'')?raw.icon:'layers';
  const iconColor=/^#[\da-f]{6}$/i.test(raw.iconColor||'')?raw.iconColor:'';
- return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes};
+ let layoutSnapshot=null;
+ try{
+  if(raw.layoutSnapshot&&typeof raw.layoutSnapshot==='object'&&!Array.isArray(raw.layoutSnapshot)){
+   const json=JSON.stringify(raw.layoutSnapshot);
+   if(json.length<=120000)layoutSnapshot=JSON.parse(json);
+  }
+ }catch(_){}
+ return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes,layoutSnapshot};
 }
 /* Space state changes only affect views, never the vault contents. */
 function writerV9215ActiveSpace(plugin){
@@ -68,12 +75,35 @@ function writerV9215SpaceHidden(plugin,path){
  const space=writerV9215ActiveSpace(plugin);
  return Boolean(space&&(space.hiddenPaths||[]).some(p=>path===p||path.startsWith(p.replace(/\/$/,'')+'/')));
 }
+function writerV10SpaceSaveLayout(plugin,space){
+ const layout=plugin.app.workspace.getLayout?.();
+ if(!space||!layout||typeof layout!=='object')return false;
+ try{
+  const snapshot=JSON.stringify(layout);
+  if(snapshot.length>120000)return false;
+  space.layoutSnapshot=JSON.parse(snapshot);return true;
+ }catch(_){return false;}
+}
+async function writerV10SpaceRestoreLayout(plugin,space){
+ if(!space?.layoutSnapshot||typeof plugin.app.workspace.changeLayout!=='function')return false;
+ try{
+  await plugin.app.workspace.changeLayout(space.layoutSnapshot);
+  return true;
+ }catch(error){
+  console.warn('[Basic AI] Space layout could not be restored',error);return false;
+ }
+}
 async function writerV9215SelectSpace(plugin,id){
  const cfg=plugin.settings.v9Spaces;
  const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
  if(cfg.activeId===next)return;
+ const previous=cfg.spaces.find(space=>space.id===cfg.activeId);
+ if(cfg.autoSaveLayouts&&previous)writerV10SpaceSaveLayout(plugin,previous);
  cfg.activeId=next;
  await plugin.saveSettings();
+ if(cfg.restoreLayoutsOnSwitch&&next){
+  await writerV10SpaceRestoreLayout(plugin,cfg.spaces.find(space=>space.id===next));
+ }
  plugin.writerV91FlexRefresh?.();
  plugin.writerV9SpacesRefresh?.();
  plugin.writerV9216SpacesDockRefresh?.();
@@ -369,6 +399,23 @@ function writerV9SpacesSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Barra de Spaces no rodapé do explorador','Space switcher at the bottom of File Explorer'))
   .addToggle(t=>t.setValue(cfg.dock).onChange(async value=>{
    cfg.dock=value;await plugin.saveSettings();plugin.writerV9216SpacesDockRefresh?.();
+  }));
+ new Setting(panel).setName(writerUi('Salvar layouts ao trocar de Space','Save layouts when switching Spaces'))
+  .setDesc(writerUi('Mantém a posição de painéis por Space, sem mover arquivos do cofre.','Keeps a pane layout per Space, without moving vault files.'))
+  .addToggle(t=>t.setValue(cfg.autoSaveLayouts===true).onChange(async value=>{cfg.autoSaveLayouts=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Restaurar layouts ao trocar de Space','Restore layout on Space switch'))
+  .setDesc(writerUi('Opcional: pode reorganizar abas e painéis abertos.','Optional: may rearrange open tabs and panes.'))
+  .addToggle(t=>t.setValue(cfg.restoreLayoutsOnSwitch===true).onChange(async value=>{cfg.restoreLayoutsOnSwitch=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Layout do Space ativo','Active Space layout'))
+  .setDesc(writerUi('Salve ou restaure manualmente a disposição atual.','Manually save or restore the current arrangement.'))
+  .addButton(b=>b.setButtonText(writerUi('Salvar layout','Save layout')).onClick(async()=>{
+   const space=cfg.spaces.find(s=>s.id===cfg.activeId);
+   if(!writerV10SpaceSaveLayout(plugin,space)){new Notice(writerUi('Escolha um Space ou simplifique o layout.','Select a Space or simplify the layout.'));return;}
+   await plugin.saveSettings();new Notice(writerUi('Layout salvo neste Space.','Layout saved for this Space.'));
+  }))
+  .addButton(b=>b.setButtonText(writerUi('Restaurar','Restore')).onClick(async()=>{
+   const space=cfg.spaces.find(s=>s.id===cfg.activeId);
+   if(!await writerV10SpaceRestoreLayout(plugin,space))new Notice(writerUi('Nenhum layout salvo ou restauração indisponível.','No saved layout or restore unavailable.'));
   }));
  new Setting(panel).setName(writerUi('Space ativo','Active Space')).addDropdown(drop=>{
    drop.addOption('',writerUi('Todo o cofre','Entire vault'));

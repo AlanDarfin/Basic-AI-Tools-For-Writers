@@ -28,7 +28,8 @@ function writerV9SpaceSanitize(raw){
  const sort=WRITER_V9_SPACE_SORTS.includes(raw.sort)?raw.sort:'recent';
  const mode=['filter','curated','folder'].includes(raw.mode)?raw.mode:'filter';
  const includePaths=Array.isArray(raw.includePaths)?[...new Set(raw.includePaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,150):[];
- return {id,name,folder,tag,property,value,groupBy,view,sort,mode,includePaths};
+ const hiddenPaths=Array.isArray(raw.hiddenPaths)?[...new Set(raw.hiddenPaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,300):[];
+ return {id,name,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths};
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -41,6 +42,7 @@ function writerV9SpaceItems(plugin,space){
  const files=plugin.app.vault.getMarkdownFiles?.()||[];
  const cache=plugin.app.metadataCache;
  return files.filter(file=>{
+  if((space.hiddenPaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.mode==='curated'&&!(space.includePaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.folder&&!(file.path===space.folder||file.path.startsWith(space.folder+'/')))return false;
   if(space.mode==='folder')return Boolean(space.folder);
@@ -62,7 +64,7 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],...(initial||{})};
+  const draft={name:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
@@ -78,6 +80,11 @@ function writerV9SpaceEditor(plugin,initial,save){
    .setDesc(writerUi('Uma rota por linha para Spaces de seleção manual.','One vault path per line for curated Spaces.'))
    .addTextArea(t=>t.setValue((draft.includePaths||[]).join('\n')).onChange(value=>{draft.includePaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);}));
 
+  new Setting(root).setName(writerUi('Ocultar somente neste Space','Hide only in this Space'))
+   .setDesc(writerUi('Uma pasta ou nota por linha. Outros Spaces não serão afetados.','One note or folder path per line. Other Spaces are unaffected.'))
+   .addTextArea(t=>t.setValue((draft.hiddenPaths||[]).join('\n')).onChange(value=>{
+    draft.hiddenPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   }));
   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');

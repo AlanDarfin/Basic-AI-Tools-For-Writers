@@ -116,6 +116,7 @@ class ProjectsView extends ItemView{
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   if(!this.root)return;
+  this.tabPanelScrollPositions=this.tabPanelScrollPositions||Object.create(null);
   const previousScroll=this.root.scrollTop;
   for(const element of this.root.querySelectorAll?.('.writer-project-panel[data-tab]')||[]){
    this.tabPanelScrollPositions[element.dataset.tab]=element.scrollTop;

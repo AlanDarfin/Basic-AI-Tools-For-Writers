@@ -1,0 +1,54 @@
+name: Publish versioned plugin release
+on:
+  push:
+    branches: [main]
+    paths: [manifest.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  release:
+    if: github.repository == 'AlanDarfin/Basic-AI-Tools-For-Writers'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify bundle, CSS, tests and community lint
+        run: |
+          npm run check
+          node --test tests/css-community-lint.test.cjs
+      - name: Check release metadata
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./manifest.json').version")"
+          test "$(node -p "require('./package.json').version")" = "$version"
+          test "$(node -p "require('./package-lock.json').version")" = "$version"
+          test "$(node -p "require('./versions.json')[require('./manifest.json').version]")" = "$(node -p "require('./manifest.json').minAppVersion")"
+          test -s main.js && test -s styles.css
+          test -f "docs/releases/$version.md"
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+      - name: Publish GitHub release and three-file plugin package
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION exists; refusing to overwrite published artifacts"
+            exit 0
+          fi
+          gh release create "$VERSION" main.js manifest.json styles.css \
+            --target "$GITHUB_SHA" --title "$VERSION" \
+            --notes-file "docs/releases/$VERSION.md" --latest

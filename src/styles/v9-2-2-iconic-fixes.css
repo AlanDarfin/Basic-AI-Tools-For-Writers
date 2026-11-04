@@ -740,3 +740,32 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-sp
 .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell.is-expanded .writer-v92-file-preview::after{
  content:none;
 }
+/* 9.4.1 — Keep decorative glyphs optically centered on the first text line.
+   Relative visual shifts do not change the editable title's line boxes. */
+.inline-title.writer-v93-title-icon-host > .writer-v9-inline-title-icon,
+.inline-title.writer-v93-title-icon-host > .writer-v9215-pretty-icon{
+ vertical-align:-.07em;
+ transform:translateY(-.10em);
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-file-title > .writer-v9-explorer-icon,
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder-title > .writer-v9-explorer-icon{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ align-self:center;
+ transform:translateY(-.10em);
+}
+/* The truncation marker belongs immediately after the last visible word,
+   not in a separate absolutely positioned right-hand column. */
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell:not(.is-expanded) .writer-v92-file-preview.writer-v931-truncated::after{
+ content:"...";
+ display:inline;
+ position:static;
+ inset:auto;
+ min-width:0;
+ width:auto;
+ height:auto;
+ padding:0;
+ text-align:inherit;
+ background:none;
+}

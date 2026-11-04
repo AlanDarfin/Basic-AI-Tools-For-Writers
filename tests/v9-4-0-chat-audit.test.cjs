@@ -27,5 +27,5 @@ test('bundles and bilingual examples are updated',()=>{
  assert.match(fs.readFileSync('main.js','utf8'),/writerV8ChatRenderFakeAudio/);
  assert.match(fs.readFileSync('styles.css','utf8'),/writer-v8-chat-fake-audio/);
  for(const p of ['docs/BLOCKS.en.md','docs/BLOCKS.pt-BR.md'])assert.match(fs.readFileSync(p,'utf8'),/\[audio:0:15\]/);
- for(const p of ['manifest.json','package.json','README.md','docs/README.pt-BR.md'])assert.match(fs.readFileSync(p,'utf8'),/9\.4\.0/);
+ for(const p of ['manifest.json','package.json','README.md','docs/README.pt-BR.md'])assert.match(fs.readFileSync(p,'utf8'),/9\.4\.1/);
 });

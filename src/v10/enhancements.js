@@ -2,7 +2,7 @@
 /* v10.1 local writing utilities: no third-party executables, no hidden writes. */
 function writerV101SuiteMerge(settings){
  const old=settings.v101Suite&&typeof settings.v101Suite==='object'?settings.v101Suite:{};
- const cfg=settings.v101Suite={enabled:true,yamlValidation:true,tableFilter:true,csvExport:true,footnotes:true,
+ const cfg=settings.v101Suite={enabled:true,readingProgress:true,yamlValidation:true,tableFilter:true,csvExport:true,footnotes:true,
   bulkProperties:false,batchMax:60, ...old};
  cfg.batchMax=Math.max(1,Math.min(100,Math.floor(Number(cfg.batchMax)||60)));
  return cfg;
@@ -121,7 +121,53 @@ async function writerV101ExportCsv(plugin,table,sourceFile){
  const file=await plugin.app.vault.create(path,writerV101TableCsv(table));
  new Notice(writerUi('CSV criado: ','CSV created: ')+file.path);
 }
+
+/* Reading progress is derived from the current reading pane, never from book/chapter counts. */
+function writerV101ReadingProgressRegister(plugin){
+ const refresh=()=>{
+  const enabled=plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite.readingProgress!==false;
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
+   const host=leaf.view?.containerEl;
+   if(!host)continue;
+   const old=host.querySelector(':scope > .writer-v101-reading-track');
+   const scroller=host.querySelector('.markdown-preview-view');
+   if(!enabled||!scroller||!scroller.isConnected||!scroller.offsetParent){old?.remove();continue;}
+   if(host.ownerDocument?.defaultView?.getComputedStyle(host).position==='static')host.style.position='relative';
+   let track=old;
+   if(!track){
+    track=host.ownerDocument.createElement('div');
+    track.className='writer-v101-reading-track';
+    track.setAttribute('role','progressbar');
+    track.setAttribute('aria-label',writerUi('Progresso de leitura','Reading progress'));
+    track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
+    track.style.cssText='position:absolute;top:0;left:0;right:0;height:3px;z-index:5;pointer-events:none;background:transparent;';
+    const fill=host.ownerDocument.createElement('div');
+    fill.className='writer-v101-reading-fill';
+    fill.style.cssText='height:100%;width:0%;background:var(--interactive-accent);transition:width 90ms linear;';
+    track.appendChild(fill);host.appendChild(track);
+   }
+   const maximum=Math.max(0,scroller.scrollHeight-scroller.clientHeight);
+   const value=maximum?Math.min(100,Math.max(0,Math.round(100*scroller.scrollTop/maximum))):100;
+   track.setAttribute('aria-valuenow',String(value));
+   track.firstElementChild.style.width=value+'%';
+  }
+ };
+ const throttled=()=>{if(plugin._writerReadingProgressRaf)return;
+  plugin._writerReadingProgressRaf=true;
+  const view=plugin.app.workspace.containerEl?.ownerDocument?.defaultView;
+  (view?.requestAnimationFrame||((fn)=>fn()))(()=>{plugin._writerReadingProgressRaf=false;refresh();});
+ };
+ plugin.registerDomEvent?.(plugin.app.workspace.containerEl,'scroll',throttled,true);
+ plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',throttled));
+ plugin.registerEvent(plugin.app.workspace.on('layout-change',throttled));
+ plugin.registerEvent(plugin.app.workspace.on('file-open',throttled));
+ plugin.app.workspace.onLayoutReady?.(throttled);
+ plugin.writerV101ReadingProgressRefresh=throttled;
+ plugin.register?.(()=>{for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();});
+}
+
 function writerV101RegisterEnhancements(plugin){
+ writerV101ReadingProgressRegister(plugin);
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -163,6 +209,7 @@ function writerV101EnhancementsSettings(plugin,panel){
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('Comandos locais para seleção, sem sobrescrever a nota; alterações em lote exigem confirmação e snapshots.','Local selection commands; batch writes require confirmation and snapshots.')});
  for(const [key,pt,en] of [
   ['enabled','Ativar ferramentas extras','Enable additional tools'],
+  ['readingProgress','Barra de progresso de leitura','Reading progress bar'],
   ['yamlValidation','Validação de YAML','YAML validation'],
   ['tableFilter','Filtro de tabelas somente leitura','Read-only table filtering'],
   ['csvExport','Exportar seleção de tabela para CSV','Export selected table as CSV'],

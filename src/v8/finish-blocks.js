@@ -143,10 +143,10 @@ function writerV8ChatDirectives(lines){
     const key=writerV8ChatNameKey(name);
     if(key==='left'||key==='right'){defaults[key]=value.slice(0,90);continue;}
     const profile=profiles.get(key)||{color:'',avatar:'',bubbleColor:''};
-    const color=value.toLowerCase();
+    const color=value.toLowerCase(),bubbleMatch=/^(?:bubble|balloon|bal[aã]o):\s*([a-z]+)$/i.exec(value);
     if(WRITER_V8_CHAT_COLORS.has(color))profile.color=color==='grey'?'gray':color;
     else if(/^(?:bubble|balloon|bal[aã]o):s*([a-z]+)$/i.test(value)){
-     const named=RegExp.$1.toLowerCase();
+     const named=bubbleMatch[1].toLowerCase();
      if(WRITER_V8_CHAT_COLORS.has(named))profile.bubbleColor=named==='grey'?'gray':named;
     }
     else if(/^(?:!?\[\[.+\]\]|[^<>:"|?*\r\n]+\.(?:png|jpe?g|webp|gif|svg|avif|bmp))$/i.test(value))

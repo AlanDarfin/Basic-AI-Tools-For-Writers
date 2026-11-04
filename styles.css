@@ -7435,9 +7435,9 @@ body.is-mobile .writer-v8-chat .writer-v8-chat-group-photo{
 }
 
 /* v10: show user-written transcripts directly below fictional voice notes. */
-.writer-v8-chat .writer-v8-chat-fake-audio{max-width:min(100%,23rem);min-width:0;}
+.writer-v8-chat .writer-v8-chat-fake-audio{max-width:min(100%,23rem);min-width:0;flex-wrap:wrap;}
 .writer-v8-chat .writer-v8-chat-transcript-text{
- display:block;max-width:100%;min-width:0;margin:8px 0 0;padding:8px 10px;
+ display:block;flex:0 0 100%;max-width:100%;min-width:0;margin:4px 0 0;padding:8px 10px;
  border:0;border-inline-start:2px solid var(--interactive-accent);border-radius:var(--radius-s);
  background:var(--background-secondary);color:var(--text-normal);
  font-size:var(--font-ui-small);line-height:1.5;white-space:pre-wrap;

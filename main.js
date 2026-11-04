@@ -12084,6 +12084,8 @@ function writerV9RegisterExplorer(plugin){
    for(const title of host.querySelectorAll('.inline-title')){
     const old=title.querySelector(':scope > .writer-v9-inline-title-icon');
     if(old?.dataset.icon!==icon)old?.remove();
+    // Explorer icons take precedence over optional YAML icons (one decoration).
+    if(icon)title.querySelector(':scope > .writer-v9215-pretty-icon')?.remove();
     if(icon&&!title.querySelector(':scope > .writer-v9-inline-title-icon')){
      const node=title.ownerDocument.createElement('span');
      node.className='writer-v9-inline-title-icon';
@@ -12093,7 +12095,7 @@ function writerV9RegisterExplorer(plugin){
      require('obsidian').setIcon(node,icon);
      title.insertBefore(node,title.firstChild);
     }
-    // Absolutely positioned decoration: never pushes the editable title baseline.
+    // Keep the decoration on the actual text baseline, not the mobile title box top.
     title.classList.toggle('writer-v93-title-icon-host',Boolean(
      title.querySelector(':scope > .writer-v9-inline-title-icon, :scope > .writer-v9215-pretty-icon')));
    }
@@ -12160,11 +12162,12 @@ function writerV9RegisterExplorer(plugin){
   explorerObservers.clear();
   clearTimeout(debounce);
   plugin.writerV9ExplorerRefresh=null;
-  for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
     leaf.view?.containerEl?.querySelectorAll('.writer-v9-inline-title-icon').forEach(el=>el.remove());
     leaf.view?.containerEl?.querySelectorAll('.inline-title.writer-v93-title-icon-host').forEach(title=>{
      if(!title.querySelector(':scope > .writer-v9215-pretty-icon'))title.classList.remove('writer-v93-title-icon-host');
     });
+   }
    plugin.writerV9InlineTitleRefresh=null;
  });
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
@@ -16502,7 +16505,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
  }
  if(cfg.icon&&fm.icon&&target&&!target.querySelector('.writer-v9-inline-title-icon')){
   const span=host.ownerDocument.createElement('span');
-  span.className='writer-v9215-pretty-icon';span.setAttribute('aria-hidden','true');
+  span.className='writer-v9215-pretty-icon';span.setAttribute('aria-hidden','true');span.setAttribute('contenteditable','false');
   writerV9215PrettyDecorateIcon(span,fm.icon);
   target.insertBefore(span,target.firstChild);
   target.classList.add('writer-v93-title-icon-host');

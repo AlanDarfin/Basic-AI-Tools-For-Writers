@@ -508,3 +508,57 @@ body.is-mobile .writer-v9216-spaces-dock .writer-v9216-space-chip{max-width:130p
  color:var(--text-muted);overflow-wrap:anywhere;
 }
 body.is-mobile .writer-v9216-flow-board{grid-template-columns:minmax(0,1fr);}
+/* 9.3 — align decorative icons with the typographic center, not the title box baseline.
+ * Inline titles remain editable, while the icon is a non-editable atomic decoration. */
+.inline-title > .writer-v9-inline-title-icon,
+.inline-title > .writer-v9215-pretty-icon{
+ display:inline-flex;position:relative;top:-.025em;
+ width:.96em;height:.96em;min-width:.96em;min-height:.96em;
+ align-items:center;justify-content:center;
+ vertical-align:middle;margin-inline:0 .36em;
+ padding:0;line-height:1;color:inherit;
+ pointer-events:none;user-select:none;
+}
+.inline-title > .writer-v9-inline-title-icon svg,
+.inline-title > .writer-v9215-pretty-icon svg{
+ display:block;width:100%;height:100%;flex:0 0 100%;
+ stroke:currentColor;color:inherit;
+}
+body.is-mobile .inline-title > .writer-v9-inline-title-icon,
+body.is-mobile .inline-title > .writer-v9215-pretty-icon{
+ top:-.02em;vertical-align:middle;
+}
+/* Larger explorer toolbar pictograms; mobile native actions live at the bottom. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button{
+ min-width:33px;min-height:33px;
+ display:inline-flex;align-items:center;justify-content:center;
+}
+.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
+.workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
+.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
+ width:21px;height:21px;display:block;stroke-width:1.9;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action{
+ flex:0 0 auto;color:var(--text-muted);
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-action-button{
+ min-width:40px;min-height:40px;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
+ width:25px;height:25px;
+}
+/* Provide touch-friendly reorder arrows ONLY inside custom-sorted explorer folders. */
+.writer-v93-reorder-actions{display:none;align-items:center;gap:1px;margin-inline-start:auto;flex:0 0 auto;}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-reorder-actions{display:inline-flex;}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-reorder-action{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-width:30px;min-height:34px;border:0;border-radius:var(--radius-s);
+ background:transparent;color:var(--text-muted);padding:4px;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-reorder-action svg{
+ width:19px;height:19px;
+}
+.writer-v93-reorder-action:disabled{opacity:.3;}
+body.is-mobile .writer-v92-preview-shell.is-expandable{touch-action:pan-y;}

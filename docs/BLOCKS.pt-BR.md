@@ -176,18 +176,25 @@ As publicações são fictícias e locais, sem conexão com redes sociais.
 ~~~~markdown
 ~~~chat
 title: Expedição ao arquivo
+group-image: [[Imagens/Expedicao.webp]]
 [Left=Mira, right=Jonas]
 [Mira=blue, Jonas=green]
 [Mira=[[Personagens/Mira.png]]]
 < | Mira | Encontramos a entrada. | 09:41
+---
 > | Jonas | Vou levar os materiais. | 09:42
-< | | Confira o mapa primeiro. | 09:43
+--- Duas horas depois ---
+< | | Confira o mapa primeiro. | 11:43
 > | | Certo.
 ~~~
 ~~~~
 
 Sintaxes curtas aceitas: `< Mira | Olá`, `> Jonas | Oi | 10:00`. A sintaxe antiga com seções `=== Personagem` também é aceita e pode conter `avatar`, `time`, `side` e `mine` antes de `---`.
 
+
+**Separadores de conversa:** coloque `---` em uma linha isolada **entre duas mensagens** para desenhar uma divisão discreta. Use `--- Duas horas depois ---` ou `--- 14:30 ---` para centralizar uma legenda entre as linhas. Eles não entram no balão da mensagem, e uma mensagem após o separador volta a exibir o avatar/nome quando informados. Na sintaxe antiga com `=== Personagem`, o **primeiro** `---` após o cabeçalho mantém a função de separar metadados e corpo; os seguintes podem ser separadores de conversa.
+
+**Foto do grupo:** use `group-image: [[Imagens/Expedicao.webp]]` logo após `title:` para exibir a imagem redonda à esquerda do título da conversa. Aceita também `group-photo:` e `group-avatar:`. A imagem precisa estar no cofre; links remotos são ignorados. Isso não modifica os avatares individuais nem depende de `avatars: on`.
 
 **Áudio falso:** use `[audio:0:15]` ou `[voice:1:09]` como o conteúdo inteiro da mensagem. O botão anima as ondas de som, **sem tocar, gravar nem enviar áudio real**. Exemplo: `< | [audio:0:15] | 10:00`.
 

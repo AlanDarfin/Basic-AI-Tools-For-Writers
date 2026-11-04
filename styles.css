@@ -7368,4 +7368,69 @@ body.is-mobile .writer-v95-timeline-toolbar input{min-height:40px;}
 body.is-mobile .writer-v95-timeline.is-layout-horizontal .writer-v95-timeline-event{
  flex-basis:min(80vw,300px);
 }
+
+/* 9.5.1 — Group portrait and transcript dividers.
+   Only fictional-chat code blocks are affected. */
+.writer-v8-chat .writer-v8-chat-heading{
+ display:flex;
+ align-items:center;
+ gap:10px;
+ min-width:0;
+ margin:2px 4px 12px;
+}
+.writer-v8-chat .writer-v8-chat-heading .writer-v8-chat-title{
+ flex:1 1 auto;
+ min-width:0;
+ margin:0;
+ padding:0;
+ line-height:1.35;
+ overflow-wrap:anywhere;
+}
+.writer-v8-chat .writer-v8-chat-group-photo{
+ display:block;
+ width:42px;
+ height:42px;
+ flex:0 0 42px;
+ border-radius:50%;
+ object-fit:cover;
+ background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);
+}
+.writer-v8-chat .writer-v8-chat-divider{
+ display:flex;
+ align-items:center;
+ gap:11px;
+ width:100%;
+ min-width:0;
+ margin:3px 0;
+ color:var(--text-muted);
+ font-size:var(--font-ui-smaller);
+ line-height:1.4;
+ text-align:center;
+}
+.writer-v8-chat .writer-v8-chat-divider::before,
+.writer-v8-chat .writer-v8-chat-divider::after{
+ content:"";
+ display:block;
+ flex:1 1 0;
+ min-width:8px;
+ height:1px;
+ background:var(--background-modifier-border);
+}
+.writer-v8-chat .writer-v8-chat-divider:not(.is-labeled)::after{
+ display:none;
+}
+.writer-v8-chat .writer-v8-chat-divider-label{
+ display:block;
+ flex:0 1 auto;
+ min-width:0;
+ max-width:min(80%,460px);
+ overflow-wrap:anywhere;
+}
+.writer-v8-chat.is-density-compact .writer-v8-chat-divider{margin:0;gap:7px;}
+.writer-v8-chat.is-density-relaxed .writer-v8-chat-divider{margin:6px 0;}
+body.is-mobile .writer-v8-chat .writer-v8-chat-heading{gap:9px;}
+body.is-mobile .writer-v8-chat .writer-v8-chat-group-photo{
+ width:38px;height:38px;flex-basis:38px;
+}
 /* END V8 MODULAR STYLES */

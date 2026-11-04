@@ -7,7 +7,7 @@ function writerV92ExplorerMerge(settings){
  const old=settings.v92Explorer&&typeof settings.v92Explorer==='object'?settings.v92Explorer:{};
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
-  previewVisible:true,showImage:true,previewLines:3,previewImageSize:62,
+  previewVisible:true,showImage:true,previewRemoteImages:true,previewLines:3,previewImageSize:62,
   previewTouchExpand:true,previewHoldMs:650,folderDescriptions:true,noteExcerpts:true,hoverExpand:true,
   folderDescriptionKey:'description',noteDescriptionKey:'description',favoriteIconColor:'',
   ...old
@@ -15,6 +15,7 @@ function writerV92ExplorerMerge(settings){
  cfg.favoritesEnabled=cfg.favoritesEnabled!==false;
  cfg.previewVisible=cfg.previewVisible!==false;
  cfg.showImage=cfg.showImage!==false;
+ cfg.previewRemoteImages=cfg.previewRemoteImages!==false;
  cfg.previewTouchExpand=cfg.previewTouchExpand!==false;
  for(const key of ['folderDescriptions','noteExcerpts','hoverExpand'])cfg[key]=cfg[key]!==false;
  cfg.previewHoldMs=Math.max(400,Math.min(1500,Number(cfg.previewHoldMs)||650));
@@ -88,7 +89,21 @@ function writerV9216FolderDescription(plugin,folder,body,full=false){
  return '';
 }
 
-/* Preview images come from local vault files only; external URLs are never requested. */
+function writerV102PreviewRemoteUrl(raw){
+ let value=String(raw||'').trim().replace(/^<|>$/g,'');
+ if(/^www\./i.test(value))value='https://'+value;
+ if(!/^https:\/\//i.test(value)||value.length>2048)return '';
+ try{
+  const url=new URL(value),host=url.hostname.toLowerCase();
+  if(url.protocol!=='https:'||url.username||url.password||url.port||!host.includes('.')||
+   host==='localhost'||host.endsWith('.local')||
+   /^(?:127\.|10\.|192\.168\.|172\.(?:1[6-9]|2\d|3[01])\.|169\.254\.|0\.)/.test(host))return '';
+  if(!/\.(?:png|jpe?g|webp|gif|avif|bmp|svg)$/i.test(url.pathname)&&
+   !/^(?:images\.unsplash\.com|images\.pexels\.com|cdn\.pixabay\.com|pixabay\.com|images\.pixabay\.com)$/i.test(host))return '';
+  return url.href;
+ }catch(_){return '';}
+}
+
 function writerV921PreviewSource(plugin,item){
  if(item instanceof TFolder)return writerV92FolderNote(plugin.app,item);
  return item instanceof TFile&&item.extension==='md'?item:null;
@@ -100,6 +115,8 @@ function writerV921ResolveImage(plugin,source,raw){
  const md=link.match(/^!?\[[^\]]*\]\(([^)]+)\)$/);
  if(md)link=md[1];
  link=link.split('|')[0].split('#')[0].trim().replace(/^<|>$/g,'');
+ const remote=writerV102PreviewRemoteUrl(link);
+ if(remote)return plugin.settings?.v92Explorer?.previewRemoteImages===false?null:{path:remote,url:remote,external:true};
  if(/^https?:\/\//i.test(link)||/^[a-z][\w+.-]*:/i.test(link)||link.startsWith('//'))return null;
  try{link=decodeURIComponent(link);}catch(_){}
  if(!link||link.includes('\0')||link.length>500)return null;
@@ -129,7 +146,7 @@ function writerV921PreviewBody(raw,max){
 }
 function writerV921PreviewImage(plugin,source,content){
  const front=plugin.app.metadataCache?.getFileCache?.(source)?.frontmatter||{};
- for(const key of ['cover','image','thumbnail','banner']){
+ for(const key of ['banner','cover','image','thumbnail']){
   const raw=Array.isArray(front[key])?front[key][0]:front[key];
   const file=writerV921ResolveImage(plugin,source,raw);
   if(file)return file;
@@ -139,11 +156,16 @@ function writerV921PreviewImage(plugin,source,content){
   const file=writerV921ResolveImage(plugin,source,embed.link);
   if(file)return file;
  }
- const rx=/!\[\[([^\]]+)\]\]|!\[[^\]]*\]\(([^)]+)\)/g;
+ const rx=/!\[\[([^\]]+)\]\]|!?\[[^\]]*\]\(([^)]+)\)/g;
  let match,count=0;
  while((match=rx.exec(String(content||'')))&&count++<48){
   const file=writerV921ResolveImage(plugin,source,match[1]||match[2]);
   if(file)return file;
+ }
+ const urls=String(content||'').match(/https?:\/\/[^\s<>"')\]]+/g)||[];
+ for(const raw of urls.slice(0,24)){
+  const url=writerV102PreviewRemoteUrl(raw.replace(/[.,;]+$/,''));
+  if(url&&plugin.settings?.v92Explorer?.previewRemoteImages!==false)return {path:url,url,external:true};
  }
  return null;
 }
@@ -418,7 +440,7 @@ function writerV92ExplorerRegister(plugin){
    }
    if(thumbnail.dataset.path!==imagePath){
     thumbnail.dataset.path=imagePath;
-    thumbnail.src=plugin.app.vault.getResourcePath(image);
+    thumbnail.src=image.external?image.url:plugin.app.vault.getResourcePath(image);
    }
   }else thumbnail?.remove();
   node.classList.add('writer-v92-has-preview');
@@ -536,10 +558,13 @@ function writerV92ExplorerSettings(plugin,panel){
    cfg.previewVisible=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
  new Setting(panel).setName(writerUi('Miniatura da primeira imagem','Preview first image'))
-  .setDesc(writerUi('Usa capa, thumbnail ou primeira imagem local incorporada à nota.','Uses the local cover, thumbnail or first embedded image from the note.'))
+  .setDesc(writerUi('Usa banner, capa, thumbnail, imagem incorporada ou link HTTPS.','Uses banner, cover, thumbnail, embedded picture or HTTPS image link.'))
   .addToggle(t=>t.setValue(cfg.showImage).onChange(async v=>{
    cfg.showImage=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
+ new Setting(panel).setName(writerUi('Miniaturas HTTPS externas','External HTTPS thumbnails'))
+  .setDesc(writerUi('URLs colocadas na nota podem informar seu IP ao servidor de imagens.','Image URLs in a note may reveal your IP to the image host.'))
+  .addToggle(t=>t.setValue(cfg.previewRemoteImages).onChange(async v=>{cfg.previewRemoteImages=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
  new Setting(panel).setName(writerUi('Exibir descrição das Folder Notes','Show Folder Note descriptions'))
   .addToggle(t=>t.setValue(cfg.folderDescriptions).onChange(async value=>{
    cfg.folderDescriptions=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();

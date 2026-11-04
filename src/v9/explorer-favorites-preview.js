@@ -8,7 +8,7 @@ function writerV92ExplorerMerge(settings){
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
   previewVisible:true,showImage:true,previewLines:2,previewImageSize:62,
-  previewTouchExpand:true,previewHoldMs:650,
+  previewTouchExpand:true,previewHoldMs:650,folderDescriptions:true,noteExcerpts:true,hoverExpand:true,
   folderDescriptionKey:'description',noteDescriptionKey:'description',favoriteIconColor:'',
   ...old
  };
@@ -16,6 +16,7 @@ function writerV92ExplorerMerge(settings){
  cfg.previewVisible=cfg.previewVisible!==false;
  cfg.showImage=cfg.showImage!==false;
  cfg.previewTouchExpand=cfg.previewTouchExpand!==false;
+ for(const key of ['folderDescriptions','noteExcerpts','hoverExpand'])cfg[key]=cfg[key]!==false;
  cfg.previewHoldMs=Math.max(400,Math.min(1500,Number(cfg.previewHoldMs)||650));
  cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||2)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
@@ -83,7 +84,8 @@ function writerV9216FolderDescription(plugin,folder,body,full=false){
    }catch(_){}
   }
  }
- return writerV921PreviewBody(body,full?4000:plugin.settings.v92Explorer.previewMax);
+ // Only the frontmatter field can appear as a Folder Note description.
+ return '';
 }
 
 /* Preview images come from local vault files only; external URLs are never requested. */
@@ -152,7 +154,10 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  const label=shell.querySelector(':scope > .writer-v92-file-preview');
  if(!label)return;
  const long=String(fullText||'');
- const truncated=long.length>shortText.length||label.scrollHeight>label.clientHeight+1;
+ const wasExpanded=shell.classList.contains('is-expanded');
+ const truncated=long.length>shortText.length||
+  (!wasExpanded&&label.scrollHeight>label.clientHeight+1)||
+  (wasExpanded&&shell.dataset.expandable==='true');
  const expanded=shell.classList.contains('is-expanded');
  shell.dataset.previewShort=shortText; shell.dataset.previewFull=long;
  shell.dataset.expandable=String(truncated);
@@ -183,7 +188,7 @@ function writerV929PreviewExpand(shell,shortText,fullText){
   if(target)target.textContent=shell.dataset.previewShort;
  };
  shell.addEventListener('mouseenter',()=>{
-  if(shell.dataset.expandable!=='true')return;
+  if(shell.dataset.expandable!=='true'||shell.dataset.hoverEnabled==='false')return;
   clearTimeout(timer);timer=setTimeout(open,1500);
  });
  shell.addEventListener('mouseleave',()=>{if(!touchLocked)close();});
@@ -207,6 +212,26 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  const stopTouch=()=>{clearTimeout(timer);timer=null;touchStart=null;};
  shell.addEventListener('pointerup',stopTouch,{passive:true});
  shell.addEventListener('pointercancel',stopTouch,{passive:true});
+ // Android WebView sometimes sends touchstart without a usable pointerdown.
+ // Preserve native scrolling; open only after the user holds steadily.
+ let touchOrigin=null;
+ shell.addEventListener('touchstart',event=>{
+  const touch=event.touches?.[0];
+  if(!touch||shell.dataset.expandable!=='true'||shell.dataset.holdMs==='0')return;
+  touchOrigin={x:touch.clientX,y:touch.clientY};
+  clearTimeout(timer);
+  const delay=Math.max(400,Math.min(1500,Number(shell.dataset.holdMs)||650));
+  timer=setTimeout(()=>{touchLocked=true;skipClick=true;open();},delay);
+ },{passive:true});
+ shell.addEventListener('touchmove',event=>{
+  const touch=event.touches?.[0];
+  if(touchOrigin&&touch&&Math.hypot(touch.clientX-touchOrigin.x,touch.clientY-touchOrigin.y)>12){
+   clearTimeout(timer);timer=null;touchOrigin=null;
+  }
+ },{passive:true});
+ const stopTouchFallback=()=>{clearTimeout(timer);timer=null;touchOrigin=null;};
+ shell.addEventListener('touchend',stopTouchFallback,{passive:true});
+ shell.addEventListener('touchcancel',stopTouchFallback,{passive:true});
  shell.addEventListener('contextmenu',event=>{
   if(!touchLocked)return;
   event.preventDefault();event.stopPropagation();
@@ -334,11 +359,11 @@ function writerV92ExplorerRegister(plugin){
   if(!stable)requestRead(source);
   const body=stable?read.content:'';
   const description=folder?
-   writerV9216FolderDescription(plugin,item,body,false):
-   (stable?writerV921PreviewBody(body,cfg.previewMax):'');
+   (cfg.folderDescriptions?writerV9216FolderDescription(plugin,item,body,false):''):
+   (cfg.noteExcerpts&&stable?writerV921PreviewBody(body,cfg.previewMax):'');
   const fullDescription=folder?
-   writerV9216FolderDescription(plugin,item,body,true):
-   (stable?writerV921PreviewBody(body,4000):'');
+   (cfg.folderDescriptions?writerV9216FolderDescription(plugin,item,body,true):''):
+   (cfg.noteExcerpts&&stable?writerV921PreviewBody(body,4000):'');
   const image=cfg.showImage?writerV921PreviewImage(plugin,source,stable?read.content:''):null;
   const imagePath=image?.path||'';
   if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
@@ -348,6 +373,8 @@ function writerV92ExplorerRegister(plugin){
    shell.className='writer-v92-preview-shell';
    node.insertAdjacentElement('afterend',shell);
   }
+  shell.classList.toggle('writer-v93-folder-description',folder);
+  shell.dataset.hoverEnabled=cfg.hoverExpand?'true':'false';
   shell.style.setProperty('--writer-v92-preview-lines',String(cfg.previewLines));
   shell.dataset.holdMs=cfg.previewTouchExpand?String(cfg.previewHoldMs):'0';
   shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
@@ -495,6 +522,18 @@ function writerV92ExplorerSettings(plugin,panel){
   .setDesc(writerUi('Usa capa, thumbnail ou primeira imagem local incorporada à nota.','Uses the local cover, thumbnail or first embedded image from the note.'))
   .addToggle(t=>t.setValue(cfg.showImage).onChange(async v=>{
    cfg.showImage=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Exibir descrição das Folder Notes','Show Folder Note descriptions'))
+  .addToggle(t=>t.setValue(cfg.folderDescriptions).onChange(async value=>{
+   cfg.folderDescriptions=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Exibir início do texto das notas','Show opening text for regular notes'))
+  .addToggle(t=>t.setValue(cfg.noteExcerpts).onChange(async value=>{
+   cfg.noteExcerpts=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Expandir ao passar o mouse','Expand on hover'))
+  .addToggle(t=>t.setValue(cfg.hoverExpand).onChange(async value=>{
+   cfg.hoverExpand=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
  new Setting(panel).setName(writerUi('Expandir ao pressionar (mobile)','Long-press to expand (mobile)'))
   .addToggle(t=>t.setValue(cfg.previewTouchExpand).onChange(async value=>{

@@ -281,6 +281,31 @@ function writerV9RegisterExplorer(plugin){
    }
   },120);
  };
+ // Decorate the actual Obsidian inline title with the same per-file icon.
+ // This is presentation only: never rewrite Markdown or frontmatter.
+ const refreshInlineTitles=()=>{
+  const enabled=active()&&plugin.settings.v9Explorer.showIcons;
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
+   const file=leaf.view?.file,host=leaf.view?.containerEl;
+   if(!host)continue;
+   const item=file&&plugin.settings.v9Explorer.items[file.path];
+   const icon=enabled&&item?.icon||'';
+   for(const title of host.querySelectorAll('.inline-title')){
+    const old=title.querySelector(':scope > .writer-v9-inline-title-icon');
+    if(old?.dataset.icon!==icon)old?.remove();
+    if(!icon||title.querySelector(':scope > .writer-v9-inline-title-icon'))continue;
+    const node=title.ownerDocument.createElement('span');
+    node.className='writer-v9-inline-title-icon';
+    node.dataset.icon=icon;
+    node.setAttribute('aria-hidden','true');
+    require('obsidian').setIcon(node,icon);
+    title.insertBefore(node,title.firstChild);
+   }
+  }
+ };
+ plugin.writerV9InlineTitleRefresh=refreshInlineTitles;
+ plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',()=>setTimeout(refreshInlineTitles,100)));
+ plugin.registerEvent(plugin.app.workspace.on('file-open',()=>setTimeout(refreshInlineTitles,100)));
  plugin.writerV9ExplorerRefresh=refresh;
  const fileMenu=(menu,file)=>{
   if(!active()||!(file instanceof TFile||file instanceof TFolder))return;
@@ -339,6 +364,7 @@ function writerV9RegisterExplorer(plugin){
   explorerObservers.clear();
   clearTimeout(debounce);
   plugin.writerV9ExplorerRefresh=null;
+  plugin.writerV9InlineTitleRefresh=null;
  });
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
   if(!active())return;

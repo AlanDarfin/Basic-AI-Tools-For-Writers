@@ -217,6 +217,28 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  return ['name-desc','number-desc','property-desc'].includes(mode)?-delta:delta;
 }
 
+/* Mobile manual ordering is an explicit, temporary editing state.
+ * Do not add two buttons to every file row during ordinary browsing. */
+function writerV1047MobileReorderVisible(plugin){
+ return plugin?.app?.isMobile===true&&
+  plugin.settings?.v91Flex?.enabled!==false&&
+  plugin.settings?.v91Flex?.mobileReorder!==false&&
+  plugin.writerV91FlexMobileSortActive===true;
+}
+function writerV1047ToggleMobileReorder(plugin,requested){
+ const enabled=plugin?.settings?.v91Flex?.mobileReorder!==false;
+ const next=enabled&&(typeof requested==='boolean'?requested:!plugin.writerV91FlexMobileSortActive);
+ plugin.writerV91FlexMobileSortActive=next;
+ if(!next){
+  for(const leaf of plugin.app?.workspace?.getLeavesOfType?.('file-explorer')||[]){
+   leaf.view?.containerEl?.querySelectorAll?.('.writer-v93-reorder-actions')
+    ?.forEach?.(element=>element.remove?.());
+  }
+ }
+ plugin.writerV91FlexRefresh?.();
+ return next;
+}
+
 function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
@@ -240,7 +262,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
-   if(!cfg.enabled||folder.sort!=='custom'||!cfg.mobileReorder)
+   if(!cfg.enabled||folder.sort!=='custom'||!writerV1047MobileReorderVisible(plugin))
     title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
    if((!cfg.enabled||folder.sort!=='custom')&&title.dataset.writerFlexPath){
     title.draggable=false;delete title.dataset.writerFlexPath;
@@ -293,7 +315,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   container.style.flexDirection='column';
   rows.forEach((row,index)=>{row.node.style.order=String(index);row.node.dataset.writerFlexOrdered='1';});
  }
- if(folder.sort==='custom'&&cfg.mobileReorder){
+ if(folder.sort==='custom'&&writerV1047MobileReorderVisible(plugin)){
   rows.forEach((row,index)=>{
    const title=row.title;if(!title)return;
    const prev=rows[index-1]?.path||'',next=rows[index+1]?.path||'';
@@ -434,6 +456,15 @@ function writerV1043GlobalSortingMenu(plugin,menu){
   plugin.writerV91FlexRefresh?.();
  };
  menu.addSeparator?.();
+ if(plugin.app?.isMobile&&cfg.mobileReorder!==false){
+  menu.addItem(item=>{
+   item.setTitle(writerUi('Reorganizar itens no celular (Basic)','Reorder items on mobile (Basic)'))
+    .setIcon('move-vertical');
+   item.setChecked?.(writerV1047MobileReorderVisible(plugin));
+   item.onClick(()=>writerV1047ToggleMobileReorder(plugin));
+  });
+  menu.addSeparator?.();
+ }
  for(const [mode,pt,en,icon] of [
   ['custom','Ordenação manual (Basic)','Manual sorting (Basic)','list-ordered'],
   ['number','Número no título (Basic)','Number in title (Basic)','list-ordered'],
@@ -451,6 +482,14 @@ function writerV1043GlobalSortingMenu(plugin,menu){
 }
 function writerV91FlexRegister(plugin){
  const cfg=plugin.settings.v91Flex;
+ // Never carry editing mode between Obsidian sessions or after plugin reload.
+ plugin.writerV91FlexMobileSortActive=false;
+ plugin.writerV91FlexToggleMobileReorder=()=>writerV1047ToggleMobileReorder(plugin);
+ plugin.addCommand?.({
+  id:'v1047-toggle-explorer-mobile-reorder',
+  name:writerUi('Explorador: ativar ou desativar reorganização móvel','Explorer: toggle mobile reorder mode'),
+  callback:()=>writerV1047ToggleMobileReorder(plugin)
+ });
  let timer=null,observer=null,lastDrag='',dropNode=null;
  const patched=new Map();
  const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
@@ -686,6 +725,8 @@ function writerV91FlexRegister(plugin){
    }
   }
   plugin.writerV91FlexRefresh=null;
+  plugin.writerV91FlexToggleMobileReorder=null;
+  plugin.writerV91FlexMobileSortActive=false;
  });
 }
 function writerV91FlexSettings(plugin,panel){

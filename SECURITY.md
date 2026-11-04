@@ -16,9 +16,9 @@ AI, translation, grammar, online dictionaries and neural text-to-speech may tran
 
 IA, gramática, tradução, dicionários e TTS online podem transmitir o texto selecionado aos provedores configurados. O Pandoc integrado usa recursos de arquivos e processos somente no computador e pode acessar recursos locais/remotos durante a exportação. Acesse apenas serviços e executáveis confiáveis.
 
-## Network disclosures (five `requestUrl` call sites)
+## Network disclosures (seven `requestUrl` call sites)
 
-The five network request call sites reported by the community scanner are distinct capabilities, **not four automatic requests when Obsidian opens**. Their execution depends on the relevant feature. This inventory describes the current shipped plugin source:
+The seven network request call sites in the shipped runtime are distinct capabilities, **not automatic requests when Obsidian opens**. Their execution depends on the relevant feature. This inventory describes the current shipped plugin source:
 
 | Feature / request | When it runs | Destination | Information sent |
 | --- | --- | --- | --- |
@@ -27,14 +27,18 @@ The five network request call sites reported by the community scanner are distin
 | AI model discovery (`GET`) | User requests or refreshes the list of available models | Selected provider's models endpoint, or local Ollama | Authorization key when configured; no manuscript text |
 | AI requests (`POST`) | User invokes dictionary, translation, writing, assistant, proofreading or related AI features | Selected cloud provider, a custom HTTPS endpoint, or local Ollama | Word/text being processed, prompts, optional contextual manuscript/project information, and provider credentials |
 | Click Clack sound pack download (`GET`) | User explicitly chooses an individual sound pack or clicks Download all | Pinned `raw.githubusercontent.com/Acylation/obsidian-click-clack` WAV resources | Requests five public WAV files per pack; **no note text or vault content** |
+| Photo search and download (`GET`) | User runs Image Inserter search or selects a result for local download | Wikimedia Commons or configured Pexels/Pixabay/Unsplash APIs, and their image CDNs | Search words, API key (where configured), IP address and requested image URL; **no manuscript text**. Image files are capped at 8 MiB and checked for recognized image signatures |
+| Unsplash download tracking (`GET`) | User selects a result for local download from Unsplash, as required by its API | `api.unsplash.com/photos/*/download` | Unsplash Client-ID and photo download tracking, not note contents |
 
-**Additional transport:** the optional online speech synthesizer sends the requested reading text via a **WebSocket** connection to `speech.platform.bing.com` only after the user opts into that TTS option. WebSocket usage may not be counted among the five `requestUrl` sites.
+**Additional transport:** the optional online speech synthesizer sends the requested reading text via a **WebSocket** connection to `speech.platform.bing.com` only after the user opts into that TTS option. WebSocket usage may not be counted among the seven `requestUrl` sites.
 
 A configured AI or grammar provider may record transmitted text according to its own policies. The auto-grammar check is enabled by default **inside the active Review/Grammar workflow** and uses a debounced editor-change trigger; it does not submit every note simply because a vault is opened. Turn off automatic grammar checks in the Review settings to avoid those background-on-edit submissions. For sensitive material, use local features and avoid enabling remote providers. These disclosures describe the current code paths, not a guarantee about external services or future code changes.
 
 ### Avisos de rede em português
 
-As cinco chamadas identificadas são: **download do índice Unicode** (solicitado pelo usuário; não envia o manuscrito), **verificação gramatical pelo LanguageTool** (envia o trecho analisado e pode acontecer automaticamente enquanto a aba Revisão/Gramática está ativa), **listagem de modelos de IA** (pode enviar a chave do provedor, mas não o manuscrito) **solicitações à IA** (enviam texto, prompts e eventualmente contexto de notas/projetos ao provedor escolhido) e **download de pacotes Click Clack** (só ao clicar em baixar; transfere cinco arquivos WAV por pacote, sem enviar textos do cofre). O **TTS online** também envia o texto de leitura ao serviço da Microsoft por WebSocket, após autorização.
+As chamadas já existentes incluem: **download do índice Unicode** (solicitado pelo usuário; não envia o manuscrito), **verificação gramatical pelo LanguageTool** (envia o trecho analisado e pode acontecer automaticamente enquanto a aba Revisão/Gramática está ativa), **listagem de modelos de IA** (pode enviar a chave do provedor, mas não o manuscrito) **solicitações à IA** (enviam texto, prompts e eventualmente contexto de notas/projetos ao provedor escolhido) e **download de pacotes Click Clack** (só ao clicar em baixar; transfere cinco arquivos WAV por pacote, sem enviar textos do cofre). O **TTS online** também envia o texto de leitura ao serviço da Microsoft por WebSocket, após autorização.
+
+O buscador de imagens (10.2) adicionou duas chamadas de rede: busca/download direto do Wikimedia Commons, Pexels, Pixabay ou Unsplash; e registro do download requerido pela API Unsplash. As pesquisas enviam as palavras digitadas e, conforme a fonte, uma chave de API. A seleção de miniaturas HTTPS e os cartões de resultados também pode informar seu IP ao servidor da imagem por carregamento normal do navegador, sem passar pelo proxy do plugin Image Inserter original. Não há pesquisa automática ao abrir o cofre. As chaves são guardadas nas configurações locais do plugin sem criptografia; avalie licenças e privacidade antes de usar.
 
 A revisão automática está ativada por padrão dentro do fluxo de Revisão/Gramática; você pode desativá-la nas configurações. Os provedores remotos podem armazenar os dados conforme suas políticas. Não ative essas funções para textos confidenciais sem avaliar os riscos.
 

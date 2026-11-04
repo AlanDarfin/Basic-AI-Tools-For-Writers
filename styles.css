@@ -6421,13 +6421,9 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
  height:auto;
  aspect-ratio:16/9;
 }
-.markdown-source-view .inline-title:has(> .writer-v9-inline-title-icon),
-.markdown-preview-view .inline-title:has(> .writer-v9-inline-title-icon){
- display:flex;
- align-items:center;
- gap:.42em;
-}
 .inline-title > .writer-v9-inline-title-icon{
+ margin-inline-end:.42em;
+ vertical-align:middle;
  display:inline-flex;
  align-items:center;
  justify-content:center;

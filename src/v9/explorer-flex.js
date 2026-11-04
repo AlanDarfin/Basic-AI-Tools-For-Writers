@@ -63,7 +63,7 @@ function writerV91FlexPatterns(cfg){
 }
 function writerV91FlexIsHidden(cfg,path,patterns,plugin){
  if(cfg.hideEnabled===false||!path)return false;
- const blocked=(cfg.hidden||[]).some(rule=>path===rule||path.startsWith(rule.replace(/\\/$/,'')+'/'));
+ const blocked=(cfg.hidden||[]).some(rule=>path===rule||path.startsWith(rule.replace(/\/$/,'')+'/'));
  return blocked||(patterns||[]).some(re=>re.test(path));
 }
 function writerV91FlexNodePath(node,view){

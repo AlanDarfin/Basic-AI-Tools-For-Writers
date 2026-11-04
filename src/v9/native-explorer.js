@@ -294,14 +294,18 @@ function writerV9RegisterExplorer(plugin){
    for(const title of host.querySelectorAll('.inline-title')){
     const old=title.querySelector(':scope > .writer-v9-inline-title-icon');
     if(old?.dataset.icon!==icon)old?.remove();
-    if(!icon||title.querySelector(':scope > .writer-v9-inline-title-icon'))continue;
-    const node=title.ownerDocument.createElement('span');
-    node.className='writer-v9-inline-title-icon';
-    node.dataset.icon=icon;
-    node.setAttribute('aria-hidden','true');
-    node.setAttribute('contenteditable','false');
-    require('obsidian').setIcon(node,icon);
-    title.insertBefore(node,title.firstChild);
+    if(icon&&!title.querySelector(':scope > .writer-v9-inline-title-icon')){
+     const node=title.ownerDocument.createElement('span');
+     node.className='writer-v9-inline-title-icon';
+     node.dataset.icon=icon;
+     node.setAttribute('aria-hidden','true');
+     node.setAttribute('contenteditable','false');
+     require('obsidian').setIcon(node,icon);
+     title.insertBefore(node,title.firstChild);
+    }
+    // Absolutely positioned decoration: never pushes the editable title baseline.
+    title.classList.toggle('writer-v93-title-icon-host',Boolean(
+     title.querySelector(':scope > .writer-v9-inline-title-icon, :scope > .writer-v9215-pretty-icon')));
    }
   }
  };
@@ -368,6 +372,9 @@ function writerV9RegisterExplorer(plugin){
   plugin.writerV9ExplorerRefresh=null;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
     leaf.view?.containerEl?.querySelectorAll('.writer-v9-inline-title-icon').forEach(el=>el.remove());
+    leaf.view?.containerEl?.querySelectorAll('.inline-title.writer-v93-title-icon-host').forEach(title=>{
+     if(!title.querySelector(':scope > .writer-v9215-pretty-icon'))title.classList.remove('writer-v93-title-icon-host');
+    });
    plugin.writerV9InlineTitleRefresh=null;
  });
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{

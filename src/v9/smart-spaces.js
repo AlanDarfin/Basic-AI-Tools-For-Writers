@@ -7,9 +7,10 @@ const WRITER_V9_SPACE_MAX=200;
 const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
- const cfg=settings.v9Spaces={enabled:false,dock:true,activeId:'',spaces:[],...raw};
+ const cfg=settings.v9Spaces={enabled:false,dock:true,manageIcon:true,sidebar:true,activeId:'',spaces:[],...raw};
  cfg.enabled=cfg.enabled===true;
  cfg.dock=cfg.dock!==false;
+ cfg.manageIcon=cfg.manageIcon!==false;cfg.sidebar=cfg.sidebar!==false;
  cfg.spaces=Array.isArray(cfg.spaces)?cfg.spaces.map(writerV9SpaceSanitize).filter(Boolean).slice(0,40):[];
  const seen=new Set();
  cfg.spaces=cfg.spaces.filter(space=>{if(seen.has(space.id))return false;seen.add(space.id);return true;});
@@ -328,6 +329,7 @@ function writerV9RegisterSpaces(plugin){
  plugin.writerV9SpacesRefresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)||[])leaf.view?.render?.();};
  plugin.addCommand({id:'v9215-spaces-all',name:writerUi('Spaces: mostrar todo o cofre','Spaces: show entire vault'),callback:()=>void writerV9215SelectSpace(plugin,'')});
  const openSidebar=async()=>{
+  if(plugin.settings.v9Spaces.sidebar===false)return;
   const existing=plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)?.[0];
   const leaf=existing||plugin.app.workspace.getLeftLeaf?.(false)||plugin.app.workspace.getLeaf('tab');
   if(!leaf)return;
@@ -373,6 +375,14 @@ function writerV9SpacesSettings(plugin,panel){
    for(const space of cfg.spaces)drop.addOption(space.id,space.name);
    drop.setValue(cfg.activeId||'').onChange(value=>void writerV9215SelectSpace(plugin,value));
   });
+ new Setting(panel).setName(writerUi('Ícone de gerenciamento no explorador','Explorer management icon'))
+  .addToggle(t=>t.setValue(cfg.manageIcon).onChange(async value=>{
+   cfg.manageIcon=value;await plugin.saveSettings();plugin.writerV9216SpacesDockRefresh?.();
+  }));
+ new Setting(panel).setName(writerUi('Ativar painel lateral de Spaces','Enable Spaces sidebar'))
+  .addToggle(t=>t.setValue(cfg.sidebar).onChange(async value=>{
+   cfg.sidebar=value;await plugin.saveSettings();
+  }));
  new Setting(panel).setName(writerUi('Abrir Spaces na barra lateral','Open Spaces in sidebar'))
   .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open sidebar')).onClick(()=>void plugin.writerV9SpacesSidebarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))

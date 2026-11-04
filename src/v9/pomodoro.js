@@ -50,7 +50,7 @@ class WriterV931PomodoroView extends require('obsidian').ItemView{
  getViewType(){return WRITER_V931_POMODORO_VIEW;}
  getDisplayText(){return writerUi('Pomodoro · Foco','Pomodoro · Focus');}
  getIcon(){return 'timer';}
- async onOpen(){this.render();}
+ async onOpen(){this.plugin.writerV931Pomodoro?.views.add(this);this.render();}
  async onClose(){this.plugin.writerV931Pomodoro?.forgetView(this);}
  render(){
   const root=this.contentEl;
@@ -73,10 +73,11 @@ class WriterV931PomodoroView extends require('obsidian').ItemView{
   const controls=root.createDiv({cls:'writer-v931-pomodoro-controls'});
   const mk=(pt,en,icon,handler)=>{
    const button=controls.createEl('button',{cls:'writer-v931-pomodoro-control',attr:{type:'button','aria-label':writerUi(pt,en)}});
-   require('obsidian').setIcon(button,icon);
+   const glyph=button.createSpan({cls:'writer-v931-pomodoro-control-icon'});
+   require('obsidian').setIcon(glyph,icon);
    const text=button.createSpan({text:writerUi(pt,en)});
    button.addEventListener('click',()=>void handler());
-   return {button,text};
+   return {button,text,glyph};
   };
   this.play=mk('Iniciar','Start','play',()=>timer.toggle());
   mk('Reiniciar','Reset','rotate-ccw',()=>timer.reset());
@@ -100,8 +101,7 @@ class WriterV931PomodoroView extends require('obsidian').ItemView{
   const total=writerV931PomodoroDuration(cfg,cfg.mode);
   this.progress.value=total?Math.max(0,Math.min(100,100*(1-remaining/total))):0;
   this.play.text.textContent=writerUi(cfg.running?'Pausar':'Iniciar',cfg.running?'Pause':'Start');
-  this.play.button.querySelector('svg')?.remove();
-  require('obsidian').setIcon(this.play.button,cfg.running?'pause':'play');
+  require('obsidian').setIcon(this.play.glyph,cfg.running?'pause':'play');
   this.count.textContent=writerUi('Sessões de foco concluídas hoje: ','Focus sessions completed today: ')+
    (cfg.today===writerV931PomodoroToday()?cfg.todayCompleted:0);
  }

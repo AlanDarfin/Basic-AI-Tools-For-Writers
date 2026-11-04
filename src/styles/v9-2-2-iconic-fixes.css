@@ -622,38 +622,40 @@ body.is-mobile .writer-v9216-flow-board > .writer-v93-flow-items{
 body.is-mobile .writer-v93-flow-layout-board > .writer-v93-flow-items{
  display:flex;
 }
-/* 9.3: Decorations are taken out of editable title layout, with an anchored
-   first-line icon. This fixes font/theme baseline drift on desktop and Android. */
+/* 9.3.2 — Place note icons in the text's first line, not at the top of
+   the taller mobile title box. Keeps long titles editable and wrapping. */
 .inline-title.writer-v93-title-icon-host{
- position:relative;
- padding-inline-start:1.38em;
+ padding-inline-start:0;
 }
 .inline-title.writer-v93-title-icon-host > .writer-v9-inline-title-icon,
 .inline-title.writer-v93-title-icon-host > .writer-v9215-pretty-icon{
- position:absolute;
- inset-inline-start:0;
- top:.16em;
- width:1em;
- height:1em;
- min-width:1em;
- min-height:1em;
- margin:0;
- padding:0;
- line-height:1;
- vertical-align:initial;
- color:inherit;
+ position:static;
+ inset:auto;
+ top:auto;
  display:inline-flex;
  align-items:center;
  justify-content:center;
+ width:.94em;
+ height:.94em;
+ min-width:.94em;
+ min-height:.94em;
+ margin:0 .34em 0 0;
+ padding:0;
+ box-sizing:border-box;
+ vertical-align:-.13em;
+ line-height:1;
+ color:inherit;
  pointer-events:none;
+ user-select:none;
 }
 .inline-title.writer-v93-title-icon-host > .writer-v9-inline-title-icon svg,
 .inline-title.writer-v93-title-icon-host > .writer-v9215-pretty-icon svg{
  display:block;
- flex:0 0 100%;
  width:100%;
  height:100%;
+ flex:0 0 100%;
  stroke:currentColor;
+ color:inherit;
 }
 /* Folder Note previews are the YAML description only; line-count limits
    belong to ordinary file-content excerpts, never Folder Notes. */

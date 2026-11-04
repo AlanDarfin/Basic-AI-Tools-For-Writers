@@ -16,26 +16,87 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['wikilink','file-symlink','Link interno','Internal link'],['callout','message-square','Callout','Callout'],
  ['table','table','Tabela','Table'],['rule','minus','Separador','Horizontal rule'],
  ['footnote','asterisk','Nota de rodapé','Footnote'],['undo','undo-2','Desfazer','Undo'],
- ['redo','redo-2','Refazer','Redo']
+ ['redo','redo-2','Refazer','Redo'],
+ ['indent','indent-increase','Aumentar recuo','Increase indent'],
+ ['outdent','indent-decrease','Diminuir recuo','Decrease indent'],
+ ['align-left','align-left','Alinhar à esquerda','Align left'],
+ ['align-center','align-center','Centralizar','Center'],
+ ['align-right','align-right','Alinhar à direita','Align right'],
+ ['justify','align-justify','Justificar','Justify'],
+ ['text-color','palette','Cor do texto','Text color'],
+ ['background-color','paint-bucket','Cor de destaque','Background color']
 ];
 const WRITER_V9_FORMAT_IDS=WRITER_V9_FORMAT_ACTIONS.map(x=>x[0]);
 const WRITER_V9_TOOLBAR_DEFAULTS={
  enabledDesktop:true,enabledMobile:false,compact:true,placement:'bottom',
+ style:'compact',buttonSize:32,showLabels:false,textColor:'#cf517f',backgroundColor:'#ffd66a',
+ customButtons:[],groups:[],customizations:{},
  actions:['bold','italic','underline','strike','highlight','code','h1','h2','h3','quote','bullet','numbered','task','link','wikilink','callout','table','rule','undo','redo']
 };
+function writerV1048ToolbarSafeIcon(icon){
+ const candidate=String(icon||'').trim().toLowerCase().slice(0,45);
+ return /^[a-z][a-z0-9-]{1,44}$/.test(candidate)?candidate:'command';
+}
+function writerV1048ToolbarHex(value,fallback){
+ const s=String(value||'').trim();
+ return /^#[\da-f]{6}$/i.test(s)?s:fallback;
+}
+function writerV1048ToolbarCustomId(id){
+ return /^custom-[a-z0-9-]{1,45}$/.test(String(id||''));
+}
+function writerV1048ToolbarItems(cfg){
+ return [...WRITER_V9_FORMAT_ACTIONS.map(([id,icon,pt,en])=>({id,icon,pt,en,type:'format'})),
+  ...(cfg.customButtons||[]).map(b=>({id:b.id,icon:b.icon,pt:b.label,en:b.label,type:'command',command:b.command}))];
+}
 function writerV9ToolbarMerge(settings){
  const raw=settings.v9Toolbar&&typeof settings.v9Toolbar==='object'&&!Array.isArray(settings.v9Toolbar)?settings.v9Toolbar:{};
  const cfg=settings.v9Toolbar={...WRITER_V9_TOOLBAR_DEFAULTS,...raw};
- cfg.enabledDesktop=cfg.enabledDesktop!==false;cfg.enabledMobile=cfg.enabledMobile===true;cfg.compact=cfg.compact!==false;
- cfg.placement=['top','bottom'].includes(cfg.placement)?cfg.placement:'bottom';
- cfg.actions=Array.isArray(cfg.actions)?[...new Set(cfg.actions.filter(x=>WRITER_V9_FORMAT_IDS.includes(x)))]:[...WRITER_V9_TOOLBAR_DEFAULTS.actions];
+ cfg.enabledDesktop=cfg.enabledDesktop!==false;
+ cfg.enabledMobile=cfg.enabledMobile===true;
+ cfg.compact=cfg.compact!==false;
+ cfg.placement=['top','bottom','floating'].includes(cfg.placement)?cfg.placement:'bottom';
+ cfg.style=['tiny','compact','regular'].includes(cfg.style)?cfg.style:(cfg.compact?'compact':'regular');
+ cfg.buttonSize=Math.max(26,Math.min(46,Math.round(Number(cfg.buttonSize)||32)));
+ cfg.showLabels=cfg.showLabels===true;
+ cfg.textColor=writerV1048ToolbarHex(cfg.textColor,'#cf517f');
+ cfg.backgroundColor=writerV1048ToolbarHex(cfg.backgroundColor,'#ffd66a');
+ const custom=[];
+ for(const rawItem of Array.isArray(cfg.customButtons)?cfg.customButtons.slice(0,60):[]){
+  if(!rawItem||!writerV1048ToolbarCustomId(rawItem.id))continue;
+  const command=String(rawItem.command||'').trim().slice(0,180);
+  if(!/^[\w.:-]{2,180}$/.test(command)||custom.some(i=>i.id===rawItem.id))continue;
+  custom.push({id:rawItem.id,command,label:String(rawItem.label||command).trim().slice(0,55)||command,
+   icon:writerV1048ToolbarSafeIcon(rawItem.icon||'command')});
+ }
+ cfg.customButtons=custom;
+ const allowed=new Set([...WRITER_V9_FORMAT_IDS,...custom.map(i=>i.id)]);
+ cfg.actions=Array.isArray(cfg.actions)?[...new Set(cfg.actions.filter(id=>allowed.has(id)))]:[...WRITER_V9_TOOLBAR_DEFAULTS.actions];
+ const customizations={};
+ for(const [id,option] of Object.entries(cfg.customizations||{})){
+  if(!allowed.has(id)||!option||typeof option!=='object')continue;
+  customizations[id]={label:String(option.label||'').trim().slice(0,55),
+   icon:option.icon?writerV1048ToolbarSafeIcon(option.icon):''};
+ }
+ cfg.customizations=customizations;
+ const assigned=new Set(),groups=[];
+ for(const group of Array.isArray(cfg.groups)?cfg.groups.slice(0,16):[]){
+  if(!group||typeof group!=='object')continue;
+  const ids=[...new Set((Array.isArray(group.ids)?group.ids:[])
+   .filter(id=>cfg.actions.includes(id)&&!assigned.has(id)))].slice(0,25);
+  if(!ids.length)continue;
+  ids.forEach(id=>assigned.add(id));
+  groups.push({id:String(group.id||'group-'+groups.length).replace(/[^a-z0-9-]/gi,'').slice(0,45),
+   name:String(group.name||'Menu').trim().slice(0,45)||'Menu',
+   icon:writerV1048ToolbarSafeIcon(group.icon||'folder-open'),ids});
+ }
+ cfg.groups=groups;
  return cfg;
 }
 function writerV9ToolbarAllowed(plugin){
  const cfg=plugin.settings.v9Toolbar;
  return writerModuleOn(plugin,'formatToolbar')&&(writerV8HomeIsMobile(plugin)?cfg.enabledMobile:cfg.enabledDesktop);
 }
-function writerV9Format(editor,action){
+function writerV9Format(editor,action,options={}){
  if(!editor)return false;
  if(action==='undo'||action==='redo'){editor[action]?.();return true;}
  const selected=editor.getSelection(),label=selected||writerUi('texto','text');
@@ -77,6 +138,23 @@ function writerV9Format(editor,action){
  case 'table':editor.replaceSelection('| '+writerUi('Coluna 1','Column 1')+' | '+writerUi('Coluna 2','Column 2')+' |\n| --- | --- |\n| '+(selected||'')+' | |\n');break;
  case 'rule':editor.replaceSelection('\n---\n');break;
  case 'footnote':editor.replaceSelection('[^1]');break;
+ case 'indent':perLine(line=>'    '+line);break;
+ case 'outdent':perLine(line=>line.replace(/^(?: {1,4}|\t)/,''));break;
+ case 'align-left':case 'align-center':case 'align-right':{
+  if(typeof writerV102AlignApply==='function'){
+   writerV102AlignApply(editor,action==='align-left'?'l':action==='align-center'?'c':'r');
+  }else return false;
+  break;
+ }
+ case 'justify':replacement('<div style="text-align:justify">','</div>');break;
+ case 'text-color':{
+  const color=writerV1048ToolbarHex(options.textColor,'#cf517f');
+  replacement('<span style="color:'+color+'">','</span>');break;
+ }
+ case 'background-color':{
+  const color=writerV1048ToolbarHex(options.backgroundColor,'#ffd66a');
+  replacement('<mark style="background-color:'+color+'">','</mark>');break;
+ }
  default:return false;
  }
  editor.focus?.();

@@ -241,7 +241,17 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  const player=bubble.createDiv({cls:'writer-v8-chat-fake-audio',attr:{role:'group','aria-label':label}});
  const button=player.createEl('button',{cls:'writer-v8-chat-voice-toggle',attr:{type:'button',title:label,'aria-pressed':'false'}});
  const wave=player.createDiv({cls:'writer-v8-chat-wave',attr:{'aria-hidden':'true'}});
- for(let i=0;i<24;i++)wave.createSpan({cls:'writer-v8-chat-wave-bar'});
+ // Vary the fictional waveform per rendered message instead of repeating
+ // the same nth-child pattern. This does not read or play audio.
+ const heights=Array.from({length:24},()=>18+Math.floor(Math.random()*78));
+ for(let i=0;i<heights.length;i++){
+  const bar=wave.createSpan({cls:'writer-v8-chat-wave-bar'});
+  if(bar?.style){
+   bar.style.height=heights[i]+'%';
+   bar.style.animationDelay=Math.floor(Math.random()*650)+'ms';
+   bar.style.animationDuration=(600+Math.floor(Math.random()*500))+'ms';
+  }
+ }
  player.createSpan({cls:'writer-v8-chat-duration',text:voice.duration});
  const update=on=>{
   player.classList.toggle('is-animating',on);

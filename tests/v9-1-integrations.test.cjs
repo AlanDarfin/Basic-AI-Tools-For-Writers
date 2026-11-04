@@ -77,6 +77,29 @@ test('Native Explorer sorts persisted custom order and hides folder descendants'
  assert.deepEqual(Array.from(sorted,x=>x.file.name),['three.md','one.md','two.md']);
  assert.deepEqual(Array.from(files,x=>x.file.name),['one.md','two.md','three.md']);
 });
+test('Moving up changes only saved order and never reparents explorer nodes',()=>{
+ const {source,exposed:m}=moduleUnderTest('explorer-flex.js',
+  ['writerV91FlexMerge','writerV91FlexReorder']);
+ const parent={path:'Notes',children:[]};
+ const all=['one.md','two.md','three.md'].map(name=>({name,path:'Notes/'+name,parent}));
+ parent.children=all;
+ const byPath=Object.fromEntries(all.map(file=>[file.path,file]));
+ const settings={v91Flex:{perSpaceSorting:false,perSpacePins:false,
+  folders:{Notes:{sort:'custom',order:['one.md','two.md','three.md']}}}};
+ m.writerV91FlexMerge(settings);
+ let saves=0,refreshes=0;
+ const plugin={settings,app:{vault:{getAbstractFileByPath:p=>byPath[p]}},
+  saveSettings:()=>{saves++;},writerV91FlexRefresh:()=>{refreshes++;}};
+ m.writerV91FlexReorder(plugin,'Notes/two.md','Notes/one.md','before');
+ assert.deepEqual(Array.from(settings.v91Flex.folders.Notes.order),
+  ['two.md','one.md','three.md']);
+ assert.deepEqual(Array.from(parent.children,file=>file.name),
+  ['one.md','two.md','three.md']);
+ assert.equal(byPath['Notes/two.md'].path,'Notes/two.md');
+ assert.equal(refreshes,1);
+ assert.doesNotMatch(source,/container\.appendChild\(row\.node\)/);
+ assert.match(source,/writerFlexOrderHost/);
+});
 test('Desktop-only sections and README feature documentation in both languages',()=>{
  const sound=fs.readFileSync(path.join(root,'src/v9/soundscapes.js'),'utf8');
  const clicks=fs.readFileSync(path.join(root,'src/v9/click-clack.js'),'utf8');

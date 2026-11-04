@@ -108,16 +108,28 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
 function writerV10RenderBookshelf(plugin,target,opts={}){
  const config=plugin.settings.v10Bookshelf||{};
  const wrapper=target.createDiv({cls:'writer-v10-bookshelf'+(opts.compact?' is-widget':'')});
- const projects=writerV10BookshelfSort(writerV10BookshelfProjects(plugin),opts.sort||config.sort,plugin);
+ const projects=writerV10BookshelfProjects(plugin);
+ let sortMode=opts.sort||config.sort||'title';
  if(!projects.length){
   wrapper.createEl('p',{cls:'setting-item-description',text:writerUi('Nenhum índice Longform encontrado. Crie um livro em Projetos.','No Longform indices found. Create a book in Projects.')});return wrapper;
  }
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
+ search.classList.add('writer-v1042-bookshelf-search');
  let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
  const shelfNames=[...new Set(projects.map(p=>writerV10BookState(plugin,p).shelf).filter(Boolean))].sort();
  if(!opts.compact){
+  const sorting=toolbar.createEl('select',{cls:'writer-v1042-bookshelf-sort',
+   attr:{'aria-label':writerUi('Ordenar livros','Sort books')}});
+  for(const [key,pt,en] of [
+   ['title','Título','Title'],['recent','Atualização','Recently updated'],
+   ['chapters','Capítulos','Chapters'],['progress','Progresso','Progress'],
+   ['series','Série','Series']]){
+   const option=sorting.createEl('option',{text:writerUi(pt,en)});option.value=key;
+  }
+  sorting.value=sortMode;
+  sorting.addEventListener('change',()=>{sortMode=sorting.value;page=0;draw();});
   const favorite=toolbar.createEl('button',{text:writerUi('Favoritos','Favorites'),attr:{type:'button','aria-pressed':'false'}});
   favorite.addEventListener('click',()=>{onlyFavorites=!onlyFavorites;favorite.setAttribute('aria-pressed',String(onlyFavorites));page=0;draw();});
   const status=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar estado de leitura','Filter reading status')}});
@@ -134,7 +146,7 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  const draw=()=>{
   grid.empty();pagination.empty();
   const query=search.value.trim().toLocaleLowerCase();
-  const items=projects.filter(p=>{
+  const items=writerV10BookshelfSort([...projects],sortMode,plugin).filter(p=>{
    const record=writerV10BookState(plugin,p);
    return (!onlyFavorites||record.favorite)&&(!statusFilter||record.status===statusFilter)&&
     (!shelfFilter||record.shelf===shelfFilter)&&(!query||
@@ -158,6 +170,7 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
 }
 function writerV10OpenBookshelf(plugin){
  const modal=new Modal(plugin.app);
+ modal.modalEl?.classList?.add('writer-v1042-bookshelf-modal');
  modal.setTitle(writerUi('Biblioteca Longform','Longform bookshelf'));
  modal.onOpen=()=>{modal.contentEl.empty();writerV10RenderBookshelf(plugin,modal.contentEl);};
  modal.open();
@@ -185,6 +198,13 @@ function writerV10RegisterBookshelf(plugin){
  plugin.addCommand?.({id:'v10-insert-bookshelf',name:writerUi('Longform: inserir bloco de livros','Longform: insert bookshelf block'),
   editorCallback:editor=>editor.replaceSelection('\n~~~bookshelf\nsort: title\nlayout: normal\n~~~\n')});
  plugin.writerV10OpenBookshelf=()=>writerV10OpenBookshelf(plugin);
+ // Quick access stays available on desktop and mobile ribbons.
+ const shelfRibbon=plugin.addRibbonIcon?.('library',writerUi('Biblioteca Longform','Longform bookshelf'),
+  ()=>writerV10OpenBookshelf(plugin));
+ shelfRibbon?.addClass?.('writer-v1042-shelf-ribbon');
+ plugin.addCommand?.({id:'v1042-bookshelf-search',name:writerUi('Biblioteca: buscar livros','Bookshelf: search books'),
+  callback:()=>writerV10OpenBookshelf(plugin)});
+
 }
 function writerV10BookshelfSettings(plugin,panel){
  const cfg=plugin.settings.v10Bookshelf;

@@ -2,13 +2,22 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.2 — Ordenação segura, Spaces, biblioteca e atalhos
+
+- **Ordenação manual:** mover notas para cima/baixo não remove nem reinsere elementos nativos da árvore do explorador, evitando o desaparecimento visual após a atualização. A ordem é apresentada via CSS e o estilo original é restaurado ao descarregar o plugin.
+- **Spaces no celular:** abas com rolagem horizontal independente, lista de notas com rolagem vertical e novos botões para criar Space, abrir biblioteca e ordenar pasta da nota atual.
+- **Biblioteca Longform:** seleção de ordenação na janela, cartões em coluna única em telas estreitas, controles de status/progresso/estante mais legíveis e atalho na barra lateral.
+- **Áudios fictícios:** ondas com alturas e animações variadas a cada renderização, sem gravar nem tocar áudio.
+- **Atalhos:** comandos na paleta para alternar Spaces, fixar nota atual, ordenar a pasta e abrir um menu de ações rápidas do Basic.
+- **CSS pessoal:** novo snippet opcional `Basic-Compat-Unificado-v2.css`, mantendo os estilos anteriores e adaptando subtítulo, títulos, Spaces e biblioteca.
 
 ## Atualização 10.4.1 — Alinhamento de títulos e texto
 

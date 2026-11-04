@@ -2,12 +2,21 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.2 — safer Explorer sorting, mobile Spaces and bookshelf
+
+- **Manual sorting:** moving a note up/down no longer reparents Obsidian's native File Explorer DOM nodes. The plugin applies visual CSS order without renaming, deleting, or moving vault files and restores original styles on unload.
+- **Spaces sidebar:** keep the Space tabs visible while scrolling the note list independently, with a count and buttons for new Space, Longform bookshelf and sorting the current folder.
+- **Bookshelf:** add interactive sorting and responsive single-column cards for narrower screens; improve reading-status, percentage and shelf controls, with a direct ribbon shortcut.
+- **Fictional voice notes:** generate a different waveform-height and animation pattern for each rendered message; no audio is generated or fetched.
+- **Shortcuts:** add palette commands for switching Spaces, quick pinning, sorting the current folder, and a compact Basic quick-actions ribbon menu.
+- **Personal CSS:** the separate optional `Basic-Compat-Unificado-v2.css` snippet preserves the user's previous styles while adapting subtitle alignment, heading overrides, Spaces and bookshelf.
 
 ## Version 10.4.1 — heading alignment and easier controls
 

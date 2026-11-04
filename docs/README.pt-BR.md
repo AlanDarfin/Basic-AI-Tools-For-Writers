@@ -2,13 +2,20 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.3 — Ordenação da raiz e botão nativo
+
+- **Raiz do cofre:** os caminhos `/` e vazio passam a identificar a mesma pasta. A ordem manual usa a listagem nativa do Obsidian quando disponível, evitando uma segunda ordenação CSS conflitante.
+- **Um único botão:** selecione o tipo de ordem no botão **Alterar ordem de classificação** que já aparece no topo do explorador. Além das opções originais, o Basic acrescenta ordem manual, número no título, propriedade YAML e pastas primeiro. A escolha vale para **todas as pastas**, inclusive a raiz.
+- **Menu de contexto limpo:** foram retirados `Ordenação desta pasta`, `Mover para cima` e `Mover para baixo` do menu dos arquivos. Ícones, favoritos, ocultação e outras funções continuam disponíveis. As setas integradas aos itens no celular permanecem no modo manual.
+- **Atalhos dos Spaces:** os botões de ordenação apontam para o controle nativo. A ordem manual previamente salva em cada pasta continua armazenada.
 
 ## Atualização 10.4.2 — Ordenação segura, Spaces, biblioteca e atalhos
 

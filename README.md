@@ -22,6 +22,22 @@ Write, plan, revise and organize books without moving your work to a separate da
 See the [v10 feature-by-feature audit](docs/V10_REVIEW.en.md), [current/legacy block guide](docs/BLOCKS.en.md) and [Portuguese documentation](docs/README.pt-BR.md). These are independent integrations inspired by other plugins, not claims of full upstream equivalence.
 
 
+## Mobile Spaces, properties, chat and images · 10.2.0
+
+**Spaces:** responsive mobile note cards, left-aligned names, truncated paths, view switches and pagination instead of an overflowing two-column grid.
+
+**Pretty Properties:** native row actions (⋯) hide a property in one note or all notes, assign a per-property icon and reveal hidden fields without deleting YAML data.
+
+**Fictional chat:** compact WhatsApp-style author-written voice transcripts, independent speaker bubble colors and transparent conversation background. It does not record or transcribe real audio.
+
+**File previews:** banner/cover/thumbnail properties, local embeds and explicitly linked HTTPS images (remote loading can be disabled for privacy).
+
+**Image search:** Wikimedia Commons without a key; optional direct Pexels, Pixabay and Unsplash APIs with the user's own keys, no third-party search proxy. Save photos into the vault or insert a URL, including into frontmatter.
+
+**Text alignment:** line-anchored non-codeblock syntax ::l[text], ::c[text], ::r[text], preserving Markdown bold/italics without conflicts with pipes or link slashes.
+
+[10.2 detailed guide](docs/V10_2_MEDIA_AND_EDITOR.en.md) · [Markdown syntax](docs/BLOCKS.en.md)
+
 ## Expanded writing workflows · 10.1.0
 
 This update extends the existing v10 foundation **without rewriting projects, migrating notes destructively or removing legacy syntax**. Settings and features are bilingual (PT/EN), and optional actions remain opt-in where they change many files or rearrange the workspace.

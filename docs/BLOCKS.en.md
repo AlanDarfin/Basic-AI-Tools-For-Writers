@@ -553,3 +553,30 @@ The story continues.
 ~~~~
 
 **Not a code-fence renderer:** importing/exporting ICS, filtering Markdown tables, validating YAML, editing batch properties, changing DoubleShift shortcuts, managing Space history, and saving dashboard presets are commands or settings, not Markdown fences.
+
+
+## 19. Chat and text alignment (10.2)
+
+~~~~markdown
+~~~chat
+title: Example
+background: transparent
+bubble-color: green
+[Maria=purple, Maria=bubble:orange]
+
+< | Maria | Test message | 14:32
+> | Me | [audio:0:02:test test] | 14:34
+~~~
+~~~~
+
+Name and bubble colors are independent, and transcripts are author-written fictional text. Transparent backgrounds remove the conversation panel.
+
+Align Markdown text by wrapping a single line without code fences:
+
+~~~~markdown
+::l[Left]
+::c[**Centered**]
+::r[*Right*]
+~~~~
+
+Long aliases: ::left, ::center, ::right.

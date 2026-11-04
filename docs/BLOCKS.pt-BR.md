@@ -564,3 +564,30 @@ A história continua.
 ~~~~
 
 **Não são blocos Markdown:** importar/exportar ICS, filtrar tabelas, validar YAML, editar propriedades em lote, configurar DoubleShift, gerenciar histórico de Spaces e salvar presets de widgets são comandos e configurações.
+
+
+## 19. Novas opções do chat e alinhamento (10.2)
+
+~~~~markdown
+~~~chat
+title: Exemplo
+background: transparent
+bubble-color: green
+[Maria=purple, Maria=bubble:orange]
+
+< | Maria | Mensagem de teste | 14:32
+> | Eu | [áudio:0:02:teste teste] | 14:34
+~~~
+~~~~
+
+Cor do nome e cor do balão são independentes; transcrições são texto fictício escrito no bloco. O fundo transparente remove o painel da conversa.
+
+Alinhamento direto no Markdown (uma linha própria por marcador):
+
+~~~~markdown
+::l[Esquerda]
+::c[**Centralizado**]
+::r[*Direita*]
+~~~~
+
+Aliases completos: ::left, ::center e ::right. Nenhum codeblock é necessário para alinhar.

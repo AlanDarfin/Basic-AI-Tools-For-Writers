@@ -10,6 +10,22 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 
 
+## Spaces mobile, propriedades, chat e imagens · 10.2.0
+
+**Spaces:** cartões responsivos, títulos alinhados à esquerda, caminhos sem transbordamento, alternância entre modos de exibição e paginação.
+
+**Pretty Properties:** menu ⋯ em cada propriedade nativa para ocultar apenas nesta nota ou em todas, definir um ícone personalizado e revelar os campos sem apagar os valores YAML.
+
+**Chat fictício:** transcrição escrita pelo autor em estilo compacto do WhatsApp, cor independente por balão e fundo transparente. Não grava nem transcreve áudios reais.
+
+**Prévia de notas:** imagem de banner/capa/thumbnail, embeds locais e links HTTPS explícitos, com chave para desativar o acesso remoto.
+
+**Buscador de imagens:** Wikimedia Commons sem chave e Pexels/Pixabay/Unsplash com as chaves pessoais diretamente nos serviços, sem proxy externo. Insira uma URL ou baixe a imagem para o cofre; também é possível alterar o campo banner.
+
+**Alinhamento de texto:** sintaxe ::l[texto], ::c[texto], ::r[texto], sem codeblock, com negrito e itálico no interior, sem conflitar com barras ou tabelas.
+
+[Guia da 10.2](V10_2_MEDIA_AND_EDITOR.pt-BR.md) · [Sintaxes Markdown](BLOCKS.pt-BR.md)
+
 ## Fluxos de escrita ampliados · 10.1.0
 
 Esta atualização amplia a base da v10 **sem reescrever projetos, migrar notas de forma destrutiva ou retirar sintaxes antigas**. Configurações e novos recursos usam textos PT/EN; operações que alteram muitos arquivos ou reorganizam painéis são opcionais.

@@ -46,7 +46,7 @@
 .metadata-property .writer-v102-property-actions{position:absolute;inset-inline-end:4px;top:4px;z-index:2;min-width:27px;min-height:27px;width:27px;height:27px;display:inline-flex;align-items:center;justify-content:center;padding:4px;border:0;border-radius:var(--radius-s);background:var(--background-secondary);color:var(--text-muted);opacity:0;box-shadow:none}
 .metadata-property:is(:hover,:focus-within) .writer-v102-property-actions{opacity:1}
 .metadata-property .writer-v102-property-actions svg{width:15px;height:15px}
-.metadata-property:has(> .writer-v102-property-actions){padding-inline-end:34px}
+.metadata-property.writer-v102-property-action-host{padding-inline-end:34px}
 .metadata-property.writer-v102-property-has-icon .metadata-property-icon{display:none}
 .metadata-property .writer-v102-property-custom-icon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 18px;width:18px;height:18px;margin-inline-end:var(--size-4-1);color:var(--text-accent);font-size:15px}
 .metadata-property .writer-v102-property-custom-icon svg{width:17px;height:17px}
@@ -82,7 +82,7 @@
 .writer-v8-chat .writer-v8-chat-fake-audio .writer-v8-chat-transcript-text::before{content:"“"}
 .writer-v8-chat .writer-v8-chat-fake-audio .writer-v8-chat-transcript-text::after{content:"”"}
 .writer-v8-chat .writer-v8-chat-fake-audio{gap:6px 9px;padding:1px;max-width:min(100%,25rem)}
-.writer-v8-chat .writer-v8-chat-bubble:has(.writer-v8-chat-fake-audio){padding:6px 9px}
+.writer-v8-chat .writer-v8-chat-bubble.is-fake-audio{padding:6px 9px}
 
 /* Search results use provider-native imagery with explicit attribution. */
 .writer-v102-image-modal{min-width:0;max-width:100%}

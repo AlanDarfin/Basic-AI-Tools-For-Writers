@@ -44,7 +44,7 @@ class WriterCursorMemory{
   }
  }
  capture(view){
-  if(!this.active()||!view?.file||!view.editor||this.pending.has(view))return false;
+  if(!this.active()||this.plugin.writerReviewInteractionGuard?.isSuspended?.()||!view?.file||!view.editor||this.pending.has(view))return false;
   const editor=view.editor;
   if(typeof editor.getCursor!=='function'||typeof editor.lineCount!=='function')return false;
   const head=writerCursorClamp(editor.getCursor('head'),editor);
@@ -84,7 +84,7 @@ class WriterCursorMemory{
  }
  restoreScrollIntoView(view,head,bookmark){
   const editor=view?.editor,cm=editor?.cm;
-  if(this.cfg.restoreScroll===false||!editor)return;
+  if(this.cfg.restoreScroll===false||!editor||this.plugin.writerReviewInteractionGuard?.isSuspended?.())return;
   // The stored pixel offset alone is unreliable on Android: a CM6 viewport may
   // not have measured its rows when file-open fires, or the virtual keyboard
   // may resize the scroll container after the initial scrollTo().
@@ -101,13 +101,14 @@ class WriterCursorMemory{
   }catch(error){console.warn('[Basic AI] Cursor scroll restore:',error);}
  }
  restore(view){
-  if(!this.active()||!view?.file?.path||!view.editor||this.isAnchored(view))return;
+  if(!this.active()||this.plugin.writerReviewInteractionGuard?.isSuspended?.()||!view?.file?.path||!view.editor||this.isAnchored(view))return;
   const path=view.file.path,bookmark=this.entries[path];
   if(!bookmark||this.pending.has(view))return;
   const editor=view.editor,initial=editor.getCursor?.('head');
   if(!initial||typeof editor.lineCount!=='function')return;
   this.pending.set(view,path);
-  const stillValid=()=>this.pending.get(view)===path&&view.file?.path===path&&!this.isAnchored(view);
+  const stillValid=()=>this.pending.get(view)===path&&view.file?.path===path&&!this.isAnchored(view)&&
+   !this.plugin.writerReviewInteractionGuard?.isSuspended?.();
   // Allow Obsidian to attach the editor and load the document before resetting
   // selection, then recenter after the layout and mobile keyboard settle.
   this.timer(()=>{

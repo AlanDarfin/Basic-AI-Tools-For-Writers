@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.2.15 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.2.16 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -66,6 +66,14 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 - **Sessões temporárias:** escreva em rascunhos mantidos na memória e salve explicitamente em uma nota quando necessário. Rascunhos não salvos desaparecem ao fechar o Obsidian.
 - **Tarefas e metas:** tarefas de projetos, indicadores de progresso e métricas de escrita.
 
+
+**Exemplo de painel Flow** (cada linha aponta para uma nota Markdown existente no cofre):
+
+```flow
+[[Capítulo 1]]
+[[Capítulo 2]]
+```
+
 ### Explorador nativo e aparência
 
 - **Ícones no estilo Iconic:** escolha ícones Lucide e cores para notas, pastas, favoritos e homepage.
@@ -79,9 +87,10 @@ A interface acompanha o idioma **português ou inglês** do Obsidian (inglês co
 ### Áudio e acessibilidade
 
 - **Soundscapes (PC):** rádios e playlists do YouTube agora **começam a tocar em segundo plano** ao clicar em Play, sem abrir popup ou aba. O mini player de vídeo aparece **somente** ao clicar no botão de exibi-lo ou usar o comando correspondente. É possível recolher sem interromper a rádio ou usar **Parar** para descarregá-la. O widget da Homepage permanece visível durante Play e Stop; no celular ele fica na grade normalmente, mas apresenta um aviso de indisponibilidade por limitações do Obsidian mobile. O mini player tenta utilizar Webview do Chromium e, quando indisponível, recorre a um iframe visível do YouTube. O volume das rádios agora pode ser ajustado pelo slider da Homepage, da barra de status ou do próprio mini player, assim como o áudio local. A configuração é reaplicada ao carregar o vídeo ou trocar de estação. Algumas transmissões podem bloquear incorporação (erro 153). **Minha Música** continua usando o player local, com controles próprios.
-- **Prévias e títulos na 9.2.15:** miniaturas quadradas novamente compactas, à direita da descrição, logo abaixo da ação de folder note. Ícones personalizados ao lado do título nativo herdam a cor do texto e ficam alinhados. Em **Spaces**, o Space ativo tem caminhos ocultos próprios, também aplicados ao explorador nativo; os filtros globais continuam globais.
-- **Propriedades visuais (primeira etapa):** capa, banner e ícone por YAML local; ocultar campos específicos ou vazios; cores de propriedades, barras de progresso, datas formatadas e modelos de texto seguros. A seleção de imagens usa o YAML nativo do Obsidian e não busca imagens externas.
-- **Flow e menu / (primeira etapa):** digite `/` para inserir títulos, listas, citações, callouts, tabelas, datas e notas incorporadas. Na visualização, notas Markdown incorporadas podem ser editadas no próprio bloco, com verificação de conflitos. A edição avançada completa de blocos do Make.md ainda não foi integrada.
+- **Prévias restauradas — 9.2.16:** Folder Notes exibem a propriedade `description` (ou `summary`/`brief`) mesmo durante o carregamento do cache; caso não exista, mostram o trecho inicial. Notas comuns exibem **o início do Markdown**, nunca o campo `description`, quando o modo **Todas as notas + Folder Notes** está ativado. Miniatura quadrada à direita da descrição, abaixo do botão de Folder Note. O ícone do título mantém a cor do próprio título.
+- **Spaces no rodapé do explorador:** barra compacta para alternar entre cofre inteiro e Spaces, criar coleções, gerenciar ícones e cores pelo seletor do Basic, renomear, configurar ou remover sem apagar notas. O Space ativo mantém suas próprias pastas/notas ocultas. Para usar, ative o módulo Spaces em **Personalização → Coleções locais**; a barra pode ser ocultada.
+- **Pretty Properties:** capas locais com formato e posição ajustáveis, banners alinhados, ícones YAML, campos ocultos, pesquisa rápida, cores por propriedade e por tag, progresso, datas formatadas, destaque de prazos e modelos de exibição. Em **Personalização → Propriedades visuais**. É uma integração própria e gradual, não uma cópia de todas as funções do plugin original.
+- **Flow e comandos `/`:** menu com estruturas de Markdown, callouts, destaques, links, fórmulas e incorporação de notas. Em leitura, notas incorporadas são editáveis com verificação do conteúdo atual antes de salvar. O bloco `flow` organiza notas como cartões com prévias e edição no próprio cartão. Configurações em **Escrita e Markdown → Flow e comandos /**. A edição avançada estrutural do Make.md ainda está em evolução.
 - **Image Captions:** legendas opcionais de imagens a partir do texto alternativo do Markdown, sem reescrever arquivos.
 - **Click Clack (PC):** sons de digitação com catálogo dos **13 pacotes originais** (Cherry MX, IBM, Olympia, Quill e outros), disponíveis para download individual ou em lote nas configurações. Pacotes instalados funcionam offline e nenhum áudio é baixado automaticamente.
 - **Leitura em voz alta (TTS):** vozes do sistema, quando disponíveis, ou vozes online com autorização, com idioma, velocidade, tom e seleção de voz. A leitura online envia texto ao serviço escolhido apenas quando ativada.

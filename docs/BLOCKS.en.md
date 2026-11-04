@@ -185,6 +185,18 @@ A simpler valid format is `< Mira | Hello` or `> Jonas | Hi | 10:00`. Legacy `==
 
 **New fictional voice notes:** use `[audio:0:15]` or `[voice:1:09]` as the entire message body. The play/pause button animates a waveform but **does not produce audio, record, or upload anything**. Example: `< | [audio:0:15] | 10:00`.
 
+**Fictional audio transcript (9.5.2):** append `:text` after the duration: `[audio:0:15:I'll be there in five minutes.]`. The visual voice note remains silent, but a **View transcript** button expands or hides the supplied words. Transcript text is displayed as plain text, supports colons and escaped `\\n` newlines, and never runs HTML. This is a **manually authored fictional transcript**, not automatic speech recognition.
+
+~~~~markdown
+~~~chat
+title: Expedition group
+group-image: [[Images/group.webp]]
+[Left=Lia, Right=Davi]
+< | Lia | [audio:0:15:I'm almost there.\\nPlease wait for me!] | 10:01
+> | Davi | [voice:0:08:We're waiting!] | 10:02
+~~~
+~~~~
+
 **Line breaks:** consecutive lines and blank lines after a message become Markdown content in the same bubble. You can also type a literal `\\n` inside one message field for a new line; `\\\\n` displays a literal backslash-n.
 
 **Visual presets (optional, before messages):** `density: compact|normal|relaxed`, `bubbles: soft|round|square`, `avatars: on|off`, `width: normal|wide`. Character colors, avatars and default names still work as before.

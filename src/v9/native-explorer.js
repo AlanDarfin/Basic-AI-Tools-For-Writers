@@ -298,6 +298,7 @@ function writerV9RegisterExplorer(plugin){
     node.className='writer-v9-inline-title-icon';
     node.dataset.icon=icon;
     node.setAttribute('aria-hidden','true');
+    node.setAttribute('contenteditable','false');
     require('obsidian').setIcon(node,icon);
     title.insertBefore(node,title.firstChild);
    }
@@ -364,7 +365,9 @@ function writerV9RegisterExplorer(plugin){
   explorerObservers.clear();
   clearTimeout(debounce);
   plugin.writerV9ExplorerRefresh=null;
-  plugin.writerV9InlineTitleRefresh=null;
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
+    leaf.view?.containerEl?.querySelectorAll('.writer-v9-inline-title-icon').forEach(el=>el.remove());
+   plugin.writerV9InlineTitleRefresh=null;
  });
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
   if(!active())return;
@@ -378,7 +381,7 @@ function writerV9ExplorerSettings(plugin,panel){
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Ícones e cores ficam nas configurações do Basic, sem alterar seus arquivos. Clique com o botão direito/pressione uma nota ou pasta no explorador para personalizar.','Icons and colors are stored in Basic settings, not in your files. Right-click or long-press a file or folder in the native explorer to customize.')});
  for(const [key,pt,en] of [['enabled','Ativar extensões do explorador','Enable explorer extensions'],['showIcons','Exibir ícones personalizados','Show custom icons'],['showColor','Exibir cores personalizadas','Show custom colors']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{
-   cfg[key]=value;await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();
+   cfg[key]=value;await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();plugin.writerV9InlineTitleRefresh?.();
   }));
  }
  new Setting(panel).setName(writerUi('Máximo de notas na visão de pasta','Maximum notes in folder view'))

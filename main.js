@@ -12084,14 +12084,18 @@ function writerV9RegisterExplorer(plugin){
    for(const title of host.querySelectorAll('.inline-title')){
     const old=title.querySelector(':scope > .writer-v9-inline-title-icon');
     if(old?.dataset.icon!==icon)old?.remove();
-    if(!icon||title.querySelector(':scope > .writer-v9-inline-title-icon'))continue;
-    const node=title.ownerDocument.createElement('span');
-    node.className='writer-v9-inline-title-icon';
-    node.dataset.icon=icon;
-    node.setAttribute('aria-hidden','true');
-    node.setAttribute('contenteditable','false');
-    require('obsidian').setIcon(node,icon);
-    title.insertBefore(node,title.firstChild);
+    if(icon&&!title.querySelector(':scope > .writer-v9-inline-title-icon')){
+     const node=title.ownerDocument.createElement('span');
+     node.className='writer-v9-inline-title-icon';
+     node.dataset.icon=icon;
+     node.setAttribute('aria-hidden','true');
+     node.setAttribute('contenteditable','false');
+     require('obsidian').setIcon(node,icon);
+     title.insertBefore(node,title.firstChild);
+    }
+    // Absolutely positioned decoration: never pushes the editable title baseline.
+    title.classList.toggle('writer-v93-title-icon-host',Boolean(
+     title.querySelector(':scope > .writer-v9-inline-title-icon, :scope > .writer-v9215-pretty-icon')));
    }
   }
  };
@@ -12158,6 +12162,9 @@ function writerV9RegisterExplorer(plugin){
   plugin.writerV9ExplorerRefresh=null;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
     leaf.view?.containerEl?.querySelectorAll('.writer-v9-inline-title-icon').forEach(el=>el.remove());
+    leaf.view?.containerEl?.querySelectorAll('.inline-title.writer-v93-title-icon-host').forEach(title=>{
+     if(!title.querySelector(':scope > .writer-v9215-pretty-icon'))title.classList.remove('writer-v93-title-icon-host');
+    });
    plugin.writerV9InlineTitleRefresh=null;
  });
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
@@ -12220,7 +12227,7 @@ function writerV9SpaceSanitize(raw){
   if(typeof path!=='string'||path.length>500||!record||typeof record!=='object')continue;
   const sort=typeof record.sort==='string'?record.sort:'native';
   const order=Array.isArray(record.order)?[...new Set(record.order.filter(n=>typeof n==='string'&&n.length<300))].slice(0,1000):[];
-  folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60)};
+  folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60),foldersFirst:record.foldersFirst===true};
  }
  const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
  const homeWidgetsEnabled=raw.homeWidgetsEnabled===true;
@@ -12720,7 +12727,10 @@ function writerV9216SpaceDockRegister(plugin){
   }
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   const bar=host.querySelector('.nav-buttons-container, .nav-action-buttons, .nav-header .nav-buttons-container, .nav-header');
+   const bar=host.querySelector('.nav-action-buttons')||
+     host.querySelector('.nav-buttons-container')||
+     host.querySelector('.nav-header .nav-buttons-container')||
+     host.querySelector('.nav-header');
    if(!bar)continue;
    current.add(bar);actions.add(bar);
    let control=bar.querySelector(':scope > .writer-v93-space-manage-action');
@@ -12730,7 +12740,8 @@ function writerV9216SpaceDockRegister(plugin){
     control.type='button';
     control.setAttribute('aria-label',writerUi('Gerenciar Spaces','Manage Spaces'));
     control.title=writerUi('Gerenciar Spaces','Manage Spaces');
-    require('obsidian').setIcon(control,'layers-3');
+    const obs=require('obsidian');
+     obs.setIcon(control,obs.getIcon?.('layers-3')?'layers-3':'layers');
     control.addEventListener('click',event=>{
      event.stopPropagation();event.preventDefault();void openManager();
     });
@@ -12774,6 +12785,7 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const refresh=()=>{clearTimeout(timer);timer=setTimeout(attach,100);};
  plugin.writerV9216SpacesDockRefresh=refresh;
+ plugin.addCommand?.({id:'v93-spaces-manage',name:writerUi('Spaces: gerenciar pelo explorador','Spaces: manage from File Explorer'),callback:()=>void openManager()});
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  plugin.register?.(()=>{
@@ -14425,13 +14437,13 @@ const WRITER_V91_FLEX_SORTS=[
 function writerV91FlexMerge(settings){
  const raw=settings.v91Flex&&typeof settings.v91Flex==='object'?settings.v91Flex:{};
  const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,mobileReorder:true,
-  perSpaceSorting:true,perSpacePins:true,yamlSorting:false,
+  perSpaceSorting:true,perSpacePins:true,yamlSorting:false,sortSpecCompat:true,
   pinEnabled:true,hideEnabled:true,sortEnabled:true,defaultSortProperty:'sort_order',
   patterns:'',pinned:[],hidden:[],folders:{},...raw};
  cfg.enabled=cfg.enabled!==false;cfg.showHidden=cfg.showHidden===true;
  cfg.dragReorder=cfg.dragReorder!==false;
  for(const key of ['mobileReorder','perSpaceSorting','perSpacePins','pinEnabled','hideEnabled','sortEnabled'])cfg[key]=cfg[key]!==false;
- cfg.yamlSorting=cfg.yamlSorting===true;
+ cfg.yamlSorting=cfg.yamlSorting===true;cfg.sortSpecCompat=cfg.sortSpecCompat!==false;
  cfg.defaultSortProperty=String(cfg.defaultSortProperty||'sort_order').replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
  cfg.patterns=String(cfg.patterns||'').slice(0,3000);
  for(const field of ['pinned','hidden'])
@@ -14442,7 +14454,7 @@ function writerV91FlexMerge(settings){
   if(typeof path!=='string'||path.length>600||!folder||typeof folder!=='object')continue;
   const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===folder.sort)?folder.sort:'native';
   const order=Array.isArray(folder.order)?[...new Set(folder.order.filter(v=>typeof v==='string'&&v.length<300))].slice(0,3000):[];
-  output[path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60)};
+  output[path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60),foldersFirst:folder.foldersFirst===true};
  }
  cfg.folders=output;
  return cfg;
@@ -14477,18 +14489,54 @@ function writerV91FlexNodePath(node){
  return node.querySelector('.nav-file-title[data-path], .nav-folder-title[data-path]')?.getAttribute('data-path')||
   node.getAttribute('data-path')||node.querySelector('.nav-file-title, .nav-folder-title')?.getAttribute('data-path')||'';
 }
+/* Supports a small, explicit subset of the Custom Sorting YAML syntax. */
+function writerV93FlexParseSortSpec(raw){
+ if(typeof raw!=='string'||!raw.trim())return null;
+ const record={sort:'native',order:[],property:'',foldersFirst:false};
+ let recognized=false;
+ for(const source of raw.split(/\r?\n/).slice(0,100)){
+  const line=source.trim();
+  if(!line||line.startsWith('#'))continue;
+  if(/^folders-first$/i.test(line)){record.foldersFirst=true;recognized=true;continue;}
+  const meta=/^by-metadata:\s*([\w-]{1,60})$/i.exec(line);
+  if(meta){record.sort='property';record.property=meta[1];recognized=true;continue;}
+  const command=/^order-(asc|desc):\s*(.+)$/i.exec(line);
+  if(!command)continue;
+  const direction=command[1],value=command[2].trim(),lower=value.toLowerCase();
+  if(['a-z','name','alphabetical'].includes(lower)){
+   record.sort=direction==='desc'?'name-desc':'name';recognized=true;
+  }else if(['number','numeric','\\d+'].includes(lower)){
+   record.sort='number';recognized=true;
+  }else if(['modified','created'].includes(lower)){
+   if(direction==='desc'){record.sort=lower;recognized=true;}
+  }else if(lower.startsWith('by-metadata:')){
+   const key=lower.slice('by-metadata:'.length).trim();
+   if(/^[\w-]{1,60}$/.test(key)){record.sort='property';record.property=key;recognized=true;}
+  }else if(!/[:\x00-\x1f]/.test(value)&&value.length<=250){
+   record.order.push(value);recognized=true;
+  }
+ }
+ if(record.order.length)record.sort='custom';
+ return recognized?record:null;
+}
 function writerV93FlexRecord(plugin,dir){
  const cfg=plugin.settings.v91Flex;
  const space=cfg.perSpaceSorting&&typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
  if(space?.folderSorts?.[dir])return space.folderSorts[dir];
  if(cfg.folders[dir])return cfg.folders[dir];
- if(!cfg.yamlSorting)return {sort:'native',order:[],property:''};
+ if(!cfg.yamlSorting)return {sort:'native',order:[],property:'',foldersFirst:false};
  const folder=plugin.app.vault.getAbstractFileByPath(dir);
  const note=folder&&typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,folder):null;
  const fm=note&&plugin.app.metadataCache?.getFileCache?.(note)?.frontmatter||{};
+ const basic=WRITER_V91_FLEX_SORTS.some(row=>row[0]===fm.basic_sort)||Array.isArray(fm.basic_sort_order);
+ if(!basic&&cfg.sortSpecCompat){
+  const parsed=writerV93FlexParseSortSpec(fm['sorting-spec']);
+  if(parsed)return parsed;
+ }
  const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===fm.basic_sort)?fm.basic_sort:'native';
  return {sort,order:Array.isArray(fm.basic_sort_order)?fm.basic_sort_order.slice(0,1000):[],
-  property:String(fm.basic_sort_field||'').replace(/[^\w-]/g,'').slice(0,60)};
+  property:String(fm.basic_sort_field||'').replace(/[^\w-]/g,'').slice(0,60),
+  foldersFirst:fm.basic_folders_first===true};
 }
 function writerV93FlexPinned(plugin,path){
  const cfg=plugin.settings.v91Flex;
@@ -14511,6 +14559,10 @@ function writerV93FlexMeta(plugin,row,key){
 }
 function writerV93FlexCompare(plugin,a,b,record,collator){
  if(a.pinned!==b.pinned)return a.pinned?-1:1;
+ if(record.foldersFirst){
+  const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
+  if(af!==bf)return af?-1:1;
+ }
  const mode=record.sort;
  if(mode==='native')return a.index-b.index;
  if(mode==='custom'){
@@ -14652,7 +14704,7 @@ function writerV93FlexSortModal(plugin,folder){
  const cfg=plugin.settings.v91Flex,key=folder?.path||'';
  const store=writerV93FlexStore(plugin,key),existing=writerV93FlexRecord(plugin,key);
  const model={sort:existing.sort||'native',property:existing.property||cfg.defaultSortProperty,
-  order:[...(existing.order||[])]};
+  order:[...(existing.order||[])],foldersFirst:existing.foldersFirst===true};
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(writerUi('Ordenação: ','Sorting: ')+(folder?.name||writerUi('Cofre','Vault')));
@@ -14663,6 +14715,8 @@ function writerV93FlexSortModal(plugin,folder){
   });
   new Setting(root).setName(writerUi('Propriedade YAML para ordenar','YAML property to sort'))
    .addText(text=>text.setValue(model.property).onChange(value=>{model.property=value.replace(/[^\w-]/g,'').slice(0,60);}));
+  new Setting(root).setName(writerUi('Pastas primeiro (nesta pasta)','Folders first (this folder)'))
+   .addToggle(t=>t.setValue(model.foldersFirst).onChange(value=>{model.foldersFirst=value;}));
   new Setting(root).setName(writerUi('Ordem manual e padrões','Manual order and patterns'))
    .setDesc(writerUi('Um nome por linha; aceita * e ?. Os demais itens ficam no fim.','One name per line; accepts * and ?. Unlisted items stay last.'))
    .addTextArea(text=>text.setValue(model.order.join('\n')).onChange(value=>{
@@ -14671,7 +14725,7 @@ function writerV93FlexSortModal(plugin,folder){
   new Setting(root).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
    if(model.sort==='custom'&&!model.order.length)
     model.order=(folder?.children||plugin.app.vault.getRoot?.()?.children||[]).map(x=>x.name);
-   store[key]={sort:model.sort,property:model.property,order:model.order};
+   store[key]={sort:model.sort,property:model.property,order:model.order,foldersFirst:model.foldersFirst};
    await plugin.saveSettings();plugin.writerV91FlexRefresh?.();modal.close();
   })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
  };
@@ -14832,12 +14886,14 @@ function writerV91FlexSettings(plugin,panel){
   ['mobileReorder','Setas de ordenação no celular','Mobile sorting arrows'],
   ['perSpaceSorting','Ordenação independente por Space','Independent sorting per Space'],
   ['perSpacePins','Itens fixados independentes por Space','Independent pins per Space'],
-  ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules']
+  ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules'],
+  ['sortSpecCompat','Compatibilidade com sorting-spec (regras simples)','sorting-spec compatibility (simple rules)']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{
    cfg[key]=v;await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
   }));
  }
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Com regras YAML ativadas, Basic interpreta basic_sort e um subconjunto do sorting-spec: A–Z/Z–A, números, pastas primeiro, metadados e padrões manuais.','With YAML sorting enabled, Basic supports basic_sort and a subset of sorting-spec: alphabetical order, numbers, folders first, metadata and manual patterns.')});
  new Setting(panel).setName(writerUi('Propriedade YAML padrão','Default YAML sorting property'))
   .addText(t=>t.setValue(cfg.defaultSortProperty).onChange(async value=>{
    cfg.defaultSortProperty=value.replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
@@ -15351,7 +15407,7 @@ function writerV92ExplorerMerge(settings){
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
   previewVisible:true,showImage:true,previewLines:2,previewImageSize:62,
-  previewTouchExpand:true,previewHoldMs:650,
+  previewTouchExpand:true,previewHoldMs:650,folderDescriptions:true,noteExcerpts:true,hoverExpand:true,
   folderDescriptionKey:'description',noteDescriptionKey:'description',favoriteIconColor:'',
   ...old
  };
@@ -15359,6 +15415,7 @@ function writerV92ExplorerMerge(settings){
  cfg.previewVisible=cfg.previewVisible!==false;
  cfg.showImage=cfg.showImage!==false;
  cfg.previewTouchExpand=cfg.previewTouchExpand!==false;
+ for(const key of ['folderDescriptions','noteExcerpts','hoverExpand'])cfg[key]=cfg[key]!==false;
  cfg.previewHoldMs=Math.max(400,Math.min(1500,Number(cfg.previewHoldMs)||650));
  cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||2)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
@@ -15405,7 +15462,7 @@ function writerV92PreviewValue(plugin,file,full=false){
  if(!(source instanceof TFile))return '';
  const front=plugin.app.metadataCache?.getFileCache?.(source)?.frontmatter||{};
  const key=folder?cfg.folderDescriptionKey:cfg.noteDescriptionKey;
- const raw=front[key]??front.summary??front.brief;
+ const raw=front[key];
  const value=Array.isArray(raw)?raw.join(', '):typeof raw==='string'?raw:'';
  return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,full?4000:cfg.previewMax);
 }
@@ -15420,13 +15477,14 @@ function writerV9216FolderDescription(plugin,folder,body,full=false){
    try{
     const obj=require('obsidian').parseYaml?.(front[1])||{};
     const key=plugin.settings.v92Explorer.folderDescriptionKey;
-    const value=obj[key]??obj.summary??obj.brief;
+    const value=obj[key];
     const text=Array.isArray(value)?value.join(', '):typeof value==='string'?value:'';
     if(text.trim())return text.replace(/\s+/g,' ').trim().slice(0,full?4000:plugin.settings.v92Explorer.previewMax);
    }catch(_){}
   }
  }
- return writerV921PreviewBody(body,full?4000:plugin.settings.v92Explorer.previewMax);
+ // Only the frontmatter field can appear as a Folder Note description.
+ return '';
 }
 
 /* Preview images come from local vault files only; external URLs are never requested. */
@@ -15495,7 +15553,10 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  const label=shell.querySelector(':scope > .writer-v92-file-preview');
  if(!label)return;
  const long=String(fullText||'');
- const truncated=long.length>shortText.length||label.scrollHeight>label.clientHeight+1;
+ const wasExpanded=shell.classList.contains('is-expanded');
+ const truncated=long.length>shortText.length||
+  (!wasExpanded&&label.scrollHeight>label.clientHeight+1)||
+  (wasExpanded&&shell.dataset.expandable==='true');
  const expanded=shell.classList.contains('is-expanded');
  shell.dataset.previewShort=shortText; shell.dataset.previewFull=long;
  shell.dataset.expandable=String(truncated);
@@ -15526,30 +15587,54 @@ function writerV929PreviewExpand(shell,shortText,fullText){
   if(target)target.textContent=shell.dataset.previewShort;
  };
  shell.addEventListener('mouseenter',()=>{
-  if(shell.dataset.expandable!=='true')return;
+  if(shell.dataset.expandable!=='true'||shell.dataset.hoverEnabled==='false')return;
   clearTimeout(timer);timer=setTimeout(open,1500);
  });
  shell.addEventListener('mouseleave',()=>{if(!touchLocked)close();});
  // Mobile: a long press reveals the full description. Scrolling cancels the timer;
  // we do not suppress Obsidian's native context menu or prevent touch scrolling.
- shell.addEventListener('touchstart',event=>{
+ shell.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='mouse'||event.isPrimary===false)return;
   if(shell.dataset.expandable!=='true'||shell.dataset.holdMs==='0')return;
-  const touch=event.touches?.[0];if(!touch)return;
-  touchStart={x:touch.clientX,y:touch.clientY};
+  touchStart={id:event.pointerId,x:event.clientX,y:event.clientY};
+  clearTimeout(timer);
+  const delay=Math.max(400,Math.min(1500,Number(shell.dataset.holdMs)||650));
+  timer=setTimeout(()=>{touchLocked=true;skipClick=true;open();},delay);
+ },{passive:true});
+ shell.addEventListener('pointermove',event=>{
+  if(event.pointerId!==touchStart?.id)return;
+  if(!touchStart)return;
+  if(Math.hypot(event.clientX-touchStart.x,event.clientY-touchStart.y)>12){
+   clearTimeout(timer);timer=null;touchStart=null;
+  }
+ },{passive:true});
+ const stopTouch=()=>{clearTimeout(timer);timer=null;touchStart=null;};
+ shell.addEventListener('pointerup',stopTouch,{passive:true});
+ shell.addEventListener('pointercancel',stopTouch,{passive:true});
+ // Android WebView sometimes sends touchstart without a usable pointerdown.
+ // Preserve native scrolling; open only after the user holds steadily.
+ let touchOrigin=null;
+ shell.addEventListener('touchstart',event=>{
+  const touch=event.touches?.[0];
+  if(!touch||shell.dataset.expandable!=='true'||shell.dataset.holdMs==='0')return;
+  touchOrigin={x:touch.clientX,y:touch.clientY};
   clearTimeout(timer);
   const delay=Math.max(400,Math.min(1500,Number(shell.dataset.holdMs)||650));
   timer=setTimeout(()=>{touchLocked=true;skipClick=true;open();},delay);
  },{passive:true});
  shell.addEventListener('touchmove',event=>{
-  if(!touchStart)return;
-  const touch=event.touches?.[0];if(!touch)return;
-  if(Math.hypot(touch.clientX-touchStart.x,touch.clientY-touchStart.y)>12){
-   clearTimeout(timer);timer=null;touchStart=null;
+  const touch=event.touches?.[0];
+  if(touchOrigin&&touch&&Math.hypot(touch.clientX-touchOrigin.x,touch.clientY-touchOrigin.y)>12){
+   clearTimeout(timer);timer=null;touchOrigin=null;
   }
  },{passive:true});
- const stopTouch=()=>{clearTimeout(timer);timer=null;touchStart=null;};
- shell.addEventListener('touchend',stopTouch,{passive:true});
- shell.addEventListener('touchcancel',stopTouch,{passive:true});
+ const stopTouchFallback=()=>{clearTimeout(timer);timer=null;touchOrigin=null;};
+ shell.addEventListener('touchend',stopTouchFallback,{passive:true});
+ shell.addEventListener('touchcancel',stopTouchFallback,{passive:true});
+ shell.addEventListener('contextmenu',event=>{
+  if(!touchLocked)return;
+  event.preventDefault();event.stopPropagation();
+ });
  shell.addEventListener('click',event=>{
   if(shell.dataset.expandable!=='true'||!touchLocked)return;
   event.preventDefault();event.stopPropagation();
@@ -15673,11 +15758,11 @@ function writerV92ExplorerRegister(plugin){
   if(!stable)requestRead(source);
   const body=stable?read.content:'';
   const description=folder?
-   writerV9216FolderDescription(plugin,item,body,false):
-   (stable?writerV921PreviewBody(body,cfg.previewMax):'');
+   (cfg.folderDescriptions?writerV9216FolderDescription(plugin,item,body,false):''):
+   (cfg.noteExcerpts&&stable?writerV921PreviewBody(body,cfg.previewMax):'');
   const fullDescription=folder?
-   writerV9216FolderDescription(plugin,item,body,true):
-   (stable?writerV921PreviewBody(body,4000):'');
+   (cfg.folderDescriptions?writerV9216FolderDescription(plugin,item,body,true):''):
+   (cfg.noteExcerpts&&stable?writerV921PreviewBody(body,4000):'');
   const image=cfg.showImage?writerV921PreviewImage(plugin,source,stable?read.content:''):null;
   const imagePath=image?.path||'';
   if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
@@ -15687,6 +15772,8 @@ function writerV92ExplorerRegister(plugin){
    shell.className='writer-v92-preview-shell';
    node.insertAdjacentElement('afterend',shell);
   }
+  shell.classList.toggle('writer-v93-folder-description',folder);
+  shell.dataset.hoverEnabled=cfg.hoverExpand?'true':'false';
   shell.style.setProperty('--writer-v92-preview-lines',String(cfg.previewLines));
   shell.dataset.holdMs=cfg.previewTouchExpand?String(cfg.previewHoldMs):'0';
   shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
@@ -15834,6 +15921,18 @@ function writerV92ExplorerSettings(plugin,panel){
   .setDesc(writerUi('Usa capa, thumbnail ou primeira imagem local incorporada à nota.','Uses the local cover, thumbnail or first embedded image from the note.'))
   .addToggle(t=>t.setValue(cfg.showImage).onChange(async v=>{
    cfg.showImage=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Exibir descrição das Folder Notes','Show Folder Note descriptions'))
+  .addToggle(t=>t.setValue(cfg.folderDescriptions).onChange(async value=>{
+   cfg.folderDescriptions=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Exibir início do texto das notas','Show opening text for regular notes'))
+  .addToggle(t=>t.setValue(cfg.noteExcerpts).onChange(async value=>{
+   cfg.noteExcerpts=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Expandir ao passar o mouse','Expand on hover'))
+  .addToggle(t=>t.setValue(cfg.hoverExpand).onChange(async value=>{
+   cfg.hoverExpand=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
  new Setting(panel).setName(writerUi('Expandir ao pressionar (mobile)','Long-press to expand (mobile)'))
   .addToggle(t=>t.setValue(cfg.previewTouchExpand).onChange(async value=>{
@@ -16358,6 +16457,9 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
  const cfg=plugin.settings.v9215Pretty,host=leaf.view?.containerEl,file=leaf.view?.file;
  if(!host)return;
  for(const el of host.querySelectorAll('.writer-v9215-pretty-banner,.writer-v9215-pretty-cover,.writer-v9215-pretty-icon,.writer-v9215-property-progress,.writer-v9215-property-caption,.writer-v9216-pretty-search'))el.remove();
+ for(const title of host.querySelectorAll('.inline-title.writer-v93-title-icon-host')){
+  if(!title.querySelector(':scope > .writer-v9-inline-title-icon'))title.classList.remove('writer-v93-title-icon-host');
+ }
  for(const row of host.querySelectorAll('.metadata-property')){
   row.classList.remove('writer-v9215-property-hidden','writer-v9215-property-colored','writer-v9216-search-hidden','writer-v9216-date-overdue','writer-v9216-date-soon');
   row.style.removeProperty('--writer-v9215-prop-color');
@@ -16386,6 +16488,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   span.className='writer-v9215-pretty-icon';span.setAttribute('aria-hidden','true');
   writerV9215PrettyDecorateIcon(span,fm.icon);
   target.insertBefore(span,target.firstChild);
+  target.classList.add('writer-v93-title-icon-host');
  }
  if(cfg.cover&&fm.cover){
   const url=writerV9215PrettyImage(plugin.app,file,fm.cover);

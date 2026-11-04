@@ -2,12 +2,20 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.7 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.8 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.8 — customizable editing toolbar and precise settings search
+
+- **Editing toolbar:** keep the existing Markdown buttons, with additional indent/outdent, left/center/right and justified alignment, text color and background highlight. The Basic toolbar remains opt-in on mobile and never replaces Obsidian's own toolbar.
+- **Customization inspired by Editing Toolbar:** add any command exposed by Obsidian or another installed plugin; customize button names and Lucide icon IDs; build named group submenus; drag or use up/down arrows to reorder buttons. Set Tiny, Compact or Comfortable density, icon labels, size, and color presets.
+- **Placement:** top or bottom, plus optional Follow cursor on desktop (falls back to the bottom on mobile).
+- **Settings search:** search by individual option instead of only categories. It indexes displayed settings, previously visited tabs, and the built-in formatting actions even before their list is expanded. The Portuguese alias `subescrito` finds `Subscrito`; selecting a result opens its section and highlights the corresponding control.
+- **Settings layout:** compact search results, theme-aware input fields and buttons, horizontally scrollable navigation tabs, and reduced visual clutter at mobile widths.
 
 ## Version 10.4.7 — compact mobile Explorer and optional ordering controls
 

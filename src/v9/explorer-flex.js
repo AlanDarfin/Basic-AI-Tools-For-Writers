@@ -425,6 +425,9 @@ function writerV1043OpenNativeSortMenu(plugin){
 function writerV1043GlobalSortingMenu(plugin,menu){
  const cfg=plugin.settings.v91Flex;
  if(!cfg.enabled||cfg.sortEnabled===false)return;
+ if(cfg.globalSortMode&&cfg.globalSortMode!=='native'){
+  for(const item of menu.items||[])if(item?.checked===true)item.setChecked?.(false);
+ }
  const set=async mode=>{
   cfg.globalSortMode=mode;
   await plugin.saveSettings();

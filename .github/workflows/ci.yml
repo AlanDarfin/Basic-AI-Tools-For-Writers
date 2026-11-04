@@ -23,6 +23,8 @@ jobs:
           cache: npm
       - name: Reproducible install
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild distributable bundle before validation
+        run: npm run build
       - name: Full syntax, bundle sync and regression checks
         run: npm run check
       - name: Community CSS lint

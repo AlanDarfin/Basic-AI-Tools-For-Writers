@@ -79,7 +79,7 @@ function lfWordCount(text){
 }
 function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;this.tabScrollPositions=Object.create(null);this.tabGroup=null;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;this.tabScrollPositions=Object.create(null);this.tabPanelScrollPositions=Object.create(null);this.tabGroup=null;}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
@@ -117,6 +117,9 @@ class ProjectsView extends ItemView{
  async render(){
   if(!this.root)return;
   const previousScroll=this.root.scrollTop;
+  for(const element of this.root.querySelectorAll?.('.writer-project-panel[data-tab]')||[]){
+   this.tabPanelScrollPositions[element.dataset.tab]=element.scrollTop;
+  }
   const previousTabs=this.root.querySelector('.writer-project-tabs');
   if(previousTabs&&this.tabGroup){
    this.tabScrollPositions[this.tabGroup]=previousTabs.scrollLeft;
@@ -247,6 +250,7 @@ class ProjectsView extends ItemView{
   }
   for(const [id] of allTabs){
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
+   panels[id].dataset.tab=id;
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
   tabs.addEventListener('wheel',event=>{
@@ -260,10 +264,16 @@ class ProjectsView extends ItemView{
   fillTabs(activeGroup);
   await this.renderProjectPanel(panels,project,token,this.activeTab);
   this.root.scrollTop=previousScroll;
+  if(this.pendingSceneFocus?.path===project.file.path&&this.activeTab==='scenes'){
+   const scene=this.pendingSceneFocus.title;this.pendingSceneFocus=null;
+   const moved=[...(this.root.querySelectorAll?.('.writer-project-scene[data-scene-title]')||[])].find(el=>el.dataset.sceneTitle===scene);
+   if(moved&&typeof moved.scrollIntoView==='function')moved.scrollIntoView({block:'nearest'});
+  }
  }
  async renderProjectPanel(panels,project,token,id=this.activeTab){
   const panel=panels[id];
   if(!panel)return;
+  this.tabPanelScrollPositions[id]=panel.scrollTop||this.tabPanelScrollPositions[id]||0;
   panel.empty();
   if(id==='scenes')this.drawScenes(panel,project);
   else if(id==='project'){this.drawProject(panel,project);await this.drawStats(panel,project,token);}
@@ -279,6 +289,7 @@ class ProjectsView extends ItemView{
   else if(id==='sessions')writerV7StudioRenderSessions(this,panel,project);
   else if(id==='tasks')this.drawTasks(panel,project);
   else if(id==='comments')this.plugin.writerV4Extras?.drawComments(panel,project,this);
+  if(panel.isConnected)panel.scrollTop=Math.max(0,this.tabPanelScrollPositions[id]||0);
  }
  refreshSeriesMembership(){
   if(!this.seriesMembershipValue)return;
@@ -392,6 +403,7 @@ class ProjectsView extends ItemView{
  async moveSceneBefore(project,source,target){return this.moveSceneRelative(project,source,target,false);}
  async moveSceneRelative(project,source,target,after=false){
   if(source===target)return;
+  this.pendingSceneFocus={path:project.file.path,title:source};
   try{await this.changeScenes(project,scenes=>{
    const i=this.sceneIndex(scenes,source),j=this.sceneIndex(scenes,target);
    if(i<0||j<0)return;
@@ -474,10 +486,28 @@ class ProjectsView extends ItemView{
    row.dataset.depth=String(level);
    row.dataset.sceneTitle=name;
    if(item.children?.length)row.addClass('writer-project-scene-has-children');
-   row.draggable=true;
+   row.draggable=false;
    const grip=row.createEl('button',{text:'⠿',cls:'writer-project-drag-handle',attr:{title:lfMsg('Arraste para mover ou toque e escolha o destino','Drag to reorder or tap and choose a destination'),'aria-label':lfMsg('Mover capítulo: ','Move chapter: ')+name}});
    grip.draggable=true;
-   grip.addEventListener('click',()=>{
+   let holdTimer=null,holdStart=null,consumeClick=false;
+   const cancelHold=()=>{if(holdTimer){clearTimeout(holdTimer);holdTimer=null;}};
+   grip.addEventListener('touchstart',event=>{
+    const touch=event.touches?.[0];if(!touch)return;
+    holdStart={x:touch.clientX,y:touch.clientY};
+    cancelHold();holdTimer=setTimeout(()=>{
+     holdTimer=null;consumeClick=true;
+     this.scenePickup={path:project.file.path,draft:this.draft,source:name};
+     row.addClass('writer-project-pickup');
+     new Notice(lfMsg('Toque na alça de destino para mover o capítulo.','Tap the destination handle to move the chapter.'),3000);
+    },420);
+   },{passive:true});
+   grip.addEventListener('touchmove',event=>{
+    const touch=event.touches?.[0];
+    if(touch&&holdStart&&Math.hypot(touch.clientX-holdStart.x,touch.clientY-holdStart.y)>10)cancelHold();
+   },{passive:true});
+   for(const event of ['touchend','touchcancel'])grip.addEventListener(event,cancelHold,{passive:true});
+   grip.addEventListener('click',event=>{
+    if(consumeClick){consumeClick=false;event.preventDefault();return;}
     if(this.scenePickup?.path===project.file.path&&this.scenePickup?.source===name){this.scenePickup=null;this.render();return;}
     if(this.scenePickup?.path===project.file.path&&this.scenePickup?.draft===this.draft){
      const source=this.scenePickup.source;this.scenePickup=null;this.moveSceneRelative(project,source,name,false);

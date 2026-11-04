@@ -345,9 +345,15 @@ function writerV91FlexReorder(plugin,path,target,direction){
  const dir=writerV91FlexFolderPath(file),parent=file.parent;
  const store=writerV93FlexStore(plugin,dir);
  const record=store[dir]||{sort:'custom',order:[]};
- const original=(parent?.children||[]).map(f=>f.name);
- const existing=new Set(original);
- const order=[...new Set([...(record.order||[]).filter(n=>existing.has(n)),...original])];
+ // Start from the order currently visible to the user, not the vault's
+ // physical children array (which may have a different creation order).
+ const view=plugin.app.workspace?.getLeavesOfType?.('file-explorer')?.[0]?.view;
+ let visible=[];
+ try{visible=(view?.getSortedFolderItems?.(parent)||[]).map(item=>item?.file?.name||item?.name).filter(Boolean);}catch(_){}
+ const available=(parent?.children||[]).map(f=>f.name);
+ const existing=new Set(available);
+ const initial=[...new Set([...visible.filter(n=>existing.has(n)),...available])];
+ const order=[...new Set([...(record.order||[]).filter(n=>existing.has(n)),...initial])];
  const from=order.indexOf(file.name),to=order.indexOf(other.name);
  if(from<0||to<0)return;
  order.splice(from,1);
@@ -404,6 +410,17 @@ function writerV1043IsSortButton(event){
  const label=String(button.getAttribute('aria-label')||button.getAttribute('title')||'').toLowerCase();
  return /sort|orden|ordem|tri|排序|sortier/.test(label)||
   Boolean(button.querySelector('.lucide-arrow-up-narrow-wide,.lucide-arrow-down-wide-narrow'));
+}
+function writerV1043OpenNativeSortMenu(plugin){
+ const view=plugin.app.workspace?.getLeavesOfType?.('file-explorer')?.[0]?.view;
+ const elements=view?.containerEl?.querySelectorAll?.('.nav-action-button')||[];
+ for(const button of elements){
+  if(writerV1043IsSortButton({target:button})){
+   button.click?.();return true;
+  }
+ }
+ new Notice(writerUi('Abra o explorador e toque no botão nativo de ordenação.','Open File Explorer and use its native sorting button.'));
+ return false;
 }
 function writerV1043GlobalSortingMenu(plugin,menu){
  const cfg=plugin.settings.v91Flex;

@@ -420,8 +420,11 @@ function writerV1043GlobalSortingMenu(plugin,menu){
   ['property','Propriedade YAML (Basic)','YAML property (Basic)','list-filter'],
   ['folders-first','Pastas primeiro (Basic)','Folders first (Basic)','folder-tree']
  ]){
-  menu.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(icon)
-   .setChecked?.(cfg.globalSortMode===mode).onClick(()=>void set(mode)));
+  menu.addItem(item=>{
+   item.setTitle(writerUi(pt,en)).setIcon(icon);
+   item.setChecked?.(cfg.globalSortMode===mode);
+   item.onClick(()=>void set(mode));
+  });
  }
  menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
   .setIcon('rotate-ccw').onClick(()=>void set('native')));
@@ -528,22 +531,7 @@ function writerV91FlexRegister(plugin){
     cfg.hidden=next;
     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
-  if(cfg.sortEnabled!==false&&file instanceof TFolder){
-   menu.addItem(item=>item.setTitle(writerUi('Ordenação desta pasta','Sort this folder')).setIcon('list-ordered')
-    .onClick(()=>writerV93FlexSortModal(plugin,file)));
-  }
-  const dir=writerV91FlexFolderPath(file);
-  if(cfg.sortEnabled!==false&&writerV93FlexRecord(plugin,dir)?.sort==='custom'&&file.parent){
-   for(const [direction,pt,en] of [['before','Mover para cima','Move earlier'],['after','Mover para baixo','Move later']]){
-    menu.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(direction==='before'?'arrow-up':'arrow-down').onClick(()=>{
-     const list=writerV93FlexRecord(plugin,dir).order;
-     const name=file.name,index=list.indexOf(name),other=list[index+(direction==='before'?-1:1)];
-     if(!other)return;
-     const target=file.parent.children?.find(f=>f.name===other);
-     if(target)writerV91FlexReorder(plugin,file.path,target.path,direction);
-    }));
-   }
-  }
+
  };
  plugin.registerEvent(plugin.app.workspace.on('file-menu',menu));
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
@@ -569,10 +557,11 @@ function writerV91FlexRegister(plugin){
   }
   cfg.folders=Object.fromEntries(Object.entries(cfg.folders).map(([key,v])=>[swap(key),v]));
   if(file.parent&&writerV1043RootKey(file.parent.path)===writerV1043RootKey(old.split('/').slice(0,-1).join('/'))){
-   const record=cfg.folders[file.parent.path];
+   const folderKey=writerV1043RootKey(file.parent.path);
+   const record=cfg.folders[folderKey];
    if(record)record.order=record.order.map(name=>name===old.split('/').pop()?file.name:name);
    for(const space of plugin.settings.v9Spaces?.spaces||[]){
-    const local=space.folderSorts?.[file.parent.path];
+    const local=space.folderSorts?.[folderKey];
     if(local)local.order=local.order.map(name=>name===old.split('/').pop()?file.name:name);
    }
   }
@@ -683,8 +672,8 @@ function writerV91FlexSettings(plugin,panel){
  const cfg=plugin.settings.v91Flex;
  panel.createEl('h3',{text:'Flexplorer'});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Organize o explorador nativo por pasta, fixe itens, oculte arquivos e escolha uma ordem manual. Clique com o botão direito ou pressione e segure para ver as opções. Arrastar reordena itens da mesma pasta em modo personalizado; Alt é opcional.',
-  'Sort native Explorer folders individually, pin files, hide items and set custom order. Right-click or long-press for file actions. Drag reorders files in custom-sorted folders; Alt is optional.'
+  'Use o botão nativo Ordenar, no topo do explorador, para aplicar uma ordem a todas as pastas. Use arrastar para escolher a ordem manual; o menu de contexto mantém os comandos de fixar e ocultar.',
+  'Use Obsidian’s native Sort button to choose an order for all folders. Drag to arrange items in manual mode; file context menus retain pin and hide actions.'
  )});
  for(const [key,pt,en] of [
   ['enabled','Ativar organização avançada','Enable enhanced organization'],
@@ -711,9 +700,9 @@ function writerV91FlexSettings(plugin,panel){
    cfg.defaultSortProperty=value.replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
    await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
   }));
- new Setting(panel).setName(writerUi('Ordenação da raiz do cofre','Vault root sorting'))
-  .addButton(button=>button.setButtonText(writerUi('Configurar','Configure'))
-   .onClick(()=>writerV93FlexSortModal(plugin,null)));
+ new Setting(panel).setName(writerUi('Ordem global no explorador','Global Explorer sorting'))
+  .setDesc(writerUi('Use o botão nativo de ordenação no topo do explorador. Escolhas nele valem para a raiz e todas as subpastas, incluindo modo manual do Basic.',
+   'Use Obsidian’s sorting button at the top of the File Explorer. Selecting a mode there applies it to the vault root and all subfolders, including Basic manual sorting.'));
  new Setting(panel).setName(writerUi('Padrões de ocultação','Hide patterns'))
   .setDesc(writerUi('Um padrão por linha; suporta * e **. Apenas oculta na interface, não exclui arquivos.','One glob per line; supports * and **. Only hides in Explorer, never deletes files.'))
   .addTextArea(t=>{t.inputEl.rows=4;t.setPlaceholder('Templates/**\n*.bak').setValue(cfg.patterns)

@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.2.15 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.2.16 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -66,6 +66,14 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 - **Temporary sessions:** create in-memory writing drafts, then explicitly save them as Markdown notes when needed. Unsaved session drafts do not survive closing Obsidian.
 - **Tasks and goals:** project tasks, progress indicators and writing metrics.
 
+
+**Flow panel example** (each line references an existing Markdown note in your vault):
+
+```flow
+[[Chapter 1]]
+[[Chapter 2]]
+```
+
 ### Native explorer and personalization
 
 - **Iconic-style customization:** choose Lucide icons and colors for files, folders, favorites and the homepage.
@@ -79,9 +87,10 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 ### Audio and accessibility
 
 - **Soundscapes (desktop):** ambient YouTube radio and custom stations **start in the background** when Play is pressed, without showing a popup or opening a tab. The compact floating video player opens **only** when the Show mini player button or command is used. It can be hidden without stopping playback, or stopped to unload it. The Homepage widget remains visible in both playing and stopped states; on mobile it stays in the dashboard and shows a compatibility notice instead of disappearing. It prefers Chromium's embedded Webview when available and falls back to a visible YouTube iframe if that is unavailable. The volume sliders on the homepage, status bar and mini player all control radio audio using the embedded player API; the same setting also controls local music. Radio volume is re-applied after the video loads or a station changes. Some videos may reject embedding (YouTube error 153). **My Music** continues to play local vault audio directly, with play/pause and volume controls.
-- **9.2.15 explorer previews and titles:** compact square images now sit to the right of the description, directly below the folder-note book action; editor inline-title icons inherit the title text color and use improved alignment. **Spaces** have a selectable active Space and independent hidden note/folder paths that also apply to the native File Explorer. Global hidden paths and glob exclusions still work across Spaces.
-- **Visual Properties (first integration):** local YAML cover, banner and icon; hide selected or empty metadata fields; property colors, number progress bars, optional date labels and safe text templates. Local image picking uses Obsidian's native YAML API; no external image requests are made.
-- **Flow and slash (first integration):** type `/` in a Markdown editor to insert headings, lists, quotes, callouts, tables, dates or embedded notes. In reading view, embedded Markdown notes can be edited in place with a last-modified conflict guard. More advanced Make.md block editing is not yet included.
+- **Explorer previews — 9.2.16:** Folder Notes retain their `description` (or `summary`/`brief`) while the metadata cache loads, with opening-text fallback. When **All notes + Folder Notes** is enabled, regular Markdown notes always show **opening note content**, not the `description` field. Compact square thumbnails stay on the right below the folder-note book action; inline-title icons inherit title text color.
+- **Native-explorer Space dock:** a compact bottom switcher lets you change Spaces, create, rename, configure, choose icons and colors through Basic's shared icon gallery, or delete collections without deleting vault files. Every active Space maintains its own hidden note/folder paths. Enable Spaces in **Customization → Local collections** and optionally hide the dock.
+- **Pretty Properties:** local covers with shape and position options, aligned banners, YAML icons, hidden fields, quick property search, property/tag colors, progress, formatted dates, deadline highlights and safe display templates. Settings live in **Customization → Visual properties**. This is an original, staged implementation, not complete feature parity with the original plugin.
+- **Flow and `/` commands:** insert Markdown structures, callouts, highlighting, links, formulas and embedded notes. In reading view, embedded notes can be edited with a fresh-content guard before saving. The `flow` code block displays note cards with previews and inline editing. Settings live in **Writing & Markdown → Flow and slash commands**. Full Make.md-style block editing remains a future phase.
 - **Image Captions:** optionally display captions from Markdown image alt text, without rewriting the files.
 - **Click Clack (desktop):** optional typing sounds with **13 downloadable sound packs** from the original Click Clack project (Cherry MX, IBM, Olympia, Quill and more). Browse the catalog in Settings to download one pack or all 13, then choose the installed scheme. Downloads are always opt-in; installed sounds work offline.
 - **Text-to-speech:** system voices where supported or opt-in online voices, with language, speed, pitch and voice preferences. Online reading sends selected text to the chosen service only when enabled.

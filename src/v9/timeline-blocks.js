@@ -32,7 +32,7 @@ function writerV95TimelineConfigOption(cfg,key,value){
 function writerV95TimelineCleanEvent(raw){
  const e=raw||{};
  const result={
-  date:String(e.date||e.time||'').trim().slice(0,120),
+  date:String(e.date||e.time||'').replace(/<\/?br\s*\/?>/gi,'\n').trim().slice(0,120),
   title:String(e.title||'').trim().slice(0,200),
   content:String(e.content||'').trim().slice(0,8000),
   image:String(e.image||'').trim().slice(0,400),
@@ -96,7 +96,7 @@ function writerV95TimelineLabeled(lines){
 }
 function writerV95TimelineSortKey(date){
  const text=String(date||'').trim();
- if(/^-?\d{1,6}$/.test(text))return Number(text)*10000;
+ if(/^-?\d{1,6}$/.test(text))return Number(text)*365.2425-719527;
  if(/^\d{4}-\d\d(?:-\d\d)?$/.test(text)){
   const stamp=Date.parse(text.length===7?text+'-01':text);
   return Number.isFinite(stamp)?stamp/86400000:null;

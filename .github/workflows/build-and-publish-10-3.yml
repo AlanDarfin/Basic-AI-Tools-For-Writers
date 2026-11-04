@@ -38,7 +38,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.3.0 distributable files'
+            git commit -m 'build: synchronize 10.4.0 distributable files'
             git push origin HEAD:fix/desktop-explorer-mobile-spaces-manual-sorting
           fi
       - name: Synchronize generated bundle on main
@@ -49,7 +49,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.3.0 plugin artifacts'
+            git commit -m 'build: synchronize 10.4.0 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -60,7 +60,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.3.0"
+          test "$VERSION" = "10.4.0"
           test -s main.js
           test -s styles.css
           test -s manifest.json

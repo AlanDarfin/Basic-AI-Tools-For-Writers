@@ -4,7 +4,7 @@
 function writerV9216SpaceDockRegister(plugin){
  let timer=null;
  const cfg=plugin.settings.v9Spaces;
- const hosts=new Set();
+ const hosts=new Set(),actions=new Set();
  const refreshAll=()=>{
   plugin.writerV91FlexRefresh?.();
   plugin.writerV9SpacesRefresh?.();
@@ -51,6 +51,20 @@ function writerV9216SpaceDockRegister(plugin){
   };
   modal.open();
  };
+ const shift=async(space,direction)=>{
+  const index=cfg.spaces.findIndex(item=>item.id===space.id),to=index+direction;
+  if(index<0||to<0||to>=cfg.spaces.length)return;
+  const copy=cfg.spaces.slice();copy.splice(index,1);copy.splice(to,0,space);
+  cfg.spaces=copy;await persist();
+ };
+ const openManager=async()=>{
+  if(!writerModuleOn(plugin,'smartSpaces')){
+   new Notice(writerUi('Ative o módulo Spaces nas configurações do Basic.','Enable the Spaces module in Basic settings.'));
+   return;
+  }
+  if(!cfg.enabled){cfg.enabled=true;await persist();}
+  writerV9SpaceModal(plugin);
+ };
  const menu=(event,space)=>{
   event.preventDefault();event.stopPropagation();
   if(!space)return;
@@ -58,6 +72,8 @@ function writerV9216SpaceDockRegister(plugin){
   menu.addItem(item=>item.setTitle(writerUi('Usar Space','Use Space')).setIcon('check').onClick(()=>void writerV9215SelectSpace(plugin,space.id)));
   menu.addItem(item=>item.setTitle(writerUi('Renomear e configurar','Rename and configure')).setIcon('settings-2').onClick(()=>edit(space)));
   menu.addItem(item=>item.setTitle(writerUi('Escolher ícone e cor','Choose icon and color')).setIcon('palette').onClick(()=>icon(space)));
+  menu.addItem(item=>item.setTitle(writerUi('Mover Space para esquerda','Move Space left')).setIcon('arrow-left').onClick(()=>void shift(space,-1)));
+  menu.addItem(item=>item.setTitle(writerUi('Mover Space para direita','Move Space right')).setIcon('arrow-right').onClick(()=>void shift(space,1)));
   menu.addSeparator?.();
   menu.addItem(item=>item.setTitle(writerUi('Remover Space','Remove Space')).setIcon('trash-2').onClick(()=>remove(space)));
   menu.showAtMouseEvent(event);
@@ -92,6 +108,24 @@ function writerV9216SpaceDockRegister(plugin){
     const chip=button(item,space.name,space.icon||'layers','writer-v9216-space-chip',()=>void writerV9215SelectSpace(plugin,space.id));
     const name=chip.ownerDocument.createElement('span');name.textContent=space.name;chip.appendChild(name);
     chip.setAttribute('aria-pressed',String(active?.id===space.id));
+    chip.draggable=true;
+    chip.addEventListener('dragstart',event=>{
+     event.dataTransfer?.setData('text/x-writer-space',space.id);
+     if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+    });
+    chip.addEventListener('dragover',event=>{
+     if(event.dataTransfer?.types?.includes('text/x-writer-space'))event.preventDefault();
+    });
+    chip.addEventListener('drop',event=>{
+     const source=event.dataTransfer?.getData('text/x-writer-space');
+     if(!source||source===space.id)return;
+     event.preventDefault();event.stopPropagation();
+     const from=cfg.spaces.findIndex(item=>item.id===source);
+     const to=cfg.spaces.findIndex(item=>item.id===space.id);
+     if(from<0||to<0)return;
+     const ordered=cfg.spaces.slice(),moved=ordered.splice(from,1)[0];
+     ordered.splice(to,0,moved);cfg.spaces=ordered;void persist();
+    });
     if(space.iconColor)chip.style.setProperty('--writer-v9216-space-color',space.iconColor);
     button(item,writerUi('Opções de ','Options for ')+space.name,'ellipsis','writer-v9216-space-options',event=>menu(event,space));
    }
@@ -104,12 +138,35 @@ function writerV9216SpaceDockRegister(plugin){
   const tools=dock.ownerDocument.createElement('div');tools.className='writer-v9216-spaces-tools';
   dock.appendChild(tools);
   button(tools,writerUi('Criar Space','Create Space'),'plus','writer-v9216-space-create',create);
-  button(tools,writerUi('Gerenciar Spaces','Manage Spaces'),'settings-2','writer-v9216-space-manage',()=>{
-   if(!cfg.enabled){cfg.enabled=true;void persist();}
-   writerV9SpaceModal(plugin);
-  });
+  button(tools,writerUi('Gerenciar Spaces','Manage Spaces'),'settings-2','writer-v9216-space-manage',()=>void openManager());
+ };
+ const attachManageAction=()=>{
+  const current=new Set();
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   const host=leaf.view?.containerEl;if(!host)continue;
+   const bar=host.querySelector('.nav-buttons-container, .nav-action-buttons, .nav-header .nav-buttons-container, .nav-header');
+   if(!bar)continue;
+   current.add(bar);actions.add(bar);
+   let control=bar.querySelector(':scope > .writer-v93-space-manage-action');
+   if(!control){
+    control=bar.ownerDocument.createElement('button');
+    control.className='clickable-icon nav-action-button writer-v93-space-manage-action';
+    control.type='button';
+    control.setAttribute('aria-label',writerUi('Gerenciar Spaces','Manage Spaces'));
+    control.title=writerUi('Gerenciar Spaces','Manage Spaces');
+    require('obsidian').setIcon(control,'layers-3');
+    control.addEventListener('click',event=>{
+     event.stopPropagation();event.preventDefault();void openManager();
+    });
+    bar.appendChild(control);
+   }
+  }
+  for(const old of actions)if(!current.has(old)){
+   old.querySelector(':scope > .writer-v93-space-manage-action')?.remove();actions.delete(old);
+  }
  };
  const attach=()=>{
+  attachManageAction();
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
     parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
@@ -144,7 +201,8 @@ function writerV9216SpaceDockRegister(plugin){
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  plugin.register?.(()=>{
-  clearTimeout(timer);for(const parent of hosts){
+  clearTimeout(timer);for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
+  actions.clear();for(const parent of hosts){
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
    parent.classList.remove('writer-v9216-spaces-host');
   }

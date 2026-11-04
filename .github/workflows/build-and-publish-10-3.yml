@@ -1,0 +1,66 @@
+name: Build and publish plugin
+on:
+  push:
+    branches:
+      - main
+      - fix/desktop-explorer-mobile-spaces-manual-sorting
+permissions:
+  contents: write
+concurrency:
+  group: build-publish-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild distributable files
+        run: npm run build
+      - name: Check all regressions
+        run: npm run check
+      - name: Check community CSS
+        run: node --test tests/css-community-lint.test.cjs
+      - name: Commit generated bundle on preview branch
+        if: github.ref == 'refs/heads/fix/desktop-explorer-mobile-spaces-manual-sorting'
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add main.js styles.css projects.js
+          if ! git diff --cached --quiet; then
+            git commit -m 'build: synchronize 10.3.0 distributable files'
+            git push origin HEAD:fix/desktop-explorer-mobile-spaces-manual-sorting
+          fi
+      - name: Publish release on main after validation
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(node -p "require('./manifest.json').version")"
+          test "$VERSION" = "10.3.0"
+          test -s main.js
+          test -s styles.css
+          test -s manifest.json
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "Release $VERSION already exists"
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag "$VERSION"
+          git push origin "$VERSION"
+          gh release create "$VERSION" main.js manifest.json styles.css \
+            --title "Basic AI Tool for Writers $VERSION" \
+            --notes "Alignment syntax ::l: / ::c: / ::r: fixes link conflicts; explorer popup and toolbar polish; mobile Spaces shortcut; global-only hiding; manual sorting commands; optional reading progress."

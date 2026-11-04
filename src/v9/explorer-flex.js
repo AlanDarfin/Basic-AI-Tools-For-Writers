@@ -153,7 +153,7 @@ function writerV91FlexRegister(plugin){
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   for(const group of host.querySelectorAll('.nav-folder-children'))writerV91FlexSortGroup(plugin,group,patterns);
+   for(const group of host.querySelectorAll('.nav-files-container, .nav-folder-children'))writerV91FlexSortGroup(plugin,group,patterns);
   }
  };
  const refresh=()=>{clearTimeout(timer);timer=setTimeout(scan,140);};

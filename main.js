@@ -10151,10 +10151,10 @@ function writerV8ChatDirectives(lines){
     const key=writerV8ChatNameKey(name);
     if(key==='left'||key==='right'){defaults[key]=value.slice(0,90);continue;}
     const profile=profiles.get(key)||{color:'',avatar:'',bubbleColor:''};
-    const color=value.toLowerCase();
+    const color=value.toLowerCase(),bubbleMatch=/^(?:bubble|balloon|bal[aã]o):\s*([a-z]+)$/i.exec(value);
     if(WRITER_V8_CHAT_COLORS.has(color))profile.color=color==='grey'?'gray':color;
     else if(/^(?:bubble|balloon|bal[aã]o):s*([a-z]+)$/i.test(value)){
-     const named=RegExp.$1.toLowerCase();
+     const named=bubbleMatch[1].toLowerCase();
      if(WRITER_V8_CHAT_COLORS.has(named))profile.bubbleColor=named==='grey'?'gray':named;
     }
     else if(/^(?:!?\[\[.+\]\]|[^<>:"|?*\r\n]+\.(?:png|jpe?g|webp|gif|svg|avif|bmp))$/i.test(value))
@@ -16961,14 +16961,14 @@ function writerV9215PrettyMerge(settings){
  cfg.coverPosition=['left','right','center'].includes(cfg.coverPosition)?cfg.coverPosition:'right';
  cfg.bannerPosition=['top','center','bottom'].includes(cfg.bannerPosition)?cfg.bannerPosition:'center';
  cfg.dueSoonDays=Math.max(1,Math.min(30,Math.round(Number(cfg.dueSoonDays)||3)));
- cfg.hidden=Array.isArray(cfg.hidden)?[...new Set(cfg.hidden.map(x=>String(x).trim().toLowerCase()).filter(x=>/^[\w-]{1,100}$/.test(x)))].slice(0,80):[];
+ cfg.hidden=Array.isArray(cfg.hidden)?[...new Set(cfg.hidden.map(x=>String(x).trim().toLowerCase()).filter(x=>x&&x.length<=100))].slice(0,80):[];
  cfg.hiddenPerFile=cfg.hiddenPerFile&&typeof cfg.hiddenPerFile==='object'&&!Array.isArray(cfg.hiddenPerFile)?Object.fromEntries(
   Object.entries(cfg.hiddenPerFile).filter(([path])=>typeof path==='string'&&path.length<=500).slice(0,400)
    .map(([path,values])=>[path,Array.isArray(values)?[...new Set(values.map(x=>String(x).toLowerCase())
-    .filter(x=>/^[\w-]{1,100}$/.test(x)))].slice(0,80):[]])):{};
+    .filter(x=>x&&x.length<=100))].slice(0,80):[]])):{};
  cfg.propertyIcons=cfg.propertyIcons&&typeof cfg.propertyIcons==='object'&&!Array.isArray(cfg.propertyIcons)?
   Object.fromEntries(Object.entries(cfg.propertyIcons).slice(0,100).filter(([key,value])=>
-   /^[\w-]{1,100}$/.test(key)&&typeof value==='string'&&value.length<=48)):{};
+   key.length>0&&key.length<=100&&typeof value==='string'&&value.length<=48)):{};
  cfg.propertyActions=cfg.propertyActions!==false;
  cfg.hideEmpty=cfg.hideEmpty===true;cfg.reveal=cfg.reveal===true;
  for(const key of ['progressKeys','dateKeys','colors','templates','tagColors'])cfg[key]=String(cfg[key]||'').slice(0,5000);

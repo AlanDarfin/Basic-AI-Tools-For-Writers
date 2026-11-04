@@ -12133,89 +12133,117 @@ function writerV1044MenuAdd(parent,title,icon,callback,section){
   item.onClick(callback);
  });
 }
-function writerV1044ContextMenus(plugin){
- plugin.registerEvent?.(plugin.app.workspace.on('editor-menu',(menu,editor)=>{
-  if(!editor||!menu?.addItem||!plugin.settings.v9Toolbar)return;
-  const cfg=plugin.settings.v9Toolbar;
-  const items=Array.isArray(menu.items)?menu.items:[];
-  const format=items.find(item=>/^(formatar|format)$/i.test(writerV1044MenuTitle(item)));
-  let formatMenu=null;
-  if(format&&typeof format.setSubmenu==='function'){
-   // Returns the current submenu if present; does not replace built-ins.
-   try{formatMenu=format.submenu||format.setSubmenu();}catch(_){}
+const WRITER_V1045_AI_ICONS={
+ translate:'languages',meaning:'book-open',synonyms:'list-tree',
+ antonyms:'arrow-left-right',rewrite:'pencil-line',smart:'wand-sparkles'
+};
+function writerV1045OrganizeEditorMenu(plugin,menu,editor){
+ if(!menu||menu.__writerV1045Organized||!editor||typeof menu.addItem!=='function')return;
+ menu.__writerV1045Organized=true;
+ const items=Array.isArray(menu.items)?menu.items:null;
+ if(!items)return; // Obsidian changed internals: do not risk breaking native actions.
+ const format=items.find(item=>/^(formatar|format)$/i.test(writerV1044MenuTitle(item)));
+ let formatMenu=format?.submenu||null;
+ if(!formatMenu&&typeof format?.setSubmenu==='function'){
+  try{formatMenu=format.setSubmenu();}catch(_){}
+ }
+ const addFormat=parent=>{
+  const existing=new Set((parent.items||[]).map(item=>writerV1044MenuTitle(item)));
+  for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
+   if(!['underline','superscript','subscript','highlight','codeblock',
+    'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
+   const title=writerUi(pt,en);
+   if(existing.has(title))continue;
+   writerV1044MenuAdd(parent,title,icon,()=>{
+    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
+   },'basic-format');
   }
-  const addFormat=parent=>{
-   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
-    if(!['underline','superscript','subscript','highlight','codeblock',
-     'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
-    writerV1044MenuAdd(parent,writerUi(pt,en),icon,()=>{
-     if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
-    },'basic-format');
+  if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
+   for(const [side,icon,pt,en] of [
+    ['l','align-left','Alinhar à esquerda','Align left'],
+    ['c','align-center','Centralizar linha/título','Center line/heading'],
+    ['r','align-right','Alinhar à direita','Align right']]){
+    const title=writerUi(pt,en);
+    if(existing.has(title))continue;
+    writerV1044MenuAdd(parent,title,icon,()=>writerV102AlignApply(editor,side),'basic-align');
    }
-   if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
-    for(const [side,icon,pt,en] of [
-     ['l','align-left','Alinhar à esquerda','Align left'],
-     ['c','align-center','Centralizar linha/título','Center line/heading'],
-     ['r','align-right','Alinhar à direita','Align right']]){
-     writerV1044MenuAdd(parent,writerUi(pt,en),icon,()=>writerV102AlignApply(editor,side),'basic-align');
+  }
+ };
+ if(formatMenu)addFormat(formatMenu);
+ else menu.addItem(item=>{
+  item.setTitle(writerUi('Formatação do Basic','Basic formatting')).setIcon('type');
+  if(typeof item.setSubmenu==='function')addFormat(item.setSubmenu());
+  else item.onClick?.(event=>{
+   const sub=new Menu(plugin.app);addFormat(sub);sub.showAtMouseEvent?.(event);
+  });
+ });
+ // Group after all editor-menu listeners have run. Older Basic handlers are
+ // often added after this module and their MenuItems have no .callback field.
+ const grouped={lookup:[],writing:[]};
+ for(const old of [...items]){
+  const title=writerV1044MenuTitle(old),key=writerV1044AiKey(title);
+  if(!key)continue;
+  const clickable=typeof old.callback==='function'||typeof old.dom?.click==='function';
+  if(!clickable)continue;
+  const section=['meaning','synonyms','antonyms','translate'].includes(key)?'lookup':'writing';
+  grouped[section].push({old,title,key});
+ }
+ if(!grouped.lookup.length&&!grouped.writing.length)return;
+ const groups=Object.entries(grouped).filter(([,list])=>list.length);
+ let moved=0;
+ menu.addItem(top=>{
+  top.setTitle(writerUi('IA · Ferramentas','AI · Tools')).setIcon('brain-circuit');
+  top.setSection?.('basic-ai');
+  if(typeof top.setSubmenu!=='function')return; // Keep legacy root actions untouched.
+  const ai=top.setSubmenu();
+  for(const [group,entries] of groups){
+   const label=group==='lookup'?writerUi('Pesquisar e traduzir','Lookup & translate'):
+    writerUi('Escrever e revisar','Writing & revision');
+   const groupIcon=group==='lookup'?'book-open-check':'pencil-ruler';
+   ai.addItem(groupItem=>{
+    groupItem.setTitle(label).setIcon(groupIcon);
+    const target=typeof groupItem.setSubmenu==='function'?groupItem.setSubmenu():ai;
+    for(const entry of entries){
+     writerV1044MenuAdd(target,entry.title,WRITER_V1045_AI_ICONS[entry.key]||'sparkles',event=>{
+      if(typeof entry.old.callback==='function')entry.old.callback.call(entry.old,event);
+      else entry.old.dom?.click?.();
+     },'basic-ai-'+group);
+     const index=items.indexOf(entry.old);
+     if(index>=0)items.splice(index,1);
+     entry.old.dom?.remove?.();
+     moved++;
     }
-   }
-  };
-  if(formatMenu)addFormat(formatMenu);
-  else{
-   // Compatibility fallback when Obsidian's private submenu cannot be extended.
-   menu.addItem(item=>{
-    item.setTitle(writerUi('Formatação do Basic','Basic formatting')).setIcon('type');
-    if(typeof item.setSubmenu==='function')addFormat(item.setSubmenu());
-    else item.onClick(event=>{
-     const submenu=new Menu(plugin.app);addFormat(submenu);
-     submenu.showAtMouseEvent?.(event);
-    });
    });
   }
-  // Move only Basic's own legacy AI entries, preserving original callbacks.
-  // Unknown third-party items, native actions and unsupported menu internals stay intact.
-  const groups={lookup:[],writing:[]};
-  for(const old of [...items]){
-   const key=writerV1044AiKey(writerV1044MenuTitle(old));
-   if(!key||typeof old.callback!=='function')continue;
-   const index=items.indexOf(old);
-   if(index<0)continue;
-   items.splice(index,1);
-   (['meaning','synonyms','antonyms','translate'].includes(key)?groups.lookup:groups.writing)
-    .push({old,key,title:writerV1044MenuTitle(old)});
-  }
-  if(!groups.lookup.length&&!groups.writing.length)return;
-  menu.addItem(item=>{
-   item.setTitle(writerUi('IA · Ferramentas','AI · Tools')).setIcon('sparkles').setSection?.('basic-ai');
-   if(typeof item.setSubmenu!=='function'){
-    item.onClick(event=>{
-     const fallback=new Menu(plugin.app);
-     for(const entry of [...groups.lookup,...groups.writing])
-      writerV1044MenuAdd(fallback,entry.title,'sparkles',()=>entry.old.callback.call(entry.old,event));
-     fallback.showAtMouseEvent?.(event);
-    });
-    return;
-   }
-   const ai=item.setSubmenu();
-   for(const [group,title,icon] of [
-    [groups.lookup,writerUi('Pesquisar e traduzir','Lookup & translate'),'search'],
-    [groups.writing,writerUi('Escrever e revisar','Writing & revision'),'pencil']]){
-    if(!group.length)continue;
-    ai.addItem(sub=>{
-     sub.setTitle(title).setIcon(icon);
-     if(typeof sub.setSubmenu==='function'){
-      const nested=sub.setSubmenu();
-      for(const entry of group)writerV1044MenuAdd(nested,entry.title,'sparkles',
-       event=>entry.old.callback.call(entry.old,event));
-     }else{
-      for(const entry of group)writerV1044MenuAdd(ai,entry.title,'sparkles',
-       event=>entry.old.callback.call(entry.old,event));
-     }
-    });
-   }
-  });
+ });
+ if(!moved)return;
+}
+function writerV1044ContextMenus(plugin){
+ // Register early to identify which menus belong to our editor, but finalize
+ // at display time, *after* every other editor-menu subscriber has added items.
+ plugin.registerEvent?.(plugin.app.workspace.on('editor-menu',(menu,editor)=>{
+  if(!plugin.settings.v9Toolbar||!editor)return;
+  menu.__writerV1045Editor=editor;
  }));
+ if(typeof Menu==='undefined'||!Menu?.prototype)return;
+ const prototype=Menu.prototype,patches=[];
+ for(const key of ['showAtMouseEvent','showAtPosition','showAtCoordinates']){
+  const original=prototype[key];
+  if(typeof original!=='function')continue;
+  const replacement=function(){
+   if(this.__writerV1045Editor&&!this.__writerV1045Organized)
+    writerV1045OrganizeEditorMenu(plugin,this,this.__writerV1045Editor);
+   return original.apply(this,arguments);
+  };
+  try{prototype[key]=replacement;
+   if(prototype[key]===replacement)patches.push([key,original,replacement]);
+  }catch(_){}
+ }
+ plugin.register?.(()=>{
+  for(const [key,original,replacement] of patches){
+   if(prototype[key]===replacement)prototype[key]=original;
+  }
+ });
 }
 
 function writerV9RegisterToolbar(plugin){
@@ -18567,15 +18595,20 @@ function writerV931PomodoroSettings(plugin,panel){
  * Longform's independent project timeline and event store remain unchanged. */
 const WRITER_V95_TIMELINE_OPTIONS={
  layout:'vertical',theme:'classic',density:'normal',sort:'source',controls:true,
- line:3,body:2,accent:'',maxEvents:80,pageSize:30
+ line:3,body:2,accent:'',maxEvents:80,pageSize:30,spacedLines:false,hideTitles:false
 };
-const WRITER_V95_TIMELINE_THEMES=['classic','cards','minimal','compact','editorial'];
+const WRITER_V95_TIMELINE_THEMES=['classic','cards','minimal','compact','editorial','poster','glass','terminal'];
 const WRITER_V95_TIMELINE_ACCENTS={
  'active-color-background-modifier-success':'--background-modifier-success',
  'active-color-background-modifier-error':'--background-modifier-error',
+ 'active-color-background-modifier-error-hover':'--background-modifier-error-hover',
  'active-color-text-accent':'--text-accent',
+ 'active-color-text-accent-hover':'--text-accent-hover',
  'active-color-text-error':'--text-error',
+ 'active-color-text-error-hover':'--text-error-hover',
+ 'active-color-text-selection':'--text-selection',
  'active-color-interactive-accent':'--interactive-accent',
+ 'active-color-interactive-accent-hover':'--interactive-accent-hover',
  'active-color-interactive-success':'--interactive-success'
 };
 function writerV95TimelineConfigOption(cfg,key,value){
@@ -18585,6 +18618,7 @@ function writerV95TimelineConfigOption(cfg,key,value){
   if(['horizontal','vertical'].includes(val))cfg.layout=val;
  }else if(name==='theme'&&WRITER_V95_TIMELINE_THEMES.includes(val))cfg.theme=val;
  else if(name==='density'&&['normal','compact','comfortable'].includes(val))cfg.density=val;
+ else if(['spaced-lines','hide-titles'].includes(name)&&['true','false','on','off','yes','no'].includes(val))cfg[name==='spaced-lines'?'spacedLines':'hideTitles']=['true','on','yes'].includes(val);
  else if(name==='sort'&&['source','asc','desc','dependencies'].includes(val))cfg.sort=val;
  else if(['controls','toolbar'].includes(name)&&['true','false','on','off','yes','no'].includes(val))
   cfg.controls=['true','on','yes'].includes(val);
@@ -18684,10 +18718,12 @@ function writerV95TimelineParse(source,format='timeline'){
     const size=/^(line|body)-([2-5])$/.exec(token);
     if(size)writerV95TimelineConfigOption(cfg,size[1],size[2]);
     if(WRITER_V95_TIMELINE_ACCENTS[token])cfg.accent='var('+WRITER_V95_TIMELINE_ACCENTS[token]+')';
+    if(token==='spaced-lines')cfg.spacedLines=true;
+    if(token==='hide-titles')cfg.hideTitles=true;
    }
    begin++;continue;
   }
-  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body|max-events|page-size):\s*(.*)$/i.exec(line);
+  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body|spaced-lines|hide-titles|max-events|page-size):\s*(.*)$/i.exec(line);
   if(option){writerV95TimelineConfigOption(cfg,option[1],option[2]);begin++;continue;}
   break;
  }
@@ -18727,7 +18763,10 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  const root=element.createDiv({cls:'writer-v95-timeline'});
  if(!parsed){root.createEl('p',{text:writerUi('Timeline muito grande (limite de 64 KB).','Timeline exceeds the 64 KB limit.')});return;}
  const cfg=parsed.config;
- root.classList.add('is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density);
+ root.classList.add('is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
+  'is-line-'+cfg.line,'is-body-'+cfg.body);
+ if(cfg.spacedLines)root.classList.add('is-spaced-lines');
+ if(cfg.hideTitles)root.classList.add('is-hide-titles');
  root.style.setProperty('--writer-v95-line-width',cfg.line+'px');
  root.style.setProperty('--writer-v95-body-width',cfg.body+'px');
  if(cfg.accent)root.style.setProperty('--writer-v95-accent',cfg.accent);
@@ -18737,10 +18776,18 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  }
  const groups=[...new Set(parsed.events.map(e=>e.group).filter(Boolean))];
  const bar=cfg.controls?root.createDiv({cls:'writer-v95-timeline-toolbar'}):null;
- let layout=cfg.layout,query='',group='',page=0;
+ let layout=cfg.layout,theme=cfg.theme,lineStyle=cfg.line,bodyStyle=cfg.body,query='',group='',page=0;
  if(bar){
-  const orient=bar.createEl('button',{cls:'writer-v95-timeline-orientation',attr:{type:'button'}});
-  const setOrientation=()=>{orient.textContent=layout==='vertical'?writerUi('Horizontal','Horizontal'):writerUi('Vertical','Vertical');orient.setAttribute('aria-label',writerUi('Mudar orientação','Switch orientation'));};
+  const orient=bar.createEl('button',{cls:'writer-v95-timeline-orientation',
+   attr:{type:'button','aria-label':writerUi('Mudar orientação','Switch orientation')}});
+  const setOrientation=()=>{
+   orient.empty?.();
+   const target=layout==='vertical'?'columns-2':'rows-2';
+   if(typeof require('obsidian').setIcon==='function')require('obsidian').setIcon(orient,target);
+   else orient.setText?.(layout==='vertical'?'↔':'↕');
+   orient.setAttribute('title',layout==='vertical'?writerUi('Ver horizontalmente','View horizontally'):
+    writerUi('Ver verticalmente','View vertically'));
+  };
   setOrientation();
   orient.addEventListener('click',()=>{
    layout=layout==='vertical'?'horizontal':'vertical';
@@ -18748,6 +18795,35 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    root.classList.toggle('is-layout-vertical',layout==='vertical');
    setOrientation();
   });
+  // Original Timeline: live preview of line-2..5 and body-2..4 alongside named themes.
+  const selector=(label,options,selected,callback)=>{
+   const input=bar.createEl('select',{cls:'writer-v105-timeline-selector',
+    attr:{'aria-label':label,title:label}});
+   for(const [value,title] of options){
+    const option=input.createEl('option',{text:title});option.value=String(value);
+   }
+   input.value=String(selected);
+   input.addEventListener('change',()=>callback(input.value));
+   return input;
+  };
+  selector(writerUi('Tema da timeline','Timeline theme'),[
+   ['classic',writerUi('Clássico','Classic')],['cards',writerUi('Cartões','Cards')],
+   ['minimal',writerUi('Minimalista','Minimal')],['compact',writerUi('Compacto','Compact')],
+   ['editorial',writerUi('Editorial','Editorial')],['poster',writerUi('Pôster','Poster')],
+   ['glass',writerUi('Vidro','Glass')],['terminal','Terminal']
+  ],theme,next=>{root.classList.remove('is-theme-'+theme);theme=next;root.classList.add('is-theme-'+theme);});
+  selector(writerUi('Estilo da linha','Timeline line style'),
+   [2,3,4,5].map(n=>[String(n),writerUi('Linha ','Line ')+n]),lineStyle,next=>{
+    root.classList.remove('is-line-'+lineStyle);lineStyle=Number(next);
+    root.classList.add('is-line-'+lineStyle);
+    root.style.setProperty('--writer-v95-line-width',lineStyle+'px');
+   });
+  selector(writerUi('Estilo do cartão','Timeline card style'),
+   [2,3,4].map(n=>[String(n),writerUi('Cartão ','Card ')+n]),bodyStyle,next=>{
+    root.classList.remove('is-body-'+bodyStyle);bodyStyle=Number(next);
+    root.classList.add('is-body-'+bodyStyle);
+    root.style.setProperty('--writer-v95-body-width',bodyStyle+'px');
+   });
   const search=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar eventos…','Search events…'),'aria-label':writerUi('Buscar eventos','Search events')}});
   search.addEventListener('input',()=>{query=search.value.trim().toLocaleLowerCase();page=0;draw();});
   if(groups.length){
@@ -18785,8 +18861,9 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     try{if(require('obsidian').getIcon?.(event.icon))require('obsidian').setIcon(marker,event.icon);}catch(_){}
    }
    const info=card.createDiv({cls:'writer-v95-timeline-event-body'});
-   if(event.date)info.createSpan({cls:'writer-v95-timeline-date',text:event.date});
-   if(event.title)info.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});
+   const head=info.createDiv({cls:'writer-v95-timeline-head'});
+   if(event.date)head.createSpan({cls:'writer-v95-timeline-date',text:event.date});
+   if(event.title)head.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});
    if(event.group)info.createSpan({cls:'writer-v95-timeline-group',text:event.group});
    if(event.era)info.createSpan({cls:'writer-v101-timeline-era',text:event.era});
    if(event.after)info.createSpan({cls:'writer-v101-timeline-after',text:writerUi('Depois de: ','After: ')+event.after});

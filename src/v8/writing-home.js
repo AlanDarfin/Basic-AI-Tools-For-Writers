@@ -70,8 +70,19 @@ class WriterV8HomeView extends ItemView{
  getViewType(){return WRITER_V8_HOME_VIEW;}
  getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
- async onOpen(){this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;this.render();this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);}
- async onClose(){this.disposed=true;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
+ async onOpen(){
+  this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;
+  this.render();
+  // Desktop-only: focus the search once when this view opens, not on every rerender.
+  if(!writerV8HomeIsMobile(this.plugin)){
+   this.homeFocusTimer=setTimeout(()=>{
+    if(!this.disposed&&this.app.workspace.activeLeaf===this.leaf&&this.homeSearchInput?.isConnected)
+     this.homeSearchInput.focus({preventScroll:true});
+   },0);
+  }
+  this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);
+ }
+ async onClose(){this.disposed=true;clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;this.homeSearchInput=null;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -87,7 +98,8 @@ class WriterV8HomeView extends ItemView{
  }
  openFile(file){
   if(!(file instanceof TFile))return;
-  const leaf=this.app.workspace.getLeaf?.('tab')||this.app.workspace.getLeaf?.(true);
+  // Replace the Homepage in the same leaf instead of opening another tab.
+  const leaf=this.leaf||this.app.workspace.activeLeaf;
   if(leaf)void leaf.openFile(file);
  }
  render(){
@@ -385,6 +397,7 @@ class WriterV8HomeView extends ItemView{
   const box=this.card(parent,'search','Buscar no cofre','Search vault');
   box.addClass('writer-v901-home-search-card');
   const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
+  this.homeSearchInput=input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
   const files=this.app.vault.getMarkdownFiles?.()||[];

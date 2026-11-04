@@ -2,12 +2,18 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.6 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.7 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.7 — compact mobile Explorer and optional ordering controls
+
+- **Compact mobile files:** manual-sorting arrows are no longer rendered across every file or folder row during normal browsing. Folder notes, favorite stars, images, descriptions and custom file icons remain intact.
+- **Reorder only when needed:** in Obsidian's native **Sort** menu, select **Reorder items on mobile (Basic)**; alternatively use the command-palette shortcut **Explorer: toggle mobile reorder mode**. This temporary mode shows small overlay arrows without expanding row heights. Toggle it again to return to normal browsing; the mode starts off after each plugin reload.
+- **Order preserved:** exiting the mode hides only the controls, never modifies, moves or deletes vault files or stored manual order. CSS stays compatible with Obsidian community lint requirements.
 
 ## Version 10.4.6 — compact LanguageTool corrections and stable review scrolling
 

@@ -549,18 +549,60 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .n
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
  width:25px;height:25px;
 }
-/* Provide touch-friendly reorder arrows ONLY inside custom-sorted explorer folders. */
-.writer-v93-reorder-actions{display:none;align-items:center;gap:1px;margin-inline-start:auto;flex:0 0 auto;}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-reorder-actions{display:inline-flex;}
+/* Explorer arrows are an opt-in editing overlay, not part of every row.
+   Keep the mobile tree at Obsidian's normal compact height. */
+.writer-v93-reorder-actions{display:none;align-items:center;gap:2px;flex:0 0 auto;}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
+ .writer-v1047-reorder-title > .writer-v93-reorder-actions{
+ display:inline-flex;
+ position:absolute;
+ top:50%;inset-inline-end:38px;
+ transform:translateY(-50%);
+ z-index:3;
+ margin:0;padding:0;
+}
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-reorder-action{
  display:inline-flex;align-items:center;justify-content:center;
- min-width:30px;min-height:34px;border:0;border-radius:var(--radius-s);
- background:transparent;color:var(--text-muted);padding:4px;
+ flex:0 0 27px;width:27px;min-width:27px;max-width:27px;
+ height:30px;min-height:30px;max-height:30px;
+ border:0;border-radius:var(--radius-s);
+ background:var(--background-primary);color:var(--text-muted);
+ padding:3px;margin:0;box-shadow:none;
 }
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-reorder-action svg{
- width:19px;height:19px;
+ width:16px;height:16px;
 }
 .writer-v93-reorder-action:disabled{opacity:.3;}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
+ :is(.nav-file-title,.nav-folder-title).writer-v1047-reorder-title{
+ position:relative;
+ box-sizing:border-box;
+ padding-inline-end:100px;
+ min-height:36px;
+ align-items:center;
+}
+/* Do not impose a height on actual folder-note descriptions, thumbnails,
+   or preview shells: those deliberately occupy extra vertical space. */
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
+ :is(.nav-file-title,.nav-folder-title):not(.writer-v92-has-preview){
+ box-sizing:border-box;
+ min-height:36px;
+ max-height:44px;
+ padding-block:3px;
+ align-items:center;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-title-content,
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title-content{
+ min-width:0;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ white-space:nowrap;
+}
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
+ .writer-v1047-reorder-title .writer-v93-reorder-action:focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:1px;
+}
 body.is-mobile .writer-v92-preview-shell.is-expandable{touch-action:pan-y;}
 /* 9.3 Flow board — document-backed ordering, mobile buttons and three layouts. */
 .writer-v9216-flow-board > .writer-v93-flow-toolbar{

@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.4.6 plugin artifacts'
+            git commit -m 'build: synchronize 10.4.7 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.4.6"
+          test "$VERSION" = "10.4.7"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic AI Tool for Writers $VERSION" \
-            --notes "10.4.6: Compact LanguageTool suggestion menus and popovers; suspend Typewriter centering and Remember Cursor during suggestion hover/click. Only genuine typing and arrow-key navigation engage tracking. Preserve editor scroll when applying suggestions by mouse. Regression coverage and bilingual docs."
+            --notes "10.4.7: Fix oversized mobile file explorer rows by hiding always-visible sort arrows. Enable mobile manual reordering only in an explicit temporary mode from Obsidian's Sort menu or the new command palette shortcut. Overlay compact arrows without altering title height, favorites, folder notes, previews or stored custom ordering. Includes PT/EN docs and regression tests."

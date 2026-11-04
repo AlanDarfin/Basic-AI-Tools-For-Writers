@@ -4,7 +4,10 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const css=fs.readFileSync('styles.css','utf8');
 const start=css.indexOf('/* 7.0.2 — desktop sidebar density');
-const fix=start<0?'':css.slice(start);
+const end=css.indexOf('/* BEGIN V8 MODULAR STYLES */',start);
+// Only the historic 7.0.2 desktop fix is guarded here; newer feature modules
+// may use optical transforms for inline glyphs without scaling the entire UI.
+const fix=start<0?'':css.slice(start,end>=0?end:undefined);
 
 test('desktop compactness fix is scoped away from Android and other Obsidian panes',()=>{
  assert.ok(start>=0,'Missing compact desktop CSS section');

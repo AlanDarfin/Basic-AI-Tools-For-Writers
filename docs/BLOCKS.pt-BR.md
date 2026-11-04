@@ -416,7 +416,7 @@ next: "[[Escrita/Capítulo 03]]"
 
 ## 14. Linha do tempo narrativa (`timeline` / `timeline-labeled`)
 
-O Basic aceita os dois formatos do Timeline original do George-debug. Preserva as classes entre colchetes (`line-2` a `line-5`, `body-2` a `body-4` e parte das `active-color-*`). Datas podem ser textuais, inclusive eras fictícias.
+O Basic aceita os dois formatos do Timeline original do George-debug. Preserva as classes entre colchetes (`line-2` a `line-5`, `body-2` a `body-4` e todas as 11 cores `active-color-*`). Datas podem ser textuais, inclusive eras fictícias.
 
 **Sintaxe original com três linhas + por evento:**
 
@@ -466,7 +466,9 @@ Mais um momento na mesma linha do tempo.
 ~~~
 ~~~~
 
-Opções: `layout` (`vertical` ou `horizontal`), `theme` (`classic`, `cards`, `minimal`, `compact`, `editorial`), `density` (`normal`, `compact`, `comfortable`), `sort` (`source`, `asc`, `desc`), `controls` (`true` ou `false`), `color` (hexadecimal de seis dígitos), `line` (2–5), `body` (2–4). Cada evento pode usar `date`, `title`, `content`, `group`, `image`, `color`, `icon`, `link`. Fotos e notas de destino precisam existir **dentro do cofre**. A barra oferece busca, filtro de trilhas, mudança de orientação e rolagem horizontal. A timeline do projeto Longform continua independente.
+Opções: `layout` (`vertical` ou `horizontal`), `theme` (`classic`, `cards`, `minimal`, `compact`, `editorial`, `poster`, `glass`, `terminal`), `density` (`normal`, `compact`, `comfortable`), `sort` (`source`, `asc`, `desc`), `controls` (`true` ou `false`), `color` (hexadecimal de seis dígitos), `line` (2–5), `body` (2–4). Cada evento pode usar `date`, `title`, `content`, `group`, `image`, `color`, `icon`, `link`. Fotos e notas de destino precisam existir **dentro do cofre**. A barra oferece busca, filtro de trilhas, mudança de orientação e rolagem horizontal. A timeline do projeto Longform continua independente.
+
+Estilos originais de linha: `line: 2` usa um anel vazado, `line: 3` um ponto sólido, `line: 4` linha tracejada com marcador circular, e `line: 5` um losango. Cartões: `body: 2` é um painel, `body: 3` uma bandeira colorida e `body: 4` uma faixa lateral. São compatíveis `spaced-lines`, `hide-titles` e todas as 11 cores `active-color-*`. Use o seletor da timeline para testar os estilos; altere o bloco Markdown para salvar a escolha. Minimal é texto sem cartões e com mais respiro; Compact é uma lista densa com data e título lado a lado.
 
 ## Se um bloco não funcionar
 

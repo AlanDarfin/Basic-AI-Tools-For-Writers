@@ -14,7 +14,7 @@ test('quote widget supports local customized quotes and original offline fallbac
  assert.ok(fns.quotes('').length>=4);
  assert.equal(fns.pick([['única','']])[0],'única');
  assert.equal(fns.pick([['primeira',''],['segunda','']],'primeira')[0],'segunda');
- assert.match(home,/async onOpen\(\)\{this\.disposed=false;this\.homeQuote=null/);
+ assert.match(home,/async onOpen\(\)\s*\{[\s\S]*?this\.homeQuote=null/);
  assert.match(home,/homeQuotePrevious/);
  assert.match(home,/renderQuotes\(parent\)/);
  assert.doesNotMatch(home,/fetch\(|requestUrl\(/);

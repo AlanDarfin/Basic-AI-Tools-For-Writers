@@ -90,34 +90,164 @@ function writerWorkspaceFilterRows(panel,query){
  }
  return visible;
 }
+function writerV1048SearchWords(query){
+ return writerWorkspaceSearchNormalize(query)
+  .replace(/\bsubescrito\b/g,'subscrito')
+  .replace(/\bsuperescrito\b/g,'sobrescrito')
+  .split(/\s+/).filter(Boolean);
+}
+function writerV1048SearchIndex(sections,panel,active,cache){
+ if(panel?.querySelectorAll){
+  const bucket=[],seen=new Set();
+  for(const row of panel.querySelectorAll('.setting-item')){
+   const title=String(row.querySelector?.('.setting-item-name')?.textContent||'').trim();
+   if(!title||seen.has(title))continue;
+   seen.add(title);
+   bucket.push({id:active,title,description:String(row.querySelector?.('.setting-item-description')?.textContent||'').trim(),
+    focus:title,source:'rendered'});
+  }
+  cache.set(active,bucket.slice(0,500));
+ }
+ const labels=new Map(sections.map(([id,label])=>[id,label]));
+ const all=[];
+ for(const [id,items] of cache)for(const item of items)if(labels.has(id))
+  all.push({...item,section:labels.get(id)});
+ // The toolbar's built-in format buttons are settings options even when
+ // their "Choose and reorder buttons" section has not yet been expanded.
+ const toolbar=sections.find(([id,label])=>/formattoolbar|formatting toolbar|barra de formata|format tool/i
+  .test(writerWorkspaceSearchNormalize(id+' '+label)));
+ if(toolbar&&typeof WRITER_V9_FORMAT_ACTIONS!=='undefined'){
+  for(const [action,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
+   const title=writerUi(pt,en);
+   if(all.some(item=>item.id===toolbar[0]&&writerWorkspaceSearchNormalize(item.title)===writerWorkspaceSearchNormalize(title)))continue;
+   all.push({id:toolbar[0],section:toolbar[1],title,
+    description:writerUi('Ativar, mover, nomear ou trocar o ícone deste botão',
+     'Enable, move, rename or change this button’s icon'),
+    keywords:pt+' '+en+' '+action+(action==='subscript'?' subescrito subscript':''),
+    focus:title,source:'toolbar'});
+  }
+ }
+ // Explicitly index individual Extended Syntax capabilities, not merely
+ // the category name. These retain the destination's original toggles.
+ const syntax=sections.find(([id,label])=>/extendedsyntax|extended syntax|sintaxe estendida/
+  .test(writerWorkspaceSearchNormalize(id+' '+label)));
+ if(syntax)for(const [pt,en,aliases] of [
+  ['Subscrito','Subscript','subescrito subscript'],
+  ['Sobrescrito','Superscript','superescrito superscript'],
+  ['Sublinhado','Underline','underline'],
+  ['Spoiler','Spoiler','ocultar texto'],
+  ['Realce','Highlight','highlight']
+ ]){
+  const title=writerUi(pt,en);
+  if(all.some(item=>item.id===syntax[0]&&writerWorkspaceSearchNormalize(item.title)===writerWorkspaceSearchNormalize(title)))continue;
+  all.push({id:syntax[0],section:syntax[1],title,
+   description:writerUi('Sintaxe Markdown estendida','Extended Markdown syntax'),
+   keywords:aliases,focus:title,source:'syntax'});
+ }
+ return all;
+}
+function writerV1048SearchOptions(entries,query){
+ const terms=writerV1048SearchWords(query);if(!terms.length)return [];
+ return entries.map(item=>{
+  const title=writerWorkspaceSearchNormalize(item.title).replace(/subescrito/g,'subscrito');
+  const combined=writerWorkspaceSearchNormalize(item.title+' '+(item.description||'')+' '+(item.keywords||''));
+  if(!terms.every(term=>combined.includes(term)||title.includes(term)))return null;
+  const exact=terms.join(' ')===title;
+  const score=exact?100:title.startsWith(terms[0])?80:title.includes(terms[0])?60:20;
+  return {...item,score};
+ }).filter(Boolean).sort((a,b)=>b.score-a.score||a.title.localeCompare(b.title)).slice(0,25);
+}
+function writerV1048SearchReveal(panel,title){
+ if(!panel?.querySelectorAll)return false;
+ const norm=writerWorkspaceSearchNormalize(title);
+ let found=null;
+ for(const row of panel.querySelectorAll('.setting-item')){
+  const name=String(row.querySelector?.('.setting-item-name')?.textContent||'').trim();
+  if(writerWorkspaceSearchNormalize(name)===norm){found=row;break;}
+ }
+ if(!found){
+  // A result may live inside a details section (e.g., toolbar buttons).
+  for(const detail of panel.querySelectorAll('details')){
+   const summary=String(detail.querySelector?.('summary')?.textContent||'');
+   if(writerWorkspaceSearchNormalize(summary).includes(norm)){found=detail;break;}
+  }
+ }
+ if(!found)return false;
+ found.hidden=false;
+ for(let ancestor=found.parentElement;ancestor&&ancestor!==panel;ancestor=ancestor.parentElement){
+  if(ancestor.tagName?.toLowerCase()==='details')ancestor.open=true;
+ }
+ found.classList?.add?.('writer-v1048-search-target');
+ found.scrollIntoView?.({block:'center',behavior:'auto'});
+ return true;
+}
 function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
- const wrap=root.createDiv({cls:'writer-v51-search writer-v901-settings-search'});
+ const wrap=root.createDiv({cls:'writer-v51-search writer-v901-settings-search writer-v1048-settings-search'});
  const field=wrap.createDiv({cls:'writer-v901-search-field'});
  const symbol=field.createSpan({cls:'writer-v901-search-icon',attr:{'aria-hidden':'true'}});
  require('obsidian').setIcon(symbol,'search');
- const input=field.createEl('input',{type:'search',attr:{placeholder:writerUi('Pesquisar opções, ferramentas ou categorias…','Search options, tools or categories…'),'aria-label':writerUi('Buscar configurações','Search settings')}});
+ const input=field.createEl('input',{type:'search',attr:{
+  placeholder:writerUi('Buscar uma configuração específica…','Search an individual setting…'),
+  'aria-label':writerUi('Buscar opções e comandos','Search options and commands'),autocomplete:'off'}});
  input.id='writer-v51-settings-search';
- const feedback=wrap.createDiv({cls:'writer-v51-search-results',attr:{role:'status','aria-live':'polite'}});
+ const feedback=wrap.createDiv({cls:'writer-v51-search-results writer-v1048-search-results',
+  attr:{role:'region','aria-label':writerUi('Resultados de configurações','Settings results')}});
  feedback.hidden=true;
+ const cache=new Map();
+ let latest=[];
+ const jump=entry=>{
+  if(!entry)return;
+  const previous=getActive();
+  if(entry.id!==previous)onOpen(entry.id);
+  const reveal=()=>{
+   const panel=getPanel();
+   if(!writerV1048SearchReveal(panel,entry.focus||entry.title)){
+    // Keep the correct section visible if a nested control is rendered lazily.
+    writerWorkspaceFilterRows(panel,'');
+   }
+  };
+  if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>setTimeout(reveal,40));
+  else setTimeout(reveal,40);
+ };
  const update=()=>{
-  const q=input.value.trim();
-  feedback.empty();
-  feedback.hidden=!q;
-  const matches=writerWorkspaceSearchSections(sections,q);
-  const active=sections.find(([id])=>id===getActive());
-  const categoryHit=active&&writerWorkspaceSearchNormalize(active[1]+' '+(WRITER_WORKSPACE_HINTS[active[0]]||'')).includes(writerWorkspaceSearchNormalize(q));
-  const count=writerWorkspaceFilterRows(getPanel(),q&&categoryHit?'':q);
+  const q=input.value.trim(),panel=getPanel(),active=getActive();
+  feedback.empty();feedback.hidden=!q;
+  const all=writerV1048SearchIndex(sections,panel,active,cache);
+  latest=writerV1048SearchOptions(all,q);
+  const activeMatches=latest.filter(entry=>entry.id===active);
+  writerWorkspaceFilterRows(panel,q&&activeMatches.length?q:'');
   if(!q)return;
-  feedback.createSpan({text:writerUi('Categorias: ','Categories: ')+matches.length+' · '+writerUi('Opções nesta aba: ','Options in current tab: ')+count});
-  for(const [id,title] of matches){
-   const button=feedback.createEl('button',{text:title,attr:{type:'button'}});
-   button.addEventListener('click',()=>{onOpen(id);update();});
+  const header=feedback.createDiv({cls:'writer-v1048-search-summary'});
+  header.setText(writerUi('Opções encontradas: ','Matching settings: ')+latest.length);
+  if(latest.length){
+   const list=feedback.createDiv({cls:'writer-v1048-search-list'});
+   for(const entry of latest){
+    const button=list.createEl('button',{cls:'writer-v1048-search-result',attr:{
+     type:'button','aria-label':entry.title+' · '+entry.section}});
+    button.createSpan({cls:'writer-v1048-search-result-title',text:entry.title});
+    button.createSpan({cls:'writer-v1048-search-result-path',text:entry.section});
+    if(entry.description)button.createSpan({cls:'writer-v1048-search-result-desc',text:entry.description});
+    button.addEventListener('click',()=>jump(entry));
+   }
+  }else{
+   const categories=writerWorkspaceSearchSections(sections,q);
+   if(categories.length){
+    feedback.createSpan({cls:'writer-v1048-search-summary',
+     text:writerUi('Categorias relacionadas','Related categories')});
+    const list=feedback.createDiv({cls:'writer-v1048-search-list'});
+    for(const [id,label] of categories.slice(0,6)){
+     const button=list.createEl('button',{cls:'writer-v1048-search-result',
+      text:label,attr:{type:'button'}});
+     button.addEventListener('click',()=>onOpen(id));
+    }
+   }else feedback.createSpan({cls:'writer-v1048-search-empty',text:writerUi(
+    'Nenhuma opção encontrada. Tente outra palavra.','No matching option. Try another word.')});
   }
  };
  input.addEventListener('input',update);
  input.addEventListener('keydown',event=>{
   if(event.key==='Escape'){input.value='';update();}
-  if(event.key==='Enter'){const first=writerWorkspaceSearchSections(sections,input.value)[0];if(first){event.preventDefault();onOpen(first[0]);update();}}
+  if(event.key==='Enter'&&latest[0]){event.preventDefault();jump(latest[0]);}
  });
  return {update,input,wrap};
 }

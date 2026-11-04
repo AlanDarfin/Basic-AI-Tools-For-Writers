@@ -302,7 +302,7 @@ class WriterV8HomeView extends ItemView{
     const hidden=view.widgetPreferences().homeHidden.includes(key);
     const button=item.createEl('button',{cls:'writer-v903-gallery-toggle',text:hidden?writerUi('Adicionar','Add'):writerUi('Remover','Remove'),attr:{type:'button','aria-pressed':String(!hidden)}});
     button.addEventListener('click',()=>{
-     const visible=plugin.settings.v8Finish.homeHidden.includes(key);
+     const visible=view.widgetPreferences().homeHidden.includes(key);
      view.setWidgetVisible(key,visible);
      button.setText(visible?writerUi('Remover','Remove'):writerUi('Adicionar','Add'));
      button.setAttribute('aria-pressed',String(visible));

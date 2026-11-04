@@ -10813,6 +10813,15 @@ class WriterV8HomeView extends ItemView{
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
  }
+ widgetPreferences(){
+  const global=this.plugin.settings.v8Finish;
+  const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(this.plugin):null;
+  if(!space?.homeWidgetsEnabled)return global;
+  if(!space.homeOrder?.length)space.homeOrder=[...global.homeOrder];
+  if(!Array.isArray(space.homeHidden))space.homeHidden=[...global.homeHidden];
+  if(!space.homeWidgetSizes)space.homeWidgetSizes={...global.homeWidgetSizes};
+  return space;
+ }
  openFile(file){
   if(!(file instanceof TFile))return;
   const leaf=this.app.workspace.getLeaf?.('tab')||this.app.workspace.getLeaf?.(true);
@@ -10824,7 +10833,7 @@ class WriterV8HomeView extends ItemView{
   this.writerV8ClockRefresh=null;
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
-  const cfg=this.plugin.settings.v8Finish;
+  const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
   // Heading first, followed by a full-width search and evenly spaced actions.
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
@@ -10881,11 +10890,11 @@ class WriterV8HomeView extends ItemView{
    quotes:p=>this.renderQuotes(p),
    today:p=>this.renderToday(p)
   };
-  for(const key of cfg.homeOrder){
-   if(!WRITER_V8_HOME_SECTIONS.includes(key)||cfg.homeHidden.includes(key))continue;
+  for(const key of widgetCfg.homeOrder){
+   if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
    cards[key]?.(grid);
    const card=[...grid.children].find(el=>el.getAttribute('data-section')===key);
-   if(card)card.dataset.widgetSize=cfg.homeWidgetSizes?.[key]||'normal';
+   if(card)card.dataset.widgetSize=widgetCfg.homeWidgetSizes?.[key]||'normal';
   }
   this.installWidgetGrid(grid);
   this.installWidgetDragging(grid);
@@ -10917,14 +10926,14 @@ class WriterV8HomeView extends ItemView{
  }
  setWidgetSize(key,size){
   if(!WRITER_V8_HOME_SECTIONS.includes(key)||!['compact','normal','wide'].includes(size))return;
-  const cfg=this.plugin.settings.v8Finish;
+  const cfg=this.widgetPreferences();
   cfg.homeWidgetSizes=cfg.homeWidgetSizes||{};
   cfg.homeWidgetSizes[key]=size;
   this.saveSoon();this.render();
  }
  reorderWidget(source,target,after=false){
   if(!source||!target||source===target)return;
-  const order=this.plugin.settings.v8Finish.homeOrder;
+  const order=this.widgetPreferences().homeOrder;
   const old=order.indexOf(source);
   if(old<0||!order.includes(target))return;
   order.splice(old,1);
@@ -10932,14 +10941,14 @@ class WriterV8HomeView extends ItemView{
   this.saveSoon();this.render();
  }
  setWidgetVisible(key,visible){
-  const cfg=this.plugin.settings.v8Finish;
+  const cfg=this.widgetPreferences();
   if(!WRITER_V8_HOME_SECTIONS.includes(key))return;
   cfg.homeHidden=cfg.homeHidden.filter(id=>id!==key);
   if(!visible)cfg.homeHidden.push(key);
   this.saveSoon();this.render();
  }
  moveWidget(key,direction){
-  const cfg=this.plugin.settings.v8Finish,order=cfg.homeOrder;
+  const cfg=this.widgetPreferences(),order=cfg.homeOrder;
   const visible=order.filter(id=>WRITER_V8_HOME_SECTIONS.includes(id)&&!cfg.homeHidden.includes(id));
   const index=visible.indexOf(key),other=visible[index+direction];
   if(index<0||!other)return;
@@ -10960,7 +10969,7 @@ class WriterV8HomeView extends ItemView{
    }
    popup.addSeparator();
    for(const [size,pt,en] of [['compact','Compacto','Compact'],['normal','Normal','Normal'],['wide','Largo','Wide']]){
-    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.plugin.settings.v8Finish.homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
+    popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.widgetPreferences().homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
    }
    popup.addSeparator();
    popup.addItem(item=>item.setTitle(writerUi('Remover widget','Remove widget')).setIcon('x').onClick(()=>this.setWidgetVisible(key,false)));
@@ -11028,10 +11037,10 @@ class WriterV8HomeView extends ItemView{
     const summary=item.createDiv({cls:'writer-v903-gallery-description'});
     summary.createEl('strong',{text:writerUi(meta[1],meta[2])});
     summary.createEl('small',{text:writerUi(meta[3],meta[4])});
-    const hidden=plugin.settings.v8Finish.homeHidden.includes(key);
+    const hidden=view.widgetPreferences().homeHidden.includes(key);
     const button=item.createEl('button',{cls:'writer-v903-gallery-toggle',text:hidden?writerUi('Adicionar','Add'):writerUi('Remover','Remove'),attr:{type:'button','aria-pressed':String(!hidden)}});
     button.addEventListener('click',()=>{
-     const visible=plugin.settings.v8Finish.homeHidden.includes(key);
+     const visible=view.widgetPreferences().homeHidden.includes(key);
      view.setWidgetVisible(key,visible);
      button.setText(visible?writerUi('Remover','Remove'):writerUi('Adicionar','Add'));
      button.setAttribute('aria-pressed',String(visible));
@@ -11785,9 +11794,10 @@ function writerV9ToolbarSettings(plugin,panel){
 const WRITER_V9_EXPLORER_ICONS=['file','file-text','folder','folder-open','book-open','book','notebook-pen','library','feather','pen-line','star','heart','bookmark','pin','house','briefcase','archive','box','layers','layout-grid','list','calendar','calendar-days','clock','list-check','check-circle','graduation-cap','lightbulb','brain','sparkles','wand-sparkles','image','images','music','video','film','globe','link','code','terminal','settings','user','users','message-circle','tag','hash','flag','map','compass','leaf','sun','moon-star','cloud','rocket','palette','flower-2'];
 const WRITER_V9_EXPLORER_COLORS=['','#e35d6a','#dc9b30','#60a47c','#579ec2','#9b79c5','#d378aa'];
 function writerV9ExplorerMerge(settings){
- const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showColor:true,items:{},maxResults:100},
+ const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showTitleIcons:true,showColor:true,items:{},maxResults:100},
   ...(settings.v9Explorer&&typeof settings.v9Explorer==='object'?settings.v9Explorer:{})};
  cfg.enabled=cfg.enabled!==false;cfg.showIcons=cfg.showIcons!==false;cfg.showColor=cfg.showColor!==false;
+ cfg.showTitleIcons=cfg.showTitleIcons!==false;
  cfg.maxResults=Math.max(20,Math.min(200,Number(cfg.maxResults)||100));
  cfg.items=cfg.items&&typeof cfg.items==='object'&&!Array.isArray(cfg.items)?cfg.items:{};
  const out={};
@@ -12065,7 +12075,7 @@ function writerV9RegisterExplorer(plugin){
  // Decorate the actual Obsidian inline title with the same per-file icon.
  // This is presentation only: never rewrite Markdown or frontmatter.
  const refreshInlineTitles=()=>{
-  const enabled=active()&&plugin.settings.v9Explorer.showIcons;
+  const enabled=active()&&plugin.settings.v9Explorer.showIcons&&plugin.settings.v9Explorer.showTitleIcons;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
    const file=leaf.view?.file,host=leaf.view?.containerEl;
    if(!host)continue;
@@ -12079,6 +12089,7 @@ function writerV9RegisterExplorer(plugin){
     node.className='writer-v9-inline-title-icon';
     node.dataset.icon=icon;
     node.setAttribute('aria-hidden','true');
+    node.setAttribute('contenteditable','false');
     require('obsidian').setIcon(node,icon);
     title.insertBefore(node,title.firstChild);
    }
@@ -12145,7 +12156,9 @@ function writerV9RegisterExplorer(plugin){
   explorerObservers.clear();
   clearTimeout(debounce);
   plugin.writerV9ExplorerRefresh=null;
-  plugin.writerV9InlineTitleRefresh=null;
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
+    leaf.view?.containerEl?.querySelectorAll('.writer-v9-inline-title-icon').forEach(el=>el.remove());
+   plugin.writerV9InlineTitleRefresh=null;
  });
  plugin.addCommand({id:'v9-explorer-open-folder',name:writerUi('Explorador: visualizar pasta atual','Explorer: show current folder'),callback:()=>{
   if(!active())return;
@@ -12157,9 +12170,9 @@ function writerV9ExplorerSettings(plugin,panel){
  const cfg=plugin.settings.v9Explorer;
  panel.createEl('h3',{text:writerUi('Explorador nativo · v9','Native File Explorer · v9')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Ícones e cores ficam nas configurações do Basic, sem alterar seus arquivos. Clique com o botão direito/pressione uma nota ou pasta no explorador para personalizar.','Icons and colors are stored in Basic settings, not in your files. Right-click or long-press a file or folder in the native explorer to customize.')});
- for(const [key,pt,en] of [['enabled','Ativar extensões do explorador','Enable explorer extensions'],['showIcons','Exibir ícones personalizados','Show custom icons'],['showColor','Exibir cores personalizadas','Show custom colors']]){
+ for(const [key,pt,en] of [['enabled','Ativar extensões do explorador','Enable explorer extensions'],['showIcons','Exibir ícones personalizados','Show custom icons'],['showTitleIcons','Ícones antes do título da nota','Icons before note titles'],['showColor','Exibir cores personalizadas','Show custom colors']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{
-   cfg[key]=value;await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();
+   cfg[key]=value;await plugin.saveSettings();plugin.writerV9ExplorerRefresh?.();plugin.writerV9InlineTitleRefresh?.();
   }));
  }
  new Setting(panel).setName(writerUi('Máximo de notas na visão de pasta','Maximum notes in folder view'))
@@ -12175,9 +12188,10 @@ const WRITER_V9_SPACE_MAX=200;
 const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
- const cfg=settings.v9Spaces={enabled:false,dock:true,activeId:'',spaces:[],...raw};
+ const cfg=settings.v9Spaces={enabled:false,dock:true,manageIcon:true,sidebar:true,activeId:'',spaces:[],...raw};
  cfg.enabled=cfg.enabled===true;
  cfg.dock=cfg.dock!==false;
+ cfg.manageIcon=cfg.manageIcon!==false;cfg.sidebar=cfg.sidebar!==false;
  cfg.spaces=Array.isArray(cfg.spaces)?cfg.spaces.map(writerV9SpaceSanitize).filter(Boolean).slice(0,40):[];
  const seen=new Set();
  cfg.spaces=cfg.spaces.filter(space=>{if(seen.has(space.id))return false;seen.add(space.id);return true;});
@@ -12199,14 +12213,37 @@ function writerV9SpaceSanitize(raw){
  const mode=['filter','curated','folder'].includes(raw.mode)?raw.mode:'filter';
  const includePaths=Array.isArray(raw.includePaths)?[...new Set(raw.includePaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,150):[];
  const hiddenPaths=Array.isArray(raw.hiddenPaths)?[...new Set(raw.hiddenPaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,300):[];
+ const pinnedPaths=Array.isArray(raw.pinnedPaths)?[...new Set(raw.pinnedPaths.filter(x=>typeof x==='string'&&x.length<500))].slice(0,300):[];
+ const sourceSort=raw.folderSorts&&typeof raw.folderSorts==='object'&&!Array.isArray(raw.folderSorts)?raw.folderSorts:{};
+ const folderSorts={};
+ for(const [path,record] of Object.entries(sourceSort).slice(0,250)){
+  if(typeof path!=='string'||path.length>500||!record||typeof record!=='object')continue;
+  const sort=typeof record.sort==='string'?record.sort:'native';
+  const order=Array.isArray(record.order)?[...new Set(record.order.filter(n=>typeof n==='string'&&n.length<300))].slice(0,1000):[];
+  folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60)};
+ }
+ const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
+ const homeWidgetsEnabled=raw.homeWidgetsEnabled===true;
+ const homeOrder=Array.isArray(raw.homeOrder)?[...new Set(raw.homeOrder.filter(key=>widgetKeys.includes(key)))]:[];
+ const homeHidden=Array.isArray(raw.homeHidden)?[...new Set(raw.homeHidden.filter(key=>widgetKeys.includes(key)))]:[];
+ const homeWidgetSizes=Object.fromEntries(Object.entries(raw.homeWidgetSizes&&typeof raw.homeWidgetSizes==='object'?raw.homeWidgetSizes:{})
+  .filter(([key,value])=>widgetKeys.includes(key)&&['compact','normal','wide'].includes(value)));
  const icon=/^[a-z][a-z0-9-]{0,60}$/.test(raw.icon||'')?raw.icon:'layers';
  const iconColor=/^#[\da-f]{6}$/i.test(raw.iconColor||'')?raw.iconColor:'';
- return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths};
+ return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes};
 }
 /* Space state changes only affect views, never the vault contents. */
 function writerV9215ActiveSpace(plugin){
  const cfg=plugin.settings.v9Spaces;
  return cfg?.enabled&&cfg.activeId?cfg.spaces.find(space=>space.id===cfg.activeId)||null:null;
+}
+function writerV93SpacePinned(plugin,path){
+ const space=writerV9215ActiveSpace(plugin);
+ return Boolean(space?.pinnedPaths?.includes(path));
+}
+function writerV93SpaceSortRecord(plugin,dir){
+ const space=writerV9215ActiveSpace(plugin);
+ return space?.folderSorts?.[dir]||null;
 }
 function writerV9215SpaceHidden(plugin,path){
  const space=writerV9215ActiveSpace(plugin);
@@ -12221,6 +12258,8 @@ async function writerV9215SelectSpace(plugin,id){
  plugin.writerV91FlexRefresh?.();
  plugin.writerV9SpacesRefresh?.();
  plugin.writerV9216SpacesDockRefresh?.();
+ if(typeof WRITER_V8_HOME_VIEW!=='undefined')
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[])leaf.view?.render?.();
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -12246,6 +12285,8 @@ function writerV9SpaceItems(plugin,space){
   }
   return true;
  }).sort((a,b)=>{
+  const pinA=space.pinnedPaths?.includes(a.path),pinB=space.pinnedPaths?.includes(b.path);
+  if(Boolean(pinA)!==Boolean(pinB))return pinA?-1:1;
   if(space.sort==='name')return a.basename.localeCompare(b.basename);
   if(space.sort==='oldest')return (a.stat?.mtime||0)-(b.stat?.mtime||0);
   return (b.stat?.mtime||0)-(a.stat?.mtime||0);
@@ -12255,7 +12296,7 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],...(initial||{})};
+  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},homeWidgetsEnabled:false,homeOrder:[],homeHidden:[],homeWidgetSizes:{},...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
@@ -12277,10 +12318,26 @@ function writerV9SpaceEditor(plugin,initial,save){
    .addTextArea(t=>t.setValue((draft.hiddenPaths||[]).join('\n')).onChange(value=>{
     draft.hiddenPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
+  new Setting(root).setName(writerUi('Fixar somente neste Space','Pin only in this Space'))
+   .setDesc(writerUi('Uma nota ou pasta por linha. Cada Space mantém seus itens fixados.','One file or folder path per line. Each Space has independent pinned items.'))
+   .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
+    draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   }));
   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
   field('groupBy','Agrupar quadro por propriedade','Board group property');
+  new Setting(root).setName(writerUi('Widgets próprios na homepage','Independent homepage widgets'))
+   .setDesc(writerUi('Ordem, visibilidade e tamanho dos widgets serão salvos somente neste Space.','Widget order, visibility and sizes will be saved only in this Space.'))
+   .addToggle(toggle=>toggle.setValue(Boolean(draft.homeWidgetsEnabled)).onChange(value=>{
+    draft.homeWidgetsEnabled=value;
+    if(value&&!draft.homeOrder?.length){
+     const global=plugin.settings.v8Finish;
+     draft.homeOrder=[...(global?.homeOrder||[])];
+     draft.homeHidden=[...(global?.homeHidden||[])];
+     draft.homeWidgetSizes={...(global?.homeWidgetSizes||{})};
+    }
+   }));
   const options=(key,pt,en,values)=>{
    new Setting(root).setName(writerUi(pt,en)).addDropdown(d=>{
     for(const [id,ptLabel,enLabel] of values)d.addOption(id,writerUi(ptLabel,enLabel));
@@ -12453,6 +12510,7 @@ function writerV9RegisterSpaces(plugin){
  plugin.writerV9SpacesRefresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)||[])leaf.view?.render?.();};
  plugin.addCommand({id:'v9215-spaces-all',name:writerUi('Spaces: mostrar todo o cofre','Spaces: show entire vault'),callback:()=>void writerV9215SelectSpace(plugin,'')});
  const openSidebar=async()=>{
+  if(plugin.settings.v9Spaces.sidebar===false)return;
   const existing=plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)?.[0];
   const leaf=existing||plugin.app.workspace.getLeftLeaf?.(false)||plugin.app.workspace.getLeaf('tab');
   if(!leaf)return;
@@ -12498,6 +12556,14 @@ function writerV9SpacesSettings(plugin,panel){
    for(const space of cfg.spaces)drop.addOption(space.id,space.name);
    drop.setValue(cfg.activeId||'').onChange(value=>void writerV9215SelectSpace(plugin,value));
   });
+ new Setting(panel).setName(writerUi('Ícone de gerenciamento no explorador','Explorer management icon'))
+  .addToggle(t=>t.setValue(cfg.manageIcon).onChange(async value=>{
+   cfg.manageIcon=value;await plugin.saveSettings();plugin.writerV9216SpacesDockRefresh?.();
+  }));
+ new Setting(panel).setName(writerUi('Ativar painel lateral de Spaces','Enable Spaces sidebar'))
+  .addToggle(t=>t.setValue(cfg.sidebar).onChange(async value=>{
+   cfg.sidebar=value;await plugin.saveSettings();
+  }));
  new Setting(panel).setName(writerUi('Abrir Spaces na barra lateral','Open Spaces in sidebar'))
   .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open sidebar')).onClick(()=>void plugin.writerV9SpacesSidebarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))
@@ -12510,7 +12576,7 @@ function writerV9SpacesSettings(plugin,panel){
 function writerV9216SpaceDockRegister(plugin){
  let timer=null;
  const cfg=plugin.settings.v9Spaces;
- const hosts=new Set();
+ const hosts=new Set(),actions=new Set();
  const refreshAll=()=>{
   plugin.writerV91FlexRefresh?.();
   plugin.writerV9SpacesRefresh?.();
@@ -12557,6 +12623,20 @@ function writerV9216SpaceDockRegister(plugin){
   };
   modal.open();
  };
+ const shift=async(space,direction)=>{
+  const index=cfg.spaces.findIndex(item=>item.id===space.id),to=index+direction;
+  if(index<0||to<0||to>=cfg.spaces.length)return;
+  const copy=cfg.spaces.slice();copy.splice(index,1);copy.splice(to,0,space);
+  cfg.spaces=copy;await persist();
+ };
+ const openManager=async()=>{
+  if(!writerModuleOn(plugin,'smartSpaces')){
+   new Notice(writerUi('Ative o módulo Spaces nas configurações do Basic.','Enable the Spaces module in Basic settings.'));
+   return;
+  }
+  if(!cfg.enabled){cfg.enabled=true;await persist();}
+  writerV9SpaceModal(plugin);
+ };
  const menu=(event,space)=>{
   event.preventDefault();event.stopPropagation();
   if(!space)return;
@@ -12564,6 +12644,8 @@ function writerV9216SpaceDockRegister(plugin){
   menu.addItem(item=>item.setTitle(writerUi('Usar Space','Use Space')).setIcon('check').onClick(()=>void writerV9215SelectSpace(plugin,space.id)));
   menu.addItem(item=>item.setTitle(writerUi('Renomear e configurar','Rename and configure')).setIcon('settings-2').onClick(()=>edit(space)));
   menu.addItem(item=>item.setTitle(writerUi('Escolher ícone e cor','Choose icon and color')).setIcon('palette').onClick(()=>icon(space)));
+  menu.addItem(item=>item.setTitle(writerUi('Mover Space para esquerda','Move Space left')).setIcon('arrow-left').onClick(()=>void shift(space,-1)));
+  menu.addItem(item=>item.setTitle(writerUi('Mover Space para direita','Move Space right')).setIcon('arrow-right').onClick(()=>void shift(space,1)));
   menu.addSeparator?.();
   menu.addItem(item=>item.setTitle(writerUi('Remover Space','Remove Space')).setIcon('trash-2').onClick(()=>remove(space)));
   menu.showAtMouseEvent(event);
@@ -12598,6 +12680,24 @@ function writerV9216SpaceDockRegister(plugin){
     const chip=button(item,space.name,space.icon||'layers','writer-v9216-space-chip',()=>void writerV9215SelectSpace(plugin,space.id));
     const name=chip.ownerDocument.createElement('span');name.textContent=space.name;chip.appendChild(name);
     chip.setAttribute('aria-pressed',String(active?.id===space.id));
+    chip.draggable=true;
+    chip.addEventListener('dragstart',event=>{
+     event.dataTransfer?.setData('text/x-writer-space',space.id);
+     if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+    });
+    chip.addEventListener('dragover',event=>{
+     if(event.dataTransfer?.types?.includes('text/x-writer-space'))event.preventDefault();
+    });
+    chip.addEventListener('drop',event=>{
+     const source=event.dataTransfer?.getData('text/x-writer-space');
+     if(!source||source===space.id)return;
+     event.preventDefault();event.stopPropagation();
+     const from=cfg.spaces.findIndex(item=>item.id===source);
+     const to=cfg.spaces.findIndex(item=>item.id===space.id);
+     if(from<0||to<0)return;
+     const ordered=cfg.spaces.slice(),moved=ordered.splice(from,1)[0];
+     ordered.splice(to,0,moved);cfg.spaces=ordered;void persist();
+    });
     if(space.iconColor)chip.style.setProperty('--writer-v9216-space-color',space.iconColor);
     button(item,writerUi('Opções de ','Options for ')+space.name,'ellipsis','writer-v9216-space-options',event=>menu(event,space));
    }
@@ -12610,12 +12710,39 @@ function writerV9216SpaceDockRegister(plugin){
   const tools=dock.ownerDocument.createElement('div');tools.className='writer-v9216-spaces-tools';
   dock.appendChild(tools);
   button(tools,writerUi('Criar Space','Create Space'),'plus','writer-v9216-space-create',create);
-  button(tools,writerUi('Gerenciar Spaces','Manage Spaces'),'settings-2','writer-v9216-space-manage',()=>{
-   if(!cfg.enabled){cfg.enabled=true;void persist();}
-   writerV9SpaceModal(plugin);
-  });
+  button(tools,writerUi('Gerenciar Spaces','Manage Spaces'),'settings-2','writer-v9216-space-manage',()=>void openManager());
+ };
+ const attachManageAction=()=>{
+  const current=new Set();
+  if(cfg.manageIcon===false){
+   for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
+   actions.clear();return;
+  }
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   const host=leaf.view?.containerEl;if(!host)continue;
+   const bar=host.querySelector('.nav-buttons-container, .nav-action-buttons, .nav-header .nav-buttons-container, .nav-header');
+   if(!bar)continue;
+   current.add(bar);actions.add(bar);
+   let control=bar.querySelector(':scope > .writer-v93-space-manage-action');
+   if(!control){
+    control=bar.ownerDocument.createElement('button');
+    control.className='clickable-icon nav-action-button writer-v93-space-manage-action';
+    control.type='button';
+    control.setAttribute('aria-label',writerUi('Gerenciar Spaces','Manage Spaces'));
+    control.title=writerUi('Gerenciar Spaces','Manage Spaces');
+    require('obsidian').setIcon(control,'layers-3');
+    control.addEventListener('click',event=>{
+     event.stopPropagation();event.preventDefault();void openManager();
+    });
+    bar.appendChild(control);
+   }
+  }
+  for(const old of actions)if(!current.has(old)){
+   old.querySelector(':scope > .writer-v93-space-manage-action')?.remove();actions.delete(old);
+  }
  };
  const attach=()=>{
+  attachManageAction();
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
     parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
@@ -12650,7 +12777,8 @@ function writerV9216SpaceDockRegister(plugin){
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  plugin.register?.(()=>{
-  clearTimeout(timer);for(const parent of hosts){
+  clearTimeout(timer);for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
+  actions.clear();for(const parent of hosts){
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
    parent.classList.remove('writer-v9216-spaces-host');
   }
@@ -14289,14 +14417,22 @@ const WRITER_V91_FLEX_SORTS=[
  ['name-desc','Nome Z–A','Name Z–A'],
  ['modified','Modificação recente','Recently modified'],
  ['created','Criação recente','Recently created'],
- ['custom','Ordem personalizada','Custom order']
+ ['custom','Ordem personalizada','Custom order'],
+ ['number','Número no título','Number in title'],
+ ['property','Propriedade YAML','YAML property'],
+ ['folders-first','Pastas primeiro','Folders first']
 ];
 function writerV91FlexMerge(settings){
  const raw=settings.v91Flex&&typeof settings.v91Flex==='object'?settings.v91Flex:{};
- const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,
+ const cfg=settings.v91Flex={enabled:true,showHidden:false,dragReorder:true,mobileReorder:true,
+  perSpaceSorting:true,perSpacePins:true,yamlSorting:false,
+  pinEnabled:true,hideEnabled:true,sortEnabled:true,defaultSortProperty:'sort_order',
   patterns:'',pinned:[],hidden:[],folders:{},...raw};
  cfg.enabled=cfg.enabled!==false;cfg.showHidden=cfg.showHidden===true;
  cfg.dragReorder=cfg.dragReorder!==false;
+ for(const key of ['mobileReorder','perSpaceSorting','perSpacePins','pinEnabled','hideEnabled','sortEnabled'])cfg[key]=cfg[key]!==false;
+ cfg.yamlSorting=cfg.yamlSorting===true;
+ cfg.defaultSortProperty=String(cfg.defaultSortProperty||'sort_order').replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
  cfg.patterns=String(cfg.patterns||'').slice(0,3000);
  for(const field of ['pinned','hidden'])
   cfg[field]=Array.isArray(cfg[field])?[...new Set(cfg[field].filter(s=>typeof s==='string'&&s.length<600))].slice(0,3000):[];
@@ -14306,7 +14442,7 @@ function writerV91FlexMerge(settings){
   if(typeof path!=='string'||path.length>600||!folder||typeof folder!=='object')continue;
   const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===folder.sort)?folder.sort:'native';
   const order=Array.isArray(folder.order)?[...new Set(folder.order.filter(v=>typeof v==='string'&&v.length<300))].slice(0,3000):[];
-  output[path]={sort,order};
+  output[path]={sort,order,property:String(folder.property||'').replace(/[^\w-]/g,'').slice(0,60)};
  }
  cfg.folders=output;
  return cfg;
@@ -14333,6 +14469,7 @@ function writerV91FlexPatterns(cfg){
  return cfg.patterns.split(/\r?\n/).map(writerV91FlexGlob).filter(Boolean).slice(0,40);
 }
 function writerV91FlexIsHidden(cfg,path,patterns,plugin){
+ if(cfg.hideEnabled===false)return false;
  return cfg.hidden.includes(path)||patterns.some(re=>re.test(path))||
   Boolean(plugin&&writerV9215SpaceHidden(plugin,path));
 }
@@ -14340,13 +14477,75 @@ function writerV91FlexNodePath(node){
  return node.querySelector('.nav-file-title[data-path], .nav-folder-title[data-path]')?.getAttribute('data-path')||
   node.getAttribute('data-path')||node.querySelector('.nav-file-title, .nav-folder-title')?.getAttribute('data-path')||'';
 }
+function writerV93FlexRecord(plugin,dir){
+ const cfg=plugin.settings.v91Flex;
+ const space=cfg.perSpaceSorting&&typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+ if(space?.folderSorts?.[dir])return space.folderSorts[dir];
+ if(cfg.folders[dir])return cfg.folders[dir];
+ if(!cfg.yamlSorting)return {sort:'native',order:[],property:''};
+ const folder=plugin.app.vault.getAbstractFileByPath(dir);
+ const note=folder&&typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,folder):null;
+ const fm=note&&plugin.app.metadataCache?.getFileCache?.(note)?.frontmatter||{};
+ const sort=WRITER_V91_FLEX_SORTS.some(row=>row[0]===fm.basic_sort)?fm.basic_sort:'native';
+ return {sort,order:Array.isArray(fm.basic_sort_order)?fm.basic_sort_order.slice(0,1000):[],
+  property:String(fm.basic_sort_field||'').replace(/[^\w-]/g,'').slice(0,60)};
+}
+function writerV93FlexPinned(plugin,path){
+ const cfg=plugin.settings.v91Flex;
+ if(cfg.pinEnabled===false)return false;
+ const space=cfg.perSpacePins&&typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+ return space?Boolean(space.pinnedPaths?.includes(path)):cfg.pinned.includes(path);
+}
+function writerV93FlexOrderIndex(name,order){
+ const index=order.findIndex(p=>p===name||(/[?*]/.test(p)&&writerV91FlexGlob(p)?.test(name)));
+ return index<0?Number.MAX_SAFE_INTEGER:index;
+}
+function writerV93FlexNumber(name){
+ const match=/\d+(?:[.,]\d+)*/.exec(String(name||''));
+ return match?Number(match[0].replace(',','.')):Number.POSITIVE_INFINITY;
+}
+function writerV93FlexMeta(plugin,row,key){
+ const file=row.file?.extension==='md'?row.file:
+  (typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,row.file):null);
+ return file?plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter?.[key]??'':'';
+}
+function writerV93FlexCompare(plugin,a,b,record,collator){
+ if(a.pinned!==b.pinned)return a.pinned?-1:1;
+ const mode=record.sort;
+ if(mode==='native')return a.index-b.index;
+ if(mode==='custom'){
+  const ia=writerV93FlexOrderIndex(a.name,record.order||[]),ib=writerV93FlexOrderIndex(b.name,record.order||[]);
+  return ia!==ib?ia-ib:a.index-b.index;
+ }
+ if(mode==='number'){
+  const na=writerV93FlexNumber(a.name),nb=writerV93FlexNumber(b.name);
+  if(na!==nb)return na-nb;
+ }
+ if(mode==='folders-first'){
+  const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
+  if(af!==bf)return af?-1:1;
+ }
+ if(mode==='property'){
+  const key=record.property||plugin.settings.v91Flex.defaultSortProperty;
+  const av=writerV93FlexMeta(plugin,a,key),bv=writerV93FlexMeta(plugin,b,key);
+  if(av!==''&&bv!==''&&Number.isFinite(Number(av))&&Number.isFinite(Number(bv))&&Number(av)!==Number(bv))
+   return Number(av)-Number(bv);
+  const delta=collator.compare(String(av),String(bv));if(delta)return delta;
+ }
+ if(mode==='modified'||mode==='created'){
+  const prop=mode==='modified'?'mtime':'ctime';
+  const delta=(b.file?.stat?.[prop]||0)-(a.file?.stat?.[prop]||0);if(delta)return delta;
+ }
+ const delta=collator.compare(a.name,b.name);
+ return mode==='name-desc'?-delta:delta;
+}
+
 function writerV91FlexSortGroup(plugin,container,patterns){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder'));
  if(!children.length)return;
  const dir=container.closest('.nav-folder')?.querySelector(':scope > .nav-folder-title[data-path]')?.getAttribute('data-path')||'';
- const folder=cfg.folders[dir]||{sort:'native',order:[]};
- const pinned=new Set(cfg.pinned);
+ const folder=writerV93FlexRecord(plugin,dir);
  const rows=children.map((node,index)=>{
   const path=writerV91FlexNodePath(node);
   const file=plugin.app.vault.getAbstractFileByPath(path);
@@ -14354,42 +14553,58 @@ function writerV91FlexSortGroup(plugin,container,patterns){
   const isHidden=path&&writerV91FlexIsHidden(cfg,path,patterns,plugin);
   node.classList.toggle('writer-v91-flex-hidden',Boolean(cfg.enabled&&isHidden&&!cfg.showHidden));
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
-  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&pinned.has(path)));
+  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
+   if(!cfg.enabled||folder.sort!=='custom'||!cfg.mobileReorder)
+    title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
+   if((!cfg.enabled||folder.sort!=='custom')&&title.dataset.writerFlexPath){
+    title.draggable=false;delete title.dataset.writerFlexPath;
+   }
    const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
-   const wanted=cfg.enabled&&pinned.has(path);
+   const wanted=cfg.enabled&&writerV93FlexPinned(plugin,path);
    if(prior&&!wanted)prior.remove();
    if(wanted&&!prior){
     const icon=title.ownerDocument.createElement('span');icon.className='writer-v91-flex-indicator';
     icon.setAttribute('aria-hidden','true');require('obsidian').setIcon(icon,'pin');title.appendChild(icon);
    }
   }
-  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned:pinned.has(path)};
+  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned:writerV93FlexPinned(plugin,path)};
  });
- if(!cfg.enabled||folder.sort==='native')return;
+ if(!cfg.enabled||cfg.sortEnabled===false||(folder.sort==='native'&&!rows.some(row=>row.pinned)))return;
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
- const priority=folder.order;
- rows.sort((a,b)=>{
-  if(a.pinned!==b.pinned)return a.pinned?-1:1;
-  if(folder.sort==='custom'){
-   const ia=priority.indexOf(a.name),ib=priority.indexOf(b.name);
-   if(ia>=0&&ib>=0)return ia-ib;
-   if(ia>=0)return -1;if(ib>=0)return 1;
-   return a.index-b.index;
-  }
-  if(folder.sort==='modified'||folder.sort==='created'){
-   const prop=folder.sort==='modified'?'mtime':'ctime';
-   const diff=(b.file?.stat?.[prop]||0)-(a.file?.stat?.[prop]||0);
-   if(diff)return diff;
-  }
-  const delta=collator.compare(a.name,b.name);
-  return folder.sort==='name-desc'?-delta:delta;
- });
+ rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
  // Change the DOM only when necessary. Repeated sorting must be idempotent
  // to avoid a MutationObserver feedback loop or jumps in editor scroll.
  const actual=Array.from(container.children).filter(node=>rows.some(r=>r.node===node));
  if(rows.some((row,index)=>actual[index]!==row.node)){
   for(const row of rows)container.appendChild(row.node);
+ }
+ if(folder.sort==='custom'&&cfg.mobileReorder){
+  rows.forEach((row,index)=>{
+   const title=row.title;if(!title)return;
+   const prev=rows[index-1]?.path||'',next=rows[index+1]?.path||'';
+   let actions=title.querySelector(':scope > .writer-v93-reorder-actions');
+   if(actions?.dataset.prev===prev&&actions?.dataset.next===next)return;
+   actions?.remove();
+   actions=title.ownerDocument.createElement('span');
+   actions.className='writer-v93-reorder-actions';
+   actions.dataset.prev=prev;actions.dataset.next=next;
+   for(const [target,position,icon,pt,en] of [
+    [prev,'before','arrow-up','Mover para cima','Move earlier'],
+    [next,'after','arrow-down','Mover para baixo','Move later']
+   ]){
+    const button=title.ownerDocument.createElement('button');
+    button.type='button';button.className='writer-v93-reorder-action';
+    button.disabled=!target;button.setAttribute('aria-label',writerUi(pt,en)+': '+row.name);
+    require('obsidian').setIcon(button,icon);
+    button.addEventListener('click',event=>{
+     event.preventDefault();event.stopPropagation();
+     if(target)writerV91FlexReorder(plugin,row.path,target,position);
+    });
+    actions.appendChild(button);
+   }
+   title.appendChild(actions);
+  });
  }
  if(folder.sort==='custom'&&cfg.dragReorder){
   for(const row of rows){
@@ -14402,13 +14617,19 @@ function writerV91FlexSortGroup(plugin,container,patterns){
 function writerV91FlexFolderPath(file){
  return file?.parent?.path||'';
 }
+function writerV93FlexStore(plugin,dir){
+ const cfg=plugin.settings.v91Flex,space=cfg.perSpaceSorting?writerV9215ActiveSpace(plugin):null;
+ if(space){space.folderSorts=space.folderSorts||{};return space.folderSorts;}
+ return cfg.folders;
+}
 function writerV91FlexReorder(plugin,path,target,direction){
  const cfg=plugin.settings.v91Flex;
  const file=plugin.app.vault.getAbstractFileByPath(path);
  const other=plugin.app.vault.getAbstractFileByPath(target);
  if(!file||!other||file.parent?.path!==other.parent?.path||path===target)return;
  const dir=writerV91FlexFolderPath(file),parent=file.parent;
- const record=cfg.folders[dir]||{sort:'custom',order:[]};
+ const store=writerV93FlexStore(plugin,dir);
+ const record=store[dir]||{sort:'custom',order:[]};
  const original=(parent?.children||[]).map(f=>f.name);
  const order=[...new Set([...record.order.filter(n=>original.includes(n)),...original])];
  const from=order.indexOf(file.name),to=order.indexOf(other.name);
@@ -14416,17 +14637,47 @@ function writerV91FlexReorder(plugin,path,target,direction){
  order.splice(from,1);
  const targetIndex=order.indexOf(other.name);
  order.splice(targetIndex+(direction==='after'?1:0),0,file.name);
- cfg.folders[dir]={sort:'custom',order};
+ store[dir]={...record,sort:'custom',order};
  void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
 function writerV91FlexSetSort(plugin,folder,sort){
- const cfg=plugin.settings.v91Flex,key=folder?.path||'';
- const record=cfg.folders[key]||{sort:'native',order:[]};
+ const key=folder?.path||'',store=writerV93FlexStore(plugin,key);
+ const record={...(store[key]||writerV93FlexRecord(plugin,key))};
  record.sort=sort;
  if(sort==='custom'&&!record.order.length)
   record.order=(folder?.children||[]).map(f=>f.name);
- cfg.folders[key]=record;void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+ store[key]=record;void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
+function writerV93FlexSortModal(plugin,folder){
+ const cfg=plugin.settings.v91Flex,key=folder?.path||'';
+ const store=writerV93FlexStore(plugin,key),existing=writerV93FlexRecord(plugin,key);
+ const model={sort:existing.sort||'native',property:existing.property||cfg.defaultSortProperty,
+  order:[...(existing.order||[])]};
+ const modal=new Modal(plugin.app);
+ modal.onOpen=()=>{
+  modal.setTitle(writerUi('Ordenação: ','Sorting: ')+(folder?.name||writerUi('Cofre','Vault')));
+  const root=modal.contentEl;
+  new Setting(root).setName(writerUi('Modo de ordenação','Sorting mode')).addDropdown(drop=>{
+   for(const [id,pt,en] of WRITER_V91_FLEX_SORTS)drop.addOption(id,writerUi(pt,en));
+   drop.setValue(model.sort).onChange(v=>{model.sort=v;});
+  });
+  new Setting(root).setName(writerUi('Propriedade YAML para ordenar','YAML property to sort'))
+   .addText(text=>text.setValue(model.property).onChange(value=>{model.property=value.replace(/[^\w-]/g,'').slice(0,60);}));
+  new Setting(root).setName(writerUi('Ordem manual e padrões','Manual order and patterns'))
+   .setDesc(writerUi('Um nome por linha; aceita * e ?. Os demais itens ficam no fim.','One name per line; accepts * and ?. Unlisted items stay last.'))
+   .addTextArea(text=>text.setValue(model.order.join('\n')).onChange(value=>{
+    model.order=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,1000);
+   }));
+  new Setting(root).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
+   if(model.sort==='custom'&&!model.order.length)
+    model.order=(folder?.children||plugin.app.vault.getRoot?.()?.children||[]).map(x=>x.name);
+   store[key]={sort:model.sort,property:model.property,order:model.order};
+   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();modal.close();
+  })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
+ };
+ modal.open();
+}
+
 function writerV91FlexRegister(plugin){
  const cfg=plugin.settings.v91Flex;
  let timer=null,observer=null,lastDrag='';
@@ -14444,14 +14695,19 @@ function writerV91FlexRegister(plugin){
   if(!active()||!(file instanceof TFile||file instanceof TFolder))return;
   const path=file.path;
   menu.addSeparator?.();
-  menu.addItem(item=>item.setTitle(cfg.pinned.includes(path)?writerUi('Desafixar no explorador','Unpin in explorer'):writerUi('Fixar no explorador','Pin in explorer'))
+  const scopedPins=cfg.perSpacePins?writerV9215ActiveSpace(plugin):null;
+  const pins=scopedPins?scopedPins.pinnedPaths:cfg.pinned;
+  if(cfg.pinEnabled!==false)menu.addItem(item=>item.setTitle(pins.includes(path)?
+   writerUi(scopedPins?'Desafixar neste Space':'Desafixar no explorador',scopedPins?'Unpin in this Space':'Unpin in explorer'):
+   writerUi(scopedPins?'Fixar neste Space':'Fixar no explorador',scopedPins?'Pin in this Space':'Pin in explorer'))
    .setIcon('pin').onClick(async()=>{
-    cfg.pinned=cfg.pinned.includes(path)?cfg.pinned.filter(p=>p!==path):[...cfg.pinned,path];
-    await plugin.saveSettings();refresh();
+    const next=pins.includes(path)?pins.filter(p=>p!==path):[...pins,path];
+    if(scopedPins)scopedPins.pinnedPaths=next;else cfg.pinned=next;
+    await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
   const space=writerV9215ActiveSpace(plugin);
   const hidden=space?space.hiddenPaths:cfg.hidden;
-  menu.addItem(item=>item.setTitle(hidden.includes(path)?
+  if(cfg.hideEnabled!==false)menu.addItem(item=>item.setTitle(hidden.includes(path)?
    writerUi(space?'Reexibir neste Space':'Reexibir no explorador',space?'Unhide in this Space':'Unhide in explorer'):
    writerUi(space?'Ocultar neste Space':'Ocultar no explorador',space?'Hide in this Space':'Hide in explorer'))
    .setIcon('eye-off').onClick(async()=>{
@@ -14459,24 +14715,15 @@ function writerV91FlexRegister(plugin){
     if(space)space.hiddenPaths=next;else cfg.hidden=next;
     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
-  if(file instanceof TFolder){
+  if(cfg.sortEnabled!==false&&file instanceof TFolder){
    menu.addItem(item=>item.setTitle(writerUi('Ordenação desta pasta','Sort this folder')).setIcon('list-ordered')
-    .onClick(()=>{
-     const modal=new Modal(plugin.app);
-     modal.onOpen=()=>{
-      modal.setTitle(writerUi('Ordenar: ','Sort: ')+(file.name||writerUi('Cofre','Vault')));
-      for(const [id,pt,en] of WRITER_V91_FLEX_SORTS){
-       const button=modal.contentEl.createEl('button',{cls:'writer-v91-flex-sort-option',text:writerUi(pt,en),attr:{type:'button'}});
-       button.addEventListener('click',()=>{writerV91FlexSetSort(plugin,file,id);modal.close();});
-      }
-     };modal.open();
-    }));
+    .onClick(()=>writerV93FlexSortModal(plugin,file)));
   }
   const dir=writerV91FlexFolderPath(file);
-  if(cfg.folders[dir]?.sort==='custom'&&file.parent){
+  if(cfg.sortEnabled!==false&&writerV93FlexRecord(plugin,dir)?.sort==='custom'&&file.parent){
    for(const [direction,pt,en] of [['before','Mover para cima','Move earlier'],['after','Mover para baixo','Move later']]){
     menu.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(direction==='before'?'arrow-up':'arrow-down').onClick(()=>{
-     const list=cfg.folders[dir].order;
+     const list=writerV93FlexRecord(plugin,dir).order;
      const name=file.name,index=list.indexOf(name),other=list[index+(direction==='before'?-1:1)];
      if(!other)return;
      const target=file.parent.children?.find(f=>f.name===other);
@@ -14491,18 +14738,30 @@ function writerV91FlexRegister(plugin){
  plugin.registerEvent(plugin.app.vault.on('delete',file=>{
   const old=file.path;cfg.pinned=cfg.pinned.filter(path=>path!==old&&!path.startsWith(old+'/'));
   cfg.hidden=cfg.hidden.filter(path=>path!==old&&!path.startsWith(old+'/'));
-  for(const space of plugin.settings.v9Spaces?.spaces||[])space.hiddenPaths=space.hiddenPaths.filter(path=>path!==old&&!path.startsWith(old+'/'));
+  for(const space of plugin.settings.v9Spaces?.spaces||[]){
+   space.hiddenPaths=space.hiddenPaths.filter(path=>path!==old&&!path.startsWith(old+'/'));
+   space.pinnedPaths=(space.pinnedPaths||[]).filter(path=>path!==old&&!path.startsWith(old+'/'));
+   for(const key of Object.keys(space.folderSorts||{}))if(key===old||key.startsWith(old+'/'))delete space.folderSorts[key];
+  }
   for(const key of Object.keys(cfg.folders))if(key===old||key.startsWith(old+'/'))delete cfg.folders[key];
   void plugin.saveSettings();refresh();
  }));
  plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
   const swap=p=>p===old||p.startsWith(old+'/')?file.path+p.slice(old.length):p;
   cfg.pinned=cfg.pinned.map(swap);cfg.hidden=cfg.hidden.map(swap);
-  for(const space of plugin.settings.v9Spaces?.spaces||[])space.hiddenPaths=space.hiddenPaths.map(swap);
+  for(const space of plugin.settings.v9Spaces?.spaces||[]){
+   space.hiddenPaths=space.hiddenPaths.map(swap);
+   space.pinnedPaths=(space.pinnedPaths||[]).map(swap);
+   space.folderSorts=Object.fromEntries(Object.entries(space.folderSorts||{}).map(([key,v])=>[swap(key),v]));
+  }
   cfg.folders=Object.fromEntries(Object.entries(cfg.folders).map(([key,v])=>[swap(key),v]));
   if(file.parent&&file.parent.path===old.split('/').slice(0,-1).join('/')){
    const record=cfg.folders[file.parent.path];
    if(record)record.order=record.order.map(name=>name===old.split('/').pop()?file.name:name);
+   for(const space of plugin.settings.v9Spaces?.spaces||[]){
+    const local=space.folderSorts?.[file.parent.path];
+    if(local)local.order=local.order.map(name=>name===old.split('/').pop()?file.name:name);
+   }
   }
   void plugin.saveSettings();refresh();
  }));
@@ -14511,11 +14770,11 @@ function writerV91FlexRegister(plugin){
  // in a folder explicitly configured for custom sorting.
  const container=plugin.app.workspace.containerEl;
  const start=event=>{
-  if(!active()||!cfg.dragReorder||!event.altKey)return;
+  if(!active()||cfg.sortEnabled===false||!cfg.dragReorder||!event.altKey)return;
   const node=event.target?.closest?.('.nav-file, .nav-folder');
   const path=node&&writerV91FlexNodePath(node);
   const file=plugin.app.vault.getAbstractFileByPath(path||'');
-  if(!file||cfg.folders[writerV91FlexFolderPath(file)]?.sort!=='custom')return;
+  if(!file||writerV93FlexRecord(plugin,writerV91FlexFolderPath(file))?.sort!=='custom')return;
   lastDrag=path;event.dataTransfer?.setData('text/x-writer-flexplorer',path);
   if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
   event.stopPropagation();
@@ -14565,13 +14824,28 @@ function writerV91FlexSettings(plugin,panel){
  )});
  for(const [key,pt,en] of [
   ['enabled','Ativar organização avançada','Enable enhanced organization'],
+  ['sortEnabled','Ativar ordenação avançada','Enable advanced sorting'],
+  ['pinEnabled','Ativar itens fixados','Enable pinned items'],
+  ['hideEnabled','Ativar ocultação de arquivos','Enable file hiding'],
   ['showHidden','Exibir itens ocultos','Show hidden items'],
-  ['dragReorder','Permitir Alt + arrastar para ordenar','Allow Alt + drag to reorder']
+  ['dragReorder','Permitir Alt + arrastar para ordenar','Allow Alt + drag to reorder'],
+  ['mobileReorder','Setas de ordenação no celular','Mobile sorting arrows'],
+  ['perSpaceSorting','Ordenação independente por Space','Independent sorting per Space'],
+  ['perSpacePins','Itens fixados independentes por Space','Independent pins per Space'],
+  ['yamlSorting','Regras YAML da Folder Note','Folder Note YAML sorting rules']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{
    cfg[key]=v;await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
   }));
  }
+ new Setting(panel).setName(writerUi('Propriedade YAML padrão','Default YAML sorting property'))
+  .addText(t=>t.setValue(cfg.defaultSortProperty).onChange(async value=>{
+   cfg.defaultSortProperty=value.replace(/[^\w-]/g,'').slice(0,60)||'sort_order';
+   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+  }));
+ new Setting(panel).setName(writerUi('Ordenação da raiz do cofre','Vault root sorting'))
+  .addButton(button=>button.setButtonText(writerUi('Configurar','Configure'))
+   .onClick(()=>writerV93FlexSortModal(plugin,null)));
  new Setting(panel).setName(writerUi('Padrões de ocultação','Hide patterns'))
   .setDesc(writerUi('Um padrão por linha; suporta * e **. Apenas oculta na interface, não exclui arquivos.','One glob per line; supports * and **. Only hides in Explorer, never deletes files.'))
   .addTextArea(t=>{t.inputEl.rows=4;t.setPlaceholder('Templates/**\n*.bak').setValue(cfg.patterns)
@@ -15077,12 +15351,15 @@ function writerV92ExplorerMerge(settings){
  const cfg=settings.v92Explorer={
   favoritesEnabled:true,favoriteIcon:'star',previewMode:'folder',previewMax:135,
   previewVisible:true,showImage:true,previewLines:2,previewImageSize:62,
+  previewTouchExpand:true,previewHoldMs:650,
   folderDescriptionKey:'description',noteDescriptionKey:'description',favoriteIconColor:'',
   ...old
  };
  cfg.favoritesEnabled=cfg.favoritesEnabled!==false;
  cfg.previewVisible=cfg.previewVisible!==false;
  cfg.showImage=cfg.showImage!==false;
+ cfg.previewTouchExpand=cfg.previewTouchExpand!==false;
+ cfg.previewHoldMs=Math.max(400,Math.min(1500,Number(cfg.previewHoldMs)||650));
  cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||2)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
  cfg.favoriteIcon=/^[a-z][a-z0-9-]{0,38}$/.test(cfg.favoriteIcon)?cfg.favoriteIcon:'star';
@@ -15235,7 +15512,7 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  label.textContent=truncated&&expanded?long:shortText;
  if(shell.dataset.hoverListeners==='ready')return;
  shell.dataset.hoverListeners='ready';
- let timer=null;
+ let timer=null,touchLocked=false,touchStart=null,skipClick=false;
  const open=()=>{
   if(shell.dataset.expandable!=='true'||!shell.isConnected)return;
   shell.classList.add('is-expanded');shell.setAttribute('aria-expanded','true');
@@ -15243,7 +15520,7 @@ function writerV929PreviewExpand(shell,shortText,fullText){
   if(target)target.textContent=shell.dataset.previewFull;
  };
  const close=()=>{
-  clearTimeout(timer);timer=null;
+  clearTimeout(timer);timer=null;touchLocked=false;
   shell.classList.remove('is-expanded');shell.setAttribute('aria-expanded','false');
   const target=shell.querySelector(':scope > .writer-v92-file-preview');
   if(target)target.textContent=shell.dataset.previewShort;
@@ -15252,9 +15529,35 @@ function writerV929PreviewExpand(shell,shortText,fullText){
   if(shell.dataset.expandable!=='true')return;
   clearTimeout(timer);timer=setTimeout(open,1500);
  });
- shell.addEventListener('mouseleave',close);
+ shell.addEventListener('mouseleave',()=>{if(!touchLocked)close();});
+ // Mobile: a long press reveals the full description. Scrolling cancels the timer;
+ // we do not suppress Obsidian's native context menu or prevent touch scrolling.
+ shell.addEventListener('touchstart',event=>{
+  if(shell.dataset.expandable!=='true'||shell.dataset.holdMs==='0')return;
+  const touch=event.touches?.[0];if(!touch)return;
+  touchStart={x:touch.clientX,y:touch.clientY};
+  clearTimeout(timer);
+  const delay=Math.max(400,Math.min(1500,Number(shell.dataset.holdMs)||650));
+  timer=setTimeout(()=>{touchLocked=true;skipClick=true;open();},delay);
+ },{passive:true});
+ shell.addEventListener('touchmove',event=>{
+  if(!touchStart)return;
+  const touch=event.touches?.[0];if(!touch)return;
+  if(Math.hypot(touch.clientX-touchStart.x,touch.clientY-touchStart.y)>12){
+   clearTimeout(timer);timer=null;touchStart=null;
+  }
+ },{passive:true});
+ const stopTouch=()=>{clearTimeout(timer);timer=null;touchStart=null;};
+ shell.addEventListener('touchend',stopTouch,{passive:true});
+ shell.addEventListener('touchcancel',stopTouch,{passive:true});
+ shell.addEventListener('click',event=>{
+  if(shell.dataset.expandable!=='true'||!touchLocked)return;
+  event.preventDefault();event.stopPropagation();
+  if(skipClick){skipClick=false;return;}
+  if(shell.classList.contains('is-expanded'))close();
+ });
  shell.addEventListener('focus',open);
- shell.addEventListener('blur',close);
+ shell.addEventListener('blur',()=>{if(!touchLocked)close();});
  shell.addEventListener('keydown',event=>{
   if(event.key==='Enter'||event.key===' '){
    if(shell.dataset.expandable!=='true')return;
@@ -15385,6 +15688,7 @@ function writerV92ExplorerRegister(plugin){
    node.insertAdjacentElement('afterend',shell);
   }
   shell.style.setProperty('--writer-v92-preview-lines',String(cfg.previewLines));
+  shell.dataset.holdMs=cfg.previewTouchExpand?String(cfg.previewHoldMs):'0';
   shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
   shell.classList.toggle('has-image',Boolean(imagePath));
   let label=shell.querySelector(':scope > .writer-v92-file-preview');
@@ -15530,6 +15834,14 @@ function writerV92ExplorerSettings(plugin,panel){
   .setDesc(writerUi('Usa capa, thumbnail ou primeira imagem local incorporada à nota.','Uses the local cover, thumbnail or first embedded image from the note.'))
   .addToggle(t=>t.setValue(cfg.showImage).onChange(async v=>{
    cfg.showImage=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Expandir ao pressionar (mobile)','Long-press to expand (mobile)'))
+  .addToggle(t=>t.setValue(cfg.previewTouchExpand).onChange(async value=>{
+   cfg.previewTouchExpand=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+  }));
+ new Setting(panel).setName(writerUi('Tempo do toque prolongado','Long-press duration'))
+  .addSlider(t=>t.setLimits(400,1500,50).setValue(cfg.previewHoldMs).setDynamicTooltip().onChange(async value=>{
+   cfg.previewHoldMs=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
  new Setting(panel).setName(writerUi('Linhas da descrição','Description lines'))
   .addSlider(t=>t.setLimits(1,4,1).setValue(cfg.previewLines).setDynamicTooltip().onChange(async v=>{
@@ -15994,8 +16306,9 @@ function writerV9215PrettyMerge(settings){
  const cfg=settings.v9215Pretty={enabled:true,banner:true,cover:true,icon:true,
   hidden:[],hideEmpty:false,reveal:false,progressKeys:'progress,completion',
   dateKeys:'due,date',colors:'',templates:'',tagColors:'',search:true,dueColors:true,dueSoonDays:3,
-  coverShape:'rounded',coverPosition:'right',bannerPosition:'center',...raw};
- for(const key of ['enabled','banner','cover','icon','search','dueColors'])cfg[key]=cfg[key]!==false;
+  coverShape:'rounded',coverPosition:'right',bannerPosition:'center',
+  propertyColors:true,tagColorsEnabled:true,progressEnabled:true,dateFormatting:true,templatesEnabled:true,...raw};
+ for(const key of ['enabled','banner','cover','icon','search','dueColors','propertyColors','tagColorsEnabled','progressEnabled','dateFormatting','templatesEnabled'])cfg[key]=cfg[key]!==false;
  cfg.coverShape=['rounded','square','circle'].includes(cfg.coverShape)?cfg.coverShape:'rounded';
  cfg.coverPosition=['left','right','center'].includes(cfg.coverPosition)?cfg.coverPosition:'right';
  cfg.bannerPosition=['top','center','bottom'].includes(cfg.bannerPosition)?cfg.bannerPosition:'center';
@@ -16091,13 +16404,13 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   const empty=value===undefined||value===null||text.trim()==='';
   if(!cfg.reveal&&(cfg.hidden.includes(key)||(cfg.hideEmpty&&empty)))row.classList.add('writer-v9215-property-hidden');
   const color=colors[key];
-  if(/^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$/.test(color||'')){
+  if(cfg.propertyColors&&/^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$/.test(color||'')){
    row.classList.add('writer-v9215-property-colored');
    row.style.setProperty('--writer-v9215-prop-color',color);
   }
   const surface=row.querySelector('.metadata-property-value')||row;
   const number=typeof value==='string'?Number(value.trim().replace(/%$/,'')):Number(value);
-  if(progressKeys.has(key)&&Number.isFinite(number)&&!empty){
+  if(cfg.progressEnabled&&progressKeys.has(key)&&Number.isFinite(number)&&!empty){
    const amount=Math.max(0,Math.min(100,number));
    const bar=row.ownerDocument.createElement('div');bar.className='writer-v9215-property-progress';
    bar.setAttribute('role','progressbar');bar.setAttribute('aria-label',key);
@@ -16107,8 +16420,8 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
    surface.appendChild(bar);
   }
   let caption='';
-  if(templates[key])caption=templates[key].replace(/\{value\}/gi,text).slice(0,250);
-  else if(dateKeys.has(key)&&/^\d{4}-\d\d-\d\d/.test(text)){
+  if(cfg.templatesEnabled&&templates[key])caption=templates[key].replace(/\{value\}/gi,text).slice(0,250);
+  else if(cfg.dateFormatting&&dateKeys.has(key)&&/^\d{4}-\d\d-\d\d/.test(text)){
    const stamp=Date.parse(text);
    if(Number.isFinite(stamp))caption=new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{dateStyle:'medium',timeZone:'UTC'}).format(new Date(stamp));
   }
@@ -16121,7 +16434,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
     else if(days<=cfg.dueSoonDays)row.classList.add('writer-v9216-date-soon');
    }
   }
-  if(key==='tags'&&Object.keys(tagColors).length){
+  if(cfg.tagColorsEnabled&&key==='tags'&&Object.keys(tagColors).length){
    for(const tag of row.querySelectorAll('.multi-select-pill,.tag')){
     const tagName=String(tag.textContent||'').trim().replace(/^#/,'').toLowerCase();
     const color=tagColors[tagName];
@@ -16214,6 +16527,11 @@ function writerV9215PrettySettings(plugin,panel){
  toggle('icon','Mostrar ícone do YAML','Show YAML note icon');
  toggle('hideEmpty','Ocultar campos vazios','Hide empty fields');
  toggle('reveal','Revelar campos escondidos','Reveal hidden fields');
+ toggle('propertyColors','Colorir propriedades','Color properties');
+ toggle('tagColorsEnabled','Colorir tags','Color tags');
+ toggle('progressEnabled','Barras de progresso','Progress bars');
+ toggle('dateFormatting','Formatação de datas','Date formatting');
+ toggle('templatesEnabled','Modelos de exibição','Display templates');
  toggle('search','Pesquisa rápida nas propriedades','Property quick search');
  toggle('dueColors','Destacar datas próximas e vencidas','Highlight approaching and past dates');
  const dropdown=(key,pt,en,items)=>new Setting(panel).setName(writerUi(pt,en)).addDropdown(d=>{
@@ -16242,13 +16560,158 @@ function writerV9215PrettySettings(plugin,panel){
  list('templates','Modelos de exibição','Display templates','status=Status: {value}');
 }
 
+// v3 module: src/v9/flow-composer.js
+/* Flow 9.3: Markdown-native note boards; edits only the single fenced source block.
+ * This module has no network requests and never deletes or moves the linked notes. */
+function writerV93FlowParse(source,cfg){
+ const options=[],items=[];let layout=cfg.defaultLayout||'cards';
+ for(const line of String(source||'').split(/\r?\n/)){
+  const trimmed=line.trim();
+  if(/^layout:\s*(cards|list|board)$/i.test(trimmed)){
+   layout=trimmed.split(':')[1].trim().toLowerCase();options.push('layout: '+layout);
+  }else if(!trimmed||trimmed.startsWith('#'))options.push(line);
+  else items.push(trimmed);
+ }
+ return {layout,options,items:items.slice(0,cfg.maxItems)};
+}
+function writerV93FlowSerialize(parsed){return [...parsed.options,...parsed.items].join('\n').trim();}
+function writerV93FlowLink(raw){
+ return String(raw||'').replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
+}
+function writerV93FlowLocateBlock(raw,source,hint){
+ const nl=raw.includes('\r\n')?'\r\n':'\n',lines=raw.split(/\r?\n/),found=[];
+ for(let start=0;start<lines.length;start++){
+  const open=/^\s{0,3}(\x60{3,}|~{3,})\s*(?:writer-)?flow\s*$/.exec(lines[start]);
+  if(!open)continue;
+  const char=open[1][0],min=open[1].length;
+  for(let end=start+1;end<lines.length;end++){
+   const closing=lines[end].trim();
+   if(closing.length>=min&&[...closing].every(c=>c===char)){
+    if(lines.slice(start+1,end).join('\n').trim()===source.trim())found.push({start,end});
+    start=end;break;
+   }
+  }
+ }
+ if(found.length===1)return {...found[0],lines,nl};
+ const exact=found.find(x=>x.start===hint);
+ return exact?{...exact,lines,nl}:null;
+}
+async function writerV93FlowPersist(plugin,ctx,root,source,model){
+ const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath||'');
+ if(!(file instanceof TFile)||file.extension!=='md')return false;
+ const start=ctx.getSectionInfo?.(root)?.lineStart;
+ const hint=Number.isInteger(start)?start:-1;
+ const replacement=writerV93FlowSerialize(model);
+ try{
+  await plugin.app.vault.process(file,raw=>{
+   const found=writerV93FlowLocateBlock(raw,source,hint);
+   if(!found)throw Error(writerUi('O bloco Flow foi alterado. Reabra a nota e tente novamente.','Flow block changed. Reopen the note and try again.'));
+   return [...found.lines.slice(0,found.start+1),...replacement.split('\n'),
+    ...found.lines.slice(found.end)].join(found.nl);
+  });
+  return true;
+ }catch(error){new Notice(String(error.message||error));return false;}
+}
+function writerV93FlowComposer(plugin,source,root,ctx){
+ const cfg=plugin.settings.v9215Flow;if(!cfg.enabled||!cfg.flowBlocks)return;
+ const model=writerV93FlowParse(source,cfg);
+ root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-'+model.layout);
+ const toolbar=root.createDiv({cls:'writer-v93-flow-toolbar'});
+ toolbar.createEl('strong',{text:'Flow · '+model.items.length+' '+writerUi('notas','notes')});
+ const persist=next=>void writerV93FlowPersist(plugin,ctx,root,source,next);
+ if(cfg.flowArrange){
+  const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel Flow','Flow panel layout')}});
+  for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board']]){
+   const option=select.createEl('option',{text:writerUi(pt,en)});option.value=id;
+  }
+  select.value=model.layout;
+  select.addEventListener('change',()=>{
+   persist({...model,layout:select.value,
+    options:[...model.options.filter(x=>!/^layout:/i.test(x)),'layout: '+select.value]});
+  });
+  const add=toolbar.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar nota ao Flow','Add note to Flow')}});
+  require('obsidian').setIcon(add,'plus');
+  add.addEventListener('click',()=>{
+   const Suggest=require('obsidian').FuzzySuggestModal;
+   const modal=new (class extends Suggest{
+    getItems(){return plugin.app.vault.getMarkdownFiles().filter(f=>f.path!==ctx.sourcePath);}
+    getItemText(f){return f.path;}
+    onChooseItem(f){
+     if(model.items.length>=cfg.maxItems){new Notice(writerUi('Limite de notas atingido.','Note limit reached.'));return;}
+     const path='[['+f.path+']]';
+     if(!model.items.includes(path))persist({...model,items:[...model.items,path]});
+    }
+   })(plugin.app);
+   modal.setPlaceholder(writerUi('Adicionar nota existente…','Add an existing note…'));modal.open();
+  });
+ }
+ const list=root.createDiv({cls:'writer-v93-flow-items'});
+ if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco Flow.','Put one note per line inside the Flow block.')});return;}
+ const reorder=(from,to)=>{
+  if(!cfg.flowArrange||from===to||from<0||to<0||from>=model.items.length||to>=model.items.length)return;
+  const items=model.items.slice(),value=items.splice(from,1)[0];items.splice(to,0,value);
+  persist({...model,items});
+ };
+ model.items.forEach((raw,index)=>{
+  const path=writerV93FlowLink(raw);
+  const file=plugin.app.metadataCache?.getFirstLinkpathDest?.(path,ctx.sourcePath||'')||
+   plugin.app.vault.getAbstractFileByPath(path);
+  const card=list.createDiv({cls:'writer-v9216-flow-card'});
+  const heading=card.createDiv({cls:'writer-v9216-flow-head'});
+  if(!(file instanceof TFile)||file.extension!=='md'){
+   heading.createSpan({text:path||raw});
+   card.createEl('small',{text:writerUi('Nota não encontrada.','Note not found.')});
+  }else{
+   const title=heading.createEl('button',{cls:'writer-v9216-flow-open',text:file.basename,attr:{type:'button'}});
+   title.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
+   if(cfg.embeds){
+    const edit=heading.createEl('button',{cls:'writer-v9216-flow-edit',text:writerUi('Editar','Edit'),attr:{type:'button'}});
+    edit.addEventListener('click',()=>void writerV9216FlowOpenEditor(plugin,file,card,edit));
+   }
+   if(cfg.flowPreviews){
+    const summary=card.createDiv({cls:'writer-v9216-flow-excerpt'});
+    void plugin.app.vault.cachedRead(file).then(rawText=>{
+     if(card.isConnected)summary.textContent=writerV921PreviewBody(rawText,180)||writerUi('Sem prévia.','No preview.');
+    }).catch(()=>{if(card.isConnected)summary.textContent=writerUi('Prévia indisponível.','Preview unavailable.');});
+   }
+  }
+  if(!cfg.flowArrange)return;
+  const actions=card.createDiv({cls:'writer-v93-flow-actions'});
+  for(const [step,name,pt,en] of [[-1,'arrow-up','Mover acima','Move earlier'],[1,'arrow-down','Mover abaixo','Move later']]){
+   const button=actions.createEl('button',{attr:{type:'button','aria-label':writerUi(pt,en)}});
+   button.disabled=index+step<0||index+step>=model.items.length;
+   require('obsidian').setIcon(button,name);
+   button.addEventListener('click',()=>reorder(index,index+step));
+  }
+  const remove=actions.createEl('button',{attr:{type:'button','aria-label':writerUi('Remover do painel','Remove from panel')}});
+  require('obsidian').setIcon(remove,'x');
+  remove.addEventListener('click',()=>persist({...model,items:model.items.filter((_,i)=>i!==index)}));
+  card.draggable=true;
+  card.addEventListener('dragstart',event=>{
+   event.dataTransfer?.setData('text/x-writer-flow-index',String(index));
+   if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+   event.stopPropagation();
+  });
+  card.addEventListener('dragover',event=>{
+   if(event.dataTransfer?.types?.includes('text/x-writer-flow-index'))event.preventDefault();
+  });
+  card.addEventListener('drop',event=>{
+   const from=Number(event.dataTransfer?.getData('text/x-writer-flow-index'));
+   if(!Number.isInteger(from))return;
+   event.preventDefault();event.stopPropagation();reorder(from,index);
+  });
+ });
+}
+
 // v3 module: src/v9/flow-slash.js
 /* v9.2.15: initial local-first Maker-style slash menu + editable Flow embeds.
  * No private Obsidian APIs and no dependency on Make.md. */
 function writerV9215FlowMerge(settings){
  const raw=settings.v9215Flow&&typeof settings.v9215Flow==='object'?settings.v9215Flow:{};
- const cfg=settings.v9215Flow={enabled:true,slash:true,embeds:true,flowBlocks:true,maxItems:30,...raw};
- for(const key of ['enabled','slash','embeds','flowBlocks'])cfg[key]=cfg[key]!==false;
+ const cfg=settings.v9215Flow={enabled:true,slash:true,embeds:true,flowBlocks:true,
+  flowArrange:true,flowPreviews:true,defaultLayout:'cards',maxItems:30,...raw};
+ for(const key of ['enabled','slash','embeds','flowBlocks','flowArrange','flowPreviews'])cfg[key]=cfg[key]!==false;
+ cfg.defaultLayout=['cards','list','board'].includes(cfg.defaultLayout)?cfg.defaultLayout:'cards';
  cfg.maxItems=Math.max(5,Math.min(80,Math.round(Number(cfg.maxItems)||30)));
  return cfg;
 }
@@ -16354,6 +16817,7 @@ async function writerV9216FlowOpenEditor(plugin,file,mount,button){
 }
 /* Local note collections from a Markdown ~~~flow block: one note link per line. */
 function writerV9216FlowBlock(plugin,source,root,ctx){
+ if(typeof writerV93FlowComposer==='function')return writerV93FlowComposer(plugin,source,root,ctx);
  const cfg=plugin.settings.v9215Flow;
  if(!cfg.enabled||!cfg.flowBlocks)return;
  const rows=String(source||'').split(/\r?\n/).map(s=>s.trim())
@@ -16424,10 +16888,18 @@ function writerV9215FlowSettings(plugin,panel){
   ['enabled','Ativar Flow e comandos rápidos','Enable Flow and slash commands'],
   ['slash','Menu de comandos /','Slash command menu'],
   ['embeds','Edição de notas incorporadas','Editable embedded notes'],
-  ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections']
+  ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections'],
+  ['flowArrange','Organizar cartões Flow e salvar no Markdown','Arrange Flow cards and save to Markdown'],
+  ['flowPreviews','Prévia do texto nos cartões Flow','Flow card text previews']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
  }
+ new Setting(panel).setName(writerUi('Layout padrão dos painéis Flow','Default Flow panel layout'))
+  .addDropdown(drop=>{
+   for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board']])
+    drop.addOption(id,writerUi(pt,en));
+   drop.setValue(cfg.defaultLayout).onChange(async value=>{cfg.defaultLayout=value;await plugin.saveSettings();});
+  });
  new Setting(panel).setName(writerUi('Máximo de notas por painel Flow','Maximum notes per Flow panel'))
   .addSlider(sl=>sl.setLimits(5,80,5).setValue(cfg.maxItems).setDynamicTooltip().onChange(async value=>{
    cfg.maxItems=value;await plugin.saveSettings();

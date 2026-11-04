@@ -2,12 +2,19 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.3 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.3 — root sorting and a single native control
+
+- **Vault root:** root folder keys `/` and `(empty)` are treated as the same folder. Manual order now renders through the native File Explorer sorting method, rather than conflicting with a second CSS-order pass.
+- **Single sorting control:** choose sorting from Obsidian's existing **Change sort order** toolbar button. Its built-in sort options apply globally, while Basic adds Manual sorting, Number in title, YAML property and Folders first. Any option selected there affects **all folders**, including the root.
+- **Clean context menus:** remove `Sort this folder`, `Move earlier` and `Move later` from file context menus. Pinning, hiding, icons, previews and other actions are unchanged. Mobile inline reorder controls remain available in manual mode.
+- **Spaces shortcuts:** sorting shortcuts in the Spaces sidebar point to the same native Explorer button. Existing per-folder custom orders are preserved and used when the global Manual option is chosen.
 
 ## Version 10.4.2 — safer Explorer sorting, mobile Spaces and bookshelf
 

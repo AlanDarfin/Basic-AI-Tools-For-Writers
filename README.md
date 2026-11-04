@@ -2,12 +2,19 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.5 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.6 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.6 — compact LanguageTool corrections and stable review scrolling
+
+- **LanguageTool suggestions:** compact, scrollable desktop correction menus, smaller icons, denser replacement rows and a tighter floating review popover, while retaining touch-friendly minimum sizes on mobile.
+- **Typewriter and Remember Cursor:** neither feature moves the editor when a LanguageTool popup or correction menu is open, hovered or clicked. Pointer interactions suspend recentering; actual typing, input composition and arrow/navigation keys resume it.
+- **Keep your viewport:** applying a correction with the mouse briefly preserves the visible CodeMirror scroll offset, even if the caret remains on a different line. Pending cursor-restoration timers are cancelled without erasing saved bookmarks.
+- **Safety and compatibility:** ordinary note edits, keyboard navigation and language-review actions are preserved, with dedicated regression coverage.
 
 ## Version 10.4.5 — timeline visual presets and complete AI context grouping
 

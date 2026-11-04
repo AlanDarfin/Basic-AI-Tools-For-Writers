@@ -73,13 +73,15 @@ test('opening and restoring selection cannot enable the highlight or recenter ed
  assert.equal(marked.has('writer-v4-typewriter-engaged'),false);
  widget.destroy();
 });
-test('keyboard and pointer actions enable highlight, wheel disables it until next interaction',()=>{
+test('keyboard navigation enables highlight; mouse interactions and wheel suspend it',()=>{
  const {cm,dom,widget,marked,listeners}=editor();
  dom.emit('keydown',{key:'Shift'});
  assert.equal(widget.decorations.length,0);
  dom.emit('pointerdown',{target:{closest:()=>null}});
  assert.equal(widget.decorations.length,0);
  dom.emit('pointerdown',{target:{closest:selector=>selector==='.cm-scroller'?{}:null}});
+ assert.equal(widget.decorations.length,0,'Mouse click should not engage Typewriter');
+ dom.emit('keydown',{key:'ArrowDown'});
  assert.equal(widget.decorations.length,1);
  assert.equal(marked.has('writer-v4-typewriter-engaged'),true);
  assert.equal(extras.typewriterActiveViews.has(cm),true);
@@ -95,7 +97,7 @@ test('keyboard and pointer actions enable highlight, wheel disables it until nex
  assert.equal(widget.decorations.length,0);
  dom.emit('keydown',{key:'a'});
  assert.equal(widget.decorations.length,1,'Re-enable only on a subsequent real edit');
- assert.ok(pendingCancels>=3,'Real pointer, keyboard and wheel events cancel pending cursor restores');
+ assert.ok(pendingCancels>=2,'Pointer and keyboard actions cancel pending restores');
  widget.destroy();
  assert.equal(listeners.size,0,'Unregister event listeners when the editor closes');
 });
@@ -125,11 +127,11 @@ test('CSS gates highlight and focus dimming by an explicitly engaged editor',()=
  assert.ok(fs.readFileSync('main.js','utf8').includes('cancelPendingForEditor'));
 });
 
-test('Android tap and virtual keyboard enable the highlight without programmatic focus',()=>{
+test('Android touch suspends highlight until virtual keyboard or composition resumes',()=>{
  const a=editor();
  assert.equal(a.widget.decorations.length,0);
  a.dom.emit('touchstart',{target:{closest:selector=>selector==='.cm-scroller'?{}:null}});
- assert.equal(a.widget.decorations.length,1,'A touch activates the current editor line');
+ assert.equal(a.widget.decorations.length,0,'Touch selection must not activate recentering');
  a.dom.emit('touchmove',{});
  assert.equal(a.widget.decorations.length,0,'Scrolling by touch suspends Typewriter mode');
  a.dom.emit('beforeinput',{inputType:'insertText',data:'á'});

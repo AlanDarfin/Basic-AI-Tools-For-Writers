@@ -2,13 +2,20 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.5 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.6 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.6 — LanguageTool compacto e rolagem estável
+
+- **Sugestões do LanguageTool:** menu de correção mais compacto e rolável no PC, com ícones menores, linhas mais próximas e popup flutuante reduzido, mantendo áreas de toque adequadas no celular.
+- **Máquina de Escrever e Remember Cursor:** ambos suspendem o acompanhamento quando um popup ou menu de sugestão está aberto, sob o mouse ou sendo clicado. Interações com o ponteiro não recentralizam a nota; digitação, composição de texto e teclas de navegação reativam o comportamento.
+- **Posição de leitura preservada:** aceitar uma correção com o mouse mantém temporariamente a rolagem visível, mesmo quando o cursor permanece em outra linha. Restaurações pendentes são canceladas, mas as posições salvas não são apagadas.
+- **Compatibilidade:** preservadas correções, atalhos e revisão automática, com testes de regressão específicos.
 
 ## Atualização 10.4.5 — timeline e menu de IA corrigidos
 

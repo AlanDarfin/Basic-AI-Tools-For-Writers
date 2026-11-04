@@ -442,49 +442,201 @@ function writerV9RegisterToolbar(plugin){
    await plugin.saveSettings();refresh();
   }});
 }
+function writerV1048ToolbarCommandPicker(plugin,onChoose){
+ const candidates=plugin.app.commands?.listCommands?.()||
+  Object.entries(plugin.app.commands?.commands||{}).map(([id,cmd])=>({id,name:cmd.name||id}));
+ const items=candidates.filter(c=>typeof c?.id==='string'&&c.id&&c.name)
+  .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
+ if(typeof FuzzySuggestModal!=='undefined'){
+  class Picker extends FuzzySuggestModal{
+   getItems(){return items;}
+   getItemText(item){return item.name+' · '+item.id;}
+   onChooseItem(item){onChoose(item);}
+  }
+  new Picker(plugin.app).open();
+ }else{
+  new Notice(writerUi('A paleta de comandos não está disponível.','The command picker is not available.'));
+ }
+}
 function writerV9ToolbarSettings(plugin,panel){
  const cfg=plugin.settings.v9Toolbar;
- panel.createEl('h3',{text:writerUi('Barra de formatação · v9','Formatting toolbar · v9')});
- panel.createEl('p',{text:writerUi('Uma barra compacta dentro do editor, sem substituir a barra nativa do celular. Os botões podem ser reorganizados e ocultados.','A compact toolbar inside the editor. It does not replace the native mobile toolbar. Reorder or hide individual buttons.'),cls:'dictionary-muted'});
- const addToggle=(pt,en,key)=>new Setting(panel).setName(writerUi(pt,en))
-  .addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();}));
- addToggle('Ativar no computador','Enable on desktop','enabledDesktop');
- addToggle('Ativar no Android/iOS (desativado inicialmente)','Enable on mobile (off by default)','enabledMobile');
- addToggle('Botões compactos','Compact buttons','compact');
- new Setting(panel).setName(writerUi('Posição da barra','Toolbar position'))
+ const root=panel.createDiv({cls:'writer-v1048-toolbar-settings'});
+ root.createEl('h3',{text:writerUi('Barra de formatação','Formatting toolbar')});
+ root.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Personalize os botões, crie menus e use comandos de outros plugins. No celular a barra continua opcional, sem substituir a barra nativa.',
+  'Customize buttons, build menus and use commands from other plugins. On mobile this bar remains optional and does not replace Obsidian’s native toolbar.')});
+ const save=async()=>{await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();};
+ const toggle=(pt,en,key)=>new Setting(root).setName(writerUi(pt,en))
+  .addToggle(t=>t.setValue(cfg[key]===true).onChange(async value=>{cfg[key]=value;await save();}));
+ toggle('Ativar no computador','Enable on desktop','enabledDesktop');
+ toggle('Ativar no Android/iOS (opcional)','Enable on Android/iOS (optional)','enabledMobile');
+ toggle('Mostrar nomes junto aos ícones','Show labels next to icons','showLabels');
+ new Setting(root).setName(writerUi('Estilo da barra','Toolbar style'))
+  .addDropdown(d=>d.addOption('tiny',writerUi('Mínima','Tiny'))
+   .addOption('compact',writerUi('Compacta','Compact'))
+   .addOption('regular',writerUi('Confortável','Comfortable'))
+   .setValue(cfg.style).onChange(async value=>{
+    cfg.style=value;cfg.compact=value!=='regular';await save();
+   }));
+ new Setting(root).setName(writerUi('Tamanho dos botões','Button size'))
+  .addSlider(sl=>sl.setLimits(26,46,2).setDynamicTooltip().setValue(cfg.buttonSize)
+   .onChange(async value=>{cfg.buttonSize=value;await save();}));
+ new Setting(root).setName(writerUi('Posição da barra','Toolbar position'))
   .addDropdown(d=>d.addOption('bottom',writerUi('Embaixo','Bottom'))
    .addOption('top',writerUi('Em cima','Top'))
-   .setValue(cfg.placement).onChange(async value=>{
-    cfg.placement=value;await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();
-   }));
- const list=panel.createEl('details',{cls:'writer-v9-toolbar-list'});
+   .addOption('floating',writerUi('Acompanhar o cursor (PC)','Follow cursor (desktop)'))
+   .setValue(cfg.placement).onChange(async value=>{cfg.placement=value;await save();}));
+ new Setting(root).setName(writerUi('Cor aplicada ao texto','Text formatting color'))
+  .setDesc(writerUi('Usada pelo comando Cor do texto.','Used by the Text color action.'))
+  .addColorPicker(p=>p.setValue(cfg.textColor).onChange(async value=>{
+   cfg.textColor=writerV1048ToolbarHex(value,'#cf517f');await save();
+  }));
+ new Setting(root).setName(writerUi('Cor de destaque','Highlight background color'))
+  .setDesc(writerUi('Usada pelo comando Cor de destaque.','Used by the Background color action.'))
+  .addColorPicker(p=>p.setValue(cfg.backgroundColor).onChange(async value=>{
+   cfg.backgroundColor=writerV1048ToolbarHex(value,'#ffd66a');await save();
+  }));
+ const inventory=root.createEl('details',{cls:'writer-v9-toolbar-list writer-v1048-toolbar-inventory'});
+ inventory.createEl('summary',{text:writerUi('Escolher e ordenar botões','Choose and reorder buttons')});
+ inventory.open=false;
+ const filter=inventory.createEl('input',{cls:'writer-v1048-toolbar-filter',attr:{type:'search',
+  placeholder:writerUi('Buscar botão, como subscrito…','Find a button, e.g. subscript…'),
+  'aria-label':writerUi('Filtrar botões','Filter buttons')}});
+ const rows=inventory.createDiv({cls:'writer-v1048-toolbar-rows'});
+ const updateOrder=async(current,next)=>{
+  if(next<0||next>=cfg.actions.length)return;
+  [cfg.actions[current],cfg.actions[next]]=[cfg.actions[next],cfg.actions[current]];
+  await save();draw();
+ };
  const draw=()=>{
-  const open=list.open;list.empty();
-  list.createEl('summary',{text:writerUi('Escolher e ordenar botões','Choose and reorder buttons')});
-  list.open=open;
-  const all=[...cfg.actions,...WRITER_V9_FORMAT_IDS.filter(id=>!cfg.actions.includes(id))];
-  for(const id of all){
-   const item=WRITER_V9_FORMAT_ACTIONS.find(entry=>entry[0]===id);
-   if(!item)continue;
+  rows.empty();
+  const needle=String(filter.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+  const all=writerV1048ToolbarItems(cfg);
+  const sorted=[...cfg.actions,...all.map(item=>item.id).filter(id=>!cfg.actions.includes(id))];
+  for(const id of sorted){
+   const item=all.find(x=>x.id===id);if(!item)continue;
+   const title=writerV1048ToolbarLabel(cfg,item);
+   const hay=(title+' '+item.pt+' '+item.en+' '+id+' '+(item.command||''))
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+   if(needle&&!hay.includes(needle))continue;
    const index=cfg.actions.indexOf(id),enabled=index>=0;
-   const row=new Setting(list).setName(writerUi(item[2],item[3])).setDesc(id);
-   row.addToggle(toggle=>toggle.setValue(enabled).onChange(async value=>{
-    cfg.actions=value?[...cfg.actions,id]:cfg.actions.filter(x=>x!==id);
-    await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();draw();
+   const row=new Setting(rows).setName(title)
+    .setDesc(item.command||writerUi('Formatação Markdown','Markdown formatting'));
+   row.settingEl?.classList?.add('writer-v1048-toolbar-item');
+   row.settingEl?.setAttribute?.('data-toolbar-action',id);
+   row.addToggle(t=>t.setValue(enabled).onChange(async checked=>{
+    cfg.actions=checked?[...cfg.actions,id]:cfg.actions.filter(x=>x!==id);
+    if(!checked)for(const g of cfg.groups)g.ids=g.ids.filter(value=>value!==id);
+    cfg.groups=cfg.groups.filter(g=>g.ids.length);
+    await save();draw();
    }));
-   for(const [direction,sign] of [[-1,'↑'],[1,'↓']]){
-    row.addButton(button=>{
-     button.setButtonText(sign).setTooltip(writerUi(direction<0?'Mover para cima':'Mover para baixo',
-      direction<0?'Move up':'Move down'));
-     if(!enabled||index+direction<0||index+direction>=cfg.actions.length)button.setDisabled(true);
-     button.onClick(async()=>{
-      const next=index+direction;
-      [cfg.actions[index],cfg.actions[next]]=[cfg.actions[next],cfg.actions[index]];
-      await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();draw();
-     });
+   for(const [direction,sign] of [[-1,'arrow-up'],[1,'arrow-down']]){
+    row.addExtraButton(button=>button.setIcon(sign)
+     .setTooltip(writerUi(direction<0?'Mover para cima':'Mover para baixo',
+      direction<0?'Move up':'Move down'))
+     .onClick(()=>void updateOrder(index,index+direction)));
+   }
+   if(row.settingEl){
+    row.settingEl.draggable=enabled;
+    row.settingEl.addEventListener('dragstart',event=>{
+     if(!enabled)return;
+     event.dataTransfer?.setData('text/plain',id);
+     if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
     });
+    row.settingEl.addEventListener('dragover',event=>event.preventDefault());
+    row.settingEl.addEventListener('drop',event=>{
+     event.preventDefault();
+     const source=event.dataTransfer?.getData('text/plain');
+     const i=cfg.actions.indexOf(source),j=cfg.actions.indexOf(id);
+     if(i<0||j<0||i===j)return;
+     cfg.actions.splice(i,1);cfg.actions.splice(j,0,source);
+     void save().then(draw);
+    });
+   }
+   const edit=rows.createEl('details',{cls:'writer-v1048-toolbar-customizer'});
+   edit.createEl('summary',{text:writerUi('Personalizar nome e ícone: ','Customize name and icon: ')+title});
+   const custom=cfg.customizations[id]||(cfg.customizations[id]={label:'',icon:''});
+   new Setting(edit).setName(writerUi('Nome mostrado','Displayed name'))
+    .addText(t=>t.setPlaceholder(title).setValue(custom.label||'')
+     .onChange(async value=>{custom.label=value.slice(0,55);await save();}));
+   new Setting(edit).setName(writerUi('Ícone Lucide','Lucide icon'))
+    .addText(t=>t.setPlaceholder(item.icon).setValue(custom.icon||'')
+     .onChange(async value=>{
+      custom.icon=value.trim()?writerV1048ToolbarSafeIcon(value):'';
+      await save();
+     }));
+   if(item.type==='command'){
+    new Setting(edit).setName(writerUi('Comando associado','Assigned command'))
+     .setDesc(item.command)
+     .addButton(button=>button.setButtonText(writerUi('Alterar','Change'))
+      .onClick(()=>writerV1048ToolbarCommandPicker(plugin,async next=>{
+       const target=cfg.customButtons.find(x=>x.id===id);
+       if(target){target.command=next.id;await save();draw();}
+      })));
+    new Setting(edit).setName(writerUi('Excluir botão personalizado','Delete custom button'))
+     .addButton(button=>button.setButtonText(writerUi('Remover','Remove')).setWarning()
+      .onClick(async()=>{
+       cfg.customButtons=cfg.customButtons.filter(x=>x.id!==id);
+       cfg.actions=cfg.actions.filter(x=>x!==id);
+       cfg.groups.forEach(g=>g.ids=g.ids.filter(x=>x!==id));
+       cfg.groups=cfg.groups.filter(g=>g.ids.length);
+       delete cfg.customizations[id];await save();draw();
+      }));
    }
   }
  };
+ filter.addEventListener('input',draw);
  draw();
+ new Setting(root).setName(writerUi('Adicionar comando de outro plugin','Add a command from another plugin'))
+  .setDesc(writerUi('Escolha um comando registrado na paleta do Obsidian.',
+   'Pick a command registered in Obsidian’s command palette.'))
+  .addButton(button=>button.setButtonText(writerUi('Escolher comando','Choose command')).setCta()
+   .onClick(()=>writerV1048ToolbarCommandPicker(plugin,async command=>{
+    let id='custom-'+Date.now().toString(36);
+    while(cfg.customButtons.some(item=>item.id===id))id+='x';
+    cfg.customButtons.push({id,command:command.id,label:String(command.name||command.id).slice(0,55),
+     icon:'command'});
+    cfg.actions.push(id);inventory.open=true;await save();draw();
+   })));
+ const groupPanel=root.createEl('details',{cls:'writer-v1048-toolbar-groups'});
+ groupPanel.createEl('summary',{text:writerUi('Menus e grupos de botões','Button menus and groups')});
+ const groupRows=groupPanel.createDiv({cls:'writer-v1048-toolbar-group-list'});
+ const drawGroups=()=>{
+  groupRows.empty();
+  for(const group of cfg.groups){
+   const box=groupRows.createEl('details',{cls:'writer-v1048-toolbar-group-card'});
+   box.createEl('summary',{text:group.name+' · '+group.ids.length});
+   new Setting(box).setName(writerUi('Nome do menu','Menu name')).addText(t=>t.setValue(group.name)
+    .onChange(async value=>{group.name=value.trim().slice(0,45)||'Menu';await save();}));
+   new Setting(box).setName(writerUi('Ícone do menu','Menu icon')).addText(t=>t.setValue(group.icon)
+    .onChange(async value=>{group.icon=writerV1048ToolbarSafeIcon(value);await save();}));
+   for(const id of cfg.actions){
+    const item=writerV1048ToolbarItems(cfg).find(entry=>entry.id===id);
+    if(!item)continue;
+    const belongs=group.ids.includes(id);
+    new Setting(box).setName(writerV1048ToolbarLabel(cfg,item))
+     .addToggle(t=>t.setValue(belongs).onChange(async checked=>{
+      if(checked){
+       for(const other of cfg.groups)other.ids=other.ids.filter(x=>x!==id);
+       group.ids.push(id);
+      }else group.ids=group.ids.filter(x=>x!==id);
+      cfg.groups=cfg.groups.filter(g=>g.ids.length);
+      await save();drawGroups();
+     }));
+   }
+   new Setting(box).setName(writerUi('Remover menu','Remove menu'))
+    .addButton(button=>button.setButtonText(writerUi('Desagrupar','Ungroup'))
+     .onClick(async()=>{cfg.groups=cfg.groups.filter(g=>g!==group);await save();drawGroups();}));
+  }
+ };
+ drawGroups();
+ new Setting(groupPanel).setName(writerUi('Criar menu de botões','Create button menu'))
+  .addButton(button=>button.setButtonText(writerUi('Novo grupo','New group'))
+   .onClick(async()=>{
+    const first=cfg.actions.find(id=>!cfg.groups.some(g=>g.ids.includes(id)));
+    if(!first){new Notice(writerUi('Ative um botão sem grupo primeiro.','Enable an ungrouped button first.'));return;}
+    cfg.groups.push({id:'group-'+Date.now().toString(36),
+     name:writerUi('Meu menu','My menu'),icon:'folder-open',ids:[first]});
+    await save();groupPanel.open=true;drawGroups();
+   }));
 }

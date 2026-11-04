@@ -169,7 +169,7 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  label.textContent=truncated&&expanded?long:shortText;
  if(shell.dataset.hoverListeners==='ready')return;
  shell.dataset.hoverListeners='ready';
- let timer=null,touchLocked=false,touchStart=null;
+ let timer=null,touchLocked=false,touchStart=null,skipClick=false;
  const open=()=>{
   if(shell.dataset.expandable!=='true'||!shell.isConnected)return;
   shell.classList.add('is-expanded');shell.setAttribute('aria-expanded','true');
@@ -195,7 +195,7 @@ function writerV929PreviewExpand(shell,shortText,fullText){
   touchStart={x:touch.clientX,y:touch.clientY};
   clearTimeout(timer);
   const delay=Math.max(400,Math.min(1500,Number(shell.dataset.holdMs)||650));
-  timer=setTimeout(()=>{touchLocked=true;open();},delay);
+  timer=setTimeout(()=>{touchLocked=true;skipClick=true;open();},delay);
  },{passive:true});
  shell.addEventListener('touchmove',event=>{
   if(!touchStart)return;
@@ -209,10 +209,12 @@ function writerV929PreviewExpand(shell,shortText,fullText){
  shell.addEventListener('touchcancel',stopTouch,{passive:true});
  shell.addEventListener('click',event=>{
   if(shell.dataset.expandable!=='true'||!touchLocked)return;
-  if(shell.classList.contains('is-expanded')){event.preventDefault();close();}
+  event.preventDefault();event.stopPropagation();
+  if(skipClick){skipClick=false;return;}
+  if(shell.classList.contains('is-expanded'))close();
  });
  shell.addEventListener('focus',open);
- shell.addEventListener('blur',close);
+ shell.addEventListener('blur',()=>{if(!touchLocked)close();});
  shell.addEventListener('keydown',event=>{
   if(event.key==='Enter'||event.key===' '){
    if(shell.dataset.expandable!=='true')return;

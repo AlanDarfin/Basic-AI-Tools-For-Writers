@@ -42,7 +42,7 @@ test('home has calendar in the widget grid and keeps search outside it',()=>{
  const grid=home.indexOf("const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'})");
  assert.ok(search>=0&&search<toolbar&&toolbar<grid);
  assert.match(home,/calendar:p=>this\.renderCalendarWidget\(p\)/);
- assert.match(home,/cfg\.homeHidden\.includes\(key\)/);
+ assert.match(home,/widgetCfg\.homeHidden\.includes\(key\)/);
  for(const name of ['renderActivity','renderRandom','renderTags','renderGoal','manageWidgets'])assert.ok(home.includes(name+'('),name);
 });
 test('hot reload snapshots all custom views and restores only what was open',async()=>{

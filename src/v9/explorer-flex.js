@@ -542,6 +542,7 @@ function writerV91FlexRegister(plugin){
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
+   host.classList?.toggle?.('writer-v1047-mobile-reorder-on',writerV1047MobileReorderVisible(plugin));
    const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
    for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
@@ -713,6 +714,8 @@ function writerV91FlexRegister(plugin){
   patched.clear();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
+   host.classList?.remove?.('writer-v1047-mobile-reorder-on');
+   host.querySelectorAll?.('.writer-v93-reorder-actions')?.forEach?.(node=>node.remove?.());
    for(const container of host.querySelectorAll('[data-writer-flex-order-host="1"]')){
     container.style.display=container.dataset.writerFlexPreviousDisplay||'';
     container.style.flexDirection=container.dataset.writerFlexPreviousDirection||'';

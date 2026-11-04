@@ -246,9 +246,11 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  const heights=Array.from({length:24},()=>18+Math.floor(Math.random()*78));
  for(let i=0;i<heights.length;i++){
   const bar=wave.createSpan({cls:'writer-v8-chat-wave-bar'});
-  bar.style.height=heights[i]+'%';
-  bar.style.animationDelay=Math.floor(Math.random()*650)+'ms';
-  bar.style.animationDuration=(600+Math.floor(Math.random()*500))+'ms';
+  if(bar?.style){
+   bar.style.height=heights[i]+'%';
+   bar.style.animationDelay=Math.floor(Math.random()*650)+'ms';
+   bar.style.animationDuration=(600+Math.floor(Math.random()*500))+'ms';
+  }
  }
  player.createSpan({cls:'writer-v8-chat-duration',text:voice.duration});
  const update=on=>{

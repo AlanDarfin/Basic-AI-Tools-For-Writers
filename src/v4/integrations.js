@@ -97,7 +97,7 @@ class WriterV4Mentions extends EditorSuggest{
  * Do not let delayed Remember Cursor or Typewriter recenter the editor after
  * a LanguageTool correction. Explicit typing/arrow keys re-enable tracking. */
 function writerV406ReviewGuard(plugin){
- let pauseUntil=0,keyboardUntil=0,scrollLock=null;
+ let pauseUntil=0,keyboardUntil=0,scrollLock=null,lastReviewPopup=null;
  const now=()=>Date.now();
  const reviewSelectors='.writer-review-floating,.writer-lt-mobile-modal,.writer-v406-lt-compact';
  const editorFor=()=>plugin.app?.workspace?.getActiveViewOfType?.(MarkdownView)?.editor?.cm||null;
@@ -150,7 +150,9 @@ function writerV406ReviewGuard(plugin){
  const inspect=()=>{
   if(typeof document==='undefined')return;
   for(const menu of document.querySelectorAll?.('.menu')||[])markMenu(menu);
-  if(document.querySelector?.('.writer-review-floating,.writer-lt-mobile-modal'))pause(350);
+  const popup=document.querySelector?.('.writer-review-floating,.writer-lt-mobile-modal')||null;
+  if(popup&&popup!==lastReviewPopup)pause(750);
+  lastReviewPopup=popup;
  };
  const onPointer=event=>{
   if(isReviewElement(event.target)){
@@ -250,14 +252,14 @@ class WriterV4Extras{
   if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
+    const guard=this.plugin.writerReviewInteractionGuard;
+    if(guard?.isSuspended?.()){
+     if(update.docChanged)guard.applyScroll?.(update.view);
+     return;
+    }
     if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||
-      this.plugin.writerReviewInteractionGuard?.isSuspended?.()||
       !this.typewriterActiveViews.has(update.view)||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
     try{
-     // A correction may change text while retaining the old caret. Only
-     // genuine editor keystrokes are allowed to recenter.
-     const guard=this.plugin.writerReviewInteractionGuard;
-     if(guard?.isSuspended?.()){guard.applyScroll?.(update.view);return;}
      const pos=update.state.selection.main.head;
      update.view.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',yMargin:0})});
     }catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}

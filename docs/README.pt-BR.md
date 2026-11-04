@@ -2,13 +2,19 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.6 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.7 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.7 — Explorador compacto no celular
+
+- **Linhas compactas:** as setas de ordenação manual deixam de aparecer em todas as pastas e notas durante a navegação normal. Mantidos ícones personalizados, favoritos, folder notes, descrições e prévias.
+- **Reorganizar somente quando necessário:** no botão nativo **Ordenar** do Obsidian, use **Reorganizar itens no celular (Basic)**, ou execute **Explorador: ativar ou desativar reorganização móvel** na paleta de comandos. Esse modo temporário mostra setas menores, sobrepostas às linhas, sem aumentar sua altura. Desative-o da mesma forma; ao recarregar o plugin ele começa desligado.
+- **Sem alterar arquivos:** sair do modo apenas esconde os controles, mantendo caminhos, arquivos, favoritos e a ordem manual salva. CSS compatível com o lint de plugins do Obsidian.
 
 ## Atualização 10.4.6 — LanguageTool compacto e rolagem estável
 

@@ -262,6 +262,8 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
+   title.classList?.toggle?.('writer-v1047-reorder-title',
+    cfg.enabled&&folder.sort==='custom'&&writerV1047MobileReorderVisible(plugin));
    if(!cfg.enabled||folder.sort!=='custom'||!writerV1047MobileReorderVisible(plugin))
     title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
    if((!cfg.enabled||folder.sort!=='custom')&&title.dataset.writerFlexPath){
@@ -716,6 +718,7 @@ function writerV91FlexRegister(plugin){
    const host=leaf.view?.containerEl;if(!host)continue;
    host.classList?.remove?.('writer-v1047-mobile-reorder-on');
    host.querySelectorAll?.('.writer-v93-reorder-actions')?.forEach?.(node=>node.remove?.());
+   host.querySelectorAll?.('.writer-v1047-reorder-title')?.forEach?.(node=>node.classList?.remove?.('writer-v1047-reorder-title'));
    for(const container of host.querySelectorAll('[data-writer-flex-order-host="1"]')){
     container.style.display=container.dataset.writerFlexPreviousDisplay||'';
     container.style.flexDirection=container.dataset.writerFlexPreviousDirection||'';

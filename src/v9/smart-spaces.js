@@ -40,9 +40,15 @@ function writerV9SpaceSanitize(raw){
   const order=Array.isArray(record.order)?[...new Set(record.order.filter(n=>typeof n==='string'&&n.length<300))].slice(0,1000):[];
   folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60)};
  }
+ const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'];
+ const homeWidgetsEnabled=raw.homeWidgetsEnabled===true;
+ const homeOrder=Array.isArray(raw.homeOrder)?[...new Set(raw.homeOrder.filter(key=>widgetKeys.includes(key)))]:[];
+ const homeHidden=Array.isArray(raw.homeHidden)?[...new Set(raw.homeHidden.filter(key=>widgetKeys.includes(key)))]:[];
+ const homeWidgetSizes=Object.fromEntries(Object.entries(raw.homeWidgetSizes&&typeof raw.homeWidgetSizes==='object'?raw.homeWidgetSizes:{})
+  .filter(([key,value])=>widgetKeys.includes(key)&&['compact','normal','wide'].includes(value)));
  const icon=/^[a-z][a-z0-9-]{0,60}$/.test(raw.icon||'')?raw.icon:'layers';
  const iconColor=/^#[\da-f]{6}$/i.test(raw.iconColor||'')?raw.iconColor:'';
- return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts};
+ return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes};
 }
 /* Space state changes only affect views, never the vault contents. */
 function writerV9215ActiveSpace(plugin){
@@ -70,6 +76,8 @@ async function writerV9215SelectSpace(plugin,id){
  plugin.writerV91FlexRefresh?.();
  plugin.writerV9SpacesRefresh?.();
  plugin.writerV9216SpacesDockRefresh?.();
+ if(typeof WRITER_V8_HOME_VIEW!=='undefined')
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[])leaf.view?.render?.();
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -106,7 +114,7 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},...(initial||{})};
+  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},homeWidgetsEnabled:false,homeOrder:[],homeHidden:[],homeWidgetSizes:{},...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
@@ -137,6 +145,17 @@ function writerV9SpaceEditor(plugin,initial,save){
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
   field('groupBy','Agrupar quadro por propriedade','Board group property');
+  new Setting(root).setName(writerUi('Widgets próprios na homepage','Independent homepage widgets'))
+   .setDesc(writerUi('Ordem, visibilidade e tamanho dos widgets serão salvos somente neste Space.','Widget order, visibility and sizes will be saved only in this Space.'))
+   .addToggle(toggle=>toggle.setValue(Boolean(draft.homeWidgetsEnabled)).onChange(value=>{
+    draft.homeWidgetsEnabled=value;
+    if(value&&!draft.homeOrder?.length){
+     const global=plugin.settings.v8Finish;
+     draft.homeOrder=[...(global?.homeOrder||[])];
+     draft.homeHidden=[...(global?.homeHidden||[])];
+     draft.homeWidgetSizes={...(global?.homeWidgetSizes||{})};
+    }
+   }));
   const options=(key,pt,en,values)=>{
    new Setting(root).setName(writerUi(pt,en)).addDropdown(d=>{
     for(const [id,ptLabel,enLabel] of values)d.addOption(id,writerUi(ptLabel,enLabel));

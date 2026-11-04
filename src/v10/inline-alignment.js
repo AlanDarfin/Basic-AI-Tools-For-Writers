@@ -1,6 +1,6 @@
 'use strict';
 /* Safe, line-anchored inline alignment. Markdown remains plain editable text.
- * Syntax: ::l[text], ::c[text], ::r[text] (long aliases allowed).
+ * Preferred syntax: ::l: text, ::c: text, ::r: text (long aliases allowed).\n * Legacy bracket syntax is retained for existing notes.
  * Never interprets /links/, |tables|, or backslashes as formatting. */
 function writerV102AlignMerge(settings){
  const raw=settings.v102Align&&typeof settings.v102Align==='object'?settings.v102Align:{};
@@ -9,12 +9,20 @@ function writerV102AlignMerge(settings){
  return cfg;
 }
 function writerV102AlignToken(raw){
- const match=/^([ \t]*)::(left|center|right|l|c|r)\[([^\n]{1,5000})\][ \t]*$/i.exec(String(raw||''));
+ const text=String(raw||'');
+ // Colon delimiters avoid Obsidian's inline link parsers altogether.
+ const modern=/^([ \\t]*)::(left|center|right|l|c|r):[ \\t]+([^\\n]{1,5000}?)[ \\t]*$/i.exec(text);
+ const legacy=modern?null:/^([ \\t]*)::(left|center|right|l|c|r)\\[([^\\n]{1,5000})\\][ \\t]*$/i.exec(text);
+ const match=modern||legacy;
  if(!match)return null;
  const word=match[2].toLowerCase();
  const side=word==='left'||word==='l'?'left':word==='right'||word==='r'?'right':'center';
- const prefix=match[1].length+2+match[2].length+1;
- return {side,from:match[1].length,to:match[0].trimEnd().length,innerFrom:prefix,innerTo:prefix+match[3].length};
+ const prefix=modern?/^([ \\t]*)::(left|center|right|l|c|r):[ \\t]+/i.exec(text)[0].length:
+   match[1].length+2+match[2].length+1;
+ const suffix=legacy?1:0;
+ const inner=match[3].trimEnd();
+ return {side,from:match[1].length,to:text.trimEnd().length,innerFrom:prefix,
+  innerTo:prefix+inner.length,legacy:!!legacy};
 }
 function writerV102AlignReading(root){
  if(!root?.querySelectorAll||typeof document==='undefined'||typeof NodeFilter==='undefined')return;
@@ -27,14 +35,17 @@ function writerV102AlignReading(root){
   const texts=[];while(walker.nextNode()&&texts.length<250)texts.push(walker.currentNode);
   if(!texts.length||texts.length>=250)continue;
   const first=texts[0],last=texts[texts.length-1];
-  const begin=/^(\s*)::(left|center|right|l|c|r)\[/i.exec(first.nodeValue||'');
-  if(!begin||!/\]\s*$/.test(last.nodeValue||''))continue;
+  const begin=token.legacy?/^(\\s*)::(left|center|right|l|c|r)\\[/i:
+   /^(\\s*)::(left|center|right|l|c|r):[ \\t]+/i;
+  const open=begin.exec(first.nodeValue||'');
+  if(!open||(token.legacy&&!/\\]\\s*$/.test(last.nodeValue||'')))continue;
   if(first===last){
    const original=first.nodeValue;
-   first.nodeValue=original.slice(begin[0].length).replace(/\]\s*$/,'');
+   first.nodeValue=original.slice(open[0].length);
+   if(token.legacy)first.nodeValue=first.nodeValue.replace(/\\]\\s*$/,'');
   }else{
-   first.nodeValue=first.nodeValue.slice(begin[0].length);
-   last.nodeValue=last.nodeValue.replace(/\]\s*$/,'');
+   first.nodeValue=first.nodeValue.slice(open[0].length);
+   if(token.legacy)last.nodeValue=last.nodeValue.replace(/\\]\\s*$/,'');
   }
   p.classList.add('writer-v102-align-processed','writer-v102-align-'+token.side);
  }
@@ -86,7 +97,7 @@ function writerV102AlignRegister(plugin){
     if(selected.includes('\n')||selected.includes('\r')){
      new Notice(writerUi('Selecione somente uma linha.','Select only one line.'));return true;
     }
-    editor.replaceSelection('::'+side+'['+(selected||writerUi('texto','text'))+']');
+    editor.replaceSelection('::'+side+': '+(selected||writerUi('texto','text')));
     return true;
    }});
  }
@@ -95,8 +106,8 @@ function writerV102AlignSettings(plugin,panel){
  const cfg=plugin.settings.v102Align;
  panel.createEl('h3',{text:writerUi('Alinhamento curto de texto','Short text alignment')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Em uma linha própria: ::l[texto] (esquerda), ::c[texto] (centro), ::r[texto] (direita). Aceita **negrito** e *itálico* no interior. Não usa /, | ou \\ para evitar conflitos com links, tabelas e escapes do Markdown.',
-  'On its own line: ::l[text] (left), ::c[text] (center), ::r[text] (right). Supports **bold** and *italics* inside. Avoids /, | and \\ to prevent clashes with links, tables and Markdown escapes.')});
+  'Em uma linha própria: ::l: texto (esquerda), ::c: texto (centro), ::r: texto (direita). O formato antigo com colchetes continua aceito, mas o novo evita conflitos com links.',
+  'On its own line: ::l: text (left), ::c: text (center), ::r: text (right). Legacy bracket markup is still supported, but colon notation avoids link conflicts.')});
  for(const [key,pt,en] of [
   ['enabled','Ativar alinhamento de texto','Enable text alignment'],
   ['reading','Renderizar no modo de leitura','Render in Reading mode'],

@@ -211,97 +211,162 @@ function writerV9SpaceEditor(plugin,initial,save){
 }
 function writerV9SpaceModal(plugin){
  if(!plugin.settings.v9Spaces.enabled||!writerModuleOn(plugin,'smartSpaces'))return;
- const modal=new Modal(plugin.app);
- let currentId=plugin.settings.v9Spaces.spaces[0]?.id||'';
- let filter='';
+ const modal=new Modal(plugin.app),cfg=plugin.settings.v9Spaces;
+ let currentId=cfg.activeId||cfg.spaces[0]?.id||'',query='',page=0;
+ const icon=(target,name)=>{
+  const targetIcon=target.createSpan({cls:'writer-v102-space-icon'});
+  try{require('obsidian').setIcon(targetIcon,name||'file-text');}catch(_){targetIcon.setText('•');}
+  return targetIcon;
+ };
+ const openFile=file=>{modal.close();void plugin.app.workspace.getLeaf('tab').openFile(file);};
  const refresh=()=>{
-  const root=modal.contentEl;root.empty();
+  const root=modal.contentEl;root.empty();root.addClass('writer-v102-spaces-manager');
   modal.setTitle(writerUi('Spaces · Coleções','Spaces · Collections'));
-  const nav=root.createDiv({cls:'writer-v9-spaces-nav'});
-  const select=nav.createEl('select',{attr:{'aria-label':writerUi('Selecionar Space','Select Space')}});
-  for(const space of plugin.settings.v9Spaces.spaces){
-   const option=select.createEl('option',{text:space.name});option.value=space.id;
+  const header=root.createDiv({cls:'writer-v102-spaces-header'});
+  const picker=header.createDiv({cls:'writer-v102-space-picker'});
+  icon(picker,'layers');
+  const select=picker.createEl('select',{attr:{'aria-label':writerUi('Coleção atual','Current collection')}});
+  for(const option of cfg.spaces){const el=select.createEl('option',{text:option.name});el.value=option.id;}
+  if(!cfg.spaces.some(x=>x.id===currentId))currentId=cfg.spaces[0]?.id||'';
+  select.value=currentId;
+  select.addEventListener('change',()=>{currentId=select.value;query='';page=0;refresh();});
+  const action=(target,label,symbol,callback)=>{
+   const button=target.createEl('button',{cls:'writer-v102-spaces-action',
+    attr:{type:'button',title:label,'aria-label':label}});
+   try{require('obsidian').setIcon(button,symbol);}catch(_){button.setText(label);}
+   button.addEventListener('click',callback);return button;
+  };
+  const actions=header.createDiv({cls:'writer-v102-spaces-actions'});
+  action(actions,writerUi('Criar Space','Create Space'),'plus',()=>writerV9SpaceEditor(plugin,null,async space=>{
+   cfg.spaces.push(space);currentId=space.id;query='';page=0;
+   await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();refresh();
+  }));
+  const space=cfg.spaces.find(x=>x.id===currentId);
+  if(!space){
+   root.createEl('p',{cls:'setting-item-description',text:writerUi('Crie uma Space para reunir suas notas.','Create a Space to organize your notes.')});return;
   }
-  select.value=currentId;select.addEventListener('change',()=>{currentId=select.value;filter='';refresh();});
-  nav.createEl('button',{text:writerUi('Nova','New')}).addEventListener('click',()=>{
-   writerV9SpaceEditor(plugin,null,async space=>{
-    plugin.settings.v9Spaces.spaces.push(space);currentId=space.id;await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();refresh();
-   });
+  action(actions,writerUi('Editar Space','Edit Space'),'settings-2',()=>writerV9SpaceEditor(plugin,space,async updated=>{
+   const i=cfg.spaces.findIndex(x=>x.id===space.id);
+   if(i>=0)cfg.spaces[i]=updated;
+   await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();refresh();
+  }));
+  action(actions,writerUi('Mais opções','More options'),'ellipsis',event=>{
+   const menu=new Menu(plugin.app);
+   menu.addItem(item=>item.setTitle(writerUi('Ativar esta Space','Activate this Space')).setIcon('check')
+    .onClick(()=>void writerV9215SelectSpace(plugin,space.id)));
+   menu.addItem(item=>item.setTitle(writerUi('Ícone e cor','Icon and color')).setIcon('palette').onClick(()=>
+    writerV922OpenIconPicker(plugin,{title:space.name,value:space.icon||'layers',color:space.iconColor||'',defaultIcon:'layers',
+     onApply:async(name,color)=>{space.icon=name||'layers';space.iconColor=color;await plugin.saveSettings();refresh();plugin.writerV9216SpacesDockRefresh?.();}})));
+   menu.addSeparator();
+   menu.addItem(item=>item.setTitle(writerUi('Excluir coleção','Delete collection')).setIcon('trash-2').onClick(()=>{
+    const confirm=new Modal(plugin.app);
+    confirm.onOpen=()=>{
+     confirm.setTitle(writerUi('Excluir a Space?','Delete this Space?'));
+     confirm.contentEl.createEl('p',{text:writerUi('Suas notas não serão excluídas.','Your notes will not be deleted.')});
+     new Setting(confirm.contentEl).addButton(btn=>btn.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>confirm.close()))
+      .addButton(btn=>btn.setButtonText(writerUi('Excluir','Delete')).setWarning().onClick(async()=>{
+       cfg.spaces=cfg.spaces.filter(x=>x.id!==space.id);
+       if(cfg.activeId===space.id)cfg.activeId='';
+       currentId=cfg.spaces[0]?.id||'';page=0;query='';
+       await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();
+       confirm.close();refresh();
+      }));
+    };confirm.open();
+   }));
+   menu.showAtMouseEvent(event);
   });
-  const space=plugin.settings.v9Spaces.spaces.find(s=>s.id===currentId);
-  if(!space){root.createEl('p',{text:writerUi('Crie uma Space para agrupar notas por pasta, tag ou propriedade.','Create a Space to collect notes by folder, tag or property.')});return;}
-  nav.createEl('button',{text:writerUi('Editar','Edit')}).addEventListener('click',()=>{
-   writerV9SpaceEditor(plugin,space,async updated=>{
-    const idx=plugin.settings.v9Spaces.spaces.findIndex(s=>s.id===space.id);
-    if(idx>=0)plugin.settings.v9Spaces.spaces[idx]=updated;
-    await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();refresh();
-   });
-  });
-  nav.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
-   const confirm=new Modal(plugin.app);
-   confirm.onOpen=()=>{
-    confirm.setTitle(writerUi('Remover coleção?','Remove collection?'));
-    confirm.contentEl.createEl('p',{text:writerUi('As notas permanecerão no cofre.','Your notes will remain in the vault.')});
-    new Setting(confirm.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>confirm.close()))
-     .addButton(b=>b.setButtonText(writerUi('Excluir Space','Delete Space')).setWarning().onClick(async()=>{
-      plugin.settings.v9Spaces.spaces=plugin.settings.v9Spaces.spaces.filter(s=>s.id!==space.id);
-      if(plugin.settings.v9Spaces.activeId===space.id)plugin.settings.v9Spaces.activeId='';
-      currentId=plugin.settings.v9Spaces.spaces[0]?.id||'';
-      await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();confirm.close();refresh();
-     }));
-   };
-   confirm.open();
-  });
-  const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',placeholder:writerUi('Pesquisar nesta coleção…','Search this collection…')}});
-  search.value=filter;
-  const content=root.createDiv({cls:'writer-v9-spaces-results is-'+space.view});
-  const cached=plugin.app.metadataCache;
+  const intro=root.createDiv({cls:'writer-v102-spaces-intro'});
+  const name=intro.createDiv({cls:'writer-v102-spaces-intro-name'});
+  const symbol=icon(name,space.icon||'layers');
+  if(space.iconColor)symbol.style.color=space.iconColor;
+  name.createEl('strong',{text:space.name});
+  const source=space.mode==='folder'?writerUi('Pasta','Folder'):
+   space.mode==='curated'?writerUi('Selecionadas','Curated'):writerUi('Filtros','Filters');
+  intro.createSpan({cls:'writer-v102-spaces-source',text:source+(space.folder?' · '+space.folder:'')});
+  const controls=root.createDiv({cls:'writer-v102-spaces-controls'});
+  const searchWrap=controls.createDiv({cls:'writer-v102-spaces-search-wrap'});
+  icon(searchWrap,'search');
+  const search=searchWrap.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar notas nesta Space…','Search notes in this Space…'),
+   'aria-label':writerUi('Buscar notas','Search notes')}});
+  search.value=query;search.addEventListener('input',()=>{query=search.value;page=0;draw();});
+  const layouts=controls.createDiv({cls:'writer-v102-spaces-layouts',attr:{role:'group','aria-label':writerUi('Modo de visualização','View mode')}});
+  const modes=[['cards','layout-grid','Cartões','Cards'],['list','list','Lista','List'],['table','table','Tabela','Table'],['board','columns-3','Quadro','Board']];
+  const buttons=new Map();
+  for(const [id,ico,pt,en] of modes){
+   buttons.set(id,action(layouts,writerUi(pt,en),ico,async()=>{
+    space.view=id;page=0;await plugin.saveSettings();draw();
+   }));
+  }
+  const count=root.createDiv({cls:'writer-v102-spaces-count'});
+  const results=root.createDiv({cls:'writer-v9-spaces-results writer-v102-spaces-results'});
+  const pagination=root.createDiv({cls:'writer-v102-spaces-pagination'});
   const draw=()=>{
-   content.empty();
-   const items=writerV9SpaceItems(plugin,space).filter(file=>file.path.toLocaleLowerCase().includes(filter.toLocaleLowerCase()));
-   if(!items.length){content.createEl('p',{text:writerUi('Nenhuma nota corresponde aos filtros.','No matching notes.')});return;}
-   const openFile=file=>{modal.close();void plugin.app.workspace.getLeaf('tab').openFile(file);};
-   const propertyOf=file=>cached.getFileCache?.(file)?.frontmatter||{};
+   results.empty();pagination.empty();
+   for(const [id,button] of buttons){
+    button.classList.toggle('is-active',space.view===id);
+    button.setAttribute('aria-pressed',String(space.view===id));
+   }
+   results.className='writer-v9-spaces-results writer-v102-spaces-results is-'+space.view;
+   const all=writerV9SpaceItems(plugin,space);
+   const norm=query.trim().toLocaleLowerCase();
+   const items=all.filter(file=>!norm||file.basename.toLocaleLowerCase().includes(norm)||file.path.toLocaleLowerCase().includes(norm));
+   count.setText(items.length+' '+writerUi('notas','notes')+(items.length!==all.length?' / '+all.length:''));
+   if(!items.length){results.createEl('p',{cls:'writer-v102-spaces-empty',text:writerUi('Nenhuma nota encontrada.','No matching notes.')});return;}
+   const pageSize=space.view==='table'?30:24,max=Math.max(0,Math.ceil(items.length/pageSize)-1);
+   page=Math.max(0,Math.min(max,page));
+   const visible=items.slice(page*pageSize,page*pageSize+pageSize);
+   const metadata=plugin.app.metadataCache;
    if(space.view==='board'){
     const groups=new Map();
-    for(const file of items){
-     const key=String(propertyOf(file)[space.groupBy]??writerUi('Sem grupo','Ungrouped')).slice(0,80);
+    for(const file of visible){
+     const key=String(metadata.getFileCache?.(file)?.frontmatter?.[space.groupBy]??writerUi('Sem grupo','Ungrouped')).slice(0,80);
      if(!groups.has(key))groups.set(key,[]);groups.get(key).push(file);
     }
-    for(const [group,entries] of groups){
-     const column=content.createDiv({cls:'writer-v9-spaces-column'});
-     column.createEl('h4',{text:group+' · '+entries.length});
-     for(const file of entries)column.createEl('button',{text:file.basename}).addEventListener('click',()=>openFile(file));
+    for(const [name,files] of groups){
+     const column=results.createDiv({cls:'writer-v9-spaces-column'});
+     column.createEl('h4',{text:name+' · '+files.length});
+     for(const file of files){
+      const item=column.createEl('button',{cls:'writer-v102-space-board-card',attr:{type:'button',title:file.path}});
+      icon(item,plugin.settings.v9Explorer?.items?.[file.path]?.icon||'file-text');
+      item.createSpan({text:file.basename});
+      item.addEventListener('click',()=>openFile(file));
+     }
     }
    }else if(space.view==='table'){
-    const table=content.createEl('table');
+    const table=results.createEl('table');
     const head=table.createEl('thead').createEl('tr');
-    for(const label of [writerUi('Nota','Note'),writerUi('Pasta','Folder'),space.groupBy])head.createEl('th',{text:label});
-    const tbody=table.createEl('tbody');
-    for(const file of items){
-     const row=tbody.createEl('tr');
-     row.createEl('td').createEl('button',{text:file.basename}).addEventListener('click',()=>openFile(file));
-     row.createEl('td',{text:file.parent?.path||'/'});
-     row.createEl('td',{text:String(propertyOf(file)[space.groupBy]??'').slice(0,120)});
+    for(const label of [writerUi('Nota','Note'),writerUi('Pasta','Folder'),space.groupBy||writerUi('Grupo','Group')])head.createEl('th',{text:label});
+    const body=table.createEl('tbody');
+    for(const file of visible){
+     const tr=body.createEl('tr'),cell=tr.createEl('td');
+     cell.createEl('button',{text:file.basename,attr:{type:'button'}}).addEventListener('click',()=>openFile(file));
+     tr.createEl('td',{text:file.parent?.path||'/'});
+     tr.createEl('td',{text:String(metadata.getFileCache?.(file)?.frontmatter?.[space.groupBy]??'').slice(0,100)});
     }
    }else{
-    for(const file of items){
-     const button=content.createEl('button',{cls:'writer-v9-spaces-item'});
-     const icon=button.createSpan();
-     require('obsidian').setIcon(icon,plugin.settings.v9Explorer?.items?.[file.path]?.icon||'file-text');
-     button.createSpan({text:file.basename});
-     if(space.view==='cards')button.createSpan({cls:'writer-v9-spaces-detail',text:file.parent?.path||'/'});
-     button.addEventListener('click',()=>openFile(file));
+    for(const file of visible){
+     const item=results.createEl('button',{cls:'writer-v9-spaces-item writer-v102-space-entry',
+      attr:{type:'button',title:file.path,'aria-label':file.basename}});
+     const symbol=icon(item,plugin.settings.v9Explorer?.items?.[file.path]?.icon||'file-text');
+     symbol.classList.add('writer-v102-space-entry-icon');
+     const info=item.createDiv({cls:'writer-v102-space-entry-info'});
+     info.createEl('strong',{text:file.basename});
+     info.createSpan({cls:'writer-v9-spaces-detail',text:file.parent?.path||'/'});
+     const arrow=icon(item,'chevron-right');arrow.classList.add('writer-v102-space-entry-arrow');
+     item.addEventListener('click',()=>openFile(file));
     }
    }
-   root.querySelector('.writer-v9-spaces-count')?.setText(items.length+' '+writerUi('notas','notes'));
+   if(max>0){
+    const prev=pagination.createEl('button',{text:writerUi('Anterior','Previous'),attr:{type:'button'}});prev.disabled=page===0;
+    prev.addEventListener('click',()=>{page--;draw();results.scrollTop=0;});
+    pagination.createSpan({text:(page+1)+' / '+(max+1)});
+    const next=pagination.createEl('button',{text:writerUi('Próxima','Next'),attr:{type:'button'}});next.disabled=page===max;
+    next.addEventListener('click',()=>{page++;draw();results.scrollTop=0;});
+   }
   };
-  root.createEl('small',{cls:'writer-v9-spaces-count'});
-  search.addEventListener('input',()=>{filter=search.value;draw();});
   draw();
  };
- modal.onOpen=refresh;
- modal.open();
+ modal.onOpen=refresh;modal.open();
 }
 class WriterV9SpacesSideView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.currentId='';this.query='';}

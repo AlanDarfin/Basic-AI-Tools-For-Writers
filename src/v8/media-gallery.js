@@ -4,7 +4,8 @@ const WRITER_V8_MEDIA_EXT={
  image:['png','jpg','jpeg','webp','gif','avif','svg','bmp'],
  video:['mp4','webm','mov','m4v','ogv'],
  audio:['mp3','ogg','wav','m4a','flac','opus'],
- pdf:['pdf']
+ pdf:['pdf'],
+  document:['txt','rtf','doc','docx','odt','epub','csv','tsv','json','jsonc','yaml','yml','xml','html','css','md','toml']
 };
 function writerV8MediaConfig(source){
  const conf={path:'',type:'all',layout:'masonry',sort:'name-asc',subfolders:true,limit:90};
@@ -13,7 +14,7 @@ function writerV8MediaConfig(source){
   if(!match)continue;
   const key=match[1].toLowerCase(),value=match[2].replace(/^['"]|['"]$/g,'');
   if(key==='path'||key==='folder')conf.path=value.slice(0,400);
-  if(key==='type'&&['all','image','video','audio','pdf'].includes(value))conf.type=value;
+  if(key==='type'&&['all','image','video','audio','pdf','document'].includes(value))conf.type=value;
   if(key==='layout'&&['masonry','grid','ratio'].includes(value))conf.layout=value;
   if(key==='sort'&&['name-asc','name-desc','mtime-desc','mtime-asc','size-desc','size-asc'].includes(value))conf.sort=value;
   if(key==='subfolders')conf.subfolders=value==='true';
@@ -60,6 +61,11 @@ function writerV8MediaOpen(plugin,items,index){
  const item=items[index];
  if(!item)return;
  if(item.kind==='pdf'){void plugin.app.workspace.getLeaf(false).openFile(item.file);return;}
+  if(item.kind==='document'){
+   if(typeof plugin.writerV10OpenTextFile==='function'&&writerV10EditableText(item.file))plugin.writerV10OpenTextFile(item.file);
+   else void plugin.app.workspace.getLeaf(false).openFile(item.file);
+   return;
+  }
  const modal=new Modal(plugin.app);
  const draw=i=>{
   const current=items[i];
@@ -94,6 +100,7 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const all=writerV8MediaFiles(plugin.app,root,cfg);
  const header=host.createDiv({cls:'writer-v8-media-header'});
  header.createEl('strong',{text:root.name||writerUi('Galeria','Gallery')});
+  header.createSpan({cls:'writer-v8-media-count',text:String(all.length)});
  const search=header.createEl('input',{attr:{type:'search',placeholder:writerUi('Filtrar mídias…','Filter media…'),'aria-label':writerUi('Filtrar mídias','Filter media')}});
  const tabs=host.createDiv({cls:'writer-v8-media-filters'});
  const grid=host.createDiv({cls:'writer-v8-media-grid writer-v8-media-'+cfg.layout});
@@ -102,7 +109,7 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const render=()=>{
   grid.empty();
   const query=search.value.trim().toLocaleLowerCase();
-  const matching=all.filter(x=>(selected==='all'||x.kind===selected)&&(!query||(x.file.basename||x.file.name).toLocaleLowerCase().includes(query)));
+  const matching=all.filter(x=>(selected==='all'||x.kind===selected)&&(!query||x.file.path.toLocaleLowerCase().includes(query)));
   buttons.forEach(({type,button})=>{button.classList.toggle('is-active',type===selected);button.setAttribute('aria-pressed',String(type===selected));});
   for(const item of matching){
    const tile=grid.createEl('button',{cls:'writer-v8-media-item',attr:{type:'button',title:item.file.path}});
@@ -111,7 +118,7 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
    }else{
     const glyph=tile.createDiv({cls:'writer-v8-media-glyph'});
     const obs=typeof require==='function'?require('obsidian'):null;
-    const icon=item.kind==='video'?'film':item.kind==='audio'?'music':'file-text';
+    const icon=item.kind==='video'?'film':item.kind==='audio'?'music':item.kind==='document'?'file-code-2':'file-text';
     if(typeof obs?.setIcon==='function')obs.setIcon(glyph,icon);
     else glyph.textContent=item.kind.toUpperCase();
    }
@@ -120,10 +127,10 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
   }
   if(!matching.length)grid.createEl('p',{text:writerUi('Nenhuma mídia encontrada.','No media found.')});
  };
- const categories=['all','image','video','audio','pdf'];
+ const categories=['all','image','video','audio','pdf','document'];
  for(const type of categories){
   if(cfg.type!=='all'&&type!==cfg.type)continue;
-  const label={all:writerUi('Tudo','All'),image:writerUi('Imagens','Images'),video:writerUi('Vídeos','Videos'),audio:writerUi('Áudio','Audio'),pdf:'PDF'}[type];
+  const label={all:writerUi('Tudo','All'),image:writerUi('Imagens','Images'),video:writerUi('Vídeos','Videos'),audio:writerUi('Áudio','Audio'),pdf:'PDF',document:writerUi('Documentos','Documents')}[type];
   const button=tabs.createEl('button',{text:label,attr:{type:'button','aria-pressed':'false'}});
   button.addEventListener('click',()=>{selected=type;render();});
   buttons.push({type,button});

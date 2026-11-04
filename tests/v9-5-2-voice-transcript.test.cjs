@@ -42,36 +42,31 @@ class FakeEl{
  addEventListener(key,handler){this.handlers[key]=handler;}
  setText(text){this.text=String(text);}
 }
-test('transcript toggle is keyboard/button accessible and hidden until pressed',()=>{
+test('transcript is always visible, text-only and has no extra toggle',()=>{
  const root=new FakeEl();
  api.writerV8ChatRenderFakeAudio(root,api.writerV8ChatFakeAudio('[audio:0:15:<span>Não executar HTML</span>]'));
- const buttons=root.children.filter(e=>e.tag==='button');
- assert.equal(buttons.length,1);
- const toggle=buttons[0],body=root.children.find(e=>e.classNames.has('writer-v8-chat-transcript-text'));
- assert.ok(body);assert.equal(body.hidden,true);
- assert.equal(toggle.attributes['aria-expanded'],'false');
- assert.equal(toggle.attributes['aria-controls'],body.attributes.id);
+ const player=root.children.find(e=>e.classNames.has('writer-v8-chat-fake-audio'));
+ assert.ok(player);
+ const body=player.children.find(e=>e.classNames.has('writer-v8-chat-transcript-text'));
+ assert.ok(body);assert.equal(body.hidden,false);
  assert.equal(body.text,'<span>Não executar HTML</span>');
- toggle.handlers.click();
- assert.equal(body.hidden,false);assert.equal(toggle.attributes['aria-expanded'],'true');
- assert.equal(toggle.text,'Ocultar transcrição');
- toggle.handlers.click();
- assert.equal(body.hidden,true);assert.equal(toggle.text,'Ver transcrição');
+ assert.equal(root.children.filter(e=>e.classNames.has('writer-v8-chat-transcript-toggle')).length,0);
  const plain=new FakeEl();
  api.writerV8ChatRenderFakeAudio(plain,api.writerV8ChatFakeAudio('[audio:0:15]'));
- assert.equal(plain.children.filter(e=>e.tag==='button').length,0);
+ assert.equal(plain.children[0].children.some(e=>e.classNames.has('writer-v8-chat-transcript-text')),false);
 });
+
 test('shipped bundle, styles and documentation include transcription and no external recognition',()=>{
- assert.match(fs.readFileSync('main.js','utf8'),/writer-v8-chat-transcript-toggle/);
+ assert.match(fs.readFileSync('main.js','utf8'),/Written transcript/);
  const css=fs.readFileSync('src/styles/v9-5-2-chat-audio.css','utf8');
  assert.ok(fs.readFileSync('styles.css','utf8').includes(css.trimEnd()));
- assert.match(css,/writer-v8-chat-transcript-text\[hidden\]\{display:none;\}/);
+ assert.match(css,/writer-v8-chat-transcript-text/);
  assert.doesNotMatch(source,/getUserMedia\(|MediaRecorder\(|new Audio\(/);
  for(const path of ['docs/BLOCKS.pt-BR.md','docs/BLOCKS.en.md']){
   const doc=fs.readFileSync(path,'utf8');
   assert.ok(doc.includes('[áudio:0:15:')||doc.includes('[audio:0:15:'));
  }
  for(const path of ['manifest.json','package.json','README.md','docs/README.pt-BR.md']){
-  assert.match(fs.readFileSync(path,'utf8'),/9\.5\.2/);
+  assert.match(fs.readFileSync(path,'utf8'),/10\.0\.0/);
  }
 });

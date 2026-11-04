@@ -1,46 +1,10 @@
-/* 9.5.2 — Fictional voice note transcripts; no audio recording or playback. */
-.writer-v8-chat .writer-v8-chat-transcript-toggle{
- display:inline-flex;
- align-items:center;
- justify-content:center;
- min-width:0;
- min-height:30px;
- margin:7px 0 0;
- padding:4px 9px;
- color:var(--text-accent);
- font-size:var(--font-ui-smaller);
- font-weight:500;
- line-height:1.35;
- background:transparent;
- border:1px solid var(--background-modifier-border);
- border-radius:var(--radius-s);
- box-shadow:none;
- cursor:pointer;
-}
-.writer-v8-chat .writer-v8-chat-transcript-toggle:hover{
- background:var(--background-modifier-hover);
-}
-.writer-v8-chat .writer-v8-chat-transcript-toggle:focus-visible{
- outline:2px solid var(--interactive-accent);
- outline-offset:2px;
-}
+/* v10: show user-written transcripts directly below fictional voice notes. */
+.writer-v8-chat .writer-v8-chat-fake-audio{max-width:min(100%,23rem);min-width:0;flex-wrap:wrap;}
 .writer-v8-chat .writer-v8-chat-transcript-text{
- max-width:100%;
- min-width:0;
- margin:7px 0 0;
- padding:8px 10px;
- border-inline-start:2px solid var(--interactive-accent);
- border-radius:var(--radius-s);
- background:var(--background-secondary);
- color:var(--text-normal);
- font-size:var(--font-ui-small);
- line-height:1.5;
- white-space:pre-wrap;
- overflow-wrap:anywhere;
- user-select:text;
+ display:block;flex:0 0 100%;max-width:100%;min-width:0;margin:4px 0 0;padding:8px 10px;
+ border:0;border-inline-start:2px solid var(--interactive-accent);border-radius:var(--radius-s);
+ background:var(--background-secondary);color:var(--text-normal);
+ font-size:var(--font-ui-small);line-height:1.5;white-space:pre-wrap;
+ overflow-wrap:anywhere;user-select:text;
 }
-.writer-v8-chat .writer-v8-chat-transcript-text[hidden]{display:none;}
-body.is-mobile .writer-v8-chat .writer-v8-chat-transcript-toggle{
- min-height:40px;
- padding:7px 10px;
-}
+body.is-mobile .writer-v8-chat .writer-v8-chat-transcript-text{padding:9px 10px;font-size:var(--font-ui-medium);}

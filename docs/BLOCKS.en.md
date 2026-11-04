@@ -462,3 +462,34 @@ Options: `layout` (`vertical` or `horizontal`), `theme` (`classic`, `cards`, `mi
 If you see raw code instead of a widget, check the spelling of the fence, the module toggle, and Obsidian's Reading View / Live Preview. For `folder-overview` and `media-gallery`, paths refer to **vault folders**, not operating-system absolute paths. For local images, the linked file must exist in the vault. On phones, the Overview **list tree** has separate touch targets: tap the chevron to collapse/expand, or the folder name to navigate into it.
 
 All examples above use only the plugin's current renderer syntax; no external Make.md dependency is required.
+
+
+## 15. Longform bookshelf (bookshelf / writer-bookshelf)
+
+The bookshelf reads existing Longform indices and local covers, without creating a second library database. A compact **Books** widget is also available on the homepage.
+
+~~~~markdown
+~~~bookshelf
+sort: recent
+layout: compact
+~~~
+~~~~
+
+Options: sort (title, recent, chapters); layout (normal, compact). Chapter count does not mean reading progress.
+
+## 16. Gallery documents and text editing
+
+In addition to image/video/audio/pdf, the Gallery accepts **type: document**. Document tiles include TXT, Markdown, JSON, CSV, XML, RTF, DOCX, EPUB and similar formats. Audio has playback controls; PDFs and binary documents are delegated to native viewers. The new text editor edits supported text/code extensions up to 512 KiB, with explicit Save; it is **not** a DOCX editor.
+
+~~~~markdown
+~~~media-gallery
+folder: Books/Resources
+type: document
+layout: grid
+subfolders: true
+~~~
+~~~~
+
+## 17. Fictional audio: always-visible written transcription
+
+With [audio:0:15:Written text] or [áudio:0:15:Texto escrito], the supplied text appears immediately and safely below the simulated waveform. There is no transcript toggle. It is not real audio transcription or playback. Older chat, writer-chat, --- and --- label --- syntax remains supported.

@@ -8,7 +8,7 @@ function writerV8HomeTitleClean(value){
   .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
   .slice(0,80);
 }
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today'],homeHidden:['activity','random','tags','goal','gallery','quotes','today'],homeWordGoal:500,homeQuotes:''};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','books'],homeWordGoal:500,homeQuotes:''};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -32,7 +32,7 @@ function writerV8FinishMerge(settings){
  else if(!requested.includes('calendar'))requested.push('calendar');
  cfg.homeOrder=[...new Set([...requested,...allowed])];
  // New widgets are off by default for existing installs; user choices persist.
- const newWidgets=['gallery','quotes','today'];
+ const newWidgets=['gallery','quotes','today','books'];
  cfg.homeHidden=Array.isArray(old.homeHidden)?
   [...new Set([...old.homeHidden.filter(key=>allowed.includes(key)),...newWidgets.filter(key=>!prevOrder.includes(key))])]:
   [...WRITER_V8_FINISH_DEFAULTS.homeHidden];
@@ -223,7 +223,6 @@ function writerV8ChatExpandBreaks(value){
  return String(value||'').replace(/(\\+)n/g,(_match,slashes)=>
   '\\'.repeat(Math.floor(slashes.length/2))+(slashes.length%2?'\n':'n'));
 }
-let writerV8ChatTranscriptSerial=0;
 function writerV8ChatRenderFakeAudio(bubble,voice){
  const label=writerUi('Áudio falso: animação sem som ou gravação real','Fake voice note: animation without sound or recording');
  const player=bubble.createDiv({cls:'writer-v8-chat-fake-audio',attr:{role:'group','aria-label':label}});
@@ -244,21 +243,10 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  // No transcript is inferred or fetched: the author provides the text after
  // the duration. Plain text avoids executing arbitrary HTML from the vault.
  if(!voice.transcript)return;
- const transcriptId='writer-v8-voice-transcript-'+(++writerV8ChatTranscriptSerial);
- const toggle=bubble.createEl('button',{cls:'writer-v8-chat-transcript-toggle',
-  attr:{type:'button','aria-expanded':'false','aria-controls':transcriptId}});
- const body=bubble.createDiv({cls:'writer-v8-chat-transcript-text',
-  attr:{id:transcriptId,role:'region','aria-label':writerUi('Transcrição do áudio fictício','Fictional voice note transcript')}});
+ // The author-supplied fictional transcript is visible immediately.
+ const body=player.createDiv({cls:'writer-v8-chat-transcript-text',
+  attr:{role:'note','aria-label':writerUi('Transcrição escrita','Written transcript')}});
  body.setText(voice.transcript);
- body.hidden=true;
- const show=expanded=>{
-  body.hidden=!expanded;
-  toggle.setAttribute('aria-expanded',String(expanded));
-  toggle.setText(expanded?writerUi('Ocultar transcrição','Hide transcript'):
-   writerUi('Ver transcrição','View transcript'));
- };
- show(false);
- toggle.addEventListener('click',()=>show(body.hidden));
 }
 /* Standalone --- separates messages; --- label --- places text between rules. */
 function writerV8ChatDivider(line){

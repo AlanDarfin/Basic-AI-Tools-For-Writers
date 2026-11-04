@@ -473,3 +473,34 @@ Opções: `layout` (`vertical` ou `horizontal`), `theme` (`classic`, `cards`, `m
 Verifique a grafia do nome entre as crases, o módulo habilitado e o modo de leitura do Obsidian. Em `folder-overview` e `media-gallery`, `folder`/`path` são caminhos **dentro do cofre**, e não caminhos absolutos do computador. Imagens locais precisam existir no cofre. No Android, o Overview em **lista** oferece dois alvos de toque: a seta expande/recolhe as subpastas e o nome abre a pasta.
 
 Todos os exemplos documentam funções existentes no Basic, sem exigir a instalação do Make.md.
+
+
+## 15. Biblioteca Longform (bookshelf / writer-bookshelf)
+
+A biblioteca usa índices Longform existentes e capas locais, sem criar uma segunda base de livros. Também há um widget compacto **Meus livros** na homepage.
+
+~~~~markdown
+~~~bookshelf
+sort: recent
+layout: compact
+~~~
+~~~~
+
+Opções: sort (title, recent, chapters); layout (normal, compact). A contagem de capítulos não significa progresso de leitura.
+
+## 16. Gallery de documentos e editor de texto
+
+Além de imagem/vídeo/áudio/pdf, a galeria aceita **type: document**. Os cartões incluem TXT, Markdown, JSON, CSV, XML, RTF, DOCX, EPUB e similares. Áudio possui player; PDF e documentos binários abrem nos visualizadores nativos. O novo editor edita formatos de texto/código de até 512 KiB com botão Salvar; **não** é editor de DOCX.
+
+~~~~markdown
+~~~media-gallery
+folder: Livros/Referências
+type: document
+layout: grid
+subfolders: true
+~~~
+~~~~
+
+## 17. Áudio fictício: transcrição escrita sempre visível
+
+Com [áudio:0:15:Texto escrito] ou [audio:0:15:Written text], o conteúdo fornecido aparece imediatamente, como texto seguro, abaixo da onda simulada, sem botão para expandir. Não há transcrição nem reprodução real de áudio. Os formatos antigos chat, writer-chat, --- e --- texto --- permanecem válidos.

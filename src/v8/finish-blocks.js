@@ -313,5 +313,6 @@ function writerV8RegisterFinishBlocks(plugin){
    if(!writerModuleOn(plugin,'fictionalChats')){element.createEl('pre',{text:source});return;}
    writerV8ChatRender(plugin,source,element,ctx);
   });
+ writerV95RegisterTimelineBlocks(plugin);
  plugin.registerMarkdownPostProcessor?.((el)=>writerV8CaptionProcess(plugin,el));
 }

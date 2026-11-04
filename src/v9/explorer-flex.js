@@ -341,31 +341,36 @@ function writerV93FlexStore(plugin,dir){
  return cfg.folders;
 }
 function writerV91FlexReorder(plugin,path,target,direction){
- const cfg=plugin.settings.v91Flex;
  const file=plugin.app.vault.getAbstractFileByPath(path);
  const other=plugin.app.vault.getAbstractFileByPath(target);
- if(!file||!other||file.parent?.path!==other.parent?.path||path===target)return;
- const dir=writerV91FlexFolderPath(file),parent=file.parent;
- const store=writerV93FlexStore(plugin,dir);
- const record=store[dir]||{sort:'custom',order:[]};
- const original=(parent?.children||[]).map(f=>f.name);
- const existing=new Set(original);
- const order=[...new Set([...(record.order||[]).filter(n=>existing.has(n)),...original])];
- const from=order.indexOf(file.name),to=order.indexOf(other.name);
- if(from<0||to<0)return;
- order.splice(from,1);
- const targetIndex=order.indexOf(other.name);
- order.splice(targetIndex+(direction==='after'?1:0),0,file.name);
+ if(!file||!other||file.parent?.path!==other.parent?.path||path===target)return false;
+ const dir=writerV324FolderKey(writerV91FlexFolderPath(file)),parent=file.parent;
+ const store=writerV93FlexStore(plugin,dir),record=store[dir]||writerV93FlexRecord(plugin,dir);
+ const available=(parent?.children||[]).map(f=>f.path);
+ if(!available.includes(path)||!available.includes(target))return false;
+ const order=writerV324ReconcilePaths(record.order,available,dir);
+ const current=order.indexOf(path);
+ if(current<0)return false;
+ order.splice(current,1);
+ const index=order.indexOf(target);
+ if(index<0)return false;
+ order.splice(index+(direction==='after'?1:0),0,path);
  store[dir]={...record,sort:'custom',order};
  void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+ return true;
 }
 function writerV91FlexSetSort(plugin,folder,sort){
- const key=folder?.path||'',store=writerV93FlexStore(plugin,key);
- const record={...(store[key]||writerV93FlexRecord(plugin,key))};
+ const dir=writerV324FolderKey(folder?.path),store=writerV93FlexStore(plugin,dir);
+ const record={...(store[dir]||writerV93FlexRecord(plugin,dir))};
  record.sort=sort;
- if(sort==='custom'&&!record.order.length)
-  record.order=(folder?.children||[]).map(f=>f.name);
- store[key]=record;void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+ if(sort==='custom')record.order=writerV324ReconcilePaths(record.order,
+  (folder?.children||plugin.app.vault.getRoot?.()?.children||[]),dir);
+ store[dir]=record;
+ void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+}
+function writerV324SortedSiblingPaths(plugin,folder){
+ const items=(folder?.children||[]).map(file=>({file}));
+ return writerV104FlexNativeSort(plugin,folder,items).map(item=>item.file.path);
 }
 function writerV93FlexSortModal(plugin,folder){
  const cfg=plugin.settings.v91Flex,key=folder?.path||'';
@@ -385,13 +390,13 @@ function writerV93FlexSortModal(plugin,folder){
   new Setting(root).setName(writerUi('Pastas primeiro (nesta pasta)','Folders first (this folder)'))
    .addToggle(t=>t.setValue(model.foldersFirst).onChange(value=>{model.foldersFirst=value;}));
   new Setting(root).setName(writerUi('Ordem manual e padrões','Manual order and patterns'))
-   .setDesc(writerUi('Um nome por linha; aceita * e ?. Os demais itens ficam no fim.','One name per line; accepts * and ?. Unlisted items stay last.'))
+   .setDesc(writerUi('Um arquivo por linha (nome ou caminho completo); aceita * e ?. Os novos itens ficam no fim.','One sibling per line (name or full path); supports * and ?. New items go last.'))
    .addTextArea(text=>text.setValue(model.order.join('\n')).onChange(value=>{
     model.order=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,1000);
    }));
   new Setting(root).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
-   if(model.sort==='custom'&&!model.order.length)
-    model.order=(folder?.children||plugin.app.vault.getRoot?.()?.children||[]).map(x=>x.name);
+   if(model.sort==='custom')model.order=writerV324ReconcilePaths(model.order,
+    (folder?.children||plugin.app.vault.getRoot?.()?.children||[]),key);
    store[key]={sort:model.sort,property:model.property,order:model.order,foldersFirst:model.foldersFirst};
    await plugin.saveSettings();plugin.writerV91FlexRefresh?.();modal.close();
   })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
@@ -475,11 +480,10 @@ function writerV91FlexRegister(plugin){
   if(cfg.sortEnabled!==false&&writerV93FlexRecord(plugin,dir)?.sort==='custom'&&file.parent){
    for(const [direction,pt,en] of [['before','Mover para cima','Move earlier'],['after','Mover para baixo','Move later']]){
     menu.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(direction==='before'?'arrow-up':'arrow-down').onClick(()=>{
-     const list=writerV93FlexRecord(plugin,dir).order;
-     const name=file.name,index=list.indexOf(name),other=list[index+(direction==='before'?-1:1)];
-     if(!other)return;
-     const target=file.parent.children?.find(f=>f.name===other);
-     if(target)writerV91FlexReorder(plugin,file.path,target.path,direction);
+     const list=writerV324SortedSiblingPaths(plugin,file.parent);
+     const index=list.indexOf(file.path);
+     const target=list[index+(direction==='before'?-1:1)];
+     if(target)writerV91FlexReorder(plugin,file.path,target,direction);
     }));
    }
   }

@@ -17137,7 +17137,8 @@ function writerV93FlowParse(source,cfg){
 }
 function writerV93FlowSerialize(parsed){return [...parsed.options,...parsed.items].join('\n').trim();}
 function writerV93FlowLink(raw){
- return String(raw||'').replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
+ const original=String(raw||'').trim().split(/\s+\|\s*after\s*:/i)[0];
+ return original.replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
 }
 function writerV101FlowLinkDependency(raw){
  const text=String(raw||'');

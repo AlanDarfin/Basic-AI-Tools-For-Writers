@@ -7646,4 +7646,24 @@ body.is-mobile .writer-v8-chat .writer-v8-chat-transcript-text{padding:9px 10px;
 .writer-v102-spaces-manager .writer-v102-spaces-results.is-cards .writer-v102-space-entry{flex-wrap:nowrap;align-content:center;justify-content:flex-start;text-align:start;min-height:65px}
 .modal.writer-v102-image-modal-host{width:min(96vw,820px);max-width:96vw}
 @media(max-width:700px){.modal.writer-v102-image-modal-host{width:calc(100vw - 16px);max-width:calc(100vw - 16px)}}
+
+
+/* Desktop: larger, consistent native explorer toolbar hit targets without enlarging mobile UI. */
+body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button,
+body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button{
+ min-width:30px;
+ width:30px;
+ min-height:30px;
+ height:30px;
+ padding:6px;
+ display:inline-flex;
+ justify-content:center;
+ align-items:center;
+ flex:0 0 30px;
+}
+body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-action-button svg{
+ width:18px;
+ height:18px;
+}
+body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
 /* END V8 MODULAR STYLES */

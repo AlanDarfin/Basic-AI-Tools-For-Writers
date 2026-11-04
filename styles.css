@@ -6815,6 +6815,47 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-sp
  width:27px;
  height:27px;
 }
+/* 9.3.1 — Preview toggle inherits the same neutral pictogram color as neighbors. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle,
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle.is-active,
+.workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle[aria-pressed="true"]{
+ color:var(--text-muted);
+ background:transparent;
+ opacity:1;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v921-preview-toggle svg{
+ color:inherit;
+ stroke:currentColor;
+}
+/* Folder descriptions show up to three lines, while ordinary note excerpts
+   honor the configured line limit. '...' only appears for measured overflow. */
+.workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell.writer-v93-folder-description:not(.is-expanded) .writer-v92-file-preview{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:3;
+ overflow:hidden;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-file-preview{
+ position:relative;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell:not(.is-expanded) .writer-v92-file-preview.writer-v931-truncated::after{
+ content:"...";
+ display:block;
+ position:absolute;
+ inset-inline-end:0;
+ bottom:0;
+ min-width:1.8em;
+ height:1.45em;
+ padding-inline-start:.45em;
+ box-sizing:border-box;
+ text-align:end;
+ color:inherit;
+ background:linear-gradient(to right,transparent,var(--background-secondary) 45%);
+ pointer-events:none;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell.is-expanded .writer-v92-file-preview::after{
+ content:none;
+}
 
 /* 9.2.3: Home heading proportions and optical alignment in native Explorer. */
 .workspace-leaf-content[data-type="file-explorer"] .nav-file-title .writer-v92-favorite{
@@ -6976,4 +7017,82 @@ body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
  gap:10px;
 }
 body.is-mobile .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
+/* Basic AI Tool for Writers — 9.3.1 Pomodoro, scoped and mobile-friendly. */
+.writer-v931-pomodoro{
+ display:flex;flex-direction:column;gap:14px;box-sizing:border-box;
+ padding:16px;min-width:0;max-width:100%;overflow-y:auto;
+}
+.writer-v931-pomodoro h3{
+ margin:0;line-height:1.3;font-size:var(--font-ui-large);
+ color:var(--text-normal);
+}
+.writer-v931-pomodoro-modes{display:flex;flex-wrap:wrap;gap:5px;min-width:0;}
+.writer-v931-pomodoro-modes button{
+ flex:1 1 auto;min-width:85px;
+ padding:8px 10px;line-height:1.2;
+ color:var(--text-muted);background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);cursor:pointer;
+}
+.writer-v931-pomodoro-modes button.is-active{
+ color:var(--text-normal);border-color:var(--interactive-accent);
+ background:var(--background-modifier-hover);
+}
+.writer-v931-pomodoro-clock{
+ text-align:center;color:var(--text-normal);
+ font-size:clamp(40px,8vw,68px);
+ font-weight:600;line-height:1.15;letter-spacing:.015em;
+ font-variant-numeric:tabular-nums;
+}
+.writer-v931-pomodoro-phase{
+ color:var(--text-muted);font-size:var(--font-ui-small);text-align:center;
+}
+.writer-v931-pomodoro-progress{
+ display:block;width:100%;max-width:100%;height:8px;
+ border:0;border-radius:999px;accent-color:var(--interactive-accent);
+}
+.writer-v931-pomodoro-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.writer-v931-pomodoro-control{
+ display:inline-flex;align-items:center;justify-content:center;gap:6px;
+ flex:1 1 auto;min-height:38px;padding:7px 9px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);color:var(--text-normal);
+ background:var(--background-secondary);cursor:pointer;
+}
+.writer-v931-pomodoro-control:hover{background:var(--background-modifier-hover);}
+.writer-v931-pomodoro-control-icon{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 18px;width:18px;height:18px;
+}
+.writer-v931-pomodoro-control-icon svg{
+ display:block;width:18px;height:18px;
+}
+.writer-v931-pomodoro-task{display:flex;flex-direction:column;gap:7px;min-width:0;}
+.writer-v931-pomodoro-task label,.writer-v931-pomodoro-count{
+ font-size:var(--font-ui-small);color:var(--text-muted);
+}
+.writer-v931-pomodoro-task input{
+ width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+ min-height:34px;padding:6px 9px;
+ background:var(--background-secondary);color:var(--text-normal);
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+}
+.writer-v931-pomodoro-count{padding-top:7px;border-top:1px solid var(--background-modifier-border);}
+.writer-v931-pomodoro-status{
+ display:inline-flex;align-items:center;justify-content:center;
+ min-width:60px;min-height:24px;padding-inline:5px;
+ gap:5px;color:var(--text-muted);cursor:pointer;white-space:nowrap;
+ font-variant-numeric:tabular-nums;
+}
+.writer-v931-pomodoro-status:hover,.writer-v931-pomodoro-status:focus-visible{
+ color:var(--text-normal);background:var(--background-modifier-hover);
+ border-radius:var(--radius-s);
+}
+body.is-mobile .writer-v931-pomodoro{
+ padding:12px;gap:12px;
+}
+body.is-mobile .writer-v931-pomodoro-control,
+body.is-mobile .writer-v931-pomodoro-modes button{
+ min-height:42px;
+}
 /* END V8 MODULAR STYLES */

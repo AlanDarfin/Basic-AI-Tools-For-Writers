@@ -273,45 +273,69 @@
 }
 
 
-/* 9.2.14 — File previews use the same wide, clipped image language as note previews. */
+/* 9.2.15: original compact square previews, opposite the text and below the folder-note book. */
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell,
 .workspace-leaf-content[data-type="file-explorer"] .nav-file > .writer-v92-preview-shell{
  display:flex;
- flex-direction:column;
+ flex-direction:row;
  align-items:flex-start;
- gap:7px;
+ justify-content:space-between;
+ min-width:0;
+ gap:9px;
 }
 .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-file-preview{
- width:100%;
- flex:none;
+ flex:1 1 auto;
+ width:auto;
+ min-width:0;
+ order:0;
 }
 .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-preview-image{
  display:block;
- width:min(100%,180px);
- height:auto;
- aspect-ratio:16/9;
- flex:none;
+ order:1;
+ flex:0 0 var(--writer-v92-preview-image-size,62px);
+ width:var(--writer-v92-preview-image-size,62px);
+ height:var(--writer-v92-preview-image-size,62px);
+ aspect-ratio:1;
+ min-width:0;
+ margin-inline-start:auto;
  object-fit:cover;
  object-position:center;
- border-radius:var(--radius-m);
+ border-radius:var(--radius-s);
  border:1px solid var(--background-modifier-border);
  background:var(--background-secondary);
- box-shadow:0 1px 3px rgba(0,0,0,.12);
 }
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-preview-shell .writer-v92-preview-image{
- width:min(100%,160px);
- height:auto;
- aspect-ratio:16/9;
+ flex-basis:min(var(--writer-v92-preview-image-size,62px),68px);
+ width:min(var(--writer-v92-preview-image-size,62px),68px);
+ height:min(var(--writer-v92-preview-image-size,62px),68px);
 }
 .inline-title > .writer-v9-inline-title-icon{
- margin-inline-end:.42em;
- vertical-align:middle;
  display:inline-flex;
  align-items:center;
  justify-content:center;
- flex:0 0 auto;
  width:1em;
  height:1em;
- color:var(--text-accent);
+ vertical-align:-.08em;
+ margin-inline-end:.4em;
+ line-height:1;
+ color:inherit;
 }
-.inline-title > .writer-v9-inline-title-icon svg{width:100%;height:100%;}
+.inline-title > .writer-v9-inline-title-icon svg{
+ display:block;
+ width:100%;
+ height:100%;
+ stroke:currentColor;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v9-explorer-icon{
+ width:1.1em;
+ height:1.1em;
+ flex:0 0 1.1em;
+ align-self:center;
+ line-height:1;
+ margin-inline-end:5px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v9-explorer-icon svg{
+ display:block;
+ width:100%;
+ height:100%;
+}

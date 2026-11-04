@@ -562,3 +562,63 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-re
 }
 .writer-v93-reorder-action:disabled{opacity:.3;}
 body.is-mobile .writer-v92-preview-shell.is-expandable{touch-action:pan-y;}
+/* 9.3 Flow board — document-backed ordering, mobile buttons and three layouts. */
+.writer-v9216-flow-board > .writer-v93-flow-toolbar{
+ grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;
+ align-items:center;justify-content:space-between;min-width:0;
+ padding:4px 0 7px;
+}
+.writer-v93-flow-toolbar strong{font-weight:600;min-width:90px;}
+.writer-v93-flow-toolbar select{
+ flex:1 1 120px;max-width:210px;min-height:32px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+ color:var(--text-normal);padding:4px 7px;
+}
+.writer-v93-flow-toolbar > button{
+ display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;
+ min-width:34px;min-height:34px;background:var(--background-secondary);
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+ color:var(--text-normal);
+}
+.writer-v93-flow-toolbar > button svg{width:18px;height:18px;}
+.writer-v9216-flow-board > .writer-v93-flow-items{
+ grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));
+ gap:9px;align-items:start;min-width:0;
+}
+.writer-v93-flow-layout-list > .writer-v93-flow-items{
+ grid-template-columns:minmax(0,1fr);
+}
+.writer-v93-flow-layout-board > .writer-v93-flow-items{
+ display:flex;overflow-x:auto;scrollbar-width:thin;align-items:stretch;
+ padding-block-end:9px;
+}
+.writer-v93-flow-layout-board > .writer-v93-flow-items > .writer-v9216-flow-card{
+ min-width:min(240px,75vw);max-width:280px;flex:0 0 240px;
+}
+.writer-v93-flow-actions{
+ display:flex;align-items:center;justify-content:flex-end;
+ gap:3px;flex-wrap:wrap;margin-block-start:auto;
+ border-top:1px solid var(--background-modifier-border);
+ padding-block-start:5px;
+}
+.writer-v93-flow-actions button{
+ min-height:30px;min-width:30px;border:0;border-radius:var(--radius-s);
+ color:var(--text-muted);background:transparent;display:inline-flex;
+ align-items:center;justify-content:center;
+}
+.writer-v93-flow-actions button svg{width:17px;height:17px;}
+.writer-v93-flow-actions button:disabled{opacity:.32;}
+.writer-v93-flow-actions button:not(:disabled):hover{
+ background:var(--background-modifier-hover);color:var(--text-normal);
+}
+body.is-mobile .writer-v93-flow-actions button{
+ min-width:38px;min-height:38px;
+}
+body.is-mobile .writer-v93-flow-actions button svg{width:20px;height:20px;}
+body.is-mobile .writer-v9216-flow-board > .writer-v93-flow-items{
+ grid-template-columns:minmax(0,1fr);
+}
+body.is-mobile .writer-v93-flow-layout-board > .writer-v93-flow-items{
+ display:flex;
+}

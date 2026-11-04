@@ -7,11 +7,12 @@ const WRITER_V9_SPACE_MAX=200;
 const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
- const cfg=settings.v9Spaces={enabled:false,spaces:[],...raw};
+ const cfg=settings.v9Spaces={enabled:false,activeId:'',spaces:[],...raw};
  cfg.enabled=cfg.enabled===true;
  cfg.spaces=Array.isArray(cfg.spaces)?cfg.spaces.map(writerV9SpaceSanitize).filter(Boolean).slice(0,40):[];
  const seen=new Set();
  cfg.spaces=cfg.spaces.filter(space=>{if(seen.has(space.id))return false;seen.add(space.id);return true;});
+ cfg.activeId=cfg.spaces.some(space=>space.id===cfg.activeId)?cfg.activeId:'';
  return cfg;
 }
 function writerV9SpaceSanitize(raw){
@@ -30,6 +31,24 @@ function writerV9SpaceSanitize(raw){
  const includePaths=Array.isArray(raw.includePaths)?[...new Set(raw.includePaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,150):[];
  const hiddenPaths=Array.isArray(raw.hiddenPaths)?[...new Set(raw.hiddenPaths.map(p=>String(p||'').trim().slice(0,500)).filter(Boolean))].slice(0,300):[];
  return {id,name,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths};
+}
+/* Space state changes only affect views, never the vault contents. */
+function writerV9215ActiveSpace(plugin){
+ const cfg=plugin.settings.v9Spaces;
+ return cfg?.enabled&&cfg.activeId?cfg.spaces.find(space=>space.id===cfg.activeId)||null:null;
+}
+function writerV9215SpaceHidden(plugin,path){
+ const space=writerV9215ActiveSpace(plugin);
+ return Boolean(space&&(space.hiddenPaths||[]).some(p=>path===p||path.startsWith(p.replace(/\/$/,'')+'/')));
+}
+async function writerV9215SelectSpace(plugin,id){
+ const cfg=plugin.settings.v9Spaces;
+ const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
+ if(cfg.activeId===next)return;
+ cfg.activeId=next;
+ await plugin.saveSettings();
+ plugin.writerV91FlexRefresh?.();
+ plugin.writerV9SpacesRefresh?.();
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -145,6 +164,7 @@ function writerV9SpaceModal(plugin){
     new Setting(confirm.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>confirm.close()))
      .addButton(b=>b.setButtonText(writerUi('Excluir Space','Delete Space')).setWarning().onClick(async()=>{
       plugin.settings.v9Spaces.spaces=plugin.settings.v9Spaces.spaces.filter(s=>s.id!==space.id);
+      if(plugin.settings.v9Spaces.activeId===space.id)plugin.settings.v9Spaces.activeId='';
       currentId=plugin.settings.v9Spaces.spaces[0]?.id||'';
       await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();confirm.close();refresh();
      }));
@@ -219,13 +239,13 @@ class WriterV9SpacesSideView extends ItemView{
   manage.addEventListener('click',()=>writerV9SpaceModal(this.plugin));
   if(!cfg.enabled){root.createEl('p',{text:writerUi('Ative Spaces nas configurações.','Enable Spaces in settings.')});return;}
   const nav=root.createDiv({cls:'writer-v9-space-side-nav'});
-  const space=cfg.spaces.find(x=>x.id===this.currentId)||cfg.spaces[0];
+  const space=cfg.spaces.find(x=>x.id===cfg.activeId)||cfg.spaces.find(x=>x.id===this.currentId)||cfg.spaces[0];
   if(space)this.currentId=space.id;
   for(const option of cfg.spaces){
    const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name}});
    require('obsidian').setIcon(button,option.mode==='folder'?'folder':option.mode==='curated'?'bookmark':'layers');
    button.createSpan({text:option.name});
-   button.addEventListener('click',()=>{this.currentId=option.id;this.query='';this.render();});
+   button.addEventListener('click',()=>{this.currentId=option.id;this.query='';void writerV9215SelectSpace(this.plugin,option.id).then(()=>this.render());});
   }
   if(!space){root.createEl('p',{text:writerUi('Crie uma Space para começar.','Create a Space to get started.')});return;}
   const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',placeholder:writerUi('Pesquisar nesta Space…','Search this Space…')}});
@@ -257,11 +277,13 @@ class WriterV9SpacesSideView extends ItemView{
 function writerV9RegisterSpaces(plugin){
  plugin.registerView(WRITER_V9_SPACE_VIEW,leaf=>new WriterV9SpacesSideView(leaf,plugin));
  plugin.writerV9SpacesRefresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)||[])leaf.view?.render?.();};
+ plugin.addCommand({id:'v9215-spaces-all',name:writerUi('Spaces: mostrar todo o cofre','Spaces: show entire vault'),callback:()=>void writerV9215SelectSpace(plugin,'')});
  const openSidebar=async()=>{
   const existing=plugin.app.workspace.getLeavesOfType?.(WRITER_V9_SPACE_VIEW)?.[0];
   const leaf=existing||plugin.app.workspace.getLeftLeaf?.(false)||plugin.app.workspace.getLeaf('tab');
   if(!leaf)return;
   if(!existing)await leaf.setViewState({type:WRITER_V9_SPACE_VIEW,active:true});
+ if(!plugin.settings.v9Spaces.activeId&&plugin.settings.v9Spaces.spaces.length)await writerV9215SelectSpace(plugin,plugin.settings.v9Spaces.spaces[0].id);
   plugin.app.workspace.revealLeaf?.(leaf);
  };
  plugin.writerV9SpacesSidebarOpen=openSidebar;
@@ -289,6 +311,11 @@ function writerV9SpacesSettings(plugin,panel){
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções virtuais filtradas por pasta, tag ou propriedades das notas, sem criar novos arquivos nem um painel lateral.','Virtual note collections filtered by folder, tags or properties, without creating files or a new sidebar.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{cfg.enabled=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Space ativo','Active Space')).addDropdown(drop=>{
+   drop.addOption('',writerUi('Todo o cofre','Entire vault'));
+   for(const space of cfg.spaces)drop.addOption(space.id,space.name);
+   drop.setValue(cfg.activeId||'').onChange(value=>void writerV9215SelectSpace(plugin,value));
+  });
  new Setting(panel).setName(writerUi('Abrir Spaces na barra lateral','Open Spaces in sidebar'))
   .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open sidebar')).onClick(()=>void plugin.writerV9SpacesSidebarOpen?.()));
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))

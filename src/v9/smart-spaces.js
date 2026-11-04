@@ -2,8 +2,8 @@
 /* v9 smart spaces: original local-first implementation of Make-inspired
  * saved filtered collections. Does not create a new pane or copy Make.md code. */
 const WRITER_V9_SPACE_VIEWS=['cards','list','table','board'];
-const WRITER_V9_SPACE_SORTS=['name','recent','oldest'];
-const WRITER_V9_SPACE_MAX=200;
+const WRITER_V9_SPACE_SORTS=['name','recent','oldest','manual'];
+const WRITER_V9_SPACE_MAX=5000; // Paginated results; search no longer silently omits notes after 200.
 const WRITER_V9_SPACE_VIEW='writer-smart-spaces';
 function writerV9SpacesMerge(settings){
  const raw=settings.v9Spaces&&typeof settings.v9Spaces==='object'&&!Array.isArray(settings.v9Spaces)?settings.v9Spaces:{};
@@ -135,9 +135,20 @@ function writerV9SpaceItems(plugin,space){
   }
   return true;
  }).sort((a,b)=>{
-  const pinA=space.pinnedPaths?.includes(a.path),pinB=space.pinnedPaths?.includes(b.path);
+  const pin=(file)=>(space.pinnedPaths||[]).some(p=>p===file.path||file.path.startsWith(p.replace(/\\/$/,'')+'/'));
+  const pinA=pin(a),pinB=pin(b);
   if(Boolean(pinA)!==Boolean(pinB))return pinA?-1:1;
-  if(space.sort==='name')return a.basename.localeCompare(b.basename);
+  if(space.sort==='manual'){
+   const order=space.includePaths||[];
+   const rank=file=>{
+    const n=order.findIndex(path=>file.path===path||file.path.startsWith(path.replace(/\\/$/,'')+'/'));
+    return n<0?Number.MAX_SAFE_INTEGER:n;
+   };
+   const ar=rank(a),br=rank(b);
+   if(ar!==br)return ar-br;
+   return a.basename.localeCompare(b.basename,undefined,{numeric:true});
+  }
+  if(space.sort==='name')return a.basename.localeCompare(b.basename,undefined,{numeric:true});
   if(space.sort==='oldest')return (a.stat?.mtime||0)-(b.stat?.mtime||0);
   return (b.stat?.mtime||0)-(a.stat?.mtime||0);
  }).slice(0,WRITER_V9_SPACE_MAX);
@@ -159,6 +170,15 @@ function writerV9SpaceEditor(plugin,initial,save){
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
   field('folder','Pasta (opcional)','Folder (optional)');
+  new Setting(root).setName(writerUi('Usar pasta da nota aberta','Use the current note folder'))
+   .setDesc(writerUi('Preenche a pasta sem mover arquivos.','Sets the folder path without moving files.'))
+   .addButton(b=>b.setButtonText(writerUi('Selecionar pasta atual','Use current folder')).onClick(()=>{
+    const current=plugin.app.workspace.getActiveFile?.();
+    if(!current?.parent){new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));return;}
+    draft.folder=current.parent.path||'';
+    modal.close();writerV9SpaceEditor(plugin,draft,save);
+   }));
+
   new Setting(root).setName(writerUi('Notas/pastas incluídas','Included notes/folders'))
    .setDesc(writerUi('Uma rota por linha para Spaces de seleção manual.','One vault path per line for curated Spaces.'))
    .addTextArea(t=>t.setValue((draft.includePaths||[]).join('\n')).onChange(value=>{draft.includePaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);}));
@@ -183,6 +203,14 @@ function writerV9SpaceEditor(plugin,initial,save){
      draft.homeWidgetSizes={...(global?.homeWidgetSizes||{})};
     }
    }));
+  new Setting(root).setName(writerUi('Incluir nota aberta','Include currently open note'))
+   .setDesc(writerUi('Adiciona a rota à seleção manual sem mover a nota.','Adds its path to the curated selection without moving the note.'))
+   .addButton(b=>b.setButtonText(writerUi('Adicionar nota','Add note')).onClick(()=>{
+    const file=plugin.app.workspace.getActiveFile?.();
+    if(!file){new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));return;}
+    draft.includePaths=[...new Set([...(draft.includePaths||[]),file.path])];
+    modal.close();writerV9SpaceEditor(plugin,draft,save);
+   }));
   const options=(key,pt,en,values)=>{
    new Setting(root).setName(writerUi(pt,en)).addDropdown(d=>{
     for(const [id,ptLabel,enLabel] of values)d.addOption(id,writerUi(ptLabel,enLabel));
@@ -192,7 +220,7 @@ function writerV9SpaceEditor(plugin,initial,save){
   options('view','Visualização','View',
    [['cards','Cartões','Cards'],['list','Lista','List'],['table','Tabela','Table'],['board','Quadro','Board']]);
   options('sort','Ordenação','Sort',
-   [['recent','Mais recente','Most recent'],['name','Nome','Name'],['oldest','Mais antigo','Oldest']]);
+   [['recent','Mais recente','Most recent'],['name','Nome','Name'],['oldest','Mais antigo','Oldest'],['manual','Ordem de inclusão','Included path order']]);
   const status=root.createEl('p',{cls:'writer-v9-space-message'});
   new Setting(root).addButton(b=>b.setButtonText(writerUi('Salvar','Save')).setCta().onClick(async()=>{
    const item=writerV9SpaceSanitize({...draft,id:initial?.id||'space-'+Date.now().toString(36)});
@@ -224,7 +252,11 @@ function writerV9SpaceModal(plugin){
   for(const option of cfg.spaces){const el=select.createEl('option',{text:option.name});el.value=option.id;}
   if(!cfg.spaces.some(x=>x.id===currentId))currentId=cfg.spaces[0]?.id||'';
   select.value=currentId;
-  select.addEventListener('change',()=>{currentId=select.value;query='';page=0;refresh();});
+  select.addEventListener('change',async()=>{
+   currentId=select.value;query='';page=0;
+   // Selecting a Space now actually activates its own sorting, pins and widgets.
+   await writerV9215SelectSpace(plugin,currentId);refresh();
+  });
   const action=(target,label,symbol,callback)=>{
    const button=target.createEl('button',{cls:'writer-v102-spaces-action',
     attr:{type:'button',title:label,'aria-label':label}});
@@ -275,6 +307,8 @@ function writerV9SpaceModal(plugin){
   const symbol=icon(name,space.icon||'layers');
   if(space.iconColor)symbol.style.color=space.iconColor;
   name.createEl('strong',{text:space.name});
+  const activated=cfg.activeId===space.id;
+  if(activated)intro.createSpan({cls:'writer-v104-space-active',text:writerUi('Ativo','Active')});
   const source=space.mode==='folder'?writerUi('Pasta','Folder'):
    space.mode==='curated'?writerUi('Selecionadas','Curated'):writerUi('Filtros','Filters');
   intro.createSpan({cls:'writer-v102-spaces-source',text:source+(space.folder?' · '+space.folder:'')});
@@ -436,6 +470,26 @@ function writerV9RegisterSpaces(plugin){
   callback:()=>writerV9SpaceModal(plugin)});
  plugin.registerEvent(plugin.app.workspace.on('file-menu',(menu,file)=>{
   if(!writerModuleOn(plugin,'smartSpaces')||!plugin.settings.v9Spaces.enabled)return;
+  if(file instanceof TFile&&file.extension==='md'&&plugin.settings.v9Spaces.spaces.length){
+   menu.addItem(item=>item.setTitle(writerUi('Adicionar nota a uma Space','Add note to a Space'))
+    .setIcon('layers').onClick(()=>{
+     const picker=new Modal(plugin.app);
+     picker.onOpen=()=>{
+      picker.setTitle(writerUi('Adicionar à Space','Add to Space'));
+      for(const space of plugin.settings.v9Spaces.spaces){
+       new Setting(picker.contentEl).setName(space.name)
+        .addButton(button=>button.setButtonText(writerUi('Adicionar','Add')).onClick(async()=>{
+         space.includePaths=[...new Set([...(space.includePaths||[]),file.path])];
+         // A dynamic Space keeps its filters; only curated Spaces use explicit inclusion.
+         if(space.mode!=='curated'){
+          new Notice(writerUi('A nota foi guardada na seleção, mas a Space usa filtros.','Note saved to the selection, but the Space uses filters.'));
+         }
+         await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();picker.close();
+        }));
+      }
+     };picker.open();
+    }));
+  }
   if(file instanceof TFolder){
    menu.addItem(item=>item.setTitle(writerUi('Criar Space desta pasta','Create Space from folder'))
     .setIcon('layers').onClick(()=>{

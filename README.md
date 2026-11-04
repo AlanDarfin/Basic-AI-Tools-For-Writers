@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.2.14 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.2.15 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -79,7 +79,9 @@ The interface follows Obsidian's **Portuguese or English** language setting (Eng
 ### Audio and accessibility
 
 - **Soundscapes (desktop):** ambient YouTube radio and custom stations **start in the background** when Play is pressed, without showing a popup or opening a tab. The compact floating video player opens **only** when the Show mini player button or command is used. It can be hidden without stopping playback, or stopped to unload it. The Homepage widget remains visible in both playing and stopped states; on mobile it stays in the dashboard and shows a compatibility notice instead of disappearing. It prefers Chromium's embedded Webview when available and falls back to a visible YouTube iframe if that is unavailable. The volume sliders on the homepage, status bar and mini player all control radio audio using the embedded player API; the same setting also controls local music. Radio volume is re-applied after the video loads or a station changes. Some videos may reject embedding (YouTube error 153). **My Music** continues to play local vault audio directly, with play/pause and volume controls.
-- **Explorer previews and titles:** images below folder notes now use a wide, 16:9 note-preview-style thumbnail on desktop and mobile. A custom per-note icon from the native explorer also appears before the Obsidian inline title without changing note content. **Spaces** now support independent hidden note/folder paths in each collection; these filter that Space's contents, not yet the native explorer. Pretty Properties, Make.md Flow and slash commands are planned integrations, not yet shipped.
+- **9.2.15 explorer previews and titles:** compact square images now sit to the right of the description, directly below the folder-note book action; editor inline-title icons inherit the title text color and use improved alignment. **Spaces** have a selectable active Space and independent hidden note/folder paths that also apply to the native File Explorer. Global hidden paths and glob exclusions still work across Spaces.
+- **Visual Properties (first integration):** local YAML cover, banner and icon; hide selected or empty metadata fields; property colors, number progress bars, optional date labels and safe text templates. Local image picking uses Obsidian's native YAML API; no external image requests are made.
+- **Flow and slash (first integration):** type `/` in a Markdown editor to insert headings, lists, quotes, callouts, tables, dates or embedded notes. In reading view, embedded Markdown notes can be edited in place with a last-modified conflict guard. More advanced Make.md block editing is not yet included.
 - **Image Captions:** optionally display captions from Markdown image alt text, without rewriting the files.
 - **Click Clack (desktop):** optional typing sounds with **13 downloadable sound packs** from the original Click Clack project (Cherry MX, IBM, Olympia, Quill and more). Browse the catalog in Settings to download one pack or all 13, then choose the installed scheme. Downloads are always opt-in; installed sounds work offline.
 - **Text-to-speech:** system voices where supported or opt-in online voices, with language, speed, pitch and voice preferences. Online reading sends selected text to the chosen service only when enabled.

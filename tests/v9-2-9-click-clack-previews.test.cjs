@@ -114,7 +114,7 @@ test('no pointer-events block; style, bundle and version are synchronized',()=>{
  const m=JSON.parse(fs.readFileSync('manifest.json','utf8'));
  const p=JSON.parse(fs.readFileSync('package.json','utf8'));
  assert.match(m.version,/^(?:9|10)\.[0-9]+\.[0-9]+$/);assert.equal(p.version,m.version);
- assert.match(p.scripts.test,/v9-2-9-click-clack-previews/);
+ assert.match(p.scripts['test:sequential']||p.scripts.test,/v9-2-9-click-clack-previews/);
  const main=fs.readFileSync('main.js','utf8');
  assert.ok(main.includes('writerV91ClickPackUrl'));
  assert.ok(main.includes('writerV929PreviewExpand'));

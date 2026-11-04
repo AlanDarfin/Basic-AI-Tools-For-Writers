@@ -251,7 +251,7 @@ class ProjectsView extends ItemView{
   }
   for(const [id] of allTabs){
    panels[id]=this.root.createDiv({cls:'writer-project-panel'});
-   panels[id].dataset.tab=id;
+   panels[id].setAttribute?.('data-tab',id);
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
   tabs.addEventListener('wheel',event=>{

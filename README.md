@@ -22,7 +22,7 @@ Write, plan, revise and organize books without moving your work to a separate da
 See the [v10 feature-by-feature audit](docs/V10_REVIEW.en.md), [current/legacy block guide](docs/BLOCKS.en.md) and [Portuguese documentation](docs/README.pt-BR.md). These are independent integrations inspired by other plugins, not claims of full upstream equivalence.
 
 
-## 10.1.0 — Expanded writing workflow
+## What's new in 10.1.0 — Expanded writing workflow
 
 This update extends the existing v10 foundation **without rewriting projects, migrating notes destructively or removing legacy syntax**. Settings and features are bilingual (PT/EN), and optional actions remain opt-in where they change many files or rearrange the workspace.
 

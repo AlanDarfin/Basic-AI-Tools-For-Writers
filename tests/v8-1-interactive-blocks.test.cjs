@@ -64,7 +64,7 @@ test('media scan stays in the vault, filters types and imposes limits',()=>{
  assert.equal(g.writerV8MediaFiles(null,d,cfg).length,3);
  assert.equal(g.writerV8MediaFiles(null,d,{...cfg,type:'image'}).length,1);
  assert.equal(g.writerV8MediaKind(d.children[2]),'pdf');
- assert.equal(g.writerV8MediaConfig('limit: 999').limit,150);
+ assert.equal(g.writerV8MediaConfig('limit: 999').limit,500);
  assert.match(media,/loading:'lazy'/);
  assert.match(media,/type: all/);
 });

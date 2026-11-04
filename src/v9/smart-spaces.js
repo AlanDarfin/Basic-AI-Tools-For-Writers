@@ -468,6 +468,71 @@ function writerV9RegisterSpaces(plugin){
  plugin.writerV9SpaceOpen=()=>writerV9SpaceModal(plugin);
  plugin.addCommand({id:'v9-spaces-open',name:writerUi('Spaces: abrir coleções','Spaces: open collections'),
   callback:()=>writerV9SpaceModal(plugin)});
+
+ // Commands are usable from the palette and from Obsidian's mobile toolbar.
+ const openQuickActions=event=>{
+  const menu=new Menu(plugin.app);
+  const item=(pt,en,icon,callback)=>menu.addItem(entry=>entry.setTitle(writerUi(pt,en))
+   .setIcon(icon).onClick(callback));
+  item('Gerenciar Spaces','Manage Spaces','layers',()=>writerV9SpaceModal(plugin));
+  item('Abrir biblioteca Longform','Open Longform bookshelf','library',
+   ()=>plugin.writerV10OpenBookshelf?.());
+  item('Ordenar pasta da nota atual','Sort current note folder','list-ordered',()=>{
+   const folder=plugin.app.workspace.getActiveFile?.()?.parent||plugin.app.vault.getRoot?.();
+   if(folder&&typeof writerV93FlexSortModal==='function')writerV93FlexSortModal(plugin,folder);
+  });
+  item('Mostrar / ocultar arquivos escondidos','Show / hide hidden files','eye',async()=>{
+   const flex=plugin.settings.v91Flex;
+   if(!flex)return;
+   flex.showHidden=!flex.showHidden;
+   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
+  });
+  item('Centralizar linha ou título','Center line or heading','align-center',()=>{
+   plugin.app.commands?.executeCommandById?.(plugin.manifest.id+':v102-align-center');
+  });
+  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
+  else menu.showAtPosition({x:90,y:120});
+ };
+ plugin.writerV1042QuickActions=openQuickActions;
+ plugin.addCommand({id:'v1042-open-quick-actions',
+  name:writerUi('Basic: abrir atalhos rápidos','Basic: open quick actions'),
+  callback:()=>openQuickActions()});
+ plugin.addCommand({id:'v1042-spaces-next',
+  name:writerUi('Spaces: próxima coleção','Spaces: next collection'),
+  callback:()=>{
+   const spaces=plugin.settings.v9Spaces?.spaces||[];
+   if(!spaces.length)return;
+   const index=spaces.findIndex(s=>s.id===plugin.settings.v9Spaces.activeId);
+   void writerV9215SelectSpace(plugin,spaces[(index+1)%spaces.length].id);
+  }});
+ plugin.addCommand({id:'v1042-spaces-previous',
+  name:writerUi('Spaces: coleção anterior','Spaces: previous collection'),
+  callback:()=>{
+   const spaces=plugin.settings.v9Spaces?.spaces||[];
+   if(!spaces.length)return;
+   const index=spaces.findIndex(s=>s.id===plugin.settings.v9Spaces.activeId);
+   void writerV9215SelectSpace(plugin,spaces[(index<0?0:index+spaces.length-1)%spaces.length].id);
+  }});
+ plugin.addCommand({id:'v1042-current-folder-sorting',
+  name:writerUi('Explorador: ordenar pasta da nota atual','Explorer: sort current note folder'),
+  callback:()=>{
+   const folder=plugin.app.workspace.getActiveFile?.()?.parent||plugin.app.vault.getRoot?.();
+   if(folder)writerV93FlexSortModal(plugin,folder);
+  }});
+ plugin.addCommand({id:'v1042-spaces-quick-pin',
+  name:writerUi('Spaces: fixar ou desafixar nota atual','Spaces: pin or unpin current note'),
+  callback:async()=>{
+   const file=plugin.app.workspace.getActiveFile?.();
+   const space=writerV9215ActiveSpace(plugin);
+   if(!file||!space){new Notice(writerUi('Abra uma nota e ative uma Space.','Open a note and activate a Space.'));return;}
+   const pinned=new Set(space.pinnedPaths||[]);
+   if(pinned.has(file.path))pinned.delete(file.path);else pinned.add(file.path);
+   space.pinnedPaths=[...pinned];
+   await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV91FlexRefresh?.();
+  }});
+ const shortcutsRibbon=plugin.addRibbonIcon?.('sliders-horizontal',
+  writerUi('Atalhos do Basic','Basic quick actions'),event=>openQuickActions(event));
+ shortcutsRibbon?.addClass?.('writer-v1042-quick-ribbon');
  plugin.registerEvent(plugin.app.workspace.on('file-menu',(menu,file)=>{
   if(!writerModuleOn(plugin,'smartSpaces')||!plugin.settings.v9Spaces.enabled)return;
   if(file instanceof TFile&&file.extension==='md'&&plugin.settings.v9Spaces.spaces.length){
@@ -505,7 +570,7 @@ function writerV9RegisterSpaces(plugin){
 function writerV9SpacesSettings(plugin,panel){
  const cfg=plugin.settings.v9Spaces;
  panel.createEl('h3',{text:writerUi('Spaces · coleções locais','Spaces · local collections')});
- panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com ícones e barra inferior no explorador. Ocultar itens em um Space não os oculta nos demais.','Collections by folder, tag or properties, with icons and a bottom explorer switcher. Hiding items in one Space does not hide them in others.')});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com ícones e barra inferior no explorador. Os filtros do Space são independentes. A ocultação do explorador é global.','Collections by folder, tag or properties, with icons and a bottom explorer switcher. Space filters are independent; Explorer hiding is global.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{
     cfg.enabled=value;if(!value)cfg.activeId='';

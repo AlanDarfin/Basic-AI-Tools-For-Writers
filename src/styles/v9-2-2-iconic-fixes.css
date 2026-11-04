@@ -574,7 +574,7 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-re
 }
 .writer-v93-reorder-action:disabled{opacity:.3;}
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"].writer-v1047-mobile-reorder-on
- :is(.nav-file-title,.nav-folder-title):has(> .writer-v93-reorder-actions){
+ :is(.nav-file-title,.nav-folder-title).writer-v1047-reorder-title{
  position:relative;
  box-sizing:border-box;
  padding-inline-end:100px;

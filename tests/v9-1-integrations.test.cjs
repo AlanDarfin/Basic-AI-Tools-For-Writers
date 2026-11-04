@@ -100,6 +100,63 @@ test('Moving up changes only saved order and never reparents explorer nodes',()=
  assert.doesNotMatch(source,/container\.appendChild\(row\.node\)/);
  assert.match(source,/writerFlexOrderHost/);
 });
+test('Root sorting normalizes / and empty key, and native toolbar mode overrides every folder',()=>{
+ const {exposed:m}=moduleUnderTest('explorer-flex.js',[
+  'writerV91FlexMerge','writerV93FlexRecord','writerV104FlexNativeSort',
+  'writerV1043RootKey','writerV1043GlobalSortingMenu','writerV1043IsSortButton']);
+ const settings={v91Flex:{perSpaceSorting:false,pinEnabled:false,
+  folders:{'/':{sort:'custom',order:['zeta.md','alpha.md']},
+   'Notes':{sort:'name-desc',order:[]}}}};
+ const cfg=m.writerV91FlexMerge(settings);
+ assert.equal(m.writerV1043RootKey('/'),'');
+ assert.equal(m.writerV1043RootKey(''),'');
+ assert.equal(cfg.folders[''].sort,'custom');
+ const plugin={settings,saveSettings:async()=>{},writerV91FlexRefresh:()=>{}};
+ const root={path:'/'},inner={path:'Notes'};
+ const make=(folder,names)=>names.map(name=>({file:{name,path:(folder.path==='/'?'':folder.path+'/')+name,stat:{mtime:1},parent:folder}}));
+ const rootItems=make(root,['alpha.md','zeta.md']);
+ assert.deepEqual(Array.from(m.writerV104FlexNativeSort(plugin,root,rootItems),r=>r.file.name),['zeta.md','alpha.md']);
+ cfg.globalSortMode='name';
+ assert.equal(m.writerV93FlexRecord(plugin,'/').sort,'name');
+ assert.equal(m.writerV93FlexRecord(plugin,'Notes').sort,'name');
+ assert.deepEqual(Array.from(m.writerV104FlexNativeSort(plugin,root,rootItems),r=>r.file.name),['alpha.md','zeta.md']);
+ cfg.globalSortMode='name-desc';
+ assert.deepEqual(Array.from(m.writerV104FlexNativeSort(plugin,inner,make(inner,['a.md','b.md'])),r=>r.file.name),['b.md','a.md']);
+ cfg.globalSortMode='custom';
+ const menu={items:[{checked:true,setChecked(v){this.checked=v;}}],
+  addSeparator(){},addItem(fn){
+   const item={setTitle(v){this.title=v;return this;},setIcon(){return this;},
+    setChecked(v){this.checked=v;return this;},onClick(cb){this.click=cb;return this;}};
+   fn(item);this.items.push(item);
+  }};
+ m.writerV1043GlobalSortingMenu(plugin,menu);
+ assert.equal(menu.items[0].checked,false);
+ assert.ok(menu.items.some(x=>x.title==='Manual sorting (Basic)'&&x.checked));
+ const nativeButton={getAttribute:()=> 'Change sort order',closest:()=>({}),querySelector:()=>null};
+ assert.equal(m.writerV1043IsSortButton({target:{closest:()=>nativeButton}}),true);
+ const otherButton={getAttribute:()=> 'New note',closest:()=>({}),querySelector:()=>null};
+ assert.equal(m.writerV1043IsSortButton({target:{closest:()=>otherButton}}),false);
+});
+test('Root reorder changes saved order only, without moving or deleting files',()=>{
+ const {source,exposed:m}=moduleUnderTest('explorer-flex.js',
+  ['writerV91FlexMerge','writerV91FlexReorder']);
+ const root={path:'/',children:[]};
+ root.children=['alpha.md','zeta.md'].map(name=>({name,path:name,parent:root}));
+ const files=Object.fromEntries(root.children.map(file=>[file.path,file]));
+ const settings={v91Flex:{perSpaceSorting:false,pinEnabled:false,
+  folders:{'/':{sort:'custom',order:['alpha.md','zeta.md']}}}};
+ m.writerV91FlexMerge(settings);
+ let refreshes=0;
+ const plugin={settings,app:{vault:{getAbstractFileByPath:path=>files[path]},
+   workspace:{getLeavesOfType:()=>[{view:{getSortedFolderItems:()=>root.children.map(file=>({file}))}}]}},
+  saveSettings:async()=>{},writerV91FlexRefresh:()=>refreshes++};
+ m.writerV91FlexReorder(plugin,'zeta.md','alpha.md','before');
+ assert.deepEqual(Array.from(settings.v91Flex.folders[''].order),['zeta.md','alpha.md']);
+ assert.deepEqual(root.children.map(x=>x.path),['alpha.md','zeta.md']);
+ assert.equal(refreshes,1);
+ assert.doesNotMatch(source,/container\\.appendChild\\(row\\.node\\)/);
+ assert.doesNotMatch(source,/setTitle\\(writerUi\\('Mover para cima'/);
+});
 test('Desktop-only sections and README feature documentation in both languages',()=>{
  const sound=fs.readFileSync(path.join(root,'src/v9/soundscapes.js'),'utf8');
  const clicks=fs.readFileSync(path.join(root,'src/v9/click-clack.js'),'utf8');

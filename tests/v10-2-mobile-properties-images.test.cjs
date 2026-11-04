@@ -70,6 +70,14 @@ test('Alignment syntax does not conflict with Markdown pipes, paths, or normal p
  }
  const cfg=api.writerV102AlignMerge({});assert.equal(cfg.enabled,true);
 });
+test('Native Explorer and voice-note CSS corrections are present in the distributed styles',()=>{
+ const css=read('styles.css'),source=read('src/v9/explorer-flex.js');
+ assert.match(css,/writer-v8-chat \\.writer-v8-chat-voice-toggle\\s*\\{/);
+ assert.match(css,/place-items:center/);
+ assert.match(css,/writer-v91-flex-hidden/);
+ assert.match(source,/getSortedFolderItems/);
+ assert.match(source,/writerFlexConcealed/);
+});
 test('Release wiring: bundled code, bilingual docs, CSS and version synchronize',()=>{
  const main=read('main.js'),build=read('scripts/build-v3.js'),css=read('styles.css'),manifest=JSON.parse(read('manifest.json'));
  for(const p of ['v10/image-inserter','v10/inline-alignment'])assert.ok(build.includes(p));

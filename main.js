@@ -17053,7 +17053,8 @@ function writerV931PomodoroMerge(settings){
  for(const key of ['focusMinutes','shortMinutes','longMinutes']){
   const limit=key==='focusMinutes'?180:60;
   const fallback=key==='focusMinutes'?25:key==='shortMinutes'?5:15;
-  cfg[key]=Math.max(1,Math.min(limit,Math.round(Number(cfg[key])||fallback)));
+  const requested=Number(cfg[key]);
+  cfg[key]=Math.max(1,Math.min(limit,Math.round(Number.isFinite(requested)&&requested>0?requested:fallback)));
  }
  cfg.longEvery=Math.max(1,Math.min(12,Math.round(Number(cfg.longEvery)||4)));
  cfg.mode=WRITER_V931_POMODORO_MODES.includes(cfg.mode)?cfg.mode:'focus';

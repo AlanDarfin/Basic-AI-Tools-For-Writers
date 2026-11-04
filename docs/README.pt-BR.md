@@ -10,7 +10,7 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 
 
-## Novidades da 10.1.0 — Expansão do fluxo de escrita
+## Fluxos de escrita ampliados · 10.1.0
 
 Esta atualização amplia a base da v10 **sem reescrever projetos, migrar notas de forma destrutiva ou retirar sintaxes antigas**. Configurações e novos recursos usam textos PT/EN; operações que alteram muitos arquivos ou reorganizam painéis são opcionais.
 

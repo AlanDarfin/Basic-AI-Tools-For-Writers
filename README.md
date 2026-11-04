@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.4.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.5.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -107,6 +107,14 @@ layout: cards
 
 **Complete copy-ready examples for every Markdown code block:** [English block guide](docs/BLOCKS.en.md) · [Guia em português](docs/BLOCKS.pt-BR.md).
 
+
+### 9.5.0 · Timeline blocks and properties behavior
+
+- **Properties filter:** the optional search field is now inside Obsidian's native collapsible properties list; collapsing Properties hides the filter in Live Preview and Reading mode, and refreshes preserve its current search query.
+- **Markdown timelines:** support the original `timeline` (`+` triplets) and `timeline-labeled` (`date/title/content`) syntax as well as expanded `layout: horizontal|vertical`, themes (`classic`, `cards`, `minimal`, `compact`, `editorial`), accent colors, local vault photos, Lucide icons, links, event groups, orientation switching and filtering.
+- **Longform stays independent:** the project timeline, events, branches, Gantt view and fictional calendar remain intact. The block is controlled separately under Settings → Modules → Markdown timelines.
+- **Examples:** [English](docs/BLOCKS.en.md) · [Português](docs/BLOCKS.pt-BR.md). No network calls or third-party runtime are necessary for these blocks.
+
 ## Markdown renderers
 
 The plugin also recognizes independent Markdown code blocks. The preferred short names are shown below; legacy aliases such as `writer-tabs`, `writer-wiki`, `writer-avatar`, `writer-post`, `writer-chat`, `writer-folder-overview` and `writer-media-gallery` remain accepted for compatibility.
@@ -123,6 +131,7 @@ The plugin also recognizes independent Markdown code blocks. The preferred short
 | `widgets` | Clock, quote, countdown and counter |
 | `meta-field` | Controlled editing or display of a YAML property |
 | `insta-toc` / `longform-nav` | Table of contents and chapter navigation |
+| `timeline` / `timeline-labeled` | Narrative timelines with original syntax, themed cards, photos and vertical/horizontal layouts |
 
 For example, add an interactive character card or a note with multiple sections:
 

@@ -31,6 +31,30 @@ function writerV6ProjectContext(plugin,path){
  const context=possible.find(item=>item.indexPath===selected)||possible[0]||null;
  cache.set(cacheKey,context);return context;
 }
+function writerV101ProjectWords(plugin,file){
+ const ctx=writerV6ProjectContext(plugin,file?.path||'');
+ return Array.isArray(ctx?.prefs?.dictionaryWords)?ctx.prefs.dictionaryWords:[];
+}
+function writerV101ProjectAcceptedWord(plugin,file,source,match){
+ if(!file||typeof writerReviewWord!=='function')return false;
+ const word=writerReviewWord(source,match).toLocaleLowerCase();
+ return Boolean(word&&writerV101ProjectWords(plugin,file)
+  .some(value=>String(value).normalize('NFC').toLocaleLowerCase()===word));
+}
+async function writerV101ProjectAddWord(plugin,file,word){
+ const ctx=writerV6ProjectContext(plugin,file?.path||'');
+ if(!ctx?.indexPath)return false;
+ const holder=plugin.settings.projectsData?.[ctx.indexPath];
+ if(!holder)return false;
+ const prefs=holder.writingSettings||(holder.writingSettings={});
+ const words=Array.isArray(prefs.dictionaryWords)?prefs.dictionaryWords:[];
+ const clean=String(word||'').trim().normalize('NFC');
+ if(!/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(clean))return false;
+ if(!words.some(x=>String(x).toLocaleLowerCase()===clean.toLocaleLowerCase())){
+  prefs.dictionaryWords=[...words,clean].slice(-1000);await plugin.saveSettings();
+ }
+ return true;
+}
 function writerV6ProjectToolAllowed(plugin,key,path){
  if(!writerModuleOn(plugin,key))return false;
  const preference=writerV6ProjectContext(plugin,path)?.prefs?.tools?.[key];
@@ -90,6 +114,15 @@ function writerV6ProjectPreferencesRender(view,panel,project){
   cfg.reviewProfile=profile;await view.plugin.saveSettings();view.plugin._writerV6ProjectPaths?.clear();
   new Notice(writerUi('Preferências salvas.','Preferences saved.'));
  }));
+ let words=Array.isArray(cfg.dictionaryWords)?cfg.dictionaryWords.join('\n'):'';
+ new Setting(editorial).setName(writerUi('Dicionário pessoal deste livro','Book-specific dictionary'))
+  .setDesc(writerUi('Uma palavra por linha; aceita nomes de personagens sem afetar outros projetos.','One word per line; accept character names without changing other books.'))
+  .addTextArea(t=>{t.inputEl.rows=3;t.setValue(words).onChange(v=>words=v.slice(0,25000));})
+  .addButton(b=>b.setButtonText(writerUi('Aplicar','Apply')).onClick(async()=>{
+   cfg.dictionaryWords=[...new Set(words.split(/\r?\n/).map(w=>w.trim().normalize('NFC'))
+    .filter(w=>/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(w)))].slice(0,1000);
+   await view.plugin.saveSettings();view.plugin._writerV6ProjectPaths?.clear();
+  }));
  const presets=root.createDiv({cls:'writer-v6-settings-section'});
  presets.createEl('h3',{text:writerUi('Perfil de escrita sugerido','Suggested writing profile')});
  let picked=String(cfg.writingPreset||'');

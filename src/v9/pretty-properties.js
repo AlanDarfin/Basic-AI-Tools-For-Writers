@@ -6,8 +6,9 @@ function writerV9215PrettyMerge(settings){
  const cfg=settings.v9215Pretty={enabled:true,banner:true,cover:true,icon:true,
   hidden:[],hideEmpty:false,reveal:false,progressKeys:'progress,completion',
   dateKeys:'due,date',colors:'',templates:'',tagColors:'',search:true,dueColors:true,dueSoonDays:3,
-  coverShape:'rounded',coverPosition:'right',bannerPosition:'center',...raw};
- for(const key of ['enabled','banner','cover','icon','search','dueColors'])cfg[key]=cfg[key]!==false;
+  coverShape:'rounded',coverPosition:'right',bannerPosition:'center',
+  propertyColors:true,tagColorsEnabled:true,progressEnabled:true,dateFormatting:true,templatesEnabled:true,...raw};
+ for(const key of ['enabled','banner','cover','icon','search','dueColors','propertyColors','tagColorsEnabled','progressEnabled','dateFormatting','templatesEnabled'])cfg[key]=cfg[key]!==false;
  cfg.coverShape=['rounded','square','circle'].includes(cfg.coverShape)?cfg.coverShape:'rounded';
  cfg.coverPosition=['left','right','center'].includes(cfg.coverPosition)?cfg.coverPosition:'right';
  cfg.bannerPosition=['top','center','bottom'].includes(cfg.bannerPosition)?cfg.bannerPosition:'center';
@@ -103,13 +104,13 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   const empty=value===undefined||value===null||text.trim()==='';
   if(!cfg.reveal&&(cfg.hidden.includes(key)||(cfg.hideEmpty&&empty)))row.classList.add('writer-v9215-property-hidden');
   const color=colors[key];
-  if(/^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$/.test(color||'')){
+  if(cfg.propertyColors&&/^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3})?$/.test(color||'')){
    row.classList.add('writer-v9215-property-colored');
    row.style.setProperty('--writer-v9215-prop-color',color);
   }
   const surface=row.querySelector('.metadata-property-value')||row;
   const number=typeof value==='string'?Number(value.trim().replace(/%$/,'')):Number(value);
-  if(progressKeys.has(key)&&Number.isFinite(number)&&!empty){
+  if(cfg.progressEnabled&&progressKeys.has(key)&&Number.isFinite(number)&&!empty){
    const amount=Math.max(0,Math.min(100,number));
    const bar=row.ownerDocument.createElement('div');bar.className='writer-v9215-property-progress';
    bar.setAttribute('role','progressbar');bar.setAttribute('aria-label',key);
@@ -119,8 +120,8 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
    surface.appendChild(bar);
   }
   let caption='';
-  if(templates[key])caption=templates[key].replace(/\{value\}/gi,text).slice(0,250);
-  else if(dateKeys.has(key)&&/^\d{4}-\d\d-\d\d/.test(text)){
+  if(cfg.templatesEnabled&&templates[key])caption=templates[key].replace(/\{value\}/gi,text).slice(0,250);
+  else if(cfg.dateFormatting&&dateKeys.has(key)&&/^\d{4}-\d\d-\d\d/.test(text)){
    const stamp=Date.parse(text);
    if(Number.isFinite(stamp))caption=new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{dateStyle:'medium',timeZone:'UTC'}).format(new Date(stamp));
   }
@@ -133,7 +134,7 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
     else if(days<=cfg.dueSoonDays)row.classList.add('writer-v9216-date-soon');
    }
   }
-  if(key==='tags'&&Object.keys(tagColors).length){
+  if(cfg.tagColorsEnabled&&key==='tags'&&Object.keys(tagColors).length){
    for(const tag of row.querySelectorAll('.multi-select-pill,.tag')){
     const tagName=String(tag.textContent||'').trim().replace(/^#/,'').toLowerCase();
     const color=tagColors[tagName];
@@ -226,6 +227,11 @@ function writerV9215PrettySettings(plugin,panel){
  toggle('icon','Mostrar ícone do YAML','Show YAML note icon');
  toggle('hideEmpty','Ocultar campos vazios','Hide empty fields');
  toggle('reveal','Revelar campos escondidos','Reveal hidden fields');
+ toggle('propertyColors','Colorir propriedades','Color properties');
+ toggle('tagColorsEnabled','Colorir tags','Color tags');
+ toggle('progressEnabled','Barras de progresso','Progress bars');
+ toggle('dateFormatting','Formatação de datas','Date formatting');
+ toggle('templatesEnabled','Modelos de exibição','Display templates');
  toggle('search','Pesquisa rápida nas propriedades','Property quick search');
  toggle('dueColors','Destacar datas próximas e vencidas','Highlight approaching and past dates');
  const dropdown=(key,pt,en,items)=>new Setting(panel).setName(writerUi(pt,en)).addDropdown(d=>{

@@ -175,6 +175,27 @@ title: Archive expedition
 
 A simpler valid format is \`< Mira | Hello\` or \`> Jonas | Hi | 10:00\`. Legacy \`=== Speaker\` sections remain supported with \`avatar\`, \`time\`, \`side\` or \`mine\` fields before \`---\`.
 
+
+**New fictional voice notes:** use `[audio:0:15]` or `[voice:1:09]` as the entire message body. The play/pause button animates a waveform but **does not produce audio, record, or upload anything**. Example: `< | [audio:0:15] | 10:00`.
+
+**Line breaks:** consecutive lines and blank lines after a message become Markdown content in the same bubble. You can also type a literal `\\n` inside one message field for a new line; `\\\\n` displays a literal backslash-n.
+
+**Visual presets (optional, before messages):** `density: compact|normal|relaxed`, `bubbles: soft|round|square`, `avatars: on|off`, `width: normal|wide`. Character colors, avatars and default names still work as before.
+
+~~~~markdown
+~~~chat
+density: compact
+bubbles: round
+[Left=Maria, right=João]
+< | Hello\\nSecond line | 10:00
+> | [audio:0:15] | 10:01
+< | Next message
+Another paragraph:
+
+- Markdown list
+~~~
+~~~~
+
 ## 7. Vault media gallery (\`media-gallery\`)
 
 Use \`path\` or \`folder\` to target a vault folder. \`type\`: \`all\`, \`image\`, \`video\`, \`audio\`, \`pdf\`. \`layout\`: \`masonry\`, \`grid\`, \`ratio\`. \`sort\`: \`name-asc\`, \`name-desc\`, \`mtime-desc\`, \`mtime-asc\`, \`size-desc\`, \`size-asc\`. \`subfolders\` is a boolean; \`limit\` is 1–150.

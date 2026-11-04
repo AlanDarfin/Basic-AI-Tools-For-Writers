@@ -188,6 +188,27 @@ title: Expedição ao arquivo
 
 Sintaxes curtas aceitas: \`< Mira | Olá\`, \`> Jonas | Oi | 10:00\`. A sintaxe antiga com seções \`=== Personagem\` também é aceita e pode conter \`avatar\`, \`time\`, \`side\` e \`mine\` antes de \`---\`.
 
+
+**Áudio falso:** use `[audio:0:15]` ou `[voice:1:09]` como o conteúdo inteiro da mensagem. O botão anima as ondas de som, **sem tocar, gravar nem enviar áudio real**. Exemplo: `< | [audio:0:15] | 10:00`.
+
+**Quebras de linha:** linhas consecutivas e linhas vazias depois da mensagem permanecem no mesmo balão como Markdown. Também é possível usar `\\n` dentro do campo para quebrar a linha; `\\\\n` mantém a barra e o n.
+
+**Estilos opcionais antes das mensagens:** `density: compact|normal|relaxed`, `bubbles: soft|round|square`, `avatars: on|off`, `width: normal|wide`. As cores, avatares e nomes padrão continuam funcionando.
+
+~~~~markdown
+~~~chat
+density: compact
+bubbles: round
+[Left=Maria, right=João]
+< | Olá\\nSegunda linha | 10:00
+> | [audio:0:15] | 10:01
+< | Outra mensagem
+Novo parágrafo:
+
+- Lista Markdown
+~~~
+~~~~
+
 ## 7. Galeria de mídias (\`media-gallery\`)
 
 Use \`path\` ou \`folder\` para o diretório do cofre; \`type\` pode ser \`all\`, \`image\`, \`video\`, \`audio\` ou \`pdf\`. \`layout\`: \`masonry\`, \`grid\`, \`ratio\`. \`sort\`: \`name-asc\`, \`name-desc\`, \`mtime-desc\`, \`mtime-asc\`, \`size-desc\`, \`size-asc\`. \`subfolders\` permite pesquisar em pastas internas; \`limit\` vai de 1 a 150.

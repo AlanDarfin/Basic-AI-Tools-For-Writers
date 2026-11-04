@@ -9908,12 +9908,21 @@ function writerV8ChatNameKey(name){
 }
 function writerV8ChatDirectives(lines){
  const profiles=new Map(),defaults={left:'',right:''};
- let title='',start=0;
+ let title='',start=0,options={density:'normal',bubbles:'soft',avatars:true,width:'normal'};
  for(let i=0;i<lines.length;i++){
   const line=lines[i].trim();
   if(!line){start=i+1;continue;}
   const heading=/^title:\s*(.+)$/i.exec(line);
   if(heading){title=heading[1].trim().slice(0,100);start=i+1;continue;}
+  const opt=/^(density|bubbles|avatars|width):\s*(\S+)\s*$/i.exec(line);
+  if(opt){
+   const k=opt[1].toLowerCase(),value=opt[2].toLowerCase();
+   if(k==='density'&&['compact','normal','relaxed'].includes(value))options.density=value;
+   if(k==='bubbles'&&['soft','round','square'].includes(value))options.bubbles=value;
+   if(k==='avatars'&&['on','off'].includes(value))options.avatars=value==='on';
+   if(k==='width'&&['normal','wide'].includes(value))options.width=value;
+   start=i+1;continue;
+  }
   if(line.startsWith('[')&&line.endsWith(']')){
    const contents=line.slice(1,-1);
    const parts=[];let fragment='',brackets=0;
@@ -9946,7 +9955,7 @@ function writerV8ChatDirectives(lines){
   }
   break;
  }
- return {title,defaults,profiles,start};
+ return {title,defaults,profiles,start,options};
 }
 function writerV8ChatSplitFields(value){
  const parts=[];let current='',brackets=0,parentheses=0,codeTicks=0;
@@ -9984,8 +9993,12 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
   time=fields[fields.length-1];
   body=fields.slice(2,-1).join(' | ');
  }else if(fields.length===3&&fields[0]===''){
-  name=meta.defaults[side]||lastSpeaker[side]||'';
-  body=fields[1];time=fields[2];
+  if(/^\d{1,2}:\d{2}(?::\d{2})?$/.test(fields[2])){
+   name=meta.defaults[side]||lastSpeaker[side]||'';
+   body=fields[1];time=fields[2];
+  }else{
+   name=fields[1];body=fields[2];explicitName=Boolean(name);
+  }
  }else if(fields.length===3){
   [name,body,time]=fields;explicitName=Boolean(name);
  }else if(fields[0]===''){
@@ -10000,6 +10013,39 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  return {name,side,explicitName,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
   color:profile.color||'',body:String(body||'').slice(0,8000)};
 }
+
+/* Fake voice notes are illustrative animations: never open audio files or the microphone. */
+function writerV8ChatFakeAudio(value){
+ const match=/^\[(?:audio|voice|áudio):\s*(\d{1,2}:\d{2}(?::\d{2})?)\]$/i.exec(String(value||'').trim());
+ if(!match)return null;
+ const p=match[1].split(':').map(Number);
+ if(p.at(-1)>59||(p.length===3&&(p[0]>2||p[1]>59)))return null;
+ const seconds=p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+p[1];
+ return seconds>0&&seconds<=7200?{duration:match[1],seconds}:null;
+}
+function writerV8ChatExpandBreaks(value){
+ return String(value||'').replace(/(\\+)n/g,(_match,slashes)=>
+  '\\'.repeat(Math.floor(slashes.length/2))+(slashes.length%2?'\n':'n'));
+}
+function writerV8ChatRenderFakeAudio(bubble,voice){
+ const label=writerUi('Áudio falso: animação sem som ou gravação real','Fake voice note: animation without sound or recording');
+ const player=bubble.createDiv({cls:'writer-v8-chat-fake-audio',attr:{role:'group','aria-label':label}});
+ const button=player.createEl('button',{cls:'writer-v8-chat-voice-toggle',attr:{type:'button',title:label,'aria-pressed':'false'}});
+ const wave=player.createDiv({cls:'writer-v8-chat-wave',attr:{'aria-hidden':'true'}});
+ for(let i=0;i<24;i++)wave.createSpan({cls:'writer-v8-chat-wave-bar'});
+ player.createSpan({cls:'writer-v8-chat-duration',text:voice.duration});
+ const update=on=>{
+  player.classList.toggle('is-animating',on);
+  button.setAttribute('aria-pressed',String(on));
+  button.setAttribute('aria-label',on?writerUi('Pausar animação fictícia','Pause fictional animation'):
+   writerUi('Animar áudio fictício','Animate fictional voice note'));
+  if(typeof setIcon==='function')setIcon(button,on?'pause':'play');
+  else button.setText(on?'Ⅱ':'▶');
+ };
+ update(false);
+ button.addEventListener('click',()=>update(!player.classList.contains('is-animating')));
+}
+
 function writerV8ChatParseLegacy(source,meta){
  const sections=source.split(/^===\s+(.{1,90})\s*$/m),messages=[];
  for(let i=1;i+1<sections.length&&messages.length<50;i+=2){
@@ -10017,7 +10063,7 @@ function writerV8ChatParseLegacy(source,meta){
     avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',
     body:textPart.slice(0,8000)});
  }
- return {title:meta.title,messages};
+ return {title:meta.title,messages,options:meta.options};
 }
 function writerV8ChatParse(source){
  const raw=String(source||'');
@@ -10041,12 +10087,13 @@ function writerV8ChatParse(source){
    if(last.body.length+line.length<8000)last.body+='\n'+line;
   }
  }
- for(const message of messages)message.body=message.body.trim();
- return {title:meta.title,messages};
+ for(const message of messages)message.body=writerV8ChatExpandBreaks(message.body.trim());
+ return {title:meta.title,messages,options:meta.options};
 }
 function writerV8ChatRender(plugin,source,element,ctx){
  const data=writerV8ChatParse(source);
- const root=element.createDiv({cls:'writer-v8-block writer-v8-chat'});
+ const opts=data?.options||{density:'normal',bubbles:'soft',avatars:true,width:'normal'};
+ const root=element.createDiv({cls:'writer-v8-block writer-v8-chat is-density-'+opts.density+' is-bubbles-'+opts.bubbles+' is-width-'+opts.width});
  if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title)root.createEl('h3',{text:data.title,cls:'writer-v8-chat-title'});
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
@@ -10054,7 +10101,7 @@ function writerV8ChatRender(plugin,source,element,ctx){
  for(const msg of data.messages){
   const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
   const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:''),attr:{role:'listitem'}});
-  if(msg.avatar&&!continuation){
+  if(opts.avatars&&msg.avatar&&!continuation){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
    if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});
   }
@@ -10065,7 +10112,9 @@ function writerV8ChatRender(plugin,source,element,ctx){
    if(msg.time)headline.createEl('span',{text:msg.time});
   }
   const bubble=group.createDiv({cls:'writer-v8-chat-bubble'});
-  if(msg.body)void writerV8Markdown(plugin,ctx,bubble,msg.body).catch(error=>{
+  const fakeAudio=writerV8ChatFakeAudio(msg.body);
+  if(fakeAudio)writerV8ChatRenderFakeAudio(bubble,fakeAudio);
+  else if(msg.body)void writerV8Markdown(plugin,ctx,bubble,msg.body).catch(error=>{
    console.warn('[Basic AI] chat Markdown:',error);
    bubble.empty();bubble.setText(msg.body);
   });

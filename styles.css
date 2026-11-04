@@ -6390,6 +6390,7 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
  white-space:normal;
 }
 
+
 /* 9.2.14 — File previews use the same wide, clipped image language as note previews. */
 .workspace-leaf-content[data-type="file-explorer"] .nav-folder > .writer-v92-preview-shell,
 .workspace-leaf-content[data-type="file-explorer"] .nav-file > .writer-v92-preview-shell{
@@ -6597,5 +6598,4 @@ body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
  gap:10px;
 }
 body.is-mobile .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
-
 /* END V8 MODULAR STYLES */

@@ -135,13 +135,13 @@ function writerV9SpaceItems(plugin,space){
   }
   return true;
  }).sort((a,b)=>{
-  const pin=(file)=>(space.pinnedPaths||[]).some(p=>p===file.path||file.path.startsWith(p.replace(/\\/$/,'')+'/'));
+  const pin=(file)=>(space.pinnedPaths||[]).some(p=>p===file.path||file.path.startsWith(p.replace(/\/$/,'')+'/'));
   const pinA=pin(a),pinB=pin(b);
   if(Boolean(pinA)!==Boolean(pinB))return pinA?-1:1;
   if(space.sort==='manual'){
    const order=space.includePaths||[];
    const rank=file=>{
-    const n=order.findIndex(path=>file.path===path||file.path.startsWith(path.replace(/\\/$/,'')+'/'));
+    const n=order.findIndex(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/'));
     return n<0?Number.MAX_SAFE_INTEGER:n;
    };
    const ar=rank(a),br=rank(b);

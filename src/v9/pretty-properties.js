@@ -57,6 +57,8 @@ function writerV9215PrettyDecorateIcon(node,name){
 function writerV9215PrettyRenderLeaf(plugin,leaf){
  const cfg=plugin.settings.v9215Pretty,host=leaf.view?.containerEl,file=leaf.view?.file;
  if(!host)return;
+ // Preserve the current filter when a metadata refresh redraws decorations.
+ const previousSearch=host.querySelector('.writer-v9216-pretty-search')?.value||'';
  for(const el of host.querySelectorAll('.writer-v9215-pretty-banner,.writer-v9215-pretty-cover,.writer-v9215-pretty-icon,.writer-v9215-property-progress,.writer-v9215-property-caption,.writer-v9216-pretty-search'))el.remove();
  for(const title of host.querySelectorAll('.inline-title.writer-v93-title-icon-host')){
   if(!title.querySelector(':scope > .writer-v9-inline-title-icon'))title.classList.remove('writer-v93-title-icon-host');
@@ -155,19 +157,26 @@ function writerV9215PrettyRenderLeaf(plugin,leaf){
   }
  }
  const metadata=host.querySelector('.metadata-container');
- if(cfg.search&&metadata&&metadata.querySelector('.metadata-property')){
+ const firstRow=metadata?.querySelector('.metadata-property');
+ // Native Obsidian collapses the .metadata-properties region, not the whole
+ // metadata container. Place the filter INSIDE that region so it disappears
+ // with the properties in Source/Live Preview as well as Reading mode.
+ const properties=firstRow?.closest('.metadata-properties')||firstRow?.parentElement;
+ if(cfg.search&&properties&&firstRow){
   const input=metadata.ownerDocument.createElement('input');
   input.className='writer-v9216-pretty-search';input.type='search';
   input.placeholder=writerUi('Filtrar propriedades…','Filter properties…');
   input.setAttribute('aria-label',input.placeholder);
-  metadata.insertBefore(input,metadata.firstChild);
-  input.addEventListener('input',()=>{
+  input.value=previousSearch;
+  properties.insertBefore(input,properties.firstChild);
+  const filter=()=>{
    const query=input.value.trim().toLocaleLowerCase();
    for(const row of metadata.querySelectorAll('.metadata-property')){
     const property=writerV9215PrettyKey(row);
     row.classList.toggle('writer-v9216-search-hidden',Boolean(query&&!property.includes(query)));
    }
-  });
+  };
+  input.addEventListener('input',filter);filter();
  }
 }
 function writerV9215PrettyImagePicker(plugin,key){

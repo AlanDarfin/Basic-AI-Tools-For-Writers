@@ -10020,17 +10020,25 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
 
 /* Fake voice notes are illustrative animations: never open audio files or the microphone. */
 function writerV8ChatFakeAudio(value){
- const match=/^\[(?:audio|voice|áudio):\s*(\d{1,2}:\d{2}(?::\d{2})?)\]$/i.exec(String(value||'').trim());
+ const raw=String(value||'').trim();
+ // This is deliberately a fictional note, not audio recognition or playback.
+ // Keep transcript content small and display it as plain text.
+ if(raw.length>2400)return null;
+ const match=/^\[(?:audio|voice|áudio):\s*(\d{1,2}:\d{2}(?::\d{2})?)(?::([\s\S]*))?\]$/i.exec(raw);
  if(!match)return null;
  const p=match[1].split(':').map(Number);
  if(p.at(-1)>59||(p.length===3&&(p[0]>2||p[1]>59)))return null;
  const seconds=p.length===3?p[0]*3600+p[1]*60+p[2]:p[0]*60+p[1];
- return seconds>0&&seconds<=7200?{duration:match[1],seconds}:null;
+ if(seconds<=0||seconds>7200)return null;
+ const transcript=match[2]===undefined?'':writerV8ChatExpandBreaks(match[2].trim());
+ if(transcript.length>2000)return null;
+ return {duration:match[1],seconds,transcript};
 }
 function writerV8ChatExpandBreaks(value){
  return String(value||'').replace(/(\\+)n/g,(_match,slashes)=>
   '\\'.repeat(Math.floor(slashes.length/2))+(slashes.length%2?'\n':'n'));
 }
+let writerV8ChatTranscriptSerial=0;
 function writerV8ChatRenderFakeAudio(bubble,voice){
  const label=writerUi('Áudio falso: animação sem som ou gravação real','Fake voice note: animation without sound or recording');
  const player=bubble.createDiv({cls:'writer-v8-chat-fake-audio',attr:{role:'group','aria-label':label}});
@@ -10048,8 +10056,25 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  };
  update(false);
  button.addEventListener('click',()=>update(!player.classList.contains('is-animating')));
+ // No transcript is inferred or fetched: the author provides the text after
+ // the duration. Plain text avoids executing arbitrary HTML from the vault.
+ if(!voice.transcript)return;
+ const transcriptId='writer-v8-voice-transcript-'+(++writerV8ChatTranscriptSerial);
+ const toggle=bubble.createEl('button',{cls:'writer-v8-chat-transcript-toggle',
+  attr:{type:'button','aria-expanded':'false','aria-controls':transcriptId}});
+ const body=bubble.createDiv({cls:'writer-v8-chat-transcript-text',
+  attr:{id:transcriptId,role:'region','aria-label':writerUi('Transcrição do áudio fictício','Fictional voice note transcript')}});
+ body.setText(voice.transcript);
+ body.hidden=true;
+ const show=expanded=>{
+  body.hidden=!expanded;
+  toggle.setAttribute('aria-expanded',String(expanded));
+  toggle.setText(expanded?writerUi('Ocultar transcrição','Hide transcript'):
+   writerUi('Ver transcrição','View transcript'));
+ };
+ show(false);
+ toggle.addEventListener('click',()=>show(body.hidden));
 }
-
 /* Standalone --- separates messages; --- label --- places text between rules. */
 function writerV8ChatDivider(line){
  const match=/^[ \t]{0,3}---(?:[ \t]+([^\r\n]{1,120}?)[ \t]+---)?[ \t]*$/.exec(String(line||''));

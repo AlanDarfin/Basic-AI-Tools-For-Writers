@@ -4,15 +4,20 @@
  * Longform's independent project timeline and event store remain unchanged. */
 const WRITER_V95_TIMELINE_OPTIONS={
  layout:'vertical',theme:'classic',density:'normal',sort:'source',controls:true,
- line:3,body:2,accent:'',maxEvents:80,pageSize:30
+ line:3,body:2,accent:'',maxEvents:80,pageSize:30,spacedLines:false,hideTitles:false
 };
-const WRITER_V95_TIMELINE_THEMES=['classic','cards','minimal','compact','editorial'];
+const WRITER_V95_TIMELINE_THEMES=['classic','cards','minimal','compact','editorial','poster','glass','terminal'];
 const WRITER_V95_TIMELINE_ACCENTS={
  'active-color-background-modifier-success':'--background-modifier-success',
  'active-color-background-modifier-error':'--background-modifier-error',
+ 'active-color-background-modifier-error-hover':'--background-modifier-error-hover',
  'active-color-text-accent':'--text-accent',
+ 'active-color-text-accent-hover':'--text-accent-hover',
  'active-color-text-error':'--text-error',
+ 'active-color-text-error-hover':'--text-error-hover',
+ 'active-color-text-selection':'--text-selection',
  'active-color-interactive-accent':'--interactive-accent',
+ 'active-color-interactive-accent-hover':'--interactive-accent-hover',
  'active-color-interactive-success':'--interactive-success'
 };
 function writerV95TimelineConfigOption(cfg,key,value){
@@ -22,6 +27,7 @@ function writerV95TimelineConfigOption(cfg,key,value){
   if(['horizontal','vertical'].includes(val))cfg.layout=val;
  }else if(name==='theme'&&WRITER_V95_TIMELINE_THEMES.includes(val))cfg.theme=val;
  else if(name==='density'&&['normal','compact','comfortable'].includes(val))cfg.density=val;
+ else if(['spaced-lines','hide-titles'].includes(name)&&['true','false','on','off','yes','no'].includes(val))cfg[name==='spaced-lines'?'spacedLines':'hideTitles']=['true','on','yes'].includes(val);
  else if(name==='sort'&&['source','asc','desc','dependencies'].includes(val))cfg.sort=val;
  else if(['controls','toolbar'].includes(name)&&['true','false','on','off','yes','no'].includes(val))
   cfg.controls=['true','on','yes'].includes(val);
@@ -121,10 +127,12 @@ function writerV95TimelineParse(source,format='timeline'){
     const size=/^(line|body)-([2-5])$/.exec(token);
     if(size)writerV95TimelineConfigOption(cfg,size[1],size[2]);
     if(WRITER_V95_TIMELINE_ACCENTS[token])cfg.accent='var('+WRITER_V95_TIMELINE_ACCENTS[token]+')';
+    if(token==='spaced-lines')cfg.spacedLines=true;
+    if(token==='hide-titles')cfg.hideTitles=true;
    }
    begin++;continue;
   }
-  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body|max-events|page-size):\s*(.*)$/i.exec(line);
+  const option=/^(layout|orientation|direction|theme|density|sort|controls|toolbar|color|line|body|spaced-lines|hide-titles|max-events|page-size):\s*(.*)$/i.exec(line);
   if(option){writerV95TimelineConfigOption(cfg,option[1],option[2]);begin++;continue;}
   break;
  }
@@ -164,7 +172,10 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  const root=element.createDiv({cls:'writer-v95-timeline'});
  if(!parsed){root.createEl('p',{text:writerUi('Timeline muito grande (limite de 64 KB).','Timeline exceeds the 64 KB limit.')});return;}
  const cfg=parsed.config;
- root.classList.add('is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density);
+ root.classList.add('is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
+  'is-line-'+cfg.line,'is-body-'+cfg.body);
+ if(cfg.spacedLines)root.classList.add('is-spaced-lines');
+ if(cfg.hideTitles)root.classList.add('is-hide-titles');
  root.style.setProperty('--writer-v95-line-width',cfg.line+'px');
  root.style.setProperty('--writer-v95-body-width',cfg.body+'px');
  if(cfg.accent)root.style.setProperty('--writer-v95-accent',cfg.accent);
@@ -174,10 +185,18 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  }
  const groups=[...new Set(parsed.events.map(e=>e.group).filter(Boolean))];
  const bar=cfg.controls?root.createDiv({cls:'writer-v95-timeline-toolbar'}):null;
- let layout=cfg.layout,query='',group='',page=0;
+ let layout=cfg.layout,theme=cfg.theme,lineStyle=cfg.line,bodyStyle=cfg.body,query='',group='',page=0;
  if(bar){
-  const orient=bar.createEl('button',{cls:'writer-v95-timeline-orientation',attr:{type:'button'}});
-  const setOrientation=()=>{orient.textContent=layout==='vertical'?writerUi('Horizontal','Horizontal'):writerUi('Vertical','Vertical');orient.setAttribute('aria-label',writerUi('Mudar orientação','Switch orientation'));};
+  const orient=bar.createEl('button',{cls:'writer-v95-timeline-orientation',
+   attr:{type:'button','aria-label':writerUi('Mudar orientação','Switch orientation')}});
+  const setOrientation=()=>{
+   orient.empty?.();
+   const target=layout==='vertical'?'columns-2':'rows-2';
+   if(typeof require('obsidian').setIcon==='function')require('obsidian').setIcon(orient,target);
+   else orient.setText?.(layout==='vertical'?'↔':'↕');
+   orient.setAttribute('title',layout==='vertical'?writerUi('Ver horizontalmente','View horizontally'):
+    writerUi('Ver verticalmente','View vertically'));
+  };
   setOrientation();
   orient.addEventListener('click',()=>{
    layout=layout==='vertical'?'horizontal':'vertical';
@@ -185,6 +204,35 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    root.classList.toggle('is-layout-vertical',layout==='vertical');
    setOrientation();
   });
+  // Original Timeline: live preview of line-2..5 and body-2..4 alongside named themes.
+  const selector=(label,options,selected,callback)=>{
+   const input=bar.createEl('select',{cls:'writer-v105-timeline-selector',
+    attr:{'aria-label':label,title:label}});
+   for(const [value,title] of options){
+    const option=input.createEl('option',{text:title});option.value=String(value);
+   }
+   input.value=String(selected);
+   input.addEventListener('change',()=>callback(input.value));
+   return input;
+  };
+  selector(writerUi('Tema da timeline','Timeline theme'),[
+   ['classic',writerUi('Clássico','Classic')],['cards',writerUi('Cartões','Cards')],
+   ['minimal',writerUi('Minimalista','Minimal')],['compact',writerUi('Compacto','Compact')],
+   ['editorial',writerUi('Editorial','Editorial')],['poster',writerUi('Pôster','Poster')],
+   ['glass',writerUi('Vidro','Glass')],['terminal','Terminal']
+  ],theme,next=>{root.classList.remove('is-theme-'+theme);theme=next;root.classList.add('is-theme-'+theme);});
+  selector(writerUi('Estilo da linha','Timeline line style'),
+   [2,3,4,5].map(n=>[String(n),writerUi('Linha ','Line ')+n]),lineStyle,next=>{
+    root.classList.remove('is-line-'+lineStyle);lineStyle=Number(next);
+    root.classList.add('is-line-'+lineStyle);
+    root.style.setProperty('--writer-v95-line-width',lineStyle+'px');
+   });
+  selector(writerUi('Estilo do cartão','Timeline card style'),
+   [2,3,4].map(n=>[String(n),writerUi('Cartão ','Card ')+n]),bodyStyle,next=>{
+    root.classList.remove('is-body-'+bodyStyle);bodyStyle=Number(next);
+    root.classList.add('is-body-'+bodyStyle);
+    root.style.setProperty('--writer-v95-body-width',bodyStyle+'px');
+   });
   const search=bar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar eventos…','Search events…'),'aria-label':writerUi('Buscar eventos','Search events')}});
   search.addEventListener('input',()=>{query=search.value.trim().toLocaleLowerCase();page=0;draw();});
   if(groups.length){
@@ -222,8 +270,9 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     try{if(require('obsidian').getIcon?.(event.icon))require('obsidian').setIcon(marker,event.icon);}catch(_){}
    }
    const info=card.createDiv({cls:'writer-v95-timeline-event-body'});
-   if(event.date)info.createSpan({cls:'writer-v95-timeline-date',text:event.date});
-   if(event.title)info.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});
+   const head=info.createDiv({cls:'writer-v95-timeline-head'});
+   if(event.date)head.createSpan({cls:'writer-v95-timeline-date',text:event.date});
+   if(event.title)head.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});
    if(event.group)info.createSpan({cls:'writer-v95-timeline-group',text:event.group});
    if(event.era)info.createSpan({cls:'writer-v101-timeline-era',text:event.era});
    if(event.after)info.createSpan({cls:'writer-v101-timeline-after',text:writerUi('Depois de: ','After: ')+event.after});

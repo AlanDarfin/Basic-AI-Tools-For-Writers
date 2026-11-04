@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 9.3.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 9.4.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -88,7 +88,7 @@ layout: cards
 ### Áudio e acessibilidade
 
 - **Soundscapes (PC):** rádios e playlists do YouTube agora **começam a tocar em segundo plano** ao clicar em Play, sem abrir popup ou aba. O mini player de vídeo aparece **somente** ao clicar no botão de exibi-lo ou usar o comando correspondente. É possível recolher sem interromper a rádio ou usar **Parar** para descarregá-la. O widget da Homepage permanece visível durante Play e Stop; no celular ele fica na grade normalmente, mas apresenta um aviso de indisponibilidade por limitações do Obsidian mobile. O mini player tenta utilizar Webview do Chromium e, quando indisponível, recorre a um iframe visível do YouTube. O volume das rádios agora pode ser ajustado pelo slider da Homepage, da barra de status ou do próprio mini player, assim como o áudio local. A configuração é reaplicada ao carregar o vídeo ou trocar de estação. Algumas transmissões podem bloquear incorporação (erro 153). **Minha Música** continua usando o player local, com controles próprios.
-- **9.3.2 · Alinhamento dos ícones no título:** ícones personalizados do explorador e do YAML agora acompanham a primeira linha do título, sem posição absoluta que os desloque para cima no Android. A cor segue a do título. Também corrige a remoção dos ícones ao recarregar o plugin e evita duplicação quando há ícones de ambas as fontes.
+- **9.4.0 · Alinhamento dos ícones no título:** ícones personalizados do explorador e do YAML agora acompanham a primeira linha do título, sem posição absoluta que os desloque para cima no Android. A cor segue a do título. Também corrige a remoção dos ícones ao recarregar o plugin e evita duplicação quando há ícones de ambas as fontes.
 - **9.3.1 · Prévias:** o botão de mostrar/ocultar prévias usa a mesma cor neutra dos demais controles. As descrições de Folder Notes mostram no máximo três linhas, com `...` **apenas quando há texto oculto**; segure para expandir. Notas comuns mantêm seu limite de linhas configurável.
 - **9.3.1 · Pomodoro:** cronômetro local inspirado em [Pomodoro Timer](https://github.com/eatgrass/obsidian-pomodoro-timer), com ciclos de foco, pausas curta/longa, painel lateral interativo (PC e Android), contador diário, atalhos na paleta e status bar **somente no PC**. Configurações em **Escrita e Markdown → Pomodoro · Foco** para durações, aviso, som, avanço automático e painel/status. O registro em notas diárias é opcional e só adiciona uma linha a um arquivo `AAAA-MM-DD.md` já existente; não cria nem apaga notas. O rastreamento avançado de tarefas do plugin original ainda não foi reproduzido.
 - **Prévias e ícones:** descrições de Folder Notes, trechos iniciais das notas, miniaturas compactas à direita e expansão do texto por mouse ou toque prolongado no Android. A duração do toque é configurável. Ícones decorativos do título foram alinhados e mantidos fora do cursor de edição. Ícones dos controles do explorador são maiores no celular.
@@ -165,3 +165,5 @@ Os blocos complementam o Markdown, sem substituir integralmente outros plugins o
 Projetos, notas, favoritos, informações de estudo e a maior parte da homepage trabalham com o cofre e com as configurações locais. IA externa, tradução online, LanguageTool remoto, rádios do YouTube e TTS online precisam de conexão quando utilizados. Ative o envio de conteúdo das suas notas apenas se concordar com o tratamento de dados do serviço. Rascunhos temporários não salvos não são arquivos persistentes.
 
 Para detalhes sobre licenças e integrações, consulte [Créditos de terceiros](../THIRD_PARTY_NOTICES.md), [Contribuição](../CONTRIBUTING.md) e [Segurança](../SECURITY.md).
+
+Os blocos de chat fictício também têm áudio simulado (`[audio:0:15]`), Markdown multilinha e estilos opcionais (veja [exemplos de blocos](BLOCKS.pt-BR.md)).

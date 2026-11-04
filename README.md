@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 9.3.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 9.4.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -88,7 +88,7 @@ layout: cards
 ### Audio and accessibility
 
 - **Soundscapes (desktop):** ambient YouTube radio and custom stations **start in the background** when Play is pressed, without showing a popup or opening a tab. The compact floating video player opens **only** when the Show mini player button or command is used. It can be hidden without stopping playback, or stopped to unload it. The Homepage widget remains visible in both playing and stopped states; on mobile it stays in the dashboard and shows a compatibility notice instead of disappearing. It prefers Chromium's embedded Webview when available and falls back to a visible YouTube iframe if that is unavailable. The volume sliders on the homepage, status bar and mini player all control radio audio using the embedded player API; the same setting also controls local music. Radio volume is re-applied after the video loads or a station changes. Some videos may reject embedding (YouTube error 153). **My Music** continues to play local vault audio directly, with play/pause and volume controls.
-- **9.3.2 · Inline title icon alignment:** explorer and YAML icons now follow the title's first text line rather than using an absolute offset that placed them above text on Android. Icons inherit title color. Also fixes icon cleanup on plugin reload and prevents duplicate decorations from the two sources.
+- **9.4.0 · Inline title icon alignment:** explorer and YAML icons now follow the title's first text line rather than using an absolute offset that placed them above text on Android. Icons inherit title color. Also fixes icon cleanup on plugin reload and prevents duplicate decorations from the two sources.
 - **9.3.1 · Previews:** the preview toggle matches the other toolbar icons' neutral color. Folder Note descriptions show at most three lines with a literal `...` **only when more text is hidden**; hold to expand. Regular notes retain their configurable line limit.
 - **9.3.1 · Pomodoro:** a local timer inspired by [Pomodoro Timer](https://github.com/eatgrass/obsidian-pomodoro-timer) with configurable focus/short/long breaks, interactive sidebar (desktop and Android), daily count, command-palette shortcuts, and a **desktop-only** status bar. See **Writing & Markdown → Pomodoro · Focus** for duration, notification, sound, auto-advance and visibility settings. Optional daily logging appends only to an existing `YYYY-MM-DD.md` file without creating or deleting notes. Advanced task tracking from the original plugin is not yet implemented.
 - **Explorer previews and icons:** Folder Note descriptions, opening Markdown excerpts, compact right-side images, and delayed hover or Android long-press expansion with a configurable duration. Inline-title decorations are aligned and non-editable; mobile explorer action icons are larger.
@@ -165,3 +165,5 @@ Markdown renderers are presentation and editing helpers, not substitutes for ind
 Local writing, projects, metadata, favorites, study information and most dashboard features work with vault files or plugin settings. External AI, online translation, remote LanguageTool, YouTube radio and online TTS require network connections when used. Do not enable services that transmit note content unless you are comfortable with their provider's data handling. Session drafts that are not saved to a file are temporary.
 
 For open-source licensing and integration details, see [Third-party notices](THIRD_PARTY_NOTICES.md), [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md).
+
+Fictional chat blocks also support simulated voice notes (`[audio:0:15]`), multiline Markdown and opt-in visual presets (see [block examples](docs/BLOCKS.en.md)).

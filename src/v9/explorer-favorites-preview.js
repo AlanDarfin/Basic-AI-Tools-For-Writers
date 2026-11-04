@@ -64,6 +64,25 @@ function writerV92PreviewValue(plugin,file,full=false){
  return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,full?4000:cfg.previewMax);
 }
 
+/* Folder Notes preserve YAML descriptions even while metadata cache warms up. */
+function writerV9216FolderDescription(plugin,folder,body,full=false){
+ const meta=writerV92PreviewValue(plugin,folder,full);
+ if(meta)return meta;
+ if(body){
+  const front=/^---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/.exec(body);
+  if(front){
+   try{
+    const obj=require('obsidian').parseYaml?.(front[1])||{};
+    const key=plugin.settings.v92Explorer.folderDescriptionKey;
+    const value=obj[key]??obj.summary??obj.brief;
+    const text=Array.isArray(value)?value.join(', '):typeof value==='string'?value:'';
+    if(text.trim())return text.replace(/\s+/g,' ').trim().slice(0,full?4000:plugin.settings.v92Explorer.previewMax);
+   }catch(_){}
+  }
+ }
+ return writerV921PreviewBody(body,full?4000:plugin.settings.v92Explorer.previewMax);
+}
+
 /* Preview images come from local vault files only; external URLs are never requested. */
 function writerV921PreviewSource(plugin,item){
  if(item instanceof TFolder)return writerV92FolderNote(plugin.app,item);
@@ -275,16 +294,18 @@ function writerV92ExplorerRegister(plugin){
    node.classList.remove('writer-v92-has-preview');
    return;
   }
-  const fromYaml=writerV92PreviewValue(plugin,item);
-  const fullYaml=fromYaml?writerV92PreviewValue(plugin,item,true):'';
   const read=cached.get(source.path);
   const stable=read&&read.mtime===(source.stat?.mtime||0);
   if(read&&!stable)cached.delete(source.path);
-  if((cfg.showImage||!fromYaml)&&!stable)requestRead(source);
-  const excerpt=stable&&cfg.previewMode==='all'&&!fromYaml?
-   writerV921PreviewBody(read.content,cfg.previewMax):'';
-  const description=fromYaml||excerpt;
-  const fullDescription=fullYaml||(excerpt&&stable?writerV921PreviewBody(read.content,4000):'');
+  // Regular notes always use their opening Markdown text rather than YAML description.
+  if(!stable)requestRead(source);
+  const body=stable?read.content:'';
+  const description=folder?
+   writerV9216FolderDescription(plugin,item,body,false):
+   (stable?writerV921PreviewBody(body,cfg.previewMax):'');
+  const fullDescription=folder?
+   writerV9216FolderDescription(plugin,item,body,true):
+   (stable?writerV921PreviewBody(body,4000):'');
   const image=cfg.showImage?writerV921PreviewImage(plugin,source,stable?read.content:''):null;
   const imagePath=image?.path||'';
   if(!description&&!imagePath){existing?.remove();node.classList.remove('writer-v92-has-preview');return;}
@@ -419,8 +440,8 @@ function writerV92ExplorerSettings(plugin,panel){
    await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }
  });
- new Setting(panel).setName(writerUi('Prévia de descrição','Description preview'))
-  .setDesc(writerUi('Desligado; somente folder notes; ou folder notes e todas as notas Markdown.','Off; folder notes only; or folder notes plus all Markdown notes.'))
+ new Setting(panel).setName(writerUi('Conteúdo nas prévias','Preview content'))
+  .setDesc(writerUi('Folder Notes mostram a descrição; notas comuns mostram o início do texto.','Folder Notes show descriptions; regular notes show opening text.'))
   .addDropdown(d=>d.addOption('off',writerUi('Desativado','Off'))
    .addOption('folder',writerUi('Somente folder notes','Folder notes only'))
    .addOption('all',writerUi('Todas as notas + folder notes','All notes + folder notes'))
@@ -431,11 +452,7 @@ function writerV92ExplorerSettings(plugin,panel){
    cfg.folderDescriptionKey=/^[\w-]{1,50}$/.test(v)?v:'description';
    await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
- new Setting(panel).setName(writerUi('Propriedade da descrição das notas','Note description property'))
-  .addText(t=>t.setValue(cfg.noteDescriptionKey).onChange(async v=>{
-   cfg.noteDescriptionKey=/^[\w-]{1,50}$/.test(v)?v:'description';
-   await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
-  }));
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Notas comuns mostram o começo do conteúdo Markdown, não a propriedade description. A descrição acima é exclusiva das Folder Notes.','Regular notes show the beginning of Markdown content, not the description property. The description above is exclusive to Folder Notes.')});
  new Setting(panel).setName(writerUi('Mostrar prévias agora','Show previews now'))
   .addToggle(t=>t.setValue(cfg.previewVisible).onChange(async v=>{
    cfg.previewVisible=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();

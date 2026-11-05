@@ -333,6 +333,7 @@ function writerV10RenderBookshelfWidget(view,parent){
 }
 function writerV10RegisterBookshelf(plugin){
  writerV109BookRegisterProgress(plugin);
+ writerV109RegisterScrollHints(plugin);
  for(const name of ['bookshelf','writer-bookshelf']){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
    if(!plugin.settings.v10Bookshelf?.enabled){el.createEl('pre',{text:source});return;}

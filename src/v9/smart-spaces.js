@@ -169,7 +169,8 @@ function writerV9SpaceEditor(plugin,initial,save){
    for(const [id,pt,en] of [['filter','Filtros dinâmicos','Dynamic filters'],['curated','Notas escolhidas','Curated notes'],['folder','Pasta fixada','Pinned folder']])d.addOption(id,writerUi(pt,en));
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
-  field('folder','Pasta (opcional)','Folder (optional)');
+  writerV109AddVaultPathSetting(plugin,root,{pt:'Pasta (opcional)',en:'Folder (optional)',kind:'folder',
+   value:draft.folder,onChange:path=>{draft.folder=path;}});
   new Setting(root).setName(writerUi('Usar pasta da nota aberta','Use the current note folder'))
    .setDesc(writerUi('Preenche a pasta sem mover arquivos.','Sets the folder path without moving files.'))
    .addButton(b=>b.setButtonText(writerUi('Selecionar pasta atual','Use current folder')).onClick(()=>{
@@ -179,15 +180,24 @@ function writerV9SpaceEditor(plugin,initial,save){
     modal.close();writerV9SpaceEditor(plugin,draft,save);
    }));
 
-  new Setting(root).setName(writerUi('Notas/pastas incluídas','Included notes/folders'))
-   .setDesc(writerUi('Uma rota por linha para Spaces de seleção manual.','One vault path per line for curated Spaces.'))
+  const included=new Setting(root).setName(writerUi('Notas/pastas incluídas','Included notes/folders'))
+   .setDesc(writerUi('Busque e selecione notas ou pastas, ou edite os caminhos abaixo.','Search and select vault paths.'))
    .addTextArea(t=>t.setValue((draft.includePaths||[]).join('\n')).onChange(value=>{draft.includePaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);}));
-
-  new Setting(root).setName(writerUi('Fixar somente neste Space','Pin only in this Space'))
-   .setDesc(writerUi('Uma nota ou pasta por linha. Cada Space mantém seus itens fixados.','One file or folder path per line. Each Space has independent pinned items.'))
+  included.addButton(button=>button.setIcon('search').setTooltip(writerUi('Selecionar do cofre','Choose vault item')).onClick(()=>
+   writerV109PickVaultPath(plugin,{kind:'both',onChoose:item=>{
+    draft.includePaths=[...new Set([...(draft.includePaths||[]),item.path])];
+    const input=included.controlEl.querySelector('textarea');if(input)input.value=draft.includePaths.join('\n');
+   }})));
+  const pinned=new Setting(root).setName(writerUi('Fixar somente neste Space','Pin only in this Space'))
+   .setDesc(writerUi('Selecione notas e pastas para fixar somente neste Space.','Choose notes or folders to pin in this Space.'))
    .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
     draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
+  pinned.addButton(button=>button.setIcon('search').setTooltip(writerUi('Selecionar do cofre','Choose vault item')).onClick(()=>
+   writerV109PickVaultPath(plugin,{kind:'both',onChoose:item=>{
+    draft.pinnedPaths=[...new Set([...(draft.pinnedPaths||[]),item.path])];
+    const input=pinned.controlEl.querySelector('textarea');if(input)input.value=draft.pinnedPaths.join('\n');
+   }})));
   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
@@ -483,32 +493,7 @@ function writerV9RegisterSpaces(plugin){
  plugin.addCommand({id:'v9-spaces-open',name:writerUi('Spaces: abrir coleções','Spaces: open collections'),
   callback:()=>writerV9SpaceModal(plugin)});
 
- // Commands are usable from the palette and from Obsidian's mobile toolbar.
- const openQuickActions=event=>{
-  const menu=new Menu(plugin.app);
-  const item=(pt,en,icon,callback)=>menu.addItem(entry=>entry.setTitle(writerUi(pt,en))
-   .setIcon(icon).onClick(callback));
-  item('Gerenciar Spaces','Manage Spaces','layers',()=>writerV9SpaceModal(plugin));
-  item('Abrir biblioteca Longform','Open Longform bookshelf','library',
-   ()=>plugin.writerV10OpenBookshelf?.());
-  item('Ordenação global do explorador','Global Explorer sorting','list-ordered',
-   ()=>writerV1043OpenNativeSortMenu(plugin));
-  item('Mostrar / ocultar arquivos escondidos','Show / hide hidden files','eye',async()=>{
-   const flex=plugin.settings.v91Flex;
-   if(!flex)return;
-   flex.showHidden=!flex.showHidden;
-   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
-  });
-  item('Centralizar linha ou título','Center line or heading','align-center',()=>{
-   plugin.app.commands?.executeCommandById?.(plugin.manifest.id+':v102-align-center');
-  });
-  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
-  else menu.showAtPosition({x:90,y:120});
- };
- plugin.writerV1042QuickActions=openQuickActions;
- plugin.addCommand({id:'v1042-open-quick-actions',
-  name:writerUi('Basic: abrir atalhos rápidos','Basic: open quick actions'),
-  callback:()=>openQuickActions()});
+ // Use individual commands directly; no unnecessary Quick Actions submenu.
  plugin.addCommand({id:'v1042-spaces-next',
   name:writerUi('Spaces: próxima coleção','Spaces: next collection'),
   callback:()=>{
@@ -525,9 +510,7 @@ function writerV9RegisterSpaces(plugin){
    const index=spaces.findIndex(s=>s.id===plugin.settings.v9Spaces.activeId);
    void writerV9215SelectSpace(plugin,spaces[(index<0?0:index+spaces.length-1)%spaces.length].id);
   }});
- plugin.addCommand({id:'v1042-current-folder-sorting',
-  name:writerUi('Explorador: abrir ordenação global','Explorer: open global sorting'),
-  callback:()=>writerV1043OpenNativeSortMenu(plugin)});
+ // Sorting is accessed in the Explorer's native Sort menu.
  plugin.addCommand({id:'v1042-spaces-quick-pin',
   name:writerUi('Spaces: fixar ou desafixar nota atual','Spaces: pin or unpin current note'),
   callback:async()=>{

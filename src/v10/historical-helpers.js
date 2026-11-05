@@ -89,5 +89,5 @@ function writerV106HistoricRegister(plugin){
    if(!checking)writerV106JsonTree(plugin,text);
    return true;
   }});
- plugin.addCommand({id:'v106-recover-v1-dictionary',name:writerUi('Dicionário: recuperar caminho da v1','Dictionary: recover v1 path'),callback:()=>void writerV106LegacyDictionaryInspector(plugin)});
+ // Recovery utility is available from Settings, not listed among everyday editor commands.
 }

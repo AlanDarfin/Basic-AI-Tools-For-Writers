@@ -246,6 +246,10 @@ function writerV101EnhancementsSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Limite de notas por operação','Maximum notes per operation'))
   .addSlider(s=>s.setLimits(1,100,1).setDynamicTooltip().setValue(cfg.batchMax)
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
+ if(typeof writerV106LegacyDictionaryInspector==='function')
+  new Setting(panel).setName(writerUi('Recuperar dicionário antigo','Recover legacy dictionary'))
+   .setDesc(writerUi('Ferramenta de migração da v1; não altera suas notas.','One-time v1 migration utility; notes remain unchanged.'))
+   .addButton(btn=>btn.setButtonText(writerUi('Abrir','Open')).onClick(()=>void writerV106LegacyDictionaryInspector(plugin)));
  if(typeof writerV10DiscoverySettings==='function')writerV10DiscoverySettings(plugin,panel);
  if(typeof writerV106DragSettings==='function')writerV106DragSettings(plugin,panel);
   if(typeof writerV107Settings==='function')writerV107Settings(plugin,panel);

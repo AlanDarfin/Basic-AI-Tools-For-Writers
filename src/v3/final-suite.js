@@ -603,7 +603,8 @@ function writerRenderFinalSettings(panel,plugin,section){
  if(section==='anotherName')str('property','Frontmatter property');
  if(section==='viewMode')str('property','View mode frontmatter property');
  if(section==='templates'){
-  str('folder','Templates folder');
+  writerV109AddVaultPathSetting(plugin,panel,{pt:'Pasta de modelos',en:'Templates folder',kind:'folder',
+    value:cfg.folder,onChange:async path=>{cfg.folder=path;await plugin.saveSettings();}});
   str('dateFormat','Date format (e.g. YYYY-MM-DD)');
   str('timeFormat','Time format (e.g. HH:mm)');
   bool('applyOnCreate','Apply templates on note creation');
@@ -627,12 +628,17 @@ function writerRenderFinalSettings(panel,plugin,section){
      d.setValue(rule.matchMethod||'prefix').onChange(async value=>{rule.matchMethod=value;await plugin.saveSettings();});
     });
     row.addText(t=>t.setPlaceholder(translateLabel('Name fragment')).setValue(rule.matchString||'').onChange(async value=>{rule.matchString=value;await plugin.saveSettings();}));
-    row.addDropdown(d=>{
-     d.addOption('','Select template');
-     for(const file of templates)d.addOption(file.path,file.path);
-     if(rule.templatePath&&!templates.some(f=>f.path===rule.templatePath))d.addOption(rule.templatePath,rule.templatePath+' (missing)');
-     d.setValue(rule.templatePath||'').onChange(async value=>{rule.templatePath=value;await plugin.saveSettings();});
+    row.addText(t=>{
+     t.setPlaceholder(translateLabel('Select template')).setValue(rule.templatePath||'')
+      .onChange(async value=>{rule.templatePath=value;await plugin.saveSettings();});
+     writerV109AttachPathAutocomplete(plugin,t.inputEl,{kind:'note',onChoose:async item=>{
+      rule.templatePath=item.path;await plugin.saveSettings();
+     }});
     });
+    row.addExtraButton(b=>b.setIcon('search').setTooltip(translateLabel('Select template'))
+     .onClick(()=>writerV109PickVaultPath(plugin,{kind:'note',onChoose:async item=>{
+      rule.templatePath=item.path;await plugin.saveSettings();render();
+     }})));
     row.addExtraButton(b=>b.setIcon('trash').setTooltip(translateLabel('Delete rule')).onClick(async()=>{
      matchers.splice(index,1);
      await plugin.saveSettings();render();

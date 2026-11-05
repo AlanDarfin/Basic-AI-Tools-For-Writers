@@ -2,9 +2,13 @@
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
- const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},...old};
+ const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},singleNotes:[],readLocations:{},...old};
  cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
+ cfg.singleNotes=Array.isArray(cfg.singleNotes)?[...new Set(cfg.singleNotes.filter(path=>typeof path==='string'&&path.endsWith('.md')&&path.length<500))].slice(0,500):[];
+ cfg.readLocations=Object.fromEntries(Object.entries(cfg.readLocations&&typeof cfg.readLocations==='object'?cfg.readLocations:{})
+  .slice(-3000).filter(([path])=>typeof path==='string'&&path.length<500).map(([path,value])=>[path,
+   Math.max(0,Math.min(100,Math.round(Number(value)||0)))]));
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
  cfg.library=Object.fromEntries(Object.entries(library).slice(0,500).filter(([path])=>typeof path==='string'&&path.length<=500)
   .map(([path,item])=>[path,writerV10BookRecord(item)]));
@@ -33,25 +37,73 @@ async function writerV10BookSaveState(plugin,project,record){
  await plugin.saveSettings();
 }
 function writerV10BookshelfProjects(plugin){
- return (plugin.app.vault.getMarkdownFiles?.()||[])
+ const vault=plugin.app.vault,cache=plugin.app.metadataCache;
+ const projects=(vault.getMarkdownFiles?.()||[])
   .map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
+ const indexed=new Set(projects.map(p=>p.file.path));
+ // Standalone books are references to existing Markdown notes, not copied projects.
+ for(const path of plugin.settings?.v10Bookshelf?.singleNotes||[]){
+  const file=vault.getAbstractFileByPath(path);
+  if(!(file instanceof TFile)||file.extension!=='md'||indexed.has(file.path))continue;
+  const front=cache?.getFileCache?.(file)?.frontmatter||{};
+  const title=String(front.title||file.basename||'').trim().slice(0,160)||file.basename;
+  projects.push({file,title,meta:front,scenes:[],singleNote:true});
+  indexed.add(file.path);
+ }
+ return projects;
+}
+function writerV109BookMeta(plugin,project){
+ const yaml=plugin.app.metadataCache?.getFileCache?.(project.file)?.frontmatter||{};
+ return {...(project.meta||{}),...yaml};
 }
 function writerV10BookCover(plugin,project){
- const m=project.meta||{};
- const value=m.cover||m.coverImage||m.image||m.banner||'';
+ const m=writerV109BookMeta(plugin,project);
+ // banner has highest priority; linked local images and HTTPS work through the existing resolver.
+ const raw=m.banner||m.cover||m.coverImage||m.image||'';
+ const value=Array.isArray(raw)?raw[0]:raw;
  return typeof writerV9215PrettyImage==='function'?writerV9215PrettyImage(plugin.app,project.file,value):'';
 }
 function writerV10BookWordProgress(plugin,project){
+ if(project.singleNote)return {chapters:1,completed:0};
  const entries=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
- const completed=entries.filter(s=>/^(?:done|complete|finished)$/i.test(String(s.status||''))).length;
+ const completed=entries.filter(s=>/^(?:done|complete|completed|finished)$/i.test(String(s.status||''))).length;
  return {chapters:entries.length,completed};
+}
+function writerV109BookScenePath(scene){
+ return String(scene?.path||scene?.file?.path||scene?.note||'');
+}
+function writerV109BookAutomaticProgress(plugin,project){
+ const read=plugin.settings.v10Bookshelf?.readLocations||{};
+ if(project.singleNote)return Math.max(0,Math.min(100,Math.round(Number(read[project.file.path])||0)));
+ const scenes=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
+ if(!scenes.length)return 0;
+ let completed=0;
+ for(const scene of scenes){
+  const status=String(scene.status||'').toLowerCase();
+  const value=/^(done|complete|completed|finished)$/.test(status)?100:
+   Math.max(0,Math.min(100,Number(read[writerV109BookScenePath(scene)])||0));
+  completed+=value/100;
+ }
+ return Math.max(0,Math.min(100,Math.round(completed/scenes.length*100)));
+}
+function writerV109BookAutoStatus(progress){
+ return progress>=100?'finished':progress>0?'reading':'planned';
+}
+function writerV109BookDescription(plugin,project){
+ const meta=writerV109BookMeta(plugin,project);
+ const raw=meta.description||meta.summary||meta.synopsis||'';
+ return String(Array.isArray(raw)?raw.join(' '):raw).trim().slice(0,2800);
+}
+function writerV109BookCopyright(plugin,project){
+ const meta=writerV109BookMeta(plugin,project);
+ return String(meta.copyright||meta.rights||meta.license||'').trim().slice(0,420);
 }
 function writerV10BookshelfSort(projects,sort,plugin){
  const books=projects.slice();
  const title=(a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'});
  if(sort==='recent')return books.sort((a,b)=>(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0)||title(a,b));
  if(sort==='chapters')return books.sort((a,b)=>(b.scenes?.length||0)-(a.scenes?.length||0)||title(a,b));
- if(sort==='progress'&&plugin)return books.sort((a,b)=>writerV10BookState(plugin,b).progress-writerV10BookState(plugin,a).progress||title(a,b));
+ if(sort==='progress'&&plugin)return books.sort((a,b)=>writerV109BookAutomaticProgress(plugin,b)-writerV109BookAutomaticProgress(plugin,a)||title(a,b));
  if(sort==='series')return books.sort((a,b)=>String(a.meta?.series||'').localeCompare(String(b.meta?.series||''))||title(a,b));
  return books.sort(title);
 }
@@ -60,83 +112,156 @@ function writerV10BookFavoriteIcon(plugin){
  return typeof configured==='string'&&/^[a-z][a-z0-9-]{0,38}$/.test(configured)?configured:'star';
 }
 function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{}){
- const record=writerV10BookState(plugin,project);
+ const record=writerV10BookState(plugin,project),percent=writerV109BookAutomaticProgress(plugin,project);
+ const description=writerV109BookDescription(plugin,project),copyright=writerV109BookCopyright(plugin,project);
  const card=parent.createDiv({cls:'writer-v10-book-card writer-v108-book-card'+(compact?' is-compact':'')});
  card.classList.toggle('is-favorite',record.favorite);
- const btn=card.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),attr:{
+ const button=card.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),attr:{
   type:'button','aria-label':writerUi('Abrir livro: ','Open book: ')+project.title
  }});
- const cover=btn.createDiv({cls:'writer-v10-book-cover'});
- const image=writerV10BookCover(plugin,project);
+ const cover=button.createDiv({cls:'writer-v10-book-cover'}),image=writerV10BookCover(plugin,project);
  if(image)cover.createEl('img',{attr:{src:image,alt:'',loading:'lazy',decoding:'async'}});
- else {const glyph=cover.createSpan();require('obsidian').setIcon?.(glyph,'book-open');}
- const data=btn.createDiv({cls:'writer-v10-book-info'});
- const title=data.createEl('strong',{cls:'writer-v108-book-title',text:project.title});
- const series=String(project.meta?.series||project.meta?.subtitle||'').slice(0,100);
- if(series&&!compact)data.createSpan({cls:'writer-v10-book-series',text:series});
+ else{const glyph=cover.createSpan();require('obsidian').setIcon?.(glyph,'book-open');}
+ const info=button.createDiv({cls:'writer-v10-book-info'});
+ info.createEl('strong',{cls:'writer-v108-book-title',text:project.title});
+ const meta=writerV109BookMeta(plugin,project);
+ const series=String(meta.series||meta.subtitle||'').slice(0,100);
+ if(series&&!compact)info.createSpan({cls:'writer-v10-book-series',text:series});
  const counts=writerV10BookWordProgress(plugin,project);
- data.createSpan({cls:'writer-v10-book-count',text:counts.chapters+' '+writerUi('capítulos','chapters')});
+ info.createSpan({cls:'writer-v10-book-count',text:project.singleNote?writerUi('Nota única','Single note'):
+  counts.chapters+' '+writerUi('capítulos','chapters')});
  if(plugin.settings.v10Bookshelf?.showProgress!==false){
-  const reading=data.createDiv({cls:'writer-v108-book-progress'});
-  reading.createSpan({text:writerUi('Leitura','Reading')});
-  reading.createEl('strong',{text:record.progress+'%'});
-  data.createEl('progress',{cls:'writer-v10-reading-progress',attr:{max:'100',value:String(record.progress),'aria-label':writerUi('Progresso de leitura','Reading progress')}});
+  const reading=info.createDiv({cls:'writer-v108-book-progress'});
+  reading.createSpan({text:writerUi('Leitura automática','Automatic reading progress')});
+  reading.createEl('strong',{text:percent+'%'});
+  info.createEl('progress',{cls:'writer-v10-reading-progress',attr:{max:'100',value:String(percent),
+   'aria-label':writerUi('Progresso de leitura calculado','Calculated reading progress')}});
  }
- btn.addEventListener('click',async()=>{
-  await plugin.openProjects('project');
-  const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
-  if(view){view.selected=project.file.path;await view.render?.();}
- });
+ const open=async()=>{
+  if(project.singleNote){
+   await plugin.app.workspace.getLeaf('tab').openFile(project.file);
+  }else{
+   await plugin.openProjects('project');
+   const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
+   if(view){view.selected=project.file.path;await view.render?.();}
+  }
+ };
+ button.addEventListener('click',()=>void open());
  const favorite=card.createEl('button',{cls:'writer-v108-book-favorite',attr:{
-  type:'button','aria-pressed':String(record.favorite),
-  'aria-label':writerUi(record.favorite?'Remover livro dos favoritos':'Favoritar livro',
-   record.favorite?'Remove book from favorites':'Favorite book'),
-  title:writerUi(record.favorite?'Desfavoritar':'Favoritar',record.favorite?'Unfavorite':'Favorite')
+  type:'button','aria-pressed':String(record.favorite),'aria-label':writerUi(
+   record.favorite?'Remover livro dos favoritos':'Favoritar livro',
+   record.favorite?'Remove book from favorites':'Favorite book')
  }});
  require('obsidian').setIcon?.(favorite,writerV10BookFavoriteIcon(plugin));
  favorite.addEventListener('click',async()=>{
-  await writerV10BookSaveState(plugin,project,{...record,favorite:!record.favorite});
-  redraw();
+  await writerV10BookSaveState(plugin,project,{...record,favorite:!record.favorite});redraw();
  });
+ if(description){
+  const excerpt=card.createDiv({cls:'writer-v109-book-description'});
+  excerpt.createSpan({cls:'writer-v109-book-metadata-label',text:writerUi('Descrição','Description')});
+  excerpt.createEl('p',{text:description});
+ }
+ if(copyright&&!compact){
+  const rights=card.createDiv({cls:'writer-v109-book-copyright'});
+  rights.createSpan({cls:'writer-v109-book-metadata-label',text:writerUi('Copyright','Copyright')});
+  rights.createEl('small',{text:copyright});
+ }
  if(!compact){
-  const actions=card.createDiv({cls:'writer-v10-book-actions writer-v108-book-fields'});
-  const field=(pt,en,kind)=>{const root=actions.createDiv({cls:'writer-v108-book-field writer-v108-book-field-'+kind});
-   root.createSpan({text:writerUi(pt,en)});return root;};
-  const statusField=field('Estado','Status','status');
-  const stat=statusField.createEl('select',{attr:{'aria-label':writerUi('Estado da leitura','Reading status')}});
-  for(const [value,pt,en] of [['planned','Planejado','Planned'],['reading','Lendo','Reading'],['paused','Pausado','Paused'],['finished','Concluído','Finished']]){
-   const opt=stat.createEl('option',{text:writerUi(pt,en)});opt.value=value;
+  const foot=card.createDiv({cls:'writer-v109-book-footer'});
+  foot.createSpan({cls:'writer-v109-book-auto',text:writerUi(
+   'Estado automático: ','Automatic status: ')+writerUi(
+    writerV109BookAutoStatus(percent)==='finished'?'Concluído':writerV109BookAutoStatus(percent)==='reading'?'Lendo':'Planejado',
+    writerV109BookAutoStatus(percent)==='finished'?'Finished':writerV109BookAutoStatus(percent)==='reading'?'Reading':'Planned')});
+  if(project.singleNote){
+   const remove=foot.createEl('button',{cls:'writer-v109-book-remove',attr:{
+    type:'button','aria-label':writerUi('Retirar da biblioteca','Remove from bookshelf')}});
+   require('obsidian').setIcon?.(remove,'book-minus');
+   remove.addEventListener('click',()=>writerV109RemoveStandaloneBook(plugin,project.file.path,redraw));
   }
-  stat.value=record.status;
-  stat.addEventListener('change',async()=>{
-   await writerV10BookSaveState(plugin,project,{...record,status:stat.value,progress:stat.value==='finished'?100:record.progress});redraw();
-  });
-  const progressField=field('Leitura (%)','Reading (%)','progress');
-  const percent=progressField.createEl('input',{attr:{type:'number',min:'0',max:'100',step:'5',value:String(record.progress),
-   'aria-label':writerUi('Progresso de leitura em porcentagem','Reading progress percent')}});
-  percent.addEventListener('change',async()=>{
-   await writerV10BookSaveState(plugin,project,{...record,progress:Math.max(0,Math.min(100,Number(percent.value)||0))});redraw();
-  });
-  const shelfField=field('Estante','Shelf','shelf');
-  const shelf=shelfField.createEl('input',{attr:{type:'text',value:record.shelf,placeholder:writerUi('Gênero ou coleção','Genre or collection'),
-   maxlength:'60','aria-label':writerUi('Estante deste livro','Book shelf')}});
-  shelf.addEventListener('change',async()=>{
-   await writerV10BookSaveState(plugin,project,{...record,shelf:shelf.value});redraw();
-  });
  }
  return card;
+}
+function writerV109RemoveStandaloneBook(plugin,path,redraw=()=>{}){
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Retirar livro da biblioteca?','Remove book from library?'));
+ modal.onOpen=()=>{
+  modal.contentEl.createEl('p',{text:writerUi(
+   'Somente a referência na biblioteca será removida. A nota não será apagada.',
+   'This removes only the library entry. Your note is not deleted.')});
+  new Setting(modal.contentEl)
+   .addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+   .addButton(b=>b.setButtonText(writerUi('Retirar','Remove')).setWarning().onClick(async()=>{
+    plugin.settings.v10Bookshelf.singleNotes=plugin.settings.v10Bookshelf.singleNotes.filter(x=>x!==path);
+    await plugin.saveSettings();modal.close();redraw();
+   }));
+ };
+ modal.open();
+}
+function writerV109AddStandaloneBook(plugin,redraw=()=>{}){
+ writerV109PickVaultPath(plugin,{kind:'note',placeholder:writerUi('Escolher nota para adicionar como livro…','Select a note as a book…'),
+  onChoose:async file=>{
+   const cfg=plugin.settings.v10Bookshelf;
+   if(!cfg.singleNotes.includes(file.path))cfg.singleNotes.push(file.path);
+   await plugin.saveSettings();redraw();
+  }});
+}
+function writerV109BookRegisterProgress(plugin){
+ const cfg=plugin.settings.v10Bookshelf;let timer=null,activePath='';
+ const tracked=new Set();
+ const refreshPaths=()=>{
+  tracked.clear();
+  for(const p of writerV10BookshelfProjects(plugin)){
+   if(p.singleNote)tracked.add(p.file.path);
+   else for(const scene of (typeof lfFlattenScenes==='function'?lfFlattenScenes(p.scenes):[]))
+    tracked.add(writerV109BookScenePath(scene));
+  }
+ };
+ const onScroll=event=>{
+  const el=event.target;
+  if(!el?.matches?.('.markdown-preview-view,.markdown-reading-view,.cm-scroller'))return;
+  const file=plugin.app.workspace.getActiveFile?.();if(!(file instanceof TFile)||file.extension!=='md')return;
+  if(activePath!==file.path){activePath=file.path;refreshPaths();}
+  if(!tracked.has(file.path))return;
+  const distance=Number(el.scrollHeight)-Number(el.clientHeight);
+  if(distance<=10)return;
+  const progress=Math.min(100,Math.max(0,Math.round(Number(el.scrollTop)/distance*100)));
+  if(progress<1||progress<=Number(cfg.readLocations[file.path]||0))return;
+  cfg.readLocations[file.path]=progress;
+  clearTimeout(timer);timer=setTimeout(()=>void plugin.saveSettings().catch(error=>console.warn('[basic] reading:',error)),800);
+ };
+ const doc=plugin.app.workspace.containerEl?.ownerDocument||(typeof document!=='undefined'?document:null);
+ if(doc)plugin.registerDomEvent?.(doc,'scroll',onScroll,true);
+ plugin.registerEvent?.(plugin.app.vault.on('rename',(file,oldPath)=>{
+  activePath='';
+  if(!oldPath||!file?.path||file.path===oldPath)return;
+  let changed=false;
+  if(cfg.singleNotes.includes(oldPath)){
+   cfg.singleNotes=cfg.singleNotes.map(path=>path===oldPath?file.path:path);changed=true;
+  }
+  if(Object.prototype.hasOwnProperty.call(cfg.readLocations,oldPath)){
+   cfg.readLocations[file.path]=cfg.readLocations[oldPath];delete cfg.readLocations[oldPath];changed=true;
+  }
+  if(cfg.library?.[oldPath]){
+   cfg.library[file.path]=cfg.library[oldPath];delete cfg.library[oldPath];changed=true;
+  }
+  if(changed)void plugin.saveSettings().catch(error=>console.warn('[basic] book path:',error));
+ }));
+ plugin.registerEvent?.(plugin.app.vault.on('delete',()=>{activePath='';}));
+ plugin.register?.(()=>clearTimeout(timer));
 }
 function writerV10RenderBookshelf(plugin,target,opts={}){
  const config=plugin.settings.v10Bookshelf||{};
  const wrapper=target.createDiv({cls:'writer-v10-bookshelf'+(opts.compact?' is-widget':'')});
  const projects=writerV10BookshelfProjects(plugin);
  let sortMode=opts.sort||config.sort||'title';
- if(!projects.length){
-  wrapper.createEl('p',{cls:'setting-item-description',text:writerUi('Nenhum índice Longform encontrado. Crie um livro em Projetos.','No Longform indices found. Create a book in Projects.')});return wrapper;
- }
  const summary=wrapper.createDiv({cls:'writer-v108-library-summary'});
  summary.createEl('p',{text:writerUi('Organize suas histórias, acompanhe o progresso e encontre o próximo capítulo.','Organize stories, track progress and find your next chapter.')});
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
+ if(!opts.compact){
+  const refresh=()=>{wrapper.remove();writerV10RenderBookshelf(plugin,target,opts);};
+  toolbar.createEl('button',{cls:'writer-v109-add-book',text:writerUi('Adicionar livro','Add book'),attr:{type:'button'}})
+   .addEventListener('click',()=>writerV109AddStandaloneBook(plugin,refresh));
+ }
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
  search.classList.add('writer-v1042-bookshelf-search');
@@ -205,11 +330,13 @@ function writerV10RenderBookshelfWidget(view,parent){
  toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  toolbar.createEl('button',{text:writerUi('Ver biblioteca','View library'),attr:{type:'button'}})
   .addEventListener('click',()=>writerV10OpenBookshelf(plugin));
+ toolbar.createEl('button',{cls:'writer-v109-widget-add',text:writerUi('Adicionar','Add'),attr:{type:'button'}})
+  .addEventListener('click',()=>writerV109AddStandaloneBook(plugin,()=>view.render()));
  if(!plugin.settings.v10Bookshelf?.enabled||!plugin.settings.v10Bookshelf?.showWidget){
   wrapper.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Ative a biblioteca nas configurações.','Enable bookshelf in settings.')});return;
  }
  if(!projects.length){
-  wrapper.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Seus livros Longform aparecerão aqui.','Your Longform books will appear here.')});return;
+  wrapper.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Adicione uma nota como livro ou crie um projeto Longform.','Add a single note as a book or create a Longform project.')});return;
  }
  const grid=wrapper.createDiv({cls:'writer-v108-books-widget-grid'});
  const books=projects.slice().sort((a,b)=>{
@@ -219,6 +346,8 @@ function writerV10RenderBookshelfWidget(view,parent){
  for(const project of books.slice(0,4))writerV10BookshelfCard(plugin,grid,project,true,()=>view.render());
 }
 function writerV10RegisterBookshelf(plugin){
+ writerV109BookRegisterProgress(plugin);
+ writerV109RegisterScrollHints(plugin);
  for(const name of ['bookshelf','writer-bookshelf']){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
    if(!plugin.settings.v10Bookshelf?.enabled){el.createEl('pre',{text:source});return;}
@@ -227,19 +356,18 @@ function writerV10RegisterBookshelf(plugin){
    writerV10RenderBookshelf(plugin,el,{compact,sort});
   });
  }
- plugin.addCommand?.({id:'v10-open-bookshelf',name:writerUi('Longform: abrir biblioteca de livros','Longform: open bookshelf'),callback:()=>writerV10OpenBookshelf(plugin)});
+ plugin.addCommand?.({id:'v10-open-bookshelf',name:writerUi('Biblioteca: abrir livros','Bookshelf: open books'),callback:()=>writerV10OpenBookshelf(plugin)});
  plugin.addCommand?.({id:'v10-insert-bookshelf',name:writerUi('Longform: inserir bloco de livros','Longform: insert bookshelf block'),
   editorCallback:editor=>editor.replaceSelection('\n~~~bookshelf\nsort: title\nlayout: normal\n~~~\n')});
  plugin.writerV10OpenBookshelf=()=>writerV10OpenBookshelf(plugin);
  // Keep bookshelf in the home widget and command palette, not as another ribbon entry.
- plugin.addCommand?.({id:'v1042-bookshelf-search',name:writerUi('Biblioteca: buscar livros','Bookshelf: search books'),
-  callback:()=>writerV10OpenBookshelf(plugin)});
+ // The library has one command; opening it already exposes the search input.
 
 }
 function writerV10BookshelfSettings(plugin,panel){
  const cfg=plugin.settings.v10Bookshelf;
  panel.createEl('h3',{text:writerUi('Biblioteca Longform','Longform bookshelf')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi('As capas e capítulos vêm dos índices Longform existentes. Nada é movido ou duplicado.','Covers and chapters come from existing Longform indices. No notes are moved or duplicated.')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Projetos Longform ou notas individuais, com capa via banner e progresso automático de leitura.','Longform projects or individual notes, with banner cover and automatic reading progress.')});
  const toggle=(key,pt,en)=>new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  toggle('enabled','Ativar biblioteca de livros','Enable bookshelf');
  toggle('showWidget','Permitir widget de livros na homepage','Allow bookshelf homepage widget');

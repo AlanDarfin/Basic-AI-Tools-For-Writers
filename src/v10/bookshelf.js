@@ -2,7 +2,8 @@
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
- const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},...old};
+ const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},standalone:[],...old};
+ cfg.standalone=[...new Set((Array.isArray(cfg.standalone)?cfg.standalone:[]).filter(p=>typeof p==='string'&&p.endsWith('.md')).slice(0,500))];
  cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
@@ -16,6 +17,18 @@ function writerV10BookRecord(raw){
   status:['planned','reading','paused','finished'].includes(r.status)?r.status:'planned',
   progress:Math.max(0,Math.min(100,Math.round(Number(r.progress)||0)))};
 }
+function writerV109BookProgress(plugin,project,record){
+ if(project.standalone)return record.status==='finished'?100:Math.max(0,Math.min(100,Number(project.meta?.readingProgress)||0));
+ const scenes=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
+ if(!scenes.length)return record.status==='finished'?100:0;
+ return Math.round(100*scenes.filter(scene=>/^(done|complete|completed|finished|conclu[ií]do)$/i.test(String(scene.status||scene.meta?.status||''))).length/scenes.length);
+}
+function writerV109StandaloneProject(plugin,file){
+ const meta=plugin.app.metadataCache.getFileCache?.(file)?.frontmatter||{};
+ return {file,title:String(meta.title||file.basename),meta,scenes:[],standalone:true};
+}
+function writerV109BookDescription(project){return String(project.meta?.description||project.meta?.summary||project.meta?.sinopse||'').trim().slice(0,1400);}
+function writerV109BookCopyright(project){return String(project.meta?.copyright||project.meta?.rights||'').trim().slice(0,400);}
 function writerV10BookState(plugin,project){
  const meta=project.meta||{},existing=plugin.settings.v10Bookshelf?.library?.[project.file.path];
  const record=writerV10BookRecord(existing);
@@ -25,6 +38,7 @@ function writerV10BookState(plugin,project){
   const fromMeta=Number(meta.readingProgress||meta.progress);
   if(Number.isFinite(fromMeta))record.progress=Math.max(0,Math.min(100,Math.round(fromMeta)));
  }
+ record.progress=writerV109BookProgress(plugin,project,record);
  return record;
 }
 async function writerV10BookSaveState(plugin,project,record){
@@ -33,12 +47,17 @@ async function writerV10BookSaveState(plugin,project,record){
  await plugin.saveSettings();
 }
 function writerV10BookshelfProjects(plugin){
- return (plugin.app.vault.getMarkdownFiles?.()||[])
-  .map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
+ const files=plugin.app.vault.getMarkdownFiles?.()||[];
+ const longform=files.map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
+ const indexed=new Set(longform.map(p=>p.file.path));
+ const standalone=(plugin.settings.v10Bookshelf?.standalone||[])
+  .filter(path=>!indexed.has(path)).map(path=>plugin.app.vault.getAbstractFileByPath(path))
+  .filter(file=>file?.extension==='md').map(file=>writerV109StandaloneProject(plugin,file));
+ return [...longform,...standalone];
 }
 function writerV10BookCover(plugin,project){
  const m=project.meta||{};
- const value=m.cover||m.coverImage||m.image||m.banner||'';
+ const value=m.banner||m.cover||m.coverImage||m.image||'';
  return typeof writerV9215PrettyImage==='function'?writerV9215PrettyImage(plugin.app,project.file,value):'';
 }
 function writerV10BookWordProgress(plugin,project){
@@ -75,7 +94,7 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
  const series=String(project.meta?.series||project.meta?.subtitle||'').slice(0,100);
  if(series&&!compact)data.createSpan({cls:'writer-v10-book-series',text:series});
  const counts=writerV10BookWordProgress(plugin,project);
- data.createSpan({cls:'writer-v10-book-count',text:counts.chapters+' '+writerUi('capítulos','chapters')});
+ data.createSpan({cls:'writer-v10-book-count',text:project.standalone?writerUi('Nota única','Single note'):counts.chapters+' '+writerUi('capítulos','chapters')});
  if(plugin.settings.v10Bookshelf?.showProgress!==false){
   const reading=data.createDiv({cls:'writer-v108-book-progress'});
   reading.createSpan({text:writerUi('Leitura','Reading')});
@@ -83,10 +102,16 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   data.createEl('progress',{cls:'writer-v10-reading-progress',attr:{max:'100',value:String(record.progress),'aria-label':writerUi('Progresso de leitura','Reading progress')}});
  }
  btn.addEventListener('click',async()=>{
+  if(project.standalone){await plugin.app.workspace.getLeaf('tab').openFile(project.file);return;}
   await plugin.openProjects('project');
   const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
   if(view){view.selected=project.file.path;await view.render?.();}
  });
+ if(!compact){
+  const description=writerV109BookDescription(project),copyright=writerV109BookCopyright(project);
+  if(description)card.createEl('p',{cls:'writer-v109-book-description',text:description});
+  if(copyright)card.createEl('small',{cls:'writer-v109-book-copyright',text:copyright});
+ }
  const favorite=card.createEl('button',{cls:'writer-v108-book-favorite',attr:{
   type:'button','aria-pressed':String(record.favorite),
   'aria-label':writerUi(record.favorite?'Remover livro dos favoritos':'Favoritar livro',
@@ -109,13 +134,7 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   }
   stat.value=record.status;
   stat.addEventListener('change',async()=>{
-   await writerV10BookSaveState(plugin,project,{...record,status:stat.value,progress:stat.value==='finished'?100:record.progress});redraw();
-  });
-  const progressField=field('Leitura (%)','Reading (%)','progress');
-  const percent=progressField.createEl('input',{attr:{type:'number',min:'0',max:'100',step:'5',value:String(record.progress),
-   'aria-label':writerUi('Progresso de leitura em porcentagem','Reading progress percent')}});
-  percent.addEventListener('change',async()=>{
-   await writerV10BookSaveState(plugin,project,{...record,progress:Math.max(0,Math.min(100,Number(percent.value)||0))});redraw();
+   await writerV10BookSaveState(plugin,project,{...record,status:stat.value});redraw();
   });
   const shelfField=field('Estante','Shelf','shelf');
   const shelf=shelfField.createEl('input',{attr:{type:'text',value:record.shelf,placeholder:writerUi('Gênero ou coleção','Genre or collection'),

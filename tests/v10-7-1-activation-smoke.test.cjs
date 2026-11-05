@@ -38,6 +38,15 @@ test('One failing module cannot prevent the remaining modules from registering',
  api.writerV107Register(plugin);
  assert.equal(called.length,4,'No duplicate commands or views after repeated startup');
 });
+test('Explicit compatibility mode keeps previous features while disabling optional 10.7 registration',()=>{
+ let calls=0;
+ const {api}=boot({writerV107DbRegister:()=>calls++});
+ const plugin={settings:{v107AdvancedEnabled:false,existingCustomSetting:42},register:()=>{}};
+ api.writerV107Register(plugin);
+ assert.equal(calls,0);
+ assert.equal(plugin._writerV107Registered,undefined);
+ assert.equal(plugin.settings.existingCustomSetting,42);
+});
 test('Settings render can survive missing module functions and a broken panel',()=>{
  const called=[],{api}=boot({
   writerV107DbSettings:()=>{called.push('db');throw Error('bad panel');},

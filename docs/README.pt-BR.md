@@ -2,13 +2,23 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.7.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.7.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.7.3 — correção de ativação (`setIcon`)
+
+- **Causa comprovada pelo console do Obsidian:** `ReferenceError: setIcon is not defined` durante `writerV106DragRegister`, na integração de arrastar blocos.
+- O Dragger passa a obter `setIcon` da API do Obsidian, com ícone textual alternativo caso a API não esteja disponível.
+- Corrigidas outras cinco chamadas a `setIcon` sem importação no painel de notas relacionadas e no explorador da lixeira.
+- Registro dos módulos opcionais de interface agora é isolado: um erro nesses recursos não impede todo o Basic de iniciar.
+- Adicionados testes **executáveis** de criação dos ícones com API simulada, fallback e continuidade de comandos mesmo quando extensões opcionais falham.
+- Notas, `data.json`, Longform, homepage, LanguageTool, toolbar e funções anteriores foram preservados. Os nove recursos experimentais da 10.7 continuam fora do `main.js` desta versão, conforme a 10.7.2.
+- Substitua os três arquivos `main.js`, `manifest.json` e `styles.css` da mesma release e reinicie o Obsidian. **Não apague `data.json`.**
 
 ## Versão 10.7.2 — recuperação emergencial do carregamento
 

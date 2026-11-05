@@ -96,13 +96,16 @@ function writerV10RelatedResults(plugin,host,file){
   if(!host.isConnected||current!==file.path)return;
   host.empty();
   if(!results.length){host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma correspondência forte encontrada.','No strong matches found.')});return;}
+  host.addClass('writer-v10-related-list');
   for(const {file:other,score} of results){
-   const row=host.createDiv({cls:'writer-v10-discovery-row'});
+   const row=host.createDiv({cls:'writer-v10-discovery-row writer-v10-related-card'});
    const open=row.createEl('button',{cls:'writer-v10-discovery-open',attr:{type:'button',title:other.path}});
-   open.createSpan({text:other.basename});
-   open.createEl('small',{text:Math.round(score*100)+'% · '+other.path});
+   open.createEl('strong',{cls:'writer-v10-related-title',text:other.basename});
+   open.createEl('span',{cls:'writer-v10-related-path',text:other.path});
    open.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(other));
-   const link=row.createEl('button',{cls:'writer-v10-discovery-icon',attr:{type:'button',title:writerUi('Inserir link na nota ativa','Insert link in active note'),'aria-label':writerUi('Inserir link','Insert link')}});
+   const actions=row.createDiv({cls:'writer-v10-related-actions'});
+   actions.createSpan({cls:'writer-v10-related-score',text:Math.round(score*100)+'%',attr:{title:writerUi('Similaridade','Similarity score')}});
+   const link=actions.createEl('button',{cls:'writer-v10-discovery-icon',attr:{type:'button',title:writerUi('Inserir link na nota ativa','Insert link in active note'),'aria-label':writerUi('Inserir link','Insert link')}});
    writerV10DiscoverySetIcon(link,'link-2');
    link.addEventListener('click',()=>{
     const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
@@ -218,7 +221,7 @@ function writerV10TrashRows(plugin,host,limit=40){
     writerV10TrashRows(plugin,host,limit);
    }));
   }
-  if(files.length+folders.length>limit)host.createEl('small',{text:writerUi('Abra o explorador para ver mais arquivos.','Open the explorer to see more files.')});
+  if(files.length+folders.length>limit)host.createEl('small',{text:writerUi('Mais itens disponíveis · use Mostrar mais.','More items available · choose Show more.')});
  }).catch(error=>{if(host.isConnected)host.setText(writerUi('Não foi possível acessar a lixeira interna.','Could not read Obsidian trash.'));console.warn('[Basic AI] Trash:',error);});
 }
 class WriterV10TrashView extends ItemView{
@@ -247,17 +250,24 @@ function writerV10DiscoveryCurrentFile(plugin){
  for(const path of recent){const file=plugin.app.vault.getAbstractFileByPath(path);if(file instanceof TFile&&file.extension==='md')return file;}
  return null;
 }
-function writerV10RenderRelatedWidget(view,parent){
- const host=view.card(parent,'related','Notas relacionadas','Related notes');
- const open=host.createEl('button',{text:writerUi('Abrir painel','Open sidebar')});
- open.addEventListener('click',()=>void view.plugin.writerV10OpenRelated?.());
- writerV10RelatedResults(view.plugin,host.createDiv(),writerV10DiscoveryCurrentFile(view.plugin));
-}
 function writerV10RenderTrashWidget(view,parent){
- const host=view.card(parent,'trash','Lixeira','Trash');
- const open=host.createEl('button',{text:writerUi('Explorar lixeira','Explore trash')});
- open.addEventListener('click',()=>void view.plugin.writerV10OpenTrash?.());
- writerV10TrashRows(view.plugin,host.createDiv(),5);
+ const plugin=view.plugin,host=view.card(parent,'trash','Lixeira','Trash');
+ host.addClass('writer-v10-trash-widget');
+ const tools=host.createDiv({cls:'writer-v10-trash-widget-tools'});
+ const refresh=tools.createEl('button',{attr:{type:'button','aria-label':writerUi('Atualizar lixeira','Refresh trash')}});
+ writerV10DiscoverySetIcon(refresh,'refresh-cw');
+ const empty=tools.createEl('button',{text:writerUi('Esvaziar…','Empty…'),attr:{type:'button'}});
+ empty.addEventListener('click',()=>writerV10Confirm(plugin,writerUi('Esvaziar lixeira?','Empty trash?'),
+  writerUi('Os arquivos serão excluídos permanentemente.','Files will be permanently deleted.'),async()=>{
+   await writerV10TrashEmpty(plugin);render();
+  }));
+ const content=host.createDiv({cls:'writer-v10-trash-widget-rows'});
+ const expand=host.createEl('button',{cls:'writer-v10-trash-expand',text:writerUi('Mostrar mais','Show more'),attr:{type:'button'}});
+ let limit=5;
+ const render=()=>{writerV10TrashRows(plugin,content,limit);expand.setText(limit===5?writerUi('Mostrar mais','Show more'):writerUi('Mostrar menos','Show less'));};
+ expand.addEventListener('click',()=>{limit=limit===5?100:5;render();});
+ refresh.addEventListener('click',render);
+ render();
 }
 function writerV10RenderReadingWidget(view,parent){
  const host=view.card(parent,'reading','Leitura da nota','Note reading');
@@ -325,14 +335,17 @@ function writerV10DiscoveryRegister(plugin){
  writerV10DiscoveryMerge(plugin.settings);
  if(!plugin.settings.v10Discovery.enabled)return;
  plugin.registerView?.(WRITER_V10_RELATED_VIEW,leaf=>new WriterV10RelatedView(leaf,plugin));
+ // The former trash view exists solely to close panels restored from older workspaces.
  plugin.registerView?.(WRITER_V10_TRASH_VIEW,leaf=>new WriterV10TrashView(leaf,plugin));
- const open=async(type,where)=>{const leaf=plugin.app.workspace.getLeavesOfType?.(type)?.[0]||plugin.app.workspace.getRightLeaf?.(false)||plugin.app.workspace.getLeaf?.('tab');if(leaf){await leaf.setViewState({type,active:true});plugin.app.workspace.revealLeaf?.(leaf);}};
+ plugin.app.workspace.onLayoutReady?.(()=>{
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V10_TRASH_VIEW)||[]){
+   try{leaf.detach();}catch(error){console.warn('[Basic AI] close legacy trash pane:',error);}
+  }
+ });
+ const open=async(type)=>{const leaf=plugin.app.workspace.getLeavesOfType?.(type)?.[0]||plugin.app.workspace.getRightLeaf?.(false)||plugin.app.workspace.getLeaf?.('tab');if(leaf){await leaf.setViewState({type,active:true});plugin.app.workspace.revealLeaf?.(leaf);}};
  plugin.writerV10OpenRelated=()=>open(WRITER_V10_RELATED_VIEW);
- plugin.writerV10OpenTrash=()=>open(WRITER_V10_TRASH_VIEW);
  plugin.addCommand({id:'v10-zotero-insert-citation',name:writerUi('Zotero: inserir referência importada','Zotero: insert imported citation'),callback:()=>writerV10ZoteroPicker(plugin)});
  plugin.addCommand({id:'v10-related-notes',name:writerUi('Notas: encontrar relacionadas','Notes: find related'),callback:()=>void plugin.writerV10OpenRelated()});
- plugin.addCommand({id:'v10-trash-explorer',name:writerUi('Lixeira: abrir explorador','Trash: open explorer'),callback:()=>void plugin.writerV10OpenTrash()});
- plugin.addCommand({id:'v10-empty-trash',name:writerUi('Lixeira: esvaziar com confirmação','Trash: empty with confirmation'),callback:()=>writerV10Confirm(plugin,writerUi('Esvaziar lixeira?','Empty trash?'),writerUi('Apaga permanentemente os arquivos da lixeira interna.','Permanently deletes files from the internal trash.'),async()=>{const count=await writerV10TrashEmpty(plugin);new Notice(count+' '+writerUi('arquivos excluídos.','files deleted.'));})});
  const refresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V10_RELATED_VIEW)||[])leaf.view?.refresh?.();};
  plugin.registerEvent(plugin.app.workspace.on('file-open',refresh));
  plugin.registerEvent(plugin.app.vault.on('rename',(file,oldPath)=>{plugin._writerV10RelatedCache?.delete(oldPath);refresh();}));
@@ -343,7 +356,7 @@ function writerV10DiscoveryRegister(plugin){
 function writerV10DiscoverySettings(plugin,panel){
  const cfg=plugin.settings.v10Discovery;
  panel.createEl('h3',{text:writerUi('Notas relacionadas e lixeira','Related notes & trash')});
- for(const [key,pt,en] of [['enabled','Ativar descoberta e lixeira','Enable discovery and trash'],['related','Buscar notas relacionadas localmente','Find related notes locally'],['trash','Ativar explorador da lixeira','Enable trash explorer']])
+ for(const [key,pt,en] of [['enabled','Ativar descoberta e lixeira','Enable discovery and trash'],['related','Buscar notas relacionadas localmente','Find related notes locally'],['trash','Ativar widget da lixeira','Enable trash homepage widget']])
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Máximo de notas analisadas','Maximum notes to scan'))
   .setDesc(writerUi('Notas recentes primeiro; índices mantidos apenas na memória.','Recent notes first; indexes stay in memory.'))

@@ -176,6 +176,7 @@ function writerV101ReadingProgressRegister(plugin){
 
 function writerV101RegisterEnhancements(plugin){
  writerV101ReadingProgressRegister(plugin);
+ if(typeof writerV106DragRegister==='function')writerV106DragRegister(plugin);
  if(typeof writerV10DiscoveryRegister==='function')writerV10DiscoveryRegister(plugin);
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
@@ -238,4 +239,5 @@ function writerV101EnhancementsSettings(plugin,panel){
   .addSlider(s=>s.setLimits(1,100,1).setDynamicTooltip().setValue(cfg.batchMax)
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
  if(typeof writerV10DiscoverySettings==='function')writerV10DiscoverySettings(plugin,panel);
+ if(typeof writerV106DragSettings==='function')writerV106DragSettings(plugin,panel);
 }

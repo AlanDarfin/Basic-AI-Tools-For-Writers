@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.4.10 plugin artifacts'
+            git commit -m 'build: synchronize 10.5.0 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.4.10"
+          test "$VERSION" = "10.5.0"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic AI Tool for Writers $VERSION" \
-            --notes "10.4.10: Rebuild Basic settings search results as accessible, theme-independent grouped rows instead of generic buttons. Deduplicate settings labels across categories with separate keyboard-accessible section targets; remove legacy conflicting CSS and fix Android icon/text overlapping. Add DOM regression tests and PT/EN documentation."
+            --notes "10.5.0: Related Notes and Trash Explorer, four homepage widgets, expanded literary quotes, local Zotero citekey picker and reading-progress fix."

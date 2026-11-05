@@ -1,13 +1,28 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','related','trash','reading','zotero'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
  ['Escreva primeiro. Descubra o caminho durante a revisão.',''],
  ['Histórias se constroem uma palavra de cada vez.',''],
  ['Às vezes uma cena pequena muda o rumo de um livro inteiro.',''],
+  ["Penso, logo existo.","René Descartes"],
+  ["Uma vida não examinada não merece ser vivida.","Sócrates · Apologia de Platão"],
+  ["O homem é a medida de todas as coisas.","Protágoras"],
+  ["O coração tem razões que a própria razão desconhece.","Blaise Pascal"],
+  ["O homem nasceu livre, e por toda parte encontra-se acorrentado.","Jean-Jacques Rousseau"],
+  ["A vida é curta, a arte é longa.","Hipócrates"],
+  ["Tudo vale a pena se a alma não é pequena.","Fernando Pessoa"],
+  ["Para viajar basta existir.","Fernando Pessoa"],
+  ["Navegar é preciso; viver não é preciso.","Fernando Pessoa"],
+  ["Ler é sonhar pela mão de outrem.","Fernando Pessoa"],
+  ["Ao vencedor, as batatas!","Machado de Assis"],
+  ["Ser ou não ser, eis a questão.","William Shakespeare"],
+  ["O resto é silêncio.","William Shakespeare"],
+  ["Somos feitos da mesma matéria que os sonhos.","William Shakespeare"],
+  ["A verdade raramente é pura e nunca é simples.","Oscar Wilde"],
  ['O próximo capítulo começa com uma única linha.','']
 ];
 function writerV8HomeQuoteChoices(value){
@@ -39,7 +54,11 @@ const WRITER_V8_HOME_CATALOG={
  gallery:['images','Galeria do cofre','Vault gallery','Foto aleatória dos arquivos locais','A random image from your local vault'],
  quotes:['quote','Citação do dia','Random quote','Citação diferente ao abrir a homepage','A fresh quote every time you open home'],
  today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today'],
- books:['library-big','Meus livros','My books','Visualização dos livros Longform','Longform bookshelf']
+ books:['library-big','Meus livros','My books','Visualização dos livros Longform','Longform bookshelf'],
+ related:['link-2','Notas relacionadas','Related notes','Descubra notas semelhantes localmente','Discover related notes locally'],
+ trash:['trash-2','Lixeira','Trash explorer','Restaure notas da lixeira interna','Restore notes from Obsidian trash'],
+ reading:['book-open-check','Leitura atual','Current reading','Palavras, títulos e tempo estimado','Words, headings and estimated time'],
+ zotero:['book-marked','Fontes Zotero','Zotero sources','Notas de pesquisa importadas','Imported research notes']
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -163,7 +182,11 @@ class WriterV8HomeView extends ItemView{
    goal:p=>this.renderGoal(p),
    gallery:p=>this.renderGallery(p),
    quotes:p=>this.renderQuotes(p),
-   today:p=>this.renderToday(p)
+   today:p=>this.renderToday(p),
+    related:p=>writerV10RenderRelatedWidget(this,p),
+    trash:p=>writerV10RenderTrashWidget(this,p),
+    reading:p=>writerV10RenderReadingWidget(this,p),
+    zotero:p=>writerV10RenderZoteroWidget(this,p)
   };
   for(const key of widgetCfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
@@ -649,44 +672,32 @@ class WriterV8HomeView extends ItemView{
  renderQuotes(parent){
   const box=this.card(parent,'quotes','Citação aleatória','Random quote');
   const options=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
-  if(!this.homeQuote)this.homeQuote=writerV8HomePick(options,this.homeQuotePrevious);
-  let current=this.homeQuote||options[0];
+  let list=options.map(([text,by])=>[text,by,null,null]);
+  let current=this.homeQuote||writerV8HomePick(list,this.homeQuotePrevious)||list[0];
   const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
-  const quote=body.createEl('p',{text:current[0]});
-  const author=box.createDiv({cls:'writer-v905-quote-author'});
-  const update=()=>{
-   quote.setText(current[0]);
-   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
-  };
-  update();
+  const quote=body.createEl('p'),author=box.createDiv({cls:'writer-v905-quote-author'});
   const actions=box.createDiv({cls:'writer-v903-widget-actions'});
-  const zoteroSource=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
-  zoteroSource.hidden=true;
-  const syncZotero=async()=>{
-   if(!this.plugin.writerV92Research?.quotes)return;
-   const entries=await this.plugin.writerV92Research.quotes();
-   if(!box.isConnected||!entries.length)return;
-   const list=entries.map(([text,by,path,title])=>[text,by,path,title]);
-   let selected=writerV8HomePick(list,current[0])||list[0];
-   const set=entry=>{
-    current=entry;this.homeQuote=entry;
-    update();zoteroSource.hidden=false;
-    zoteroSource.onclick=()=>{
-     const file=this.app.vault.getAbstractFileByPath(entry[2]);
-     if(file instanceof TFile)this.openFile(file);
-    };
-   };
-   set(selected);
-   next.onclick=()=>set(writerV8HomePick(list,current[0])||list[0]);
-  };
-  void syncZotero().catch(error=>console.warn('[Basic AI] Zotero quote widget:',error));
+  const source=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
   const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
+  const draw=()=>{
+   this.homeQuote=current;quote.setText(current[0]);
+   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
+   source.hidden=!current[2];
+  };
+  source.addEventListener('click',()=>{
+   const file=current[2]?this.app.vault.getAbstractFileByPath(current[2]):null;
+   if(file instanceof TFile)this.openFile(file);
+  });
   next.addEventListener('click',()=>{
    this.homeQuotePrevious=current[0];
-   current=writerV8HomePick(options,current[0])||current;
-   this.homeQuote=current;
-   update();
+   current=writerV8HomePick(list,current[0])||current;draw();
   });
+  draw();
+  if(this.plugin.writerV92Research?.quotes)void this.plugin.writerV92Research.quotes().then(entries=>{
+   if(!box.isConnected||!entries.length)return;
+   list=[...list,...entries.map(([text,by,path,title])=>[text,by,path,title])];
+   draw();
+  }).catch(error=>console.warn('[Basic AI] Zotero quote widget:',error));
  }
  renderActivity(parent){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');

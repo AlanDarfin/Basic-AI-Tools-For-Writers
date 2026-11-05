@@ -2,13 +2,23 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.10 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.5.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.5.0 — pesquisa, recuperação e leitura
+
+- Notas relacionadas por análise local: painel lateral, widget, índice limitado e inserção rápida de links Markdown.
+- Explorador da lixeira interna do Obsidian: restauração sem sobrescrever, exclusão com confirmação e widget.
+- Novos widgets: notas relacionadas, lixeira, estatísticas de leitura e fontes importadas do Zotero.
+- Mais citações clássicas de filósofos e escritores, preservando listas personalizadas.
+- Zotero: extração melhorada de autores/destaques importados e seletor de citações com citekey Better BibTeX (`[@chave]`) ou link da nota.
+- Barra de progresso do Enhancement Suite corrigida nos modos edição e leitura, com cor e espessura configuráveis.
+- Ainda não há sincronização direta do Zotero nem acesso à lixeira do sistema.
 
 ## Atualização 10.4.10 — Resultados de pesquisa reorganizados no Android
 

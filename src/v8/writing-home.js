@@ -833,7 +833,7 @@ function writerV8RegisterHome(plugin){
  // settings, sidebars, restored sessions or the native Web Viewer.
  let tabTimer=null,tabBusy=false;
  const populateEmptyTabs=()=>{
-  if(tabBusy||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
+  if(tabBusy||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
   tabBusy=true;
   try{
    for(const leaf of writerV8HomeAttachedEmpty(plugin.app.workspace)){
@@ -847,7 +847,7 @@ function writerV8RegisterHome(plugin){
   }finally{tabBusy=false;}
  };
  const schedule=()=>{
-  if(!plugin.settings?.v8Finish?.homeOnNewTab)return;
+  if(!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab)return;
   clearTimeout(tabTimer);
   tabTimer=setTimeout(()=>{tabTimer=null;populateEmptyTabs();},85);
  };
@@ -858,8 +858,7 @@ function writerV8RegisterHome(plugin){
   }));
  }
  plugin.register?.(()=>clearTimeout(tabTimer));
- if(plugin.settings.v8Finish.homeAtStartup&&typeof plugin.app.workspace.onLayoutReady==='function')
-  plugin.app.workspace.onLayoutReady(()=>{if(writerModuleOn(plugin,'writingHome'))void open();});
+ if(typeof writerV106HomeRegisterStartup==='function')writerV106HomeRegisterStartup(plugin,open);
  if(typeof plugin.app.workspace.onLayoutReady==='function')
   plugin.app.workspace.onLayoutReady(()=>{if(plugin.settings.v8Finish.homeOnNewTab)schedule();});
 }
@@ -873,8 +872,11 @@ function writerV8FinishSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Tamanho máximo da legenda','Maximum caption characters'))
   .addText(x=>x.setValue(String(cfg.captionMax)).onChange(async value=>{cfg.captionMax=Math.max(32,Math.min(240,Number(value)||180));await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Abrir a homepage de escrita ao iniciar','Open writing homepage on startup'))
-  .setDesc(writerUi('Desativado por padrão; não altera a página inicial de outros plugins.','Off by default; does not alter other plugins’ home views.'))
+  .setDesc(writerUi('Abre a homepage no próximo início do Obsidian. A limpeza de abas é configurada separadamente.','Opens Home at the next Obsidian startup. Tab cleanup is configured separately.'))
   .addToggle(x=>x.setValue(cfg.homeAtStartup).onChange(async value=>{cfg.homeAtStartup=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Começar cada sessão com a homepage limpa','Start each session with a clean homepage'))
+  .setDesc(writerUi('Ativado por padrão. No próximo início real do Obsidian, fecha apenas abas principais restauradas, mantém painéis laterais e abre uma homepage. Não roda ao atualizar ou recarregar o plugin.','Enabled by default. On a fresh Obsidian startup, closes restored main tabs, keeps sidebars and opens one Home tab. Never runs on plugin updates/reloads.'))
+  .addToggle(x=>x.setValue(cfg.homeCleanStart!==false).onChange(async value=>{cfg.homeCleanStart=value;await plugin.saveSettings();}));
  const refreshHome=()=>{
   for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
    leaf.view?.render?.();

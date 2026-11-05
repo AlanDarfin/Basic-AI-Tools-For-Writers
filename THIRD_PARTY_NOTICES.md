@@ -114,3 +114,7 @@ The `timeline` and `timeline-labeled` Markdown syntax is based on the
 public original README. Basic's rendering, parsing, horizontal/vertical
 layout, themes, photos, icons and optional controls are independently
 implemented. No upstream JavaScript, CSS or images were copied.
+
+## Dragger (Ariestar)
+
+The v10.6 block dragging feature is an original Basic implementation inspired by the public feature list of [Dragger](https://github.com/Ariestar/obsidian-dragger) (MIT-licensed). No source code or proprietary assets were copied or bundled. Full Dragger feature parity is not claimed.

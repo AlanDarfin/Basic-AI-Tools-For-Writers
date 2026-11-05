@@ -2,12 +2,21 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.5.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.6.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.6.0 — clean home sessions, block dragging and historical integrations
+
+- **Session reset:** optionally start every new Obsidian session with exactly one Home tab, discarding restored **main tabs only**. This is enabled by default; sidebars, notes, and layout settings stay intact. Plugin updates/hot reloads cannot trigger a reset. A confirmed manual cleanup command is included.
+- **Dragger-inspired editor controls:** drag paragraphs, headings, list items (with children), tasks, quotes/callouts, tables and fenced code; multi-line selections, nested list indentation, drop indicators, mobile long-press, configurable handle icon/color/size/offset, keyboard move commands and block-type menu. The original Dragger is detected to prevent competing handles.
+- **Recovered v1 dictionary path:** optional inspector can link a valid Markdown dictionary note from the legacy Alan's Offline Dictionary settings without importing API keys or deleting old files.
+- **Enhancement Suite follow-up:** inspect selected JSON as a bounded, read-only expandable tree.
+- **Audit:** See [v1–v10 integration report](docs/V10_6_HISTORICAL_AUDIT.pt-BR.md) for functions present, partially implemented and still absent. Includes Make.md, Zotero, calendar, TTS and media limitations.
+- No third-party plugin source is bundled. A real Android and desktop acceptance test is still needed for gestures and theme variations.
 
 ## Version 10.5.0 — research, recovery and reading
 

@@ -70,8 +70,8 @@ test('quick drafts are local and persist across switches; export chooses a new p
  assert.match(home,/while\(this\.app\.vault\.getAbstractFileByPath\(path\)\)/);
  assert.doesNotMatch(home,/fetch\(|requestUrl\(/);
 });
-test('dashboard does not replace new tabs by default or add editor extensions',()=>{
- assert.match(home,/if\(plugin\.settings\.v8Finish\.homeAtStartup/);
+test('dashboard safely delegates startup cleanup and does not add editor extensions',()=>{
+ assert.match(home,/writerV106HomeRegisterStartup\(plugin,open\)/);
  assert.match(src,/plugin\.registerMarkdownPostProcessor/);
  assert.match(src,/\['chat','writer-chat'\]/);
  assert.doesNotMatch(home,/registerEditorExtension/);

@@ -2,13 +2,22 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.5.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.6.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.6.0 — homepage limpa, Dragger e revisão histórica
+
+- **Sessão limpa:** ao iniciar o Obsidian, a homepage pode abrir sozinha, fechando apenas abas principais restauradas. Ligado por padrão; preserva notas, painéis laterais e configurações. Nunca apaga abas no recarregamento/atualização do plugin. Há comando de limpeza manual com confirmação.
+- **Arrastar blocos, inspirado no Dragger:** mover parágrafos, títulos, listas com filhos, tarefas, citações, tabelas e blocos de código; seleção múltipla, recuo, linha indicadora, toque longo no Android, ícone/tamanho/cor personalizáveis, comandos de teclado e menu de tipos. Evita conflito com Dragger original ativo.
+- **Dicionário da v1:** assistente opcional localiza nota Markdown do antigo Alan's Offline Dictionary sem copiar chaves de API nem alterar arquivos antigos.
+- **Enhancement Suite:** comando para explorar JSON selecionado em uma árvore expandível somente leitura.
+- **Auditoria:** [funções conferidas desde a v1](V10_6_HISTORICAL_AUDIT.pt-BR.md), distinguindo implementações, integrações parciais e pendências ainda reais.
+- Os gestos e a aparência do Dragger no Android/PC dependem de validação prática no Obsidian.
 
 ## Versão 10.5.0 — pesquisa, recuperação e leitura
 

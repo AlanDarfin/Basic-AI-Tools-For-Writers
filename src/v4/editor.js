@@ -186,5 +186,5 @@ function writerV4RenderSettings(plugin,panel){
   }));
 }
 function writerV4Register(plugin){
-  plugin.addCommand({id:'v4-selective-review',name:'Basic AI: '+writerUi('Revisar seleção com diff','Review selection with diff'),editorCallback:()=>writerV4OpenDiff(plugin)});
+  plugin.addCommand({id:'v4-selective-review',name:'basic: '+writerUi('Revisar seleção com diff','Review selection with diff'),editorCallback:()=>writerV4OpenDiff(plugin)});
 }

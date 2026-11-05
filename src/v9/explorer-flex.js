@@ -479,7 +479,13 @@ function writerV1043GlobalSortingMenu(plugin,menu){
    item.onClick(()=>void set(mode));
   });
  }
- menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
+ menu.addSeparator?.();
+  menu.addItem(item=>{
+   item.setTitle(writerUi('Revelar arquivos ocultos','Reveal hidden files')).setIcon(cfg.showHidden?'eye-off':'eye');
+   item.setChecked?.(cfg.showHidden===true);
+   item.onClick(()=>{cfg.showHidden=!cfg.showHidden;void plugin.saveSettings().then(()=>plugin.writerV91FlexRefresh?.());});
+  });
+  menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
   .setIcon('rotate-ccw').onClick(()=>void set('native')));
 }
 function writerV91FlexRegister(plugin){

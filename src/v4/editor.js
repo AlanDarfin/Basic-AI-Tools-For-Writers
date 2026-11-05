@@ -170,7 +170,7 @@ function writerV4RenderSettings(plugin,panel){
     const card=list.createDiv({cls:'writer-v4-profile'});
     new Setting(card).setName(writerUi('Nome do perfil','Profile name')).addText(t=>t.setValue(p.name).onChange(async v=>{p.name=v.slice(0,80);await plugin.saveSettings();}));
     writerV109AddVaultPathSetting(plugin,card,{pt:'Pasta no cofre (opcional)',en:'Vault folder (optional)',kind:'folder',
-     value:p.folder,onChange:async value=>{p.folder=String(value).replace(/^\\/+/, '').slice(0,300);await plugin.saveSettings();}});
+     value:p.folder,onChange:async value=>{p.folder=String(value).replace(/^[/]+/,'').slice(0,300);await plugin.saveSettings();}});
     new Setting(card).setName(writerUi('Instruções de escrita','Writing instructions')).addTextArea(t=>{t.inputEl.rows=5;t.setValue(p.instructions).onChange(async v=>{p.instructions=v.slice(0,10000);await plugin.saveSettings();});});
     new Setting(card).setName(writerUi('Excluir perfil','Delete profile')).addButton(b=>b.setButtonText(writerUi('Remover','Remove')).setWarning().onClick(()=>{
       const confirm=new Modal(plugin.app);confirm.onOpen=()=>{confirm.setTitle(writerUi('Remover perfil?','Remove profile?'));

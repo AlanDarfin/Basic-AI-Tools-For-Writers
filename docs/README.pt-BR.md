@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-****Versão:** 10.8.0** · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+****Versão:** 10.9.0** · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 

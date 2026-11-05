@@ -5864,8 +5864,37 @@ function writerV1048SearchReveal(panel,title){
  found.scrollIntoView?.({block:'center',behavior:'auto'});
  return true;
 }
+/* Group identical options from different sections, without building fake
+ * setting buttons: the host/theme can restyle button children unpredictably. */
+function writerV1050SearchGroups(entries){
+ const groups=[],lookup=new Map();
+ for(const entry of entries||[]){
+  const key=writerWorkspaceSearchNormalize(entry.title);
+  if(!key)continue;
+  let group=lookup.get(key);
+  if(!group){
+   group={title:entry.title,entries:[]};
+   groups.push(group);lookup.set(key,group);
+  }
+  if(!group.entries.some(item=>item.id===entry.id))group.entries.push(entry);
+ }
+ return groups;
+}
+function writerV1050SearchTarget(container,entry,activate){
+ const node=container.createDiv({cls:'writer-v1050-result-target',attr:{
+  role:'button',tabindex:'0',
+  'aria-label':writerUi('Abrir ','Open ')+entry.title+' · '+entry.section
+ }});
+ node.createSpan({cls:'writer-v1050-result-target-text',text:entry.section});
+ node.addEventListener('click',()=>activate(entry));
+ node.addEventListener('keydown',event=>{
+  if(event.key!=='Enter'&&event.key!==' ')return;
+  event.preventDefault();activate(entry);
+ });
+ return node;
+}
 function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
- const wrap=root.createDiv({cls:'writer-v51-search writer-v901-settings-search writer-v1048-settings-search'});
+ const wrap=root.createDiv({cls:'writer-v901-settings-search writer-v1050-settings-search'});
  const field=wrap.createDiv({cls:'writer-v901-search-field'});
  const symbol=field.createSpan({cls:'writer-v901-search-icon',attr:{'aria-hidden':'true'}});
  require('obsidian').setIcon(symbol,'search');
@@ -5873,7 +5902,7 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   placeholder:writerUi('Buscar uma configuração específica…','Search an individual setting…'),
   'aria-label':writerUi('Buscar opções e comandos','Search options and commands'),autocomplete:'off'}});
  input.id='writer-v51-settings-search';
- const feedback=wrap.createDiv({cls:'writer-v51-search-results writer-v1048-search-results',
+ const feedback=wrap.createDiv({cls:'writer-v1050-results',
   attr:{role:'region','aria-live':'polite',
    'aria-label':writerUi('Resultados de configurações','Settings results')}});
  feedback.hidden=true;
@@ -5901,33 +5930,30 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   const activeMatches=latest.filter(entry=>entry.id===active);
   writerWorkspaceFilterRows(panel,q&&activeMatches.length?q:'');
   if(!q)return;
-  const header=feedback.createDiv({cls:'writer-v1048-search-summary'});
-  header.setText(writerUi('Opções encontradas: ','Matching settings: ')+latest.length);
   if(latest.length){
-   const list=feedback.createDiv({cls:'writer-v1048-search-list'});
-   for(const entry of latest){
-    const button=list.createEl('button',{cls:'writer-v1048-search-result',attr:{
-     type:'button','aria-label':entry.title+' · '+entry.section}});
-    const symbol=button.createSpan({cls:'writer-v1049-result-icon',attr:{'aria-hidden':'true'}});
-    require('obsidian').setIcon(symbol,entry.source==='toolbar'?'type':entry.source==='syntax'?'braces':'settings-2');
-    const content=button.createSpan({cls:'writer-v1049-result-content'});
-    content.createSpan({cls:'writer-v1048-search-result-title',text:entry.title});
-    content.createSpan({cls:'writer-v1048-search-result-path',text:entry.section});
-    if(entry.description)content.createSpan({cls:'writer-v1048-search-result-desc',text:entry.description});
-    button.addEventListener('click',()=>jump(entry));
+   const grouped=writerV1050SearchGroups(latest);
+   feedback.createDiv({cls:'writer-v1050-result-count',text:
+    writerUi('Configurações: ','Settings: ')+grouped.length+
+    (grouped.length!==latest.length?writerUi(' · locais: ',' · locations: ')+latest.length:'')});
+   const list=feedback.createDiv({cls:'writer-v1050-result-list',attr:{role:'list'}});
+   for(const group of grouped){
+    const row=list.createDiv({cls:'writer-v1050-result-group',attr:{role:'listitem'}});
+    row.createDiv({cls:'writer-v1050-result-title',text:group.title});
+    const targets=row.createDiv({cls:'writer-v1050-result-targets'});
+    for(const entry of group.entries)writerV1050SearchTarget(targets,entry,jump);
    }
   }else{
    const categories=writerWorkspaceSearchSections(sections,q);
    if(categories.length){
-    feedback.createSpan({cls:'writer-v1048-search-summary',
+    feedback.createDiv({cls:'writer-v1050-result-count',
      text:writerUi('Categorias relacionadas','Related categories')});
-    const list=feedback.createDiv({cls:'writer-v1048-search-list'});
+    const list=feedback.createDiv({cls:'writer-v1050-result-list',attr:{role:'list'}});
     for(const [id,label] of categories.slice(0,6)){
-     const button=list.createEl('button',{cls:'writer-v1048-search-result',
-      text:label,attr:{type:'button'}});
-     button.addEventListener('click',()=>onOpen(id));
+     const row=list.createDiv({cls:'writer-v1050-result-group',attr:{role:'listitem'}});
+     const entry={id,title:label,section:label,focus:''};
+     writerV1050SearchTarget(row,entry,()=>onOpen(id));
     }
-   }else feedback.createSpan({cls:'writer-v1048-search-empty',text:writerUi(
+   }else feedback.createDiv({cls:'writer-v1050-result-empty',text:writerUi(
     'Nenhuma opção encontrada. Tente outra palavra.','No matching option. Try another word.')});
   }
  };

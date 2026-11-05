@@ -2,13 +2,22 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.7.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.7.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.7.1 — recuperação de ativação
+
+- **Correção crítica:** os módulos antigos do Basic terminam a inicialização antes das integrações adicionais 10.7; erros opcionais não podem interromper o carregamento do plugin inteiro.
+- **Funções preservadas:** inspeção do bundle confirmou que as integrações antigas, incluindo Longform, homepage, LanguageTool, toolbar, calendário, estudos e ferramentas de escrita, não foram excluídas.
+- **Instalação parcial:** verificações de existência impedem que integrações ausentes em arquivos desencontrados provoquem falha de referência durante o início.
+- **Modo de compatibilidade:** desligue **Ativar integrações experimentais 10.7** nas configurações e reinicie para manter apenas o conjunto anterior de funções. Nenhuma preferência é apagada.
+- Novos testes verificam erros de registro, módulos ausentes, cancelamento de tarefas atrasadas e preservação do código legado.
+- [Leia o relatório de recuperação](V10_7_1_ACTIVATION_RECOVERY.pt-BR.md). Substitua sempre `main.js`, `manifest.json` e `styles.css` juntos. O erro exato no dispositivo ainda precisa ser confirmado pelo console do Obsidian.
 
 ## Versão 10.7.0 — integrações avançadas
 

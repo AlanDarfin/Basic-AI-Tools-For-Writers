@@ -131,22 +131,24 @@ function writerV101ReadingProgressRegister(plugin){
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
    const host=leaf.view?.containerEl;
    if(!host)continue;
-   const old=host.querySelector(':scope > .writer-v101-reading-track');
-   const scroller=host.querySelector('.markdown-preview-view');
-   if(!enabled||!scroller||!scroller.isConnected||!scroller.offsetParent){old?.remove();continue;}
-   if(host.ownerDocument?.defaultView?.getComputedStyle(host).position==='static')host.style.position='relative';
+   const pane=host.querySelector('.view-content')||host;
+   const old=pane.querySelector(':scope > .writer-v101-reading-track');
+   const scroller=[...host.querySelectorAll('.markdown-source-view .cm-scroller, .markdown-preview-view, .cm-scroller')]
+    .find(el=>el.isConnected&&el.getBoundingClientRect().height>5&&el.getBoundingClientRect().width>5);
+   if(!enabled||!scroller){old?.remove();continue;}
+   if(pane.ownerDocument?.defaultView?.getComputedStyle(pane).position==='static')pane.classList.add('writer-v101-reading-pane');
    let track=old;
    if(!track){
-    track=host.ownerDocument.createElement('div');
+    track=pane.ownerDocument.createElement('div');
     track.className='writer-v101-reading-track';
     track.setAttribute('role','progressbar');
     track.setAttribute('aria-label',writerUi('Progresso de leitura','Reading progress'));
     track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
     track.style.cssText='position:absolute;top:0;left:0;right:0;height:3px;z-index:5;pointer-events:none;background:transparent;';
-    const fill=host.ownerDocument.createElement('div');
+    const fill=pane.ownerDocument.createElement('div');
     fill.className='writer-v101-reading-fill';
     fill.style.cssText='height:100%;width:0%;background:var(--interactive-accent);transition:width 90ms linear;';
-    track.appendChild(fill);host.appendChild(track);
+    track.appendChild(fill);pane.appendChild(track);
    }
    const style=plugin.settings.v101Suite;
    track.style.height=(style?.readingProgressHeight||3)+'px';
@@ -165,14 +167,16 @@ function writerV101ReadingProgressRegister(plugin){
  plugin.registerDomEvent?.(plugin.app.workspace.containerEl,'scroll',throttled,true);
  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',throttled));
  plugin.registerEvent(plugin.app.workspace.on('layout-change',throttled));
- plugin.registerEvent(plugin.app.workspace.on('file-open',throttled));
+ plugin.registerEvent(plugin.app.workspace.on('file-open',()=>{throttled();setTimeout(throttled,140);}));
+ plugin.registerEvent(plugin.app.workspace.on('editor-change',throttled));
  plugin.app.workspace.onLayoutReady?.(throttled);
  plugin.writerV101ReadingProgressRefresh=throttled;
- plugin.register?.(()=>{for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();});
+ plugin.register?.(()=>{for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-pane'))el.classList.remove('writer-v101-reading-pane');});
 }
 
 function writerV101RegisterEnhancements(plugin){
  writerV101ReadingProgressRegister(plugin);
+ if(typeof writerV10DiscoveryRegister==='function')writerV10DiscoveryRegister(plugin);
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -220,7 +224,7 @@ function writerV101EnhancementsSettings(plugin,panel){
   ['csvExport','Exportar seleção de tabela para CSV','Export selected table as CSV'],
   ['footnotes','Inserir notas de rodapé','Insert footnotes'],
   ['bulkProperties','Permitir editar propriedades em lote (desligado inicialmente)','Allow batch property edits (off by default)']
- ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();if(key==='enabled'||key==='readingProgress')plugin.writerV101ReadingProgressRefresh?.();}));
  new Setting(panel).setName(writerUi('Espessura da barra de leitura','Reading bar thickness'))
   .addSlider(slider=>slider.setLimits(2,10,1).setDynamicTooltip().setValue(cfg.readingProgressHeight||3)
    .onChange(async value=>{cfg.readingProgressHeight=value;await plugin.saveSettings();plugin.writerV101ReadingProgressRefresh?.();}));
@@ -233,4 +237,5 @@ function writerV101EnhancementsSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Limite de notas por operação','Maximum notes per operation'))
   .addSlider(s=>s.setLimits(1,100,1).setDynamicTooltip().setValue(cfg.batchMax)
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
+ if(typeof writerV10DiscoverySettings==='function')writerV10DiscoverySettings(plugin,panel);
 }

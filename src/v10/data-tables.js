@@ -5,15 +5,16 @@ function writerV107DbConfig(settings){
  return settings.v107Db={enabled:true,maxFiles:500,editable:true,...old,maxFiles:Math.max(25,Math.min(2000,Number(old.maxFiles)||500))};
 }
 function writerV107DbSpec(source){
- const s={folder:'',columns:['file','tags'],filter:'',sort:'file',order:'asc',limit:80,formulas:[],rollups:[]};
+ const s={folder:'',columns:['file','tags'],filter:'',sort:'file',order:'asc',group:'',view:'table',limit:80,formulas:[],rollups:[]};
  for(const line of String(source||'').slice(0,6000).split(/\r?\n/)){
-  const m=/^\s*(folder|columns|filter|sort|order|limit|formula|rollup)\s*:\s*(.*?)\s*$/i.exec(line);if(!m)continue;
+  const m=/^\s*(folder|columns|filter|sort|order|group|view|limit|formula|rollup)\s*:\s*(.*?)\s*$/i.exec(line);if(!m)continue;
   const key=m[1].toLowerCase(),value=m[2].trim().replace(/^["']|["']$/g,'');
   if(key==='columns')s.columns=value.split(',').map(x=>x.trim()).filter(x=>/^[\w-]{1,60}$/.test(x)).slice(0,24);
   else if(key==='formula'){const f=/^([\w-]{1,35})\s*=\s*(.{1,140})$/.exec(value);if(f&&s.formulas.length<8)s.formulas.push({name:f[1],expression:f[2]});}
   else if(key==='rollup'){const f=/^([\w-]{1,35})\s*=\s*([\w-]{1,40})\.([\w-]{1,40})\s*\|\s*(count|sum|avg|min|max)$/i.exec(value);if(f&&s.rollups.length<8)s.rollups.push({name:f[1],relation:f[2],field:f[3],op:f[4].toLowerCase()});}
   else if(key==='limit')s.limit=Math.max(5,Math.min(300,Number(value)||80));
   else if(key==='order')s.order=value==='desc'?'desc':'asc';
+  else if(key==='view')s.view=value==='board'?'board':'table';
   else if(key==='folder')s.folder=value.replace(/^\/|\/$/g,'').slice(0,260);
   else s[key]=value.slice(0,220);
  }
@@ -116,6 +117,23 @@ function writerV107DbRender(plugin,source,element,ctx){
   scroller.empty();const q=filter.value.toLowerCase();
   const shown=rows.filter(r=>!q||cols.some(k=>String(r.data[k]??'').toLowerCase().includes(q)));
   count.setText(shown.length+' / '+rows.length);
+  if(spec.view==='board'){
+   const groups=new Map();
+   for(const row of shown){const group=String(row.data[spec.group||'status']||writerUi('Sem grupo','Ungrouped'));
+    if(!groups.has(group))groups.set(group,[]);groups.get(group).push(row);}
+   const board=scroller.createDiv({cls:'writer-v107-db-board'});
+   for(const [name,members] of groups){
+    const lane=board.createDiv({cls:'writer-v107-db-lane'});
+    lane.createEl('h4',{text:name+' · '+members.length});
+    for(const row of members){
+     const card=lane.createEl('button',{cls:'writer-v107-db-board-card'});
+     card.createEl('strong',{text:row.file.basename});
+     for(const col of cols.filter(k=>k!=='file').slice(0,5))card.createEl('small',{text:col+': '+String(row.data[col]??'—')});
+     card.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
+    }
+   }
+   return;
+  }
   const table=scroller.createEl('table'),thead=table.createEl('thead').createEl('tr');
   for(const col of cols){const b=thead.createEl('th').createEl('button',{text:col});b.addEventListener('click',()=>{spec.sort=col;spec.order=spec.order==='asc'?'desc':'asc';refresh();});}
   const body=table.createEl('tbody');
@@ -146,7 +164,7 @@ function writerV107DbRegister(plugin){
  for(const lang of ['writer-database','basic-database'])plugin.registerMarkdownCodeBlockProcessor(lang,(source,element,ctx)=>writerV107DbRender(plugin,source,element,ctx));
  plugin.addCommand({id:'v107-insert-database',name:writerUi('Make.md: inserir banco de dados','Make.md: insert database'),editorCallback:editor=>{
   const fence=String.fromCharCode(96).repeat(3);
-  editor.replaceSelection(['',fence+'writer-database','folder:','columns: file, status, priority','filter: status != done','sort: modified','order: desc','formula: score = priority * 2','rollup: total = related.pages | sum',fence,''].join('\n'));
+  editor.replaceSelection(['',fence+'writer-database','folder:','columns: file, status, priority','view: table','group: status','filter: status != done','sort: modified','order: desc','formula: score = priority * 2','rollup: total = related.pages | sum',fence,''].join('\n'));
  }});
 }
 function writerV107DbSettings(plugin,panel){

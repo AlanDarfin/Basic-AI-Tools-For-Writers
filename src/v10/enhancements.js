@@ -179,6 +179,7 @@ function writerV101RegisterEnhancements(plugin){
  if(typeof writerV106DragRegister==='function')writerV106DragRegister(plugin);
  if(typeof writerV106HistoricRegister==='function')writerV106HistoricRegister(plugin);
  if(typeof writerV10DiscoveryRegister==='function')writerV10DiscoveryRegister(plugin);
+  if(typeof writerV107Register==='function')writerV107Register(plugin);
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -241,4 +242,5 @@ function writerV101EnhancementsSettings(plugin,panel){
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
  if(typeof writerV10DiscoverySettings==='function')writerV10DiscoverySettings(plugin,panel);
  if(typeof writerV106DragSettings==='function')writerV106DragSettings(plugin,panel);
+  if(typeof writerV107Settings==='function')writerV107Settings(plugin,panel);
 }

@@ -101,10 +101,12 @@ test('Cross-note move extracts either a selection or full block safely',()=>{
  const editor={getSelection:()=>'',getCursor:()=>({line:0,ch:0}),getValue:()=>'- Parent\n  - child\n\nNext'};
  assert.equal(media.writerV107CrossNoteBlock(editor).text,'- Parent\n  - child');
 });
-test('Build and settings include every v10.7 module',()=>{
+test('All 10.7 sources are preserved in Git, but excluded from the recovery runtime',()=>{
  const read=p=>fs.readFileSync(p,'utf8'),build=read('scripts/build-v3.js'),enhancements=read('src/v10/enhancements.js');
- for(const name of ['data-tables','zotero-web','study-fsrs','calendar-feeds','story-graph','editor-pro','speech-accessibility','media-drag-extension','integrations-107'])
-  assert.ok(build.includes('v10/'+name));
+ for(const name of ['data-tables','zotero-web','study-fsrs','calendar-feeds','story-graph','editor-pro','speech-accessibility','media-drag-extension','integrations-107']){
+  assert.ok(build.includes("'v10/"+name+"'"));
+  assert.ok(fs.existsSync('src/v10/'+name+'.js'));
+ }
  assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);
  assert.match(enhancements,/writerV107Settings\(plugin,panel\)/);
 });

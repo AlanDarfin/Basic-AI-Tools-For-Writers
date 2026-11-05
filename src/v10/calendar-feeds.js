@@ -62,7 +62,7 @@ function writerV107CalendarRegister(plugin){
   const handler=()=>{const c=plugin.settings.v107Feeds;if(c?.enabled&&c?.autoSync&&(!plugin._writerV107FeedLast||Date.now()-plugin._writerV107FeedLast>=c.intervalHours*3600000)){
    plugin._writerV107FeedLast=Date.now();void writerV107CalendarSynchronize(plugin,true);
   }};
-  const id=interval(handler,3600000);
+  const id=plugin.app.workspace.containerEl.ownerDocument.defaultView.setInterval(handler,3600000);
   plugin.register?.(()=>plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.clearInterval(id));
  }
 }

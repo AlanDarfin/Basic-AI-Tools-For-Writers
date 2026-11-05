@@ -89,8 +89,8 @@ test('search result opens details and reveals the precise Setting row',()=>{
 });
 test('settings and toolbar CSS are scoped, accessible and do not rely on unsupported selectors',()=>{
  for(const label of ['writer-v1048-toolbar-settings','writer-v1048-toolbar-inventory',
-  'writer-v1048-format-toolbar','writer-v1048-settings-search',
-  'writer-v1048-search-result','dictionary-settings-subtabs'])
+  'writer-v1048-format-toolbar','writer-v1050-settings-search',
+  'writer-v1050-result-group','dictionary-settings-subtabs'])
   assert.ok(css.includes(label),label);
  assert.doesNotMatch(css,/:has\s*\(|!important\b/);
  assert.match(toolbar,/writerV1048ToolbarCommandPicker/);

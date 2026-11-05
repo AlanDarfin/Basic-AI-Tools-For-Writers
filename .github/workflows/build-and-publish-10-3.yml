@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.4.8 plugin artifacts'
+            git commit -m 'build: synchronize 10.4.9 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.4.8"
+          test "$VERSION" = "10.4.9"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic AI Tool for Writers $VERSION" \
-            --notes "10.4.8: Rebuild Basic formatting toolbar around customizable commands and menus, editable names and Lucide icons, drag sorting, colors, density, and desktop follow-cursor mode while keeping mobile optional. Add option-level settings search with accent-insensitive alias matching (e.g. subescrito), direct navigation, and unified compact responsive settings UI. PT/EN docs and regression tests."
+            --notes "10.4.9: Fix full-width compact settings search results on mobile and replace oversized native dropdown/slider/color rows with bounded Basic controls. Justify text and headings via {j} marker using the same Markdown-alignment engine as {c}, {l}, {r}. Updated bilingual documentation and regression tests."

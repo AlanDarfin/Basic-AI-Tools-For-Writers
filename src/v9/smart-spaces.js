@@ -539,9 +539,7 @@ function writerV9RegisterSpaces(plugin){
    space.pinnedPaths=[...pinned];
    await plugin.saveSettings();plugin.writerV9SpacesRefresh?.();plugin.writerV91FlexRefresh?.();
   }});
- const shortcutsRibbon=plugin.addRibbonIcon?.('sliders-horizontal',
-  writerUi('Atalhos do Basic','Basic quick actions'),event=>openQuickActions(event));
- shortcutsRibbon?.addClass?.('writer-v1042-quick-ribbon');
+ // Quick actions remain available through commands, not the ribbon.
  plugin.registerEvent(plugin.app.workspace.on('file-menu',(menu,file)=>{
   if(!writerModuleOn(plugin,'smartSpaces')||!plugin.settings.v9Spaces.enabled)return;
   if(file instanceof TFile&&file.extension==='md'&&plugin.settings.v9Spaces.spaces.length){

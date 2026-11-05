@@ -112,7 +112,8 @@ function writerV107ZoteroPrompt(plugin,format='json'){
     key='';input.value='';modal.close();
     if(format==='json')writerV107ZoteroImport(plugin,items);
     else{
-     const entries=items.map(writerV107ZoteroCsl).filter(Boolean);
+     const entries=items.filter(item=>item&&typeof item==='object')
+      .map(item=>item.id||item.type?item:writerV107ZoteroCsl(item)).filter(Boolean);
      const path='Zotero-csl-'+Date.now()+'.json';
      await plugin.app.vault.create(path,JSON.stringify(entries,null,2));
      new Notice(writerUi('Exportação CSL criada: ','CSL export created: ')+path);

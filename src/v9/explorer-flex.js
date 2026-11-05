@@ -460,7 +460,7 @@ function writerV1043GlobalSortingMenu(plugin,menu){
  menu.addSeparator?.();
  if(plugin.app?.isMobile&&cfg.mobileReorder!==false){
   menu.addItem(item=>{
-   item.setTitle(writerUi('Reorganizar itens no celular (basic)','Reorder items on mobile (basic)'))
+   item.setTitle(writerUi('Reorganizar itens no celular (Basic)','Reorder items on mobile (Basic)'))
     .setIcon('move-vertical');
    item.setChecked?.(writerV1047MobileReorderVisible(plugin));
    item.onClick(()=>writerV1047ToggleMobileReorder(plugin));
@@ -477,10 +477,10 @@ function writerV1043GlobalSortingMenu(plugin,menu){
  });
  menu.addSeparator?.();
  for(const [mode,pt,en,icon] of [
-  ['custom','Ordenação manual (basic)','Manual sorting (basic)','list-ordered'],
-  ['number','Número no título (basic)','Number in title (basic)','list-ordered'],
-  ['property','Propriedade YAML (basic)','YAML property (basic)','list-filter'],
-  ['folders-first','Pastas primeiro (basic)','Folders first (basic)','folder-tree']
+  ['custom','Ordenação manual (Basic)','Manual sorting (Basic)','list-ordered'],
+  ['number','Número no título (Basic)','Number in title (Basic)','list-ordered'],
+  ['property','Propriedade YAML (Basic)','YAML property (Basic)','list-filter'],
+  ['folders-first','Pastas primeiro (Basic)','Folders first (Basic)','folder-tree']
  ]){
   menu.addItem(item=>{
    item.setTitle(writerUi(pt,en)).setIcon(icon);

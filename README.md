@@ -2,12 +2,18 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.6.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.6.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.6.1 — formatting toolbar in Reading view
+
+- Hide the Basic custom formatting toolbar when a Markdown note is in **Reading** mode, on both desktop and mobile.
+- Show it again when returning to Source/Live Preview editing, without changing customization or toolbar position.
+- Detect changes to the active Markdown view without requiring the user to close/reopen the note; release observers when the plugin unloads.
 
 ## Version 10.6.0 — clean home sessions, block dragging and historical integrations
 

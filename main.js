@@ -3864,9 +3864,19 @@ class WriterV4Extras{
    for(const sign of ['@','#','§','+','!'])d.addOption(sign,sign);
    d.setValue(cfg.mention.sign).onChange(async v=>{cfg.mention.sign=v;await this.plugin.saveSettings();});
   });
-  new Setting(panel).setName(writerUi('Pasta das menções','Mention folder')).addText(t=>t.setPlaceholder('Characters').setValue(cfg.mention.folder).onChange(async v=>{
-   cfg.mention.folder=v;await this.plugin.saveSettings();
-  }));
+  new Setting(panel).setName(writerUi('Pasta das menções','Mention folder'))
+   .addText(t=>t.setPlaceholder(writerUi('Buscar pasta…','Search folder…')).setValue(cfg.mention.folder).onChange(async v=>{
+    cfg.mention.folder=v;await this.plugin.saveSettings();
+   }))
+   .addButton(button=>button.setButtonText(writerUi('Pesquisar…','Browse…')).onClick(()=>{
+    const plugin=this.plugin;
+    class FolderPicker extends require('obsidian').FuzzySuggestModal{
+     getItems(){return plugin.app.vault.getAllLoadedFiles?.().filter(f=>f.children&&f.path!=='/')||[];}
+     getItemText(folder){return folder.path;}
+     onChooseItem(folder){cfg.mention.folder=folder.path;void plugin.saveSettings();panel.querySelector('input[placeholder="Buscar pasta…"],input[placeholder="Search folder…"]')?.setAttribute('value',folder.path);}
+    }
+    new FolderPicker(plugin.app).open();
+   }));
   new Setting(panel).setName(writerUi('Inserção de menções','Mention insertion')).addDropdown(d=>{
    d.addOption('link',writerUi('Wikilink','Wikilink')).addOption('text',writerUi('Apenas texto','Plain text'));
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
@@ -13611,6 +13621,19 @@ function writerV9SpaceEditor(plugin,initial,save){
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
   field('folder','Pasta (opcional)','Folder (optional)');
+   const pickPath=(foldersOnly,onSelect)=>{
+    class SpacePathPicker extends require('obsidian').FuzzySuggestModal{
+     getItems(){return (plugin.app.vault.getAllLoadedFiles?.()||[]).filter(item=>foldersOnly?Boolean(item.children):item.extension==='md'||Boolean(item.children));}
+     getItemText(item){return item.path;}
+     onChooseItem(item){onSelect(item.path);modal.close();writerV9SpaceEditor(plugin,draft,save);}
+    }
+    const picker=new SpacePathPicker(plugin.app);
+    picker.setPlaceholder(writerUi('Pesquisar arquivos e pastas…','Search files and folders…'));
+    picker.open();
+   };
+   new Setting(root).setName(writerUi('Pesquisar pasta','Find folder'))
+    .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(true,path=>{draft.folder=path;})));
+
   new Setting(root).setName(writerUi('Usar pasta da nota aberta','Use the current note folder'))
    .setDesc(writerUi('Preenche a pasta sem mover arquivos.','Sets the folder path without moving files.'))
    .addButton(b=>b.setButtonText(writerUi('Selecionar pasta atual','Use current folder')).onClick(()=>{
@@ -13629,7 +13652,11 @@ function writerV9SpaceEditor(plugin,initial,save){
    .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
     draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
-  field('tag','Tag (opcional)','Tag (optional)');
+  new Setting(root).setName(writerUi('Pesquisar nota ou pasta para incluir','Find note or folder to include'))
+    .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(false,path=>{
+     draft.includePaths=[...new Set([...(draft.includePaths||[]),path])];
+    })));
+   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
   field('groupBy','Agrupar quadro por propriedade','Board group property');
@@ -13924,32 +13951,6 @@ function writerV9RegisterSpaces(plugin){
  plugin.addCommand({id:'v9-spaces-open',name:writerUi('Spaces: abrir coleções','Spaces: open collections'),
   callback:()=>writerV9SpaceModal(plugin)});
 
- // Commands are usable from the palette and from Obsidian's mobile toolbar.
- const openQuickActions=event=>{
-  const menu=new Menu(plugin.app);
-  const item=(pt,en,icon,callback)=>menu.addItem(entry=>entry.setTitle(writerUi(pt,en))
-   .setIcon(icon).onClick(callback));
-  item('Gerenciar Spaces','Manage Spaces','layers',()=>writerV9SpaceModal(plugin));
-  item('Abrir biblioteca Longform','Open Longform bookshelf','library',
-   ()=>plugin.writerV10OpenBookshelf?.());
-  item('Ordenação global do explorador','Global Explorer sorting','list-ordered',
-   ()=>writerV1043OpenNativeSortMenu(plugin));
-  item('Mostrar / ocultar arquivos escondidos','Show / hide hidden files','eye',async()=>{
-   const flex=plugin.settings.v91Flex;
-   if(!flex)return;
-   flex.showHidden=!flex.showHidden;
-   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
-  });
-  item('Centralizar linha ou título','Center line or heading','align-center',()=>{
-   plugin.app.commands?.executeCommandById?.(plugin.manifest.id+':v102-align-center');
-  });
-  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
-  else menu.showAtPosition({x:90,y:120});
- };
- plugin.writerV1042QuickActions=openQuickActions;
- plugin.addCommand({id:'v1042-open-quick-actions',
-  name:writerUi('Basic: abrir atalhos rápidos','Basic: open quick actions'),
-  callback:()=>openQuickActions()});
  plugin.addCommand({id:'v1042-spaces-next',
   name:writerUi('Spaces: próxima coleção','Spaces: next collection'),
   callback:()=>{
@@ -13966,9 +13967,6 @@ function writerV9RegisterSpaces(plugin){
    const index=spaces.findIndex(s=>s.id===plugin.settings.v9Spaces.activeId);
    void writerV9215SelectSpace(plugin,spaces[(index<0?0:index+spaces.length-1)%spaces.length].id);
   }});
- plugin.addCommand({id:'v1042-current-folder-sorting',
-  name:writerUi('Explorador: abrir ordenação global','Explorer: open global sorting'),
-  callback:()=>writerV1043OpenNativeSortMenu(plugin)});
  plugin.addCommand({id:'v1042-spaces-quick-pin',
   name:writerUi('Spaces: fixar ou desafixar nota atual','Spaces: pin or unpin current note'),
   callback:async()=>{
@@ -16390,7 +16388,13 @@ function writerV1043GlobalSortingMenu(plugin,menu){
    item.onClick(()=>void set(mode));
   });
  }
- menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
+ menu.addSeparator?.();
+  menu.addItem(item=>{
+   item.setTitle(writerUi('Revelar arquivos ocultos','Reveal hidden files')).setIcon(cfg.showHidden?'eye-off':'eye');
+   item.setChecked?.(cfg.showHidden===true);
+   item.onClick(()=>{cfg.showHidden=!cfg.showHidden;void plugin.saveSettings().then(()=>plugin.writerV91FlexRefresh?.());});
+  });
+  menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
   .setIcon('rotate-ccw').onClick(()=>void set('native')));
 }
 function writerV91FlexRegister(plugin){
@@ -17084,8 +17088,16 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
   const textSetting=new Setting(content).setName('Markdown').addTextArea(t=>{t.inputEl.rows=7;t.setValue(data.text)
    .onChange(v=>{data.text=v.slice(0,16000);});});
   const fileSetting=new Setting(content).setName(writerUi('Nota modelo','Template note')).addText(t=>t.setValue(data.file)
-   .setPlaceholder('Templates/Book footer.md').onChange(v=>{data.file=v.slice(0,500);}));
-  const sourceUI=()=>{
+    .setPlaceholder(writerUi('Buscar nota modelo…','Search template note…')).onChange(v=>{data.file=v.slice(0,500);}))
+    .addButton(button=>button.setButtonText(writerUi('Pesquisar…','Browse…')).onClick(()=>{
+     class TemplatePicker extends require('obsidian').FuzzySuggestModal{
+      getItems(){return plugin.app.vault.getMarkdownFiles?.()||[];}
+      getItemText(file){return file.path;}
+      onChooseItem(file){data.file=file.path;const input=fileSetting.settingEl.querySelector('input');if(input)input.value=file.path;}
+     }
+     new TemplatePicker(plugin.app).open();
+    }));
+   const sourceUI=()=>{
    textSetting.settingEl.style.display=data.source==='text'?'':'none';
    fileSetting.settingEl.style.display=data.source==='file'?'':'none';
   };
@@ -19667,7 +19679,8 @@ function writerV95RegisterTimelineBlocks(plugin){
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
- const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},...old};
+ const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},standalone:[],...old};
+ cfg.standalone=[...new Set((Array.isArray(cfg.standalone)?cfg.standalone:[]).filter(p=>typeof p==='string'&&p.endsWith('.md')).slice(0,500))];
  cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
@@ -19681,6 +19694,18 @@ function writerV10BookRecord(raw){
   status:['planned','reading','paused','finished'].includes(r.status)?r.status:'planned',
   progress:Math.max(0,Math.min(100,Math.round(Number(r.progress)||0)))};
 }
+function writerV109BookProgress(plugin,project,record){
+ if(project.standalone)return record.status==='finished'?100:Math.max(0,Math.min(100,Number(project.meta?.readingProgress)||0));
+ const scenes=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
+ if(!scenes.length)return record.status==='finished'?100:0;
+ return Math.round(100*scenes.filter(scene=>/^(done|complete|completed|finished|conclu[ií]do)$/i.test(String(scene.status||scene.meta?.status||''))).length/scenes.length);
+}
+function writerV109StandaloneProject(plugin,file){
+ const meta=plugin.app.metadataCache.getFileCache?.(file)?.frontmatter||{};
+ return {file,title:String(meta.title||file.basename),meta,scenes:[],standalone:true};
+}
+function writerV109BookDescription(project){return String(project.meta?.description||project.meta?.summary||project.meta?.sinopse||'').trim().slice(0,1400);}
+function writerV109BookCopyright(project){return String(project.meta?.copyright||project.meta?.rights||'').trim().slice(0,400);}
 function writerV10BookState(plugin,project){
  const meta=project.meta||{},existing=plugin.settings.v10Bookshelf?.library?.[project.file.path];
  const record=writerV10BookRecord(existing);
@@ -19690,6 +19715,7 @@ function writerV10BookState(plugin,project){
   const fromMeta=Number(meta.readingProgress||meta.progress);
   if(Number.isFinite(fromMeta))record.progress=Math.max(0,Math.min(100,Math.round(fromMeta)));
  }
+ record.progress=writerV109BookProgress(plugin,project,record);
  return record;
 }
 async function writerV10BookSaveState(plugin,project,record){
@@ -19698,12 +19724,17 @@ async function writerV10BookSaveState(plugin,project,record){
  await plugin.saveSettings();
 }
 function writerV10BookshelfProjects(plugin){
- return (plugin.app.vault.getMarkdownFiles?.()||[])
-  .map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
+ const files=plugin.app.vault.getMarkdownFiles?.()||[];
+ const longform=files.map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
+ const indexed=new Set(longform.map(p=>p.file.path));
+ const standalone=(plugin.settings.v10Bookshelf?.standalone||[])
+  .filter(path=>!indexed.has(path)).map(path=>plugin.app.vault.getAbstractFileByPath(path))
+  .filter(file=>file?.extension==='md').map(file=>writerV109StandaloneProject(plugin,file));
+ return [...longform,...standalone];
 }
 function writerV10BookCover(plugin,project){
  const m=project.meta||{};
- const value=m.cover||m.coverImage||m.image||m.banner||'';
+ const value=m.banner||m.cover||m.coverImage||m.image||'';
  return typeof writerV9215PrettyImage==='function'?writerV9215PrettyImage(plugin.app,project.file,value):'';
 }
 function writerV10BookWordProgress(plugin,project){
@@ -19740,7 +19771,7 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
  const series=String(project.meta?.series||project.meta?.subtitle||'').slice(0,100);
  if(series&&!compact)data.createSpan({cls:'writer-v10-book-series',text:series});
  const counts=writerV10BookWordProgress(plugin,project);
- data.createSpan({cls:'writer-v10-book-count',text:counts.chapters+' '+writerUi('capítulos','chapters')});
+ data.createSpan({cls:'writer-v10-book-count',text:project.standalone?writerUi('Nota única','Single note'):counts.chapters+' '+writerUi('capítulos','chapters')});
  if(plugin.settings.v10Bookshelf?.showProgress!==false){
   const reading=data.createDiv({cls:'writer-v108-book-progress'});
   reading.createSpan({text:writerUi('Leitura','Reading')});
@@ -19748,10 +19779,16 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   data.createEl('progress',{cls:'writer-v10-reading-progress',attr:{max:'100',value:String(record.progress),'aria-label':writerUi('Progresso de leitura','Reading progress')}});
  }
  btn.addEventListener('click',async()=>{
+  if(project.standalone){await plugin.app.workspace.getLeaf('tab').openFile(project.file);return;}
   await plugin.openProjects('project');
   const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
   if(view){view.selected=project.file.path;await view.render?.();}
  });
+ if(!compact){
+  const description=writerV109BookDescription(project),copyright=writerV109BookCopyright(project);
+  if(description)card.createEl('p',{cls:'writer-v109-book-description',text:description});
+  if(copyright)card.createEl('small',{cls:'writer-v109-book-copyright',text:copyright});
+ }
  const favorite=card.createEl('button',{cls:'writer-v108-book-favorite',attr:{
   type:'button','aria-pressed':String(record.favorite),
   'aria-label':writerUi(record.favorite?'Remover livro dos favoritos':'Favoritar livro',
@@ -19764,6 +19801,13 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   redraw();
  });
  if(!compact){
+  if(project.standalone){
+   const remove=card.createEl('button',{cls:'writer-v109-book-remove',text:writerUi('Remover da biblioteca','Remove from library'),attr:{type:'button'}});
+   remove.addEventListener('click',async()=>{
+    plugin.settings.v10Bookshelf.standalone=plugin.settings.v10Bookshelf.standalone.filter(path=>path!==project.file.path);
+    await plugin.saveSettings();redraw();
+   });
+  }
   const actions=card.createDiv({cls:'writer-v10-book-actions writer-v108-book-fields'});
   const field=(pt,en,kind)=>{const root=actions.createDiv({cls:'writer-v108-book-field writer-v108-book-field-'+kind});
    root.createSpan({text:writerUi(pt,en)});return root;};
@@ -19774,13 +19818,7 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   }
   stat.value=record.status;
   stat.addEventListener('change',async()=>{
-   await writerV10BookSaveState(plugin,project,{...record,status:stat.value,progress:stat.value==='finished'?100:record.progress});redraw();
-  });
-  const progressField=field('Leitura (%)','Reading (%)','progress');
-  const percent=progressField.createEl('input',{attr:{type:'number',min:'0',max:'100',step:'5',value:String(record.progress),
-   'aria-label':writerUi('Progresso de leitura em porcentagem','Reading progress percent')}});
-  percent.addEventListener('change',async()=>{
-   await writerV10BookSaveState(plugin,project,{...record,progress:Math.max(0,Math.min(100,Number(percent.value)||0))});redraw();
+   await writerV10BookSaveState(plugin,project,{...record,status:stat.value});redraw();
   });
   const shelfField=field('Estante','Shelf','shelf');
   const shelf=shelfField.createEl('input',{attr:{type:'text',value:record.shelf,placeholder:writerUi('Gênero ou coleção','Genre or collection'),
@@ -19796,13 +19834,13 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  const wrapper=target.createDiv({cls:'writer-v10-bookshelf'+(opts.compact?' is-widget':'')});
  const projects=writerV10BookshelfProjects(plugin);
  let sortMode=opts.sort||config.sort||'title';
- if(!projects.length){
-  wrapper.createEl('p',{cls:'setting-item-description',text:writerUi('Nenhum índice Longform encontrado. Crie um livro em Projetos.','No Longform indices found. Create a book in Projects.')});return wrapper;
- }
  const summary=wrapper.createDiv({cls:'writer-v108-library-summary'});
  summary.createEl('p',{text:writerUi('Organize suas histórias, acompanhe o progresso e encontre o próximo capítulo.','Organize stories, track progress and find your next chapter.')});
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
+ toolbar.createEl('button',{text:writerUi('+ Adicionar livro','+ Add book'),attr:{type:'button'}})
+  .addEventListener('click',()=>writerV109AddStandaloneBook(plugin,()=>{target.empty();writerV10RenderBookshelf(plugin,target,opts);}));
+
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
  search.classList.add('writer-v1042-bookshelf-search');
  let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
@@ -19859,7 +19897,7 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
 function writerV10OpenBookshelf(plugin){
  const modal=new Modal(plugin.app);
  modal.modalEl?.classList?.add('writer-v1042-bookshelf-modal');
- modal.setTitle(writerUi('Biblioteca Longform','Longform bookshelf'));
+ modal.setTitle(writerUi('Biblioteca','Library'));
  modal.onOpen=()=>{modal.contentEl.empty();writerV10RenderBookshelf(plugin,modal.contentEl);};
  modal.open();
 }
@@ -19883,6 +19921,18 @@ function writerV10RenderBookshelfWidget(view,parent){
  });
  for(const project of books.slice(0,4))writerV10BookshelfCard(plugin,grid,project,true,()=>view.render());
 }
+function writerV109AddStandaloneBook(plugin,done){
+ const existing=new Set(plugin.settings.v10Bookshelf.standalone||[]);
+ const indexed=new Set((plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof longformIndex==='function'&&longformIndex(file,plugin.app)).map(f=>f.path));
+ class BookNotePicker extends require('obsidian').FuzzySuggestModal{
+  getItems(){return (plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>!indexed.has(file.path)&&!existing.has(file.path));}
+  getItemText(file){return file.path;}
+  onChooseItem(file){plugin.settings.v10Bookshelf.standalone=[...existing,file.path];void plugin.saveSettings().then(()=>done?.());}
+ }
+ const modal=new BookNotePicker(plugin.app);
+ modal.setPlaceholder(writerUi('Buscar nota para adicionar à biblioteca…','Search a note to add to the library…'));
+ modal.open();
+}
 function writerV10RegisterBookshelf(plugin){
  for(const name of ['bookshelf','writer-bookshelf']){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
@@ -19896,19 +19946,18 @@ function writerV10RegisterBookshelf(plugin){
  plugin.addCommand?.({id:'v10-insert-bookshelf',name:writerUi('Longform: inserir bloco de livros','Longform: insert bookshelf block'),
   editorCallback:editor=>editor.replaceSelection('\n~~~bookshelf\nsort: title\nlayout: normal\n~~~\n')});
  plugin.writerV10OpenBookshelf=()=>writerV10OpenBookshelf(plugin);
+ plugin.addCommand?.({id:'v109-add-book-note',name:writerUi('Biblioteca: adicionar nota como livro','Library: add note as book'),callback:()=>writerV109AddStandaloneBook(plugin,()=>writerV10OpenBookshelf(plugin))});
  // Keep bookshelf in the home widget and command palette, not as another ribbon entry.
- plugin.addCommand?.({id:'v1042-bookshelf-search',name:writerUi('Biblioteca: buscar livros','Bookshelf: search books'),
-  callback:()=>writerV10OpenBookshelf(plugin)});
 
 }
 function writerV10BookshelfSettings(plugin,panel){
  const cfg=plugin.settings.v10Bookshelf;
- panel.createEl('h3',{text:writerUi('Biblioteca Longform','Longform bookshelf')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi('As capas e capítulos vêm dos índices Longform existentes. Nada é movido ou duplicado.','Covers and chapters come from existing Longform indices. No notes are moved or duplicated.')});
+ panel.createEl('h3',{text:writerUi('Biblioteca','Library')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Projetos Longform e notas avulsas. Banner, descrição e copyright vêm do frontmatter; progresso automático.','Longform projects and standalone notes. Banner, description and copyright come from frontmatter; automatic progress.')});
  const toggle=(key,pt,en)=>new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  toggle('enabled','Ativar biblioteca de livros','Enable bookshelf');
  toggle('showWidget','Permitir widget de livros na homepage','Allow bookshelf homepage widget');
- toggle('showProgress','Mostrar contagem de capítulos','Show chapter count');
+ toggle('showProgress','Mostrar progresso automático','Show automatic progress');
  new Setting(panel).setName(writerUi('Ordem padrão','Default order')).addDropdown(d=>{
   for(const [value,pt,en] of [['title','Título','Title'],['recent','Atualização','Recent'],['chapters','Capítulos','Chapters'],['progress','Progresso','Progress'],['series','Série','Series']])d.addOption(value,writerUi(pt,en));
   d.setValue(cfg.sort||'title').onChange(async value=>{cfg.sort=value;await plugin.saveSettings();});

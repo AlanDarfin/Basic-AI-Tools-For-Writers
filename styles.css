@@ -8994,4 +8994,35 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
  .writer-v10-related-card .writer-v10-related-actions{min-width:38px;}
  .writer-v108-books-widget-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));}
 }
+
+
+/* 10.9: responsive library descriptions and automatically calculated progress. */
+.writer-v10-bookshelf .writer-v109-book-description{
+ margin:0;padding:0 12px 9px;font-size:var(--font-ui-small);
+ line-height:1.5;color:var(--text-muted);overflow-wrap:anywhere;
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4;overflow:hidden;
+}
+.writer-v10-bookshelf .writer-v109-book-copyright{
+ display:block;margin:0;padding:0 12px 12px;color:var(--text-faint);
+ font-size:var(--font-ui-smaller);line-height:1.4;overflow-wrap:anywhere;
+}
+.writer-v10-bookshelf .writer-v108-book-fields{
+ grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+}
+.writer-v10-bookshelf .writer-v108-book-field-shelf{grid-column:auto;}
+.writer-v10-bookshelf .writer-v10-bookshelf-toolbar > button{min-height:32px;}
+/* Hide intrusive horizontal scrollbar tracks in Basic tabs and menus, with a
+   subtle gradient at the trailing edge. Native scroll and touch remain usable. */
+.dictionary-settings-panel :is(.writer-v1048-toolbar-settings,.writer-v1050-settings-search),
+.writer-v10-bookshelf :is(.writer-v10-bookshelf-toolbar,.writer-v10-bookshelf-grid),
+.writer-v8-home :is(.writer-v8-home-tabs,.writer-v8-home-widget-list){
+ scrollbar-width:none;
+}
+.dictionary-settings-panel :is(.writer-v1048-toolbar-settings,.writer-v1050-settings-search)::-webkit-scrollbar,
+.writer-v10-bookshelf :is(.writer-v10-bookshelf-toolbar,.writer-v10-bookshelf-grid)::-webkit-scrollbar,
+.writer-v8-home :is(.writer-v8-home-tabs,.writer-v8-home-widget-list)::-webkit-scrollbar{display:none;}
+/* Only the horizontal tab rails receive a trailing fade, not the whole settings. */
+.dictionary-settings-panel .writer-v1048-toolbar-settings{
+ mask-image:linear-gradient(to right,#000 0%,#000 calc(100% - 22px),transparent 100%);
+}
 /* END V8 MODULAR STYLES */

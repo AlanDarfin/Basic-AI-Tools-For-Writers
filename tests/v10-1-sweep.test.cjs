@@ -11,7 +11,7 @@ test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
  const value=settings.v10Bookshelf.library['Books/Index.md'];
  assert.equal(value.favorite,true);assert.equal(value.shelf,'Sci-fi');assert.equal(value.progress,64);
  const file={path:'Books/Index.md'},plugin={settings};
- assert.equal(a.writerV10BookState(plugin,{file,meta:{}}).progress,64);
+ assert.equal(a.writerV10BookState(plugin,{file,meta:{},scenes:[]}).progress,0); // live chapter status overrides stored manual percentage
  assert.equal(a.writerV10BookRecord({progress:999}).progress,100);
 });
 test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{

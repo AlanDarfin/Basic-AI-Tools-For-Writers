@@ -21,7 +21,7 @@ function writerV107DbSpec(source){
 }
 function writerV107DbFormula(text,record){
  const source=String(text||'').replace(/\s+/g,'');
- const parts=source.match(/[a-z_][a-z0-9_-]*|\d+(?:\.\d+)?|[()+*/-]/gi)||[];
+ const parts=source.match(/[a-z_][a-z0-9_]*|\d+(?:\.\d+)?|[()+*/-]/gi)||[];
  if(source.length>140||parts.length>64||parts.join('')!==source)return null;
  let n=0;
  const atom=()=>{

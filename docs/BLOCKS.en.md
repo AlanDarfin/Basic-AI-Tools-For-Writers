@@ -591,11 +591,13 @@ Use a short suffix at the **end of the line**, keeping the real Markdown heading
 # Main title {c}
 ## Right-aligned subtitle {r}
 ### Left-aligned section {l}
+Justified paragraph with longer text {j}
+## Justified heading {j}
 Centered **bold** paragraph {c}
 ~~~
 
-- {l} = left, {c} = center, {r} = right.
+- {l} = left, {c} = center, {r} = right, {j} = justify.
 - Suffixes are hidden in Reading View and may be hidden outside the active Live Preview line.
-- For a one-tap solution, use the **Align left**, **Center text or heading**, **Align right**, or **Cycle line or heading alignment** commands. Assign a desktop hotkey or add them to the Obsidian mobile toolbar. Commands format the current line while preserving H1–H6.
+- For a one-tap solution, use the **Align left**, **Center text or heading**, **Align right**, **Justify text**, or **Cycle line or heading alignment** commands. Assign a desktop hotkey or add them to the Obsidian mobile toolbar. Commands format the current line while preserving H1–H6.
 - The former ::l: / ::c: / ::r: and bracket syntax (for example, ::c[text]) remain recognized for existing notes.
 

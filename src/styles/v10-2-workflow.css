@@ -1202,3 +1202,79 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
  .writer-v10-related-card .writer-v10-related-actions{min-width:38px;}
  .writer-v108-books-widget-grid{grid-template-columns:repeat(auto-fill,minmax(min(100%,180px),1fr));}
 }
+
+
+/* 10.9: horizontal navigation has no thick native scroll bar; fades are real overflow hints. */
+:is(.dictionary-settings-tabs,.dictionary-settings-subtabs,.writer-project-tabs,.writer-project-nav-groups,
+ .writer-tools-v3-tabs,.writer-tool-tabs,.writer-v7-rc-structure-tabs,.writer-v9-space-side-nav){
+ scrollbar-width:none;scrollbar-gutter:auto;overscroll-behavior-x:contain;scroll-behavior:smooth;
+}
+:is(.dictionary-settings-tabs,.dictionary-settings-subtabs,.writer-project-tabs,.writer-project-nav-groups,
+ .writer-tools-v3-tabs,.writer-tool-tabs,.writer-v7-rc-structure-tabs,.writer-v9-space-side-nav)::-webkit-scrollbar{
+ width:0;height:0;display:none;
+}
+.writer-v109-hscroll[data-writer-scroll="start"]{
+ -webkit-mask-image:linear-gradient(to right,#000 0%,#000 calc(100% - 24px),transparent 100%);
+ mask-image:linear-gradient(to right,#000 0%,#000 calc(100% - 24px),transparent 100%);
+}
+.writer-v109-hscroll[data-writer-scroll="middle"]{
+ -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 24px,#000 calc(100% - 24px),transparent 100%);
+ mask-image:linear-gradient(to right,transparent 0%,#000 24px,#000 calc(100% - 24px),transparent 100%);
+}
+.writer-v109-hscroll[data-writer-scroll="end"]{
+ -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 24px,#000 100%);
+ mask-image:linear-gradient(to right,transparent 0%,#000 24px,#000 100%);
+}
+.writer-v109-hscroll[data-writer-scroll="none"]{
+ -webkit-mask-image:none;mask-image:none;
+}
+/* One native-looking fuzzy picker for folders, notes and template paths. */
+.writer-v109-path-holder{position:relative;min-width:0;max-width:100%;}
+.writer-v109-path-holder input{min-width:0;width:100%;max-width:100%;}
+.writer-v109-path-options{
+ position:absolute;z-index:90;inset-inline:0;top:calc(100% + 4px);
+ display:flex;flex-direction:column;gap:2px;min-width:min(100%,240px);
+ max-height:min(280px,45vh);overflow-y:auto;padding:6px;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);
+ background:var(--background-primary);box-shadow:var(--shadow-l);
+}
+.writer-v109-path-options[hidden]{display:none;}
+.writer-v109-path-option{
+ display:grid;grid-template-columns:18px minmax(0,1fr);gap:2px 8px;
+ align-items:center;min-width:0;width:100%;padding:7px 8px;
+ background:transparent;border:0;border-radius:var(--radius-s);text-align:start;
+}
+.writer-v109-path-option:is(.is-selected,:hover,:focus-visible){background:var(--background-modifier-hover);}
+.writer-v109-path-icon{grid-row:1 / 3;color:var(--text-muted);}
+.writer-v109-path-icon svg{width:16px;height:16px;}
+.writer-v109-path-title{font-size:var(--font-ui-small);font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.writer-v109-path-dir{font-size:var(--font-ui-smaller);color:var(--text-muted);min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.writer-v109-pick-results{display:flex;flex-direction:column;gap:4px;max-height:55vh;overflow-y:auto;}
+.writer-v109-pick-results button{text-align:start;white-space:normal;overflow-wrap:anywhere;}
+/* Single-note books: metadata is part of the card, not a manual progress form. */
+.writer-v10-bookshelf .writer-v109-add-book{background:var(--interactive-accent);color:var(--text-on-accent);flex:0 0 auto;}
+.writer-v108-books-widget-toolbar .writer-v109-widget-add{min-height:30px;}
+.writer-v109-book-description,.writer-v109-book-copyright{
+ min-width:0;padding:0 12px 10px;line-height:1.4;overflow-wrap:anywhere;
+}
+.writer-v109-book-description p{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+ overflow:hidden;margin:5px 0 0;font-size:var(--font-ui-small);color:var(--text-muted);
+}
+.writer-v109-book-metadata-label{font-size:var(--font-ui-smaller);font-weight:600;color:var(--text-normal);}
+.writer-v109-book-copyright small{display:block;color:var(--text-muted);font-size:var(--font-ui-smaller);margin-top:4px;}
+.writer-v109-book-footer{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;
+ padding:8px 12px;margin-top:auto;border-top:1px solid var(--background-modifier-border);
+ color:var(--text-muted);font-size:var(--font-ui-smaller);
+}
+.writer-v109-book-remove{display:grid;place-items:center;width:30px;height:30px;padding:5px;background:transparent;color:var(--text-muted);border:0;}
+.writer-v109-book-remove:hover{color:var(--text-error);background:var(--background-modifier-hover);}
+.writer-v109-book-remove svg{width:16px;height:16px;}
+.writer-v108-books-widget .writer-v109-book-description{padding:0 9px 9px;}
+.writer-v108-books-widget .writer-v109-book-description p{-webkit-line-clamp:2;}
+.writer-v10-bookshelf .writer-v108-book-card>.writer-v10-book{min-height:122px;}
+@media(max-width:700px){
+ .writer-v10-bookshelf .writer-v109-add-book{width:100%;min-height:36px;}
+ .writer-v109-path-options{max-height:35vh;}
+}

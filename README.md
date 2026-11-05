@@ -2,12 +2,21 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.7.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.7.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.7.1 — activation recovery and safe initialization
+
+- **Critical activation fix:** previous v1–v10 modules load before optional 10.7 integrations. The new modules register only after the workspace is ready and cannot abort Basic's main startup if one fails.
+- **Preserved functions:** no legacy source module removed; verified core, Longform, homepage, grammar, toolbar, study, calendar and writing tools remain bundled.
+- **Partial update recovery:** guards protect optional module references when release files are mismatched or a component is unavailable.
+- **Compatibility switch:** disable advanced 10.7 integrations in Settings, restart Obsidian, and retain all previous features and saved settings.
+- Added dedicated regression tests for missing modules, isolated failures, deferred startup, unload cleanup and legacy module presence. The actual user-side error trace is not yet available, so this fix still needs confirmation on Android and desktop.
+- See [activation recovery and reinstall instructions](docs/V10_7_1_ACTIVATION_RECOVERY.pt-BR.md). Always install `main.js`, `manifest.json` and `styles.css` from the **same** release.
 
 ## Version 10.7.0 — advanced integrations
 

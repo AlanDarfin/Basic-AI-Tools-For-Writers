@@ -105,6 +105,6 @@ test('Build and settings include every v10.7 module',()=>{
  const read=p=>fs.readFileSync(p,'utf8'),build=read('scripts/build-v3.js'),enhancements=read('src/v10/enhancements.js');
  for(const name of ['data-tables','zotero-web','study-fsrs','calendar-feeds','story-graph','editor-pro','speech-accessibility','media-drag-extension','integrations-107'])
   assert.ok(build.includes('v10/'+name));
- assert.match(enhancements,/writerV107Register\(plugin\)/);
+ assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);
  assert.match(enhancements,/writerV107Settings\(plugin,panel\)/);
 });

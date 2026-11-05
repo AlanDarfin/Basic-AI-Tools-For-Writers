@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.7.2 plugin artifacts'
+            git commit -m 'build: synchronize 10.7.3 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.7.2"
+          test "$VERSION" = "10.7.3"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic AI Tool for Writers $VERSION" \
-            --notes "10.7.2: Emergency activation recovery. Ship the stable pre-10.7 runtime while keeping all 10.7 experimental modules in source; preserve existing notes, preferences, homepage, Dragger, Longform and LanguageTool. Tests verify historical modules and reduced bundle."
+            --notes "10.7.3: Fix verified Obsidian startup ReferenceError setIcon is not defined in Dragger; repair five related-notes/trash icon calls; isolate optional UI registration and add executable activation smoke tests. Retains 10.7.2 stable runtime with advanced modules quarantined."

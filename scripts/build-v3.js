@@ -18,7 +18,11 @@ const modules=sources.map(name=>{
  const source=fs.readFileSync(path.join(root,filename),'utf8').replace(/^'use strict';\s*/,'');
  return '// v3 module: '+filename+'\n'+source;
 }).join('\n');
-const expected=main.slice(0,a+begin.length)+modules+'\n'+main.slice(b);
+// Keep release version literals in the legacy (pre-v3) source in sync too.
+const distVersion=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'),'utf8')).version;
+const prefix=main.slice(0,a+begin.length).replace(/\b10\.8\.0\b/g,distVersion);
+const suffix=main.slice(b).replace(/\b10\.8\.0\b/g,distVersion);
+const expected=prefix+modules+'\n'+suffix;
 if(process.argv.includes('--check')){
  if(expected!==main){console.error('main.js v3 modules are outdated. Run node scripts/build-v3.js');process.exitCode=1;}
  else console.log('v3 source and bundled main.js are synchronized.');

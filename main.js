@@ -11372,13 +11372,28 @@ function writerV83StudySettings(plugin,panel){
 // v3 module: src/v8/writing-home.js
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','related','trash','reading','zotero'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
  ['Escreva primeiro. Descubra o caminho durante a revisão.',''],
  ['Histórias se constroem uma palavra de cada vez.',''],
  ['Às vezes uma cena pequena muda o rumo de um livro inteiro.',''],
+  ["Penso, logo existo.","René Descartes"],
+  ["Uma vida não examinada não merece ser vivida.","Sócrates · Apologia de Platão"],
+  ["O homem é a medida de todas as coisas.","Protágoras"],
+  ["O coração tem razões que a própria razão desconhece.","Blaise Pascal"],
+  ["O homem nasceu livre, e por toda parte encontra-se acorrentado.","Jean-Jacques Rousseau"],
+  ["A vida é curta, a arte é longa.","Hipócrates"],
+  ["Tudo vale a pena se a alma não é pequena.","Fernando Pessoa"],
+  ["Para viajar basta existir.","Fernando Pessoa"],
+  ["Navegar é preciso; viver não é preciso.","Fernando Pessoa"],
+  ["Ler é sonhar pela mão de outrem.","Fernando Pessoa"],
+  ["Ao vencedor, as batatas!","Machado de Assis"],
+  ["Ser ou não ser, eis a questão.","William Shakespeare"],
+  ["O resto é silêncio.","William Shakespeare"],
+  ["Somos feitos da mesma matéria que os sonhos.","William Shakespeare"],
+  ["A verdade raramente é pura e nunca é simples.","Oscar Wilde"],
  ['O próximo capítulo começa com uma única linha.','']
 ];
 function writerV8HomeQuoteChoices(value){
@@ -11410,7 +11425,11 @@ const WRITER_V8_HOME_CATALOG={
  gallery:['images','Galeria do cofre','Vault gallery','Foto aleatória dos arquivos locais','A random image from your local vault'],
  quotes:['quote','Citação do dia','Random quote','Citação diferente ao abrir a homepage','A fresh quote every time you open home'],
  today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today'],
- books:['library-big','Meus livros','My books','Visualização dos livros Longform','Longform bookshelf']
+ books:['library-big','Meus livros','My books','Visualização dos livros Longform','Longform bookshelf'],
+ related:['link-2','Notas relacionadas','Related notes','Descubra notas semelhantes localmente','Discover related notes locally'],
+ trash:['trash-2','Lixeira','Trash explorer','Restaure notas da lixeira interna','Restore notes from Obsidian trash'],
+ reading:['book-open-check','Leitura atual','Current reading','Palavras, títulos e tempo estimado','Words, headings and estimated time'],
+ zotero:['book-marked','Fontes Zotero','Zotero sources','Notas de pesquisa importadas','Imported research notes']
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -11534,7 +11553,11 @@ class WriterV8HomeView extends ItemView{
    goal:p=>this.renderGoal(p),
    gallery:p=>this.renderGallery(p),
    quotes:p=>this.renderQuotes(p),
-   today:p=>this.renderToday(p)
+   today:p=>this.renderToday(p),
+    related:p=>writerV10RenderRelatedWidget(this,p),
+    trash:p=>writerV10RenderTrashWidget(this,p),
+    reading:p=>writerV10RenderReadingWidget(this,p),
+    zotero:p=>writerV10RenderZoteroWidget(this,p)
   };
   for(const key of widgetCfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
@@ -12020,44 +12043,32 @@ class WriterV8HomeView extends ItemView{
  renderQuotes(parent){
   const box=this.card(parent,'quotes','Citação aleatória','Random quote');
   const options=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
-  if(!this.homeQuote)this.homeQuote=writerV8HomePick(options,this.homeQuotePrevious);
-  let current=this.homeQuote||options[0];
+  let list=options.map(([text,by])=>[text,by,null,null]);
+  let current=this.homeQuote||writerV8HomePick(list,this.homeQuotePrevious)||list[0];
   const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
-  const quote=body.createEl('p',{text:current[0]});
-  const author=box.createDiv({cls:'writer-v905-quote-author'});
-  const update=()=>{
-   quote.setText(current[0]);
-   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
-  };
-  update();
+  const quote=body.createEl('p'),author=box.createDiv({cls:'writer-v905-quote-author'});
   const actions=box.createDiv({cls:'writer-v903-widget-actions'});
-  const zoteroSource=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
-  zoteroSource.hidden=true;
-  const syncZotero=async()=>{
-   if(!this.plugin.writerV92Research?.quotes)return;
-   const entries=await this.plugin.writerV92Research.quotes();
-   if(!box.isConnected||!entries.length)return;
-   const list=entries.map(([text,by,path,title])=>[text,by,path,title]);
-   let selected=writerV8HomePick(list,current[0])||list[0];
-   const set=entry=>{
-    current=entry;this.homeQuote=entry;
-    update();zoteroSource.hidden=false;
-    zoteroSource.onclick=()=>{
-     const file=this.app.vault.getAbstractFileByPath(entry[2]);
-     if(file instanceof TFile)this.openFile(file);
-    };
-   };
-   set(selected);
-   next.onclick=()=>set(writerV8HomePick(list,current[0])||list[0]);
-  };
-  void syncZotero().catch(error=>console.warn('[Basic AI] Zotero quote widget:',error));
+  const source=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
   const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
+  const draw=()=>{
+   this.homeQuote=current;quote.setText(current[0]);
+   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
+   source.hidden=!current[2];
+  };
+  source.addEventListener('click',()=>{
+   const file=current[2]?this.app.vault.getAbstractFileByPath(current[2]):null;
+   if(file instanceof TFile)this.openFile(file);
+  });
   next.addEventListener('click',()=>{
    this.homeQuotePrevious=current[0];
-   current=writerV8HomePick(options,current[0])||current;
-   this.homeQuote=current;
-   update();
+   current=writerV8HomePick(list,current[0])||current;draw();
   });
+  draw();
+  if(this.plugin.writerV92Research?.quotes)void this.plugin.writerV92Research.quotes().then(entries=>{
+   if(!box.isConnected||!entries.length)return;
+   list=[...list,...entries.map(([text,by,path,title])=>[text,by,path,title])];
+   draw();
+  }).catch(error=>console.warn('[Basic AI] Zotero quote widget:',error));
  }
  renderActivity(parent){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
@@ -17972,7 +17983,8 @@ function writerV92ZoteroIsSource(plugin,file){
 function writerV92ZoteroExtract(plugin,file,text){
  const cache=plugin.app.metadataCache?.getFileCache?.(file);
  const meta=cache?.frontmatter||{};
- const author=String(meta.author||meta.creators||meta.citation||meta.title||file.basename).replace(/\s+/g,' ').slice(0,160);
+ const creators=meta.author||meta.creators||meta.creator||meta.citation||meta.title||file.basename;
+ const author=(Array.isArray(creators)?creators.map(value=>typeof value==='string'?value:[value?.lastName,value?.firstName].filter(Boolean).join(', ')).join('; '):String(creators)).replace(/\s+/g,' ').slice(0,160);
  const source=String(meta.title||file.basename).slice(0,180);
  const entries=[];
  const push=raw=>{
@@ -17980,9 +17992,9 @@ function writerV92ZoteroExtract(plugin,file,text){
   if(quote.length>=12&&!entries.some(x=>x[0]===quote))entries.push([quote,author,file.path,source]);
  };
  // Only explicitly marked highlights/quotes: no inference from ordinary text or abstracts.
- for(const key of ['highlights','quotes','annotations']){
+ for(const key of ['highlights','quotes','annotations','zoteroAnnotations','annotation']){
   const value=meta[key];
-  if(Array.isArray(value))for(const item of value)push(typeof item==='string'?item:item?.text||item?.quote||'');
+  if(Array.isArray(value))for(const item of value)push(typeof item==='string'?item:item?.text||item?.quote||item?.annotationText||item?.highlightText||'');
   else if(typeof value==='string')push(value);
  }
  const lines=String(text||'').split(/\r?\n/);
@@ -17991,7 +18003,7 @@ function writerV92ZoteroExtract(plugin,file,text){
    push(lines[i].replace(/^\s*(?:>\s*)?(?:\*\*)?(?:highlight|quote|citação|destaque)(?:\*\*)?\s*:\s*/i,''));
   }
   // Zotero integration highlight templates often use Markdown blockquotes under a highlight heading.
-  if(/^\s*#{1,5}\s*(?:highlights?|destaques?|annotations?)\b/i.test(lines[i])){
+  if(/^\s*#{1,5}\s*(?:highlights?|destaques?|annotations?|anotações)\b/i.test(lines[i])){
    for(let j=i+1;j<Math.min(lines.length,i+100);j++){
     if(/^\s*#{1,5}\s/.test(lines[j]))break;
     const match=lines[j].match(/^\s*>\s*(.+)/);
@@ -18004,7 +18016,7 @@ function writerV92ZoteroExtract(plugin,file,text){
 async function writerV92ZoteroQuotes(plugin,limit=180){
  const cfg=plugin.settings.v92Research;
  if(!cfg.enabled||!cfg.zoteroQuotes||!writerModuleOn(plugin,'zoteroIntegration'))return [];
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>writerV92ZoteroIsSource(plugin,file)).slice(0,100);
+ const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>writerV92ZoteroIsSource(plugin,file)).slice(0,240);
  const quotes=[];
  for(const file of files){
   try{
@@ -20436,22 +20448,24 @@ function writerV101ReadingProgressRegister(plugin){
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
    const host=leaf.view?.containerEl;
    if(!host)continue;
-   const old=host.querySelector(':scope > .writer-v101-reading-track');
-   const scroller=host.querySelector('.markdown-preview-view');
-   if(!enabled||!scroller||!scroller.isConnected||!scroller.offsetParent){old?.remove();continue;}
-   if(host.ownerDocument?.defaultView?.getComputedStyle(host).position==='static')host.style.position='relative';
+   const pane=host.querySelector('.view-content')||host;
+   const old=pane.querySelector(':scope > .writer-v101-reading-track');
+   const scroller=[...host.querySelectorAll('.markdown-source-view .cm-scroller, .markdown-preview-view, .cm-scroller')]
+    .find(el=>el.isConnected&&el.getBoundingClientRect().height>5&&el.getBoundingClientRect().width>5);
+   if(!enabled||!scroller){old?.remove();continue;}
+   if(pane.ownerDocument?.defaultView?.getComputedStyle(pane).position==='static')pane.classList.add('writer-v101-reading-pane');
    let track=old;
    if(!track){
-    track=host.ownerDocument.createElement('div');
+    track=pane.ownerDocument.createElement('div');
     track.className='writer-v101-reading-track';
     track.setAttribute('role','progressbar');
     track.setAttribute('aria-label',writerUi('Progresso de leitura','Reading progress'));
     track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax','100');
     track.style.cssText='position:absolute;top:0;left:0;right:0;height:3px;z-index:5;pointer-events:none;background:transparent;';
-    const fill=host.ownerDocument.createElement('div');
+    const fill=pane.ownerDocument.createElement('div');
     fill.className='writer-v101-reading-fill';
     fill.style.cssText='height:100%;width:0%;background:var(--interactive-accent);transition:width 90ms linear;';
-    track.appendChild(fill);host.appendChild(track);
+    track.appendChild(fill);pane.appendChild(track);
    }
    const style=plugin.settings.v101Suite;
    track.style.height=(style?.readingProgressHeight||3)+'px';
@@ -20470,14 +20484,16 @@ function writerV101ReadingProgressRegister(plugin){
  plugin.registerDomEvent?.(plugin.app.workspace.containerEl,'scroll',throttled,true);
  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',throttled));
  plugin.registerEvent(plugin.app.workspace.on('layout-change',throttled));
- plugin.registerEvent(plugin.app.workspace.on('file-open',throttled));
+ plugin.registerEvent(plugin.app.workspace.on('file-open',()=>{throttled();setTimeout(throttled,140);}));
+ plugin.registerEvent(plugin.app.workspace.on('editor-change',throttled));
  plugin.app.workspace.onLayoutReady?.(throttled);
  plugin.writerV101ReadingProgressRefresh=throttled;
- plugin.register?.(()=>{for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();});
+ plugin.register?.(()=>{for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-pane'))el.classList.remove('writer-v101-reading-pane');});
 }
 
 function writerV101RegisterEnhancements(plugin){
  writerV101ReadingProgressRegister(plugin);
+ if(typeof writerV10DiscoveryRegister==='function')writerV10DiscoveryRegister(plugin);
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -20525,7 +20541,7 @@ function writerV101EnhancementsSettings(plugin,panel){
   ['csvExport','Exportar seleção de tabela para CSV','Export selected table as CSV'],
   ['footnotes','Inserir notas de rodapé','Insert footnotes'],
   ['bulkProperties','Permitir editar propriedades em lote (desligado inicialmente)','Allow batch property edits (off by default)']
- ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();if(key==='enabled'||key==='readingProgress')plugin.writerV101ReadingProgressRefresh?.();}));
  new Setting(panel).setName(writerUi('Espessura da barra de leitura','Reading bar thickness'))
   .addSlider(slider=>slider.setLimits(2,10,1).setDynamicTooltip().setValue(cfg.readingProgressHeight||3)
    .onChange(async value=>{cfg.readingProgressHeight=value;await plugin.saveSettings();plugin.writerV101ReadingProgressRefresh?.();}));
@@ -20538,6 +20554,7 @@ function writerV101EnhancementsSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Limite de notas por operação','Maximum notes per operation'))
   .addSlider(s=>s.setLimits(1,100,1).setDynamicTooltip().setValue(cfg.batchMax)
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
+ if(typeof writerV10DiscoverySettings==='function')writerV10DiscoverySettings(plugin,panel);
 }
 
 // v3 module: src/v10/calendar-exchange.js
@@ -21149,6 +21166,353 @@ function writerV102AlignSettings(plugin,panel){
   ['hideDelimiters','Ocultar marcadores fora da linha em edição','Hide markers outside the edited line']
  ])new Setting(panel).setName(writerUi(pt,en))
   .addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+}
+
+// v3 module: src/v10/discovery.js
+/* Local-first note discovery and safe Obsidian .trash explorer.
+ * Inspired by Related Notes and Trash Explorer; independent MIT-compatible implementation. */
+const WRITER_V10_RELATED_VIEW='writer-related-notes';
+const WRITER_V10_TRASH_VIEW='writer-trash-explorer';
+function writerV10DiscoveryMerge(settings){
+ const old=settings.v10Discovery&&typeof settings.v10Discovery==='object'?settings.v10Discovery:{};
+ const cfg=settings.v10Discovery={enabled:true,related:true,trash:true,maxCandidates:350,maxResults:8,relatedMinScore:0.12,...old};
+ cfg.maxCandidates=Math.max(30,Math.min(1200,Math.floor(Number(cfg.maxCandidates)||350)));
+ cfg.maxResults=Math.max(3,Math.min(20,Math.floor(Number(cfg.maxResults)||8)));
+ cfg.relatedMinScore=Math.max(0.02,Math.min(0.85,Number(cfg.relatedMinScore)||0.12));
+ return cfg;
+}
+const WRITER_V10_STOP=new Set('a o os as de da do das dos em no na nos nas para por com sem que um uma uns umas ao aos se e ou é ser ter the and for with from that this are was were into then than have has you your not but our their its der die das und ist ein eine les des aux dans pour est avec sur los las del con que una uno'.split(' '));
+function writerV10RelatedTokens(text){
+ const source=String(text||'').replace(/^---\r?\n[\s\S]*?\r?\n---\s*\n/,' ').replace(/```[\s\S]*?```/g,' ').slice(0,45000).toLocaleLowerCase();
+ const out=new Set();
+ for(const match of source.matchAll(/[\p{L}\p{N}]{2,}/gu)){
+  const word=match[0];
+  if(word.length>2&&!WRITER_V10_STOP.has(word))out.add(word.slice(0,45));
+  if(/[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]/u.test(word)){
+   for(let i=0;i<Math.min(word.length-1,80);i++)out.add(word.slice(i,i+2));
+  }
+  if(out.size>=1400)break;
+ }
+ return out;
+}
+function writerV10RelatedSignature(tokens){
+ const bloom=new Uint32Array(64);
+ for(const token of tokens){
+  let h=2166136261;
+  for(let i=0;i<token.length;i++)h=Math.imul(h^token.charCodeAt(i),16777619)>>>0;
+  for(const bit of [h&2047,(Math.imul(h^(h>>>16),2246822519)>>>0)&2047])bloom[bit>>>5]|=1<<(bit&31);
+ }
+ return bloom;
+}
+function writerV10RelatedScore(a,b){
+ if(!a?.tokens?.size||!b?.tokens?.size)return 0;
+ let common=0,possible=0;
+ for(let i=0;i<64;i++){let v=a.bloom[i]&b.bloom[i];while(v){v&=v-1;possible++;}}
+ if(possible<2)return 0;
+ const [small,big]=a.tokens.size<b.tokens.size?[a.tokens,b.tokens]:[b.tokens,a.tokens];
+ for(const token of small)if(big.has(token))common++;
+ const base=common/Math.sqrt(a.tokens.size*b.tokens.size);
+ const overlap=common/Math.max(1,Math.min(a.tokens.size,b.tokens.size));
+ const tagsA=new Set(a.tags),tagsB=new Set(b.tags);
+ const tagOverlap=[...tagsA].filter(t=>tagsB.has(t)).length;
+ return Math.min(1,base*.8+overlap*.16+Math.min(0.18,tagOverlap*.06));
+}
+async function writerV10RelatedIndex(plugin,file){
+ const cache=plugin._writerV10RelatedCache||(plugin._writerV10RelatedCache=new Map());
+ const old=cache.get(file.path);
+ if(old?.mtime===file.stat?.mtime&&old.size===file.stat?.size)return old;
+ if((file.stat?.size||0)>750000)return null;
+ const raw=await plugin.app.vault.cachedRead(file);
+ const tokens=writerV10RelatedTokens(raw),metadata=plugin.app.metadataCache?.getFileCache?.(file);
+ for(const word of writerV10RelatedTokens(file.basename||''))tokens.add(word);
+ const tags=[...(metadata?.tags||[]).map(x=>x.tag),...(Array.isArray(metadata?.frontmatter?.tags)?metadata.frontmatter.tags:[metadata?.frontmatter?.tags])].filter(Boolean).map(x=>String(x).toLocaleLowerCase().replace(/^#/,''));
+ const entry={mtime:file.stat?.mtime,size:file.stat?.size,tokens,tags,bloom:writerV10RelatedSignature(tokens)};
+ if(cache.size>1800)cache.delete(cache.keys().next().value);
+ cache.set(file.path,entry);
+ return entry;
+}
+async function writerV10FindRelated(plugin,active){
+ const cfg=plugin.settings.v10Discovery;
+ if(!cfg?.enabled||!cfg.related||!(active instanceof TFile)||active.extension!=='md')return [];
+ const current=await writerV10RelatedIndex(plugin,active);
+ if(!current)return [];
+ const candidates=(plugin.app.vault.getMarkdownFiles?.()||[])
+  .filter(file=>file.path!==active.path&&(file.stat?.size||0)<750000)
+  .sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0))
+  .slice(0,cfg.maxCandidates);
+ const ranked=[];
+ for(let i=0;i<candidates.length;i++){
+  const file=candidates[i];
+  try{
+   const entry=await writerV10RelatedIndex(plugin,file),score=writerV10RelatedScore(current,entry);
+   if(score>=cfg.relatedMinScore)ranked.push({file,score});
+  }catch(error){console.warn('[Basic AI] Related note:',file.path,error);}
+  if(i%28===27)await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ return ranked.sort((a,b)=>b.score-a.score).slice(0,cfg.maxResults);
+}
+function writerV10RelatedResults(plugin,host,file){
+ host.empty();
+ if(!(file instanceof TFile)){host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Abra uma nota Markdown para ver conexões.','Open a Markdown note to discover connections.')});return;}
+ const current=file.path;
+ host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Analisando notas localmente…','Finding local connections…')});
+ void writerV10FindRelated(plugin,file).then(results=>{
+  if(!host.isConnected||current!==file.path)return;
+  host.empty();
+  if(!results.length){host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma correspondência forte encontrada.','No strong matches found.')});return;}
+  for(const {file:other,score} of results){
+   const row=host.createDiv({cls:'writer-v10-discovery-row'});
+   const open=row.createEl('button',{cls:'writer-v10-discovery-open',attr:{type:'button',title:other.path}});
+   open.createSpan({text:other.basename});
+   open.createEl('small',{text:Math.round(score*100)+'% · '+other.path});
+   open.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(other));
+   const link=row.createEl('button',{cls:'writer-v10-discovery-icon',attr:{type:'button',title:writerUi('Inserir link na nota ativa','Insert link in active note'),'aria-label':writerUi('Inserir link','Insert link')}});
+   setIcon(link,'link-2');
+   link.addEventListener('click',()=>{
+    const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
+    const source=view?.file;
+    if(!source||!view.editor){new Notice(writerUi('Abra uma nota em edição antes de inserir o link.','Open an editable note before inserting a link.'));return;}
+    const markdown=plugin.app.fileManager.generateMarkdownLink(other,source.path);
+    view.editor.replaceSelection(markdown);
+   });
+  }
+ }).catch(error=>{if(host.isConnected)host.setText(writerUi('Não foi possível analisar as notas.','Could not analyze notes.'));console.warn('[Basic AI] Related notes:',error);});
+}
+class WriterV10RelatedView extends ItemView{
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;}
+ getViewType(){return WRITER_V10_RELATED_VIEW;}
+ getDisplayText(){return writerUi('Notas relacionadas','Related notes');}
+ getIcon(){return 'link-2';}
+ async onOpen(){this.refresh();}
+ refresh(){
+  this.contentEl.empty();this.contentEl.addClass('writer-v10-discovery-pane');
+  const top=this.contentEl.createDiv({cls:'writer-v10-discovery-top'});
+  top.createEl('h3',{text:writerUi('Notas relacionadas','Related notes')});
+  const reload=top.createEl('button',{attr:{type:'button','aria-label':writerUi('Reanalisar','Reanalyze')}});setIcon(reload,'refresh-cw');reload.addEventListener('click',()=>this.refresh());
+  const host=this.contentEl.createDiv();
+  writerV10RelatedResults(this.plugin,host,this.plugin.app.workspace.getActiveFile?.());
+ }
+}
+async function writerV10TrashList(plugin,max=400){
+ const adapter=plugin.app.vault.adapter;
+ if(!await adapter.exists('.trash'))return [];
+ const found=[],pending=['.trash'];
+ while(pending.length&&found.length<max){
+  const path=pending.shift();
+  let listing;
+  try{listing=await adapter.list(path);}catch(error){console.warn('[Basic AI] Trash list:',path,error);continue;}
+  for(const file of listing.files||[])if(file.startsWith('.trash/')&&found.length<max)found.push(file);
+  for(const folder of listing.folders||[])if(folder.startsWith('.trash/')&&folder.split('/').length<14&&pending.length<500)pending.push(folder);
+ }
+ return found.sort((a,b)=>a.localeCompare(b));
+}
+async function writerV10TrashFolders(plugin){
+ const adapter=plugin.app.vault.adapter;
+ if(!await adapter.exists('.trash'))return [];
+ try{
+  const listing=await adapter.list('.trash');
+  return (listing.folders||[]).filter(p=>p.startsWith('.trash/')&&p!=='.trash').sort((a,b)=>a.localeCompare(b));
+ }catch(error){console.warn('[Basic AI] Trash folders:',error);return [];}
+}
+async function writerV10TrashDeleteFolder(plugin,path){
+ if(!path.startsWith('.trash/')||path.slice(7).split('/').some(x=>!x||x==='.'||x==='..'||x.includes('\\')||x.includes('\0')))throw Error('Invalid trash folder');
+ await plugin.app.vault.adapter.rmdir(path,true);
+}
+async function writerV10TrashRestore(plugin,path){
+ if(!path.startsWith('.trash/')||path.slice(7).split('/').some(segment=>!segment||segment==='.'||segment==='..'||segment.includes('\\')||segment.includes('\0')))throw Error('Invalid trash path');
+ const adapter=plugin.app.vault.adapter,destination=path.slice('.trash/'.length);
+ if(!destination||destination.startsWith('.trash/'))throw Error('Invalid destination');
+ if(await adapter.exists(destination))throw Error(writerUi('Já existe um arquivo com esse nome.','A file with this name already exists.'));
+ const segments=destination.split('/');segments.pop();
+ let dir='';
+ for(const segment of segments){dir=dir?dir+'/'+segment:segment;if(!await adapter.exists(dir))await adapter.mkdir(dir);}
+ await adapter.rename(path,destination);
+ return destination;
+}
+async function writerV10TrashPermanentlyDelete(plugin,path){
+ if(!path.startsWith('.trash/')||path.slice(7).split('/').some(segment=>!segment||segment==='.'||segment==='..'||segment.includes('\\')||segment.includes('\0')))throw Error('Invalid trash path');
+ await plugin.app.vault.adapter.remove(path);
+}
+function writerV10Confirm(plugin,title,description,action){
+ const modal=new Modal(plugin.app);modal.setTitle(title);
+ modal.onOpen=()=>{
+  modal.contentEl.createEl('p',{text:description});
+  const buttons=modal.contentEl.createDiv({cls:'writer-v10-discovery-actions'});
+  buttons.createEl('button',{text:writerUi('Cancelar','Cancel')}).addEventListener('click',()=>modal.close());
+  const ok=buttons.createEl('button',{text:writerUi('Excluir definitivamente','Delete permanently'),cls:'mod-warning'});
+  ok.addEventListener('click',async()=>{ok.disabled=true;try{await action();modal.close();}catch(error){new Notice(String(error.message||error));ok.disabled=false;}});
+ };
+ modal.open();
+}
+async function writerV10TrashEmpty(plugin){
+ let count=0;
+ for(let pass=0;pass<10;pass++){
+  const files=await writerV10TrashList(plugin,1000);
+  if(!files.length){
+   const folders=await writerV10TrashFolders(plugin);
+   for(const path of folders)await writerV10TrashDeleteFolder(plugin,path);
+   return count+folders.length;
+  }
+  for(const path of files){await writerV10TrashPermanentlyDelete(plugin,path);count++;}
+ }
+ throw Error(writerUi('A operação atingiu o limite de segurança de 10 mil arquivos.','Reached the 10,000-file safety limit.'));
+}
+function writerV10TrashRows(plugin,host,limit=40){
+ host.empty();host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Carregando lixeira interna…','Loading Obsidian trash…')});
+ void Promise.all([writerV10TrashList(plugin),writerV10TrashFolders(plugin)]).then(([files,folders])=>{
+  if(!host.isConnected)return;
+  host.empty();
+  host.createEl('p',{cls:'writer-v8-home-muted',text:files.length+' '+writerUi('arquivos','files')+' · '+folders.length+' '+writerUi('pastas','folders')});
+  if(!files.length&&!folders.length)return;
+  for(const path of [...folders.map(path=>({path,isFolder:true})),...files.map(path=>({path,isFolder:false}))].slice(0,limit).map(x=>x)){ 
+   const isFolder=path.isFolder,entry=path.path;
+   const row=host.createDiv({cls:'writer-v10-discovery-row'});
+   row.createEl('span',{text:entry.slice(7)+(isFolder?'/':''),cls:'writer-v10-trash-path'});
+   const actions=row.createDiv({cls:'writer-v10-discovery-actions'});
+   const restore=actions.createEl('button',{attr:{title:writerUi('Restaurar','Restore'),'aria-label':writerUi('Restaurar','Restore')}});setIcon(restore,'undo-2');
+   restore.addEventListener('click',async()=>{
+    restore.disabled=true;
+    try{const dest=await writerV10TrashRestore(plugin,entry);new Notice(writerUi('Restaurado: ','Restored: ')+dest);writerV10TrashRows(plugin,host,limit);}
+    catch(error){new Notice(String(error.message||error));restore.disabled=false;}
+   });
+   const erase=actions.createEl('button',{attr:{title:writerUi('Excluir definitivamente','Delete permanently'),'aria-label':writerUi('Excluir definitivamente','Delete permanently')}});setIcon(erase,'trash-2');
+   erase.addEventListener('click',()=>writerV10Confirm(plugin,writerUi('Excluir arquivo?','Delete file?'),entry,async()=>{
+    if(isFolder)await writerV10TrashDeleteFolder(plugin,entry);
+    else await writerV10TrashPermanentlyDelete(plugin,entry);
+    writerV10TrashRows(plugin,host,limit);
+   }));
+  }
+  if(files.length+folders.length>limit)host.createEl('small',{text:writerUi('Abra o explorador para ver mais arquivos.','Open the explorer to see more files.')});
+ }).catch(error=>{if(host.isConnected)host.setText(writerUi('Não foi possível acessar a lixeira interna.','Could not read Obsidian trash.'));console.warn('[Basic AI] Trash:',error);});
+}
+class WriterV10TrashView extends ItemView{
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;}
+ getViewType(){return WRITER_V10_TRASH_VIEW;}
+ getDisplayText(){return writerUi('Lixeira','Trash explorer');}
+ getIcon(){return 'trash-2';}
+ async onOpen(){this.refresh();}
+ refresh(){
+  this.contentEl.empty();this.contentEl.addClass('writer-v10-discovery-pane');
+  const top=this.contentEl.createDiv({cls:'writer-v10-discovery-top'});
+  top.createEl('h3',{text:writerUi('Lixeira do Obsidian','Obsidian trash')});
+  const refresh=top.createEl('button',{attr:{'aria-label':writerUi('Atualizar','Refresh')}});setIcon(refresh,'refresh-cw');refresh.addEventListener('click',()=>this.refresh());
+  this.contentEl.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('A restauração usa o caminho preservado na lixeira; o Obsidian pode descartar as pastas originais.','Restore uses the path preserved in trash; Obsidian may discard original parent folders.')});
+  const actions=this.contentEl.createDiv({cls:'writer-v10-discovery-actions'});
+  actions.createEl('button',{text:writerUi('Esvaziar lixeira…','Empty trash…')}).addEventListener('click',()=>writerV10Confirm(this.plugin,writerUi('Esvaziar lixeira?','Empty trash?'),writerUi('Esta ação não pode ser desfeita.','This action cannot be undone.'),async()=>{
+   const count=await writerV10TrashEmpty(this.plugin);new Notice(count+' '+writerUi('arquivos apagados.','files deleted.'));this.refresh();
+  }));
+  writerV10TrashRows(this.plugin,this.contentEl.createDiv(),400);
+ }
+}
+function writerV10DiscoveryCurrentFile(plugin){
+ const active=plugin.app.workspace.getActiveFile?.();
+ if(active instanceof TFile&&active.extension==='md')return active;
+ const recent=plugin.settings?.v8Finish?.homeRecent||[];
+ for(const path of recent){const file=plugin.app.vault.getAbstractFileByPath(path);if(file instanceof TFile&&file.extension==='md')return file;}
+ return null;
+}
+function writerV10RenderRelatedWidget(view,parent){
+ const host=view.card(parent,'related','Notas relacionadas','Related notes');
+ const open=host.createEl('button',{text:writerUi('Abrir painel','Open sidebar')});
+ open.addEventListener('click',()=>void view.plugin.writerV10OpenRelated?.());
+ writerV10RelatedResults(view.plugin,host.createDiv(),writerV10DiscoveryCurrentFile(view.plugin));
+}
+function writerV10RenderTrashWidget(view,parent){
+ const host=view.card(parent,'trash','Lixeira','Trash');
+ const open=host.createEl('button',{text:writerUi('Explorar lixeira','Explore trash')});
+ open.addEventListener('click',()=>void view.plugin.writerV10OpenTrash?.());
+ writerV10TrashRows(view.plugin,host.createDiv(),5);
+}
+function writerV10RenderReadingWidget(view,parent){
+ const host=view.card(parent,'reading','Leitura da nota','Note reading');
+ const file=writerV10DiscoveryCurrentFile(view.plugin);
+ if(!(file instanceof TFile)){host.createEl('p',{text:writerUi('Abra uma nota para visualizar o resumo.','Open a note for reading statistics.')});return;}
+ const detail=host.createDiv({cls:'writer-v10-reading-stats'});
+ void view.app.vault.cachedRead(file).then(content=>{
+  if(!detail.isConnected)return;
+  const words=(content.match(/[\p{L}\p{N}]+/gu)||[]).length;
+  const headings=(content.match(/^#{1,6} /gm)||[]).length;
+  const minutes=Math.max(1,Math.ceil(words/220));
+  detail.createEl('strong',{text:file.basename});
+  detail.createEl('p',{text:words+' '+writerUi('palavras','words')+' · '+headings+' '+writerUi('títulos','headings')+' · ~'+minutes+' min'});
+ }).catch(()=>{if(detail.isConnected)detail.setText(writerUi('Não foi possível ler esta nota.','Could not read this note.'));});
+}
+function writerV10RenderZoteroWidget(view,parent){
+ const host=view.card(parent,'zotero','Biblioteca Zotero','Zotero library');
+ const files=(view.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
+ host.createEl('p',{text:files.length+' '+writerUi('notas importadas','imported notes')});
+ const cite=host.createEl('button',{text:writerUi('Inserir citação…','Insert citation…')});
+ cite.addEventListener('click',()=>writerV10ZoteroPicker(view.plugin));
+ for(const file of files.slice(0,4)){
+  const button=host.createEl('button',{cls:'writer-v10-discovery-open',text:file.basename});
+  button.addEventListener('click',()=>void view.app.workspace.getLeaf('tab').openFile(file));
+ }
+ host.createEl('small',{cls:'writer-v8-home-muted',text:writerUi('Fonte: notas locais importadas; sem sincronização automática.','Source: local imported notes; no automatic sync.')});
+}
+function writerV10ZoteroRef(plugin,file){
+ const front=plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter||{};
+ const key=String(front.citekey||front.citationKey||front['citation-key']||front.bibtexKey||'').trim().replace(/^@/,'').slice(0,100);
+ const title=String(front.title||file.basename).slice(0,160);
+ const creator=front.author||front.creators||front.creator||'';
+ const author=Array.isArray(creator)?creator.map(p=>typeof p==='string'?p:[p.lastName,p.firstName].filter(Boolean).join(', ')).join('; '):String(creator);
+ return {file,key,title,author:author.slice(0,150),doi:String(front.DOI||front.doi||'').slice(0,100)};
+}
+function writerV10ZoteroPicker(plugin){
+ const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
+ const references=files.map(file=>writerV10ZoteroRef(plugin,file));
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Inserir citação Zotero','Insert Zotero citation'));
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Pesquisa em notas Markdown já importadas. Better BibTeX: propriedade citekey.','Search previously imported Markdown notes. Better BibTeX: citekey property.')});
+  const search=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Título, autor, DOI ou citekey…','Title, author, DOI or citekey…'),'aria-label':writerUi('Buscar referências','Search references')}});
+  const results=root.createDiv({cls:'writer-v10-zotero-picker'});
+  const draw=()=>{
+   results.empty();const query=search.value.trim().toLocaleLowerCase();
+   const filtered=references.filter(ref=>[ref.key,ref.title,ref.author,ref.doi].some(value=>value.toLocaleLowerCase().includes(query))).slice(0,40);
+   if(!filtered.length){results.createEl('p',{text:writerUi('Nenhuma referência importada encontrada.','No imported reference found.')});return;}
+   for(const ref of filtered){
+    const button=results.createEl('button',{cls:'writer-v10-discovery-open',attr:{type:'button'}});
+    button.createSpan({text:ref.title});button.createEl('small',{text:[ref.author,ref.key?'@'+ref.key:'',ref.doi].filter(Boolean).join(' · ')});
+    button.addEventListener('click',()=>{
+     const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
+     if(!view?.editor||!view?.file){new Notice(writerUi('Abra uma nota editável antes de citar.','Open an editable note to insert a citation.'));return;}
+     const citation=ref.key?'[@'+ref.key.replace(/[^\w:.-]/g,'')+']':plugin.app.fileManager.generateMarkdownLink(ref.file,view.file.path);
+     view.editor.replaceSelection(citation);modal.close();
+    });
+   }
+  };
+  search.addEventListener('input',draw);draw();
+ };
+ modal.open();
+}
+function writerV10DiscoveryRegister(plugin){
+ writerV10DiscoveryMerge(plugin.settings);
+ if(!plugin.settings.v10Discovery.enabled)return;
+ plugin.registerView?.(WRITER_V10_RELATED_VIEW,leaf=>new WriterV10RelatedView(leaf,plugin));
+ plugin.registerView?.(WRITER_V10_TRASH_VIEW,leaf=>new WriterV10TrashView(leaf,plugin));
+ const open=async(type,where)=>{const leaf=plugin.app.workspace.getLeavesOfType?.(type)?.[0]||plugin.app.workspace.getRightLeaf?.(false)||plugin.app.workspace.getLeaf?.('tab');if(leaf){await leaf.setViewState({type,active:true});plugin.app.workspace.revealLeaf?.(leaf);}};
+ plugin.writerV10OpenRelated=()=>open(WRITER_V10_RELATED_VIEW);
+ plugin.writerV10OpenTrash=()=>open(WRITER_V10_TRASH_VIEW);
+ plugin.addCommand({id:'v10-zotero-insert-citation',name:writerUi('Zotero: inserir referência importada','Zotero: insert imported citation'),callback:()=>writerV10ZoteroPicker(plugin)});
+ plugin.addCommand({id:'v10-related-notes',name:writerUi('Notas: encontrar relacionadas','Notes: find related'),callback:()=>void plugin.writerV10OpenRelated()});
+ plugin.addCommand({id:'v10-trash-explorer',name:writerUi('Lixeira: abrir explorador','Trash: open explorer'),callback:()=>void plugin.writerV10OpenTrash()});
+ plugin.addCommand({id:'v10-empty-trash',name:writerUi('Lixeira: esvaziar com confirmação','Trash: empty with confirmation'),callback:()=>writerV10Confirm(plugin,writerUi('Esvaziar lixeira?','Empty trash?'),writerUi('Apaga permanentemente os arquivos da lixeira interna.','Permanently deletes files from the internal trash.'),async()=>{const count=await writerV10TrashEmpty(plugin);new Notice(count+' '+writerUi('arquivos excluídos.','files deleted.'));})});
+ const refresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V10_RELATED_VIEW)||[])leaf.view?.refresh?.();};
+ plugin.registerEvent(plugin.app.workspace.on('file-open',refresh));
+ plugin.registerEvent(plugin.app.vault.on('rename',(file,oldPath)=>{plugin._writerV10RelatedCache?.delete(oldPath);refresh();}));
+ plugin.registerEvent(plugin.app.vault.on('modify',file=>{plugin._writerV10RelatedCache?.delete(file.path);}));
+ plugin.registerEvent(plugin.app.vault.on('delete',file=>{plugin._writerV10RelatedCache?.delete(file.path);}));
+ plugin.register?.(()=>plugin._writerV10RelatedCache?.clear());
+}
+function writerV10DiscoverySettings(plugin,panel){
+ const cfg=plugin.settings.v10Discovery;
+ panel.createEl('h3',{text:writerUi('Notas relacionadas e lixeira','Related notes & trash')});
+ for(const [key,pt,en] of [['enabled','Ativar descoberta e lixeira','Enable discovery and trash'],['related','Buscar notas relacionadas localmente','Find related notes locally'],['trash','Ativar explorador da lixeira','Enable trash explorer']])
+  new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Máximo de notas analisadas','Maximum notes to scan'))
+  .setDesc(writerUi('Notas recentes primeiro; índices mantidos apenas na memória.','Recent notes first; indexes stay in memory.'))
+  .addSlider(s=>s.setLimits(30,1200,30).setValue(cfg.maxCandidates).setDynamicTooltip().onChange(async v=>{cfg.maxCandidates=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Resultados relacionados','Related results')).addSlider(s=>s.setLimits(3,20,1).setValue(cfg.maxResults).setDynamicTooltip().onChange(async v=>{cfg.maxResults=v;await plugin.saveSettings();}));
 }
 
 // END WRITER V3 MODULES

@@ -101,3 +101,33 @@ test('All formerly quarantined 10.7 integrations are restored after the core loa
  assert.match(read('src/v10/integrations-107.js'),/if\(plugin\.settings\?\.v107AdvancedEnabled===false\)/);
  assert.match(read('src/v10/integrations-107.js'),/const ready=plugin\.app\?\.workspace\?\.onLayoutReady/);
 });
+
+test('10.9 supports standalone books, automatic progress, metadata, and fuzzy picker',()=>{
+ const src=read('src/v10/bookshelf.js');
+ const api=load('src/v10/bookshelf.js',{lfFlattenScenes:scenes=>scenes},['writerV10BookshelfMerge','writerV10BookshelfProjects','writerV109BookProgress','writerV109BookDescription','writerV109BookCopyright']);
+ const file={path:'Books/Novel.md',basename:'Novel',extension:'md',stat:{mtime:10}};
+ const settings={};
+ api.writerV10BookshelfMerge(settings);
+ settings.v10Bookshelf.standalone=['Books/Novel.md'];
+ const plugin={settings,app:{vault:{getMarkdownFiles:()=>[file],getAbstractFileByPath:()=>file},metadataCache:{getFileCache:()=>({frontmatter:{title:'Novel',banner:'Cover.png',description:'Synopsis',copyright:'Copyright 2026'}})}}};
+ const projects=api.writerV10BookshelfProjects(plugin);
+ assert.equal(projects.length,1);
+ assert.equal(projects[0].standalone,true);
+ assert.equal(api.writerV109BookDescription(projects[0]),'Synopsis');
+ assert.equal(api.writerV109BookCopyright(projects[0]),'Copyright 2026');
+ assert.equal(api.writerV109BookProgress(plugin,{scenes:[{status:'done'},{status:'draft'}]},{}),50);
+ assert.match(src,/class BookNotePicker extends require\('obsidian'\)\.FuzzySuggestModal/);
+ assert.doesNotMatch(src,/const progressField=field\('Leitura \(%\)'/);
+});
+test('10.9 keeps changelogs out of both READMEs and supports fuzzy path settings',()=>{
+ for(const path of ['README.md','docs/README.pt-BR.md']){
+  const text=read(path);
+  assert.doesNotMatch(text,/^## (?:Version|Versão) 10\./m);
+  assert.match(text,/Longform|Markdown/);
+ }
+ assert.match(read('src/v9/virtual-content.js'),/class TemplatePicker extends require\('obsidian'\)\.FuzzySuggestModal/);
+ assert.match(read('src/v9/smart-spaces.js'),/class SpacePathPicker extends require\('obsidian'\)\.FuzzySuggestModal/);
+ assert.match(read('src/v4/integrations.js'),/class FolderPicker extends require\('obsidian'\)\.FuzzySuggestModal/);
+ assert.match(read('src/v9/explorer-flex.js'),/Revelar arquivos ocultos/);
+ assert.match(read('CHANGELOG.md'),/10\.9\.0/);
+});

@@ -1,6 +1,6 @@
 'use strict';
 /* Basic inline alignment, compatible with Markdown headings and links.
- * Preferred suffix: Text {c}, # Heading {r}, ## Heading {l}.
+ * Preferred suffix: Text {c}, # Heading {r}, ## Heading {l}, Text {j}.
  * Legacy ::c: Text, ::c[Text] remain supported; never reformat saved
  * notes automatically. Editor commands replace only the current line(s). */
 function writerV102AlignMerge(settings){
@@ -11,7 +11,8 @@ function writerV102AlignMerge(settings){
 }
 function writerV102AlignSide(alias){
  const side=String(alias||'').toLowerCase();
- return side==='l'||side==='left'?'left':side==='r'||side==='right'?'right':'center';
+ return side==='l'||side==='left'?'left':side==='r'||side==='right'?'right':
+  side==='j'||side==='justify'?'justify':'center';
 }
 function writerV102AlignToken(raw){
  const source=String(raw||'');
@@ -20,19 +21,19 @@ function writerV102AlignToken(raw){
  const heading=/^([ \t]{0,3}#{1,6}[ \t]+)/.exec(source);
  const offset=heading?heading[0].length:0;
  const text=source.slice(offset);
- const suffix=/[ \t]+\{(left|center|right|l|c|r)\}[ \t]*$/i.exec(text);
+ const suffix=/[ \t]+\{(left|center|right|justify|l|c|r|j)\}[ \t]*$/i.exec(text);
  if(suffix&&text.slice(0,suffix.index).trim()){
   const from=offset+suffix.index,to=offset+suffix.index+suffix[0].length;
   return {side:writerV102AlignSide(suffix[1]),format:'suffix',legacy:false,heading:!!heading,
    from,innerFrom:to,innerTo:to,to};
  }
- const modern=/^([ \t]*)::(left|center|right|l|c|r):[ \t]+([^\n]{1,5000}?)[ \t]*$/i.exec(text);
- const legacy=modern?null:/^([ \t]*)::(left|center|right|l|c|r)\[([^\n]{1,5000})\][ \t]*$/i.exec(text);
+ const modern=/^([ \t]*)::(left|center|right|justify|l|c|r|j):[ \t]+([^\n]{1,5000}?)[ \t]*$/i.exec(text);
+ const legacy=modern?null:/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[([^\n]{1,5000})\][ \t]*$/i.exec(text);
  const match=modern||legacy;
  if(!match)return null;
  const start=(modern
-  ?/^([ \t]*)::(left|center|right|l|c|r):[ \t]+/i
-  :/^([ \t]*)::(left|center|right|l|c|r)\[/i).exec(text)[0];
+  ?/^([ \t]*)::(left|center|right|justify|l|c|r|j):[ \t]+/i
+  :/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[/i).exec(text)[0];
  const from=offset+match[1].length;
  const innerFrom=offset+start.length;
  const innerTo=innerFrom+match[3].trimEnd().length;
@@ -53,12 +54,12 @@ function writerV102AlignReading(root){
   if(first.parentElement?.closest?.('code,pre')||last.parentElement?.closest?.('code,pre'))continue;
   if(token.format==='suffix'){
    // Only remove the author's dedicated suffix; preserve inline links/emphasis.
-   if(!/[ \t]+\{(?:left|center|right|l|c|r)\}[ \t]*$/i.test(last.nodeValue||''))continue;
-   last.nodeValue=last.nodeValue.replace(/[ \t]+\{(?:left|center|right|l|c|r)\}[ \t]*$/i,'');
+   if(!/[ \t]+\{(?:left|center|right|justify|l|c|r|j)\}[ \t]*$/i.test(last.nodeValue||''))continue;
+   last.nodeValue=last.nodeValue.replace(/[ \t]+\{(?:left|center|right|justify|l|c|r|j)\}[ \t]*$/i,'');
   }else{
    const begin=token.legacy
-    ?/^([ \t]*)::(left|center|right|l|c|r)\[/i
-    :/^([ \t]*)::(left|center|right|l|c|r):[ \t]+/i;
+    ?/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[/i
+    :/^([ \t]*)::(left|center|right|justify|l|c|r|j):[ \t]+/i;
    const open=begin.exec(first.nodeValue||'');
    if(!open||(token.legacy&&!/\][ \t]*$/.test(last.nodeValue||'')))continue;
    first.nodeValue=first.nodeValue.slice(open[0].length);
@@ -76,7 +77,7 @@ function writerV102AlignReading(root){
   block.classList.add('writer-v102-align-processed','writer-v102-align-'+token.side);
   // Honor an explicitly marked heading even when the user's CSS snippet
   // centers every h1–h6 with !important.
-  block.style?.setProperty?.('text-align',token.side==='center'?'center':token.side==='left'?'left':'right','important');
+  block.style?.setProperty?.('text-align',token.side==='justify'?'justify':token.side==='center'?'center':token.side==='left'?'left':'right','important');
  }
 }
 function writerV102AlignDecorations(view,cfg){
@@ -108,7 +109,7 @@ function writerV102AlignNormalizeLine(source){
  const token=writerV102AlignToken(source);
  if(token?.format==='suffix')text=text.slice(0,token.from-lead.length).trimEnd();
  else if(token?.format==='prefix'){
-  const open=/^([ \t]*)::(left|center|right|l|c|r)(?::[ \t]+|\[)/i.exec(text);
+  const open=/^([ \t]*)::(left|center|right|justify|l|c|r|j)(?::[ \t]+|\[)/i.exec(text);
   if(open)text=text.slice(open[0].length);
   if(token.legacy)text=text.replace(/\][ \t]*$/,'');
   text=text.trimEnd();
@@ -155,7 +156,8 @@ function writerV102AlignRegister(plugin){
  for(const [side,id,pt,en] of [
   ['l','left','Alinhar à esquerda','Align left'],
   ['c','center','Centralizar texto ou título','Center text or heading'],
-  ['r','right','Alinhar à direita','Align right']
+  ['r','right','Alinhar à direita','Align right'],
+  ['j','justify','Justificar texto','Justify text']
  ]){
   plugin.addCommand({id:'v102-align-'+id,name:writerUi(pt,en),
    editorCheckCallback:(checking,editor)=>{
@@ -170,7 +172,7 @@ function writerV102AlignRegister(plugin){
    if(checking)return true;
    const cursor=editor.getCursor?.('from')||editor.getCursor?.()||{line:0};
    const side=writerV102AlignToken(editor.getLine?.(cursor.line)||'')?.side;
-   const next=side==='center'?'r':side==='right'?'l':side==='left'?null:'c';
+   const next=side==='center'?'r':side==='right'?'l':side==='left'?'j':side==='justify'?null:'c';
    writerV102AlignApply(editor,next);return true;
   }});
 }
@@ -178,8 +180,8 @@ function writerV102AlignSettings(plugin,panel){
  const cfg=plugin.settings.v102Align;
  panel.createEl('h3',{text:writerUi('Alinhamento de texto e títulos','Text and heading alignment')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Use um comando na paleta ou na barra móvel (Centralizar, Direita, Esquerda ou Alternar). Para digitar: texto {c}, # Título {r}, ## Título {l}. Os formatos antigos ::c: texto e ::c[texto] continuam funcionando.',
-  'Use a command from the palette or mobile toolbar (Center, Right, Left or Cycle). To type: text {c}, # Heading {r}, ## Heading {l}. Legacy ::c: text and ::c[text] stay supported.')});
+  'Use um comando na paleta ou na barra móvel (Centralizar, Direita, Esquerda, Justificar ou Alternar). Para digitar: texto {c}, # Título {r}, ## Título {l}, texto {j}. Os formatos antigos ::c: texto e ::c[texto] continuam funcionando.',
+  'Use a command from the palette or mobile toolbar (Center, Right, Left, Justify or Cycle). To type: text {c}, # Heading {r}, ## Heading {l}, text {j}. Legacy ::c: text and ::c[text] stay supported.')});
  for(const [key,pt,en] of [
   ['enabled','Ativar alinhamento de texto','Enable text alignment'],
   ['reading','Renderizar no modo de leitura','Render in Reading mode'],

@@ -361,10 +361,22 @@ function writerV1048ToolbarPosition(root,host,view,cfg){
  root.style.left=Math.round(left)+'px';
  root.style.top=Math.round(top)+'px';
 }
+/* MarkdownView.editor remains available in reading mode.
+ * Check the actual Markdown mode before mounting formatting controls. */
+function writerV1061ToolbarEditingMode(view){
+ if(!view)return false;
+ let mode='';
+ try{mode=view.getMode?.()||view.getState?.()?.mode||'';}catch(_){}
+ if(mode==='preview'||mode==='reading')return false;
+ if(mode==='source'||mode==='edit')return true;
+ const content=view.contentEl;
+ if(content?.querySelector?.('.markdown-preview-view')&&!content.querySelector?.('.markdown-source-view'))return false;
+ return !!view.editor;
+}
 function writerV9RegisterToolbar(plugin){
  const cfg=plugin.settings.v9Toolbar;
  writerV1044ContextMenus(plugin);
- let owner=null,root=null,queued=null,currentView=null;
+ let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null;
  const remove=()=>{
   if(root){root.remove();root=null;}
   if(owner){owner.classList.remove('writer-v9-toolbar-host');owner=null;}
@@ -373,8 +385,9 @@ function writerV9RegisterToolbar(plugin){
  const paint=()=>{
   queued=null;
   const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
+  observeMode(view);
   const host=view?.contentEl;
-  if(!host||!view?.editor||!writerV9ToolbarAllowed(plugin)){remove();return;}
+  if(!host||!view?.editor||!writerV1061ToolbarEditingMode(view)||!writerV9ToolbarAllowed(plugin)){remove();return;}
   if(owner!==host){remove();owner=host;owner.classList.add('writer-v9-toolbar-host');}
   currentView=view;
   if(root)root.remove();
@@ -418,19 +431,39 @@ function writerV9RegisterToolbar(plugin){
   writerV1048ToolbarPosition(root,owner,view,cfg);
  };
  const refresh=()=>{if(queued)return;queued=setTimeout(paint,90);};
+ const observeMode=view=>{
+  const host=view?.containerEl||view?.contentEl||null;
+  if(host===observedHost&&view===observedView)return;
+  modeObserver?.disconnect();modeObserver=null;
+  observedHost=host;observedView=view||null;
+  lastEditable=writerV1061ToolbarEditingMode(view);
+  const Observer=host?.ownerDocument?.defaultView?.MutationObserver;
+  if(!host||typeof Observer!=='function')return;
+  modeObserver=new Observer(()=>{
+   const editable=writerV1061ToolbarEditingMode(observedView);
+   if(editable===lastEditable)return;
+   lastEditable=editable;
+   // Hide immediately when switching to Reading; rebuild only on returning to Edit.
+   if(!editable)remove();
+   refresh();
+  });
+  modeObserver.observe(host,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+ };
  const reposition=()=>{
+  if(root&&currentView&&!writerV1061ToolbarEditingMode(currentView)){remove();refresh();return;}
   if(root&&owner&&currentView&&cfg.placement==='floating')
    writerV1048ToolbarPosition(root,owner,currentView,cfg);
  };
  plugin.writerV9ToolbarRefresh=refresh;
  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',refresh));
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
+ plugin.registerEvent(plugin.app.workspace.on('file-open',refresh));
  if(typeof document!=='undefined'&&plugin.registerDomEvent){
   for(const key of ['keyup','pointerup','selectionchange','scroll'])
    plugin.registerDomEvent(document,key,reposition,true);
  }
  if(typeof plugin.register==='function')plugin.register(()=>{
-  clearTimeout(queued);remove();plugin.writerV9ToolbarRefresh=null;
+  clearTimeout(queued);modeObserver?.disconnect();modeObserver=null;observedHost=null;observedView=null;remove();plugin.writerV9ToolbarRefresh=null;
  });
  plugin.app.workspace.onLayoutReady?.(refresh);
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){

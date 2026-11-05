@@ -2,13 +2,19 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.6.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.6.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.6.1 — barra de formatação no modo leitura
+
+- A barra de formatação do Basic desaparece automaticamente no **modo de leitura**, no PC e no celular.
+- Ela volta ao alternar para modo de edição ou Live Preview, preservando botões, posição e personalização.
+- A mudança de modo é detectada sem precisar fechar/reabrir a nota; os observadores são desativados ao descarregar o plugin.
 
 ## Versão 10.6.0 — homepage limpa, Dragger e revisão histórica
 

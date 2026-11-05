@@ -175,11 +175,17 @@ function writerV101ReadingProgressRegister(plugin){
 }
 
 function writerV101RegisterEnhancements(plugin){
- writerV101ReadingProgressRegister(plugin);
- if(typeof writerV106DragRegister==='function')writerV106DragRegister(plugin);
- if(typeof writerV106HistoricRegister==='function')writerV106HistoricRegister(plugin);
- if(typeof writerV10DiscoveryRegister==='function')writerV10DiscoveryRegister(plugin);
-  if(typeof writerV107RegisterAfterStartup==='function')writerV107RegisterAfterStartup(plugin);
+ // A supplemental editor widget must never prevent the writing core from enabling.
+ // Keep failures visible in Developer Console but isolate optional registrations.
+ const safeRegister=(name,register)=>{
+  try{register();}
+  catch(error){console.error('[Basic AI] Optional startup module failed: '+name,error);}
+ };
+ safeRegister('reading-progress',()=>writerV101ReadingProgressRegister(plugin));
+ if(typeof writerV106DragRegister==='function')safeRegister('block-dragger',()=>writerV106DragRegister(plugin));
+ if(typeof writerV106HistoricRegister==='function')safeRegister('historical-tools',()=>writerV106HistoricRegister(plugin));
+ if(typeof writerV10DiscoveryRegister==='function')safeRegister('related-notes-and-trash',()=>writerV10DiscoveryRegister(plugin));
+ if(typeof writerV107RegisterAfterStartup==='function')safeRegister('v10.7-optional',()=>writerV107RegisterAfterStartup(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;

@@ -593,3 +593,16 @@ Alinhamento direto no Markdown (uma linha própria por marcador):
 ~~~~
 
 Aliases completos: ::left, ::center e ::right. Nenhum codeblock é necessário para alinhar.
+
+
+## Alinhamento com marcadores curtos (10.4.9)
+
+No fim da linha, digite `{l}`, `{c}`, `{r}` ou `{j}`: esquerda, centro, direita e justificado. Isso funciona também em títulos Markdown.
+
+~~~~markdown
+# Título centralizado {c}
+## Capítulo justificado {j}
+Um parágrafo mais longo que deve ser justificado {j}
+~~~~
+
+A toolbar e o comando **Justificar texto** também aplicam `{j}`, sem criar HTML. Os marcadores ficam ocultos no modo de leitura, e os formatos antigos `::c:` e `::c[...]` continuam compatíveis.

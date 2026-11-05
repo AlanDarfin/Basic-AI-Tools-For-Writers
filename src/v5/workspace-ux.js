@@ -192,7 +192,8 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   'aria-label':writerUi('Buscar opções e comandos','Search options and commands'),autocomplete:'off'}});
  input.id='writer-v51-settings-search';
  const feedback=wrap.createDiv({cls:'writer-v51-search-results writer-v1048-search-results',
-  attr:{role:'region','aria-label':writerUi('Resultados de configurações','Settings results')}});
+  attr:{role:'region','aria-live':'polite',
+   'aria-label':writerUi('Resultados de configurações','Settings results')}});
  feedback.hidden=true;
  const cache=new Map();
  let latest=[];
@@ -225,9 +226,12 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
    for(const entry of latest){
     const button=list.createEl('button',{cls:'writer-v1048-search-result',attr:{
      type:'button','aria-label':entry.title+' · '+entry.section}});
-    button.createSpan({cls:'writer-v1048-search-result-title',text:entry.title});
-    button.createSpan({cls:'writer-v1048-search-result-path',text:entry.section});
-    if(entry.description)button.createSpan({cls:'writer-v1048-search-result-desc',text:entry.description});
+    const symbol=button.createSpan({cls:'writer-v1049-result-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon(symbol,entry.source==='toolbar'?'type':entry.source==='syntax'?'braces':'settings-2');
+    const content=button.createSpan({cls:'writer-v1049-result-content'});
+    content.createSpan({cls:'writer-v1048-search-result-title',text:entry.title});
+    content.createSpan({cls:'writer-v1048-search-result-path',text:entry.section});
+    if(entry.description)content.createSpan({cls:'writer-v1048-search-result-desc',text:entry.description});
     button.addEventListener('click',()=>jump(entry));
    }
   }else{

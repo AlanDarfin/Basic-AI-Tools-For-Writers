@@ -115,7 +115,7 @@ function writerV107MediaRegister(plugin){
   editor.replaceSelection(['',fence+'writer-columns','## '+writerUi('Coluna 1','Column 1'),'',
    '---column---','## '+writerUi('Coluna 2','Column 2'),fence,''].join('\n'));
  }});
- plugin.registerMarkdownCodeBlockProcessor('writer-columns',(source,element,ctx)=>writerV107ColumnsRender(plugin,source,element,ctx));
+ if(plugin.settings.v107Media.columns)plugin.registerMarkdownCodeBlockProcessor('writer-columns',(source,element,ctx)=>writerV107ColumnsRender(plugin,source,element,ctx));
  plugin.addCommand({id:'v107-pdf-pages',name:writerUi('PDF: prévia por páginas','PDF: preview pages'),callback:()=>{
   const file=plugin.app.workspace.getActiveFile();
   if(file?.extension==='pdf')writerV107PdfViewer(plugin,file);

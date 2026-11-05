@@ -461,9 +461,7 @@ function writerV92ExplorerRegister(plugin){
   }
  };
  plugin.writerV92Explorer={refresh,schedule};
- plugin.addCommand?.({id:'v92-toggle-favorite',name:writerUi('Favoritos: alternar nota ativa','Favorites: toggle active note'),callback:()=>{
-  const file=plugin.app.workspace.getActiveFile?.();if(file instanceof TFile)void writerV92ToggleFavorite(plugin,file.path);
- }});
+ // Favorite command already exists in the Home module; do not register a second alias.
  plugin.addCommand?.({id:'v921-toggle-previews',name:writerUi('Explorador: mostrar/ocultar prévias','Explorer: show/hide previews'),callback:async()=>{
   const cfg=plugin.settings.v92Explorer;cfg.previewVisible=!cfg.previewVisible;
   refresh();await plugin.saveSettings();

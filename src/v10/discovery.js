@@ -136,6 +136,18 @@ async function writerV10TrashList(plugin,max=400){
  }
  return found.sort((a,b)=>a.localeCompare(b));
 }
+async function writerV10TrashFolders(plugin){
+ const adapter=plugin.app.vault.adapter;
+ if(!await adapter.exists('.trash'))return [];
+ try{
+  const listing=await adapter.list('.trash');
+  return (listing.folders||[]).filter(p=>p.startsWith('.trash/')&&p!=='.trash').sort((a,b)=>a.localeCompare(b));
+ }catch(error){console.warn('[Basic AI] Trash folders:',error);return [];}
+}
+async function writerV10TrashDeleteFolder(plugin,path){
+ if(!path.startsWith('.trash/')||path.slice(7).split('/').some(x=>!x||x==='.'||x==='..'||x.includes('\\')||x.includes('\0')))throw Error('Invalid trash folder');
+ await plugin.app.vault.adapter.rmdir(path,true);
+}
 async function writerV10TrashRestore(plugin,path){
  if(!path.startsWith('.trash/')||path.slice(7).split('/').some(segment=>!segment||segment==='.'||segment==='..'||segment.includes('\\')||segment.includes('\0')))throw Error('Invalid trash path');
  const adapter=plugin.app.vault.adapter,destination=path.slice('.trash/'.length);
@@ -166,34 +178,41 @@ async function writerV10TrashEmpty(plugin){
  let count=0;
  for(let pass=0;pass<10;pass++){
   const files=await writerV10TrashList(plugin,1000);
-  if(!files.length)return count;
+  if(!files.length){
+   const folders=await writerV10TrashFolders(plugin);
+   for(const path of folders)await writerV10TrashDeleteFolder(plugin,path);
+   return count+folders.length;
+  }
   for(const path of files){await writerV10TrashPermanentlyDelete(plugin,path);count++;}
  }
  throw Error(writerUi('A operação atingiu o limite de segurança de 10 mil arquivos.','Reached the 10,000-file safety limit.'));
 }
 function writerV10TrashRows(plugin,host,limit=40){
  host.empty();host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Carregando lixeira interna…','Loading Obsidian trash…')});
- void writerV10TrashList(plugin).then(files=>{
+ void Promise.all([writerV10TrashList(plugin),writerV10TrashFolders(plugin)]).then(([files,folders])=>{
   if(!host.isConnected)return;
   host.empty();
-  host.createEl('p',{cls:'writer-v8-home-muted',text:files.length+' '+writerUi('arquivos na lixeira interna','files in Obsidian trash')});
-  if(!files.length)return;
-  for(const path of files.slice(0,limit)){
+  host.createEl('p',{cls:'writer-v8-home-muted',text:files.length+' '+writerUi('arquivos','files')+' · '+folders.length+' '+writerUi('pastas','folders')});
+  if(!files.length&&!folders.length)return;
+  for(const path of [...folders.map(path=>({path,isFolder:true})),...files.map(path=>({path,isFolder:false}))].slice(0,limit).map(x=>x)){ 
+   const isFolder=path.isFolder,entry=path.path;
    const row=host.createDiv({cls:'writer-v10-discovery-row'});
-   row.createEl('span',{text:path.slice(7),cls:'writer-v10-trash-path'});
+   row.createEl('span',{text:entry.slice(7)+(isFolder?'/':''),cls:'writer-v10-trash-path'});
    const actions=row.createDiv({cls:'writer-v10-discovery-actions'});
    const restore=actions.createEl('button',{attr:{title:writerUi('Restaurar','Restore'),'aria-label':writerUi('Restaurar','Restore')}});setIcon(restore,'undo-2');
    restore.addEventListener('click',async()=>{
     restore.disabled=true;
-    try{const dest=await writerV10TrashRestore(plugin,path);new Notice(writerUi('Restaurado: ','Restored: ')+dest);writerV10TrashRows(plugin,host,limit);}
+    try{const dest=await writerV10TrashRestore(plugin,entry);new Notice(writerUi('Restaurado: ','Restored: ')+dest);writerV10TrashRows(plugin,host,limit);}
     catch(error){new Notice(String(error.message||error));restore.disabled=false;}
    });
    const erase=actions.createEl('button',{attr:{title:writerUi('Excluir definitivamente','Delete permanently'),'aria-label':writerUi('Excluir definitivamente','Delete permanently')}});setIcon(erase,'trash-2');
-   erase.addEventListener('click',()=>writerV10Confirm(plugin,writerUi('Excluir arquivo?','Delete file?'),path,async()=>{
-    await writerV10TrashPermanentlyDelete(plugin,path);writerV10TrashRows(plugin,host,limit);
+   erase.addEventListener('click',()=>writerV10Confirm(plugin,writerUi('Excluir arquivo?','Delete file?'),entry,async()=>{
+    if(isFolder)await writerV10TrashDeleteFolder(plugin,entry);
+    else await writerV10TrashPermanentlyDelete(plugin,entry);
+    writerV10TrashRows(plugin,host,limit);
    }));
   }
-  if(files.length>limit)host.createEl('small',{text:writerUi('Abra o explorador para ver mais arquivos.','Open the explorer to see more files.')});
+  if(files.length+folders.length>limit)host.createEl('small',{text:writerUi('Abra o explorador para ver mais arquivos.','Open the explorer to see more files.')});
  }).catch(error=>{if(host.isConnected)host.setText(writerUi('Não foi possível acessar a lixeira interna.','Could not read Obsidian trash.'));console.warn('[Basic AI] Trash:',error);});
 }
 class WriterV10TrashView extends ItemView{

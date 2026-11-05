@@ -7,7 +7,11 @@ const source=fs.readFileSync('src/v10/integrations-107.js','utf8');
 function boot(globals={}){
  const calls=[],timeouts=[],logs=[];
  const env={
-  console:{warn:(...a)=>logs.push(['warn',...a]),error:(...a)=>logs.push(['error',...a])},
+  console:{warn:(...a)=>logs.push(['warn',...a]),error:(...a)=>logs.push(['error',...a]),info:(...a)=>logs.push(['info',...a])},
+  Setting:class {
+   setName(){return this;}setDesc(){return this;}
+   addToggle(fn){fn({setValue(){return this;},onChange(){return this;}});return this;}
+  },
   setTimeout:fn=>{timeouts.push(fn);return timeouts.length;},
   ...globals
  };

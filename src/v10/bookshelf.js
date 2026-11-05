@@ -150,13 +150,13 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  const wrapper=target.createDiv({cls:'writer-v10-bookshelf'+(opts.compact?' is-widget':'')});
  const projects=writerV10BookshelfProjects(plugin);
  let sortMode=opts.sort||config.sort||'title';
- if(!projects.length){
-  wrapper.createEl('p',{cls:'setting-item-description',text:writerUi('Nenhum índice Longform encontrado. Crie um livro em Projetos.','No Longform indices found. Create a book in Projects.')});return wrapper;
- }
  const summary=wrapper.createDiv({cls:'writer-v108-library-summary'});
  summary.createEl('p',{text:writerUi('Organize suas histórias, acompanhe o progresso e encontre o próximo capítulo.','Organize stories, track progress and find your next chapter.')});
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
+ toolbar.createEl('button',{text:writerUi('+ Adicionar livro','+ Add book'),attr:{type:'button'}})
+  .addEventListener('click',()=>writerV109AddStandaloneBook(plugin,()=>{target.empty();writerV10RenderBookshelf(plugin,target,opts);}));
+
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
  search.classList.add('writer-v1042-bookshelf-search');
  let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
@@ -213,7 +213,7 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
 function writerV10OpenBookshelf(plugin){
  const modal=new Modal(plugin.app);
  modal.modalEl?.classList?.add('writer-v1042-bookshelf-modal');
- modal.setTitle(writerUi('Biblioteca Longform','Longform bookshelf'));
+ modal.setTitle(writerUi('Biblioteca','Library'));
  modal.onOpen=()=>{modal.contentEl.empty();writerV10RenderBookshelf(plugin,modal.contentEl);};
  modal.open();
 }
@@ -237,6 +237,18 @@ function writerV10RenderBookshelfWidget(view,parent){
  });
  for(const project of books.slice(0,4))writerV10BookshelfCard(plugin,grid,project,true,()=>view.render());
 }
+function writerV109AddStandaloneBook(plugin,done){
+ const existing=new Set(plugin.settings.v10Bookshelf.standalone||[]);
+ const indexed=new Set((plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof longformIndex==='function'&&longformIndex(file,plugin.app)).map(f=>f.path));
+ class BookNotePicker extends require('obsidian').FuzzySuggestModal{
+  getItems(){return (plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>!indexed.has(file.path)&&!existing.has(file.path));}
+  getItemText(file){return file.path;}
+  onChooseItem(file){plugin.settings.v10Bookshelf.standalone=[...existing,file.path];void plugin.saveSettings().then(()=>done?.());}
+ }
+ const modal=new BookNotePicker(plugin.app);
+ modal.setPlaceholder(writerUi('Buscar nota para adicionar à biblioteca…','Search a note to add to the library…'));
+ modal.open();
+}
 function writerV10RegisterBookshelf(plugin){
  for(const name of ['bookshelf','writer-bookshelf']){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
@@ -250,19 +262,18 @@ function writerV10RegisterBookshelf(plugin){
  plugin.addCommand?.({id:'v10-insert-bookshelf',name:writerUi('Longform: inserir bloco de livros','Longform: insert bookshelf block'),
   editorCallback:editor=>editor.replaceSelection('\n~~~bookshelf\nsort: title\nlayout: normal\n~~~\n')});
  plugin.writerV10OpenBookshelf=()=>writerV10OpenBookshelf(plugin);
+ plugin.addCommand?.({id:'v109-add-book-note',name:writerUi('Biblioteca: adicionar nota como livro','Library: add note as book'),callback:()=>writerV109AddStandaloneBook(plugin,()=>writerV10OpenBookshelf(plugin))});
  // Keep bookshelf in the home widget and command palette, not as another ribbon entry.
- plugin.addCommand?.({id:'v1042-bookshelf-search',name:writerUi('Biblioteca: buscar livros','Bookshelf: search books'),
-  callback:()=>writerV10OpenBookshelf(plugin)});
 
 }
 function writerV10BookshelfSettings(plugin,panel){
  const cfg=plugin.settings.v10Bookshelf;
- panel.createEl('h3',{text:writerUi('Biblioteca Longform','Longform bookshelf')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi('As capas e capítulos vêm dos índices Longform existentes. Nada é movido ou duplicado.','Covers and chapters come from existing Longform indices. No notes are moved or duplicated.')});
+ panel.createEl('h3',{text:writerUi('Biblioteca','Library')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Projetos Longform e notas avulsas. Banner, descrição e copyright vêm do frontmatter; progresso automático.','Longform projects and standalone notes. Banner, description and copyright come from frontmatter; automatic progress.')});
  const toggle=(key,pt,en)=>new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  toggle('enabled','Ativar biblioteca de livros','Enable bookshelf');
  toggle('showWidget','Permitir widget de livros na homepage','Allow bookshelf homepage widget');
- toggle('showProgress','Mostrar contagem de capítulos','Show chapter count');
+ toggle('showProgress','Mostrar progresso automático','Show automatic progress');
  new Setting(panel).setName(writerUi('Ordem padrão','Default order')).addDropdown(d=>{
   for(const [value,pt,en] of [['title','Título','Title'],['recent','Atualização','Recent'],['chapters','Capítulos','Chapters'],['progress','Progresso','Progress'],['series','Série','Series']])d.addOption(value,writerUi(pt,en));
   d.setValue(cfg.sort||'title').onChange(async value=>{cfg.sort=value;await plugin.saveSettings();});

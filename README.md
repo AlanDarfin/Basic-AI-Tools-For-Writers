@@ -2,12 +2,22 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.7.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.7.3 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.7.3 — fix plugin activation (`setIcon`)
+
+- **Root cause confirmed by the Obsidian console:** `ReferenceError: setIcon is not defined` during `writerV106DragRegister` in the 10.6 Dragger-inspired integration.
+- Fixes the Dragger startup icon to import `setIcon` directly from Obsidian's API, with a text fallback if the API is unavailable.
+- Fixes five more missing `setIcon` references in the Related Notes and Trash Explorer sidebar/widgets, preventing the next error after activation.
+- Each optional editor/UI module is now registered in an isolated error boundary, so a supplementary tool cannot disable the whole writing plugin.
+- Adds **executable startup regression tests** that reproduce the Dragger icon creation using a minimal Obsidian API mock, verify its fallback, check related-note icons, and verify errors cannot stop the core commands.
+- Keeps existing notes, settings, Longform, homepage, language tools, toolbar and pre-10.7 features. The nine experimental 10.7 modules remain quarantined from the production bundle, as in 10.7.2.
+- Install all three matching release assets (`main.js`, `manifest.json`, `styles.css`) and restart Obsidian. No need to delete `data.json`.
 
 ## Version 10.7.2 — emergency stable-runtime recovery
 

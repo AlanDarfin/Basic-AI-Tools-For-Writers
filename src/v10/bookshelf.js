@@ -198,10 +198,7 @@ function writerV10RegisterBookshelf(plugin){
  plugin.addCommand?.({id:'v10-insert-bookshelf',name:writerUi('Longform: inserir bloco de livros','Longform: insert bookshelf block'),
   editorCallback:editor=>editor.replaceSelection('\n~~~bookshelf\nsort: title\nlayout: normal\n~~~\n')});
  plugin.writerV10OpenBookshelf=()=>writerV10OpenBookshelf(plugin);
- // Quick access stays available on desktop and mobile ribbons.
- const shelfRibbon=plugin.addRibbonIcon?.('library',writerUi('Biblioteca Longform','Longform bookshelf'),
-  ()=>writerV10OpenBookshelf(plugin));
- shelfRibbon?.addClass?.('writer-v1042-shelf-ribbon');
+ // Keep bookshelf in the home widget and command palette, not as another ribbon entry.
  plugin.addCommand?.({id:'v1042-bookshelf-search',name:writerUi('Biblioteca: buscar livros','Bookshelf: search books'),
   callback:()=>writerV10OpenBookshelf(plugin)});
 

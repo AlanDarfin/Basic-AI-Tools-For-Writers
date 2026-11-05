@@ -34,7 +34,8 @@ function writerV92ZoteroIsSource(plugin,file){
 function writerV92ZoteroExtract(plugin,file,text){
  const cache=plugin.app.metadataCache?.getFileCache?.(file);
  const meta=cache?.frontmatter||{};
- const author=String(meta.author||meta.creators||meta.citation||meta.title||file.basename).replace(/\s+/g,' ').slice(0,160);
+ const creators=meta.author||meta.creators||meta.creator||meta.citation||meta.title||file.basename;
+ const author=(Array.isArray(creators)?creators.map(value=>typeof value==='string'?value:[value?.lastName,value?.firstName].filter(Boolean).join(', ')).join('; '):String(creators)).replace(/\s+/g,' ').slice(0,160);
  const source=String(meta.title||file.basename).slice(0,180);
  const entries=[];
  const push=raw=>{
@@ -42,9 +43,9 @@ function writerV92ZoteroExtract(plugin,file,text){
   if(quote.length>=12&&!entries.some(x=>x[0]===quote))entries.push([quote,author,file.path,source]);
  };
  // Only explicitly marked highlights/quotes: no inference from ordinary text or abstracts.
- for(const key of ['highlights','quotes','annotations']){
+ for(const key of ['highlights','quotes','annotations','zoteroAnnotations','annotation']){
   const value=meta[key];
-  if(Array.isArray(value))for(const item of value)push(typeof item==='string'?item:item?.text||item?.quote||'');
+  if(Array.isArray(value))for(const item of value)push(typeof item==='string'?item:item?.text||item?.quote||item?.annotationText||item?.highlightText||'');
   else if(typeof value==='string')push(value);
  }
  const lines=String(text||'').split(/\r?\n/);
@@ -53,7 +54,7 @@ function writerV92ZoteroExtract(plugin,file,text){
    push(lines[i].replace(/^\s*(?:>\s*)?(?:\*\*)?(?:highlight|quote|citação|destaque)(?:\*\*)?\s*:\s*/i,''));
   }
   // Zotero integration highlight templates often use Markdown blockquotes under a highlight heading.
-  if(/^\s*#{1,5}\s*(?:highlights?|destaques?|annotations?)\b/i.test(lines[i])){
+  if(/^\s*#{1,5}\s*(?:highlights?|destaques?|annotations?|anotações)\b/i.test(lines[i])){
    for(let j=i+1;j<Math.min(lines.length,i+100);j++){
     if(/^\s*#{1,5}\s/.test(lines[j]))break;
     const match=lines[j].match(/^\s*>\s*(.+)/);
@@ -66,7 +67,7 @@ function writerV92ZoteroExtract(plugin,file,text){
 async function writerV92ZoteroQuotes(plugin,limit=180){
  const cfg=plugin.settings.v92Research;
  if(!cfg.enabled||!cfg.zoteroQuotes||!writerModuleOn(plugin,'zoteroIntegration'))return [];
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>writerV92ZoteroIsSource(plugin,file)).slice(0,100);
+ const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>writerV92ZoteroIsSource(plugin,file)).slice(0,240);
  const quotes=[];
  for(const file of files){
   try{

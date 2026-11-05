@@ -177,6 +177,7 @@ function writerV101ReadingProgressRegister(plugin){
 function writerV101RegisterEnhancements(plugin){
  writerV101ReadingProgressRegister(plugin);
  if(typeof writerV106DragRegister==='function')writerV106DragRegister(plugin);
+ if(typeof writerV106HistoricRegister==='function')writerV106HistoricRegister(plugin);
  if(typeof writerV10DiscoveryRegister==='function')writerV10DiscoveryRegister(plugin);
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{

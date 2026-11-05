@@ -2,12 +2,24 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.6.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.7.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.7.0 — advanced integrations
+
+- **Make.md:** Markdown databases with table/board views, sorting, filtering, safe formulas and linked-note rollups; property editing and CSV export.
+- **Zotero:** optional read-only Web API v3 library import, temporary per-request key and CSL JSON export; imported note and Better BibTeX features remain available.
+- **Calendar:** opt-in read-only HTTPS ICS subscriptions with deduplicated append-only import and optional periodic checks.
+- **Study:** choose FSRS-4.5 or existing SM-2, plus Anki-compatible TSV import/export.
+- **StoryLine:** interactive, repositionable relationship graph and explicit links between compendium notes.
+- **Enhancement Suite:** preview-confirmed batch find/replace with snapshots, live YAML diagnostics, and editable JSON tree for selected content.
+- **Dragger and media:** safe cross-note block transfer, responsive Markdown columns, navigable PDF page previews with native-viewer fallback.
+- **Accessibility:** OS speech synthesis with voice/rate controls and additional LanguageTool popup scroll protection.
+- [Integration audit and remaining gaps](docs/V10_7_INTEGRATIONS_AUDIT.pt-BR.md). OAuth/CalDAV bidirectional sync, actual PDF page raster thumbnails and Anki .apkg are **not** implemented.
 
 ## Version 10.6.1 — formatting toolbar in Reading view
 

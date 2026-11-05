@@ -601,3 +601,31 @@ Centered **bold** paragraph {c}
 - For a one-tap solution, use the **Align left**, **Center text or heading**, **Align right**, **Justify text**, or **Cycle line or heading alignment** commands. Assign a desktop hotkey or add them to the Obsidian mobile toolbar. Commands format the current line while preserving H1–H6.
 - The former ::l: / ::c: / ::r: and bracket syntax (for example, ::c[text]) remain recognized for existing notes.
 
+
+
+## 10.7 — Databases and columns
+
+Additional examples. Fields refer to Markdown note YAML properties; rollups follow `[[Note]]` links stored in `related`.
+
+```writer-database
+folder: Personagens
+columns: file, status, priority
+view: board
+group: status
+sort: priority
+order: desc
+formula: doublePriority = priority * 2
+rollup: scenePages = related.pages | sum
+limit: 100
+```
+
+```writer-columns
+## Notes
+- A
+- B
+
+---column---
+## References
+- C
+- D
+```

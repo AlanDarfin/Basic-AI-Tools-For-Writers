@@ -2,13 +2,24 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.6.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.7.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.7.0 — integrações avançadas
+
+- **Make.md:** bancos de notas Markdown em tabela/board, filtros, ordenação, fórmulas seguras e rollups de relações; edição por célula e CSV.
+- **Zotero:** API Web v3 opcional e somente leitura, importação de referências, chave temporária por consulta e exportação CSL JSON.
+- **Calendário:** assinaturas ICS HTTPS com importação sem sobrescrita, deduplicação e atualização periódica opcional.
+- **Estudos:** agendamento FSRS-4.5 ou SM-2 anterior, com importação/exportação TSV compatível com Anki.
+- **StoryLine:** grafo visual arrastável de relações do compêndio e inclusão de relações entre notas.
+- **Enhancement Suite:** busca/substituição em lote com prévia, confirmação e snapshots; diagnóstico YAML no editor; edição JSON em árvore.
+- **Dragger, mídia e TTS:** mover blocos entre notas com segurança, colunas responsivas, prévia de PDF por páginas e vozes locais do sistema; guarda de scroll do LanguageTool.
+- [Relatório de integração e pendências](V10_7_INTEGRATIONS_AUDIT.pt-BR.md). Não há autenticação OAuth, sincronização CalDAV bidirecional, geração de thumbnails PDF independentes nem leitura de `.apkg`.
 
 ## Versão 10.6.1 — barra de formatação no modo leitura
 

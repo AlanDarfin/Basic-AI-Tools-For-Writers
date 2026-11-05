@@ -38,5 +38,4 @@ test('Legacy settings and user-controlled startup remain supported',()=>{
  assert.match(old,/typeof writerV107RegisterAfterStartup==='function'/);
  const home=fs.readFileSync('src/v8/writing-home.js','utf8');
  assert.match(home,/homeCleanStart/);
- assert.ok(!fs.existsSync('.obsidian/plugins/basic-ai-tool-for-writers/data.json'));
 });

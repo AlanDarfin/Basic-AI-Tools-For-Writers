@@ -231,7 +231,21 @@ function writerV109BookRegisterProgress(plugin){
  };
  const doc=plugin.app.workspace.containerEl?.ownerDocument||(typeof document!=='undefined'?document:null);
  if(doc)plugin.registerDomEvent?.(doc,'scroll',onScroll,true);
- plugin.registerEvent?.(plugin.app.vault.on('rename',()=>{activePath='';}));
+ plugin.registerEvent?.(plugin.app.vault.on('rename',(file,oldPath)=>{
+  activePath='';
+  if(!oldPath||!file?.path||file.path===oldPath)return;
+  let changed=false;
+  if(cfg.singleNotes.includes(oldPath)){
+   cfg.singleNotes=cfg.singleNotes.map(path=>path===oldPath?file.path:path);changed=true;
+  }
+  if(Object.prototype.hasOwnProperty.call(cfg.readLocations,oldPath)){
+   cfg.readLocations[file.path]=cfg.readLocations[oldPath];delete cfg.readLocations[oldPath];changed=true;
+  }
+  if(cfg.library?.[oldPath]){
+   cfg.library[file.path]=cfg.library[oldPath];delete cfg.library[oldPath];changed=true;
+  }
+  if(changed)void plugin.saveSettings().catch(error=>console.warn('[basic] book path:',error));
+ }));
  plugin.registerEvent?.(plugin.app.vault.on('delete',()=>{activePath='';}));
  plugin.register?.(()=>clearTimeout(timer));
 }

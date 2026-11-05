@@ -163,9 +163,13 @@ function writerV10Confirm(plugin,title,description,action){
  modal.open();
 }
 async function writerV10TrashEmpty(plugin){
- const files=await writerV10TrashList(plugin,2000);
- for(const path of files)await writerV10TrashPermanentlyDelete(plugin,path);
- return files.length;
+ let count=0;
+ for(let pass=0;pass<10;pass++){
+  const files=await writerV10TrashList(plugin,1000);
+  if(!files.length)return count;
+  for(const path of files){await writerV10TrashPermanentlyDelete(plugin,path);count++;}
+ }
+ throw Error(writerUi('A operação atingiu o limite de segurança de 10 mil arquivos.','Reached the 10,000-file safety limit.'));
 }
 function writerV10TrashRows(plugin,host,limit=40){
  host.empty();host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Carregando lixeira interna…','Loading Obsidian trash…')});
@@ -248,6 +252,8 @@ function writerV10RenderZoteroWidget(view,parent){
  const host=view.card(parent,'zotero','Biblioteca Zotero','Zotero library');
  const files=(view.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
  host.createEl('p',{text:files.length+' '+writerUi('notas importadas','imported notes')});
+ const cite=host.createEl('button',{text:writerUi('Inserir citação…','Insert citation…')});
+ cite.addEventListener('click',()=>writerV10ZoteroPicker(view.plugin));
  for(const file of files.slice(0,4)){
   const button=host.createEl('button',{cls:'writer-v10-discovery-open',text:file.basename});
   button.addEventListener('click',()=>void view.app.workspace.getLeaf('tab').openFile(file));

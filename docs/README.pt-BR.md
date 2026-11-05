@@ -2,13 +2,19 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.4.9 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.4.10 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Atualização 10.4.10 — Resultados de pesquisa reorganizados no Android
+
+- A pesquisa deixou de renderizar os resultados como botões padrão do Obsidian, que recebiam estilos conflitantes e separavam os ícones do texto. Agora usa linhas próprias, compactas e compatíveis com temas e snippets CSS.
+- Opções repetidas, como **Subscrito**, aparecem uma única vez, com acessos independentes a **Barra de formatação** e **Extended Syntax**, por toque/clique ou teclado.
+- Removidas as regras de CSS duplicadas e conflitantes das versões anteriores. A lista continua rolável, sem alterar as configurações existentes, a Toolbar ou a sintaxe de alinhamento.
 
 ## Atualização 10.4.9 — Pesquisa, campos compactos e justificar com {j}
 

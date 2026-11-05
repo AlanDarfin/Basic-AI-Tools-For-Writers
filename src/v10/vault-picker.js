@@ -130,7 +130,7 @@ function writerV109RegisterScrollHints(plugin){
  };
  const scan=()=>{
   // Keep the old package ID stable, but never show the long legacy brand in UI.
-  for(const label of doc.querySelectorAll('.side-dock-ribbon-action,.community-plugin-item,.vertical-tab-nav-item,.plugin-item')){
+  for(const label of doc.querySelectorAll?.('.side-dock-ribbon-action,.community-plugin-item,.vertical-tab-nav-item,.plugin-item')||[]){
    for(const attr of ['title','aria-label']){
     const original=label.getAttribute?.(attr)||'';
     if(/^(?:Basic AI Tool for Writers|Basic AI)(?:: .*)?$/i.test(original))
@@ -139,7 +139,7 @@ function writerV109RegisterScrollHints(plugin){
    if(label.children?.length===0&&/^(Basic AI Tool for Writers|Basic AI)$/i.test(label.textContent?.trim()||''))
     label.textContent='basic';
   }
-  const elements=doc.querySelectorAll(selector);
+  const elements=doc.querySelectorAll?.(selector)||[];
   for(const el of Array.from(elements).slice(0,150))updateElement(el);
  };
  const schedule=()=>{clearTimeout(timer);timer=setTimeout(scan,100);};

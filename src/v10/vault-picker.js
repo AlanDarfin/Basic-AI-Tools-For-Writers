@@ -129,6 +129,16 @@ function writerV109RegisterScrollHints(plugin){
   el.dataset.writerScroll=max<=3?'none':left<=2?'start':left>=max-2?'end':'middle';
  };
  const scan=()=>{
+  // Keep the old package ID stable, but never show the long legacy brand in UI.
+  for(const label of doc.querySelectorAll('.side-dock-ribbon-action,.community-plugin-item,.vertical-tab-nav-item,.plugin-item')){
+   for(const attr of ['title','aria-label']){
+    const original=label.getAttribute?.(attr)||'';
+    if(/^(?:Basic AI Tool for Writers|Basic AI)(?:: .*)?$/i.test(original))
+     label.setAttribute(attr,original.replace(/^Basic AI Tool for Writers|^Basic AI/i,'basic'));
+   }
+   if(label.children?.length===0&&/^(Basic AI Tool for Writers|Basic AI)$/i.test(label.textContent?.trim()||''))
+    label.textContent='basic';
+  }
   const elements=doc.querySelectorAll(selector);
   for(const el of Array.from(elements).slice(0,150))updateElement(el);
  };

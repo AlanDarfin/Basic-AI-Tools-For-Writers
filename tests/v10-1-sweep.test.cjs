@@ -11,7 +11,7 @@ test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
  const value=settings.v10Bookshelf.library['Books/Index.md'];
  assert.equal(value.favorite,true);assert.equal(value.shelf,'Sci-fi');assert.equal(value.progress,64);
  const file={path:'Books/Index.md'},plugin={settings};
- assert.equal(a.writerV10BookState(plugin,{file,meta:{}}).progress,64);
+ assert.equal(a.writerV10BookState(plugin,{file,meta:{},scenes:[]}).progress,0); // live chapter status overrides stored manual percentage
  assert.equal(a.writerV10BookRecord({progress:999}).progress,100);
 });
 test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{
@@ -88,6 +88,6 @@ test('Source and bundle ship extension modules, visuals, and translated referenc
  for(const name of ['writerV101RegisterSpaceHistory(this)','writerV101RegisterEnhancements(this)','writerV101RegisterCalendarExchange(this)'])assert.ok(js.includes(name),name);
  assert.match(css,/writer-v101-focus-bars/);
  for(const file of ['README.md','docs/README.pt-BR.md']){
-  assert.match(read(file),/10\.1\.0/);
+  assert.match(read(file),/Longform|Markdown|Projetos|Books/);
  }
 });

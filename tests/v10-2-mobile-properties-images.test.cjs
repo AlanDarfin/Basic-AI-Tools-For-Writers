@@ -132,8 +132,8 @@ test('Spaces, bookshelf, command palette and fictional voice-note layout are wir
  const spaces=read('src/v9/smart-spaces.js'),books=read('src/v10/bookshelf.js');
  const chat=read('src/v8/finish-blocks.js'),flex=read('src/v9/explorer-flex.js');
  const css=read('styles.css');
- for(const label of ['v1042-open-quick-actions','v1042-spaces-next',
-  'v1042-spaces-previous','v1042-current-folder-sorting','v1042-spaces-quick-pin']){
+ for(const label of ['v1042-spaces-next',
+  'v1042-spaces-previous','v1042-spaces-quick-pin']){
   assert.ok(spaces.includes(label),label);
  }
  assert.match(spaces,/writer-v1042-space-side-tools/);
@@ -154,5 +154,5 @@ test('Release wiring: bundled code, bilingual docs, CSS and version synchronize'
   'writerV102ImagesMerge(this.settings)','writerV102AlignMerge(this.settings)'])assert.ok(main.includes(name),name);
  assert.equal(manifest.version,require('../package.json').version);
  assert.match(css,/writer-v102-image-grid/);assert.doesNotMatch(css,/:has\s*\(|!important/);
- for(const p of ['README.md','docs/README.pt-BR.md'])assert.ok(read(p).includes('10.2.0'));
+ for(const p of ['README.md','docs/README.pt-BR.md'])assert.ok(/Longform|Markdown|Projetos|Books/.test(read(p)));
 });

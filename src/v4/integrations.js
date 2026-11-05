@@ -480,9 +480,19 @@ class WriterV4Extras{
    for(const sign of ['@','#','§','+','!'])d.addOption(sign,sign);
    d.setValue(cfg.mention.sign).onChange(async v=>{cfg.mention.sign=v;await this.plugin.saveSettings();});
   });
-  new Setting(panel).setName(writerUi('Pasta das menções','Mention folder')).addText(t=>t.setPlaceholder('Characters').setValue(cfg.mention.folder).onChange(async v=>{
-   cfg.mention.folder=v;await this.plugin.saveSettings();
-  }));
+  new Setting(panel).setName(writerUi('Pasta das menções','Mention folder'))
+   .addText(t=>t.setPlaceholder(writerUi('Buscar pasta…','Search folder…')).setValue(cfg.mention.folder).onChange(async v=>{
+    cfg.mention.folder=v;await this.plugin.saveSettings();
+   }))
+   .addButton(button=>button.setButtonText(writerUi('Pesquisar…','Browse…')).onClick(()=>{
+    const plugin=this.plugin;
+    class FolderPicker extends require('obsidian').FuzzySuggestModal{
+     getItems(){return plugin.app.vault.getAllLoadedFiles?.().filter(f=>f.children&&f.path!=='/')||[];}
+     getItemText(folder){return folder.path;}
+     onChooseItem(folder){cfg.mention.folder=folder.path;void plugin.saveSettings();panel.querySelector('input[placeholder="Buscar pasta…"],input[placeholder="Search folder…"]')?.setAttribute('value',folder.path);}
+    }
+    new FolderPicker(plugin.app).open();
+   }));
   new Setting(panel).setName(writerUi('Inserção de menções','Mention insertion')).addDropdown(d=>{
    d.addOption('link',writerUi('Wikilink','Wikilink')).addOption('text',writerUi('Apenas texto','Plain text'));
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});

@@ -24,7 +24,7 @@ test('v10 bookshelf uses existing Longform indices without duplicating books',()
  const api=vm.runInNewContext(fs.readFileSync('src/v10/bookshelf.js','utf8')+
   '\n({writerV10BookshelfMerge,writerV10BookshelfProjects,writerV10BookshelfSort})',
   {TFile,writerUi:pt=>pt,longformIndex:(value)=>({file:value,title:'Novel',scenes:[],meta:{}})});
- const plugin={app:{vault:{getMarkdownFiles:()=>[file]}}};
+ const plugin={settings:{v10Bookshelf:{standalone:[]}},app:{vault:{getMarkdownFiles:()=>[file]}}};
  assert.equal(api.writerV10BookshelfProjects(plugin).length,1);
  assert.equal(api.writerV10BookshelfSort(api.writerV10BookshelfProjects(plugin),'title')[0].title,'Novel');
  assert.equal(api.writerV10BookshelfMerge({}).enabled,true);

@@ -395,8 +395,16 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
   const textSetting=new Setting(content).setName('Markdown').addTextArea(t=>{t.inputEl.rows=7;t.setValue(data.text)
    .onChange(v=>{data.text=v.slice(0,16000);});});
   const fileSetting=new Setting(content).setName(writerUi('Nota modelo','Template note')).addText(t=>t.setValue(data.file)
-   .setPlaceholder('Templates/Book footer.md').onChange(v=>{data.file=v.slice(0,500);}));
-  const sourceUI=()=>{
+    .setPlaceholder(writerUi('Buscar nota modelo…','Search template note…')).onChange(v=>{data.file=v.slice(0,500);}))
+    .addButton(button=>button.setButtonText(writerUi('Pesquisar…','Browse…')).onClick(()=>{
+     class TemplatePicker extends require('obsidian').FuzzySuggestModal{
+      getItems(){return plugin.app.vault.getMarkdownFiles?.()||[];}
+      getItemText(file){return file.path;}
+      onChooseItem(file){data.file=file.path;const input=fileSetting.settingEl.querySelector('input');if(input)input.value=file.path;}
+     }
+     new TemplatePicker(plugin.app).open();
+    }));
+   const sourceUI=()=>{
    textSetting.settingEl.style.display=data.source==='text'?'':'none';
    fileSetting.settingEl.style.display=data.source==='file'?'':'none';
   };

@@ -170,6 +170,19 @@ function writerV9SpaceEditor(plugin,initial,save){
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
   field('folder','Pasta (opcional)','Folder (optional)');
+   const pickPath=(foldersOnly,onSelect)=>{
+    class SpacePathPicker extends require('obsidian').FuzzySuggestModal{
+     getItems(){return (plugin.app.vault.getAllLoadedFiles?.()||[]).filter(item=>foldersOnly?Boolean(item.children):item.extension==='md'||Boolean(item.children));}
+     getItemText(item){return item.path;}
+     onChooseItem(item){onSelect(item.path);modal.close();writerV9SpaceEditor(plugin,draft,save);}
+    }
+    const picker=new SpacePathPicker(plugin.app);
+    picker.setPlaceholder(writerUi('Pesquisar arquivos e pastas…','Search files and folders…'));
+    picker.open();
+   };
+   new Setting(root).setName(writerUi('Pesquisar pasta','Find folder'))
+    .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(true,path=>{draft.folder=path;})));
+
   new Setting(root).setName(writerUi('Usar pasta da nota aberta','Use the current note folder'))
    .setDesc(writerUi('Preenche a pasta sem mover arquivos.','Sets the folder path without moving files.'))
    .addButton(b=>b.setButtonText(writerUi('Selecionar pasta atual','Use current folder')).onClick(()=>{
@@ -188,7 +201,11 @@ function writerV9SpaceEditor(plugin,initial,save){
    .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
     draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
-  field('tag','Tag (opcional)','Tag (optional)');
+  new Setting(root).setName(writerUi('Pesquisar nota ou pasta para incluir','Find note or folder to include'))
+    .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(false,path=>{
+     draft.includePaths=[...new Set([...(draft.includePaths||[]),path])];
+    })));
+   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
   field('groupBy','Agrupar quadro por propriedade','Board group property');
@@ -483,32 +500,6 @@ function writerV9RegisterSpaces(plugin){
  plugin.addCommand({id:'v9-spaces-open',name:writerUi('Spaces: abrir coleções','Spaces: open collections'),
   callback:()=>writerV9SpaceModal(plugin)});
 
- // Commands are usable from the palette and from Obsidian's mobile toolbar.
- const openQuickActions=event=>{
-  const menu=new Menu(plugin.app);
-  const item=(pt,en,icon,callback)=>menu.addItem(entry=>entry.setTitle(writerUi(pt,en))
-   .setIcon(icon).onClick(callback));
-  item('Gerenciar Spaces','Manage Spaces','layers',()=>writerV9SpaceModal(plugin));
-  item('Abrir biblioteca Longform','Open Longform bookshelf','library',
-   ()=>plugin.writerV10OpenBookshelf?.());
-  item('Ordenação global do explorador','Global Explorer sorting','list-ordered',
-   ()=>writerV1043OpenNativeSortMenu(plugin));
-  item('Mostrar / ocultar arquivos escondidos','Show / hide hidden files','eye',async()=>{
-   const flex=plugin.settings.v91Flex;
-   if(!flex)return;
-   flex.showHidden=!flex.showHidden;
-   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
-  });
-  item('Centralizar linha ou título','Center line or heading','align-center',()=>{
-   plugin.app.commands?.executeCommandById?.(plugin.manifest.id+':v102-align-center');
-  });
-  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
-  else menu.showAtPosition({x:90,y:120});
- };
- plugin.writerV1042QuickActions=openQuickActions;
- plugin.addCommand({id:'v1042-open-quick-actions',
-  name:writerUi('Basic: abrir atalhos rápidos','Basic: open quick actions'),
-  callback:()=>openQuickActions()});
  plugin.addCommand({id:'v1042-spaces-next',
   name:writerUi('Spaces: próxima coleção','Spaces: next collection'),
   callback:()=>{
@@ -525,9 +516,6 @@ function writerV9RegisterSpaces(plugin){
    const index=spaces.findIndex(s=>s.id===plugin.settings.v9Spaces.activeId);
    void writerV9215SelectSpace(plugin,spaces[(index<0?0:index+spaces.length-1)%spaces.length].id);
   }});
- plugin.addCommand({id:'v1042-current-folder-sorting',
-  name:writerUi('Explorador: abrir ordenação global','Explorer: open global sorting'),
-  callback:()=>writerV1043OpenNativeSortMenu(plugin)});
  plugin.addCommand({id:'v1042-spaces-quick-pin',
   name:writerUi('Spaces: fixar ou desafixar nota atual','Spaces: pin or unpin current note'),
   callback:async()=>{

@@ -170,6 +170,19 @@ function writerV9SpaceEditor(plugin,initial,save){
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
   field('folder','Pasta (opcional)','Folder (optional)');
+   const pickPath=(foldersOnly,onSelect)=>{
+    class SpacePathPicker extends require('obsidian').FuzzySuggestModal{
+     getItems(){return (plugin.app.vault.getAllLoadedFiles?.()||[]).filter(item=>foldersOnly?Boolean(item.children):item.extension==='md'||Boolean(item.children));}
+     getItemText(item){return item.path;}
+     onChooseItem(item){onSelect(item.path);modal.close();writerV9SpaceEditor(plugin,draft,save);}
+    }
+    const picker=new SpacePathPicker(plugin.app);
+    picker.setPlaceholder(writerUi('Pesquisar arquivos e pastas…','Search files and folders…'));
+    picker.open();
+   };
+   new Setting(root).setName(writerUi('Pesquisar pasta','Find folder'))
+    .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(true,path=>{draft.folder=path;})));
+
   new Setting(root).setName(writerUi('Usar pasta da nota aberta','Use the current note folder'))
    .setDesc(writerUi('Preenche a pasta sem mover arquivos.','Sets the folder path without moving files.'))
    .addButton(b=>b.setButtonText(writerUi('Selecionar pasta atual','Use current folder')).onClick(()=>{
@@ -188,7 +201,11 @@ function writerV9SpaceEditor(plugin,initial,save){
    .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
     draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
-  field('tag','Tag (opcional)','Tag (optional)');
+  new Setting(root).setName(writerUi('Pesquisar nota ou pasta para incluir','Find note or folder to include'))
+    .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(false,path=>{
+     draft.includePaths=[...new Set([...(draft.includePaths||[]),path])];
+    })));
+   field('tag','Tag (opcional)','Tag (optional)');
   field('property','Propriedade YAML (opcional)','YAML property (optional)');
   field('value','Valor da propriedade (opcional)','Property value (optional)');
   field('groupBy','Agrupar quadro por propriedade','Board group property');

@@ -87,7 +87,7 @@ test('No ribbon shortcut popup or redundant Spaces/Books ribbon icons',()=>{
   const source=read(name);
   assert.doesNotMatch(source,/addRibbonIcon\s*\?\./,name);
  }
- assert.match(read('src/v9/smart-spaces.js'),/id:'v1042-open-quick-actions'/);
+ assert.doesNotMatch(read('src/v9/smart-spaces.js'),/id:'v1042-open-quick-actions'/);
  assert.match(read('src/v9/spaces-dock.js'),/id:'v93-spaces-manage'/);
  assert.match(read('src/v10/bookshelf.js'),/id:'v10-open-bookshelf'/);
 });

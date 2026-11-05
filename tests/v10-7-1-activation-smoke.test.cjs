@@ -8,6 +8,7 @@ function boot(globals={}){
  const calls=[],timeouts=[],logs=[];
  const env={
   console:{warn:(...a)=>logs.push(['warn',...a]),error:(...a)=>logs.push(['error',...a]),info:(...a)=>logs.push(['info',...a])},
+  writerUi:(pt,en)=>en,
   Setting:class {
    setName(){return this;}setDesc(){return this;}
    addToggle(fn){fn({setValue(){return this;},onChange(){return this;}});return this;}

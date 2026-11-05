@@ -89,7 +89,16 @@ function writerV106DragMove(source,fromStart,fromEnd,dest,indent=0){
  }
  const lo=Math.min(start,target),hi=Math.max(end,target);
  const between=target<start?lines.slice(target,start):lines.slice(end,target);
- const replacement=target<start?[...moved,...between]:[...between,...moved];
+ let replacement;
+ if(target<start){
+  const middle=[...between],separators=[];
+  while(middle.length&&!middle[middle.length-1].trim())separators.unshift(middle.pop());
+  replacement=[...moved,...separators,...middle];
+ }else{
+  const middle=[...between],separators=[];
+  while(middle.length&&!middle[0].trim())separators.push(middle.shift());
+  replacement=[...middle,...separators,...moved];
+ }
  return {start:lo,end:hi,lines:replacement,sourceLength:hi-lo,
   insertion:target<start?target:target-(end-start),text:replacement.join('\n')};
 }
@@ -122,13 +131,13 @@ function writerV106DragRegister(plugin){
  const doc=plugin.app.workspace.containerEl?.ownerDocument;
  if(!doc)return;
  const isMobile=()=>Boolean(platform?.isMobile||plugin.app.isMobile);
- const enabled=()=>cfg.enabled&&writerModuleOn(plugin,'writingHome')!==false&&!writerV106DragNativeConflict(plugin);
+ const enabled=()=>cfg.enabled&&!writerV106DragNativeConflict(plugin);
  const handle=doc.createElement('button'),indicator=doc.createElement('div');
  handle.type='button';handle.className='writer-v106-drag-handle';
  handle.setAttribute('aria-label',writerUi('Arrastar bloco','Drag block'));
  handle.style.display='none';indicator.className='writer-v106-drag-indicator';indicator.style.display='none';
  doc.body.appendChild(handle);doc.body.appendChild(indicator);
- let active=null,drag=null,pressTimer=null,hideTimer=null,selection=null;
+ let active=null,drag=null,pressTimer=null,hideTimer=null,selection=null,sourceNode=null,targetNode=null;
  const viewFor=node=>{
   const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
   if(!view?.editor||!view.containerEl?.contains(node)||!view.containerEl?.querySelector('.cm-content'))return null;
@@ -145,6 +154,8 @@ function writerV106DragRegister(plugin){
  };
  applyIcon();
  const clear=()=>{
+  sourceNode?.classList.remove('writer-v106-drag-source');sourceNode=null;
+  targetNode?.classList.remove('writer-v106-drag-target');targetNode=null;
   drag=null;active=null;selection=null;handle.style.display='none';indicator.style.display='none';
   plugin.app.workspace.containerEl?.classList.remove('writer-v106-dragging');
  };
@@ -188,6 +199,9 @@ function writerV106DragRegister(plugin){
   drag={...data,target:data.range.end,destRect:null,origin,indent:0};
   plugin.app.workspace.containerEl?.classList.add('writer-v106-dragging');
   handle.classList.add('is-dragging');
+  const coords=view.editor.coordsAtPos?.({line:data.range.start,ch:0});
+  sourceNode=coords?doc.elementFromPoint?.(coords.left+6,coords.top+4)?.closest?.('.cm-line'):null;
+  if(cfg.highlight)sourceNode?.classList.add('writer-v106-drag-source');
   return true;
  };
  const targetAt=e=>{
@@ -196,6 +210,16 @@ function writerV106DragRegister(plugin){
   const pos=ed.posAtCoords?.({left:e.clientX,top:e.clientY});
   if(!pos)return;
   const lines=ed.getValue().split('\n'),block=writerV106DragBlockAt(lines,pos.line);
+  const node=doc.elementFromPoint?.(e.clientX,e.clientY)?.closest?.('.cm-line');
+  if(targetNode&&targetNode!==node)targetNode.classList.remove('writer-v106-drag-target');
+  targetNode=node||null;
+  if(cfg.highlight&&targetNode&&targetNode!==sourceNode)targetNode.classList.add('writer-v106-drag-target');
+  const scroller=view.containerEl.querySelector('.cm-scroller');
+  if(scroller){
+   const rect=scroller.getBoundingClientRect();
+   if(e.clientY<rect.top+30)scroller.scrollTop-=12;
+   else if(e.clientY>rect.bottom-30)scroller.scrollTop+=12;
+  }
   if(!block)return;
   const targetLine=block.start;
   drag.target=targetLine>=drag.range.start&&targetLine<drag.range.end?drag.range.end:targetLine;
@@ -219,6 +243,8 @@ function writerV106DragRegister(plugin){
    moved=writerV106DragApply(ed,result);
   }catch(error){console.warn('[Basic AI] Move block:',error);new Notice(writerUi('Não foi possível mover o bloco.','Could not move the block.'));}
   drag=null;selection=null;indicator.style.display='none';handle.classList.remove('is-dragging');
+  sourceNode?.classList.remove('writer-v106-drag-source');sourceNode=null;
+  targetNode?.classList.remove('writer-v106-drag-target');targetNode=null;
   plugin.app.workspace.containerEl?.classList.remove('writer-v106-dragging');
   if(moved){handle.style.display='none';active=null;}
  };
@@ -288,6 +314,7 @@ function writerV106DragRegister(plugin){
   const view=line&&viewFor(line);
   if(!view)return;
   const x=e.clientX,y=e.clientY;
+  plugin._writerV106TouchOrigin={x,y};
   clearTimeout(pressTimer);
   pressTimer=setTimeout(()=>{
    pressTimer=null;
@@ -297,14 +324,17 @@ function writerV106DragRegister(plugin){
   },420);
  };
  const release=e=>{
-  clearTimeout(pressTimer);pressTimer=null;
+  clearTimeout(pressTimer);pressTimer=null;plugin._writerV106TouchOrigin=null;
   if(drag){e.preventDefault?.();finishDrag();}
  };
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointermove',pointermove,true);
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointerdown',pointerdown,true);
- plugin.registerDomEvent(doc,'pointermove',e=>{if(pressTimer&&drag===null&&e.buttons===1){}if(drag)targetAt(e);},true);
+ plugin.registerDomEvent(doc,'pointermove',e=>{
+  if(pressTimer&&e.pointerType==='touch'){const origin=plugin._writerV106TouchOrigin;if(origin&&Math.hypot(origin.x-e.clientX,origin.y-e.clientY)>12){clearTimeout(pressTimer);pressTimer=null;}}
+  if(drag)targetAt(e);
+ },true);
  plugin.registerDomEvent(doc,'pointerup',release,true);
- plugin.registerDomEvent(doc,'pointercancel',()=>{clearTimeout(pressTimer);pressTimer=null;if(drag)finishDrag();},true);
+ plugin.registerDomEvent(doc,'pointercancel',()=>{clearTimeout(pressTimer);pressTimer=null;clear();},true);
  plugin.registerDomEvent(handle,'contextmenu',e=>{e.preventDefault();showMenu(e);});
  plugin.registerDomEvent(handle,'click',e=>{if(!drag&&isMobile())showMenu(e);});
  plugin.registerDomEvent(doc,'keydown',e=>{if(e.key==='Escape'&&drag){clear();}});

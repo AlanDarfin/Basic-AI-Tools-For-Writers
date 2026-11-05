@@ -2,13 +2,24 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.7.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.8.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.8.0 — interface organizada e integrações recuperadas
+
+- **Ribbon:** removido o menu de atalhos rápidos e os botões duplicados de Spaces e Biblioteca Longform; os comandos continuam na paleta e Spaces permanece no rodapé do explorador.
+- **Notas relacionadas:** somente painel lateral, com cartões que não se sobrepõem, títulos claros, caminho encurtado e botão separado de link. Widget da homepage removido.
+- **Lixeira:** somente widget da homepage: atualizar, restaurar, excluir com confirmação, expandir e esvaziar com confirmação. Painéis antigos restaurados são fechados.
+- **Meus livros:** corrigida a renderização ausente e a lista de widgets permitidos. O widget mostra até quatro livros com capas, progresso e acesso à biblioteca. Passa a ser visível após migração.
+- **Biblioteca:** cartões responsivos, campos com rótulos e estrela preenchida quando favoritada, usando o mesmo ícone configurado para favoritos no explorador.
+- **Funções 10.7 recuperadas:** nove módulos avançados voltaram ao bundle: bancos Make.md, Zotero via API, ICS, FSRS, StoryLine, edição JSON/YAML, TTS local e Dragger entre notas. Inicialização separada e protegida, com modo de compatibilidade para desativar o grupo sem perder preferências.
+- Mantida a correção de ativação `setIcon` da 10.7.3; novas conexões externas são opcionais. [Relatório completo](V10_8_UI_REVIEW.pt-BR.md).
+- Visual e gestos ainda precisam de verificação no Obsidian real, especialmente no Android.
 
 ## Versão 10.7.3 — correção de ativação (`setIcon`)
 

@@ -140,7 +140,8 @@ test('Spaces, bookshelf, command palette and fictional voice-note layout are wir
  assert.match(css,/writer-v9-space-side-nav/);
  assert.match(css,/writer-v1042-bookshelf-modal/);
  assert.match(books,/writer-v1042-bookshelf-sort/);
- assert.match(books,/addRibbonIcon/);
+ assert.match(books,/id:'v10-open-bookshelf'/);
+  assert.doesNotMatch(books,/addRibbonIcon/);
  assert.match(chat,/Math\.random\(\)/);
  assert.match(chat,/bar\.style\.height/);
  assert.match(flex,/writerFlexOrderHost/);

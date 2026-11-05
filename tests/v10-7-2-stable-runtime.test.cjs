@@ -23,14 +23,15 @@ test('Recovery bundle retains every pre-10.7 core and historical source',()=>{
  assert.ok(main.includes('writerV106HomeRegisterStartup'));
  assert.ok(main.includes('writerV1061ToolbarEditingMode'));
 });
-test('Known 10.7 candidates are quarantined in production, not executed at plugin activation',()=>{
+test('Advanced 10.7 source modules are restored, while startup remains deferred and isolated',()=>{
  for(const name of quarantined){
-  assert.ok(!active.includes(name),name+' must not be active in emergency build');
+  assert.ok(active.includes(name),name+' restored into the 10.8 bundle');
   assert.ok(build.includes("'"+name+"'"),name+' must remain recoverable');
   assert.ok(fs.existsSync('src/'+name+'.js'),name+' must not be deleted');
-  assert.ok(!main.includes('// v3 module: src/'+name+'.js'),name+' must not execute in main.js');
+  assert.ok(main.includes('// v3 module: src/'+name+'.js'),name+' must be in main.js');
  }
- assert.ok(!main.includes('function writerV107Register(plugin)'), 'experimental modules should not run in production');
+ assert.ok(main.includes('function writerV107Register(plugin)'), 'restored optional integration entrypoint missing');
+ assert.ok(main.includes('function writerV107RegisterAfterStartup(plugin)'), 'deferred activation guard missing');
 });
 test('Legacy settings and user-controlled startup remain supported',()=>{
  const old=fs.readFileSync('src/v10/enhancements.js','utf8');

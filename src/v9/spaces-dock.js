@@ -207,9 +207,7 @@ function writerV9216SpaceDockRegister(plugin){
  const refresh=()=>{clearTimeout(timer);timer=setTimeout(attach,100);};
  plugin.writerV9216SpacesDockRefresh=refresh;
  plugin.addCommand?.({id:'v93-spaces-manage',name:writerUi('Spaces: gerenciar pelo explorador','Spaces: manage from File Explorer'),callback:()=>void openManager()});
- // Mobile exposes Spaces even when the explorer's bottom dock is off-screen.
- const mobileRibbon=plugin.addRibbonIcon?.('layers',writerUi('Abrir Spaces','Open Spaces'),()=>void openManager());
- mobileRibbon?.addClass?.('writer-v93-mobile-spaces-entry');
+ // Spaces remain accessible through the explorer dock and command palette.
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  plugin.register?.(()=>{

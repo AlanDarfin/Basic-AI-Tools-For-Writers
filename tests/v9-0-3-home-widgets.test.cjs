@@ -14,7 +14,7 @@ test('old home layout migrates to configurable widgets without enabling extras',
  assert.equal(cfg.homeOrder[0],'continue');
  assert.equal(cfg.homeOrder[1],'calendar');
  assert.ok(!cfg.homeOrder.includes('search'));
- assert.deepEqual(Array.from(cfg.homeHidden),['activity','random','tags','goal','gallery','quotes','today','books']);
+ assert.deepEqual(Array.from(cfg.homeHidden),['activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero']);
  assert.equal(cfg.homeWordGoal,500);
 });
 test('visible and hidden widgets are retained on subsequent reloads',()=>{

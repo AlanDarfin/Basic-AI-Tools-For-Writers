@@ -2,12 +2,23 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.7.3 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.8.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.8.0 — cleaner UI and restored advanced integrations
+
+- **Ribbon:** removed the redundant Basic quick-actions popup and extra Books/Spaces ribbon entries; the commands and Spaces explorer dock remain.
+- **Related Notes:** sidebar panel only, with responsive non-overlapping cards, readable titles, truncated paths and a clear link action. Removed its Homepage widget.
+- **Trash:** Homepage widget only, with refresh, restore, confirmed deletion, expansion and confirmed empty. Old restored Trash sidebars are detached; no new sidebar can be opened.
+- **Books widget:** connected the previously missing renderer, fixed widget allowlist and saved layouts, and displays up to four favorite/recent Longform books with covers and progress. The widget becomes visible after migration.
+- **Bookshelf:** redesigned responsive library cards, labelled status/progress/shelf controls, and filled favorite stars matching the icon configured in File Explorer.
+- **Advanced features restored:** re-enabled all nine 10.7 source modules (Make.md-like databases, Zotero API, ICS, FSRS, StoryLine graph, JSON/YAML editors, local speech and cross-note block movement). Initialization is deferred and individually isolated; the compatibility switch lets users disable the group without losing settings.
+- **Activation guard preserved:** the 10.7.3 `setIcon` fix remains, and startup smoke tests were expanded. External Zotero/ICS connections are opt-in; no automatic manuscript upload.
+- [Full UI and integration audit](docs/V10_8_UI_REVIEW.pt-BR.md). Runtime UI testing in Obsidian desktop/Android is still recommended.
 
 ## Version 10.7.3 — fix plugin activation (`setIcon`)
 

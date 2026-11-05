@@ -55,53 +55,74 @@ function writerV10BookshelfSort(projects,sort,plugin){
  if(sort==='series')return books.sort((a,b)=>String(a.meta?.series||'').localeCompare(String(b.meta?.series||''))||title(a,b));
  return books.sort(title);
 }
+function writerV10BookFavoriteIcon(plugin){
+ const configured=plugin.settings?.v92Explorer?.favoriteIcon;
+ return typeof configured==='string'&&/^[a-z][a-z0-9-]{0,38}$/.test(configured)?configured:'star';
+}
 function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{}){
- const card=parent.createDiv({cls:'writer-v10-book-card'});
- const btn=card.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),
-  attr:{type:'button','aria-label':writerUi('Abrir livro: ','Open book: ')+project.title}});
+ const record=writerV10BookState(plugin,project);
+ const card=parent.createDiv({cls:'writer-v10-book-card writer-v108-book-card'+(compact?' is-compact':'')});
+ card.classList.toggle('is-favorite',record.favorite);
+ const btn=card.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),attr:{
+  type:'button','aria-label':writerUi('Abrir livro: ','Open book: ')+project.title
+ }});
  const cover=btn.createDiv({cls:'writer-v10-book-cover'});
  const image=writerV10BookCover(plugin,project);
  if(image)cover.createEl('img',{attr:{src:image,alt:'',loading:'lazy',decoding:'async'}});
  else {const glyph=cover.createSpan();require('obsidian').setIcon?.(glyph,'book-open');}
  const data=btn.createDiv({cls:'writer-v10-book-info'});
- data.createEl('strong',{text:project.title});
+ const title=data.createEl('strong',{cls:'writer-v108-book-title',text:project.title});
  const series=String(project.meta?.series||project.meta?.subtitle||'').slice(0,100);
  if(series&&!compact)data.createSpan({cls:'writer-v10-book-series',text:series});
- const count=writerV10BookWordProgress(plugin,project),record=writerV10BookState(plugin,project);
+ const counts=writerV10BookWordProgress(plugin,project);
+ data.createSpan({cls:'writer-v10-book-count',text:counts.chapters+' '+writerUi('capítulos','chapters')});
  if(plugin.settings.v10Bookshelf?.showProgress!==false){
-  data.createSpan({cls:'writer-v10-book-count',text:count.chapters+' '+writerUi('capítulos','chapters')+' · '+record.progress+'%'});
-  const bar=data.createEl('progress',{cls:'writer-v10-reading-progress',attr:{max:'100',value:String(record.progress),'aria-label':writerUi('Progresso de leitura','Reading progress')}});
+  const reading=data.createDiv({cls:'writer-v108-book-progress'});
+  reading.createSpan({text:writerUi('Leitura','Reading')});
+  reading.createEl('strong',{text:record.progress+'%'});
+  data.createEl('progress',{cls:'writer-v10-reading-progress',attr:{max:'100',value:String(record.progress),'aria-label':writerUi('Progresso de leitura','Reading progress')}});
  }
  btn.addEventListener('click',async()=>{
   await plugin.openProjects('project');
   const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
   if(view){view.selected=project.file.path;await view.render?.();}
  });
- const actions=card.createDiv({cls:'writer-v10-book-actions'});
- const favorite=actions.createEl('button',{attr:{type:'button','aria-pressed':String(record.favorite),
-  'aria-label':writerUi('Favoritar livro','Favorite book')}});
- require('obsidian').setIcon?.(favorite,record.favorite?'star':'star-off');
+ const favorite=card.createEl('button',{cls:'writer-v108-book-favorite',attr:{
+  type:'button','aria-pressed':String(record.favorite),
+  'aria-label':writerUi(record.favorite?'Remover livro dos favoritos':'Favoritar livro',
+   record.favorite?'Remove book from favorites':'Favorite book'),
+  title:writerUi(record.favorite?'Desfavoritar':'Favoritar',record.favorite?'Unfavorite':'Favorite')
+ }});
+ require('obsidian').setIcon?.(favorite,writerV10BookFavoriteIcon(plugin));
  favorite.addEventListener('click',async()=>{
   await writerV10BookSaveState(plugin,project,{...record,favorite:!record.favorite});
   redraw();
  });
  if(!compact){
-  const stat=actions.createEl('select',{attr:{'aria-label':writerUi('Estado da leitura','Reading status')}});
+  const actions=card.createDiv({cls:'writer-v10-book-actions writer-v108-book-fields'});
+  const field=(pt,en,kind)=>{const root=actions.createDiv({cls:'writer-v108-book-field writer-v108-book-field-'+kind});
+   root.createSpan({text:writerUi(pt,en)});return root;};
+  const statusField=field('Estado','Status','status');
+  const stat=statusField.createEl('select',{attr:{'aria-label':writerUi('Estado da leitura','Reading status')}});
   for(const [value,pt,en] of [['planned','Planejado','Planned'],['reading','Lendo','Reading'],['paused','Pausado','Paused'],['finished','Concluído','Finished']]){
    const opt=stat.createEl('option',{text:writerUi(pt,en)});opt.value=value;
   }
   stat.value=record.status;
-  stat.addEventListener('change',async()=>{const progress=stat.value==='finished'?100:record.progress;
-   await writerV10BookSaveState(plugin,project,{...record,status:stat.value,progress});redraw();
+  stat.addEventListener('change',async()=>{
+   await writerV10BookSaveState(plugin,project,{...record,status:stat.value,progress:stat.value==='finished'?100:record.progress});redraw();
   });
-  const percent=actions.createEl('input',{attr:{type:'number',min:'0',max:'100',step:'5',value:String(record.progress),
+  const progressField=field('Leitura (%)','Reading (%)','progress');
+  const percent=progressField.createEl('input',{attr:{type:'number',min:'0',max:'100',step:'5',value:String(record.progress),
    'aria-label':writerUi('Progresso de leitura em porcentagem','Reading progress percent')}});
   percent.addEventListener('change',async()=>{
    await writerV10BookSaveState(plugin,project,{...record,progress:Math.max(0,Math.min(100,Number(percent.value)||0))});redraw();
   });
-  const shelf=actions.createEl('input',{attr:{type:'text',value:record.shelf,placeholder:writerUi('Estante / gênero','Shelf / genre'),
+  const shelfField=field('Estante','Shelf','shelf');
+  const shelf=shelfField.createEl('input',{attr:{type:'text',value:record.shelf,placeholder:writerUi('Gênero ou coleção','Genre or collection'),
    maxlength:'60','aria-label':writerUi('Estante deste livro','Book shelf')}});
-  shelf.addEventListener('change',async()=>{await writerV10BookSaveState(plugin,project,{...record,shelf:shelf.value});redraw();});
+  shelf.addEventListener('change',async()=>{
+   await writerV10BookSaveState(plugin,project,{...record,shelf:shelf.value});redraw();
+  });
  }
  return card;
 }
@@ -113,6 +134,8 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  if(!projects.length){
   wrapper.createEl('p',{cls:'setting-item-description',text:writerUi('Nenhum índice Longform encontrado. Crie um livro em Projetos.','No Longform indices found. Create a book in Projects.')});return wrapper;
  }
+ const summary=wrapper.createDiv({cls:'writer-v108-library-summary'});
+ summary.createEl('p',{text:writerUi('Organize suas histórias, acompanhe o progresso e encontre o próximo capítulo.','Organize stories, track progress and find your next chapter.')});
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
@@ -176,14 +199,24 @@ function writerV10OpenBookshelf(plugin){
  modal.open();
 }
 function writerV10RenderBookshelfWidget(view,parent){
- const plugin=view.plugin;
+ const plugin=view.plugin,wrapper=parent.createDiv({cls:'writer-v108-books-widget'});
+ const toolbar=wrapper.createDiv({cls:'writer-v108-books-widget-toolbar'});
+ const projects=writerV10BookshelfProjects(plugin);
+ toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
+ toolbar.createEl('button',{text:writerUi('Ver biblioteca','View library'),attr:{type:'button'}})
+  .addEventListener('click',()=>writerV10OpenBookshelf(plugin));
  if(!plugin.settings.v10Bookshelf?.enabled||!plugin.settings.v10Bookshelf?.showWidget){
-  parent.createEl('p',{text:writerUi('Ative a biblioteca nas configurações.','Enable bookshelf in settings.')});return;
+  wrapper.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Ative a biblioteca nas configurações.','Enable bookshelf in settings.')});return;
  }
- const header=parent.createDiv({cls:'writer-v10-widget-header'});
- const b=header.createEl('button',{text:writerUi('Abrir biblioteca','Open bookshelf'),attr:{type:'button'}});
- b.addEventListener('click',()=>writerV10OpenBookshelf(plugin));
- writerV10RenderBookshelf(plugin,parent,{compact:true});
+ if(!projects.length){
+  wrapper.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Seus livros Longform aparecerão aqui.','Your Longform books will appear here.')});return;
+ }
+ const grid=wrapper.createDiv({cls:'writer-v108-books-widget-grid'});
+ const books=projects.slice().sort((a,b)=>{
+  const af=writerV10BookState(plugin,a).favorite,bf=writerV10BookState(plugin,b).favorite;
+  return Number(bf)-Number(af)||(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0);
+ });
+ for(const project of books.slice(0,4))writerV10BookshelfCard(plugin,grid,project,true,()=>view.render());
 }
 function writerV10RegisterBookshelf(plugin){
  for(const name of ['bookshelf','writer-bookshelf']){
@@ -198,10 +231,7 @@ function writerV10RegisterBookshelf(plugin){
  plugin.addCommand?.({id:'v10-insert-bookshelf',name:writerUi('Longform: inserir bloco de livros','Longform: insert bookshelf block'),
   editorCallback:editor=>editor.replaceSelection('\n~~~bookshelf\nsort: title\nlayout: normal\n~~~\n')});
  plugin.writerV10OpenBookshelf=()=>writerV10OpenBookshelf(plugin);
- // Quick access stays available on desktop and mobile ribbons.
- const shelfRibbon=plugin.addRibbonIcon?.('library',writerUi('Biblioteca Longform','Longform bookshelf'),
-  ()=>writerV10OpenBookshelf(plugin));
- shelfRibbon?.addClass?.('writer-v1042-shelf-ribbon');
+ // Keep bookshelf in the home widget and command palette, not as another ribbon entry.
  plugin.addCommand?.({id:'v1042-bookshelf-search',name:writerUi('Biblioteca: buscar livros','Bookshelf: search books'),
   callback:()=>writerV10OpenBookshelf(plugin)});
 

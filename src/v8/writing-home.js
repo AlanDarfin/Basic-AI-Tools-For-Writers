@@ -1,7 +1,7 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','related','trash','reading','zotero'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
@@ -55,7 +55,6 @@ const WRITER_V8_HOME_CATALOG={
  quotes:['quote','Citação do dia','Random quote','Citação diferente ao abrir a homepage','A fresh quote every time you open home'],
  today:['calendar-check','Editadas hoje','Edited today','Notas modificadas durante o dia','Notes modified today'],
  books:['library-big','Meus livros','My books','Visualização dos livros Longform','Longform bookshelf'],
- related:['link-2','Notas relacionadas','Related notes','Descubra notas semelhantes localmente','Discover related notes locally'],
  trash:['trash-2','Lixeira','Trash explorer','Restaure notas da lixeira interna','Restore notes from Obsidian trash'],
  reading:['book-open-check','Leitura atual','Current reading','Palavras, títulos e tempo estimado','Words, headings and estimated time'],
  zotero:['book-marked','Fontes Zotero','Zotero sources','Notas de pesquisa importadas','Imported research notes']
@@ -111,7 +110,9 @@ class WriterV8HomeView extends ItemView{
   const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(this.plugin):null;
   if(!space?.homeWidgetsEnabled)return global;
   if(!space.homeOrder?.length)space.homeOrder=[...global.homeOrder];
+   space.homeOrder=[...new Set([...space.homeOrder.filter(k=>WRITER_V8_HOME_SECTIONS.includes(k)),...global.homeOrder])];
   if(!Array.isArray(space.homeHidden))space.homeHidden=[...global.homeHidden];
+   space.homeHidden=space.homeHidden.filter(k=>WRITER_V8_HOME_SECTIONS.includes(k));
   if(!space.homeWidgetSizes)space.homeWidgetSizes={...global.homeWidgetSizes};
   return space;
  }
@@ -183,7 +184,11 @@ class WriterV8HomeView extends ItemView{
    gallery:p=>this.renderGallery(p),
    quotes:p=>this.renderQuotes(p),
    today:p=>this.renderToday(p),
-    related:p=>writerV10RenderRelatedWidget(this,p),
+    books:p=>{
+     const card=this.card(p,'books','Meus livros','My books');
+     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card);
+     else card.createEl('p',{text:writerUi('Abra a biblioteca pelos comandos.','Open bookshelf using commands.')});
+    },
     trash:p=>writerV10RenderTrashWidget(this,p),
     reading:p=>writerV10RenderReadingWidget(this,p),
     zotero:p=>writerV10RenderZoteroWidget(this,p)

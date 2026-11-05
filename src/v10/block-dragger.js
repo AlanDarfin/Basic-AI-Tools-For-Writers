@@ -127,7 +127,7 @@ function writerV106DragNativeConflict(plugin){
 }
 function writerV106DragRegister(plugin){
  const cfg=writerV106DragMerge(plugin.settings);
- const platform=require('obsidian').Platform;
+ const {Platform:platform,setIcon:obsidianSetIcon}=require('obsidian');
  const doc=plugin.app.workspace.containerEl?.ownerDocument;
  if(!doc)return;
  const isMobile=()=>Boolean(platform?.isMobile||plugin.app.isMobile);
@@ -147,7 +147,8 @@ function writerV106DragRegister(plugin){
   handle.replaceChildren();
   if(cfg.icon==='dot')handle.textContent='●';
   else if(cfg.icon==='square')handle.textContent='■';
-  else setIcon(handle,cfg.icon==='grip-lines'?'menu':'grip');
+  else if(typeof obsidianSetIcon==='function')obsidianSetIcon(handle,cfg.icon==='grip-lines'?'menu':'grip');
+  else handle.textContent='⋮⋮';
   handle.style.width=cfg.size+'px';handle.style.height=cfg.size+'px';
   handle.style.color=cfg.color||'var(--text-muted)';
   indicator.style.backgroundColor=cfg.indicatorColor||'var(--interactive-accent)';

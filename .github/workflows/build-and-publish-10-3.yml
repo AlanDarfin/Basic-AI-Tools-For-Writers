@@ -61,5 +61,5 @@ jobs:
           git tag "$VERSION"
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
-            --title "Basic AI Tool for Writers $VERSION" \
-            --notes "10.9.0: Remove ribbon shortcuts; Related Notes becomes a clean sidebar-only panel, Trash a Homepage-only widget, and Books a working Homepage card. Responsive library and filled favorites; restore 10.7 advanced modules with deferred isolated activation and compatibility switch. See UI audit."
+            --title "Basic $VERSION" \
+            --notes "10.9.0: Automatic Longform chapter progress; standalone Markdown books with fuzzy selection and banner/description/copyright metadata; clean command palette, reveal hidden files in Explorer sorting, fuzzy file/folder pickers in settings, consistent UI fades and Basic branding. README is feature-only; history moved to CHANGELOG.md."

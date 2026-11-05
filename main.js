@@ -5874,7 +5874,8 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   'aria-label':writerUi('Buscar opções e comandos','Search options and commands'),autocomplete:'off'}});
  input.id='writer-v51-settings-search';
  const feedback=wrap.createDiv({cls:'writer-v51-search-results writer-v1048-search-results',
-  attr:{role:'region','aria-label':writerUi('Resultados de configurações','Settings results')}});
+  attr:{role:'region','aria-live':'polite',
+   'aria-label':writerUi('Resultados de configurações','Settings results')}});
  feedback.hidden=true;
  const cache=new Map();
  let latest=[];
@@ -5907,9 +5908,12 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
    for(const entry of latest){
     const button=list.createEl('button',{cls:'writer-v1048-search-result',attr:{
      type:'button','aria-label':entry.title+' · '+entry.section}});
-    button.createSpan({cls:'writer-v1048-search-result-title',text:entry.title});
-    button.createSpan({cls:'writer-v1048-search-result-path',text:entry.section});
-    if(entry.description)button.createSpan({cls:'writer-v1048-search-result-desc',text:entry.description});
+    const symbol=button.createSpan({cls:'writer-v1049-result-icon',attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon(symbol,entry.source==='toolbar'?'type':entry.source==='syntax'?'braces':'settings-2');
+    const content=button.createSpan({cls:'writer-v1049-result-content'});
+    content.createSpan({cls:'writer-v1048-search-result-title',text:entry.title});
+    content.createSpan({cls:'writer-v1048-search-result-path',text:entry.section});
+    if(entry.description)content.createSpan({cls:'writer-v1048-search-result-desc',text:entry.description});
     button.addEventListener('click',()=>jump(entry));
    }
   }else{
@@ -12418,7 +12422,10 @@ function writerV9Format(editor,action,options={}){
   }else return false;
   break;
  }
- case 'justify':replacement('<div style="text-align:justify">','</div>');break;
+ case 'justify':{
+  if(typeof writerV102AlignApply!=='function')return false;
+  writerV102AlignApply(editor,'j');break;
+ }
  case 'text-color':{
   const color=writerV1048ToolbarHex(options.textColor,'#cf517f');
   replacement('<span style="color:'+color+'">','</span>');break;
@@ -12491,7 +12498,8 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
    for(const [side,icon,pt,en] of [
     ['l','align-left','Alinhar à esquerda','Align left'],
     ['c','align-center','Centralizar linha/título','Center line/heading'],
-    ['r','align-right','Alinhar à direita','Align right']]){
+    ['r','align-right','Alinhar à direita','Align right'],
+    ['j','align-justify','Justificar','Justify']]){
     const title=writerUi(pt,en);
     if(existing.has(title))continue;
     writerV1044MenuAdd(parent,title,icon,()=>writerV102AlignApply(editor,side),'basic-align');
@@ -12743,31 +12751,65 @@ function writerV9ToolbarSettings(plugin,panel){
  toggle('Ativar no computador','Enable on desktop','enabledDesktop');
  toggle('Ativar no Android/iOS (opcional)','Enable on Android/iOS (optional)','enabledMobile');
  toggle('Mostrar nomes junto aos ícones','Show labels next to icons','showLabels');
- new Setting(root).setName(writerUi('Estilo da barra','Toolbar style'))
-  .addDropdown(d=>d.addOption('tiny',writerUi('Mínima','Tiny'))
-   .addOption('compact',writerUi('Compacta','Compact'))
-   .addOption('regular',writerUi('Confortável','Comfortable'))
-   .setValue(cfg.style).onChange(async value=>{
-    cfg.style=value;cfg.compact=value!=='regular';await save();
-   }));
- new Setting(root).setName(writerUi('Tamanho dos botões','Button size'))
-  .addSlider(sl=>sl.setLimits(26,46,2).setDynamicTooltip().setValue(cfg.buttonSize)
-   .onChange(async value=>{cfg.buttonSize=value;await save();}));
- new Setting(root).setName(writerUi('Posição da barra','Toolbar position'))
-  .addDropdown(d=>d.addOption('bottom',writerUi('Embaixo','Bottom'))
-   .addOption('top',writerUi('Em cima','Top'))
-   .addOption('floating',writerUi('Acompanhar o cursor (PC)','Follow cursor (desktop)'))
-   .setValue(cfg.placement).onChange(async value=>{cfg.placement=value;await save();}));
- new Setting(root).setName(writerUi('Cor aplicada ao texto','Text formatting color'))
-  .setDesc(writerUi('Usada pelo comando Cor do texto.','Used by the Text color action.'))
-  .addColorPicker(p=>p.setValue(cfg.textColor).onChange(async value=>{
-   cfg.textColor=writerV1048ToolbarHex(value,'#cf517f');await save();
-  }));
- new Setting(root).setName(writerUi('Cor de destaque','Highlight background color'))
-  .setDesc(writerUi('Usada pelo comando Cor de destaque.','Used by the Background color action.'))
-  .addColorPicker(p=>p.setValue(cfg.backgroundColor).onChange(async value=>{
-   cfg.backgroundColor=writerV1048ToolbarHex(value,'#ffd66a');await save();
-  }));
+ // Obsidian's generic Setting flex rows can inherit enormous vertical space
+ // from third-party mobile snippets. These native controls have stable height.
+ const compactField=(name,description,controlId)=>{
+  const row=root.createDiv({cls:'writer-v1049-compact-field'});
+  const information=row.createDiv({cls:'writer-v1049-field-info'});
+  information.createEl('label',{cls:'writer-v1049-field-label',text:name,attr:{for:controlId}});
+  if(description)information.createDiv({cls:'writer-v1049-field-description',text:description});
+  const controls=row.createDiv({cls:'writer-v1049-field-control'});
+  return {row,controls};
+ };
+ const styledSelect=(id,name,options,value,onChange)=>{
+  const field=compactField(name,'',id);
+  const control=field.controls.createEl('select',{cls:'writer-v1049-control-select',
+   attr:{id,'aria-label':name}});
+  for(const [key,title] of options){
+   const option=control.createEl('option',{text:title,attr:{value:key}});
+   option.value=key;
+  }
+  control.value=value;
+  control.addEventListener('change',()=>void onChange(control.value));
+  return control;
+ };
+ styledSelect('writer-v1049-toolbar-style',writerUi('Estilo da barra','Toolbar style'),[
+  ['tiny',writerUi('Mínima','Tiny')],
+  ['compact',writerUi('Compacta','Compact')],
+  ['regular',writerUi('Confortável','Comfortable')]
+ ],cfg.style,async value=>{cfg.style=value;cfg.compact=value!=='regular';await save();});
+ const sizeField=compactField(writerUi('Tamanho dos botões','Button size'),'','writer-v1049-toolbar-size');
+ const sizeValue=sizeField.controls.createSpan({cls:'writer-v1049-slider-value',text:String(cfg.buttonSize)});
+ const sizeInput=sizeField.controls.createEl('input',{cls:'writer-v1049-control-range',
+  attr:{id:'writer-v1049-toolbar-size',type:'range',min:'26',max:'46',step:'2',
+   value:String(cfg.buttonSize),'aria-label':writerUi('Tamanho dos botões','Button size')}});
+ sizeInput.value=String(cfg.buttonSize);
+ sizeInput.addEventListener('input',()=>{
+  cfg.buttonSize=Math.max(26,Math.min(46,Number(sizeInput.value)||32));
+  sizeValue.setText(String(cfg.buttonSize));void save();
+ });
+ styledSelect('writer-v1049-toolbar-position',writerUi('Posição da barra','Toolbar position'),[
+  ['bottom',writerUi('Embaixo','Bottom')],
+  ['top',writerUi('Em cima','Top')],
+  ['floating',writerUi('Acompanhar o cursor (PC)','Follow cursor (desktop)')]
+ ],cfg.placement,async value=>{cfg.placement=value;await save();});
+ const colorField=(name,desc,key,id)=>{
+  const field=compactField(name,desc,id);
+  const picker=field.controls.createEl('input',{cls:'writer-v1049-color-picker',attr:{
+   id,type:'color',value:cfg[key],'aria-label':name}});
+  picker.value=cfg[key];
+  const display=field.controls.createSpan({cls:'writer-v1049-color-value',text:cfg[key]});
+  picker.addEventListener('input',()=>{
+   cfg[key]=writerV1048ToolbarHex(picker.value,cfg[key]);
+   display.setText(cfg[key]);void save();
+  });
+ };
+ colorField(writerUi('Cor aplicada ao texto','Text formatting color'),
+  writerUi('Usada pelo comando Cor do texto.','Used by the Text color action.'),
+  'textColor','writer-v1049-text-color');
+ colorField(writerUi('Cor de destaque','Highlight background color'),
+  writerUi('Usada pelo comando Cor de destaque.','Used by the Background color action.'),
+  'backgroundColor','writer-v1049-background-color');
  const inventory=root.createEl('details',{cls:'writer-v9-toolbar-list writer-v1048-toolbar-inventory'});
  inventory.createEl('summary',{text:writerUi('Escolher e ordenar botões','Choose and reorder buttons')});
  inventory.open=false;
@@ -20892,7 +20934,7 @@ function writerV102ImagesSettings(plugin,panel){
 
 // v3 module: src/v10/inline-alignment.js
 /* Basic inline alignment, compatible with Markdown headings and links.
- * Preferred suffix: Text {c}, # Heading {r}, ## Heading {l}.
+ * Preferred suffix: Text {c}, # Heading {r}, ## Heading {l}, Text {j}.
  * Legacy ::c: Text, ::c[Text] remain supported; never reformat saved
  * notes automatically. Editor commands replace only the current line(s). */
 function writerV102AlignMerge(settings){
@@ -20903,7 +20945,8 @@ function writerV102AlignMerge(settings){
 }
 function writerV102AlignSide(alias){
  const side=String(alias||'').toLowerCase();
- return side==='l'||side==='left'?'left':side==='r'||side==='right'?'right':'center';
+ return side==='l'||side==='left'?'left':side==='r'||side==='right'?'right':
+  side==='j'||side==='justify'?'justify':'center';
 }
 function writerV102AlignToken(raw){
  const source=String(raw||'');
@@ -20912,19 +20955,19 @@ function writerV102AlignToken(raw){
  const heading=/^([ \t]{0,3}#{1,6}[ \t]+)/.exec(source);
  const offset=heading?heading[0].length:0;
  const text=source.slice(offset);
- const suffix=/[ \t]+\{(left|center|right|l|c|r)\}[ \t]*$/i.exec(text);
+ const suffix=/[ \t]+\{(left|center|right|justify|l|c|r|j)\}[ \t]*$/i.exec(text);
  if(suffix&&text.slice(0,suffix.index).trim()){
   const from=offset+suffix.index,to=offset+suffix.index+suffix[0].length;
   return {side:writerV102AlignSide(suffix[1]),format:'suffix',legacy:false,heading:!!heading,
    from,innerFrom:to,innerTo:to,to};
  }
- const modern=/^([ \t]*)::(left|center|right|l|c|r):[ \t]+([^\n]{1,5000}?)[ \t]*$/i.exec(text);
- const legacy=modern?null:/^([ \t]*)::(left|center|right|l|c|r)\[([^\n]{1,5000})\][ \t]*$/i.exec(text);
+ const modern=/^([ \t]*)::(left|center|right|justify|l|c|r|j):[ \t]+([^\n]{1,5000}?)[ \t]*$/i.exec(text);
+ const legacy=modern?null:/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[([^\n]{1,5000})\][ \t]*$/i.exec(text);
  const match=modern||legacy;
  if(!match)return null;
  const start=(modern
-  ?/^([ \t]*)::(left|center|right|l|c|r):[ \t]+/i
-  :/^([ \t]*)::(left|center|right|l|c|r)\[/i).exec(text)[0];
+  ?/^([ \t]*)::(left|center|right|justify|l|c|r|j):[ \t]+/i
+  :/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[/i).exec(text)[0];
  const from=offset+match[1].length;
  const innerFrom=offset+start.length;
  const innerTo=innerFrom+match[3].trimEnd().length;
@@ -20945,12 +20988,12 @@ function writerV102AlignReading(root){
   if(first.parentElement?.closest?.('code,pre')||last.parentElement?.closest?.('code,pre'))continue;
   if(token.format==='suffix'){
    // Only remove the author's dedicated suffix; preserve inline links/emphasis.
-   if(!/[ \t]+\{(?:left|center|right|l|c|r)\}[ \t]*$/i.test(last.nodeValue||''))continue;
-   last.nodeValue=last.nodeValue.replace(/[ \t]+\{(?:left|center|right|l|c|r)\}[ \t]*$/i,'');
+   if(!/[ \t]+\{(?:left|center|right|justify|l|c|r|j)\}[ \t]*$/i.test(last.nodeValue||''))continue;
+   last.nodeValue=last.nodeValue.replace(/[ \t]+\{(?:left|center|right|justify|l|c|r|j)\}[ \t]*$/i,'');
   }else{
    const begin=token.legacy
-    ?/^([ \t]*)::(left|center|right|l|c|r)\[/i
-    :/^([ \t]*)::(left|center|right|l|c|r):[ \t]+/i;
+    ?/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[/i
+    :/^([ \t]*)::(left|center|right|justify|l|c|r|j):[ \t]+/i;
    const open=begin.exec(first.nodeValue||'');
    if(!open||(token.legacy&&!/\][ \t]*$/.test(last.nodeValue||'')))continue;
    first.nodeValue=first.nodeValue.slice(open[0].length);
@@ -20968,7 +21011,7 @@ function writerV102AlignReading(root){
   block.classList.add('writer-v102-align-processed','writer-v102-align-'+token.side);
   // Honor an explicitly marked heading even when the user's CSS snippet
   // centers every h1–h6 with !important.
-  block.style?.setProperty?.('text-align',token.side==='center'?'center':token.side==='left'?'left':'right','important');
+  block.style?.setProperty?.('text-align',token.side==='justify'?'justify':token.side==='center'?'center':token.side==='left'?'left':'right','important');
  }
 }
 function writerV102AlignDecorations(view,cfg){
@@ -21000,7 +21043,7 @@ function writerV102AlignNormalizeLine(source){
  const token=writerV102AlignToken(source);
  if(token?.format==='suffix')text=text.slice(0,token.from-lead.length).trimEnd();
  else if(token?.format==='prefix'){
-  const open=/^([ \t]*)::(left|center|right|l|c|r)(?::[ \t]+|\[)/i.exec(text);
+  const open=/^([ \t]*)::(left|center|right|justify|l|c|r|j)(?::[ \t]+|\[)/i.exec(text);
   if(open)text=text.slice(open[0].length);
   if(token.legacy)text=text.replace(/\][ \t]*$/,'');
   text=text.trimEnd();
@@ -21047,7 +21090,8 @@ function writerV102AlignRegister(plugin){
  for(const [side,id,pt,en] of [
   ['l','left','Alinhar à esquerda','Align left'],
   ['c','center','Centralizar texto ou título','Center text or heading'],
-  ['r','right','Alinhar à direita','Align right']
+  ['r','right','Alinhar à direita','Align right'],
+  ['j','justify','Justificar texto','Justify text']
  ]){
   plugin.addCommand({id:'v102-align-'+id,name:writerUi(pt,en),
    editorCheckCallback:(checking,editor)=>{
@@ -21062,7 +21106,7 @@ function writerV102AlignRegister(plugin){
    if(checking)return true;
    const cursor=editor.getCursor?.('from')||editor.getCursor?.()||{line:0};
    const side=writerV102AlignToken(editor.getLine?.(cursor.line)||'')?.side;
-   const next=side==='center'?'r':side==='right'?'l':side==='left'?null:'c';
+   const next=side==='center'?'r':side==='right'?'l':side==='left'?'j':side==='justify'?null:'c';
    writerV102AlignApply(editor,next);return true;
   }});
 }
@@ -21070,8 +21114,8 @@ function writerV102AlignSettings(plugin,panel){
  const cfg=plugin.settings.v102Align;
  panel.createEl('h3',{text:writerUi('Alinhamento de texto e títulos','Text and heading alignment')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Use um comando na paleta ou na barra móvel (Centralizar, Direita, Esquerda ou Alternar). Para digitar: texto {c}, # Título {r}, ## Título {l}. Os formatos antigos ::c: texto e ::c[texto] continuam funcionando.',
-  'Use a command from the palette or mobile toolbar (Center, Right, Left or Cycle). To type: text {c}, # Heading {r}, ## Heading {l}. Legacy ::c: text and ::c[text] stay supported.')});
+  'Use um comando na paleta ou na barra móvel (Centralizar, Direita, Esquerda, Justificar ou Alternar). Para digitar: texto {c}, # Título {r}, ## Título {l}, texto {j}. Os formatos antigos ::c: texto e ::c[texto] continuam funcionando.',
+  'Use a command from the palette or mobile toolbar (Center, Right, Left, Justify or Cycle). To type: text {c}, # Heading {r}, ## Heading {l}, text {j}. Legacy ::c: text and ::c[text] stay supported.')});
  for(const [key,pt,en] of [
   ['enabled','Ativar alinhamento de texto','Enable text alignment'],
   ['reading','Renderizar no modo de leitura','Render in Reading mode'],

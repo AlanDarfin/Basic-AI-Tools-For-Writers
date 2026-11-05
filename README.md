@@ -2,12 +2,22 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.10 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.5.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.5.0 — research, recovery and reading
+
+- Discover related notes locally with a similarity index, sidebar, homepage widget and one-click Markdown links.
+- Explore Obsidian's internal `.trash`: restore without overwriting, delete with confirmation and optionally empty the trash.
+- New homepage widgets: related notes, trash, note reading statistics and imported Zotero sources.
+- Curated public-domain philosopher and writer quotations without overriding personalized quote lists.
+- Improved Zotero imported metadata and an insert-citation dialog using Better BibTeX citekeys (`[@key]`) or a note link.
+- Fixed reading-progress indicator in source and Reading views; configurable accent color and height.
+- No direct Zotero sync, OS trash access or claims of full parity with reference plugins.
 
 ## Version 10.4.10 — grouped settings search, Android layout fix
 

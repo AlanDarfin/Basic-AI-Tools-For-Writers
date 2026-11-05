@@ -2,13 +2,21 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.7.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.7.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
 
+
+## Versão 10.7.2 — recuperação emergencial do carregamento
+
+- **Ativação prioritária:** o `main.js` volta a distribuir somente os módulos do conjunto anterior à 10.7, incluindo homepage, Longform, LanguageTool, barra de leitura, Dragger anterior, biblioteca, explorador, notas relacionadas e widgets.
+- **Código preservado:** os nove arquivos experimentais da 10.7 (novos bancos, Zotero via API, FSRS, ICS remoto, grafo StoryLine, editor avançado, voz local e transferência entre notas) continuam no GitHub, mas **não são carregados nesta release** para evitar travamentos antes do `onload`.
+- Nenhuma preferência do usuário, nota, senha ou `data.json` é apagado ou migrado.
+- A suíte de regressão verifica a presença de todos os módulos anteriores e a ausência das integrações experimentais no bundle distribuído.
+- O funcionamento no Obsidian Android/PC ainda precisa de confirmação. [Procedimento de recuperação e diagnóstico](V10_7_2_STABLE_RECOVERY.pt-BR.md).
 
 ## Versão 10.7.1 — recuperação de ativação
 

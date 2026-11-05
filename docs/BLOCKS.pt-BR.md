@@ -606,3 +606,31 @@ Um parágrafo mais longo que deve ser justificado {j}
 ~~~~
 
 A toolbar e o comando **Justificar texto** também aplicam `{j}`, sem criar HTML. Os marcadores ficam ocultos no modo de leitura, e os formatos antigos `::c:` e `::c[...]` continuam compatíveis.
+
+
+## 10.7 — Bancos de notas e colunas
+
+Exemplos adicionais. Os campos são propriedades YAML das notas; rollups usam links `[[Nota]]` em `related`.
+
+```writer-database
+folder: Personagens
+columns: file, status, priority
+view: board
+group: status
+sort: priority
+order: desc
+formula: doublePriority = priority * 2
+rollup: scenePages = related.pages | sum
+limit: 100
+```
+
+```writer-columns
+## Anotações
+- A
+- B
+
+---column---
+## Referências
+- C
+- D
+```

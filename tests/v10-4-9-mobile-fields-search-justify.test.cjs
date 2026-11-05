@@ -65,13 +65,14 @@ test('mobile settings use layout-independent controls with bounded heights',()=>
  assert.match(css,/max-height:38px/);
  assert.match(css,/min-height:0/);
 });
-test('settings search displays full-width flat option rows instead of centered black cards',()=>{
- assert.match(settings,/writer-v1049-result-content/);
- assert.match(settings,/writer-v1049-result-icon/);
+test('settings search uses grouped options and accessible targets instead of theme-styled buttons',()=>{
+ assert.match(settings,/writerV1050SearchGroups/);
+ assert.match(settings,/writerV1050SearchTarget/);
+ assert.match(settings,/writer-v1050-result-targets/);
  assert.match(settings,/aria-live':'polite'/);
- assert.match(css,/writer-v1048-search-list > button\.writer-v1048-search-result/);
- assert.match(css,/background:transparent/);
- assert.match(css,/width:100%;min-width:0;max-width:100%/);
- assert.match(css,/max-height:min\(33vh,260px\)/);
- assert.doesNotMatch(css.slice(css.indexOf('10.4.9 —')),/!important|:has\s*\(/);
+ assert.doesNotMatch(settings,/createEl\('button',\{cls:'writer-v1048-search-result'/);
+ assert.match(css,/writer-v1050-result-group/);
+ assert.match(css,/writer-v1050-result-target/);
+ assert.match(css,/max-height:min\(32vh,245px\)/);
+ assert.doesNotMatch(css.slice(css.indexOf('10.4.10: self-contained')),/!important|:has\s*\(/);
 });

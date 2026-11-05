@@ -69,7 +69,7 @@ class WriterToolsView extends ItemView{
   const footer=root.createDiv({cls:'writer-tools-footer'});
   if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
   if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
-  this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
+  this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do basic pelo menu do Obsidian.","Open basic settings through Obsidian's settings menu."));});
  }
  renderSelectedTab(panel,active){
   panel.empty();

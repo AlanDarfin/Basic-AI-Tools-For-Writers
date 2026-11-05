@@ -998,3 +998,10 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
  .writer-v107-pdf-page iframe{height:45vh;}
  .writer-v107-columns{grid-template-columns:1fr;}
 }
+
+.writer-v107-db-board{display:flex;align-items:flex-start;gap:10px;overflow-x:auto;max-width:100%;padding:6px 0;overscroll-behavior-x:contain;}
+.writer-v107-db-lane{display:flex;flex-direction:column;gap:6px;min-width:min(220px,85vw);max-width:280px;background:var(--background-primary);border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);padding:8px;}
+.writer-v107-db-lane h4{font-size:var(--font-ui-small);margin:0;padding:5px 2px;}
+.writer-v107-db-board-card{display:flex;flex-direction:column;gap:4px;text-align:left;white-space:normal;padding:8px;background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);color:var(--text-normal);}
+.writer-v107-db-board-card small{overflow-wrap:anywhere;color:var(--text-muted);font-size:var(--font-ui-smaller);}
+.writer-v107-db-board-card:hover{background:var(--background-modifier-hover);}

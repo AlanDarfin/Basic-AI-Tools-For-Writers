@@ -20,10 +20,10 @@ function writerV106HomeSessionStore(plugin){
  try{return plugin.app.workspace?.containerEl?.ownerDocument?.defaultView?.sessionStorage||null;}
  catch(error){return null;}
 }
-async function writerV106HomeCleanup(plugin,open){
+async function writerV106HomeCleanup(plugin,open,force=false){
  const workspace=plugin.app.workspace;
  const cfg=plugin.settings?.v8Finish;
- if(!cfg?.homeCleanStart||!writerModuleOn(plugin,'writingHome'))return false;
+ if((!force&&!cfg?.homeCleanStart)||!writerModuleOn(plugin,'writingHome'))return false;
  if(typeof workspace.iterateRootLeaves!=='function')return false;
  const roots=[];
  workspace.iterateRootLeaves(leaf=>{
@@ -82,7 +82,7 @@ function writerV106HomeRegisterStartup(plugin,open){
    const actions=modal.contentEl.createDiv({cls:'writer-v10-discovery-actions'});
    actions.createEl('button',{text:writerUi('Cancelar','Cancel')}).addEventListener('click',()=>modal.close());
    actions.createEl('button',{text:writerUi('Fechar abas','Close tabs'),cls:'mod-warning'}).addEventListener('click',()=>{
-    modal.close();void writerV106HomeCleanup(plugin,open);
+    modal.close();void writerV106HomeCleanup(plugin,open,true);
    });
   };modal.open();
  }});

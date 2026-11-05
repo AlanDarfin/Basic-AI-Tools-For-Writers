@@ -42,7 +42,7 @@ function writerV10BookshelfProjects(plugin){
   .map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
  const indexed=new Set(projects.map(p=>p.file.path));
  // Standalone books are references to existing Markdown notes, not copied projects.
- for(const path of plugin.settings.v10Bookshelf?.singleNotes||[]){
+ for(const path of plugin.settings?.v10Bookshelf?.singleNotes||[]){
   const file=vault.getAbstractFileByPath(path);
   if(!(file instanceof TFile)||file.extension!=='md'||indexed.has(file.path))continue;
   const front=cache?.getFileCache?.(file)?.frontmatter||{};

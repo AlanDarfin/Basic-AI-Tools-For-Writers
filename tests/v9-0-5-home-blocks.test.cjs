@@ -37,10 +37,11 @@ test('new widget catalog is opt-in, preserves previous dashboard layout and quot
  const settings={v8Finish:{homeOrder:['continue','recent','calendar'],homeHidden:['random']}};
  api(settings);
  for(const key of ['gallery','quotes','today','books'])assert.ok(settings.v8Finish.homeOrder.includes(key),key);
- assert.deepEqual(Array.from(settings.v8Finish.homeHidden),['random','gallery','quotes','today','books']);
+ assert.deepEqual(Array.from(settings.v8Finish.homeHidden),['random','gallery','quotes','today','trash','reading','zotero']);
  // Existing preferences remain intentional; opt-in new cards on brand-new/default configurations.
  const empty={};api(empty);
- for(const key of ['gallery','quotes','today','books'])assert.ok(empty.v8Finish.homeHidden.includes(key),key);
+ for(const key of ['gallery','quotes','today','trash','reading','zotero'])assert.ok(empty.v8Finish.homeHidden.includes(key),key);
+  assert.ok(!empty.v8Finish.homeHidden.includes('books'),'Books is visible after the 10.8 repair');
  assert.equal(empty.v8Finish.homeQuotes,'');
 });
 test('all seven presentation fences have short aliases and existing writer names still render',()=>{

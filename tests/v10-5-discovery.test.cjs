@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 class TFile{}
 const source=fs.readFileSync('src/v10/discovery.js','utf8');
-const helpers=vm.runInNewContext(source+'\n({writerV10DiscoveryMerge,writerV10RelatedTokens,writerV10RelatedSignature,writerV10RelatedScore,writerV10TrashRestore,writerV10TrashList,writerV10TrashPermanentlyDelete,writerV10ZoteroRef})',
+const helpers=vm.runInNewContext(source+'\n({writerV10DiscoveryMerge,writerV10RelatedTokens,writerV10RelatedSignature,writerV10RelatedScore,writerV10TrashRestore,writerV10TrashList,writerV10TrashFolders,writerV10TrashDeleteFolder,writerV10TrashPermanentlyDelete,writerV10ZoteroRef})',
  {console,Map,Set,Uint32Array,Math,Promise,setTimeout,ItemView:class{},TFile,writerUi:(pt,en)=>en});
 test('Discovery defaults remain bounded and opt in to local matching',()=>{
  const settings={};
@@ -45,6 +45,15 @@ test('Trash restore protects collisions and forbids traversal and system paths',
  await assert.rejects(helpers.writerV10TrashPermanentlyDelete(plugin,'System/file.md'));
  await helpers.writerV10TrashPermanentlyDelete(plugin,'.trash/Old.md');
  assert.deepEqual(actions[2],['remove','.trash/Old.md']);
+});
+test('Trash restores and removes folders only inside internal trash',async()=>{
+ const calls=[];
+ const adapter={exists:async path=>path==='.trash',list:async path=>({files:[],folders:path==='.trash'?['.trash/Old']:[]}),rmdir:async(path,recursive)=>calls.push([path,recursive])};
+ const plugin={app:{vault:{adapter}}};
+ assert.deepEqual(Array.from(await helpers.writerV10TrashFolders(plugin)),['.trash/Old']);
+ await assert.rejects(helpers.writerV10TrashDeleteFolder(plugin,'.trash/../Documents'));
+ await helpers.writerV10TrashDeleteFolder(plugin,'.trash/Old');
+ assert.deepEqual(calls,[['.trash/Old',true]]);
 });
 test('Zotero note metadata produces citekey and author without network',()=>{
  const file={basename:'Research',path:'Zotero/Research.md'};

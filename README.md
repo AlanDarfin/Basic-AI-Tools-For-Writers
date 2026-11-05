@@ -2,12 +2,18 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.4.8 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.4.9 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.4.9 — compact settings and Markdown justification
+
+- **Settings search results:** full-width, compact rows with small icons and readable section labels rather than narrow centered dark buttons; improved sizing and scrolling on Android.
+- **Toolbar controls:** replace the oversized generic mobile dropdown/slider/color-picker rows with consistently spaced controls for Style, Button size, Placement and Colors. Keep all existing settings and functions.
+- **Justification:** use the same short Markdown suffix syntax as other alignments: `Paragraph {j}` or `## Heading {j}`. Live Preview, Reading View, toolbar and command palette share the same implementation; no HTML wrapper is inserted. Older `{c}`, `{l}`, `{r}` and legacy notation still work.
 
 ## Version 10.4.8 — customizable editing toolbar and precise settings search
 

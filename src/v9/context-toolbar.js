@@ -146,7 +146,10 @@ function writerV9Format(editor,action,options={}){
   }else return false;
   break;
  }
- case 'justify':replacement('<div style="text-align:justify">','</div>');break;
+ case 'justify':{
+  if(typeof writerV102AlignApply!=='function')return false;
+  writerV102AlignApply(editor,'j');break;
+ }
  case 'text-color':{
   const color=writerV1048ToolbarHex(options.textColor,'#cf517f');
   replacement('<span style="color:'+color+'">','</span>');break;
@@ -219,7 +222,8 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
    for(const [side,icon,pt,en] of [
     ['l','align-left','Alinhar à esquerda','Align left'],
     ['c','align-center','Centralizar linha/título','Center line/heading'],
-    ['r','align-right','Alinhar à direita','Align right']]){
+    ['r','align-right','Alinhar à direita','Align right'],
+    ['j','align-justify','Justificar','Justify']]){
     const title=writerUi(pt,en);
     if(existing.has(title))continue;
     writerV1044MenuAdd(parent,title,icon,()=>writerV102AlignApply(editor,side),'basic-align');
@@ -471,31 +475,65 @@ function writerV9ToolbarSettings(plugin,panel){
  toggle('Ativar no computador','Enable on desktop','enabledDesktop');
  toggle('Ativar no Android/iOS (opcional)','Enable on Android/iOS (optional)','enabledMobile');
  toggle('Mostrar nomes junto aos ícones','Show labels next to icons','showLabels');
- new Setting(root).setName(writerUi('Estilo da barra','Toolbar style'))
-  .addDropdown(d=>d.addOption('tiny',writerUi('Mínima','Tiny'))
-   .addOption('compact',writerUi('Compacta','Compact'))
-   .addOption('regular',writerUi('Confortável','Comfortable'))
-   .setValue(cfg.style).onChange(async value=>{
-    cfg.style=value;cfg.compact=value!=='regular';await save();
-   }));
- new Setting(root).setName(writerUi('Tamanho dos botões','Button size'))
-  .addSlider(sl=>sl.setLimits(26,46,2).setDynamicTooltip().setValue(cfg.buttonSize)
-   .onChange(async value=>{cfg.buttonSize=value;await save();}));
- new Setting(root).setName(writerUi('Posição da barra','Toolbar position'))
-  .addDropdown(d=>d.addOption('bottom',writerUi('Embaixo','Bottom'))
-   .addOption('top',writerUi('Em cima','Top'))
-   .addOption('floating',writerUi('Acompanhar o cursor (PC)','Follow cursor (desktop)'))
-   .setValue(cfg.placement).onChange(async value=>{cfg.placement=value;await save();}));
- new Setting(root).setName(writerUi('Cor aplicada ao texto','Text formatting color'))
-  .setDesc(writerUi('Usada pelo comando Cor do texto.','Used by the Text color action.'))
-  .addColorPicker(p=>p.setValue(cfg.textColor).onChange(async value=>{
-   cfg.textColor=writerV1048ToolbarHex(value,'#cf517f');await save();
-  }));
- new Setting(root).setName(writerUi('Cor de destaque','Highlight background color'))
-  .setDesc(writerUi('Usada pelo comando Cor de destaque.','Used by the Background color action.'))
-  .addColorPicker(p=>p.setValue(cfg.backgroundColor).onChange(async value=>{
-   cfg.backgroundColor=writerV1048ToolbarHex(value,'#ffd66a');await save();
-  }));
+ // Obsidian's generic Setting flex rows can inherit enormous vertical space
+ // from third-party mobile snippets. These native controls have stable height.
+ const compactField=(name,description,controlId)=>{
+  const row=root.createDiv({cls:'writer-v1049-compact-field'});
+  const information=row.createDiv({cls:'writer-v1049-field-info'});
+  information.createEl('label',{cls:'writer-v1049-field-label',text:name,attr:{for:controlId}});
+  if(description)information.createDiv({cls:'writer-v1049-field-description',text:description});
+  const controls=row.createDiv({cls:'writer-v1049-field-control'});
+  return {row,controls};
+ };
+ const styledSelect=(id,name,options,value,onChange)=>{
+  const field=compactField(name,'',id);
+  const control=field.controls.createEl('select',{cls:'writer-v1049-control-select',
+   attr:{id,'aria-label':name}});
+  for(const [key,title] of options){
+   const option=control.createEl('option',{text:title,attr:{value:key}});
+   option.value=key;
+  }
+  control.value=value;
+  control.addEventListener('change',()=>void onChange(control.value));
+  return control;
+ };
+ styledSelect('writer-v1049-toolbar-style',writerUi('Estilo da barra','Toolbar style'),[
+  ['tiny',writerUi('Mínima','Tiny')],
+  ['compact',writerUi('Compacta','Compact')],
+  ['regular',writerUi('Confortável','Comfortable')]
+ ],cfg.style,async value=>{cfg.style=value;cfg.compact=value!=='regular';await save();});
+ const sizeField=compactField(writerUi('Tamanho dos botões','Button size'),'','writer-v1049-toolbar-size');
+ const sizeValue=sizeField.controls.createSpan({cls:'writer-v1049-slider-value',text:String(cfg.buttonSize)});
+ const sizeInput=sizeField.controls.createEl('input',{cls:'writer-v1049-control-range',
+  attr:{id:'writer-v1049-toolbar-size',type:'range',min:'26',max:'46',step:'2',
+   value:String(cfg.buttonSize),'aria-label':writerUi('Tamanho dos botões','Button size')}});
+ sizeInput.value=String(cfg.buttonSize);
+ sizeInput.addEventListener('input',()=>{
+  cfg.buttonSize=Math.max(26,Math.min(46,Number(sizeInput.value)||32));
+  sizeValue.setText(String(cfg.buttonSize));void save();
+ });
+ styledSelect('writer-v1049-toolbar-position',writerUi('Posição da barra','Toolbar position'),[
+  ['bottom',writerUi('Embaixo','Bottom')],
+  ['top',writerUi('Em cima','Top')],
+  ['floating',writerUi('Acompanhar o cursor (PC)','Follow cursor (desktop)')]
+ ],cfg.placement,async value=>{cfg.placement=value;await save();});
+ const colorField=(name,desc,key,id)=>{
+  const field=compactField(name,desc,id);
+  const picker=field.controls.createEl('input',{cls:'writer-v1049-color-picker',attr:{
+   id,type:'color',value:cfg[key],'aria-label':name}});
+  picker.value=cfg[key];
+  const display=field.controls.createSpan({cls:'writer-v1049-color-value',text:cfg[key]});
+  picker.addEventListener('input',()=>{
+   cfg[key]=writerV1048ToolbarHex(picker.value,cfg[key]);
+   display.setText(cfg[key]);void save();
+  });
+ };
+ colorField(writerUi('Cor aplicada ao texto','Text formatting color'),
+  writerUi('Usada pelo comando Cor do texto.','Used by the Text color action.'),
+  'textColor','writer-v1049-text-color');
+ colorField(writerUi('Cor de destaque','Highlight background color'),
+  writerUi('Usada pelo comando Cor de destaque.','Used by the Background color action.'),
+  'backgroundColor','writer-v1049-background-color');
  const inventory=root.createEl('details',{cls:'writer-v9-toolbar-list writer-v1048-toolbar-inventory'});
  inventory.createEl('summary',{text:writerUi('Escolher e ordenar botões','Choose and reorder buttons')});
  inventory.open=false;

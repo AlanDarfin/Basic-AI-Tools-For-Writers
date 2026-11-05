@@ -113,3 +113,42 @@ function writerV109AddVaultPathSetting(plugin,parent,{pt,en,kind='both',value=''
   }})));
  return setting;
 }
+
+/* Horizontal tab overflow: hidden native sliders and only show edge fades
+ * when there is actually more content in that direction. */
+function writerV109RegisterScrollHints(plugin){
+ const selector='.dictionary-settings-tabs,.dictionary-settings-subtabs,.writer-project-tabs,.writer-project-nav-groups,.writer-tools-v3-tabs,.writer-tool-tabs,.writer-v7-rc-structure-tabs,.writer-v9-space-side-nav';
+ const doc=plugin.app.workspace.containerEl?.ownerDocument||(typeof document!=='undefined'?document:null);
+ if(!doc)return;
+ let timer=null;
+ const updateElement=el=>{
+  if(!el?.isConnected)return;
+  const max=Math.max(0,el.scrollWidth-el.clientWidth);
+  const left=el.scrollLeft;
+  el.classList.add('writer-v109-hscroll');
+  el.dataset.writerScroll=max<=3?'none':left<=2?'start':left>=max-2?'end':'middle';
+ };
+ const scan=()=>{
+  const elements=doc.querySelectorAll(selector);
+  for(const el of Array.from(elements).slice(0,150))updateElement(el);
+ };
+ const schedule=()=>{clearTimeout(timer);timer=setTimeout(scan,100);};
+ plugin.registerDomEvent?.(doc,'scroll',event=>{
+  const el=event.target;
+  if(el?.matches?.(selector))updateElement(el);
+ },true);
+ let observer=null;
+ const root=plugin.app.workspace.containerEl;
+ if(root&&typeof MutationObserver!=='undefined'){
+  observer=new MutationObserver(schedule);
+  observer.observe(root,{childList:true,subtree:true});
+ }
+ plugin.registerEvent?.(plugin.app.workspace.on('layout-change',schedule));
+ if(typeof ResizeObserver!=='undefined'){
+  const resize=new ResizeObserver(schedule);if(root)resize.observe(root);
+  plugin.register?.(()=>resize.disconnect());
+ }
+ plugin.app.workspace.onLayoutReady?.(schedule);
+ plugin.register?.(()=>{clearTimeout(timer);observer?.disconnect();});
+ schedule();
+}

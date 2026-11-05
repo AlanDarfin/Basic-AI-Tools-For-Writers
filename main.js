@@ -20527,11 +20527,17 @@ function writerV101ReadingProgressRegister(plugin){
 }
 
 function writerV101RegisterEnhancements(plugin){
- writerV101ReadingProgressRegister(plugin);
- if(typeof writerV106DragRegister==='function')writerV106DragRegister(plugin);
- if(typeof writerV106HistoricRegister==='function')writerV106HistoricRegister(plugin);
- if(typeof writerV10DiscoveryRegister==='function')writerV10DiscoveryRegister(plugin);
-  if(typeof writerV107RegisterAfterStartup==='function')writerV107RegisterAfterStartup(plugin);
+ // A supplemental editor widget must never prevent the writing core from enabling.
+ // Keep failures visible in Developer Console but isolate optional registrations.
+ const safeRegister=(name,register)=>{
+  try{register();}
+  catch(error){console.error('[Basic AI] Optional startup module failed: '+name,error);}
+ };
+ safeRegister('reading-progress',()=>writerV101ReadingProgressRegister(plugin));
+ if(typeof writerV106DragRegister==='function')safeRegister('block-dragger',()=>writerV106DragRegister(plugin));
+ if(typeof writerV106HistoricRegister==='function')safeRegister('historical-tools',()=>writerV106HistoricRegister(plugin));
+ if(typeof writerV10DiscoveryRegister==='function')safeRegister('related-notes-and-trash',()=>writerV10DiscoveryRegister(plugin));
+ if(typeof writerV107RegisterAfterStartup==='function')safeRegister('v10.7-optional',()=>writerV107RegisterAfterStartup(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -21291,6 +21297,12 @@ async function writerV10FindRelated(plugin,active){
  }
  return ranked.sort((a,b)=>b.score-a.score).slice(0,cfg.maxResults);
 }
+/* Explicit Obsidian icon dependency: main.js does not expose setIcon globally. */
+function writerV10DiscoverySetIcon(element,name){
+ const setIconFromObsidian=require('obsidian').setIcon;
+ if(typeof setIconFromObsidian==='function')setIconFromObsidian(element,name);
+ else element.textContent='•';
+}
 function writerV10RelatedResults(plugin,host,file){
  host.empty();
  if(!(file instanceof TFile)){host.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Abra uma nota Markdown para ver conexões.','Open a Markdown note to discover connections.')});return;}
@@ -21307,7 +21319,7 @@ function writerV10RelatedResults(plugin,host,file){
    open.createEl('small',{text:Math.round(score*100)+'% · '+other.path});
    open.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(other));
    const link=row.createEl('button',{cls:'writer-v10-discovery-icon',attr:{type:'button',title:writerUi('Inserir link na nota ativa','Insert link in active note'),'aria-label':writerUi('Inserir link','Insert link')}});
-   setIcon(link,'link-2');
+   writerV10DiscoverySetIcon(link,'link-2');
    link.addEventListener('click',()=>{
     const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
     const source=view?.file;
@@ -21328,7 +21340,7 @@ class WriterV10RelatedView extends ItemView{
   this.contentEl.empty();this.contentEl.addClass('writer-v10-discovery-pane');
   const top=this.contentEl.createDiv({cls:'writer-v10-discovery-top'});
   top.createEl('h3',{text:writerUi('Notas relacionadas','Related notes')});
-  const reload=top.createEl('button',{attr:{type:'button','aria-label':writerUi('Reanalisar','Reanalyze')}});setIcon(reload,'refresh-cw');reload.addEventListener('click',()=>this.refresh());
+  const reload=top.createEl('button',{attr:{type:'button','aria-label':writerUi('Reanalisar','Reanalyze')}});writerV10DiscoverySetIcon(reload,'refresh-cw');reload.addEventListener('click',()=>this.refresh());
   const host=this.contentEl.createDiv();
   writerV10RelatedResults(this.plugin,host,this.plugin.app.workspace.getActiveFile?.());
  }
@@ -21409,13 +21421,13 @@ function writerV10TrashRows(plugin,host,limit=40){
    const row=host.createDiv({cls:'writer-v10-discovery-row'});
    row.createEl('span',{text:entry.slice(7)+(isFolder?'/':''),cls:'writer-v10-trash-path'});
    const actions=row.createDiv({cls:'writer-v10-discovery-actions'});
-   const restore=actions.createEl('button',{attr:{title:writerUi('Restaurar','Restore'),'aria-label':writerUi('Restaurar','Restore')}});setIcon(restore,'undo-2');
+   const restore=actions.createEl('button',{attr:{title:writerUi('Restaurar','Restore'),'aria-label':writerUi('Restaurar','Restore')}});writerV10DiscoverySetIcon(restore,'undo-2');
    restore.addEventListener('click',async()=>{
     restore.disabled=true;
     try{const dest=await writerV10TrashRestore(plugin,entry);new Notice(writerUi('Restaurado: ','Restored: ')+dest);writerV10TrashRows(plugin,host,limit);}
     catch(error){new Notice(String(error.message||error));restore.disabled=false;}
    });
-   const erase=actions.createEl('button',{attr:{title:writerUi('Excluir definitivamente','Delete permanently'),'aria-label':writerUi('Excluir definitivamente','Delete permanently')}});setIcon(erase,'trash-2');
+   const erase=actions.createEl('button',{attr:{title:writerUi('Excluir definitivamente','Delete permanently'),'aria-label':writerUi('Excluir definitivamente','Delete permanently')}});writerV10DiscoverySetIcon(erase,'trash-2');
    erase.addEventListener('click',()=>writerV10Confirm(plugin,writerUi('Excluir arquivo?','Delete file?'),entry,async()=>{
     if(isFolder)await writerV10TrashDeleteFolder(plugin,entry);
     else await writerV10TrashPermanentlyDelete(plugin,entry);
@@ -21435,7 +21447,7 @@ class WriterV10TrashView extends ItemView{
   this.contentEl.empty();this.contentEl.addClass('writer-v10-discovery-pane');
   const top=this.contentEl.createDiv({cls:'writer-v10-discovery-top'});
   top.createEl('h3',{text:writerUi('Lixeira do Obsidian','Obsidian trash')});
-  const refresh=top.createEl('button',{attr:{'aria-label':writerUi('Atualizar','Refresh')}});setIcon(refresh,'refresh-cw');refresh.addEventListener('click',()=>this.refresh());
+  const refresh=top.createEl('button',{attr:{'aria-label':writerUi('Atualizar','Refresh')}});writerV10DiscoverySetIcon(refresh,'refresh-cw');refresh.addEventListener('click',()=>this.refresh());
   this.contentEl.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('A restauração usa o caminho preservado na lixeira; o Obsidian pode descartar as pastas originais.','Restore uses the path preserved in trash; Obsidian may discard original parent folders.')});
   const actions=this.contentEl.createDiv({cls:'writer-v10-discovery-actions'});
   actions.createEl('button',{text:writerUi('Esvaziar lixeira…','Empty trash…')}).addEventListener('click',()=>writerV10Confirm(this.plugin,writerUi('Esvaziar lixeira?','Empty trash?'),writerUi('Esta ação não pode ser desfeita.','This action cannot be undone.'),async()=>{
@@ -21774,7 +21786,7 @@ function writerV106DragNativeConflict(plugin){
 }
 function writerV106DragRegister(plugin){
  const cfg=writerV106DragMerge(plugin.settings);
- const platform=require('obsidian').Platform;
+ const {Platform:platform,setIcon:obsidianSetIcon}=require('obsidian');
  const doc=plugin.app.workspace.containerEl?.ownerDocument;
  if(!doc)return;
  const isMobile=()=>Boolean(platform?.isMobile||plugin.app.isMobile);
@@ -21794,7 +21806,8 @@ function writerV106DragRegister(plugin){
   handle.replaceChildren();
   if(cfg.icon==='dot')handle.textContent='●';
   else if(cfg.icon==='square')handle.textContent='■';
-  else setIcon(handle,cfg.icon==='grip-lines'?'menu':'grip');
+  else if(typeof obsidianSetIcon==='function')obsidianSetIcon(handle,cfg.icon==='grip-lines'?'menu':'grip');
+  else handle.textContent='⋮⋮';
   handle.style.width=cfg.size+'px';handle.style.height=cfg.size+'px';
   handle.style.color=cfg.color||'var(--text-muted)';
   indicator.style.backgroundColor=cfg.indicatorColor||'var(--interactive-accent)';

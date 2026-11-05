@@ -483,32 +483,6 @@ function writerV9RegisterSpaces(plugin){
  plugin.addCommand({id:'v9-spaces-open',name:writerUi('Spaces: abrir coleções','Spaces: open collections'),
   callback:()=>writerV9SpaceModal(plugin)});
 
- // Commands are usable from the palette and from Obsidian's mobile toolbar.
- const openQuickActions=event=>{
-  const menu=new Menu(plugin.app);
-  const item=(pt,en,icon,callback)=>menu.addItem(entry=>entry.setTitle(writerUi(pt,en))
-   .setIcon(icon).onClick(callback));
-  item('Gerenciar Spaces','Manage Spaces','layers',()=>writerV9SpaceModal(plugin));
-  item('Abrir biblioteca Longform','Open Longform bookshelf','library',
-   ()=>plugin.writerV10OpenBookshelf?.());
-  item('Ordenação global do explorador','Global Explorer sorting','list-ordered',
-   ()=>writerV1043OpenNativeSortMenu(plugin));
-  item('Mostrar / ocultar arquivos escondidos','Show / hide hidden files','eye',async()=>{
-   const flex=plugin.settings.v91Flex;
-   if(!flex)return;
-   flex.showHidden=!flex.showHidden;
-   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();
-  });
-  item('Centralizar linha ou título','Center line or heading','align-center',()=>{
-   plugin.app.commands?.executeCommandById?.(plugin.manifest.id+':v102-align-center');
-  });
-  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
-  else menu.showAtPosition({x:90,y:120});
- };
- plugin.writerV1042QuickActions=openQuickActions;
- plugin.addCommand({id:'v1042-open-quick-actions',
-  name:writerUi('Basic: abrir atalhos rápidos','Basic: open quick actions'),
-  callback:()=>openQuickActions()});
  plugin.addCommand({id:'v1042-spaces-next',
   name:writerUi('Spaces: próxima coleção','Spaces: next collection'),
   callback:()=>{
@@ -525,9 +499,6 @@ function writerV9RegisterSpaces(plugin){
    const index=spaces.findIndex(s=>s.id===plugin.settings.v9Spaces.activeId);
    void writerV9215SelectSpace(plugin,spaces[(index<0?0:index+spaces.length-1)%spaces.length].id);
   }});
- plugin.addCommand({id:'v1042-current-folder-sorting',
-  name:writerUi('Explorador: abrir ordenação global','Explorer: open global sorting'),
-  callback:()=>writerV1043OpenNativeSortMenu(plugin)});
  plugin.addCommand({id:'v1042-spaces-quick-pin',
   name:writerUi('Spaces: fixar ou desafixar nota atual','Spaces: pin or unpin current note'),
   callback:async()=>{

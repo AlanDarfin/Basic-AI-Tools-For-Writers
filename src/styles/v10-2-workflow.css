@@ -943,3 +943,12 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
  .writer-v106-drag-handle svg{max-width:19px;max-height:19px;}
  .writer-v106-drag-indicator{height:3px;}
 }
+
+/* Historical read-only JSON explorer, scoped to Basic. */
+.writer-v106-json-viewer{min-width:0;}
+.writer-v106-json-tree{max-height:min(58vh,560px);overflow:auto;font-family:var(--font-monospace);font-size:var(--font-ui-small);overflow-wrap:anywhere;}
+.writer-v106-json-node{padding:2px 0;border-bottom:1px solid var(--background-modifier-border);}
+.writer-v106-json-node summary{cursor:pointer;min-height:25px;padding:3px;overflow-wrap:anywhere;}
+.writer-v106-json-children{padding-inline-start:12px;border-inline-start:1px solid var(--background-modifier-border);}
+.writer-v106-json-entry{padding:3px 2px;white-space:pre-wrap;overflow-wrap:anywhere;}
+@media(max-width:650px){.writer-v106-json-children{padding-inline-start:6px;}}

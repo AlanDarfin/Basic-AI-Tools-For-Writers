@@ -93,7 +93,7 @@ test('Related-notes/trash icon buttons also resolve setIcon explicitly',()=>{
  }
  assert.deepEqual(env.icons,['link-2','refresh-cw','undo-2','trash-2','refresh-cw']);
  const source=fs.readFileSync('src/v10/discovery.js','utf8');
- assert.equal((source.match(/\bwriterV10DiscoverySetIcon\(/g)||[]).length,6);
+ assert.equal((source.match(/\bwriterV10DiscoverySetIcon\(/g)||[]).length,7);
  assert.equal((source.match(/(?<![\w.])setIcon\(/g)||[]).length,0);
 });
 

@@ -124,6 +124,13 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   redraw();
  });
  if(!compact){
+  if(project.standalone){
+   const remove=card.createEl('button',{cls:'writer-v109-book-remove',text:writerUi('Remover da biblioteca','Remove from library'),attr:{type:'button'}});
+   remove.addEventListener('click',async()=>{
+    plugin.settings.v10Bookshelf.standalone=plugin.settings.v10Bookshelf.standalone.filter(path=>path!==project.file.path);
+    await plugin.saveSettings();redraw();
+   });
+  }
   const actions=card.createDiv({cls:'writer-v10-book-actions writer-v108-book-fields'});
   const field=(pt,en,kind)=>{const root=actions.createDiv({cls:'writer-v108-book-field writer-v108-book-field-'+kind});
    root.createSpan({text:writerUi(pt,en)});return root;};

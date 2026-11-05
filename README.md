@@ -2,12 +2,20 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.7.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.7.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
 Write, plan, revise and organize books without moving your work to a separate database. The plugin combines a Longform workspace, worldbuilding tools, a configurable homepage, Markdown editors, language assistance and optional AI. Notes, folders, links and properties stay inside your Obsidian vault.
 
+
+## Version 10.7.2 — emergency stable-runtime recovery
+
+- **Activation first:** production `main.js` restores the last known stable pre-10.7 module set while retaining all prior features, including homepage, Longform, LanguageTool, reading progress, settings, Dragger-inspired block controls, Zotero imported-note support and related-note/trash widgets.
+- **Safe quarantine:** the nine advanced 10.7 integration sources (new databases, Zotero Web API, FSRS, remote ICS, relationship graph, advanced editor, local Web Speech, cross-note move and optional integration registry) remain in the Git repository, **but are not included in the shipped bundle** until the cause of the activation failure can be reproduced in Obsidian.
+- No user data, settings migration or plugin ID changes. This release contains a smaller, reduced-risk `main.js` with the original features preserved.
+- Full regression checks now confirm that experimental modules are absent from the production bundle, all legacy modules remain, and no optional network calls are unexpectedly active.
+- **Status:** runtime Obsidian activation still requires validation on real desktop and Android installations. If installation fails, see [recovery guide](docs/V10_7_2_STABLE_RECOVERY.pt-BR.md) and provide the first console error without private data.
 
 ## Version 10.7.1 — activation recovery and safe initialization
 

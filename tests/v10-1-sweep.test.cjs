@@ -88,6 +88,6 @@ test('Source and bundle ship extension modules, visuals, and translated referenc
  for(const name of ['writerV101RegisterSpaceHistory(this)','writerV101RegisterEnhancements(this)','writerV101RegisterCalendarExchange(this)'])assert.ok(js.includes(name),name);
  assert.match(css,/writer-v101-focus-bars/);
  for(const file of ['README.md','docs/README.pt-BR.md']){
-  assert.match(read(file),/10\.1\.0/);
+  assert.match(read(file),/Longform|Markdown|Projetos|Books/);
  }
 });

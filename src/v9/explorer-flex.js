@@ -467,6 +467,15 @@ function writerV1043GlobalSortingMenu(plugin,menu){
   });
   menu.addSeparator?.();
  }
+ menu.addItem(item=>{
+  item.setTitle(writerUi('Revelar arquivos ocultos','Reveal hidden files')).setIcon(cfg.showHidden?'eye-off':'eye');
+  item.setChecked?.(cfg.showHidden===true);
+  item.onClick(async()=>{
+   cfg.showHidden=!cfg.showHidden;await plugin.saveSettings();
+   plugin.writerV91FlexRefresh?.();
+  });
+ });
+ menu.addSeparator?.();
  for(const [mode,pt,en,icon] of [
   ['custom','Ordenação manual (Basic)','Manual sorting (Basic)','list-ordered'],
   ['number','Número no título (Basic)','Number in title (Basic)','list-ordered'],

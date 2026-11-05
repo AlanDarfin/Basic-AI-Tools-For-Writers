@@ -2,9 +2,13 @@
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
- const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},...old};
+ const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},singleNotes:[],readLocations:{},...old};
  cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
+ cfg.singleNotes=Array.isArray(cfg.singleNotes)?[...new Set(cfg.singleNotes.filter(path=>typeof path==='string'&&path.endsWith('.md')&&path.length<500))].slice(0,500):[];
+ cfg.readLocations=Object.fromEntries(Object.entries(cfg.readLocations&&typeof cfg.readLocations==='object'?cfg.readLocations:{})
+  .slice(-3000).filter(([path])=>typeof path==='string'&&path.length<500).map(([path,value])=>[path,
+   Math.max(0,Math.min(100,Math.round(Number(value)||0)))]));
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
  cfg.library=Object.fromEntries(Object.entries(library).slice(0,500).filter(([path])=>typeof path==='string'&&path.length<=500)
   .map(([path,item])=>[path,writerV10BookRecord(item)]));
@@ -33,25 +37,73 @@ async function writerV10BookSaveState(plugin,project,record){
  await plugin.saveSettings();
 }
 function writerV10BookshelfProjects(plugin){
- return (plugin.app.vault.getMarkdownFiles?.()||[])
+ const vault=plugin.app.vault,cache=plugin.app.metadataCache;
+ const projects=(vault.getMarkdownFiles?.()||[])
   .map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
+ const indexed=new Set(projects.map(p=>p.file.path));
+ // Standalone books are references to existing Markdown notes, not copied projects.
+ for(const path of plugin.settings.v10Bookshelf?.singleNotes||[]){
+  const file=vault.getAbstractFileByPath(path);
+  if(!(file instanceof TFile)||file.extension!=='md'||indexed.has(file.path))continue;
+  const front=cache?.getFileCache?.(file)?.frontmatter||{};
+  const title=String(front.title||file.basename||'').trim().slice(0,160)||file.basename;
+  projects.push({file,title,meta:front,scenes:[],singleNote:true});
+  indexed.add(file.path);
+ }
+ return projects;
+}
+function writerV109BookMeta(plugin,project){
+ const yaml=plugin.app.metadataCache?.getFileCache?.(project.file)?.frontmatter||{};
+ return {...(project.meta||{}),...yaml};
 }
 function writerV10BookCover(plugin,project){
- const m=project.meta||{};
- const value=m.cover||m.coverImage||m.image||m.banner||'';
+ const m=writerV109BookMeta(plugin,project);
+ // banner has highest priority; linked local images and HTTPS work through the existing resolver.
+ const raw=m.banner||m.cover||m.coverImage||m.image||'';
+ const value=Array.isArray(raw)?raw[0]:raw;
  return typeof writerV9215PrettyImage==='function'?writerV9215PrettyImage(plugin.app,project.file,value):'';
 }
 function writerV10BookWordProgress(plugin,project){
+ if(project.singleNote)return {chapters:1,completed:0};
  const entries=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
- const completed=entries.filter(s=>/^(?:done|complete|finished)$/i.test(String(s.status||''))).length;
+ const completed=entries.filter(s=>/^(?:done|complete|completed|finished)$/i.test(String(s.status||''))).length;
  return {chapters:entries.length,completed};
+}
+function writerV109BookScenePath(scene){
+ return String(scene?.path||scene?.file?.path||scene?.note||'');
+}
+function writerV109BookAutomaticProgress(plugin,project){
+ const read=plugin.settings.v10Bookshelf?.readLocations||{};
+ if(project.singleNote)return Math.max(0,Math.min(100,Math.round(Number(read[project.file.path])||0)));
+ const scenes=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
+ if(!scenes.length)return 0;
+ let completed=0;
+ for(const scene of scenes){
+  const status=String(scene.status||'').toLowerCase();
+  const value=/^(done|complete|completed|finished)$/.test(status)?100:
+   Math.max(0,Math.min(100,Number(read[writerV109BookScenePath(scene)])||0));
+  completed+=value/100;
+ }
+ return Math.max(0,Math.min(100,Math.round(completed/scenes.length*100)));
+}
+function writerV109BookAutoStatus(progress){
+ return progress>=100?'finished':progress>0?'reading':'planned';
+}
+function writerV109BookDescription(plugin,project){
+ const meta=writerV109BookMeta(plugin,project);
+ const raw=meta.description||meta.summary||meta.synopsis||'';
+ return String(Array.isArray(raw)?raw.join(' '):raw).trim().slice(0,2800);
+}
+function writerV109BookCopyright(plugin,project){
+ const meta=writerV109BookMeta(plugin,project);
+ return String(meta.copyright||meta.rights||meta.license||'').trim().slice(0,420);
 }
 function writerV10BookshelfSort(projects,sort,plugin){
  const books=projects.slice();
  const title=(a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'});
  if(sort==='recent')return books.sort((a,b)=>(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0)||title(a,b));
  if(sort==='chapters')return books.sort((a,b)=>(b.scenes?.length||0)-(a.scenes?.length||0)||title(a,b));
- if(sort==='progress'&&plugin)return books.sort((a,b)=>writerV10BookState(plugin,b).progress-writerV10BookState(plugin,a).progress||title(a,b));
+ if(sort==='progress'&&plugin)return books.sort((a,b)=>writerV109BookAutomaticProgress(plugin,b)-writerV109BookAutomaticProgress(plugin,a)||title(a,b));
  if(sort==='series')return books.sort((a,b)=>String(a.meta?.series||'').localeCompare(String(b.meta?.series||''))||title(a,b));
  return books.sort(title);
 }

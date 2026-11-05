@@ -137,7 +137,7 @@ async function writerV10TrashList(plugin,max=400){
  return found.sort((a,b)=>a.localeCompare(b));
 }
 async function writerV10TrashRestore(plugin,path){
- if(!/^\.trash\/(?!\/)[^\0]+$/.test(path)||path.includes('/../')||path.includes('\\'))throw Error('Invalid trash path');
+ if(!path.startsWith('.trash/')||path.slice(7).split('/').some(segment=>!segment||segment==='.'||segment==='..'||segment.includes('\\')||segment.includes('\0')))throw Error('Invalid trash path');
  const adapter=plugin.app.vault.adapter,destination=path.slice('.trash/'.length);
  if(!destination||destination.startsWith('.trash/'))throw Error('Invalid destination');
  if(await adapter.exists(destination))throw Error(writerUi('Já existe um arquivo com esse nome.','A file with this name already exists.'));
@@ -148,7 +148,7 @@ async function writerV10TrashRestore(plugin,path){
  return destination;
 }
 async function writerV10TrashPermanentlyDelete(plugin,path){
- if(!/^\.trash\/(?!\/)[^\0]+$/.test(path)||path.includes('/../')||path.includes('\\'))throw Error('Invalid trash path');
+ if(!path.startsWith('.trash/')||path.slice(7).split('/').some(segment=>!segment||segment==='.'||segment==='..'||segment.includes('\\')||segment.includes('\0')))throw Error('Invalid trash path');
  await plugin.app.vault.adapter.remove(path);
 }
 function writerV10Confirm(plugin,title,description,action){
@@ -211,11 +211,18 @@ class WriterV10TrashView extends ItemView{
   writerV10TrashRows(this.plugin,this.contentEl.createDiv(),400);
  }
 }
+function writerV10DiscoveryCurrentFile(plugin){
+ const active=plugin.app.workspace.getActiveFile?.();
+ if(active instanceof TFile&&active.extension==='md')return active;
+ const recent=plugin.settings?.v8Finish?.homeRecent||[];
+ for(const path of recent){const file=plugin.app.vault.getAbstractFileByPath(path);if(file instanceof TFile&&file.extension==='md')return file;}
+ return null;
+}
 function writerV10RenderRelatedWidget(view,parent){
  const host=view.card(parent,'related','Notas relacionadas','Related notes');
  const open=host.createEl('button',{text:writerUi('Abrir painel','Open sidebar')});
  open.addEventListener('click',()=>void view.plugin.writerV10OpenRelated?.());
- writerV10RelatedResults(view.plugin,host.createDiv(),view.app.workspace.getActiveFile?.());
+ writerV10RelatedResults(view.plugin,host.createDiv(),writerV10DiscoveryCurrentFile(view.plugin));
 }
 function writerV10RenderTrashWidget(view,parent){
  const host=view.card(parent,'trash','Lixeira','Trash');
@@ -225,7 +232,7 @@ function writerV10RenderTrashWidget(view,parent){
 }
 function writerV10RenderReadingWidget(view,parent){
  const host=view.card(parent,'reading','Leitura da nota','Note reading');
- const file=view.app.workspace.getActiveFile?.();
+ const file=writerV10DiscoveryCurrentFile(view.plugin);
  if(!(file instanceof TFile)){host.createEl('p',{text:writerUi('Abra uma nota para visualizar o resumo.','Open a note for reading statistics.')});return;}
  const detail=host.createDiv({cls:'writer-v10-reading-stats'});
  void view.app.vault.cachedRead(file).then(content=>{
@@ -247,6 +254,42 @@ function writerV10RenderZoteroWidget(view,parent){
  }
  host.createEl('small',{cls:'writer-v8-home-muted',text:writerUi('Fonte: notas locais importadas; sem sincronização automática.','Source: local imported notes; no automatic sync.')});
 }
+function writerV10ZoteroRef(plugin,file){
+ const front=plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter||{};
+ const key=String(front.citekey||front.citationKey||front['citation-key']||front.bibtexKey||'').trim().replace(/^@/,'').slice(0,100);
+ const title=String(front.title||file.basename).slice(0,160);
+ const creator=front.author||front.creators||front.creator||'';
+ const author=Array.isArray(creator)?creator.map(p=>typeof p==='string'?p:[p.lastName,p.firstName].filter(Boolean).join(', ')).join('; '):String(creator);
+ return {file,key,title,author:author.slice(0,150),doi:String(front.DOI||front.doi||'').slice(0,100)};
+}
+function writerV10ZoteroPicker(plugin){
+ const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
+ const references=files.map(file=>writerV10ZoteroRef(plugin,file));
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Inserir citação Zotero','Insert Zotero citation'));
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Pesquisa em notas Markdown já importadas. Better BibTeX: propriedade citekey.','Search previously imported Markdown notes. Better BibTeX: citekey property.')});
+  const search=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Título, autor, DOI ou citekey…','Title, author, DOI or citekey…'),'aria-label':writerUi('Buscar referências','Search references')}});
+  const results=root.createDiv({cls:'writer-v10-zotero-picker'});
+  const draw=()=>{
+   results.empty();const query=search.value.trim().toLocaleLowerCase();
+   const filtered=references.filter(ref=>[ref.key,ref.title,ref.author,ref.doi].some(value=>value.toLocaleLowerCase().includes(query))).slice(0,40);
+   if(!filtered.length){results.createEl('p',{text:writerUi('Nenhuma referência importada encontrada.','No imported reference found.')});return;}
+   for(const ref of filtered){
+    const button=results.createEl('button',{cls:'writer-v10-discovery-open',attr:{type:'button'}});
+    button.createSpan({text:ref.title});button.createEl('small',{text:[ref.author,ref.key?'@'+ref.key:'',ref.doi].filter(Boolean).join(' · ')});
+    button.addEventListener('click',()=>{
+     const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
+     if(!view?.editor||!view?.file){new Notice(writerUi('Abra uma nota editável antes de citar.','Open an editable note to insert a citation.'));return;}
+     const citation=ref.key?'[@'+ref.key.replace(/[^\w:.-]/g,'')+']':plugin.app.fileManager.generateMarkdownLink(ref.file,view.file.path);
+     view.editor.replaceSelection(citation);modal.close();
+    });
+   }
+  };
+  search.addEventListener('input',draw);draw();
+ };
+ modal.open();
+}
 function writerV10DiscoveryRegister(plugin){
  writerV10DiscoveryMerge(plugin.settings);
  if(!plugin.settings.v10Discovery.enabled)return;
@@ -255,6 +298,7 @@ function writerV10DiscoveryRegister(plugin){
  const open=async(type,where)=>{const leaf=plugin.app.workspace.getLeavesOfType?.(type)?.[0]||plugin.app.workspace.getRightLeaf?.(false)||plugin.app.workspace.getLeaf?.('tab');if(leaf){await leaf.setViewState({type,active:true});plugin.app.workspace.revealLeaf?.(leaf);}};
  plugin.writerV10OpenRelated=()=>open(WRITER_V10_RELATED_VIEW);
  plugin.writerV10OpenTrash=()=>open(WRITER_V10_TRASH_VIEW);
+ plugin.addCommand({id:'v10-zotero-insert-citation',name:writerUi('Zotero: inserir referência importada','Zotero: insert imported citation'),callback:()=>writerV10ZoteroPicker(plugin)});
  plugin.addCommand({id:'v10-related-notes',name:writerUi('Notas: encontrar relacionadas','Notes: find related'),callback:()=>void plugin.writerV10OpenRelated()});
  plugin.addCommand({id:'v10-trash-explorer',name:writerUi('Lixeira: abrir explorador','Trash: open explorer'),callback:()=>void plugin.writerV10OpenTrash()});
  plugin.addCommand({id:'v10-empty-trash',name:writerUi('Lixeira: esvaziar com confirmação','Trash: empty with confirmation'),callback:()=>writerV10Confirm(plugin,writerUi('Esvaziar lixeira?','Empty trash?'),writerUi('Apaga permanentemente os arquivos da lixeira interna.','Permanently deletes files from the internal trash.'),async()=>{const count=await writerV10TrashEmpty(plugin);new Notice(count+' '+writerUi('arquivos excluídos.','files deleted.'));})});

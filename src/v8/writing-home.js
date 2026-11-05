@@ -31,7 +31,7 @@ function writerV8HomeQuoteChoices(value){
   const parts=line.split(/\s+\|\s+/);
   return [String(parts[0]||'').slice(0,440),String(parts.slice(1).join(' | ')||'').slice(0,80)];
  }).filter(row=>row[0]);
- return [...choices,...WRITER_V8_HOME_ORIGINAL_QUOTES.filter(([quote])=>!choices.some(([custom])=>custom===quote))];
+ return choices.length?choices:WRITER_V8_HOME_ORIGINAL_QUOTES;
 }
 function writerV8HomePick(items,previous=''){
  if(!Array.isArray(items)||!items.length)return null;

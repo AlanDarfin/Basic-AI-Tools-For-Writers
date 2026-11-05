@@ -1012,7 +1012,7 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
  display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-block:10px;min-width:0;
 }
 .writer-v10-discovery-pane .writer-v10-related-card{
- display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:10px;
+ display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;
  width:100%;min-width:0;min-height:72px;height:auto;padding:9px;
  border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);
  background:var(--background-secondary);

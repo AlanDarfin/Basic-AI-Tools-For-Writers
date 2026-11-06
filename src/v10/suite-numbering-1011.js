@@ -97,10 +97,11 @@ function writerV1011NumberPreview(plugin,mode){
 }
 function writerV1011NumberReading(plugin,el,ctx){
  const cfg=writerV1011NumberCfg(plugin.settings);
- if(!cfg.enabled)return;
  const file=plugin.app.vault.getAbstractFileByPath?.(ctx.sourcePath);
- if(file&&writerV1011NumberDisabled(plugin,file))return;
+ const enabled=cfg.enabled&&!(file&&writerV1011NumberDisabled(plugin,file));
  const preview=el.closest?.('.markdown-preview-view');
+ preview?.classList?.toggle('writer-v1011-number-reading',Boolean(enabled&&cfg.virtual));
+ if(!enabled)return;
  if(cfg.virtual&&preview){
   preview.classList.add('writer-v1011-number-reading');
   preview.dataset.basicScheme=cfg.scheme;

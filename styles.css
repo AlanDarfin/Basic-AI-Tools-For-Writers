@@ -9025,4 +9025,73 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
 .dictionary-settings-panel .writer-v1048-toolbar-settings{
  mask-image:linear-gradient(to right,#000 0%,#000 calc(100% - 22px),transparent 100%);
 }
+
+
+/* Basic 10.10: opt-in sidebar toolbar, without modifying Obsidian's native tabs. */
+.writer-v1010-sidebar-toolbar{
+ display:flex;align-items:center;flex-wrap:wrap;gap:4px;
+ min-height:32px;padding:4px 7px;border-bottom:1px solid var(--background-modifier-border);
+ background:var(--background-secondary);box-sizing:border-box;max-width:100%;
+}
+.writer-v1010-sidebar-toolbar > .writer-v1010-sidebar-button{
+ display:grid;place-items:center;flex:0 0 28px;width:28px;height:28px;
+ border:1px solid transparent;background:transparent;box-shadow:none;
+ color:var(--text-muted);padding:5px;border-radius:var(--radius-s);
+}
+.writer-v1010-sidebar-toolbar > .writer-v1010-sidebar-button:hover{
+ background:var(--background-modifier-hover);color:var(--text-normal);
+}
+.writer-v1010-sidebar-toolbar > .writer-v1010-sidebar-button.is-active{
+ background:var(--background-modifier-hover);color:var(--text-accent);
+ border-color:var(--background-modifier-border);
+}
+.writer-v1010-sidebar-toolbar > .writer-v1010-sidebar-button svg{
+ width:17px;height:17px;stroke:currentColor;
+}
+.writer-v1010-sidebar-toolbar > .writer-v1010-sidebar-filter{
+ flex:1 1 105px;min-width:0;max-width:100%;height:30px;
+ font-size:var(--font-ui-small);margin:2px 0 0;
+}
+.writer-v1010-filter-hidden{display:none;}
+.workspace-leaf-content[data-type="markdown"].writer-v1010-editor-width{
+ --file-line-width:var(--basic-editor-width,80%);
+}
+.workspace-leaf-content[data-type="markdown"].writer-v1010-editor-width
+ :is(.markdown-source-view.mod-cm6 .cm-sizer,.markdown-preview-view .markdown-preview-sizer){
+ width:var(--basic-editor-width,80%);
+ max-width:var(--basic-editor-width,80%);
+ margin-inline:auto;
+}
+/* Keep source view toolbars, CodeMirror gutters and inline tooltips intact. */
+.status-bar-item.writer-v1010-width-status{
+ display:flex;align-items:center;gap:6px;white-space:nowrap;
+ max-width:220px;padding-inline:6px;
+}
+.writer-v1010-width-status .writer-v1010-width-name{
+ color:var(--text-muted);font-size:var(--font-ui-smaller);
+}
+.writer-v1010-width-status input[type="range"]{
+ flex:1 1 92px;width:92px;min-width:45px;max-width:120px;
+ height:16px;margin:0;accent-color:var(--interactive-accent);
+}
+.writer-v1010-width-status button.writer-v1010-width-value{
+ padding:1px 4px;min-width:37px;min-height:22px;
+ color:var(--text-muted);font-variant-numeric:tabular-nums;
+ background:transparent;box-shadow:none;border:0;border-radius:var(--radius-s);
+ font-size:var(--font-ui-smaller);
+}
+.writer-v1010-width-status button.writer-v1010-width-value:hover{
+ color:var(--text-accent);background:var(--background-modifier-hover);
+}
+@media(max-width:700px){
+ .writer-v1010-sidebar-toolbar{
+  position:relative;z-index:2;flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;
+  scrollbar-width:none;
+ }
+ .writer-v1010-sidebar-toolbar::-webkit-scrollbar{display:none;}
+ .writer-v1010-sidebar-toolbar > .writer-v1010-sidebar-button{flex-shrink:0;}
+ .writer-v1010-sidebar-toolbar > .writer-v1010-sidebar-filter{flex:1 0 100px;}
+ /* Sidebar views stay sized by Obsidian, including when the software keyboard opens. */
+ .writer-v1010-width-status{display:none;}
+}
 /* END V8 MODULAR STYLES */

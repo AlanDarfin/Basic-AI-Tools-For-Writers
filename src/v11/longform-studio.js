@@ -352,7 +352,7 @@ function writerV11StudioRegister(plugin){
   }
  }));
 
- plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir estúdio contínuo','Longform: open continuous studio'),
+ plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir escrita contínua','Longform: open continuous writing'),
   callback:()=>writerV11PickProject(plugin,project=>writerV11OpenProject(plugin,project))});
  plugin.addCommand({id:'v11-editorial-review',name:writerUi('Revisão: comparar snapshots do capítulo','Review: compare chapter snapshots'),
   callback:()=>writerV11OpenRevision(plugin,plugin.app.workspace.getActiveFile?.())});
@@ -365,18 +365,18 @@ function writerV11StudioRegister(plugin){
 }
 function writerV11StudioSettings(plugin,panel){
  const cfg=writerV11Cfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('v11 · Longform Studio','v11 · Longform Studio')});
+ panel.createEl('h3',{text:writerUi('Longform · Escrita contínua','Longform · Continuous writing')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Escrita contínua segura, revisões com snapshots, pesquisa contextual e exportação Markdown por projeto.',
   'Safe continuous writing, snapshot comparisons, contextual search and per-project Markdown compilation.')});
- new Setting(panel).setName(writerUi('Ativar estúdio Longform','Enable Longform Studio'))
+ new Setting(panel).setName(writerUi('Ativar escrita contínua no Longform','Enable continuous writing in Longform'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Limite de capítulos por sessão','Chapter limit per session'))
   .addSlider(s=>s.setLimits(10,200,10).setValue(cfg.chapterLimit).setDynamicTooltip().onChange(async v=>{cfg.chapterLimit=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum searched notes'))
   .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.searchLimit).setDynamicTooltip().onChange(async v=>{cfg.searchLimit=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Estúdio Longform','Longform Studio'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
+ new Setting(panel).setName(writerUi('Escrita contínua','Continuous writing'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir Longform','Open Longform')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
  new Setting(panel).setName(writerUi('Central de compatibilidade','Compatibility center'))
   .addButton(b=>b.setButtonText(writerUi('Diagnosticar','Diagnose')).onClick(()=>writerV11OpenDiagnostics(plugin)));
 }

@@ -2,6 +2,16 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 12.0.3 — Surfing search and browser-style bookmarks
+
+- Added a Web search mode to the existing homepage search bar, retaining fuzzy vault search.
+- Routes desktop web pages to the optional Surfing plugin, then Obsidian Web Viewer or the external browser; mobile uses its system browser.
+- Added search engine and browser destination settings within the existing Homepage settings page.
+- Added an optional Web Bookmarks homepage widget with titles, groups, Lucide icons, reorder/edit/delete controls and command to capture the current web page.
+- Keeps browser bookmarks distinct from local note favorites and supports per-Space widget visibility.
+- Improved floating toolbar selection handling and independent desktop/mobile presentation options.
+- Added regression coverage, bilingual documentation and rebuilt the release assets.
+
 ## 12.0.2 — Scoped Spaces and per-device toolbar
 
 - Added local per-Space hiding and folder-root rendering in the native Explorer.

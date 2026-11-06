@@ -121,6 +121,8 @@ class WriterV8HomeView extends ItemView{
   if(!Array.isArray(space.homeHidden))space.homeHidden=[...global.homeHidden];
    space.homeHidden=space.homeHidden.filter(k=>WRITER_V8_HOME_SECTIONS.includes(k));
   if(!space.homeWidgetSizes)space.homeWidgetSizes={...global.homeWidgetSizes};
+  if(!space.homeWidgetFrames)space.homeWidgetFrames={...global.homeWidgetFrames};
+  if(!['grid','free'].includes(space.homeWidgetAlignment))space.homeWidgetAlignment=global.homeWidgetAlignment||'grid';
   return space;
  }
  openFile(file){
@@ -181,6 +183,7 @@ class WriterV8HomeView extends ItemView{
   add.createSpan({text:writerUi('Adicionar widgets','Add widgets')});
   add.addEventListener('click',()=>this.manageWidgets());
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'});
+  grid.dataset.widgetAlignment=widgetCfg.homeWidgetAlignment==='free'?'free':'grid';
   const cards={
    calendar:p=>this.renderCalendarWidget(p),
    soundscape:p=>writerV91HomeSoundscape(this,p),
@@ -210,10 +213,16 @@ class WriterV8HomeView extends ItemView{
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
    cards[key]?.(grid);
    const card=[...grid.children].find(el=>el.getAttribute('data-section')===key);
-   if(card)card.dataset.widgetSize=widgetCfg.homeWidgetSizes?.[key]||'normal';
+   if(card){
+    const size=widgetCfg.homeWidgetSizes?.[key]||'normal';
+    card.dataset.widgetSize=size;
+    const frame=widgetCfg.homeWidgetFrames?.[key];
+    if(frame)this.applyWidgetFrame(grid,card,frame);
+   }
   }
   this.installWidgetGrid(grid);
   this.installWidgetDragging(grid);
+  this.installWidgetResizing(grid);
   if(!grid.querySelector('[data-section]')){
    const empty=grid.createDiv({cls:'writer-v903-widgets-empty'});
    empty.createEl('p',{text:writerUi('Sua homepage está vazia. Adicione widgets para começar.','Your dashboard is empty. Add some widgets to get started.')});
@@ -221,6 +230,108 @@ class WriterV8HomeView extends ItemView{
    restore.addEventListener('click',()=>this.manageWidgets());
   }
   this.contentEl.scrollTop=scroll;
+ }
+ applyWidgetFrame(grid,card,frame){
+  const isMobile=writerV8HomeIsMobile(this.plugin)||grid.clientWidth<=560;
+  if(isMobile)return;
+  const columns=Math.min(12,Math.max(3,Math.round(frame.columns||6)));
+  card.style.gridColumnEnd='span '+columns;
+  if(frame.height>0){
+   card.style.height=frame.height+'px';
+   card.classList.add('writer-v1205-manual-height');
+  }
+  if(grid.dataset.widgetAlignment==='free'&&frame.width>0){
+   card.style.width=frame.width+'px';
+   card.style.maxWidth='100%';
+   card.style.justifySelf='start';
+  }
+ }
+ setWidgetAlignment(alignment){
+  if(!['grid','free'].includes(alignment))return;
+  this.widgetPreferences().homeWidgetAlignment=alignment;
+  this.saveSoon();this.render();
+ }
+ resetWidgetFrame(key){
+  const prefs=this.widgetPreferences();
+  if(!prefs.homeWidgetFrames)return;
+  delete prefs.homeWidgetFrames[key];
+  this.saveSoon();this.render();
+ }
+ installWidgetResizing(grid){
+  if(writerV8HomeIsMobile(this.plugin))return;
+  const prefs=this.widgetPreferences();
+  for(const card of grid.querySelectorAll('[data-section]')){
+   const key=card.getAttribute('data-section');
+   if(!WRITER_V8_HOME_SECTIONS.includes(key))continue;
+   card.classList.add('writer-v1205-resize-card');
+   for(const direction of ['right','bottom','corner']){
+    const handle=card.createEl('button',{cls:'writer-v1205-resize-handle writer-v1205-resize-'+direction,
+     attr:{type:'button','aria-label':writerUi('Redimensionar '+direction+' de '+key,'Resize '+direction+' of '+key),
+      title:writerUi('Arraste para redimensionar','Drag to resize')}});
+    const horizontal=direction!=='bottom',vertical=direction!=='right';
+    const commit=(columns,height,width)=>{
+     const frames=prefs.homeWidgetFrames||(prefs.homeWidgetFrames={});
+     frames[key]={columns,height,width};
+     this.saveSoon();
+    };
+    const metrics=()=>{
+     const gap=parseFloat(getComputedStyle(grid).columnGap)||12;
+     const step=(grid.clientWidth-gap*11)/12+gap;
+     const r=card.getBoundingClientRect();
+     const f=prefs.homeWidgetFrames?.[key]||{};
+     return {r,step,columns:f.columns||Math.max(3,Math.round((r.width+gap)/step)),height:f.height||Math.round(r.height),width:f.width||Math.round(r.width)};
+    };
+    const adjust=(start,dx,dy)=>{
+     const free=grid.dataset.widgetAlignment==='free';
+     const nextWidth=Math.max(160,start.r.width+dx);
+     const columns=horizontal?Math.max(3,Math.min(12,Math.round((nextWidth+12)/start.step))):start.columns;
+     const height=vertical?Math.max(92,Math.min(1100,Math.round(start.height+dy))):start.height;
+     const width=horizontal?Math.max(160,Math.min(1800,Math.round(nextWidth))):start.width;
+     card.style.gridColumnEnd='span '+columns;
+     if(free&&horizontal){card.style.width=width+'px';card.style.maxWidth='100%';card.style.justifySelf='start';}
+     if(!free){card.style.removeProperty('width');card.style.removeProperty('justify-self');}
+     if(vertical){card.style.height=height+'px';card.classList.add('writer-v1205-manual-height');}
+     return {columns,height,width};
+    };
+    handle.addEventListener('pointerdown',event=>{
+     if(event.button!==undefined&&event.button!==0)return;
+     event.preventDefault();event.stopPropagation();
+     const start=metrics(),origin={x:event.clientX,y:event.clientY};
+     let result={columns:start.columns,height:start.height,width:start.width};
+     card.classList.add('writer-v1205-resizing');
+     handle.setPointerCapture?.(event.pointerId);
+     const move=e=>{result=adjust(start,e.clientX-origin.x,e.clientY-origin.y);};
+     const finish=e=>{
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',finish);
+      handle.removeEventListener('pointercancel',cancel);
+      card.classList.remove('writer-v1205-resizing');
+      handle.releasePointerCapture?.(e.pointerId);
+      commit(result.columns,result.height,result.width);
+     };
+     const cancel=e=>{
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',finish);
+      handle.removeEventListener('pointercancel',cancel);
+      card.classList.remove('writer-v1205-resizing');
+      handle.releasePointerCapture?.(e.pointerId);
+      this.render();
+     };
+     handle.addEventListener('pointermove',move);
+     handle.addEventListener('pointerup',finish);
+     handle.addEventListener('pointercancel',cancel);
+    });
+    handle.addEventListener('keydown',event=>{
+     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
+     event.preventDefault();event.stopPropagation();
+     const m=metrics(),factor=event.shiftKey?3:1;
+     const dx=horizontal?factor*(event.key==='ArrowLeft'?-m.step:event.key==='ArrowRight'?m.step:0):0;
+     const dy=vertical?factor*(event.key==='ArrowUp'?-24:event.key==='ArrowDown'?24:0):0;
+     const result=adjust(m,dx,dy);
+     commit(result.columns,result.height,result.width);
+    });
+   }
+  }
  }
  installWidgetGrid(grid){
   const update=()=>{
@@ -287,6 +398,10 @@ class WriterV8HomeView extends ItemView{
    for(const [size,pt,en] of [['compact','Compacto','Compact'],['normal','Normal','Normal'],['wide','Largo','Wide']]){
     popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.widgetPreferences().homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
    }
+   popup.addSeparator();
+   popup.addItem(item=>item.setTitle(writerUi('Encaixar na grade','Snap to grid')).setIcon(this.widgetPreferences().homeWidgetAlignment==='grid'?'check':'grid-3x3').onClick(()=>this.setWidgetAlignment('grid')));
+   popup.addItem(item=>item.setTitle(writerUi('Tamanho livre','Free size')).setIcon(this.widgetPreferences().homeWidgetAlignment==='free'?'check':'move').onClick(()=>this.setWidgetAlignment('free')));
+   popup.addItem(item=>item.setTitle(writerUi('Restaurar dimensões','Reset dimensions')).setIcon('rotate-ccw').onClick(()=>this.resetWidgetFrame(key)));
    popup.addSeparator();
    popup.addItem(item=>item.setTitle(writerUi('Remover widget','Remove widget')).setIcon('x').onClick(()=>this.setWidgetVisible(key,false)));
    popup.showAtMouseEvent(event);
@@ -364,7 +479,7 @@ class WriterV8HomeView extends ItemView{
     save.addEventListener('click',async()=>{
      if(!inputName)return;
      const prefs=view.widgetPreferences();
-     const record={name:inputName,order:[...prefs.homeOrder],hidden:[...prefs.homeHidden],sizes:{...prefs.homeWidgetSizes}};
+     const record={name:inputName,order:[...prefs.homeOrder],hidden:[...prefs.homeHidden],sizes:{...prefs.homeWidgetSizes},frames:{...prefs.homeWidgetFrames},alignment:prefs.homeWidgetAlignment||'grid'};
      const at=presets.findIndex(x=>x.name===inputName);
      if(at>=0)presets[at]=record;else presets.push(record);
      plugin.settings.v8Finish.homePresets=presets.slice(-12);
@@ -377,6 +492,8 @@ class WriterV8HomeView extends ItemView{
      prefs.homeOrder=[...new Set([...preset.order,...WRITER_V8_HOME_SECTIONS])];
      prefs.homeHidden=[...preset.hidden];
      prefs.homeWidgetSizes={...preset.sizes};
+     prefs.homeWidgetFrames={...(preset.frames||{})};
+     prefs.homeWidgetAlignment=preset.alignment==='free'?'free':'grid';
      view.saveSoon();view.render();modal.close();
     });
     const remove=section.createEl('button',{text:writerUi('Excluir preset','Delete preset')});

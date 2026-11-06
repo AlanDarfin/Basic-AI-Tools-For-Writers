@@ -189,59 +189,90 @@ function writerV1010Register(plugin){
  const hosts=new Map();
  let queued=null,unloaded=false,status=null,range=null,value=null;
  const make=(tag,cls,doc)=>{const node=doc.createElement(tag);if(cls)node.className=cls;return node;};
+ const restoreSidebar=side=>{
+  const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
+  bar?.remove?.();hosts.delete(side);
+  split?.tabsListEl?.classList?.remove('writer-v1011-native-tabs-hidden');
+  split?.containerEl?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
+ };
  const renderSide=side=>{
   const split=side==='left'?workspace.leftSplit:workspace.rightSplit;
-  const root=split?.containerEl,old=hosts.get(side);
-  if(!showSidebar(side)||!root){
-   if(old){old.remove();hosts.delete(side);}return;
+  const drawer=writerV1010MobileDrawer(workspace,side),root=split?.containerEl;
+  const mobile=Boolean(require('obsidian').Platform?.isMobile);
+  if(!showSidebar(side)||!root||
+     (mobile&&!drawer)||
+     (mobile&&(root.classList?.contains('osm-sidebar')||
+       root.ownerDocument?.body?.classList?.contains('osm-mobile-tabs')))){
+   restoreSidebar(side);return;
   }
-  const header=root.querySelector?.('.workspace-tab-header-container,.workspace-drawer-header');
-  if(!header){if(old){old.remove();hosts.delete(side);}return;}
-  const doc=header.ownerDocument,leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
-  if(!leaves.length){if(old){old.remove();hosts.delete(side);}return;}
-  let bar=old;
-  if(!bar||bar.parentElement!==header.parentElement){
-   bar?.remove();bar=make('div','writer-v1010-sidebar-toolbar',doc);
-   header.insertAdjacentElement?.('afterend',bar);
-   hosts.set(side,bar);
+  // Mobile: draw inside the native tab selector, never below it as a duplicate row.
+  // If private drawer internals change, use the unmodified native selector.
+  const header=drawer?drawer.tabsContainerEl:
+   root.querySelector?.('.workspace-tab-header-container');
+  if(!header){restoreSidebar(side);return;}
+  const doc=header.ownerDocument;
+  const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
+  if(!leaves.length){restoreSidebar(side);return;}
+  let bar=hosts.get(side);
+  if(!bar||bar.parentElement!==header){
+   bar?.remove?.();
+   bar=make('div','writer-v1010-sidebar-toolbar'+(drawer?' writer-v1011-native-row':''),doc);
+   header.appendChild(bar);hosts.set(side,bar);
+  }
+  if(drawer){
+   drawer.tabsListEl.classList.add('writer-v1011-native-tabs-hidden');
+   root.classList.add('writer-v1011-managed-mobile');
+   // Only compact the vault footer when the user can still open the vault chooser.
+   const switcher=drawer.headerEl?.querySelector?.('.workspace-drawer-header-switcher');
+   const canSwitch=typeof plugin.app.openVaultChooser==='function'||
+    typeof plugin.app.openVaultSwitcher==='function'||Boolean(switcher);
+   root.classList.toggle('writer-v1011-compact-footer',
+    side==='left'&&cfg.sidebar.compactFooter!==false&&canSwitch);
   }
   bar.replaceChildren();
-  const active=writerV1010ActiveLeaf(workspace,leaves);
-  const max=cfg.sidebar.overflow!==false&&root.clientWidth&&root.clientWidth<330?3:6;
+  const active=writerV1010ActiveLeaf(workspace,leaves,side);
+  const max=drawer?Math.max(2,Math.min(6,Math.floor(((root.clientWidth||380)-55)/48))):
+   Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
   const addIcon=(type,title,callback,isActive=false)=>{
    const btn=make('button','writer-v1010-sidebar-button'+(isActive?' is-active':''),doc);
-   btn.type='button';btn.setAttribute('aria-label',title);btn.setAttribute('title',title);
+   btn.type='button';btn.setAttribute('aria-label',title);
+   btn.setAttribute('title',title);btn.setAttribute('aria-pressed',String(isActive));
    writerV1010Icon(btn,WRITER_V1010_VIEWS[type]?.[0]||'panel-left');
-   btn.addEventListener('click',callback);bar.appendChild(btn);return btn;
+   btn.addEventListener('click',callback);bar.appendChild(btn);
+   return btn;
   };
   for(const entry of visible){
-   const info=WRITER_V1010_VIEWS[entry.type]||['panels',entry.type,entry.type];
-   addIcon(entry.type,writerUi(info[1],info[2]),()=>void workspace.revealLeaf?.(entry.leaf),active===entry.leaf);
+   const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
+   addIcon(entry.type,writerUi(info[1],info[2]),
+    ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf);
   }
-  if(hidden.length){
-   const overflow=addIcon('',writerUi('Mais painéis','More panels'),e=>{
+  if(hidden.length&&cfg.sidebar.actionMenu===false){
+   const overflow=addIcon('',writerUi('Mais painéis','More panels'),event=>{
     const menu=new Menu(plugin.app);
     for(const entry of hidden){
-     const info=WRITER_V1010_VIEWS[entry.type]||['panels',entry.type,entry.type];
+     const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
      menu.addItem(item=>item.setTitle(writerUi(info[1],info[2])).setIcon(info[0])
-      .onClick(()=>void workspace.revealLeaf?.(entry.leaf)));
+      .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
     }
-    menu.showAtMouseEvent?.(e);
-   });
-   writerV1010Icon(overflow,'chevron-down');
+    menu.showAtMouseEvent?.(event);
+   });writerV1010Icon(overflow,'ellipsis');
   }
   if(cfg.sidebar.actionMenu!==false){
-   const menu=addIcon('',writerUi('Ações do painel','Sidebar actions'),e=>writerV1010SidebarMenu(plugin,e,side,leaves,active));
+   const menu=addIcon('',writerUi('Ações e mais painéis','Actions and more views'),
+    event=>writerV1010SidebarMenu(plugin,event,side,hidden,active));
    writerV1010Icon(menu,'ellipsis');
   }
   if(cfg.sidebar.fileFilter===true&&side==='left'){
+   // The filter is opt-in; it never appears as a second full-width header.
    const box=make('input','writer-v1010-sidebar-filter',doc);
-   box.type='search';box.placeholder=writerUi('Filtrar arquivos…','Filter files…');
+   box.type='search';box.placeholder=writerUi('Filtrar…','Filter…');
    box.setAttribute('aria-label',box.placeholder);
    box.value=plugin._writerV1010Filter||'';
-   box.addEventListener('input',()=>{plugin._writerV1010Filter=box.value;writerV1010FilterFiles(workspace,box.value);});
-   bar.appendChild(box);
+   box.addEventListener('input',()=>{
+    plugin._writerV1010Filter=box.value;
+    writerV1010FilterFiles(workspace,box.value);
+   });bar.appendChild(box);
   }
  };
  const allMarkdown=()=>{
@@ -317,8 +348,7 @@ function writerV1010Register(plugin){
  else queue();
  plugin.register?.(()=>{
   unloaded=true;clearTimeout(queued);
-  for(const bar of hosts.values())bar.remove();
-  hosts.clear();
+  restoreSidebar('left');restoreSidebar('right');
   for(const leaf of allMarkdown()){
    const el=leaf?.view?.containerEl;
    el?.classList?.remove('writer-v1010-editor-width');
@@ -343,7 +373,9 @@ function writerV1010Settings(plugin,panel){
   ['desktopTabs','Abas extras no computador','Extra tabs on desktop'],
   ['overflow','Agrupar abas excedentes','Overflow for extra tabs'],
   ['actionMenu','Menu de ações do painel','Sidebar action menu'],
-  ['fileFilter','Filtro local do explorador','Local Explorer filter']
+  ['fileFilter','Filtro local do explorador','Local Explorer filter'],
+  ['integrateSpaces','Integrar Spaces ao rodapé móvel','Integrate Spaces into mobile footer'],
+  ['compactFooter','Compactar rodapé nativo no celular','Compact native footer on mobile']
  ])toggle(cfg.sidebar,key,pt,en);
  new Setting(panel).setName(writerUi('Organizar abas laterais','Reorder sidebar tabs'))
   .setDesc(writerUi('A ordem será usada no PC e no celular, sem alterar o workspace nativo.','The same order applies on desktop and mobile without rewriting the native workspace.'))

@@ -20736,6 +20736,10 @@ function writerV101RegisterEnhancements(plugin){
  if(typeof writerV111NumberRegister==='function')safeRegister('numbering-live-v11.1',()=>writerV111NumberRegister(plugin));
  if(typeof writerV111DbBuilderRegister==='function')safeRegister('database-builder-v11.1',()=>writerV111DbBuilderRegister(plugin));
  if(typeof writerV12Register==='function')safeRegister('unified-toolkit-v12',()=>writerV12Register(plugin));
+ if(typeof writerV12SecureRegister==='function')safeRegister('encrypted-notes-v12',()=>writerV12SecureRegister(plugin));
+ if(typeof writerV12TasksRegister==='function')safeRegister('task-workbench-v12',()=>writerV12TasksRegister(plugin));
+ if(typeof writerV12AnnotationRegister==='function')safeRegister('image-annotation-v12',()=>writerV12AnnotationRegister(plugin));
+ if(typeof writerV12ReaderRegister==='function')safeRegister('context-reader-v12',()=>writerV12ReaderRegister(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -20807,7 +20811,11 @@ function writerV101EnhancementsSettings(plugin,panel){
  if(typeof writerV111NumberSettings==='function')writerV111NumberSettings(plugin,panel);
  if(typeof writerV111DbBuilderSettings==='function')writerV111DbBuilderSettings(plugin,panel);
  if(typeof writerV12Settings==='function')writerV12Settings(plugin,panel);
+ if(typeof writerV12SecureSettings==='function')writerV12SecureSettings(plugin,panel);
+ if(typeof writerV12AnnotationSettings==='function')writerV12AnnotationSettings(plugin,panel);
+ if(typeof writerV12ReaderSettings==='function')writerV12ReaderSettings(plugin,panel);
 }
+
 
 // v3 module: src/v10/calendar-exchange.js
 /* RFC 5545 subset for offline .ics import/export; never connects to remote calendars. */
@@ -25609,7 +25617,7 @@ const WRITER_V12_SYNC=['none','syncthing-manager','syncthing-integration','obsid
 function writerV12Config(plugin){
  const old=plugin.settings.v12Toolkit;
  const cfg=plugin.settings.v12Toolkit={
-  enabled:true,palette:true,imageTools:true,taskNavigator:true,localInbox:true,
+  enabled:true,palette:true,imageTools:true,taskNavigator:true,localInbox:true,secureNotes:false,selectionTools:false,
   folderFocus:true,integrations:true,syncProvider:'none',maxTaskFiles:250,
   ...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})
  };
@@ -26087,6 +26095,509 @@ function writerV12Settings(plugin,panel){
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin)));
  new Setting(panel).setName(writerUi('Central de sincronização','Synchronization center'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin,'sync')));
+}
+
+// v3 module: src/v12/secure-notes.js
+/* Basic v12: local encrypted note envelopes. Never replaces an existing file,
+ * never persists keys or plaintext. AES-256-GCM + PBKDF2-SHA256 via WebCrypto.
+ * Encryption is per new note; NOT a folder-wide vault or searchable lock. */
+const WRITER_V12_SECURE_PREFIX='BASIC-SECURE/1\n';
+function writerV12SecureSubtle(){
+ const wc=globalThis.crypto;
+ if(!wc?.subtle||typeof wc.getRandomValues!=='function')throw Error('Web Crypto API is unavailable.');
+ return wc;
+}
+function writerV12SecureBytes(text){
+ return new TextEncoder().encode(String(text||''));
+}
+function writerV12SecureB64(array){
+ const bytes=new Uint8Array(array),step=16384;
+ let result='';
+ for(let i=0;i<bytes.length;i+=step)
+  result+=String.fromCharCode(...bytes.subarray(i,i+step));
+ return btoa(result);
+}
+function writerV12SecureUnb64(input){
+ if(typeof input!=='string'||input.length>6500000||!/^[A-Za-z0-9+/]*={0,2}$/.test(input))
+  throw Error('Invalid encrypted payload');
+ const str=atob(input),bytes=new Uint8Array(str.length);
+ for(let i=0;i<str.length;i++)bytes[i]=str.charCodeAt(i);
+ return bytes;
+}
+async function writerV12SecureKey(password,salt,usage){
+ const wc=writerV12SecureSubtle(),secret=String(password||'');
+ if(secret.length<12)throw Error('Use a passphrase with at least 12 characters');
+ const base=await wc.subtle.importKey('raw',writerV12SecureBytes(secret),'PBKDF2',false,['deriveKey']);
+ return wc.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},base,
+  {name:'AES-GCM',length:256},false,usage);
+}
+async function writerV12SecureSeal(plaintext,password){
+ const wc=writerV12SecureSubtle();
+ if(typeof plaintext!=='string'||!plaintext||plaintext.length>750000)
+  throw Error('Secure notes must contain 1–750000 characters');
+ const salt=wc.getRandomValues(new Uint8Array(16));
+ const iv=wc.getRandomValues(new Uint8Array(12));
+ const key=await writerV12SecureKey(password,salt,['encrypt']);
+ const ciphertext=await wc.subtle.encrypt({name:'AES-GCM',iv,additionalData:writerV12SecureBytes('Basic-12-Envelope-v1')},
+  key,writerV12SecureBytes(plaintext));
+ return WRITER_V12_SECURE_PREFIX+JSON.stringify({
+  version:1,algorithm:'AES-256-GCM',kdf:'PBKDF2-SHA256',iterations:310000,
+  salt:writerV12SecureB64(salt),iv:writerV12SecureB64(iv),
+  ciphertext:writerV12SecureB64(ciphertext)
+ });
+}
+async function writerV12SecureOpen(envelope,password){
+ const raw=String(envelope||'');
+ if(!raw.startsWith(WRITER_V12_SECURE_PREFIX)||raw.length>7000000)
+  throw Error('Not a Basic encrypted note');
+ const entry=JSON.parse(raw.slice(WRITER_V12_SECURE_PREFIX.length));
+ if(entry.version!==1||entry.algorithm!=='AES-256-GCM'||entry.kdf!=='PBKDF2-SHA256'||entry.iterations!==310000)
+  throw Error('Unsupported encrypted note format');
+ const salt=writerV12SecureUnb64(entry.salt),iv=writerV12SecureUnb64(entry.iv),data=writerV12SecureUnb64(entry.ciphertext);
+ if(salt.length!==16||iv.length!==12||data.length>5500000||data.length<16)
+  throw Error('Invalid encrypted note');
+ const key=await writerV12SecureKey(password,salt,['decrypt']);
+ const wc=writerV12SecureSubtle();
+ const decoded=await wc.subtle.decrypt({name:'AES-GCM',iv,additionalData:writerV12SecureBytes('Basic-12-Envelope-v1')},key,data);
+ return new TextDecoder('utf-8',{fatal:true}).decode(decoded);
+}
+function writerV12SecureMessage(plugin,pt,en){new Notice(writerUi(pt,en));}
+function writerV12SecureCreate(plugin){
+ if(!writerV12On(plugin,'secureNotes'))return;
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Nova nota protegida','New encrypted note'));
+ modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Cria um NOVO arquivo criptografado. Não modifica notas existentes. A senha não será salva: se perdida, o conteúdo não poderá ser recuperado.',
+  'Creates a NEW encrypted file. Does not modify existing notes. No password is stored: if lost, the content cannot be recovered.')});
+ const title=modal.contentEl.createEl('input',{attr:{type:'text',placeholder:writerUi('Nome do arquivo','File name'),style:'width:100%'}});
+ const password=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'new-password',placeholder:writerUi('Senha (mínimo 12 caracteres)','Passphrase (12+ characters)'),style:'width:100%;margin-top:8px'}});
+ const confirm=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'new-password',placeholder:writerUi('Repetir senha','Repeat passphrase'),style:'width:100%;margin-top:8px'}});
+ const body=modal.contentEl.createEl('textarea',{attr:{rows:'10',placeholder:writerUi('Conteúdo protegido','Protected content'),style:'width:100%;margin-top:8px;'}});
+ const error=modal.contentEl.createEl('p',{cls:'setting-item-description'});
+ new Setting(modal.contentEl).addButton(button=>button.setButtonText(writerUi('Criptografar e salvar novo arquivo','Encrypt and save new file')).setCta().onClick(async()=>{
+  if(password.value!==confirm.value){error.setText(writerUi('As senhas não coincidem.','Passwords do not match.'));return;}
+  if(password.value.length<12||!body.value.trim()){error.setText(writerUi('Informe uma senha de pelo menos 12 caracteres e o conteúdo.','Provide a 12+ character passphrase and content.'));return;}
+  button.setDisabled(true);
+  try{
+   const vault=plugin.app.vault,folder='Basic Secure',filename=writerV12SafeName(title.value||'Protected note');
+   if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+   let target=folder+'/'+filename+'.md',suffix=2;
+   while(vault.getAbstractFileByPath(target))target=folder+'/'+filename+' '+suffix+++'.md';
+   const sealed=await writerV12SecureSeal(body.value,password.value);
+   await vault.create(target,sealed);
+   password.value='';confirm.value='';body.value='';
+   modal.close();
+   writerV12SecureMessage(plugin,'Nota criptografada criada.','Encrypted note created.');
+  }catch(err){error.setText(String(err.message||err));}
+  finally{button.setDisabled(false);}
+ }));
+ modal.open();
+}
+function writerV12SecureRead(plugin){
+ if(!writerV12On(plugin,'secureNotes'))return;
+ const files=plugin.app.vault.getMarkdownFiles().filter(f=>f.path.startsWith('Basic Secure/'));
+ if(!files.length){writerV12SecureMessage(plugin,'Nenhuma nota protegida encontrada.','No encrypted notes found.');return;}
+ class Picker extends FuzzySuggestModal{
+  getItems(){return files;}
+  getItemText(file){return file.path;}
+  onChooseItem(file){void writerV12SecureUnlock(plugin,file);}
+ }
+ new Picker(plugin.app).open();
+}
+async function writerV12SecureUnlock(plugin,file){
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Abrir conteúdo protegido','Unlock encrypted content'));
+ const password=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:writerUi('Senha da nota','Note passphrase'),style:'width:100%'}});
+ const feedback=modal.contentEl.createEl('p',{cls:'setting-item-description'});
+ const result=modal.contentEl.createEl('textarea',{attr:{rows:'12',readonly:'',style:'width:100%;display:none;'}});
+ const run=async()=>{
+  try{
+   const encrypted=await plugin.app.vault.cachedRead(file);
+   const original=await writerV12SecureOpen(encrypted,password.value);
+   password.value='';result.style.display='block';result.value=original;
+   feedback.setText(writerUi('Conteúdo descriptografado somente nesta janela. Feche para descartá-lo.','Decrypted only in this window. Close to discard it.'));
+  }catch(err){feedback.setText(writerUi('Não foi possível abrir: ','Could not decrypt: ')+String(err.message||err));}
+ };
+ new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Desbloquear','Unlock')).setCta().onClick(run));
+ modal.onClose=()=>{password.value='';result.value='';};
+ modal.open();
+}
+function writerV12SecureRegister(plugin){
+ plugin.addCommand({id:'v12-secure-new',name:writerUi('Privacidade: criar nova nota criptografada','Privacy: create encrypted note'),callback:()=>writerV12SecureCreate(plugin)});
+ plugin.addCommand({id:'v12-secure-open',name:writerUi('Privacidade: abrir nota criptografada','Privacy: open encrypted note'),callback:()=>writerV12SecureRead(plugin)});
+}
+function writerV12SecureSettings(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Notas criptografadas · AES-256-GCM','Encrypted notes · AES-256-GCM')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Protege apenas o conteúdo de NOVAS notas. Nomes de arquivos e existência dos documentos continuam visíveis. Não é a criptografia de pastas do Ultimate Toolkit; sem recuperação de senha.',
+  'Encrypts only NEW note contents. File names and their existence remain visible. This is not Ultimate Toolkit folder encryption; no password recovery.')});
+ new Setting(panel).setName(writerUi('Ativar notas criptografadas locais','Enable local encrypted notes')).addToggle(t=>t.setValue(cfg.secureNotes===true).onChange(async v=>{cfg.secureNotes=v;await plugin.saveSettings();}));
+}
+
+// v3 module: src/v12/task-workbench.js
+/* Basic v12 task workbench: notes stay authoritative, writes are optional,
+ * atomic and reject concurrent changes. Markdown code fences are excluded. */
+function writerV12TaskRefs(source){
+ const lines=String(source||'').split(/\r?\n/),tasks=[];
+ let fence='';
+ for(let line=0;line<lines.length;line++){
+  const raw=lines[line],delimiter=/^\s*([~\x60]{3,})/.exec(raw);
+  if(delimiter){
+   const c=delimiter[1][0];
+   if(!fence)fence=c;else if(fence===c)fence='';
+   continue;
+  }
+  if(fence)continue;
+  const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);
+  if(!m)continue;
+  const label=m[3].replace(/^\]\s+/,'').trim();
+  const tags=[...new Set(label.match(/#[\p{L}\p{N}_/-]+/gu)||[])].slice(0,8);
+  tasks.push({line,raw,text:label,done:m[2].toLowerCase()==='x',tags});
+  if(tasks.length>=250)break;
+ }
+ return tasks;
+}
+function writerV12TaskReplacedLine(entry){
+ const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(entry.raw);
+ if(!m)throw Error('Invalid task marker');
+ return m[1]+(entry.done?' ':'x')+m[3];
+}
+async function writerV12ToggleTask(plugin,file,entry,expected){
+ if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid task file');
+ if(typeof expected!=='string'||expected.length>2500000)throw Error('Invalid source snapshot');
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
+  if(leaf.view?.file?.path===file.path&&leaf.view.editor?.getValue?.()!==expected)
+   throw Error(writerUi('Nota com alterações não salvas: salve antes de marcar.','Unsaved changes: save the note first.'));
+ const oldLines=expected.split(/\r?\n/);
+ if(oldLines[entry.line]!==entry.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ const next=oldLines.map((s,i)=>i===entry.line?writerV12TaskReplacedLine(entry):s)
+  .join(expected.includes('\r\n')?'\r\n':'\n');
+ await plugin.app.vault.process(file,current=>{
+  if(current!==expected)throw Error(writerUi('Arquivo mudou; nada foi alterado.','File changed; no modifications applied.'));
+  return next;
+ });
+ return next;
+}
+function writerV12TaskWorkbench(plugin){
+ if(!writerV12On(plugin,'taskNavigator'))return;
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Workbench de tarefas','Task workbench'));
+ const root=modal.contentEl;
+ const summary=root.createEl('p',{cls:'setting-item-description'});
+ const query=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar por tarefa, nota ou etiqueta','Filter by task, note or tag'),style:'width:100%'}});
+ const showDone=root.createEl('label',{text:' '+writerUi('Mostrar concluídas','Show completed')});
+ const checkbox=showDone.createEl('input',{attr:{type:'checkbox',checked:''}});
+ const results=root.createDiv();
+ let data=[],loading=false;
+ const render=()=>{
+  results.empty();
+  const term=query.value.trim().toLocaleLowerCase();
+  const visible=data.filter(row=>(checkbox.checked||!row.entry.done)&&
+   (!term||(row.entry.text+' '+row.file.path).toLocaleLowerCase().includes(term)));
+  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible'));
+  const groups=new Map();
+  for(const row of visible.slice(0,400)){
+   const tag=row.entry.tags[0]||writerUi('Sem etiqueta','Untagged');
+   if(!groups.has(tag))groups.set(tag,[]);
+   groups.get(tag).push(row);
+  }
+  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada.','No tasks found.')});
+  for(const [tag,group] of groups){
+   results.createEl('h4',{text:tag+' ('+group.length+')'});
+   for(const row of group){
+    const el=results.createDiv({cls:'setting-item'}),info=el.createDiv({cls:'setting-item-info'});
+    info.createDiv({cls:'setting-item-name',text:row.entry.text.slice(0,320)});
+    info.createDiv({cls:'setting-item-description',text:row.file.path+' · '+(row.entry.line+1)});
+    const button=el.createEl('button',{text:row.entry.done?'☑':'☐',attr:{type:'button','aria-label':writerUi('Alternar tarefa','Toggle task')}});
+    button.addEventListener('click',async()=>{
+     button.disabled=true;
+     try{await writerV12ToggleTask(plugin,row.file,row.entry,row.source);await refresh();}
+     catch(err){new Notice(String(err.message||err));button.disabled=false;}
+    });
+    el.createEl('button',{text:writerUi('Abrir','Open'),attr:{type:'button'}})
+     .addEventListener('click',()=>void plugin.app.workspace.getLeaf(false).openFile(row.file));
+   }
+  }
+ };
+ const refresh=async()=>{
+  if(loading)return;
+  loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
+  try{
+   const files=plugin.app.vault.getMarkdownFiles().slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
+   for(let i=0;i<files.length;i+=12){
+    const batch=await Promise.all(files.slice(i,i+12).map(async file=>({
+     file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)
+    })));
+    if(!root.isConnected)return;
+    for(const {file,source} of batch)if(source!==null)
+     for(const entry of writerV12TaskRefs(source))rows.push({file,source,entry});
+   }
+   data=rows;
+  }catch(err){new Notice(String(err.message||err));}
+  finally{loading=false;render();}
+ };
+ query.addEventListener('input',render);
+ checkbox.addEventListener('change',render);
+ new Setting(root).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()));
+ modal.open();void refresh();
+}
+function writerV12TasksRegister(plugin){
+ plugin.addCommand({id:'v12-task-workbench',name:writerUi('Tarefas: Workbench com etiquetas','Tasks: tag-grouped workbench'),
+  callback:()=>writerV12TaskWorkbench(plugin)});
+}
+
+// v3 module: src/v12/image-annotations.js
+/* Basic v12 visual annotation: locally save a NEW PNG; originals untouched.
+ * No remote image capture, no network, no image libraries. */
+function writerV12AnnotationConfig(plugin){
+ const value=plugin.settings.v12Annotations;
+ return plugin.settings.v12Annotations={maxDimension:1400,desktopOnly:false,
+  ...(value&&typeof value==='object'&&!Array.isArray(value)?value:{})};
+}
+function writerV12AnnotatePick(plugin){
+ if(!writerV12On(plugin,'imageTools'))return;
+ if(plugin.app.isMobile&&writerV12AnnotationConfig(plugin).desktopOnly){
+  new Notice(writerUi('Anotações desativadas no celular.','Annotation disabled on mobile.'));return;
+ }
+ const images=plugin.app.vault.getFiles().filter(file=>/^(png|jpe?g|webp)$/i.test(file.extension)).slice(0,1200);
+ if(!images.length){new Notice(writerUi('Não há imagens locais PNG, JPEG ou WebP.','No PNG, JPEG or WebP images found.'));return;}
+ class Picker extends FuzzySuggestModal{
+  getItems(){return images;}
+  getItemText(file){return file.path;}
+  onChooseItem(file){writerV12AnnotateImage(plugin,file);}
+ }
+ const picker=new Picker(plugin.app);
+ picker.setPlaceholder(writerUi('Escolha uma imagem para anotar','Choose image to annotate'));
+ picker.open();
+}
+function writerV12AnnotateImage(plugin,file){
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Anotar imagem · salvar cópia','Annotate image · save a copy'));
+ const panel=modal.contentEl;
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Pinte sobre a imagem. O arquivo original não será alterado. A anotação será um novo PNG.',
+  'Draw over the image. The original is untouched. Annotations are saved as a new PNG.')});
+ const controls=panel.createDiv({cls:'modal-button-container'});
+ const mode=controls.createEl('select',{attr:{'aria-label':writerUi('Ferramenta','Drawing tool')}});
+ for(const [type,pt,en] of [
+  ['pen','Caneta','Pen'],['arrow','Seta','Arrow'],['rect','Retângulo','Rectangle'],
+  ['redact','Ocultar região','Cover region'],['text','Texto','Text']
+ ])mode.createEl('option',{text:writerUi(pt,en),attr:{value:type}});
+ const color=controls.createEl('input',{attr:{type:'color',value:'#ff4b4b','aria-label':writerUi('Cor','Color')}});
+ const text=controls.createEl('input',{attr:{type:'text',maxlength:'120',placeholder:writerUi('Texto da anotação','Annotation text')}});
+ text.style.maxWidth='155px';
+ const undo=controls.createEl('button',{text:writerUi('Desfazer','Undo'),attr:{type:'button'}});
+ const canvas=panel.createEl('canvas',{attr:{'aria-label':writerUi('Área de anotação','Image annotation area')}});
+ canvas.style.cssText='max-width:100%;width:100%;height:auto;border:1px solid var(--background-modifier-border);touch-action:none;cursor:crosshair;';
+ const status=panel.createEl('p',{cls:'setting-item-description'});
+ const ctx=canvas.getContext('2d');
+ if(!ctx){status.setText(writerUi('Canvas indisponível.','Canvas not available.'));modal.open();return;}
+ const source=new (panel.ownerDocument.defaultView.Image)();
+ const shapes=[];let drawing=false,draft=null,loaded=false;
+ const point=event=>{
+  const r=canvas.getBoundingClientRect();
+  return {x:Math.max(0,Math.min(canvas.width,(event.clientX-r.left)*canvas.width/(r.width||1))),
+   y:Math.max(0,Math.min(canvas.height,(event.clientY-r.top)*canvas.height/(r.height||1)))};
+ };
+ const paint=s=>{
+  const {a,b,type,stroke,points,label}=s;
+  ctx.lineWidth=Math.max(2,canvas.width/400);ctx.strokeStyle=stroke;ctx.fillStyle=stroke;
+  ctx.lineJoin='round';ctx.lineCap='round';
+  if(type==='pen'){
+   ctx.beginPath();ctx.moveTo(a.x,a.y);
+   for(const p of points||[])ctx.lineTo(p.x,p.y);
+   ctx.stroke();
+  }else if(type==='text'){
+   ctx.font=Math.max(15,Math.floor(canvas.width/35))+'px sans-serif';
+   ctx.fillText(label||'',a.x,a.y,canvas.width-a.x);
+  }else if(type==='rect'||type==='redact'){
+   const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);
+   if(type==='redact'){ctx.fillStyle='#151515';ctx.fillRect(x,y,w,h);}
+   else ctx.strokeRect(x,y,w,h);
+  }else if(type==='arrow'){
+   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+   const theta=Math.atan2(b.y-a.y,b.x-a.x),size=Math.max(10,canvas.width/60);
+   ctx.beginPath();ctx.moveTo(b.x,b.y);
+   ctx.lineTo(b.x-size*Math.cos(theta-.5),b.y-size*Math.sin(theta-.5));
+   ctx.moveTo(b.x,b.y);
+   ctx.lineTo(b.x-size*Math.cos(theta+.5),b.y-size*Math.sin(theta+.5));ctx.stroke();
+  }
+ };
+ const redraw=()=>{
+  if(!loaded)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(source,0,0,canvas.width,canvas.height);
+  for(const shape of shapes)paint(shape);
+  if(draft)paint(draft);
+ };
+ source.onload=()=>{
+  const max=Math.max(500,Math.min(1800,Number(writerV12AnnotationConfig(plugin).maxDimension)||1400));
+  const scale=Math.min(1,max/Math.max(source.naturalWidth,source.naturalHeight));
+  canvas.width=Math.max(1,Math.floor(source.naturalWidth*scale));
+  canvas.height=Math.max(1,Math.floor(source.naturalHeight*scale));
+  loaded=true;status.setText(source.naturalWidth+' × '+source.naturalHeight+
+   (scale<1?writerUi(' · cópia reduzida',' · resized output'):''));
+  redraw();
+ };
+ source.onerror=()=>status.setText(writerUi('Não foi possível abrir a imagem.','Could not load the image.'));
+ source.src=plugin.app.vault.getResourcePath(file);
+ canvas.addEventListener('pointerdown',e=>{
+  if(!loaded||shapes.length>=100)return;
+  e.preventDefault();
+  const a=point(e),type=mode.value;
+  if(type==='text'){
+   if(!text.value.trim())return;
+   shapes.push({type,a,b:a,label:text.value.trim().slice(0,120),stroke:color.value});
+   redraw();return;
+  }
+  draft={type,a,b:a,points:[a],stroke:color.value};
+  drawing=true;canvas.setPointerCapture?.(e.pointerId);redraw();
+ });
+ canvas.addEventListener('pointermove',e=>{
+  if(!drawing||!draft)return;
+  e.preventDefault();draft.b=point(e);
+  if(draft.type==='pen'&&draft.points.length<1500)draft.points.push(draft.b);
+  redraw();
+ });
+ canvas.addEventListener('pointerup',e=>{
+  if(!drawing||!draft)return;
+  e.preventDefault();draft.b=point(e);
+  if(draft.type==='pen'&&draft.points.length<1500)draft.points.push(draft.b);
+  shapes.push(draft);draft=null;drawing=false;redraw();
+ });
+ canvas.addEventListener('pointercancel',()=>{draft=null;drawing=false;redraw();});
+ undo.addEventListener('click',()=>{shapes.pop();redraw();});
+ new Setting(panel).addButton(b=>b.setButtonText(writerUi('Salvar novo PNG','Save new PNG')).setCta().onClick(async()=>{
+  if(!loaded||!shapes.length){new Notice(writerUi('Faça uma anotação antes.','Add an annotation first.'));return;}
+  b.setDisabled(true);
+  try{
+   const vault=plugin.app.vault,folder='Basic Annotations';
+   if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+   const name=writerV12SafeName(file.basename)+'-annotated';
+   let path=folder+'/'+name+'.png',i=2;
+   while(vault.getAbstractFileByPath(path))path=folder+'/'+name+'-'+i+++'.png';
+   const data=canvas.toDataURL('image/png').split(',')[1];
+   if(!data)throw Error('PNG encoding failed');
+   const decoded=atob(data),bytes=new Uint8Array(decoded.length);
+   for(let j=0;j<decoded.length;j++)bytes[j]=decoded.charCodeAt(j);
+   const result=await vault.createBinary(path,bytes.buffer);
+   modal.close();
+   new Notice(writerUi('Imagem salva: ','Image saved: ')+result.path);
+  }catch(err){status.setText(writerUi('Erro ao salvar: ','Save failed: ')+String(err.message||err));}
+  finally{b.setDisabled(false);}
+ }));
+ modal.open();
+}
+function writerV12AnnotationRegister(plugin){
+ plugin.addCommand({id:'v12-annotate-image',name:writerUi('Imagens: anotar nova cópia PNG','Images: annotate a new PNG copy'),
+  callback:()=>writerV12AnnotatePick(plugin)});
+}
+function writerV12AnnotationSettings(plugin,panel){
+ const cfg=writerV12AnnotationConfig(plugin);
+ panel.createEl('h3',{text:writerUi('Anotações visuais · v12','Image annotations · v12')});
+ new Setting(panel).setName(writerUi('Maior dimensão da imagem exportada','Maximum PNG output dimension'))
+  .addSlider(s=>s.setLimits(600,1800,100).setValue(cfg.maxDimension).setDynamicTooltip().onChange(async v=>{
+   cfg.maxDimension=v;await plugin.saveSettings();
+  }));
+ new Setting(panel).setName(writerUi('Desativar anotação no Android','Disable annotation on Android'))
+  .addToggle(t=>t.setValue(cfg.desktopOnly===true).onChange(async v=>{cfg.desktopOnly=v;await plugin.saveSettings();}));
+}
+
+// v3 module: src/v12/selection-reader.js
+/* Basic v12: context-aware reader for DOM text selections and safe extraction
+ * of selected prose into a linked Markdown note. No new TTS network service. */
+function writerV12SelectedText(plugin){
+ const root=plugin.app.workspace.containerEl,win=root?.ownerDocument?.defaultView;
+ const selection=win?.getSelection?.();
+ if(!selection||!selection.rangeCount||selection.isCollapsed)return '';
+ const node=selection.anchorNode||selection.getRangeAt(0).commonAncestorContainer;
+ if(!node||!root.contains(node))return '';
+ const text=selection.toString().replace(/\s+/g,' ').trim();
+ return text.length>1?text.slice(0,20000):'';
+}
+function writerV12ReadSelection(plugin,text){
+ if(!writerV12On(plugin,'selectionTools'))return;
+ const selected=text||writerV12SelectedText(plugin);
+ if(!selected){new Notice(writerUi('Selecione texto em uma nota ou documento.','Select text in a note or document.'));return;}
+ if(typeof writerV107SpeechStart==='function'){
+  writerV107SpeechConfig?.(plugin.settings);
+  writerV107SpeechStart(plugin,selected);
+ }else new Notice(writerUi('Ative o módulo de voz do Basic.','Enable Basic local speech tools.'));
+}
+function writerV12SelectionMenu(plugin,event){
+ if(!writerV12On(plugin,'selectionTools'))return;
+ const root=plugin.app.workspace.containerEl;
+ const node=event.target;
+ if(!node?.closest||!root.contains(node))return;
+ const container=node.closest('.markdown-preview-view, .pdf-viewer, .pdf-container, .markdown-rendered');
+ if(!container||node.closest('input,textarea,[contenteditable="true"],.cm-editor,.modal-container'))return;
+ const selected=writerV12SelectedText(plugin);
+ if(!selected||selected.length>5000)return;
+ const menu=new Menu(plugin.app);
+ menu.addItem(i=>i.setTitle(writerUi('Ler texto selecionado','Read selected text'))
+  .setIcon('volume-2').onClick(()=>writerV12ReadSelection(plugin,selected)));
+ menu.addItem(i=>i.setTitle(writerUi('Copiar texto','Copy text'))
+  .setIcon('copy').onClick(async()=>{
+   try{await root.ownerDocument.defaultView.navigator.clipboard.writeText(selected);}
+   catch(err){new Notice(writerUi('Permissão de área de transferência indisponível.','Clipboard permission unavailable.'));}
+  }));
+ menu.addItem(i=>i.setTitle(writerUi('Configurar voz','Voice settings')).setIcon('settings')
+  .onClick(()=>{if(typeof writerV107SpeechPanel==='function')writerV107SpeechPanel(plugin);}));
+ menu.showAtPosition({x:event.clientX,y:event.clientY});
+}
+function writerV12MoveSelection(plugin,editor){
+ if(!writerV12On(plugin,'localInbox')||!editor)return;
+ const selected=editor.getSelection()||'';
+ if(!selected.trim()){new Notice(writerUi('Selecione o trecho que deseja separar.','Select the passage to extract.'));return;}
+ const snapshot=editor.getValue();
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Separar trecho em nova nota','Extract passage into a note'));
+ modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Primeiro cria a nova nota. Depois substitui a seleção original por um link. Se a nota mudar, nenhuma substituição será feita.',
+  'Creates the new note first, then replaces the original selection with a link. If content changes, no replacement occurs.')});
+ const input=modal.contentEl.createEl('input',{attr:{type:'text',placeholder:writerUi('Nome da nova nota','New note title'),style:'width:100%'}});
+ const feedback=modal.contentEl.createEl('p',{cls:'setting-item-description'});
+ new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Criar nota vinculada','Create linked note')).setCta().onClick(async()=>{
+  if(!selected.trim()||!input.value.trim()){feedback.setText(writerUi('Informe um nome.','Enter a title.'));return;}
+  b.setDisabled(true);
+  try{
+   const file=await writerV12CreateNote(plugin,'Basic Extracts',input.value,selected);
+   // The original selected text is safe in the new note before touching the editor.
+   if(editor.getValue()!==snapshot||editor.getSelection()!==selected){
+    feedback.setText(writerUi('A nota original mudou; o trecho foi copiado, sem substituir a seleção.',
+      'The original changed; passage was copied without replacing the selection.'));
+    return;
+   }
+   editor.replaceSelection('[['+file.path.replace(/\.md$/,'')+']]');
+   modal.close();
+  }catch(err){feedback.setText(String(err.message||err));}
+  finally{b.setDisabled(false);}
+ }));
+ modal.open();
+}
+function writerV12ReaderRegister(plugin){
+ plugin.addCommand({id:'v12-reader-selected-dom',name:writerUi('TTS: ler seleção em documentos','TTS: read selection from document'),
+  callback:()=>writerV12ReadSelection(plugin)});
+ plugin.addCommand({id:'v12-extract-selected',name:writerUi('Notas: separar trecho em nova nota','Notes: extract selection to a linked note'),
+  editorCallback:editor=>writerV12MoveSelection(plugin,editor)});
+ const root=plugin.app.workspace.containerEl;
+ if(root)plugin.registerDomEvent(root,'pointerup',event=>{
+  // Optional; default false to avoid competing with Android text-selection HUDs.
+  if(!writerV12On(plugin,'selectionTools'))return;
+  if(event.pointerType==='touch')return;
+  setTimeout(()=>{if(root.isConnected)writerV12SelectionMenu(plugin,event);},75);
+ });
+}
+function writerV12ReaderSettings(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Leitor contextual · v12','Context reader · v12')});
+ new Setting(panel).setName(writerUi('Habilitar leitura de seleção em documentos','Enable document selection reader'))
+  .setDesc(writerUi('Usa voz local do Basic. Depende de seleção de texto acessível (inclusive a camada de texto de alguns PDFs).',
+   'Uses the existing Basic local voice. Requires selectable document text, including supported PDF text layers.'))
+  .addToggle(t=>t.setValue(cfg.selectionTools===true).onChange(async v=>{
+   cfg.selectionTools=v;await plugin.saveSettings();
+  }));
 }
 
 // END WRITER V3 MODULES

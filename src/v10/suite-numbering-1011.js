@@ -50,6 +50,7 @@ function writerV1011NumberDisabled(plugin,file){
 }
 function writerV1011NumberPreview(plugin,mode){
  const file=plugin.app.workspace.getActiveFile?.(),cfg=writerV1011NumberCfg(plugin.settings);
+ if(!cfg.enabled)return;
  if(!file||file.extension!=='md'){new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));return;}
  if(writerV1011NumberDisabled(plugin,file)){new Notice(writerUi('Numeração desativada nesta nota.','Numbering is disabled for this note.'));return;}
  const modal=new Modal(plugin.app);
@@ -119,6 +120,8 @@ function writerV1011NumberReading(plugin,el,ctx){
  }
 }
 function writerV1011NumberOutline(plugin){
+ const cfg=writerV1011NumberCfg(plugin.settings);
+ if(!cfg.enabled||!cfg.outline)return;
  const file=plugin.app.workspace.getActiveFile?.();
  if(!file||file.extension!=='md'){new Notice(writerUi('Abra uma nota.','Open a note.'));return;}
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Sumário numerado','Numbered outline'));

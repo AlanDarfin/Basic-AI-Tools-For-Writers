@@ -320,7 +320,10 @@ function writerV106DragRegister(plugin){
   if(!enabled())return;
   if(e.target===handle||handle.contains(e.target)||nearHandle(e))return;
   const line=e.target?.closest?.('.cm-line');
-  if(!line){active=null;postponeHide();return;}
+  if(!line){
+   if(nearHandle(e))return; // keep the source while crossing to the detached grip
+   active=null;postponeHide();return;
+  }
   if(!line.textContent?.trim()){active=null;handle.style.display='none';return;}
   const view=viewFor(line);
   if(!view){active=null;postponeHide();return;}

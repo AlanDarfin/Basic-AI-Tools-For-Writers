@@ -267,6 +267,7 @@ function writerV1010Register(plugin){
    // Ignore our own button updates. Repaint only when Obsidian has replaced
    // the header or selected a different tab, including native swipe changes.
    if(!state||!bar||bar.parentElement!==liveHeader||
+      root.contains?.(bar)===false||
       state.activeLeaf!==current.children?.[current.currentTab]||
       !root.classList?.contains('writer-v1011-managed-mobile')){
     queue();
@@ -296,8 +297,13 @@ function writerV1010Register(plugin){
   if(drawer)watchMobileDrawer(side);
   // Mobile: draw inside the native tab selector, never below it as a duplicate row.
   // If private drawer internals change, use the unmodified native selector.
-  const header=drawer?drawer.tabsContainerEl:
+  let header=drawer?drawer.tabsContainerEl:
    root.querySelector?.('.workspace-tab-header-container');
+  if(drawer&&root.contains?.(header)===false){
+   // Obsidian can replace the mobile tab header on a view switch. Never attach
+   // Basic's buttons to the detached header object.
+   header=root.querySelector?.('.workspace-drawer-tab-options')||null;
+  }
   if(!header){restoreSidebar(side);return;}
   const doc=header.ownerDocument;
   const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));

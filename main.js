@@ -23530,6 +23530,44 @@ function writerV1010ActiveLeaf(workspace,leaves,side){
  return leaves.find(entry=>entry.leaf===workspace.activeLeaf)?.leaf||
   leaves.find(entry=>entry.leaf?.view?.containerEl?.closest?.('.mod-active'))?.leaf||leaves[0]?.leaf;
 }
+/* Borrow a native action's Lucide icon without moving or copying its handler. */
+function writerV1012NativeActionIcon(action,label){
+ const svg=action?.querySelector?.('svg');
+ const cls=String(svg?.getAttribute?.('class')||'');
+ const match=cls.match(/(?:^|\s)lucide-([a-z0-9-]+)/);
+ if(match)return match[1];
+ const data=String(action?.getAttribute?.('data-lucide')||'');
+ if(/^[a-z0-9-]+$/.test(data)&&data)return data;
+ const title=String(label||'').toLocaleLowerCase();
+ for(const [words,icon] of [
+  [/(?:nova nota|new note|criar nota)/,'file-plus'],
+  [/(?:nova pasta|new folder|criar pasta)/,'folder-plus'],
+  [/(?:orden|sort|ordem)/,'arrow-up-narrow-wide'],
+  [/(?:revelar|auto.reveal)/,'gallery-vertical'],
+  [/(?:expandir|expand)/,'chevrons-up-down'],
+  [/(?:recolher|colapsar|collapse)/,'chevrons-down-up'],
+  [/(?:filtr|search|buscar|pesquis)/,'search'],
+  [/(?:spaces|espaços)/,'layers'],
+  [/(?:prévias|previews|preview)/,'eye'],
+  [/(?:configur|settings)/,'settings']
+ ])if(words.test(title))return icon;
+ return 'circle-dot';
+}
+function writerV1012IsNativeSortAction(action,label){
+ if(/(?:orden|sort|ordem|排序|sortier)/i.test(String(label||'')))return true;
+ const icon=writerV1012NativeActionIcon(action,label);
+ return icon==='arrow-up-narrow-wide'||icon==='arrow-down-wide-narrow';
+}
+/* Mobile nested menus must open after their parent menu closes. The hidden
+ * native action retains a laid-out DOM anchor so Obsidian won't dismiss it. */
+function writerV1012OpenNativeAction(action,sort){
+ if(!action?.click)return;
+ if(!sort){action.click();return;}
+ setTimeout(()=>{
+  try{if(action.isConnected!==false)action.click();}
+  catch(error){console.warn('[Basic] Could not open native sorting menu:',error);}
+ },90);
+}
 function writerV1010SidebarMenu(plugin,event,side,leaves,active){
  const menu=new Menu(plugin.app),current=active?.view?.containerEl;
  const actions=[...new Set([...(current?.querySelectorAll?.('.view-actions .clickable-icon,.nav-header .nav-action-button,.nav-header .nav-buttons-container .clickable-icon')||[])])];
@@ -23538,7 +23576,9 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   const label=String(action.getAttribute('aria-label')||action.getAttribute('title')||'').trim();
   if(!label||action.closest('.writer-v1010-sidebar-toolbar'))continue;
   count++;
-  menu.addItem(item=>item.setTitle(label).onClick(()=>action.click?.()));
+  const sort=writerV1012IsNativeSortAction(action,label);
+  menu.addItem(item=>item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label))
+   .onClick(()=>writerV1012OpenNativeAction(action,sort)));
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))
@@ -23590,7 +23630,7 @@ function writerV1010Register(plugin){
   const mobile=Boolean(require('obsidian').Platform?.isMobile);
   return mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true;
  };
- const hosts=new Map();
+ const hosts=new Map(),hostState=new Map(),drawerObservers=new Map();
  const groupedViews=new Map();
  const groupNativeActions=(side,leaves,enabled)=>{
   const previous=groupedViews.get(side)||new Set(),next=new Set();
@@ -23614,11 +23654,36 @@ function writerV1010Register(plugin){
  };
 
  let queued=null,unloaded=false,status=null,range=null,value=null;
+ const watchMobileDrawer=side=>{
+  if(typeof MutationObserver==='undefined')return;
+  const drawer=writerV1010MobileDrawer(workspace,side);
+  const root=drawer?.containerEl,previous=drawerObservers.get(side);
+  if(previous?.root===root)return;
+  previous?.observer?.disconnect?.();drawerObservers.delete(side);
+  if(!root)return;
+  const observer=new MutationObserver(()=>{
+   if(unloaded)return;
+   const current=writerV1010MobileDrawer(workspace,side);
+   if(!current||current.containerEl!==root)return;
+   const state=hostState.get(side),bar=hosts.get(side);
+   const liveHeader=current.tabsContainerEl;
+   // Ignore our own button updates. Repaint only when Obsidian has replaced
+   // the header or selected a different tab, including native swipe changes.
+   if(!state||!bar||bar.parentElement!==liveHeader||
+      root.contains?.(bar)===false||
+      state.activeLeaf!==current.children?.[current.currentTab]||
+      !root.classList?.contains('writer-v1011-managed-mobile')){
+    queue();
+   }
+  });
+  observer.observe(root,{childList:true,subtree:true});
+  drawerObservers.set(side,{root,observer});
+ };
  const make=(tag,cls,doc)=>{const node=doc.createElement(tag);if(cls)node.className=cls;return node;};
  const restoreSidebar=side=>{
   groupNativeActions(side,[],false);
   const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
-  bar?.remove?.();hosts.delete(side);
+  bar?.remove?.();hosts.delete(side);hostState.delete(side);
   split?.tabsListEl?.classList?.remove('writer-v1011-native-tabs-hidden');
   split?.containerEl?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
  };
@@ -23632,10 +23697,16 @@ function writerV1010Register(plugin){
        root.ownerDocument?.body?.classList?.contains('osm-mobile-tabs')))){
    restoreSidebar(side);return;
   }
+  if(drawer)watchMobileDrawer(side);
   // Mobile: draw inside the native tab selector, never below it as a duplicate row.
   // If private drawer internals change, use the unmodified native selector.
-  const header=drawer?drawer.tabsContainerEl:
+  let header=drawer?drawer.tabsContainerEl:
    root.querySelector?.('.workspace-tab-header-container');
+  if(drawer&&root.contains?.(header)===false){
+   // Obsidian can replace the mobile tab header on a view switch. Never attach
+   // Basic's buttons to the detached header object.
+   header=root.querySelector?.('.workspace-drawer-tab-options')||null;
+  }
   if(!header){restoreSidebar(side);return;}
   const doc=header.ownerDocument;
   const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
@@ -23658,16 +23729,35 @@ function writerV1010Register(plugin){
    root.classList.toggle('writer-v1011-compact-footer',
     side==='left'&&cfg.sidebar.compactFooter!==false&&canSwitch);
   }
-  bar.replaceChildren();
   const active=writerV1010ActiveLeaf(workspace,leaves,side);
   const max=drawer?Math.max(2,Math.min(6,Math.floor(((root.clientWidth||380)-55)/48))):
    Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
+  const signature=[...visible.map(e=>e.type),'|',...hidden.map(e=>e.type),
+   cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true].join(';');
+  const currentState=hostState.get(side);
+  if(currentState?.bar===bar&&currentState.signature===signature){
+   // Replacing buttons on every layout-change destroys the menu anchor and
+   // can dismiss the native sorting sheet as soon as it appears.
+   const selected=active?.view?.getViewType?.()||active?.getViewState?.()?.type;
+   for(const child of bar.children||[]){
+    const viewType=child.getAttribute?.('data-view-type');
+    if(!viewType)continue;
+    const on=viewType==='__overflow'?hidden.some(e=>e.leaf===active):viewType===selected;
+    child.classList?.toggle?.('is-active',on);
+    child.setAttribute?.('aria-pressed',String(on));
+   }
+   currentState.activeLeaf=drawer?.children?.[drawer.currentTab]||active;
+   return;
+  }
+  bar.replaceChildren();
+  hostState.set(side,{bar,signature,activeLeaf:drawer?.children?.[drawer.currentTab]||active});
   const addIcon=(type,title,callback,isActive=false)=>{
    const btn=make('button','writer-v1010-sidebar-button'+(isActive?' is-active':''),doc);
    btn.type='button';btn.setAttribute('aria-label',title);
    btn.setAttribute('title',title);btn.setAttribute('aria-pressed',String(isActive));
    writerV1010Icon(btn,WRITER_V1010_VIEWS[type]?.[0]||'panel-left');
+   btn.setAttribute('data-view-type',type||'__overflow');
    btn.addEventListener('click',callback);bar.appendChild(btn);
    return btn;
   };
@@ -23777,6 +23867,8 @@ function writerV1010Register(plugin){
  else queue();
  plugin.register?.(()=>{
   unloaded=true;clearTimeout(queued);
+  for(const entry of drawerObservers.values())entry.observer?.disconnect?.();
+  drawerObservers.clear();
   restoreSidebar('left');restoreSidebar('right');
   for(const leaf of allMarkdown()){
    const el=leaf?.view?.containerEl;

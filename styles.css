@@ -9169,13 +9169,17 @@ body.is-mobile .writer-v1011-managed-mobile.writer-v1011-compact-footer .workspa
 
 /* Built-in sidepane actions now live in the single overflow/context menu.
    Never hide a third-party view's own toolbar. */
+/* Keep Obsidian's real action buttons laid out as menu anchors.
+   display:none removes the anchor and immediately closes nested sort menus. */
 body.is-mobile .writer-v1011-managed-mobile
  .workspace-leaf-content.writer-v1011-grouped-native-actions .nav-header > .nav-buttons-container{
- display:none;
+ display:flex;position:absolute;inset-block-start:0;inset-inline-start:0;
+ opacity:0;pointer-events:none;max-width:max-content;z-index:-1;
 }
 body.is-mobile .writer-v1011-managed-mobile
  .workspace-leaf-content.writer-v1011-grouped-native-actions .nav-header.writer-v1011-empty-native-header{
- display:none;
+ display:block;position:relative;height:0;min-height:0;max-height:0;
+ padding:0;margin:0;border:0;overflow:visible;
 }
 
 /* Basic mobile: the desktop Dragger is disabled, including stale overlay markup. */

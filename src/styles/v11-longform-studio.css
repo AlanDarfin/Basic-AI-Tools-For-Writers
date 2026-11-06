@@ -27,3 +27,7 @@
 .writer-v11-diagnostic-row{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid var(--background-modifier-border);padding:8px 0}
 .writer-v11-diagnostic-row span{color:var(--text-muted);overflow-wrap:anywhere}
 @media(max-width:700px){.writer-v11-studio-modal{width:100vw;max-width:100vw}.writer-v11-chapter-body{padding:8px}.writer-v11-editor{min-height:180px;font-size:16px}.writer-v11-studio-actions button,.writer-v11-chapter-actions button{flex:1 1 auto}}
+
+.writer-v11-db-move{box-sizing:border-box;width:100%;max-width:100%;min-height:30px;margin:3px 0 9px;font-size:var(--font-ui-smaller)}
+.writer-v11-property-preview{background:var(--background-secondary);padding:8px 12px;border-radius:var(--radius-m);overflow-wrap:anywhere}
+.writer-v11-property-preview p{margin:0}

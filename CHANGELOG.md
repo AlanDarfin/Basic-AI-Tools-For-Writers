@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.10.3 — Android sidebar indicator and native menus
+
+- Keep the native mobile tab indicator stable when switching between Explorer and other sidebar views, updating the selected state without rebuilding the whole toolbar.
+- Remount the sidebar controls if Obsidian reconstructs the drawer header, with an observer that is disconnected on unload.
+- Preserve native Obsidian action icons in Basic's unified More menu; provide icons for actions lacking source SVGs.
+- Fix the sorting menu opening and immediately closing by invoking the native action after the previous menu has finished closing.
+- Add regression tests for tab switching, header rebuild, native action icons and sort-menu timing. Dragger remains disabled on Android.
+- No changes to the vault's notes, Space layouts or settings data.
+
 ## 10.10.2 — Dragger desktop-only
 
 - Disable the block Dragger completely on mobile. No drag handle, indicator, pointer or touch listeners, or Dragger-specific commands are registered on Android.

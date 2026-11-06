@@ -225,7 +225,8 @@ function writerV1010Register(plugin){
    // Only compact the vault footer when the user can still open the vault chooser.
    const switcher=drawer.headerEl?.querySelector?.('.workspace-drawer-header-switcher');
    const canSwitch=typeof plugin.app.openVaultChooser==='function'||
-    typeof plugin.app.openVaultSwitcher==='function'||Boolean(switcher);
+    typeof plugin.app.openVaultSwitcher==='function';
+   // A hidden DOM switcher alone is not a reliable replacement for a native vault picker.
    root.classList.toggle('writer-v1011-compact-footer',
     side==='left'&&cfg.sidebar.compactFooter!==false&&canSwitch);
   }
@@ -366,7 +367,7 @@ function writerV1010Settings(plugin,panel){
   'Gerencie abas laterais sem substituir o explorador ou as Spaces. O recurso fica desligado por padrão; layouts anteriores são preservados.',
   'Manage sidebar tabs without replacing File Explorer or Spaces. Off by default; prior layouts remain untouched.')});
  const toggle=(target,key,pt,en)=>new Setting(panel).setName(writerUi(pt,en))
-  .addToggle(t=>t.setValue(target[key]===true).onChange(async v=>{target[key]=v;await plugin.saveSettings();plugin.writerV1010Refresh?.();}));
+  .addToggle(t=>t.setValue(target[key]===true).onChange(async v=>{target[key]=v;await plugin.saveSettings();plugin.writerV1010Refresh?.();plugin.writerV1011SpacesDockRefresh?.();}));
  for(const [key,pt,en] of [
   ['enabled','Ativar gerenciador de painéis','Enable sidebar manager'],
   ['mobileTabs','Abas em ícones no celular','Icon tabs on mobile'],

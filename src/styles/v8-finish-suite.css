@@ -150,3 +150,80 @@ body.is-mobile .writer-v8-home-grid{grid-template-columns:minmax(0,1fr);gap:10px
 .writer-v8-chat-fake-audio.is-animating .writer-v8-chat-wave-bar:nth-child(5n){animation-delay:370ms;}
 @keyframes writer-v8-fake-wave{to{opacity:.35;}}
 @media (prefers-reduced-motion:reduce){.writer-v8-chat-fake-audio.is-animating .writer-v8-chat-wave-bar{animation:none;}}
+
+
+/* 12.0.x: Surfing-compatible homepage omnibox and local browser-style bookmarks. */
+.writer-v1203-home-search-modes{
+ display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 9px;
+}
+.writer-v1203-home-search-modes button{
+ min-height:29px;padding:5px 13px;border-radius:var(--radius-s);
+ background:transparent;color:var(--text-muted);border:1px solid var(--background-modifier-border);
+ box-shadow:none;font-size:var(--font-ui-small);
+}
+.writer-v1203-home-search-modes button[aria-pressed="true"]{
+ color:var(--text-normal);background:var(--background-primary);
+ border-color:var(--interactive-accent);font-weight:600;
+}
+.writer-v1203-home-search-modes button:focus-visible,
+.writer-v1203-web-bookmark button:focus-visible,
+.writer-v1203-web-bookmarks-tools button:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:2px;
+}
+.writer-v1203-home-search-modes button[hidden]{display:none;}
+.writer-v1203-web-bookmarks-tools{
+ display:flex;justify-content:flex-end;gap:6px;margin:0 0 10px;
+}
+.writer-v1203-web-bookmarks-tools button,
+.writer-v1203-web-bookmarks-expand{
+ display:inline-flex;gap:7px;align-items:center;justify-content:center;
+ min-height:30px;padding:5px 10px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);background:var(--background-primary);box-shadow:none;
+ color:var(--text-muted);font-size:var(--font-ui-small);
+}
+.writer-v1203-web-bookmarks-tools button:hover,
+.writer-v1203-web-bookmarks-expand:hover{color:var(--text-normal);background:var(--background-modifier-hover);}
+.writer-v1203-web-bookmarks-tools button svg{width:15px;height:15px;}
+.writer-v1203-web-bookmarks-heading{margin:12px 0 7px;font-size:var(--font-ui-small);color:var(--text-muted);}
+.writer-v1203-web-bookmarks-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;min-width:0;
+}
+.writer-v1203-web-bookmark{
+ display:flex;align-items:center;min-width:0;
+ background:var(--background-primary);border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);overflow:hidden;
+}
+.writer-v1203-web-bookmark:hover{border-color:var(--background-modifier-border-hover);}
+.writer-v1203-web-bookmark-open{
+ display:flex;gap:9px;align-items:center;min-width:0;flex:1 1 auto;min-height:51px;
+ background:transparent;border:0;border-radius:0;padding:7px 6px 7px 9px;
+ color:var(--text-normal);box-shadow:none;text-align:start;
+}
+.writer-v1203-web-bookmark-open:hover{background:var(--background-modifier-hover);}
+.writer-v1203-web-bookmark-icon{
+ display:flex;align-items:center;justify-content:center;flex:0 0 30px;
+ width:30px;height:30px;border-radius:var(--radius-s);
+ background:var(--background-secondary);color:var(--text-accent);
+}
+.writer-v1203-web-bookmark-icon svg{width:17px;height:17px;}
+.writer-v1203-web-bookmark-labels{
+ display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto;
+}
+.writer-v1203-web-bookmark-title,
+.writer-v1203-web-bookmark-domain{
+ display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.writer-v1203-web-bookmark-title{font-weight:600;font-size:var(--font-ui-small);}
+.writer-v1203-web-bookmark-domain{font-size:var(--font-smaller);color:var(--text-muted);}
+.writer-v1203-web-bookmark-more{
+ display:flex;align-items:center;justify-content:center;flex:0 0 30px;
+ width:30px;min-height:36px;margin-right:3px;border:0;border-radius:var(--radius-s);
+ background:transparent;color:var(--text-muted);box-shadow:none;
+}
+.writer-v1203-web-bookmark-more:hover{background:var(--background-modifier-hover);color:var(--text-normal);}
+.writer-v1203-web-bookmark-more svg{width:16px;height:16px;}
+.writer-v1203-web-bookmarks-expand{margin-top:10px;width:100%;}
+@media(max-width:600px){
+ .writer-v1203-web-bookmarks-grid{grid-template-columns:minmax(0,1fr);}
+ .writer-v1203-web-bookmark-open{min-height:48px;}
+}

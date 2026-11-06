@@ -116,7 +116,7 @@ readingProgress: 25
 
 ### Customizable writing homepage
 
-The homepage provides a compact dashboard with configurable title, icon, theme accents and fuzzy vault search. It can open when a new empty tab appears (the `homeOnNewTab` preference), with an option to disable this behavior. Desktop web links can use Obsidian's native **Web Viewer**; mobile links use the system browser.
+The homepage provides a compact dashboard with configurable title, icon, theme accents and fuzzy vault search. It can open when a new empty tab appears (the `homeOnNewTab` preference), with an option to disable this behavior. The existing search bar now switches between **Vault** (fuzzy note search) and **Web** (addresses or web search). On desktop, web results open in an installed **Surfing** plugin first, then the native **Web Viewer**, with an external-browser fallback; mobile links always open in the system browser. The search engine and destination are configurable in the existing **Homepage** settings. The **Web bookmarks** widget stores safe HTTP(S) links with titles, optional groups and Lucide icons, offers edit/delete/reorder controls and can capture the current Surfing/Web Viewer page through a command. It is optional in the existing widget manager, with per-Space widget visibility.
 
 Available widgets include a **clock and calendar**, **Soundscapes radio** (desktop), **continue writing**, **recent notes**, **favorites**, **quick drafts**, **vault summary**, **weekly activity**, **random note**, **tags**, **word goal**, **vault photo gallery**, **quotes** and **today's overview**.
 

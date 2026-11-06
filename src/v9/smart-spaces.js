@@ -41,7 +41,7 @@ function writerV9SpaceSanitize(raw){
   const order=Array.isArray(record.order)?[...new Set(record.order.filter(n=>typeof n==='string'&&n.length<300))].slice(0,1000):[];
   folderSorts[path]={sort,order,property:String(record.property||'').slice(0,60),foldersFirst:record.foldersFirst===true};
  }
- const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books'];
+ const widgetKeys=['continue','calendar','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','webBookmarks'];
  const homeWidgetsEnabled=raw.homeWidgetsEnabled===true;
  const homeOrder=Array.isArray(raw.homeOrder)?[...new Set(raw.homeOrder.filter(key=>widgetKeys.includes(key)))]:[];
  const homeHidden=Array.isArray(raw.homeHidden)?[...new Set(raw.homeHidden.filter(key=>widgetKeys.includes(key)))]:[];

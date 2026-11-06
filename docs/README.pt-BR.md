@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.11.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 11.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -32,6 +32,19 @@ editor-width: 75
 ```
 
 
+
+### Longform Studio (v11)
+
+O **Longform Studio** mostra os capítulos de um livro em sequência, permitindo expandir e editar cada arquivo Markdown original sem mesclar ou mover notas. O salvamento é explícito, cria snapshot local quando ativado e recusa alterações concorrentes para evitar sobrescrever o trabalho de outro editor.
+
+- **Revisão editorial:** comparação linha a linha com snapshots existentes e comentários editoriais locais por capítulo.
+- **Pesquisa universal:** busca limitada por nome, propriedades e conteúdo, com escopos de livro, Space e cofre, trechos encontrados e abertura da nota original.
+- **Montagem do manuscrito:** prévia antes da criação explícita de um novo arquivo Markdown em `Basic Exports/`, sem modificar os capítulos.
+- **Central de compatibilidade:** mostra estados dos módulos, falhas de inicialização e possíveis sobreposições entre plugins, sem enviar dados do cofre à rede.
+- **Homepage e biblioteca:** widget opcional com atalhos para Estúdio, pesquisa e diagnóstico; botão Estúdio na biblioteca.
+- **Bancos Markdown:** mover cartões do quadro entre colunas existentes por arraste ou seletor acessível; edição tipada de propriedades (texto, número, data, checkbox e tags), com snapshot e verificação de conflitos.
+
+As interfaces usam editores separados por capítulo, não um único editor CodeMirror sincronizado. A exportação direta de EPUB/PDF/DOCX, a sincronização remota e a paridade integral com os plugins originais continuam fora deste módulo. Confira o [escopo detalhado da v11](V11_SCOPE.pt-BR.md).
 
 ### Livros, capítulos e planejamento de histórias
 

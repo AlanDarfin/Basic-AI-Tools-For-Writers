@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.11.0 plugin artifacts'
+            git commit -m 'build: synchronize 11.0.0 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.11.0"
+          test "$VERSION" = "11.0.0"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic $VERSION" \
-            --notes "10.11.0: Add local academic center for daily notes, classes, reminders and timetable; Notion-inspired Markdown gallery/list/calendar/timeline/chart views; Number-inspired Reading View numbering, navigable outline and safe confirmed heading writes. Reuse Basic calendar, ICS, formulas and rollups. README feature-only, changelog separate. This is a documented subset, not full upstream plugin parity."
+            --notes "11.0.0: Add Longform Studio chapter editing, snapshot comparison, editorial comments, scoped content search, safe Markdown manuscript assembly and module diagnostics; improve Notion-style boards with drag status updates, mobile selectors and typed property editing. Builds on existing Markdown storage without claiming full upstream parity."

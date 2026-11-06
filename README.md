@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.11.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 11.0.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -28,6 +28,19 @@ editor-width: 75
 ```
 
 
+
+### Longform Studio (v11)
+
+The **Longform Studio** offers a continuous, chapter-ordered writing workspace for books in the existing Longform library. Expand chapters to edit their original Markdown files without merging or relocating them. Saves are explicit, create a local snapshot when enabled, and reject concurrent changes instead of overwriting another editor. Scenes can be opened in a regular Obsidian tab.
+
+- **Editorial review:** read-only line comparisons against existing Basic snapshots, plus local comments attached to chapter paths.
+- **Universal search:** query file names, properties and note contents within a selected book, Space or bounded vault scan. Results include excerpts and open the source note.
+- **Manuscript assembly:** review a compiled Markdown preview before explicitly creating a new file under `Basic Exports/`. Existing chapters are untouched. Use the separate Pandoc export features for supported desktop publishing formats.
+- **Compatibility center:** inspect local module states, integration failures and overlapping third-party plugins without sending vault content over the network.
+- **Homepage:** optional Longform Studio widget with shortcuts for editing, search and diagnostics. A Studio button is also available from the bookshelf.
+- **Markdown databases:** move Notion-style board cards between existing columns using drag-and-drop or a mobile-friendly dropdown, with conflict checks and snapshots; use **Databases: edit typed property** for text, numbers, dates, checkboxes and tags.
+
+The v11 implementations extend previous modules rather than replicating entire upstream plugins. Current limits and remaining roadmap are documented in [v11 scope](docs/V11_SCOPE.pt-BR.md). Importantly, editing in the Studio uses separate chapter textareas, not a single synchronized CodeMirror buffer. No PDF/EPUB/DOCX rendering or cloud sync is introduced by the Studio.
 
 ### Books, chapters and story planning
 

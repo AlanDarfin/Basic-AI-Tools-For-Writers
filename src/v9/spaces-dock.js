@@ -5,6 +5,16 @@ function writerV9216SpaceDockRegister(plugin){
  let timer=null;
  const cfg=plugin.settings.v9Spaces;
  const hosts=new Set(),actions=new Set();
+ // On phones, integrate the existing Space switcher into the managed drawer
+ // instead of showing a second rail inside File Explorer.
+ const mobileIntegrated=()=>{
+  const drawer=plugin.app.workspace.leftSplit;
+  const ui=plugin.settings.v1010Layout?.sidebar;
+  return require('obsidian').Platform?.isMobile===true&&
+   drawer?.type==='mobile-drawer'&&Boolean(drawer.containerEl)&&
+   ui?.enabled===true&&ui.mobileTabs!==false&&ui.integrateSpaces!==false&&
+   cfg.enabled===true&&cfg.dock!==false;
+ };
  const refreshAll=()=>{
   plugin.writerV91FlexRefresh?.();
   plugin.writerV9SpacesRefresh?.();
@@ -142,7 +152,7 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const attachManageAction=()=>{
   const current=new Set();
-  if(cfg.manageIcon===false){
+  if(cfg.manageIcon===false||mobileIntegrated()){
    for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
    actions.clear();return;
   }
@@ -178,30 +188,48 @@ function writerV9216SpaceDockRegister(plugin){
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
     parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
-    parent.classList.remove('writer-v9216-spaces-host');
+    parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');
    }
    hosts.clear();return;
   }
   const current=new Set();
-  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
-   const host=leaf.view?.containerEl;
-   if(!host)continue;
-   const scroll=host.querySelector('.nav-files-container');
-   const mount=scroll?.parentElement||host.querySelector('.view-content');
-   if(!mount)continue;
+  if(mobileIntegrated()){
+   const drawer=plugin.app.workspace.leftSplit;
+   const root=drawer.containerEl;
+   const mount=root.querySelector?.('.workspace-drawer-inner')||root;
    current.add(mount);hosts.add(mount);
-   mount.classList.add('writer-v9216-spaces-host');
+   mount.classList.add('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');
    let dock=mount.querySelector(':scope > .writer-v9216-spaces-dock');
    if(!dock){
     dock=mount.ownerDocument.createElement('div');
-    dock.className='writer-v9216-spaces-dock';mount.appendChild(dock);
+    dock.className='writer-v9216-spaces-dock writer-v1011-integrated-spaces';
+    const nativeFooter=mount.querySelector(':scope > .workspace-drawer-header');
+    if(nativeFooter)nativeFooter.insertAdjacentElement('beforebegin',dock);
+    else mount.appendChild(dock);
    }
+   dock.classList.add('writer-v1011-integrated-spaces');
    draw(dock);
+  }else{
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+    const host=leaf.view?.containerEl;
+    if(!host)continue;
+    const scroll=host.querySelector('.nav-files-container');
+    const mount=scroll?.parentElement||host.querySelector('.view-content');
+    if(!mount)continue;
+    current.add(mount);hosts.add(mount);
+    mount.classList.add('writer-v9216-spaces-host');
+    let dock=mount.querySelector(':scope > .writer-v9216-spaces-dock');
+    if(!dock){
+     dock=mount.ownerDocument.createElement('div');
+     dock.className='writer-v9216-spaces-dock';mount.appendChild(dock);
+    }
+    draw(dock);
+   }
   }
   for(const parent of hosts){
    if(current.has(parent))continue;
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
-   parent.classList.remove('writer-v9216-spaces-host');hosts.delete(parent);
+   parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');hosts.delete(parent);
   }
  };
  const refresh=()=>{clearTimeout(timer);timer=setTimeout(attach,100);};
@@ -210,12 +238,13 @@ function writerV9216SpaceDockRegister(plugin){
  // Spaces remain accessible through the explorer dock and command palette.
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
+ plugin.writerV1011SpacesDockRefresh=refresh;
  plugin.register?.(()=>{
   clearTimeout(timer);for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
   actions.clear();for(const parent of hosts){
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
-   parent.classList.remove('writer-v9216-spaces-host');
+   parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');
   }
-  hosts.clear();plugin.writerV9216SpacesDockRefresh=null;
+  hosts.clear();plugin.writerV9216SpacesDockRefresh=null;plugin.writerV1011SpacesDockRefresh=null;
  });
 }

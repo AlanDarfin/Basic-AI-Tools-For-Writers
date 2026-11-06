@@ -4,16 +4,16 @@ const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
 const source=read('src/v9/smart-spaces.js');
 const scope=vm.runInNewContext(source+'\n({writerV9SpaceSanitize,writerV9SpaceItems})',{ItemView:class{}});
-test('per-Space hiding is deprecated and no longer filters notes',()=>{
+test('per-Space hiding excludes only paths in that collection',()=>{
  const a=scope.writerV9SpaceSanitize({id:'a',name:'Writing',hiddenPaths:['Private','Draft.md']});
  const b=scope.writerV9SpaceSanitize({id:'b',name:'All'});
  const files=['Private/one.md','Draft.md','Public/one.md'].map(path=>({
   path,basename:path.split('/').pop(),stat:{mtime:1}
  }));
  const plugin={app:{vault:{getMarkdownFiles:()=>files},metadataCache:{getFileCache:()=>({})}}};
- assert.equal(scope.writerV9SpaceItems(plugin,a).length,3);
+ assert.deepEqual(Array.from(scope.writerV9SpaceItems(plugin,a),file=>file.path),['Public/one.md']);
  assert.equal(scope.writerV9SpaceItems(plugin,b).length,3);
- assert.doesNotMatch(source,/Ocultar somente neste Space/);
+ assert.match(source,/Ocultar apenas neste Space/);
 });
 test('Spaces can use manual curated ordering and search beyond old 200-note cap',()=>{
  const items=Array.from({length:250},(_,i)=>({path:'Notes/'+String(i).padStart(3,'0')+'.md',

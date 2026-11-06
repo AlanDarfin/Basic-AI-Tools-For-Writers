@@ -38,3 +38,25 @@ body.is-mobile .dictionary-settings-subtabs button{
 .dictionary-settings-panel .setting-item-description{
  overflow-wrap:anywhere;
 }
+
+/* v12.0.2: visually re-root the native tree at the active Space folder.
+ * Ancestor wrappers stay mounted for Obsidian's native events and children. */
+.writer-v1202-space-scoped .nav-folder.writer-v1202-space-ancestor > .nav-folder-title,
+.writer-v1202-space-scoped .nav-folder.writer-v1202-space-ancestor > .tree-item-self{
+ display:none;
+}
+.writer-v1202-space-scoped .nav-folder.writer-v1202-space-ancestor{
+ --nav-item-children-margin-left:0px;
+ --tree-item-children-margin-left:0px;
+}
+.writer-v1202-space-scoped .nav-folder.writer-v1202-space-ancestor > .nav-folder-children,
+.writer-v1202-space-scoped .nav-folder.writer-v1202-space-ancestor > .tree-item-children{
+ margin-inline-start:0;
+ padding-inline-start:0;
+ border-inline-start:0;
+}
+.writer-v1202-space-scoped .nav-folder.writer-v1202-space-root{
+ margin-inline-start:0;
+}
+.writer-v106-drag-handle{pointer-events:auto;}
+.writer-v1202-toolbar-profile{min-width:0;}

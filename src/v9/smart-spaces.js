@@ -125,6 +125,7 @@ function writerV9SpaceItems(plugin,space){
  return files.filter(file=>{
   if(space.mode==='curated'&&!(space.includePaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.folder&&!(file.path===space.folder||file.path.startsWith(space.folder+'/')))return false;
+  if((space.hiddenPaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.mode==='folder')return Boolean(space.folder);
   const data=cache.getFileCache?.(file)||{};
   if(space.tag&&!writerV9SpaceTags(file,data).some(tag=>tag===space.tag.toLocaleLowerCase()||tag.startsWith(space.tag.toLocaleLowerCase()+'/')))return false;
@@ -169,7 +170,8 @@ function writerV9SpaceEditor(plugin,initial,save){
    for(const [id,pt,en] of [['filter','Filtros dinâmicos','Dynamic filters'],['curated','Notas escolhidas','Curated notes'],['folder','Pasta fixada','Pinned folder']])d.addOption(id,writerUi(pt,en));
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
-  field('folder','Pasta (opcional)','Folder (optional)');
+  field('folder','Pasta raiz do Space (opcional)','Space root folder (optional)');
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Ao selecionar uma pasta, o explorador mostrará somente essa pasta como raiz, sem exibir as pastas superiores.','When a folder is selected, Explorer shows it as the visual root without its parent folder names.')});
    const pickPath=(foldersOnly,onSelect)=>{
     class SpacePathPicker extends require('obsidian').FuzzySuggestModal{
      getItems(){return (plugin.app.vault.getAllLoadedFiles?.()||[]).filter(item=>foldersOnly?Boolean(item.children):item.extension==='md'||Boolean(item.children));}
@@ -200,6 +202,11 @@ function writerV9SpaceEditor(plugin,initial,save){
    .setDesc(writerUi('Uma nota ou pasta por linha. Cada Space mantém seus itens fixados.','One file or folder path per line. Each Space has independent pinned items.'))
    .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
     draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   }));
+  new Setting(root).setName(writerUi('Ocultar apenas neste Space','Hide only in this Space'))
+   .setDesc(writerUi('Uma pasta ou nota por linha. Oculta também todo o conteúdo de pastas listadas, sem modificar o cofre.','One file or folder per line. Also hides descendants without changing vault files.'))
+   .addTextArea(t=>t.setValue((draft.hiddenPaths||[]).join('\n')).onChange(value=>{
+    draft.hiddenPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
   new Setting(root).setName(writerUi('Pesquisar nota ou pasta para incluir','Find note or folder to include'))
     .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(false,path=>{
@@ -556,7 +563,8 @@ function writerV9RegisterSpaces(plugin){
      writerV9SpaceEditor(plugin,{folder:file.path,name:file.name,view:'cards',mode:'folder'},async space=>{
       space.id='space-'+Date.now().toString(36);
       plugin.settings.v9Spaces.spaces.push(space);
-      await plugin.saveSettings();
+      await writerV9215SelectSpace(plugin,space.id);
+      plugin.writerV91FlexRefresh?.();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();
      });
     }));
   }

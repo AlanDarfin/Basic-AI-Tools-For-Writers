@@ -62,10 +62,40 @@ function writerV91FlexGlob(glob){
 function writerV91FlexPatterns(cfg){
  return cfg.patterns.split(/\r?\n/).map(writerV91FlexGlob).filter(Boolean).slice(0,40);
 }
+/* A folder Space has a visual root. Keep the ancestor DOM shells so that
+ * Obsidian's native explorer can still render the nested folder and its children. */
+function writerV1202SpaceScope(plugin,path){
+ const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+ const root=String(space?.folder||'').replace(/^\/+|\/+$/g,'');
+ if(!root||!path)return 'global';
+ if(path===root)return 'root';
+ if(path.startsWith(root+'/'))return 'descendant';
+ if(root.startsWith(path+'/'))return 'ancestor';
+ return 'excluded';
+}
 function writerV91FlexIsHidden(cfg,path,patterns,plugin){
- if(cfg.hideEnabled===false||!path)return false;
+ if(!path)return false;
+ if(typeof writerV9215SpaceHidden==='function'&&writerV9215SpaceHidden(plugin,path))return true;
+ if(cfg.hideEnabled===false)return false;
  const blocked=(cfg.hidden||[]).some(rule=>path===rule||path.startsWith(rule.replace(/\/$/,'')+'/'));
  return blocked||(patterns||[]).some(re=>re.test(path));
+}
+function writerV1202SpaceVisibility(plugin,cfg,path,patterns){
+ const scope=writerV1202SpaceScope(plugin,path);
+ const rule=cfg.enabled&&writerV91FlexIsHidden(cfg,path,patterns,plugin);
+ // A hidden ancestor must remain mounted; its title is visually suppressed.
+ const hidden=scope==='excluded'||(scope!=='ancestor'&&rule&&!cfg.showHidden);
+ return {scope,hidden,rule};
+}
+function writerV1202SpaceExpand(plugin,view,root){
+ if(!root||!view)return;
+ const parts=root.split('/'),paths=parts.map((_,i)=>parts.slice(0,i+1).join('/'));
+ for(const path of paths){
+  const items=view.fileItems;
+  const item=items?.[path]||items?.get?.(path);
+  if(!item||typeof item.setCollapsed!=='function')continue;
+  try{item.setCollapsed(false);}catch(_){}
+ }
 }
 function writerV91FlexNodePath(node,view){
  if(!node)return '';
@@ -250,8 +280,11 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   const path=writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
   const file=plugin.app.vault.getAbstractFileByPath(path);
   const title=node.querySelector('.nav-file-title, .nav-folder-title');
-  const isHidden=path&&writerV91FlexIsHidden(cfg,path,patterns,plugin);
-  const conceal=Boolean(cfg.enabled&&isHidden&&!cfg.showHidden);
+  const visibility=writerV1202SpaceVisibility(plugin,cfg,path,patterns);
+  const isHidden=visibility.rule;
+  const conceal=visibility.hidden;
+  node.classList.toggle('writer-v1202-space-ancestor',visibility.scope==='ancestor');
+  node.classList.toggle('writer-v1202-space-root',visibility.scope==='root');
   node.classList.toggle('writer-v91-flex-hidden',conceal);
   // Native file explorer styles may override simple CSS classes, so also set
   // a scoped inline display value. Never touch vault contents or file paths.
@@ -259,7 +292,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   else if(node.dataset.writerFlexConcealed==='true'){
    delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');
   }
-  node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
+  node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden&&visibility.scope!=='excluded'));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
    title.classList?.toggle?.('writer-v1047-reorder-title',
@@ -551,6 +584,16 @@ function writerV91FlexRegister(plugin){
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
    host.classList?.toggle?.('writer-v1047-mobile-reorder-on',writerV1047MobileReorderVisible(plugin));
+   const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+   const rootPath=String(space?.folder||'').replace(/^\/+|\/+$/g,'');
+   host.classList.toggle('writer-v1202-space-scoped',Boolean(rootPath));
+   if(rootPath){
+    const key=(space?.id||'')+':'+rootPath;
+    if(leaf.view._writerV1202SpaceRoot!==key){
+     leaf.view._writerV1202SpaceRoot=key;
+     writerV1202SpaceExpand(plugin,leaf.view,rootPath);
+    }
+   }else leaf.view._writerV1202SpaceRoot='';
    const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
    for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
@@ -558,9 +601,12 @@ function writerV91FlexRegister(plugin){
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);
     if(!path)continue;
-    const hidden=cfg.enabled&&writerV91FlexIsHidden(cfg,path,patterns,plugin)&&!cfg.showHidden;
+    const visibility=writerV1202SpaceVisibility(plugin,cfg,path,patterns);
+    const hidden=visibility.hidden;
+    node.classList.toggle('writer-v1202-space-ancestor',visibility.scope==='ancestor');
+    node.classList.toggle('writer-v1202-space-root',visibility.scope==='root');
     node.classList.toggle('writer-v91-flex-hidden',hidden);
-    node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&writerV91FlexIsHidden(cfg,path,patterns,plugin));
+    node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&visibility.rule&&visibility.scope!=='excluded');
     if(hidden){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
     else if(node.dataset.writerFlexConcealed==='true'){delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');}
    }
@@ -590,6 +636,18 @@ function writerV91FlexRegister(plugin){
     if(scopedPins)scopedPins.pinnedPaths=next;else cfg.pinned=next;
     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
+  const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+  if(space){
+   const local=Array.isArray(space.hiddenPaths)?space.hiddenPaths:[];
+   const own=local.includes(path);
+   menu.addItem(item=>item.setTitle(own?
+    writerUi('Reexibir neste Space','Show in this Space'):
+    writerUi('Ocultar neste Space','Hide in this Space'))
+    .setIcon(own?'eye':'eye-off').onClick(async()=>{
+     space.hiddenPaths=own?local.filter(entry=>entry!==path):[...new Set([...local,path])];
+     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
+    }));
+  }
   const hidden=cfg.hidden;
   if(cfg.hideEnabled!==false)menu.addItem(item=>item.setTitle(hidden.includes(path)?
    writerUi('Reexibir no explorador','Unhide in explorer'):
@@ -619,6 +677,8 @@ function writerV91FlexRegister(plugin){
   const swap=p=>p===old||p.startsWith(old+'/')?file.path+p.slice(old.length):p;
   cfg.pinned=cfg.pinned.map(swap);cfg.hidden=cfg.hidden.map(swap);
   for(const space of plugin.settings.v9Spaces?.spaces||[]){
+   space.folder=swap(space.folder||'');
+   space.includePaths=(space.includePaths||[]).map(swap);
    space.hiddenPaths=space.hiddenPaths.map(swap);
    space.pinnedPaths=(space.pinnedPaths||[]).map(swap);
    space.folderSorts=Object.fromEntries(Object.entries(space.folderSorts||{}).map(([key,v])=>[swap(key),v]));

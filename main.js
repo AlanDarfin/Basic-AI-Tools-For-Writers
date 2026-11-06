@@ -12428,7 +12428,59 @@ function writerV9ToolbarMerge(settings){
    icon:writerV1048ToolbarSafeIcon(group.icon||'folder-open'),ids});
  }
  cfg.groups=groups;
+ // Migrate old shared toolbar settings once into distinct editable device profiles.
+ // Keep the old top-level fields for existing commands and safe data migration.
+ const normalizeProfile=(rawProfile,mobile)=>{
+  const prior=rawProfile&&typeof rawProfile==='object'&&!Array.isArray(rawProfile)?rawProfile:{};
+  const profile={
+   placement:cfg.placement,style:cfg.style,compact:cfg.compact,buttonSize:cfg.buttonSize,
+   showLabels:cfg.showLabels,textColor:cfg.textColor,backgroundColor:cfg.backgroundColor,
+   customButtons:cfg.customButtons.map(item=>({...item})),
+   customizations:Object.fromEntries(Object.entries(cfg.customizations).map(([id,value])=>[id,{...value}])),
+   actions:[...cfg.actions],groups:cfg.groups.map(group=>({...group,ids:[...group.ids]})),
+   ...prior
+  };
+  profile.placement=['top','bottom','floating'].includes(profile.placement)?profile.placement:'bottom';
+  if(mobile&&profile.placement==='floating')profile.placement='bottom';
+  profile.style=['tiny','compact','regular'].includes(profile.style)?profile.style:'compact';
+  profile.buttonSize=Math.max(26,Math.min(46,Math.round(Number(profile.buttonSize)||32)));
+  profile.showLabels=profile.showLabels===true;
+  profile.textColor=writerV1048ToolbarHex(profile.textColor,cfg.textColor);
+  profile.backgroundColor=writerV1048ToolbarHex(profile.backgroundColor,cfg.backgroundColor);
+  profile.customButtons=Array.isArray(profile.customButtons)?profile.customButtons.filter(item=>
+   item&&writerV1048ToolbarCustomId(item.id)&&/^[\w.:-]{2,180}$/.test(String(item.command||'')))
+   .slice(0,60).map(item=>({id:item.id,command:String(item.command).slice(0,180),
+    label:String(item.label||item.command).slice(0,55),icon:writerV1048ToolbarSafeIcon(item.icon)})):[];
+  const allowed=new Set([...WRITER_V9_FORMAT_IDS,...profile.customButtons.map(item=>item.id)]);
+  profile.actions=Array.isArray(profile.actions)?[...new Set(profile.actions.filter(id=>allowed.has(id)))]:[...cfg.actions];
+  profile.customizations=Object.fromEntries(Object.entries(profile.customizations||{}).filter(([id,value])=>
+   allowed.has(id)&&value&&typeof value==='object').map(([id,value])=>[id,{
+    label:String(value.label||'').slice(0,55),icon:value.icon?writerV1048ToolbarSafeIcon(value.icon):''
+   }]));
+  const assigned=new Set();
+  profile.groups=(Array.isArray(profile.groups)?profile.groups:[]).slice(0,16).map(group=>{
+   const ids=[...new Set((Array.isArray(group?.ids)?group.ids:[]).filter(id=>
+    profile.actions.includes(id)&&!assigned.has(id)))];
+   ids.forEach(id=>assigned.add(id));
+   return {id:String(group?.id||'group').replace(/[^a-z0-9-]/gi,'').slice(0,45),
+    name:String(group?.name||'Menu').slice(0,45),icon:writerV1048ToolbarSafeIcon(group?.icon),ids};
+  }).filter(group=>group.ids.length);
+  return profile;
+ };
+ const stored=raw.profiles&&typeof raw.profiles==='object'&&!Array.isArray(raw.profiles)?raw.profiles:{};
+ cfg.profiles={desktop:normalizeProfile(stored.desktop,false),mobile:normalizeProfile(stored.mobile,true)};
  return cfg;
+}
+function writerV1048ToolbarProfile(plugin,device){
+ const cfg=plugin.settings.v9Toolbar||writerV9ToolbarMerge(plugin.settings);
+ const key=device|| (writerV8HomeIsMobile(plugin)?'mobile':'desktop');
+ return cfg.profiles?.[key]||cfg;
+}
+function writerV1048ToolbarHasSelection(view){
+ if(!view?.editor||!writerV1061ToolbarEditingMode(view))return false;
+ try{if(String(view.editor.getSelection?.()||'').length>0)return true;}catch(_){}
+ const ranges=view.editor.cm?.state?.selection?.ranges;
+ return Array.isArray(ranges)&&ranges.some(range=>range.from!==range.to);
 }
 function writerV9ToolbarAllowed(plugin){
  const cfg=plugin.settings.v9Toolbar;
@@ -12652,7 +12704,7 @@ function writerV1048ToolbarIcon(cfg,item){
  return cfg.customizations?.[item.id]?.icon||item.icon||'command';
 }
 function writerV1048ToolbarRun(plugin,editor,id){
- const cfg=plugin.settings.v9Toolbar;
+ const cfg=writerV1048ToolbarProfile(plugin);
  const item=writerV1048ToolbarItems(cfg).find(entry=>entry.id===id);
  if(!item)return false;
  if(item.type==='command'){
@@ -12672,11 +12724,12 @@ function writerV1048ToolbarGroups(cfg){
  return groupMap;
 }
 function writerV1048ToolbarMenu(plugin,group,event){
- const menu=new Menu(plugin.app),items=writerV1048ToolbarItems(plugin.settings.v9Toolbar);
+ const cfg=writerV1048ToolbarProfile(plugin);
+ const menu=new Menu(plugin.app),items=writerV1048ToolbarItems(cfg);
  for(const id of group.ids){
   const item=items.find(a=>a.id===id);if(!item)continue;
-  menu.addItem(entry=>entry.setTitle(writerV1048ToolbarLabel(plugin.settings.v9Toolbar,item))
-   .setIcon(writerV1048ToolbarIcon(plugin.settings.v9Toolbar,item))
+  menu.addItem(entry=>entry.setTitle(writerV1048ToolbarLabel(cfg,item))
+   .setIcon(writerV1048ToolbarIcon(cfg,item))
    .onClick(()=>{
     const current=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
     writerV1048ToolbarRun(plugin,current?.editor,id);
@@ -12712,7 +12765,7 @@ function writerV1061ToolbarEditingMode(view){
  return !!view.editor;
 }
 function writerV9RegisterToolbar(plugin){
- const cfg=plugin.settings.v9Toolbar;
+ const settings=plugin.settings.v9Toolbar;
  writerV1044ContextMenus(plugin);
  let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null;
  const remove=()=>{
@@ -12725,7 +12778,9 @@ function writerV9RegisterToolbar(plugin){
   const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
   observeMode(view);
   const host=view?.contentEl;
-  if(!host||!view?.editor||!writerV1061ToolbarEditingMode(view)||!writerV9ToolbarAllowed(plugin)){remove();return;}
+  const cfg=writerV1048ToolbarProfile(plugin);
+  if(!host||!view?.editor||!writerV1061ToolbarEditingMode(view)||!writerV9ToolbarAllowed(plugin)||
+   (cfg.placement==='floating'&&!writerV1048ToolbarHasSelection(view))){remove();return;}
   if(owner!==host){remove();owner=host;owner.classList.add('writer-v9-toolbar-host');}
   currentView=view;
   if(root)root.remove();
@@ -12789,8 +12844,13 @@ function writerV9RegisterToolbar(plugin){
  };
  const reposition=()=>{
   if(root&&currentView&&!writerV1061ToolbarEditingMode(currentView)){remove();refresh();return;}
-  if(root&&owner&&currentView&&cfg.placement==='floating')
+  const cfg=writerV1048ToolbarProfile(plugin);
+  if(cfg.placement==='floating'){
+   const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
+   if(!writerV1048ToolbarHasSelection(view)){if(root)remove();return;}
+   if(!root||view!==currentView){refresh();return;}
    writerV1048ToolbarPosition(root,owner,currentView,cfg);
+  }
  };
  plugin.writerV9ToolbarRefresh=refresh;
  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',refresh));
@@ -12807,13 +12867,13 @@ function writerV9RegisterToolbar(plugin){
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
   plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
    editorCallback:editor=>{
-    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,cfg);
+    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
    }});
  }
  plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),
   callback:async()=>{
-   if(writerV8HomeIsMobile(plugin))cfg.enabledMobile=!cfg.enabledMobile;
-   else cfg.enabledDesktop=!cfg.enabledDesktop;
+   if(writerV8HomeIsMobile(plugin))settings.enabledMobile=!settings.enabledMobile;
+   else settings.enabledDesktop=!settings.enabledDesktop;
    await plugin.saveSettings();refresh();
   }});
 }
@@ -12834,15 +12894,22 @@ function writerV1048ToolbarCommandPicker(plugin,onChoose){
  }
 }
 function writerV9ToolbarSettings(plugin,panel){
- const cfg=plugin.settings.v9Toolbar;
- const root=panel.createDiv({cls:'writer-v1048-toolbar-settings'});
+ const settings=plugin.settings.v9Toolbar;
+ const container=panel.createDiv({cls:'writer-v1048-toolbar-settings'});
+ const deviceSetting=new Setting(container).setName(writerUi('Personalizar para','Customize for'))
+  .setDesc(writerUi('PC e celular possuem botões, estilos, menus e cores independentes.','Desktop and mobile have independent buttons, style, menus and colors.'));
+ const content=container.createDiv({cls:'writer-v1202-toolbar-profile'});
+ const render=device=>{
+  content.empty();
+  const cfg=writerV1048ToolbarProfile(plugin,device);
+  const root=content;
  root.createEl('h3',{text:writerUi('Barra de formatação','Formatting toolbar')});
  root.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Personalize os botões, crie menus e use comandos de outros plugins. No celular a barra continua opcional, sem substituir a barra nativa.',
   'Customize buttons, build menus and use commands from other plugins. On mobile this bar remains optional and does not replace Obsidian’s native toolbar.')});
  const save=async()=>{await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();};
  const toggle=(pt,en,key)=>new Setting(root).setName(writerUi(pt,en))
-  .addToggle(t=>t.setValue(cfg[key]===true).onChange(async value=>{cfg[key]=value;await save();}));
+  .addToggle(t=>t.setValue(settings[key]===true).onChange(async value=>{settings[key]=value;await save();}));
  toggle('Ativar no computador','Enable on desktop','enabledDesktop');
  toggle('Ativar no Android/iOS (opcional)','Enable on Android/iOS (optional)','enabledMobile');
  toggle('Mostrar nomes junto aos ícones','Show labels next to icons','showLabels');
@@ -13048,6 +13115,13 @@ function writerV9ToolbarSettings(plugin,panel){
      name:writerUi('Meu menu','My menu'),icon:'folder-open',ids:[first]});
     await save();groupPanel.open=true;drawGroups();
    }));
+ };
+ deviceSetting.addDropdown(drop=>drop
+  .addOption('desktop',writerUi('Computador','Desktop'))
+  .addOption('mobile',writerUi('Celular','Mobile'))
+  .setValue('desktop')
+  .onChange(device=>render(device)));
+ render('desktop');
 }
 
 // v3 module: src/v9/native-explorer.js
@@ -13578,6 +13652,7 @@ function writerV9SpaceItems(plugin,space){
  return files.filter(file=>{
   if(space.mode==='curated'&&!(space.includePaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.folder&&!(file.path===space.folder||file.path.startsWith(space.folder+'/')))return false;
+  if((space.hiddenPaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.mode==='folder')return Boolean(space.folder);
   const data=cache.getFileCache?.(file)||{};
   if(space.tag&&!writerV9SpaceTags(file,data).some(tag=>tag===space.tag.toLocaleLowerCase()||tag.startsWith(space.tag.toLocaleLowerCase()+'/')))return false;
@@ -13622,7 +13697,8 @@ function writerV9SpaceEditor(plugin,initial,save){
    for(const [id,pt,en] of [['filter','Filtros dinâmicos','Dynamic filters'],['curated','Notas escolhidas','Curated notes'],['folder','Pasta fixada','Pinned folder']])d.addOption(id,writerUi(pt,en));
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
-  field('folder','Pasta (opcional)','Folder (optional)');
+  field('folder','Pasta raiz do Space (opcional)','Space root folder (optional)');
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Ao selecionar uma pasta, o explorador mostrará somente essa pasta como raiz, sem exibir as pastas superiores.','When a folder is selected, Explorer shows it as the visual root without its parent folder names.')});
    const pickPath=(foldersOnly,onSelect)=>{
     class SpacePathPicker extends require('obsidian').FuzzySuggestModal{
      getItems(){return (plugin.app.vault.getAllLoadedFiles?.()||[]).filter(item=>foldersOnly?Boolean(item.children):item.extension==='md'||Boolean(item.children));}
@@ -13653,6 +13729,11 @@ function writerV9SpaceEditor(plugin,initial,save){
    .setDesc(writerUi('Uma nota ou pasta por linha. Cada Space mantém seus itens fixados.','One file or folder path per line. Each Space has independent pinned items.'))
    .addTextArea(t=>t.setValue((draft.pinnedPaths||[]).join('\n')).onChange(value=>{
     draft.pinnedPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   }));
+  new Setting(root).setName(writerUi('Ocultar apenas neste Space','Hide only in this Space'))
+   .setDesc(writerUi('Uma pasta ou nota por linha. Oculta também todo o conteúdo de pastas listadas, sem modificar o cofre.','One file or folder per line. Also hides descendants without changing vault files.'))
+   .addTextArea(t=>t.setValue((draft.hiddenPaths||[]).join('\n')).onChange(value=>{
+    draft.hiddenPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    }));
   new Setting(root).setName(writerUi('Pesquisar nota ou pasta para incluir','Find note or folder to include'))
     .addButton(button=>button.setButtonText(writerUi('Selecionar…','Select…')).onClick(()=>pickPath(false,path=>{
@@ -14009,7 +14090,8 @@ function writerV9RegisterSpaces(plugin){
      writerV9SpaceEditor(plugin,{folder:file.path,name:file.name,view:'cards',mode:'folder'},async space=>{
       space.id='space-'+Date.now().toString(36);
       plugin.settings.v9Spaces.spaces.push(space);
-      await plugin.saveSettings();
+      await writerV9215SelectSpace(plugin,space.id);
+      plugin.writerV91FlexRefresh?.();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();
      });
     }));
   }
@@ -16070,10 +16152,40 @@ function writerV91FlexGlob(glob){
 function writerV91FlexPatterns(cfg){
  return cfg.patterns.split(/\r?\n/).map(writerV91FlexGlob).filter(Boolean).slice(0,40);
 }
+/* A folder Space has a visual root. Keep the ancestor DOM shells so that
+ * Obsidian's native explorer can still render the nested folder and its children. */
+function writerV1202SpaceScope(plugin,path){
+ const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+ const root=String(space?.folder||'').replace(/^\/+|\/+$/g,'');
+ if(!root||!path)return 'global';
+ if(path===root)return 'root';
+ if(path.startsWith(root+'/'))return 'descendant';
+ if(root.startsWith(path+'/'))return 'ancestor';
+ return 'excluded';
+}
 function writerV91FlexIsHidden(cfg,path,patterns,plugin){
- if(cfg.hideEnabled===false||!path)return false;
+ if(!path)return false;
+ if(typeof writerV9215SpaceHidden==='function'&&writerV9215SpaceHidden(plugin,path))return true;
+ if(cfg.hideEnabled===false)return false;
  const blocked=(cfg.hidden||[]).some(rule=>path===rule||path.startsWith(rule.replace(/\/$/,'')+'/'));
  return blocked||(patterns||[]).some(re=>re.test(path));
+}
+function writerV1202SpaceVisibility(plugin,cfg,path,patterns){
+ const scope=writerV1202SpaceScope(plugin,path);
+ const rule=cfg.enabled&&writerV91FlexIsHidden(cfg,path,patterns,plugin);
+ // A hidden ancestor must remain mounted; its title is visually suppressed.
+ const hidden=scope==='excluded'||(scope!=='ancestor'&&rule&&!cfg.showHidden);
+ return {scope,hidden,rule};
+}
+function writerV1202SpaceExpand(plugin,view,root){
+ if(!root||!view)return;
+ const parts=root.split('/'),paths=parts.map((_,i)=>parts.slice(0,i+1).join('/'));
+ for(const path of paths){
+  const items=view.fileItems;
+  const item=items?.[path]||items?.get?.(path);
+  if(!item||typeof item.setCollapsed!=='function')continue;
+  try{item.setCollapsed(false);}catch(_){}
+ }
 }
 function writerV91FlexNodePath(node,view){
  if(!node)return '';
@@ -16258,8 +16370,11 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   const path=writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
   const file=plugin.app.vault.getAbstractFileByPath(path);
   const title=node.querySelector('.nav-file-title, .nav-folder-title');
-  const isHidden=path&&writerV91FlexIsHidden(cfg,path,patterns,plugin);
-  const conceal=Boolean(cfg.enabled&&isHidden&&!cfg.showHidden);
+  const visibility=writerV1202SpaceVisibility(plugin,cfg,path,patterns);
+  const isHidden=visibility.rule;
+  const conceal=visibility.hidden;
+  node.classList.toggle('writer-v1202-space-ancestor',visibility.scope==='ancestor');
+  node.classList.toggle('writer-v1202-space-root',visibility.scope==='root');
   node.classList.toggle('writer-v91-flex-hidden',conceal);
   // Native file explorer styles may override simple CSS classes, so also set
   // a scoped inline display value. Never touch vault contents or file paths.
@@ -16267,7 +16382,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   else if(node.dataset.writerFlexConcealed==='true'){
    delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');
   }
-  node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden));
+  node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden&&visibility.scope!=='excluded'));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
    title.classList?.toggle?.('writer-v1047-reorder-title',
@@ -16559,6 +16674,16 @@ function writerV91FlexRegister(plugin){
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
    host.classList?.toggle?.('writer-v1047-mobile-reorder-on',writerV1047MobileReorderVisible(plugin));
+   const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+   const rootPath=String(space?.folder||'').replace(/^\/+|\/+$/g,'');
+   host.classList.toggle('writer-v1202-space-scoped',Boolean(rootPath));
+   if(rootPath){
+    const key=(space?.id||'')+':'+rootPath;
+    if(leaf.view._writerV1202SpaceRoot!==key){
+     leaf.view._writerV1202SpaceRoot=key;
+     writerV1202SpaceExpand(plugin,leaf.view,rootPath);
+    }
+   }else leaf.view._writerV1202SpaceRoot='';
    const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
    for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
@@ -16566,9 +16691,12 @@ function writerV91FlexRegister(plugin){
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);
     if(!path)continue;
-    const hidden=cfg.enabled&&writerV91FlexIsHidden(cfg,path,patterns,plugin)&&!cfg.showHidden;
+    const visibility=writerV1202SpaceVisibility(plugin,cfg,path,patterns);
+    const hidden=visibility.hidden;
+    node.classList.toggle('writer-v1202-space-ancestor',visibility.scope==='ancestor');
+    node.classList.toggle('writer-v1202-space-root',visibility.scope==='root');
     node.classList.toggle('writer-v91-flex-hidden',hidden);
-    node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&writerV91FlexIsHidden(cfg,path,patterns,plugin));
+    node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&visibility.rule&&visibility.scope!=='excluded');
     if(hidden){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
     else if(node.dataset.writerFlexConcealed==='true'){delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');}
    }
@@ -16598,6 +16726,18 @@ function writerV91FlexRegister(plugin){
     if(scopedPins)scopedPins.pinnedPaths=next;else cfg.pinned=next;
     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
    }));
+  const space=typeof writerV9215ActiveSpace==='function'?writerV9215ActiveSpace(plugin):null;
+  if(space){
+   const local=Array.isArray(space.hiddenPaths)?space.hiddenPaths:[];
+   const own=local.includes(path);
+   menu.addItem(item=>item.setTitle(own?
+    writerUi('Reexibir neste Space','Show in this Space'):
+    writerUi('Ocultar neste Space','Hide in this Space'))
+    .setIcon(own?'eye':'eye-off').onClick(async()=>{
+     space.hiddenPaths=own?local.filter(entry=>entry!==path):[...new Set([...local,path])];
+     await plugin.saveSettings();refresh();plugin.writerV9SpacesRefresh?.();
+    }));
+  }
   const hidden=cfg.hidden;
   if(cfg.hideEnabled!==false)menu.addItem(item=>item.setTitle(hidden.includes(path)?
    writerUi('Reexibir no explorador','Unhide in explorer'):
@@ -16627,6 +16767,8 @@ function writerV91FlexRegister(plugin){
   const swap=p=>p===old||p.startsWith(old+'/')?file.path+p.slice(old.length):p;
   cfg.pinned=cfg.pinned.map(swap);cfg.hidden=cfg.hidden.map(swap);
   for(const space of plugin.settings.v9Spaces?.spaces||[]){
+   space.folder=swap(space.folder||'');
+   space.includePaths=(space.includePaths||[]).map(swap);
    space.hiddenPaths=space.hiddenPaths.map(swap);
    space.pinnedPaths=(space.pinnedPaths||[]).map(swap);
    space.folderSorts=Object.fromEntries(Object.entries(space.folderSorts||{}).map(([key,v])=>[swap(key),v]));
@@ -22165,12 +22307,29 @@ function writerV106DragRegister(plugin){
   if(ev?.clientX!==undefined)menu.showAtPosition({x:ev.clientX,y:ev.clientY});
   else menu.showAtPosition({x:200,y:120});
  };
+ // The handle sits in document.body, outside the editor mouse listener.
+ // Preserve it while the pointer crosses the gap from the text to the grip.
+ const nearHandle=e=>{
+  if(handle.style.display==='none'||!Number.isFinite(e.clientX)||!Number.isFinite(e.clientY))return false;
+  const rect=handle.getBoundingClientRect();
+  return e.clientX>=rect.left-30&&e.clientX<=rect.right+65&&
+   e.clientY>=rect.top-28&&e.clientY<=rect.bottom+28;
+ };
+ const postponeHide=()=>{
+  clearTimeout(hideTimer);
+  if(cfg.visibility==='always'||drag)return;
+  hideTimer=setTimeout(()=>{
+   if(!drag&&!handle.matches(':hover')&&handle.style.display!=='none')
+    handle.style.display='none';
+  },650);
+ };
  const pointermove=e=>{
   clearTimeout(hideTimer);
   if(drag){e.preventDefault?.();targetAt(e);return;}
   if(!enabled())return;
+  if(e.target===handle||handle.contains(e.target)||nearHandle(e))return;
   const line=e.target?.closest?.('.cm-line');
-  if(!line){if(cfg.visibility!=='always')hideTimer=setTimeout(()=>{if(!drag)handle.style.display='none';},170);return;}
+  if(!line){postponeHide();return;}
   const view=viewFor(line);
   if(!view)return;
   const rect=line.getBoundingClientRect();
@@ -22209,7 +22368,10 @@ function writerV106DragRegister(plugin){
  };
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointermove',pointermove,true);
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointerdown',pointerdown,true);
+ plugin.registerDomEvent(handle,'pointerenter',()=>clearTimeout(hideTimer));
+ plugin.registerDomEvent(handle,'pointerleave',()=>{if(!drag)postponeHide();});
  plugin.registerDomEvent(doc,'pointermove',e=>{
+  if(!drag&&nearHandle(e))clearTimeout(hideTimer);
   if(pressTimer&&e.pointerType==='touch'){const origin=plugin._writerV106TouchOrigin;if(origin&&Math.hypot(origin.x-e.clientX,origin.y-e.clientY)>12){clearTimeout(pressTimer);pressTimer=null;}}
   if(drag)targetAt(e);
  },true);
@@ -26730,34 +26892,14 @@ function writerV1201SettingsOverview(plugin,panel){
  const cfg=writerV12Config(plugin);
  panel.createEl('h3',{text:writerUi('Toolkit e suítes','Toolkit and suites')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Cada recurso está organizado em uma categoria própria. As configurações antigas foram preservadas, sem recriar dados ou perfis.',
-  'Each feature has its own category. Previous settings and data are preserved.')});
+  'As funções recentes foram reunidas nas categorias existentes: Escrita, Organização, Arquivos, Revisão e Longform. Nenhuma aba adicional é criada.',
+  'Recent features are grouped into the existing Writing, Organization, Files, Review and Longform categories. No additional tabs are created.')});
  new Setting(panel).setName(writerUi('Ativar Toolkit v12','Enable v12 toolkit'))
   .setDesc(writerUi('Controle geral para os recursos da v12.','Global switch for v12 features.'))
   .addToggle(t=>t.setValue(cfg.enabled!==false).onChange(async v=>{
    cfg.enabled=v;await plugin.saveSettings();writerV12FocusRefresh(plugin);
   }));
- const pages=[
-  ['v12Writing','pen-line','Escrita e ações rápidas','Writing and quick actions'],
-  ['v12Images','image','Imagens e anotações','Images and annotations'],
-  ['v12Tasks','list-checks','Tarefas e captura','Tasks and capture'],
-  ['v12Privacy','lock-keyhole','Notas protegidas','Protected notes'],
-  ['v12Reader','volume-2','Leitura e TTS','Reading and TTS'],
-  ['v12Connections','git-branch','Integrações e sincronização','Integrations and synchronization'],
-  ['suiteEducation','graduation-cap','Unique Suite · estudos','Unique Suite · studies'],
-  ['suiteDatabase','table','Notion Suite · bases','Notion Suite · databases'],
-  ['suiteNumbering','list-ordered','Number Suite · numeração','Number Suite · numbering'],
-  ['suiteLongform','book-open','Longform Studio','Longform Studio']
- ];
- for(const [id,icon,pt,en] of pages){
-  new Setting(panel).setName(writerUi(pt,en)).addButton(b=>b
-   .setIcon('chevron-right').setTooltip(writerUi('Abrir configurações','Open settings'))
-   .onClick(()=>{
-    const tab=plugin.writerSettingsTab;
-    if(!tab)return;
-    tab.activeSettingsTab=id;tab.display();
-   }));
- }
+
 }
 function writerV1201SettingsWriting(plugin,panel){
  panel.createEl('h3',{text:writerUi('Escrita e ações rápidas','Writing and quick actions')});
@@ -27351,17 +27493,6 @@ class DictionarySettings extends PluginSettingTab{
     ['v9Calendar',msg('Calendário','Calendar')],
     ['v10Bookshelf',msg('Biblioteca','Bookshelf')],
     ['v10Tools',msg('Arquivos e atalhos','Files & shortcuts')],
-    ['v12Overview',msg('Visão geral','Overview')],
-    ['v12Writing',msg('Escrita e atalhos','Writing & shortcuts')],
-    ['v12Images',msg('Imagens','Images')],
-    ['v12Tasks',msg('Tarefas e Inbox','Tasks & inbox')],
-    ['v12Privacy',msg('Privacidade','Privacy')],
-    ['v12Reader',msg('Leitura e voz','Reading & voice')],
-    ['v12Connections',msg('Integrações e sync','Integrations & sync')],
-    ['suiteEducation',msg('Unique Suite','Unique Suite')],
-    ['suiteDatabase',msg('Notion Suite','Notion Suite')],
-    ['suiteNumbering',msg('Number Suite','Number Suite')],
-    ['suiteLongform',msg('Longform Studio','Longform Studio')],
     ['dictionary',msg('Dicionário','Dictionary')],
     ['translation',msg('Tradução','Translation')],
     ['assistant',msg('Chat','Chat')],
@@ -27416,20 +27547,14 @@ class DictionarySettings extends PluginSettingTab{
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
    ['customize',msg('Personalização','Customization'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','research']],
-   ['workflow',msg('Organização','Organization'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
+   ['workflow',msg('Organização e Spaces','Organization & Spaces'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
    ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','writingWidgets','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
-   ['longform',msg('Longform','Longform'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
-   ['toolkit',msg('Toolkit v12','Toolkit v12'),['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections']],
-   ['suites',msg('Suítes','Suites'),['suiteEducation','suiteDatabase','suiteNumbering','suiteLongform']],
+   ['longform',msg('Longform e livros','Longform & books'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
    ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
   ];
   const groupIcons={general:'settings-2',customize:'palette',workflow:'layers-3',writing:'pen-line',longform:'book-open',toolkit:'blocks',suites:'layers',ai:'brain-circuit',review:'spell-check'};
   const sectionIcons={
-   v12Overview:'layout-dashboard',v12Writing:'pen-tool',v12Images:'image',v12Tasks:'list-checks',
-   v12Privacy:'lock-keyhole',v12Reader:'volume-2',v12Connections:'git-branch',
-   suiteEducation:'graduation-cap',suiteDatabase:'table',suiteNumbering:'list-ordered',
-   suiteLongform:'book-open-check',
    general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
    homepage:'house',soundscapes:'headphones',v10Bookshelf:'library-big',v10Tools:'file-pen-line',writingWidgets:'columns-3',research:'book-marked',sessionDrafts:'notebook-pen',v9Pomodoro:'timer',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
    dictionary:'book-a',translation:'languages',assistant:'message-circle',projects:'notebook-pen',
@@ -27486,27 +27611,18 @@ class DictionarySettings extends PluginSettingTab{
     renderSubtabs(group,id);
     panel.empty();
     panel.classList.toggle('writer-v91-ai-settings',groupFor(id)==='ai');
-    if(id==='v12Overview'){writerV1201SettingsOverview(this.plugin,panel);
-    }else if(id==='v12Writing'){writerV1201SettingsWriting(this.plugin,panel);
-    }else if(id==='v12Images'){writerV1201SettingsImages(this.plugin,panel);
-    }else if(id==='v12Tasks'){writerV1201SettingsTasks(this.plugin,panel);
-    }else if(id==='v12Privacy'){writerV1201SettingsPrivacy(this.plugin,panel);
-    }else if(id==='v12Reader'){writerV1201SettingsReader(this.plugin,panel);
-    }else if(id==='v12Connections'){writerV1201SettingsConnections(this.plugin,panel);
-    }else if(['suiteEducation','suiteDatabase','suiteNumbering','suiteLongform'].includes(id)){
-      writerV1201SettingsSuite(this.plugin,panel,id);
-    }else if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
+    if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
     }else if(id==='soundscapes'){writerV91SoundSettings(this.plugin,panel);
-    }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
+    }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);writerV1201SettingsWriting(this.plugin,panel);
     }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);writerV92ExplorerSettings(this.plugin,panel);
-    }else if(id==='v9Pretty'){writerV9215PrettySettings(this.plugin,panel);writerV102ImagesSettings(this.plugin,panel);
-    }else if(id==='v9Flow'){writerV9215FlowSettings(this.plugin,panel);
+    }else if(id==='v9Pretty'){writerV9215PrettySettings(this.plugin,panel);writerV102ImagesSettings(this.plugin,panel);writerV1201SettingsImages(this.plugin,panel);
+    }else if(id==='v9Flow'){writerV9215FlowSettings(this.plugin,panel);writerV1201SettingsSuite(this.plugin,panel,'suiteDatabase');
     }else if(id==='v9Pomodoro'){writerV931PomodoroSettings(this.plugin,panel);
     }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);writerV101SpaceHistorySettings(this.plugin,panel);
     }else if(id==='v10Bookshelf'){writerV10BookshelfSettings(this.plugin,panel);
-    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);writerV101EnhancementsSettings(this.plugin,panel);
-    }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);
-    }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);writerV101CalendarExchangeSettings(this.plugin,panel);
+    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);writerV101EnhancementsSettings(this.plugin,panel);writerV1201SettingsTasks(this.plugin,panel);
+    }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);writerV1201SettingsPrivacy(this.plugin,panel);
+    }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);writerV101CalendarExchangeSettings(this.plugin,panel);writerV1201SettingsSuite(this.plugin,panel,'suiteEducation');
     }else if(id==='workspaceProfiles'){
       this.plugin.writerWorkspaceProfiles.renderSettings(panel);
     }else if(id==='cursor'){
@@ -27572,15 +27688,15 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='writingProfiles'){
       writerV4RenderSettings(this.plugin,panel);
     }else if(id==='integrationsV4'){
-      this.plugin.writerV4Extras.renderSettings(panel);
+      this.plugin.writerV4Extras.renderSettings(panel);writerV1201SettingsConnections(this.plugin,panel);
     }else if(id==='keyshots'){
       this.plugin.writerKeyshots.renderSettings(panel);
     }else if(id==='v6Markdown'){
-      this.plugin.writerV6Markup.renderSettings(panel);
+      this.plugin.writerV6Markup.renderSettings(panel);writerV1201SettingsSuite(this.plugin,panel,'suiteNumbering');
     }else if(id==='smartInsert'){
       this.plugin.writerV6SmartInsert.renderSettings(panel);
     }else if(id==='v6Reading'){
-      this.plugin.writerV6Reading.renderSettings(panel);
+      this.plugin.writerV6Reading.renderSettings(panel);writerV1201SettingsReader(this.plugin,panel);
     }else if(id==='v6Linter'){
       this.plugin.writerV6Linter.renderSettings(panel);
     }else if(id==='bookNavigation'){
@@ -27613,6 +27729,7 @@ class DictionarySettings extends PluginSettingTab{
       writerRenderDiagnostics(this.plugin,panel);
       writerWorkspaceRenderHotkeys(this.plugin,panel);
     }else if(id==='general'){
+      writerV1201SettingsOverview(this.plugin,panel);
       panel.createEl('h3',{text:msg('Preferências gerais','General preferences')});
       new Setting(panel).setName(t('language')).addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
       panel.createEl('p',{text:msg('Configure dicionário, tradução, chat e revisão nas respectivas abas. As chaves ficam em APIs e os modelos padrão em Modelos.','Configure dictionary, translation, chat and review in their respective tabs. API keys are under APIs and default models under Models.'),cls:'dictionary-muted'});
@@ -27626,6 +27743,7 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='v7Worldbuilding'){
       this.plugin.writerV7Worldbuilding.renderSettings(panel);
     }else if(id==='projects'){
+      writerV1201SettingsSuite(this.plugin,panel,'suiteLongform');
       panel.createEl('h3',{text:msg('Projetos de escrita','Writing projects')});
       panel.createEl('p',{text:msg('Compatibilidade com índices Longform, cenas, rascunhos, notas organizadas, metas e compilação. Os índices existentes são reconhecidos automaticamente, sem importação destrutiva.','Longform-compatible indexes, scenes, drafts, organized notes, goals and compilation. Existing indexes are detected automatically, without destructive migration.'),cls:'dictionary-muted'});
       new Setting(panel).setName(msg('Abrir gerenciador de projetos','Open project manager')).addButton(b=>b.setButtonText(msg('Abrir projetos','Open projects')).setCta().onClick(()=>this.plugin.openProjects()));

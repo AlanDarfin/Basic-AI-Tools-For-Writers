@@ -20816,7 +20816,6 @@ function writerV101EnhancementsSettings(plugin,panel){
  if(typeof writerV12ReaderSettings==='function')writerV12ReaderSettings(plugin,panel);
 }
 
-
 // v3 module: src/v10/calendar-exchange.js
 /* RFC 5545 subset for offline .ics import/export; never connects to remote calendars. */
 function writerV101CalendarExchangeMerge(settings){

@@ -169,7 +169,8 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
-  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
+   if(this.activeTab==='manuscript'&&this.plugin.settings?.v11Studio?.enabled===false)this.activeTab='scenes';
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['manuscript',lfMsg('Escrita contínua','Continuous writing')],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments') ]].filter(([id])=>(id!=='manuscript'||this.plugin.settings?.v11Studio?.enabled!==false)&&(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
   &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
@@ -178,10 +179,10 @@ class ProjectsView extends ItemView{
   &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
   &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
   if(!allTabs.some(([id])=>id===this.activeTab))this.activeTab=allTabs[0]?.[0]||'scenes';
-  const tabLucide={scenes:'clapperboard',project:'settings-2',compile:'file-output',notes:'library-big',timeline:'calendar-range',board:'columns-3',structure:'list-tree',relations:'git-branch',maps:'map',gallery:'images',sessions:'clock',analytics:'chart-no-axes-column',tasks:'list-check',comments:'message-circle'};
+  const tabLucide={scenes:'clapperboard',manuscript:'book-open-text',project:'settings-2',compile:'file-output',notes:'library-big',timeline:'calendar-range',board:'columns-3',structure:'list-tree',relations:'git-branch',maps:'map',gallery:'images',sessions:'clock',analytics:'chart-no-axes-column',tasks:'list-check',comments:'message-circle'};
   const groupLucide={writing:'pen-line',world:'globe',management:'folder-kanban'};
   const menuGroups=[
-   {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
+   {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','manuscript','board','structure','compile','analytics']},
    {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
    {id:'management',pt:'Projeto',en:'Project',tabs:['project','tasks','comments']}
   ];
@@ -279,6 +280,7 @@ class ProjectsView extends ItemView{
   this.tabPanelScrollPositions[id]=panel.scrollTop||this.tabPanelScrollPositions[id]||0;
   panel.empty();
   if(id==='scenes')this.drawScenes(panel,project);
+   else if(id==='manuscript'&&typeof writerV11RenderLongformTab==='function')writerV11RenderLongformTab(this,panel,project);
   else if(id==='project'){this.drawProject(panel,project);await this.drawStats(panel,project,token);}
   else if(id==='compile')this.drawCompile(panel,project);
   else if(id==='notes')await this.drawNotes(panel,project);
@@ -11388,7 +11390,7 @@ function writerV83StudySettings(plugin,panel){
 // v3 module: src/v8/writing-home.js
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero','studio'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
@@ -11445,7 +11447,6 @@ const WRITER_V8_HOME_CATALOG={
  trash:['trash-2','Lixeira','Trash explorer','Restaure notas da lixeira interna','Restore notes from Obsidian trash'],
  reading:['book-open-check','Leitura atual','Current reading','Palavras, títulos e tempo estimado','Words, headings and estimated time'],
  zotero:['book-marked','Fontes Zotero','Zotero sources','Notas de pesquisa importadas','Imported research notes'],
- studio:['book-text','Longform Studio','Longform Studio','Manuscrito contínuo, revisão e pesquisa','Continuous manuscript, review and search']
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -11579,14 +11580,7 @@ class WriterV8HomeView extends ItemView{
     },
     trash:p=>writerV10RenderTrashWidget(this,p),
     reading:p=>writerV10RenderReadingWidget(this,p),
-    zotero:p=>writerV10RenderZoteroWidget(this,p),
-    studio:p=>{
-     const card=this.card(p,'studio','Longform Studio','Longform Studio');
-     const actions=card.createDiv({cls:'writer-v11-studio-actions'});
-     actions.createEl('button',{text:writerUi('Abrir estúdio','Open studio')}).addEventListener('click',()=>writerV11PickProject(this.plugin,x=>writerV11OpenProject(this.plugin,x)));
-     actions.createEl('button',{text:writerUi('Pesquisar','Search')}).addEventListener('click',()=>writerV11OpenSearch(this.plugin));
-     actions.createEl('button',{text:writerUi('Diagnóstico','Diagnostics')}).addEventListener('click',()=>writerV11OpenDiagnostics(this.plugin));
-    }
+    zotero:p=>writerV10RenderZoteroWidget(this,p)
   };
   for(const key of widgetCfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
@@ -19945,7 +19939,7 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  summary.createEl('p',{text:writerUi('Organize suas histórias, acompanhe o progresso e encontre o próximo capítulo.','Organize stories, track progress and find your next chapter.')});
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
- if(typeof writerV11OpenProject==='function')toolbar.createEl('button',{text:writerUi('Estúdio','Studio'),attr:{type:'button'}})
+ if(typeof writerV11OpenProject==='function')toolbar.createEl('button',{text:writerUi('Escrita contínua','Continuous writing'),attr:{type:'button'}})
   .addEventListener('click',()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p)));
  toolbar.createEl('button',{text:writerUi('+ Adicionar livro','+ Add book'),attr:{type:'button'}})
   .addEventListener('click',()=>writerV109AddStandaloneBook(plugin,()=>{target.empty();writerV10RenderBookshelf(plugin,target,opts);}));
@@ -23504,7 +23498,9 @@ const WRITER_V1010_VIEWS={
  'all-properties':['list-filter','Propriedades','Properties'],
  backlink:['links','Links de entrada','Backlinks'],
  'outgoing-link':['link','Links de saída','Outgoing links'],
- outline:['list-tree','Estrutura','Outline']
+ outline:['list-tree','Estrutura','Outline'],
+ 'basic-ai-projects':['notebook-pen','Longform','Longform'],
+ 'writer-writing-home':['house','Homepage','Homepage']
 };
 function writerV1010Clamp(value,fallback=80){
  const n=Number(value);return Number.isFinite(n)?Math.max(20,Math.min(100,Math.round(n))):fallback;
@@ -23651,13 +23647,16 @@ function writerV1012IsNativeSortAction(action,label){
 }
 /* Mobile nested menus must open after their parent menu closes. The hidden
  * native action retains a laid-out DOM anchor so Obsidian won't dismiss it. */
-function writerV1012OpenNativeAction(action,sort){
- if(!action?.click)return;
+function writerV1012OpenNativeAction(action,sort,plugin){
+ if(typeof action?.click!=='function')return;
  if(!sort){action.click();return;}
+ // Let the first mobile sheet dismiss before the nested native sheet opens.
+ if(plugin)plugin._writerV1010NativeActionPending=true;
  setTimeout(()=>{
   try{if(action.isConnected!==false)action.click();}
-  catch(error){console.warn('[Basic] Could not open native sorting menu:',error);}
- },90);
+  catch(error){console.warn('[Basic] Could not open nested native action:',error);}
+  setTimeout(()=>{if(plugin){plugin._writerV1010NativeActionPending=false;plugin.writerV1010Refresh?.();}},800);
+ },220);
 }
 function writerV1010SidebarMenu(plugin,event,side,leaves,active){
  const menu=new Menu(plugin.app),current=active?.view?.containerEl;
@@ -23667,9 +23666,11 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   const label=String(action.getAttribute('aria-label')||action.getAttribute('title')||'').trim();
   if(!label||action.closest('.writer-v1010-sidebar-toolbar'))continue;
   count++;
-  const sort=writerV1012IsNativeSortAction(action,label);
+  const sort=writerV1012IsNativeSortAction(action,label)||
+   action.getAttribute?.('aria-haspopup')==='menu'||
+   /(?:mais op[cç][oõ]es|more options|op[cç][oõ]es|menu de opções)/i.test(label);
   menu.addItem(item=>item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label))
-   .onClick(()=>writerV1012OpenNativeAction(action,sort)));
+   .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin)));
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))
@@ -23800,7 +23801,8 @@ function writerV1010Register(plugin){
   }
   if(!header){restoreSidebar(side);return;}
   const doc=header.ownerDocument;
-  const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
+  const ordered=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
+  const leaves=typeof writerV112SortPinned==='function'?writerV112SortPinned(plugin,side,ordered):ordered;
   if(!leaves.length){restoreSidebar(side);return;}
   groupNativeActions(side,leaves,Boolean(drawer)&&cfg.sidebar.actionMenu!==false);
   let bar=hosts.get(side);
@@ -23825,7 +23827,8 @@ function writerV1010Register(plugin){
    Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
   const signature=[...visible.map(e=>e.type),'|',...hidden.map(e=>e.type),
-   cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true].join(';');
+   cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true,
+   JSON.stringify(cfg.sidebar.pinnedViews?.[side]||[])].join(';');
   const currentState=hostState.get(side);
   if(currentState?.bar===bar&&currentState.signature===signature){
    // Replacing buttons on every layout-change destroys the menu anchor and
@@ -23884,6 +23887,7 @@ function writerV1010Register(plugin){
     writerV1010FilterFiles(workspace,box.value);
    });bar.appendChild(box);
   }
+  if(drawer&&typeof writerV112SidebarWire==='function')writerV112SidebarWire(plugin,side,visible,bar);
  };
  const allMarkdown=()=>{
   const leaves=[];workspace.iterateAllLeaves?.(leaf=>{
@@ -23908,7 +23912,7 @@ function writerV1010Register(plugin){
   if(status)status.style.display=cfg.width.enabled&&cfg.width.showStatus&&!require('obsidian').Platform?.isMobile?'':'none';
  };
  const refresh=()=>{
-  if(unloaded)return;
+  if(unloaded||plugin._writerV1010NativeActionPending)return;
   try{renderSide('left');renderSide('right');paintWidth();
    if(require('obsidian').Platform?.isMobile)plugin.writerV9216SpacesDockRefresh?.();}
   catch(error){console.error('[Basic] Sidebar / width refresh failed:',error);}
@@ -23986,6 +23990,7 @@ function writerV1010Settings(plugin,panel){
   ['desktopTabs','Abas extras no computador','Extra tabs on desktop'],
   ['overflow','Agrupar abas excedentes','Overflow for extra tabs'],
   ['actionMenu','Menu de ações do painel','Sidebar action menu'],
+  ['longPressMenu','Segurar uma aba para fechar ou fixar painel','Hold a tab to close or pin panel'],
   ['fileFilter','Filtro local do explorador','Local Explorer filter'],
   ['integrateSpaces','Integrar Spaces ao rodapé móvel','Integrate Spaces into mobile footer'],
   ['compactFooter','Compactar rodapé nativo no celular','Compact native footer on mobile']
@@ -24822,82 +24827,99 @@ async function writerV11SaveChapter(plugin,file,expected,next){
 function writerV11Heading(parent,pt,en){
  parent.createEl('h3',{text:writerUi(pt,en)});
 }
-function writerV11OpenProject(plugin,project){
- const cfg=writerV11Cfg(plugin.settings);
- if(!cfg.enabled){new Notice(writerUi('Longform Studio desativado.','Longform Studio disabled.'));return;}
- const scenes=writerV11ProjectFiles(plugin,project,cfg.chapterLimit);
- const modal=new Modal(plugin.app);
- modal.modalEl?.addClass('writer-v11-studio-modal');
- modal.setTitle(writerUi('Longform Studio · ','Longform Studio · ')+project.title);
- modal.onOpen=()=>{
-  const root=modal.contentEl;root.empty();root.addClass('writer-v11-studio');
-  const intro=root.createDiv({cls:'writer-v11-studio-intro'});
-  intro.createEl('p',{text:writerUi(
-   'Capítulos em sequência, cada um salvo no seu arquivo original. Expanda uma cena para editar; salve explicitamente. Outras alterações nunca são sobrescritas.',
-   'Chapters in sequence, each stored in its original file. Expand a scene to edit and save explicitly. Concurrent changes are never overwritten.')});
-  const bar=root.createDiv({cls:'writer-v11-studio-actions'});
-  bar.createEl('button',{text:writerUi('Pesquisar livro','Search book')})
-   .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
-  bar.createEl('button',{text:writerUi('Revisar versões','Review revisions')})
-   .addEventListener('click',()=>writerV11OpenRevision(plugin,scenes[0]?.file));
-  bar.createEl('button',{text:writerUi('Compilar manuscrito','Compile manuscript')})
-   .addEventListener('click',()=>void writerV11Compile(plugin,project,scenes));
-  const total=root.createEl('p',{cls:'writer-v11-summary',text:scenes.length+' '+writerUi('capítulos encontrados.','chapters found.')});
-  if(!scenes.length){root.createEl('p',{text:writerUi('Nenhum capítulo Markdown encontrado. Confira a ordem no Longform.','No Markdown chapters found. Check Longform scene ordering.')});return;}
-  const host=root.createDiv({cls:'writer-v11-chapters'});
-  let wordTotal=0;
-  for(const [index,entry] of scenes.entries()){
-   const detail=host.createEl('details',{cls:'writer-v11-chapter'});
-   const summary=detail.createEl('summary');
-   summary.createSpan({text:String(index+1)+'. '+entry.title});
-   const counter=summary.createEl('small',{text:' · …'});
-   const content=detail.createDiv({cls:'writer-v11-chapter-body'});
-   let loaded=false;
-   detail.addEventListener('toggle',async()=>{
-    if(!detail.open||loaded||modal._writerClosed)return;
-    loaded=true;
-    let original='';
-    try{original=await plugin.app.vault.read(entry.file);}catch(error){
-     loaded=false;content.createEl('p',{text:String(error.message||error)});return;
-    }
-    const count=writerV11Words(original);
-    wordTotal+=count;
-    total.setText(scenes.length+' '+writerUi('capítulos · ','chapters · ')+wordTotal+' '+writerUi('palavras carregadas','loaded words'));
-    counter.setText(' · '+count+' '+writerUi(' palavras',' words'));
-    const editor=content.createEl('textarea',{cls:'writer-v11-editor',attr:{spellcheck:'true','aria-label':entry.title}});
-    const draft=plugin._writerV11Drafts?.get(entry.file.path);
-    editor.value=draft?.original===original?draft.text:original;
-    const buttons=content.createDiv({cls:'writer-v11-chapter-actions'});
-    const status=buttons.createEl('small',{text:writerUi('Alterações não salvas','Unsaved changes')});
-    const save=buttons.createEl('button',{text:writerUi('Salvar capítulo','Save chapter'),attr:{type:'button'}});
-    const open=buttons.createEl('button',{text:writerUi('Abrir nota','Open note'),attr:{type:'button'}});
-    const review=buttons.createEl('button',{text:writerUi('Revisão','Review'),attr:{type:'button'}});
-    if(draft?.original===original)status.setText(writerUi('Rascunho temporário recuperado · não salvo','Temporary draft recovered · unsaved'));
+async function writerV11OpenProject(plugin,project){
+ // Reuse the canonical Projects view and selected Longform index.
+ // No separate Studio leaf, homepage widget or manuscript database is created.
+ if(!project?.file?.path)return;
+ await plugin.openProjects?.('manuscript');
+ const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
+ if(!view){new Notice(writerUi('Não foi possível abrir o Longform.','Could not open Longform.'));return;}
+ view.selected=project.file.path;
+ if(typeof writerProjectRemember==='function')writerProjectRemember(view,project.file.path);
+ view.activeTab='manuscript';
+ await view.render?.();
+}
+function writerV11RenderLongformTab(view,panel,project){
+ const plugin=view.plugin,cfg=writerV11Cfg(plugin.settings);
+ const root=panel.createDiv({cls:'writer-v11-studio writer-v11-longform-inline'});
+ if(cfg.enabled===false){
+  root.createEl('p',{text:writerUi('A escrita contínua está desativada nas configurações do Longform.','Continuous writing is disabled in Longform settings.')});return;
+ }
+ const entries=project.format==='single'?[{title:project.title,file:project.file}]:
+  (typeof view.activeScenes==='function'?view.activeScenes(project):typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[]).map(scene=>{
+   const file=typeof view.resolveScene==='function'?view.resolveScene(project,scene.title):null;
+   return {title:scene.title,file,indent:scene.indent||0};
+  }).filter(entry=>entry.file?.extension==='md');
+ const unique=new Set(),scenes=entries.filter(entry=>{
+  if(!entry.file?.path||unique.has(entry.file.path))return false;
+  unique.add(entry.file.path);return true;
+ }).slice(0,cfg.chapterLimit);
+ root.createEl('h4',{text:writerUi('Escrita contínua','Continuous writing')});
+ root.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Todas as cenas continuam no Longform padrão, com a ordem, os metadados e os arquivos originais. Expanda uma cena para editar e salve explicitamente.',
+  'Scenes retain the standard Longform order, metadata and original files. Expand a scene to edit and save explicitly.')});
+ const bar=root.createDiv({cls:'writer-v11-studio-actions'});
+ bar.createEl('button',{text:writerUi('Pesquisar capítulos','Search chapters')})
+  .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
+ bar.createEl('button',{text:writerUi('Compilar manuscrito','Compile manuscript')})
+  .addEventListener('click',()=>void writerV11Compile(plugin,project,scenes));
+ const count=bar.createSpan({cls:'writer-v11-longform-counter',text:scenes.length+' '+writerUi('capítulos','chapters')});
+ if(!scenes.length){
+  root.createEl('p',{text:writerUi('Este projeto ainda não contém cenas Markdown. Use a aba Cenas para adicioná-las.','This project has no Markdown scenes yet. Add them in Scenes.')});return;
+ }
+ const host=root.createDiv({cls:'writer-v11-chapters'});
+ for(const [index,scene] of scenes.entries()){
+  const section=host.createEl('details',{cls:'writer-v11-chapter'});
+  const head=section.createEl('summary');
+  head.createSpan({text:String(index+1)+'. '+scene.title});
+  const info=head.createEl('small',{text:''});
+  const body=section.createDiv({cls:'writer-v11-chapter-body'});
+  let loading=false,loaded=false,expected='';
+  section.addEventListener('toggle',async()=>{
+   if(!section.open||loaded||loading)return;
+   loading=true;
+   try{
+    expected=await plugin.app.vault.read(scene.file);
+    if(!section.isConnected)return;
+    info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
+    const editor=body.createEl('textarea',{cls:'writer-v11-editor',attr:{
+     'aria-label':scene.title,spellcheck:'true'}});
+    const draft=plugin._writerV11Drafts?.get(scene.file.path);
+    editor.value=draft?.original===expected?draft.text:expected;
+    const buttons=body.createDiv({cls:'writer-v11-chapter-actions'});
+    const status=buttons.createEl('small',{text:editor.value===expected?
+     writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo recuperado','Unsaved draft recovered')});
+    const save=buttons.createEl('button',{attr:{type:'button'},text:writerUi('Salvar cena','Save scene')});
+    buttons.createEl('button',{attr:{type:'button'},text:writerUi('Abrir nota','Open note')})
+     .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(scene.file));
+    buttons.createEl('button',{attr:{type:'button'},text:writerUi('Revisões','Revisions')})
+     .addEventListener('click',()=>writerV11OpenRevision(plugin,scene.file));
     editor.addEventListener('input',()=>{
-     if(!plugin._writerV11Drafts)plugin._writerV11Drafts=new Map();
-     if(editor.value===original)plugin._writerV11Drafts.delete(entry.file.path);
-     else plugin._writerV11Drafts.set(entry.file.path,{original,text:editor.value});
-     status.setText(writerUi('Alterado · não salvo','Modified · not saved'));
+     plugin._writerV11Drafts??=new Map();
+     if(editor.value===expected)plugin._writerV11Drafts.delete(scene.file.path);
+     else plugin._writerV11Drafts.set(scene.file.path,{original:expected,text:editor.value});
+     status.setText(editor.value===expected?writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo','Unsaved changes'));
     });
     save.addEventListener('click',async()=>{
      save.disabled=true;
-     try{await writerV11SaveChapter(plugin,entry.file,original,editor.value);
-      original=editor.value;plugin._writerV11Drafts?.delete(entry.file.path);status.setText(writerUi('Salvo','Saved'));counter.setText(' · '+writerV11Words(original)+' '+writerUi('palavras','words'));
-      new Notice(writerUi('Capítulo salvo.','Chapter saved.'));
-     }catch(error){status.setText(String(error.message||error));new Notice(String(error.message||error));}
-     finally{save.disabled=false;}
+     try{
+      await writerV11SaveChapter(plugin,scene.file,expected,editor.value);
+      expected=editor.value;
+      plugin._writerV11Drafts?.delete(scene.file.path);
+      info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
+      status.setText(writerUi('Salvo','Saved'));
+      new Notice(writerUi('Cena salva no arquivo Longform original.','Scene saved in original Longform note.'));
+     }catch(error){
+      status.setText(String(error.message||error));new Notice(String(error.message||error));
+     }finally{save.disabled=false;}
     });
-    open.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(entry.file));
-    review.addEventListener('click',()=>writerV11OpenRevision(plugin,entry.file));
-    writerV11ReviewArea(plugin,entry.file,content);
-   });
-  }
- };
- modal.onClose=()=>{modal._writerClosed=true;
-  if(scenes.some(entry=>plugin._writerV11Drafts?.has(entry.file.path)))
-   new Notice(writerUi('Rascunhos não salvos mantidos temporariamente nesta sessão do Basic.','Unsaved drafts are held temporarily in this Basic session.'));
- };
- modal.open();
+    writerV11ReviewArea(plugin,scene.file,body);
+    loaded=true;
+   }catch(error){
+    body.createEl('p',{text:String(error.message||error)});
+   }finally{loading=false;}
+  });
+ }
 }
 function writerV11ReviewArea(plugin,file,root){
  const box=root.createDiv({cls:'writer-v11-review-area'});
@@ -25082,7 +25104,7 @@ function writerV11StudioRegister(plugin){
   }
  }));
 
- plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir estúdio contínuo','Longform: open continuous studio'),
+ plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir escrita contínua','Longform: open continuous writing'),
   callback:()=>writerV11PickProject(plugin,project=>writerV11OpenProject(plugin,project))});
  plugin.addCommand({id:'v11-editorial-review',name:writerUi('Revisão: comparar snapshots do capítulo','Review: compare chapter snapshots'),
   callback:()=>writerV11OpenRevision(plugin,plugin.app.workspace.getActiveFile?.())});
@@ -25095,18 +25117,18 @@ function writerV11StudioRegister(plugin){
 }
 function writerV11StudioSettings(plugin,panel){
  const cfg=writerV11Cfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('v11 · Longform Studio','v11 · Longform Studio')});
+ panel.createEl('h3',{text:writerUi('Longform · Escrita contínua','Longform · Continuous writing')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Escrita contínua segura, revisões com snapshots, pesquisa contextual e exportação Markdown por projeto.',
   'Safe continuous writing, snapshot comparisons, contextual search and per-project Markdown compilation.')});
- new Setting(panel).setName(writerUi('Ativar estúdio Longform','Enable Longform Studio'))
+ new Setting(panel).setName(writerUi('Ativar escrita contínua no Longform','Enable continuous writing in Longform'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Limite de capítulos por sessão','Chapter limit per session'))
   .addSlider(s=>s.setLimits(10,200,10).setValue(cfg.chapterLimit).setDynamicTooltip().onChange(async v=>{cfg.chapterLimit=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum searched notes'))
   .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.searchLimit).setDynamicTooltip().onChange(async v=>{cfg.searchLimit=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Estúdio Longform','Longform Studio'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
+ new Setting(panel).setName(writerUi('Escrita contínua','Continuous writing'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir Longform','Open Longform')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
  new Setting(panel).setName(writerUi('Central de compatibilidade','Compatibility center'))
   .addButton(b=>b.setButtonText(writerUi('Diagnosticar','Diagnose')).onClick(()=>writerV11OpenDiagnostics(plugin)));
 }
@@ -25465,6 +25487,103 @@ function writerV111DbBuilderSettings(plugin,panel){
    const editor=plugin.app.workspace.getActiveViewOfType?.(MarkdownView)?.editor;
    writerV111DbBuilderOpen(plugin,editor);
   }));
+}
+
+// v3 module: src/v11/mobile-panel-actions.js
+/* Basic 11.1.2 — mobile sidebar panel management.
+ * Native leaves are never recreated. Pinned types stay first in the bar,
+ * survive restarts and are spared from "close others". A normal tap is intact. */
+function writerV112PanelPrefs(plugin){
+ const sidebar=writerV1010Merge(plugin.settings).sidebar;
+ if(!sidebar.pinnedViews||typeof sidebar.pinnedViews!=='object')
+  sidebar.pinnedViews={left:[],right:[]};
+ for(const side of ['left','right']){
+  const entries=sidebar.pinnedViews[side];
+  sidebar.pinnedViews[side]=Array.isArray(entries)?
+   [...new Set(entries.filter(x=>typeof x==='string'&&x.length<100))].slice(0,40):[];
+ }
+ if(sidebar.longPressMenu===undefined)sidebar.longPressMenu=true;
+ return sidebar;
+}
+function writerV112SortPinned(plugin,side,entries){
+ const pins=writerV112PanelPrefs(plugin).pinnedViews[side];
+ return entries.slice().sort((a,b)=>Number(pins.includes(b.type))-Number(pins.includes(a.type)));
+}
+function writerV112ContextMenu(plugin,side,entry,x,y){
+ const workspace=plugin.app.workspace,leaf=entry?.leaf;
+ if(!leaf||writerV1010SideForLeaf(workspace,leaf)!==side)return false;
+ const config=writerV112PanelPrefs(plugin),pins=config.pinnedViews[side];
+ const pinned=pins.includes(entry.type),menu=new Menu(plugin.app);
+ menu.addItem(item=>item.setTitle(pinned?writerUi('Desafixar painel','Unpin panel'):writerUi('Fixar painel','Pin panel'))
+  .setIcon(pinned?'pin-off':'pin').onClick(async()=>{
+   config.pinnedViews[side]=pinned?pins.filter(type=>type!==entry.type):[...pins,entry.type];
+   await plugin.saveSettings();plugin.writerV1010Refresh?.();
+  }));
+ menu.addItem(item=>item.setTitle(writerUi('Fechar painel','Close panel')).setIcon('x')
+  .onClick(async()=>{
+   try{
+    if(writerV1010SideForLeaf(workspace,leaf)===side)await leaf.detach?.();
+    plugin.writerV1010Refresh?.();
+   }catch(error){new Notice(writerUi('Não foi possível fechar o painel: ','Could not close panel: ')+String(error.message||error));}
+  }));
+ const others=writerV1010CollectLeaves(workspace,side).filter(x=>
+  x.leaf!==leaf&&!pins.includes(x.type));
+ if(others.length){
+  menu.addSeparator();
+  menu.addItem(item=>item.setTitle(writerUi('Fechar outros não fixados','Close other unpinned panels'))
+   .setIcon('panel-top-close').onClick(async()=>{
+    for(const other of others){
+     if(config.pinnedViews[side].includes(other.type))continue;
+     try{if(writerV1010SideForLeaf(workspace,other.leaf)===side)await other.leaf.detach?.();}
+     catch(error){console.warn('[Basic] Sidebar close others:',error);}
+    }
+    plugin.writerV1010Refresh?.();
+   }));
+ }
+ menu.showAtPosition?.({x:Number.isFinite(x)?x:96,y:Number.isFinite(y)?y:180});
+ return true;
+}
+function writerV112HoldControl(plugin,button,side,entry){
+ if(button.dataset.writerV112Hold==='1')return;
+ button.dataset.writerV112Hold='1';
+ const pin=writerV112PanelPrefs(plugin).pinnedViews[side].includes(entry.type);
+ button.classList.toggle('writer-v112-pinned-tab',pin);
+ if(pin)button.setAttribute('aria-label',(button.getAttribute('aria-label')||entry.type)+writerUi(' · fixado',' · pinned'));
+ if(writerV112PanelPrefs(plugin).longPressMenu===false)return;
+ let timer=null,startX=0,startY=0,suppressUntil=0;
+ const cancel=()=>{if(timer!==null)clearTimeout(timer);timer=null;};
+ const open=(x,y)=>{cancel();suppressUntil=Date.now()+850;writerV112ContextMenu(plugin,side,entry,x,y);};
+ button.addEventListener('pointerdown',event=>{
+  if(event.pointerType==='mouse'||event.button!==0)return;
+  cancel();startX=event.clientX;startY=event.clientY;
+  timer=setTimeout(()=>open(startX,startY),550);
+ });
+ button.addEventListener('pointermove',event=>{
+  if(Math.hypot(event.clientX-startX,event.clientY-startY)>12)cancel();
+ });
+ for(const type of ['pointerup','pointercancel','pointerleave'])button.addEventListener(type,cancel);
+ button.addEventListener('contextmenu',event=>{
+  event.preventDefault();event.stopPropagation();
+  if(Date.now()>suppressUntil)open(event.clientX,event.clientY);
+ });
+ button.addEventListener('keydown',event=>{
+  if(event.key==='ContextMenu'||(event.key==='F10'&&event.shiftKey)){
+   event.preventDefault();
+   const r=button.getBoundingClientRect();
+   open(r.left+r.width/2,r.top+r.height/2);
+  }
+ });
+ button.addEventListener('click',event=>{
+  if(Date.now()>suppressUntil)return;
+  event.preventDefault();event.stopImmediatePropagation?.();suppressUntil=0;
+ },true);
+}
+function writerV112SidebarWire(plugin,side,entries,bar){
+ const buttons=[...(bar?.querySelectorAll?.('.writer-v1010-sidebar-button[data-view-type]')||[])];
+ for(const entry of entries){
+  const button=buttons.find(node=>node.getAttribute('data-view-type')===entry.type);
+  if(button)writerV112HoldControl(plugin,button,side,entry);
+ }
 }
 
 // END WRITER V3 MODULES

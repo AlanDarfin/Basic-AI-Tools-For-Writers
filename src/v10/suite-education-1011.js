@@ -89,8 +89,8 @@ async function writerV1011StudyReminder(plugin,label,date){
  if(!vault.getAbstractFileByPath(path))await vault.create(path,'# '+writerUi('Lembretes','Reminders')+'\n');
  const file=vault.getAbstractFileByPath(path);
  const line='- [ ] [due:: '+date+'] '+clean+'\n';
- if(typeof vault.process==='function')await vault.process(file,text=>text.replace(/\s*$/,'\n')+line);
- else await vault.modify(file,(await vault.read(file)).replace(/\s*$/,'\n')+line);
+ if(typeof vault.process!=='function')throw Error('Atomic vault.process is required for reminders');
+ await vault.process(file,text=>text.replace(/\s*$/,'\n')+line);
  return file;
 }
 function writerV1011StudyReminders(text,now=writerV1011StudyDate()){

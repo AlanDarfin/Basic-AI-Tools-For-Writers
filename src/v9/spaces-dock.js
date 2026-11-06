@@ -12,6 +12,9 @@ function writerV9216SpaceDockRegister(plugin){
   const ui=plugin.settings.v1010Layout?.sidebar;
   return require('obsidian').Platform?.isMobile===true&&
    drawer?.type==='mobile-drawer'&&Boolean(drawer.containerEl)&&
+   typeof drawer.selectTabIndex==='function'&&drawer.tabsListEl&&drawer.tabsContainerEl&&
+   !drawer.containerEl.classList?.contains('osm-sidebar')&&
+   !drawer.containerEl.ownerDocument?.body?.classList?.contains('osm-mobile-tabs')&&
    ui?.enabled===true&&ui.mobileTabs!==false&&ui.integrateSpaces!==false&&
    cfg.enabled===true&&cfg.dock!==false;
  };

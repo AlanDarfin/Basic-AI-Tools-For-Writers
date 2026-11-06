@@ -9272,4 +9272,151 @@ body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-tools butto
 body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-tools button svg{
  width:17px;height:17px;flex-shrink:0;
 }
+
+
+/* Basic 10.11 — local academic workspace (Unique-inspired). */
+.writer-v1011-study-hub{max-width:760px;}
+.writer-v1011-study-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:8px;margin:12px 0;}
+.writer-v1011-study-actions > button{
+ display:flex;align-items:center;gap:9px;justify-content:flex-start;
+ min-height:46px;padding:9px 12px;text-align:start;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-secondary);
+ color:var(--text-normal);box-shadow:none;
+}
+.writer-v1011-study-actions button svg{width:19px;height:19px;flex:0 0 auto;color:var(--text-accent);}
+.writer-v1011-study-upcoming{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.writer-v1011-study-reminder{display:flex;align-items:baseline;gap:10px;padding:8px;
+ border-radius:var(--radius-s);background:var(--background-secondary);overflow-wrap:anywhere;}
+.writer-v1011-study-reminder time{flex:0 0 88px;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+.writer-v1011-study-reminder.is-overdue time{color:var(--text-error);}
+.writer-v1011-study-schedule{max-width:100%;overflow-x:auto;}
+.writer-v1011-study-schedule table{width:100%;min-width:360px;}
+.writer-v1011-study-schedule tr.is-today{background:var(--background-modifier-hover);}
+
+/* Notion-inspired views atop existing Basic Markdown databases. */
+.writer-v1011-notion{min-width:0;max-width:100%;padding:10px;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);}
+.writer-v1011-notion-toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.writer-v1011-notion-toolbar > strong{margin-inline-end:auto;overflow-wrap:anywhere;}
+.writer-v1011-notion-toolbar > small{color:var(--text-muted);font-variant-numeric:tabular-nums;}
+.writer-v1011-notion-toolbar > :is(select,input,button){min-height:32px;margin:0;}
+.writer-v1011-notion-toolbar > input{flex:1 1 130px;min-width:90px;max-width:260px;}
+.writer-v1011-notion-body{min-width:0;overflow:hidden;}
+.writer-v1011-notion-row,.writer-v1011-notion-cell{
+ border:0;background:transparent;box-shadow:none;color:var(--text-normal);
+ text-align:start;min-width:0;overflow-wrap:anywhere;
+}
+.writer-v1011-notion-row{display:flex;flex-direction:column;align-items:flex-start;gap:5px;
+ width:100%;min-height:40px;padding:8px;border-radius:var(--radius-s);}
+.writer-v1011-notion-row:hover,.writer-v1011-notion-cell:hover{background:var(--background-modifier-hover);}
+.writer-v1011-notion-row strong{font-size:var(--font-ui-small);line-height:1.35;}
+.writer-v1011-notion-row small{font-size:var(--font-ui-smaller);color:var(--text-muted);}
+.writer-v1011-notion-gallery{display:grid;
+ grid-template-columns:repeat(auto-fill,minmax(min(100%,190px),1fr));gap:10px;}
+.writer-v1011-notion-gallery-card{
+ display:flex;flex-direction:column;gap:3px;min-width:0;overflow:hidden;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-secondary);
+}
+.writer-v1011-notion-gallery-card img{display:block;width:100%;height:125px;object-fit:cover;}
+.writer-v1011-notion-list{display:flex;flex-direction:column;gap:2px;}
+.writer-v1011-notion-list-item{border-bottom:1px solid var(--background-modifier-border);}
+.writer-v1011-notion-list-item.is-child{padding-inline-start:22px;}
+.writer-v1011-notion-list-item.is-child > button::before{content:"↳";color:var(--text-muted);margin-inline-end:5px;}
+.writer-v1011-notion-board{display:flex;gap:12px;overflow-x:auto;min-width:0;scrollbar-width:thin;}
+.writer-v1011-notion-lane{display:flex;flex-direction:column;flex:0 0 240px;gap:4px;
+ max-width:260px;max-height:460px;overflow-y:auto;
+ padding:10px;border-radius:var(--radius-m);
+ background:var(--background-secondary);}
+.writer-v1011-notion-lane h5{margin:0 0 6px;font-size:var(--font-ui-small);}
+.writer-v1011-notion-lane .writer-v1011-notion-row{background:var(--background-primary);border:1px solid var(--background-modifier-border);}
+.writer-v1011-notion-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;}
+.writer-v1011-notion-month{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-bottom:8px;}
+.writer-v1011-notion-month strong{margin-inline-end:auto;}
+.writer-v1011-notion-day{display:flex;flex-direction:column;gap:2px;min-height:78px;
+ min-width:0;padding:4px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);overflow:hidden;}
+.writer-v1011-notion-day > span{font-size:var(--font-ui-smaller);color:var(--text-muted);}
+.writer-v1011-notion-day .writer-v1011-notion-row{padding:4px;min-height:20px;}
+.writer-v1011-notion-day .writer-v1011-notion-row strong{font-size:var(--font-ui-smaller);}
+.writer-v1011-notion-timeline{display:flex;flex-direction:column;gap:8px;max-height:500px;overflow-y:auto;}
+.writer-v1011-notion-timeline-item{display:grid;grid-template-columns:140px minmax(0,1fr);gap:6px;align-items:center;}
+.writer-v1011-notion-timeline-item > span{color:var(--text-muted);font-size:var(--font-ui-smaller);}
+.writer-v1011-notion-timeline-track,.writer-v1011-notion-chart-track{
+ height:7px;background:var(--background-modifier-border);border-radius:7px;overflow:hidden;}
+.writer-v1011-notion-timeline-track{grid-column:2;}
+.writer-v1011-notion-timeline-fill,.writer-v1011-notion-chart-fill{
+ height:100%;background:var(--interactive-accent);border-radius:7px;}
+.writer-v1011-notion-chart-row{display:grid;grid-template-columns:minmax(70px,1fr) 3fr 44px;align-items:center;gap:12px;margin:8px 0;}
+.writer-v1011-notion-chart-row > span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.writer-v1011-notion-chart-row > small{text-align:end;font-variant-numeric:tabular-nums;}
+.writer-v1011-notion-scroll{max-width:100%;overflow-x:auto;}
+.writer-v1011-notion-scroll table{min-width:350px;width:100%;border-collapse:collapse;}
+.writer-v1011-notion-scroll td,.writer-v1011-notion-scroll th{padding:5px 8px;text-align:start;}
+
+/* Number Suite-inspired display-only Reading View numbering, H1–H6. */
+.markdown-preview-view.writer-v1011-number-reading{
+ counter-reset:basic-h1 basic-h2 basic-h3 basic-h4 basic-h5 basic-h6;
+}
+.writer-v1011-number-reading h1.writer-v1011-numbered-title{
+ counter-increment:basic-h1;counter-reset:basic-h2 basic-h3 basic-h4 basic-h5 basic-h6;
+}
+.writer-v1011-number-reading h2.writer-v1011-numbered-title{
+ counter-increment:basic-h2;counter-reset:basic-h3 basic-h4 basic-h5 basic-h6;
+}
+.writer-v1011-number-reading h3.writer-v1011-numbered-title{
+ counter-increment:basic-h3;counter-reset:basic-h4 basic-h5 basic-h6;
+}
+.writer-v1011-number-reading h4.writer-v1011-numbered-title{
+ counter-increment:basic-h4;counter-reset:basic-h5 basic-h6;
+}
+.writer-v1011-number-reading h5.writer-v1011-numbered-title{counter-increment:basic-h5;counter-reset:basic-h6;}
+.writer-v1011-number-reading h6.writer-v1011-numbered-title{counter-increment:basic-h6;}
+.writer-v1011-number-reading h1.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) ". ";}
+.writer-v1011-number-reading h2.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) " ";}
+.writer-v1011-number-reading h3.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) "." counter(basic-h3) " ";}
+.writer-v1011-number-reading h4.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) "." counter(basic-h3) "." counter(basic-h4) " ";}
+.writer-v1011-number-reading h5.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) "." counter(basic-h3) "." counter(basic-h4) "." counter(basic-h5) " ";}
+.writer-v1011-number-reading h6.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) "." counter(basic-h3) "." counter(basic-h4) "." counter(basic-h5) "." counter(basic-h6) " ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h1.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h2.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h2) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h3.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h3) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h4.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h4) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h5.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h5) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h6.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h6) ". ";}
+.writer-v1011-number-reading .writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{
+ display:inline;font-variant-numeric:tabular-nums;color:var(--text-accent);
+ font-weight:600;margin-inline-end:.15em;
+}
+.writer-v1011-number-caption{
+ display:table;max-width:100%;padding:3px 9px;
+ border-radius:var(--radius-s);background:var(--background-secondary);
+ color:var(--text-normal);font-size:var(--font-ui-small);
+ border:1px solid var(--background-modifier-border);
+}
+.writer-v1011-number-caption[data-basic-caption="Figure"],
+.writer-v1011-number-caption[data-basic-caption="Equation"]{margin-inline:auto;}
+.writer-v1011-number-preview .writer-v1011-number-diff{
+ display:flex;flex-direction:column;gap:7px;max-height:48vh;overflow:auto;margin:12px 0;
+}
+.writer-v1011-number-change{padding:8px 10px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);overflow-wrap:anywhere;background:var(--background-secondary);}
+.writer-v1011-number-change > small{display:block;color:var(--text-muted);margin-bottom:4px;}
+.writer-v1011-number-before,.writer-v1011-number-after{
+ font-family:var(--font-monospace);white-space:pre-wrap;overflow-wrap:anywhere;font-size:var(--font-smaller);
+}
+.writer-v1011-number-before{color:var(--text-muted);}
+.writer-v1011-number-after{color:var(--text-accent);}
+.writer-v1011-number-outline-item{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;
+ text-align:start;background:transparent;box-shadow:none;border:0;border-radius:var(--radius-s);}
+.writer-v1011-number-outline-item:hover{background:var(--background-modifier-hover);}
+.writer-v1011-number-outline-item > small{min-width:32px;color:var(--text-muted);}
+@media(max-width:700px){
+ .writer-v1011-notion-calendar{grid-template-columns:repeat(4,minmax(0,1fr));}
+ .writer-v1011-notion-day{min-height:60px;}
+ .writer-v1011-notion-timeline-item{grid-template-columns:92px minmax(0,1fr);}
+ .writer-v1011-notion-toolbar > input{flex:1 1 100%;max-width:none;}
+ .writer-v1011-study-actions{grid-template-columns:1fr 1fr;}
+}
 /* END V8 MODULAR STYLES */

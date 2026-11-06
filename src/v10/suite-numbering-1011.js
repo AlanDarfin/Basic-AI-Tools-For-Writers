@@ -32,7 +32,8 @@ function writerV1011NumberHeadings(source,scheme='hierarchical'){
  return out;
 }
 function writerV1011NumberPlan(source,mode='write',scheme='hierarchical'){
- const lines=String(source||'').split(/\r?\n/),changes=[];
+ const text=String(source||''),eol=text.includes('\r\n')?'\r\n':'\n';
+ const lines=text.split(/\r?\n/),changes=[];
  for(const item of writerV1011NumberHeadings(source,scheme)){
   if(/\s+#+\s*$/.test(item.title))continue;
   if(mode==='remove'&&!item.stored)continue;
@@ -41,7 +42,7 @@ function writerV1011NumberPlan(source,mode='write',scheme='hierarchical'){
   changes.push({line:item.line+1,before:lines[item.line],after:next});
   lines[item.line]=next;
  }
- return {before:String(source||''),after:lines.join('\n'),changes};
+ return {before:text,after:lines.join(eol),changes};
 }
 function writerV1011NumberDisabled(plugin,file){
  const fm=plugin.app.metadataCache.getFileCache?.(file)?.frontmatter||{};

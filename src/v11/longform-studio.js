@@ -59,7 +59,7 @@ async function writerV11SaveChapter(plugin,file,expected,next){
  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid Markdown chapter');
  if(String(next).length>2000000)throw Error(writerUi('Capítulo muito grande.','Chapter is too large.'));
  // The editor and other plugins may have modified the note in the meantime.
- for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
+ for(const leaf of plugin.app.workspace?.getLeavesOfType?.('markdown')||[]){
   if(leaf.view?.file?.path===file.path&&leaf.view.editor?.getValue?.()!==expected)
    throw Error(writerUi('Esta nota também está sendo editada em outra aba. Salve essa aba antes.','This note is being edited in another pane. Save that pane first.'));
  }

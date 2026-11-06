@@ -59,6 +59,10 @@ async function writerV11SaveChapter(plugin,file,expected,next){
  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid Markdown chapter');
  if(String(next).length>2000000)throw Error(writerUi('Capítulo muito grande.','Chapter is too large.'));
  // The editor and other plugins may have modified the note in the meantime.
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
+  if(leaf.view?.file?.path===file.path&&leaf.view.editor?.getValue?.()!==expected)
+   throw Error(writerUi('Esta nota também está sendo editada em outra aba. Salve essa aba antes.','This note is being edited in another pane. Save that pane first.'));
+ }
  if(await plugin.app.vault.read(file)!==expected)throw Error(writerUi(
   'Esta nota mudou enquanto você editava. Copie seu rascunho e reabra a cena antes de salvar.',
   'This note changed while you edited it. Copy your draft and reopen the scene before saving.'));
@@ -114,17 +118,24 @@ function writerV11OpenProject(plugin,project){
     total.setText(scenes.length+' '+writerUi('capítulos · ','chapters · ')+wordTotal+' '+writerUi('palavras carregadas','loaded words'));
     counter.setText(' · '+count+' '+writerUi(' palavras',' words'));
     const editor=content.createEl('textarea',{cls:'writer-v11-editor',attr:{spellcheck:'true','aria-label':entry.title}});
-    editor.value=original;
+    const draft=plugin._writerV11Drafts?.get(entry.file.path);
+    editor.value=draft?.original===original?draft.text:original;
     const buttons=content.createDiv({cls:'writer-v11-chapter-actions'});
     const status=buttons.createEl('small',{text:writerUi('Alterações não salvas','Unsaved changes')});
     const save=buttons.createEl('button',{text:writerUi('Salvar capítulo','Save chapter'),attr:{type:'button'}});
     const open=buttons.createEl('button',{text:writerUi('Abrir nota','Open note'),attr:{type:'button'}});
     const review=buttons.createEl('button',{text:writerUi('Revisão','Review'),attr:{type:'button'}});
-    editor.addEventListener('input',()=>{status.setText(writerUi('Alterado · não salvo','Modified · not saved'));});
+    if(draft?.original===original)status.setText(writerUi('Rascunho temporário recuperado · não salvo','Temporary draft recovered · unsaved'));
+    editor.addEventListener('input',()=>{
+     if(!plugin._writerV11Drafts)plugin._writerV11Drafts=new Map();
+     if(editor.value===original)plugin._writerV11Drafts.delete(entry.file.path);
+     else plugin._writerV11Drafts.set(entry.file.path,{original,text:editor.value});
+     status.setText(writerUi('Alterado · não salvo','Modified · not saved'));
+    });
     save.addEventListener('click',async()=>{
      save.disabled=true;
      try{await writerV11SaveChapter(plugin,entry.file,original,editor.value);
-      original=editor.value;status.setText(writerUi('Salvo','Saved'));counter.setText(' · '+writerV11Words(original)+' '+writerUi('palavras','words'));
+      original=editor.value;plugin._writerV11Drafts?.delete(entry.file.path);status.setText(writerUi('Salvo','Saved'));counter.setText(' · '+writerV11Words(original)+' '+writerUi('palavras','words'));
       new Notice(writerUi('Capítulo salvo.','Chapter saved.'));
      }catch(error){status.setText(String(error.message||error));new Notice(String(error.message||error));}
      finally{save.disabled=false;}
@@ -135,7 +146,10 @@ function writerV11OpenProject(plugin,project){
    });
   }
  };
- modal.onClose=()=>{modal._writerClosed=true;};
+ modal.onClose=()=>{modal._writerClosed=true;
+  if(scenes.some(entry=>plugin._writerV11Drafts?.has(entry.file.path)))
+   new Notice(writerUi('Rascunhos não salvos mantidos temporariamente nesta sessão do Basic.','Unsaved drafts are held temporarily in this Basic session.'));
+ };
  modal.open();
 }
 function writerV11ReviewArea(plugin,file,root){
@@ -312,6 +326,15 @@ function writerV11OpenDiagnostics(plugin){
 }
 function writerV11StudioRegister(plugin){
  writerV11Cfg(plugin.settings);
+ plugin.registerEvent?.(plugin.app.vault.on('rename',(file,oldPath)=>{
+  if(!file||file.extension!=='md'||!oldPath||oldPath===file.path)return;
+  const notes=plugin.settings.v11Studio?.reviewNotes||{};
+  if(notes[oldPath]&&!notes[file.path]){notes[file.path]=notes[oldPath];delete notes[oldPath];void plugin.saveSettings();}
+  if(plugin._writerV11Drafts?.has(oldPath)){
+   plugin._writerV11Drafts.set(file.path,plugin._writerV11Drafts.get(oldPath));plugin._writerV11Drafts.delete(oldPath);
+  }
+ }));
+
  plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir estúdio contínuo','Longform: open continuous studio'),
   callback:()=>writerV11PickProject(plugin,project=>writerV11OpenProject(plugin,project))});
  plugin.addCommand({id:'v11-editorial-review',name:writerUi('Revisão: comparar snapshots do capítulo','Review: compare chapter snapshots'),

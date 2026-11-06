@@ -98,6 +98,37 @@ layout: cards
 [[Capítulo 2]]
 ```
 
+### Rotina acadêmica, bancos avançados e numeração
+
+- **Central acadêmica (inspirada no Unique Suite):** criar notas de aulas, abrir o diário do dia, registrar lembretes com data e manter um horário de aulas em Markdown. Acesse pela paleta de comandos **Estudos: abrir central acadêmica**. Pastas configuráveis, sem criação automática de arquivos ao ativar. Calendário e assinaturas ICS continuam usando as funções existentes do Basic.
+- **Bancos avançados (inspirados no Notion Suite):** visualizações de tabela, quadro, lista, galeria, calendário, linha do tempo e gráfico de barras. Cada linha continua sendo uma nota Markdown. Pesquisa, filtro, fórmulas simples e rollups aproveitam o mecanismo atual. A criação de notas acontece apenas ao usar **Nova nota**. O bloco `basic-suite-db` não entra em conflito com `notion-db` do plugin independente.
+- **Numeração de documentos (inspirada no Number Suite):** títulos H1–H6 numerados visualmente no **Modo de Leitura**, sumário navegável e comandos com prévia para gravar/remover números reconhecidos. Toda alteração exige confirmação e comparação exata do conteúdo antes da gravação. Também oferece destaque para legendas `Figure:`, `Table:`, `Equation:` e `Code:`. A numeração completa de legendas, referências e Live Preview ainda não foi integrada.
+
+Exemplo de banco de dados:
+
+~~~basic-suite-db
+folder: Databases/Tarefas
+view: gallery
+columns: file, status, due
+cover: banner
+group: status
+sort: modified
+order: desc
+~~~
+
+O campo `view` aceita `table`, `board`, `gallery`, `list`, `calendar`, `timeline` ou `chart`. O menu `/` do Flow oferece um modelo para inserir.
+
+Exemplo de horário com dados da nota local `Estudos/Horário.md`:
+
+~~~basic-timetable
+file: Estudos/Horário.md
+title: Minhas aulas
+~~~
+
+Para desativar a numeração em uma nota específica, use a propriedade `basic-numbering: false`. Exibir números virtuais não muda o Markdown; gravá-los pode alterar destinos de links para títulos.
+
+Confira [o escopo real das integrações](V10_11_SUITES_SCOPE.pt-BR.md) para saber o que já funciona e quais recursos avançados ainda não têm paridade.
+
 ### Explorador nativo e aparência
 
 - **Ícones no estilo Iconic:** escolha ícones Lucide e cores para notas, pastas, favoritos e homepage.

@@ -1,0 +1,48 @@
+/* Basic 11.1: Number Suite + Notion database builder enhancements */
+.markdown-source-view.is-live-preview .cm-line.writer-v111-number-live-heading::before{
+ content:attr(data-basic-number) " ";
+ display:inline-block;
+ min-width:2.1em;
+ margin-inline-end:.38em;
+ color:var(--text-accent);
+ font-variant-numeric:tabular-nums;
+ font-size:var(--font-smaller);
+ font-weight:600;
+ user-select:none;
+ pointer-events:none;
+}
+.markdown-preview-view.writer-v111-caption-numbers .markdown-preview-sizer{
+ counter-reset:basic-figure basic-table basic-equation basic-code;
+}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Figure"]{counter-increment:basic-figure}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Table"]{counter-increment:basic-table}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Equation"]{counter-increment:basic-equation}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Code"]{counter-increment:basic-code}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Figure"]::before{content:"Figure " counter(basic-figure) " · "}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Table"]::before{content:"Table " counter(basic-table) " · "}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Equation"]::before{content:"Equation " counter(basic-equation) " · "}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption[data-basic-caption="Code"]::before{content:"Code " counter(basic-code) " · "}
+.markdown-preview-view.writer-v111-caption-numbers p.writer-v1011-number-caption::before{color:var(--text-accent);font-weight:600;font-variant-numeric:tabular-nums}
+.writer-v111-number-structure{max-height:min(72vh,700px);overflow-y:auto}
+.writer-v111-number-structure details{border-bottom:1px solid var(--background-modifier-border);padding-block:8px}
+.writer-v111-number-structure summary{cursor:pointer;font-weight:600}
+.writer-v111-structure-row{display:flex;justify-content:space-between;gap:14px;min-height:34px;align-items:center;text-align:start;width:100%;max-width:100%;border:0;background:transparent;color:var(--text-normal);padding-block:5px;overflow-wrap:anywhere}
+.writer-v111-structure-row:hover,.writer-v111-structure-row:focus-visible{background:var(--background-modifier-hover)}
+.writer-v111-structure-row small{color:var(--text-muted);white-space:nowrap}
+.modal.writer-v111-db-modal{width:min(96vw,900px);max-width:96vw;max-height:92vh}
+.writer-v111-db-builder{min-width:0;display:flex;flex-direction:column;gap:10px}
+.writer-v111-db-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px;min-width:0}
+.writer-v111-db-fields .setting-item{min-width:0;display:flex;flex-wrap:wrap;align-items:start;gap:4px}
+.writer-v111-db-fields .setting-item-info{min-width:0;flex:1 1 100%}
+.writer-v111-db-fields .setting-item-control{min-width:0;flex:1 1 100%;justify-content:stretch}
+.writer-v111-db-fields input,.writer-v111-db-fields select{max-width:100%;width:100%}
+.writer-v111-db-preview{background:var(--background-secondary);border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);padding:10px;min-width:0}
+.writer-v111-db-preview small{color:var(--text-muted)}
+.writer-v111-db-preview pre{max-height:200px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;font-size:var(--font-smaller)}
+.writer-v111-db-actions{display:flex;justify-content:flex-end;gap:8px}
+.writer-v111-db-actions button{min-height:38px}
+@media(max-width:700px){
+ .writer-v111-db-fields{grid-template-columns:minmax(0,1fr)}
+ .writer-v111-db-actions button{width:100%}
+ .writer-v111-number-structure{max-height:66vh}
+}

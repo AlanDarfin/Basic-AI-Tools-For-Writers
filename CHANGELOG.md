@@ -2,6 +2,14 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 11.1.0 — Number Suite and Notion view-builder expansion
+
+- Added opt-in visual heading numbering for Live Preview using CodeMirror line decorations (non-destructive).
+- Added independent CSS counters for Figure, Table, Equation and Code captions in Reading View, plus a navigable outline of headings, captions, footnotes and endnotes.
+- Added a guided visual builder for existing Markdown database blocks, including views, columns, sorting, grouping, pagination limit and simple filters, with safe editor insertion and no implicit note or folder creation.
+- Preserved existing database engine and supported Obsidian 1.11.4+, with module isolation, CSS, PT/EN docs and regression tests.
+- Full Number Suite cross-reference/batch numbering, relational Notion databases, cloud sync and other integrations remain incomplete; see docs/V11_1_INTEGRATIONS_SCOPE.pt-BR.md.
+
 ## 11.0.0 — Longform Studio foundation and database workflow
 
 - New source-preserving sequential chapter editor with guarded writes, snapshot integration and explicit save actions.

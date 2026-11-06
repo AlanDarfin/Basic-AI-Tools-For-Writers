@@ -53,10 +53,15 @@ const WRITER_V8_WEB_ENGINE_URLS={
 };
 function writerV8HomeSurfing(plugin){
  const manager=plugin.app?.plugins;
+ const surfing=manager?.plugins?.surfing;
+ if(!surfing)return null;
+ // A loaded plugin object alone does not mean Surfing is enabled. Check the
+ // live Obsidian plugin registry so disabling Surfing hides the home omnibox.
  const enabled=manager?.enabledPlugins;
- if(enabled?.has&&!enabled.has('surfing'))return null;
- if(Array.isArray(enabled)&&!enabled.includes('surfing'))return null;
- return manager?.plugins?.surfing||null;
+ if(typeof enabled?.has==='function')return enabled.has('surfing')?surfing:null;
+ if(Array.isArray(enabled))return enabled.includes('surfing')?surfing:null;
+ if(typeof manager?.isEnabled==='function')return manager.isEnabled('surfing')?surfing:null;
+ return null;
 }
 function writerV8HomeSearchURL(plugin,input){
  const query=String(input||'').trim();

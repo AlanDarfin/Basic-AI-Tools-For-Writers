@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 11.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 11.1.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -32,6 +32,14 @@ editor-width: 75
 ```
 
 
+
+### Number Suite e construtor de bancos (11.1)
+
+A integração do **Number Suite** ganhou **numeração visual opcional dos títulos no Live Preview** por decorações do CodeMirror, sem modificar os títulos originais. No modo de leitura, há contadores independentes para parágrafos iniciados por `Figure:`, `Table:`, `Equation:` e `Code:`. O comando **Numeração: estrutura, figuras e notas de rodapé** abre um sumário navegável de títulos, legendas e definições de notas de rodapé/fim. Os novos contadores começam desativados para manter a compatibilidade.
+
+O comando **Bancos: construtor visual de visualização** cria blocos `basic-suite-db` usando campos, sem exigir escrita manual de opções. Os layouts são tabela, quadro, galeria, lista, calendário, linha do tempo e gráfico. Há opções de colunas, agrupamento, ordenação, filtros simples e limites. Selecione um bloco completo no editor antes de abrir o construtor para modificá-lo; caso contrário, um bloco novo é inserido após confirmação. **O construtor não cria pastas nem altera registros automaticamente.**
+
+Confira o [escopo da 11.1](V11_1_INTEGRATIONS_SCOPE.pt-BR.md), incluindo limitações de paridade e testes visuais pendentes no Android.
 
 ### Longform Studio (v11)
 

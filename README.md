@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.10.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.10.2 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -66,7 +66,7 @@ Available widgets include a **clock and calendar**, **Soundscapes radio** (deskt
 
 - **Space-efficient layout:** a responsive, height-aware masonry grid places small widgets beside taller ones instead of leaving large gaps.
 - **Widget sizes:** choose **Compact**, **Normal** or **Wide** from each widget's options. A wide widget spans both columns on desktop; mobile uses a single column.
-- **Reordering:** drag the handle on desktop; on touch devices, select a handle and then another widget heading. The widget menu also has earlier/later commands.
+- **Reordering:** drag the handle on desktop (Dragger is fully disabled on Android); on touch devices, select a handle and then another widget heading. The widget menu also has earlier/later commands.
 - **Personal settings:** add, hide and rearrange widgets; order, sizes, hidden items and quick drafts are saved locally.
 
 ### Editing, Markdown formatting and navigation

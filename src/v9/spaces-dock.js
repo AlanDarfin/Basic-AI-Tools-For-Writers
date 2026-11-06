@@ -1,23 +1,26 @@
 'use strict';
-/* A compact, persistent Make-inspired Space switcher in Obsidian's native explorer.
- * It does not replace or fork the explorer. All note visibility stays local to settings. */
+/* A compact Make-inspired Space switcher. Mobile uses the persistent native
+ * drawer tab bar as the anchor; desktop keeps the explorer footer. */
+function writerV1014MobileSpacesAnchor(plugin){
+ const workspace=plugin.app?.workspace,drawer=workspace?.leftSplit;
+ const ui=plugin.settings?.v1010Layout?.sidebar;
+ if(require('obsidian').Platform?.isMobile!==true||
+  drawer?.type!=='mobile-drawer'||!drawer?.containerEl||
+  typeof drawer.selectTabIndex!=='function'||!drawer.tabsListEl||!drawer.tabsContainerEl||
+  ui?.enabled!==true||ui.mobileTabs===false||ui.integrateSpaces===false||
+  plugin.settings?.v9Spaces?.enabled!==true||plugin.settings?.v9Spaces?.dock===false||
+  drawer.containerEl.classList?.contains('osm-sidebar')||
+  drawer.containerEl.ownerDocument?.body?.classList?.contains('osm-mobile-tabs'))return null;
+ // Never attach the menu to a stale header detached by Obsidian.
+ const tabs=drawer.tabsContainerEl;
+ if(drawer.containerEl.contains?.(tabs)===false)return null;
+ return tabs;
+}
 function writerV9216SpaceDockRegister(plugin){
- let timer=null;
+ let timer=null,mobileMenuOpen=false,mobileObserver=null,observedMobileRoot=null;
  const cfg=plugin.settings.v9Spaces;
  const hosts=new Set(),actions=new Set();
- // On phones, integrate the existing Space switcher into the managed drawer
- // instead of showing a second rail inside File Explorer.
- const mobileIntegrated=()=>{
-  const drawer=plugin.app.workspace.leftSplit;
-  const ui=plugin.settings.v1010Layout?.sidebar;
-  return require('obsidian').Platform?.isMobile===true&&
-   drawer?.type==='mobile-drawer'&&Boolean(drawer.containerEl)&&
-   typeof drawer.selectTabIndex==='function'&&drawer.tabsListEl&&drawer.tabsContainerEl&&
-   !drawer.containerEl.classList?.contains('osm-sidebar')&&
-   !drawer.containerEl.ownerDocument?.body?.classList?.contains('osm-mobile-tabs')&&
-   ui?.enabled===true&&ui.mobileTabs!==false&&ui.integrateSpaces!==false&&
-   cfg.enabled===true&&cfg.dock!==false;
- };
+ const mobileIntegrated=()=>Boolean(writerV1014MobileSpacesAnchor(plugin));
  const refreshAll=()=>{
   plugin.writerV91FlexRefresh?.();
   plugin.writerV9SpacesRefresh?.();

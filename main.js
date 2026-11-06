@@ -14068,7 +14068,21 @@ function writerV9SpaceSanitize(raw){
  const homeHidden=Array.isArray(raw.homeHidden)?[...new Set(raw.homeHidden.filter(key=>widgetKeys.includes(key)))]:[];
  const homeWidgetSizes=Object.fromEntries(Object.entries(raw.homeWidgetSizes&&typeof raw.homeWidgetSizes==='object'?raw.homeWidgetSizes:{})
   .filter(([key,value])=>widgetKeys.includes(key)&&['compact','normal','wide'].includes(value)));
- const homeWidgetFrames=writerV8HomeNormalizeFrames(raw.homeWidgetFrames,widgetKeys);
+ // Keep the Spaces sanitizer self-contained: tests and standalone consumers
+ // evaluate this module without loading the homepage module first.
+ const homeWidgetFrames={};
+ const rawFrames=raw.homeWidgetFrames;
+ if(rawFrames&&typeof rawFrames==='object'&&!Array.isArray(rawFrames)){
+  for(const [key,frame] of Object.entries(rawFrames).slice(0,80)){
+   if(!widgetKeys.includes(key)||!frame||typeof frame!=='object'||Array.isArray(frame))continue;
+   const columns=Number(frame.columns),height=Number(frame.height),width=Number(frame.width);
+   homeWidgetFrames[key]={
+    columns:Math.max(3,Math.min(12,Number.isFinite(columns)?Math.round(columns):6)),
+    height:Number.isFinite(height)?Math.max(92,Math.min(1100,Math.round(height))):0,
+    width:Number.isFinite(width)?Math.max(160,Math.min(1800,Math.round(width))):0
+   };
+  }
+ }
  const homeWidgetAlignment=raw.homeWidgetAlignment==='free'?'free':'grid';
  const icon=/^[a-z][a-z0-9-]{0,60}$/.test(raw.icon||'')?raw.icon:'layers';
  const iconColor=/^#[\da-f]{6}$/i.test(raw.iconColor||'')?raw.iconColor:'';
@@ -14642,7 +14656,6 @@ function writerV9SpacesSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))
   .addButton(button=>button.setButtonText(writerUi('Abrir Spaces','Open Spaces')).onClick(()=>writerV9SpaceModal(plugin)));
 }
-
 // v3 module: src/v9/spaces-dock.js
 /* A compact Make-inspired Space switcher. Mobile uses the persistent native
  * drawer tab bar as the anchor; desktop keeps the explorer footer. */

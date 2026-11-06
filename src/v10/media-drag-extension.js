@@ -105,11 +105,14 @@ function writerV107MediaRegister(plugin){
   return prior(p,items,index);
  };
  plugin.register?.(()=>{writerV8MediaOpen=prior;});
+ // Dragger commands are desktop-only; keep unrelated PDF and columns features on mobile.
+ if(require('obsidian').Platform?.isMobile!==true&&plugin.app?.isMobile!==true){
  plugin.addCommand({id:'v107-move-block-to-note',name:writerUi('Dragger: mover bloco para outra nota','Dragger: move block to another note'),editorCheckCallback:(checking,editor,view)=>{
   if(!plugin.settings.v107Media.crossNote||!view?.file)return false;
   if(!checking)writerV107MoveBlockModal(plugin,editor,view.file);
   return true;
  }});
+ }
  plugin.addCommand({id:'v107-insert-columns',name:writerUi('Make.md: inserir colunas Markdown','Make.md: insert Markdown columns'),editorCallback:editor=>{
   const fence=String.fromCharCode(96).repeat(3);
   editor.replaceSelection(['',fence+'writer-columns','## '+writerUi('Coluna 1','Column 1'),'',

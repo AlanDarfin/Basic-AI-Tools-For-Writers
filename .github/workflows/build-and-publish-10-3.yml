@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.10.1 plugin artifacts'
+            git commit -m 'build: synchronize 10.10.2 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.10.1"
+          test "$VERSION" = "10.10.2"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic $VERSION" \
-            --notes "10.10.1: Android sidebar repair. Single tab row in native drawer selector, correct selectTabIndex navigation, unified actions menu, Basic Spaces dock integrated into mobile footer and reversible native fallback. README remains features-only; details in CHANGELOG.md."
+            --notes "10.10.2: Dragger disabled entirely on Android to avoid taking up editor space and interfering with selection. Desktop Dragger retained. Mobile gestures/listeners/handles and obsolete toggle removed; startup regressions added. README is features-only; history in CHANGELOG."

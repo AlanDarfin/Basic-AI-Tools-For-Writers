@@ -930,7 +930,7 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
  .writer-v10-discovery-row .writer-v10-discovery-actions button{min-width:32px;}
 }
 
-/* Basic v10.6 — original Dragger-inspired handles and mobile-safe indicators */
+/* Basic v10.6 — desktop-only Dragger handle styling */
 .writer-v106-drag-handle{box-sizing:border-box;display:flex;align-items:center;justify-content:center;z-index:110;border:0;border-radius:var(--radius-s);padding:2px;min-width:0;min-height:0;background:var(--background-secondary);color:var(--text-muted);opacity:.88;box-shadow:0 1px 4px var(--background-modifier-box-shadow);}
 .writer-v106-drag-handle:hover,.writer-v106-drag-handle:focus-visible,.writer-v106-drag-handle.is-dragging{color:var(--interactive-accent);background:var(--background-modifier-hover);opacity:1;}
 .writer-v106-drag-handle:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:1px;}
@@ -938,11 +938,6 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
 .writer-v106-dragging .cm-line.writer-v106-drag-source{background:var(--background-modifier-hover);outline:1px solid var(--interactive-accent);border-radius:var(--radius-s);}
 .writer-v106-dragging .cm-line.writer-v106-drag-target{box-shadow:inset 0 1px 0 var(--interactive-accent);}
 .writer-v106-drag-indicator{box-shadow:0 0 8px var(--interactive-accent);}
-@media(max-width:650px){
- .writer-v106-drag-handle{min-width:24px;min-height:24px;touch-action:none;}
- .writer-v106-drag-handle svg{max-width:19px;max-height:19px;}
- .writer-v106-drag-indicator{height:3px;}
-}
 
 /* Historical read-only JSON explorer, scoped to Basic. */
 .writer-v106-json-viewer{min-width:0;}
@@ -1390,3 +1385,7 @@ body.is-mobile .writer-v1011-managed-mobile
  .workspace-leaf-content.writer-v1011-grouped-native-actions .nav-header.writer-v1011-empty-native-header{
  display:none;
 }
+
+/* Basic mobile: the desktop Dragger is disabled, including stale overlay markup. */
+body.is-mobile .writer-v106-drag-handle,
+body.is-mobile .writer-v106-drag-indicator{display:none;pointer-events:none;}

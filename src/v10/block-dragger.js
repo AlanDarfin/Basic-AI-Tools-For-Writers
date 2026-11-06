@@ -128,6 +128,9 @@ function writerV106DragNativeConflict(plugin){
 function writerV106DragRegister(plugin){
  const cfg=writerV106DragMerge(plugin.settings);
  const {Platform:platform,setIcon:obsidianSetIcon}=require('obsidian');
+ // Drag handles are desktop-only: on mobile they obstruct the editor and
+ // interfere with touch selection. Do not create DOM, commands or listeners.
+ if(platform?.isMobile===true||plugin.app?.isMobile===true)return;
  const doc=plugin.app.workspace.containerEl?.ownerDocument;
  if(!doc)return;
  const isMobile=()=>Boolean(platform?.isMobile||plugin.app.isMobile);
@@ -349,8 +352,12 @@ function writerV106DragRegister(plugin){
 function writerV106DragSettings(plugin,panel){
  const cfg=writerV106DragMerge(plugin.settings);
  panel.createEl('h3',{text:writerUi('Arrastar blocos (Dragger)','Block dragger')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi('Arraste parágrafos, títulos, listas, tarefas, citações, tabelas e código com uma alça. Ctrl+Z desfaz. Em celular, toque prolongado. Se o plugin Dragger original estiver ativo, esta integração evita competir com ele.','Move paragraphs, headings, lists, tasks, quotes, tables and code using a handle. Undo with Ctrl+Z. On mobile use long-press. This integration avoids conflicting with the original Dragger plugin.')});
- for(const [k,pt,en] of [['enabled','Ativar alça de arrastar','Enable drag handles'],['multiSelect','Mover seleção de linhas juntas','Move selected lines together'],['nested','Ajustar recuo de listas ao arrastar','Adjust list indentation while dragging'],['mobileLongPress','Toque prolongado no mobile','Mobile long-press on text'],['highlight','Destacar bloco de origem','Highlight source block']]){
+ if(require('obsidian').Platform?.isMobile===true||plugin.app?.isMobile===true){
+  panel.createEl('p',{cls:'setting-item-description',text:writerUi('O Dragger está desativado no celular. Nenhuma alça ou gesto de arrastar será instalado. Suas preferências para PC foram preservadas.','Dragger is disabled on mobile. No drag handles or gestures will be installed. Your desktop preferences are preserved.')});
+  return;
+ }
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Disponível somente no computador. No celular, a alça e seus eventos são desativados para não atrapalhar a seleção de texto nem ocupar espaço. No PC, arraste os blocos pela alça; Ctrl+Z desfaz.','Desktop only. On mobile, drag handles and touch listeners are disabled to avoid obstructing text selection or taking up editor space. On desktop, drag blocks using the handle; undo with Ctrl+Z.')});
+ for(const [k,pt,en] of [['enabled','Ativar alça de arrastar','Enable drag handles'],['multiSelect','Mover seleção de linhas juntas','Move selected lines together'],['nested','Ajustar recuo de listas ao arrastar','Adjust list indentation while dragging'],['highlight','Destacar bloco de origem','Highlight source block']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[k]!==false).onChange(async v=>{cfg[k]=v;await plugin.saveSettings();plugin.writerV106DragApplyStyles?.();}));
  }
  new Setting(panel).setName(writerUi('Mostrar alça','Handle visibility')).addDropdown(d=>{

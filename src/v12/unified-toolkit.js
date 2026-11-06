@@ -176,7 +176,7 @@ function writerV12RegisterImageViewer(plugin){
   for(const img of root.querySelectorAll('img:not([data-basic-v12-image])')){
    img.dataset.basicV12Image='true';
    img.setAttribute('title',writerUi('Toque para ampliar','Tap to enlarge'));
-   plugin.registerDomEvent(img,'click',event=>{
+   img.addEventListener('click',event=>{
     if(!writerV12On(plugin,'imageTools'))return;
     event.preventDefault();event.stopPropagation();
     writerV12Lightbox(plugin,img);
@@ -256,7 +256,7 @@ function writerV12ActiveFolder(plugin){
  return parent&&parent.path!=='/'?parent.path:'';
 }
 function writerV12FocusRefresh(plugin){
- const focus=plugin._writerV12FolderFocus||'';
+ const focus=writerV12On(plugin,'folderFocus')?(plugin._writerV12FolderFocus||''):'';
  for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
   const root=leaf.view?.containerEl;
   if(!root)continue;

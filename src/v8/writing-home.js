@@ -687,15 +687,25 @@ class WriterV8HomeView extends ItemView{
  renderWebBookmarks(parent){
   const box=this.card(parent,'webBookmarks','Favoritos da web','Web bookmarks');
   const cfg=this.plugin.settings.v8Finish,list=cfg.homeWebBookmarks||[];
+  box.addClass('writer-v1205-bookmarks-widget');
   const tools=box.createDiv({cls:'writer-v1203-web-bookmarks-tools'});
-  const add=tools.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar site favorito','Add web bookmark')}});
+  tools.createSpan({cls:'writer-v1205-web-bookmark-count',
+   text:list.length===1?writerUi('1 site salvo','1 saved site'):
+   list.length+' '+writerUi('sites salvos','saved sites')});
+  const add=tools.createEl('button',{cls:'writer-v1205-add-bookmark',attr:{type:'button',
+   title:writerUi('Adicionar site favorito','Add web bookmark'),
+   'aria-label':writerUi('Adicionar site favorito','Add web bookmark')}});
   require('obsidian').setIcon?.(add,'plus');
-  add.createSpan({text:writerUi('Adicionar site','Add website')});
   add.addEventListener('click',()=>this.editWebBookmark());
   if(!list.length){
-   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi(
-    'Salve seus sites preferidos aqui. Os links são guardados localmente e abertos apenas ao clicar.',
-    'Save your favorite websites here. Links stay local and open only when clicked.')});
+   const empty=box.createDiv({cls:'writer-v1205-bookmarks-empty'});
+   const glyph=empty.createSpan();
+   require('obsidian').setIcon?.(glyph,'bookmark-plus');
+   empty.createEl('p',{text:writerUi(
+    'Adicione seus sites preferidos para abrir tudo sem sair da homepage.',
+    'Add your favorite websites for quick access from the dashboard.')});
+   const first=empty.createEl('button',{text:writerUi('Adicionar primeiro site','Add first website'),attr:{type:'button'}});
+   first.addEventListener('click',()=>this.editWebBookmark());
    return;
   }
   const shown=this.webBookmarksExpanded?list:list.slice(0,12);
@@ -707,23 +717,34 @@ class WriterV8HomeView extends ItemView{
   }
   for(const [group,entries] of groups){
    if(group)box.createEl('h4',{cls:'writer-v1203-web-bookmarks-heading',text:group});
-   const grid=box.createDiv({cls:'writer-v1203-web-bookmarks-grid'});
+   const grid=box.createDiv({cls:'writer-v1203-web-bookmarks-grid writer-v1205-web-bookmarks-grid'});
    for(const bookmark of entries){
-    const item=grid.createDiv({cls:'writer-v1203-web-bookmark'});
+    const item=grid.createDiv({cls:'writer-v1203-web-bookmark writer-v1205-web-bookmark'});
     const button=item.createEl('button',{cls:'writer-v1203-web-bookmark-open',attr:{
-     type:'button',title:bookmark.url,'aria-label':writerUi('Abrir site: ','Open website: ')+bookmark.title}});
-    const glyph=button.createSpan({cls:'writer-v1203-web-bookmark-icon'});
-    try{require('obsidian').setIcon?.(glyph,bookmark.icon||'globe');}
-    catch(_){require('obsidian').setIcon?.(glyph,'globe');}
+     type:'button',title:bookmark.url,
+     'aria-label':writerUi('Abrir site: ','Open website: ')+bookmark.title}});
+    const glyph=button.createSpan({cls:'writer-v1203-web-bookmark-icon writer-v1205-bookmark-favicon'});
+    const domain=new URL(bookmark.url).hostname.replace(/^www\./,'');
+    const map=[[/youtu(?:\.be|be\.com)/,'youtube'],[/github\.com/,'github'],[/wikipedia\.org/,'book-open'],[/google\./,'search'],
+      [/reddit\.com/,'message-circle'],[/twitch\.tv/,'tv'],[/discord\.com/,'message-square']];
+    const known=map.find(([rx])=>rx.test(domain))?.[1];
+    const icon=bookmark.icon&&bookmark.icon!=='globe'?bookmark.icon:known||'globe';
+    glyph.createSpan({cls:'writer-v1205-favicon-letter',text:String(bookmark.title||domain).slice(0,1).toLocaleUpperCase()});
+    try{
+     require('obsidian').setIcon?.(glyph,icon);
+     if(!glyph.querySelector?.('svg'))glyph.addClass('writer-v1205-icon-fallback');
+    }catch(_){glyph.addClass('writer-v1205-icon-fallback');}
     const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
     labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
-    labels.createSpan({text:new URL(bookmark.url).hostname,cls:'writer-v1203-web-bookmark-domain'});
+    labels.createSpan({text:domain,cls:'writer-v1203-web-bookmark-domain'});
     button.addEventListener('click',()=>void writerV8HomeOpenURL(this.plugin,bookmark.url)
      .catch(error=>new Notice(String(error.message||error))));
     const more=item.createEl('button',{cls:'writer-v1203-web-bookmark-more',
-     attr:{type:'button','aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});
+     attr:{type:'button',title:writerUi('Opções','Options'),
+      'aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});
     require('obsidian').setIcon?.(more,'ellipsis');
     more.addEventListener('click',event=>{
+     event.preventDefault();event.stopPropagation();
      const menu=new Menu(this.app);
      menu.addItem(i=>i.setTitle(writerUi('Editar favorito','Edit bookmark')).setIcon('pencil')
       .onClick(()=>this.editWebBookmark(bookmark)));

@@ -218,7 +218,7 @@ async function writerV12OpenTasks(plugin){
  }catch(error){status.setText(writerUi('Não foi possível ler as tarefas: ','Could not scan tasks: ')+String(error.message||error));}
 }
 function writerV12SafeName(name){
- return String(name||'').trim().replace(/[\\/:*?"<>|#\[\]\x00-\x1f]/g,' ').replace(/\s+/g,' ').slice(0,70)||'Captured';
+ return String(name||'').trim().replace(/[\\/:*?"<>|#\[\]\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim().slice(0,70)||'Captured';
 }
 async function writerV12CreateNote(plugin,folder,title,body){
  const vault=plugin.app.vault;

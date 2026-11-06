@@ -116,10 +116,12 @@ test('Nested native mobile action is delayed until its parent sheet closes',()=>
  const f=vm.runInNewContext(sidebar.slice(begin,end)+'\nwriterV1012OpenNativeAction',ctx);
  let clicked=0,refreshed=0;
  const plugin={writerV1010Refresh:()=>{refreshed++;}};
- f({click:()=>{clicked++;},isConnected:true},false,plugin);
+ f({click:()=>{clicked++;},isConnected:true},true,plugin);
  assert.equal(clicked,0);assert.equal(plugin._writerV1010NativeActionPending,true);
  tasks.shift()();assert.equal(clicked,1);
  tasks.shift()();assert.equal(plugin._writerV1010NativeActionPending,false);
  assert.equal(refreshed,1);
+ f({click:()=>{clicked++;},isConnected:true},false,plugin);
+ assert.equal(clicked,2,'ordinary actions must still execute immediately');
  assert.match(sidebar,/writerV112SidebarWire\(plugin,side,visible,bar\)/);
 });

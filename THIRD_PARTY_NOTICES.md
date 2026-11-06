@@ -136,3 +136,18 @@ This release adds newly authored Basic modules inspired by documented capabiliti
 - [Number Suite](https://github.com/ZHYX91/obsidian-number-suite) — ZhengYX and contributors (2026), MIT. Visual heading numbering, navigable outline and confirmed preview-before-write operations. Basic implements a limited H1–H6 Reading View and single-note subset.
 
 These are **feature integrations, not full ports**. In particular, the upstream Notion Suite and Number Suite use Obsidian APIs from newer releases than Basic's compatibility baseline. See `docs/V10_11_SUITES_SCOPE.pt-BR.md` for the implemented scope and missing functions. The original projects remain maintained separately.
+
+## v12 toolkit and synchronization references (2026)
+
+The v12 additions in `src/v12/unified-toolkit.js` are independent implementations of the documented user interactions and a **runtime command bridge**, not source-code copies or redistributed packages. **No upstream code has been vendored.** Each original project retains its copyright and license; install the original plugin separately to access capabilities delegated to it.
+
+- Ultimate Toolkit / My Toolkit — Ahmed Moussa: https://github.com/ahmdmusa/obsidian-toolkit
+- Visual Kit — pedrohf-dev: https://github.com/pedrohf-dev/visual-kit
+- Snailkit — Arnaud Gastelblum: https://github.com/arnaudgastelblum/snailkit
+- dropit Obsidian — smart-kits: https://github.com/smart-kits/dropit-obsidian
+- Syncthing Integration — LBF38: https://github.com/LBF38/obsidian-syncthing-integration
+- Syncthing Manager — Gustavo Carreiro: https://github.com/gustjose/obsidian-syncthing-manager
+- Obsidian Git — Vinzent: https://github.com/Vinzent03/obsidian-git
+- FIT (File gIT) — joshuakto: https://github.com/joshuakto/fit
+
+Basic v12 does not include the external plugins' cryptographic, synchronization, pairing, or image-annotation engines. Do not confuse runtime command compatibility with complete feature parity.

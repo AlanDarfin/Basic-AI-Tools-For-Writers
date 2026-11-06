@@ -20735,6 +20735,11 @@ function writerV101RegisterEnhancements(plugin){
  if(typeof writerV11DbRegister==='function')safeRegister('database-workflow-v11',()=>writerV11DbRegister(plugin));
  if(typeof writerV111NumberRegister==='function')safeRegister('numbering-live-v11.1',()=>writerV111NumberRegister(plugin));
  if(typeof writerV111DbBuilderRegister==='function')safeRegister('database-builder-v11.1',()=>writerV111DbBuilderRegister(plugin));
+ if(typeof writerV12Register==='function')safeRegister('unified-toolkit-v12',()=>writerV12Register(plugin));
+ if(typeof writerV12SecureRegister==='function')safeRegister('encrypted-notes-v12',()=>writerV12SecureRegister(plugin));
+ if(typeof writerV12TasksRegister==='function')safeRegister('task-workbench-v12',()=>writerV12TasksRegister(plugin));
+ if(typeof writerV12AnnotationRegister==='function')safeRegister('image-annotation-v12',()=>writerV12AnnotationRegister(plugin));
+ if(typeof writerV12ReaderRegister==='function')safeRegister('context-reader-v12',()=>writerV12ReaderRegister(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -20805,6 +20810,10 @@ function writerV101EnhancementsSettings(plugin,panel){
  if(typeof writerV11StudioSettings==='function')writerV11StudioSettings(plugin,panel);
  if(typeof writerV111NumberSettings==='function')writerV111NumberSettings(plugin,panel);
  if(typeof writerV111DbBuilderSettings==='function')writerV111DbBuilderSettings(plugin,panel);
+ if(typeof writerV12Settings==='function')writerV12Settings(plugin,panel);
+ if(typeof writerV12SecureSettings==='function')writerV12SecureSettings(plugin,panel);
+ if(typeof writerV12AnnotationSettings==='function')writerV12AnnotationSettings(plugin,panel);
+ if(typeof writerV12ReaderSettings==='function')writerV12ReaderSettings(plugin,panel);
 }
 
 // v3 module: src/v10/calendar-exchange.js
@@ -25584,6 +25593,1010 @@ function writerV112SidebarWire(plugin,side,entries,bar){
   const button=buttons.find(node=>node.getAttribute('data-view-type')===entry.type);
   if(button)writerV112HoldControl(plugin,button,side,entry);
  }
+}
+
+// v3 module: src/v12/unified-toolkit.js
+/* Basic v12: compatibility-first toolkit integrations.
+ * Original code; inspired by Ultimate Toolkit, Visual Kit, Snailkit, dropit,
+ * Syncthing Integration/Manager, Obsidian Git and FIT. No upstream code vendored.
+ * Native features operate without companion plugins; sensitive transports and
+ * cryptographic functions are deliberately NOT emulated.
+ */
+const WRITER_V12_COMPANIONS=[
+ {id:'ahmed-toolkit',name:'Ultimate Toolkit',role:'toolkit',mobile:true},
+ {id:'visual-kit',name:'Visual Kit',role:'visual',mobile:false},
+ {id:'snailkit',name:'Snailkit',role:'notes',mobile:true},
+ {id:'dropit',name:'dropit',role:'transfer',mobile:true},
+ {id:'syncthing-integration',name:'Syncthing Integration',role:'sync',mobile:true},
+ {id:'syncthing-manager',name:'Syncthing Manager',role:'sync',mobile:true},
+ {id:'obsidian-git',name:'Obsidian Git',role:'sync',mobile:true},
+ {id:'fit',name:'FIT',role:'sync',mobile:true}
+];
+const WRITER_V12_SYNC=['none','syncthing-manager','syncthing-integration','obsidian-git','fit'];
+function writerV12Config(plugin){
+ const old=plugin.settings.v12Toolkit;
+ const cfg=plugin.settings.v12Toolkit={
+  enabled:true,palette:true,imageTools:true,taskNavigator:true,localInbox:true,secureNotes:false,selectionTools:false,
+  folderFocus:true,integrations:true,syncProvider:'none',maxTaskFiles:250,
+  ...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})
+ };
+ if(!WRITER_V12_SYNC.includes(cfg.syncProvider))cfg.syncProvider='none';
+ cfg.maxTaskFiles=Math.max(25,Math.min(1000,Number(cfg.maxTaskFiles)||250));
+ return cfg;
+}
+function writerV12On(plugin,key){
+ const cfg=writerV12Config(plugin);
+ return cfg.enabled!==false&&cfg[key]!==false;
+}
+function writerV12CompanionInstalled(plugin,id){
+ return !!plugin.app.plugins?.plugins?.[id];
+}
+function writerV12Commands(plugin,id){
+ const list=plugin.app.commands?.listCommands?.()||Object.values(plugin.app.commands?.commands||{});
+ return list.filter(cmd=>typeof cmd.id==='string'&&
+  (cmd.id.startsWith(id+':')||cmd.id.startsWith(id+'-')||cmd.id===id)).slice(0,70);
+}
+function writerV12Item(pt,en,kind,value){
+ return {name:writerUi(pt,en),kind,value};
+}
+function writerV12PaletteItems(){
+ const items=[
+  writerV12Item('Negrito','Bold','wrap','**'),writerV12Item('Itálico','Italic','wrap','*'),
+  writerV12Item('Riscado','Strikethrough','wrap','~~'),writerV12Item('Realce','Highlight','wrap','=='),
+  writerV12Item('Código inline','Inline code','wrap','&#96;'),
+  writerV12Item('Sobrescrito','Superscript','wrap','<sup>|</sup>'),
+  writerV12Item('Subscrito','Subscript','wrap','<sub>|</sub>'),
+  writerV12Item('Citação','Quote','line','> '),
+  writerV12Item('Lista de marcadores','Bullet list','line','- '),
+  writerV12Item('Lista numerada','Numbered list','line','1. '),
+  writerV12Item('Lista de tarefas','Task list','line','- [ ] '),
+  writerV12Item('Linha divisória','Horizontal rule','insert','\n---\n'),
+  writerV12Item('Divisor pontilhado','Dotted divider','insert','\n· · ·\n'),
+  writerV12Item('Divisor longo','Long divider','insert','\n━━━━━━━━━━━━\n'),
+  writerV12Item('Bloco de código','Code fence','block','code'),
+  writerV12Item('Bloco matemático','Math block','block','math'),
+  writerV12Item('Tabela básica','Basic table','insert','\n| Coluna 1 | Coluna 2 |\n| --- | --- |\n| Valor | Valor |\n'),
+  writerV12Item('Data atual','Today','date','date'),
+  writerV12Item('Hora atual','Current time','date','time'),
+  writerV12Item('Texto da direita para a esquerda','Right-to-left paragraph','wrap','<div dir="rtl">|</div>')
+ ];
+ for(let i=1;i<=6;i++)items.push(writerV12Item('Título '+i,'Heading '+i,'line','#'.repeat(i)+' '));
+ for(const [key,pt,en] of [
+  ['note','Nota','Note'],['tip','Dica','Tip'],['info','Informação','Info'],
+  ['warning','Aviso','Warning'],['danger','Perigo','Danger'],
+  ['success','Sucesso','Success'],['question','Pergunta','Question'],
+  ['quote','Citação','Quote'],['example','Exemplo','Example'],['summary','Resumo','Summary'],
+  ['bug','Bug','Bug'],['todo','Tarefa','Todo'],['abstract','Resumo breve','Abstract'],
+  ['failure','Falha','Failure'],['important','Importante','Important']
+ ])items.push(writerV12Item('Callout: '+writerUi(pt,en),'Callout: '+en,'callout',key));
+ items.push(
+  writerV12Item('Link interno','Internal wiki link','wrap','[[|]]'),
+  writerV12Item('Link externo','External Markdown link','wrap','[|](https://example.com)'),
+  writerV12Item('Sublinhado','Underline','wrap','<u>|</u>'),
+  writerV12Item('Texto pequeno','Small text','wrap','<small>|</small>'),
+  writerV12Item('Tecla de atalho','Keyboard key','wrap','<kbd>|</kbd>'),
+  writerV12Item('Abreviação','Abbreviation','wrap','<abbr>|</abbr>'),
+  writerV12Item('Comentário oculto','Obsidian comment','wrap','%%|%%'),
+  writerV12Item('Detalhes recolhíveis','Collapsible details','wrap','<details><summary>Resumo</summary>|</details>'),
+  writerV12Item('Texto centralizado','Centered text','wrap','<div align="center">|</div>'),
+  writerV12Item('Texto à direita','Right-aligned text','wrap','<div align="right">|</div>'),
+  writerV12Item('Texto à esquerda','Left-aligned text','wrap','<div align="left">|</div>'),
+  writerV12Item('Bloco SQL','SQL code fence','insert','\n~~~sql\n\n~~~\n'),
+  writerV12Item('Bloco JSON','JSON code fence','insert','\n~~~json\n{}\n~~~\n'),
+  writerV12Item('Bloco Python','Python code fence','insert','\n~~~python\n\n~~~\n'),
+  writerV12Item('Bloco JavaScript','JavaScript code fence','insert','\n~~~javascript\n\n~~~\n'),
+  writerV12Item('Bloco de aviso HTML','HTML notice','wrap','<aside>|</aside>'),
+  writerV12Item('Marcador de nota','Footnote marker','insert','[^1]'),
+  writerV12Item('Definição de nota de rodapé','Footnote definition','insert','\n[^1]: \n')
+ );
+ for(const [id,pt,en] of [
+  ['goal','Meta','Goal'],['idea','Ideia','Idea'],['remember','Lembrete','Reminder'],
+  ['blocker','Bloqueio','Blocker'],['command','Comando','Command'],['config','Configuração','Config']
+ ])items.push(writerV12Item('Callout: '+writerUi(pt,en),'Callout: '+en,'callout',id));
+ return items;
+}
+function writerV12Transform(editor,item){
+ const selected=editor.getSelection()||'';
+ if(item.kind==='wrap'){
+  const parts=item.value.split('|');
+  const left=parts.length===2?parts[0]:item.value.replace('&#96;','&#96;');
+  const right=parts.length===2?parts[1]:left;
+  const clean=text=>text.replaceAll('&#96;',String.fromCharCode(96));
+  editor.replaceSelection(clean(left)+selected+clean(right));
+ }else if(item.kind==='line'){
+  editor.replaceSelection((selected||writerUi('Texto','Text')).split('\n').map(line=>item.value+line).join('\n'));
+ }else if(item.kind==='insert')editor.replaceSelection(item.value.replaceAll('&#96;',String.fromCharCode(96)));
+ else if(item.kind==='date'){
+  const now=new Date();
+  editor.replaceSelection(item.value==='time'?now.toLocaleTimeString():now.toLocaleDateString());
+ }else if(item.kind==='block'){
+  const fence=item.value==='math'?'$$':String.fromCharCode(96).repeat(3);
+  editor.replaceSelection(fence+'\n'+selected+'\n'+fence);
+ }else if(item.kind==='callout'){
+  editor.replaceSelection('> [!'+item.value+']\n'+
+   (selected||writerUi('Conteúdo','Content')).split('\n').map(x=>'> '+x).join('\n'));
+ }
+}
+function writerV12OpenPalette(plugin,editor){
+ if(!writerV12On(plugin,'palette'))return;
+ if(!editor){new Notice(writerUi('Abra uma nota no editor.','Open a note in edit mode.'));return;}
+ class Palette extends FuzzySuggestModal{
+  getItems(){return writerV12PaletteItems();}
+  getItemText(item){return item.name;}
+  onChooseItem(item){writerV12Transform(editor,item);}
+ }
+ const modal=new Palette(plugin.app);
+ modal.setPlaceholder(writerUi('Pesquisar formatação, callouts e inserções...','Search formatting, callouts and inserts...'));
+ modal.open();
+}
+function writerV12NormalizeEmbeds(source,width){
+ let count=0;
+ const next=String(source||'').replace(/!\[\[([^\]\r\n]+)\]\]/g,(whole,inside)=>{
+  const bits=inside.split('|'),path=bits.shift();
+  if(!/\.(png|jpe?g|gif|webp|svg|bmp|avif)(?:#[^\]]*)?$/i.test(path.trim()))return whole;
+  const aliases=bits.filter(s=>!/^\d{2,5}(?:x\d{2,5})?$/.test(s.trim()));
+  count++;
+  return '![['+[path,...aliases,String(width)].join('|')+']]';
+ });
+ return {next,count};
+}
+function writerV12NormalizeImageCommand(plugin,editor){
+ if(!writerV12On(plugin,'imageTools')||!editor)return;
+ const selected=editor.getSelection(),before=editor.getValue();
+ if(!selected){new Notice(writerUi('Selecione um trecho contendo imagens incorporadas.','Select a passage containing embedded images.'));return;}
+ const modal=new Modal(plugin.app);
+ modal.titleEl.setText(writerUi('Padronizar largura das imagens','Normalize image widths'));
+ modal.contentEl.createEl('p',{text:writerUi(
+  'Somente imagens ![[arquivo.png]] da seleção. Visualize a quantidade e confirme antes de editar.',
+  'Only ![[file.png]] images in the selection. Review the count before changing Markdown.')});
+ const range=modal.contentEl.createEl('input',{attr:{type:'number',min:'80',max:'2400',value:'480','aria-label':'Width in pixels'}});
+ const preview=modal.contentEl.createEl('p');
+ const render=()=>{const width=Math.round(Number(range.value)||0),res=writerV12NormalizeEmbeds(selected,width);
+  preview.setText((width>=80&&width<=2400?res.count:0)+' '+writerUi('imagens para alterar','images to change'));};
+ range.addEventListener('input',render);render();
+ new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(()=>{
+  const width=Math.round(Number(range.value));
+  if(width<80||width>2400){new Notice(writerUi('Use 80–2400 px.','Use 80–2400 px.'));return;}
+  const res=writerV12NormalizeEmbeds(selected,width);
+  if(!res.count)return;
+  if(editor.getValue()!==before||editor.getSelection()!==selected){
+   new Notice(writerUi('A seleção mudou; operação cancelada.','The selection changed; operation cancelled.'));return;
+  }
+  editor.replaceSelection(res.next);modal.close();
+ }));
+ modal.open();
+}
+function writerV12Lightbox(plugin,original){
+ if(!writerV12On(plugin,'imageTools'))return;
+ const modal=new Modal(plugin.app);
+ modal.titleEl.setText(writerUi('Visualizador de imagem','Image viewer'));
+ const wrapper=modal.contentEl.createDiv();
+ wrapper.style.cssText='overflow:auto;max-height:70vh;text-align:center;';
+ const img=wrapper.createEl('img',{attr:{src:original.currentSrc||original.src,alt:original.alt||''}});
+ img.style.cssText='max-width:100%;height:auto;object-fit:contain;';
+ let width=100,rotate=0;
+ const apply=()=>{img.style.width=width+'%';img.style.transform='rotate('+rotate+'deg)';};
+ const controls=modal.contentEl.createDiv({cls:'modal-button-container'});
+ for(const [label,delta,action] of [['−',-15,'size'],['+',15,'size'],['↻',90,'rotate'],['↺',0,'reset']]){
+  controls.createEl('button',{text:label,attr:{type:'button'}}).addEventListener('click',()=>{
+   if(action==='size')width=Math.max(25,Math.min(200,width+delta));
+   else if(action==='rotate')rotate=(rotate+delta)%360;
+   else {width=100;rotate=0;}
+   apply();
+  });
+ }
+ modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Ajustes apenas no visualizador. Para gravar uma largura no Markdown, use a opção de normalização.',
+  'Viewer-only adjustments. Use the width normalization command to persist sizes in Markdown.')});
+ modal.open();
+}
+function writerV12RegisterImageViewer(plugin){
+ if(!writerV12On(plugin,'imageTools'))return;
+ plugin.registerMarkdownPostProcessor((root)=>{
+  if(!writerV12On(plugin,'imageTools')||writerV12CompanionInstalled(plugin,'ahmed-toolkit'))return;
+  for(const img of root.querySelectorAll('img:not([data-basic-v12-image])')){
+   img.dataset.basicV12Image='true';
+   img.setAttribute('title',writerUi('Toque para ampliar','Tap to enlarge'));
+   img.addEventListener('click',event=>{
+    if(!writerV12On(plugin,'imageTools'))return;
+    event.preventDefault();event.stopPropagation();
+    writerV12Lightbox(plugin,img);
+   });
+  }
+ });
+}
+function writerV12TaskLines(source){
+ const out=[],rx=/^[ \t]*[-*][ \t]+\[([ xX])\][ \t]+(.+)$/gm;
+ let match;
+ while((match=rx.exec(String(source||'')))!==null&&out.length<150)
+  out.push({done:match[1].toLowerCase()==='x',text:match[2].slice(0,350)});
+ return out;
+}
+async function writerV12OpenTasks(plugin){
+ if(!writerV12On(plugin,'taskNavigator'))return;
+ const modal=new Modal(plugin.app);
+ modal.titleEl.setText(writerUi('Tarefas do cofre','Vault tasks'));
+ const status=modal.contentEl.createEl('p',{text:writerUi('Lendo tarefas locais...','Reading local tasks...')});
+ const host=modal.contentEl.createDiv();modal.open();
+ const files=plugin.app.vault.getMarkdownFiles().slice(0,writerV12Config(plugin).maxTaskFiles);
+ const results=[];
+ try{
+  for(let i=0;i<files.length;i+=10){
+   const group=files.slice(i,i+10);
+   const rows=await Promise.all(group.map(async file=>({file,content:await plugin.app.vault.cachedRead(file).catch(()=>null)})));
+   if(!modal.contentEl.isConnected)return;
+   for(const row of rows)if(row.content!==null)
+    for(const task of writerV12TaskLines(row.content))results.push({file:row.file,...task});
+  }
+  results.sort((a,b)=>Number(a.done)-Number(b.done));
+  status.setText(results.length+' '+writerUi('tarefas em','tasks across')+' '+files.length+' '+writerUi('notas (somente leitura)','notes (read-only)'));
+  if(!results.length)host.createEl('p',{text:writerUi('Nenhuma tarefa encontrada.','No tasks found.')});
+  for(const task of results.slice(0,150)){
+   const line=host.createEl('button',{cls:'clickable-icon',attr:{type:'button',style:'display:block;text-align:left;width:100%;height:auto;white-space:normal;padding:8px;'}});
+   line.setText((task.done?'☑ ':'☐ ')+task.text+' — '+task.file.basename);
+   line.addEventListener('click',()=>{modal.close();void plugin.app.workspace.getLeaf(false).openFile(task.file);});
+  }
+ }catch(error){status.setText(writerUi('Não foi possível ler as tarefas: ','Could not scan tasks: ')+String(error.message||error));}
+}
+function writerV12SafeName(name){
+ return String(name||'').trim().replace(/[\\/:*?"<>|#\[\]\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim().slice(0,70)||'Captured';
+}
+async function writerV12CreateNote(plugin,folder,title,body){
+ const vault=plugin.app.vault;
+ if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+ const now=new Date();
+ const date=now.toISOString().slice(0,16).replace('T',' ').replace(':','-');
+ const base=folder+'/'+date+' '+writerV12SafeName(title);
+ let path=base+'.md',number=2;
+ while(vault.getAbstractFileByPath(path))path=base+' '+number+++'.md';
+ const file=await vault.create(path,String(body||'').slice(0,100000));
+ await plugin.app.workspace.getLeaf(false).openFile(file);
+ return file;
+}
+function writerV12Capture(plugin,brainstorm){
+ if(!writerV12On(plugin,'localInbox'))return;
+ const modal=new Modal(plugin.app);
+ modal.titleEl.setText(brainstorm?writerUi('Nova chuva de ideias','New brainstorm'):writerUi('Captura rápida','Quick capture'));
+ const title=modal.contentEl.createEl('input',{attr:{type:'text',placeholder:writerUi('Título','Title'),maxlength:'70',style:'width:100%;margin-bottom:8px;'}});
+ const body=modal.contentEl.createEl('textarea',{attr:{rows:'9',placeholder:writerUi('Digite ou cole seu conteúdo...','Type or paste your content...'),style:'width:100%;'}});
+ const save=async()=>{
+  if(!body.value.trim()){new Notice(writerUi('Adicione algum conteúdo.','Enter some content.'));return;}
+  try{
+   const text=brainstorm?'# '+writerV12SafeName(title.value||'Brainstorm')+'\n\n## Ideias\n\n'+body.value.trim()+'\n\n## Próximas ações\n\n- [ ] \n':
+    '# '+writerV12SafeName(title.value||'Captura')+'\n\n'+body.value.trim()+'\n';
+   const file=await writerV12CreateNote(plugin,brainstorm?'Basic Brainstorms':'Inbox',title.value||'Captura',text);
+   modal.close();new Notice(writerUi('Nota criada: ','Created note: ')+file.path);
+  }catch(error){new Notice(String(error.message||error));}
+ };
+ new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Criar nota','Create note')).setCta().onClick(save));
+ modal.open();
+}
+function writerV12ActiveFolder(plugin){
+ const file=plugin.app.workspace.getActiveFile?.();
+ const parent=file?.parent;
+ return parent&&parent.path!=='/'?parent.path:'';
+}
+function writerV12FocusRefresh(plugin){
+ const focus=writerV12On(plugin,'folderFocus')?(plugin._writerV12FolderFocus||''):'';
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+  const root=leaf.view?.containerEl;
+  if(!root)continue;
+  for(const el of root.querySelectorAll('.nav-file, .nav-folder')){
+   const title=el.querySelector(':scope > .nav-file-title, :scope > .nav-folder-title');
+   const path=el.getAttribute('data-path')||title?.getAttribute('data-path')||'';
+   // A blank path must not be hidden; other plugins may supply custom rows.
+   const keep=!focus||!path||path===focus||path.startsWith(focus+'/')||focus.startsWith(path+'/');
+   if(!keep&&el.dataset.writerV12Hidden!=='1'){
+    el.dataset.writerV12Hidden='1';el.dataset.writerV12Display=el.style.display||'';el.style.display='none';
+   }else if(keep&&el.dataset.writerV12Hidden==='1'){
+    el.style.display=el.dataset.writerV12Display||'';
+    delete el.dataset.writerV12Hidden;delete el.dataset.writerV12Display;
+   }
+  }
+ }
+}
+function writerV12FolderFocus(plugin,clear){
+ if(!writerV12On(plugin,'folderFocus'))return;
+ if(!clear&&!writerV12ActiveFolder(plugin)){
+  new Notice(writerUi('Abra uma nota dentro de uma pasta.','Open a note inside a folder.'));return;
+ }
+ plugin._writerV12FolderFocus=clear?'':writerV12ActiveFolder(plugin);
+ writerV12FocusRefresh(plugin);
+ new Notice(clear?writerUi('Explorador completo restaurado.','Full explorer restored.'):
+  writerUi('Foco temporário: ','Temporary folder focus: ')+plugin._writerV12FolderFocus);
+}
+function writerV12RegisterFocus(plugin){
+ plugin._writerV12FolderFocus='';
+ const run=()=>writerV12FocusRefresh(plugin);
+ plugin.app.workspace.onLayoutReady?.(()=>{
+  run();
+  const root=plugin.app.workspace.containerEl;
+  if(typeof MutationObserver!=='undefined'&&root){
+   let scheduled=false;
+   const observer=new MutationObserver(()=>{
+    if(scheduled||!plugin._writerV12FolderFocus)return;
+    scheduled=true;Promise.resolve().then(()=>{scheduled=false;run();});
+   });
+   observer.observe(root,{childList:true,subtree:true});
+   plugin.register(()=>{observer.disconnect();plugin._writerV12FolderFocus='';run();});
+  }
+ });
+ plugin.registerEvent(plugin.app.workspace.on('layout-change',run));
+}
+function writerV12ConflictViewer(plugin){
+ const files=plugin.app.vault.getFiles().filter(file=>/\.sync-conflict-/i.test(file.name)).slice(0,100);
+ const modal=new Modal(plugin.app);
+ modal.titleEl.setText(writerUi('Conflitos Syncthing · somente leitura','Syncthing conflicts · read-only'));
+ modal.contentEl.createEl('p',{text:files.length+' '+writerUi('arquivos de conflito encontrados. Nenhum será apagado ou mesclado.','conflict files found. None will be deleted or merged.')});
+ for(const file of files){
+  const button=modal.contentEl.createEl('button',{text:file.path,attr:{type:'button',style:'display:block;width:100%;text-align:left;margin:6px 0;'}});
+  button.addEventListener('click',async()=>{
+   if(file.extension!=='md'&&file.extension!=='txt'){new Notice(writerUi('Abra o arquivo manualmente para comparar.','Open the file manually to compare.'));return;}
+   const child=new Modal(plugin.app);
+   child.titleEl.setText(file.name);
+   const originalPath=file.path.replace(/\.sync-conflict-[^.]+(?=\.[^.]+$)/i,'');
+   const original=plugin.app.vault.getAbstractFileByPath(originalPath);
+   const max=50000;
+   for(const [name,source] of [[writerUi('Conflito','Conflict'),file],[writerUi('Original','Original'),original]]){
+    child.contentEl.createEl('h4',{text:name});
+    const data=source?.extension===file.extension?await plugin.app.vault.cachedRead(source).catch(()=>null):null;
+    const pre=child.contentEl.createEl('pre',{text:data===null?writerUi('Não encontrado','Not found'):data.slice(0,max)});
+    pre.style.cssText='white-space:pre-wrap;max-height:25vh;overflow:auto;';
+   }
+   child.contentEl.createEl('p',{text:writerUi('Compare e resolva manualmente; Basic não altera os arquivos de conflito.','Compare and resolve manually; Basic does not change conflict files.')});
+   child.open();
+  });
+ }
+ modal.open();
+}
+
+function writerV12BasicTools(plugin,modal){
+ const all=plugin.app.commands?.listCommands?.()||Object.values(plugin.app.commands?.commands||{});
+ const prefix=(plugin.manifest?.id||'basic-ai-tool-for-writers')+':';
+ const actions=[
+  ['v107-local-tts-selection','TTS: ler seleção','TTS: read selection'],
+  ['v107-local-tts-panel','TTS: abrir controles','TTS: open controls'],
+  ['v8-inline-ai-generate','IA: sugerir continuação','AI: suggest continuation'],
+  ['v9-toggle-format-toolbar','Alternar barra de formatação','Toggle formatting toolbar']
+ ];
+ const available=actions.map(([id,pt,en])=>({
+  command:all.find(c=>c.id===prefix+id),name:writerUi(pt,en)
+ })).filter(a=>a.command);
+ if(!available.length)return;
+ modal.contentEl.createEl('h4',{text:writerUi('Recursos já presentes no Basic','Existing Basic tools')});
+ const tools=modal.contentEl.createDiv();
+ for(const action of available)
+  tools.createEl('button',{text:action.name,attr:{type:'button',style:'margin:3px;'}})
+   .addEventListener('click',()=>plugin.app.commands.executeCommandById(action.command.id));
+}
+
+function writerV12OpenIntegrationHub(plugin,role){
+ if(!writerV12On(plugin,'integrations'))return;
+ const cfg=writerV12Config(plugin),modal=new Modal(plugin.app);
+ modal.titleEl.setText(role==='sync'?writerUi('Central de sincronização','Synchronization center'):
+  writerUi('Central de integrações · v12','Integration center · v12'));
+ const intro=role==='sync'?
+  writerUi('Escolha apenas um mecanismo para executar comandos manuais. O Basic não inicia sincronização automática, nem desliga rotinas de outros plugins.',
+   'Select one provider for manual commands. Basic does not auto-sync or disable other plugins’ background jobs.'):
+  writerUi('Funções nativas do Basic continuam independentes. Plugins externos, quando instalados, aparecem como comandos adicionais sem copiar seus dados.',
+   'Native Basic features remain independent. Installed companion plugins expose additional commands without duplicating their data.');
+ modal.contentEl.createEl('p',{text:intro});
+ if(role!=='sync')writerV12BasicTools(plugin,modal);
+ if(role==='sync'){
+  new Setting(modal.contentEl).setName(writerUi('Provedor selecionado','Selected provider'))
+   .addDropdown(d=>{
+    for(const id of WRITER_V12_SYNC){
+     const name=id==='none'?writerUi('Nenhum','None'):WRITER_V12_COMPANIONS.find(p=>p.id===id)?.name||id;
+     d.addOption(id,name);
+    }
+    d.setValue(cfg.syncProvider).onChange(async value=>{
+     cfg.syncProvider=WRITER_V12_SYNC.includes(value)?value:'none';
+     await plugin.saveSettings();modal.close();writerV12OpenIntegrationHub(plugin,'sync');
+    });
+   });
+  new Setting(modal.contentEl).setName(writerUi('Conflitos locais','Local conflicts'))
+   .addButton(b=>b.setButtonText(writerUi('Inspecionar','Inspect')).onClick(()=>writerV12ConflictViewer(plugin)));
+ }
+ for(const item of WRITER_V12_COMPANIONS.filter(i=>role!=='sync'||i.role==='sync')){
+  const installed=writerV12CompanionInstalled(plugin,item.id);
+  const section=modal.contentEl.createDiv({cls:'setting-item'});
+  const info=section.createDiv({cls:'setting-item-info'});
+  info.createEl('div',{cls:'setting-item-name',text:item.name});
+  info.createEl('div',{cls:'setting-item-description',text:installed?writerUi('Ativo no Obsidian','Active in Obsidian'):
+    writerUi('Não instalado ou desativado','Not installed or disabled')});
+  if(installed&&(role!=='sync'||cfg.syncProvider===item.id)){
+   const cmd=writerV12Commands(plugin,item.id)
+    .filter(c=>!/(?:delete|remove|discard|reset|force-push|drop)/i.test(c.id)).slice(0,12);
+   if(cmd.length){
+    const actions=modal.contentEl.createDiv();
+    for(const command of cmd){
+     const button=actions.createEl('button',{text:command.name,attr:{type:'button',style:'margin:3px;'}});
+     button.addEventListener('click',()=>{
+      if(role==='sync'&&plugin._writerV12SyncRunning)return;
+      // Dispatch is explicit; commands and configuration remain owned by the companion.
+      try{
+       if(role==='sync')plugin._writerV12SyncRunning=true;
+       const maybe=plugin.app.commands.executeCommandById(command.id);
+       if(maybe&&typeof maybe.finally==='function')
+        maybe.finally(()=>{plugin._writerV12SyncRunning=false;});
+       else plugin._writerV12SyncRunning=false;
+      }catch(error){
+       plugin._writerV12SyncRunning=false;new Notice(String(error.message||error));
+      }
+     });
+    }
+   }
+  }
+ }
+ if(role==='sync')modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Atenção: Git, FIT e Syncthing podem sobrescrever mudanças entre dispositivos. Faça backup e desative agendas concorrentes nos plugins instalados.',
+  'Caution: Git, FIT and Syncthing can conflict across devices. Back up your vault and disable concurrent jobs in installed plugins.')});
+ modal.open();
+}
+function writerV12Templates(plugin,editor){
+ if(!editor)return;
+ const templates=[
+  {name:writerUi('Cena de romance','Fiction scene'),text:'# Cena: \n\n## Objetivo\n\n## Conflito\n\n## Desenvolvimento\n\n## Desfecho\n\n'},
+  {name:writerUi('Personagem','Character'),text:'# Personagem: \n\n## Motivação\n\n## Personalidade\n\n## Relações\n\n## Arco\n\n'},
+  {name:writerUi('Pesquisa','Research'),text:'# Pesquisa: \n\n## Pergunta\n\n## Fontes\n\n## Evidências\n\n## Conclusões\n\n'},
+  {name:writerUi('Reunião','Meeting'),text:'# Reunião\n\n## Participantes\n\n## Pauta\n\n## Decisões\n\n## Ações\n\n- [ ] \n'},
+  {name:writerUi('Planejamento semanal','Weekly plan'),text:'# Semana\n\n## Prioridades\n\n## Calendário\n\n## Tarefas\n\n- [ ] \n'},
+  {name:writerUi('Resumo de estudo','Study summary'),text:'# Resumo\n\n## Conceitos\n\n## Questões\n\n## Próxima revisão\n\n'}
+ ];
+ class Picker extends FuzzySuggestModal{
+  getItems(){return templates;}
+  getItemText(item){return item.name;}
+  onChooseItem(item){editor.replaceSelection(item.text);}
+ }
+ const picker=new Picker(plugin.app);
+ picker.setPlaceholder(writerUi('Escolha um modelo local (não usa IA)','Choose a local template (no AI request)'));
+ picker.open();
+}
+function writerV12Register(plugin){
+ writerV12Config(plugin);
+ const command=(id,pt,en,callback)=>plugin.addCommand({id,name:writerUi(pt,en),callback});
+ command('v12-integrations','Toolkit: central de integrações','Toolkit: integration center',()=>writerV12OpenIntegrationHub(plugin));
+ command('v12-sync-center','Sincronização: abrir central','Sync: open center',()=>writerV12OpenIntegrationHub(plugin,'sync'));
+ command('v12-tasks','Tarefas: localizar em notas','Tasks: find in notes',()=>void writerV12OpenTasks(plugin));
+ command('v12-capture','Captura: guardar na Inbox local','Capture: save to local inbox',()=>writerV12Capture(plugin,false));
+ command('v12-brainstorm','Ideias: criar brainstorm local','Ideas: create local brainstorm',()=>writerV12Capture(plugin,true));
+ command('v12-folder-focus','Explorador: focar pasta da nota','Explorer: focus current folder',()=>writerV12FolderFocus(plugin,false));
+ command('v12-folder-focus-reset','Explorador: mostrar todas as pastas','Explorer: show all folders',()=>writerV12FolderFocus(plugin,true));
+ plugin.addCommand({id:'v12-format-palette',name:writerUi('Formatar: paleta unificada','Format: unified palette'),
+  editorCallback:editor=>writerV12OpenPalette(plugin,editor)});
+ plugin.addCommand({id:'v12-normalize-images',name:writerUi('Imagens: padronizar largura na seleção','Images: normalize widths in selection'),
+  editorCallback:editor=>writerV12NormalizeImageCommand(plugin,editor)});
+ plugin.addCommand({id:'v12-template-picker',name:writerUi('Modelos: inserir estrutura pronta','Templates: insert local outline'),
+  editorCallback:editor=>writerV12Templates(plugin,editor)});
+ writerV12RegisterImageViewer(plugin);
+ writerV12RegisterFocus(plugin);
+}
+function writerV12Settings(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Toolkit unificado · v12','Unified toolkit · v12')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Aproveita a formatação, o TTS, o explorador, os Spaces e a IA já presentes. Sincronização externa e criptografia não são duplicadas.',
+  'Reuses existing formatting, TTS, explorer, Spaces and AI. External sync and encryption engines are not duplicated.')});
+ for(const [key,pt,en] of [
+  ['enabled','Ativar Toolkit v12','Enable v12 toolkit'],
+  ['palette','Paleta de formatação','Formatting palette'],
+  ['imageTools','Visualizador e tamanhos de imagens','Image viewer and sizing'],
+  ['taskNavigator','Navegação de tarefas','Task navigation'],
+  ['localInbox','Captura e brainstorm locais','Local capture and brainstorm'],
+  ['folderFocus','Foco temporário por pasta','Temporary folder focus'],
+  ['integrations','Central de integrações externas','External integration center']
+ ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
+  .onChange(async val=>{cfg[key]=val;await plugin.saveSettings();writerV12FocusRefresh(plugin);}));
+ new Setting(panel).setName(writerUi('Limite de notas na busca por tarefas','Task scan note limit'))
+  .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.maxTaskFiles).setDynamicTooltip()
+   .onChange(async val=>{cfg.maxTaskFiles=val;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Central de integrações','Integration center'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin)));
+ new Setting(panel).setName(writerUi('Central de sincronização','Synchronization center'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin,'sync')));
+}
+
+// v3 module: src/v12/secure-notes.js
+/* Basic v12: local encrypted note envelopes. Never replaces an existing file,
+ * never persists keys or plaintext. AES-256-GCM + PBKDF2-SHA256 via WebCrypto.
+ * Encryption is per new note; NOT a folder-wide vault or searchable lock. */
+const WRITER_V12_SECURE_PREFIX='BASIC-SECURE/1\n';
+function writerV12SecureSubtle(){
+ const wc=globalThis.crypto;
+ if(!wc?.subtle||typeof wc.getRandomValues!=='function')throw Error('Web Crypto API is unavailable.');
+ return wc;
+}
+function writerV12SecureBytes(text){
+ return new TextEncoder().encode(String(text||''));
+}
+function writerV12SecureB64(array){
+ const bytes=new Uint8Array(array),step=16384;
+ let result='';
+ for(let i=0;i<bytes.length;i+=step)
+  result+=String.fromCharCode(...bytes.subarray(i,i+step));
+ return btoa(result);
+}
+function writerV12SecureUnb64(input){
+ if(typeof input!=='string'||input.length>6500000||!/^[A-Za-z0-9+/]*={0,2}$/.test(input))
+  throw Error('Invalid encrypted payload');
+ const str=atob(input),bytes=new Uint8Array(str.length);
+ for(let i=0;i<str.length;i++)bytes[i]=str.charCodeAt(i);
+ return bytes;
+}
+async function writerV12SecureKey(password,salt,usage){
+ const wc=writerV12SecureSubtle(),secret=String(password||'');
+ if(secret.length<12)throw Error('Use a passphrase with at least 12 characters');
+ const base=await wc.subtle.importKey('raw',writerV12SecureBytes(secret),'PBKDF2',false,['deriveKey']);
+ return wc.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},base,
+  {name:'AES-GCM',length:256},false,usage);
+}
+async function writerV12SecureSeal(plaintext,password){
+ const wc=writerV12SecureSubtle();
+ if(typeof plaintext!=='string'||!plaintext||plaintext.length>750000)
+  throw Error('Secure notes must contain 1–750000 characters');
+ const salt=wc.getRandomValues(new Uint8Array(16));
+ const iv=wc.getRandomValues(new Uint8Array(12));
+ const key=await writerV12SecureKey(password,salt,['encrypt']);
+ const ciphertext=await wc.subtle.encrypt({name:'AES-GCM',iv,additionalData:writerV12SecureBytes('Basic-12-Envelope-v1')},
+  key,writerV12SecureBytes(plaintext));
+ return WRITER_V12_SECURE_PREFIX+JSON.stringify({
+  version:1,algorithm:'AES-256-GCM',kdf:'PBKDF2-SHA256',iterations:310000,
+  salt:writerV12SecureB64(salt),iv:writerV12SecureB64(iv),
+  ciphertext:writerV12SecureB64(ciphertext)
+ });
+}
+async function writerV12SecureOpen(envelope,password){
+ const raw=String(envelope||'');
+ if(!raw.startsWith(WRITER_V12_SECURE_PREFIX)||raw.length>7000000)
+  throw Error('Not a Basic encrypted note');
+ const entry=JSON.parse(raw.slice(WRITER_V12_SECURE_PREFIX.length));
+ if(entry.version!==1||entry.algorithm!=='AES-256-GCM'||entry.kdf!=='PBKDF2-SHA256'||entry.iterations!==310000)
+  throw Error('Unsupported encrypted note format');
+ const salt=writerV12SecureUnb64(entry.salt),iv=writerV12SecureUnb64(entry.iv),data=writerV12SecureUnb64(entry.ciphertext);
+ if(salt.length!==16||iv.length!==12||data.length>5500000||data.length<16)
+  throw Error('Invalid encrypted note');
+ const key=await writerV12SecureKey(password,salt,['decrypt']);
+ const wc=writerV12SecureSubtle();
+ const decoded=await wc.subtle.decrypt({name:'AES-GCM',iv,additionalData:writerV12SecureBytes('Basic-12-Envelope-v1')},key,data);
+ return new TextDecoder('utf-8',{fatal:true}).decode(decoded);
+}
+function writerV12SecureMessage(plugin,pt,en){new Notice(writerUi(pt,en));}
+function writerV12SecureCreate(plugin){
+ if(!writerV12On(plugin,'secureNotes'))return;
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Nova nota protegida','New encrypted note'));
+ modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Cria um NOVO arquivo criptografado. Não modifica notas existentes. A senha não será salva: se perdida, o conteúdo não poderá ser recuperado.',
+  'Creates a NEW encrypted file. Does not modify existing notes. No password is stored: if lost, the content cannot be recovered.')});
+ const title=modal.contentEl.createEl('input',{attr:{type:'text',placeholder:writerUi('Nome do arquivo','File name'),style:'width:100%'}});
+ const password=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'new-password',placeholder:writerUi('Senha (mínimo 12 caracteres)','Passphrase (12+ characters)'),style:'width:100%;margin-top:8px'}});
+ const confirm=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'new-password',placeholder:writerUi('Repetir senha','Repeat passphrase'),style:'width:100%;margin-top:8px'}});
+ const body=modal.contentEl.createEl('textarea',{attr:{rows:'10',placeholder:writerUi('Conteúdo protegido','Protected content'),style:'width:100%;margin-top:8px;'}});
+ const error=modal.contentEl.createEl('p',{cls:'setting-item-description'});
+ new Setting(modal.contentEl).addButton(button=>button.setButtonText(writerUi('Criptografar e salvar novo arquivo','Encrypt and save new file')).setCta().onClick(async()=>{
+  if(password.value!==confirm.value){error.setText(writerUi('As senhas não coincidem.','Passwords do not match.'));return;}
+  if(password.value.length<12||!body.value.trim()){error.setText(writerUi('Informe uma senha de pelo menos 12 caracteres e o conteúdo.','Provide a 12+ character passphrase and content.'));return;}
+  button.setDisabled(true);
+  try{
+   const vault=plugin.app.vault,folder='Basic Secure',filename=writerV12SafeName(title.value||'Protected note');
+   if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+   let target=folder+'/'+filename+'.md',suffix=2;
+   while(vault.getAbstractFileByPath(target))target=folder+'/'+filename+' '+suffix+++'.md';
+   const sealed=await writerV12SecureSeal(body.value,password.value);
+   await vault.create(target,sealed);
+   password.value='';confirm.value='';body.value='';
+   modal.close();
+   writerV12SecureMessage(plugin,'Nota criptografada criada.','Encrypted note created.');
+  }catch(err){error.setText(String(err.message||err));}
+  finally{button.setDisabled(false);}
+ }));
+ modal.open();
+}
+function writerV12SecureRead(plugin){
+ if(!writerV12On(plugin,'secureNotes'))return;
+ const files=plugin.app.vault.getMarkdownFiles().filter(f=>f.path.startsWith('Basic Secure/'));
+ if(!files.length){writerV12SecureMessage(plugin,'Nenhuma nota protegida encontrada.','No encrypted notes found.');return;}
+ class Picker extends FuzzySuggestModal{
+  getItems(){return files;}
+  getItemText(file){return file.path;}
+  onChooseItem(file){void writerV12SecureUnlock(plugin,file);}
+ }
+ new Picker(plugin.app).open();
+}
+async function writerV12SecureUnlock(plugin,file){
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Abrir conteúdo protegido','Unlock encrypted content'));
+ const password=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:writerUi('Senha da nota','Note passphrase'),style:'width:100%'}});
+ const feedback=modal.contentEl.createEl('p',{cls:'setting-item-description'});
+ const result=modal.contentEl.createEl('textarea',{attr:{rows:'12',readonly:'',style:'width:100%;display:none;'}});
+ const run=async()=>{
+  try{
+   const encrypted=await plugin.app.vault.cachedRead(file);
+   const original=await writerV12SecureOpen(encrypted,password.value);
+   password.value='';result.style.display='block';result.value=original;
+   feedback.setText(writerUi('Conteúdo descriptografado somente nesta janela. Feche para descartá-lo.','Decrypted only in this window. Close to discard it.'));
+  }catch(err){feedback.setText(writerUi('Não foi possível abrir: ','Could not decrypt: ')+String(err.message||err));}
+ };
+ new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Desbloquear','Unlock')).setCta().onClick(run));
+ modal.onClose=()=>{password.value='';result.value='';};
+ modal.open();
+}
+function writerV12SecureRegister(plugin){
+ plugin.addCommand({id:'v12-secure-new',name:writerUi('Privacidade: criar nova nota criptografada','Privacy: create encrypted note'),callback:()=>writerV12SecureCreate(plugin)});
+ plugin.addCommand({id:'v12-secure-open',name:writerUi('Privacidade: abrir nota criptografada','Privacy: open encrypted note'),callback:()=>writerV12SecureRead(plugin)});
+}
+function writerV12SecureSettings(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Notas criptografadas · AES-256-GCM','Encrypted notes · AES-256-GCM')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Protege apenas o conteúdo de NOVAS notas. Nomes de arquivos e existência dos documentos continuam visíveis. Não é a criptografia de pastas do Ultimate Toolkit; sem recuperação de senha.',
+  'Encrypts only NEW note contents. File names and their existence remain visible. This is not Ultimate Toolkit folder encryption; no password recovery.')});
+ new Setting(panel).setName(writerUi('Ativar notas criptografadas locais','Enable local encrypted notes')).addToggle(t=>t.setValue(cfg.secureNotes===true).onChange(async v=>{cfg.secureNotes=v;await plugin.saveSettings();}));
+}
+
+// v3 module: src/v12/task-workbench.js
+/* Basic v12 task workbench: notes stay authoritative, writes are optional,
+ * atomic and reject concurrent changes. Markdown code fences are excluded. */
+function writerV12TaskRefs(source){
+ const lines=String(source||'').split(/\r?\n/),tasks=[];
+ let fence='';
+ for(let line=0;line<lines.length;line++){
+  const raw=lines[line],delimiter=/^\s*([~\x60]{3,})/.exec(raw);
+  if(delimiter){
+   const c=delimiter[1][0];
+   if(!fence)fence=c;else if(fence===c)fence='';
+   continue;
+  }
+  if(fence)continue;
+  const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);
+  if(!m)continue;
+  const label=m[3].replace(/^\]\s+/,'').trim();
+  const tags=[...new Set(label.match(/#[\p{L}\p{N}_/-]+/gu)||[])].slice(0,8);
+  tasks.push({line,raw,text:label,done:m[2].toLowerCase()==='x',tags});
+  if(tasks.length>=250)break;
+ }
+ return tasks;
+}
+function writerV12TaskReplacedLine(entry){
+ const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(entry.raw);
+ if(!m)throw Error('Invalid task marker');
+ return m[1]+(entry.done?' ':'x')+m[3];
+}
+async function writerV12ToggleTask(plugin,file,entry,expected){
+ if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid task file');
+ if(typeof expected!=='string'||expected.length>2500000)throw Error('Invalid source snapshot');
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
+  if(leaf.view?.file?.path===file.path&&leaf.view.editor?.getValue?.()!==expected)
+   throw Error(writerUi('Nota com alterações não salvas: salve antes de marcar.','Unsaved changes: save the note first.'));
+ const oldLines=expected.split(/\r?\n/);
+ if(oldLines[entry.line]!==entry.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ const next=oldLines.map((s,i)=>i===entry.line?writerV12TaskReplacedLine(entry):s)
+  .join(expected.includes('\r\n')?'\r\n':'\n');
+ await plugin.app.vault.process(file,current=>{
+  if(current!==expected)throw Error(writerUi('Arquivo mudou; nada foi alterado.','File changed; no modifications applied.'));
+  return next;
+ });
+ return next;
+}
+function writerV12TaskWorkbench(plugin){
+ if(!writerV12On(plugin,'taskNavigator'))return;
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Workbench de tarefas','Task workbench'));
+ const root=modal.contentEl;
+ const summary=root.createEl('p',{cls:'setting-item-description'});
+ const query=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar por tarefa, nota ou etiqueta','Filter by task, note or tag'),style:'width:100%'}});
+ const showDone=root.createEl('label',{text:' '+writerUi('Mostrar concluídas','Show completed')});
+ const checkbox=showDone.createEl('input',{attr:{type:'checkbox',checked:''}});
+ const results=root.createDiv();
+ let data=[],loading=false;
+ const render=()=>{
+  results.empty();
+  const term=query.value.trim().toLocaleLowerCase();
+  const visible=data.filter(row=>(checkbox.checked||!row.entry.done)&&
+   (!term||(row.entry.text+' '+row.file.path).toLocaleLowerCase().includes(term)));
+  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible'));
+  const groups=new Map();
+  for(const row of visible.slice(0,400)){
+   const tag=row.entry.tags[0]||writerUi('Sem etiqueta','Untagged');
+   if(!groups.has(tag))groups.set(tag,[]);
+   groups.get(tag).push(row);
+  }
+  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada.','No tasks found.')});
+  for(const [tag,group] of groups){
+   results.createEl('h4',{text:tag+' ('+group.length+')'});
+   for(const row of group){
+    const el=results.createDiv({cls:'setting-item'}),info=el.createDiv({cls:'setting-item-info'});
+    info.createDiv({cls:'setting-item-name',text:row.entry.text.slice(0,320)});
+    info.createDiv({cls:'setting-item-description',text:row.file.path+' · '+(row.entry.line+1)});
+    const button=el.createEl('button',{text:row.entry.done?'☑':'☐',attr:{type:'button','aria-label':writerUi('Alternar tarefa','Toggle task')}});
+    button.addEventListener('click',async()=>{
+     button.disabled=true;
+     try{await writerV12ToggleTask(plugin,row.file,row.entry,row.source);await refresh();}
+     catch(err){new Notice(String(err.message||err));button.disabled=false;}
+    });
+    el.createEl('button',{text:writerUi('Abrir','Open'),attr:{type:'button'}})
+     .addEventListener('click',()=>void plugin.app.workspace.getLeaf(false).openFile(row.file));
+   }
+  }
+ };
+ const refresh=async()=>{
+  if(loading)return;
+  loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
+  try{
+   const files=plugin.app.vault.getMarkdownFiles().slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
+   for(let i=0;i<files.length;i+=12){
+    const batch=await Promise.all(files.slice(i,i+12).map(async file=>({
+     file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)
+    })));
+    if(!root.isConnected)return;
+    for(const {file,source} of batch)if(source!==null)
+     for(const entry of writerV12TaskRefs(source))rows.push({file,source,entry});
+   }
+   data=rows;
+  }catch(err){new Notice(String(err.message||err));}
+  finally{loading=false;render();}
+ };
+ query.addEventListener('input',render);
+ checkbox.addEventListener('change',render);
+ new Setting(root).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()));
+ modal.open();void refresh();
+}
+function writerV12TasksRegister(plugin){
+ plugin.addCommand({id:'v12-task-workbench',name:writerUi('Tarefas: Workbench com etiquetas','Tasks: tag-grouped workbench'),
+  callback:()=>writerV12TaskWorkbench(plugin)});
+}
+
+// v3 module: src/v12/image-annotations.js
+/* Basic v12 visual annotation: locally save a NEW PNG; originals untouched.
+ * No remote image capture, no network, no image libraries. */
+function writerV12AnnotationConfig(plugin){
+ const value=plugin.settings.v12Annotations;
+ return plugin.settings.v12Annotations={maxDimension:1400,desktopOnly:false,
+  ...(value&&typeof value==='object'&&!Array.isArray(value)?value:{})};
+}
+function writerV12AnnotatePick(plugin){
+ if(!writerV12On(plugin,'imageTools'))return;
+ if(plugin.app.isMobile&&writerV12AnnotationConfig(plugin).desktopOnly){
+  new Notice(writerUi('Anotações desativadas no celular.','Annotation disabled on mobile.'));return;
+ }
+ const images=plugin.app.vault.getFiles().filter(file=>/^(png|jpe?g|webp)$/i.test(file.extension)).slice(0,1200);
+ if(!images.length){new Notice(writerUi('Não há imagens locais PNG, JPEG ou WebP.','No PNG, JPEG or WebP images found.'));return;}
+ class Picker extends FuzzySuggestModal{
+  getItems(){return images;}
+  getItemText(file){return file.path;}
+  onChooseItem(file){writerV12AnnotateImage(plugin,file);}
+ }
+ const picker=new Picker(plugin.app);
+ picker.setPlaceholder(writerUi('Escolha uma imagem para anotar','Choose image to annotate'));
+ picker.open();
+}
+function writerV12AnnotateImage(plugin,file){
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Anotar imagem · salvar cópia','Annotate image · save a copy'));
+ const panel=modal.contentEl;
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Pinte sobre a imagem. O arquivo original não será alterado. A anotação será um novo PNG.',
+  'Draw over the image. The original is untouched. Annotations are saved as a new PNG.')});
+ const controls=panel.createDiv({cls:'modal-button-container'});
+ const mode=controls.createEl('select',{attr:{'aria-label':writerUi('Ferramenta','Drawing tool')}});
+ for(const [type,pt,en] of [
+  ['pen','Caneta','Pen'],['arrow','Seta','Arrow'],['rect','Retângulo','Rectangle'],
+  ['redact','Ocultar região','Cover region'],['text','Texto','Text']
+ ])mode.createEl('option',{text:writerUi(pt,en),attr:{value:type}});
+ const color=controls.createEl('input',{attr:{type:'color',value:'#ff4b4b','aria-label':writerUi('Cor','Color')}});
+ const text=controls.createEl('input',{attr:{type:'text',maxlength:'120',placeholder:writerUi('Texto da anotação','Annotation text')}});
+ text.style.maxWidth='155px';
+ const undo=controls.createEl('button',{text:writerUi('Desfazer','Undo'),attr:{type:'button'}});
+ const canvas=panel.createEl('canvas',{attr:{'aria-label':writerUi('Área de anotação','Image annotation area')}});
+ canvas.style.cssText='max-width:100%;width:100%;height:auto;border:1px solid var(--background-modifier-border);touch-action:none;cursor:crosshair;';
+ const status=panel.createEl('p',{cls:'setting-item-description'});
+ const ctx=canvas.getContext('2d');
+ if(!ctx){status.setText(writerUi('Canvas indisponível.','Canvas not available.'));modal.open();return;}
+ const source=new (panel.ownerDocument.defaultView.Image)();
+ const shapes=[];let drawing=false,draft=null,loaded=false;
+ const point=event=>{
+  const r=canvas.getBoundingClientRect();
+  return {x:Math.max(0,Math.min(canvas.width,(event.clientX-r.left)*canvas.width/(r.width||1))),
+   y:Math.max(0,Math.min(canvas.height,(event.clientY-r.top)*canvas.height/(r.height||1)))};
+ };
+ const paint=s=>{
+  const {a,b,type,stroke,points,label}=s;
+  ctx.lineWidth=Math.max(2,canvas.width/400);ctx.strokeStyle=stroke;ctx.fillStyle=stroke;
+  ctx.lineJoin='round';ctx.lineCap='round';
+  if(type==='pen'){
+   ctx.beginPath();ctx.moveTo(a.x,a.y);
+   for(const p of points||[])ctx.lineTo(p.x,p.y);
+   ctx.stroke();
+  }else if(type==='text'){
+   ctx.font=Math.max(15,Math.floor(canvas.width/35))+'px sans-serif';
+   ctx.fillText(label||'',a.x,a.y,canvas.width-a.x);
+  }else if(type==='rect'||type==='redact'){
+   const x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(a.x-b.x),h=Math.abs(a.y-b.y);
+   if(type==='redact'){ctx.fillStyle='#151515';ctx.fillRect(x,y,w,h);}
+   else ctx.strokeRect(x,y,w,h);
+  }else if(type==='arrow'){
+   ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+   const theta=Math.atan2(b.y-a.y,b.x-a.x),size=Math.max(10,canvas.width/60);
+   ctx.beginPath();ctx.moveTo(b.x,b.y);
+   ctx.lineTo(b.x-size*Math.cos(theta-.5),b.y-size*Math.sin(theta-.5));
+   ctx.moveTo(b.x,b.y);
+   ctx.lineTo(b.x-size*Math.cos(theta+.5),b.y-size*Math.sin(theta+.5));ctx.stroke();
+  }
+ };
+ const redraw=()=>{
+  if(!loaded)return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(source,0,0,canvas.width,canvas.height);
+  for(const shape of shapes)paint(shape);
+  if(draft)paint(draft);
+ };
+ source.onload=()=>{
+  const max=Math.max(500,Math.min(1800,Number(writerV12AnnotationConfig(plugin).maxDimension)||1400));
+  const scale=Math.min(1,max/Math.max(source.naturalWidth,source.naturalHeight));
+  canvas.width=Math.max(1,Math.floor(source.naturalWidth*scale));
+  canvas.height=Math.max(1,Math.floor(source.naturalHeight*scale));
+  loaded=true;status.setText(source.naturalWidth+' × '+source.naturalHeight+
+   (scale<1?writerUi(' · cópia reduzida',' · resized output'):''));
+  redraw();
+ };
+ source.onerror=()=>status.setText(writerUi('Não foi possível abrir a imagem.','Could not load the image.'));
+ source.src=plugin.app.vault.getResourcePath(file);
+ canvas.addEventListener('pointerdown',e=>{
+  if(!loaded||shapes.length>=100)return;
+  e.preventDefault();
+  const a=point(e),type=mode.value;
+  if(type==='text'){
+   if(!text.value.trim())return;
+   shapes.push({type,a,b:a,label:text.value.trim().slice(0,120),stroke:color.value});
+   redraw();return;
+  }
+  draft={type,a,b:a,points:[a],stroke:color.value};
+  drawing=true;canvas.setPointerCapture?.(e.pointerId);redraw();
+ });
+ canvas.addEventListener('pointermove',e=>{
+  if(!drawing||!draft)return;
+  e.preventDefault();draft.b=point(e);
+  if(draft.type==='pen'&&draft.points.length<1500)draft.points.push(draft.b);
+  redraw();
+ });
+ canvas.addEventListener('pointerup',e=>{
+  if(!drawing||!draft)return;
+  e.preventDefault();draft.b=point(e);
+  if(draft.type==='pen'&&draft.points.length<1500)draft.points.push(draft.b);
+  shapes.push(draft);draft=null;drawing=false;redraw();
+ });
+ canvas.addEventListener('pointercancel',()=>{draft=null;drawing=false;redraw();});
+ undo.addEventListener('click',()=>{shapes.pop();redraw();});
+ new Setting(panel).addButton(b=>b.setButtonText(writerUi('Salvar novo PNG','Save new PNG')).setCta().onClick(async()=>{
+  if(!loaded||!shapes.length){new Notice(writerUi('Faça uma anotação antes.','Add an annotation first.'));return;}
+  b.setDisabled(true);
+  try{
+   const vault=plugin.app.vault,folder='Basic Annotations';
+   if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+   const name=writerV12SafeName(file.basename)+'-annotated';
+   let path=folder+'/'+name+'.png',i=2;
+   while(vault.getAbstractFileByPath(path))path=folder+'/'+name+'-'+i+++'.png';
+   const data=canvas.toDataURL('image/png').split(',')[1];
+   if(!data)throw Error('PNG encoding failed');
+   const decoded=atob(data),bytes=new Uint8Array(decoded.length);
+   for(let j=0;j<decoded.length;j++)bytes[j]=decoded.charCodeAt(j);
+   const result=await vault.createBinary(path,bytes.buffer);
+   modal.close();
+   new Notice(writerUi('Imagem salva: ','Image saved: ')+result.path);
+  }catch(err){status.setText(writerUi('Erro ao salvar: ','Save failed: ')+String(err.message||err));}
+  finally{b.setDisabled(false);}
+ }));
+ modal.open();
+}
+function writerV12AnnotationRegister(plugin){
+ plugin.addCommand({id:'v12-annotate-image',name:writerUi('Imagens: anotar nova cópia PNG','Images: annotate a new PNG copy'),
+  callback:()=>writerV12AnnotatePick(plugin)});
+}
+function writerV12AnnotationSettings(plugin,panel){
+ const cfg=writerV12AnnotationConfig(plugin);
+ panel.createEl('h3',{text:writerUi('Anotações visuais · v12','Image annotations · v12')});
+ new Setting(panel).setName(writerUi('Maior dimensão da imagem exportada','Maximum PNG output dimension'))
+  .addSlider(s=>s.setLimits(600,1800,100).setValue(cfg.maxDimension).setDynamicTooltip().onChange(async v=>{
+   cfg.maxDimension=v;await plugin.saveSettings();
+  }));
+ new Setting(panel).setName(writerUi('Desativar anotação no Android','Disable annotation on Android'))
+  .addToggle(t=>t.setValue(cfg.desktopOnly===true).onChange(async v=>{cfg.desktopOnly=v;await plugin.saveSettings();}));
+}
+
+// v3 module: src/v12/selection-reader.js
+/* Basic v12: context-aware reader for DOM text selections and safe extraction
+ * of selected prose into a linked Markdown note. No new TTS network service. */
+function writerV12SelectedText(plugin){
+ const root=plugin.app.workspace.containerEl,win=root?.ownerDocument?.defaultView;
+ const selection=win?.getSelection?.();
+ if(!selection||!selection.rangeCount||selection.isCollapsed)return '';
+ const node=selection.anchorNode||selection.getRangeAt(0).commonAncestorContainer;
+ if(!node||!root.contains(node))return '';
+ const text=selection.toString().replace(/\s+/g,' ').trim();
+ return text.length>1?text.slice(0,20000):'';
+}
+function writerV12ReadSelection(plugin,text){
+ if(!writerV12On(plugin,'selectionTools'))return;
+ const selected=text||writerV12SelectedText(plugin);
+ if(!selected){new Notice(writerUi('Selecione texto em uma nota ou documento.','Select text in a note or document.'));return;}
+ if(typeof writerV107SpeechStart==='function'){
+  writerV107SpeechConfig?.(plugin.settings);
+  writerV107SpeechStart(plugin,selected);
+ }else new Notice(writerUi('Ative o módulo de voz do Basic.','Enable Basic local speech tools.'));
+}
+function writerV12SelectionMenu(plugin,event){
+ if(!writerV12On(plugin,'selectionTools'))return;
+ const root=plugin.app.workspace.containerEl;
+ const node=event.target;
+ if(!node?.closest||!root.contains(node))return;
+ const container=node.closest('.markdown-preview-view, .pdf-viewer, .pdf-container, .markdown-rendered');
+ if(!container||node.closest('input,textarea,[contenteditable="true"],.cm-editor,.modal-container'))return;
+ const selected=writerV12SelectedText(plugin);
+ if(!selected||selected.length>5000)return;
+ const menu=new Menu(plugin.app);
+ menu.addItem(i=>i.setTitle(writerUi('Ler texto selecionado','Read selected text'))
+  .setIcon('volume-2').onClick(()=>writerV12ReadSelection(plugin,selected)));
+ menu.addItem(i=>i.setTitle(writerUi('Copiar texto','Copy text'))
+  .setIcon('copy').onClick(async()=>{
+   try{await root.ownerDocument.defaultView.navigator.clipboard.writeText(selected);}
+   catch(err){new Notice(writerUi('Permissão de área de transferência indisponível.','Clipboard permission unavailable.'));}
+  }));
+ menu.addItem(i=>i.setTitle(writerUi('Configurar voz','Voice settings')).setIcon('settings')
+  .onClick(()=>{if(typeof writerV107SpeechPanel==='function')writerV107SpeechPanel(plugin);}));
+ menu.showAtPosition({x:event.clientX,y:event.clientY});
+}
+function writerV12MoveSelection(plugin,editor){
+ if(!writerV12On(plugin,'localInbox')||!editor)return;
+ const selected=editor.getSelection()||'';
+ if(!selected.trim()){new Notice(writerUi('Selecione o trecho que deseja separar.','Select the passage to extract.'));return;}
+ const snapshot=editor.getValue();
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Separar trecho em nova nota','Extract passage into a note'));
+ modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Primeiro cria a nova nota. Depois substitui a seleção original por um link. Se a nota mudar, nenhuma substituição será feita.',
+  'Creates the new note first, then replaces the original selection with a link. If content changes, no replacement occurs.')});
+ const input=modal.contentEl.createEl('input',{attr:{type:'text',placeholder:writerUi('Nome da nova nota','New note title'),style:'width:100%'}});
+ const feedback=modal.contentEl.createEl('p',{cls:'setting-item-description'});
+ new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Criar nota vinculada','Create linked note')).setCta().onClick(async()=>{
+  if(!selected.trim()||!input.value.trim()){feedback.setText(writerUi('Informe um nome.','Enter a title.'));return;}
+  b.setDisabled(true);
+  try{
+   const file=await writerV12CreateNote(plugin,'Basic Extracts',input.value,selected);
+   // The original selected text is safe in the new note before touching the editor.
+   if(editor.getValue()!==snapshot||editor.getSelection()!==selected){
+    feedback.setText(writerUi('A nota original mudou; o trecho foi copiado, sem substituir a seleção.',
+      'The original changed; passage was copied without replacing the selection.'));
+    return;
+   }
+   editor.replaceSelection('[['+file.path.replace(/\.md$/,'')+']]');
+   modal.close();
+  }catch(err){feedback.setText(String(err.message||err));}
+  finally{b.setDisabled(false);}
+ }));
+ modal.open();
+}
+function writerV12ReaderRegister(plugin){
+ plugin.addCommand({id:'v12-reader-selected-dom',name:writerUi('TTS: ler seleção em documentos','TTS: read selection from document'),
+  callback:()=>writerV12ReadSelection(plugin)});
+ plugin.addCommand({id:'v12-extract-selected',name:writerUi('Notas: separar trecho em nova nota','Notes: extract selection to a linked note'),
+  editorCallback:editor=>writerV12MoveSelection(plugin,editor)});
+ const root=plugin.app.workspace.containerEl;
+ if(root)plugin.registerDomEvent(root,'pointerup',event=>{
+  // Optional; default false to avoid competing with Android text-selection HUDs.
+  if(!writerV12On(plugin,'selectionTools'))return;
+  if(event.pointerType==='touch')return;
+  setTimeout(()=>{if(root.isConnected)writerV12SelectionMenu(plugin,event);},75);
+ });
+}
+function writerV12ReaderSettings(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Leitor contextual · v12','Context reader · v12')});
+ new Setting(panel).setName(writerUi('Habilitar leitura de seleção em documentos','Enable document selection reader'))
+  .setDesc(writerUi('Usa voz local do Basic. Depende de seleção de texto acessível (inclusive a camada de texto de alguns PDFs).',
+   'Uses the existing Basic local voice. Requires selectable document text, including supported PDF text layers.'))
+  .addToggle(t=>t.setValue(cfg.selectionTools===true).onChange(async v=>{
+   cfg.selectionTools=v;await plugin.saveSettings();
+  }));
 }
 
 // END WRITER V3 MODULES

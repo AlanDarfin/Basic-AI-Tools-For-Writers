@@ -194,6 +194,11 @@ function writerV101RegisterEnhancements(plugin){
  if(typeof writerV11DbRegister==='function')safeRegister('database-workflow-v11',()=>writerV11DbRegister(plugin));
  if(typeof writerV111NumberRegister==='function')safeRegister('numbering-live-v11.1',()=>writerV111NumberRegister(plugin));
  if(typeof writerV111DbBuilderRegister==='function')safeRegister('database-builder-v11.1',()=>writerV111DbBuilderRegister(plugin));
+ if(typeof writerV12Register==='function')safeRegister('unified-toolkit-v12',()=>writerV12Register(plugin));
+ if(typeof writerV12SecureRegister==='function')safeRegister('encrypted-notes-v12',()=>writerV12SecureRegister(plugin));
+ if(typeof writerV12TasksRegister==='function')safeRegister('task-workbench-v12',()=>writerV12TasksRegister(plugin));
+ if(typeof writerV12AnnotationRegister==='function')safeRegister('image-annotation-v12',()=>writerV12AnnotationRegister(plugin));
+ if(typeof writerV12ReaderRegister==='function')safeRegister('context-reader-v12',()=>writerV12ReaderRegister(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -264,4 +269,8 @@ function writerV101EnhancementsSettings(plugin,panel){
  if(typeof writerV11StudioSettings==='function')writerV11StudioSettings(plugin,panel);
  if(typeof writerV111NumberSettings==='function')writerV111NumberSettings(plugin,panel);
  if(typeof writerV111DbBuilderSettings==='function')writerV111DbBuilderSettings(plugin,panel);
+ if(typeof writerV12Settings==='function')writerV12Settings(plugin,panel);
+ if(typeof writerV12SecureSettings==='function')writerV12SecureSettings(plugin,panel);
+ if(typeof writerV12AnnotationSettings==='function')writerV12AnnotationSettings(plugin,panel);
+ if(typeof writerV12ReaderSettings==='function')writerV12ReaderSettings(plugin,panel);
 }

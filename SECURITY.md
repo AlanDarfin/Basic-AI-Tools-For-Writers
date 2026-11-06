@@ -52,3 +52,13 @@ A revisão automática está ativada por padrão dentro do fluxo de Revisão/Gra
 Use GitHub's private vulnerability reporting option, **if available**. Otherwise open a minimal issue requesting a private contact channel, without any exploit details, secrets or manuscript content. Never post personal vault data in public issues.
 
 Não publique informações sensíveis ou detalhes de exploração em issues públicas.
+
+## v12 unified toolkit / Toolkit unificado v12
+
+The v12 additions do not introduce background network requests, local synchronization transports or third-party executables. The companion integration center runs commands of **separately installed and enabled** plugins only when the user invokes them. Their requests, credentials and schedules remain governed by their own settings; choosing one provider in Basic does **not** suspend other plugins' automatic jobs. Use only one background sync strategy for a vault and keep independent backups.
+
+**Per-note encrypted files (opt-in):** Basic v12 can create NEW files with ciphertext only under `Basic Secure/`. It uses Web Crypto AES-256-GCM with a fresh random 96-bit IV, 128-bit random salt, PBKDF2-SHA256 with 310,000 iterations, and an authenticated version marker; the password and derived key are not saved by Basic. Decryption happens in a temporary read-only modal, and its textarea is cleared when the modal closes. Passwords are not recoverable. File names, directory structure, file existence, sizes, timestamps, plugin logs, device backups and metadata are **not hidden or encrypted**. This is not encrypted folder protection, a security audit, key management, or a guarantee against memory/screen capture. Do not add confidential source text to an ordinary Markdown note first if it must remain encrypted.
+
+**Source-preserving edits:** the image annotator writes a new PNG instead of replacing existing images (the original can still show unredacted content). The task Workbench can toggle checkboxes but verifies the full source snapshot atomically before writing; the original read-only task navigator remains available. Copy/extract commands request a new Markdown file and replace the selected passage with a link only after successful creation and a source-state check. Image width changes require explicit confirmation. Folder focus only hides rows in the explorer UI; it never restricts filesystem access.
+
+The original plugins are still needed for folder encryption/index isolation, full Visual Kit HTML handling, dropit remote pairing/transfer, Git/FIT libraries and Syncthing API support. See `docs/V12_SCOPE.pt-BR.md` for exact coverage. Local speech uses the Web Speech voices made available by the browser/OS; those voices are not guaranteed offline by Basic.

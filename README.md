@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 11.1.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 12.0.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -11,6 +11,21 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 
 ## Features
+
+### v12 · Unified Toolkit and companion integrations
+
+Basic v12 expands the existing Markdown writing workspace without adding competing AI, TTS, explorer, Longform, or sync engines.
+
+- **Ultimate Toolkit-inspired writing:** searchable palette with 65 formatting, callout and insertion actions; reusable Basic AI/TTS commands; optional contextual read-aloud for selected document text; six local note templates; temporary file-explorer folder focus.
+- **Visual Kit-inspired images:** image lightbox, preview-and-confirm width normalization in Markdown, and a local image annotation editor with pen, arrows, rectangles, text and area-cover tools. Annotated output is saved as a **new PNG**; source images remain unchanged. Full HTML editing, rich-copy/paste and binary deduplication remain external.
+- **Snailkit-inspired organization:** task Workbench groups tasks by their first tag, filters completed tasks and supports check/uncheck using atomic concurrent-change checks; quick capture, brainstorm and safe extraction of selected prose to a linked note. Search, Spaces and the homepage continue using Basic's existing features.
+- **Optional local encrypted notes:** new files in `Basic Secure/` use AES-256-GCM with PBKDF2-SHA256 and a password never persisted by Basic. This is **per-note content encryption**, disabled by default; it does not encrypt folders, hide filenames or supply password recovery.
+- **Integration center:** detects Ultimate Toolkit, Visual Kit, Snailkit, dropit, both Syncthing plugins, Obsidian Git and FIT when separately enabled. It exposes supported commands while preserving ownership of external settings and data.
+- **Sync center:** select one external provider for **manual** command dispatch and inspect Syncthing conflict copies read-only. No new background sync, Git credentials, remote transport, or automatic conflict resolution is introduced. Disable overlapping auto-sync jobs in original plugins.
+
+**Scope and mobile:** Visual Kit upstream is desktop-only; Basic's original annotation feature works separately but requires Android device testing. Document speech requires selectable text (including PDF text layers when accessible) and a working device voice. Full Ultimate Toolkit protected-folder indexing/bilingual PDF parsing, dropit transport, native Git/Syncthing engines, and complete upstream parity are not claimed.
+
+See [v12 implementation coverage](docs/V12_SCOPE.pt-BR.md) and [release notes](docs/RELEASE_V12.md).
 
 ### Sidebars and editor width
 

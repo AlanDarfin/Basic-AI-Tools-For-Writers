@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 11.1.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 12.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -12,6 +12,21 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 
 ## Funcionalidades
+
+### v12 · Toolkit unificado e integrações externas
+
+A versão 12 expande o espaço de escrita sem duplicar os motores de IA, TTS, explorador, Longform ou sincronização.
+
+- **Escrita inspirada no Ultimate Toolkit:** paleta pesquisável com 65 ações de formatação, callouts e inserções; reaproveitamento da IA e voz do Basic; leitura contextual opcional de texto selecionado em documentos; seis modelos locais; foco temporário em pastas do explorador.
+- **Imagens inspiradas no Visual Kit:** visualizador, normalização de largura com confirmação e editor local para anotar imagens com caneta, setas, retângulos, texto e cobertura de regiões. O resultado é um **novo PNG**, preservando a imagem original. Edição HTML completa, cópia/colagem rica e deduplicação binária permanecem externas.
+- **Organização inspirada no Snailkit:** Workbench de tarefas agrupadas pela primeira etiqueta, filtros, marcar/desmarcar com verificação de conflitos, Inbox, brainstorm e extração segura de trechos para notas vinculadas. Busca, Spaces e homepage reutilizam os módulos atuais.
+- **Notas criptografadas opcionais:** novos arquivos em `Basic Secure/` usam AES-256-GCM com PBKDF2-SHA256 e senha não armazenada pelo Basic. A opção começa **desligada**. Não criptografa pastas, oculta nomes ou recupera senhas esquecidas.
+- **Central de integrações:** detecta Ultimate Toolkit, Visual Kit, Snailkit, dropit, os dois projetos Syncthing, Obsidian Git e FIT quando ativados separadamente, com acesso aos comandos disponíveis.
+- **Sincronização:** seleção de um provedor externo para execução **manual** de comandos e inspeção somente leitura de cópias de conflito. Não há novo motor Git/Syncthing, sincronização automática, pareamento dropit ou mescla automática de conflitos.
+
+**Compatibilidade:** Visual Kit original é exclusivo de PC. O anotador próprio do Basic é separado e precisa de testes no Android. A leitura de PDFs depende da camada de texto selecionável e das vozes do dispositivo. Os motores de criptografia de pastas, índice protegido e transporte remoto dos projetos originais não foram copiados.
+
+Veja a [matriz de funcionalidades](V12_SCOPE.pt-BR.md) e as [notas da versão](RELEASE_V12.md).
 
 No Android, o Dragger de blocos é desativado automaticamente e não exibe alças nem captura gestos de toque.
 

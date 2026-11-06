@@ -1,0 +1,81 @@
+name: Publish Basic 12.0.0
+on:
+  push:
+    branches: [main]
+    paths:
+      - manifest.json
+      - .github/workflows/release-v12.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  publish:
+    if: github.repository == 'AlanDarfin/Basic-AI-Tools-For-Writers'
+    name: Verify and publish plugin
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Verify release version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          current="$(node -p "require('./manifest.json').version")"
+          if [[ "$current" == "12.0.0" ]]; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping v12.0.0 release: current manifest version is $current"
+          fi
+      - name: Set up Node
+        if: steps.version.outputs.eligible == 'true'
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned dependencies
+        if: steps.version.outputs.eligible == 'true'
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Rebuild distributable assets
+        if: steps.version.outputs.eligible == 'true'
+        run: npm run build
+      - name: Complete regression and consistency validation
+        if: steps.version.outputs.eligible == 'true'
+        run: npm run check
+      - name: Verify metadata and bundle assets
+        if: steps.version.outputs.eligible == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs');
+          const pkg=require('./package.json');
+          const lock=require('./package-lock.json');
+          const manifest=require('./manifest.json');
+          const versions=require('./versions.json');
+          if(pkg.version!=='12.0.0'||lock.version!==pkg.version||lock.packages[''].version!==pkg.version||manifest.version!==pkg.version||versions[pkg.version]!==manifest.minAppVersion)
+            throw Error('Release version mismatch');
+          for(const f of ['main.js','manifest.json','styles.css','docs/RELEASE_V12.md'])
+            if(!fs.statSync(f).size)throw Error('Missing/empty '+f);
+          NODE
+          zip -j basic-12.0.0.zip main.js manifest.json styles.css
+          unzip -t basic-12.0.0.zip
+      - name: Publish GitHub release
+        if: steps.version.outputs.eligible == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view 12.0.0 >/dev/null 2>&1; then
+            echo "Basic 12.0.0 release already exists; no duplicate created."
+            exit 0
+          fi
+          gh release create 12.0.0 \
+            main.js manifest.json styles.css basic-12.0.0.zip \
+            --title "Basic 12.0.0 · Unified Toolkit" \
+            --notes-file docs/RELEASE_V12.md \
+            --target "$GITHUB_SHA" \
+            --latest

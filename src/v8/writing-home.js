@@ -1,7 +1,7 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero','webBookmarks'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
@@ -58,6 +58,7 @@ const WRITER_V8_HOME_CATALOG={
  trash:['trash-2','Lixeira','Trash explorer','Restaure notas da lixeira interna','Restore notes from Obsidian trash'],
  reading:['book-open-check','Leitura atual','Current reading','Palavras, títulos e tempo estimado','Words, headings and estimated time'],
  zotero:['book-marked','Fontes Zotero','Zotero sources','Notas de pesquisa importadas','Imported research notes'],
+ webBookmarks:['globe','Favoritos da web','Web bookmarks','Links salvos para abrir no Surfing ou navegador','Saved links for Surfing or your browser'],
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -175,6 +176,7 @@ class WriterV8HomeView extends ItemView{
    continue:p=>this.renderContinue(p),
    recent:p=>this.renderFiles(p,'recent'),
    favorites:p=>this.renderFiles(p,'favorites'),
+   webBookmarks:p=>this.renderWebBookmarks(p),
    quick:p=>this.renderQuick(p),
    stats:p=>this.renderStats(p),
    activity:p=>this.renderActivity(p),
@@ -422,8 +424,13 @@ class WriterV8HomeView extends ItemView{
    .addEventListener('click',()=>this.plugin.openProjects('board'));
  }
  renderSearch(parent){
-  const box=this.card(parent,'search','Buscar no cofre','Search vault');
+  const box=this.card(parent,'search','Pesquisa','Search');
   box.addClass('writer-v901-home-search-card');
+  const modeBar=box.createDiv({cls:'writer-v1203-home-search-modes',attr:{role:'group','aria-label':writerUi('Origem da pesquisa','Search source')}});
+  const vaultTab=modeBar.createEl('button',{text:writerUi('Cofre','Vault'),attr:{type:'button','aria-pressed':'true'}});
+  const webTab=modeBar.createEl('button',{text:writerUi('Web · Surfing','Web · Surfing'),attr:{type:'button','aria-pressed':'false'}});
+  webTab.hidden=this.plugin.settings.v8Finish.homeWebSearchEnabled===false;
+  let mode='vault';
   const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
   this.homeSearchInput=input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
@@ -446,7 +453,7 @@ class WriterV8HomeView extends ItemView{
    const previous=preserve?matches[selected]?.path:'';
    results.empty();results.hidden=true;status.hidden=true;
    const q=input.value.trim();
-   if(!q){matches=[];selected=0;return;}
+   if(mode==='web'||!q){matches=[];selected=0;return;}
    matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
    if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
    else selected=0;
@@ -478,31 +485,50 @@ class WriterV8HomeView extends ItemView{
   web.hidden=true;
   const link=web.createEl('button',{text:writerUi('Abrir endereço web','Open web address'),attr:{type:'button'}});
   link.hidden=true;
+  const updateWebAction=()=>{
+   const q=input.value.trim(),url=writerV8HomeValidURL(q);
+   const visible=Boolean(q&&(mode==='web'||url));
+   link.hidden=!visible;web.hidden=!visible;
+   if(visible)link.setText(url?writerUi('Abrir endereço','Open address'):
+    writerUi('Pesquisar na web','Search web'));
+  };
   const open=async()=>{
    link.disabled=true;
-   try{await writerV8HomeOpenURL(this.plugin,input.value);}
-   catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   try{
+    const target=mode==='web'?writerV8HomeSearchURL(this.plugin,input.value):input.value;
+    await writerV8HomeOpenURL(this.plugin,target);
+   }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
    finally{link.disabled=false;}
   };
+  const setMode=next=>{
+   mode=next==='web'&&this.plugin.settings.v8Finish.homeWebSearchEnabled!==false?'web':'vault';
+   vaultTab.setAttribute('aria-pressed',String(mode==='vault'));
+   webTab.setAttribute('aria-pressed',String(mode==='web'));
+   input.placeholder=mode==='web'?writerUi('Pesquisar na web ou digitar um endereço…','Search the web or enter an address…'):
+    writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…');
+   input.setAttribute('aria-label',mode==='web'?writerUi('Pesquisar na web','Search web'):writerUi('Buscar notas','Search notes'));
+   updateWebAction();draw();input.focus({preventScroll:true});
+  };
+  vaultTab.addEventListener('click',()=>setMode('vault'));
+  webTab.addEventListener('click',()=>setMode('web'));
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
-   if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
-   if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
+   if((event.ctrlKey||event.metaKey)&&event.key==='Enter'&&input.value.trim()&&
+      this.plugin.settings.v8Finish.homeWebSearchEnabled!==false){
+    event.preventDefault();setMode('web');void open();return;
+   }
+   if(mode==='vault'&&event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
+   if(mode==='vault'&&event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
    if(event.key==='Enter'){
     const url=writerV8HomeValidURL(input.value);
-    if(url){event.preventDefault();void open();return;}
+    if(mode==='web'||url){event.preventDefault();void open();return;}
     if(matches.length){event.preventDefault();this.openFile(matches[selected]);return;}
    }
    if(event.key==='Escape'&&input.value){
-    event.preventDefault();input.value='';link.hidden=true;web.hidden=true;draw();
+    event.preventDefault();input.value='';updateWebAction();draw();
    }
   });
-  input.addEventListener('input',()=>{
-   const url=writerV8HomeValidURL(input.value);
-   link.hidden=!url;web.hidden=!url;
-   if(url)link.setText(writerUi('Abrir site no navegador','Open website'));
-   draw();
-  });
+  input.addEventListener('input',()=>{updateWebAction();draw();});
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
   box.addEventListener('keydown',focus);

@@ -85,6 +85,30 @@ test('Dragger falls back gracefully if setIcon is not available in older Obsidia
  env.cleanup.forEach(fn=>fn());
 });
 
+test('Dragger does not create a handle, commands or listeners on Obsidian mobile',()=>{
+ const env=makeRuntime();
+ env.obsidian.Platform.isMobile=true;
+ const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
+ assert.equal(env.doc.body.children.length,0,'no overlay controls on mobile');
+ assert.deepEqual(env.icons,[]);
+ assert.deepEqual(env.listeners,[],'no editor pointer, long-press or touch listeners');
+ assert.deepEqual(env.commands,[],'no unused Dragger commands in mobile palette');
+ assert.equal(typeof env.plugin.writerV106DragApplyStyles,'undefined');
+ assert.deepEqual(env.cleanup,[]);
+ assert.equal(env.plugin.settings.v106Dragger.enabled,true,'desktop preferences are preserved');
+});
+
+test('Dragger also skips mobile if app.isMobile is true without Platform.isMobile',()=>{
+ const env=makeRuntime();
+ env.plugin.app.isMobile=true;
+ const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
+ assert.equal(env.doc.body.children.length,0);
+ assert.deepEqual(env.listeners,[]);
+ assert.deepEqual(env.commands,[]);
+});
+
 test('Related-notes/trash icon buttons also resolve setIcon explicitly',()=>{
  const env=makeRuntime();
  const api=loadModule('src/v10/discovery.js',{obsidian:env.obsidian});

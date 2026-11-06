@@ -11,6 +11,7 @@ const v=context.v12;
 
 test('v12 bridges all eight requested projects without copying upstream engines',()=>{
  assert.equal(v.WRITER_V12_COMPANIONS.length,8);
+ assert.ok(v.writerV12PaletteItems().length>=60,'Expected 60+ formatting actions');
  const ids=Array.from(v.WRITER_V12_COMPANIONS,x=>x.id);
  for(const expected of ['ahmed-toolkit','visual-kit','snailkit','dropit','syncthing-integration','syncthing-manager','obsidian-git','fit'])
   assert.ok(ids.includes(expected),expected);

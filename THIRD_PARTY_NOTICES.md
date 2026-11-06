@@ -122,3 +122,7 @@ The v10.6 block dragging feature is an original Basic implementation inspired by
 ## FSRS-4.5 and third-party APIs
 
 The scheduling calculations in Basic 10.7 follow the published FSRS-4.5 equations and parameter defaults documented by [open-spaced-repetition](https://open-spaced-repetition.github.io/ts-fsrs/guide/model/fsrs-4dot5). This is an original integration and does not bundle the upstream library. Zotero Web API integration uses documented public v3 HTTP endpoints with explicit user activation; Zotero trademarks and web services remain those of their respective owners. The calendar subscription feature uses the standard iCalendar (.ics) format and user-supplied HTTPS feeds.
+
+## Sidebar Manager and Editor Width Slider — inspiration (10.10.0)
+
+[Sidebar Manager by koosolek](https://github.com/koosolek/obsidian-sidebar-manager) and [Editor Width Slider by MugishoMp](https://github.com/MugishoMp/obsidian-editor-width-slider) are MIT-licensed independent Obsidian plugins. Basic's implementation is newly written and **does not vendor their source files or images**. Their capabilities inspired optional sidebar view buttons, overflow/accessibility controls and a status bar/metadata-based editor-width feature. Sidebar Manager targets private UI structures from Obsidian 1.14; Basic intentionally avoids copying its DOM mutation and vault-switching internals. The Basic sidebar feature is opt-in, reversible and not a claim of full parity.

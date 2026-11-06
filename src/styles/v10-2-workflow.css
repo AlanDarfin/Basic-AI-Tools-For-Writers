@@ -1587,12 +1587,12 @@ body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-tools butto
 .writer-v1011-number-reading h4.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) "." counter(basic-h3) "." counter(basic-h4) " ";}
 .writer-v1011-number-reading h5.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) "." counter(basic-h3) "." counter(basic-h4) "." counter(basic-h5) " ";}
 .writer-v1011-number-reading h6.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) "." counter(basic-h2) "." counter(basic-h3) "." counter(basic-h4) "." counter(basic-h5) "." counter(basic-h6) " ";}
-.writer-v1011-number-reading[data-basic-scheme="flat"] h1.writer-v1011-numbered-title::before{content:counter(basic-h1) ". ";}
-.writer-v1011-number-reading[data-basic-scheme="flat"] h2.writer-v1011-numbered-title::before{content:counter(basic-h2) ". ";}
-.writer-v1011-number-reading[data-basic-scheme="flat"] h3.writer-v1011-numbered-title::before{content:counter(basic-h3) ". ";}
-.writer-v1011-number-reading[data-basic-scheme="flat"] h4.writer-v1011-numbered-title::before{content:counter(basic-h4) ". ";}
-.writer-v1011-number-reading[data-basic-scheme="flat"] h5.writer-v1011-numbered-title::before{content:counter(basic-h5) ". ";}
-.writer-v1011-number-reading[data-basic-scheme="flat"] h6.writer-v1011-numbered-title::before{content:counter(basic-h6) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h1.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h1) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h2.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h2) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h3.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h3) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h4.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h4) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h5.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h5) ". ";}
+.writer-v1011-number-reading[data-basic-scheme="flat"] h6.writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{content:counter(basic-h6) ". ";}
 .writer-v1011-number-reading .writer-v1011-numbered-title:not(.writer-v1011-number-already-stored)::before{
  display:inline;font-variant-numeric:tabular-nums;color:var(--text-accent);
  font-weight:600;margin-inline-end:.15em;

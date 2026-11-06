@@ -26810,10 +26810,12 @@ function writerV1201SettingsPrivacy(plugin,panel){
   'Content-only encryption of new files. Titles, filenames and folders stay visible.')});
  new Setting(panel).setName(writerUi('Criar nota protegida','Create protected note'))
   .addButton(b=>b.setButtonText(writerUi('Criar','Create'))
-   .setDisabled(cfg.secureNotes!==true).onClick(()=>writerV12SecureCreate(plugin)));
+   .onClick(()=>cfg.secureNotes===true?writerV12SecureCreate(plugin):
+    new Notice(writerUi('Ative notas criptografadas acima.','Enable encrypted notes above.'))));
  new Setting(panel).setName(writerUi('Abrir nota protegida','Open protected note'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
-   .setDisabled(cfg.secureNotes!==true).onClick(()=>writerV12SecureRead(plugin)));
+   .onClick(()=>cfg.secureNotes===true?writerV12SecureRead(plugin):
+    new Notice(writerUi('Ative notas criptografadas acima.','Enable encrypted notes above.'))));
 }
 function writerV1201SettingsReader(plugin,panel){
  panel.createEl('h3',{text:writerUi('Leitura e voz','Reading and voice')});

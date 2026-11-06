@@ -164,7 +164,42 @@ function writerV1011NotionRender(plugin,source,element,ctx){
    for(const [name,items] of groups){
     const lane=board.createDiv({cls:'writer-v1011-notion-lane'});
     lane.createEl('h5',{text:name+' · '+items.length});
-    for(const row of items)link(lane,row,true);
+    const canMove=plugin.settings.v107Db?.editable&&typeof writerV11DbChangeGroup==='function'&&typeof writerV11DbPropertyKey==='function'&&writerV11DbPropertyKey(spec.group);
+    if(canMove){
+     lane.addEventListener('dragover',ev=>{if(ev.dataTransfer?.types.includes('text/plain'))ev.preventDefault();});
+     lane.addEventListener('drop',ev=>{
+      const data=ev.dataTransfer?.getData('text/plain')||'';
+      if(!data.startsWith('basic-v11:'))return;
+      ev.preventDefault();
+      const source=shown.find(x=>x.file.path===data.slice('basic-v11:'.length));
+      if(!source)return;
+      void writerV11DbChangeGroup(plugin,source,spec.group,name).then(()=>{
+       element.empty();writerV1011NotionRender(plugin,sourceText,element,ctx);
+      }).catch(error=>new Notice(String(error.message||error)));
+     });
+    }
+    for(const row of items){
+     const button=link(lane,row,true);
+     if(!canMove)continue;
+     button.draggable=true;
+     button.addEventListener('dragstart',ev=>{
+      ev.dataTransfer?.setData('text/plain','basic-v11:'+row.file.path);
+      if(ev.dataTransfer)ev.dataTransfer.effectAllowed='move';
+     });
+     const change=lane.createEl('select',{cls:'writer-v11-db-move',attr:{'aria-label':writerUi('Mover cartão: ','Move card: ')+row.file.basename}});
+     for(const value of groups.keys()){
+      const option=change.createEl('option',{text:value});option.value=value;
+     }
+     change.value=name;
+     change.addEventListener('click',ev=>ev.stopPropagation());
+     change.addEventListener('change',async()=>{
+      change.disabled=true;
+      try{
+       await writerV11DbChangeGroup(plugin,row,spec.group,change.value);
+       element.empty();writerV1011NotionRender(plugin,sourceText,element,ctx);
+      }catch(error){new Notice(String(error.message||error));change.value=name;change.disabled=false;}
+     });
+    }
    }
   }else if(mode==='chart'){
    const data=writerV1011NotionChart(shown,spec.group||'status',spec.calculate||'count');

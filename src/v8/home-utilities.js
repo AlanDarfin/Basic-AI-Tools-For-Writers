@@ -41,22 +41,83 @@ function writerV8HomeWebViewerEnabled(plugin){
  const instance=internal?.getPluginById?.('webviewer')||internal?.plugins?.webviewer;
  return Boolean(instance?.enabled===true);
 }
+const WRITER_V8_WEB_ENGINES=[
+ ['surfing','Surfing'],
+ ['google','Google'],['duckduckgo','DuckDuckGo'],['bing','Bing'],
+ ['yahoo','Yahoo'],['wikipedia','Wikipedia']
+];
+const WRITER_V8_WEB_ENGINE_URLS={
+ google:'https://www.google.com/search?q=',duckduckgo:'https://duckduckgo.com/?q=',
+ bing:'https://www.bing.com/search?q=',yahoo:'https://search.yahoo.com/search?p=',
+ wikipedia:'https://en.wikipedia.org/w/index.php?search='
+};
+function writerV8HomeSurfing(plugin){
+ const manager=plugin.app?.plugins;
+ const enabled=manager?.enabledPlugins;
+ if(enabled?.has&&!enabled.has('surfing'))return null;
+ if(Array.isArray(enabled)&&!enabled.includes('surfing'))return null;
+ return manager?.plugins?.surfing||null;
+}
+function writerV8HomeSearchURL(plugin,input){
+ const query=String(input||'').trim();
+ if(!query||query.length>500||/[\u0000-\u001f]/.test(query))
+  throw Error(writerUi('Digite uma pesquisa válida.','Enter a valid web search.'));
+ const direct=writerV8HomeValidURL(query);
+ if(direct)return direct;
+ const cfg=plugin.settings?.v8Finish||{};
+ const surfing=writerV8HomeSurfing(plugin);
+ let selected=String(cfg.homeWebSearchEngine||'surfing').toLowerCase();
+ if(selected==='surfing')
+  selected=String(surfing?.settings?.defaultSearchEngine||'google').toLowerCase();
+ let base=WRITER_V8_WEB_ENGINE_URLS[selected];
+ if(!base&&surfing){
+  const custom=surfing.settings?.customSearchEngine;
+  const engine=Array.isArray(custom)?custom.find(x=>String(x.name||'').toLowerCase()===selected):null;
+  if(engine?.url)base=engine.url;
+ }
+ base=String(base||WRITER_V8_WEB_ENGINE_URLS.google);
+ // Custom Surfing search engines are URL prefixes, never script protocols.
+ let candidate;
+ try{
+  const url=new URL(base);
+  if(!['https:','http:'].includes(url.protocol)||url.username||url.password)throw Error('Unsafe engine');
+  candidate=base.includes('%s')?base.replaceAll('%s',encodeURIComponent(query)):
+   base.includes('{query}')?base.replaceAll('{query}',encodeURIComponent(query)):
+   base+encodeURIComponent(query);
+ }catch(_){candidate=WRITER_V8_WEB_ENGINE_URLS.google+encodeURIComponent(query);}
+ const result=writerV8HomeValidURL(candidate);
+ if(!result)throw Error(writerUi('Busca web inválida.','Invalid web search URL.'));
+ return result;
+}
 async function writerV8HomeOpenURL(plugin,input){
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));
- if(!writerV8HomeIsMobile(plugin)&&writerV8HomeWebViewerEnabled(plugin)){
-  const leaf=plugin.app.workspace.getLeaf?.('tab');
-  if(leaf){
-   try{
-    await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
-    if(leaf.getViewState?.()?.type==='webviewer')return 'webviewer';
-   }catch(error){console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
+ const mobile=writerV8HomeIsMobile(plugin);
+ const preference=plugin.settings?.v8Finish?.homeWebSearchTarget||'auto';
+ if(!mobile&&preference!=='external'){
+  const surfing=writerV8HomeSurfing(plugin);
+  if(surfing&&(preference==='surfing'||preference==='auto')){
+   const leaf=plugin.app.workspace.getLeaf?.('tab');
+   if(leaf){
+    try{
+     await leaf.setViewState({type:'surfing-view',state:{url},active:true});
+     if(leaf.getViewState?.()?.type==='surfing-view')return 'surfing';
+    }catch(error){console.warn('[Basic AI] Surfing browser unavailable:',error);}
+   }
+  }
+  if(writerV8HomeWebViewerEnabled(plugin)){
+   const leaf=plugin.app.workspace.getLeaf?.('tab');
+   if(leaf){
+    try{
+     await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+     if(leaf.getViewState?.()?.type==='webviewer')return 'webviewer';
+    }catch(error){console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
+   }
   }
  }
- // On mobile, Obsidian has no desktop Web Viewer. Delegate to the system
- // browser through the host's external-link handler, never an iframe.
+ // Surfing is desktop-only; mobile always delegates to the external browser.
  const scope=plugin.app.workspace.containerEl?.ownerDocument?.defaultView || (typeof window!=='undefined'?window:null);
- if(typeof scope?.open==='function'){scope.open(url,writerV8HomeIsMobile(plugin)?'_system':'_blank');return 'external';}
+ if(typeof scope?.open==='function'){scope.open(url,mobile?'_system':'_blank');return 'external';}
  throw Error(writerUi('Navegador externo indisponível.','External browser unavailable.'));
 }
 function writerV8HomeCalendarCells(year,month){

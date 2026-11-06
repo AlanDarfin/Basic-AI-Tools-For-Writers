@@ -126,3 +126,13 @@ The scheduling calculations in Basic 10.7 follow the published FSRS-4.5 equation
 ## Sidebar Manager and Editor Width Slider — inspiration (10.10.0)
 
 [Sidebar Manager by koosolek](https://github.com/koosolek/obsidian-sidebar-manager) and [Editor Width Slider by MugishoMp](https://github.com/MugishoMp/obsidian-editor-width-slider) are MIT-licensed independent Obsidian plugins. Basic's implementation is newly written and **does not vendor their source files or images**. Their capabilities inspired optional sidebar view buttons, overflow/accessibility controls and a status bar/metadata-based editor-width feature. Sidebar Manager targets private UI structures from Obsidian 1.14; Basic intentionally avoids copying its DOM mutation and vault-switching internals. The Basic sidebar feature is opt-in, reversible and not a claim of full parity.
+
+## Unique Suite, Notion Suite and Number Suite — inspiration (10.11.0)
+
+This release adds newly authored Basic modules inspired by documented capabilities of three independently developed **MIT-licensed** Obsidian plugins. No upstream application source, icons, fonts, third-party dependencies or compiled bundles have been copied into Basic.
+
+- [Unique Suite](https://github.com/Benhaman9/unique-suite) — Benjamín Alcalde (2026), MIT. Academic note capture, daily notes, reminders, class timetable and the academic dashboard concept. Basic deliberately reuses its existing calendar, study engine and optional iCalendar subscriptions.
+- [Notion Suite](https://github.com/navysum/notion-suite) — craigstfn / navysum and contributors, MIT. Markdown-backed table, board, list, gallery, calendar, timeline and chart views. Basic's independent renderer uses `basic-suite-db` rather than taking over the original `notion-db` code block.
+- [Number Suite](https://github.com/ZHYX91/obsidian-number-suite) — ZhengYX and contributors (2026), MIT. Visual heading numbering, navigable outline and confirmed preview-before-write operations. Basic implements a limited H1–H6 Reading View and single-note subset.
+
+These are **feature integrations, not full ports**. In particular, the upstream Notion Suite and Number Suite use Obsidian APIs from newer releases than Basic's compatibility baseline. See `docs/V10_11_SUITES_SCOPE.pt-BR.md` for the implemented scope and missing functions. The original projects remain maintained separately.

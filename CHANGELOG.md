@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.11.0 — Academic, database and numbering integrations
+
+- Added an academic center based on the Unique Suite workflow, with user-triggered class capture, daily notes, local dated reminders and a Markdown timetable renderer. The existing Basic calendar and ICS feed modules are reused.
+- Added Notion-inspired Markdown database views: list, gallery, calendar, timeline and chart, alongside table and board. Reuses Basic's formulas and relation rollups. New block `basic-suite-db` avoids conflict with the original plugin.
+- Added conservative Number-inspired H1–H6 virtual numbering in Reading View, a navigable outline, recognized prefix removal and preview/confirmation before writing headings. Single-note changes use snapshots when available and exact file staleness checks.
+- Independent module settings, guarded startup, responsive CSS and slash-menu starters. No additional ribbon icons, external network requests or automatic vault migrations.
+- Added regression tests and a [Portuguese scope report](docs/V10_11_SUITES_SCOPE.pt-BR.md). These integrations are subsets, **not full compatibility with every function in the three original plugins**.
+- README files remain dedicated to current capabilities and examples; this file is the only version history.
+
 ## 10.10.4 — Persistent collapsible mobile Spaces
 
 - Move the Spaces selector out of the Explorer's temporary drawer contents and anchor it directly to the native mobile tab bar.

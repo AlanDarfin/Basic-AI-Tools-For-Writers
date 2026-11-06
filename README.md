@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.10.4 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.11.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -107,6 +107,37 @@ layout: cards
 [[Chapter 1]]
 [[Chapter 2]]
 ```
+
+### Academic workspace, advanced databases and document numbering
+
+- **Academic center (Unique Suite-inspired):** capture class notes, open daily journal notes, write dated reminders and maintain a Markdown timetable. Access it through **Study: open academic center** in the command palette. Folder names are configurable, and nothing is created until you choose an action. Use the existing Basic calendar and optional iCalendar subscriptions rather than introducing a duplicate sync engine.
+- **Advanced databases (Notion Suite-inspired):** use the local Markdown database engine with table, board, list, gallery, calendar, timeline and bar-chart views. Rows remain normal notes; view filters, safe formulas, basic relations and rollups reuse existing Basic functions. The **Create note** control writes a file only when clicked. The dedicated `basic-suite-db` block avoids conflicts with the standalone `notion-db` renderer.
+- **Document numbering (Number Suite-inspired):** optional virtual H1–H6 heading numbers in **Reading View**, a navigable outline, and preview-before-apply commands for writing or removing recognized stored numbers. Each write requires confirmation and an exact stale-content check. Plain caption paragraphs beginning with `Figure:`, `Table:`, `Equation:` or `Code:` can receive visual styling; full caption/reference numbering and Live Preview decorations are not yet included.
+
+Database example:
+
+~~~basic-suite-db
+folder: Databases/Tasks
+view: gallery
+columns: file, status, due
+cover: banner
+group: status
+sort: modified
+order: desc
+~~~
+
+Change `view` to `table`, `board`, `list`, `calendar`, `timeline` or `chart`; the toolbar can also switch views temporarily. The Flow `/` menu offers a database-view starter.
+
+Timetable example, reading your local `Estudos/Horário.md`:
+
+~~~basic-timetable
+file: Estudos/Horário.md
+title: My classes
+~~~
+
+A note can opt out of virtual heading numbering with `basic-numbering: false` in Properties. Turning on virtual numbering does not edit Markdown. Writing heading numbers can change section-link targets, so test it with a sample note first.
+
+The [suite feature scope](docs/V10_11_SUITES_SCOPE.pt-BR.md) distinguishes implemented workflows from capabilities that still belong to the standalone upstream plugins.
 
 ### Native explorer and personalization
 

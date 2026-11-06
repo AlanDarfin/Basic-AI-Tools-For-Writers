@@ -8,7 +8,21 @@ function writerV8HomeTitleClean(value){
   .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
   .slice(0,80);
 }
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeCleanStart:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','books','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero','webBookmarks'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero','webBookmarks'],homeWordGoal:500,homeQuotes:'',homePresets:[],homeWebSearchEnabled:true,homeWebSearchEngine:'surfing',homeWebSearchTarget:'auto',homeWebBookmarks:[]};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeCleanStart:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeWidgetFrames:{},homeWidgetAlignment:'grid',homeOrder:['continue','calendar','books','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero','webBookmarks'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero','webBookmarks'],homeWordGoal:500,homeQuotes:'',homePresets:[],homeWebSearchEnabled:true,homeWebSearchEngine:'surfing',homeWebSearchTarget:'auto',homeWebBookmarks:[]};
+function writerV8HomeNormalizeFrames(raw,allowed){
+ const clean={};
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return clean;
+ for(const [key,frame] of Object.entries(raw).slice(0,80)){
+  if(!allowed.includes(key)||!frame||typeof frame!=='object'||Array.isArray(frame))continue;
+  const columns=Number(frame.columns),height=Number(frame.height),width=Number(frame.width);
+  clean[key]={
+   columns:Math.max(3,Math.min(12,Number.isFinite(columns)?Math.round(columns):6)),
+   height:Number.isFinite(height)?Math.max(92,Math.min(1100,Math.round(height))):0,
+   width:Number.isFinite(width)?Math.max(160,Math.min(1800,Math.round(width))):0
+  };
+ }
+ return clean;
+}
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -25,6 +39,8 @@ function writerV8FinishMerge(settings){
  cfg.homeQuick=Array.isArray(cfg.homeQuick)?Array.from({length:3},(_,i)=>String(cfg.homeQuick[i]||'').slice(0,12000)):['','',''];
  cfg.homeWidgetSizes=Object.fromEntries(Object.entries(cfg.homeWidgetSizes&&typeof cfg.homeWidgetSizes==='object'&&!Array.isArray(cfg.homeWidgetSizes)?cfg.homeWidgetSizes:{}).filter(([key,size])=>WRITER_V8_FINISH_DEFAULTS.homeOrder.includes(key)&&['compact','normal','wide'].includes(size)));
  const allowed=WRITER_V8_FINISH_DEFAULTS.homeOrder;
+ cfg.homeWidgetAlignment=cfg.homeWidgetAlignment==='free'?'free':'grid';
+ cfg.homeWidgetFrames=writerV8HomeNormalizeFrames(cfg.homeWidgetFrames,allowed);
  const prevOrder=Array.isArray(old.homeOrder)?old.homeOrder.filter(key=>allowed.includes(key)):[];
  const requested=prevOrder.length?prevOrder:[...allowed];
  const index=requested.includes('calendar')?-1:requested.indexOf('continue');
@@ -66,7 +82,9 @@ function writerV8FinishMerge(settings){
   order:Array.isArray(raw?.order)?[...new Set(raw.order.filter(key=>allowed.includes(key)))]:[],
   hidden:Array.isArray(raw?.hidden)?[...new Set(raw.hidden.filter(key=>allowed.includes(key)))]:[],
   sizes:Object.fromEntries(Object.entries(raw?.sizes&&typeof raw.sizes==='object'?raw.sizes:{})
-   .filter(([key,size])=>allowed.includes(key)&&['compact','normal','wide'].includes(size)))
+   .filter(([key,size])=>allowed.includes(key)&&['compact','normal','wide'].includes(size))),
+  frames:writerV8HomeNormalizeFrames(raw?.frames,allowed),
+  alignment:raw?.alignment==='free'?'free':'grid'
  })).filter(p=>p.name);
  return cfg;
 }

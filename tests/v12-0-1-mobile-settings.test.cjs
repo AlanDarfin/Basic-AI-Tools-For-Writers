@@ -20,13 +20,21 @@ const ctx={
 };
 vm.runInNewContext(quickSource+'\nglobalThis.quick={writerV1201NativeAction,writerV1201RibbonRegister,writerV1201QuickMenu,writerV1201Format,writerV1201Editor,writerV1201BookmarkCommand};',ctx);
 const quick=ctx.quick;
-test('all new settings categories appear in the Basic settings navigation',()=>{
- for(const page of ['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections','suiteEducation','suiteDatabase','suiteNumbering','suiteLongform']){
-  assert.match(main,new RegExp("\\['"+page+"'"));
-  assert.match(main,new RegExp("id==='"+page+"'|includes\\(id\\)"));
- }
- assert.match(main,/\['toolkit',/);
- assert.match(main,/\['suites',/);
+test('v12 settings are integrated into existing tabs with no new groups',()=>{
+ const navigation=main.slice(main.indexOf('class DictionarySettings extends PluginSettingTab'),
+  main.indexOf('module.exports=class AlansOfflineDictionary'));
+ for(const page of ['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections',
+  'suiteEducation','suiteDatabase','suiteNumbering','suiteLongform'])
+  assert.doesNotMatch(navigation,new RegExp("\\\\['"+page+"',msg\\\\("));
+ const groups=navigation.slice(navigation.indexOf('const groups=['),navigation.indexOf('const groupIcons='));
+ assert.doesNotMatch(groups,/\['toolkit',/);
+ assert.doesNotMatch(groups,/\['suites',/);
+ for(const id of ['v9Toolbar','v9Pretty','v9Flow','v9Calendar','v9Lock','v10Tools','integrationsV4','projects'])
+  assert.match(groups,new RegExp("'"+id+"'"));
+ for(const fn of ['writerV1201SettingsOverview','writerV1201SettingsWriting','writerV1201SettingsImages',
+  'writerV1201SettingsTasks','writerV1201SettingsPrivacy','writerV1201SettingsReader',
+  'writerV1201SettingsConnections','writerV1201SettingsSuite'])
+  assert.ok(navigation.includes(fn+'(this.plugin,panel'));
 });
 test('recent modules are no longer all appended to Files and shortcuts settings',()=>{
  assert.doesNotMatch(enhancements,/if\(typeof writerV12Settings==='function'\)writerV12Settings/);

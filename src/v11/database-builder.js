@@ -26,7 +26,7 @@ function writerV111DbBuilderNormalize(raw){
  const limit=Math.max(5,Math.min(500,Math.round(Number(a.limit)||80)));
  const cover=prop(a.cover)||'banner',date=prop(a.date)||'date';
  const start=prop(a.start)||'start',end=prop(a.end)||'end',parent=prop(a.parent)||'parent';
- return {folder,view,columns,group,sort,order,filter,title,limit,cover,date,start,end,parent};
+ return {folder,view,columns,group,sort,order,filter:safeFilter,title,limit,cover,date,start,end,parent};
 }
 function writerV111DbBuilderBlock(raw){
  const p=writerV111DbBuilderNormalize(raw);

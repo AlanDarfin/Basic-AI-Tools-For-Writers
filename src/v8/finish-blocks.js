@@ -8,7 +8,7 @@ function writerV8HomeTitleClean(value){
   .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g,'')
   .slice(0,80);
 }
-const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeCleanStart:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','books','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero'],homeWordGoal:500,homeQuotes:'',homePresets:[]};
+const WRITER_V8_FINISH_DEFAULTS={captions:true,captionMax:180,homeAtStartup:false,homeOnNewTab:true,homeCleanStart:true,homeTitle:'',homeIcon:'book-open',homeIconImage:'',homeTitleColor:'',homeIconColor:'',homeFavorites:[],homeRecent:[],homeQuick:['','',''],homeWidgetSizes:{},homeOrder:['continue','calendar','books','soundscape','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero','webBookmarks'],homeHidden:['activity','random','tags','goal','gallery','quotes','today','trash','reading','zotero','webBookmarks'],homeWordGoal:500,homeQuotes:'',homePresets:[],homeWebSearchEnabled:true,homeWebSearchEngine:'surfing',homeWebSearchTarget:'auto',homeWebBookmarks:[]};
 function writerV8FinishMerge(settings){
  const old=settings.v8Finish&&typeof settings.v8Finish==='object'&&!Array.isArray(settings.v8Finish)?settings.v8Finish:{};
  const cfg=settings.v8Finish={...WRITER_V8_FINISH_DEFAULTS,...old};
@@ -32,7 +32,7 @@ function writerV8FinishMerge(settings){
  else if(!requested.includes('calendar'))requested.push('calendar');
  cfg.homeOrder=[...new Set([...requested,...allowed])];
  // New widgets are off by default for existing installs; user choices persist.
- const newWidgets=['gallery','quotes','today','trash','reading','zotero'];
+ const newWidgets=['gallery','quotes','today','trash','reading','zotero','webBookmarks'];
  cfg.homeHidden=Array.isArray(old.homeHidden)?
   [...new Set([...old.homeHidden.filter(key=>allowed.includes(key)),...newWidgets.filter(key=>!prevOrder.includes(key))])]:
   [...WRITER_V8_FINISH_DEFAULTS.homeHidden];
@@ -44,6 +44,23 @@ function writerV8FinishMerge(settings){
  }
  cfg.homeWordGoal=Math.max(50,Math.min(20000,Math.round(Number(cfg.homeWordGoal)||500)));
  cfg.homeQuotes=String(cfg.homeQuotes||'').slice(0,12000);
+ cfg.homeWebSearchEnabled=cfg.homeWebSearchEnabled!==false;
+ cfg.homeWebSearchEngine=String(cfg.homeWebSearchEngine||'surfing').toLowerCase().slice(0,50);
+ cfg.homeWebSearchTarget=['auto','surfing','webviewer','external'].includes(cfg.homeWebSearchTarget)?cfg.homeWebSearchTarget:'auto';
+ const bookmarks=[],seenUrls=new Set(),seenIds=new Set();
+ for(const rawBookmark of Array.isArray(cfg.homeWebBookmarks)?cfg.homeWebBookmarks.slice(0,100):[]){
+  if(!rawBookmark||typeof rawBookmark!=='object')continue;
+  const url=typeof writerV8HomeValidURL==='function'?writerV8HomeValidURL(rawBookmark.url):'';
+  if(!url||seenUrls.has(url))continue;
+  seenUrls.add(url);
+  const title=String(rawBookmark.title||new URL(url).hostname).replace(/[\r\n\u0000-\u001f]/g,' ').trim().slice(0,70)||new URL(url).hostname;
+  const icon=/^[a-z][a-z0-9-]{1,45}$/.test(rawBookmark.icon||'')?rawBookmark.icon:'globe';
+  const group=String(rawBookmark.group||'').replace(/[\r\n\u0000-\u001f]/g,' ').trim().slice(0,40);
+  let id=String(rawBookmark.id||'').replace(/[^a-z0-9_-]/gi,'').slice(0,65);
+  if(!id||seenIds.has(id))id='web-'+(bookmarks.length+1)+'-'+url.length;
+  seenIds.add(id);bookmarks.push({id,title,url,icon,group});
+ }
+ cfg.homeWebBookmarks=bookmarks;
  cfg.homePresets=(Array.isArray(cfg.homePresets)?cfg.homePresets:[]).slice(0,12).map(raw=>({
   name:String(raw?.name||'').trim().slice(0,60),
   order:Array.isArray(raw?.order)?[...new Set(raw.order.filter(key=>allowed.includes(key)))]:[],

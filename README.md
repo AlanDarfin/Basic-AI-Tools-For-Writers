@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 11.0.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 11.1.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -28,6 +28,14 @@ editor-width: 75
 ```
 
 
+
+### Number Suite and database builder extensions (11.1)
+
+The existing **Number Suite** integration now supports **opt-in visual heading numbers in Live Preview**. They are rendered as CodeMirror line decorations without modifying heading text. Reading View can display separate automatic counters for `Figure:`, `Table:`, `Equation:` and `Code:` caption paragraphs. The **Numbering: heading, caption and footnote outline** command navigates titles, captions and recognized footnote definitions. Enable the switches under the numbering settings; both are disabled by default for compatibility.
+
+The new **Databases: visual view builder** command prepares `basic-suite-db` Markdown blocks through fields instead of requiring hand-written configuration. It supports table, board, gallery, list, calendar, timeline and chart views, along with columns, sort, group, limits and simple filters. Select an entire existing block in the editor before running the command to update it; otherwise a new block is inserted after explicit confirmation. The builder **never creates folders or edits database rows by itself**. It complements the previously added board moves and typed-property editor.
+
+See [v11.1 implementation scope](docs/V11_1_INTEGRATIONS_SCOPE.pt-BR.md) for limitations, including missing complete upstream parity and the need for Android visual testing.
 
 ### Longform Studio (v11)
 

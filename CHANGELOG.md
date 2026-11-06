@@ -2,6 +2,14 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.10.3 — Sidebar and native menu stability
+
+- Keep the Android tab button DOM stable across layout changes, preserving its active indicator and menu anchors.
+- Observe mobile drawer DOM changes and remount the tab row if Obsidian replaces its header.
+- Restore original Lucide icons or localized fallbacks for native Explorer actions in the Sidebar Manager menu.
+- Open the native sort popup after the parent menu closes, and retain its hidden trigger as a laid-out anchor so it does not immediately dismiss.
+- Add regression coverage for tab restoration, unchanged toolbar controls, native action icons and delayed sorting.
+
 ## 10.10.2 — Dragger desktop-only
 
 - Disable the block Dragger completely on mobile. No drag handle, indicator, pointer or touch listeners, or Dragger-specific commands are registered on Android.

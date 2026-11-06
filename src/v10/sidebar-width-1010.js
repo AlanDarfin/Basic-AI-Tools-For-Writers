@@ -298,6 +298,7 @@ function writerV1010Register(plugin){
   if(!bar||bar.parentElement!==header){
    bar?.remove?.();
    bar=make('div','writer-v1010-sidebar-toolbar'+(drawer?' writer-v1011-native-row':''),doc);
+   bar.addEventListener('click',event=>event?.stopPropagation?.());
    header.appendChild(bar);hosts.set(side,bar);
   }
   if(drawer){
@@ -311,23 +312,50 @@ function writerV1010Register(plugin){
    root.classList.toggle('writer-v1011-compact-footer',
     side==='left'&&cfg.sidebar.compactFooter!==false&&canSwitch);
   }
-  bar.replaceChildren();
   const active=writerV1010ActiveLeaf(workspace,leaves,side);
   const max=drawer?Math.max(2,Math.min(6,Math.floor(((root.clientWidth||380)-55)/48))):
    Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
+  const oldState=bar._writerV1010Render;
+  const same=oldState&&oldState.visible.length===visible.length&&
+   oldState.hidden.length===hidden.length&&
+   oldState.actions===(cfg.sidebar.actionMenu!==false)&&
+   oldState.filter===(cfg.sidebar.fileFilter===true&&side==='left')&&
+   oldState.visible.every((leaf,i)=>leaf===visible[i].leaf)&&
+   oldState.hidden.every((leaf,i)=>leaf===hidden[i].leaf);
+  if(same){
+   for(let i=0;i<visible.length;i++){
+    const selected=visible[i].leaf===active,button=oldState.buttons[i];
+    button?.classList?.toggle('is-active',selected);
+    button?.setAttribute?.('aria-pressed',String(selected));
+   }
+   if(oldState.more){
+    const selected=hidden.some(entry=>entry.leaf===active);
+    oldState.more.classList.toggle('is-active',selected);
+    oldState.more.setAttribute('aria-pressed',String(selected));
+   }
+   return;
+  }
+  bar.replaceChildren();
+  const toolbarButtons=[],toolbarState={
+   visible:visible.map(entry=>entry.leaf),hidden:hidden.map(entry=>entry.leaf),
+   actions:cfg.sidebar.actionMenu!==false,
+   filter:cfg.sidebar.fileFilter===true&&side==='left',
+   buttons:toolbarButtons,more:null
+  };
+  bar._writerV1010Render=toolbarState;
   const addIcon=(type,title,callback,isActive=false)=>{
    const btn=make('button','writer-v1010-sidebar-button'+(isActive?' is-active':''),doc);
    btn.type='button';btn.setAttribute('aria-label',title);
    btn.setAttribute('title',title);btn.setAttribute('aria-pressed',String(isActive));
    writerV1010Icon(btn,WRITER_V1010_VIEWS[type]?.[0]||'panel-left');
-   btn.addEventListener('click',callback);bar.appendChild(btn);
+   btn.addEventListener('click',event=>{event?.stopPropagation?.();callback(event);});bar.appendChild(btn);
    return btn;
   };
   for(const entry of visible){
    const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
-   addIcon(entry.type,writerUi(info[1],info[2]),
-    ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf);
+   toolbarButtons.push(addIcon(entry.type,writerUi(info[1],info[2]),
+    ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf));
   }
   if(hidden.length&&cfg.sidebar.actionMenu===false){
    const overflow=addIcon('',writerUi('Mais painéis','More panels'),event=>{
@@ -338,12 +366,12 @@ function writerV1010Register(plugin){
       .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
     }
     menu.showAtMouseEvent?.(event);
-   });writerV1010Icon(overflow,'ellipsis');
+   });writerV1010Icon(overflow,'ellipsis');toolbarState.more=overflow;
   }
   if(cfg.sidebar.actionMenu!==false){
    const menu=addIcon('',writerUi('Ações e mais painéis','Actions and more views'),
     event=>writerV1010SidebarMenu(plugin,event,side,hidden,active),hidden.some(item=>item.leaf===active));
-   writerV1010Icon(menu,'ellipsis');
+   writerV1010Icon(menu,'ellipsis');toolbarState.more=menu;
   }
   if(cfg.sidebar.fileFilter===true&&side==='left'){
    // The filter is opt-in; it never appears as a second full-width header.

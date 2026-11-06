@@ -119,7 +119,8 @@ test('Existing mobile Spaces dock is relocated to the drawer footer, not duplica
  assert.match(text,/writerV9215SelectSpace\(plugin,space\.id\)/);
 });
 test('More menu combines overflowing tabs and native actions, with Spaces access',()=>{
- assert.match(source,/writerV1010SidebarMenu\(plugin,event,side,hidden,active\)/);
+ assert.match(source,/writerV1010SidebarMenu\(plugin,event,side,hidden,/);
+ assert.match(source,/writerV1010ActiveLeaf\(workspace,leaves,side\)/);
  assert.match(source,/writerV1010SelectLeaf\(plugin,side,entry\.leaf\)/);
  assert.match(source,/Gerenciar Spaces/);
  assert.match(source,/Cofre: /);

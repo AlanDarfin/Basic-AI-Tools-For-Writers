@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 11.1.0 plugin artifacts'
+            git commit -m 'build: synchronize 11.1.1 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "11.1.0"
+          test "$VERSION" = "11.1.1"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic $VERSION" \
-            --notes "11.1.0: Extend Number Suite with opt-in Live Preview heading numbering, Reading View caption counters and a structural outline for headings, figures and footnotes. Add a visual markdown database view builder supporting table, board, gallery, list, calendar, timeline and chart plus basic filters. Preserve Markdown and use explicit edit commands, with PT/EN documentation and regression tests. Not full upstream parity."
+            --notes "11.1.1: Merge Longform continuous writing into the native project tab and remove the separate Homepage widget. Stabilize native nested mobile sidebar menus. Long-press a mobile sidebar tab to pin/unpin, close or close other unpinned panels, with accessible keyboard and context menu support. Includes PT/EN docs and regression tests."

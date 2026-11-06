@@ -20,11 +20,12 @@ function writerV1010Merge(settings){
  const previous=settings.v1010Layout&&typeof settings.v1010Layout==='object'?settings.v1010Layout:{};
  const sidebar=previous.sidebar&&typeof previous.sidebar==='object'?previous.sidebar:{};
  const width=previous.width&&typeof previous.width==='object'?previous.width:{};
- const cfg=settings.v1010Layout={
-  sidebar:{enabled:false,mobileTabs:true,desktopTabs:false,overflow:true,actionMenu:true,fileFilter:false,
-   sharedFilter:false,order:{left:[],right:[]},...sidebar},
-  width:{enabled:true,current:80,defaultPercent:80,showStatus:true,frontmatter:true,...width}
- };
+ // Keep object identity stable: settings panels and live handlers share this object.
+ Object.assign(sidebar,{enabled:false,mobileTabs:true,desktopTabs:false,overflow:true,actionMenu:true,fileFilter:false,
+  sharedFilter:false,order:{left:[],right:[]},...sidebar});
+ Object.assign(width,{enabled:true,current:80,defaultPercent:80,showStatus:true,frontmatter:true,...width});
+ const cfg=Object.assign(previous,{sidebar,width});
+ settings.v1010Layout=cfg;
  cfg.width.current=writerV1010Clamp(cfg.width.current);
  cfg.width.defaultPercent=writerV1010Clamp(cfg.width.defaultPercent);
  for(const side of ['left','right']){

@@ -25,7 +25,7 @@ test('v12 settings are integrated into existing tabs with no new groups',()=>{
   main.indexOf('module.exports=class AlansOfflineDictionary'));
  for(const page of ['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections',
   'suiteEducation','suiteDatabase','suiteNumbering','suiteLongform'])
-  assert.doesNotMatch(navigation,new RegExp("\\\\['"+page+"',msg\\\\("));
+  assert.equal(navigation.includes("['"+page+"',msg("),false,page+' must not have its own tab');
  const groups=navigation.slice(navigation.indexOf('const groups=['),navigation.indexOf('const groupIcons='));
  assert.doesNotMatch(groups,/\['toolkit',/);
  assert.doesNotMatch(groups,/\['suites',/);

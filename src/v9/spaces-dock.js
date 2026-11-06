@@ -102,59 +102,109 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const draw=(dock)=>{
   const active=writerV9215ActiveSpace(plugin);
+  const mobile=dock.classList.contains('writer-v1014-collapsible-spaces');
   const signature=JSON.stringify({
    enabled:cfg.enabled,activeId:cfg.activeId,
    spaces:cfg.spaces.map(s=>[s.id,s.name,s.icon,s.iconColor]),
-   locale:writerUi('pt','en')
+   mobile,expanded:mobile&&mobileMenuOpen,locale:writerUi('pt','en')
   });
   if(dock.dataset.signature===signature)return;
   dock.dataset.signature=signature;dock.replaceChildren();
-  const rail=dock.ownerDocument.createElement('div');
-  rail.className='writer-v9216-spaces-rail';rail.setAttribute('role','group');
+  const doc=dock.ownerDocument;
+  let content=dock;
+  if(mobile){
+   const title=active?.name||writerUi('Todo o cofre','Entire vault');
+   const toggle=button(dock,writerUi('Selecionar Space: ','Select Space: ')+title,
+    active?.icon||'layers','writer-v1014-spaces-toggle',()=>{
+     mobileMenuOpen=!mobileMenuOpen;dock.dataset.signature='';draw(dock);
+    });
+   if(active?.iconColor)toggle.style.setProperty('--writer-v9216-space-color',active.iconColor);
+   toggle.setAttribute('aria-expanded',String(mobileMenuOpen));
+   toggle.setAttribute('aria-controls','writer-v1014-spaces-options');
+   const name=doc.createElement('span');name.className='writer-v1014-spaces-current';
+   name.textContent=title;toggle.appendChild(name);
+   const chevron=doc.createElement('span');chevron.className='writer-v1014-spaces-chevron';
+   require('obsidian').setIcon(chevron,mobileMenuOpen?'chevron-down':'chevron-up');
+   toggle.appendChild(chevron);
+   const panel=doc.createElement('div');
+   panel.className='writer-v1014-spaces-options';panel.id='writer-v1014-spaces-options';
+   panel.setAttribute('role','group');
+   panel.setAttribute('aria-label',writerUi('Coleções Spaces','Spaces collections'));
+   panel.hidden=!mobileMenuOpen;dock.classList.toggle('is-open',mobileMenuOpen);
+   dock.appendChild(panel);content=panel;
+  }
+  const selectSpace=id=>{
+   if(mobile){
+    mobileMenuOpen=false;dock.dataset.signature='';draw(dock);
+   }
+   void Promise.resolve(writerV9215SelectSpace(plugin,id))
+    .catch(error=>console.error('[Basic] Could not switch Space:',error))
+    .finally(()=>plugin.writerV9216SpacesDockRefresh?.());
+  };
+  const rail=doc.createElement('div');
+  rail.className='writer-v9216-spaces-rail';
+  rail.setAttribute('role','group');
   rail.setAttribute('aria-label',writerUi('Selecionar Space','Choose Space'));
-  dock.appendChild(rail);
-  const all=button(rail,writerUi('Todo o cofre','Entire vault'),'house','writer-v9216-space-all',()=>void writerV9215SelectSpace(plugin,''));
+  content.appendChild(rail);
+  const all=button(rail,writerUi('Todo o cofre','Entire vault'),
+   'house','writer-v9216-space-all',()=>selectSpace(''));
+  if(mobile){
+   const label=doc.createElement('span');label.textContent=writerUi('Todo o cofre','Entire vault');
+   all.appendChild(label);
+  }
   all.classList.toggle('is-active',!active);
   all.setAttribute('aria-pressed',String(!active));
   if(cfg.enabled){
    for(const space of cfg.spaces){
-    const item=dock.ownerDocument.createElement('div');item.className='writer-v9216-space-group';
-    item.classList.toggle('is-active',active?.id===space.id);
-    rail.appendChild(item);
-    const chip=button(item,space.name,space.icon||'layers','writer-v9216-space-chip',()=>void writerV9215SelectSpace(plugin,space.id));
-    const name=chip.ownerDocument.createElement('span');name.textContent=space.name;chip.appendChild(name);
+    const item=doc.createElement('div');item.className='writer-v9216-space-group';
+    item.classList.toggle('is-active',active?.id===space.id);rail.appendChild(item);
+    const chip=button(item,space.name,space.icon||'layers','writer-v9216-space-chip',
+     ()=>selectSpace(space.id));
+    const name=doc.createElement('span');name.textContent=space.name;chip.appendChild(name);
     chip.setAttribute('aria-pressed',String(active?.id===space.id));
-    chip.draggable=true;
-    chip.addEventListener('dragstart',event=>{
-     event.dataTransfer?.setData('text/x-writer-space',space.id);
-     if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
-    });
-    chip.addEventListener('dragover',event=>{
-     if(event.dataTransfer?.types?.includes('text/x-writer-space'))event.preventDefault();
-    });
-    chip.addEventListener('drop',event=>{
-     const source=event.dataTransfer?.getData('text/x-writer-space');
-     if(!source||source===space.id)return;
-     event.preventDefault();event.stopPropagation();
-     const from=cfg.spaces.findIndex(item=>item.id===source);
-     const to=cfg.spaces.findIndex(item=>item.id===space.id);
-     if(from<0||to<0)return;
-     const ordered=cfg.spaces.slice(),moved=ordered.splice(from,1)[0];
-     ordered.splice(to,0,moved);cfg.spaces=ordered;void persist();
-    });
+    // Android long-press should select text, not start the desktop drag gesture.
+    chip.draggable=!mobile;
+    if(!mobile){
+     chip.addEventListener('dragstart',event=>{
+      event.dataTransfer?.setData('text/x-writer-space',space.id);
+      if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+     });
+     chip.addEventListener('dragover',event=>{
+      if(event.dataTransfer?.types?.includes('text/x-writer-space'))event.preventDefault();
+     });
+     chip.addEventListener('drop',event=>{
+      const source=event.dataTransfer?.getData('text/x-writer-space');
+      if(!source||source===space.id)return;
+      event.preventDefault();event.stopPropagation();
+      const from=cfg.spaces.findIndex(item=>item.id===source);
+      const to=cfg.spaces.findIndex(item=>item.id===space.id);
+      if(from<0||to<0)return;
+      const ordered=cfg.spaces.slice(),moved=ordered.splice(from,1)[0];
+      ordered.splice(to,0,moved);cfg.spaces=ordered;void persist();
+     });
+    }
     if(space.iconColor)chip.style.setProperty('--writer-v9216-space-color',space.iconColor);
-    button(item,writerUi('Opções de ','Options for ')+space.name,'ellipsis','writer-v9216-space-options',event=>menu(event,space));
+    button(item,writerUi('Opções de ','Options for ')+space.name,'ellipsis',
+     'writer-v9216-space-options',event=>menu(event,space));
    }
   }else{
-   const message=rail.ownerDocument.createElement('span');
+   const message=doc.createElement('span');
    message.className='writer-v9216-space-inactive';
    message.textContent=writerUi('Spaces desativados','Spaces disabled');
    rail.appendChild(message);
   }
-  const tools=dock.ownerDocument.createElement('div');tools.className='writer-v9216-spaces-tools';
-  dock.appendChild(tools);
-  button(tools,writerUi('Criar Space','Create Space'),'plus','writer-v9216-space-create',create);
-  button(tools,writerUi('Gerenciar Spaces','Manage Spaces'),'settings-2','writer-v9216-space-manage',()=>void openManager());
+  const tools=doc.createElement('div');tools.className='writer-v9216-spaces-tools';
+  content.appendChild(tools);
+  const createButton=button(tools,writerUi('Criar Space','Create Space'),'plus',
+   'writer-v9216-space-create',create);
+  const manageButton=button(tools,writerUi('Gerenciar Spaces','Manage Spaces'),'settings-2',
+   'writer-v9216-space-manage',()=>void openManager());
+  if(mobile){
+   const createText=doc.createElement('span');createText.textContent=writerUi('Criar','Create');
+   createButton.appendChild(createText);
+   const manageText=doc.createElement('span');manageText.textContent=writerUi('Gerenciar','Manage');
+   manageButton.appendChild(manageText);
+  }
  };
  const attachManageAction=()=>{
   const current=new Set();

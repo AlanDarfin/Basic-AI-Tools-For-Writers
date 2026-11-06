@@ -222,7 +222,7 @@ function writerV1010Register(plugin){
   const mobile=Boolean(require('obsidian').Platform?.isMobile);
   return mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true;
  };
- const hosts=new Map();
+ const hosts=new Map(),barState=new Map();
  const groupedViews=new Map();
  const groupNativeActions=(side,leaves,enabled)=>{
   const previous=groupedViews.get(side)||new Set(),next=new Set();
@@ -250,7 +250,7 @@ function writerV1010Register(plugin){
  const restoreSidebar=side=>{
   groupNativeActions(side,[],false);
   const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
-  bar?.remove?.();hosts.delete(side);
+  bar?.remove?.();hosts.delete(side);barState.delete(side);
   split?.tabsListEl?.classList?.remove('writer-v1011-native-tabs-hidden');
   split?.containerEl?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
  };
@@ -290,11 +290,31 @@ function writerV1010Register(plugin){
    root.classList.toggle('writer-v1011-compact-footer',
     side==='left'&&cfg.sidebar.compactFooter!==false&&canSwitch);
   }
-  bar.replaceChildren();
   const active=writerV1010ActiveLeaf(workspace,leaves,side);
   const max=drawer?Math.max(2,Math.min(6,Math.floor(((root.clientWidth||380)-55)/48))):
    Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
+  const previous=barState.get(side);
+  const signature=[cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true,
+   cfg.sidebar.overflow!==false,visible.length,hidden.length].join(':');
+  // Switching tabs should update selection, not destroy and recreate icons.
+  if(previous?.bar===bar&&previous.signature===signature&&
+    previous.leaves.length===leaves.length&&
+    leaves.every((entry,index)=>previous.leaves[index]?.leaf===entry.leaf)){
+   for(const {entry,button} of previous.buttons){
+    const selected=entry.leaf===active;
+    button.classList.toggle('is-active',selected);
+    button.setAttribute('aria-pressed',String(selected));
+   }
+   if(previous.overflowButton){
+    const selected=hidden.some(entry=>entry.leaf===active);
+    previous.overflowButton.classList.toggle('is-active',selected);
+    previous.overflowButton.setAttribute('aria-pressed',String(selected));
+   }
+   return;
+  }
+  bar.replaceChildren();
+  const buttons=[];let overflowButton=null;
   const addIcon=(type,title,callback,isActive=false)=>{
    const btn=make('button','writer-v1010-sidebar-button'+(isActive?' is-active':''),doc);
    btn.type='button';btn.setAttribute('aria-label',title);
@@ -305,8 +325,9 @@ function writerV1010Register(plugin){
   };
   for(const entry of visible){
    const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
-   addIcon(entry.type,writerUi(info[1],info[2]),
+   const button=addIcon(entry.type,writerUi(info[1],info[2]),
     ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf);
+   buttons.push({entry,button});
   }
   if(hidden.length&&cfg.sidebar.actionMenu===false){
    const overflow=addIcon('',writerUi('Mais painéis','More panels'),event=>{
@@ -317,12 +338,13 @@ function writerV1010Register(plugin){
       .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
     }
     menu.showAtMouseEvent?.(event);
-   });writerV1010Icon(overflow,'ellipsis');
+   });writerV1010Icon(overflow,'ellipsis');overflowButton=overflow;
   }
   if(cfg.sidebar.actionMenu!==false){
    const menu=addIcon('',writerUi('Ações e mais painéis','Actions and more views'),
-    event=>writerV1010SidebarMenu(plugin,event,side,hidden,active),hidden.some(item=>item.leaf===active));
-   writerV1010Icon(menu,'ellipsis');
+    event=>writerV1010SidebarMenu(plugin,event,side,hidden,
+      writerV1010ActiveLeaf(workspace,leaves,side)),hidden.some(item=>item.leaf===active));
+   writerV1010Icon(menu,'ellipsis');overflowButton=menu;
   }
   if(cfg.sidebar.fileFilter===true&&side==='left'){
    // The filter is opt-in; it never appears as a second full-width header.
@@ -335,6 +357,7 @@ function writerV1010Register(plugin){
     writerV1010FilterFiles(workspace,box.value);
    });bar.appendChild(box);
   }
+  barState.set(side,{bar,signature,leaves:leaves.slice(),buttons,overflowButton});
  };
  const allMarkdown=()=>{
   const leaves=[];workspace.iterateAllLeaves?.(leaf=>{
@@ -369,6 +392,32 @@ function writerV1010Register(plugin){
   queued=setTimeout(()=>{queued=null;refresh();},90);
  };
  plugin.writerV1010Refresh=queue;
+ // Native Android drawers can rebuild their tab header on view changes.
+ // Reattach a detached toolbar without polling or flickering on every update.
+ let drawerObserver=null;
+ if(typeof MutationObserver==='function'&&workspace.containerEl){
+  drawerObserver=new MutationObserver(()=>{
+   if(unloaded)return;
+   for(const side of ['left','right']){
+    if(!showSidebar(side))continue;
+    const drawer=writerV1010MobileDrawer(workspace,side);
+    if(!drawer)continue;
+    const bar=hosts.get(side);
+    if(!bar||bar.parentElement!==drawer.tabsContainerEl||
+      bar.isConnected===false||
+      !drawer.tabsListEl?.classList?.contains('writer-v1011-native-tabs-hidden')){
+     queue();break;
+    }
+   }
+  });
+  drawerObserver.observe(workspace.containerEl,{childList:true,subtree:true});
+ }
+ if(typeof plugin.registerDomEvent==='function'&&workspace.containerEl){
+  plugin.registerDomEvent(workspace.containerEl,'click',event=>{
+   if(event.target?.closest?.('.workspace-drawer-tab-select,.workspace-drawer-tab-options,.workspace-tab-header'))
+    queue();
+  },true);
+ }
  const item=plugin.addStatusBarItem?.();
  if(item){
   status=item;
@@ -408,7 +457,7 @@ function writerV1010Register(plugin){
  if(typeof workspace.onLayoutReady==='function')workspace.onLayoutReady(startup);
  else queue();
  plugin.register?.(()=>{
-  unloaded=true;clearTimeout(queued);
+  unloaded=true;clearTimeout(queued);drawerObserver?.disconnect();
   restoreSidebar('left');restoreSidebar('right');
   for(const leaf of allMarkdown()){
    const el=leaf?.view?.containerEl;

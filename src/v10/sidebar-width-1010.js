@@ -127,6 +127,40 @@ function writerV1010ActiveLeaf(workspace,leaves,side){
  return leaves.find(entry=>entry.leaf===workspace.activeLeaf)?.leaf||
   leaves.find(entry=>entry.leaf?.view?.containerEl?.closest?.('.mod-active'))?.leaf||leaves[0]?.leaf;
 }
+/* Reuse the icon on the original Obsidian action. Menu items must not lose
+ * their icon when we group native buttons into the mobile More menu. */
+function writerV1013NativeActionIcon(action,label){
+ const svg=action?.querySelector?.('svg');
+ const svgClasses=String(svg?.getAttribute?.('class')||'');
+ const match=svgClasses.match(/(?:^|\s)lucide-([a-z0-9-]+)(?=\s|$)/g);
+ if(match){
+  const name=match.map(v=>v.trim().slice(7)).find(v=>v!=='icon'&&v!=='lucide');
+  if(name)return name;
+ }
+ const icon=String(action?.getAttribute?.('data-icon')||svg?.getAttribute?.('data-lucide')||'');
+ if(/^[a-z][a-z0-9-]{1,50}$/.test(icon))return icon;
+ const text=String(label||'').toLocaleLowerCase();
+ const known=[
+  [/nova nota|new note|create note/,'file-pen-line'],
+  [/nova pasta|new folder/,'folder-plus'],
+  [/orden|sort|order|ordre/,'arrow-up-narrow-wide'],
+  [/revelar|reveal|localizar arquivo|find file/,'scan-eye'],
+  [/expand|expandir|desdobrar/,'chevrons-down'],
+  [/recolher|collapse|contrair/,'chevrons-up'],
+  [/filtro|filter|pesquisar|search/,'search'],
+  [/spaces?|espaços/,'layers'],
+  [/prévias|previews?/,'panel-top'],
+  [/favorit|bookmark/,'bookmark'],
+  [/settings|configuraç|ajustes/,'settings']
+ ];
+ return known.find(([pattern])=>pattern.test(text))?.[1]||'circle-dot';
+}
+/* The source action opens another Obsidian menu. Clicking it in the same
+ * menu-item event closes both menus on mobile. Let More finish closing first. */
+function writerV1013ForwardNativeAction(action){
+ if(!action?.click)return;
+ setTimeout(()=>{try{action.click();}catch(error){console.warn('[Basic] Could not invoke native sidebar action:',error);}},120);
+}
 function writerV1010SidebarMenu(plugin,event,side,leaves,active){
  const menu=new Menu(plugin.app),current=active?.view?.containerEl;
  const actions=[...new Set([...(current?.querySelectorAll?.('.view-actions .clickable-icon,.nav-header .nav-action-button,.nav-header .nav-buttons-container .clickable-icon')||[])])];
@@ -135,7 +169,8 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   const label=String(action.getAttribute('aria-label')||action.getAttribute('title')||'').trim();
   if(!label||action.closest('.writer-v1010-sidebar-toolbar'))continue;
   count++;
-  menu.addItem(item=>item.setTitle(label).onClick(()=>action.click?.()));
+  menu.addItem(item=>item.setTitle(label).setIcon(writerV1013NativeActionIcon(action,label))
+    .onClick(()=>writerV1013ForwardNativeAction(action)));
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))

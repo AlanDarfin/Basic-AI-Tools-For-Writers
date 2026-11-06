@@ -1393,3 +1393,90 @@ body.is-mobile .writer-v1011-managed-mobile
 /* Basic mobile: the desktop Dragger is disabled, including stale overlay markup. */
 body.is-mobile .writer-v106-drag-handle,
 body.is-mobile .writer-v106-drag-indicator{display:none;pointer-events:none;}
+
+
+/* Basic 10.10.4: permanent, collapsible mobile Spaces selector above sidebar tabs.
+   The anchor belongs to the native MobileDrawer tab bar, not a view or scroller. */
+body.is-mobile .writer-v1014-mobile-spaces-anchor{
+ position:relative;overflow:visible;z-index:4;
+}
+body.is-mobile .writer-v1014-mobile-spaces-anchor > .writer-v1014-collapsible-spaces{
+ position:absolute;inset:auto 8px calc(100% + 3px);
+ z-index:10;display:flex;flex-direction:column;align-items:stretch;
+ width:auto;max-width:none;height:auto;min-height:0;padding:0;gap:0;
+ overflow:visible;box-sizing:border-box;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-secondary);
+ box-shadow:var(--shadow-s);
+}
+body.is-mobile .writer-v1014-collapsible-spaces > .writer-v1014-spaces-toggle{
+ display:flex;align-items:center;justify-content:flex-start;gap:9px;
+ width:100%;max-width:100%;min-height:43px;padding:7px 12px;
+ border:0;border-radius:var(--radius-m);background:transparent;
+ color:var(--text-normal);font-size:var(--font-ui-small);text-align:start;
+ box-sizing:border-box;touch-action:manipulation;
+}
+body.is-mobile .writer-v1014-collapsible-spaces > .writer-v1014-spaces-toggle:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-2px;
+}
+body.is-mobile .writer-v1014-collapsible-spaces > .writer-v1014-spaces-toggle svg{
+ width:18px;height:18px;flex-shrink:0;
+ color:var(--writer-v9216-space-color,var(--text-accent));
+}
+body.is-mobile .writer-v1014-spaces-toggle > .writer-v1014-spaces-current{
+ flex:1 1 auto;min-width:0;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis;font-weight:500;
+}
+body.is-mobile .writer-v1014-spaces-toggle > .writer-v1014-spaces-chevron{
+ display:grid;place-items:center;flex:0 0 20px;
+ color:var(--text-muted);
+}
+body.is-mobile .writer-v1014-spaces-toggle > .writer-v1014-spaces-chevron svg{
+ width:16px;height:16px;color:var(--text-muted);
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v1014-spaces-options[hidden]{
+ display:none;
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v1014-spaces-options{
+ display:flex;flex-direction:column;align-items:stretch;
+ min-height:0;max-height:min(48vh,420px);min-width:0;
+ border-top:1px solid var(--background-modifier-border);
+ overflow:hidden;padding:6px;
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-rail{
+ display:flex;flex-direction:column;align-items:stretch;
+ flex:1 1 auto;gap:3px;min-width:0;min-height:0;
+ overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+ padding:2px;scrollbar-width:thin;scroll-snap-type:none;
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-space-group{
+ display:flex;align-items:center;gap:4px;
+ flex:0 0 auto;max-width:100%;width:100%;scroll-snap-align:none;
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-rail > .writer-v9216-space-all,
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-space-group > .writer-v9216-space-chip{
+ display:flex;justify-content:flex-start;align-items:center;gap:10px;
+ flex:1 1 auto;width:100%;max-width:none;min-width:0;
+ min-height:42px;padding:7px 10px;text-align:start;
+ color:var(--text-normal);
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-space-chip > span{
+ min-width:0;max-width:100%;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis;
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-space-group > .writer-v9216-space-options{
+ flex:0 0 36px;min-width:36px;width:36px;min-height:40px;
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-tools{
+ display:flex;align-items:center;justify-content:flex-end;
+ flex:0 0 auto;gap:4px;padding:6px 2px 0;margin:5px 2px 0;
+ border-inline-start:0;border-top:1px solid var(--background-modifier-border);
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-tools button{
+ display:flex;gap:7px;align-items:center;min-height:38px;
+ padding-inline:10px;color:var(--text-muted);font-size:var(--font-ui-small);
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-tools button svg{
+ width:17px;height:17px;flex-shrink:0;
+}

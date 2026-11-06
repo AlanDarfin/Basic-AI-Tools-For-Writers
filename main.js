@@ -25662,6 +25662,30 @@ function writerV12PaletteItems(){
   ['bug','Bug','Bug'],['todo','Tarefa','Todo'],['abstract','Resumo breve','Abstract'],
   ['failure','Falha','Failure'],['important','Importante','Important']
  ])items.push(writerV12Item('Callout: '+writerUi(pt,en),'Callout: '+en,'callout',key));
+ items.push(
+  writerV12Item('Link interno','Internal wiki link','wrap','[[|]]'),
+  writerV12Item('Link externo','External Markdown link','wrap','[|](https://example.com)'),
+  writerV12Item('Sublinhado','Underline','wrap','<u>|</u>'),
+  writerV12Item('Texto pequeno','Small text','wrap','<small>|</small>'),
+  writerV12Item('Tecla de atalho','Keyboard key','wrap','<kbd>|</kbd>'),
+  writerV12Item('Abreviação','Abbreviation','wrap','<abbr>|</abbr>'),
+  writerV12Item('Comentário oculto','Obsidian comment','wrap','%%|%%'),
+  writerV12Item('Detalhes recolhíveis','Collapsible details','wrap','<details><summary>Resumo</summary>|</details>'),
+  writerV12Item('Texto centralizado','Centered text','wrap','<div align="center">|</div>'),
+  writerV12Item('Texto à direita','Right-aligned text','wrap','<div align="right">|</div>'),
+  writerV12Item('Texto à esquerda','Left-aligned text','wrap','<div align="left">|</div>'),
+  writerV12Item('Bloco SQL','SQL code fence','insert','\n~~~sql\n\n~~~\n'),
+  writerV12Item('Bloco JSON','JSON code fence','insert','\n~~~json\n{}\n~~~\n'),
+  writerV12Item('Bloco Python','Python code fence','insert','\n~~~python\n\n~~~\n'),
+  writerV12Item('Bloco JavaScript','JavaScript code fence','insert','\n~~~javascript\n\n~~~\n'),
+  writerV12Item('Bloco de aviso HTML','HTML notice','wrap','<aside>|</aside>'),
+  writerV12Item('Marcador de nota','Footnote marker','insert','[^1]'),
+  writerV12Item('Definição de nota de rodapé','Footnote definition','insert','\n[^1]: \n')
+ );
+ for(const [id,pt,en] of [
+  ['goal','Meta','Goal'],['idea','Ideia','Idea'],['remember','Lembrete','Reminder'],
+  ['blocker','Bloqueio','Blocker'],['command','Comando','Command'],['config','Configuração','Config']
+ ])items.push(writerV12Item('Callout: '+writerUi(pt,en),'Callout: '+en,'callout',id));
  return items;
 }
 function writerV12Transform(editor,item){
@@ -25918,6 +25942,27 @@ function writerV12ConflictViewer(plugin){
  }
  modal.open();
 }
+
+function writerV12BasicTools(plugin,modal){
+ const all=plugin.app.commands?.listCommands?.()||Object.values(plugin.app.commands?.commands||{});
+ const prefix=(plugin.manifest?.id||'basic-ai-tool-for-writers')+':';
+ const actions=[
+  ['v107-local-tts-selection','TTS: ler seleção','TTS: read selection'],
+  ['v107-local-tts-panel','TTS: abrir controles','TTS: open controls'],
+  ['v8-inline-ai-generate','IA: sugerir continuação','AI: suggest continuation'],
+  ['v9-toggle-format-toolbar','Alternar barra de formatação','Toggle formatting toolbar']
+ ];
+ const available=actions.map(([id,pt,en])=>({
+  command:all.find(c=>c.id===prefix+id),name:writerUi(pt,en)
+ })).filter(a=>a.command);
+ if(!available.length)return;
+ modal.contentEl.createEl('h4',{text:writerUi('Recursos já presentes no Basic','Existing Basic tools')});
+ const tools=modal.contentEl.createDiv();
+ for(const action of available)
+  tools.createEl('button',{text:action.name,attr:{type:'button',style:'margin:3px;'}})
+   .addEventListener('click',()=>plugin.app.commands.executeCommandById(action.command.id));
+}
+
 function writerV12OpenIntegrationHub(plugin,role){
  if(!writerV12On(plugin,'integrations'))return;
  const cfg=writerV12Config(plugin),modal=new Modal(plugin.app);
@@ -25929,6 +25974,7 @@ function writerV12OpenIntegrationHub(plugin,role){
   writerUi('Funções nativas do Basic continuam independentes. Plugins externos, quando instalados, aparecem como comandos adicionais sem copiar seus dados.',
    'Native Basic features remain independent. Installed companion plugins expose additional commands without duplicating their data.');
  modal.contentEl.createEl('p',{text:intro});
+ if(role!=='sync')writerV12BasicTools(plugin,modal);
  if(role==='sync'){
   new Setting(modal.contentEl).setName(writerUi('Provedor selecionado','Selected provider'))
    .addDropdown(d=>{

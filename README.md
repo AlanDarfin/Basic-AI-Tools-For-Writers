@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-****Version:** 10.9.0** · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.10.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -11,6 +11,23 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 
 ## Features
+
+### Sidebars and editor width
+
+- **Sidebar Manager (opt-in):** compact icon tabs for Obsidian's left and right sidebar views, overflow menu for extra views, contextual native actions, and a local File Explorer filter. Configure mobile and desktop independently. The tab order is stored in Basic and shared across devices; native Obsidian pane placements are not rewritten.
+- **Editor Width:** desktop status-bar slider (20–100%), click its percentage to reset the width, and a settings slider available on Android. Supports individual Markdown notes using the `editor-width` YAML property. A note's YAML value takes precedence; moving the slider for that note gives a temporary preview without rewriting Markdown.
+- **Compatibility:** sidebars are disabled by default to avoid conflicts with Spaces and other plugins. The optional sidebar toolbar is reversible on unload. Vault switching and relocation of Obsidian's private toolbar buttons are not replicated.
+
+Example note frontmatter:
+
+```yaml
+---
+title: Chapter 1
+editor-width: 75
+---
+```
+
+
 
 ### Books, chapters and story planning
 

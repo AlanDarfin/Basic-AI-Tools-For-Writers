@@ -1379,3 +1379,14 @@ body.is-mobile .writer-v1011-integrated-spaces .writer-v9216-space-options{
 body.is-mobile .writer-v1011-managed-mobile.writer-v1011-compact-footer .workspace-drawer-header{
  display:none;
 }
+
+/* Built-in sidepane actions now live in the single overflow/context menu.
+   Never hide a third-party view's own toolbar. */
+body.is-mobile .writer-v1011-managed-mobile
+ .workspace-leaf-content.writer-v1011-grouped-native-actions .nav-header > .nav-buttons-container{
+ display:none;
+}
+body.is-mobile .writer-v1011-managed-mobile
+ .workspace-leaf-content.writer-v1011-grouped-native-actions .nav-header.writer-v1011-empty-native-header{
+ display:none;
+}

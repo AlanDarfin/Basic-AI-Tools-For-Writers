@@ -59,9 +59,9 @@ function writerV112HoldControl(plugin,button,side,entry){
  button.classList.toggle('writer-v112-pinned-tab',pin);
  if(pin)button.setAttribute('aria-label',(button.getAttribute('aria-label')||entry.type)+writerUi(' · fixado',' · pinned'));
  if(writerV112PanelPrefs(plugin).longPressMenu===false)return;
- let timer=null,startX=0,startY=0,suppress=false;
+ let timer=null,startX=0,startY=0,suppressUntil=0;
  const cancel=()=>{if(timer!==null)clearTimeout(timer);timer=null;};
- const open=(x,y)=>{cancel();suppress=true;writerV112ContextMenu(plugin,side,entry,x,y);};
+ const open=(x,y)=>{cancel();suppressUntil=Date.now()+850;writerV112ContextMenu(plugin,side,entry,x,y);};
  button.addEventListener('pointerdown',event=>{
   if(event.pointerType==='mouse'||event.button!==0)return;
   cancel();startX=event.clientX;startY=event.clientY;
@@ -73,7 +73,7 @@ function writerV112HoldControl(plugin,button,side,entry){
  for(const type of ['pointerup','pointercancel','pointerleave'])button.addEventListener(type,cancel);
  button.addEventListener('contextmenu',event=>{
   event.preventDefault();event.stopPropagation();
-  if(!suppress)open(event.clientX,event.clientY);
+  if(Date.now()>suppressUntil)open(event.clientX,event.clientY);
  });
  button.addEventListener('keydown',event=>{
   if(event.key==='ContextMenu'||(event.key==='F10'&&event.shiftKey)){
@@ -83,8 +83,8 @@ function writerV112HoldControl(plugin,button,side,entry){
   }
  });
  button.addEventListener('click',event=>{
-  if(!suppress)return;
-  event.preventDefault();event.stopImmediatePropagation?.();suppress=false;
+  if(Date.now()>suppressUntil)return;
+  event.preventDefault();event.stopImmediatePropagation?.();suppressUntil=0;
  },true);
 }
 function writerV112SidebarWire(plugin,side,entries,bar){

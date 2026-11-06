@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.10.3 plugin artifacts'
+            git commit -m 'build: synchronize 10.10.4 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.10.3"
+          test "$VERSION" = "10.10.4"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic $VERSION" \
-            --notes "10.10.3: Fix mobile sidebar indicator disappearing after tab switches, restore native action icons in the More menu, and stop native Explorer sort popup instantly closing. Stable tab anchors and drawer DOM recovery with regression coverage. README remains features-only."
+            --notes "10.10.4: Keep a permanent collapsible Spaces selector above the native Android sidebar tabs. Show current Space, expand collections and management, collapse after selection, restore after drawer recreation. Desktop Spaces unchanged and drag disabled on mobile. README remains feature-only; history in CHANGELOG."

@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.10.4 — Persistent collapsible mobile Spaces
+
+- Move the Spaces selector out of the Explorer's temporary drawer contents and anchor it directly to the native mobile tab bar.
+- Always show a compact, collapsible selector just above the sidebar tabs, displaying the currently selected Space.
+- Expand to show Entire vault, saved Spaces, per-Space actions and Create/Manage controls; collapse automatically after selection.
+- Restore the selector after native Android drawer header replacement, and keep it in place when switching sidebar tabs.
+- Keep desktop behavior unchanged and disable Space-chip desktop drag gestures on mobile.
+- Add regression coverage for tab switches, collapsible state, selected Space, header recreation and unload cleanup. No notes or saved Space configurations are modified.
+
 ## 10.10.3 — Sidebar and native menu stability
 
 - Keep the Android tab button DOM stable across layout changes, preserving its active indicator and menu anchors.

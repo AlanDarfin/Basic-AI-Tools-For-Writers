@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.10.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.10.4 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -17,7 +17,7 @@ No Android, o Dragger de blocos é desativado automaticamente e não exibe alça
 
 ### Painéis laterais e largura do editor
 
-- **Gerenciador lateral (opcional):** abas superiores integradas ao drawer nativo do Android, com indicação ativa preservada ao alternar painéis; menu unificado de ações com ícones Lucide, suporte à ordenação nativa e dock opcional de Spaces no rodapé. A atualização do layout não destrói a barra de abas nem fecha seus menus. Configurações próprias para PC e celular, sem mover painéis nativos.
+- **Gerenciador lateral (opcional):** abas superiores integradas ao drawer nativo do Android, com indicação ativa preservada ao alternar painéis; menu unificado de ações com ícones Lucide, suporte à ordenação nativa e seletor recolhível de Spaces sempre acima das abas móveis (mostra a Space ativa e expande para selecionar outras ou Todo o cofre). A atualização do layout não destrói a barra de abas nem fecha seus menus. Configurações próprias para PC e celular, sem mover painéis nativos.
 - **Largura do editor:** controle de 20–100% na barra de status do PC e ajuste também nas configurações para Android. Um clique na porcentagem restaura o valor padrão.
 - **Largura individual de cada nota:** defina `editor-width: 75` no YAML. A propriedade tem prioridade; alterações pelo controle são temporárias e nunca reescrevem a nota.
 - **Compatibilidade:** o gerenciador permanece opcional, restaura o seletor nativo quando desligado e não altera arquivos nem layouts salvos dos Spaces. O menu oferece acesso ao cofre quando o Obsidian fornece um seletor utilizável; caso contrário, preserva o rodapé original.

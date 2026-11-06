@@ -224,7 +224,7 @@ function writerV1011NotionRender(plugin,source,element,ctx){
      const derived=spec.formulas?.some(f=>f.name===col)||spec.rollups?.some(f=>f.name===col);
      if(col==='file'||col==='path')btn.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
      else if(!derived&&plugin.settings.v107Db?.editable)
-      btn.addEventListener('click',()=>writerV107DbEdit(plugin,row,col,()=>writerV1011NotionRender(plugin,source,element.empty(),ctx)));
+      btn.addEventListener('click',()=>writerV107DbEdit(plugin,row,col,()=>{element.empty();writerV1011NotionRender(plugin,source,element,ctx);}));
      else btn.disabled=true;
     }
    }

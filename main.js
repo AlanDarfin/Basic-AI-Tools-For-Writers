@@ -27546,7 +27546,7 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Interface e explorador','Interface & Explorer'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','research']],
+   ['customize',msg('Personalização','Customization'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','research']],
    ['workflow',msg('Organização e Spaces','Organization & Spaces'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
    ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','writingWidgets','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
    ['longform',msg('Longform e livros','Longform & books'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],

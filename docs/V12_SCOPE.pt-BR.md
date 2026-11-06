@@ -1,6 +1,8 @@
-# Basic v12.0.0 — Cobertura real e compatibilidade
+# Basic v12.0.1 — Cobertura real e compatibilidade
 
-Esta versão acrescenta ferramentas originais inspiradas em oito plugins comunitários, sem incorporar integralmente os respectivos projetos. A integração externa depende dos plugins originais estarem instalados e ativados.
+As versões 12.0.0–12.0.1 acrescentam ferramentas originais inspiradas em oito plugins comunitários, sem incorporar integralmente os respectivos projetos. A integração externa depende dos plugins originais estarem instalados e ativados.
+
+A atualização 12.0.1 reorganiza as configurações entre **Toolkit v12** e **Suítes** (Unique, Notion, Number e Longform Studio). Acrescenta o ribbon **Basic: ações rápidas**, correções para a abertura de menus Android e o comando **Marcador**, sem modificar os atalhos pertencentes ao Ultimate Toolkit original. [Consulte o guia completo](SUITES_AND_INTEGRATIONS.pt-BR.md).
 
 ## O que foi implementado
 

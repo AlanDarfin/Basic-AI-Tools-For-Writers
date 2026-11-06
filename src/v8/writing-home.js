@@ -1,7 +1,7 @@
 'use strict';
 /* Lightweight local-first writing dashboard, inspired by Harbor Tab + Genkan. */
 const WRITER_V8_HOME_VIEW='writer-writing-home';
-const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero','studio'];
+const WRITER_V8_HOME_SECTIONS=['calendar','soundscape','continue','recent','favorites','quick','stats','activity','random','tags','goal','gallery','quotes','today','books','trash','reading','zotero'];
 const WRITER_V8_HOME_ORIGINAL_QUOTES=[
  ['Cada parágrafo é uma porta para uma história que ainda não existe.',''],
  ['Uma boa ideia cresce quando ganha espaço na página.',''],
@@ -58,7 +58,6 @@ const WRITER_V8_HOME_CATALOG={
  trash:['trash-2','Lixeira','Trash explorer','Restaure notas da lixeira interna','Restore notes from Obsidian trash'],
  reading:['book-open-check','Leitura atual','Current reading','Palavras, títulos e tempo estimado','Words, headings and estimated time'],
  zotero:['book-marked','Fontes Zotero','Zotero sources','Notas de pesquisa importadas','Imported research notes'],
- studio:['book-text','Longform Studio','Longform Studio','Manuscrito contínuo, revisão e pesquisa','Continuous manuscript, review and search']
 };
 function writerV8HomeSearch(files,query,cache,max=12){
  if(typeof writerV83FuzzySearch==='function')return writerV83FuzzySearch(files,query,cache,max);
@@ -192,14 +191,7 @@ class WriterV8HomeView extends ItemView{
     },
     trash:p=>writerV10RenderTrashWidget(this,p),
     reading:p=>writerV10RenderReadingWidget(this,p),
-    zotero:p=>writerV10RenderZoteroWidget(this,p),
-    studio:p=>{
-     const card=this.card(p,'studio','Longform Studio','Longform Studio');
-     const actions=card.createDiv({cls:'writer-v11-studio-actions'});
-     actions.createEl('button',{text:writerUi('Abrir estúdio','Open studio')}).addEventListener('click',()=>writerV11PickProject(this.plugin,x=>writerV11OpenProject(this.plugin,x)));
-     actions.createEl('button',{text:writerUi('Pesquisar','Search')}).addEventListener('click',()=>writerV11OpenSearch(this.plugin));
-     actions.createEl('button',{text:writerUi('Diagnóstico','Diagnostics')}).addEventListener('click',()=>writerV11OpenDiagnostics(this.plugin));
-    }
+    zotero:p=>writerV10RenderZoteroWidget(this,p)
   };
   for(const key of widgetCfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;

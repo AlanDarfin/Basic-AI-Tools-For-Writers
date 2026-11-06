@@ -56,7 +56,7 @@ function writerV9SpaceSanitize(raw){
    if(json.length<=120000)layoutSnapshot=JSON.parse(json);
   }
  }catch(_){}
- return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes,layoutSnapshot};
+ return {id,name,icon,iconColor,folder,rootExplorer:raw.rootExplorer!==false&&Boolean(folder),tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes,layoutSnapshot};
 }
 /* Space state changes only affect views, never the vault contents. */
 function writerV9215ActiveSpace(plugin){
@@ -103,6 +103,7 @@ async function writerV9215SelectSpace(plugin,id){
  if(cfg.autoSaveLayouts&&previous)writerV10SpaceSaveLayout(plugin,previous);
  cfg.activeId=next;
  await plugin.saveSettings();
+ plugin._writerV122RevealSpaceHidden=false;
  if(cfg.restoreLayoutsOnSwitch&&next){
   await writerV10SpaceRestoreLayout(plugin,cfg.spaces.find(space=>space.id===next));
  }
@@ -123,6 +124,7 @@ function writerV9SpaceItems(plugin,space){
  const files=plugin.app.vault.getMarkdownFiles?.()||[];
  const cache=plugin.app.metadataCache;
  return files.filter(file=>{
+  if((space.hiddenPaths||[]).some(path=>file.path===path||file.path.startsWith(path+'/')))return false;
   if(space.mode==='curated'&&!(space.includePaths||[]).some(path=>file.path===path||file.path.startsWith(path.replace(/\/$/,'')+'/')))return false;
   if(space.folder&&!(file.path===space.folder||file.path.startsWith(space.folder+'/')))return false;
   if(space.mode==='folder')return Boolean(space.folder);
@@ -157,7 +159,7 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},homeWidgetsEnabled:false,homeOrder:[],homeHidden:[],homeWidgetSizes:{},...(initial||{})};
+  const draft={name:'',icon:'layers',iconColor:'',folder:'',rootExplorer:true,tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},homeWidgetsEnabled:false,homeOrder:[],homeHidden:[],homeWidgetSizes:{},...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t
@@ -170,6 +172,16 @@ function writerV9SpaceEditor(plugin,initial,save){
    d.setValue(draft.mode||'filter').onChange(value=>{draft.mode=value;});
   });
   field('folder','Pasta (opcional)','Folder (optional)');
+  new Setting(root).setName(writerUi('Exibir pasta como raiz do explorador','Show folder as explorer root'))
+   .setDesc(writerUi('Esconde a árvore acima desta pasta e os itens fora dela, sem mover arquivos.',
+    'Visually removes parent folders and unrelated items; vault files are untouched.'))
+   .addToggle(t=>t.setValue(draft.rootExplorer!==false).onChange(value=>{draft.rootExplorer=value;}));
+  new Setting(root).setName(writerUi('Ocultar somente neste Space','Hide only in this Space'))
+   .setDesc(writerUi('Um caminho por linha. Pastas ocultas também ocultam seu conteúdo. Remova da lista para reexibir.',
+    'One path per line. Hidden folders hide their contents. Remove an entry here to unhide.'))
+   .addTextArea(t=>t.setValue((draft.hiddenPaths||[]).join('\n')).onChange(value=>{
+    draft.hiddenPaths=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+   }));
    const pickPath=(foldersOnly,onSelect)=>{
     class SpacePathPicker extends require('obsidian').FuzzySuggestModal{
      getItems(){return (plugin.app.vault.getAllLoadedFiles?.()||[]).filter(item=>foldersOnly?Boolean(item.children):item.extension==='md'||Boolean(item.children));}
@@ -560,12 +572,30 @@ function writerV9RegisterSpaces(plugin){
      });
     }));
   }
+  const activeSpace=writerV9215ActiveSpace(plugin);
+  if(activeSpace&&(file instanceof TFolder||file instanceof TFile)&&file.path){
+   const path=file.path;
+   const related=activeSpace.folder&&activeSpace.rootExplorer!==false&&
+    (path===activeSpace.folder||activeSpace.folder.startsWith(path+'/'));
+   const direct=(activeSpace.hiddenPaths||[]).includes(path);
+   if(!related)menu.addItem(item=>item.setTitle(direct?
+    writerUi('Reexibir neste Space','Unhide in this Space'):
+    writerUi('Ocultar neste Space','Hide in this Space'))
+    .setIcon(direct?'eye':'eye-off').onClick(async()=>{
+     const current=activeSpace.hiddenPaths||[];
+     activeSpace.hiddenPaths=direct?current.filter(x=>x!==path):[...new Set([...current,path])];
+     await plugin.saveSettings();
+     plugin.writerV91FlexRefresh?.();
+     plugin.writerV9SpacesRefresh?.();
+     plugin.writerV9216SpacesDockRefresh?.();
+    }));
+  }
  }));
 }
 function writerV9SpacesSettings(plugin,panel){
  const cfg=plugin.settings.v9Spaces;
  panel.createEl('h3',{text:writerUi('Spaces · coleções locais','Spaces · local collections')});
- panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com ícones e barra inferior no explorador. Os filtros do Space são independentes. A ocultação do explorador é global.','Collections by folder, tag or properties, with icons and a bottom explorer switcher. Space filters are independent; Explorer hiding is global.')});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com ícones e barra inferior no explorador. Os filtros do Space são independentes. A ocultação pode ser específica do Space ou global.','Collections by folder, tag or properties, with icons and a bottom explorer switcher. Space filters are independent; Explorer hiding can be per Space or global.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{
     cfg.enabled=value;if(!value)cfg.activeId='';

@@ -10,9 +10,9 @@ Open **Obsidian Settings → Basic**. Recent features now have separate top-leve
 | --- | --- |
 | Toolkit v12 | Overview, Writing & shortcuts, Images, Tasks & inbox, Privacy, Reading & voice, Integrations & sync |
 | Suites | Unique Suite, Notion Suite, Number Suite, Longform Studio |
-| Interface | Homepage, file explorer, visual properties, toolbar, sound and styles |
+| Customization | Homepage, file explorer, visual properties, toolbar, sound and styles |
 | Organization | Spaces, calendar, Flow, Pomodoro, session drafts, visual lock and files |
-| Writing | Markdown, widgets, typing, linter, templates and navigation |
+| Writing & Markdown | Markdown, widgets, typing, linter, templates and navigation |
 | Longform | Projects, bookshelf, tasks, BookNav, virtual content and worldbuilding |
 | AI & dictionary / Review | Models, providers, prompts, grammar, TTS and versions |
 

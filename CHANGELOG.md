@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 12.0.2 — Scoped Spaces and per-device toolbar
+
+- Added local per-Space hiding and folder-root rendering in the native Explorer.
+- Updated filtered Space collections to respect hidden folder descendants and folder renames.
+- Preserved desktop Dragger handles while moving the pointer from content to grip.
+- Limited floating toolbar to real selections and split desktop/mobile profiles.
+- Folded suite/toolkit settings into the original tabs.
+- Reviewed open issues and pull requests; added regression tests.
+
 ## 11.1.1 — Mobile sidebar and integrated Longform writing
 
 - Moved continuous writing into the standard Longform project tabs, preserving scene order, source files, guarded saves, snapshots, editorial comments and manuscript compilation.

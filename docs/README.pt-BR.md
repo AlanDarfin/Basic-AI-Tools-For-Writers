@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 12.0.3 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 12.0.4 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -106,7 +106,7 @@ As interfaces usam editores separados por capítulo, não um único editor CodeM
 
 ### Homepage de escrita personalizável
 
-A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia (preferência `homeOnNewTab`), com opção para desativar esse comportamento. A barra de pesquisa existente agora alterna entre **Cofre** (busca fuzzy nas notas) e **Web** (endereços ou pesquisa online). No PC, a pesquisa pode abrir no plugin **Surfing** quando estiver instalado, no **Web Viewer** nativo ou no navegador externo; no celular, abre no navegador do sistema. O buscador e o destino são configurados na aba **Página inicial**, sem criar novas abas. O widget opcional **Favoritos da web** guarda links HTTP(S) com título, grupo e ícone Lucide, permite editar, remover e mudar a ordem e pode salvar a página aberta do Surfing/Web Viewer por um comando. A visibilidade do widget é independente por Space.
+A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia (preferência `homeOnNewTab`), com opção para desativar esse comportamento. No computador, quando o **Surfing** estiver habilitado, a homepage mostra uma barra fixa de endereço e pesquisa no topo, no estilo do navegador original. Digite uma URL ou termo e pressione Enter para abrir no Surfing. Ao desativá-lo, a barra desaparece; a busca fuzzy pelo **Cofre** continua separada, sem seletor Cofre/Web. No PC, a pesquisa pode abrir no plugin **Surfing** quando estiver instalado, no **Web Viewer** nativo ou no navegador externo; no celular, abre no navegador do sistema. O buscador e o destino são configurados na aba **Página inicial**, sem criar novas abas. O widget opcional **Favoritos da web** guarda links HTTP(S) com título, grupo e ícone Lucide, permite editar, remover e mudar a ordem e pode salvar a página aberta do Surfing/Web Viewer por um comando. A visibilidade do widget é independente por Space.
 
 Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (computador), **continuar escrevendo**, **notas recentes**, **favoritos**, **rascunhos rápidos**, **resumo do cofre**, **atividade semanal**, **nota aleatória**, **tags**, **meta de palavras**, **galeria de fotos**, **citações** e **visão do dia**.
 

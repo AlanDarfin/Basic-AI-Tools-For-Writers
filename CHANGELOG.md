@@ -2,6 +2,14 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 12.0.4 — Surfing browser-style homepage bar
+
+- Replaced the redundant Vault/Web toggle with a sticky desktop address/search input at the very top of Home.
+- Show the Surfing bar only when the external Surfing plugin is actually enabled; auto-refresh visibility after enable/disable without restarting Basic.
+- Preserve the original fuzzy vault search separately and keep browser-style Enter-to-search, keyboard focus, and existing local web bookmarks.
+- Remove obsolete selector styling and replace old explanatory settings with active-only Surfing search controls.
+- Add automated integration and source regression tests to the full release pipeline.
+
 ## 12.0.3 — Surfing search and browser-style bookmarks
 
 - Added a Web search mode to the existing homepage search bar, retaining fuzzy vault search.

@@ -10778,10 +10778,15 @@ const WRITER_V8_WEB_ENGINE_URLS={
 };
 function writerV8HomeSurfing(plugin){
  const manager=plugin.app?.plugins;
+ const surfing=manager?.plugins?.surfing;
+ if(!surfing)return null;
+ // A loaded plugin object alone does not mean Surfing is enabled. Check the
+ // live Obsidian plugin registry so disabling Surfing hides the home omnibox.
  const enabled=manager?.enabledPlugins;
- if(enabled?.has&&!enabled.has('surfing'))return null;
- if(Array.isArray(enabled)&&!enabled.includes('surfing'))return null;
- return manager?.plugins?.surfing||null;
+ if(typeof enabled?.has==='function')return enabled.has('surfing')?surfing:null;
+ if(Array.isArray(enabled))return enabled.includes('surfing')?surfing:null;
+ if(typeof manager?.isEnabled==='function')return manager.isEnabled('surfing')?surfing:null;
+ return null;
 }
 function writerV8HomeSearchURL(plugin,input){
  const query=String(input||'').trim();
@@ -11562,13 +11567,19 @@ class WriterV8HomeView extends ItemView{
   // Desktop-only: focus the search once when this view opens, not on every rerender.
   if(!writerV8HomeIsMobile(this.plugin)){
    this.homeFocusTimer=setTimeout(()=>{
-    if(!this.disposed&&this.app.workspace.activeLeaf===this.leaf&&this.homeSearchInput?.isConnected)
-     this.homeSearchInput.focus({preventScroll:true});
+    if(!this.disposed&&this.app.workspace.activeLeaf===this.leaf){
+     const target=this.homeSurfingInput?.isConnected?this.homeSurfingInput:this.homeSearchInput;
+     if(target?.isConnected)target.focus({preventScroll:true});
+    }
    },0);
   }
-  this.writerV8ClockTimer=setInterval(()=>{if(!this.disposed)this.writerV8ClockRefresh?.();},1000);
+  this.writerV8ClockTimer=setInterval(()=>{
+   if(this.disposed)return;
+   this.writerV8ClockRefresh?.();
+   this.syncSurfingVisibility();
+  },1000);
  }
- async onClose(){this.disposed=true;clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;this.homeSearchInput=null;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
+ async onClose(){this.disposed=true;clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;this.homeSearchInput=null;this.homeSurfingInput=null;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -11597,7 +11608,12 @@ class WriterV8HomeView extends ItemView{
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
-  // Heading first, followed by a full-width search and evenly spaced actions.
+  // Surfing's omnibox is a permanent top address/search bar only while Surfing
+  // is active; Basic's original vault search stays independent beneath it.
+  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&writerV8HomeSurfing(this.plugin));
+  this.homeSurfingInput=null;
+  if(this.homeSurfingEnabled)this.renderSurfingBar(this.contentEl);
+  // Heading follows the optional browser bar, then the existing vault search.
   const hero=this.contentEl.createDiv({cls:'writer-v8-home-hero'});
   const heading=hero.createDiv({cls:'writer-v8-home-heading'});
   heading.style.setProperty('--writer-v8-home-title-color',writerV9SafeHex(cfg.homeTitleColor)||'var(--interactive-accent)');
@@ -11890,14 +11906,59 @@ class WriterV8HomeView extends ItemView{
   box.createEl('button',{text:writerUi('Abrir quadro de cenas','Open scene board')})
    .addEventListener('click',()=>this.plugin.openProjects('board'));
  }
+ syncSurfingVisibility(){
+  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&writerV8HomeSurfing(this.plugin));
+  if(active!==this.homeSurfingEnabled)this.render();
+ }
+ homeSearchWebMode(){
+  if(!this.homeSurfingInput?.isConnected){
+   new Notice(writerUi('Ative o Surfing para pesquisar na web pela homepage.','Enable Surfing to use the homepage web search.'));
+   return false;
+  }
+  this.homeSurfingInput.focus({preventScroll:true});
+  return true;
+ }
+ renderSurfingBar(parent){
+  const bar=parent.createDiv({cls:'writer-v1204-home-surfing-bar',
+   attr:{role:'search','aria-label':writerUi('Barra de endereço do Surfing','Surfing address bar')}});
+  const symbol=bar.createSpan({cls:'writer-v1204-home-surfing-symbol',attr:{'aria-hidden':'true'}});
+  require('obsidian').setIcon?.(symbol,'globe-2');
+  const surfing=writerV8HomeSurfing(this.plugin);
+  const engine=String(surfing?.settings?.defaultSearchEngine||'Google').slice(0,48);
+  const input=bar.createEl('input',{cls:'writer-v1204-home-surfing-input',attr:{
+   type:'text',placeholder:writerUi('Pesquisar com ','Search with ')+engine+
+    writerUi(' ou digitar endereço',' or enter address'),
+   'aria-label':writerUi('Pesquisar na web ou digitar endereço','Search web or enter address'),
+   autocomplete:'off',autocapitalize:'off',spellcheck:'false'}});
+  this.homeSurfingInput=input;
+  input.value=this.homeSurfingQuery||'';
+  input.addEventListener('input',()=>{this.homeSurfingQuery=input.value.slice(0,2048);});
+  input.addEventListener('focus',()=>{input.select?.();});
+  const openButton=bar.createEl('button',{cls:'writer-v1204-home-surfing-go',
+   attr:{type:'button',title:writerUi('Abrir no Surfing','Open in Surfing'),
+    'aria-label':writerUi('Abrir pesquisa no Surfing','Open search in Surfing')}});
+  require('obsidian').setIcon?.(openButton,'arrow-right');
+  const submit=async()=>{
+   const value=input.value.trim();
+   if(!value||openButton.disabled)return;
+   openButton.disabled=true;
+   try{
+    const url=writerV8HomeSearchURL(this.plugin,value);
+    await writerV8HomeOpenURL(this.plugin,url);
+   }catch(error){
+    new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+
+     String(error.message||error).slice(0,160));
+   }finally{openButton.disabled=false;}
+  };
+  input.addEventListener('keydown',event=>{
+   if(event.key==='Enter'){event.preventDefault();void submit();}
+   else if(event.key==='Escape'){event.preventDefault();input.value='';this.homeSurfingQuery='';}
+  });
+  openButton.addEventListener('click',()=>void submit());
+ }
  renderSearch(parent){
-  const box=this.card(parent,'search','Pesquisa','Search');
+  const box=this.card(parent,'search','Buscar no cofre','Search vault');
   box.addClass('writer-v901-home-search-card');
-  const modeBar=box.createDiv({cls:'writer-v1203-home-search-modes',attr:{role:'group','aria-label':writerUi('Origem da pesquisa','Search source')}});
-  const vaultTab=modeBar.createEl('button',{text:writerUi('Cofre','Vault'),attr:{type:'button','aria-pressed':'true'}});
-  const webTab=modeBar.createEl('button',{text:writerUi('Web · Surfing','Web · Surfing'),attr:{type:'button','aria-pressed':'false'}});
-  webTab.hidden=this.plugin.settings.v8Finish.homeWebSearchEnabled===false;
-  let mode='vault';
   const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
   this.homeSearchInput=input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
@@ -11920,7 +11981,7 @@ class WriterV8HomeView extends ItemView{
    const previous=preserve?matches[selected]?.path:'';
    results.empty();results.hidden=true;status.hidden=true;
    const q=input.value.trim();
-   if(mode==='web'||!q){matches=[];selected=0;return;}
+   if(!q){matches=[];selected=0;return;}
    matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
    if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
    else selected=0;
@@ -11948,55 +12009,34 @@ class WriterV8HomeView extends ItemView{
    }
    select(selected,false);
   };
-  const web=box.createDiv({cls:'writer-v8-home-web-links'});
-  web.hidden=true;
-  const link=web.createEl('button',{text:writerUi('Abrir endereço web','Open web address'),attr:{type:'button'}});
-  link.hidden=true;
-  const updateWebAction=()=>{
-   const q=input.value.trim(),url=writerV8HomeValidURL(q);
-   const visible=Boolean(q&&(mode==='web'||url));
-   link.hidden=!visible;web.hidden=!visible;
-   if(visible)link.setText(url?writerUi('Abrir endereço','Open address'):
-    writerUi('Pesquisar na web','Search web'));
+  // Keep the original vault search and its legacy direct-URL opening shortcut,
+  // but never display a second browser mode selector inside this search card.
+  const web=box.createDiv({cls:'writer-v8-home-web-links'});web.hidden=true;
+  const link=web.createEl('button',{text:writerUi('Abrir endereço','Open address'),attr:{type:'button'}});link.hidden=true;
+  const updateLink=()=>{
+   const url=writerV8HomeValidURL(input.value);
+   web.hidden=!url;link.hidden=!url;
   };
   const open=async()=>{
    link.disabled=true;
-   try{
-    const target=mode==='web'?writerV8HomeSearchURL(this.plugin,input.value):input.value;
-    await writerV8HomeOpenURL(this.plugin,target);
-   }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   try{await writerV8HomeOpenURL(this.plugin,input.value);}
+   catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
    finally{link.disabled=false;}
   };
-  const setMode=next=>{
-   mode=next==='web'&&this.plugin.settings.v8Finish.homeWebSearchEnabled!==false?'web':'vault';
-   vaultTab.setAttribute('aria-pressed',String(mode==='vault'));
-   webTab.setAttribute('aria-pressed',String(mode==='web'));
-   input.placeholder=mode==='web'?writerUi('Pesquisar na web ou digitar um endereço…','Search the web or enter an address…'):
-    writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…');
-   input.setAttribute('aria-label',mode==='web'?writerUi('Pesquisar na web','Search web'):writerUi('Buscar notas','Search notes'));
-   updateWebAction();draw();input.focus({preventScroll:true});
-  };
-  this.homeSearchWebMode=()=>setMode('web');
-  vaultTab.addEventListener('click',()=>setMode('vault'));
-  webTab.addEventListener('click',()=>setMode('web'));
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
-   if((event.ctrlKey||event.metaKey)&&event.key==='Enter'&&input.value.trim()&&
-      this.plugin.settings.v8Finish.homeWebSearchEnabled!==false){
-    event.preventDefault();setMode('web');void open();return;
-   }
-   if(mode==='vault'&&event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
-   if(mode==='vault'&&event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
+   if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
+   if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
    if(event.key==='Enter'){
     const url=writerV8HomeValidURL(input.value);
-    if(mode==='web'||url){event.preventDefault();void open();return;}
+    if(url){event.preventDefault();void open();return;}
     if(matches.length){event.preventDefault();this.openFile(matches[selected]);return;}
    }
    if(event.key==='Escape'&&input.value){
-    event.preventDefault();input.value='';updateWebAction();draw();
+    event.preventDefault();input.value='';updateLink();draw();
    }
   });
-  input.addEventListener('input',()=>{updateWebAction();draw();});
+  input.addEventListener('input',()=>{updateLink();draw();});
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
   box.addEventListener('keydown',focus);
@@ -12561,13 +12601,11 @@ function writerV8FinishSettings(plugin,panel){
   .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{
    cfg.homeOnNewTab=value;await plugin.saveSettings();
   }));
+ if(writerV8HomeSurfing(plugin)&&!writerV8HomeIsMobile(plugin)){
  panel.createEl('h3',{text:writerUi('Pesquisa web e Surfing','Web search and Surfing')});
- new Setting(panel).setName(writerUi('Pesquisa web na homepage','Web search on homepage'))
-  .setDesc(writerUi('Mostra Cofre/Web na barra de pesquisa já existente; não cria outra barra.',
-   'Adds Vault/Web to the existing home search bar without creating another search bar.'))
-  .addToggle(t=>t.setValue(cfg.homeWebSearchEnabled!==false).onChange(async value=>{
-   cfg.homeWebSearchEnabled=value;await plugin.saveSettings();refreshHome();
-  }));
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'A barra de endereços é exibida automaticamente no topo da homepage somente enquanto o Surfing estiver ativo no computador.',
+  'The address bar appears automatically at the top of Home only while Surfing is active on desktop.')});
  new Setting(panel).setName(writerUi('Mecanismo de busca','Search engine'))
   .setDesc(writerUi('O padrão do Surfing acompanha o buscador escolhido nele, quando instalado.',
    'Surfing default follows the search engine selected in Surfing, when installed.'))
@@ -12587,6 +12625,7 @@ function writerV8FinishSettings(plugin,panel){
    .addOption('external',writerUi('Navegador externo','External browser'))
    .setValue(cfg.homeWebSearchTarget||'auto')
    .onChange(async value=>{cfg.homeWebSearchTarget=value;await plugin.saveSettings();}));
+ }
  new Setting(panel).setName(writerUi('Favoritos da web','Web bookmarks'))
   .setDesc(writerUi('Adicione sites ao widget de favoritos, sem misturar com as notas favoritas.',
    'Add sites to the web bookmarks widget, separate from favorite notes.'))

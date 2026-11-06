@@ -106,7 +106,7 @@ As interfaces usam editores separados por capítulo, não um único editor CodeM
 
 ### Homepage de escrita personalizável
 
-A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia (preferência `homeOnNewTab`), com opção para desativar esse comportamento. Links externos podem abrir no **Web Viewer** nativo do PC ou no navegador do celular.
+A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia (preferência `homeOnNewTab`), com opção para desativar esse comportamento. A barra de pesquisa existente agora alterna entre **Cofre** (busca fuzzy nas notas) e **Web** (endereços ou pesquisa online). No PC, a pesquisa pode abrir no plugin **Surfing** quando estiver instalado, no **Web Viewer** nativo ou no navegador externo; no celular, abre no navegador do sistema. O buscador e o destino são configurados na aba **Página inicial**, sem criar novas abas. O widget opcional **Favoritos da web** guarda links HTTP(S) com título, grupo e ícone Lucide, permite editar, remover e mudar a ordem e pode salvar a página aberta do Surfing/Web Viewer por um comando. A visibilidade do widget é independente por Space.
 
 Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (computador), **continuar escrevendo**, **notas recentes**, **favoritos**, **rascunhos rápidos**, **resumo do cofre**, **atividade semanal**, **nota aleatória**, **tags**, **meta de palavras**, **galeria de fotos**, **citações** e **visão do dia**.
 

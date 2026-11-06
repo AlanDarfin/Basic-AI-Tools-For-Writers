@@ -251,7 +251,8 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   const file=plugin.app.vault.getAbstractFileByPath(path);
   const title=node.querySelector('.nav-file-title, .nav-folder-title');
   const isHidden=path&&writerV91FlexIsHidden(cfg,path,patterns,plugin);
-  const conceal=Boolean(cfg.enabled&&isHidden&&!cfg.showHidden);
+  const conceal=Boolean((cfg.enabled&&isHidden&&!cfg.showHidden)||
+  (typeof writerV122SpaceConcealed==='function'&&writerV122SpaceConcealed(plugin,path)));
   node.classList.toggle('writer-v91-flex-hidden',conceal);
   // Native file explorer styles may override simple CSS classes, so also set
   // a scoped inline display value. Never touch vault contents or file paths.
@@ -558,12 +559,14 @@ function writerV91FlexRegister(plugin){
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);
     if(!path)continue;
-    const hidden=cfg.enabled&&writerV91FlexIsHidden(cfg,path,patterns,plugin)&&!cfg.showHidden;
+    const hidden=(cfg.enabled&&writerV91FlexIsHidden(cfg,path,patterns,plugin)&&!cfg.showHidden)||
+     (typeof writerV122SpaceConcealed==='function'&&writerV122SpaceConcealed(plugin,path));
     node.classList.toggle('writer-v91-flex-hidden',hidden);
     node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&writerV91FlexIsHidden(cfg,path,patterns,plugin));
     if(hidden){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
     else if(node.dataset.writerFlexConcealed==='true'){delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');}
    }
+   if(typeof writerV122TreeDecorate==='function')writerV122TreeDecorate(plugin,leaf);
   }
  };
  const refresh=()=>{

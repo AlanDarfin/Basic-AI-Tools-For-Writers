@@ -124,7 +124,6 @@ async function writerV12SecureUnlock(plugin,file){
  modal.open();
 }
 function writerV12SecureRegister(plugin){
- if(!writerV12On(plugin,'secureNotes'))return;
  plugin.addCommand({id:'v12-secure-new',name:writerUi('Privacidade: criar nova nota criptografada','Privacy: create encrypted note'),callback:()=>writerV12SecureCreate(plugin)});
  plugin.addCommand({id:'v12-secure-open',name:writerUi('Privacidade: abrir nota criptografada','Privacy: open encrypted note'),callback:()=>writerV12SecureRead(plugin)});
 }

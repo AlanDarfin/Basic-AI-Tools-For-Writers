@@ -127,6 +127,53 @@ function writerV1010ActiveLeaf(workspace,leaves,side){
  return leaves.find(entry=>entry.leaf===workspace.activeLeaf)?.leaf||
   leaves.find(entry=>entry.leaf?.view?.containerEl?.closest?.('.mod-active'))?.leaf||leaves[0]?.leaf;
 }
+function writerV1010ActionIcon(action,label){
+ const svg=action?.querySelector?.('svg');
+ const explicit=svg?.getAttribute?.('data-lucide')||action?.getAttribute?.('data-icon');
+ if(explicit&&/^[a-z][a-z0-9-]{1,50}$/.test(explicit))return explicit;
+ const classes=svg?.classList;
+ const iconClass=classes&&typeof classes[Symbol.iterator]==='function'?
+  [...classes].find(cls=>cls.startsWith('lucide-')&&cls!=='lucide'):null;
+ if(iconClass)return iconClass.slice(7);
+ const text=String(label||'').toLocaleLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+ for(const [rx,icon] of [
+  [/nova nota|new note/,'square-pen'],[/nova pasta|new folder/,'folder-plus'],
+  [/orden|ordem|sort/,'arrow-up-narrow-wide'],[/revelar|reveal/,'gallery-vertical'],
+  [/expand|expand/,'chevrons-up-down'],[/recolher|collapse/,'chevrons-down-up'],
+  [/filtro|filter|busca|search/,'search'],[/space/,'layers'],
+  [/previa|preview/,'panel-bottom'],[/configur|setting/,'settings'],
+  [/cofre|vault/,'folder-open'],[/favorit|bookmark/,'bookmark']
+ ])if(rx.test(text))return icon;
+ return 'circle-dot';
+}
+function writerV1010IsSortingAction(action,label){
+ const text=String(label||'').toLocaleLowerCase();
+ if(/orden|ordem|sort|sortier|排序/.test(text))return true;
+ const svg=action?.querySelector?.('svg');
+ return Boolean(svg?.classList?.contains?.('lucide-arrow-up-narrow-wide')||
+  svg?.classList?.contains?.('lucide-arrow-down-wide-narrow'));
+}
+function writerV1010FillSortMenu(plugin,menu,view){
+ for(const [mode,pt,en,icon] of [
+  ['alphabetical','Nome (A–Z)','Name (A–Z)','arrow-down-a-z'],
+  ['alphabeticalReverse','Nome (Z–A)','Name (Z–A)','arrow-up-z-a'],
+  ['byModifiedTime','Modificados recentemente','Recently modified','clock'],
+  ['byModifiedTimeReverse','Modificados há mais tempo','Oldest modified','history'],
+  ['byCreatedTime','Criados recentemente','Recently created','calendar-plus'],
+  ['byCreatedTimeReverse','Criados há mais tempo','Oldest created','calendar-days']
+ ]){
+  menu.addItem(item=>{
+   item.setTitle(writerUi(pt,en)).setIcon(icon);
+   item.setChecked?.(view?.sortOrder===mode);
+   item.onClick(()=>{
+    if(typeof view?.setSortOrder==='function')view.setSortOrder(mode);
+    else if(typeof writerV93FlexSortModal==='function')writerV93FlexSortModal(plugin,null);
+   });
+  });
+ }
+ if(typeof writerV1043GlobalSortingMenu==='function'&&plugin.settings?.v91Flex)
+  writerV1043GlobalSortingMenu(plugin,menu);
+}
 function writerV1010SidebarMenu(plugin,event,side,leaves,active){
  const menu=new Menu(plugin.app),current=active?.view?.containerEl;
  const actions=[...new Set([...(current?.querySelectorAll?.('.view-actions .clickable-icon,.nav-header .nav-action-button,.nav-header .nav-buttons-container .clickable-icon')||[])])];
@@ -135,7 +182,15 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   const label=String(action.getAttribute('aria-label')||action.getAttribute('title')||'').trim();
   if(!label||action.closest('.writer-v1010-sidebar-toolbar'))continue;
   count++;
-  menu.addItem(item=>item.setTitle(label).onClick(()=>action.click?.()));
+  const icon=writerV1010ActionIcon(action,label);
+  if(writerV1010IsSortingAction(action,label)){
+   menu.addItem(item=>{
+    item.setTitle(label).setIcon(icon);
+    if(typeof item.setSubmenu==='function')
+     writerV1010FillSortMenu(plugin,item.setSubmenu(),active?.view);
+    else item.onClick(()=>typeof writerV93FlexSortModal==='function'&&writerV93FlexSortModal(plugin,null));
+   });
+  }else menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(()=>action.click?.()));
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))
@@ -159,6 +214,7 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   menu.addItem(item=>item.setTitle(writerUi(info[1],info[2])).setIcon(info[0])
    .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
  }
+ event?.stopPropagation?.();
  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
  else menu.showAtPosition({x:90,y:110});
 }

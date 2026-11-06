@@ -55,7 +55,7 @@ test('Notion additional Markdown views, rollup source and safe chart arithmetic'
  assert.equal(a.writerV1011NotionSpec('folder: Vault/Notes\nview: timeline').view,'timeline');
  assert.equal(a.writerV1011NotionSpec('view: untrusted').view,'table');
  assert.equal(a.writerV1011NotionDate('2026-02-30'),'');
- assert.equal(a.writerV1011NotionSafeName('../unsafe/'),'. unsafe');
+ assert.equal(a.writerV1011NotionSafeName('../unsafe/'),'unsafe');
  const chart=a.writerV1011NotionChart([
   {data:{status:'Done',hours:3}},{data:{status:'Done',hours:2}},
   {data:{status:'Todo',hours:1}}],'status','hours');

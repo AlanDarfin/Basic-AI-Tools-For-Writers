@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 10.10.3 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 10.10.4 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -14,7 +14,7 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 ### Sidebars and editor width
 
-- **Sidebar Manager (opt-in):** stable native Android sidebar tab controls with an active-tab indicator retained across panel switches; consolidated action menu with Lucide icons, native sorting menu support and optional Spaces dock in the mobile footer. Layout refreshes preserve the top-row buttons so menus do not disappear. Configure mobile/desktop independently; order preferences are shared without moving native panes.
+- **Sidebar Manager (opt-in):** stable native Android sidebar tab controls with an active-tab indicator retained across panel switches; consolidated action menu with Lucide icons, native sorting menu support and a permanent collapsible Spaces selector just above mobile sidebar tabs (tap to open your Spaces or choose Entire vault). Layout refreshes preserve the top-row buttons so menus do not disappear. Configure mobile/desktop independently; order preferences are shared without moving native panes.
 - **Editor Width:** desktop status-bar slider (20–100%), click its percentage to reset the width, and a settings slider available on Android. Supports individual Markdown notes using the `editor-width` YAML property. A note's YAML value takes precedence; moving the slider for that note gives a temporary preview without rewriting Markdown.
 - **Compatibility:** sidebars remain opt-in, and native controls return when disabled. When available, the current vault can be accessed from the sidebar menu; otherwise the native vault footer stays visible. Using the original Sidebar Manager simultaneously leaves its sidebar controls in charge.
 

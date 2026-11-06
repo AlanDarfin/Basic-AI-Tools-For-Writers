@@ -509,6 +509,7 @@ class WriterV8HomeView extends ItemView{
    input.setAttribute('aria-label',mode==='web'?writerUi('Pesquisar na web','Search web'):writerUi('Buscar notas','Search notes'));
    updateWebAction();draw();input.focus({preventScroll:true});
   };
+  this.homeSearchWebMode=()=>setMode('web');
   vaultTab.addEventListener('click',()=>setMode('vault'));
   webTab.addEventListener('click',()=>setMode('web'));
   link.addEventListener('click',()=>void open());
@@ -965,6 +966,27 @@ function writerV8RegisterHome(plugin){
  };
  plugin.writerV8HomeOpen=open;
  plugin.addCommand({id:'v8-open-writing-home',name:writerUi('Início: abrir painel de escrita','Home: open writing dashboard'),callback:()=>void open()});
+ plugin.addCommand({id:'v1203-bookmark-current-webpage',
+  name:writerUi('Web: favoritar página aberta no Surfing','Web: bookmark current Surfing page'),
+  callback:async()=>{
+   const view=plugin.app.workspace.activeLeaf?.view;
+   const type=view?.getViewType?.();
+   if(type!=='surfing-view'&&type!=='webviewer'){
+    new Notice(writerUi('Abra uma página do Surfing ou Web Viewer primeiro.','Open a Surfing or Web Viewer page first.'));return;
+   }
+   const url=writerV8HomeValidURL(view.getState?.()?.url||'');
+   if(!url){new Notice(writerUi('Essa página não possui um endereço web válido.','This page has no valid web address.'));return;}
+   const bookmark={url,title:String(view.getCurrentTitle?.()||view.getDisplayText?.()||new URL(url).hostname).slice(0,70)};
+   await open();
+   const home=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
+   home?.editWebBookmark?.(bookmark);
+  }});
+ plugin.addCommand({id:'v1203-web-search',name:writerUi('Web: pesquisar na homepage','Web: search from home'),
+  callback:async()=>{
+   await open();
+   const view=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
+   view?.homeSearchWebMode?.();
+  }});
  plugin.addCommand({id:'v8-toggle-current-favorite',name:writerUi('Início: favoritar nota atual','Home: toggle current note favorite'),callback:()=>{
   const file=plugin.app.workspace.getActiveFile?.();
   if(!(file instanceof TFile))return new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));
@@ -1071,6 +1093,40 @@ function writerV8FinishSettings(plugin,panel){
   .setDesc(writerUi('Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.','Enabled by default. Empty tabs only: never replaces notes or other views.'))
   .addToggle(toggle=>toggle.setValue(cfg.homeOnNewTab).onChange(async value=>{
    cfg.homeOnNewTab=value;await plugin.saveSettings();
+  }));
+ panel.createEl('h3',{text:writerUi('Pesquisa web e Surfing','Web search and Surfing')});
+ new Setting(panel).setName(writerUi('Pesquisa web na homepage','Web search on homepage'))
+  .setDesc(writerUi('Mostra Cofre/Web na barra de pesquisa já existente; não cria outra barra.',
+   'Adds Vault/Web to the existing home search bar without creating another search bar.'))
+  .addToggle(t=>t.setValue(cfg.homeWebSearchEnabled!==false).onChange(async value=>{
+   cfg.homeWebSearchEnabled=value;await plugin.saveSettings();refreshHome();
+  }));
+ new Setting(panel).setName(writerUi('Mecanismo de busca','Search engine'))
+  .setDesc(writerUi('O padrão do Surfing acompanha o buscador escolhido nele, quando instalado.',
+   'Surfing default follows the search engine selected in Surfing, when installed.'))
+  .addDropdown(d=>{
+   for(const [id,name] of WRITER_V8_WEB_ENGINES)
+    d.addOption(id,id==='surfing'?writerUi('Padrão do Surfing (ou Google)','Surfing default (or Google)'):name);
+   d.setValue(WRITER_V8_WEB_ENGINES.some(row=>row[0]===cfg.homeWebSearchEngine)?cfg.homeWebSearchEngine:'surfing')
+    .onChange(async value=>{cfg.homeWebSearchEngine=value;await plugin.saveSettings();});
+  });
+ new Setting(panel).setName(writerUi('Abrir resultados web em','Open web results in'))
+  .setDesc(writerUi('No PC, Surfing usa o plugin instalado. Se não estiver disponível, recorre ao Web Viewer ou navegador externo. No celular usa navegador externo.',
+   'On desktop, Surfing uses the installed plugin; otherwise native Web Viewer or external browser. Mobile always uses the external browser.'))
+  .addDropdown(d=>d
+   .addOption('auto',writerUi('Automático (Surfing → Web Viewer → navegador)','Automatic (Surfing → Web Viewer → browser)'))
+   .addOption('surfing','Surfing')
+   .addOption('webviewer','Web Viewer')
+   .addOption('external',writerUi('Navegador externo','External browser'))
+   .setValue(cfg.homeWebSearchTarget||'auto')
+   .onChange(async value=>{cfg.homeWebSearchTarget=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Favoritos da web','Web bookmarks'))
+  .setDesc(writerUi('Adicione sites ao widget de favoritos, sem misturar com as notas favoritas.',
+   'Add sites to the web bookmarks widget, separate from favorite notes.'))
+  .addButton(b=>b.setButtonText(writerUi('Adicionar site','Add website')).onClick(async()=>{
+   await plugin.writerV8HomeOpen?.();
+   const home=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
+   home?.editWebBookmark?.();
   }));
  writerV83StudySettings(plugin,panel);
  new Setting(panel).setName(writerUi('Personalizar widgets da homepage','Customize homepage widgets'))

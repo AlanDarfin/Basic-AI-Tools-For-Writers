@@ -2,6 +2,14 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.10.3 — Mobile sidebar indicator, action icons and sorting
+
+- Preserve the same mobile tab buttons across layout events instead of replacing the toolbar; update only active classes and ARIA state so the indicator remains visible when returning to File Explorer.
+- Stop custom tab/menu click propagation from triggering native drawer actions.
+- Show Lucide icons for native sidebar actions using their own SVGs, with PT/EN label fallbacks.
+- Replace synthetic clicks on the native sorting button with an in-place sorting submenu covering name, modified/created dates and existing Basic sorting choices.
+- Add regression tests for switching Explorer → Search → Explorer, submenu behavior without synthetic clicks and icon coverage.
+
 ## 10.10.2 — Dragger desktop-only
 
 - Disable the block Dragger completely on mobile. No drag handle, indicator, pointer or touch listeners, or Dragger-specific commands are registered on Android.

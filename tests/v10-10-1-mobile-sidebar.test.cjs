@@ -89,10 +89,19 @@ test('Mobile toolbar mounts INSIDE native selector, replaces only the old select
  assert.equal(tabs.parentElement,null,'no duplicate header inserted below selector');
  assert.ok(root.classList.contains('writer-v1011-managed-mobile'));
  assert.equal(logs.length,0);
- bar.children[1].click();
+ const firstButton=bar.children[0],secondButton=bar.children[1];
+ secondButton.click();
  while(callbacks.length)callbacks.shift()();
  assert.equal(drawer.currentTab,1,'second icon selects correct native tab');
- assert.ok(tabs.children.find(n=>n.classList.contains('writer-v1010-sidebar-toolbar')).children[1].classList.contains('is-active'));
+ assert.equal(tabs.children.find(n=>n.classList.contains('writer-v1010-sidebar-toolbar')),bar,'tab row is not destroyed when switching');
+ assert.equal(bar.children[1],secondButton,'existing icon remains mounted');
+ assert.ok(secondButton.classList.contains('is-active'));
+ firstButton.click();
+ while(callbacks.length)callbacks.shift()();
+ assert.equal(drawer.currentTab,0,'returning to explorer selects first tab');
+ assert.equal(bar.children[0],firstButton,'explorer icon remains mounted');
+ assert.ok(firstButton.classList.contains('is-active'),'top indicator stays visible when returning');
+ assert.equal(firstButton.attributes['aria-pressed'],'true');
  unload();
  assert.ok(!native.classList.contains('writer-v1011-native-tabs-hidden'));
  assert.ok(!root.classList.contains('writer-v1011-managed-mobile'));
@@ -119,4 +128,44 @@ test('More menu combines overflowing tabs and native actions, with Spaces access
  assert.match(css,/\.writer-v1011-native-tabs-hidden/);
  assert.match(css,/\.writer-v1011-integrated-spaces/);
  assert.match(css,/writer-v1011-managed-mobile\.writer-v1011-compact-footer/);
+});
+
+test('Mobile tab header can be recreated without losing Basic controls',()=>{
+ const {doc,node}=html();
+ let notify=null,disconnects=0;
+ class Observer {
+  constructor(callback){notify=callback;}
+  observe(target,options){assert.equal(options.subtree,true);assert.equal(options.childList,true);}
+  disconnect(){disconnects++;}
+ }
+ const {api,callbacks}=loadMobile({MutationObserver:Observer});
+ const root=node(),native=node(),tabs=node();
+ root.ownerDocument=doc;tabs.appendChild(native);
+ const explorer={view:{getViewType:()=> 'file-explorer'}};
+ const search={view:{getViewType:()=> 'global-search'}};
+ const drawer={type:'mobile-drawer',containerEl:root,tabsContainerEl:tabs,
+  tabsListEl:native,headerEl:node(),children:[explorer,search],
+  currentTab:0,isPinned:false,selectTabIndex(i){this.currentTab=i;}};
+ let ready,dispose;
+ const workspace={containerEl:root,leftSplit:drawer,rightSplit:{},activeLeaf:explorer,
+  iterateAllLeaves(fn){[explorer,search].forEach(fn);},getActiveFile(){return null;},
+  onLayoutReady(fn){ready=fn;},on(){return {};},setActiveLeaf(leaf){this.activeLeaf=leaf;}};
+ const plugin={settings:{v1010Layout:{sidebar:{enabled:true,mobileTabs:true},width:{enabled:false}}},
+  app:{workspace},addStatusBarItem:()=>null,registerEvent(){},registerDomEvent(){},
+  register(fn){dispose=fn;},saveSettings:async()=>{}};
+ api.writerV1010Register(plugin);ready();
+ while(callbacks.length)callbacks.shift()();
+ assert.equal(typeof notify,'function');
+ const initial=tabs.children.find(x=>x.classList.contains('writer-v1010-sidebar-toolbar'));
+ assert.ok(initial);
+ const nextTabs=node(),nextNative=node();nextTabs.appendChild(nextNative);
+ drawer.tabsContainerEl=nextTabs;drawer.tabsListEl=nextNative;
+ notify([{type:'childList'}]);
+ while(callbacks.length)callbacks.shift()();
+ const restored=nextTabs.children.find(x=>x.classList.contains('writer-v1010-sidebar-toolbar'));
+ assert.ok(restored,'toolbar returns after Obsidian rebuilds tab header');
+ assert.notEqual(restored,initial,'stale detached toolbar is not reused');
+ assert.ok(nextNative.classList.contains('writer-v1011-native-tabs-hidden'));
+ dispose();
+ assert.ok(disconnects>0,'observer is disconnected on unload');
 });

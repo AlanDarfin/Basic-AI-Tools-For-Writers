@@ -54,7 +54,7 @@ function writerV1011NotionChart(rows,group,value='count'){
  return [...totals].sort((a,b)=>b[1]-a[1]).slice(0,20);
 }
 function writerV1011NotionSafeName(value){
- return String(value||'').replace(/[\x00-\x1f\\/:*?"<>|#\[\]]/g,' ').replace(/\s+/g,' ').trim().slice(0,75);
+ return String(value||'').replace(/[\x00-\x1f\\/:*?"<>|#\[\]]/g,' ').replace(/\s+/g,' ').trim().replace(/^\.+\s*/,'').slice(0,75);
 }
 async function writerV1011NotionNew(plugin,spec,label){
  const folder=String(spec.folder||'').replace(/\/+$/,'');

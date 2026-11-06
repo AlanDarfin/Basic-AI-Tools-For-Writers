@@ -240,7 +240,20 @@ function writerV9216SpaceDockRegister(plugin){
    old.querySelector(':scope > .writer-v93-space-manage-action')?.remove();actions.delete(old);
   }
  };
+ const observeDrawer=()=>{
+  if(require('obsidian').Platform?.isMobile!==true||typeof MutationObserver!=='function')return;
+  const root=plugin.app.workspace.leftSplit?.containerEl;
+  if(root===observedMobileRoot)return;
+  mobileObserver?.disconnect();mobileObserver=null;observedMobileRoot=root||null;
+  if(!root)return;
+  mobileObserver=new MutationObserver(()=>{
+   const anchor=writerV1014MobileSpacesAnchor(plugin);
+   if(anchor&&!anchor.querySelector?.(':scope > .writer-v1014-collapsible-spaces'))refresh();
+  });
+  mobileObserver.observe(root,{childList:true,subtree:true});
+ };
  const attach=()=>{
+  observeDrawer();
   attachManageAction();
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
@@ -290,10 +303,12 @@ function writerV9216SpaceDockRegister(plugin){
  plugin.addCommand?.({id:'v93-spaces-manage',name:writerUi('Spaces: gerenciar pelo explorador','Spaces: manage from File Explorer'),callback:()=>void openManager()});
  // Spaces remain accessible through the explorer dock and command palette.
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
+ plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',refresh));
  plugin.app.workspace.onLayoutReady?.(refresh);
  plugin.writerV1011SpacesDockRefresh=refresh;
  plugin.register?.(()=>{
-  clearTimeout(timer);for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
+  clearTimeout(timer);mobileObserver?.disconnect();mobileObserver=null;observedMobileRoot=null;
+  for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
   actions.clear();for(const parent of hosts){
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
    parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host','writer-v1014-mobile-spaces-anchor');

@@ -534,6 +534,134 @@ class WriterV8HomeView extends ItemView{
   box.addEventListener('keydown',focus);
   draw();
  }
+ renderWebBookmarks(parent){
+  const box=this.card(parent,'webBookmarks','Favoritos da web','Web bookmarks');
+  const cfg=this.plugin.settings.v8Finish,list=cfg.homeWebBookmarks||[];
+  const tools=box.createDiv({cls:'writer-v1203-web-bookmarks-tools'});
+  const add=tools.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar site favorito','Add web bookmark')}});
+  require('obsidian').setIcon?.(add,'plus');
+  add.createSpan({text:writerUi('Adicionar site','Add website')});
+  add.addEventListener('click',()=>this.editWebBookmark());
+  if(!list.length){
+   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi(
+    'Salve seus sites preferidos aqui. Os links são guardados localmente e abertos apenas ao clicar.',
+    'Save your favorite websites here. Links stay local and open only when clicked.')});
+   return;
+  }
+  const shown=this.webBookmarksExpanded?list:list.slice(0,12);
+  const groups=new Map();
+  for(const item of shown){
+   const key=item.group||'';
+   if(!groups.has(key))groups.set(key,[]);
+   groups.get(key).push(item);
+  }
+  for(const [group,entries] of groups){
+   if(group)box.createEl('h4',{cls:'writer-v1203-web-bookmarks-heading',text:group});
+   const grid=box.createDiv({cls:'writer-v1203-web-bookmarks-grid'});
+   for(const bookmark of entries){
+    const item=grid.createDiv({cls:'writer-v1203-web-bookmark'});
+    const button=item.createEl('button',{cls:'writer-v1203-web-bookmark-open',attr:{
+     type:'button',title:bookmark.url,'aria-label':writerUi('Abrir site: ','Open website: ')+bookmark.title}});
+    const glyph=button.createSpan({cls:'writer-v1203-web-bookmark-icon'});
+    try{require('obsidian').setIcon?.(glyph,bookmark.icon||'globe');}
+    catch(_){require('obsidian').setIcon?.(glyph,'globe');}
+    const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
+    labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
+    labels.createSpan({text:new URL(bookmark.url).hostname,cls:'writer-v1203-web-bookmark-domain'});
+    button.addEventListener('click',()=>void writerV8HomeOpenURL(this.plugin,bookmark.url)
+     .catch(error=>new Notice(String(error.message||error))));
+    const more=item.createEl('button',{cls:'writer-v1203-web-bookmark-more',
+     attr:{type:'button','aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});
+    require('obsidian').setIcon?.(more,'ellipsis');
+    more.addEventListener('click',event=>{
+     const menu=new Menu(this.app);
+     menu.addItem(i=>i.setTitle(writerUi('Editar favorito','Edit bookmark')).setIcon('pencil')
+      .onClick(()=>this.editWebBookmark(bookmark)));
+     menu.addItem(i=>i.setTitle(writerUi('Mover para cima','Move up')).setIcon('arrow-up')
+      .onClick(()=>this.moveWebBookmark(bookmark,-1)));
+     menu.addItem(i=>i.setTitle(writerUi('Mover para baixo','Move down')).setIcon('arrow-down')
+      .onClick(()=>this.moveWebBookmark(bookmark,1)));
+     menu.addSeparator?.();
+     menu.addItem(i=>i.setTitle(writerUi('Remover favorito','Remove bookmark')).setIcon('trash-2')
+      .onClick(()=>this.removeWebBookmark(bookmark)));
+     menu.showAtMouseEvent(event);
+    });
+   }
+  }
+  if(list.length>12){
+   const expand=box.createEl('button',{cls:'writer-v1203-web-bookmarks-expand',attr:{type:'button'}});
+   expand.setText(this.webBookmarksExpanded?writerUi('Mostrar menos','Show fewer'):
+    writerUi('Mostrar todos (','Show all (')+list.length+')');
+   expand.addEventListener('click',()=>{this.webBookmarksExpanded=!this.webBookmarksExpanded;this.render();});
+  }
+ }
+ editWebBookmark(bookmark){
+  const view=this,plugin=this.plugin,modal=new Modal(this.app);
+  const cfg=plugin.settings.v8Finish;
+  const original=(cfg.homeWebBookmarks||[]).find(x=>x.id===bookmark?.id);
+  const draft={title:bookmark?.title||'',url:bookmark?.url||'',icon:bookmark?.icon||'globe',group:bookmark?.group||''};
+  modal.onOpen=()=>{
+   modal.setTitle(original?writerUi('Editar favorito web','Edit web bookmark'):
+    writerUi('Adicionar favorito web','Add web bookmark'));
+   const root=modal.contentEl;
+   root.createEl('p',{cls:'setting-item-description',text:writerUi(
+    'Somente links HTTP e HTTPS. Os favoritos pertencem ao Basic; não alteram os favoritos do navegador.',
+    'Only HTTP and HTTPS links. These are Basic bookmarks, not browser bookmarks.')});
+   new Setting(root).setName(writerUi('Nome','Name')).addText(t=>t.setValue(draft.title)
+    .setPlaceholder('Ex.: Wikipedia').onChange(v=>{draft.title=v;}));
+   new Setting(root).setName('URL').addText(t=>t.setPlaceholder('https://example.org')
+    .setValue(draft.url).onChange(v=>{draft.url=v;}));
+   new Setting(root).setName(writerUi('Grupo (opcional)','Group (optional)'))
+    .addText(t=>t.setPlaceholder(writerUi('Pesquisa, Escrita, Estudos…','Research, Writing, Study…'))
+     .setValue(draft.group).onChange(v=>{draft.group=v;}));
+   new Setting(root).setName(writerUi('Ícone Lucide','Lucide icon'))
+    .setDesc(writerUi('Ex.: globe, book-open, search.','E.g. globe, book-open, search.'))
+    .addText(t=>t.setValue(draft.icon).onChange(v=>{draft.icon=v;}));
+   const status=root.createEl('p',{cls:'setting-item-description',attr:{role:'status'}});
+   new Setting(root).addButton(b=>b.setButtonText(writerUi('Salvar favorito','Save bookmark')).setCta()
+    .onClick(async()=>{
+     const url=writerV8HomeValidURL(draft.url);
+     if(!url){status.setText(writerUi('Insira um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));return;}
+     const list=cfg.homeWebBookmarks||(cfg.homeWebBookmarks=[]);
+     if(list.some(x=>x.url===url&&x.id!==original?.id)){
+      status.setText(writerUi('Esse site já está nos favoritos.','This site is already bookmarked.'));return;
+     }
+     if(!original&&list.length>=100){status.setText(writerUi('Limite de 100 favoritos.','100-bookmark limit reached.'));return;}
+     const safe={
+      id:original?.id||'web-'+Date.now().toString(36)+'-'+list.length,
+      url,title:String(draft.title||new URL(url).hostname).trim().replace(/[\r\n\u0000-\u001f]/g,' ').slice(0,70)||new URL(url).hostname,
+      group:String(draft.group||'').trim().replace(/[\r\n\u0000-\u001f]/g,' ').slice(0,40),
+      icon:/^[a-z][a-z0-9-]{1,45}$/.test(draft.icon)?draft.icon:'globe'
+     };
+     if(original)list[list.findIndex(x=>x.id===original.id)]=safe;
+     else list.push(safe);
+     try{await plugin.saveSettings();modal.close();view.render();}
+     catch(error){status.setText(String(error.message||error));}
+    })).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
+  };
+  modal.open();
+ }
+ moveWebBookmark(bookmark,offset){
+  const list=this.plugin.settings.v8Finish.homeWebBookmarks||[];
+  const i=list.findIndex(x=>x.id===bookmark.id),dest=i+offset;
+  if(i<0||dest<0||dest>=list.length)return;
+  [list[i],list[dest]]=[list[dest],list[i]];
+  this.saveSoon();this.render();
+ }
+ removeWebBookmark(bookmark){
+  const modal=new Modal(this.app);
+  modal.onOpen=()=>{
+   modal.setTitle(writerUi('Remover favorito web','Remove web bookmark'));
+   modal.contentEl.createEl('p',{text:writerUi('Remover somente o atalho para ','Remove only the shortcut to ')+bookmark.title+'?'});
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Remover','Remove'))
+    .setWarning().onClick(async()=>{
+     const cfg=this.plugin.settings.v8Finish;
+     cfg.homeWebBookmarks=cfg.homeWebBookmarks.filter(x=>x.id!==bookmark.id);
+     await this.plugin.saveSettings();modal.close();this.render();
+    })).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
+  };
+  modal.open();
+ }
  renderFiles(parent,kind){
   const recent=kind==='recent',box=this.card(parent,kind,recent?'Notas recentes':'Favoritos',recent?'Recent notes':'Favorites');
   const files=recent?writerV8HomeTopFiles(this.plugin,12):

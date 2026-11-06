@@ -45,7 +45,7 @@ function loadMobile(globals={}){
   Set,Map,Object,Math,Number,String,
   ...globals
  };
- const api=vm.runInNewContext(source+'\n({writerV1010Merge,writerV1010MobileDrawer,writerV1010CollectLeaves,writerV1010ActiveLeaf,writerV1010SelectLeaf,writerV1010Register})',ctx);
+ const api=vm.runInNewContext(source+'\n({writerV1010Merge,writerV1010MobileDrawer,writerV1010CollectLeaves,writerV1010ActiveLeaf,writerV1010SelectLeaf,writerV1010Register,writerV1012NativeActionIcon,writerV1012IsNativeSortAction,writerV1012OpenNativeAction})',ctx);
  return {api,callbacks,logs};
 }
 test('MobileDrawer tabs use native child positions, not generic revealLeaf',()=>{
@@ -89,9 +89,14 @@ test('Mobile toolbar mounts INSIDE native selector, replaces only the old select
  assert.equal(tabs.parentElement,null,'no duplicate header inserted below selector');
  assert.ok(root.classList.contains('writer-v1011-managed-mobile'));
  assert.equal(logs.length,0);
+ const originalButtons=[...bar.children];
  bar.children[1].click();
  while(callbacks.length)callbacks.shift()();
  assert.equal(drawer.currentTab,1,'second icon selects correct native tab');
+ assert.equal(bar.children[1],originalButtons[1],'tab switching must preserve the same button DOM anchors');
+ plugin.writerV1010Refresh();
+ while(callbacks.length)callbacks.shift()();
+ assert.equal(bar.children[1],originalButtons[1],'layout refresh must not destroy the menu anchor');
  assert.ok(tabs.children.find(n=>n.classList.contains('writer-v1010-sidebar-toolbar')).children[1].classList.contains('is-active'));
  unload();
  assert.ok(!native.classList.contains('writer-v1011-native-tabs-hidden'));
@@ -119,4 +124,69 @@ test('More menu combines overflowing tabs and native actions, with Spaces access
  assert.match(css,/\.writer-v1011-native-tabs-hidden/);
  assert.match(css,/\.writer-v1011-integrated-spaces/);
  assert.match(css,/writer-v1011-managed-mobile\.writer-v1011-compact-footer/);
+});
+
+test('Native action menu retains Lucide icons and waits until parent menu closes before showing sort',()=>{
+ const {api,callbacks}=loadMobile();
+ const action={
+  clicks:0,
+  getAttribute:()=>null,
+  querySelector:()=>({getAttribute:()=> 'svg-icon lucide lucide-arrow-up-narrow-wide'}),
+  click(){this.clicks++;}
+ };
+ assert.equal(api.writerV1012NativeActionIcon(action,'Mudar ordenação'),'arrow-up-narrow-wide');
+ assert.equal(api.writerV1012IsNativeSortAction(action,'Mudar ordenação'),true);
+ api.writerV1012OpenNativeAction(action,true);
+ assert.equal(action.clicks,0,'nested sort menu must not open during the parent click');
+ callbacks.shift()();
+ assert.equal(action.clicks,1,'sort opens after the old menu has closed');
+ api.writerV1012OpenNativeAction(action,false);
+ assert.equal(action.clicks,2,'simple actions remain immediate');
+ const noIcon={getAttribute:()=>null,querySelector:()=>null};
+ assert.equal(api.writerV1012NativeActionIcon(noIcon,'Nova nota'),'file-plus');
+ assert.equal(api.writerV1012NativeActionIcon(noIcon,'Nova pasta'),'folder-plus');
+ assert.equal(api.writerV1012NativeActionIcon(noIcon,'Expandir tudo'),'chevrons-up-down');
+ const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+ assert.match(css,/Keep Obsidian's real action buttons laid out/);
+ assert.match(css,/opacity:0;pointer-events:none/);
+ assert.doesNotMatch(css,/writer-v1011-empty-native-header\{\s*display:none/);
+});
+test('Mobile sidebar reconstructs its header if Obsidian replaces the native tab host',()=>{
+ const {doc,node}=html(),root=node(),native=node(),tabs=node();
+ // Simulate a changed mobile header with an attached, live host.
+ root.appendChild(tabs);tabs.appendChild(native);root.contains=target=>{
+  const visit=el=>el===target||el.children.some(visit);
+  return visit(root);
+ };
+ let ready,cleanup;
+ const watchers=[];
+ class MutationObserver{
+  constructor(cb){this.cb=cb;watchers.push(this);}
+  observe(){}disconnect(){}
+ }
+ const {api,callbacks,logs}=loadMobile({MutationObserver});
+ const a={view:{getViewType:()=> 'file-explorer'}};
+ const drawer={type:'mobile-drawer',containerEl:root,tabsContainerEl:tabs,tabsListEl:native,
+  children:[a],currentTab:0,headerEl:node(),isPinned:false,selectTabIndex(i){this.currentTab=i;}};
+ const workspace={leftSplit:drawer,rightSplit:{},activeLeaf:a,
+  iterateAllLeaves(fn){fn(a);},getActiveFile:()=>null,onLayoutReady(fn){ready=fn;},
+  on(){return {};},setActiveLeaf(){}};
+ const plugin={settings:{v1010Layout:{sidebar:{enabled:true,mobileTabs:true},width:{enabled:false}}},
+  app:{workspace},registerEvent(){},addStatusBarItem:()=>null,register(fn){cleanup=fn;},
+  saveSettings:async()=>{}};
+ api.writerV1010Register(plugin);ready();
+ while(callbacks.length)callbacks.shift()();
+ const initial=tabs.children.find(n=>n.classList.contains('writer-v1010-sidebar-toolbar'));
+ assert.ok(initial);
+ const freshTabs=node(),freshNative=node();
+ root.replaceChildren(freshTabs);freshTabs.appendChild(freshNative);
+ drawer.tabsContainerEl=freshTabs;drawer.tabsListEl=freshNative;
+ watchers.forEach(w=>w.cb());
+ while(callbacks.length)callbacks.shift()();
+ const replacement=freshTabs.children.find(n=>n.classList.contains('writer-v1010-sidebar-toolbar'));
+ assert.ok(replacement,'Basic toolbar is remounted in replacement header after switching views');
+ assert.notEqual(replacement,initial);
+ assert.equal(logs.length,0);
+ cleanup();
+ assert.ok(!root.classList.contains('writer-v1011-managed-mobile'));
 });

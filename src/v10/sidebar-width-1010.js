@@ -129,7 +129,7 @@ function writerV1010ActiveLeaf(workspace,leaves,side){
 }
 function writerV1010SidebarMenu(plugin,event,side,leaves,active){
  const menu=new Menu(plugin.app),current=active?.view?.containerEl;
- const actions=[...(current?.querySelectorAll?.('.view-actions .clickable-icon,.nav-header .nav-action-button')||[])];
+ const actions=[...new Set([...(current?.querySelectorAll?.('.view-actions .clickable-icon,.nav-header .nav-action-button,.nav-header .nav-buttons-container .clickable-icon')||[])])];
  let count=0;
  for(const action of actions.slice(0,14)){
   const label=String(action.getAttribute('aria-label')||action.getAttribute('title')||'').trim();
@@ -188,9 +188,32 @@ function writerV1010Register(plugin){
   return mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true;
  };
  const hosts=new Map();
+ const groupedViews=new Map();
+ const groupNativeActions=(side,leaves,enabled)=>{
+  const previous=groupedViews.get(side)||new Set(),next=new Set();
+  for(const entry of leaves){
+   // Third-party sidebar views may use the same HTML as toolbar content.
+   if(!Object.hasOwn(WRITER_V1010_VIEWS,entry.type))continue;
+   const el=entry.leaf?.view?.containerEl;
+   const header=el?.querySelector?.('.nav-header');
+   const actions=header?.querySelector?.(':scope > .nav-buttons-container');
+   if(!enabled||!actions||!el?.classList)continue;
+   el.classList.add('writer-v1011-grouped-native-actions');next.add(el);
+   const empty=[...header.children].every(child=>
+    child===actions||child.style?.display==='none');
+   header.classList.toggle('writer-v1011-empty-native-header',empty);
+  }
+  for(const el of previous)if(!next.has(el)){
+   el.classList?.remove('writer-v1011-grouped-native-actions');
+   el.querySelector?.('.nav-header')?.classList?.remove('writer-v1011-empty-native-header');
+  }
+  groupedViews.set(side,next);
+ };
+
  let queued=null,unloaded=false,status=null,range=null,value=null;
  const make=(tag,cls,doc)=>{const node=doc.createElement(tag);if(cls)node.className=cls;return node;};
  const restoreSidebar=side=>{
+  groupNativeActions(side,[],false);
   const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
   bar?.remove?.();hosts.delete(side);
   split?.tabsListEl?.classList?.remove('writer-v1011-native-tabs-hidden');
@@ -214,6 +237,7 @@ function writerV1010Register(plugin){
   const doc=header.ownerDocument;
   const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
   if(!leaves.length){restoreSidebar(side);return;}
+  groupNativeActions(side,leaves,Boolean(drawer)&&cfg.sidebar.actionMenu!==false);
   let bar=hosts.get(side);
   if(!bar||bar.parentElement!==header){
    bar?.remove?.();

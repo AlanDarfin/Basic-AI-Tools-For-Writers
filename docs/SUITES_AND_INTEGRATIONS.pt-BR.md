@@ -10,9 +10,9 @@ Abra **Configurações do Obsidian → Basic**. Use as abas superiores ou a pesq
 | --- | --- | --- |
 | **Toolkit v12** | Visão geral, Escrita e atalhos, Imagens, Tarefas e Inbox, Privacidade, Leitura e voz, Integrações e sync | Funcionalidades novas, seus interruptores, limites e comandos |
 | **Suítes** | Unique Suite, Notion Suite, Number Suite, Longform Studio | Configurações herdadas das versões 10.11 e 11 |
-| **Interface** | Homepage, explorador, propriedades visuais, barra de edição, som e estilos | Aparência sem duplicar controles |
+| **Personalização** | Homepage, explorador, propriedades visuais, barra de edição, som e estilos | Aparência sem duplicar controles |
 | **Organização** | Spaces, calendário, Flow, Pomodoro, rascunhos, bloqueio visual e arquivos | Fluxos de trabalho |
-| **Escrita** | Digitação, Markdown, widgets, modelos, linter e navegação | Ferramentas da nota |
+| **Escrita e Markdown** | Digitação, Markdown, widgets, modelos, linter e navegação | Ferramentas da nota |
 | **Longform** | Projetos, biblioteca, tarefas, BookNav, conteúdo virtual e mundo | Ferramentas narrativas |
 | **IA e dicionário / Revisão** | Modelos, provedores, prompts, gramática, TTS e versões | Modelos e avaliação de textos |
 

@@ -100,6 +100,7 @@ function writerV1010SelectLeaf(plugin,side,leaf){
    if(typeof workspace.setActiveLeaf==='function')
     workspace.setActiveLeaf(leaf,{focus:!drawer.isPinned});
    plugin.writerV1010Refresh?.();
+   plugin.writerV9216SpacesDockRefresh?.();
    return true;
   }catch(error){console.error('[Basic] Mobile sidebar tab selection:',error);return false;}
  }
@@ -415,7 +416,8 @@ function writerV1010Register(plugin){
  };
  const refresh=()=>{
   if(unloaded)return;
-  try{renderSide('left');renderSide('right');paintWidth();}
+  try{renderSide('left');renderSide('right');paintWidth();
+   if(require('obsidian').Platform?.isMobile)plugin.writerV9216SpacesDockRefresh?.();}
   catch(error){console.error('[Basic] Sidebar / width refresh failed:',error);}
  };
  const queue=()=>{

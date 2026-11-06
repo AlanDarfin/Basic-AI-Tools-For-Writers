@@ -15,34 +15,14 @@ function writerV1201SettingsOverview(plugin,panel){
  const cfg=writerV12Config(plugin);
  panel.createEl('h3',{text:writerUi('Toolkit e suítes','Toolkit and suites')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Cada recurso está organizado em uma categoria própria. As configurações antigas foram preservadas, sem recriar dados ou perfis.',
-  'Each feature has its own category. Previous settings and data are preserved.')});
+  'As funções recentes foram reunidas nas categorias existentes: Escrita, Organização, Arquivos, Revisão e Longform. Nenhuma aba adicional é criada.',
+  'Recent features are grouped into the existing Writing, Organization, Files, Review and Longform categories. No additional tabs are created.')});
  new Setting(panel).setName(writerUi('Ativar Toolkit v12','Enable v12 toolkit'))
   .setDesc(writerUi('Controle geral para os recursos da v12.','Global switch for v12 features.'))
   .addToggle(t=>t.setValue(cfg.enabled!==false).onChange(async v=>{
    cfg.enabled=v;await plugin.saveSettings();writerV12FocusRefresh(plugin);
   }));
- const pages=[
-  ['v12Writing','pen-line','Escrita e ações rápidas','Writing and quick actions'],
-  ['v12Images','image','Imagens e anotações','Images and annotations'],
-  ['v12Tasks','list-checks','Tarefas e captura','Tasks and capture'],
-  ['v12Privacy','lock-keyhole','Notas protegidas','Protected notes'],
-  ['v12Reader','volume-2','Leitura e TTS','Reading and TTS'],
-  ['v12Connections','git-branch','Integrações e sincronização','Integrations and synchronization'],
-  ['suiteEducation','graduation-cap','Unique Suite · estudos','Unique Suite · studies'],
-  ['suiteDatabase','table','Notion Suite · bases','Notion Suite · databases'],
-  ['suiteNumbering','list-ordered','Number Suite · numeração','Number Suite · numbering'],
-  ['suiteLongform','book-open','Longform Studio','Longform Studio']
- ];
- for(const [id,icon,pt,en] of pages){
-  new Setting(panel).setName(writerUi(pt,en)).addButton(b=>b
-   .setIcon('chevron-right').setTooltip(writerUi('Abrir configurações','Open settings'))
-   .onClick(()=>{
-    const tab=plugin.writerSettingsTab;
-    if(!tab)return;
-    tab.activeSettingsTab=id;tab.display();
-   }));
- }
+
 }
 function writerV1201SettingsWriting(plugin,panel){
  panel.createEl('h3',{text:writerUi('Escrita e ações rápidas','Writing and quick actions')});

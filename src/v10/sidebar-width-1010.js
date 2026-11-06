@@ -162,6 +162,7 @@ function writerV1012IsNativeSortAction(action,label){
  * native action retains a laid-out DOM anchor so Obsidian won't dismiss it. */
 function writerV1012OpenNativeAction(action,sort,plugin){
  if(typeof action?.click!=='function')return;
+ if(!sort){action.click();return;}
  // Let the first mobile sheet dismiss before the nested native sheet opens.
  if(plugin)plugin._writerV1010NativeActionPending=true;
  setTimeout(()=>{
@@ -178,7 +179,9 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   const label=String(action.getAttribute('aria-label')||action.getAttribute('title')||'').trim();
   if(!label||action.closest('.writer-v1010-sidebar-toolbar'))continue;
   count++;
-  const sort=writerV1012IsNativeSortAction(action,label);
+  const sort=writerV1012IsNativeSortAction(action,label)||
+   action.getAttribute?.('aria-haspopup')==='menu'||
+   /(?:mais op[cç][oõ]es|more options|op[cç][oõ]es|menu de opções)/i.test(label);
   menu.addItem(item=>item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label))
    .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin)));
  }

@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 11.1.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 12.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -12,6 +12,18 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 
 ## Funcionalidades
+
+### v12 · Toolkit unificado (prévia da integração)
+
+A v12 adiciona **paleta pesquisável de formatação**, **visualizador de imagens** com ampliação e rotação, **normalização confirmada da largura** das imagens Markdown, **navegação pelas tarefas** das notas, **captura rápida na Inbox**, **brainstorm local** e **foco temporário em pastas** do explorador nativo. Reutiliza a IA, o TTS, os Spaces, o Longform e as ferramentas de formatação e pesquisa existentes no Basic.
+
+- **Central de integrações:** detecta Ultimate Toolkit, Visual Kit, Snailkit, dropit, os dois projetos Syncthing, Obsidian Git e FIT quando instalados e ativos. Exibe comandos que pertencem ao plugin de origem, sem copiá-los.
+- **Central de sincronização:** permite escolher **um** provedor para executar **manualmente** seus comandos. Inspeciona arquivos `.sync-conflict-` sem apagá-los nem mesclá-los. O Basic **não cria motor de sync próprio** nem desliga agendamentos de plugins externos.
+- **Dados locais:** Inbox e brainstorm criam notas Markdown apenas por solicitação; a v12 não armazena senhas ou chaves de sincronização.
+- **Limites:** ainda **não há paridade integral** com os oito projetos. Criptografia de pastas, blindagem do índice, TTS bilíngue de PDF/HTML, anotação gráfica de imagens, editor HTML do Visual Kit, pareamento/transporte dropit, todos os exportadores do Snailkit e os motores completos de Git/Syncthing **não foram incorporados** nesta etapa.
+
+Leia a [matriz de cobertura e compatibilidade](V12_SCOPE.pt-BR.md). Esta é a implementação inicial, sujeita à validação antes de liberação geral.
+
 
 No Android, o Dragger de blocos é desativado automaticamente e não exibe alças nem captura gestos de toque.
 

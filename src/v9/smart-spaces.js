@@ -47,6 +47,22 @@ function writerV9SpaceSanitize(raw){
  const homeHidden=Array.isArray(raw.homeHidden)?[...new Set(raw.homeHidden.filter(key=>widgetKeys.includes(key)))]:[];
  const homeWidgetSizes=Object.fromEntries(Object.entries(raw.homeWidgetSizes&&typeof raw.homeWidgetSizes==='object'?raw.homeWidgetSizes:{})
   .filter(([key,value])=>widgetKeys.includes(key)&&['compact','normal','wide'].includes(value)));
+ // Keep the Spaces sanitizer self-contained: tests and standalone consumers
+ // evaluate this module without loading the homepage module first.
+ const homeWidgetFrames={};
+ const rawFrames=raw.homeWidgetFrames;
+ if(rawFrames&&typeof rawFrames==='object'&&!Array.isArray(rawFrames)){
+  for(const [key,frame] of Object.entries(rawFrames).slice(0,80)){
+   if(!widgetKeys.includes(key)||!frame||typeof frame!=='object'||Array.isArray(frame))continue;
+   const columns=Number(frame.columns),height=Number(frame.height),width=Number(frame.width);
+   homeWidgetFrames[key]={
+    columns:Math.max(3,Math.min(12,Number.isFinite(columns)?Math.round(columns):6)),
+    height:Number.isFinite(height)?Math.max(92,Math.min(1100,Math.round(height))):0,
+    width:Number.isFinite(width)?Math.max(160,Math.min(1800,Math.round(width))):0
+   };
+  }
+ }
+ const homeWidgetAlignment=raw.homeWidgetAlignment==='free'?'free':'grid';
  const icon=/^[a-z][a-z0-9-]{0,60}$/.test(raw.icon||'')?raw.icon:'layers';
  const iconColor=/^#[\da-f]{6}$/i.test(raw.iconColor||'')?raw.iconColor:'';
  let layoutSnapshot=null;
@@ -56,7 +72,7 @@ function writerV9SpaceSanitize(raw){
    if(json.length<=120000)layoutSnapshot=JSON.parse(json);
   }
  }catch(_){}
- return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes,layoutSnapshot};
+ return {id,name,icon,iconColor,folder,tag,property,value,groupBy,view,sort,mode,includePaths,hiddenPaths,pinnedPaths,folderSorts,homeWidgetsEnabled,homeOrder,homeHidden,homeWidgetSizes,homeWidgetFrames,homeWidgetAlignment,layoutSnapshot};
 }
 /* Space state changes only affect views, never the vault contents. */
 function writerV9215ActiveSpace(plugin){
@@ -158,7 +174,7 @@ function writerV9SpaceEditor(plugin,initial,save){
  const modal=new Modal(plugin.app);
  modal.onOpen=()=>{
   modal.setTitle(initial?writerUi('Editar Space','Edit Space'):writerUi('Nova Space','New Space'));
-  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},homeWidgetsEnabled:false,homeOrder:[],homeHidden:[],homeWidgetSizes:{},...(initial||{})};
+  const draft={name:'',icon:'layers',iconColor:'',folder:'',tag:'',property:'',value:'',groupBy:'status',view:'cards',sort:'recent',mode:'filter',includePaths:[],hiddenPaths:[],pinnedPaths:[],folderSorts:{},homeWidgetsEnabled:false,homeOrder:[],homeHidden:[],homeWidgetSizes:{},homeWidgetFrames:{},homeWidgetAlignment:'grid',...(initial||{})};
   const root=modal.contentEl;
   const field=(key,pt,en)=>{
    new Setting(root).setName(writerUi(pt,en)).addText(t=>t

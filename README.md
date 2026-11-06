@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 12.0.4 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 12.0.5 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -17,7 +17,7 @@ Write, plan, revise and organize books without moving your work to a separate da
 - **Folder-root Spaces:** choosing `Trabalho/Escrita/Fireverse` displays Fireverse as the native Explorer's visual root, with only its descendants. This changes the interface, never vault paths.
 - **Hide only in this Space:** hide or unhide notes and folders from their context menu without changing other Spaces. Space collections respect hidden folders and folder renames preserve scope.
 - **Independent formatting toolbars:** desktop and mobile have separate button order, groups, styles, sizes and colors. Floating desktop mode appears only while editor text is selected.
-- **Desktop Dragger:** handles stay reachable while moving the mouse from a Markdown line to the grip; handles remain disabled on Android.
+- **Desktop Dragger:** grips initiate a real pointer drag, remain reachable when moving the pointer across the editor gutter, and do not appear on blank Markdown lines; handles remain disabled on Android.
 - **Integrated settings:** existing General, Customization, Organization, Writing, Longform, AI and Review groups contain the newest suite and toolkit controls, without extra top-level groups.
 - **Mobile quick-action ribbon:** Basic now has its own searchable-entry-compatible command set and a single **Basic: quick actions** ribbon menu for read-aloud, 65-action formatting palette, clean focus screen, folder focus and integrations. These are independent of the Ultimate Toolkit plugin's own shortcuts.
 - **Sidebar fixes:** delayed native **More options** routing prevents nested Android menus from opening during the previous sheet's dismissal. The **Bookmark** action uses an available Bookmarks command when registered, otherwise the original native button; panel pin/close long press remains available.
@@ -116,14 +116,14 @@ readingProgress: 25
 
 ### Customizable writing homepage
 
-The homepage provides a compact dashboard with configurable title, icon, theme accents and fuzzy vault search. It can open when a new empty tab appears (the `homeOnNewTab` preference), with an option to disable this behavior. When the desktop **Surfing** plugin is enabled, a sticky browser-style address/search bar appears at the top of the homepage. Type a URL or search terms and press Enter to open in Surfing. It disappears when Surfing is disabled; the original fuzzy **Vault** search remains separate, with no Vault/Web selector. On desktop, web results open in an installed **Surfing** plugin first, then the native **Web Viewer**, with an external-browser fallback; mobile links always open in the system browser. The search engine and destination are configurable in the existing **Homepage** settings. The **Web bookmarks** widget stores safe HTTP(S) links with titles, optional groups and Lucide icons, offers edit/delete/reorder controls and can capture the current Surfing/Web Viewer page through a command. It is optional in the existing widget manager, with per-Space widget visibility.
+The homepage provides a compact dashboard with configurable title, icon, theme accents and fuzzy vault search. It can open when a new empty tab appears (the `homeOnNewTab` preference), with an option to disable this behavior. When desktop **Surfing** is enabled, the homepage mounts Surfing's **native HeaderBar** at the top, including its own address handling and suggestions, instead of a Basic imitation. This integration uses an internal Surfing method and may require compatibility updates if Surfing changes. It disappears when Surfing is disabled; the original fuzzy **Vault** search remains separate, with no Vault/Web selector. On desktop, web results open in an installed **Surfing** plugin first, then the native **Web Viewer**, with an external-browser fallback; mobile links always open in the system browser. The search engine and destination are configurable in the existing **Homepage** settings. The **Web bookmarks** widget stores safe HTTP(S) links with titles, optional groups and Lucide icons, offers edit/delete/reorder controls and can capture the current Surfing/Web Viewer page through a command. It is optional in the existing widget manager, with per-Space widget visibility.
 
 Available widgets include a **clock and calendar**, **Soundscapes radio** (desktop), **continue writing**, **recent notes**, **favorites**, **quick drafts**, **vault summary**, **weekly activity**, **random note**, **tags**, **word goal**, **vault photo gallery**, **quotes** and **today's overview**.
 
 - **Space-efficient layout:** a responsive, height-aware masonry grid places small widgets beside taller ones instead of leaving large gaps.
-- **Widget sizes:** choose **Compact**, **Normal** or **Wide** from each widget's options. A wide widget spans both columns on desktop; mobile uses a single column.
+- **Widget sizes:** choose **Compact**, **Normal** or **Wide** from each widget's options, or resize horizontally and vertically by dragging the right, bottom or corner handle on desktop. Choose **Snap to grid** or **Free size** and reset a widget's dimensions from its menu. The mobile layout stays single-column.
 - **Reordering:** drag the handle on desktop (Dragger is fully disabled on Android); on touch devices, select a handle and then another widget heading. The widget menu also has earlier/later commands.
-- **Personal settings:** add, hide and rearrange widgets; order, sizes, hidden items and quick drafts are saved locally.
+- **Personal settings:** add, hide and rearrange widgets; order, edge-resized frames, alignment, hidden items and quick drafts are saved locally, separately for each Space when its widget preferences are enabled.
 
 ### Editing, Markdown formatting and navigation
 

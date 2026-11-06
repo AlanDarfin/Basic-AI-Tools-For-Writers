@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 12.0.5 — Native Surfing, resizable widgets, timeline and desktop Dragger
+
+- Mounts the native Surfing HeaderBar when the Surfing plugin is enabled, instead of maintaining an imitation search bar.
+- Redesigns Web Bookmarks as responsive browser-like cards with compact icon actions.
+- Adds desktop edge/corner resizing, snapping/free sizing, keyboard controls and per-Space frame persistence for Homepage widgets.
+- Fixes Markdown timeline horizontal clipping, marker/rail alignment and theme distinctions.
+- Repairs detached Dragger grip pointerdown on desktop; suppresses handles on blank editor lines.
+- Audits outstanding Unique, Notion, Number and other suite parity in `docs/V12_0_5_INTEGRATION_GAPS.pt-BR.md`.
+
 ## 12.0.4 — Surfing browser-style homepage bar
 
 - Replaced the redundant Vault/Web toggle with a sticky desktop address/search input at the very top of Home.

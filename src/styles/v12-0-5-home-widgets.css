@@ -1,0 +1,170 @@
+/* 12.0.5: Native Surfing bar and browser-style widgets.
+ * The wb-search-bar itself is created by the Surfing plugin. */
+.writer-v8-home .writer-v1205-native-surfing-host{
+ position:sticky;top:0;z-index:15;display:flex;align-items:center;
+ box-sizing:border-box;width:100%;min-width:0;min-height:42px;
+ padding:5px 10px;margin-bottom:12px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-v8-home .writer-v1205-native-surfing-host:focus-within{
+ border-color:var(--interactive-accent);
+}
+.writer-v8-home .writer-v1205-native-surfing-host input.wb-search-bar{
+ box-sizing:border-box;width:100%;min-width:0;flex:1 1 auto;
+ height:32px;border:0;outline:0;box-shadow:none;
+ background:transparent;color:var(--text-normal);
+}
+.writer-v8-home .writer-v1205-native-surfing-host .wb-refresh-button{
+ flex:0 0 auto;
+}
+/* Replace old faux address bar selectors entirely. */
+.writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ grid-template-columns:repeat(12,minmax(0,1fr));
+ grid-auto-flow:row dense;
+}
+.writer-v8-home .writer-v925-grid>[data-section]{
+ grid-column:span 6;
+ min-width:0;position:relative;
+}
+.writer-v8-home .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 12;}
+.writer-v8-home .writer-v925-grid>[data-section][data-widget-size="compact"]{grid-column:span 4;}
+.writer-v8-home .writer-v925-grid[data-widget-alignment="free"]{
+ grid-auto-flow:row;
+}
+.writer-v8-home .writer-v925-grid>[data-section].writer-v1205-manual-height{
+ overflow-y:auto;
+ overscroll-behavior:contain;
+}
+.writer-v925-grid .writer-v1205-resize-card{
+ position:relative;
+}
+.writer-v925-grid .writer-v1205-resize-handle{
+ position:absolute;z-index:6;display:block;
+ margin:0;padding:0;border:0;box-shadow:none;
+ background:transparent;opacity:0;touch-action:none;
+}
+.writer-v925-grid .writer-v1205-resize-right{
+ inset:17px 0 17px auto;width:9px;cursor:ew-resize;
+ border-radius:8px;
+}
+.writer-v925-grid .writer-v1205-resize-bottom{
+ inset:auto 17px 0 17px;height:9px;cursor:ns-resize;
+ border-radius:8px;
+}
+.writer-v925-grid .writer-v1205-resize-corner{
+ inset:auto 0 0 auto;width:19px;height:19px;cursor:nwse-resize;
+ border-radius:var(--radius-s);
+}
+.writer-v925-grid .writer-v1205-resize-corner::after{
+ content:"";position:absolute;right:5px;bottom:5px;width:9px;height:9px;
+ border-right:2px solid var(--text-muted);border-bottom:2px solid var(--text-muted);
+}
+.writer-v925-grid .writer-v1205-resize-card:hover .writer-v1205-resize-handle,
+.writer-v925-grid .writer-v1205-resize-card:focus-within .writer-v1205-resize-handle,
+.writer-v925-grid .writer-v1205-resizing .writer-v1205-resize-handle{
+ opacity:1;
+}
+.writer-v925-grid .writer-v1205-resize-handle:hover,
+.writer-v925-grid .writer-v1205-resize-handle:focus-visible,
+.writer-v925-grid .writer-v1205-resizing .writer-v1205-resize-handle{
+ background:color-mix(in srgb,var(--interactive-accent) 25%,transparent);
+ outline:1px solid var(--interactive-accent);
+}
+/* More compact, spacious browser-like bookmark tiles. */
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmarks-tools{
+ align-items:center;justify-content:space-between;margin:0 0 10px;
+}
+.writer-v1205-web-bookmark-count{
+ color:var(--text-faint);font-size:var(--font-smaller);
+}
+.writer-v1205-bookmarks-widget .writer-v1205-add-bookmark{
+ margin:0;width:30px;height:30px;min-height:30px;min-width:30px;
+ padding:5px;border:1px solid transparent;border-radius:var(--radius-s);
+ background:transparent;color:var(--text-muted);box-shadow:none;
+}
+.writer-v1205-bookmarks-widget .writer-v1205-add-bookmark:hover{
+ background:var(--background-modifier-hover);color:var(--text-normal);
+}
+.writer-v1205-bookmarks-widget .writer-v1205-add-bookmark svg{width:18px;height:18px;}
+.writer-v1205-bookmarks-widget .writer-v1205-web-bookmarks-grid{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:9px;
+}
+.writer-v1205-bookmarks-widget .writer-v1205-web-bookmark{
+ position:relative;display:block;overflow:hidden;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+ transition:border-color .14s,background-color .14s;
+}
+.writer-v1205-bookmarks-widget .writer-v1205-web-bookmark:hover{
+ background:var(--background-modifier-hover);
+ border-color:var(--background-modifier-border-hover);
+}
+.writer-v1205-bookmarks-widget .writer-v1205-web-bookmark .writer-v1203-web-bookmark-open{
+ display:flex;flex-direction:column;align-items:flex-start;gap:10px;
+ box-sizing:border-box;width:100%;min-height:100px;padding:12px;
+ text-align:left;color:var(--text-normal);box-shadow:none;border:0;background:transparent;
+}
+.writer-v1205-bookmarks-widget .writer-v1205-web-bookmark .writer-v1203-web-bookmark-open:hover{
+ background:transparent;
+}
+.writer-v1205-bookmarks-widget .writer-v1205-bookmark-favicon{
+ width:34px;height:34px;flex:0 0 34px;display:flex;align-items:center;justify-content:center;
+ border-radius:10px;background:var(--background-secondary);
+ color:var(--interactive-accent);font-weight:650;font-size:1.05em;
+}
+.writer-v1205-bookmark-favicon svg{height:20px;width:20px;}
+.writer-v1205-bookmark-favicon .writer-v1205-favicon-letter{display:none;}
+.writer-v1205-bookmark-favicon.writer-v1205-icon-fallback .writer-v1205-favicon-letter{
+ display:inline;
+}
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-labels{
+ width:100%;gap:3px;
+}
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-title{
+ font-size:var(--font-ui-small);line-height:1.25;
+}
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-domain{
+ font-size:var(--font-smaller);color:var(--text-faint);
+}
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more{
+ position:absolute;top:7px;right:7px;z-index:2;
+ width:27px;height:27px;min-height:27px;padding:4px;
+ border-radius:var(--radius-s);border:0;background:var(--background-primary);
+ opacity:0;transition:opacity .12s;
+}
+.writer-v1205-bookmarks-widget .writer-v1205-web-bookmark:hover .writer-v1203-web-bookmark-more,
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more:focus-visible,
+body.is-mobile .writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more{
+ opacity:1;
+}
+.writer-v1205-bookmarks-empty{
+ padding:12px 5px 5px;display:flex;flex-direction:column;gap:9px;
+ align-items:center;text-align:center;color:var(--text-muted);
+}
+.writer-v1205-bookmarks-empty svg{width:27px;height:27px;color:var(--text-accent);}
+.writer-v1205-bookmarks-empty p{margin:0;font-size:var(--font-ui-small);}
+.writer-v1205-bookmarks-empty button{
+ margin-top:3px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);padding:8px 12px;background:var(--background-primary);
+}
+@media(max-width:720px){
+ .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+  grid-template-columns:minmax(0,1fr);
+ }
+ .writer-v8-home .writer-v925-grid>[data-section]{
+  grid-column:1/-1;width:100%;max-width:100%;
+ }
+ .writer-v925-grid .writer-v1205-resize-handle{display:none;}
+}
+body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ grid-template-columns:minmax(0,1fr);
+}
+body.is-mobile .writer-v8-home .writer-v925-grid>[data-section]{
+ grid-column:1/-1;width:100%;max-width:100%;
+}
+body.is-mobile .writer-v925-grid .writer-v1205-resize-handle{display:none;}
+@media(prefers-reduced-motion:reduce){
+ .writer-v1205-bookmarks-widget .writer-v1205-web-bookmark,
+ .writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more{transition:none;}
+}

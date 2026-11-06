@@ -121,6 +121,8 @@ class WriterV8HomeView extends ItemView{
   if(!Array.isArray(space.homeHidden))space.homeHidden=[...global.homeHidden];
    space.homeHidden=space.homeHidden.filter(k=>WRITER_V8_HOME_SECTIONS.includes(k));
   if(!space.homeWidgetSizes)space.homeWidgetSizes={...global.homeWidgetSizes};
+  if(!space.homeWidgetFrames)space.homeWidgetFrames={...global.homeWidgetFrames};
+  if(!['grid','free'].includes(space.homeWidgetAlignment))space.homeWidgetAlignment=global.homeWidgetAlignment||'grid';
   return space;
  }
  openFile(file){
@@ -138,7 +140,8 @@ class WriterV8HomeView extends ItemView{
   const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
   // Surfing's omnibox is a permanent top address/search bar only while Surfing
   // is active; Basic's original vault search stays independent beneath it.
-  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&writerV8HomeSurfing(this.plugin));
+  const surfing=writerV8HomeSurfing(this.plugin);
+  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
   this.homeSurfingInput=null;
   if(this.homeSurfingEnabled)this.renderSurfingBar(this.contentEl);
   // Heading follows the optional browser bar, then the existing vault search.
@@ -181,6 +184,7 @@ class WriterV8HomeView extends ItemView{
   add.createSpan({text:writerUi('Adicionar widgets','Add widgets')});
   add.addEventListener('click',()=>this.manageWidgets());
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'});
+  grid.dataset.widgetAlignment=widgetCfg.homeWidgetAlignment==='free'?'free':'grid';
   const cards={
    calendar:p=>this.renderCalendarWidget(p),
    soundscape:p=>writerV91HomeSoundscape(this,p),
@@ -210,10 +214,16 @@ class WriterV8HomeView extends ItemView{
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
    cards[key]?.(grid);
    const card=[...grid.children].find(el=>el.getAttribute('data-section')===key);
-   if(card)card.dataset.widgetSize=widgetCfg.homeWidgetSizes?.[key]||'normal';
+   if(card){
+    const size=widgetCfg.homeWidgetSizes?.[key]||'normal';
+    card.dataset.widgetSize=size;
+    const frame=widgetCfg.homeWidgetFrames?.[key];
+    if(frame)this.applyWidgetFrame(grid,card,frame);
+   }
   }
   this.installWidgetGrid(grid);
   this.installWidgetDragging(grid);
+  this.installWidgetResizing(grid);
   if(!grid.querySelector('[data-section]')){
    const empty=grid.createDiv({cls:'writer-v903-widgets-empty'});
    empty.createEl('p',{text:writerUi('Sua homepage está vazia. Adicione widgets para começar.','Your dashboard is empty. Add some widgets to get started.')});
@@ -221,6 +231,108 @@ class WriterV8HomeView extends ItemView{
    restore.addEventListener('click',()=>this.manageWidgets());
   }
   this.contentEl.scrollTop=scroll;
+ }
+ applyWidgetFrame(grid,card,frame){
+  const isMobile=writerV8HomeIsMobile(this.plugin)||grid.clientWidth<=560;
+  if(isMobile)return;
+  const columns=Math.min(12,Math.max(3,Math.round(frame.columns||6)));
+  card.style.gridColumnEnd='span '+columns;
+  if(frame.height>0){
+   card.style.height=frame.height+'px';
+   card.classList.add('writer-v1205-manual-height');
+  }
+  if(grid.dataset.widgetAlignment==='free'&&frame.width>0){
+   card.style.width=frame.width+'px';
+   card.style.maxWidth='100%';
+   card.style.justifySelf='start';
+  }
+ }
+ setWidgetAlignment(alignment){
+  if(!['grid','free'].includes(alignment))return;
+  this.widgetPreferences().homeWidgetAlignment=alignment;
+  this.saveSoon();this.render();
+ }
+ resetWidgetFrame(key){
+  const prefs=this.widgetPreferences();
+  if(!prefs.homeWidgetFrames)return;
+  delete prefs.homeWidgetFrames[key];
+  this.saveSoon();this.render();
+ }
+ installWidgetResizing(grid){
+  if(writerV8HomeIsMobile(this.plugin))return;
+  const prefs=this.widgetPreferences();
+  for(const card of grid.querySelectorAll('[data-section]')){
+   const key=card.getAttribute('data-section');
+   if(!WRITER_V8_HOME_SECTIONS.includes(key))continue;
+   card.classList.add('writer-v1205-resize-card');
+   for(const direction of ['right','bottom','corner']){
+    const handle=card.createEl('button',{cls:'writer-v1205-resize-handle writer-v1205-resize-'+direction,
+     attr:{type:'button','aria-label':writerUi('Redimensionar '+direction+' de '+key,'Resize '+direction+' of '+key),
+      title:writerUi('Arraste para redimensionar','Drag to resize')}});
+    const horizontal=direction!=='bottom',vertical=direction!=='right';
+    const commit=(columns,height,width)=>{
+     const frames=prefs.homeWidgetFrames||(prefs.homeWidgetFrames={});
+     frames[key]={columns,height,width};
+     this.saveSoon();
+    };
+    const metrics=()=>{
+     const gap=parseFloat(getComputedStyle(grid).columnGap)||12;
+     const step=(grid.clientWidth-gap*11)/12+gap;
+     const r=card.getBoundingClientRect();
+     const f=prefs.homeWidgetFrames?.[key]||{};
+     return {r,step,columns:f.columns||Math.max(3,Math.round((r.width+gap)/step)),height:f.height||Math.round(r.height),width:f.width||Math.round(r.width)};
+    };
+    const adjust=(start,dx,dy)=>{
+     const free=grid.dataset.widgetAlignment==='free';
+     const nextWidth=Math.max(160,start.r.width+dx);
+     const columns=horizontal?Math.max(3,Math.min(12,Math.round((nextWidth+12)/start.step))):start.columns;
+     const height=vertical?Math.max(92,Math.min(1100,Math.round(start.height+dy))):start.height;
+     const width=horizontal?Math.max(160,Math.min(1800,Math.round(nextWidth))):start.width;
+     card.style.gridColumnEnd='span '+columns;
+     if(free&&horizontal){card.style.width=width+'px';card.style.maxWidth='100%';card.style.justifySelf='start';}
+     if(!free){card.style.removeProperty('width');card.style.removeProperty('justify-self');}
+     if(vertical){card.style.height=height+'px';card.classList.add('writer-v1205-manual-height');}
+     return {columns,height,width};
+    };
+    handle.addEventListener('pointerdown',event=>{
+     if(event.button!==undefined&&event.button!==0)return;
+     event.preventDefault();event.stopPropagation();
+     const start=metrics(),origin={x:event.clientX,y:event.clientY};
+     let result={columns:start.columns,height:start.height,width:start.width};
+     card.classList.add('writer-v1205-resizing');
+     handle.setPointerCapture?.(event.pointerId);
+     const move=e=>{result=adjust(start,e.clientX-origin.x,e.clientY-origin.y);};
+     const finish=e=>{
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',finish);
+      handle.removeEventListener('pointercancel',cancel);
+      card.classList.remove('writer-v1205-resizing');
+      handle.releasePointerCapture?.(e.pointerId);
+      commit(result.columns,result.height,result.width);
+     };
+     const cancel=e=>{
+      handle.removeEventListener('pointermove',move);
+      handle.removeEventListener('pointerup',finish);
+      handle.removeEventListener('pointercancel',cancel);
+      card.classList.remove('writer-v1205-resizing');
+      handle.releasePointerCapture?.(e.pointerId);
+      this.render();
+     };
+     handle.addEventListener('pointermove',move);
+     handle.addEventListener('pointerup',finish);
+     handle.addEventListener('pointercancel',cancel);
+    });
+    handle.addEventListener('keydown',event=>{
+     if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;
+     event.preventDefault();event.stopPropagation();
+     const m=metrics(),factor=event.shiftKey?3:1;
+     const dx=horizontal?factor*(event.key==='ArrowLeft'?-m.step:event.key==='ArrowRight'?m.step:0):0;
+     const dy=vertical?factor*(event.key==='ArrowUp'?-24:event.key==='ArrowDown'?24:0):0;
+     const result=adjust(m,dx,dy);
+     commit(result.columns,result.height,result.width);
+    });
+   }
+  }
  }
  installWidgetGrid(grid){
   const update=()=>{
@@ -287,6 +399,10 @@ class WriterV8HomeView extends ItemView{
    for(const [size,pt,en] of [['compact','Compacto','Compact'],['normal','Normal','Normal'],['wide','Largo','Wide']]){
     popup.addItem(item=>item.setTitle(writerUi(pt,en)).setIcon(this.widgetPreferences().homeWidgetSizes?.[key]===size?'check':'rectangle-horizontal').onClick(()=>this.setWidgetSize(key,size)));
    }
+   popup.addSeparator();
+   popup.addItem(item=>item.setTitle(writerUi('Encaixar na grade','Snap to grid')).setIcon(this.widgetPreferences().homeWidgetAlignment==='grid'?'check':'grid-3x3').onClick(()=>this.setWidgetAlignment('grid')));
+   popup.addItem(item=>item.setTitle(writerUi('Tamanho livre','Free size')).setIcon(this.widgetPreferences().homeWidgetAlignment==='free'?'check':'move').onClick(()=>this.setWidgetAlignment('free')));
+   popup.addItem(item=>item.setTitle(writerUi('Restaurar dimensões','Reset dimensions')).setIcon('rotate-ccw').onClick(()=>this.resetWidgetFrame(key)));
    popup.addSeparator();
    popup.addItem(item=>item.setTitle(writerUi('Remover widget','Remove widget')).setIcon('x').onClick(()=>this.setWidgetVisible(key,false)));
    popup.showAtMouseEvent(event);
@@ -364,7 +480,7 @@ class WriterV8HomeView extends ItemView{
     save.addEventListener('click',async()=>{
      if(!inputName)return;
      const prefs=view.widgetPreferences();
-     const record={name:inputName,order:[...prefs.homeOrder],hidden:[...prefs.homeHidden],sizes:{...prefs.homeWidgetSizes}};
+     const record={name:inputName,order:[...prefs.homeOrder],hidden:[...prefs.homeHidden],sizes:{...prefs.homeWidgetSizes},frames:{...prefs.homeWidgetFrames},alignment:prefs.homeWidgetAlignment||'grid'};
      const at=presets.findIndex(x=>x.name===inputName);
      if(at>=0)presets[at]=record;else presets.push(record);
      plugin.settings.v8Finish.homePresets=presets.slice(-12);
@@ -377,6 +493,8 @@ class WriterV8HomeView extends ItemView{
      prefs.homeOrder=[...new Set([...preset.order,...WRITER_V8_HOME_SECTIONS])];
      prefs.homeHidden=[...preset.hidden];
      prefs.homeWidgetSizes={...preset.sizes};
+     prefs.homeWidgetFrames={...(preset.frames||{})};
+     prefs.homeWidgetAlignment=preset.alignment==='free'?'free':'grid';
      view.saveSoon();view.render();modal.close();
     });
     const remove=section.createEl('button',{text:writerUi('Excluir preset','Delete preset')});
@@ -435,7 +553,8 @@ class WriterV8HomeView extends ItemView{
    .addEventListener('click',()=>this.plugin.openProjects('board'));
  }
  syncSurfingVisibility(){
-  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&writerV8HomeSurfing(this.plugin));
+  const surfing=writerV8HomeSurfing(this.plugin);
+  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
   if(active!==this.homeSurfingEnabled)this.render();
  }
  homeSearchWebMode(){
@@ -447,42 +566,40 @@ class WriterV8HomeView extends ItemView{
   return true;
  }
  renderSurfingBar(parent){
-  const bar=parent.createDiv({cls:'writer-v1204-home-surfing-bar',
-   attr:{role:'search','aria-label':writerUi('Barra de endereço do Surfing','Surfing address bar')}});
-  const symbol=bar.createSpan({cls:'writer-v1204-home-surfing-symbol',attr:{'aria-hidden':'true'}});
-  require('obsidian').setIcon?.(symbol,'globe-2');
   const surfing=writerV8HomeSurfing(this.plugin);
-  const engine=String(surfing?.settings?.defaultSearchEngine||'Google').slice(0,48);
-  const input=bar.createEl('input',{cls:'writer-v1204-home-surfing-input',attr:{
-   type:'text',placeholder:writerUi('Pesquisar com ','Search with ')+engine+
-    writerUi(' ou digitar endereço',' or enter address'),
-   'aria-label':writerUi('Pesquisar na web ou digitar endereço','Search web or enter address'),
-   autocomplete:'off',autocapitalize:'off',spellcheck:'false'}});
-  this.homeSurfingInput=input;
-  input.value=this.homeSurfingQuery||'';
-  input.addEventListener('input',()=>{this.homeSurfingQuery=input.value.slice(0,2048);});
-  input.addEventListener('focus',()=>{input.select?.();});
-  const openButton=bar.createEl('button',{cls:'writer-v1204-home-surfing-go',
-   attr:{type:'button',title:writerUi('Abrir no Surfing','Open in Surfing'),
-    'aria-label':writerUi('Abrir pesquisa no Surfing','Open search in Surfing')}});
-  require('obsidian').setIcon?.(openButton,'arrow-right');
-  const submit=async()=>{
-   const value=input.value.trim();
-   if(!value||openButton.disabled)return;
-   openButton.disabled=true;
-   try{
-    const url=writerV8HomeSearchURL(this.plugin,value);
-    await writerV8HomeOpenURL(this.plugin,url);
-   }catch(error){
-    new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+
-     String(error.message||error).slice(0,160));
-   }finally{openButton.disabled=false;}
+  if(!surfing||typeof surfing.addHeaderAndSearchBar!=='function'){
+   // Surfing's HeaderBar is an internal component, not a public API.
+   // Do not silently replace it with a second, imitation search field.
+   this.homeSurfingEnabled=false;
+   this.homeSurfingInput=null;
+   return;
+  }
+  const host=parent.createDiv({cls:'writer-v1205-native-surfing-host',
+   attr:{role:'search','aria-label':writerUi('Pesquisa nativa do Surfing','Surfing native search')}});
+  // Use Surfing's own HeaderBar and suggestions, without duplicating its
+  // search/URL engine. Adapt an empty view only for the private integration
+  // method; the actual Basic homepage view type and leaf remain unchanged.
+  const adapter={
+   getViewType:()=> 'empty',
+   titleContainerEl:host,
+   contentEl:{children:[{hasClass:()=>false}],toggleClass:()=>{}},
+   leaf:this.leaf,
+   scope:{register:()=>{}} // avoid leaking Surfing "/" bindings on rerender
   };
-  input.addEventListener('keydown',event=>{
-   if(event.key==='Enter'){event.preventDefault();void submit();}
-   else if(event.key==='Escape'){event.preventDefault();input.value='';this.homeSurfingQuery='';}
-  });
-  openButton.addEventListener('click',()=>void submit());
+  try{
+   surfing.addHeaderAndSearchBar(adapter);
+   const input=host.querySelector('input.wb-search-bar');
+   if(!input)throw Error('Surfing did not mount its native address bar.');
+   input.value=this.homeSurfingQuery||'';
+   input.addEventListener('input',()=>{this.homeSurfingQuery=input.value.slice(0,2048);});
+   this.homeSurfingInput=input;
+  }catch(error){
+   host.remove?.();
+   this.homeSurfingEnabled=false;
+   this.homeSurfingInput=null;
+   this.homeSurfingFailed=surfing;
+   console.warn('[Basic AI] Native Surfing header unavailable:',error);
+  }
  }
  renderSearch(parent){
   const box=this.card(parent,'search','Buscar no cofre','Search vault');
@@ -573,15 +690,25 @@ class WriterV8HomeView extends ItemView{
  renderWebBookmarks(parent){
   const box=this.card(parent,'webBookmarks','Favoritos da web','Web bookmarks');
   const cfg=this.plugin.settings.v8Finish,list=cfg.homeWebBookmarks||[];
+  box.addClass('writer-v1205-bookmarks-widget');
   const tools=box.createDiv({cls:'writer-v1203-web-bookmarks-tools'});
-  const add=tools.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar site favorito','Add web bookmark')}});
+  tools.createSpan({cls:'writer-v1205-web-bookmark-count',
+   text:list.length===1?writerUi('1 site salvo','1 saved site'):
+   list.length+' '+writerUi('sites salvos','saved sites')});
+  const add=tools.createEl('button',{cls:'writer-v1205-add-bookmark',attr:{type:'button',
+   title:writerUi('Adicionar site favorito','Add web bookmark'),
+   'aria-label':writerUi('Adicionar site favorito','Add web bookmark')}});
   require('obsidian').setIcon?.(add,'plus');
-  add.createSpan({text:writerUi('Adicionar site','Add website')});
   add.addEventListener('click',()=>this.editWebBookmark());
   if(!list.length){
-   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi(
-    'Salve seus sites preferidos aqui. Os links são guardados localmente e abertos apenas ao clicar.',
-    'Save your favorite websites here. Links stay local and open only when clicked.')});
+   const empty=box.createDiv({cls:'writer-v1205-bookmarks-empty'});
+   const glyph=empty.createSpan();
+   require('obsidian').setIcon?.(glyph,'bookmark-plus');
+   empty.createEl('p',{text:writerUi(
+    'Adicione seus sites preferidos para abrir tudo sem sair da homepage.',
+    'Add your favorite websites for quick access from the dashboard.')});
+   const first=empty.createEl('button',{text:writerUi('Adicionar primeiro site','Add first website'),attr:{type:'button'}});
+   first.addEventListener('click',()=>this.editWebBookmark());
    return;
   }
   const shown=this.webBookmarksExpanded?list:list.slice(0,12);
@@ -593,23 +720,35 @@ class WriterV8HomeView extends ItemView{
   }
   for(const [group,entries] of groups){
    if(group)box.createEl('h4',{cls:'writer-v1203-web-bookmarks-heading',text:group});
-   const grid=box.createDiv({cls:'writer-v1203-web-bookmarks-grid'});
+   const grid=box.createDiv({cls:'writer-v1203-web-bookmarks-grid writer-v1205-web-bookmarks-grid'});
    for(const bookmark of entries){
-    const item=grid.createDiv({cls:'writer-v1203-web-bookmark'});
+    const item=grid.createDiv({cls:'writer-v1203-web-bookmark writer-v1205-web-bookmark'});
     const button=item.createEl('button',{cls:'writer-v1203-web-bookmark-open',attr:{
-     type:'button',title:bookmark.url,'aria-label':writerUi('Abrir site: ','Open website: ')+bookmark.title}});
-    const glyph=button.createSpan({cls:'writer-v1203-web-bookmark-icon'});
-    try{require('obsidian').setIcon?.(glyph,bookmark.icon||'globe');}
-    catch(_){require('obsidian').setIcon?.(glyph,'globe');}
+     type:'button',title:bookmark.url,
+     'aria-label':writerUi('Abrir site: ','Open website: ')+bookmark.title}});
+    const glyph=button.createSpan({cls:'writer-v1203-web-bookmark-icon writer-v1205-bookmark-favicon'});
+    const domain=new URL(bookmark.url).hostname.replace(/^www\./,'');
+    const map=[[/youtu(?:\.be|be\.com)/,'youtube'],[/github\.com/,'github'],[/wikipedia\.org/,'book-open'],[/google\./,'search'],
+      [/reddit\.com/,'message-circle'],[/twitch\.tv/,'tv'],[/discord\.com/,'message-square']];
+    const known=map.find(([rx])=>rx.test(domain))?.[1];
+    const icon=bookmark.icon&&bookmark.icon!=='globe'?bookmark.icon:known||'globe';
+    try{require('obsidian').setIcon?.(glyph,icon);}catch(_){}
+    if(!glyph.querySelector?.('svg')){
+     glyph.empty();
+     glyph.addClass('writer-v1205-icon-fallback');
+     glyph.createSpan({cls:'writer-v1205-favicon-letter',text:String(bookmark.title||domain).slice(0,1).toLocaleUpperCase()});
+    }
     const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
     labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
-    labels.createSpan({text:new URL(bookmark.url).hostname,cls:'writer-v1203-web-bookmark-domain'});
+    labels.createSpan({text:domain,cls:'writer-v1203-web-bookmark-domain'});
     button.addEventListener('click',()=>void writerV8HomeOpenURL(this.plugin,bookmark.url)
      .catch(error=>new Notice(String(error.message||error))));
     const more=item.createEl('button',{cls:'writer-v1203-web-bookmark-more',
-     attr:{type:'button','aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});
+     attr:{type:'button',title:writerUi('Opções','Options'),
+      'aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});
     require('obsidian').setIcon?.(more,'ellipsis');
     more.addEventListener('click',event=>{
+     event.preventDefault();event.stopPropagation();
      const menu=new Menu(this.app);
      menu.addItem(i=>i.setTitle(writerUi('Editar favorito','Edit bookmark')).setIcon('pencil')
       .onClick(()=>this.editWebBookmark(bookmark)));

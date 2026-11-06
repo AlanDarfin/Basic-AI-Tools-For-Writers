@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 12.0.4 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 12.0.5 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -18,7 +18,7 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 - **Spaces com pasta-raiz:** ao selecionar `Trabalho/Escrita/Fireverse`, Fireverse aparece como raiz visual do explorador, sem exibir as pastas ancestrais. Nada é movido no cofre.
 - **Ocultar apenas neste Space:** menu contextual para ocultar e reexibir notas e pastas somente na Space ativa. As coleções respeitam a ocultação, e as renomeações atualizam os caminhos.
 - **Toolbar independente:** PC e celular possuem botões, menus, cores, tamanhos e estilos separados. Seguir o cursor só exibe a toolbar ao selecionar texto no editor.
-- **Dragger:** alça não desaparece quando o mouse atravessa o espaço entre o texto e o quadrado no computador; o recurso continua desativado no Android.
+- **Dragger:** a alça inicia o arraste de fato no computador, permanece visível ao atravessar o espaço entre o texto e o quadrado e não aparece em linhas vazias; o recurso continua desativado no Android.
 - **Configurações sem abas novas:** recursos novos integrados às categorias antigas, sem grupos adicionais Toolkit ou Suítes.
 - **Ações rápidas próprias do Basic:** um único botão no ribbon abre leitura em voz alta, paleta com 65 formatações, tela de foco, foco em pastas e central de integrações. Os atalhos não dependem dos botões do Ultimate Toolkit externo.
 - **Correções no painel lateral:** o item **Mais opções** só encaminha o comando nativo depois que o menu anterior foi fechado no Android. **Marcador** prioriza um comando disponível do Bookmarks, com alternativa para o botão nativo. Os comandos para fixar, fechar e fechar outros painéis continuam.
@@ -106,14 +106,14 @@ As interfaces usam editores separados por capítulo, não um único editor CodeM
 
 ### Homepage de escrita personalizável
 
-A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia (preferência `homeOnNewTab`), com opção para desativar esse comportamento. No computador, quando o **Surfing** estiver habilitado, a homepage mostra uma barra fixa de endereço e pesquisa no topo, no estilo do navegador original. Digite uma URL ou termo e pressione Enter para abrir no Surfing. Ao desativá-lo, a barra desaparece; a busca fuzzy pelo **Cofre** continua separada, sem seletor Cofre/Web. No PC, a pesquisa pode abrir no plugin **Surfing** quando estiver instalado, no **Web Viewer** nativo ou no navegador externo; no celular, abre no navegador do sistema. O buscador e o destino são configurados na aba **Página inicial**, sem criar novas abas. O widget opcional **Favoritos da web** guarda links HTTP(S) com título, grupo e ícone Lucide, permite editar, remover e mudar a ordem e pode salvar a página aberta do Surfing/Web Viewer por um comando. A visibilidade do widget é independente por Space.
+A homepage reúne título, ícone, cores de destaque e busca fuzzy pelo cofre. Ela pode aparecer ao abrir uma nova aba vazia (preferência `homeOnNewTab`), com opção para desativar esse comportamento. No computador, com o **Surfing** habilitado, a homepage monta a **HeaderBar nativa do Surfing** no topo, usando os próprios atalhos e sugestões do plugin em vez de uma imitação do Basic. Essa integração utiliza um método interno do Surfing e pode precisar de ajustes se o plugin original mudar. Ao desativá-lo, a barra desaparece; a busca fuzzy pelo **Cofre** continua separada, sem seletor Cofre/Web. No PC, a pesquisa pode abrir no plugin **Surfing** quando estiver instalado, no **Web Viewer** nativo ou no navegador externo; no celular, abre no navegador do sistema. O buscador e o destino são configurados na aba **Página inicial**, sem criar novas abas. O widget opcional **Favoritos da web** guarda links HTTP(S) com título, grupo e ícone Lucide, permite editar, remover e mudar a ordem e pode salvar a página aberta do Surfing/Web Viewer por um comando. A visibilidade do widget é independente por Space.
 
 Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (computador), **continuar escrevendo**, **notas recentes**, **favoritos**, **rascunhos rápidos**, **resumo do cofre**, **atividade semanal**, **nota aleatória**, **tags**, **meta de palavras**, **galeria de fotos**, **citações** e **visão do dia**.
 
 - **Aproveitamento do espaço:** grade responsiva do tipo Masonry que mede as alturas e posiciona widgets pequenos ao lado de outros maiores.
-- **Tamanhos:** escolha **Compacto**, **Normal** ou **Largo** nas opções de cada widget. O modo largo ocupa duas colunas no PC; no celular tudo fica em uma coluna.
+- **Tamanhos:** use **Compacto**, **Normal** ou **Largo**, ou arraste as bordas direita, inferior ou o canto dos widgets no PC para alterar largura e altura. Escolha **Encaixar na grade** ou **Tamanho livre** no menu; também é possível restaurar as dimensões. No celular a grade permanece em uma coluna.
 - **Reorganização:** arraste pela alça no computador; em telas de toque, selecione uma alça e depois o cabeçalho de outro widget. O menu também oferece movimentos para antes/depois.
-- **Personalização local:** adicione, oculte ou reorganize os widgets; a ordem, os tamanhos, a visibilidade e os rascunhos são salvos nas configurações.
+- **Personalização local:** adicione, oculte ou reorganize widgets; a ordem, as dimensões livres, o encaixe, a visibilidade e os rascunhos são salvos nas configurações, de forma independente por Space quando ativada.
 
 ### Edição e formatação Markdown e navegação
 

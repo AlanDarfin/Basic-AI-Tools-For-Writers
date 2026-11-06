@@ -71,6 +71,9 @@ function writerV106DragBlockAt(lines,line){
  const blocks=writerV106DragBlocks(lines);
  return blocks.find(b=>y>=b.start&&y<b.end)||blocks.find(b=>b.start>y)||blocks[blocks.length-1]||null;
 }
+function writerV106DragHasText(lines,index){
+ return Number.isInteger(index)&&index>=0&&index<lines.length&&Boolean(String(lines[index]||'').trim());
+}
 function writerV106DragMove(source,fromStart,fromEnd,dest,indent=0){
  const lines=String(source||'').split('\n'),max=lines.length;
  const start=Math.max(0,Math.min(max,Math.floor(fromStart)));
@@ -169,11 +172,16 @@ function writerV106DragRegister(plugin){
   const pos=ed.posAtCoords({left:x,top:y});
   if(!pos)return null;
   const lines=ed.getValue().split('\n');
+  // BlockAt deliberately returns the nearest block for drop targets; never
+  // use that fallback for a drag handle over an empty Markdown line.
+  if(!writerV106DragHasText(lines,pos.line))return null;
   const block=writerV106DragBlockAt(lines,pos.line);
   return block?{block,view,ed,lines}:null;
  };
  const preview=(info,rect)=>{
-  if(!info||!rect||!enabled()||cfg.visibility==='hidden'){handle.style.display='none';return;}
+  if(!info||!rect||!enabled()||cfg.visibility==='hidden'){
+   active=null;handle.style.display='none';return;
+  }
   active=info;
   handle.style.position='fixed';
   handle.style.left=Math.max(2,rect.left-cfg.size-7+cfg.offset)+'px';
@@ -182,6 +190,7 @@ function writerV106DragRegister(plugin){
  };
  const source=(view,point)=>{
   const ed=view.editor,lines=ed.getValue().split('\n');
+  if(!writerV106DragHasText(lines,point.line))return null;
   let range=writerV106DragBlockAt(lines,point.line);
   if(!range)return null;
   if(cfg.multiSelect){
@@ -311,9 +320,13 @@ function writerV106DragRegister(plugin){
   if(!enabled())return;
   if(e.target===handle||handle.contains(e.target)||nearHandle(e))return;
   const line=e.target?.closest?.('.cm-line');
-  if(!line){postponeHide();return;}
+  if(!line){
+   if(nearHandle(e))return; // keep the source while crossing to the detached grip
+   active=null;postponeHide();return;
+  }
+  if(!line.textContent?.trim()){active=null;handle.style.display='none';return;}
   const view=viewFor(line);
-  if(!view)return;
+  if(!view){active=null;postponeHide();return;}
   const rect=line.getBoundingClientRect();
   const info=locate(view,rect.left+Math.min(15,rect.width/2),rect.top+Math.min(8,rect.height/2));
   preview(info,rect);
@@ -349,6 +362,10 @@ function writerV106DragRegister(plugin){
   if(drag){e.preventDefault?.();finishDrag();}
  };
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointermove',pointermove,true);
+ // The grip is appended to document.body, not the workspace container.
+ // Pointerdown on that grip never reached the former workspace listener,
+ // so a desktop drag could not start. Handle this event on the grip itself.
+ plugin.registerDomEvent(handle,'pointerdown',pointerdown,true);
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointerdown',pointerdown,true);
  plugin.registerDomEvent(handle,'pointerenter',()=>clearTimeout(hideTimer));
  plugin.registerDomEvent(handle,'pointerleave',()=>{if(!drag)postponeHide();});

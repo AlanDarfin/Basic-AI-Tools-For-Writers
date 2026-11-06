@@ -18,7 +18,7 @@ const ctx={
 };
 const scope=vm.runInNewContext(flex+'\n({writerV1202SpaceScope,writerV1202SpaceVisibility})',ctx);
 const tools=vm.runInNewContext(toolbar+'\n({writerV9ToolbarMerge,writerV1048ToolbarProfile,writerV1048ToolbarHasSelection})',ctx);
-const spaceModel=vm.runInNewContext(spaces+'\n({writerV9SpaceItems})',{writerUi:ctx.writerUi,console});
+const spaceModel=vm.runInNewContext(spaces+'\n({writerV9SpaceItems})',{writerUi:ctx.writerUi,ItemView:class{},console});
 function sample(){
  return {settings:{v9Spaces:{activeId:'fireverse',spaces:[
   {id:'fireverse',folder:'Trabalho/Escrita/Fireverse',hiddenPaths:['Trabalho/Escrita/Fireverse/Privado']},

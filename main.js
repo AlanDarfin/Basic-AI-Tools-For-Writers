@@ -27413,9 +27413,9 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Interface','Interface'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','research']],
+   ['customize',msg('Personalização','Customization'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','research']],
    ['workflow',msg('Organização','Organization'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
-   ['writing',msg('Escrita','Writing'),['complements','variants','integrationsV4','writingWidgets','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
+   ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','writingWidgets','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
    ['longform',msg('Longform','Longform'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
    ['toolkit',msg('Toolkit v12','Toolkit v12'),['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections']],
    ['suites',msg('Suítes','Suites'),['suiteEducation','suiteDatabase','suiteNumbering','suiteLongform']],

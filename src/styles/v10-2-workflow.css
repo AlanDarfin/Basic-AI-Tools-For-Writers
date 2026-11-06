@@ -1305,6 +1305,14 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
 
 
 /* Basic 10.10.1 — use the Obsidian mobile drawer's own tab selector. */
+/* Hide only the native drop-down: Basic draws its icon row in the same host. */
+body.is-mobile .writer-v1011-managed-mobile .workspace-drawer-tab-options{
+ display:flex;flex-direction:row;align-items:center;min-width:0;
+}
+body.is-mobile .writer-v1011-managed-mobile .workspace-drawer-tab-select{
+ display:none;
+}
+
 body.is-mobile .writer-v1011-managed-mobile .writer-v1011-native-tabs-hidden{
  display:none;
 }

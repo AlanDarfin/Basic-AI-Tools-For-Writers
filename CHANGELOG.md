@@ -2,6 +2,18 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 11.0.0 — Longform Studio foundation and database workflow
+
+- New source-preserving sequential chapter editor with guarded writes, snapshot integration and explicit save actions.
+- Editorial review compares local snapshot lines and stores local per-note comments.
+- Search note contents, names and frontmatter within book, Space or bounded vault scans; open matched source notes.
+- Safe Markdown manuscript assembly with preview and non-overwriting new export files.
+- Local compatibility diagnostics, bookshelf Studio shortcut and optional homepage widget.
+- Extend Notion-style board with drag-and-drop and accessible selectors to update existing status groups with conflict protection.
+- Add typed Markdown property editor with validation and user-confirmed changes.
+- Add desktop/mobile responsive styling, PT/EN documentation and regression coverage.
+- Scope limitation: these features are built as original modules; not all upstream capabilities have been ported. See docs/V11_SCOPE.pt-BR.md.
+
 ## 10.11.0 — Academic, database and numbering integrations
 
 - Added an academic center based on the Unique Suite workflow, with user-triggered class capture, daily notes, local dated reminders and a Markdown timetable renderer. The existing Basic calendar and ICS feed modules are reused.

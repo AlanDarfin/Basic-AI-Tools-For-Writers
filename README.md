@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 11.1.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 12.0.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -11,6 +11,18 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 
 ## Features
+
+### v12 · Unified Toolkit (integration preview)
+
+Basic v12 adds a **unified formatting palette**, a read-only **image lightbox** (zoom/rotation), a preview-and-confirm **Markdown image width normalizer**, **tagged-task navigation** over local notes, **quick Inbox capture**, **brainstorm notes**, and **temporary folder focus** in the native explorer. These actions reuse existing Basic AI, TTS, formatting, homepage, Longform, Spaces and file utilities instead of creating duplicate systems.
+
+- **Integration center:** detects Ultimate Toolkit, Visual Kit, Snailkit, dropit, the two Syncthing plugins, Obsidian Git and FIT if already enabled. Companion commands are exposed only while their plugin is active. Desktop-only Visual Kit is not made available on mobile by this integration.
+- **Synchronization center:** selects one of Syncthing Manager, Syncthing Integration, Obsidian Git or FIT for **manual** command dispatch; can inspect `.sync-conflict-` files without modifying them. **Basic does not implement or enable a separate sync engine**, disable other plugins' automatic jobs yourself to avoid concurrent writes.
+- **Local-first:** v12's Inbox and brainstorm features create ordinary Markdown notes only when explicitly requested. No credentials are collected by v12.
+- **Boundaries:** full upstream parity is **not** claimed. In particular, encrypted-folder vaults, protected search indexes, PDF/HTML bilingual TTS, image annotation/HTML editor, dropit pairing and transport, complete Snailkit export tools and native Git/Syncthing transports are **not** bundled. Existing Basic modules and optional third-party plugins continue to provide their respective capabilities.
+
+See [v12 coverage and compatibility notes](docs/V12_SCOPE.pt-BR.md). The v12 integration is introduced for review/testing before general rollout.
+
 
 ### Sidebars and editor width
 

@@ -90,7 +90,59 @@ function writerV9ToolbarMerge(settings){
    icon:writerV1048ToolbarSafeIcon(group.icon||'folder-open'),ids});
  }
  cfg.groups=groups;
+ // Migrate old shared toolbar settings once into distinct editable device profiles.
+ // Keep the old top-level fields for existing commands and safe data migration.
+ const normalizeProfile=(rawProfile,mobile)=>{
+  const prior=rawProfile&&typeof rawProfile==='object'&&!Array.isArray(rawProfile)?rawProfile:{};
+  const profile={
+   placement:cfg.placement,style:cfg.style,compact:cfg.compact,buttonSize:cfg.buttonSize,
+   showLabels:cfg.showLabels,textColor:cfg.textColor,backgroundColor:cfg.backgroundColor,
+   customButtons:cfg.customButtons.map(item=>({...item})),
+   customizations:Object.fromEntries(Object.entries(cfg.customizations).map(([id,value])=>[id,{...value}])),
+   actions:[...cfg.actions],groups:cfg.groups.map(group=>({...group,ids:[...group.ids]})),
+   ...prior
+  };
+  profile.placement=['top','bottom','floating'].includes(profile.placement)?profile.placement:'bottom';
+  if(mobile&&profile.placement==='floating')profile.placement='bottom';
+  profile.style=['tiny','compact','regular'].includes(profile.style)?profile.style:'compact';
+  profile.buttonSize=Math.max(26,Math.min(46,Math.round(Number(profile.buttonSize)||32)));
+  profile.showLabels=profile.showLabels===true;
+  profile.textColor=writerV1048ToolbarHex(profile.textColor,cfg.textColor);
+  profile.backgroundColor=writerV1048ToolbarHex(profile.backgroundColor,cfg.backgroundColor);
+  profile.customButtons=Array.isArray(profile.customButtons)?profile.customButtons.filter(item=>
+   item&&writerV1048ToolbarCustomId(item.id)&&/^[\w.:-]{2,180}$/.test(String(item.command||'')))
+   .slice(0,60).map(item=>({id:item.id,command:String(item.command).slice(0,180),
+    label:String(item.label||item.command).slice(0,55),icon:writerV1048ToolbarSafeIcon(item.icon)})):[];
+  const allowed=new Set([...WRITER_V9_FORMAT_IDS,...profile.customButtons.map(item=>item.id)]);
+  profile.actions=Array.isArray(profile.actions)?[...new Set(profile.actions.filter(id=>allowed.has(id)))]:[...cfg.actions];
+  profile.customizations=Object.fromEntries(Object.entries(profile.customizations||{}).filter(([id,value])=>
+   allowed.has(id)&&value&&typeof value==='object').map(([id,value])=>[id,{
+    label:String(value.label||'').slice(0,55),icon:value.icon?writerV1048ToolbarSafeIcon(value.icon):''
+   }]));
+  const assigned=new Set();
+  profile.groups=(Array.isArray(profile.groups)?profile.groups:[]).slice(0,16).map(group=>{
+   const ids=[...new Set((Array.isArray(group?.ids)?group.ids:[]).filter(id=>
+    profile.actions.includes(id)&&!assigned.has(id)))];
+   ids.forEach(id=>assigned.add(id));
+   return {id:String(group?.id||'group').replace(/[^a-z0-9-]/gi,'').slice(0,45),
+    name:String(group?.name||'Menu').slice(0,45),icon:writerV1048ToolbarSafeIcon(group?.icon),ids};
+  }).filter(group=>group.ids.length);
+  return profile;
+ };
+ const stored=raw.profiles&&typeof raw.profiles==='object'&&!Array.isArray(raw.profiles)?raw.profiles:{};
+ cfg.profiles={desktop:normalizeProfile(stored.desktop,false),mobile:normalizeProfile(stored.mobile,true)};
  return cfg;
+}
+function writerV1048ToolbarProfile(plugin,device){
+ const cfg=plugin.settings.v9Toolbar||writerV9ToolbarMerge(plugin.settings);
+ const key=device|| (writerV8HomeIsMobile(plugin)?'mobile':'desktop');
+ return cfg.profiles?.[key]||cfg;
+}
+function writerV1048ToolbarHasSelection(view){
+ if(!view?.editor||!writerV1061ToolbarEditingMode(view))return false;
+ try{if(String(view.editor.getSelection?.()||'').length>0)return true;}catch(_){}
+ const ranges=view.editor.cm?.state?.selection?.ranges;
+ return Array.isArray(ranges)&&ranges.some(range=>range.from!==range.to);
 }
 function writerV9ToolbarAllowed(plugin){
  const cfg=plugin.settings.v9Toolbar;
@@ -314,7 +366,7 @@ function writerV1048ToolbarIcon(cfg,item){
  return cfg.customizations?.[item.id]?.icon||item.icon||'command';
 }
 function writerV1048ToolbarRun(plugin,editor,id){
- const cfg=plugin.settings.v9Toolbar;
+ const cfg=writerV1048ToolbarProfile(plugin);
  const item=writerV1048ToolbarItems(cfg).find(entry=>entry.id===id);
  if(!item)return false;
  if(item.type==='command'){
@@ -334,11 +386,12 @@ function writerV1048ToolbarGroups(cfg){
  return groupMap;
 }
 function writerV1048ToolbarMenu(plugin,group,event){
- const menu=new Menu(plugin.app),items=writerV1048ToolbarItems(plugin.settings.v9Toolbar);
+ const cfg=writerV1048ToolbarProfile(plugin);
+ const menu=new Menu(plugin.app),items=writerV1048ToolbarItems(cfg);
  for(const id of group.ids){
   const item=items.find(a=>a.id===id);if(!item)continue;
-  menu.addItem(entry=>entry.setTitle(writerV1048ToolbarLabel(plugin.settings.v9Toolbar,item))
-   .setIcon(writerV1048ToolbarIcon(plugin.settings.v9Toolbar,item))
+  menu.addItem(entry=>entry.setTitle(writerV1048ToolbarLabel(cfg,item))
+   .setIcon(writerV1048ToolbarIcon(cfg,item))
    .onClick(()=>{
     const current=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
     writerV1048ToolbarRun(plugin,current?.editor,id);
@@ -374,7 +427,7 @@ function writerV1061ToolbarEditingMode(view){
  return !!view.editor;
 }
 function writerV9RegisterToolbar(plugin){
- const cfg=plugin.settings.v9Toolbar;
+ const settings=plugin.settings.v9Toolbar;
  writerV1044ContextMenus(plugin);
  let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null;
  const remove=()=>{
@@ -387,7 +440,9 @@ function writerV9RegisterToolbar(plugin){
   const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
   observeMode(view);
   const host=view?.contentEl;
-  if(!host||!view?.editor||!writerV1061ToolbarEditingMode(view)||!writerV9ToolbarAllowed(plugin)){remove();return;}
+  const cfg=writerV1048ToolbarProfile(plugin);
+  if(!host||!view?.editor||!writerV1061ToolbarEditingMode(view)||!writerV9ToolbarAllowed(plugin)||
+   (cfg.placement==='floating'&&!writerV1048ToolbarHasSelection(view))){remove();return;}
   if(owner!==host){remove();owner=host;owner.classList.add('writer-v9-toolbar-host');}
   currentView=view;
   if(root)root.remove();
@@ -451,8 +506,13 @@ function writerV9RegisterToolbar(plugin){
  };
  const reposition=()=>{
   if(root&&currentView&&!writerV1061ToolbarEditingMode(currentView)){remove();refresh();return;}
-  if(root&&owner&&currentView&&cfg.placement==='floating')
+  const cfg=writerV1048ToolbarProfile(plugin);
+  if(cfg.placement==='floating'){
+   const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
+   if(!writerV1048ToolbarHasSelection(view)){if(root)remove();return;}
+   if(!root||view!==currentView){refresh();return;}
    writerV1048ToolbarPosition(root,owner,currentView,cfg);
+  }
  };
  plugin.writerV9ToolbarRefresh=refresh;
  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',refresh));
@@ -469,13 +529,13 @@ function writerV9RegisterToolbar(plugin){
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
   plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
    editorCallback:editor=>{
-    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,cfg);
+    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
    }});
  }
  plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),
   callback:async()=>{
-   if(writerV8HomeIsMobile(plugin))cfg.enabledMobile=!cfg.enabledMobile;
-   else cfg.enabledDesktop=!cfg.enabledDesktop;
+   if(writerV8HomeIsMobile(plugin))settings.enabledMobile=!settings.enabledMobile;
+   else settings.enabledDesktop=!settings.enabledDesktop;
    await plugin.saveSettings();refresh();
   }});
 }
@@ -496,15 +556,22 @@ function writerV1048ToolbarCommandPicker(plugin,onChoose){
  }
 }
 function writerV9ToolbarSettings(plugin,panel){
- const cfg=plugin.settings.v9Toolbar;
- const root=panel.createDiv({cls:'writer-v1048-toolbar-settings'});
+ const settings=plugin.settings.v9Toolbar;
+ const container=panel.createDiv({cls:'writer-v1048-toolbar-settings'});
+ const deviceSetting=new Setting(container).setName(writerUi('Personalizar para','Customize for'))
+  .setDesc(writerUi('PC e celular possuem botões, estilos, menus e cores independentes.','Desktop and mobile have independent buttons, style, menus and colors.'));
+ const content=container.createDiv({cls:'writer-v1202-toolbar-profile'});
+ const render=device=>{
+  content.empty();
+  const cfg=writerV1048ToolbarProfile(plugin,device);
+  const root=content;
  root.createEl('h3',{text:writerUi('Barra de formatação','Formatting toolbar')});
  root.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Personalize os botões, crie menus e use comandos de outros plugins. No celular a barra continua opcional, sem substituir a barra nativa.',
   'Customize buttons, build menus and use commands from other plugins. On mobile this bar remains optional and does not replace Obsidian’s native toolbar.')});
  const save=async()=>{await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();};
  const toggle=(pt,en,key)=>new Setting(root).setName(writerUi(pt,en))
-  .addToggle(t=>t.setValue(cfg[key]===true).onChange(async value=>{cfg[key]=value;await save();}));
+  .addToggle(t=>t.setValue(settings[key]===true).onChange(async value=>{settings[key]=value;await save();}));
  toggle('Ativar no computador','Enable on desktop','enabledDesktop');
  toggle('Ativar no Android/iOS (opcional)','Enable on Android/iOS (optional)','enabledMobile');
  toggle('Mostrar nomes junto aos ícones','Show labels next to icons','showLabels');
@@ -710,4 +777,11 @@ function writerV9ToolbarSettings(plugin,panel){
      name:writerUi('Meu menu','My menu'),icon:'folder-open',ids:[first]});
     await save();groupPanel.open=true;drawGroups();
    }));
+ };
+ deviceSetting.addDropdown(drop=>drop
+  .addOption('desktop',writerUi('Computador','Desktop'))
+  .addOption('mobile',writerUi('Celular','Mobile'))
+  .setValue('desktop')
+  .onChange(device=>render(device)));
+ render('desktop');
 }

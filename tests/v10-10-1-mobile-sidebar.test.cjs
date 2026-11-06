@@ -103,16 +103,22 @@ test('Mobile toolbar mounts INSIDE native selector, replaces only the old select
  assert.ok(!root.classList.contains('writer-v1011-managed-mobile'));
  assert.ok(!tabs.children.some(n=>n.classList.contains('writer-v1010-sidebar-toolbar')));
 });
-test('Existing mobile Spaces dock is relocated to the drawer footer, not duplicated in explorer',()=>{
- const text=fs.readFileSync('src/v9/spaces-dock.js','utf8');
- assert.match(text,/const mobileIntegrated=\(\)=>/);
- assert.match(text,/drawer\.containerEl/);
- assert.match(text,/const mount=root\.querySelector\?\.\('\.workspace-drawer-inner'\)\|\|root/);
- assert.match(text,/writer-v1011-integrated-spaces/);
- assert.match(text,/nativeFooter\.insertAdjacentElement\('beforebegin',dock\)/);
- assert.match(text,/if\(mobileIntegrated\(\)\)\{/);
- assert.match(text,/writer-v1011-mobile-spaces-host/);
- assert.match(text,/writerV9215SelectSpace\(plugin,space\.id\)/);
+test('Mobile Spaces belongs to native tabs instead of Explorer scroll or rebuilt drawer inner',()=>{
+ const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+ assert.match(source,/function writerV1014MobileSpacesAnchor\(plugin\)/);
+ assert.match(source,/const mount=writerV1014MobileSpacesAnchor\(plugin\)/);
+ assert.match(source,/writer-v1014-mobile-spaces-anchor/);
+ assert.match(source,/writer-v1014-collapsible-spaces/);
+ assert.match(source,/writer-v1014-spaces-toggle/);
+ assert.match(source,/aria-expanded/);
+ assert.match(source,/mobileObserver\.observe\(root,\{childList:true,subtree:true\}\)/);
+ assert.match(source,/writerV9215SelectSpace\(plugin,id\)/);
+ assert.doesNotMatch(source,/const mount=root\.querySelector\?\.\('\.workspace-drawer-inner'\)/);
+ const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+ assert.match(css,/\.writer-v1014-mobile-spaces-anchor/);
+ assert.match(css,/inset:auto 8px calc\(100% \+ 3px\)/);
+ assert.match(css,/\.writer-v1014-collapsible-spaces/);
+ assert.match(css,/\.writer-v1014-spaces-options\[hidden\]/);
 });
 test('More menu combines overflowing tabs and native actions, with Spaces access',()=>{
  assert.match(source,/writerV1010SidebarMenu\(plugin,event,side,hidden,active\)/);

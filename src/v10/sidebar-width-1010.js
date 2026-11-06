@@ -142,8 +142,9 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   .setIcon('settings').onClick(()=>plugin.app.setting?.open?.()));
  // Prefer Obsidian's own chooser, then the existing native vault switcher.
  const chooser=plugin.app.openVaultChooser||plugin.app.openVaultSwitcher;
+ const vaultName=plugin.app.vault?.getName?.()||writerUi('cofre atual','current vault');
  const switcher=plugin.app.workspace?.leftSplit?.headerEl?.querySelector?.('.workspace-drawer-header-switcher');
- if(typeof chooser==='function'||switcher)menu.addItem(item=>item.setTitle(writerUi('Trocar de cofre','Switch vault'))
+ if(typeof chooser==='function'||switcher)menu.addItem(item=>item.setTitle(writerUi('Cofre: ','Vault: ')+vaultName)
   .setIcon('folder-open').onClick(()=>{
    if(typeof chooser==='function')chooser.call(plugin.app);
    else switcher?.click?.();
@@ -261,7 +262,7 @@ function writerV1010Register(plugin){
   }
   if(cfg.sidebar.actionMenu!==false){
    const menu=addIcon('',writerUi('Ações e mais painéis','Actions and more views'),
-    event=>writerV1010SidebarMenu(plugin,event,side,hidden,active));
+    event=>writerV1010SidebarMenu(plugin,event,side,hidden,active),hidden.some(item=>item.leaf===active));
    writerV1010Icon(menu,'ellipsis');
   }
   if(cfg.sidebar.fileFilter===true&&side==='left'){

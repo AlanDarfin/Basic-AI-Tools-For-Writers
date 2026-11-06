@@ -1,51 +1,51 @@
-# Basic v12 — Cobertura, compatibilidade e limitações
+# Basic v12.0.0 — Cobertura real e compatibilidade
 
-**Estado:** implementação inicial em branch de revisão. A v12 não incorpora integralmente o código ou todas as funções dos oito projetos. Nenhum código de terceiros foi copiado para o Basic.
+Esta versão acrescenta ferramentas originais inspiradas em oito plugins comunitários, sem incorporar integralmente os respectivos projetos. A integração externa depende dos plugins originais estarem instalados e ativados.
 
-## Arquitetura
+## O que foi implementado
 
-- Uma função, um responsável: reutilizar IA, TTS, Longform, Spaces, explorador, formatação, imagens e recursos de escrita já presentes no Basic.
-- Configurações isoladas em v12Toolkit, e comandos novos com prefixo v12. Nenhuma alteração involuntária de notas, nem sync automático por padrão.
-- Os comandos externos aparecem apenas para projetos instalados e ativos. Selecionar um provedor de sincronização controla apenas o despacho **manual do Basic**, sem desligar agendamentos dos próprios plugins.
-- Ocultar itens do explorador não representa criptografia nem controle de acesso.
-
-## Matriz por plugin
-
-| Projeto | Entregue pelo Basic v12 | Ainda não integrado |
+| Origem | Funcionalidades v12 | O que continua externo ou pendente |
 | --- | --- | --- |
-| [Ultimate Toolkit](https://github.com/ahmdmusa/obsidian-toolkit) | Paleta pesquisável de formatação, callouts, listas e divisores; lightbox; controle de largura de imagens; foco temporário por pasta; reaproveitamento da IA e TTS existentes | Cofres de pasta AES/PBKDF2, proteção do índice, TTS bilíngue de PDF/HTML, streaming SSE completo, HUD completo do Live Preview, bloqueio de emergência |
-| [Visual Kit](https://github.com/pedrohf-dev/visual-kit) | Normalização de largura dos embeds selecionados; descoberta de comandos externos quando instalado | Anotador de imagens, editor HTML, colagem rica, deduplicação de arquivos binários; a versão original é desktop-only |
-| [Snailkit](https://github.com/arnaudgastelblum/snailkit) | Navegação por tarefas Markdown; criação de brainstorm; reaproveita Home, calendário, slash e busca existentes | Workbench integral, coluna/outline especial e exportadores próprios |
-| [dropit](https://github.com/smart-kits/dropit-obsidian) | Captura local na pasta Inbox e descoberta de comandos do plugin | Pareamento, transporte entre aparelhos, inbox remoto, recepção automática e processamento por CLI |
-| [Syncthing Integration](https://github.com/LBF38/obsidian-syncthing-integration) | Ponte para os comandos instalados; inspeção local de nomes de conflito | Servidor/cliente de sync próprio, operações remotas de dispositivos |
-| [Syncthing Manager](https://github.com/gustjose/obsidian-syncthing-manager) | Ponte manual e visor de arquivos de conflito sem modificá-los | Controle completo de Syncthing, versionamento, comparação/mescla avançada e edição de ignorados |
-| [Obsidian Git](https://github.com/Vinzent03/obsidian-git) | Comandos de plugin externo disponíveis na central, mediante clique | Implementação própria de Git, push/pull automático, histórico e diffs completos |
-| [FIT](https://github.com/joshuakto/fit) | Comandos externos na central, seleção explícita do provedor | Transporte de GitHub integrado, autenticação e resolução de conflitos |
+| [Ultimate Toolkit](https://github.com/ahmdmusa/obsidian-toolkit) | Paleta de 65 ações; seleção contextual com leitura e cópia; reaproveitamento do TTS e IA já existentes; foco temporário em pastas; notas criptografadas individualmente com AES-256-GCM e PBKDF2-SHA256 | Criptografia de pastas inteiras, proteção do índice de busca e nomes, TTS bilíngue com parsing completo de PDF/HTML, HUD completo do Live Preview e bloqueio geral de emergência |
+| [Visual Kit](https://github.com/pedrohf-dev/visual-kit) | Visualizador, tamanho de embeds com prévia e confirmação, anotador PNG local com caneta/seta/retângulo/texto/cobertura | Editor HTML completo, rich paste/copy com imagens, deduplicação binária e edição de camadas do projeto original; ele é exclusivo de desktop |
+| [Snailkit](https://github.com/arnaudgastelblum/snailkit) | Workbench de tarefas agrupadas por etiqueta e com alternância atômica, brainstorm e extração de texto para nota vinculada | Workbench original completo, exportação PPTX, seleção de coluna e gesto de mouse próprio |
+| [dropit](https://github.com/smart-kits/dropit-obsidian) | Captura rápida na Inbox e botão de comando externo quando instalado | Pareamento QR, aplicativo/servidor remoto, push/pull, recebimento automático e processamento por agente/CLI |
+| [Syncthing Integration](https://github.com/LBF38/obsidian-syncthing-integration) | Ponte para comandos do plugin externo e inspeção de conflitos locais | API Syncthing embutida, dados de conexão, dispositivos, ignorados e transportes |
+| [Syncthing Manager](https://github.com/gustjose/obsidian-syncthing-manager) | Central manual, seleção de provedor e comparação textual somente leitura de conflitos | Controle completo de pastas/dispositivos, versionamento e mescla de conflitos pelo motor original |
+| [Obsidian Git](https://github.com/Vinzent03/obsidian-git) | Executar comandos fornecidos pelo plugin instalado (somente mediante ação do usuário) | Git nativo, autenticação, stage, push/pull, diff e histórico próprios |
+| [FIT](https://github.com/joshuakto/fit) | Mesma ponte manual e mecanismo de escolha de provedor do Basic | API GitHub, geração de tokens, sincronização e resolução de conflitos próprios |
 
-## Comandos
+## Arquitetura e dados
 
-- Toolkit: central de integrações.
-- Sincronização: abrir central (seleção de um entre quatro provedores e execução manual).
-- Formatar: paleta unificada.
-- Imagens: padronizar largura na seleção (prévia e confirmação).
-- Tarefas: localizar em notas (leitura de 25–1000 notas, limite configurável).
-- Captura: guardar na Inbox local.
-- Ideias: criar brainstorm local.
-- Explorador: focar pasta da nota; Explorador: mostrar todas as pastas.
-- Modelos: inserir estrutura pronta (modelos locais, não geração por IA).
+- Arquivos nativos: `src/v12/unified-toolkit.js`, `secure-notes.js`, `task-workbench.js`, `image-annotations.js`, `selection-reader.js`.
+- Nenhum código-fonte dos oito projetos foi copiado. Os direitos e licenças continuam com seus autores; ver `THIRD_PARTY_NOTICES.md`.
+- Os módulos já existentes de IA, TTS, barra de edição, pesquisa, calendário, Spaces e Longform não foram duplicados.
+- Os scripts de sincronização são **exclusivamente os dos plugins externos**; escolher um provedor na central do Basic não desliga jobs automáticos dos demais.
+- O plugin não guarda chave de GitHub, Syncthing, FIT ou dropit. A rede é acessada pelo próprio plugin externo, conforme a configuração dele.
 
 ## Segurança
 
-A v12 não faz novas chamadas de rede, não armazena segredos de sincronização e não inclui um motor de criptografia. Captura e brainstorm gravam novos arquivos Markdown somente após a ação do usuário. Conflitos Syncthing podem ser abertos para inspeção textual, mas não são apagados ou mesclados. O foco em pastas é um filtro puramente visual. Backups independentes são recomendados antes de testar sincronizadores.
+As notas criptografadas devem ser **criadas diretamente** pelo comando do Basic. O programa não converte nem exclui o arquivo original e não fornece criptografia de pastas. A senha precisa ter ao menos 12 caracteres; nunca é armazenada pelo Basic. O formato usa AES-256-GCM, salt aleatório, IV aleatório e PBKDF2-SHA256 (310 mil iterações). Títulos, nomes, tamanhos, pastas e existência dos arquivos permanecem visíveis. Uma senha perdida não pode ser recuperada.
 
-**Não ative agendamentos concorrentes de Git, FIT ou Syncthing no mesmo cofre.** A seleção do Basic não controla os agendamentos dos plugins originais.
+O Workbench de tarefas recusa gravação se o conteúdo mudou entre a leitura e a operação. O editor de imagens salva um **novo PNG**, deixando o original visível; uma região coberta no PNG exportado não remove a imagem de origem. A extração de texto escreve a nota nova antes de substituir a seleção. O foco em pastas só muda a aparência do explorador.
 
-## Verificação
+## Comandos adicionais
 
-- [x] Fontes adicionadas ao build e módulos registrados.
-- [x] Testes de unidade novos para formatação de links, tarefas, configuração e registro de comandos escritos.
-- [ ] CI GitHub: compilação, checagem do bundle e regressões.
-- [ ] Testes reais do Obsidian desktop e Android.
-- [ ] Testar ícones, acessibilidade, temas e convivência com Spaces, Flexplorer e plugins externos.
+- Formatar: paleta unificada (65 opções).
+- TTS: ler seleção em documentos, com a voz local do Basic e texto selecionável.
+- Privacidade: criar nota criptografada; Privacidade: abrir nota criptografada.
+- Imagens: anotar nova cópia PNG; Imagens: padronizar largura.
+- Tarefas: Workbench com etiquetas; Tarefas: localizar em notas.
+- Captura: guardar na Inbox; Ideias: criar brainstorm local.
+- Notas: separar trecho em nova nota vinculada; Modelos: inserir estrutura pronta.
+- Explorador: focar pasta / mostrar todas; Toolkit: central de integrações; Sincronização: abrir central.
 
-A paridade total com os oito projetos não está concluída. Esta tabela descreve intencionalmente o que realmente foi implementado e o que ainda depende dos plugins originais.
+## Validação e limitações de plataforma
+
+- [x] Build modular e arquivo distribuível sincronizados.
+- [x] Testes para autenticação de nota criptografada, senha incorreta, adulteração, parser de tarefas e concorrência de escrita.
+- [x] Suíte de testes, sintaxe, CSS, metadados e empacotamento em GitHub Actions (branch de desenvolvimento).
+- [ ] Testes manuais completos no Obsidian para PC e Android, com diferentes temas.
+- [ ] Auditoria de segurança de implementação e testes externos de sincronização.
+
+O leitor não faz OCR nem analisa integralmente PDFs: exige texto selecionável na interface. O anotador do Basic é próprio; o Visual Kit original continua restrito a desktop. Esta v12 não deve ser anunciada como uma cópia completa de nenhum dos oito plugins.

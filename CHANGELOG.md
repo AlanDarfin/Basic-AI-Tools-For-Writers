@@ -2,6 +2,12 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.10.2 — Dragger desktop-only
+
+- Disable the block Dragger completely on mobile. No drag handle, indicator, pointer or touch listeners, or Dragger-specific commands are registered on Android.
+- Preserve the desktop Dragger with its existing settings. Remove the mobile long-press toggle and obsolete mobile handle styling.
+- Add mobile activation regression coverage. Other editing features and all user settings are preserved.
+
 ## 10.10.1 — Android sidebar and Spaces dock repair
 
 - Sidebar tabs now mount in the native mobile selector rather than creating another toolbar below it.

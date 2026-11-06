@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 11.1.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 11.1.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -33,6 +33,12 @@ editor-width: 75
 
 
 
+### Painéis no celular (11.1.1)
+
+Na barra lateral do Basic, **segure o dedo sobre o ícone de um painel por aproximadamente 550 ms** para abrir o menu **Fixar/Desafixar painel**, **Fechar painel** e **Fechar outros não fixados**. Fixar mantém o painel entre os primeiros ícones, protegendo-o do fechamento em lote, mas não substitui a função nativa de fixar a gaveta do Obsidian. Arrastar o dedo para rolar cancela o gesto; tocar normalmente continua alternando abas. Os menus nativos aninhados agora são abertos somente após o fechamento do primeiro menu, evitando o efeito de abrir e fechar instantaneamente.
+
+Essas ações não apagam notas. O gesto pode ser desligado nas configurações de Painéis laterais. Consulte as [notas da 11.1.1](V11_1_1_MOBILE_LONGFORM.pt-BR.md) para limites e testes reais pendentes.
+
 ### Number Suite e construtor de bancos (11.1)
 
 A integração do **Number Suite** ganhou **numeração visual opcional dos títulos no Live Preview** por decorações do CodeMirror, sem modificar os títulos originais. No modo de leitura, há contadores independentes para parágrafos iniciados por `Figure:`, `Table:`, `Equation:` e `Code:`. O comando **Numeração: estrutura, figuras e notas de rodapé** abre um sumário navegável de títulos, legendas e definições de notas de rodapé/fim. Os novos contadores começam desativados para manter a compatibilidade.
@@ -41,15 +47,15 @@ O comando **Bancos: construtor visual de visualização** cria blocos `basic-sui
 
 Confira o [escopo da 11.1](V11_1_INTEGRATIONS_SCOPE.pt-BR.md), incluindo limitações de paridade e testes visuais pendentes no Android.
 
-### Longform Studio (v11)
+### Escrita contínua no Longform (11.1.1)
 
-O **Longform Studio** mostra os capítulos de um livro em sequência, permitindo expandir e editar cada arquivo Markdown original sem mesclar ou mover notas. O salvamento é explícito, cria snapshot local quando ativado e recusa alterações concorrentes para evitar sobrescrever o trabalho de outro editor.
+Em **Longform → Escrita → Escrita contínua**, os capítulos são exibidos no mesmo painel de projetos, sem um widget independente na Homepage. A escrita contínua mostra os capítulos de um livro em sequência, permitindo expandir e editar cada arquivo Markdown original sem mesclar ou mover notas. O salvamento é explícito, cria snapshot local quando ativado e recusa alterações concorrentes para evitar sobrescrever o trabalho de outro editor.
 
 - **Revisão editorial:** comparação linha a linha com snapshots existentes e comentários editoriais locais por capítulo.
 - **Pesquisa universal:** busca limitada por nome, propriedades e conteúdo, com escopos de livro, Space e cofre, trechos encontrados e abertura da nota original.
 - **Montagem do manuscrito:** prévia antes da criação explícita de um novo arquivo Markdown em `Basic Exports/`, sem modificar os capítulos.
 - **Central de compatibilidade:** mostra estados dos módulos, falhas de inicialização e possíveis sobreposições entre plugins, sem enviar dados do cofre à rede.
-- **Homepage e biblioteca:** widget opcional com atalhos para Estúdio, pesquisa e diagnóstico; botão Estúdio na biblioteca.
+- **Homepage e biblioteca:** o widget Meus livros permanece; o widget Longform Studio foi removido. A biblioteca leva diretamente à aba Escrita contínua no Longform padrão.
 - **Bancos Markdown:** mover cartões do quadro entre colunas existentes por arraste ou seletor acessível; edição tipada de propriedades (texto, número, data, checkbox e tags), com snapshot e verificação de conflitos.
 
 As interfaces usam editores separados por capítulo, não um único editor CodeMirror sincronizado. A exportação direta de EPUB/PDF/DOCX, a sincronização remota e a paridade integral com os plugins originais continuam fora deste módulo. Confira o [escopo detalhado da v11](V11_SCOPE.pt-BR.md).

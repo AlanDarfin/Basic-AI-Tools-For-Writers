@@ -12478,9 +12478,14 @@ function writerV1048ToolbarProfile(plugin,device){
 }
 function writerV1048ToolbarHasSelection(view){
  if(!view?.editor||!writerV1061ToolbarEditingMode(view))return false;
- try{if(String(view.editor.getSelection?.()||'').length>0)return true;}catch(_){}
+ // A caret alone is not a selected passage; dismiss the floating toolbar
+ // promptly when the actual selection is cleared.
+ try{
+  const selected=view.editor.getSelection?.();
+  if(typeof selected==='string')return selected.trim().length>0;
+ }catch(_){}
  const ranges=view.editor.cm?.state?.selection?.ranges;
- return Array.isArray(ranges)&&ranges.some(range=>range.from!==range.to);
+ return Array.isArray(ranges)&&ranges.some(range=>range.to>range.from);
 }
 function writerV9ToolbarAllowed(plugin){
  const cfg=plugin.settings.v9Toolbar;
@@ -12910,9 +12915,14 @@ function writerV9ToolbarSettings(plugin,panel){
  const save=async()=>{await plugin.saveSettings();plugin.writerV9ToolbarRefresh?.();};
  const toggle=(pt,en,key)=>new Setting(root).setName(writerUi(pt,en))
   .addToggle(t=>t.setValue(settings[key]===true).onChange(async value=>{settings[key]=value;await save();}));
- toggle('Ativar no computador','Enable on desktop','enabledDesktop');
- toggle('Ativar no Android/iOS (opcional)','Enable on Android/iOS (optional)','enabledMobile');
- toggle('Mostrar nomes junto aos ícones','Show labels next to icons','showLabels');
+ // Availability and presentation preferences belong to the selected device.
+ toggle(device==='mobile'?'Ativar no celular':'Ativar no computador',
+  device==='mobile'?'Enable on mobile':'Enable on desktop',
+  device==='mobile'?'enabledMobile':'enabledDesktop');
+ new Setting(root).setName(writerUi('Mostrar nomes junto aos ícones','Show labels next to icons'))
+  .addToggle(t=>t.setValue(cfg.showLabels===true).onChange(async value=>{
+   cfg.showLabels=value;await save();
+  }));
  // Obsidian's generic Setting flex rows can inherit enormous vertical space
  // from third-party mobile snippets. These native controls have stable height.
  const compactField=(name,description,controlId)=>{
@@ -12953,7 +12963,7 @@ function writerV9ToolbarSettings(plugin,panel){
  styledSelect('writer-v1049-toolbar-position',writerUi('Posição da barra','Toolbar position'),[
   ['bottom',writerUi('Embaixo','Bottom')],
   ['top',writerUi('Em cima','Top')],
-  ['floating',writerUi('Acompanhar o cursor (PC)','Follow cursor (desktop)')]
+  ...(device==='desktop'?[['floating',writerUi('Mostrar ao selecionar texto','Show on text selection')]]:[])
  ],cfg.placement,async value=>{cfg.placement=value;await save();});
  const colorField=(name,desc,key,id)=>{
   const field=compactField(name,desc,id);
@@ -13119,9 +13129,9 @@ function writerV9ToolbarSettings(plugin,panel){
  deviceSetting.addDropdown(drop=>drop
   .addOption('desktop',writerUi('Computador','Desktop'))
   .addOption('mobile',writerUi('Celular','Mobile'))
-  .setValue('desktop')
+  .setValue(writerV8HomeIsMobile(plugin)?'mobile':'desktop')
   .onChange(device=>render(device)));
- render('desktop');
+ render(writerV8HomeIsMobile(plugin)?'mobile':'desktop');
 }
 
 // v3 module: src/v9/native-explorer.js

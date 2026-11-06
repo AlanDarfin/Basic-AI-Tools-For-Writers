@@ -52,3 +52,11 @@ A revisão automática está ativada por padrão dentro do fluxo de Revisão/Gra
 Use GitHub's private vulnerability reporting option, **if available**. Otherwise open a minimal issue requesting a private contact channel, without any exploit details, secrets or manuscript content. Never post personal vault data in public issues.
 
 Não publique informações sensíveis ou detalhes de exploração em issues públicas.
+
+## v12 unified toolkit / Toolkit unificado v12
+
+The v12 module adds no network requests, third-party executables, API keys, or local credentials. The native Inbox and brainstorm actions write only the new Markdown note explicitly requested by the user. The task viewer and Syncthing conflict inspector are read-only; image width rewriting requires an explicit editor selection and confirmation. The temporary explorer focus is a **visual filter only** and is not an access-control or encryption feature.
+
+The integration center can execute commands **belonging to a separately installed and enabled plugin** when explicitly clicked. Those commands are governed by that plugin's own permissions, settings and network connections. Selecting one provider in Basic does **not** disable automatic jobs in other enabled plugins. Running Git, FIT, Syncthing and/or other cloud synchronization concurrently may produce conflicts or overwritten files. Back up the vault and configure only one active automated sync strategy. Do not treat Obsidian UI password locks as filesystem encryption.
+
+A v12 native encrypted folder vault, protected search index, cryptographic keychain, file transfer server, Git library, and direct Syncthing API client are **not implemented**. The source plugins must be installed separately for those functions. Visual Kit itself declares desktop-only support; the bridge does not change that limitation.

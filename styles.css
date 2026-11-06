@@ -9094,4 +9094,92 @@ body.is-mobile .writer-v9-format-toolbar.writer-v1048-format-toolbar.is-top{
  /* Sidebar views stay sized by Obsidian, including when the software keyboard opens. */
  .writer-v1010-width-status{display:none;}
 }
+
+
+/* Basic 10.10.1 — use the Obsidian mobile drawer's own tab selector. */
+/* Hide only the native drop-down: Basic draws its icon row in the same host. */
+body.is-mobile .writer-v1011-managed-mobile .workspace-drawer-tab-options{
+ display:flex;flex-direction:row;align-items:center;min-width:0;
+}
+body.is-mobile .writer-v1011-managed-mobile .workspace-drawer-tab-select{
+ display:none;
+}
+
+body.is-mobile .writer-v1011-managed-mobile .writer-v1011-native-tabs-hidden{
+ display:none;
+}
+body.is-mobile .writer-v1011-managed-mobile .writer-v1011-native-row{
+ display:flex;align-items:center;flex-wrap:nowrap;gap:3px;width:100%;
+ min-width:0;min-height:52px;max-width:100%;padding:4px 10px;
+ box-sizing:border-box;border:0;background:transparent;
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+ -webkit-overflow-scrolling:touch;
+}
+body.is-mobile .writer-v1011-managed-mobile .writer-v1011-native-row::-webkit-scrollbar{display:none;}
+body.is-mobile .writer-v1011-native-row > .writer-v1010-sidebar-button{
+ flex:1 1 0;min-width:38px;max-width:62px;width:auto;height:42px;
+ border:0;background:transparent;color:var(--text-muted);border-radius:var(--radius-m);
+}
+body.is-mobile .writer-v1011-native-row > .writer-v1010-sidebar-button svg{
+ width:22px;height:22px;stroke-width:1.85;
+}
+body.is-mobile .writer-v1011-native-row > .writer-v1010-sidebar-button.is-active{
+ color:var(--text-normal);background:var(--background-modifier-hover);
+}
+body.is-mobile .writer-v1011-native-row > .writer-v1010-sidebar-button:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-2px;
+}
+body.is-mobile .writer-v1011-native-row > .writer-v1010-sidebar-filter{
+ flex:1 0 90px;min-width:90px;height:34px;
+}
+/* The same Spaces dock now attaches to the bottom of the mobile drawer,
+   outside the file explorer scroll viewport, and no duplicate dock is created. */
+body.is-mobile .writer-v1011-mobile-spaces-host{
+ display:flex;flex-direction:column;min-height:0;
+}
+body.is-mobile .writer-v1011-mobile-spaces-host > .workspace-drawer-tab-container{
+ flex:1 1 auto;min-height:0;
+}
+body.is-mobile .writer-v1011-mobile-spaces-host > .writer-v1011-integrated-spaces{
+ position:relative;inset:auto;z-index:3;display:flex;flex:0 0 auto;
+ align-items:center;gap:5px;max-width:100%;width:100%;min-height:50px;
+ padding:5px max(8px,env(safe-area-inset-right)) 5px max(8px,env(safe-area-inset-left));
+ box-sizing:border-box;border-top:1px solid var(--background-modifier-border);
+ background:var(--background-primary);overflow:hidden;
+}
+body.is-mobile .writer-v1011-integrated-spaces .writer-v9216-spaces-rail{
+ flex:1 1 auto;gap:6px;min-width:0;overflow-x:auto;overflow-y:hidden;
+ scroll-snap-type:x proximity;scrollbar-width:none;
+}
+body.is-mobile .writer-v1011-integrated-spaces .writer-v9216-spaces-rail::-webkit-scrollbar{display:none;}
+body.is-mobile .writer-v1011-integrated-spaces .writer-v9216-space-group{scroll-snap-align:start;max-width:50vw;}
+body.is-mobile .writer-v1011-integrated-spaces button{
+ min-height:38px;min-width:38px;border-radius:var(--radius-m);
+ color:var(--text-muted);font-size:var(--font-ui-small);
+}
+body.is-mobile .writer-v1011-integrated-spaces .writer-v9216-space-group.is-active > .writer-v9216-space-chip{
+ color:var(--text-normal);background:var(--background-modifier-hover);
+}
+body.is-mobile .writer-v1011-integrated-spaces .writer-v9216-spaces-tools{
+ flex:0 0 auto;padding-inline-start:5px;margin-inline-start:2px;
+}
+body.is-mobile .writer-v1011-integrated-spaces .writer-v9216-space-options{
+ min-width:26px;width:26px;min-height:32px;
+}
+/* Only collapse the native vault footer when the working Obsidian vault chooser
+   exists and the user enabled this option. Otherwise leave it accessible. */
+body.is-mobile .writer-v1011-managed-mobile.writer-v1011-compact-footer .workspace-drawer-header{
+ display:none;
+}
+
+/* Built-in sidepane actions now live in the single overflow/context menu.
+   Never hide a third-party view's own toolbar. */
+body.is-mobile .writer-v1011-managed-mobile
+ .workspace-leaf-content.writer-v1011-grouped-native-actions .nav-header > .nav-buttons-container{
+ display:none;
+}
+body.is-mobile .writer-v1011-managed-mobile
+ .workspace-leaf-content.writer-v1011-grouped-native-actions .nav-header.writer-v1011-empty-native-header{
+ display:none;
+}
 /* END V8 MODULAR STYLES */

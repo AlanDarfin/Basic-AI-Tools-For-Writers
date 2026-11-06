@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 11.1.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 11.1.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -29,6 +29,12 @@ editor-width: 75
 
 
 
+### Mobile panel controls (11.1.1)
+
+In the Basic-managed mobile sidebar, **hold a panel icon for approximately 550 ms** (or use the context menu key) to open **Pin/Unpin panel**, **Close panel** and **Close other unpinned panels**. Pinning keeps the panel ahead of unpinned tabs and excludes it from *Close other unpinned panels*; it does not change native Obsidian drawer pinning. Dragging/scrolling cancels the long-press gesture. Normal tapping still switches views. Nested native sidebar actions are deferred until the first menu closes, avoiding the instant open-close behavior.
+
+These controls never delete vault notes. Under Settings → Sidebars, the gesture can be disabled. See the [11.1.1 implementation notes](docs/V11_1_1_MOBILE_LONGFORM.pt-BR.md) for remaining real-device testing.
+
 ### Number Suite and database builder extensions (11.1)
 
 The existing **Number Suite** integration now supports **opt-in visual heading numbers in Live Preview**. They are rendered as CodeMirror line decorations without modifying heading text. Reading View can display separate automatic counters for `Figure:`, `Table:`, `Equation:` and `Code:` caption paragraphs. The **Numbering: heading, caption and footnote outline** command navigates titles, captions and recognized footnote definitions. Enable the switches under the numbering settings; both are disabled by default for compatibility.
@@ -37,15 +43,15 @@ The new **Databases: visual view builder** command prepares `basic-suite-db` Mar
 
 See [v11.1 implementation scope](docs/V11_1_INTEGRATIONS_SCOPE.pt-BR.md) for limitations, including missing complete upstream parity and the need for Android visual testing.
 
-### Longform Studio (v11)
+### Continuous writing in Longform (11.1.1)
 
-The **Longform Studio** offers a continuous, chapter-ordered writing workspace for books in the existing Longform library. Expand chapters to edit their original Markdown files without merging or relocating them. Saves are explicit, create a local snapshot when enabled, and reject concurrent changes instead of overwriting another editor. Scenes can be opened in a regular Obsidian tab.
+Open **Longform → Writing → Continuous writing** to work through chapters in the same native Projects view. The separate Longform Studio homepage widget has been removed. Continuous writing offers a chapter-ordered workspace for books in the existing Longform library. Expand chapters to edit their original Markdown files without merging or relocating them. Saves are explicit, create a local snapshot when enabled, and reject concurrent changes instead of overwriting another editor. Scenes can be opened in a regular Obsidian tab.
 
 - **Editorial review:** read-only line comparisons against existing Basic snapshots, plus local comments attached to chapter paths.
 - **Universal search:** query file names, properties and note contents within a selected book, Space or bounded vault scan. Results include excerpts and open the source note.
 - **Manuscript assembly:** review a compiled Markdown preview before explicitly creating a new file under `Basic Exports/`. Existing chapters are untouched. Use the separate Pandoc export features for supported desktop publishing formats.
 - **Compatibility center:** inspect local module states, integration failures and overlapping third-party plugins without sending vault content over the network.
-- **Homepage:** optional Longform Studio widget with shortcuts for editing, search and diagnostics. A Studio button is also available from the bookshelf.
+- **Integration:** the new Continuous writing tab is part of the standard Longform interface; the Bookshelf shortcut opens that same project tab. The Homepage keeps its Books widget, without a duplicate Studio widget.
 - **Markdown databases:** move Notion-style board cards between existing columns using drag-and-drop or a mobile-friendly dropdown, with conflict checks and snapshots; use **Databases: edit typed property** for text, numbers, dates, checkboxes and tags.
 
 The v11 implementations extend previous modules rather than replicating entire upstream plugins. Current limits and remaining roadmap are documented in [v11 scope](docs/V11_SCOPE.pt-BR.md). Importantly, editing in the Studio uses separate chapter textareas, not a single synchronized CodeMirror buffer. No PDF/EPUB/DOCX rendering or cloud sync is introduced by the Studio.

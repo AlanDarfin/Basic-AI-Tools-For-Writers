@@ -75,82 +75,99 @@ async function writerV11SaveChapter(plugin,file,expected,next){
 function writerV11Heading(parent,pt,en){
  parent.createEl('h3',{text:writerUi(pt,en)});
 }
-function writerV11OpenProject(plugin,project){
- const cfg=writerV11Cfg(plugin.settings);
- if(!cfg.enabled){new Notice(writerUi('Longform Studio desativado.','Longform Studio disabled.'));return;}
- const scenes=writerV11ProjectFiles(plugin,project,cfg.chapterLimit);
- const modal=new Modal(plugin.app);
- modal.modalEl?.addClass('writer-v11-studio-modal');
- modal.setTitle(writerUi('Longform Studio · ','Longform Studio · ')+project.title);
- modal.onOpen=()=>{
-  const root=modal.contentEl;root.empty();root.addClass('writer-v11-studio');
-  const intro=root.createDiv({cls:'writer-v11-studio-intro'});
-  intro.createEl('p',{text:writerUi(
-   'Capítulos em sequência, cada um salvo no seu arquivo original. Expanda uma cena para editar; salve explicitamente. Outras alterações nunca são sobrescritas.',
-   'Chapters in sequence, each stored in its original file. Expand a scene to edit and save explicitly. Concurrent changes are never overwritten.')});
-  const bar=root.createDiv({cls:'writer-v11-studio-actions'});
-  bar.createEl('button',{text:writerUi('Pesquisar livro','Search book')})
-   .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
-  bar.createEl('button',{text:writerUi('Revisar versões','Review revisions')})
-   .addEventListener('click',()=>writerV11OpenRevision(plugin,scenes[0]?.file));
-  bar.createEl('button',{text:writerUi('Compilar manuscrito','Compile manuscript')})
-   .addEventListener('click',()=>void writerV11Compile(plugin,project,scenes));
-  const total=root.createEl('p',{cls:'writer-v11-summary',text:scenes.length+' '+writerUi('capítulos encontrados.','chapters found.')});
-  if(!scenes.length){root.createEl('p',{text:writerUi('Nenhum capítulo Markdown encontrado. Confira a ordem no Longform.','No Markdown chapters found. Check Longform scene ordering.')});return;}
-  const host=root.createDiv({cls:'writer-v11-chapters'});
-  let wordTotal=0;
-  for(const [index,entry] of scenes.entries()){
-   const detail=host.createEl('details',{cls:'writer-v11-chapter'});
-   const summary=detail.createEl('summary');
-   summary.createSpan({text:String(index+1)+'. '+entry.title});
-   const counter=summary.createEl('small',{text:' · …'});
-   const content=detail.createDiv({cls:'writer-v11-chapter-body'});
-   let loaded=false;
-   detail.addEventListener('toggle',async()=>{
-    if(!detail.open||loaded||modal._writerClosed)return;
-    loaded=true;
-    let original='';
-    try{original=await plugin.app.vault.read(entry.file);}catch(error){
-     loaded=false;content.createEl('p',{text:String(error.message||error)});return;
-    }
-    const count=writerV11Words(original);
-    wordTotal+=count;
-    total.setText(scenes.length+' '+writerUi('capítulos · ','chapters · ')+wordTotal+' '+writerUi('palavras carregadas','loaded words'));
-    counter.setText(' · '+count+' '+writerUi(' palavras',' words'));
-    const editor=content.createEl('textarea',{cls:'writer-v11-editor',attr:{spellcheck:'true','aria-label':entry.title}});
-    const draft=plugin._writerV11Drafts?.get(entry.file.path);
-    editor.value=draft?.original===original?draft.text:original;
-    const buttons=content.createDiv({cls:'writer-v11-chapter-actions'});
-    const status=buttons.createEl('small',{text:writerUi('Alterações não salvas','Unsaved changes')});
-    const save=buttons.createEl('button',{text:writerUi('Salvar capítulo','Save chapter'),attr:{type:'button'}});
-    const open=buttons.createEl('button',{text:writerUi('Abrir nota','Open note'),attr:{type:'button'}});
-    const review=buttons.createEl('button',{text:writerUi('Revisão','Review'),attr:{type:'button'}});
-    if(draft?.original===original)status.setText(writerUi('Rascunho temporário recuperado · não salvo','Temporary draft recovered · unsaved'));
+async function writerV11OpenProject(plugin,project){
+ // Reuse the canonical Projects view and selected Longform index.
+ // No separate Studio leaf, homepage widget or manuscript database is created.
+ if(!project?.file?.path)return;
+ await plugin.openProjects?.('manuscript');
+ const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
+ if(!view){new Notice(writerUi('Não foi possível abrir o Longform.','Could not open Longform.'));return;}
+ view.selected=project.file.path;
+ if(typeof writerProjectRemember==='function')writerProjectRemember(view,project.file.path);
+ view.activeTab='manuscript';
+ await view.render?.();
+}
+function writerV11RenderLongformTab(view,panel,project){
+ const plugin=view.plugin,cfg=writerV11Cfg(plugin.settings);
+ const root=panel.createDiv({cls:'writer-v11-studio writer-v11-longform-inline'});
+ if(cfg.enabled===false){
+  root.createEl('p',{text:writerUi('A escrita contínua está desativada nas configurações do Longform.','Continuous writing is disabled in Longform settings.')});return;
+ }
+ const entries=project.format==='single'?[{title:project.title,file:project.file}]:
+  (typeof view.activeScenes==='function'?view.activeScenes(project):typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[]).map(scene=>{
+   const file=typeof view.resolveScene==='function'?view.resolveScene(project,scene.title):null;
+   return {title:scene.title,file,indent:scene.indent||0};
+  }).filter(entry=>entry.file?.extension==='md');
+ const unique=new Set(),scenes=entries.filter(entry=>{
+  if(!entry.file?.path||unique.has(entry.file.path))return false;
+  unique.add(entry.file.path);return true;
+ }).slice(0,cfg.chapterLimit);
+ root.createEl('h4',{text:writerUi('Escrita contínua','Continuous writing')});
+ root.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Todas as cenas continuam no Longform padrão, com a ordem, os metadados e os arquivos originais. Expanda uma cena para editar e salve explicitamente.',
+  'Scenes retain the standard Longform order, metadata and original files. Expand a scene to edit and save explicitly.')});
+ const bar=root.createDiv({cls:'writer-v11-studio-actions'});
+ bar.createEl('button',{text:writerUi('Pesquisar capítulos','Search chapters')})
+  .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
+ bar.createEl('button',{text:writerUi('Compilar manuscrito','Compile manuscript')})
+  .addEventListener('click',()=>void writerV11Compile(plugin,project,scenes));
+ const count=bar.createSpan({cls:'writer-v11-longform-counter',text:scenes.length+' '+writerUi('capítulos','chapters')});
+ if(!scenes.length){
+  root.createEl('p',{text:writerUi('Este projeto ainda não contém cenas Markdown. Use a aba Cenas para adicioná-las.','This project has no Markdown scenes yet. Add them in Scenes.')});return;
+ }
+ const host=root.createDiv({cls:'writer-v11-chapters'});
+ for(const [index,scene] of scenes.entries()){
+  const section=host.createEl('details',{cls:'writer-v11-chapter'});
+  const head=section.createEl('summary');
+  head.createSpan({text:String(index+1)+'. '+scene.title});
+  const info=head.createEl('small',{text:''});
+  const body=section.createDiv({cls:'writer-v11-chapter-body'});
+  let loading=false,loaded=false,expected='';
+  section.addEventListener('toggle',async()=>{
+   if(!section.open||loaded||loading)return;
+   loading=true;
+   try{
+    expected=await plugin.app.vault.read(scene.file);
+    if(!section.isConnected)return;
+    info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
+    const editor=body.createEl('textarea',{cls:'writer-v11-editor',attr:{
+     'aria-label':scene.title,spellcheck:'true'}});
+    const draft=plugin._writerV11Drafts?.get(scene.file.path);
+    editor.value=draft?.original===expected?draft.text:expected;
+    const buttons=body.createDiv({cls:'writer-v11-chapter-actions'});
+    const status=buttons.createEl('small',{text:editor.value===expected?
+     writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo recuperado','Unsaved draft recovered')});
+    const save=buttons.createEl('button',{attr:{type:'button'},text:writerUi('Salvar cena','Save scene')});
+    buttons.createEl('button',{attr:{type:'button'},text:writerUi('Abrir nota','Open note')})
+     .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(scene.file));
+    buttons.createEl('button',{attr:{type:'button'},text:writerUi('Revisões','Revisions')})
+     .addEventListener('click',()=>writerV11OpenRevision(plugin,scene.file));
     editor.addEventListener('input',()=>{
-     if(!plugin._writerV11Drafts)plugin._writerV11Drafts=new Map();
-     if(editor.value===original)plugin._writerV11Drafts.delete(entry.file.path);
-     else plugin._writerV11Drafts.set(entry.file.path,{original,text:editor.value});
-     status.setText(writerUi('Alterado · não salvo','Modified · not saved'));
+     plugin._writerV11Drafts??=new Map();
+     if(editor.value===expected)plugin._writerV11Drafts.delete(scene.file.path);
+     else plugin._writerV11Drafts.set(scene.file.path,{original:expected,text:editor.value});
+     status.setText(editor.value===expected?writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo','Unsaved changes'));
     });
     save.addEventListener('click',async()=>{
      save.disabled=true;
-     try{await writerV11SaveChapter(plugin,entry.file,original,editor.value);
-      original=editor.value;plugin._writerV11Drafts?.delete(entry.file.path);status.setText(writerUi('Salvo','Saved'));counter.setText(' · '+writerV11Words(original)+' '+writerUi('palavras','words'));
-      new Notice(writerUi('Capítulo salvo.','Chapter saved.'));
-     }catch(error){status.setText(String(error.message||error));new Notice(String(error.message||error));}
-     finally{save.disabled=false;}
+     try{
+      await writerV11SaveChapter(plugin,scene.file,expected,editor.value);
+      expected=editor.value;
+      plugin._writerV11Drafts?.delete(scene.file.path);
+      info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
+      status.setText(writerUi('Salvo','Saved'));
+      new Notice(writerUi('Cena salva no arquivo Longform original.','Scene saved in original Longform note.'));
+     }catch(error){
+      status.setText(String(error.message||error));new Notice(String(error.message||error));
+     }finally{save.disabled=false;}
     });
-    open.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(entry.file));
-    review.addEventListener('click',()=>writerV11OpenRevision(plugin,entry.file));
-    writerV11ReviewArea(plugin,entry.file,content);
-   });
-  }
- };
- modal.onClose=()=>{modal._writerClosed=true;
-  if(scenes.some(entry=>plugin._writerV11Drafts?.has(entry.file.path)))
-   new Notice(writerUi('Rascunhos não salvos mantidos temporariamente nesta sessão do Basic.','Unsaved drafts are held temporarily in this Basic session.'));
- };
- modal.open();
+    writerV11ReviewArea(plugin,scene.file,body);
+    loaded=true;
+   }catch(error){
+    body.createEl('p',{text:String(error.message||error)});
+   }finally{loading=false;}
+  });
+ }
 }
 function writerV11ReviewArea(plugin,file,root){
  const box=root.createDiv({cls:'writer-v11-review-area'});
@@ -335,7 +352,7 @@ function writerV11StudioRegister(plugin){
   }
  }));
 
- plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir estúdio contínuo','Longform: open continuous studio'),
+ plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir escrita contínua','Longform: open continuous writing'),
   callback:()=>writerV11PickProject(plugin,project=>writerV11OpenProject(plugin,project))});
  plugin.addCommand({id:'v11-editorial-review',name:writerUi('Revisão: comparar snapshots do capítulo','Review: compare chapter snapshots'),
   callback:()=>writerV11OpenRevision(plugin,plugin.app.workspace.getActiveFile?.())});
@@ -348,18 +365,18 @@ function writerV11StudioRegister(plugin){
 }
 function writerV11StudioSettings(plugin,panel){
  const cfg=writerV11Cfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('v11 · Longform Studio','v11 · Longform Studio')});
+ panel.createEl('h3',{text:writerUi('Longform · Escrita contínua','Longform · Continuous writing')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Escrita contínua segura, revisões com snapshots, pesquisa contextual e exportação Markdown por projeto.',
   'Safe continuous writing, snapshot comparisons, contextual search and per-project Markdown compilation.')});
- new Setting(panel).setName(writerUi('Ativar estúdio Longform','Enable Longform Studio'))
+ new Setting(panel).setName(writerUi('Ativar escrita contínua no Longform','Enable continuous writing in Longform'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Limite de capítulos por sessão','Chapter limit per session'))
   .addSlider(s=>s.setLimits(10,200,10).setValue(cfg.chapterLimit).setDynamicTooltip().onChange(async v=>{cfg.chapterLimit=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum searched notes'))
   .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.searchLimit).setDynamicTooltip().onChange(async v=>{cfg.searchLimit=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Estúdio Longform','Longform Studio'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
+ new Setting(panel).setName(writerUi('Escrita contínua','Continuous writing'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir Longform','Open Longform')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
  new Setting(panel).setName(writerUi('Central de compatibilidade','Compatibility center'))
   .addButton(b=>b.setButtonText(writerUi('Diagnosticar','Diagnose')).onClick(()=>writerV11OpenDiagnostics(plugin)));
 }

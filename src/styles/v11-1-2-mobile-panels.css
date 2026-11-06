@@ -1,0 +1,27 @@
+/* 11.1.2 — Longform continuous writing inside canonical Projects pane. */
+.writer-project-panel .writer-v11-longform-inline{
+ max-width:100%;min-width:0;padding:0 var(--size-4-2,8px) var(--size-4-4,16px);
+}
+.writer-project-panel .writer-v11-longform-inline > h4{margin:8px 0 0;font-size:var(--h4-size)}
+.writer-project-panel .writer-v11-longform-inline .writer-v11-studio-actions{
+ position:sticky;top:0;z-index:2;display:flex;flex-wrap:wrap;align-items:center;
+ gap:7px;padding:6px 0;background:var(--background-primary);
+}
+.writer-project-panel .writer-v11-longform-counter{color:var(--text-muted);font-size:var(--font-ui-smaller)}
+.writer-project-panel .writer-v11-chapters{width:100%;min-width:0;max-width:100%}
+.writer-project-panel .writer-v11-chapter summary{min-height:46px}
+.writer-project-panel .writer-v11-editor{min-height:220px;max-width:100%;max-height:min(65vh,750px)}
+/* A pinned sidebar view is given priority and is exempt from "close others". */
+body.is-mobile .writer-v1011-native-row .writer-v1010-sidebar-button.writer-v112-pinned-tab{position:relative}
+body.is-mobile .writer-v1011-native-row .writer-v1010-sidebar-button.writer-v112-pinned-tab::after{
+ content:"";position:absolute;top:4px;inset-inline-end:5px;border-radius:50%;
+ width:5px;height:5px;background:var(--interactive-accent);pointer-events:none;
+}
+body.is-mobile .writer-v1011-native-row .writer-v1010-sidebar-button{
+ touch-action:pan-x pan-y;user-select:none;-webkit-user-select:none;
+}
+@media(max-width:700px){
+ .writer-project-panel .writer-v11-longform-inline{padding-inline:2px}
+ .writer-project-panel .writer-v11-editor{min-height:160px;font-size:16px}
+ .writer-project-panel .writer-v11-studio-actions button{flex:1 1 auto}
+}

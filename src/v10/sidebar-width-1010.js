@@ -11,7 +11,9 @@ const WRITER_V1010_VIEWS={
  'all-properties':['list-filter','Propriedades','Properties'],
  backlink:['links','Links de entrada','Backlinks'],
  'outgoing-link':['link','Links de saída','Outgoing links'],
- outline:['list-tree','Estrutura','Outline']
+ outline:['list-tree','Estrutura','Outline'],
+ 'basic-ai-projects':['notebook-pen','Longform','Longform'],
+ 'writer-writing-home':['house','Homepage','Homepage']
 };
 function writerV1010Clamp(value,fallback=80){
  const n=Number(value);return Number.isFinite(n)?Math.max(20,Math.min(100,Math.round(n))):fallback;
@@ -158,13 +160,16 @@ function writerV1012IsNativeSortAction(action,label){
 }
 /* Mobile nested menus must open after their parent menu closes. The hidden
  * native action retains a laid-out DOM anchor so Obsidian won't dismiss it. */
-function writerV1012OpenNativeAction(action,sort){
- if(!action?.click)return;
+function writerV1012OpenNativeAction(action,sort,plugin){
+ if(typeof action?.click!=='function')return;
  if(!sort){action.click();return;}
+ // Let the first mobile sheet dismiss before the nested native sheet opens.
+ if(plugin)plugin._writerV1010NativeActionPending=true;
  setTimeout(()=>{
   try{if(action.isConnected!==false)action.click();}
-  catch(error){console.warn('[Basic] Could not open native sorting menu:',error);}
- },90);
+  catch(error){console.warn('[Basic] Could not open nested native action:',error);}
+  setTimeout(()=>{if(plugin){plugin._writerV1010NativeActionPending=false;plugin.writerV1010Refresh?.();}},800);
+ },220);
 }
 function writerV1010SidebarMenu(plugin,event,side,leaves,active){
  const menu=new Menu(plugin.app),current=active?.view?.containerEl;
@@ -174,9 +179,11 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   const label=String(action.getAttribute('aria-label')||action.getAttribute('title')||'').trim();
   if(!label||action.closest('.writer-v1010-sidebar-toolbar'))continue;
   count++;
-  const sort=writerV1012IsNativeSortAction(action,label);
+  const sort=writerV1012IsNativeSortAction(action,label)||
+   action.getAttribute?.('aria-haspopup')==='menu'||
+   /(?:mais op[cç][oõ]es|more options|op[cç][oõ]es|menu de opções)/i.test(label);
   menu.addItem(item=>item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label))
-   .onClick(()=>writerV1012OpenNativeAction(action,sort)));
+   .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin)));
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))
@@ -307,7 +314,8 @@ function writerV1010Register(plugin){
   }
   if(!header){restoreSidebar(side);return;}
   const doc=header.ownerDocument;
-  const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
+  const ordered=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
+  const leaves=typeof writerV112SortPinned==='function'?writerV112SortPinned(plugin,side,ordered):ordered;
   if(!leaves.length){restoreSidebar(side);return;}
   groupNativeActions(side,leaves,Boolean(drawer)&&cfg.sidebar.actionMenu!==false);
   let bar=hosts.get(side);
@@ -332,7 +340,8 @@ function writerV1010Register(plugin){
    Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
   const signature=[...visible.map(e=>e.type),'|',...hidden.map(e=>e.type),
-   cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true].join(';');
+   cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true,
+   JSON.stringify(cfg.sidebar.pinnedViews?.[side]||[])].join(';');
   const currentState=hostState.get(side);
   if(currentState?.bar===bar&&currentState.signature===signature){
    // Replacing buttons on every layout-change destroys the menu anchor and
@@ -391,6 +400,7 @@ function writerV1010Register(plugin){
     writerV1010FilterFiles(workspace,box.value);
    });bar.appendChild(box);
   }
+  if(drawer&&typeof writerV112SidebarWire==='function')writerV112SidebarWire(plugin,side,visible,bar);
  };
  const allMarkdown=()=>{
   const leaves=[];workspace.iterateAllLeaves?.(leaf=>{
@@ -415,7 +425,7 @@ function writerV1010Register(plugin){
   if(status)status.style.display=cfg.width.enabled&&cfg.width.showStatus&&!require('obsidian').Platform?.isMobile?'':'none';
  };
  const refresh=()=>{
-  if(unloaded)return;
+  if(unloaded||plugin._writerV1010NativeActionPending)return;
   try{renderSide('left');renderSide('right');paintWidth();
    if(require('obsidian').Platform?.isMobile)plugin.writerV9216SpacesDockRefresh?.();}
   catch(error){console.error('[Basic] Sidebar / width refresh failed:',error);}
@@ -493,6 +503,7 @@ function writerV1010Settings(plugin,panel){
   ['desktopTabs','Abas extras no computador','Extra tabs on desktop'],
   ['overflow','Agrupar abas excedentes','Overflow for extra tabs'],
   ['actionMenu','Menu de ações do painel','Sidebar action menu'],
+  ['longPressMenu','Segurar uma aba para fechar ou fixar painel','Hold a tab to close or pin panel'],
   ['fileFilter','Filtro local do explorador','Local Explorer filter'],
   ['integrateSpaces','Integrar Spaces ao rodapé móvel','Integrate Spaces into mobile footer'],
   ['compactFooter','Compactar rodapé nativo no celular','Compact native footer on mobile']

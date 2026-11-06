@@ -2,6 +2,14 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 11.1.1 — Mobile sidebar and integrated Longform writing
+
+- Moved continuous writing into the standard Longform project tabs, preserving scene order, source files, guarded saves, snapshots, editorial comments and manuscript compilation.
+- Removed the redundant Longform Studio homepage widget and updated the bookshelf shortcut to use the same Longform workspace.
+- Delayed all nested native mobile sidebar actions until their parent menu closes to prevent instant open-close behavior, retaining the original action targets.
+- Added long-press actions on mobile sidebar icons: pin/unpin, close and close other unpinned panels. Pinned views stay first and are excluded from bulk close. A normal tap still switches views; scrolling cancels long-press.
+- Improved generic panel naming in the sidebar (Longform, Homepage), added optional long-press toggle, mobile styling and regression tests. See docs/V11_1_1_MOBILE_LONGFORM.pt-BR.md.
+
 ## 11.1.0 — Number Suite and Notion view-builder expansion
 
 - Added opt-in visual heading numbering for Live Preview using CodeMirror line decorations (non-destructive).

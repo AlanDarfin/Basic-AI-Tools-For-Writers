@@ -167,7 +167,8 @@ class ProjectsView extends ItemView{
    return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
-  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments')]].filter(([id])=>(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
+   if(this.activeTab==='manuscript'&&this.plugin.settings?.v11Studio?.enabled===false)this.activeTab='scenes';
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['manuscript',lfMsg('Escrita contínua','Continuous writing')],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments') ]].filter(([id])=>(id!=='manuscript'||this.plugin.settings?.v11Studio?.enabled!==false)&&(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
   &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
@@ -176,10 +177,10 @@ class ProjectsView extends ItemView{
   &&(id!=='gallery'||this.plugin.settings.v7?.studioGallery!==false)
   &&(id!=='sessions'||this.plugin.settings.v7?.studioSessions!==false));
   if(!allTabs.some(([id])=>id===this.activeTab))this.activeTab=allTabs[0]?.[0]||'scenes';
-  const tabLucide={scenes:'clapperboard',project:'settings-2',compile:'file-output',notes:'library-big',timeline:'calendar-range',board:'columns-3',structure:'list-tree',relations:'git-branch',maps:'map',gallery:'images',sessions:'clock',analytics:'chart-no-axes-column',tasks:'list-check',comments:'message-circle'};
+  const tabLucide={scenes:'clapperboard',manuscript:'book-open-text',project:'settings-2',compile:'file-output',notes:'library-big',timeline:'calendar-range',board:'columns-3',structure:'list-tree',relations:'git-branch',maps:'map',gallery:'images',sessions:'clock',analytics:'chart-no-axes-column',tasks:'list-check',comments:'message-circle'};
   const groupLucide={writing:'pen-line',world:'globe',management:'folder-kanban'};
   const menuGroups=[
-   {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','board','structure','compile','analytics']},
+   {id:'writing',pt:'Escrita',en:'Writing',tabs:['scenes','manuscript','board','structure','compile','analytics']},
    {id:'world',pt:'Universo',en:'World',tabs:['notes','timeline','relations','maps','gallery','sessions']},
    {id:'management',pt:'Projeto',en:'Project',tabs:['project','tasks','comments']}
   ];
@@ -277,6 +278,7 @@ class ProjectsView extends ItemView{
   this.tabPanelScrollPositions[id]=panel.scrollTop||this.tabPanelScrollPositions[id]||0;
   panel.empty();
   if(id==='scenes')this.drawScenes(panel,project);
+   else if(id==='manuscript'&&typeof writerV11RenderLongformTab==='function')writerV11RenderLongformTab(this,panel,project);
   else if(id==='project'){this.drawProject(panel,project);await this.drawStats(panel,project,token);}
   else if(id==='compile')this.drawCompile(panel,project);
   else if(id==='notes')await this.drawNotes(panel,project);

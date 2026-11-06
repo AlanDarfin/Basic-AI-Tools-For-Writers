@@ -199,6 +199,7 @@ function writerV101RegisterEnhancements(plugin){
  if(typeof writerV12TasksRegister==='function')safeRegister('task-workbench-v12',()=>writerV12TasksRegister(plugin));
  if(typeof writerV12AnnotationRegister==='function')safeRegister('image-annotation-v12',()=>writerV12AnnotationRegister(plugin));
  if(typeof writerV12ReaderRegister==='function')safeRegister('context-reader-v12',()=>writerV12ReaderRegister(plugin));
+ if(typeof writerV1201RibbonRegister==='function')safeRegister('mobile-ribbon-v12.0.1',()=>writerV1201RibbonRegister(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -263,14 +264,4 @@ function writerV101EnhancementsSettings(plugin,panel){
  if(typeof writerV106DragSettings==='function')writerV106DragSettings(plugin,panel);
   if(typeof writerV107Settings==='function')writerV107Settings(plugin,panel);
  if(typeof writerV1010Settings==='function')writerV1010Settings(plugin,panel);
- if(typeof writerV1011StudySettings==='function')writerV1011StudySettings(plugin,panel);
- if(typeof writerV1011NotionSettings==='function')writerV1011NotionSettings(plugin,panel);
- if(typeof writerV1011NumberSettings==='function')writerV1011NumberSettings(plugin,panel);
- if(typeof writerV11StudioSettings==='function')writerV11StudioSettings(plugin,panel);
- if(typeof writerV111NumberSettings==='function')writerV111NumberSettings(plugin,panel);
- if(typeof writerV111DbBuilderSettings==='function')writerV111DbBuilderSettings(plugin,panel);
- if(typeof writerV12Settings==='function')writerV12Settings(plugin,panel);
- if(typeof writerV12SecureSettings==='function')writerV12SecureSettings(plugin,panel);
- if(typeof writerV12AnnotationSettings==='function')writerV12AnnotationSettings(plugin,panel);
- if(typeof writerV12ReaderSettings==='function')writerV12ReaderSettings(plugin,panel);
 }

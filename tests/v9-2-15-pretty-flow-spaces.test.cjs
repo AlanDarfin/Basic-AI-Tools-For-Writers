@@ -8,14 +8,14 @@ const flexSource=read('src/v9/explorer-flex.js');
 const sandbox={ItemView:class {}};
 const scope=vm.runInNewContext(spaceSource+'\n'+flexSource+
  '\n({writerV9SpacesMerge,writerV9215ActiveSpace,writerV9215SpaceHidden,writerV91FlexIsHidden})',sandbox);
-test('Explorer hiding is global rather than per Space',()=>{
+test('Explorer hiding combines independent Space rules with global rules',()=>{
  const cfg={v9Spaces:{enabled:true,activeId:'first',spaces:[
   {id:'first',name:'First',hiddenPaths:['Writing/Drafts']},
   {id:'second',name:'Second',hiddenPaths:[]}
  ]}};
  scope.writerV9SpacesMerge(cfg);
  const plugin={settings:cfg};
- assert.equal(scope.writerV91FlexIsHidden({hidden:[]},'Writing/Drafts/chapter.md',[],plugin),false);
+ assert.equal(scope.writerV91FlexIsHidden({hidden:[]},'Writing/Drafts/chapter.md',[],plugin),true);
  assert.equal(scope.writerV91FlexIsHidden({hidden:['Writing/Drafts/chapter.md']},'Writing/Drafts/chapter.md',[],plugin),true);
  cfg.v9Spaces.activeId='second';
  assert.equal(scope.writerV91FlexIsHidden({hidden:[]},'Writing/Drafts/chapter.md',[],plugin),false);

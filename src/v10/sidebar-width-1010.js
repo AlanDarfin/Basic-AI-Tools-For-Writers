@@ -160,7 +160,8 @@ function writerV1012IsNativeSortAction(action,label){
 }
 /* Mobile nested menus must open after their parent menu closes. The hidden
  * native action retains a laid-out DOM anchor so Obsidian won't dismiss it. */
-function writerV1012OpenNativeAction(action,sort,plugin){
+function writerV1012OpenNativeAction(action,sort,plugin,label){
+ if(typeof writerV1201NativeAction==='function'&&writerV1201NativeAction(plugin,action,label))return;
  if(typeof action?.click!=='function')return;
  if(!sort){action.click();return;}
  // Let the first mobile sheet dismiss before the nested native sheet opens.
@@ -183,7 +184,7 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
    action.getAttribute?.('aria-haspopup')==='menu'||
    /(?:mais op[cç][oõ]es|more options|op[cç][oõ]es|menu de opções)/i.test(label);
   menu.addItem(item=>item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label))
-   .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin)));
+   .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin,label)));
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))

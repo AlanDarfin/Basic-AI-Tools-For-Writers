@@ -20740,6 +20740,7 @@ function writerV101RegisterEnhancements(plugin){
  if(typeof writerV12TasksRegister==='function')safeRegister('task-workbench-v12',()=>writerV12TasksRegister(plugin));
  if(typeof writerV12AnnotationRegister==='function')safeRegister('image-annotation-v12',()=>writerV12AnnotationRegister(plugin));
  if(typeof writerV12ReaderRegister==='function')safeRegister('context-reader-v12',()=>writerV12ReaderRegister(plugin));
+ if(typeof writerV1201RibbonRegister==='function')safeRegister('mobile-ribbon-v12.0.1',()=>writerV1201RibbonRegister(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -20804,16 +20805,6 @@ function writerV101EnhancementsSettings(plugin,panel){
  if(typeof writerV106DragSettings==='function')writerV106DragSettings(plugin,panel);
   if(typeof writerV107Settings==='function')writerV107Settings(plugin,panel);
  if(typeof writerV1010Settings==='function')writerV1010Settings(plugin,panel);
- if(typeof writerV1011StudySettings==='function')writerV1011StudySettings(plugin,panel);
- if(typeof writerV1011NotionSettings==='function')writerV1011NotionSettings(plugin,panel);
- if(typeof writerV1011NumberSettings==='function')writerV1011NumberSettings(plugin,panel);
- if(typeof writerV11StudioSettings==='function')writerV11StudioSettings(plugin,panel);
- if(typeof writerV111NumberSettings==='function')writerV111NumberSettings(plugin,panel);
- if(typeof writerV111DbBuilderSettings==='function')writerV111DbBuilderSettings(plugin,panel);
- if(typeof writerV12Settings==='function')writerV12Settings(plugin,panel);
- if(typeof writerV12SecureSettings==='function')writerV12SecureSettings(plugin,panel);
- if(typeof writerV12AnnotationSettings==='function')writerV12AnnotationSettings(plugin,panel);
- if(typeof writerV12ReaderSettings==='function')writerV12ReaderSettings(plugin,panel);
 }
 
 // v3 module: src/v10/calendar-exchange.js
@@ -23656,7 +23647,8 @@ function writerV1012IsNativeSortAction(action,label){
 }
 /* Mobile nested menus must open after their parent menu closes. The hidden
  * native action retains a laid-out DOM anchor so Obsidian won't dismiss it. */
-function writerV1012OpenNativeAction(action,sort,plugin){
+function writerV1012OpenNativeAction(action,sort,plugin,label){
+ if(typeof writerV1201NativeAction==='function'&&writerV1201NativeAction(plugin,action,label))return;
  if(typeof action?.click!=='function')return;
  if(!sort){action.click();return;}
  // Let the first mobile sheet dismiss before the nested native sheet opens.
@@ -23679,7 +23671,7 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
    action.getAttribute?.('aria-haspopup')==='menu'||
    /(?:mais op[cç][oõ]es|more options|op[cç][oõ]es|menu de opções)/i.test(label);
   menu.addItem(item=>item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label))
-   .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin)));
+   .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin,label)));
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))
@@ -26599,6 +26591,297 @@ function writerV12ReaderSettings(plugin,panel){
   }));
 }
 
+// v3 module: src/v12/mobile-ux-1201.js
+/* Basic 12.0.1: Android quick actions without depending on other plugins'
+ * ribbon listeners; defer nested native actions until the first menu closes. */
+function writerV1201Editor(plugin){
+ return plugin.app.workspace.activeEditor?.editor||
+  plugin.app.workspace.getActiveViewOfType?.(MarkdownView)?.editor||
+  plugin.app.workspace.getLeavesOfType?.('markdown')?.find(l=>l===plugin.app.workspace.activeLeaf)?.view?.editor||null;
+}
+function writerV1201Read(plugin){
+ if(!writerModuleOn(plugin,'tts')){new Notice(writerUi('Ative TTS em Módulos.','Enable TTS in Modules.'));return;}
+ const selected=writerV1201Editor(plugin)?.getSelection?.()||'';
+ const domText=typeof writerV12SelectedText==='function'?writerV12SelectedText(plugin):'';
+ const play=source=>{
+  const content=String(source||'').replace(/^---\r?\n[\s\S]*?\r?\n---\s*/,'')
+   .replace(/(?:^|\n)#{1,6}\s+/g,' ').replace(/!\[\[[^\]]+\]\]/g,'')
+   .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(_,path,alias)=>alias||path)
+   .replace(/[\x60*_~]/g,' ').trim();
+  if(!content){new Notice(writerUi('Nenhum texto disponível.','No readable text available.'));return;}
+  if(typeof writerV107SpeechStart!=='function'){
+   new Notice(writerUi('O leitor de voz local não está disponível.','Local speech is unavailable.'));return;
+  }
+  writerV107SpeechConfig(plugin.settings);
+  writerV107SpeechStart(plugin,content.slice(0,30000));
+ };
+ if(selected.trim()||domText.trim()){play(selected.trim()||domText.trim());return;}
+ const file=plugin.app.workspace.getActiveFile?.();
+ if(file?.extension==='md'){void plugin.app.vault.cachedRead(file).then(play).catch(e=>new Notice(String(e.message||e)));return;}
+ new Notice(writerUi('Abra uma nota Markdown ou selecione texto no documento.','Open a Markdown note or select document text.'));
+}
+function writerV1201Format(plugin){
+ if(!writerModuleOn(plugin,'formatToolbar')){new Notice(writerUi('Ative a formatação em Módulos.','Enable formatting in Modules.'));return;}
+ const editor=writerV1201Editor(plugin);
+ if(!editor){new Notice(writerUi('Abra uma nota no modo de edição para formatar.','Open a note in editing mode to format.'));return;}
+ if(typeof writerV12OpenPalette==='function')writerV12OpenPalette(plugin,editor);
+ else new Notice(writerUi('Paleta indisponível.','Formatting palette unavailable.'));
+}
+function writerV1201Folder(plugin){
+ if(typeof writerV12FolderFocus!=='function')return new Notice(writerUi('Foco por pasta indisponível.','Folder focus is unavailable.'));
+ writerV12FolderFocus(plugin,!!plugin._writerV12FolderFocus);
+}
+function writerV1201Zen(plugin){
+ const doc=plugin.app.workspace.containerEl?.ownerDocument;
+ if(!doc)return;
+ const body=doc.body,enable=!body.classList.contains('writer-v1201-zen');
+ body.classList.toggle('writer-v1201-zen',enable);
+ plugin._writerV1201Zen=enable;
+ plugin._writerV1201ZenExit?.remove?.();plugin._writerV1201ZenExit=null;
+ if(enable){
+  const exit=doc.createElement('button');
+  exit.type='button';exit.className='writer-v1201-zen-exit';
+  exit.setAttribute('aria-label',writerUi('Sair do modo de foco','Exit focus mode'));
+  exit.textContent=writerUi('Sair do foco','Exit focus');
+  exit.addEventListener('click',()=>writerV1201Zen(plugin));
+  body.appendChild(exit);plugin._writerV1201ZenExit=exit;
+ }
+}
+function writerV1201QuickMenu(plugin,event){
+ const menu=new Menu(plugin.app);
+ for(const [title,icon,callback] of [
+  [writerUi('Ler seleção ou nota','Read selection or note'),'volume-2',()=>writerV1201Read(plugin)],
+  [writerUi('Abrir paleta de formatação','Open formatting palette'),'wand-sparkles',()=>writerV1201Format(plugin)],
+  [writerUi('Alternar tela de foco','Toggle focus screen'),'maximize-2',()=>writerV1201Zen(plugin)],
+  [writerUi('Alternar foco na pasta','Toggle folder focus'),'target',()=>writerV1201Folder(plugin)],
+  [writerUi('Central de integrações','Integration center'),'blocks',()=>writerV12OpenIntegrationHub(plugin)]
+ ])menu.addItem(i=>i.setTitle(title).setIcon(icon).onClick(callback));
+ if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
+ else menu.showAtPosition({x:80,y:150});
+}
+function writerV1201BookmarkCommand(plugin){
+ const commands=plugin.app.commands?.listCommands?.()||Object.values(plugin.app.commands?.commands||{});
+ return commands.find(command=>/^bookmarks?:/i.test(command.id||'')&&
+  /(?:bookmark|marcar|marcador|adicionar.*favorito)/i.test(command.name||'')&&
+  !/(?:remove|delete|remover|apagar|unbookmark)/i.test(command.id+' '+command.name))||null;
+}
+function writerV1201NativeAction(plugin,action,label){
+ if(!action||!plugin)return false;
+ if(plugin._writerV1201NativeRelay)return false;
+ const name=String(label||action.getAttribute?.('aria-label')||'');
+ const isBookmark=/^(?:marcador|bookmark|adicionar marcador|adicionar aos favoritos)$/i.test(name.trim());
+ const command=isBookmark?writerV1201BookmarkCommand(plugin):null;
+ plugin._writerV1201NativeRelay=true;
+ plugin._writerV1010NativeActionPending=true;
+ setTimeout(()=>{
+  try{
+   if(command&&plugin.app.commands?.executeCommandById){
+    plugin.app.commands.executeCommandById(command.id);
+   }else if(action.isConnected){
+    action.click();
+   }else new Notice(writerUi('O painel mudou. Reabra o menu e tente novamente.',
+      'The pane changed. Reopen its menu and try again.'));
+  }catch(error){
+   console.warn('[Basic] Native sidebar action:',error);
+   new Notice(writerUi('Não foi possível executar esta ação.','Could not execute this action.'));
+  }finally{
+   setTimeout(()=>{
+    plugin._writerV1201NativeRelay=false;
+    plugin._writerV1010NativeActionPending=false;
+    plugin.writerV1010Refresh?.();
+   },1100);
+  }
+ },380);
+ return true;
+}
+function writerV1201RibbonRegister(plugin){
+ if(plugin._writerV1201Ribbon)return;
+ const ribbon=plugin.addRibbonIcon?.('panel-top',writerUi('Basic: ações rápidas','Basic: quick actions'),
+  event=>writerV1201QuickMenu(plugin,event));
+ if(ribbon){ribbon.addClass?.('writer-v1201-ribbon');plugin._writerV1201Ribbon=ribbon;}
+ for(const [id,pt,en,callback] of [
+  ['v1201-read','Leitura: ler texto ou nota atual','Reading: read current selection or note',()=>writerV1201Read(plugin)],
+  ['v1201-format','Formatação: abrir paleta','Formatting: open palette',()=>writerV1201Format(plugin)],
+  ['v1201-focus-screen','Foco: alternar tela limpa','Focus: toggle clean screen',()=>writerV1201Zen(plugin)],
+  ['v1201-folder-focus','Explorador: alternar foco na pasta','Explorer: toggle folder focus',()=>writerV1201Folder(plugin)],
+  ['v1201-quick-actions','Basic: abrir ações rápidas','Basic: open quick actions',()=>writerV1201QuickMenu(plugin)]
+ ])plugin.addCommand({id,name:writerUi(pt,en),callback});
+ plugin.register?.(()=>{
+  plugin._writerV1201ZenExit?.remove?.();
+  plugin._writerV1201ZenExit=null;
+  plugin.app.workspace.containerEl?.ownerDocument?.body?.classList.remove('writer-v1201-zen');
+ });
+}
+
+// v3 module: src/v12/settings-hub-1201.js
+/* Basic 12.0.1: feature-centered settings. The existing Basic settings tab
+ * owns navigation; these renderers never create a second settings panel. */
+function writerV1201SettingToggle(plugin,panel,key,pt,en,description){
+ const cfg=writerV12Config(plugin);
+ return new Setting(panel).setName(writerUi(pt,en))
+  .setDesc(writerUi(description?.[0]||'',description?.[1]||''))
+  .addToggle(toggle=>toggle.setValue(cfg[key]!==false)
+   .onChange(async value=>{
+    cfg[key]=value;await plugin.saveSettings();
+    if(key==='folderFocus')writerV12FocusRefresh(plugin);
+   }));
+}
+function writerV1201SettingsOverview(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Toolkit e suítes','Toolkit and suites')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Cada recurso está organizado em uma categoria própria. As configurações antigas foram preservadas, sem recriar dados ou perfis.',
+  'Each feature has its own category. Previous settings and data are preserved.')});
+ new Setting(panel).setName(writerUi('Ativar Toolkit v12','Enable v12 toolkit'))
+  .setDesc(writerUi('Controle geral para os recursos da v12.','Global switch for v12 features.'))
+  .addToggle(t=>t.setValue(cfg.enabled!==false).onChange(async v=>{
+   cfg.enabled=v;await plugin.saveSettings();writerV12FocusRefresh(plugin);
+  }));
+ const pages=[
+  ['v12Writing','pen-line','Escrita e ações rápidas','Writing and quick actions'],
+  ['v12Images','image','Imagens e anotações','Images and annotations'],
+  ['v12Tasks','list-checks','Tarefas e captura','Tasks and capture'],
+  ['v12Privacy','lock-keyhole','Notas protegidas','Protected notes'],
+  ['v12Reader','volume-2','Leitura e TTS','Reading and TTS'],
+  ['v12Connections','git-branch','Integrações e sincronização','Integrations and synchronization'],
+  ['suiteEducation','graduation-cap','Unique Suite · estudos','Unique Suite · studies'],
+  ['suiteDatabase','table','Notion Suite · bases','Notion Suite · databases'],
+  ['suiteNumbering','list-ordered','Number Suite · numeração','Number Suite · numbering'],
+  ['suiteLongform','book-open','Longform Studio','Longform Studio']
+ ];
+ for(const [id,icon,pt,en] of pages){
+  new Setting(panel).setName(writerUi(pt,en)).addButton(b=>b
+   .setIcon('chevron-right').setTooltip(writerUi('Abrir configurações','Open settings'))
+   .onClick(()=>{
+    const tab=plugin.writerSettingsTab;
+    if(!tab)return;
+    tab.activeSettingsTab=id;tab.display();
+   }));
+ }
+}
+function writerV1201SettingsWriting(plugin,panel){
+ panel.createEl('h3',{text:writerUi('Escrita e ações rápidas','Writing and quick actions')});
+ writerV1201SettingToggle(plugin,panel,'palette','Paleta de formatação','Formatting palette',
+  ['65 ações de Markdown, callouts e inserções.','65 Markdown, callout and insertion actions.']);
+ writerV1201SettingToggle(plugin,panel,'localInbox','Captura e brainstorm local','Local capture and brainstorm',
+  ['Novas notas Markdown, sem serviço externo.','New Markdown notes, without external services.']);
+ writerV1201SettingToggle(plugin,panel,'folderFocus','Foco na pasta do explorador','Explorer folder focus',
+  ['Apenas visual; não bloqueia o acesso aos arquivos.','Visual only; does not restrict file access.']);
+ new Setting(panel).setName(writerUi('Atalhos do ribbon do Basic','Basic ribbon shortcuts'))
+  .setDesc(writerUi('Menu próprio: leitura, formatação, foco e integrações, sem depender do Ultimate Toolkit.',
+   'Basic-owned menu for reading, formatting, focus and integrations.'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir menu','Open menu'))
+   .onClick(()=>writerV1201QuickMenu(plugin)));
+}
+function writerV1201SettingsImages(plugin,panel){
+ panel.createEl('h3',{text:writerUi('Imagens e anotações','Images and annotations')});
+ writerV1201SettingToggle(plugin,panel,'imageTools','Visualizador e tamanhos de imagens','Image viewer and resizing',
+  ['Inclui visualização ampliada e normalização confirmada de largura.','Includes zoom preview and confirmed width normalization.']);
+ if(typeof writerV12AnnotationSettings==='function')writerV12AnnotationSettings(plugin,panel);
+ new Setting(panel).setName(writerUi('Anotar imagem local','Annotate local image'))
+  .setDesc(writerUi('Salva um novo PNG e preserva o arquivo original.','Saves a new PNG, keeping the original file.'))
+  .addButton(b=>b.setButtonText(writerUi('Escolher imagem','Choose image'))
+   .onClick(()=>writerV12AnnotatePick(plugin)));
+}
+function writerV1201SettingsTasks(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Tarefas, Inbox e brainstorm','Tasks, Inbox and brainstorm')});
+ writerV1201SettingToggle(plugin,panel,'taskNavigator','Navegador de tarefas','Task navigator',
+  ['Leitura e edição com verificação de alterações concorrentes.','Read and edit with concurrent-change checks.']);
+ new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum notes to scan'))
+  .addSlider(s=>s.setLimits(25,1000,25).setDynamicTooltip().setValue(cfg.maxTaskFiles)
+   .onChange(async v=>{cfg.maxTaskFiles=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Workbench de tarefas','Task workbench'))
+  .setDesc(writerUi('Agrupa por etiqueta, filtra e permite marcar tarefas.','Group by tag, filter and toggle tasks.'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
+   .onClick(()=>writerV12TaskWorkbench(plugin)));
+ new Setting(panel).setName(writerUi('Nova captura rápida','New quick capture'))
+  .addButton(b=>b.setButtonText(writerUi('Criar','Create'))
+   .onClick(()=>writerV12Capture(plugin,false)));
+ new Setting(panel).setName(writerUi('Nova sessão de ideias','New brainstorm'))
+  .addButton(b=>b.setButtonText(writerUi('Criar','Create'))
+   .onClick(()=>writerV12Capture(plugin,true)));
+}
+function writerV1201SettingsPrivacy(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ if(typeof writerV12SecureSettings==='function')writerV12SecureSettings(plugin,panel);
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Criptografia somente do conteúdo de novos arquivos. Títulos, nomes e pastas continuam visíveis.',
+  'Content-only encryption of new files. Titles, filenames and folders stay visible.')});
+ new Setting(panel).setName(writerUi('Criar nota protegida','Create protected note'))
+  .addButton(b=>b.setButtonText(writerUi('Criar','Create'))
+   .onClick(()=>cfg.secureNotes===true?writerV12SecureCreate(plugin):
+    new Notice(writerUi('Ative notas criptografadas acima.','Enable encrypted notes above.'))));
+ new Setting(panel).setName(writerUi('Abrir nota protegida','Open protected note'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
+   .onClick(()=>cfg.secureNotes===true?writerV12SecureRead(plugin):
+    new Notice(writerUi('Ative notas criptografadas acima.','Enable encrypted notes above.'))));
+}
+function writerV1201SettingsReader(plugin,panel){
+ panel.createEl('h3',{text:writerUi('Leitura e voz','Reading and voice')});
+ if(typeof writerV12ReaderSettings==='function')writerV12ReaderSettings(plugin,panel);
+ if(typeof writerV107SpeechSettings==='function')writerV107SpeechSettings(plugin,panel);
+ new Setting(panel).setName(writerUi('Controles de voz local','Local speech controls'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
+   .onClick(()=>typeof writerV107SpeechPanel==='function'&&writerV107SpeechPanel(plugin)));
+}
+function writerV1201SettingsConnections(plugin,panel){
+ const cfg=writerV12Config(plugin);
+ panel.createEl('h3',{text:writerUi('Integrações e sincronização','Integrations and synchronization')});
+ writerV1201SettingToggle(plugin,panel,'integrations','Central de integrações','Integration center',
+  ['Comandos dos plugins externos exigem instalação separada.','External plugin commands require separate installation.']);
+ new Setting(panel).setName(writerUi('Provedor manual de sincronização','Manual synchronization provider'))
+  .setDesc(writerUi('Selecionar aqui não desativa sincronizadores externos automáticos.',
+   'Selecting a provider does not disable external automatic sync jobs.'))
+  .addDropdown(d=>{
+   for(const id of WRITER_V12_SYNC){
+    const label=id==='none'?writerUi('Nenhum','None'):WRITER_V12_COMPANIONS.find(x=>x.id===id)?.name||id;
+    d.addOption(id,label);
+   }
+   d.setValue(cfg.syncProvider).onChange(async value=>{cfg.syncProvider=value;await plugin.saveSettings();});
+  });
+ for(const item of WRITER_V12_COMPANIONS){
+  const installed=writerV12CompanionInstalled(plugin,item.id);
+  new Setting(panel).setName(item.name).setDesc(installed?
+   writerUi('Plugin externo instalado e ativo.','External plugin installed and active.'):
+   writerUi('Exige instalar e ativar o plugin original.','Requires installing and enabling the original plugin.'));
+ }
+ new Setting(panel).setName(writerUi('Central de integrações','Integration center'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
+   .onClick(()=>writerV12OpenIntegrationHub(plugin)));
+ new Setting(panel).setName(writerUi('Inspecionar conflitos','Inspect conflicts'))
+  .addButton(b=>b.setButtonText(writerUi('Inspecionar','Inspect'))
+   .onClick(()=>writerV12ConflictViewer(plugin)));
+}
+function writerV1201SettingsSuite(plugin,panel,id){
+ const functions={
+  suiteEducation:['Unique Suite · estudos e horários','Unique Suite · study tools',
+   ['writerV1011StudySettings']],
+  suiteDatabase:['Notion Suite · bancos e visualizações','Notion Suite · databases and views',
+   ['writerV1011NotionSettings','writerV111DbBuilderSettings']],
+  suiteNumbering:['Number Suite · numeração','Number Suite · numbering',
+   ['writerV1011NumberSettings','writerV111NumberSettings']],
+  suiteLongform:['Longform Studio · escrita e projetos','Longform Studio · writing and projects',
+   ['writerV11StudioSettings']]
+ };
+ const row=functions[id];
+ if(!row)return;
+ panel.createEl('h3',{text:writerUi(row[0],row[1])});
+ for(const name of row[2]){
+  // Names are mapped explicitly; never resolve arbitrary setting callbacks.
+  const render={
+   writerV1011StudySettings:()=>writerV1011StudySettings(plugin,panel),
+   writerV1011NotionSettings:()=>writerV1011NotionSettings(plugin,panel),
+   writerV111DbBuilderSettings:()=>writerV111DbBuilderSettings(plugin,panel),
+   writerV1011NumberSettings:()=>writerV1011NumberSettings(plugin,panel),
+   writerV111NumberSettings:()=>writerV111NumberSettings(plugin,panel),
+   writerV11StudioSettings:()=>writerV11StudioSettings(plugin,panel)
+  }[name];
+  try{render?.();}
+  catch(error){console.error('[Basic] Suite settings:',name,error);}
+ }
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
@@ -27068,6 +27351,17 @@ class DictionarySettings extends PluginSettingTab{
     ['v9Calendar',msg('Calendário','Calendar')],
     ['v10Bookshelf',msg('Biblioteca','Bookshelf')],
     ['v10Tools',msg('Arquivos e atalhos','Files & shortcuts')],
+    ['v12Overview',msg('Visão geral','Overview')],
+    ['v12Writing',msg('Escrita e atalhos','Writing & shortcuts')],
+    ['v12Images',msg('Imagens','Images')],
+    ['v12Tasks',msg('Tarefas e Inbox','Tasks & inbox')],
+    ['v12Privacy',msg('Privacidade','Privacy')],
+    ['v12Reader',msg('Leitura e voz','Reading & voice')],
+    ['v12Connections',msg('Integrações e sync','Integrations & sync')],
+    ['suiteEducation',msg('Unique Suite','Unique Suite')],
+    ['suiteDatabase',msg('Notion Suite','Notion Suite')],
+    ['suiteNumbering',msg('Number Suite','Number Suite')],
+    ['suiteLongform',msg('Longform Studio','Longform Studio')],
     ['dictionary',msg('Dicionário','Dictionary')],
     ['translation',msg('Tradução','Translation')],
     ['assistant',msg('Chat','Chat')],
@@ -27121,15 +27415,21 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Personalização','Customization'),['homepage','soundscapes','v9Toolbar','v9Explorer','v9Pretty','research']],
-   ['workflow',msg('Fluxo de trabalho','Workflow'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
-   ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
-   ['longform',msg('Longform','Longform'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
+   ['customize',msg('Personalização','Customization'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','research']],
+   ['workflow',msg('Organização','Organization'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
    ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','writingWidgets','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
+   ['longform',msg('Longform','Longform'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
+   ['toolkit',msg('Toolkit v12','Toolkit v12'),['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections']],
+   ['suites',msg('Suítes','Suites'),['suiteEducation','suiteDatabase','suiteNumbering','suiteLongform']],
+   ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
    ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
   ];
-  const groupIcons={general:'settings-2',customize:'palette',workflow:'layers-3',ai:'brain-circuit',longform:'book-open',writing:'pen-line',review:'spell-check'};
+  const groupIcons={general:'settings-2',customize:'palette',workflow:'layers-3',writing:'pen-line',longform:'book-open',toolkit:'blocks',suites:'layers',ai:'brain-circuit',review:'spell-check'};
   const sectionIcons={
+   v12Overview:'layout-dashboard',v12Writing:'pen-tool',v12Images:'image',v12Tasks:'list-checks',
+   v12Privacy:'lock-keyhole',v12Reader:'volume-2',v12Connections:'git-branch',
+   suiteEducation:'graduation-cap',suiteDatabase:'table',suiteNumbering:'list-ordered',
+   suiteLongform:'book-open-check',
    general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
    homepage:'house',soundscapes:'headphones',v10Bookshelf:'library-big',v10Tools:'file-pen-line',writingWidgets:'columns-3',research:'book-marked',sessionDrafts:'notebook-pen',v9Pomodoro:'timer',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
    dictionary:'book-a',translation:'languages',assistant:'message-circle',projects:'notebook-pen',
@@ -27186,7 +27486,16 @@ class DictionarySettings extends PluginSettingTab{
     renderSubtabs(group,id);
     panel.empty();
     panel.classList.toggle('writer-v91-ai-settings',groupFor(id)==='ai');
-    if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
+    if(id==='v12Overview'){writerV1201SettingsOverview(this.plugin,panel);
+    }else if(id==='v12Writing'){writerV1201SettingsWriting(this.plugin,panel);
+    }else if(id==='v12Images'){writerV1201SettingsImages(this.plugin,panel);
+    }else if(id==='v12Tasks'){writerV1201SettingsTasks(this.plugin,panel);
+    }else if(id==='v12Privacy'){writerV1201SettingsPrivacy(this.plugin,panel);
+    }else if(id==='v12Reader'){writerV1201SettingsReader(this.plugin,panel);
+    }else if(id==='v12Connections'){writerV1201SettingsConnections(this.plugin,panel);
+    }else if(['suiteEducation','suiteDatabase','suiteNumbering','suiteLongform'].includes(id)){
+      writerV1201SettingsSuite(this.plugin,panel,id);
+    }else if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
     }else if(id==='soundscapes'){writerV91SoundSettings(this.plugin,panel);
     }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
     }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);writerV92ExplorerSettings(this.plugin,panel);

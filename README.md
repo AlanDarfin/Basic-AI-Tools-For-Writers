@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 12.0.0 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 12.0.1 · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -11,6 +11,15 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 
 ## Features
+
+### v12.0.1 · Mobile actions and settings
+
+- **Mobile quick-action ribbon:** Basic now has its own searchable-entry-compatible command set and a single **Basic: quick actions** ribbon menu for read-aloud, 65-action formatting palette, clean focus screen, folder focus and integrations. These are independent of the Ultimate Toolkit plugin's own shortcuts.
+- **Sidebar fixes:** delayed native **More options** routing prevents nested Android menus from opening during the previous sheet's dismissal. The **Bookmark** action uses an available Bookmarks command when registered, otherwise the original native button; panel pin/close long press remains available.
+- **Reorganized settings:** new top-level **Toolkit v12** and **Suites** groups. Toolkit has dedicated Writing, Images, Tasks & Inbox, Privacy, Reading, and Integrations & Sync panels. Unique Suite, Notion Suite, Number Suite and Longform Studio each have their own settings page, rather than crowding **Files & shortcuts**.
+- **No reset:** previously saved settings, note files, Spaces and layouts are not migrated or deleted.
+
+**Complete feature inventories and limitations:** [Suites & integration guide (English)](docs/SUITES_AND_INTEGRATIONS.en.md) · [Guia PT-BR](docs/SUITES_AND_INTEGRATIONS.pt-BR.md).
 
 ### v12 · Unified Toolkit and companion integrations
 

@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 12.0.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 12.0.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -12,6 +12,15 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 
 ## Funcionalidades
+
+### v12.0.1 · Atalhos móveis e configurações
+
+- **Ações rápidas próprias do Basic:** um único botão no ribbon abre leitura em voz alta, paleta com 65 formatações, tela de foco, foco em pastas e central de integrações. Os atalhos não dependem dos botões do Ultimate Toolkit externo.
+- **Correções no painel lateral:** o item **Mais opções** só encaminha o comando nativo depois que o menu anterior foi fechado no Android. **Marcador** prioriza um comando disponível do Bookmarks, com alternativa para o botão nativo. Os comandos para fixar, fechar e fechar outros painéis continuam.
+- **Configurações reorganizadas:** grupos superiores **Toolkit v12** (Escrita, Imagens, Tarefas e Inbox, Privacidade, Leitura e Integrações) e **Suítes** (Unique, Notion, Number e Longform). As funções recentes não ficam mais acumuladas em **Arquivos e atalhos**.
+- **Dados preservados:** nenhum arquivo, layout, Space ou ajuste anterior é apagado pela reorganização.
+
+**Inventário completo e limites de cada plugin:** [Guia das suítes e integrações](SUITES_AND_INTEGRATIONS.pt-BR.md) · [English guide](SUITES_AND_INTEGRATIONS.en.md).
 
 ### v12 · Toolkit unificado e integrações externas
 

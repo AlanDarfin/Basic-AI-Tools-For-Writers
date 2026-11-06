@@ -1,0 +1,40 @@
+/* Basic 12.0.1 — mobile quick actions and compact suite settings. */
+body.writer-v1201-zen .workspace-ribbon,
+body.writer-v1201-zen .workspace-split.mod-left-split,
+body.writer-v1201-zen .workspace-split.mod-right-split,
+body.writer-v1201-zen .workspace-tab-header-container,
+body.writer-v1201-zen .workspace-leaf-content[data-type="markdown"] > .view-header{
+ display:none;
+}
+body.writer-v1201-zen .workspace-leaf-content[data-type="markdown"]{
+ --file-line-width:100%;
+}
+body .writer-v1201-zen-exit{
+ position:fixed;z-index:999;inset:auto 16px max(64px,env(safe-area-inset-bottom)) auto;
+ min-height:36px;padding:8px 13px;border-radius:var(--radius-m);
+ background:var(--interactive-accent);color:var(--text-on-accent);
+ border:1px solid var(--background-modifier-border);
+ box-shadow:var(--shadow-s);cursor:pointer;
+}
+body.is-mobile .writer-v1201-zen-exit{
+ inset:auto 12px max(66px,env(safe-area-inset-bottom)) auto;
+}
+body.is-mobile .writer-v1011-managed-mobile
+ .workspace-leaf-content.writer-v1011-grouped-native-actions
+ .nav-header > .nav-buttons-container{
+ z-index:1;opacity:.001;visibility:visible;
+ min-width:24px;min-height:24px;
+}
+.dictionary-settings-tabs,.dictionary-settings-subtabs{
+ scroll-padding-inline:12px;overscroll-behavior-x:contain;
+}
+.dictionary-settings-tabs > button,.dictionary-settings-subtabs > button{
+ white-space:nowrap;min-width:max-content;
+}
+body.is-mobile .dictionary-settings-tabs button,
+body.is-mobile .dictionary-settings-subtabs button{
+ padding-inline:9px;min-height:36px;
+}
+.dictionary-settings-panel .setting-item-description{
+ overflow-wrap:anywhere;
+}

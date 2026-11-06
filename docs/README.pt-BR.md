@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 10.10.1 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.10.2 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -12,6 +12,8 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 
 ## Funcionalidades
+
+No Android, o Dragger de blocos é desativado automaticamente e não exibe alças nem captura gestos de toque.
 
 ### Painéis laterais e largura do editor
 

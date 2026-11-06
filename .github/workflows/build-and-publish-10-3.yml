@@ -37,7 +37,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add main.js styles.css projects.js
           if ! git diff --cached --quiet; then
-            git commit -m 'build: synchronize 10.9.0 plugin artifacts'
+            git commit -m 'build: synchronize 10.10.0 plugin artifacts'
             git push origin HEAD:main
           fi
       - name: Publish release on main after validation
@@ -48,7 +48,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="$(node -p "require('./manifest.json').version")"
-          test "$VERSION" = "10.9.0"
+          test "$VERSION" = "10.10.0"
           test -s main.js
           test -s styles.css
           test -s manifest.json
@@ -62,4 +62,4 @@ jobs:
           git push origin "$VERSION"
           gh release create "$VERSION" main.js manifest.json styles.css \
             --title "Basic $VERSION" \
-            --notes "10.9.0: Automatic Longform chapter progress; standalone Markdown books with fuzzy selection and banner/description/copyright metadata; clean command palette, reveal hidden files in Explorer sorting, fuzzy file/folder pickers in settings, consistent UI fades and Basic branding. README is feature-only; history moved to CHANGELOG.md."
+            --notes "10.10.0: Opt-in Sidebar Manager-inspired icon tabs, overflow/actions, shared view order and Explorer filtering; Editor Width Slider-inspired per-note YAML editor-width, desktop status slider and Android settings. No ribbon clutter or destructive workspace changes; feature docs in README, history in CHANGELOG."

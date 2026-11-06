@@ -2,6 +2,13 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.10.0 — Sidebars and editor width
+
+- Sidebar Manager-inspired optional sidebar icon tabs, overflow, contextual action menu, local File Explorer filter and shared ordering settings for desktop/mobile, without moving native workspace leaves.
+- Editor Width Slider-inspired desktop status control with default reset, settings controls and per-note YAML `editor-width` reading on desktop/mobile.
+- Activation guarded in the existing optional module boundary, with cleanup on unload.
+- No additional ribbon buttons or network calls. Features documented in README; change history stays here.
+
 ## 10.9.0 — Books, commands and interface
 
 - Library: add standalone Markdown notes as books with fuzzy search; metadata from `banner`, `description` and `copyright`, with fallback cover properties.

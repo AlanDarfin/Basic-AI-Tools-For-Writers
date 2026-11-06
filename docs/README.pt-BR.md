@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-****Versão:** 10.9.0** · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 10.10.0 · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -12,6 +12,24 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 
 ## Funcionalidades
+
+### Painéis laterais e largura do editor
+
+- **Gerenciador lateral (opcional):** abas com ícones dos painéis do Obsidian, menu de excedentes, acesso às ações do painel ativo e pesquisa local no explorador. Configurações próprias para celular e computador. A ordem configurada é compartilhada entre dispositivos sem reorganizar as abas nativas.
+- **Largura do editor:** controle de 20–100% na barra de status do PC e ajuste também nas configurações para Android. Um clique na porcentagem restaura o valor padrão.
+- **Largura individual de cada nota:** defina `editor-width: 75` no YAML. A propriedade tem prioridade; alterações pelo controle são temporárias e nunca reescrevem a nota.
+- **Compatibilidade:** o gerenciador lateral vem desativado por padrão, não altera a posição dos painéis do Spaces e é inteiramente reversível. Não replica troca entre cofres nem movimenta botões internos não públicos do Obsidian.
+
+Exemplo:
+
+```yaml
+---
+title: Capítulo 1
+editor-width: 75
+---
+```
+
+
 
 ### Livros, capítulos e planejamento de histórias
 

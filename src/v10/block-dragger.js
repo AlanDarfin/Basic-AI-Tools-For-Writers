@@ -289,12 +289,29 @@ function writerV106DragRegister(plugin){
   if(ev?.clientX!==undefined)menu.showAtPosition({x:ev.clientX,y:ev.clientY});
   else menu.showAtPosition({x:200,y:120});
  };
+ // The handle sits in document.body, outside the editor mouse listener.
+ // Preserve it while the pointer crosses the gap from the text to the grip.
+ const nearHandle=e=>{
+  if(handle.style.display==='none'||!Number.isFinite(e.clientX)||!Number.isFinite(e.clientY))return false;
+  const rect=handle.getBoundingClientRect();
+  return e.clientX>=rect.left-30&&e.clientX<=rect.right+65&&
+   e.clientY>=rect.top-28&&e.clientY<=rect.bottom+28;
+ };
+ const postponeHide=()=>{
+  clearTimeout(hideTimer);
+  if(cfg.visibility==='always'||drag)return;
+  hideTimer=setTimeout(()=>{
+   if(!drag&&!handle.matches(':hover')&&handle.style.display!=='none')
+    handle.style.display='none';
+  },650);
+ };
  const pointermove=e=>{
   clearTimeout(hideTimer);
   if(drag){e.preventDefault?.();targetAt(e);return;}
   if(!enabled())return;
+  if(e.target===handle||handle.contains(e.target)||nearHandle(e))return;
   const line=e.target?.closest?.('.cm-line');
-  if(!line){if(cfg.visibility!=='always')hideTimer=setTimeout(()=>{if(!drag)handle.style.display='none';},170);return;}
+  if(!line){postponeHide();return;}
   const view=viewFor(line);
   if(!view)return;
   const rect=line.getBoundingClientRect();
@@ -333,7 +350,10 @@ function writerV106DragRegister(plugin){
  };
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointermove',pointermove,true);
  plugin.registerDomEvent(plugin.app.workspace.containerEl,'pointerdown',pointerdown,true);
+ plugin.registerDomEvent(handle,'pointerenter',()=>clearTimeout(hideTimer));
+ plugin.registerDomEvent(handle,'pointerleave',()=>{if(!drag)postponeHide();});
  plugin.registerDomEvent(doc,'pointermove',e=>{
+  if(!drag&&nearHandle(e))clearTimeout(hideTimer);
   if(pressTimer&&e.pointerType==='touch'){const origin=plugin._writerV106TouchOrigin;if(origin&&Math.hypot(origin.x-e.clientX,origin.y-e.clientY)>12){clearTimeout(pressTimer);pressTimer=null;}}
   if(drag)targetAt(e);
  },true);

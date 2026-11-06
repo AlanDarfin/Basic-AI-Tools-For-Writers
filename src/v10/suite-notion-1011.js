@@ -72,7 +72,8 @@ async function writerV1011NotionNew(plugin,spec,label){
  while(plugin.app.vault.getAbstractFileByPath(path)&&i<101)path=folder+'/'+name+' '+i+++'.md';
  if(plugin.app.vault.getAbstractFileByPath(path))throw Error('Too many similarly named items');
  const props={title:name};
- if(spec.group&&spec.group!=='file'&&spec.view==='board')props[spec.group]='Backlog';
+ if(spec.view==='board'&&/^[a-z][a-z0-9_-]{0,40}$/i.test(spec.group||'')&&
+  !['__proto__','constructor','prototype','file','path'].includes(spec.group))props[spec.group]='Backlog';
  const fm='---\n'+Object.entries(props).map(([key,val])=>key+': '+JSON.stringify(val)).join('\n')+'\n---\n\n';
  const file=await plugin.app.vault.create(path,fm+'# '+name+'\n');
  await plugin.app.workspace.getLeaf('tab').openFile(file);
@@ -81,7 +82,7 @@ async function writerV1011NotionNew(plugin,spec,label){
 function writerV1011NotionRender(plugin,source,element,ctx){
  const cfg=writerV1011NotionCfg(plugin.settings);
  const shell=element.createDiv({cls:'writer-v1011-notion'});
- if(!cfg.enabled||plugin.settings.v107Db?.enabled===false){
+ if(!cfg.enabled||plugin.settings.v107AdvancedEnabled===false||plugin.settings.v107Db?.enabled===false){
   shell.setText(writerUi('Visualizações de banco desativadas','Database views disabled'));return;
  }
  const spec=writerV1011NotionSpec(source);

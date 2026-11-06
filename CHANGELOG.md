@@ -2,6 +2,14 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 10.10.1 — Android sidebar and Spaces dock repair
+
+- Sidebar tabs now mount in the native mobile selector rather than creating another toolbar below it.
+- Fixed mobile tab activation by using the drawer's native selectTabIndex and active state.
+- Unified overflow and view actions under one menu with Spaces and vault access when available.
+- Existing Spaces dock moves to the mobile drawer footer, outside File Explorer, and is no longer duplicated in two places.
+- Reversible mobile controls, safe fallback when Obsidian internals differ, and regression tests for native tab switching and unload cleanup.
+
 ## 10.10.0 — Sidebars and editor width
 
 - Sidebar Manager-inspired optional sidebar icon tabs, overflow, contextual action menu, local File Explorer filter and shared ordering settings for desktop/mobile, without moving native workspace leaves.

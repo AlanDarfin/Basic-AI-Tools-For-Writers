@@ -161,6 +161,8 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  summary.createEl('p',{text:writerUi('Organize suas histórias, acompanhe o progresso e encontre o próximo capítulo.','Organize stories, track progress and find your next chapter.')});
  const toolbar=wrapper.createDiv({cls:'writer-v10-bookshelf-toolbar'});
  const count=toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
+ if(typeof writerV11OpenProject==='function')toolbar.createEl('button',{text:writerUi('Estúdio','Studio'),attr:{type:'button'}})
+  .addEventListener('click',()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p)));
  toolbar.createEl('button',{text:writerUi('+ Adicionar livro','+ Add book'),attr:{type:'button'}})
   .addEventListener('click',()=>writerV109AddStandaloneBook(plugin,()=>{target.empty();writerV10RenderBookshelf(plugin,target,opts);}));
 

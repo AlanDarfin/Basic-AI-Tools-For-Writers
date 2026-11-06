@@ -4,7 +4,7 @@ body.writer-v1201-zen .workspace-split.mod-left-split,
 body.writer-v1201-zen .workspace-split.mod-right-split,
 body.writer-v1201-zen .workspace-tab-header-container,
 body.writer-v1201-zen .workspace-leaf-content[data-type="markdown"] > .view-header{
- display:none !important;
+ display:none;
 }
 body.writer-v1201-zen .workspace-leaf-content[data-type="markdown"]{
  --file-line-width:100%;

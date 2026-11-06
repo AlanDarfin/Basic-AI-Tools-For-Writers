@@ -138,7 +138,7 @@ class WriterV8HomeView extends ItemView{
   const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
   // Surfing's omnibox is a permanent top address/search bar only while Surfing
   // is active; Basic's original vault search stays independent beneath it.
-  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&writerV8HomeSurfing(this.plugin));
+  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&typeof writerV8HomeSurfing(this.plugin)?.addHeaderAndSearchBar==='function');
   this.homeSurfingInput=null;
   if(this.homeSurfingEnabled)this.renderSurfingBar(this.contentEl);
   // Heading follows the optional browser bar, then the existing vault search.
@@ -435,7 +435,7 @@ class WriterV8HomeView extends ItemView{
    .addEventListener('click',()=>this.plugin.openProjects('board'));
  }
  syncSurfingVisibility(){
-  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&writerV8HomeSurfing(this.plugin));
+  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&typeof writerV8HomeSurfing(this.plugin)?.addHeaderAndSearchBar==='function');
   if(active!==this.homeSurfingEnabled)this.render();
  }
  homeSearchWebMode(){
@@ -447,42 +447,39 @@ class WriterV8HomeView extends ItemView{
   return true;
  }
  renderSurfingBar(parent){
-  const bar=parent.createDiv({cls:'writer-v1204-home-surfing-bar',
-   attr:{role:'search','aria-label':writerUi('Barra de endereço do Surfing','Surfing address bar')}});
-  const symbol=bar.createSpan({cls:'writer-v1204-home-surfing-symbol',attr:{'aria-hidden':'true'}});
-  require('obsidian').setIcon?.(symbol,'globe-2');
   const surfing=writerV8HomeSurfing(this.plugin);
-  const engine=String(surfing?.settings?.defaultSearchEngine||'Google').slice(0,48);
-  const input=bar.createEl('input',{cls:'writer-v1204-home-surfing-input',attr:{
-   type:'text',placeholder:writerUi('Pesquisar com ','Search with ')+engine+
-    writerUi(' ou digitar endereço',' or enter address'),
-   'aria-label':writerUi('Pesquisar na web ou digitar endereço','Search web or enter address'),
-   autocomplete:'off',autocapitalize:'off',spellcheck:'false'}});
-  this.homeSurfingInput=input;
-  input.value=this.homeSurfingQuery||'';
-  input.addEventListener('input',()=>{this.homeSurfingQuery=input.value.slice(0,2048);});
-  input.addEventListener('focus',()=>{input.select?.();});
-  const openButton=bar.createEl('button',{cls:'writer-v1204-home-surfing-go',
-   attr:{type:'button',title:writerUi('Abrir no Surfing','Open in Surfing'),
-    'aria-label':writerUi('Abrir pesquisa no Surfing','Open search in Surfing')}});
-  require('obsidian').setIcon?.(openButton,'arrow-right');
-  const submit=async()=>{
-   const value=input.value.trim();
-   if(!value||openButton.disabled)return;
-   openButton.disabled=true;
-   try{
-    const url=writerV8HomeSearchURL(this.plugin,value);
-    await writerV8HomeOpenURL(this.plugin,url);
-   }catch(error){
-    new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+
-     String(error.message||error).slice(0,160));
-   }finally{openButton.disabled=false;}
+  if(!surfing||typeof surfing.addHeaderAndSearchBar!=='function'){
+   // Surfing's HeaderBar is an internal component, not a public API.
+   // Do not silently replace it with a second, imitation search field.
+   this.homeSurfingEnabled=false;
+   this.homeSurfingInput=null;
+   return;
+  }
+  const host=parent.createDiv({cls:'writer-v1205-native-surfing-host',
+   attr:{role:'search','aria-label':writerUi('Pesquisa nativa do Surfing','Surfing native search')}});
+  // Use Surfing's own HeaderBar and suggestions, without duplicating its
+  // search/URL engine. Adapt an empty view only for the private integration
+  // method; the actual Basic homepage view type and leaf remain unchanged.
+  const adapter={
+   getViewType:()=> 'empty',
+   titleContainerEl:host,
+   contentEl:{children:[{hasClass:()=>false}],toggleClass:()=>{}},
+   leaf:this.leaf,
+   scope:{register:()=>{}} // avoid leaking Surfing "/" bindings on rerender
   };
-  input.addEventListener('keydown',event=>{
-   if(event.key==='Enter'){event.preventDefault();void submit();}
-   else if(event.key==='Escape'){event.preventDefault();input.value='';this.homeSurfingQuery='';}
-  });
-  openButton.addEventListener('click',()=>void submit());
+  try{
+   surfing.addHeaderAndSearchBar(adapter);
+   const input=host.querySelector('input.wb-search-bar');
+   if(!input)throw Error('Surfing did not mount its native address bar.');
+   input.value=this.homeSurfingQuery||'';
+   input.addEventListener('input',()=>{this.homeSurfingQuery=input.value.slice(0,2048);});
+   this.homeSurfingInput=input;
+  }catch(error){
+   host.remove?.();
+   this.homeSurfingEnabled=false;
+   this.homeSurfingInput=null;
+   console.warn('[Basic AI] Native Surfing header unavailable:',error);
+  }
  }
  renderSearch(parent){
   const box=this.card(parent,'search','Buscar no cofre','Search vault');

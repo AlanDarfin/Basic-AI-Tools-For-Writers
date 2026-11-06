@@ -19,7 +19,7 @@ const WRITER_V12_SYNC=['none','syncthing-manager','syncthing-integration','obsid
 function writerV12Config(plugin){
  const old=plugin.settings.v12Toolkit;
  const cfg=plugin.settings.v12Toolkit={
-  enabled:true,palette:true,imageTools:true,taskNavigator:true,localInbox:true,
+  enabled:true,palette:true,imageTools:true,taskNavigator:true,localInbox:true,secureNotes:false,selectionTools:false,
   folderFocus:true,integrations:true,syncProvider:'none',maxTaskFiles:250,
   ...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})
  };

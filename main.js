@@ -20739,6 +20739,8 @@ function writerV101RegisterEnhancements(plugin){
  if(typeof writerV1011NumberRegister==='function')safeRegister('numbering-suite',()=>writerV1011NumberRegister(plugin));
  if(typeof writerV11StudioRegister==='function')safeRegister('longform-studio-v11',()=>writerV11StudioRegister(plugin));
  if(typeof writerV11DbRegister==='function')safeRegister('database-workflow-v11',()=>writerV11DbRegister(plugin));
+ if(typeof writerV111NumberRegister==='function')safeRegister('numbering-live-v11.1',()=>writerV111NumberRegister(plugin));
+ if(typeof writerV111DbBuilderRegister==='function')safeRegister('database-builder-v11.1',()=>writerV111DbBuilderRegister(plugin));
  const active=key=>plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite[key]!==false;
  plugin.addCommand({id:'v101-validate-yaml',name:writerUi('YAML: validar seleção','YAML: validate selection'),editorCheckCallback:(checking,editor)=>{
   if(!active('yamlValidation')||!editor.getSelection().trim())return false;
@@ -20807,6 +20809,8 @@ function writerV101EnhancementsSettings(plugin,panel){
  if(typeof writerV1011NotionSettings==='function')writerV1011NotionSettings(plugin,panel);
  if(typeof writerV1011NumberSettings==='function')writerV1011NumberSettings(plugin,panel);
  if(typeof writerV11StudioSettings==='function')writerV11StudioSettings(plugin,panel);
+ if(typeof writerV111NumberSettings==='function')writerV111NumberSettings(plugin,panel);
+ if(typeof writerV111DbBuilderSettings==='function')writerV111DbBuilderSettings(plugin,panel);
 }
 
 // v3 module: src/v10/calendar-exchange.js
@@ -25202,6 +25206,265 @@ function writerV11DbPropertyModal(plugin,file){
 function writerV11DbRegister(plugin){
  plugin.addCommand({id:'v11-property-editor',name:writerUi('Bancos: editar propriedade tipada','Databases: edit typed property'),
   callback:()=>writerV11DbPropertyModal(plugin,plugin.app.workspace.getActiveFile?.())});
+}
+
+// v3 module: src/v11/numbering-extensions.js
+/* Optional Number Suite additions: no Markdown writes, shared Reading View
+   caption counters and line decorations in Live Preview. */
+function writerV111NumberCfg(settings){
+ const old=settings.v111Number&&typeof settings.v111Number==='object'&&!Array.isArray(settings.v111Number)?settings.v111Number:{};
+ return settings.v111Number={livePreview:false,captionNumbers:false,...old};
+}
+function writerV111NumberStructure(source,scheme='hierarchical'){
+ const text=String(source||'');
+ if(text.length>2000000)return {headings:[],captions:[],footnotes:[]};
+ const headings=typeof writerV1011NumberHeadings==='function'?writerV1011NumberHeadings(text,scheme):[];
+ const captions=[],footnotes=[],counts={Figure:0,Table:0,Equation:0,Code:0};
+ let yaml=false,fence='';
+ for(const [index,line] of text.split(/\r?\n/).entries()){
+  if(index===0&&line.trim()==='---'){yaml=true;continue;}
+  if(yaml){if(/^(---|\.\.\.)\s*$/.test(line))yaml=false;continue;}
+  const mFence=/^ {0,3}((?:\x60{3,}|~{3,}))/.exec(line);
+  if(mFence){if(!fence)fence=mFence[1][0];else if(fence===mFence[1][0])fence='';continue;}
+  if(fence||/^\s*(?:>|[-*+]\s+|(?:\d+)[.)]\s+)/.test(line))continue;
+  const cap=/^(Figure|Table|Equation|Code):[ \t]+(.{1,500})\s*$/.exec(line);
+  if(cap){counts[cap[1]]++;captions.push({line:index,kind:cap[1],number:counts[cap[1]],title:cap[2]});continue;}
+  const foot=/^\[\^(?:(footnote|endnote):)?([^\]\s]{1,90})\]:\s*/.exec(line);
+  if(foot&&footnotes.length<200)footnotes.push({line:index,kind:foot[1]==='endnote'?'endnote':'footnote',id:foot[2]});
+  if(captions.length>=800)break;
+ }
+ return {headings,captions,footnotes};
+}
+function writerV111NumberLineSpecs(plugin,view){
+ const cfg=writerV111NumberCfg(plugin.settings),base=writerV1011NumberCfg(plugin.settings);
+ if(!cfg.livePreview||!base.enabled||!base.virtual||!view?.dom?.closest?.('.is-live-preview'))return [];
+ const leaf=(plugin.app.workspace?.getLeavesOfType?.('markdown')||[]).find(x=>x.view?.editor?.cm===view);
+ const file=leaf?.view?.file;
+ if(!file||writerV1011NumberDisabled(plugin,file))return [];
+ const items=writerV111NumberStructure(view.state.doc.toString(),base.scheme).headings;
+ return items.filter(x=>x.line<view.state.doc.lines&&!x.stored)
+  .map(x=>({line:x.line+1,number:x.number+'.'}));
+}
+function writerV111NumberRefresh(plugin){
+ const effect=plugin._writerV111NumberEffect;
+ for(const leaf of plugin.app.workspace?.getLeavesOfType?.('markdown')||[]){
+  try{if(effect)leaf.view?.editor?.cm?.dispatch?.({effects:effect.of(null)});}catch(e){}
+  const file=leaf.view?.file,root=leaf.view?.containerEl?.querySelector?.('.markdown-preview-view');
+  if(root){
+   const cfg=writerV111NumberCfg(plugin.settings),base=writerV1011NumberCfg(plugin.settings);
+   root.classList.toggle('writer-v111-caption-numbers',Boolean(cfg.captionNumbers&&base.enabled&&base.captions&&file&&!writerV1011NumberDisabled(plugin,file)));
+  }
+ }
+}
+function writerV111NumberRegister(plugin){
+ writerV111NumberCfg(plugin.settings);
+ plugin.registerMarkdownPostProcessor?.((el,ctx)=>{
+  const root=el.closest?.('.markdown-preview-view'),file=plugin.app.vault.getAbstractFileByPath?.(ctx.sourcePath);
+  const base=writerV1011NumberCfg(plugin.settings),cfg=writerV111NumberCfg(plugin.settings);
+  root?.classList?.toggle('writer-v111-caption-numbers',Boolean(cfg.captionNumbers&&base.enabled&&base.captions&&file&&!writerV1011NumberDisabled(plugin,file)));
+ });
+ if(typeof ViewPlugin!=='undefined'&&typeof Decoration!=='undefined'&&typeof plugin.registerEditorExtension==='function'){
+  const effect=require('@codemirror/state').StateEffect.define();
+  plugin._writerV111NumberEffect=effect;
+  plugin.registerEditorExtension(ViewPlugin.fromClass(class{
+   constructor(view){this.decorations=this.build(view);}
+   build(view){
+    const specs=writerV111NumberLineSpecs(plugin,view),ranges=[];
+    for(const spec of specs){
+     const line=view.state.doc.line(spec.line);
+     ranges.push(Decoration.line({attributes:{class:'writer-v111-number-live-heading','data-basic-number':spec.number}}).range(line.from));
+    }
+    return ranges.length?Decoration.set(ranges,true):Decoration.none;
+   }
+   update(u){
+    if(u.docChanged||u.viewportChanged||u.transactions.some(tr=>tr.effects.some(e=>e.is(effect))))
+     this.decorations=this.build(u.view);
+   }
+  },{decorations:x=>x.decorations}));
+ }
+ for(const type of ['file-open','layout-change','active-leaf-change'])
+  plugin.registerEvent?.(plugin.app.workspace.on(type,()=>writerV111NumberRefresh(plugin)));
+ plugin.addCommand?.({id:'v111-number-structure-outline',
+  name:writerUi('Numeração: estrutura, figuras e notas de rodapé','Numbering: heading, caption and footnote outline'),
+  callback:()=>writerV111NumberStructureModal(plugin)});
+}
+function writerV111NumberStructureModal(plugin){
+ const file=plugin.app.workspace.getActiveFile?.();
+ if(!file||file.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Estrutura numerada','Numbered structure'));
+ modal.onOpen=async()=>{
+  const root=modal.contentEl;root.empty();root.addClass('writer-v111-number-structure');
+  try{
+   const data=writerV111NumberStructure(await plugin.app.vault.read(file),writerV1011NumberCfg(plugin.settings).scheme);
+   const sections=[
+    [writerUi('Títulos','Headings'),data.headings.map(x=>({line:x.line,label:x.number+' '+x.title,level:x.level}))],
+    [writerUi('Legendas','Captions'),data.captions.map(x=>({line:x.line,label:x.kind+' '+x.number+' — '+x.title}))],
+    [writerUi('Notas de rodapé e fim','Footnotes and endnotes'),data.footnotes.map(x=>({line:x.line,label:(x.kind==='endnote'?'Endnote ':'Footnote ')+x.id}))]
+   ];
+   for(const [heading,items] of sections){
+    const section=root.createEl('details');section.open=heading===sections[0][0];
+    section.createEl('summary',{text:heading+' · '+items.length});
+    if(!items.length)section.createEl('p',{text:writerUi('Nenhum elemento encontrado.','No entries.')});
+    for(const item of items.slice(0,200)){
+     const button=section.createEl('button',{cls:'writer-v111-structure-row',attr:{type:'button'}});
+     button.style.paddingInlineStart=Math.min(40,(item.level||1)*8)+'px';
+     button.createSpan({text:item.label});button.createEl('small',{text:writerUi('Linha ','Line ')+(item.line+1)});
+     button.addEventListener('click',async()=>{
+      const leaf=plugin.app.workspace.getLeaf('tab');await leaf.openFile(file);
+      leaf.view?.editor?.setCursor?.({line:item.line,ch:0});modal.close();
+     });
+    }
+   }
+  }catch(error){root.createEl('p',{text:String(error.message||error)});}
+ };
+ modal.open();
+}
+function writerV111NumberSettings(plugin,panel){
+ const cfg=writerV111NumberCfg(plugin.settings);
+ panel.createEl('h3',{text:writerUi('Number Suite · funções extras','Number Suite · additional features')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Números de títulos no Live Preview e numeração de legendas somente visuais. Nenhum arquivo é alterado.',
+  'Display-only Live Preview headings and caption counters. No Markdown changes.')});
+ for(const [key,pt,en] of [
+  ['livePreview','Numeração dos títulos no Live Preview','Heading numbers in Live Preview'],
+  ['captionNumbers','Numerar legendas no modo de leitura','Number captions in Reading View']
+ ])new Setting(panel).setName(writerUi(pt,en))
+   .addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{
+    cfg[key]=v;await plugin.saveSettings();writerV111NumberRefresh(plugin);
+   }));
+ new Setting(panel).setName(writerUi('Estrutura e legendas','Structure and captions'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir sumário','Open outline'))
+   .onClick(()=>writerV111NumberStructureModal(plugin)));
+}
+
+// v3 module: src/v11/database-builder.js
+/* Notion Suite / Make.md extension: guided editor for Basic Markdown views.
+ * The builder inserts a selected view block only on explicit confirmation.
+ * No proprietary database, no folder creation and no silent note rewrites. */
+const WRITER_V111_DB_VIEWS=['table','board','gallery','list','calendar','timeline','chart'];
+function writerV111DbFolder(value){
+ const raw=String(value||'').trim().replace(/\\/g,'/');
+ if(!raw||raw.length>240||raw.startsWith('/')||raw.endsWith('/')||/[\x00-\x1f:*?"<>|#\[\]]/.test(raw))return '';
+ const parts=raw.split('/');
+ return parts.length<=10&&parts.every(x=>x&&x!=='.'&&x!=='..'&&!x.startsWith('.'))?raw:'';
+}
+function writerV111DbBuilderNormalize(raw){
+ const a=raw&&typeof raw==='object'?raw:{};
+ const folder=writerV111DbFolder(a.folder);
+ const view=WRITER_V111_DB_VIEWS.includes(a.view)?a.view:'table';
+ const keys=String(a.columns||'file, status').split(',').map(x=>x.trim())
+  .filter(x=>x==='file'||x==='path'||(typeof writerV11DbPropertyKey==='function'&&writerV11DbPropertyKey(x))).slice(0,18);
+ const columns=[...new Set(keys.length?keys:['file','status'])];
+ const prop=value=>typeof writerV11DbPropertyKey==='function'?writerV11DbPropertyKey(value):'';
+ const group=prop(a.group)||'status';
+ const sort=['name','file','modified','created',...columns].includes(a.sort)?a.sort:'file';
+ const order=a.order==='desc'?'desc':'asc';
+ const filter=String(a.filter||'').trim().slice(0,150);
+ const safeFilter=/^[\w-]{1,60}\s*(?:=|!=|>=|<=|>|<|contains)\s*[^ \r\n](?:[^\r\n]{0,110})?$/i.test(filter)?filter:'';
+ const title=String(a.title||'').trim().replace(/[\r\n]/g,' ').slice(0,80);
+ const limit=Math.max(5,Math.min(500,Math.round(Number(a.limit)||80)));
+ const cover=prop(a.cover)||'banner',date=prop(a.date)||'date';
+ const start=prop(a.start)||'start',end=prop(a.end)||'end',parent=prop(a.parent)||'parent';
+ return {folder,view,columns,group,sort,order,filter:safeFilter,title,limit,cover,date,start,end,parent};
+}
+function writerV111DbBuilderBlock(raw){
+ const p=writerV111DbBuilderNormalize(raw);
+ if(!p.folder)throw Error('Invalid database folder');
+ const lines=['~~~basic-suite-db','folder: '+p.folder,'view: '+p.view,'columns: '+p.columns.join(', '),
+  'group: '+p.group,'sort: '+p.sort,'order: '+p.order,'limit: '+p.limit];
+ if(p.title)lines.push('title: '+p.title);
+ if(p.filter)lines.push('filter: '+p.filter);
+ if(p.view==='gallery'||p.view==='board')lines.push('cover: '+p.cover);
+ if(p.view==='calendar')lines.push('date: '+p.date);
+ if(p.view==='timeline')lines.push('start: '+p.start,'end: '+p.end);
+ if(p.view==='list')lines.push('parent: '+p.parent);
+ lines.push('~~~');
+ return lines.join('\n');
+}
+function writerV111DbBuilderFromSelection(source){
+ const match=/^\s*(?:\x60{3}|~{3})basic-suite-db\s*\r?\n([\s\S]*?)\r?\n(?:\x60{3}|~{3})\s*$/.exec(String(source||''));
+ if(!match)return null;
+ return writerV111DbBuilderNormalize(writerV1011NotionSpec(match[1]));
+}
+function writerV111DbBuilderOpen(plugin,editor){
+ if(!editor)return new Notice(writerUi('Abra uma nota em edição.','Open a note in editing mode.'));
+ const before=editor.getValue(),selected=editor.getSelection?.()||'';
+ const existing=writerV111DbBuilderFromSelection(selected);
+ let spec=existing||writerV111DbBuilderNormalize({folder:'Databases/Tasks',view:'board',columns:'file, status, due',group:'status',sort:'modified',order:'desc'});
+ const modal=new Modal(plugin.app);modal.modalEl?.addClass('writer-v111-db-modal');
+ modal.setTitle(writerUi(existing?'Editar visualização Markdown':'Criar visualização Markdown',
+  existing?'Edit Markdown database view':'Create Markdown database view'));
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();root.addClass('writer-v111-db-builder');
+  root.createEl('p',{cls:'setting-item-description',text:writerUi(
+   'Configure a visualização; o código só será inserido ao confirmar. Para editar uma visualização, selecione o bloco inteiro no editor antes de abrir esta ferramenta.',
+   'Configure the view; code is inserted only on confirmation. To edit an existing view, select its entire code block before opening.')});
+  const fields=root.createDiv({cls:'writer-v111-db-fields'}),preview=root.createDiv({cls:'writer-v111-db-preview'});
+  const details=preview.createEl('small'),code=preview.createEl('pre');
+  const refresh=()=>{
+   code.empty();
+   try{
+    const out=writerV111DbBuilderBlock(spec);code.setText(out);
+    if(writerV111DbFolder(spec.folder)){
+     const found=plugin.app.vault.getAbstractFileByPath(spec.folder);
+     details.setText(found?writerUi('Pasta encontrada.','Folder found.'):writerUi('A pasta ainda não existe. Nenhuma será criada automaticamente.','Folder does not yet exist. None will be created automatically.'));
+    }else details.setText(writerUi('Escolha uma pasta válida.','Choose a valid folder.'));
+   }catch(e){details.setText(String(e.message||e));}
+  };
+  const field=(key,pt,en,value)=>new Setting(fields).setName(writerUi(pt,en)).addText(t=>
+   t.setValue(String(spec[key]??value??'')).onChange(v=>{spec[key]=v;refresh();}));
+  field('folder','Pasta de notas','Notes folder','Databases/Tasks');
+  field('title','Título da visualização','View title','');
+  new Setting(fields).setName(writerUi('Layout','Layout')).addDropdown(d=>{
+   for(const name of WRITER_V111_DB_VIEWS)d.addOption(name,name[0].toUpperCase()+name.slice(1));
+   d.setValue(spec.view).onChange(v=>{spec.view=v;refresh();});
+  });
+  field('columns','Colunas (separadas por vírgula)','Columns (comma separated)','file, status, due');
+  field('group','Propriedade de agrupamento','Group property','status');
+  field('filter','Filtro opcional','Optional filter','');
+  field('sort','Ordenar por propriedade','Sort by property','file');
+  new Setting(fields).setName(writerUi('Direção','Direction')).addDropdown(d=>{
+   d.addOption('asc',writerUi('Crescente','Ascending')).addOption('desc',writerUi('Decrescente','Descending'));
+   d.setValue(spec.order).onChange(v=>{spec.order=v;refresh();});
+  });
+  new Setting(fields).setName(writerUi('Limite de itens','Row limit')).addSlider(t=>{
+   t.setLimits(5,500,5).setDynamicTooltip().setValue(spec.limit).onChange(v=>{spec.limit=v;refresh();});
+  });
+  field('cover','Campo de capa','Cover property','banner');
+  field('date','Campo de data (calendário)','Date property (calendar)','date');
+  field('start','Início (timeline)','Start date (timeline)','start');
+  field('end','Fim (timeline)','End date (timeline)','end');
+  field('parent','Pai (lista)','Parent (list)','parent');
+  const actions=root.createDiv({cls:'writer-v111-db-actions'});
+  const save=actions.createEl('button',{text:writerUi('Inserir visualização','Insert database view'),attr:{type:'button'}});
+  save.addEventListener('click',()=>{
+   let block;
+   try{block=writerV111DbBuilderBlock(spec);}catch(e){return new Notice(String(e.message||e));}
+   if(editor.getValue()!==before||editor.getSelection?.()!==selected){
+    return new Notice(writerUi('A nota mudou. Abra o construtor novamente.','Note changed. Reopen the builder.'));
+   }
+   editor.replaceSelection((selected?'':'\n')+block+(selected?'':'\n'));
+   modal.close();
+  });
+  refresh();
+ };
+ modal.open();
+}
+function writerV111DbBuilderRegister(plugin){
+ plugin.addCommand({id:'v111-database-visual-builder',
+  name:writerUi('Bancos: construtor visual de visualização','Databases: visual view builder'),
+  editorCallback:editor=>writerV111DbBuilderOpen(plugin,editor)});
+}
+function writerV111DbBuilderSettings(plugin,panel){
+ panel.createEl('h3',{text:writerUi('Notion Suite · construtor visual','Notion Suite · visual builder')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Configure filtros simples, colunas, cartões e visualizações sem digitar blocos manualmente. Para alterar blocos existentes, selecione-os no editor.',
+  'Configure simple filters, columns, boards and views without hand-writing code blocks. Select existing blocks in the editor to modify.')});
+ new Setting(panel).setName(writerUi('Construtor de bancos','Database builder'))
+  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>{
+   const editor=plugin.app.workspace.getActiveViewOfType?.(MarkdownView)?.editor;
+   writerV111DbBuilderOpen(plugin,editor);
+  }));
 }
 
 // END WRITER V3 MODULES

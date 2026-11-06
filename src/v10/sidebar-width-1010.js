@@ -22,7 +22,7 @@ function writerV1010Merge(settings){
  const width=previous.width&&typeof previous.width==='object'?previous.width:{};
  // Keep object identity stable: settings panels and live handlers share this object.
  Object.assign(sidebar,{enabled:false,mobileTabs:true,desktopTabs:false,overflow:true,actionMenu:true,fileFilter:false,
-  sharedFilter:false,order:{left:[],right:[]},...sidebar});
+  sharedFilter:false,integrateSpaces:true,compactFooter:true,order:{left:[],right:[]},...sidebar});
  Object.assign(width,{enabled:true,current:80,defaultPercent:80,showStatus:true,frontmatter:true,...width});
  const cfg=Object.assign(previous,{sidebar,width});
  settings.v1010Layout=cfg;
@@ -51,7 +51,19 @@ function writerV1010WidthForFile(plugin,file){
  }
  return cfg.current;
 }
+/* Obsidian mobile uses a MobileDrawer, not a desktop TabGroup.
+ * Inspect its shape before using undocumented methods, then fall back to native UI. */
+function writerV1010MobileDrawer(workspace,side){
+ const split=side==='right'?workspace?.rightSplit:workspace?.leftSplit;
+ if(split?.type!=='mobile-drawer'||!Array.isArray(split.children)||
+  typeof split.selectTabIndex!=='function'||!split.tabsContainerEl||!split.tabsListEl)return null;
+ return split;
+}
 function writerV1010SideForLeaf(workspace,leaf){
+ for(const side of ['left','right']){
+  const drawer=writerV1010MobileDrawer(workspace,side);
+  if(drawer?.children.includes(leaf))return side;
+ }
  try{
   const root=leaf?.getRoot?.();
   if(root&&root===workspace.leftSplit)return 'left';
@@ -63,18 +75,36 @@ function writerV1010SideForLeaf(workspace,leaf){
  return '';
 }
 function writerV1010CollectLeaves(workspace,side){
- const leaves=[],seen=new Set();
+ const leaves=[],seen=new Set(),drawer=writerV1010MobileDrawer(workspace,side);
  const visit=leaf=>{
   const type=leaf?.view?.getViewType?.()||leaf?.getViewState?.()?.type;
   if(!type||type==='empty'||type==='markdown'||seen.has(type))return;
   if(writerV1010SideForLeaf(workspace,leaf)!==side)return;
   seen.add(type);leaves.push({type,leaf});
  };
- if(typeof workspace.iterateAllLeaves==='function')workspace.iterateAllLeaves(visit);
- else for(const type of Object.keys(WRITER_V1010_VIEWS)){
+ if(drawer)for(const leaf of drawer.children)visit(leaf);
+ else if(typeof workspace.iterateAllLeaves==='function')workspace.iterateAllLeaves(visit);
+ else for(const type of Object.keys(WRITER_V1010_VIEWS))
   for(const leaf of workspace.getLeavesOfType?.(type)||[])visit(leaf);
- }
  return leaves;
+}
+function writerV1010SelectLeaf(plugin,side,leaf){
+ const workspace=plugin.app.workspace,drawer=writerV1010MobileDrawer(workspace,side);
+ if(drawer){
+  const index=drawer.children.indexOf(leaf);
+  if(index<0)return false;
+  try{
+   drawer.selectTabIndex(index);
+   // Mobile drawer selection and activeLeaf are separate. Keep both in sync;
+   // revealLeaf() alone can select the wrong pane on phones.
+   if(typeof workspace.setActiveLeaf==='function')
+    workspace.setActiveLeaf(leaf,{focus:!drawer.isPinned});
+   plugin.writerV1010Refresh?.();
+   return true;
+  }catch(error){console.error('[Basic] Mobile sidebar tab selection:',error);return false;}
+ }
+ try{void workspace.revealLeaf?.(leaf);return true;}
+ catch(error){console.warn('[Basic] Could not reveal sidebar tab:',error);return false;}
 }
 function writerV1010SortLeaves(plugin,side,leaves){
  const order=writerV1010Merge(plugin.settings).sidebar.order[side];
@@ -88,7 +118,12 @@ function writerV1010Icon(host,name){
  if(typeof setIcon==='function')setIcon(host,name||'panel-left');
  else host.textContent='⋯';
 }
-function writerV1010ActiveLeaf(workspace,leaves){
+function writerV1010ActiveLeaf(workspace,leaves,side){
+ const drawer=writerV1010MobileDrawer(workspace,side);
+ if(drawer){
+  const active=drawer.children[drawer.currentTab];
+  if(leaves.some(entry=>entry.leaf===active))return active;
+ }
  return leaves.find(entry=>entry.leaf===workspace.activeLeaf)?.leaf||
   leaves.find(entry=>entry.leaf?.view?.containerEl?.closest?.('.mod-active'))?.leaf||leaves[0]?.leaf;
 }
@@ -105,14 +140,23 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))
   .setIcon('settings').onClick(()=>plugin.app.setting?.open?.()));
- const openVault=plugin.app.openVaultSwitcher;
- if(typeof openVault==='function')menu.addItem(item=>item.setTitle(writerUi('Trocar de cofre','Switch vault'))
-  .setIcon('folder-open').onClick(()=>openVault.call(plugin.app)));
+ // Prefer Obsidian's own chooser, then the existing native vault switcher.
+ const chooser=plugin.app.openVaultChooser||plugin.app.openVaultSwitcher;
+ const switcher=plugin.app.workspace?.leftSplit?.headerEl?.querySelector?.('.workspace-drawer-header-switcher');
+ if(typeof chooser==='function'||switcher)menu.addItem(item=>item.setTitle(writerUi('Trocar de cofre','Switch vault'))
+  .setIcon('folder-open').onClick(()=>{
+   if(typeof chooser==='function')chooser.call(plugin.app);
+   else switcher?.click?.();
+  }));
+ if(side==='left'&&plugin.settings.v9Spaces?.enabled){
+  menu.addItem(item=>item.setTitle(writerUi('Gerenciar Spaces','Manage Spaces'))
+   .setIcon('layers').onClick(()=>typeof writerV9SpaceModal==='function'&&writerV9SpaceModal(plugin)));
+ }
  if(leaves?.length)menu.addSeparator?.();
  for(const entry of leaves.slice(0,20)){
   const info=WRITER_V1010_VIEWS[entry.type]||['panels',entry.type,entry.type];
   menu.addItem(item=>item.setTitle(writerUi(info[1],info[2])).setIcon(info[0])
-   .onClick(()=>void plugin.app.workspace.revealLeaf?.(entry.leaf)));
+   .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
  }
  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
  else menu.showAtPosition({x:90,y:110});

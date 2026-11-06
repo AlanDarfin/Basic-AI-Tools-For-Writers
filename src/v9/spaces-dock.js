@@ -12,8 +12,9 @@ function writerV1014MobileSpacesAnchor(plugin){
   drawer.containerEl.classList?.contains('osm-sidebar')||
   drawer.containerEl.ownerDocument?.body?.classList?.contains('osm-mobile-tabs'))return null;
  // Never attach the menu to a stale header detached by Obsidian.
- const tabs=drawer.tabsContainerEl;
- if(drawer.containerEl.contains?.(tabs)===false)return null;
+ let tabs=drawer.tabsContainerEl;
+ if(drawer.containerEl.contains?.(tabs)===false)
+  tabs=drawer.containerEl.querySelector?.('.workspace-drawer-tab-options')||null;
  return tabs;
 }
 function writerV9216SpaceDockRegister(plugin){
@@ -244,26 +245,22 @@ function writerV9216SpaceDockRegister(plugin){
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
     parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
-    parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');
+    parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host','writer-v1014-mobile-spaces-anchor');
    }
    hosts.clear();return;
   }
   const current=new Set();
   if(mobileIntegrated()){
-   const drawer=plugin.app.workspace.leftSplit;
-   const root=drawer.containerEl;
-   const mount=root.querySelector?.('.workspace-drawer-inner')||root;
+   const mount=writerV1014MobileSpacesAnchor(plugin);
    current.add(mount);hosts.add(mount);
-   mount.classList.add('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');
+   mount.classList.add('writer-v1014-mobile-spaces-anchor');
    let dock=mount.querySelector(':scope > .writer-v9216-spaces-dock');
    if(!dock){
     dock=mount.ownerDocument.createElement('div');
-    dock.className='writer-v9216-spaces-dock writer-v1011-integrated-spaces';
-    const nativeFooter=mount.querySelector(':scope > .workspace-drawer-header');
-    if(nativeFooter)nativeFooter.insertAdjacentElement('beforebegin',dock);
-    else mount.appendChild(dock);
+    dock.className='writer-v9216-spaces-dock writer-v1011-integrated-spaces writer-v1014-collapsible-spaces';
+    mount.appendChild(dock);
    }
-   dock.classList.add('writer-v1011-integrated-spaces');
+   dock.classList.add('writer-v1011-integrated-spaces','writer-v1014-collapsible-spaces');
    draw(dock);
   }else{
    for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
@@ -285,7 +282,7 @@ function writerV9216SpaceDockRegister(plugin){
   for(const parent of hosts){
    if(current.has(parent))continue;
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
-   parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');hosts.delete(parent);
+   parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host','writer-v1014-mobile-spaces-anchor');hosts.delete(parent);
   }
  };
  const refresh=()=>{clearTimeout(timer);timer=setTimeout(attach,100);};
@@ -299,7 +296,7 @@ function writerV9216SpaceDockRegister(plugin){
   clearTimeout(timer);for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
   actions.clear();for(const parent of hosts){
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
-   parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host');
+   parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host','writer-v1014-mobile-spaces-anchor');
   }
   hosts.clear();plugin.writerV9216SpacesDockRefresh=null;plugin.writerV1011SpacesDockRefresh=null;
  });

@@ -30,6 +30,8 @@ function writerV9215SlashActions(){
   {id:'highlight',pt:'Realce',en:'Highlight',keys:'mark highlight',text:"==texto=="},
   {id:'formula',pt:'Fórmula',en:'Math formula',keys:'math formula latex',text:"$$\n\n$$"},
   {id:'flowboard',pt:'Painel Flow',en:'Flow panel',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
+  {id:'dbview',pt:'Banco: nova visualização',en:'Database: new view',keys:'notion base database gallery board',text:'~~~basic-suite-db\nfolder: Databases/Tarefas\nview: gallery\ncolumns: file, status\n~~~'},
+  {id:'timetable',pt:'Estudos: horário de aulas',en:'Study: class timetable',keys:'unique agenda schedule horario aula',text:'~~~basic-timetable\n~~~'},
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
   {id:'flow',pt:'Flow: incorporar nota',en:'Flow: embed note',keys:'embed inline edit note flow',text:''}
  ];

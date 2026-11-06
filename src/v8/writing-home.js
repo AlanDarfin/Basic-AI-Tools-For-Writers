@@ -140,7 +140,8 @@ class WriterV8HomeView extends ItemView{
   const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
   // Surfing's omnibox is a permanent top address/search bar only while Surfing
   // is active; Basic's original vault search stays independent beneath it.
-  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&typeof writerV8HomeSurfing(this.plugin)?.addHeaderAndSearchBar==='function');
+  const surfing=writerV8HomeSurfing(this.plugin);
+  this.homeSurfingEnabled=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
   this.homeSurfingInput=null;
   if(this.homeSurfingEnabled)this.renderSurfingBar(this.contentEl);
   // Heading follows the optional browser bar, then the existing vault search.
@@ -552,7 +553,8 @@ class WriterV8HomeView extends ItemView{
    .addEventListener('click',()=>this.plugin.openProjects('board'));
  }
  syncSurfingVisibility(){
-  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&typeof writerV8HomeSurfing(this.plugin)?.addHeaderAndSearchBar==='function');
+  const surfing=writerV8HomeSurfing(this.plugin);
+  const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
   if(active!==this.homeSurfingEnabled)this.render();
  }
  homeSearchWebMode(){
@@ -595,6 +597,7 @@ class WriterV8HomeView extends ItemView{
    host.remove?.();
    this.homeSurfingEnabled=false;
    this.homeSurfingInput=null;
+   this.homeSurfingFailed=surfing;
    console.warn('[Basic AI] Native Surfing header unavailable:',error);
   }
  }
@@ -729,11 +732,12 @@ class WriterV8HomeView extends ItemView{
       [/reddit\.com/,'message-circle'],[/twitch\.tv/,'tv'],[/discord\.com/,'message-square']];
     const known=map.find(([rx])=>rx.test(domain))?.[1];
     const icon=bookmark.icon&&bookmark.icon!=='globe'?bookmark.icon:known||'globe';
-    glyph.createSpan({cls:'writer-v1205-favicon-letter',text:String(bookmark.title||domain).slice(0,1).toLocaleUpperCase()});
-    try{
-     require('obsidian').setIcon?.(glyph,icon);
-     if(!glyph.querySelector?.('svg'))glyph.addClass('writer-v1205-icon-fallback');
-    }catch(_){glyph.addClass('writer-v1205-icon-fallback');}
+    try{require('obsidian').setIcon?.(glyph,icon);}catch(_){}
+    if(!glyph.querySelector?.('svg')){
+     glyph.empty();
+     glyph.addClass('writer-v1205-icon-fallback');
+     glyph.createSpan({cls:'writer-v1205-favicon-letter',text:String(bookmark.title||domain).slice(0,1).toLocaleUpperCase()});
+    }
     const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
     labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
     labels.createSpan({text:domain,cls:'writer-v1203-web-bookmark-domain'});

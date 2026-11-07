@@ -228,6 +228,7 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
  let latest=[];
  const jump=entry=>{
   if(!entry)return;
+  input.value='';feedback.hidden=true;
   const previous=getActive();
   if(entry.id!==previous)onOpen(entry.id);
   const reveal=()=>{
@@ -244,9 +245,13 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   const q=input.value.trim(),panel=getPanel(),active=getActive();
   feedback.empty();feedback.hidden=!q;
   const all=writerV1048SearchIndex(sections,panel,active,cache);
-  latest=writerV1048SearchOptions(all,q);
-  const activeMatches=latest.filter(entry=>entry.id===active);
-  writerWorkspaceFilterRows(panel,q&&activeMatches.length?q:'');
+  // Also index not-yet-opened categories, with contextual aliases and fuzzy ranking.
+  const locations=sections.map(([id,title])=>({id,title,section:title,
+   keywords:WRITER_WORKSPACE_HINTS[id]||'',focus:'',source:'category'}));
+  latest=writerV131RankSettings([...all,...locations],q,18);
+  // Fuzzy results remain in the compact dropdown; do not hide actual settings
+  // just because the approximate query does not literally match their text.
+  writerWorkspaceFilterRows(panel,'');
   if(!q)return;
   if(latest.length){
    const grouped=writerV1050SearchGroups(latest);

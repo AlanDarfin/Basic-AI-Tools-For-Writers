@@ -2,6 +2,16 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.0.1 — 720p usability, dragger and AI connections
+
+- Improve homepage widget grid and resize hit targets so controls stay clickable in small panes.
+- Restore reliable block dragging on desktop and optional long-press initiation on Android.
+- Prevent character-by-character wrapping, oversized controls and stray toolbar scrollbars at 1280×720.
+- Add compact settings navigation and contextual fuzzy search with typo and accent tolerance.
+- Reorganize AI provider and model controls into a focused, responsive workspace with masked keys, on-demand checks, cached searchable model catalogs and per-purpose provider selection.
+- Preserve all existing provider credentials and model IDs; no automatic connection probes.
+- Add focused regression tests and synchronize the settings search source with the built bundle.
+
 ## 12.0.5 — Native Surfing, resizable widgets, timeline and desktop Dragger
 
 - Mounts the native Surfing HeaderBar when the Surfing plugin is enabled, instead of maintaining an imitation search bar.

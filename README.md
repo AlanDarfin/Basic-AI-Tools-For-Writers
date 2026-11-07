@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.0.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.0.1 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -14,11 +14,13 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 ### Spaces, toolbar and mobile actions
 
+- **AI setup:** choose a provider in one compact workspace, manage masked keys and validated endpoints, run tests only on demand, fetch and filter model lists, and assign different providers to definitions, translation and the assistant. Existing credentials and model choices are preserved.
+
 - **Folder-root Spaces:** choosing `Trabalho/Escrita/Fireverse` displays Fireverse as the native Explorer's visual root, with only its descendants. This changes the interface, never vault paths.
 - **Hide only in this Space:** hide or unhide notes and folders from their context menu without changing other Spaces. Space collections respect hidden folders and folder renames preserve scope.
 - **Independent formatting toolbars:** desktop and mobile have separate button order, groups, styles, sizes and colors. Floating desktop mode appears only while editor text is selected.
-- **Desktop Dragger:** grips initiate a real pointer drag, remain reachable when moving the pointer across the editor gutter, and do not appear on blank Markdown lines; handles remain disabled on Android.
-- **Integrated settings:** existing General, Customization, Organization, Writing, Longform, AI and Review groups contain the newest suite and toolkit controls, without extra top-level groups.
+- **Block Dragger:** desktop grips support pointer dragging without overlapping nearby buttons. Android offers an optional block long-press drag without a persistent grip; both retain ordinary tapping and scrolling.
+- **Integrated settings:** category/section selectors, typo-tolerant contextual search and compact controls for 720p split panes. Existing General, Customization, Organization, Writing, Longform, AI and Review sections remain available.
 - **Mobile quick-action ribbon:** Basic now has its own searchable-entry-compatible command set and a single **Basic: quick actions** ribbon menu for read-aloud, 65-action formatting palette, clean focus screen, folder focus and integrations. These are independent of the Ultimate Toolkit plugin's own shortcuts.
 - **Sidebar fixes:** delayed native **More options** routing prevents nested Android menus from opening during the previous sheet's dismissal. The **Bookmark** action uses an available Bookmarks command when registered, otherwise the original native button; panel pin/close long press remains available.
 - **Reorganized settings:** newer features and suites sit alongside related modules in the existing settings navigation.
@@ -122,7 +124,7 @@ Available widgets include a **clock and calendar**, **Soundscapes radio** (deskt
 
 - **Space-efficient layout:** a responsive, height-aware masonry grid places small widgets beside taller ones instead of leaving large gaps.
 - **Widget sizes:** choose **Compact**, **Normal** or **Wide** from each widget's options, or resize horizontally and vertically by dragging the right, bottom or corner handle on desktop. Choose **Snap to grid** or **Free size** and reset a widget's dimensions from its menu. The mobile layout stays single-column.
-- **Reordering:** drag the handle on desktop (Dragger is fully disabled on Android); on touch devices, select a handle and then another widget heading. The widget menu also has earlier/later commands.
+- **Reordering:** drag the handle on desktop (dashboard reorder grips remain unavailable on Android); on touch devices, select a handle and then another widget heading. The widget menu also has earlier/later commands.
 - **Personal settings:** add, hide and rearrange widgets; order, edge-resized frames, alignment, hidden items and quick drafts are saved locally, separately for each Space when its widget preferences are enabled.
 
 ### Editing, Markdown formatting and navigation

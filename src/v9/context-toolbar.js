@@ -457,6 +457,8 @@ function writerV9RegisterToolbar(plugin){
    cfg.placement==='top'?'is-top':cfg.placement==='floating'&&!mobile?'is-floating':''];
   root=owner.createDiv({cls:classes.filter(Boolean).join(' '),
    attr:{role:'toolbar','aria-label':writerUi('Barra de formatação personalizada','Custom formatting toolbar')}});
+  // Docked bars flow with the editor and never cover the host's top/bottom controls.
+  if(cfg.placement==='top')owner.insertBefore(root,owner.firstChild);
   root.style.setProperty('--writer-v1048-button-size',cfg.buttonSize+'px');
   const available=writerV1048ToolbarItems(cfg);
   const groups=writerV1048ToolbarGroups(cfg),shown=new Set();

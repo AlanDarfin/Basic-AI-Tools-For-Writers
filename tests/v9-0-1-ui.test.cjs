@@ -49,7 +49,7 @@ test('visual lock is opt-in, limits paths and never claims encryption',()=>{
 test('v9.0.1 sources and runtime bundle contain new controls',()=>{
  const main=read('main.js'),style=read('styles.css');
  for(const needle of ['writerV9LockRegister(this)','writerV9SpacesSidebarOpen',
-  'writerV9SafeHex','writer-v901-nav-icon','Escrita e Markdown','homeTitleColor']){
+  'writerV9SafeHex','writer-v901-nav-icon','Escrita e edição','Markdown e extensões','homeTitleColor']){
   assert.ok(main.includes(needle),needle);
  }
  assert.match(style,/writer-v901-color-input/);

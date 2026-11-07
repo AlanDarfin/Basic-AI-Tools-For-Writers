@@ -279,7 +279,7 @@ function writerV1044CommandPicker(plugin,selected){
  });
  // Preserve support for commands not yet registered in the application.
  const custom=new Setting(root).setName(writerUi('ID de comando personalizado','Custom command ID'))
-  .addText(field=>field.setPlaceholder('app:open-command-palette').onChange(()=>{}))
+  .addText(field=>field.setPlaceholder('app:open-command-palette'))
   .addButton(button=>button.setButtonText(writerUi('Usar ID','Use ID')).onClick(()=>{
    const id=custom.controlEl.querySelector('input')?.value.trim()||'';
    if(!/^[\w.:-]{1,200}$/.test(id))return;

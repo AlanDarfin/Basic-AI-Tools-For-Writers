@@ -2,7 +2,6 @@
 /* v9: Make.md-inspired file organization in the native Obsidian File Explorer.
  * Original implementation; no Make.md source code or replacement sidebar. */
 const WRITER_V9_EXPLORER_ICONS=['file','file-text','folder','folder-open','book-open','book','notebook-pen','library','feather','pen-line','star','heart','bookmark','pin','house','briefcase','archive','box','layers','layout-grid','list','calendar','calendar-days','clock','list-check','check-circle','graduation-cap','lightbulb','brain','sparkles','wand-sparkles','image','images','music','video','film','globe','link','code','terminal','settings','user','users','message-circle','tag','hash','flag','map','compass','leaf','sun','moon-star','cloud','rocket','palette','flower-2'];
-const WRITER_V9_EXPLORER_COLORS=['','#e35d6a','#dc9b30','#60a47c','#579ec2','#9b79c5','#d378aa'];
 function writerV9ExplorerMerge(settings){
  const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showTitleIcons:true,showColor:true,items:{},maxResults:100},
   ...(settings.v9Explorer&&typeof settings.v9Explorer==='object'?settings.v9Explorer:{})};

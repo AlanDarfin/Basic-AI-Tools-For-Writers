@@ -13607,7 +13607,6 @@ function writerV9ToolbarSettings(plugin,panel){
 /* v9: Make.md-inspired file organization in the native Obsidian File Explorer.
  * Original implementation; no Make.md source code or replacement sidebar. */
 const WRITER_V9_EXPLORER_ICONS=['file','file-text','folder','folder-open','book-open','book','notebook-pen','library','feather','pen-line','star','heart','bookmark','pin','house','briefcase','archive','box','layers','layout-grid','list','calendar','calendar-days','clock','list-check','check-circle','graduation-cap','lightbulb','brain','sparkles','wand-sparkles','image','images','music','video','film','globe','link','code','terminal','settings','user','users','message-circle','tag','hash','flag','map','compass','leaf','sun','moon-star','cloud','rocket','palette','flower-2'];
-const WRITER_V9_EXPLORER_COLORS=['','#e35d6a','#dc9b30','#60a47c','#579ec2','#9b79c5','#d378aa'];
 function writerV9ExplorerMerge(settings){
  const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showTitleIcons:true,showColor:true,items:{},maxResults:100},
   ...(settings.v9Explorer&&typeof settings.v9Explorer==='object'?settings.v9Explorer:{})};
@@ -15591,7 +15590,7 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
   });
  }
  const daily=new Map(days.map(d=>[d,rows.filter(e=>e.occurs===d)]));
- const allDay=board.createDiv({cls:'writer-v9-calendar-all-day-label',text:writerUi('Dia inteiro','All day')});
+ board.createDiv({cls:'writer-v9-calendar-all-day-label',text:writerUi('Dia inteiro','All day')});
  for(const day of days){
   const all=board.createDiv({cls:'writer-v9-calendar-time-slot is-all-day'});
   for(const event of daily.get(day).filter(e=>!e.time))writerV9CalendarEntry(view,all,event,true);
@@ -17928,7 +17927,6 @@ function writerV912VirtualRegister(plugin){
 /* v9.2.0 native explorer enhancements, inspired by Favorite Note and File Preview.
  * Reuses Basic's homepage favorites; never changes note content to mark a favorite.
  * Folder descriptions are read from the folder note's YAML frontmatter. */
-const WRITER_V92_FAVORITE_ICONS=['star','heart','bookmark','sparkles','pin','flag','award','gem','flower-2','sun'];
 function writerV92ExplorerMerge(settings){
  const old=settings.v92Explorer&&typeof settings.v92Explorer==='object'?settings.v92Explorer:{};
  const cfg=settings.v92Explorer={
@@ -20986,7 +20984,7 @@ function writerV1044CommandPicker(plugin,selected){
  });
  // Preserve support for commands not yet registered in the application.
  const custom=new Setting(root).setName(writerUi('ID de comando personalizado','Custom command ID'))
-  .addText(field=>field.setPlaceholder('app:open-command-palette').onChange(()=>{}))
+  .addText(field=>field.setPlaceholder('app:open-command-palette'))
   .addButton(button=>button.setButtonText(writerUi('Usar ID','Use ID')).onClick(()=>{
    const id=custom.controlEl.querySelector('input')?.value.trim()||'';
    if(!/^[\w.:-]{1,200}$/.test(id))return;

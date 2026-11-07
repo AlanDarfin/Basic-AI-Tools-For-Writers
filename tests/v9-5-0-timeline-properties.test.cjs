@@ -114,3 +114,59 @@ test('Markdown block is registered with bilingual UI and bundled for distributio
   assert.match(contents,/layout: horizontal/);
  }
 });
+
+test('timeline headings normalize legacy HTML breaks and preserve safe Markdown',()=>{
+ const input=[
+  'controls: false',
+  '+ 1700 a 1800',
+  "+ Seekin' My Secrets </br>",
+  '+ A detail with malformed </br> break',
+  '+ 1900<br/>1901',
+  '+ New<br>Chapter',
+  '+ Next'
+ ].join('\n');
+ const events=api.writerV95TimelineParse(input).events;
+ assert.equal(events.length,2);
+ assert.equal(events[0].date,'1700 a 1800');
+ assert.equal(events[0].title,"Seekin' My Secrets");
+ assert.equal(events[0].content,'A detail with malformed   \nbreak');
+ assert.equal(events[1].date,'1900\n1901');
+ assert.equal(events[1].title,'New\nChapter');
+ assert.equal(events[1].content,'Next');
+ const labeled=api.writerV95TimelineParse([
+  'controls: false','date: 2000','title: One<br />Two',
+  'content: Normal <br> HTML is preserved.'
+ ].join('\n'),'timeline-labeled');
+ assert.equal(labeled.events[0].title,'One\nTwo');
+ assert.equal(labeled.events[0].content,'Normal <br> HTML is preserved.');
+ const css=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+ assert.match(css,/writer-v95-timeline-title\{\s*white-space:pre-line/);
+ assert.match(css,/is-heading-only/);
+});
+test('Timeline render uses text nodes and removes empty bottom area for heading-only events',()=>{
+ const rendered=vm.runInNewContext(source+'\n({writerV95TimelineRender})',{console,writerUi:pt=>pt});
+ function create(cls=''){
+  const node={children:[],cssClass:cls,style:{setProperty(){}},classNames:new Set(cls.split(/\s+/).filter(Boolean))};
+  node.classList={
+   add(...names){for(const name of names)node.classNames.add(name);},
+   contains:name=>node.classNames.has(name)
+  };
+  node.createDiv=options=>{const child=create(options?.cls||'');node.children.push(child);return child;};
+  node.createEl=(tag,options={})=>{
+   const child=create(options.cls||'');child.tag=tag;child.text=options.text||'';
+   node.children.push(child);return child;
+  };
+  node.createSpan=options=>node.createEl('span',options);
+  return node;
+ }
+ const mount=create();
+ rendered.writerV95TimelineRender({},[
+  'controls: false','date: 1700 a 1800',"title: Seekin' My Secrets </br>"
+ ].join('\n'),mount,{},'timeline-labeled');
+ const root=mount.children[0];
+ const list=root.children.find(node=>node.cssClass==='writer-v95-timeline-items');
+ const body=list.children[0].children.find(node=>node.cssClass==='writer-v95-timeline-event-body');
+ assert.ok(body.classNames.has('is-heading-only'));
+ const title=body.children[0].children.find(node=>node.cssClass==='writer-v95-timeline-title');
+ assert.equal(title.text,"Seekin' My Secrets");
+});

@@ -10328,4 +10328,20 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
   max-width:100%;
  }
 }
+
+/* v13 Timeline: normalize legacy breaks safely and preserve real multiline
+ * date/title text. The empty footer rule applies only to heading-only cards.
+ */
+.writer-v95-timeline .writer-v95-timeline-date,
+.writer-v95-timeline .writer-v95-timeline-title{
+ white-space:pre-line;
+ overflow-wrap:anywhere;
+}
+.writer-v95-timeline.is-body-2 .writer-v95-timeline-event-body.is-heading-only{
+ padding-bottom:0;
+}
+.writer-v95-timeline.is-body-2 .writer-v95-timeline-event-body.is-heading-only .writer-v95-timeline-head{
+ border-bottom:0;
+ padding-bottom:11px;
+}
 /* END V8 MODULAR STYLES */

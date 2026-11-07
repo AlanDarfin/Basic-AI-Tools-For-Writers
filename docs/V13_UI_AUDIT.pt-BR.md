@@ -179,3 +179,19 @@ regressões, lint, checksums e verificação de compatibilidade estática.
 - **QA real pendente:** executar e documentar casos P1–P8 / A1–G4 em
   `docs/V13_QA_VISUAL.pt-BR.md` antes de tratar a v13 como versão estável
   ou mesclar na `main`. A execução manual NÃO foi declarada concluída.
+
+## Correção pontual da Timeline — QA visual
+
+O screenshot fornecido evidenciou que o título \`Seekin' My Secrets </br>\`
+exibia literalmente um fechamento HTML inválido. O renderizador tratava
+quebras HTML na data, mas não no título.
+
+- Datas e títulos normalizam <br>, <br/> e </br> como novas linhas textuais;
+  títulos continuam usando textContent, não innerHTML.
+- No corpo Markdown, a tag inválida </br> vira quebra Markdown; um <br>
+  válido continua no MarkdownRenderer sem conversão desnecessária.
+- CSS da Timeline respeita newlines com white-space: pre-line e elimina
+  divisória/rodapé vazio em cards de estilo body-2 sem conteúdo adicional.
+- Novos testes reproduzem a sintaxe do screenshot, o formato labeled,
+  quebras de linha em título/data e DOM simulado.
+- Ainda é necessário repetir a observação visual no Obsidian real.

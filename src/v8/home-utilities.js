@@ -63,37 +63,7 @@ function writerV8HomeSurfing(plugin){
  if(typeof manager?.isEnabled==='function')return manager.isEnabled('surfing')?surfing:null;
  return null;
 }
-function writerV8HomeSearchURL(plugin,input){
- const query=String(input||'').trim();
- if(!query||query.length>500||/[\u0000-\u001f]/.test(query))
-  throw Error(writerUi('Digite uma pesquisa válida.','Enter a valid web search.'));
- const direct=writerV8HomeValidURL(query);
- if(direct)return direct;
- const cfg=plugin.settings?.v8Finish||{};
- const surfing=writerV8HomeSurfing(plugin);
- let selected=String(cfg.homeWebSearchEngine||'surfing').toLowerCase();
- if(selected==='surfing')
-  selected=String(surfing?.settings?.defaultSearchEngine||'google').toLowerCase();
- let base=WRITER_V8_WEB_ENGINE_URLS[selected];
- if(!base&&surfing){
-  const custom=surfing.settings?.customSearchEngine;
-  const engine=Array.isArray(custom)?custom.find(x=>String(x.name||'').toLowerCase()===selected):null;
-  if(engine?.url)base=engine.url;
- }
- base=String(base||WRITER_V8_WEB_ENGINE_URLS.google);
- // Custom Surfing search engines are URL prefixes, never script protocols.
- let candidate;
- try{
-  const url=new URL(base);
-  if(!['https:','http:'].includes(url.protocol)||url.username||url.password)throw Error('Unsafe engine');
-  candidate=base.includes('%s')?base.replaceAll('%s',encodeURIComponent(query)):
-   base.includes('{query}')?base.replaceAll('{query}',encodeURIComponent(query)):
-   base+encodeURIComponent(query);
- }catch(_){candidate=WRITER_V8_WEB_ENGINE_URLS.google+encodeURIComponent(query);}
- const result=writerV8HomeValidURL(candidate);
- if(!result)throw Error(writerUi('Busca web inválida.','Invalid web search URL.'));
- return result;
-}
+
 async function writerV8HomeOpenURL(plugin,input){
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));

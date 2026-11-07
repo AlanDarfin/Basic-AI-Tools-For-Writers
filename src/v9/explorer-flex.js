@@ -427,37 +427,7 @@ function writerV91FlexSetSort(plugin,folder,sort){
   record.order=(folder?.children||[]).map(f=>f.name);
  store[key]=record;void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
-function writerV93FlexSortModal(plugin,folder){
- const cfg=plugin.settings.v91Flex,key=writerV1043RootKey(folder?.path);
- const store=writerV93FlexStore(plugin,key),existing=writerV93FlexRecord(plugin,key);
- const model={sort:existing.sort||'native',property:existing.property||cfg.defaultSortProperty,
-  order:[...(existing.order||[])],foldersFirst:existing.foldersFirst===true};
- const modal=new Modal(plugin.app);
- modal.onOpen=()=>{
-  modal.setTitle(writerUi('Ordenação: ','Sorting: ')+(folder?.name||writerUi('Cofre','Vault')));
-  const root=modal.contentEl;
-  new Setting(root).setName(writerUi('Modo de ordenação','Sorting mode')).addDropdown(drop=>{
-   for(const [id,pt,en] of WRITER_V91_FLEX_SORTS)drop.addOption(id,writerUi(pt,en));
-   drop.setValue(model.sort).onChange(v=>{model.sort=v;});
-  });
-  new Setting(root).setName(writerUi('Propriedade YAML para ordenar','YAML property to sort'))
-   .addText(text=>text.setValue(model.property).onChange(value=>{model.property=value.replace(/[^\w-]/g,'').slice(0,60);}));
-  new Setting(root).setName(writerUi('Pastas primeiro (nesta pasta)','Folders first (this folder)'))
-   .addToggle(t=>t.setValue(model.foldersFirst).onChange(value=>{model.foldersFirst=value;}));
-  new Setting(root).setName(writerUi('Ordem manual e padrões','Manual order and patterns'))
-   .setDesc(writerUi('Um nome por linha; aceita * e ?. Os demais itens ficam no fim.','One name per line; accepts * and ?. Unlisted items stay last.'))
-   .addTextArea(text=>text.setValue(model.order.join('\n')).onChange(value=>{
-    model.order=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,1000);
-   }));
-  new Setting(root).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
-   if(model.sort==='custom'&&!model.order.length)
-    model.order=(folder?.children||plugin.app.vault.getRoot?.()?.children||[]).map(x=>x.name);
-   store[key]={sort:model.sort,property:model.property,order:model.order,foldersFirst:model.foldersFirst};
-   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();modal.close();
-  })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
- };
- modal.open();
-}
+
 
 /* Keep the original Obsidian sorting control. Extend its menu, rather than
  * adding a second toolbar button or file context-menu entries. */

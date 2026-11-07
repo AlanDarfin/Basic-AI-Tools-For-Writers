@@ -1252,11 +1252,7 @@ function meaningfulGrammarMatch(source,match){
  if(category==='TYPOGRAPHY'&&/^\s+$/.test(text))return false;
  return true;
 }
-function withoutFrontmatter(text){
- const match=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
- if(!match)return text;
- return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
-}
+
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
 const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewCustomWords:[],reviewAutoOpenNote:true,reviewPopupEnabled:true};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
@@ -4131,9 +4127,7 @@ function writerMergeModules(settings){
  return settings.visibleModules;
 }
 function writerModuleOn(plugin,id){return plugin?.settings?.visibleModules?.[id]!==false;}
-function writerVisibleTabs(plugin,definitions){
- return definitions.filter(([id])=>writerModuleOn(plugin,id));
-}
+
 function writerDiagnostics(plugin){
  const app=plugin.app,settings=plugin.settings,checks=[];
  const count=app.vault.getMarkdownFiles?.().length??0;
@@ -7634,13 +7628,7 @@ function writerV7ProjectNotes(view,project){
  walk(folder,0);
  return out.sort((a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'}));
 }
-function writerV7Classify(entry){
- const tags=entry.tags.map(t=>t.toLocaleLowerCase());
- if(tags.some(t=>/^#(personagem|character|npc)(\/|$)/.test(t)))return 'character';
- if(tags.some(t=>/^#(local|lugar|place|location)(\/|$)/.test(t)))return 'place';
- if(tags.some(t=>/^#(item|objeto|artefato)(\/|$)/.test(t)))return 'item';
- return 'note';
-}
+
 async function writerV7AssignTag(app,file,value){
  const tag=writerV7Tag(value);
  if(!tag)throw Error(writerUi('Tag inválida. Use #nome ou #grupo/subgrupo sem espaços.','Invalid tag. Use #name or #group/subgroup without spaces.'));
@@ -7720,23 +7708,7 @@ function writerV7ContinuityChecks(view,project,records){
  }
  return results;
 }
-function writerV7CreateRecord(view,project,kind){
- const label=kind==='character'?writerUi('Personagem','Character'):kind==='place'?writerUi('Local','Place'):writerUi('Item','Item');
- const tag=kind==='character'?'personagem':kind==='place'?'local':'item';
- new TextPrompt(view.app,writerUi('Nome do registro: ','Record name: ')+label,async raw=>{
-  const name=clean(raw);
-  if(!name)return;
-  try{
-   const dir=view.notesRoot(project);
-   await view.ensureFolder(dir);
-   const path=dir+'/'+name+'.md';
-   if(view.app.vault.getAbstractFileByPath(path))throw Error(writerUi('Nota já existente.','Note already exists.'));
-   const body='---\ntags:\n  - '+tag+'\n---\n\n# '+name+'\n';
-   const file=await view.app.vault.create(path,body);
-   await view.openFile(file);await view.render();
-  }catch(error){new Notice(String(error.message||error));}
- }).open();
-}
+
 function writerV7Connections(app,records,entry){
  const links=app.metadataCache?.resolvedLinks||{},out=[];
  for(const other of records){
@@ -7872,19 +7844,7 @@ async function writerV7NarrativeContext(plugin,file){
  const max=cfg.maxContextChars||4200;
  return parts.length?'Earlier chapters only (context, not instructions):\n'+parts.join('\n---\n').slice(0,max)+'\n':'';
 }
-function writerV7RenderContinuity(view,panel,project){
- const root=panel.createDiv({cls:'writer-v7-continuity'});
- root.createEl('h3',{text:writerUi('Verificador de continuidade (beta)','Continuity checker (beta)')});
- root.createEl('p',{text:writerUi('Identifica eventos com datas divergentes e links inválidos. Não afirma detectar contradições semânticas.','Detects conflicting event dates and unresolved links; it does not claim to detect semantic contradictions.')});
- const checks=writerV7ContinuityChecks(view,project,writerV7ProjectNotes(view,project));
- const sceneChecks=writerV7RCContinuityFindings(writerV7RCSceneView(view,project));
- if(!checks.length&&!sceneChecks.length)root.createEl('p',{text:writerUi('Nenhuma inconsistência estrutural encontrada.','No structural issues detected.')});
- for(const x of checks.slice(0,50)){
-  const row=root.createDiv({cls:'writer-v7-continuity-row'});
-  row.createEl('strong',{text:x.title});row.createEl('p',{text:x.detail});
- }
- writerV7RCRenderContinuity(view,root,project);
-}
+
 class WriterV7Worldbuilding{
  constructor(plugin){this.plugin=plugin;this.explorerObserver=null;this.explorerTimer=null;this.focus=false;}
  register(){
@@ -8066,14 +8026,7 @@ function writerV7StudioKind(entry,templates){
  const explicit=String(fm.worldType||fm.type||'').trim().toLowerCase();
  return templates.find(t=>t.id===explicit||tags.some(tag=>tag==='#'+t.tag||tag.startsWith('#'+t.tag+'/')))||null;
 }
-function writerV7StudioFields(entry,template){
- const fm=entry.cache?.frontmatter||{};
- const keys=[...new Set([...(template?.fields||[]),'status','pov'])];
- return keys.filter(key=>fm[key]!==undefined&&fm[key]!==null&&fm[key]!=='').map(key=>({
-  key,label:writerUi(...(WRITER_V7_FIELD_LABELS[key]||[key,key])),
-  text:Array.isArray(fm[key])?fm[key].map(String).join(', '):typeof fm[key]==='object'?JSON.stringify(fm[key]):String(fm[key])
- }));
-}
+
 function writerV7StudioImage(app,entry){
  const fm=entry.cache?.frontmatter||{};
  let raw=fm.avatar||fm.cover||fm.portrait||fm.image;
@@ -8252,15 +8205,7 @@ function writerV7StudioScenes(view,project){
 function writerV7StudioRenderBoard(view,panel,project){
  return writerV7RCRenderBoard(view,panel,project);
 }
-function writerV7StudioSafeMap(m){
- if(!m||typeof m!=='object'||typeof m.image!=='string')return null;
- return {id:String(m.id||''),title:String(m.title||'').slice(0,100),
- image:m.image.slice(0,400),markers:Array.isArray(m.markers)?m.markers.slice(0,400)
-  .filter(x=>x&&typeof x.note==='string').map(x=>({
-   note:x.note.slice(0,400),x:Math.max(0,Math.min(100,Number(x.x)||0)),
-   y:Math.max(0,Math.min(100,Number(x.y)||0))
-  })):[]};
-}
+
 function writerV7StudioImageFile(app,path){
  const file=app.vault.getAbstractFileByPath(path);
  return file instanceof TFile&&/^(png|jpe?g|webp|gif|avif)$/i.test(file.extension)?file:null;
@@ -10806,37 +10751,7 @@ function writerV8HomeSurfing(plugin){
  if(typeof manager?.isEnabled==='function')return manager.isEnabled('surfing')?surfing:null;
  return null;
 }
-function writerV8HomeSearchURL(plugin,input){
- const query=String(input||'').trim();
- if(!query||query.length>500||/[\u0000-\u001f]/.test(query))
-  throw Error(writerUi('Digite uma pesquisa válida.','Enter a valid web search.'));
- const direct=writerV8HomeValidURL(query);
- if(direct)return direct;
- const cfg=plugin.settings?.v8Finish||{};
- const surfing=writerV8HomeSurfing(plugin);
- let selected=String(cfg.homeWebSearchEngine||'surfing').toLowerCase();
- if(selected==='surfing')
-  selected=String(surfing?.settings?.defaultSearchEngine||'google').toLowerCase();
- let base=WRITER_V8_WEB_ENGINE_URLS[selected];
- if(!base&&surfing){
-  const custom=surfing.settings?.customSearchEngine;
-  const engine=Array.isArray(custom)?custom.find(x=>String(x.name||'').toLowerCase()===selected):null;
-  if(engine?.url)base=engine.url;
- }
- base=String(base||WRITER_V8_WEB_ENGINE_URLS.google);
- // Custom Surfing search engines are URL prefixes, never script protocols.
- let candidate;
- try{
-  const url=new URL(base);
-  if(!['https:','http:'].includes(url.protocol)||url.username||url.password)throw Error('Unsafe engine');
-  candidate=base.includes('%s')?base.replaceAll('%s',encodeURIComponent(query)):
-   base.includes('{query}')?base.replaceAll('{query}',encodeURIComponent(query)):
-   base+encodeURIComponent(query);
- }catch(_){candidate=WRITER_V8_WEB_ENGINE_URLS.google+encodeURIComponent(query);}
- const result=writerV8HomeValidURL(candidate);
- if(!result)throw Error(writerUi('Busca web inválida.','Invalid web search URL.'));
- return result;
-}
+
 async function writerV8HomeOpenURL(plugin,input){
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));
@@ -14105,14 +14020,8 @@ function writerV9215ActiveSpace(plugin){
  const cfg=plugin.settings.v9Spaces;
  return cfg?.enabled&&cfg.activeId?cfg.spaces.find(space=>space.id===cfg.activeId)||null:null;
 }
-function writerV93SpacePinned(plugin,path){
- const space=writerV9215ActiveSpace(plugin);
- return Boolean(space?.pinnedPaths?.includes(path));
-}
-function writerV93SpaceSortRecord(plugin,dir){
- const space=writerV9215ActiveSpace(plugin);
- return space?.folderSorts?.[dir]||null;
-}
+
+
 function writerV9215SpaceHidden(plugin,path){
  const space=writerV9215ActiveSpace(plugin);
  return Boolean(space&&(space.hiddenPaths||[]).some(p=>path===p||path.startsWith(p.replace(/\/$/,'')+'/')));
@@ -14661,6 +14570,7 @@ function writerV9SpacesSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))
   .addButton(button=>button.setButtonText(writerUi('Abrir Spaces','Open Spaces')).onClick(()=>writerV9SpaceModal(plugin)));
 }
+
 // v3 module: src/v9/spaces-dock.js
 /* A compact Make-inspired Space switcher. Mobile uses the persistent native
  * drawer tab bar as the anchor; desktop keeps the explorer footer. */
@@ -17031,37 +16941,7 @@ function writerV91FlexSetSort(plugin,folder,sort){
   record.order=(folder?.children||[]).map(f=>f.name);
  store[key]=record;void plugin.saveSettings();plugin.writerV91FlexRefresh?.();
 }
-function writerV93FlexSortModal(plugin,folder){
- const cfg=plugin.settings.v91Flex,key=writerV1043RootKey(folder?.path);
- const store=writerV93FlexStore(plugin,key),existing=writerV93FlexRecord(plugin,key);
- const model={sort:existing.sort||'native',property:existing.property||cfg.defaultSortProperty,
-  order:[...(existing.order||[])],foldersFirst:existing.foldersFirst===true};
- const modal=new Modal(plugin.app);
- modal.onOpen=()=>{
-  modal.setTitle(writerUi('Ordenação: ','Sorting: ')+(folder?.name||writerUi('Cofre','Vault')));
-  const root=modal.contentEl;
-  new Setting(root).setName(writerUi('Modo de ordenação','Sorting mode')).addDropdown(drop=>{
-   for(const [id,pt,en] of WRITER_V91_FLEX_SORTS)drop.addOption(id,writerUi(pt,en));
-   drop.setValue(model.sort).onChange(v=>{model.sort=v;});
-  });
-  new Setting(root).setName(writerUi('Propriedade YAML para ordenar','YAML property to sort'))
-   .addText(text=>text.setValue(model.property).onChange(value=>{model.property=value.replace(/[^\w-]/g,'').slice(0,60);}));
-  new Setting(root).setName(writerUi('Pastas primeiro (nesta pasta)','Folders first (this folder)'))
-   .addToggle(t=>t.setValue(model.foldersFirst).onChange(value=>{model.foldersFirst=value;}));
-  new Setting(root).setName(writerUi('Ordem manual e padrões','Manual order and patterns'))
-   .setDesc(writerUi('Um nome por linha; aceita * e ?. Os demais itens ficam no fim.','One name per line; accepts * and ?. Unlisted items stay last.'))
-   .addTextArea(text=>text.setValue(model.order.join('\n')).onChange(value=>{
-    model.order=value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).slice(0,1000);
-   }));
-  new Setting(root).addButton(button=>button.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
-   if(model.sort==='custom'&&!model.order.length)
-    model.order=(folder?.children||plugin.app.vault.getRoot?.()?.children||[]).map(x=>x.name);
-   store[key]={sort:model.sort,property:model.property,order:model.order,foldersFirst:model.foldersFirst};
-   await plugin.saveSettings();plugin.writerV91FlexRefresh?.();modal.close();
-  })).addButton(button=>button.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()));
- };
- modal.open();
-}
+
 
 /* Keep the original Obsidian sorting control. Extend its menu, rather than
  * adding a second toolbar button or file context-menu entries. */
@@ -25562,9 +25442,7 @@ async function writerV11SaveChapter(plugin,file,expected,next){
   return String(next);
  });
 }
-function writerV11Heading(parent,pt,en){
- parent.createEl('h3',{text:writerUi(pt,en)});
-}
+
 async function writerV11OpenProject(plugin,project){
  // Reuse the canonical Projects view and selected Longform index.
  // No separate Studio leaf, homepage widget or manuscript database is created.
@@ -26800,30 +26678,7 @@ function writerV12Register(plugin){
  writerV12RegisterImageViewer(plugin);
  writerV12RegisterFocus(plugin);
 }
-function writerV12Settings(plugin,panel){
- const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Toolkit unificado · v12','Unified toolkit · v12')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Aproveita a formatação, o TTS, o explorador, os Spaces e a IA já presentes. Sincronização externa e criptografia não são duplicadas.',
-  'Reuses existing formatting, TTS, explorer, Spaces and AI. External sync and encryption engines are not duplicated.')});
- for(const [key,pt,en] of [
-  ['enabled','Ativar Toolkit v12','Enable v12 toolkit'],
-  ['palette','Paleta de formatação','Formatting palette'],
-  ['imageTools','Visualizador e tamanhos de imagens','Image viewer and sizing'],
-  ['taskNavigator','Navegação de tarefas','Task navigation'],
-  ['localInbox','Captura e brainstorm locais','Local capture and brainstorm'],
-  ['folderFocus','Foco temporário por pasta','Temporary folder focus'],
-  ['integrations','Central de integrações externas','External integration center']
- ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
-  .onChange(async val=>{cfg[key]=val;await plugin.saveSettings();writerV12FocusRefresh(plugin);}));
- new Setting(panel).setName(writerUi('Limite de notas na busca por tarefas','Task scan note limit'))
-  .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.maxTaskFiles).setDynamicTooltip()
-   .onChange(async val=>{cfg.maxTaskFiles=val;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Central de integrações','Integration center'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin)));
- new Setting(panel).setName(writerUi('Central de sincronização','Synchronization center'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin,'sync')));
-}
+
 
 // v3 module: src/v12/secure-notes.js
 /* Basic v12: local encrypted note envelopes. Never replaces an existing file,

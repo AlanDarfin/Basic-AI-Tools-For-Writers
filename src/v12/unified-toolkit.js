@@ -474,27 +474,4 @@ function writerV12Register(plugin){
  writerV12RegisterImageViewer(plugin);
  writerV12RegisterFocus(plugin);
 }
-function writerV12Settings(plugin,panel){
- const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Toolkit unificado · v12','Unified toolkit · v12')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Aproveita a formatação, o TTS, o explorador, os Spaces e a IA já presentes. Sincronização externa e criptografia não são duplicadas.',
-  'Reuses existing formatting, TTS, explorer, Spaces and AI. External sync and encryption engines are not duplicated.')});
- for(const [key,pt,en] of [
-  ['enabled','Ativar Toolkit v12','Enable v12 toolkit'],
-  ['palette','Paleta de formatação','Formatting palette'],
-  ['imageTools','Visualizador e tamanhos de imagens','Image viewer and sizing'],
-  ['taskNavigator','Navegação de tarefas','Task navigation'],
-  ['localInbox','Captura e brainstorm locais','Local capture and brainstorm'],
-  ['folderFocus','Foco temporário por pasta','Temporary folder focus'],
-  ['integrations','Central de integrações externas','External integration center']
- ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
-  .onChange(async val=>{cfg[key]=val;await plugin.saveSettings();writerV12FocusRefresh(plugin);}));
- new Setting(panel).setName(writerUi('Limite de notas na busca por tarefas','Task scan note limit'))
-  .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.maxTaskFiles).setDynamicTooltip()
-   .onChange(async val=>{cfg.maxTaskFiles=val;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Central de integrações','Integration center'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin)));
- new Setting(panel).setName(writerUi('Central de sincronização','Synchronization center'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin,'sync')));
-}
+

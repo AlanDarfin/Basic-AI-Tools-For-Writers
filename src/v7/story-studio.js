@@ -43,14 +43,7 @@ function writerV7StudioKind(entry,templates){
  const explicit=String(fm.worldType||fm.type||'').trim().toLowerCase();
  return templates.find(t=>t.id===explicit||tags.some(tag=>tag==='#'+t.tag||tag.startsWith('#'+t.tag+'/')))||null;
 }
-function writerV7StudioFields(entry,template){
- const fm=entry.cache?.frontmatter||{};
- const keys=[...new Set([...(template?.fields||[]),'status','pov'])];
- return keys.filter(key=>fm[key]!==undefined&&fm[key]!==null&&fm[key]!=='').map(key=>({
-  key,label:writerUi(...(WRITER_V7_FIELD_LABELS[key]||[key,key])),
-  text:Array.isArray(fm[key])?fm[key].map(String).join(', '):typeof fm[key]==='object'?JSON.stringify(fm[key]):String(fm[key])
- }));
-}
+
 function writerV7StudioImage(app,entry){
  const fm=entry.cache?.frontmatter||{};
  let raw=fm.avatar||fm.cover||fm.portrait||fm.image;
@@ -229,15 +222,7 @@ function writerV7StudioScenes(view,project){
 function writerV7StudioRenderBoard(view,panel,project){
  return writerV7RCRenderBoard(view,panel,project);
 }
-function writerV7StudioSafeMap(m){
- if(!m||typeof m!=='object'||typeof m.image!=='string')return null;
- return {id:String(m.id||''),title:String(m.title||'').slice(0,100),
- image:m.image.slice(0,400),markers:Array.isArray(m.markers)?m.markers.slice(0,400)
-  .filter(x=>x&&typeof x.note==='string').map(x=>({
-   note:x.note.slice(0,400),x:Math.max(0,Math.min(100,Number(x.x)||0)),
-   y:Math.max(0,Math.min(100,Number(x.y)||0))
-  })):[]};
-}
+
 function writerV7StudioImageFile(app,path){
  const file=app.vault.getAbstractFileByPath(path);
  return file instanceof TFile&&/^(png|jpe?g|webp|gif|avif)$/i.test(file.extension)?file:null;

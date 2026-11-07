@@ -11,9 +11,9 @@ body.writer-v1201-zen .workspace-leaf-content[data-type="markdown"]{
 }
 body .writer-v1201-zen-exit{
  position:fixed;z-index:999;inset:auto 16px max(64px,env(safe-area-inset-bottom)) auto;
- min-height:36px;padding:8px 13px;border-radius:var(--radius-m);
- background:var(--interactive-accent);color:var(--text-on-accent);
- border:1px solid var(--background-modifier-border);
+ min-height:36px;padding:8px 13px;border-radius:var(--basic-ui-radius,var(--radius-m));
+ background:var(--basic-ui-accent,var(--interactive-accent));color:var(--text-on-accent);
+ border:1px solid var(--basic-ui-border,var(--background-modifier-border));
  box-shadow:var(--shadow-s);cursor:pointer;
 }
 body.is-mobile .writer-v1201-zen-exit{

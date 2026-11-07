@@ -215,34 +215,71 @@ function writerV10RegisterToolbox(plugin){
  }
 
 }
+/**
+ * Basic-owned command selector. This does not re-order Obsidian's native palette;
+ * it improves Basic's command binding workflow and preserves custom command IDs.
+ */
 function writerV1044CommandPicker(plugin,selected){
  const modal=new Modal(plugin.app);
+ modal.modalEl?.classList.add('writer-v13-command-dialog');
  modal.setTitle(writerUi('Escolher comando','Choose command'));
  const root=modal.contentEl;
- const input=root.createEl('input',{attr:{type:'search',
-  placeholder:writerUi('Buscar comando…','Search commands…'),
-  'aria-label':writerUi('Buscar comando','Search command')}});
- const list=root.createDiv({cls:'writer-v1044-command-options'});
- const commands=Object.entries(plugin.app.commands?.commands||{})
-  .filter(([id,entry])=>entry?.name&&typeof id==='string')
-  .map(([id,entry])=>({id,name:String(entry.name)}))
-  .sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
- const render=()=>{
-  list.empty();
-  const q=input.value.trim().toLocaleLowerCase();
-  const matches=commands.filter(c=>!q||c.name.toLocaleLowerCase().includes(q)||c.id.toLowerCase().includes(q)).slice(0,70);
-  if(!matches.length)list.createEl('p',{text:writerUi('Nenhum comando encontrado.','No matching commands.')});
-  for(const c of matches){
-   const button=list.createEl('button',{cls:'writer-v1044-command-option',attr:{type:'button'}});
-   button.createEl('span',{text:c.name});
-   button.createEl('small',{text:c.id});
-   button.addEventListener('click',()=>{selected(c.id,c.name);modal.close();});
+ const input=root.createEl('input',{cls:'writer-v13-command-search',attr:{type:'search',
+  placeholder:writerUi('Buscar por nome ou ID…','Search by name or ID…'),
+  'aria-label':writerUi('Buscar comando','Search commands'),
+  'aria-autocomplete':'list'}});
+ const count=root.createEl('p',{cls:'writer-v13-command-count',attr:{'aria-live':'polite'}});
+ const list=root.createDiv({cls:'writer-v1044-command-options',attr:{role:'listbox',
+  'aria-label':writerUi('Resultados de comandos','Command results')}});
+ const commands=writerV13CommandCatalog(plugin);
+ let visible=[],active=0;
+ const choose=command=>{
+  if(!command)return;
+  selected(command.id,command.name);modal.close();
+ };
+ const updateActive=scroll=>{
+  const buttons=Array.from(list.querySelectorAll('button.writer-v1044-command-option'));
+  for(let index=0;index<buttons.length;index++){
+   const chosen=index===active;
+   buttons[index].classList.toggle('is-active',chosen);
+   buttons[index].setAttribute('aria-selected',String(chosen));
   }
+  if(scroll)buttons[active]?.scrollIntoView?.({block:'nearest'});
+ };
+ const render=()=>{
+  list.empty();active=0;
+  const query=input.value.trim();
+  visible=writerV13RankCommands(commands,query,70);
+  count.setText(visible.length+' '+writerUi('comandos encontrados','commands found'));
+  if(!visible.length){
+   list.createEl('p',{cls:'writer-v13-command-empty',
+    text:writerUi('Nenhum comando encontrado.','No matching commands.')});
+   return;
+  }
+  for(const [index,command] of visible.entries()){
+   const button=list.createEl('button',{cls:'writer-v1044-command-option',
+    attr:{type:'button',role:'option','aria-selected':String(index===0)}});
+   button.createEl('span',{text:command.name});
+   button.createEl('small',{text:command.id});
+   button.addEventListener('mouseenter',()=>{active=index;updateActive(false);});
+   button.addEventListener('click',()=>choose(command));
+  }
+  updateActive(false);
  };
  input.addEventListener('input',render);
- // Text field covers commands not yet registered in app.commands.
+ input.addEventListener('keydown',event=>{
+  const key=event.key;
+  if(!['ArrowDown','ArrowUp','Home','End','Enter'].includes(key))return;
+  if(event.altKey||event.ctrlKey||event.metaKey||!visible.length)return;
+  event.preventDefault();
+  if(key==='Enter'){choose(visible[active]);return;}
+  active=key==='Home'?0:key==='End'?visible.length-1:
+   (active+(key==='ArrowDown'?1:-1)+visible.length)%visible.length;
+  updateActive(true);
+ });
+ // Preserve support for commands not yet registered in the application.
  const custom=new Setting(root).setName(writerUi('ID de comando personalizado','Custom command ID'))
-  .addText(field=>field.setPlaceholder('app:open-command-palette').onChange(()=>{}))
+  .addText(field=>field.setPlaceholder('app:open-command-palette'))
   .addButton(button=>button.setButtonText(writerUi('Usar ID','Use ID')).onClick(()=>{
    const id=custom.controlEl.querySelector('input')?.value.trim()||'';
    if(!/^[\w.:-]{1,200}$/.test(id))return;

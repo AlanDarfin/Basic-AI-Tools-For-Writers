@@ -333,7 +333,7 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
   });
  }
  const daily=new Map(days.map(d=>[d,rows.filter(e=>e.occurs===d)]));
- const allDay=board.createDiv({cls:'writer-v9-calendar-all-day-label',text:writerUi('Dia inteiro','All day')});
+ board.createDiv({cls:'writer-v9-calendar-all-day-label',text:writerUi('Dia inteiro','All day')});
  for(const day of days){
   const all=board.createDiv({cls:'writer-v9-calendar-time-slot is-all-day'});
   for(const event of daily.get(day).filter(e=>!e.time))writerV9CalendarEntry(view,all,event,true);

@@ -545,20 +545,9 @@ function writerV9RegisterToolbar(plugin){
   }});
 }
 function writerV1048ToolbarCommandPicker(plugin,onChoose){
- const candidates=plugin.app.commands?.listCommands?.()||
-  Object.entries(plugin.app.commands?.commands||{}).map(([id,cmd])=>({id,name:cmd.name||id}));
- const items=candidates.filter(c=>typeof c?.id==='string'&&c.id&&c.name)
-  .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
- if(typeof FuzzySuggestModal!=='undefined'){
-  class Picker extends FuzzySuggestModal{
-   getItems(){return items;}
-   getItemText(item){return item.name+' · '+item.id;}
-   onChooseItem(item){onChoose(item);}
-  }
-  new Picker(plugin.app).open();
- }else{
-  new Notice(writerUi('A paleta de comandos não está disponível.','The command picker is not available.'));
- }
+ // v13: the formatter and shortcut editor use the same accessible, ranked picker.
+ // The command ID callback contract stays unchanged.
+ return writerV1044CommandPicker(plugin,(id,name)=>onChoose({id,name}));
 }
 function writerV9ToolbarSettings(plugin,panel){
  const settings=plugin.settings.v9Toolbar;

@@ -37,12 +37,20 @@ function writerV95TimelineConfigOption(cfg,key,value){
  else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Number(val)||80));
  else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Number(val)||30));
 }
+// Normalize legacy <br>, <br/> and malformed </br> in headings.
+// Preserve valid HTML <br> within Markdown content, rewriting only malformed
+// closing </br> into a Markdown hard break. Never evaluate title/date as HTML.
+function writerV95TimelineNormalizeBreaks(value,markdown=false){
+ const input=String(value==null?'':value).replace(/\r\n?/g,'\n');
+ return markdown?input.replace(/[ \t]*<\s*\/\s*br\s*>[ \t]*/gi,'  \n'):
+  input.replace(/<\s*\/?\s*br\s*\/?\s*>/gi,'\n');
+}
 function writerV95TimelineCleanEvent(raw){
  const e=raw||{};
  const result={
-  date:String(e.date||e.time||'').replace(/<\/?br\s*\/?>/gi,'\n').trim().slice(0,120),
-  title:String(e.title||'').trim().slice(0,200),
-  content:String(e.content||'').trim().slice(0,8000),
+  date:writerV95TimelineNormalizeBreaks(e.date||e.time||'').trim().slice(0,120),
+  title:writerV95TimelineNormalizeBreaks(e.title||'').trim().slice(0,200),
+  content:writerV95TimelineNormalizeBreaks(e.content||'',true).trim().slice(0,8000),
   image:String(e.image||'').trim().slice(0,400),
   icon:String(e.icon||'').trim().slice(0,45),
   color:/^#[0-9a-f]{6}$/i.test(String(e.color||''))?String(e.color):'',
@@ -270,6 +278,8 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     try{if(require('obsidian').getIcon?.(event.icon))require('obsidian').setIcon(marker,event.icon);}catch(_){}
    }
    const info=card.createDiv({cls:'writer-v95-timeline-event-body'});
+   if(!event.content&&!event.group&&!event.era&&!event.after&&!event.image&&!event.link)
+    info.classList.add('is-heading-only');
    const head=info.createDiv({cls:'writer-v95-timeline-head'});
    if(event.date)head.createSpan({cls:'writer-v95-timeline-date',text:event.date});
    if(event.title)head.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});

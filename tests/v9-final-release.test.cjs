@@ -14,8 +14,8 @@ test('v1 Markdown dictionary headings and separators still parse after historica
  assert.match(entries[0].markdown,/Uma descrição/);
  assert.equal(entries[1].word,'Abelhas');
 });
-test('all v9 settings appear under distinct Customization tabs rather than General',()=>{
- assert.match(main,/\['customize',msg\('Personalização','Customization'\)/);
+test('all historical settings remain outside General in the v13 category hierarchy',()=>{
+ assert.match(main,/\['customize',msg\('Interface e personalização','Interface & appearance'\)/);
  for(const key of ['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar']){
   assert.match(main,new RegExp("id==='"+key+"'"),key);
  }

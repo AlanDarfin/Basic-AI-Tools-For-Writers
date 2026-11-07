@@ -2,7 +2,6 @@
 /* v9.2.0 native explorer enhancements, inspired by Favorite Note and File Preview.
  * Reuses Basic's homepage favorites; never changes note content to mark a favorite.
  * Folder descriptions are read from the folder note's YAML frontmatter. */
-const WRITER_V92_FAVORITE_ICONS=['star','heart','bookmark','sparkles','pin','flag','award','gem','flower-2','sun'];
 function writerV92ExplorerMerge(settings){
  const old=settings.v92Explorer&&typeof settings.v92Explorer==='object'?settings.v92Explorer:{};
  const cfg=settings.v92Explorer={

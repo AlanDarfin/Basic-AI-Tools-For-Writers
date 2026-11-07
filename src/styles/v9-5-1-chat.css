@@ -22,8 +22,8 @@
  flex:0 0 42px;
  border-radius:50%;
  object-fit:cover;
- background:var(--background-secondary);
- border:1px solid var(--background-modifier-border);
+ background:var(--basic-ui-surface,var(--background-secondary));
+ border:1px solid var(--basic-ui-border,var(--background-modifier-border));
 }
 .writer-v8-chat .writer-v8-chat-divider{
  display:flex;
@@ -32,7 +32,7 @@
  width:100%;
  min-width:0;
  margin:3px 0;
- color:var(--text-muted);
+ color:var(--basic-ui-muted,var(--text-muted));
  font-size:var(--font-ui-smaller);
  line-height:1.4;
  text-align:center;
@@ -44,7 +44,7 @@
  flex:1 1 0;
  min-width:8px;
  height:1px;
- background:var(--background-modifier-border);
+ background:var(--basic-ui-border,var(--background-modifier-border));
 }
 .writer-v8-chat .writer-v8-chat-divider:not(.is-labeled)::after{
  display:none;

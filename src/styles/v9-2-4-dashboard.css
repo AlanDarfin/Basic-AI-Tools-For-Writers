@@ -9,8 +9,8 @@
 .writer-v924-masonry .writer-v924-drag-handle{cursor:grab;touch-action:auto;}
 .writer-v924-masonry .writer-v924-drag-handle:active{cursor:grabbing;}
 .writer-v924-masonry .writer-v924-dragging{opacity:.52;}
-.writer-v924-masonry .writer-v924-drop-before{outline:2px solid var(--interactive-accent);outline-offset:2px;border-top:3px solid var(--interactive-accent);}
-.writer-v924-masonry .writer-v924-drop-after{outline:2px solid var(--interactive-accent);outline-offset:2px;border-bottom:3px solid var(--interactive-accent);}
+.writer-v924-masonry .writer-v924-drop-before{outline:2px solid var(--basic-ui-accent,var(--interactive-accent));outline-offset:2px;border-top:3px solid var(--basic-ui-accent,var(--interactive-accent));}
+.writer-v924-masonry .writer-v924-drop-after{outline:2px solid var(--basic-ui-accent,var(--interactive-accent));outline-offset:2px;border-bottom:3px solid var(--basic-ui-accent,var(--interactive-accent));}
 .writer-v924-masonry .writer-v924-widget-menu{cursor:pointer;}
 @media(max-width:720px){
  .writer-v8-home .writer-v8-home-grid.writer-v924-masonry{flex-direction:column;gap:10px;}

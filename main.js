@@ -1252,11 +1252,7 @@ function meaningfulGrammarMatch(source,match){
  if(category==='TYPOGRAPHY'&&/^\s+$/.test(text))return false;
  return true;
 }
-function withoutFrontmatter(text){
- const match=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(text);
- if(!match)return text;
- return ' '.repeat(match[0].length).replace(/ /g,(c,i)=>text[i]==='\n'?'\n':text[i]==='\r'?'\r':c)+text.slice(match[0].length);
-}
+
 const msg=(pt,en)=>getLocale()==='pt'?pt:en;
 const DEFAULTS = {dictionaryFileName:'Dicionario.md', onlineMode:'ask', importMode:'confirm', ignoreAccents:true, onlineLanguage:'pt', historyEnabled:false,provider:'openai',yomitanDictionaries:[],aiKeys:{},aiModels:{},customEndpoint:'',customHeaders:'',translationProvider:'openai',translationKeys:{},translationEndpoint:'',sourceLanguage:'auto',targetLanguage:'pt',detectionMode:'translate',writerContext:'',ollamaEndpoint:'http://127.0.0.1:11434/v1/chat/completions',prompts:{},assistantProvider:'',assistantModel:'',assistantTemperature:0.7,assistantSendTemperature:true,assistantPrompt:'',reviewLanguage:'pt-BR',reviewEndpoint:'https://api.languagetool.org/v2/check',reviewApiKey:'',reviewProfile:'',reviewMode:'grammar',reviewStylePrompt:'',reviewBetaPrompt:'',reviewExplainPrompt:'',reviewProvider:'',reviewModel:'',reviewMaxChars:14000,reviewIgnoreWhitespace:true,reviewIgnoreRules:'',reviewCustomWords:[],reviewAutoOpenNote:true,reviewPopupEnabled:true};
 const normalize = (s, accents=true) => (accents ? s.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : s).toLocaleLowerCase().trim();
@@ -13367,20 +13363,9 @@ function writerV9RegisterToolbar(plugin){
   }});
 }
 function writerV1048ToolbarCommandPicker(plugin,onChoose){
- const candidates=plugin.app.commands?.listCommands?.()||
-  Object.entries(plugin.app.commands?.commands||{}).map(([id,cmd])=>({id,name:cmd.name||id}));
- const items=candidates.filter(c=>typeof c?.id==='string'&&c.id&&c.name)
-  .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
- if(typeof FuzzySuggestModal!=='undefined'){
-  class Picker extends FuzzySuggestModal{
-   getItems(){return items;}
-   getItemText(item){return item.name+' · '+item.id;}
-   onChooseItem(item){onChoose(item);}
-  }
-  new Picker(plugin.app).open();
- }else{
-  new Notice(writerUi('A paleta de comandos não está disponível.','The command picker is not available.'));
- }
+ // v13: the formatter and shortcut editor use the same accessible, ranked picker.
+ // The command ID callback contract stays unchanged.
+ return writerV1044CommandPicker(plugin,(id,name)=>onChoose({id,name}));
 }
 function writerV9ToolbarSettings(plugin,panel){
  const settings=plugin.settings.v9Toolbar;
@@ -13622,7 +13607,6 @@ function writerV9ToolbarSettings(plugin,panel){
 /* v9: Make.md-inspired file organization in the native Obsidian File Explorer.
  * Original implementation; no Make.md source code or replacement sidebar. */
 const WRITER_V9_EXPLORER_ICONS=['file','file-text','folder','folder-open','book-open','book','notebook-pen','library','feather','pen-line','star','heart','bookmark','pin','house','briefcase','archive','box','layers','layout-grid','list','calendar','calendar-days','clock','list-check','check-circle','graduation-cap','lightbulb','brain','sparkles','wand-sparkles','image','images','music','video','film','globe','link','code','terminal','settings','user','users','message-circle','tag','hash','flag','map','compass','leaf','sun','moon-star','cloud','rocket','palette','flower-2'];
-const WRITER_V9_EXPLORER_COLORS=['','#e35d6a','#dc9b30','#60a47c','#579ec2','#9b79c5','#d378aa'];
 function writerV9ExplorerMerge(settings){
  const cfg=settings.v9Explorer={...{enabled:true,showIcons:true,showTitleIcons:true,showColor:true,items:{},maxResults:100},
   ...(settings.v9Explorer&&typeof settings.v9Explorer==='object'?settings.v9Explorer:{})};
@@ -14656,6 +14640,7 @@ function writerV9SpacesSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Abrir e organizar coleções','Open and manage collections'))
   .addButton(button=>button.setButtonText(writerUi('Abrir Spaces','Open Spaces')).onClick(()=>writerV9SpaceModal(plugin)));
 }
+
 // v3 module: src/v9/spaces-dock.js
 /* A compact Make-inspired Space switcher. Mobile uses the persistent native
  * drawer tab bar as the anchor; desktop keeps the explorer footer. */
@@ -15605,7 +15590,7 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
   });
  }
  const daily=new Map(days.map(d=>[d,rows.filter(e=>e.occurs===d)]));
- const allDay=board.createDiv({cls:'writer-v9-calendar-all-day-label',text:writerUi('Dia inteiro','All day')});
+ board.createDiv({cls:'writer-v9-calendar-all-day-label',text:writerUi('Dia inteiro','All day')});
  for(const day of days){
   const all=board.createDiv({cls:'writer-v9-calendar-time-slot is-all-day'});
   for(const event of daily.get(day).filter(e=>!e.time))writerV9CalendarEntry(view,all,event,true);
@@ -17942,7 +17927,6 @@ function writerV912VirtualRegister(plugin){
 /* v9.2.0 native explorer enhancements, inspired by Favorite Note and File Preview.
  * Reuses Basic's homepage favorites; never changes note content to mark a favorite.
  * Folder descriptions are read from the folder note's YAML frontmatter. */
-const WRITER_V92_FAVORITE_ICONS=['star','heart','bookmark','sparkles','pin','flag','award','gem','flower-2','sun'];
 function writerV92ExplorerMerge(settings){
  const old=settings.v92Explorer&&typeof settings.v92Explorer==='object'?settings.v92Explorer:{};
  const cfg=settings.v92Explorer={
@@ -20138,12 +20122,20 @@ function writerV95TimelineConfigOption(cfg,key,value){
  else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Number(val)||80));
  else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Number(val)||30));
 }
+// Normalize legacy <br>, <br/> and malformed </br> in headings.
+// Preserve valid HTML <br> within Markdown content, rewriting only malformed
+// closing </br> into a Markdown hard break. Never evaluate title/date as HTML.
+function writerV95TimelineNormalizeBreaks(value,markdown=false){
+ const input=String(value==null?'':value).replace(/\r\n?/g,'\n');
+ return markdown?input.replace(/[ \t]*<\s*\/\s*br\s*>[ \t]*/gi,'  \n'):
+  input.replace(/<\s*\/?\s*br\s*\/?\s*>/gi,'\n');
+}
 function writerV95TimelineCleanEvent(raw){
  const e=raw||{};
  const result={
-  date:String(e.date||e.time||'').replace(/<\/?br\s*\/?>/gi,'\n').trim().slice(0,120),
-  title:String(e.title||'').trim().slice(0,200),
-  content:String(e.content||'').trim().slice(0,8000),
+  date:writerV95TimelineNormalizeBreaks(e.date||e.time||'').trim().slice(0,120),
+  title:writerV95TimelineNormalizeBreaks(e.title||'').trim().slice(0,200),
+  content:writerV95TimelineNormalizeBreaks(e.content||'',true).trim().slice(0,8000),
   image:String(e.image||'').trim().slice(0,400),
   icon:String(e.icon||'').trim().slice(0,45),
   color:/^#[0-9a-f]{6}$/i.test(String(e.color||''))?String(e.color):'',
@@ -20371,6 +20363,8 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     try{if(require('obsidian').getIcon?.(event.icon))require('obsidian').setIcon(marker,event.icon);}catch(_){}
    }
    const info=card.createDiv({cls:'writer-v95-timeline-event-body'});
+   if(!event.content&&!event.group&&!event.era&&!event.after&&!event.image&&!event.link)
+    info.classList.add('is-heading-only');
    const head=info.createDiv({cls:'writer-v95-timeline-head'});
    if(event.date)head.createSpan({cls:'writer-v95-timeline-date',text:event.date});
    if(event.title)head.createEl('strong',{cls:'writer-v95-timeline-title',text:event.title});
@@ -20936,34 +20930,71 @@ function writerV10RegisterToolbox(plugin){
  }
 
 }
+/**
+ * Basic-owned command selector. This does not re-order Obsidian's native palette;
+ * it improves Basic's command binding workflow and preserves custom command IDs.
+ */
 function writerV1044CommandPicker(plugin,selected){
  const modal=new Modal(plugin.app);
+ modal.modalEl?.classList.add('writer-v13-command-dialog');
  modal.setTitle(writerUi('Escolher comando','Choose command'));
  const root=modal.contentEl;
- const input=root.createEl('input',{attr:{type:'search',
-  placeholder:writerUi('Buscar comando…','Search commands…'),
-  'aria-label':writerUi('Buscar comando','Search command')}});
- const list=root.createDiv({cls:'writer-v1044-command-options'});
- const commands=Object.entries(plugin.app.commands?.commands||{})
-  .filter(([id,entry])=>entry?.name&&typeof id==='string')
-  .map(([id,entry])=>({id,name:String(entry.name)}))
-  .sort((a,b)=>a.name.localeCompare(b.name,undefined,{sensitivity:'base'}));
- const render=()=>{
-  list.empty();
-  const q=input.value.trim().toLocaleLowerCase();
-  const matches=commands.filter(c=>!q||c.name.toLocaleLowerCase().includes(q)||c.id.toLowerCase().includes(q)).slice(0,70);
-  if(!matches.length)list.createEl('p',{text:writerUi('Nenhum comando encontrado.','No matching commands.')});
-  for(const c of matches){
-   const button=list.createEl('button',{cls:'writer-v1044-command-option',attr:{type:'button'}});
-   button.createEl('span',{text:c.name});
-   button.createEl('small',{text:c.id});
-   button.addEventListener('click',()=>{selected(c.id,c.name);modal.close();});
+ const input=root.createEl('input',{cls:'writer-v13-command-search',attr:{type:'search',
+  placeholder:writerUi('Buscar por nome ou ID…','Search by name or ID…'),
+  'aria-label':writerUi('Buscar comando','Search commands'),
+  'aria-autocomplete':'list'}});
+ const count=root.createEl('p',{cls:'writer-v13-command-count',attr:{'aria-live':'polite'}});
+ const list=root.createDiv({cls:'writer-v1044-command-options',attr:{role:'listbox',
+  'aria-label':writerUi('Resultados de comandos','Command results')}});
+ const commands=writerV13CommandCatalog(plugin);
+ let visible=[],active=0;
+ const choose=command=>{
+  if(!command)return;
+  selected(command.id,command.name);modal.close();
+ };
+ const updateActive=scroll=>{
+  const buttons=Array.from(list.querySelectorAll('button.writer-v1044-command-option'));
+  for(let index=0;index<buttons.length;index++){
+   const chosen=index===active;
+   buttons[index].classList.toggle('is-active',chosen);
+   buttons[index].setAttribute('aria-selected',String(chosen));
   }
+  if(scroll)buttons[active]?.scrollIntoView?.({block:'nearest'});
+ };
+ const render=()=>{
+  list.empty();active=0;
+  const query=input.value.trim();
+  visible=writerV13RankCommands(commands,query,70);
+  count.setText(visible.length+' '+writerUi('comandos encontrados','commands found'));
+  if(!visible.length){
+   list.createEl('p',{cls:'writer-v13-command-empty',
+    text:writerUi('Nenhum comando encontrado.','No matching commands.')});
+   return;
+  }
+  for(const [index,command] of visible.entries()){
+   const button=list.createEl('button',{cls:'writer-v1044-command-option',
+    attr:{type:'button',role:'option','aria-selected':String(index===0)}});
+   button.createEl('span',{text:command.name});
+   button.createEl('small',{text:command.id});
+   button.addEventListener('mouseenter',()=>{active=index;updateActive(false);});
+   button.addEventListener('click',()=>choose(command));
+  }
+  updateActive(false);
  };
  input.addEventListener('input',render);
- // Text field covers commands not yet registered in app.commands.
+ input.addEventListener('keydown',event=>{
+  const key=event.key;
+  if(!['ArrowDown','ArrowUp','Home','End','Enter'].includes(key))return;
+  if(event.altKey||event.ctrlKey||event.metaKey||!visible.length)return;
+  event.preventDefault();
+  if(key==='Enter'){choose(visible[active]);return;}
+  active=key==='Home'?0:key==='End'?visible.length-1:
+   (active+(key==='ArrowDown'?1:-1)+visible.length)%visible.length;
+  updateActive(true);
+ });
+ // Preserve support for commands not yet registered in the application.
  const custom=new Setting(root).setName(writerUi('ID de comando personalizado','Custom command ID'))
-  .addText(field=>field.setPlaceholder('app:open-command-palette').onChange(()=>{}))
+  .addText(field=>field.setPlaceholder('app:open-command-palette'))
   .addButton(button=>button.setButtonText(writerUi('Usar ID','Use ID')).onClick(()=>{
    const id=custom.controlEl.querySelector('input')?.value.trim()||'';
    if(!/^[\w.:-]{1,200}$/.test(id))return;
@@ -27550,6 +27581,92 @@ function writerV1201SettingsSuite(plugin,panel,id){
  }
 }
 
+// v3 module: src/v13/ui-foundation.js
+/**
+ * Basic v13 UI foundation. Shared, deterministic helpers only.
+ * Never registers/replaces Obsidian commands, removes old settings, or writes data.
+ *
+ * Example: writerV13RankCommands(writerV13CommandCatalog(plugin), 'format bold');
+ * Example: writerV13BindSettingsTabs(nav, subnav);
+ */
+function writerV13SearchText(value){
+ return String(value==null?'':value).normalize('NFD')
+  .replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().trim();
+}
+function writerV13CommandCatalog(plugin){
+ const registry=plugin?.app?.commands;
+ const items=[];
+ const used=new Set();
+ const add=(item,id)=>{
+  const key=String(item?.id||id||'').trim();
+  const name=String(item?.name||'').trim();
+  if(!key||!name||used.has(key))return;
+  used.add(key);items.push({id:key,name});
+ };
+ const list=registry?.listCommands?.();
+ if(Array.isArray(list))for(const item of list)add(item);
+ for(const [id,item] of Object.entries(registry?.commands||{}))add(item,id);
+ return items;
+}
+function writerV13CommandScore(command,query){
+ const name=writerV13SearchText(command?.name);
+ const id=writerV13SearchText(command?.id);
+ const search=writerV13SearchText(query);
+ if(!search)return id.startsWith('basic-ai-tool-for-writers:')?10:0;
+ const pieces=search.split(/\s+/).filter(Boolean);
+ let score=0;
+ for(const term of pieces){
+  const nameIndex=name.indexOf(term);
+  const idIndex=id.indexOf(term);
+  if(nameIndex<0&&idIndex<0)return -1;
+  if(name===term||id===term)score+=1000;
+  else if(name.startsWith(term))score+=450;
+  else if(nameIndex>=0&&(nameIndex===0||/[\s:./-]/.test(name[nameIndex-1])))score+=240;
+  else if(nameIndex>=0)score+=120;
+  else if(id.startsWith(term))score+=80;
+  else score+=30;
+ }
+ if(name===search)score+=500;
+ if(id.startsWith('basic-ai-tool-for-writers:'))score+=8;
+ return score;
+}
+function writerV13RankCommands(commands,query,limit=70){
+ const max=Math.max(1,Math.min(500,Math.trunc(Number(limit)||70)));
+ const text=writerV13SearchText(query);
+ return (Array.isArray(commands)?commands:[])
+  .map(command=>({command,score:writerV13CommandScore(command,text)}))
+  .filter(item=>item.score>=0)
+  .sort((a,b)=>b.score-a.score||
+   String(a.command.name).localeCompare(String(b.command.name),undefined,{sensitivity:'base'})||
+   String(a.command.id).localeCompare(String(b.command.id)))
+  .slice(0,max).map(item=>item.command);
+}
+function writerV13BindSettingsTabs(nav,subnav){
+ const bind=(strip,label)=>{
+  if(!strip||strip.dataset.basicV13Keyboard==='1')return;
+  strip.dataset.basicV13Keyboard='1';
+  strip.setAttribute('role','tablist');
+  strip.setAttribute('aria-label',label);
+  strip.addEventListener('keydown',event=>{
+   if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;
+   if(event.altKey||event.ctrlKey||event.metaKey)return;
+   const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
+   if(!tabs.length)return;
+   let current=tabs.indexOf(event.target.closest?.('button[role="tab"]'));
+   if(current<0)current=tabs.findIndex(tab=>tab.getAttribute('aria-selected')==='true');
+   if(current<0)current=0;
+   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+    (current+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+   event.preventDefault();
+   tabs[next].focus();
+   tabs[next].click();
+  });
+ };
+ const label=(pt,en)=>typeof writerUi==='function'?writerUi(pt,en):en;
+ bind(nav,label('Categorias de configurações','Settings categories'));
+ bind(subnav,label('Seções de configurações','Settings sections'));
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
@@ -27977,7 +28094,7 @@ class DictionarySettings extends PluginSettingTab{
   this.settingsSubtabsScrollLeft=this.settingsSubtabsScrollLeft||Object.create(null);
   if(previousSubnav?.dataset.group)
    this.settingsSubtabsScrollLeft[previousSubnav.dataset.group]=previousSubnav.scrollLeft;
-  el.empty();el.createEl('h2',{text:t('settings')});
+  el.empty();el.classList.add('writer-v13-settings');el.createEl('h2',{text:t('settings')});
   const nav=el.createDiv({cls:'dictionary-settings-tabs'});
   const subnav=el.createDiv({cls:'dictionary-settings-subtabs'});
   const bindHorizontalWheel=row=>row.addEventListener('wheel',event=>{
@@ -28072,14 +28189,15 @@ class DictionarySettings extends PluginSettingTab{
    :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
   const groups=[
    ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Personalização','Customization'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','research']],
-   ['workflow',msg('Organização e Spaces','Organization & Spaces'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
-   ['writing',msg('Escrita e Markdown','Writing & Markdown'),['complements','variants','integrationsV4','writingWidgets','keyshots','typing','clickClack','v6Linter','cursor','abbreviations','anotherName','viewMode','extendedSyntax','pandocSyntax','v6Markdown','smartInsert','templates','unicode','toc']],
+   ['customize',msg('Interface e personalização','Interface & appearance'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','writingWidgets']],
+   ['workflow',msg('Organização e produtividade','Organization & productivity'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
+   ['writing',msg('Escrita e edição','Writing & editing'),['complements','variants','keyshots','typing','clickClack','cursor','abbreviations','anotherName','viewMode','smartInsert','templates']],
+   ['markdown',msg('Markdown e extensões','Markdown & extensions'),['extendedSyntax','pandocSyntax','v6Markdown','v6Linter','unicode','toc','integrationsV4']],
    ['longform',msg('Longform e livros','Longform & books'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
-   ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']],
-   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading']]
+   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading','research']],
+   ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']]
   ];
-  const groupIcons={general:'settings-2',customize:'palette',workflow:'layers-3',writing:'pen-line',longform:'book-open',toolkit:'blocks',suites:'layers',ai:'brain-circuit',review:'spell-check'};
+  const groupIcons={general:'settings-2',customize:'palette',workflow:'layers-3',writing:'pen-line',longform:'book-open',toolkit:'blocks',suites:'layers',ai:'brain-circuit',review:'spell-check',markdown:'file-code'};
   const sectionIcons={
    general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
    homepage:'house',soundscapes:'headphones',v10Bookshelf:'library-big',v10Tools:'file-pen-line',writingWidgets:'columns-3',research:'book-marked',sessionDrafts:'notebook-pen',v9Pomodoro:'timer',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
@@ -28338,6 +28456,7 @@ class DictionarySettings extends PluginSettingTab{
    });
   }
   nav.setAttribute('role','tablist');
+  writerV13BindSettingsTabs(nav,subnav);
   // Buttons must exist before setting scrollLeft; otherwise it clamps to zero.
   nav.scrollLeft=Math.max(0,this.settingsTabsScrollLeft||0);
   showTab(this.plugin.settingsTabV4Hint?'writingProfiles':(this.activeSettingsTab||'general'));

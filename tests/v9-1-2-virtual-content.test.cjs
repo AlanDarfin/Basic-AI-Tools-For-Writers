@@ -37,7 +37,7 @@ const rule=(obj={})=>api.writerV912VirtualRule({name:'Example',conditions:[{type
 test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and documentation agree',()=>{
  const manifest=JSON.parse(read('manifest.json')),pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json')),versions=JSON.parse(read('versions.json'));
  for(const x of [pkg.version,lock.version,lock.packages[''].version])assert.equal(x,manifest.version);
- assert.match(manifest.version,/^(?:9|[1-9]\d)\.[0-9]+\.[0-9]+$/);
+ assert.match(manifest.version,/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/);
  assert.equal(versions[manifest.version],'1.11.4');
  const main=read('main.js');
  assert.match(main,/\/\/ v3 module: src\/v9\/virtual-content\.js/);

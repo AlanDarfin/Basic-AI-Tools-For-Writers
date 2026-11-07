@@ -85,28 +85,28 @@ test('Dragger falls back gracefully if setIcon is not available in older Obsidia
  env.cleanup.forEach(fn=>fn());
 });
 
-test('Dragger does not create a handle, commands or listeners on Obsidian mobile',()=>{
+test('Android long-press support keeps the grip hidden and does not cover buttons',()=>{
  const env=makeRuntime();
  env.obsidian.Platform.isMobile=true;
  const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
- assert.equal(env.doc.body.children.length,0,'no overlay controls on mobile');
- assert.deepEqual(env.icons,[]);
- assert.deepEqual(env.listeners,[],'no editor pointer, long-press or touch listeners');
- assert.deepEqual(env.commands,[],'no unused Dragger commands in mobile palette');
- assert.equal(typeof env.plugin.writerV106DragApplyStyles,'undefined');
- assert.deepEqual(env.cleanup,[]);
- assert.equal(env.plugin.settings.v106Dragger.enabled,true,'desktop preferences are preserved');
+ assert.equal(env.doc.body.children.length,2,'handle and indicator mount hidden');
+ assert.equal(env.doc.body.children[0].style.display,'none');
+ assert.equal(env.doc.body.children[1].style.display,'none');
+ assert.ok(env.listeners.includes('pointerdown'));
+ assert.ok(env.commands.includes('v106-drag-move-block-up'));
+ assert.equal(env.plugin.settings.v106Dragger.mobileLongPress,true);
+ env.cleanup.forEach(fn=>fn());
 });
-
-test('Dragger also skips mobile if app.isMobile is true without Platform.isMobile',()=>{
+test('app.isMobile fallback also protects buttons with a hidden grip',()=>{
  const env=makeRuntime();
  env.plugin.app.isMobile=true;
  const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
- assert.equal(env.doc.body.children.length,0);
- assert.deepEqual(env.listeners,[]);
- assert.deepEqual(env.commands,[]);
+ assert.equal(env.doc.body.children.length,2);
+ assert.equal(env.doc.body.children[0].style.display,'none');
+ assert.ok(env.listeners.includes('pointerdown'));
+ env.cleanup.forEach(fn=>fn());
 });
 
 test('Related-notes/trash icon buttons also resolve setIcon explicitly',()=>{

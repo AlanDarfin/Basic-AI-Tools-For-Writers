@@ -28199,6 +28199,177 @@ function writerMarkCompactSettings(root){
   row.classList.toggle('writer-setting-field',field&&!toggle);
  }
 }
+/* Basic 13.0.1: compact, provider-focused connection and model workspace.
+ * Network operations run only after an explicit click. Existing saved keys and
+ * models are never migrated or removed by this view.
+ */
+function writerV131RenderAISettings(plugin,panel,mode){
+ const cfg=plugin.settings;
+ if(!cfg.aiKeys||typeof cfg.aiKeys!=='object')cfg.aiKeys={};
+ if(!cfg.aiModels||typeof cfg.aiModels!=='object')cfg.aiModels={};
+ const label=(pt,en)=>msg(pt,en);
+ const root=panel.createDiv({cls:'writer-v131-ai-workspace'});
+ root.createEl('p',{cls:'dictionary-muted',text:mode==='models'?
+  label('Selecione um provedor, descubra modelos sob demanda e escolha um modelo sem perder suas configurações anteriores.','Choose a provider, fetch models on demand, and pick one without losing previous settings.'):
+  label('Gerencie chaves, endpoints e testes por provedor. As chaves ficam nos dados locais do plugin sem criptografia.','Manage keys, endpoints, and checks per provider. Keys are stored unencrypted in plugin data.')});
+ const available=AI_PROVIDERS.some(([id])=>id===plugin.writerV131AISelected);
+ const initial=available?plugin.writerV131AISelected:(cfg.assistantProvider||cfg.provider||'openai');
+ let selected=AI_PROVIDERS.some(([id])=>id===initial)?initial:'openai';
+ const selection=new Setting(root).setName(label('Provedor','Provider')).setDesc(label('Escolha qual conexão editar','Choose the connection to edit'));
+ const workspace=root.createDiv({cls:'writer-v131-ai-details'});
+ selection.addDropdown(dropdown=>{
+  for(const [id,name] of AI_PROVIDERS)dropdown.addOption(id,name);
+  dropdown.setValue(selected).onChange(value=>{
+   selected=value;plugin.writerV131AISelected=value;render();
+  });
+ });
+ if(!plugin.writerV131AIModelCache||typeof plugin.writerV131AIModelCache!=='object')
+  plugin.writerV131AIModelCache=Object.create(null);
+ const cache=plugin.writerV131AIModelCache;
+ const modelsDefault={openai:'gpt-4.1-mini',gemini:'gemini-2.5-flash',
+  grok:'grok-3-mini',claude:'claude-sonnet-4-5',custom:'',
+  ollama:'llama3.2',openrouter:'openai/gpt-4o-mini',groqcloud:'llama-3.3-70b-versatile'};
+ const save=()=>plugin.saveSettings();
+ function render(){
+  workspace.empty();
+  const id=selected;
+  const title=AI_PROVIDERS.find(([key])=>key===id)?.[1]||id;
+  const key=String(cfg.aiKeys[id]||'');
+  const credentialsOk=id==='ollama'||id==='custom'||!!key.trim();
+  const heading=workspace.createDiv({cls:'writer-v131-ai-heading'});
+  heading.createEl('h4',{text:title});
+  heading.createSpan({cls:'writer-v131-ai-status',text:credentialsOk?
+   label('Pronto para testar','Ready to test'):label('Chave necessária','API key required')});
+  const feedback=workspace.createDiv({cls:'writer-v131-ai-feedback',attr:{role:'status','aria-live':'polite'}});
+  const notify=(pt,en)=>feedback.setText(label(pt,en));
+  const actions=workspace.createDiv({cls:'writer-v131-ai-actions'});
+  if(mode==='providers'){
+   if(id!=='ollama'){
+    const credential=new Setting(workspace).setName(label('Chave de API','API key'))
+     .setDesc(label('Salva ao sair do campo. Não é enviada durante a digitação.','Saved on leaving the field; not sent while typing.'));
+    let entry;
+    credential.addText(input=>{
+     entry=input.inputEl;entry.type='password';entry.autocomplete='off';entry.spellcheck=false;
+     entry.setAttribute('aria-label',title+' '+label('chave','key'));
+     input.setValue(key);
+     entry.addEventListener('change',async()=>{
+      const next=entry.value.trim(),previous=String(cfg.aiKeys[id]||'');
+      if(next===previous)return;
+      if(!next&&previous&&typeof window!=='undefined'&&
+       !window.confirm(label('Remover a chave salva deste provedor?','Remove the saved key for this provider?'))){
+       entry.value=previous;return;
+      }
+      cfg.aiKeys[id]=next;await save();render();
+     });
+    });
+    credential.addButton(button=>button.setButtonText(label('Mostrar','Show'))
+     .setTooltip(label('Mostrar ou ocultar chave','Toggle key visibility'))
+     .onClick(()=>{
+      const shown=entry.type==='password';entry.type=shown?'text':'password';
+      button.setButtonText(shown?label('Ocultar','Hide'):label('Mostrar','Show'));
+      button.buttonEl.setAttribute('aria-pressed',String(shown));
+     }));
+   }else{
+    workspace.createEl('p',{cls:'dictionary-muted',text:label('Ollama local não exige chave. Configure o endereço abaixo.','Local Ollama does not require an API key. Configure its URL below.')});
+   }
+   if(id==='custom'||id==='ollama'){
+    const field=id==='custom'?'customEndpoint':'ollamaEndpoint';
+    const endpoint=new Setting(workspace).setName(id==='custom'?
+     label('Endpoint compatível com OpenAI (HTTPS)','OpenAI-compatible endpoint (HTTPS)'):
+     label('Endereço do Ollama','Ollama endpoint'));
+    endpoint.addText(input=>{
+     input.setValue(String(cfg[field]||'')).setPlaceholder(id==='custom'?
+      'https://example.com/v1/chat/completions':'http://127.0.0.1:11434/v1/chat/completions');
+     input.inputEl.addEventListener('change',async()=>{
+      const value=input.inputEl.value.trim();
+      if(value){
+       try{
+        const url=new URL(value);
+        if(url.username||url.password||!(url.protocol==='https:'||(id==='ollama'&&url.protocol==='http:')))
+         throw Error('Invalid protocol');
+       }catch(_){notify('URL inválida: use HTTPS (HTTP apenas para Ollama).','Invalid URL: use HTTPS (HTTP only for Ollama).');return;}
+      }
+      cfg[field]=value;await save();notify('Endereço salvo.','Endpoint saved.');
+     });
+    });
+   }
+  }
+  const current=String(cfg.aiModels[id]||'');
+  const modelSetting=new Setting(workspace).setName(label('Modelo ativo','Active model'))
+   .setDesc(label('Identificador exato do modelo; deixe vazio para o padrão.','Exact model ID; leave blank for the provider default.'));
+  let modelInput;
+  modelSetting.addText(input=>{
+   modelInput=input.inputEl;input.setPlaceholder(modelsDefault[id]||label('Identificador do modelo','Model ID'))
+    .setValue(current);
+   modelInput.setAttribute('aria-label',label('Modelo','Model')+' — '+title);
+   modelInput.addEventListener('change',async()=>{
+    cfg.aiModels[id]=modelInput.value.trim();await save();
+    notify('Modelo salvo.','Model saved.');
+   });
+  });
+  const connect=actions.createEl('button',{attr:{type:'button'},text:label('Testar conexão','Test connection')});
+  connect.disabled=!credentialsOk;
+  connect.addEventListener('click',async()=>{
+   connect.disabled=true;notify('Testando conexão…','Testing connection…');
+   try{await plugin.testProvider(id);notify('Conexão funcionando.','Connection working.');}
+   catch(_){notify('Não foi possível conectar. Confira credenciais, endpoint e modelo.','Connection failed. Check key, endpoint, and model.');}
+   finally{connect.disabled=!credentialsOk;}
+  });
+  const fetch=actions.createEl('button',{attr:{type:'button'},text:label('Buscar modelos','Fetch models')});
+  fetch.disabled=!credentialsOk;
+  const catalog=workspace.createDiv({cls:'writer-v131-ai-catalog'});
+  const search=catalog.createEl('input',{attr:{type:'search',placeholder:label('Filtrar modelos…','Filter models…'),'aria-label':label('Pesquisar modelos','Search models')}});
+  const selection=catalog.createEl('select',{attr:{'aria-label':label('Modelos disponíveis','Available models')}});
+  const count=catalog.createEl('small',{cls:'dictionary-muted'});
+  function refreshModels(){
+   const term=String(search.value||'').toLocaleLowerCase().trim();
+   const all=Array.isArray(cache[id])?cache[id]:[];
+   const filtered=all.filter(name=>name.toLocaleLowerCase().includes(term)).slice(0,300);
+   selection.empty();
+   const prompt=selection.createEl('option',{text:label('Escolha um modelo','Choose a model')});prompt.value='';
+   for(const name of filtered){const option=selection.createEl('option',{text:name});option.value=name;}
+   selection.value=filtered.includes(String(cfg.aiModels[id]||''))?cfg.aiModels[id]:'';
+   count.setText(all.length?filtered.length+' / '+all.length+' '+label('modelos','models'):
+    label('Use “Buscar modelos” para carregar a lista.','Use “Fetch models” to load the list.'));
+  }
+  search.addEventListener('input',refreshModels);
+  selection.addEventListener('change',async()=>{
+   if(!selection.value)return;
+   cfg.aiModels[id]=selection.value;modelInput.value=selection.value;
+   await save();notify('Modelo selecionado e salvo.','Model selected and saved.');
+  });
+  fetch.addEventListener('click',async()=>{
+   fetch.disabled=true;notify('Buscando modelos…','Fetching models…');
+   try{
+    const result=await plugin.fetchModels(id);
+    if(!Array.isArray(result))throw Error('Invalid list');
+    cache[id]=Array.from(new Set(result.filter(x=>typeof x==='string'&&x.trim())
+     .map(x=>x.trim()))).slice(0,500).sort((a,b)=>a.localeCompare(b));
+    refreshModels();notify('Catálogo atualizado.','Model catalog updated.');
+   }catch(_){notify('Não foi possível obter os modelos. Revise a conexão.','Unable to fetch models. Check the connection.');}
+   finally{fetch.disabled=!credentialsOk;}
+  });
+  refreshModels();
+  const defaults=workspace.createDiv({cls:'writer-v131-ai-defaults'});
+  defaults.createEl('h5',{text:label('Usar este provedor em','Use this provider for')});
+  const usage=[
+   ['provider',label('Definições','Definitions')],
+   ['translationProvider',label('Tradução','Translation')],
+   ['assistantProvider',label('Assistente','Assistant')]
+  ];
+  for(const [field,name] of usage){
+   const button=defaults.createEl('button',{attr:{type:'button'},text:name});
+   const active=cfg[field]===id;
+   button.classList.toggle('is-active',active);
+   button.setAttribute('aria-pressed',String(active));
+   button.addEventListener('click',async()=>{
+    cfg[field]=id;await save();render();
+   });
+  }
+ }
+ render();
+}
+
 class DictionarySettings extends PluginSettingTab{
  constructor(app,plugin){super(app,plugin);this.plugin=plugin;this.plugin.writerSettingsTab=this;}
  display(){
@@ -28525,28 +28696,9 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(panel).setName(msg('Abrir notas do projeto','Open project notes')).addButton(b=>b.setButtonText(msg('Abrir notas','Open notes')).onClick(()=>this.plugin.openProjects('notes')));
       panel.createEl('p',{text:msg('Uma cópia do índice é salva em _Backups antes da primeira alteração da sessão. Compilações criam novos arquivos; scripts de workflows externos não são executados.','A copy of the index is saved under _Backups before the first edit of the session. Compilations create new files; external workflow scripts are not executed.'),cls:'dictionary-muted'});
     }else if(id==='providers'){
-      for(const [provider,label] of AI_PROVIDERS){
-        new Setting(panel).setName(label+' — '+t('key')).addText(x=>{x.inputEl.type='password';x.setValue(this.plugin.settings.aiKeys[provider]||'').onChange(async v=>{this.plugin.settings.aiKeys[provider]=v.trim();await this.plugin.saveSettings();});});
-      }
-      new Setting(panel).setName(t('endpoint')).addText(x=>x.setValue(this.plugin.settings.customEndpoint||'').onChange(async v=>{this.plugin.settings.customEndpoint=v.trim();await this.plugin.saveSettings();}));
-      new Setting(panel).setName('Ollama URL').addText(x=>x.setValue(this.plugin.settings.ollamaEndpoint).onChange(async v=>{this.plugin.settings.ollamaEndpoint=v.trim();await this.plugin.saveSettings();}));
-      panel.createEl('p',{text:t('notice'),cls:'dictionary-muted'});
+      writerV131RenderAISettings(this.plugin,panel,'providers');
     }else if(id==='models'){
-      for(const [provider,label,defaultModel] of [['openai','OpenAI','gpt-4.1-mini'],['gemini','Gemini','gemini-2.5-flash'],['grok','Grok','grok-3-mini'],['claude','Claude','claude-sonnet-4-5'],['custom','Custom',''],['ollama','Ollama','llama3.2'],['openrouter','OpenRouter','openai/gpt-4o-mini'],['groqcloud','Groq Cloud','llama-3.3-70b-versatile']]){
-        new Setting(panel).setName(label+' — '+t('model')).addText(x=>x.setPlaceholder(defaultModel).setValue(this.plugin.settings.aiModels[provider]||defaultModel).onChange(async v=>{this.plugin.settings.aiModels[provider]=v.trim();await this.plugin.saveSettings();}));
-      }
-      const catalog=panel.createDiv({cls:'dictionary-model-catalog'});
-      for(const [provider,label] of AI_PROVIDERS){
-        const section=catalog.createDiv({cls:'dictionary-model-provider'});section.createEl('strong',{text:label});
-        const actions=section.createDiv({cls:'dictionary-model-actions'});const status=section.createEl('small',{text:''});
-        const test=actions.createEl('button',{text:msg('Testar conexão','Test connection')});
-        test.addEventListener('click',async()=>{test.disabled=true;status.setText('…');try{await this.plugin.testProvider(provider);status.setText(msg('Conexão funcionando','Connection working'));}catch(e){status.setText(e.message);}finally{test.disabled=false;}});
-        const list=actions.createEl('button',{text:msg('Buscar modelos','Fetch models')});
-        const select=section.createEl('select',{attr:{'aria-label':label+' models'}});
-        select.createEl('option',{text:msg('Buscar modelos primeiro','Fetch models first'),value:''});
-        list.addEventListener('click',async()=>{list.disabled=true;status.setText('…');try{const models=await this.plugin.fetchModels(provider);select.empty();select.createEl('option',{text:msg('Escolha um modelo','Choose a model'),value:''});for(const model of models){const option=select.createEl('option',{text:model});option.value=model;}status.setText(models.length+' '+msg('modelos','models'));}catch(e){status.setText(e.message);}finally{list.disabled=false;}});
-        select.addEventListener('change',async()=>{if(!select.value)return;this.plugin.settings.aiModels[provider]=select.value;await this.plugin.saveSettings();status.setText(msg('Modelo salvo','Model saved'));});
-      }
+      writerV131RenderAISettings(this.plugin,panel,'models');
     }else if(id==='assistant'){
       panel.createEl('p',{text:msg('Estas opções afetam apenas o chat de escrita. As definições e traduções continuam independentes.','These options affect only writing chat. Definitions and translations remain independent.'),cls:'dictionary-muted'});
       new Setting(panel).setName(msg('Provedor do assistente','Assistant provider')).addDropdown(d=>{

@@ -5918,6 +5918,7 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
  let latest=[];
  const jump=entry=>{
   if(!entry)return;
+  input.value='';feedback.hidden=true;
   const previous=getActive();
   if(entry.id!==previous)onOpen(entry.id);
   const reveal=()=>{
@@ -5934,9 +5935,13 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   const q=input.value.trim(),panel=getPanel(),active=getActive();
   feedback.empty();feedback.hidden=!q;
   const all=writerV1048SearchIndex(sections,panel,active,cache);
-  latest=writerV1048SearchOptions(all,q);
-  const activeMatches=latest.filter(entry=>entry.id===active);
-  writerWorkspaceFilterRows(panel,q&&activeMatches.length?q:'');
+  // Also index not-yet-opened categories, with contextual aliases and fuzzy ranking.
+  const locations=sections.map(([id,title])=>({id,title,section:title,
+   keywords:WRITER_WORKSPACE_HINTS[id]||'',focus:'',source:'category'}));
+  latest=writerV131RankSettings([...all,...locations],q,18);
+  // Fuzzy results remain in the compact dropdown; do not hide actual settings
+  // just because the approximate query does not literally match their text.
+  writerWorkspaceFilterRows(panel,'');
   if(!q)return;
   if(latest.length){
    const grouped=writerV1050SearchGroups(latest);
@@ -11719,7 +11724,7 @@ class WriterV8HomeView extends ItemView{
   this.contentEl.scrollTop=scroll;
  }
  applyWidgetFrame(grid,card,frame){
-  const isMobile=writerV8HomeIsMobile(this.plugin)||grid.clientWidth<=560;
+  const isMobile=writerV8HomeIsMobile(this.plugin)||grid.clientWidth<=760;
   if(isMobile)return;
   const columns=Math.min(12,Math.max(3,Math.round(frame.columns||6)));
   card.style.gridColumnEnd='span '+columns;
@@ -11745,7 +11750,7 @@ class WriterV8HomeView extends ItemView{
   this.saveSoon();this.render();
  }
  installWidgetResizing(grid){
-  if(writerV8HomeIsMobile(this.plugin))return;
+  if(writerV8HomeIsMobile(this.plugin)||grid.clientWidth<640)return;
   const prefs=this.widgetPreferences();
   for(const card of grid.querySelectorAll('[data-section]')){
    const key=card.getAttribute('data-section');
@@ -11763,17 +11768,18 @@ class WriterV8HomeView extends ItemView{
     };
     const metrics=()=>{
      const gap=parseFloat(getComputedStyle(grid).columnGap)||12;
-     const step=(grid.clientWidth-gap*11)/12+gap;
+     const step=Math.max(1,(grid.clientWidth-gap*11)/12+gap);
+     const minColumns=writerV131MinWidgetColumns(grid.clientWidth,gap);
      const r=card.getBoundingClientRect();
      const f=prefs.homeWidgetFrames?.[key]||{};
-     return {r,step,columns:f.columns||Math.max(3,Math.round((r.width+gap)/step)),height:f.height||Math.round(r.height),width:f.width||Math.round(r.width)};
+     return {r,step,minColumns,columns:Math.max(minColumns,f.columns||Math.round((r.width+gap)/step)),height:f.height||Math.round(r.height),width:f.width||Math.round(r.width)};
     };
     const adjust=(start,dx,dy)=>{
      const free=grid.dataset.widgetAlignment==='free';
-     const nextWidth=Math.max(160,start.r.width+dx);
-     const columns=horizontal?Math.max(3,Math.min(12,Math.round((nextWidth+12)/start.step))):start.columns;
+     const nextWidth=Math.max(Math.min(grid.clientWidth,205),start.r.width+dx);
+     const columns=horizontal?Math.max(start.minColumns,Math.min(12,Math.round((nextWidth+12)/start.step))):start.columns;
      const height=vertical?Math.max(92,Math.min(1100,Math.round(start.height+dy))):start.height;
-     const width=horizontal?Math.max(160,Math.min(1800,Math.round(nextWidth))):start.width;
+     const width=horizontal?Math.max(Math.min(grid.clientWidth,205),Math.min(1800,Math.round(nextWidth))):start.width;
      card.style.gridColumnEnd='span '+columns;
      if(free&&horizontal){card.style.width=width+'px';card.style.maxWidth='100%';card.style.justifySelf='start';}
      if(!free){card.style.removeProperty('width');card.style.removeProperty('justify-self');}
@@ -11917,7 +11923,7 @@ class WriterV8HomeView extends ItemView{
     if(!dragged||dragged===key)return;
     event.preventDefault();
     const bounds=card.getBoundingClientRect();
-    const after=event.clientY>bounds.top+bounds.height/2;
+    const after=writerV131WidgetDropAfter(bounds,event.clientX,event.clientY);
     clear();card.classList.add(after?'writer-v924-drop-after':'writer-v924-drop-before');
     if(event.dataTransfer)event.dataTransfer.dropEffect='move';
    });
@@ -11925,7 +11931,7 @@ class WriterV8HomeView extends ItemView{
     if(!dragged||dragged===key)return;
     event.preventDefault();
     const bounds=card.getBoundingClientRect();
-    this.reorderWidget(dragged,key,event.clientY>bounds.top+bounds.height/2);
+    this.reorderWidget(dragged,key,writerV131WidgetDropAfter(bounds,event.clientX,event.clientY));
     dragged=null;clear();
    });
    // Tap a grip, then tap another widget: works on touch and keyboard.
@@ -13275,6 +13281,8 @@ function writerV9RegisterToolbar(plugin){
    cfg.placement==='top'?'is-top':cfg.placement==='floating'&&!mobile?'is-floating':''];
   root=owner.createDiv({cls:classes.filter(Boolean).join(' '),
    attr:{role:'toolbar','aria-label':writerUi('Barra de formatação personalizada','Custom formatting toolbar')}});
+  // Docked bars flow with the editor and never cover the host's top/bottom controls.
+  if(cfg.placement==='top')owner.insertBefore(root,owner.firstChild);
   root.style.setProperty('--writer-v1048-button-size',cfg.buttonSize+'px');
   const available=writerV1048ToolbarItems(cfg);
   const groups=writerV1048ToolbarGroups(cfg),shown=new Set();
@@ -22563,7 +22571,7 @@ function writerV106DragMerge(settings){
  const old=settings.v106Dragger&&typeof settings.v106Dragger==='object'?settings.v106Dragger:{};
  const cfg=settings.v106Dragger={
   enabled:true,visibility:'hover',icon:'grip',size:20,offset:0,color:'',indicatorColor:'',
-  multiSelect:true,nested:true,mobileLongPress:true,highlight:true,...old
+  multiSelect:true,nested:true,mobileLongPress:true,highlight:true,coexistWithNative:true,...old
  };
  if(!['hover','always','hidden'].includes(cfg.visibility))cfg.visibility='hover';
  if(!['grip','grip-lines','dot','square'].includes(cfg.icon))cfg.icon='grip';
@@ -22686,16 +22694,22 @@ function writerV106DragNativeConflict(plugin){
  try{return !!(internal?.enabledPlugins?.has?.('dragger')||internal?.plugins?.dragger?.enabled);}
  catch(_){return false;}
 }
+function writerV131DragPosition(editor,x,y){
+ const pos=editor?.posAtCoords?.({left:x,top:y});
+ if(pos&&Number.isInteger(pos.line))return pos;
+ const cm=editor?.cm,offset=cm?.posAtCoords?.({x,y});
+ if(!Number.isInteger(offset))return null;
+ const line=cm.state?.doc?.lineAt?.(offset);
+ return line?{line:line.number-1,ch:offset-line.from}:null;
+}
 function writerV106DragRegister(plugin){
  const cfg=writerV106DragMerge(plugin.settings);
  const {Platform:platform,setIcon:obsidianSetIcon}=require('obsidian');
- // Drag handles are desktop-only: on mobile they obstruct the editor and
- // interfere with touch selection. Do not create DOM, commands or listeners.
- if(platform?.isMobile===true||plugin.app?.isMobile===true)return;
+ // Android uses a long-press gesture without showing a grip over controls.
  const doc=plugin.app.workspace.containerEl?.ownerDocument;
  if(!doc)return;
  const isMobile=()=>Boolean(platform?.isMobile||plugin.app.isMobile);
- const enabled=()=>cfg.enabled&&!writerV106DragNativeConflict(plugin);
+ const enabled=()=>cfg.enabled&&(cfg.coexistWithNative!==false||!writerV106DragNativeConflict(plugin));
  const handle=doc.createElement('button'),indicator=doc.createElement('div');
  handle.type='button';handle.className='writer-v106-drag-handle';
  handle.setAttribute('aria-label',writerUi('Arrastar bloco','Drag block'));
@@ -22727,7 +22741,7 @@ function writerV106DragRegister(plugin){
  const locate=(view,x,y)=>{
   const ed=view?.editor;
   if(!ed?.posAtCoords)return null;
-  const pos=ed.posAtCoords({left:x,top:y});
+  const pos=writerV131DragPosition(ed,x,y);
   if(!pos)return null;
   const lines=ed.getValue().split('\n');
   // BlockAt deliberately returns the nearest block for drop targets; never
@@ -22737,9 +22751,11 @@ function writerV106DragRegister(plugin){
   return block?{block,view,ed,lines}:null;
  };
  const preview=(info,rect)=>{
-  if(!info||!rect||!enabled()||cfg.visibility==='hidden'){
+  if(!info||!rect||!enabled()||cfg.visibility==='hidden'||isMobile()){
    active=null;handle.style.display='none';return;
   }
+  const scroll=info.view.containerEl?.querySelector?.('.cm-scroller')?.getBoundingClientRect?.();
+  if(scroll&&(rect.bottom<scroll.top||rect.top>scroll.bottom)){active=null;handle.style.display='none';return;}
   active=info;
   handle.style.position='fixed';
   handle.style.left=Math.max(2,rect.left-cfg.size-7+cfg.offset)+'px';
@@ -22778,7 +22794,7 @@ function writerV106DragRegister(plugin){
  const targetAt=e=>{
   if(!drag)return;
   const view=drag.view,ed=view.editor;
-  const pos=ed.posAtCoords?.({left:e.clientX,top:e.clientY});
+  const pos=writerV131DragPosition(ed,e.clientX,e.clientY);
   if(!pos)return;
   const lines=ed.getValue().split('\n'),block=writerV106DragBlockAt(lines,pos.line);
   const node=doc.elementFromPoint?.(e.clientX,e.clientY)?.closest?.('.cm-line');
@@ -22813,6 +22829,9 @@ function writerV106DragRegister(plugin){
    const result=writerV106DragMove(current,range.start,range.end,target,indent);
    moved=writerV106DragApply(ed,result);
   }catch(error){console.warn('[Basic AI] Move block:',error);new Notice(writerUi('Não foi possível mover o bloco.','Could not move the block.'));}
+  if(drag.origin==='handle'&&drag.pointerId!==undefined){
+   try{handle.releasePointerCapture?.(drag.pointerId);}catch(_){}
+  }
   drag=null;selection=null;indicator.style.display='none';handle.classList.remove('is-dragging');
   sourceNode?.classList.remove('writer-v106-drag-source');sourceNode=null;
   targetNode?.classList.remove('writer-v106-drag-target');targetNode=null;
@@ -22861,8 +22880,8 @@ function writerV106DragRegister(plugin){
  const nearHandle=e=>{
   if(handle.style.display==='none'||!Number.isFinite(e.clientX)||!Number.isFinite(e.clientY))return false;
   const rect=handle.getBoundingClientRect();
-  return e.clientX>=rect.left-30&&e.clientX<=rect.right+65&&
-   e.clientY>=rect.top-28&&e.clientY<=rect.bottom+28;
+  return e.clientX>=rect.left-18&&e.clientX<=rect.right+18&&
+   e.clientY>=rect.top-18&&e.clientY<=rect.bottom+18;
  };
  const postponeHide=()=>{
   clearTimeout(hideTimer);
@@ -22875,7 +22894,7 @@ function writerV106DragRegister(plugin){
  const pointermove=e=>{
   clearTimeout(hideTimer);
   if(drag){e.preventDefault?.();targetAt(e);return;}
-  if(!enabled())return;
+  if(!enabled()||isMobile())return;
   if(e.target===handle||handle.contains(e.target)||nearHandle(e))return;
   const line=e.target?.closest?.('.cm-line');
   if(!line){
@@ -22898,7 +22917,10 @@ function writerV106DragRegister(plugin){
     return;
    }
    e.preventDefault();
-   startDrag({x:e.clientX,y:e.clientY,line:active.block.start},active.view,'handle');
+   if(startDrag({x:e.clientX,y:e.clientY,line:active.block.start},active.view,'handle')){
+    drag.pointerId=e.pointerId;
+    try{handle.setPointerCapture?.(e.pointerId);}catch(_){}
+   }
    return;
   }
   if(!enabled()||!isMobile()||!cfg.mobileLongPress||e.pointerType!=='touch')return;
@@ -22910,7 +22932,7 @@ function writerV106DragRegister(plugin){
   clearTimeout(pressTimer);
   pressTimer=setTimeout(()=>{
    pressTimer=null;
-   const pos=view.editor.posAtCoords?.({left:x,top:y});
+   const pos=writerV131DragPosition(view.editor,x,y);
    if(!pos)return;
    if(startDrag({x,y,line:pos.line},view,'touch')){new Notice(writerUi('Arraste para mover o bloco','Drag to move the block'),1000);}
   },420);
@@ -22948,10 +22970,15 @@ function writerV106DragSettings(plugin,panel){
  const cfg=writerV106DragMerge(plugin.settings);
  panel.createEl('h3',{text:writerUi('Arrastar blocos (Dragger)','Block dragger')});
  if(require('obsidian').Platform?.isMobile===true||plugin.app?.isMobile===true){
-  panel.createEl('p',{cls:'setting-item-description',text:writerUi('O Dragger está desativado no celular. Nenhuma alça ou gesto de arrastar será instalado. Suas preferências para PC foram preservadas.','Dragger is disabled on mobile. No drag handles or gestures will be installed. Your desktop preferences are preserved.')});
+  panel.createEl('p',{cls:'setting-item-description',text:writerUi('No Android, a alça não aparece. Segure uma linha não vazia para mover quando habilitado.','On Android the grip stays hidden. Long-press a nonempty editor line to move it when enabled.')});
+  new Setting(panel).setName(writerUi('Toque prolongado para mover blocos','Long-press to move blocks'))
+   .addToggle(t=>t.setValue(cfg.mobileLongPress!==false).onChange(async v=>{cfg.mobileLongPress=v;await plugin.saveSettings();}));
   return;
  }
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('Disponível somente no computador. No celular, a alça e seus eventos são desativados para não atrapalhar a seleção de texto nem ocupar espaço. No PC, arraste os blocos pela alça; Ctrl+Z desfaz.','Desktop only. On mobile, drag handles and touch listeners are disabled to avoid obstructing text selection or taking up editor space. On desktop, drag blocks using the handle; undo with Ctrl+Z.')});
+ new Setting(panel).setName(writerUi('Alça Basic com Dragger externo','Basic grip with external Dragger'))
+  .setDesc(writerUi('Mantém a alça do Basic disponível quando outro Dragger estiver ativado.','Keep Basic grip available if another Dragger plugin is enabled.'))
+  .addToggle(t=>t.setValue(cfg.coexistWithNative!==false).onChange(async v=>{cfg.coexistWithNative=v;await plugin.saveSettings();}));
  for(const [k,pt,en] of [['enabled','Ativar alça de arrastar','Enable drag handles'],['multiSelect','Mover seleção de linhas juntas','Move selected lines together'],['nested','Ajustar recuo de listas ao arrastar','Adjust list indentation while dragging'],['highlight','Destacar bloco de origem','Highlight source block']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[k]!==false).onChange(async v=>{cfg[k]=v;await plugin.saveSettings();plugin.writerV106DragApplyStyles?.();}));
  }
@@ -27667,6 +27694,77 @@ function writerV13BindSettingsTabs(nav,subnav){
  bind(subnav,label('Seções de configurações','Settings sections'));
 }
 
+/** Protect card legibility when a 720p view is split with Obsidian sidebars. */
+function writerV131MinWidgetColumns(width,gap=12){
+ const w=Math.max(1,Number(width)||1),g=Math.max(0,Number(gap)||0);
+ const step=Math.max(1,(w-11*g)/12+g);
+ return Math.max(3,Math.min(12,Math.ceil((205+g)/step)));
+}
+/** In a masonry grid, use x for peers in the same row and y otherwise. */
+function writerV131WidgetDropAfter(bounds,x,y){
+ if(!bounds)return false;
+ const cy=bounds.top+bounds.height/2;
+ return Math.abs(y-cy)<=Math.min(bounds.height/3,35)?
+  x>bounds.left+bounds.width/2:y>cy;
+}
+/** Small, bounded edit distance for search typos, with no network calls. */
+function writerV131TokenScore(hay,term){
+ if(!term)return 0;
+ if(hay===term)return 160;
+ if(hay.startsWith(term))return 115;
+ if(hay.includes(term))return 75;
+ if(term.length<4)return -1;
+ for(const word of hay.split(/[^a-z0-9]+/).filter(Boolean)){
+  if(word.startsWith(term.slice(0,Math.min(4,term.length))))return 45;
+  if(Math.abs(word.length-term.length)>2)continue;
+  let prev=Array.from({length:term.length+1},(_,i)=>i);
+  for(let i=1;i<=word.length;i++){
+   const next=[i];
+   for(let j=1;j<=term.length;j++)
+    next[j]=Math.min(next[j-1]+1,prev[j]+1,prev[j-1]+(word[i-1]===term[j-1]?0:1));
+   prev=next;
+  }
+  if(prev[term.length]<=(term.length>=7?2:1))return 35-prev[term.length]*5;
+ }
+ return -1;
+}
+/** Score titles first, then category/description/aliases, then synonyms. */
+function writerV131RankSettings(entries,query,limit=18){
+ const q=writerV13SearchText(query)
+  .replace(/\bsubescrito\b/g,'subscrito').replace(/\bsuperescrito\b/g,'sobrescrito');
+ const words=q.split(/\s+/).filter(Boolean);
+ if(!words.length)return [];
+ const synonyms={
+  grade:['grid','colunas','widgets'],arrastar:['drag','dragger','grip','mover'],
+  redimensionar:['resize','largura','altura','tamanho'],
+  pesquisar:['search','busca','pesquisa'],imagem:['image','foto','banner'],
+  atalho:['hotkey','teclado','comando'],alinhamento:['align','justificar','centralizar'],
+  compactar:['compacto','tamanho','densidade'],texto:['escrita','markdown','fonte']
+ };
+ return (Array.isArray(entries)?entries:[]).map(entry=>{
+  const title=writerV13SearchText(entry?.title),context=writerV13SearchText(
+   [entry?.section,entry?.description,entry?.keywords,entry?.id].join(' '));
+  let score=0;
+  for(const term of words){
+   const first=writerV131TokenScore(title,term);
+   const second=writerV131TokenScore(context,term);
+   let best=Math.max(first>=0?first*3:-1,second);
+   for(const synonym of synonyms[term]||[]){
+    const synonymScore=Math.max(writerV131TokenScore(title,synonym),
+     writerV131TokenScore(context,synonym));
+    if(synonymScore>=0)best=Math.max(best,synonymScore/2);
+   }
+   if(best<0)return null;
+   score+=best;
+  }
+  if(title===q)score+=500;
+  if(entry?.source==='category')score-=50;
+  return {...entry,score};
+ }).filter(Boolean).sort((a,b)=>b.score-a.score||
+  String(a.title).localeCompare(String(b.title),undefined,{sensitivity:'base'}))
+ .slice(0,Math.max(1,Math.min(40,Math.trunc(Number(limit)||18))));
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.sequence=0;this.pending=null;}
@@ -28114,6 +28212,12 @@ class DictionarySettings extends PluginSettingTab{
     this.settingsSubtabsScrollLeft[subnav.dataset.group]=subnav.scrollLeft;
   },{passive:true});
   const panel=el.createDiv({cls:'dictionary-settings-panel'});
+  const compactPickers=el.createDiv({cls:'writer-v131-settings-pickers'});
+  el.insertBefore(compactPickers,panel);
+  const groupPicker=compactPickers.createEl('select',{attr:{
+   'aria-label':writerUi('Categoria de configurações','Settings category')}});
+  const sectionPicker=compactPickers.createEl('select',{attr:{
+   'aria-label':writerUi('Seção de configurações','Settings section')}});
   this.writerSettingsObserver?.disconnect();
   if(typeof MutationObserver==='function'){
    this.writerSettingsObserver=new MutationObserver(()=>writerMarkCompactSettings(panel));
@@ -28239,6 +28343,15 @@ class DictionarySettings extends PluginSettingTab{
     }
    }
    subnav.setAttribute('role','tablist');
+   if(sectionPicker.dataset.group!==group){
+    sectionPicker.empty();
+    for(const [key,label] of enabledSections.filter(([key])=>groupFor(key)===group)){
+     const option=sectionPicker.createEl('option',{text:label});option.value=key;
+    }
+    sectionPicker.dataset.group=group;
+   }
+   sectionPicker.value=id;
+   groupPicker.value=group;
   };
   const finder=writerWorkspaceBindSearch(el,enabledSections,id=>showTab(id),()=>panel,()=>this.activeSettingsTab);
   el.insertBefore(finder.wrap,nav);
@@ -28444,6 +28557,7 @@ class DictionarySettings extends PluginSettingTab{
   };
   for(const [id,label] of groups){
    if(!enabledSections.some(([key])=>groupFor(key)===id))continue;
+   const option=groupPicker.createEl('option',{text:label});option.value=id;
    const b=nav.createEl('button',{attr:{type:'button',role:'tab','aria-selected':'false'}});
    const symbol=b.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
    require('obsidian').setIcon(symbol,groupIcons[id]||'settings');
@@ -28455,6 +28569,13 @@ class DictionarySettings extends PluginSettingTab{
     if(target)showTab(target);
    });
   }
+  groupPicker.addEventListener('change',()=>{
+   const id=groupPicker.value,remembered=this.lastSectionByGroup[id];
+   const target=enabledSections.some(([key])=>key===remembered)?remembered:
+    enabledSections.find(([key])=>groupFor(key)===id)?.[0];
+   if(target)showTab(target);
+  });
+  sectionPicker.addEventListener('change',()=>showTab(sectionPicker.value));
   nav.setAttribute('role','tablist');
   writerV13BindSettingsTabs(nav,subnav);
   // Buttons must exist before setting scrollLeft; otherwise it clamps to zero.

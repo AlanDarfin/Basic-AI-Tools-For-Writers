@@ -10276,4 +10276,56 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
   outline-width:3px;
  }
 }
+
+/*
+ * v13 touch and compact-screen adapters.
+ * The Surfing plugin keeps ownership of its native search/header UI; these
+ * guards only affect Basic's hosting container and local cards.
+ */
+:where(.writer-v11-studio-actions,.writer-v11-chapter-actions,
+ .writer-v102-spaces-manager,.writer-v95-timeline-toolbar)
+ :is(button,select,input){
+ min-width:0;
+ max-width:100%;
+}
+:where(.writer-v11-studio-actions,.writer-v11-chapter-actions,
+ .writer-v102-spaces-manager,.writer-v95-timeline-toolbar)
+ :is(button,select) svg{
+ display:block;
+ flex-shrink:0;
+ vertical-align:middle;
+}
+:where(.writer-v11-studio,.writer-v102-spaces-manager,.writer-v1205-bookmarks-widget)
+ :is(.writer-v11-chapter,.writer-v102-space-entry,.writer-v1205-web-bookmark):focus-within{
+ outline:var(--basic-ui-focus,2px solid var(--interactive-accent));
+ outline-offset:1px;
+}
+.writer-v95-timeline.is-layout-horizontal .writer-v95-timeline-scroll{
+ box-sizing:border-box;
+ width:100%;
+ min-width:0;
+ overflow-x:auto;
+}
+.writer-v8-home .writer-v1205-native-surfing-host{
+ max-width:100%;
+ min-width:0;
+}
+@media(max-width:720px){
+ body.is-mobile :is(.writer-v11-studio-modal,.writer-v102-spaces-modal) .modal-content{
+  max-height:85vh;
+  max-height:min(85dvh,calc(100dvh - env(safe-area-inset-bottom,0px) - env(safe-area-inset-top,0px) - var(--basic-ui-space-4,16px)));
+  overflow-y:auto;
+  overscroll-behavior-y:contain;
+ }
+ body.is-mobile :where(.writer-v11-studio-actions,.writer-v11-chapter-actions,
+  .writer-v95-timeline-toolbar,.writer-v102-spaces-manager) :is(button,select){
+  min-height:var(--basic-ui-control-height,34px);
+ }
+ body.is-mobile .writer-v1205-bookmarks-widget{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+ }
+}
 /* END V8 MODULAR STYLES */

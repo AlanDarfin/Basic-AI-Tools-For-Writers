@@ -64,3 +64,16 @@ test('generated outputs and build inventories both include the same v13 entry',(
  assert.match(main,/writerV13BindSettingsTabs\(nav,subnav\)/);
  assert.match(css,/Basic v13 — foundation overrides/);
 });
+
+test('v13 compatibility adapters remain scoped to Basic hosts and preserve Surfing native UI',()=>{
+ const css=fs.readFileSync(path.join(root,'src/styles/v13-foundation.css'),'utf8');
+ assert.match(css,/writer-v11-studio-actions/);
+ assert.match(css,/writer-v102-spaces-manager/);
+ assert.match(css,/writer-v95-timeline\.is-layout-horizontal/);
+ assert.match(css,/writer-v106-drag-handle/);
+ assert.match(css,/body\.is-mobile/);
+ assert.match(css,/writer-v1205-native-surfing-host/);
+ assert.match(css,/prefers-contrast:more/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.doesNotMatch(css,/\.wb-header-bar\s*\{/,'native Surfing header remains plugin-owned');
+});

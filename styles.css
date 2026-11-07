@@ -10014,4 +10014,251 @@ body.is-mobile .writer-v925-grid .writer-v1205-resize-handle{display:none;}
   flex-basis:min(75vw,290px);max-width:min(75vw,290px);
  }
 }
+
+/* Basic v13 — foundation overrides, one shared visual language.
+ * Loaded AFTER historical CSS. Scope every rule to Basic-owned UI.
+ * Theme variables remain the authority for light/dark and custom themes.
+ * Never restyle Obsidian editor prose or the third-party Surfing webview.
+ */
+:where(.dictionary-settings-panel,.dictionary-settings-tabs,.dictionary-settings-subtabs,
+ .writer-project-root,.writer-tool-root,.writer-tools-v3,.writer-v8-home,
+ .writer-v9-calendar,.writer-v9-space,.writer-v9-event-modal,.writer-v13-command-dialog){
+ --basic-ui-accent:var(--interactive-accent);
+ --basic-ui-bg:var(--background-primary);
+ --basic-ui-surface:var(--background-secondary);
+ --basic-ui-hover:var(--background-modifier-hover);
+ --basic-ui-border:var(--background-modifier-border);
+ --basic-ui-text:var(--text-normal);
+ --basic-ui-muted:var(--text-muted);
+ --basic-ui-radius:var(--radius-m,8px);
+ --basic-ui-radius-small:var(--radius-s,5px);
+ --basic-ui-space-1:4px;
+ --basic-ui-space-2:8px;
+ --basic-ui-space-3:12px;
+ --basic-ui-space-4:16px;
+ --basic-ui-control-height:34px;
+ --basic-ui-focus:2px solid var(--interactive-accent);
+ font-family:var(--font-interface);
+ color:var(--basic-ui-text);
+}
+/* Native form controls share spacing, clear focus and disabled states. */
+:where(.dictionary-settings-panel,.writer-project-root,.writer-tool-root,.writer-tools-v3,
+ .writer-v8-home,.writer-v9-calendar,.writer-v9-space,.writer-v9-event-modal,
+ .writer-v13-command-dialog)
+ :is(button,input,select,textarea):not(.writer-v1205-resize-handle){
+ box-sizing:border-box;
+ font-family:inherit;
+ max-width:100%;
+}
+:where(.dictionary-settings-panel,.writer-project-root,.writer-tool-root,.writer-tools-v3,
+ .writer-v8-home,.writer-v9-calendar,.writer-v9-space,.writer-v9-event-modal,
+ .writer-v13-command-dialog)
+ :is(button,input,select,textarea,[role="button"]):focus-visible{
+ outline:var(--basic-ui-focus);
+ outline-offset:2px;
+}
+:where(.dictionary-settings-panel,.writer-project-root,.writer-tool-root,.writer-tools-v3,
+ .writer-v8-home,.writer-v9-calendar,.writer-v9-space,.writer-v9-event-modal,
+ .writer-v13-command-dialog)
+ :is(button,input,select,textarea):disabled{
+ opacity:.55;
+ cursor:not-allowed;
+}
+:where(.writer-v8-home,.writer-project-root,.writer-tool-root,.writer-tools-v3,.writer-v9-calendar,
+ .writer-v9-space,.dictionary-settings-panel) :is(h2,h3,h4){
+ overflow-wrap:anywhere;
+ line-height:1.35;
+}
+:where(.writer-v8-home,.writer-project-root,.writer-tool-root,.writer-tools-v3,.writer-v9-calendar,
+ .writer-v9-space) :is(.writer-v8-home-card,.writer-v9-space-item,.writer-v9-calendar-side){
+ border-color:var(--basic-ui-border);
+ border-radius:var(--basic-ui-radius);
+}
+/* Full-width top-level navigation, horizontal secondary navigation, no clipped icons. */
+.dictionary-settings-tabs,.dictionary-settings-subtabs{
+ box-sizing:border-box;
+ display:flex;
+ align-items:stretch;
+ gap:var(--basic-ui-space-1,4px);
+ width:100%;
+ min-width:0;
+ overflow-x:auto;
+ overflow-y:hidden;
+ scrollbar-width:thin;
+ scroll-padding-inline:var(--basic-ui-space-2,8px);
+}
+.dictionary-settings-tabs>button,.dictionary-settings-subtabs>button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:var(--basic-ui-space-2,8px);
+ box-sizing:border-box;
+ min-height:36px;
+ padding:7px 11px;
+ min-width:0;
+ max-width:none;
+ line-height:1.25;
+ white-space:nowrap;
+ border:1px solid transparent;
+ border-radius:var(--basic-ui-radius-small,var(--radius-s));
+ background:transparent;
+ color:var(--text-muted);
+ box-shadow:none;
+}
+.dictionary-settings-tabs>button{
+ flex:1 0 auto;
+}
+.dictionary-settings-subtabs>button{flex:0 0 auto;}
+.dictionary-settings-tabs>button:hover,.dictionary-settings-subtabs>button:hover{
+ background:var(--basic-ui-hover,var(--background-modifier-hover));
+ color:var(--basic-ui-text,var(--text-normal));
+}
+.dictionary-settings-tabs>button.is-active,.dictionary-settings-subtabs>button.is-active{
+ color:var(--text-accent);
+ background:var(--background-modifier-hover);
+ border-color:var(--background-modifier-border);
+ font-weight:var(--font-semibold);
+}
+:is(.dictionary-settings-tabs,.dictionary-settings-subtabs)>button .writer-v901-nav-icon{
+ display:inline-flex;
+ flex:0 0 18px;
+ align-items:center;
+ justify-content:center;
+ width:18px;
+ height:18px;
+ line-height:1;
+}
+:is(.dictionary-settings-tabs,.dictionary-settings-subtabs)>button .writer-v901-nav-icon svg{
+ display:block;
+ width:17px;height:17px;
+}
+/* All settings panels have the same scan order, widths and section rhythm. */
+.dictionary-settings-panel{
+ box-sizing:border-box;
+ width:100%;
+ min-width:0;
+ padding-bottom:var(--size-4-6,24px);
+}
+.dictionary-settings-panel>h3,.dictionary-settings-panel>h4{
+ margin:var(--size-4-6,24px) 0 var(--size-4-2,8px);
+ padding:0 0 var(--size-4-2,8px);
+ border-bottom:1px solid var(--basic-ui-border,var(--background-modifier-border));
+ font-size:var(--font-ui-medium);
+ font-weight:var(--font-semibold);
+}
+.dictionary-settings-panel>h3:first-child,.dictionary-settings-panel>h4:first-child{margin-top:var(--size-4-2,8px);}
+.dictionary-settings-panel>.setting-item{
+ min-width:0;
+ gap:var(--basic-ui-space-3,12px);
+ border-color:var(--basic-ui-border,var(--background-modifier-border));
+}
+.dictionary-settings-panel .setting-item-info,
+.dictionary-settings-panel .setting-item-control{min-width:0;}
+.dictionary-settings-panel .setting-item-name{line-height:1.35;overflow-wrap:anywhere;}
+.dictionary-settings-panel .setting-item-description{
+ line-height:1.48;
+ color:var(--text-muted);
+ overflow-wrap:anywhere;
+}
+.dictionary-settings-panel :is(input[type="text"],input[type="search"],input[type="url"],
+ input[type="password"],input[type="number"],select,textarea){min-width:0;max-width:100%;}
+.dictionary-settings-panel :is(.writer-v901-settings-search,.writer-v901-search-field){
+ width:100%;
+ max-width:100%;
+}
+/* Old and new toolbars align SVGs and text with one consistent row baseline. */
+:where(.writer-v8-home,.writer-project-root,.writer-tool-root,.writer-tools-v3,
+ .writer-v9-calendar,.writer-v9-space,.dictionary-settings-panel)
+ :is(.writer-v8-home-action,.writer-v9-format-action,.writer-v1205-add-bookmark)
+ svg{
+ display:block;
+ flex-shrink:0;
+ width:18px;height:18px;
+ vertical-align:middle;
+}
+:where(.writer-v8-home,.writer-project-root,.writer-tool-root,.writer-tools-v3)
+ :is(.writer-v8-home-quick-actions,.writer-tool-tabs,.writer-project-tabs){
+ min-width:0;
+ max-width:100%;
+}
+.writer-v8-home .writer-v8-home-card{min-width:0;overflow-wrap:anywhere;}
+.writer-v8-home .writer-v8-home-card-header{min-width:0;gap:var(--basic-ui-space-2);}
+.writer-v8-home .writer-v8-home-card-header :is(h3,button){min-width:0;}
+/* Accessible command picker: keyboard highlight, count and empty states. */
+.writer-v13-command-dialog .writer-v13-command-search{
+ box-sizing:border-box;
+ display:block;
+ width:100%;
+ min-height:40px;
+ padding:8px 11px;
+ margin:0 0 var(--basic-ui-space-2,8px);
+ border:1px solid var(--basic-ui-border,var(--background-modifier-border));
+ border-radius:var(--basic-ui-radius,var(--radius-m));
+ background:var(--background-secondary);
+ color:var(--text-normal);
+}
+.writer-v13-command-dialog .writer-v1044-command-options{
+ display:flex;
+ flex-direction:column;
+ gap:2px;
+ max-height:min(50vh,420px);
+ overflow-y:auto;
+ padding:var(--basic-ui-space-1,4px);
+ border:1px solid var(--basic-ui-border,var(--background-modifier-border));
+ border-radius:var(--basic-ui-radius,var(--radius-m));
+}
+.writer-v13-command-dialog .writer-v1044-command-option{
+ box-sizing:border-box;
+ display:flex;
+ flex-direction:column;
+ align-items:stretch;
+ width:100%;
+ min-width:0;
+ min-height:42px;
+ padding:7px 10px;
+ gap:3px;
+ border:0;
+ border-radius:var(--basic-ui-radius-small,var(--radius-s));
+ background:transparent;
+ text-align:start;
+ box-shadow:none;
+ color:var(--text-normal);
+}
+.writer-v13-command-dialog .writer-v1044-command-option:hover,
+.writer-v13-command-dialog .writer-v1044-command-option.is-active{
+ background:var(--background-modifier-hover);
+}
+.writer-v13-command-dialog .writer-v1044-command-option.is-active{
+ box-shadow:inset 3px 0 0 var(--basic-ui-accent,var(--interactive-accent));
+}
+.writer-v13-command-dialog .writer-v1044-command-option small{
+ display:block;
+ max-width:100%;
+ overflow-wrap:anywhere;
+ color:var(--text-muted);
+ font-size:var(--font-smaller);
+}
+.writer-v13-command-dialog .writer-v13-command-count,
+.writer-v13-command-dialog .writer-v13-command-empty{
+ margin:0 0 var(--basic-ui-space-2,8px);
+ color:var(--text-muted);
+ font-size:var(--font-ui-small);
+}
+/* 720p and Android layout: no horizontal bleeding or fixed panel heights. */
+@media(max-width:780px){
+ .dictionary-settings-panel>.setting-item{flex-wrap:wrap;align-items:flex-start;}
+ .dictionary-settings-panel .setting-item-info{flex:1 1 100%;}
+ .dictionary-settings-panel .setting-item-control{
+  flex:1 1 100%;
+  justify-content:flex-start;
+  flex-wrap:wrap;
+ }
+ .dictionary-settings-tabs>button,.dictionary-settings-subtabs>button{min-height:40px;}
+ :where(.writer-v8-home,.writer-project-root,.writer-tool-root,.writer-tools-v3)
+  :is(.writer-tool-tabs,.writer-project-tabs){max-width:100%;overflow-x:auto;}
+}
+@media(prefers-reduced-motion:reduce){
+ :where(.dictionary-settings-panel,.writer-v8-home,.writer-v9-calendar,.writer-v9-space,
+ .writer-v13-command-dialog) :is(button,input,select,textarea){transition-duration:0s;animation-duration:0s;}
+}
 /* END V8 MODULAR STYLES */

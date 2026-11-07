@@ -106,3 +106,13 @@ const results=writerV13RankCommands(commands,'formatar título',70);
 - [ ] Erros restantes documentados sem apresentar correções não testadas como concluídas.
 
 **Publicação:** somente após CI aprovado e checklist manual de compatibilidade. Este relatório distingue mudanças no código de comportamentos ainda não confirmados na interface real.
+
+## Resultado da auditoria automatizada no CI (07/11/2026)
+
+- **403 arquivos** no branch v13; **102 módulos JS** registrados no build, **32 módulos CSS**, **109 arquivos de teste**.
+- **0 erros** e **0 avisos** de integridade do inventário/build.
+- **333 chaves de seletores CSS com múltiplas ocorrências** em styles.css. Isso indica sobreposição histórica da cascata, mas não prova que as declarações sejam idênticas ou removíveis com segurança. Mantidas até haver análise diferencial de regras e testes visuais.
+- A barra de formatação e o seletor de atalhos agora compartilham o mesmo picker de comandos; o caminho antigo de FuzzySuggestModal permanece como fallback.
+- CI confirma sintaxe, geração, lint comunitário, metadados e regressões simuladas. **Não** confirma pixels, comportamento por toque nem compatibilidade com todas as versões de terceiros.
+
+A versão estável ainda depende de validação visual e funcional no Obsidian; publicar apenas com esse resultado automatizado seria prematuro.

@@ -116,3 +116,15 @@ const results=writerV13RankCommands(commands,'formatar título',70);
 - CI confirma sintaxe, geração, lint comunitário, metadados e regressões simuladas. **Não** confirma pixels, comportamento por toque nem compatibilidade com todas as versões de terceiros.
 
 A versão estável ainda depende de validação visual e funcional no Obsidian; publicar apenas com esse resultado automatizado seria prematuro.
+
+## Ciclo de higienização e liberação de CSS (07/11/2026)
+
+**Métrica de origem:** 333 seletores reincidentes, 252 com contextos condicionais distintos, 115 com repetições dentro do mesmo contexto, 106 declarações idênticas candidatas e 124 valores diferentes que exigem preservação/inspeção. A contagem de seletores reincidentes NÃO representa 333 erros.
+
+**Mudança aplicada:** `scripts/css-v13-dedupe.js` removeu **106 declarações redundantes** correspondentes a **52 seletores** do CSS distribuído (504.393 → 501.881 caracteres) e passou a executar em `scripts/build-css.js`. O algoritmo respeita igualdade exata de seletor, contexto de at-rules, propriedade e valor; preserva fallbacks no mesmo bloco, comentários, keyframes, valores divergentes e regras responsivas. Passes adicionais são idempotentes. `styles.css` é mantido sincronizado com essa etapa na compilação. Os módulos `src/styles` conservam as versões originais como fontes históricas para manutenção; a deduplicação acontece no bundle final.
+
+**Migração segura:** continuam no bundle os adaptadores visuais e tokens v13 para configurações, editor, Longform, Spaces, Timeline, Dragger e bookmarks/Surfing. Não se removeu código JavaScript pelo simples fato de não ser encontrado por uma pesquisa textual: há classes criadas dinamicamente e fallbacks necessários em ambientes isolados. Limpeza semântica de JS legado ainda requer comprovação de paridade de cada função.
+
+**Testes novos:** `tests/v13-css-dedupe.test.cjs` cobre duplicatas equivalentes, contextos responsivos, `@supports`, keyframes, temas, fallbacks, comentários, idempotência e presença de módulos no bundle. `npm run check` incorpora a validação do bundle otimizado e a regressão.
+
+**Limites de validação:** o CI verifica sintaxe e testes automatizados. Visual real de Android, múltiplos temas externos e plugins nativos dentro do Obsidian ainda exige execução manual com capturas e teste por toque/arraste. Sem essa evidência, não declarar autorização incondicional de merge da release estável.

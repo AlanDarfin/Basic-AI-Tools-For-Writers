@@ -83,3 +83,74 @@ function writerV13BindSettingsTabs(nav,subnav){
  bind(nav,label('Categorias de configurações','Settings categories'));
  bind(subnav,label('Seções de configurações','Settings sections'));
 }
+
+/** Protect card legibility when a 720p view is split with Obsidian sidebars. */
+function writerV131MinWidgetColumns(width,gap=12){
+ const w=Math.max(1,Number(width)||1),g=Math.max(0,Number(gap)||0);
+ const step=Math.max(1,(w-11*g)/12+g);
+ return Math.max(3,Math.min(12,Math.ceil((205+g)/step)));
+}
+/** In a masonry grid, use x for peers in the same row and y otherwise. */
+function writerV131WidgetDropAfter(bounds,x,y){
+ if(!bounds)return false;
+ const cy=bounds.top+bounds.height/2;
+ return Math.abs(y-cy)<=Math.min(bounds.height/3,35)?
+  x>bounds.left+bounds.width/2:y>cy;
+}
+/** Small, bounded edit distance for search typos, with no network calls. */
+function writerV131TokenScore(hay,term){
+ if(!term)return 0;
+ if(hay===term)return 160;
+ if(hay.startsWith(term))return 115;
+ if(hay.includes(term))return 75;
+ if(term.length<4)return -1;
+ for(const word of hay.split(/[^a-z0-9]+/).filter(Boolean)){
+  if(word.startsWith(term.slice(0,Math.min(4,term.length))))return 45;
+  if(Math.abs(word.length-term.length)>2)continue;
+  let prev=Array.from({length:term.length+1},(_,i)=>i);
+  for(let i=1;i<=word.length;i++){
+   const next=[i];
+   for(let j=1;j<=term.length;j++)
+    next[j]=Math.min(next[j-1]+1,prev[j]+1,prev[j-1]+(word[i-1]===term[j-1]?0:1));
+   prev=next;
+  }
+  if(prev[term.length]<=(term.length>=7?2:1))return 35-prev[term.length]*5;
+ }
+ return -1;
+}
+/** Score titles first, then category/description/aliases, then synonyms. */
+function writerV131RankSettings(entries,query,limit=18){
+ const q=writerV13SearchText(query)
+  .replace(/\bsubescrito\b/g,'subscrito').replace(/\bsuperescrito\b/g,'sobrescrito');
+ const words=q.split(/\s+/).filter(Boolean);
+ if(!words.length)return [];
+ const synonyms={
+  grade:['grid','colunas','widgets'],arrastar:['drag','dragger','grip','mover'],
+  redimensionar:['resize','largura','altura','tamanho'],
+  pesquisar:['search','busca','pesquisa'],imagem:['image','foto','banner'],
+  atalho:['hotkey','teclado','comando'],alinhamento:['align','justificar','centralizar'],
+  compactar:['compacto','tamanho','densidade'],texto:['escrita','markdown','fonte']
+ };
+ return (Array.isArray(entries)?entries:[]).map(entry=>{
+  const title=writerV13SearchText(entry?.title),context=writerV13SearchText(
+   [entry?.section,entry?.description,entry?.keywords,entry?.id].join(' '));
+  let score=0;
+  for(const term of words){
+   const first=writerV131TokenScore(title,term);
+   const second=writerV131TokenScore(context,term);
+   let best=Math.max(first>=0?first*3:-1,second);
+   for(const synonym of synonyms[term]||[]){
+    const synonymScore=Math.max(writerV131TokenScore(title,synonym),
+     writerV131TokenScore(context,synonym));
+    if(synonymScore>=0)best=Math.max(best,synonymScore/2);
+   }
+   if(best<0)return null;
+   score+=best;
+  }
+  if(title===q)score+=500;
+  if(entry?.source==='category')score-=50;
+  return {...entry,score};
+ }).filter(Boolean).sort((a,b)=>b.score-a.score||
+  String(a.title).localeCompare(String(b.title),undefined,{sensitivity:'base'}))
+ .slice(0,Math.max(1,Math.min(40,Math.trunc(Number(limit)||18))));
+}

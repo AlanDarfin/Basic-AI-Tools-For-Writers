@@ -15,11 +15,11 @@ A v13.0.0 estável consolida o novo sistema de interface do Basic, mantendo a es
 ## Instalação ou atualização manual
 
 1. Faça backup das configurações e da pasta do plugin.
-2. Baixe **Basic-AI-Tool-for-Writers-13.0.0.zip** e, opcionalmente, confira os checksums em **SHA256SUMS-13.0.0.txt**.
-3. Extraia `main.js`, `manifest.json` e `styles.css` para `.obsidian/plugins/basic-ai-tool-for-writers`, substituindo os arquivos anteriores.
+2. Baixe os três arquivos **main.js**, **manifest.json** e **styles.css** nos Assets desta release.
+3. Coloque-os em `.obsidian/plugins/basic-ai-tool-for-writers`, substituindo os arquivos anteriores.
 4. Recarregue o Obsidian e reative o Basic.
 
-O arquivo ZIP contém os três arquivos de instalação. O código do plugin preserva o formato de notas/arquivos e a configuração de módulos.
+O ZIP offline e os checksums SHA-256 são produzidos como artefatos pelo workflow de publicação, enquanto a release do GitHub preserva os três arquivos suportados pelo Obsidian. O código do plugin mantém o formato de notas/arquivos e as configurações dos módulos.
 
 ## Documentação e feedback
 

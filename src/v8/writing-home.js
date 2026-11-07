@@ -233,7 +233,7 @@ class WriterV8HomeView extends ItemView{
   this.contentEl.scrollTop=scroll;
  }
  applyWidgetFrame(grid,card,frame){
-  const isMobile=writerV8HomeIsMobile(this.plugin)||grid.clientWidth<=560;
+  const isMobile=writerV8HomeIsMobile(this.plugin)||grid.clientWidth<=760;
   if(isMobile)return;
   const columns=Math.min(12,Math.max(3,Math.round(frame.columns||6)));
   card.style.gridColumnEnd='span '+columns;
@@ -259,7 +259,7 @@ class WriterV8HomeView extends ItemView{
   this.saveSoon();this.render();
  }
  installWidgetResizing(grid){
-  if(writerV8HomeIsMobile(this.plugin))return;
+  if(writerV8HomeIsMobile(this.plugin)||grid.clientWidth<640)return;
   const prefs=this.widgetPreferences();
   for(const card of grid.querySelectorAll('[data-section]')){
    const key=card.getAttribute('data-section');
@@ -277,17 +277,18 @@ class WriterV8HomeView extends ItemView{
     };
     const metrics=()=>{
      const gap=parseFloat(getComputedStyle(grid).columnGap)||12;
-     const step=(grid.clientWidth-gap*11)/12+gap;
+     const step=Math.max(1,(grid.clientWidth-gap*11)/12+gap);
+     const minColumns=writerV131MinWidgetColumns(grid.clientWidth,gap);
      const r=card.getBoundingClientRect();
      const f=prefs.homeWidgetFrames?.[key]||{};
-     return {r,step,columns:f.columns||Math.max(3,Math.round((r.width+gap)/step)),height:f.height||Math.round(r.height),width:f.width||Math.round(r.width)};
+     return {r,step,minColumns,columns:Math.max(minColumns,f.columns||Math.round((r.width+gap)/step)),height:f.height||Math.round(r.height),width:f.width||Math.round(r.width)};
     };
     const adjust=(start,dx,dy)=>{
      const free=grid.dataset.widgetAlignment==='free';
-     const nextWidth=Math.max(160,start.r.width+dx);
-     const columns=horizontal?Math.max(3,Math.min(12,Math.round((nextWidth+12)/start.step))):start.columns;
+     const nextWidth=Math.max(Math.min(grid.clientWidth,205),start.r.width+dx);
+     const columns=horizontal?Math.max(start.minColumns,Math.min(12,Math.round((nextWidth+12)/start.step))):start.columns;
      const height=vertical?Math.max(92,Math.min(1100,Math.round(start.height+dy))):start.height;
-     const width=horizontal?Math.max(160,Math.min(1800,Math.round(nextWidth))):start.width;
+     const width=horizontal?Math.max(Math.min(grid.clientWidth,205),Math.min(1800,Math.round(nextWidth))):start.width;
      card.style.gridColumnEnd='span '+columns;
      if(free&&horizontal){card.style.width=width+'px';card.style.maxWidth='100%';card.style.justifySelf='start';}
      if(!free){card.style.removeProperty('width');card.style.removeProperty('justify-self');}
@@ -431,7 +432,7 @@ class WriterV8HomeView extends ItemView{
     if(!dragged||dragged===key)return;
     event.preventDefault();
     const bounds=card.getBoundingClientRect();
-    const after=event.clientY>bounds.top+bounds.height/2;
+    const after=writerV131WidgetDropAfter(bounds,event.clientX,event.clientY);
     clear();card.classList.add(after?'writer-v924-drop-after':'writer-v924-drop-before');
     if(event.dataTransfer)event.dataTransfer.dropEffect='move';
    });
@@ -439,7 +440,7 @@ class WriterV8HomeView extends ItemView{
     if(!dragged||dragged===key)return;
     event.preventDefault();
     const bounds=card.getBoundingClientRect();
-    this.reorderWidget(dragged,key,event.clientY>bounds.top+bounds.height/2);
+    this.reorderWidget(dragged,key,writerV131WidgetDropAfter(bounds,event.clientX,event.clientY));
     dragged=null;clear();
    });
    // Tap a grip, then tap another widget: works on touch and keyboard.

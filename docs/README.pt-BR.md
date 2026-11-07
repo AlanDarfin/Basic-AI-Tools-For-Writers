@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 13.0.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 13.0.1 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -15,11 +15,13 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 ### Spaces, toolbar e ações móveis
 
+- **Configurações de IA:** um painel compacto por provedor com chave oculta, endpoint validado, teste sob demanda, modelos pesquisáveis e escolha separada de provedor para definições, tradução e assistente. As configurações existentes são preservadas.
+
 - **Spaces com pasta-raiz:** ao selecionar `Trabalho/Escrita/Fireverse`, Fireverse aparece como raiz visual do explorador, sem exibir as pastas ancestrais. Nada é movido no cofre.
 - **Ocultar apenas neste Space:** menu contextual para ocultar e reexibir notas e pastas somente na Space ativa. As coleções respeitam a ocultação, e as renomeações atualizam os caminhos.
 - **Toolbar independente:** PC e celular possuem botões, menus, cores, tamanhos e estilos separados. Seguir o cursor só exibe a toolbar ao selecionar texto no editor.
-- **Dragger:** a alça inicia o arraste de fato no computador, permanece visível ao atravessar o espaço entre o texto e o quadrado e não aparece em linhas vazias; o recurso continua desativado no Android.
-- **Configurações sem abas novas:** recursos novos integrados às categorias antigas, sem grupos adicionais Toolkit ou Suítes.
+- **Dragger de blocos:** alça de arraste no PC sem bloquear botões próximos e opção de segurar o bloco para arrastar no Android, sem alça fixa. Toques e rolagem comuns permanecem disponíveis.
+- **Configurações organizadas:** seletores compactos de categoria e seção, busca contextual tolerante a erros e controles dimensionados para 720p. Sem grupos adicionais Toolkit ou Suítes.
 - **Ações rápidas próprias do Basic:** um único botão no ribbon abre leitura em voz alta, paleta com 65 formatações, tela de foco, foco em pastas e central de integrações. Os atalhos não dependem dos botões do Ultimate Toolkit externo.
 - **Correções no painel lateral:** o item **Mais opções** só encaminha o comando nativo depois que o menu anterior foi fechado no Android. **Marcador** prioriza um comando disponível do Bookmarks, com alternativa para o botão nativo. Os comandos para fixar, fechar e fechar outros painéis continuam.
 - **Configurações reorganizadas:** ferramentas, suítes, privacidade e integrações ficam junto às funções relacionadas nas abas existentes.
@@ -42,7 +44,7 @@ A versão 12 expande o espaço de escrita sem duplicar os motores de IA, TTS, ex
 
 Veja a [matriz de funcionalidades](V12_SCOPE.pt-BR.md) e as [notas da versão](RELEASE_V12.md).
 
-No Android, o Dragger de blocos é desativado automaticamente e não exibe alças nem captura gestos de toque.
+No Android, o Dragger de blocos não mostra alças fixas: inicia após toque prolongado no bloco quando habilitado. A reorganização dos widgets da homepage usa controles próprios.
 
 ### Painéis laterais e largura do editor
 

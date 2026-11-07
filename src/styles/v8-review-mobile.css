@@ -6,7 +6,7 @@
   overscroll-behavior-y:contain;
 }
 .writer-lt-mobile-modal .writer-lt-mobile-reason{
-  color:var(--text-muted);
+  color:var(--basic-ui-muted,var(--text-muted));
   overflow-wrap:anywhere;
 }
 .writer-lt-mobile-modal .writer-lt-mobile-choices,

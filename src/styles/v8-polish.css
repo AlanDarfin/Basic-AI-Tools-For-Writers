@@ -31,21 +31,21 @@
   word-break:normal;
   line-height:1.2;
   background:transparent;
-  border:1px solid var(--background-modifier-border);
-  border-radius:var(--radius-m);
+  border:1px solid var(--basic-ui-border,var(--background-modifier-border));
+  border-radius:var(--basic-ui-radius,var(--radius-m));
   box-shadow:none;
-  color:var(--text-muted);
+  color:var(--basic-ui-muted,var(--text-muted));
 }
 .writer-project-root .writer-v7-rc-structure-tabs>button:hover,
 .writer-tool-root .dictionary-lexical-actions>button:hover,
 .writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button:not(.mod-cta):hover{
-  background:var(--background-modifier-hover);
-  color:var(--text-normal);
+  background:var(--basic-ui-hover,var(--background-modifier-hover));
+  color:var(--basic-ui-text,var(--text-normal));
 }
 .writer-project-root .writer-v7-rc-structure-tabs>button.is-active{
   color:var(--text-accent);
-  background:var(--background-secondary);
-  border-color:var(--interactive-accent);
+  background:var(--basic-ui-surface,var(--background-secondary));
+  border-color:var(--basic-ui-accent,var(--interactive-accent));
 }
 .writer-tool-root .writer-tool-panel>textarea.dictionary-context-optional.dictionary-context-optional{
   box-sizing:border-box;
@@ -67,9 +67,9 @@
 .writer-tool-root .dictionary-lexical-actions>button,
 .writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button:not(.mod-cta){
   background:transparent;
-  color:var(--text-normal);
-  border:1px solid var(--background-modifier-border);
-  border-radius:var(--radius-m);
+  color:var(--basic-ui-text,var(--text-normal));
+  border:1px solid var(--basic-ui-border,var(--background-modifier-border));
+  border-radius:var(--basic-ui-radius,var(--radius-m));
   box-shadow:none;
 }
 .writer-tool-root .dictionary-lexical-actions{

@@ -13,6 +13,7 @@ const main=read('main.js');
 const functions=vm.runInNewContext(ui+'\n'+drag+'\n({writerV131MinWidgetColumns,writerV131WidgetDropAfter,writerV131RankSettings,writerV131DragPosition})',{console,writerUi:(pt,en)=>en});
 test('widget width is safe in an Obsidian 720p split pane',()=>{
  assert.equal(functions.writerV131MinWidgetColumns(360,12),12);
+ assert.match(home,/basicCompactLayout/);
  assert.ok(functions.writerV131MinWidgetColumns(620,12)>=4);
  assert.ok(functions.writerV131MinWidgetColumns(1100,12)<=4);
  assert.equal(functions.writerV131WidgetDropAfter({left:0,top:0,width:200,height:100},180,50),true);
@@ -34,7 +35,7 @@ test('settings fuzzy search tolerates Portuguese accents, typos and semantic con
  assert.equal(functions.writerV131RankSettings(options,'redimensionar')[0]?.title,'Tamanho do painel');
  assert.equal(functions.writerV131RankSettings(options,'sobrescrto')[0]?.title,'Sobrescrito');
  assert.equal(functions.writerV131RankSettings(options,'inexistente xyz').length,0);
- assert.match(main,/writerV131RankSettings\(\[\.\.\.all,\.\.\.locations\],q,18\)/);
+ assert.ok(main.includes('writerV131RankSettings([...all,...locations],q,18)'), 'core fuzzy search is wired');
  assert.match(main,/writer-v131-settings-pickers/);
 });
 test('block dragging works with Editor and CodeMirror position APIs',()=>{

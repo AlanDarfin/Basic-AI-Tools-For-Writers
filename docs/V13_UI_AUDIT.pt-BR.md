@@ -140,3 +140,22 @@ A versão estável ainda depende de validação visual e funcional no Obsidian; 
 - `classList.add/remove/toggle`, `createDiv/createEl`, `className`, concatenação, templates `\${...}` e `style.setProperty` foram inventariados em `docs/V13_DOM_CONTRACTS.md`. As classes sem ocorrência literal em JS continuam preservadas: podem vir de estados calculados, Markdown, navegador nativo, tema externo ou DOM de plugins de terceiros.
 - **Remoções semanticamente justificadas:** duas constantes sem leitura (`WRITER_V9_EXPLORER_COLORS`, `WRITER_V92_FAVORITE_ICONS`), a variável não utilizada `allDay` (mantida a criação do elemento HTML) e o handler vazio do input de ID de comando. Fonte e `main.js` alterados juntos. Nenhuma função acionada via registro dinâmico ou classe indireta foi removida.
 - Limite: essa varredura é estática; não garante equivalência de pixels, nem prova que TODO legado pode ser excluído. O checklist e os contratos permitem revisão reprodutível sem falsas declarações de teste em dispositivo.
+
+## Estado da liberação pública v13
+
+**Candidato de liberação:** `13.0.0-rc.1`. A tag/release pública só é criada
+pela rotina `.github/workflows/release-v13-preview.yml` depois de build,
+regressões, lint, checksums e verificação de compatibilidade estática.
+
+- QA técnico estático: contratos CSS/DOM verificados; o CSS v13 não altera
+  diretamente a HeaderBar ou webview do Surfing fora do host próprio.
+- JavaScript: inspecionadas construções `classList`, `cls`, `className`,
+  concatenações, template literals e estilos inline. Inventário detalhado em
+  `docs/V13_DOM_CONTRACTS.md`.
+- Código morto: duas constantes, um identificador sem leitura e callback vazio
+  removidos; o elemento de calendário continua sendo renderizado normalmente.
+- **QA visual humano:** roteiro `docs/V13_QA_VISUAL.pt-BR.md` entregue; cenários
+  P1–P8 e A1–G4 ainda **NÃO EXECUTADOS**. Nenhum resultado de toque/temas foi
+  fabricado.
+- PR #122 pode ser apresentado para revisão, mas pré-lançamento não deve ser
+  confundido com confirmação de compatibilidade visual nem com v13 estável.

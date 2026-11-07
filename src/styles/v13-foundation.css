@@ -636,3 +636,184 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  .dictionary-settings-panel .writer-v131-ai-details{gap:5px;padding:9px;}
  .dictionary-settings-panel .writer-v131-ai-details>.setting-item{padding:4px 0;}
 }
+
+/* v13.0.2 — project chapters keep readable words in resizable sidebars.
+ * Rules are scoped to Basic's project view; the Obsidian layout stays native.
+ */
+.writer-project-root{
+ container-name:basic-project;
+ container-type:inline-size;
+ min-width:0;
+}
+.writer-project-root .writer-project-nav-groups{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr));
+ gap:4px;
+}
+.writer-project-root .writer-project-nav-groups>button{
+ box-sizing:border-box;min-width:0;max-width:100%;width:100%;
+ display:inline-flex;align-items:center;justify-content:center;
+ min-height:31px;gap:5px;padding:5px 6px;
+ white-space:nowrap;word-break:normal;overflow-wrap:normal;
+ overflow:hidden;text-overflow:ellipsis;
+ font-size:var(--font-ui-smaller);
+}
+.writer-project-root .writer-project-nav-groups>button>.writer-v901-nav-icon{
+ flex:0 0 16px;width:16px;height:16px;
+}
+.writer-project-root .writer-project-tabs.writer-project-tabs{
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+ scroll-snap-type:x proximity;
+}
+.writer-project-root .writer-project-tabs.writer-project-tabs>button{
+ flex:0 0 auto;min-width:max-content;max-width:none;
+ white-space:nowrap;overflow-wrap:normal;word-break:normal;
+ scroll-snap-align:start;
+}
+.writer-project-root .writer-project-tabs::-webkit-scrollbar{display:none;height:0;}
+.writer-project-root .writer-project-scene-title-text,
+.writer-project-root .writer-project-scene-actions .writer-project-scene-title{
+ overflow-wrap:normal;word-break:normal;
+}
+@container basic-project (max-width:540px){
+ .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  column-gap:5px;row-gap:2px;
+  min-width:0;width:100%;
+  padding-block:5px;
+ }
+ .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{
+  grid-column:1;grid-row:1;
+  box-sizing:border-box;width:29px;min-width:29px;max-width:29px;
+  height:29px;min-height:29px;padding:0;
+ }
+ .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-v7-scene-title-wrap{
+  grid-column:2;grid-row:1;min-width:0;width:100%;
+  margin:0;align-items:center;
+ }
+ .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{
+  grid-column:2;grid-row:2;
+  box-sizing:border-box;display:flex;flex-wrap:nowrap;
+  justify-content:flex-end;align-items:center;
+  width:100%;max-width:100%;gap:3px;
+  padding:0;margin:0;
+ }
+ .writer-project-root .writer-project-panel .writer-project-scene-controls>button.writer-project-small-button{
+  box-sizing:border-box;flex:0 0 27px;
+  min-width:27px;max-width:27px;width:27px;
+  min-height:27px;max-height:29px;height:27px;padding:0;
+ }
+ .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap>.writer-project-scene-title{
+  min-width:0;max-width:100%;width:100%;flex:1 1 auto;
+  overflow:hidden;white-space:normal;word-break:normal;overflow-wrap:normal;
+  padding:3px 0;line-height:1.35;
+ }
+ .writer-project-root .writer-project-panel .writer-project-scene-title-text{
+  min-width:0;max-width:100%;white-space:normal;
+  word-break:normal;overflow-wrap:normal;
+ }
+}
+@container basic-project (max-width:250px){
+ /* Very narrow sidebars must ellipsize, never stack letters vertically. */
+ .writer-project-root .writer-project-panel .writer-project-scene-title-text{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+ }
+ .writer-project-root .writer-project-panel .writer-project-scene-rails{
+  max-width:15px;overflow:hidden;flex:0 0 auto;
+ }
+ .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap>.writer-project-scene-title{
+  white-space:nowrap;overflow:hidden;
+ }
+}
+
+/* v13.0.2 — shared slim range control for Basic Soundscapes and Editor Width.
+ * The controls keep different purposes but use one track, thumb, and geometry.
+ * Never alter other plugins' ranges or Obsidian's native status buttons.
+ */
+.status-bar .status-bar-item.writer-v91-sound-status,
+.status-bar .status-bar-item.writer-v1010-width-status{
+ box-sizing:border-box;display:flex;align-items:center;
+ flex:0 1 auto;min-width:0;white-space:nowrap;
+ gap:4px;padding:0 3px;max-width:100%;
+}
+.status-bar .status-bar-item.writer-v91-sound-status{
+ flex:0 1 255px;max-width:255px;
+}
+.status-bar .writer-v91-sound-status .writer-v91-sound-select{
+ flex:1 1 98px;width:98px;min-width:64px;max-width:115px;
+ height:24px;min-height:24px;padding:2px 5px;
+ font-size:var(--font-ui-smaller);
+ text-overflow:ellipsis;white-space:nowrap;
+}
+.status-bar .writer-v91-sound-status>button{
+ box-sizing:border-box;flex:0 0 23px;
+ width:23px;min-width:23px;max-width:23px;
+ height:23px;min-height:23px;max-height:23px;
+ padding:3px;border-radius:var(--radius-s,5px);
+}
+.status-bar .status-bar-item.writer-v1010-width-status{
+ flex:0 0 auto;max-width:112px;gap:3px;
+}
+.status-bar .writer-v1010-width-status .writer-v1010-width-name{
+ display:none;
+}
+.status-bar .writer-v1010-width-status button.writer-v1010-width-value{
+ box-sizing:border-box;flex:0 0 auto;
+ min-width:32px;min-height:23px;padding:1px 2px;
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status) input[type="range"]{
+ -webkit-appearance:none;appearance:none;
+ box-sizing:border-box;display:block;flex:0 0 54px;
+ width:54px;min-width:54px;max-width:54px;
+ height:18px;margin:0;padding:0;
+ border:0;box-shadow:none;border-radius:0;
+ background:transparent;cursor:pointer;
+ accent-color:var(--interactive-accent);
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status)
+ input[type="range"]::-webkit-slider-runnable-track{
+ height:3px;border-radius:99px;
+ background:var(--background-modifier-border-hover,var(--background-modifier-border));
+ border:0;
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status)
+ input[type="range"]::-webkit-slider-thumb{
+ -webkit-appearance:none;appearance:none;
+ width:11px;height:11px;
+ margin-top:-4px;border:0;border-radius:50%;
+ background:var(--interactive-accent);box-shadow:0 0 0 1px var(--background-primary);
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status)
+ input[type="range"]::-moz-range-track{
+ height:3px;border-radius:99px;border:0;
+ background:var(--background-modifier-border-hover,var(--background-modifier-border));
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status)
+ input[type="range"]::-moz-range-thumb{
+ width:11px;height:11px;border:0;border-radius:50%;
+ background:var(--interactive-accent);
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status)
+ input[type="range"]:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:2px;}
+.status-bar .status-bar-item.writer-v6-reading-status{
+ box-sizing:border-box;flex:0 1 auto;max-width:74px;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+@media (max-width:1180px){
+ .status-bar .status-bar-item.writer-v91-sound-status{max-width:190px;}
+ .status-bar .writer-v91-sound-status .writer-v91-sound-select{
+  max-width:78px;width:78px;min-width:50px;
+ }
+ .status-bar .writer-v91-sound-status>button{flex-basis:21px;width:21px;min-width:21px;}
+ .status-bar .status-bar-item.writer-v1010-width-status{max-width:95px;}
+}
+@media (max-width:920px){
+ /* Keep room for Obsidian's native buttons on very small windows. */
+ .status-bar .status-bar-item.writer-v1010-width-status{display:none;}
+ .status-bar .status-bar-item.writer-v6-reading-status{display:none;}
+ .status-bar .status-bar-item.writer-v91-sound-status{max-width:155px;}
+ .status-bar .writer-v91-sound-status>button:nth-of-type(2),
+ .status-bar .writer-v91-sound-status>button:nth-of-type(3){display:none;}
+}

@@ -72,8 +72,7 @@
  border-color:var(--basic-ui-border,var(--background-modifier-border));
  min-width:0;
 }
-.dictionary-settings-panel .setting-item-info,
-.dictionary-settings-panel .setting-item-control{min-width:0;}
+/* v13 owns the shared settings min-width rule; historical duplicate retired. */
 .dictionary-settings-panel :is(select,input[type="text"],input[type="number"],input[type="search"],input[type="url"]){
  max-width:100%;
 }

@@ -5,7 +5,11 @@
  */
 :where(.dictionary-settings-panel,.dictionary-settings-tabs,.dictionary-settings-subtabs,
  .writer-project-root,.writer-tool-root,.writer-tools-v3,.writer-v8-home,
- .writer-v9-calendar,.writer-v9-space,.writer-v9-event-modal,.writer-v13-command-dialog){
+ .writer-v9-calendar,.writer-v9-space,.writer-v9-event-modal,.writer-v13-command-dialog,
+ .writer-v95-timeline,.writer-v95-timeline-toolbar,.writer-v11-studio,
+ .writer-v11-studio-modal,.writer-project-panel,.writer-v102-spaces-modal,
+ .writer-v102-spaces-manager,.writer-v1042-bookshelf-modal,
+ .writer-v1205-bookmarks-widget){
  --basic-ui-accent:var(--interactive-accent);
  --basic-ui-bg:var(--background-primary);
  --basic-ui-surface:var(--background-secondary);
@@ -243,4 +247,83 @@
 @media(prefers-reduced-motion:reduce){
  :where(.dictionary-settings-panel,.writer-v8-home,.writer-v9-calendar,.writer-v9-space,
  .writer-v13-command-dialog) :is(button,input,select,textarea){transition-duration:0s;animation-duration:0s;}
+}
+/*
+ * v13 convergence adapters: preserve existing feature-specific layouts and
+ * timeline themes. These rules correct geometry/accessibility, never overwrite
+ * Surfing's native HeaderBar DOM or third-party theme palette.
+ */
+:where(.writer-v11-studio,.writer-v11-studio-modal,.writer-project-panel,
+ .writer-v95-timeline,.writer-v95-timeline-toolbar,.writer-v102-spaces-modal,
+ .writer-v102-spaces-manager,.writer-v1042-bookshelf-modal){
+ box-sizing:border-box;
+ min-width:0;
+ max-width:100%;
+ color:var(--basic-ui-text,var(--text-normal));
+}
+:where(.writer-v11-studio,.writer-v11-studio-modal,.writer-project-panel,
+ .writer-v95-timeline,.writer-v102-spaces-modal,.writer-v102-spaces-manager)
+ :is(button,input,select,textarea):focus-visible{
+ outline:var(--basic-ui-focus,2px solid var(--interactive-accent));
+ outline-offset:2px;
+}
+:where(.writer-v11-studio,.writer-project-panel,.writer-v95-timeline,
+ .writer-v102-spaces-manager) :is(h2,h3,h4,button,small,p,span){
+ overflow-wrap:anywhere;
+}
+:where(.writer-v11-studio,.writer-project-panel,.writer-v102-spaces-manager)
+ :is(.writer-v11-chapter,.writer-v11-chapter-body,.writer-v11-editor,
+ .writer-v102-space-entry,.writer-v102-space-entry-info){
+ box-sizing:border-box;
+ min-width:0;
+ max-width:100%;
+}
+:where(.writer-v95-timeline,.writer-v95-timeline-toolbar)
+ :is(.writer-v95-timeline-items,.writer-v95-timeline-event,
+ .writer-v95-timeline-event-body,.writer-v95-timeline-head,
+ .writer-v95-timeline-title,.writer-v95-timeline-content){
+ min-width:0;
+ overflow-wrap:anywhere;
+}
+.writer-v95-timeline.is-layout-horizontal .writer-v95-timeline-scroll{
+ max-width:100%;
+ overscroll-behavior-inline:contain;
+}
+.writer-v106-drag-handle:focus-visible{
+ outline:var(--basic-ui-focus,2px solid var(--interactive-accent));
+ outline-offset:2px;
+}
+/* Desktop pointer handles should not create a large blank drag region. */
+@media(hover:hover) and (pointer:fine){
+ .writer-v106-drag-handle{touch-action:none;}
+ .writer-v925-grid .writer-v1205-resize-handle:focus-visible{
+  opacity:1;
+ }
+}
+/* Mobile retains native page scrolling and avoids desktop-only drag targets. */
+body.is-mobile .writer-v106-drag-handle{
+ display:none;
+}
+body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
+ .writer-v102-spaces-manager,.writer-v95-timeline){
+ max-width:100%;
+ overflow-wrap:anywhere;
+}
+@media(max-width:720px){
+ :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
+ .writer-v102-spaces-manager,.writer-v95-timeline-toolbar){
+  max-width:100%;
+ }
+ :where(.writer-v11-studio-actions,.writer-v11-chapter-actions,
+ .writer-v95-timeline-toolbar){
+  min-width:0;flex-wrap:wrap;
+ }
+}
+/* Dark/light themes use the same Obsidian variables; stronger focus when requested. */
+@media(prefers-contrast:more){
+ :where(.dictionary-settings-panel,.writer-v11-studio,.writer-project-panel,
+ .writer-v95-timeline,.writer-v102-spaces-manager,.writer-v8-home)
+ :is(button,input,select,textarea):focus-visible{
+  outline-width:3px;
+ }
 }

@@ -129,7 +129,7 @@ test('timeline headings normalize legacy HTML breaks and preserve safe Markdown'
  assert.equal(events.length,2);
  assert.equal(events[0].date,'1700 a 1800');
  assert.equal(events[0].title,"Seekin' My Secrets");
- assert.equal(events[0].content,'A detail with malformed   \nbreak');
+ assert.equal(events[0].content,'A detail with malformed  \nbreak');
  assert.equal(events[1].date,'1900\n1901');
  assert.equal(events[1].title,'New\nChapter');
  assert.equal(events[1].content,'Next');
@@ -147,6 +147,7 @@ test('Timeline render uses text nodes and removes empty bottom area for heading-
  const rendered=vm.runInNewContext(source+'\n({writerV95TimelineRender})',{console,writerUi:pt=>pt});
  function create(cls=''){
   const node={children:[],cssClass:cls,style:{setProperty(){}},classNames:new Set(cls.split(/\s+/).filter(Boolean))};
+  node.empty=()=>{node.children.length=0;};
   node.classList={
    add(...names){for(const name of names)node.classNames.add(name);},
    contains:name=>node.classNames.has(name)

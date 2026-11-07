@@ -42,7 +42,7 @@ function writerV95TimelineConfigOption(cfg,key,value){
 // closing </br> into a Markdown hard break. Never evaluate title/date as HTML.
 function writerV95TimelineNormalizeBreaks(value,markdown=false){
  const input=String(value==null?'':value).replace(/\r\n?/g,'\n');
- return markdown?input.replace(/<\s*\/\s*br\s*>/gi,'  \n'):
+ return markdown?input.replace(/[ \t]*<\s*\/\s*br\s*>[ \t]*/gi,'  \n'):
   input.replace(/<\s*\/?\s*br\s*\/?\s*>/gi,'\n');
 }
 function writerV95TimelineCleanEvent(raw){

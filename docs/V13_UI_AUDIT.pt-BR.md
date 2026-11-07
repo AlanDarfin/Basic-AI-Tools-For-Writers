@@ -159,3 +159,23 @@ regressões, lint, checksums e verificação de compatibilidade estática.
   fabricado.
 - PR #122 pode ser apresentado para revisão, mas pré-lançamento não deve ser
   confundido com confirmação de compatibilidade visual nem com v13 estável.
+
+## Resultado confirmado — preparação para revisão (07/11/2026)
+
+- **Contratos DOM/CSS:** aprovado em `node scripts/audit-v13-dom-contracts.js --check` e
+  `tests/v13-dom-contracts.test.cjs`; os seletores nativos do Surfing permanecem
+  restritos ao host Basic. Inventário: 1.173 classes CSS, das quais 80 sem
+  ocorrência literal no JS — **preservadas** por possíveis usos dinâmicos/externos.
+- **Código morto confirmado:** duas constantes sem leitura, o identificador
+  `allDay` não usado (com criação DOM mantida) e callback vazio removidos.
+- **CI final da distribuição:** execução [Plugin checks #42385186308](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/actions/runs/42385186308):
+  **112 arquivos de regressão aprovados, 0 falhas**, com verificação de sintaxe,
+  bundle, lint comunitário, metadados e empacotamento.
+- **Pré-lançamento público confirmado:** [Basic 13.0.0-rc.1](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/releases/tag/13.0.0-rc.1),
+  publicado com `main.js`, `manifest.json`, `styles.css`, ZIP e checksums.
+  O workflow de publicação validou build, testes e proveniência.
+- **PR #122:** movido de *Draft* para **Ready for Review**. Isso autoriza
+  revisão de código, **não comprova QA visual**.
+- **QA real pendente:** executar e documentar casos P1–P8 / A1–G4 em
+  `docs/V13_QA_VISUAL.pt-BR.md` antes de tratar a v13 como versão estável
+  ou mesclar na `main`. A execução manual NÃO foi declarada concluída.

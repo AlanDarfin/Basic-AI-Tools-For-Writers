@@ -1,19 +1,26 @@
 'use strict';
-const test=require('node:test'),assert=require('node:assert/strict');
-const {scanCss,analyze,auditWorkingTree}=require('../scripts/audit-v13-css.js');
-test('scan respects @media boundaries and semicolons inside strings',()=>{
- const rules=scanCss("a{content:'hello;world';color:red}@media(max-width:650px){a{color:blue}}a{color:red}");
- assert.equal(rules.length,3);assert.equal(rules[0].decls.length,2);
- const summary=analyze(rules);assert.equal(summary.identicalDeclarations,1);
- assert.equal(summary.changedValues,0);
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+const {collectRules,declarations,analyze,makeMarkdown}=require('../scripts/css-v13-audit.js');
+test('CSS rule inventory preserves @media scope and quoted CSS values',()=>{
+ const css="a{content:'hello;world';color:red}@media(max-width:650px){a{color:blue}}a{color:red}";
+ const rules=collectRules(css);
+ assert.equal(rules.length,3);
+ assert.equal(declarations(rules[0].body).length,2);
+ const result=analyze(css);
+ assert.equal(result.metrics.repeatedSelectors,1);
+ assert.equal(result.metrics.sameContext,1);
+ assert.equal(result.metrics.acrossContexts,1);
 });
-test('different overrides are not misclassified as identical',()=>{
- const r=analyze(scanCss('.a{color:red}.a{color:blue}.a{color:blue}'));
- assert.equal(r.repeatedSelectorKeys,1);assert.equal(r.extraSelectorOccurrences,2);
- assert.equal(r.overlappingProperties,2);assert.equal(r.changedValues,1);assert.equal(r.identicalDeclarations,1);
+test('intentional cascade overrides remain classified separately',()=>{
+ const result=analyze('.a{color:red}.a{color:blue}.a{color:blue}');
+ assert.equal(result.metrics.repeatedSelectors,1);
+ assert.equal(result.metrics.identicalDeclarationOccurrences,1);
+ assert.equal(result.metrics.differingDeclarationOccurrences,1);
 });
-test('entire legacy CSS and modular tree is inventoried',()=>{
- const r=auditWorkingTree();
- assert.ok(r.files>=33);assert.ok(r.ruleCount>2000);assert.ok(r.repeatedSelectorKeys>100);
- assert.equal(r.duplicates.length,r.repeatedSelectorKeys);
+test('CSS report lists each duplicated selector, without deleting rules',()=>{
+ const css=fs.readFileSync('styles.css','utf8'),result=analyze(css);
+ assert.ok(result.metrics.rules>2000);
+ assert.equal(result.rows.length,result.metrics.repeatedSelectors);
+ assert.match(makeMarkdown(result),/Inventário completo/);
+ assert.ok(result.metrics.sameContext>0);
 });

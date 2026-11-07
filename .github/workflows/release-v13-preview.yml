@@ -1,0 +1,87 @@
+name: Publish Basic v13 public release candidate
+on:
+  push:
+    branches: [refactor/v13-ui-foundation]
+    paths: [manifest.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+concurrency:
+  group: basic-v13-rc-publication
+  cancel-in-progress: false
+jobs:
+  release:
+    name: Validate and publish v13.0.0-rc.1
+    if: github.repository == 'AlanDarfin/Basic-AI-Tools-For-Writers'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validate candidate version
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs'),m=require('./manifest.json'),
+            p=require('./package.json'),l=require('./package-lock.json'),
+            v=require('./versions.json'),tag='13.0.0-rc.1';
+          if(m.version!==tag||p.version!==tag||l.version!==tag||
+             l.packages[''].version!==tag||v[tag]!==m.minAppVersion)
+             throw Error('v13 RC metadata mismatch');
+          for(const path of ['README.md','docs/README.pt-BR.md',
+            'docs/RELEASE_V13_RC1.md','docs/V13_QA_VISUAL.pt-BR.md',
+            'docs/V13_UI_AUDIT.pt-BR.md']) {
+            if(!fs.readFileSync(path,'utf8').length)throw Error('Missing '+path);
+          }
+          NODE
+      - name: Reproducible installation
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build and run all checks
+        run: |
+          npm run build
+          npm run check
+          node --test tests/css-community-lint.test.cjs
+      - name: Package public distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          zip -j Basic-13.0.0-rc.1.zip main.js manifest.json styles.css
+          unzip -t Basic-13.0.0-rc.1.zip
+          test "$(unzip -Z1 Basic-13.0.0-rc.1.zip | wc -l)" -eq 3
+          sha256sum main.js manifest.json styles.css Basic-13.0.0-rc.1.zip > SHA256SUMS-13.0.0-rc.1.txt
+      - name: Attest provenance
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
+            Basic-13.0.0-rc.1.zip
+      - name: Publish public prerelease with install assets
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=13.0.0-rc.1
+          if gh release view "$tag" --json isDraft,assets --jq '(.isDraft|not) and ([.assets[].name] | (index("main.js") != null) and (index("manifest.json") != null) and (index("styles.css") != null))' 2>/dev/null | grep -qx true; then
+            echo "Public candidate already present with install assets."
+            exit 0
+          fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" main.js manifest.json styles.css Basic-13.0.0-rc.1.zip SHA256SUMS-13.0.0-rc.1.txt --clobber
+            gh release edit "$tag" --draft=false --prerelease
+          else
+            gh release create "$tag" main.js manifest.json styles.css Basic-13.0.0-rc.1.zip SHA256SUMS-13.0.0-rc.1.txt \
+              --target "$GITHUB_SHA" --prerelease \
+              --title "Basic 13.0.0-rc.1 — Visual Foundation" \
+              --notes-file docs/RELEASE_V13_RC1.md
+          fi
+          gh release view "$tag" --json isDraft,isPrerelease,assets \
+            --jq '{draft:.isDraft,prerelease:.isPrerelease,assets:[.assets[].name]}'

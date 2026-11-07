@@ -13363,25 +13363,9 @@ function writerV9RegisterToolbar(plugin){
   }});
 }
 function writerV1048ToolbarCommandPicker(plugin,onChoose){
- // Reuse the accessible Basic command picker; retain the historical fuzzy fallback
- // for isolated modules and older test harnesses without the v10 toolbox.
- if(typeof writerV1044CommandPicker==='function'){
-  return writerV1044CommandPicker(plugin,(id,name)=>onChoose({id,name}));
- }
- const candidates=plugin.app.commands?.listCommands?.()||
-  Object.entries(plugin.app.commands?.commands||{}).map(([id,cmd])=>({id,name:cmd.name||id}));
- const items=candidates.filter(c=>typeof c?.id==='string'&&c.id&&c.name)
-  .sort((a,b)=>String(a.name).localeCompare(String(b.name)));
- if(typeof FuzzySuggestModal!=='undefined'){
-  class Picker extends FuzzySuggestModal{
-   getItems(){return items;}
-   getItemText(item){return item.name+' · '+item.id;}
-   onChooseItem(item){onChoose(item);}
-  }
-  new Picker(plugin.app).open();
- }else{
-  new Notice(writerUi('A paleta de comandos não está disponível.','The command picker is not available.'));
- }
+ // v13: the formatter and shortcut editor use the same accessible, ranked picker.
+ // The command ID callback contract stays unchanged.
+ return writerV1044CommandPicker(plugin,(id,name)=>onChoose({id,name}));
 }
 function writerV9ToolbarSettings(plugin,panel){
  const settings=plugin.settings.v9Toolbar;
@@ -20954,11 +20938,7 @@ function writerV1044CommandPicker(plugin,selected){
  const count=root.createEl('p',{cls:'writer-v13-command-count',attr:{'aria-live':'polite'}});
  const list=root.createDiv({cls:'writer-v1044-command-options',attr:{role:'listbox',
   'aria-label':writerUi('Resultados de comandos','Command results')}});
- const fallback=Object.entries(plugin.app.commands?.commands||{})
-  .filter(([id,entry])=>entry?.name&&typeof id==='string')
-  .map(([id,entry])=>({id,name:String(entry.name)}));
- const commands=typeof writerV13CommandCatalog==='function'?
-  writerV13CommandCatalog(plugin):fallback;
+ const commands=writerV13CommandCatalog(plugin);
  let visible=[],active=0;
  const choose=command=>{
   if(!command)return;
@@ -20976,10 +20956,7 @@ function writerV1044CommandPicker(plugin,selected){
  const render=()=>{
   list.empty();active=0;
   const query=input.value.trim();
-  visible=typeof writerV13RankCommands==='function'?
-   writerV13RankCommands(commands,query,70):
-   commands.filter(c=>!query||c.name.toLowerCase().includes(query.toLowerCase())||
-    c.id.toLowerCase().includes(query.toLowerCase())).slice(0,70);
+  visible=writerV13RankCommands(commands,query,70);
   count.setText(visible.length+' '+writerUi('comandos encontrados','commands found'));
   if(!visible.length){
    list.createEl('p',{cls:'writer-v13-command-empty',

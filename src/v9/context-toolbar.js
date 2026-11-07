@@ -545,6 +545,11 @@ function writerV9RegisterToolbar(plugin){
   }});
 }
 function writerV1048ToolbarCommandPicker(plugin,onChoose){
+ // Reuse the accessible Basic command picker; retain the historical fuzzy fallback
+ // for isolated modules and older test harnesses without the v10 toolbox.
+ if(typeof writerV1044CommandPicker==='function'){
+  return writerV1044CommandPicker(plugin,(id,name)=>onChoose({id,name}));
+ }
  const candidates=plugin.app.commands?.listCommands?.()||
   Object.entries(plugin.app.commands?.commands||{}).map(([id,cmd])=>({id,name:cmd.name||id}));
  const items=candidates.filter(c=>typeof c?.id==='string'&&c.id&&c.name)

@@ -195,3 +195,10 @@ quebras HTML na data, mas não no título.
 - Novos testes reproduzem a sintaxe do screenshot, o formato labeled,
   quebras de linha em título/data e DOM simulado.
 - Ainda é necessário repetir a observação visual no Obsidian real.
+
+## Finalização e liberação estável — v13.0.0
+
+- O usuário verificou a v13 em Obsidian e relatou o último defeito visual aparente no bloco Timeline, evidenciado por captura com `</br>` literal.
+- Corrigidos os títulos/datas e as quebras de linha do conteúdo, incluindo cartões com apenas cabeçalho; testes de regressão adicionados e executados em CI.
+- Metadados, changelog e automação foram preparados para lançar a versão `13.0.0` pela `main` somente após build, regressões, lint e atestação de proveniência.
+- A revisão visual do usuário dá contexto à decisão de publicação; não representa certificação automática de cada dispositivo e tema do checklist.

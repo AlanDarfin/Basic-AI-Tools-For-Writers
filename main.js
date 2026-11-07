@@ -15837,7 +15837,9 @@ class WriterV91SoundPlayer{
  init(){
   if(this.plugin.app.isMobile)return;
   this.status=this.plugin.addStatusBarItem?.();
-  if(this.status){this.status.addClass('writer-v91-sound-status');this.renderStatus();}
+  if(this.status){this.status.addClass('writer-v91-sound-status');
+   if(typeof writerV132ProtectStatusBar==='function')writerV132ProtectStatusBar(this.plugin,this.status);
+   this.renderStatus();}
   this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Soundscapes: reproduzir ou pausar','Soundscapes: play or pause'),callback:()=>this.toggle()});
   this.plugin.addCommand({id:'v91-sound-mini-player',name:writerUi('Soundscapes: mostrar mini player','Soundscapes: show mini player'),callback:()=>this.showMiniPlayer()});
   this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Soundscapes: próxima faixa','Soundscapes: next track'),callback:()=>this.next()});
@@ -24691,6 +24693,7 @@ function writerV1010Register(plugin){
  if(item){
   status=item;
   item.addClass?.('writer-v1010-width-status');
+  if(typeof writerV132ProtectStatusBar==='function')writerV132ProtectStatusBar(plugin,item);
   const doc=item.ownerDocument;
   const title=make('span','writer-v1010-width-name',doc);title.textContent=writerUi('Largura','Width');item.appendChild(title);
   range=make('input','writer-v1010-width-range',doc);
@@ -27781,6 +27784,15 @@ function writerV131RankSettings(entries,query,limit=18){
  }).filter(Boolean).sort((a,b)=>b.score-a.score||
   String(a.title).localeCompare(String(b.title),undefined,{sensitivity:'base'}))
  .slice(0,Math.max(1,Math.min(40,Math.trunc(Number(limit)||18))));
+}
+
+// Scope status-bar sizing to hosts with Basic controls; restore on plugin unload.
+function writerV132ProtectStatusBar(plugin,item){
+ const bar=item?.parentElement;
+ if(!bar?.classList?.contains('status-bar'))return;
+ const already=bar.classList.contains('writer-v132-status-host');
+ bar.classList.add('writer-v132-status-host');
+ if(!already)plugin.register?.(()=>bar.classList.remove('writer-v132-status-host'));
 }
 
 // END WRITER V3 MODULES

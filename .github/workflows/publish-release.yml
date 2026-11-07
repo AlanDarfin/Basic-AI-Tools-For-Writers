@@ -130,7 +130,9 @@ jobs:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          if [[ "$RELEASE_TAG" == "13.0.0" ]]; then
+          if [[ "$RELEASE_TAG" == "13.0.2" ]]; then
+            notes=(--notes-file docs/RELEASE_V13_0_2.md)
+          elif [[ "$RELEASE_TAG" == "13.0.0" ]]; then
             notes=(--notes-file docs/RELEASE_V13.md)
           else
             notes=(--generate-notes)

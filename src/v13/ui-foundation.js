@@ -155,3 +155,12 @@ function writerV131RankSettings(entries,query,limit=18){
   String(a.title).localeCompare(String(b.title),undefined,{sensitivity:'base'}))
  .slice(0,Math.max(1,Math.min(40,Math.trunc(Number(limit)||18))));
 }
+
+// Scope status-bar sizing to hosts with Basic controls; restore on plugin unload.
+function writerV132ProtectStatusBar(plugin,item){
+ const bar=item?.parentElement;
+ if(!bar?.classList?.contains('status-bar'))return;
+ const already=bar.classList.contains('writer-v132-status-host');
+ bar.classList.add('writer-v132-status-host');
+ if(!already)plugin.register?.(()=>bar.classList.remove('writer-v132-status-host'));
+}

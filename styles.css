@@ -236,7 +236,7 @@
 .writer-project-panel .setting-item-control{max-width:100%;flex-wrap:wrap}
 
 /* Project manager v2: touch-friendly controls, workflows and notes */
-.writer-project-root{overflow-x:hidden;overscroll-behavior:contain;padding:10px 9px 30px}
+.writer-project-root{overscroll-behavior:contain;padding:10px 9px 30px}
 .writer-project-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .writer-project-toolbar select{min-width:0;flex:1 1 160px;margin:0}
 .writer-project-create{flex:0 0 auto}
@@ -5297,7 +5297,7 @@ body.is-mobile .writer-v83-calendar.writer-v9-calendar .writer-v9-calendar-month
 }
 
 /* 9.0.2: title, full-width search, then a balanced six-action grid. */
-.writer-v8-home{container-type:inline-size;}
+.writer-v8-home{}
 .writer-v8-home .writer-v8-home-hero{margin:0 auto 12px;
 }
 .writer-v8-home .writer-v8-home-heading{margin:0;
@@ -7084,12 +7084,10 @@ body.is-mobile .writer-v924-masonry>.writer-v924-column{width:100%;flex:none;gap
 
 /* 9.2.5 — measured masonry grid: height-aware placement without fixed columns. */
 .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
- display:grid;
  grid-template-columns:repeat(2,minmax(0,1fr));
  grid-auto-rows:8px;
  gap:10px 12px;
  align-items:start;
- max-width:1100px;
 }
 .writer-v925-grid>[data-section]{
  grid-column:span 1;
@@ -9589,7 +9587,7 @@ body.is-mobile .dictionary-settings-subtabs button{
  * The wb-search-bar itself is created by the Surfing plugin. */
 .writer-v8-home .writer-v1205-native-surfing-host{
  position:sticky;top:0;z-index:15;display:flex;align-items:center;
- box-sizing:border-box;width:100%;min-width:0;min-height:42px;
+ box-sizing:border-box;width:100%;min-height:42px;
  padding:5px 10px;margin-bottom:12px;
  border:1px solid var(--basic-ui-border,var(--background-modifier-border));
  border-radius:var(--basic-ui-radius,var(--radius-m));background:var(--basic-ui-bg,var(--background-primary));
@@ -9607,12 +9605,9 @@ body.is-mobile .dictionary-settings-subtabs button{
 }
 /* Replace old faux address bar selectors entirely. */
 .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
- grid-template-columns:repeat(12,minmax(0,1fr));
- grid-auto-flow:row dense;
 }
 .writer-v8-home .writer-v925-grid>[data-section]{
- grid-column:span 6;
- min-width:0;position:relative;
+ grid-column:span 6;position:relative;
 }
 .writer-v8-home .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 12;}
 .writer-v8-home .writer-v925-grid>[data-section][data-widget-size="compact"]{grid-column:span 4;}
@@ -10584,5 +10579,130 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  .dictionary-settings-panel .writer-v131-ai-workspace{gap:5px;}
  .dictionary-settings-panel .writer-v131-ai-details{gap:5px;padding:9px;}
  .dictionary-settings-panel .writer-v131-ai-details>.setting-item{padding:4px 0;}
+}
+
+/* 13.0.1 — Project view and status-bar fixes from 720p screenshots.
+ * No single-letter line wrapping: controls are allowed to scroll or truncate.
+ */
+.writer-project-root{
+ container-type:inline-size;container-name:basic-project;
+ min-width:0;max-width:100%;overflow-x:hidden;
+}
+.writer-project-root .writer-project-tabs.writer-project-tabs,
+.writer-project-root .writer-v7-rc-structure-tabs.writer-v7-rc-structure-tabs{
+ display:flex;flex-wrap:nowrap;gap:4px;
+ overflow-x:auto;overflow-y:hidden;
+ max-width:100%;min-width:0;scrollbar-width:none;
+ overscroll-behavior-x:contain;
+}
+.writer-project-root .writer-project-tabs::-webkit-scrollbar,
+.writer-project-root .writer-v7-rc-structure-tabs::-webkit-scrollbar{
+ display:none;height:0;
+}
+.writer-project-root .writer-project-tabs.writer-project-tabs>button,
+.writer-project-root .writer-v7-rc-structure-tabs.writer-v7-rc-structure-tabs>button{
+ flex:0 0 auto;min-width:max-content;max-width:none;
+ width:auto;min-height:32px;padding:5px 9px;
+ white-space:nowrap;overflow-wrap:normal;word-break:normal;
+ writing-mode:horizontal-tb;
+}
+.writer-project-root .writer-project-scene-actions{
+ display:grid;grid-template-columns:minmax(0,1fr) repeat(4,minmax(24px,auto));
+ align-items:center;gap:3px;max-width:100%;
+}
+.writer-project-root .writer-project-scene-actions>.writer-project-scene-title{
+ grid-column:1/-1;min-width:0;max-width:100%;width:100%;
+ text-align:left;white-space:normal;overflow-wrap:normal;word-break:normal;
+ hyphens:none;line-height:1.4;padding:6px 4px;
+}
+.writer-project-root .writer-project-scene-actions>.writer-project-small-button{
+ min-width:26px;max-width:100%;min-height:28px;
+ padding:3px 5px;white-space:nowrap;overflow-wrap:normal;
+}
+.writer-project-root .writer-project-panel :is(
+ .writer-project-note,.writer-v7-rc-card-title,.writer-v7-rc-plotrow button){
+ overflow-wrap:normal;word-break:normal;hyphens:none;
+}
+@container basic-project (max-width:260px){
+ .writer-project-root .writer-project-scene-actions{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+ }
+ .writer-project-root .writer-project-scene-actions>.writer-project-small-button{
+  justify-self:center;
+ }
+}
+@container basic-project (min-width:430px){
+ .writer-project-root .writer-project-scene-actions{
+  grid-template-columns:minmax(150px,1fr) repeat(4,28px);
+ }
+ .writer-project-root .writer-project-scene-actions>.writer-project-scene-title{
+  grid-column:1;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
+ }
+}
+
+/* The native Obsidian status bar and its Settings/Help controls must retain room.
+ * Basic status widgets shrink before Obsidian's own buttons do.
+ */
+.status-bar.writer-v132-status-host{
+ min-width:0;max-width:calc(100% - 64px);box-sizing:border-box;
+ flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+}
+.status-bar.writer-v132-status-host::-webkit-scrollbar{display:none;}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status,.writer-v931-pomodoro-status){
+ box-sizing:border-box;min-width:0;flex-shrink:1;
+}
+.status-bar .writer-v91-sound-status{
+ max-width:clamp(90px,20vw,235px);gap:3px;padding-inline:3px;
+}
+.status-bar .writer-v91-sound-select{
+ flex:1 1 auto;min-width:0;max-width:120px;
+ width:clamp(48px,8vw,120px);height:22px;
+}
+.status-bar .writer-v1010-width-status{
+ max-width:clamp(90px,15vw,160px);gap:4px;padding-inline:3px;
+}
+.status-bar .writer-v1010-width-status .writer-v1010-width-name{
+ font-size:var(--font-ui-smaller);white-space:nowrap;
+}
+.status-bar .writer-v1010-width-status button.writer-v1010-width-value{
+ min-width:30px;padding:0 2px;
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status) input[type="range"]{
+ flex:1 1 45px;min-width:30px;width:clamp(30px,5vw,65px);
+ max-width:65px;height:12px;margin:0;
+ appearance:none;-webkit-appearance:none;background:transparent;
+ accent-color:var(--interactive-accent);
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status) input[type="range"]::-webkit-slider-runnable-track{
+ height:3px;border-radius:999px;background:var(--background-modifier-border);
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status) input[type="range"]::-webkit-slider-thumb{
+ appearance:none;-webkit-appearance:none;width:10px;height:10px;
+ margin-top:-3.5px;border-radius:50%;border:0;
+ background:var(--interactive-accent);
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status) input[type="range"]::-moz-range-track{
+ height:3px;border-radius:999px;background:var(--background-modifier-border);
+}
+.status-bar :is(.writer-v91-sound-status,.writer-v1010-width-status) input[type="range"]::-moz-range-thumb{
+ width:10px;height:10px;border:0;border-radius:50%;
+ background:var(--interactive-accent);
+}
+@media(max-width:1350px){
+ .status-bar .writer-v91-sound-select{max-width:90px;}
+ .status-bar .writer-v91-sound-status{max-width:170px;}
+ .status-bar .writer-v1010-width-status{max-width:125px;}
+}
+@media(max-width:1050px){
+ .status-bar .writer-v91-sound-select{max-width:65px;}
+ .status-bar .writer-v91-sound-status{max-width:125px;}
+ .status-bar .writer-v1010-width-status{max-width:100px;}
+ .status-bar .writer-v1010-width-name{display:none;}
+}
+@media(max-width:850px){
+ .status-bar .writer-v91-sound-status input[type="range"],
+ .status-bar .writer-v1010-width-status input[type="range"]{display:none;}
+ .status-bar .writer-v91-sound-status{max-width:85px;}
+ .status-bar .writer-v1010-width-status{max-width:48px;}
 }
 /* END V8 MODULAR STYLES */

@@ -202,3 +202,7 @@ quebras HTML na data, mas não no título.
 - Corrigidos os títulos/datas e as quebras de linha do conteúdo, incluindo cartões com apenas cabeçalho; testes de regressão adicionados e executados em CI.
 - Metadados, changelog e automação foram preparados para lançar a versão `13.0.0` pela `main` somente após build, regressões, lint e atestação de proveniência.
 - A revisão visual do usuário dá contexto à decisão de publicação; não representa certificação automática de cada dispositivo e tema do checklist.
+
+## 13.0.2 — correções das capturas de Projetos/status bar
+
+Abas preservam palavras inteiras; capítulos ocupam linha própria em painéis estreitos. A barra recebe uma classe temporária somente ao hospedar controles Basic, reserva 64 px à esquerda e mantém os sliders padronizados. Limpeza da classe no unload coberta por regressão. Ver RELEASE_V13_0_2.md.

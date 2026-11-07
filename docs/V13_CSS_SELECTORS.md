@@ -1,6 +1,6 @@
 # Basic v13 — Inventário dos seletores CSS reincidentes
 
-Gerado de styles.css, com contexto de regras @media/@supports/@container.
+Inventário de referência gerado ANTES da higienização do bundle v13, com contexto de regras @media/@supports/@container.\nOs números de linha refletem o snapshot anterior e NÃO devem ser usados como offsets após a limpeza.\nEm 07/11/2026, 106 declarações redundantes em 52 seletores foram removidas do CSS distribuído\npor `scripts/css-v13-dedupe.js` (sem eliminar variações responsivas ou conflitos legítimos).
 Leitura: duplicidade textual de seletor não prova redundância. O resultado
 distingue mudanças condicionais de declarações repetidas no mesmo contexto.
 A lista contém seletores para REVISÃO, não autorização automática para remoção.

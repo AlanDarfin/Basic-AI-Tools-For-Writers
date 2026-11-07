@@ -67,8 +67,10 @@ function writerV6ReadingTextStatus(plugin,element){
  const source=view?.editor?.getValue?.()||'';
  const result=writerV6ReadingEstimate(source,cfg);
  element.style.display='';
- element.textContent=result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('min leitura','min read');
- element.title=writerUi('Estimativa de tempo de leitura','Estimated reading time');
+ // Obsidian/other plugins may already display word counts. Status stays slim.
+ element.textContent=result.minutes+' '+writerUi('min leitura','min read');
+ element.title=writerUi('Estimativa de leitura: ','Estimated reading time: ')+
+  result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('minutos','minutes');
 }
 class WriterV6Reading{
  constructor(plugin){this.plugin=plugin;this.updateTimer=null;}

@@ -389,7 +389,8 @@ class WriterV91SoundPlayer{
   const play=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
   const next=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
   const mini=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
-  const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
+  const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5',
+   'aria-label':writerUi('Volume','Volume'),title:writerUi('Volume do Soundscapes','Soundscapes volume')}});
   for(const [id,label] of writerV91SoundStationOptions(this.plugin)){
    const option=select.createEl('option',{text:label});option.value=id;
   }

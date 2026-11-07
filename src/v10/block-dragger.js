@@ -5,7 +5,7 @@ function writerV106DragMerge(settings){
  const old=settings.v106Dragger&&typeof settings.v106Dragger==='object'?settings.v106Dragger:{};
  const cfg=settings.v106Dragger={
   enabled:true,visibility:'hover',icon:'grip',size:20,offset:0,color:'',indicatorColor:'',
-  multiSelect:true,nested:true,mobileLongPress:true,highlight:true,...old
+  multiSelect:true,nested:true,mobileLongPress:true,highlight:true,coexistWithNative:true,...old
  };
  if(!['hover','always','hidden'].includes(cfg.visibility))cfg.visibility='hover';
  if(!['grip','grip-lines','dot','square'].includes(cfg.icon))cfg.icon='grip';
@@ -128,16 +128,22 @@ function writerV106DragNativeConflict(plugin){
  try{return !!(internal?.enabledPlugins?.has?.('dragger')||internal?.plugins?.dragger?.enabled);}
  catch(_){return false;}
 }
+function writerV131DragPosition(editor,x,y){
+ const pos=editor?.posAtCoords?.({left:x,top:y});
+ if(pos&&Number.isInteger(pos.line))return pos;
+ const cm=editor?.cm,offset=cm?.posAtCoords?.({x,y});
+ if(!Number.isInteger(offset))return null;
+ const line=cm.state?.doc?.lineAt?.(offset);
+ return line?{line:line.number-1,ch:offset-line.from}:null;
+}
 function writerV106DragRegister(plugin){
  const cfg=writerV106DragMerge(plugin.settings);
  const {Platform:platform,setIcon:obsidianSetIcon}=require('obsidian');
- // Drag handles are desktop-only: on mobile they obstruct the editor and
- // interfere with touch selection. Do not create DOM, commands or listeners.
- if(platform?.isMobile===true||plugin.app?.isMobile===true)return;
+ // Android uses a long-press gesture without showing a grip over controls.
  const doc=plugin.app.workspace.containerEl?.ownerDocument;
  if(!doc)return;
  const isMobile=()=>Boolean(platform?.isMobile||plugin.app.isMobile);
- const enabled=()=>cfg.enabled&&!writerV106DragNativeConflict(plugin);
+ const enabled=()=>cfg.enabled&&(cfg.coexistWithNative!==false||!writerV106DragNativeConflict(plugin));
  const handle=doc.createElement('button'),indicator=doc.createElement('div');
  handle.type='button';handle.className='writer-v106-drag-handle';
  handle.setAttribute('aria-label',writerUi('Arrastar bloco','Drag block'));
@@ -169,7 +175,7 @@ function writerV106DragRegister(plugin){
  const locate=(view,x,y)=>{
   const ed=view?.editor;
   if(!ed?.posAtCoords)return null;
-  const pos=ed.posAtCoords({left:x,top:y});
+  const pos=writerV131DragPosition(ed,x,y);
   if(!pos)return null;
   const lines=ed.getValue().split('\n');
   // BlockAt deliberately returns the nearest block for drop targets; never
@@ -179,9 +185,11 @@ function writerV106DragRegister(plugin){
   return block?{block,view,ed,lines}:null;
  };
  const preview=(info,rect)=>{
-  if(!info||!rect||!enabled()||cfg.visibility==='hidden'){
+  if(!info||!rect||!enabled()||cfg.visibility==='hidden'||isMobile()){
    active=null;handle.style.display='none';return;
   }
+  const scroll=info.view.containerEl?.querySelector?.('.cm-scroller')?.getBoundingClientRect?.();
+  if(scroll&&(rect.bottom<scroll.top||rect.top>scroll.bottom)){active=null;handle.style.display='none';return;}
   active=info;
   handle.style.position='fixed';
   handle.style.left=Math.max(2,rect.left-cfg.size-7+cfg.offset)+'px';
@@ -220,7 +228,7 @@ function writerV106DragRegister(plugin){
  const targetAt=e=>{
   if(!drag)return;
   const view=drag.view,ed=view.editor;
-  const pos=ed.posAtCoords?.({left:e.clientX,top:e.clientY});
+  const pos=writerV131DragPosition(ed,e.clientX,e.clientY);
   if(!pos)return;
   const lines=ed.getValue().split('\n'),block=writerV106DragBlockAt(lines,pos.line);
   const node=doc.elementFromPoint?.(e.clientX,e.clientY)?.closest?.('.cm-line');
@@ -255,6 +263,9 @@ function writerV106DragRegister(plugin){
    const result=writerV106DragMove(current,range.start,range.end,target,indent);
    moved=writerV106DragApply(ed,result);
   }catch(error){console.warn('[Basic AI] Move block:',error);new Notice(writerUi('Não foi possível mover o bloco.','Could not move the block.'));}
+  if(drag.origin==='handle'&&drag.pointerId!==undefined){
+   try{handle.releasePointerCapture?.(drag.pointerId);}catch(_){}
+  }
   drag=null;selection=null;indicator.style.display='none';handle.classList.remove('is-dragging');
   sourceNode?.classList.remove('writer-v106-drag-source');sourceNode=null;
   targetNode?.classList.remove('writer-v106-drag-target');targetNode=null;
@@ -303,8 +314,8 @@ function writerV106DragRegister(plugin){
  const nearHandle=e=>{
   if(handle.style.display==='none'||!Number.isFinite(e.clientX)||!Number.isFinite(e.clientY))return false;
   const rect=handle.getBoundingClientRect();
-  return e.clientX>=rect.left-30&&e.clientX<=rect.right+65&&
-   e.clientY>=rect.top-28&&e.clientY<=rect.bottom+28;
+  return e.clientX>=rect.left-18&&e.clientX<=rect.right+18&&
+   e.clientY>=rect.top-18&&e.clientY<=rect.bottom+18;
  };
  const postponeHide=()=>{
   clearTimeout(hideTimer);
@@ -317,7 +328,7 @@ function writerV106DragRegister(plugin){
  const pointermove=e=>{
   clearTimeout(hideTimer);
   if(drag){e.preventDefault?.();targetAt(e);return;}
-  if(!enabled())return;
+  if(!enabled()||isMobile())return;
   if(e.target===handle||handle.contains(e.target)||nearHandle(e))return;
   const line=e.target?.closest?.('.cm-line');
   if(!line){
@@ -340,7 +351,10 @@ function writerV106DragRegister(plugin){
     return;
    }
    e.preventDefault();
-   startDrag({x:e.clientX,y:e.clientY,line:active.block.start},active.view,'handle');
+   if(startDrag({x:e.clientX,y:e.clientY,line:active.block.start},active.view,'handle')){
+    drag.pointerId=e.pointerId;
+    try{handle.setPointerCapture?.(e.pointerId);}catch(_){}
+   }
    return;
   }
   if(!enabled()||!isMobile()||!cfg.mobileLongPress||e.pointerType!=='touch')return;
@@ -352,7 +366,7 @@ function writerV106DragRegister(plugin){
   clearTimeout(pressTimer);
   pressTimer=setTimeout(()=>{
    pressTimer=null;
-   const pos=view.editor.posAtCoords?.({left:x,top:y});
+   const pos=writerV131DragPosition(view.editor,x,y);
    if(!pos)return;
    if(startDrag({x,y,line:pos.line},view,'touch')){new Notice(writerUi('Arraste para mover o bloco','Drag to move the block'),1000);}
   },420);
@@ -390,10 +404,15 @@ function writerV106DragSettings(plugin,panel){
  const cfg=writerV106DragMerge(plugin.settings);
  panel.createEl('h3',{text:writerUi('Arrastar blocos (Dragger)','Block dragger')});
  if(require('obsidian').Platform?.isMobile===true||plugin.app?.isMobile===true){
-  panel.createEl('p',{cls:'setting-item-description',text:writerUi('O Dragger está desativado no celular. Nenhuma alça ou gesto de arrastar será instalado. Suas preferências para PC foram preservadas.','Dragger is disabled on mobile. No drag handles or gestures will be installed. Your desktop preferences are preserved.')});
+  panel.createEl('p',{cls:'setting-item-description',text:writerUi('No Android, a alça não aparece. Segure uma linha não vazia para mover quando habilitado.','On Android the grip stays hidden. Long-press a nonempty editor line to move it when enabled.')});
+  new Setting(panel).setName(writerUi('Toque prolongado para mover blocos','Long-press to move blocks'))
+   .addToggle(t=>t.setValue(cfg.mobileLongPress!==false).onChange(async v=>{cfg.mobileLongPress=v;await plugin.saveSettings();}));
   return;
  }
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('Disponível somente no computador. No celular, a alça e seus eventos são desativados para não atrapalhar a seleção de texto nem ocupar espaço. No PC, arraste os blocos pela alça; Ctrl+Z desfaz.','Desktop only. On mobile, drag handles and touch listeners are disabled to avoid obstructing text selection or taking up editor space. On desktop, drag blocks using the handle; undo with Ctrl+Z.')});
+ new Setting(panel).setName(writerUi('Alça Basic com Dragger externo','Basic grip with external Dragger'))
+  .setDesc(writerUi('Mantém a alça do Basic disponível quando outro Dragger estiver ativado.','Keep Basic grip available if another Dragger plugin is enabled.'))
+  .addToggle(t=>t.setValue(cfg.coexistWithNative!==false).onChange(async v=>{cfg.coexistWithNative=v;await plugin.saveSettings();}));
  for(const [k,pt,en] of [['enabled','Ativar alça de arrastar','Enable drag handles'],['multiSelect','Mover seleção de linhas juntas','Move selected lines together'],['nested','Ajustar recuo de listas ao arrastar','Adjust list indentation while dragging'],['highlight','Destacar bloco de origem','Highlight source block']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[k]!==false).onChange(async v=>{cfg[k]=v;await plugin.saveSettings();plugin.writerV106DragApplyStyles?.();}));
  }

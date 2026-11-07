@@ -421,7 +421,8 @@ function writerV1010Register(plugin){
   }
   const file=workspace.getActiveFile?.();
   const current=writerV1010WidthForFile(plugin,file),yaml=cfg.width.frontmatter!==false&&writerV1010YamlWidth(plugin,file)!==null;
-  if(range){range.value=String(current);range.title=yaml?writerUi('Nota usa editor-width no YAML. Alteração temporária nesta sessão.','This note has YAML editor-width; slider changes are session-only.'):'';}
+  if(range){range.value=String(current);range.title=yaml?writerUi('Nota usa editor-width no YAML. Alteração temporária nesta sessão.','This note has YAML editor-width; slider changes are session-only.'):
+   writerUi('Largura do editor','Editor width');}
   if(value)value.textContent=current+'%';
   if(status)status.style.display=cfg.width.enabled&&cfg.width.showStatus&&!require('obsidian').Platform?.isMobile?'':'none';
  };

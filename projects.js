@@ -226,7 +226,7 @@ class ProjectsView extends ItemView{
   };
   for(const group of menuGroups){
    const button=groupNav.createEl('button',{text:lfMsg(group.pt,group.en),cls:activeGroup===group.id?'is-active':'',
-    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
+    attr:{type:'button','aria-pressed':String(activeGroup===group.id),title:lfMsg(group.pt,group.en)}});
    const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
    require('obsidian').setIcon?.(glyph,groupLucide[group.id]||'folder');
    button.prepend?.(glyph);
@@ -555,7 +555,8 @@ class ProjectsView extends ItemView{
      });
    }
    const titleButton=titleWrapper.createEl('button',{cls:'writer-project-scene-title',attr:{
-    'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
+    'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name,
+    title:name
    }});
    if(level>0){
     // One slender vertical rail for each level:

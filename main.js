@@ -228,7 +228,7 @@ class ProjectsView extends ItemView{
   };
   for(const group of menuGroups){
    const button=groupNav.createEl('button',{text:lfMsg(group.pt,group.en),cls:activeGroup===group.id?'is-active':'',
-    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
+    attr:{type:'button','aria-pressed':String(activeGroup===group.id),title:lfMsg(group.pt,group.en)}});
    const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
    require('obsidian').setIcon?.(glyph,groupLucide[group.id]||'folder');
    button.prepend?.(glyph);
@@ -557,7 +557,8 @@ class ProjectsView extends ItemView{
      });
    }
    const titleButton=titleWrapper.createEl('button',{cls:'writer-project-scene-title',attr:{
-    'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
+    'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name,
+    title:name
    }});
    if(level>0){
     // One slender vertical rail for each level:
@@ -6346,8 +6347,10 @@ function writerV6ReadingTextStatus(plugin,element){
  const source=view?.editor?.getValue?.()||'';
  const result=writerV6ReadingEstimate(source,cfg);
  element.style.display='';
- element.textContent=result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('min leitura','min read');
- element.title=writerUi('Estimativa de tempo de leitura','Estimated reading time');
+ // Obsidian/other plugins may already display word counts. Status stays slim.
+ element.textContent=result.minutes+' '+writerUi('min leitura','min read');
+ element.title=writerUi('Estimativa de leitura: ','Estimated reading time: ')+
+  result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('minutos','minutes');
 }
 class WriterV6Reading{
  constructor(plugin){this.plugin=plugin;this.updateTimer=null;}
@@ -16117,7 +16120,8 @@ class WriterV91SoundPlayer{
   const play=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
   const next=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
   const mini=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
-  const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
+  const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5',
+   'aria-label':writerUi('Volume','Volume'),title:writerUi('Volume do Soundscapes','Soundscapes volume')}});
   for(const [id,label] of writerV91SoundStationOptions(this.plugin)){
    const option=select.createEl('option',{text:label});option.value=id;
   }
@@ -24671,7 +24675,8 @@ function writerV1010Register(plugin){
   }
   const file=workspace.getActiveFile?.();
   const current=writerV1010WidthForFile(plugin,file),yaml=cfg.width.frontmatter!==false&&writerV1010YamlWidth(plugin,file)!==null;
-  if(range){range.value=String(current);range.title=yaml?writerUi('Nota usa editor-width no YAML. Alteração temporária nesta sessão.','This note has YAML editor-width; slider changes are session-only.'):'';}
+  if(range){range.value=String(current);range.title=yaml?writerUi('Nota usa editor-width no YAML. Alteração temporária nesta sessão.','This note has YAML editor-width; slider changes are session-only.'):
+   writerUi('Largura do editor','Editor width');}
   if(value)value.textContent=current+'%';
   if(status)status.style.display=cfg.width.enabled&&cfg.width.showStatus&&!require('obsidian').Platform?.isMobile?'':'none';
  };

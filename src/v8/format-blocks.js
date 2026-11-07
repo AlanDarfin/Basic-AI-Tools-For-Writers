@@ -161,4 +161,135 @@ function writerV8RegisterBlocks(plugin,enabled){
    else writerV8RenderCard(plugin,source,element,ctx,kind,type);
   });
  }
+ writerV131RegisterWritingBlocks(plugin,enabled);
+}
+
+/* Local writing helpers and story blocks. No external services or note indexing. */
+const WRITER_V131_STORY_BLOCKS={
+ 'scene-card':{pt:'Ficha de cena',en:'Scene card',icon:'clapperboard'},
+ 'character-voice':{pt:'Voz da personagem',en:'Character voice',icon:'quote'},
+ 'beat-sheet':{pt:'Batidas da história',en:'Story beats',icon:'list-ordered'},
+ 'editor-note':{pt:'Nota de revisão',en:'Editorial note',icon:'pencil-line'}
+};
+const WRITER_V131_STOPWORDS=new Set(('a ao aos as até com como da das de dela dele do dos e é em entre eu foi há isso la lhe mais mas me meu minha na nas não no nos o os ou para pela pelo por que se sem seu sua um uma uns umas você ele ela eles elas the a an and are as at be been but by for from had has have he her his i if in into is it its me my not of on or our she so than that the their them then there they this to was we were what when where which who will with you your').split(/\s+/));
+function writerV131NormalizeWord(word){
+ return String(word||'').toLocaleLowerCase().normalize('NFC').replace(/[’]/g,"'");
+}
+function writerV131WritingAnalysis(input){
+ // Analyze a bounded in-memory snapshot; never save or transmit its text.
+ const text=String(input||'').slice(0,200000);
+ const words=[...text.matchAll(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu)].map(m=>({word:m[0],index:m.index}));
+ const counts=new Map(),near=[];
+ for(let i=0;i<words.length;i++){
+  const item=words[i],key=writerV131NormalizeWord(item.word);
+  if(key.length<4||WRITER_V131_STOPWORDS.has(key))continue;
+  const entry=counts.get(key)||{word:item.word,count:0,last:-100};
+  entry.count++;
+  if(i-entry.last<=7&&near.length<20){
+   const excerpt=text.slice(Math.max(0,item.index-36),Math.min(text.length,item.index+item.word.length+36)).replace(/\s+/g,' ').trim();
+   near.push({word:item.word,distance:i-entry.last,excerpt});
+  }
+  entry.last=i;counts.set(key,entry);
+ }
+ const repeated=[...counts.values()].filter(x=>x.count>1)
+  .sort((a,b)=>b.count-a.count||a.word.localeCompare(b.word)).slice(0,20)
+  .map(({word,count})=>({word,count}));
+ return {wordCount:words.length,repeated,near,truncated:String(input||'').length>text.length};
+}
+function writerV131ReviewModal(plugin,text,scope){
+ const result=writerV131WritingAnalysis(text),modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Revisão de repetições','Repetition review'));
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();root.addClass('writer-v131-review');
+  root.createEl('p',{cls:'setting-item-description',text:scope+' · '+result.wordCount+' '+writerUi('palavras','words')+
+   (result.truncated?' · '+writerUi('primeiros 200 mil caracteres','first 200,000 characters'):'')});
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Sugestões locais: nomes e repetições intencionais também podem aparecer. Nenhuma alteração é feita na nota.','Local suggestions: names and intentional repetition may appear. Your note is not changed.')});
+  root.createEl('h4',{text:writerUi('Palavras repetidas','Repeated words')});
+  if(!result.repeated.length)root.createEl('p',{text:writerUi('Nenhuma repetição relevante encontrada.','No relevant repetitions found.')});
+  else{
+   const list=root.createEl('ul',{cls:'writer-v131-review-frequency'});
+   for(const item of result.repeated)list.createEl('li',{text:item.word+' · '+item.count});
+  }
+  root.createEl('h4',{text:writerUi('Repetições próximas','Nearby repetitions')});
+  if(!result.near.length)root.createEl('p',{text:writerUi('Nenhuma repetição próxima encontrada.','No nearby repetitions found.')});
+  else{
+   const list=root.createEl('ul',{cls:'writer-v131-review-near'});
+   for(const item of result.near){const li=list.createEl('li');li.createEl('strong',{text:item.word});
+    li.createEl('span',{text:' · …'+item.excerpt+'…'});}
+  }
+ };
+ modal.onClose=()=>modal.contentEl.empty();modal.open();
+}
+function writerV131BeatLines(text){
+ return String(text||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).slice(0,80).map((line,i)=>{
+  line=line.replace(/^[-*]\s+/,'');const separator=/\s+\|\s+/.exec(line);
+  return {title:separator?line.slice(0,separator.index).trim().slice(0,100):String(i+1),
+   body:(separator?line.slice(separator.index+separator[0].length):line).trim()};
+ });
+}
+function writerV131BlockTemplate(kind,selection=''){
+ const selected=String(selection||'');
+ const templates={
+  'scene-card':'title: '+writerUi('Nome da cena','Scene title')+'\npov: '+writerUi('Ponto de vista','Point of view')+'\nlocation: '+writerUi('Local','Location')+'\ngoal: '+writerUi('Objetivo','Goal')+'\nconflict: '+writerUi('Conflito','Conflict')+'\noutcome: '+writerUi('Resultado','Outcome')+'\n---\n',
+  'character-voice':'name: '+writerUi('Personagem','Character')+'\ntone: '+writerUi('Tom','Tone')+'\n---\n',
+  'beat-sheet':'title: '+writerUi('Batidas da história','Story beats')+'\n---\n',
+  'editor-note':'title: '+writerUi('Nota de revisão','Editorial note')+'\nstatus: '+writerUi('Pendente','Pending')+'\n---\n'
+ };
+ const defaults={
+  'scene-card':writerUi('Descreva a cena em Markdown.','Describe the scene in Markdown.'),
+  'character-voice':writerUi('Escreva uma fala ou pensamento.','Write a line or thought.'),
+  'beat-sheet':writerUi('Abertura | Apresente a situação.\nVirada | Algo muda.\nDesfecho | Mostre a consequência.','Opening | Set the scene.\nTurn | Something changes.\nOutcome | Show the consequence.'),
+  'editor-note':writerUi('O que precisa de atenção?','What needs attention?')
+ };
+ if(!templates[kind])return '';
+ const body=templates[kind]+(selected.length?selected:defaults[kind]);
+ let longest=2;
+ for(const match of body.matchAll(/`+/g))longest=Math.max(longest,match[0].length);
+ const fence='`'.repeat(longest+1);
+ return '\n'+fence+kind+'\n'+body+'\n'+fence+'\n';
+}
+function writerV131RenderStoryBlock(plugin,source,element,ctx,type){
+ const cfg=WRITER_V131_STORY_BLOCKS[type],parsed=writerV8ReadCard(source);
+ const root=element.createDiv({cls:'writer-v131-story-block writer-v131-'+type});
+ if(!parsed){root.createEl('p',{text:writerUi('Bloco muito grande.','Block too large.')});return;}
+ const {fields,body}=parsed,header=root.createDiv({cls:'writer-v131-story-header'});
+ const symbol=header.createSpan({cls:'writer-v131-story-icon',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon?.(symbol,cfg.icon);
+ const name=fields.title||fields.name||fields.nome||writerUi(cfg.pt,cfg.en);
+ header.createEl('strong',{text:name});
+ const edit=header.createEl('button',{cls:'writer-v131-story-edit',text:writerUi('Editar','Edit'),attr:{type:'button','aria-label':writerUi('Editar bloco','Edit block')+': '+name}});
+ edit.addEventListener('click',()=>writerV8InlineEditor(plugin,ctx,root,element,type,source,source,value=>value,
+  next=>writerV131RenderStoryBlock(plugin,next,element,ctx,type)));
+ const metaNames=type==='scene-card'?[
+  ['pov','Ponto de vista','Point of view'],['location','Local','Location'],['goal','Objetivo','Goal'],
+  ['conflict','Conflito','Conflict'],['outcome','Resultado','Outcome']]:
+  type==='character-voice'?[['tone','Tom','Tone']]:type==='editor-note'?[['status','Estado','Status']]:[];
+ const visible=metaNames.filter(([key])=>fields[key]);
+ if(visible.length){const list=root.createEl('dl',{cls:'writer-v131-story-meta'});
+  for(const [key,pt,en] of visible){list.createEl('dt',{text:writerUi(pt,en)});list.createEl('dd',{text:fields[key]});}}
+ const content=root.createDiv({cls:'writer-v131-story-content'});
+ const render=(parent,markdown)=>{if(markdown)void writerV8Markdown(plugin,ctx,parent,markdown).catch(()=>parent.createEl('p',{text:markdown}));};
+ if(type==='beat-sheet'){
+  const beats=writerV131BeatLines(body),list=content.createEl('ol',{cls:'writer-v131-beats'});
+  for(const beat of beats){const li=list.createEl('li');li.createEl('strong',{text:beat.title});render(li.createDiv(),beat.body);}
+ }else render(content,body);
+}
+function writerV131RegisterWritingBlocks(plugin,enabled){
+ for(const [type,cfg] of Object.entries(WRITER_V131_STORY_BLOCKS)){
+  plugin.registerMarkdownCodeBlockProcessor(type,(source,element,ctx)=>{
+   if(!enabled()){element.createEl('pre',{text:source});return;}
+   writerV131RenderStoryBlock(plugin,source,element,ctx,type);
+  });
+  plugin.addCommand?.({id:'v131-insert-'+type,name:writerUi('Inserir: '+cfg.pt,'Insert: '+cfg.en),editorCallback:editor=>{
+   if(!enabled()){new Notice(writerUi('Ative os blocos interativos nas configurações.','Enable interactive blocks in settings.'));return;}
+   const selection=editor.getSelection();
+   if(selection.length>WRITER_V8_BLOCK_MAX-600){new Notice(writerUi('Seleção grande demais para um bloco.','Selection is too large for a block.'));return;}
+   editor.replaceSelection(writerV131BlockTemplate(type,selection));
+  }});
+ }
+ plugin.addCommand?.({id:'v131-review-repetitions',name:writerUi('Escrita: analisar repetições','Writing: review repetitions'),editorCallback:editor=>{
+  const selection=editor.getSelection(),content=selection||editor.getValue();
+  if(!content.trim()){new Notice(writerUi('Não há texto para analisar.','No text to review.'));return;}
+  writerV131ReviewModal(plugin,content,selection?writerUi('Seleção','Selection'):writerUi('Nota atual','Current note'));
+ }});
 }

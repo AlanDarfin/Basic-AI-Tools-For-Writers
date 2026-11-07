@@ -225,11 +225,12 @@ class ProjectsView extends ItemView{
    rebuildingTabs=false;
   };
   for(const group of menuGroups){
-   const button=groupNav.createEl('button',{text:lfMsg(group.pt,group.en),cls:activeGroup===group.id?'is-active':'',
-    attr:{type:'button','aria-pressed':String(activeGroup===group.id)}});
+   const groupLabel=lfMsg(group.pt,group.en);
+   const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
+    attr:{type:'button',title:groupLabel,'aria-label':groupLabel,'aria-pressed':String(activeGroup===group.id)}});
    const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
    require('obsidian').setIcon?.(glyph,groupLucide[group.id]||'folder');
-   button.prepend?.(glyph);
+   button.createSpan({cls:'writer-project-nav-label',text:groupLabel});
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
     if(this.tabGroup===group.id)return;
@@ -554,7 +555,7 @@ class ProjectsView extends ItemView{
       await this.plugin.saveSettings();await this.render();
      });
    }
-   const titleButton=titleWrapper.createEl('button',{cls:'writer-project-scene-title',attr:{
+   const titleButton=titleWrapper.createEl('button',{cls:'writer-project-scene-title',attr:{title:name,
     'aria-label':(level?lfMsg('Subcapítulo nível ','Subchapter level ')+level+': ':'')+name
    }});
    if(level>0){
@@ -577,6 +578,8 @@ class ProjectsView extends ItemView{
    more.addEventListener('click',event=>{
     const menu=new Menu();
     for(const [label,icon,action] of [
+     [lfMsg('Mover para cima','Move up'),'arrow-up',()=>this.moveScene(project,name,-1)],
+     [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>this.moveScene(project,name,1)],
      ['Diminuir recuo','arrow-left',()=>this.indentScene(project,name,-1)],
      ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
      [lfMsg('Adicionar subcapítulo','Add subchapter'),'plus',()=>this.addScene(project,name)],

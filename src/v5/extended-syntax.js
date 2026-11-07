@@ -158,7 +158,7 @@ class WriterExtendedSyntax{
    ['customSpan','Span !!{classe}texto!!','Custom span !!{class}text!!'],
    ['fencedDivs','Blocos ::: classe (fechamento :::)','Fenced div ::: class (closing :::)'],
    ['livePreview','Estilizar no Live Preview','Style in Live Preview'],
-   ['interactiveBlocks','Abas, avatar e quadros Wiki','Tabs, avatar and Wiki cards']
+   ['interactiveBlocks','Abas, fichas e blocos narrativos','Tabs, cards and writing blocks']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();this.revision++;writerV5RefreshEditors(this.plugin);}));
  }
 }

@@ -2,6 +2,14 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.1.0 — Writing tools and compact project navigation
+
+- Add local repetition review for a selection or current note, with frequent and nearby matches.
+- Add scene-card, character-voice, beat-sheet and editor-note blocks, insertion commands and safe inline source editing.
+- Fix chapter title truncation in the actual nested Longform DOM, preserve accessible full titles and keep move actions in the menu.
+- Prevent project area labels from breaking letter by letter; show icons in very narrow panes.
+- Compact and center Basic's status host, inspired by Prism while using native theme tokens.
+
 ## 13.0.2 — Project panels and status controls
 
 - Keep project tabs and chapter names readable in narrow panels.

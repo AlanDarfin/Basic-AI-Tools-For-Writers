@@ -629,3 +629,55 @@ limit: 100
 - C
 - D
 ```
+
+## Four writing and editing blocks
+
+Enable **Extended Syntax → Interactive blocks**. Insert them from the command
+palette using **Insert: Scene card**, **Character voice**, **Story beats**, or
+**Editorial note**. Selected editor text is kept in the inserted block. The
+**Edit** button edits the fenced Markdown source and detects concurrent changes.
+
+````markdown
+```scene-card
+title: The empty station
+pov: Ana
+location: Platform
+goal: Find her brother
+conflict: The last train is leaving
+outcome: She finds a clue
+---
+The scene starts with **Ana** arriving at the platform.
+```
+
+```character-voice
+name: Ana
+tone: Anxious
+---
+“Did you hear that too?”
+```
+
+```beat-sheet
+title: The first act
+---
+Opening | Ana arrives at the station.
+Turn | She finds [[Letter|a letter]].
+Outcome | The train leaves without her.
+```
+
+```editor-note
+title: Scene review
+status: Pending
+---
+Check whether Ana's motivation is clear to the reader.
+```
+````
+
+Initial lines are optional fields; `---` separates them from the Markdown body.
+In `beat-sheet`, use `Title | content` on each line. Spaces around the separator
+are required, so wiki-link aliases such as `[[Note|Alias]]` stay intact. A block
+is limited to 32,000 characters and a beat sheet to 80 lines.
+
+**Writing: review repetitions** analyzes the selection, or the current note if
+nothing is selected. It shows frequent and nearby repetitions locally, without
+editing or transmitting the note. Names and deliberate repetition can appear;
+only the first 200,000 characters are analyzed.

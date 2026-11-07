@@ -680,7 +680,7 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
   display:grid;
   grid-template-columns:30px minmax(0,1fr);
   grid-template-rows:auto auto;
-  column-gap:5px;row-gap:2px;
+  gap:2px 5px;
   min-width:0;width:100%;
   padding-block:5px;
  }

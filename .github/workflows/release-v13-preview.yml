@@ -1,8 +1,6 @@
 name: Publish Basic v13 public release candidate
+# Retired from automatic branch pushes after the RC1 publication.
 on:
-  push:
-    branches: [refactor/v13-ui-foundation]
-    paths: [manifest.json]
   workflow_dispatch:
 permissions:
   contents: write

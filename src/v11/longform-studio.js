@@ -72,7 +72,9 @@ async function writerV11SaveChapter(plugin,file,expected,next){
   return String(next);
  });
 }
-
+function writerV11Heading(parent,pt,en){
+ parent.createEl('h3',{text:writerUi(pt,en)});
+}
 async function writerV11OpenProject(plugin,project){
  // Reuse the canonical Projects view and selected Longform index.
  // No separate Studio leaf, homepage widget or manuscript database is created.

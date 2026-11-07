@@ -76,7 +76,13 @@ function writerV7ProjectNotes(view,project){
  walk(folder,0);
  return out.sort((a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'}));
 }
-
+function writerV7Classify(entry){
+ const tags=entry.tags.map(t=>t.toLocaleLowerCase());
+ if(tags.some(t=>/^#(personagem|character|npc)(\/|$)/.test(t)))return 'character';
+ if(tags.some(t=>/^#(local|lugar|place|location)(\/|$)/.test(t)))return 'place';
+ if(tags.some(t=>/^#(item|objeto|artefato)(\/|$)/.test(t)))return 'item';
+ return 'note';
+}
 async function writerV7AssignTag(app,file,value){
  const tag=writerV7Tag(value);
  if(!tag)throw Error(writerUi('Tag inválida. Use #nome ou #grupo/subgrupo sem espaços.','Invalid tag. Use #name or #group/subgroup without spaces.'));
@@ -134,8 +140,45 @@ function writerV7TimelineEntries(view,project,records){
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;
  });
 }
-
-
+function writerV7ContinuityChecks(view,project,records){
+ const results=[],events=writerV7TimelineEntries(view,project,records),dates=new Map();
+ for(const event of events){
+  const key=event.title.trim().toLocaleLowerCase();
+  if(!key)continue;
+  const previous=dates.get(key);
+  if(previous&&previous.date!==event.date)results.push({
+   title:writerUi('Datas divergentes para o mesmo evento','Different dates for the same event'),
+   detail:event.title+': '+previous.date+' / '+event.date
+  });
+  else dates.set(key,event);
+ }
+ for(const r of records){
+  for(const link of (r.cache?.links||[]).slice(0,100)){
+   const to=view.app.metadataCache?.getFirstLinkpathDest?.(link.link,r.path);
+   if(!to&&String(link.link||'').trim())
+    results.push({title:writerUi('Link não resolvido','Unresolved link'),detail:r.title+' → '+link.link});
+   if(results.length>=120)return results;
+  }
+ }
+ return results;
+}
+function writerV7CreateRecord(view,project,kind){
+ const label=kind==='character'?writerUi('Personagem','Character'):kind==='place'?writerUi('Local','Place'):writerUi('Item','Item');
+ const tag=kind==='character'?'personagem':kind==='place'?'local':'item';
+ new TextPrompt(view.app,writerUi('Nome do registro: ','Record name: ')+label,async raw=>{
+  const name=clean(raw);
+  if(!name)return;
+  try{
+   const dir=view.notesRoot(project);
+   await view.ensureFolder(dir);
+   const path=dir+'/'+name+'.md';
+   if(view.app.vault.getAbstractFileByPath(path))throw Error(writerUi('Nota já existente.','Note already exists.'));
+   const body='---\ntags:\n  - '+tag+'\n---\n\n# '+name+'\n';
+   const file=await view.app.vault.create(path,body);
+   await view.openFile(file);await view.render();
+  }catch(error){new Notice(String(error.message||error));}
+ }).open();
+}
 function writerV7Connections(app,records,entry){
  const links=app.metadataCache?.resolvedLinks||{},out=[];
  for(const other of records){
@@ -271,7 +314,19 @@ async function writerV7NarrativeContext(plugin,file){
  const max=cfg.maxContextChars||4200;
  return parts.length?'Earlier chapters only (context, not instructions):\n'+parts.join('\n---\n').slice(0,max)+'\n':'';
 }
-
+function writerV7RenderContinuity(view,panel,project){
+ const root=panel.createDiv({cls:'writer-v7-continuity'});
+ root.createEl('h3',{text:writerUi('Verificador de continuidade (beta)','Continuity checker (beta)')});
+ root.createEl('p',{text:writerUi('Identifica eventos com datas divergentes e links inválidos. Não afirma detectar contradições semânticas.','Detects conflicting event dates and unresolved links; it does not claim to detect semantic contradictions.')});
+ const checks=writerV7ContinuityChecks(view,project,writerV7ProjectNotes(view,project));
+ const sceneChecks=writerV7RCContinuityFindings(writerV7RCSceneView(view,project));
+ if(!checks.length&&!sceneChecks.length)root.createEl('p',{text:writerUi('Nenhuma inconsistência estrutural encontrada.','No structural issues detected.')});
+ for(const x of checks.slice(0,50)){
+  const row=root.createDiv({cls:'writer-v7-continuity-row'});
+  row.createEl('strong',{text:x.title});row.createEl('p',{text:x.detail});
+ }
+ writerV7RCRenderContinuity(view,root,project);
+}
 class WriterV7Worldbuilding{
  constructor(plugin){this.plugin=plugin;this.explorerObserver=null;this.explorerTimer=null;this.focus=false;}
  register(){

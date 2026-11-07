@@ -79,8 +79,14 @@ function writerV9215ActiveSpace(plugin){
  const cfg=plugin.settings.v9Spaces;
  return cfg?.enabled&&cfg.activeId?cfg.spaces.find(space=>space.id===cfg.activeId)||null:null;
 }
-
-
+function writerV93SpacePinned(plugin,path){
+ const space=writerV9215ActiveSpace(plugin);
+ return Boolean(space?.pinnedPaths?.includes(path));
+}
+function writerV93SpaceSortRecord(plugin,dir){
+ const space=writerV9215ActiveSpace(plugin);
+ return space?.folderSorts?.[dir]||null;
+}
 function writerV9215SpaceHidden(plugin,path){
  const space=writerV9215ActiveSpace(plugin);
  return Boolean(space&&(space.hiddenPaths||[]).some(p=>path===p||path.startsWith(p.replace(/\/$/,'')+'/')));

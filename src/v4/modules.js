@@ -58,7 +58,9 @@ function writerMergeModules(settings){
  return settings.visibleModules;
 }
 function writerModuleOn(plugin,id){return plugin?.settings?.visibleModules?.[id]!==false;}
-
+function writerVisibleTabs(plugin,definitions){
+ return definitions.filter(([id])=>writerModuleOn(plugin,id));
+}
 function writerDiagnostics(plugin){
  const app=plugin.app,settings=plugin.settings,checks=[];
  const count=app.vault.getMarkdownFiles?.().length??0;

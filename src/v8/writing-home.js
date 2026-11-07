@@ -338,6 +338,23 @@ class WriterV8HomeView extends ItemView{
  installWidgetGrid(grid){
   const update=()=>{
    if(this.disposed||!grid.isConnected)return;
+   // Responsive widths depend on the pane, never the overall monitor.
+   // Reset stale inline frame widths while compact, restore when expanded.
+   const compact=grid.clientWidth<=760;
+   if(grid.dataset.basicCompactLayout!==String(compact)){
+    grid.dataset.basicCompactLayout=String(compact);
+    for(const card of grid.querySelectorAll('[data-section]')){
+     if(compact){
+      card.style.removeProperty('grid-column-end');
+      card.style.removeProperty('width');
+      card.style.removeProperty('justify-self');
+     }else{
+      const key=card.getAttribute('data-section');
+      const frame=this.widgetPreferences().homeWidgetFrames?.[key];
+      if(frame)this.applyWidgetFrame(grid,card,frame);
+     }
+    }
+   }
    const gap=parseFloat(getComputedStyle(grid).rowGap)||10;
    const row=8;
    for(const card of grid.querySelectorAll('[data-section]')){

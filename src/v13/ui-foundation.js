@@ -87,6 +87,7 @@ function writerV13BindSettingsTabs(nav,subnav){
 /** Protect card legibility when a 720p view is split with Obsidian sidebars. */
 function writerV131MinWidgetColumns(width,gap=12){
  const w=Math.max(1,Number(width)||1),g=Math.max(0,Number(gap)||0);
+ if(w<560)return 12;
  const step=Math.max(1,(w-11*g)/12+g);
  return Math.max(3,Math.min(12,Math.ceil((205+g)/step)));
 }

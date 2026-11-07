@@ -10446,17 +10446,24 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
 }
 @container basic-home (max-width:820px){
  .writer-v8-home .writer-v925-grid>[data-section]{
-  grid-column:span 6!important;width:100%!important;
-  max-width:100%;justify-self:stretch!important;
+  grid-column:span 6;width:100%;
+  max-width:100%;justify-self:stretch;
+ }
+ .writer-v8-home .writer-v925-grid>[data-section][data-widget-size="compact"]{
+  grid-column:span 6;
  }
  .writer-v8-home .writer-v925-grid>[data-section][data-widget-size="wide"]{
-  grid-column:span 12!important;
+  grid-column:span 12;
  }
 }
 @container basic-home (max-width:560px){
  .writer-v8-home .writer-v925-grid>[data-section]{
-  grid-column:span 12!important;
-  width:100%!important;max-width:100%;justify-self:stretch!important;
+  grid-column:span 12;
+  width:100%;max-width:100%;justify-self:stretch;
+ }
+ .writer-v8-home .writer-v925-grid>[data-section][data-widget-size="compact"],
+ .writer-v8-home .writer-v925-grid>[data-section][data-widget-size="wide"]{
+  grid-column:span 12;
  }
  .writer-v8-home .writer-v925-grid .writer-v1205-resize-handle{
   display:none;pointer-events:none;

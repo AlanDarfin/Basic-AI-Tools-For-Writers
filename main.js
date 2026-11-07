@@ -7686,28 +7686,7 @@ function writerV7TimelineEntries(view,project,records){
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;
  });
 }
-function writerV7ContinuityChecks(view,project,records){
- const results=[],events=writerV7TimelineEntries(view,project,records),dates=new Map();
- for(const event of events){
-  const key=event.title.trim().toLocaleLowerCase();
-  if(!key)continue;
-  const previous=dates.get(key);
-  if(previous&&previous.date!==event.date)results.push({
-   title:writerUi('Datas divergentes para o mesmo evento','Different dates for the same event'),
-   detail:event.title+': '+previous.date+' / '+event.date
-  });
-  else dates.set(key,event);
- }
- for(const r of records){
-  for(const link of (r.cache?.links||[]).slice(0,100)){
-   const to=view.app.metadataCache?.getFirstLinkpathDest?.(link.link,r.path);
-   if(!to&&String(link.link||'').trim())
-    results.push({title:writerUi('Link não resolvido','Unresolved link'),detail:r.title+' → '+link.link});
-   if(results.length>=120)return results;
-  }
- }
- return results;
-}
+
 
 function writerV7Connections(app,records,entry){
  const links=app.metadataCache?.resolvedLinks||{},out=[];
@@ -8866,17 +8845,7 @@ function writerV7RCContinuityFindings(scenes){
  }
  return results;
 }
-function writerV7RCRenderContinuity(view,panel,project){
- const scenes=writerV7RCSceneView(view,project),results=writerV7RCContinuityFindings(scenes);
- if(!results.length)return;
- const box=panel.createDiv({cls:'writer-v7-rc-continuity'});
- box.createEl('h4',{text:writerUi('Preparação e consequência de cenas','Scene setups and payoffs')});
- box.createEl('p',{cls:'writer-v7-muted',text:writerUi('Analisa referências setup_scenes e payoff_scenes, sem inventar conexões nem interpretar semanticamente o enredo.','Checks setup_scenes and payoff_scenes references without inventing links or interpreting the plot.')});
- for(const item of results.slice(0,60)){
-  const row=box.createDiv({cls:'writer-v7-rc-continuity-row'});
-  row.createEl('strong',{text:item.title});row.createEl('p',{text:item.detail});
- }
-}
+
 function writerV7RCRenderPacing(view,panel,project){
  const root=panel.createDiv({cls:'writer-v7-rc-pacing'});
  root.createEl('h3',{text:writerUi('Ritmo e intensidade','Pacing and intensity')});

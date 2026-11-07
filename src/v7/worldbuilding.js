@@ -134,28 +134,7 @@ function writerV7TimelineEntries(view,project,records){
   return a.sortKey-b.sortKey||a.originalOrder-b.originalOrder;
  });
 }
-function writerV7ContinuityChecks(view,project,records){
- const results=[],events=writerV7TimelineEntries(view,project,records),dates=new Map();
- for(const event of events){
-  const key=event.title.trim().toLocaleLowerCase();
-  if(!key)continue;
-  const previous=dates.get(key);
-  if(previous&&previous.date!==event.date)results.push({
-   title:writerUi('Datas divergentes para o mesmo evento','Different dates for the same event'),
-   detail:event.title+': '+previous.date+' / '+event.date
-  });
-  else dates.set(key,event);
- }
- for(const r of records){
-  for(const link of (r.cache?.links||[]).slice(0,100)){
-   const to=view.app.metadataCache?.getFirstLinkpathDest?.(link.link,r.path);
-   if(!to&&String(link.link||'').trim())
-    results.push({title:writerUi('Link não resolvido','Unresolved link'),detail:r.title+' → '+link.link});
-   if(results.length>=120)return results;
-  }
- }
- return results;
-}
+
 
 function writerV7Connections(app,records,entry){
  const links=app.metadataCache?.resolvedLinks||{},out=[];

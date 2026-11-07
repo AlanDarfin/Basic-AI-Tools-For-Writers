@@ -2725,14 +2725,14 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
    v7 beta.1 — compendium, flexible world tags, native folder notes, timeline
    Theme-aware, local-first, responsive; never affects other Obsidian plugins.
    ========================================================================== */
-.writer-v7-compendium,.writer-v7-timeline,.writer-v7-continuity{
+.writer-v7-compendium,.writer-v7-timeline{
  box-sizing:border-box;
  min-width:0;
  max-width:100%;
  color:var(--text-normal);
  font-size:var(--font-ui-small);
 }
-.writer-v7-compendium h3,.writer-v7-timeline h3,.writer-v7-continuity h3{
+.writer-v7-compendium h3,.writer-v7-timeline h3{
  margin:3px 0 6px;
  font-size:var(--font-ui-medium);
  font-weight:600;
@@ -2986,18 +2986,8 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
  font-size:var(--font-ui-smaller);
  background:transparent;
 }
-.writer-v7-continuity-row{
- display:flex;
- flex-direction:column;
- gap:3px;
- padding:9px 2px;
- border-bottom:1px solid var(--background-modifier-border);
-}
-.writer-v7-continuity-row>p{
- color:var(--text-muted);
- margin:0;
- overflow-wrap:anywhere;
-}
+
+
 .writer-v7-settings .setting-item{background:transparent}
 .writer-v7-settings .setting-item-description{font-size:var(--font-ui-smaller)}
 /* Folder-note buttons are scoped to the Obsidian file explorer. */
@@ -3287,7 +3277,7 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
    Scoped to this plugin; no global theme overrides or external CSS.
    ===================================================================== */
 .writer-v7-rc-board,.writer-v7-rc-structure,.writer-v7-rc-plotlines,
-.writer-v7-rc-beats,.writer-v7-rc-continuity{
+.writer-v7-rc-beats{
  box-sizing:border-box;min-width:0;max-width:100%;color:var(--text-normal);
  font-size:var(--font-ui-small);
 }
@@ -3444,19 +3434,10 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
 .writer-v7-rc-beat-row>button{
  flex:0 0 auto;background:transparent;border:1px solid var(--background-modifier-border);
 }
-.writer-v7-rc-continuity{
- border-top:1px solid var(--background-modifier-border);
- margin:12px 0 0;padding-top:9px;
-}
-.writer-v7-rc-continuity h4{
- margin:4px 0 8px;font-size:var(--font-ui-small);
-}
-.writer-v7-rc-continuity-row{
- padding:8px 0;border-bottom:1px solid var(--background-modifier-border);
-}
-.writer-v7-rc-continuity-row p{
- margin:4px 0;color:var(--text-muted);overflow-wrap:anywhere;
-}
+
+
+
+
 @media(max-width:460px){
  .writer-v7-rc-board-toolbar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
  .writer-v7-rc-board-toolbar input{grid-column:1/-1}

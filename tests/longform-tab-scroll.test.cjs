@@ -96,11 +96,11 @@ test('group switches only refresh tab buttons, preserving the strip and group po
  const groups=view.root.querySelector('.writer-project-nav-groups');
  let rerenderCount=0;
  view.render=async()=>{rerenderCount++;throw Error('Full render is forbidden for a navigation click');};
- groups.children.find(x=>x.text==='Escrita').click();
+ groups.children.find(x=>x.children.some(child=>child.text==='Escrita')).click();
  assert.equal(view.tabGroup,'writing');
  assert.equal(view.root.querySelector('.writer-project-tabs'),tabs);
  tabs.scrollTo(100);
- groups.children.find(x=>x.text==='Universo').click();
+ groups.children.find(x=>x.children.some(child=>child.text==='Universo')).click();
  assert.equal(view.tabGroup,'world');
  assert.equal(tabs.scrollLeft,230);
  assert.equal(view.tabScrollPositions.writing,100);

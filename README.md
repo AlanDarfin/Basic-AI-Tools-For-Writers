@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.0.2 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.1.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -13,6 +13,8 @@ Write, plan, revise and organize books without moving your work to a separate da
 ## Features
 
 ### Spaces, toolbar and mobile actions
+
+- **Writing review:** analyze nearby and frequent word repetitions locally in a selection or current note. Four interactive Markdown blocks — `scene-card`, `character-voice`, `beat-sheet` and `editor-note` — can be inserted with commands and edited in preview. See the [block guide](docs/BLOCKS.en.md).
 
 - **AI setup:** choose a provider in one compact workspace, manage masked keys and validated endpoints, run tests only on demand, fetch and filter model lists, and assign different providers to definitions, translation and the assistant. Existing credentials and model choices are preserved.
 

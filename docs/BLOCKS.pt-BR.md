@@ -634,3 +634,57 @@ limit: 100
 - C
 - D
 ```
+
+## Quatro blocos para escrever e revisar
+
+Ative **Sintaxe estendida → Blocos interativos**. Insira pelos comandos da paleta
+**Inserir: Ficha de cena**, **Voz da personagem**, **Batidas da história** ou
+**Nota de revisão**. Uma seleção no editor é preservada dentro do bloco.
+O botão **Editar** altera o código Markdown do próprio bloco; o salvamento detecta
+se o conteúdo original mudou e não sobrescreve edições concorrentes.
+
+````markdown
+```scene-card
+title: A estação vazia
+pov: Ana
+location: Plataforma
+goal: Encontrar o irmão
+conflict: O último trem está partindo
+outcome: Ela encontra uma pista
+---
+A cena começa com **Ana** chegando à plataforma.
+```
+
+```character-voice
+name: Ana
+tone: Ansiosa
+---
+“Você também ouviu aquilo?”
+```
+
+```beat-sheet
+title: O primeiro ato
+---
+Abertura | Ana chega à estação.
+Virada | Ela encontra [[Carta|uma carta]].
+Desfecho | O trem parte sem ela.
+```
+
+```editor-note
+title: Revisão da cena
+status: Pendente
+---
+Verificar se o motivo de Ana está claro para o leitor.
+```
+````
+
+Nos blocos, as linhas iniciais são campos opcionais e `---` separa os campos do
+conteúdo Markdown. No `beat-sheet`, use `Título | conteúdo` por linha; o separador
+requer espaços dos dois lados, preservando links como `[[Nota|Apelido]]`. Há no
+máximo 80 batidas por bloco e 32 mil caracteres por bloco. Os exemplos não
+precisam de IA nem serviços externos.
+
+O comando **Escrita: analisar repetições** examina a seleção ou, se não houver
+seleção, a nota atual. Mostra palavras recorrentes e repetições próximas, sem
+editar a nota ou enviar seu conteúdo. Nomes e repetições intencionais podem
+aparecer; textos acima de 200 mil caracteres são analisados até esse limite.

@@ -662,40 +662,6 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  white-space:nowrap;overflow-wrap:normal;word-break:normal;
  writing-mode:horizontal-tb;
 }
-.writer-project-root .writer-project-scene-actions{
- display:grid;grid-template-columns:minmax(0,1fr) repeat(4,minmax(24px,auto));
- align-items:center;gap:3px;max-width:100%;
-}
-.writer-project-root .writer-project-scene-actions>.writer-project-scene-title{
- grid-column:1/-1;min-width:0;max-width:100%;width:100%;
- text-align:left;white-space:normal;overflow-wrap:normal;word-break:normal;
- hyphens:none;line-height:1.4;padding:6px 4px;
-}
-.writer-project-root .writer-project-scene-actions>.writer-project-small-button{
- min-width:26px;max-width:100%;min-height:28px;
- padding:3px 5px;white-space:nowrap;overflow-wrap:normal;
-}
-.writer-project-root .writer-project-panel :is(
- .writer-project-note,.writer-v7-rc-card-title,.writer-v7-rc-plotrow button){
- overflow-wrap:normal;word-break:normal;hyphens:none;
-}
-@container basic-project (max-width:260px){
- .writer-project-root .writer-project-scene-actions{
-  grid-template-columns:repeat(4,minmax(0,1fr));
- }
- .writer-project-root .writer-project-scene-actions>.writer-project-small-button{
-  justify-self:center;
- }
-}
-@container basic-project (min-width:430px){
- .writer-project-root .writer-project-scene-actions{
-  grid-template-columns:minmax(150px,1fr) repeat(4,28px);
- }
- .writer-project-root .writer-project-scene-actions>.writer-project-scene-title{
-  grid-column:1;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;
- }
-}
-
 /* The native Obsidian status bar and its Settings/Help controls must retain room.
  * Basic status widgets shrink before Obsidian's own buttons do.
  */
@@ -761,3 +727,79 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  .status-bar .writer-v91-sound-status{max-width:85px;}
  .status-bar .writer-v1010-width-status{max-width:48px;}
 }
+
+/* v13.1 — Project navigation follows its actual nested scene DOM. */
+.writer-project-root .writer-project-nav-groups>button{
+ display:flex;align-items:center;justify-content:center;gap:5px;min-width:0;
+ white-space:nowrap;overflow:hidden;word-break:normal;overflow-wrap:normal;
+}
+.writer-project-root .writer-project-nav-groups>button .writer-v901-nav-icon{
+ display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;
+}
+.writer-project-root .writer-project-nav-label{
+ display:block;flex:0 1 auto;min-width:0;overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis;word-break:normal;overflow-wrap:normal;
+}
+.writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{
+ box-sizing:border-box;display:grid;grid-template-columns:32px minmax(0,1fr) max-content;
+ align-items:center;gap:3px;width:100%;min-width:0;max-width:100%;
+}
+.writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{
+ grid-column:1;grid-row:1;
+}
+.writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-v7-scene-title-wrap{
+ grid-column:2;grid-row:1;display:flex;min-width:0;max-width:100%;gap:3px;overflow:hidden;
+}
+.writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{
+ grid-column:3;grid-row:1;display:flex;flex-wrap:nowrap;min-width:0;gap:1px;
+}
+.writer-project-root .writer-project-panel .writer-v7-scene-title-wrap>.writer-project-scene-title{
+ display:flex;align-items:center;min-width:0;max-width:100%;overflow:hidden;
+ white-space:nowrap;word-break:normal;overflow-wrap:normal;
+}
+.writer-project-root .writer-project-panel .writer-v7-scene-title-wrap .writer-project-scene-title-text{
+ display:block;min-width:0;overflow:hidden;white-space:nowrap;
+ text-overflow:ellipsis;word-break:normal;overflow-wrap:normal;hyphens:none;
+}
+@container basic-project (max-width:220px){
+ .writer-project-root .writer-project-panel .writer-project-scene-controls>button:not(.writer-project-scene-more){display:none;}
+}
+@container basic-project (max-width:175px){
+ .writer-project-root .writer-project-nav-groups>button{padding-inline:3px;}
+ .writer-project-root .writer-project-nav-label{display:none;}
+}
+/* Prism-inspired compact floating bar, restricted to hosts with Basic items. */
+body:not(.is-mobile) .status-bar.writer-v132-status-host{
+ --status-bar-position:fixed;
+ position:fixed;left:50%;right:auto;bottom:4px;transform:translateX(-50%);
+ width:max-content;max-width:calc(100vw - 128px);margin:0;
+ padding:2px 5px;gap:3px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s,5px);background:var(--background-secondary);
+ box-shadow:var(--shadow-s);overflow-x:auto;overflow-y:hidden;
+}
+/* Four writing formats, using Obsidian's theme tokens without replacing theme CSS. */
+.writer-v131-story-block{
+ box-sizing:border-box;min-width:0;max-width:100%;margin:12px 0;padding:12px;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-m,8px);
+ background:var(--background-secondary);color:var(--text-normal);
+}
+.writer-v131-story-header{display:flex;align-items:center;gap:7px;min-width:0;}
+.writer-v131-story-header>strong{min-width:0;flex:1 1 auto;overflow-wrap:break-word;}
+.writer-v131-story-icon{display:inline-flex;flex:0 0 auto;color:var(--interactive-accent);}
+.writer-v131-story-edit{flex:0 0 auto;font-size:var(--font-ui-smaller);padding:4px 7px;}
+.writer-v131-story-meta{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:3px 10px;margin:10px 0;}
+.writer-v131-story-meta dt{color:var(--text-muted);font-size:var(--font-ui-small);}
+.writer-v131-story-meta dd{margin:0;min-width:0;overflow-wrap:break-word;}
+.writer-v131-character-voice{border-inline-start:3px solid var(--interactive-accent);}
+.writer-v131-character-voice .writer-v131-story-content{font-style:italic;}
+.writer-v131-editor-note{border-inline-start:3px solid var(--text-warning,var(--interactive-accent));}
+.writer-v131-beats{padding-inline-start:24px;margin:10px 0 0;}
+.writer-v131-beats>li{padding:4px 0 4px 4px;}
+.writer-v131-beats>li::marker{color:var(--interactive-accent);font-weight:600;}
+.writer-v131-story-content p:first-child{margin-top:8px;}
+.writer-v131-story-content p:last-child{margin-bottom:0;}
+.writer-v131-review-frequency{display:flex;flex-wrap:wrap;gap:6px;list-style:none;padding:0;}
+.writer-v131-review-frequency li{padding:3px 7px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s,5px);}
+.writer-v131-review-near{padding-inline-start:20px;}
+.writer-v131-review-near li{margin-block:6px;overflow-wrap:break-word;}
+@media(max-width:420px){.writer-v131-story-block{padding:9px;}.writer-v131-story-meta{grid-template-columns:minmax(0,1fr);gap:2px;}}

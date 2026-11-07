@@ -2,6 +2,12 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.0.2 — Project panels and status controls
+
+- Keep project tabs and chapter names readable in narrow panels.
+- Reserve native button space beside the status bar and unify slim volume/width sliders.
+- Scope status layout to Basic hosts and restore on unload.
+
 ## 13.0.1 — 720p usability, dragger and AI connections
 
 - Improve homepage widget grid and resize hit targets so controls stay clickable in small panes.

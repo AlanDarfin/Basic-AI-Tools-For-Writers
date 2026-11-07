@@ -109,7 +109,9 @@ class WriterV91SoundPlayer{
  init(){
   if(this.plugin.app.isMobile)return;
   this.status=this.plugin.addStatusBarItem?.();
-  if(this.status){this.status.addClass('writer-v91-sound-status');this.renderStatus();}
+  if(this.status){this.status.addClass('writer-v91-sound-status');
+   if(typeof writerV132ProtectStatusBar==='function')writerV132ProtectStatusBar(this.plugin,this.status);
+   this.renderStatus();}
   this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Soundscapes: reproduzir ou pausar','Soundscapes: play or pause'),callback:()=>this.toggle()});
   this.plugin.addCommand({id:'v91-sound-mini-player',name:writerUi('Soundscapes: mostrar mini player','Soundscapes: show mini player'),callback:()=>this.showMiniPlayer()});
   this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Soundscapes: próxima faixa','Soundscapes: next track'),callback:()=>this.next()});

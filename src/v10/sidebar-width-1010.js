@@ -441,6 +441,7 @@ function writerV1010Register(plugin){
  if(item){
   status=item;
   item.addClass?.('writer-v1010-width-status');
+  if(typeof writerV132ProtectStatusBar==='function')writerV132ProtectStatusBar(plugin,item);
   const doc=item.ownerDocument;
   const title=make('span','writer-v1010-width-name',doc);title.textContent=writerUi('Largura','Width');item.appendChild(title);
   range=make('input','writer-v1010-width-range',doc);

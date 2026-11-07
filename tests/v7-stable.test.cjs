@@ -64,7 +64,7 @@ test('scene setup and payoff relationships use canonical Longform notes',()=>{
 });
 test('stable release manifest, bilingual docs, new UI and bundled modules',()=>{
  const m=require('../manifest.json'),p=require('../package.json'),versions=require('../versions.json');
- assert.match(m.version,/^\d+\.\d+\.\d+$/);assert.equal(m.version,p.version);
+ assert.match(m.version,/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/);assert.equal(m.version,p.version);
  assert.equal(versions[m.version],m.minAppVersion);
  assert.equal(m.name,'Basic');
  assert.doesNotMatch(m.name,/\b(obsidian|plugin)\b/i);

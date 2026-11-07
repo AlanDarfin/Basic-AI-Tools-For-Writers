@@ -14,7 +14,7 @@ test('mobile day numbers are upper-left without circular backgrounds',()=>{
 });
 test('current day colors entire tile, not the date button, in narrow and native mobile',()=>{
  const small=source.slice(source.indexOf('/* 9.0.4:'));
- const currentDay=small.match(/\.writer-v9-calendar-month-day\.is-today\s*\{\s*background:var\(--interactive-accent\);border-color:var\(--interactive-accent\);/g)||[];
+ const currentDay=small.match(/\.writer-v9-calendar-month-day\.is-today\s*\{\s*background:var\(--basic-ui-accent,var\(--interactive-accent\)\);border-color:var\(--basic-ui-accent,var\(--interactive-accent\)\);/g)||[];
  assert.equal(currentDay.length,2,'native mobile and narrow viewports each have tile coloring');
  assert.match(small,/color:var\(--text-on-accent\)/);
  assert.match(small,/\.is-today \.writer-v9-calendar-month-dayhead \.writer-v9-calendar-button\{/);

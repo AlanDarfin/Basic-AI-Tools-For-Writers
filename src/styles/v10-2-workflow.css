@@ -275,14 +275,14 @@ body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
 .modal.writer-v1042-bookshelf-modal{
  width:min(94vw,880px);
  max-width:94vw;
- max-height:90vh;
+ 
 }
-.writer-v1042-bookshelf-modal .modal-content{min-width:0;overflow-x:hidden;overflow-y:auto;}
+.writer-v1042-bookshelf-modal .modal-content{overflow-x:hidden;overflow-y:auto;}
 .writer-v10-bookshelf .writer-v10-bookshelf-toolbar{
- display:flex;
+ 
  align-items:stretch;
  justify-content:flex-start;
- gap:8px;
+ 
 }
 .writer-v10-bookshelf .writer-v10-bookshelf-toolbar .writer-v1042-bookshelf-search{
  flex:1 1 12rem;

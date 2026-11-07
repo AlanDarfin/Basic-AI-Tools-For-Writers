@@ -12,9 +12,9 @@ A lista contém seletores para REVISÃO, não autorização automática para rem
 - repeatedSelectors: **333**
 - acrossContexts: **252**
 - sameContext: **115**
-- identicalDeclarationOccurrences: **110**
+- identicalDeclarationOccurrences: **106**
 - differingDeclarationOccurrences: **124**
-- complementaryGroups: **33**
+- complementaryGroups: **34**
 - exactSameContextBlocks: **0**
 
 ## Inventário completo
@@ -27,8 +27,8 @@ A lista contém seletores para REVISÃO, não autorização automática para rem
 | `.dictionary-settings-panel` | 4 | 2 | Review repeated declaration + conditional | 49, 1210, 1617, 10139 |
 | `.dictionary-settings-panel .setting-item-control` | 4 | 4 | Adaptive (@media/@supports/@container) | 182, 187, 1630, 10254 |
 | `.dictionary-settings-tabs` | 4 | 2 | Review repeated declaration + conditional | 46, 179, 1605, 1621 |
-| `.modal.writer-v1042-bookshelf-modal` | 4 | 2 | Review repeated declaration + conditional | 8125, 8158, 8920, 9041 |
-| `.writer-v1042-bookshelf-modal .modal-content` | 4 | 2 | Review repeated declaration + conditional | 8130, 8159, 8923, 9042 |
+| `.modal.writer-v1042-bookshelf-modal` | 4 | 2 | Intentional cascade override + conditional | 8125, 8158, 8920, 9041 |
+| `.writer-v1042-bookshelf-modal .modal-content` | 4 | 2 | Complementary declarations + conditional | 8130, 8159, 8923, 9042 |
 | `.writer-v106-drag-handle` | 4 | 2 | Review repeated declaration + conditional | 8784, 9652, 10006, 10314 |
 | `.writer-v6-booknav` | 4 | 2 | Review repeated declaration + conditional | 1735, 1757, 1768, 1838 |
 | `.writer-v8-home .writer-v8-home-grid.writer-v925-grid` | 4 | 2 | Review repeated declaration + conditional | 7124, 7166, 9676, 9806 |
@@ -161,7 +161,7 @@ A lista contém seletores para REVISÃO, não autorização automática para rem
 | `.writer-v10-book` | 2 | 2 | Adaptive (@media/@supports/@container) | 7779, 7797 |
 | `.writer-v10-book-cover` | 2 | 2 | Adaptive (@media/@supports/@container) | 7782, 7797 |
 | `.writer-v10-bookshelf .writer-v10-bookshelf-grid` | 2 | 2 | Adaptive (@media/@supports/@container) | 8942, 9043 |
-| `.writer-v10-bookshelf .writer-v10-bookshelf-toolbar` | 2 | 1 | Review repeated declaration | 8131, 8927 |
+| `.writer-v10-bookshelf .writer-v10-bookshelf-toolbar` | 2 | 1 | Intentional cascade override | 8131, 8927 |
 | `.writer-v10-bookshelf-grid` | 2 | 2 | Adaptive (@media/@supports/@container) | 7778, 7797 |
 | `.writer-v10-discovery-pane` | 2 | 2 | Adaptive (@media/@supports/@container) | 8760, 8777 |
 | `.writer-v10-discovery-pane .writer-v10-related-card` | 2 | 2 | Adaptive (@media/@supports/@container) | 8859, 9046 |

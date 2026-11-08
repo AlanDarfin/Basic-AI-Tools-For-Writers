@@ -203,6 +203,25 @@ test('selected translation follows the translator provider even with Chat disabl
  assert.ok(view.translationOutput.findText('A deed'));
 });
 
+test('a second definition action on the same word supersedes the first',async()=>{
+ const {plugin,view}=runtime();
+ await view.onOpen();
+ const reads=[];
+ plugin.getEntries=()=>new Promise(resolve=>reads.push(resolve));
+ const lookups=[];
+ plugin.lookupAI=async(word,mode)=>{lookups.push(mode);return {word,definitions:[mode]};};
+ const first=plugin.runSelectionAction('ação','definition');
+ await new Promise(resolve=>setImmediate(resolve));
+ const second=plugin.runSelectionAction('ação','synonyms');
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(reads.length,2);
+ reads[0]([]);
+ await first;
+ reads[1]([]);
+ await second;
+ assert.deepEqual(lookups,['synonyms']);
+});
+
 test('connection checks describe missing local configuration and use the route model',()=>{
  const {api,plugin}=runtime();
  const custom={...plugin.settings,customEndpoint:'http://localhost/test',aiKeys:{custom:'test-key'}};
@@ -230,6 +249,21 @@ test('Markdown translation preserves fences, CRLF boundaries and literal markers
  assert.throws(()=>plan.restore(protectedPart,'Missing marker'),/protected Markdown marker/);
 });
 
+test('translation keeps full Markdown links and code spans out of provider input',()=>{
+ const {api}=runtime();
+ const inlineCode='`` private `command` text ``';
+ const angleLink='[Folder [draft]](<Vault folder/file).md> "a title with )")';
+ const nestedLink=String.raw`[Link \[draft\]](https://example.test/a_(b(c))/keep\).md 'another ) title')`;
+ const imageLink='[![Cover](cover.png)](https://example.test/book_(1)/chapter)';
+ const input=['Read',inlineCode,angleLink,nestedLink,imageLink,'today.'].join(' ');
+ const plan=api.writerV13TranslationPlan(input);
+ assert.equal(plan.parts.length,1);
+ const [part]=plan.parts;
+ assert.equal(part.text.replace(/⟦BASIC_KEEP_0_\d+⟧/g,'marker'),'Read marker marker marker marker today.');
+ const translated=part.text.replace('Read','Leia').replace('today.','hoje.');
+ assert.equal(plan.restore(part,translated),input.replace('Read','Leia').replace('today.','hoje.'));
+});
+
 test('file translation uses a single settings snapshot and writes the final copy only',async()=>{
  const env=runtime(),{plugin,view}=env;
  const prose='An English line.\n\n'.repeat(190);
@@ -254,6 +288,17 @@ test('file translation uses a single settings snapshot and writes the final copy
  assert.equal(env.data.get(file.path),input);
  assert.equal(env.data.get('Book/Chapter (pt).md'),'existing');
  assert.equal(env.data.get('Book/Chapter (pt) (2).md'),input.replaceAll('An English line.','Uma linha em inglês.'));
+});
+
+test('file translation reads the active editor when the vault copy is behind',async()=>{
+ const {plugin,view,add,data}=runtime();
+ const file=add('Chapter.md','Saved text.');
+ plugin.app.workspace.activeLeaf={view:{file,getMode:()=> 'source',editor:{getValue:()=> 'Unsaved text.'}}};
+ plugin.translateAI=async text=>{assert.equal(text,'Unsaved text.');return 'Texto atualizado.';};
+ await view.onOpen();
+ await view.translateVaultFile(file);
+ assert.equal(data.get('Chapter (pt).md'),'Texto atualizado.');
+ assert.equal(data.get(file.path),'Saved text.');
 });
 
 test('cancelling file translation discards the in-flight response',async()=>{

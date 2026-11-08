@@ -13,7 +13,7 @@ A revisão partiu do código da v13.1.0, do roteador de configurações e do inv
 
 A busca local lê o caminho configurado em **IA e dicionário → Dicionário**, com uma entrada por título de nível 1. Quando há mais de um arquivo com o mesmo nome, informe o caminho completo. **Salvar definição** cria o arquivo quando ele ainda não existe e sua pasta está disponível.
 
-A cópia traduzida usa o padrão \`Capítulo (en).md\`, com um número quando o nome já está em uso. Com a proteção de Markdown ativada, YAML, links, código e demais sintaxes reconhecidas são restaurados a partir do original. Se um marcador for alterado ou o provedor indicar que atingiu o limite de saída, a operação mostra o erro antes de gravar. Cancelar descarta a resposta da solicitação que já estava em andamento.
+A cópia traduzida usa o padrão `Capítulo (en).md`, com um número quando o nome já está em uso. Se a nota estiver aberta em edição, o Basic usa o texto do editor. Com a proteção de Markdown ativada, o Basic guarda YAML, links (inclusive com parênteses na URL) e os trechos de código reconhecidos e os restaura na cópia. Se um marcador for alterado ou o provedor indicar que atingiu o limite de saída, a operação mostra o erro antes de gravar. Cancelar descarta a resposta da solicitação que já estava em andamento.
 
 A validação automatizada usa um cofre e provedores simulados. O comportamento visual em temas de terceiros, a interação por toque e as respostas dos provedores reais dependem de teste no Obsidian.
 

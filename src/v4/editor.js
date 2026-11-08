@@ -31,6 +31,24 @@ function writerV4ProfilePrompt(plugin,file){
   const profile=writerV4Profile(plugin,file);
   return profile?.instructions?.trim()?('Writing profile '+JSON.stringify(profile.name)+':\n'+profile.instructions.trim()+'\n'):'';
 }
+function writerV4LinkEnd(text,start){
+  while(text[start]===' '||text[start]==='\t')start++;
+  let quote=text[start]==='<'?'>':'',depth=1;
+  for(let i=start+(quote?1:0);i<text.length;i++){
+    const char=text[i];
+    if(char==='\r'||char==='\n')break;
+    if(char==='\\'&&i+1<text.length&&text[i+1]!=='\r'&&text[i+1]!=='\n'){i++;continue;}
+    if(quote){
+      if(char===quote)quote='';
+      continue;
+    }
+    // A quoted title can contain parentheses without ending the link.
+    if(depth===1&&(char==='"'||char==="'")&&/[ \t]/.test(text[i-1]||''))quote=char;
+    else if(char==='(')depth++;
+    else if(char===')'&&--depth===0)return i+1;
+  }
+  return -1;
+}
 function writerV4ProtectedRanges(text){
   const value=String(text||''),ranges=[],add=(a,b)=>{if(b>a)ranges.push([a,b]);};
   const fm=/^\uFEFF?---[ \t]*\r?\n[\s\S]*?^(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/m.exec(value);
@@ -51,10 +69,26 @@ function writerV4ProtectedRanges(text){
     }
   }
   if(open)add(open.start,value.length);
+  // Match a complete code span before scanning brackets and escapes in link labels.
+  const brackets=[];
+  const inline=/(?<!`)(`+)(?!`)[^\r\n]*?(?<!`)\1(?!`)|\\.|[\[\]\r\n]/g;
+  while((match=inline.exec(value))){
+    const token=match[0],index=match.index;
+    if(match[1])add(index,inline.lastIndex);
+    else if(token==='\r'||token==='\n')brackets.length=0;
+    else if(token==='[')brackets.push(index);
+    else if(token===']'&&brackets.length){
+      const start=brackets.pop();
+      if(value[index+1]!=='(')continue;
+      const end=writerV4LinkEnd(value,index+2);
+      if(end<0)continue;
+      add(value[start-1]==='!'?start-1:start,end);
+      inline.lastIndex=end;
+    }
+  }
   const patterns=[
-    /`+[^\r\n`]*`+/g,
     /%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,
-    /!?\[\[[^\]\r\n]+\]\]/g,/!?\[[^\]\r\n]*\]\([^\r\n)]*\)/g,
+    /!?\[\[[^\]\r\n]+\]\]/g,
     /\{\{[^\r\n]{1,6000}?\}\}\^\d+/g
   ];
   for(const re of patterns)while((match=re.exec(value)))add(match.index,match.index+match[0].length);

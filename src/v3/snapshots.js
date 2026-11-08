@@ -30,7 +30,10 @@ class WriterSnapshots{
   const adapter=this.plugin.app.vault.adapter;let part='';
   for(const segment of path.split('/').filter(Boolean)){
    part=part?part+'/'+segment:segment;
-   if(!(await adapter.exists(part)))await adapter.mkdir(part);
+   if(!(await adapter.exists(part))){
+    try{await adapter.mkdir(part);}
+    catch(error){if(!(await adapter.exists(part)))throw error;}
+   }
   }
  }
  identity(file){
@@ -38,6 +41,14 @@ class WriterSnapshots{
   if(map[file.path])return map[file.path];
   const id='n'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
   map[file.path]=id;return id;
+ }
+ enqueue(file,operation){
+  // All index mutations for one note share its stable identity, even after a rename.
+  const key=this.identity(file),previous=this.jobs.get(key)||Promise.resolve();
+  const result=previous.then(operation),done=result.then(()=>{},()=>{});
+  this.jobs.set(key,done);
+  void done.then(()=>{if(this.jobs.get(key)===done)this.jobs.delete(key);});
+  return result;
  }
  folder(file){const id=this.identity(file);if(!/^n[a-z0-9-]+$/i.test(id))throw Error(writerUi('Identidade de nota inválida.','Invalid note identity.'));return this.path(this.root(),id);}
  async manifest(file){
@@ -103,6 +114,7 @@ class WriterSnapshots{
   if(!this.config.enabled)throw Error(writerUi('Snapshots desativados.','Snapshots are disabled.'));
   if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi('Selecione uma nota Markdown.','Select a Markdown note.'));
   const text=options.content??await writerCurrentText(this.plugin,file);
+  return this.enqueue(file,async()=>{
   const folder=this.folder(file);await this.mkdir(folder);
   const manifest=await this.manifest(file);
   const entry={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),name:String(name||writerUi('Versão manual','Manual version')).slice(0,120),size:text.length,attachments:[]};
@@ -116,6 +128,7 @@ class WriterSnapshots{
    await this.plugin.saveSettings();
    return entry;
   }catch(e){throw Error(writerUi('O snapshot foi salvo, mas o índice não foi atualizado: ','Snapshot saved, but the index was not updated: ')+e.message);}
+  });
  }
  async prune(file,manifest){
   const max=Number(this.config.maxPerNote)||0,days=Number(this.config.retentionDays)||0;
@@ -161,16 +174,27 @@ class WriterSnapshots{
   return {restored,skipped};
  }
  async delete(file,entry){
+  return this.enqueue(file,async()=>{
   const data=await this.manifest(file);
   const current=data.snapshots.find(x=>x.id===entry.id);if(!current)return;
   data.snapshots=data.snapshots.filter(x=>x.id!==entry.id);
   await this.writeManifest(file,data);
   const path=this.path(this.folder(file),entry.id+'.md');
   if(await this.plugin.app.vault.adapter.exists(path))await this.plugin.app.vault.adapter.remove(path);
+  });
  }
  onRename(file,oldPath){
-  const map=this.config.identityMap||{};
-  if(map[oldPath]){map[file.path]=map[oldPath];delete map[oldPath];this.plugin.saveSettings();}
+  if(typeof oldPath!=='string'||!oldPath||typeof file?.path!=='string'||!file.path||oldPath===file.path)return;
+  const map=this.config.identityMap||{},prefix=oldPath+'/';let changed=false;
+  for(const [path,id] of Object.entries(map)){
+   if(path!==oldPath&&!path.startsWith(prefix))continue;
+   delete map[path];map[file.path+path.slice(oldPath.length)]=id;changed=true;
+  }
+  for(const [path,time] of [...this.lastAuto]){
+   if(path!==oldPath&&!path.startsWith(prefix))continue;
+   this.lastAuto.delete(path);this.lastAuto.set(file.path+path.slice(oldPath.length),time);
+  }
+  if(changed)return this.plugin.saveSettings();
  }
  onModify(file){
   if(!this.config.enabled||!this.config.automatic||!(file instanceof TFile)||file.extension!=='md'||file.path.startsWith(this.root()+'/'))return;

@@ -31,24 +31,79 @@ function writerV4ProfilePrompt(plugin,file){
   const profile=writerV4Profile(plugin,file);
   return profile?.instructions?.trim()?('Writing profile '+JSON.stringify(profile.name)+':\n'+profile.instructions.trim()+'\n'):'';
 }
-function writerV4ProtectedTokens(text){
+function writerV4LinkEnd(text,start){
+  while(text[start]===' '||text[start]==='\t')start++;
+  let quote=text[start]==='<'?'>':'',depth=1;
+  for(let i=start+(quote?1:0);i<text.length;i++){
+    const char=text[i];
+    if(char==='\r'||char==='\n')break;
+    if(char==='\\'&&i+1<text.length&&text[i+1]!=='\r'&&text[i+1]!=='\n'){i++;continue;}
+    if(quote){
+      if(char===quote)quote='';
+      continue;
+    }
+    // A quoted title can contain parentheses without ending the link.
+    if(depth===1&&(char==='"'||char==="'")&&/[ \t]/.test(text[i-1]||''))quote=char;
+    else if(char==='(')depth++;
+    else if(char===')'&&--depth===0)return i+1;
+  }
+  return -1;
+}
+function writerV4ProtectedRanges(text){
   const value=String(text||''),ranges=[],add=(a,b)=>{if(b>a)ranges.push([a,b]);};
-  const fm=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(value);
-  if(fm)add(0,fm[0].length);
-  const fence=/^([ \t]{0,3})(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1(?:`{3,}|~{3,})[ \t]*$/gm;
+  const fm=/^\uFEFF?---[ \t]*\r?\n[\s\S]*?^(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/m.exec(value);
+  const frontmatter=fm?.index===0?fm[0].length:0;
+  add(0,frontmatter);
+  const fence=/^[ \t]{0,3}(`{3,}|~{3,})([^\r\n]*)/gm;
+  fence.lastIndex=frontmatter;
+  let open=null;
   let match;
-  while((match=fence.exec(value)))add(match.index,match.index+match[0].length);
+  while((match=fence.exec(value))){
+    const delimiter=match[1];
+    if(!open){
+      if(delimiter[0]==='`'&&match[2].includes('`'))continue;
+      open={start:match.index,delimiter};
+    }else if(delimiter[0]===open.delimiter[0]&&delimiter.length>=open.delimiter.length&&!match[2].trim()){
+      add(open.start,fence.lastIndex);
+      open=null;
+    }
+  }
+  if(open)add(open.start,value.length);
+  // Match a complete code span before scanning brackets and escapes in link labels.
+  const brackets=[];
+  const inline=/(?<!`)(`+)(?!`)[^\r\n]*?(?<!`)\1(?!`)|\\.|[\[\]\r\n]/g;
+  while((match=inline.exec(value))){
+    const token=match[0],index=match.index;
+    if(match[1])add(index,inline.lastIndex);
+    else if(token==='\r'||token==='\n')brackets.length=0;
+    else if(token==='[')brackets.push(index);
+    else if(token===']'&&brackets.length){
+      const start=brackets.pop();
+      if(value[index+1]!=='(')continue;
+      const end=writerV4LinkEnd(value,index+2);
+      if(end<0)continue;
+      add(value[start-1]==='!'?start-1:start,end);
+      inline.lastIndex=end;
+    }
+  }
   const patterns=[
-    /`+[^\r\n`]*`+/g,
     /%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,
-    /!?\[\[[^\]\r\n]+\]\]/g,/!?\[[^\]\r\n]*\]\([^\r\n)]*\)/g,
+    /!?\[\[[^\]\r\n]+\]\]/g,
     /\{\{[^\r\n]{1,6000}?\}\}\^\d+/g
   ];
   for(const re of patterns)while((match=re.exec(value)))add(match.index,match.index+match[0].length);
   ranges.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
-  const out=[];let end=-1;
-  for(const [a,b] of ranges){if(a<end)continue;out.push(value.slice(a,b));end=b;}
+  const out=[];
+  for(const [a,b] of ranges){
+    const previous=out.at(-1);
+    if(previous&&a<previous[1])previous[1]=Math.max(previous[1],b);
+    else out.push([a,b]);
+  }
   return out;
+}
+function writerV4ProtectedTokens(text){
+  const value=String(text||'');
+  return writerV4ProtectedRanges(value).map(([start,end])=>value.slice(start,end));
 }
 function writerV4AssertProtected(before,after){
   const a=writerV4ProtectedTokens(before),b=writerV4ProtectedTokens(after);

@@ -28,7 +28,7 @@ function writerMaskMarkdown(source,keepVariants=false){
   const m=/^[ \t]{0,3}(\x60{3,}|~{3,})/.exec(line);
   if(m){
    if(!fence)fence={char:m[1][0],size:m[1].length};
-   else if(m[1][0]===fence.char&&m[1].length>=fence.size)fence=null;
+   else if(m[1][0]===fence.char&&m[1].length>=fence.size&&!line.slice(m[0].length).trim())fence=null;
    hide(offset,offset+line.length);
   }else if(fence)hide(offset,offset+line.length);
   offset+=line.length+1;
@@ -135,8 +135,13 @@ function writerEncodeVariant(items,active=0){
 }
 function writerVariantAt(text,offset){return writerParseVariants(text).find(v=>offset>=v.from&&offset<=v.to)||null;}
 function writerActiveEditor(plugin,file){
- const leaf=plugin.app.workspace.getLeavesOfType('markdown').find(l=>l.view?.file?.path===file?.path);
- return leaf?.view?.editor||null;
+ if(!file?.path)return null;
+ const workspace=plugin.app.workspace;
+ const editing=view=>view?.file?.path===file.path&&view.editor&&view.getMode?.()!=='preview';
+ const active=workspace.activeLeaf?.view;
+ if(editing(active))return active.editor;
+ const leaf=workspace.getLeavesOfType('markdown').find(item=>editing(item.view));
+ return leaf?.view.editor||null;
 }
 function writerCurrentText(plugin,file){const editor=writerActiveEditor(plugin,file);return editor?Promise.resolve(editor.getValue()):plugin.app.vault.read(file);}
 function writerOffsetToPos(editor,offset){return typeof editor.offsetToPos==='function'?editor.offsetToPos(offset):{line:0,ch:offset};}
@@ -153,7 +158,8 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
  const next=text.slice(0,from)+replacement+text.slice(to);
  if(editor){
   // A snapshot may involve async I/O: never apply stale offsets afterward.
-  if(editor.getValue()!==text)throw Error(writerUi('A nota mudou durante o snapshot. Faça uma nova revisão.','The note changed while creating the snapshot. Run the review again.'));
+  if(writerActiveEditor(plugin,file)!==editor||editor.getValue()!==text)
+   throw Error(writerUi('A nota mudou durante o snapshot. Faça uma nova revisão.','The note changed while creating the snapshot. Run the review again.'));
   editor.replaceRange(replacement,writerOffsetToPos(editor,from),writerOffsetToPos(editor,to));
  }else await plugin.app.vault.process(file,old=>{
    // A matching fragment is not enough: concurrent edits elsewhere must survive.

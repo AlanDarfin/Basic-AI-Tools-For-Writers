@@ -642,6 +642,9 @@ Ative **Sintaxe estendida → Blocos interativos**. Insira pelos comandos da pal
 **Nota de revisão**. Uma seleção no editor é preservada dentro do bloco.
 O botão **Editar** altera o código Markdown do próprio bloco; o salvamento detecta
 se o conteúdo original mudou e não sobrescreve edições concorrentes.
+Se qualquer parte da nota mudar enquanto o editor do bloco estiver aberto, o
+salvamento é recusado e o rascunho continua no editor. Copie-o antes de reabrir o
+bloco. Cercas de código no conteúdo ficam dentro de uma cerca externa maior.
 
 ````markdown
 ```scene-card

@@ -636,6 +636,9 @@ Enable **Extended Syntax → Interactive blocks**. Insert them from the command
 palette using **Insert: Scene card**, **Character voice**, **Story beats**, or
 **Editorial note**. Selected editor text is kept in the inserted block. The
 **Edit** button edits the fenced Markdown source and detects concurrent changes.
+If any part of the note changes while the inline editor is open, saving is
+rejected and your draft stays in the editor. Copy it before reopening the block.
+Nested Markdown code fences are kept inside a sufficiently long outer fence.
 
 ````markdown
 ```scene-card

@@ -2,6 +2,17 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.2.0 — Core workflows and manuscript preservation
+
+- Integrate first-use configuration, filterable modules, local Markdown dictionary lookup and explicit AI/save actions from PR #127.
+- Preserve protected Markdown and current editor text in note translation; support cancellation, recover failed chat drafts and verify review targets in split panes.
+- Fix inline edits targeting adjacent identical blocks, reject stale edits and preserve valid fences around nested Markdown code.
+- Recognize combining Unicode accents in repetition review and preserve wikilink aliases in beat-sheet parsing.
+- Keep newer Longform edits as drafts when typing continues during a save.
+- Serialize per-note snapshot index changes and preserve snapshot identities, review comments and drafts when folders are renamed.
+- Exclude nested fenced code examples from the task Workbench without omitting actual tasks after the closing fence.
+- Add behavioral regression coverage, a functional audit and version-specific release notes in the publication workflow.
+
 ## 13.1.0 — Writing tools and compact project navigation
 
 - Add local repetition review for a selection or current note, with frequent and nearby matches.

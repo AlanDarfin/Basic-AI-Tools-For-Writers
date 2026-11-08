@@ -10747,4 +10747,23 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{
 .writer-v131-review-near{padding-inline-start:20px;}
 .writer-v131-review-near li{margin-block:6px;overflow-wrap:break-word;}
 @media(max-width:420px){.writer-v131-story-block{padding:9px;}.writer-v131-story-meta{grid-template-columns:minmax(0,1fr);gap:2px;}}
+
+/* Early language workflows share the same sizing as the surrounding pane. */
+.writer-v13-settings .writer-v13-module-filter,
+.writer-tool-root .dictionary-results > select{
+ box-sizing:border-box;
+ width:100%;
+ min-width:0;
+ max-width:100%;
+}
+.writer-tool-root .dictionary-results > select{margin-block-end:6px;}
+.writer-tool-root .writer-file-status{
+ overflow-wrap:anywhere;
+}
+.writer-tool-root .writer-file-status > button{
+ margin-inline-start:6px;
+ max-width:100%;
+ white-space:normal;
+}
+.writer-tool-root .writer-file-actions > button[hidden]{display:none;}
 /* END V8 MODULAR STYLES */

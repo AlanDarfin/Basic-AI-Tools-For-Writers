@@ -85,8 +85,15 @@ function writerDiagnostics(plugin){
 function writerRenderModuleSettings(plugin,panel,refresh){
  panel.createEl('h3',{text:writerUi('Módulos visíveis','Visible modules')});
  panel.createEl('p',{text:writerUi('Desative recursos que não utiliza para ocultar abas, menus e atalhos de acesso. Os dados e configurações são mantidos. Recursos podem ser reativados aqui a qualquer momento.','Hide unused features from tabs and menus. Existing settings and data are retained and can be restored any time.'),cls:'dictionary-muted'});
+ const label=writerUi('Filtrar módulos…','Filter modules…');
+ const filter=panel.createEl('input',{cls:'writer-v13-module-filter',attr:{type:'search',placeholder:label,'aria-label':label}});
+ filter.value=plugin.writerModuleFilterQuery||'';
+ const status=panel.createEl('p',{cls:'dictionary-muted',attr:{role:'status'}});
+ const rows=[];
  for(const [id,pt,en,descPt,descEn] of WRITER_MODULES){
-  new Setting(panel).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
+  const row=panel.createDiv({cls:'writer-v13-module-row'});
+  rows.push({row,search:writerV13SearchText([id,pt,en,descPt,descEn].join(' '))});
+  new Setting(row).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
    .addToggle(t=>t.setValue(writerModuleOn(plugin,id)).onChange(async value=>{
     plugin.settings.visibleModules[id]=value;
     await plugin.saveSettings();
@@ -94,6 +101,19 @@ function writerRenderModuleSettings(plugin,panel,refresh){
     if(typeof refresh==='function')refresh();
    }));
  }
+ const update=()=>{
+  plugin.writerModuleFilterQuery=filter.value;
+  const terms=writerV13SearchText(filter.value).split(/\s+/).filter(Boolean);
+  let matches=0;
+  for(const {row,search} of rows){
+   row.hidden=!terms.every(term=>search.includes(term));
+   if(!row.hidden)matches++;
+  }
+  status.setText(matches?matches+' / '+rows.length+' '+writerUi('módulos','modules'):
+   writerUi('Nenhum módulo encontrado.','No modules found.'));
+ };
+ filter.addEventListener('input',update);
+ update();
 }
 function writerRenderDiagnostics(plugin,panel){
  panel.createEl('h3',{text:writerUi('Diagnóstico','Diagnostics')});

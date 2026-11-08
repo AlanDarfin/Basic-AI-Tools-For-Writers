@@ -8,8 +8,12 @@
 
 Escreva, planeje, revise e organize livros sem transferir seu trabalho para um banco de dados separado. O plugin reúne Longform, ferramentas de criação de mundos, homepage personalizável, edição Markdown, revisão linguística e IA opcional. Suas notas, pastas, links e propriedades continuam dentro do cofre do Obsidian.
 
+## Primeiros passos
 
-
+- Abra **Configurações → Basic → Geral → Comece por aqui** para ver o estado do dicionário, tradutor, assistente e revisor e abrir suas configurações. Use o filtro de **Módulos** para encontrar um recurso.
+- Em **Definições**, digite para pesquisar seu dicionário Markdown. Use **Definir palavra** ou Enter para consultar o provedor escolhido. **Salvar definição** adiciona o resultado ao dicionário.
+- Use o menu de seleção do editor para abrir uma definição ou tradução na aba correspondente. Cada ação usa o provedor configurado nela. A tradução de arquivo salva uma cópia Markdown ao lado da nota, com o idioma de destino no nome.
+- Abra **Revisão** para usar LanguageTool e sugestões editoriais. O **Assistente** recupera o rascunho de uma mensagem quando o envio falha.
 
 ## Funcionalidades
 

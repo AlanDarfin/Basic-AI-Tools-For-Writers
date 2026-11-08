@@ -68,7 +68,11 @@ const WRITER_WORKSPACE_HINTS={
  smartTypography:'tipografia aspas apostrofos reticencias travessao frações guillemets',
  review:'languagetool corretor gramatica automático',
  snapshots:'versoes backup restaurar snapshot',
- translation:'tradutor idiomas translated',
+ dictionary:'dicionario definicoes entrada local significado sinonimos antonimos ignorar acentos word lookup definitions accents',
+ translation:'tradutor idiomas origem destino arquivo selecao translation language source target selection',
+ providers:'api chave credenciais conexao endpoint ollama openai gemini anthropic custom key connection',
+ models:'modelos catalogo modelos disponiveis model catalog',
+ assistant:'chat assistente modelo temperatura anexo assistant model attachments',
  tts:'voz leitura audio voz alta'
 };
 function writerWorkspaceSearchSections(sections,query){

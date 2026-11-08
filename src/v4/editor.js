@@ -31,13 +31,26 @@ function writerV4ProfilePrompt(plugin,file){
   const profile=writerV4Profile(plugin,file);
   return profile?.instructions?.trim()?('Writing profile '+JSON.stringify(profile.name)+':\n'+profile.instructions.trim()+'\n'):'';
 }
-function writerV4ProtectedTokens(text){
+function writerV4ProtectedRanges(text){
   const value=String(text||''),ranges=[],add=(a,b)=>{if(b>a)ranges.push([a,b]);};
-  const fm=/^---[ \t]*\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/.exec(value);
-  if(fm)add(0,fm[0].length);
-  const fence=/^([ \t]{0,3})(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1(?:`{3,}|~{3,})[ \t]*$/gm;
+  const fm=/^\uFEFF?---[ \t]*\r?\n[\s\S]*?^(?:---|\.\.\.)[ \t]*(?:\r?\n|$)/m.exec(value);
+  const frontmatter=fm?.index===0?fm[0].length:0;
+  add(0,frontmatter);
+  const fence=/^[ \t]{0,3}(`{3,}|~{3,})([^\r\n]*)/gm;
+  fence.lastIndex=frontmatter;
+  let open=null;
   let match;
-  while((match=fence.exec(value)))add(match.index,match.index+match[0].length);
+  while((match=fence.exec(value))){
+    const delimiter=match[1];
+    if(!open){
+      if(delimiter[0]==='`'&&match[2].includes('`'))continue;
+      open={start:match.index,delimiter};
+    }else if(delimiter[0]===open.delimiter[0]&&delimiter.length>=open.delimiter.length&&!match[2].trim()){
+      add(open.start,fence.lastIndex);
+      open=null;
+    }
+  }
+  if(open)add(open.start,value.length);
   const patterns=[
     /`+[^\r\n`]*`+/g,
     /%%[\s\S]*?%%/g,/<!--[\s\S]*?-->/g,
@@ -46,9 +59,17 @@ function writerV4ProtectedTokens(text){
   ];
   for(const re of patterns)while((match=re.exec(value)))add(match.index,match.index+match[0].length);
   ranges.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
-  const out=[];let end=-1;
-  for(const [a,b] of ranges){if(a<end)continue;out.push(value.slice(a,b));end=b;}
+  const out=[];
+  for(const [a,b] of ranges){
+    const previous=out.at(-1);
+    if(previous&&a<previous[1])previous[1]=Math.max(previous[1],b);
+    else out.push([a,b]);
+  }
   return out;
+}
+function writerV4ProtectedTokens(text){
+  const value=String(text||'');
+  return writerV4ProtectedRanges(value).map(([start,end])=>value.slice(start,end));
 }
 function writerV4AssertProtected(before,after){
   const a=writerV4ProtectedTokens(before),b=writerV4ProtectedTokens(after);

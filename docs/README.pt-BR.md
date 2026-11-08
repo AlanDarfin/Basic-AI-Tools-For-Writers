@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 13.1.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 13.2.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -18,6 +18,8 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 ## Funcionalidades
 
 ### Spaces, toolbar e ações móveis
+
+- **Preservação de manuscritos:** o Longform mantém como rascunho não salvo o texto digitado durante um salvamento. Snapshots concorrentes mantêm suas entradas; renomeações de pastas preservam históricos, comentários e rascunhos dos capítulos. A edição de blocos verifica alterações antes de salvar e aceita cercas Markdown no conteúdo.
 
 - **Revisão de escrita:** analise repetições próximas e palavras frequentes na seleção ou nota atual, localmente. Quatro blocos interativos — `scene-card`, `character-voice`, `beat-sheet` e `editor-note` — podem ser inseridos por comando e editados na visualização. Veja o [guia de blocos](BLOCKS.pt-BR.md).
 

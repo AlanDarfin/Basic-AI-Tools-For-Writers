@@ -65,7 +65,7 @@ test('inline editors preserve exactly the new or legacy fenced name when saving'
   const out=type(source,name,{getSectionInfo:()=>({lineStart:2,lineEnd:5})},null,'=== A\nOld','=== A\nNew');
   assert.ok(out.includes('~~~'+name+'\n=== A\nNew\n~~~'),name);
  }
- assert.match(blocks,/writerV8CommitFenced\(plugin,ctx,element,fenceType,source,next\)/);
+ assert.match(blocks,/writerV8CommitFenced\(plugin,ctx,element,fenceType,source,next,baseline\)/);
  assert.match(blocks,/writerV8InlineEditor\(plugin,ctx,target,element,fenceType,source/);
 });
 test('home heading prominence and compact list rules are bundled',()=>{

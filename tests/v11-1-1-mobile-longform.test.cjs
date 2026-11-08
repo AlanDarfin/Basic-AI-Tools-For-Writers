@@ -22,7 +22,7 @@ test('Longform Studio belongs to standard Longform writing tabs; standalone home
  const list=home.match(/WRITER_V8_HOME_SECTIONS=\[([^\]]+)\]/)?.[1];
  assert.ok(list&&!list.includes("'studio'"));
  assert.match(longform,/function writerV11RenderLongformTab\(/);
- assert.match(longform,/writerV11SaveChapter\(plugin,scene.file,expected,editor.value\)/);
+ assert.match(longform,/writerV11SaveChapter\(plugin,scene.file,expected,submitted\)/);
  assert.match(longform,/plugin\.openProjects\?\.\('manuscript'\)/);
 });
 test('Mobile panel pins are sanitized and prioritized without disturbing ordinary tab order',()=>{

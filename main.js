@@ -1852,7 +1852,10 @@ class WriterSnapshots{
   const adapter=this.plugin.app.vault.adapter;let part='';
   for(const segment of path.split('/').filter(Boolean)){
    part=part?part+'/'+segment:segment;
-   if(!(await adapter.exists(part)))await adapter.mkdir(part);
+   if(!(await adapter.exists(part))){
+    try{await adapter.mkdir(part);}
+    catch(error){if(!(await adapter.exists(part)))throw error;}
+   }
   }
  }
  identity(file){
@@ -1860,6 +1863,14 @@ class WriterSnapshots{
   if(map[file.path])return map[file.path];
   const id='n'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,12);
   map[file.path]=id;return id;
+ }
+ enqueue(file,operation){
+  // All index mutations for one note share its stable identity, even after a rename.
+  const key=this.identity(file),previous=this.jobs.get(key)||Promise.resolve();
+  const result=previous.then(operation),done=result.then(()=>{},()=>{});
+  this.jobs.set(key,done);
+  void done.then(()=>{if(this.jobs.get(key)===done)this.jobs.delete(key);});
+  return result;
  }
  folder(file){const id=this.identity(file);if(!/^n[a-z0-9-]+$/i.test(id))throw Error(writerUi('Identidade de nota inválida.','Invalid note identity.'));return this.path(this.root(),id);}
  async manifest(file){
@@ -1925,6 +1936,7 @@ class WriterSnapshots{
   if(!this.config.enabled)throw Error(writerUi('Snapshots desativados.','Snapshots are disabled.'));
   if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi('Selecione uma nota Markdown.','Select a Markdown note.'));
   const text=options.content??await writerCurrentText(this.plugin,file);
+  return this.enqueue(file,async()=>{
   const folder=this.folder(file);await this.mkdir(folder);
   const manifest=await this.manifest(file);
   const entry={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),at:new Date().toISOString(),name:String(name||writerUi('Versão manual','Manual version')).slice(0,120),size:text.length,attachments:[]};
@@ -1938,6 +1950,7 @@ class WriterSnapshots{
    await this.plugin.saveSettings();
    return entry;
   }catch(e){throw Error(writerUi('O snapshot foi salvo, mas o índice não foi atualizado: ','Snapshot saved, but the index was not updated: ')+e.message);}
+  });
  }
  async prune(file,manifest){
   const max=Number(this.config.maxPerNote)||0,days=Number(this.config.retentionDays)||0;
@@ -1983,16 +1996,27 @@ class WriterSnapshots{
   return {restored,skipped};
  }
  async delete(file,entry){
+  return this.enqueue(file,async()=>{
   const data=await this.manifest(file);
   const current=data.snapshots.find(x=>x.id===entry.id);if(!current)return;
   data.snapshots=data.snapshots.filter(x=>x.id!==entry.id);
   await this.writeManifest(file,data);
   const path=this.path(this.folder(file),entry.id+'.md');
   if(await this.plugin.app.vault.adapter.exists(path))await this.plugin.app.vault.adapter.remove(path);
+  });
  }
  onRename(file,oldPath){
-  const map=this.config.identityMap||{};
-  if(map[oldPath]){map[file.path]=map[oldPath];delete map[oldPath];this.plugin.saveSettings();}
+  if(typeof oldPath!=='string'||!oldPath||typeof file?.path!=='string'||!file.path||oldPath===file.path)return;
+  const map=this.config.identityMap||{},prefix=oldPath+'/';let changed=false;
+  for(const [path,id] of Object.entries(map)){
+   if(path!==oldPath&&!path.startsWith(prefix))continue;
+   delete map[path];map[file.path+path.slice(oldPath.length)]=id;changed=true;
+  }
+  for(const [path,time] of [...this.lastAuto]){
+   if(path!==oldPath&&!path.startsWith(prefix))continue;
+   this.lastAuto.delete(path);this.lastAuto.set(file.path+path.slice(oldPath.length),time);
+  }
+  if(changed)return this.plugin.saveSettings();
  }
  onModify(file){
   if(!this.config.enabled||!this.config.automatic||!(file instanceof TFile)||file.extension!=='md'||file.path.startsWith(this.root()+'/'))return;
@@ -9382,20 +9406,21 @@ class WriterV7StableFeatures{
 // v3 module: src/v8/block-edit.js
 /* Safe bounded editing of ONLY the active fenced block. Does not touch unrelated notes. */
 function writerV8FenceCandidate(text,type,info,expected){
- const lines=String(text).split(/\r?\n/),start=Math.max(0,Number(info?.lineStart??-1)-3);
- const end=Math.min(lines.length,Number(info?.lineEnd??-1)+4);
- if(!info||!Number.isInteger(info.lineStart)||!Number.isInteger(info.lineEnd))return null;
+ const lines=String(text).split(/\r?\n/);
+ if(!info||!Number.isInteger(info.lineStart)||!Number.isInteger(info.lineEnd)
+  ||info.lineStart<0||info.lineEnd<=info.lineStart||info.lineEnd>=lines.length)return null;
  const norm=s=>String(s).replace(/\r\n/g,'\n').replace(/\n+$/,'');
- for(let i=start;i<end;i++){
-  const open=/^ {0,3}(`{3,}|~{3,})([\w-]+)(?:\s+.*)?$/.exec(lines[i]||'');
-  if(!open||open[2]!==type)continue;
-  const close=new RegExp('^ {0,3}'+(open[1][0]==='`'?'\\`':'~')+'{'+open[1].length+',}\\s*$');
-  for(let j=i+1;j<Math.min(lines.length,Math.max(end+5,i+1200));j++){
-   if(!close.test(lines[j]))continue;
-   const body=lines.slice(i+1,j).join('\n');
-   if(norm(body)!==norm(expected))break;
-   return {lines,start:i,end:j,body,eol:String(text).includes('\r\n')?'\r\n':'\n'};
-  }
+ // Section coordinates identify the block. Never search a neighbour with identical text.
+ const start=info.lineStart,end=info.lineEnd;
+ const open=/^( {0,3})(`{3,}|~{3,})([\w-]+)([ \t].*)?$/.exec(lines[start]);
+ if(!open||open[3]!==type)return null;
+ const close=new RegExp('^ {0,3}'+open[2][0]+'{'+open[2].length+',}[ \\t]*$');
+ for(let j=start+1;j<=end;j++){
+  if(!close.test(lines[j]))continue;
+  if(j!==end)return null;
+  const body=lines.slice(start+1,end).map(line=>line.slice(Math.min(open[1].length,/^ */.exec(line)[0].length))).join('\n');
+  if(norm(body)!==norm(expected))return null;
+  return {lines,start,end,body,open,eol:String(text).includes('\r\n')?'\r\n':'\n'};
  }
  return null;
 }
@@ -9404,18 +9429,45 @@ function writerV8FenceReplace(original,type,ctx,el,expected,updated){
  const info=typeof ctx.getSectionInfo==='function'?ctx.getSectionInfo(el):null;
  const block=writerV8FenceCandidate(original,type,info,expected);
  if(!block)throw Error(writerUi('O bloco mudou ou não pode ser localizado. Abra a nota no editor.','Block changed or was not found. Open the note in the editor.'));
- const out=[...block.lines.slice(0,block.start+1),...String(updated).replace(/\r\n/g,'\n').replace(/\n+$/,'').split('\n'),...block.lines.slice(block.end)];
+ const content=String(updated).replace(/\r\n/g,'\n').replace(/\n+$/,''),marker=block.open[2][0];
+ let width=block.open[2].length;
+ // A closing fence in edited Markdown must remain inside the outer block.
+ for(const line of content.split('\n')){
+  const match=/^ {0,3}(`+|~+)[ \t]*$/.exec(line);
+  if(match&&match[1][0]===marker)width=Math.max(width,match[1].length+1);
+ }
+ const fence=marker.repeat(width),opening=block.open[1]+fence+block.open[3]+(block.open[4]||'');
+ const closing=block.lines[block.end].replace(/`{3,}|~{3,}/,fence);
+ const out=[...block.lines.slice(0,block.start),opening,...content.split('\n').map(line=>block.open[1]+line),closing,...block.lines.slice(block.end+1)];
  return out.join(block.eol);
 }
-async function writerV8CommitFenced(plugin,ctx,el,type,oldSource,newSource){
+function writerV8CaptureFenced(plugin,ctx){
+ // Read at editor-open time, before a neighbouring identical block can replace this one.
+ try{
+  const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath||'');
+  if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi('Nota não editável.','Note is not editable.'));
+  const path=file.path,mtime=file.stat?.mtime,size=file.stat?.size;
+  return Promise.resolve(plugin.app.vault.read(file)).then(text=>{
+   if(file.path!==path||file.stat?.mtime!==mtime||file.stat?.size!==size)
+    throw Error(writerUi('A nota mudou. Reabra o editor do bloco.','Note changed. Reopen the block editor.'));
+   return {file,path,text};
+  }).catch(error=>({error}));
+ }catch(error){return Promise.resolve({error});}
+}
+async function writerV8CommitFenced(plugin,ctx,el,type,oldSource,newSource,baseline){
  const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath||'');
  if(!(file instanceof TFile)||file.extension!=='md'||typeof plugin.app.vault.process!=='function')
   throw Error(writerUi('Nota não editável.','Note is not editable.'));
  const section=typeof ctx.getSectionInfo==='function'?ctx.getSectionInfo(el):null;
  if(!section)throw Error(writerUi('Abra esta nota no modo de edição para alterar o bloco.','Open this note in edit mode to change the block.'));
+ const snapshot=await(baseline||writerV8CaptureFenced(plugin,ctx));
+ if(snapshot.error)throw snapshot.error;
+ if(snapshot.file!==file||snapshot.path!==file.path)
+  throw Error(writerUi('A nota mudou. Reabra o editor do bloco.','Note changed. Reopen the block editor.'));
  // Re-read within vault.process to reject stale edits, without overriding concurrent edits.
  let newContent;
  await plugin.app.vault.process(file,text=>{
+  if(text!==snapshot.text)throw Error(writerUi('A nota mudou. Reabra o editor do bloco.','Note changed. Reopen the block editor.'));
   newContent=writerV8FenceReplace(text,type,{getSectionInfo:()=>section},el,oldSource,newSource);
   return newContent;
  });
@@ -9423,6 +9475,7 @@ async function writerV8CommitFenced(plugin,ctx,el,type,oldSource,newSource){
 }
 function writerV8InlineEditor(plugin,ctx,host,element,type,source,initial,done,rerender){
  if(host.querySelector('.writer-v8-inline-editor'))return;
+ const baseline=writerV8CaptureFenced(plugin,ctx);
  const pre=host.createDiv({cls:'writer-v8-inline-editor'});
  host.classList.add('is-editing');
  const input=pre.createEl('textarea',{cls:'writer-v8-inline-textarea',attr:{'aria-label':writerUi('Editar conteúdo Markdown','Edit Markdown content')}});
@@ -9438,7 +9491,7 @@ function writerV8InlineEditor(plugin,ctx,host,element,type,source,initial,done,r
   try{
    const next=done(input.value);
    if(typeof next!=='string'||next.length>WRITER_V8_BLOCK_MAX)throw Error(writerUi('Texto muito longo.','Text too long.'));
-   if(next!==source)await writerV8CommitFenced(plugin,ctx,element,type,source,next);
+   if(next!==source)await writerV8CommitFenced(plugin,ctx,element,type,source,next,baseline);
    close();if(element.isConnected){element.empty();rerender(next);}
   }catch(error){
    save.disabled=false;
@@ -9496,6 +9549,16 @@ function writerV8ReadCard(source){
   header=false;body.push(line);
  }
  return {fields,body:body.join('\n').trim()};
+}
+function writerV8ReplaceCardBody(source,value){
+ const original=String(source||''),lines=original.split(/\r?\n/),header=[];
+ for(const line of lines){
+  if(/^---\s*$/.test(line))break;
+  if(!/^([a-z][a-z0-9_-]{0,35}):\s*(.*)$/i.test(line))break;
+  header.push(line);
+ }
+ const eol=original.includes('\r\n')?'\r\n':'\n';
+ return [...header,'---',String(value).replace(/\r\n/g,'\n')].join('\n').replace(/\n/g,eol);
 }
 function writerV8ImagePath(app,raw,sourcePath){
  let link=String(raw||'').trim();
@@ -9563,6 +9626,7 @@ function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
  plus.disabled=tabs.length>=12;
  plus.addEventListener('click',()=>{
   if(nav.querySelector('.writer-v8-tab-new-title'))return;
+  const baseline=writerV8CaptureFenced(plugin,ctx);
   const input=nav.createEl('input',{cls:'writer-v8-tab-new-title',attr:{placeholder:writerUi('Nome da aba…','Tab title…'),'aria-label':writerUi('Nome da nova aba','New tab title')}});
   input.maxLength=80;input.focus();
   const add=async()=>{
@@ -9570,7 +9634,7 @@ function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
    if(!title)return;
    const next=source.replace(/\n+$/,'')+'\n=== '+title+'\n';
    try{
-    await writerV8CommitFenced(plugin,ctx,element,fenceType,source,next);
+    await writerV8CommitFenced(plugin,ctx,element,fenceType,source,next,baseline);
     if(element.isConnected){element.empty();rerender(next);}
    }catch(error){new Notice(writerUi('Erro ao criar aba: ','Unable to add tab: ')+String(error.message||error));}
   };
@@ -9612,9 +9676,7 @@ function writerV8RenderCard(plugin,source,element,ctx,kind,fenceType=kind==='ava
   if(event?.target?.closest?.('a,button,input,textarea,select'))return;
   if(root.querySelector('.writer-v8-inline-editor'))return;
   writerV8InlineEditor(plugin,ctx,root,element,fenceType,source,body,
-   value=>source.includes('\n---\n')
-    ?source.slice(0,source.indexOf('\n---\n')+5)+value
-    :source.trimEnd()+'\n---\n'+value,
+   value=>writerV8ReplaceCardBody(source,value),
    next=>writerV8RenderCard(plugin,next,element,ctx,kind,fenceType));
  };
  content.addEventListener('click',edit);
@@ -9647,7 +9709,7 @@ function writerV131NormalizeWord(word){
 function writerV131WritingAnalysis(input){
  // Analyze a bounded in-memory snapshot; never save or transmit its text.
  const text=String(input||'').slice(0,200000);
- const words=[...text.matchAll(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu)].map(m=>({word:m[0],index:m.index}));
+ const words=[...text.matchAll(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*(?:['’\-][\p{L}\p{N}][\p{L}\p{N}\p{M}]*)*/gu)].map(m=>({word:m[0],index:m.index}));
  const counts=new Map(),near=[];
  for(let i=0;i<words.length;i++){
   const item=words[i],key=writerV131NormalizeWord(item.word);
@@ -9691,9 +9753,25 @@ function writerV131ReviewModal(plugin,text,scope){
 }
 function writerV131BeatLines(text){
  return String(text||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).slice(0,80).map((line,i)=>{
-  line=line.replace(/^[-*]\s+/,'');const separator=/\s+\|\s+/.exec(line);
-  return {title:separator?line.slice(0,separator.index).trim().slice(0,100):String(i+1),
-   body:(separator?line.slice(separator.index+separator[0].length):line).trim()};
+  line=line.replace(/^[-*]\s+/,'');let separator=-1,wiki=0,code=0;
+  for(let at=0;at<line.length;at++){
+   if(line[at]==='\\'){at++;continue;}
+   if(line[at]==='`'){
+    let end=at+1;while(line[end]==='`')end++;
+    const width=end-at;
+    if(!code){
+     // An unmatched backtick is literal Markdown, so it cannot hide a separator.
+     if([...line.slice(end).matchAll(/`+/g)].some(run=>run[0].length===width))code=width;
+    }else if(width===code)code=0;
+    at=end-1;continue;
+   }
+   if(code)continue;
+   if(line.slice(at,at+2)==='[['){wiki++;at++;continue;}
+   if(line.slice(at,at+2)===']]'&&wiki){wiki--;at++;continue;}
+   if(!wiki&&line[at]==='|'&&/\s/.test(line[at-1]||'')&&/\s/.test(line[at+1]||'')){separator=at;break;}
+  }
+  return {title:separator>=0?line.slice(0,separator).trim().slice(0,100):String(i+1),
+   body:(separator>=0?line.slice(separator+1):line).trim()};
  });
 }
 function writerV131BlockTemplate(kind,selection=''){
@@ -25886,21 +25964,25 @@ function writerV11RenderLongformTab(view,panel,project){
      .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(scene.file));
     buttons.createEl('button',{attr:{type:'button'},text:writerUi('Revisões','Revisions')})
      .addEventListener('click',()=>writerV11OpenRevision(plugin,scene.file));
-    editor.addEventListener('input',()=>{
+    const rememberDraft=()=>{
      plugin._writerV11Drafts??=new Map();
      if(editor.value===expected)plugin._writerV11Drafts.delete(scene.file.path);
      else plugin._writerV11Drafts.set(scene.file.path,{original:expected,text:editor.value});
      status.setText(editor.value===expected?writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo','Unsaved changes'));
-    });
+    };
+    editor.addEventListener('input',rememberDraft);
     save.addEventListener('click',async()=>{
      save.disabled=true;
+     const submitted=editor.value;
      try{
-      await writerV11SaveChapter(plugin,scene.file,expected,editor.value);
-      expected=editor.value;
-      plugin._writerV11Drafts?.delete(scene.file.path);
+      await writerV11SaveChapter(plugin,scene.file,expected,submitted);
+      expected=submitted;
+      rememberDraft();
       info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
-      status.setText(writerUi('Salvo','Saved'));
-      new Notice(writerUi('Cena salva no arquivo Longform original.','Scene saved in original Longform note.'));
+      if(editor.value===expected){
+       status.setText(writerUi('Salvo','Saved'));
+       new Notice(writerUi('Cena salva no arquivo Longform original.','Scene saved in original Longform note.'));
+      }else new Notice(writerUi('Cena salva. As alterações mais recentes continuam no rascunho não salvo.','Scene saved. Newer edits remain in the unsaved draft.'));
      }catch(error){
       status.setText(String(error.message||error));new Notice(String(error.message||error));
      }finally{save.disabled=false;}
@@ -26088,11 +26170,23 @@ function writerV11OpenDiagnostics(plugin){
 function writerV11StudioRegister(plugin){
  writerV11Cfg(plugin.settings);
  plugin.registerEvent?.(plugin.app.vault.on('rename',(file,oldPath)=>{
-  if(!file||file.extension!=='md'||!oldPath||oldPath===file.path)return;
+  if(typeof file?.path!=='string'||typeof oldPath!=='string'||!oldPath||oldPath===file.path)return;
+  const destination=path=>path===oldPath||path.startsWith(oldPath+'/')?file.path+path.slice(oldPath.length):null;
   const notes=plugin.settings.v11Studio?.reviewNotes||{};
-  if(notes[oldPath]&&!notes[file.path]){notes[file.path]=notes[oldPath];delete notes[oldPath];void plugin.saveSettings();}
-  if(plugin._writerV11Drafts?.has(oldPath)){
-   plugin._writerV11Drafts.set(file.path,plugin._writerV11Drafts.get(oldPath));plugin._writerV11Drafts.delete(oldPath);
+  let changed=false;
+  for(const path of Object.keys(notes)){
+   const next=destination(path);
+   if(next&&!Object.prototype.hasOwnProperty.call(notes,next)){
+    notes[next]=notes[path];delete notes[path];changed=true;
+   }
+  }
+  if(changed)void plugin.saveSettings();
+  const drafts=plugin._writerV11Drafts;
+  for(const [path,draft] of Array.from(drafts?.entries()||[])){
+   const next=destination(path);
+   if(next&&!drafts.has(next)){
+    drafts.set(next,draft);drafts.delete(path);
+   }
   }
  }));
 
@@ -27222,13 +27316,19 @@ function writerV12SecureSettings(plugin,panel){
  * atomic and reject concurrent changes. Markdown code fences are excluded. */
 function writerV12TaskRefs(source){
  const lines=String(source||'').split(/\r?\n/),tasks=[];
- let fence='';
+ let fence=null;
  for(let line=0;line<lines.length;line++){
-  const raw=lines[line],delimiter=/^\s*([~\x60]{3,})/.exec(raw);
+  const raw=lines[line],delimiter=/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(raw);
   if(delimiter){
-   const c=delimiter[1][0];
-   if(!fence)fence=c;else if(fence===c)fence='';
-   continue;
+   const marker=delimiter[1],tail=delimiter[2];
+   if(fence){
+    if(marker[0]===fence.char&&marker.length>=fence.length&&!tail.trim())fence=null;
+    continue;
+   }
+   if(marker[0]==='~'||!tail.includes('`')){
+    fence={char:marker[0],length:marker.length};
+    continue;
+   }
   }
   if(fence)continue;
   const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);
@@ -29591,7 +29691,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerEditorSuggest(this.writerComplements);
     this.registerEditorExtension(this.writerVariants.editorExtension());
     this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
-      if(file instanceof TFile)this.writerSnapshots.onRename(file,oldPath);
+      if(file instanceof TFile||file instanceof TFolder)this.writerSnapshots.onRename(file,oldPath);
       this.writerComplements.dirty=true;
     }));
     for(const event of ['create','delete','modify'])this.registerEvent(this.app.vault.on(event,file=>{

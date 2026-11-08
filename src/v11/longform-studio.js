@@ -142,21 +142,25 @@ function writerV11RenderLongformTab(view,panel,project){
      .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(scene.file));
     buttons.createEl('button',{attr:{type:'button'},text:writerUi('Revisões','Revisions')})
      .addEventListener('click',()=>writerV11OpenRevision(plugin,scene.file));
-    editor.addEventListener('input',()=>{
+    const rememberDraft=()=>{
      plugin._writerV11Drafts??=new Map();
      if(editor.value===expected)plugin._writerV11Drafts.delete(scene.file.path);
      else plugin._writerV11Drafts.set(scene.file.path,{original:expected,text:editor.value});
      status.setText(editor.value===expected?writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo','Unsaved changes'));
-    });
+    };
+    editor.addEventListener('input',rememberDraft);
     save.addEventListener('click',async()=>{
      save.disabled=true;
+     const submitted=editor.value;
      try{
-      await writerV11SaveChapter(plugin,scene.file,expected,editor.value);
-      expected=editor.value;
-      plugin._writerV11Drafts?.delete(scene.file.path);
+      await writerV11SaveChapter(plugin,scene.file,expected,submitted);
+      expected=submitted;
+      rememberDraft();
       info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
-      status.setText(writerUi('Salvo','Saved'));
-      new Notice(writerUi('Cena salva no arquivo Longform original.','Scene saved in original Longform note.'));
+      if(editor.value===expected){
+       status.setText(writerUi('Salvo','Saved'));
+       new Notice(writerUi('Cena salva no arquivo Longform original.','Scene saved in original Longform note.'));
+      }else new Notice(writerUi('Cena salva. As alterações mais recentes continuam no rascunho não salvo.','Scene saved. Newer edits remain in the unsaved draft.'));
      }catch(error){
       status.setText(String(error.message||error));new Notice(String(error.message||error));
      }finally{save.disabled=false;}
@@ -344,11 +348,23 @@ function writerV11OpenDiagnostics(plugin){
 function writerV11StudioRegister(plugin){
  writerV11Cfg(plugin.settings);
  plugin.registerEvent?.(plugin.app.vault.on('rename',(file,oldPath)=>{
-  if(!file||file.extension!=='md'||!oldPath||oldPath===file.path)return;
+  if(typeof file?.path!=='string'||typeof oldPath!=='string'||!oldPath||oldPath===file.path)return;
+  const destination=path=>path===oldPath||path.startsWith(oldPath+'/')?file.path+path.slice(oldPath.length):null;
   const notes=plugin.settings.v11Studio?.reviewNotes||{};
-  if(notes[oldPath]&&!notes[file.path]){notes[file.path]=notes[oldPath];delete notes[oldPath];void plugin.saveSettings();}
-  if(plugin._writerV11Drafts?.has(oldPath)){
-   plugin._writerV11Drafts.set(file.path,plugin._writerV11Drafts.get(oldPath));plugin._writerV11Drafts.delete(oldPath);
+  let changed=false;
+  for(const path of Object.keys(notes)){
+   const next=destination(path);
+   if(next&&!Object.prototype.hasOwnProperty.call(notes,next)){
+    notes[next]=notes[path];delete notes[path];changed=true;
+   }
+  }
+  if(changed)void plugin.saveSettings();
+  const drafts=plugin._writerV11Drafts;
+  for(const [path,draft] of Array.from(drafts?.entries()||[])){
+   const next=destination(path);
+   if(next&&!drafts.has(next)){
+    drafts.set(next,draft);drafts.delete(path);
+   }
   }
  }));
 

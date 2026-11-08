@@ -28,6 +28,16 @@ function writerV8ReadCard(source){
  }
  return {fields,body:body.join('\n').trim()};
 }
+function writerV8ReplaceCardBody(source,value){
+ const original=String(source||''),lines=original.split(/\r?\n/),header=[];
+ for(const line of lines){
+  if(/^---\s*$/.test(line))break;
+  if(!/^([a-z][a-z0-9_-]{0,35}):\s*(.*)$/i.test(line))break;
+  header.push(line);
+ }
+ const eol=original.includes('\r\n')?'\r\n':'\n';
+ return [...header,'---',String(value).replace(/\r\n/g,'\n')].join('\n').replace(/\n/g,eol);
+}
 function writerV8ImagePath(app,raw,sourcePath){
  let link=String(raw||'').trim();
  if(!link||/[\n\r]/.test(link)||/^(?:https?:|file:|data:|javascript:)/i.test(link))return '';
@@ -94,6 +104,7 @@ function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
  plus.disabled=tabs.length>=12;
  plus.addEventListener('click',()=>{
   if(nav.querySelector('.writer-v8-tab-new-title'))return;
+  const baseline=writerV8CaptureFenced(plugin,ctx);
   const input=nav.createEl('input',{cls:'writer-v8-tab-new-title',attr:{placeholder:writerUi('Nome da aba…','Tab title…'),'aria-label':writerUi('Nome da nova aba','New tab title')}});
   input.maxLength=80;input.focus();
   const add=async()=>{
@@ -101,7 +112,7 @@ function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
    if(!title)return;
    const next=source.replace(/\n+$/,'')+'\n=== '+title+'\n';
    try{
-    await writerV8CommitFenced(plugin,ctx,element,fenceType,source,next);
+    await writerV8CommitFenced(plugin,ctx,element,fenceType,source,next,baseline);
     if(element.isConnected){element.empty();rerender(next);}
    }catch(error){new Notice(writerUi('Erro ao criar aba: ','Unable to add tab: ')+String(error.message||error));}
   };
@@ -143,9 +154,7 @@ function writerV8RenderCard(plugin,source,element,ctx,kind,fenceType=kind==='ava
   if(event?.target?.closest?.('a,button,input,textarea,select'))return;
   if(root.querySelector('.writer-v8-inline-editor'))return;
   writerV8InlineEditor(plugin,ctx,root,element,fenceType,source,body,
-   value=>source.includes('\n---\n')
-    ?source.slice(0,source.indexOf('\n---\n')+5)+value
-    :source.trimEnd()+'\n---\n'+value,
+   value=>writerV8ReplaceCardBody(source,value),
    next=>writerV8RenderCard(plugin,next,element,ctx,kind,fenceType));
  };
  content.addEventListener('click',edit);
@@ -178,7 +187,7 @@ function writerV131NormalizeWord(word){
 function writerV131WritingAnalysis(input){
  // Analyze a bounded in-memory snapshot; never save or transmit its text.
  const text=String(input||'').slice(0,200000);
- const words=[...text.matchAll(/[\p{L}\p{N}]+(?:['’\-][\p{L}\p{N}]+)*/gu)].map(m=>({word:m[0],index:m.index}));
+ const words=[...text.matchAll(/[\p{L}\p{N}][\p{L}\p{N}\p{M}]*(?:['’\-][\p{L}\p{N}][\p{L}\p{N}\p{M}]*)*/gu)].map(m=>({word:m[0],index:m.index}));
  const counts=new Map(),near=[];
  for(let i=0;i<words.length;i++){
   const item=words[i],key=writerV131NormalizeWord(item.word);
@@ -222,9 +231,25 @@ function writerV131ReviewModal(plugin,text,scope){
 }
 function writerV131BeatLines(text){
  return String(text||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).slice(0,80).map((line,i)=>{
-  line=line.replace(/^[-*]\s+/,'');const separator=/\s+\|\s+/.exec(line);
-  return {title:separator?line.slice(0,separator.index).trim().slice(0,100):String(i+1),
-   body:(separator?line.slice(separator.index+separator[0].length):line).trim()};
+  line=line.replace(/^[-*]\s+/,'');let separator=-1,wiki=0,code=0;
+  for(let at=0;at<line.length;at++){
+   if(line[at]==='\\'){at++;continue;}
+   if(line[at]==='`'){
+    let end=at+1;while(line[end]==='`')end++;
+    const width=end-at;
+    if(!code){
+     // An unmatched backtick is literal Markdown, so it cannot hide a separator.
+     if([...line.slice(end).matchAll(/`+/g)].some(run=>run[0].length===width))code=width;
+    }else if(width===code)code=0;
+    at=end-1;continue;
+   }
+   if(code)continue;
+   if(line.slice(at,at+2)==='[['){wiki++;at++;continue;}
+   if(line.slice(at,at+2)===']]'&&wiki){wiki--;at++;continue;}
+   if(!wiki&&line[at]==='|'&&/\s/.test(line[at-1]||'')&&/\s/.test(line[at+1]||'')){separator=at;break;}
+  }
+  return {title:separator>=0?line.slice(0,separator).trim().slice(0,100):String(i+1),
+   body:(separator>=0?line.slice(separator+1):line).trim()};
  });
 }
 function writerV131BlockTemplate(kind,selection=''){

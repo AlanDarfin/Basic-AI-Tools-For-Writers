@@ -3,13 +3,19 @@
  * atomic and reject concurrent changes. Markdown code fences are excluded. */
 function writerV12TaskRefs(source){
  const lines=String(source||'').split(/\r?\n/),tasks=[];
- let fence='';
+ let fence=null;
  for(let line=0;line<lines.length;line++){
-  const raw=lines[line],delimiter=/^\s*([~\x60]{3,})/.exec(raw);
+  const raw=lines[line],delimiter=/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(raw);
   if(delimiter){
-   const c=delimiter[1][0];
-   if(!fence)fence=c;else if(fence===c)fence='';
-   continue;
+   const marker=delimiter[1],tail=delimiter[2];
+   if(fence){
+    if(marker[0]===fence.char&&marker.length>=fence.length&&!tail.trim())fence=null;
+    continue;
+   }
+   if(marker[0]==='~'||!tail.includes('`')){
+    fence={char:marker[0],length:marker.length};
+    continue;
+   }
   }
   if(fence)continue;
   const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);

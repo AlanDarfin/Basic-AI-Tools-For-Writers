@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.1.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.2.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -18,6 +18,8 @@ Write, plan, revise and organize books without moving your work to a separate da
 ## Features
 
 ### Spaces, toolbar and mobile actions
+
+- **Manuscript preservation:** Longform retains text typed during a save as an unsaved draft. Concurrent snapshots keep their index entries; folder renames retain chapter histories, editorial comments and drafts. Interactive block edits check for changes before saving and support nested Markdown fences.
 
 - **Writing review:** analyze nearby and frequent word repetitions locally in a selection or current note. Four interactive Markdown blocks — `scene-card`, `character-voice`, `beat-sheet` and `editor-note` — can be inserted with commands and edited in preview. See the [block guide](docs/BLOCKS.en.md).
 

@@ -61,9 +61,13 @@ function writerV112HoldControl(plugin,button,side,entry){
  if(writerV112PanelPrefs(plugin).longPressMenu===false)return;
  let timer=null,startX=0,startY=0,suppressUntil=0;
  const cancel=()=>{if(timer!==null)clearTimeout(timer);timer=null;};
- const open=(x,y)=>{cancel();suppressUntil=Date.now()+850;writerV112ContextMenu(plugin,side,entry,x,y);};
+ const open=(x,y)=>{
+  cancel();
+  if(button.isConnected===false)return;
+  suppressUntil=Date.now()+850;writerV112ContextMenu(plugin,side,entry,x,y);
+ };
  button.addEventListener('pointerdown',event=>{
-  if(event.pointerType==='mouse'||event.button!==0)return;
+  if(event.pointerType==='mouse'||event.button!==0||event.isPrimary===false)return;
   cancel();startX=event.clientX;startY=event.clientY;
   timer=setTimeout(()=>open(startX,startY),550);
  });
@@ -90,7 +94,9 @@ function writerV112HoldControl(plugin,button,side,entry){
 function writerV112SidebarWire(plugin,side,entries,bar){
  const buttons=[...(bar?.querySelectorAll?.('.writer-v1010-sidebar-button[data-view-type]')||[])];
  for(const entry of entries){
-  const button=buttons.find(node=>node.getAttribute('data-view-type')===entry.type);
+  const key=entry.key||(typeof writerV133LeafKey==='function'?writerV133LeafKey(entry.leaf):'');
+  const button=buttons.find(node=>key?node.getAttribute('data-leaf-key')===key:
+   node.getAttribute('data-view-type')===entry.type);
   if(button)writerV112HoldControl(plugin,button,side,entry);
  }
 }

@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 13.2.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 13.3.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -18,6 +18,8 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 ## Funcionalidades
 
 ### Spaces, toolbar e ações móveis
+
+- **Spaces no celular:** o seletor persistente funciona com as abas nativas e com o gerenciador opcional do Basic. Busque Spaces por nome, com tolerância a acentos, volte a Todo o cofre ou use **Escolher Space** nas ações rápidas e na paleta de comandos. Trocas rápidas preservam a ordem dos layouts; abrir o painel de coleções mantém o escopo atual.
 
 - **Preservação de manuscritos:** o Longform mantém como rascunho não salvo o texto digitado durante um salvamento. Snapshots concorrentes mantêm suas entradas; renomeações de pastas preservam históricos, comentários e rascunhos dos capítulos. A edição de blocos verifica alterações antes de salvar e aceita cercas Markdown no conteúdo.
 
@@ -56,7 +58,7 @@ No Android, o Dragger de blocos não mostra alças fixas: inicia após toque pro
 
 ### Painéis laterais e largura do editor
 
-- **Gerenciador lateral (opcional):** abas superiores integradas ao drawer nativo do Android, com indicação ativa preservada ao alternar painéis; menu unificado de ações com ícones Lucide, suporte à ordenação nativa e seletor recolhível de Spaces sempre acima das abas móveis (mostra a Space ativa e expande para selecionar outras ou Todo o cofre). A atualização do layout não destrói a barra de abas nem fecha seus menus. Configurações próprias para PC e celular, sem mover painéis nativos.
+- **Gerenciador lateral (opcional):** as abas móveis preservam instâncias separadas do mesmo tipo de painel e notas Markdown, usam títulos e ícones dos painéis e acompanham abertura, fechamento e substituição de abas. A indicação ativa e o menu de ações seguem o painel atual. Configurações próprias para PC e celular; ordem e preferências de fixação continuam por tipo de painel, sem mover as abas nativas. O seletor de Spaces também funciona com o gerenciador desligado.
 - **Largura do editor:** controle de 20–100% na barra de status do PC e ajuste também nas configurações para Android. Um clique na porcentagem restaura o valor padrão.
 - **Largura individual de cada nota:** defina `editor-width: 75` no YAML. A propriedade tem prioridade; alterações pelo controle são temporárias e nunca reescrevem a nota.
 - **Compatibilidade:** o gerenciador permanece opcional, restaura o seletor nativo quando desligado e não altera arquivos nem layouts salvos dos Spaces. O menu oferece acesso ao cofre quando o Obsidian fornece um seletor utilizável; caso contrário, preserva o rodapé original.

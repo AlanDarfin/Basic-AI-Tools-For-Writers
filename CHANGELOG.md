@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.3.0 — Mobile Spaces and sidebar discovery
+
+- Keep the mobile Spaces selector accessible with native tabs independently of the optional sidebar manager; add name filtering, dismissal controls and a command/quick-action chooser.
+- Preserve distinct sidebar leaf instances, including Markdown notes and repeated view types; use actual panel titles and icons.
+- Refresh tab discovery after panel additions, removals, replacements and native selection changes; resolve action menus from the current panel.
+- Serialize Space transitions so rapid switches cannot restore an older layout after the selected Space; preserve Entire vault when opening the collections sidebar.
+- Read the current editor buffer in mobile quick actions and avoid using an old Markdown selection after switching to a different document type.
+- Add behavioral mobile regression coverage and bilingual usage/release documentation.
+
 ## 13.2.0 — Core workflows and manuscript preservation
 
 - Integrate first-use configuration, filterable modules, local Markdown dictionary lookup and explicit AI/save actions from PR #127.

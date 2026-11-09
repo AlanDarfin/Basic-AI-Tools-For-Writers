@@ -15,6 +15,51 @@ const WRITER_V1010_VIEWS={
  'basic-ai-projects':['notebook-pen','Longform','Longform'],
  'writer-writing-home':['house','Homepage','Homepage']
 };
+const WRITER_V133_LEAF_KEYS=new WeakMap();
+let writerV133LeafSerial=0;
+function writerV133LeafKey(leaf){
+ if(!leaf||typeof leaf!=='object')return '';
+ if(!WRITER_V133_LEAF_KEYS.has(leaf))WRITER_V133_LEAF_KEYS.set(leaf,'leaf-'+(++writerV133LeafSerial));
+ return WRITER_V133_LEAF_KEYS.get(leaf);
+}
+function writerV133LeafType(leaf){
+ try{
+  const current=leaf?.view?.getViewType?.(),saved=leaf?.getViewState?.()?.type;
+  const type=(!current||current==='empty'||current==='deferred')?saved||current:current;
+  return typeof type==='string'?type:'';
+ }catch(error){console.warn('[Basic] Could not inspect sidebar view:',error);return '';}
+}
+function writerV133LeafInfo(entry){
+ const fallback=WRITER_V1010_VIEWS[entry.type];
+ const read=method=>{
+  for(const owner of [entry.leaf,entry.leaf?.view]){
+   try{const value=owner?.[method]?.();if(typeof value==='string'&&value.trim())return value.trim();}
+   catch(error){console.warn('[Basic] Could not read sidebar label:',error);}
+  }
+  return '';
+ };
+ return {title:(read('getDisplayText')||(fallback?writerUi(fallback[1],fallback[2]):entry.type)).slice(0,160),
+  icon:read('getIcon')||fallback?.[0]||'panel-left'};
+}
+function writerV133EntriesSignature(entries){
+ return JSON.stringify(entries.map(entry=>{const info=writerV133LeafInfo(entry);
+  return [writerV133LeafKey(entry.leaf),entry.type,info.title,info.icon];}));
+}
+function writerV133ContainsLeaf(split,leaf,seen=new Set()){
+ if(!split||seen.has(split))return false;
+ if(split===leaf)return true;
+ seen.add(split);
+ return Array.isArray(split.children)&&split.children.some(child=>writerV133ContainsLeaf(child,leaf,seen));
+}
+/* Resolve the live host independently of private selection methods. Spaces can
+ * use this anchor even when Basic leaves the native mobile selector in charge. */
+function writerV133DrawerTabsHost(workspace,side){
+ const split=side==='right'?workspace?.rightSplit:workspace?.leftSplit,root=split?.containerEl;
+ const live=node=>node&&node.isConnected!==false&&root?.contains?.(node)!==false;
+ if(live(split?.tabsContainerEl))return split.tabsContainerEl;
+ const found=root?.querySelector?.('.workspace-drawer-tab-options');
+ return live(found)?found:null;
+}
 function writerV1010Clamp(value,fallback=80){
  const n=Number(value);return Number.isFinite(n)?Math.max(20,Math.min(100,Math.round(n))):fallback;
 }
@@ -58,13 +103,13 @@ function writerV1010WidthForFile(plugin,file){
 function writerV1010MobileDrawer(workspace,side){
  const split=side==='right'?workspace?.rightSplit:workspace?.leftSplit;
  if(split?.type!=='mobile-drawer'||!Array.isArray(split.children)||
-  typeof split.selectTabIndex!=='function'||!split.tabsContainerEl||!split.tabsListEl)return null;
+  typeof split.selectTabIndex!=='function')return null;
  return split;
 }
 function writerV1010SideForLeaf(workspace,leaf){
  for(const side of ['left','right']){
-  const drawer=writerV1010MobileDrawer(workspace,side);
-  if(drawer?.children.includes(leaf))return side;
+  const split=side==='right'?workspace?.rightSplit:workspace?.leftSplit;
+  if(writerV133ContainsLeaf(split,leaf))return side;
  }
  try{
   const root=leaf?.getRoot?.();
@@ -77,36 +122,53 @@ function writerV1010SideForLeaf(workspace,leaf){
  return '';
 }
 function writerV1010CollectLeaves(workspace,side){
- const leaves=[],seen=new Set(),drawer=writerV1010MobileDrawer(workspace,side);
+ const leaves=[],seen=new Set(),walked=new Set();
  const visit=leaf=>{
-  const type=leaf?.view?.getViewType?.()||leaf?.getViewState?.()?.type;
-  if(!type||type==='empty'||type==='markdown'||seen.has(type))return;
+  const type=writerV133LeafType(leaf);
+  if(!type||type==='empty'||type==='deferred'||seen.has(leaf))return;
   if(writerV1010SideForLeaf(workspace,leaf)!==side)return;
-  seen.add(type);leaves.push({type,leaf});
+  seen.add(leaf);leaves.push({type,leaf,key:writerV133LeafKey(leaf)});
  };
- if(drawer)for(const leaf of drawer.children)visit(leaf);
- else if(typeof workspace.iterateAllLeaves==='function')workspace.iterateAllLeaves(visit);
- else for(const type of Object.keys(WRITER_V1010_VIEWS))
+ const walk=node=>{
+  if(!node||walked.has(node))return;
+  walked.add(node);
+  if(node.view)visit(node);
+  if(Array.isArray(node.children))node.children.forEach(walk);
+ };
+ walk(side==='right'?workspace?.rightSplit:workspace?.leftSplit);
+ if(typeof workspace.iterateAllLeaves==='function')workspace.iterateAllLeaves(visit);
+ else for(const type of [...Object.keys(WRITER_V1010_VIEWS),'markdown'])
   for(const leaf of workspace.getLeavesOfType?.(type)||[])visit(leaf);
  return leaves;
 }
 function writerV1010SelectLeaf(plugin,side,leaf){
  const workspace=plugin.app.workspace,drawer=writerV1010MobileDrawer(workspace,side);
  if(drawer){
-  const index=drawer.children.indexOf(leaf);
+  const index=drawer.children.findIndex(child=>writerV133ContainsLeaf(child,leaf));
   if(index<0)return false;
   try{
    drawer.selectTabIndex(index);
+   if(drawer.children[index]!==leaf&&typeof workspace.revealLeaf==='function'){
+    const result=workspace.revealLeaf(leaf);
+    result?.catch?.(error=>console.warn('[Basic] Could not reveal nested sidebar tab:',error));
+   }
    // Mobile drawer selection and activeLeaf are separate. Keep both in sync;
    // revealLeaf() alone can select the wrong pane on phones.
-   if(typeof workspace.setActiveLeaf==='function')
-    workspace.setActiveLeaf(leaf,{focus:!drawer.isPinned});
+   if(typeof workspace.setActiveLeaf==='function'&&
+      (require('obsidian').Platform?.isPhone||!drawer.isPinned))
+    workspace.setActiveLeaf(leaf,{focus:true});
+   drawer.setTabOptionsCollapsed?.(true);
    plugin.writerV1010Refresh?.();
    plugin.writerV9216SpacesDockRefresh?.();
    return true;
   }catch(error){console.error('[Basic] Mobile sidebar tab selection:',error);return false;}
  }
- try{void workspace.revealLeaf?.(leaf);return true;}
+ if(typeof workspace.revealLeaf!=='function'||writerV1010SideForLeaf(workspace,leaf)!==side)return false;
+ try{
+  const result=workspace.revealLeaf(leaf);
+  result?.catch?.(error=>console.warn('[Basic] Could not reveal sidebar tab:',error));
+  return true;
+ }
  catch(error){console.warn('[Basic] Could not reveal sidebar tab:',error);return false;}
 }
 function writerV1010SortLeaves(plugin,side,leaves){
@@ -203,9 +265,9 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
    .setIcon('layers').onClick(()=>typeof writerV9SpaceModal==='function'&&writerV9SpaceModal(plugin)));
  }
  if(leaves?.length)menu.addSeparator?.();
- for(const entry of leaves.slice(0,20)){
-  const info=WRITER_V1010_VIEWS[entry.type]||['panels',entry.type,entry.type];
-  menu.addItem(item=>item.setTitle(writerUi(info[1],info[2])).setIcon(info[0])
+ for(const entry of leaves){
+  const info=writerV133LeafInfo(entry);
+  menu.addItem(item=>item.setTitle(info.title).setIcon(info.icon)
    .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
  }
  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
@@ -236,7 +298,7 @@ function writerV1010Register(plugin){
   const mobile=Boolean(require('obsidian').Platform?.isMobile);
   return mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true;
  };
- const hosts=new Map(),hostState=new Map(),drawerObservers=new Map();
+ const hosts=new Map(),hostState=new Map(),drawerObservers=new Map(),managedMobile=new Map();
  const groupedViews=new Map();
  const groupNativeActions=(side,leaves,enabled)=>{
   const previous=groupedViews.get(side)||new Set(),next=new Set();
@@ -267,22 +329,26 @@ function writerV1010Register(plugin){
   if(previous?.root===root)return;
   previous?.observer?.disconnect?.();drawerObservers.delete(side);
   if(!root)return;
-  const observer=new MutationObserver(()=>{
-   if(unloaded)return;
+  const observer=new MutationObserver(records=>{
+   if(unloaded||!showSidebar(side))return;
    const current=writerV1010MobileDrawer(workspace,side);
    if(!current||current.containerEl!==root)return;
    const state=hostState.get(side),bar=hosts.get(side);
-   const liveHeader=current.tabsContainerEl;
+   // In native fallback there is no Basic toolbar. Its cleanup and editor-width
+   // classes must not schedule another cleanup; a rebuilt header emits childList.
+   if(!state&&records?.length&&records.every(record=>record.type==='attributes'))return;
+   const liveHeader=writerV133DrawerTabsHost(workspace,side);
    // Ignore our own button updates. Repaint only when Obsidian has replaced
    // the header or selected a different tab, including native swipe changes.
    if(!state||!bar||bar.parentElement!==liveHeader||
       root.contains?.(bar)===false||
       state.activeLeaf!==current.children?.[current.currentTab]||
+      state.leafSignature!==writerV133EntriesSignature(writerV1010CollectLeaves(workspace,side))||
       !root.classList?.contains('writer-v1011-managed-mobile')){
     queue();
    }
   });
-  observer.observe(root,{childList:true,subtree:true});
+  observer.observe(root,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['class','aria-selected']});
   drawerObservers.set(side,{root,observer});
  };
  const make=(tag,cls,doc)=>{const node=doc.createElement(tag);if(cls)node.className=cls;return node;};
@@ -290,6 +356,10 @@ function writerV1010Register(plugin){
   groupNativeActions(side,[],false);
   const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
   bar?.remove?.();hosts.delete(side);hostState.delete(side);
+  const previous=managedMobile.get(side);
+  previous?.nativeTabs?.classList?.remove('writer-v1011-native-tabs-hidden');
+  previous?.root?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
+  managedMobile.delete(side);
   split?.tabsListEl?.classList?.remove('writer-v1011-native-tabs-hidden');
   split?.containerEl?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
  };
@@ -306,16 +376,19 @@ function writerV1010Register(plugin){
   if(drawer)watchMobileDrawer(side);
   // Mobile: draw inside the native tab selector, never below it as a duplicate row.
   // If private drawer internals change, use the unmodified native selector.
-  let header=drawer?drawer.tabsContainerEl:
+  let header=drawer?writerV133DrawerTabsHost(workspace,side):
    root.querySelector?.('.workspace-tab-header-container');
   if(drawer&&root.contains?.(header)===false){
    // Obsidian can replace the mobile tab header on a view switch. Never attach
    // Basic's buttons to the detached header object.
    header=root.querySelector?.('.workspace-drawer-tab-options')||null;
   }
-  if(!header){restoreSidebar(side);return;}
+  const nativeTabs=drawer?(drawer.tabsListEl&&root.contains?.(drawer.tabsListEl)!==false&&drawer.tabsListEl.isConnected!==false?
+   drawer.tabsListEl:header?.querySelector?.('.workspace-drawer-tab-options-list')):null;
+  if(!header||(drawer&&!nativeTabs)){restoreSidebar(side);return;}
   const doc=header.ownerDocument;
-  const ordered=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
+  const collected=writerV1010CollectLeaves(workspace,side),leafSignature=writerV133EntriesSignature(collected);
+  const ordered=writerV1010SortLeaves(plugin,side,collected);
   const leaves=typeof writerV112SortPinned==='function'?writerV112SortPinned(plugin,side,ordered):ordered;
   if(!leaves.length){restoreSidebar(side);return;}
   groupNativeActions(side,leaves,Boolean(drawer)&&cfg.sidebar.actionMenu!==false);
@@ -326,7 +399,11 @@ function writerV1010Register(plugin){
    header.appendChild(bar);hosts.set(side,bar);
   }
   if(drawer){
-   drawer.tabsListEl.classList.add('writer-v1011-native-tabs-hidden');
+   const previous=managedMobile.get(side);
+   if(previous?.nativeTabs!==nativeTabs)previous?.nativeTabs?.classList?.remove('writer-v1011-native-tabs-hidden');
+   if(previous?.root!==root)previous?.root?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
+   managedMobile.set(side,{root,nativeTabs});
+   nativeTabs.classList.add('writer-v1011-native-tabs-hidden');
    root.classList.add('writer-v1011-managed-mobile');
    // Only compact the vault footer when the user can still open the vault chooser.
    const switcher=drawer.headerEl?.querySelector?.('.workspace-drawer-header-switcher');
@@ -340,46 +417,48 @@ function writerV1010Register(plugin){
   const max=drawer?Math.max(2,Math.min(6,Math.floor(((root.clientWidth||380)-55)/48))):
    Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
-  const signature=[...visible.map(e=>e.type),'|',...hidden.map(e=>e.type),
+  const signature=[writerV133EntriesSignature(visible),'|',writerV133EntriesSignature(hidden),
    cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true,
+   cfg.sidebar.longPressMenu!==false,
    JSON.stringify(cfg.sidebar.pinnedViews?.[side]||[])].join(';');
   const currentState=hostState.get(side);
   if(currentState?.bar===bar&&currentState.signature===signature){
    // Replacing buttons on every layout-change destroys the menu anchor and
    // can dismiss the native sorting sheet as soon as it appears.
-   const selected=active?.view?.getViewType?.()||active?.getViewState?.()?.type;
    for(const child of bar.children||[]){
     const viewType=child.getAttribute?.('data-view-type');
     if(!viewType)continue;
-    const on=viewType==='__overflow'?hidden.some(e=>e.leaf===active):viewType===selected;
+    const on=viewType==='__overflow'?hidden.some(e=>e.leaf===active):child.getAttribute?.('data-leaf-key')===writerV133LeafKey(active);
     child.classList?.toggle?.('is-active',on);
     child.setAttribute?.('aria-pressed',String(on));
    }
    currentState.activeLeaf=drawer?.children?.[drawer.currentTab]||active;
+   currentState.leafSignature=leafSignature;
    return;
   }
   bar.replaceChildren();
-  hostState.set(side,{bar,signature,activeLeaf:drawer?.children?.[drawer.currentTab]||active});
-  const addIcon=(type,title,callback,isActive=false)=>{
+  hostState.set(side,{bar,signature,leafSignature,activeLeaf:drawer?.children?.[drawer.currentTab]||active});
+  const addIcon=(type,title,callback,isActive=false,entry=null)=>{
    const btn=make('button','writer-v1010-sidebar-button'+(isActive?' is-active':''),doc);
    btn.type='button';btn.setAttribute('aria-label',title);
    btn.setAttribute('title',title);btn.setAttribute('aria-pressed',String(isActive));
-   writerV1010Icon(btn,WRITER_V1010_VIEWS[type]?.[0]||'panel-left');
+   writerV1010Icon(btn,entry?writerV133LeafInfo(entry).icon:WRITER_V1010_VIEWS[type]?.[0]||'panel-left');
    btn.setAttribute('data-view-type',type||'__overflow');
+   if(entry)btn.setAttribute('data-leaf-key',writerV133LeafKey(entry.leaf));
    btn.addEventListener('click',callback);bar.appendChild(btn);
    return btn;
   };
   for(const entry of visible){
-   const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
-   addIcon(entry.type,writerUi(info[1],info[2]),
-    ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf);
+   const info=writerV133LeafInfo(entry);
+   addIcon(entry.type,info.title,
+    ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf,entry);
   }
   if(hidden.length&&cfg.sidebar.actionMenu===false){
    const overflow=addIcon('',writerUi('Mais painéis','More panels'),event=>{
     const menu=new Menu(plugin.app);
     for(const entry of hidden){
-     const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
-     menu.addItem(item=>item.setTitle(writerUi(info[1],info[2])).setIcon(info[0])
+     const info=writerV133LeafInfo(entry);
+     menu.addItem(item=>item.setTitle(info.title).setIcon(info.icon)
       .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
     }
     menu.showAtMouseEvent?.(event);
@@ -387,7 +466,10 @@ function writerV1010Register(plugin){
   }
   if(cfg.sidebar.actionMenu!==false){
    const menu=addIcon('',writerUi('Ações e mais painéis','Actions and more views'),
-    event=>writerV1010SidebarMenu(plugin,event,side,hidden,active),hidden.some(item=>item.leaf===active));
+    event=>{
+     const active=writerV1010ActiveLeaf(workspace,writerV1010CollectLeaves(workspace,side),side);
+     writerV1010SidebarMenu(plugin,event,side,hidden,active);
+    },hidden.some(item=>item.leaf===active));
    writerV1010Icon(menu,'ellipsis');
   }
   if(cfg.sidebar.fileFilter===true&&side==='left'){
@@ -507,7 +589,7 @@ function writerV1010Settings(plugin,panel){
   ['actionMenu','Menu de ações do painel','Sidebar action menu'],
   ['longPressMenu','Segurar uma aba para fechar ou fixar painel','Hold a tab to close or pin panel'],
   ['fileFilter','Filtro local do explorador','Local Explorer filter'],
-  ['integrateSpaces','Integrar Spaces ao rodapé móvel','Integrate Spaces into mobile footer'],
+  ['integrateSpaces','Seletor persistente de Spaces no celular','Persistent Spaces selector on mobile'],
   ['compactFooter','Compactar rodapé nativo no celular','Compact native footer on mobile']
  ])toggle(cfg.sidebar,key,pt,en);
  new Setting(panel).setName(writerUi('Organizar abas laterais','Reorder sidebar tabs'))
@@ -523,8 +605,7 @@ function writerV1010Settings(plugin,panel){
       const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(plugin.app.workspace,side));
       const order=cfg.sidebar.order[side];
       for(const [index,entry] of leaves.entries()){
-       const row=new Setting(modal.contentEl).setName(writerUi(
-        WRITER_V1010_VIEWS[entry.type]?.[1]||entry.type,WRITER_V1010_VIEWS[entry.type]?.[2]||entry.type));
+       const row=new Setting(modal.contentEl).setName(writerV133LeafInfo(entry).title);
        for(const [offset,label] of [[-1,'↑'],[1,'↓']])row.addButton(button=>button.setButtonText(label).onClick(async()=>{
         const types=leaves.map(item=>item.type);
         const target=index+offset;

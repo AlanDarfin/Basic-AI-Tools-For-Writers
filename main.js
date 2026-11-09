@@ -14432,34 +14432,63 @@ function writerV10SpaceSaveLayout(plugin,space){
   if(snapshot.length>120000)return false;
   if(typeof writerV101SpaceBeforeOverwrite==='function' &&
    space.layoutSnapshot && JSON.stringify(space.layoutSnapshot)!==snapshot)writerV101SpaceBeforeOverwrite(plugin,space);
-  space.layoutSnapshot=JSON.parse(snapshot);return true;
+  space.layoutSnapshot=JSON.parse(snapshot);
+  if(plugin._writerV133FailedSpaceLayout===space.id)plugin._writerV133FailedSpaceLayout=null;
+  return true;
  }catch(_){return false;}
 }
 async function writerV10SpaceRestoreLayout(plugin,space){
  if(!space?.layoutSnapshot||typeof plugin.app.workspace.changeLayout!=='function')return false;
  try{
   await plugin.app.workspace.changeLayout(space.layoutSnapshot);
+  if(plugin._writerV133FailedSpaceLayout===space.id)plugin._writerV133FailedSpaceLayout=null;
   return true;
  }catch(error){
   console.warn('[Basic AI] Space layout could not be restored',error);return false;
  }
 }
-async function writerV9215SelectSpace(plugin,id){
- const cfg=plugin.settings.v9Spaces;
- const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
- if(cfg.activeId===next)return;
- const previous=cfg.spaces.find(space=>space.id===cfg.activeId);
- if(cfg.autoSaveLayouts&&previous)writerV10SpaceSaveLayout(plugin,previous);
- cfg.activeId=next;
- await plugin.saveSettings();
- if(cfg.restoreLayoutsOnSwitch&&next){
-  await writerV10SpaceRestoreLayout(plugin,cfg.spaces.find(space=>space.id===next));
- }
- plugin.writerV91FlexRefresh?.();
- plugin.writerV9SpacesRefresh?.();
- plugin.writerV9216SpacesDockRefresh?.();
- if(typeof WRITER_V8_HOME_VIEW!=='undefined')
-  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[])leaf.view?.render?.();
+function writerV9215SelectSpace(plugin,id){
+ const refresh=()=>{
+  plugin.writerV91FlexRefresh?.();
+  plugin.writerV9SpacesRefresh?.();
+  plugin.writerV9216SpacesDockRefresh?.();
+  if(typeof WRITER_V8_HOME_VIEW!=='undefined')
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[])leaf.view?.render?.();
+ };
+ const switchSpace=async()=>{
+  const cfg=plugin.settings.v9Spaces;
+  const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
+  if(cfg.activeId===next)return;
+  const previousId=cfg.activeId,previous=cfg.spaces.find(space=>space.id===previousId);
+  // Keep a failed destination's saved layout: the current panes still belong
+  // to the source. An explicit save or successful restore clears this guard.
+  if(cfg.autoSaveLayouts&&previous&&plugin._writerV133FailedSpaceLayout!==previous.id)
+   writerV10SpaceSaveLayout(plugin,previous);
+  cfg.activeId=next;
+  try{
+   await plugin.saveSettings();
+  }catch(error){
+   // A failed persistence must not leave the selector pointing at an unapplied Space.
+   if(cfg.activeId===next)cfg.activeId=cfg.enabled&&cfg.spaces.some(space=>space.id===previousId)?previousId:'';
+   refresh();
+   throw error;
+  }
+  if(cfg.enabled&&cfg.activeId===next&&cfg.restoreLayoutsOnSwitch&&next){
+   const target=cfg.spaces.find(space=>space.id===next);
+   const restored=await writerV10SpaceRestoreLayout(plugin,target);
+   if(!restored&&target?.layoutSnapshot&&typeof plugin.app.workspace.changeLayout==='function')
+    plugin._writerV133FailedSpaceLayout=next;
+  }
+  refresh();
+ };
+ // Serialize layout saves/restores too: an older asynchronous restore must never
+ // finish after a newer selection and overwrite that Space's workspace.
+ const pending=plugin._writerV133SpaceSwitch;
+ const result=pending?pending.then(switchSpace):switchSpace();
+ const settled=result.then(()=>{},()=>{});
+ plugin._writerV133SpaceSwitch=settled;
+ void settled.then(()=>{if(plugin._writerV133SpaceSwitch===settled)plugin._writerV133SpaceSwitch=null;});
+ return result;
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -14787,17 +14816,30 @@ class WriterV9SpacesSideView extends ItemView{
   manage.addEventListener('click',()=>writerV9SpaceModal(this.plugin));
   if(!cfg.enabled){root.createEl('p',{text:writerUi('Ative Spaces nas configurações.','Enable Spaces in settings.')});return;}
   const nav=root.createDiv({cls:'writer-v9-space-side-nav'});
-  const space=cfg.spaces.find(x=>x.id===cfg.activeId)||cfg.spaces.find(x=>x.id===this.currentId)||cfg.spaces[0];
-  if(space)this.currentId=space.id;
+  const activeSpace=writerV9215ActiveSpace(this.plugin);
+  const space=activeSpace||{mode:'filter',sort:'recent',hiddenPaths:[],pinnedPaths:[]};
+  this.currentId=activeSpace?.id||'';
+  const select=id=>{
+   this.query='';
+   void writerV9215SelectSpace(this.plugin,id).then(()=>this.render(),error=>{
+    new Notice(writerUi('Não foi possível trocar de Space: ','Could not switch Space: ')+String(error.message||error));
+    this.render();
+   });
+  };
+  const all=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(!activeSpace?' is-active':''),
+   attr:{type:'button',title:writerUi('Todo o cofre','Entire vault'),'aria-pressed':String(!activeSpace)}});
+  require('obsidian').setIcon(all,'house');
+  all.createSpan({text:writerUi('Todo o cofre','Entire vault')});
+  all.addEventListener('click',()=>select(''));
   for(const option of cfg.spaces){
-   const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name}});
+   const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name,'aria-pressed':String(option.id===this.currentId)}});
    require('obsidian').setIcon(button,option.icon||'layers');
    if(option.iconColor)button.style.setProperty('--writer-v9216-space-color',option.iconColor);
    button.createSpan({text:option.name});
-   button.addEventListener('click',()=>{this.currentId=option.id;this.query='';void writerV9215SelectSpace(this.plugin,option.id).then(()=>this.render());});
+   button.addEventListener('click',()=>select(option.id));
   }
-  if(!space){root.createEl('p',{text:writerUi('Crie uma Space para começar.','Create a Space to get started.')});return;}
-  const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',placeholder:writerUi('Pesquisar nesta Space…','Search this Space…')}});
+  const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',
+   placeholder:activeSpace?writerUi('Pesquisar nesta Space…','Search this Space…'):writerUi('Pesquisar no cofre…','Search the vault…')}});
   search.value=this.query;
   const sidebarTools=root.createDiv({cls:'writer-v1042-space-side-tools'});
   const quick=(pt,en,icon,handler)=>{
@@ -14847,7 +14889,6 @@ function writerV9RegisterSpaces(plugin){
   const leaf=existing||plugin.app.workspace.getLeftLeaf?.(false)||plugin.app.workspace.getLeaf('tab');
   if(!leaf)return;
   if(!existing)await leaf.setViewState({type:WRITER_V9_SPACE_VIEW,active:true});
- if(!plugin.settings.v9Spaces.activeId&&plugin.settings.v9Spaces.spaces.length)await writerV9215SelectSpace(plugin,plugin.settings.v9Spaces.spaces[0].id);
   plugin.app.workspace.revealLeaf?.(leaf);
  };
  plugin.writerV9SpacesSidebarOpen=openSidebar;
@@ -14922,14 +14963,15 @@ function writerV9RegisterSpaces(plugin){
 function writerV9SpacesSettings(plugin,panel){
  const cfg=plugin.settings.v9Spaces;
  panel.createEl('h3',{text:writerUi('Spaces · coleções locais','Spaces · local collections')});
- panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com ícones e barra inferior no explorador. Os filtros do Space são independentes. A ocultação do explorador é global.','Collections by folder, tag or properties, with icons and a bottom explorer switcher. Space filters are independent; Explorer hiding is global.')});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com seletor no explorador e nas abas laterais móveis. Filtros e ocultações de cada Space são combinados às regras globais do explorador. Nenhum arquivo é movido.','Collections by folder, tag or properties, with a switcher in File Explorer and the mobile sidebar tabs. Each Space combines its filters and hidden items with global Explorer rules. No files are moved.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{
     cfg.enabled=value;if(!value)cfg.activeId='';
     await plugin.saveSettings();
     plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();plugin.writerV9SpacesRefresh?.();
    }));
- new Setting(panel).setName(writerUi('Barra de Spaces no rodapé do explorador','Space switcher at the bottom of File Explorer'))
+ new Setting(panel).setName(writerUi('Mostrar seletor de Spaces','Show Spaces switcher'))
+  .setDesc(writerUi('No computador, aparece no explorador. No celular, fica junto às abas laterais, inclusive usando as abas nativas.','On desktop, appears in File Explorer. On mobile, stays beside the sidebar tabs, including native tabs.'))
   .addToggle(t=>t.setValue(cfg.dock).onChange(async value=>{
    cfg.dock=value;await plugin.saveSettings();plugin.writerV9216SpacesDockRefresh?.();
   }));
@@ -14976,23 +15018,56 @@ function writerV1014MobileSpacesAnchor(plugin){
  const workspace=plugin.app?.workspace,drawer=workspace?.leftSplit;
  const ui=plugin.settings?.v1010Layout?.sidebar;
  if(require('obsidian').Platform?.isMobile!==true||
-  drawer?.type!=='mobile-drawer'||!drawer?.containerEl||
-  typeof drawer.selectTabIndex!=='function'||!drawer.tabsListEl||!drawer.tabsContainerEl||
-  ui?.enabled!==true||ui.mobileTabs===false||ui.integrateSpaces===false||
+  !drawer?.containerEl||ui?.integrateSpaces===false||
   plugin.settings?.v9Spaces?.enabled!==true||plugin.settings?.v9Spaces?.dock===false||
   drawer.containerEl.classList?.contains('osm-sidebar')||
   drawer.containerEl.ownerDocument?.body?.classList?.contains('osm-mobile-tabs'))return null;
- // Never attach the menu to a stale header detached by Obsidian.
- let tabs=drawer.tabsContainerEl;
- if(drawer.containerEl.contains?.(tabs)===false)
-  tabs=drawer.containerEl.querySelector?.('.workspace-drawer-tab-options')||null;
- return tabs;
+ // Spaces can use native tabs without replacing them or requiring private tab APIs.
+ if(typeof writerV133DrawerTabsHost==='function'){
+  const shared=writerV133DrawerTabsHost(workspace,'left');
+  if(shared)return shared;
+ }
+ const root=drawer.containerEl;
+ if(drawer.type!=='mobile-drawer'&&!root.classList?.contains('workspace-drawer')&&
+  !root.querySelector?.('.workspace-drawer-tab-options'))return null;
+ const candidates=[drawer.tabsContainerEl,root.querySelector?.('.workspace-drawer-tab-options'),
+  drawer.tabsListEl?.parentElement];
+ return candidates.find(node=>node&&node!==root&&root.contains?.(node)!==false&&node.isConnected!==false)||null;
 }
 function writerV9216SpaceDockRegister(plugin){
- let timer=null,mobileMenuOpen=false,mobileObserver=null,observedMobileRoot=null;
+ let timer=null,mobileMenuOpen=false,mobileQuery='',mobileObserver=null,observedMobileRoot=null,unloaded=false,panelSerial=0;
  const cfg=plugin.settings.v9Spaces;
- const hosts=new Set(),actions=new Set();
+ const hosts=new Set(),actions=new Set(),documents=new Set();
  const mobileIntegrated=()=>Boolean(writerV1014MobileSpacesAnchor(plugin));
+ const closeMobile=(restoreFocus=false)=>{
+  if(!mobileMenuOpen)return;
+  mobileMenuOpen=false;mobileQuery='';
+  for(const host of hosts){
+   const dock=host.querySelector(':scope > .writer-v1014-collapsible-spaces');
+   if(!dock)continue;
+   draw(dock);
+   if(restoreFocus)dock.querySelector('.writer-v1014-spaces-toggle')?.focus?.({preventScroll:true});
+  }
+ };
+ const onOutside=event=>{
+  if(!mobileMenuOpen||event.target?.closest?.('.menu,.modal-container,.suggestion-container'))return;
+  for(const host of hosts){
+   const dock=host.querySelector(':scope > .writer-v1014-collapsible-spaces');
+   if(dock?.contains?.(event.target))return;
+  }
+  closeMobile();
+ };
+ const onKey=event=>{
+  if(event.key!=='Escape'||!mobileMenuOpen||event.target?.closest?.('.menu,.modal-container,.suggestion-container'))return;
+  event.preventDefault();event.stopPropagation();closeMobile(true);
+ };
+ const bindDocument=doc=>{
+  if(documents.has(doc))return;
+  doc.addEventListener?.('pointerdown',onOutside,true);
+  doc.addEventListener?.('keydown',onKey);
+  documents.add(doc);
+ };
+ const searchText=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().trim();
  const refreshAll=()=>{
   plugin.writerV91FlexRefresh?.();
   plugin.writerV9SpacesRefresh?.();
@@ -15053,6 +15128,27 @@ function writerV9216SpaceDockRegister(plugin){
   if(!cfg.enabled){cfg.enabled=true;await persist();}
   writerV9SpaceModal(plugin);
  };
+ const chooseSpace=()=>{
+  if(!writerModuleOn(plugin,'smartSpaces')||!cfg.enabled){
+   new Notice(writerUi('Ative Spaces nas configurações do Basic.','Enable Spaces in Basic settings.'));return;
+  }
+  const {FuzzySuggestModal}=require('obsidian');
+  class Picker extends FuzzySuggestModal{
+   getItems(){return [{id:'',name:writerUi('Todo o cofre','Entire vault')},...cfg.spaces];}
+   getItemText(space){return space.name;}
+   onChooseItem(space){
+    if(space.id&&!cfg.spaces.some(item=>item.id===space.id)){
+     new Notice(writerUi('Este Space não está mais disponível.','This Space is no longer available.'));return;
+    }
+    closeMobile();
+    return Promise.resolve(writerV9215SelectSpace(plugin,space.id)).catch(error=>{
+     new Notice(writerUi('Não foi possível trocar Space: ','Unable to switch Space: ')+String(error.message||error).slice(0,160));
+    });
+   }
+  }
+  const picker=new Picker(plugin.app);
+  picker.setPlaceholder(writerUi('Selecionar Space…','Choose Space…'));picker.open();
+ };
  const menu=(event,space)=>{
   event.preventDefault();event.stopPropagation();
   if(!space)return;
@@ -15077,37 +15173,46 @@ function writerV9216SpaceDockRegister(plugin){
   const mobile=dock.classList.contains('writer-v1014-collapsible-spaces');
   const signature=JSON.stringify({
    enabled:cfg.enabled,activeId:cfg.activeId,
-   spaces:cfg.spaces.map(s=>[s.id,s.name,s.icon,s.iconColor]),
+   spaces:cfg.spaces.map(s=>[s.id,s.name,s.icon,s.iconColor,s.folder]),
    mobile,expanded:mobile&&mobileMenuOpen,locale:writerUi('pt','en')
   });
   if(dock.dataset.signature===signature)return;
-  dock.dataset.signature=signature;dock.replaceChildren();
   const doc=dock.ownerDocument;
-  let content=dock;
+  const focused=mobile&&doc.activeElement?.classList?.contains('writer-v133-spaces-search')&&dock.contains?.(doc.activeElement);
+  const selection=focused?[doc.activeElement.selectionStart,doc.activeElement.selectionEnd]:null;
+  dock.dataset.signature=signature;dock.replaceChildren();
+  let content=dock,search=null;
   if(mobile){
+   bindDocument(doc);
    const title=active?.name||writerUi('Todo o cofre','Entire vault');
    const toggle=button(dock,writerUi('Selecionar Space: ','Select Space: ')+title,
     active?.icon||'layers','writer-v1014-spaces-toggle',()=>{
-     mobileMenuOpen=!mobileMenuOpen;dock.dataset.signature='';draw(dock);
+     if(mobileMenuOpen){closeMobile();return;}
+     mobileMenuOpen=true;dock.dataset.signature='';draw(dock);
     });
    if(active?.iconColor)toggle.style.setProperty('--writer-v9216-space-color',active.iconColor);
    toggle.setAttribute('aria-expanded',String(mobileMenuOpen));
-   toggle.setAttribute('aria-controls','writer-v1014-spaces-options');
+   dock.dataset.optionsId||='writer-v133-spaces-options-'+(++panelSerial);
+   toggle.setAttribute('aria-controls',dock.dataset.optionsId);
    const name=doc.createElement('span');name.className='writer-v1014-spaces-current';
    name.textContent=title;toggle.appendChild(name);
    const chevron=doc.createElement('span');chevron.className='writer-v1014-spaces-chevron';
    require('obsidian').setIcon(chevron,mobileMenuOpen?'chevron-down':'chevron-up');
    toggle.appendChild(chevron);
    const panel=doc.createElement('div');
-   panel.className='writer-v1014-spaces-options';panel.id='writer-v1014-spaces-options';
+   panel.className='writer-v1014-spaces-options';panel.id=dock.dataset.optionsId;
    panel.setAttribute('role','group');
    panel.setAttribute('aria-label',writerUi('Coleções Spaces','Spaces collections'));
    panel.hidden=!mobileMenuOpen;dock.classList.toggle('is-open',mobileMenuOpen);
    dock.appendChild(panel);content=panel;
+   search=doc.createElement('input');search.type='search';search.className='writer-v133-spaces-search';
+   search.placeholder=writerUi('Buscar Spaces…','Find Spaces…');
+   search.setAttribute('aria-label',writerUi('Buscar Spaces','Find Spaces'));
+   search.autocomplete='off';search.value=mobileQuery;panel.appendChild(search);
   }
   const selectSpace=id=>{
    if(mobile){
-    mobileMenuOpen=false;dock.dataset.signature='';draw(dock);
+    closeMobile();
    }
    void Promise.resolve(writerV9215SelectSpace(plugin,id))
     .catch(error=>console.error('[Basic] Could not switch Space:',error))
@@ -15129,6 +15234,7 @@ function writerV9216SpaceDockRegister(plugin){
   if(cfg.enabled){
    for(const space of cfg.spaces){
     const item=doc.createElement('div');item.className='writer-v9216-space-group';
+    if(mobile)item.dataset.spaceSearch=searchText(space.name+' '+(space.folder||''));
     item.classList.toggle('is-active',active?.id===space.id);rail.appendChild(item);
     const chip=button(item,space.name,space.icon||'layers','writer-v9216-space-chip',
      ()=>selectSpace(space.id));
@@ -15165,6 +15271,26 @@ function writerV9216SpaceDockRegister(plugin){
    message.textContent=writerUi('Spaces desativados','Spaces disabled');
    rail.appendChild(message);
   }
+  if(mobile){
+   const empty=doc.createElement('p');empty.className='writer-v133-spaces-empty';
+   empty.textContent=writerUi('Nenhum Space encontrado.','No matching Spaces.');
+   empty.setAttribute('role','status');empty.hidden=true;content.appendChild(empty);
+   const filter=()=>{
+    const query=searchText(mobileQuery),terms=query.split(/\s+/).filter(Boolean);
+    let matches=0;
+    for(const item of rail.children){
+     if(!item.classList.contains('writer-v9216-space-group'))continue;
+     item.hidden=!terms.every(term=>item.dataset.spaceSearch.includes(term));
+     if(!item.hidden)matches++;
+    }
+    empty.hidden=!query||matches>0;
+   };
+   search.addEventListener('input',()=>{mobileQuery=search.value;filter();});filter();
+   if(focused&&mobileMenuOpen){
+    search.focus?.({preventScroll:true});
+    try{if(selection&&selection.every(Number.isInteger))search.setSelectionRange?.(...selection);}catch(_){}
+   }
+  }
   const tools=doc.createElement('div');tools.className='writer-v9216-spaces-tools';
   content.appendChild(tools);
   const createButton=button(tools,writerUi('Criar Space','Create Space'),'plus',
@@ -15180,7 +15306,7 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const attachManageAction=()=>{
   const current=new Set();
-  if(cfg.manageIcon===false||mobileIntegrated()){
+  if(!writerModuleOn(plugin,'smartSpaces')||cfg.manageIcon===false||mobileIntegrated()){
    for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
    actions.clear();return;
   }
@@ -15218,13 +15344,16 @@ function writerV9216SpaceDockRegister(plugin){
   mobileObserver?.disconnect();mobileObserver=null;observedMobileRoot=root||null;
   if(!root)return;
   mobileObserver=new MutationObserver(()=>{
+   if(unloaded)return;
    const anchor=writerV1014MobileSpacesAnchor(plugin);
    if(anchor&&!anchor.querySelector?.(':scope > .writer-v1014-collapsible-spaces'))refresh();
+   else if(!anchor&&[...hosts].some(host=>host.querySelector(':scope > .writer-v1014-collapsible-spaces')))refresh();
   });
   mobileObserver.observe(root,{childList:true,subtree:true});
  };
  const attach=()=>{
   observeDrawer();
+  if(!mobileIntegrated()){mobileMenuOpen=false;mobileQuery='';}
   attachManageAction();
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
@@ -15269,8 +15398,10 @@ function writerV9216SpaceDockRegister(plugin){
    parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host','writer-v1014-mobile-spaces-anchor');hosts.delete(parent);
   }
  };
- const refresh=()=>{clearTimeout(timer);timer=setTimeout(attach,100);};
+ const refresh=()=>{if(unloaded)return;clearTimeout(timer);timer=setTimeout(attach,100);};
  plugin.writerV9216SpacesDockRefresh=refresh;
+ plugin.writerV133SpacesChoose=chooseSpace;
+ plugin.addCommand?.({id:'v133-spaces-switch',name:writerUi('Spaces: trocar coleção','Spaces: switch collection'),callback:chooseSpace});
  plugin.addCommand?.({id:'v93-spaces-manage',name:writerUi('Spaces: gerenciar pelo explorador','Spaces: manage from File Explorer'),callback:()=>void openManager()});
  // Spaces remain accessible through the explorer dock and command palette.
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
@@ -15278,13 +15409,18 @@ function writerV9216SpaceDockRegister(plugin){
  plugin.app.workspace.onLayoutReady?.(refresh);
  plugin.writerV1011SpacesDockRefresh=refresh;
  plugin.register?.(()=>{
+  unloaded=true;mobileMenuOpen=false;mobileQuery='';
   clearTimeout(timer);mobileObserver?.disconnect();mobileObserver=null;observedMobileRoot=null;
+  for(const doc of documents){
+   doc.removeEventListener?.('pointerdown',onOutside,true);doc.removeEventListener?.('keydown',onKey);
+  }
+  documents.clear();
   for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
   actions.clear();for(const parent of hosts){
    parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
    parent.classList.remove('writer-v9216-spaces-host','writer-v1011-mobile-spaces-host','writer-v1014-mobile-spaces-anchor');
   }
-  hosts.clear();plugin.writerV9216SpacesDockRefresh=null;plugin.writerV1011SpacesDockRefresh=null;
+  hosts.clear();plugin.writerV9216SpacesDockRefresh=null;plugin.writerV1011SpacesDockRefresh=null;plugin.writerV133SpacesChoose=null;
  });
 }
 
@@ -24570,6 +24706,51 @@ const WRITER_V1010_VIEWS={
  'basic-ai-projects':['notebook-pen','Longform','Longform'],
  'writer-writing-home':['house','Homepage','Homepage']
 };
+const WRITER_V133_LEAF_KEYS=new WeakMap();
+let writerV133LeafSerial=0;
+function writerV133LeafKey(leaf){
+ if(!leaf||typeof leaf!=='object')return '';
+ if(!WRITER_V133_LEAF_KEYS.has(leaf))WRITER_V133_LEAF_KEYS.set(leaf,'leaf-'+(++writerV133LeafSerial));
+ return WRITER_V133_LEAF_KEYS.get(leaf);
+}
+function writerV133LeafType(leaf){
+ try{
+  const current=leaf?.view?.getViewType?.(),saved=leaf?.getViewState?.()?.type;
+  const type=(!current||current==='empty'||current==='deferred')?saved||current:current;
+  return typeof type==='string'?type:'';
+ }catch(error){console.warn('[Basic] Could not inspect sidebar view:',error);return '';}
+}
+function writerV133LeafInfo(entry){
+ const fallback=WRITER_V1010_VIEWS[entry.type];
+ const read=method=>{
+  for(const owner of [entry.leaf,entry.leaf?.view]){
+   try{const value=owner?.[method]?.();if(typeof value==='string'&&value.trim())return value.trim();}
+   catch(error){console.warn('[Basic] Could not read sidebar label:',error);}
+  }
+  return '';
+ };
+ return {title:(read('getDisplayText')||(fallback?writerUi(fallback[1],fallback[2]):entry.type)).slice(0,160),
+  icon:read('getIcon')||fallback?.[0]||'panel-left'};
+}
+function writerV133EntriesSignature(entries){
+ return JSON.stringify(entries.map(entry=>{const info=writerV133LeafInfo(entry);
+  return [writerV133LeafKey(entry.leaf),entry.type,info.title,info.icon];}));
+}
+function writerV133ContainsLeaf(split,leaf,seen=new Set()){
+ if(!split||seen.has(split))return false;
+ if(split===leaf)return true;
+ seen.add(split);
+ return Array.isArray(split.children)&&split.children.some(child=>writerV133ContainsLeaf(child,leaf,seen));
+}
+/* Resolve the live host independently of private selection methods. Spaces can
+ * use this anchor even when Basic leaves the native mobile selector in charge. */
+function writerV133DrawerTabsHost(workspace,side){
+ const split=side==='right'?workspace?.rightSplit:workspace?.leftSplit,root=split?.containerEl;
+ const live=node=>node&&node.isConnected!==false&&root?.contains?.(node)!==false;
+ if(live(split?.tabsContainerEl))return split.tabsContainerEl;
+ const found=root?.querySelector?.('.workspace-drawer-tab-options');
+ return live(found)?found:null;
+}
 function writerV1010Clamp(value,fallback=80){
  const n=Number(value);return Number.isFinite(n)?Math.max(20,Math.min(100,Math.round(n))):fallback;
 }
@@ -24613,13 +24794,13 @@ function writerV1010WidthForFile(plugin,file){
 function writerV1010MobileDrawer(workspace,side){
  const split=side==='right'?workspace?.rightSplit:workspace?.leftSplit;
  if(split?.type!=='mobile-drawer'||!Array.isArray(split.children)||
-  typeof split.selectTabIndex!=='function'||!split.tabsContainerEl||!split.tabsListEl)return null;
+  typeof split.selectTabIndex!=='function')return null;
  return split;
 }
 function writerV1010SideForLeaf(workspace,leaf){
  for(const side of ['left','right']){
-  const drawer=writerV1010MobileDrawer(workspace,side);
-  if(drawer?.children.includes(leaf))return side;
+  const split=side==='right'?workspace?.rightSplit:workspace?.leftSplit;
+  if(writerV133ContainsLeaf(split,leaf))return side;
  }
  try{
   const root=leaf?.getRoot?.();
@@ -24632,36 +24813,53 @@ function writerV1010SideForLeaf(workspace,leaf){
  return '';
 }
 function writerV1010CollectLeaves(workspace,side){
- const leaves=[],seen=new Set(),drawer=writerV1010MobileDrawer(workspace,side);
+ const leaves=[],seen=new Set(),walked=new Set();
  const visit=leaf=>{
-  const type=leaf?.view?.getViewType?.()||leaf?.getViewState?.()?.type;
-  if(!type||type==='empty'||type==='markdown'||seen.has(type))return;
+  const type=writerV133LeafType(leaf);
+  if(!type||type==='empty'||type==='deferred'||seen.has(leaf))return;
   if(writerV1010SideForLeaf(workspace,leaf)!==side)return;
-  seen.add(type);leaves.push({type,leaf});
+  seen.add(leaf);leaves.push({type,leaf,key:writerV133LeafKey(leaf)});
  };
- if(drawer)for(const leaf of drawer.children)visit(leaf);
- else if(typeof workspace.iterateAllLeaves==='function')workspace.iterateAllLeaves(visit);
- else for(const type of Object.keys(WRITER_V1010_VIEWS))
+ const walk=node=>{
+  if(!node||walked.has(node))return;
+  walked.add(node);
+  if(node.view)visit(node);
+  if(Array.isArray(node.children))node.children.forEach(walk);
+ };
+ walk(side==='right'?workspace?.rightSplit:workspace?.leftSplit);
+ if(typeof workspace.iterateAllLeaves==='function')workspace.iterateAllLeaves(visit);
+ else for(const type of [...Object.keys(WRITER_V1010_VIEWS),'markdown'])
   for(const leaf of workspace.getLeavesOfType?.(type)||[])visit(leaf);
  return leaves;
 }
 function writerV1010SelectLeaf(plugin,side,leaf){
  const workspace=plugin.app.workspace,drawer=writerV1010MobileDrawer(workspace,side);
  if(drawer){
-  const index=drawer.children.indexOf(leaf);
+  const index=drawer.children.findIndex(child=>writerV133ContainsLeaf(child,leaf));
   if(index<0)return false;
   try{
    drawer.selectTabIndex(index);
+   if(drawer.children[index]!==leaf&&typeof workspace.revealLeaf==='function'){
+    const result=workspace.revealLeaf(leaf);
+    result?.catch?.(error=>console.warn('[Basic] Could not reveal nested sidebar tab:',error));
+   }
    // Mobile drawer selection and activeLeaf are separate. Keep both in sync;
    // revealLeaf() alone can select the wrong pane on phones.
-   if(typeof workspace.setActiveLeaf==='function')
-    workspace.setActiveLeaf(leaf,{focus:!drawer.isPinned});
+   if(typeof workspace.setActiveLeaf==='function'&&
+      (require('obsidian').Platform?.isPhone||!drawer.isPinned))
+    workspace.setActiveLeaf(leaf,{focus:true});
+   drawer.setTabOptionsCollapsed?.(true);
    plugin.writerV1010Refresh?.();
    plugin.writerV9216SpacesDockRefresh?.();
    return true;
   }catch(error){console.error('[Basic] Mobile sidebar tab selection:',error);return false;}
  }
- try{void workspace.revealLeaf?.(leaf);return true;}
+ if(typeof workspace.revealLeaf!=='function'||writerV1010SideForLeaf(workspace,leaf)!==side)return false;
+ try{
+  const result=workspace.revealLeaf(leaf);
+  result?.catch?.(error=>console.warn('[Basic] Could not reveal sidebar tab:',error));
+  return true;
+ }
  catch(error){console.warn('[Basic] Could not reveal sidebar tab:',error);return false;}
 }
 function writerV1010SortLeaves(plugin,side,leaves){
@@ -24758,9 +24956,9 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
    .setIcon('layers').onClick(()=>typeof writerV9SpaceModal==='function'&&writerV9SpaceModal(plugin)));
  }
  if(leaves?.length)menu.addSeparator?.();
- for(const entry of leaves.slice(0,20)){
-  const info=WRITER_V1010_VIEWS[entry.type]||['panels',entry.type,entry.type];
-  menu.addItem(item=>item.setTitle(writerUi(info[1],info[2])).setIcon(info[0])
+ for(const entry of leaves){
+  const info=writerV133LeafInfo(entry);
+  menu.addItem(item=>item.setTitle(info.title).setIcon(info.icon)
    .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
  }
  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
@@ -24791,7 +24989,7 @@ function writerV1010Register(plugin){
   const mobile=Boolean(require('obsidian').Platform?.isMobile);
   return mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true;
  };
- const hosts=new Map(),hostState=new Map(),drawerObservers=new Map();
+ const hosts=new Map(),hostState=new Map(),drawerObservers=new Map(),managedMobile=new Map();
  const groupedViews=new Map();
  const groupNativeActions=(side,leaves,enabled)=>{
   const previous=groupedViews.get(side)||new Set(),next=new Set();
@@ -24822,22 +25020,26 @@ function writerV1010Register(plugin){
   if(previous?.root===root)return;
   previous?.observer?.disconnect?.();drawerObservers.delete(side);
   if(!root)return;
-  const observer=new MutationObserver(()=>{
-   if(unloaded)return;
+  const observer=new MutationObserver(records=>{
+   if(unloaded||!showSidebar(side))return;
    const current=writerV1010MobileDrawer(workspace,side);
    if(!current||current.containerEl!==root)return;
    const state=hostState.get(side),bar=hosts.get(side);
-   const liveHeader=current.tabsContainerEl;
+   // In native fallback there is no Basic toolbar. Its cleanup and editor-width
+   // classes must not schedule another cleanup; a rebuilt header emits childList.
+   if(!state&&records?.length&&records.every(record=>record.type==='attributes'))return;
+   const liveHeader=writerV133DrawerTabsHost(workspace,side);
    // Ignore our own button updates. Repaint only when Obsidian has replaced
    // the header or selected a different tab, including native swipe changes.
    if(!state||!bar||bar.parentElement!==liveHeader||
       root.contains?.(bar)===false||
       state.activeLeaf!==current.children?.[current.currentTab]||
+      state.leafSignature!==writerV133EntriesSignature(writerV1010CollectLeaves(workspace,side))||
       !root.classList?.contains('writer-v1011-managed-mobile')){
     queue();
    }
   });
-  observer.observe(root,{childList:true,subtree:true});
+  observer.observe(root,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['class','aria-selected']});
   drawerObservers.set(side,{root,observer});
  };
  const make=(tag,cls,doc)=>{const node=doc.createElement(tag);if(cls)node.className=cls;return node;};
@@ -24845,6 +25047,10 @@ function writerV1010Register(plugin){
   groupNativeActions(side,[],false);
   const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
   bar?.remove?.();hosts.delete(side);hostState.delete(side);
+  const previous=managedMobile.get(side);
+  previous?.nativeTabs?.classList?.remove('writer-v1011-native-tabs-hidden');
+  previous?.root?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
+  managedMobile.delete(side);
   split?.tabsListEl?.classList?.remove('writer-v1011-native-tabs-hidden');
   split?.containerEl?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
  };
@@ -24861,16 +25067,19 @@ function writerV1010Register(plugin){
   if(drawer)watchMobileDrawer(side);
   // Mobile: draw inside the native tab selector, never below it as a duplicate row.
   // If private drawer internals change, use the unmodified native selector.
-  let header=drawer?drawer.tabsContainerEl:
+  let header=drawer?writerV133DrawerTabsHost(workspace,side):
    root.querySelector?.('.workspace-tab-header-container');
   if(drawer&&root.contains?.(header)===false){
    // Obsidian can replace the mobile tab header on a view switch. Never attach
    // Basic's buttons to the detached header object.
    header=root.querySelector?.('.workspace-drawer-tab-options')||null;
   }
-  if(!header){restoreSidebar(side);return;}
+  const nativeTabs=drawer?(drawer.tabsListEl&&root.contains?.(drawer.tabsListEl)!==false&&drawer.tabsListEl.isConnected!==false?
+   drawer.tabsListEl:header?.querySelector?.('.workspace-drawer-tab-options-list')):null;
+  if(!header||(drawer&&!nativeTabs)){restoreSidebar(side);return;}
   const doc=header.ownerDocument;
-  const ordered=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(workspace,side));
+  const collected=writerV1010CollectLeaves(workspace,side),leafSignature=writerV133EntriesSignature(collected);
+  const ordered=writerV1010SortLeaves(plugin,side,collected);
   const leaves=typeof writerV112SortPinned==='function'?writerV112SortPinned(plugin,side,ordered):ordered;
   if(!leaves.length){restoreSidebar(side);return;}
   groupNativeActions(side,leaves,Boolean(drawer)&&cfg.sidebar.actionMenu!==false);
@@ -24881,7 +25090,11 @@ function writerV1010Register(plugin){
    header.appendChild(bar);hosts.set(side,bar);
   }
   if(drawer){
-   drawer.tabsListEl.classList.add('writer-v1011-native-tabs-hidden');
+   const previous=managedMobile.get(side);
+   if(previous?.nativeTabs!==nativeTabs)previous?.nativeTabs?.classList?.remove('writer-v1011-native-tabs-hidden');
+   if(previous?.root!==root)previous?.root?.classList?.remove('writer-v1011-managed-mobile','writer-v1011-compact-footer');
+   managedMobile.set(side,{root,nativeTabs});
+   nativeTabs.classList.add('writer-v1011-native-tabs-hidden');
    root.classList.add('writer-v1011-managed-mobile');
    // Only compact the vault footer when the user can still open the vault chooser.
    const switcher=drawer.headerEl?.querySelector?.('.workspace-drawer-header-switcher');
@@ -24895,46 +25108,48 @@ function writerV1010Register(plugin){
   const max=drawer?Math.max(2,Math.min(6,Math.floor(((root.clientWidth||380)-55)/48))):
    Math.max(2,Math.min(8,Math.floor(((root.clientWidth||400)-55)/40)));
   const visible=leaves.slice(0,max),hidden=leaves.slice(max);
-  const signature=[...visible.map(e=>e.type),'|',...hidden.map(e=>e.type),
+  const signature=[writerV133EntriesSignature(visible),'|',writerV133EntriesSignature(hidden),
    cfg.sidebar.actionMenu!==false,cfg.sidebar.fileFilter===true,
+   cfg.sidebar.longPressMenu!==false,
    JSON.stringify(cfg.sidebar.pinnedViews?.[side]||[])].join(';');
   const currentState=hostState.get(side);
   if(currentState?.bar===bar&&currentState.signature===signature){
    // Replacing buttons on every layout-change destroys the menu anchor and
    // can dismiss the native sorting sheet as soon as it appears.
-   const selected=active?.view?.getViewType?.()||active?.getViewState?.()?.type;
    for(const child of bar.children||[]){
     const viewType=child.getAttribute?.('data-view-type');
     if(!viewType)continue;
-    const on=viewType==='__overflow'?hidden.some(e=>e.leaf===active):viewType===selected;
+    const on=viewType==='__overflow'?hidden.some(e=>e.leaf===active):child.getAttribute?.('data-leaf-key')===writerV133LeafKey(active);
     child.classList?.toggle?.('is-active',on);
     child.setAttribute?.('aria-pressed',String(on));
    }
    currentState.activeLeaf=drawer?.children?.[drawer.currentTab]||active;
+   currentState.leafSignature=leafSignature;
    return;
   }
   bar.replaceChildren();
-  hostState.set(side,{bar,signature,activeLeaf:drawer?.children?.[drawer.currentTab]||active});
-  const addIcon=(type,title,callback,isActive=false)=>{
+  hostState.set(side,{bar,signature,leafSignature,activeLeaf:drawer?.children?.[drawer.currentTab]||active});
+  const addIcon=(type,title,callback,isActive=false,entry=null)=>{
    const btn=make('button','writer-v1010-sidebar-button'+(isActive?' is-active':''),doc);
    btn.type='button';btn.setAttribute('aria-label',title);
    btn.setAttribute('title',title);btn.setAttribute('aria-pressed',String(isActive));
-   writerV1010Icon(btn,WRITER_V1010_VIEWS[type]?.[0]||'panel-left');
+   writerV1010Icon(btn,entry?writerV133LeafInfo(entry).icon:WRITER_V1010_VIEWS[type]?.[0]||'panel-left');
    btn.setAttribute('data-view-type',type||'__overflow');
+   if(entry)btn.setAttribute('data-leaf-key',writerV133LeafKey(entry.leaf));
    btn.addEventListener('click',callback);bar.appendChild(btn);
    return btn;
   };
   for(const entry of visible){
-   const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
-   addIcon(entry.type,writerUi(info[1],info[2]),
-    ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf);
+   const info=writerV133LeafInfo(entry);
+   addIcon(entry.type,info.title,
+    ()=>writerV1010SelectLeaf(plugin,side,entry.leaf),active===entry.leaf,entry);
   }
   if(hidden.length&&cfg.sidebar.actionMenu===false){
    const overflow=addIcon('',writerUi('Mais painéis','More panels'),event=>{
     const menu=new Menu(plugin.app);
     for(const entry of hidden){
-     const info=WRITER_V1010_VIEWS[entry.type]||['panel-left',entry.type,entry.type];
-     menu.addItem(item=>item.setTitle(writerUi(info[1],info[2])).setIcon(info[0])
+     const info=writerV133LeafInfo(entry);
+     menu.addItem(item=>item.setTitle(info.title).setIcon(info.icon)
       .onClick(()=>writerV1010SelectLeaf(plugin,side,entry.leaf)));
     }
     menu.showAtMouseEvent?.(event);
@@ -24942,7 +25157,10 @@ function writerV1010Register(plugin){
   }
   if(cfg.sidebar.actionMenu!==false){
    const menu=addIcon('',writerUi('Ações e mais painéis','Actions and more views'),
-    event=>writerV1010SidebarMenu(plugin,event,side,hidden,active),hidden.some(item=>item.leaf===active));
+    event=>{
+     const active=writerV1010ActiveLeaf(workspace,writerV1010CollectLeaves(workspace,side),side);
+     writerV1010SidebarMenu(plugin,event,side,hidden,active);
+    },hidden.some(item=>item.leaf===active));
    writerV1010Icon(menu,'ellipsis');
   }
   if(cfg.sidebar.fileFilter===true&&side==='left'){
@@ -25062,7 +25280,7 @@ function writerV1010Settings(plugin,panel){
   ['actionMenu','Menu de ações do painel','Sidebar action menu'],
   ['longPressMenu','Segurar uma aba para fechar ou fixar painel','Hold a tab to close or pin panel'],
   ['fileFilter','Filtro local do explorador','Local Explorer filter'],
-  ['integrateSpaces','Integrar Spaces ao rodapé móvel','Integrate Spaces into mobile footer'],
+  ['integrateSpaces','Seletor persistente de Spaces no celular','Persistent Spaces selector on mobile'],
   ['compactFooter','Compactar rodapé nativo no celular','Compact native footer on mobile']
  ])toggle(cfg.sidebar,key,pt,en);
  new Setting(panel).setName(writerUi('Organizar abas laterais','Reorder sidebar tabs'))
@@ -25078,8 +25296,7 @@ function writerV1010Settings(plugin,panel){
       const leaves=writerV1010SortLeaves(plugin,side,writerV1010CollectLeaves(plugin.app.workspace,side));
       const order=cfg.sidebar.order[side];
       for(const [index,entry] of leaves.entries()){
-       const row=new Setting(modal.contentEl).setName(writerUi(
-        WRITER_V1010_VIEWS[entry.type]?.[1]||entry.type,WRITER_V1010_VIEWS[entry.type]?.[2]||entry.type));
+       const row=new Setting(modal.contentEl).setName(writerV133LeafInfo(entry).title);
        for(const [offset,label] of [[-1,'↑'],[1,'↓']])row.addButton(button=>button.setButtonText(label).onClick(async()=>{
         const types=leaves.map(item=>item.type);
         const target=index+offset;
@@ -26638,9 +26855,13 @@ function writerV112HoldControl(plugin,button,side,entry){
  if(writerV112PanelPrefs(plugin).longPressMenu===false)return;
  let timer=null,startX=0,startY=0,suppressUntil=0;
  const cancel=()=>{if(timer!==null)clearTimeout(timer);timer=null;};
- const open=(x,y)=>{cancel();suppressUntil=Date.now()+850;writerV112ContextMenu(plugin,side,entry,x,y);};
+ const open=(x,y)=>{
+  cancel();
+  if(button.isConnected===false)return;
+  suppressUntil=Date.now()+850;writerV112ContextMenu(plugin,side,entry,x,y);
+ };
  button.addEventListener('pointerdown',event=>{
-  if(event.pointerType==='mouse'||event.button!==0)return;
+  if(event.pointerType==='mouse'||event.button!==0||event.isPrimary===false)return;
   cancel();startX=event.clientX;startY=event.clientY;
   timer=setTimeout(()=>open(startX,startY),550);
  });
@@ -26667,7 +26888,9 @@ function writerV112HoldControl(plugin,button,side,entry){
 function writerV112SidebarWire(plugin,side,entries,bar){
  const buttons=[...(bar?.querySelectorAll?.('.writer-v1010-sidebar-button[data-view-type]')||[])];
  for(const entry of entries){
-  const button=buttons.find(node=>node.getAttribute('data-view-type')===entry.type);
+  const key=entry.key||(typeof writerV133LeafKey==='function'?writerV133LeafKey(entry.leaf):'');
+  const button=buttons.find(node=>key?node.getAttribute('data-leaf-key')===key:
+   node.getAttribute('data-view-type')===entry.type);
   if(button)writerV112HoldControl(plugin,button,side,entry);
  }
 }
@@ -27686,13 +27909,19 @@ function writerV12ReaderSettings(plugin,panel){
 /* Basic 12.0.1: Android quick actions without depending on other plugins'
  * ribbon listeners; defer nested native actions until the first menu closes. */
 function writerV1201Editor(plugin){
- return plugin.app.workspace.activeEditor?.editor||
-  plugin.app.workspace.getActiveViewOfType?.(MarkdownView)?.editor||
-  plugin.app.workspace.getLeavesOfType?.('markdown')?.find(l=>l===plugin.app.workspace.activeLeaf)?.view?.editor||null;
+ const workspace=plugin.app.workspace,file=workspace.getActiveFile?.();
+ if(file&&file.extension!=='md')return null;
+ const active=typeof MarkdownView!=='undefined'?workspace.getActiveViewOfType?.(MarkdownView):null;
+ for(const view of [active,workspace.activeLeaf?.view,workspace.activeEditor]){
+  if(!view?.editor||(view.file&&file&&view.file.path!==file.path))continue;
+  if(typeof view.getViewType==='function'&&view.getViewType()!=='markdown')continue;
+  return view.editor;
+ }
+ return null;
 }
 function writerV1201Read(plugin){
  if(!writerModuleOn(plugin,'tts')){new Notice(writerUi('Ative TTS em Módulos.','Enable TTS in Modules.'));return;}
- const selected=writerV1201Editor(plugin)?.getSelection?.()||'';
+ const editor=writerV1201Editor(plugin),selected=editor?.getSelection?.()||'';
  const domText=typeof writerV12SelectedText==='function'?writerV12SelectedText(plugin):'';
  const play=source=>{
   const content=String(source||'').replace(/^---\r?\n[\s\S]*?\r?\n---\s*/,'')
@@ -27708,7 +27937,13 @@ function writerV1201Read(plugin){
  };
  if(selected.trim()||domText.trim()){play(selected.trim()||domText.trim());return;}
  const file=plugin.app.workspace.getActiveFile?.();
- if(file?.extension==='md'){void plugin.app.vault.cachedRead(file).then(play).catch(e=>new Notice(String(e.message||e)));return;}
+ if(file?.extension==='md'){
+  if(typeof editor?.getValue==='function'){play(editor.getValue());return;}
+  const path=file.path;
+  return plugin.app.vault.cachedRead(file).then(text=>{
+   if(file.path===path&&plugin.app.workspace.getActiveFile?.()?.path===path)play(text);
+  }).catch(e=>new Notice(String(e.message||e)));
+ }
  new Notice(writerUi('Abra uma nota Markdown ou selecione texto no documento.','Open a Markdown note or select document text.'));
 }
 function writerV1201Format(plugin){
@@ -27740,6 +27975,9 @@ function writerV1201Zen(plugin){
 }
 function writerV1201QuickMenu(plugin,event){
  const menu=new Menu(plugin.app);
+ if(typeof plugin.writerV133SpacesChoose==='function')menu.addItem(item=>item
+  .setTitle(writerUi('Escolher Space','Choose Space')).setIcon('layers')
+  .onClick(()=>plugin.writerV133SpacesChoose()));
  for(const [title,icon,callback] of [
   [writerUi('Ler seleção ou nota','Read selection or note'),'volume-2',()=>writerV1201Read(plugin)],
   [writerUi('Abrir paleta de formatação','Open formatting palette'),'wand-sparkles',()=>writerV1201Format(plugin)],

@@ -53,8 +53,8 @@ test('10.10 shared sidebar ordering preserves native leaves and does not reparen
  const explorer=make('file-explorer'),search=make('global-search'),markdown=make('markdown');
  const workspace={leftSplit:split,rightSplit:{},iterateAllLeaves(callback){[explorer,search,markdown].forEach(callback);}};
  const leaves=api.writerV1010CollectLeaves(workspace,'left');
- assert.equal(leaves.length,2);
- assert.deepEqual(Array.from(api.writerV1010SortLeaves({settings},'left',leaves),entry=>entry.type),['global-search','file-explorer']);
+ assert.equal(leaves.length,3);
+ assert.deepEqual(Array.from(api.writerV1010SortLeaves({settings},'left',leaves),entry=>entry.type),['global-search','file-explorer','markdown']);
  assert.equal(explorer.getRoot(),split);
 });
 test('10.10 startup does not break Obsidian on missing sidebar DOM or mobile status bar',()=>{

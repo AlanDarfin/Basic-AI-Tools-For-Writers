@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.2.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.3.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -18,6 +18,8 @@ Write, plan, revise and organize books without moving your work to a separate da
 ## Features
 
 ### Spaces, toolbar and mobile actions
+
+- **Spaces on mobile:** the persistent selector works with native sidebar tabs and Basic's optional tab manager. Search Space names with accent tolerance, return to Entire vault, or use **Choose Space** from Basic's quick actions or the command palette. Rapid Space switches preserve layout order; opening the collections sidebar keeps the current scope.
 
 - **Manuscript preservation:** Longform retains text typed during a save as an unsaved draft. Concurrent snapshots keep their index entries; folder renames retain chapter histories, editorial comments and drafts. Interactive block edits check for changes before saving and support nested Markdown fences.
 
@@ -54,7 +56,7 @@ See [v12 implementation coverage](docs/V12_SCOPE.pt-BR.md) and [release notes](d
 
 ### Sidebars and editor width
 
-- **Sidebar Manager (opt-in):** stable native Android sidebar tab controls with an active-tab indicator retained across panel switches; consolidated action menu with Lucide icons, native sorting menu support and a permanent collapsible Spaces selector just above mobile sidebar tabs (tap to open your Spaces or choose Entire vault). Layout refreshes preserve the top-row buttons so menus do not disappear. Configure mobile/desktop independently; order preferences are shared without moving native panes.
+- **Sidebar Manager (opt-in):** mobile sidebar tabs retain separate instances of the same view and Markdown notes, use panel titles and icons, and track opening, closing and replacement of panels. The active indicator and action menu follow the current panel. Configure mobile/desktop independently; order and pin preferences remain shared by view type, without moving native panes. The Spaces selector also works when this manager is disabled.
 - **Editor Width:** desktop status-bar slider (20–100%), click its percentage to reset the width, and a settings slider available on Android. Supports individual Markdown notes using the `editor-width` YAML property. A note's YAML value takes precedence; moving the slider for that note gives a temporary preview without rewriting Markdown.
 - **Compatibility:** sidebars remain opt-in, and native controls return when disabled. When available, the current vault can be accessed from the sidebar menu; otherwise the native vault footer stays visible. Using the original Sidebar Manager simultaneously leaves its sidebar controls in charge.
 

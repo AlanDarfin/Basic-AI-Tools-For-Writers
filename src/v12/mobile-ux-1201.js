@@ -2,13 +2,19 @@
 /* Basic 12.0.1: Android quick actions without depending on other plugins'
  * ribbon listeners; defer nested native actions until the first menu closes. */
 function writerV1201Editor(plugin){
- return plugin.app.workspace.activeEditor?.editor||
-  plugin.app.workspace.getActiveViewOfType?.(MarkdownView)?.editor||
-  plugin.app.workspace.getLeavesOfType?.('markdown')?.find(l=>l===plugin.app.workspace.activeLeaf)?.view?.editor||null;
+ const workspace=plugin.app.workspace,file=workspace.getActiveFile?.();
+ if(file&&file.extension!=='md')return null;
+ const active=typeof MarkdownView!=='undefined'?workspace.getActiveViewOfType?.(MarkdownView):null;
+ for(const view of [active,workspace.activeLeaf?.view,workspace.activeEditor]){
+  if(!view?.editor||(view.file&&file&&view.file.path!==file.path))continue;
+  if(typeof view.getViewType==='function'&&view.getViewType()!=='markdown')continue;
+  return view.editor;
+ }
+ return null;
 }
 function writerV1201Read(plugin){
  if(!writerModuleOn(plugin,'tts')){new Notice(writerUi('Ative TTS em Módulos.','Enable TTS in Modules.'));return;}
- const selected=writerV1201Editor(plugin)?.getSelection?.()||'';
+ const editor=writerV1201Editor(plugin),selected=editor?.getSelection?.()||'';
  const domText=typeof writerV12SelectedText==='function'?writerV12SelectedText(plugin):'';
  const play=source=>{
   const content=String(source||'').replace(/^---\r?\n[\s\S]*?\r?\n---\s*/,'')
@@ -24,7 +30,13 @@ function writerV1201Read(plugin){
  };
  if(selected.trim()||domText.trim()){play(selected.trim()||domText.trim());return;}
  const file=plugin.app.workspace.getActiveFile?.();
- if(file?.extension==='md'){void plugin.app.vault.cachedRead(file).then(play).catch(e=>new Notice(String(e.message||e)));return;}
+ if(file?.extension==='md'){
+  if(typeof editor?.getValue==='function'){play(editor.getValue());return;}
+  const path=file.path;
+  return plugin.app.vault.cachedRead(file).then(text=>{
+   if(file.path===path&&plugin.app.workspace.getActiveFile?.()?.path===path)play(text);
+  }).catch(e=>new Notice(String(e.message||e)));
+ }
  new Notice(writerUi('Abra uma nota Markdown ou selecione texto no documento.','Open a Markdown note or select document text.'));
 }
 function writerV1201Format(plugin){
@@ -56,6 +68,9 @@ function writerV1201Zen(plugin){
 }
 function writerV1201QuickMenu(plugin,event){
  const menu=new Menu(plugin.app);
+ if(typeof plugin.writerV133SpacesChoose==='function')menu.addItem(item=>item
+  .setTitle(writerUi('Escolher Space','Choose Space')).setIcon('layers')
+  .onClick(()=>plugin.writerV133SpacesChoose()));
  for(const [title,icon,callback] of [
   [writerUi('Ler seleção ou nota','Read selection or note'),'volume-2',()=>writerV1201Read(plugin)],
   [writerUi('Abrir paleta de formatação','Open formatting palette'),'wand-sparkles',()=>writerV1201Format(plugin)],

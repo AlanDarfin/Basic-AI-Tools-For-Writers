@@ -9226,6 +9226,17 @@ body.is-mobile .writer-v1014-collapsible-spaces .writer-v1014-spaces-options{
  border-top:1px solid var(--basic-ui-border,var(--background-modifier-border));
  overflow:hidden;padding:6px;
 }
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v133-spaces-search{
+ flex:0 0 auto;width:100%;min-width:0;min-height:42px;
+ margin:0 0 5px;padding:8px 10px;box-sizing:border-box;
+ font-size:var(--font-ui-small);touch-action:manipulation;
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v133-spaces-empty{
+ flex:0 0 auto;margin:4px 6px;padding:6px 2px;
+ color:var(--basic-ui-muted,var(--text-muted));font-size:var(--font-ui-small);
+}
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v133-spaces-empty[hidden],
+body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-space-group[hidden]{display:none;}
 body.is-mobile .writer-v1014-collapsible-spaces .writer-v9216-spaces-rail{
  display:flex;flex-direction:column;align-items:stretch;
  flex:1 1 auto;gap:3px;min-width:0;min-height:0;

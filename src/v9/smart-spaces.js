@@ -99,34 +99,63 @@ function writerV10SpaceSaveLayout(plugin,space){
   if(snapshot.length>120000)return false;
   if(typeof writerV101SpaceBeforeOverwrite==='function' &&
    space.layoutSnapshot && JSON.stringify(space.layoutSnapshot)!==snapshot)writerV101SpaceBeforeOverwrite(plugin,space);
-  space.layoutSnapshot=JSON.parse(snapshot);return true;
+  space.layoutSnapshot=JSON.parse(snapshot);
+  if(plugin._writerV133FailedSpaceLayout===space.id)plugin._writerV133FailedSpaceLayout=null;
+  return true;
  }catch(_){return false;}
 }
 async function writerV10SpaceRestoreLayout(plugin,space){
  if(!space?.layoutSnapshot||typeof plugin.app.workspace.changeLayout!=='function')return false;
  try{
   await plugin.app.workspace.changeLayout(space.layoutSnapshot);
+  if(plugin._writerV133FailedSpaceLayout===space.id)plugin._writerV133FailedSpaceLayout=null;
   return true;
  }catch(error){
   console.warn('[Basic AI] Space layout could not be restored',error);return false;
  }
 }
-async function writerV9215SelectSpace(plugin,id){
- const cfg=plugin.settings.v9Spaces;
- const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
- if(cfg.activeId===next)return;
- const previous=cfg.spaces.find(space=>space.id===cfg.activeId);
- if(cfg.autoSaveLayouts&&previous)writerV10SpaceSaveLayout(plugin,previous);
- cfg.activeId=next;
- await plugin.saveSettings();
- if(cfg.restoreLayoutsOnSwitch&&next){
-  await writerV10SpaceRestoreLayout(plugin,cfg.spaces.find(space=>space.id===next));
- }
- plugin.writerV91FlexRefresh?.();
- plugin.writerV9SpacesRefresh?.();
- plugin.writerV9216SpacesDockRefresh?.();
- if(typeof WRITER_V8_HOME_VIEW!=='undefined')
-  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[])leaf.view?.render?.();
+function writerV9215SelectSpace(plugin,id){
+ const refresh=()=>{
+  plugin.writerV91FlexRefresh?.();
+  plugin.writerV9SpacesRefresh?.();
+  plugin.writerV9216SpacesDockRefresh?.();
+  if(typeof WRITER_V8_HOME_VIEW!=='undefined')
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[])leaf.view?.render?.();
+ };
+ const switchSpace=async()=>{
+  const cfg=plugin.settings.v9Spaces;
+  const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
+  if(cfg.activeId===next)return;
+  const previousId=cfg.activeId,previous=cfg.spaces.find(space=>space.id===previousId);
+  // Keep a failed destination's saved layout: the current panes still belong
+  // to the source. An explicit save or successful restore clears this guard.
+  if(cfg.autoSaveLayouts&&previous&&plugin._writerV133FailedSpaceLayout!==previous.id)
+   writerV10SpaceSaveLayout(plugin,previous);
+  cfg.activeId=next;
+  try{
+   await plugin.saveSettings();
+  }catch(error){
+   // A failed persistence must not leave the selector pointing at an unapplied Space.
+   if(cfg.activeId===next)cfg.activeId=cfg.enabled&&cfg.spaces.some(space=>space.id===previousId)?previousId:'';
+   refresh();
+   throw error;
+  }
+  if(cfg.enabled&&cfg.activeId===next&&cfg.restoreLayoutsOnSwitch&&next){
+   const target=cfg.spaces.find(space=>space.id===next);
+   const restored=await writerV10SpaceRestoreLayout(plugin,target);
+   if(!restored&&target?.layoutSnapshot&&typeof plugin.app.workspace.changeLayout==='function')
+    plugin._writerV133FailedSpaceLayout=next;
+  }
+  refresh();
+ };
+ // Serialize layout saves/restores too: an older asynchronous restore must never
+ // finish after a newer selection and overwrite that Space's workspace.
+ const pending=plugin._writerV133SpaceSwitch;
+ const result=pending?pending.then(switchSpace):switchSpace();
+ const settled=result.then(()=>{},()=>{});
+ plugin._writerV133SpaceSwitch=settled;
+ void settled.then(()=>{if(plugin._writerV133SpaceSwitch===settled)plugin._writerV133SpaceSwitch=null;});
+ return result;
 }
 function writerV9SpaceTags(file,cache){
  const fm=cache?.frontmatter||{};
@@ -454,17 +483,30 @@ class WriterV9SpacesSideView extends ItemView{
   manage.addEventListener('click',()=>writerV9SpaceModal(this.plugin));
   if(!cfg.enabled){root.createEl('p',{text:writerUi('Ative Spaces nas configurações.','Enable Spaces in settings.')});return;}
   const nav=root.createDiv({cls:'writer-v9-space-side-nav'});
-  const space=cfg.spaces.find(x=>x.id===cfg.activeId)||cfg.spaces.find(x=>x.id===this.currentId)||cfg.spaces[0];
-  if(space)this.currentId=space.id;
+  const activeSpace=writerV9215ActiveSpace(this.plugin);
+  const space=activeSpace||{mode:'filter',sort:'recent',hiddenPaths:[],pinnedPaths:[]};
+  this.currentId=activeSpace?.id||'';
+  const select=id=>{
+   this.query='';
+   void writerV9215SelectSpace(this.plugin,id).then(()=>this.render(),error=>{
+    new Notice(writerUi('Não foi possível trocar de Space: ','Could not switch Space: ')+String(error.message||error));
+    this.render();
+   });
+  };
+  const all=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(!activeSpace?' is-active':''),
+   attr:{type:'button',title:writerUi('Todo o cofre','Entire vault'),'aria-pressed':String(!activeSpace)}});
+  require('obsidian').setIcon(all,'house');
+  all.createSpan({text:writerUi('Todo o cofre','Entire vault')});
+  all.addEventListener('click',()=>select(''));
   for(const option of cfg.spaces){
-   const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name}});
+   const button=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(option.id===this.currentId?' is-active':''),attr:{type:'button',title:option.name,'aria-pressed':String(option.id===this.currentId)}});
    require('obsidian').setIcon(button,option.icon||'layers');
    if(option.iconColor)button.style.setProperty('--writer-v9216-space-color',option.iconColor);
    button.createSpan({text:option.name});
-   button.addEventListener('click',()=>{this.currentId=option.id;this.query='';void writerV9215SelectSpace(this.plugin,option.id).then(()=>this.render());});
+   button.addEventListener('click',()=>select(option.id));
   }
-  if(!space){root.createEl('p',{text:writerUi('Crie uma Space para começar.','Create a Space to get started.')});return;}
-  const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',placeholder:writerUi('Pesquisar nesta Space…','Search this Space…')}});
+  const search=root.createEl('input',{cls:'writer-v9-spaces-search',attr:{type:'search',
+   placeholder:activeSpace?writerUi('Pesquisar nesta Space…','Search this Space…'):writerUi('Pesquisar no cofre…','Search the vault…')}});
   search.value=this.query;
   const sidebarTools=root.createDiv({cls:'writer-v1042-space-side-tools'});
   const quick=(pt,en,icon,handler)=>{
@@ -514,7 +556,6 @@ function writerV9RegisterSpaces(plugin){
   const leaf=existing||plugin.app.workspace.getLeftLeaf?.(false)||plugin.app.workspace.getLeaf('tab');
   if(!leaf)return;
   if(!existing)await leaf.setViewState({type:WRITER_V9_SPACE_VIEW,active:true});
- if(!plugin.settings.v9Spaces.activeId&&plugin.settings.v9Spaces.spaces.length)await writerV9215SelectSpace(plugin,plugin.settings.v9Spaces.spaces[0].id);
   plugin.app.workspace.revealLeaf?.(leaf);
  };
  plugin.writerV9SpacesSidebarOpen=openSidebar;
@@ -589,14 +630,15 @@ function writerV9RegisterSpaces(plugin){
 function writerV9SpacesSettings(plugin,panel){
  const cfg=plugin.settings.v9Spaces;
  panel.createEl('h3',{text:writerUi('Spaces · coleções locais','Spaces · local collections')});
- panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com ícones e barra inferior no explorador. Os filtros do Space são independentes. A ocultação do explorador é global.','Collections by folder, tag or properties, with icons and a bottom explorer switcher. Space filters are independent; Explorer hiding is global.')});
+ panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Coleções por pasta, tag ou propriedades, com seletor no explorador e nas abas laterais móveis. Filtros e ocultações de cada Space são combinados às regras globais do explorador. Nenhum arquivo é movido.','Collections by folder, tag or properties, with a switcher in File Explorer and the mobile sidebar tabs. Each Space combines its filters and hidden items with global Explorer rules. No files are moved.')});
  new Setting(panel).setName(writerUi('Ativar Spaces (desativado inicialmente)','Enable Spaces (off by default)'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async value=>{
     cfg.enabled=value;if(!value)cfg.activeId='';
     await plugin.saveSettings();
     plugin.writerV9216SpacesDockRefresh?.();plugin.writerV91FlexRefresh?.();plugin.writerV9SpacesRefresh?.();
    }));
- new Setting(panel).setName(writerUi('Barra de Spaces no rodapé do explorador','Space switcher at the bottom of File Explorer'))
+ new Setting(panel).setName(writerUi('Mostrar seletor de Spaces','Show Spaces switcher'))
+  .setDesc(writerUi('No computador, aparece no explorador. No celular, fica junto às abas laterais, inclusive usando as abas nativas.','On desktop, appears in File Explorer. On mobile, stays beside the sidebar tabs, including native tabs.'))
   .addToggle(t=>t.setValue(cfg.dock).onChange(async value=>{
    cfg.dock=value;await plugin.saveSettings();plugin.writerV9216SpacesDockRefresh?.();
   }));

@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.4.0 — Longform draft recovery
+
+- Keep local recovery copies of unsaved Longform chapter edits across plugin/application restarts, separate from manuscript files and settings.
+- Recover a draft in continuous writing when its original base still matches; preserve conflicting drafts for review before editing that scene.
+- Add a recovery center with previews, original-file status, non-overwriting Markdown copy export and explicit discard; expose it in commands, the Longform toolbar and settings.
+- Serialize/debounce recovery writes, preserve a previous valid store and retain in-memory drafts on storage failure or size limits; never silently replace an unreadable recovery store.
+- Keep edits typed during a scene save with their updated base, preserve recovery paths after renames and flush pending copies on normal plugin unload or application backgrounding.
+- Leave temporary Session drafts unchanged; document local plaintext storage, backup timing, limits and recovery controls in English and Portuguese.
+
 ## 13.3.0 — Mobile Spaces and sidebar discovery
 
 - Keep the mobile Spaces selector accessible with native tabs independently of the optional sidebar manager; add name filtering, dismissal controls and a command/quick-action chooser.

@@ -1,0 +1,71 @@
+/* Local Longform draft recovery. The manuscript remains a separate note. */
+.writer-v134-recovery-modal{width:min(1000px,96vw);max-height:92vh;}
+.writer-v134-recovery{min-width:0;max-width:100%;}
+.writer-v134-recovery .writer-v134-recovery-status{
+ margin:8px 0;padding:9px 11px;border-radius:var(--radius-s);
+ background:var(--background-secondary);color:var(--text-muted);
+ font-size:var(--font-ui-small);overflow-wrap:anywhere;
+}
+.writer-v134-recovery .writer-v134-recovery-status[data-phase="error"],
+.writer-v134-recovery .writer-v134-recovery-comparison[data-state="error"],
+.writer-v134-recovery .writer-v134-recovery-comparison[data-state="conflict"]{
+ color:var(--text-warning,var(--text-normal));
+}
+.writer-v134-recovery .writer-v134-recovery-filter{
+ width:100%;min-width:0;min-height:40px;margin:8px 0 12px;
+}
+.writer-v134-recovery .writer-v134-recovery-columns{
+ display:grid;grid-template-columns:minmax(180px,250px) minmax(0,1fr);gap:16px;min-width:0;
+}
+.writer-v134-recovery .writer-v134-recovery-navigation,
+.writer-v134-recovery .writer-v134-recovery-detail{min-width:0;}
+.writer-v134-recovery .writer-v134-recovery-list{
+ display:flex;flex-direction:column;gap:5px;max-height:55vh;overflow:auto;
+}
+.writer-v134-recovery .writer-v134-recovery-item{
+ display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+ width:100%;min-width:0;min-height:48px;padding:8px 10px;text-align:start;
+ white-space:normal;box-shadow:none;
+}
+.writer-v134-recovery .writer-v134-recovery-item[aria-pressed="true"]{
+ color:var(--text-on-accent);background:var(--interactive-accent);
+}
+.writer-v134-recovery .writer-v134-recovery-item-path{max-width:100%;overflow-wrap:anywhere;}
+.writer-v134-recovery .writer-v134-recovery-item small{font-size:var(--font-ui-smaller);opacity:.85;}
+.writer-v134-recovery .writer-v134-recovery-path{margin:0 0 4px;font-size:var(--font-ui-medium);overflow-wrap:anywhere;}
+.writer-v134-recovery .writer-v134-recovery-time{margin:0 0 8px;color:var(--text-muted);font-size:var(--font-ui-smaller);}
+.writer-v134-recovery .writer-v134-recovery-comparison{margin:8px 0;overflow-wrap:anywhere;font-size:var(--font-ui-small);}
+.writer-v134-recovery .writer-v134-recovery-actions{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:7px;}
+.writer-v134-recovery .writer-v134-recovery-actions button,
+.writer-v134-recovery .writer-v134-recovery-refresh,
+.writer-v134-recovery .writer-v134-recovery-retry{min-height:36px;white-space:normal;}
+.writer-v134-recovery .writer-v134-recovery-refresh{margin-bottom:9px;}
+.writer-v134-recovery .writer-v134-recovery-preview-label{display:block;margin:4px 0 6px;font-size:var(--font-ui-small);}
+.writer-v134-recovery :is(.writer-v134-recovery-draft,.writer-v134-recovery-current){
+ display:block;width:100%;min-width:0;min-height:240px;max-height:55vh;
+ resize:vertical;box-sizing:border-box;font-family:var(--font-text);
+ line-height:1.5;padding:10px;white-space:pre-wrap;
+}
+.writer-v134-recovery .writer-v134-recovery-original{margin-top:10px;}
+.writer-v134-recovery .writer-v134-recovery-original summary{cursor:pointer;padding:6px 0;font-size:var(--font-ui-small);}
+.writer-v134-recovery .writer-v134-recovery-current{min-height:160px;}
+.writer-v134-recovery [hidden]{display:none;}
+.writer-v11-studio .writer-v134-recovery-status{
+ display:block;max-width:100%;margin:4px 0;color:var(--text-muted);
+ font-size:var(--font-ui-smaller);overflow-wrap:anywhere;
+}
+.writer-v11-studio .writer-v134-recovery-conflict{
+ margin:8px 0;padding:9px 11px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+ color:var(--text-normal);font-size:var(--font-ui-small);overflow-wrap:anywhere;
+}
+.writer-v11-studio .writer-v134-recovery-conflict[hidden]{display:none;}
+.writer-v11-studio .writer-v134-recovery-conflict button{min-height:36px;margin-top:6px;white-space:normal;}
+.writer-v11-studio .writer-v11-editor[readonly]{background:var(--background-secondary);color:var(--text-muted);}
+@media(max-width:650px){
+ .writer-v134-recovery .writer-v134-recovery-columns{grid-template-columns:minmax(0,1fr);gap:12px;}
+ .writer-v134-recovery .writer-v134-recovery-list{max-height:180px;}
+ .writer-v134-recovery .writer-v134-recovery-filter{font-size:16px;min-height:44px;}
+ .writer-v134-recovery .writer-v134-recovery-actions button{flex:1 1 145px;min-height:44px;}
+ .writer-v134-recovery :is(.writer-v134-recovery-draft,.writer-v134-recovery-current){min-height:180px;font-size:16px;}
+}

@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.3.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.4.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -18,6 +18,8 @@ Write, plan, revise and organize books without moving your work to a separate da
 ## Features
 
 ### Spaces, toolbar and mobile actions
+
+- **Longform draft recovery:** chapter edits keep a local recovery copy in Basic's plugin data. After a restart, matching drafts return to continuous writing; changed originals are kept separate for review. Open **Longform: recover drafts** to preview, save a new Markdown copy or explicitly discard a recovery entry. Saving a scene remains explicit. Temporary Session drafts keep their existing memory-only behavior.
 
 - **Spaces on mobile:** the persistent selector works with native sidebar tabs and Basic's optional tab manager. Search Space names with accent tolerance, return to Entire vault, or use **Choose Space** from Basic's quick actions or the command palette. Rapid Space switches preserve layout order; opening the collections sidebar keeps the current scope.
 

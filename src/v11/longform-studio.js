@@ -4,7 +4,7 @@
  * The source notes remain ordinary Markdown files; edits are explicit and guarded. */
 function writerV11Cfg(settings){
  const old=settings.v11Studio&&typeof settings.v11Studio==='object'?settings.v11Studio:{};
- const cfg=settings.v11Studio={enabled:true,searchLimit:240,chapterLimit:100,reviewNotes:{},...old};
+ const cfg=settings.v11Studio={enabled:true,recoveryEnabled:true,searchLimit:240,chapterLimit:100,reviewNotes:{},...old};
  cfg.searchLimit=Math.max(25,Math.min(1000,Number(cfg.searchLimit)||240));
  cfg.chapterLimit=Math.max(10,Math.min(200,Number(cfg.chapterLimit)||100));
  if(!cfg.reviewNotes||typeof cfg.reviewNotes!=='object'||Array.isArray(cfg.reviewNotes))cfg.reviewNotes={};
@@ -111,6 +111,8 @@ function writerV11RenderLongformTab(view,panel,project){
   .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
  bar.createEl('button',{text:writerUi('Compilar manuscrito','Compile manuscript')})
   .addEventListener('click',()=>void writerV11Compile(plugin,project,scenes));
+ if(typeof writerV134OpenRecovery==='function')bar.createEl('button',{text:writerUi('Recuperar rascunhos','Recover drafts')})
+  .addEventListener('click',()=>writerV134OpenRecovery(plugin));
  const count=bar.createSpan({cls:'writer-v11-longform-counter',text:scenes.length+' '+writerUi('capítulos','chapters')});
  if(!scenes.length){
   root.createEl('p',{text:writerUi('Este projeto ainda não contém cenas Markdown. Use a aba Cenas para adicioná-las.','This project has no Markdown scenes yet. Add them in Scenes.')});return;
@@ -127,35 +129,85 @@ function writerV11RenderLongformTab(view,panel,project){
    if(!section.open||loaded||loading)return;
    loading=true;
    try{
+    const recovery=typeof writerV134Recovery==='function'?writerV134Recovery(plugin):null;
+    if(recovery)await recovery.ready;
     expected=await plugin.app.vault.read(scene.file);
     if(!section.isConnected)return;
     info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
     const editor=body.createEl('textarea',{cls:'writer-v11-editor',attr:{
      'aria-label':scene.title,spellcheck:'true'}});
-    const draft=plugin._writerV11Drafts?.get(scene.file.path);
+    let draft=plugin._writerV11Drafts?.get(scene.file.path);
+    if(draft?.text===expected){
+     if(recovery)recovery.capture(scene.file.path,expected,expected);
+     else plugin._writerV11Drafts.delete(scene.file.path);
+     draft=null;
+    }
     editor.value=draft?.original===expected?draft.text:expected;
+    let localVersion=editor.value;
     const buttons=body.createDiv({cls:'writer-v11-chapter-actions'});
     const status=buttons.createEl('small',{text:editor.value===expected?
      writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo recuperado','Unsaved draft recovered')});
     const save=buttons.createEl('button',{attr:{type:'button'},text:writerUi('Salvar cena','Save scene')});
+    let saving=false,conflicted=Boolean(recovery&&draft&&draft.original!==expected);
+    const recoveryInfo=recovery?body.createEl('small',{cls:'writer-v134-recovery-status'}):null;
+    let conflictInfo=null;
+    if(recovery&&typeof writerV134OpenRecovery==='function'){
+     conflictInfo=body.createDiv({cls:'writer-v134-recovery-conflict'});
+     conflictInfo.createEl('p',{text:writerUi(
+      'Existe um rascunho baseado em outra versão desta cena. Revise a cópia de recuperação antes de continuar a edição aqui.',
+      'A draft is based on another version of this scene. Review the recovery copy before continuing to edit here.')});
+     conflictInfo.createEl('button',{text:writerUi('Revisar rascunho recuperado','Review recovered draft'),attr:{type:'button'}})
+      .addEventListener('click',()=>writerV134OpenRecovery(plugin,scene.file.path));
+    }
+    const paintRecovery=()=>{
+     if(!recovery)return;
+     const current=plugin._writerV11Drafts?.get(scene.file.path);
+     // Keep panes sharing the same base in sync without replacing text changed
+     // locally since its last input event. This prevents one pane losing the
+     // other pane's draft merely because both originally opened a clean scene.
+     if(current&&current.original===expected&&editor.value===localVersion&&editor.value!==current.text){
+      editor.value=current.text;localVersion=current.text;
+      status.setText(writerUi('Rascunho não salvo atualizado em outro painel','Unsaved draft updated in another pane'));
+     }
+     conflicted=Boolean(current&&current.original!==expected&&current.text!==expected);
+     editor.readOnly=conflicted;save.disabled=saving||conflicted;
+     if(conflictInfo)conflictInfo.hidden=!conflicted;
+     const state=recovery.status;
+     if(!current&&state.phase!=='error'){recoveryInfo.setText('');return;}
+     recoveryInfo.setText(state.phase==='error'?writerUi('Cópia de recuperação indisponível: ','Recovery copy unavailable: ')+String(state.error||'').slice(0,180):
+      state.phase==='disabled'?writerUi('Recuperação persistente desativada.','Persistent recovery is disabled.'):
+      state.phase==='saved'?writerUi('Cópia local de recuperação atualizada. A cena ainda precisa ser salva.','Local recovery copy updated. The scene still needs saving.'):
+      writerUi('Atualizando cópia local de recuperação…','Updating local recovery copy…'));
+    };
     buttons.createEl('button',{attr:{type:'button'},text:writerUi('Abrir nota','Open note')})
      .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(scene.file));
     buttons.createEl('button',{attr:{type:'button'},text:writerUi('Revisões','Revisions')})
      .addEventListener('click',()=>writerV11OpenRevision(plugin,scene.file));
     const rememberDraft=()=>{
+     if(conflicted)return;
+     localVersion=editor.value;
      plugin._writerV11Drafts??=new Map();
-     if(editor.value===expected)plugin._writerV11Drafts.delete(scene.file.path);
+     if(recovery)recovery.capture(scene.file.path,expected,editor.value);
+     else if(editor.value===expected)plugin._writerV11Drafts.delete(scene.file.path);
      else plugin._writerV11Drafts.set(scene.file.path,{original:expected,text:editor.value});
      status.setText(editor.value===expected?writerUi('Sem alterações','No changes'):writerUi('Rascunho não salvo','Unsaved changes'));
     };
     editor.addEventListener('input',rememberDraft);
+    if(recovery){
+     let unsubscribe=()=>{};
+     unsubscribe=recovery.subscribe(()=>{if(!body.isConnected)unsubscribe();else paintRecovery();});
+     plugin.register?.(unsubscribe);paintRecovery();
+    }
     save.addEventListener('click',async()=>{
+     if(saving||conflicted)return;
+     saving=true;
      save.disabled=true;
      const submitted=editor.value;
      try{
       await writerV11SaveChapter(plugin,scene.file,expected,submitted);
       expected=submitted;
       rememberDraft();
+      if(recovery)void recovery.flush().catch(()=>{});
       info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
       if(editor.value===expected){
        status.setText(writerUi('Salvo','Saved'));
@@ -163,7 +215,7 @@ function writerV11RenderLongformTab(view,panel,project){
       }else new Notice(writerUi('Cena salva. As alterações mais recentes continuam no rascunho não salvo.','Scene saved. Newer edits remain in the unsaved draft.'));
      }catch(error){
       status.setText(String(error.message||error));new Notice(String(error.message||error));
-     }finally{save.disabled=false;}
+     }finally{saving=false;save.disabled=conflicted;}
     });
     writerV11ReviewArea(plugin,scene.file,body);
     loaded=true;
@@ -347,6 +399,11 @@ function writerV11OpenDiagnostics(plugin){
 }
 function writerV11StudioRegister(plugin){
  writerV11Cfg(plugin.settings);
+ const recovery=typeof writerV134Recovery==='function'?writerV134Recovery(plugin):null;
+ const doc=plugin.app.workspace?.containerEl?.ownerDocument;
+ if(recovery&&doc&&typeof plugin.registerDomEvent==='function')plugin.registerDomEvent(doc,'visibilitychange',()=>{
+  if(doc.visibilityState==='hidden')void recovery.flush().catch(()=>{});
+ });
  plugin.registerEvent?.(plugin.app.vault.on('rename',(file,oldPath)=>{
   if(typeof file?.path!=='string'||typeof oldPath!=='string'||!oldPath||oldPath===file.path)return;
   const destination=path=>path===oldPath||path.startsWith(oldPath+'/')?file.path+path.slice(oldPath.length):null;
@@ -359,6 +416,7 @@ function writerV11StudioRegister(plugin){
    }
   }
   if(changed)void plugin.saveSettings();
+  if(recovery){recovery.rename(oldPath,file.path);return;}
   const drafts=plugin._writerV11Drafts;
   for(const [path,draft] of Array.from(drafts?.entries()||[])){
    const next=destination(path);
@@ -378,6 +436,8 @@ function writerV11StudioRegister(plugin){
   callback:()=>writerV11PickProject(plugin,p=>void writerV11Compile(plugin,p,writerV11ProjectFiles(plugin,p,writerV11Cfg(plugin.settings).chapterLimit)))});
  plugin.addCommand({id:'v11-compatibility-center',name:writerUi('Basic: central de compatibilidade','Basic: compatibility center'),
   callback:()=>writerV11OpenDiagnostics(plugin)});
+ if(typeof writerV134OpenRecovery==='function')plugin.addCommand({id:'v134-longform-recovery',name:writerUi('Longform: recuperar rascunhos','Longform: recover drafts'),
+  callback:()=>writerV134OpenRecovery(plugin)});
 }
 function writerV11StudioSettings(plugin,panel){
  const cfg=writerV11Cfg(plugin.settings);
@@ -387,6 +447,15 @@ function writerV11StudioSettings(plugin,panel){
   'Safe continuous writing, snapshot comparisons, contextual search and per-project Markdown compilation.')});
  new Setting(panel).setName(writerUi('Ativar escrita contínua no Longform','Enable continuous writing in Longform'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Cópias locais de recuperação','Local recovery copies'))
+  .setDesc(writerUi('Guarda rascunhos de capítulos nos dados locais do Basic para recuperar após reiniciar. Não substitui Salvar cena; desativar preserva as cópias existentes.',
+   'Keeps chapter drafts in Basic local data for recovery after restart. Does not replace Save scene; disabling preserves existing copies.'))
+  .addToggle(t=>t.setValue(cfg.recoveryEnabled!==false).onChange(async value=>{
+   plugin.settings.v11Studio.recoveryEnabled=value;await plugin.saveSettings();
+   if(typeof writerV134Recovery==='function')void writerV134Recovery(plugin).flush().catch(()=>{});
+  }));
+ if(typeof writerV134OpenRecovery==='function')new Setting(panel).setName(writerUi('Rascunhos recuperáveis','Recoverable drafts'))
+  .addButton(button=>button.setButtonText(writerUi('Abrir recuperação','Open recovery')).onClick(()=>writerV134OpenRecovery(plugin)));
  new Setting(panel).setName(writerUi('Limite de capítulos por sessão','Chapter limit per session'))
   .addSlider(s=>s.setLimits(10,200,10).setValue(cfg.chapterLimit).setDynamicTooltip().onChange(async v=>{cfg.chapterLimit=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum searched notes'))

@@ -1974,12 +1974,45 @@ class WriterSnapshots{
   return this.plugin.app.vault.adapter.read(path);
  }
  async restore(file,entry,attachments=false){
+  const vault=this.plugin.app.vault,path=file.path,editor=writerActiveEditor(this.plugin,file);
+  const checkCurrent=()=>{
+   if(file.path!==path||
+    (typeof vault.getAbstractFileByPath==='function'&&vault.getAbstractFileByPath(path)!==file)||
+    writerActiveEditor(this.plugin,file)!==editor)
+    throw Error(writerUi('A nota ou o editor mudou durante a restauração. Nada foi substituído; tente novamente.',
+     'The note or editor changed during restore. Nothing was replaced; please try again.'));
+  };
+  const changed=()=>Error(writerUi('A nota mudou durante a restauração. As alterações foram preservadas; tente novamente.',
+   'The note changed during restore. Your edits were preserved; please try again.'));
+  const checkBuffers=live=>{
+   for(const leaf of this.plugin.app.workspace.getLeavesOfType('markdown')){
+    const view=leaf.view;
+    if(view?.file?.path===path&&view.editor&&view.getMode?.()!=='preview'&&view.editor.getValue()!==live)
+     throw changed();
+   }
+  };
   const text=await this.read(file,entry);
-  const live=await writerCurrentText(this.plugin,file);
+  checkCurrent();
+  const live=editor?editor.getValue():await vault.read(file);
+  const disk=editor?await vault.read(file):live;
+  checkCurrent();
+  checkBuffers(live);
   if(this.config.snapshotBeforeRestore!==false&&this.config.enabled)await this.create(file,writerUi('Antes de restaurar ','Before restoring ')+entry.name,{content:live});
-  const editor=writerActiveEditor(this.plugin,file);
-  if(editor)editor.setValue(text);
-  else await this.plugin.app.vault.process(file,()=>text);
+  // Saving the backup can await disk or attachment work. Revalidate the same
+  // editor and base before replacing prose entered during that interval.
+  checkCurrent();
+  if(editor){
+   if(await vault.read(file)!==disk)throw changed();
+   checkCurrent();
+   checkBuffers(live);
+   if(editor.getValue()!==live)throw changed();
+   editor.setValue(text);
+  }else await vault.process(file,current=>{
+   checkCurrent();
+   checkBuffers(live);
+   if(current!==live)throw changed();
+   return text;
+  });
   let restored=0,skipped=0;
   if(attachments)for(const item of entry.attachments||[]){
    if(typeof item.path!=='string'||item.path.startsWith('/')||item.path.split('/').some(x=>x==='..'||x==='.')||item.path.includes('\\')){skipped++;continue;}
@@ -27210,7 +27243,7 @@ async function writerV12OpenTasks(plugin){
 function writerV12SafeName(name){
  return String(name||'').trim().replace(/[\\/:*?"<>|#\[\]\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim().slice(0,70)||'Captured';
 }
-async function writerV12CreateNote(plugin,folder,title,body){
+async function writerV12CreateNote(plugin,folder,title,body,options={}){
  const vault=plugin.app.vault;
  if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
  const now=new Date();
@@ -27218,8 +27251,8 @@ async function writerV12CreateNote(plugin,folder,title,body){
  const base=folder+'/'+date+' '+writerV12SafeName(title);
  let path=base+'.md',number=2;
  while(vault.getAbstractFileByPath(path))path=base+' '+number+++'.md';
- const file=await vault.create(path,String(body||'').slice(0,100000));
- await plugin.app.workspace.getLeaf(false).openFile(file);
+ const file=await vault.create(path,String(body??''));
+ if(options.open!==false)await plugin.app.workspace.getLeaf(false).openFile(file);
  return file;
 }
 function writerV12Capture(plugin,brainstorm){
@@ -27920,11 +27953,19 @@ function writerV12SelectionMenu(plugin,event){
   .onClick(()=>{if(typeof writerV107SpeechPanel==='function')writerV107SpeechPanel(plugin);}));
  menu.showAtPosition({x:event.clientX,y:event.clientY});
 }
-function writerV12MoveSelection(plugin,editor){
+function writerV12MoveSelection(plugin,editor,view){
  if(!writerV12On(plugin,'localInbox')||!editor)return;
  const selected=editor.getSelection()||'';
  if(!selected.trim()){new Notice(writerUi('Selecione o trecho que deseja separar.','Select the passage to extract.'));return;}
- const snapshot=editor.getValue();
+ const workspace=plugin.app.workspace,vault=plugin.app.vault;
+ const sourceView=view||workspace.getLeavesOfType?.('markdown')?.find(leaf=>leaf.view?.editor===editor)?.view;
+ const sourceFile=sourceView?.file,sourcePath=sourceFile?.path;
+ const ranges=()=>JSON.stringify(editor.listSelections().map(({anchor,head})=>({anchor:{line:anchor.line,ch:anchor.ch},head:{line:head.line,ch:head.ch}})));
+ if(!sourceFile||sourceFile.extension!=='md'||sourceView.editor!==editor||editor.listSelections().length!==1){
+  new Notice(writerUi('Selecione um único trecho em uma nota Markdown.','Select one passage in a Markdown note.'));return;
+ }
+ const snapshot=editor.getValue(),selection=ranges(),sourceMtime=sourceFile.stat?.mtime,sourceSize=sourceFile.stat?.size;
+ let busy=false;
  const modal=new Modal(plugin.app);
  modal.setTitle(writerUi('Separar trecho em nova nota','Extract passage into a note'));
  modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
@@ -27933,20 +27974,38 @@ function writerV12MoveSelection(plugin,editor){
  const input=modal.contentEl.createEl('input',{attr:{type:'text',placeholder:writerUi('Nome da nova nota','New note title'),style:'width:100%'}});
  const feedback=modal.contentEl.createEl('p',{cls:'setting-item-description'});
  new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Criar nota vinculada','Create linked note')).setCta().onClick(async()=>{
+  if(busy)return;
   if(!selected.trim()||!input.value.trim()){feedback.setText(writerUi('Informe um nome.','Enter a title.'));return;}
-  b.setDisabled(true);
+  busy=true;b.setDisabled(true);
   try{
-   const file=await writerV12CreateNote(plugin,'Basic Extracts',input.value,selected);
-   // The original selected text is safe in the new note before touching the editor.
-   if(editor.getValue()!==snapshot||editor.getSelection()!==selected){
+   const file=await writerV12CreateNote(plugin,'Basic Extracts',input.value,selected,{open:false});
+   const destinationPath=file.path,destinationMtime=file.stat?.mtime,destinationSize=file.stat?.size;
+   const content=await vault.read(file);
+   const destinationChanged=file.path!==destinationPath||file.stat?.mtime!==destinationMtime||file.stat?.size!==destinationSize||
+    vault.getAbstractFileByPath(destinationPath)!==file||content!==selected||
+    (workspace.getLeavesOfType?.('markdown')||[]).some(leaf=>leaf.view?.file?.path===destinationPath&&
+     leaf.view.getMode?.()!=='preview'&&leaf.view.editor&&leaf.view.editor.getValue()!==selected);
+   if(destinationChanged){
+    feedback.setText(writerUi('A cópia de destino mudou ou está incompleta; o trecho original foi mantido.',
+      'The destination copy changed or is incomplete; the original passage was kept.'));return;
+   }
+   // Check the original document and exact range after every asynchronous step.
+   if(sourceView.file!==sourceFile||sourceFile.path!==sourcePath||sourceFile.stat?.mtime!==sourceMtime||
+    sourceFile.stat?.size!==sourceSize||sourceView.editor!==editor||
+    !(workspace.getLeavesOfType?.('markdown')||[]).some(leaf=>leaf.view===sourceView)||
+    vault.getAbstractFileByPath(sourcePath)!==sourceFile||editor.getValue()!==snapshot||
+    editor.getSelection()!==selected||ranges()!==selection){
     feedback.setText(writerUi('A nota original mudou; o trecho foi copiado, sem substituir a seleção.',
       'The original changed; passage was copied without replacing the selection.'));
     return;
    }
-   editor.replaceSelection('[['+file.path.replace(/\.md$/,'')+']]');
+   editor.replaceSelection('[['+destinationPath.replace(/\.md$/,'')+']]');
    modal.close();
+   try{await workspace.getLeaf(false).openFile(file);}
+   catch(err){new Notice(writerUi('Trecho extraído; não foi possível abrir a nova nota: ',
+    'Passage extracted; could not open the new note: ')+String(err.message||err));}
   }catch(err){feedback.setText(String(err.message||err));}
-  finally{b.setDisabled(false);}
+  finally{busy=false;b.setDisabled(false);}
  }));
  modal.open();
 }
@@ -27954,7 +28013,7 @@ function writerV12ReaderRegister(plugin){
  plugin.addCommand({id:'v12-reader-selected-dom',name:writerUi('TTS: ler seleção em documentos','TTS: read selection from document'),
   callback:()=>writerV12ReadSelection(plugin)});
  plugin.addCommand({id:'v12-extract-selected',name:writerUi('Notas: separar trecho em nova nota','Notes: extract selection to a linked note'),
-  editorCallback:editor=>writerV12MoveSelection(plugin,editor)});
+  editorCallback:(editor,view)=>writerV12MoveSelection(plugin,editor,view)});
  const root=plugin.app.workspace.containerEl;
  if(root)plugin.registerDomEvent(root,'pointerup',event=>{
   // Optional; default false to avoid competing with Android text-selection HUDs.

@@ -2,6 +2,13 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.4.1 — Extraction and snapshot restore preservation
+
+- Preserve complete extracted passages and captured notes instead of truncating their content at 100,000 characters.
+- Verify the new extraction note before replacing the original selection, and preserve the source if its content, selection or note identity changes.
+- Revalidate snapshot restore targets after saving the safety snapshot; reject concurrent editor or disk changes instead of replacing newer prose.
+- Add behavioral regressions and bilingual release documentation for both preservation workflows.
+
 ## 13.4.0 — Longform draft recovery
 
 - Keep local recovery copies of unsaved Longform chapter edits across plugin/application restarts, separate from manuscript files and settings.

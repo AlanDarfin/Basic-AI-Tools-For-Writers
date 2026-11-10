@@ -152,12 +152,45 @@ class WriterSnapshots{
   return this.plugin.app.vault.adapter.read(path);
  }
  async restore(file,entry,attachments=false){
+  const vault=this.plugin.app.vault,path=file.path,editor=writerActiveEditor(this.plugin,file);
+  const checkCurrent=()=>{
+   if(file.path!==path||
+    (typeof vault.getAbstractFileByPath==='function'&&vault.getAbstractFileByPath(path)!==file)||
+    writerActiveEditor(this.plugin,file)!==editor)
+    throw Error(writerUi('A nota ou o editor mudou durante a restauração. Nada foi substituído; tente novamente.',
+     'The note or editor changed during restore. Nothing was replaced; please try again.'));
+  };
+  const changed=()=>Error(writerUi('A nota mudou durante a restauração. As alterações foram preservadas; tente novamente.',
+   'The note changed during restore. Your edits were preserved; please try again.'));
+  const checkBuffers=live=>{
+   for(const leaf of this.plugin.app.workspace.getLeavesOfType('markdown')){
+    const view=leaf.view;
+    if(view?.file?.path===path&&view.editor&&view.getMode?.()!=='preview'&&view.editor.getValue()!==live)
+     throw changed();
+   }
+  };
   const text=await this.read(file,entry);
-  const live=await writerCurrentText(this.plugin,file);
+  checkCurrent();
+  const live=editor?editor.getValue():await vault.read(file);
+  const disk=editor?await vault.read(file):live;
+  checkCurrent();
+  checkBuffers(live);
   if(this.config.snapshotBeforeRestore!==false&&this.config.enabled)await this.create(file,writerUi('Antes de restaurar ','Before restoring ')+entry.name,{content:live});
-  const editor=writerActiveEditor(this.plugin,file);
-  if(editor)editor.setValue(text);
-  else await this.plugin.app.vault.process(file,()=>text);
+  // Saving the backup can await disk or attachment work. Revalidate the same
+  // editor and base before replacing prose entered during that interval.
+  checkCurrent();
+  if(editor){
+   if(await vault.read(file)!==disk)throw changed();
+   checkCurrent();
+   checkBuffers(live);
+   if(editor.getValue()!==live)throw changed();
+   editor.setValue(text);
+  }else await vault.process(file,current=>{
+   checkCurrent();
+   checkBuffers(live);
+   if(current!==live)throw changed();
+   return text;
+  });
   let restored=0,skipped=0;
   if(attachments)for(const item of entry.attachments||[]){
    if(typeof item.path!=='string'||item.path.startsWith('/')||item.path.split('/').some(x=>x==='..'||x==='.')||item.path.includes('\\')){skipped++;continue;}

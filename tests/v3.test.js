@@ -54,9 +54,13 @@ function makeApp(){
   async readBinary(p){return adapterFiles.get(p);},
   async remove(p){adapterFiles.delete(p);}
  };
- const notes=new Map();
+ const notes=new Map(),noteFiles=new Map();
  const app={vault:{adapter,notes,on:()=>({}),getMarkdownFiles:()=>[...notes.keys()].map(x=>new TFile(x)),
-  getAbstractFileByPath:p=>notes.has(p)?new TFile(p):null,
+  getAbstractFileByPath:p=>{
+   if(!notes.has(p))return null;
+   if(!noteFiles.has(p))noteFiles.set(p,new TFile(p));
+   return noteFiles.get(p);
+  },
   read:async f=>notes.get(f.path),cachedRead:async f=>notes.get(f.path),
   process:async(f,fn)=>{notes.set(f.path,fn(notes.get(f.path)));},
   readBinary:async f=>adapter.readBinary(f.path),
@@ -131,8 +135,9 @@ async function run(){
   const diff=writerDiffLines('first\nsecond','first\nthird');
   assert.equal(diff.added,1);assert.equal(diff.removed,1);
  });
- const app=makeApp(),file=new TFile('Book/Chapter.md');
- app.vault.notes.set(file.path,'Hello world');
+ const app=makeApp();
+ app.vault.notes.set('Book/Chapter.md','Hello world');
+ const file=app.vault.getAbstractFileByPath('Book/Chapter.md');
  const plugin={app,settings:writerMergeV3({}),saveSettings:async()=>{}};
  const snapshots=new WriterSnapshots(plugin);plugin.writerSnapshots=snapshots;
  const first=await snapshots.create(file,'Antes de editar');

@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 13.4.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 13.4.1 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -18,6 +18,8 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 ## Funcionalidades
 
 ### Spaces, toolbar e ações móveis
+
+- **Extração e restauração seguras:** separar uma seleção preserva o texto completo, inclusive trechos com mais de 100 mil caracteres, e confere a cópia salva antes de substituir o original por um link. A restauração de snapshots é cancelada se a nota mudar durante a gravação da cópia de segurança.
 
 - **Recuperação de rascunhos Longform:** alterações de capítulos mantêm uma cópia local nos dados do Basic. Após reiniciar, rascunhos compatíveis voltam à escrita contínua; quando o original mudou, ficam separados para revisão. Abra **Longform: recuperar rascunhos** para visualizar, salvar uma nova cópia Markdown ou descartar explicitamente uma entrada. Salvar a cena continua sendo uma ação própria. Rascunhos temporários de sessão mantêm o comportamento anterior, somente em memória.
 

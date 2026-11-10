@@ -244,7 +244,7 @@ async function writerV12OpenTasks(plugin){
 function writerV12SafeName(name){
  return String(name||'').trim().replace(/[\\/:*?"<>|#\[\]\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim().slice(0,70)||'Captured';
 }
-async function writerV12CreateNote(plugin,folder,title,body){
+async function writerV12CreateNote(plugin,folder,title,body,options={}){
  const vault=plugin.app.vault;
  if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
  const now=new Date();
@@ -252,8 +252,8 @@ async function writerV12CreateNote(plugin,folder,title,body){
  const base=folder+'/'+date+' '+writerV12SafeName(title);
  let path=base+'.md',number=2;
  while(vault.getAbstractFileByPath(path))path=base+' '+number+++'.md';
- const file=await vault.create(path,String(body||'').slice(0,100000));
- await plugin.app.workspace.getLeaf(false).openFile(file);
+ const file=await vault.create(path,String(body??''));
+ if(options.open!==false)await plugin.app.workspace.getLeaf(false).openFile(file);
  return file;
 }
 function writerV12Capture(plugin,brainstorm){

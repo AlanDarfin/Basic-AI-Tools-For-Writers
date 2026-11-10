@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.4.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.4.1 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -22,6 +22,8 @@ Write, plan, revise and organize books without moving your work to a separate da
 - **Longform draft recovery:** chapter edits keep a local recovery copy in Basic's plugin data. After a restart, matching drafts return to continuous writing; changed originals are kept separate for review. Open **Longform: recover drafts** to preview, save a new Markdown copy or explicitly discard a recovery entry. Saving a scene remains explicit. Temporary Session drafts keep their existing memory-only behavior.
 
 - **Spaces on mobile:** the persistent selector works with native sidebar tabs and Basic's optional tab manager. Search Space names with accent tolerance, return to Entire vault, or use **Choose Space** from Basic's quick actions or the command palette. Rapid Space switches preserve layout order; opening the collections sidebar keeps the current scope.
+
+- **Safe extraction and restore:** extracting a selection preserves its full text, including passages over 100,000 characters, and checks the saved copy before replacing the source with a link. Snapshot restores stop if the note changes while the backup is being saved.
 
 - **Manuscript preservation:** Longform retains text typed during a save as an unsaved draft. Concurrent snapshots keep their index entries; folder renames retain chapter histories, editorial comments and drafts. Interactive block edits check for changes before saving and support nested Markdown fences.
 

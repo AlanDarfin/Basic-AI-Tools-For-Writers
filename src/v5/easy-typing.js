@@ -198,15 +198,65 @@ class WriterEasyTyping{
   new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
    .setDesc(writerUi('Um caminho por linha.','One path per line.'))
    .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  const section=panel.createDiv({cls:'writer-typing-rules'});
+  section.createEl('h4',{text:writerUi('Substituições automáticas de texto','Automatic text replacements')});
+  section.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Digite um atalho e escolha o texto que aparece no lugar. Ex.: vc → você ou att → atenciosamente. Aceita espaços, quebras e o caractere |; não usa expressões regulares. Aspas e travessões ficam em Smart Typography.',
+   'Type a shortcut and choose what it becomes. For example, btw → by the way. Spaces and | are allowed; regular expressions are separate. Quotes and dashes are configured in Smart Typography.'
+  )});
+  const list=section.createDiv({cls:'writer-typing-rule-list'});
+  const label=rule=>rule.from+' → '+(rule.to||writerUi('(apagar)','(delete)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');
+  const render=()=>{
+   list.empty();
+   if(!this.cfg.customReplacements.length)list.createEl('p',{cls:'dictionary-muted',text:writerUi('Nenhuma regra personalizada.','No custom rules yet.')});
+   this.cfg.customReplacements.forEach((rule,index)=>{
+    const details=list.createEl('details',{cls:'writer-typing-rule'});
+    const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    new Setting(details).setName(writerUi('Quando eu digitar','When I type')).setDesc(writerUi('Atalho literal, até 80 caracteres.','Literal shortcut, up to 80 characters.')).addText(t=>{
+     t.setPlaceholder(writerUi('Ex.: vc','E.g. btw')).setValue(rule.from);
+     t.inputEl.setAttribute('aria-label',writerUi('Texto original','Original text'));
+     t.onChange(async value=>{
+      if(!value||value.length>80)return;
+      rule.from=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).setDesc(writerUi('Até 300 caracteres; vazio remove o atalho digitado.','Up to 300 characters; empty removes the typed shortcut.')).addTextArea(t=>{
+     t.inputEl.rows=2;t.inputEl.maxLength=300;
+     t.setPlaceholder(writerUi('Ex.: você','E.g. by the way')).setValue(rule.to);
+     t.inputEl.setAttribute('aria-label',writerUi('Texto de substituição','Replacement text'));
+     t.onChange(async value=>{
+      if(value.length>300)return;
+      rule.to=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
+     rule.enabled=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+    })).addExtraButton(b=>b.setIcon('trash-2').setTooltip(writerUi('Excluir esta substituição','Delete this replacement')).onClick(async()=>{
+     this.cfg.customReplacements.splice(index,1);await this.plugin.saveSettings();render();
+    }));
+   });
+  };
+  render();
+  const add=section.createEl('details',{cls:'writer-typing-rule-new'});
+  add.createEl('summary',{text:writerUi('Adicionar substituição','Add replacement')});
+  let from='',to='';
+  new Setting(add).setName(writerUi('Quando eu digitar','When I type')).addText(t=>{
+   t.setPlaceholder(writerUi('Ex.: pq','E.g. asap')).onChange(value=>{from=value;});
+  });
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+   t.inputEl.rows=2;t.inputEl.maxLength=300;
+   t.setPlaceholder(writerUi('Ex.: porque','E.g. as soon as possible')).onChange(value=>{to=value;});
+  });
+  new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar substituição','Save replacement')).setCta().onClick(async()=>{
+   if(!from||from.length>80||to.length>300||this.cfg.customReplacements.length>=50){
+    new Notice(writerUi('Informe um atalho válido (1–80 caracteres), uma substituição de até 300 caracteres e use no máximo 50 regras.','Enter a shortcut (1–80 characters), a replacement of at most 300 characters, and keep at most 50 rules.'));
+    return;
+   }
+   this.cfg.customReplacements.push({from,to,enabled:true});
+   await this.plugin.saveSettings();render();add.open=false;
+   for(const input of add.querySelectorAll('input,textarea'))input.value='';
+   from='';to='';
+  }));
   this.plugin.writerEasyAdvanced?.renderSettings(panel);
-  new Setting(panel).setName(writerUi('Substituições literais','Literal replacement rules'))
-   .setDesc(writerUi('Uma por linha: origem|destino. Sem regex ou JavaScript.','One per line: source|replacement; no regex or JavaScript.'))
-   .addTextArea(t=>{t.inputEl.rows=5;t.setValue(this.cfg.customReplacements.map(x=>x.from+'|'+x.to).join('\n')).onChange(async v=>{
-    this.cfg.customReplacements=v.split(/\r?\n/).slice(0,50).map(line=>{
-     const split=line.indexOf('|');
-     return split>0?{from:line.slice(0,split).trim(),to:line.slice(split+1),enabled:true}:null;
-    }).filter(Boolean).filter(x=>x.from&&x.from.length<=80&&x.to.length<=300);
-    await this.plugin.saveSettings();
-   });});
  }
 }

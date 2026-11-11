@@ -2,6 +2,17 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.6.0 — Visual interface polish across writing workflows
+
+- Improve real-pane layouts in Settings, AI connections, homepage widgets, bookshelf cards, Dictionary, Translation, Assistant and Review.
+- Wrap chapter titles and keep hierarchy visible; provide a compact section selector in narrow Project panes and accessible keyboard navigation in wider tabs.
+- Restore Soundscapes action icons, hide unavailable actions and retain readable station selection while preserving local/custom-playlist controls.
+- Keep recovery-list keyboard focus during background draft updates.
+- Cancel stale Project metadata renders after selection changes, renames, view replacement or closing.
+- Include PR #133's native desktop quote pairing, optional dialogue dashes and individual literal/regex rule editors; preserve pipes, multiline replacements and disabled rules.
+- Step over existing typographic closing quotes, protect empty fenced-code lines and keep the previous regex rule when an edit is invalid.
+- Preserve existing notes, settings and per-Space layouts; verify light/dark and desktop/narrow-window layouts in real Obsidian.
+
 ## 13.5.0 — Complete manuscript compilation and recovery discard
 
 - Compile all chapters in the selected Longform draft independently of the editor display limit, and support single-note books from the command palette.

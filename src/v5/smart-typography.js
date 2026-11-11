@@ -2,7 +2,7 @@
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={
  enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
- fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,
+ fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,dialogueDashes:true,
  openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
  openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
 };
@@ -14,7 +14,7 @@ const WRITER_TYPO_FRACTIONS={
 function writerTypoMerge(settings){
  const old=settings.smartTypography;
  const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
- for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes'])cfg[key]=cfg[key]===true;
  for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
@@ -30,6 +30,10 @@ function writerTypoAtInput(before,typed,cfg){
   if(before.endsWith('–-'))return put('–-','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
+ // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
+ // Wait for the first letter so Markdown's --- separator remains available.
+ if(cfg.dashes&&cfg.dialogueDashes&&/[\p{L}]/u.test(typed)&&/^\s*--[\p{L}]$/u.test(before))
+  return put('--'+typed,'—'+typed);
  if(cfg.ellipsis&&typed==='.'&&before.endsWith('...'))return put('...','…');
  if(cfg.guillemets&&typed==='<'&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
  if(cfg.guillemets&&typed==='>'&&before.endsWith('>>'))return put('>>',cfg.closeGuillemet);
@@ -97,6 +101,63 @@ function writerTypoConvertProse(text,cfg){
   return transformed;
  }).join('\n');
 }
+/* One CodeMirror transaction filter for both modules. The desktop auto-pair
+ * extension often inserts two quotes together, not one typed character.
+ * Keep those insertions in a single undoable transaction and restore the
+ * caret between the typographic pair. Avoid paste, completion and IME edits. */
+function writerTypingFilterTransaction(tr,p){
+ if(!tr.docChanged||!tr.changes?.iterChanges||!tr.isUserEvent?.('input'))return tr;
+ if(['input.type.compose','input.paste','input.drop','input.complete'].some(e=>tr.isUserEvent(e)))return tr;
+ const typography=p.writerSmartTypography,typoOn=typography?.active()===true;
+ const easy=p.writerEasyTyping,easyOn=easy?.active()===true;
+ if(!typoOn&&!easyOn)return tr;
+ const edits=[];let caret=null;
+ tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+  if(fromA!==toA)return;
+  const insertion=inserted.toString();
+  const doc=tr.newDoc;
+  const line=doc.lineAt(Math.min(toB,doc.length));
+  const prefix=doc.sliceString(line.from,toB);
+  if(writerTypingUnsafeContext(tr.startState,fromA,prefix))return;
+  const paired=insertion.length===2&&insertion[0]===insertion[1]&&
+   (insertion[0]==='"'||insertion[0]==="'")&&
+   tr.startState.selection?.ranges?.length===1&&tr.startState.selection.main.empty&&
+   tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
+   tr.newSelection.main.head===fromB+1;
+  // The native editor cannot skip its ASCII closer after we convert the pair.
+  // Typing a matching quote should step over the existing typographic closer.
+  if(typoOn&&typography.cfg.curlyQuotes&&(insertion.length===1||paired)&&
+   (insertion[0]==='"'||insertion[0]==="'")&&tr.newSelection?.ranges?.length===1){
+   const closer=insertion[0]==="'"?typography.cfg.closeSingle:typography.cfg.closeDouble;
+   const suggestion=writerTypoAtInput(doc.sliceString(line.from,fromB+1),insertion[0],typography.cfg);
+   if(suggestion?.text===closer&&doc.sliceString(toB,Math.min(doc.length,toB+closer.length))===closer){
+    edits.push({from:fromB,to:toB,insert:''});caret={anchor:fromB+closer.length};return;
+   }
+  }
+  if(paired&&typoOn&&typography.cfg.curlyQuotes){
+   const single=insertion[0]==="'";
+   const opener=single?typography.cfg.openSingle:typography.cfg.openDouble;
+   const closer=single?typography.cfg.closeSingle:typography.cfg.closeDouble;
+   const firstPrefix=doc.sliceString(line.from,fromB+1);
+   const suggestion=writerTypoAtInput(firstPrefix,insertion[0],typography.cfg);
+   if(suggestion?.text!==opener)return; // Only change auto-paired opening quotes.
+   edits.push({from:fromB,to:toB,insert:opener+closer});
+   caret={anchor:fromB+opener.length};
+   return;
+  }
+  if(insertion.length!==1)return;
+  let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
+  if(!proposal&&easyOn)proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);
+  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length)
+   edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+ });
+ if(!edits.length)return tr;
+ edits.sort((a,b)=>a.from-b.from);
+ if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
+ const next={changes:edits,sequential:true};
+ if(caret&&edits.length===1)next.selection=caret;
+ return [tr,next];
+}
 class WriterSmartTypography{
  constructor(plugin){this.plugin=plugin;}
  get cfg(){return this.plugin.settings.smartTypography;}
@@ -114,29 +175,7 @@ class WriterSmartTypography{
   }});
   const {EditorState}=require('@codemirror/state');
   if(!EditorState?.transactionFilter?.of)return;
-  p.registerEditorExtension(EditorState.transactionFilter.of(tr=>{
-   if(!tr.docChanged||!tr.isUserEvent?.('input.type')||tr.isUserEvent?.('input.type.compose')||!tr.changes?.iterChanges)return tr;
-   if(!this.active()&&!p.writerEasyTyping?.active())return tr;
-   const edits=[];
-   tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
-    const character=inserted.toString();
-    if(character.length!==1||fromA!==toA)return;
-    const doc=tr.newDoc;
-    const line=doc.lineAt(Math.min(toB,doc.length));
-    const priorLine=doc.sliceString(line.from,toB);
-    if(writerTypingUnsafeContext(tr.startState,fromA,priorLine))return;
-    let proposal=null;
-    if(this.active())proposal=writerTypoAtInput(priorLine,character,this.cfg);
-    if(!proposal&&p.writerEasyTyping?.active())
-     proposal=writerEasyTypingAtInput(priorLine,character,p.writerEasyTyping.cfg);
-    if(proposal&&proposal.consume>0&&proposal.consume<=priorLine.length)
-     edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
-   });
-   if(!edits.length)return tr;
-   edits.sort((a,b)=>a.from-b.from);
-   if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
-   return [tr,{changes:edits,sequential:true}];
-  }));
+  p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Smart Typography · tipografia','Smart Typography')});
@@ -147,6 +186,7 @@ class WriterSmartTypography{
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
    ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['dialogueDashes','Travessão de diálogo (--Olá)','Dialogue dash (--Hello)'],
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
   for(const [key,pt,en] of [
@@ -174,13 +214,40 @@ function writerTypingUnsafeContext(state,from,prefix){
  if(ticks%2!==0)return true;
  if(/(?:https?:\/\/|obsidian:\/\/|www\.|mailto:)\S*$/i.test(line))return true;
  if(/(?:!?\[[^\]]*\]\([^)]*|\[\[[^\]]*|\$\$?[^$]*)$/.test(line))return true;
+ let parsed=false;
  try{
-  const {syntaxTree}=require('@codemirror/language');
+  const {syntaxTree,syntaxTreeAvailable}=require('@codemirror/language');
   const tree=typeof syntaxTree==='function'&&state?syntaxTree(state):null;
+  parsed=Boolean(tree)&&(typeof syntaxTreeAvailable!=='function'||syntaxTreeAvailable(state,from));
   if(tree){
    for(let node=tree.resolveInner(Math.max(0,from-1),1);node;node=node.parent)
     if(/Code|Math|Frontmatter|YAML|Link|URL|HTML|Comment|Tag/i.test(node.name||''))return true;
   }
  }catch(_){}
+ // Obsidian's line-oriented parser has no node on an empty fenced-code line.
+ // Check fence state for the first input on a blank line (or an unparsed range),
+ // rather than scanning a long manuscript for every ordinary prose keystroke.
+ if(state?.doc?.lineAt&&state.doc.line){
+  const cursor=state.doc.lineAt(Math.min(from,state.doc.length));
+  const head=cursor.text.slice(0,Math.max(0,from-cursor.from));
+  if(!parsed||!head.replace(/^(?:\s*> ?)+/,'').trim()){
+   let fence=null;
+   const consume=text=>{
+    const clean=text.replace(/^(?: {0,3}> ?)+/,'');
+    const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(clean);
+    if(!match)return;
+    const marker=match[1],tail=match[2];
+    if(!fence){
+     if(marker[0]==='\x60'&&tail.includes('\x60'))return;
+     fence={symbol:marker[0],length:marker.length};
+    }else if(marker[0]===fence.symbol&&marker.length>=fence.length&&!tail.trim())fence=null;
+   };
+   if(typeof state.doc.iterLines==='function'){
+    const lines=state.doc.iterLines(1,cursor.number);
+    while(!lines.next().done)consume(lines.value);
+   }else for(let number=1;number<cursor.number;number++)consume(state.doc.line(number).text);
+   if(fence)return true;
+  }
+ }
  return false;
 }

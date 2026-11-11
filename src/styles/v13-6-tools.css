@@ -1,0 +1,158 @@
+/* Writing tools respond to their pane, including a narrow desktop sidebar. */
+.dictionary-view-content.writer-tool-root{
+ gap:10px;
+}
+.dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs{
+ display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:4px;overflow:visible;align-items:stretch;
+ padding:0 0 8px;
+}
+body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button{
+ width:100%;min-width:0;max-width:100%;min-height:36px;
+ padding:7px 5px;white-space:normal;overflow-wrap:normal;
+ line-height:1.3;box-shadow:none;
+}
+body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-tool-panel{
+ gap:10px;padding:6px 0 12px;
+}
+.dictionary-view-content.writer-tool-root .dictionary-heading{
+ margin:0;font-size:var(--font-ui-medium);line-height:1.4;
+}
+.dictionary-view-content.writer-tool-root :is(.dictionary-results,.dictionary-output,.writer-review-results){
+ min-width:0;max-width:100%;
+}
+.dictionary-view-content.writer-tool-root :is(.dictionary-markdown,.writer-chat-bubble,.writer-review-explanation) pre{
+ max-width:100%;overflow:auto;
+}
+.dictionary-view-content.writer-tool-root :is(.dictionary-card,.dictionary-local-result,.writer-review-card){
+ border-radius:var(--radius-m);box-shadow:none;
+}
+body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-translation-panel>textarea{
+ flex:0 0 auto;min-height:128px;max-height:38vh;
+ line-height:1.55;resize:vertical;
+}
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar{
+ display:grid;grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr);
+ align-items:center;gap:8px;padding:0;
+}
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar select{
+ grid-column:auto;width:100%;min-width:0;max-width:100%;min-height:38px;
+}
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar .dictionary-translation-engine,
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>button{
+ grid-column:1/-1;
+}
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar .dictionary-language-arrow{
+ grid-column:2;justify-self:center;transform:none;margin:0;
+ color:var(--text-muted);line-height:1;
+}
+body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-panel{
+ flex:1 1 0;min-height:0;gap:0;padding:0;overflow:hidden;
+ border:0;border-radius:0;background:var(--background-primary);
+}
+.dictionary-view-content.writer-tool-root .writer-chat-panel>.writer-chat-header{
+ display:flex;flex:0 0 auto;flex-wrap:wrap;align-items:center;
+ gap:6px 10px;min-width:0;padding:4px 0 2px;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-header strong{
+ flex:1 1 120px;min-width:0;line-height:1.4;overflow-wrap:break-word;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-header button{
+ flex:0 1 auto;min-width:0;max-width:100%;min-height:30px;
+ padding:5px 8px;white-space:normal;line-height:1.3;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-header .writer-chat-clear{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 32px;width:32px;height:32px;padding:6px;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-clear svg{width:16px;height:16px}
+.dictionary-view-content.writer-tool-root .writer-chat-panel>.writer-chat-messages{
+ flex:1 1 0;min-height:0;max-height:none;overflow:auto;
+ padding:4px 2px;gap:12px;overscroll-behavior:contain;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-panel>.writer-chat-attachments{
+ flex:0 0 auto;gap:6px;padding:4px 0;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-attachments>button{
+ min-height:32px;max-width:100%;white-space:normal;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-panel>.writer-file-status{
+ flex:0 0 auto;line-height:1.4;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-panel>.writer-chat-composer{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;
+ flex:0 0 auto;gap:8px;align-items:end;padding:8px 0 0;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-composer textarea{
+ width:100%;min-width:0;height:72px;min-height:56px;max-height:160px;
+ padding:8px 10px;line-height:1.45;
+}
+.dictionary-view-content.writer-tool-root .writer-chat-composer button{
+ min-height:40px;max-width:100%;white-space:normal;
+}
+.dictionary-view-content.writer-tool-root .writer-review-engine-row{
+ display:grid;grid-template-columns:auto minmax(0,1fr);
+ gap:8px;align-items:center;min-width:0;
+}
+.dictionary-view-content.writer-tool-root .writer-review-engine-row>select{
+ min-width:0;max-width:100%;
+}
+.dictionary-view-content.writer-tool-root .writer-file-actions>button{
+ min-height:40px;white-space:normal;line-height:1.35;
+}
+.dictionary-view-content.writer-tool-root :is(button,input,textarea,select,summary):focus-visible,
+:is(.writer-v134-recovery-modal,.writer-v135-compile-modal) :is(button,input,textarea,select,summary):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:2px;
+}
+.writer-v134-recovery-modal .modal-content,
+.writer-v135-compile-modal .modal-content{
+ overscroll-behavior:contain;
+}
+.writer-v134-recovery .writer-v134-recovery-path{
+ font-size:var(--font-ui-small);line-height:1.45;
+}
+.writer-v134-recovery .writer-v134-recovery-actions button{
+ min-height:40px;line-height:1.35;
+}
+.writer-v134-recovery .writer-v134-recovery-discard:not(:disabled){
+ color:var(--text-error);
+}
+.writer-v134-recovery :is(.writer-v134-recovery-draft,.writer-v134-recovery-current){
+ line-height:1.6;
+}
+.writer-v135-compile details>ol>li{
+ padding-block:4px;line-height:1.45;overflow-wrap:anywhere;
+}
+.writer-v135-compile details>summary::marker,
+.writer-v134-recovery .writer-v134-recovery-original>summary::marker{
+ color:var(--text-accent);
+}
+@container writer-sidebar (max-width:300px){
+ .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button{
+  min-height:38px;
+ }
+ .dictionary-view-content.writer-tool-root .writer-review-engine-row{
+  grid-template-columns:minmax(0,1fr);gap:4px;
+ }
+}
+@media(max-width:600px){
+ body .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar :is(select,button){min-height:44px}
+ .dictionary-view-content.writer-tool-root :is(input[type="search"],textarea){
+  font-size:16px;
+ }
+ body .dictionary-view-content.writer-tool-root :is(.writer-tool-tabs.writer-tool-tabs>button,.dictionary-controls button,.dictionary-actions button,.writer-file-actions>button){
+  min-height:44px;
+ }
+ .dictionary-view-content.writer-tool-root .writer-chat-composer textarea{
+  height:80px;
+ }
+ .dictionary-view-content.writer-tool-root .writer-chat-header .writer-chat-clear{
+  flex-basis:44px;width:44px;height:44px;
+ }
+ .writer-v134-recovery .writer-v134-recovery-actions button{
+  min-height:44px;
+ }
+}

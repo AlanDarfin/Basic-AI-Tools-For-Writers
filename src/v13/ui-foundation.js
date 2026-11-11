@@ -164,3 +164,40 @@ function writerV132ProtectStatusBar(plugin,item){
  bar.classList.add('writer-v132-status-host');
  if(!already)plugin.register?.(()=>bar.classList.remove('writer-v132-status-host'));
 }
+
+/** Keep horizontal project tabs usable without a pointer or a visible scrollbar. */
+function writerV136BindProjectTabs(strip){
+ if(!strip||strip.dataset.basicV136Keyboard==='1')return;
+ strip.dataset.basicV136Keyboard='1';
+ strip.addEventListener('keydown',event=>{
+  if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
+  const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
+  if(!tabs.length)return;
+  const target=event.target.closest?.('button[role="tab"]');
+  let index=tabs.indexOf(target);
+  if(index<0)return;
+  const direction=strip.ownerDocument?.defaultView?.getComputedStyle?.(strip)?.direction==='rtl'?-1:1;
+  const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+   (index+(event.key==='ArrowRight'?direction:-direction)+tabs.length)%tabs.length;
+  event.preventDefault();
+  tabs[next].focus();tabs[next].click();
+  tabs[next].scrollIntoView?.({block:'nearest',inline:'nearest'});
+ });
+}
+
+/** Named tool panes let compact layouts follow the pane width, not the window. */
+function writerV136DecorateToolPanels(view){
+ view.panels?.definition?.addClass('writer-definition-panel');
+ view.panels?.translation?.addClass('writer-translation-panel');
+ view.reviewStatus?.setAttribute('role','status');
+ view.reviewStatus?.setAttribute('aria-live','polite');
+}
+
+/** Native settings navigation is compact only while Basic owns the page. */
+function writerV136MarkSettingsHost(tab,active){
+ tab.writerV136SettingsHost?.classList.remove('writer-v136-settings-host');
+ tab.writerV136SettingsHost=null;
+ if(!active)return;
+ const host=tab.containerEl?.closest?.('.mod-settings');
+ if(host){host.classList.add('writer-v136-settings-host');tab.writerV136SettingsHost=host;}
+}

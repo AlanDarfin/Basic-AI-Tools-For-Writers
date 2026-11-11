@@ -1,0 +1,142 @@
+/* 13.6: a compact homepage and readable book cards at the actual pane width.
+ * Keep the measured masonry rows and per-Space widget frames untouched. */
+.writer-v8-home .writer-v8-home-hero{
+ max-width:1100px;
+ margin:0 auto 12px;
+}
+body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
+ flex-direction:row;
+ align-items:center;
+ justify-content:flex-start;
+ gap:12px;
+ padding:8px 0;
+ text-align:start;
+}
+body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading h2{
+ min-width:0;
+ margin:0;
+ padding:0;
+ font-size:clamp(1.3rem,2.6cqi,1.85rem);
+ font-weight:var(--font-semibold);
+ line-height:1.3;
+ letter-spacing:normal;
+ text-align:start;
+ text-wrap:pretty;
+}
+body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon{
+ flex:0 0 42px;
+ width:42px;
+ min-width:42px;
+ height:42px;
+ min-height:42px;
+}
+body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
+ width:32px;
+ height:32px;
+}
+.writer-v8-home .writer-v8-home-search-region{
+ box-sizing:border-box;
+ width:100%;
+ max-width:1100px;
+ margin:0 auto 12px;
+}
+.writer-v8-home .writer-v8-home-quick-actions{
+ margin-bottom:14px;
+}
+.writer-v8-home .writer-v8-home-card-header{
+ align-items:center;
+ gap:8px;
+}
+.writer-v8-home .writer-v903-widget-heading h3{
+ line-height:1.35;
+}
+.writer-v8-home .writer-v903-widget-controls>button{
+ width:30px;
+ min-width:30px;
+ height:30px;
+ min-height:30px;
+}
+.writer-v8-home :is(.writer-v903-widgets-toolbar,.writer-v108-books-widget-toolbar){
+ min-width:0;
+ flex-wrap:wrap;
+}
+.writer-v8-home .writer-v903-widgets-toolbar strong{
+ min-width:0;
+}
+/* Obsidian's native buttons are nowrap and have a fixed control height. Book
+ * cards need their prose to wrap and their contents to determine the height. */
+:is(.writer-v10-bookshelf,.writer-v108-books-widget) .writer-v108-book-card>.writer-v10-book{
+ height:auto;
+ white-space:normal;
+}
+:is(.writer-v10-bookshelf,.writer-v108-books-widget) .writer-v10-book-info{
+ overflow:hidden;
+}
+:is(.writer-v10-bookshelf,.writer-v108-books-widget) .writer-v108-book-title{
+ white-space:normal;
+ overflow-wrap:anywhere;
+ line-height:1.4;
+}
+:is(.writer-v10-bookshelf,.writer-v108-books-widget) .writer-v10-book-series{
+ display:-webkit-box;
+ -webkit-box-orient:vertical;
+ -webkit-line-clamp:2;
+ overflow:hidden;
+ white-space:normal;
+ overflow-wrap:anywhere;
+ line-height:1.4;
+}
+.writer-v108-books-widget .writer-v108-book-card>.writer-v10-book{
+ padding-inline-end:38px;
+}
+.writer-v108-books-widget .writer-v108-book-card .writer-v10-book-cover{
+ flex-basis:48px;
+ width:48px;
+ height:70px;
+}
+.writer-v108-books-widget .writer-v10-book-count{
+ white-space:normal;
+}
+@container basic-home (max-width:560px){
+ .writer-v8-home .writer-v8-home-hero{margin-bottom:10px;}
+ body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
+  gap:10px;
+  padding:6px 0;
+ }
+ .writer-v8-home .writer-v8-home-quick-actions>.writer-v8-home-action{
+  min-height:42px;
+ }
+ .writer-v8-home .writer-v903-widget-controls>button{
+  width:34px;
+  min-width:34px;
+  height:34px;
+  min-height:34px;
+  padding:7px;
+ }
+ .writer-v8-home .writer-v903-widget-heading{gap:6px;}
+}
+/* Physical mobile controls remain comfortable to tap. Reordering stays in the
+ * widget menu; do not reintroduce drag or resize handles on touch devices. */
+body.is-mobile .writer-v8-home .writer-v903-widget-controls>button{
+ width:44px;
+ min-width:44px;
+ height:44px;
+ min-height:44px;
+ padding:12px;
+}
+body.is-mobile .writer-v8-home .writer-v903-widget-controls>.writer-v924-drag-handle{
+ display:none;
+}
+body.is-mobile .writer-v8-home :is(.writer-v8-home-action,.writer-v903-widget-add,.writer-v108-books-widget-toolbar>button){
+ min-height:44px;
+}
+body.is-mobile :is(.writer-v10-bookshelf,.writer-v108-books-widget) .writer-v108-book-favorite{
+ width:44px;
+ min-width:44px;
+ height:44px;
+ min-height:44px;
+ padding:12px;
+}
+body.is-mobile :is(.writer-v10-bookshelf,.writer-v108-books-widget) .writer-v108-book-card>.writer-v10-book{
+ padding-inline-end:56px;
+}

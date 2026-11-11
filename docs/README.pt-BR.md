@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 13.5.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 13.6.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -18,6 +18,8 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 ## Funcionalidades
 
 ### Spaces, toolbar e ações móveis
+
+- **Interface compacta e legível:** configurações, homepage, cartões de livros e painéis de escrita se adaptam à largura real do painel. Os nomes dos capítulos quebram em linhas; painéis estreitos ganham seletor de seção; as abas de projetos funcionam pelo teclado; e o Soundscapes mantém a rádio legível. Atualizações da recuperação preservam o foco do teclado. Preferências, notas e layouts dos Spaces são preservados.
 
 - **Compilação completa do manuscrito:** exporte todos os capítulos do rascunho Longform selecionado, independentemente do limite de exibição dos editores. Escolha arquivos salvos ou a escrita atual, com rascunhos compatíveis e texto ainda não salvo. Capítulos ausentes ou versões conflitantes interrompem a compilação; a prévia mantém o texto escolhido até ser atualizada.
 
@@ -136,7 +138,7 @@ Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (comput
 ### Edição e formatação Markdown e navegação
 
 - **Keyshots:** atalhos de navegação e edição pelo teclado.
-- **Easy Typing e Smart Typography:** auxílio automático para digitação, espaçamento, símbolos e tipografia.
+- **Easy Typing e Smart Typography:** auxílio automático para digitação, espaçamento, símbolos e tipografia. Aspas pareadas mantêm o cursor entre as aspas tipográficas; fechar avança sobre a existente. A regra opcional de diálogo reconhece `--Olá`. Regras literais/regex individuais preservam `|`, substituições multilinha e regras desativadas; uma edição de regex inválida mantém a regra anterior. Código, texto colado e composição IME ficam fora das transformações de digitação.
 - **Máquina de escrever:** foco no texto e destaque de linha.
 - **Remember Cursor:** preservação e recuperação da posição do cursor.
 - **Variantes e snapshots:** compare versões de trechos antes de substituí-los e salve versões locais das notas.

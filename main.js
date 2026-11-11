@@ -86,6 +86,7 @@ class ProjectsView extends ItemView{
  getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
  async onOpen(){
+  this.writerProjectClosed=false;
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
   if(typeof MutationObserver==='function'){
    this.writerSettingsObserver=new MutationObserver(()=>{
@@ -113,11 +114,12 @@ class ProjectsView extends ItemView{
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
  }
- queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
+ queueRender(){if(this.writerProjectClosed)return;clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
+ async onClose(){this.writerProjectClosed=true;this.renderToken++;this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
-  if(!this.root)return;
+  const root=this.root;
+  if(!root||this.writerProjectClosed)return;
   this.tabPanelScrollPositions=this.tabPanelScrollPositions||Object.create(null);
   const previousScroll=this.root.scrollTop;
   for(const element of this.root.querySelectorAll?.('.writer-project-panel[data-tab]')||[]){
@@ -134,7 +136,7 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
+  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create',attr:{title:lfMsg('Criar projeto','Create project'),'aria-label':lfMsg('Criar projeto','Create project')}}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
@@ -147,6 +149,10 @@ class ProjectsView extends ItemView{
   selector.value=this.selected;
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
+  selector.title=project.title;
+  const projectPath=project.file.path;
+  const isCurrent=()=>!this.writerProjectClosed&&this.root===root&&token===this.renderToken&&
+   this.selected===projectPath&&project.file.path===projectPath;
   this.currentProject=project;
   // Series stays below the selector, even when the viewport or tab changes.
   const seriesRow=this.root.createDiv({cls:'writer-project-series-row'});
@@ -158,11 +164,14 @@ class ProjectsView extends ItemView{
    attr:{type:'button','aria-label':lfMsg('Gerenciar séries de livros','Manage book series')}})
    .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
-   try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
+   try{const raw=await this.app.vault.cachedRead(project.file);
+    if(!isCurrent())return;
+    const fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
     const parsed=fm?parseYaml(fm[1]):null;
     if(Array.isArray(parsed?.longform?.scenes)&&parsed.longform.scenes.length){project.meta={...project.meta,...parsed.longform};project.scenes=parsed.longform.scenes;}
-   }catch(e){console.warn('[Basic AI] Could not read Longform index',e);}
+   }catch(e){if(!isCurrent())return;console.warn('[Basic AI] Could not read Longform index',e);}
   }
+  if(!isCurrent())return;
   this.projectPrefs=this.prefs(project);
   if(!writerModuleOn(this.plugin,'projects')){
    this.root.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
@@ -190,7 +199,10 @@ class ProjectsView extends ItemView{
   this.tabGroup=activeGroup;
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   const groupButtons={};
-  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist'}});
+  const tabPrefix=this.writerTabPrefix??=('writer-project-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
+  const compactTabs=this.root.createEl('select',{cls:'writer-v136-project-sections',attr:{'aria-label':lfMsg('Seção do projeto','Project section')}});
+  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
+  if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
   const panels={};
   const tabButtons={};
   let rebuildingTabs=false;
@@ -199,33 +211,41 @@ class ProjectsView extends ItemView{
   const switchTab=id=>{
    if(this.activeTab===id)return;
    this.activeTab=id;
+   compactTabs.value=id;
    for(const [key,button] of Object.entries(tabButtons)){
     const selected=key===id;
     button.classList.toggle('is-active',selected);
     button.setAttribute('aria-selected',String(selected));
+    button.tabIndex=selected?0:-1;
    }
-   for(const [key,panel] of Object.entries(panels))
+   for(const [key,panel] of Object.entries(panels)){
     panel.style.display=key===id?'block':'none';
+    panel.setAttribute?.('aria-hidden',String(key!==id));
+   }
    void this.renderProjectPanel(panels,project,++this.renderToken,id)
     .catch(error=>console.error('[Basic AI] Could not render project tab',error));
   };
   const fillTabs=group=>{
    rebuildingTabs=true;
    tabs.empty();
+   compactTabs.empty();
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
+    const option=compactTabs.createEl('option',{text:name});option.value=id;
     const selected=this.activeTab===id;
     const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
-     attr:{type:'button',role:'tab','aria-selected':String(selected)}});
+     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
     require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
     btn.prepend?.(glyph);
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
+   compactTabs.value=this.activeTab;
    tabs.scrollLeft=Math.max(0,this.tabScrollPositions[group]||0);
    rebuildingTabs=false;
   };
+  compactTabs.addEventListener('change',()=>switchTab(compactTabs.value));
   for(const group of menuGroups){
    const groupLabel=lfMsg(group.pt,group.en);
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
@@ -247,15 +267,18 @@ class ProjectsView extends ItemView{
      b.setAttribute('aria-pressed',String(active));
     }
     fillTabs(group.id);
-    for(const [key,panel] of Object.entries(panels))
+    for(const [key,panel] of Object.entries(panels)){
      panel.style.display=key===this.activeTab?'block':'none';
+     panel.setAttribute?.('aria-hidden',String(key!==this.activeTab));
+    }
     void this.renderProjectPanel(panels,project,++this.renderToken,this.activeTab)
      .catch(error=>console.error('[Basic AI] Could not render project group',error));
    });
   }
   for(const [id] of allTabs){
-   panels[id]=this.root.createDiv({cls:'writer-project-panel'});
+   panels[id]=this.root.createDiv({cls:'writer-project-panel',attr:{role:'tabpanel',id:tabPrefix+'-panel-'+id,'aria-labelledby':tabPrefix+'-tab-'+id,tabindex:'0'}});
    panels[id].setAttribute?.('data-tab',id);
+   panels[id].setAttribute?.('aria-hidden',String(this.activeTab!==id));
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
   tabs.addEventListener('wheel',event=>{
@@ -268,6 +291,7 @@ class ProjectsView extends ItemView{
   },{passive:true});
   fillTabs(activeGroup);
   await this.renderProjectPanel(panels,project,token,this.activeTab);
+  if(!isCurrent())return;
   this.root.scrollTop=previousScroll;
   if(this.pendingSceneFocus?.path===project.file.path&&this.activeTab==='scenes'){
    const scene=this.pendingSceneFocus.title;this.pendingSceneFocus=null;
@@ -582,8 +606,8 @@ class ProjectsView extends ItemView{
     for(const [label,icon,action] of [
      [lfMsg('Mover para cima','Move up'),'arrow-up',()=>this.moveScene(project,name,-1)],
      [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>this.moveScene(project,name,1)],
-     ['Diminuir recuo','arrow-left',()=>this.indentScene(project,name,-1)],
-     ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
+     [lfMsg('Diminuir recuo','Decrease indent'),'arrow-left',()=>this.indentScene(project,name,-1)],
+     [lfMsg('Aumentar recuo','Increase indent'),'arrow-right',()=>this.indentScene(project,name,1)],
      [lfMsg('Adicionar subcapítulo','Add subchapter'),'plus',()=>this.addScene(project,name)],
      [lfMsg('Renomear cena','Rename scene'),'pencil',()=>this.renameScene(project,name)],
      [lfMsg('Inspecionar cena','Inspect scene'),'clipboard-list',()=>file?writerV7StudioOpenSheet(this,{
@@ -5482,16 +5506,66 @@ class WriterEasyTyping{
   new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
    .setDesc(writerUi('Um caminho por linha.','One path per line.'))
    .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  const section=panel.createDiv({cls:'writer-typing-rules'});
+  section.createEl('h4',{text:writerUi('Substituições automáticas de texto','Automatic text replacements')});
+  section.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Digite um atalho e escolha o texto que aparece no lugar. Ex.: vc → você ou att → atenciosamente. Aceita espaços, quebras e o caractere |; não usa expressões regulares. Aspas e travessões ficam em Smart Typography.',
+   'Type a shortcut and choose what it becomes. For example, btw → by the way. Spaces and | are allowed; regular expressions are separate. Quotes and dashes are configured in Smart Typography.'
+  )});
+  const list=section.createDiv({cls:'writer-typing-rule-list'});
+  const label=rule=>rule.from+' → '+(rule.to||writerUi('(apagar)','(delete)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');
+  const render=()=>{
+   list.empty();
+   if(!this.cfg.customReplacements.length)list.createEl('p',{cls:'dictionary-muted',text:writerUi('Nenhuma regra personalizada.','No custom rules yet.')});
+   this.cfg.customReplacements.forEach((rule,index)=>{
+    const details=list.createEl('details',{cls:'writer-typing-rule'});
+    const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    new Setting(details).setName(writerUi('Quando eu digitar','When I type')).setDesc(writerUi('Atalho literal, até 80 caracteres.','Literal shortcut, up to 80 characters.')).addText(t=>{
+     t.setPlaceholder(writerUi('Ex.: vc','E.g. btw')).setValue(rule.from);
+     t.inputEl.setAttribute('aria-label',writerUi('Texto original','Original text'));
+     t.onChange(async value=>{
+      if(!value||value.length>80)return;
+      rule.from=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).setDesc(writerUi('Até 300 caracteres; vazio remove o atalho digitado.','Up to 300 characters; empty removes the typed shortcut.')).addTextArea(t=>{
+     t.inputEl.rows=2;t.inputEl.maxLength=300;
+     t.setPlaceholder(writerUi('Ex.: você','E.g. by the way')).setValue(rule.to);
+     t.inputEl.setAttribute('aria-label',writerUi('Texto de substituição','Replacement text'));
+     t.onChange(async value=>{
+      if(value.length>300)return;
+      rule.to=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
+     rule.enabled=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+    })).addExtraButton(b=>b.setIcon('trash-2').setTooltip(writerUi('Excluir esta substituição','Delete this replacement')).onClick(async()=>{
+     this.cfg.customReplacements.splice(index,1);await this.plugin.saveSettings();render();
+    }));
+   });
+  };
+  render();
+  const add=section.createEl('details',{cls:'writer-typing-rule-new'});
+  add.createEl('summary',{text:writerUi('Adicionar substituição','Add replacement')});
+  let from='',to='';
+  new Setting(add).setName(writerUi('Quando eu digitar','When I type')).addText(t=>{
+   t.setPlaceholder(writerUi('Ex.: pq','E.g. asap')).onChange(value=>{from=value;});
+  });
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+   t.inputEl.rows=2;t.inputEl.maxLength=300;
+   t.setPlaceholder(writerUi('Ex.: porque','E.g. as soon as possible')).onChange(value=>{to=value;});
+  });
+  new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar substituição','Save replacement')).setCta().onClick(async()=>{
+   if(!from||from.length>80||to.length>300||this.cfg.customReplacements.length>=50){
+    new Notice(writerUi('Informe um atalho válido (1–80 caracteres), uma substituição de até 300 caracteres e use no máximo 50 regras.','Enter a shortcut (1–80 characters), a replacement of at most 300 characters, and keep at most 50 rules.'));
+    return;
+   }
+   this.cfg.customReplacements.push({from,to,enabled:true});
+   await this.plugin.saveSettings();render();add.open=false;
+   for(const input of add.querySelectorAll('input,textarea'))input.value='';
+   from='';to='';
+  }));
   this.plugin.writerEasyAdvanced?.renderSettings(panel);
-  new Setting(panel).setName(writerUi('Substituições literais','Literal replacement rules'))
-   .setDesc(writerUi('Uma por linha: origem|destino. Sem regex ou JavaScript.','One per line: source|replacement; no regex or JavaScript.'))
-   .addTextArea(t=>{t.inputEl.rows=5;t.setValue(this.cfg.customReplacements.map(x=>x.from+'|'+x.to).join('\n')).onChange(async v=>{
-    this.cfg.customReplacements=v.split(/\r?\n/).slice(0,50).map(line=>{
-     const split=line.indexOf('|');
-     return split>0?{from:line.slice(0,split).trim(),to:line.slice(split+1),enabled:true}:null;
-    }).filter(Boolean).filter(x=>x.from&&x.from.length<=80&&x.to.length<=300);
-    await this.plugin.saveSettings();
-   });});
  }
 }
 
@@ -5517,6 +5591,10 @@ function writerEasyRegexSafe(pattern){
  // Repeated groups with alternatives can be catastrophic even without nested quantifiers.
  if(/\([^)]*\|[^)]*\)\s*(?:\+|\*|\{)/.test(pattern))return false;
  return true;
+}
+function writerEasyRegexValid(pattern,flags=''){
+ if(!writerEasyRegexSafe(pattern)||!/^[iu]*$/.test(flags))return false;
+ try{new RegExp(pattern,flags);return true;}catch(_){return false;}
 }
 function writerEasyRegexAtInput(before,cfg){
  if(!cfg?.regexEnabled||!cfg.enabled)return null;
@@ -5619,20 +5697,80 @@ class WriterEasyAdvanced{
   panel.createEl('h4',{text:writerUi('Regras regex e modelos com Tab','Regex rules and Tab snippets')});
   panel.createEl('p',{text:writerUi('Regras regex são limitadas, não executam JavaScript e vêm desativadas por padrão. Modelos inseridos por comando incluem marcações ${1:texto} e ${0} para a posição final.','Regex rules are bounded, do not execute JavaScript, and default to off. Snippets use ${1:text} and ${0} cursor markers.'),cls:'dictionary-muted'});
   new Setting(panel).setName(writerUi('Ativar regras regex','Enable regex rules')).addToggle(t=>t.setValue(this.cfg.regexEnabled).onChange(async v=>{this.cfg.regexEnabled=v;await this.plugin.saveSettings();}));
-  new Setting(panel).setName(writerUi('Substituições regex','Regex replacement rules'))
-   .setDesc(writerUi('Uma por linha: padrão|substituição|flags (i ou u). Sem avaliação de código.','One per line: pattern|replacement|flags (i or u). No code evaluation.'))
-   .addTextArea(t=>{
-    t.inputEl.rows=5;
-    t.setValue((this.cfg.regexRules||[]).map(x=>[x.pattern,x.replace,x.flags||''].join('|')).join('\n')).onChange(async value=>{
-     this.cfg.regexRules=value.split(/\r?\n/).slice(0,30).map(line=>{
-      const parts=line.split('|');
-      if(parts.length<2)return null;
-      const [pattern,replace,flags='']=parts;
-      return writerEasyRegexSafe(pattern)&&replace.length<=250&&/^[iu]*$/.test(flags)?{pattern,replace,flags,enabled:true}:null;
-     }).filter(Boolean);
-     await this.plugin.saveSettings();
+  const regexSection=panel.createDiv({cls:'writer-typing-regex-rules'});
+  regexSection.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Use padrões regex apenas quando uma substituição literal não for suficiente. Cada regra tem campos próprios, pode ser desativada e mantém sua ordem de prioridade. As regex só funcionam se o interruptor acima estiver ligado.',
+   'Use regex only when a literal replacement is not enough. Every rule has separate fields, its own enabled switch and a stable priority order. Regex runs only when enabled above.'
+  )});
+  const regexList=regexSection.createDiv({cls:'writer-typing-regex-list'});
+  const label=rule=>rule.pattern+' → '+(rule.replace||writerUi('(vazio)','(empty)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');
+  const render=()=>{
+   regexList.empty();
+   (this.cfg.regexRules||[]).forEach((rule,index)=>{
+    const details=regexList.createEl('details',{cls:'writer-typing-regex-rule'});
+    const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    const feedback=details.createEl('p',{cls:'writer-typing-regex-feedback dictionary-muted',attr:{role:'status','aria-live':'polite'}});
+    const refresh=()=>summary.setText((index+1)+'. '+label(rule));
+    new Setting(details).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>{
+     t.setPlaceholder('\\bpalavra\\b').setValue(rule.pattern);
+     t.inputEl.setAttribute('aria-label',writerUi('Padrão regex','Regex pattern'));
+     t.onChange(async value=>{
+      const valid=writerEasyRegexValid(value,rule.flags||'');
+      t.inputEl.setAttribute('aria-invalid',String(!valid));
+      feedback.setText(valid?'':writerUi('Padrão inválido. A regra anterior foi mantida; confira a sintaxe e os limites.','Invalid pattern. The previous rule was kept; check syntax and limits.'));
+      if(!valid)return;
+      rule.pattern=value;refresh();await this.plugin.saveSettings();
+     });
     });
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+     t.inputEl.rows=2;t.inputEl.maxLength=250;
+     t.setValue(rule.replace);
+     t.inputEl.setAttribute('aria-label',writerUi('Substituição regex','Regex replacement'));
+     t.onChange(async value=>{
+      if(value.length>250)return;
+      rule.replace=value;refresh();await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
+     d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
+     if(rule.flags==='ui')d.addOption('ui',writerUi('Ambos (ui)','Both (ui)'));
+     d.setValue(rule.flags||'').onChange(async value=>{
+      if(!writerEasyRegexValid(rule.pattern,value)){
+       d.setValue(rule.flags||'');feedback.setText(writerUi('Essas opções não são válidas para o padrão. A regra anterior foi mantida.','Those options are not valid for this pattern. The previous rule was kept.'));return;
+      }
+      rule.flags=value;feedback.setText('');await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
+     rule.enabled=value;refresh();await this.plugin.saveSettings();
+    })).addExtraButton(b=>b.setIcon('trash-2').setTooltip(writerUi('Excluir regex','Delete regex rule')).onClick(async()=>{
+     this.cfg.regexRules.splice(index,1);await this.plugin.saveSettings();render();
+    }));
    });
+  };
+  render();
+  const add=regexSection.createEl('details',{cls:'writer-typing-regex-new'});
+  add.createEl('summary',{text:writerUi('Adicionar regex','Add regex rule')});
+  let pattern='',replace='',flags='';
+  new Setting(add).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>t.setPlaceholder('\\bpalavra\\b').onChange(value=>{pattern=value;}));
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+   t.inputEl.rows=2;t.inputEl.maxLength=250;t.onChange(value=>{replace=value;});
+  });
+  new Setting(add).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
+   d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
+   d.onChange(value=>{flags=value;});
+  });
+  new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar regex','Save regex rule')).onClick(async()=>{
+   if(!writerEasyRegexValid(pattern,flags)||replace.length>250||!['','i','u','iu'].includes(flags)||(this.cfg.regexRules||[]).length>=30){
+    new Notice(writerUi('Regex inválida ou limite de 30 regras atingido.','Invalid regex or 30-rule limit reached.'));return;
+   }
+   try{new RegExp(pattern,flags);}catch(error){new Notice(writerUi('Confira a sintaxe da regex.','Check regex syntax.'));return;}
+   this.cfg.regexRules.push({pattern,replace,flags,enabled:true});
+   await this.plugin.saveSettings();render();add.open=false;
+   for(const input of add.querySelectorAll('input,textarea'))input.value='';
+   const dropdown=add.querySelector('select');if(dropdown)dropdown.value='';
+   pattern='';replace='';flags='';
+  }));
   new Setting(panel).setName(writerUi('Modelos de texto','Text snippets'))
    .setDesc(writerUi('Uma linha por modelo usando JSON com name e body. Para múltiplas linhas, use \\n no body.','One JSON object per line with name and body. Use \\n for multiline content.'))
    .addTextArea(t=>{
@@ -5652,7 +5790,7 @@ class WriterEasyAdvanced{
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={
  enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
- fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,
+ fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,dialogueDashes:true,
  openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
  openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
 };
@@ -5664,7 +5802,7 @@ const WRITER_TYPO_FRACTIONS={
 function writerTypoMerge(settings){
  const old=settings.smartTypography;
  const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
- for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes'])cfg[key]=cfg[key]===true;
  for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
@@ -5680,6 +5818,10 @@ function writerTypoAtInput(before,typed,cfg){
   if(before.endsWith('–-'))return put('–-','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
+ // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
+ // Wait for the first letter so Markdown's --- separator remains available.
+ if(cfg.dashes&&cfg.dialogueDashes&&/[\p{L}]/u.test(typed)&&/^\s*--[\p{L}]$/u.test(before))
+  return put('--'+typed,'—'+typed);
  if(cfg.ellipsis&&typed==='.'&&before.endsWith('...'))return put('...','…');
  if(cfg.guillemets&&typed==='<'&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
  if(cfg.guillemets&&typed==='>'&&before.endsWith('>>'))return put('>>',cfg.closeGuillemet);
@@ -5747,6 +5889,63 @@ function writerTypoConvertProse(text,cfg){
   return transformed;
  }).join('\n');
 }
+/* One CodeMirror transaction filter for both modules. The desktop auto-pair
+ * extension often inserts two quotes together, not one typed character.
+ * Keep those insertions in a single undoable transaction and restore the
+ * caret between the typographic pair. Avoid paste, completion and IME edits. */
+function writerTypingFilterTransaction(tr,p){
+ if(!tr.docChanged||!tr.changes?.iterChanges||!tr.isUserEvent?.('input'))return tr;
+ if(['input.type.compose','input.paste','input.drop','input.complete'].some(e=>tr.isUserEvent(e)))return tr;
+ const typography=p.writerSmartTypography,typoOn=typography?.active()===true;
+ const easy=p.writerEasyTyping,easyOn=easy?.active()===true;
+ if(!typoOn&&!easyOn)return tr;
+ const edits=[];let caret=null;
+ tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+  if(fromA!==toA)return;
+  const insertion=inserted.toString();
+  const doc=tr.newDoc;
+  const line=doc.lineAt(Math.min(toB,doc.length));
+  const prefix=doc.sliceString(line.from,toB);
+  if(writerTypingUnsafeContext(tr.startState,fromA,prefix))return;
+  const paired=insertion.length===2&&insertion[0]===insertion[1]&&
+   (insertion[0]==='"'||insertion[0]==="'")&&
+   tr.startState.selection?.ranges?.length===1&&tr.startState.selection.main.empty&&
+   tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
+   tr.newSelection.main.head===fromB+1;
+  // The native editor cannot skip its ASCII closer after we convert the pair.
+  // Typing a matching quote should step over the existing typographic closer.
+  if(typoOn&&typography.cfg.curlyQuotes&&(insertion.length===1||paired)&&
+   (insertion[0]==='"'||insertion[0]==="'")&&tr.newSelection?.ranges?.length===1){
+   const closer=insertion[0]==="'"?typography.cfg.closeSingle:typography.cfg.closeDouble;
+   const suggestion=writerTypoAtInput(doc.sliceString(line.from,fromB+1),insertion[0],typography.cfg);
+   if(suggestion?.text===closer&&doc.sliceString(toB,Math.min(doc.length,toB+closer.length))===closer){
+    edits.push({from:fromB,to:toB,insert:''});caret={anchor:fromB+closer.length};return;
+   }
+  }
+  if(paired&&typoOn&&typography.cfg.curlyQuotes){
+   const single=insertion[0]==="'";
+   const opener=single?typography.cfg.openSingle:typography.cfg.openDouble;
+   const closer=single?typography.cfg.closeSingle:typography.cfg.closeDouble;
+   const firstPrefix=doc.sliceString(line.from,fromB+1);
+   const suggestion=writerTypoAtInput(firstPrefix,insertion[0],typography.cfg);
+   if(suggestion?.text!==opener)return; // Only change auto-paired opening quotes.
+   edits.push({from:fromB,to:toB,insert:opener+closer});
+   caret={anchor:fromB+opener.length};
+   return;
+  }
+  if(insertion.length!==1)return;
+  let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
+  if(!proposal&&easyOn)proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);
+  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length)
+   edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+ });
+ if(!edits.length)return tr;
+ edits.sort((a,b)=>a.from-b.from);
+ if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
+ const next={changes:edits,sequential:true};
+ if(caret&&edits.length===1)next.selection=caret;
+ return [tr,next];
+}
 class WriterSmartTypography{
  constructor(plugin){this.plugin=plugin;}
  get cfg(){return this.plugin.settings.smartTypography;}
@@ -5764,29 +5963,7 @@ class WriterSmartTypography{
   }});
   const {EditorState}=require('@codemirror/state');
   if(!EditorState?.transactionFilter?.of)return;
-  p.registerEditorExtension(EditorState.transactionFilter.of(tr=>{
-   if(!tr.docChanged||!tr.isUserEvent?.('input.type')||tr.isUserEvent?.('input.type.compose')||!tr.changes?.iterChanges)return tr;
-   if(!this.active()&&!p.writerEasyTyping?.active())return tr;
-   const edits=[];
-   tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
-    const character=inserted.toString();
-    if(character.length!==1||fromA!==toA)return;
-    const doc=tr.newDoc;
-    const line=doc.lineAt(Math.min(toB,doc.length));
-    const priorLine=doc.sliceString(line.from,toB);
-    if(writerTypingUnsafeContext(tr.startState,fromA,priorLine))return;
-    let proposal=null;
-    if(this.active())proposal=writerTypoAtInput(priorLine,character,this.cfg);
-    if(!proposal&&p.writerEasyTyping?.active())
-     proposal=writerEasyTypingAtInput(priorLine,character,p.writerEasyTyping.cfg);
-    if(proposal&&proposal.consume>0&&proposal.consume<=priorLine.length)
-     edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
-   });
-   if(!edits.length)return tr;
-   edits.sort((a,b)=>a.from-b.from);
-   if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
-   return [tr,{changes:edits,sequential:true}];
-  }));
+  p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Smart Typography · tipografia','Smart Typography')});
@@ -5797,6 +5974,7 @@ class WriterSmartTypography{
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
    ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['dialogueDashes','Travessão de diálogo (--Olá)','Dialogue dash (--Hello)'],
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
   for(const [key,pt,en] of [
@@ -5824,14 +6002,41 @@ function writerTypingUnsafeContext(state,from,prefix){
  if(ticks%2!==0)return true;
  if(/(?:https?:\/\/|obsidian:\/\/|www\.|mailto:)\S*$/i.test(line))return true;
  if(/(?:!?\[[^\]]*\]\([^)]*|\[\[[^\]]*|\$\$?[^$]*)$/.test(line))return true;
+ let parsed=false;
  try{
-  const {syntaxTree}=require('@codemirror/language');
+  const {syntaxTree,syntaxTreeAvailable}=require('@codemirror/language');
   const tree=typeof syntaxTree==='function'&&state?syntaxTree(state):null;
+  parsed=Boolean(tree)&&(typeof syntaxTreeAvailable!=='function'||syntaxTreeAvailable(state,from));
   if(tree){
    for(let node=tree.resolveInner(Math.max(0,from-1),1);node;node=node.parent)
     if(/Code|Math|Frontmatter|YAML|Link|URL|HTML|Comment|Tag/i.test(node.name||''))return true;
   }
  }catch(_){}
+ // Obsidian's line-oriented parser has no node on an empty fenced-code line.
+ // Check fence state for the first input on a blank line (or an unparsed range),
+ // rather than scanning a long manuscript for every ordinary prose keystroke.
+ if(state?.doc?.lineAt&&state.doc.line){
+  const cursor=state.doc.lineAt(Math.min(from,state.doc.length));
+  const head=cursor.text.slice(0,Math.max(0,from-cursor.from));
+  if(!parsed||!head.replace(/^(?:\s*> ?)+/,'').trim()){
+   let fence=null;
+   const consume=text=>{
+    const clean=text.replace(/^(?: {0,3}> ?)+/,'');
+    const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(clean);
+    if(!match)return;
+    const marker=match[1],tail=match[2];
+    if(!fence){
+     if(marker[0]==='\x60'&&tail.includes('\x60'))return;
+     fence={symbol:marker[0],length:marker.length};
+    }else if(marker[0]===fence.symbol&&marker.length>=fence.length&&!tail.trim())fence=null;
+   };
+   if(typeof state.doc.iterLines==='function'){
+    const lines=state.doc.iterLines(1,cursor.number);
+    while(!lines.next().done)consume(lines.value);
+   }else for(let number=1;number<cursor.number;number++)consume(state.doc.line(number).text);
+   if(fence)return true;
+  }
+ }
  return false;
 }
 
@@ -16650,9 +16855,10 @@ class WriterV91SoundPlayer{
   if(!this.status)return;
   const root=this.status;root.empty();
   const select=root.createEl('select',{cls:'writer-v91-sound-select',attr:{'aria-label':writerUi('Escolher rádio','Choose radio')}});
-  const play=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
-  const next=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
-  const mini=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
+  const play=root.createEl('button',{cls:'writer-v136-sound-play',attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
+  const next=root.createEl('button',{cls:'writer-v136-sound-next',attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
+  const mini=root.createEl('button',{cls:'writer-v136-sound-mini',attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
+  require('obsidian').setIcon(next,'skip-forward');
   const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
   for(const [id,label] of writerV91SoundStationOptions(this.plugin)){
    const option=select.createEl('option',{text:label});option.value=id;
@@ -16664,12 +16870,19 @@ class WriterV91SoundPlayer{
    play.empty();require('obsidian').setIcon(play,local?(active?'pause':'play'):(active?'square':'play'));
    mini.empty();require('obsidian').setIcon(mini,'picture-in-picture-2');
    mini.disabled=local||!active;
+   mini.hidden=local||!active;
+   next.hidden=this.tracks.length<2;
+   play.disabled=!this.cfg.enabled;
    mini.title=writerUi('Exibir mini player sem reiniciar a rádio','Show mini player without restarting radio');
-   play.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
-    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
+   const playLabel=local?writerUi('Reproduzir ou pausar','Play or pause'):
+    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar rádio','Start radio');
+   play.setAttribute('aria-label',playLabel);
    volume.disabled=!this.cfg.enabled;
    volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');
-   next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',active);
+   play.title=playLabel;
+   next.title=writerUi('Próxima faixa','Next track');
+   next.disabled=!this.cfg.enabled||this.tracks.length<2;root.classList.toggle('is-playing',active);
+   root.classList.toggle('is-local',local);
    select.title=this.label;
    root.toggleClass?.('is-disabled',!this.cfg.enabled);
   };
@@ -28708,6 +28921,43 @@ function writerV132ProtectStatusBar(plugin,item){
  if(!already)plugin.register?.(()=>bar.classList.remove('writer-v132-status-host'));
 }
 
+/** Keep horizontal project tabs usable without a pointer or a visible scrollbar. */
+function writerV136BindProjectTabs(strip){
+ if(!strip||strip.dataset.basicV136Keyboard==='1')return;
+ strip.dataset.basicV136Keyboard='1';
+ strip.addEventListener('keydown',event=>{
+  if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
+  const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
+  if(!tabs.length)return;
+  const target=event.target.closest?.('button[role="tab"]');
+  let index=tabs.indexOf(target);
+  if(index<0)return;
+  const direction=strip.ownerDocument?.defaultView?.getComputedStyle?.(strip)?.direction==='rtl'?-1:1;
+  const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+   (index+(event.key==='ArrowRight'?direction:-direction)+tabs.length)%tabs.length;
+  event.preventDefault();
+  tabs[next].focus();tabs[next].click();
+  tabs[next].scrollIntoView?.({block:'nearest',inline:'nearest'});
+ });
+}
+
+/** Named tool panes let compact layouts follow the pane width, not the window. */
+function writerV136DecorateToolPanels(view){
+ view.panels?.definition?.addClass('writer-definition-panel');
+ view.panels?.translation?.addClass('writer-translation-panel');
+ view.reviewStatus?.setAttribute('role','status');
+ view.reviewStatus?.setAttribute('aria-live','polite');
+}
+
+/** Native settings navigation is compact only while Basic owns the page. */
+function writerV136MarkSettingsHost(tab,active){
+ tab.writerV136SettingsHost?.classList.remove('writer-v136-settings-host');
+ tab.writerV136SettingsHost=null;
+ if(!active)return;
+ const host=tab.containerEl?.closest?.('.mod-settings');
+ if(host){host.classList.add('writer-v136-settings-host');tab.writerV136SettingsHost=host;}
+}
+
 // v3 module: src/v13/core-workflows.js
 const WRITER_V13_DEFAULT_MODELS={
  openai:'gpt-4.1-mini',
@@ -29339,10 +29589,14 @@ function writerV134OpenRecovery(plugin,initialPath=''){
    visible.some((entry,index)=>!same(entry,rows[index])||entry.updatedAt!==rows[index].updatedAt);
   const next=visible.find(entry=>entry.path===selectedPath)||visible[0]||null;
   if(changed){
+   const focusedPath=Array.from(list.children).find(node=>node===list.ownerDocument?.activeElement)?.dataset.path;
+   const scrollTop=list.scrollTop;
+   let focusTarget=null;
    lastQuery=query;rows=visible.map(entry=>({...entry}));list.empty();
    for(const entry of visible){
     const button=list.createEl('button',{cls:'writer-v134-recovery-item',attr:{type:'button','aria-pressed':String(entry.path===next?.path)}});
     button.dataset.path=entry.path;
+    if(entry.path===focusedPath)focusTarget=button;
     button.createSpan({cls:'writer-v134-recovery-item-path',text:entry.path});
     button.createEl('small',{text:date(entry.updatedAt)});
     button.addEventListener('click',()=>{
@@ -29350,6 +29604,8 @@ function writerV134OpenRecovery(plugin,initialPath=''){
      for(const node of list.children)node.setAttribute('aria-pressed',String(node.dataset.path===selectedPath));
     });
    }
+   if(focusTarget)focusTarget.focus({preventScroll:true});
+   list.scrollTop=scrollTop;
   }
   empty.hidden=visible.length>0;
   empty.setText(all.length?writerUi('Nenhum rascunho corresponde à busca.','No drafts match the filter.'):
@@ -29478,9 +29734,9 @@ class DictionaryView extends ItemView{
   const actions=defs.createDiv({cls:'dictionary-actions dictionary-lexical-actions'});
   const button=(label,fn)=>{const b=actions.createEl('button',{text:label});b.addEventListener('click',fn);return b;};
   
-  const translation=translations.createDiv({cls:'dictionary-translation-bar'});
   const translationLabel=msg('Texto para traduzir','Text to translate');
   this.translationInput=translations.createEl('textarea',{attr:{placeholder:translationLabel,'aria-label':translationLabel}});
+  const translation=translations.createDiv({cls:'dictionary-translation-bar'});
   this.translationEngine=translation.createEl('select',{cls:'dictionary-translation-engine',attr:{'aria-label':t('transProvider')}});
   selectOptions(this.translationEngine,AI_PROVIDERS,this.plugin.settings.translationProvider,v=>{this.plugin.settings.translationProvider=v;this.clearTranslationResult();void this.plugin.saveSettings();});
   this.sourceSelect=translation.createEl('select',{attr:{'aria-label':t('source')}});
@@ -29513,7 +29769,10 @@ class DictionaryView extends ItemView{
   this.translationInput.addEventListener('input',()=>this.clearTranslationResult());
   chat.addClass('writer-v91-ai-dialogue');
   const header=chat.createDiv({cls:'writer-chat-header'});header.createEl('strong',{text:msg('Assistente de escrita','Writing assistant')});
-  header.createEl('button',{text:msg('Limpar conversa','Clear conversation')}).addEventListener('click',()=>{
+  const clearChatLabel=msg('Limpar conversa','Clear conversation');
+  const clearChat=header.createEl('button',{cls:'writer-chat-clear',attr:{'aria-label':clearChatLabel,title:clearChatLabel}});
+  require('obsidian').setIcon(clearChat,'eraser');
+  clearChat.addEventListener('click',()=>{
    if(this.chatRequest){
     if(!this.chatInput.value)this.chatInput.value=this.chatRequest.draft;
     this.chatRequest=null;this.chatSend.disabled=false;
@@ -29566,6 +29825,7 @@ class DictionaryView extends ItemView{
   reviewButtons.createEl('button',{text:msg('Escolher arquivo','Choose file')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
   this.reviewStatus=review.createDiv({cls:'writer-file-status'});
   this.reviewResults=review.createDiv({cls:'writer-review-results'});
+  writerV136DecorateToolPanels(this);
   this.updateReviewEngineUI();
   this.applyModuleVisibility();
   this.input.addEventListener('input',()=>{
@@ -30260,6 +30520,11 @@ function writerV131RenderAISettings(plugin,panel,mode){
 
 class DictionarySettings extends PluginSettingTab{
  constructor(app,plugin){super(app,plugin);this.plugin=plugin;this.plugin.writerSettingsTab=this;}
+ hide(){
+  writerV136MarkSettingsHost(this,false);
+  this.containerEl.classList.remove('writer-v13-settings');
+  if(typeof super.hide==='function')super.hide();
+ }
  display(){
   const el=this.containerEl;
   // Full settings rebuilds (e.g. module toggles) should retain both scroll strips.
@@ -30270,6 +30535,7 @@ class DictionarySettings extends PluginSettingTab{
   if(previousSubnav?.dataset.group)
    this.settingsSubtabsScrollLeft[previousSubnav.dataset.group]=previousSubnav.scrollLeft;
   el.empty();el.classList.add('writer-v13-settings');el.createEl('h2',{text:msg('Configurações do Basic','Basic settings')});
+  writerV136MarkSettingsHost(this,true);
   const nav=el.createDiv({cls:'dictionary-settings-tabs'});
   const subnav=el.createDiv({cls:'dictionary-settings-subtabs'});
   const bindHorizontalWheel=row=>row.addEventListener('wheel',event=>{

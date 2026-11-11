@@ -207,7 +207,12 @@ function writerBookNavHasSourceBlock(text){
 }
 class WriterBookNavWidget extends (typeof WriterV6WidgetType!=='undefined'?WriterV6WidgetType:class{}){
  constructor(plugin,buttons){super();this.plugin=plugin;this.buttons=buttons;}
- eq(other){return other instanceof WriterBookNavWidget&&JSON.stringify(other.buttons)===JSON.stringify(this.buttons);}
+ eq(other){
+  return other instanceof WriterBookNavWidget&&other.buttons.length===this.buttons.length&&this.buttons.every((button,index)=>{
+   const next=other.buttons[index];
+   return button.direction===next.direction&&button.kind===next.kind&&button.target?.path===next.target?.path&&button.target?.title===next.target?.title;
+  });
+ }
  toDOM(view){
   const root=view.dom.ownerDocument.createElement('div');
   writerBookNavRenderButtons(root,this.plugin.app,this.buttons,{automatic:true});
@@ -292,71 +297,128 @@ class WriterBookNavigation{
  }
  registerAutomatic(){
   const plugin=this.plugin,owner=this;
-  const effect=require('@codemirror/state').StateEffect.define();
+  const {StateEffect,StateField}=require('@codemirror/state');
+  const {EditorView}=require('@codemirror/view');
+  const effect=StateEffect.define(),setButtons=StateEffect.define();
+  const instances=new Set(),timers=new Set();let closed=false;
+  const editorPath=view=>{
+   for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[])
+    if(leaf.view?.editor?.cm===view)return leaf.view?.file?.path||'';
+   return '';
+  };
+  const navigationField=StateField.define({
+   create:()=>null,
+   update(value,tr){
+    let data=value?.data;
+    for(const item of tr.effects){
+     if(item.is(effect))data=null;
+     else if(item.is(setButtons))data=item.value;
+    }
+    if(closed||!owner.cfg.enabled||!writerModuleOn(plugin,'bookNavigation')||
+     writerBookNavHasSourceBlock(tr.newDoc.toString())||!data?.buttons?.length||editorPath(data.view)!==data.path)return null;
+    if(value?.data===data&&!tr.docChanged)return value;
+    return {data,decorations:Decoration.set([
+     Decoration.widget({widget:new WriterBookNavWidget(plugin,data.buttons),side:1,block:true}).range(tr.newDoc.length)
+    ])};
+   },
+   // Block widgets affect document layout and must be supplied directly by a
+   // StateField; ViewPlugin decoration providers may only supply inline ones.
+   provide:field=>EditorView.decorations.from(field,value=>value?.decorations||Decoration.none)
+  });
   const refreshEditors=()=>{
+   if(closed)return;
    owner.revision++;
    for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[]){
     try{leaf.view?.editor?.cm?.dispatch({effects:effect.of(null)});}catch(_){}
    }
    void updatePreview();
   };
+  const later=delay=>{
+   if(closed)return;
+   const timer=setTimeout(()=>{timers.delete(timer);refreshEditors();},delay);timers.add(timer);
+  };
   const updatePreview=async()=>{
+   const revision=owner.revision;
    for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[]){
-    const view=leaf.view,file=view?.file;
-    const root=view?.previewMode?.containerEl?.querySelector?.('.markdown-preview-sizer');
-    if(!root)continue;
-    root.querySelectorAll('.writer-v6-booknav-preview-auto').forEach(x=>x.remove());
-    if(!(file instanceof TFile)||!owner.cfg.enabled)continue;
-    const match=await writerBookNavFindProjectAsync(plugin.app,file.path,plugin.settings.lastLongformProject);
-    if(!root.isConnected||!writerBookNavAutoAllowed(plugin,match,file.path))continue;
-    const noteText=view?.editor?.getValue?.()||await plugin.app.vault.cachedRead(file);
-    if(writerBookNavHasSourceBlock(noteText))continue;
-    const buttons=writerBookNavButtons(writerBookNavTargets(match.items,file.path),owner.cfg);
-    if(!buttons.length)continue;
-    const holder=root.createDiv({cls:'writer-v6-booknav-preview-auto'});
-    writerBookNavRenderButtons(holder,plugin.app,buttons,{automatic:true});
+    if(closed||revision!==owner.revision)return;
+    try{
+     const view=leaf.view,file=view?.file;
+     const path=file?.path;
+     const root=view?.previewMode?.containerEl?.querySelector?.('.markdown-preview-sizer');
+     if(!root)continue;
+     root.querySelectorAll('.writer-v6-booknav-preview-auto').forEach(x=>x.remove());
+     if(!(file instanceof TFile)||!owner.cfg.enabled)continue;
+     const current=()=>!closed&&revision===owner.revision&&root.isConnected&&view.file===file&&file.path===path;
+     const match=await writerBookNavFindProjectAsync(plugin.app,path,plugin.settings.lastLongformProject);
+     if(!current()||!writerBookNavAutoAllowed(plugin,match,path))continue;
+     const editing=view?.editor?.getValue?.();
+     const noteText=typeof editing==='string'?editing:await plugin.app.vault.cachedRead(file);
+     if(!current()||writerBookNavHasSourceBlock(noteText))continue;
+     const targets=writerBookNavTargets(match.items,path);
+     const buttons=targets?writerBookNavButtons(targets,owner.cfg):[];
+     if(!buttons.length)continue;
+     const holder=root.createDiv({cls:'writer-v6-booknav-preview-auto'});
+     writerBookNavRenderButtons(holder,plugin.app,buttons,{automatic:true});
+    }catch(error){
+     if(!closed&&revision===owner.revision)console.warn('[Basic AI] Automatic navigation preview:',error);
+    }
    }
   };
-  plugin.registerEditorExtension(ViewPlugin.fromClass(class{
-   constructor(view){this.view=view;this.key='';this.buttons=[];this.decorations=Decoration.none;this.rebuild();}
-   getPath(){
-    for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[]){
-     if(leaf.view?.editor?.cm===this.view)return leaf.view?.file?.path||'';
-    }
-    return '';
+  const lookup=ViewPlugin.fromClass(class{
+   constructor(view){this.view=view;this.key='';this.doc=null;this.path='';this.serial=0;this.destroyed=false;instances.add(this);this.rebuild();}
+   send(data,serial){
+    // CodeMirror forbids dispatch during ViewPlugin.update. Both clears and
+    // lookup results enter the field in a later microtask.
+    void Promise.resolve().then(()=>{
+     if(closed||this.destroyed||serial!==this.serial)return;
+     try{this.view.dispatch({effects:setButtons.of(data)});}catch(_){}
+    });
    }
    rebuild(){
-    const path=this.getPath(),source=this.view.state.doc.toString();
-    if(!path||!owner.cfg.enabled||writerBookNavHasSourceBlock(source)){
-     this.key='';this.buttons=[];this.decorations=Decoration.none;return;
+    if(closed||this.destroyed)return;
+    const path=editorPath(this.view),doc=this.view.state.doc,source=doc.toString();
+    if(!path||!owner.cfg.enabled||!writerModuleOn(plugin,'bookNavigation')||writerBookNavHasSourceBlock(source)){
+     this.key='';this.doc=doc;this.path=path;this.send(null,++this.serial);return;
     }
-    const key=path+'|'+source.length+'|'+writerBookNavHasSourceBlock(source)+'|'+String(owner.cfg.auto)+'|'+String(owner.revision)+'|'+String(plugin.settings.lastLongformProject||'');
-    if(key===this.key)return;
-    this.key=key;
-    const current=key;
+    const key=path+'|'+String(owner.cfg.auto)+'|'+String(owner.revision)+'|'+String(plugin.settings.lastLongformProject||'');
+    if(key===this.key&&doc===this.doc)return;
+    const changedPath=path!==this.path,serial=++this.serial;
+    this.key=key;this.doc=doc;this.path=path;
+    if(changedPath)this.send(null,serial);
     void writerBookNavFindProjectAsync(plugin.app,path,plugin.settings.lastLongformProject).then(match=>{
-     if(current!==this.key)return;
+     if(closed||this.destroyed||serial!==this.serial||this.view.state.doc!==doc||editorPath(this.view)!==path)return;
+     if(!owner.cfg.enabled||!writerModuleOn(plugin,'bookNavigation')||writerBookNavHasSourceBlock(this.view.state.doc.toString())){
+      this.send(null,serial);return;
+     }
      const targets=match&&writerBookNavAutoAllowed(plugin,match,path)?writerBookNavTargets(match.items,path):null;
-     this.buttons=targets?writerBookNavButtons(targets,owner.cfg):[];
-     try{this.view.dispatch({effects:effect.of(null)});}catch(_){}
+     this.send({path,view:this.view,buttons:targets?writerBookNavButtons(targets,owner.cfg):[]},serial);
     }).catch(e=>console.warn('[Basic AI] Automatic navigation:',e));
    }
    update(update){
     if(update.docChanged||update.transactions.some(tr=>tr.effects.some(e=>e.is(effect))))this.rebuild();
-    this.decorations=this.buttons.length&&!writerBookNavHasSourceBlock(update.view.state.doc.toString())
-     ?Decoration.set([Decoration.widget({widget:new WriterBookNavWidget(plugin,this.buttons),side:1,block:true}).range(update.view.state.doc.length)])
-     :Decoration.none;
    }
-  },{decorations:instance=>instance.decorations}));
+   destroy(){this.destroyed=true;this.serial++;instances.delete(this);}
+  });
+  plugin.registerEditorExtension([navigationField,lookup]);
+  plugin.register?.(()=>{
+   closed=true;
+   for(const timer of timers)clearTimeout(timer);timers.clear();
+   for(const instance of [...instances]){
+    instance.destroy();
+    try{instance.view.dispatch({effects:setButtons.of(null)});}catch(_){}
+   }
+   for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[])
+    leaf.view?.previewMode?.containerEl?.querySelectorAll?.('.writer-v6-booknav-preview-auto').forEach(node=>node.remove());
+  });
   for(const name of ['file-open','layout-change','active-leaf-change']){
-   plugin.registerEvent(plugin.app.workspace.on(name,()=>setTimeout(refreshEditors,120)));
+   plugin.registerEvent(plugin.app.workspace.on(name,()=>later(120)));
   }
-  if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>setTimeout(refreshEditors,150)));
-  plugin.registerEvent(plugin.app.vault.on('rename',()=>setTimeout(refreshEditors,150)));
+  if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>later(150)));
+  plugin.registerEvent(plugin.app.vault.on('rename',()=>later(150)));
   plugin.registerEvent(plugin.app.vault.on('modify',file=>{
-   if(file?.extension==='md'&&file.path===plugin.settings.lastLongformProject)setTimeout(refreshEditors,150);
+   if(file?.extension==='md'&&file.path===plugin.settings.lastLongformProject)later(150);
   }));
-  setTimeout(refreshEditors,220);
+  later(220);
   this.refreshAutomatic=refreshEditors;
  }
  renderSettings(panel){

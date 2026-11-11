@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.5.0 — Complete manuscript compilation and recovery discard
+
+- Compile all chapters in the selected Longform draft independently of the editor display limit, and support single-note books from the command palette.
+- Offer saved-file and current-writing sources; include compatible recovery drafts and native editor buffers, and block missing or conflicting chapters.
+- Keep a frozen compilation preview with explicit refresh, complete chapter/word counts and safe creation of a separate Markdown export.
+- Provide automatic chapter navigation blocks through a CodeMirror StateField so typing in a Longform scene does not crash the editor.
+- Track recovery draft identities through note/folder renames so explicit discard removes the intended draft from primary and fallback stores, including while recovery is disabled.
+- Add behavioral regression coverage, bilingual documentation and real Obsidian validation for manuscript compilation and renamed draft discard.
+
 ## 13.4.1 — Extraction and snapshot restore preservation
 
 - Preserve complete extracted passages and captured notes instead of truncating their content at 100,000 characters.

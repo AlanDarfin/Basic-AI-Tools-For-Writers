@@ -36,6 +36,10 @@ class WriterV134DraftRecovery{
   this.plugin=plugin;
   plugin._writerV11Drafts??=new Map();
   this.times=new Map();this.touched=new Set(plugin._writerV11Drafts.keys());
+  // Paths can be reused after a rename. Track the draft owning each in-memory
+  // and persisted path so an explicit discard removes only that draft's copies.
+  this.identities=new Map([...this.touched].map(path=>[path,{}]));
+  this.persistedIdentities=new Map(this.identities);
   this.persisted=new Map();this.discarded=new Set();this.listeners=new Set();this.renames=[];
   this.revision=this.touched.size?1:0;this.savedRevision=0;
   this.timer=null;this.queue=Promise.resolve();this.lastGood=null;this.blocked=false;
@@ -84,7 +88,7 @@ class WriterV134DraftRecovery{
    }
    this.blocked=Boolean(problem);
    if(loaded){
-    this.lastGood=loaded.raw;this.persisted=new Map(loaded.entries.map(entry=>[entry.path,entry]));
+    const persistedIdentities=new Map(),paths=new Map(),reserved=new Set();
     const destinations=new Map(),originalPaths=new Set(loaded.entries.map(entry=>entry.path));
     const destination=path=>{
      for(const rename of this.renames)
@@ -97,9 +101,44 @@ class WriterV134DraftRecovery{
      // A rename can collide with an orphaned recovery copy. Keep both under
      // their original paths instead of dropping whichever one loads second.
      if(path!==entry.path&&(originalPaths.has(path)||destinations.get(path)>1||this.drafts.has(path)||this.touched.has(path)))path=entry.path;
-     if(this.touched.has(entry.path)||this.touched.has(path)||this.drafts.has(path))continue;
-     this.drafts.set(path,{original:entry.original,text:entry.text});this.times.set(path,entry.updatedAt);
+     paths.set(entry,path);
+     const previous=this.persisted.get(entry.path);
+     const same=!previous||(previous.original===entry.original&&previous.text===entry.text&&previous.updatedAt===entry.updatedAt);
+     const identity=same&&this.persistedIdentities.get(entry.path);
+     if(identity&&!reserved.has(identity)){persistedIdentities.set(entry.path,identity);reserved.add(identity);}
     }
+    for(const entry of loaded.entries){
+     if(persistedIdentities.has(entry.path))continue;
+     const current=this.identities.get(paths.get(entry));
+     const identity=current&&!reserved.has(current)?current:{};
+     persistedIdentities.set(entry.path,identity);reserved.add(identity);
+    }
+    const origins=new Map([...persistedIdentities].map(([path,identity])=>[identity,path]));
+    for(const entry of loaded.entries){
+     const path=paths.get(entry),identity=persistedIdentities.get(entry.path);
+     let relocated=false;
+     if(this.drafts.has(path)&&this.identities.get(path)!==identity){
+      const originalPath=origins.get(this.identities.get(path));
+      if(originalPath&&originalPath!==path){
+       // Typing can precede loading, then move onto an unknown orphan. Put
+       // that moved draft back at its original vacant path and expose both.
+       if(this.drafts.has(originalPath))throw Error(writerUi(
+        'A renomeação encontrou rascunhos diferentes no mesmo caminho. A recuperação em disco foi preservada; salve cópias dos rascunhos e tente novamente.',
+        'The rename found different drafts at the same path. Disk recovery was preserved; save draft copies and retry.'));
+       this.drafts.set(originalPath,this.drafts.get(path));this.drafts.delete(path);
+       this.identities.set(originalPath,this.identities.get(path));this.identities.delete(path);
+       this.times.set(originalPath,this.times.get(path)||new Date().toISOString());this.times.delete(path);
+       this.touched.add(originalPath);this.revision++;relocated=true;
+      }
+     }
+     // A touched alias may now belong to a different draft. Only the owner
+     // of this identity can supersede its stored copy (including a clear).
+     const owned=[...this.identities.values()].includes(identity);
+     if(!relocated&&(owned||this.drafts.has(path)))continue;
+     this.drafts.set(path,{original:entry.original,text:entry.text});this.times.set(path,entry.updatedAt);this.identities.set(path,identity);
+    }
+    this.lastGood=loaded.raw;this.persisted=new Map(loaded.entries.map(entry=>[entry.path,entry]));
+    this.persistedIdentities=persistedIdentities;
    }
    if(problem)throw Error(writerUi(
     'Não foi possível ler a recuperação. O arquivo será preservado; salve uma cópia do rascunho e tente novamente após reparar o arquivo. ',
@@ -115,10 +154,20 @@ class WriterV134DraftRecovery{
   }
   return entries.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)||a.path.localeCompare(b.path));
  }
+ identity(path){
+  let identity=this.identities.get(path);
+  if(!identity){
+   identity={};this.identities.set(path,identity);
+   // A draft may be renamed before its older disk copy finishes loading.
+   if(!this.persistedIdentities.has(path))this.persistedIdentities.set(path,identity);
+  }
+  return identity;
+ }
  capture(path,original,text){
   if(this.closed||this.closing)return false;
   try{
    const entry=writerV134RecoveryEntry(path,{original,text},new Date().toISOString(),false);
+   this.identity(path);
    if(original===text){this.drafts.delete(path);this.times.delete(path);}
    else{this.drafts.set(path,{original:entry.original,text:entry.text});this.times.set(path,entry.updatedAt);}
    this.touched.add(path);this.revision++;
@@ -143,6 +192,7 @@ class WriterV134DraftRecovery{
    if(path!==oldPath&&!path.startsWith(oldPath+'/'))continue;
    const next=newPath+path.slice(oldPath.length);
    if(this.drafts.has(next)||!writerV134RecoveryPath(next,true))continue;
+   const identity=this.identity(path);this.identities.set(next,identity);this.identities.delete(path);
    this.drafts.set(next,draft);this.drafts.delete(path);
    this.times.set(next,this.times.get(path)||new Date().toISOString());this.times.delete(path);
    this.touched.add(path);this.touched.add(next);changed=true;
@@ -189,21 +239,25 @@ class WriterV134DraftRecovery{
      if(enabled&&this.revision===this.savedRevision&&!this.discarded.size){this.notify('saved');return;}
      if(!enabled&&!this.discarded.size){this.notify('disabled');return;}
      const revision=this.revision,removed=new Set(this.discarded);
-     const entries=enabled?[...this.drafts].map(([path,draft])=>
-      writerV134RecoveryEntry(path,draft,this.times.get(path)||new Date().toISOString())):
-      [...this.persisted.values()].filter(entry=>!removed.has(entry.path));
+     const identities=new Map(),persistedIdentities=this.persistedIdentities;
+     const entries=enabled?[...this.drafts].map(([path,draft])=>{
+      identities.set(path,this.identity(path));
+      return writerV134RecoveryEntry(path,draft,this.times.get(path)||new Date().toISOString());
+     }):[...this.persisted.values()].filter(entry=>!removed.has(persistedIdentities.get(entry.path)));
+     if(!enabled)for(const entry of entries)identities.set(entry.path,persistedIdentities.get(entry.path));
      const raw=this.serialize(entries);
      this.notify(enabled?'pending':'disabled');
      await this.mkdir();
      if(this.lastGood!==null){
       // Explicit discard also removes that text from the fallback copy, so a
       // later damaged primary cannot resurrect a deliberately discarded draft.
-      const previous=removed.size?this.serialize(writerV134RecoveryDecode(this.lastGood).filter(entry=>!removed.has(entry.path))):this.lastGood;
+      const previous=removed.size?this.serialize(writerV134RecoveryDecode(this.lastGood).filter(entry=>!removed.has(persistedIdentities.get(entry.path)))):this.lastGood;
       await this.plugin.app.vault.adapter.write(this.previousPath,previous);
      }
      await this.plugin.app.vault.adapter.write(this.path,raw);
      this.lastGood=raw;this.persisted=new Map(entries.map(entry=>[entry.path,entry]));
-     for(const path of removed)this.discarded.delete(path);
+     this.persistedIdentities=identities;
+     for(const identity of removed)this.discarded.delete(identity);
      if(enabled)this.savedRevision=revision;
      if(!this.enabled){this.notify('disabled');return;}
      if(this.revision===revision){this.notify('saved');return;}
@@ -219,14 +273,16 @@ class WriterV134DraftRecovery{
   if(!current||current.original!==entry.original||current.text!==entry.text)
    throw Error(writerUi('O rascunho mudou. Reabra a recuperação antes de descartá-lo.','The draft changed. Reopen recovery before discarding it.'));
   const at=this.times.get(entry.path);
+  const identity=this.identity(entry.path);
   this.drafts.delete(entry.path);this.times.delete(entry.path);this.touched.add(entry.path);
-  this.discarded.add(entry.path);this.revision++;
+  this.identities.delete(entry.path);this.discarded.add(identity);this.revision++;
   try{await this.flush({discard:true});}
   catch(error){
    if(!this.drafts.has(entry.path)){
     this.drafts.set(entry.path,current);this.times.set(entry.path,at||new Date().toISOString());this.revision++;
+    this.identities.set(entry.path,identity);
    }
-   this.discarded.delete(entry.path);throw error;
+   this.discarded.delete(identity);throw error;
   }
  }
  async retry(){

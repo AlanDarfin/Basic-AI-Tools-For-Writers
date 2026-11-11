@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 13.4.1 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 13.5.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -19,9 +19,11 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 
 ### Spaces, toolbar e ações móveis
 
+- **Compilação completa do manuscrito:** exporte todos os capítulos do rascunho Longform selecionado, independentemente do limite de exibição dos editores. Escolha arquivos salvos ou a escrita atual, com rascunhos compatíveis e texto ainda não salvo. Capítulos ausentes ou versões conflitantes interrompem a compilação; a prévia mantém o texto escolhido até ser atualizada.
+
 - **Extração e restauração seguras:** separar uma seleção preserva o texto completo, inclusive trechos com mais de 100 mil caracteres, e confere a cópia salva antes de substituir o original por um link. A restauração de snapshots é cancelada se a nota mudar durante a gravação da cópia de segurança.
 
-- **Recuperação de rascunhos Longform:** alterações de capítulos mantêm uma cópia local nos dados do Basic. Após reiniciar, rascunhos compatíveis voltam à escrita contínua; quando o original mudou, ficam separados para revisão. Abra **Longform: recuperar rascunhos** para visualizar, salvar uma nova cópia Markdown ou descartar explicitamente uma entrada. Salvar a cena continua sendo uma ação própria. Rascunhos temporários de sessão mantêm o comportamento anterior, somente em memória.
+- **Recuperação de rascunhos Longform:** alterações de capítulos mantêm uma cópia local nos dados do Basic. Após reiniciar, rascunhos compatíveis voltam à escrita contínua; quando o original mudou, ficam separados para revisão. Abra **Longform: recuperar rascunhos** para visualizar, salvar uma nova cópia Markdown ou descartar explicitamente uma entrada. O descarte acompanha renomeações de notas e pastas, mesmo com novas cópias de recuperação desativadas. Salvar a cena continua sendo uma ação própria. Rascunhos temporários de sessão mantêm o comportamento anterior, somente em memória.
 
 - **Spaces no celular:** o seletor persistente funciona com as abas nativas e com o gerenciador opcional do Basic. Busque Spaces por nome, com tolerância a acentos, volte a Todo o cofre ou use **Escolher Space** nas ações rápidas e na paleta de comandos. Trocas rápidas preservam a ordem dos layouts; abrir o painel de coleções mantém o escopo atual.
 
@@ -98,7 +100,7 @@ Em **Longform → Escrita → Escrita contínua**, os capítulos são exibidos n
 
 - **Revisão editorial:** comparação linha a linha com snapshots existentes e comentários editoriais locais por capítulo.
 - **Pesquisa universal:** busca limitada por nome, propriedades e conteúdo, com escopos de livro, Space e cofre, trechos encontrados e abertura da nota original.
-- **Montagem do manuscrito:** prévia antes da criação explícita de um novo arquivo Markdown em `Basic Exports/`, sem modificar os capítulos.
+- **Montagem do manuscrito:** escolha arquivos salvos ou a escrita atual, confira a prévia completa e crie explicitamente um novo Markdown em `Basic Exports/`. A compilação inclui capítulos além do limite de exibição dos editores. Atualize a prévia para incluir edições posteriores; capítulos ausentes ou conflitantes precisam ser conferidos antes da exportação. Os capítulos originais permanecem intactos.
 - **Central de compatibilidade:** mostra estados dos módulos, falhas de inicialização e possíveis sobreposições entre plugins, sem enviar dados do cofre à rede.
 - **Homepage e biblioteca:** o widget Meus livros permanece; o widget Longform Studio foi removido. A biblioteca leva diretamente à aba Escrita contínua no Longform padrão.
 - **Bancos Markdown:** mover cartões do quadro entre colunas existentes por arraste ou seletor acessível; edição tipada de propriedades (texto, número, data, checkbox e tags), com snapshot e verificação de conflitos.

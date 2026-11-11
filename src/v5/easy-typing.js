@@ -220,7 +220,8 @@ class WriterEasyTyping{
       rule.from=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
      });
     });
-    new Setting(details).setName(writerUi('Substituir por','Replace with')).setDesc(writerUi('Até 300 caracteres; vazio remove o atalho digitado.','Up to 300 characters; empty removes the typed shortcut.')).addText(t=>{
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).setDesc(writerUi('Até 300 caracteres; vazio remove o atalho digitado.','Up to 300 characters; empty removes the typed shortcut.')).addTextArea(t=>{
+     t.inputEl.rows=2;t.inputEl.maxLength=300;
      t.setPlaceholder(writerUi('Ex.: você','E.g. by the way')).setValue(rule.to);
      t.inputEl.setAttribute('aria-label',writerUi('Texto de substituição','Replacement text'));
      t.onChange(async value=>{
@@ -242,7 +243,8 @@ class WriterEasyTyping{
   new Setting(add).setName(writerUi('Quando eu digitar','When I type')).addText(t=>{
    t.setPlaceholder(writerUi('Ex.: pq','E.g. asap')).onChange(value=>{from=value;});
   });
-  new Setting(add).setName(writerUi('Substituir por','Replace with')).addText(t=>{
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+   t.inputEl.rows=2;t.inputEl.maxLength=300;
    t.setPlaceholder(writerUi('Ex.: porque','E.g. as soon as possible')).onChange(value=>{to=value;});
   });
   new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar substituição','Save replacement')).setCta().onClick(async()=>{
@@ -252,7 +254,7 @@ class WriterEasyTyping{
    }
    this.cfg.customReplacements.push({from,to,enabled:true});
    await this.plugin.saveSettings();render();add.open=false;
-   for(const input of add.querySelectorAll('input'))input.value='';
+   for(const input of add.querySelectorAll('input,textarea'))input.value='';
    from='';to='';
   }));
   this.plugin.writerEasyAdvanced?.renderSettings(panel);

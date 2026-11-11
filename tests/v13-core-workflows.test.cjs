@@ -74,6 +74,7 @@ function runtime(){
   ItemView:class{constructor(leaf){this.app=leaf.app;this.contentEl=new Element();}},
   Notice:class{constructor(message){notices.push(message);}},
   MarkdownRenderer:{render:async(_app,value,el)=>el.setText(value)},
+  setIcon:(el,icon)=>{el.icon=icon;},
   requestUrl:options=>reply(options),
   getLanguage:()=> 'en',parseYaml:()=>({}),stringifyYaml:()=>''
  };
@@ -342,7 +343,7 @@ test('chat restores failed drafts and ignores an answer after clearing the conve
  plugin.generateWriting=()=>new Promise(resolve=>{complete=resolve;started();});
  const pending=view.sendChat();
  await began;
- view.panels.chat.findText('Clear conversation').fire('click');
+ view.panels.chat.descendants().find(el=>el.attrs['aria-label']==='Clear conversation').fire('click');
  complete('Old answer');
  await pending;
  assert.equal(view.chatHistory.length,0);

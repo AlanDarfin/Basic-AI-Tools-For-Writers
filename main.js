@@ -5528,7 +5528,8 @@ class WriterEasyTyping{
       rule.from=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
      });
     });
-    new Setting(details).setName(writerUi('Substituir por','Replace with')).setDesc(writerUi('Até 300 caracteres; vazio remove o atalho digitado.','Up to 300 characters; empty removes the typed shortcut.')).addText(t=>{
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).setDesc(writerUi('Até 300 caracteres; vazio remove o atalho digitado.','Up to 300 characters; empty removes the typed shortcut.')).addTextArea(t=>{
+     t.inputEl.rows=2;t.inputEl.maxLength=300;
      t.setPlaceholder(writerUi('Ex.: você','E.g. by the way')).setValue(rule.to);
      t.inputEl.setAttribute('aria-label',writerUi('Texto de substituição','Replacement text'));
      t.onChange(async value=>{
@@ -5550,7 +5551,8 @@ class WriterEasyTyping{
   new Setting(add).setName(writerUi('Quando eu digitar','When I type')).addText(t=>{
    t.setPlaceholder(writerUi('Ex.: pq','E.g. asap')).onChange(value=>{from=value;});
   });
-  new Setting(add).setName(writerUi('Substituir por','Replace with')).addText(t=>{
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+   t.inputEl.rows=2;t.inputEl.maxLength=300;
    t.setPlaceholder(writerUi('Ex.: porque','E.g. as soon as possible')).onChange(value=>{to=value;});
   });
   new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar substituição','Save replacement')).setCta().onClick(async()=>{
@@ -5560,7 +5562,7 @@ class WriterEasyTyping{
    }
    this.cfg.customReplacements.push({from,to,enabled:true});
    await this.plugin.saveSettings();render();add.open=false;
-   for(const input of add.querySelectorAll('input'))input.value='';
+   for(const input of add.querySelectorAll('input,textarea'))input.value='';
    from='';to='';
   }));
   this.plugin.writerEasyAdvanced?.renderSettings(panel);
@@ -5589,6 +5591,10 @@ function writerEasyRegexSafe(pattern){
  // Repeated groups with alternatives can be catastrophic even without nested quantifiers.
  if(/\([^)]*\|[^)]*\)\s*(?:\+|\*|\{)/.test(pattern))return false;
  return true;
+}
+function writerEasyRegexValid(pattern,flags=''){
+ if(!writerEasyRegexSafe(pattern)||!/^[iu]*$/.test(flags))return false;
+ try{new RegExp(pattern,flags);return true;}catch(_){return false;}
 }
 function writerEasyRegexAtInput(before,cfg){
  if(!cfg?.regexEnabled||!cfg.enabled)return null;
@@ -5703,16 +5709,21 @@ class WriterEasyAdvanced{
    (this.cfg.regexRules||[]).forEach((rule,index)=>{
     const details=regexList.createEl('details',{cls:'writer-typing-regex-rule'});
     const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    const feedback=details.createEl('p',{cls:'writer-typing-regex-feedback dictionary-muted',attr:{role:'status','aria-live':'polite'}});
     const refresh=()=>summary.setText((index+1)+'. '+label(rule));
     new Setting(details).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>{
      t.setPlaceholder('\\bpalavra\\b').setValue(rule.pattern);
      t.inputEl.setAttribute('aria-label',writerUi('Padrão regex','Regex pattern'));
      t.onChange(async value=>{
-      if(!writerEasyRegexSafe(value))return;
+      const valid=writerEasyRegexValid(value,rule.flags||'');
+      t.inputEl.setAttribute('aria-invalid',String(!valid));
+      feedback.setText(valid?'':writerUi('Padrão inválido. A regra anterior foi mantida; confira a sintaxe e os limites.','Invalid pattern. The previous rule was kept; check syntax and limits.'));
+      if(!valid)return;
       rule.pattern=value;refresh();await this.plugin.saveSettings();
      });
     });
-    new Setting(details).setName(writerUi('Substituir por','Replace with')).addText(t=>{
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+     t.inputEl.rows=2;t.inputEl.maxLength=250;
      t.setValue(rule.replace);
      t.inputEl.setAttribute('aria-label',writerUi('Substituição regex','Regex replacement'));
      t.onChange(async value=>{
@@ -5722,7 +5733,13 @@ class WriterEasyAdvanced{
     });
     new Setting(details).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
      d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
-     d.setValue(rule.flags||'').onChange(async value=>{rule.flags=value;await this.plugin.saveSettings();});
+     if(rule.flags==='ui')d.addOption('ui',writerUi('Ambos (ui)','Both (ui)'));
+     d.setValue(rule.flags||'').onChange(async value=>{
+      if(!writerEasyRegexValid(rule.pattern,value)){
+       d.setValue(rule.flags||'');feedback.setText(writerUi('Essas opções não são válidas para o padrão. A regra anterior foi mantida.','Those options are not valid for this pattern. The previous rule was kept.'));return;
+      }
+      rule.flags=value;feedback.setText('');await this.plugin.saveSettings();
+     });
     });
     new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
      rule.enabled=value;refresh();await this.plugin.saveSettings();
@@ -5736,19 +5753,21 @@ class WriterEasyAdvanced{
   add.createEl('summary',{text:writerUi('Adicionar regex','Add regex rule')});
   let pattern='',replace='',flags='';
   new Setting(add).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>t.setPlaceholder('\\bpalavra\\b').onChange(value=>{pattern=value;}));
-  new Setting(add).setName(writerUi('Substituir por','Replace with')).addText(t=>t.onChange(value=>{replace=value;}));
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+   t.inputEl.rows=2;t.inputEl.maxLength=250;t.onChange(value=>{replace=value;});
+  });
   new Setting(add).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
    d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
    d.onChange(value=>{flags=value;});
   });
   new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar regex','Save regex rule')).onClick(async()=>{
-   if(!writerEasyRegexSafe(pattern)||replace.length>250||!['','i','u','iu'].includes(flags)||(this.cfg.regexRules||[]).length>=30){
+   if(!writerEasyRegexValid(pattern,flags)||replace.length>250||!['','i','u','iu'].includes(flags)||(this.cfg.regexRules||[]).length>=30){
     new Notice(writerUi('Regex inválida ou limite de 30 regras atingido.','Invalid regex or 30-rule limit reached.'));return;
    }
    try{new RegExp(pattern,flags);}catch(error){new Notice(writerUi('Confira a sintaxe da regex.','Check regex syntax.'));return;}
    this.cfg.regexRules.push({pattern,replace,flags,enabled:true});
    await this.plugin.saveSettings();render();add.open=false;
-   for(const input of add.querySelectorAll('input'))input.value='';
+   for(const input of add.querySelectorAll('input,textarea'))input.value='';
    const dropdown=add.querySelector('select');if(dropdown)dropdown.value='';
    pattern='';replace='';flags='';
   }));
@@ -5893,6 +5912,16 @@ function writerTypingFilterTransaction(tr,p){
    tr.startState.selection?.ranges?.length===1&&tr.startState.selection.main.empty&&
    tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
    tr.newSelection.main.head===fromB+1;
+  // The native editor cannot skip its ASCII closer after we convert the pair.
+  // Typing a matching quote should step over the existing typographic closer.
+  if(typoOn&&typography.cfg.curlyQuotes&&(insertion.length===1||paired)&&
+   (insertion[0]==='"'||insertion[0]==="'")&&tr.newSelection?.ranges?.length===1){
+   const closer=insertion[0]==="'"?typography.cfg.closeSingle:typography.cfg.closeDouble;
+   const suggestion=writerTypoAtInput(doc.sliceString(line.from,fromB+1),insertion[0],typography.cfg);
+   if(suggestion?.text===closer&&doc.sliceString(toB,Math.min(doc.length,toB+closer.length))===closer){
+    edits.push({from:fromB,to:toB,insert:''});caret={anchor:fromB+closer.length};return;
+   }
+  }
   if(paired&&typoOn&&typography.cfg.curlyQuotes){
    const single=insertion[0]==="'";
    const opener=single?typography.cfg.openSingle:typography.cfg.openDouble;
@@ -5973,14 +6002,41 @@ function writerTypingUnsafeContext(state,from,prefix){
  if(ticks%2!==0)return true;
  if(/(?:https?:\/\/|obsidian:\/\/|www\.|mailto:)\S*$/i.test(line))return true;
  if(/(?:!?\[[^\]]*\]\([^)]*|\[\[[^\]]*|\$\$?[^$]*)$/.test(line))return true;
+ let parsed=false;
  try{
-  const {syntaxTree}=require('@codemirror/language');
+  const {syntaxTree,syntaxTreeAvailable}=require('@codemirror/language');
   const tree=typeof syntaxTree==='function'&&state?syntaxTree(state):null;
+  parsed=Boolean(tree)&&(typeof syntaxTreeAvailable!=='function'||syntaxTreeAvailable(state,from));
   if(tree){
    for(let node=tree.resolveInner(Math.max(0,from-1),1);node;node=node.parent)
     if(/Code|Math|Frontmatter|YAML|Link|URL|HTML|Comment|Tag/i.test(node.name||''))return true;
   }
  }catch(_){}
+ // Obsidian's line-oriented parser has no node on an empty fenced-code line.
+ // Check fence state for the first input on a blank line (or an unparsed range),
+ // rather than scanning a long manuscript for every ordinary prose keystroke.
+ if(state?.doc?.lineAt&&state.doc.line){
+  const cursor=state.doc.lineAt(Math.min(from,state.doc.length));
+  const head=cursor.text.slice(0,Math.max(0,from-cursor.from));
+  if(!parsed||!head.replace(/^(?:\s*> ?)+/,'').trim()){
+   let fence=null;
+   const consume=text=>{
+    const clean=text.replace(/^(?: {0,3}> ?)+/,'');
+    const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(clean);
+    if(!match)return;
+    const marker=match[1],tail=match[2];
+    if(!fence){
+     if(marker[0]==='\x60'&&tail.includes('\x60'))return;
+     fence={symbol:marker[0],length:marker.length};
+    }else if(marker[0]===fence.symbol&&marker.length>=fence.length&&!tail.trim())fence=null;
+   };
+   if(typeof state.doc.iterLines==='function'){
+    const lines=state.doc.iterLines(1,cursor.number);
+    while(!lines.next().done)consume(lines.value);
+   }else for(let number=1;number<cursor.number;number++)consume(state.doc.line(number).text);
+   if(fence)return true;
+  }
+ }
  return false;
 }
 
@@ -16819,7 +16875,7 @@ class WriterV91SoundPlayer{
    play.disabled=!this.cfg.enabled;
    mini.title=writerUi('Exibir mini player sem reiniciar a rádio','Show mini player without restarting radio');
    const playLabel=local?writerUi('Reproduzir ou pausar','Play or pause'):
-    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player');
+    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar rádio','Start radio');
    play.setAttribute('aria-label',playLabel);
    volume.disabled=!this.cfg.enabled;
    volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');
@@ -28893,6 +28949,15 @@ function writerV136DecorateToolPanels(view){
  view.reviewStatus?.setAttribute('aria-live','polite');
 }
 
+/** Native settings navigation is compact only while Basic owns the page. */
+function writerV136MarkSettingsHost(tab,active){
+ tab.writerV136SettingsHost?.classList.remove('writer-v136-settings-host');
+ tab.writerV136SettingsHost=null;
+ if(!active)return;
+ const host=tab.containerEl?.closest?.('.mod-settings');
+ if(host){host.classList.add('writer-v136-settings-host');tab.writerV136SettingsHost=host;}
+}
+
 // v3 module: src/v13/core-workflows.js
 const WRITER_V13_DEFAULT_MODELS={
  openai:'gpt-4.1-mini',
@@ -29704,7 +29769,10 @@ class DictionaryView extends ItemView{
   this.translationInput.addEventListener('input',()=>this.clearTranslationResult());
   chat.addClass('writer-v91-ai-dialogue');
   const header=chat.createDiv({cls:'writer-chat-header'});header.createEl('strong',{text:msg('Assistente de escrita','Writing assistant')});
-  header.createEl('button',{text:msg('Limpar conversa','Clear conversation')}).addEventListener('click',()=>{
+  const clearChatLabel=msg('Limpar conversa','Clear conversation');
+  const clearChat=header.createEl('button',{cls:'writer-chat-clear',attr:{'aria-label':clearChatLabel,title:clearChatLabel}});
+  require('obsidian').setIcon(clearChat,'eraser');
+  clearChat.addEventListener('click',()=>{
    if(this.chatRequest){
     if(!this.chatInput.value)this.chatInput.value=this.chatRequest.draft;
     this.chatRequest=null;this.chatSend.disabled=false;
@@ -30452,6 +30520,11 @@ function writerV131RenderAISettings(plugin,panel,mode){
 
 class DictionarySettings extends PluginSettingTab{
  constructor(app,plugin){super(app,plugin);this.plugin=plugin;this.plugin.writerSettingsTab=this;}
+ hide(){
+  writerV136MarkSettingsHost(this,false);
+  this.containerEl.classList.remove('writer-v13-settings');
+  if(typeof super.hide==='function')super.hide();
+ }
  display(){
   const el=this.containerEl;
   // Full settings rebuilds (e.g. module toggles) should retain both scroll strips.
@@ -30462,6 +30535,7 @@ class DictionarySettings extends PluginSettingTab{
   if(previousSubnav?.dataset.group)
    this.settingsSubtabsScrollLeft[previousSubnav.dataset.group]=previousSubnav.scrollLeft;
   el.empty();el.classList.add('writer-v13-settings');el.createEl('h2',{text:msg('Configurações do Basic','Basic settings')});
+  writerV136MarkSettingsHost(this,true);
   const nav=el.createDiv({cls:'dictionary-settings-tabs'});
   const subnav=el.createDiv({cls:'dictionary-settings-subtabs'});
   const bindHorizontalWheel=row=>row.addEventListener('wheel',event=>{

@@ -98,21 +98,35 @@
  gap:8px;
  margin-top:4px;
 }
+/* Individual typing rules keep delimiters and multiline replacements readable. */
+.writer-v13-settings :is(.writer-typing-rule,.writer-typing-rule-new,.writer-typing-regex-rule,.writer-typing-regex-new){
+ margin-block:8px;padding:10px 12px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-v13-settings :is(.writer-typing-rules,.writer-typing-regex-rules) summary{
+ cursor:pointer;min-height:32px;padding-block:4px;line-height:1.45;
+ white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text-normal);
+}
+.writer-v13-settings :is(.writer-typing-rules,.writer-typing-regex-rules) summary::marker{color:var(--text-accent)}
+.writer-v13-settings :is(.writer-typing-rules,.writer-typing-regex-rules) textarea{min-height:64px;max-height:180px;resize:vertical;line-height:1.45}
+.writer-v13-settings .writer-typing-regex-feedback{color:var(--text-error);line-height:1.45}
+.writer-v13-settings .writer-typing-regex-feedback:empty{display:none}
+.writer-v13-settings [aria-invalid="true"]{border-color:var(--text-error)}
 /* Use the actual settings content width, including narrow split windows. */
 @container basic-settings (min-width:620px){
- .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle){
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(.writer-setting-textarea):not(.writer-setting-toggle){
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(180px,45%);
   align-items:center;
   gap:12px 20px;
  }
- .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle)>.setting-item-info,
- .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle)>.setting-item-control{
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(.writer-setting-textarea):not(.writer-setting-toggle)>.setting-item-info,
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(.writer-setting-textarea):not(.writer-setting-toggle)>.setting-item-control{
   width:100%;
   min-width:0;
   max-width:100%;
  }
- .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle)>.setting-item-control{
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(.writer-setting-textarea):not(.writer-setting-toggle)>.setting-item-control{
   justify-content:flex-end;
  }
  .writer-v13-settings .writer-v131-ai-workspace>.setting-item{
@@ -133,7 +147,7 @@
  .writer-v13-settings .writer-v131-ai-details{
   padding:10px;
  }
- .writer-v13-settings .writer-v131-ai-details .setting-item-control:has(>input[type="password"],>input[type="text"]){
+ .writer-v13-settings .writer-v131-ai-details .writer-setting-field>.setting-item-control{
   flex-wrap:nowrap;
  }
  .writer-v13-settings .writer-v131-ai-details .setting-item-control>input{
@@ -145,18 +159,19 @@
  }
 }
 @media(max-width:700px){
+ .writer-v13-settings :is(.writer-typing-rules,.writer-typing-regex-rules) summary{min-height:44px}
  /* The desktop native sidebar stays available while Basic is selected.
   * Obsidian Mobile continues to own its own settings navigation. */
- body:not(.is-mobile) .mod-settings:has(.writer-v13-settings) .vertical-tab-header{
+ body:not(.is-mobile) .mod-settings.writer-v136-settings-host .vertical-tab-header{
   flex:0 0 136px;
   width:136px;
   min-width:0;
   padding-inline:6px;
  }
- body:not(.is-mobile) .mod-settings:has(.writer-v13-settings) .vertical-tab-header-group-container{
+ body:not(.is-mobile) .mod-settings.writer-v136-settings-host .vertical-tab-header-group-container{
   padding-inline:4px;
  }
- body:not(.is-mobile) .mod-settings:has(.writer-v13-settings) .vertical-tab-nav-item{
+ body:not(.is-mobile) .mod-settings.writer-v136-settings-host .vertical-tab-nav-item{
   padding-inline:4px;
  }
  .modal.mod-settings .vertical-tab-content.writer-v13-settings{

@@ -21,6 +21,10 @@ function writerEasyRegexSafe(pattern){
  if(/\([^)]*\|[^)]*\)\s*(?:\+|\*|\{)/.test(pattern))return false;
  return true;
 }
+function writerEasyRegexValid(pattern,flags=''){
+ if(!writerEasyRegexSafe(pattern)||!/^[iu]*$/.test(flags))return false;
+ try{new RegExp(pattern,flags);return true;}catch(_){return false;}
+}
 function writerEasyRegexAtInput(before,cfg){
  if(!cfg?.regexEnabled||!cfg.enabled)return null;
  const slice=String(before).slice(-256);
@@ -134,16 +138,21 @@ class WriterEasyAdvanced{
    (this.cfg.regexRules||[]).forEach((rule,index)=>{
     const details=regexList.createEl('details',{cls:'writer-typing-regex-rule'});
     const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    const feedback=details.createEl('p',{cls:'writer-typing-regex-feedback dictionary-muted',attr:{role:'status','aria-live':'polite'}});
     const refresh=()=>summary.setText((index+1)+'. '+label(rule));
     new Setting(details).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>{
      t.setPlaceholder('\\bpalavra\\b').setValue(rule.pattern);
      t.inputEl.setAttribute('aria-label',writerUi('Padrão regex','Regex pattern'));
      t.onChange(async value=>{
-      if(!writerEasyRegexSafe(value))return;
+      const valid=writerEasyRegexValid(value,rule.flags||'');
+      t.inputEl.setAttribute('aria-invalid',String(!valid));
+      feedback.setText(valid?'':writerUi('Padrão inválido. A regra anterior foi mantida; confira a sintaxe e os limites.','Invalid pattern. The previous rule was kept; check syntax and limits.'));
+      if(!valid)return;
       rule.pattern=value;refresh();await this.plugin.saveSettings();
      });
     });
-    new Setting(details).setName(writerUi('Substituir por','Replace with')).addText(t=>{
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+     t.inputEl.rows=2;t.inputEl.maxLength=250;
      t.setValue(rule.replace);
      t.inputEl.setAttribute('aria-label',writerUi('Substituição regex','Regex replacement'));
      t.onChange(async value=>{
@@ -153,7 +162,13 @@ class WriterEasyAdvanced{
     });
     new Setting(details).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
      d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
-     d.setValue(rule.flags||'').onChange(async value=>{rule.flags=value;await this.plugin.saveSettings();});
+     if(rule.flags==='ui')d.addOption('ui',writerUi('Ambos (ui)','Both (ui)'));
+     d.setValue(rule.flags||'').onChange(async value=>{
+      if(!writerEasyRegexValid(rule.pattern,value)){
+       d.setValue(rule.flags||'');feedback.setText(writerUi('Essas opções não são válidas para o padrão. A regra anterior foi mantida.','Those options are not valid for this pattern. The previous rule was kept.'));return;
+      }
+      rule.flags=value;feedback.setText('');await this.plugin.saveSettings();
+     });
     });
     new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
      rule.enabled=value;refresh();await this.plugin.saveSettings();
@@ -167,19 +182,21 @@ class WriterEasyAdvanced{
   add.createEl('summary',{text:writerUi('Adicionar regex','Add regex rule')});
   let pattern='',replace='',flags='';
   new Setting(add).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>t.setPlaceholder('\\bpalavra\\b').onChange(value=>{pattern=value;}));
-  new Setting(add).setName(writerUi('Substituir por','Replace with')).addText(t=>t.onChange(value=>{replace=value;}));
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addTextArea(t=>{
+   t.inputEl.rows=2;t.inputEl.maxLength=250;t.onChange(value=>{replace=value;});
+  });
   new Setting(add).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
    d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
    d.onChange(value=>{flags=value;});
   });
   new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar regex','Save regex rule')).onClick(async()=>{
-   if(!writerEasyRegexSafe(pattern)||replace.length>250||!['','i','u','iu'].includes(flags)||(this.cfg.regexRules||[]).length>=30){
+   if(!writerEasyRegexValid(pattern,flags)||replace.length>250||!['','i','u','iu'].includes(flags)||(this.cfg.regexRules||[]).length>=30){
     new Notice(writerUi('Regex inválida ou limite de 30 regras atingido.','Invalid regex or 30-rule limit reached.'));return;
    }
    try{new RegExp(pattern,flags);}catch(error){new Notice(writerUi('Confira a sintaxe da regex.','Check regex syntax.'));return;}
    this.cfg.regexRules.push({pattern,replace,flags,enabled:true});
    await this.plugin.saveSettings();render();add.open=false;
-   for(const input of add.querySelectorAll('input'))input.value='';
+   for(const input of add.querySelectorAll('input,textarea'))input.value='';
    const dropdown=add.querySelector('select');if(dropdown)dropdown.value='';
    pattern='';replace='';flags='';
   }));

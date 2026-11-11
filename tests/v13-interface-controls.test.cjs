@@ -5,6 +5,17 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const {writerV136BindProjectTabs:bind}=vm.runInNewContext(
  fs.readFileSync('src/v13/ui-foundation.js','utf8')+'\n({writerV136BindProjectTabs})');
+const {writerV136MarkSettingsHost:markHost}=vm.runInNewContext(
+ fs.readFileSync('src/v13/ui-foundation.js','utf8')+'\n({writerV136MarkSettingsHost})');
+test('compact native settings scope follows Basic and clears when its page is hidden or moved',()=>{
+ const host=()=>{const classes=new Set();return {classes,classList:{add:key=>classes.add(key),remove:key=>classes.delete(key)}};};
+ const one=host(),two=host();let current=one;
+ const tab={containerEl:{closest:()=>current}};
+ markHost(tab,true);assert.equal(one.classes.has('writer-v136-settings-host'),true);
+ current=two;markHost(tab,true);assert.equal(one.classes.size,0);assert.equal(two.classes.size,1);
+ markHost(tab,false);assert.equal(two.classes.size,0);
+ current=null;markHost(tab,true);assert.equal(tab.writerV136SettingsHost,null);
+});
 
 function tabs(direction='ltr'){
  const handlers={},actions=[];
@@ -63,7 +74,7 @@ function sound(station='lofi',count=0){
 }
 test('single-track radio status hides unavailable actions while retaining named playback',()=>{
  const h=sound();assert.equal(h.next.icon,'skip-forward');assert.equal(h.next.hidden,true);assert.equal(h.mini.hidden,true);
- assert.equal(h.play.attributes['aria-label'],'Start in mini player');assert.equal(h.play.title,'Start in mini player');
+ assert.equal(h.play.attributes['aria-label'],'Start radio');assert.equal(h.play.title,'Start radio');
  h.player.guest={isConnected:true};h.player.webUrl='existing guest';h.player.emit();
  assert.equal(h.mini.hidden,false);assert.equal(h.mini.disabled,false);assert.equal(h.play.attributes['aria-label'],'Stop radio');
 });

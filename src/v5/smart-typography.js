@@ -124,6 +124,16 @@ function writerTypingFilterTransaction(tr,p){
    tr.startState.selection?.ranges?.length===1&&tr.startState.selection.main.empty&&
    tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
    tr.newSelection.main.head===fromB+1;
+  // The native editor cannot skip its ASCII closer after we convert the pair.
+  // Typing a matching quote should step over the existing typographic closer.
+  if(typoOn&&typography.cfg.curlyQuotes&&(insertion.length===1||paired)&&
+   (insertion[0]==='"'||insertion[0]==="'")&&tr.newSelection?.ranges?.length===1){
+   const closer=insertion[0]==="'"?typography.cfg.closeSingle:typography.cfg.closeDouble;
+   const suggestion=writerTypoAtInput(doc.sliceString(line.from,fromB+1),insertion[0],typography.cfg);
+   if(suggestion?.text===closer&&doc.sliceString(toB,Math.min(doc.length,toB+closer.length))===closer){
+    edits.push({from:fromB,to:toB,insert:''});caret={anchor:fromB+closer.length};return;
+   }
+  }
   if(paired&&typoOn&&typography.cfg.curlyQuotes){
    const single=insertion[0]==="'";
    const opener=single?typography.cfg.openSingle:typography.cfg.openDouble;
@@ -204,13 +214,40 @@ function writerTypingUnsafeContext(state,from,prefix){
  if(ticks%2!==0)return true;
  if(/(?:https?:\/\/|obsidian:\/\/|www\.|mailto:)\S*$/i.test(line))return true;
  if(/(?:!?\[[^\]]*\]\([^)]*|\[\[[^\]]*|\$\$?[^$]*)$/.test(line))return true;
+ let parsed=false;
  try{
-  const {syntaxTree}=require('@codemirror/language');
+  const {syntaxTree,syntaxTreeAvailable}=require('@codemirror/language');
   const tree=typeof syntaxTree==='function'&&state?syntaxTree(state):null;
+  parsed=Boolean(tree)&&(typeof syntaxTreeAvailable!=='function'||syntaxTreeAvailable(state,from));
   if(tree){
    for(let node=tree.resolveInner(Math.max(0,from-1),1);node;node=node.parent)
     if(/Code|Math|Frontmatter|YAML|Link|URL|HTML|Comment|Tag/i.test(node.name||''))return true;
   }
  }catch(_){}
+ // Obsidian's line-oriented parser has no node on an empty fenced-code line.
+ // Check fence state for the first input on a blank line (or an unparsed range),
+ // rather than scanning a long manuscript for every ordinary prose keystroke.
+ if(state?.doc?.lineAt&&state.doc.line){
+  const cursor=state.doc.lineAt(Math.min(from,state.doc.length));
+  const head=cursor.text.slice(0,Math.max(0,from-cursor.from));
+  if(!parsed||!head.replace(/^(?:\s*> ?)+/,'').trim()){
+   let fence=null;
+   const consume=text=>{
+    const clean=text.replace(/^(?: {0,3}> ?)+/,'');
+    const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(clean);
+    if(!match)return;
+    const marker=match[1],tail=match[2];
+    if(!fence){
+     if(marker[0]==='\x60'&&tail.includes('\x60'))return;
+     fence={symbol:marker[0],length:marker.length};
+    }else if(marker[0]===fence.symbol&&marker.length>=fence.length&&!tail.trim())fence=null;
+   };
+   if(typeof state.doc.iterLines==='function'){
+    const lines=state.doc.iterLines(1,cursor.number);
+    while(!lines.next().done)consume(lines.value);
+   }else for(let number=1;number<cursor.number;number++)consume(state.doc.line(number).text);
+   if(fence)return true;
+  }
+ }
  return false;
 }

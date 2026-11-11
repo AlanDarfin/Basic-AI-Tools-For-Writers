@@ -149,7 +149,7 @@ Available widgets include a **clock and calendar**, **Soundscapes radio** (deskt
 ### Editing, Markdown formatting and navigation
 
 - **Keyshots-style editing:** keyboard navigation and editing actions.
-- **Easy Typing & Smart Typography:** automatic writing assistance for spacing, symbols and typographic details.
+- **Easy Typing & Smart Typography:** automatic writing assistance for spacing, symbols and typographic details. Native paired quotes keep the cursor between typographic quotes, and closing quotes advance over the existing closer. Optional dialogue dashes recognize `--Hello`. Individual literal/regex rule cards preserve pipes, multiline replacements and disabled rules; invalid regex edits keep the previous rule. Code, pasted text and IME composition remain outside typing transformations.
 - **Typewriter mode:** focus and active-line highlighting.
 - **Remember Cursor:** preserve and restore the editing position.
 - **Variants & Snapshots:** compare alternate wording before replacing text, and keep local note snapshots.

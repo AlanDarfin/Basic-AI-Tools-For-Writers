@@ -138,7 +138,7 @@ Widgets disponíveis: **relógio e calendário**, **rádio Soundscapes** (comput
 ### Edição e formatação Markdown e navegação
 
 - **Keyshots:** atalhos de navegação e edição pelo teclado.
-- **Easy Typing e Smart Typography:** auxílio automático para digitação, espaçamento, símbolos e tipografia.
+- **Easy Typing e Smart Typography:** auxílio automático para digitação, espaçamento, símbolos e tipografia. Aspas pareadas mantêm o cursor entre as aspas tipográficas; fechar avança sobre a existente. A regra opcional de diálogo reconhece `--Olá`. Regras literais/regex individuais preservam `|`, substituições multilinha e regras desativadas; uma edição de regex inválida mantém a regra anterior. Código, texto colado e composição IME ficam fora das transformações de digitação.
 - **Máquina de escrever:** foco no texto e destaque de linha.
 - **Remember Cursor:** preservação e recuperação da posição do cursor.
 - **Variantes e snapshots:** compare versões de trechos antes de substituí-los e salve versões locais das notas.

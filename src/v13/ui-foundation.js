@@ -192,3 +192,12 @@ function writerV136DecorateToolPanels(view){
  view.reviewStatus?.setAttribute('role','status');
  view.reviewStatus?.setAttribute('aria-live','polite');
 }
+
+/** Native settings navigation is compact only while Basic owns the page. */
+function writerV136MarkSettingsHost(tab,active){
+ tab.writerV136SettingsHost?.classList.remove('writer-v136-settings-host');
+ tab.writerV136SettingsHost=null;
+ if(!active)return;
+ const host=tab.containerEl?.closest?.('.mod-settings');
+ if(host){host.classList.add('writer-v136-settings-host');tab.writerV136SettingsHost=host;}
+}

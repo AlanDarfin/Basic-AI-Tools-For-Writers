@@ -408,7 +408,7 @@ class WriterV91SoundPlayer{
    play.disabled=!this.cfg.enabled;
    mini.title=writerUi('Exibir mini player sem reiniciar a rádio','Show mini player without restarting radio');
    const playLabel=local?writerUi('Reproduzir ou pausar','Play or pause'):
-    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player');
+    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar rádio','Start radio');
    play.setAttribute('aria-label',playLabel);
    volume.disabled=!this.cfg.enabled;
    volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');

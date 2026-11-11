@@ -388,9 +388,10 @@ class WriterV91SoundPlayer{
   if(!this.status)return;
   const root=this.status;root.empty();
   const select=root.createEl('select',{cls:'writer-v91-sound-select',attr:{'aria-label':writerUi('Escolher rádio','Choose radio')}});
-  const play=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
-  const next=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
-  const mini=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
+  const play=root.createEl('button',{cls:'writer-v136-sound-play',attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
+  const next=root.createEl('button',{cls:'writer-v136-sound-next',attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
+  const mini=root.createEl('button',{cls:'writer-v136-sound-mini',attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
+  require('obsidian').setIcon(next,'skip-forward');
   const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
   for(const [id,label] of writerV91SoundStationOptions(this.plugin)){
    const option=select.createEl('option',{text:label});option.value=id;
@@ -402,12 +403,19 @@ class WriterV91SoundPlayer{
    play.empty();require('obsidian').setIcon(play,local?(active?'pause':'play'):(active?'square':'play'));
    mini.empty();require('obsidian').setIcon(mini,'picture-in-picture-2');
    mini.disabled=local||!active;
+   mini.hidden=local||!active;
+   next.hidden=this.tracks.length<2;
+   play.disabled=!this.cfg.enabled;
    mini.title=writerUi('Exibir mini player sem reiniciar a rádio','Show mini player without restarting radio');
-   play.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
-    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
+   const playLabel=local?writerUi('Reproduzir ou pausar','Play or pause'):
+    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player');
+   play.setAttribute('aria-label',playLabel);
    volume.disabled=!this.cfg.enabled;
    volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');
-   next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',active);
+   play.title=playLabel;
+   next.title=writerUi('Próxima faixa','Next track');
+   next.disabled=!this.cfg.enabled||this.tracks.length<2;root.classList.toggle('is-playing',active);
+   root.classList.toggle('is-local',local);
    select.title=this.label;
    root.toggleClass?.('is-disabled',!this.cfg.enabled);
   };

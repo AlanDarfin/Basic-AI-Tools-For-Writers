@@ -86,6 +86,7 @@ class ProjectsView extends ItemView{
  getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
  async onOpen(){
+  this.writerProjectClosed=false;
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
   if(typeof MutationObserver==='function'){
    this.writerSettingsObserver=new MutationObserver(()=>{
@@ -113,11 +114,12 @@ class ProjectsView extends ItemView{
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
  }
- queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
+ queueRender(){if(this.writerProjectClosed)return;clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
+ async onClose(){this.writerProjectClosed=true;this.renderToken++;this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
-  if(!this.root)return;
+  const root=this.root;
+  if(!root||this.writerProjectClosed)return;
   this.tabPanelScrollPositions=this.tabPanelScrollPositions||Object.create(null);
   const previousScroll=this.root.scrollTop;
   for(const element of this.root.querySelectorAll?.('.writer-project-panel[data-tab]')||[]){
@@ -134,7 +136,7 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
+  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create',attr:{title:lfMsg('Criar projeto','Create project'),'aria-label':lfMsg('Criar projeto','Create project')}}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
@@ -147,6 +149,10 @@ class ProjectsView extends ItemView{
   selector.value=this.selected;
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
+  selector.title=project.title;
+  const projectPath=project.file.path;
+  const isCurrent=()=>!this.writerProjectClosed&&this.root===root&&token===this.renderToken&&
+   this.selected===projectPath&&project.file.path===projectPath;
   this.currentProject=project;
   // Series stays below the selector, even when the viewport or tab changes.
   const seriesRow=this.root.createDiv({cls:'writer-project-series-row'});
@@ -158,11 +164,14 @@ class ProjectsView extends ItemView{
    attr:{type:'button','aria-label':lfMsg('Gerenciar séries de livros','Manage book series')}})
    .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
-   try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
+   try{const raw=await this.app.vault.cachedRead(project.file);
+    if(!isCurrent())return;
+    const fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
     const parsed=fm?parseYaml(fm[1]):null;
     if(Array.isArray(parsed?.longform?.scenes)&&parsed.longform.scenes.length){project.meta={...project.meta,...parsed.longform};project.scenes=parsed.longform.scenes;}
-   }catch(e){console.warn('[Basic AI] Could not read Longform index',e);}
+   }catch(e){if(!isCurrent())return;console.warn('[Basic AI] Could not read Longform index',e);}
   }
+  if(!isCurrent())return;
   this.projectPrefs=this.prefs(project);
   if(!writerModuleOn(this.plugin,'projects')){
    this.root.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
@@ -190,7 +199,10 @@ class ProjectsView extends ItemView{
   this.tabGroup=activeGroup;
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   const groupButtons={};
-  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist'}});
+  const tabPrefix=this.writerTabPrefix??=('writer-project-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
+  const compactTabs=this.root.createEl('select',{cls:'writer-v136-project-sections',attr:{'aria-label':lfMsg('Seção do projeto','Project section')}});
+  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
+  if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
   const panels={};
   const tabButtons={};
   let rebuildingTabs=false;
@@ -199,33 +211,41 @@ class ProjectsView extends ItemView{
   const switchTab=id=>{
    if(this.activeTab===id)return;
    this.activeTab=id;
+   compactTabs.value=id;
    for(const [key,button] of Object.entries(tabButtons)){
     const selected=key===id;
     button.classList.toggle('is-active',selected);
     button.setAttribute('aria-selected',String(selected));
+    button.tabIndex=selected?0:-1;
    }
-   for(const [key,panel] of Object.entries(panels))
+   for(const [key,panel] of Object.entries(panels)){
     panel.style.display=key===id?'block':'none';
+    panel.setAttribute?.('aria-hidden',String(key!==id));
+   }
    void this.renderProjectPanel(panels,project,++this.renderToken,id)
     .catch(error=>console.error('[Basic AI] Could not render project tab',error));
   };
   const fillTabs=group=>{
    rebuildingTabs=true;
    tabs.empty();
+   compactTabs.empty();
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
+    const option=compactTabs.createEl('option',{text:name});option.value=id;
     const selected=this.activeTab===id;
     const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
-     attr:{type:'button',role:'tab','aria-selected':String(selected)}});
+     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
     require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
     btn.prepend?.(glyph);
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
+   compactTabs.value=this.activeTab;
    tabs.scrollLeft=Math.max(0,this.tabScrollPositions[group]||0);
    rebuildingTabs=false;
   };
+  compactTabs.addEventListener('change',()=>switchTab(compactTabs.value));
   for(const group of menuGroups){
    const groupLabel=lfMsg(group.pt,group.en);
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
@@ -247,15 +267,18 @@ class ProjectsView extends ItemView{
      b.setAttribute('aria-pressed',String(active));
     }
     fillTabs(group.id);
-    for(const [key,panel] of Object.entries(panels))
+    for(const [key,panel] of Object.entries(panels)){
      panel.style.display=key===this.activeTab?'block':'none';
+     panel.setAttribute?.('aria-hidden',String(key!==this.activeTab));
+    }
     void this.renderProjectPanel(panels,project,++this.renderToken,this.activeTab)
      .catch(error=>console.error('[Basic AI] Could not render project group',error));
    });
   }
   for(const [id] of allTabs){
-   panels[id]=this.root.createDiv({cls:'writer-project-panel'});
+   panels[id]=this.root.createDiv({cls:'writer-project-panel',attr:{role:'tabpanel',id:tabPrefix+'-panel-'+id,'aria-labelledby':tabPrefix+'-tab-'+id,tabindex:'0'}});
    panels[id].setAttribute?.('data-tab',id);
+   panels[id].setAttribute?.('aria-hidden',String(this.activeTab!==id));
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
   tabs.addEventListener('wheel',event=>{
@@ -268,6 +291,7 @@ class ProjectsView extends ItemView{
   },{passive:true});
   fillTabs(activeGroup);
   await this.renderProjectPanel(panels,project,token,this.activeTab);
+  if(!isCurrent())return;
   this.root.scrollTop=previousScroll;
   if(this.pendingSceneFocus?.path===project.file.path&&this.activeTab==='scenes'){
    const scene=this.pendingSceneFocus.title;this.pendingSceneFocus=null;
@@ -582,8 +606,8 @@ class ProjectsView extends ItemView{
     for(const [label,icon,action] of [
      [lfMsg('Mover para cima','Move up'),'arrow-up',()=>this.moveScene(project,name,-1)],
      [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>this.moveScene(project,name,1)],
-     ['Diminuir recuo','arrow-left',()=>this.indentScene(project,name,-1)],
-     ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
+     [lfMsg('Diminuir recuo','Decrease indent'),'arrow-left',()=>this.indentScene(project,name,-1)],
+     [lfMsg('Aumentar recuo','Increase indent'),'arrow-right',()=>this.indentScene(project,name,1)],
      [lfMsg('Adicionar subcapítulo','Add subchapter'),'plus',()=>this.addScene(project,name)],
      [lfMsg('Renomear cena','Rename scene'),'pencil',()=>this.renameScene(project,name)],
      [lfMsg('Inspecionar cena','Inspect scene'),'clipboard-list',()=>file?writerV7StudioOpenSheet(this,{
@@ -16650,9 +16674,10 @@ class WriterV91SoundPlayer{
   if(!this.status)return;
   const root=this.status;root.empty();
   const select=root.createEl('select',{cls:'writer-v91-sound-select',attr:{'aria-label':writerUi('Escolher rádio','Choose radio')}});
-  const play=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
-  const next=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
-  const mini=root.createEl('button',{attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
+  const play=root.createEl('button',{cls:'writer-v136-sound-play',attr:{type:'button','aria-label':writerUi('Reproduzir ou pausar','Play or pause')}});
+  const next=root.createEl('button',{cls:'writer-v136-sound-next',attr:{type:'button','aria-label':writerUi('Próxima faixa','Next track')}});
+  const mini=root.createEl('button',{cls:'writer-v136-sound-mini',attr:{type:'button','aria-label':writerUi('Exibir mini player','Show mini player')}});
+  require('obsidian').setIcon(next,'skip-forward');
   const volume=root.createEl('input',{attr:{type:'range',min:'0',max:'100',step:'5','aria-label':writerUi('Volume','Volume')}});
   for(const [id,label] of writerV91SoundStationOptions(this.plugin)){
    const option=select.createEl('option',{text:label});option.value=id;
@@ -16664,12 +16689,19 @@ class WriterV91SoundPlayer{
    play.empty();require('obsidian').setIcon(play,local?(active?'pause':'play'):(active?'square':'play'));
    mini.empty();require('obsidian').setIcon(mini,'picture-in-picture-2');
    mini.disabled=local||!active;
+   mini.hidden=local||!active;
+   next.hidden=this.tracks.length<2;
+   play.disabled=!this.cfg.enabled;
    mini.title=writerUi('Exibir mini player sem reiniciar a rádio','Show mini player without restarting radio');
-   play.setAttribute('aria-label',local?writerUi('Reproduzir ou pausar','Play or pause'):
-    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
+   const playLabel=local?writerUi('Reproduzir ou pausar','Play or pause'):
+    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player');
+   play.setAttribute('aria-label',playLabel);
    volume.disabled=!this.cfg.enabled;
    volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');
-   next.disabled=this.tracks.length<2;root.classList.toggle('is-playing',active);
+   play.title=playLabel;
+   next.title=writerUi('Próxima faixa','Next track');
+   next.disabled=!this.cfg.enabled||this.tracks.length<2;root.classList.toggle('is-playing',active);
+   root.classList.toggle('is-local',local);
    select.title=this.label;
    root.toggleClass?.('is-disabled',!this.cfg.enabled);
   };
@@ -28708,6 +28740,34 @@ function writerV132ProtectStatusBar(plugin,item){
  if(!already)plugin.register?.(()=>bar.classList.remove('writer-v132-status-host'));
 }
 
+/** Keep horizontal project tabs usable without a pointer or a visible scrollbar. */
+function writerV136BindProjectTabs(strip){
+ if(!strip||strip.dataset.basicV136Keyboard==='1')return;
+ strip.dataset.basicV136Keyboard='1';
+ strip.addEventListener('keydown',event=>{
+  if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
+  const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
+  if(!tabs.length)return;
+  const target=event.target.closest?.('button[role="tab"]');
+  let index=tabs.indexOf(target);
+  if(index<0)return;
+  const direction=strip.ownerDocument?.defaultView?.getComputedStyle?.(strip)?.direction==='rtl'?-1:1;
+  const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+   (index+(event.key==='ArrowRight'?direction:-direction)+tabs.length)%tabs.length;
+  event.preventDefault();
+  tabs[next].focus();tabs[next].click();
+  tabs[next].scrollIntoView?.({block:'nearest',inline:'nearest'});
+ });
+}
+
+/** Named tool panes let compact layouts follow the pane width, not the window. */
+function writerV136DecorateToolPanels(view){
+ view.panels?.definition?.addClass('writer-definition-panel');
+ view.panels?.translation?.addClass('writer-translation-panel');
+ view.reviewStatus?.setAttribute('role','status');
+ view.reviewStatus?.setAttribute('aria-live','polite');
+}
+
 // v3 module: src/v13/core-workflows.js
 const WRITER_V13_DEFAULT_MODELS={
  openai:'gpt-4.1-mini',
@@ -29339,10 +29399,14 @@ function writerV134OpenRecovery(plugin,initialPath=''){
    visible.some((entry,index)=>!same(entry,rows[index])||entry.updatedAt!==rows[index].updatedAt);
   const next=visible.find(entry=>entry.path===selectedPath)||visible[0]||null;
   if(changed){
+   const focusedPath=Array.from(list.children).find(node=>node===list.ownerDocument?.activeElement)?.dataset.path;
+   const scrollTop=list.scrollTop;
+   let focusTarget=null;
    lastQuery=query;rows=visible.map(entry=>({...entry}));list.empty();
    for(const entry of visible){
     const button=list.createEl('button',{cls:'writer-v134-recovery-item',attr:{type:'button','aria-pressed':String(entry.path===next?.path)}});
     button.dataset.path=entry.path;
+    if(entry.path===focusedPath)focusTarget=button;
     button.createSpan({cls:'writer-v134-recovery-item-path',text:entry.path});
     button.createEl('small',{text:date(entry.updatedAt)});
     button.addEventListener('click',()=>{
@@ -29350,6 +29414,8 @@ function writerV134OpenRecovery(plugin,initialPath=''){
      for(const node of list.children)node.setAttribute('aria-pressed',String(node.dataset.path===selectedPath));
     });
    }
+   if(focusTarget)focusTarget.focus({preventScroll:true});
+   list.scrollTop=scrollTop;
   }
   empty.hidden=visible.length>0;
   empty.setText(all.length?writerUi('Nenhum rascunho corresponde à busca.','No drafts match the filter.'):
@@ -29478,9 +29544,9 @@ class DictionaryView extends ItemView{
   const actions=defs.createDiv({cls:'dictionary-actions dictionary-lexical-actions'});
   const button=(label,fn)=>{const b=actions.createEl('button',{text:label});b.addEventListener('click',fn);return b;};
   
-  const translation=translations.createDiv({cls:'dictionary-translation-bar'});
   const translationLabel=msg('Texto para traduzir','Text to translate');
   this.translationInput=translations.createEl('textarea',{attr:{placeholder:translationLabel,'aria-label':translationLabel}});
+  const translation=translations.createDiv({cls:'dictionary-translation-bar'});
   this.translationEngine=translation.createEl('select',{cls:'dictionary-translation-engine',attr:{'aria-label':t('transProvider')}});
   selectOptions(this.translationEngine,AI_PROVIDERS,this.plugin.settings.translationProvider,v=>{this.plugin.settings.translationProvider=v;this.clearTranslationResult();void this.plugin.saveSettings();});
   this.sourceSelect=translation.createEl('select',{attr:{'aria-label':t('source')}});
@@ -29566,6 +29632,7 @@ class DictionaryView extends ItemView{
   reviewButtons.createEl('button',{text:msg('Escolher arquivo','Choose file')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
   this.reviewStatus=review.createDiv({cls:'writer-file-status'});
   this.reviewResults=review.createDiv({cls:'writer-review-results'});
+  writerV136DecorateToolPanels(this);
   this.updateReviewEngineUI();
   this.applyModuleVisibility();
   this.input.addEventListener('input',()=>{

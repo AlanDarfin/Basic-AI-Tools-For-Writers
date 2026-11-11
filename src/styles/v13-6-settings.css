@@ -1,0 +1,188 @@
+/* Basic 13.6 — settings measured in Obsidian's native settings window.
+ * Keep native navigation available and constrain changes to Basic's page. */
+.vertical-tab-content.writer-v13-settings{
+ padding-block:24px 40px;
+ scroll-padding-block:16px;
+}
+.writer-v13-settings>h2{
+ margin:0 0 12px;
+ padding:0;
+ font-size:var(--font-ui-large);
+ line-height:1.35;
+}
+.writer-v13-settings .writer-v131-settings-pickers{
+ position:sticky;
+ top:-24px;
+ z-index:4;
+ padding-block:6px;
+ margin-block:0 12px;
+ background:var(--background-primary);
+ border-bottom:1px solid var(--background-modifier-border);
+}
+.writer-v13-settings .writer-v131-settings-pickers>select{
+ min-height:36px;
+ box-shadow:none;
+}
+.writer-v13-settings .writer-v901-search-field{
+ min-height:38px;
+ background:var(--background-secondary);
+}
+.writer-v13-settings .dictionary-settings-panel :is(h3,h4){
+ line-height:1.4;
+}
+.writer-v13-settings .dictionary-settings-panel .setting-item{
+ min-height:46px;
+ padding-block:10px;
+}
+.writer-v13-settings .dictionary-settings-panel .setting-item-name{
+ color:var(--text-normal);
+ line-height:1.4;
+}
+.writer-v13-settings .dictionary-settings-panel .setting-item-description{
+ margin-top:4px;
+ line-height:1.45;
+}
+.writer-v13-settings .dictionary-settings-panel .setting-item-control{
+ gap:8px;
+}
+.writer-v13-settings .dictionary-settings-panel button:not(.clickable-icon){
+ min-height:34px;
+ padding:6px 10px;
+ white-space:normal;
+ line-height:1.3;
+ overflow-wrap:break-word;
+}
+.writer-v13-settings .dictionary-settings-panel button:not(.clickable-icon):not(.mod-cta):not(.mod-warning):not(.mod-destructive):not(.is-active){
+ border:1px solid var(--background-modifier-border);
+ background:var(--interactive-normal);
+ color:var(--text-normal);
+ box-shadow:none;
+}
+.writer-v13-settings .dictionary-settings-panel button:not(.clickable-icon):not(.mod-cta):not(.mod-warning):not(.mod-destructive):not(.is-active):hover:not(:disabled){
+ background:var(--interactive-hover);
+ border-color:var(--background-modifier-border-hover);
+}
+.writer-v13-settings :is(button,select,input,textarea,.checkbox-container):focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:2px;
+}
+.writer-v13-settings .dictionary-settings-panel button:disabled{
+ color:var(--text-faint);
+ cursor:default;
+}
+.writer-v13-settings .writer-v13-module-filter{
+ margin-block:4px 8px;
+}
+.writer-v13-settings .writer-v13-module-row .setting-item{
+ padding:10px 2px;
+}
+.writer-v13-settings .writer-v13-module-row:focus-within{
+ background:var(--background-secondary);
+}
+.writer-v13-settings .writer-v131-ai-details{
+ gap:8px;
+ padding:12px;
+}
+.writer-v13-settings .writer-v131-ai-heading{
+ gap:6px 12px;
+}
+.writer-v13-settings .writer-v131-ai-status{
+ max-width:100%;
+ line-height:1.4;
+ white-space:normal;
+}
+.writer-v13-settings .writer-v131-ai-feedback:empty{
+ display:none;
+}
+.writer-v13-settings .writer-v131-ai-catalog{
+ gap:8px;
+ margin-top:4px;
+}
+/* Use the actual settings content width, including narrow split windows. */
+@container basic-settings (min-width:620px){
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle){
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(180px,45%);
+  align-items:center;
+  gap:12px 20px;
+ }
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle)>.setting-item-info,
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle)>.setting-item-control{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+ }
+ .writer-v13-settings .dictionary-settings-panel .setting-item:not(:has(textarea)):not(.writer-setting-toggle)>.setting-item-control{
+  justify-content:flex-end;
+ }
+ .writer-v13-settings .writer-v131-ai-workspace>.setting-item{
+  margin-bottom:4px;
+ }
+ .writer-v13-settings .writer-v131-ai-details>.setting-item{
+  padding-block:8px;
+ }
+}
+@container basic-settings (max-width:619px){
+ .writer-v13-settings .dictionary-settings-panel .setting-item-control{
+  justify-content:flex-start;
+ }
+ .writer-v13-settings .dictionary-settings-panel .setting-item .setting-item-control>button{
+  flex:0 1 auto;
+  width:auto;
+ }
+ .writer-v13-settings .writer-v131-ai-details{
+  padding:10px;
+ }
+ .writer-v13-settings .writer-v131-ai-details .setting-item-control:has(>input[type="password"],>input[type="text"]){
+  flex-wrap:nowrap;
+ }
+ .writer-v13-settings .writer-v131-ai-details .setting-item-control>input{
+  flex:1 1 0;
+  width:0;
+ }
+ .writer-v13-settings .writer-v131-ai-details .setting-item-control>button{
+  flex:0 0 auto;
+ }
+}
+@media(max-width:700px){
+ /* The desktop native sidebar stays available while Basic is selected.
+  * Obsidian Mobile continues to own its own settings navigation. */
+ body:not(.is-mobile) .mod-settings:has(.writer-v13-settings) .vertical-tab-header{
+  flex:0 0 136px;
+  width:136px;
+  min-width:0;
+  padding-inline:6px;
+ }
+ body:not(.is-mobile) .mod-settings:has(.writer-v13-settings) .vertical-tab-header-group-container{
+  padding-inline:4px;
+ }
+ body:not(.is-mobile) .mod-settings:has(.writer-v13-settings) .vertical-tab-nav-item{
+  padding-inline:4px;
+ }
+ .modal.mod-settings .vertical-tab-content.writer-v13-settings{
+  padding:18px 12px 32px;
+  padding-inline:12px;
+ }
+ .writer-v13-settings .writer-v131-settings-pickers{
+  gap:8px;
+  top:-18px;
+ }
+ .writer-v13-settings :is(.writer-v131-settings-pickers>select,.dictionary-settings-panel button:not(.clickable-icon),.dictionary-settings-panel select:not(.is-measuring)){
+  min-height:44px;
+  height:auto;
+ }
+ .writer-v13-settings .writer-v901-search-field{
+  min-height:44px;
+ }
+ .writer-v13-settings .dictionary-settings-panel .setting-item{
+  padding-block:12px;
+ }
+ .writer-v13-settings .writer-v131-ai-actions{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ .writer-v13-settings .writer-v131-ai-actions button{
+  width:100%;
+  padding-inline:8px;
+ }
+}

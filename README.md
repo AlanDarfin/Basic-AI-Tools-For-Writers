@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.5.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.6.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -18,6 +18,8 @@ Write, plan, revise and organize books without moving your work to a separate da
 ## Features
 
 ### Spaces, toolbar and mobile actions
+
+- **Compact, readable interface:** settings, the homepage, book cards and writing panels adapt to the actual pane width. Chapter titles wrap, narrow project panes use a section selector, keyboard users can navigate project tabs, and Soundscapes keeps its station readable. Recovery updates retain keyboard focus. Preferences, note contents and Space layouts are preserved.
 
 - **Complete manuscript compilation:** export every chapter in the selected Longform draft, independently of the chapter editor display limit. Choose saved files or current writing with compatible drafts and unsaved editor text. Missing chapters or conflicting versions stop compilation; the preview keeps the chosen text until you refresh it.
 

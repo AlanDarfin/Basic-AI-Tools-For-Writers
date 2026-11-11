@@ -84,6 +84,7 @@ class ProjectsView extends ItemView{
  getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
  async onOpen(){
+  this.writerProjectClosed=false;
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
   if(typeof MutationObserver==='function'){
    this.writerSettingsObserver=new MutationObserver(()=>{
@@ -111,11 +112,12 @@ class ProjectsView extends ItemView{
   this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
   await this.render();
  }
- queueRender(){clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
+ queueRender(){if(this.writerProjectClosed)return;clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
+ async onClose(){this.writerProjectClosed=true;this.renderToken++;this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
-  if(!this.root)return;
+  const root=this.root;
+  if(!root||this.writerProjectClosed)return;
   this.tabPanelScrollPositions=this.tabPanelScrollPositions||Object.create(null);
   const previousScroll=this.root.scrollTop;
   for(const element of this.root.querySelectorAll?.('.writer-project-panel[data-tab]')||[]){
@@ -132,7 +134,7 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create'}).addEventListener('click',()=>this.promptNewProject());
+  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create',attr:{title:lfMsg('Criar projeto','Create project'),'aria-label':lfMsg('Criar projeto','Create project')}}).addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
@@ -145,6 +147,10 @@ class ProjectsView extends ItemView{
   selector.value=this.selected;
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
+  selector.title=project.title;
+  const projectPath=project.file.path;
+  const isCurrent=()=>!this.writerProjectClosed&&this.root===root&&token===this.renderToken&&
+   this.selected===projectPath&&project.file.path===projectPath;
   this.currentProject=project;
   // Series stays below the selector, even when the viewport or tab changes.
   const seriesRow=this.root.createDiv({cls:'writer-project-series-row'});
@@ -156,11 +162,14 @@ class ProjectsView extends ItemView{
    attr:{type:'button','aria-label':lfMsg('Gerenciar séries de livros','Manage book series')}})
    .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
-   try{const raw=await this.app.vault.cachedRead(project.file),fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
+   try{const raw=await this.app.vault.cachedRead(project.file);
+    if(!isCurrent())return;
+    const fm=/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(raw);
     const parsed=fm?parseYaml(fm[1]):null;
     if(Array.isArray(parsed?.longform?.scenes)&&parsed.longform.scenes.length){project.meta={...project.meta,...parsed.longform};project.scenes=parsed.longform.scenes;}
-   }catch(e){console.warn('[Basic AI] Could not read Longform index',e);}
+   }catch(e){if(!isCurrent())return;console.warn('[Basic AI] Could not read Longform index',e);}
   }
+  if(!isCurrent())return;
   this.projectPrefs=this.prefs(project);
   if(!writerModuleOn(this.plugin,'projects')){
    this.root.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
@@ -188,7 +197,10 @@ class ProjectsView extends ItemView{
   this.tabGroup=activeGroup;
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   const groupButtons={};
-  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist'}});
+  const tabPrefix=this.writerTabPrefix??=('writer-project-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
+  const compactTabs=this.root.createEl('select',{cls:'writer-v136-project-sections',attr:{'aria-label':lfMsg('Seção do projeto','Project section')}});
+  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
+  if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
   const panels={};
   const tabButtons={};
   let rebuildingTabs=false;
@@ -197,33 +209,41 @@ class ProjectsView extends ItemView{
   const switchTab=id=>{
    if(this.activeTab===id)return;
    this.activeTab=id;
+   compactTabs.value=id;
    for(const [key,button] of Object.entries(tabButtons)){
     const selected=key===id;
     button.classList.toggle('is-active',selected);
     button.setAttribute('aria-selected',String(selected));
+    button.tabIndex=selected?0:-1;
    }
-   for(const [key,panel] of Object.entries(panels))
+   for(const [key,panel] of Object.entries(panels)){
     panel.style.display=key===id?'block':'none';
+    panel.setAttribute?.('aria-hidden',String(key!==id));
+   }
    void this.renderProjectPanel(panels,project,++this.renderToken,id)
     .catch(error=>console.error('[Basic AI] Could not render project tab',error));
   };
   const fillTabs=group=>{
    rebuildingTabs=true;
    tabs.empty();
+   compactTabs.empty();
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
+    const option=compactTabs.createEl('option',{text:name});option.value=id;
     const selected=this.activeTab===id;
     const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
-     attr:{type:'button',role:'tab','aria-selected':String(selected)}});
+     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
     require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
     btn.prepend?.(glyph);
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
+   compactTabs.value=this.activeTab;
    tabs.scrollLeft=Math.max(0,this.tabScrollPositions[group]||0);
    rebuildingTabs=false;
   };
+  compactTabs.addEventListener('change',()=>switchTab(compactTabs.value));
   for(const group of menuGroups){
    const groupLabel=lfMsg(group.pt,group.en);
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
@@ -245,15 +265,18 @@ class ProjectsView extends ItemView{
      b.setAttribute('aria-pressed',String(active));
     }
     fillTabs(group.id);
-    for(const [key,panel] of Object.entries(panels))
+    for(const [key,panel] of Object.entries(panels)){
      panel.style.display=key===this.activeTab?'block':'none';
+     panel.setAttribute?.('aria-hidden',String(key!==this.activeTab));
+    }
     void this.renderProjectPanel(panels,project,++this.renderToken,this.activeTab)
      .catch(error=>console.error('[Basic AI] Could not render project group',error));
    });
   }
   for(const [id] of allTabs){
-   panels[id]=this.root.createDiv({cls:'writer-project-panel'});
+   panels[id]=this.root.createDiv({cls:'writer-project-panel',attr:{role:'tabpanel',id:tabPrefix+'-panel-'+id,'aria-labelledby':tabPrefix+'-tab-'+id,tabindex:'0'}});
    panels[id].setAttribute?.('data-tab',id);
+   panels[id].setAttribute?.('aria-hidden',String(this.activeTab!==id));
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
   tabs.addEventListener('wheel',event=>{
@@ -266,6 +289,7 @@ class ProjectsView extends ItemView{
   },{passive:true});
   fillTabs(activeGroup);
   await this.renderProjectPanel(panels,project,token,this.activeTab);
+  if(!isCurrent())return;
   this.root.scrollTop=previousScroll;
   if(this.pendingSceneFocus?.path===project.file.path&&this.activeTab==='scenes'){
    const scene=this.pendingSceneFocus.title;this.pendingSceneFocus=null;
@@ -580,8 +604,8 @@ class ProjectsView extends ItemView{
     for(const [label,icon,action] of [
      [lfMsg('Mover para cima','Move up'),'arrow-up',()=>this.moveScene(project,name,-1)],
      [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>this.moveScene(project,name,1)],
-     ['Diminuir recuo','arrow-left',()=>this.indentScene(project,name,-1)],
-     ['Aumentar recuo','arrow-right',()=>this.indentScene(project,name,1)],
+     [lfMsg('Diminuir recuo','Decrease indent'),'arrow-left',()=>this.indentScene(project,name,-1)],
+     [lfMsg('Aumentar recuo','Increase indent'),'arrow-right',()=>this.indentScene(project,name,1)],
      [lfMsg('Adicionar subcapítulo','Add subchapter'),'plus',()=>this.addScene(project,name)],
      [lfMsg('Renomear cena','Rename scene'),'pencil',()=>this.renameScene(project,name)],
      [lfMsg('Inspecionar cena','Inspect scene'),'clipboard-list',()=>file?writerV7StudioOpenSheet(this,{

@@ -133,10 +133,14 @@ function writerV134OpenRecovery(plugin,initialPath=''){
    visible.some((entry,index)=>!same(entry,rows[index])||entry.updatedAt!==rows[index].updatedAt);
   const next=visible.find(entry=>entry.path===selectedPath)||visible[0]||null;
   if(changed){
+   const focusedPath=Array.from(list.children).find(node=>node===list.ownerDocument?.activeElement)?.dataset.path;
+   const scrollTop=list.scrollTop;
+   let focusTarget=null;
    lastQuery=query;rows=visible.map(entry=>({...entry}));list.empty();
    for(const entry of visible){
     const button=list.createEl('button',{cls:'writer-v134-recovery-item',attr:{type:'button','aria-pressed':String(entry.path===next?.path)}});
     button.dataset.path=entry.path;
+    if(entry.path===focusedPath)focusTarget=button;
     button.createSpan({cls:'writer-v134-recovery-item-path',text:entry.path});
     button.createEl('small',{text:date(entry.updatedAt)});
     button.addEventListener('click',()=>{
@@ -144,6 +148,8 @@ function writerV134OpenRecovery(plugin,initialPath=''){
      for(const node of list.children)node.setAttribute('aria-pressed',String(node.dataset.path===selectedPath));
     });
    }
+   if(focusTarget)focusTarget.focus({preventScroll:true});
+   list.scrollTop=scrollTop;
   }
   empty.hidden=visible.length>0;
   empty.setText(all.length?writerUi('Nenhum rascunho corresponde à busca.','No drafts match the filter.'):

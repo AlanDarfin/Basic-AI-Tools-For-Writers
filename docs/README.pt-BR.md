@@ -2,7 +2,7 @@
 
 **Um espaço de escrita modular para o Obsidian.**
 
-**Versão:** 13.5.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
+**Versão:** 13.6.0 (versão estável) · **Requer:** Obsidian 1.11.4+ · **Computador e Android** · **Licença:** MIT
 
 [Read in English](../README.md) · [Créditos de terceiros](../THIRD_PARTY_NOTICES.md) · [Segurança](../SECURITY.md)
 
@@ -18,6 +18,8 @@ Escreva, planeje, revise e organize livros sem transferir seu trabalho para um b
 ## Funcionalidades
 
 ### Spaces, toolbar e ações móveis
+
+- **Interface compacta e legível:** configurações, homepage, cartões de livros e painéis de escrita se adaptam à largura real do painel. Os nomes dos capítulos quebram em linhas; painéis estreitos ganham seletor de seção; as abas de projetos funcionam pelo teclado; e o Soundscapes mantém a rádio legível. Atualizações da recuperação preservam o foco do teclado. Preferências, notas e layouts dos Spaces são preservados.
 
 - **Compilação completa do manuscrito:** exporte todos os capítulos do rascunho Longform selecionado, independentemente do limite de exibição dos editores. Escolha arquivos salvos ou a escrita atual, com rascunhos compatíveis e texto ainda não salvo. Capítulos ausentes ou versões conflitantes interrompem a compilação; a prévia mantém o texto escolhido até ser atualizada.
 

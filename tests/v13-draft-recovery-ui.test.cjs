@@ -230,3 +230,17 @@ test('copy failures keep the draft available and reenable its action without tou
  assert.equal(h.contents.get('Book/Chapter.md'),'Original');assert.equal(h.created.length,0);
  assert.ok(h.notices.some(message=>message.includes('Permission denied')));
 });
+test('background draft changes preserve the focused recovery row and list scroll position',async()=>{
+ const h=setup([entry(),entry('Book/Other.md','Other draft')]),modal=await h.open();
+ const list=modal.contentEl.find('writer-v134-recovery-list');
+ const focused=list.children.find(node=>node.dataset.path==='Book/Chapter.md');
+ focused.focus();list.scrollTop=87;
+ h.store.entries[1].text='Background update';h.store.emit();
+ assert.notEqual(h.document.activeElement,focused);
+ assert.equal(h.document.activeElement.dataset.path,'Book/Chapter.md');
+ assert.equal(list.scrollTop,87);
+ const filter=modal.contentEl.find('writer-v134-recovery-filter');filter.focus();
+ h.store.entries[1].text='Another update';h.store.emit();
+ assert.equal(h.document.activeElement,filter);
+ assert.equal(h.created.length,0);assert.equal(h.store.discards.length,0);
+});

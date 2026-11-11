@@ -122,20 +122,67 @@ class WriterEasyAdvanced{
   panel.createEl('h4',{text:writerUi('Regras regex e modelos com Tab','Regex rules and Tab snippets')});
   panel.createEl('p',{text:writerUi('Regras regex são limitadas, não executam JavaScript e vêm desativadas por padrão. Modelos inseridos por comando incluem marcações ${1:texto} e ${0} para a posição final.','Regex rules are bounded, do not execute JavaScript, and default to off. Snippets use ${1:text} and ${0} cursor markers.'),cls:'dictionary-muted'});
   new Setting(panel).setName(writerUi('Ativar regras regex','Enable regex rules')).addToggle(t=>t.setValue(this.cfg.regexEnabled).onChange(async v=>{this.cfg.regexEnabled=v;await this.plugin.saveSettings();}));
-  new Setting(panel).setName(writerUi('Substituições regex','Regex replacement rules'))
-   .setDesc(writerUi('Uma por linha: padrão|substituição|flags (i ou u). Sem avaliação de código.','One per line: pattern|replacement|flags (i or u). No code evaluation.'))
-   .addTextArea(t=>{
-    t.inputEl.rows=5;
-    t.setValue((this.cfg.regexRules||[]).map(x=>[x.pattern,x.replace,x.flags||''].join('|')).join('\n')).onChange(async value=>{
-     this.cfg.regexRules=value.split(/\r?\n/).slice(0,30).map(line=>{
-      const parts=line.split('|');
-      if(parts.length<2)return null;
-      const [pattern,replace,flags='']=parts;
-      return writerEasyRegexSafe(pattern)&&replace.length<=250&&/^[iu]*$/.test(flags)?{pattern,replace,flags,enabled:true}:null;
-     }).filter(Boolean);
-     await this.plugin.saveSettings();
+  const regexSection=panel.createDiv({cls:'writer-typing-regex-rules'});
+  regexSection.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Use padrões regex apenas quando uma substituição literal não for suficiente. Cada regra tem campos próprios, pode ser desativada e mantém sua ordem de prioridade. As regex só funcionam se o interruptor acima estiver ligado.',
+   'Use regex only when a literal replacement is not enough. Every rule has separate fields, its own enabled switch and a stable priority order. Regex runs only when enabled above.'
+  )});
+  const regexList=regexSection.createDiv({cls:'writer-typing-regex-list'});
+  const label=rule=>rule.pattern+' → '+(rule.replace||writerUi('(vazio)','(empty)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');
+  const render=()=>{
+   regexList.empty();
+   (this.cfg.regexRules||[]).forEach((rule,index)=>{
+    const details=regexList.createEl('details',{cls:'writer-typing-regex-rule'});
+    const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    const refresh=()=>summary.setText((index+1)+'. '+label(rule));
+    new Setting(details).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>{
+     t.setPlaceholder('\\bpalavra\\b').setValue(rule.pattern);
+     t.inputEl.setAttribute('aria-label',writerUi('Padrão regex','Regex pattern'));
+     t.onChange(async value=>{
+      if(!writerEasyRegexSafe(value))return;
+      rule.pattern=value;refresh();await this.plugin.saveSettings();
+     });
     });
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).addText(t=>{
+     t.setValue(rule.replace);
+     t.inputEl.setAttribute('aria-label',writerUi('Substituição regex','Regex replacement'));
+     t.onChange(async value=>{
+      if(value.length>250)return;
+      rule.replace=value;refresh();await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
+     d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
+     d.setValue(rule.flags||'').onChange(async value=>{rule.flags=value;await this.plugin.saveSettings();});
+    });
+    new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
+     rule.enabled=value;refresh();await this.plugin.saveSettings();
+    })).addExtraButton(b=>b.setIcon('trash-2').setTooltip(writerUi('Excluir regex','Delete regex rule')).onClick(async()=>{
+     this.cfg.regexRules.splice(index,1);await this.plugin.saveSettings();render();
+    }));
    });
+  };
+  render();
+  const add=regexSection.createEl('details',{cls:'writer-typing-regex-new'});
+  add.createEl('summary',{text:writerUi('Adicionar regex','Add regex rule')});
+  let pattern='',replace='',flags='';
+  new Setting(add).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>t.setPlaceholder('\\bpalavra\\b').onChange(value=>{pattern=value;}));
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addText(t=>t.onChange(value=>{replace=value;}));
+  new Setting(add).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
+   d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
+   d.onChange(value=>{flags=value;});
+  });
+  new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar regex','Save regex rule')).onClick(async()=>{
+   if(!writerEasyRegexSafe(pattern)||replace.length>250||!['','i','u','iu'].includes(flags)||(this.cfg.regexRules||[]).length>=30){
+    new Notice(writerUi('Regex inválida ou limite de 30 regras atingido.','Invalid regex or 30-rule limit reached.'));return;
+   }
+   try{new RegExp(pattern,flags);}catch(error){new Notice(writerUi('Confira a sintaxe da regex.','Check regex syntax.'));return;}
+   this.cfg.regexRules.push({pattern,replace,flags,enabled:true});
+   await this.plugin.saveSettings();render();add.open=false;
+   for(const input of add.querySelectorAll('input'))input.value='';
+   const dropdown=add.querySelector('select');if(dropdown)dropdown.value='';
+   pattern='';replace='';flags='';
+  }));
   new Setting(panel).setName(writerUi('Modelos de texto','Text snippets'))
    .setDesc(writerUi('Uma linha por modelo usando JSON com name e body. Para múltiplas linhas, use \\n no body.','One JSON object per line with name and body. Use \\n for multiline content.'))
    .addTextArea(t=>{

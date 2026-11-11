@@ -115,7 +115,7 @@ test('desktop input supports prose dashes and skips composition, paste and code'
   const tx=typingTr('',0,'""',event,1);
   assert.equal(v.writerTypingFilterTransaction(tx,plugin),tx,event);
  }
- const inCode=typingTr('\\x60code ',6,'"');
+ const inCode=typingTr(String.fromCharCode(96)+'code ',6,'"');
  assert.equal(v.writerTypingFilterTransaction(inCode,plugin),inCode);
 });
 test('literal replacements preserve pipes, disabled rules and independent editor controls',()=>{

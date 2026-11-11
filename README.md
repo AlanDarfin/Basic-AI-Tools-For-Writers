@@ -2,7 +2,7 @@
 
 **A modular writing workspace for Obsidian.**
 
-**Version:** 13.4.1 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
+**Version:** 13.5.0 (stable release) · **Requires:** Obsidian 1.11.4+ · **Desktop & Android** · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Third-party notices](THIRD_PARTY_NOTICES.md) · [Security](SECURITY.md)
 
@@ -19,7 +19,9 @@ Write, plan, revise and organize books without moving your work to a separate da
 
 ### Spaces, toolbar and mobile actions
 
-- **Longform draft recovery:** chapter edits keep a local recovery copy in Basic's plugin data. After a restart, matching drafts return to continuous writing; changed originals are kept separate for review. Open **Longform: recover drafts** to preview, save a new Markdown copy or explicitly discard a recovery entry. Saving a scene remains explicit. Temporary Session drafts keep their existing memory-only behavior.
+- **Complete manuscript compilation:** export every chapter in the selected Longform draft, independently of the chapter editor display limit. Choose saved files or current writing with compatible drafts and unsaved editor text. Missing chapters or conflicting versions stop compilation; the preview keeps the chosen text until you refresh it.
+
+- **Longform draft recovery:** chapter edits keep a local recovery copy in Basic's plugin data. After a restart, matching drafts return to continuous writing; changed originals are kept separate for review. Open **Longform: recover drafts** to preview, save a new Markdown copy or explicitly discard a recovery entry. Discard follows renamed notes and folders, including when new recovery copies are disabled. Saving a scene remains explicit. Temporary Session drafts keep their existing memory-only behavior.
 
 - **Spaces on mobile:** the persistent selector works with native sidebar tabs and Basic's optional tab manager. Search Space names with accent tolerance, return to Entire vault, or use **Choose Space** from Basic's quick actions or the command palette. Rapid Space switches preserve layout order; opening the collections sidebar keeps the current scope.
 
@@ -95,7 +97,7 @@ Open **Longform → Writing → Continuous writing** to work through chapters in
 
 - **Editorial review:** read-only line comparisons against existing Basic snapshots, plus local comments attached to chapter paths.
 - **Universal search:** query file names, properties and note contents within a selected book, Space or bounded vault scan. Results include excerpts and open the source note.
-- **Manuscript assembly:** review a compiled Markdown preview before explicitly creating a new file under `Basic Exports/`. Existing chapters are untouched. Use the separate Pandoc export features for supported desktop publishing formats.
+- **Manuscript assembly:** choose saved files or current writing, review a complete Markdown preview and explicitly create a new file under `Basic Exports/`. Compilation includes chapters beyond the editor display limit. Refresh the preview to include later edits; missing or conflicting chapters require attention before export. Existing chapters are untouched. Use the separate Pandoc export features for supported desktop publishing formats.
 - **Compatibility center:** inspect local module states, integration failures and overlapping third-party plugins without sending vault content over the network.
 - **Integration:** the new Continuous writing tab is part of the standard Longform interface; the Bookshelf shortcut opens that same project tab. The Homepage keeps its Books widget, without a duplicate Studio widget.
 - **Markdown databases:** move Notion-style board cards between existing columns using drag-and-drop or a mobile-friendly dropdown, with conflict checks and snapshots; use **Databases: edit typed property** for text, numbers, dates, checkboxes and tags.

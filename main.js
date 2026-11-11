@@ -7269,7 +7269,12 @@ function writerBookNavHasSourceBlock(text){
 }
 class WriterBookNavWidget extends (typeof WriterV6WidgetType!=='undefined'?WriterV6WidgetType:class{}){
  constructor(plugin,buttons){super();this.plugin=plugin;this.buttons=buttons;}
- eq(other){return other instanceof WriterBookNavWidget&&JSON.stringify(other.buttons)===JSON.stringify(this.buttons);}
+ eq(other){
+  return other instanceof WriterBookNavWidget&&other.buttons.length===this.buttons.length&&this.buttons.every((button,index)=>{
+   const next=other.buttons[index];
+   return button.direction===next.direction&&button.kind===next.kind&&button.target?.path===next.target?.path&&button.target?.title===next.target?.title;
+  });
+ }
  toDOM(view){
   const root=view.dom.ownerDocument.createElement('div');
   writerBookNavRenderButtons(root,this.plugin.app,this.buttons,{automatic:true});
@@ -7354,71 +7359,128 @@ class WriterBookNavigation{
  }
  registerAutomatic(){
   const plugin=this.plugin,owner=this;
-  const effect=require('@codemirror/state').StateEffect.define();
+  const {StateEffect,StateField}=require('@codemirror/state');
+  const {EditorView}=require('@codemirror/view');
+  const effect=StateEffect.define(),setButtons=StateEffect.define();
+  const instances=new Set(),timers=new Set();let closed=false;
+  const editorPath=view=>{
+   for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[])
+    if(leaf.view?.editor?.cm===view)return leaf.view?.file?.path||'';
+   return '';
+  };
+  const navigationField=StateField.define({
+   create:()=>null,
+   update(value,tr){
+    let data=value?.data;
+    for(const item of tr.effects){
+     if(item.is(effect))data=null;
+     else if(item.is(setButtons))data=item.value;
+    }
+    if(closed||!owner.cfg.enabled||!writerModuleOn(plugin,'bookNavigation')||
+     writerBookNavHasSourceBlock(tr.newDoc.toString())||!data?.buttons?.length||editorPath(data.view)!==data.path)return null;
+    if(value?.data===data&&!tr.docChanged)return value;
+    return {data,decorations:Decoration.set([
+     Decoration.widget({widget:new WriterBookNavWidget(plugin,data.buttons),side:1,block:true}).range(tr.newDoc.length)
+    ])};
+   },
+   // Block widgets affect document layout and must be supplied directly by a
+   // StateField; ViewPlugin decoration providers may only supply inline ones.
+   provide:field=>EditorView.decorations.from(field,value=>value?.decorations||Decoration.none)
+  });
   const refreshEditors=()=>{
+   if(closed)return;
    owner.revision++;
    for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[]){
     try{leaf.view?.editor?.cm?.dispatch({effects:effect.of(null)});}catch(_){}
    }
    void updatePreview();
   };
+  const later=delay=>{
+   if(closed)return;
+   const timer=setTimeout(()=>{timers.delete(timer);refreshEditors();},delay);timers.add(timer);
+  };
   const updatePreview=async()=>{
+   const revision=owner.revision;
    for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[]){
-    const view=leaf.view,file=view?.file;
-    const root=view?.previewMode?.containerEl?.querySelector?.('.markdown-preview-sizer');
-    if(!root)continue;
-    root.querySelectorAll('.writer-v6-booknav-preview-auto').forEach(x=>x.remove());
-    if(!(file instanceof TFile)||!owner.cfg.enabled)continue;
-    const match=await writerBookNavFindProjectAsync(plugin.app,file.path,plugin.settings.lastLongformProject);
-    if(!root.isConnected||!writerBookNavAutoAllowed(plugin,match,file.path))continue;
-    const noteText=view?.editor?.getValue?.()||await plugin.app.vault.cachedRead(file);
-    if(writerBookNavHasSourceBlock(noteText))continue;
-    const buttons=writerBookNavButtons(writerBookNavTargets(match.items,file.path),owner.cfg);
-    if(!buttons.length)continue;
-    const holder=root.createDiv({cls:'writer-v6-booknav-preview-auto'});
-    writerBookNavRenderButtons(holder,plugin.app,buttons,{automatic:true});
+    if(closed||revision!==owner.revision)return;
+    try{
+     const view=leaf.view,file=view?.file;
+     const path=file?.path;
+     const root=view?.previewMode?.containerEl?.querySelector?.('.markdown-preview-sizer');
+     if(!root)continue;
+     root.querySelectorAll('.writer-v6-booknav-preview-auto').forEach(x=>x.remove());
+     if(!(file instanceof TFile)||!owner.cfg.enabled)continue;
+     const current=()=>!closed&&revision===owner.revision&&root.isConnected&&view.file===file&&file.path===path;
+     const match=await writerBookNavFindProjectAsync(plugin.app,path,plugin.settings.lastLongformProject);
+     if(!current()||!writerBookNavAutoAllowed(plugin,match,path))continue;
+     const editing=view?.editor?.getValue?.();
+     const noteText=typeof editing==='string'?editing:await plugin.app.vault.cachedRead(file);
+     if(!current()||writerBookNavHasSourceBlock(noteText))continue;
+     const targets=writerBookNavTargets(match.items,path);
+     const buttons=targets?writerBookNavButtons(targets,owner.cfg):[];
+     if(!buttons.length)continue;
+     const holder=root.createDiv({cls:'writer-v6-booknav-preview-auto'});
+     writerBookNavRenderButtons(holder,plugin.app,buttons,{automatic:true});
+    }catch(error){
+     if(!closed&&revision===owner.revision)console.warn('[Basic AI] Automatic navigation preview:',error);
+    }
    }
   };
-  plugin.registerEditorExtension(ViewPlugin.fromClass(class{
-   constructor(view){this.view=view;this.key='';this.buttons=[];this.decorations=Decoration.none;this.rebuild();}
-   getPath(){
-    for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[]){
-     if(leaf.view?.editor?.cm===this.view)return leaf.view?.file?.path||'';
-    }
-    return '';
+  const lookup=ViewPlugin.fromClass(class{
+   constructor(view){this.view=view;this.key='';this.doc=null;this.path='';this.serial=0;this.destroyed=false;instances.add(this);this.rebuild();}
+   send(data,serial){
+    // CodeMirror forbids dispatch during ViewPlugin.update. Both clears and
+    // lookup results enter the field in a later microtask.
+    void Promise.resolve().then(()=>{
+     if(closed||this.destroyed||serial!==this.serial)return;
+     try{this.view.dispatch({effects:setButtons.of(data)});}catch(_){}
+    });
    }
    rebuild(){
-    const path=this.getPath(),source=this.view.state.doc.toString();
-    if(!path||!owner.cfg.enabled||writerBookNavHasSourceBlock(source)){
-     this.key='';this.buttons=[];this.decorations=Decoration.none;return;
+    if(closed||this.destroyed)return;
+    const path=editorPath(this.view),doc=this.view.state.doc,source=doc.toString();
+    if(!path||!owner.cfg.enabled||!writerModuleOn(plugin,'bookNavigation')||writerBookNavHasSourceBlock(source)){
+     this.key='';this.doc=doc;this.path=path;this.send(null,++this.serial);return;
     }
-    const key=path+'|'+source.length+'|'+writerBookNavHasSourceBlock(source)+'|'+String(owner.cfg.auto)+'|'+String(owner.revision)+'|'+String(plugin.settings.lastLongformProject||'');
-    if(key===this.key)return;
-    this.key=key;
-    const current=key;
+    const key=path+'|'+String(owner.cfg.auto)+'|'+String(owner.revision)+'|'+String(plugin.settings.lastLongformProject||'');
+    if(key===this.key&&doc===this.doc)return;
+    const changedPath=path!==this.path,serial=++this.serial;
+    this.key=key;this.doc=doc;this.path=path;
+    if(changedPath)this.send(null,serial);
     void writerBookNavFindProjectAsync(plugin.app,path,plugin.settings.lastLongformProject).then(match=>{
-     if(current!==this.key)return;
+     if(closed||this.destroyed||serial!==this.serial||this.view.state.doc!==doc||editorPath(this.view)!==path)return;
+     if(!owner.cfg.enabled||!writerModuleOn(plugin,'bookNavigation')||writerBookNavHasSourceBlock(this.view.state.doc.toString())){
+      this.send(null,serial);return;
+     }
      const targets=match&&writerBookNavAutoAllowed(plugin,match,path)?writerBookNavTargets(match.items,path):null;
-     this.buttons=targets?writerBookNavButtons(targets,owner.cfg):[];
-     try{this.view.dispatch({effects:effect.of(null)});}catch(_){}
+     this.send({path,view:this.view,buttons:targets?writerBookNavButtons(targets,owner.cfg):[]},serial);
     }).catch(e=>console.warn('[Basic AI] Automatic navigation:',e));
    }
    update(update){
     if(update.docChanged||update.transactions.some(tr=>tr.effects.some(e=>e.is(effect))))this.rebuild();
-    this.decorations=this.buttons.length&&!writerBookNavHasSourceBlock(update.view.state.doc.toString())
-     ?Decoration.set([Decoration.widget({widget:new WriterBookNavWidget(plugin,this.buttons),side:1,block:true}).range(update.view.state.doc.length)])
-     :Decoration.none;
    }
-  },{decorations:instance=>instance.decorations}));
+   destroy(){this.destroyed=true;this.serial++;instances.delete(this);}
+  });
+  plugin.registerEditorExtension([navigationField,lookup]);
+  plugin.register?.(()=>{
+   closed=true;
+   for(const timer of timers)clearTimeout(timer);timers.clear();
+   for(const instance of [...instances]){
+    instance.destroy();
+    try{instance.view.dispatch({effects:setButtons.of(null)});}catch(_){}
+   }
+   for(const leaf of plugin.app.workspace.getLeavesOfType('markdown')||[])
+    leaf.view?.previewMode?.containerEl?.querySelectorAll?.('.writer-v6-booknav-preview-auto').forEach(node=>node.remove());
+  });
   for(const name of ['file-open','layout-change','active-leaf-change']){
-   plugin.registerEvent(plugin.app.workspace.on(name,()=>setTimeout(refreshEditors,120)));
+   plugin.registerEvent(plugin.app.workspace.on(name,()=>later(120)));
   }
-  if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>setTimeout(refreshEditors,150)));
-  plugin.registerEvent(plugin.app.vault.on('rename',()=>setTimeout(refreshEditors,150)));
+  if(typeof plugin.app.metadataCache?.on==='function')plugin.registerEvent(plugin.app.metadataCache.on('changed',()=>later(150)));
+  plugin.registerEvent(plugin.app.vault.on('rename',()=>later(150)));
   plugin.registerEvent(plugin.app.vault.on('modify',file=>{
-   if(file?.extension==='md'&&file.path===plugin.settings.lastLongformProject)setTimeout(refreshEditors,150);
+   if(file?.extension==='md'&&file.path===plugin.settings.lastLongformProject)later(150);
   }));
-  setTimeout(refreshEditors,220);
+  later(220);
   this.refreshAutomatic=refreshEditors;
  }
  renderSettings(panel){
@@ -26091,7 +26153,7 @@ function writerV11CleanMarkdown(source){
 }
 function writerV11ProjectFiles(plugin,project,limit){
  if(!project?.file)return [];
- if(project.standalone)return [{title:project.title,file:project.file,indent:0}];
+ if(project.standalone||project.format==='single')return [{title:project.title,file:project.file,indent:0}];
  const entries=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
  const out=[],paths=new Set();
  for(const scene of entries){
@@ -26165,11 +26227,10 @@ function writerV11RenderLongformTab(view,panel,project){
  if(cfg.enabled===false){
   root.createEl('p',{text:writerUi('A escrita contínua está desativada nas configurações do Longform.','Continuous writing is disabled in Longform settings.')});return;
  }
- const entries=project.format==='single'?[{title:project.title,file:project.file}]:
-  (typeof view.activeScenes==='function'?view.activeScenes(project):typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[]).map(scene=>{
-   const file=typeof view.resolveScene==='function'?view.resolveScene(project,scene.title):null;
-   return {title:scene.title,file,indent:scene.indent||0};
-  }).filter(entry=>entry.file?.extension==='md');
+ const compileScenes=()=>writerV11ManuscriptScenes(plugin,project,
+  typeof view.activeScenes==='function'?view.activeScenes(project):undefined,
+  typeof view.resolveScene==='function'?scene=>view.resolveScene(project,scene.title):undefined);
+ const entries=compileScenes().filter(entry=>entry.file?.extension==='md');
  const unique=new Set(),scenes=entries.filter(entry=>{
   if(!entry.file?.path||unique.has(entry.file.path))return false;
   unique.add(entry.file.path);return true;
@@ -26182,10 +26243,14 @@ function writerV11RenderLongformTab(view,panel,project){
  bar.createEl('button',{text:writerUi('Pesquisar capítulos','Search chapters')})
   .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
  bar.createEl('button',{text:writerUi('Compilar manuscrito','Compile manuscript')})
-  .addEventListener('click',()=>void writerV11Compile(plugin,project,scenes));
+  .addEventListener('click',()=>void writerV11Compile(plugin,project,compileScenes));
  if(typeof writerV134OpenRecovery==='function')bar.createEl('button',{text:writerUi('Recuperar rascunhos','Recover drafts')})
   .addEventListener('click',()=>writerV134OpenRecovery(plugin));
- const count=bar.createSpan({cls:'writer-v11-longform-counter',text:scenes.length+' '+writerUi('capítulos','chapters')});
+ const total=unique.size;
+ const count=bar.createSpan({cls:'writer-v11-longform-counter',text:(scenes.length<total?scenes.length+'/'+total:scenes.length)+' '+writerUi('capítulos','chapters')});
+ if(scenes.length<total)root.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'O limite reduz apenas os editores desta sessão. A compilação inclui todas as cenas do rascunho ativo.',
+  'The session limit applies only to chapter editors. Compilation includes every scene in the active draft.')});
  if(!scenes.length){
   root.createEl('p',{text:writerUi('Este projeto ainda não contém cenas Markdown. Use a aba Cenas para adicioná-las.','This project has no Markdown scenes yet. Add them in Scenes.')});return;
  }
@@ -26409,41 +26474,196 @@ function writerV11OpenSearch(plugin,scoped){
  modal.onClose=()=>{generation++;modal._writerCleanup?.();close?.();};
  modal.open();
 }
-async function writerV11Compile(plugin,project,scenes){
- if(!scenes?.length)return new Notice(writerUi('Nenhum capítulo encontrado.','No chapters found.'));
- let contents=[],words=0;
- for(const scene of scenes){
-  try{const text=writerV11CleanMarkdown(await plugin.app.vault.read(scene.file));
-   contents.push('# '+scene.title+'\n\n'+text);words+=writerV11Words(text);
-  }catch(error){new Notice(String(error.message||error));return;}
- }
- const manuscript='# '+project.title+'\n\n'+contents.join('\n\n---\n\n')+'\n';
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Compilar manuscrito','Compile manuscript'));
- modal.onOpen=()=>{
-  const root=modal.contentEl;root.empty();
-  root.createEl('p',{text:scenes.length+' '+writerUi('capítulos · ','chapters · ')+words+' '+writerUi('palavras.','words.')});
-  root.createEl('p',{text:writerUi('Prévia de compilação. O original não será alterado.','Compilation preview. Original notes are never changed.')});
-  const pre=root.createEl('pre',{cls:'writer-v11-compile-preview'});
-  pre.setText(manuscript.slice(0,6000)+(manuscript.length>6000?'\n…':''));
-  let approved=false;
-  new Setting(root).setName(writerUi('Confirmar criação de um novo Markdown','Confirm creation of a new Markdown file'))
-   .addToggle(t=>t.onChange(v=>approved=v));
-  new Setting(root).addButton(b=>b.setButtonText(writerUi('Criar manuscrito','Create manuscript')).setCta().onClick(async()=>{
-   if(!approved)return new Notice(writerUi('Confirme a criação.','Confirm creation.'));
-   b.setDisabled(true);
-   try{
-    const folder='Basic Exports';
-    if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
-    const base=String(project.title||'Livro').replace(/[\x00-\x1f\\/:*?"<>|#\[\]]/g,' ').trim().slice(0,75)||'Livro';
-    let path=folder+'/'+base+' - Manuscrito.md',i=2;
-    while(plugin.app.vault.getAbstractFileByPath(path)&&i<100)path=folder+'/'+base+' - Manuscrito '+i+++'.md';
-    if(plugin.app.vault.getAbstractFileByPath(path))throw Error('No free export path');
-    const file=await plugin.app.vault.create(path,manuscript);
-    modal.close();await plugin.app.workspace.getLeaf('tab').openFile(file);
-   }catch(error){new Notice(String(error.message||error));}finally{b.setDisabled(false);}
-  }));
+function writerV11ManuscriptScenes(plugin,project,entries,resolve){
+ if(!project?.file)return [];
+ if(project.standalone||project.format==='single')return [{title:project.title,file:project.file,indent:0}];
+ const scenes=entries??(typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[]);
+ // Keep unresolved entries and repeated references: every ordered scene must
+ // either appear in the manuscript or produce an explicit preparation error.
+ return scenes.map(scene=>({title:String(scene.title||''),indent:scene.indent||0,
+  file:typeof resolve==='function'?resolve(scene):
+   typeof writerBookNavFindSceneFile==='function'?writerBookNavFindSceneFile(project,scene,plugin.app):null}));
+}
+function writerV11ManuscriptBuffers(plugin,path){
+ return (plugin.app.workspace.getLeavesOfType?.('markdown')||[]).map(leaf=>leaf.view)
+  .filter(view=>view?.file?.path===path&&view.editor&&view.getMode?.()!=='preview')
+  .map(view=>({view,editor:view.editor,text:view.editor.getValue()}));
+}
+function writerV11ManuscriptDraft(plugin,path){
+ const draft=plugin._writerV11Drafts?.get(path);
+ return draft?{original:draft.original,text:draft.text}:null;
+}
+async function writerV11ManuscriptSnapshot(plugin,project,scenes,mode='saved',active=()=>true){
+ const vault=plugin.app.vault,rows=[],events=[];
+ const tracked=new Set([project?.file,...(scenes||[]).map(scene=>scene.file)].filter(Boolean));
+ const paths=[...tracked].map(file=>file.path).filter(path=>typeof path==='string');
+ let dirty=false;
+ const changed=()=>Error(writerUi('O projeto mudou durante a preparação. Atualize a prévia.',
+  'The project changed while preparing the manuscript. Refresh the preview.'));
+ const checkActive=()=>{if(dirty||!active())throw changed();};
+ const invalidate=(file,oldPath)=>{
+  if(tracked.has(file)||[file?.path,oldPath].some(path=>typeof path==='string'&&
+   paths.some(target=>target===path||target.startsWith(path+'/'))))dirty=true;
  };
- modal.open();
+ try{
+ // Metadata may retain mtime/size, and an earlier chapter can change after its
+ // final read while another chapter is still loading. Observe source/index
+ // events only during preparation; completed previews remain frozen.
+ if(typeof vault.on==='function'&&typeof vault.offref==='function')
+  for(const event of ['modify','rename','delete'])events.push(vault.on(event,invalidate));
+ if(mode==='current'&&typeof writerV134Recovery==='function'){
+  const recovery=writerV134Recovery(plugin);await recovery.ready;checkActive();
+  if(recovery.blocked)throw Error(writerUi('As cópias de recuperação precisam de revisão. Abra a recuperação ou use os arquivos salvos.',
+   'Recovery copies need attention. Open draft recovery or use saved files.'));
+ }
+ if(!scenes?.length)throw Error(writerUi('Nenhum capítulo encontrado.','No chapters found.'));
+ for(const [index,scene] of scenes.entries()){
+  checkActive();
+  const file=scene.file,path=file?.path;
+  if(!file||file.extension!=='md'||vault.getAbstractFileByPath(path)!==file)
+   throw Error(writerUi('Capítulo ausente ou indisponível: ','Missing or unavailable chapter: ')+scene.title);
+  const mtime=file.stat?.mtime,size=file.stat?.size,saved=await vault.read(file);
+  checkActive();
+  if(file.path!==path||vault.getAbstractFileByPath(path)!==file||file.stat?.mtime!==mtime||file.stat?.size!==size)throw changed();
+  const buffers=mode==='current'?writerV11ManuscriptBuffers(plugin,path):[];
+  const draft=mode==='current'?writerV11ManuscriptDraft(plugin,path):null;
+  let text=saved,origin='saved';
+  if(mode==='current'){
+   const versions=new Set(buffers.map(buffer=>buffer.text));
+   if(versions.size>1)throw Error(writerUi('Painéis com textos diferentes: ','Open panes have different text: ')+path);
+   const editing=buffers[0]?.text??saved;
+   if(draft&&draft.text!==saved){
+    if(typeof draft.original!=='string'||typeof draft.text!=='string'||draft.original!==saved)
+     throw Error(writerUi('Rascunho baseado em outra versão: ','Draft is based on another version: ')+path);
+    if(editing!==saved&&editing!==draft.text)
+     throw Error(writerUi('Rascunho e editor têm textos diferentes: ','Draft and editor have different text: ')+path);
+    text=draft.text;origin='draft';
+   }else if(editing!==saved){text=editing;origin='editor';}
+  }
+  rows.push({title:scene.title,path,file,indent:scene.indent||0,saved,mtime,size,buffers,draft,text,origin});
+  if(index%12===11)await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ // Re-read the original files, then check all identities and live buffers in
+ // one synchronous pass so earlier chapters cannot change unnoticed while
+ // later chapters are loading. Only the completed snapshot is frozen.
+ for(const [index,row] of rows.entries()){
+  checkActive();
+  if(row.file.path!==row.path||vault.getAbstractFileByPath(row.path)!==row.file||await vault.read(row.file)!==row.saved)throw changed();
+  if(index%12===11)await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ checkActive();
+ for(const row of rows){
+  if(row.file.path!==row.path||vault.getAbstractFileByPath(row.path)!==row.file||
+   row.file.stat?.mtime!==row.mtime||row.file.stat?.size!==row.size)throw changed();
+  if(mode==='current'){
+   const draft=writerV11ManuscriptDraft(plugin,row.path),buffers=writerV11ManuscriptBuffers(plugin,row.path);
+   if(draft?.original!==row.draft?.original||draft?.text!==row.draft?.text||buffers.length!==row.buffers.length||
+    buffers.some(buffer=>!row.buffers.some(old=>old.view===buffer.view&&old.editor===buffer.editor&&old.text===buffer.text)))throw changed();
+  }
+ }
+ let words=0;
+ const contents=rows.map(row=>{const text=writerV11CleanMarkdown(row.text);words+=writerV11Words(text);return '# '+row.title+'\n\n'+text;});
+ return {rows,words,mode,createdAt:new Date(),manuscript:'# '+project.title+'\n\n'+contents.join('\n\n---\n\n')+'\n'};
+ }finally{
+  for(const event of events)vault.offref(event);
+ }
+}
+async function writerV11SaveManuscript(plugin,project,manuscript){
+ const vault=plugin.app.vault,folder='Basic Exports';
+ const existing=vault.getAbstractFileByPath(folder);
+ if(existing&&!(existing instanceof TFolder))throw Error(writerUi('Basic Exports precisa ser uma pasta.','Basic Exports must be a folder.'));
+ if(!existing){
+  try{await vault.createFolder(folder);}
+  catch(error){if(!(vault.getAbstractFileByPath(folder) instanceof TFolder))throw error;}
+ }
+ const base=String(project.title||'Livro').replace(/[\x00-\x1f\\/:*?"<>|#\[\]]/g,' ').replace(/[. ]+$/,'').trim().slice(0,75)||'Livro';
+ for(let number=1;number<=1000;number++){
+  const path=folder+'/'+base+' - Manuscrito'+(number>1?' '+number:'')+'.md';
+  if(vault.getAbstractFileByPath(path))continue;
+  try{return await vault.create(path,manuscript);}
+  catch(error){if(!vault.getAbstractFileByPath(path))throw error;}
+ }
+ throw Error(writerUi('Não foi possível encontrar um nome livre para o manuscrito.','Could not find a free name for the manuscript.'));
+}
+async function writerV11Compile(plugin,project,sceneSource){
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Compilar manuscrito','Compile manuscript'));
+ modal.modalEl?.addClass('writer-v135-compile-modal');
+ let mode='saved',snapshot=null,generation=0,closed=false,loading=false,busy=false,approved=false;
+ let summary,chapters,preview,previewNote,confirmation,create,refreshButton,sourceChoice;
+ const resolveScenes=()=>typeof sceneSource==='function'?sceneSource():sceneSource||writerV11ManuscriptScenes(plugin,project);
+ const sourceLabel=origin=>origin==='draft'?writerUi('Rascunho Longform','Longform draft'):
+  origin==='editor'?writerUi('Editor não salvo','Unsaved editor'):writerUi('Arquivo salvo','Saved file');
+ const controls=()=>{
+  create?.setDisabled(busy||loading||!snapshot);
+  refreshButton?.setDisabled(busy||loading);
+  sourceChoice?.setDisabled(busy);
+  confirmation?.setDisabled(busy||loading||!snapshot);
+ };
+ const refresh=async()=>{
+  if(busy||closed)return;
+  const mine=++generation;loading=true;snapshot=null;approved=false;confirmation?.setValue(false);
+  summary.setText(writerUi('Preparando todas as cenas…','Preparing every scene…'));
+  chapters.empty();preview.setText('');previewNote.setText('');controls();
+  try{
+   const scenes=resolveScenes().map(scene=>({...scene}));
+   const result=await writerV11ManuscriptSnapshot(plugin,project,scenes,mode,()=>!closed&&mine===generation);
+   if(closed||mine!==generation)return;
+   const latest=resolveScenes();
+   if(latest.length!==scenes.length||latest.some((scene,index)=>scene.file!==scenes[index].file||scene.title!==scenes[index].title||scene.indent!==scenes[index].indent))
+    throw Error(writerUi('A ordem do projeto mudou. Atualize a prévia.','The project order changed. Refresh the preview.'));
+   snapshot=result;
+   summary.setText(result.rows.length+' '+writerUi('capítulos · ','chapters · ')+result.words+' '+writerUi('palavras · ','words · ')+result.createdAt.toLocaleString());
+   for(const row of result.rows)chapters.createEl('li',{text:row.title+' — '+row.path+' · '+sourceLabel(row.origin)});
+   preview.setText(result.manuscript.slice(0,6000));
+   previewNote.setText(result.manuscript.length>6000?writerUi(
+    'A prévia mostra os primeiros 6.000 caracteres. O arquivo incluirá o manuscrito completo.',
+    'The preview shows the first 6,000 characters. The file will contain the complete manuscript.'):
+    writerUi('A prévia mostra o manuscrito completo.','The preview shows the complete manuscript.'));
+  }catch(error){if(!closed&&mine===generation)summary.setText(String(error.message||error));}
+  finally{if(!closed&&mine===generation){loading=false;controls();}}
+ };
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();root.addClass('writer-v135-compile');
+  root.createEl('p',{cls:'setting-item-description',text:writerUi(
+   'Todas as cenas, na ordem do projeto. Os capítulos originais nunca são alterados.',
+   'Every scene, in project order. Original chapters are never changed.')});
+  new Setting(root).setName(writerUi('Texto a incluir','Text to include')).addDropdown(dropdown=>{
+   sourceChoice=dropdown;
+   dropdown.addOption('saved',writerUi('Arquivos salvos','Saved files'))
+    .addOption('current',writerUi('Escrita atual','Current writing')).setValue(mode).onChange(value=>{mode=value;void refresh();});
+  });
+  root.createEl('p',{cls:'setting-item-description',text:writerUi(
+   'Arquivos salvos ignora edições não salvas. Escrita atual inclui rascunhos Longform compatíveis e editores abertos; versões conflitantes precisam de revisão.',
+   'Saved files excludes unsaved edits. Current writing includes matching Longform drafts and open editors; conflicting versions need review.')});
+  summary=root.createEl('p',{attr:{role:'status','aria-live':'polite'}});
+  const detail=root.createEl('details');detail.createEl('summary',{text:writerUi('Capítulos e fontes do texto','Chapters and text sources')});
+  chapters=detail.createEl('ol');
+  preview=root.createEl('pre',{cls:'writer-v11-compile-preview'});
+  previewNote=root.createEl('p',{cls:'setting-item-description'});
+  root.createEl('p',{cls:'setting-item-description',text:writerUi(
+   'A exportação usa esta cópia preparada. Alterações posteriores só entram após Atualizar prévia.',
+   'Export uses this prepared copy. Later edits are included only after Refresh preview.')});
+  new Setting(root).addButton(button=>{refreshButton=button;button.setButtonText(writerUi('Atualizar prévia','Refresh preview')).onClick(refresh);});
+  new Setting(root).setName(writerUi('Confirmar novo Markdown','Confirm new Markdown file')).addToggle(toggle=>{
+   confirmation=toggle;toggle.onChange(value=>approved=value);
+  });
+  new Setting(root).addButton(button=>{
+   create=button;button.setButtonText(writerUi('Criar manuscrito','Create manuscript')).setCta().onClick(async()=>{
+    if(busy||loading||!snapshot)return;
+    if(!approved)return new Notice(writerUi('Confirme a criação.','Confirm creation.'));
+    busy=true;controls();
+    try{
+     const file=await writerV11SaveManuscript(plugin,project,snapshot.manuscript);
+     modal.close();
+     try{await plugin.app.workspace.getLeaf('tab').openFile(file);}
+     catch(error){new Notice(writerUi('Manuscrito criado; não foi possível abrir: ','Manuscript created; could not open: ')+String(error.message||error));}
+    }catch(error){new Notice(String(error.message||error));}
+    finally{busy=false;if(!closed)controls();}
+   });
+  });
+ };
+ modal.onClose=()=>{closed=true;generation++;snapshot=null;};
+ modal.open();await refresh();return modal;
 }
 function writerV11OpenDiagnostics(plugin){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Central de compatibilidade v11','v11 compatibility center'));
@@ -26505,7 +26725,7 @@ function writerV11StudioRegister(plugin){
  plugin.addCommand({id:'v11-universal-search',name:writerUi('Pesquisa: conteúdo e propriedades do cofre','Search: vault content and properties'),
   callback:()=>writerV11OpenSearch(plugin)});
  plugin.addCommand({id:'v11-manuscript-compile',name:writerUi('Longform: compilar manuscrito Markdown','Longform: compile Markdown manuscript'),
-  callback:()=>writerV11PickProject(plugin,p=>void writerV11Compile(plugin,p,writerV11ProjectFiles(plugin,p,writerV11Cfg(plugin.settings).chapterLimit)))});
+  callback:()=>writerV11PickProject(plugin,p=>void writerV11Compile(plugin,p))});
  plugin.addCommand({id:'v11-compatibility-center',name:writerUi('Basic: central de compatibilidade','Basic: compatibility center'),
   callback:()=>writerV11OpenDiagnostics(plugin)});
  if(typeof writerV134OpenRecovery==='function')plugin.addCommand({id:'v134-longform-recovery',name:writerUi('Longform: recuperar rascunhos','Longform: recover drafts'),
@@ -26528,7 +26748,9 @@ function writerV11StudioSettings(plugin,panel){
   }));
  if(typeof writerV134OpenRecovery==='function')new Setting(panel).setName(writerUi('Rascunhos recuperáveis','Recoverable drafts'))
   .addButton(button=>button.setButtonText(writerUi('Abrir recuperação','Open recovery')).onClick(()=>writerV134OpenRecovery(plugin)));
- new Setting(panel).setName(writerUi('Limite de capítulos por sessão','Chapter limit per session'))
+ new Setting(panel).setName(writerUi('Editores de capítulos por sessão','Chapter editors per session'))
+  .setDesc(writerUi('Limita apenas a lista de editores da escrita contínua. A compilação inclui todas as cenas do rascunho ativo.',
+   'Limits only the continuous writing editor list. Compilation includes every scene in the active draft.'))
   .addSlider(s=>s.setLimits(10,200,10).setValue(cfg.chapterLimit).setDynamicTooltip().onChange(async v=>{cfg.chapterLimit=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum searched notes'))
   .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.searchLimit).setDynamicTooltip().onChange(async v=>{cfg.searchLimit=v;await plugin.saveSettings();}));
@@ -28708,6 +28930,10 @@ class WriterV134DraftRecovery{
   this.plugin=plugin;
   plugin._writerV11Drafts??=new Map();
   this.times=new Map();this.touched=new Set(plugin._writerV11Drafts.keys());
+  // Paths can be reused after a rename. Track the draft owning each in-memory
+  // and persisted path so an explicit discard removes only that draft's copies.
+  this.identities=new Map([...this.touched].map(path=>[path,{}]));
+  this.persistedIdentities=new Map(this.identities);
   this.persisted=new Map();this.discarded=new Set();this.listeners=new Set();this.renames=[];
   this.revision=this.touched.size?1:0;this.savedRevision=0;
   this.timer=null;this.queue=Promise.resolve();this.lastGood=null;this.blocked=false;
@@ -28756,7 +28982,7 @@ class WriterV134DraftRecovery{
    }
    this.blocked=Boolean(problem);
    if(loaded){
-    this.lastGood=loaded.raw;this.persisted=new Map(loaded.entries.map(entry=>[entry.path,entry]));
+    const persistedIdentities=new Map(),paths=new Map(),reserved=new Set();
     const destinations=new Map(),originalPaths=new Set(loaded.entries.map(entry=>entry.path));
     const destination=path=>{
      for(const rename of this.renames)
@@ -28769,9 +28995,44 @@ class WriterV134DraftRecovery{
      // A rename can collide with an orphaned recovery copy. Keep both under
      // their original paths instead of dropping whichever one loads second.
      if(path!==entry.path&&(originalPaths.has(path)||destinations.get(path)>1||this.drafts.has(path)||this.touched.has(path)))path=entry.path;
-     if(this.touched.has(entry.path)||this.touched.has(path)||this.drafts.has(path))continue;
-     this.drafts.set(path,{original:entry.original,text:entry.text});this.times.set(path,entry.updatedAt);
+     paths.set(entry,path);
+     const previous=this.persisted.get(entry.path);
+     const same=!previous||(previous.original===entry.original&&previous.text===entry.text&&previous.updatedAt===entry.updatedAt);
+     const identity=same&&this.persistedIdentities.get(entry.path);
+     if(identity&&!reserved.has(identity)){persistedIdentities.set(entry.path,identity);reserved.add(identity);}
     }
+    for(const entry of loaded.entries){
+     if(persistedIdentities.has(entry.path))continue;
+     const current=this.identities.get(paths.get(entry));
+     const identity=current&&!reserved.has(current)?current:{};
+     persistedIdentities.set(entry.path,identity);reserved.add(identity);
+    }
+    const origins=new Map([...persistedIdentities].map(([path,identity])=>[identity,path]));
+    for(const entry of loaded.entries){
+     const path=paths.get(entry),identity=persistedIdentities.get(entry.path);
+     let relocated=false;
+     if(this.drafts.has(path)&&this.identities.get(path)!==identity){
+      const originalPath=origins.get(this.identities.get(path));
+      if(originalPath&&originalPath!==path){
+       // Typing can precede loading, then move onto an unknown orphan. Put
+       // that moved draft back at its original vacant path and expose both.
+       if(this.drafts.has(originalPath))throw Error(writerUi(
+        'A renomeação encontrou rascunhos diferentes no mesmo caminho. A recuperação em disco foi preservada; salve cópias dos rascunhos e tente novamente.',
+        'The rename found different drafts at the same path. Disk recovery was preserved; save draft copies and retry.'));
+       this.drafts.set(originalPath,this.drafts.get(path));this.drafts.delete(path);
+       this.identities.set(originalPath,this.identities.get(path));this.identities.delete(path);
+       this.times.set(originalPath,this.times.get(path)||new Date().toISOString());this.times.delete(path);
+       this.touched.add(originalPath);this.revision++;relocated=true;
+      }
+     }
+     // A touched alias may now belong to a different draft. Only the owner
+     // of this identity can supersede its stored copy (including a clear).
+     const owned=[...this.identities.values()].includes(identity);
+     if(!relocated&&(owned||this.drafts.has(path)))continue;
+     this.drafts.set(path,{original:entry.original,text:entry.text});this.times.set(path,entry.updatedAt);this.identities.set(path,identity);
+    }
+    this.lastGood=loaded.raw;this.persisted=new Map(loaded.entries.map(entry=>[entry.path,entry]));
+    this.persistedIdentities=persistedIdentities;
    }
    if(problem)throw Error(writerUi(
     'Não foi possível ler a recuperação. O arquivo será preservado; salve uma cópia do rascunho e tente novamente após reparar o arquivo. ',
@@ -28787,10 +29048,20 @@ class WriterV134DraftRecovery{
   }
   return entries.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)||a.path.localeCompare(b.path));
  }
+ identity(path){
+  let identity=this.identities.get(path);
+  if(!identity){
+   identity={};this.identities.set(path,identity);
+   // A draft may be renamed before its older disk copy finishes loading.
+   if(!this.persistedIdentities.has(path))this.persistedIdentities.set(path,identity);
+  }
+  return identity;
+ }
  capture(path,original,text){
   if(this.closed||this.closing)return false;
   try{
    const entry=writerV134RecoveryEntry(path,{original,text},new Date().toISOString(),false);
+   this.identity(path);
    if(original===text){this.drafts.delete(path);this.times.delete(path);}
    else{this.drafts.set(path,{original:entry.original,text:entry.text});this.times.set(path,entry.updatedAt);}
    this.touched.add(path);this.revision++;
@@ -28815,6 +29086,7 @@ class WriterV134DraftRecovery{
    if(path!==oldPath&&!path.startsWith(oldPath+'/'))continue;
    const next=newPath+path.slice(oldPath.length);
    if(this.drafts.has(next)||!writerV134RecoveryPath(next,true))continue;
+   const identity=this.identity(path);this.identities.set(next,identity);this.identities.delete(path);
    this.drafts.set(next,draft);this.drafts.delete(path);
    this.times.set(next,this.times.get(path)||new Date().toISOString());this.times.delete(path);
    this.touched.add(path);this.touched.add(next);changed=true;
@@ -28861,21 +29133,25 @@ class WriterV134DraftRecovery{
      if(enabled&&this.revision===this.savedRevision&&!this.discarded.size){this.notify('saved');return;}
      if(!enabled&&!this.discarded.size){this.notify('disabled');return;}
      const revision=this.revision,removed=new Set(this.discarded);
-     const entries=enabled?[...this.drafts].map(([path,draft])=>
-      writerV134RecoveryEntry(path,draft,this.times.get(path)||new Date().toISOString())):
-      [...this.persisted.values()].filter(entry=>!removed.has(entry.path));
+     const identities=new Map(),persistedIdentities=this.persistedIdentities;
+     const entries=enabled?[...this.drafts].map(([path,draft])=>{
+      identities.set(path,this.identity(path));
+      return writerV134RecoveryEntry(path,draft,this.times.get(path)||new Date().toISOString());
+     }):[...this.persisted.values()].filter(entry=>!removed.has(persistedIdentities.get(entry.path)));
+     if(!enabled)for(const entry of entries)identities.set(entry.path,persistedIdentities.get(entry.path));
      const raw=this.serialize(entries);
      this.notify(enabled?'pending':'disabled');
      await this.mkdir();
      if(this.lastGood!==null){
       // Explicit discard also removes that text from the fallback copy, so a
       // later damaged primary cannot resurrect a deliberately discarded draft.
-      const previous=removed.size?this.serialize(writerV134RecoveryDecode(this.lastGood).filter(entry=>!removed.has(entry.path))):this.lastGood;
+      const previous=removed.size?this.serialize(writerV134RecoveryDecode(this.lastGood).filter(entry=>!removed.has(persistedIdentities.get(entry.path)))):this.lastGood;
       await this.plugin.app.vault.adapter.write(this.previousPath,previous);
      }
      await this.plugin.app.vault.adapter.write(this.path,raw);
      this.lastGood=raw;this.persisted=new Map(entries.map(entry=>[entry.path,entry]));
-     for(const path of removed)this.discarded.delete(path);
+     this.persistedIdentities=identities;
+     for(const identity of removed)this.discarded.delete(identity);
      if(enabled)this.savedRevision=revision;
      if(!this.enabled){this.notify('disabled');return;}
      if(this.revision===revision){this.notify('saved');return;}
@@ -28891,14 +29167,16 @@ class WriterV134DraftRecovery{
   if(!current||current.original!==entry.original||current.text!==entry.text)
    throw Error(writerUi('O rascunho mudou. Reabra a recuperação antes de descartá-lo.','The draft changed. Reopen recovery before discarding it.'));
   const at=this.times.get(entry.path);
+  const identity=this.identity(entry.path);
   this.drafts.delete(entry.path);this.times.delete(entry.path);this.touched.add(entry.path);
-  this.discarded.add(entry.path);this.revision++;
+  this.identities.delete(entry.path);this.discarded.add(identity);this.revision++;
   try{await this.flush({discard:true});}
   catch(error){
    if(!this.drafts.has(entry.path)){
     this.drafts.set(entry.path,current);this.times.set(entry.path,at||new Date().toISOString());this.revision++;
+    this.identities.set(entry.path,identity);
    }
-   this.discarded.delete(entry.path);throw error;
+   this.discarded.delete(identity);throw error;
   }
  }
  async retry(){

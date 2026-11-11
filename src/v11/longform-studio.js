@@ -19,7 +19,7 @@ function writerV11CleanMarkdown(source){
 }
 function writerV11ProjectFiles(plugin,project,limit){
  if(!project?.file)return [];
- if(project.standalone)return [{title:project.title,file:project.file,indent:0}];
+ if(project.standalone||project.format==='single')return [{title:project.title,file:project.file,indent:0}];
  const entries=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
  const out=[],paths=new Set();
  for(const scene of entries){
@@ -93,11 +93,10 @@ function writerV11RenderLongformTab(view,panel,project){
  if(cfg.enabled===false){
   root.createEl('p',{text:writerUi('A escrita contínua está desativada nas configurações do Longform.','Continuous writing is disabled in Longform settings.')});return;
  }
- const entries=project.format==='single'?[{title:project.title,file:project.file}]:
-  (typeof view.activeScenes==='function'?view.activeScenes(project):typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[]).map(scene=>{
-   const file=typeof view.resolveScene==='function'?view.resolveScene(project,scene.title):null;
-   return {title:scene.title,file,indent:scene.indent||0};
-  }).filter(entry=>entry.file?.extension==='md');
+ const compileScenes=()=>writerV11ManuscriptScenes(plugin,project,
+  typeof view.activeScenes==='function'?view.activeScenes(project):undefined,
+  typeof view.resolveScene==='function'?scene=>view.resolveScene(project,scene.title):undefined);
+ const entries=compileScenes().filter(entry=>entry.file?.extension==='md');
  const unique=new Set(),scenes=entries.filter(entry=>{
   if(!entry.file?.path||unique.has(entry.file.path))return false;
   unique.add(entry.file.path);return true;
@@ -110,10 +109,14 @@ function writerV11RenderLongformTab(view,panel,project){
  bar.createEl('button',{text:writerUi('Pesquisar capítulos','Search chapters')})
   .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
  bar.createEl('button',{text:writerUi('Compilar manuscrito','Compile manuscript')})
-  .addEventListener('click',()=>void writerV11Compile(plugin,project,scenes));
+  .addEventListener('click',()=>void writerV11Compile(plugin,project,compileScenes));
  if(typeof writerV134OpenRecovery==='function')bar.createEl('button',{text:writerUi('Recuperar rascunhos','Recover drafts')})
   .addEventListener('click',()=>writerV134OpenRecovery(plugin));
- const count=bar.createSpan({cls:'writer-v11-longform-counter',text:scenes.length+' '+writerUi('capítulos','chapters')});
+ const total=unique.size;
+ const count=bar.createSpan({cls:'writer-v11-longform-counter',text:(scenes.length<total?scenes.length+'/'+total:scenes.length)+' '+writerUi('capítulos','chapters')});
+ if(scenes.length<total)root.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'O limite reduz apenas os editores desta sessão. A compilação inclui todas as cenas do rascunho ativo.',
+  'The session limit applies only to chapter editors. Compilation includes every scene in the active draft.')});
  if(!scenes.length){
   root.createEl('p',{text:writerUi('Este projeto ainda não contém cenas Markdown. Use a aba Cenas para adicioná-las.','This project has no Markdown scenes yet. Add them in Scenes.')});return;
  }
@@ -337,41 +340,196 @@ function writerV11OpenSearch(plugin,scoped){
  modal.onClose=()=>{generation++;modal._writerCleanup?.();close?.();};
  modal.open();
 }
-async function writerV11Compile(plugin,project,scenes){
- if(!scenes?.length)return new Notice(writerUi('Nenhum capítulo encontrado.','No chapters found.'));
- let contents=[],words=0;
- for(const scene of scenes){
-  try{const text=writerV11CleanMarkdown(await plugin.app.vault.read(scene.file));
-   contents.push('# '+scene.title+'\n\n'+text);words+=writerV11Words(text);
-  }catch(error){new Notice(String(error.message||error));return;}
- }
- const manuscript='# '+project.title+'\n\n'+contents.join('\n\n---\n\n')+'\n';
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Compilar manuscrito','Compile manuscript'));
- modal.onOpen=()=>{
-  const root=modal.contentEl;root.empty();
-  root.createEl('p',{text:scenes.length+' '+writerUi('capítulos · ','chapters · ')+words+' '+writerUi('palavras.','words.')});
-  root.createEl('p',{text:writerUi('Prévia de compilação. O original não será alterado.','Compilation preview. Original notes are never changed.')});
-  const pre=root.createEl('pre',{cls:'writer-v11-compile-preview'});
-  pre.setText(manuscript.slice(0,6000)+(manuscript.length>6000?'\n…':''));
-  let approved=false;
-  new Setting(root).setName(writerUi('Confirmar criação de um novo Markdown','Confirm creation of a new Markdown file'))
-   .addToggle(t=>t.onChange(v=>approved=v));
-  new Setting(root).addButton(b=>b.setButtonText(writerUi('Criar manuscrito','Create manuscript')).setCta().onClick(async()=>{
-   if(!approved)return new Notice(writerUi('Confirme a criação.','Confirm creation.'));
-   b.setDisabled(true);
-   try{
-    const folder='Basic Exports';
-    if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
-    const base=String(project.title||'Livro').replace(/[\x00-\x1f\\/:*?"<>|#\[\]]/g,' ').trim().slice(0,75)||'Livro';
-    let path=folder+'/'+base+' - Manuscrito.md',i=2;
-    while(plugin.app.vault.getAbstractFileByPath(path)&&i<100)path=folder+'/'+base+' - Manuscrito '+i+++'.md';
-    if(plugin.app.vault.getAbstractFileByPath(path))throw Error('No free export path');
-    const file=await plugin.app.vault.create(path,manuscript);
-    modal.close();await plugin.app.workspace.getLeaf('tab').openFile(file);
-   }catch(error){new Notice(String(error.message||error));}finally{b.setDisabled(false);}
-  }));
+function writerV11ManuscriptScenes(plugin,project,entries,resolve){
+ if(!project?.file)return [];
+ if(project.standalone||project.format==='single')return [{title:project.title,file:project.file,indent:0}];
+ const scenes=entries??(typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[]);
+ // Keep unresolved entries and repeated references: every ordered scene must
+ // either appear in the manuscript or produce an explicit preparation error.
+ return scenes.map(scene=>({title:String(scene.title||''),indent:scene.indent||0,
+  file:typeof resolve==='function'?resolve(scene):
+   typeof writerBookNavFindSceneFile==='function'?writerBookNavFindSceneFile(project,scene,plugin.app):null}));
+}
+function writerV11ManuscriptBuffers(plugin,path){
+ return (plugin.app.workspace.getLeavesOfType?.('markdown')||[]).map(leaf=>leaf.view)
+  .filter(view=>view?.file?.path===path&&view.editor&&view.getMode?.()!=='preview')
+  .map(view=>({view,editor:view.editor,text:view.editor.getValue()}));
+}
+function writerV11ManuscriptDraft(plugin,path){
+ const draft=plugin._writerV11Drafts?.get(path);
+ return draft?{original:draft.original,text:draft.text}:null;
+}
+async function writerV11ManuscriptSnapshot(plugin,project,scenes,mode='saved',active=()=>true){
+ const vault=plugin.app.vault,rows=[],events=[];
+ const tracked=new Set([project?.file,...(scenes||[]).map(scene=>scene.file)].filter(Boolean));
+ const paths=[...tracked].map(file=>file.path).filter(path=>typeof path==='string');
+ let dirty=false;
+ const changed=()=>Error(writerUi('O projeto mudou durante a preparação. Atualize a prévia.',
+  'The project changed while preparing the manuscript. Refresh the preview.'));
+ const checkActive=()=>{if(dirty||!active())throw changed();};
+ const invalidate=(file,oldPath)=>{
+  if(tracked.has(file)||[file?.path,oldPath].some(path=>typeof path==='string'&&
+   paths.some(target=>target===path||target.startsWith(path+'/'))))dirty=true;
  };
- modal.open();
+ try{
+ // Metadata may retain mtime/size, and an earlier chapter can change after its
+ // final read while another chapter is still loading. Observe source/index
+ // events only during preparation; completed previews remain frozen.
+ if(typeof vault.on==='function'&&typeof vault.offref==='function')
+  for(const event of ['modify','rename','delete'])events.push(vault.on(event,invalidate));
+ if(mode==='current'&&typeof writerV134Recovery==='function'){
+  const recovery=writerV134Recovery(plugin);await recovery.ready;checkActive();
+  if(recovery.blocked)throw Error(writerUi('As cópias de recuperação precisam de revisão. Abra a recuperação ou use os arquivos salvos.',
+   'Recovery copies need attention. Open draft recovery or use saved files.'));
+ }
+ if(!scenes?.length)throw Error(writerUi('Nenhum capítulo encontrado.','No chapters found.'));
+ for(const [index,scene] of scenes.entries()){
+  checkActive();
+  const file=scene.file,path=file?.path;
+  if(!file||file.extension!=='md'||vault.getAbstractFileByPath(path)!==file)
+   throw Error(writerUi('Capítulo ausente ou indisponível: ','Missing or unavailable chapter: ')+scene.title);
+  const mtime=file.stat?.mtime,size=file.stat?.size,saved=await vault.read(file);
+  checkActive();
+  if(file.path!==path||vault.getAbstractFileByPath(path)!==file||file.stat?.mtime!==mtime||file.stat?.size!==size)throw changed();
+  const buffers=mode==='current'?writerV11ManuscriptBuffers(plugin,path):[];
+  const draft=mode==='current'?writerV11ManuscriptDraft(plugin,path):null;
+  let text=saved,origin='saved';
+  if(mode==='current'){
+   const versions=new Set(buffers.map(buffer=>buffer.text));
+   if(versions.size>1)throw Error(writerUi('Painéis com textos diferentes: ','Open panes have different text: ')+path);
+   const editing=buffers[0]?.text??saved;
+   if(draft&&draft.text!==saved){
+    if(typeof draft.original!=='string'||typeof draft.text!=='string'||draft.original!==saved)
+     throw Error(writerUi('Rascunho baseado em outra versão: ','Draft is based on another version: ')+path);
+    if(editing!==saved&&editing!==draft.text)
+     throw Error(writerUi('Rascunho e editor têm textos diferentes: ','Draft and editor have different text: ')+path);
+    text=draft.text;origin='draft';
+   }else if(editing!==saved){text=editing;origin='editor';}
+  }
+  rows.push({title:scene.title,path,file,indent:scene.indent||0,saved,mtime,size,buffers,draft,text,origin});
+  if(index%12===11)await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ // Re-read the original files, then check all identities and live buffers in
+ // one synchronous pass so earlier chapters cannot change unnoticed while
+ // later chapters are loading. Only the completed snapshot is frozen.
+ for(const [index,row] of rows.entries()){
+  checkActive();
+  if(row.file.path!==row.path||vault.getAbstractFileByPath(row.path)!==row.file||await vault.read(row.file)!==row.saved)throw changed();
+  if(index%12===11)await new Promise(resolve=>setTimeout(resolve,0));
+ }
+ checkActive();
+ for(const row of rows){
+  if(row.file.path!==row.path||vault.getAbstractFileByPath(row.path)!==row.file||
+   row.file.stat?.mtime!==row.mtime||row.file.stat?.size!==row.size)throw changed();
+  if(mode==='current'){
+   const draft=writerV11ManuscriptDraft(plugin,row.path),buffers=writerV11ManuscriptBuffers(plugin,row.path);
+   if(draft?.original!==row.draft?.original||draft?.text!==row.draft?.text||buffers.length!==row.buffers.length||
+    buffers.some(buffer=>!row.buffers.some(old=>old.view===buffer.view&&old.editor===buffer.editor&&old.text===buffer.text)))throw changed();
+  }
+ }
+ let words=0;
+ const contents=rows.map(row=>{const text=writerV11CleanMarkdown(row.text);words+=writerV11Words(text);return '# '+row.title+'\n\n'+text;});
+ return {rows,words,mode,createdAt:new Date(),manuscript:'# '+project.title+'\n\n'+contents.join('\n\n---\n\n')+'\n'};
+ }finally{
+  for(const event of events)vault.offref(event);
+ }
+}
+async function writerV11SaveManuscript(plugin,project,manuscript){
+ const vault=plugin.app.vault,folder='Basic Exports';
+ const existing=vault.getAbstractFileByPath(folder);
+ if(existing&&!(existing instanceof TFolder))throw Error(writerUi('Basic Exports precisa ser uma pasta.','Basic Exports must be a folder.'));
+ if(!existing){
+  try{await vault.createFolder(folder);}
+  catch(error){if(!(vault.getAbstractFileByPath(folder) instanceof TFolder))throw error;}
+ }
+ const base=String(project.title||'Livro').replace(/[\x00-\x1f\\/:*?"<>|#\[\]]/g,' ').replace(/[. ]+$/,'').trim().slice(0,75)||'Livro';
+ for(let number=1;number<=1000;number++){
+  const path=folder+'/'+base+' - Manuscrito'+(number>1?' '+number:'')+'.md';
+  if(vault.getAbstractFileByPath(path))continue;
+  try{return await vault.create(path,manuscript);}
+  catch(error){if(!vault.getAbstractFileByPath(path))throw error;}
+ }
+ throw Error(writerUi('Não foi possível encontrar um nome livre para o manuscrito.','Could not find a free name for the manuscript.'));
+}
+async function writerV11Compile(plugin,project,sceneSource){
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Compilar manuscrito','Compile manuscript'));
+ modal.modalEl?.addClass('writer-v135-compile-modal');
+ let mode='saved',snapshot=null,generation=0,closed=false,loading=false,busy=false,approved=false;
+ let summary,chapters,preview,previewNote,confirmation,create,refreshButton,sourceChoice;
+ const resolveScenes=()=>typeof sceneSource==='function'?sceneSource():sceneSource||writerV11ManuscriptScenes(plugin,project);
+ const sourceLabel=origin=>origin==='draft'?writerUi('Rascunho Longform','Longform draft'):
+  origin==='editor'?writerUi('Editor não salvo','Unsaved editor'):writerUi('Arquivo salvo','Saved file');
+ const controls=()=>{
+  create?.setDisabled(busy||loading||!snapshot);
+  refreshButton?.setDisabled(busy||loading);
+  sourceChoice?.setDisabled(busy);
+  confirmation?.setDisabled(busy||loading||!snapshot);
+ };
+ const refresh=async()=>{
+  if(busy||closed)return;
+  const mine=++generation;loading=true;snapshot=null;approved=false;confirmation?.setValue(false);
+  summary.setText(writerUi('Preparando todas as cenas…','Preparing every scene…'));
+  chapters.empty();preview.setText('');previewNote.setText('');controls();
+  try{
+   const scenes=resolveScenes().map(scene=>({...scene}));
+   const result=await writerV11ManuscriptSnapshot(plugin,project,scenes,mode,()=>!closed&&mine===generation);
+   if(closed||mine!==generation)return;
+   const latest=resolveScenes();
+   if(latest.length!==scenes.length||latest.some((scene,index)=>scene.file!==scenes[index].file||scene.title!==scenes[index].title||scene.indent!==scenes[index].indent))
+    throw Error(writerUi('A ordem do projeto mudou. Atualize a prévia.','The project order changed. Refresh the preview.'));
+   snapshot=result;
+   summary.setText(result.rows.length+' '+writerUi('capítulos · ','chapters · ')+result.words+' '+writerUi('palavras · ','words · ')+result.createdAt.toLocaleString());
+   for(const row of result.rows)chapters.createEl('li',{text:row.title+' — '+row.path+' · '+sourceLabel(row.origin)});
+   preview.setText(result.manuscript.slice(0,6000));
+   previewNote.setText(result.manuscript.length>6000?writerUi(
+    'A prévia mostra os primeiros 6.000 caracteres. O arquivo incluirá o manuscrito completo.',
+    'The preview shows the first 6,000 characters. The file will contain the complete manuscript.'):
+    writerUi('A prévia mostra o manuscrito completo.','The preview shows the complete manuscript.'));
+  }catch(error){if(!closed&&mine===generation)summary.setText(String(error.message||error));}
+  finally{if(!closed&&mine===generation){loading=false;controls();}}
+ };
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.empty();root.addClass('writer-v135-compile');
+  root.createEl('p',{cls:'setting-item-description',text:writerUi(
+   'Todas as cenas, na ordem do projeto. Os capítulos originais nunca são alterados.',
+   'Every scene, in project order. Original chapters are never changed.')});
+  new Setting(root).setName(writerUi('Texto a incluir','Text to include')).addDropdown(dropdown=>{
+   sourceChoice=dropdown;
+   dropdown.addOption('saved',writerUi('Arquivos salvos','Saved files'))
+    .addOption('current',writerUi('Escrita atual','Current writing')).setValue(mode).onChange(value=>{mode=value;void refresh();});
+  });
+  root.createEl('p',{cls:'setting-item-description',text:writerUi(
+   'Arquivos salvos ignora edições não salvas. Escrita atual inclui rascunhos Longform compatíveis e editores abertos; versões conflitantes precisam de revisão.',
+   'Saved files excludes unsaved edits. Current writing includes matching Longform drafts and open editors; conflicting versions need review.')});
+  summary=root.createEl('p',{attr:{role:'status','aria-live':'polite'}});
+  const detail=root.createEl('details');detail.createEl('summary',{text:writerUi('Capítulos e fontes do texto','Chapters and text sources')});
+  chapters=detail.createEl('ol');
+  preview=root.createEl('pre',{cls:'writer-v11-compile-preview'});
+  previewNote=root.createEl('p',{cls:'setting-item-description'});
+  root.createEl('p',{cls:'setting-item-description',text:writerUi(
+   'A exportação usa esta cópia preparada. Alterações posteriores só entram após Atualizar prévia.',
+   'Export uses this prepared copy. Later edits are included only after Refresh preview.')});
+  new Setting(root).addButton(button=>{refreshButton=button;button.setButtonText(writerUi('Atualizar prévia','Refresh preview')).onClick(refresh);});
+  new Setting(root).setName(writerUi('Confirmar novo Markdown','Confirm new Markdown file')).addToggle(toggle=>{
+   confirmation=toggle;toggle.onChange(value=>approved=value);
+  });
+  new Setting(root).addButton(button=>{
+   create=button;button.setButtonText(writerUi('Criar manuscrito','Create manuscript')).setCta().onClick(async()=>{
+    if(busy||loading||!snapshot)return;
+    if(!approved)return new Notice(writerUi('Confirme a criação.','Confirm creation.'));
+    busy=true;controls();
+    try{
+     const file=await writerV11SaveManuscript(plugin,project,snapshot.manuscript);
+     modal.close();
+     try{await plugin.app.workspace.getLeaf('tab').openFile(file);}
+     catch(error){new Notice(writerUi('Manuscrito criado; não foi possível abrir: ','Manuscript created; could not open: ')+String(error.message||error));}
+    }catch(error){new Notice(String(error.message||error));}
+    finally{busy=false;if(!closed)controls();}
+   });
+  });
+ };
+ modal.onClose=()=>{closed=true;generation++;snapshot=null;};
+ modal.open();await refresh();return modal;
 }
 function writerV11OpenDiagnostics(plugin){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Central de compatibilidade v11','v11 compatibility center'));
@@ -433,7 +591,7 @@ function writerV11StudioRegister(plugin){
  plugin.addCommand({id:'v11-universal-search',name:writerUi('Pesquisa: conteúdo e propriedades do cofre','Search: vault content and properties'),
   callback:()=>writerV11OpenSearch(plugin)});
  plugin.addCommand({id:'v11-manuscript-compile',name:writerUi('Longform: compilar manuscrito Markdown','Longform: compile Markdown manuscript'),
-  callback:()=>writerV11PickProject(plugin,p=>void writerV11Compile(plugin,p,writerV11ProjectFiles(plugin,p,writerV11Cfg(plugin.settings).chapterLimit)))});
+  callback:()=>writerV11PickProject(plugin,p=>void writerV11Compile(plugin,p))});
  plugin.addCommand({id:'v11-compatibility-center',name:writerUi('Basic: central de compatibilidade','Basic: compatibility center'),
   callback:()=>writerV11OpenDiagnostics(plugin)});
  if(typeof writerV134OpenRecovery==='function')plugin.addCommand({id:'v134-longform-recovery',name:writerUi('Longform: recuperar rascunhos','Longform: recover drafts'),
@@ -456,7 +614,9 @@ function writerV11StudioSettings(plugin,panel){
   }));
  if(typeof writerV134OpenRecovery==='function')new Setting(panel).setName(writerUi('Rascunhos recuperáveis','Recoverable drafts'))
   .addButton(button=>button.setButtonText(writerUi('Abrir recuperação','Open recovery')).onClick(()=>writerV134OpenRecovery(plugin)));
- new Setting(panel).setName(writerUi('Limite de capítulos por sessão','Chapter limit per session'))
+ new Setting(panel).setName(writerUi('Editores de capítulos por sessão','Chapter editors per session'))
+  .setDesc(writerUi('Limita apenas a lista de editores da escrita contínua. A compilação inclui todas as cenas do rascunho ativo.',
+   'Limits only the continuous writing editor list. Compilation includes every scene in the active draft.'))
   .addSlider(s=>s.setLimits(10,200,10).setValue(cfg.chapterLimit).setDynamicTooltip().onChange(async v=>{cfg.chapterLimit=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum searched notes'))
   .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.searchLimit).setDynamicTooltip().onChange(async v=>{cfg.searchLimit=v;await plugin.saveSettings();}));

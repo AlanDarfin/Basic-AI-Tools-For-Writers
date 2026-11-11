@@ -5506,16 +5506,64 @@ class WriterEasyTyping{
   new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
    .setDesc(writerUi('Um caminho por linha.','One path per line.'))
    .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  const section=panel.createDiv({cls:'writer-typing-rules'});
+  section.createEl('h4',{text:writerUi('Substituições automáticas de texto','Automatic text replacements')});
+  section.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Digite um atalho e escolha o texto que aparece no lugar. Ex.: vc → você ou att → atenciosamente. Aceita espaços, quebras e o caractere |; não usa expressões regulares. Aspas e travessões ficam em Smart Typography.',
+   'Type a shortcut and choose what it becomes. For example, btw → by the way. Spaces and | are allowed; regular expressions are separate. Quotes and dashes are configured in Smart Typography.'
+  )});
+  const list=section.createDiv({cls:'writer-typing-rule-list'});
+  const label=rule=>rule.from+' → '+(rule.to||writerUi('(apagar)','(delete)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');
+  const render=()=>{
+   list.empty();
+   if(!this.cfg.customReplacements.length)list.createEl('p',{cls:'dictionary-muted',text:writerUi('Nenhuma regra personalizada.','No custom rules yet.')});
+   this.cfg.customReplacements.forEach((rule,index)=>{
+    const details=list.createEl('details',{cls:'writer-typing-rule'});
+    const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    new Setting(details).setName(writerUi('Quando eu digitar','When I type')).setDesc(writerUi('Atalho literal, até 80 caracteres.','Literal shortcut, up to 80 characters.')).addText(t=>{
+     t.setPlaceholder(writerUi('Ex.: vc','E.g. btw')).setValue(rule.from);
+     t.inputEl.setAttribute('aria-label',writerUi('Texto original','Original text'));
+     t.onChange(async value=>{
+      if(!value||value.length>80)return;
+      rule.from=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).setDesc(writerUi('Até 300 caracteres; vazio remove o atalho digitado.','Up to 300 characters; empty removes the typed shortcut.')).addText(t=>{
+     t.setPlaceholder(writerUi('Ex.: você','E.g. by the way')).setValue(rule.to);
+     t.inputEl.setAttribute('aria-label',writerUi('Texto de substituição','Replacement text'));
+     t.onChange(async value=>{
+      if(value.length>300)return;
+      rule.to=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
+     rule.enabled=value;summary.setText((index+1)+'. '+label(rule));await this.plugin.saveSettings();
+    })).addExtraButton(b=>b.setIcon('trash-2').setTooltip(writerUi('Excluir esta substituição','Delete this replacement')).onClick(async()=>{
+     this.cfg.customReplacements.splice(index,1);await this.plugin.saveSettings();render();
+    }));
+   });
+  };
+  render();
+  const add=section.createEl('details',{cls:'writer-typing-rule-new'});
+  add.createEl('summary',{text:writerUi('Adicionar substituição','Add replacement')});
+  let from='',to='';
+  new Setting(add).setName(writerUi('Quando eu digitar','When I type')).addText(t=>{
+   t.setPlaceholder(writerUi('Ex.: pq','E.g. asap')).onChange(value=>{from=value;});
+  });
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addText(t=>{
+   t.setPlaceholder(writerUi('Ex.: porque','E.g. as soon as possible')).onChange(value=>{to=value;});
+  });
+  new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar substituição','Save replacement')).setCta().onClick(async()=>{
+   if(!from||from.length>80||to.length>300||this.cfg.customReplacements.length>=50){
+    new Notice(writerUi('Informe um atalho válido (1–80 caracteres), uma substituição de até 300 caracteres e use no máximo 50 regras.','Enter a shortcut (1–80 characters), a replacement of at most 300 characters, and keep at most 50 rules.'));
+    return;
+   }
+   this.cfg.customReplacements.push({from,to,enabled:true});
+   await this.plugin.saveSettings();render();add.open=false;
+   for(const input of add.querySelectorAll('input'))input.value='';
+   from='';to='';
+  }));
   this.plugin.writerEasyAdvanced?.renderSettings(panel);
-  new Setting(panel).setName(writerUi('Substituições literais','Literal replacement rules'))
-   .setDesc(writerUi('Uma por linha: origem|destino. Sem regex ou JavaScript.','One per line: source|replacement; no regex or JavaScript.'))
-   .addTextArea(t=>{t.inputEl.rows=5;t.setValue(this.cfg.customReplacements.map(x=>x.from+'|'+x.to).join('\n')).onChange(async v=>{
-    this.cfg.customReplacements=v.split(/\r?\n/).slice(0,50).map(line=>{
-     const split=line.indexOf('|');
-     return split>0?{from:line.slice(0,split).trim(),to:line.slice(split+1),enabled:true}:null;
-    }).filter(Boolean).filter(x=>x.from&&x.from.length<=80&&x.to.length<=300);
-    await this.plugin.saveSettings();
-   });});
  }
 }
 
@@ -5643,20 +5691,67 @@ class WriterEasyAdvanced{
   panel.createEl('h4',{text:writerUi('Regras regex e modelos com Tab','Regex rules and Tab snippets')});
   panel.createEl('p',{text:writerUi('Regras regex são limitadas, não executam JavaScript e vêm desativadas por padrão. Modelos inseridos por comando incluem marcações ${1:texto} e ${0} para a posição final.','Regex rules are bounded, do not execute JavaScript, and default to off. Snippets use ${1:text} and ${0} cursor markers.'),cls:'dictionary-muted'});
   new Setting(panel).setName(writerUi('Ativar regras regex','Enable regex rules')).addToggle(t=>t.setValue(this.cfg.regexEnabled).onChange(async v=>{this.cfg.regexEnabled=v;await this.plugin.saveSettings();}));
-  new Setting(panel).setName(writerUi('Substituições regex','Regex replacement rules'))
-   .setDesc(writerUi('Uma por linha: padrão|substituição|flags (i ou u). Sem avaliação de código.','One per line: pattern|replacement|flags (i or u). No code evaluation.'))
-   .addTextArea(t=>{
-    t.inputEl.rows=5;
-    t.setValue((this.cfg.regexRules||[]).map(x=>[x.pattern,x.replace,x.flags||''].join('|')).join('\n')).onChange(async value=>{
-     this.cfg.regexRules=value.split(/\r?\n/).slice(0,30).map(line=>{
-      const parts=line.split('|');
-      if(parts.length<2)return null;
-      const [pattern,replace,flags='']=parts;
-      return writerEasyRegexSafe(pattern)&&replace.length<=250&&/^[iu]*$/.test(flags)?{pattern,replace,flags,enabled:true}:null;
-     }).filter(Boolean);
-     await this.plugin.saveSettings();
+  const regexSection=panel.createDiv({cls:'writer-typing-regex-rules'});
+  regexSection.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Use padrões regex apenas quando uma substituição literal não for suficiente. Cada regra tem campos próprios, pode ser desativada e mantém sua ordem de prioridade. As regex só funcionam se o interruptor acima estiver ligado.',
+   'Use regex only when a literal replacement is not enough. Every rule has separate fields, its own enabled switch and a stable priority order. Regex runs only when enabled above.'
+  )});
+  const regexList=regexSection.createDiv({cls:'writer-typing-regex-list'});
+  const label=rule=>rule.pattern+' → '+(rule.replace||writerUi('(vazio)','(empty)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');
+  const render=()=>{
+   regexList.empty();
+   (this.cfg.regexRules||[]).forEach((rule,index)=>{
+    const details=regexList.createEl('details',{cls:'writer-typing-regex-rule'});
+    const summary=details.createEl('summary',{text:(index+1)+'. '+label(rule)});
+    const refresh=()=>summary.setText((index+1)+'. '+label(rule));
+    new Setting(details).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>{
+     t.setPlaceholder('\\bpalavra\\b').setValue(rule.pattern);
+     t.inputEl.setAttribute('aria-label',writerUi('Padrão regex','Regex pattern'));
+     t.onChange(async value=>{
+      if(!writerEasyRegexSafe(value))return;
+      rule.pattern=value;refresh();await this.plugin.saveSettings();
+     });
     });
+    new Setting(details).setName(writerUi('Substituir por','Replace with')).addText(t=>{
+     t.setValue(rule.replace);
+     t.inputEl.setAttribute('aria-label',writerUi('Substituição regex','Regex replacement'));
+     t.onChange(async value=>{
+      if(value.length>250)return;
+      rule.replace=value;refresh();await this.plugin.saveSettings();
+     });
+    });
+    new Setting(details).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
+     d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
+     d.setValue(rule.flags||'').onChange(async value=>{rule.flags=value;await this.plugin.saveSettings();});
+    });
+    new Setting(details).setName(writerUi('Regra ativada','Rule enabled')).addToggle(t=>t.setValue(rule.enabled!==false).onChange(async value=>{
+     rule.enabled=value;refresh();await this.plugin.saveSettings();
+    })).addExtraButton(b=>b.setIcon('trash-2').setTooltip(writerUi('Excluir regex','Delete regex rule')).onClick(async()=>{
+     this.cfg.regexRules.splice(index,1);await this.plugin.saveSettings();render();
+    }));
    });
+  };
+  render();
+  const add=regexSection.createEl('details',{cls:'writer-typing-regex-new'});
+  add.createEl('summary',{text:writerUi('Adicionar regex','Add regex rule')});
+  let pattern='',replace='',flags='';
+  new Setting(add).setName(writerUi('Padrão regex','Regex pattern')).addText(t=>t.setPlaceholder('\\bpalavra\\b').onChange(value=>{pattern=value;}));
+  new Setting(add).setName(writerUi('Substituir por','Replace with')).addText(t=>t.onChange(value=>{replace=value;}));
+  new Setting(add).setName(writerUi('Opções de busca','Match options')).addDropdown(d=>{
+   d.addOption('',writerUi('Padrão','Default')).addOption('i',writerUi('Ignorar maiúsculas','Ignore case')).addOption('u','Unicode').addOption('iu',writerUi('Ambos','Both'));
+   d.onChange(value=>{flags=value;});
+  });
+  new Setting(add).addButton(b=>b.setButtonText(writerUi('Salvar regex','Save regex rule')).onClick(async()=>{
+   if(!writerEasyRegexSafe(pattern)||replace.length>250||!['','i','u','iu'].includes(flags)||(this.cfg.regexRules||[]).length>=30){
+    new Notice(writerUi('Regex inválida ou limite de 30 regras atingido.','Invalid regex or 30-rule limit reached.'));return;
+   }
+   try{new RegExp(pattern,flags);}catch(error){new Notice(writerUi('Confira a sintaxe da regex.','Check regex syntax.'));return;}
+   this.cfg.regexRules.push({pattern,replace,flags,enabled:true});
+   await this.plugin.saveSettings();render();add.open=false;
+   for(const input of add.querySelectorAll('input'))input.value='';
+   const dropdown=add.querySelector('select');if(dropdown)dropdown.value='';
+   pattern='';replace='';flags='';
+  }));
   new Setting(panel).setName(writerUi('Modelos de texto','Text snippets'))
    .setDesc(writerUi('Uma linha por modelo usando JSON com name e body. Para múltiplas linhas, use \\n no body.','One JSON object per line with name and body. Use \\n for multiline content.'))
    .addTextArea(t=>{
@@ -5676,7 +5771,7 @@ class WriterEasyAdvanced{
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={
  enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
- fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,
+ fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,dialogueDashes:true,
  openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
  openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
 };
@@ -5688,7 +5783,7 @@ const WRITER_TYPO_FRACTIONS={
 function writerTypoMerge(settings){
  const old=settings.smartTypography;
  const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
- for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes'])cfg[key]=cfg[key]===true;
  for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
@@ -5704,6 +5799,10 @@ function writerTypoAtInput(before,typed,cfg){
   if(before.endsWith('–-'))return put('–-','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
+ // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
+ // Wait for the first letter so Markdown's --- separator remains available.
+ if(cfg.dashes&&cfg.dialogueDashes&&/[\p{L}]/u.test(typed)&&/^\s*--[\p{L}]$/u.test(before))
+  return put('--'+typed,'—'+typed);
  if(cfg.ellipsis&&typed==='.'&&before.endsWith('...'))return put('...','…');
  if(cfg.guillemets&&typed==='<'&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
  if(cfg.guillemets&&typed==='>'&&before.endsWith('>>'))return put('>>',cfg.closeGuillemet);
@@ -5771,6 +5870,53 @@ function writerTypoConvertProse(text,cfg){
   return transformed;
  }).join('\n');
 }
+/* One CodeMirror transaction filter for both modules. The desktop auto-pair
+ * extension often inserts two quotes together, not one typed character.
+ * Keep those insertions in a single undoable transaction and restore the
+ * caret between the typographic pair. Avoid paste, completion and IME edits. */
+function writerTypingFilterTransaction(tr,p){
+ if(!tr.docChanged||!tr.changes?.iterChanges||!tr.isUserEvent?.('input'))return tr;
+ if(['input.type.compose','input.paste','input.drop','input.complete'].some(e=>tr.isUserEvent(e)))return tr;
+ const typography=p.writerSmartTypography,typoOn=typography?.active()===true;
+ const easy=p.writerEasyTyping,easyOn=easy?.active()===true;
+ if(!typoOn&&!easyOn)return tr;
+ const edits=[];let caret=null;
+ tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+  if(fromA!==toA)return;
+  const insertion=inserted.toString();
+  const doc=tr.newDoc;
+  const line=doc.lineAt(Math.min(toB,doc.length));
+  const prefix=doc.sliceString(line.from,toB);
+  if(writerTypingUnsafeContext(tr.startState,fromA,prefix))return;
+  const paired=insertion.length===2&&insertion[0]===insertion[1]&&
+   (insertion[0]==='"'||insertion[0]==="'")&&
+   tr.startState.selection?.ranges?.length===1&&tr.startState.selection.main.empty&&
+   tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
+   tr.newSelection.main.head===fromB+1;
+  if(paired&&typoOn&&typography.cfg.curlyQuotes){
+   const single=insertion[0]==="'";
+   const opener=single?typography.cfg.openSingle:typography.cfg.openDouble;
+   const closer=single?typography.cfg.closeSingle:typography.cfg.closeDouble;
+   const firstPrefix=doc.sliceString(line.from,fromB+1);
+   const suggestion=writerTypoAtInput(firstPrefix,insertion[0],typography.cfg);
+   if(suggestion?.text!==opener)return; // Only change auto-paired opening quotes.
+   edits.push({from:fromB,to:toB,insert:opener+closer});
+   caret={anchor:fromB+opener.length};
+   return;
+  }
+  if(insertion.length!==1)return;
+  let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
+  if(!proposal&&easyOn)proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);
+  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length)
+   edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+ });
+ if(!edits.length)return tr;
+ edits.sort((a,b)=>a.from-b.from);
+ if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
+ const next={changes:edits,sequential:true};
+ if(caret&&edits.length===1)next.selection=caret;
+ return [tr,next];
+}
 class WriterSmartTypography{
  constructor(plugin){this.plugin=plugin;}
  get cfg(){return this.plugin.settings.smartTypography;}
@@ -5788,29 +5934,7 @@ class WriterSmartTypography{
   }});
   const {EditorState}=require('@codemirror/state');
   if(!EditorState?.transactionFilter?.of)return;
-  p.registerEditorExtension(EditorState.transactionFilter.of(tr=>{
-   if(!tr.docChanged||!tr.isUserEvent?.('input.type')||tr.isUserEvent?.('input.type.compose')||!tr.changes?.iterChanges)return tr;
-   if(!this.active()&&!p.writerEasyTyping?.active())return tr;
-   const edits=[];
-   tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
-    const character=inserted.toString();
-    if(character.length!==1||fromA!==toA)return;
-    const doc=tr.newDoc;
-    const line=doc.lineAt(Math.min(toB,doc.length));
-    const priorLine=doc.sliceString(line.from,toB);
-    if(writerTypingUnsafeContext(tr.startState,fromA,priorLine))return;
-    let proposal=null;
-    if(this.active())proposal=writerTypoAtInput(priorLine,character,this.cfg);
-    if(!proposal&&p.writerEasyTyping?.active())
-     proposal=writerEasyTypingAtInput(priorLine,character,p.writerEasyTyping.cfg);
-    if(proposal&&proposal.consume>0&&proposal.consume<=priorLine.length)
-     edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
-   });
-   if(!edits.length)return tr;
-   edits.sort((a,b)=>a.from-b.from);
-   if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
-   return [tr,{changes:edits,sequential:true}];
-  }));
+  p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Smart Typography · tipografia','Smart Typography')});
@@ -5821,6 +5945,7 @@ class WriterSmartTypography{
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
    ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['dialogueDashes','Travessão de diálogo (--Olá)','Dialogue dash (--Hello)'],
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
   for(const [key,pt,en] of [

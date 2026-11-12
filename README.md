@@ -56,7 +56,7 @@ Under **General → Features**, turn features off or on to choose which entries 
 
 ## Write, recover and export
 
-Open **Projects** or the **Library** to create a book or add an existing note. Chapters remain separate Markdown files. Continuous writing uses an editor for each expanded chapter; saves are explicit and check for concurrent changes.
+Open **Projects** or the **Library** to create a book or add an existing note. Chapters remain separate Markdown files. Use **+ Divider** in the Longform Scenes tab to insert an optional-titled story arc line, reorder it by drag or touch, or edit/remove it from the context menu. Dividers are visual-only, stored per draft in Basic settings, and never create notes or join the compiled manuscript. Continuous writing uses an editor for each expanded chapter; saves are explicit and check for concurrent changes.
 
 Chapter drafts have local recovery copies. Use **Books: recover drafts** to inspect them, save a separate Markdown copy or discard an entry. A changed original is kept separate for review. Recovery copies and version snapshots serve different purposes; neither replaces an independent backup. Temporary session drafts stay in memory until you save them.
 

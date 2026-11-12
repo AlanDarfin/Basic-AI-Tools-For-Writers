@@ -11142,33 +11142,43 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-
  max-width:1100px;
  margin:0 auto 12px;
 }
+/* Center icon and title as one group in desktop and wide panes. */
 body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
  flex-direction:row;
  align-items:center;
- justify-content:flex-start;
+ justify-content:center;
  gap:12px;
  padding:8px 0;
- text-align:start;
+ text-align:center;
 }
 body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading h2{
  min-width:0;
+ max-width:100%;
  margin:0;
  padding:0;
  font-size:clamp(1.3rem,2.6cqi,1.85rem);
  font-weight:var(--font-semibold);
  line-height:1.3;
  letter-spacing:normal;
- text-align:start;
+ text-align:center;
  text-wrap:pretty;
+ overflow-wrap:break-word;
+ word-break:normal;
 }
 body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon{
+ display:flex;
+ align-items:center;
+ justify-content:center;
  flex:0 0 42px;
  width:42px;
  min-width:42px;
  height:42px;
  min-height:42px;
+ line-height:0;
 }
 body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
+ display:block;
+ flex:0 0 auto;
  width:32px;
  height:32px;
 }
@@ -11237,9 +11247,17 @@ body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
 }
 @container basic-home (max-width:560px){
  .writer-v8-home .writer-v8-home-hero{margin-bottom:10px;}
+ /* Keep the icon above the centered title when the homepage pane is narrow,
+  * even in a desktop sidebar or a split workspace. */
  body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
-  gap:10px;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
   padding:6px 0;
+ }
+ body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading h2{
+  width:100%;
  }
  .writer-v8-home .writer-v8-home-quick-actions>.writer-v8-home-action{
   min-height:42px;
@@ -11252,6 +11270,14 @@ body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
   padding:7px;
  }
  .writer-v8-home .writer-v903-widget-heading{gap:6px;}
+}
+/* Tablets can exceed the narrow-pane breakpoint; mobile remains vertically
+ * centered regardless of the physical screen width. */
+body.is-mobile .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
 }
 /* Physical mobile controls remain comfortable to tap. Reordering stays in the
  * widget menu; do not reintroduce drag or resize handles on touch devices. */

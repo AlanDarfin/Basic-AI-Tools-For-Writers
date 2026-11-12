@@ -229,7 +229,7 @@ class WriterSmartTypography{
     update:(previous,tr)=>{
      const replacement=tr.annotation(marker);
      if(replacement)return replacement;
-     if(tr.docChanged||!tr.startState.selection.eq(tr.state.selection))return null;
+     if(tr.docChanged||!tr.startState.selection.eq(tr.newSelection))return null;
      return previous;
     }
    });

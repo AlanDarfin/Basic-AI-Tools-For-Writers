@@ -1,0 +1,63 @@
+/* Compatibility is opt-out and owned classes disappear on disable/unload. */
+.writer-companion-safe-area{
+ position:fixed;visibility:hidden;pointer-events:none;width:0;height:0;
+ padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);
+ padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);
+}
+body.is-mobile .writer-companion-managed{
+ translate:var(--writer-companion-x,0px) var(--writer-companion-y,0px);
+}
+/* Native Toolkit fullscreen's z-index 9000 otherwise sits above Obsidian menus. */
+body.is-mobile .fs-float-btn.writer-companion-managed{z-index:23;min-height:44px;min-width:44px;}
+body.is-mobile .fk-tts-player.writer-companion-managed{z-index:24;box-sizing:border-box;}
+body.is-mobile .fs-hint.writer-companion-managed{z-index:25;box-sizing:border-box;white-space:normal;flex-wrap:wrap;}
+.writer-companion-icon-toolkit>.writer-v9-explorer-icon,
+.writer-companion-icon-basic>.ft-icon{display:none;}
+/* Native pane and settings cards use the available pane width, including sidebars. */
+.writer-companion-center{
+ box-sizing:border-box;display:flex;flex-direction:column;gap:14px;
+ min-width:0;max-width:100%;padding:16px;overflow-wrap:anywhere;
+}
+.writer-companion-center>h2{margin:0;font-size:var(--font-ui-large);line-height:1.35;}
+.writer-companion-center>.setting-item-description{margin:0;line-height:1.5;}
+.writer-companion-card{
+ min-width:0;padding:14px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-companion-card>h3{margin:0 0 6px;font-size:var(--font-ui-medium);line-height:1.4;}
+.writer-companion-status{margin:0 0 12px;color:var(--text-muted);font-size:var(--font-ui-small);line-height:1.5;}
+.writer-companion-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;min-width:0;}
+.writer-companion-actions>button{
+ flex:1 1 135px;min-width:0;max-width:100%;height:auto;min-height:36px;
+ padding:7px 10px;white-space:normal;overflow-wrap:anywhere;line-height:1.4;
+}
+.writer-companion-actions>button:disabled{cursor:default;}
+.writer-companion-options{
+ margin-block:4px 12px;padding:10px 12px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);min-width:0;
+}
+.writer-companion-options>summary{cursor:var(--cursor);font-size:var(--font-ui-small);line-height:1.5;}
+.writer-companion-options[open]>summary{margin-bottom:8px;}
+.writer-companion-options .setting-item{gap:8px 12px;min-width:0;flex-wrap:wrap;}
+.writer-companion-options .setting-item-info{min-width:120px;flex:1 1 150px;}
+.writer-companion-options .setting-item-control{min-width:0;max-width:100%;flex-wrap:wrap;}
+.writer-companion-options .setting-item-control>select{max-width:100%;}
+.writer-companion-tasks{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.writer-companion-tasks>li{display:flex;align-items:flex-start;gap:10px;min-height:36px;padding-block:6px;line-height:1.5;}
+.writer-companion-tasks>li>input[type="checkbox"]{flex:none;margin-top:3px;width:18px;height:18px;}
+.writer-companion-tasks>li>span{min-width:0;overflow-wrap:anywhere;}
+.writer-sidebar-header>.writer-companion-launcher{flex:none;min-height:30px;padding-inline:8px;font-size:var(--font-ui-smaller);}
+:is(.writer-companion-center,.writer-companion-options) :is(button,input,select,summary):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:2px;
+}
+body.is-mobile .writer-companion-center{padding:12px;gap:12px;}
+body.is-mobile .writer-companion-actions>button{min-height:44px;}
+body.is-mobile .writer-companion-tasks>li{min-height:44px;}
+body.is-mobile .writer-companion-tasks>li>input[type="checkbox"]{width:22px;height:22px;}
+@media(max-width:420px){
+ .writer-companion-card{padding:12px;}
+ .writer-companion-center .setting-item{min-width:0;flex-wrap:wrap;gap:8px;}
+ .writer-companion-center .setting-item-control{min-width:0;max-width:100%;flex-wrap:wrap;}
+ .writer-companion-actions>button{flex-basis:100%;min-height:44px;}
+ .writer-companion-options .setting-item-control>select{min-height:44px;}
+}

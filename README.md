@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.7.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 13.8.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Features and integrations](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -26,7 +26,7 @@ For manual updates, replace all three release files together and reload Obsidian
 | --- | --- |
 | **Write a book** | Chapters and subchapters, scene boards, continuous writing, project tasks, local draft recovery and complete Markdown manuscript compilation. |
 | **Plan a story** | Characters, places, compendium entries, relationships, timelines, series, goals and editorial notes. |
-| **Write and edit notes** | Word suggestions, editor shortcuts, quote pairing, dialogue dashes, literal/regex replacements, snippets, cursor memory and Markdown formatting. |
+| **Write and edit notes** | Word suggestions, editor shortcuts, quote pairing, en/em dashes (`--` → `–`, `---` → `—`), immediate or Space-triggered literal/regex replacements, Backspace restoration, snippets, cursor memory and Markdown formatting. |
 | **Organize a vault** | Workspaces, virtual collections, a configurable homepage, file previews, calendars, tasks, local database views and image annotation. |
 | **Study and read** | Flashcards, spaced repetition, study routines, reading estimates, imported citations and read-aloud controls. |
 | **Revise your text** | Local repetition review, a personal spelling dictionary, optional LanguageTool checking, version comparisons and snapshots. |
@@ -56,13 +56,19 @@ Under **General → Features**, turn features off or on to choose which entries 
 
 ## Write, recover and export
 
-Open **Projects** or the **Library** to create a book or add an existing note. Chapters remain separate Markdown files. Continuous writing uses an editor for each expanded chapter; saves are explicit and check for concurrent changes.
+Open **Projects** or the **Library** to create a book or add an existing note. Chapters remain separate Markdown files. **+ Divider** in Longform adds a visual story-arc line, with an optional caption and drag/touch reordering. Dividers stay in Basic settings per draft and do not enter notes or compiled manuscripts. Continuous writing uses an editor for each expanded chapter; saves are explicit and check for concurrent changes.
 
 Chapter drafts have local recovery copies. Use **Books: recover drafts** to inspect them, save a separate Markdown copy or discard an entry. A changed original is kept separate for review. Recovery copies and version snapshots serve different purposes; neither replaces an independent backup. Temporary session drafts stay in memory until you save them.
 
 To assemble a manuscript, choose **Books: compile Markdown manuscript**, select saved files or current writing, review the preview and create a new file under `Basic Exports/`. Compilation includes all chapters in the selected draft, beyond the chapter-editor display limit. Missing chapters or conflicting versions block export. Refresh the preview to include later changes.
 
 Optional desktop export to DOCX, EPUB, HTML or PDF uses a separately installed **Pandoc** executable; PDF may also require a compatible rendering engine. See the [first-use guide](docs/GETTING_STARTED.en.md#write-your-first-book).
+
+## Connect installed plugins
+
+**General → Integrations & sync** connects native panels, selected settings and available commands from Ultimate Toolkit, Visual Kit, Snailkit, dropit, Syncthing, Git, FIT and LanguageTool. Each bridge can be disabled. Choose Toolkit speech explicitly; Basic remains the default, with a separate permission for Toolkit online speech. Mobile controls avoid detected overlaps, and explorer icon priority keeps duplicate decorations under control. Visual Kit is desktop-only; Git on mobile depends on its own backend.
+
+See the [connected plugins guide](docs/guides/companion-compatibility.md) for setup, speech, grammar, data use and platform limits.
 
 ## Optional AI and online services
 

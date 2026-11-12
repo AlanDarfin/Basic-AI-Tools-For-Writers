@@ -539,6 +539,9 @@ class WriterFinalFeatures{
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
   const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
+  if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(this.plugin).ttsProvider==='ahmed-toolkit'){
+   this.stop();return writerCompanionSpeechStart(this.plugin,text,note.basename);
+  }
   const engine=cfg.engine||'system';
   if(engine==='edge'){
    if(!cfg.allowOnline)return new Notice(writerUi('Ative o envio de texto à Microsoft nas configurações de voz antes de usar vozes online.','Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.'));
@@ -575,17 +578,21 @@ class WriterFinalFeatures{
   next();
  }
  pause(){
+  if(this.plugin._writerCompanionSpeechHandle){writerCompanionSpeechControl(this.plugin,'pause');return;}
   if(this.cfg.tts.engine==='edge')this.edgePlayer?.pause();
-  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.pause();this.onTtsState('paused');}
+  else if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined'){speechSynthesis.pause();this.onTtsState('paused');}
  }
  resume(){
+  if(this.plugin._writerCompanionSpeechHandle){writerCompanionSpeechControl(this.plugin,'resume');return;}
   if(this.cfg.tts.engine==='edge')this.edgePlayer?.resume();
-  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
+  else if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
  }
  stop(){
+  if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(this.plugin,'stop');
   this.ttsRunId=(this.ttsRunId||0)+1;
   this.edgePlayer?.stop();
-  if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+  if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+  this.plugin._writerV107SpeechId=(this.plugin._writerV107SpeechId||0)+1;this.plugin._writerV107SpeechActive=false;
   this.speaking=false;this.onTtsState('idle');
  }
 
@@ -658,6 +665,7 @@ function writerRenderFinalSettings(panel,plugin,section){
  }
  if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
+  if(typeof writerCompanionSpeechSettings==='function')writerCompanionSpeechSettings(plugin,panel);
   new Setting(panel).setName(translateLabel('Voice engine')).setDesc(translateLabel('System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.')).addDropdown(d=>{
    d.addOption('system',translateLabel('System / offline (Web Speech)'));
    d.addOption('edge',translateLabel('Microsoft Edge neural / online'));

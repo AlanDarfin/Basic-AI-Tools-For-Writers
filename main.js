@@ -2988,6 +2988,9 @@ class WriterFinalFeatures{
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
   const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
+  if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(this.plugin).ttsProvider==='ahmed-toolkit'){
+   this.stop();return writerCompanionSpeechStart(this.plugin,text,note.basename);
+  }
   const engine=cfg.engine||'system';
   if(engine==='edge'){
    if(!cfg.allowOnline)return new Notice(writerUi('Ative o envio de texto à Microsoft nas configurações de voz antes de usar vozes online.','Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.'));
@@ -3024,17 +3027,21 @@ class WriterFinalFeatures{
   next();
  }
  pause(){
+  if(this.plugin._writerCompanionSpeechHandle){writerCompanionSpeechControl(this.plugin,'pause');return;}
   if(this.cfg.tts.engine==='edge')this.edgePlayer?.pause();
-  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.pause();this.onTtsState('paused');}
+  else if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined'){speechSynthesis.pause();this.onTtsState('paused');}
  }
  resume(){
+  if(this.plugin._writerCompanionSpeechHandle){writerCompanionSpeechControl(this.plugin,'resume');return;}
   if(this.cfg.tts.engine==='edge')this.edgePlayer?.resume();
-  else if(typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
+  else if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
  }
  stop(){
+  if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(this.plugin,'stop');
   this.ttsRunId=(this.ttsRunId||0)+1;
   this.edgePlayer?.stop();
-  if(typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+  if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined')speechSynthesis.cancel();
+  this.plugin._writerV107SpeechId=(this.plugin._writerV107SpeechId||0)+1;this.plugin._writerV107SpeechActive=false;
   this.speaking=false;this.onTtsState('idle');
  }
 
@@ -3107,6 +3114,7 @@ function writerRenderFinalSettings(panel,plugin,section){
  }
  if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
+  if(typeof writerCompanionSpeechSettings==='function')writerCompanionSpeechSettings(plugin,panel);
   new Setting(panel).setName(translateLabel('Voice engine')).setDesc(translateLabel('System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.')).addDropdown(d=>{
    d.addOption('system',translateLabel('System / offline (Web Speech)'));
    d.addOption('edge',translateLabel('Microsoft Edge neural / online'));
@@ -3703,7 +3711,7 @@ class WriterV4Mentions extends EditorSuggest{
 function writerV406ReviewGuard(plugin){
  let pauseUntil=0,keyboardUntil=0,scrollLock=null,lastReviewPopup=null;
  const now=()=>Date.now();
- const reviewSelectors='.writer-review-floating,.writer-lt-mobile-modal,.writer-v406-lt-compact';
+ const reviewSelectors='.writer-review-floating,.writer-lt-mobile-modal,.writer-v406-lt-compact,.writer-grammar-external-compat .lt-tooltip';
  const editorFor=()=>plugin.app?.workspace?.getActiveViewOfType?.(MarkdownView)?.editor?.cm||null;
  const isReviewElement=node=>!!node?.closest?.(reviewSelectors);
  const openReview=()=>{
@@ -3754,7 +3762,7 @@ function writerV406ReviewGuard(plugin){
  const inspect=()=>{
   if(typeof document==='undefined')return;
   for(const menu of document.querySelectorAll?.('.menu')||[])markMenu(menu);
-  const popup=document.querySelector?.('.writer-review-floating,.writer-lt-mobile-modal')||null;
+  const popup=document.querySelector?.('.writer-review-floating,.writer-lt-mobile-modal,.writer-grammar-external-compat .lt-tooltip')||null;
   if(popup&&popup!==lastReviewPopup)pause(750);
   lastReviewPopup=popup;
  };
@@ -4494,12 +4502,20 @@ function writerDiagnostics(plugin){
  checks.push([writerUi('Notas Markdown','Markdown notes'),String(count)]);
  checks.push([writerUi('Módulos visíveis','Visible modules'),Object.keys(WRITER_MODULE_DEFAULTS).filter(id=>writerModuleOn(plugin,id)).length+'/'+Object.keys(WRITER_MODULE_DEFAULTS).length]);
  checks.push(['LanguageTool',writerModuleOn(plugin,'review')
-  ?(settings.autoGrammar?.enabled===false?writerUi('Manual','Manual'):writerUi('Automático quando Revisão está aberta','Automatic while Review is open'))
+  ?(settings.reviewEngine==='external'?
+    (typeof writerLanguageToolState==='function'&&writerLanguageToolState(plugin).canCheck?
+     writerUi('Plugin externo ativo; preferências próprias','External plugin active; independent preferences'):
+     writerUi('Plugin externo indisponível ou integração desativada','External plugin unavailable or bridge disabled')):
+    settings.autoGrammar?.enabled===false?writerUi('Manual','Manual'):writerUi('Automático quando Revisão está aberta','Automatic while Review is open'))
   :writerUi('Oculto','Hidden')]);
- const endpoint=String(settings.reviewEndpoint||'');
+ const endpoint=String(settings.reviewEngine==='external'?
+  (typeof writerLanguageToolInstalled==='function'?writerLanguageToolInstalled(plugin)?.settings?.options?.serverUrl||'':''):
+  settings.reviewEndpoint||'');
  let safeEndpoint=writerUi('Não configurado','Not configured');
- try{const url=new URL(endpoint);safeEndpoint=url.protocol==='https:'?url.origin:writerUi('URL não HTTPS','Non-HTTPS URL');}catch(_){}
- checks.push([writerUi('Servidor LanguageTool','LanguageTool server'),safeEndpoint]);
+ try{const url=new URL(endpoint);safeEndpoint=url.protocol==='https:'||settings.reviewEngine==='external'&&url.protocol==='http:'?
+  url.origin:writerUi('URL não HTTPS','Non-HTTPS URL');}catch(_){}
+ checks.push([settings.reviewEngine==='external'?writerUi('Servidor do plugin LanguageTool','LanguageTool plugin server'):
+  writerUi('Servidor LanguageTool','LanguageTool server'),safeEndpoint]);
  checks.push([writerUi('Provedores de IA','AI providers'),Object.entries(settings.aiKeys||{}).filter(([_,v])=>Boolean(v)).length+writerUi(' com chave configurada',' configured keys')]);
  const nativeSpeech=typeof speechSynthesis!=='undefined'&&typeof SpeechSynthesisUtterance!=='undefined';
  checks.push(['TTS',!writerModuleOn(plugin,'tts')?writerUi('Oculto','Hidden'):
@@ -5516,7 +5532,7 @@ class WriterPandocExporter{
 const WRITER_EASY_DEFAULTS={
  enabled:true,tabOut:true,smartPaste:true,smartBackspace:true,autoCapitalize:false,
  cjkSpacing:false,inlineSpacing:false,autoFormatPaste:false,excludedPaths:'',
- customReplacements:[],maxPasteChars:20000
+ customReplacements:[],replaceWithoutSpace:true,maxPasteChars:20000
 };
 const WRITER_EASY_PAIRS=[
  ['(',')'],['[',']'],['{','}'],['"','"'],["'","'"],['“','”'],['‘','’'],['«','»'],
@@ -5526,7 +5542,7 @@ const WRITER_EASY_PAIRS=[
 function writerEasyMerge(settings){
  const original=settings.easyTyping;
  const cfg=settings.easyTyping={...WRITER_EASY_DEFAULTS,...(original&&typeof original==='object'&&!Array.isArray(original)?original:{})};
- for(const key of ['enabled','tabOut','smartPaste','smartBackspace','autoCapitalize','cjkSpacing','inlineSpacing','autoFormatPaste'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','tabOut','smartPaste','smartBackspace','autoCapitalize','cjkSpacing','inlineSpacing','autoFormatPaste','replaceWithoutSpace'])cfg[key]=cfg[key]===true;
  cfg.excludedPaths=String(cfg.excludedPaths||'').slice(0,4096);
  cfg.maxPasteChars=Math.max(250,Math.min(100000,Number(cfg.maxPasteChars)||20000));
  cfg.customReplacements=Array.isArray(cfg.customReplacements)?cfg.customReplacements.slice(0,50).filter(x=>x&&typeof x.from==='string'&&x.from.length>0&&x.from.length<=80&&typeof x.to==='string'&&x.to.length<=300).map(x=>({from:x.from,to:x.to,enabled:x.enabled!==false})):[];
@@ -5541,10 +5557,18 @@ function writerEasyExcluded(filePath,cfg){
 }
 function writerEasyTypingAtInput(before,character,cfg){
  if(!cfg?.enabled||!character||character.length!==1)return null;
- const advanced=writerEasyRegexAtInput(before,cfg);
- if(advanced)return advanced;
- for(const rule of [...(cfg.customReplacements||[])].filter(r=>r.enabled!==false).sort((a,b)=>b.from.length-a.from.length)){
-  if(before.endsWith(rule.from))return {consume:rule.from.length,text:rule.to};
+ // Immediate mode keeps the current shortcut behavior; otherwise the
+ // trailing space is the trigger and is preserved after the replacement.
+ const triggerSpace=cfg.replaceWithoutSpace===false;
+ const eligible=!triggerSpace||character===' ';
+ const input=triggerSpace?before.slice(0,-1):before;
+ if(eligible){
+  const trailing=triggerSpace?' ':'';
+  const advanced=writerEasyRegexAtInput(input,cfg);
+  if(advanced)return {consume:advanced.consume+(triggerSpace?1:0),text:advanced.text+trailing};
+  for(const rule of [...(cfg.customReplacements||[])].filter(r=>r.enabled!==false).sort((a,b)=>b.from.length-a.from.length)){
+   if(input.endsWith(rule.from))return {consume:rule.from.length+(triggerSpace?1:0),text:rule.to+trailing};
+  }
  }
  if(cfg.autoCapitalize&&/\p{L}/u.test(character)){
   const pre=before.slice(0,-1);
@@ -5703,6 +5727,7 @@ class WriterEasyTyping{
    ['enabled','Ativar digitação assistida','Enable typing assistance'],['tabOut','Tab sai de símbolos pareados','Tab moves past paired symbols'],
    ['smartPaste','Colagem inteligente em listas e citações','Smart paste in lists and quotes'],
    ['smartBackspace','Backspace em itens vazios','Smart Backspace for empty list items'],
+   ['replaceWithoutSpace','Substituir imediatamente (sem espaço)','Replace immediately (without space)'],
    ['autoCapitalize','Maiúsculas no início de frases','Auto capitalize sentences'],
    ['cjkSpacing','Espaçamento entre CJK e alfanuméricos','CJK/Latin spacing'],
    ['inlineSpacing','Espaçamento ao formatar código inline','Space inline code when formatting'],
@@ -5711,6 +5736,10 @@ class WriterEasyTyping{
   new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
    .setDesc(writerUi('Um caminho por linha.','One path per line.'))
    .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Substituir imediatamente: o atalho muda assim que você termina de digitá-lo. Desligado: substitui somente após pressionar Espaço. Backspace logo após uma substituição pode recuperar o texto original.',
+   'Immediate replacement: shortcuts change as soon as they are typed. Turn it off to replace only after pressing Space. Backspace directly after a replacement can restore the original text.'
+  )});
   const section=panel.createDiv({cls:'writer-typing-rules'});
   section.createEl('h4',{text:writerUi('Substituições automáticas de texto','Automatic text replacements')});
   section.createEl('p',{cls:'dictionary-muted',text:writerUi(
@@ -5995,7 +6024,7 @@ class WriterEasyAdvanced{
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={
  enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
- fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,dialogueDashes:true,
+ fractions:false,guillemets:false,skipEnDash:false,smartApostrophes:true,dialogueDashes:true,restoreOnBackspace:true,
  openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
  openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
 };
@@ -6007,7 +6036,7 @@ const WRITER_TYPO_FRACTIONS={
 function writerTypoMerge(settings){
  const old=settings.smartTypography;
  const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
- for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes','restoreOnBackspace'])cfg[key]=cfg[key]===true;
  for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
@@ -6019,8 +6048,11 @@ function writerTypoAtInput(before,typed,cfg){
  if(cfg.dashes&&typed==='-'){
   // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
   if(/^\s*-{2,}$/.test(before))return null;
-  if(before.endsWith('—-'))return put('—-','---');
+  // -- becomes –; adding a third hyphen makes —.
   if(before.endsWith('–-'))return put('–-','—');
+  // The optional direct-to-em-dash mode must not undo its own conversion.
+  if(cfg.skipEnDash&&before.endsWith('—-'))return put('—-','—');
+  if(before.endsWith('---'))return put('---','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
  // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
@@ -6099,12 +6131,31 @@ function writerTypoConvertProse(text,cfg){
  * Keep those insertions in a single undoable transaction and restore the
  * caret between the typographic pair. Avoid paste, completion and IME edits. */
 function writerTypingFilterTransaction(tr,p){
- if(!tr.docChanged||!tr.changes?.iterChanges||!tr.isUserEvent?.('input'))return tr;
+ if(!tr.docChanged||!tr.changes?.iterChanges)return tr;
+ const prior=p._writerTypingRestoreField&&tr.startState.field?.(p._writerTypingRestoreField,false);
+ // On Android, the virtual keyboard may delete without using the Backspace keymap.
+ if(prior&&p.writerSmartTypography?.cfg?.restoreOnBackspace!==false&&
+    (tr.isUserEvent?.('delete.backward')||tr.isUserEvent?.('input.delete'))){
+  let matches=false,count=0;
+  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+   count++;
+   matches=fromA===prior.to-1&&toA===prior.to&&fromB===fromA&&toB===fromB&&
+    inserted.toString()===''&&tr.startState.selection?.ranges?.length===1&&
+    tr.startState.selection?.main?.empty&&
+    tr.startState.selection.main.head===prior.to;
+  });
+  const allowed=prior.source==='easy'?p.writerEasyTyping?.active()===true:
+   p.writerSmartTypography?.active()===true;
+  if(count===1&&matches&&allowed&&tr.startState.doc.sliceString(prior.from,prior.to)===prior.text)
+   return [tr,{changes:{from:prior.from,to:prior.to-1,insert:prior.original},
+    sequential:true,selection:{anchor:prior.from+prior.original.length}}];
+ }
+ if(!tr.isUserEvent?.('input'))return tr;
  if(['input.type.compose','input.paste','input.drop','input.complete'].some(e=>tr.isUserEvent(e)))return tr;
  const typography=p.writerSmartTypography,typoOn=typography?.active()===true;
  const easy=p.writerEasyTyping,easyOn=easy?.active()===true;
  if(!typoOn&&!easyOn)return tr;
- const edits=[];let caret=null;
+ const edits=[];let caret=null,restore=null;
  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
   if(fromA!==toA)return;
   const insertion=inserted.toString();
@@ -6140,16 +6191,41 @@ function writerTypingFilterTransaction(tr,p){
   }
   if(insertion.length!==1)return;
   let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
-  if(!proposal&&easyOn)proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);
-  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length)
-   edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+  let source=proposal?'typography':null;
+  if(!proposal&&easyOn){proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);source='easy';}
+  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length){
+   const start=toB-proposal.consume,typedText=doc.sliceString(start,toB);
+   // Remember original keystrokes across -- → – → —.
+   const original=prior&&source===prior.source&&prior.from===start&&
+    prior.to===fromA&&typedText===prior.text+insertion?
+     prior.original+insertion:typedText;
+   edits.push({from:start,to:toB,insert:proposal.text});
+   if(tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
+      tr.newSelection.main.head===toB)
+    restore={from:start,to:start+proposal.text.length,text:proposal.text,original,source};
+  }
  });
  if(!edits.length)return tr;
  edits.sort((a,b)=>a.from-b.from);
  if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
  const next={changes:edits,sequential:true};
  if(caret&&edits.length===1)next.selection=caret;
+ if(restore&&edits.length===1&&p._writerTypingRestoreAnnotation&&
+    p.writerSmartTypography?.cfg?.restoreOnBackspace!==false)
+  next.annotations=p._writerTypingRestoreAnnotation.of(restore);
  return [tr,next];
+}
+function writerTypingRestoreBackspace(view,p){
+ const meta=p._writerTypingRestoreField&&view.state.field?.(p._writerTypingRestoreField,false);
+ if(!meta||view.composing||p.writerSmartTypography?.cfg?.restoreOnBackspace===false)return false;
+ const sel=view.state.selection;
+ if(sel?.ranges?.length!==1||!sel.main.empty||sel.main.head!==meta.to)return false;
+ const active=meta.source==='easy'?p.writerEasyTyping?.active()===true:
+  p.writerSmartTypography?.active()===true;
+ if(!active||view.state.doc.sliceString(meta.from,meta.to)!==meta.text)return false;
+ view.dispatch({changes:{from:meta.from,to:meta.to,insert:meta.original},
+  selection:{anchor:meta.from+meta.original.length},userEvent:'delete.backward'});
+ return true;
 }
 class WriterSmartTypography{
  constructor(plugin){this.plugin=plugin;}
@@ -6166,8 +6242,27 @@ class WriterSmartTypography{
    const text=editor.getSelection(),converted=writerTypoConvertProse(text,this.cfg);
    if(text!==converted)editor.replaceSelection(converted);
   }});
-  const {EditorState}=require('@codemirror/state');
+  const {EditorState,StateField,Annotation}=require('@codemirror/state');
+  const {keymap}=require('@codemirror/view');
   if(!EditorState?.transactionFilter?.of)return;
+  if(StateField?.define&&Annotation?.define){
+   const marker=Annotation.define();
+   const field=StateField.define({
+    create:()=>null,
+    update:(previous,tr)=>{
+     const replacement=tr.annotation(marker);
+     if(replacement)return replacement;
+     if(tr.docChanged||!tr.startState.selection.eq(tr.newSelection))return null;
+     return previous;
+    }
+   });
+   p._writerTypingRestoreField=field;
+   p._writerTypingRestoreAnnotation=marker;
+   p.registerEditorExtension(field);
+   if(keymap?.of)p.registerEditorExtension(keymap.of([
+    {key:'Backspace',run:view=>writerTypingRestoreBackspace(view,p)}
+   ]));
+  }
   p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
@@ -6178,10 +6273,15 @@ class WriterSmartTypography{
    ['dashes','Travessões e meia-risca','Dashes'],['ellipsis','Reticências (...)','Ellipsis (...)'],
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
-   ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['skipEnDash','Pular meia-risca (-- → — direto)','Skip en dash (-- → — directly)'],
+   ['restoreOnBackspace','Backspace desfaz a última substituição','Backspace restores the last replacement'],
    ['dialogueDashes','Travessão de diálogo (--Olá)','Dialogue dash (--Hello)'],
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Padrão: -- vira meia-risca (–) e --- vira travessão (—) no texto. Linhas --- do Markdown continuam intactas. Backspace após a conversão recupera os hífens.',
+   'Default: -- becomes an en dash (–), and --- an em dash (—) in prose. Markdown --- separators stay intact. Backspace directly after conversion restores the hyphens.'
+  )});
   for(const [key,pt,en] of [
    ['openDouble','Aspas duplas de abertura','Opening double quote'],['closeDouble','Aspas duplas de fechamento','Closing double quote'],
    ['openSingle','Aspas simples de abertura','Opening single quote'],['closeSingle','Aspas simples de fechamento','Closing single quote'],
@@ -24971,30 +25071,34 @@ function writerV107SpeechChunks(text,max=1450){
  return result;
 }
 function writerV107SpeechStart(plugin,text){
- if(plugin.settings.v107Speech?.enabled===false)return false;
+ if(plugin.settings.v107Speech?.enabled===false||plugin.settings.visibleModules?.tts===false||plugin.settings.finalSuite?.tts?.enabled===false)return false;
+ if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(plugin).ttsProvider==='ahmed-toolkit')return writerCompanionSpeechStart(plugin,text);
+ if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
  const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
  const Utterance=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.SpeechSynthesisUtterance;
  if(!speech||!Utterance){new Notice(writerUi('O Android/WebView não disponibilizou voz local. Use a opção Edge TTS do Basic.','No local speech voice in this WebView. Try Basic Edge TTS.'));return false;}
  const chunks=writerV107SpeechChunks(text),cfg=plugin.settings.v107Speech;
  if(!chunks.length)return false;
- speech.cancel();plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;
+ speech.cancel();plugin._writerV107SpeechActive=true;plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;
  const id=plugin._writerV107SpeechId,voices=speech.getVoices?.()||[];
  const voice=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>v.lang===cfg.lang)||voices.find(v=>v.lang?.split('-')[0]===cfg.lang.split('-')[0]);
  let index=0;
  const speak=()=>{
-  if(plugin._writerV107SpeechId!==id||index>=chunks.length)return;
+  if(plugin._writerV107SpeechId!==id)return;
+  if(index>=chunks.length){plugin._writerV107SpeechActive=false;return;}
   const utter=new Utterance(chunks[index++]);
   utter.lang=voice?.lang||cfg.lang;utter.rate=cfg.rate;utter.pitch=cfg.pitch;if(voice)utter.voice=voice;
   utter.onend=()=>{if(plugin._writerV107SpeechId===id)speak();};
-  utter.onerror=event=>{console.warn('[Basic AI] Local TTS unavailable:',event?.error);};
+  utter.onerror=event=>{if(plugin._writerV107SpeechId===id)plugin._writerV107SpeechActive=false;console.warn('[Basic AI] Local TTS unavailable:',event?.error);};
   speech.speak(utter);
  };
  speak();return true;
 }
 function writerV107SpeechPanel(plugin){
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Leitura em voz alta · local','Local text to speech'));
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Leitura em voz alta','Text to speech'));
  modal.onOpen=()=>{
   const root=modal.contentEl,cfg=plugin.settings.v107Speech;
+  if(typeof writerCompanionSpeechSettings==='function')writerCompanionSpeechSettings(plugin,root);
   root.createEl('p',{cls:'setting-item-description',text:writerUi('Usa vozes disponibilizadas pelo sistema ou navegador. A disponibilidade e o uso de rede dependem da voz escolhida e do dispositivo.','Uses voices provided by the system or browser. Availability and network use depend on the selected voice and device.')});
   const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
   const list=speech?.getVoices?.()||[];
@@ -25006,9 +25110,9 @@ function writerV107SpeechPanel(plugin){
   new Setting(root).setName(writerUi('Idioma','Language')).addText(t=>t.setValue(cfg.lang).onChange(async v=>{cfg.lang=v.slice(0,18);await plugin.saveSettings();}));
   new Setting(root).setName(writerUi('Velocidade','Rate')).addSlider(s=>s.setLimits(.5,2,.05).setValue(cfg.rate).setDynamicTooltip().onChange(async v=>{cfg.rate=v;await plugin.saveSettings();}));
   const commands=root.createDiv({cls:'writer-v10-discovery-actions'});
-  commands.createEl('button',{text:writerUi('Pausar','Pause')}).addEventListener('click',()=>speech?.pause());
-  commands.createEl('button',{text:writerUi('Continuar','Resume')}).addEventListener('click',()=>speech?.resume());
-  commands.createEl('button',{text:writerUi('Parar','Stop')}).addEventListener('click',()=>{plugin._writerV107SpeechId++;speech?.cancel();});
+  commands.createEl('button',{text:writerUi('Pausar','Pause')}).addEventListener('click',()=>plugin._writerCompanionSpeechHandle?writerCompanionSpeechControl(plugin,'pause'):plugin._writerV107SpeechActive&&speech?.pause());
+  commands.createEl('button',{text:writerUi('Continuar','Resume')}).addEventListener('click',()=>plugin._writerCompanionSpeechHandle?writerCompanionSpeechControl(plugin,'resume'):plugin._writerV107SpeechActive&&speech?.resume());
+  commands.createEl('button',{text:writerUi('Parar','Stop')}).addEventListener('click',()=>{plugin._writerV107SpeechId++;if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');if(plugin._writerV107SpeechActive)speech?.cancel();plugin._writerV107SpeechActive=false;});
  };
  modal.open();
 }
@@ -25027,7 +25131,8 @@ function writerV107SpeechRegister(plugin){
  }});
  plugin.addCommand({id:'v107-local-tts-panel',name:writerUi('TTS: vozes e controles locais','TTS: local voice controls'),callback:()=>writerV107SpeechPanel(plugin)});
  plugin.addCommand({id:'v107-tts-stop',name:writerUi('TTS: parar reprodução','TTS: stop playback'),callback:()=>{
-  plugin._writerV107SpeechId++;plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis?.cancel();
+  if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
+  plugin._writerV107SpeechId++;if(plugin._writerV107SpeechActive)plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis?.cancel();plugin._writerV107SpeechActive=false;
  }});
  const workspace=plugin.app.workspace.containerEl;
  plugin.registerDomEvent?.(workspace,'pointerdown',event=>{
@@ -25035,7 +25140,7 @@ function writerV107SpeechRegister(plugin){
    plugin.writerReviewInteractionGuard?.captureScroll?.();plugin.writerReviewInteractionGuard?.pause?.(1200);
   }
  },true);
- plugin.register?.(()=>{plugin._writerV107SpeechId++;workspace?.ownerDocument?.defaultView?.speechSynthesis?.cancel();});
+ plugin.register?.(()=>{plugin._writerV107SpeechId++;if(plugin._writerV107SpeechActive)workspace?.ownerDocument?.defaultView?.speechSynthesis?.cancel();plugin._writerV107SpeechActive=false;});
 }
 function writerV107SpeechSettings(plugin,panel){
  const cfg=plugin.settings.v107Speech;
@@ -27907,12 +28012,13 @@ function writerV12Lightbox(plugin,original){
 function writerV12RegisterImageViewer(plugin){
  if(!writerV12On(plugin,'imageTools'))return;
  plugin.registerMarkdownPostProcessor((root)=>{
-  if(!writerV12On(plugin,'imageTools')||writerV12CompanionInstalled(plugin,'ahmed-toolkit'))return;
+  if(!writerV12On(plugin,'imageTools'))return;
   for(const img of root.querySelectorAll('img:not([data-basic-v12-image])')){
    img.dataset.basicV12Image='true';
    img.setAttribute('title',writerUi('Toque para ampliar','Tap to enlarge'));
    img.addEventListener('click',event=>{
     if(!writerV12On(plugin,'imageTools'))return;
+    if(typeof writerCompanionEnabled==='function'&&writerCompanionEnabled(plugin,'ahmed-toolkit')&&plugin.app.plugins.plugins['ahmed-toolkit']?.settings?.enableImageControl===true)return;
     event.preventDefault();event.stopPropagation();
     writerV12Lightbox(plugin,img);
    });
@@ -28085,6 +28191,7 @@ function writerV12BasicTools(plugin,modal){
 }
 
 function writerV12OpenIntegrationHub(plugin,role){
+ if(typeof writerCompanionOpen==='function')return writerCompanionOpen(plugin,role);
  if(!writerV12On(plugin,'integrations'))return;
  const cfg=writerV12Config(plugin),modal=new Modal(plugin.app);
  modal.titleEl.setText(role==='sync'?writerUi('Central de sincronização','Synchronization center'):
@@ -28167,6 +28274,7 @@ function writerV12Templates(plugin,editor){
  picker.open();
 }
 function writerV12Register(plugin){
+ if(typeof writerCompanionRegister==='function')writerCompanionRegister(plugin);
  writerV12Config(plugin);
  const command=(id,pt,en,callback)=>plugin.addCommand({id,name:writerUi(pt,en),callback});
  command('v12-integrations','Integrações: abrir central','Integrations: open center',()=>writerV12OpenIntegrationHub(plugin));
@@ -29061,6 +29169,7 @@ function writerV1201SettingsReader(plugin,panel){
    .onClick(()=>typeof writerV107SpeechPanel==='function'&&writerV107SpeechPanel(plugin)));
 }
 function writerV1201SettingsConnections(plugin,panel){
+ if(typeof writerCompanionSettings==='function')return writerCompanionSettings(plugin,panel);
  const cfg=writerV12Config(plugin);
  panel.createEl('h3',{text:writerUi('Integrações e sincronização','Integrations and synchronization')});
  writerV1201SettingToggle(plugin,panel,'integrations','Central de integrações','Integration center',
@@ -30204,6 +30313,16 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "integrationsV4",
+  "titlePt": "Permitir voz online do Toolkit",
+  "titleEn": "Allow Toolkit online speech"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Organizar botões no mobile",
+  "titleEn": "Arrange mobile buttons"
+ },
+ {
+  "id": "integrationsV4",
   "titlePt": "Mudar tom",
   "titleEn": "Change tone"
  },
@@ -30214,6 +30333,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "integrationsV4",
+  "titlePt": "Ativar integrações",
+  "titleEn": "Enable integrations",
+  "descriptionPt": "Desligar remove as conexões do Basic. Cada plugin continua com seus próprios módulos.",
+  "descriptionEn": "Turning this off removes Basic connections. Each plugin retains its own modules."
+ },
+ {
+  "id": "integrationsV4",
   "titlePt": "Expandir",
   "titleEn": "Expand"
  },
@@ -30221,6 +30347,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "integrationsV4",
   "titlePt": "Explorar alternativa",
   "titleEn": "Explore an alternative"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Ícones do explorador quando há duplicação",
+  "titleEn": "Explorer icons when both plugins add one"
  },
  {
   "id": "integrationsV4",
@@ -30241,6 +30372,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "integrationsV4",
   "titlePt": "Central de integrações",
   "titleEn": "Integration center"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Conflitos locais",
+  "titleEn": "Local conflicts"
  },
  {
   "id": "integrationsV4",
@@ -30271,8 +30407,23 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "integrationsV4",
+  "titlePt": "Abrir central de plugins",
+  "titleEn": "Open plugin center"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Local dos painéis",
+  "titleEn": "Panel placement"
+ },
+ {
+  "id": "integrationsV4",
   "titlePt": "Revisar pontos fracos",
   "titleEn": "Review weak points"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Atalho nos painéis do Basic",
+  "titleEn": "Shortcut in Basic panels"
  },
  {
   "id": "integrationsV4",
@@ -30283,6 +30434,16 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "integrationsV4",
   "titlePt": "Simplificar",
   "titleEn": "Simplify"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Provedor de leitura",
+  "titleEn": "Speech provider"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Vozes e player do Toolkit",
+  "titleEn": "Toolkit voices and player"
  },
  {
   "id": "keyshots",
@@ -31093,6 +31254,30 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "review",
+  "titlePt": "Verificação automática externa",
+  "titleEn": "External automatic checking",
+  "descriptionPt": "Este plugin pode verificar mesmo com o painel do Basic fechado. Desligar a integração não desliga essa preferência.",
+  "descriptionEn": "This plugin can check while the Basic pane is closed. Disabling the bridge does not turn off this preference."
+ },
+ {
+  "id": "review",
+  "titlePt": "Revisão rigorosa externa",
+  "titleEn": "External picky mode",
+  "descriptionPt": "Inclui sugestões adicionais de estilo.",
+  "descriptionEn": "Include additional style suggestions."
+ },
+ {
+  "id": "review",
+  "titlePt": "Idioma do plugin externo",
+  "titleEn": "External plugin language"
+ },
+ {
+  "id": "review",
+  "titlePt": "Configuração completa do plugin",
+  "titleEn": "Full plugin settings"
+ },
+ {
+  "id": "review",
   "titlePt": "Corretor de gramática",
   "titleEn": "Grammar checker",
   "descriptionPt": "Use a conexão do Basic ou os controles de um plugin LanguageTool instalado separadamente.",
@@ -31123,6 +31308,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "review",
   "titlePt": "Intervalo mínimo entre verificações",
   "titleEn": "Minimum interval between checks"
+ },
+ {
+  "id": "review",
+  "titlePt": "Avisar sobre verificações longas",
+  "titleEn": "Notify about long checks",
+  "descriptionPt": "Útil no celular, onde o indicador da barra de status não aparece.",
+  "descriptionEn": "Useful on mobile, where the status bar indicator is unavailable."
  },
  {
   "id": "review",
@@ -31579,6 +31771,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "tts",
+  "titlePt": "Permitir voz online do Toolkit",
+  "titleEn": "Allow Toolkit online speech",
+  "descriptionPt": "Desativado por padrão. A versão auditada envia o texto ao Google Translate quando seu motor online está selecionado. Idiomas e vozes dependem do Toolkit.",
+  "descriptionEn": "Off by default. The audited version sends text to Google Translate when its online engine is selected. Languages and voices depend on Toolkit."
+ },
+ {
+  "id": "tts",
   "titlePt": "Verificar vozes disponíveis",
   "titleEn": "Check available voices"
  },
@@ -31643,10 +31842,22 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "tts",
+  "titlePt": "Provedor de leitura",
+  "titleEn": "Speech provider",
+  "descriptionPt": "Basic mantém suas vozes. Ultimate Toolkit usa suas próprias vozes e seu próprio player; exige instalação e ativação separadas.",
+  "descriptionEn": "Basic keeps its voices. Ultimate Toolkit uses its own voices and player; install and enable it separately."
+ },
+ {
+  "id": "tts",
   "titlePt": "Voz do sistema",
   "titleEn": "System voice",
   "descriptionPt": "As vozes dependem do WebView; talvez não estejam disponíveis no Android.",
   "descriptionEn": "Voices depend on the WebView and might be unavailable on Android."
+ },
+ {
+  "id": "tts",
+  "titlePt": "Vozes e player do Toolkit",
+  "titleEn": "Toolkit voices and player"
  },
  {
   "id": "tts",
@@ -31717,6 +31928,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "typing",
+  "titlePt": "Backspace desfaz a última substituição",
+  "titleEn": "Backspace restores the last replacement"
+ },
+ {
+  "id": "typing",
   "titlePt": "Espaçamento entre CJK e alfanuméricos",
   "titleEn": "CJK/Latin spacing"
  },
@@ -31739,11 +31955,6 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "typing",
   "titlePt": "Comparações (>=, <=, /=)",
   "titleEn": "Comparisons"
- },
- {
-  "id": "typing",
-  "titlePt": "Converter -- diretamente em travessão",
-  "titleEn": "Convert -- directly to em dash"
  },
  {
   "id": "typing",
@@ -31834,6 +32045,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "typing",
+  "titlePt": "Substituir imediatamente (sem espaço)",
+  "titleEn": "Replace immediately (without space)"
+ },
+ {
+  "id": "typing",
   "titlePt": "Substituir por",
   "titleEn": "Replace with",
   "descriptionPt": "Até 300 caracteres; vazio remove o atalho digitado.",
@@ -31848,6 +32064,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "typing",
   "titlePt": "Regra ativada",
   "titleEn": "Rule enabled"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Pular meia-risca (-- → — direto)",
+  "titleEn": "Skip en dash (-- → — directly)"
  },
  {
   "id": "typing",
@@ -33289,6 +33510,7 @@ function writerV137GrammarSettings(plugin,panel){
   .addDropdown(d=>d.addOption('grammar',writerUi('Gramática','Grammar')).addOption('style',writerUi('Estilo com IA','Style with AI'))
    .addOption('beta',writerUi('Leitura beta com IA','Beta reading with AI')).setValue(settings.reviewMode||'grammar')
    .onChange(async value=>{settings.reviewMode=value;await save();}));
+ if(typeof writerLanguageToolSettings==='function')writerLanguageToolSettings(plugin,root);
  const editor=section('Sugestões no editor','Editor suggestions');
  for(const [key,pt,en,descPt,descEn] of [
   ['reviewAutoOpenNote','Abrir a nota revisada no editor','Open the reviewed note in the editor',
@@ -34225,6 +34447,1448 @@ function writerV134OpenRecovery(plugin,initialPath=''){
  modal.open();return modal;
 }
 
+// v3 module: src/v13/longform-dividers.js
+/* Basic Longform arc dividers.
+ * Purely visual items: never enter longform.scenes and never create vault files.
+ * Plugin project preferences preserve a separate ordered list for each draft. */
+function writerV13ArcRoots(view,project){
+ return view.activeScenes(project).filter(scene=>Number(scene.indent||0)===0).map(scene=>scene.title);
+}
+function writerV13ArcStore(view,project,draft=view.draft||'Principal'){
+ const prefs=view.prefs(project);
+ if(!prefs.arcDividers||typeof prefs.arcDividers!=='object'||Array.isArray(prefs.arcDividers))prefs.arcDividers={};
+ if(!Object.prototype.hasOwnProperty.call(prefs.arcDividers,draft)||!Array.isArray(prefs.arcDividers[draft])){
+  const original=prefs.arcDividers.Principal;
+  const items=draft!=='Principal'&&Array.isArray(original)?
+   original.filter(item=>item&&typeof item==='object').map(item=>({...item})):[];
+  Object.defineProperty(prefs.arcDividers,draft,{value:items,writable:true,enumerable:true,configurable:true});
+ }
+ return prefs.arcDividers[draft];
+}
+function writerV13ArcLayout(roots,dividers){
+ const known=new Set(roots),groups=new Map();
+ for(const item of dividers||[]){
+  if(!item||typeof item.id!=='string')continue;
+  const before=known.has(item.before)?item.before:null;
+  if(!groups.has(before))groups.set(before,[]);
+  groups.get(before).push({type:'divider',id:item.id,label:String(item.label||''),before});
+ }
+ const layout=[];
+ for(const title of roots){
+  layout.push(...(groups.get(title)||[]),{type:'scene',title});
+ }
+ layout.push(...(groups.get(null)||[]));
+ return layout;
+}
+function writerV13ArcReanchor(dividers,layout){
+ const byId=new Map(dividers.map(item=>[item.id,item])),next=[];
+ for(let i=0;i<layout.length;i++){
+  if(layout[i].type!=='divider')continue;
+  const item=byId.get(layout[i].id);
+  if(!item)continue;
+  item.before=layout.slice(i+1).find(entry=>entry.type==='scene')?.title||null;
+  next.push(item);
+ }
+ dividers.splice(0,dividers.length,...next);
+ return dividers;
+}
+async function writerV13ArcSave(view){
+ await view.plugin.saveSettings();
+ await view.render();
+}
+function writerV13ArcPrompt(view,project,existing=null){
+ const draft=view.draft||'Principal';
+ new TextPrompt(view.app,existing?
+  lfMsg('Texto do separador (opcional)','Divider text (optional)'):
+  lfMsg('Novo separador de arco (texto opcional)','New story arc divider (optional text)'),
+  async text=>{
+   // A settings modal may outlive a draft switch; keep its original target.
+   if(draft!=='Principal'&&!Object.prototype.hasOwnProperty.call(view.prefs(project).drafts||{},draft))return;
+   const items=writerV13ArcStore(view,project,draft);
+   if(existing){
+    const item=items.find(entry=>entry.id===existing.id);
+    if(!item)return;
+    item.label=String(text||'').trim().slice(0,160);
+   }else{
+    items.push({id:'arc-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9),
+     label:String(text||'').trim().slice(0,160),before:null});
+   }
+   await writerV13ArcSave(view);
+  },existing?.label||'').open();
+}
+async function writerV13ArcMove(view,project,id,target,after=false){
+ const dividers=writerV13ArcStore(view,project);
+ const layout=writerV13ArcLayout(writerV13ArcRoots(view,project),dividers);
+ const sourceIndex=layout.findIndex(item=>item.type==='divider'&&item.id===id);
+ const targetIndex=layout.findIndex(item=>item.type==='divider'?item.id===target:item.title===target);
+ if(sourceIndex<0||targetIndex<0||sourceIndex===targetIndex)return;
+ const [source]=layout.splice(sourceIndex,1);
+ const index=layout.findIndex(item=>item.type==='divider'?item.id===target:item.title===target);
+ layout.splice(index+(after?1:0),0,source);
+ writerV13ArcReanchor(dividers,layout);
+ view.writerArcPickup=null;
+ await writerV13ArcSave(view);
+}
+async function writerV13ArcShift(view,project,id,delta){
+ const layout=writerV13ArcLayout(writerV13ArcRoots(view,project),writerV13ArcStore(view,project));
+ const index=layout.findIndex(item=>item.type==='divider'&&item.id===id);
+ const target=layout[index+delta];
+ if(index<0||!target)return;
+ await writerV13ArcMove(view,project,id,target.type==='divider'?target.id:target.title,delta>0);
+}
+function writerV13ArcInstall(){
+ if(typeof ProjectsView!=='function'||ProjectsView.prototype._writerArcInstalled)return;
+ const original=ProjectsView.prototype.drawScenes;
+ const originalChange=ProjectsView.prototype.changeScenes;
+ // Preserve an arc's position when the chapter anchoring it is renamed or removed.
+ ProjectsView.prototype.changeScenes=async function(project,change){
+  const items=writerV13ArcStore(this,project),planned=[];
+  const result=await originalChange.call(this,project,scenes=>{
+   const before=scenes.filter(scene=>Number(scene.indent||0)===0)
+    .map(scene=>({scene,title:scene.title}));
+   change(scenes);
+   const after=scenes.filter(scene=>Number(scene.indent||0)===0);
+   planned.length=0;
+   for(const divider of items){
+    const oldIndex=before.findIndex(entry=>entry.title===divider.before);
+    if(oldIndex<0)continue;
+    const anchor=before[oldIndex].scene;
+    // Object identity distinguishes a rename from a deletion, without guessing
+    // from the new numeric position after unrelated removals or reordering.
+    const next=after.includes(anchor)?anchor:
+     before.slice(oldIndex+1).map(entry=>entry.scene).find(scene=>after.includes(scene));
+    const target=next?.title||null;
+    if(target!==divider.before)planned.push({divider,target});
+   }
+  });
+  // Only update preferences after the native index operation has succeeded.
+  if(planned.length){
+   for(const {divider,target} of planned)divider.before=target;
+   await this.plugin.saveSettings();await this.render();
+  }
+  return result;
+ };
+ ProjectsView.prototype._writerArcInstalled=true;
+ ProjectsView.prototype.drawScenes=function(panel,project){
+  original.call(this,panel,project);
+  if(project.format==='single')return;
+  const view=this,roots=writerV13ArcRoots(view,project),dividers=writerV13ArcStore(view,project);
+  const bars=panel.querySelectorAll('.writer-project-notes-toolbar');
+  const toolbar=bars[bars.length-1];
+  if(toolbar){
+   const button=toolbar.createEl('button',{text:lfMsg('+ Separador','+ Divider'),
+    cls:'writer-project-arc-create',attr:{type:'button',
+     title:lfMsg('Inserir linha divisória sem criar nota','Insert visual divider without creating a note')}});
+   button.addEventListener('click',()=>writerV13ArcPrompt(view,project));
+   toolbar.insertBefore(button,toolbar.children[1]||null);
+  }
+  const rows=Array.from(panel.querySelectorAll('.writer-project-scene[data-depth="0"]'));
+  const rowOf=title=>rows.find(row=>row.dataset.sceneTitle===title);
+  const projectKey=project.file.path,draft=view.draft;
+  const pickupValid=()=>view.writerArcPickup?.path===projectKey&&view.writerArcPickup?.draft===draft;
+  // Capture the destination grip before the regular chapter pickup handler runs.
+  for(const row of rows){
+   const grip=row.querySelector('.writer-project-drag-handle');
+   grip?.addEventListener('click',event=>{
+    if(!pickupValid())return;
+    event.preventDefault();event.stopImmediatePropagation();
+    const id=view.writerArcPickup.id;view.writerArcPickup=null;
+    void writerV13ArcMove(view,project,id,row.dataset.sceneTitle,false);
+   },true);
+   row.addEventListener('dragover',event=>{
+    if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc'))return;
+    event.preventDefault();row.addClass('writer-project-dragover');
+   });
+   row.addEventListener('dragleave',event=>{
+    if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
+   });
+   row.addEventListener('drop',event=>{
+    let data;try{data=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){return;}
+    if(data?.path!==projectKey||data?.draft!==draft)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    row.removeClass('writer-project-dragover');
+    const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
+    void writerV13ArcMove(view,project,data.id,row.dataset.sceneTitle,after);
+   },true);
+  }
+  const layout=writerV13ArcLayout(roots,dividers);
+  for(const divider of layout){
+   if(divider.type!=='divider')continue;
+   const row=panel.createDiv({cls:'writer-project-arc-divider'});
+   row.dataset.arcId=divider.id;
+   row.setAttribute('role','group');
+   row.setAttribute('aria-label',divider.label?lfMsg('Separador: ','Divider: ')+divider.label:lfMsg('Separador de arco','Story arc divider'));
+   const grip=row.createEl('button',{text:'⠿',cls:'writer-project-arc-grip',attr:{
+    type:'button',title:lfMsg('Mover separador','Move divider'),
+    'aria-label':lfMsg('Mover separador','Move divider')}});
+   grip.draggable=true;
+   grip.addEventListener('click',()=>{
+    if(view.scenePickup?.path===projectKey&&view.scenePickup?.draft===draft){
+     const source=view.scenePickup.source;view.scenePickup=null;
+     const target=divider.before||roots.at(-1);
+     if(target)void view.moveSceneRelative(project,source,target,!divider.before);
+     return;
+    }
+    if(pickupValid()&&view.writerArcPickup.id===divider.id){
+     view.writerArcPickup=null;void view.render();return;
+    }
+    if(pickupValid()){
+     const id=view.writerArcPickup.id;view.writerArcPickup=null;
+     void writerV13ArcMove(view,project,id,divider.id,false);return;
+    }
+    view.scenePickup=null;
+    view.writerArcPickup={path:projectKey,draft,id:divider.id};
+    row.addClass('writer-project-arc-picked');
+    new Notice(lfMsg('Separador selecionado. Toque na alça de outro separador ou capítulo.','Divider selected. Tap the handle of a chapter or another divider.'),3000);
+   });
+   grip.addEventListener('dragstart',event=>{
+    event.dataTransfer?.setData('application/x-basic-ai-arc',JSON.stringify({path:projectKey,draft,id:divider.id}));
+    if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+   });
+   const rule=row.createDiv({cls:'writer-project-arc-rule'+(divider.label?' is-labeled':'')});
+   if(divider.label)rule.createSpan({cls:'writer-project-arc-label',text:divider.label});
+   const more=row.createEl('button',{text:'⋯',cls:'writer-project-arc-more',attr:{type:'button',
+    title:lfMsg('Opções do separador','Divider options'),'aria-label':lfMsg('Opções do separador','Divider options')}});
+   more.addEventListener('click',event=>{
+    event.stopPropagation();
+    const menu=new Menu();
+    const actions=[
+     [lfMsg('Editar texto','Edit text'),'pencil',()=>writerV13ArcPrompt(view,project,divider)],
+     [lfMsg('Mover para cima','Move up'),'arrow-up',()=>writerV13ArcShift(view,project,divider.id,-1)],
+     [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>writerV13ArcShift(view,project,divider.id,1)],
+     [lfMsg('Remover separador','Remove divider'),'trash-2',async()=>{
+      const items=writerV13ArcStore(view,project),at=items.findIndex(item=>item.id===divider.id);
+      if(at>=0){items.splice(at,1);view.writerArcPickup=null;await writerV13ArcSave(view);}
+     }]
+    ];
+    for(const [label,icon,action] of actions)menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
+    menu.showAtMouseEvent(event);
+   });
+   row.addEventListener('dragover',event=>{
+    if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc')&&!event.dataTransfer?.types?.includes('application/x-basic-ai-scene'))return;
+    event.preventDefault();row.addClass('writer-project-dragover');
+   });
+   row.addEventListener('dragleave',event=>{
+    if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
+   });
+   row.addEventListener('drop',event=>{
+    row.removeClass('writer-project-dragover');
+    let arc,scene;
+    try{arc=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){arc=null;}
+    if(arc?.path===projectKey&&arc?.draft===draft){
+     event.preventDefault();event.stopImmediatePropagation();
+     void writerV13ArcMove(view,project,arc.id,divider.id,false);return;
+    }
+    try{scene=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-scene')||'null');}catch(_){scene=null;}
+    if(scene?.path===projectKey&&scene?.draft===draft){
+     const target=divider.before||roots.at(-1);
+     if(target){
+      event.preventDefault();event.stopImmediatePropagation();
+      void view.moveSceneRelative(project,scene.name,target,!divider.before);
+     }
+    }
+   });
+   if(pickupValid()&&view.writerArcPickup.id===divider.id)row.addClass('writer-project-arc-picked');
+   panel.insertBefore(row,divider.before?rowOf(divider.before)||null:null);
+  }
+ };
+}
+writerV13ArcInstall();
+
+// v3 module: src/v13/companion-toolkit.js
+/* Independently implemented compatibility descriptors. No companion code is bundled.
+ * Capabilities below were verified against the source revisions in each descriptor.
+ * Companion settings remain owned and persisted by the companion itself.
+ */
+const WRITER_COMPANION_TOOLKIT_SPECS=[
+ {
+  id:'ahmed-toolkit',name:'Ultimate Toolkit',mobile:true,
+  source:{repo:'https://github.com/ahmdmusa/obsidian-toolkit',sha:'70506a95a9059aa86da1c7688ea24f8df3dd4899',version:'2.9.17',license:'MIT'},
+  description:{pt:'Leitura pelo motor do Toolkit, player flutuante e ferramentas de escrita do plugin instalado.',en:'Speech through Toolkit’s engine, its floating player and the installed plugin’s writing tools.'},
+  notes:{pt:'O player é uma janela flutuante nativa, não um painel lateral. O motor online auditado envia trechos ao Google Translate e usa árabe ou inglês. Vozes e rede são controladas pelo Toolkit.',en:'The player is a native floating window, not a sidebar view. The audited online engine sends passages to Google Translate and uses Arabic or English. Toolkit controls voices and networking.'},
+  commands:[
+   {id:'ahmed-toolkit:flowkit-tts-show-player',pt:'Abrir player do Toolkit',en:'Open Toolkit player',kind:'panel',module:'tts',requiresSetting:'enableTTS'},
+   {id:'ahmed-toolkit:flowkit-tts-play-selection',pt:'Toolkit: ler seleção',en:'Toolkit: read selection',kind:'speech',module:'tts',requiresSetting:'enableTTS'},
+   {id:'ahmed-toolkit:flowkit-tts-play-note',pt:'Toolkit: ler nota atual',en:'Toolkit: read current note',kind:'speech',module:'tts',requiresSetting:'enableTTS'},
+   {id:'ahmed-toolkit:flowkit-tts-play-from-cursor',pt:'Toolkit: ler a partir do cursor',en:'Toolkit: read from cursor',kind:'speech',module:'tts',requiresSetting:'enableTTS'},
+   {id:'ahmed-toolkit:open-formatting-palette',pt:'Abrir paleta de formatação',en:'Open formatting palette',kind:'menu',requiresSetting:'enableFormatting'},
+   {id:'ahmed-toolkit:focus-current-folder',pt:'Focar pasta atual',en:'Focus current folder',kind:'action',requiresSetting:'enableFolderFocus'},
+   {id:'ahmed-toolkit:clear-folder-focus',pt:'Limpar foco da pasta',en:'Clear folder focus',kind:'action',requiresSetting:'enableFolderFocus'}
+  ],
+  views:[],
+  saveMethod:'saveSettings',
+  settings:[
+   {key:'enableTTS',type:'boolean',pt:'Leitura do Toolkit',en:'Toolkit speech',requiresReload:true,description:{pt:'O motor responde imediatamente; atalhos e menus nativos exigem recarregar o Toolkit.',en:'The engine updates immediately; native commands and menus require reloading Toolkit.'}},
+   {key:'ttsEngine',type:'select',pt:'Motor de voz do Toolkit',en:'Toolkit speech engine',options:[{value:'offline',pt:'Vozes do sistema',en:'System voices'},{value:'online',pt:'Motor online do Toolkit',en:'Toolkit online engine'}]},
+   {key:'ttsRate',type:'number',pt:'Velocidade do Toolkit',en:'Toolkit speech rate',min:0.5,max:2,step:0.05},
+   {key:'ttsPitch',type:'number',pt:'Tom do Toolkit',en:'Toolkit pitch',min:0.5,max:1.5,step:0.05},
+   {key:'ttsShowFloatingPlayer',type:'boolean',pt:'Player flutuante durante a leitura',en:'Floating player during speech'},
+   {key:'enableImageControl',type:'boolean',pt:'Controles de imagem do Toolkit',en:'Toolkit image controls'},
+   {key:'enableFormatting',type:'boolean',pt:'Formatação do Toolkit',en:'Toolkit formatting',requiresReload:true},
+   {key:'enableFolderFocus',type:'boolean',pt:'Foco de pastas do Toolkit',en:'Toolkit folder focus',requiresReload:true},
+   {key:'enableFileTree',type:'boolean',pt:'Ícones de arquivos e pastas do Toolkit',en:'Toolkit file and folder icons',requiresReload:true},
+   {key:'fileTreeThumbnails',type:'boolean',pt:'Miniaturas de imagens no explorador',en:'Image thumbnails in file explorer',requiresReload:true},
+   {key:'fileTreeRowHeight',type:'select',pt:'Espaçamento do explorador do Toolkit',en:'Toolkit explorer spacing',requiresReload:true,options:[{value:'compact',pt:'Compacto',en:'Compact'},{value:'default',pt:'Padrão',en:'Default'},{value:'spacious',pt:'Espaçoso',en:'Spacious'}]}
+  ]
+ },
+ {
+  id:'visual-kit',name:'Visual Kit',mobile:false,
+  source:{repo:'https://github.com/pedrohf-dev/visual-kit',sha:'e5766c85a36c7895bf775ae597ec05f8edb88217',version:'0.9.0',license:'MIT'},
+  description:{pt:'Editor e visualizador HTML, anotações em imagens e colagem de imagens do Visual Kit instalado.',en:'HTML editor and viewer, image annotation and image pasting through the installed Visual Kit.'},
+  notes:{pt:'Anotações abrem a janela nativa sobre a imagem no cursor. A visualização HTML usa o arquivo HTML atual. O plugin original é exclusivo de desktop.',en:'Annotation opens the native dialog for the image at the cursor. HTML viewing uses the current HTML file. The original plugin is desktop only.'},
+  commands:[
+   {id:'visual-kit:annotate-image',pt:'Anotar imagem no cursor',en:'Annotate image at cursor',kind:'editor',editor:true},
+   {id:'visual-kit:normalize-image-sizes',pt:'Configurar tamanhos de imagem',en:'Configure image sizes',kind:'editor',editor:true},
+   {id:'visual-kit:copy-with-images',pt:'Copiar com imagens',en:'Copy with images',kind:'clipboard',editor:true},
+   {id:'visual-kit:create-html-note',pt:'Criar nota HTML',en:'Create HTML note',kind:'create',requiresSetting:'htmlNotes'},
+   {id:'visual-kit:save-html-template',pt:'Salvar nota HTML como modelo',en:'Save HTML note as template',kind:'create',requiresSetting:'htmlNotes'},
+   {id:'visual-kit:copy-as-rich-html',pt:'Copiar seleção HTML formatada',en:'Copy formatted HTML selection',kind:'clipboard',requiresSetting:'htmlNotes'},
+   {id:'visual-kit:copy-whole-html-note',pt:'Copiar nota HTML completa',en:'Copy whole HTML note',kind:'clipboard',requiresSetting:'htmlNotes'},
+   {id:'visual-kit:rebuild-image-duplicate-index',pt:'Reconstruir índice de imagens duplicadas',en:'Rebuild duplicate image index',kind:'action'}
+  ],
+  views:[{type:'visual-kit-html-note',id:'visual-kit-html-note',pt:'Abrir HTML no Visual Kit',en:'Open HTML in Visual Kit',file:true,extensions:['html','htm'],requiresSetting:'htmlNotes'}],
+  saveMethod:'persist',
+  settings:[
+   {key:'htmlNotes',type:'boolean',pt:'Editor de notas HTML',en:'HTML note editor',requiresReload:true},
+   {key:'htmlRegisterExtensions',type:'boolean',pt:'Abrir HTML automaticamente no Visual Kit',en:'Open HTML automatically in Visual Kit',requiresReload:true},
+   {key:'htmlDefaultMode',type:'select',pt:'Modo inicial do HTML',en:'Initial HTML mode',options:[{value:'visual',pt:'Visual',en:'Visual'},{value:'source',pt:'Código',en:'Source'},{value:'preview',pt:'Prévia',en:'Preview'}]},
+   {key:'htmlImportImages',type:'boolean',pt:'Importar imagens ao colar HTML',en:'Import images when pasting HTML'},
+   {key:'htmlExternalImages',type:'select',pt:'Imagens externas em HTML',en:'External HTML images',options:[{value:'download',pt:'Baixar para o cofre',en:'Download into vault'},{value:'block',pt:'Bloquear',en:'Block'}]},
+   {key:'multiPaste',type:'boolean',pt:'Colar várias imagens',en:'Paste multiple images'},
+   {key:'pasteWidth',type:'boolean',pt:'Aplicar largura ao colar',en:'Apply width when pasting'},
+   {key:'width',type:'number',pt:'Largura padrão de imagem',en:'Default image width',min:1,max:10000,step:1},
+   {key:'preserveHeight',type:'boolean',pt:'Preservar altura ao normalizar',en:'Preserve height when normalizing'},
+   {key:'duplicates',type:'boolean',pt:'Detectar imagens duplicadas',en:'Detect duplicate images'},
+   {key:'duplicateAction',type:'select',pt:'Ao encontrar imagem duplicada',en:'When a duplicate image is found',options:[{value:'reuse',pt:'Reutilizar',en:'Reuse'},{value:'ask',pt:'Perguntar',en:'Ask'},{value:'save',pt:'Salvar outra cópia',en:'Save another copy'}]},
+   {key:'quickTools',type:'boolean',pt:'Ferramentas rápidas de imagem',en:'Quick image tools'},
+   {key:'autoMarkers',type:'boolean',pt:'Marcadores para reabrir anotações',en:'Markers for reopening annotations'},
+   {key:'editable',type:'boolean',pt:'Manter anotações editáveis',en:'Keep annotations editable'},
+   {key:'ribbon',type:'boolean',pt:'Botão de imagens na barra lateral',en:'Image button in ribbon',afterSave:'updateRibbon'}
+  ]
+ }
+];
+
+const WRITER_COMPANION_TOOLKIT_SESSIONS=new WeakMap();
+const WRITER_COMPANION_TOOLKIT_OWNERS=new WeakMap();
+function writerCompanionToolkitMessage(pt,en){return typeof writerUi==='function'?writerUi(pt,en):en;}
+function writerCompanionToolkitAllowed(plugin){
+ if(!plugin?.settings)return false;
+ const settings=plugin.settings,cfg=settings.v12Toolkit;
+ if(cfg?.enabled===false||cfg?.integrations===false)return false;
+ if(typeof writerCompanionEnabled==='function'&&!writerCompanionEnabled(plugin,'ahmed-toolkit'))return false;
+ if(settings.companionCompatibility?.enabledById?.['ahmed-toolkit']===false)return false;
+ if(settings.visibleModules?.tts===false||settings.finalSuite?.tts?.enabled===false)return false;
+ if(typeof writerModuleOn==='function'&&!writerModuleOn(plugin,'tts'))return false;
+ return settings.companionCompatibility?.ttsProvider==='ahmed-toolkit';
+}
+function writerCompanionToolkitInstance(plugin){return plugin?.app?.plugins?.plugins?.['ahmed-toolkit']||null;}
+function writerCompanionToolkitManagerReady(manager){
+ return !!manager&&['playText','pause','resume','stop'].every(key=>typeof manager[key]==='function')&&Array.isArray(manager.sentences);
+}
+function writerCompanionToolkitOwns(plugin,handle){
+ const owner=handle&&WRITER_COMPANION_TOOLKIT_OWNERS.get(handle);
+ if(!owner||owner.plugin!==plugin||WRITER_COMPANION_TOOLKIT_SESSIONS.get(plugin)!==handle)return null;
+ const live=writerCompanionToolkitInstance(plugin);
+ // A replacement instance or a native Toolkit read must never inherit Basic controls.
+ if(live!==owner.instance||live?.ttsMgr!==owner.manager||owner.manager.sentences!==owner.sentences)return null;
+ return owner;
+}
+function writerCompanionToolkitSpeechStatus(plugin,handle){
+ const instance=writerCompanionToolkitInstance(plugin),manager=instance?.ttsMgr;
+ const available=!!instance&&writerCompanionToolkitManagerReady(manager),enabled=writerCompanionToolkitAllowed(plugin)&&instance?.settings?.enableTTS===true;
+ const owner=writerCompanionToolkitOwns(plugin,handle||WRITER_COMPANION_TOOLKIT_SESSIONS.get(plugin));
+ return {available,enabled,owned:!!owner,speaking:!!owner&&manager.isPlaying===true,paused:!!owner&&manager.isPlaying===true&&manager.isPaused===true,
+  engine:instance?.settings?.ttsEngine==='offline'?'offline':'online',onlineAllowed:plugin?.settings?.companionCompatibility?.allowToolkitOnline===true};
+}
+function writerCompanionToolkitSpeech(plugin,text,title){
+ if(!writerCompanionToolkitAllowed(plugin))throw new Error(writerCompanionToolkitMessage('Ative a integração e o módulo de leitura e escolha o Toolkit como provedor.','Enable the integration and speech module, and select Toolkit as the provider.'));
+ const instance=writerCompanionToolkitInstance(plugin),manager=instance?.ttsMgr;
+ if(!instance||!writerCompanionToolkitManagerReady(manager))throw new Error(writerCompanionToolkitMessage('O motor de leitura do Toolkit não está disponível nesta versão ou o plugin está desligado.','Toolkit’s speech engine is unavailable in this version or the plugin is disabled.'));
+ if(instance.settings?.enableTTS!==true)throw new Error(writerCompanionToolkitMessage('Ative a leitura nas configurações do Toolkit.','Enable speech in Toolkit settings.'));
+ const online=instance.settings.ttsEngine!=='offline';
+ if(online&&plugin.settings.companionCompatibility?.allowToolkitOnline!==true)throw new Error(writerCompanionToolkitMessage('O motor online do Toolkit envia texto ao Google Translate. Ative a permissão específica do Toolkit nas integrações do Basic ou selecione vozes do sistema no Toolkit.','Toolkit’s online engine sends text to Google Translate. Enable Toolkit’s specific permission in Basic integrations or select system voices in Toolkit.'));
+ const passage=typeof text==='string'?text.trim():'';
+ if(!passage)throw new Error(writerCompanionToolkitMessage('Não há texto para ler.','There is no text to read.'));
+ const max=Number(plugin.settings.finalSuite?.tts?.maxCharacters);
+ if(Number.isFinite(max)&&max>0&&passage.length>max)throw new Error(writerCompanionToolkitMessage('A seleção excede o limite de leitura configurado no Basic.','The selection exceeds Basic’s configured speech limit.'));
+ const previous=manager.sentences;
+ manager.playText(passage,typeof title==='string'&&title.trim()?title:writerCompanionToolkitMessage('Leitura do Basic','Basic speech'));
+ if(manager.sentences===previous||!Array.isArray(manager.sentences)||manager.isPlaying!==true)throw new Error(writerCompanionToolkitMessage('O Toolkit não iniciou a leitura deste texto.','Toolkit did not start reading this text.'));
+ const handle=Object.freeze({provider:'ahmed-toolkit'});
+ WRITER_COMPANION_TOOLKIT_OWNERS.set(handle,{plugin,instance,manager,sentences:manager.sentences});
+ WRITER_COMPANION_TOOLKIT_SESSIONS.set(plugin,handle);
+ return handle;
+}
+function writerCompanionToolkitControl(plugin,handle,action){
+ if(!['pause','resume','stop'].includes(action))return false;
+ const owner=writerCompanionToolkitOwns(plugin,handle);
+ if(!owner)return false;
+ // Stop remains available when a Basic switch is disabled, for owned-session cleanup.
+ if(action!=='stop'&&(!writerCompanionToolkitAllowed(plugin)||owner.instance.settings?.enableTTS!==true))return false;
+ if(action!=='stop'&&owner.manager.isPlaying!==true)return false;
+ if(action==='stop'){
+  WRITER_COMPANION_TOOLKIT_SESSIONS.delete(plugin);
+  WRITER_COMPANION_TOOLKIT_OWNERS.delete(handle);
+  // Toolkit stop() cancels global Web Speech; do not call it after native playback ended.
+  if(owner.manager.isPlaying===true)owner.manager.stop(true);
+ }else owner.manager[action]();
+ return true;
+}
+
+// v3 module: src/v13/companion-notes.js
+/**
+ * Companion contracts checked against the original sources, not copied from them.
+ * Native commands keep their own checks, settings, transport and confirmation flows.
+ * No task is changed, file sent, process started or network request made on registration.
+ */
+const WRITER_COMPANION_NOTES=[
+ {
+  id:'snailkit',name:'Snailkit',repository:'https://github.com/arnaudgastelblum/snailkit',
+  revision:'ef857e50f501dc7cfa9cda47b63919259e1b06ed',license:'MIT',version:'0.2.9',
+  settingsTabId:'snailkit',mobile:true,viewTypes:['snailkit-tasks'],
+  settingsSections:[
+   {id:'workbench',pt:'Painel e abas',en:'Workbench and tabs'},
+   {id:'note-rail',pt:'Botões flutuantes das notas',en:'Floating note buttons'},
+   {id:'tasks',pt:'Tarefas e captura',en:'Tasks and capture'},
+   {id:'home',pt:'Página inicial e notas',en:'Home and notes'},
+   {id:'sessions',pt:'Sessões de ideias',en:'Brainstorm sessions'}
+  ],
+  actions:[
+   {id:'home',pt:'Abrir página inicial',en:'Open home',command:'snailkit:workbench-home',viewType:'snailkit-tasks',effect:'panel'},
+   {id:'tasks',pt:'Abrir tarefas',en:'Open tasks',command:'snailkit:workbench-tasks',viewType:'snailkit-tasks',effect:'panel'},
+   {id:'tasks-side',pt:'Tarefas na lateral',en:'Tasks in sidebar',command:'snailkit:tasks-open-side',viewType:'snailkit-tasks',effect:'panel'},
+   {id:'today',pt:'Tarefas de hoje',en:'Today’s tasks',command:'snailkit:tasks-open-today',viewType:'snailkit-tasks',effect:'panel'},
+   {id:'brainstorms',pt:'Abrir sessões de ideias',en:'Open brainstorm sessions',command:'snailkit:workbench-brainstorms',viewType:'snailkit-tasks',effect:'panel'},
+   {id:'note-menu',pt:'Menu flutuante da nota',en:'Floating note menu',command:'snailkit:note-rail-open-menu',effect:'panel',requiresEditor:true},
+   {id:'note-contents',pt:'Sumário da nota',en:'Note contents',command:'snailkit:note-rail-open-contents',effect:'panel',requiresEditor:true},
+   {id:'note-tasks',pt:'Tarefas da nota',en:'Note tasks',command:'snailkit:note-rail-open-tasks',effect:'panel',requiresEditor:true},
+   {id:'note-bookmarks',pt:'Favoritos da nota',en:'Note bookmarks',command:'snailkit:note-rail-open-bookmarks',effect:'panel',requiresEditor:true},
+   {id:'note-actions',pt:'Ações da nota',en:'Note actions',command:'snailkit:note-rail-open-actions',effect:'panel',requiresEditor:true},
+   {id:'note-calendar',pt:'Calendário do menu da nota',en:'Note menu calendar',command:'snailkit:note-rail-open-calendar',effect:'panel',requiresEditor:true},
+   {id:'new-task',pt:'Nova tarefa',en:'New task',command:'snailkit:tasks-new-task',effect:'create'},
+   {id:'new-note',pt:'Nova nota',en:'New note',command:'snailkit:home-new-note',effect:'create'},
+   {id:'new-session',pt:'Nova sessão de ideias',en:'New brainstorm session',command:'snailkit:sessions-new',effect:'create'},
+   {id:'adopt-session',pt:'Usar nota como sessão de ideias',en:'Use note as brainstorm session',command:'snailkit:sessions-adopt',effect:'write',requiresEditor:true}
+  ]
+ },
+ {
+  id:'dropit',name:'dropit',repository:'https://github.com/smart-kits/dropit-obsidian',
+  revision:'00d5e59ec23d90571da51f9eb460f7c9f45256d8',license:'MIT',version:'3.3.1',
+  settingsTabId:'dropit',mobile:true,viewTypes:[],
+  actions:[
+   {id:'sync',pt:'Receber agora',en:'Receive now',command:'dropit:sync',effect:'network'},
+   {id:'send-note',pt:'Enviar nota atual',en:'Send current note',command:'dropit:send-note',effect:'send',requiresEditor:true},
+   {id:'send-selection',pt:'Enviar seleção',en:'Send selection',command:'dropit:send-selection',effect:'send',requiresEditor:true,requiresSelection:true},
+   {id:'process-note',pt:'Processar nota com regra do dropit',en:'Process note with a dropit rule',command:'dropit:process-note',effect:'process',requiresEditor:true,desktopOnly:true},
+   {id:'rerun-last',pt:'Repetir último processamento',en:'Repeat last processing',command:'dropit:rerun-last',effect:'process',desktopOnly:true}
+  ]
+ }
+];
+
+/** Open the companion's own settings so credentials, pairing and rules stay native. */
+function writerCompanionNotesOpenSettings(plugin,id,section){
+ const descriptor=WRITER_COMPANION_NOTES.find(item=>item.id===id);
+ const companion=plugin?.app?.plugins?.plugins?.[id];
+ if(!descriptor||!companion)return false;
+ try{
+  if(id==='snailkit'&&typeof companion.openSettings==='function'){
+   const selected=descriptor.settingsSections.some(item=>item.id===section)?section:undefined;
+   companion.openSettings(selected);return true;
+  }
+  if(id==='dropit'&&typeof companion.openSettings==='function'){
+   companion.openSettings();return true;
+  }
+  const setting=plugin?.app?.setting;
+  if(typeof setting?.open!=='function'||typeof setting?.openTabById!=='function')return false;
+  setting.open();setting.openTabById(descriptor.settingsTabId);return true;
+ }catch(_){return false;}
+}
+
+/** Always resolve the running service: Snailkit removes it when Tasks is disabled. */
+function writerCompanionSnailkitService(plugin){
+ try{
+  if(typeof writerCompanionEnabled==='function'&&!writerCompanionEnabled(plugin,'snailkit'))return null;
+  const api=plugin?.app?.plugins?.plugins?.snailkit?.api;
+  if(api?.version!==1||typeof api.isEnabled!=='function'||!api.isEnabled('tasks')||typeof api.service!=='function')return null;
+  const service=api.service('tasks');
+  return service?.version===1?service:null;
+ }catch(_){return null;}
+}
+function writerCompanionSnailkitLocation(value){
+ return value&&typeof value.path==='string'&&value.path.length>0&&
+  Number.isInteger(value.line)&&value.line>=0&&typeof value.raw==='string'&&value.raw.length>0?
+  {path:value.path,line:value.line,raw:value.raw}:null;
+}
+function writerCompanionSnailkitTask(value){
+ const location=writerCompanionSnailkitLocation(value);
+ if(!location||typeof value.done!=='boolean')return null;
+ const task={...location,done:value.done};
+ for(const key of ['key','text','title','plainTitle','description','tag'])task[key]=typeof value[key]==='string'?value[key]:'';
+ for(const key of ['due','doneDate','notePath'])task[key]=typeof value[key]==='string'?value[key]:null;
+ task.priority=['high','medium','low'].includes(value.priority)?value.priority:null;
+ task.tags=Array.isArray(value.tags)?value.tags.filter(tag=>typeof tag==='string'):[];
+ task.markers=Object.fromEntries(Object.entries(value.markers||{}).filter(([key,item])=>typeof key==='string'&&typeof item==='string'));
+ return task;
+}
+/** Read a detached snapshot; the external service remains the source of truth. */
+function writerCompanionSnailkitTasks(plugin,includeDone=false){
+ const service=writerCompanionSnailkitService(plugin);
+ try{
+  if(typeof service?.isReady!=='function'||!service.isReady()||typeof service.getTasks!=='function')return [];
+  const tasks=service.getTasks({includeDone:includeDone===true});
+  return Array.isArray(tasks)?tasks.map(writerCompanionSnailkitTask).filter(Boolean):[];
+ }catch(_){return [];}
+}
+/** Called only by a user action; native find/setDone preserve concurrent edits. */
+async function writerCompanionSnailkitSetDone(plugin,value,done){
+ const location=writerCompanionSnailkitLocation(value);
+ if(!location||typeof done!=='boolean')return null;
+ const service=writerCompanionSnailkitService(plugin);
+ try{
+  if(typeof service?.isReady!=='function'||!service.isReady()||typeof service.find!=='function'||typeof service.setDone!=='function')return null;
+  const current=service.find(location);
+  if(!current||current.path!==location.path||current.raw!==location.raw)return null;
+  // Resolve again after find: disabling/replacing the companion must invalidate old UI.
+  if(writerCompanionSnailkitService(plugin)!==service)return null;
+  const result=await service.setDone(location,done);
+  return writerCompanionSnailkitTask(result);
+ }catch(_){return null;}
+}
+
+/**
+ * A Basic tab in Snailkit's native page/sidebar. Returns an idempotent lifecycle.
+ * The common companion manager calls refresh() after preferences or plugins change.
+ */
+function writerCompanionSnailkitRegister(plugin,isEnabled=()=>true){
+ let stopped=false,service=null,removeTab=null,refreshing=false;
+ const events=[];
+ const moduleOn=id=>typeof writerModuleOn==='function'?writerModuleOn(plugin,id):plugin?.settings?.visibleModules?.[id]!==false;
+ const enabled=()=>{try{return !stopped&&isEnabled()===true;}catch(_){return false;}};
+ const label=(pt,en)=>typeof writerUi==='function'?writerUi(pt,en):en;
+ const mounts=new Set();
+ const cleanup=()=>{
+  const remove=removeTab;removeTab=null;service=null;
+  try{remove?.();}catch(_){}
+  for(const mounted of [...mounts])mounted.destroy();
+ };
+ const mount=el=>{
+  let destroyed=false;
+  el.addClass?.('basic-companion-snailkit');
+  const heading=el.createEl('h3',{text:label('Escrita com Basic','Writing with Basic')});
+  const description=el.createEl('p',{text:label('Abra seu projeto e suas ferramentas sem sair do painel de tarefas.','Open your project and writing tools from your task workspace.')});
+  const actions=el.createDiv({cls:'basic-companion-snailkit-actions'});
+  const buttons=[];
+  const add=(pt,en,module,method,arg)=>{
+   const button=actions.createEl('button',{text:label(pt,en),attr:{type:'button'}});
+   button.addEventListener('click',()=>{
+   if(destroyed||!enabled()||!writerCompanionSnailkitService(plugin)||module&&!moduleOn(module))return;
+    if(typeof plugin?.[method]!=='function')return;
+    try{Promise.resolve(plugin[method](arg)).catch(()=>{});}catch(_){}
+   });
+   buttons.push({button,module,method});
+  };
+  add('Projetos e manuscritos','Projects and manuscripts','projects','openProjects');
+  add('Ferramentas de escrita','Writing tools','tools','openWritingTools');
+  add('Configurações das integrações','Integration settings',null,'openCoreSettings','integrationsV4');
+  const instance={
+   update(){
+    if(destroyed)return;
+    for(const {button,module,method} of buttons){
+     const available=enabled()&&(!module||moduleOn(module))&&typeof plugin?.[method]==='function';
+     button.hidden=!available;button.disabled=!available;
+    }
+   },
+   destroy(){
+    if(destroyed)return;destroyed=true;mounts.delete(instance);
+    el.removeClass?.('basic-companion-snailkit');
+    heading.remove?.();description.remove?.();actions.remove?.();
+   }
+  };
+  mounts.add(instance);instance.update();return instance;
+ };
+ const refresh=()=>{
+  if(refreshing||stopped)return;
+  refreshing=true;
+  try{
+   const next=enabled()?writerCompanionSnailkitService(plugin):null;
+   if(next===service){for(const mounted of mounts)mounted.update();return;}
+   cleanup();
+   if(typeof next?.addViewTab!=='function')return;
+   const remove=next.addViewTab({id:'basic-writing',icon:'pen-line',label:label('Escrita · Basic','Writing · Basic'),mount});
+   if(typeof remove!=='function')return;
+   service=next;removeTab=remove;
+   if(!enabled()||writerCompanionSnailkitService(plugin)!==next)cleanup();
+  }catch(_){cleanup();}
+  finally{refreshing=false;}
+ };
+ const stop=()=>{
+  if(stopped)return;stopped=true;cleanup();
+  for(const {emitter,ref} of events.splice(0))try{emitter.offref?.(ref);}catch(_){}
+ };
+ const workspace=plugin?.app?.workspace;
+ if(typeof workspace?.on==='function'){
+  for(const event of ['snailkit:services-changed','layout-ready']){
+   try{events.push({emitter:workspace,ref:workspace.on(event,refresh)});}catch(_){}
+  }
+ }
+ plugin?.register?.(stop);
+ refresh();return {refresh,stop};
+}
+
+// v3 module: src/v13/companion-sync.js
+/**
+ * Contracts observed in the original companion sources; no upstream code is copied.
+ * Commands keep the companion's own editor checks, settings and transport lifecycle.
+ * Registration and snapshots never invoke a command, transport, shell or sync task.
+ */
+const WRITER_COMPANION_SYNC=[
+ {
+  id:'syncthing-integration',name:'Syncthing Integration',role:'sync',
+  repository:'https://github.com/LBF38/obsidian-syncthing-integration',
+  revision:'12ca9b8bdb60a5d6527894aec802be11da06e3c8',license:'MIT',version:'2.4.0',
+  minAppVersion:'1.0.0',mobile:true,settingsTabId:'syncthing-integration',viewTypes:[],
+  descriptionPt:'Conflitos, diferenças e configuração do Syncthing nas telas originais. Este plugin não oferece um comando de sincronização manual.',
+  descriptionEn:'Syncthing conflicts, differences and configuration in the original dialogs. This plugin does not expose a manual sync command.',
+  panels:[
+   {id:'conflicts',pt:'Abrir conflitos',en:'Open conflicts',command:'syncthing-integration:syncthing-conflicts-modal'}
+  ],
+  actions:[
+   {id:'conflicts',pt:'Abrir conflitos',en:'Open conflicts',command:'syncthing-integration:syncthing-conflicts-modal',kind:'inspect',effect:'inspect'},
+   {id:'diff',pt:'Comparar nota atual',en:'Compare current note',command:'syncthing-integration:syncthing-diff-modal',kind:'inspect',effect:'inspect',requiresEditor:true},
+   {id:'configuration',pt:'Abrir configuração do Syncthing',en:'Open Syncthing configuration',command:'syncthing-integration:syncthing-configuration-modal',kind:'network',effect:'network'},
+   {id:'settings',pt:'Abrir configurações da integração',en:'Open integration settings',command:'syncthing-integration:syncthing-plugin-settings',kind:'panel',effect:'panel'}
+  ]
+ },
+ {
+  id:'syncthing-manager',name:'Syncthing Manager',role:'sync',
+  repository:'https://github.com/gustjose/obsidian-syncthing-manager',
+  revision:'0e1e612982b21a27323e2f62a228689cdcdc6a13',license:'MIT',version:'1.4.5',
+  minAppVersion:'1.11.4',mobile:true,settingsTabId:'syncthing-manager',viewTypes:['syncthing-view'],
+  statusEvents:['syncthing:status-changed'],
+  descriptionPt:'Painel, versões e diagnóstico do Syncthing. A leitura do estado usa apenas informações já mantidas pelo plugin.',
+  descriptionEn:'Syncthing dashboard, versions and diagnostics. Status reads only information already maintained by the plugin.',
+  panels:[
+   {id:'dashboard',pt:'Abrir painel do Syncthing',en:'Open Syncthing dashboard',command:'syncthing-manager:open-syncthing-view',viewType:'syncthing-view'}
+  ],
+  actions:[
+   {id:'dashboard',pt:'Abrir painel do Syncthing',en:'Open Syncthing dashboard',command:'syncthing-manager:open-syncthing-view',viewType:'syncthing-view',kind:'panel',effect:'panel'},
+   {id:'versions',pt:'Ver versões da nota atual',en:'View current note versions',command:'syncthing-manager:view-file-versions',kind:'network',effect:'network',requiresEditor:true},
+   {id:'scan',pt:'Solicitar sincronização agora',en:'Request sync now',command:'syncthing-manager:syncthing-force-scan',kind:'sync',effect:'sync'},
+   {id:'test-connection',pt:'Testar conexão',en:'Test connection',command:'syncthing-manager:test-syncthing-connection',kind:'network',effect:'network'},
+   {id:'diagnostics',pt:'Abrir diagnóstico de conexão',en:'Open connection diagnostics',command:'syncthing-manager:copy-debug-info',kind:'network',effect:'network'}
+  ]
+ },
+ {
+  id:'obsidian-git',name:'Obsidian Git',role:'sync',
+  repository:'https://github.com/Vinzent03/obsidian-git',
+  revision:'8d1144aef2d41ffca6245a60199656e7a0c5ab17',license:'MIT',version:'2.43.0',
+  minAppVersion:'1.13.0',mobile:true,settingsTabId:'obsidian-git',
+  viewTypes:['git-view','git-history-view','diff-view','split-diff-view','git-read-only-file-view'],
+  statusEvents:['obsidian-git:refreshed','obsidian-git:repository-state-changed'],
+  descriptionPt:'Controle de versão, histórico e diferenças. No celular, as operações dependem do backend Git disponível e inicializado pelo plugin.',
+  descriptionEn:'Source control, history and differences. On mobile, operations depend on the Git backend being available and initialized by the plugin.',
+  panels:[
+   {id:'source-control',pt:'Abrir controle de versão',en:'Open source control',command:'obsidian-git:open-git-view',viewType:'git-view'},
+   {id:'history',pt:'Abrir histórico',en:'Open history',command:'obsidian-git:open-history-view',viewType:'git-history-view'}
+  ],
+  actions:[
+   {id:'source-control',pt:'Abrir controle de versão',en:'Open source control',command:'obsidian-git:open-git-view',viewType:'git-view',kind:'panel',effect:'panel'},
+   {id:'history',pt:'Abrir histórico',en:'Open history',command:'obsidian-git:open-history-view',viewType:'git-history-view',kind:'panel',effect:'panel'},
+   {id:'diff',pt:'Comparar nota atual',en:'Compare current note',command:'obsidian-git:open-diff-view',kind:'inspect',effect:'inspect',requiresEditor:true,requiresReady:true},
+   {id:'changed-files',pt:'Listar arquivos alterados',en:'List changed files',command:'obsidian-git:list-changed-files',kind:'inspect',effect:'inspect',requiresReady:true},
+   {id:'fetch',pt:'Buscar referências remotas',en:'Fetch remote references',command:'obsidian-git:fetch',kind:'network',effect:'network',requiresReady:true},
+   {id:'pull',pt:'Receber alterações remotas',en:'Pull remote changes',command:'obsidian-git:pull',kind:'sync',effect:'sync',requiresReady:true},
+   {id:'push',pt:'Enviar commits existentes',en:'Push existing commits',command:'obsidian-git:push2',kind:'sync',effect:'sync',requiresReady:true},
+   {id:'commit-and-sync',pt:'Criar commit e sincronizar',en:'Commit and sync',command:'obsidian-git:push',kind:'sync',effect:'sync',requiresReady:true}
+  ]
+ },
+ {
+  id:'fit',name:'FIT',role:'sync',repository:'https://github.com/joshuakto/fit',
+  revision:'e0b7af61393ef9cb973fc01d431b24fd2e9877fc',license:'MIT',version:'1.5.0',
+  minAppVersion:'1.11.4',mobile:true,settingsTabId:'fit',viewTypes:[],
+  descriptionPt:'Sincronização com GitHub e explicação do estado na janela original do FIT. Consultar o estado completo pode acessar o servidor.',
+  descriptionEn:'GitHub sync and status explanations in FIT’s original dialog. Inspecting full status may contact the server.',
+  panels:[],
+  actions:[
+   {id:'explain-status',pt:'Consultar e explicar estado',en:'Inspect and explain status',command:'fit:fit-explain-status',kind:'network',effect:'network'},
+   {id:'sync',pt:'Sincronizar com FIT',en:'Sync with FIT',command:'fit:fit-sync',kind:'sync',effect:'sync'}
+  ]
+ }
+];
+
+function writerCompanionSyncInstance(plugin,id){
+ try{
+  if(!WRITER_COMPANION_SYNC.some(item=>item.id===id))return null;
+  if(typeof writerCompanionEnabled==='function'&&!writerCompanionEnabled(plugin,id))return null;
+  return plugin?.app?.plugins?.plugins?.[id]||null;
+ }catch(_){return null;}
+}
+
+/**
+ * Availability is observed, never probed by executing a native callback.
+ * The common manager additionally checks module/preferences, selected sync provider
+ * and editor context immediately before dispatching an explicit user action.
+ */
+function writerCompanionSyncActionAvailable(plugin,id,actionId){
+ try{
+  const descriptor=WRITER_COMPANION_SYNC.find(item=>item.id===id);
+  const action=descriptor?.actions.find(item=>item.id===actionId);
+  if(!action)return false;
+  const companion=writerCompanionSyncInstance(plugin,id);
+  if(!companion)return false;
+  const command=plugin?.app?.commands?.commands?.[action.command];
+  if(!command||!['callback','checkCallback','editorCallback','editorCheckCallback'].some(key=>typeof command[key]==='function'))return false;
+  if(id==='obsidian-git'&&action.requiresReady&&(companion.gitReady!==true||companion.repositoryMissing===true))return false;
+  return true;
+ }catch(_){return false;}
+}
+
+/**
+ * Redacted cached snapshot only. No native settings, credentials, hostnames,
+ * repository paths, device names, file lists, logs or transport methods are read.
+ * lastSync is a native time label (Syncthing Manager) or epoch milliseconds (FIT).
+ */
+function writerCompanionSyncStatus(plugin,id){
+ const companion=writerCompanionSyncInstance(plugin,id);
+ if(!companion)return {status:'unavailable'};
+ try{
+  if(id==='syncthing-manager'){
+   const statuses={conectado:'synced',sincronizando:'syncing',escutando:'listening',pausado:'paused',
+    'pausado-remoto':'remote-paused','aguardando-dispositivos':'waiting',desconectado:'offline',
+    erro:'error',configurando:'setup',desconhecido:'unknown'};
+   const currentStatus=companion.currentStatus;
+   const result={status:typeof currentStatus==='string'&&Object.prototype.hasOwnProperty.call(statuses,currentStatus)?statuses[currentStatus]:'unknown'};
+   const paused=companion.isPaused,count=companion.connectedDevices,lastSync=companion.lastSyncTime;
+   if(typeof paused==='boolean')result.paused=paused;
+   if(Number.isSafeInteger(count)&&count>=0)result.connectedDevicesCount=count;
+   if(typeof lastSync==='string'&&/^(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?:\s?[ap]\.?m\.?)?$/i.test(lastSync))result.lastSync=lastSync;
+   return result;
+  }
+  if(id==='obsidian-git'){
+   const state=companion.state;
+   if(companion.repositoryMissing===true)return {status:'setup'};
+   if(state?.offlineMode===true)return {status:'offline'};
+   if(state?.mergeInProgress===true)return {status:'conflict'};
+   // GitOperation is the source enum idle=0, pull=1, commit=2, push=3,
+   // fetch=4, checkout=5. Unknown values remain unknown on future versions.
+   const operation=state?.operation;
+   if(Number.isInteger(operation)&&operation>=1&&operation<=5)return {status:'syncing'};
+   return {status:companion.gitReady===true&&operation===0?'idle':'unknown'};
+  }
+  if(id==='fit'){
+   const active=companion.fitSync?.isActive;
+   const result={status:active===true?'syncing':active===false?'idle':'unknown'};
+   const lastSync=companion.localStore?.lastSyncedAt;
+   if(Number.isSafeInteger(lastSync)&&lastSync>0&&lastSync<=8640000000000000)result.lastSync=lastSync;
+   return result;
+  }
+ }catch(_){return {status:'unknown'};}
+ // Syncthing Integration exposes dialogs, not a verified cached status contract.
+ return {status:'unknown'};
+}
+
+// v3 module: src/v13/grammar-companion.js
+/* Independent bridge to the installed plugin. No LanguageTool source is bundled. */
+const WRITER_COMPANION_GRAMMAR=[{
+ id:'languagetool',name:'LanguageTool',repository:'https://github.com/wrenger/obsidian-languagetool',
+ revision:'0d663b6c713ee88eeee35cc128a23c0277c72a69',version:'1.6.0',minAppVersion:'1.13.6',
+ license:'AGPL-3.0',mobile:true,settingsTabId:'languagetool',
+ actions:[
+  {id:'check',pt:'Verificar nota ou seleção',en:'Check note or selection',command:'languagetool:check',requiresEditor:true,effect:'network',module:'review'},
+  {id:'clear',pt:'Limpar sugestões',en:'Clear suggestions',command:'languagetool:clear',requiresEditor:true,effect:'inspect',module:'review'},
+  {id:'next',pt:'Próxima sugestão',en:'Next suggestion',command:'languagetool:next',requiresEditor:true,effect:'inspect',module:'review'},
+  {id:'toggle-auto-check',pt:'Alternar verificação automática',en:'Toggle automatic checking',command:'languagetool:toggle-auto-check',effect:'setting',module:'review'}
+ ]
+}];
+function writerLanguageToolInstalled(plugin){return plugin.app?.plugins?.plugins?.languagetool||null;}
+function writerLanguageToolEnabled(plugin){
+ if(!writerModuleOn(plugin,'review'))return false;
+ if(typeof writerCompanionEnabled==='function')return writerCompanionEnabled(plugin,'languagetool');
+ return plugin.settings?.v12Toolkit?.enabled!==false&&plugin.settings?.v12Toolkit?.integrations!==false&&
+  plugin.settings?.companionCompatibility?.enabledById?.languagetool!==false&&!!writerLanguageToolInstalled(plugin);
+}
+function writerLanguageToolState(plugin){
+ const instance=writerLanguageToolInstalled(plugin),enabled=!!instance&&writerLanguageToolEnabled(plugin);
+ const options=instance?.settings?.options,commands=plugin.app?.commands?.commands||{};
+ return {installed:!!instance,enabled,canCheck:enabled&&typeof instance.runDetection==='function',
+  canConfigure:enabled&&!!options&&typeof instance.settings?.update==='function',
+  automatic:typeof options?.shouldAutoCheck==='boolean'?options.shouldAutoCheck:null,
+  language:typeof options?.staticLanguage==='string'?options.staticLanguage:null,
+  version:String(instance?.manifest?.version||''),
+  commands:Object.fromEntries(WRITER_COMPANION_GRAMMAR[0].actions.map(action=>[action.id,enabled&&!!commands[action.command]]))};
+}
+function writerLanguageToolEditor(plugin,file){
+ if(!file?.path)return null;
+ const workspace=plugin.app.workspace,leaves=workspace.getLeavesOfType?.('markdown')||[];
+ const recent=workspace.getMostRecentLeaf?.(),active=workspace.activeLeaf;
+ const leaf=[active,recent,...leaves].find(item=>item?.view?.file?.path===file.path&&item.view.editor?.cm);
+ if(!leaf)return null;
+ // runDetection reads the active note's frontmatter; commands also use its editor.
+ // Restore the chosen note before either call, including when Basic has focus.
+ workspace.setActiveLeaf?.(leaf,{focus:true});
+ if(workspace.getActiveFile?.()?.path!==file.path)return null;
+ return {leaf,editor:leaf.view.editor,cm:leaf.view.editor.cm};
+}
+function writerLanguageToolCommand(plugin,command,file){
+ const state=writerLanguageToolState(plugin),action=WRITER_COMPANION_GRAMMAR[0].actions.find(item=>item.id===command);
+ if(!action||!state.commands[command])return false;
+ if(action.requiresEditor&&!writerLanguageToolEditor(plugin,file||plugin.app.workspace.getActiveFile?.())){
+  new Notice(writerUi('Abra a nota no editor para usar esta ação do LanguageTool.','Open the note in an editor to use this LanguageTool action.'));return false;
+ }
+ return !!plugin.app.commands.executeCommandById(action.command);
+}
+async function writerLanguageToolReview(plugin,file,view){
+ if(!writerLanguageToolEnabled(plugin)||plugin.settings.reviewEngine!=='external'||view?.activeTab!=='review'||
+  view.reviewMode?.value!=='grammar'||view.reviewFilePath!==file?.path)return false;
+ const instance=writerLanguageToolInstalled(plugin);
+ if(typeof instance?.runDetection!=='function'){view.updateReviewEngineUI?.();return false;}
+ const context=writerLanguageToolEditor(plugin,file);
+ if(!context){view.reviewStatus?.setText(writerUi('Abra esta nota no editor para usar o corretor externo.','Open the note in an editor to use the external checker.'));return false;}
+ if(view.reviewBusy)return false;
+ const token=view.reviewToken=(view.reviewToken||0)+1;
+ const document=context.cm.state?.doc;
+ const current=()=>view.reviewToken===token&&writerLanguageToolEnabled(plugin)&&
+  writerLanguageToolInstalled(plugin)===instance&&plugin.settings.reviewEngine==='external'&&
+  view.reviewMode?.value==='grammar'&&view.activeTab==='review'&&view.reviewFilePath===file.path&&
+  context.leaf.view?.file?.path===file.path&&context.leaf.view?.editor?.cm===context.cm&&
+  context.cm.state?.doc===document;
+ view.reviewBusy=true;
+ view.reviewStatus?.setText(writerUi('Verificando pelo LanguageTool externo…','Checking with external LanguageTool…'));
+ try{
+  await instance.runDetection(context.cm);
+  if(!current())return false;
+  // Upstream returns true for some handled failures as well as findings.
+  // Completion cannot certify successful transport; its own notices explain errors.
+  view.reviewStatus?.setText(writerUi('Solicitação encerrada. Confira os sublinhados e os avisos do LanguageTool no editor.',
+   'Request finished. Check the editor underlines and LanguageTool notices.'));
+  return true;
+ }catch(_){
+  if(current())view.reviewStatus?.setText(writerUi('O LanguageTool externo não concluiu a verificação. Confira as configurações e os avisos dele.',
+   'External LanguageTool could not finish the check. Review its settings and notices.'));
+  return false;
+ }finally{if(view.reviewToken===token)view.reviewBusy=false;}
+}
+async function writerLanguageToolUpdate(plugin,key,value){
+ if(!writerLanguageToolState(plugin).canConfigure)throw Error(writerUi('Configuração externa indisponível.','External settings unavailable.'));
+ const options=writerLanguageToolInstalled(plugin).settings.options;
+ const booleans=['shouldAutoCheck','pickyMode','longCheckNotification'];
+ if(booleans.includes(key)){if(typeof value!=='boolean'||typeof options[key]!=='boolean')throw Error('Invalid LanguageTool option');}
+ else if(key==='staticLanguage'){
+  if(typeof options.staticLanguage!=='string'||typeof value!=='string'||(value!==''&&!/^[a-z]{2,3}(?:-[A-Za-z]{2,4})?$/.test(value)))throw Error('Invalid LanguageTool language');
+ }else throw Error('Unsupported LanguageTool option');
+ // Its updater serializes writes and preserves dictionaries, secret references
+ // and plugin-owned metadata. Never replace or save its settings object.
+ await writerLanguageToolInstalled(plugin).settings.update({[key]:value});
+}
+function writerLanguageToolSettings(plugin,panel){
+ const root=panel.createDiv({cls:'writer-grammar-external-settings'}),state=writerLanguageToolState(plugin);
+ root.createEl('h4',{text:writerUi('Plugin LanguageTool externo','External LanguageTool plugin')});
+ root.createEl('p',{cls:'setting-item-description',attr:{role:'status'},text:!state.installed?
+  writerUi('Não instalado ou desativado. O corretor integrado funciona sem este plugin.','Not installed or disabled. The built-in checker works without this plugin.'):
+  !state.enabled?writerUi('A integração está desativada em Recursos ou Integrações. O plugin externo mantém seu próprio funcionamento.',
+   'The bridge is disabled in Features or Integrations. The external plugin keeps its own behavior.'):
+  writerUi('Plugin ativo','Plugin active')+(state.version?' · '+state.version:'')});
+ root.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'O idioma, a conta, o dicionário e a verificação automática do plugin externo são independentes dos do Basic. Propriedades lt-language, lt-autoCheck e lt-picky da nota podem substituir as preferências dele.',
+  'The external plugin’s language, account, dictionary and automatic checking are independent of Basic. Note properties lt-language, lt-autoCheck and lt-picky can override its preferences.')});
+ new Setting(root).setName(writerUi('Configuração completa do plugin','Full plugin settings'))
+  .addButton(button=>button.setButtonText(writerUi('Abrir configurações','Open settings')).setDisabled(!state.installed).onClick(()=>{
+   if(!writerLanguageToolInstalled(plugin))return;
+   plugin.app.setting?.open?.();plugin.app.setting?.openTabById?.('languagetool');
+  }));
+ if(!state.canConfigure)return root;
+ const feedback=root.createEl('p',{cls:'writer-grammar-feedback',attr:{role:'status','aria-live':'polite'}});
+ const persist=async(control,key,value)=>{
+  control.setDisabled(true);
+  try{await writerLanguageToolUpdate(plugin,key,value);feedback.setText(writerUi('Preferência salva no LanguageTool.','Preference saved in LanguageTool.'));}
+  catch(_){feedback.setText(writerUi('Não foi possível salvar. Reabra esta seção para conferir a preferência atual.',
+   'Could not save. Reopen this section to check the current preference.'));}
+  finally{control.setDisabled(!writerLanguageToolState(plugin).canConfigure);}
+ };
+ for(const [key,pt,en,descPt,descEn] of [
+  ['shouldAutoCheck','Verificação automática externa','External automatic checking',
+   'Este plugin pode verificar mesmo com o painel do Basic fechado. Desligar a integração não desliga essa preferência.',
+   'This plugin can check while the Basic pane is closed. Disabling the bridge does not turn off this preference.'],
+  ['pickyMode','Revisão rigorosa externa','External picky mode','Inclui sugestões adicionais de estilo.','Include additional style suggestions.'],
+  ['longCheckNotification','Avisar sobre verificações longas','Notify about long checks',
+   'Útil no celular, onde o indicador da barra de status não aparece.','Useful on mobile, where the status bar indicator is unavailable.']
+ ]){
+  if(typeof writerLanguageToolInstalled(plugin).settings.options[key]!=='boolean')continue;
+  new Setting(root).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
+   .addToggle(control=>control.setValue(writerLanguageToolInstalled(plugin).settings.options[key])
+    .onChange(value=>persist(control,key,value)));
+ }
+ if(typeof writerLanguageToolInstalled(plugin).settings.options.staticLanguage==='string')new Setting(root).setName(writerUi('Idioma do plugin externo','External plugin language'))
+  .addDropdown(control=>{
+   const languages=[['',writerUi('Detecção automática','Automatic detection')],['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],
+    ['en-US','English (US)'],['en-GB','English (UK)'],['es','Español'],['fr','Français'],['de-DE','Deutsch']];
+   const current=writerLanguageToolInstalled(plugin).settings.options.staticLanguage||'';
+   for(const [value,label] of languages)control.addOption(value,label);
+   if(!languages.some(([value])=>value===current))control.addOption(current,current);
+   control.setValue(current).onChange(value=>persist(control,'staticLanguage',value));
+  });
+ return root;
+}
+function writerLanguageToolPanel(view){
+ const plugin=view.plugin,state=writerLanguageToolState(plugin);
+ const info=view.reviewResults.createDiv({cls:'writer-review-external'});
+ info.createEl('h4',{text:writerUi('LanguageTool externo','External LanguageTool')});
+ info.createEl('p',{text:state.enabled?writerUi(
+  'O plugin externo controla os sublinhados e as sugestões no editor. O Basic usa o idioma e a conta dele neste modo.',
+  'The external plugin controls editor underlines and suggestions. Basic uses its language and account in this mode.'):
+  writerUi('Ative o LanguageTool e sua integração. O Basic não envia verificações enquanto o corretor externo estiver selecionado.',
+   'Enable LanguageTool and its bridge. Basic does not send checks while the external checker is selected.')});
+ const actions=info.createDiv({cls:'writer-tools-v3-actions'});
+ const button=(pt,en,enabled,callback)=>{
+  const element=actions.createEl('button',{text:writerUi(pt,en)});element.disabled=!enabled;
+  element.addEventListener('click',callback);return element;
+ };
+ button('Verificar nota/seleção','Check note/selection',state.canCheck,()=>view.reviewActiveFile());
+ for(const action of WRITER_COMPANION_GRAMMAR[0].actions.filter(item=>item.id!=='check')){
+  let pt=action.pt,en=action.en;
+  if(action.id==='toggle-auto-check'&&state.automatic!==null){
+   pt=state.automatic?'Desativar verificação automática externa':'Ativar verificação automática externa';
+   en=state.automatic?'Turn off external automatic checking':'Turn on external automatic checking';
+  }
+  const element=button(pt,en,state.commands[action.id],()=>{
+   const file=plugin.app.vault.getAbstractFileByPath?.(view.reviewFilePath)||plugin.app.workspace.getActiveFile?.();
+   if(!writerLanguageToolCommand(plugin,action.id,file))view.reviewStatus.setText(writerUi(
+    'Ação indisponível para a nota atual.','Action unavailable for the current note.'));
+   if(action.id==='toggle-auto-check')element.textContent=writerUi('Preferência enviada; reabra o painel para atualizar.','Preference sent; reopen the pane to refresh.');
+  });
+ }
+ button('Configurar LanguageTool','LanguageTool settings',state.installed,()=>{
+  plugin.app.setting?.open?.();plugin.app.setting?.openTabById?.('languagetool');
+ });
+ view.reviewStatus.setText(state.canCheck?writerUi('Controles do LanguageTool externo disponíveis.','External LanguageTool controls are ready.'):
+  writerUi('LanguageTool externo indisponível ou integração desativada.','External LanguageTool unavailable or bridge disabled.'));
+}
+function writerLanguageToolRegister(plugin){
+ if(typeof document==='undefined')return;
+ const bodies=new Set();let previous='',pendingRefresh=false,stopped=false;
+ const refresh=()=>{
+  if(stopped)return;
+  const enabled=writerLanguageToolEnabled(plugin),state=writerLanguageToolState(plugin);
+  const body=document.body;if(body){body.classList.toggle('writer-grammar-external-compat',enabled);bodies.add(body);}
+  const fingerprint=JSON.stringify([state.enabled,state.canCheck,state.version,state.automatic,state.commands]);
+  if(fingerprint===previous&&!pendingRefresh)return;previous=fingerprint;pendingRefresh=false;
+  for(const leaf of plugin.app.workspace.getLeavesOfType?.(typeof VIEW==='string'?VIEW:'offline-dictionary-view')||[]){
+   const view=leaf.view;
+   if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'&&plugin.settings.reviewEngine==='external'){
+    if(view.reviewBusy&&state.enabled){pendingRefresh=true;continue;}
+    if(view.reviewBusy)view.cancelReview?.();
+    view.updateReviewEngineUI?.();
+   }
+  }
+ };
+ refresh();const timer=setInterval(refresh,1500);plugin.registerInterval?.(timer);
+ const stop=()=>{stopped=true;clearInterval(timer);for(const body of bodies)body.classList.remove('writer-grammar-external-compat');bodies.clear();};
+ plugin.register?.(stop);return {refresh,stop};
+}
+
+// v3 module: src/v13/companion-layout.js
+/* Native companion controls keep their own DOM, handlers and preferences.
+ * Selectors audited in Toolkit 2.9.17 and Snailkit 0.2.9; no settings are rewritten. */
+function writerCompanionRect(rect){
+ const left=Number(rect?.left),top=Number(rect?.top);
+ const width=Number(rect?.width??(rect?.right-left)),height=Number(rect?.height??(rect?.bottom-top));
+ return [left,top,width,height].every(Number.isFinite)&&width>0&&height>0?
+  {left,top,width,height,right:left+width,bottom:top+height}:null;
+}
+function writerCompanionRectsOverlap(a,b,gap=0){
+ return a.left<b.right+gap&&a.right>b.left-gap&&a.top<b.bottom+gap&&a.bottom>b.top-gap;
+}
+/** Find the nearest clear place, constrained to the owning pane and visible viewport.
+ * Returns null when no complete fit exists: never move a control into another pane. */
+function writerCompanionControlPlace(rect,bounds,obstacles=[],gap=8){
+ const source=writerCompanionRect(rect),area=writerCompanionRect(bounds);
+ if(!source||!area||source.width>area.width||source.height>area.height)return null;
+ const blocked=obstacles.map(writerCompanionRect).filter(Boolean);
+ const clamp=(n,low,high)=>Math.max(low,Math.min(high,n));
+ const xs=[source.left,area.left,area.right-source.width];
+ const ys=[source.top,area.top,area.bottom-source.height];
+ for(const o of blocked){xs.push(o.left-source.width-gap,o.right+gap);ys.push(o.top-source.height-gap,o.bottom+gap);}
+ const candidates=[];
+ for(const x of xs)for(const y of ys){
+  const left=clamp(x,area.left,area.right-source.width),top=clamp(y,area.top,area.bottom-source.height);
+  const candidate={left,top,width:source.width,height:source.height,right:left+source.width,bottom:top+source.height};
+  if(blocked.some(o=>writerCompanionRectsOverlap(candidate,o,gap)))continue;
+  candidates.push({...candidate,distance:(left-source.left)**2+(top-source.top)**2});
+ }
+ candidates.sort((a,b)=>a.distance-b.distance);
+ return candidates[0]||null;
+}
+function writerCompanionLayoutRegister(plugin){
+ const doc=plugin?.app?.workspace?.containerEl?.ownerDocument||(typeof document==='object'?document:null);
+ const win=doc?.defaultView;
+ if(!doc||!win)return {refresh(){},stop(){}};
+ const shifted=new Map(),marked=new Set(),cleanups=[];
+ let frame=null,stopped=false,dragging=false;
+ const enabled=id=>typeof writerCompanionEnabled==='function'?writerCompanionEnabled(plugin,id):
+  Boolean(plugin?.settings?.v12Toolkit?.enabled!==false&&plugin?.settings?.v12Toolkit?.integrations!==false&&
+   plugin?.settings?.companionCompatibility?.enabledById?.[id]!==false&&plugin?.app?.plugins?.plugins?.[id]);
+ const config=()=>plugin?.settings?.companionCompatibility||{};
+ const restore=(preserve=null)=>{
+  for(const [el,snapshot] of shifted){
+   if(preserve?.(el))continue;
+   for(const [key,value] of snapshot.props){
+    // A companion may update its own styling during a drag. Restore only our values.
+    if(el.style.getPropertyValue(key)!==snapshot.applied.get(key))continue;
+    if(value.value)el.style.setProperty(key,value.value,value.priority);else el.style.removeProperty(key);
+   }
+   if(!snapshot.hadClass)el.classList.remove('writer-companion-managed');
+   shifted.delete(el);
+  }
+  for(const el of marked)el.classList.remove('writer-companion-icon-toolkit','writer-companion-icon-basic');
+  marked.clear();
+ };
+ const visible=el=>{
+  const r=writerCompanionRect(el.getBoundingClientRect());if(!r)return null;
+  const style=win.getComputedStyle(el);
+  return style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)!==0?r:null;
+ };
+ const manage=(el,properties)=>{
+  let snapshot=shifted.get(el);
+  if(!snapshot){snapshot={props:new Map(),applied:new Map(),hadClass:el.classList.contains('writer-companion-managed')};shifted.set(el,snapshot);}
+  for(const [key,value] of Object.entries(properties)){
+   if(!snapshot.props.has(key))snapshot.props.set(key,{value:el.style.getPropertyValue(key),priority:el.style.getPropertyPriority(key)});
+   el.style.setProperty(key,value);snapshot.applied.set(key,value);
+  }
+  el.classList.add('writer-companion-managed');
+ };
+ const refresh=()=>{
+  if(stopped||dragging)return;
+  const mobile=plugin.app.isMobile===true||doc.body.classList.contains('is-mobile');
+  // The task fan draws its connectors from the button's current screen rect. Do
+  // not move that anchor while the fan is open; disable/unload still restores it.
+  const pinned=el=>mobile&&config().mobileLayout!==false&&enabled('snailkit')&&el.matches('.sk-tasks-fab.is-fan');
+  restore(pinned);
+  if(enabled('ahmed-toolkit')&&config().explorerIcons!=='both'&&config().explorerIcons!==false){
+   const preferBasic=config().explorerIcons==='basic';
+   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+    for(const row of leaf.view?.containerEl?.querySelectorAll?.('.nav-file-title,.nav-folder-title')||[]){
+     if(!row.querySelector(':scope > .ft-icon')||!row.querySelector(':scope > .writer-v9-explorer-icon'))continue;
+     row.classList.add(preferBasic?'writer-companion-icon-basic':'writer-companion-icon-toolkit');marked.add(row);
+    }
+   }
+  }
+  if(!mobile||config().mobileLayout===false)return;
+  const vv=win.visualViewport;
+  const viewport={left:vv?.offsetLeft||0,top:vv?.offsetTop||0,width:vv?.width||win.innerWidth,height:vv?.height||win.innerHeight};
+  // The probe resolves the platform safe areas without interpreting CSS env() in JS.
+  const probe=doc.createElement('div');probe.className='writer-companion-safe-area';doc.body.appendChild(probe);
+  const safeStyle=win.getComputedStyle(probe),bodyStyle=win.getComputedStyle(doc.body);
+  const safe=(padding,side)=>Math.max(parseFloat(padding)||0,parseFloat(bodyStyle.getPropertyValue?.('--safe-area-inset-'+side))||0);
+  const safeTop=safe(safeStyle.paddingTop,'top'),safeBottom=safe(safeStyle.paddingBottom,'bottom');
+  const safeLeft=safe(safeStyle.paddingLeft,'left'),safeRight=safe(safeStyle.paddingRight,'right');probe.remove();
+  const area={left:viewport.left+safeLeft+8,top:viewport.top+safeTop+8,
+   width:viewport.width-safeLeft-safeRight-16,height:viewport.height-safeTop-safeBottom-16};
+  const areaRect=writerCompanionRect(area);if(!areaRect)return;
+  const obstacles=[];
+  // These are existing native/Basic controls, not guessed companion panels.
+  const reserved='.mobile-navbar,.mobile-toolbar,.writer-v9-format-toolbar,.writer-review-floating,.writer-lt-mobile-modal,.writer-v1201-zen-exit,.status-bar';
+  for(const el of doc.querySelectorAll(reserved)){const r=visible(el);if(r)obstacles.push(r);}
+  const selectors=[];
+  if(enabled('snailkit')){
+   // Snailkit positions the rail and shell together. Moving just the rail would
+   // detach its panel, so preserve native geometry and reserve it for other buttons.
+   for(const node of doc.querySelectorAll('.sk-note-rail,.sk-note-rail-panel.is-open')){const r=visible(node);if(r)obstacles.push(r);}
+   selectors.push('.sk-tasks-fab');
+  }
+  if(enabled('ahmed-toolkit')){
+   for(const node of doc.querySelectorAll('.fk-selection-toolbar,.fk-live-image-toolbar')){const r=visible(node);if(r)obstacles.push(r);}
+   selectors.push('.fs-float-btn','.fk-tts-player','.fs-hint');
+  }
+  if(!selectors.length)return;
+  const priority=el=>el.matches('.fk-tts-player')?0:el.matches('.fs-hint')?1:el.matches('.sk-tasks-fab')?2:3;
+  const controls=Array.from(doc.querySelectorAll(selectors.join(','))).sort((a,b)=>priority(a)-priority(b));
+  // Reserve the wide audio player first, then Snailkit's task button. Move
+  // Toolkit's small fullscreen button around them; native anchored popovers keep working.
+  for(const el of controls){
+   let r=visible(el);if(!r)continue;
+   if(pinned(el)){obstacles.push(r);continue;}
+   if(win.getComputedStyle(el).translate&&!['none','0px','0px 0px'].includes(win.getComputedStyle(el).translate))continue;
+   manage(el,{});r=visible(el);if(!r)continue;
+   let bounds=areaRect;
+   const pane=el.closest('.workspace-leaf-content');
+   const paneRect=pane&&writerCompanionRect(pane.getBoundingClientRect());
+   if(paneRect){
+    const left=Math.max(bounds.left,paneRect.left+4),top=Math.max(bounds.top,paneRect.top+4);
+    bounds=writerCompanionRect({left,top,width:Math.min(bounds.right,paneRect.right-4)-left,height:Math.min(bounds.bottom,paneRect.bottom-4)-top});
+    if(!bounds)continue;
+   }
+   // The native Toolkit player is 320px wide. Constrain it on narrow phones while
+   // retaining its original size and position as soon as compatibility is disabled.
+   const props={};
+   if(el.matches('.fk-tts-player,.fs-hint')){
+    if(r.width>bounds.width){props['max-width']=Math.floor(bounds.width)+'px';manage(el,props);r=visible(el);if(!r)continue;}
+    if(r.height>bounds.height){props['max-height']=Math.floor(bounds.height)+'px';props['overflow-y']='auto';manage(el,props);r=visible(el);if(!r)continue;}
+   }
+   const ownObstacles=obstacles.filter(o=>o!==r);
+   // If a very short keyboard viewport cannot fit every native control, keep
+   // the control reachable inside its pane rather than below the keyboard.
+   const place=writerCompanionControlPlace(r,bounds,ownObstacles)||writerCompanionControlPlace(r,bounds,[]);
+   if(place){
+    if(el.matches('.fk-tts-player')){
+     // The native player drag records screen coordinates and writes left/top.
+     // A separate translation would be added a second time during that drag.
+     props.left=Math.round(place.left)+'px';props.top=Math.round(place.top)+'px';props.right='auto';props.bottom='auto';
+    }else{
+     props['--writer-companion-x']=Math.round(place.left-r.left)+'px';
+     props['--writer-companion-y']=Math.round(place.top-r.top)+'px';
+    }
+    manage(el,props);
+    obstacles.push(place);
+   }else obstacles.push(r);
+  }
+ };
+ const schedule=()=>{if(stopped||frame!==null)return;frame=win.requestAnimationFrame(()=>{frame=null;refresh();});};
+ const listen=(target,type,handler,opts)=>{target?.addEventListener?.(type,handler,opts);cleanups.push(()=>target?.removeEventListener?.(type,handler,opts));};
+ listen(win,'resize',schedule,{passive:true});listen(win,'orientationchange',schedule,{passive:true});listen(doc,'scroll',schedule,{passive:true,capture:true});
+ listen(win.visualViewport,'resize',schedule,{passive:true});listen(win.visualViewport,'scroll',schedule,{passive:true});
+ listen(doc,'pointerdown',event=>{
+  if(!event.target?.closest?.('.fk-tts-header,.fs-float-btn,.sk-note-rail,.sk-tasks-fab'))return;
+  dragging=true;
+  const player=event.target.closest('.fk-tts-header')&&!event.target.closest('.fk-tts-close')?event.target.closest('.fk-tts-player'):null;
+  const snapshot=player&&shifted.get(player);
+  // A user dragging the native header takes ownership of its position. Keep the
+  // native coordinates instead of restoring a position from before that gesture.
+  if(snapshot)for(const key of ['left','top','right','bottom']){snapshot.props.delete(key);snapshot.applied.delete(key);}
+ },{passive:true});
+ listen(win,'pointerup',()=>{dragging=false;schedule();},{passive:true});listen(win,'pointercancel',()=>{dragging=false;schedule();},{passive:true});
+ // Ignore our geometry writes (attributes) and coalesce native rendering bursts.
+ const Observer=win.MutationObserver;
+ if(Observer){const observer=new Observer(records=>{if(records.some(record=>[...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&!node.classList?.contains('writer-companion-safe-area'))))schedule();});observer.observe(doc.body,{childList:true,subtree:true});cleanups.push(()=>observer.disconnect());}
+ const stop=()=>{if(stopped)return;stopped=true;if(frame!==null)win.cancelAnimationFrame(frame);frame=null;for(const cleanup of cleanups)cleanup();restore();};
+ plugin.register?.(stop);schedule();return {refresh,schedule,stop};
+}
+
+// v3 module: src/v13/companion-bridge.js
+/* Explicit adapters for audited companion plugins. Never install, sync or send on load. */
+const WRITER_COMPANION_VIEW='basic-connected-plugins';
+function writerCompanionCatalog(){
+ const groups=[typeof WRITER_COMPANION_TOOLKIT_SPECS!=='undefined'?WRITER_COMPANION_TOOLKIT_SPECS:[],
+  typeof WRITER_COMPANION_NOTES!=='undefined'?WRITER_COMPANION_NOTES:[],
+  typeof WRITER_COMPANION_SYNC!=='undefined'?WRITER_COMPANION_SYNC:[],
+  typeof WRITER_COMPANION_GRAMMAR!=='undefined'?WRITER_COMPANION_GRAMMAR:[]];
+ return groups.flat().map(item=>({...item,repository:item.repository||item.repo||item.source?.repo,
+  revision:item.revision||item.source?.sha,version:item.version||item.source?.version,
+  settingsTabId:item.settingsTabId||item.id,actions:(item.actions||item.commands||[]).map(action=>({...action,
+   command:action.command||(action.id?.includes(':')?action.id:item.id+':'+action.id),requiresEditor:action.requiresEditor||action.editor||action.kind==='speech',requiresSelection:action.requiresSelection||action.id==='ahmed-toolkit:flowkit-tts-play-selection',effect:action.effect||action.kind||'panel'}))}));
+}
+function writerCompanionConfig(plugin){
+ const old=plugin.settings.companionCompatibility;
+ const cfg=plugin.settings.companionCompatibility=old&&typeof old==='object'&&!Array.isArray(old)?old:{};
+ if(!cfg.enabledById||typeof cfg.enabledById!=='object'||Array.isArray(cfg.enabledById))cfg.enabledById={};
+ for(const item of writerCompanionCatalog())if(typeof cfg.enabledById[item.id]!=='boolean')cfg.enabledById[item.id]=true;
+ if(!['basic','ahmed-toolkit'].includes(cfg.ttsProvider))cfg.ttsProvider='basic';
+ if(!['right','left','tab'].includes(cfg.panelPlacement))cfg.panelPlacement='right';
+ if(!['companion','basic','both'].includes(cfg.explorerIcons))cfg.explorerIcons='companion';
+ if(typeof cfg.mobileLayout!=='boolean')cfg.mobileLayout=true;
+ if(typeof cfg.showLaunchers!=='boolean')cfg.showLaunchers=true;
+ if(typeof cfg.allowToolkitOnline!=='boolean')cfg.allowToolkitOnline=false;
+ return cfg;
+}
+function writerCompanionMobile(plugin){return plugin.app?.isMobile===true||(typeof Platform!=='undefined'&&Platform.isMobile===true);}
+function writerCompanionEnabled(plugin,id){
+ const item=writerCompanionCatalog().find(item=>item.id===id);
+ return !!item&&writerV12On(plugin,'integrations')&&writerCompanionConfig(plugin).enabledById[id]!==false&&
+  !!plugin.app.plugins?.plugins?.[id]&&!(item.mobile===false&&writerCompanionMobile(plugin));
+}
+function writerCompanionCommands(plugin){return plugin.app.commands?.commands||{};}
+function writerCompanionViewAvailable(plugin,type){
+ const registry=plugin.app.viewRegistry||plugin.app.workspace.viewRegistry;
+ const views=registry?.viewByType;
+ return views instanceof Map?views.has(type):!!views?.[type];
+}
+function writerCompanionActionAvailable(plugin,item,action){
+ if(!writerCompanionEnabled(plugin,item.id)||!writerCompanionCommands(plugin)[action.command])return false;
+ if(action.desktopOnly&&writerCompanionMobile(plugin))return false;
+ if(item.id==='languagetool'&&typeof writerLanguageToolEnabled==='function'&&!writerLanguageToolEnabled(plugin))return false;
+ if(action.requiresSetting&&plugin.app.plugins.plugins[item.id]?.settings?.[action.requiresSetting]!==true)return false;
+ if(action.module&&typeof writerModuleOn==='function'&&!writerModuleOn(plugin,action.module))return false;
+ if(item.role==='sync'&&typeof writerCompanionSyncActionAvailable==='function'&&
+  !writerCompanionSyncActionAvailable(plugin,item.id,action.id))return false;
+ return true;
+}
+function writerCompanionEditorContext(plugin){
+ const ws=plugin.app.workspace,active=ws.activeLeaf;
+ const leaves=ws.getLeavesOfType?.('markdown')||[],recent=ws.getMostRecentLeaf?.(),last=plugin._writerCompanionEditorContext;
+ const leaf=active?.view?.editor&&active.view.file?active:
+  recent?.view?.editor&&recent.view.file&&leaves.includes(recent)?recent:
+  last&&leaves.includes(last.leaf)&&last.leaf.view?.editor===last.editor&&last.leaf.view.file?.path===last.path?last.leaf:
+  leaves.find(leaf=>leaf.view?.file?.path===ws.getActiveFile?.()?.path&&leaf.view?.editor);
+ return leaf?{leaf,editor:leaf.view.editor,path:leaf.view.file.path}:null;
+}
+async function writerCompanionRun(plugin,id,actionId,context){
+ const item=writerCompanionCatalog().find(item=>item.id===id),action=item?.actions.find(action=>action.id===actionId);
+ if(!action||!writerCompanionActionAvailable(plugin,item,action))return false;
+ if(item.role==='sync'&&['sync','network'].includes(action.effect)&&writerV12Config(plugin).syncProvider!==id){
+  new Notice(writerUi('Selecione este provedor de sincronização primeiro.','Select this synchronization provider first.'));return false;
+ }
+ if(action.requiresEditor){
+  const saved=context||writerCompanionEditorContext(plugin),live=plugin.app.workspace.getLeavesOfType?.('markdown')||[];
+  if(!saved||!live.includes(saved.leaf)||saved.leaf.view?.editor!==saved.editor||saved.leaf.view.file?.path!==saved.path){
+   new Notice(writerUi('Abra a nota no editor e tente novamente.','Open the note in the editor and try again.'));return false;
+  }
+  if(action.requiresSelection&&!saved.editor.getSelection?.().trim()){
+   new Notice(writerUi('Selecione o texto na nota primeiro.','Select text in the note first.'));return false;
+  }
+  if(item.id==='ahmed-toolkit'&&action.kind==='speech'){
+   const raw=action.command.endsWith('play-selection')?saved.editor.getSelection?.():
+    action.command.endsWith('play-from-cursor')?saved.editor.getValue?.().slice(saved.editor.posToOffset(saved.editor.getCursor())):saved.editor.getValue?.();
+   return writerCompanionSpeechStart(plugin,raw||'',saved.leaf.view.file.basename);
+  }
+  try{await plugin.app.workspace.setActiveLeaf(saved.leaf,{focus:true});}catch(_){return false;}
+  if(!writerCompanionActionAvailable(plugin,item,action)||plugin.app.workspace.activeLeaf!==saved.leaf||
+   !(plugin.app.workspace.getLeavesOfType?.('markdown')||[]).includes(saved.leaf)||saved.leaf.view?.editor!==saved.editor||
+   saved.leaf.view.file?.path!==saved.path||action.requiresSelection&&!saved.editor.getSelection?.().trim())return false;
+ }
+ if(item.role==='sync'&&['sync','network'].includes(action.effect)&&writerV12Config(plugin).syncProvider!==id)return false;
+ try{
+  // Obsidian returns dispatch success, not a promise for the companion's transport.
+  return plugin.app.commands.executeCommandById(action.command)!==false;
+ }catch(_){new Notice(writerUi('O plugin externo não conseguiu abrir esta ação. Confira suas configurações.','The companion could not open this action. Check its settings.'));return false;}
+}
+function writerCompanionOpenSettings(plugin,id,section){
+ if(!plugin.app.plugins?.plugins?.[id])return false;
+ if(writerCompanionCatalog().find(item=>item.id===id)?.mobile===false&&writerCompanionMobile(plugin))return false;
+ if(typeof writerCompanionNotesOpenSettings==='function'&&['snailkit','dropit'].includes(id))return writerCompanionNotesOpenSettings(plugin,id,section);
+ try{plugin.app.setting.open();plugin.app.setting.openTabById(id);return true;}catch(_){return false;}
+}
+async function writerCompanionOpenPanel(plugin,id,viewType){
+ const item=writerCompanionCatalog().find(item=>item.id===id);
+ const allowed=[...(item?.viewTypes||[]),...(item?.views||[]).map(view=>typeof view==='string'?view:view.viewType||view.id),
+  ...(item?.panels||[]).map(view=>view.viewType)].filter(Boolean);
+ if(!writerCompanionEnabled(plugin,id)||!allowed.includes(viewType))return false;
+ const descriptor=item.views?.find(view=>(view.type||view.viewType||view.id)===viewType);
+ if(descriptor?.requiresSetting&&plugin.app.plugins.plugins[id]?.settings?.[descriptor.requiresSetting]!==true)return false;
+ const ws=plugin.app.workspace,existing=ws.getLeavesOfType(viewType)?.[0];
+ if(existing){try{await existing.loadIfDeferred?.();if(!writerCompanionEnabled(plugin,id))return false;await ws.revealLeaf(existing);return writerCompanionEnabled(plugin,id);}catch(_){return false;}}
+ // Do not manufacture views when a module did not register its factory.
+ if(!writerCompanionViewAvailable(plugin,viewType))return false;
+ const file=descriptor?.file?ws.getActiveFile?.():null;
+ if(descriptor?.file&&(!file||!descriptor.extensions?.includes(file.extension))){new Notice(writerUi('Abra um arquivo HTML primeiro.','Open an HTML file first.'));return false;}
+ const place=writerCompanionConfig(plugin).panelPlacement;
+ const leaf=place==='tab'?ws.getLeaf('tab'):place==='left'?ws.getLeftLeaf(false):ws.getRightLeaf(false);
+ if(!leaf)return false;
+ try{await leaf.setViewState({type:viewType,active:true,...(file?{state:{file:file.path}}:{})});if(!writerCompanionEnabled(plugin,id))return false;await ws.revealLeaf(leaf);return writerCompanionEnabled(plugin,id);}catch(_){return false;}
+}
+function writerCompanionSpeechControl(plugin,action){
+ const handle=plugin._writerCompanionSpeechHandle;
+ if(!handle||typeof writerCompanionToolkitControl!=='function')return false;
+ const result=writerCompanionToolkitControl(plugin,handle,action);
+ if(action==='stop')plugin._writerCompanionSpeechHandle=null;
+ return result;
+}
+function writerCompanionSpeechStart(plugin,text,title){
+ if(writerCompanionConfig(plugin).ttsProvider!=='ahmed-toolkit')return false;
+ writerCompanionSpeechControl(plugin,'stop');
+ if(typeof writerCompanionToolkitSpeech!=='function')return false;
+ let handle;
+ try{handle=writerCompanionToolkitSpeech(plugin,text,title);}catch(error){new Notice(error.message);return false;}
+ if(!handle){new Notice(writerUi('Ative a compatibilidade e a leitura do Ultimate Toolkit. Confira também a permissão de voz online.','Enable Ultimate Toolkit compatibility and speech. Also check the online speech permission.'));return false;}
+ plugin._writerCompanionSpeechHandle=handle;return true;
+}
+async function writerCompanionToolkitSet(plugin,id,key,value){
+ const spec=typeof WRITER_COMPANION_TOOLKIT_SPECS!=='undefined'?WRITER_COMPANION_TOOLKIT_SPECS.find(item=>item.id===id):null;
+ const field=spec?.settings.find(field=>field.key===key),instance=plugin.app.plugins?.plugins?.[id];
+ if(!field||!writerCompanionEnabled(plugin,id)||!instance?.settings||typeof instance[spec.saveMethod]!=='function')return false;
+ if(field.type==='boolean'&&typeof value!=='boolean'||field.type==='select'&&!field.options.some(option=>option.value===value)||
+  field.type==='number'&&(!Number.isFinite(value)||value<field.min||value>field.max))return false;
+ const settings=instance.settings,previous=settings[key];settings[key]=value;
+ try{await instance[spec.saveMethod]();
+  if(field.afterSave==='updateRibbon'&&typeof instance.updateRibbon==='function')instance.updateRibbon();
+  return true;
+ }catch(_){if(settings[key]===value)settings[key]=previous;new Notice(writerUi('Não foi possível salvar no plugin externo.','Could not save in the companion plugin.'));return false;}
+}
+function writerCompanionToolkitSettings(plugin,panel,id){
+ const spec=typeof WRITER_COMPANION_TOOLKIT_SPECS!=='undefined'?WRITER_COMPANION_TOOLKIT_SPECS.find(item=>item.id===id):null;
+ const instance=plugin.app.plugins?.plugins?.[id];
+ if(!spec||!writerCompanionEnabled(plugin,id)||typeof instance?.[spec.saveMethod]!=='function')return;
+ const details=panel.createEl('details',{cls:'writer-companion-options'});details.createEl('summary',{text:writerUi('Opções de ','Options for ')+spec.name});
+ for(const field of spec.settings){
+  if(!Object.prototype.hasOwnProperty.call(instance.settings||{},field.key))continue;
+  const row=new Setting(details).setName(writerUi(field.pt,field.en));
+  const note=field.description?writerUi(field.description.pt,field.description.en):'';
+  row.setDesc(note+(field.requiresReload?' '+writerUi('Recarregue o plugin externo para aplicar todos os atalhos e painéis.','Reload the companion to apply all commands and panels.') :''));
+  const change=async value=>{await writerCompanionToolkitSet(plugin,id,field.key,value);plugin._writerCompanionManager?.refresh();};
+  if(field.type==='boolean')row.addToggle(t=>t.setValue(instance.settings[field.key]===true).onChange(change));
+  else if(field.type==='select')row.addDropdown(d=>{for(const option of field.options)d.addOption(option.value,writerUi(option.pt,option.en));d.setValue(instance.settings[field.key]).onChange(change);});
+  else if(field.type==='number')row.addSlider(s=>s.setLimits(field.min,field.max,field.step||1).setValue(Number(instance.settings[field.key])).setDynamicTooltip().onChange(change));
+ }
+}
+function writerCompanionSpeechSettings(plugin,panel){
+ const cfg=writerCompanionConfig(plugin);
+ new Setting(panel).setName(writerUi('Provedor de leitura','Speech provider'))
+  .setDesc(writerUi('Basic mantém suas vozes. Ultimate Toolkit usa suas próprias vozes e seu próprio player; exige instalação e ativação separadas.','Basic keeps its voices. Ultimate Toolkit uses its own voices and player; install and enable it separately.'))
+  .addDropdown(d=>d.addOption('basic','Basic').addOption('ahmed-toolkit','Ultimate Toolkit').setValue(cfg.ttsProvider).onChange(async value=>{
+   if(!['basic','ahmed-toolkit'].includes(value))return;
+   writerCompanionSpeechControl(plugin,'stop');plugin.writerFinalFeatures?.stop();
+   plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;
+   cfg.ttsProvider=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();
+  }));
+ new Setting(panel).setName(writerUi('Permitir voz online do Toolkit','Allow Toolkit online speech'))
+  .setDesc(writerUi('Desativado por padrão. A versão auditada envia o texto ao Google Translate quando seu motor online está selecionado. Idiomas e vozes dependem do Toolkit.','Off by default. The audited version sends text to Google Translate when its online engine is selected. Languages and voices depend on Toolkit.'))
+  .addToggle(t=>t.setValue(cfg.allowToolkitOnline).onChange(async value=>{if(!value)writerCompanionSpeechControl(plugin,'stop');cfg.allowToolkitOnline=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Vozes e player do Toolkit','Toolkit voices and player')).addButton(b=>b.setButtonText(writerUi('Configurar','Configure')).setDisabled(!plugin.app.plugins?.plugins?.['ahmed-toolkit']).onClick(()=>writerCompanionOpenSettings(plugin,'ahmed-toolkit')));
+}
+function writerCompanionStatus(plugin,item){
+ const instance=plugin.app.plugins?.plugins?.[item.id];
+ if(item.mobile===false&&writerCompanionMobile(plugin))return writerUi('Disponível apenas no desktop','Desktop only');
+ if(!instance)return writerUi('Instale e ative o plugin original','Install and enable the original plugin');
+ if(!writerCompanionEnabled(plugin,item.id))return writerUi('Compatibilidade desligada no Basic','Compatibility disabled in Basic');
+ const version=instance.manifest?.version||'?';
+ if(item.role==='sync'&&typeof writerCompanionSyncStatus==='function'){
+   const status=writerCompanionSyncStatus(plugin,item.id);
+   const labels={setup:['Configure o provedor','Set up provider'],offline:['Sem conexão','Offline'],syncing:['Sincronizando','Syncing'],synced:['Sincronizado','Synced'],idle:['Pronto','Ready'],paused:['Pausado','Paused'],'remote-paused':['Pausado em outro dispositivo','Paused on another device'],conflict:['Conflito','Conflict'],error:['Erro de conexão','Connection error'],waiting:['Aguardando dispositivos','Waiting for devices'],listening:['Aguardando alterações','Listening for changes']};
+   if(labels[status?.status])return version+' · '+writerUi(...labels[status.status]);
+ }
+ return version+' · '+writerUi('Ativo','Active');
+}
+function writerCompanionButton(root,text,callback,disabled=false){
+ const button=root.createEl('button',{text,attr:{type:'button'}});button.disabled=disabled;
+ button.addEventListener('click',()=>{if(!button.disabled)Promise.resolve(callback()).catch(()=>{});});return button;
+}
+function writerCompanionRender(plugin,root,role,context){
+ root.empty();root.addClass('writer-companion-center');
+ root.createEl('h2',{text:writerUi('Plugins conectados','Connected plugins')});
+ root.createEl('p',{cls:'setting-item-description',text:writerUi('Abra os painéis originais e configure cada conexão. O Basic usa somente os recursos disponíveis na versão ativa.','Open native panels and configure each connection. Basic uses only capabilities available in the running version.')});
+ if(!writerV12On(plugin,'integrations')){root.createEl('p',{text:writerUi('As integrações estão desligadas nas configurações do Basic.','Integrations are disabled in Basic settings.')});return;}
+ if(role==='sync')writerCompanionSyncSelector(plugin,root);
+ for(const item of writerCompanionCatalog().filter(item=>role!=='sync'||item.role==='sync')){
+  const card=root.createDiv({cls:'writer-companion-card'});card.dataset.companion=item.id;
+  card.createEl('h3',{text:item.name});card.createEl('p',{cls:'writer-companion-status',text:writerCompanionStatus(plugin,item),attr:{role:'status'}});
+  const description=item.description?writerUi(item.description.pt,item.description.en):writerUi(item.descriptionPt||'',item.descriptionEn||'');
+  if(description)card.createEl('p',{cls:'setting-item-description',text:description});
+  if(item.notes)card.createEl('p',{cls:'setting-item-description',text:writerUi(item.notes.pt,item.notes.en)});
+  const actions=card.createDiv({cls:'writer-companion-actions'});
+  if(plugin.app.plugins?.plugins?.[item.id])writerCompanionButton(actions,writerUi('Configurações originais','Native settings'),()=>writerCompanionOpenSettings(plugin,item.id),item.mobile===false&&writerCompanionMobile(plugin));
+  for(const action of item.actions){
+   if(!writerCompanionCommands(plugin)[action.command]||item.mobile===false&&writerCompanionMobile(plugin))continue;
+   if(action.desktopOnly&&writerCompanionMobile(plugin))continue;
+   const available=writerCompanionActionAvailable(plugin,item,action);
+   const selected=item.role!=='sync'||!['sync','network'].includes(action.effect)||writerV12Config(plugin).syncProvider===item.id;
+   const button=writerCompanionButton(actions,writerUi(action.pt||action.id,action.en||action.id),()=>writerCompanionRun(plugin,item.id,action.id,context),!available||!selected);
+   if(!available)button.title=writerUi('O plugin ou módulo não disponibilizou este comando.','The plugin or module has not made this command available.');
+   else if(!selected)button.title=writerUi('Selecione este sincronizador primeiro.','Select this sync provider first.');
+  }
+  const panels=[...(item.panels||[]).map(view=>view.viewType),...(item.views||[]).map(view=>typeof view==='string'?view:view.type||view.viewType||view.id)].filter(Boolean);
+  for(const type of [...new Set(panels)]){
+   const view=item.views?.find(view=>(view.type||view.viewType||view.id)===type)||item.panels?.find(view=>view.viewType===type);
+   const available=writerCompanionViewAvailable(plugin,type)&&writerCompanionEnabled(plugin,item.id)&&(!view?.requiresSetting||plugin.app.plugins.plugins[item.id]?.settings?.[view.requiresSetting]===true);
+   if(writerCompanionViewAvailable(plugin,type))writerCompanionButton(actions,(view?writerUi(view.pt,view.en):writerUi('Abrir painel','Open panel')+' · '+item.name)+' · '+writerUi({left:'à esquerda',right:'à direita',tab:'em aba'}[writerCompanionConfig(plugin).panelPlacement],{left:'left',right:'right',tab:'tab'}[writerCompanionConfig(plugin).panelPlacement]),()=>writerCompanionOpenPanel(plugin,item.id,type),!available);
+  }
+  if(item.id==='snailkit'&&writerCompanionEnabled(plugin,item.id)){
+   const tasks=writerCompanionSnailkitTasks(plugin).slice(0,8);
+   if(tasks.length){const list=card.createEl('ul',{cls:'writer-companion-tasks'});
+    for(const task of tasks){const row=list.createEl('li');const check=row.createEl('input',{attr:{type:'checkbox','aria-label':writerUi('Concluir tarefa','Complete task')}});check.checked=task.done;
+     row.createSpan({text:task.plainTitle||task.text||task.title||task.raw});
+     check.addEventListener('change',async()=>{check.disabled=true;const result=await writerCompanionSnailkitSetDone(plugin,task,check.checked);if(!result){check.checked=task.done;new Notice(writerUi('A tarefa mudou. Atualize o painel.','The task changed. Refresh the panel.'));}check.disabled=false;});
+    }
+   }
+  }
+ }
+ const footer=root.createDiv({cls:'writer-companion-actions'});
+ writerCompanionButton(footer,writerUi('Atualizar recursos','Refresh capabilities'),()=>writerCompanionRender(plugin,root,role,context));
+ writerCompanionButton(footer,writerUi('Configurar integrações','Configure integrations'),()=>plugin.openCoreSettings('integrationsV4'));
+}
+function writerCompanionSyncSelector(plugin,panel){
+ new Setting(panel).setName(writerUi('Provedor manual de sincronização','Manual synchronization provider'))
+  .setDesc(writerUi('Selecionar aqui habilita ações manuais. As rotinas automáticas continuam nas configurações do plugin original.','This selection enables manual actions. Automatic schedules remain in the original plugin settings.'))
+  .addDropdown(d=>{d.addOption('none',writerUi('Nenhum','None'));for(const item of writerCompanionCatalog().filter(item=>item.role==='sync'))d.addOption(item.id,item.name);
+   d.setValue(writerV12Config(plugin).syncProvider).onChange(async value=>{if(!WRITER_V12_SYNC.includes(value))return;writerV12Config(plugin).syncProvider=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();});});
+}
+function writerCompanionSettings(plugin,panel){
+ const cfg=writerCompanionConfig(plugin);
+ panel.createEl('h3',{text:writerUi('Compatibilidade entre plugins','Plugin compatibility')});
+ new Setting(panel).setName(writerUi('Ativar integrações','Enable integrations')).setDesc(writerUi('Desligar remove as conexões do Basic. Cada plugin continua com seus próprios módulos.','Turning this off removes Basic connections. Each plugin retains its own modules.'))
+  .addToggle(t=>t.setValue(writerV12On(plugin,'integrations')).onChange(async value=>{writerV12Config(plugin).integrations=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}));
+ new Setting(panel).setName(writerUi('Abrir central de plugins','Open plugin center')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerCompanionOpen(plugin)));
+ new Setting(panel).setName(writerUi('Local dos painéis','Panel placement')).addDropdown(d=>{
+  for(const [key,pt,en] of [['right','Lateral direita','Right sidebar'],['left','Lateral esquerda','Left sidebar'],['tab','Nova aba','New tab']])d.addOption(key,writerUi(pt,en));
+  d.setValue(cfg.panelPlacement).onChange(async value=>{if(['right','left','tab'].includes(value)){cfg.panelPlacement=value;await plugin.saveSettings();}});
+ });
+ for(const [key,pt,en] of [['showLaunchers','Atalho nos painéis do Basic','Shortcut in Basic panels'],['mobileLayout','Organizar botões no mobile','Arrange mobile buttons']])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}));
+ new Setting(panel).setName(writerUi('Ícones do explorador quando há duplicação','Explorer icons when both plugins add one')).addDropdown(d=>d.addOption('companion','Ultimate Toolkit').addOption('basic',writerUi('Basic personalizado','Custom Basic')).addOption('both',writerUi('Ambos','Both')).setValue(cfg.explorerIcons).onChange(async value=>{if(['companion','basic','both'].includes(value)){cfg.explorerIcons=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}}));
+ writerCompanionSyncSelector(plugin,panel);
+ for(const item of writerCompanionCatalog()){
+  new Setting(panel).setName(item.name).setDesc(writerCompanionStatus(plugin,item))
+   .addToggle(t=>t.setValue(cfg.enabledById[item.id]!==false).onChange(async value=>{cfg.enabledById[item.id]=value;if(!value&&item.id==='ahmed-toolkit')writerCompanionSpeechControl(plugin,'stop');await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}))
+   .addButton(b=>b.setButtonText(writerUi('Configurar','Configure')).setDisabled(!plugin.app.plugins?.plugins?.[item.id]||item.mobile===false&&writerCompanionMobile(plugin)).onClick(()=>writerCompanionOpenSettings(plugin,item.id)));
+  if(typeof writerCompanionToolkitSettings==='function')writerCompanionToolkitSettings(plugin,panel,item.id);
+  if(item.settingsSections&&writerCompanionEnabled(plugin,item.id)){
+   const actions=panel.createDiv({cls:'writer-companion-actions'});
+   for(const section of item.settingsSections)writerCompanionButton(actions,writerUi(section.pt,section.en),()=>writerCompanionOpenSettings(plugin,item.id,section.id));
+  }
+ }
+ writerCompanionSpeechSettings(plugin,panel);
+ new Setting(panel).setName(writerUi('Conflitos locais','Local conflicts')).addButton(b=>b.setButtonText(writerUi('Inspecionar','Inspect')).onClick(()=>writerV12ConflictViewer(plugin)));
+}
+async function writerCompanionOpen(plugin,role){
+ if(!writerV12On(plugin,'integrations'))return;
+ const context=writerCompanionEditorContext(plugin),ws=plugin.app.workspace;
+ let leaf=ws.getLeavesOfType(WRITER_COMPANION_VIEW)?.[0];
+ if(leaf){
+  try{await leaf.loadIfDeferred?.();}catch(_){return false;}
+  if(typeof leaf.view?.render!=='function'){
+   if((ws.getLeavesOfType(WRITER_COMPANION_VIEW)||[]).includes(leaf))leaf.detach?.();
+   leaf=null;
+  }
+ }
+ if(!leaf){const place=writerCompanionConfig(plugin).panelPlacement;leaf=place==='tab'?ws.getLeaf('tab'):place==='left'?ws.getLeftLeaf(false):ws.getRightLeaf(false);if(!leaf)return;await leaf.setViewState({type:WRITER_COMPANION_VIEW,active:true});}
+ await leaf.loadIfDeferred?.();
+ if(!writerV12On(plugin,'integrations')||typeof leaf.view?.render!=='function')return false;
+ leaf.view.role=role;leaf.view.editorContext=context;leaf.view.render();await ws.revealLeaf(leaf);return true;
+}
+function writerCompanionRegister(plugin){
+ if(plugin._writerCompanionManager)return;
+ writerCompanionConfig(plugin);
+ if(typeof writerLanguageToolRegister==='function')writerLanguageToolRegister(plugin);
+ class CompanionView extends ItemView{
+  getViewType(){return WRITER_COMPANION_VIEW;}
+  getDisplayText(){return writerUi('Plugins conectados','Connected plugins');}
+  getIcon(){return 'plug';}
+  async onOpen(){this.render();}
+  render(){writerCompanionRender(plugin,this.contentEl,this.role,this.editorContext);}
+ }
+ plugin.registerView(WRITER_COMPANION_VIEW,leaf=>new CompanionView(leaf));
+ const snail=typeof writerCompanionSnailkitRegister==='function'?writerCompanionSnailkitRegister(plugin,()=>writerCompanionEnabled(plugin,'snailkit')):null;
+ const layout=typeof writerCompanionLayoutRegister==='function'?writerCompanionLayoutRegister(plugin):null;
+ let stopped=false,fingerprint='';
+ const refresh=()=>{
+  if(stopped)return;
+  snail?.refresh();layout?.refresh();
+  if(plugin._writerCompanionSpeechHandle&&(typeof writerCompanionToolkitAllowed!=='function'||!writerCompanionToolkitAllowed(plugin)||plugin.app.plugins.plugins['ahmed-toolkit']?.settings?.enableTTS!==true))writerCompanionSpeechControl(plugin,'stop');
+  const next=JSON.stringify([writerV12On(plugin,'integrations'),writerCompanionConfig(plugin),writerCompanionCatalog().map(item=>[item.id,writerCompanionStatus(plugin,item),item.actions.map(action=>writerCompanionActionAvailable(plugin,item,action))])]);
+  const doc=plugin.app.workspace.containerEl?.ownerDocument;
+  for(const header of doc?.querySelectorAll('.writer-sidebar-header')||[]){
+   const old=header.querySelector('.writer-companion-launcher');
+   const show=writerCompanionConfig(plugin).showLaunchers&&writerV12On(plugin,'integrations')&&writerCompanionCatalog().some(item=>writerCompanionEnabled(plugin,item.id));
+   if(!show)old?.remove();
+   if(show&&!old){
+    const button=writerCompanionButton(header,writerUi('Plugins','Plugins'),()=>writerCompanionOpen(plugin));button.addClass('writer-companion-launcher');
+   }
+  }
+  if(next===fingerprint)return;fingerprint=next;
+  for(const leaf of plugin.app.workspace.getLeavesOfType(WRITER_COMPANION_VIEW)||[])leaf.view.render?.();
+ };
+ const stop=()=>{if(stopped)return;stopped=true;snail?.stop();layout?.stop();writerCompanionSpeechControl(plugin,'stop');
+  const doc=plugin.app.workspace.containerEl?.ownerDocument;for(const el of doc?.querySelectorAll('.writer-companion-launcher')||[])el.remove();
+  for(const leaf of plugin.app.workspace.getLeavesOfType(WRITER_COMPANION_VIEW)||[])leaf.detach?.();
+ };
+ plugin._writerCompanionManager={refresh,stop};plugin.register(stop);
+ if(typeof plugin.app.workspace.on==='function'){
+  const ref=plugin.app.workspace.on('active-leaf-change',leaf=>{
+   if(!leaf?.view?.editor||leaf.view.file?.extension!=='md')return;
+   const context={leaf,editor:leaf.view.editor,path:leaf.view.file.path};plugin._writerCompanionEditorContext=context;
+   for(const panel of plugin.app.workspace.getLeavesOfType(WRITER_COMPANION_VIEW)||[]){panel.view.editorContext=context;panel.view.render?.();}
+  });
+  if(typeof plugin.registerEvent==='function')plugin.registerEvent(ref);else plugin.register(()=>plugin.app.workspace.offref?.(ref));
+ }
+ plugin.registerInterval(setInterval(refresh,2000));plugin.app.workspace.onLayoutReady(refresh);
+}
+
 // END WRITER V3 MODULES
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){
@@ -34575,23 +36239,7 @@ class DictionaryView extends ItemView{
   const external=this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine==='external';
   if(!external){this.reviewResults.empty();this.reviewStatus.setText('');return;}
   this.reviewResults.empty();
-  const ext=this.plugin.externalLanguageTool();
-  const ready=!!ext&&typeof ext.runDetection==='function';
-  const info=this.reviewResults.createDiv({cls:'writer-review-external'});
-  info.createEl('h4',{text:msg('LanguageTool externo','External LanguageTool')});
-  info.createEl('p',{text:ready
-   ?msg('O corretor externo controla os sublinhados e menus no editor. Use estes controles sem duplicar requisições pelo Basic.','The external checker controls underlines and menus in the editor. Use these controls without duplicate Basic requests.')
-   :msg('Instale e ative o plugin LanguageTool (wrenger). O corretor interno não fará requisições enquanto este modo estiver selecionado.','Install and enable the LanguageTool plugin (wrenger). Basic will not send requests while this mode is selected.')});
-  const actions=info.createDiv({cls:'writer-tools-v3-actions'});
-  const action=(label,fn)=>{const b=actions.createEl('button',{text:label});b.disabled=!ready;b.addEventListener('click',fn);return b;};
-  action(msg('Verificar nota/seleção','Check note/selection'),()=>this.reviewActiveFile());
-  action(msg('Limpar sugestões','Clear suggestions'),()=>this.plugin.runExternalLanguageToolCommand('clear'));
-  action(msg('Próximo erro','Next error'),()=>this.plugin.runExternalLanguageToolCommand('next'));
-  action(msg('Alternar auto-check','Toggle auto-check'),()=>this.plugin.runExternalLanguageToolCommand('toggle-auto-check'));
-  action(msg('Configurar LanguageTool','LanguageTool settings'),()=>{
-   this.app.setting?.open?.();this.app.setting?.openTabById?.('languagetool');
-  });
-  this.reviewStatus.setText(ready?msg('Controles do LanguageTool externo disponíveis.','External LanguageTool controls are ready.'):msg('LanguageTool externo não está ativo.','External LanguageTool is not enabled.'));
+  writerLanguageToolPanel(this);
  }
  async reviewActiveFile(){
   const file=this.app.workspace.getActiveFile();
@@ -35790,29 +37438,14 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
 
   externalLanguageTool(){
-    // The host's plugin registry is not a stable API; keep this integration optional.
-    return this.app.plugins?.plugins?.languagetool||null;
+    return writerLanguageToolEnabled(this)?writerLanguageToolInstalled(this):null;
   }
-  runExternalLanguageToolCommand(command){
-    const ext=this.externalLanguageTool();
-    if(!ext)return new Notice(msg('Ative o plugin LanguageTool nos plugins da comunidade.','Enable LanguageTool in Community Plugins.'));
-    if(!['clear','next','toggle-auto-check'].includes(command))return;
-    if(!this.app.commands?.executeCommandById?.('languagetool:'+command))
-     new Notice(msg('Comando do plugin externo indisponível.','External plugin command unavailable.'));
+  runExternalLanguageToolCommand(command,file){
+    if(!writerLanguageToolCommand(this,command,file))
+     new Notice(msg('Ação do LanguageTool indisponível para a nota atual.','LanguageTool action unavailable for the current note.'));
   }
   async reviewWithExternalLanguageTool(file,view){
-    const ext=this.externalLanguageTool();
-    if(!ext||typeof ext.runDetection!=='function'){view.updateReviewEngineUI();return;}
-    const editor=writerActiveEditor(this,file),cm=editor?.cm;
-    if(!cm){view.reviewStatus.setText(msg('Abra esta nota no editor para usar o corretor externo.','Open the note in an editor to use the external checker.'));return;}
-    if(view.reviewBusy)return;
-    view.reviewBusy=true;view.reviewStatus.setText(msg('Verificando pelo LanguageTool externo…','Checking with external LanguageTool…'));
-    try{
-     const found=await ext.runDetection(cm);
-     if(this.settings.reviewEngine!=='external'||view.reviewFilePath!==file.path)return;
-     view.reviewStatus.setText(found?msg('Sugestões disponíveis no editor.','Suggestions available in the editor.'):msg('Verificação concluída. Confira os sublinhados no editor.','Check completed. See editor underlines.'));
-    }catch(error){view.reviewStatus.setText(msg('Falha do corretor externo: ','External checker error: ')+(error?.message||String(error)));}
-    finally{view.reviewBusy=false;}
+    return writerLanguageToolReview(this,file,view);
   }
   async checkGrammar(text){return writerGrammarRequest(this,text);}
   async reviewWithAI(text,mode,file){

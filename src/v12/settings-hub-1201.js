@@ -91,6 +91,7 @@ function writerV1201SettingsReader(plugin,panel){
    .onClick(()=>typeof writerV107SpeechPanel==='function'&&writerV107SpeechPanel(plugin)));
 }
 function writerV1201SettingsConnections(plugin,panel){
+ if(typeof writerCompanionSettings==='function')return writerCompanionSettings(plugin,panel);
  const cfg=writerV12Config(plugin);
  panel.createEl('h3',{text:writerUi('Integrações e sincronização','Integrations and synchronization')});
  writerV1201SettingToggle(plugin,panel,'integrations','Central de integrações','Integration center',

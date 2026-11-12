@@ -70,3 +70,47 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-
 @media(max-width:640px){
  body:not(.is-mobile) .status-bar.writer-v132-status-host{max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center;row-gap:2px}
 }
+/* Visual-only Longform story arc dividers, compact on desktop and Android. */
+.writer-project-root .writer-project-arc-divider{
+ display:grid;grid-template-columns:32px minmax(0,1fr) 32px;
+ align-items:center;gap:6px;min-width:0;
+ padding:5px 0;margin:1px 0;
+}
+.writer-project-root .writer-project-arc-rule{
+ min-width:0;display:flex;align-items:center;gap:9px;color:var(--text-muted);
+ font-size:var(--font-ui-smaller);font-weight:600;letter-spacing:.025em;
+}
+.writer-project-root .writer-project-arc-rule::before,
+.writer-project-root .writer-project-arc-rule::after{
+ content:'';display:block;flex:1 1 auto;min-width:6px;
+ border-top:1px solid var(--background-modifier-border);
+}
+.writer-project-root .writer-project-arc-rule:not(.is-labeled)::after{display:none}
+.writer-project-root .writer-project-arc-label{
+ min-width:0;max-width:75%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more){
+ display:flex;align-items:center;justify-content:center;
+ background:transparent;color:var(--text-muted);border:1px solid transparent;
+ border-radius:var(--radius-s);width:32px;min-width:32px;height:32px;padding:0;
+}
+.writer-project-root .writer-project-arc-grip{cursor:grab;touch-action:manipulation}
+.writer-project-root .writer-project-arc-grip:active{cursor:grabbing}
+.writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more):hover{
+ color:var(--text-normal);background:var(--background-modifier-hover);
+}
+.writer-project-root .writer-project-arc-divider:is(.writer-project-dragover,.writer-project-arc-picked){
+ background:var(--background-modifier-hover);border-radius:var(--radius-s);
+}
+.writer-project-root .writer-project-arc-divider.writer-project-dragover .writer-project-arc-rule::before{
+ border-color:var(--interactive-accent);
+}
+.writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:1px;
+}
+body.is-mobile .writer-project-root .writer-project-arc-divider{
+ grid-template-columns:44px minmax(0,1fr) 44px;gap:4px;
+}
+body.is-mobile .writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more){
+ min-width:44px;width:44px;min-height:44px;
+}

@@ -35,7 +35,7 @@ These request sites and the Zotero API adapter are bundled, but are **not automa
 
 **Additional transport:** the optional online speech synthesizer sends the requested reading text via a **WebSocket** connection to `speech.platform.bing.com` only after the user opts into that TTS option. WebSocket usage may not be counted among the direct `requestUrl` sites.
 
-A configured AI or grammar provider may record transmitted text according to its own policies. The auto-grammar check is enabled by default **inside the active Review/Grammar workflow** and uses a debounced editor-change trigger; it does not submit every note simply because a vault is opened. Turn off automatic grammar checks in the Review settings to avoid those background-on-edit submissions. For sensitive material, use local features and avoid enabling remote providers. These disclosures describe the current code paths, not a guarantee about external services or future code changes.
+A configured AI or grammar provider may record transmitted text according to its own policies. Automatic grammar checking is off on fresh installations; existing installations retain their choice. When enabled, it uses a debounced editor-change trigger **inside the active Review/Grammar workflow**; it does not submit every note simply because a vault is opened. Turn off automatic grammar checks in the Review settings to avoid those background-on-edit submissions. For sensitive material, use local features and avoid enabling remote providers. These disclosures describe the current code paths, not a guarantee about external services or future code changes.
 
 ### Avisos de rede em português
 
@@ -45,7 +45,19 @@ O buscador de imagens (10.2) adicionou duas chamadas de rede: busca/download dir
 
 Na versão 10.8, as integrações avançadas estão disponíveis com inicialização separada e podem ser desligadas nas configurações. Ao serem utilizadas, o importador Zotero enviará ID numérico de biblioteca e, quando fornecida, uma chave temporária por cabeçalho HTTPS ao servidor `api.zotero.org`; a chave **não** é salva no cofre. As assinaturas iCalendar HTTPS (10.7) baixam calendários somente após ativação. A URL do feed pode conter uma senha/token e fica salva localmente nas configurações sem criptografia; sincronização periódica começa **desativada**. Essas duas integrações não enviam o manuscrito e podem ser desligadas.
 
-A revisão automática está ativada por padrão dentro do fluxo de Revisão/Gramática; você pode desativá-la nas configurações. Os provedores remotos podem armazenar os dados conforme suas políticas. Não ative essas funções para textos confidenciais sem avaliar os riscos.
+Em instalações novas, a revisão automática começa desligada; atualizações preservam a escolha existente. Quando ativada, ela funciona dentro do fluxo de Revisão/Gramática e pode ser desligada nas configurações. Os provedores remotos podem armazenar os dados conforme suas políticas. Não ative essas funções para textos confidenciais sem avaliar os riscos.
+
+## Installed companion plugins / Plugins externos instalados (13.8.0)
+
+Basic's runtime bridges do not copy or synchronize credentials. An external plugin owns its endpoint, account, transport and automatic schedules. Opening a native panel can activate that plugin's normal refresh behavior. Explicit sync, send, receive and processing commands retain the external plugin's effects; dropit's desktop processing can invoke programs configured by the user. Disabling a bridge removes Basic's connection, not the external plugin's background work.
+
+Choosing **Ultimate Toolkit** as the speech provider forwards the requested text to its own player. Basic's **Allow Toolkit online speech** permission is off by default. The inspected Toolkit 2.9.17 uses `https://translate.google.com/translate_tts` for its online engine, despite its Edge label; reading text is sent in the request URL. Its device speech uses OS/browser voices with their own network requirements. Basic does not silently change providers when the selected one is unavailable.
+
+Choosing the external **LanguageTool** checker delegates the current editor check to the installed plugin, using its own endpoint, account and note overrides. Its independent automatic checks can run while the Basic pane is closed and require disabling in that plugin if unwanted. Basic's built-in grammar client continues to use the endpoint described above.
+
+**Português:** as conexões não copiam credenciais. Cada plugin externo controla endereço, conta, transporte e rotinas automáticas. Abrir um painel pode ativar a atualização nativa dele. Comandos de sincronização, envio, recebimento e processamento mantêm seus efeitos; o processamento desktop do dropit pode executar programas configurados pelo usuário. Desligar a conexão do Basic não interrompe rotinas externas.
+
+O provedor de voz **Ultimate Toolkit** recebe o texto solicitado no seu próprio player. **Permitir voz online do Toolkit** começa desligado. O Toolkit 2.9.17 auditado usa `https://translate.google.com/translate_tts`, com o texto na URL, embora chame esse motor de Edge. Vozes do dispositivo dependem do sistema e podem usar rede. A escolha do corretor **LanguageTool externo** usa a conta, o endereço e as propriedades da nota do plugin instalado. A verificação automática dele pode continuar com o Basic fechado; desative-a no próprio plugin para interrompê-la.
 
 ## Vulnerability reporting / Reporte de vulnerabilidades
 

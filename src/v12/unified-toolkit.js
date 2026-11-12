@@ -199,12 +199,13 @@ function writerV12Lightbox(plugin,original){
 function writerV12RegisterImageViewer(plugin){
  if(!writerV12On(plugin,'imageTools'))return;
  plugin.registerMarkdownPostProcessor((root)=>{
-  if(!writerV12On(plugin,'imageTools')||writerV12CompanionInstalled(plugin,'ahmed-toolkit'))return;
+  if(!writerV12On(plugin,'imageTools'))return;
   for(const img of root.querySelectorAll('img:not([data-basic-v12-image])')){
    img.dataset.basicV12Image='true';
    img.setAttribute('title',writerUi('Toque para ampliar','Tap to enlarge'));
    img.addEventListener('click',event=>{
     if(!writerV12On(plugin,'imageTools'))return;
+    if(typeof writerCompanionEnabled==='function'&&writerCompanionEnabled(plugin,'ahmed-toolkit')&&plugin.app.plugins.plugins['ahmed-toolkit']?.settings?.enableImageControl===true)return;
     event.preventDefault();event.stopPropagation();
     writerV12Lightbox(plugin,img);
    });
@@ -377,6 +378,7 @@ function writerV12BasicTools(plugin,modal){
 }
 
 function writerV12OpenIntegrationHub(plugin,role){
+ if(typeof writerCompanionOpen==='function')return writerCompanionOpen(plugin,role);
  if(!writerV12On(plugin,'integrations'))return;
  const cfg=writerV12Config(plugin),modal=new Modal(plugin.app);
  modal.titleEl.setText(role==='sync'?writerUi('Central de sincronização','Synchronization center'):
@@ -459,6 +461,7 @@ function writerV12Templates(plugin,editor){
  picker.open();
 }
 function writerV12Register(plugin){
+ if(typeof writerCompanionRegister==='function')writerCompanionRegister(plugin);
  writerV12Config(plugin);
  const command=(id,pt,en,callback)=>plugin.addCommand({id,name:writerUi(pt,en),callback});
  command('v12-integrations','Integrações: abrir central','Integrations: open center',()=>writerV12OpenIntegrationHub(plugin));

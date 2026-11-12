@@ -10931,6 +10931,50 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-
 @media(max-width:640px){
  body:not(.is-mobile) .status-bar.writer-v132-status-host{max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center;row-gap:2px}
 }
+/* Visual-only Longform story arc dividers, compact on desktop and Android. */
+.writer-project-root .writer-project-arc-divider{
+ display:grid;grid-template-columns:32px minmax(0,1fr) 32px;
+ align-items:center;gap:6px;min-width:0;
+ padding:5px 0;margin:1px 0;
+}
+.writer-project-root .writer-project-arc-rule{
+ min-width:0;display:flex;align-items:center;gap:9px;color:var(--text-muted);
+ font-size:var(--font-ui-smaller);font-weight:600;letter-spacing:.025em;
+}
+.writer-project-root .writer-project-arc-rule::before,
+.writer-project-root .writer-project-arc-rule::after{
+ content:'';display:block;flex:1 1 auto;min-width:6px;
+ border-top:1px solid var(--background-modifier-border);
+}
+.writer-project-root .writer-project-arc-rule:not(.is-labeled)::after{display:none}
+.writer-project-root .writer-project-arc-label{
+ min-width:0;max-width:75%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more){
+ display:flex;align-items:center;justify-content:center;
+ background:transparent;color:var(--text-muted);border:1px solid transparent;
+ border-radius:var(--radius-s);width:32px;min-width:32px;height:32px;padding:0;
+}
+.writer-project-root .writer-project-arc-grip{cursor:grab;touch-action:manipulation}
+.writer-project-root .writer-project-arc-grip:active{cursor:grabbing}
+.writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more):hover{
+ color:var(--text-normal);background:var(--background-modifier-hover);
+}
+.writer-project-root .writer-project-arc-divider:is(.writer-project-dragover,.writer-project-arc-picked){
+ background:var(--background-modifier-hover);border-radius:var(--radius-s);
+}
+.writer-project-root .writer-project-arc-divider.writer-project-dragover .writer-project-arc-rule::before{
+ border-color:var(--interactive-accent);
+}
+.writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:1px;
+}
+body.is-mobile .writer-project-root .writer-project-arc-divider{
+ grid-template-columns:44px minmax(0,1fr) 44px;gap:4px;
+}
+body.is-mobile .writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more){
+ min-width:44px;width:44px;min-height:44px;
+}
 
 /* Basic 13.6 — settings measured in Obsidian's native settings window.
  * Keep native navigation available and constrain changes to Basic's page. */
@@ -11142,33 +11186,43 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-
  max-width:1100px;
  margin:0 auto 12px;
 }
+/* Center icon and title as one group in desktop and wide panes. */
 body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
  flex-direction:row;
  align-items:center;
- justify-content:flex-start;
+ justify-content:center;
  gap:12px;
  padding:8px 0;
- text-align:start;
+ text-align:center;
 }
 body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading h2{
  min-width:0;
+ max-width:100%;
  margin:0;
  padding:0;
  font-size:clamp(1.3rem,2.6cqi,1.85rem);
  font-weight:var(--font-semibold);
  line-height:1.3;
  letter-spacing:normal;
- text-align:start;
+ text-align:center;
  text-wrap:pretty;
+ overflow-wrap:break-word;
+ word-break:normal;
 }
 body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon{
+ display:flex;
+ align-items:center;
+ justify-content:center;
  flex:0 0 42px;
  width:42px;
  min-width:42px;
  height:42px;
  min-height:42px;
+ line-height:0;
 }
 body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
+ display:block;
+ flex:0 0 auto;
  width:32px;
  height:32px;
 }
@@ -11237,9 +11291,17 @@ body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
 }
 @container basic-home (max-width:560px){
  .writer-v8-home .writer-v8-home-hero{margin-bottom:10px;}
+ /* Keep the icon above the centered title when the homepage pane is narrow,
+  * even in a desktop sidebar or a split workspace. */
  body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
-  gap:10px;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
   padding:6px 0;
+ }
+ body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading h2{
+  width:100%;
  }
  .writer-v8-home .writer-v8-home-quick-actions>.writer-v8-home-action{
   min-height:42px;
@@ -11252,6 +11314,14 @@ body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
   padding:7px;
  }
  .writer-v8-home .writer-v903-widget-heading{gap:6px;}
+}
+/* Tablets can exceed the narrow-pane breakpoint; mobile remains vertically
+ * centered regardless of the physical screen width. */
+body.is-mobile .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
 }
 /* Physical mobile controls remain comfortable to tap. Reordering stays in the
  * widget menu; do not reintroduce drag or resize handles on touch devices. */
@@ -11658,5 +11728,100 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
  .writer-grammar-settings .setting-item-control :is(button,input,select){min-height:44px}
  .dictionary-view-content.writer-tool-root .writer-review-panel :is(.writer-lt-choice,.writer-lt-result-actions>button,.writer-lt-details>button,.writer-lt-show-more){min-height:44px}
  .dictionary-view-content.writer-tool-root .writer-review-external .writer-tools-v3-actions{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Compatibility is opt-out and owned classes disappear on disable/unload. */
+.writer-companion-safe-area{
+ position:fixed;visibility:hidden;pointer-events:none;width:0;height:0;
+ padding-top:env(safe-area-inset-top);padding-right:env(safe-area-inset-right);
+ padding-bottom:env(safe-area-inset-bottom);padding-left:env(safe-area-inset-left);
+}
+body.is-mobile .writer-companion-managed{
+ translate:var(--writer-companion-x,0px) var(--writer-companion-y,0px);
+}
+/* Native Toolkit fullscreen's z-index 9000 otherwise sits above Obsidian menus. */
+body.is-mobile .fs-float-btn.writer-companion-managed{z-index:23;min-height:44px;min-width:44px;}
+body.is-mobile .fk-tts-player.writer-companion-managed{z-index:24;box-sizing:border-box;}
+body.is-mobile .fs-hint.writer-companion-managed{z-index:25;box-sizing:border-box;white-space:normal;flex-wrap:wrap;}
+.writer-companion-icon-toolkit>.writer-v9-explorer-icon,
+.writer-companion-icon-basic>.ft-icon{display:none;}
+/* Native pane and settings cards use the available pane width, including sidebars. */
+.writer-companion-center{
+ box-sizing:border-box;display:flex;flex-direction:column;gap:14px;
+ min-width:0;max-width:100%;padding:16px;overflow-wrap:anywhere;
+}
+.writer-companion-center>h2{margin:0;font-size:var(--font-ui-large);line-height:1.35;}
+.writer-companion-center>.setting-item-description{margin:0;line-height:1.5;}
+.writer-companion-card{
+ min-width:0;padding:14px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-companion-card>h3{margin:0 0 6px;font-size:var(--font-ui-medium);line-height:1.4;}
+.writer-companion-status{margin:0 0 12px;color:var(--text-muted);font-size:var(--font-ui-small);line-height:1.5;}
+.writer-companion-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;min-width:0;}
+.writer-companion-actions>button{
+ flex:1 1 135px;min-width:0;max-width:100%;height:auto;min-height:36px;
+ padding:7px 10px;white-space:normal;overflow-wrap:anywhere;line-height:1.4;
+}
+.writer-companion-actions>button:disabled{cursor:default;}
+.writer-companion-options{
+ margin-block:4px 12px;padding:10px 12px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);min-width:0;
+}
+.writer-companion-options>summary{cursor:var(--cursor);font-size:var(--font-ui-small);line-height:1.5;}
+.writer-companion-options[open]>summary{margin-bottom:8px;}
+.writer-companion-options .setting-item{gap:8px 12px;min-width:0;flex-wrap:wrap;}
+.writer-companion-options .setting-item-info{min-width:120px;flex:1 1 150px;}
+.writer-companion-options .setting-item-control{min-width:0;max-width:100%;flex-wrap:wrap;}
+.writer-companion-options .setting-item-control>select{max-width:100%;}
+.writer-companion-tasks{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.writer-companion-tasks>li{display:flex;align-items:flex-start;gap:10px;min-height:36px;padding-block:6px;line-height:1.5;}
+.writer-companion-tasks>li>input[type="checkbox"]{flex:none;margin-top:3px;width:18px;height:18px;}
+.writer-companion-tasks>li>span{min-width:0;overflow-wrap:anywhere;}
+.writer-sidebar-header>.writer-companion-launcher{flex:none;min-height:30px;padding-inline:8px;font-size:var(--font-ui-smaller);}
+:is(.writer-companion-center,.writer-companion-options) :is(button,input,select,summary):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:2px;
+}
+body.is-mobile .writer-companion-center{padding:12px;gap:12px;}
+body.is-mobile .writer-companion-actions>button{min-height:44px;}
+body.is-mobile .writer-companion-tasks>li{min-height:44px;}
+body.is-mobile .writer-companion-tasks>li>input[type="checkbox"]{width:22px;height:22px;}
+@media(max-width:420px){
+ .writer-companion-card{padding:12px;}
+ .writer-companion-center .setting-item{min-width:0;flex-wrap:wrap;gap:8px;}
+ .writer-companion-center .setting-item-control{min-width:0;max-width:100%;flex-wrap:wrap;}
+ .writer-companion-actions>button{flex-basis:100%;min-height:44px;}
+ .writer-companion-options .setting-item-control>select{min-height:44px;}
+}
+
+/* External LanguageTool keeps ownership of its editor UI. Basic only fits it
+   to narrow viewports while the optional bridge is active. */
+.writer-grammar-external-settings{
+ min-width:0;padding:12px 14px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-grammar-external-settings>h4{margin:0 0 6px;font-size:var(--font-ui-medium)}
+.writer-grammar-external-settings .setting-item-control{min-width:0;max-width:100%}
+.writer-grammar-external-settings select{max-width:100%}
+.writer-grammar-external-compat .cm-tooltip .lt-tooltip{
+ max-width:calc(100vw - 40px);max-height:calc(70vh - 40px);overflow-y:auto;
+ overflow-wrap:anywhere;overscroll-behavior:contain;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-buttoncontainer{
+ display:flex;flex-wrap:wrap;gap:4px;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-buttoncontainer>button{
+ min-height:44px;white-space:normal;max-width:100%;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-ignore-container{
+ flex-wrap:wrap;gap:4px;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-ignore-btn{
+ min-height:44px;min-width:80px;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-info-button{min-height:44px;min-width:44px}
+@media(max-width:600px){
+ .writer-grammar-external-settings{padding:10px}
+ .writer-grammar-external-settings .setting-item{align-items:stretch}
 }
 /* END V8 MODULAR STYLES */

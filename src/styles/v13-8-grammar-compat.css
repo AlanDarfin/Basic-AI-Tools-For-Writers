@@ -1,0 +1,30 @@
+/* External LanguageTool keeps ownership of its editor UI. Basic only fits it
+   to narrow viewports while the optional bridge is active. */
+.writer-grammar-external-settings{
+ min-width:0;padding:12px 14px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-grammar-external-settings>h4{margin:0 0 6px;font-size:var(--font-ui-medium)}
+.writer-grammar-external-settings .setting-item-control{min-width:0;max-width:100%}
+.writer-grammar-external-settings select{max-width:100%}
+.writer-grammar-external-compat .cm-tooltip .lt-tooltip{
+ max-width:calc(100vw - 40px);max-height:calc(70vh - 40px);overflow-y:auto;
+ overflow-wrap:anywhere;overscroll-behavior:contain;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-buttoncontainer{
+ display:flex;flex-wrap:wrap;gap:4px;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-buttoncontainer>button{
+ min-height:44px;white-space:normal;max-width:100%;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-ignore-container{
+ flex-wrap:wrap;gap:4px;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-ignore-btn{
+ min-height:44px;min-width:80px;
+}
+.is-mobile.writer-grammar-external-compat .cm-tooltip .lt-tooltip .lt-info-button{min-height:44px;min-width:44px}
+@media(max-width:600px){
+ .writer-grammar-external-settings{padding:10px}
+ .writer-grammar-external-settings .setting-item{align-items:stretch}
+}

@@ -34314,6 +34314,25 @@ async function writerV13ArcShift(view,project,id,delta){
 function writerV13ArcInstall(){
  if(typeof ProjectsView!=='function'||ProjectsView.prototype._writerArcInstalled)return;
  const original=ProjectsView.prototype.drawScenes;
+ const originalChange=ProjectsView.prototype.changeScenes;
+ // Preserve an arc's position when the chapter anchoring it is renamed or removed.
+ ProjectsView.prototype.changeScenes=async function(project,change){
+  let adjusted=false;
+  const items=writerV13ArcStore(this,project);
+  const result=await originalChange.call(this,project,scenes=>{
+   const before=scenes.filter(scene=>Number(scene.indent||0)===0).map(scene=>scene.title);
+   change(scenes);
+   const after=scenes.filter(scene=>Number(scene.indent||0)===0).map(scene=>scene.title);
+   for(const divider of items){
+    const oldIndex=before.indexOf(divider.before);
+    if(oldIndex<0||after.includes(divider.before))continue;
+    divider.before=after[oldIndex]||null;
+    adjusted=true;
+   }
+  });
+  if(adjusted)await this.plugin.saveSettings();
+  return result;
+ };
  ProjectsView.prototype._writerArcInstalled=true;
  ProjectsView.prototype.drawScenes=function(panel,project){
   original.call(this,panel,project);
@@ -34381,7 +34400,7 @@ function writerV13ArcInstall(){
     event.dataTransfer?.setData('application/x-basic-ai-arc',JSON.stringify({path:projectKey,draft,id:divider.id}));
     if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
    });
-   const rule=row.createDiv({cls:'writer-project-arc-rule'});
+   const rule=row.createDiv({cls:'writer-project-arc-rule'+(divider.label?' is-labeled':'')});
    if(divider.label)rule.createSpan({cls:'writer-project-arc-label',text:divider.label});
    const more=row.createEl('button',{text:'⋯',cls:'writer-project-arc-more',attr:{type:'button',
     title:lfMsg('Opções do separador','Divider options'),'aria-label':lfMsg('Opções do separador','Divider options')}});

@@ -71,7 +71,7 @@ test('Two separators in a row keep their relative order and support retitling',a
  const dividers=api.writerV13ArcStore(view,project);
  dividers.push({id:'a',label:'Arc I',before:'Chapter 2'},{id:'b',label:'Arc II',before:'Chapter 2'});
  await api.writerV13ArcMove(view,project,'b','a',false);
- assert.deepEqual(dividers.map(item=>item.id),['b','a']);
+ assert.deepEqual(json(dividers.map(item=>item.id)),['b','a']);
  assert.equal(dividers[0].before,'Chapter 2');
  api.writerV13ArcPrompt(view,project,dividers[0]);
  await lastPrompt.done('  New act title  ');

@@ -192,6 +192,18 @@ function writerTypingFilterTransaction(tr,p){
   next.annotations=p._writerTypingRestoreAnnotation.of(restore);
  return [tr,next];
 }
+function writerTypingRestoreBackspace(view,p){
+ const meta=p._writerTypingRestoreField&&view.state.field?.(p._writerTypingRestoreField,false);
+ if(!meta||p.writerSmartTypography?.cfg?.restoreOnBackspace===false)return false;
+ const sel=view.state.selection;
+ if(sel?.ranges?.length!==1||!sel.main.empty||sel.main.head!==meta.to)return false;
+ const active=meta.source==='easy'?p.writerEasyTyping?.active()===true:
+  p.writerSmartTypography?.active()===true;
+ if(!active||view.state.doc.sliceString(meta.from,meta.to)!==meta.text)return false;
+ view.dispatch({changes:{from:meta.from,to:meta.to,insert:meta.original},
+  selection:{anchor:meta.from+meta.original.length},userEvent:'delete.backward'});
+ return true;
+}
 class WriterSmartTypography{
  constructor(plugin){this.plugin=plugin;}
  get cfg(){return this.plugin.settings.smartTypography;}
@@ -207,8 +219,27 @@ class WriterSmartTypography{
    const text=editor.getSelection(),converted=writerTypoConvertProse(text,this.cfg);
    if(text!==converted)editor.replaceSelection(converted);
   }});
-  const {EditorState}=require('@codemirror/state');
+  const {EditorState,StateField,Annotation}=require('@codemirror/state');
+  const {keymap}=require('@codemirror/view');
   if(!EditorState?.transactionFilter?.of)return;
+  if(StateField?.define&&Annotation?.define){
+   const marker=Annotation.define();
+   const field=StateField.define({
+    create:()=>null,
+    update:(previous,tr)=>{
+     const replacement=tr.annotation(marker);
+     if(replacement)return replacement;
+     if(tr.docChanged||!tr.startState.selection.eq(tr.state.selection))return null;
+     return previous;
+    }
+   });
+   p._writerTypingRestoreField=field;
+   p._writerTypingRestoreAnnotation=marker;
+   p.registerEditorExtension(field);
+   if(keymap?.of)p.registerEditorExtension(keymap.of([
+    {key:'Backspace',run:view=>writerTypingRestoreBackspace(view,p)}
+   ]));
+  }
   p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){

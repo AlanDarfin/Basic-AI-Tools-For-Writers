@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=['src/v5/easy-typing.js','src/v5/easy-advanced.js','src/v5/smart-typography.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n');
 const mock={writerUi:(pt)=>pt,writerModuleOn:()=>true,console,require:()=>({})};
-const v=vm.runInNewContext(source+'\n({writerEasyMerge,writerEasyTypingAtInput,writerEasyExcluded,writerEasyPaste,writerEasyTabOut,writerEasyBackspacePrefix,writerEasyProseFormat,writerTypoMerge,writerTypoAtInput,writerTypoConvertProse,writerTypingUnsafeContext,WriterEasyTyping,WriterSmartTypography,writerTypingFilterTransaction,writerEasyRegexValid})',mock);
+const v=vm.runInNewContext(source+'\n({writerEasyMerge,writerEasyTypingAtInput,writerEasyExcluded,writerEasyPaste,writerEasyTabOut,writerEasyBackspacePrefix,writerEasyProseFormat,writerTypoMerge,writerTypoAtInput,writerTypoConvertProse,writerTypingUnsafeContext,WriterEasyTyping,WriterSmartTypography,writerTypingFilterTransaction,writerTypingRestoreBackspace,writerEasyRegexValid})',mock);
 let count=0;
 function test(title,run){run();count++;console.log('PASS',title);}
 test('old data and module visibility preserved',()=>{
@@ -11,20 +11,27 @@ test('old data and module visibility preserved',()=>{
  assert.equal(s.visibleModules.keyshots,false);
  assert.equal(s.projectsData['Book.md'].wordGoal,1000);
  assert.equal(s.easyTyping.tabOut,false);
+  assert.equal(s.easyTyping.replaceWithoutSpace,true);
+  assert.equal(s.smartTypography.skipEnDash,false);
+  assert.equal(s.smartTypography.restoreOnBackspace,true);
  assert.equal(s.smartTypography.curlyQuotes,false);
  assert.equal(s.smartTypography.enabled,true);
 });
 test('curly quotation marks and apostrophes',()=>{
  const c=v.writerTypoMerge({});
  assert.equal(v.writerTypoConvertProse('"" and \'\'.',c),'“” and ‘’.');
- assert.equal(v.writerTypoConvertProse('"Hello" -- ...',c),'“Hello” — …');
+ assert.equal(v.writerTypoConvertProse('"Hello" -- ...',c),'“Hello” – …');
  assert.equal(v.writerTypoAtInput("don't".slice(0,-1)+"'", "'",c)?.text,'’');
 });
 test('smart dashes, ellipses, symbols and disabled options',()=>{
  const c=v.writerTypoMerge({});
- for(const [input,key,expect] of [['Text --','-','—'],['...','.','…'],['->','>','→'],['<-','-','←'],['>=','=','≥'],['<=','=','≤'],['/=','=','≠']])
+ for(const [input,key,expect] of [['Text --','-','–'],['...','.','…'],['->','>','→'],['<-','-','←'],['>=','=','≥'],['<=','=','≤'],['/=','=','≠']])
   assert.equal(v.writerTypoAtInput(input,key,c)?.text,expect,input);
- assert.equal(v.writerTypoAtInput('1/2','2',c),null);
+ assert.equal(v.writerTypoAtInput('Text –-','-',c)?.text,'—');
+  assert.equal(v.writerTypoConvertProse('Texto -- e ---',c),'Texto – e —');
+  assert.equal(v.writerTypoAtInput('Texto —-','-',{...c,skipEnDash:true})?.text,'—');
+  assert.equal(v.writerTypoAtInput('Texto --','-',{...c,skipEnDash:true})?.text,'—');
+  assert.equal(v.writerTypoAtInput('1/2','2',c),null);
  assert.equal(v.writerTypoAtInput('1/2','2',{...c,fractions:true}).text,'½');
  assert.equal(v.writerTypoAtInput('<<','<',{...c,guillemets:true}).text,'«');
 });
@@ -63,6 +70,10 @@ test('CJK spacing, capitalization, literal rules and folder exclusions',()=>{
  assert.equal(v.writerEasyTypingAtInput('hello. a','a',s).text,'A');
  assert.equal(v.writerEasyTypingAtInput('中文a','a',s).text,' a');
  assert.equal(v.writerEasyTypingAtInput('btw','w',s).text,'by the way');
+  const spaceMode={...s,replaceWithoutSpace:false};
+  assert.equal(v.writerEasyTypingAtInput('btw','w',spaceMode),null);
+  assert.deepEqual(JSON.parse(JSON.stringify(v.writerEasyTypingAtInput('btw ',' ',spaceMode))),
+   {consume:4,text:'by the way '});
  assert.equal(v.writerEasyExcluded('Drafts/story.md',s),true);
  assert.equal(v.writerEasyExcluded('Other/story.md',s),false);
 });

@@ -5516,7 +5516,7 @@ class WriterPandocExporter{
 const WRITER_EASY_DEFAULTS={
  enabled:true,tabOut:true,smartPaste:true,smartBackspace:true,autoCapitalize:false,
  cjkSpacing:false,inlineSpacing:false,autoFormatPaste:false,excludedPaths:'',
- customReplacements:[],maxPasteChars:20000
+ customReplacements:[],replaceWithoutSpace:true,maxPasteChars:20000
 };
 const WRITER_EASY_PAIRS=[
  ['(',')'],['[',']'],['{','}'],['"','"'],["'","'"],['“','”'],['‘','’'],['«','»'],
@@ -5526,7 +5526,7 @@ const WRITER_EASY_PAIRS=[
 function writerEasyMerge(settings){
  const original=settings.easyTyping;
  const cfg=settings.easyTyping={...WRITER_EASY_DEFAULTS,...(original&&typeof original==='object'&&!Array.isArray(original)?original:{})};
- for(const key of ['enabled','tabOut','smartPaste','smartBackspace','autoCapitalize','cjkSpacing','inlineSpacing','autoFormatPaste'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','tabOut','smartPaste','smartBackspace','autoCapitalize','cjkSpacing','inlineSpacing','autoFormatPaste','replaceWithoutSpace'])cfg[key]=cfg[key]===true;
  cfg.excludedPaths=String(cfg.excludedPaths||'').slice(0,4096);
  cfg.maxPasteChars=Math.max(250,Math.min(100000,Number(cfg.maxPasteChars)||20000));
  cfg.customReplacements=Array.isArray(cfg.customReplacements)?cfg.customReplacements.slice(0,50).filter(x=>x&&typeof x.from==='string'&&x.from.length>0&&x.from.length<=80&&typeof x.to==='string'&&x.to.length<=300).map(x=>({from:x.from,to:x.to,enabled:x.enabled!==false})):[];
@@ -5541,10 +5541,18 @@ function writerEasyExcluded(filePath,cfg){
 }
 function writerEasyTypingAtInput(before,character,cfg){
  if(!cfg?.enabled||!character||character.length!==1)return null;
- const advanced=writerEasyRegexAtInput(before,cfg);
- if(advanced)return advanced;
- for(const rule of [...(cfg.customReplacements||[])].filter(r=>r.enabled!==false).sort((a,b)=>b.from.length-a.from.length)){
-  if(before.endsWith(rule.from))return {consume:rule.from.length,text:rule.to};
+ // Immediate mode keeps the current shortcut behavior; otherwise the
+ // trailing space is the trigger and is preserved after the replacement.
+ const triggerSpace=cfg.replaceWithoutSpace===false;
+ const eligible=!triggerSpace||character===' ';
+ const input=triggerSpace?before.slice(0,-1):before;
+ if(eligible){
+  const trailing=triggerSpace?' ':'';
+  const advanced=writerEasyRegexAtInput(input,cfg);
+  if(advanced)return {consume:advanced.consume+(triggerSpace?1:0),text:advanced.text+trailing};
+  for(const rule of [...(cfg.customReplacements||[])].filter(r=>r.enabled!==false).sort((a,b)=>b.from.length-a.from.length)){
+   if(input.endsWith(rule.from))return {consume:rule.from.length+(triggerSpace?1:0),text:rule.to+trailing};
+  }
  }
  if(cfg.autoCapitalize&&/\p{L}/u.test(character)){
   const pre=before.slice(0,-1);
@@ -5703,6 +5711,7 @@ class WriterEasyTyping{
    ['enabled','Ativar digitação assistida','Enable typing assistance'],['tabOut','Tab sai de símbolos pareados','Tab moves past paired symbols'],
    ['smartPaste','Colagem inteligente em listas e citações','Smart paste in lists and quotes'],
    ['smartBackspace','Backspace em itens vazios','Smart Backspace for empty list items'],
+   ['replaceWithoutSpace','Substituir imediatamente (sem espaço)','Replace immediately (without space)'],
    ['autoCapitalize','Maiúsculas no início de frases','Auto capitalize sentences'],
    ['cjkSpacing','Espaçamento entre CJK e alfanuméricos','CJK/Latin spacing'],
    ['inlineSpacing','Espaçamento ao formatar código inline','Space inline code when formatting'],
@@ -5711,6 +5720,10 @@ class WriterEasyTyping{
   new Setting(panel).setName(writerUi('Pastas/arquivos excluídos','Excluded folders/files'))
    .setDesc(writerUi('Um caminho por linha.','One path per line.'))
    .addTextArea(t=>{t.inputEl.rows=3;t.setValue(this.cfg.excludedPaths).onChange(async v=>{this.cfg.excludedPaths=v.slice(0,4096);await this.plugin.saveSettings();});});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Substituir imediatamente: o atalho muda assim que você termina de digitá-lo. Desligado: substitui somente após pressionar Espaço. Backspace logo após uma substituição pode recuperar o texto original.',
+   'Immediate replacement: shortcuts change as soon as they are typed. Turn it off to replace only after pressing Space. Backspace directly after a replacement can restore the original text.'
+  )});
   const section=panel.createDiv({cls:'writer-typing-rules'});
   section.createEl('h4',{text:writerUi('Substituições automáticas de texto','Automatic text replacements')});
   section.createEl('p',{cls:'dictionary-muted',text:writerUi(
@@ -5995,7 +6008,7 @@ class WriterEasyAdvanced{
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={
  enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
- fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,dialogueDashes:true,
+ fractions:false,guillemets:false,skipEnDash:false,smartApostrophes:true,dialogueDashes:true,restoreOnBackspace:true,
  openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
  openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
 };
@@ -6007,7 +6020,7 @@ const WRITER_TYPO_FRACTIONS={
 function writerTypoMerge(settings){
  const old=settings.smartTypography;
  const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
- for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes','restoreOnBackspace'])cfg[key]=cfg[key]===true;
  for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
@@ -6019,8 +6032,11 @@ function writerTypoAtInput(before,typed,cfg){
  if(cfg.dashes&&typed==='-'){
   // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
   if(/^\s*-{2,}$/.test(before))return null;
-  if(before.endsWith('—-'))return put('—-','---');
+  // -- becomes –; adding a third hyphen makes —.
   if(before.endsWith('–-'))return put('–-','—');
+  // The optional direct-to-em-dash mode must not undo its own conversion.
+  if(cfg.skipEnDash&&before.endsWith('—-'))return put('—-','—');
+  if(before.endsWith('---'))return put('---','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
  // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
@@ -6099,12 +6115,30 @@ function writerTypoConvertProse(text,cfg){
  * Keep those insertions in a single undoable transaction and restore the
  * caret between the typographic pair. Avoid paste, completion and IME edits. */
 function writerTypingFilterTransaction(tr,p){
- if(!tr.docChanged||!tr.changes?.iterChanges||!tr.isUserEvent?.('input'))return tr;
+ if(!tr.docChanged||!tr.changes?.iterChanges)return tr;
+ const prior=p._writerTypingRestoreField&&tr.startState.field?.(p._writerTypingRestoreField,false);
+ // On Android, the virtual keyboard may delete without using the Backspace keymap.
+ if(prior&&p.writerSmartTypography?.cfg?.restoreOnBackspace!==false&&
+    (tr.isUserEvent?.('delete.backward')||tr.isUserEvent?.('input.delete'))){
+  let matches=false,count=0;
+  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+   count++;
+   matches=fromA===prior.to-1&&toA===prior.to&&fromB===fromA&&toB===fromB&&
+    inserted.toString()===''&&tr.startState.selection?.main?.empty&&
+    tr.startState.selection.main.head===prior.to;
+  });
+  const allowed=prior.source==='easy'?p.writerEasyTyping?.active()===true:
+   p.writerSmartTypography?.active()===true;
+  if(count===1&&matches&&allowed&&tr.startState.doc.sliceString(prior.from,prior.to)===prior.text)
+   return [tr,{changes:{from:prior.from,to:prior.to-1,insert:prior.original},
+    sequential:true,selection:{anchor:prior.from+prior.original.length}}];
+ }
+ if(!tr.isUserEvent?.('input'))return tr;
  if(['input.type.compose','input.paste','input.drop','input.complete'].some(e=>tr.isUserEvent(e)))return tr;
  const typography=p.writerSmartTypography,typoOn=typography?.active()===true;
  const easy=p.writerEasyTyping,easyOn=easy?.active()===true;
  if(!typoOn&&!easyOn)return tr;
- const edits=[];let caret=null;
+ const edits=[];let caret=null,restore=null;
  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
   if(fromA!==toA)return;
   const insertion=inserted.toString();
@@ -6140,16 +6174,41 @@ function writerTypingFilterTransaction(tr,p){
   }
   if(insertion.length!==1)return;
   let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
-  if(!proposal&&easyOn)proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);
-  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length)
-   edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+  let source=proposal?'typography':null;
+  if(!proposal&&easyOn){proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);source='easy';}
+  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length){
+   const start=toB-proposal.consume,typedText=doc.sliceString(start,toB);
+   // Remember original keystrokes across -- → – → —.
+   const original=prior&&source===prior.source&&prior.from===start&&
+    prior.to===fromA&&typedText===prior.text+insertion?
+     prior.original+insertion:typedText;
+   edits.push({from:start,to:toB,insert:proposal.text});
+   if(tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
+      tr.newSelection.main.head===toB)
+    restore={from:start,to:start+proposal.text.length,text:proposal.text,original,source};
+  }
  });
  if(!edits.length)return tr;
  edits.sort((a,b)=>a.from-b.from);
  if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
  const next={changes:edits,sequential:true};
  if(caret&&edits.length===1)next.selection=caret;
+ if(restore&&edits.length===1&&p._writerTypingRestoreAnnotation&&
+    p.writerSmartTypography?.cfg?.restoreOnBackspace!==false)
+  next.annotations=p._writerTypingRestoreAnnotation.of(restore);
  return [tr,next];
+}
+function writerTypingRestoreBackspace(view,p){
+ const meta=p._writerTypingRestoreField&&view.state.field?.(p._writerTypingRestoreField,false);
+ if(!meta||p.writerSmartTypography?.cfg?.restoreOnBackspace===false)return false;
+ const sel=view.state.selection;
+ if(sel?.ranges?.length!==1||!sel.main.empty||sel.main.head!==meta.to)return false;
+ const active=meta.source==='easy'?p.writerEasyTyping?.active()===true:
+  p.writerSmartTypography?.active()===true;
+ if(!active||view.state.doc.sliceString(meta.from,meta.to)!==meta.text)return false;
+ view.dispatch({changes:{from:meta.from,to:meta.to,insert:meta.original},
+  selection:{anchor:meta.from+meta.original.length},userEvent:'delete.backward'});
+ return true;
 }
 class WriterSmartTypography{
  constructor(plugin){this.plugin=plugin;}
@@ -6166,8 +6225,27 @@ class WriterSmartTypography{
    const text=editor.getSelection(),converted=writerTypoConvertProse(text,this.cfg);
    if(text!==converted)editor.replaceSelection(converted);
   }});
-  const {EditorState}=require('@codemirror/state');
+  const {EditorState,StateField,Annotation}=require('@codemirror/state');
+  const {keymap}=require('@codemirror/view');
   if(!EditorState?.transactionFilter?.of)return;
+  if(StateField?.define&&Annotation?.define){
+   const marker=Annotation.define();
+   const field=StateField.define({
+    create:()=>null,
+    update:(previous,tr)=>{
+     const replacement=tr.annotation(marker);
+     if(replacement)return replacement;
+     if(tr.docChanged||!tr.startState.selection.eq(tr.newSelection))return null;
+     return previous;
+    }
+   });
+   p._writerTypingRestoreField=field;
+   p._writerTypingRestoreAnnotation=marker;
+   p.registerEditorExtension(field);
+   if(keymap?.of)p.registerEditorExtension(keymap.of([
+    {key:'Backspace',run:view=>writerTypingRestoreBackspace(view,p)}
+   ]));
+  }
   p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
@@ -6178,10 +6256,15 @@ class WriterSmartTypography{
    ['dashes','Travessões e meia-risca','Dashes'],['ellipsis','Reticências (...)','Ellipsis (...)'],
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
-   ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['skipEnDash','Pular meia-risca (-- → — direto)','Skip en dash (-- → — directly)'],
+   ['restoreOnBackspace','Backspace desfaz a última substituição','Backspace restores the last replacement'],
    ['dialogueDashes','Travessão de diálogo (--Olá)','Dialogue dash (--Hello)'],
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Padrão: -- vira meia-risca (–) e --- vira travessão (—) no texto. Linhas --- do Markdown continuam intactas. Backspace após a conversão recupera os hífens.',
+   'Default: -- becomes an en dash (–), and --- an em dash (—) in prose. Markdown --- separators stay intact. Backspace directly after conversion restores the hyphens.'
+  )});
   for(const [key,pt,en] of [
    ['openDouble','Aspas duplas de abertura','Opening double quote'],['closeDouble','Aspas duplas de fechamento','Closing double quote'],
    ['openSingle','Aspas simples de abertura','Opening single quote'],['closeSingle','Aspas simples de fechamento','Closing single quote'],

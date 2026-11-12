@@ -2,7 +2,7 @@
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={
  enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
- fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,dialogueDashes:true,
+ fractions:false,guillemets:false,skipEnDash:false,smartApostrophes:true,dialogueDashes:true,restoreOnBackspace:true,
  openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
  openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
 };
@@ -14,7 +14,7 @@ const WRITER_TYPO_FRACTIONS={
 function writerTypoMerge(settings){
  const old=settings.smartTypography;
  const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
- for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes','restoreOnBackspace'])cfg[key]=cfg[key]===true;
  for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
@@ -26,8 +26,11 @@ function writerTypoAtInput(before,typed,cfg){
  if(cfg.dashes&&typed==='-'){
   // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
   if(/^\s*-{2,}$/.test(before))return null;
-  if(before.endsWith('—-'))return put('—-','---');
+  // -- becomes –; adding a third hyphen makes —.
   if(before.endsWith('–-'))return put('–-','—');
+  // The optional direct-to-em-dash mode must not undo its own conversion.
+  if(cfg.skipEnDash&&before.endsWith('—-'))return put('—-','—');
+  if(before.endsWith('---'))return put('---','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
  // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
@@ -106,12 +109,30 @@ function writerTypoConvertProse(text,cfg){
  * Keep those insertions in a single undoable transaction and restore the
  * caret between the typographic pair. Avoid paste, completion and IME edits. */
 function writerTypingFilterTransaction(tr,p){
- if(!tr.docChanged||!tr.changes?.iterChanges||!tr.isUserEvent?.('input'))return tr;
+ if(!tr.docChanged||!tr.changes?.iterChanges)return tr;
+ const prior=p._writerTypingRestoreField&&tr.startState.field?.(p._writerTypingRestoreField,false);
+ // On Android, the virtual keyboard may delete without using the Backspace keymap.
+ if(prior&&p.writerSmartTypography?.cfg?.restoreOnBackspace!==false&&
+    (tr.isUserEvent?.('delete.backward')||tr.isUserEvent?.('input.delete'))){
+  let matches=false,count=0;
+  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+   count++;
+   matches=fromA===prior.to-1&&toA===prior.to&&fromB===fromA&&toB===fromB&&
+    inserted.toString()===''&&tr.startState.selection?.main?.empty&&
+    tr.startState.selection.main.head===prior.to;
+  });
+  const allowed=prior.source==='easy'?p.writerEasyTyping?.active()===true:
+   p.writerSmartTypography?.active()===true;
+  if(count===1&&matches&&allowed&&tr.startState.doc.sliceString(prior.from,prior.to)===prior.text)
+   return [tr,{changes:{from:prior.from,to:prior.to-1,insert:prior.original},
+    sequential:true,selection:{anchor:prior.from+prior.original.length}}];
+ }
+ if(!tr.isUserEvent?.('input'))return tr;
  if(['input.type.compose','input.paste','input.drop','input.complete'].some(e=>tr.isUserEvent(e)))return tr;
  const typography=p.writerSmartTypography,typoOn=typography?.active()===true;
  const easy=p.writerEasyTyping,easyOn=easy?.active()===true;
  if(!typoOn&&!easyOn)return tr;
- const edits=[];let caret=null;
+ const edits=[];let caret=null,restore=null;
  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
   if(fromA!==toA)return;
   const insertion=inserted.toString();
@@ -147,16 +168,41 @@ function writerTypingFilterTransaction(tr,p){
   }
   if(insertion.length!==1)return;
   let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
-  if(!proposal&&easyOn)proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);
-  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length)
-   edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+  let source=proposal?'typography':null;
+  if(!proposal&&easyOn){proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);source='easy';}
+  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length){
+   const start=toB-proposal.consume,typedText=doc.sliceString(start,toB);
+   // Remember original keystrokes across -- → – → —.
+   const original=prior&&source===prior.source&&prior.from===start&&
+    prior.to===fromA&&typedText===prior.text+insertion?
+     prior.original+insertion:typedText;
+   edits.push({from:start,to:toB,insert:proposal.text});
+   if(tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
+      tr.newSelection.main.head===toB)
+    restore={from:start,to:start+proposal.text.length,text:proposal.text,original,source};
+  }
  });
  if(!edits.length)return tr;
  edits.sort((a,b)=>a.from-b.from);
  if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
  const next={changes:edits,sequential:true};
  if(caret&&edits.length===1)next.selection=caret;
+ if(restore&&edits.length===1&&p._writerTypingRestoreAnnotation&&
+    p.writerSmartTypography?.cfg?.restoreOnBackspace!==false)
+  next.annotations=p._writerTypingRestoreAnnotation.of(restore);
  return [tr,next];
+}
+function writerTypingRestoreBackspace(view,p){
+ const meta=p._writerTypingRestoreField&&view.state.field?.(p._writerTypingRestoreField,false);
+ if(!meta||p.writerSmartTypography?.cfg?.restoreOnBackspace===false)return false;
+ const sel=view.state.selection;
+ if(sel?.ranges?.length!==1||!sel.main.empty||sel.main.head!==meta.to)return false;
+ const active=meta.source==='easy'?p.writerEasyTyping?.active()===true:
+  p.writerSmartTypography?.active()===true;
+ if(!active||view.state.doc.sliceString(meta.from,meta.to)!==meta.text)return false;
+ view.dispatch({changes:{from:meta.from,to:meta.to,insert:meta.original},
+  selection:{anchor:meta.from+meta.original.length},userEvent:'delete.backward'});
+ return true;
 }
 class WriterSmartTypography{
  constructor(plugin){this.plugin=plugin;}
@@ -173,8 +219,27 @@ class WriterSmartTypography{
    const text=editor.getSelection(),converted=writerTypoConvertProse(text,this.cfg);
    if(text!==converted)editor.replaceSelection(converted);
   }});
-  const {EditorState}=require('@codemirror/state');
+  const {EditorState,StateField,Annotation}=require('@codemirror/state');
+  const {keymap}=require('@codemirror/view');
   if(!EditorState?.transactionFilter?.of)return;
+  if(StateField?.define&&Annotation?.define){
+   const marker=Annotation.define();
+   const field=StateField.define({
+    create:()=>null,
+    update:(previous,tr)=>{
+     const replacement=tr.annotation(marker);
+     if(replacement)return replacement;
+     if(tr.docChanged||!tr.startState.selection.eq(tr.newSelection))return null;
+     return previous;
+    }
+   });
+   p._writerTypingRestoreField=field;
+   p._writerTypingRestoreAnnotation=marker;
+   p.registerEditorExtension(field);
+   if(keymap?.of)p.registerEditorExtension(keymap.of([
+    {key:'Backspace',run:view=>writerTypingRestoreBackspace(view,p)}
+   ]));
+  }
   p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
@@ -185,10 +250,15 @@ class WriterSmartTypography{
    ['dashes','Travessões e meia-risca','Dashes'],['ellipsis','Reticências (...)','Ellipsis (...)'],
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
-   ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['skipEnDash','Pular meia-risca (-- → — direto)','Skip en dash (-- → — directly)'],
+   ['restoreOnBackspace','Backspace desfaz a última substituição','Backspace restores the last replacement'],
    ['dialogueDashes','Travessão de diálogo (--Olá)','Dialogue dash (--Hello)'],
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Padrão: -- vira meia-risca (–) e --- vira travessão (—) no texto. Linhas --- do Markdown continuam intactas. Backspace após a conversão recupera os hífens.',
+   'Default: -- becomes an en dash (–), and --- an em dash (—) in prose. Markdown --- separators stay intact. Backspace directly after conversion restores the hyphens.'
+  )});
   for(const [key,pt,en] of [
    ['openDouble','Aspas duplas de abertura','Opening double quote'],['closeDouble','Aspas duplas de fechamento','Closing double quote'],
    ['openSingle','Aspas simples de abertura','Opening single quote'],['closeSingle','Aspas simples de fechamento','Closing single quote'],

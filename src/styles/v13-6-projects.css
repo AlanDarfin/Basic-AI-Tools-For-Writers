@@ -109,7 +109,7 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-
  outline:2px solid var(--interactive-accent);outline-offset:1px;
 }
 body.is-mobile .writer-project-root .writer-project-arc-divider{
- grid-template-columns:44px minmax(0,1fr) 44px;column-gap:4px;
+ grid-template-columns:44px minmax(0,1fr) 44px;gap:4px;
 }
 body.is-mobile .writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more){
  min-width:44px;width:44px;min-height:44px;

@@ -109,12 +109,30 @@ function writerTypoConvertProse(text,cfg){
  * Keep those insertions in a single undoable transaction and restore the
  * caret between the typographic pair. Avoid paste, completion and IME edits. */
 function writerTypingFilterTransaction(tr,p){
- if(!tr.docChanged||!tr.changes?.iterChanges||!tr.isUserEvent?.('input'))return tr;
+ if(!tr.docChanged||!tr.changes?.iterChanges)return tr;
+ const prior=p._writerTypingRestoreField&&tr.startState.field?.(p._writerTypingRestoreField,false);
+ // On Android, the virtual keyboard may delete without using the Backspace keymap.
+ if(prior&&p.writerSmartTypography?.cfg?.restoreOnBackspace!==false&&
+    (tr.isUserEvent?.('delete.backward')||tr.isUserEvent?.('input.delete'))){
+  let matches=false,count=0;
+  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
+   count++;
+   matches=fromA===prior.to-1&&toA===prior.to&&fromB===fromA&&toB===fromB&&
+    inserted.toString()===''&&tr.startState.selection?.main?.empty&&
+    tr.startState.selection.main.head===prior.to;
+  });
+  const allowed=prior.source==='easy'?p.writerEasyTyping?.active()===true:
+   p.writerSmartTypography?.active()===true;
+  if(count===1&&matches&&allowed&&tr.startState.doc.sliceString(prior.from,prior.to)===prior.text)
+   return [tr,{changes:{from:prior.from,to:prior.to-1,insert:prior.original},
+    sequential:true,selection:{anchor:prior.from+prior.original.length}}];
+ }
+ if(!tr.isUserEvent?.('input'))return tr;
  if(['input.type.compose','input.paste','input.drop','input.complete'].some(e=>tr.isUserEvent(e)))return tr;
  const typography=p.writerSmartTypography,typoOn=typography?.active()===true;
  const easy=p.writerEasyTyping,easyOn=easy?.active()===true;
  if(!typoOn&&!easyOn)return tr;
- const edits=[];let caret=null;
+ const edits=[];let caret=null,restore=null;
  tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
   if(fromA!==toA)return;
   const insertion=inserted.toString();
@@ -150,15 +168,28 @@ function writerTypingFilterTransaction(tr,p){
   }
   if(insertion.length!==1)return;
   let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
-  if(!proposal&&easyOn)proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);
-  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length)
-   edits.push({from:toB-proposal.consume,to:toB,insert:proposal.text});
+  let source=proposal?'typography':null;
+  if(!proposal&&easyOn){proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);source='easy';}
+  if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length){
+   const start=toB-proposal.consume,typedText=doc.sliceString(start,toB);
+   // Remember original keystrokes across -- → – → —.
+   const original=prior&&source===prior.source&&prior.from===start&&
+    prior.to===fromA&&typedText===prior.text+insertion?
+     prior.original+insertion:typedText;
+   edits.push({from:start,to:toB,insert:proposal.text});
+   if(tr.newSelection?.ranges?.length===1&&tr.newSelection.main.empty&&
+      tr.newSelection.main.head===toB)
+    restore={from:start,to:start+proposal.text.length,text:proposal.text,original,source};
+  }
  });
  if(!edits.length)return tr;
  edits.sort((a,b)=>a.from-b.from);
  if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
  const next={changes:edits,sequential:true};
  if(caret&&edits.length===1)next.selection=caret;
+ if(restore&&edits.length===1&&p._writerTypingRestoreAnnotation&&
+    p.writerSmartTypography?.cfg?.restoreOnBackspace!==false)
+  next.annotations=p._writerTypingRestoreAnnotation.of(restore);
  return [tr,next];
 }
 class WriterSmartTypography{

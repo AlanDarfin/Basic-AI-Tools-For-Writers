@@ -117,7 +117,7 @@ function writerV111DbBuilderRegister(plugin){
   editorCallback:editor=>writerV111DbBuilderOpen(plugin,editor)});
 }
 function writerV111DbBuilderSettings(plugin,panel){
- panel.createEl('h3',{text:writerUi('Notion Suite · construtor visual','Notion Suite · visual builder')});
+ panel.createEl('h3',{text:writerUi('Construtor de tabelas e visualizações','Table and view builder')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Configure filtros simples, colunas, cartões e visualizações sem digitar blocos manualmente. Para alterar blocos existentes, selecione-os no editor.',
   'Configure simple filters, columns, boards and views without hand-writing code blocks. Select existing blocks in the editor to modify.')});

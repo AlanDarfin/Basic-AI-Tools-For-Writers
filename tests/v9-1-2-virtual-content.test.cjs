@@ -47,11 +47,17 @@ test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and docume
  assert.match(read('scripts/build-v3.js'),/'v9\/virtual-content'/);
  assert.match(read('styles.css'),/writer-v912-virtual-block/);
  assert.match(read('scripts/build-css.js'),/v9-1-2-virtual-content\.css/);
- for(const doc of ['README.md','docs/README.pt-BR.md']){
+ for(const [doc,guide,dynamic,navigation] of [
+  ['README.md','docs/SUITES_AND_INTEGRATIONS.en.md','Dynamic content','Chapter navigation'],
+  ['docs/README.pt-BR.md','docs/SUITES_AND_INTEGRATIONS.pt-BR.md','Conteúdo dinâmico','Navegação de capítulos']
+ ]){
   const text=read(doc);
   assert.ok(text.includes(manifest.version));
-  assert.match(text,/Virtual Content|Conteúdo virtual/);
-  assert.match(text,/BookNav/);
+  assert.ok(text.includes(guide.split('/').pop()),doc+' links the current guide');
+  const details=read(guide);
+  assert.ok(details.includes(dynamic),guide+' documents dynamic content');
+  assert.ok(details.includes(navigation),guide+' documents chapter navigation');
+  assert.ok(details.includes('longform-nav'),guide+' preserves the existing block syntax');
   assert.doesNotMatch(text,/^## (What's new|Novidades da)/m);
  }
 });

@@ -207,10 +207,10 @@ class WriterPandocSyntax{
   dialog.open();
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Pandoc Syntax · listas e blocos','Pandoc Syntax · lists and blocks')});
-  panel.createEl('p',{text:writerUi('Renderização local de Markdown compatível com Pandoc. Exportação por executável Pandoc e filtros Lua não estão incluídos nesta etapa.','Local Pandoc-compatible Markdown rendering. Pandoc executable exports and Lua filters are not part of this stage.'),cls:'dictionary-muted'});
+  panel.createEl('h3',{text:writerUi('Listas e blocos avançados','Advanced lists and blocks')});
+  panel.createEl('p',{text:writerUi('Visualização local de listas, blocos e índices com Markdown compatível com Pandoc. Estes recursos não exigem instalar o executável Pandoc.','Local lists, blocks and outlines using Pandoc-compatible Markdown. These rendering features do not require the Pandoc executable.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Habilitar Pandoc Syntax','Enable Pandoc Syntax'],
+   ['enabled','Ativar listas e blocos avançados','Enable advanced lists and blocks'],
    ['fancyLists','Listas alfabéticas, romanas e #.','Alphabetic, Roman and #. lists'],
    ['definitionLists','Listas de definições','Definition lists'],
    ['exampleLists','Exemplos numerados (@id)','Numbered examples (@id)'],

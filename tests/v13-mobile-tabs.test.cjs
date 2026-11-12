@@ -182,3 +182,29 @@ test('disabling and unloading restore the original native selector after a heade
  assert.equal(fresh.classList.contains('writer-v1011-native-tabs-hidden'),false);assert.equal(h.bar(),undefined);
  h.stop();assert.ok(h.observers.every(x=>x.disconnected));assert.equal(h.logs.length,0);
 });
+
+test('disabling the sidebar manager releases an open native relay and restores native tabs',()=>{
+ const h=harness();h.drawer.children=[h.leaf('outline')];h.start();
+ let cancelled=0;
+ h.plugin._writerV1010NativeActionPending=true;
+ h.plugin._writerV1201NativeRelayState={cancel(){cancelled++;h.plugin._writerV1010NativeActionPending=false;}};
+ h.plugin.settings.v1010Layout.sidebar.enabled=false;
+ h.plugin.writerV1010Refresh();h.flush();
+ assert.equal(cancelled,1);assert.equal(h.bar(),undefined);
+ assert.equal(h.native.classList.contains('writer-v1011-native-tabs-hidden'),false);
+});
+
+test('an active native popup defers toolbar replacement and permits disabling only the action menu',()=>{
+ const h=harness();h.drawer.children=[h.leaf('outline')];h.start();
+ const before=h.bar();let cancelled=0;
+ h.plugin._writerV1010NativeActionPending=true;
+ h.plugin._writerV1201NativeRelayState={cancel(){cancelled++;h.plugin._writerV1010NativeActionPending=false;}};
+ h.drawer.children.push(h.leaf('bookmarks'));
+ h.plugin.writerV1010Refresh();h.flush();
+ assert.equal(h.bar(),before);assert.equal(cancelled,0);
+ assert.equal(h.bar().children.filter(x=>x.getAttribute('data-leaf-key')).length,1);
+ h.plugin.settings.v1010Layout.sidebar.actionMenu=false;
+ h.plugin.writerV1010Refresh();h.flush();
+ assert.equal(cancelled,1);
+ assert.equal(h.bar().children.filter(x=>x.getAttribute('data-leaf-key')).length,2);
+});

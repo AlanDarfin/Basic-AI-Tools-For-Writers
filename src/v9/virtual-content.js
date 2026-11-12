@@ -179,7 +179,7 @@ function writerV912VirtualPlace(root,node,rule,reading){
 class WriterV912VirtualSideView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.run=0;this.current='';this.components=[];}
  getViewType(){return WRITER_V912_VIRTUAL_VIEW;}
- getDisplayText(){return writerUi('Conteúdo virtual','Virtual Content');}
+ getDisplayText(){return writerUi('Conteúdo dinâmico','Dynamic content');}
  getIcon(){return 'panels-top-left';}
  async onOpen(){await this.render();}
  async render(){
@@ -188,7 +188,7 @@ class WriterV912VirtualSideView extends ItemView{
   this.components=[];
   root.empty();root.addClass('writer-v912-sidebar');
   const head=root.createDiv({cls:'writer-v912-sidebar-heading'});
-  head.createEl('strong',{text:writerUi('Conteúdo virtual','Virtual Content')});
+  head.createEl('strong',{text:writerUi('Conteúdo dinâmico','Dynamic content')});
   const file=plugin.app.workspace.getActiveFile?.();
   if(!(file instanceof TFile)||file.extension!=='md'){
    root.createEl('p',{cls:'dictionary-muted',text:writerUi('Abra uma nota Markdown para ver seu conteúdo dinâmico.','Open a Markdown note to see matching virtual content.')});return;
@@ -301,9 +301,9 @@ class WriterV912VirtualContent{
  register(){
   const plugin=this.plugin;
   plugin.registerView?.(WRITER_V912_VIRTUAL_VIEW,leaf=>new WriterV912VirtualSideView(leaf,plugin));
-  plugin.addCommand?.({id:'v912-open-virtual-content',name:writerUi('Conteúdo virtual: abrir na lateral','Virtual Content: open sidebar'),
+  plugin.addCommand?.({id:'v912-open-virtual-content',name:writerUi('Conteúdo dinâmico: abrir na lateral','Dynamic content: open sidebar'),
    callback:()=>void this.openSidebar()});
-  plugin.addCommand?.({id:'v912-refresh-virtual-content',name:writerUi('Conteúdo virtual: atualizar regras','Virtual Content: refresh rules'),
+  plugin.addCommand?.({id:'v912-refresh-virtual-content',name:writerUi('Conteúdo dinâmico: atualizar regras','Dynamic content: refresh rules'),
    callback:()=>void this.refresh()});
   for(const name of ['file-open','layout-change','active-leaf-change'])
    if(typeof plugin.app.workspace.on==='function')plugin.registerEvent(plugin.app.workspace.on(name,()=>this.schedule()));
@@ -389,7 +389,7 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
   extraLocation();
   new Setting(content).setName(writerUi('Fonte do conteúdo','Content source')).addDropdown(d=>{
    for(const [id,pt,en] of [['text','Markdown digitado','Typed Markdown'],['file','Nota modelo do cofre','Vault template note'],
-    ['booknav','BookNav automático (Longform)','Automatic BookNav (Longform)']])d.addOption(id,writerUi(pt,en));
+    ['booknav','Navegação automática de capítulos','Automatic chapter navigation']])d.addOption(id,writerUi(pt,en));
    d.setValue(data.source).onChange(v=>{data.source=v;sourceUI();});
   });
   const textSetting=new Setting(content).setName('Markdown').addTextArea(t=>{t.inputEl.rows=7;t.setValue(data.text)
@@ -410,8 +410,8 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
   };
   sourceUI();
   content.createEl('p',{cls:'dictionary-muted',text:writerUi(
-   'Use {{file.name}}, {{file.path}} ou {{file.folder}} como variáveis. O BookNav usa a ordem real do projeto; notas não são alteradas. Seções são renderizadas somente no modo Leitura.',
-   'Use {{file.name}}, {{file.path}} or {{file.folder}}. BookNav follows the actual project index; notes are never changed. Sections render only in Reading mode.'
+   'Use {{file.name}}, {{file.path}} ou {{file.folder}} como variáveis. A navegação de capítulos segue a ordem real do projeto; notas não são alteradas. Seções são renderizadas somente no modo Leitura.',
+   'Use {{file.name}}, {{file.path}} or {{file.folder}}. Chapter navigation follows the actual project index; notes are never changed. Sections render only in Reading mode.'
   )});
   const error=content.createEl('p',{cls:'writer-v912-error'});
   new Setting(content).addButton(b=>b.setButtonText(writerUi('Salvar regra','Save rule')).setCta().onClick(async()=>{
@@ -427,15 +427,15 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
 }
 function writerV912VirtualSettings(plugin,panel){
  const cfg=plugin.settings.v912Virtual;
- panel.createEl('h3',{text:writerUi('Conteúdo virtual','Virtual Content')});
+ panel.createEl('h3',{text:writerUi('Conteúdo dinâmico','Dynamic content')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
   'Acrescente Markdown virtualmente em notas por pasta, tag ou propriedade. Modelos podem aparecer no cabeçalho, rodapé, seção ou lateral. Nenhum arquivo é modificado.',
   'Display virtual Markdown in notes by folder, tag or property. Templates can appear in headers, footers, sections or a sidebar. Note files remain unchanged.'
  )});
  const refresh=()=>{plugin.writerV912Virtual?.schedule();plugin.writerBookNavigation?.refreshAutomatic?.();};
  for(const [key,pt,en,descPt,descEn] of [
-  ['enabled','Ativar conteúdo virtual','Enable virtual content','Desliga apenas a renderização, mantendo as regras.','Disables rendering but retains rules.'],
-  ['autoBookNav','BookNav automático em projetos Longform','Automatic BookNav in Longform projects',
+  ['enabled','Ativar conteúdo dinâmico','Enable dynamic content','Desliga apenas a renderização, mantendo as regras.','Disables rendering but retains rules.'],
+  ['autoBookNav','Navegação automática de capítulos nos projetos','Automatic chapter navigation in projects',
    'Exibe a navegação de capítulos sem inserir blocos na nota; respeita a opção por projeto e blocos manuais.',
    'Displays chapter navigation without editing notes; respects project overrides and manual blocks.'],
   ['showLivePreview','Exibir no Live Preview','Show in Live Preview',
@@ -452,8 +452,8 @@ function writerV912VirtualSettings(plugin,panel){
   cfg.rules.push(rule);await plugin.saveSettings();refresh();plugin.writerSettingsTab?.display();
  }));
  if(!cfg.rules.length)panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Nenhuma regra personalizada. O BookNav automático já pode funcionar sem criar regras.',
-  'No custom rules. Automatic BookNav can work without setting up rules.'
+  'Nenhuma regra personalizada. A navegação automática de capítulos funciona sem criar regras.',
+  'No custom rules. Automatic chapter navigation works without setting up rules.'
  )});
  for(const [index,rule] of cfg.rules.entries()){
   const card=panel.createDiv({cls:'writer-v912-rule-card'});
@@ -462,7 +462,7 @@ function writerV912VirtualSettings(plugin,panel){
   summary.createEl('small',{text:writerUi(
    {header:'Cabeçalho',footer:'Rodapé',sidebar:'Lateral','section-start':'Início de seção','section-end':'Fim de seção'}[rule.location]||rule.location,
    {header:'Header',footer:'Footer',sidebar:'Sidebar','section-start':'Section start','section-end':'Section end'}[rule.location]||rule.location
-  )+' · '+(rule.source==='booknav'?'BookNav':rule.source==='file'?writerUi('Nota modelo','Template file'):'Markdown')});
+  )+' · '+(rule.source==='booknav'?writerUi('Navegação de capítulos','Chapter navigation'):rule.source==='file'?writerUi('Nota modelo','Template file'):'Markdown')});
   new Setting(card).setName(writerUi('Ativa','Enabled')).addToggle(t=>t.setValue(rule.enabled)
    .onChange(async v=>{rule.enabled=v;await plugin.saveSettings();refresh();}));
   const actions=card.createDiv({cls:'writer-v912-rule-actions'});
@@ -487,7 +487,7 @@ function writerV912VirtualSettings(plugin,panel){
    cfg.rules.splice(index,1);await plugin.saveSettings();refresh();plugin.writerSettingsTab?.display();
   });
  }
- new Setting(panel).setName(writerUi('Abrir conteúdo virtual na lateral','Open Virtual Content sidebar'))
+ new Setting(panel).setName(writerUi('Abrir conteúdo dinâmico na lateral','Open dynamic content sidebar'))
   .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open sidebar')).onClick(()=>void plugin.writerV912Virtual?.openSidebar()));
 }
 function writerV912VirtualRegister(plugin){

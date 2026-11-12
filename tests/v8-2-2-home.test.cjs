@@ -91,8 +91,12 @@ test('documentation and bundles include all new homepage functions',()=>{
  const source=read('main.js'),styles=read('styles.css');
  for(const piece of ['writerV8HomeCalendarCells','writerV8HomeOpenURL','homeOnNewTab'])assert.ok(source.includes(piece),piece);
  assert.match(styles,/writer-v8-home-clock-digits/);
- for(const path of ['README.md','docs/README.pt-BR.md']){
+ for(const [readme,path,music,emptyTab] of [
+  ['README.md','docs/SUITES_AND_INTEGRATIONS.en.md','Music & ambience','empty new tab'],
+  ['docs/README.pt-BR.md','docs/SUITES_AND_INTEGRATIONS.pt-BR.md','Música e ambiente','nova aba vazia']
+ ]){
+  assert.ok(read(readme).includes(path.split('/').pop()),readme+' links the feature guide');
   const md=read(path);
-  for(const piece of ['Soundscapes','Web Viewer','calend','homeOnNewTab'])assert.ok(md.toLowerCase().includes(piece.toLowerCase()),path+': '+piece);
+  for(const piece of [music,'Web Viewer','calend',emptyTab])assert.ok(md.toLowerCase().includes(piece.toLowerCase()),path+': '+piece);
  }
 });

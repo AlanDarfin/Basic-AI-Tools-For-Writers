@@ -17,12 +17,15 @@ const WRITER_V12_COMPANIONS=[
 ];
 const WRITER_V12_SYNC=['none','syncthing-manager','syncthing-integration','obsidian-git','fit'];
 function writerV12Config(plugin){
- const old=plugin.settings.v12Toolkit;
- const cfg=plugin.settings.v12Toolkit={
+ const original=plugin.settings.v12Toolkit;
+ const old=original&&typeof original==='object'&&!Array.isArray(original)?original:{};
+ // Settings controls and open menus retain this object between input events.
+ // Normalize it in place so another feature read cannot discard their edits.
+ const cfg=plugin.settings.v12Toolkit=Object.assign(old,{
   enabled:true,palette:true,imageTools:true,taskNavigator:true,localInbox:true,secureNotes:false,selectionTools:false,
   folderFocus:true,integrations:true,syncProvider:'none',maxTaskFiles:250,
-  ...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})
- };
+  ...old
+ });
  if(!WRITER_V12_SYNC.includes(cfg.syncProvider))cfg.syncProvider='none';
  cfg.maxTaskFiles=Math.max(25,Math.min(1000,Number(cfg.maxTaskFiles)||250));
  return cfg;
@@ -377,7 +380,7 @@ function writerV12OpenIntegrationHub(plugin,role){
  if(!writerV12On(plugin,'integrations'))return;
  const cfg=writerV12Config(plugin),modal=new Modal(plugin.app);
  modal.titleEl.setText(role==='sync'?writerUi('Central de sincronização','Synchronization center'):
-  writerUi('Central de integrações · v12','Integration center · v12'));
+  writerUi('Central de integrações','Integration center'));
  const intro=role==='sync'?
   writerUi('Escolha apenas um mecanismo para executar comandos manuais. O Basic não inicia sincronização automática, nem desliga rotinas de outros plugins.',
    'Select one provider for manual commands. Basic does not auto-sync or disable other plugins’ background jobs.'):
@@ -458,7 +461,7 @@ function writerV12Templates(plugin,editor){
 function writerV12Register(plugin){
  writerV12Config(plugin);
  const command=(id,pt,en,callback)=>plugin.addCommand({id,name:writerUi(pt,en),callback});
- command('v12-integrations','Toolkit: central de integrações','Toolkit: integration center',()=>writerV12OpenIntegrationHub(plugin));
+ command('v12-integrations','Integrações: abrir central','Integrations: open center',()=>writerV12OpenIntegrationHub(plugin));
  command('v12-sync-center','Sincronização: abrir central','Sync: open center',()=>writerV12OpenIntegrationHub(plugin,'sync'));
  command('v12-tasks','Tarefas: localizar em notas','Tasks: find in notes',()=>void writerV12OpenTasks(plugin));
  command('v12-capture','Captura: guardar na Inbox local','Capture: save to local inbox',()=>writerV12Capture(plugin,false));
@@ -476,12 +479,12 @@ function writerV12Register(plugin){
 }
 function writerV12Settings(plugin,panel){
  const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Toolkit unificado · v12','Unified toolkit · v12')});
+ panel.createEl('h3',{text:writerUi('Ações rápidas e utilitários','Quick actions and utilities')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Aproveita a formatação, o TTS, o explorador, os Spaces e a IA já presentes. Sincronização externa e criptografia não são duplicadas.',
   'Reuses existing formatting, TTS, explorer, Spaces and AI. External sync and encryption engines are not duplicated.')});
  for(const [key,pt,en] of [
-  ['enabled','Ativar Toolkit v12','Enable v12 toolkit'],
+  ['enabled','Ativar ações rápidas e utilitários','Enable quick actions and utilities'],
   ['palette','Paleta de formatação','Formatting palette'],
   ['imageTools','Visualizador e tamanhos de imagens','Image viewer and sizing'],
   ['taskNavigator','Navegação de tarefas','Task navigation'],

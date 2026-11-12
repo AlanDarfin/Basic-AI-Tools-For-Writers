@@ -83,9 +83,14 @@ test('dashboard safely delegates startup cleanup and does not add editor extensi
 test('published bundle, source and documentation all include final writing features',()=>{
  const bundle=read('main.js');
  for(const marker of ['writerV8FinishMerge','writerV8RegisterFinishBlocks','writerV8RegisterHome','writer-chat','writer-v8-caption'])assert.ok(bundle.includes(marker),marker);
- for(const path of ['README.md','docs/README.pt-BR.md']){
-  const docs=read(path);
-  for(const feature of ['writer-chat','Image Captions','Soundscapes','writer-post','writer-tabs','writer-media-gallery'])assert.ok(docs.includes(feature),path+': '+feature);
+ for(const [path,guide,captions,music] of [
+  ['README.md','docs/SUITES_AND_INTEGRATIONS.en.md','Image captions','Music & ambience'],
+  ['docs/README.pt-BR.md','docs/SUITES_AND_INTEGRATIONS.pt-BR.md','Legendas de imagens','Música e ambiente']
+ ]){
+  const docs=read(path),details=read(guide);
+  for(const feature of ['writer-chat','writer-post','writer-tabs','writer-media-gallery'])assert.ok(docs.includes(feature),path+': '+feature);
+  assert.ok(docs.includes('SUITES_AND_INTEGRATIONS.'),path+' links the current guide');
+  for(const feature of [captions,music])assert.ok(details.includes(feature),guide+': '+feature);
  }
  assert.match(read('scripts/build-v3.js'),/v8\/finish-blocks/);
  assert.match(read('scripts/build-v3.js'),/v8\/writing-home/);

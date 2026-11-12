@@ -2,8 +2,8 @@
 /* FSRS-4.5 scheduling with published defaults, optional; retains existing SM-2 histories. */
 const WRITER_V107_FSRS_WEIGHTS=[.4872,1.4003,3.7145,13.8206,5.1618,1.2298,.8975,.031,1.6474,.1367,1.0461,2.1072,.0793,.3246,1.587,.2272,2.8755];
 function writerV107StudyConfig(settings){
- const v=settings.v83Study||{},old=settings.v107Study&&typeof settings.v107Study==='object'?settings.v107Study:{};
- const cfg=settings.v107Study={scheduler:'sm2',desiredRetention:.90,tsvEnabled:true,...old};
+ const old=settings.v107Study&&typeof settings.v107Study==='object'&&!Array.isArray(settings.v107Study)?settings.v107Study:{};
+ const cfg=settings.v107Study=Object.assign(old,{scheduler:'sm2',desiredRetention:.90,tsvEnabled:true,...old});
  if(!['sm2','fsrs45'].includes(cfg.scheduler))cfg.scheduler='sm2';
  cfg.desiredRetention=Math.max(.70,Math.min(.97,Number(cfg.desiredRetention)||.90));
  return cfg;

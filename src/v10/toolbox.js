@@ -353,7 +353,7 @@ function writerV10ToolboxSettings(plugin,panel){
   'Ferramentas de edição de arquivos e comandos Markdown. Os atalhos por tecla dupla são configurados separadamente abaixo.',
   'File editing and Markdown commands. Double-press shortcuts are configured separately below.')});
  for(const [key,pt,en] of [
-  ['enabled','Ativar extras da v10','Enable v10 tools'],
+  ['enabled','Ativar ferramentas de arquivos','Enable file tools'],
   ['textEditor','Permitir edição de arquivos de texto (até 512 KiB)','Allow text-file edits (up to 512 KiB)'],
   ['tableSorting','Ordenar linhas de tabelas Markdown','Sort Markdown table rows'],
   ['jsonFormatting','Formatar JSON selecionado','Format selected JSON'],

@@ -16,14 +16,14 @@ AI, translation, grammar, online dictionaries and neural text-to-speech may tran
 
 IA, gramática, tradução, dicionários e TTS online podem transmitir o texto selecionado aos provedores configurados. O Pandoc integrado usa recursos de arquivos e processos somente no computador e pode acessar recursos locais/remotos durante a exportação. Acesse apenas serviços e executáveis confiáveis.
 
-## Network disclosures (eight direct `requestUrl` call sites plus Zotero API read-only adapter in 10.8)
+## Network disclosures (eight HTTP request paths plus the Zotero API read-only adapter)
 
 These request sites and the Zotero API adapter are bundled, but are **not automatically contacted when Obsidian opens**. Remote Zotero and iCalendar features are opt-in and require a configured library or HTTPS feed; automatic iCalendar refresh remains disabled by default.
 
 | Feature / request | When it runs | Destination | Information sent |
 | --- | --- | --- | --- |
 | Unicode index download (`GET`) | User explicitly downloads the optional Unicode database | `www.unicode.org` | Download request; no manuscript text in the request |
-| LanguageTool grammar check (`POST`) | Manual review, or after editing **while the Review tab is open in Grammar mode and auto-check is enabled** | Default `api.languagetool.org/v2/check`, or a custom HTTPS endpoint | The text/window being checked, language and optional LanguageTool API key |
+| LanguageTool grammar check (`POST`) | Manual review, or after editing **while the Review tab is open in Grammar mode and auto-check is enabled** | Default `api.languagetool.org/v2/check`, or a custom HTTPS endpoint | The text/window being checked, language and optional LanguageTool API key/account name |
 | AI model discovery (`GET`) | User requests or refreshes the list of available models | Selected provider's models endpoint, or local Ollama | Authorization key when configured; no manuscript text |
 | AI requests (`POST`) | User invokes dictionary, translation, writing, assistant, proofreading or related AI features | Selected cloud provider, a custom HTTPS endpoint, or local Ollama | Word/text being processed, prompts, optional contextual manuscript/project information, and provider credentials |
 | Click Clack sound pack download (`GET`) | User explicitly chooses an individual sound pack or clicks Download all | Pinned `raw.githubusercontent.com/Acylation/obsidian-click-clack` WAV resources | Requests five public WAV files per pack; **no note text or vault content** |

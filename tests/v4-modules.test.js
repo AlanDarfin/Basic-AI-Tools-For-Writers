@@ -63,7 +63,7 @@ test('standalone views and Longform respect optional modules and skip hidden pan
  const grammar=fs.readFileSync('src/v4/auto-grammar.js','utf8');
  const integrations=fs.readFileSync('src/v4/integrations.js','utf8');
  assert.ok(main.includes('this.applyModuleVisibility()'));
- assert.ok(main.includes("settingsFlags={dictionary:'dictionary'"));
+ assert.ok(main.includes("const sections=writerSettingsSections();"));
  assert.ok(main.includes('writerRenderModuleSettings(this.plugin,panel'));
  assert.ok(main.includes('writerRenderDiagnostics(this.plugin,panel'));
  assert.ok(main.includes("writerModuleOn(this,'translation')"));

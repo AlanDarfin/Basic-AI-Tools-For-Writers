@@ -143,7 +143,7 @@ class WriterKeyshots{
  register(){
   const p=this.plugin;
   for(const [id,pt,en] of WRITER_KEYSHOTS_ACTIONS){
-   p.addCommand({id:'v5-keyshots-'+id,name:'Keyshots: '+writerUi(pt,en),
+   p.addCommand({id:'v5-keyshots-'+id,name:writerUi('Atalhos do editor: ','Editor shortcuts: ')+writerUi(pt,en),
     editorCheckCallback:(checking,editor,view)=>{
      if(!this.available()||!editor)return false;
      if(!checking)this.perform(id,editor,view);
@@ -166,7 +166,7 @@ class WriterKeyshots{
   if(keymap?.of)p.registerEditorExtension(keymap.of(map));
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Keyshots · navegação por teclado','Keyshots · keyboard navigation')});
+  panel.createEl('h3',{text:writerUi('Atalhos do editor','Editor shortcuts')});
   panel.createEl('p',{text:writerUi('Comandos para mover, duplicar, inserir e organizar linhas. Funciona somente no editor desktop. Os atalhos podem ser alterados nas configurações de teclas do Obsidian.','Desktop-only commands to move, duplicate, insert and organize lines. Assign custom shortcuts in Obsidian Hotkeys.'),cls:'dictionary-muted'});
   new Setting(panel).setName(writerUi('Ativar comandos de teclado','Enable keyboard commands'))
    .addToggle(t=>t.setValue(this.cfg.enabled).onChange(async v=>{this.cfg.enabled=v;await this.plugin.saveSettings();}));

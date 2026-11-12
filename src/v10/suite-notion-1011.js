@@ -3,9 +3,9 @@
  * local views. No duplicate Notion Suite registration or proprietary storage. */
 const WRITER_V1011_DB_VIEWS=['table','board','gallery','list','calendar','timeline','chart'];
 function writerV1011NotionCfg(settings){
- const old=settings.v1011Notion&&typeof settings.v1011Notion==='object'?settings.v1011Notion:{};
- return settings.v1011Notion={enabled:true,maxShown:160,allowNew:true,...old,
-  maxShown:Math.max(20,Math.min(500,Number(old.maxShown)||160))};
+ const old=settings.v1011Notion&&typeof settings.v1011Notion==='object'&&!Array.isArray(settings.v1011Notion)?settings.v1011Notion:{};
+ return settings.v1011Notion=Object.assign(old,{enabled:true,maxShown:160,allowNew:true,...old,
+  maxShown:Math.max(20,Math.min(500,Number(old.maxShown)||160))});
 }
 function writerV1011NotionSpec(source){
  const base=typeof writerV107DbSpec==='function'?writerV107DbSpec(source):{columns:['file','status'],limit:80,view:'table'};
@@ -285,10 +285,10 @@ function writerV1011NotionRegister(plugin){
 }
 function writerV1011NotionSettings(plugin,panel){
  const cfg=writerV1011NotionCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Notion Suite — visualizações de bancos','Notion Suite — database views')});
+ panel.createEl('h3',{text:writerUi('Bancos e visualizações','Databases and views')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Amplia os bancos Markdown existentes com lista, galeria, calendário, timeline e gráficos. Usa basic-suite-db para não conflitar com o plugin original.',
-  'Adds list, gallery, calendar, timeline and charts to existing Markdown databases. Uses basic-suite-db to avoid clashes with the original plugin.')});
+  'Visualize notas Markdown em listas, galerias, quadros, calendários, linhas do tempo e gráficos com o bloco basic-suite-db.',
+  'View Markdown notes as lists, galleries, boards, calendars, timelines and charts using the basic-suite-db block.')});
  new Setting(panel).setName(writerUi('Habilitar visualizações extras','Enable additional views'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Permitir criar novas notas pelo banco','Allow creating notes from a view'))

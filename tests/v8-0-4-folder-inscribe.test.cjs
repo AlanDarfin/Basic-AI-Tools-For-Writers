@@ -80,7 +80,7 @@ test('bundled files, tests and README mention all requested blocks',()=>{
  for(const name of ['writer-tabs','writer-avatar','writer-wiki','writer-folder-overview']){assert.ok(main.includes(name),name);assert.ok(readme.includes(name),name);assert.ok(pt.includes(name),name);}
  assert.ok(main.includes('WriterV8InlineAI'));
  assert.ok(styles.includes('writer-v8-inline-ghost'));
- assert.match(readme,/Inscribe-inspired/);
- assert.match(pt,/Inscribe/);
+ assert.match(readme,/inline AI/);
+ assert.match(pt,/IA durante a digitação/);
  assert.doesNotMatch(css,/!important/);
 });

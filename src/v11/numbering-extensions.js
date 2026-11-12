@@ -3,7 +3,7 @@
    caption counters and line decorations in Live Preview. */
 function writerV111NumberCfg(settings){
  const old=settings.v111Number&&typeof settings.v111Number==='object'&&!Array.isArray(settings.v111Number)?settings.v111Number:{};
- return settings.v111Number={livePreview:false,captionNumbers:false,...old};
+ return settings.v111Number=Object.assign(old,{livePreview:false,captionNumbers:false,...old});
 }
 function writerV111NumberStructure(source,scheme='hierarchical'){
  const text=String(source||'');
@@ -111,7 +111,7 @@ function writerV111NumberStructureModal(plugin){
 }
 function writerV111NumberSettings(plugin,panel){
  const cfg=writerV111NumberCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Number Suite · funções extras','Number Suite · additional features')});
+ panel.createEl('h3',{text:writerUi('Numeração visual e legendas','Visual numbering and captions')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Números de títulos no Live Preview e numeração de legendas somente visuais. Nenhum arquivo é alterado.',
   'Display-only Live Preview headings and caption counters. No Markdown changes.')});

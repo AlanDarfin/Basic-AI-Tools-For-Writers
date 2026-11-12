@@ -178,10 +178,10 @@ class WriterSmartTypography{
   p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Smart Typography · tipografia','Smart Typography')});
+  panel.createEl('h3',{text:writerUi('Tipografia automática','Automatic typography')});
   panel.createEl('p',{text:writerUi('Substituições somente durante digitação em prosa. Código, fórmulas, URLs e outros contextos estruturados são ignorados sempre que detectados.','Replacements while typing prose; recognized code, math and structured contexts are skipped.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Ativar Smart Typography','Enable Smart Typography'],['curlyQuotes','Aspas curvas e apóstrofos','Curly quotes and apostrophes'],
+   ['enabled','Ativar tipografia automática','Enable automatic typography'],['curlyQuotes','Aspas curvas e apóstrofos','Curly quotes and apostrophes'],
    ['dashes','Travessões e meia-risca','Dashes'],['ellipsis','Reticências (...)','Ellipsis (...)'],
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],

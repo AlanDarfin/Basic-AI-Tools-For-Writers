@@ -1,8 +1,8 @@
 'use strict';
 /* Enhancement Suite: bounded multi-file search/replace and local editor diagnostics. */
 function writerV107EditorConfig(settings){
- const old=settings.v107Editor&&typeof settings.v107Editor==='object'?settings.v107Editor:{};
- return settings.v107Editor={enabled:true,yamlLive:true,maxFiles:80,jsonTreeEdit:true,...old,maxFiles:Math.max(5,Math.min(200,Number(old.maxFiles)||80))};
+ const old=settings.v107Editor&&typeof settings.v107Editor==='object'&&!Array.isArray(settings.v107Editor)?settings.v107Editor:{};
+ return settings.v107Editor=Object.assign(old,{enabled:true,yamlLive:true,maxFiles:80,jsonTreeEdit:true,...old,maxFiles:Math.max(5,Math.min(200,Number(old.maxFiles)||80))});
 }
 function writerV107ReplacePreview(files,search,replace,matchCase=false){
  if(!search||search.length>200||replace.length>1000)return [];
@@ -111,7 +111,7 @@ function writerV107EditorYamlState(text,parse){
 }
 function writerV107EditorRegister(plugin){
  const cfg=writerV107EditorConfig(plugin.settings);
- plugin.addCommand({id:'v107-find-replace-vault',name:writerUi('Enhancement: buscar/substituir entre notas','Enhancement: find/replace across notes'),callback:()=>writerV107BatchReplaceModal(plugin)});
+ plugin.addCommand({id:'v107-find-replace-vault',name:writerUi('Edição: buscar e substituir entre notas','Editing: find and replace across notes'),callback:()=>writerV107BatchReplaceModal(plugin)});
  plugin.addCommand({id:'v107-json-tree-edit',name:writerUi('JSON: editar seleção em árvore','JSON: edit selection as tree'),editorCheckCallback:(checking,editor)=>{
   if(!cfg.jsonTreeEdit||!editor.getSelection().trim())return false;
   try{JSON.parse(editor.getSelection());}catch(_){return false;}
@@ -138,7 +138,7 @@ function writerV107EditorRegister(plugin){
 }
 function writerV107EditorSettings(plugin,panel){
  const cfg=plugin.settings.v107Editor;
- panel.createEl('h3',{text:writerUi('Enhancement · edição avançada','Enhancement · advanced editing')});
+ panel.createEl('h3',{text:writerUi('Edição avançada','Advanced editing')});
  for(const [k,pt,en] of [['enabled','Ativar ferramentas avançadas','Enable advanced tools'],['yamlLive','Diagnóstico YAML no editor','Live YAML editor diagnostics'],['jsonTreeEdit','Editor JSON em árvore','JSON tree editor']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[k]!==false).onChange(async v=>{cfg[k]=v;await plugin.saveSettings();}));
  }

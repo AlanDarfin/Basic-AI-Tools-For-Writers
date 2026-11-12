@@ -63,7 +63,7 @@ async function writerV93FlowPersist(plugin,ctx,root,source,model){
  try{
   await plugin.app.vault.process(file,raw=>{
    const found=writerV93FlowLocateBlock(raw,source,hint);
-   if(!found)throw Error(writerUi('O bloco Flow foi alterado. Reabra a nota e tente novamente.','Flow block changed. Reopen the note and try again.'));
+   if(!found)throw Error(writerUi('O painel de notas foi alterado. Reabra a nota e tente novamente.','Note board changed. Reopen the note and try again.'));
    return [...found.lines.slice(0,found.start+1),...replacement.split('\n'),
     ...found.lines.slice(found.end)].join(found.nl);
   });
@@ -75,10 +75,10 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  const model=writerV93FlowParse(source,cfg);
  root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-'+model.layout);
  const toolbar=root.createDiv({cls:'writer-v93-flow-toolbar'});
- toolbar.createEl('strong',{text:'Flow · '+model.items.length+' '+writerUi('notas','notes')});
+ toolbar.createEl('strong',{text:writerUi('Painel de notas','Note board')+' · '+model.items.length+' '+writerUi('notas','notes')});
  const persist=next=>void writerV93FlowPersist(plugin,ctx,root,source,next);
  if(cfg.flowArrange){
-  const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel Flow','Flow panel layout')}});
+  const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel de notas','Note board layout')}});
   for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board'],['graph','Grafo','Graph']]){
    const option=select.createEl('option',{text:writerUi(pt,en)});option.value=id;
   }
@@ -87,7 +87,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
    persist({...model,layout:select.value,
     options:[...model.options.filter(x=>!/^layout:/i.test(x)),'layout: '+select.value]});
   });
-  const add=toolbar.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar nota ao Flow','Add note to Flow')}});
+  const add=toolbar.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar nota ao painel','Add note to board')}});
   require('obsidian').setIcon(add,'plus');
   add.addEventListener('click',()=>{
    const Suggest=require('obsidian').FuzzySuggestModal;
@@ -105,7 +105,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  }
  const list=root.createDiv({cls:'writer-v93-flow-items'});
  const depths=writerV101FlowDepths(model.items);
- if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco Flow.','Put one note per line inside the Flow block.')});return;}
+ if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco flow.','Put one note per line inside the flow block.')});return;}
  const reorder=(from,to)=>{
   if(!cfg.flowArrange||from===to||from<0||to<0||from>=model.items.length||to>=model.items.length)return;
   const items=model.items.slice(),value=items.splice(from,1)[0];items.splice(to,0,value);

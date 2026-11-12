@@ -85,12 +85,19 @@ test('new modules are opt-in views and do not touch CodeMirror or delete unrelat
  for(const name of ['writerV83RegisterCalendar','writerV83RegisterStudy','writerV83FuzzySearch'])assert.ok(main.includes(name),name);
  for(const style of ['writer-v83-cal-month','writer-v83-study-choices'])assert.ok(styles.includes(style),style);
 });
-test('release documentation preserves previous blocks, home and new study features',()=>{
- for(const name of ['README.md','docs/README.pt-BR.md']){
+test('current documentation preserves block syntax and documents calendar, search and study features',()=>{
+ for(const [name,guide,calendar] of [
+  ['README.md','docs/SUITES_AND_INTEGRATIONS.en.md','Calendar & events'],
+  ['docs/README.pt-BR.md','docs/SUITES_AND_INTEGRATIONS.pt-BR.md','Calendário e eventos']
+ ]){
   const content=read(name);
   for(const key of [require('../manifest.json').version,'writer-tabs','writer-avatar','writer-wiki','writer-post',
-    'writer-media-gallery','writer-chat','#flashcards','Full Calendar','fuzzy']){
+    'writer-media-gallery','writer-chat']){
    assert.ok(content.toLowerCase().includes(key.toLowerCase()),name+' missing '+key);
   }
+  assert.ok(content.includes(guide.split('/').pop()),name+' links the current feature guide');
+  const details=read(guide);
+  for(const key of ['#flashcards',calendar,'fuzzy'])
+   assert.ok(details.toLowerCase().includes(key.toLowerCase()),guide+' missing '+key);
  }
 });

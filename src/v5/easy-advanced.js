@@ -59,7 +59,7 @@ class WriterEasyAdvanced{
  active(){return this.plugin.writerEasyTyping?.active()===true;}
  register(){
   const p=this.plugin;
-  p.addCommand({id:'v5-easy-insert-snippet',name:writerUi('Easy Typing: inserir modelo com Tab','Easy Typing: insert navigation snippet'),editorCheckCallback:(checking)=>{
+  p.addCommand({id:'v5-easy-insert-snippet',name:writerUi('Digitação: inserir modelo com campos','Typing: insert snippet with fields'),editorCheckCallback:(checking)=>{
    if(!this.active()||!this.cfg.snippets.length)return false;
    if(!checking)this.openPicker();
    return true;

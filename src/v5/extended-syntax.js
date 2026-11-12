@@ -146,10 +146,10 @@ class WriterExtendedSyntax{
   }
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Extended Syntax · Markdown','Extended Syntax · Markdown')});
-  panel.createEl('p',{text:writerUi('Renderização adicional; não reinstala a antiga toolbar nem comandos de formatação.','Extra syntax without reinstating the retired toolbar or formatting commands.'),cls:'dictionary-muted'});
+  panel.createEl('h3',{text:writerUi('Formatação de texto','Text formatting')});
+  panel.createEl('p',{text:writerUi('Use delimitadores Markdown para sublinhado, sobrescrito, subscrito, destaques e blocos interativos.','Use Markdown delimiters for underline, superscript, subscript, highlights and interactive blocks.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Habilitar sintaxe estendida','Enable extended syntax'],
+   ['enabled','Ativar formatação de texto','Enable text formatting'],
    ['underline','Sublinhado ++texto++','Underline ++text++'],
    ['spoiler','Spoiler ||texto||','Spoiler ||text||'],
    ['superscript','Sobrescrito ^texto^','Superscript ^text^'],

@@ -3040,9 +3040,9 @@ class WriterFinalFeatures{
 
 };
 function writerRenderFinalSettings(panel,plugin,section){
- const labelMap={"Abbreviations":"Abreviações","Another name":"Nome alternativo","View mode":"Modo de visualização","Templates by note name":"Modelos por nome da nota","Unicode search":"Busca Unicode","Instant TOC":"Sumário instantâneo","Text to speech":"Leitura em voz alta","Enabled":"Ativado","Expand on punctuation or space (instead of space only)":"Expandir ao digitar pontuação ou espaço","Edit abbreviations":"Editar abreviações","Frontmatter property":"Propriedade do frontmatter","View mode frontmatter property":"Propriedade do modo de visualização","Templates folder":"Pasta de modelos","Date format (e.g. YYYY-MM-DD)":"Formato de data (ex.: AAAA-MM-DD)","Time format (e.g. HH:mm)":"Formato de hora (ex.: HH:mm)","Apply templates on note creation":"Aplicar modelos ao criar notas","Apply templates when a note is renamed to match":"Aplicar modelos ao renomear notas compatíveis","Case-sensitive title matching":"Diferenciar maiúsculas e minúsculas no título","Original matching rules":"Regras de correspondência","The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.":"A primeira regra correspondente aplica um modelo. Sem regras, permanece a busca pelo nome exato.","Rule ":"Regra ","Starts with":"Começa com","Contains":"Contém","Ends with":"Termina com","Name fragment":"Trecho do nome","Select template":"Selecionar modelo","Delete rule":"Excluir regra","Add matching rule":"Adicionar regra","Add":"Adicionar","Legacy exact-name fallback":"Compatibilidade com nome exato","If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty.":"Se não houver regras, procurar Templates/<nome da nota>.md e aplicar somente em notas vazias.","Unicode picker":"Seletor Unicode","Search":"Pesquisar","Max results":"Máximo de resultados","Offline Unicode index":"Índice Unicode offline","Download UnicodeData.txt from unicode.org once. Search works offline afterward.":"Baixe UnicodeData.txt do unicode.org uma vez; depois a busca funciona offline.","Download / update":"Baixar / atualizar","Downloading…":"Baixando…","Max heading level":"Nível máximo de títulos","Numbered table of contents":"Sumário numerado","Start folded":"Iniciar recolhido","Voice engine":"Mecanismo de voz","System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.":"Vozes do sistema funcionam offline. Vozes online do Edge funcionam sem motor de voz no Linux, mas enviam texto à Microsoft e exigem internet.","System / offline (Web Speech)":"Sistema / offline (Web Speech)","Microsoft Edge neural / online":"Microsoft Edge neural / online","Allow online text processing":"Permitir processamento online de texto","OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.":"Desativado por padrão. Com Edge, o texto selecionado ou a nota é enviada à Microsoft para gerar a voz. O serviço não oficial pode mudar.","Speech language":"Idioma da leitura","Edge online voice":"Voz online do Edge","High-quality online voices; independent of installed Linux voices.":"Vozes online de alta qualidade, independentes das vozes instaladas no Linux.","Auto by language":"Automático conforme idioma","Prefer selected text":"Preferir texto selecionado","Maximum characters per playback":"Máximo de caracteres por leitura","Speaking speed":"Velocidade da fala","Pitch (system voice)":"Tom (voz do sistema)","Volume (system voice)":"Volume (voz do sistema)","Speech":"Leitura","Read":"Ler","Pause":"Pausar","Resume":"Retomar","Stop":"Parar","Open":"Abrir","Ready":"Pronto"};
+ const labelMap={"Abbreviations":"Abreviações","Alternate titles":"Títulos alternativos","View mode":"Modo de visualização","Templates by note name":"Modelos por nome da nota","Unicode search":"Busca Unicode","Table of contents":"Sumário","Read aloud":"Leitura em voz alta","Enabled":"Ativado","Expand on punctuation or space (instead of space only)":"Expandir ao digitar pontuação ou espaço","Edit abbreviations":"Editar abreviações","Frontmatter property":"Propriedade do frontmatter","View mode frontmatter property":"Propriedade do modo de visualização","Templates folder":"Pasta de modelos","Date format (e.g. YYYY-MM-DD)":"Formato de data (ex.: YYYY-MM-DD)","Time format (e.g. HH:mm)":"Formato de hora (ex.: HH:mm)","Apply templates on note creation":"Aplicar modelos ao criar notas","Apply templates when a note is renamed to match":"Aplicar modelos ao renomear notas compatíveis","Case-sensitive title matching":"Diferenciar maiúsculas e minúsculas no título","Original matching rules":"Regras de correspondência","The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.":"A primeira regra correspondente aplica um modelo. Sem regras, permanece a busca pelo nome exato.","Rule ":"Regra ","Starts with":"Começa com","Contains":"Contém","Ends with":"Termina com","Name fragment":"Trecho do nome","Select template":"Selecionar modelo","Delete rule":"Excluir regra","Add matching rule":"Adicionar regra","Add":"Adicionar","Legacy exact-name fallback":"Compatibilidade com nome exato","If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty.":"Se não houver regras, procurar Templates/<nome da nota>.md e aplicar somente em notas vazias.","Unicode picker":"Seletor Unicode","Search":"Pesquisar","Max results":"Máximo de resultados","Offline Unicode index":"Índice Unicode offline","Download UnicodeData.txt from unicode.org once. Search works offline afterward.":"Baixe UnicodeData.txt do unicode.org uma vez; depois a busca funciona offline.","Download / update":"Baixar / atualizar","Downloading…":"Baixando…","Max heading level":"Nível máximo de títulos","Numbered table of contents":"Sumário numerado","Start folded":"Iniciar recolhido","Voice engine":"Mecanismo de voz","System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.":"Vozes do sistema funcionam offline. Vozes online do Edge funcionam sem motor de voz no Linux, mas enviam texto à Microsoft e exigem internet.","System / offline (Web Speech)":"Sistema / offline (Web Speech)","Microsoft Edge neural / online":"Microsoft Edge neural / online","Allow online text processing":"Permitir processamento online de texto","OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.":"Desativado por padrão. Com Edge, o texto selecionado ou a nota é enviada à Microsoft para gerar a voz. O serviço não oficial pode mudar.","Speech language":"Idioma da leitura","Edge online voice":"Voz online do Edge","High-quality online voices; independent of installed Linux voices.":"Vozes online de alta qualidade, independentes das vozes instaladas no Linux.","Auto by language":"Automático conforme idioma","Prefer selected text":"Preferir texto selecionado","Maximum characters per playback":"Máximo de caracteres por leitura","Speaking speed":"Velocidade da fala","Pitch (system voice)":"Tom (voz do sistema)","Volume (system voice)":"Volume (voz do sistema)","Speech":"Leitura","Read":"Ler","Pause":"Pausar","Resume":"Retomar","Stop":"Parar","Open":"Abrir","Ready":"Pronto"};
  const translateLabel=value=>writerUi(labelMap[value]||value,value);
- const sectionMap={abbreviations:'Abbreviations',anotherName:'Another name',viewMode:'View mode',templates:'Templates by note name',unicode:'Unicode search',toc:'Instant TOC',tts:'Text to speech'};
+ const sectionMap={abbreviations:'Abbreviations',anotherName:'Alternate titles',viewMode:'View mode',templates:'Templates by note name',unicode:'Unicode search',toc:'Table of contents',tts:'Read aloud'};
  const cfg=plugin.settings.finalSuite[section];
  panel.createEl('h3',{text:translateLabel(sectionMap[section]||section)});
  const bool=(field,label)=>new Setting(panel).setName(translateLabel(label)).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
@@ -3077,9 +3077,9 @@ function writerRenderFinalSettings(panel,plugin,section){
     });
     row.addText(t=>t.setPlaceholder(translateLabel('Name fragment')).setValue(rule.matchString||'').onChange(async value=>{rule.matchString=value;await plugin.saveSettings();}));
     row.addDropdown(d=>{
-     d.addOption('','Select template');
+     d.addOption('',translateLabel('Select template'));
      for(const file of templates)d.addOption(file.path,file.path);
-     if(rule.templatePath&&!templates.some(f=>f.path===rule.templatePath))d.addOption(rule.templatePath,rule.templatePath+' (missing)');
+     if(rule.templatePath&&!templates.some(f=>f.path===rule.templatePath))d.addOption(rule.templatePath,rule.templatePath+writerUi(' (ausente)',' (missing)'));
      d.setValue(rule.templatePath||'').onChange(async value=>{rule.templatePath=value;await plugin.saveSettings();});
     });
     row.addExtraButton(b=>b.setIcon('trash').setTooltip(translateLabel('Delete rule')).onClick(async()=>{
@@ -3088,7 +3088,7 @@ function writerRenderFinalSettings(panel,plugin,section){
     }));
    }
   };
-  new Setting(panel).setName(translateLabel('Add matching rule')).addButton(b=>b.setButtonText(translateLabel('Add')).setIcon('plus').onClick(async()=>{
+  new Setting(panel).setName(translateLabel('Add matching rule')).addButton(b=>b.setButtonText(translateLabel('Add')).setIcon('plus').setTooltip(translateLabel('Add matching rule')).onClick(async()=>{
    cfg.matchers.push({matchMethod:'prefix',matchString:'',templatePath:''});
    await plugin.saveSettings();render();
   }));
@@ -3108,8 +3108,8 @@ function writerRenderFinalSettings(panel,plugin,section){
  if(section==='toc'){str('maxDepth','Max heading level');bool('numbered','Numbered table of contents');bool('folded','Start folded');}
  if(section==='tts'){
   new Setting(panel).setName(translateLabel('Voice engine')).setDesc(translateLabel('System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet.')).addDropdown(d=>{
-   d.addOption('system','System / offline (Web Speech)');
-   d.addOption('edge','Microsoft Edge neural / online');
+   d.addOption('system',translateLabel('System / offline (Web Speech)'));
+   d.addOption('edge',translateLabel('Microsoft Edge neural / online'));
    d.setValue(cfg.engine||'system').onChange(async value=>{cfg.engine=value;plugin.writerFinalFeatures.stop();await plugin.saveSettings();});
   });
   new Setting(panel).setName(translateLabel('Allow online text processing')).setDesc(translateLabel('OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service.')).addToggle(t=>t.setValue(!!cfg.allowOnline).onChange(async value=>{cfg.allowOnline=value;if(!value)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
@@ -3140,8 +3140,8 @@ function writerRenderFinalSettings(panel,plugin,section){
    .setDesc(writerUi('Pedaços menores evitam travamentos de Web Speech no Android.','Shorter chunks can reduce Web Speech stalls on Android.'))
    .addSlider(x=>x.setLimits(250,1200,50).setDynamicTooltip().setValue(cfg.chunkSize||700)
     .onChange(async v=>{cfg.chunkSize=v;await plugin.saveSettings();}));
-  for(const [key,pt,en] of [['pauseMusic','Pausar Soundscapes ao falar','Pause Soundscapes while speaking'],
-   ['resumeMusic','Retomar Soundscapes ao terminar','Resume Soundscapes after speech']])
+  for(const [key,pt,en] of [['pauseMusic','Pausar música ao falar','Pause music while speaking'],
+   ['resumeMusic','Retomar música ao terminar','Resume music after speech']])
    new Setting(panel).setName(writerUi(pt,en)).addToggle(x=>x.setValue(cfg[key]===true)
     .onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
   new Setting(panel).setName(translateLabel('Speech')).addButton(b=>b.setButtonText(translateLabel('Read')).onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText(translateLabel('Pause')).onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText(translateLabel('Resume')).onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText(translateLabel('Stop')).onClick(()=>plugin.writerFinalFeatures.stop()));
@@ -3535,7 +3535,7 @@ function writerV4Register(plugin){
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
+  typewriter:{enabled:false,centerPercent:0.43,focusMode:false,followCursor:true,highlightLine:true,focusOpacity:0.7},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
     shorten:'Make the selection more concise without removing essential meaning or changing Markdown links.',
@@ -3560,8 +3560,79 @@ function writerV4ExtraMerge(settings){
  };
  delete cfg.toolbar; // Drop retired toolbar preferences during settings migration.
   cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
- cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
+ writerV137NormalizeTypewriter(cfg.typewriter);
  return cfg;
+}
+function writerV137NormalizeTypewriter(cfg){
+ const number=(value,fallback,min,max)=>value!==null&&value!==''&&Number.isFinite(Number(value))?Math.max(min,Math.min(max,Number(value))):fallback;
+ cfg.enabled=cfg.enabled===true;cfg.focusMode=cfg.focusMode===true;
+ cfg.followCursor=cfg.followCursor!==false;cfg.highlightLine=cfg.highlightLine!==false;
+ cfg.centerPercent=number(cfg.centerPercent,.43,.2,.8);
+ cfg.focusOpacity=number(cfg.focusOpacity,.7,.45,.95);
+ return cfg;
+}
+function writerV137TypewriterConfig(plugin){
+ let cfg=plugin.settings.writerV4Extras?.typewriter;
+ if(!cfg||typeof cfg!=='object'||Array.isArray(cfg))cfg=writerV4ExtraMerge(plugin.settings).typewriter;
+ return writerV137NormalizeTypewriter(cfg);
+}
+function writerV137TypewriterSelection(selection){
+ const main=selection?.main;
+ return !!main&&(!selection.ranges||selection.ranges.length===1)&&main.empty!==false&&
+  (!Number.isFinite(main.anchor)||main.anchor===main.head);
+}
+function writerV137TypewriterScrollOptions(view,cfg){
+ const height=Number(view.scrollDOM?.clientHeight)||0;
+ if(height<=0)return {y:'center',yMargin:0};
+ const percent=Number.isFinite(Number(cfg.centerPercent))?Math.max(.2,Math.min(.8,Number(cfg.centerPercent))):.43;
+ return {y:'start',yMargin:Math.max(0,Math.round(height*percent-(Number(view.defaultLineHeight)||0)/2)),x:'nearest'};
+}
+function writerV137TypewriterSettings(plugin,panel){
+ const cfg=writerV137TypewriterConfig(plugin),controls={};
+ panel.createEl('h3',{text:writerUi('Máquina de escrever','Typewriter mode')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Mantenha a linha de escrita na altura escolhida e ajuste o foco visual. Rolar, tocar ou selecionar texto pausa o acompanhamento até a próxima digitação. Nenhuma nota é alterada.',
+  'Keep the writing line at your preferred height and adjust visual focus. Scrolling, touching or selecting text pauses following until you type again. Notes are never changed.')});
+ const preview=panel.createDiv({cls:'writer-v137-typewriter-preview',attr:{role:'img','aria-label':writerUi('Prévia do destaque e da intensidade de foco','Preview of line highlight and focus intensity')}});
+ preview.createDiv({cls:'writer-v137-typewriter-preview-context',text:writerUi('A história encontra seu ritmo.','The story finds its rhythm.')});
+ preview.createDiv({cls:'writer-v137-typewriter-preview-current',text:writerUi('Esta é a linha que você está escrevendo.','This is the line you are writing.')});
+ preview.createDiv({cls:'writer-v137-typewriter-preview-context',text:writerUi('As próximas palavras esperam por você.','The next words are waiting for you.')});
+ const refresh=()=>{
+  const current=writerV137TypewriterConfig(plugin);
+  preview.classList.toggle('is-focused',current.focusMode);preview.classList.toggle('is-highlighted',current.highlightLine);
+  preview.style.setProperty('--writer-typewriter-focus-opacity',String(current.focusOpacity));
+  controls.position?.setDisabled?.(!current.followCursor);
+  controls.opacity?.setDisabled?.(!current.focusMode);
+ };
+ const save=async(key,value)=>{
+  writerV137TypewriterConfig(plugin)[key]=value;
+  plugin.writerV4Extras?.updateTypewriterClass?.();refresh();await plugin.saveSettings();
+ };
+ for(const [key,pt,en,descriptionPt,descriptionEn] of [
+  ['enabled','Ativar máquina de escrever','Enable typewriter mode','Ativa estes recursos apenas no editor de texto.','Enables these features only in the text editor.'],
+  ['followCursor','Acompanhar o cursor ao escrever','Follow the cursor while writing','Desative para usar apenas o destaque e o foco visual, sem rolagem automática.','Turn off to use line highlighting and visual focus without automatic scrolling.']
+ ])new Setting(panel).setName(writerUi(pt,en)).setDesc(writerUi(descriptionPt,descriptionEn))
+  .addToggle(t=>{controls[key]=t;t.setValue(cfg[key]).onChange(value=>save(key,value));});
+ new Setting(panel).setName(writerUi('Altura da linha de escrita','Writing line height'))
+  .setDesc(writerUi('Percentual da área visível do editor, de cima para baixo.','Percentage of the visible editor area, measured from the top.'))
+  .addSlider(s=>{controls.position=s;s.setLimits(20,80,1).setDynamicTooltip().setValue(Math.round(cfg.centerPercent*100)).onChange(value=>save('centerPercent',value/100));});
+ for(const [key,pt,en] of [
+  ['highlightLine','Destacar a linha atual','Highlight the current line'],
+  ['focusMode','Atenuar as outras linhas','Dim other lines']
+ ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>{controls[key]=t;t.setValue(cfg[key]).onChange(value=>save(key,value));});
+ new Setting(panel).setName(writerUi('Visibilidade das outras linhas','Visibility of other lines'))
+  .setDesc(writerUi('Valores maiores mantêm o texto ao redor mais legível.','Higher values keep the surrounding text more readable.'))
+  .addSlider(s=>{controls.opacity=s;s.setLimits(45,95,5).setDynamicTooltip().setValue(Math.round(cfg.focusOpacity*100)).onChange(value=>save('focusOpacity',value/100));});
+ new Setting(panel).setName(writerUi('Restaurar aparência e posição','Restore appearance and position'))
+  .setDesc(writerUi('Mantém o modo ligado ou desligado como está.','Keeps the mode enabled or disabled as it is.'))
+  .addButton(b=>b.setButtonText(writerUi('Restaurar','Restore')).onClick(async()=>{
+   const current=writerV137TypewriterConfig(plugin);
+   Object.assign(current,{centerPercent:.43,focusMode:false,followCursor:true,highlightLine:true,focusOpacity:.7});
+   for(const key of ['followCursor','highlightLine','focusMode'])controls[key]?.setValue?.(current[key]);
+   controls.position?.setValue?.(43);controls.opacity?.setValue?.(70);
+   plugin.writerV4Extras?.updateTypewriterClass?.();refresh();await plugin.saveSettings();
+  }));
+ refresh();
 }
 function writerV4NoteEditor(plugin,file){
  const leaves=plugin.app.workspace.getLeavesOfType('markdown')||[];
@@ -3726,13 +3797,14 @@ function writerV406ReviewGuard(plugin){
 }
 
 class WriterV4Extras{
- constructor(plugin){this.plugin=plugin;this.lastNote=null;this.typewriterActiveViews=new WeakSet();this.typewriterViews=new Set();}
+ constructor(plugin){this.plugin=plugin;this.lastNote=null;this.typewriterActiveViews=new WeakSet();this.typewriterFollowViews=new WeakSet();this.typewriterViews=new Set();}
  resetTypewriterHighlights(cm=null){
   for(const instance of this.typewriterViews){
    if(!cm||instance.view===cm)instance.setInteracting(false);
   }
  }
  get config(){return this.plugin.settings.writerV4Extras;}
+ typewriterEnabled(){return writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true;}
  getCurrentNote(){
   const app=this.plugin.app;
   const active=app.workspace.getActiveFile?.();
@@ -3776,13 +3848,32 @@ class WriterV4Extras{
    ['brainstorm','Explorar alternativa','Brainstorm alternative']
   ])p.addCommand({id:'v4-writing-'+key,name:writerUi('IA: '+pt,'AI: '+en),
     editorCallback:editor=>this.runEditorAIAction(editor,key)});
-  p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Alternar modo máquina de escrever','Toggle typewriter mode'),callback:async()=>{
-   this.config.typewriter.enabled=!this.config.typewriter.enabled;
-   this.resetTypewriterHighlights();this.updateTypewriterClass();await p.saveSettings();
-   new Notice(this.config.typewriter.enabled?writerUi('Modo máquina de escrever ativado.','Typewriter mode enabled.'):writerUi('Modo máquina de escrever desativado.','Typewriter mode disabled.'));
+  p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Máquina de escrever: ativar/desativar','Typewriter: toggle mode'),checkCallback:checking=>{
+   if(!writerModuleOn(p,'typewriter'))return false;
+   if(!checking){
+    const cfg=writerV137TypewriterConfig(p);cfg.enabled=!cfg.enabled;
+    this.resetTypewriterHighlights();this.updateTypewriterClass();
+    void p.saveSettings().catch(error=>new Notice(String(error?.message||error)));
+    new Notice(cfg.enabled?writerUi('Máquina de escrever ativada.','Typewriter mode enabled.'):writerUi('Máquina de escrever desativada.','Typewriter mode disabled.'));
+   }
+   return true;
+  }});
+  p.addCommand({id:'v137-typewriter-focus',name:writerUi('Máquina de escrever: alternar foco visual','Typewriter: toggle visual focus'),checkCallback:checking=>{
+   if(!this.typewriterEnabled())return false;
+   if(!checking){
+    const cfg=writerV137TypewriterConfig(p);cfg.focusMode=!cfg.focusMode;this.updateTypewriterClass();
+    void p.saveSettings().catch(error=>new Notice(String(error?.message||error)));
+   }
+   return true;
   }});
   this.updateTypewriterClass();
-  if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
+  if(typeof p.register==='function')p.register(()=>{
+   this.resetTypewriterHighlights();
+   for(const body of this.typewriterBodies||[]){
+    body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus','writer-v137-typewriter-highlight');
+    body.style?.removeProperty('--writer-typewriter-focus-opacity');
+   }
+  });
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
     const guard=this.plugin.writerReviewInteractionGuard;
@@ -3790,12 +3881,23 @@ class WriterV4Extras{
      if(update.docChanged)guard.applyScroll?.(update.view);
      return;
     }
-    if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||
+    if(!this.typewriterEnabled()||this.config.typewriter.followCursor===false||
       !this.typewriterActiveViews.has(update.view)||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
-    try{
-     const pos=update.state.selection.main.head;
-     update.view.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',yMargin:0})});
-    }catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}
+    const direct=this.typewriterFollowViews.has(update.view);
+    this.typewriterFollowViews.delete(update.view);
+    if(!direct||!writerV137TypewriterSelection(update.state.selection))return;
+    const pos=update.state.selection.main.head,view=update.view;
+    const follow=()=>{
+     if(!this.typewriterEnabled()||this.config.typewriter.followCursor===false||!view.hasFocus||
+       !this.typewriterActiveViews.has(view)||this.plugin.writerReviewInteractionGuard?.isSuspended?.()||
+       !writerV137TypewriterSelection(view.state.selection)||view.state.selection.main.head!==pos)return;
+     try{view.dispatch({effects:EditorView.scrollIntoView(pos,writerV137TypewriterScrollOptions(view,this.config.typewriter))});}
+     catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}
+    };
+    // Live Preview must finish its text/layout transaction before a new scroll
+    // request, otherwise its own measurement can overwrite the desired position.
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(follow);
+    else follow();
    }));
   }
   // Only direct editor interaction may activate the highlight. Cursor restoration,
@@ -3810,30 +3912,30 @@ class WriterV4Extras{
       // Pointer inspection and text selection must never enable typewriter
       // scroll locking; only keyboard typing/navigation can engage it.
       if(event.target?.closest?.('.cm-scroller')){
-       owner.plugin.writerReviewInteractionGuard?.pause?.(650);
+       if(owner.typewriterEnabled())owner.plugin.writerReviewInteractionGuard?.pause?.(650);
        this.setInteracting(false);
       }
      };
      this.onTouchStart=event=>{
       if(event.target?.closest?.('.cm-scroller')){
-       owner.plugin.writerReviewInteractionGuard?.pause?.(650);
+       if(owner.typewriterEnabled())owner.plugin.writerReviewInteractionGuard?.pause?.(650);
        this.setInteracting(false);
       }
      };
      this.onTouchMove=()=>this.setInteracting(false);
-     this.onBeforeInput=()=>{owner.plugin.writerReviewInteractionGuard?.typing?.();this.setInteracting(true);};
-     this.onCompositionStart=()=>{owner.plugin.writerReviewInteractionGuard?.typing?.();this.setInteracting(true);};
+     this.onBeforeInput=()=>this.beginInput();
+     this.onCompositionStart=()=>this.beginInput();
      this.onKey=event=>{
       const key=event.key||'';
       if(['Shift','Control','Alt','Meta'].includes(key))return;
+      if(event.shiftKey&&(key.startsWith('Arrow')||['Home','End','PageUp','PageDown'].includes(key))){this.setInteracting(false);return;}
       if(!(key.startsWith('Arrow')||['Home','End','PageUp','PageDown','Backspace','Delete','Enter','Tab'].includes(key)||
        (key.length===1&&!event.ctrlKey&&!event.altKey&&!event.metaKey)))return;
-      owner.plugin.writerReviewInteractionGuard?.typing?.();
-      this.setInteracting(true);
+      this.beginInput();
      };
      this.onWheel=()=>{
       // The wheel gesture also wins over delayed Remember Cursor restoration.
-      owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(view);
+      if(owner.typewriterEnabled())owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(view);
       this.setInteracting(false);
      };
      view.dom.addEventListener('pointerdown',this.onPointer,true);
@@ -3844,26 +3946,36 @@ class WriterV4Extras{
      view.dom.addEventListener('keydown',this.onKey,true);
      view.dom.addEventListener('wheel',this.onWheel,{capture:true,passive:true});
      owner.typewriterViews.add(this);
+     owner.updateTypewriterClass();
     }
-    setInteracting(value){
-     if(value)owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(this.view);
+    beginInput(){
+     if(!owner.typewriterEnabled())return;
+     owner.plugin.writerReviewInteractionGuard?.typing?.();
+     if(owner.config.typewriter.followCursor!==false)owner.typewriterFollowViews.add(this.view);
+     else owner.typewriterFollowViews.delete(this.view);
+     this.setInteracting(true);
+    }
+    setInteracting(value,refresh=true){
      const allowed=value&&!owner.plugin.writerReviewInteractionGuard?.isSuspended?.()&&
       writerModuleOn(owner.plugin,'typewriter')&&owner.config.typewriter.enabled===true;
+     if(allowed)owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(this.view);
+     else owner.typewriterFollowViews.delete(this.view);
      if(this.interacting===allowed)return;
      this.interacting=allowed;
      if(allowed)owner.typewriterActiveViews.add(this.view);
      else owner.typewriterActiveViews.delete(this.view);
      this.view.dom.classList.toggle('writer-v4-typewriter-engaged',allowed);
-     if(refreshEffect&&this.view.dispatch)this.view.dispatch({effects:refreshEffect.of(null)});
+     if(refresh&&refreshEffect&&this.view.dispatch)this.view.dispatch({effects:refreshEffect.of(null)});
      else this.decorations=this.mark(this.view);
     }
     mark(view){
-     if(!this.interacting||!writerModuleOn(owner.plugin,'typewriter')||!owner.config.typewriter.enabled)
+     if(!this.interacting||!owner.typewriterEnabled()||!view.hasFocus||!writerV137TypewriterSelection(view.state.selection))
       return Decoration.set([]);
      const line=view.state.doc.lineAt(view.state.selection.main.head);
      return Decoration.set([Decoration.line({class:'writer-v4-typewriter-current-line'}).range(line.from)]);
     }
     update(update){
+     if(!update.view.hasFocus||!writerV137TypewriterSelection(update.state.selection)||!owner.typewriterEnabled())this.setInteracting(false,false);
      if(update.docChanged||update.selectionSet||update.viewportChanged||update.focusChanged||
        update.transactions?.some(tr=>tr.effects?.some(effect=>refreshEffect&&effect?.is?.(refreshEffect))))
       this.decorations=this.mark(update.view);
@@ -3878,13 +3990,31 @@ class WriterV4Extras{
      this.view.dom.removeEventListener('wheel',this.onWheel,true);
      this.view.dom.classList.remove('writer-v4-typewriter-engaged');
      owner.typewriterActiveViews.delete(this.view);
+     owner.typewriterFollowViews.delete(this.view);
      owner.typewriterViews.delete(this);
+     owner.updateTypewriterClass();
     }
    },{decorations:value=>value.decorations}));
   }
   }
  updateTypewriterClass(){
-  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
+  const cfg=writerV137TypewriterConfig(this.plugin),enabled=this.typewriterEnabled();
+  if(!enabled)this.resetTypewriterHighlights();
+  if(!cfg.followCursor)for(const instance of this.typewriterViews)this.typewriterFollowViews.delete(instance.view);
+  const current=new Set();
+  if(typeof document!=='undefined'&&document.body?.classList)current.add(document.body);
+  for(const instance of this.typewriterViews){const body=instance.view.dom.ownerDocument?.body;if(body)current.add(body);}
+  this.typewriterBodies=this.typewriterBodies||new Set();
+  for(const body of current)this.typewriterBodies.add(body);
+  for(const body of this.typewriterBodies){
+   const active=enabled&&current.has(body);
+   body.classList.toggle('writer-v4-typewriter',active);
+   body.classList.toggle('writer-v4-typewriter-focus',active&&cfg.focusMode);
+   body.classList.toggle('writer-v137-typewriter-highlight',active&&cfg.highlightLine);
+   if(active)body.style?.setProperty('--writer-typewriter-focus-opacity',String(cfg.focusOpacity));
+   else body.style?.removeProperty('--writer-typewriter-focus-opacity');
+   if(!current.has(body))this.typewriterBodies.delete(body);
+  }
  }
  currentEditor(){
   const app=this.plugin.app;
@@ -4003,7 +4133,7 @@ class WriterV4Extras{
   modal.open();
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Ferramentas integradas · v4','Integrated writing tools · v4')});
+  panel.createEl('h3',{text:writerUi('Menções e ações de IA','Mentions and AI actions')});
   const cfg=this.config;
   const toggle=(section,key,label)=>new Setting(panel).setName(label).addToggle(t=>t.setValue(cfg[section][key]!==false).onChange(async v=>{
    cfg[section][key]=v;if(section==='typewriter'){this.resetTypewriterHighlights();this.updateTypewriterClass();}await this.plugin.saveSettings();
@@ -4030,12 +4160,10 @@ class WriterV4Extras{
    d.addOption('link',writerUi('Wikilink','Wikilink')).addOption('text',writerUi('Apenas texto','Plain text'));
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
   });
-  toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));
-  toggle('typewriter','focusMode',writerUi('Atenuar linhas fora de foco','Dim unfocused lines'));
   toggle('wordwise','enabled',writerUi('Ações de IA para escrita','AI writing actions'));
   panel.createEl('h4',{text:writerUi('Prompts das ações de IA','AI action prompts')});
-  for(const [key,label] of [['improve','Melhorar estilo'],['shorten','Encurtar'],['expand','Expandir'],['simplify','Simplificar'],['tone','Mudar tom'],['dialogue','Melhorar diálogo'],['critique','Revisar pontos fracos'],['brainstorm','Explorar alternativa'],['grammar','Corrigir gramática']]){
-   new Setting(panel).setName(label).addTextArea(t=>{t.inputEl.rows=3;t.setValue(cfg.wordwise.prompts[key]||'').onChange(async v=>{cfg.wordwise.prompts[key]=v;await this.plugin.saveSettings();});});
+  for(const [key,pt,en] of [['improve','Melhorar estilo','Improve style'],['shorten','Encurtar','Shorten'],['expand','Expandir','Expand'],['simplify','Simplificar','Simplify'],['tone','Mudar tom','Change tone'],['dialogue','Melhorar diálogo','Improve dialogue'],['critique','Revisar pontos fracos','Review weak points'],['brainstorm','Explorar alternativa','Explore an alternative'],['grammar','Corrigir gramática','Correct grammar']]){
+   new Setting(panel).setName(writerUi(pt,en)).addTextArea(t=>{t.inputEl.rows=3;t.setValue(cfg.wordwise.prompts[key]||'').onChange(async v=>{cfg.wordwise.prompts[key]=v;await this.plugin.saveSettings();});});
   }
  }
 }
@@ -4044,12 +4172,71 @@ class WriterV4Extras{
 /* Opt-in-while-reviewing LanguageTool checks. Manual review remains available. */
 const WRITER_AUTO_GRAMMAR_DEFAULTS={enabled:true,delayMs:3500,minIntervalMs:9000,maxWindowChars:12000};
 function writerAutoGrammarSettings(settings){
- const old=settings.autoGrammar&&typeof settings.autoGrammar==='object'?settings.autoGrammar:{};
- const cfg=settings.autoGrammar={...WRITER_AUTO_GRAMMAR_DEFAULTS,...old};
+ const old=settings.autoGrammar&&typeof settings.autoGrammar==='object'&&!Array.isArray(settings.autoGrammar)?settings.autoGrammar:{};
+ const cfg=settings.autoGrammar=Object.assign(old,{...WRITER_AUTO_GRAMMAR_DEFAULTS,...old});
+ cfg.enabled=cfg.enabled!==false;
  cfg.delayMs=Math.max(2000,Math.min(15000,Number(cfg.delayMs)||3500));
  cfg.minIntervalMs=Math.max(6000,Math.min(30000,Number(cfg.minIntervalMs)||9000));
  cfg.maxWindowChars=Math.max(4000,Math.min(16000,Number(cfg.maxWindowChars)||12000));
  return cfg;
+}
+const WRITER_GRAMMAR_ENDPOINT='https://api.languagetool.org/v2/check';
+function writerGrammarEndpoint(value){
+ try{
+  const url=new URL(String(value||'').trim()||WRITER_GRAMMAR_ENDPOINT);
+  if(url.protocol==='https:'&&!url.username&&!url.password)return url.toString();
+ }catch(_){}
+ return '';
+}
+function writerGrammarConnectionKey(settings){
+ return [settings.reviewEngine||'basic',settings.reviewEndpoint||'',settings.reviewLanguage||'pt-BR',
+  settings.reviewApiKey||'',settings.reviewUsername||''].join('\u0000');
+}
+function writerGrammarCancel(plugin){
+ plugin._writerGrammarRequestEpoch=(plugin._writerGrammarRequestEpoch||0)+1;
+}
+function writerGrammarCancelled(){
+ const error=new Error(writerUi('Verificação cancelada.','Grammar check cancelled.'));
+ error.name='WriterGrammarCancelled';error.code='WRITER_GRAMMAR_CANCELLED';return error;
+}
+async function writerGrammarRequest(plugin,text){
+ const settings=plugin.settings,epoch=plugin._writerGrammarRequestEpoch||0;
+ const key=writerGrammarConnectionKey(settings);
+ const current=()=>writerModuleOn(plugin,'review')&&plugin.settings.reviewEngine!=='external'&&
+  epoch===(plugin._writerGrammarRequestEpoch||0)&&key===writerGrammarConnectionKey(plugin.settings);
+ if(!current())throw writerGrammarCancelled();
+ const endpoint=writerGrammarEndpoint(settings.reviewEndpoint);
+ if(!endpoint)throw Error(writerUi('Use um endpoint HTTPS válido, sem usuário ou senha na URL.','Use a valid HTTPS endpoint without URL credentials.'));
+ const source=String(text||'');
+ if(source.length>18000)throw Error(writerUi('Limite de 18 mil caracteres por verificação. Escolha um trecho menor.','18,000-character limit per check. Select a shorter passage.'));
+ const body=new URLSearchParams({text:source,language:settings.reviewLanguage||'pt-BR'});
+ const apiKey=String(settings.reviewApiKey||'').trim(),username=String(settings.reviewUsername||'').trim();
+ if(apiKey)body.set('apiKey',apiKey);
+ if(username)body.set('username',username);
+ let response;
+ try{
+  const send=typeof requestUrl==='function'?requestUrl:require('obsidian').requestUrl;
+  response=await send({url:endpoint,method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString(),throw:false});
+ }catch(error){
+  if(!current())throw writerGrammarCancelled();
+  throw Error(writerUi('Não foi possível alcançar o corretor. Confira o endereço e a conexão.','Could not reach the checker. Check the server address and connection.'));
+ }
+ if(!current())throw writerGrammarCancelled();
+ if(response.status<200||response.status>=300){
+  const messages={
+   400:['O corretor rejeitou a solicitação. Confira o idioma e as opções da conta.','The checker rejected this request. Check the language and account options.'],
+   401:['A conta ou a chave do corretor não foi aceita.','The checker did not accept the account or API key.'],
+   403:['A conta não tem permissão para usar este corretor.','This account cannot access the checker.'],
+   413:['O trecho excede o limite deste servidor. Reduza a janela de verificação.','This passage exceeds the server limit. Reduce the checking window.'],
+   429:['Limite de verificações atingido. Aguarde e tente novamente.','Checking rate limit reached. Wait and try again.']
+  };
+  const message=messages[response.status]||['O servidor do corretor está indisponível. Tente novamente mais tarde.','The checker server is unavailable. Try again later.'];
+  throw Error(writerUi(message[0],message[1])+' (HTTP '+response.status+')');
+ }
+ let matches;
+ try{matches=response.json?.matches;}catch(_){}
+ if(!Array.isArray(matches))throw Error(writerUi('Resposta inválida do corretor. Confira o endpoint configurado.','Invalid checker response. Check the configured endpoint.'));
+ return matches;
 }
 // Long manuscripts exceed LanguageTool's single-request limit. Check a bounded
 // window around the cursor and translate its offsets back into full-note offsets.
@@ -4147,12 +4334,12 @@ function writerGrammarPreserveOutside(matches,oldScope,delta){
   .map(m=>({...m,offset:m.offset>=oldScope.to?m.offset+delta:m.offset}));
 }
 class WriterAutoGrammar{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.lastRun=0;this.pendingPath=null;this.destroyed=false;}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.lastRun=0;this.pendingPath=null;this.destroyed=false;this.revision=0;}
  get config(){return this.plugin.settings.autoGrammar;}
- reviewView(){
-  const leaf=this.plugin.app.workspace.getLeavesOfType(VIEW)?.[0];
-  const view=leaf?.view;
-  return this.plugin.settings.reviewEngine!=='external'&&view?.reviewMode?.value==='grammar'&&view?.activeTab==='review'?view:null;
+ reviewView(path=''){
+  if(!writerModuleOn(this.plugin,'review')||this.plugin.settings.reviewEngine==='external')return null;
+  return (this.plugin.app.workspace.getLeavesOfType(VIEW)||[]).map(leaf=>leaf.view)
+   .find(view=>view?.reviewMode?.value==='grammar'&&view?.activeTab==='review'&&(!path||view.reviewFilePath===path))||null;
  }
  register(){
   this.plugin.registerEvent(this.plugin.app.workspace.on('editor-change',(editor,info)=>{
@@ -4170,29 +4357,42 @@ class WriterAutoGrammar{
   // Obsidian Plugin provides register(); minimal testing hosts may not.
   this.plugin.register?.(()=>this.stop());
  }
- cancelPending(){clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
+ cancelPending(){this.revision++;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  stop(){this.destroyed=true;this.cancelPending();}
  schedule(file,{delay}={}){
   if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.plugin.settings.reviewEngine==='external'||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return;
-  const view=this.reviewView();
-  if(!view||view.reviewFilePath!==file.path)return;
+  const view=this.reviewView(file.path);
+  if(!view)return;
   this.pendingPath=file.path;
   clearTimeout(this.timer);
   const cooldown=Math.max(0,this.lastRun+(this.config.minIntervalMs||9000)-Date.now());
   const ms=Math.max(delay??(this.config.delayMs||3500),cooldown);
-  this.timer=setTimeout(()=>this.run(),ms);
+  const revision=++this.revision;
+  this.timer=setTimeout(()=>this.run(revision),ms);
   view.reviewStatus?.setText?.(writerUi('Alterações detectadas. Verificação automática em breve…','Changes detected. Automatic grammar check scheduled…'));
  }
- async run(){
+ async run(revision=this.revision){
+  if(revision!==this.revision)return;
   this.timer=null;
   if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.config?.enabled===false)return;
-  const view=this.reviewView(),path=this.pendingPath;
+  const path=this.pendingPath,view=this.reviewView(path);
   if(!view||!path||view.reviewFilePath!==path)return;
   const file=this.plugin.app.vault.getAbstractFileByPath(path);
   if(!file||file.extension!=='md')return;
   if(view.reviewBusy){this.schedule(file,{delay:1000});return;}
   // No redundant request if a manual check already covered this exact text.
-  const source=await writerCurrentText(this.plugin,file);
+  let source;
+  try{source=await writerCurrentText(this.plugin,file);}
+  catch(error){
+   if(revision===this.revision&&!this.destroyed&&this.reviewView(path)===view){
+    this.pendingPath=null;view.reviewStatus?.setText?.(writerUi('Não foi possível ler a nota para revisar.','Could not read the note for review.'));
+   }
+   return;
+  }
+  // A file read can finish after the user disables review, changes its mode,
+  // switches notes or schedules a newer edit. It must not start a request.
+  if(revision!==this.revision||this.destroyed||this.config?.enabled===false||
+   this.pendingPath!==path||this.reviewView(path)!==view)return;
   if(view.grammarCheckedPath===path&&view.grammarCheckedSource===source){
    this.pendingPath=null;return;
   }
@@ -4204,14 +4404,19 @@ class WriterAutoGrammar{
    typeof before==='string'&&this.plugin.reviewSource===before&&
    Array.isArray(this.plugin.reviewMatches)?this.plugin.reviewMatches.slice():null;
   const diff=cached?writerGrammarDiffSpan(before,source):null;
-  if(diff){
-   const scopes=writerGrammarLocalScopes(before,source,diff.start,diff.oldEnd,diff.newEnd,true);
-   if(scopes.next.text.length<=this.config.maxWindowChars){
-    const stale=await view.recheckGrammarCorrection(file,before,source,diff.start,diff.oldEnd,diff.newEnd,cached,{preferParagraph:true});
-    if(stale)this.schedule(file,{delay:1000});
+  try{
+   if(diff){
+    const scopes=writerGrammarLocalScopes(before,source,diff.start,diff.oldEnd,diff.newEnd,true);
+    if(scopes.next.text.length<=this.config.maxWindowChars){
+     const stale=await view.recheckGrammarCorrection(file,before,source,diff.start,diff.oldEnd,diff.newEnd,cached,{preferParagraph:true});
+     if(stale&&revision===this.revision)this.schedule(file,{delay:1000});
+    }else await view.reviewFile(file,{automatic:true});
    }else await view.reviewFile(file,{automatic:true});
-  }else await view.reviewFile(file,{automatic:true});
-  if(this.pendingPath){
+  }catch(error){
+   if(revision===this.revision&&!this.destroyed&&this.reviewView(path)===view&&error?.code!=='WRITER_GRAMMAR_CANCELLED')
+    view.reviewStatus?.setText?.(writerUi('Não foi possível atualizar a revisão automática.','Could not update automatic review.'));
+  }
+  if(this.pendingPath&&!this.timer){
    const next=this.plugin.app.vault.getAbstractFileByPath(this.pendingPath);
    if(next)this.schedule(next);
   }
@@ -4225,14 +4430,14 @@ const WRITER_MODULES=[
  ['translation','Tradutor','Translator','Oculta tradução do menu, da seleção e do painel.','Hides translation in sidebar and selection menus.'],
  ['chat','Assistente de escrita','Writing assistant','Oculta o chat e ações que abrem o assistente.','Hides chat and assistant shortcuts.'],
  ['review','Revisão e LanguageTool','Review & LanguageTool','Oculta revisão gramatical, estilo e leitor beta.','Hides grammar, style and beta reader.'],
- ['projects','Longform e projetos','Longform & projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
+ ['projects','Livros e projetos','Books and projects','Oculta o painel e os atalhos de projetos.','Hides project pane and shortcuts.'],
  ['writingWidgets','Widgets e blocos interativos','Widgets & interactive blocks','Colunas, progresso, campos YAML e widgets.','Columns, progress, YAML fields and widgets.'],
  ['timelineBlocks','Timelines em Markdown','Markdown timelines','Cronologias verticais e horizontais, temas, imagens e filtros.','Vertical and horizontal timelines, themes, images and filters.'],
  ['zoteroIntegration','Integração de citações Zotero','Zotero quote integration','Destaques de notas importadas como citações.','Imported-note highlights as quotes.'],
  ['styleMate','Estilos de leitura','Reading styles','Tipografia e largura personalizadas por nota.','Scoped note typography and width.'],
  ['sessionNotes','Rascunhos de sessão','Session drafts','Rascunhos temporários em memória.','Ephemeral in-memory drafts.'],
- ['virtualContent','Conteúdo virtual','Virtual Content','Markdown dinâmico por pasta, tag ou propriedade e BookNav automático.','Dynamic Markdown by folder, tag or property and automatic BookNav.'],
- ['bookNavigation','Navegação de capítulos Longform','Longform chapter navigation','Bloco com capítulos e subcapítulos ordenados pelo índice Longform.','Chapter and subchapter navigation based on the Longform scene order.'],
+ ['virtualContent','Conteúdo dinâmico','Dynamic content','Markdown por pasta, tag ou propriedade e navegação automática de capítulos.','Markdown by folder, tag or property and automatic chapter navigation.'],
+ ['bookNavigation','Navegação de capítulos','Chapter navigation','Capítulos e subcapítulos na ordem do índice do projeto.','Chapter and subchapter navigation following the project index.'],
  ['tools','Ferramentas de escrita','Writing tools','Oculta a barra lateral complementar.','Hides supplementary tools pane.'],
  ['imageCaptions','Legendas de imagens','Image captions','Descrições breves em imagens Markdown.','Short descriptions below Markdown images.'],
  ['fictionalChats','Conversas fictícias','Fictional chats','Mensagens em balões com avatares opcionais.','Chat bubbles with optional avatars.'],
@@ -4240,7 +4445,7 @@ const WRITER_MODULES=[
  ['study','Estudos e revisão espaçada','Study and spaced repetition','Baralhos e cartões locais com revisão programada.','Local decks and scheduled flashcards.'],
  ['smartSpaces','Spaces locais','Local Spaces','Coleções virtuais por pasta, tag e propriedades com listas, quadros e tabelas.','Virtual collections from folders, tags and properties with list, board and table views.'],
  ['formatToolbar','Barra de formatação','Formatting toolbar','Ações de Markdown no editor; desligada por padrão no celular.','Markdown actions in editor; off by default on mobile.'],
- ['soundscapes','Soundscapes e rádio','Soundscapes & radio','Rádio e música local com controle inferior e widget na homepage (PC).','Radio and local music with status bar controls and a homepage widget (desktop).'],
+ ['soundscapes','Música e ambiente','Music and ambience','Rádio e música local com controle inferior e widget na homepage (PC).','Radio and local music with status bar controls and a homepage widget (desktop).'],
  ['nativeExplorer','Explorador nativo avançado','Enhanced native explorer','Ícones, cores e visões de pastas sem substituir o painel padrão.','Icons, colors and folder views without replacing the original panel.'],
  ['writingHome','Página inicial de escrita','Writing homepage','Busca, favoritos, rascunhos e projetos.','Search, favorites, drafts and projects.'],
  ['socialBlocks','Posts e respostas','Posts and threaded replies','Posts fictícios em Markdown.','Local fictional social threads.'],
@@ -4250,24 +4455,24 @@ const WRITER_MODULES=[
  ['variants','Variantes','Writing variants','Oculta comparações e variantes de frases.','Hides writing variants.'],
  ['diff','Diff e perfis','Diff & profiles','Oculta revisão seletiva.','Hides selective review.'],
  ['snapshots','Histórico de versões','Version history','Oculta atalhos de snapshots; não apaga backups.','Hides snapshot shortcuts; never deletes backups.'],
- ['tts','Leitura em voz alta','Text to speech','Oculta o leitor e seus controles.','Hides speech controls.'],
+ ['tts','Leitura em voz alta','Read aloud','Oculta o leitor e seus controles.','Hides speech controls.'],
  ['unicode','Unicode','Unicode','Oculta o seletor de símbolos.','Hides symbol picker.'],
  ['templates','Templates e sumário','Templates & table of contents','Oculta modelos e sumários.','Hides templates and table of contents.'],
  ['mentions','Menções','Mentions','Oculta menções de notas.','Hides note mentions.'],
- ['comments','Comentários','Comments','Oculta comentários do Longform; mantém seus dados.','Hides Longform comments; keeps existing data.'],
- ['wordwise','Ações de escrita com IA','AI writing actions','Oculta ações Wordwise e seus menus.','Hides AI writing actions.'],
- ['typewriter','Máquina de escrever','Typewriter','Oculta o modo de foco.','Hides focus mode.'],
+ ['comments','Comentários','Comments','Oculta os comentários dos projetos; mantém seus dados.','Hides project comments; keeps existing data.'],
+ ['wordwise','Ações de escrita com IA','AI writing actions','Oculta ações de escrita com IA e seus menus.','Hides AI writing actions.'],
+ ['typewriter','Foco e sons de digitação','Focus & typing sounds','Modo máquina de escrever, foco e sons opcionais do teclado.','Typewriter mode, focus and optional typing sounds.'],
  ['cursorMemory','Lembrar posição do cursor','Remember cursor position','Salva e restaura posição, seleção e rolagem por nota.','Saves and restores cursor, selection and scroll per note.'],
- ['keyshots','Keyshots · teclado','Keyshots · keyboard','Navegação e transformação de linhas por atalhos no PC.','Desktop keyboard navigation and line actions.'],
- ['extendedSyntax','Extended Syntax','Extended Syntax','Formatação Markdown com delimitadores estendidos.','Extra Markdown delimiters and rendering.'],
- ['pandocSyntax','Pandoc Syntax','Pandoc Syntax','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.'],
- ['easyTyping','Easy Typing','Easy Typing','Digitação e edição rápida, colagem e Backspace inteligentes.','Typing helpers, smart paste and Backspace.'],
- ['smartTypography','Smart Typography','Smart Typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.'],
- ['ruby','Ruby','Ruby','Anotações de pronúncia sobre texto Markdown.','Pronunciation annotations above Markdown text.'],
- ['timestamps','Datas Discord','Discord timestamps','Exibição localizada de marcadores de tempo.','Localized timestamp markup rendering.'],
+ ['keyshots','Atalhos do editor','Editor shortcuts','Navegação e transformação de linhas por atalhos no PC.','Desktop keyboard navigation and line actions.'],
+ ['extendedSyntax','Formatação de texto','Text formatting','Formatação Markdown com delimitadores estendidos.','Extra Markdown delimiters and rendering.'],
+ ['pandocSyntax','Listas e blocos avançados','Advanced lists and blocks','Listas especiais, exemplos, definições e blocos.','Fancy lists, examples, definitions and blocks.'],
+ ['easyTyping','Digitação assistida','Typing assistance','Digitação e edição rápida, colagem e Backspace inteligentes.','Typing helpers, smart paste and Backspace.'],
+ ['smartTypography','Tipografia automática','Automatic typography','Aspas curvas, travessões, reticências e símbolos tipográficos.','Curly quotes, dashes, ellipses and smart symbols.'],
+ ['ruby','Anotações de pronúncia','Pronunciation annotations','Texto pequeno acima das palavras usando a sintaxe Ruby.','Small pronunciation guides above words using Ruby syntax.'],
+ ['timestamps','Datas e horários localizados','Localized dates and times','Exibição localizada de marcadores de tempo.','Localized timestamp markup rendering.'],
  ['ratings','Avaliações interativas','Interactive ratings','Símbolos editáveis no Live Preview.','Interactive symbols in Live Preview.'],
- ['discordSyntax','Subtexto Discord','Discord subtext','Subtexto -# e extensão de spoilers.','-# subtext and extended spoilers.'],
- ['linter','Linter','Linter','Prévia e formatação manual com cópia de recuperação.','Previewed manual formatting with recovery copy.'],
+ ['discordSyntax','Subtexto e spoilers','Subtext and spoilers','Subtexto -# e extensão de spoilers.','-# subtext and extended spoilers.'],
+ ['linter','Revisão de formatação','Formatting review','Prévia e formatação manual com cópia de recuperação.','Previewed manual formatting with recovery copy.'],
  ['readingTime','Tempo de leitura','Reading time','Estimativa de leitura da nota e seleção.','Reading estimates for notes and selections.']
 ];
 const WRITER_MODULE_DEFAULTS=Object.fromEntries(WRITER_MODULES.map(([id])=>[id,id!=='smartSpaces']));
@@ -4736,7 +4941,7 @@ class WriterKeyshots{
  register(){
   const p=this.plugin;
   for(const [id,pt,en] of WRITER_KEYSHOTS_ACTIONS){
-   p.addCommand({id:'v5-keyshots-'+id,name:'Keyshots: '+writerUi(pt,en),
+   p.addCommand({id:'v5-keyshots-'+id,name:writerUi('Atalhos do editor: ','Editor shortcuts: ')+writerUi(pt,en),
     editorCheckCallback:(checking,editor,view)=>{
      if(!this.available()||!editor)return false;
      if(!checking)this.perform(id,editor,view);
@@ -4759,7 +4964,7 @@ class WriterKeyshots{
   if(keymap?.of)p.registerEditorExtension(keymap.of(map));
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Keyshots · navegação por teclado','Keyshots · keyboard navigation')});
+  panel.createEl('h3',{text:writerUi('Atalhos do editor','Editor shortcuts')});
   panel.createEl('p',{text:writerUi('Comandos para mover, duplicar, inserir e organizar linhas. Funciona somente no editor desktop. Os atalhos podem ser alterados nas configurações de teclas do Obsidian.','Desktop-only commands to move, duplicate, insert and organize lines. Assign custom shortcuts in Obsidian Hotkeys.'),cls:'dictionary-muted'});
   new Setting(panel).setName(writerUi('Ativar comandos de teclado','Enable keyboard commands'))
    .addToggle(t=>t.setValue(this.cfg.enabled).onChange(async v=>{this.cfg.enabled=v;await this.plugin.saveSettings();}));
@@ -4920,10 +5125,10 @@ class WriterExtendedSyntax{
   }
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Extended Syntax · Markdown','Extended Syntax · Markdown')});
-  panel.createEl('p',{text:writerUi('Renderização adicional; não reinstala a antiga toolbar nem comandos de formatação.','Extra syntax without reinstating the retired toolbar or formatting commands.'),cls:'dictionary-muted'});
+  panel.createEl('h3',{text:writerUi('Formatação de texto','Text formatting')});
+  panel.createEl('p',{text:writerUi('Use delimitadores Markdown para sublinhado, sobrescrito, subscrito, destaques e blocos interativos.','Use Markdown delimiters for underline, superscript, subscript, highlights and interactive blocks.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Habilitar sintaxe estendida','Enable extended syntax'],
+   ['enabled','Ativar formatação de texto','Enable text formatting'],
    ['underline','Sublinhado ++texto++','Underline ++text++'],
    ['spoiler','Spoiler ||texto||','Spoiler ||text||'],
    ['superscript','Sobrescrito ^texto^','Superscript ^text^'],
@@ -5146,10 +5351,10 @@ class WriterPandocSyntax{
   dialog.open();
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Pandoc Syntax · listas e blocos','Pandoc Syntax · lists and blocks')});
-  panel.createEl('p',{text:writerUi('Renderização local de Markdown compatível com Pandoc. Exportação por executável Pandoc e filtros Lua não estão incluídos nesta etapa.','Local Pandoc-compatible Markdown rendering. Pandoc executable exports and Lua filters are not part of this stage.'),cls:'dictionary-muted'});
+  panel.createEl('h3',{text:writerUi('Listas e blocos avançados','Advanced lists and blocks')});
+  panel.createEl('p',{text:writerUi('Visualização local de listas, blocos e índices com Markdown compatível com Pandoc. Estes recursos não exigem instalar o executável Pandoc.','Local lists, blocks and outlines using Pandoc-compatible Markdown. These rendering features do not require the Pandoc executable.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Habilitar Pandoc Syntax','Enable Pandoc Syntax'],
+   ['enabled','Ativar listas e blocos avançados','Enable advanced lists and blocks'],
    ['fancyLists','Listas alfabéticas, romanas e #.','Alphabetic, Roman and #. lists'],
    ['definitionLists','Listas de definições','Definition lists'],
    ['exampleLists','Exemplos numerados (@id)','Numbered examples (@id)'],
@@ -5448,13 +5653,13 @@ class WriterEasyTyping{
     ed.setSelection({line:from,ch:0},{line:to,ch:ed.getLine(to).length});
    }]
   ];
-  for(const [id,pt,en,action] of commands)p.addCommand({id:'v5-easy-'+id,name:'Easy Typing: '+writerUi(pt,en),editorCheckCallback:(checking,editor)=>{
+  for(const [id,pt,en,action] of commands)p.addCommand({id:'v5-easy-'+id,name:writerUi('Digitação: ','Typing: ')+writerUi(pt,en),editorCheckCallback:(checking,editor)=>{
    if(!this.active())return false;
    if(!checking)action(editor);return true;
   }});
-  p.addCommand({id:'v5-easy-toggle',name:writerUi('Easy Typing: alternar assistentes','Easy Typing: toggle helpers'),callback:async()=>{
+  p.addCommand({id:'v5-easy-toggle',name:writerUi('Digitação assistida: ativar/desativar','Typing assistance: toggle'),callback:async()=>{
    this.cfg.enabled=!this.cfg.enabled;await p.saveSettings();
-   new Notice(writerUi('Digitação fácil: ','Easy Typing: ')+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
+   new Notice(writerUi('Digitação assistida: ','Typing assistance: ')+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
   }});
   const {keymap,EditorView}=require('@codemirror/view');
   const bindings=[
@@ -5492,10 +5697,10 @@ class WriterEasyTyping{
   }));
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Easy Typing · digitação eficiente','Easy Typing · editing assistance')});
+  panel.createEl('h3',{text:writerUi('Digitação assistida','Typing assistance')});
   panel.createEl('p',{text:writerUi('Tab e Backspace inteligentes, colagem em listas, substituições literais e comandos manuais. Sem a antiga toolbar.','Tab and Backspace helpers, smart list pasting, literal rules and editor commands; no retired toolbar.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Ativar Easy Typing','Enable Easy Typing'],['tabOut','Tab sai de símbolos pareados','Tab moves past paired symbols'],
+   ['enabled','Ativar digitação assistida','Enable typing assistance'],['tabOut','Tab sai de símbolos pareados','Tab moves past paired symbols'],
    ['smartPaste','Colagem inteligente em listas e citações','Smart paste in lists and quotes'],
    ['smartBackspace','Backspace em itens vazios','Smart Backspace for empty list items'],
    ['autoCapitalize','Maiúsculas no início de frases','Auto capitalize sentences'],
@@ -5509,8 +5714,8 @@ class WriterEasyTyping{
   const section=panel.createDiv({cls:'writer-typing-rules'});
   section.createEl('h4',{text:writerUi('Substituições automáticas de texto','Automatic text replacements')});
   section.createEl('p',{cls:'dictionary-muted',text:writerUi(
-   'Digite um atalho e escolha o texto que aparece no lugar. Ex.: vc → você ou att → atenciosamente. Aceita espaços, quebras e o caractere |; não usa expressões regulares. Aspas e travessões ficam em Smart Typography.',
-   'Type a shortcut and choose what it becomes. For example, btw → by the way. Spaces and | are allowed; regular expressions are separate. Quotes and dashes are configured in Smart Typography.'
+   'Digite um atalho e escolha o texto que aparece no lugar. Ex.: vc → você ou att → atenciosamente. Aceita espaços, quebras e o caractere |; não usa expressões regulares. Aspas e travessões ficam em Tipografia automática.',
+   'Type a shortcut and choose what it becomes. For example, btw → by the way. Spaces and | are allowed; regular expressions are separate. Quotes and dashes are configured in Automatic typography.'
   )});
   const list=section.createDiv({cls:'writer-typing-rule-list'});
   const label=rule=>rule.from+' → '+(rule.to||writerUi('(apagar)','(delete)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');
@@ -5630,7 +5835,7 @@ class WriterEasyAdvanced{
  active(){return this.plugin.writerEasyTyping?.active()===true;}
  register(){
   const p=this.plugin;
-  p.addCommand({id:'v5-easy-insert-snippet',name:writerUi('Easy Typing: inserir modelo com Tab','Easy Typing: insert navigation snippet'),editorCheckCallback:(checking)=>{
+  p.addCommand({id:'v5-easy-insert-snippet',name:writerUi('Digitação: inserir modelo com campos','Typing: insert snippet with fields'),editorCheckCallback:(checking)=>{
    if(!this.active()||!this.cfg.snippets.length)return false;
    if(!checking)this.openPicker();
    return true;
@@ -5966,10 +6171,10 @@ class WriterSmartTypography{
   p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Smart Typography · tipografia','Smart Typography')});
+  panel.createEl('h3',{text:writerUi('Tipografia automática','Automatic typography')});
   panel.createEl('p',{text:writerUi('Substituições somente durante digitação em prosa. Código, fórmulas, URLs e outros contextos estruturados são ignorados sempre que detectados.','Replacements while typing prose; recognized code, math and structured contexts are skipped.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Ativar Smart Typography','Enable Smart Typography'],['curlyQuotes','Aspas curvas e apóstrofos','Curly quotes and apostrophes'],
+   ['enabled','Ativar tipografia automática','Enable automatic typography'],['curlyQuotes','Aspas curvas e apóstrofos','Curly quotes and apostrophes'],
    ['dashes','Travessões e meia-risca','Dashes'],['ellipsis','Reticências (...)','Ellipsis (...)'],
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
@@ -6159,6 +6364,17 @@ function writerV1048SearchIndex(sections,panel,active,cache){
  const all=[];
  for(const [id,items] of cache)for(const item of items)if(labels.has(id))
   all.push({...item,section:labels.get(id)});
+ // The build-time index contains labels only, never saved values or callbacks.
+ // Options remain discoverable before their settings page has been visited.
+ if(typeof WRITER_SETTINGS_SEARCH_INDEX!=='undefined')for(const item of WRITER_SETTINGS_SEARCH_INDEX){
+  if(!labels.has(item.id))continue;
+  const title=writerUi(item.titlePt,item.titleEn);
+  const keywords=[item.titlePt,item.titleEn,item.descriptionPt,item.descriptionEn,item.keywords].filter(Boolean).join(' ');
+  const existing=all.find(entry=>entry.id===item.id&&writerWorkspaceSearchNormalize(entry.title)===writerWorkspaceSearchNormalize(title));
+  if(existing){existing.keywords=keywords;continue;}
+  all.push({id:item.id,title,section:labels.get(item.id),description:writerUi(item.descriptionPt||'',item.descriptionEn||''),
+   keywords,focus:writerUi(item.focusPt||item.titlePt,item.focusEn||item.titleEn),source:'catalog'});
+ }
  // The toolbar's built-in format buttons are settings options even when
  // their "Choose and reorder buttons" section has not yet been expanded.
  const toolbar=sections.find(([id,label])=>/formattoolbar|formatting toolbar|barra de formata|format tool/i
@@ -6204,7 +6420,7 @@ function writerV1048SearchOptions(entries,query){
   return {...item,score};
  }).filter(Boolean).sort((a,b)=>b.score-a.score||a.title.localeCompare(b.title)).slice(0,25);
 }
-function writerV1048SearchReveal(panel,title){
+function writerV1048SearchReveal(panel,title,focus=false){
  if(!panel?.querySelectorAll)return false;
  const norm=writerWorkspaceSearchNormalize(title);
  let found=null;
@@ -6219,13 +6435,25 @@ function writerV1048SearchReveal(panel,title){
    if(writerWorkspaceSearchNormalize(summary).includes(norm)){found=detail;break;}
   }
  }
+ if(!found)for(const control of panel.querySelectorAll('input,textarea,select,button')){
+  const label=control.getAttribute?.('aria-label')||control.textContent||'';
+  if(writerWorkspaceSearchNormalize(label)===norm){found=control;break;}
+ }
  if(!found)return false;
+ for(const previous of panel.querySelectorAll('.writer-v1048-search-target'))
+  previous.classList?.remove?.('writer-v1048-search-target');
  found.hidden=false;
+ if(found.tagName?.toLowerCase()==='details')found.open=true;
  for(let ancestor=found.parentElement;ancestor&&ancestor!==panel;ancestor=ancestor.parentElement){
   if(ancestor.tagName?.toLowerCase()==='details')ancestor.open=true;
  }
  found.classList?.add?.('writer-v1048-search-target');
  found.scrollIntoView?.({block:'center',behavior:'auto'});
+ if(focus){
+  const selector='input:not([type="hidden"]):not(:disabled),textarea:not(:disabled),select:not(:disabled),button:not(:disabled),[role="switch"]:not([aria-disabled="true"]),[role="checkbox"]:not([aria-disabled="true"])';
+  const control=found.matches?.(selector)?found:found.querySelector?.(selector)||found.querySelector?.('summary');
+  control?.focus?.({preventScroll:true});
+ }
  return true;
 }
 /* Group identical options from different sections, without building fake
@@ -6252,6 +6480,7 @@ function writerV1050SearchTarget(container,entry,activate){
  node.createSpan({cls:'writer-v1050-result-target-text',text:entry.section});
  node.addEventListener('click',()=>activate(entry));
  node.addEventListener('keydown',event=>{
+  if(event.isComposing||event.keyCode===229||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
   if(event.key!=='Enter'&&event.key!==' ')return;
   event.preventDefault();activate(entry);
  });
@@ -6271,15 +6500,17 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
    'aria-label':writerUi('Resultados de configurações','Settings results')}});
  feedback.hidden=true;
  const cache=new Map();
- let latest=[];
+ let latest=[],jumpSerial=0;
  const jump=entry=>{
   if(!entry)return;
   input.value='';feedback.hidden=true;
   const previous=getActive();
+  const serial=++jumpSerial;
   if(entry.id!==previous)onOpen(entry.id);
   const reveal=()=>{
+   if(serial!==jumpSerial||entry.id!==getActive()||input.value)return;
    const panel=getPanel();
-   if(!writerV1048SearchReveal(panel,entry.focus||entry.title)){
+   if(!writerV1048SearchReveal(panel,entry.focus||entry.title,true)){
     // Keep the correct section visible if a nested control is rendered lazily.
     writerWorkspaceFilterRows(panel,'');
    }
@@ -6292,8 +6523,11 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   feedback.empty();feedback.hidden=!q;
   const all=writerV1048SearchIndex(sections,panel,active,cache);
   // Also index not-yet-opened categories, with contextual aliases and fuzzy ranking.
-  const locations=sections.map(([id,title])=>({id,title,section:title,
-   keywords:WRITER_WORKSPACE_HINTS[id]||'',focus:'',source:'category'}));
+  const locations=sections.map(([id,title])=>{
+   const meta=typeof WRITER_SETTINGS_CATALOG!=='undefined'?WRITER_SETTINGS_CATALOG.find(item=>item.id===id):null;
+   return {id,title,section:title,aliases:meta?.keywords||'',keywords:[WRITER_WORKSPACE_HINTS[id],meta?.pt,meta?.en,
+    meta?.descriptionPt,meta?.descriptionEn,meta?.keywords].filter(Boolean).join(' '),focus:'',source:'category'};
+  });
   latest=writerV131RankSettings([...all,...locations],q,18);
   // Fuzzy results remain in the compact dropdown; do not hide actual settings
   // just because the approximate query does not literally match their text.
@@ -6328,6 +6562,7 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
  };
  input.addEventListener('input',update);
  input.addEventListener('keydown',event=>{
+  if(event.isComposing||event.keyCode===229||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
   if(event.key==='Escape'){input.value='';update();}
   if(event.key==='Enter'&&latest[0]){event.preventDefault();jump(latest[0]);}
  });
@@ -6339,12 +6574,12 @@ function writerWorkspaceNormalizeShortcut(key){
 function writerWorkspaceHotkeyAudit(plugin){
  const items=[],status=[],cfg=plugin.settings;
  if(!plugin.app.isMobile&&writerModuleOn(plugin,'keyshots')&&cfg.keyshots?.enabled&&cfg.keyshots.shortcuts){
-  for(const [key,action] of writerKeyshotsBindings(cfg.keyshots.preset))items.push({key,action:'Keyshots: '+action,owner:'basic'});
+  for(const [key,action] of writerKeyshotsBindings(cfg.keyshots.preset))items.push({key,action:writerUi('Atalhos do editor: ','Editor shortcuts: ')+action,owner:'basic'});
  }
  if(writerModuleOn(plugin,'easyTyping')&&cfg.easyTyping?.enabled){
-  if(cfg.easyTyping.tabOut)items.push({key:'Tab',action:'Easy Typing: tab-out (context only)',owner:'basic'});
-  if(cfg.easyTyping.smartBackspace)items.push({key:'Backspace',action:'Easy Typing: empty list (context only)',owner:'basic'});
-  items.push({key:'Shift-Tab',action:'Easy Typing: previous snippet (context only)',owner:'basic'});
+  if(cfg.easyTyping.tabOut)items.push({key:'Tab',action:writerUi('Digitação: sair do par (contextual)','Typing: leave pair (context only)'),owner:'basic'});
+  if(cfg.easyTyping.smartBackspace)items.push({key:'Backspace',action:writerUi('Digitação: lista vazia (contextual)','Typing: empty list (context only)'),owner:'basic'});
+  items.push({key:'Shift-Tab',action:writerUi('Digitação: campo anterior do modelo (contextual)','Typing: previous snippet field (context only)'),owner:'basic'});
  }
  const duplicates=[],seen=new Map();
  for(const item of items){
@@ -6370,7 +6605,7 @@ function writerWorkspaceHotkeyAudit(plugin){
       duplicates.push({key:own.key,first:own.action,second:command.name||command.id,kind:'host'});
     }
    }
-  }catch(error){status.push('Host hotkey API unavailable');hostScanned=false;}
+  }catch(error){status.push(writerUi('API de atalhos do aplicativo indisponível','Host hotkey API unavailable'));hostScanned=false;}
  }
  return {items,duplicates,hostScanned,status};
 }
@@ -6385,6 +6620,7 @@ class WriterWorkspaceProfiles{
   this.plugin.writerV4Extras?.updateTypewriterClass?.();
   this.plugin.refreshModuleVisibility?.();
   writerV5RefreshEditors(this.plugin);
+  this.refreshSettings?.();
   new Notice(writerUi('Perfil aplicado: ','Applied profile: ')+name);
  }
  async undo(){
@@ -6392,6 +6628,7 @@ class WriterWorkspaceProfiles{
   const old=this.cfg.undo;this.cfg.undo=null;
   writerWorkspaceApplyValues(this.plugin.settings,old);
   await this.plugin.saveSettings();this.plugin.writerV4Extras?.updateTypewriterClass?.();writerV5RefreshEditors(this.plugin);
+  this.refreshSettings?.();
   new Notice(writerUi('Preferências anteriores restauradas.','Previous preferences restored.'));
  }
  async saveCustom(name){
@@ -6401,6 +6638,7 @@ class WriterWorkspaceProfiles{
   this.cfg.saved.push({name:title,values:writerWorkspaceCapture(this.plugin.settings)});
   this.cfg.saved=this.cfg.saved.slice(-10);
   await this.plugin.saveSettings();
+  this.refreshSettings?.();
   new Notice(writerUi('Perfil salvo: ','Saved profile: ')+title);
  }
  register(){
@@ -6424,33 +6662,47 @@ class WriterWorkspaceProfiles{
   new Picker(plugin.app).open();
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Perfis rápidos de escrita','Quick writing profiles')});
-  panel.createEl('p',{text:writerUi('Alterne preferências de edição, não conteúdo. Não altera chaves de API, textos, prompts, snapshots ou dicionários. A última troca pode ser desfeita.','Switch editor preferences, never document content. API keys, prompts, snapshots and dictionaries are untouched. The previous setup can be restored.'),cls:'dictionary-muted'});
+  const root=panel.createDiv({cls:'writer-v137-profile-settings'});
+  let chosen='',selectedToDelete='';
+  const mark=(control,action)=>{(control.buttonEl||control.selectEl)?.setAttribute?.('data-profile-action',action);return control;};
+  const render=()=>{
+  const active=root.ownerDocument?.activeElement;
+  const focus=root.contains?.(active)?active?.getAttribute?.('data-profile-action'):null;
+  root.empty();
+  root.createEl('h3',{text:writerUi('Perfis rápidos de escrita','Quick writing profiles')});
+  root.createEl('p',{text:writerUi('Alterne preferências de edição, não conteúdo. Não altera chaves de API, textos, prompts, snapshots ou dicionários. A última troca pode ser desfeita.','Switch editor preferences, never document content. API keys, prompts, snapshots and dictionaries are untouched. The previous setup can be restored.'),cls:'dictionary-muted'});
   const items=[...Object.entries(WRITER_WORKSPACE_PRESETS).map(([key,p])=>({key,label:writerUi(p.labelPt,p.labelEn),values:p.values})),...this.cfg.saved.map(item=>({key:'custom:'+item.name,label:item.name,values:item.values}))];
-  const selector=panel.createDiv({cls:'writer-v51-profile-actions'});
-  let chosen=items[0]?.key;
+  if(!items.some(item=>item.key===chosen))chosen=items.find(item=>item.label===this.cfg.lastPreset)?.key||items[0]?.key;
+  const selector=root.createDiv({cls:'writer-v51-profile-actions'});
   new Setting(selector).setName(writerUi('Escolher perfil','Choose profile')).addDropdown(d=>{
+   mark(d,'choose');
    for(const item of items)d.addOption(item.key,item.label);
+   d.setValue(chosen);
    d.onChange(value=>chosen=value);
-  }).addButton(b=>b.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
+  }).addButton(b=>mark(b,'apply').setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
    const item=items.find(x=>x.key===chosen);if(item)await this.apply(item.label,item.values);
   }));
-  new Setting(panel).setName(writerUi('Guardar perfil atual','Save current profile'))
+  new Setting(root).setName(writerUi('Guardar perfil atual','Save current profile'))
    .setDesc(writerUi('Salva somente opções de edição permitidas, até 10 perfis.','Saves only selected editor preferences, up to 10 profiles.'))
-   .addButton(b=>b.setButtonText(writerUi('Salvar como…','Save as…')).onClick(()=>{
+   .addButton(b=>mark(b,'save').setButtonText(writerUi('Salvar como…','Save as…')).onClick(()=>{
     new TextPrompt(this.plugin.app,writerUi('Nome do perfil','Profile name'),value=>this.saveCustom(value)).open();
    }));
   if(this.cfg.saved.length){
-   new Setting(panel).setName(writerUi('Excluir perfil salvo','Delete saved profile')).addDropdown(d=>{
+   if(!this.cfg.saved.some(item=>item.name===selectedToDelete))selectedToDelete=this.cfg.saved[0]?.name||'';
+   new Setting(root).setName(writerUi('Excluir perfil salvo','Delete saved profile')).addDropdown(d=>{
+    mark(d,'delete-choice');
     for(const item of this.cfg.saved)d.addOption(item.name,item.name);
-    d.onChange(v=>this.selectedToDelete=v);
-   }).addButton(b=>b.setButtonText(writerUi('Excluir','Delete')).onClick(async()=>{
-    const name=this.selectedToDelete||this.cfg.saved[0]?.name;
-    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==name);await this.plugin.saveSettings();this.plugin.writerSettingsTab?.display?.();
+    d.setValue(selectedToDelete).onChange(v=>selectedToDelete=v);
+   }).addButton(b=>mark(b,'delete').setButtonText(writerUi('Excluir','Delete')).onClick(async()=>{
+    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==selectedToDelete);await this.plugin.saveSettings();this.refreshSettings?.();
    }));
   }
-  new Setting(panel).setName(writerUi('Desfazer última aplicação','Undo last application'))
-   .addButton(b=>b.setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.undo()));
+  new Setting(root).setName(writerUi('Desfazer última aplicação','Undo last application'))
+   .addButton(b=>mark(b,'restore').setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.undo()));
+  if(focus)(root.querySelector?.('[data-profile-action="'+focus+'"]:not(:disabled)')||root.querySelector?.('select:not(:disabled)'))?.focus?.({preventScroll:true});
+  };
+  this.refreshSettings=()=>{if(root.isConnected!==false)render();};
+  render();
  }
 }
 function writerWorkspaceRenderHotkeys(plugin,panel){
@@ -6473,7 +6725,7 @@ function writerWorkspaceRenderHotkeys(plugin,panel){
   container.createEl('p',{text:writerUi('Combinações contextuais (Tab/Backspace) só atuam quando o editor reconhece uma situação compatível.','Context-dependent Tab/Backspace bindings only act when a matching editor context exists.')});
  };
  render();
- new Setting(panel).setName(writerUi('Rever ou desativar atalhos de Keyshots','Review Keyshots shortcuts')).addButton(b=>b.setButtonText(writerUi('Desativar perfil automático','Disable preset shortcuts')).onClick(async()=>{
+ new Setting(panel).setName(writerUi('Rever ou desativar atalhos de edição','Review editor shortcuts')).addButton(b=>b.setButtonText(writerUi('Desativar perfil automático','Disable preset shortcuts')).onClick(async()=>{
   if(plugin.settings.keyshots){plugin.settings.keyshots.shortcuts=false;plugin.settings.keyshots.preset='none';await plugin.saveSettings();render();}
  }));
  new Setting(panel).setName(writerUi('Atualizar diagnóstico','Refresh shortcut audit')).addButton(b=>b.setButtonText(writerUi('Analisar','Scan')).onClick(render));
@@ -16027,10 +16279,10 @@ const WRITER_V9_CAL_VIEW_OPTIONS=[['month','Mês','Month'],['week','Semana','Wee
 const WRITER_V9_CAL_REPEAT=[['none','Não repetir','Does not repeat'],['daily','Diariamente','Daily'],['weekly','Semanalmente','Weekly'],['monthly','Mensalmente','Monthly'],['yearly','Anualmente','Yearly']];
 function writerV9CalendarMerge(settings){
  const prior=settings.v9Calendar&&typeof settings.v9Calendar==='object'&&!Array.isArray(settings.v9Calendar)?settings.v9Calendar:{};
- const cfg=settings.v9Calendar={
+ const cfg=settings.v9Calendar=Object.assign(prior,{
   defaultView:'month',showSidebar:true,showSidebarMobile:false,compactMonth:true,
   startHour:7,endHour:21,maxMonthEvents:3,...prior
- };
+ });
  cfg.defaultView=WRITER_V9_CAL_VIEWS.includes(cfg.defaultView)?cfg.defaultView:'month';
  cfg.showSidebar=cfg.showSidebar!==false;cfg.showSidebarMobile=cfg.showSidebarMobile===true;
  cfg.compactMonth=cfg.compactMonth!==false;
@@ -16455,11 +16707,17 @@ function writerV9CalendarSettings(plugin,panel){
   .addSlider(slider=>slider.setLimits(1,5,1).setValue(cfg.maxMonthEvents).setDynamicTooltip().onChange(async value=>{
    cfg.maxMonthEvents=value;await plugin.saveSettings();refresh();
   }));
+ const hourSliders={};
  for(const [key,pt,en,min,max] of [['startHour','Hora inicial da grade','Timeline start hour',0,20],
   ['endHour','Hora final da grade','Timeline end hour',1,24]]){
-  new Setting(panel).setName(writerUi(pt,en)).addSlider(slider=>slider.setLimits(min,max,1).setValue(cfg[key]).setDynamicTooltip().onChange(async value=>{
-   cfg[key]=value;writerV9CalendarMerge(plugin.settings);await plugin.saveSettings();refresh();
-  }));
+  new Setting(panel).setName(writerUi(pt,en)).addSlider(slider=>{
+   hourSliders[key]=slider;
+   slider.setLimits(min,max,1).setValue(cfg[key]).setDynamicTooltip().onChange(async value=>{
+    cfg[key]=value;writerV9CalendarMerge(plugin.settings);
+    for(const [field,control] of Object.entries(hourSliders))control.setValue(cfg[field]);
+    await plugin.saveSettings();refresh();
+   });
+  });
  }
  new Setting(panel).setName(writerUi('Abrir calendário de escrita','Open writing calendar'))
   .addButton(button=>button.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));
@@ -16562,7 +16820,7 @@ class WriterV91SoundPlayer{
   return [{name:preset[1],id:preset[2]}];
  }
  get track(){const tracks=this.tracks;return tracks[Math.min(Math.max(0,this.trackIndex),tracks.length-1)]||null;}
- get label(){return this.track?.basename||this.track?.name||this.station?.[1]||'Soundscapes';}
+ get label(){return this.track?.basename||this.track?.name||this.station?.[1]||writerUi('Música e ambiente','Music and ambience');}
  get videoId(){return this.cfg.station==='my-music'?'':this.track?.id||'';}
  get webOpen(){return Boolean(this.guest?.isConnected&&this.webUrl);}
  get miniVisible(){return Boolean(this.dock?.isConnected&&this.dockOpen);}
@@ -16579,10 +16837,10 @@ class WriterV91SoundPlayer{
   if(this.status){this.status.addClass('writer-v91-sound-status');
    if(typeof writerV132ProtectStatusBar==='function')writerV132ProtectStatusBar(this.plugin,this.status);
    this.renderStatus();}
-  this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Soundscapes: reproduzir ou pausar','Soundscapes: play or pause'),callback:()=>this.toggle()});
-  this.plugin.addCommand({id:'v91-sound-mini-player',name:writerUi('Soundscapes: mostrar mini player','Soundscapes: show mini player'),callback:()=>this.showMiniPlayer()});
-  this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Soundscapes: próxima faixa','Soundscapes: next track'),callback:()=>this.next()});
-  this.plugin.addCommand({id:'v91-sound-library',name:writerUi('Soundscapes: abrir Minha Música','Soundscapes: open My Music'),callback:()=>this.libraryModal()});
+  this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Música: reproduzir ou pausar','Music: play or pause'),callback:()=>this.toggle()});
+  this.plugin.addCommand({id:'v91-sound-mini-player',name:writerUi('Música: mostrar player compacto','Music: show mini player'),callback:()=>this.showMiniPlayer()});
+  this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Música: próxima faixa','Music: next track'),callback:()=>this.next()});
+  this.plugin.addCommand({id:'v91-sound-library',name:writerUi('Música: abrir biblioteca','Music: open library'),callback:()=>this.libraryModal()});
   this.plugin.register?.(()=>this.destroy());
   if(this.cfg.autoplay&&this.cfg.enabled)this.plugin.app.workspace.onLayoutReady?.(()=>this.play());
  }
@@ -16601,7 +16859,7 @@ class WriterV91SoundPlayer{
   if(!doc?.body)throw new Error('Document body unavailable');
   const panel=doc.body.createDiv({cls:'writer-v91-mini-player is-collapsed'});
   panel.setAttribute('role','region');
-  panel.setAttribute('aria-label',writerUi('Mini player Soundscapes','Soundscapes mini player'));
+  panel.setAttribute('aria-label',writerUi('Player compacto de música','Music mini player'));
   const head=panel.createDiv({cls:'writer-v91-mini-head'});
   const title=head.createSpan({cls:'writer-v91-mini-title',text:this.label});
   const hide=head.createEl('button',{attr:{type:'button','aria-label':writerUi('Recolher sem parar','Hide without stopping')}});
@@ -16878,7 +17136,7 @@ class WriterV91SoundPlayer{
     active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar rádio','Start radio');
    play.setAttribute('aria-label',playLabel);
    volume.disabled=!this.cfg.enabled;
-   volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');
+   volume.title=writerUi('Volume da música','Music volume');
    play.title=playLabel;
    next.title=writerUi('Próxima faixa','Next track');
    next.disabled=!this.cfg.enabled||this.tracks.length<2;root.classList.toggle('is-playing',active);
@@ -16926,18 +17184,18 @@ class WriterV91SoundPlayer{
 function writerV91HomeSoundscape(view,parent){
  // All home widgets exist independent of playback and platform. In particular,
  // mobile retains the same configurable/reorderable card instead of omitting it.
- const card=view.card(parent,'soundscape','Soundscapes · rádio','Soundscapes · radio');
+ const card=view.card(parent,'soundscape','Música e ambiente','Music and ambience');
  card.addClass('writer-v91-sound-widget');
  if(view.plugin.app.isMobile){
   card.createEl('p',{cls:'writer-v8-home-muted writer-v91-sound-unavailable',
-   text:writerUi('A reprodução do Soundscapes não está disponível no celular devido às limitações de áudio e Webview do Obsidian mobile.',
-    'Soundscapes playback is unavailable on mobile due to Obsidian mobile audio and Webview limitations.')});
+   text:writerUi('A reprodução de música não está disponível no celular devido às limitações de áudio e Webview do Obsidian mobile.',
+    'Music playback is unavailable on mobile due to Obsidian mobile audio and Webview limitations.')});
   return card;
  }
  const player=view.plugin.writerV91Sound;
  if(!player){
   card.createEl('p',{cls:'writer-v8-home-muted writer-v91-sound-unavailable',
-   text:writerUi('O player Soundscapes não está disponível nesta sessão.','Soundscapes player is unavailable in this session.')});
+   text:writerUi('O player de música não está disponível nesta sessão.','Music player is unavailable in this session.')});
   return card;
  }
  const preview=card.createDiv({cls:'writer-v91-sound-preview'});
@@ -16969,7 +17227,7 @@ function writerV91HomeSoundscape(view,parent){
    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
   const multi=player.tracks.length>1;back.disabled=!multi;forward.disabled=!multi;
   slider.value=String(player.cfg.volume);slider.disabled=!player.cfg.enabled;
-  slider.title=writerUi('Volume do Soundscapes','Soundscapes volume');
+  slider.title=writerUi('Volume da música','Music volume');
   heading.textContent=player.label;
   detail.textContent=local?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('YouTube no mini player integrado','YouTube in integrated mini player');
   const id=player.videoId;
@@ -17019,15 +17277,15 @@ function writerV91SoundPlaylistEditor(plugin,initial,done){
 }
 function writerV91SoundSettings(plugin,panel){
  const cfg=plugin.settings.v91Sound;
- panel.createEl('h3',{text:'Soundscapes'});
+ panel.createEl('h3',{text:writerUi('Música e ambiente','Music and ambience')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'As rádios abrem um mini player dentro do Obsidian, sem criar abas. O volume é controlado pelo mesmo slider na Homepage, na barra de status e no mini player. Recolher preserva a reprodução; Parar encerra a rádio. Alguns vídeos podem bloquear incorporação (erro 153). Minha Música continua local.',
-  'Radio stations open an in-app mini player without tabs. The same volume setting is shared by the Homepage, status bar and mini player sliders. Hiding keeps playback running; Stop ends the radio. Some videos block embedding (error 153). My Music stays local.'
+  'A rádio toca em segundo plano, sem criar abas. Use o player compacto para ver o vídeo. O volume é compartilhado entre a página inicial, a barra de status e o player. Recolher preserva a reprodução; Parar encerra a rádio. Alguns vídeos podem bloquear incorporação (erro 153). Minha Música usa arquivos locais.',
+  'Radio plays in the background without opening tabs. Open the mini player to see its video. Volume is shared by the homepage, status bar and player. Hiding keeps playback running; Stop ends the radio. Some videos block embedding (error 153). My Music uses local files.'
  )});
  if(plugin.app.isMobile){
   panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Rádios e reprodução estão disponíveis apenas no computador.','Radio playback is desktop-only.')});return;
  }
- new Setting(panel).setName(writerUi('Ativar Soundscapes','Enable Soundscapes')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{
+ new Setting(panel).setName(writerUi('Ativar música e ambiente','Enable music and ambience')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{
   cfg.enabled=v;if(!v)plugin.writerV91Sound.pause();await plugin.saveSettings();plugin.writerV91Sound.emit();
  }));
  new Setting(panel).setName(writerUi('Rádio selecionada','Selected radio')).addDropdown(d=>{
@@ -17217,11 +17475,11 @@ class WriterV91ClickClack{
   if(this.plugin.app.isMobile)return;
   const modal=new Modal(this.plugin.app);
   modal.onOpen=()=>{
-   modal.setTitle(writerUi('Pacotes de sons do Click Clack','Click Clack sound packs'));
+   modal.setTitle(writerUi('Pacotes de sons de digitação','Typing sound packs'));
    const root=modal.contentEl;root.empty();
    root.createEl('p',{cls:'dictionary-muted',text:writerUi(
-    '13 pacotes do Click Clack original. Os arquivos são baixados do GitHub apenas com sua autorização e funcionam offline depois.',
-    '13 original Click Clack packs. Files download from GitHub only on request and work offline afterward.'
+    '13 pacotes de sons opcionais. Os arquivos são baixados do GitHub apenas com sua autorização e funcionam offline depois.',
+    '13 optional typing sound packs. Files download from GitHub only on request and work offline afterward.'
    )});
    const status=root.createEl('p',{cls:'dictionary-muted',attr:{role:'status','aria-live':'polite'}});
    const actions=root.createDiv({cls:'writer-v91-click-actions'});
@@ -17337,7 +17595,7 @@ function writerV91ClickSettings(plugin,panel){
    drop.setValue(choices.some(x=>x.id===cfg.scheme)?cfg.scheme:'generated');
    drop.onChange(async v=>{cfg.scheme=v;await plugin.saveSettings();await plugin.writerV91Click.load();});
   });
- new Setting(panel).setName(writerUi('Baixar pacotes do Click Clack','Download Click Clack sound packs'))
+ new Setting(panel).setName(writerUi('Baixar pacotes de sons','Download sound packs'))
   .setDesc(writerUi('Escolha entre os 13 pacotes originais ou instale todos. Download sob demanda.',
    'Choose from 13 original packs or install all. On-demand downloads.'))
   .addButton(b=>b.setButtonText(writerUi('Ver pacotes','Browse packs')).setCta()
@@ -18161,7 +18419,7 @@ function writerV91FlexRegister(plugin){
 }
 function writerV91FlexSettings(plugin,panel){
  const cfg=plugin.settings.v91Flex;
- panel.createEl('h3',{text:'Flexplorer'});
+ panel.createEl('h3',{text:writerUi('Apresentação de pastas e arquivos','Folder and file presentation')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
   'Use o botão nativo Ordenar, no topo do explorador, para aplicar uma ordem a todas as pastas. Use arrastar para escolher a ordem manual; o menu de contexto mantém os comandos de fixar e ocultar.',
   'Use Obsidian’s native Sort button to choose an order for all folders. Drag to arrange items in manual mode; file context menus retain pin and hide actions.'
@@ -18381,7 +18639,7 @@ function writerV912VirtualPlace(root,node,rule,reading){
 class WriterV912VirtualSideView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.run=0;this.current='';this.components=[];}
  getViewType(){return WRITER_V912_VIRTUAL_VIEW;}
- getDisplayText(){return writerUi('Conteúdo virtual','Virtual Content');}
+ getDisplayText(){return writerUi('Conteúdo dinâmico','Dynamic content');}
  getIcon(){return 'panels-top-left';}
  async onOpen(){await this.render();}
  async render(){
@@ -18390,7 +18648,7 @@ class WriterV912VirtualSideView extends ItemView{
   this.components=[];
   root.empty();root.addClass('writer-v912-sidebar');
   const head=root.createDiv({cls:'writer-v912-sidebar-heading'});
-  head.createEl('strong',{text:writerUi('Conteúdo virtual','Virtual Content')});
+  head.createEl('strong',{text:writerUi('Conteúdo dinâmico','Dynamic content')});
   const file=plugin.app.workspace.getActiveFile?.();
   if(!(file instanceof TFile)||file.extension!=='md'){
    root.createEl('p',{cls:'dictionary-muted',text:writerUi('Abra uma nota Markdown para ver seu conteúdo dinâmico.','Open a Markdown note to see matching virtual content.')});return;
@@ -18503,9 +18761,9 @@ class WriterV912VirtualContent{
  register(){
   const plugin=this.plugin;
   plugin.registerView?.(WRITER_V912_VIRTUAL_VIEW,leaf=>new WriterV912VirtualSideView(leaf,plugin));
-  plugin.addCommand?.({id:'v912-open-virtual-content',name:writerUi('Conteúdo virtual: abrir na lateral','Virtual Content: open sidebar'),
+  plugin.addCommand?.({id:'v912-open-virtual-content',name:writerUi('Conteúdo dinâmico: abrir na lateral','Dynamic content: open sidebar'),
    callback:()=>void this.openSidebar()});
-  plugin.addCommand?.({id:'v912-refresh-virtual-content',name:writerUi('Conteúdo virtual: atualizar regras','Virtual Content: refresh rules'),
+  plugin.addCommand?.({id:'v912-refresh-virtual-content',name:writerUi('Conteúdo dinâmico: atualizar regras','Dynamic content: refresh rules'),
    callback:()=>void this.refresh()});
   for(const name of ['file-open','layout-change','active-leaf-change'])
    if(typeof plugin.app.workspace.on==='function')plugin.registerEvent(plugin.app.workspace.on(name,()=>this.schedule()));
@@ -18591,7 +18849,7 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
   extraLocation();
   new Setting(content).setName(writerUi('Fonte do conteúdo','Content source')).addDropdown(d=>{
    for(const [id,pt,en] of [['text','Markdown digitado','Typed Markdown'],['file','Nota modelo do cofre','Vault template note'],
-    ['booknav','BookNav automático (Longform)','Automatic BookNav (Longform)']])d.addOption(id,writerUi(pt,en));
+    ['booknav','Navegação automática de capítulos','Automatic chapter navigation']])d.addOption(id,writerUi(pt,en));
    d.setValue(data.source).onChange(v=>{data.source=v;sourceUI();});
   });
   const textSetting=new Setting(content).setName('Markdown').addTextArea(t=>{t.inputEl.rows=7;t.setValue(data.text)
@@ -18612,8 +18870,8 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
   };
   sourceUI();
   content.createEl('p',{cls:'dictionary-muted',text:writerUi(
-   'Use {{file.name}}, {{file.path}} ou {{file.folder}} como variáveis. O BookNav usa a ordem real do projeto; notas não são alteradas. Seções são renderizadas somente no modo Leitura.',
-   'Use {{file.name}}, {{file.path}} or {{file.folder}}. BookNav follows the actual project index; notes are never changed. Sections render only in Reading mode.'
+   'Use {{file.name}}, {{file.path}} ou {{file.folder}} como variáveis. A navegação de capítulos segue a ordem real do projeto; notas não são alteradas. Seções são renderizadas somente no modo Leitura.',
+   'Use {{file.name}}, {{file.path}} or {{file.folder}}. Chapter navigation follows the actual project index; notes are never changed. Sections render only in Reading mode.'
   )});
   const error=content.createEl('p',{cls:'writer-v912-error'});
   new Setting(content).addButton(b=>b.setButtonText(writerUi('Salvar regra','Save rule')).setCta().onClick(async()=>{
@@ -18629,15 +18887,15 @@ function writerV912VirtualRuleEditor(plugin,existing,done){
 }
 function writerV912VirtualSettings(plugin,panel){
  const cfg=plugin.settings.v912Virtual;
- panel.createEl('h3',{text:writerUi('Conteúdo virtual','Virtual Content')});
+ panel.createEl('h3',{text:writerUi('Conteúdo dinâmico','Dynamic content')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
   'Acrescente Markdown virtualmente em notas por pasta, tag ou propriedade. Modelos podem aparecer no cabeçalho, rodapé, seção ou lateral. Nenhum arquivo é modificado.',
   'Display virtual Markdown in notes by folder, tag or property. Templates can appear in headers, footers, sections or a sidebar. Note files remain unchanged.'
  )});
  const refresh=()=>{plugin.writerV912Virtual?.schedule();plugin.writerBookNavigation?.refreshAutomatic?.();};
  for(const [key,pt,en,descPt,descEn] of [
-  ['enabled','Ativar conteúdo virtual','Enable virtual content','Desliga apenas a renderização, mantendo as regras.','Disables rendering but retains rules.'],
-  ['autoBookNav','BookNav automático em projetos Longform','Automatic BookNav in Longform projects',
+  ['enabled','Ativar conteúdo dinâmico','Enable dynamic content','Desliga apenas a renderização, mantendo as regras.','Disables rendering but retains rules.'],
+  ['autoBookNav','Navegação automática de capítulos nos projetos','Automatic chapter navigation in projects',
    'Exibe a navegação de capítulos sem inserir blocos na nota; respeita a opção por projeto e blocos manuais.',
    'Displays chapter navigation without editing notes; respects project overrides and manual blocks.'],
   ['showLivePreview','Exibir no Live Preview','Show in Live Preview',
@@ -18654,8 +18912,8 @@ function writerV912VirtualSettings(plugin,panel){
   cfg.rules.push(rule);await plugin.saveSettings();refresh();plugin.writerSettingsTab?.display();
  }));
  if(!cfg.rules.length)panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Nenhuma regra personalizada. O BookNav automático já pode funcionar sem criar regras.',
-  'No custom rules. Automatic BookNav can work without setting up rules.'
+  'Nenhuma regra personalizada. A navegação automática de capítulos funciona sem criar regras.',
+  'No custom rules. Automatic chapter navigation works without setting up rules.'
  )});
  for(const [index,rule] of cfg.rules.entries()){
   const card=panel.createDiv({cls:'writer-v912-rule-card'});
@@ -18664,7 +18922,7 @@ function writerV912VirtualSettings(plugin,panel){
   summary.createEl('small',{text:writerUi(
    {header:'Cabeçalho',footer:'Rodapé',sidebar:'Lateral','section-start':'Início de seção','section-end':'Fim de seção'}[rule.location]||rule.location,
    {header:'Header',footer:'Footer',sidebar:'Sidebar','section-start':'Section start','section-end':'Section end'}[rule.location]||rule.location
-  )+' · '+(rule.source==='booknav'?'BookNav':rule.source==='file'?writerUi('Nota modelo','Template file'):'Markdown')});
+  )+' · '+(rule.source==='booknav'?writerUi('Navegação de capítulos','Chapter navigation'):rule.source==='file'?writerUi('Nota modelo','Template file'):'Markdown')});
   new Setting(card).setName(writerUi('Ativa','Enabled')).addToggle(t=>t.setValue(rule.enabled)
    .onChange(async v=>{rule.enabled=v;await plugin.saveSettings();refresh();}));
   const actions=card.createDiv({cls:'writer-v912-rule-actions'});
@@ -18689,7 +18947,7 @@ function writerV912VirtualSettings(plugin,panel){
    cfg.rules.splice(index,1);await plugin.saveSettings();refresh();plugin.writerSettingsTab?.display();
   });
  }
- new Setting(panel).setName(writerUi('Abrir conteúdo virtual na lateral','Open Virtual Content sidebar'))
+ new Setting(panel).setName(writerUi('Abrir conteúdo dinâmico na lateral','Open dynamic content sidebar'))
   .addButton(b=>b.setButtonText(writerUi('Abrir painel','Open sidebar')).onClick(()=>void plugin.writerV912Virtual?.openSidebar()));
 }
 function writerV912VirtualRegister(plugin){
@@ -20174,7 +20432,7 @@ async function writerV93FlowPersist(plugin,ctx,root,source,model){
  try{
   await plugin.app.vault.process(file,raw=>{
    const found=writerV93FlowLocateBlock(raw,source,hint);
-   if(!found)throw Error(writerUi('O bloco Flow foi alterado. Reabra a nota e tente novamente.','Flow block changed. Reopen the note and try again.'));
+   if(!found)throw Error(writerUi('O painel de notas foi alterado. Reabra a nota e tente novamente.','Note board changed. Reopen the note and try again.'));
    return [...found.lines.slice(0,found.start+1),...replacement.split('\n'),
     ...found.lines.slice(found.end)].join(found.nl);
   });
@@ -20186,10 +20444,10 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  const model=writerV93FlowParse(source,cfg);
  root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-'+model.layout);
  const toolbar=root.createDiv({cls:'writer-v93-flow-toolbar'});
- toolbar.createEl('strong',{text:'Flow · '+model.items.length+' '+writerUi('notas','notes')});
+ toolbar.createEl('strong',{text:writerUi('Painel de notas','Note board')+' · '+model.items.length+' '+writerUi('notas','notes')});
  const persist=next=>void writerV93FlowPersist(plugin,ctx,root,source,next);
  if(cfg.flowArrange){
-  const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel Flow','Flow panel layout')}});
+  const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel de notas','Note board layout')}});
   for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board'],['graph','Grafo','Graph']]){
    const option=select.createEl('option',{text:writerUi(pt,en)});option.value=id;
   }
@@ -20198,7 +20456,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
    persist({...model,layout:select.value,
     options:[...model.options.filter(x=>!/^layout:/i.test(x)),'layout: '+select.value]});
   });
-  const add=toolbar.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar nota ao Flow','Add note to Flow')}});
+  const add=toolbar.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar nota ao painel','Add note to board')}});
   require('obsidian').setIcon(add,'plus');
   add.addEventListener('click',()=>{
    const Suggest=require('obsidian').FuzzySuggestModal;
@@ -20216,7 +20474,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  }
  const list=root.createDiv({cls:'writer-v93-flow-items'});
  const depths=writerV101FlowDepths(model.items);
- if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco Flow.','Put one note per line inside the Flow block.')});return;}
+ if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco flow.','Put one note per line inside the flow block.')});return;}
  const reorder=(from,to)=>{
   if(!cfg.flowArrange||from===to||from<0||to<0||from>=model.items.length||to>=model.items.length)return;
   const items=model.items.slice(),value=items.splice(from,1)[0];items.splice(to,0,value);
@@ -20323,11 +20581,11 @@ function writerV9215SlashActions(){
   {id:'link',pt:'Link Markdown',en:'Markdown link',keys:'link url',text:"[texto](https://)"},
   {id:'highlight',pt:'Realce',en:'Highlight',keys:'mark highlight',text:"==texto=="},
   {id:'formula',pt:'Fórmula',en:'Math formula',keys:'math formula latex',text:"$$\n\n$$"},
-  {id:'flowboard',pt:'Painel Flow',en:'Flow panel',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
+  {id:'flowboard',pt:'Painel de notas',en:'Note board',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
   {id:'dbview',pt:'Banco: nova visualização',en:'Database: new view',keys:'notion base database gallery board',text:'~~~basic-suite-db\nfolder: Databases/Tarefas\nview: gallery\ncolumns: file, status\n~~~'},
   {id:'timetable',pt:'Estudos: horário de aulas',en:'Study: class timetable',keys:'unique agenda schedule horario aula',text:'~~~basic-timetable\n~~~'},
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
-  {id:'flow',pt:'Flow: incorporar nota',en:'Flow: embed note',keys:'embed inline edit note flow',text:''}
+  {id:'flow',pt:'Incorporar nota',en:'Embed note',keys:'embed inline edit note flow',text:''}
  ];
 }
 class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
@@ -20466,32 +20724,32 @@ function writerV9215FlowRegister(plugin){
   for(const id of ['flow','writer-flow'])
    plugin.registerMarkdownCodeBlockProcessor(id,(source,root,context)=>writerV9216FlowBlock(plugin,source,root,context));
  }
- plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Flow: ativar/desativar edição de notas incorporadas','Flow: toggle inline embed editing'),callback:async()=>{
+ plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Notas incorporadas: ativar/desativar edição','Embedded notes: toggle inline editing'),callback:async()=>{
   plugin.settings.v9215Flow.embeds=!plugin.settings.v9215Flow.embeds;
   await plugin.saveSettings();
  }});
 }
 function writerV9215FlowSettings(plugin,panel){
  const cfg=plugin.settings.v9215Flow;
- panel.createEl('h3',{text:writerUi('Flow e menu rápido /','Flow and slash menu /')});
+ panel.createEl('h3',{text:writerUi('Painéis de notas e comandos /','Note boards and slash commands')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Use / no editor para inserir blocos. Notas Markdown incorporadas podem ser editadas na visualização, com proteção contra alterações simultâneas.','Type / in the editor to insert blocks. Embedded Markdown notes can be edited in reading view, with concurrent-edit protection.')});
  for(const [key,pt,en] of [
-  ['enabled','Ativar Flow e comandos rápidos','Enable Flow and slash commands'],
+  ['enabled','Ativar painéis e comandos rápidos','Enable note boards and slash commands'],
   ['slash','Menu de comandos /','Slash command menu'],
   ['embeds','Edição de notas incorporadas','Editable embedded notes'],
-  ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections'],
-  ['flowArrange','Organizar cartões Flow e salvar no Markdown','Arrange Flow cards and save to Markdown'],
-  ['flowPreviews','Prévia do texto nos cartões Flow','Flow card text previews']
+  ['flowBlocks','Painéis para coleções de notas','Boards for note collections'],
+  ['flowArrange','Organizar cartões e salvar no Markdown','Arrange cards and save to Markdown'],
+  ['flowPreviews','Prévia do texto nos cartões','Card text previews']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
  }
- new Setting(panel).setName(writerUi('Layout padrão dos painéis Flow','Default Flow panel layout'))
+ new Setting(panel).setName(writerUi('Layout padrão dos painéis de notas','Default note board layout'))
   .addDropdown(drop=>{
    for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board']])
     drop.addOption(id,writerUi(pt,en));
    drop.setValue(cfg.defaultLayout).onChange(async value=>{cfg.defaultLayout=value;await plugin.saveSettings();});
   });
- new Setting(panel).setName(writerUi('Máximo de notas por painel Flow','Maximum notes per Flow panel'))
+ new Setting(panel).setName(writerUi('Máximo de notas por painel','Maximum notes per board'))
   .addSlider(sl=>sl.setLimits(5,80,5).setValue(cfg.maxItems).setDynamicTooltip().onChange(async value=>{
    cfg.maxItems=value;await plugin.saveSettings();
   }));
@@ -21842,7 +22100,7 @@ function writerV10ToolboxSettings(plugin,panel){
   'Ferramentas de edição de arquivos e comandos Markdown. Os atalhos por tecla dupla são configurados separadamente abaixo.',
   'File editing and Markdown commands. Double-press shortcuts are configured separately below.')});
  for(const [key,pt,en] of [
-  ['enabled','Ativar extras da v10','Enable v10 tools'],
+  ['enabled','Ativar ferramentas de arquivos','Enable file tools'],
   ['textEditor','Permitir edição de arquivos de texto (até 512 KiB)','Allow text-file edits (up to 512 KiB)'],
   ['tableSorting','Ordenar linhas de tabelas Markdown','Sort Markdown table rows'],
   ['jsonFormatting','Formatar JSON selecionado','Format selected JSON'],
@@ -22232,7 +22490,7 @@ function writerV101RegisterEnhancements(plugin){
   writerV101BulkPropertiesModal(plugin);
  }});
 }
-function writerV101EnhancementsSettings(plugin,panel){
+function writerV101EnhancementsSettings(plugin,panel,{includeAdvanced=true}={}){
  const cfg=plugin.settings.v101Suite;
  panel.createEl('h3',{text:writerUi('Ferramentas editoriais avançadas','Advanced editorial tools')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('Comandos locais para seleção, sem sobrescrever a nota; alterações em lote exigem confirmação e snapshots.','Local selection commands; batch writes require confirmation and snapshots.')});
@@ -22259,7 +22517,7 @@ function writerV101EnhancementsSettings(plugin,panel){
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
  if(typeof writerV10DiscoverySettings==='function')writerV10DiscoverySettings(plugin,panel);
  if(typeof writerV106DragSettings==='function')writerV106DragSettings(plugin,panel);
-  if(typeof writerV107Settings==='function')writerV107Settings(plugin,panel);
+  if(includeAdvanced&&typeof writerV107Settings==='function')writerV107Settings(plugin,panel);
  if(typeof writerV1010Settings==='function')writerV1010Settings(plugin,panel);
 }
 
@@ -22420,9 +22678,9 @@ function writerV101CalendarExchangeSettings(plugin,panel){
  * Online queries are explicit; photo credits and licenses must be respected. */
 const WRITER_V102_IMAGE_PROVIDERS=['commons','pexels','pixabay','unsplash'];
 function writerV102ImagesMerge(settings){
- const raw=settings.v102Images&&typeof settings.v102Images==='object'?settings.v102Images:{};
- const cfg=settings.v102Images={enabled:true,provider:'commons',mode:'local',orientation:'any',
-  folder:'Writing Images',width:420,property:'banner',credits:true,pexelsKey:'',pixabayKey:'',unsplashKey:'',...raw};
+ const raw=settings.v102Images&&typeof settings.v102Images==='object'&&!Array.isArray(settings.v102Images)?settings.v102Images:{};
+ const cfg=settings.v102Images=Object.assign(raw,{enabled:true,provider:'commons',mode:'local',orientation:'any',
+  folder:'Writing Images',width:420,property:'banner',credits:true,pexelsKey:'',pixabayKey:'',unsplashKey:'',...raw});
  cfg.provider=WRITER_V102_IMAGE_PROVIDERS.includes(cfg.provider)?cfg.provider:'commons';
  cfg.mode=['local','remote'].includes(cfg.mode)?cfg.mode:'local';
  cfg.orientation=['any','landscape','portrait','square'].includes(cfg.orientation)?cfg.orientation:'any';
@@ -22648,7 +22906,7 @@ function writerV102ImagesRegister(plugin){
 function writerV102ImagesSettings(plugin,panel){
  const cfg=plugin.settings.v102Images;
  panel.createEl('h3',{text:writerUi('Pesquisar e inserir imagens','Search and insert images')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi('Baseado nas ideias do Image Inserter, com buscas diretas aos serviços, sem proxy de terceiros. Buscas e miniaturas exigem rede e podem expor sua consulta e IP ao provedor. Verifique as licenças antes de reutilizar imagens.','Image Inserter-inspired, with direct provider requests and no third-party proxy. Searching and thumbnails use the internet and reveal queries/IP to providers. Check image licenses before reuse.')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Buscas diretas aos serviços de imagens, sem proxy de terceiros. Buscas e miniaturas exigem rede e podem expor sua consulta e IP ao provedor. Verifique as licenças antes de reutilizar imagens.','Direct requests to image providers, without a third-party proxy. Searching and thumbnails use the internet and reveal queries/IP to providers. Check image licenses before reuse.')});
  new Setting(panel).setName(writerUi('Ativar busca de imagens','Enable image search'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Fonte padrão','Default provider')).addDropdown(d=>{
@@ -23860,8 +24118,8 @@ function writerV106HistoricRegister(plugin){
 // v3 module: src/v10/data-tables.js
 /* Local, bounded Markdown database with safe arithmetic formulas and relation rollups. */
 function writerV107DbConfig(settings){
- const old=settings.v107Db&&typeof settings.v107Db==='object'?settings.v107Db:{};
- return settings.v107Db={enabled:true,maxFiles:500,editable:true,...old,maxFiles:Math.max(25,Math.min(2000,Number(old.maxFiles)||500))};
+ const old=settings.v107Db&&typeof settings.v107Db==='object'&&!Array.isArray(settings.v107Db)?settings.v107Db:{};
+ return settings.v107Db=Object.assign(old,{enabled:true,maxFiles:500,editable:true,...old,maxFiles:Math.max(25,Math.min(2000,Number(old.maxFiles)||500))});
 }
 function writerV107DbSpec(source){
  const s={folder:'',columns:['file','tags'],filter:'',sort:'file',order:'asc',group:'',view:'table',limit:80,formulas:[],rollups:[]};
@@ -24021,14 +24279,14 @@ function writerV107DbRender(plugin,source,element,ctx){
 function writerV107DbRegister(plugin){
  writerV107DbConfig(plugin.settings);
  for(const lang of ['writer-database','basic-database'])plugin.registerMarkdownCodeBlockProcessor(lang,(source,element,ctx)=>writerV107DbRender(plugin,source,element,ctx));
- plugin.addCommand({id:'v107-insert-database',name:writerUi('Make.md: inserir banco de dados','Make.md: insert database'),editorCallback:editor=>{
+ plugin.addCommand({id:'v107-insert-database',name:writerUi('Banco de dados: inserir tabela','Database: insert table'),editorCallback:editor=>{
   const fence=String.fromCharCode(96).repeat(3);
   editor.replaceSelection(['',fence+'writer-database','folder:','columns: file, status, priority','view: table','group: status','filter: status != done','sort: modified','order: desc','formula: score = priority * 2','rollup: total = related.pages | sum',fence,''].join('\n'));
  }});
 }
 function writerV107DbSettings(plugin,panel){
  const cfg=plugin.settings.v107Db;
- panel.createEl('h3',{text:writerUi('Make.md — bases e fórmulas','Make.md — databases and formulas')});
+ panel.createEl('h3',{text:writerUi('Bancos de dados e fórmulas','Databases and formulas')});
  for(const [key,pt,en] of [['enabled','Bases Markdown','Markdown databases'],['editable','Editar células','Edit cells']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  }
@@ -24039,14 +24297,14 @@ function writerV107DbSettings(plugin,panel){
 // v3 module: src/v10/zotero-web.js
 /* Zotero Web API v3 read-only: session-only key; never writes to the remote library. */
 function writerV107ZoteroConfig(settings){
- const old=settings.v107Zotero&&typeof settings.v107Zotero==='object'?settings.v107Zotero:{};
- return settings.v107Zotero={
+ const old=settings.v107Zotero&&typeof settings.v107Zotero==='object'&&!Array.isArray(settings.v107Zotero)?settings.v107Zotero:{};
+ return settings.v107Zotero=Object.assign(old,{
   enabled:false,libraryType:'users',libraryId:'',folder:'Zotero',maxItems:200,importNotes:true,...old,
   libraryType:old.libraryType==='groups'?'groups':'users',
   libraryId:/^\d{1,15}$/.test(String(old.libraryId||''))?String(old.libraryId):'',
   folder:/^[\p{L}\p{N} _\/-]{1,120}$/u.test(old.folder||'')?old.folder:'Zotero',
   maxItems:Math.max(20,Math.min(300,Number(old.maxItems)||200))
- };
+ });
 }
 function writerV107ZoteroUrl(cfg,start=0,format='json'){
  if(!/^\d{1,15}$/.test(String(cfg.libraryId||'')))throw Error('Invalid Zotero library ID');
@@ -24182,8 +24440,8 @@ function writerV107ZoteroSettings(plugin,panel){
 /* FSRS-4.5 scheduling with published defaults, optional; retains existing SM-2 histories. */
 const WRITER_V107_FSRS_WEIGHTS=[.4872,1.4003,3.7145,13.8206,5.1618,1.2298,.8975,.031,1.6474,.1367,1.0461,2.1072,.0793,.3246,1.587,.2272,2.8755];
 function writerV107StudyConfig(settings){
- const v=settings.v83Study||{},old=settings.v107Study&&typeof settings.v107Study==='object'?settings.v107Study:{};
- const cfg=settings.v107Study={scheduler:'sm2',desiredRetention:.90,tsvEnabled:true,...old};
+ const old=settings.v107Study&&typeof settings.v107Study==='object'&&!Array.isArray(settings.v107Study)?settings.v107Study:{};
+ const cfg=settings.v107Study=Object.assign(old,{scheduler:'sm2',desiredRetention:.90,tsvEnabled:true,...old});
  if(!['sm2','fsrs45'].includes(cfg.scheduler))cfg.scheduler='sm2';
  cfg.desiredRetention=Math.max(.70,Math.min(.97,Number(cfg.desiredRetention)||.90));
  return cfg;
@@ -24279,10 +24537,10 @@ function writerV107StudySettings(plugin,panel){
 // v3 module: src/v10/calendar-feeds.js
 /* Optional HTTPS iCalendar subscriptions. Read-only upstream, append-only local imports. */
 function writerV107CalendarConfig(settings){
- const old=settings.v107Feeds&&typeof settings.v107Feeds==='object'?settings.v107Feeds:{};
- const urls=Array.isArray(old.urls)?old.urls.filter(x=>typeof x==='string').slice(0,5):[];
- return settings.v107Feeds={enabled:false,autoSync:false,intervalHours:6,urls,maxEvents:160,...old,
-  urls,intervalHours:Math.max(1,Math.min(24,Number(old.intervalHours)||6)),maxEvents:Math.max(20,Math.min(300,Number(old.maxEvents)||160))};
+ const old=settings.v107Feeds&&typeof settings.v107Feeds==='object'&&!Array.isArray(settings.v107Feeds)?settings.v107Feeds:{};
+ const urls=Array.isArray(old.urls)?Array.from(old.urls.slice(0,5),value=>typeof value==='string'?value:''):[];
+ return settings.v107Feeds=Object.assign(old,{enabled:false,autoSync:false,intervalHours:6,urls,maxEvents:160,...old,
+  urls,intervalHours:Math.max(1,Math.min(24,Number(old.intervalHours)||6)),maxEvents:Math.max(20,Math.min(300,Number(old.maxEvents)||160))});
 }
 function writerV107CalendarUrl(value){
  const text=String(value||'').trim();
@@ -24313,6 +24571,7 @@ async function writerV107CalendarSynchronize(plugin,quiet=false){
  const folder=WRITER_V83_CAL_FOLDER;
  if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
  for(const url of cfg.urls.slice(0,5)){
+  if(!url)continue;
   if(!writerV107CalendarUrl(url)){errors++;continue;}
   try{
    const items=writerV101IcsParse(await writerV107CalendarFetch(plugin,url),cfg.maxEvents);
@@ -24355,7 +24614,8 @@ function writerV107CalendarSettings(plugin,panel){
   new Setting(panel).setName(writerUi('Fonte ICS HTTPS ','HTTPS ICS feed ')+(i+1))
    .addText(t=>t.setValue(cfg.urls[i]||'').setPlaceholder('https://example.com/calendar.ics').onChange(async v=>{
     const list=[...cfg.urls];if(v&&!writerV107CalendarUrl(v))return;
-    list[i]=v;cfg.urls=list.filter(Boolean);await plugin.saveSettings();
+    while(list.length<=i)list.push('');
+    list[i]=v;cfg.urls=list;await plugin.saveSettings();
    }));
  }
  new Setting(panel).setName(writerUi('Sincronizar agora','Sync now')).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void writerV107CalendarSynchronize(plugin)));
@@ -24365,8 +24625,8 @@ function writerV107CalendarSettings(plugin,panel){
 /* StoryLine: interactive, local-first relationship canvas using vault metadata. */
 const WRITER_V107_GRAPH_VIEW='writer-story-graph';
 function writerV107GraphConfig(settings){
- const old=settings.v107Graph&&typeof settings.v107Graph==='object'?settings.v107Graph:{};
- return settings.v107Graph={enabled:true,maxNodes:90,layout:'radial',positions:{},...old,maxNodes:Math.max(20,Math.min(180,Number(old.maxNodes)||90))};
+ const old=settings.v107Graph&&typeof settings.v107Graph==='object'&&!Array.isArray(settings.v107Graph)?settings.v107Graph:{};
+ return settings.v107Graph=Object.assign(old,{enabled:true,maxNodes:90,layout:'radial',positions:{},...old,maxNodes:Math.max(20,Math.min(180,Number(old.maxNodes)||90))});
 }
 function writerV107GraphLinks(value){
  const values=Array.isArray(value)?value:String(value||'').split(/[,;\n]/);
@@ -24526,21 +24786,21 @@ function writerV107GraphRelationModal(plugin,refresh){
 class WriterV107GraphView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;}
  getViewType(){return WRITER_V107_GRAPH_VIEW;}
- getDisplayText(){return writerUi('Mapa StoryLine','StoryLine graph');}
+ getDisplayText(){return writerUi('Mapa de relações','Relationship map');}
  getIcon(){return 'network';}
  async onOpen(){writerV107GraphRender(this.plugin,this.contentEl);}
 }
 function writerV107GraphRegister(plugin){
  writerV107GraphConfig(plugin.settings);
  plugin.registerView(WRITER_V107_GRAPH_VIEW,leaf=>new WriterV107GraphView(leaf,plugin));
- plugin.addCommand({id:'v107-story-graph',name:writerUi('StoryLine: abrir mapa de relações','StoryLine: open relationship graph'),callback:async()=>{
+ plugin.addCommand({id:'v107-story-graph',name:writerUi('Relações: abrir mapa','Relationships: open map'),callback:async()=>{
   const leaf=plugin.app.workspace.getLeavesOfType(WRITER_V107_GRAPH_VIEW)[0]||plugin.app.workspace.getLeaf('tab');
   await leaf.setViewState({type:WRITER_V107_GRAPH_VIEW,active:true});await plugin.app.workspace.revealLeaf(leaf);
  }});
 }
 function writerV107GraphSettings(plugin,panel){
  const cfg=plugin.settings.v107Graph;
- panel.createEl('h3',{text:writerUi('StoryLine · grafo de relações','StoryLine · relationship graph')});
+ panel.createEl('h3',{text:writerUi('Mapa de relações','Relationship map')});
  new Setting(panel).setName(writerUi('Notas máximas no mapa','Maximum graph nodes')).addSlider(s=>s.setLimits(20,180,10).setValue(cfg.maxNodes).setDynamicTooltip().onChange(async v=>{cfg.maxNodes=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Layout inicial','Initial layout')).addDropdown(d=>d.addOption('radial',writerUi('Radial','Radial')).addOption('grid',writerUi('Grade','Grid')).setValue(cfg.layout).onChange(async v=>{cfg.layout=v;await plugin.saveSettings();}));
 }
@@ -24548,8 +24808,8 @@ function writerV107GraphSettings(plugin,panel){
 // v3 module: src/v10/editor-pro.js
 /* Enhancement Suite: bounded multi-file search/replace and local editor diagnostics. */
 function writerV107EditorConfig(settings){
- const old=settings.v107Editor&&typeof settings.v107Editor==='object'?settings.v107Editor:{};
- return settings.v107Editor={enabled:true,yamlLive:true,maxFiles:80,jsonTreeEdit:true,...old,maxFiles:Math.max(5,Math.min(200,Number(old.maxFiles)||80))};
+ const old=settings.v107Editor&&typeof settings.v107Editor==='object'&&!Array.isArray(settings.v107Editor)?settings.v107Editor:{};
+ return settings.v107Editor=Object.assign(old,{enabled:true,yamlLive:true,maxFiles:80,jsonTreeEdit:true,...old,maxFiles:Math.max(5,Math.min(200,Number(old.maxFiles)||80))});
 }
 function writerV107ReplacePreview(files,search,replace,matchCase=false){
  if(!search||search.length>200||replace.length>1000)return [];
@@ -24658,7 +24918,7 @@ function writerV107EditorYamlState(text,parse){
 }
 function writerV107EditorRegister(plugin){
  const cfg=writerV107EditorConfig(plugin.settings);
- plugin.addCommand({id:'v107-find-replace-vault',name:writerUi('Enhancement: buscar/substituir entre notas','Enhancement: find/replace across notes'),callback:()=>writerV107BatchReplaceModal(plugin)});
+ plugin.addCommand({id:'v107-find-replace-vault',name:writerUi('Edição: buscar e substituir entre notas','Editing: find and replace across notes'),callback:()=>writerV107BatchReplaceModal(plugin)});
  plugin.addCommand({id:'v107-json-tree-edit',name:writerUi('JSON: editar seleção em árvore','JSON: edit selection as tree'),editorCheckCallback:(checking,editor)=>{
   if(!cfg.jsonTreeEdit||!editor.getSelection().trim())return false;
   try{JSON.parse(editor.getSelection());}catch(_){return false;}
@@ -24685,7 +24945,7 @@ function writerV107EditorRegister(plugin){
 }
 function writerV107EditorSettings(plugin,panel){
  const cfg=plugin.settings.v107Editor;
- panel.createEl('h3',{text:writerUi('Enhancement · edição avançada','Enhancement · advanced editing')});
+ panel.createEl('h3',{text:writerUi('Edição avançada','Advanced editing')});
  for(const [k,pt,en] of [['enabled','Ativar ferramentas avançadas','Enable advanced tools'],['yamlLive','Diagnóstico YAML no editor','Live YAML editor diagnostics'],['jsonTreeEdit','Editor JSON em árvore','JSON tree editor']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[k]!==false).onChange(async v=>{cfg[k]=v;await plugin.saveSettings();}));
  }
@@ -24694,10 +24954,10 @@ function writerV107EditorSettings(plugin,panel){
 }
 
 // v3 module: src/v10/speech-accessibility.js
-/* Offline Web Speech and a small, explicit LanguageTool/Typewriter interaction guard. */
+/* Device/browser Web Speech and an explicit grammar/focus interaction guard. */
 function writerV107SpeechConfig(settings){
- const old=settings.v107Speech&&typeof settings.v107Speech==='object'?settings.v107Speech:{};
- return settings.v107Speech={enabled:true,lang:'pt-BR',voice:'',rate:1,pitch:1,...old,rate:Math.max(.5,Math.min(2,Number(old.rate)||1)),pitch:Math.max(.5,Math.min(2,Number(old.pitch)||1))};
+ const old=settings.v107Speech&&typeof settings.v107Speech==='object'&&!Array.isArray(settings.v107Speech)?settings.v107Speech:{};
+ return settings.v107Speech=Object.assign(old,{enabled:true,lang:'pt-BR',voice:'',rate:1,pitch:1,...old,rate:Math.max(.5,Math.min(2,Number(old.rate)||1)),pitch:Math.max(.5,Math.min(2,Number(old.pitch)||1))});
 }
 function writerV107SpeechChunks(text,max=1450){
  const src=String(text||'').replace(/\s+/g,' ').trim().slice(0,30000);
@@ -24711,6 +24971,7 @@ function writerV107SpeechChunks(text,max=1450){
  return result;
 }
 function writerV107SpeechStart(plugin,text){
+ if(plugin.settings.v107Speech?.enabled===false)return false;
  const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
  const Utterance=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.SpeechSynthesisUtterance;
  if(!speech||!Utterance){new Notice(writerUi('O Android/WebView não disponibilizou voz local. Use a opção Edge TTS do Basic.','No local speech voice in this WebView. Try Basic Edge TTS.'));return false;}
@@ -24734,7 +24995,7 @@ function writerV107SpeechPanel(plugin){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Leitura em voz alta · local','Local text to speech'));
  modal.onOpen=()=>{
   const root=modal.contentEl,cfg=plugin.settings.v107Speech;
-  root.createEl('p',{cls:'setting-item-description',text:writerUi('Vozes locais do sistema; nenhum texto é enviado pela função de voz local. A disponibilidade depende do Android/Linux e WebView.','Uses OS voices without sending the text to a server. Android/Linux/WebView support varies.')});
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Usa vozes disponibilizadas pelo sistema ou navegador. A disponibilidade e o uso de rede dependem da voz escolhida e do dispositivo.','Uses voices provided by the system or browser. Availability and network use depend on the selected voice and device.')});
   const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
   const list=speech?.getVoices?.()||[];
   new Setting(root).setName(writerUi('Voz do dispositivo','Device voice')).addDropdown(d=>{
@@ -24778,7 +25039,7 @@ function writerV107SpeechRegister(plugin){
 }
 function writerV107SpeechSettings(plugin,panel){
  const cfg=plugin.settings.v107Speech;
- panel.createEl('h3',{text:writerUi('Voz local e LanguageTool','Local speech and LanguageTool')});
+ panel.createEl('h3',{text:writerUi('Leitura com voz do dispositivo','Read with device voices')});
  new Setting(panel).setName(writerUi('Ativar TTS local','Enable local speech')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Abrir seletor de voz','Open voice settings')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV107SpeechPanel(plugin)));
 }
@@ -24786,8 +25047,8 @@ function writerV107SpeechSettings(plugin,panel){
 // v3 module: src/v10/media-drag-extension.js
 /* Cross-note block move, responsive columns and best-effort PDF per-page previews. */
 function writerV107MediaConfig(settings){
- const old=settings.v107Media&&typeof settings.v107Media==='object'?settings.v107Media:{};
- return settings.v107Media={pdfPages:true,maxPage:30,crossNote:true,columns:true,...old,maxPage:Math.max(3,Math.min(80,Number(old.maxPage)||30))};
+ const old=settings.v107Media&&typeof settings.v107Media==='object'&&!Array.isArray(settings.v107Media)?settings.v107Media:{};
+ return settings.v107Media=Object.assign(old,{pdfPages:true,maxPage:30,crossNote:true,columns:true,...old,maxPage:Math.max(3,Math.min(80,Number(old.maxPage)||30))});
 }
 function writerV107CrossNoteBlock(editor){
  const selected=editor.getSelection();
@@ -24892,13 +25153,13 @@ function writerV107MediaRegister(plugin){
  plugin.register?.(()=>{writerV8MediaOpen=prior;});
  // Dragger commands are desktop-only; keep unrelated PDF and columns features on mobile.
  if(require('obsidian').Platform?.isMobile!==true&&plugin.app?.isMobile!==true){
- plugin.addCommand({id:'v107-move-block-to-note',name:writerUi('Dragger: mover bloco para outra nota','Dragger: move block to another note'),editorCheckCallback:(checking,editor,view)=>{
+ plugin.addCommand({id:'v107-move-block-to-note',name:writerUi('Blocos: mover para outra nota','Blocks: move to another note'),editorCheckCallback:(checking,editor,view)=>{
   if(!plugin.settings.v107Media.crossNote||!view?.file)return false;
   if(!checking)writerV107MoveBlockModal(plugin,editor,view.file);
   return true;
  }});
  }
- plugin.addCommand({id:'v107-insert-columns',name:writerUi('Make.md: inserir colunas Markdown','Make.md: insert Markdown columns'),editorCallback:editor=>{
+ plugin.addCommand({id:'v107-insert-columns',name:writerUi('Formatação: inserir colunas Markdown','Formatting: insert Markdown columns'),editorCallback:editor=>{
   const fence=String.fromCharCode(96).repeat(3);
   editor.replaceSelection(['',fence+'writer-columns','## '+writerUi('Coluna 1','Column 1'),'',
    '---column---','## '+writerUi('Coluna 2','Column 2'),fence,''].join('\n'));
@@ -24912,7 +25173,7 @@ function writerV107MediaRegister(plugin){
 }
 function writerV107MediaSettings(plugin,panel){
  const cfg=plugin.settings.v107Media;
- panel.createEl('h3',{text:writerUi('Mídia, PDF e Dragger','Media, PDF and Dragger')});
+ panel.createEl('h3',{text:writerUi('Mídia, PDF e movimentação de blocos','Media, PDF and block movement')});
  for(const [key,pt,en] of [['pdfPages','Prévia PDF por página','PDF page previews'],['crossNote','Mover blocos entre notas','Move blocks between notes'],['columns','Colunas Markdown responsivas','Responsive Markdown columns']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  }
@@ -24971,14 +25232,17 @@ function writerV107RegisterAfterStartup(plugin){
   if(typeof setTimeout==='function')setTimeout(run,0);
  }
 }
-function writerV107Settings(plugin,panel){
- new Setting(panel).setName(writerUi('Ativar integrações experimentais 10.7','Enable experimental 10.7 integrations'))
+function writerV107CompatibilitySettings(plugin,panel){
+ new Setting(panel).setName(writerUi('Carregar recursos avançados','Load advanced features'))
   .setDesc(writerUi('Desative para iniciar apenas com as funções estáveis anteriores. Reinicie o Obsidian para aplicar. As configurações das funções não são apagadas.','Turn off to start only the previous stable features. Restart Obsidian to apply. Existing settings are preserved.'))
   .addToggle(toggle=>toggle.setValue(plugin.settings?.v107AdvancedEnabled!==false).onChange(async value=>{
    plugin.settings.v107AdvancedEnabled=value;
    await plugin.saveSettings();
    new Notice(writerUi('Reinicie o Obsidian para aplicar a mudança.','Restart Obsidian to apply this change.'));
   }));
+}
+function writerV107Settings(plugin,panel){
+ writerV107CompatibilitySettings(plugin,panel);
  for(const [name,render] of [
   ['databases',typeof writerV107DbSettings==='function'?writerV107DbSettings:null],
   ['zotero',typeof writerV107ZoteroSettings==='function'?writerV107ZoteroSettings:null],
@@ -25221,8 +25485,9 @@ function writerV1012IsNativeSortAction(action,label){
 }
 /* Mobile nested menus must open after their parent menu closes. The hidden
  * native action retains a laid-out DOM anchor so Obsidian won't dismiss it. */
-function writerV1012OpenNativeAction(action,sort,plugin,label){
- if(typeof writerV1201NativeAction==='function'&&writerV1201NativeAction(plugin,action,label))return;
+function writerV1012OpenNativeAction(action,sort,plugin,label,parentMenu,trigger){
+ if(typeof writerV1201NativeAction==='function'&&writerV1201NativeAction(plugin,action,label,parentMenu,trigger))return;
+ if(plugin?._writerV1010NativeActionPending)return;
  if(typeof action?.click!=='function')return;
  if(!sort){action.click();return;}
  // Let the first mobile sheet dismiss before the nested native sheet opens.
@@ -25234,7 +25499,7 @@ function writerV1012OpenNativeAction(action,sort,plugin,label){
  },220);
 }
 function writerV1010SidebarMenu(plugin,event,side,leaves,active){
- const menu=new Menu(plugin.app),current=active?.view?.containerEl;
+ const menu=new Menu(plugin.app),current=active?.view?.containerEl,trigger=event?.currentTarget;
  const actions=[...new Set([...(current?.querySelectorAll?.('.view-actions .clickable-icon,.nav-header .nav-action-button,.nav-header .nav-buttons-container .clickable-icon')||[])])];
  let count=0;
  for(const action of actions.slice(0,14)){
@@ -25244,8 +25509,11 @@ function writerV1010SidebarMenu(plugin,event,side,leaves,active){
   const sort=writerV1012IsNativeSortAction(action,label)||
    action.getAttribute?.('aria-haspopup')==='menu'||
    /(?:mais op[cç][oõ]es|more options|op[cç][oõ]es|menu de opções)/i.test(label);
-  menu.addItem(item=>item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label))
-   .onClick(()=>writerV1012OpenNativeAction(action,sort,plugin,label)));
+  menu.addItem(item=>{
+   item.setTitle(label).setIcon(writerV1012NativeActionIcon(action,label));
+   item.setDisabled?.(action.disabled===true||action.getAttribute?.('aria-disabled')==='true');
+   item.onClick(()=>writerV1012OpenNativeAction(action,sort,plugin,label,menu,trigger));
+  });
  }
  if(count)menu.addSeparator?.();
  menu.addItem(item=>item.setTitle(writerUi('Configurações do Obsidian','Obsidian settings'))
@@ -25507,7 +25775,12 @@ function writerV1010Register(plugin){
   if(status)status.style.display=cfg.width.enabled&&cfg.width.showStatus&&!require('obsidian').Platform?.isMobile?'':'none';
  };
  const refresh=()=>{
-  if(unloaded||plugin._writerV1010NativeActionPending)return;
+  if(unloaded)return;
+  if(plugin._writerV1010NativeActionPending){
+   const sidebar=cfg.sidebar,mobile=Boolean(require('obsidian').Platform?.isMobile);
+   if(sidebar.enabled&&sidebar.actionMenu!==false&&(mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true))return;
+   plugin._writerV1201NativeRelayState?.cancel();
+  }
   try{renderSide('left');renderSide('right');paintWidth();
    if(require('obsidian').Platform?.isMobile)plugin.writerV9216SpacesDockRefresh?.();}
   catch(error){console.error('[Basic] Sidebar / width refresh failed:',error);}
@@ -25639,11 +25912,12 @@ function writerV1010Settings(plugin,panel){
  * No upstream code, automatic vault reshaping, recurring network requests,
  * or duplicated calendar/ICS implementations. */
 function writerV1011StudyCfg(settings){
- const old=settings.v1011Study&&typeof settings.v1011Study==='object'?settings.v1011Study:{};
- const cfg=settings.v1011Study=Object.assign({
+ const old=settings.v1011Study&&typeof settings.v1011Study==='object'&&!Array.isArray(settings.v1011Study)?settings.v1011Study:{};
+ // Keep the object used by all currently rendered field callbacks current.
+ const cfg=settings.v1011Study=Object.assign(old,{
   enabled:true,root:'Estudos',daily:'Diário',classes:'Aulas',reminders:'Lembretes.md',
-  timetable:'Horário.md',maxRows:120
- },old);
+  timetable:'Horário.md',maxRows:120,...old
+ });
  const folder=value=>{
   const parts=String(value||'').trim().replace(/\\/g,'/').split('/');
   if(!parts.length||parts.length>6||parts.some(p=>!p||p==='.'||p==='..'||p[0]==='.'||p.length>90||/[\x00-\x1f:*?"<>|]/.test(p)))return '';
@@ -25853,7 +26127,7 @@ function writerV1011StudyRegister(plugin){
 }
 function writerV1011StudySettings(plugin,panel){
  const cfg=writerV1011StudyCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Unique Suite — rotina acadêmica','Unique Suite — academic workflow')});
+ panel.createEl('h3',{text:writerUi('Rotina de estudos','Study routine')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Integração local com o calendário já existente. Nenhuma pasta é criada ao ativar.',
   'Local workflow using the existing calendar. Enabling does not create folders.')});
@@ -25873,9 +26147,9 @@ function writerV1011StudySettings(plugin,panel){
  * local views. No duplicate Notion Suite registration or proprietary storage. */
 const WRITER_V1011_DB_VIEWS=['table','board','gallery','list','calendar','timeline','chart'];
 function writerV1011NotionCfg(settings){
- const old=settings.v1011Notion&&typeof settings.v1011Notion==='object'?settings.v1011Notion:{};
- return settings.v1011Notion={enabled:true,maxShown:160,allowNew:true,...old,
-  maxShown:Math.max(20,Math.min(500,Number(old.maxShown)||160))};
+ const old=settings.v1011Notion&&typeof settings.v1011Notion==='object'&&!Array.isArray(settings.v1011Notion)?settings.v1011Notion:{};
+ return settings.v1011Notion=Object.assign(old,{enabled:true,maxShown:160,allowNew:true,...old,
+  maxShown:Math.max(20,Math.min(500,Number(old.maxShown)||160))});
 }
 function writerV1011NotionSpec(source){
  const base=typeof writerV107DbSpec==='function'?writerV107DbSpec(source):{columns:['file','status'],limit:80,view:'table'};
@@ -26155,10 +26429,10 @@ function writerV1011NotionRegister(plugin){
 }
 function writerV1011NotionSettings(plugin,panel){
  const cfg=writerV1011NotionCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Notion Suite — visualizações de bancos','Notion Suite — database views')});
+ panel.createEl('h3',{text:writerUi('Bancos e visualizações','Databases and views')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Amplia os bancos Markdown existentes com lista, galeria, calendário, timeline e gráficos. Usa basic-suite-db para não conflitar com o plugin original.',
-  'Adds list, gallery, calendar, timeline and charts to existing Markdown databases. Uses basic-suite-db to avoid clashes with the original plugin.')});
+  'Visualize notas Markdown em listas, galerias, quadros, calendários, linhas do tempo e gráficos com o bloco basic-suite-db.',
+  'View Markdown notes as lists, galleries, boards, calendars, timelines and charts using the basic-suite-db block.')});
  new Setting(panel).setName(writerUi('Habilitar visualizações extras','Enable additional views'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Permitir criar novas notas pelo banco','Allow creating notes from a view'))
@@ -26172,9 +26446,9 @@ function writerV1011NotionSettings(plugin,panel){
 // v3 module: src/v10/suite-numbering-1011.js
 /* Basic 10.11 numbering, local and non-destructive by default. */
 function writerV1011NumberCfg(settings){
- const old=settings.v1011Number&&typeof settings.v1011Number==='object'?settings.v1011Number:{};
- return settings.v1011Number={enabled:true,virtual:false,captions:true,outline:true,scheme:'hierarchical',...old,
-  scheme:old.scheme==='flat'?'flat':'hierarchical'};
+ const old=settings.v1011Number&&typeof settings.v1011Number==='object'&&!Array.isArray(settings.v1011Number)?settings.v1011Number:{};
+ return settings.v1011Number=Object.assign(old,{enabled:true,virtual:false,captions:true,outline:true,scheme:'hierarchical',...old,
+  scheme:old.scheme==='flat'?'flat':'hierarchical'});
 }
 function writerV1011NumberStored(title){
  const m=/^(\d+(?:\.\d+){1,8}\.?|\d+\.)\s+(.+)$/.exec(String(title||''));
@@ -26327,7 +26601,7 @@ function writerV1011NumberRegister(plugin){
 }
 function writerV1011NumberSettings(plugin,panel){
  const cfg=writerV1011NumberCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Number Suite — numeração','Number Suite — numbering')});
+ panel.createEl('h3',{text:writerUi('Numeração automática','Automatic numbering')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Numeração visual só no modo de leitura. Gravar ou remover títulos exige prévia e confirmação. H1–H6.',
   'Display-only numbers in Reading View. Writing/removal requires preview and confirmation. H1–H6.')});
@@ -26350,8 +26624,8 @@ function writerV1011NumberSettings(plugin,panel){
  * editorial review, scoped search, manuscript preview and diagnostics.
  * The source notes remain ordinary Markdown files; edits are explicit and guarded. */
 function writerV11Cfg(settings){
- const old=settings.v11Studio&&typeof settings.v11Studio==='object'?settings.v11Studio:{};
- const cfg=settings.v11Studio={enabled:true,recoveryEnabled:true,searchLimit:240,chapterLimit:100,reviewNotes:{},...old};
+ const old=settings.v11Studio&&typeof settings.v11Studio==='object'&&!Array.isArray(settings.v11Studio)?settings.v11Studio:{};
+ const cfg=settings.v11Studio=Object.assign(old,{enabled:true,recoveryEnabled:true,searchLimit:240,chapterLimit:100,reviewNotes:{},...old});
  cfg.searchLimit=Math.max(25,Math.min(1000,Number(cfg.searchLimit)||240));
  cfg.chapterLimit=Math.max(10,Math.min(200,Number(cfg.chapterLimit)||100));
  if(!cfg.reviewNotes||typeof cfg.reviewNotes!=='object'||Array.isArray(cfg.reviewNotes))cfg.reviewNotes={};
@@ -26413,7 +26687,7 @@ async function writerV11SaveChapter(plugin,file,expected,next){
  if(await plugin.app.vault.read(file)!==expected)throw Error(writerUi(
   'Esta nota mudou enquanto você editava. Copie seu rascunho e reabra a cena antes de salvar.',
   'This note changed while you edited it. Copy your draft and reopen the scene before saving.'));
- if(plugin.writerSnapshots?.config?.enabled)await plugin.writerSnapshots.create(file,writerUi('Antes da edição contínua v11','Before v11 continuous edit'),{content:expected});
+ if(plugin.writerSnapshots?.config?.enabled)await plugin.writerSnapshots.create(file,writerUi('Antes da edição contínua','Before continuous edit'),{content:expected});
  await plugin.app.vault.process(file,current=>{
   if(current!==expected)throw Error(writerUi('Alteração concorrente: gravação cancelada.','Concurrent edit: write cancelled.'));
   return String(next);
@@ -26428,7 +26702,7 @@ async function writerV11OpenProject(plugin,project){
  if(!project?.file?.path)return;
  await plugin.openProjects?.('manuscript');
  const view=plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.[0]?.view;
- if(!view){new Notice(writerUi('Não foi possível abrir o Longform.','Could not open Longform.'));return;}
+ if(!view){new Notice(writerUi('Não foi possível abrir a escrita do livro.','Could not open book writing.'));return;}
  view.selected=project.file.path;
  if(typeof writerProjectRemember==='function')writerProjectRemember(view,project.file.path);
  view.activeTab='manuscript';
@@ -26438,7 +26712,7 @@ function writerV11RenderLongformTab(view,panel,project){
  const plugin=view.plugin,cfg=writerV11Cfg(plugin.settings);
  const root=panel.createDiv({cls:'writer-v11-studio writer-v11-longform-inline'});
  if(cfg.enabled===false){
-  root.createEl('p',{text:writerUi('A escrita contínua está desativada nas configurações do Longform.','Continuous writing is disabled in Longform settings.')});return;
+  root.createEl('p',{text:writerUi('A escrita contínua está desativada nas configurações de livros.','Continuous writing is disabled in book settings.')});return;
  }
  const compileScenes=()=>writerV11ManuscriptScenes(plugin,project,
   typeof view.activeScenes==='function'?view.activeScenes(project):undefined,
@@ -26450,8 +26724,8 @@ function writerV11RenderLongformTab(view,panel,project){
  }).slice(0,cfg.chapterLimit);
  root.createEl('h4',{text:writerUi('Escrita contínua','Continuous writing')});
  root.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Todas as cenas continuam no Longform padrão, com a ordem, os metadados e os arquivos originais. Expanda uma cena para editar e salve explicitamente.',
-  'Scenes retain the standard Longform order, metadata and original files. Expand a scene to edit and save explicitly.')});
+  'As cenas mantêm a ordem do projeto, os metadados e os arquivos originais. Expanda uma cena para editar e salve explicitamente.',
+  'Scenes retain their project order, metadata and original files. Expand a scene to edit and save explicitly.')});
  const bar=root.createDiv({cls:'writer-v11-studio-actions'});
  bar.createEl('button',{text:writerUi('Pesquisar capítulos','Search chapters')})
   .addEventListener('click',()=>writerV11OpenSearch(plugin,scenes.map(x=>x.file)));
@@ -26561,7 +26835,7 @@ function writerV11RenderLongformTab(view,panel,project){
       info.setText(writerV11Words(expected)+' '+writerUi('palavras','words'));
       if(editor.value===expected){
        status.setText(writerUi('Salvo','Saved'));
-       new Notice(writerUi('Cena salva no arquivo Longform original.','Scene saved in original Longform note.'));
+       new Notice(writerUi('Cena salva na nota original do capítulo.','Scene saved in the original chapter note.'));
       }else new Notice(writerUi('Cena salva. As alterações mais recentes continuam no rascunho não salvo.','Scene saved. Newer edits remain in the unsaved draft.'));
      }catch(error){
       status.setText(String(error.message||error));new Notice(String(error.message||error));
@@ -26804,7 +27078,7 @@ async function writerV11Compile(plugin,project,sceneSource){
  let mode='saved',snapshot=null,generation=0,closed=false,loading=false,busy=false,approved=false;
  let summary,chapters,preview,previewNote,confirmation,create,refreshButton,sourceChoice;
  const resolveScenes=()=>typeof sceneSource==='function'?sceneSource():sceneSource||writerV11ManuscriptScenes(plugin,project);
- const sourceLabel=origin=>origin==='draft'?writerUi('Rascunho Longform','Longform draft'):
+ const sourceLabel=origin=>origin==='draft'?writerUi('Rascunho de capítulo','Chapter draft'):
   origin==='editor'?writerUi('Editor não salvo','Unsaved editor'):writerUi('Arquivo salvo','Saved file');
  const controls=()=>{
   create?.setDisabled(busy||loading||!snapshot);
@@ -26846,8 +27120,8 @@ async function writerV11Compile(plugin,project,sceneSource){
     .addOption('current',writerUi('Escrita atual','Current writing')).setValue(mode).onChange(value=>{mode=value;void refresh();});
   });
   root.createEl('p',{cls:'setting-item-description',text:writerUi(
-   'Arquivos salvos ignora edições não salvas. Escrita atual inclui rascunhos Longform compatíveis e editores abertos; versões conflitantes precisam de revisão.',
-   'Saved files excludes unsaved edits. Current writing includes matching Longform drafts and open editors; conflicting versions need review.')});
+   'Arquivos salvos ignora edições não salvas. Escrita atual inclui rascunhos de capítulos compatíveis e editores abertos; versões conflitantes precisam de revisão.',
+   'Saved files excludes unsaved edits. Current writing includes matching chapter drafts and open editors; conflicting versions need review.')});
   summary=root.createEl('p',{attr:{role:'status','aria-live':'polite'}});
   const detail=root.createEl('details');detail.createEl('summary',{text:writerUi('Capítulos e fontes do texto','Chapters and text sources')});
   chapters=detail.createEl('ol');
@@ -26879,7 +27153,7 @@ async function writerV11Compile(plugin,project,sceneSource){
  modal.open();await refresh();return modal;
 }
 function writerV11OpenDiagnostics(plugin){
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Central de compatibilidade v11','v11 compatibility center'));
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Central de compatibilidade','Compatibility center'));
  modal.onOpen=()=>{
   const root=modal.contentEl;root.empty();root.addClass('writer-v11-studio');
   root.createEl('p',{text:writerUi('Inspeção local e sem alterações nos arquivos.','Local read-only inspection, without file changes.')});
@@ -26888,7 +27162,7 @@ function writerV11OpenDiagnostics(plugin){
    [writerUi('Arquivos Markdown','Markdown files'),String(plugin.app.vault.getMarkdownFiles?.().length||0)],
    [writerUi('Módulos opcionais 10.7','Optional 10.7 modules'),plugin.settings.v107AdvancedEnabled===false?'disabled':'enabled'],
    [writerUi('Banco Markdown','Markdown databases'),plugin.settings.v1011Notion?.enabled===false?'disabled':'enabled'],
-   [writerUi('Estúdio Longform','Longform Studio'),writerV11Cfg(plugin.settings).enabled?'enabled':'disabled'],
+  [writerUi('Escrita de livros','Book writing'),writerV11Cfg(plugin.settings).enabled?'enabled':'disabled'],
    [writerUi('Falhas 10.7','10.7 registration failures'),(plugin._writerV107Failures||[]).join(', ')||'none'],
    [writerUi('Spaces','Spaces'),String(plugin.settings.v9Spaces?.spaces?.length||0)]
   ];
@@ -26931,26 +27205,26 @@ function writerV11StudioRegister(plugin){
   }
  }));
 
- plugin.addCommand({id:'v11-longform-studio',name:writerUi('Longform: abrir escrita contínua','Longform: open continuous writing'),
+ plugin.addCommand({id:'v11-longform-studio',name:writerUi('Livros: abrir escrita contínua','Books: open continuous writing'),
   callback:()=>writerV11PickProject(plugin,project=>writerV11OpenProject(plugin,project))});
  plugin.addCommand({id:'v11-editorial-review',name:writerUi('Revisão: comparar snapshots do capítulo','Review: compare chapter snapshots'),
   callback:()=>writerV11OpenRevision(plugin,plugin.app.workspace.getActiveFile?.())});
  plugin.addCommand({id:'v11-universal-search',name:writerUi('Pesquisa: conteúdo e propriedades do cofre','Search: vault content and properties'),
   callback:()=>writerV11OpenSearch(plugin)});
- plugin.addCommand({id:'v11-manuscript-compile',name:writerUi('Longform: compilar manuscrito Markdown','Longform: compile Markdown manuscript'),
+ plugin.addCommand({id:'v11-manuscript-compile',name:writerUi('Livros: compilar manuscrito Markdown','Books: compile Markdown manuscript'),
   callback:()=>writerV11PickProject(plugin,p=>void writerV11Compile(plugin,p))});
  plugin.addCommand({id:'v11-compatibility-center',name:writerUi('Basic: central de compatibilidade','Basic: compatibility center'),
   callback:()=>writerV11OpenDiagnostics(plugin)});
- if(typeof writerV134OpenRecovery==='function')plugin.addCommand({id:'v134-longform-recovery',name:writerUi('Longform: recuperar rascunhos','Longform: recover drafts'),
+ if(typeof writerV134OpenRecovery==='function')plugin.addCommand({id:'v134-longform-recovery',name:writerUi('Livros: recuperar rascunhos','Books: recover drafts'),
   callback:()=>writerV134OpenRecovery(plugin)});
 }
 function writerV11StudioSettings(plugin,panel){
  const cfg=writerV11Cfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Longform · Escrita contínua','Longform · Continuous writing')});
+ panel.createEl('h3',{text:writerUi('Escrita de livros','Book writing')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Escrita contínua segura, revisões com snapshots, pesquisa contextual e exportação Markdown por projeto.',
   'Safe continuous writing, snapshot comparisons, contextual search and per-project Markdown compilation.')});
- new Setting(panel).setName(writerUi('Ativar escrita contínua no Longform','Enable continuous writing in Longform'))
+ new Setting(panel).setName(writerUi('Ativar escrita contínua de capítulos','Enable continuous chapter writing'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Cópias locais de recuperação','Local recovery copies'))
   .setDesc(writerUi('Guarda rascunhos de capítulos nos dados locais do Basic para recuperar após reiniciar. Não substitui Salvar cena; desativar preserva as cópias existentes.',
@@ -26968,7 +27242,7 @@ function writerV11StudioSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum searched notes'))
   .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.searchLimit).setDynamicTooltip().onChange(async v=>{cfg.searchLimit=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Escrita contínua','Continuous writing'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir Longform','Open Longform')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
+  .addButton(b=>b.setButtonText(writerUi('Escolher livro','Choose book')).onClick(()=>writerV11PickProject(plugin,p=>writerV11OpenProject(plugin,p))));
  new Setting(panel).setName(writerUi('Central de compatibilidade','Compatibility center'))
   .addButton(b=>b.setButtonText(writerUi('Diagnosticar','Diagnose')).onClick(()=>writerV11OpenDiagnostics(plugin)));
 }
@@ -27075,7 +27349,7 @@ function writerV11DbRegister(plugin){
    caption counters and line decorations in Live Preview. */
 function writerV111NumberCfg(settings){
  const old=settings.v111Number&&typeof settings.v111Number==='object'&&!Array.isArray(settings.v111Number)?settings.v111Number:{};
- return settings.v111Number={livePreview:false,captionNumbers:false,...old};
+ return settings.v111Number=Object.assign(old,{livePreview:false,captionNumbers:false,...old});
 }
 function writerV111NumberStructure(source,scheme='hierarchical'){
  const text=String(source||'');
@@ -27183,7 +27457,7 @@ function writerV111NumberStructureModal(plugin){
 }
 function writerV111NumberSettings(plugin,panel){
  const cfg=writerV111NumberCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Number Suite · funções extras','Number Suite · additional features')});
+ panel.createEl('h3',{text:writerUi('Numeração visual e legendas','Visual numbering and captions')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Números de títulos no Live Preview e numeração de legendas somente visuais. Nenhum arquivo é alterado.',
   'Display-only Live Preview headings and caption counters. No Markdown changes.')});
@@ -27318,7 +27592,7 @@ function writerV111DbBuilderRegister(plugin){
   editorCallback:editor=>writerV111DbBuilderOpen(plugin,editor)});
 }
 function writerV111DbBuilderSettings(plugin,panel){
- panel.createEl('h3',{text:writerUi('Notion Suite · construtor visual','Notion Suite · visual builder')});
+ panel.createEl('h3',{text:writerUi('Construtor de tabelas e visualizações','Table and view builder')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Configure filtros simples, colunas, cartões e visualizações sem digitar blocos manualmente. Para alterar blocos existentes, selecione-os no editor.',
   'Configure simple filters, columns, boards and views without hand-writing code blocks. Select existing blocks in the editor to modify.')});
@@ -27451,12 +27725,15 @@ const WRITER_V12_COMPANIONS=[
 ];
 const WRITER_V12_SYNC=['none','syncthing-manager','syncthing-integration','obsidian-git','fit'];
 function writerV12Config(plugin){
- const old=plugin.settings.v12Toolkit;
- const cfg=plugin.settings.v12Toolkit={
+ const original=plugin.settings.v12Toolkit;
+ const old=original&&typeof original==='object'&&!Array.isArray(original)?original:{};
+ // Settings controls and open menus retain this object between input events.
+ // Normalize it in place so another feature read cannot discard their edits.
+ const cfg=plugin.settings.v12Toolkit=Object.assign(old,{
   enabled:true,palette:true,imageTools:true,taskNavigator:true,localInbox:true,secureNotes:false,selectionTools:false,
   folderFocus:true,integrations:true,syncProvider:'none',maxTaskFiles:250,
-  ...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})
- };
+  ...old
+ });
  if(!WRITER_V12_SYNC.includes(cfg.syncProvider))cfg.syncProvider='none';
  cfg.maxTaskFiles=Math.max(25,Math.min(1000,Number(cfg.maxTaskFiles)||250));
  return cfg;
@@ -27811,7 +28088,7 @@ function writerV12OpenIntegrationHub(plugin,role){
  if(!writerV12On(plugin,'integrations'))return;
  const cfg=writerV12Config(plugin),modal=new Modal(plugin.app);
  modal.titleEl.setText(role==='sync'?writerUi('Central de sincronização','Synchronization center'):
-  writerUi('Central de integrações · v12','Integration center · v12'));
+  writerUi('Central de integrações','Integration center'));
  const intro=role==='sync'?
   writerUi('Escolha apenas um mecanismo para executar comandos manuais. O Basic não inicia sincronização automática, nem desliga rotinas de outros plugins.',
    'Select one provider for manual commands. Basic does not auto-sync or disable other plugins’ background jobs.'):
@@ -27892,7 +28169,7 @@ function writerV12Templates(plugin,editor){
 function writerV12Register(plugin){
  writerV12Config(plugin);
  const command=(id,pt,en,callback)=>plugin.addCommand({id,name:writerUi(pt,en),callback});
- command('v12-integrations','Toolkit: central de integrações','Toolkit: integration center',()=>writerV12OpenIntegrationHub(plugin));
+ command('v12-integrations','Integrações: abrir central','Integrations: open center',()=>writerV12OpenIntegrationHub(plugin));
  command('v12-sync-center','Sincronização: abrir central','Sync: open center',()=>writerV12OpenIntegrationHub(plugin,'sync'));
  command('v12-tasks','Tarefas: localizar em notas','Tasks: find in notes',()=>void writerV12OpenTasks(plugin));
  command('v12-capture','Captura: guardar na Inbox local','Capture: save to local inbox',()=>writerV12Capture(plugin,false));
@@ -27910,12 +28187,12 @@ function writerV12Register(plugin){
 }
 function writerV12Settings(plugin,panel){
  const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Toolkit unificado · v12','Unified toolkit · v12')});
+ panel.createEl('h3',{text:writerUi('Ações rápidas e utilitários','Quick actions and utilities')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Aproveita a formatação, o TTS, o explorador, os Spaces e a IA já presentes. Sincronização externa e criptografia não são duplicadas.',
   'Reuses existing formatting, TTS, explorer, Spaces and AI. External sync and encryption engines are not duplicated.')});
  for(const [key,pt,en] of [
-  ['enabled','Ativar Toolkit v12','Enable v12 toolkit'],
+  ['enabled','Ativar ações rápidas e utilitários','Enable quick actions and utilities'],
   ['palette','Paleta de formatação','Formatting palette'],
   ['imageTools','Visualizador e tamanhos de imagens','Image viewer and sizing'],
   ['taskNavigator','Navegação de tarefas','Task navigation'],
@@ -28066,8 +28343,8 @@ function writerV12SecureSettings(plugin,panel){
  const cfg=writerV12Config(plugin);
  panel.createEl('h3',{text:writerUi('Notas criptografadas · AES-256-GCM','Encrypted notes · AES-256-GCM')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Protege apenas o conteúdo de NOVAS notas. Nomes de arquivos e existência dos documentos continuam visíveis. Não é a criptografia de pastas do Ultimate Toolkit; sem recuperação de senha.',
-  'Encrypts only NEW note contents. File names and their existence remain visible. This is not Ultimate Toolkit folder encryption; no password recovery.')});
+  'Protege apenas o conteúdo de NOVAS notas. Nomes de arquivos e existência dos documentos continuam visíveis. Não há recuperação de senha.',
+  'Encrypts only NEW note contents. File names and their existence remain visible. There is no password recovery.')});
  new Setting(panel).setName(writerUi('Ativar notas criptografadas locais','Enable local encrypted notes')).addToggle(t=>t.setValue(cfg.secureNotes===true).onChange(async v=>{cfg.secureNotes=v;await plugin.saveSettings();}));
 }
 
@@ -28194,8 +28471,8 @@ function writerV12TasksRegister(plugin){
  * No remote image capture, no network, no image libraries. */
 function writerV12AnnotationConfig(plugin){
  const value=plugin.settings.v12Annotations;
- return plugin.settings.v12Annotations={maxDimension:1400,desktopOnly:false,
-  ...(value&&typeof value==='object'&&!Array.isArray(value)?value:{})};
+ const cfg=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+ return plugin.settings.v12Annotations=Object.assign(cfg,{maxDimension:1400,desktopOnly:false,...cfg});
 }
 function writerV12AnnotatePick(plugin){
  if(!writerV12On(plugin,'imageTools'))return;
@@ -28337,7 +28614,7 @@ function writerV12AnnotationRegister(plugin){
 }
 function writerV12AnnotationSettings(plugin,panel){
  const cfg=writerV12AnnotationConfig(plugin);
- panel.createEl('h3',{text:writerUi('Anotações visuais · v12','Image annotations · v12')});
+ panel.createEl('h3',{text:writerUi('Anotações em imagens','Image annotations')});
  new Setting(panel).setName(writerUi('Maior dimensão da imagem exportada','Maximum PNG output dimension'))
   .addSlider(s=>s.setLimits(600,1800,100).setValue(cfg.maxDimension).setDynamicTooltip().onChange(async v=>{
    cfg.maxDimension=v;await plugin.saveSettings();
@@ -28557,19 +28834,101 @@ function writerV1201BookmarkCommand(plugin){
   /(?:bookmark|marcar|marcador|adicionar.*favorito)/i.test(command.name||'')&&
   !/(?:remove|delete|remover|apagar|unbookmark)/i.test(command.id+' '+command.name))||null;
 }
-function writerV1201NativeAction(plugin,action,label){
+function writerV1201NativeAction(plugin,action,label,parentMenu,trigger){
  if(!action||!plugin)return false;
- if(plugin._writerV1201NativeRelay)return false;
+ // A repeated tap is already handled; falling through would click the native
+ // toggle a second time and close the popup that the first tap just opened.
+ if(plugin._writerV1201NativeRelay)return true;
  const name=String(label||action.getAttribute?.('aria-label')||'');
  const isBookmark=/^(?:marcador|bookmark|adicionar marcador|adicionar aos favoritos)$/i.test(name.trim());
  const command=isBookmark?writerV1201BookmarkCommand(plugin):null;
+ const doc=action.ownerDocument||trigger?.ownerDocument||plugin.app.workspace?.containerEl?.ownerDocument;
+ const win=doc?.defaultView;
+ const popupSelector='.menu,.popover,.suggestion-container,.modal-container,.bases-toolbar-menu';
+ const shown=node=>{
+  if(!node||node.isConnected===false||node.hidden)return false;
+  const style=win?.getComputedStyle?.(node)||node.style;
+  return style?.display!=='none'&&style?.visibility!=='hidden';
+ };
+ const popups=()=>Array.from(doc?.querySelectorAll?.(popupSelector)||[]).filter(shown);
+ const nativeMenus=new Set();
+ let stopped=false,observer=null,anchor=null,opened=false,checkTimer=null,openTimer=null;
+ const finish=(refresh=true)=>{
+  if(stopped)return;
+  stopped=true;observer?.disconnect?.();
+  if(checkTimer!==null)clearTimeout(checkTimer);
+  if(openTimer!==null)clearTimeout(openTimer);
+  anchor?.remove?.();
+  plugin._writerV1201NativeRelay=false;
+  plugin._writerV1010NativeActionPending=false;
+  plugin._writerV1201NativeRelayState=null;
+  if(refresh)plugin.writerV1010Refresh?.();
+ };
+ const cancel=()=>{
+  finish(false);
+  for(const menu of nativeMenus)menu.hide?.();
+ };
+ plugin._writerV1201NativeRelayState={cancel};
  plugin._writerV1201NativeRelay=true;
  plugin._writerV1010NativeActionPending=true;
- setTimeout(()=>{
+ if(!plugin._writerV1201NativeRelayCleanup){
+  plugin._writerV1201NativeRelayCleanup=true;
+  plugin.register?.(()=>plugin._writerV1201NativeRelayState?.cancel());
+ }
+ const open=()=>{
+  if(stopped||opened)return;
+  opened=true;
+  const before=new Set(popups()),tracked=new Set();
+  const update=()=>{
+   if(stopped)return;
+   if(action.isConnected===false){cancel();plugin.writerV1010Refresh?.();return;}
+   for(const popup of popups())if(!before.has(popup))tracked.add(popup);
+   if(tracked.size&&![...tracked].some(shown))finish();
+  };
+  const Observer=win?.MutationObserver||(typeof MutationObserver==='function'?MutationObserver:null);
+  if(Observer&&doc?.body){
+   observer=new Observer(update);
+   observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});
+  }
+  // Obsidian dismisses menus when their parent element is hidden. Native view
+  // actions are often hidden on mobile. Give only menus opened by this click a
+  // stable, laid-out anchor; leave the native button and its listeners in place.
+  const parent=typeof Menu!=='undefined'?Menu.prototype:null;
+  const oldParent=parent?.setParentElement,oldShow=parent?.showAtPosition;
+  const reanchored=new Set();
+  const stableAnchor=()=>{
+   if(anchor||!doc?.body||!doc.createElement)return anchor;
+   const point=(trigger||action).getBoundingClientRect?.()||{};
+   anchor=doc.createElement('span');
+   anchor.className='writer-v137-native-menu-anchor';
+   anchor.setAttribute('aria-hidden','true');
+   Object.assign(anchor.style,{position:'absolute',left:(Number(point.left)||0)+'px',
+    top:(Number(point.bottom)||Number(point.top)||0)+'px',width:'1px',height:'1px',opacity:'0',pointerEvents:'none'});
+   doc.body.appendChild(anchor);return anchor;
+  };
+  const setParent=function(element){
+   const target=element===action?stableAnchor():null;
+   if(target)reanchored.add(this);
+   return oldParent.call(this,target||element);
+  };
+  const show=function(...args){
+   nativeMenus.add(this);
+   if(reanchored.has(this)&&anchor){
+    const point=anchor.getBoundingClientRect();
+    args[0]={...args[0],x:point.left,y:point.bottom};
+   }
+   return oldShow.apply(this,args);
+  };
   try{
+   // These public API wrappers exist only during synchronous event dispatch.
+   // No global hook remains installed while the popup is open.
+   if(typeof oldParent==='function')parent.setParentElement=setParent;
+   if(typeof oldShow==='function')parent.showAtPosition=show;
    if(command&&plugin.app.commands?.executeCommandById){
     plugin.app.commands.executeCommandById(command.id);
-   }else if(action.isConnected){
+   }else if(action.disabled===true||action.getAttribute?.('aria-disabled')==='true'){
+    new Notice(writerUi('Esta ação não está disponível agora.','This action is currently unavailable.'));
+   }else if(action.isConnected!==false){
     action.click();
    }else new Notice(writerUi('O painel mudou. Reabra o menu e tente novamente.',
       'The pane changed. Reopen its menu and try again.'));
@@ -28577,13 +28936,17 @@ function writerV1201NativeAction(plugin,action,label){
    console.warn('[Basic] Native sidebar action:',error);
    new Notice(writerUi('Não foi possível executar esta ação.','Could not execute this action.'));
   }finally{
-   setTimeout(()=>{
-    plugin._writerV1201NativeRelay=false;
-    plugin._writerV1010NativeActionPending=false;
-    plugin.writerV1010Refresh?.();
-   },1100);
+   if(parent?.setParentElement===setParent)parent.setParentElement=oldParent;
+   if(parent?.showAtPosition===show)parent.showAtPosition=oldShow;
+   update();
+   // Ordinary actions finish after their event. Popups hold their anchor until
+   // actual removal/closing, including long-lived sheets and nested menus.
+   if(!stopped)checkTimer=setTimeout(()=>{update();if(!tracked.size)finish();},0);
   }
- },380);
+ };
+ const ready=()=>{if(!stopped&&openTimer===null)openTimer=setTimeout(open,0);};
+ if(typeof parentMenu?.onHide==='function')parentMenu.onHide(ready);
+ else ready();
  return true;
 }
 function writerV1201RibbonRegister(plugin){
@@ -28620,12 +28983,12 @@ function writerV1201SettingToggle(plugin,panel,key,pt,en,description){
 }
 function writerV1201SettingsOverview(plugin,panel){
  const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Toolkit e suítes','Toolkit and suites')});
+ panel.createEl('h3',{text:writerUi('Ações rápidas','Quick actions')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'As funções recentes foram reunidas nas categorias existentes: Escrita, Organização, Arquivos, Revisão e Longform. Nenhuma aba adicional é criada.',
-  'Recent features are grouped into the existing Writing, Organization, Files, Review and Longform categories. No additional tabs are created.')});
- new Setting(panel).setName(writerUi('Ativar Toolkit v12','Enable v12 toolkit'))
-  .setDesc(writerUi('Controle geral para os recursos da v12.','Global switch for v12 features.'))
+  'Ferramentas locais de formatação, captura, tarefas, imagens e foco. As opções de cada recurso ficam na categoria correspondente.',
+  'Local tools for formatting, capture, tasks, images and focus. Each feature has its options in the corresponding category.')});
+ new Setting(panel).setName(writerUi('Ativar ações rápidas','Enable quick actions'))
+  .setDesc(writerUi('Ativa a paleta de formatação, captura, tarefas, imagens e foco.','Enables the formatting palette, capture, tasks, images and focus tools.'))
   .addToggle(t=>t.setValue(cfg.enabled!==false).onChange(async v=>{
    cfg.enabled=v;await plugin.saveSettings();writerV12FocusRefresh(plugin);
   }));
@@ -28640,8 +29003,8 @@ function writerV1201SettingsWriting(plugin,panel){
  writerV1201SettingToggle(plugin,panel,'folderFocus','Foco na pasta do explorador','Explorer folder focus',
   ['Apenas visual; não bloqueia o acesso aos arquivos.','Visual only; does not restrict file access.']);
  new Setting(panel).setName(writerUi('Atalhos do ribbon do Basic','Basic ribbon shortcuts'))
-  .setDesc(writerUi('Menu próprio: leitura, formatação, foco e integrações, sem depender do Ultimate Toolkit.',
-   'Basic-owned menu for reading, formatting, focus and integrations.'))
+  .setDesc(writerUi('Abra as ações de leitura, formatação, foco e integrações do Basic.',
+   'Open Basic actions for reading, formatting, focus and integrations.'))
   .addButton(b=>b.setButtonText(writerUi('Abrir menu','Open menu'))
    .onClick(()=>writerV1201QuickMenu(plugin)));
 }
@@ -28657,13 +29020,13 @@ function writerV1201SettingsImages(plugin,panel){
 }
 function writerV1201SettingsTasks(plugin,panel){
  const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Tarefas, Inbox e brainstorm','Tasks, Inbox and brainstorm')});
+ panel.createEl('h3',{text:writerUi('Tarefas e captura de ideias','Tasks and idea capture')});
  writerV1201SettingToggle(plugin,panel,'taskNavigator','Navegador de tarefas','Task navigator',
   ['Leitura e edição com verificação de alterações concorrentes.','Read and edit with concurrent-change checks.']);
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum notes to scan'))
   .addSlider(s=>s.setLimits(25,1000,25).setDynamicTooltip().setValue(cfg.maxTaskFiles)
    .onChange(async v=>{cfg.maxTaskFiles=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Workbench de tarefas','Task workbench'))
+ new Setting(panel).setName(writerUi('Painel de tarefas','Task dashboard'))
   .setDesc(writerUi('Agrupa por etiqueta, filtra e permite marcar tarefas.','Group by tag, filter and toggle tasks.'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
    .onClick(()=>writerV12TaskWorkbench(plugin)));
@@ -28727,13 +29090,13 @@ function writerV1201SettingsConnections(plugin,panel){
 }
 function writerV1201SettingsSuite(plugin,panel,id){
  const functions={
-  suiteEducation:['Unique Suite · estudos e horários','Unique Suite · study tools',
+  suiteEducation:['Rotina de estudos','Study routine',
    ['writerV1011StudySettings']],
-  suiteDatabase:['Notion Suite · bancos e visualizações','Notion Suite · databases and views',
+  suiteDatabase:['Bancos e visualizações','Databases and views',
    ['writerV1011NotionSettings','writerV111DbBuilderSettings']],
-  suiteNumbering:['Number Suite · numeração','Number Suite · numbering',
+  suiteNumbering:['Numeração e legendas','Numbering and captions',
    ['writerV1011NumberSettings','writerV111NumberSettings']],
-  suiteLongform:['Longform Studio · escrita e projetos','Longform Studio · writing and projects',
+  suiteLongform:['Escrita contínua','Continuous writing',
    ['writerV11StudioSettings']]
  };
  const row=functions[id];
@@ -28814,25 +29177,35 @@ function writerV13RankCommands(commands,query,limit=70){
    String(a.command.id).localeCompare(String(b.command.id)))
   .slice(0,max).map(item=>item.command);
 }
+function writerV137SyncSettingsTabs(strip){
+ const tabs=Array.from(strip?.querySelectorAll?.('button[role="tab"]:not(:disabled)')||[]);
+ const selected=tabs.find(tab=>tab.getAttribute('aria-selected')==='true')||tabs[0];
+ for(const tab of tabs)tab.tabIndex=tab===selected?0:-1;
+}
 function writerV13BindSettingsTabs(nav,subnav){
  const bind=(strip,label)=>{
   if(!strip||strip.dataset.basicV13Keyboard==='1')return;
   strip.dataset.basicV13Keyboard='1';
   strip.setAttribute('role','tablist');
   strip.setAttribute('aria-label',label);
+  writerV137SyncSettingsTabs(strip);
+  strip.addEventListener('click',()=>writerV137SyncSettingsTabs(strip));
   strip.addEventListener('keydown',event=>{
    if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;
-   if(event.altKey||event.ctrlKey||event.metaKey)return;
+   if(event.altKey||event.ctrlKey||event.metaKey||event.shiftKey||event.isComposing||event.keyCode===229)return;
    const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
    if(!tabs.length)return;
    let current=tabs.indexOf(event.target.closest?.('button[role="tab"]'));
    if(current<0)current=tabs.findIndex(tab=>tab.getAttribute('aria-selected')==='true');
    if(current<0)current=0;
+   const direction=strip.ownerDocument?.defaultView?.getComputedStyle?.(strip)?.direction==='rtl'?-1:1;
    const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
-    (current+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+    (current+(event.key==='ArrowRight'?direction:-direction)+tabs.length)%tabs.length;
    event.preventDefault();
    tabs[next].focus();
    tabs[next].click();
+   writerV137SyncSettingsTabs(strip);
+   tabs[next].scrollIntoView?.({block:'nearest',inline:'nearest'});
   });
  };
  const label=(pt,en)=>typeof writerUi==='function'?writerUi(pt,en):en;
@@ -28905,6 +29278,8 @@ function writerV131RankSettings(entries,query,limit=18){
    score+=best;
   }
   if(title===q)score+=500;
+  const aliases=writerV13SearchText(entry?.aliases).split(/\s+/).filter(Boolean);
+  if(aliases.length&&words.every(word=>aliases.includes(word)))score+=500;
   if(entry?.source==='category')score-=50;
   return {...entry,score};
  }).filter(Boolean).sort((a,b)=>b.score-a.score||
@@ -28956,6 +29331,4170 @@ function writerV136MarkSettingsHost(tab,active){
  if(!active)return;
  const host=tab.containerEl?.closest?.('.mod-settings');
  if(host){host.classList.add('writer-v136-settings-host');tab.writerV136SettingsHost=host;}
+}
+
+// v3 module: src/v13/settings-catalog.js
+/* Presentation routes use stable IDs so existing shortcuts and saved choices work. */
+const WRITER_SETTINGS_GROUPS=[
+ {id:'general',pt:'Geral',en:'General',icon:'settings-2'},
+ {id:'customize',pt:'Aparência e painéis',en:'Appearance & panes',icon:'palette'},
+ {id:'writing',pt:'Escrita e edição',en:'Writing & editing',icon:'pen-line'},
+ {id:'markdown',pt:'Markdown e formatação',en:'Markdown & formatting',icon:'type'},
+ {id:'workflow',pt:'Organização e foco',en:'Organization & focus',icon:'layers-3'},
+ {id:'longform',pt:'Livros e projetos',en:'Books & projects',icon:'book-open'},
+ {id:'review',pt:'Revisão e versões',en:'Review & versions',icon:'spell-check'},
+ {id:'reading',pt:'Leitura e estudo',en:'Reading & study',icon:'graduation-cap'},
+ {id:'ai',pt:'Inteligência artificial',en:'Artificial intelligence',icon:'brain-circuit'}
+];
+const WRITER_SETTINGS_CATALOG=[
+ {id:'general',group:'general',pt:'Comece por aqui',en:'Get started',descriptionPt:'Configuração inicial, idioma e atalhos para os recursos.',descriptionEn:'Initial setup, language and feature shortcuts.'},
+ {id:'modules',group:'general',pt:'Recursos',en:'Features',descriptionPt:'Escolha quais recursos aparecem nos painéis, menus e comandos.',descriptionEn:'Choose the features shown in panes, menus and commands.',keywords:'módulos modules visibility ocultar hide ativar enabled'},
+ {id:'workspaceProfiles',group:'general',pt:'Perfis de escrita',en:'Writing profiles',descriptionPt:'Salve combinações de preferências e desfaça a última aplicação.',descriptionEn:'Save combinations of preferences and undo the last application.'},
+ {id:'diagnostics',group:'general',pt:'Diagnóstico e atalhos',en:'Diagnostics & shortcuts',descriptionPt:'Confira o estado local e possíveis conflitos de atalhos.',descriptionEn:'Check local status and possible shortcut conflicts.'},
+ {id:'integrationsV4',group:'general',pt:'Integrações e sincronização',en:'Integrations & sync',descriptionPt:'Menções, ações integradas e conexões com plugins externos.',descriptionEn:'Mentions, integrated actions and connections to external plugins.'},
+ {id:'compatibility',group:'general',pt:'Compatibilidade',en:'Compatibility',descriptionPt:'Controle o carregamento dos recursos avançados após reiniciar.',descriptionEn:'Control advanced feature loading after restarting.'},
+ {id:'homepage',group:'customize',pt:'Página inicial',en:'Homepage',descriptionPt:'Busca, atalhos, widgets e livros na página inicial.',descriptionEn:'Search, shortcuts, widgets and books on the homepage.',modules:['writingHome']},
+ {id:'v9Explorer',group:'customize',pt:'Explorador de arquivos',en:'File explorer',descriptionPt:'Ícones, cores, prévias e apresentação das pastas.',descriptionEn:'Icons, colors, previews and folder presentation.',modules:['nativeExplorer']},
+ {id:'v9Pretty',group:'customize',pt:'Propriedades das notas',en:'Note properties',descriptionPt:'Apresentação e edição das propriedades no editor.',descriptionEn:'Property presentation and editing in the editor.'},
+ {id:'images',group:'customize',pt:'Imagens e anotações',en:'Images & annotations',descriptionPt:'Inserção, tamanhos, visualização e anotações em imagens locais.',descriptionEn:'Insert, resize, view and annotate local images.'},
+ {id:'media',group:'customize',pt:'Mídia e arraste',en:'Media & dragging',descriptionPt:'Arraste e prévias de imagens, áudio e vídeo.',descriptionEn:'Dragging and previews for images, audio and video.'},
+ {id:'writingWidgets',group:'customize',pt:'Blocos e widgets',en:'Blocks & widgets',descriptionPt:'Colunas, progresso, galerias e blocos interativos.',descriptionEn:'Columns, progress, galleries and interactive blocks.',modules:['writingWidgets']},
+ {id:'keyshots',group:'writing',pt:'Atalhos do editor',en:'Editor shortcuts',descriptionPt:'Navegação pelo teclado, edição de linhas e múltiplos cursores.',descriptionEn:'Keyboard navigation, line editing and multiple cursors.',modules:['keyshots'],keywords:'keyshots keysho keyboard jetbrains vscode'},
+ {id:'typing',group:'writing',pt:'Digitação e tipografia',en:'Typing & typography',descriptionPt:'Aspas, travessões, colagem, substituições e regras de texto.',descriptionEn:'Quotes, dashes, paste, replacements and text rules.',modules:['easyTyping','smartTypography'],keywords:'easy typing smart typography regex snippets'},
+ {id:'typewriter',group:'writing',pt:'Máquina de escrever e foco',en:'Typewriter & focus',descriptionPt:'Posição da linha ativa e leitura confortável durante a escrita.',descriptionEn:'Active line position and comfortable focus while writing.',modules:['typewriter']},
+ {id:'complements',group:'writing',pt:'Sugestões de palavras',en:'Word suggestions',descriptionPt:'Autocompletar com palavras e termos locais.',descriptionEn:'Autocomplete using local words and terms.',modules:['complements']},
+ {id:'cursor',group:'writing',pt:'Posição do cursor',en:'Cursor position',descriptionPt:'Retome a posição, seleção e rolagem das notas.',descriptionEn:'Restore note cursor position, selection and scroll.',modules:['cursorMemory']},
+ {id:'abbreviations',group:'writing',pt:'Abreviações',en:'Abbreviations',descriptionPt:'Expansões de texto e abreviações usadas na escrita.',descriptionEn:'Text expansions and abbreviations used while writing.'},
+ {id:'anotherName',group:'writing',pt:'Títulos alternativos',en:'Alternate titles',descriptionPt:'Nomes de exibição e títulos alternativos das notas.',descriptionEn:'Display names and alternate note titles.',keywords:'another name outro nome aliases'},
+ {id:'viewMode',group:'writing',pt:'Modos do editor',en:'Editor modes',descriptionPt:'Preferências de edição, leitura e visualização.',descriptionEn:'Editing, reading and view preferences.'},
+ {id:'templates',group:'writing',pt:'Modelos de notas',en:'Note templates',descriptionPt:'Modelos reutilizáveis para criar e preencher notas.',descriptionEn:'Reusable templates to create and fill notes.',modules:['templates']},
+ {id:'quickActions',group:'writing',pt:'Ações rápidas',en:'Quick actions',descriptionPt:'Paleta de ações, captura de ideias e foco em pastas.',descriptionEn:'Action palette, idea capture and folder focus.',keywords:'toolkit inbox brainstorm capture ribbon'},
+ {id:'editorAdvanced',group:'writing',pt:'Edição avançada',en:'Advanced editing',descriptionPt:'Comandos adicionais e recursos do editor.',descriptionEn:'Additional editor commands and features.'},
+ {id:'v9Toolbar',group:'markdown',pt:'Barra de formatação',en:'Formatting toolbar',descriptionPt:'Botões, grupos, atalhos e apresentação da barra.',descriptionEn:'Toolbar buttons, groups, shortcuts and appearance.',modules:['formatToolbar']},
+ {id:'extendedSyntax',group:'markdown',pt:'Formatação de texto',en:'Text formatting',descriptionPt:'Sublinhado, realce, subscrito, sobrescrito e alinhamento.',descriptionEn:'Underline, highlight, subscript, superscript and alignment.',modules:['extendedSyntax'],keywords:'extended syntax sintaxe estendida'},
+ {id:'pandocSyntax',group:'markdown',pt:'Listas e blocos avançados',en:'Advanced lists & blocks',descriptionPt:'Listas de definições, exemplos e exportação com Pandoc.',descriptionEn:'Definition lists, examples and export using Pandoc.',modules:['pandocSyntax'],keywords:'pandoc syntax'},
+ {id:'v6Markdown',group:'markdown',pt:'Anotações e elementos de texto',en:'Annotations & text elements',descriptionPt:'Pronúncia, subtexto, spoilers e avaliações interativas.',descriptionEn:'Pronunciation, subtext, spoilers and interactive ratings.',modules:['ruby','discordSyntax','ratings'],keywords:'ruby discord ratings'},
+ {id:'numbering',group:'markdown',pt:'Numeração e legendas',en:'Numbering & captions',descriptionPt:'Sequências, referências, capítulos, figuras e tabelas.',descriptionEn:'Sequences, references, chapters, figures and tables.',keywords:'number suite numbering'},
+ {id:'smartInsert',group:'markdown',pt:'Inserção inteligente',en:'Smart insertion',descriptionPt:'Insira formatação e elementos conforme o contexto.',descriptionEn:'Insert formatting and elements based on context.'},
+ {id:'unicode',group:'markdown',pt:'Símbolos e caracteres',en:'Symbols & characters',descriptionPt:'Escolha e insira caracteres Unicode.',descriptionEn:'Choose and insert Unicode characters.',modules:['unicode'],keywords:'unicode'},
+ {id:'toc',group:'markdown',pt:'Sumário da nota',en:'Note table of contents',descriptionPt:'Gere e configure o sumário dos títulos da nota.',descriptionEn:'Generate and configure a table of note headings.',modules:['templates']},
+ {id:'v6Linter',group:'markdown',pt:'Padronização de Markdown',en:'Markdown cleanup',descriptionPt:'Revise regras de formatação antes de aplicar mudanças.',descriptionEn:'Preview formatting rules before applying changes.',modules:['linter'],keywords:'linter'},
+ {id:'v9Spaces',group:'workflow',pt:'Espaços de trabalho',en:'Workspaces',descriptionPt:'Coleções por pasta, etiqueta e propriedades, com layouts próprios.',descriptionEn:'Collections by folder, tag and properties, with independent layouts.',modules:['smartSpaces'],keywords:'spaces coleções collections'},
+ {id:'v9Calendar',group:'workflow',pt:'Calendário e eventos',en:'Calendar & events',descriptionPt:'Agenda, importação e feeds de calendário.',descriptionEn:'Agenda, imports and calendar feeds.',modules:['calendar']},
+ {id:'tasks',group:'workflow',pt:'Tarefas e captura',en:'Tasks & capture',descriptionPt:'Pesquise tarefas, organize pendências e capture ideias.',descriptionEn:'Find tasks, organize to-dos and capture ideas.'},
+ {id:'databases',group:'workflow',pt:'Tabelas e bancos de dados',en:'Tables & databases',descriptionPt:'Visualizações, propriedades, consultas e criação de bases locais.',descriptionEn:'Views, properties, queries and local database creation.',keywords:'notion suite make.md database'},
+ {id:'v9Flow',group:'workflow',pt:'Comandos e inserção com /',en:'Slash commands & insertion',descriptionPt:'Composição por blocos e menu de comandos na escrita.',descriptionEn:'Block composition and slash command menus.',keywords:'flow composer'},
+ {id:'v9Pomodoro',group:'workflow',pt:'Temporizador de foco',en:'Focus timer',descriptionPt:'Sessões de foco, pausas e controles do temporizador.',descriptionEn:'Focus sessions, breaks and timer controls.',keywords:'pomodoro'},
+ {id:'soundscapes',group:'workflow',pt:'Música e ambiente',en:'Music & ambience',descriptionPt:'Rádio, playlists e músicas locais para acompanhar a escrita.',descriptionEn:'Radio, playlists and local music while writing.',modules:['soundscapes'],keywords:'soundscapes radio'},
+ {id:'clickClack',group:'workflow',pt:'Sons de digitação',en:'Typing sounds',descriptionPt:'Pacotes de sons e volume do teclado no computador.',descriptionEn:'Desktop keyboard sound packs and volume.',modules:['typewriter'],keywords:'click clack'},
+ {id:'sessionDrafts',group:'workflow',pt:'Rascunhos temporários',en:'Temporary drafts',descriptionPt:'Rascunhos de sessão mantidos em memória.',descriptionEn:'Session drafts kept in memory.',modules:['sessionNotes']},
+ {id:'v9Lock',group:'workflow',pt:'Privacidade da interface',en:'Interface privacy',descriptionPt:'Proteção visual e bloqueio da interface local.',descriptionEn:'Visual privacy and local interface locking.'},
+ {id:'privacy',group:'workflow',pt:'Notas protegidas',en:'Protected notes',descriptionPt:'Crie e abra cópias de notas com conteúdo criptografado.',descriptionEn:'Create and open notes with encrypted content.'},
+ {id:'v10Tools',group:'workflow',pt:'Arquivos e ferramentas',en:'Files & tools',descriptionPt:'Arquivos de texto, tabelas, propriedades em lote e painéis laterais.',descriptionEn:'Text files, tables, batch properties and side panes.'},
+ {id:'projects',group:'longform',pt:'Escrita de livros',en:'Book writing',descriptionPt:'Projetos, capítulos, escrita contínua, recuperação e compilação.',descriptionEn:'Projects, chapters, continuous writing, recovery and compilation.',modules:['projects'],keywords:'longform studio'},
+ {id:'v10Bookshelf',group:'longform',pt:'Biblioteca',en:'Library',descriptionPt:'Estantes, séries, capas e apresentação dos livros.',descriptionEn:'Shelves, series, covers and book presentation.'},
+ {id:'projectTasks',group:'longform',pt:'Tarefas dos projetos',en:'Project tasks',descriptionPt:'Listas por projeto com grupos, prazos e links.',descriptionEn:'Project lists with groups, due dates and links.',modules:['projects']},
+ {id:'bookNavigation',group:'longform',pt:'Navegação de capítulos',en:'Chapter navigation',descriptionPt:'Links e blocos de navegação pela ordem dos capítulos.',descriptionEn:'Links and navigation blocks following chapter order.',modules:['bookNavigation'],keywords:'booknav'},
+ {id:'virtualContent',group:'longform',pt:'Conteúdo dinâmico',en:'Dynamic content',descriptionPt:'Monte trechos a partir de pastas, etiquetas e propriedades.',descriptionEn:'Compose passages from folders, tags and properties.',modules:['virtualContent'],keywords:'virtual content conteúdo virtual'},
+ {id:'v7Worldbuilding',group:'longform',pt:'Personagens e universo',en:'Characters & worldbuilding',descriptionPt:'Compêndio, personagens e organização do universo da história.',descriptionEn:'Compendium, characters and story world organization.'},
+ {id:'graph',group:'longform',pt:'Mapa de relações',en:'Relationship graph',descriptionPt:'Visualize relações entre personagens, locais e notas.',descriptionEn:'Visualize relationships between characters, places and notes.',keywords:'storyline story graph'},
+ {id:'review',group:'review',pt:'Revisão gramatical',en:'Grammar checking',descriptionPt:'Idiomas, dicionário pessoal e verificação com LanguageTool.',descriptionEn:'Languages, personal dictionary and LanguageTool checking.',modules:['review']},
+ {id:'reviewAI',group:'review',pt:'Revisão com IA',en:'AI review',descriptionPt:'Revisores de estilo, leitor beta e perfil editorial.',descriptionEn:'Style reviewers, beta reader and editorial profile.',modules:['review']},
+ {id:'writingProfiles',group:'review',pt:'Comparação e revisão seletiva',en:'Comparison & selective review',descriptionPt:'Compare versões e aceite alterações selecionadas.',descriptionEn:'Compare versions and accept selected changes.',modules:['diff']},
+ {id:'variants',group:'review',pt:'Reescrita e alternativas',en:'Rewriting & alternatives',descriptionPt:'Alternativas de frases e comparação de reescritas.',descriptionEn:'Sentence alternatives and rewrite comparisons.',modules:['variants']},
+ {id:'snapshots',group:'review',pt:'Histórico de versões',en:'Version history',descriptionPt:'Cópias locais, prévias e restauração de versões.',descriptionEn:'Local copies, previews and version restoration.',modules:['snapshots'],keywords:'snapshots backup'},
+ {id:'research',group:'reading',pt:'Citações e leitura',en:'Citations & reading',descriptionPt:'Fontes de pesquisa, destaques importados e estilo de leitura.',descriptionEn:'Research sources, imported highlights and reading style.',modules:['zoteroIntegration','styleMate'],keywords:'zotero stylemate'},
+ {id:'v6Reading',group:'reading',pt:'Tempo de leitura e datas',en:'Reading time & dates',descriptionPt:'Estimativas de leitura e apresentação de marcadores de data.',descriptionEn:'Reading estimates and timestamp presentation.',modules:['timestamps','readingTime']},
+ {id:'tts',group:'reading',pt:'Leitura em voz alta',en:'Read aloud',descriptionPt:'Vozes, idiomas e serviços para ler as notas.',descriptionEn:'Voices, languages and services for reading notes aloud.',modules:['tts'],keywords:'tts'},
+ {id:'speech',group:'reading',pt:'Voz e acessibilidade',en:'Voice & accessibility',descriptionPt:'Leitura da seleção, controles locais e recursos de voz.',descriptionEn:'Selection reading, local controls and voice features.'},
+ {id:'study',group:'reading',pt:'Estudos e revisão espaçada',en:'Study & spaced repetition',descriptionPt:'Rotina de estudos, cartões e agendamento das revisões.',descriptionEn:'Study routine, flashcards and review scheduling.',modules:['study'],keywords:'unique suite fsrs'},
+ {id:'dictionary',group:'ai',pt:'Dicionário e definições',en:'Dictionary & definitions',descriptionPt:'Dicionário local, busca e conexão usada nas definições.',descriptionEn:'Local dictionary, lookup and definition connection.',modules:['dictionary']},
+ {id:'translation',group:'ai',pt:'Tradução',en:'Translation',descriptionPt:'Conexão, idioma de origem e idioma de destino.',descriptionEn:'Connection, source language and target language.',modules:['translation']},
+ {id:'assistant',group:'ai',pt:'Assistente de escrita',en:'Writing assistant',descriptionPt:'Chat, sugestões no editor, modelo e instruções do assistente.',descriptionEn:'Chat, editor suggestions, model and assistant instructions.',modules:['chat','inlineAI']},
+ {id:'providers',group:'ai',pt:'Conexões de IA',en:'AI connections',descriptionPt:'Chaves, endpoints e testes sob demanda.',descriptionEn:'Keys, endpoints and on-demand checks.',keywords:'api apis provedores providers credenciais credentials'},
+ {id:'models',group:'ai',pt:'Modelos de IA',en:'AI models',descriptionPt:'Catálogo de modelos e escolhas por função.',descriptionEn:'Model catalog and per-feature choices.'},
+ {id:'prompts',group:'ai',pt:'Instruções da IA',en:'AI instructions',descriptionPt:'Prompts padrão para definições, tradução e escrita.',descriptionEn:'Default prompts for definitions, translation and writing.',keywords:'prompts system instructions'}
+];
+let writerSettingsInstance=0;
+function writerSettingsSections(){return WRITER_SETTINGS_CATALOG.map(item=>[item.id,writerUi(item.pt,item.en)]);}
+function writerSettingsGroups(){return WRITER_SETTINGS_GROUPS.map(item=>[item.id,writerUi(item.pt,item.en),WRITER_SETTINGS_CATALOG.filter(section=>section.group===item.id).map(section=>section.id)]);}
+function writerSettingsNavigation(settings){
+ const valid=new Set(WRITER_SETTINGS_CATALOG.map(item=>item.id));
+ const value=settings.settingsNavigation;
+ const cfg=settings.settingsNavigation=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+ cfg.favorites=[...new Set(Array.isArray(cfg.favorites)?cfg.favorites:[])].filter(id=>valid.has(id)).slice(0,12);
+ return cfg;
+}
+function writerSettingsToggleFavorite(settings,id){
+ if(!WRITER_SETTINGS_CATALOG.some(item=>item.id===id))return false;
+ const cfg=writerSettingsNavigation(settings),index=cfg.favorites.indexOf(id);
+ if(index>=0)cfg.favorites.splice(index,1);
+ else if(cfg.favorites.length<12)cfg.favorites.push(id);
+ else return false;
+ return true;
+}
+function writerSettingsRenderShortcuts(plugin,container,open){
+ container.empty();
+ const cfg=writerSettingsNavigation(plugin.settings),favorites=cfg.favorites;
+ const recent=(plugin.writerRecentSettings||[]).filter(id=>id!==plugin.writerSettingsTab?.activeSettingsTab&&!favorites.includes(id)).slice(0,4);
+ const add=(ids,pt,en,collapsible=false)=>{
+  if(!ids.length)return;
+  let host=container;
+  if(collapsible){
+   host=container.createEl('details',{cls:'writer-v137-settings-recent'});
+   host.createEl('summary',{text:writerUi(pt,en)});
+  }
+  const group=host.createDiv({cls:'writer-v137-settings-shortcut-group'});
+  if(!collapsible)
+  group.createSpan({cls:'writer-v137-settings-shortcut-label',text:writerUi(pt,en)});
+  for(const id of ids){
+   const meta=WRITER_SETTINGS_CATALOG.find(item=>item.id===id);if(!meta)continue;
+   const button=group.createEl('button',{text:writerUi(meta.pt,meta.en),attr:{type:'button'}});
+   button.classList.toggle('is-active',id===plugin.writerSettingsTab?.activeSettingsTab);
+   button.addEventListener('click',()=>open(id));
+  }
+ };
+ add(favorites,'Favoritos','Favorites');add(recent,'Recentes nesta sessão','Recent this session',true);
+ container.hidden=!container.childElementCount;
+}
+function writerSettingsFinishPanel(panel,id){
+ const meta=WRITER_SETTINGS_CATALOG.find(item=>item.id===id);if(!meta)return;
+ const title=writerV13SearchText(writerUi(meta.pt,meta.en));
+ for(const child of Array.from(panel.children))
+  if(child.tagName==='H3'&&writerV13SearchText(child.textContent)===title)child.remove();
+ const description=panel.querySelector('.writer-v137-settings-description');
+ const grammar=panel.querySelector('.writer-grammar-settings');
+ if(grammar){grammar.querySelector('h3')?.remove();description?.remove();}
+ // Specialized renderer introductions already explain the page in context.
+ const firstSetting=Array.from(panel.children).findIndex(child=>child.classList.contains('setting-item'));
+ const intro=Array.from(panel.children).some((child,index)=>child.tagName==='P'&&child!==description&&child.textContent.trim()&&(firstSetting<0||index<firstSetting));
+ if(intro)description?.remove();
+}
+let writerSettingsLabelId=0;
+function writerSettingsLabelControls(root){
+ for(const row of root?.querySelectorAll?.('.setting-item')||[]){
+  const name=row.querySelector('.setting-item-name'),description=row.querySelector('.setting-item-description');
+  if(!name?.textContent?.trim())continue;
+  if(!name.id)name.id='writer-setting-label-'+(++writerSettingsLabelId);
+  if(description?.textContent?.trim()&&!description.id)description.id='writer-setting-description-'+(++writerSettingsLabelId);
+  for(const control of row.querySelectorAll('input:not([type="hidden"]),textarea,select,[role="switch"],[role="checkbox"]')){
+   if(!control.hasAttribute('aria-label')&&!control.hasAttribute('aria-labelledby'))control.setAttribute('aria-labelledby',name.id);
+   if(description?.textContent?.trim()){
+    const tokens=new Set((control.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean));tokens.add(description.id);
+    control.setAttribute('aria-describedby',[...tokens].join(' '));
+   }
+  }
+ }
+}
+function writerSettingsRenderHeader(plugin,panel,id,open,refresh){
+ const meta=WRITER_SETTINGS_CATALOG.find(item=>item.id===id);if(!meta)return;
+ const header=panel.createDiv({cls:'writer-v137-settings-heading'});
+ header.createEl('h3',{text:writerUi(meta.pt,meta.en)});
+ const favorite=header.createEl('button',{cls:'writer-v137-settings-favorite',attr:{type:'button'}});
+ const update=()=>{
+  const active=writerSettingsNavigation(plugin.settings).favorites.includes(id);
+  const label=active?writerUi('Remover dos favoritos','Remove from favorites'):writerUi('Adicionar aos favoritos','Add to favorites');
+  favorite.setAttribute('aria-label',label);favorite.setAttribute('title',label);favorite.setAttribute('aria-pressed',String(active));
+  require('obsidian').setIcon(favorite,active?'star':'star');favorite.classList.toggle('is-active',active);
+ };
+ update();
+ favorite.addEventListener('click',async()=>{
+  if(!writerSettingsToggleFavorite(plugin.settings,id)){
+   new Notice(writerUi('Você pode guardar até 12 seções favoritas.','You can save up to 12 favorite sections.'));return;
+  }
+  update();refresh();
+  try{await plugin.saveSettings();}catch(error){new Notice(String(error?.message||error));}
+ });
+ panel.createEl('p',{cls:'writer-v137-settings-description',text:writerUi(meta.descriptionPt,meta.descriptionEn)});
+ const hidden=(meta.modules||[]).filter(key=>!writerModuleOn(plugin,key));
+ if(hidden.length){
+  const notice=panel.createDiv({cls:'writer-v137-settings-hidden',attr:{role:'note'}});
+  notice.createSpan({text:writerUi('Há recursos desta seção desligados em Recursos. Você pode configurar as opções aqui e reativá-los quando quiser.','Some features in this section are off in Features. You can configure them here and enable them whenever you like.')});
+  notice.createEl('button',{text:writerUi('Gerenciar recursos','Manage features'),attr:{type:'button'}}).addEventListener('click',()=>{
+   plugin.writerModuleFilterQuery=hidden.length===1?hidden[0]:'';open('modules');
+  });
+ }
+}
+
+// v3 module: src/v13/settings-search-index.js
+// Generated by scripts/settings-search-index.js. Labels only: no saved values or executable source.
+const WRITER_SETTINGS_SEARCH_INDEX=[
+ {
+  "id": "abbreviations",
+  "titlePt": "Editar abreviações",
+  "titleEn": "Edit abbreviations"
+ },
+ {
+  "id": "abbreviations",
+  "titlePt": "Ativado",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "abbreviations",
+  "titlePt": "Expandir ao digitar pontuação ou espaço",
+  "titleEn": "Expand on punctuation or space (instead of space only)"
+ },
+ {
+  "id": "anotherName",
+  "titlePt": "Ativado",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "anotherName",
+  "titlePt": "Propriedade do frontmatter",
+  "titleEn": "Frontmatter property"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Modelo do assistente",
+  "titleEn": "Assistant model",
+  "descriptionPt": "Deixe vazio para usar o modelo padrão do provedor. Consulte a aba Modelos para descobrir identificadores.",
+  "descriptionEn": "Leave empty to use the provider default model. See Models to discover model IDs."
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Provedor do assistente",
+  "titleEn": "Assistant provider"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Prompt do assistente",
+  "titleEn": "Assistant system prompt",
+  "descriptionPt": "Deixe vazio para usar Escrita em Instruções da IA. {language} usa o idioma de resposta configurado.",
+  "descriptionEn": "Leave blank to use Writing in AI instructions. {language} uses the configured response language."
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Gerar automaticamente ao digitar (envia trechos ao provedor)",
+  "titleEn": "Automatic suggestions while typing (sends excerpts to provider)"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Instruções personalizadas",
+  "titleEn": "Custom completion prompt"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Permitir sugestões de IA inline",
+  "titleEn": "Enable inline AI suggestions"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Máximo de caracteres sugeridos",
+  "titleEn": "Maximum suggested characters"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Intervalo mínimo entre pedidos automáticos (ms)",
+  "titleEn": "Minimum interval for automatic requests (ms)"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Regras por pasta",
+  "titleEn": "Per-folder writing profiles",
+  "descriptionPt": "Uma regra por linha: Livros/|creative, Pesquisa/|formal, Privado/|off. A pasta mais específica vence.",
+  "descriptionEn": "One rule per line: Books/|creative, Research/|formal, Private/|off. Most specific folder wins."
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Enviar temperatura à API",
+  "titleEn": "Send temperature to API"
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Temperatura",
+  "titleEn": "Temperature",
+  "descriptionPt": "Controla a variação das respostas, de 0 a 2. Alguns modelos não aceitam este parâmetro; nesse caso, desative-o.",
+  "descriptionEn": "Controls response variation from 0 to 2. Some models reject this parameter; disable it if needed."
+ },
+ {
+  "id": "assistant",
+  "titlePt": "Tempo de espera (ms)",
+  "titleEn": "Typing delay (ms)"
+ },
+ {
+  "id": "bookNavigation",
+  "titlePt": "Adicionar automaticamente ao fim das notas",
+  "titleEn": "Automatically add to note ends"
+ },
+ {
+  "id": "bookNavigation",
+  "titlePt": "Ativar navegação",
+  "titleEn": "Enable navigation"
+ },
+ {
+  "id": "bookNavigation",
+  "titlePt": "Exibir capítulos principais",
+  "titleEn": "Show main chapters"
+ },
+ {
+  "id": "bookNavigation",
+  "titlePt": "Exibir subcapítulos",
+  "titleEn": "Show subchapters"
+ },
+ {
+  "id": "clickClack",
+  "titlePt": "Baixar pacotes de sons",
+  "titleEn": "Download sound packs",
+  "descriptionPt": "Escolha entre os 13 pacotes originais ou instale todos. Download sob demanda.",
+  "descriptionEn": "Choose from 13 original packs or install all. On-demand downloads."
+ },
+ {
+  "id": "clickClack",
+  "titlePt": "Ativar sons de digitação",
+  "titleEn": "Enable typing sounds",
+  "descriptionPt": "Sons somente ao digitar no editor Markdown.",
+  "descriptionEn": "Sounds only while typing in the Markdown editor."
+ },
+ {
+  "id": "clickClack",
+  "titlePt": "Recarregar pacotes locais",
+  "titleEn": "Rescan local sound packs"
+ },
+ {
+  "id": "clickClack",
+  "titlePt": "Esquema sonoro",
+  "titleEn": "Sound scheme",
+  "descriptionPt": "Compatível com os arquivos WAV e manifestos dos pacotes Click Clack.",
+  "descriptionEn": "Supports Click Clack WAV packs and manifest files."
+ },
+ {
+  "id": "clickClack",
+  "titlePt": "Volume dos sons",
+  "titleEn": "Sound volume"
+ },
+ {
+  "id": "compatibility",
+  "titlePt": "Carregar recursos avançados",
+  "titleEn": "Load advanced features"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Sugestões automáticas",
+  "titleEn": "Automatic suggestions"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Diferenciar maiúsculas de minúsculas",
+  "titleEn": "Case sensitive"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Limpar aprendizado",
+  "titleEn": "Clear learning"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Dicionários personalizados",
+  "titleEn": "Custom dictionaries"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Arquivos de dicionário",
+  "titleEn": "Dictionary files",
+  "descriptionPt": "Caminhos Markdown separados por linha; linhas podem ter palavra => inserção.",
+  "descriptionEn": "Markdown paths separated by line. Entries may use word => insertion."
+ },
+ {
+  "id": "complements",
+  "titlePt": "Ativar sugestões",
+  "titleEn": "Enable suggestions"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Pastas excluídas",
+  "titleEn": "Excluded folders",
+  "descriptionPt": "Separadas por vírgula.",
+  "descriptionEn": "Comma separated."
+ },
+ {
+  "id": "complements",
+  "titlePt": "Links internos",
+  "titleEn": "Internal links"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Aprender sugestões escolhidas",
+  "titleEn": "Learn from selected suggestions"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Corresponder dentro da palavra",
+  "titleEn": "Match inside words"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Máximo de texto analisado por nota (caracteres)",
+  "titleEn": "Maximum sampled text per note (characters)"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Número máximo de sugestões",
+  "titleEn": "Maximum suggestions"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Mínimo de caracteres",
+  "titleEn": "Minimum characters"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Usar Dicionario.md",
+  "titleEn": "Use Dicionario.md"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Índice do cofre",
+  "titleEn": "Vault index",
+  "descriptionPt": "Reindexe aqui; a lista de arquivos excluídos fica acima. O índice não altera notas.",
+  "descriptionEn": "Rebuild here; excluded folders are configured above. The index does not modify notes."
+ },
+ {
+  "id": "complements",
+  "titlePt": "Palavras do arquivo atual",
+  "titleEn": "Words from current note"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Palavras de outras notas do cofre",
+  "titleEn": "Words from other vault notes"
+ },
+ {
+  "id": "complements",
+  "titlePt": "Propriedades YAML",
+  "titleEn": "YAML properties"
+ },
+ {
+  "id": "cursor",
+  "titlePt": "Apagar posições salvas",
+  "titleEn": "Clear saved positions",
+  "descriptionPt": "Apaga só os marcadores de posição, nunca o texto das notas.",
+  "descriptionEn": "Deletes only position bookmarks, never note text."
+ },
+ {
+  "id": "cursor",
+  "titlePt": "Ativar memória de cursor",
+  "titleEn": "Enable cursor memory"
+ },
+ {
+  "id": "cursor",
+  "titlePt": "Máximo de notas lembradas",
+  "titleEn": "Maximum remembered notes",
+  "descriptionPt": "De 50 a 2.000 notas; remove automaticamente os registros mais antigos.",
+  "descriptionEn": "50 to 2,000 notes; oldest records are pruned."
+ },
+ {
+  "id": "cursor",
+  "titlePt": "Restaurar rolagem da nota",
+  "titleEn": "Restore note scroll"
+ },
+ {
+  "id": "cursor",
+  "titlePt": "Restaurar seleção de texto",
+  "titleEn": "Restore text selection"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Permitir criar novas notas pelo banco",
+  "titleEn": "Allow creating notes from a view"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Construtor de bancos",
+  "titleEn": "Database builder"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Direção",
+  "titleEn": "Direction"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Editar células",
+  "titleEn": "Edit cells"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Habilitar visualizações extras",
+  "titleEn": "Enable additional views"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Layout",
+  "titleEn": "Layout"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Bases Markdown",
+  "titleEn": "Markdown databases"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Notas máximas por banco",
+  "titleEn": "Maximum notes per database"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Máximo de itens visíveis",
+  "titleEn": "Maximum visible items"
+ },
+ {
+  "id": "databases",
+  "titlePt": "Limite de itens",
+  "titleEn": "Row limit"
+ },
+ {
+  "id": "diagnostics",
+  "titlePt": "Escolher perfil",
+  "titleEn": "Choose profile"
+ },
+ {
+  "id": "diagnostics",
+  "titlePt": "Excluir perfil salvo",
+  "titleEn": "Delete saved profile"
+ },
+ {
+  "id": "diagnostics",
+  "titlePt": "Atualizar informações",
+  "titleEn": "Refresh information"
+ },
+ {
+  "id": "diagnostics",
+  "titlePt": "Atualizar diagnóstico",
+  "titleEn": "Refresh shortcut audit"
+ },
+ {
+  "id": "diagnostics",
+  "titlePt": "Rever ou desativar atalhos de edição",
+  "titleEn": "Review editor shortcuts"
+ },
+ {
+  "id": "diagnostics",
+  "titlePt": "Guardar perfil atual",
+  "titleEn": "Save current profile"
+ },
+ {
+  "id": "diagnostics",
+  "titlePt": "Desfazer última aplicação",
+  "titleEn": "Undo last application"
+ },
+ {
+  "id": "dictionary",
+  "titlePt": "Provedor de IA",
+  "titleEn": "AI provider"
+ },
+ {
+  "id": "dictionary",
+  "titlePt": "Arquivo do dicionário",
+  "titleEn": "Dictionary file",
+  "descriptionPt": "Caminho no cofre. Cada entrada começa com um título # Palavra. O arquivo é criado ao salvar a primeira definição.",
+  "descriptionEn": "Vault path. Each entry starts with a # Word heading. The file is created when you save the first definition."
+ },
+ {
+  "id": "dictionary",
+  "titlePt": "Ignorar acentos na busca local",
+  "titleEn": "Ignore accents in local lookup"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Ativar ferramentas avançadas",
+  "titleEn": "Enable advanced tools"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Editor JSON em árvore",
+  "titleEn": "JSON tree editor"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Diagnóstico YAML no editor",
+  "titleEn": "Live YAML editor diagnostics"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Máximo de notas para busca/substituição",
+  "titleEn": "Max files for batch replace"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Alinhar no Live Preview",
+  "titleEn": "Align in Live Preview"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Destaque =={cor}texto==",
+  "titleEn": "Colored highlight =={color}text=="
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Span !!{classe}texto!!",
+  "titleEn": "Custom span !!{class}text!!"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Ativar alinhamento de texto",
+  "titleEn": "Enable text alignment"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Ativar formatação de texto",
+  "titleEn": "Enable text formatting"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Blocos ::: classe (fechamento :::)",
+  "titleEn": "Fenced div ::: class (closing :::)"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Ocultar marcadores fora da linha em edição",
+  "titleEn": "Hide markers outside the edited line"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Renderizar no modo de leitura",
+  "titleEn": "Render in Reading mode"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Spoiler ||texto||",
+  "titleEn": "Spoiler ||text||"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Estilizar no Live Preview",
+  "titleEn": "Style in Live Preview"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Subscrito ~texto~",
+  "titleEn": "Subscript ~text~"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Sobrescrito ^texto^",
+  "titleEn": "Superscript ^text^"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Abas, fichas e blocos narrativos",
+  "titleEn": "Tabs, cards and writing blocks"
+ },
+ {
+  "id": "extendedSyntax",
+  "titlePt": "Sublinhado ++texto++",
+  "titleEn": "Underline ++text++"
+ },
+ {
+  "id": "general",
+  "titlePt": "Dicionário e definições",
+  "titleEn": "Dictionary and definitions"
+ },
+ {
+  "id": "general",
+  "titlePt": "Ativar ações rápidas",
+  "titleEn": "Enable quick actions",
+  "descriptionPt": "Ativa a paleta de formatação, captura, tarefas, imagens e foco.",
+  "descriptionEn": "Enables the formatting palette, capture, tasks, images and focus tools."
+ },
+ {
+  "id": "general",
+  "titlePt": "Configuração inicial",
+  "titleEn": "Quick start",
+  "descriptionPt": "Escolha um conjunto de recursos e personalize o que fica ativo.",
+  "descriptionEn": "Choose a set of features and customize what stays active."
+ },
+ {
+  "id": "general",
+  "titlePt": "Idioma das respostas",
+  "titleEn": "Response language",
+  "descriptionPt": "Usado nas definições, no chat e nas revisões com IA. O tradutor tem idiomas próprios.",
+  "descriptionEn": "Used for definitions, chat and AI reviews. The translator has separate language settings."
+ },
+ {
+  "id": "general",
+  "titlePt": "Revisão e LanguageTool",
+  "titleEn": "Review and LanguageTool"
+ },
+ {
+  "id": "general",
+  "titlePt": "Tradutor",
+  "titleEn": "Translator"
+ },
+ {
+  "id": "general",
+  "titlePt": "Assistente de escrita",
+  "titleEn": "Writing assistant"
+ },
+ {
+  "id": "graph",
+  "titlePt": "Layout inicial",
+  "titleEn": "Initial layout"
+ },
+ {
+  "id": "graph",
+  "titlePt": "Notas máximas no mapa",
+  "titleEn": "Maximum graph nodes"
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Personalizar widgets da homepage",
+  "titleEn": "Customize homepage widgets",
+  "descriptionPt": "Adicione, remova e reorganize cartões sem apagar suas notas.",
+  "descriptionEn": "Add, remove and reorder cards without deleting notes."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Citações da homepage",
+  "titleEn": "Homepage quotes",
+  "descriptionPt": "Uma citação por linha. Opcional: frase | autor. Em branco usa frases originais do Basic. O sorteio muda ao abrir a homepage.",
+  "descriptionEn": "One quote per line. Optional: quote | author. Empty uses original Basic quotes. A new quote is chosen when opening the homepage."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Título da homepage",
+  "titleEn": "Homepage title",
+  "descriptionPt": "Em branco para usar o título padrão.",
+  "descriptionEn": "Leave blank to use the default title."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Imagem do ícone (cofre ou HTTPS)",
+  "titleEn": "Icon image (vault or HTTPS)",
+  "descriptionPt": "Caminho de uma imagem no cofre ou URL HTTPS. Deixe em branco para usar o ícone Lucide escolhido. Links remotos fazem uma requisição ao site da imagem.",
+  "descriptionEn": "Vault image path or HTTPS URL. Leave empty to use the selected Lucide icon. Remote images contact the image host."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Tamanho máximo da legenda",
+  "titleEn": "Maximum caption characters"
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Abrir calendário completo",
+  "titleEn": "Open full calendar"
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Abrir homepage em toda nova aba vazia",
+  "titleEn": "Open homepage in every new empty tab",
+  "descriptionPt": "Ativado por padrão. Apenas abas vazias: nunca substitui arquivos ou outras visualizações.",
+  "descriptionEn": "Enabled by default. Empty tabs only: never replaces notes or other views."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Abrir homepage agora",
+  "titleEn": "Open homepage now"
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Abrir resultados web em",
+  "titleEn": "Open web results in",
+  "descriptionPt": "No PC, Surfing usa o plugin instalado. Se não estiver disponível, recorre ao Web Viewer ou navegador externo. No celular usa navegador externo.",
+  "descriptionEn": "On desktop, Surfing uses the installed plugin; otherwise native Web Viewer or external browser. Mobile always uses the external browser."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Abrir a homepage de escrita ao iniciar",
+  "titleEn": "Open writing homepage on startup",
+  "descriptionPt": "Abre a homepage no próximo início do Obsidian. A limpeza de abas é configurada separadamente.",
+  "descriptionEn": "Opens Home at the next Obsidian startup. Tab cleanup is configured separately."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Mecanismo de busca",
+  "titleEn": "Search engine",
+  "descriptionPt": "O padrão do Surfing acompanha o buscador escolhido nele, quando instalado.",
+  "descriptionEn": "Surfing default follows the search engine selected in Surfing, when installed."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Legendas automáticas em imagens Markdown",
+  "titleEn": "Show captions from Markdown image alt text",
+  "descriptionPt": "Ex.: ![[foto.jpg|Legenda curta]]. Se Image Captions estiver ativo, este módulo deixa a renderização com ele.",
+  "descriptionEn": "Example: ![[photo.jpg|Short caption]]. When Image Captions is enabled, that plugin handles captions."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Começar cada sessão com a homepage limpa",
+  "titleEn": "Start each session with a clean homepage",
+  "descriptionPt": "Ativado por padrão. No próximo início real do Obsidian, fecha apenas abas principais restauradas, mantém painéis laterais e abre uma homepage. Não roda ao atualizar ou recarregar o plugin.",
+  "descriptionEn": "Enabled by default. On a fresh Obsidian startup, closes restored main tabs, keeps sidebars and opens one Home tab. Never runs on plugin updates/reloads."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Favoritos da web",
+  "titleEn": "Web bookmarks",
+  "descriptionPt": "Adicione sites ao widget de favoritos, sem misturar com as notas favoritas.",
+  "descriptionEn": "Add sites to the web bookmarks widget, separate from favorite notes."
+ },
+ {
+  "id": "homepage",
+  "titlePt": "Meta de palavras do widget",
+  "titleEn": "Widget word target",
+  "descriptionPt": "Progresso calculado sobre a última nota Markdown aberta.",
+  "descriptionEn": "Progress measured against the latest opened Markdown note."
+ },
+ {
+  "id": "images",
+  "titlePt": "Anotar imagem local",
+  "titleEn": "Annotate local image",
+  "descriptionPt": "Salva um novo PNG e preserva o arquivo original.",
+  "descriptionEn": "Saves a new PNG, keeping the original file."
+ },
+ {
+  "id": "images",
+  "titlePt": "Fonte padrão",
+  "titleEn": "Default provider"
+ },
+ {
+  "id": "images",
+  "titlePt": "Desativar anotação no Android",
+  "titleEn": "Disable annotation on Android"
+ },
+ {
+  "id": "images",
+  "titlePt": "Pasta dos downloads",
+  "titleEn": "Downloaded images folder"
+ },
+ {
+  "id": "images",
+  "titlePt": "Ativar busca de imagens",
+  "titleEn": "Enable image search"
+ },
+ {
+  "id": "images",
+  "titlePt": "Propriedade para imagem (ex.: banner)",
+  "titleEn": "Image property (e.g. banner)"
+ },
+ {
+  "id": "images",
+  "titlePt": "Visualizador e tamanhos de imagens",
+  "titleEn": "Image viewer and resizing"
+ },
+ {
+  "id": "images",
+  "titlePt": "Incluir crédito no Markdown",
+  "titleEn": "Include attribution in Markdown"
+ },
+ {
+  "id": "images",
+  "titlePt": "Inserir como",
+  "titleEn": "Insert as"
+ },
+ {
+  "id": "images",
+  "titlePt": "Largura inserida (0 = original)",
+  "titleEn": "Inserted width (0 = original)"
+ },
+ {
+  "id": "images",
+  "titlePt": "Maior dimensão da imagem exportada",
+  "titleEn": "Maximum PNG output dimension"
+ },
+ {
+  "id": "images",
+  "titlePt": "Abrir buscador de imagens",
+  "titleEn": "Open image search"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Ações de IA para escrita",
+  "titleEn": "AI writing actions"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Mudar tom",
+  "titleEn": "Change tone"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Corrigir gramática",
+  "titleEn": "Correct grammar"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Expandir",
+  "titleEn": "Expand"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Explorar alternativa",
+  "titleEn": "Explore an alternative"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Melhorar diálogo",
+  "titleEn": "Improve dialogue"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Melhorar estilo",
+  "titleEn": "Improve style"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Inspecionar conflitos",
+  "titleEn": "Inspect conflicts"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Central de integrações",
+  "titleEn": "Integration center"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Provedor manual de sincronização",
+  "titleEn": "Manual synchronization provider",
+  "descriptionPt": "Selecionar aqui não desativa sincronizadores externos automáticos.",
+  "descriptionEn": "Selecting a provider does not disable external automatic sync jobs."
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Pasta das menções",
+  "titleEn": "Mention folder"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Inserção de menções",
+  "titleEn": "Mention insertion"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Símbolo de menção",
+  "titleEn": "Mention trigger"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Menções de notas",
+  "titleEn": "Note mentions"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Revisar pontos fracos",
+  "titleEn": "Review weak points"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Encurtar",
+  "titleEn": "Shorten"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Simplificar",
+  "titleEn": "Simplify"
+ },
+ {
+  "id": "keyshots",
+  "titlePt": "Ativar comandos de teclado",
+  "titleEn": "Enable keyboard commands"
+ },
+ {
+  "id": "keyshots",
+  "titlePt": "Perfil de atalhos",
+  "titleEn": "Shortcut profile",
+  "descriptionPt": "Nenhum = apenas comandos do Obsidian. Se outra extensão usar o mesmo atalho, escolha Nenhum.",
+  "descriptionEn": "None = Obsidian commands only. Choose None if another plugin owns the same shortcuts."
+ },
+ {
+  "id": "keyshots",
+  "titlePt": "Usar atalhos de editor",
+  "titleEn": "Use editor shortcuts"
+ },
+ {
+  "id": "media",
+  "titlePt": "Máximo de páginas na prévia PDF",
+  "titleEn": "Maximum PDF preview page"
+ },
+ {
+  "id": "media",
+  "titlePt": "Mover blocos entre notas",
+  "titleEn": "Move blocks between notes"
+ },
+ {
+  "id": "media",
+  "titlePt": "Prévia PDF por página",
+  "titleEn": "PDF page previews"
+ },
+ {
+  "id": "media",
+  "titlePt": "Colunas Markdown responsivas",
+  "titleEn": "Responsive Markdown columns"
+ },
+ {
+  "id": "models",
+  "titlePt": "Modelo ativo",
+  "titleEn": "Active model"
+ },
+ {
+  "id": "models",
+  "titlePt": "Assistente",
+  "titleEn": "Assistant"
+ },
+ {
+  "id": "models",
+  "titlePt": "Modelos disponíveis",
+  "titleEn": "Available models"
+ },
+ {
+  "id": "models",
+  "titlePt": "Definições",
+  "titleEn": "Definitions"
+ },
+ {
+  "id": "models",
+  "titlePt": "Buscar modelos",
+  "titleEn": "Fetch models"
+ },
+ {
+  "id": "models",
+  "titlePt": "Provedor",
+  "titleEn": "Provider",
+  "descriptionPt": "Escolha qual conexão editar",
+  "descriptionEn": "Choose the connection to edit"
+ },
+ {
+  "id": "models",
+  "titlePt": "Pesquisar modelos",
+  "titleEn": "Search models"
+ },
+ {
+  "id": "models",
+  "titlePt": "Testar conexão",
+  "titleEn": "Test connection"
+ },
+ {
+  "id": "models",
+  "titlePt": "Tradução",
+  "titleEn": "Translation"
+ },
+ {
+  "id": "modules",
+  "titlePt": "Listas e blocos avançados",
+  "titleEn": "Advanced lists and blocks",
+  "descriptionPt": "Listas especiais, exemplos, definições e blocos.",
+  "descriptionEn": "Fancy lists, examples, definitions and blocks."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Ações de escrita com IA",
+  "titleEn": "AI writing actions",
+  "descriptionPt": "Oculta ações de escrita com IA e seus menus.",
+  "descriptionEn": "Hides AI writing actions."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Autocomplete",
+  "titleEn": "Autocomplete",
+  "descriptionPt": "Oculta sugestões locais e busca de termos.",
+  "descriptionEn": "Hides local word suggestions and indexing controls."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Tipografia automática",
+  "titleEn": "Automatic typography",
+  "descriptionPt": "Aspas curvas, travessões, reticências e símbolos tipográficos.",
+  "descriptionEn": "Curly quotes, dashes, ellipses and smart symbols."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Livros e projetos",
+  "titleEn": "Books and projects",
+  "descriptionPt": "Oculta o painel e os atalhos de projetos.",
+  "descriptionEn": "Hides project pane and shortcuts."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Calendário e eventos",
+  "titleEn": "Calendar and events",
+  "descriptionPt": "Agenda local de eventos em notas Markdown.",
+  "descriptionEn": "Local calendar events stored in Markdown notes."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Navegação de capítulos",
+  "titleEn": "Chapter navigation",
+  "descriptionPt": "Capítulos e subcapítulos na ordem do índice do projeto.",
+  "descriptionEn": "Chapter and subchapter navigation following the project index."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Comentários",
+  "titleEn": "Comments",
+  "descriptionPt": "Oculta os comentários dos projetos; mantém seus dados.",
+  "descriptionEn": "Hides project comments; keeps existing data."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Dicionário e definições",
+  "titleEn": "Dictionary & definitions",
+  "descriptionPt": "Consultas locais/online, sinônimos e antônimos.",
+  "descriptionEn": "Local/online lookup, synonyms and antonyms."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Diff e perfis",
+  "titleEn": "Diff & profiles",
+  "descriptionPt": "Oculta revisão seletiva.",
+  "descriptionEn": "Hides selective review."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Conteúdo dinâmico",
+  "titleEn": "Dynamic content",
+  "descriptionPt": "Markdown por pasta, tag ou propriedade e navegação automática de capítulos.",
+  "descriptionEn": "Markdown by folder, tag or property and automatic chapter navigation."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Atalhos do editor",
+  "titleEn": "Editor shortcuts",
+  "descriptionPt": "Navegação e transformação de linhas por atalhos no PC.",
+  "descriptionEn": "Desktop keyboard navigation and line actions."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Explorador nativo avançado",
+  "titleEn": "Enhanced native explorer",
+  "descriptionPt": "Ícones, cores e visões de pastas sem substituir o painel padrão.",
+  "descriptionEn": "Icons, colors and folder views without replacing the original panel."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Conversas fictícias",
+  "titleEn": "Fictional chats",
+  "descriptionPt": "Mensagens em balões com avatares opcionais.",
+  "descriptionEn": "Chat bubbles with optional avatars."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Foco e sons de digitação",
+  "titleEn": "Focus & typing sounds",
+  "descriptionPt": "Modo máquina de escrever, foco e sons opcionais do teclado.",
+  "descriptionEn": "Typewriter mode, focus and optional typing sounds."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Revisão de formatação",
+  "titleEn": "Formatting review",
+  "descriptionPt": "Prévia e formatação manual com cópia de recuperação.",
+  "descriptionEn": "Previewed manual formatting with recovery copy."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Barra de formatação",
+  "titleEn": "Formatting toolbar",
+  "descriptionPt": "Ações de Markdown no editor; desligada por padrão no celular.",
+  "descriptionEn": "Markdown actions in editor; off by default on mobile."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Legendas de imagens",
+  "titleEn": "Image captions",
+  "descriptionPt": "Descrições breves em imagens Markdown.",
+  "descriptionEn": "Short descriptions below Markdown images."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Sugestões de IA inline",
+  "titleEn": "Inline AI suggestions",
+  "descriptionPt": "Continuações de texto com IA, desativadas por padrão.",
+  "descriptionEn": "AI text continuations, off by default."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Avaliações interativas",
+  "titleEn": "Interactive ratings",
+  "descriptionPt": "Símbolos editáveis no Live Preview.",
+  "descriptionEn": "Interactive symbols in Live Preview."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Spaces locais",
+  "titleEn": "Local Spaces",
+  "descriptionPt": "Coleções virtuais por pasta, tag e propriedades com listas, quadros e tabelas.",
+  "descriptionEn": "Virtual collections from folders, tags and properties with list, board and table views."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Datas e horários localizados",
+  "titleEn": "Localized dates and times",
+  "descriptionPt": "Exibição localizada de marcadores de tempo.",
+  "descriptionEn": "Localized timestamp markup rendering."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Timelines em Markdown",
+  "titleEn": "Markdown timelines",
+  "descriptionPt": "Cronologias verticais e horizontais, temas, imagens e filtros.",
+  "descriptionEn": "Vertical and horizontal timelines, themes, images and filters."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Galeria de mídias",
+  "titleEn": "Media gallery",
+  "descriptionPt": "Galeria local para imagens, vídeos, PDFs e áudio.",
+  "descriptionEn": "Local galleries for images, videos, PDFs and audio."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Menções",
+  "titleEn": "Mentions",
+  "descriptionPt": "Oculta menções de notas.",
+  "descriptionEn": "Hides note mentions."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Música e ambiente",
+  "titleEn": "Music and ambience",
+  "descriptionPt": "Rádio e música local com controle inferior e widget na homepage (PC).",
+  "descriptionEn": "Radio and local music with status bar controls and a homepage widget (desktop)."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Posts e respostas",
+  "titleEn": "Posts and threaded replies",
+  "descriptionPt": "Posts fictícios em Markdown.",
+  "descriptionEn": "Local fictional social threads."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Anotações de pronúncia",
+  "titleEn": "Pronunciation annotations",
+  "descriptionPt": "Texto pequeno acima das palavras usando a sintaxe Ruby.",
+  "descriptionEn": "Small pronunciation guides above words using Ruby syntax."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Leitura em voz alta",
+  "titleEn": "Read aloud",
+  "descriptionPt": "Oculta o leitor e seus controles.",
+  "descriptionEn": "Hides speech controls."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Estilos de leitura",
+  "titleEn": "Reading styles",
+  "descriptionPt": "Tipografia e largura personalizadas por nota.",
+  "descriptionEn": "Scoped note typography and width."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Tempo de leitura",
+  "titleEn": "Reading time",
+  "descriptionPt": "Estimativa de leitura da nota e seleção.",
+  "descriptionEn": "Reading estimates for notes and selections."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Lembrar posição do cursor",
+  "titleEn": "Remember cursor position",
+  "descriptionPt": "Salva e restaura posição, seleção e rolagem por nota.",
+  "descriptionEn": "Saves and restores cursor, selection and scroll per note."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Revisão e LanguageTool",
+  "titleEn": "Review & LanguageTool",
+  "descriptionPt": "Oculta revisão gramatical, estilo e leitor beta.",
+  "descriptionEn": "Hides grammar, style and beta reader."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Rascunhos de sessão",
+  "titleEn": "Session drafts",
+  "descriptionPt": "Rascunhos temporários em memória.",
+  "descriptionEn": "Ephemeral in-memory drafts."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Estudos e revisão espaçada",
+  "titleEn": "Study and spaced repetition",
+  "descriptionPt": "Baralhos e cartões locais com revisão programada.",
+  "descriptionEn": "Local decks and scheduled flashcards."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Subtexto e spoilers",
+  "titleEn": "Subtext and spoilers",
+  "descriptionPt": "Subtexto -# e extensão de spoilers.",
+  "descriptionEn": "-# subtext and extended spoilers."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Templates e sumário",
+  "titleEn": "Templates & table of contents",
+  "descriptionPt": "Oculta modelos e sumários.",
+  "descriptionEn": "Hides templates and table of contents."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Formatação de texto",
+  "titleEn": "Text formatting",
+  "descriptionPt": "Formatação Markdown com delimitadores estendidos.",
+  "descriptionEn": "Extra Markdown delimiters and rendering."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Tradutor",
+  "titleEn": "Translator",
+  "descriptionPt": "Oculta tradução do menu, da seleção e do painel.",
+  "descriptionEn": "Hides translation in sidebar and selection menus."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Digitação assistida",
+  "titleEn": "Typing assistance",
+  "descriptionPt": "Digitação e edição rápida, colagem e Backspace inteligentes.",
+  "descriptionEn": "Typing helpers, smart paste and Backspace."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Unicode",
+  "titleEn": "Unicode",
+  "descriptionPt": "Oculta o seletor de símbolos.",
+  "descriptionEn": "Hides symbol picker."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Histórico de versões",
+  "titleEn": "Version history",
+  "descriptionPt": "Oculta atalhos de snapshots; não apaga backups.",
+  "descriptionEn": "Hides snapshot shortcuts; never deletes backups."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Widgets e blocos interativos",
+  "titleEn": "Widgets & interactive blocks",
+  "descriptionPt": "Colunas, progresso, campos YAML e widgets.",
+  "descriptionEn": "Columns, progress, YAML fields and widgets."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Assistente de escrita",
+  "titleEn": "Writing assistant",
+  "descriptionPt": "Oculta o chat e ações que abrem o assistente.",
+  "descriptionEn": "Hides chat and assistant shortcuts."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Página inicial de escrita",
+  "titleEn": "Writing homepage",
+  "descriptionPt": "Busca, favoritos, rascunhos e projetos.",
+  "descriptionEn": "Search, favorites, drafts and projects."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Ferramentas de escrita",
+  "titleEn": "Writing tools",
+  "descriptionPt": "Oculta a barra lateral complementar.",
+  "descriptionEn": "Hides supplementary tools pane."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Variantes",
+  "titleEn": "Writing variants",
+  "descriptionPt": "Oculta comparações e variantes de frases.",
+  "descriptionEn": "Hides writing variants."
+ },
+ {
+  "id": "modules",
+  "titlePt": "Integração de citações Zotero",
+  "titleEn": "Zotero quote integration",
+  "descriptionPt": "Destaques de notas importadas como citações.",
+  "descriptionEn": "Imported-note highlights as quotes."
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Ativar numeração",
+  "titleEn": "Enable numbering"
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Habilitar sumário",
+  "titleEn": "Enable outline"
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Numeração dos títulos no Live Preview",
+  "titleEn": "Heading numbers in Live Preview"
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Realçar legendas",
+  "titleEn": "Highlight captions"
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Numerar legendas no modo de leitura",
+  "titleEn": "Number captions in Reading View"
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Esquema numérico",
+  "titleEn": "Number scheme"
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Estrutura e legendas",
+  "titleEn": "Structure and captions"
+ },
+ {
+  "id": "numbering",
+  "titlePt": "Números visuais em leitura",
+  "titleEn": "Virtual numbers in Reading View"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Listas alfabéticas, romanas e #.",
+  "titleEn": "Alphabetic, Roman and #. lists"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Rótulos {::P}",
+  "titleEn": "Custom labels {::P}"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Formato padrão",
+  "titleEn": "Default format"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Listas de definições",
+  "titleEn": "Definition lists"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Ativar listas e blocos avançados",
+  "titleEn": "Enable advanced lists and blocks"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Ativar exportação",
+  "titleEn": "Enable export"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Pasta de exportações",
+  "titleEn": "Export folder"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Blocos ::: {.classe}",
+  "titleEn": "Fenced div ::: {.class}"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Índice navegável",
+  "titleEn": "Navigable outline"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Exemplos numerados (@id)",
+  "titleEn": "Numbered examples (@id)"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Executável Pandoc",
+  "titleEn": "Pandoc executable"
+ },
+ {
+  "id": "pandocSyntax",
+  "titlePt": "Sobrescrito e subscrito",
+  "titleEn": "Superscript and subscript"
+ },
+ {
+  "id": "privacy",
+  "titlePt": "Criar nota protegida",
+  "titleEn": "Create protected note"
+ },
+ {
+  "id": "privacy",
+  "titlePt": "Ativar notas criptografadas locais",
+  "titleEn": "Enable local encrypted notes"
+ },
+ {
+  "id": "privacy",
+  "titlePt": "Abrir nota protegida",
+  "titleEn": "Open protected note"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Editores de capítulos por sessão",
+  "titleEn": "Chapter editors per session",
+  "descriptionPt": "Limita apenas a lista de editores da escrita contínua. A compilação inclui todas as cenas do rascunho ativo.",
+  "descriptionEn": "Limits only the continuous writing editor list. Compilation includes every scene in the active draft."
+ },
+ {
+  "id": "projects",
+  "titlePt": "Central de compatibilidade",
+  "titleEn": "Compatibility center"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Escrita contínua",
+  "titleEn": "Continuous writing"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Ativar escrita contínua de capítulos",
+  "titleEn": "Enable continuous chapter writing"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Cópias locais de recuperação",
+  "titleEn": "Local recovery copies",
+  "descriptionPt": "Guarda rascunhos de capítulos nos dados locais do Basic para recuperar após reiniciar. Não substitui Salvar cena; desativar preserva as cópias existentes.",
+  "descriptionEn": "Keeps chapter drafts in Basic local data for recovery after restart. Does not replace Save scene; disabling preserves existing copies."
+ },
+ {
+  "id": "projects",
+  "titlePt": "Máximo de notas pesquisadas",
+  "titleEn": "Maximum searched notes"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Abrir gerenciador de projetos",
+  "titleEn": "Open project manager"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Abrir notas do projeto",
+  "titleEn": "Open project notes"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Rascunhos recuperáveis",
+  "titleEn": "Recoverable drafts"
+ },
+ {
+  "id": "projectTasks",
+  "titlePt": "Ocultar tarefas concluídas",
+  "titleEn": "Hide completed tasks"
+ },
+ {
+  "id": "projectTasks",
+  "titlePt": "Mostrar dicas dos botões",
+  "titleEn": "Show button tooltips"
+ },
+ {
+  "id": "projectTasks",
+  "titlePt": "Mostrar prazos",
+  "titleEn": "Show due dates"
+ },
+ {
+  "id": "projectTasks",
+  "titlePt": "Ordenar grupos por tarefas pendentes",
+  "titleEn": "Sort groups by pending tasks"
+ },
+ {
+  "id": "prompts",
+  "titlePt": "Antônimos",
+  "titleEn": "Antonyms"
+ },
+ {
+  "id": "prompts",
+  "titlePt": "Definições",
+  "titleEn": "Definitions"
+ },
+ {
+  "id": "prompts",
+  "titlePt": "Sinônimos",
+  "titleEn": "Synonyms"
+ },
+ {
+  "id": "prompts",
+  "titlePt": "Tradução",
+  "titleEn": "Translation"
+ },
+ {
+  "id": "prompts",
+  "titlePt": "Escrita",
+  "titleEn": "Writing"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Modelo ativo",
+  "titleEn": "Active model"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Chave de API",
+  "titleEn": "API key"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Assistente",
+  "titleEn": "Assistant"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Modelos disponíveis",
+  "titleEn": "Available models"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Definições",
+  "titleEn": "Definitions"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Buscar modelos",
+  "titleEn": "Fetch models"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Endereço do Ollama",
+  "titleEn": "Ollama endpoint"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Endpoint compatível com OpenAI (HTTPS)",
+  "titleEn": "OpenAI-compatible endpoint (HTTPS)"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Provedor",
+  "titleEn": "Provider",
+  "descriptionPt": "Escolha qual conexão editar",
+  "descriptionEn": "Choose the connection to edit"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Pesquisar modelos",
+  "titleEn": "Search models"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Testar conexão",
+  "titleEn": "Test connection"
+ },
+ {
+  "id": "providers",
+  "titlePt": "Tradução",
+  "titleEn": "Translation"
+ },
+ {
+  "id": "quickActions",
+  "titlePt": "Atalhos do ribbon do Basic",
+  "titleEn": "Basic ribbon shortcuts",
+  "descriptionPt": "Abra as ações de leitura, formatação, foco e integrações do Basic.",
+  "descriptionEn": "Open Basic actions for reading, formatting, focus and integrations."
+ },
+ {
+  "id": "quickActions",
+  "titlePt": "Foco na pasta do explorador",
+  "titleEn": "Explorer folder focus"
+ },
+ {
+  "id": "quickActions",
+  "titlePt": "Paleta de formatação",
+  "titleEn": "Formatting palette"
+ },
+ {
+  "id": "quickActions",
+  "titlePt": "Captura e brainstorm local",
+  "titleEn": "Local capture and brainstorm"
+ },
+ {
+  "id": "research",
+  "titlePt": "Ativar acesso à API",
+  "titleEn": "Enable API access"
+ },
+ {
+  "id": "research",
+  "titlePt": "Ativar estilo por nota",
+  "titleEn": "Enable note styling"
+ },
+ {
+  "id": "research",
+  "titlePt": "Ativar fontes de pesquisa",
+  "titleEn": "Enable research sources"
+ },
+ {
+  "id": "research",
+  "titlePt": "Buscar referências",
+  "titleEn": "Fetch references"
+ },
+ {
+  "id": "research",
+  "titlePt": "Tamanho da fonte",
+  "titleEn": "Font size"
+ },
+ {
+  "id": "research",
+  "titlePt": "Cor dos títulos (#RRGGBB)",
+  "titleEn": "Heading color (#RRGGBB)"
+ },
+ {
+  "id": "research",
+  "titlePt": "Pasta das notas importadas",
+  "titleEn": "Imported notes folder"
+ },
+ {
+  "id": "research",
+  "titlePt": "Pasta de importação",
+  "titleEn": "Imported notes folder"
+ },
+ {
+  "id": "research",
+  "titlePt": "Tipo de biblioteca",
+  "titleEn": "Library type"
+ },
+ {
+  "id": "research",
+  "titlePt": "Altura de linha",
+  "titleEn": "Line height"
+ },
+ {
+  "id": "research",
+  "titlePt": "Itens por consulta",
+  "titleEn": "Max items per request"
+ },
+ {
+  "id": "research",
+  "titlePt": "ID numérico da biblioteca",
+  "titleEn": "Numeric library ID"
+ },
+ {
+  "id": "research",
+  "titlePt": "Largura da leitura",
+  "titleEn": "Reading width"
+ },
+ {
+  "id": "research",
+  "titlePt": "Usar destaques Zotero no widget de citações",
+  "titleEn": "Use Zotero highlights in quote widget"
+ },
+ {
+  "id": "research",
+  "titlePt": "Tag das notas Zotero",
+  "titleEn": "Zotero note tag"
+ },
+ {
+  "id": "review",
+  "titlePt": "Chave da API (opcional)",
+  "titleEn": "API key (optional)",
+  "descriptionPt": "O servidor público não exige chave. A chave fica nas configurações locais do cofre.",
+  "descriptionEn": "The public server does not require a key. Keys are stored in the vault’s local settings."
+ },
+ {
+  "id": "review",
+  "titlePt": "Caracteres por verificação automática",
+  "titleEn": "Characters per automatic check"
+ },
+ {
+  "id": "review",
+  "titlePt": "Modo inicial do painel",
+  "titleEn": "Default pane mode",
+  "descriptionPt": "Modo usado ao abrir um novo painel de revisão.",
+  "descriptionEn": "Mode used when opening a new Review pane."
+ },
+ {
+  "id": "review",
+  "titlePt": "Corretor de gramática",
+  "titleEn": "Grammar checker",
+  "descriptionPt": "Use a conexão do Basic ou os controles de um plugin LanguageTool instalado separadamente.",
+  "descriptionEn": "Use Basic’s connection or a separately installed LanguageTool plugin."
+ },
+ {
+  "id": "review",
+  "titlePt": "Ocultar sugestões só de espaço e formatação",
+  "titleEn": "Hide spacing-only and formatting suggestions",
+  "descriptionPt": "Reduz avisos causados pela estrutura Markdown.",
+  "descriptionEn": "Reduce findings caused by Markdown structure."
+ },
+ {
+  "id": "review",
+  "titlePt": "IDs de regras ignoradas",
+  "titleEn": "Ignored rule IDs",
+  "descriptionPt": "Separe os IDs por vírgula, espaço ou linha. As outras sugestões continuam ativas.",
+  "descriptionEn": "Separate IDs with commas, spaces or lines. Other suggestions remain active."
+ },
+ {
+  "id": "review",
+  "titlePt": "Conta do LanguageTool (opcional)",
+  "titleEn": "LanguageTool account (optional)",
+  "descriptionPt": "E-mail da conta quando exigido por uma chave Premium ou servidor próprio.",
+  "descriptionEn": "Account email when required by a Premium API key or your own server."
+ },
+ {
+  "id": "review",
+  "titlePt": "Intervalo mínimo entre verificações",
+  "titleEn": "Minimum interval between checks"
+ },
+ {
+  "id": "review",
+  "titlePt": "Abrir a nota revisada no editor",
+  "titleEn": "Open the reviewed note in the editor",
+  "descriptionPt": "Exibe os sublinhados ao escolher uma nota que ainda não está aberta.",
+  "descriptionEn": "Show underlines when choosing a note that is not open yet."
+ },
+ {
+  "id": "review",
+  "titlePt": "Pausa após digitar",
+  "titleEn": "Pause after typing"
+ },
+ {
+  "id": "review",
+  "titlePt": "Dicionário pessoal",
+  "titleEn": "Personal spelling dictionary",
+  "descriptionPt": "Uma palavra por linha, até 2.000. Nomes e termos inventados não gerarão avisos de ortografia.",
+  "descriptionEn": "One word per line, up to 2,000. Names and invented terms will not produce spelling warnings."
+ },
+ {
+  "id": "review",
+  "titlePt": "Idioma da revisão",
+  "titleEn": "Review language"
+ },
+ {
+  "id": "review",
+  "titlePt": "Endereço do servidor",
+  "titleEn": "Server endpoint",
+  "descriptionPt": "URL HTTPS da API /v2/check. Deixe vazio para usar o servidor público do LanguageTool.",
+  "descriptionEn": "HTTPS URL for the /v2/check API. Leave empty to use LanguageTool’s public server."
+ },
+ {
+  "id": "review",
+  "titlePt": "Mostrar sugestões ao passar o mouse ou mover o cursor",
+  "titleEn": "Show suggestions on hover or caret",
+  "descriptionPt": "No celular, toque na palavra sublinhada.",
+  "descriptionEn": "On mobile, tap an underlined word."
+ },
+ {
+  "id": "review",
+  "titlePt": "Testar a conexão",
+  "titleEn": "Test connection"
+ },
+ {
+  "id": "review",
+  "titlePt": "Quando verificar",
+  "titleEn": "When to check"
+ },
+ {
+  "id": "reviewAI",
+  "titlePt": "Prompt do leitor beta",
+  "titleEn": "Beta reader prompt"
+ },
+ {
+  "id": "reviewAI",
+  "titlePt": "Perfil editorial",
+  "titleEn": "Editorial profile",
+  "descriptionPt": "Gênero, voz, público-alvo, estilo e preferências do autor.",
+  "descriptionEn": "Genre, voice, audience, style and author preferences."
+ },
+ {
+  "id": "reviewAI",
+  "titlePt": "Prompt de explicações gramaticais",
+  "titleEn": "Grammar explanation prompt"
+ },
+ {
+  "id": "reviewAI",
+  "titlePt": "Máximo de caracteres por análise IA",
+  "titleEn": "Maximum characters per AI review",
+  "descriptionPt": "Entre 1.000 e 28.000. Documentos maiores serão analisados parcialmente.",
+  "descriptionEn": "Between 1,000 and 28,000. Longer documents are analyzed partially."
+ },
+ {
+  "id": "reviewAI",
+  "titlePt": "Modelo dos revisores",
+  "titleEn": "Reviewer model"
+ },
+ {
+  "id": "reviewAI",
+  "titlePt": "Provedor dos revisores",
+  "titleEn": "Reviewer provider"
+ },
+ {
+  "id": "reviewAI",
+  "titlePt": "Prompt do revisor de estilo",
+  "titleEn": "Style reviewer prompt"
+ },
+ {
+  "id": "sessionDrafts",
+  "titlePt": "Criar rascunho",
+  "titleEn": "Create draft"
+ },
+ {
+  "id": "sessionDrafts",
+  "titlePt": "Ativar rascunhos temporários",
+  "titleEn": "Enable temporary drafts"
+ },
+ {
+  "id": "sessionDrafts",
+  "titlePt": "Pasta para salvar rascunhos",
+  "titleEn": "Folder for saved drafts"
+ },
+ {
+  "id": "smartInsert",
+  "titlePt": "Inserir Ruby, avaliações ou datas",
+  "titleEn": "Insert Ruby, ratings or dates"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Snapshots automáticos",
+  "titleEn": "Automatic snapshots"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Linhas de contexto no diff",
+  "titleEn": "Context lines in diff"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Ativar histórico local",
+  "titleEn": "Enable local history"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Pasta do histórico",
+  "titleEn": "History folder"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Incluir anexos nos novos snapshots",
+  "titleEn": "Include attachments in new snapshots"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Intervalo entre snapshots automáticos (segundos)",
+  "titleEn": "Interval between automatic snapshots (seconds)"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Abrir histórico da nota",
+  "titleEn": "Open note history"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Retenção em dias",
+  "titleEn": "Retention in days"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Criar snapshot antes de alterações",
+  "titleEn": "Snapshot before edits"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Criar snapshot antes de restaurar",
+  "titleEn": "Snapshot before restoring"
+ },
+ {
+  "id": "snapshots",
+  "titlePt": "Limite de versões por nota",
+  "titleEn": "Version limit per note"
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Adicionar playlist",
+  "titleEn": "Add playlist"
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Ativar música e ambiente",
+  "titleEn": "Enable music and ambience"
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Biblioteca de músicas",
+  "titleEn": "Music library"
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Reproduzir ao iniciar",
+  "titleEn": "Play on startup"
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Rádio selecionada",
+  "titleEn": "Selected radio"
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Reprodução aleatória",
+  "titleEn": "Shuffle My Music"
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Pasta de músicas do cofre",
+  "titleEn": "Vault music folder",
+  "descriptionPt": "Deixe vazio para pesquisar áudios em todo o cofre.",
+  "descriptionEn": "Leave blank to search audio throughout the vault."
+ },
+ {
+  "id": "soundscapes",
+  "titlePt": "Volume",
+  "titleEn": "Volume"
+ },
+ {
+  "id": "speech",
+  "titlePt": "Voz do dispositivo",
+  "titleEn": "Device voice"
+ },
+ {
+  "id": "speech",
+  "titlePt": "Habilitar leitura de seleção em documentos",
+  "titleEn": "Enable document selection reader",
+  "descriptionPt": "Usa voz local do Basic. Depende de seleção de texto acessível (inclusive a camada de texto de alguns PDFs).",
+  "descriptionEn": "Uses the existing Basic local voice. Requires selectable document text, including supported PDF text layers."
+ },
+ {
+  "id": "speech",
+  "titlePt": "Ativar TTS local",
+  "titleEn": "Enable local speech"
+ },
+ {
+  "id": "speech",
+  "titlePt": "Idioma",
+  "titleEn": "Language"
+ },
+ {
+  "id": "speech",
+  "titlePt": "Abrir seletor de voz",
+  "titleEn": "Open voice settings"
+ },
+ {
+  "id": "speech",
+  "titlePt": "Velocidade",
+  "titleEn": "Rate"
+ },
+ {
+  "id": "study",
+  "titlePt": "Cartões por sessão",
+  "titleEn": "Cards per session"
+ },
+ {
+  "id": "study",
+  "titlePt": "Subpasta das aulas",
+  "titleEn": "Class notes folder"
+ },
+ {
+  "id": "study",
+  "titlePt": "Subpasta de diário",
+  "titleEn": "Daily journal folder"
+ },
+ {
+  "id": "study",
+  "titlePt": "Retenção desejada (FSRS)",
+  "titleEn": "Desired retention (FSRS)"
+ },
+ {
+  "id": "study",
+  "titlePt": "Bônus de resposta fácil",
+  "titleEn": "Easy-answer bonus"
+ },
+ {
+  "id": "study",
+  "titlePt": "Ativar central acadêmica",
+  "titleEn": "Enable academic center"
+ },
+ {
+  "id": "study",
+  "titlePt": "Primeiro intervalo (dias)",
+  "titleEn": "First interval (days)"
+ },
+ {
+  "id": "study",
+  "titlePt": "Multiplicador dos intervalos",
+  "titleEn": "Interval multiplier"
+ },
+ {
+  "id": "study",
+  "titlePt": "Limite de intervalo (dias)",
+  "titleEn": "Maximum interval (days)"
+ },
+ {
+  "id": "study",
+  "titlePt": "Cartões novos por sessão",
+  "titleEn": "New cards per session"
+ },
+ {
+  "id": "study",
+  "titlePt": "Abrir área de Estudos",
+  "titleEn": "Open Study workspace"
+ },
+ {
+  "id": "study",
+  "titlePt": "Nota dos lembretes",
+  "titleEn": "Reminder note"
+ },
+ {
+  "id": "study",
+  "titlePt": "Repetição após erro (minutos)",
+  "titleEn": "Retry after lapse (minutes)"
+ },
+ {
+  "id": "study",
+  "titlePt": "Pasta principal",
+  "titleEn": "Root folder"
+ },
+ {
+  "id": "study",
+  "titlePt": "Algoritmo de agendamento",
+  "titleEn": "Scheduling algorithm",
+  "descriptionPt": "SM-2 mantém o comportamento antigo; FSRS-4.5 usa estabilidade e dificuldade da memória.",
+  "descriptionEn": "SM-2 preserves previous behavior; FSRS-4.5 uses memory stability and difficulty."
+ },
+ {
+  "id": "study",
+  "titlePt": "Segundo intervalo (dias)",
+  "titleEn": "Second interval (days)"
+ },
+ {
+  "id": "study",
+  "titlePt": "Etiqueta de estudos",
+  "titleEn": "Study tag",
+  "descriptionPt": "Sem #. Ex.: flashcards ou estudos.",
+  "descriptionEn": "Without #, e.g. flashcards or study."
+ },
+ {
+  "id": "study",
+  "titlePt": "Nota de horário",
+  "titleEn": "Timetable note"
+ },
+ {
+  "id": "tasks",
+  "titlePt": "Máximo de notas pesquisadas",
+  "titleEn": "Maximum notes to scan"
+ },
+ {
+  "id": "tasks",
+  "titlePt": "Nova sessão de ideias",
+  "titleEn": "New brainstorm"
+ },
+ {
+  "id": "tasks",
+  "titlePt": "Nova captura rápida",
+  "titleEn": "New quick capture"
+ },
+ {
+  "id": "tasks",
+  "titlePt": "Painel de tarefas",
+  "titleEn": "Task dashboard",
+  "descriptionPt": "Agrupa por etiqueta, filtra e permite marcar tarefas.",
+  "descriptionEn": "Group by tag, filter and toggle tasks."
+ },
+ {
+  "id": "tasks",
+  "titlePt": "Navegador de tarefas",
+  "titleEn": "Task navigator"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Adicionar regra",
+  "titleEn": "Add matching rule"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Aplicar modelos ao criar notas",
+  "titleEn": "Apply templates on note creation"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Aplicar modelos ao renomear notas compatíveis",
+  "titleEn": "Apply templates when a note is renamed to match"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Diferenciar maiúsculas e minúsculas no título",
+  "titleEn": "Case-sensitive title matching"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Formato de data (ex.: YYYY-MM-DD)",
+  "titleEn": "Date format (e.g. YYYY-MM-DD)"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Ativado",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Compatibilidade com nome exato",
+  "titleEn": "Legacy exact-name fallback",
+  "descriptionPt": "Se não houver regras, procurar Templates/<nome da nota>.md e aplicar somente em notas vazias.",
+  "descriptionEn": "If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty."
+ },
+ {
+  "id": "templates",
+  "titlePt": "Regras de correspondência",
+  "titleEn": "Original matching rules",
+  "descriptionPt": "A primeira regra correspondente aplica um modelo. Sem regras, permanece a busca pelo nome exato.",
+  "descriptionEn": "The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available."
+ },
+ {
+  "id": "templates",
+  "titlePt": "Pasta de modelos",
+  "titleEn": "Templates folder"
+ },
+ {
+  "id": "templates",
+  "titlePt": "Formato de hora (ex.: HH:mm)",
+  "titleEn": "Time format (e.g. HH:mm)"
+ },
+ {
+  "id": "toc",
+  "titlePt": "Ativado",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "toc",
+  "titlePt": "Nível máximo de títulos",
+  "titleEn": "Max heading level"
+ },
+ {
+  "id": "toc",
+  "titlePt": "Sumário numerado",
+  "titleEn": "Numbered table of contents"
+ },
+ {
+  "id": "toc",
+  "titlePt": "Iniciar recolhido",
+  "titleEn": "Start folded"
+ },
+ {
+  "id": "translation",
+  "titlePt": "Idioma de origem",
+  "titleEn": "Source language"
+ },
+ {
+  "id": "translation",
+  "titlePt": "Idioma de destino",
+  "titleEn": "Target language"
+ },
+ {
+  "id": "translation",
+  "titlePt": "Provedor de tradução",
+  "titleEn": "Translation provider"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Permitir processamento online de texto",
+  "titleEn": "Allow online text processing",
+  "descriptionPt": "Desativado por padrão. Com Edge, o texto selecionado ou a nota é enviada à Microsoft para gerar a voz. O serviço não oficial pode mudar.",
+  "descriptionEn": "OFF by default. When enabled and Edge is selected, the selected text or note is sent to Microsoft to generate speech. Edge Read Aloud is an unofficial, changeable service."
+ },
+ {
+  "id": "tts",
+  "titlePt": "Verificar vozes disponíveis",
+  "titleEn": "Check available voices"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Voz online do Edge",
+  "titleEn": "Edge online voice",
+  "descriptionPt": "Vozes online de alta qualidade, independentes das vozes instaladas no Linux.",
+  "descriptionEn": "High-quality online voices; independent of installed Linux voices."
+ },
+ {
+  "id": "tts",
+  "titlePt": "Ativado",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Máximo de caracteres por leitura",
+  "titleEn": "Maximum characters per playback"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Pausar música ao falar",
+  "titleEn": "Pause music while speaking"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Tom (voz do sistema)",
+  "titleEn": "Pitch (system voice)"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Preferir texto selecionado",
+  "titleEn": "Prefer selected text"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Retomar música ao terminar",
+  "titleEn": "Resume music after speech"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Velocidade da fala",
+  "titleEn": "Speaking speed"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Leitura",
+  "titleEn": "Speech"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Tamanho dos trechos de leitura",
+  "titleEn": "Speech chunk size",
+  "descriptionPt": "Pedaços menores evitam travamentos de Web Speech no Android.",
+  "descriptionEn": "Shorter chunks can reduce Web Speech stalls on Android."
+ },
+ {
+  "id": "tts",
+  "titlePt": "Idioma da leitura",
+  "titleEn": "Speech language"
+ },
+ {
+  "id": "tts",
+  "titlePt": "Voz do sistema",
+  "titleEn": "System voice",
+  "descriptionPt": "As vozes dependem do WebView; talvez não estejam disponíveis no Android.",
+  "descriptionEn": "Voices depend on the WebView and might be unavailable on Android."
+ },
+ {
+  "id": "tts",
+  "titlePt": "Mecanismo de voz",
+  "titleEn": "Voice engine",
+  "descriptionPt": "Vozes do sistema funcionam offline. Vozes online do Edge funcionam sem motor de voz no Linux, mas enviam texto à Microsoft e exigem internet.",
+  "descriptionEn": "System voices work offline. Edge online voices work even if Linux has no speech engine, but send the text to Microsoft and require internet."
+ },
+ {
+  "id": "tts",
+  "titlePt": "Volume (voz do sistema)",
+  "titleEn": "Volume (system voice)"
+ },
+ {
+  "id": "typewriter",
+  "titlePt": "Atenuar as outras linhas",
+  "titleEn": "Dim other lines"
+ },
+ {
+  "id": "typewriter",
+  "titlePt": "Ativar máquina de escrever",
+  "titleEn": "Enable typewriter mode",
+  "descriptionPt": "Ativa estes recursos apenas no editor de texto.",
+  "descriptionEn": "Enables these features only in the text editor."
+ },
+ {
+  "id": "typewriter",
+  "titlePt": "Acompanhar o cursor ao escrever",
+  "titleEn": "Follow the cursor while writing",
+  "descriptionPt": "Desative para usar apenas o destaque e o foco visual, sem rolagem automática.",
+  "descriptionEn": "Turn off to use line highlighting and visual focus without automatic scrolling."
+ },
+ {
+  "id": "typewriter",
+  "titlePt": "Destacar a linha atual",
+  "titleEn": "Highlight the current line"
+ },
+ {
+  "id": "typewriter",
+  "titlePt": "Restaurar aparência e posição",
+  "titleEn": "Restore appearance and position",
+  "descriptionPt": "Mantém o modo ligado ou desligado como está.",
+  "descriptionEn": "Keeps the mode enabled or disabled as it is."
+ },
+ {
+  "id": "typewriter",
+  "titlePt": "Visibilidade das outras linhas",
+  "titleEn": "Visibility of other lines",
+  "descriptionPt": "Valores maiores mantêm o texto ao redor mais legível.",
+  "descriptionEn": "Higher values keep the surrounding text more readable."
+ },
+ {
+  "id": "typewriter",
+  "titlePt": "Altura da linha de escrita",
+  "titleEn": "Writing line height",
+  "descriptionPt": "Percentual da área visível do editor, de cima para baixo.",
+  "descriptionEn": "Percentage of the visible editor area, measured from the top."
+ },
+ {
+  "id": "typing",
+  "titlePt": "Setas (->, <-)",
+  "titleEn": "Arrows (->, <-)"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Maiúsculas no início de frases",
+  "titleEn": "Auto capitalize sentences"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Espaçamento entre CJK e alfanuméricos",
+  "titleEn": "CJK/Latin spacing"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Aspas duplas de fechamento",
+  "titleEn": "Closing double quote"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Guillemet de fechamento",
+  "titleEn": "Closing guillemet"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Aspas simples de fechamento",
+  "titleEn": "Closing single quote"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Comparações (>=, <=, /=)",
+  "titleEn": "Comparisons"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Converter -- diretamente em travessão",
+  "titleEn": "Convert -- directly to em dash"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Aspas curvas e apóstrofos",
+  "titleEn": "Curly quotes and apostrophes"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Travessões e meia-risca",
+  "titleEn": "Dashes"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Travessão de diálogo (--Olá)",
+  "titleEn": "Dialogue dash (--Hello)"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Reticências (...)",
+  "titleEn": "Ellipsis (...)"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Ativar tipografia automática",
+  "titleEn": "Enable automatic typography"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Ativar regras regex",
+  "titleEn": "Enable regex rules"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Ativar digitação assistida",
+  "titleEn": "Enable typing assistance"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Pastas/arquivos excluídos",
+  "titleEn": "Excluded folders/files",
+  "descriptionPt": "Um caminho por linha.",
+  "descriptionEn": "One path per line."
+ },
+ {
+  "id": "typing",
+  "titlePt": "Formatar texto colado",
+  "titleEn": "Format pasted text"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Frações (1/2, 3/4)",
+  "titleEn": "Fractions"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Aspas angulares (<<, >>)",
+  "titleEn": "Guillemets"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Seta esquerda",
+  "titleEn": "Left arrow"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Opções de busca",
+  "titleEn": "Match options"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Aspas duplas de abertura",
+  "titleEn": "Opening double quote"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Guillemet de abertura",
+  "titleEn": "Opening guillemet"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Aspas simples de abertura",
+  "titleEn": "Opening single quote"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Padrão regex",
+  "titleEn": "Regex pattern"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Substituir por",
+  "titleEn": "Replace with",
+  "descriptionPt": "Até 300 caracteres; vazio remove o atalho digitado.",
+  "descriptionEn": "Up to 300 characters; empty removes the typed shortcut."
+ },
+ {
+  "id": "typing",
+  "titlePt": "Seta direita",
+  "titleEn": "Right arrow"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Regra ativada",
+  "titleEn": "Rule enabled"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Reconhecer apóstrofos em palavras",
+  "titleEn": "Smart apostrophes"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Backspace em itens vazios",
+  "titleEn": "Smart Backspace for empty list items"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Colagem inteligente em listas e citações",
+  "titleEn": "Smart paste in lists and quotes"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Espaçamento ao formatar código inline",
+  "titleEn": "Space inline code when formatting"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Tab sai de símbolos pareados",
+  "titleEn": "Tab moves past paired symbols"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Modelos de texto",
+  "titleEn": "Text snippets",
+  "descriptionPt": "Uma linha por modelo usando JSON com name e body. Para múltiplas linhas, use \\n no body.",
+  "descriptionEn": "One JSON object per line with name and body. Use \\n for multiline content."
+ },
+ {
+  "id": "typing",
+  "titlePt": "Quando eu digitar",
+  "titleEn": "When I type",
+  "descriptionPt": "Atalho literal, até 80 caracteres.",
+  "descriptionEn": "Literal shortcut, up to 80 characters."
+ },
+ {
+  "id": "unicode",
+  "titlePt": "Ativado",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "unicode",
+  "titlePt": "Máximo de resultados",
+  "titleEn": "Max results"
+ },
+ {
+  "id": "unicode",
+  "titlePt": "Índice Unicode offline",
+  "titleEn": "Offline Unicode index",
+  "descriptionPt": "Baixe UnicodeData.txt do unicode.org uma vez; depois a busca funciona offline.",
+  "descriptionEn": "Download UnicodeData.txt from unicode.org once. Search works offline afterward."
+ },
+ {
+  "id": "unicode",
+  "titlePt": "Seletor Unicode",
+  "titleEn": "Unicode picker"
+ },
+ {
+  "id": "v10Bookshelf",
+  "titlePt": "Permitir widget de livros na homepage",
+  "titleEn": "Allow bookshelf homepage widget"
+ },
+ {
+  "id": "v10Bookshelf",
+  "titlePt": "Biblioteca",
+  "titleEn": "Bookshelf"
+ },
+ {
+  "id": "v10Bookshelf",
+  "titlePt": "Ordem padrão",
+  "titleEn": "Default order"
+ },
+ {
+  "id": "v10Bookshelf",
+  "titlePt": "Ativar biblioteca de livros",
+  "titleEn": "Enable bookshelf"
+ },
+ {
+  "id": "v10Bookshelf",
+  "titlePt": "Mostrar progresso automático",
+  "titleEn": "Show automatic progress"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Permitir editar propriedades em lote (desligado inicialmente)",
+  "titleEn": "Allow batch property edits (off by default)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Permitir edição de arquivos de texto (até 512 KiB)",
+  "titleEn": "Allow text-file edits (up to 512 KiB)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Comando",
+  "titleEn": "Command"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Largura atual (%)",
+  "titleEn": "Current width (%)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "ID de comando personalizado",
+  "titleEn": "Custom command ID"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Largura padrão para restaurar (%)",
+  "titleEn": "Default reset width (%)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Ativar ferramentas extras",
+  "titleEn": "Enable additional tools"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Ativar largura personalizada",
+  "titleEn": "Enable custom editor width"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Ativar atalhos de tecla dupla",
+  "titleEn": "Enable double-press shortcuts"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Ativar ferramentas de arquivos",
+  "titleEn": "Enable file tools"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Ativo",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Exportar seleção de tabela para CSV",
+  "titleEn": "Export selected table as CSV"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Formatar JSON selecionado",
+  "titleEn": "Format selected JSON"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Ignorar em janelas e sugestões",
+  "titleEn": "Ignore in dialogs and suggestions"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Inserir callouts por comando",
+  "titleEn": "Insert callouts via command"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Inserir notas de rodapé",
+  "titleEn": "Insert footnotes"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Limite de notas por operação",
+  "titleEn": "Maximum notes per operation"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Novo atalho",
+  "titleEn": "New shortcut"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Reconhecer editor-width das notas",
+  "titleEn": "Read per-note editor-width property"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Filtro de tabelas somente leitura",
+  "titleEn": "Read-only table filtering"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Cor da barra de leitura",
+  "titleEn": "Reading bar color",
+  "descriptionPt": "Hexadecimal (#RRGGBB) ou deixe vazio para usar a cor de destaque.",
+  "descriptionEn": "Hex color (#RRGGBB), or leave blank to use accent color."
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Espessura da barra de leitura",
+  "titleEn": "Reading bar thickness"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Barra de progresso de leitura",
+  "titleEn": "Reading progress bar"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Organizar abas laterais",
+  "titleEn": "Reorder sidebar tabs",
+  "descriptionPt": "A ordem será usada no PC e no celular, sem alterar o workspace nativo.",
+  "descriptionEn": "The same order applies on desktop and mobile without rewriting the native workspace."
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Mostrar slider na barra de status (PC)",
+  "titleEn": "Show status bar slider (desktop)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Ordenar linhas de tabelas Markdown",
+  "titleEn": "Sort Markdown table rows"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Intervalo entre toques (ms)",
+  "titleEn": "Time between taps (ms)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Onde funciona",
+  "titleEn": "Where active"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Validação de YAML",
+  "titleEn": "YAML validation"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Reduzir linhas em branco excessivas",
+  "titleEn": "Collapse excessive blank lines"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Ativar Linter",
+  "titleEn": "Enable Linter"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Arquivos e pastas excluídos",
+  "titleEn": "Excluded files and folders",
+  "descriptionPt": "Caminhos relativos ao cofre, um por linha; use barra final para pastas.",
+  "descriptionEn": "Vault-relative paths, one per line; end folder names with a slash."
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Nova linha ao fim do arquivo",
+  "titleEn": "Final newline"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Remover espaços ao fim da linha",
+  "titleEn": "Remove trailing whitespace"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Espaço depois de > em citações",
+  "titleEn": "Space after blockquote >"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Espaço após definição de nota de rodapé",
+  "titleEn": "Space after footnote definitions"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Espaço depois de títulos #",
+  "titleEn": "Space after heading #"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Espaço depois de marcadores de lista",
+  "titleEn": "Space after list markers"
+ },
+ {
+  "id": "v6Linter",
+  "titlePt": "Espaço após chaves YAML",
+  "titleEn": "Space after YAML keys"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Tamanho da anotação",
+  "titleEn": "Annotation size"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Spoiler em bloco ||",
+  "titleEn": "Block spoiler ||"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Símbolo vazio",
+  "titleEn": "Empty symbol"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Ativar subtexto -#",
+  "titleEn": "Enable -# subtext"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Habilitar avaliações",
+  "titleEn": "Enable ratings"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Ativar Ruby",
+  "titleEn": "Enable Ruby"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Símbolo preenchido",
+  "titleEn": "Filled symbol"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Meio ponto",
+  "titleEn": "Half symbol"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Tamanho do Ruby aninhado",
+  "titleEn": "Nested Ruby size"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Renderizar ao editar",
+  "titleEn": "Render while editing"
+ },
+ {
+  "id": "v6Markdown",
+  "titlePt": "Exibir valor",
+  "titleEn": "Show rating value"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Idioma de exibição",
+  "titleEn": "Display locale",
+  "descriptionPt": "Automático, pt-BR, en-US ou espanhol",
+  "descriptionEn": "Auto, pt-BR, en-US or Spanish"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Ativar tempo de leitura",
+  "titleEn": "Enable reading time"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Ignorar código",
+  "titleEn": "Exclude code"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Ignorar frontmatter",
+  "titleEn": "Exclude frontmatter"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Fuso horário IANA",
+  "titleEn": "IANA timezone",
+  "descriptionPt": "Use local ou um nome como America/Sao_Paulo",
+  "descriptionEn": "Use local or a name such as America/New_York"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Renderizar marcadores <t:…>",
+  "titleEn": "Render <t:…> timestamps"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Exibir na barra de status",
+  "titleEn": "Show in status bar"
+ },
+ {
+  "id": "v6Reading",
+  "titlePt": "Palavras por minuto",
+  "titleEn": "Words per minute"
+ },
+ {
+  "id": "v7Worldbuilding",
+  "titlePt": "Limite de registros do compêndio",
+  "titleEn": "Compendium entry limit"
+ },
+ {
+  "id": "v7Worldbuilding",
+  "titlePt": "Timeline de eventos",
+  "titleEn": "Event timeline"
+ },
+ {
+  "id": "v7Worldbuilding",
+  "titlePt": "Ocultar notas de pasta no explorador e abrir pelo ícone",
+  "titleEn": "Hide folder notes in Explorer and open from its icon"
+ },
+ {
+  "id": "v7Worldbuilding",
+  "titlePt": "Reconhecer notas de pasta",
+  "titleEn": "Recognize folder notes"
+ },
+ {
+  "id": "v7Worldbuilding",
+  "titlePt": "Enviar contexto de capítulos anteriores para revisão IA",
+  "titleEn": "Send previous-chapter context to AI review"
+ },
+ {
+  "id": "v7Worldbuilding",
+  "titlePt": "Compêndio por tags",
+  "titleEn": "Tag-driven compendium"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Atualizar automaticamente",
+  "titleEn": "Automatic refresh"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Mês compacto",
+  "titleEn": "Compact month"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Vista inicial",
+  "titleEn": "Default view"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Painel lateral no computador",
+  "titleEn": "Desktop sidebar"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Ativar assinaturas externas",
+  "titleEn": "Enable external subscriptions"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Limite de importação por vez",
+  "titleEn": "Events per import"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Exportar agenda",
+  "titleEn": "Export calendar"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Importar ICS",
+  "titleEn": "Import ICS"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Painel lateral no celular inicialmente",
+  "titleEn": "Initial mobile sidebar"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Máximo de eventos por dia no mês",
+  "titleEn": "Maximum month events per day"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Abrir calendário de escrita",
+  "titleEn": "Open writing calendar"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Intervalo (horas)",
+  "titleEn": "Refresh interval (hours)"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Sincronizar agora",
+  "titleEn": "Sync now"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Hora final da grade",
+  "titleEn": "Timeline end hour"
+ },
+ {
+  "id": "v9Calendar",
+  "titlePt": "Hora inicial da grade",
+  "titleEn": "Timeline start hour"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Propriedade YAML padrão",
+  "titleEn": "Default YAML sorting property"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Linhas da descrição",
+  "titleEn": "Description lines"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Arrastar para reordenar manualmente",
+  "titleEn": "Drag to reorder manually"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ativar ordenação avançada",
+  "titleEn": "Enable advanced sorting"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ativar organização avançada",
+  "titleEn": "Enable enhanced organization"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ativar extensões do explorador",
+  "titleEn": "Enable explorer extensions"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ativar ocultação de arquivos",
+  "titleEn": "Enable file hiding"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ativar itens fixados",
+  "titleEn": "Enable pinned items"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Expandir ao passar o mouse",
+  "titleEn": "Expand on hover"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Favoritos no explorador",
+  "titleEn": "Explorer favorites"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Miniaturas HTTPS externas",
+  "titleEn": "External HTTPS thumbnails",
+  "descriptionPt": "URLs colocadas na nota podem informar seu IP ao servidor de imagens.",
+  "descriptionEn": "Image URLs in a note may reveal your IP to the image host."
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Propriedade da descrição da pasta",
+  "titleEn": "Folder description property",
+  "descriptionPt": "Por padrão: description no YAML da folder note.",
+  "descriptionEn": "Default: description in the folder note frontmatter."
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Regras YAML da Folder Note",
+  "titleEn": "Folder Note YAML sorting rules"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ordem global no explorador",
+  "titleEn": "Global Explorer sorting",
+  "descriptionPt": "Use o botão nativo de ordenação no topo do explorador. Escolhas nele valem para a raiz e todas as subpastas, incluindo modo manual do Basic.",
+  "descriptionEn": "Use Obsidian’s sorting button at the top of the File Explorer. Selecting a mode there applies it to the vault root and all subfolders, including Basic manual sorting."
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Padrões de ocultação",
+  "titleEn": "Hide patterns",
+  "descriptionPt": "Um padrão por linha; suporta * e **. Apenas oculta na interface, não exclui arquivos.",
+  "descriptionEn": "One glob per line; supports * and **. Only hides in Explorer, never deletes files."
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ícones antes do título da nota",
+  "titleEn": "Icons before note titles"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Itens fixados independentes por Space",
+  "titleEn": "Independent pins per Space"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Ordenação independente por Space",
+  "titleEn": "Independent sorting per Space"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Tempo do toque prolongado",
+  "titleEn": "Long-press duration"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Expandir ao pressionar (mobile)",
+  "titleEn": "Long-press to expand (mobile)"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Máximo de notas na visão de pasta",
+  "titleEn": "Maximum notes in folder view"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Setas de ordenação no celular",
+  "titleEn": "Mobile sorting arrows"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Conteúdo nas prévias",
+  "titleEn": "Preview content",
+  "descriptionPt": "Folder Notes mostram a descrição; notas comuns mostram o início do texto.",
+  "descriptionEn": "Folder Notes show descriptions; regular notes show opening text."
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Miniatura da primeira imagem",
+  "titleEn": "Preview first image",
+  "descriptionPt": "Usa banner, capa, thumbnail, imagem incorporada ou link HTTPS.",
+  "descriptionEn": "Uses banner, cover, thumbnail, embedded picture or HTTPS image link."
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Limite da descrição",
+  "titleEn": "Preview length"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Exigir Alt ao arrastar (opcional)",
+  "titleEn": "Require Alt while dragging (optional)"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Exibir cores personalizadas",
+  "titleEn": "Show custom colors"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Exibir ícones personalizados",
+  "titleEn": "Show custom icons"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Exibir descrição das Folder Notes",
+  "titleEn": "Show Folder Note descriptions"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Exibir itens ocultos",
+  "titleEn": "Show hidden items"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Exibir início do texto das notas",
+  "titleEn": "Show opening text for regular notes"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Mostrar prévias agora",
+  "titleEn": "Show previews now"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Compatibilidade com sorting-spec (regras ampliadas)",
+  "titleEn": "sorting-spec compatibility (simple rules)"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Tamanho da miniatura",
+  "titleEn": "Thumbnail size"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Integrar ordenação nativa do explorador",
+  "titleEn": "Use native Explorer sorting integration"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Organizar cartões e salvar no Markdown",
+  "titleEn": "Arrange cards and save to Markdown"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Painéis para coleções de notas",
+  "titleEn": "Boards for note collections"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Prévia do texto nos cartões",
+  "titleEn": "Card text previews"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Layout padrão dos painéis de notas",
+  "titleEn": "Default note board layout"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Edição de notas incorporadas",
+  "titleEn": "Editable embedded notes"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Ativar painéis e comandos rápidos",
+  "titleEn": "Enable note boards and slash commands"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Máximo de notas por painel",
+  "titleEn": "Maximum notes per board"
+ },
+ {
+  "id": "v9Flow",
+  "titlePt": "Menu de comandos /",
+  "titleEn": "Slash command menu"
+ },
+ {
+  "id": "v9Lock",
+  "titlePt": "Criar ou alterar senha",
+  "titleEn": "Create or change password"
+ },
+ {
+  "id": "v9Lock",
+  "titlePt": "Ativar bloqueio visual",
+  "titleEn": "Enable visual lock"
+ },
+ {
+  "id": "v9Lock",
+  "titlePt": "Bloquear novamente após (minutos)",
+  "titleEn": "Lock again after (minutes)",
+  "descriptionPt": "0 = uma vez por sessão.",
+  "descriptionEn": "0 = once per session."
+ },
+ {
+  "id": "v9Lock",
+  "titlePt": "Caminhos protegidos",
+  "titleEn": "Protected paths",
+  "descriptionPt": "Uma pasta ou nota por linha. Use / para o cofre inteiro.",
+  "descriptionEn": "One note or folder path per line. Use / for the entire vault."
+ },
+ {
+  "id": "v9Pomodoro",
+  "titlePt": "Pasta de notas diárias (opcional)",
+  "titleEn": "Daily note folder (optional)",
+  "descriptionPt": "Registra somente em notas existentes no formato AAAA-MM-DD.md. Deixe vazio para usar a raiz. Não cria arquivos.",
+  "descriptionEn": "Logs only to existing YYYY-MM-DD.md notes. Leave blank for vault root. Does not create files."
+ },
+ {
+  "id": "v9Pomodoro",
+  "titlePt": "Exportar relatório de foco",
+  "titleEn": "Export focus report"
+ },
+ {
+  "id": "v9Pomodoro",
+  "titlePt": "Duração do foco (minutos)",
+  "titleEn": "Focus duration (minutes)"
+ },
+ {
+  "id": "v9Pomodoro",
+  "titlePt": "Pausa longa (minutos)",
+  "titleEn": "Long break (minutes)"
+ },
+ {
+  "id": "v9Pomodoro",
+  "titlePt": "Pausa longa a cada N focos",
+  "titleEn": "Long break every N sessions"
+ },
+ {
+  "id": "v9Pomodoro",
+  "titlePt": "Abrir painel Pomodoro",
+  "titleEn": "Open Pomodoro sidebar"
+ },
+ {
+  "id": "v9Pomodoro",
+  "titlePt": "Pausa curta (minutos)",
+  "titleEn": "Short break (minutes)"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Posição da imagem do banner",
+  "titleEn": "Banner image position"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Colorir propriedades",
+  "titleEn": "Color properties"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Colorir tags",
+  "titleEn": "Color tags"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Posição da capa",
+  "titleEn": "Cover position"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Formato da capa",
+  "titleEn": "Cover shape"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Formatação de datas",
+  "titleEn": "Date formatting"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Modelos de exibição",
+  "titleEn": "Display templates"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Avisar com antecedência (dias)",
+  "titleEn": "Due soon threshold (days)"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Ativar propriedades visuais",
+  "titleEn": "Enable visual properties"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Datas formatadas",
+  "titleEn": "Formatted dates"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Campos ocultos",
+  "titleEn": "Hidden properties"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Menu de ocultar e personalizar ícones direto nas propriedades",
+  "titleEn": "Hide and customize icons from property rows"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Ocultar campos vazios",
+  "titleEn": "Hide empty fields"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Destacar datas próximas e vencidas",
+  "titleEn": "Highlight approaching and past dates"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Barras de progresso",
+  "titleEn": "Progress bars"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Propriedades de progresso",
+  "titleEn": "Progress properties"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Cores por propriedade",
+  "titleEn": "Property colors"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Pesquisa rápida nas propriedades",
+  "titleEn": "Property quick search"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Revelar campos escondidos",
+  "titleEn": "Reveal hidden fields"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Mostrar banner YAML",
+  "titleEn": "Show YAML banner"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Mostrar capa YAML",
+  "titleEn": "Show YAML cover"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Mostrar ícone do YAML",
+  "titleEn": "Show YAML note icon"
+ },
+ {
+  "id": "v9Pretty",
+  "titlePt": "Cores por tag",
+  "titleEn": "Tag colors"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Space ativo",
+  "titleEn": "Active Space"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Layout do Space ativo",
+  "titleEn": "Active Space layout",
+  "descriptionPt": "Salve ou restaure manualmente a disposição atual.",
+  "descriptionEn": "Manually save or restore the current arrangement."
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Checkpoints por Space",
+  "titleEn": "Checkpoints per Space"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Guardar ponto de restauração",
+  "titleEn": "Create restore point"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Ativar Spaces (desativado inicialmente)",
+  "titleEn": "Enable Spaces (off by default)"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Ativar painel lateral de Spaces",
+  "titleEn": "Enable Spaces sidebar"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Ícone de gerenciamento no explorador",
+  "titleEn": "Explorer management icon"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Exportar backup deste Space",
+  "titleEn": "Export Space backup"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Importar um backup",
+  "titleEn": "Import a backup"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Abrir e organizar coleções",
+  "titleEn": "Open and manage collections"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Abrir Spaces na barra lateral",
+  "titleEn": "Open Spaces in sidebar"
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Restaurar layouts ao trocar de Space",
+  "titleEn": "Restore layout on Space switch",
+  "descriptionPt": "Opcional: pode reorganizar abas e painéis abertos.",
+  "descriptionEn": "Optional: may rearrange open tabs and panes."
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Salvar layouts ao trocar de Space",
+  "titleEn": "Save layouts when switching Spaces",
+  "descriptionPt": "Mantém a posição de painéis por Space, sem mover arquivos do cofre.",
+  "descriptionEn": "Keeps a pane layout per Space, without moving vault files."
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Mostrar seletor de Spaces",
+  "titleEn": "Show Spaces switcher",
+  "descriptionPt": "No computador, aparece no explorador. No celular, fica junto às abas laterais, inclusive usando as abas nativas.",
+  "descriptionEn": "On desktop, appears in File Explorer. On mobile, stays beside the sidebar tabs, including native tabs."
+ },
+ {
+  "id": "v9Spaces",
+  "titlePt": "Histórico e backups por Space",
+  "titleEn": "Space layout history & backups",
+  "descriptionPt": "Crie checkpoints, restaure versões, importe ou exporte seu layout.",
+  "descriptionEn": "Checkpoint, restore, import or export layouts."
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Adicionar comando de outro plugin",
+  "titleEn": "Add a command from another plugin",
+  "descriptionPt": "Escolha um comando registrado na paleta do Obsidian.",
+  "descriptionEn": "Pick a command registered in Obsidian’s command palette."
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Comando associado",
+  "titleEn": "Assigned command"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Tamanho dos botões",
+  "titleEn": "Button size"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Criar menu de botões",
+  "titleEn": "Create button menu"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Personalizar para",
+  "titleEn": "Customize for",
+  "descriptionPt": "PC e celular possuem botões, estilos, menus e cores independentes.",
+  "descriptionEn": "Desktop and mobile have independent buttons, style, menus and colors."
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Excluir botão personalizado",
+  "titleEn": "Delete custom button"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Nome mostrado",
+  "titleEn": "Displayed name"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Ativar no computador",
+  "titleEn": "Enable on desktop"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Ativar no celular",
+  "titleEn": "Enable on mobile"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Filtrar botões",
+  "titleEn": "Filter buttons"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Cor de destaque",
+  "titleEn": "Highlight background color"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Ícone Lucide",
+  "titleEn": "Lucide icon"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Ícone do menu",
+  "titleEn": "Menu icon"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Nome do menu",
+  "titleEn": "Menu name"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Remover menu",
+  "titleEn": "Remove menu"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Mostrar nomes junto aos ícones",
+  "titleEn": "Show labels next to icons"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Cor aplicada ao texto",
+  "titleEn": "Text formatting color"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Posição da barra",
+  "titleEn": "Toolbar position"
+ },
+ {
+  "id": "v9Toolbar",
+  "titlePt": "Estilo da barra",
+  "titleEn": "Toolbar style"
+ },
+ {
+  "id": "variants",
+  "titlePt": "Instruções da IA para variantes",
+  "titleEn": "AI instructions for variants"
+ },
+ {
+  "id": "variants",
+  "titlePt": "Confirmar antes de aplicar todas",
+  "titleEn": "Confirm before applying all"
+ },
+ {
+  "id": "variants",
+  "titlePt": "Ativar variantes",
+  "titleEn": "Enable variants"
+ },
+ {
+  "id": "variants",
+  "titlePt": "Destacar variantes no editor",
+  "titleEn": "Highlight variants in editor"
+ },
+ {
+  "id": "variants",
+  "titlePt": "Oferecer variantes na revisão gramatical",
+  "titleEn": "Offer variants in grammar review"
+ },
+ {
+  "id": "variants",
+  "titlePt": "Abrir editor de variantes",
+  "titleEn": "Open variant editor"
+ },
+ {
+  "id": "variants",
+  "titlePt": "Salvar versão antes de confirmar",
+  "titleEn": "Save version before confirming"
+ },
+ {
+  "id": "viewMode",
+  "titlePt": "Ativado",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "viewMode",
+  "titlePt": "Propriedade do modo de visualização",
+  "titleEn": "View mode frontmatter property"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Navegação automática de capítulos nos projetos",
+  "titleEn": "Automatic chapter navigation in projects",
+  "descriptionPt": "Exibe a navegação de capítulos sem inserir blocos na nota; respeita a opção por projeto e blocos manuais.",
+  "descriptionEn": "Displays chapter navigation without editing notes; respects project overrides and manual blocks."
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Comparação",
+  "titleEn": "Comparison"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Combinação das condições",
+  "titleEn": "Condition matching"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Posição do conteúdo",
+  "titleEn": "Content position"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Fonte do conteúdo",
+  "titleEn": "Content source"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Ativar conteúdo dinâmico",
+  "titleEn": "Enable dynamic content",
+  "descriptionPt": "Desliga apenas a renderização, mantendo as regras.",
+  "descriptionEn": "Disables rendering but retains rules."
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Ativa",
+  "titleEn": "Enabled"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Pasta (vazio = cofre inteiro)",
+  "titleEn": "Folder (blank = entire vault)"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Nível do título",
+  "titleEn": "Heading level"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Incluir subpastas / subtags",
+  "titleEn": "Include nested folders / tags"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Markdown",
+  "titleEn": "Markdown"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Inverter esta condição",
+  "titleEn": "Negate this condition"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Nova regra",
+  "titleEn": "New rule"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Abrir conteúdo dinâmico na lateral",
+  "titleEn": "Open dynamic content sidebar"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Aba própria no painel lateral",
+  "titleEn": "Own sidebar tab"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Nome da propriedade",
+  "titleEn": "Property name"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Nome da regra",
+  "titleEn": "Rule name"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Título da seção",
+  "titleEn": "Section heading"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Exibir no Live Preview",
+  "titleEn": "Show in Live Preview",
+  "descriptionPt": "Seções específicas ainda são exclusivas do modo Leitura.",
+  "descriptionEn": "Targeted sections are Reading-only."
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Tag",
+  "titleEn": "Tag"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Nota modelo",
+  "titleEn": "Template note"
+ },
+ {
+  "id": "virtualContent",
+  "titlePt": "Valor",
+  "titleEn": "Value"
+ },
+ {
+  "id": "workspaceProfiles",
+  "titlePt": "Escolher perfil",
+  "titleEn": "Choose profile"
+ },
+ {
+  "id": "workspaceProfiles",
+  "titlePt": "Excluir perfil salvo",
+  "titleEn": "Delete saved profile"
+ },
+ {
+  "id": "workspaceProfiles",
+  "titlePt": "Guardar perfil atual",
+  "titleEn": "Save current profile",
+  "descriptionPt": "Salva somente opções de edição permitidas, até 10 perfis.",
+  "descriptionEn": "Saves only selected editor preferences, up to 10 profiles."
+ },
+ {
+  "id": "workspaceProfiles",
+  "titlePt": "Desfazer última aplicação",
+  "titleEn": "Undo last application"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Excluir perfil",
+  "titleEn": "Delete profile"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Ativar revisão seletiva",
+  "titleEn": "Enable selective review"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Máximo de caracteres selecionados",
+  "titleEn": "Maximum selection length"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Novo perfil",
+  "titleEn": "New profile"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Nome do perfil",
+  "titleEn": "Profile name"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Proteger sintaxe Markdown",
+  "titleEn": "Protect Markdown syntax",
+  "descriptionPt": "Bloqueia alterações de frontmatter, código, wikilinks e links durante a revisão seletiva.",
+  "descriptionEn": "Blocks changes to frontmatter, code, wikilinks and links during selective review."
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Revisar seleção",
+  "titleEn": "Review selection"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Prompt da revisão seletiva",
+  "titleEn": "Selective review prompt"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Pasta no cofre (opcional)",
+  "titleEn": "Vault folder (optional)"
+ },
+ {
+  "id": "writingProfiles",
+  "titlePt": "Instruções de escrita",
+  "titleEn": "Writing instructions"
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Ativar renderizadores",
+  "titleEn": "Enable renderers"
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Colunas Markdown",
+  "titleEn": "Markdown columns"
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Widgets de notas",
+  "titleEn": "Note widgets"
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Barras de progresso",
+  "titleEn": "Progress bars"
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Campos vinculados ao YAML",
+  "titleEn": "YAML-bound fields"
+ }
+];
+
+// v3 module: src/v13/grammar-settings.js
+/* Grammar setup uses the existing review preferences. No requests run on render. */
+let writerV137GrammarSettingId=0;
+function writerV137GrammarWords(value){
+ const words=[],seen=new Set();let skipped=0;
+ for(const line of String(value||'').split(/\r?\n/)){
+  const word=line.trim().normalize('NFC');if(!word)continue;
+  if(!/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(word)||words.length>=2000){skipped++;continue;}
+  if(!seen.has(word)){seen.add(word);words.push(word);}
+ }
+ return {words,skipped};
+}
+function writerV137GrammarRules(value){
+ const rules=[],seen=new Set();let skipped=0;
+ for(const token of String(value||'').split(/[\s,;]+/)){
+  if(!token)continue;
+  if(!/^[A-Za-z][A-Za-z0-9_:.-]{0,119}$/.test(token)){skipped++;continue;}
+  const rule=token.toUpperCase();if(!seen.has(rule)){seen.add(rule);rules.push(rule);}
+ }
+ return {rules,skipped};
+}
+function writerV137GrammarInvalidate(plugin){
+ plugin.autoGrammar?.cancelPending?.();writerGrammarCancel(plugin);
+ plugin.clearReviewMarks?.();
+ for(const leaf of plugin.app?.workspace?.getLeavesOfType?.(typeof VIEW==='string'?VIEW:'offline-dictionary-view')||[]){
+  const view=leaf.view;
+  if(!view)continue;
+  view.grammarCheckedPath=null;view.grammarCheckedSource=null;
+  if(view.reviewEngine)view.reviewEngine.value=plugin.settings.reviewEngine==='external'?'external':'basic';
+  if(view.reviewMode?.value==='grammar')view.updateReviewEngineUI?.();
+ }
+}
+function writerV137GrammarSettings(plugin,panel){
+ const settings=plugin.settings,cfg=writerAutoGrammarSettings(settings);
+ const root=panel.createDiv({cls:'writer-grammar-settings'});
+ root.createEl('h3',{text:writerUi('Gramática e ortografia','Grammar and spelling')});
+ root.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'O LanguageTool sugere correções. A nota só muda quando você aceita uma sugestão; o texto revisado é enviado ao servidor escolhido.',
+  'LanguageTool suggests corrections. Notes change only when you accept a suggestion; reviewed text is sent to the selected server.')});
+ const status=root.createDiv({cls:'writer-grammar-state',attr:{role:'status','aria-live':'polite'}});
+ const builtIn=[],automatic=[];let busy=false,revision=0,testButton,testStatus;
+ const section=(pt,en)=>{
+  const card=root.createDiv({cls:'writer-grammar-section'});
+  card.createEl('h4',{text:writerUi(pt,en)});return card;
+ };
+ const save=()=>plugin.saveSettings();
+ const changed=()=>{
+  revision++;busy=false;writerV137GrammarInvalidate(plugin);refresh();
+  testStatus?.setText('');return save();
+ };
+ const remember=(control,list=builtIn)=>{list.push(control);return control;};
+ const refresh=()=>{
+  const enabled=writerModuleOn(plugin,'review'),external=settings.reviewEngine==='external';
+  status.dataset.state=!enabled?'disabled':external?'external':cfg.enabled?'automatic':'manual';
+  status.setText(!enabled?writerUi('Revisão desativada em Recursos. Suas preferências podem ser preparadas aqui.',
+   'Review is disabled in Features. You can prepare its preferences here.'):
+   external?writerUi('Corretor externo selecionado. As opções abaixo são do corretor integrado; o Basic não enviará verificações neste modo.',
+    'External checker selected. The options below belong to the built-in checker; Basic will not send checks in this mode.'):
+   cfg.enabled?writerUi('Automático enquanto o painel Revisão estiver aberto em Gramática. A verificação manual continua disponível.',
+    'Automatic while the Review pane is open in Grammar mode. Manual checking remains available.'):
+   writerUi('Manual. O corretor só verifica quando você usa uma ação de revisão.','Manual. The checker runs only when you use a review action.'));
+  for(const control of builtIn)control.setDisabled?.(external);
+  for(const control of automatic)control.setDisabled?.(external||!cfg.enabled);
+  testButton?.setDisabled?.(busy||!enabled||external||endpointInput?.getAttribute('aria-invalid')==='true');
+ };
+ const workflow=section('Como revisar','Checking behavior');
+ new Setting(workflow).setName(writerUi('Corretor de gramática','Grammar checker'))
+  .setDesc(writerUi('Use a conexão do Basic ou os controles de um plugin LanguageTool instalado separadamente.',
+   'Use Basic’s connection or a separately installed LanguageTool plugin.'))
+  .addDropdown(d=>d.addOption('basic',writerUi('Integrado ao Basic','Built into Basic'))
+   .addOption('external',writerUi('LanguageTool externo','External LanguageTool'))
+   .setValue(settings.reviewEngine==='external'?'external':'basic')
+   .onChange(async value=>{settings.reviewEngine=value;await changed();}));
+ new Setting(workflow).setName(writerUi('Quando verificar','When to check'))
+  .addDropdown(d=>remember(d).addOption('manual',writerUi('Somente manual','Manual only'))
+   .addOption('automatic',writerUi('Após digitar, com Revisão aberta','After typing, while Review is open'))
+   .setValue(cfg.enabled?'automatic':'manual').onChange(async value=>{cfg.enabled=value==='automatic';await changed();}));
+ new Setting(workflow).setName(writerUi('Idioma da revisão','Review language')).addDropdown(d=>{
+  remember(d);
+  const languages=[['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],
+   ['es','Español'],['fr','Français'],['de-DE','Deutsch'],['auto',writerUi('Detectar automaticamente','Detect automatically')]];
+  const language=settings.reviewLanguage||'pt-BR';
+  for(const [code,label] of languages)d.addOption(code,label);
+  if(!languages.some(([code])=>code===language))d.addOption(language,language);
+  d.setValue(language).onChange(async value=>{settings.reviewLanguage=value;await changed();});
+ });
+ for(const [key,pt,en,min,max,step,unit] of [
+  ['delayMs','Pausa após digitar','Pause after typing',2,15,1,1000],
+  ['minIntervalMs','Intervalo mínimo entre verificações','Minimum interval between checks',6,30,1,1000],
+  ['maxWindowChars','Caracteres por verificação automática','Characters per automatic check',4000,16000,1000,1]
+ ])new Setting(workflow).setName(writerUi(pt,en))
+  .setDesc(key==='maxWindowChars'?writerUi('Em notas longas, revisa um trecho próximo ao cursor.',
+   'Long notes are checked in a passage near the cursor.'):writerUi('Em segundos.','In seconds.'))
+  .addSlider(s=>remember(s,automatic).setLimits(min,max,step).setDynamicTooltip().setValue(Math.round(cfg[key]/unit))
+   .onChange(async value=>{cfg[key]=value*unit;await changed();}));
+ new Setting(workflow).setName(writerUi('Modo inicial do painel','Default pane mode'))
+  .setDesc(writerUi('Modo usado ao abrir um novo painel de revisão.','Mode used when opening a new Review pane.'))
+  .addDropdown(d=>d.addOption('grammar',writerUi('Gramática','Grammar')).addOption('style',writerUi('Estilo com IA','Style with AI'))
+   .addOption('beta',writerUi('Leitura beta com IA','Beta reading with AI')).setValue(settings.reviewMode||'grammar')
+   .onChange(async value=>{settings.reviewMode=value;await save();}));
+ const editor=section('Sugestões no editor','Editor suggestions');
+ for(const [key,pt,en,descPt,descEn] of [
+  ['reviewAutoOpenNote','Abrir a nota revisada no editor','Open the reviewed note in the editor',
+   'Exibe os sublinhados ao escolher uma nota que ainda não está aberta.','Show underlines when choosing a note that is not open yet.'],
+  ['reviewPopupEnabled','Mostrar sugestões ao passar o mouse ou mover o cursor','Show suggestions on hover or caret',
+   'No celular, toque na palavra sublinhada.','On mobile, tap an underlined word.'],
+  ['reviewIgnoreWhitespace','Ocultar sugestões só de espaço e formatação','Hide spacing-only and formatting suggestions',
+   'Reduz avisos causados pela estrutura Markdown.','Reduce findings caused by Markdown structure.']
+ ])new Setting(editor).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
+  .addToggle(t=>remember(t).setValue(settings[key]!==false).onChange(async value=>{
+   settings[key]=value;
+   if(key==='reviewIgnoreWhitespace')await changed();
+   else{if(key==='reviewPopupEnabled'&&!value)plugin.closeReviewPopup?.();await save();}
+  }));
+ const connection=section('Conexão do corretor','Checker connection');
+ const endpointId='writer-grammar-endpoint-'+(++writerV137GrammarSettingId);
+ let endpointInput;
+ new Setting(connection).setName(writerUi('Endereço do servidor','Server endpoint'))
+  .setDesc(writerUi('URL HTTPS da API /v2/check. Deixe vazio para usar o servidor público do LanguageTool.',
+   'HTTPS URL for the /v2/check API. Leave empty to use LanguageTool’s public server.'))
+  .addText(field=>{
+   remember(field);endpointInput=field.inputEl;
+   field.inputEl.setAttribute('aria-describedby',endpointId);
+   field.setPlaceholder(WRITER_GRAMMAR_ENDPOINT).setValue(settings.reviewEndpoint||'').onChange(async value=>{
+    revision++;busy=false;testStatus?.setText('');
+    const valid=Boolean(writerGrammarEndpoint(value));
+    field.inputEl.setAttribute('aria-invalid',String(!valid));
+    endpointFeedback.setText(valid?'':writerUi('Endereço inválido. Use HTTPS sem usuário ou senha na URL. O endereço anterior foi mantido.',
+     'Invalid address. Use HTTPS without URL credentials. The previous address was kept.'));
+    if(!valid){refresh();return;}
+    settings.reviewEndpoint=value.trim();await changed();
+   });
+  });
+ const endpointFeedback=connection.createEl('p',{cls:'writer-grammar-feedback',attr:{id:endpointId,role:'status','aria-live':'polite'}});
+ if(!writerGrammarEndpoint(settings.reviewEndpoint)){
+  endpointInput.setAttribute('aria-invalid','true');
+  endpointFeedback.setText(writerUi('O endereço salvo precisa de uma URL HTTPS válida antes de verificar.','The saved endpoint needs a valid HTTPS URL before checking.'));
+ }
+ new Setting(connection).setName(writerUi('Conta do LanguageTool (opcional)','LanguageTool account (optional)'))
+  .setDesc(writerUi('E-mail da conta quando exigido por uma chave Premium ou servidor próprio.',
+   'Account email when required by a Premium API key or your own server.'))
+  .addText(field=>{remember(field);field.inputEl.type='email';field.inputEl.autocomplete='username';
+   field.setValue(settings.reviewUsername||'').onChange(async value=>{settings.reviewUsername=value.trim().slice(0,254);await changed();});});
+ let keyInput,showKey=false;
+ const keyRow=new Setting(connection).setName(writerUi('Chave da API (opcional)','API key (optional)'))
+  .setDesc(writerUi('O servidor público não exige chave. A chave fica nas configurações locais do cofre.',
+   'The public server does not require a key. Keys are stored in the vault’s local settings.'));
+ keyRow.addText(field=>{remember(field);keyInput=field.inputEl;keyInput.type='password';keyInput.autocomplete='off';
+  field.setValue(settings.reviewApiKey||'').onChange(async value=>{settings.reviewApiKey=value.trim();await changed();});});
+ keyRow.addButton(button=>{remember(button);button.setButtonText(writerUi('Mostrar','Show')).onClick(()=>{
+  showKey=!showKey;keyInput.type=showKey?'text':'password';
+  button.setButtonText(showKey?writerUi('Ocultar','Hide'):writerUi('Mostrar','Show'));
+  button.buttonEl?.setAttribute('aria-pressed',String(showKey));
+  button.buttonEl?.setAttribute('aria-label',showKey?writerUi('Ocultar chave da API','Hide API key'):writerUi('Mostrar chave da API','Show API key'));
+ });button.buttonEl?.setAttribute('aria-pressed','false');
+ button.buttonEl?.setAttribute('aria-label',writerUi('Mostrar chave da API','Show API key'));});
+ const testText=writerUi('Este é um pequeno texto de teste.','This is a short test sentence.');
+ new Setting(connection).setName(writerUi('Testar a conexão','Test connection'))
+  .setDesc(writerUi('Envia somente esta frase ao servidor: ','Sends only this sentence to the server: ')+testText)
+  .addButton(button=>{testButton=button;button.setButtonText(writerUi('Testar agora','Test now')).onClick(async()=>{
+   if(busy||!writerModuleOn(plugin,'review')||settings.reviewEngine==='external')return;
+   if(!writerGrammarEndpoint(settings.reviewEndpoint)){
+    testStatus.setText(writerUi('Corrija o endereço do servidor antes de testar.','Correct the server endpoint before testing.'));return;
+   }
+   const token=++revision,connectionKey=writerGrammarConnectionKey(settings);busy=true;refresh();
+   testStatus.dataset.state='loading';testStatus.setText(writerUi('Verificando a conexão…','Checking the connection…'));
+   const current=()=>token===revision&&root.isConnected!==false&&writerModuleOn(plugin,'review')&&
+    settings.reviewEngine!=='external'&&connectionKey===writerGrammarConnectionKey(settings);
+   try{
+    const matches=await plugin.checkGrammar(testText);
+    if(!current())return;
+    testStatus.dataset.state='success';testStatus.setText(writerUi('Conexão disponível. Sugestões no texto de teste: ',
+     'Connection available. Suggestions in the test sentence: ')+matches.length+'.');
+   }catch(error){
+    if(!current()||error?.code==='WRITER_GRAMMAR_CANCELLED')return;
+    testStatus.dataset.state='error';testStatus.setText(String(error?.message||error));
+   }finally{if(token===revision){busy=false;refresh();}}
+  });});
+ testStatus=connection.createEl('p',{cls:'writer-grammar-test-status',attr:{role:'status','aria-live':'polite'}});
+ const exceptions=section('Palavras e regras ignoradas','Words and ignored rules');
+ const wordsId='writer-grammar-words-'+writerV137GrammarSettingId;
+ new Setting(exceptions).setName(writerUi('Dicionário pessoal','Personal spelling dictionary'))
+  .setDesc(writerUi('Uma palavra por linha, até 2.000. Nomes e termos inventados não gerarão avisos de ortografia.',
+   'One word per line, up to 2,000. Names and invented terms will not produce spelling warnings.'))
+  .addTextArea(field=>{remember(field);field.inputEl.rows=5;field.inputEl.setAttribute('aria-describedby',wordsId);
+   field.setValue((settings.reviewCustomWords||[]).join('\n')).onChange(async value=>{
+    const result=writerV137GrammarWords(value);settings.reviewCustomWords=result.words;
+    wordsFeedback.setText(result.words.length+' '+writerUi('palavras aceitas','accepted words')+
+     (result.skipped?' · '+result.skipped+' '+writerUi('linhas inválidas ou além do limite','invalid or over-limit lines'):''));
+    await changed();
+   });});
+ const wordsFeedback=exceptions.createEl('p',{cls:'writer-grammar-feedback',attr:{id:wordsId,role:'status','aria-live':'polite'}});
+ const rulesId='writer-grammar-rules-'+writerV137GrammarSettingId;
+ new Setting(exceptions).setName(writerUi('IDs de regras ignoradas','Ignored rule IDs'))
+  .setDesc(writerUi('Separe os IDs por vírgula, espaço ou linha. As outras sugestões continuam ativas.',
+   'Separate IDs with commas, spaces or lines. Other suggestions remain active.'))
+  .addTextArea(field=>{remember(field);field.inputEl.rows=3;field.inputEl.setAttribute('aria-describedby',rulesId);
+   field.setValue(settings.reviewIgnoreRules||'').onChange(async value=>{
+    const result=writerV137GrammarRules(value);settings.reviewIgnoreRules=result.rules.join(', ');
+    rulesFeedback.setText(result.rules.length+' '+writerUi('regras ignoradas','ignored rules')+
+     (result.skipped?' · '+result.skipped+' '+writerUi('IDs inválidos não foram salvos','invalid IDs were not saved'):''));
+    await changed();
+   });});
+ const rulesFeedback=exceptions.createEl('p',{cls:'writer-grammar-feedback',attr:{id:rulesId,role:'status','aria-live':'polite'}});
+ refresh();return root;
+}
+
+// v3 module: src/v13/setup-guide.js
+/* First-run choices only change feature availability; existing vaults opt in. */
+const WRITER_QUICK_START_PRESETS={
+ essentials:['dictionary','translation','chat','review','snapshots','templates','cursorMemory','easyTyping','smartTypography','writingHome'],
+ books:['dictionary','translation','chat','review','projects','writingHome','writingWidgets','bookNavigation','virtualContent','comments','snapshots','templates','cursorMemory','easyTyping','smartTypography','complements'],
+ study:['dictionary','translation','review','study','calendar','writingHome','readingTime','tts','zoteroIntegration','styleMate','snapshots','templates','cursorMemory','easyTyping','extendedSyntax','pandocSyntax']
+};
+function writerQuickStartChoices(settings,preset='custom'){
+ const enabled=WRITER_QUICK_START_PRESETS[preset];
+ return Object.fromEntries(WRITER_MODULES.map(([id])=>[id,enabled?enabled.includes(id):settings.visibleModules?.[id]!==false]));
+}
+async function writerQuickStartApply(plugin,choices){
+ const previous=plugin.settings.visibleModules,previousStart=plugin.settings.quickStart;
+ const next={...previous};
+ for(const [id] of WRITER_MODULES)if(typeof choices?.[id]==='boolean')next[id]=choices[id];
+ plugin.settings.visibleModules=next;
+ plugin.settings.quickStart={version:1,status:'complete'};
+ try{await plugin.saveSettings();}
+ catch(error){plugin.settings.visibleModules=previous;plugin.settings.quickStart=previousStart;throw error;}
+ plugin.refreshModuleVisibility?.();
+ plugin.writerV4Extras?.resetTypewriterHighlights?.();plugin.writerV4Extras?.updateTypewriterClass?.();
+ plugin.writerV92Research?.refreshStyle?.();
+ if(!writerModuleOn(plugin,'soundscapes'))plugin.writerV91Sound?.pause?.();
+ plugin.writerV91Sound?.emit?.();
+}
+function writerQuickStartOpen(plugin,initial=false){
+ if(plugin._writerQuickStartModal?.modalEl?.isConnected)return plugin._writerQuickStartModal;
+ const modal=new Modal(plugin.app);plugin._writerQuickStartModal=modal;
+ modal.modalEl.addClass('writer-v137-quick-start-modal');
+ modal.setTitle(writerUi('Configuração inicial','Quick start'));
+ let choices=writerQuickStartChoices(plugin.settings,initial?'essentials':'custom'),finished=false,busy=false;
+ const close=modal.close.bind(modal);modal.close=()=>{if(!busy||finished)close();};
+ modal.onOpen=()=>{
+  const root=modal.contentEl;root.addClass('writer-v137-quick-start');
+  root.createEl('p',{text:writerUi('Escolha os recursos que você quer usar. As opções desligadas ficam ocultas nos menus; suas configurações e dados continuam disponíveis.','Choose the features you want to use. Features you turn off are hidden from menus; their settings and data remain available.')});
+  let preset=initial?'essentials':'custom';
+  const controls=root.createDiv({cls:'writer-v137-quick-start-controls'});
+  const select=controls.createEl('select',{attr:{'aria-label':writerUi('Ponto de partida','Starting point')}});
+  for(const [id,pt,en] of [['essentials','Essencial','Essentials'],['books','Escrita de livros','Book writing'],['study','Estudo','Study'],['custom','Personalizado','Custom']]){
+   const option=select.createEl('option',{text:writerUi(pt,en)});option.value=id;
+  }
+  select.value=preset;
+  const label=writerUi('Buscar recurso…','Find a feature…');
+  const filter=controls.createEl('input',{attr:{type:'search','aria-label':label,placeholder:label}});
+  const status=root.createEl('p',{cls:'writer-v137-quick-start-status',attr:{role:'status','aria-live':'polite'}});
+  const list=root.createDiv({cls:'writer-v137-quick-start-list'}),rows=[];
+  const update=()=>{
+   const terms=writerV13SearchText(filter.value).split(/\s+/).filter(Boolean);let shown=0;
+   for(const item of rows){item.row.hidden=!terms.every(term=>item.search.includes(term));if(!item.row.hidden)shown++;}
+   const count=Object.values(choices).filter(Boolean).length;
+   status.setText(count+' / '+WRITER_MODULES.length+' '+writerUi('recursos selecionados','features selected')+' · '+shown+' '+writerUi('na lista','in the list'));
+  };
+  const render=()=>{
+   rows.length=0;list.empty();
+   for(const [id,pt,en,descriptionPt,descriptionEn] of WRITER_MODULES){
+    const setting=new Setting(list).setName(writerUi(pt,en)).setDesc(writerUi(descriptionPt,descriptionEn));
+    const row=setting.settingEl;
+    rows.push({row,search:writerV13SearchText([id,pt,en,descriptionPt,descriptionEn].join(' '))});
+    setting.addToggle(toggle=>toggle.setValue(choices[id]).onChange(value=>{choices[id]=value;select.value='custom';update();}));
+   }
+   writerSettingsLabelControls(list);update();
+  };
+  select.addEventListener('change',()=>{
+   preset=select.value;
+   if(preset!=='custom')choices=writerQuickStartChoices(plugin.settings,preset);
+   render();
+  });
+  filter.addEventListener('input',update);
+  root.createEl('p',{cls:'writer-v137-quick-start-note',text:writerUi('Você pode mudar essas escolhas em Geral → Recursos. Conexões de IA são configuradas separadamente; esta tela não envia texto nem testa serviços.','You can change these choices in General → Features. AI connections are configured separately; this screen does not send text or test services.')});
+  const footer=root.createDiv({cls:'writer-v137-quick-start-footer'});
+  const later=footer.createEl('button',{text:writerUi('Configurar depois','Set up later'),attr:{type:'button'}});
+  later.addEventListener('click',()=>{if(!busy)modal.close();});
+  const apply=footer.createEl('button',{cls:'mod-cta',text:writerUi('Aplicar escolhas','Apply choices'),attr:{type:'button'}});
+  apply.addEventListener('click',async()=>{
+   if(busy)return;busy=true;apply.disabled=true;later.disabled=true;
+   try{await writerQuickStartApply(plugin,choices);finished=true;modal.close();plugin.writerSettingsTab?.display?.();}
+   catch(error){new Notice(String(error?.message||error));}
+   finally{busy=false;apply.disabled=false;later.disabled=false;}
+  });
+  render();
+ };
+ modal.onClose=()=>{
+  if(plugin._writerQuickStartModal===modal)plugin._writerQuickStartModal=null;
+  if(initial&&!finished){
+   plugin.settings.quickStart={version:1,status:'deferred'};
+   void plugin.saveSettings().catch(error=>console.error('[Basic] Quick start preferences:',error));
+  }
+  modal.contentEl.empty();
+ };
+ modal.open();return modal;
+}
+function writerQuickStartRegister(plugin,firstInstall){
+ plugin.addCommand({id:'v137-quick-start',name:writerUi('Configuração inicial: abrir','Quick start: open'),callback:()=>writerQuickStartOpen(plugin)});
+ let stopped=false;
+ plugin.register?.(()=>{stopped=true;plugin._writerQuickStartModal?.close();});
+ if(!firstInstall)return;
+ const open=()=>{if(!stopped&&!plugin.settings.quickStart)writerQuickStartOpen(plugin,true);};
+ if(typeof plugin.app.workspace.onLayoutReady==='function')plugin.app.workspace.onLayoutReady(open);
+ else open();
 }
 
 // v3 module: src/v13/core-workflows.js
@@ -29847,6 +34386,7 @@ class DictionaryView extends ItemView{
  switchTab(id){
   const mapping={definition:'dictionary',translation:'translation',chat:'chat',review:'review'};
   if(!writerModuleOn(this.plugin,mapping[id]))id=Object.keys(mapping).find(key=>writerModuleOn(this.plugin,mapping[key]))||null;
+  if(this.activeTab==='review'&&id!=='review')this.cancelReview();
   for(const [key,panel] of Object.entries(this.panels)){
    const active=key===id;
    panel.style.display=active?'flex':'none';
@@ -30024,7 +34564,13 @@ class DictionaryView extends ItemView{
   this.chatInput.value=(tasks[mode]||'')+'\n\n'+selection;
   await this.sendChat();
  }
+ cancelReview(){
+  this.reviewToken=(this.reviewToken||0)+1;
+  if(this.reviewBusy){this.reviewResults?.empty?.();this.reviewStatus?.setText?.('');}
+  this.reviewBusy=false;this.grammarCheckedPath=null;this.grammarCheckedSource=null;
+ }
  updateReviewEngineUI(){
+  this.cancelReview();
   if(!this.reviewResults||!this.reviewStatus)return;
   const external=this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine==='external';
   if(!external){this.reviewResults.empty();this.reviewStatus.setText('');return;}
@@ -30062,27 +34608,38 @@ class DictionaryView extends ItemView{
    if(!automatic)await this.plugin.reviewWithExternalLanguageTool(file,this);
    return;
   }
+  const reviewToken=this.reviewToken=(this.reviewToken||0)+1,mode=this.reviewMode.value;
+  this.reviewFilePath=file.path;
+  const current=()=>this.reviewToken===reviewToken&&writerModuleOn(this.plugin,'review')&&
+   this.reviewFilePath===file.path&&this.activeTab==='review'&&this.reviewMode.value===mode&&
+   (mode!=='grammar'||this.plugin.settings.reviewEngine!=='external');
   this.reviewBusy=true;if(!automatic)this.reviewResults.empty();this.reviewStatus.setText((automatic?msg('Atualizando gramática de ','Updating grammar for '):msg('Analisando ','Analyzing '))+file.path+'…');
   try{
     const source=await writerCurrentText(this.plugin,file);
-    this.reviewFilePath=file.path;
+    if(!current())return;
     this.reviewSource=source;
-    if(this.reviewMode.value==='grammar'){
+    if(mode==='grammar'){
       const grammarText=prepareGrammarText(source);
       const editor=writerActiveEditor(this.plugin,file);
       const offset=editor?.posToOffset?.(editor.getCursor?.())||0;
       const window=writerAutoGrammarWindow(grammarText,offset,automatic?(this.plugin.settings.autoGrammar?.maxWindowChars||12000):16000);
       const rawMatches=await this.plugin.checkGrammar(window.text);
+      if(!current())return;
       // Never publish stale matches from a request that finished after the edit.
-      if(source!==await writerCurrentText(this.plugin,file)){
+      const checkedSource=await writerCurrentText(this.plugin,file);
+      if(!current())return;
+      if(source!==checkedSource){
        this.reviewStatus.setText(msg('Nota alterada durante a análise; atualizando…','Note changed during review; refreshing…'));
        this.plugin.autoGrammar?.schedule(file);return;
       }
-      if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode.value!=='grammar')return;
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
       const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
        .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerReviewIsAcceptedWord(this.plugin.settings,source,m)&&(typeof writerV101ProjectAcceptedWord!=='function'||!writerV101ProjectAcceptedWord(this.plugin,file,source,m))&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
       if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
+      if(!current())return;
+      const openedSource=await writerCurrentText(this.plugin,file);
+      if(!current())return;
+      if(source!==openedSource){this.plugin.autoGrammar?.schedule(file);return;}
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
       this.plugin.showReviewMarks(file,matches);
@@ -30090,25 +34647,34 @@ class DictionaryView extends ItemView{
       this.renderGrammarResults(file,source,matches);
     }else{
       this.plugin.clearReviewMarks();
-      const mode=this.reviewMode.value;
       const result=await this.plugin.reviewWithAI(source,mode,file);
+      if(!current())return;
       this.reviewStatus.setText(msg('Parecer editorial (sem alterar o arquivo)','Editorial feedback (file unchanged)'));
       const card=this.reviewResults.createDiv({cls:'writer-review-card'});
       await MarkdownRenderer.render(this.app,result,card,this.plugin.dictionaryPath(),this);
+      if(!current())return;
       card.createEl('button',{text:msg('Discutir no chat','Discuss in chat')}).addEventListener('click',()=>this.reviewToChat(file,source.slice(0,3500),result));
     }
-  }catch(e){this.reviewStatus.setText(msg('Falha: ','Failed: ')+(e.message||String(e)));}
+  }catch(e){
+   if(!current())return;
+   this.reviewStatus.setText(e.code==='WRITER_GRAMMAR_CANCELLED'?msg('Verificação cancelada. Use Revisar para tentar novamente.','Check cancelled. Use Review to try again.'):msg('Falha: ','Failed: ')+(e.message||String(e)));
+  }
   finally{
-   this.reviewBusy=false;
-   if(this.plugin.autoGrammar?.pendingPath===file.path&&!this.plugin.autoGrammar.timer)this.plugin.autoGrammar.schedule(file);
+   if(this.reviewToken===reviewToken){
+    this.reviewBusy=false;
+    if(current()&&this.plugin.autoGrammar?.pendingPath===file.path&&!this.plugin.autoGrammar.timer)this.plugin.autoGrammar.schedule(file);
+   }
   }
  }
  async recheckGrammarCorrection(file,before,after,start,oldEnd,newEnd,previousMatches,{preferParagraph=false}={}){
-  if(this.activeTab!=='review'||this.reviewMode?.value!=='grammar'||this.plugin.settings.reviewEngine==='external'||this.reviewFilePath!==file.path)return false;
+  if(!writerModuleOn(this.plugin,'review')||this.activeTab!=='review'||this.reviewMode?.value!=='grammar'||this.plugin.settings.reviewEngine==='external'||this.reviewFilePath!==file.path)return false;
+  const reviewToken=this.reviewToken=(this.reviewToken||0)+1;
+  const current=()=>this.reviewToken===reviewToken&&writerModuleOn(this.plugin,'review')&&
+   this.plugin.settings.reviewEngine!=='external'&&this.reviewFilePath===file.path&&this.activeTab==='review'&&this.reviewMode?.value==='grammar';
   const scopes=writerGrammarLocalScopes(before,after,start,oldEnd,newEnd,preferParagraph);
   const preserved=writerGrammarPreserveOutside(previousMatches,scopes.old,after.length-before.length);
   const publish=(matches,status)=>{
-   if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return;
+   if(!current())return;
    this.reviewSource=after;this.plugin.reviewSource=after;
    this.grammarCheckedPath=file.path;this.grammarCheckedSource=after;
    this.plugin.showReviewMarks(file,matches);
@@ -30122,8 +34688,10 @@ class DictionaryView extends ItemView{
   try{
    const masked=prepareGrammarText(after);
    const raw=await this.plugin.checkGrammar(masked.slice(scopes.next.from,scopes.next.to));
-   if(after!==await writerCurrentText(this.plugin,file))return true;
-   if(this.reviewFilePath!==file.path||this.activeTab!=='review'||this.reviewMode?.value!=='grammar')return false;
+   if(!current())return false;
+   const checkedSource=await writerCurrentText(this.plugin,file);
+   if(!current())return false;
+   if(after!==checkedSource)return true;
    const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
    const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
     .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
@@ -30135,10 +34703,14 @@ class DictionaryView extends ItemView{
    publish(all,all.length+' '+msg('sugestões no documento (trecho alterado atualizado)','suggestions in document (changed passage refreshed)'));
    return false;
   }catch(error){
-   if(after!==await writerCurrentText(this.plugin,file))return true;
+   if(!current())return false;
+   if(error.code==='WRITER_GRAMMAR_CANCELLED')return false;
+   const checkedSource=await writerCurrentText(this.plugin,file);
+   if(!current())return false;
+   if(after!==checkedSource)return true;
    publish(preserved,msg('Não foi possível reanalisar o trecho; outras sugestões preservadas. ','Could not recheck passage; other suggestions preserved. ')+(error.message||String(error)));
    return false;
-  }finally{this.reviewBusy=false;}
+  }finally{if(this.reviewToken===reviewToken)this.reviewBusy=false;}
  }
  renderGrammarResults(file,source,matches){
   // Reduce DOM work for long notes while keeping every CodeMirror highlight.
@@ -30317,6 +34889,7 @@ class DictionaryView extends ItemView{
  }
  lexical(mode){return this.lookup(mode);}
  async onClose(){
+  this.cancelReview();
   clearTimeout(this.localSearchTimer);
   this.sequence++;this.localSequence++;this.translationSequence++;
   this.fileTranslation=null;this.chatRequest=null;
@@ -30333,6 +34906,7 @@ function writerMarkCompactSettings(root){
   row.classList.toggle('writer-setting-textarea',textarea);
   row.classList.toggle('writer-setting-field',field&&!toggle);
  }
+ writerSettingsLabelControls(root);
 }
 /* Basic 13.0.1: compact, provider-focused connection and model workspace.
  * Network operations run only after an explicit click. Existing saved keys and
@@ -30554,7 +35128,8 @@ class DictionarySettings extends PluginSettingTab{
    if(!buildingSubtabs&&subnav.isConnected&&subnav.dataset.group)
     this.settingsSubtabsScrollLeft[subnav.dataset.group]=subnav.scrollLeft;
   },{passive:true});
-  const panel=el.createDiv({cls:'dictionary-settings-panel'});
+  this.writerSettingsId=this.writerSettingsId||'writer-settings-'+(++writerSettingsInstance);
+  const panel=el.createDiv({cls:'dictionary-settings-panel',attr:{id:this.writerSettingsId+'-panel',role:'tabpanel',tabindex:'-1'}});
   const compactPickers=el.createDiv({cls:'writer-v131-settings-pickers'});
   el.insertBefore(compactPickers,panel);
   const groupPicker=compactPickers.createEl('select',{attr:{
@@ -30566,85 +35141,11 @@ class DictionarySettings extends PluginSettingTab{
    this.writerSettingsObserver=new MutationObserver(()=>writerMarkCompactSettings(panel));
    this.writerSettingsObserver.observe(panel,{childList:true,subtree:true});
   }
-  const sections=[
-    ['general',msg('Geral','General')],
-    ['modules',msg('Módulos','Modules')],
-    ['workspaceProfiles',msg('Perfis rápidos','Quick profiles')],
-    ['diagnostics',msg('Diagnóstico','Diagnostics')],
-    ['homepage',msg('Página inicial','Homepage')],
-    ['soundscapes','Soundscapes'],
-    ['v9Toolbar',msg('Barra de formatação','Formatting toolbar')],
-    ['v9Explorer',msg('Explorador de arquivos','File explorer')],
-    ['v9Pretty',msg('Propriedades visuais','Visual properties')],
-    ['v9Flow',msg('Flow e comandos /','Flow and slash commands')],
-    ['v9Pomodoro',msg('Pomodoro · Foco','Pomodoro · Focus')],
-    ['v9Spaces',msg('Coleções locais','Local collections')],
-    ['v9Lock',msg('Proteção visual','Visual protection')],
-    ['v9Calendar',msg('Calendário','Calendar')],
-    ['v10Bookshelf',msg('Biblioteca','Bookshelf')],
-    ['v10Tools',msg('Arquivos e atalhos','Files & shortcuts')],
-    ['dictionary',msg('Dicionário','Dictionary')],
-    ['translation',msg('Tradução','Translation')],
-    ['assistant',msg('Chat','Chat')],
-    ['projects',msg('Projetos','Projects')],
-    ['v7Worldbuilding',msg('Compêndio e universo','Compendium & worldbuilding')],
-    ['complements',msg('Sugestões','Suggestions')],
-    ['variants',msg('Variantes','Variants')],
-    ['writingProfiles',msg('Revisão seletiva e perfis','Selective review & profiles')],
-    ['integrationsV4',msg('Ferramentas integradas','Integrated tools')],
-    ['keyshots',msg('Keyshots · teclado','Keyshots · keyboard')],
-    ['extendedSyntax',msg('Extended Syntax','Extended Syntax')],
-    ['pandocSyntax',msg('Pandoc Syntax','Pandoc Syntax')],
-    ['v6Markdown',msg('Ruby, Discord e avaliações','Ruby, Discord & ratings')],
-    ['smartInsert',msg('Inserção inteligente','Smart insertion')],
-    ['typing',msg('Digitação e tipografia','Typing & typography')],
-    ['clickClack',msg('Sons da máquina de escrever','Typewriter sounds')],
-    ['cursor',msg('Posição do cursor','Cursor position')],
-    ['snapshots',msg('Versões','Versions')],
-    ['projectTasks',msg('Tarefas','Tasks')],
-    ['bookNavigation',msg('Navegação Longform','Longform navigation')],
-    ['virtualContent',msg('Conteúdo virtual','Virtual Content')],
-    ['writingWidgets',msg('Widgets, colunas e progresso','Widgets, columns & progress')],
-    ['research',msg('Zotero e estilos de leitura','Zotero & reading styles')],
-    ['sessionDrafts',msg('Rascunhos temporários','Temporary drafts')],
-    ['abbreviations',msg('Abreviações','Abbreviations')],
-    ['anotherName',msg('Outro nome','Another name')],
-    ['viewMode',msg('Modo de visualização','View mode')],
-    ['templates',msg('Modelos','Templates')],
-    ['unicode','Unicode'],
-    ['toc',msg('Sumário','Table of contents')],
-    ['tts','TTS'],
-    ['v6Reading',msg('Datas e tempo de leitura','Dates & reading time')],
-    ['v6Linter',msg('Linter de escrita','Writing linter')],
-    ['review',msg('Revisão','Review')],
-    ['reviewAI',msg('Revisores IA','AI reviewers')],
-    ['providers',msg('APIs','APIs')],
-    ['models',msg('Modelos','Models')],
-    ['prompts',msg('Prompts','Prompts')]
-  ];
-  const settingsFlags={dictionary:'dictionary',translation:'translation',assistant:'chat',projects:'projects',
-   complements:'complements',variants:'variants',writingProfiles:'diff',integrationsV4:'tools',keyshots:'keyshots',extendedSyntax:'extendedSyntax',pandocSyntax:'pandocSyntax',
-   snapshots:'snapshots',projectTasks:'projects',bookNavigation:'bookNavigation',virtualContent:'virtualContent',writingWidgets:'writingWidgets',research:'zoteroIntegration',sessionDrafts:'sessionNotes',cursor:'cursorMemory',unicode:'unicode',templates:'templates',
-   toc:'templates',tts:'tts',review:'review',reviewAI:'review',
-   homepage:'writingHome',soundscapes:'soundscapes',clickClack:'typewriter',v9Toolbar:'formatToolbar',v9Explorer:'nativeExplorer',v9Spaces:'smartSpaces',v9Calendar:'calendar'};
-  const enabledSections=sections.filter(([id])=>id==='v6Markdown'
-   ?['ruby','discordSyntax','ratings'].some(key=>writerModuleOn(this.plugin,key))
-   :id==='v6Reading'?['timestamps','readingTime'].some(key=>writerModuleOn(this.plugin,key))
-   :id==='v6Linter'?writerModuleOn(this.plugin,'linter')
-   :id==='typing'
-   ?writerModuleOn(this.plugin,'easyTyping')||writerModuleOn(this.plugin,'smartTypography')
-   :!settingsFlags[id]||writerModuleOn(this.plugin,settingsFlags[id]));
-  const groups=[
-   ['general',msg('Geral','General'),['general','modules','workspaceProfiles','diagnostics']],
-   ['customize',msg('Interface e personalização','Interface & appearance'),['homepage','v9Explorer','v9Pretty','v9Toolbar','soundscapes','writingWidgets']],
-   ['workflow',msg('Organização e produtividade','Organization & productivity'),['v9Spaces','v9Calendar','v9Flow','v9Pomodoro','sessionDrafts','v9Lock','v10Tools']],
-   ['writing',msg('Escrita e edição','Writing & editing'),['complements','variants','keyshots','typing','clickClack','cursor','abbreviations','anotherName','viewMode','smartInsert','templates']],
-   ['markdown',msg('Markdown e extensões','Markdown & extensions'),['extendedSyntax','pandocSyntax','v6Markdown','v6Linter','unicode','toc','integrationsV4']],
-   ['longform',msg('Longform e livros','Longform & books'),['projects','v10Bookshelf','projectTasks','bookNavigation','virtualContent','v7Worldbuilding']],
-   ['review',msg('Revisão e leitura','Review & reading'),['review','reviewAI','writingProfiles','snapshots','tts','v6Reading','research']],
-   ['ai',msg('IA e dicionário','AI & dictionary'),['dictionary','translation','assistant','providers','models','prompts']]
-  ];
-  const groupIcons={general:'settings-2',customize:'palette',workflow:'layers-3',writing:'pen-line',longform:'book-open',toolkit:'blocks',suites:'layers',ai:'brain-circuit',review:'spell-check',markdown:'file-code'};
+  // Every configuration page stays discoverable, including hidden features.
+  const sections=writerSettingsSections();
+  const enabledSections=sections;
+  const groups=writerSettingsGroups();
+  const groupIcons=Object.fromEntries(WRITER_SETTINGS_GROUPS.map(item=>[item.id,item.icon]));
   const sectionIcons={
    general:'settings',modules:'blocks',workspaceProfiles:'sliders-horizontal',diagnostics:'activity',
    homepage:'house',soundscapes:'headphones',v10Bookshelf:'library-big',v10Tools:'file-pen-line',writingWidgets:'columns-3',research:'book-marked',sessionDrafts:'notebook-pen',v9Pomodoro:'timer',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
@@ -30655,6 +35156,7 @@ class DictionarySettings extends PluginSettingTab{
    smartInsert:'wand-sparkles',typing:'type',clickClack:'keyboard',cursor:'mouse-pointer-2',snapshots:'history',
    projectTasks:'list-check',bookNavigation:'book-open-check',virtualContent:'panels-top-left',abbreviations:'text-cursor-input',
    anotherName:'tag',viewMode:'eye',templates:'files',unicode:'omega',toc:'list-tree',
+   typewriter:'focus',images:'image',media:'film',quickActions:'zap',tasks:'list-check',databases:'table-2',numbering:'list-ordered',study:'graduation-cap',graph:'network',editorAdvanced:'text-cursor-input',speech:'audio-lines',compatibility:'shield-check',privacy:'lock-keyhole',
    tts:'volume-2',v6Reading:'clock',v6Linter:'spell-check',review:'check-check',
    reviewAI:'scan-eye',providers:'key-round',models:'cpu',prompts:'scroll-text'
   };
@@ -30672,6 +35174,7 @@ class DictionarySettings extends PluginSettingTab{
      const symbol=b.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
      require('obsidian').setIcon(symbol,sectionIcons[key]||'settings');
      b.createSpan({text:label});
+     b.id=this.writerSettingsId+'-section-'+key;b.setAttribute('aria-controls',panel.id);
      b.dataset.tab=key;b.classList.toggle('is-active',key===id);
      b.addEventListener('click',()=>{if(this.activeSettingsTab!==key)showTab(key);});
     }
@@ -30696,6 +35199,9 @@ class DictionarySettings extends PluginSettingTab{
    sectionPicker.value=id;
    groupPicker.value=group;
   };
+  const shortcuts=el.createDiv({cls:'writer-v137-settings-shortcuts'});
+  el.insertBefore(shortcuts,panel);
+  const refreshShortcuts=()=>writerSettingsRenderShortcuts(this.plugin,shortcuts,id=>showTab(id));
   const finder=writerWorkspaceBindSearch(el,enabledSections,id=>showTab(id),()=>panel,()=>this.activeSettingsTab);
   el.insertBefore(finder.wrap,nav);
   const showTab=id=>{
@@ -30710,19 +35216,34 @@ class DictionarySettings extends PluginSettingTab{
     }
     renderSubtabs(group,id);
     panel.empty();
+    panel.setAttribute('aria-labelledby',this.writerSettingsId+'-section-'+id);
+    writerSettingsRenderHeader(this.plugin,panel,id,showTab,refreshShortcuts);
     panel.classList.toggle('writer-v91-ai-settings',groupFor(id)==='ai');
     if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
     }else if(id==='soundscapes'){writerV91SoundSettings(this.plugin,panel);
-    }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);writerV1201SettingsWriting(this.plugin,panel);
+    }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
     }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);writerV92ExplorerSettings(this.plugin,panel);
-    }else if(id==='v9Pretty'){writerV9215PrettySettings(this.plugin,panel);writerV102ImagesSettings(this.plugin,panel);writerV1201SettingsImages(this.plugin,panel);
-    }else if(id==='v9Flow'){writerV9215FlowSettings(this.plugin,panel);writerV1201SettingsSuite(this.plugin,panel,'suiteDatabase');
+    }else if(id==='v9Pretty'){writerV9215PrettySettings(this.plugin,panel);
+    }else if(id==='images'){writerV102ImagesSettings(this.plugin,panel);writerV1201SettingsImages(this.plugin,panel);
+    }else if(id==='media'){writerV107MediaSettings(this.plugin,panel);
+    }else if(id==='quickActions'){writerV1201SettingsWriting(this.plugin,panel);
+    }else if(id==='typewriter'){writerV137TypewriterSettings(this.plugin,panel);
+    }else if(id==='tasks'){writerV1201SettingsTasks(this.plugin,panel);
+    }else if(id==='databases'){writerV1201SettingsSuite(this.plugin,panel,'suiteDatabase');writerV107DbSettings(this.plugin,panel);
+    }else if(id==='numbering'){writerV1201SettingsSuite(this.plugin,panel,'suiteNumbering');
+    }else if(id==='study'){writerV1201SettingsSuite(this.plugin,panel,'suiteEducation');writerV107StudySettings(this.plugin,panel);
+    }else if(id==='graph'){writerV107GraphSettings(this.plugin,panel);
+    }else if(id==='editorAdvanced'){writerV107EditorSettings(this.plugin,panel);
+    }else if(id==='speech'){writerV1201SettingsReader(this.plugin,panel);
+    }else if(id==='compatibility'){writerV107CompatibilitySettings(this.plugin,panel);
+    }else if(id==='privacy'){writerV1201SettingsPrivacy(this.plugin,panel);
+    }else if(id==='v9Flow'){writerV9215FlowSettings(this.plugin,panel);
     }else if(id==='v9Pomodoro'){writerV931PomodoroSettings(this.plugin,panel);
     }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);writerV101SpaceHistorySettings(this.plugin,panel);
     }else if(id==='v10Bookshelf'){writerV10BookshelfSettings(this.plugin,panel);
-    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);writerV101EnhancementsSettings(this.plugin,panel);writerV1201SettingsTasks(this.plugin,panel);
-    }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);writerV1201SettingsPrivacy(this.plugin,panel);
-    }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);writerV101CalendarExchangeSettings(this.plugin,panel);writerV1201SettingsSuite(this.plugin,panel,'suiteEducation');
+    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);writerV101EnhancementsSettings(this.plugin,panel,{includeAdvanced:false});
+    }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);
+    }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);writerV101CalendarExchangeSettings(this.plugin,panel);writerV107CalendarSettings(this.plugin,panel);
     }else if(id==='workspaceProfiles'){
       this.plugin.writerWorkspaceProfiles.renderSettings(panel);
     }else if(id==='cursor'){
@@ -30741,39 +35262,7 @@ class DictionarySettings extends PluginSettingTab{
     }else if(['complements','variants','snapshots'].includes(id)){
       writerRenderV3Settings(panel,this.plugin,id);
     }else if(id==='review'){
-      panel.createEl('h3',{text:msg('LanguageTool e comportamento da revisão','LanguageTool and review behavior')});
-      panel.createEl('p',{text:msg('As correções são sugestões: o arquivo só muda quando você aceita uma alteração.','Corrections are suggestions: the file changes only when you accept a change.'),cls:'dictionary-muted'});
-      new Setting(panel).setName(msg('Verificação automática do LanguageTool','Automatic LanguageTool check'))
-       .setDesc(msg('Com a aba Revisão aberta, verifica a nota após uma pausa na digitação. O texto é enviado ao endpoint configurado.','While the Review tab is open, checks after a typing pause. Text is sent to the configured endpoint.'))
-       .addToggle(t=>t.setValue(this.plugin.settings.autoGrammar?.enabled!==false).onChange(async v=>{
-        this.plugin.settings.autoGrammar.enabled=v;
-        if(!v){this.plugin.autoGrammar.pendingPath=null;clearTimeout(this.plugin.autoGrammar.timer);}
-        await this.plugin.saveSettings();
-       }));
-      new Setting(panel).setName(msg('Pausa antes da verificação','Pause before checking'))
-       .setDesc(msg('Intervalo de 2 a 15 segundos. O plugin também respeita pelo menos 9 segundos entre requisições.','2–15 seconds; requests are also spaced at least 9 seconds apart.'))
-       .addSlider(t=>t.setLimits(2,15,1).setDynamicTooltip().setValue(Math.round((this.plugin.settings.autoGrammar?.delayMs||3500)/1000))
-        .onChange(async v=>{this.plugin.settings.autoGrammar.delayMs=v*1000;await this.plugin.saveSettings();}));
-      new Setting(panel).setName(msg('Idioma da revisão','Review language')).addDropdown(d=>{
-        for(const [code,label] of [['pt-BR','Português (Brasil)'],['pt-PT','Português (Portugal)'],['en-US','English (US)'],['en-GB','English (UK)'],['es','Español'],['fr','Français'],['de-DE','Deutsch'],['auto','Auto']])d.addOption(code,label);
-        d.setValue(this.plugin.settings.reviewLanguage||'pt-BR').onChange(async v=>{this.plugin.settings.reviewLanguage=v;await this.plugin.saveSettings();});
-      });
-      new Setting(panel).setName(msg('Modo inicial','Default review mode')).addDropdown(d=>{
-        for(const [code,label] of [['grammar',msg('Gramática','Grammar')],['style',msg('Estilo','Style')],['beta',msg('Leitura beta','Beta reading')]])d.addOption(code,label);
-        d.setValue(this.plugin.settings.reviewMode||'grammar').onChange(async v=>{this.plugin.settings.reviewMode=v;await this.plugin.saveSettings();});
-      });
-      new Setting(panel).setName(msg('Abrir nota selecionada no editor','Open selected note in editor')).setDesc(msg('Permite ver sublinhados do CodeMirror ao revisar um arquivo que ainda não está aberto.','Enables CodeMirror underlines when reviewing a note not already open.')).addToggle(x=>x.setValue(this.plugin.settings.reviewAutoOpenNote!==false).onChange(async v=>{this.plugin.settings.reviewAutoOpenNote=v;await this.plugin.saveSettings();}));
-      new Setting(panel).setName(msg('Abrir sugestões ao passar o mouse ou posicionar o cursor','Open suggestions on hover or caret')).setDesc(msg('Passe o mouse sobre uma palavra destacada ou posicione o cursor de texto dentro dela. No celular, toque no erro.','Hover over a highlighted error or place the text caret inside it. On mobile, tap the error.')).addToggle(x=>x.setValue(this.plugin.settings.reviewPopupEnabled!==false).onChange(async v=>{this.plugin.settings.reviewPopupEnabled=v;await this.plugin.saveSettings();if(!v)this.plugin.closeReviewPopup();}));
-      new Setting(panel).setName(msg('Ignorar avisos de espaços e formatação','Ignore whitespace and formatting warnings')).addToggle(x=>x.setValue(this.plugin.settings.reviewIgnoreWhitespace!==false).onChange(async v=>{this.plugin.settings.reviewIgnoreWhitespace=v;await this.plugin.saveSettings();}));
-      new Setting(panel).setName(msg('Dicionário pessoal do corretor','Personal spelling dictionary'))
-       .setDesc(msg('Uma palavra por linha. Nomes próprios e termos inventados não gerarão avisos de ortografia no Basic AI.','One word per line. Proper nouns and invented words will no longer produce spelling warnings in Basic AI.'))
-       .addTextArea(x=>{x.inputEl.rows=3;x.setValue((this.plugin.settings.reviewCustomWords||[]).join('\n')).onChange(async v=>{
-        this.plugin.settings.reviewCustomWords=[...new Set(v.split(/\r?\n/).map(w=>w.trim().normalize('NFC')).filter(w=>/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(w)))].slice(0,2000);
-        await this.plugin.saveSettings();
-       });});
-      new Setting(panel).setName(msg('IDs de regras ignoradas','Ignored rule IDs')).setDesc(msg('IDs do LanguageTool separados por vírgula.','Comma-separated LanguageTool rule IDs.')).addTextArea(x=>{x.inputEl.rows=3;x.setValue(this.plugin.settings.reviewIgnoreRules||'').onChange(async v=>{this.plugin.settings.reviewIgnoreRules=v;await this.plugin.saveSettings();});});
-      new Setting(panel).setName(msg('Endpoint do LanguageTool','LanguageTool endpoint')).setDesc(msg('Use HTTPS. O endpoint público tem limites de uso.','Use HTTPS. The public endpoint has usage limits.')).addText(x=>x.setValue(this.plugin.settings.reviewEndpoint||'https://api.languagetool.org/v2/check').onChange(async v=>{this.plugin.settings.reviewEndpoint=v.trim();await this.plugin.saveSettings();}));
-      new Setting(panel).setName(msg('Chave do LanguageTool (opcional)','LanguageTool key (optional)')).addText(x=>{x.inputEl.type='password';x.setValue(this.plugin.settings.reviewApiKey||'').onChange(async v=>{this.plugin.settings.reviewApiKey=v.trim();await this.plugin.saveSettings();});});
+      writerV137GrammarSettings(this.plugin,panel);
     }else if(id==='reviewAI'){
       panel.createEl('h3',{text:msg('Revisores de estilo e leitor beta','Style reviewer and beta reader')});
       panel.createEl('p',{text:msg('Cada revisor usa a IA selecionada aqui. Deixe provedor/modelo vazios para herdar do chat.','Reviewers use the AI configured here. Leave provider/model blank to inherit from chat.'),cls:'dictionary-muted'});
@@ -30792,11 +35281,11 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='keyshots'){
       this.plugin.writerKeyshots.renderSettings(panel);
     }else if(id==='v6Markdown'){
-      this.plugin.writerV6Markup.renderSettings(panel);writerV1201SettingsSuite(this.plugin,panel,'suiteNumbering');
+      this.plugin.writerV6Markup.renderSettings(panel);
     }else if(id==='smartInsert'){
       this.plugin.writerV6SmartInsert.renderSettings(panel);
     }else if(id==='v6Reading'){
-      this.plugin.writerV6Reading.renderSettings(panel);writerV1201SettingsReader(this.plugin,panel);
+      this.plugin.writerV6Reading.renderSettings(panel);
     }else if(id==='v6Linter'){
       this.plugin.writerV6Linter.renderSettings(panel);
     }else if(id==='bookNavigation'){
@@ -30806,23 +35295,20 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='writingWidgets'){
       writerV92BlockSettings(this.plugin,panel);
     }else if(id==='research'){
-      writerV92ResearchSettings(this.plugin,panel);
+      writerV92ResearchSettings(this.plugin,panel);writerV107ZoteroSettings(this.plugin,panel);
     }else if(id==='sessionDrafts'){
       writerV92SessionSettings(this.plugin,panel);
     }else if(id==='extendedSyntax'){
       this.plugin.writerExtendedSyntax.renderSettings(panel);
       writerV102AlignSettings(this.plugin,panel);
-      panel.createEl('hr');
-      this.plugin.writerInlineAI?.renderSettings(panel);
+
     }else if(id==='pandocSyntax'){
       this.plugin.writerPandocSyntax.renderSettings(panel);
       this.plugin.writerPandocExporter.renderSettings(panel);
     }else if(id==='typing'){
-      if(writerModuleOn(this.plugin,'easyTyping'))this.plugin.writerEasyTyping.renderSettings(panel);
-      if(writerModuleOn(this.plugin,'smartTypography')){
-       if(writerModuleOn(this.plugin,'easyTyping'))panel.createEl('hr');
-       this.plugin.writerSmartTypography.renderSettings(panel);
-      }
+      this.plugin.writerEasyTyping.renderSettings(panel);
+      panel.createEl('hr');
+      this.plugin.writerSmartTypography.renderSettings(panel);
     }else if(id==='modules'){
       writerRenderModuleSettings(this.plugin,panel,()=>this.display());
     }else if(id==='diagnostics'){
@@ -30834,6 +35320,7 @@ class DictionarySettings extends PluginSettingTab{
       new Setting(panel).setName(msg('Idioma das respostas','Response language'))
        .setDesc(msg('Usado nas definições, no chat e nas revisões com IA. O tradutor tem idiomas próprios.','Used for definitions, chat and AI reviews. The translator has separate language settings.'))
        .addDropdown(d=>{for(const [k,v] of Object.entries(LANGS))d.addOption(k,v);d.setValue(this.plugin.settings.onlineLanguage).onChange(async v=>{this.plugin.settings.onlineLanguage=v;await this.plugin.saveSettings();});});
+      new Setting(panel).setName(msg('Configuração inicial','Quick start')).setDesc(msg('Escolha um conjunto de recursos e personalize o que fica ativo.','Choose a set of features and customize what stays active.')).addButton(b=>b.setButtonText(msg('Abrir configuração inicial','Open quick start')).onClick(()=>writerQuickStartOpen(this.plugin)));
       writerV1201SettingsOverview(this.plugin,panel);
     }else if(id==='dictionary'){
       new Setting(panel).setName(t('dictionary'))
@@ -30877,15 +35364,21 @@ class DictionarySettings extends PluginSettingTab{
       tempSetting.addSlider(x=>x.setLimits(0,2,0.1).setDynamicTooltip().setValue(Number.isFinite(Number(this.plugin.settings.assistantTemperature))?Number(this.plugin.settings.assistantTemperature):0.7).onChange(async v=>{this.plugin.settings.assistantTemperature=v;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Enviar temperatura à API','Send temperature to API')).addToggle(x=>x.setValue(this.plugin.settings.assistantSendTemperature!==false).onChange(async v=>{this.plugin.settings.assistantSendTemperature=v;await this.plugin.saveSettings();}));
       new Setting(panel).setName(msg('Prompt do assistente','Assistant system prompt'))
-        .setDesc(msg('Instruções para todas as mensagens do chat. {language} é substituído pelo idioma de definição configurado.','Instructions applied to every chat message. {language} is replaced by the configured definition language.'))
-        .addTextArea(x=>{x.inputEl.rows=8;x.inputEl.addClass('dictionary-prompt-editor');x.setValue(this.plugin.settings.assistantPrompt||PROMPT_DEFAULTS.writing).onChange(async v=>{this.plugin.settings.assistantPrompt=v;await this.plugin.saveSettings();});});
+        .setDesc(msg('Deixe vazio para usar Escrita em Instruções da IA. {language} usa o idioma de resposta configurado.','Leave blank to use Writing in AI instructions. {language} uses the configured response language.'))
+        .addTextArea(x=>{x.inputEl.rows=6;x.inputEl.addClass('dictionary-prompt-editor');x.setPlaceholder(msg('Herdar das instruções de Escrita','Inherit Writing instructions')).setValue(this.plugin.settings.assistantPrompt||'').onChange(async v=>{this.plugin.settings.assistantPrompt=v;await this.plugin.saveSettings();});});
+      panel.createEl('hr');
+      this.plugin.writerInlineAI?.renderSettings(panel);
     }else if(id==='prompts'){
       panel.createEl('p',{text:msg('Use {language}, {source} e {target} como variáveis.','Use {language}, {source} and {target} as variables.'),cls:'dictionary-muted'});
       for(const [kind,label] of [['definition',msg('Definições','Definitions')],['synonyms',msg('Sinônimos','Synonyms')],['antonyms',msg('Antônimos','Antonyms')],['translate',msg('Tradução','Translation')],['writing',msg('Escrita','Writing')]]){
         new Setting(panel).setName(label).addTextArea(x=>{x.inputEl.rows=5;x.inputEl.addClass('dictionary-prompt-editor');x.setValue(this.plugin.settings.prompts[kind]||PROMPT_DEFAULTS[kind]).onChange(async v=>{this.plugin.settings.prompts[kind]=v;await this.plugin.saveSettings();});});
       }
     }
+    writerSettingsFinishPanel(panel,id);
     writerMarkCompactSettings(panel);
+    writerV137SyncSettingsTabs(nav);writerV137SyncSettingsTabs(subnav);
+    this.plugin.writerRecentSettings=[id,...(this.plugin.writerRecentSettings||[]).filter(item=>item!==id)].slice(0,5);
+    refreshShortcuts();
     finder.update();
   };
   for(const [id,label] of groups){
@@ -30895,6 +35388,7 @@ class DictionarySettings extends PluginSettingTab{
    const symbol=b.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
    require('obsidian').setIcon(symbol,groupIcons[id]||'settings');
    b.createSpan({text:label});
+   b.id=this.writerSettingsId+'-group-'+id;b.setAttribute('aria-controls',panel.id);
    b.dataset.group=id;
    b.addEventListener('click',()=>{
     const remembered=this.lastSectionByGroup[id];
@@ -30987,7 +35481,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
        this.view.dom.removeEventListener('touchend',this.onTouchEnd);
       }
     }));
-    const saved=await this.loadData()||{};
+    const stored=await this.loadData();
+    const firstInstall=stored==null;
+    const saved=stored||{};
     if(Number(saved.schemaVersion||0)<3){
       const base=this.manifest.dir||this.app.vault.configDir+'/plugins/'+this.manifest.id;
       const adapter=this.app.vault.adapter;
@@ -31006,6 +35502,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     writerV4Merge(this.settings);
     writerV4ExtraMerge(this.settings);
     writerMergeModules(this.settings);
+    if(firstInstall){this.settings.autoGrammar={...this.settings.autoGrammar,enabled:false};}
     writerCursorMerge(this.settings);
     writerBookNavMerge(this.settings);
     writerKeyshotsMerge(this.settings);
@@ -31195,6 +35692,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     }));
     this.registerEvent(this.app.vault.on('modify',f=>{if(f.path===this.dictionaryPath())this.invalidate();}));
     for(const event of ['create','rename','delete'])this.registerEvent(this.app.vault.on(event,()=>this.invalidate()));
+    writerQuickStartRegister(this,firstInstall);
   }
   async openReview(mode,file){
     const view=await this.openCoreTab('review');
@@ -31316,19 +35814,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     }catch(error){view.reviewStatus.setText(msg('Falha do corretor externo: ','External checker error: ')+(error?.message||String(error)));}
     finally{view.reviewBusy=false;}
   }
-  async checkGrammar(text){
-    const endpoint=this.settings.reviewEndpoint?.trim()||'https://api.languagetool.org/v2/check';
-    const url=new URL(endpoint);
-    if(url.protocol!=='https:'||url.username||url.password)throw new Error(msg('Use um endpoint HTTPS válido.','Use a valid HTTPS endpoint.'));
-    if(text.length>18000)throw new Error(msg('Arquivo muito longo para uma única verificação (limite de 18 mil caracteres). Selecione um trecho menor.','File too long for one check (18,000-character limit). Select a shorter text.'));
-    const body=new URLSearchParams({text,language:this.settings.reviewLanguage||'pt-BR'});
-    const key=this.settings.reviewApiKey?.trim();
-    if(key)body.set('apiKey',key);
-    const response=await requestUrl({url:url.toString(),method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString(),throw:false});
-    if(response.status<200||response.status>=300)throw new Error('LanguageTool HTTP '+response.status+': '+String(response.text||'').slice(0,180));
-    if(!Array.isArray(response.json?.matches))throw new Error(msg('Resposta inválida do LanguageTool.','Invalid LanguageTool response.'));
-    return response.json.matches;
-  }
+  async checkGrammar(text){return writerGrammarRequest(this,text);}
   async reviewWithAI(text,mode,file){
     const instructions={
       style:'Review this text as a writing editor. Discuss clarity, rhythm, repetition, voice, dialogue, and flow. Identify specific passages and explain why a change might help, then offer 2-3 alternatives. Preserve the author voice. Do not rewrite the full document. Use Markdown.',
@@ -31518,8 +36004,14 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(!writerModuleOn(this,'review')){
      if(this.autoGrammar?.timer)clearTimeout(this.autoGrammar.timer);
      if(this.autoGrammar)this.autoGrammar.pendingPath=null;
+     for(const leaf of this.app.workspace.getLeavesOfType(VIEW)||[])leaf.view?.cancelReview?.();
+     this.autoGrammar?.cancelPending?.();writerGrammarCancel(this);this.clearReviewMarks();
      this.closeReviewPopup?.();
     }
+    this.writerV4Extras?.updateTypewriterClass?.();
+    this.writerV92Research?.refreshStyle?.();
+    if(!writerModuleOn(this,'soundscapes'))this.writerV91Sound?.pause?.();
+    this.writerV91Sound?.emit?.();
     this.writerV9ToolbarRefresh?.();
     this.writerV9ExplorerRefresh?.();
     if(!writerModuleOn(this,'tts'))this.writerFinalFeatures?.stop?.();

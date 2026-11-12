@@ -29,11 +29,11 @@ function writerV9215SlashActions(){
   {id:'link',pt:'Link Markdown',en:'Markdown link',keys:'link url',text:"[texto](https://)"},
   {id:'highlight',pt:'Realce',en:'Highlight',keys:'mark highlight',text:"==texto=="},
   {id:'formula',pt:'Fórmula',en:'Math formula',keys:'math formula latex',text:"$$\n\n$$"},
-  {id:'flowboard',pt:'Painel Flow',en:'Flow panel',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
+  {id:'flowboard',pt:'Painel de notas',en:'Note board',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
   {id:'dbview',pt:'Banco: nova visualização',en:'Database: new view',keys:'notion base database gallery board',text:'~~~basic-suite-db\nfolder: Databases/Tarefas\nview: gallery\ncolumns: file, status\n~~~'},
   {id:'timetable',pt:'Estudos: horário de aulas',en:'Study: class timetable',keys:'unique agenda schedule horario aula',text:'~~~basic-timetable\n~~~'},
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
-  {id:'flow',pt:'Flow: incorporar nota',en:'Flow: embed note',keys:'embed inline edit note flow',text:''}
+  {id:'flow',pt:'Incorporar nota',en:'Embed note',keys:'embed inline edit note flow',text:''}
  ];
 }
 class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
@@ -172,32 +172,32 @@ function writerV9215FlowRegister(plugin){
   for(const id of ['flow','writer-flow'])
    plugin.registerMarkdownCodeBlockProcessor(id,(source,root,context)=>writerV9216FlowBlock(plugin,source,root,context));
  }
- plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Flow: ativar/desativar edição de notas incorporadas','Flow: toggle inline embed editing'),callback:async()=>{
+ plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Notas incorporadas: ativar/desativar edição','Embedded notes: toggle inline editing'),callback:async()=>{
   plugin.settings.v9215Flow.embeds=!plugin.settings.v9215Flow.embeds;
   await plugin.saveSettings();
  }});
 }
 function writerV9215FlowSettings(plugin,panel){
  const cfg=plugin.settings.v9215Flow;
- panel.createEl('h3',{text:writerUi('Flow e menu rápido /','Flow and slash menu /')});
+ panel.createEl('h3',{text:writerUi('Painéis de notas e comandos /','Note boards and slash commands')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Use / no editor para inserir blocos. Notas Markdown incorporadas podem ser editadas na visualização, com proteção contra alterações simultâneas.','Type / in the editor to insert blocks. Embedded Markdown notes can be edited in reading view, with concurrent-edit protection.')});
  for(const [key,pt,en] of [
-  ['enabled','Ativar Flow e comandos rápidos','Enable Flow and slash commands'],
+  ['enabled','Ativar painéis e comandos rápidos','Enable note boards and slash commands'],
   ['slash','Menu de comandos /','Slash command menu'],
   ['embeds','Edição de notas incorporadas','Editable embedded notes'],
-  ['flowBlocks','Painéis Flow para coleções de notas','Flow panels for note collections'],
-  ['flowArrange','Organizar cartões Flow e salvar no Markdown','Arrange Flow cards and save to Markdown'],
-  ['flowPreviews','Prévia do texto nos cartões Flow','Flow card text previews']
+  ['flowBlocks','Painéis para coleções de notas','Boards for note collections'],
+  ['flowArrange','Organizar cartões e salvar no Markdown','Arrange cards and save to Markdown'],
+  ['flowPreviews','Prévia do texto nos cartões','Card text previews']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
  }
- new Setting(panel).setName(writerUi('Layout padrão dos painéis Flow','Default Flow panel layout'))
+ new Setting(panel).setName(writerUi('Layout padrão dos painéis de notas','Default note board layout'))
   .addDropdown(drop=>{
    for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board']])
     drop.addOption(id,writerUi(pt,en));
    drop.setValue(cfg.defaultLayout).onChange(async value=>{cfg.defaultLayout=value;await plugin.saveSettings();});
   });
- new Setting(panel).setName(writerUi('Máximo de notas por painel Flow','Maximum notes per Flow panel'))
+ new Setting(panel).setName(writerUi('Máximo de notas por painel','Maximum notes per board'))
   .addSlider(sl=>sl.setLimits(5,80,5).setValue(cfg.maxItems).setDynamicTooltip().onChange(async value=>{
    cfg.maxItems=value;await plugin.saveSettings();
   }));

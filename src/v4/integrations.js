@@ -2,7 +2,7 @@
 /* Original, self-contained writer utilities for v4 beta. No code from referenced plugins. */
 const WRITER_V4_EXTRA_DEFAULTS={
   comments:{},mention:{enabled:true,sign:'@',folder:'',mode:'link',maxResults:8},
-  typewriter:{enabled:false,centerPercent:0.43,focusMode:false},
+  typewriter:{enabled:false,centerPercent:0.43,focusMode:false,followCursor:true,highlightLine:true,focusOpacity:0.7},
   wordwise:{enabled:true,prompts:{
     improve:'Improve fluency, clarity and rhythm while preserving the writer’s intent, voice and Markdown.',
     shorten:'Make the selection more concise without removing essential meaning or changing Markdown links.',
@@ -27,8 +27,79 @@ function writerV4ExtraMerge(settings){
  };
  delete cfg.toolbar; // Drop retired toolbar preferences during settings migration.
   cfg.mention.maxResults=Math.max(2,Math.min(30,Number(cfg.mention.maxResults)||8));
- cfg.typewriter.centerPercent=Math.max(.2,Math.min(.8,Number(cfg.typewriter.centerPercent)||.43));
+ writerV137NormalizeTypewriter(cfg.typewriter);
  return cfg;
+}
+function writerV137NormalizeTypewriter(cfg){
+ const number=(value,fallback,min,max)=>value!==null&&value!==''&&Number.isFinite(Number(value))?Math.max(min,Math.min(max,Number(value))):fallback;
+ cfg.enabled=cfg.enabled===true;cfg.focusMode=cfg.focusMode===true;
+ cfg.followCursor=cfg.followCursor!==false;cfg.highlightLine=cfg.highlightLine!==false;
+ cfg.centerPercent=number(cfg.centerPercent,.43,.2,.8);
+ cfg.focusOpacity=number(cfg.focusOpacity,.7,.45,.95);
+ return cfg;
+}
+function writerV137TypewriterConfig(plugin){
+ let cfg=plugin.settings.writerV4Extras?.typewriter;
+ if(!cfg||typeof cfg!=='object'||Array.isArray(cfg))cfg=writerV4ExtraMerge(plugin.settings).typewriter;
+ return writerV137NormalizeTypewriter(cfg);
+}
+function writerV137TypewriterSelection(selection){
+ const main=selection?.main;
+ return !!main&&(!selection.ranges||selection.ranges.length===1)&&main.empty!==false&&
+  (!Number.isFinite(main.anchor)||main.anchor===main.head);
+}
+function writerV137TypewriterScrollOptions(view,cfg){
+ const height=Number(view.scrollDOM?.clientHeight)||0;
+ if(height<=0)return {y:'center',yMargin:0};
+ const percent=Number.isFinite(Number(cfg.centerPercent))?Math.max(.2,Math.min(.8,Number(cfg.centerPercent))):.43;
+ return {y:'start',yMargin:Math.max(0,Math.round(height*percent-(Number(view.defaultLineHeight)||0)/2)),x:'nearest'};
+}
+function writerV137TypewriterSettings(plugin,panel){
+ const cfg=writerV137TypewriterConfig(plugin),controls={};
+ panel.createEl('h3',{text:writerUi('Máquina de escrever','Typewriter mode')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi(
+  'Mantenha a linha de escrita na altura escolhida e ajuste o foco visual. Rolar, tocar ou selecionar texto pausa o acompanhamento até a próxima digitação. Nenhuma nota é alterada.',
+  'Keep the writing line at your preferred height and adjust visual focus. Scrolling, touching or selecting text pauses following until you type again. Notes are never changed.')});
+ const preview=panel.createDiv({cls:'writer-v137-typewriter-preview',attr:{role:'img','aria-label':writerUi('Prévia do destaque e da intensidade de foco','Preview of line highlight and focus intensity')}});
+ preview.createDiv({cls:'writer-v137-typewriter-preview-context',text:writerUi('A história encontra seu ritmo.','The story finds its rhythm.')});
+ preview.createDiv({cls:'writer-v137-typewriter-preview-current',text:writerUi('Esta é a linha que você está escrevendo.','This is the line you are writing.')});
+ preview.createDiv({cls:'writer-v137-typewriter-preview-context',text:writerUi('As próximas palavras esperam por você.','The next words are waiting for you.')});
+ const refresh=()=>{
+  const current=writerV137TypewriterConfig(plugin);
+  preview.classList.toggle('is-focused',current.focusMode);preview.classList.toggle('is-highlighted',current.highlightLine);
+  preview.style.setProperty('--writer-typewriter-focus-opacity',String(current.focusOpacity));
+  controls.position?.setDisabled?.(!current.followCursor);
+  controls.opacity?.setDisabled?.(!current.focusMode);
+ };
+ const save=async(key,value)=>{
+  writerV137TypewriterConfig(plugin)[key]=value;
+  plugin.writerV4Extras?.updateTypewriterClass?.();refresh();await plugin.saveSettings();
+ };
+ for(const [key,pt,en,descriptionPt,descriptionEn] of [
+  ['enabled','Ativar máquina de escrever','Enable typewriter mode','Ativa estes recursos apenas no editor de texto.','Enables these features only in the text editor.'],
+  ['followCursor','Acompanhar o cursor ao escrever','Follow the cursor while writing','Desative para usar apenas o destaque e o foco visual, sem rolagem automática.','Turn off to use line highlighting and visual focus without automatic scrolling.']
+ ])new Setting(panel).setName(writerUi(pt,en)).setDesc(writerUi(descriptionPt,descriptionEn))
+  .addToggle(t=>{controls[key]=t;t.setValue(cfg[key]).onChange(value=>save(key,value));});
+ new Setting(panel).setName(writerUi('Altura da linha de escrita','Writing line height'))
+  .setDesc(writerUi('Percentual da área visível do editor, de cima para baixo.','Percentage of the visible editor area, measured from the top.'))
+  .addSlider(s=>{controls.position=s;s.setLimits(20,80,1).setDynamicTooltip().setValue(Math.round(cfg.centerPercent*100)).onChange(value=>save('centerPercent',value/100));});
+ for(const [key,pt,en] of [
+  ['highlightLine','Destacar a linha atual','Highlight the current line'],
+  ['focusMode','Atenuar as outras linhas','Dim other lines']
+ ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>{controls[key]=t;t.setValue(cfg[key]).onChange(value=>save(key,value));});
+ new Setting(panel).setName(writerUi('Visibilidade das outras linhas','Visibility of other lines'))
+  .setDesc(writerUi('Valores maiores mantêm o texto ao redor mais legível.','Higher values keep the surrounding text more readable.'))
+  .addSlider(s=>{controls.opacity=s;s.setLimits(45,95,5).setDynamicTooltip().setValue(Math.round(cfg.focusOpacity*100)).onChange(value=>save('focusOpacity',value/100));});
+ new Setting(panel).setName(writerUi('Restaurar aparência e posição','Restore appearance and position'))
+  .setDesc(writerUi('Mantém o modo ligado ou desligado como está.','Keeps the mode enabled or disabled as it is.'))
+  .addButton(b=>b.setButtonText(writerUi('Restaurar','Restore')).onClick(async()=>{
+   const current=writerV137TypewriterConfig(plugin);
+   Object.assign(current,{centerPercent:.43,focusMode:false,followCursor:true,highlightLine:true,focusOpacity:.7});
+   for(const key of ['followCursor','highlightLine','focusMode'])controls[key]?.setValue?.(current[key]);
+   controls.position?.setValue?.(43);controls.opacity?.setValue?.(70);
+   plugin.writerV4Extras?.updateTypewriterClass?.();refresh();await plugin.saveSettings();
+  }));
+ refresh();
 }
 function writerV4NoteEditor(plugin,file){
  const leaves=plugin.app.workspace.getLeavesOfType('markdown')||[];
@@ -193,13 +264,14 @@ function writerV406ReviewGuard(plugin){
 }
 
 class WriterV4Extras{
- constructor(plugin){this.plugin=plugin;this.lastNote=null;this.typewriterActiveViews=new WeakSet();this.typewriterViews=new Set();}
+ constructor(plugin){this.plugin=plugin;this.lastNote=null;this.typewriterActiveViews=new WeakSet();this.typewriterFollowViews=new WeakSet();this.typewriterViews=new Set();}
  resetTypewriterHighlights(cm=null){
   for(const instance of this.typewriterViews){
    if(!cm||instance.view===cm)instance.setInteracting(false);
   }
  }
  get config(){return this.plugin.settings.writerV4Extras;}
+ typewriterEnabled(){return writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true;}
  getCurrentNote(){
   const app=this.plugin.app;
   const active=app.workspace.getActiveFile?.();
@@ -243,13 +315,32 @@ class WriterV4Extras{
    ['brainstorm','Explorar alternativa','Brainstorm alternative']
   ])p.addCommand({id:'v4-writing-'+key,name:writerUi('IA: '+pt,'AI: '+en),
     editorCallback:editor=>this.runEditorAIAction(editor,key)});
-  p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Alternar modo máquina de escrever','Toggle typewriter mode'),callback:async()=>{
-   this.config.typewriter.enabled=!this.config.typewriter.enabled;
-   this.resetTypewriterHighlights();this.updateTypewriterClass();await p.saveSettings();
-   new Notice(this.config.typewriter.enabled?writerUi('Modo máquina de escrever ativado.','Typewriter mode enabled.'):writerUi('Modo máquina de escrever desativado.','Typewriter mode disabled.'));
+  p.addCommand({id:'v4-toggle-typewriter',name:writerUi('Máquina de escrever: ativar/desativar','Typewriter: toggle mode'),checkCallback:checking=>{
+   if(!writerModuleOn(p,'typewriter'))return false;
+   if(!checking){
+    const cfg=writerV137TypewriterConfig(p);cfg.enabled=!cfg.enabled;
+    this.resetTypewriterHighlights();this.updateTypewriterClass();
+    void p.saveSettings().catch(error=>new Notice(String(error?.message||error)));
+    new Notice(cfg.enabled?writerUi('Máquina de escrever ativada.','Typewriter mode enabled.'):writerUi('Máquina de escrever desativada.','Typewriter mode disabled.'));
+   }
+   return true;
+  }});
+  p.addCommand({id:'v137-typewriter-focus',name:writerUi('Máquina de escrever: alternar foco visual','Typewriter: toggle visual focus'),checkCallback:checking=>{
+   if(!this.typewriterEnabled())return false;
+   if(!checking){
+    const cfg=writerV137TypewriterConfig(p);cfg.focusMode=!cfg.focusMode;this.updateTypewriterClass();
+    void p.saveSettings().catch(error=>new Notice(String(error?.message||error)));
+   }
+   return true;
   }});
   this.updateTypewriterClass();
-  if(typeof p.register==='function')p.register(()=>{if(typeof document!=='undefined'&&document.body?.classList)document.body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus');});
+  if(typeof p.register==='function')p.register(()=>{
+   this.resetTypewriterHighlights();
+   for(const body of this.typewriterBodies||[]){
+    body.classList.remove('writer-v4-typewriter','writer-v4-typewriter-focus','writer-v137-typewriter-highlight');
+    body.style?.removeProperty('--writer-typewriter-focus-opacity');
+   }
+  });
   if(EditorView.updateListener?.of){
    p.registerEditorExtension(EditorView.updateListener.of(update=>{
     const guard=this.plugin.writerReviewInteractionGuard;
@@ -257,12 +348,23 @@ class WriterV4Extras{
      if(update.docChanged)guard.applyScroll?.(update.view);
      return;
     }
-    if(!writerModuleOn(this.plugin,'typewriter')||!this.config.typewriter.enabled||
+    if(!this.typewriterEnabled()||this.config.typewriter.followCursor===false||
       !this.typewriterActiveViews.has(update.view)||(!update.docChanged&&!update.selectionSet)||!update.view.hasFocus)return;
-    try{
-     const pos=update.state.selection.main.head;
-     update.view.dispatch({effects:EditorView.scrollIntoView(pos,{y:'center',yMargin:0})});
-    }catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}
+    const direct=this.typewriterFollowViews.has(update.view);
+    this.typewriterFollowViews.delete(update.view);
+    if(!direct||!writerV137TypewriterSelection(update.state.selection))return;
+    const pos=update.state.selection.main.head,view=update.view;
+    const follow=()=>{
+     if(!this.typewriterEnabled()||this.config.typewriter.followCursor===false||!view.hasFocus||
+       !this.typewriterActiveViews.has(view)||this.plugin.writerReviewInteractionGuard?.isSuspended?.()||
+       !writerV137TypewriterSelection(view.state.selection)||view.state.selection.main.head!==pos)return;
+     try{view.dispatch({effects:EditorView.scrollIntoView(pos,writerV137TypewriterScrollOptions(view,this.config.typewriter))});}
+     catch(error){console.warn('[Basic AI] Typewriter scroll:',error);}
+    };
+    // Live Preview must finish its text/layout transaction before a new scroll
+    // request, otherwise its own measurement can overwrite the desired position.
+    if(typeof requestAnimationFrame==='function')requestAnimationFrame(follow);
+    else follow();
    }));
   }
   // Only direct editor interaction may activate the highlight. Cursor restoration,
@@ -277,30 +379,30 @@ class WriterV4Extras{
       // Pointer inspection and text selection must never enable typewriter
       // scroll locking; only keyboard typing/navigation can engage it.
       if(event.target?.closest?.('.cm-scroller')){
-       owner.plugin.writerReviewInteractionGuard?.pause?.(650);
+       if(owner.typewriterEnabled())owner.plugin.writerReviewInteractionGuard?.pause?.(650);
        this.setInteracting(false);
       }
      };
      this.onTouchStart=event=>{
       if(event.target?.closest?.('.cm-scroller')){
-       owner.plugin.writerReviewInteractionGuard?.pause?.(650);
+       if(owner.typewriterEnabled())owner.plugin.writerReviewInteractionGuard?.pause?.(650);
        this.setInteracting(false);
       }
      };
      this.onTouchMove=()=>this.setInteracting(false);
-     this.onBeforeInput=()=>{owner.plugin.writerReviewInteractionGuard?.typing?.();this.setInteracting(true);};
-     this.onCompositionStart=()=>{owner.plugin.writerReviewInteractionGuard?.typing?.();this.setInteracting(true);};
+     this.onBeforeInput=()=>this.beginInput();
+     this.onCompositionStart=()=>this.beginInput();
      this.onKey=event=>{
       const key=event.key||'';
       if(['Shift','Control','Alt','Meta'].includes(key))return;
+      if(event.shiftKey&&(key.startsWith('Arrow')||['Home','End','PageUp','PageDown'].includes(key))){this.setInteracting(false);return;}
       if(!(key.startsWith('Arrow')||['Home','End','PageUp','PageDown','Backspace','Delete','Enter','Tab'].includes(key)||
        (key.length===1&&!event.ctrlKey&&!event.altKey&&!event.metaKey)))return;
-      owner.plugin.writerReviewInteractionGuard?.typing?.();
-      this.setInteracting(true);
+      this.beginInput();
      };
      this.onWheel=()=>{
       // The wheel gesture also wins over delayed Remember Cursor restoration.
-      owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(view);
+      if(owner.typewriterEnabled())owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(view);
       this.setInteracting(false);
      };
      view.dom.addEventListener('pointerdown',this.onPointer,true);
@@ -311,26 +413,36 @@ class WriterV4Extras{
      view.dom.addEventListener('keydown',this.onKey,true);
      view.dom.addEventListener('wheel',this.onWheel,{capture:true,passive:true});
      owner.typewriterViews.add(this);
+     owner.updateTypewriterClass();
     }
-    setInteracting(value){
-     if(value)owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(this.view);
+    beginInput(){
+     if(!owner.typewriterEnabled())return;
+     owner.plugin.writerReviewInteractionGuard?.typing?.();
+     if(owner.config.typewriter.followCursor!==false)owner.typewriterFollowViews.add(this.view);
+     else owner.typewriterFollowViews.delete(this.view);
+     this.setInteracting(true);
+    }
+    setInteracting(value,refresh=true){
      const allowed=value&&!owner.plugin.writerReviewInteractionGuard?.isSuspended?.()&&
       writerModuleOn(owner.plugin,'typewriter')&&owner.config.typewriter.enabled===true;
+     if(allowed)owner.plugin.writerCursorMemory?.cancelPendingForEditor?.(this.view);
+     else owner.typewriterFollowViews.delete(this.view);
      if(this.interacting===allowed)return;
      this.interacting=allowed;
      if(allowed)owner.typewriterActiveViews.add(this.view);
      else owner.typewriterActiveViews.delete(this.view);
      this.view.dom.classList.toggle('writer-v4-typewriter-engaged',allowed);
-     if(refreshEffect&&this.view.dispatch)this.view.dispatch({effects:refreshEffect.of(null)});
+     if(refresh&&refreshEffect&&this.view.dispatch)this.view.dispatch({effects:refreshEffect.of(null)});
      else this.decorations=this.mark(this.view);
     }
     mark(view){
-     if(!this.interacting||!writerModuleOn(owner.plugin,'typewriter')||!owner.config.typewriter.enabled)
+     if(!this.interacting||!owner.typewriterEnabled()||!view.hasFocus||!writerV137TypewriterSelection(view.state.selection))
       return Decoration.set([]);
      const line=view.state.doc.lineAt(view.state.selection.main.head);
      return Decoration.set([Decoration.line({class:'writer-v4-typewriter-current-line'}).range(line.from)]);
     }
     update(update){
+     if(!update.view.hasFocus||!writerV137TypewriterSelection(update.state.selection)||!owner.typewriterEnabled())this.setInteracting(false,false);
      if(update.docChanged||update.selectionSet||update.viewportChanged||update.focusChanged||
        update.transactions?.some(tr=>tr.effects?.some(effect=>refreshEffect&&effect?.is?.(refreshEffect))))
       this.decorations=this.mark(update.view);
@@ -345,13 +457,31 @@ class WriterV4Extras{
      this.view.dom.removeEventListener('wheel',this.onWheel,true);
      this.view.dom.classList.remove('writer-v4-typewriter-engaged');
      owner.typewriterActiveViews.delete(this.view);
+     owner.typewriterFollowViews.delete(this.view);
      owner.typewriterViews.delete(this);
+     owner.updateTypewriterClass();
     }
    },{decorations:value=>value.decorations}));
   }
   }
  updateTypewriterClass(){
-  if(typeof document!=='undefined'&&document.body?.classList){document.body.classList.toggle('writer-v4-typewriter',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true);document.body.classList.toggle('writer-v4-typewriter-focus',writerModuleOn(this.plugin,'typewriter')&&this.config.typewriter.enabled===true&&this.config.typewriter.focusMode===true);}
+  const cfg=writerV137TypewriterConfig(this.plugin),enabled=this.typewriterEnabled();
+  if(!enabled)this.resetTypewriterHighlights();
+  if(!cfg.followCursor)for(const instance of this.typewriterViews)this.typewriterFollowViews.delete(instance.view);
+  const current=new Set();
+  if(typeof document!=='undefined'&&document.body?.classList)current.add(document.body);
+  for(const instance of this.typewriterViews){const body=instance.view.dom.ownerDocument?.body;if(body)current.add(body);}
+  this.typewriterBodies=this.typewriterBodies||new Set();
+  for(const body of current)this.typewriterBodies.add(body);
+  for(const body of this.typewriterBodies){
+   const active=enabled&&current.has(body);
+   body.classList.toggle('writer-v4-typewriter',active);
+   body.classList.toggle('writer-v4-typewriter-focus',active&&cfg.focusMode);
+   body.classList.toggle('writer-v137-typewriter-highlight',active&&cfg.highlightLine);
+   if(active)body.style?.setProperty('--writer-typewriter-focus-opacity',String(cfg.focusOpacity));
+   else body.style?.removeProperty('--writer-typewriter-focus-opacity');
+   if(!current.has(body))this.typewriterBodies.delete(body);
+  }
  }
  currentEditor(){
   const app=this.plugin.app;
@@ -470,7 +600,7 @@ class WriterV4Extras{
   modal.open();
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Ferramentas integradas · v4','Integrated writing tools · v4')});
+  panel.createEl('h3',{text:writerUi('Menções e ações de IA','Mentions and AI actions')});
   const cfg=this.config;
   const toggle=(section,key,label)=>new Setting(panel).setName(label).addToggle(t=>t.setValue(cfg[section][key]!==false).onChange(async v=>{
    cfg[section][key]=v;if(section==='typewriter'){this.resetTypewriterHighlights();this.updateTypewriterClass();}await this.plugin.saveSettings();
@@ -497,12 +627,10 @@ class WriterV4Extras{
    d.addOption('link',writerUi('Wikilink','Wikilink')).addOption('text',writerUi('Apenas texto','Plain text'));
    d.setValue(cfg.mention.mode).onChange(async v=>{cfg.mention.mode=v;await this.plugin.saveSettings();});
   });
-  toggle('typewriter','enabled',writerUi('Modo máquina de escrever','Typewriter mode'));
-  toggle('typewriter','focusMode',writerUi('Atenuar linhas fora de foco','Dim unfocused lines'));
   toggle('wordwise','enabled',writerUi('Ações de IA para escrita','AI writing actions'));
   panel.createEl('h4',{text:writerUi('Prompts das ações de IA','AI action prompts')});
-  for(const [key,label] of [['improve','Melhorar estilo'],['shorten','Encurtar'],['expand','Expandir'],['simplify','Simplificar'],['tone','Mudar tom'],['dialogue','Melhorar diálogo'],['critique','Revisar pontos fracos'],['brainstorm','Explorar alternativa'],['grammar','Corrigir gramática']]){
-   new Setting(panel).setName(label).addTextArea(t=>{t.inputEl.rows=3;t.setValue(cfg.wordwise.prompts[key]||'').onChange(async v=>{cfg.wordwise.prompts[key]=v;await this.plugin.saveSettings();});});
+  for(const [key,pt,en] of [['improve','Melhorar estilo','Improve style'],['shorten','Encurtar','Shorten'],['expand','Expandir','Expand'],['simplify','Simplificar','Simplify'],['tone','Mudar tom','Change tone'],['dialogue','Melhorar diálogo','Improve dialogue'],['critique','Revisar pontos fracos','Review weak points'],['brainstorm','Explorar alternativa','Explore an alternative'],['grammar','Corrigir gramática','Correct grammar']]){
+   new Setting(panel).setName(writerUi(pt,en)).addTextArea(t=>{t.inputEl.rows=3;t.setValue(cfg.wordwise.prompts[key]||'').onChange(async v=>{cfg.wordwise.prompts[key]=v;await this.plugin.saveSettings();});});
   }
  }
 }

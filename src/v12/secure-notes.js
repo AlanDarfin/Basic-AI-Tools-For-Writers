@@ -131,7 +131,7 @@ function writerV12SecureSettings(plugin,panel){
  const cfg=writerV12Config(plugin);
  panel.createEl('h3',{text:writerUi('Notas criptografadas · AES-256-GCM','Encrypted notes · AES-256-GCM')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Protege apenas o conteúdo de NOVAS notas. Nomes de arquivos e existência dos documentos continuam visíveis. Não é a criptografia de pastas do Ultimate Toolkit; sem recuperação de senha.',
-  'Encrypts only NEW note contents. File names and their existence remain visible. This is not Ultimate Toolkit folder encryption; no password recovery.')});
+  'Protege apenas o conteúdo de NOVAS notas. Nomes de arquivos e existência dos documentos continuam visíveis. Não há recuperação de senha.',
+  'Encrypts only NEW note contents. File names and their existence remain visible. There is no password recovery.')});
  new Setting(panel).setName(writerUi('Ativar notas criptografadas locais','Enable local encrypted notes')).addToggle(t=>t.setValue(cfg.secureNotes===true).onChange(async v=>{cfg.secureNotes=v;await plugin.saveSettings();}));
 }

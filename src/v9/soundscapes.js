@@ -95,7 +95,7 @@ class WriterV91SoundPlayer{
   return [{name:preset[1],id:preset[2]}];
  }
  get track(){const tracks=this.tracks;return tracks[Math.min(Math.max(0,this.trackIndex),tracks.length-1)]||null;}
- get label(){return this.track?.basename||this.track?.name||this.station?.[1]||'Soundscapes';}
+ get label(){return this.track?.basename||this.track?.name||this.station?.[1]||writerUi('Música e ambiente','Music and ambience');}
  get videoId(){return this.cfg.station==='my-music'?'':this.track?.id||'';}
  get webOpen(){return Boolean(this.guest?.isConnected&&this.webUrl);}
  get miniVisible(){return Boolean(this.dock?.isConnected&&this.dockOpen);}
@@ -112,10 +112,10 @@ class WriterV91SoundPlayer{
   if(this.status){this.status.addClass('writer-v91-sound-status');
    if(typeof writerV132ProtectStatusBar==='function')writerV132ProtectStatusBar(this.plugin,this.status);
    this.renderStatus();}
-  this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Soundscapes: reproduzir ou pausar','Soundscapes: play or pause'),callback:()=>this.toggle()});
-  this.plugin.addCommand({id:'v91-sound-mini-player',name:writerUi('Soundscapes: mostrar mini player','Soundscapes: show mini player'),callback:()=>this.showMiniPlayer()});
-  this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Soundscapes: próxima faixa','Soundscapes: next track'),callback:()=>this.next()});
-  this.plugin.addCommand({id:'v91-sound-library',name:writerUi('Soundscapes: abrir Minha Música','Soundscapes: open My Music'),callback:()=>this.libraryModal()});
+  this.plugin.addCommand({id:'v91-sound-play-pause',name:writerUi('Música: reproduzir ou pausar','Music: play or pause'),callback:()=>this.toggle()});
+  this.plugin.addCommand({id:'v91-sound-mini-player',name:writerUi('Música: mostrar player compacto','Music: show mini player'),callback:()=>this.showMiniPlayer()});
+  this.plugin.addCommand({id:'v91-sound-next',name:writerUi('Música: próxima faixa','Music: next track'),callback:()=>this.next()});
+  this.plugin.addCommand({id:'v91-sound-library',name:writerUi('Música: abrir biblioteca','Music: open library'),callback:()=>this.libraryModal()});
   this.plugin.register?.(()=>this.destroy());
   if(this.cfg.autoplay&&this.cfg.enabled)this.plugin.app.workspace.onLayoutReady?.(()=>this.play());
  }
@@ -134,7 +134,7 @@ class WriterV91SoundPlayer{
   if(!doc?.body)throw new Error('Document body unavailable');
   const panel=doc.body.createDiv({cls:'writer-v91-mini-player is-collapsed'});
   panel.setAttribute('role','region');
-  panel.setAttribute('aria-label',writerUi('Mini player Soundscapes','Soundscapes mini player'));
+  panel.setAttribute('aria-label',writerUi('Player compacto de música','Music mini player'));
   const head=panel.createDiv({cls:'writer-v91-mini-head'});
   const title=head.createSpan({cls:'writer-v91-mini-title',text:this.label});
   const hide=head.createEl('button',{attr:{type:'button','aria-label':writerUi('Recolher sem parar','Hide without stopping')}});
@@ -411,7 +411,7 @@ class WriterV91SoundPlayer{
     active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar rádio','Start radio');
    play.setAttribute('aria-label',playLabel);
    volume.disabled=!this.cfg.enabled;
-   volume.title=writerUi('Volume do Soundscapes','Soundscapes volume');
+   volume.title=writerUi('Volume da música','Music volume');
    play.title=playLabel;
    next.title=writerUi('Próxima faixa','Next track');
    next.disabled=!this.cfg.enabled||this.tracks.length<2;root.classList.toggle('is-playing',active);
@@ -459,18 +459,18 @@ class WriterV91SoundPlayer{
 function writerV91HomeSoundscape(view,parent){
  // All home widgets exist independent of playback and platform. In particular,
  // mobile retains the same configurable/reorderable card instead of omitting it.
- const card=view.card(parent,'soundscape','Soundscapes · rádio','Soundscapes · radio');
+ const card=view.card(parent,'soundscape','Música e ambiente','Music and ambience');
  card.addClass('writer-v91-sound-widget');
  if(view.plugin.app.isMobile){
   card.createEl('p',{cls:'writer-v8-home-muted writer-v91-sound-unavailable',
-   text:writerUi('A reprodução do Soundscapes não está disponível no celular devido às limitações de áudio e Webview do Obsidian mobile.',
-    'Soundscapes playback is unavailable on mobile due to Obsidian mobile audio and Webview limitations.')});
+   text:writerUi('A reprodução de música não está disponível no celular devido às limitações de áudio e Webview do Obsidian mobile.',
+    'Music playback is unavailable on mobile due to Obsidian mobile audio and Webview limitations.')});
   return card;
  }
  const player=view.plugin.writerV91Sound;
  if(!player){
   card.createEl('p',{cls:'writer-v8-home-muted writer-v91-sound-unavailable',
-   text:writerUi('O player Soundscapes não está disponível nesta sessão.','Soundscapes player is unavailable in this session.')});
+   text:writerUi('O player de música não está disponível nesta sessão.','Music player is unavailable in this session.')});
   return card;
  }
  const preview=card.createDiv({cls:'writer-v91-sound-preview'});
@@ -502,7 +502,7 @@ function writerV91HomeSoundscape(view,parent){
    active?writerUi('Parar rádio','Stop radio'):writerUi('Iniciar no mini player','Start in mini player'));
   const multi=player.tracks.length>1;back.disabled=!multi;forward.disabled=!multi;
   slider.value=String(player.cfg.volume);slider.disabled=!player.cfg.enabled;
-  slider.title=writerUi('Volume do Soundscapes','Soundscapes volume');
+  slider.title=writerUi('Volume da música','Music volume');
   heading.textContent=player.label;
   detail.textContent=local?writerUi('Arquivos de áudio do cofre','Vault audio files'):writerUi('YouTube no mini player integrado','YouTube in integrated mini player');
   const id=player.videoId;
@@ -552,15 +552,15 @@ function writerV91SoundPlaylistEditor(plugin,initial,done){
 }
 function writerV91SoundSettings(plugin,panel){
  const cfg=plugin.settings.v91Sound;
- panel.createEl('h3',{text:'Soundscapes'});
+ panel.createEl('h3',{text:writerUi('Música e ambiente','Music and ambience')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'As rádios abrem um mini player dentro do Obsidian, sem criar abas. O volume é controlado pelo mesmo slider na Homepage, na barra de status e no mini player. Recolher preserva a reprodução; Parar encerra a rádio. Alguns vídeos podem bloquear incorporação (erro 153). Minha Música continua local.',
-  'Radio stations open an in-app mini player without tabs. The same volume setting is shared by the Homepage, status bar and mini player sliders. Hiding keeps playback running; Stop ends the radio. Some videos block embedding (error 153). My Music stays local.'
+  'A rádio toca em segundo plano, sem criar abas. Use o player compacto para ver o vídeo. O volume é compartilhado entre a página inicial, a barra de status e o player. Recolher preserva a reprodução; Parar encerra a rádio. Alguns vídeos podem bloquear incorporação (erro 153). Minha Música usa arquivos locais.',
+  'Radio plays in the background without opening tabs. Open the mini player to see its video. Volume is shared by the homepage, status bar and player. Hiding keeps playback running; Stop ends the radio. Some videos block embedding (error 153). My Music uses local files.'
  )});
  if(plugin.app.isMobile){
   panel.createEl('p',{cls:'dictionary-muted',text:writerUi('Rádios e reprodução estão disponíveis apenas no computador.','Radio playback is desktop-only.')});return;
  }
- new Setting(panel).setName(writerUi('Ativar Soundscapes','Enable Soundscapes')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{
+ new Setting(panel).setName(writerUi('Ativar música e ambiente','Enable music and ambience')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{
   cfg.enabled=v;if(!v)plugin.writerV91Sound.pause();await plugin.saveSettings();plugin.writerV91Sound.emit();
  }));
  new Setting(panel).setName(writerUi('Rádio selecionada','Selected radio')).addDropdown(d=>{

@@ -69,8 +69,8 @@ test('stable version, translations and built bundle stay synchronized',()=>{
  const en=fs.readFileSync('README.md','utf8'),pt=fs.readFileSync('docs/README.pt-BR.md','utf8');
  assert.ok(en.includes(manifest.version));
  assert.ok(pt.includes(manifest.version));
- assert.match(en,/chapters.*subchapters/);
- assert.match(pt,/capítulos.*subcapítulos/);
+ assert.match(en,/chapters.*subchapters/i);
+ assert.match(pt,/capítulos.*subcapítulos/i);
  for(const path of ['docs/V6_RELEASE.en.md','docs/V6_RELEASE.pt-BR.md'])
   assert.ok(fs.readFileSync(path,'utf8').includes('6.0.0'));
 });

@@ -69,13 +69,17 @@ test('renderer only creates avatar element when an image exists',()=>{
  local.writerV8ChatRender({app:{}},'[Maria=blue]\n< foto.png | Maria | Texto | 12:00',two,{sourcePath:'Story.md'});
  assert.match(JSON.stringify(two),/"tag":"img"/);assert.match(JSON.stringify(two),/is-color-blue/);
 });
-test('bundle, CSS and localized README document both formats',()=>{
+test('bundle, CSS and linked localized guides document both chat formats',()=>{
  const main=read('main.js'),css=read('styles.css');
  assert.match(main,/writerV8ChatShortMessage/);assert.match(main,/writerV8ChatDirectives/);
  assert.match(css,/writer-v8-chat-row\.is-color-red/);
- for(const path of ['README.md','docs/README.pt-BR.md']){
+ for(const [readme,path] of [
+  ['README.md','docs/SUITES_AND_INTEGRATIONS.en.md'],
+  ['docs/README.pt-BR.md','docs/SUITES_AND_INTEGRATIONS.pt-BR.md']
+ ]){
+  assert.ok(read(readme).includes(path.split('/').pop()),readme+' links the feature guide');
   const doc=read(path);
-  for(const bit of ['Soundscapes','[Left=Maria, right=João]','[Maria=blue','=== Maria'])
+  for(const bit of ['[Left=Maria, right=João]','[Maria=blue','=== Maria'])
    assert.ok(doc.includes(bit),path+' missing '+bit);
  }
 });

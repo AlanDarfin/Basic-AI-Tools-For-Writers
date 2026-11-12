@@ -5,10 +5,11 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-test('10.8 runtime includes eight direct network calls and opt-in Zotero/ICS',()=>{
+test('runtime retains eight HTTP request paths and opt-in Zotero/ICS',()=>{
  const bundle=read('main.js');
  const hits=bundle.match(/\brequestUrl\s*\(/g)||[];
- assert.equal(hits.length,8,'Update SECURITY.md and this inventory if requestUrl call sites change');
+ const grammarAlias=(bundle.match(/await send\(\{url:endpoint,method:'POST'/g)||[]).length;
+ assert.equal(hits.length+grammarAlias,8,'Update SECURITY.md and this inventory if HTTP request paths change');
  for(const fragment of ['UnicodeData.txt','api.languagetool.org/v2/check','/v1/models','/v1/chat/completions','Acylation/obsidian-click-clack']){
    assert(bundle.includes(fragment),'Missing expected network functionality: '+fragment);
  }

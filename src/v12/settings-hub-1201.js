@@ -13,12 +13,12 @@ function writerV1201SettingToggle(plugin,panel,key,pt,en,description){
 }
 function writerV1201SettingsOverview(plugin,panel){
  const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Toolkit e suítes','Toolkit and suites')});
+ panel.createEl('h3',{text:writerUi('Ações rápidas','Quick actions')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'As funções recentes foram reunidas nas categorias existentes: Escrita, Organização, Arquivos, Revisão e Longform. Nenhuma aba adicional é criada.',
-  'Recent features are grouped into the existing Writing, Organization, Files, Review and Longform categories. No additional tabs are created.')});
- new Setting(panel).setName(writerUi('Ativar Toolkit v12','Enable v12 toolkit'))
-  .setDesc(writerUi('Controle geral para os recursos da v12.','Global switch for v12 features.'))
+  'Ferramentas locais de formatação, captura, tarefas, imagens e foco. As opções de cada recurso ficam na categoria correspondente.',
+  'Local tools for formatting, capture, tasks, images and focus. Each feature has its options in the corresponding category.')});
+ new Setting(panel).setName(writerUi('Ativar ações rápidas','Enable quick actions'))
+  .setDesc(writerUi('Ativa a paleta de formatação, captura, tarefas, imagens e foco.','Enables the formatting palette, capture, tasks, images and focus tools.'))
   .addToggle(t=>t.setValue(cfg.enabled!==false).onChange(async v=>{
    cfg.enabled=v;await plugin.saveSettings();writerV12FocusRefresh(plugin);
   }));
@@ -33,8 +33,8 @@ function writerV1201SettingsWriting(plugin,panel){
  writerV1201SettingToggle(plugin,panel,'folderFocus','Foco na pasta do explorador','Explorer folder focus',
   ['Apenas visual; não bloqueia o acesso aos arquivos.','Visual only; does not restrict file access.']);
  new Setting(panel).setName(writerUi('Atalhos do ribbon do Basic','Basic ribbon shortcuts'))
-  .setDesc(writerUi('Menu próprio: leitura, formatação, foco e integrações, sem depender do Ultimate Toolkit.',
-   'Basic-owned menu for reading, formatting, focus and integrations.'))
+  .setDesc(writerUi('Abra as ações de leitura, formatação, foco e integrações do Basic.',
+   'Open Basic actions for reading, formatting, focus and integrations.'))
   .addButton(b=>b.setButtonText(writerUi('Abrir menu','Open menu'))
    .onClick(()=>writerV1201QuickMenu(plugin)));
 }
@@ -50,13 +50,13 @@ function writerV1201SettingsImages(plugin,panel){
 }
 function writerV1201SettingsTasks(plugin,panel){
  const cfg=writerV12Config(plugin);
- panel.createEl('h3',{text:writerUi('Tarefas, Inbox e brainstorm','Tasks, Inbox and brainstorm')});
+ panel.createEl('h3',{text:writerUi('Tarefas e captura de ideias','Tasks and idea capture')});
  writerV1201SettingToggle(plugin,panel,'taskNavigator','Navegador de tarefas','Task navigator',
   ['Leitura e edição com verificação de alterações concorrentes.','Read and edit with concurrent-change checks.']);
  new Setting(panel).setName(writerUi('Máximo de notas pesquisadas','Maximum notes to scan'))
   .addSlider(s=>s.setLimits(25,1000,25).setDynamicTooltip().setValue(cfg.maxTaskFiles)
    .onChange(async v=>{cfg.maxTaskFiles=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Workbench de tarefas','Task workbench'))
+ new Setting(panel).setName(writerUi('Painel de tarefas','Task dashboard'))
   .setDesc(writerUi('Agrupa por etiqueta, filtra e permite marcar tarefas.','Group by tag, filter and toggle tasks.'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
    .onClick(()=>writerV12TaskWorkbench(plugin)));
@@ -120,13 +120,13 @@ function writerV1201SettingsConnections(plugin,panel){
 }
 function writerV1201SettingsSuite(plugin,panel,id){
  const functions={
-  suiteEducation:['Unique Suite · estudos e horários','Unique Suite · study tools',
+  suiteEducation:['Rotina de estudos','Study routine',
    ['writerV1011StudySettings']],
-  suiteDatabase:['Notion Suite · bancos e visualizações','Notion Suite · databases and views',
+  suiteDatabase:['Bancos e visualizações','Databases and views',
    ['writerV1011NotionSettings','writerV111DbBuilderSettings']],
-  suiteNumbering:['Number Suite · numeração','Number Suite · numbering',
+  suiteNumbering:['Numeração e legendas','Numbering and captions',
    ['writerV1011NumberSettings','writerV111NumberSettings']],
-  suiteLongform:['Longform Studio · escrita e projetos','Longform Studio · writing and projects',
+  suiteLongform:['Escrita contínua','Continuous writing',
    ['writerV11StudioSettings']]
  };
  const row=functions[id];

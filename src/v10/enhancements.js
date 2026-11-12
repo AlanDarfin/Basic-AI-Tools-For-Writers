@@ -235,7 +235,7 @@ function writerV101RegisterEnhancements(plugin){
   writerV101BulkPropertiesModal(plugin);
  }});
 }
-function writerV101EnhancementsSettings(plugin,panel){
+function writerV101EnhancementsSettings(plugin,panel,{includeAdvanced=true}={}){
  const cfg=plugin.settings.v101Suite;
  panel.createEl('h3',{text:writerUi('Ferramentas editoriais avançadas','Advanced editorial tools')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('Comandos locais para seleção, sem sobrescrever a nota; alterações em lote exigem confirmação e snapshots.','Local selection commands; batch writes require confirmation and snapshots.')});
@@ -262,6 +262,6 @@ function writerV101EnhancementsSettings(plugin,panel){
    .onChange(async v=>{cfg.batchMax=v;await plugin.saveSettings();}));
  if(typeof writerV10DiscoverySettings==='function')writerV10DiscoverySettings(plugin,panel);
  if(typeof writerV106DragSettings==='function')writerV106DragSettings(plugin,panel);
-  if(typeof writerV107Settings==='function')writerV107Settings(plugin,panel);
+  if(includeAdvanced&&typeof writerV107Settings==='function')writerV107Settings(plugin,panel);
  if(typeof writerV1010Settings==='function')writerV1010Settings(plugin,panel);
 }

@@ -7,6 +7,15 @@ const src=fs.readFileSync('src/v4/auto-grammar.js','utf8');
 const main=fs.readFileSync('main.js','utf8');
 const tools=fs.readFileSync('src/v3/workspace.js','utf8');
 const read=()=>new Map();
+function externalMethods(){
+ const from=main.indexOf('  externalLanguageTool(){'),end=main.indexOf('  async checkGrammar(text){',from);
+ assert.ok(from>0&&end>from);
+ return vm.runInNewContext(fs.readFileSync('src/v13/grammar-companion.js','utf8')+
+  '\nnew (class {'+main.slice(from,end)+'})()',{
+   writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
+   writerUi:pt=>pt,Notice:class{},msg:pt=>pt
+  });
+}
 
 test('only changed paragraph is rechecked after an automatic editor change',async()=>{
  const file={extension:'md',path:'Draft.md'};
@@ -67,41 +76,61 @@ test('writing tools tab click updates content only without rebuilding the nav',(
  assert.ok(tools.includes('tabs.scrollLeft=Math.max(0,this.tabScrollLeft||0)'));
 });
 test('external reviewer uses plugin APIs and never triggers native LanguageTool',async()=>{
- const from=main.indexOf('  externalLanguageTool(){'),end=main.indexOf('  async checkGrammar(text){',from);
- assert.ok(from>0&&end>from);
- const code=main.slice(from,end);
- const {externalLanguageTool,runExternalLanguageToolCommand,reviewWithExternalLanguageTool}=vm.runInNewContext('new (class {'+code+'})()',{
-   writerActiveEditor:()=>({cm:{state:{}}}),Notice:class{},msg:pt=>pt
- });
+ const {externalLanguageTool,runExternalLanguageToolCommand,reviewWithExternalLanguageTool}=externalMethods();
  const file={path:'Draft.md'};
  let externalCalls=0,commands=[],status='',nativeCalls=0;
+ const cm={state:{doc:{}}},leaf={view:{file,editor:{cm}}};
+ const workspace={activeLeaf:{view:{}},getLeavesOfType:()=>[leaf],getMostRecentLeaf:()=>leaf,
+  getActiveFile:()=>workspace.activeLeaf.view.file||file,setActiveLeaf:value=>{workspace.activeLeaf=value;}};
  const plugin={
-  settings:{reviewEngine:'external'},
-  app:{plugins:{plugins:{languagetool:{runDetection:async()=>{externalCalls++;return true;}}}},
-   commands:{executeCommandById:id=>{commands.push(id);return true;}}},
+  settings:{reviewEngine:'external',visibleModules:{review:true}},
+  app:{workspace,plugins:{plugins:{languagetool:{runDetection:async editor=>{
+   assert.equal(editor,cm);assert.equal(workspace.activeLeaf,leaf);externalCalls++;return true;
+  }}}},
+   commands:{commands:Object.fromEntries(['clear','next','toggle-auto-check'].map(id=>['languagetool:'+id,{}])),
+    executeCommandById:id=>{commands.push(id);return true;}}},
   checkGrammar:async()=>{nativeCalls++;},
   externalLanguageTool,runExternalLanguageToolCommand,reviewWithExternalLanguageTool
  };
- const view={reviewFilePath:file.path,reviewBusy:false,
+ const view={activeTab:'review',reviewMode:{value:'grammar'},reviewFilePath:file.path,reviewBusy:false,
   reviewStatus:{setText:x=>{status=x;}},
   updateReviewEngineUI:()=>{}};
  await plugin.reviewWithExternalLanguageTool(file,view);
  assert.equal(externalCalls,1);
  assert.equal(nativeCalls,0);
- assert.match(status,/Sugestões disponíveis/);
+ assert.match(status,/Confira os sublinhados e os avisos do LanguageTool/);
  plugin.runExternalLanguageToolCommand('clear');
  plugin.runExternalLanguageToolCommand('next');
  plugin.runExternalLanguageToolCommand('toggle-auto-check');
  assert.deepEqual(commands,['languagetool:clear','languagetool:next','languagetool:toggle-auto-check']);
 });
 test('external checker missing is handled without posting any native request',async()=>{
- const idx=main.indexOf('  externalLanguageTool(){'),end=main.indexOf('  async checkGrammar(text){',idx);
- const {externalLanguageTool,reviewWithExternalLanguageTool}=vm.runInNewContext('new (class {'+main.slice(idx,end)+'})()',{
-  writerActiveEditor:()=>({cm:{}}),Notice:class{},msg:pt=>pt
- });
- let updated=0;
- const plugin={app:{plugins:{plugins:{}}},externalLanguageTool,reviewWithExternalLanguageTool};
- await plugin.reviewWithExternalLanguageTool({path:'x.md'}, {updateReviewEngineUI:()=>{updated++;}});
+ const {externalLanguageTool,reviewWithExternalLanguageTool}=externalMethods();
+ let updated=0,nativeCalls=0;
+ const plugin={settings:{reviewEngine:'external',visibleModules:{review:true}},app:{plugins:{plugins:{}}},
+  externalLanguageTool,reviewWithExternalLanguageTool,checkGrammar:()=>{nativeCalls++;}};
+ const file={path:'x.md'},view={activeTab:'review',reviewMode:{value:'grammar'},reviewFilePath:file.path,
+  updateReviewEngineUI:()=>{updated++;}};
+ assert.equal(await plugin.reviewWithExternalLanguageTool(file,view),false);
+ assert.equal(updated,0);assert.equal(nativeCalls,0);assert.equal(plugin.externalLanguageTool(),null);
+ plugin.app.plugins.plugins.languagetool={};
+ assert.equal(await plugin.reviewWithExternalLanguageTool(file,view),false);
  assert.equal(updated,1);
+ assert.equal(nativeCalls,0);
  assert.match(main,/this\.plugin\.settings\.reviewEngine==='external'/);
+});
+
+test('external wrapper honors current module, provider, integration and reviewer mode before checking',async()=>{
+ for(const change of [plugin=>{plugin.settings.visibleModules.review=false;},
+  plugin=>{plugin.settings.reviewEngine='basic';},plugin=>{plugin.settings.v12Toolkit={integrations:false};},
+  plugin=>{plugin.settings.companionCompatibility={enabledById:{languagetool:false}};},
+  (_plugin,view)=>{view.reviewMode.value='style';},(_plugin,view)=>{view.activeTab='dictionary';}]){
+  const methods=externalMethods();let requests=0,nativeCalls=0;
+  const plugin={reviewWithExternalLanguageTool:methods.reviewWithExternalLanguageTool,
+   settings:{reviewEngine:'external',visibleModules:{review:true}},
+   app:{plugins:{plugins:{languagetool:{runDetection:async()=>{requests++;}}}}},checkGrammar:()=>{nativeCalls++;}};
+  const file={path:'Draft.md'},view={activeTab:'review',reviewMode:{value:'grammar'},reviewFilePath:file.path};
+  change(plugin,view);assert.equal(await plugin.reviewWithExternalLanguageTool(file,view),false);
+  assert.equal(requests,0);assert.equal(nativeCalls,0);
+ }
 });

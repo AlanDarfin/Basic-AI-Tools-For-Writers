@@ -206,6 +206,10 @@ Aliases existentes como `writer-tabs`, `writer-avatar`, `writer-wiki`, `writer-p
 
 O chat fictício aceita `[Left=Maria, right=João]`, formas curtas como `[Maria=blue]` e títulos de abas como `=== Maria`. Áudio simulado e transcrições escritas pelo autor são elementos narrativos, não gravações reais ou serviços de transcrição. Consulte o guia antes de adicionar sintaxes avançadas.
 
+## Plugins da comunidade conectados
+
+Use **Geral → Integrações e sincronização** para a central de painéis nativos, interruptores por plugin, algumas preferências originais, provedor de voz, botões móveis e prioridade dos ícones no explorador. O [guia de plugins conectados](guides/companion-compatibility.pt-BR.md) detalha os nove plugins auditados e seus requisitos. Cada plugin mantém credenciais, transporte e rotinas automáticas próprios.
+
 ## Conexões e uso de dados
 
 | Conexão | Como funciona |

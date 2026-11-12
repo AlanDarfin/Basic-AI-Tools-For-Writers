@@ -2,6 +2,18 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.8.0 — Connected plugins and mobile compatibility
+
+- Replace generic companion discovery with audited commands, native panel reuse, selected native preferences and per-plugin disable controls across nine integrations.
+- Add explicit Ultimate Toolkit speech routing with owned-session controls and a separate online permission; keep Basic as the default and disclose the audited Google Translate transport.
+- Connect Snailkit's public Tasks API and native Workbench tab; preserve concurrent task edits, native transfer rules and each plugin's settings lifecycle.
+- Improve external LanguageTool editor targeting, independent settings and native suggestion actions; retain Basic's own checker and discard obsolete results.
+- Arrange supported Toolkit/Snailkit mobile controls around detected obstacles, restore styles on disable and provide explorer icon priority without deleting preferences.
+- Respect Visual Kit's desktop-only scope and Obsidian Git's initialized mobile backend; require explicit manual sync/network actions and retain external schedules.
+- Review and incorporate PRs #136/#137: visual-only Longform arc dividers, stable en/em dashes, immediate/Space-triggered replacements and Backspace restoration, with additional draft/concurrency/IME protections.
+- Incorporate PR #138: center homepage title/icon groups, stack them in narrow/mobile panes and retain custom-image and long-title support.
+- Add bilingual usage documentation, pinned upstream source/license audit and behavioral regression coverage.
+
 ## 13.7.0 — Settings, first-run setup and mobile menus
 
 - Organize 67 settings pages into nine task-based categories, with clear English/Portuguese names, searchable options before visiting a page, favorites and accessible keyboard navigation.

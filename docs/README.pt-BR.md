@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.7.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.8.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e integrações](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
@@ -26,7 +26,7 @@ Para atualizar manualmente, substitua os três arquivos da release juntos e reca
 | --- | --- |
 | **Escrever um livro** | Capítulos e subcapítulos, quadros de cenas, escrita contínua, tarefas do projeto, recuperação local de rascunhos e compilação completa do manuscrito em Markdown. |
 | **Planejar uma história** | Personagens, lugares, compêndio, relações, cronologias, séries, metas e notas editoriais. |
-| **Escrever e editar notas** | Sugestões de palavras, atalhos do editor, aspas pareadas, travessões de diálogo, substituições literais/regex, trechos reutilizáveis, memória do cursor e formatação Markdown. |
+| **Escrever e editar notas** | Sugestões de palavras, atalhos do editor, aspas pareadas, meia-risca/travessão (`--` → `–`, `---` → `—`), substituições literais/regex imediatas ou após Espaço, restauração por Backspace, trechos reutilizáveis, memória do cursor e formatação Markdown. |
 | **Organizar o cofre** | Espaços de trabalho, coleções virtuais, página inicial, prévias de arquivos, calendários, tarefas, bancos locais e anotações em imagens. |
 | **Estudar e ler** | Cartões, revisão espaçada, rotina de estudos, estimativa de leitura, citações importadas e controles de voz. |
 | **Revisar textos** | Análise local de repetições, dicionário ortográfico pessoal, LanguageTool opcional, comparação de versões e snapshots. |
@@ -56,13 +56,19 @@ Em **Geral → Recursos**, ligue ou desligue os recursos para escolher quais ent
 
 ## Escreva, recupere e exporte
 
-Abra **Projetos** ou a **Biblioteca** para criar um livro ou adicionar uma nota existente. Os capítulos continuam em arquivos Markdown separados. A escrita contínua usa um editor por capítulo expandido; a gravação é explícita e verifica alterações concorrentes.
+Abra **Projetos** ou a **Biblioteca** para criar um livro ou adicionar uma nota existente. Os capítulos continuam em arquivos Markdown separados. **+ Separador** no Longform adiciona uma linha visual de arco, com legenda opcional e movimento por arraste/toque. Os separadores ficam nas configurações do Basic por rascunho e não entram nas notas nem na compilação. A escrita contínua usa um editor por capítulo expandido; a gravação é explícita e verifica alterações concorrentes.
 
 Rascunhos dos capítulos têm cópias locais de recuperação. Use **Livros: recuperar rascunhos** para conferir, salvar uma cópia Markdown separada ou descartar uma entrada. Se o original mudou, o rascunho fica separado para revisão. Recuperação e snapshots de versões têm propósitos diferentes; mantenha também um backup independente. Rascunhos temporários de sessão ficam em memória até serem salvos.
 
 Para montar o manuscrito, use **Livros: compilar manuscrito Markdown**, escolha arquivos salvos ou escrita atual, confira a prévia e crie um novo arquivo em `Basic Exports/`. A compilação inclui todos os capítulos do rascunho selecionado, além do limite de editores exibidos. Capítulos ausentes ou versões conflitantes impedem a exportação. Atualize a prévia para incluir alterações posteriores.
 
 A exportação opcional para DOCX, EPUB, HTML ou PDF no computador usa o **Pandoc** instalado separadamente; PDF também pode exigir um mecanismo compatível de renderização. Veja o [guia de primeiro uso](GETTING_STARTED.pt-BR.md#escreva-seu-primeiro-livro).
+
+## Conecte os plugins instalados
+
+**Geral → Integrações e sincronização** conecta painéis nativos, algumas configurações e comandos disponíveis do Ultimate Toolkit, Visual Kit, Snailkit, dropit, Syncthing, Git, FIT e LanguageTool. Cada conexão pode ser desligada. Escolha a leitura do Toolkit explicitamente; o Basic permanece como padrão, com permissão separada para voz online do Toolkit. Os controles móveis evitam sobreposições detectadas, e a prioridade de ícones controla decorações duplicadas no explorador. Visual Kit funciona só no computador; Git no celular depende do backend dele.
+
+Consulte o [guia de plugins conectados](guides/companion-compatibility.pt-BR.md) para configuração, voz, gramática, uso de dados e limites de plataforma.
 
 ## IA e serviços online opcionais
 

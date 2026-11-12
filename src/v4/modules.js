@@ -69,12 +69,20 @@ function writerDiagnostics(plugin){
  checks.push([writerUi('Notas Markdown','Markdown notes'),String(count)]);
  checks.push([writerUi('Módulos visíveis','Visible modules'),Object.keys(WRITER_MODULE_DEFAULTS).filter(id=>writerModuleOn(plugin,id)).length+'/'+Object.keys(WRITER_MODULE_DEFAULTS).length]);
  checks.push(['LanguageTool',writerModuleOn(plugin,'review')
-  ?(settings.autoGrammar?.enabled===false?writerUi('Manual','Manual'):writerUi('Automático quando Revisão está aberta','Automatic while Review is open'))
+  ?(settings.reviewEngine==='external'?
+    (typeof writerLanguageToolState==='function'&&writerLanguageToolState(plugin).canCheck?
+     writerUi('Plugin externo ativo; preferências próprias','External plugin active; independent preferences'):
+     writerUi('Plugin externo indisponível ou integração desativada','External plugin unavailable or bridge disabled')):
+    settings.autoGrammar?.enabled===false?writerUi('Manual','Manual'):writerUi('Automático quando Revisão está aberta','Automatic while Review is open'))
   :writerUi('Oculto','Hidden')]);
- const endpoint=String(settings.reviewEndpoint||'');
+ const endpoint=String(settings.reviewEngine==='external'?
+  (typeof writerLanguageToolInstalled==='function'?writerLanguageToolInstalled(plugin)?.settings?.options?.serverUrl||'':''):
+  settings.reviewEndpoint||'');
  let safeEndpoint=writerUi('Não configurado','Not configured');
- try{const url=new URL(endpoint);safeEndpoint=url.protocol==='https:'?url.origin:writerUi('URL não HTTPS','Non-HTTPS URL');}catch(_){}
- checks.push([writerUi('Servidor LanguageTool','LanguageTool server'),safeEndpoint]);
+ try{const url=new URL(endpoint);safeEndpoint=url.protocol==='https:'||settings.reviewEngine==='external'&&url.protocol==='http:'?
+  url.origin:writerUi('URL não HTTPS','Non-HTTPS URL');}catch(_){}
+ checks.push([settings.reviewEngine==='external'?writerUi('Servidor do plugin LanguageTool','LanguageTool plugin server'):
+  writerUi('Servidor LanguageTool','LanguageTool server'),safeEndpoint]);
  checks.push([writerUi('Provedores de IA','AI providers'),Object.entries(settings.aiKeys||{}).filter(([_,v])=>Boolean(v)).length+writerUi(' com chave configurada',' configured keys')]);
  const nativeSpeech=typeof speechSynthesis!=='undefined'&&typeof SpeechSynthesisUtterance!=='undefined';
  checks.push(['TTS',!writerModuleOn(plugin,'tts')?writerUi('Oculto','Hidden'):

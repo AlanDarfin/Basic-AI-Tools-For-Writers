@@ -151,3 +151,10 @@ The v12 additions in `src/v12/unified-toolkit.js` are independent implementation
 - FIT (File gIT) — joshuakto: https://github.com/joshuakto/fit
 
 Basic v12 does not include the external plugins' cryptographic, synchronization, pairing, or image-annotation engines. Do not confuse runtime command compatibility with complete feature parity.
+
+
+## Runtime companion adapters (13.8.0)
+
+Basic's independently authored adapters connect to the separately installed plugins listed above, plus [LanguageTool for Obsidian](https://github.com/wrenger/obsidian-languagetool), by Lars Wrenger, Clemens Ertle and contributors, licensed under **AGPL-3.0**. Basic does not bundle LanguageTool's source, dependencies or compiled plugin; the installed original owns its implementation and license. The other eight inspected companions are MIT-licensed. Source revisions, native APIs, persistence boundaries and platform limits are recorded in the [companion source audit](docs/maintenance/COMPANION_SOURCE_AUDIT.md).
+
+**Português:** os adaptadores são escritos pelo Basic e se conectam aos plugins instalados separadamente. O plugin LanguageTool original é AGPL-3.0; os outros oito fontes consultados são MIT. Nenhum código, dependência ou pacote compilado desses plugins foi incorporado. A auditoria registra as revisões consultadas e os limites de cada conexão.

@@ -170,7 +170,7 @@ class WriterV4Mentions extends EditorSuggest{
 function writerV406ReviewGuard(plugin){
  let pauseUntil=0,keyboardUntil=0,scrollLock=null,lastReviewPopup=null;
  const now=()=>Date.now();
- const reviewSelectors='.writer-review-floating,.writer-lt-mobile-modal,.writer-v406-lt-compact';
+ const reviewSelectors='.writer-review-floating,.writer-lt-mobile-modal,.writer-v406-lt-compact,.writer-grammar-external-compat .lt-tooltip';
  const editorFor=()=>plugin.app?.workspace?.getActiveViewOfType?.(MarkdownView)?.editor?.cm||null;
  const isReviewElement=node=>!!node?.closest?.(reviewSelectors);
  const openReview=()=>{
@@ -221,7 +221,7 @@ function writerV406ReviewGuard(plugin){
  const inspect=()=>{
   if(typeof document==='undefined')return;
   for(const menu of document.querySelectorAll?.('.menu')||[])markMenu(menu);
-  const popup=document.querySelector?.('.writer-review-floating,.writer-lt-mobile-modal')||null;
+  const popup=document.querySelector?.('.writer-review-floating,.writer-lt-mobile-modal,.writer-grammar-external-compat .lt-tooltip')||null;
   if(popup&&popup!==lastReviewPopup)pause(750);
   lastReviewPopup=popup;
  };

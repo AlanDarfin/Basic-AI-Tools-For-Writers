@@ -206,6 +206,10 @@ Existing aliases such as `writer-tabs`, `writer-avatar`, `writer-wiki`, `writer-
 
 Fictional chat accepts `[Left=Maria, right=João]`, participant shorthand such as `[Maria=blue]`, and tab headings such as `=== Maria`. Simulated audio and author-written transcripts are story elements, not real recordings or transcription services. See the block guide before adding advanced syntax.
 
+## Connected community plugins
+
+Use **General → Integrations & sync** for the native panel center, per-plugin bridge switches, selected original preferences, speech provider, mobile button layout and explorer icon priority. See the [connected plugins guide](guides/companion-compatibility.md) for the nine audited companions and their requirements. External plugins keep their own credentials, transport and automatic schedules.
+
 ## Connections and data use
 
 | Connection | What to expect |

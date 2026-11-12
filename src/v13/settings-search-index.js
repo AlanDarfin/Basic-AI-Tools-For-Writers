@@ -686,6 +686,16 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "integrationsV4",
+  "titlePt": "Permitir voz online do Toolkit",
+  "titleEn": "Allow Toolkit online speech"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Organizar botões no mobile",
+  "titleEn": "Arrange mobile buttons"
+ },
+ {
+  "id": "integrationsV4",
   "titlePt": "Mudar tom",
   "titleEn": "Change tone"
  },
@@ -696,6 +706,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "integrationsV4",
+  "titlePt": "Ativar integrações",
+  "titleEn": "Enable integrations",
+  "descriptionPt": "Desligar remove as conexões do Basic. Cada plugin continua com seus próprios módulos.",
+  "descriptionEn": "Turning this off removes Basic connections. Each plugin retains its own modules."
+ },
+ {
+  "id": "integrationsV4",
   "titlePt": "Expandir",
   "titleEn": "Expand"
  },
@@ -703,6 +720,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "integrationsV4",
   "titlePt": "Explorar alternativa",
   "titleEn": "Explore an alternative"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Ícones do explorador quando há duplicação",
+  "titleEn": "Explorer icons when both plugins add one"
  },
  {
   "id": "integrationsV4",
@@ -723,6 +745,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "integrationsV4",
   "titlePt": "Central de integrações",
   "titleEn": "Integration center"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Conflitos locais",
+  "titleEn": "Local conflicts"
  },
  {
   "id": "integrationsV4",
@@ -753,8 +780,23 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "integrationsV4",
+  "titlePt": "Abrir central de plugins",
+  "titleEn": "Open plugin center"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Local dos painéis",
+  "titleEn": "Panel placement"
+ },
+ {
+  "id": "integrationsV4",
   "titlePt": "Revisar pontos fracos",
   "titleEn": "Review weak points"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Atalho nos painéis do Basic",
+  "titleEn": "Shortcut in Basic panels"
  },
  {
   "id": "integrationsV4",
@@ -765,6 +807,16 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "integrationsV4",
   "titlePt": "Simplificar",
   "titleEn": "Simplify"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Provedor de leitura",
+  "titleEn": "Speech provider"
+ },
+ {
+  "id": "integrationsV4",
+  "titlePt": "Vozes e player do Toolkit",
+  "titleEn": "Toolkit voices and player"
  },
  {
   "id": "keyshots",
@@ -1575,6 +1627,30 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "review",
+  "titlePt": "Verificação automática externa",
+  "titleEn": "External automatic checking",
+  "descriptionPt": "Este plugin pode verificar mesmo com o painel do Basic fechado. Desligar a integração não desliga essa preferência.",
+  "descriptionEn": "This plugin can check while the Basic pane is closed. Disabling the bridge does not turn off this preference."
+ },
+ {
+  "id": "review",
+  "titlePt": "Revisão rigorosa externa",
+  "titleEn": "External picky mode",
+  "descriptionPt": "Inclui sugestões adicionais de estilo.",
+  "descriptionEn": "Include additional style suggestions."
+ },
+ {
+  "id": "review",
+  "titlePt": "Idioma do plugin externo",
+  "titleEn": "External plugin language"
+ },
+ {
+  "id": "review",
+  "titlePt": "Configuração completa do plugin",
+  "titleEn": "Full plugin settings"
+ },
+ {
+  "id": "review",
   "titlePt": "Corretor de gramática",
   "titleEn": "Grammar checker",
   "descriptionPt": "Use a conexão do Basic ou os controles de um plugin LanguageTool instalado separadamente.",
@@ -1605,6 +1681,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "review",
   "titlePt": "Intervalo mínimo entre verificações",
   "titleEn": "Minimum interval between checks"
+ },
+ {
+  "id": "review",
+  "titlePt": "Avisar sobre verificações longas",
+  "titleEn": "Notify about long checks",
+  "descriptionPt": "Útil no celular, onde o indicador da barra de status não aparece.",
+  "descriptionEn": "Useful on mobile, where the status bar indicator is unavailable."
  },
  {
   "id": "review",
@@ -2061,6 +2144,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "tts",
+  "titlePt": "Permitir voz online do Toolkit",
+  "titleEn": "Allow Toolkit online speech",
+  "descriptionPt": "Desativado por padrão. A versão auditada envia o texto ao Google Translate quando seu motor online está selecionado. Idiomas e vozes dependem do Toolkit.",
+  "descriptionEn": "Off by default. The audited version sends text to Google Translate when its online engine is selected. Languages and voices depend on Toolkit."
+ },
+ {
+  "id": "tts",
   "titlePt": "Verificar vozes disponíveis",
   "titleEn": "Check available voices"
  },
@@ -2125,10 +2215,22 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "tts",
+  "titlePt": "Provedor de leitura",
+  "titleEn": "Speech provider",
+  "descriptionPt": "Basic mantém suas vozes. Ultimate Toolkit usa suas próprias vozes e seu próprio player; exige instalação e ativação separadas.",
+  "descriptionEn": "Basic keeps its voices. Ultimate Toolkit uses its own voices and player; install and enable it separately."
+ },
+ {
+  "id": "tts",
   "titlePt": "Voz do sistema",
   "titleEn": "System voice",
   "descriptionPt": "As vozes dependem do WebView; talvez não estejam disponíveis no Android.",
   "descriptionEn": "Voices depend on the WebView and might be unavailable on Android."
+ },
+ {
+  "id": "tts",
+  "titlePt": "Vozes e player do Toolkit",
+  "titleEn": "Toolkit voices and player"
  },
  {
   "id": "tts",
@@ -2199,6 +2301,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "typing",
+  "titlePt": "Backspace desfaz a última substituição",
+  "titleEn": "Backspace restores the last replacement"
+ },
+ {
+  "id": "typing",
   "titlePt": "Espaçamento entre CJK e alfanuméricos",
   "titleEn": "CJK/Latin spacing"
  },
@@ -2221,11 +2328,6 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "typing",
   "titlePt": "Comparações (>=, <=, /=)",
   "titleEn": "Comparisons"
- },
- {
-  "id": "typing",
-  "titlePt": "Converter -- diretamente em travessão",
-  "titleEn": "Convert -- directly to em dash"
  },
  {
   "id": "typing",
@@ -2316,6 +2418,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "typing",
+  "titlePt": "Substituir imediatamente (sem espaço)",
+  "titleEn": "Replace immediately (without space)"
+ },
+ {
+  "id": "typing",
   "titlePt": "Substituir por",
   "titleEn": "Replace with",
   "descriptionPt": "Até 300 caracteres; vazio remove o atalho digitado.",
@@ -2330,6 +2437,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "typing",
   "titlePt": "Regra ativada",
   "titleEn": "Rule enabled"
+ },
+ {
+  "id": "typing",
+  "titlePt": "Pular meia-risca (-- → — direto)",
+  "titleEn": "Skip en dash (-- → — directly)"
  },
  {
   "id": "typing",

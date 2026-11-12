@@ -98,6 +98,7 @@ function writerV137GrammarSettings(plugin,panel){
   .addDropdown(d=>d.addOption('grammar',writerUi('Gramática','Grammar')).addOption('style',writerUi('Estilo com IA','Style with AI'))
    .addOption('beta',writerUi('Leitura beta com IA','Beta reading with AI')).setValue(settings.reviewMode||'grammar')
    .onChange(async value=>{settings.reviewMode=value;await save();}));
+ if(typeof writerLanguageToolSettings==='function')writerLanguageToolSettings(plugin,root);
  const editor=section('Sugestões no editor','Editor suggestions');
  for(const [key,pt,en,descPt,descEn] of [
   ['reviewAutoOpenNote','Abrir a nota revisada no editor','Open the reviewed note in the editor',

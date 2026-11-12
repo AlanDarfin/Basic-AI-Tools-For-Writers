@@ -2,7 +2,7 @@
 /* Basic AI v5: original Smart Typography implementation, scoped to prose input. */
 const WRITER_TYPO_DEFAULTS={
  enabled:true,curlyQuotes:true,dashes:true,ellipsis:true,arrows:true,comparisons:true,
- fractions:false,guillemets:false,skipEnDash:true,smartApostrophes:true,dialogueDashes:true,
+ fractions:false,guillemets:false,skipEnDash:false,smartApostrophes:true,dialogueDashes:true,restoreOnBackspace:true,
  openDouble:'“',closeDouble:'”',openSingle:'‘',closeSingle:'’',
  openGuillemet:'«',closeGuillemet:'»',leftArrow:'←',rightArrow:'→'
 };
@@ -14,7 +14,7 @@ const WRITER_TYPO_FRACTIONS={
 function writerTypoMerge(settings){
  const old=settings.smartTypography;
  const cfg=settings.smartTypography={...WRITER_TYPO_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
- for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes'])cfg[key]=cfg[key]===true;
+ for(const key of ['enabled','curlyQuotes','dashes','ellipsis','arrows','comparisons','fractions','guillemets','skipEnDash','smartApostrophes','dialogueDashes','restoreOnBackspace'])cfg[key]=cfg[key]===true;
  for(const key of ['openDouble','closeDouble','openSingle','closeSingle','openGuillemet','closeGuillemet','leftArrow','rightArrow'])
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
@@ -26,8 +26,11 @@ function writerTypoAtInput(before,typed,cfg){
  if(cfg.dashes&&typed==='-'){
   // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
   if(/^\s*-{2,}$/.test(before))return null;
-  if(before.endsWith('—-'))return put('—-','---');
+  // -- becomes –; adding a third hyphen makes —.
   if(before.endsWith('–-'))return put('–-','—');
+  // The optional direct-to-em-dash mode must not undo its own conversion.
+  if(cfg.skipEnDash&&before.endsWith('—-'))return put('—-','—');
+  if(before.endsWith('---'))return put('---','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
  // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
@@ -185,10 +188,15 @@ class WriterSmartTypography{
    ['dashes','Travessões e meia-risca','Dashes'],['ellipsis','Reticências (...)','Ellipsis (...)'],
    ['arrows','Setas (->, <-)','Arrows (->, <-)'],['comparisons','Comparações (>=, <=, /=)','Comparisons'],
    ['fractions','Frações (1/2, 3/4)','Fractions'],['guillemets','Aspas angulares (<<, >>)','Guillemets'],
-   ['skipEnDash','Converter -- diretamente em travessão','Convert -- directly to em dash'],
+   ['skipEnDash','Pular meia-risca (-- → — direto)','Skip en dash (-- → — directly)'],
+   ['restoreOnBackspace','Backspace desfaz a última substituição','Backspace restores the last replacement'],
    ['dialogueDashes','Travessão de diálogo (--Olá)','Dialogue dash (--Hello)'],
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Padrão: -- vira meia-risca (–) e --- vira travessão (—) no texto. Linhas --- do Markdown continuam intactas. Backspace após a conversão recupera os hífens.',
+   'Default: -- becomes an en dash (–), and --- an em dash (—) in prose. Markdown --- separators stay intact. Backspace directly after conversion restores the hyphens.'
+  )});
   for(const [key,pt,en] of [
    ['openDouble','Aspas duplas de abertura','Opening double quote'],['closeDouble','Aspas duplas de fechamento','Closing double quote'],
    ['openSingle','Aspas simples de abertura','Opening single quote'],['closeSingle','Aspas simples de fechamento','Closing single quote'],

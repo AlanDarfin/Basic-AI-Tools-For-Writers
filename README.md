@@ -26,7 +26,7 @@ For manual updates, replace all three release files together and reload Obsidian
 | --- | --- |
 | **Write a book** | Chapters and subchapters, scene boards, continuous writing, project tasks, local draft recovery and complete Markdown manuscript compilation. |
 | **Plan a story** | Characters, places, compendium entries, relationships, timelines, series, goals and editorial notes. |
-| **Write and edit notes** | Word suggestions, editor shortcuts, quote pairing, dialogue dashes, literal/regex replacements, snippets, cursor memory and Markdown formatting. |
+| **Write and edit notes** | Word suggestions, editor shortcuts, quote pairing, en/em dashes (`--` → `–`, `---` → `—`), configurable immediate or Space-triggered literal/regex replacements, Backspace to revert the most recent automatic conversion, snippets, cursor memory and Markdown formatting. |
 | **Organize a vault** | Workspaces, virtual collections, a configurable homepage, file previews, calendars, tasks, local database views and image annotation. |
 | **Study and read** | Flashcards, spaced repetition, study routines, reading estimates, imported citations and read-aloud controls. |
 | **Revise your text** | Local repetition review, a personal spelling dictionary, optional LanguageTool checking, version comparisons and snapshots. |

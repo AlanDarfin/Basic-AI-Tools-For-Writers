@@ -15,7 +15,8 @@ test('v1 Markdown dictionary headings and separators still parse after historica
  assert.equal(entries[1].word,'Abelhas');
 });
 test('all historical settings remain outside General in the v13 category hierarchy',()=>{
- assert.match(main,/\['customize',msg\('Interface e personalização','Interface & appearance'\)/);
+ const catalog=vm.runInNewContext(read('src/v13/settings-catalog.js')+'\nWRITER_SETTINGS_CATALOG',{});
+ for(const id of ['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar'])assert.notEqual(catalog.find(item=>item.id===id)?.group,'general',id);
  for(const key of ['homepage','v9Toolbar','v9Explorer','v9Spaces','v9Calendar']){
   assert.match(main,new RegExp("id==='"+key+"'"),key);
  }

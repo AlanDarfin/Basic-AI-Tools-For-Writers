@@ -166,9 +166,12 @@ test('Desktop-only sections and README feature documentation in both languages',
  const pt=fs.readFileSync(path.join(root,'docs/README.pt-BR.md'),'utf8');
  assert.doesNotMatch(en,/^## What's new/m);
  assert.doesNotMatch(pt,/^## Novidades da/m);
- for(const doc of [en,pt]){
-  assert.match(doc,/Soundscapes/);
-  assert.match(doc,/Flexplorer/);
-  assert.match(doc,/Click Clack/);
+ for(const [doc,guide,music,explorer,sounds] of [
+  [en,'docs/SUITES_AND_INTEGRATIONS.en.md','Music & ambience','File explorer','Typing sounds'],
+  [pt,'docs/SUITES_AND_INTEGRATIONS.pt-BR.md','Música e ambiente','Explorador de arquivos','Sons de digitação']
+ ]){
+  assert.ok(doc.includes(guide.split('/').pop()),'README links the current feature guide');
+  const details=fs.readFileSync(path.join(root,guide),'utf8');
+  for(const label of [music,explorer,sounds])assert.ok(details.includes(label),guide+': '+label);
  }
 });

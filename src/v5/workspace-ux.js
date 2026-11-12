@@ -117,6 +117,17 @@ function writerV1048SearchIndex(sections,panel,active,cache){
  const all=[];
  for(const [id,items] of cache)for(const item of items)if(labels.has(id))
   all.push({...item,section:labels.get(id)});
+ // The build-time index contains labels only, never saved values or callbacks.
+ // Options remain discoverable before their settings page has been visited.
+ if(typeof WRITER_SETTINGS_SEARCH_INDEX!=='undefined')for(const item of WRITER_SETTINGS_SEARCH_INDEX){
+  if(!labels.has(item.id))continue;
+  const title=writerUi(item.titlePt,item.titleEn);
+  const keywords=[item.titlePt,item.titleEn,item.descriptionPt,item.descriptionEn,item.keywords].filter(Boolean).join(' ');
+  const existing=all.find(entry=>entry.id===item.id&&writerWorkspaceSearchNormalize(entry.title)===writerWorkspaceSearchNormalize(title));
+  if(existing){existing.keywords=keywords;continue;}
+  all.push({id:item.id,title,section:labels.get(item.id),description:writerUi(item.descriptionPt||'',item.descriptionEn||''),
+   keywords,focus:writerUi(item.focusPt||item.titlePt,item.focusEn||item.titleEn),source:'catalog'});
+ }
  // The toolbar's built-in format buttons are settings options even when
  // their "Choose and reorder buttons" section has not yet been expanded.
  const toolbar=sections.find(([id,label])=>/formattoolbar|formatting toolbar|barra de formata|format tool/i
@@ -162,7 +173,7 @@ function writerV1048SearchOptions(entries,query){
   return {...item,score};
  }).filter(Boolean).sort((a,b)=>b.score-a.score||a.title.localeCompare(b.title)).slice(0,25);
 }
-function writerV1048SearchReveal(panel,title){
+function writerV1048SearchReveal(panel,title,focus=false){
  if(!panel?.querySelectorAll)return false;
  const norm=writerWorkspaceSearchNormalize(title);
  let found=null;
@@ -177,13 +188,25 @@ function writerV1048SearchReveal(panel,title){
    if(writerWorkspaceSearchNormalize(summary).includes(norm)){found=detail;break;}
   }
  }
+ if(!found)for(const control of panel.querySelectorAll('input,textarea,select,button')){
+  const label=control.getAttribute?.('aria-label')||control.textContent||'';
+  if(writerWorkspaceSearchNormalize(label)===norm){found=control;break;}
+ }
  if(!found)return false;
+ for(const previous of panel.querySelectorAll('.writer-v1048-search-target'))
+  previous.classList?.remove?.('writer-v1048-search-target');
  found.hidden=false;
+ if(found.tagName?.toLowerCase()==='details')found.open=true;
  for(let ancestor=found.parentElement;ancestor&&ancestor!==panel;ancestor=ancestor.parentElement){
   if(ancestor.tagName?.toLowerCase()==='details')ancestor.open=true;
  }
  found.classList?.add?.('writer-v1048-search-target');
  found.scrollIntoView?.({block:'center',behavior:'auto'});
+ if(focus){
+  const selector='input:not([type="hidden"]):not(:disabled),textarea:not(:disabled),select:not(:disabled),button:not(:disabled),[role="switch"]:not([aria-disabled="true"]),[role="checkbox"]:not([aria-disabled="true"])';
+  const control=found.matches?.(selector)?found:found.querySelector?.(selector)||found.querySelector?.('summary');
+  control?.focus?.({preventScroll:true});
+ }
  return true;
 }
 /* Group identical options from different sections, without building fake
@@ -210,6 +233,7 @@ function writerV1050SearchTarget(container,entry,activate){
  node.createSpan({cls:'writer-v1050-result-target-text',text:entry.section});
  node.addEventListener('click',()=>activate(entry));
  node.addEventListener('keydown',event=>{
+  if(event.isComposing||event.keyCode===229||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
   if(event.key!=='Enter'&&event.key!==' ')return;
   event.preventDefault();activate(entry);
  });
@@ -229,15 +253,17 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
    'aria-label':writerUi('Resultados de configurações','Settings results')}});
  feedback.hidden=true;
  const cache=new Map();
- let latest=[];
+ let latest=[],jumpSerial=0;
  const jump=entry=>{
   if(!entry)return;
   input.value='';feedback.hidden=true;
   const previous=getActive();
+  const serial=++jumpSerial;
   if(entry.id!==previous)onOpen(entry.id);
   const reveal=()=>{
+   if(serial!==jumpSerial||entry.id!==getActive()||input.value)return;
    const panel=getPanel();
-   if(!writerV1048SearchReveal(panel,entry.focus||entry.title)){
+   if(!writerV1048SearchReveal(panel,entry.focus||entry.title,true)){
     // Keep the correct section visible if a nested control is rendered lazily.
     writerWorkspaceFilterRows(panel,'');
    }
@@ -250,8 +276,11 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
   feedback.empty();feedback.hidden=!q;
   const all=writerV1048SearchIndex(sections,panel,active,cache);
   // Also index not-yet-opened categories, with contextual aliases and fuzzy ranking.
-  const locations=sections.map(([id,title])=>({id,title,section:title,
-   keywords:WRITER_WORKSPACE_HINTS[id]||'',focus:'',source:'category'}));
+  const locations=sections.map(([id,title])=>{
+   const meta=typeof WRITER_SETTINGS_CATALOG!=='undefined'?WRITER_SETTINGS_CATALOG.find(item=>item.id===id):null;
+   return {id,title,section:title,aliases:meta?.keywords||'',keywords:[WRITER_WORKSPACE_HINTS[id],meta?.pt,meta?.en,
+    meta?.descriptionPt,meta?.descriptionEn,meta?.keywords].filter(Boolean).join(' '),focus:'',source:'category'};
+  });
   latest=writerV131RankSettings([...all,...locations],q,18);
   // Fuzzy results remain in the compact dropdown; do not hide actual settings
   // just because the approximate query does not literally match their text.
@@ -286,6 +315,7 @@ function writerWorkspaceBindSearch(root,sections,onOpen,getPanel,getActive){
  };
  input.addEventListener('input',update);
  input.addEventListener('keydown',event=>{
+  if(event.isComposing||event.keyCode===229||event.altKey||event.ctrlKey||event.metaKey||event.shiftKey)return;
   if(event.key==='Escape'){input.value='';update();}
   if(event.key==='Enter'&&latest[0]){event.preventDefault();jump(latest[0]);}
  });
@@ -297,12 +327,12 @@ function writerWorkspaceNormalizeShortcut(key){
 function writerWorkspaceHotkeyAudit(plugin){
  const items=[],status=[],cfg=plugin.settings;
  if(!plugin.app.isMobile&&writerModuleOn(plugin,'keyshots')&&cfg.keyshots?.enabled&&cfg.keyshots.shortcuts){
-  for(const [key,action] of writerKeyshotsBindings(cfg.keyshots.preset))items.push({key,action:'Keyshots: '+action,owner:'basic'});
+  for(const [key,action] of writerKeyshotsBindings(cfg.keyshots.preset))items.push({key,action:writerUi('Atalhos do editor: ','Editor shortcuts: ')+action,owner:'basic'});
  }
  if(writerModuleOn(plugin,'easyTyping')&&cfg.easyTyping?.enabled){
-  if(cfg.easyTyping.tabOut)items.push({key:'Tab',action:'Easy Typing: tab-out (context only)',owner:'basic'});
-  if(cfg.easyTyping.smartBackspace)items.push({key:'Backspace',action:'Easy Typing: empty list (context only)',owner:'basic'});
-  items.push({key:'Shift-Tab',action:'Easy Typing: previous snippet (context only)',owner:'basic'});
+  if(cfg.easyTyping.tabOut)items.push({key:'Tab',action:writerUi('Digitação: sair do par (contextual)','Typing: leave pair (context only)'),owner:'basic'});
+  if(cfg.easyTyping.smartBackspace)items.push({key:'Backspace',action:writerUi('Digitação: lista vazia (contextual)','Typing: empty list (context only)'),owner:'basic'});
+  items.push({key:'Shift-Tab',action:writerUi('Digitação: campo anterior do modelo (contextual)','Typing: previous snippet field (context only)'),owner:'basic'});
  }
  const duplicates=[],seen=new Map();
  for(const item of items){
@@ -328,7 +358,7 @@ function writerWorkspaceHotkeyAudit(plugin){
       duplicates.push({key:own.key,first:own.action,second:command.name||command.id,kind:'host'});
     }
    }
-  }catch(error){status.push('Host hotkey API unavailable');hostScanned=false;}
+  }catch(error){status.push(writerUi('API de atalhos do aplicativo indisponível','Host hotkey API unavailable'));hostScanned=false;}
  }
  return {items,duplicates,hostScanned,status};
 }
@@ -343,6 +373,7 @@ class WriterWorkspaceProfiles{
   this.plugin.writerV4Extras?.updateTypewriterClass?.();
   this.plugin.refreshModuleVisibility?.();
   writerV5RefreshEditors(this.plugin);
+  this.refreshSettings?.();
   new Notice(writerUi('Perfil aplicado: ','Applied profile: ')+name);
  }
  async undo(){
@@ -350,6 +381,7 @@ class WriterWorkspaceProfiles{
   const old=this.cfg.undo;this.cfg.undo=null;
   writerWorkspaceApplyValues(this.plugin.settings,old);
   await this.plugin.saveSettings();this.plugin.writerV4Extras?.updateTypewriterClass?.();writerV5RefreshEditors(this.plugin);
+  this.refreshSettings?.();
   new Notice(writerUi('Preferências anteriores restauradas.','Previous preferences restored.'));
  }
  async saveCustom(name){
@@ -359,6 +391,7 @@ class WriterWorkspaceProfiles{
   this.cfg.saved.push({name:title,values:writerWorkspaceCapture(this.plugin.settings)});
   this.cfg.saved=this.cfg.saved.slice(-10);
   await this.plugin.saveSettings();
+  this.refreshSettings?.();
   new Notice(writerUi('Perfil salvo: ','Saved profile: ')+title);
  }
  register(){
@@ -382,33 +415,47 @@ class WriterWorkspaceProfiles{
   new Picker(plugin.app).open();
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Perfis rápidos de escrita','Quick writing profiles')});
-  panel.createEl('p',{text:writerUi('Alterne preferências de edição, não conteúdo. Não altera chaves de API, textos, prompts, snapshots ou dicionários. A última troca pode ser desfeita.','Switch editor preferences, never document content. API keys, prompts, snapshots and dictionaries are untouched. The previous setup can be restored.'),cls:'dictionary-muted'});
+  const root=panel.createDiv({cls:'writer-v137-profile-settings'});
+  let chosen='',selectedToDelete='';
+  const mark=(control,action)=>{(control.buttonEl||control.selectEl)?.setAttribute?.('data-profile-action',action);return control;};
+  const render=()=>{
+  const active=root.ownerDocument?.activeElement;
+  const focus=root.contains?.(active)?active?.getAttribute?.('data-profile-action'):null;
+  root.empty();
+  root.createEl('h3',{text:writerUi('Perfis rápidos de escrita','Quick writing profiles')});
+  root.createEl('p',{text:writerUi('Alterne preferências de edição, não conteúdo. Não altera chaves de API, textos, prompts, snapshots ou dicionários. A última troca pode ser desfeita.','Switch editor preferences, never document content. API keys, prompts, snapshots and dictionaries are untouched. The previous setup can be restored.'),cls:'dictionary-muted'});
   const items=[...Object.entries(WRITER_WORKSPACE_PRESETS).map(([key,p])=>({key,label:writerUi(p.labelPt,p.labelEn),values:p.values})),...this.cfg.saved.map(item=>({key:'custom:'+item.name,label:item.name,values:item.values}))];
-  const selector=panel.createDiv({cls:'writer-v51-profile-actions'});
-  let chosen=items[0]?.key;
+  if(!items.some(item=>item.key===chosen))chosen=items.find(item=>item.label===this.cfg.lastPreset)?.key||items[0]?.key;
+  const selector=root.createDiv({cls:'writer-v51-profile-actions'});
   new Setting(selector).setName(writerUi('Escolher perfil','Choose profile')).addDropdown(d=>{
+   mark(d,'choose');
    for(const item of items)d.addOption(item.key,item.label);
+   d.setValue(chosen);
    d.onChange(value=>chosen=value);
-  }).addButton(b=>b.setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
+  }).addButton(b=>mark(b,'apply').setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
    const item=items.find(x=>x.key===chosen);if(item)await this.apply(item.label,item.values);
   }));
-  new Setting(panel).setName(writerUi('Guardar perfil atual','Save current profile'))
+  new Setting(root).setName(writerUi('Guardar perfil atual','Save current profile'))
    .setDesc(writerUi('Salva somente opções de edição permitidas, até 10 perfis.','Saves only selected editor preferences, up to 10 profiles.'))
-   .addButton(b=>b.setButtonText(writerUi('Salvar como…','Save as…')).onClick(()=>{
+   .addButton(b=>mark(b,'save').setButtonText(writerUi('Salvar como…','Save as…')).onClick(()=>{
     new TextPrompt(this.plugin.app,writerUi('Nome do perfil','Profile name'),value=>this.saveCustom(value)).open();
    }));
   if(this.cfg.saved.length){
-   new Setting(panel).setName(writerUi('Excluir perfil salvo','Delete saved profile')).addDropdown(d=>{
+   if(!this.cfg.saved.some(item=>item.name===selectedToDelete))selectedToDelete=this.cfg.saved[0]?.name||'';
+   new Setting(root).setName(writerUi('Excluir perfil salvo','Delete saved profile')).addDropdown(d=>{
+    mark(d,'delete-choice');
     for(const item of this.cfg.saved)d.addOption(item.name,item.name);
-    d.onChange(v=>this.selectedToDelete=v);
-   }).addButton(b=>b.setButtonText(writerUi('Excluir','Delete')).onClick(async()=>{
-    const name=this.selectedToDelete||this.cfg.saved[0]?.name;
-    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==name);await this.plugin.saveSettings();this.plugin.writerSettingsTab?.display?.();
+    d.setValue(selectedToDelete).onChange(v=>selectedToDelete=v);
+   }).addButton(b=>mark(b,'delete').setButtonText(writerUi('Excluir','Delete')).onClick(async()=>{
+    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==selectedToDelete);await this.plugin.saveSettings();this.refreshSettings?.();
    }));
   }
-  new Setting(panel).setName(writerUi('Desfazer última aplicação','Undo last application'))
-   .addButton(b=>b.setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.undo()));
+  new Setting(root).setName(writerUi('Desfazer última aplicação','Undo last application'))
+   .addButton(b=>mark(b,'restore').setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.undo()));
+  if(focus)(root.querySelector?.('[data-profile-action="'+focus+'"]:not(:disabled)')||root.querySelector?.('select:not(:disabled)'))?.focus?.({preventScroll:true});
+  };
+  this.refreshSettings=()=>{if(root.isConnected!==false)render();};
+  render();
  }
 }
 function writerWorkspaceRenderHotkeys(plugin,panel){
@@ -431,7 +478,7 @@ function writerWorkspaceRenderHotkeys(plugin,panel){
   container.createEl('p',{text:writerUi('Combinações contextuais (Tab/Backspace) só atuam quando o editor reconhece uma situação compatível.','Context-dependent Tab/Backspace bindings only act when a matching editor context exists.')});
  };
  render();
- new Setting(panel).setName(writerUi('Rever ou desativar atalhos de Keyshots','Review Keyshots shortcuts')).addButton(b=>b.setButtonText(writerUi('Desativar perfil automático','Disable preset shortcuts')).onClick(async()=>{
+ new Setting(panel).setName(writerUi('Rever ou desativar atalhos de edição','Review editor shortcuts')).addButton(b=>b.setButtonText(writerUi('Desativar perfil automático','Disable preset shortcuts')).onClick(async()=>{
   if(plugin.settings.keyshots){plugin.settings.keyshots.shortcuts=false;plugin.settings.keyshots.preset='none';await plugin.saveSettings();render();}
  }));
  new Setting(panel).setName(writerUi('Atualizar diagnóstico','Refresh shortcut audit')).addButton(b=>b.setButtonText(writerUi('Analisar','Scan')).onClick(render));

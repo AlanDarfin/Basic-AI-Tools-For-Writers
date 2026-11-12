@@ -74,7 +74,7 @@ test('standalone bundle and settings include all v5 modules',()=>{
  }
  for(const name of ['writerKeyshotsMerge(this.settings)','writerExtendedMerge(this.settings)','writerPandocMerge(this.settings)','this.writerPandocSyntax.register()'])
   assert.ok(main.includes(name),name);
- assert.ok(main.includes("['pandocSyntax',msg('Pandoc Syntax'"));
+ assert.ok(main.includes("id:'pandocSyntax',group:'markdown'"));
  assert.ok(!source.includes('eval('));
 });
 console.log(total+' Basic AI v5 tests passed.');

@@ -16,17 +16,17 @@ const ctx={
  writerUi:(pt,en)=>en, writerModuleOn:()=>true,
  Menu:class{constructor(){this.items=[];} addItem(cb){const self=this;const item={setTitle(){return this;},setIcon(){return this;},onClick(fn){self.items.push(fn);return this;}};cb(item);}showAtPosition(){}},
  Notice:class{constructor(message){ctx.notices.push(message);}},
- notices:[],console,setTimeout:fn=>{queue.push(fn);return queue.length;}
+ notices:[],console,setTimeout:fn=>{queue.push(fn);return queue.length;},clearTimeout(){}
 };
 vm.runInNewContext(quickSource+'\nglobalThis.quick={writerV1201NativeAction,writerV1201RibbonRegister,writerV1201QuickMenu,writerV1201Format,writerV1201Editor,writerV1201BookmarkCommand};',ctx);
 const quick=ctx.quick;
-test('v12 settings are integrated into existing tabs with no new groups',()=>{
+test('settings routes organize features without version-branded categories',()=>{
  const navigation=main.slice(main.indexOf('class DictionarySettings extends PluginSettingTab'),
   main.indexOf('module.exports=class AlansOfflineDictionary'));
  for(const page of ['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections',
   'suiteEducation','suiteDatabase','suiteNumbering','suiteLongform'])
   assert.equal(navigation.includes("['"+page+"',msg("),false,page+' must not have its own tab');
- const groups=navigation.slice(navigation.indexOf('const groups=['),navigation.indexOf('const groupIcons='));
+ const groups=fs.readFileSync(path.join(root,'src/v13/settings-catalog.js'),'utf8');
  assert.doesNotMatch(groups,/\['toolkit',/);
  assert.doesNotMatch(groups,/\['suites',/);
  for(const id of ['v9Toolbar','v9Pretty','v9Flow','v9Calendar','v9Lock','v10Tools','integrationsV4','projects'])
@@ -86,7 +86,7 @@ test('bookmark action uses an installed bookmark command instead of an inert hid
  assert.equal(clicks,0);
 });
 test('native sidebars delegate to the stabilized action relay with the label',()=>{
- assert.match(layout,/writerV1201NativeAction\(plugin,action,label\)/);
- assert.match(layout,/writerV1012OpenNativeAction\(action,sort,plugin,label\)/);
+ assert.match(layout,/writerV1201NativeAction\(plugin,action,label,parentMenu,trigger\)/);
+ assert.match(layout,/writerV1012OpenNativeAction\(action,sort,plugin,label,menu,trigger\)/);
  assert.match(enhancements,/writerV1201RibbonRegister\(plugin\)/);
 });

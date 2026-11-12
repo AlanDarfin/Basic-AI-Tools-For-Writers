@@ -2,8 +2,8 @@
 /* StoryLine: interactive, local-first relationship canvas using vault metadata. */
 const WRITER_V107_GRAPH_VIEW='writer-story-graph';
 function writerV107GraphConfig(settings){
- const old=settings.v107Graph&&typeof settings.v107Graph==='object'?settings.v107Graph:{};
- return settings.v107Graph={enabled:true,maxNodes:90,layout:'radial',positions:{},...old,maxNodes:Math.max(20,Math.min(180,Number(old.maxNodes)||90))};
+ const old=settings.v107Graph&&typeof settings.v107Graph==='object'&&!Array.isArray(settings.v107Graph)?settings.v107Graph:{};
+ return settings.v107Graph=Object.assign(old,{enabled:true,maxNodes:90,layout:'radial',positions:{},...old,maxNodes:Math.max(20,Math.min(180,Number(old.maxNodes)||90))});
 }
 function writerV107GraphLinks(value){
  const values=Array.isArray(value)?value:String(value||'').split(/[,;\n]/);
@@ -163,21 +163,21 @@ function writerV107GraphRelationModal(plugin,refresh){
 class WriterV107GraphView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;}
  getViewType(){return WRITER_V107_GRAPH_VIEW;}
- getDisplayText(){return writerUi('Mapa StoryLine','StoryLine graph');}
+ getDisplayText(){return writerUi('Mapa de relações','Relationship map');}
  getIcon(){return 'network';}
  async onOpen(){writerV107GraphRender(this.plugin,this.contentEl);}
 }
 function writerV107GraphRegister(plugin){
  writerV107GraphConfig(plugin.settings);
  plugin.registerView(WRITER_V107_GRAPH_VIEW,leaf=>new WriterV107GraphView(leaf,plugin));
- plugin.addCommand({id:'v107-story-graph',name:writerUi('StoryLine: abrir mapa de relações','StoryLine: open relationship graph'),callback:async()=>{
+ plugin.addCommand({id:'v107-story-graph',name:writerUi('Relações: abrir mapa','Relationships: open map'),callback:async()=>{
   const leaf=plugin.app.workspace.getLeavesOfType(WRITER_V107_GRAPH_VIEW)[0]||plugin.app.workspace.getLeaf('tab');
   await leaf.setViewState({type:WRITER_V107_GRAPH_VIEW,active:true});await plugin.app.workspace.revealLeaf(leaf);
  }});
 }
 function writerV107GraphSettings(plugin,panel){
  const cfg=plugin.settings.v107Graph;
- panel.createEl('h3',{text:writerUi('StoryLine · grafo de relações','StoryLine · relationship graph')});
+ panel.createEl('h3',{text:writerUi('Mapa de relações','Relationship map')});
  new Setting(panel).setName(writerUi('Notas máximas no mapa','Maximum graph nodes')).addSlider(s=>s.setLimits(20,180,10).setValue(cfg.maxNodes).setDynamicTooltip().onChange(async v=>{cfg.maxNodes=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Layout inicial','Initial layout')).addDropdown(d=>d.addOption('radial',writerUi('Radial','Radial')).addOption('grid',writerUi('Grade','Grid')).setValue(cfg.layout).onChange(async v=>{cfg.layout=v;await plugin.saveSettings();}));
 }

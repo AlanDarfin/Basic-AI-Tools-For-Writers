@@ -1,0 +1,182 @@
+{
+  "version": "13.7.0",
+  "base": "e1357dcca8a0818bd3ae3dfef467e9aaa3b4ca13",
+  "environment": {
+    "obsidian": "1.15.0",
+    "os": "Linux",
+    "ui": "real Electron controlled through CDP",
+    "viewports": [
+      [
+        1280,
+        720
+      ],
+      [
+        412,
+        915
+      ]
+    ],
+    "languages": [
+      "en",
+      "pt-BR"
+    ],
+    "themes": [
+      "light",
+      "dark"
+    ],
+    "physicalAndroidOrIOS": false,
+    "physicalIME": false,
+    "liveProviderRequests": false
+  },
+  "automated": {
+    "node": "22",
+    "regressionFiles": 144,
+    "newSuites": 9,
+    "newCases": 77,
+    "cssLint": "passed",
+    "sourceBundleAndSearchIndex": "synchronized"
+  },
+  "settings": {
+    "pagesBefore": 54,
+    "pagesAfter": 67,
+    "categoriesAfter": 9,
+    "features": 48,
+    "allFeaturesOff": 67,
+    "notesUnchanged": true,
+    "coldSearchQueries": [
+      "Máximo de notas lembradas",
+      "criptografia",
+      "numeração",
+      "voz"
+    ],
+    "IME": {
+      "query": "cursor",
+      "prevented": false,
+      "section": "general"
+    },
+    "profiles": {
+      "restoreBefore": true,
+      "restoreAfterApply": false,
+      "restoreAfterUndo": true,
+      "editingRestored": true,
+      "newProfileShown": true
+    },
+    "favorites": {
+      "inMemory": [
+        "cursor"
+      ],
+      "aria": "true",
+      "bar": "FavoritosPosição do cursorRecentes nesta sessãoComece por aquiAtalhos do editorDicionário e definiçõesCitações e leitura",
+      "afterRebuild": "true"
+    }
+  },
+  "firstInstall": {
+    "fresh": {
+      "modal": 1,
+      "preset": "essentials",
+      "rows": 48,
+      "automaticGrammar": false
+    },
+    "geometry": {
+      "overflow": 0,
+      "footerBottom": 811.625,
+      "viewport": 915,
+      "listRows": 48
+    },
+    "customChoicesPersistAfterRestart": {
+      "modal": false,
+      "state": {
+        "version": 1,
+        "status": "complete"
+      },
+      "chat": false,
+      "projects": true
+    },
+    "notesUnchanged": true
+  },
+  "typewriter": {
+    "obsidian": "1.15.0",
+    "plugin": "13.7.0",
+    "viewport": [
+      1280,
+      720
+    ],
+    "cases": [
+      {
+        "ratio": 0.19786369498041315,
+        "scroll": 1907,
+        "active": true,
+        "lines": 1,
+        "warnings": [],
+        "requested": 0.2,
+        "passed": true
+      },
+      {
+        "ratio": 0.4283315895763887,
+        "scroll": 1759,
+        "active": true,
+        "lines": 1,
+        "warnings": [],
+        "requested": 0.43,
+        "passed": true
+      },
+      {
+        "ratio": 0.7989488795347819,
+        "scroll": 1521,
+        "active": true,
+        "lines": 1,
+        "warnings": [],
+        "requested": 0.8,
+        "passed": true
+      }
+    ],
+    "moduleOff": {
+      "before": {
+        "scroll": 1521,
+        "markers": 0
+      },
+      "after": {
+        "scroll": 1521,
+        "markers": 0,
+        "engaged": false,
+        "errors": []
+      }
+    }
+  },
+  "mobileMenu": {
+    "platform": "Obsidian mobile API/CSS emulation in Electron",
+    "before": {
+      "open": 1,
+      "pending": true
+    },
+    "selection": {
+      "x": 206,
+      "y": 714.8203125
+    },
+    "afterSelection": {
+      "open": 0,
+      "pending": false,
+      "anchors": 0,
+      "sort": "byModifiedTime"
+    },
+    "retryAfter1400ms": {
+      "open": 1,
+      "pending": true,
+      "anchors": 1
+    },
+    "afterDismiss": {
+      "open": 0,
+      "pending": false,
+      "anchors": 0
+    }
+  },
+  "grammar": {
+    "acceptedSuggestion": true,
+    "otherTextPreserved": true,
+    "network": "deterministic mock"
+  },
+  "distributableSHA256": {
+    "main.js": "1d18643bf3639097c12816838e62b777edb7f50ca638906424b81260fe3cefc6",
+    "manifest.json": "7418e0005e1c0852d09450d341a954a88fdc2c768a12744cb7266c583c4cf2e0",
+    "styles.css": "fa6db2e7193aeacfc2e8d66cfc10c361c2fb7f9aa388247c315e099fd91e3a58"
+  }
+}

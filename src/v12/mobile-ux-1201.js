@@ -87,19 +87,101 @@ function writerV1201BookmarkCommand(plugin){
   /(?:bookmark|marcar|marcador|adicionar.*favorito)/i.test(command.name||'')&&
   !/(?:remove|delete|remover|apagar|unbookmark)/i.test(command.id+' '+command.name))||null;
 }
-function writerV1201NativeAction(plugin,action,label){
+function writerV1201NativeAction(plugin,action,label,parentMenu,trigger){
  if(!action||!plugin)return false;
- if(plugin._writerV1201NativeRelay)return false;
+ // A repeated tap is already handled; falling through would click the native
+ // toggle a second time and close the popup that the first tap just opened.
+ if(plugin._writerV1201NativeRelay)return true;
  const name=String(label||action.getAttribute?.('aria-label')||'');
  const isBookmark=/^(?:marcador|bookmark|adicionar marcador|adicionar aos favoritos)$/i.test(name.trim());
  const command=isBookmark?writerV1201BookmarkCommand(plugin):null;
+ const doc=action.ownerDocument||trigger?.ownerDocument||plugin.app.workspace?.containerEl?.ownerDocument;
+ const win=doc?.defaultView;
+ const popupSelector='.menu,.popover,.suggestion-container,.modal-container,.bases-toolbar-menu';
+ const shown=node=>{
+  if(!node||node.isConnected===false||node.hidden)return false;
+  const style=win?.getComputedStyle?.(node)||node.style;
+  return style?.display!=='none'&&style?.visibility!=='hidden';
+ };
+ const popups=()=>Array.from(doc?.querySelectorAll?.(popupSelector)||[]).filter(shown);
+ const nativeMenus=new Set();
+ let stopped=false,observer=null,anchor=null,opened=false,checkTimer=null,openTimer=null;
+ const finish=(refresh=true)=>{
+  if(stopped)return;
+  stopped=true;observer?.disconnect?.();
+  if(checkTimer!==null)clearTimeout(checkTimer);
+  if(openTimer!==null)clearTimeout(openTimer);
+  anchor?.remove?.();
+  plugin._writerV1201NativeRelay=false;
+  plugin._writerV1010NativeActionPending=false;
+  plugin._writerV1201NativeRelayState=null;
+  if(refresh)plugin.writerV1010Refresh?.();
+ };
+ const cancel=()=>{
+  finish(false);
+  for(const menu of nativeMenus)menu.hide?.();
+ };
+ plugin._writerV1201NativeRelayState={cancel};
  plugin._writerV1201NativeRelay=true;
  plugin._writerV1010NativeActionPending=true;
- setTimeout(()=>{
+ if(!plugin._writerV1201NativeRelayCleanup){
+  plugin._writerV1201NativeRelayCleanup=true;
+  plugin.register?.(()=>plugin._writerV1201NativeRelayState?.cancel());
+ }
+ const open=()=>{
+  if(stopped||opened)return;
+  opened=true;
+  const before=new Set(popups()),tracked=new Set();
+  const update=()=>{
+   if(stopped)return;
+   if(action.isConnected===false){cancel();plugin.writerV1010Refresh?.();return;}
+   for(const popup of popups())if(!before.has(popup))tracked.add(popup);
+   if(tracked.size&&![...tracked].some(shown))finish();
+  };
+  const Observer=win?.MutationObserver||(typeof MutationObserver==='function'?MutationObserver:null);
+  if(Observer&&doc?.body){
+   observer=new Observer(update);
+   observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});
+  }
+  // Obsidian dismisses menus when their parent element is hidden. Native view
+  // actions are often hidden on mobile. Give only menus opened by this click a
+  // stable, laid-out anchor; leave the native button and its listeners in place.
+  const parent=typeof Menu!=='undefined'?Menu.prototype:null;
+  const oldParent=parent?.setParentElement,oldShow=parent?.showAtPosition;
+  const reanchored=new Set();
+  const stableAnchor=()=>{
+   if(anchor||!doc?.body||!doc.createElement)return anchor;
+   const point=(trigger||action).getBoundingClientRect?.()||{};
+   anchor=doc.createElement('span');
+   anchor.className='writer-v137-native-menu-anchor';
+   anchor.setAttribute('aria-hidden','true');
+   Object.assign(anchor.style,{position:'absolute',left:(Number(point.left)||0)+'px',
+    top:(Number(point.bottom)||Number(point.top)||0)+'px',width:'1px',height:'1px',opacity:'0',pointerEvents:'none'});
+   doc.body.appendChild(anchor);return anchor;
+  };
+  const setParent=function(element){
+   const target=element===action?stableAnchor():null;
+   if(target)reanchored.add(this);
+   return oldParent.call(this,target||element);
+  };
+  const show=function(...args){
+   nativeMenus.add(this);
+   if(reanchored.has(this)&&anchor){
+    const point=anchor.getBoundingClientRect();
+    args[0]={...args[0],x:point.left,y:point.bottom};
+   }
+   return oldShow.apply(this,args);
+  };
   try{
+   // These public API wrappers exist only during synchronous event dispatch.
+   // No global hook remains installed while the popup is open.
+   if(typeof oldParent==='function')parent.setParentElement=setParent;
+   if(typeof oldShow==='function')parent.showAtPosition=show;
    if(command&&plugin.app.commands?.executeCommandById){
     plugin.app.commands.executeCommandById(command.id);
-   }else if(action.isConnected){
+   }else if(action.disabled===true||action.getAttribute?.('aria-disabled')==='true'){
+    new Notice(writerUi('Esta ação não está disponível agora.','This action is currently unavailable.'));
+   }else if(action.isConnected!==false){
     action.click();
    }else new Notice(writerUi('O painel mudou. Reabra o menu e tente novamente.',
       'The pane changed. Reopen its menu and try again.'));
@@ -107,13 +189,17 @@ function writerV1201NativeAction(plugin,action,label){
    console.warn('[Basic] Native sidebar action:',error);
    new Notice(writerUi('Não foi possível executar esta ação.','Could not execute this action.'));
   }finally{
-   setTimeout(()=>{
-    plugin._writerV1201NativeRelay=false;
-    plugin._writerV1010NativeActionPending=false;
-    plugin.writerV1010Refresh?.();
-   },1100);
+   if(parent?.setParentElement===setParent)parent.setParentElement=oldParent;
+   if(parent?.showAtPosition===show)parent.showAtPosition=oldShow;
+   update();
+   // Ordinary actions finish after their event. Popups hold their anchor until
+   // actual removal/closing, including long-lived sheets and nested menus.
+   if(!stopped)checkTimer=setTimeout(()=>{update();if(!tracked.size)finish();},0);
   }
- },380);
+ };
+ const ready=()=>{if(!stopped&&openTimer===null)openTimer=setTimeout(open,0);};
+ if(typeof parentMenu?.onHide==='function')parentMenu.onHide(ready);
+ else ready();
  return true;
 }
 function writerV1201RibbonRegister(plugin){

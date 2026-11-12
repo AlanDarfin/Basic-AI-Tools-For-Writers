@@ -3,11 +3,12 @@
  * No upstream code, automatic vault reshaping, recurring network requests,
  * or duplicated calendar/ICS implementations. */
 function writerV1011StudyCfg(settings){
- const old=settings.v1011Study&&typeof settings.v1011Study==='object'?settings.v1011Study:{};
- const cfg=settings.v1011Study=Object.assign({
+ const old=settings.v1011Study&&typeof settings.v1011Study==='object'&&!Array.isArray(settings.v1011Study)?settings.v1011Study:{};
+ // Keep the object used by all currently rendered field callbacks current.
+ const cfg=settings.v1011Study=Object.assign(old,{
   enabled:true,root:'Estudos',daily:'Diário',classes:'Aulas',reminders:'Lembretes.md',
-  timetable:'Horário.md',maxRows:120
- },old);
+  timetable:'Horário.md',maxRows:120,...old
+ });
  const folder=value=>{
   const parts=String(value||'').trim().replace(/\\/g,'/').split('/');
   if(!parts.length||parts.length>6||parts.some(p=>!p||p==='.'||p==='..'||p[0]==='.'||p.length>90||/[\x00-\x1f:*?"<>|]/.test(p)))return '';
@@ -217,7 +218,7 @@ function writerV1011StudyRegister(plugin){
 }
 function writerV1011StudySettings(plugin,panel){
  const cfg=writerV1011StudyCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Unique Suite — rotina acadêmica','Unique Suite — academic workflow')});
+ panel.createEl('h3',{text:writerUi('Rotina de estudos','Study routine')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Integração local com o calendário já existente. Nenhuma pasta é criada ao ativar.',
   'Local workflow using the existing calendar. Enabling does not create folders.')});

@@ -1,0 +1,46 @@
+/* Typewriter follows explicit editor input; its visuals use native theme tokens. */
+body.writer-v4-typewriter .cm-editor .cm-scroller{
+ scroll-padding-block:0;
+}
+body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line{
+ background-color:color-mix(in srgb,var(--interactive-accent) 8%,transparent);
+ border-radius:var(--radius-s);
+}
+body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line::before{
+ width:2px;opacity:.8;
+}
+body.writer-v4-typewriter:not(.writer-v137-typewriter-highlight) .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line{
+ background-color:transparent;
+}
+body.writer-v4-typewriter:not(.writer-v137-typewriter-highlight) .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line::before{
+ display:none;
+}
+body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line:not(.writer-v4-typewriter-current-line){
+ opacity:var(--writer-typewriter-focus-opacity,.7);
+ transition:opacity 100ms ease;
+}
+.writer-v137-typewriter-preview{
+ margin:12px 0 18px;padding:12px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-secondary);
+ color:var(--text-normal);
+ font-size:var(--font-ui-medium);line-height:1.6;
+}
+.writer-v137-typewriter-preview>div{
+ position:relative;padding:3px 10px;
+ overflow-wrap:break-word;border-radius:var(--radius-s);
+}
+.writer-v137-typewriter-preview.is-focused .writer-v137-typewriter-preview-context{
+ opacity:var(--writer-typewriter-focus-opacity,.7);
+}
+.writer-v137-typewriter-preview.is-highlighted .writer-v137-typewriter-preview-current{
+ background:color-mix(in srgb,var(--interactive-accent) 8%,transparent);
+}
+.writer-v137-typewriter-preview.is-highlighted .writer-v137-typewriter-preview-current::before{
+ content:'';position:absolute;inset-block:0;inset-inline-start:0;
+ width:2px;border-radius:var(--radius-s);background:var(--interactive-accent);
+}
+@media(prefers-reduced-motion:reduce){
+ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line{transition:none}
+}

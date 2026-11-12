@@ -58,25 +58,35 @@ function writerV13RankCommands(commands,query,limit=70){
    String(a.command.id).localeCompare(String(b.command.id)))
   .slice(0,max).map(item=>item.command);
 }
+function writerV137SyncSettingsTabs(strip){
+ const tabs=Array.from(strip?.querySelectorAll?.('button[role="tab"]:not(:disabled)')||[]);
+ const selected=tabs.find(tab=>tab.getAttribute('aria-selected')==='true')||tabs[0];
+ for(const tab of tabs)tab.tabIndex=tab===selected?0:-1;
+}
 function writerV13BindSettingsTabs(nav,subnav){
  const bind=(strip,label)=>{
   if(!strip||strip.dataset.basicV13Keyboard==='1')return;
   strip.dataset.basicV13Keyboard='1';
   strip.setAttribute('role','tablist');
   strip.setAttribute('aria-label',label);
+  writerV137SyncSettingsTabs(strip);
+  strip.addEventListener('click',()=>writerV137SyncSettingsTabs(strip));
   strip.addEventListener('keydown',event=>{
    if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key))return;
-   if(event.altKey||event.ctrlKey||event.metaKey)return;
+   if(event.altKey||event.ctrlKey||event.metaKey||event.shiftKey||event.isComposing||event.keyCode===229)return;
    const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
    if(!tabs.length)return;
    let current=tabs.indexOf(event.target.closest?.('button[role="tab"]'));
    if(current<0)current=tabs.findIndex(tab=>tab.getAttribute('aria-selected')==='true');
    if(current<0)current=0;
+   const direction=strip.ownerDocument?.defaultView?.getComputedStyle?.(strip)?.direction==='rtl'?-1:1;
    const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
-    (current+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+    (current+(event.key==='ArrowRight'?direction:-direction)+tabs.length)%tabs.length;
    event.preventDefault();
    tabs[next].focus();
    tabs[next].click();
+   writerV137SyncSettingsTabs(strip);
+   tabs[next].scrollIntoView?.({block:'nearest',inline:'nearest'});
   });
  };
  const label=(pt,en)=>typeof writerUi==='function'?writerUi(pt,en):en;
@@ -149,6 +159,8 @@ function writerV131RankSettings(entries,query,limit=18){
    score+=best;
   }
   if(title===q)score+=500;
+  const aliases=writerV13SearchText(entry?.aliases).split(/\s+/).filter(Boolean);
+  if(aliases.length&&words.every(word=>aliases.includes(word)))score+=500;
   if(entry?.source==='category')score-=50;
   return {...entry,score};
  }).filter(Boolean).sort((a,b)=>b.score-a.score||

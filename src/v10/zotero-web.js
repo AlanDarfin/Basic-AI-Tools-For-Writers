@@ -1,14 +1,14 @@
 'use strict';
 /* Zotero Web API v3 read-only: session-only key; never writes to the remote library. */
 function writerV107ZoteroConfig(settings){
- const old=settings.v107Zotero&&typeof settings.v107Zotero==='object'?settings.v107Zotero:{};
- return settings.v107Zotero={
+ const old=settings.v107Zotero&&typeof settings.v107Zotero==='object'&&!Array.isArray(settings.v107Zotero)?settings.v107Zotero:{};
+ return settings.v107Zotero=Object.assign(old,{
   enabled:false,libraryType:'users',libraryId:'',folder:'Zotero',maxItems:200,importNotes:true,...old,
   libraryType:old.libraryType==='groups'?'groups':'users',
   libraryId:/^\d{1,15}$/.test(String(old.libraryId||''))?String(old.libraryId):'',
   folder:/^[\p{L}\p{N} _\/-]{1,120}$/u.test(old.folder||'')?old.folder:'Zotero',
   maxItems:Math.max(20,Math.min(300,Number(old.maxItems)||200))
- };
+ });
 }
 function writerV107ZoteroUrl(cfg,start=0,format='json'){
  if(!/^\d{1,15}$/.test(String(cfg.libraryId||'')))throw Error('Invalid Zotero library ID');

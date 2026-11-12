@@ -68,7 +68,7 @@ test('large manuscript checks a small cursor window with source offsets',()=>{
  const code=fs.readFileSync('main.js','utf8');
  for(const text of ['writerAutoGrammarSettings(this.settings)','this.autoGrammar.register()',
   'this.plugin.autoGrammar?.schedule(file)','writerAutoGrammarWindow(grammarText',
-  'source!==await writerCurrentText(this.plugin,file)','automatic=false']){
+  'source!==checkedSource','automatic=false']){
   assert.ok(code.includes(text),text);
  }
  passed++;console.log('PASS main bundle contains safeguards and auto-check integration');

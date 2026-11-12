@@ -2,6 +2,17 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.7.0 — Settings, first-run setup and mobile menus
+
+- Organize 67 settings pages into nine task-based categories, with clear English/Portuguese names, searchable options before visiting a page, favorites and accessible keyboard navigation.
+- Keep every configuration page available when its feature is off; preserve the existing 48 feature switches, saved IDs and user data.
+- Add first-install Quick start with Essentials, Book writing, Study and Custom choices; provide explicit apply/later actions and a command to reopen it without resetting preferences.
+- Fix settings lost after normalization, repeated typing or rendering in study, calendars, images, databases, numbering, book writing, media and voice; preserve calendar feed slots.
+- Keep native mobile menus open by anchoring them to a visible element, waiting for parent-menu dismissal and suppressing duplicate activation; release temporary state when the menu closes.
+- Add configurable typewriter position, independent following/highlighting/focus, a live preview and immediate cleanup when disabled.
+- Rebuild grammar settings around manual/automatic checking, validated connections, masked credentials, optional account names and an explicit sample test; discard obsolete reviews and allow a fresh check while an old request is pending.
+- Rewrite both READMEs and the installation/feature guides; retain compatibility syntax, existing notes and third-party credits.
+
 ## 13.6.0 — Visual interface polish across writing workflows
 
 - Improve real-pane layouts in Settings, AI connections, homepage widgets, bookshelf cards, Dictionary, Translation, Assistant and Review.

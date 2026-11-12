@@ -1,10 +1,10 @@
 'use strict';
 /* Optional HTTPS iCalendar subscriptions. Read-only upstream, append-only local imports. */
 function writerV107CalendarConfig(settings){
- const old=settings.v107Feeds&&typeof settings.v107Feeds==='object'?settings.v107Feeds:{};
- const urls=Array.isArray(old.urls)?old.urls.filter(x=>typeof x==='string').slice(0,5):[];
- return settings.v107Feeds={enabled:false,autoSync:false,intervalHours:6,urls,maxEvents:160,...old,
-  urls,intervalHours:Math.max(1,Math.min(24,Number(old.intervalHours)||6)),maxEvents:Math.max(20,Math.min(300,Number(old.maxEvents)||160))};
+ const old=settings.v107Feeds&&typeof settings.v107Feeds==='object'&&!Array.isArray(settings.v107Feeds)?settings.v107Feeds:{};
+ const urls=Array.isArray(old.urls)?Array.from(old.urls.slice(0,5),value=>typeof value==='string'?value:''):[];
+ return settings.v107Feeds=Object.assign(old,{enabled:false,autoSync:false,intervalHours:6,urls,maxEvents:160,...old,
+  urls,intervalHours:Math.max(1,Math.min(24,Number(old.intervalHours)||6)),maxEvents:Math.max(20,Math.min(300,Number(old.maxEvents)||160))});
 }
 function writerV107CalendarUrl(value){
  const text=String(value||'').trim();
@@ -35,6 +35,7 @@ async function writerV107CalendarSynchronize(plugin,quiet=false){
  const folder=WRITER_V83_CAL_FOLDER;
  if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
  for(const url of cfg.urls.slice(0,5)){
+  if(!url)continue;
   if(!writerV107CalendarUrl(url)){errors++;continue;}
   try{
    const items=writerV101IcsParse(await writerV107CalendarFetch(plugin,url),cfg.maxEvents);
@@ -77,7 +78,8 @@ function writerV107CalendarSettings(plugin,panel){
   new Setting(panel).setName(writerUi('Fonte ICS HTTPS ','HTTPS ICS feed ')+(i+1))
    .addText(t=>t.setValue(cfg.urls[i]||'').setPlaceholder('https://example.com/calendar.ics').onChange(async v=>{
     const list=[...cfg.urls];if(v&&!writerV107CalendarUrl(v))return;
-    list[i]=v;cfg.urls=list.filter(Boolean);await plugin.saveSettings();
+    while(list.length<=i)list.push('');
+    list[i]=v;cfg.urls=list;await plugin.saveSettings();
    }));
  }
  new Setting(panel).setName(writerUi('Sincronizar agora','Sync now')).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void writerV107CalendarSynchronize(plugin)));

@@ -78,12 +78,12 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
   assert.equal(written[2].copyright,'cc-by-sa-4.0');
   assert.equal(projectApi.writerProjectNormalizeDescription('a'.repeat(2500)).length,2000);
  });
- await test('settings use six grouped categories with only one combined typing section',()=>{
+ await test('settings catalog keeps one combined typing section and stable feature IDs',()=>{
   const main=fs.readFileSync('main.js','utf8');
-  assert.ok(main.includes("['typing',msg('Digitação e tipografia','Typing & typography')]"));
-  assert.ok(main.includes("if(writerModuleOn(this.plugin,'easyTyping'))this.plugin.writerEasyTyping.renderSettings(panel)"));
+  assert.ok(main.includes("id:'typing',group:'writing'"));
+  assert.ok(main.includes("this.plugin.writerEasyTyping.renderSettings(panel)"));
   assert.ok(main.includes("this.plugin.writerSmartTypography.renderSettings(panel)"));
-  assert.ok(main.includes("const groups=["));
+  assert.ok(main.includes("const groups=writerSettingsGroups()"));
   assert.ok(main.includes("const subnav=el.createDiv({cls:'dictionary-settings-subtabs'})"));
   assert.ok(!main.includes("['easyTyping',msg("));
   assert.ok(!main.includes("['smartTypography',msg("));
@@ -98,8 +98,8 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
   assert.ok(build.includes("'v5/project-metadata'"));
   assert.ok(css.includes('.writer-project-cover-preview img'));
   assert.ok(css.includes('.dictionary-settings-subtabs'));
-  assert.ok(fs.readFileSync('README.md','utf8').includes('Longform'));
-  assert.ok(fs.readFileSync('docs/README.pt-BR.md','utf8').includes('Longform'));
+  assert.ok(fs.readFileSync('README.md','utf8').includes('Book writing'));
+  assert.ok(fs.readFileSync('docs/README.pt-BR.md','utf8').includes('Escrita de livros'));
  });
  console.log(passed+' Basic AI v5.2 tests passed.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

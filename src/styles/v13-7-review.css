@@ -1,0 +1,75 @@
+/* Grammar setup and findings follow native theme colors and real pane width. */
+.writer-grammar-settings{display:flex;flex-direction:column;gap:12px;min-width:0}
+.writer-grammar-settings>h3{margin-bottom:0}
+.writer-grammar-settings>.setting-item-description{margin:0;line-height:1.5}
+.writer-grammar-settings .writer-grammar-state{
+ padding:10px 12px;border:1px solid var(--background-modifier-border);
+ border-inline-start:3px solid var(--interactive-accent);border-radius:var(--radius-s);
+ background:var(--background-secondary);line-height:1.5;color:var(--text-normal);
+}
+.writer-grammar-settings .writer-grammar-state[data-state="disabled"]{
+ border-inline-start-color:var(--text-muted);color:var(--text-muted);
+}
+.writer-grammar-settings .writer-grammar-section{
+ min-width:0;padding:12px 14px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-grammar-settings .writer-grammar-section>h4{margin:0 0 6px;font-size:var(--font-ui-medium);line-height:1.4}
+.writer-grammar-settings .writer-grammar-section>.setting-item:last-of-type{border-bottom:0}
+.writer-grammar-settings .setting-item-control{min-width:0;max-width:100%}
+.writer-grammar-settings .setting-item-control :is(input,select,textarea){min-width:0;max-width:100%}
+.writer-grammar-settings .setting-item-control>input{width:100%}
+.writer-grammar-settings .setting-item-control>input[type="password"]{flex:1 1 150px}
+.writer-grammar-settings .setting-item-control>textarea{width:100%;min-height:82px;resize:vertical;line-height:1.5}
+.writer-grammar-settings :is(.writer-grammar-feedback,.writer-grammar-test-status){
+ margin:6px 0 0;font-size:var(--font-ui-small);line-height:1.5;overflow-wrap:anywhere;
+}
+.writer-grammar-settings :is(.writer-grammar-feedback,.writer-grammar-test-status):empty{display:none}
+.writer-grammar-settings .writer-grammar-feedback{color:var(--text-muted)}
+.writer-grammar-settings .writer-grammar-test-status[data-state="loading"]{color:var(--text-accent)}
+.writer-grammar-settings .writer-grammar-test-status[data-state="error"]{color:var(--text-error)}
+.writer-grammar-settings input[aria-invalid="true"]{border-color:var(--text-error)}
+.dictionary-view-content.writer-tool-root .writer-review-panel .writer-review-header{
+ display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;line-height:1.4;
+}
+.dictionary-view-content.writer-tool-root .writer-review-results{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result{
+ margin:0;padding:12px;border:1px solid var(--background-modifier-border);
+ border-inline-start-width:3px;border-radius:var(--radius-m);background:var(--background-primary);
+}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-major{border-inline-start-color:var(--text-error)}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-minor{border-inline-start-color:var(--text-warning,var(--text-accent))}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-style{border-inline-start-color:var(--text-accent)}
+:is(.writer-cm-review-mark,.writer-lt-result,.writer-lt-menu-info).writer-lt-major{--writer-lt-underline:var(--text-error)}
+:is(.writer-cm-review-mark,.writer-lt-result,.writer-lt-menu-info).writer-lt-minor{--writer-lt-underline:var(--text-warning,var(--text-accent))}
+:is(.writer-cm-review-mark,.writer-lt-result,.writer-lt-menu-info).writer-lt-style{--writer-lt-underline:var(--text-accent)}
+.dictionary-view-content.writer-tool-root .writer-lt-result-heading{display:flex;flex-direction:column;align-items:start;gap:4px;min-width:0}
+.dictionary-view-content.writer-tool-root .writer-lt-category{font-size:var(--font-ui-smaller);color:var(--text-muted);line-height:1.4}
+.dictionary-view-content.writer-tool-root .writer-lt-title{font-size:var(--font-ui-small);line-height:1.45;overflow-wrap:anywhere}
+.dictionary-view-content.writer-tool-root .writer-lt-original{margin-block:10px;line-height:1.55;overflow-wrap:anywhere}
+.dictionary-view-content.writer-tool-root .writer-lt-original>mark{
+ padding:1px 3px;border-radius:var(--radius-s);background:var(--text-highlight-bg);color:var(--text-normal);
+}
+.dictionary-view-content.writer-tool-root .writer-lt-choices{display:flex;flex-wrap:wrap;gap:6px}
+.dictionary-view-content.writer-tool-root .writer-lt-choices>.writer-lt-choice{
+ min-width:0;max-width:100%;min-height:36px;height:auto;white-space:normal;overflow-wrap:anywhere;
+ line-height:1.4;padding:6px 10px;
+}
+.dictionary-view-content.writer-tool-root .writer-lt-result-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:10px}
+.dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{min-height:34px;white-space:normal;line-height:1.35}
+.dictionary-view-content.writer-tool-root .writer-lt-details{margin-top:10px;padding-top:8px;border-top:1px solid var(--background-modifier-border)}
+.dictionary-view-content.writer-tool-root .writer-lt-details>summary{font-size:var(--font-ui-small);line-height:1.4;cursor:var(--cursor)}
+.dictionary-view-content.writer-tool-root .writer-lt-details p{font-size:var(--font-ui-small);line-height:1.55;overflow-wrap:anywhere}
+.dictionary-view-content.writer-tool-root .writer-review-external .writer-tools-v3-actions{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+.dictionary-view-content.writer-tool-root .writer-review-external .writer-tools-v3-actions>button{white-space:normal;min-width:0;min-height:38px;line-height:1.35}
+:is(.writer-grammar-settings,.writer-review-panel) :is(button,input,select,textarea,summary):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:2px;
+}
+@media(max-width:600px){
+ .writer-grammar-settings .writer-grammar-section{padding:10px}
+ .writer-grammar-settings .setting-item-control :is(button,input,select){min-height:44px}
+ .dictionary-view-content.writer-tool-root .writer-review-panel :is(.writer-lt-choice,.writer-lt-result-actions>button,.writer-lt-details>button,.writer-lt-show-more){min-height:44px}
+ .dictionary-view-content.writer-tool-root .writer-review-external .writer-tools-v3-actions{grid-template-columns:minmax(0,1fr)}
+}

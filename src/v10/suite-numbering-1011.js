@@ -1,9 +1,9 @@
 'use strict';
 /* Basic 10.11 numbering, local and non-destructive by default. */
 function writerV1011NumberCfg(settings){
- const old=settings.v1011Number&&typeof settings.v1011Number==='object'?settings.v1011Number:{};
- return settings.v1011Number={enabled:true,virtual:false,captions:true,outline:true,scheme:'hierarchical',...old,
-  scheme:old.scheme==='flat'?'flat':'hierarchical'};
+ const old=settings.v1011Number&&typeof settings.v1011Number==='object'&&!Array.isArray(settings.v1011Number)?settings.v1011Number:{};
+ return settings.v1011Number=Object.assign(old,{enabled:true,virtual:false,captions:true,outline:true,scheme:'hierarchical',...old,
+  scheme:old.scheme==='flat'?'flat':'hierarchical'});
 }
 function writerV1011NumberStored(title){
  const m=/^(\d+(?:\.\d+){1,8}\.?|\d+\.)\s+(.+)$/.exec(String(title||''));
@@ -156,7 +156,7 @@ function writerV1011NumberRegister(plugin){
 }
 function writerV1011NumberSettings(plugin,panel){
  const cfg=writerV1011NumberCfg(plugin.settings);
- panel.createEl('h3',{text:writerUi('Number Suite — numeração','Number Suite — numbering')});
+ panel.createEl('h3',{text:writerUi('Numeração automática','Automatic numbering')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
   'Numeração visual só no modo de leitura. Gravar ou remover títulos exige prévia e confirmação. H1–H6.',
   'Display-only numbers in Reading View. Writing/removal requires preview and confirmation. H1–H6.')});

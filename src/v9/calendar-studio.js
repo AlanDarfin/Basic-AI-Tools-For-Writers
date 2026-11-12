@@ -6,10 +6,10 @@ const WRITER_V9_CAL_VIEW_OPTIONS=[['month','Mês','Month'],['week','Semana','Wee
 const WRITER_V9_CAL_REPEAT=[['none','Não repetir','Does not repeat'],['daily','Diariamente','Daily'],['weekly','Semanalmente','Weekly'],['monthly','Mensalmente','Monthly'],['yearly','Anualmente','Yearly']];
 function writerV9CalendarMerge(settings){
  const prior=settings.v9Calendar&&typeof settings.v9Calendar==='object'&&!Array.isArray(settings.v9Calendar)?settings.v9Calendar:{};
- const cfg=settings.v9Calendar={
+ const cfg=settings.v9Calendar=Object.assign(prior,{
   defaultView:'month',showSidebar:true,showSidebarMobile:false,compactMonth:true,
   startHour:7,endHour:21,maxMonthEvents:3,...prior
- };
+ });
  cfg.defaultView=WRITER_V9_CAL_VIEWS.includes(cfg.defaultView)?cfg.defaultView:'month';
  cfg.showSidebar=cfg.showSidebar!==false;cfg.showSidebarMobile=cfg.showSidebarMobile===true;
  cfg.compactMonth=cfg.compactMonth!==false;
@@ -434,11 +434,17 @@ function writerV9CalendarSettings(plugin,panel){
   .addSlider(slider=>slider.setLimits(1,5,1).setValue(cfg.maxMonthEvents).setDynamicTooltip().onChange(async value=>{
    cfg.maxMonthEvents=value;await plugin.saveSettings();refresh();
   }));
+ const hourSliders={};
  for(const [key,pt,en,min,max] of [['startHour','Hora inicial da grade','Timeline start hour',0,20],
   ['endHour','Hora final da grade','Timeline end hour',1,24]]){
-  new Setting(panel).setName(writerUi(pt,en)).addSlider(slider=>slider.setLimits(min,max,1).setValue(cfg[key]).setDynamicTooltip().onChange(async value=>{
-   cfg[key]=value;writerV9CalendarMerge(plugin.settings);await plugin.saveSettings();refresh();
-  }));
+  new Setting(panel).setName(writerUi(pt,en)).addSlider(slider=>{
+   hourSliders[key]=slider;
+   slider.setLimits(min,max,1).setValue(cfg[key]).setDynamicTooltip().onChange(async value=>{
+    cfg[key]=value;writerV9CalendarMerge(plugin.settings);
+    for(const [field,control] of Object.entries(hourSliders))control.setValue(cfg[field]);
+    await plugin.saveSettings();refresh();
+   });
+  });
  }
  new Setting(panel).setName(writerUi('Abrir calendário de escrita','Open writing calendar'))
   .addButton(button=>button.setButtonText(writerUi('Abrir','Open')).onClick(()=>void plugin.writerCalendarOpen?.()));

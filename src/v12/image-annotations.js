@@ -3,8 +3,8 @@
  * No remote image capture, no network, no image libraries. */
 function writerV12AnnotationConfig(plugin){
  const value=plugin.settings.v12Annotations;
- return plugin.settings.v12Annotations={maxDimension:1400,desktopOnly:false,
-  ...(value&&typeof value==='object'&&!Array.isArray(value)?value:{})};
+ const cfg=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
+ return plugin.settings.v12Annotations=Object.assign(cfg,{maxDimension:1400,desktopOnly:false,...cfg});
 }
 function writerV12AnnotatePick(plugin){
  if(!writerV12On(plugin,'imageTools'))return;
@@ -146,7 +146,7 @@ function writerV12AnnotationRegister(plugin){
 }
 function writerV12AnnotationSettings(plugin,panel){
  const cfg=writerV12AnnotationConfig(plugin);
- panel.createEl('h3',{text:writerUi('Anotações visuais · v12','Image annotations · v12')});
+ panel.createEl('h3',{text:writerUi('Anotações em imagens','Image annotations')});
  new Setting(panel).setName(writerUi('Maior dimensão da imagem exportada','Maximum PNG output dimension'))
   .addSlider(s=>s.setLimits(600,1800,100).setValue(cfg.maxDimension).setDynamicTooltip().onChange(async v=>{
    cfg.maxDimension=v;await plugin.saveSettings();

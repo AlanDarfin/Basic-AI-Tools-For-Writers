@@ -50,14 +50,17 @@ function writerV107RegisterAfterStartup(plugin){
   if(typeof setTimeout==='function')setTimeout(run,0);
  }
 }
-function writerV107Settings(plugin,panel){
- new Setting(panel).setName(writerUi('Ativar integrações experimentais 10.7','Enable experimental 10.7 integrations'))
+function writerV107CompatibilitySettings(plugin,panel){
+ new Setting(panel).setName(writerUi('Carregar recursos avançados','Load advanced features'))
   .setDesc(writerUi('Desative para iniciar apenas com as funções estáveis anteriores. Reinicie o Obsidian para aplicar. As configurações das funções não são apagadas.','Turn off to start only the previous stable features. Restart Obsidian to apply. Existing settings are preserved.'))
   .addToggle(toggle=>toggle.setValue(plugin.settings?.v107AdvancedEnabled!==false).onChange(async value=>{
    plugin.settings.v107AdvancedEnabled=value;
    await plugin.saveSettings();
    new Notice(writerUi('Reinicie o Obsidian para aplicar a mudança.','Restart Obsidian to apply this change.'));
   }));
+}
+function writerV107Settings(plugin,panel){
+ writerV107CompatibilitySettings(plugin,panel);
  for(const [name,render] of [
   ['databases',typeof writerV107DbSettings==='function'?writerV107DbSettings:null],
   ['zotero',typeof writerV107ZoteroSettings==='function'?writerV107ZoteroSettings:null],

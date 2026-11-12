@@ -3,9 +3,9 @@
  * Online queries are explicit; photo credits and licenses must be respected. */
 const WRITER_V102_IMAGE_PROVIDERS=['commons','pexels','pixabay','unsplash'];
 function writerV102ImagesMerge(settings){
- const raw=settings.v102Images&&typeof settings.v102Images==='object'?settings.v102Images:{};
- const cfg=settings.v102Images={enabled:true,provider:'commons',mode:'local',orientation:'any',
-  folder:'Writing Images',width:420,property:'banner',credits:true,pexelsKey:'',pixabayKey:'',unsplashKey:'',...raw};
+ const raw=settings.v102Images&&typeof settings.v102Images==='object'&&!Array.isArray(settings.v102Images)?settings.v102Images:{};
+ const cfg=settings.v102Images=Object.assign(raw,{enabled:true,provider:'commons',mode:'local',orientation:'any',
+  folder:'Writing Images',width:420,property:'banner',credits:true,pexelsKey:'',pixabayKey:'',unsplashKey:'',...raw});
  cfg.provider=WRITER_V102_IMAGE_PROVIDERS.includes(cfg.provider)?cfg.provider:'commons';
  cfg.mode=['local','remote'].includes(cfg.mode)?cfg.mode:'local';
  cfg.orientation=['any','landscape','portrait','square'].includes(cfg.orientation)?cfg.orientation:'any';
@@ -231,7 +231,7 @@ function writerV102ImagesRegister(plugin){
 function writerV102ImagesSettings(plugin,panel){
  const cfg=plugin.settings.v102Images;
  panel.createEl('h3',{text:writerUi('Pesquisar e inserir imagens','Search and insert images')});
- panel.createEl('p',{cls:'setting-item-description',text:writerUi('Baseado nas ideias do Image Inserter, com buscas diretas aos serviços, sem proxy de terceiros. Buscas e miniaturas exigem rede e podem expor sua consulta e IP ao provedor. Verifique as licenças antes de reutilizar imagens.','Image Inserter-inspired, with direct provider requests and no third-party proxy. Searching and thumbnails use the internet and reveal queries/IP to providers. Check image licenses before reuse.')});
+ panel.createEl('p',{cls:'setting-item-description',text:writerUi('Buscas diretas aos serviços de imagens, sem proxy de terceiros. Buscas e miniaturas exigem rede e podem expor sua consulta e IP ao provedor. Verifique as licenças antes de reutilizar imagens.','Direct requests to image providers, without a third-party proxy. Searching and thumbnails use the internet and reveal queries/IP to providers. Check image licenses before reuse.')});
  new Setting(panel).setName(writerUi('Ativar busca de imagens','Enable image search'))
   .addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Fonte padrão','Default provider')).addDropdown(d=>{

@@ -1344,7 +1344,6 @@ body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.write
  position:relative;
  background-color:var(--background-modifier-hover);
  opacity:1;
- border-radius:var(--radius-s);
 }
 body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line::before{
  content:"";
@@ -11437,5 +11436,227 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-pa
  .writer-v134-recovery .writer-v134-recovery-actions button{
   min-height:44px;
  }
+}
+
+/* Settings routes and first-run choices use native colors and controls. */
+.writer-v13-settings .writer-v137-settings-heading{
+ display:flex;align-items:start;justify-content:space-between;gap:12px;
+ margin:4px 0 8px;
+}
+.writer-v13-settings .writer-v137-settings-heading>h3{
+ margin:4px 0;font-size:var(--font-ui-large);line-height:1.4;
+}
+.writer-v13-settings .writer-v137-settings-favorite{
+ display:inline-flex;align-items:center;justify-content:center;
+ flex:0 0 36px;width:36px;height:36px;padding:8px;
+ border:1px solid var(--background-modifier-border);box-shadow:none;
+ color:var(--text-muted);background:var(--background-primary);
+}
+.writer-v13-settings .writer-v137-settings-favorite.is-active{
+ color:var(--text-accent);background:var(--background-secondary);
+}
+.writer-v13-settings .writer-v137-settings-favorite svg{width:18px;height:18px}
+.writer-v13-settings .writer-v137-settings-description{
+ margin:0 0 16px;color:var(--text-muted);line-height:1.5;
+}
+.writer-v13-settings .writer-v137-settings-hidden{
+ display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+ padding:12px;margin:0 0 16px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-secondary);
+ font-size:var(--font-ui-small);line-height:1.5;
+}
+.writer-v13-settings .writer-v137-settings-hidden>span{flex:1 1 240px;min-width:0}
+.writer-v13-settings .writer-v137-settings-hidden>button{flex:0 0 auto;min-height:36px}
+.writer-v13-settings .writer-v137-settings-shortcuts{
+ display:flex;flex-direction:column;gap:6px;margin:0 0 14px;
+ padding-block:2px 10px;border-bottom:1px solid var(--background-modifier-border);
+}
+.writer-v13-settings .writer-v137-settings-shortcuts[hidden]{display:none}
+.writer-v13-settings .writer-v137-settings-shortcut-group{
+ display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+}
+.writer-v13-settings .writer-v137-settings-shortcut-label{
+ flex:0 0 auto;margin-inline-end:3px;font-size:var(--font-ui-smaller);color:var(--text-muted);
+}
+.writer-v13-settings .writer-v137-settings-recent>summary{
+ color:var(--text-muted);font-size:var(--font-ui-smaller);line-height:1.4;
+ padding-block:4px;cursor:var(--cursor);
+}
+.writer-v13-settings .writer-v137-settings-recent[open]>.writer-v137-settings-shortcut-group{margin-top:6px}
+.writer-v13-settings .writer-v137-settings-shortcut-group>button{
+ height:auto;min-height:30px;padding:5px 8px;font-size:var(--font-ui-smaller);
+ white-space:normal;line-height:1.35;box-shadow:none;
+}
+.writer-v13-settings .writer-v137-settings-shortcut-group>button.is-active{
+ color:var(--text-accent);background:var(--background-secondary);
+}
+.writer-v13-settings .writer-v137-settings-shortcuts button:focus-visible,
+.writer-v137-quick-start-modal :is(button,input,select):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:2px;
+}
+.writer-v137-quick-start-modal{
+ width:min(760px,calc(100vw - 32px));max-height:calc(100dvh - 32px);
+}
+.writer-v137-quick-start-modal .modal-content.writer-v137-quick-start{
+ display:flex;flex-direction:column;gap:12px;min-height:0;
+ max-height:calc(100dvh - 150px);overflow:auto;
+}
+.writer-v137-quick-start>p{margin:0;line-height:1.5}
+.writer-v137-quick-start .writer-v137-quick-start-controls{
+ display:grid;grid-template-columns:minmax(150px,1fr) minmax(0,2fr);gap:10px;
+}
+.writer-v137-quick-start-controls :is(select,input){width:100%;min-width:0;min-height:38px}
+.writer-v137-quick-start .writer-v137-quick-start-status{
+ color:var(--text-muted);font-size:var(--font-ui-small);
+}
+.writer-v137-quick-start .writer-v137-quick-start-list{
+ flex:1 1 280px;min-height:120px;overflow:auto;overscroll-behavior:contain;
+ border-block:1px solid var(--background-modifier-border);padding-inline-end:6px;
+}
+.writer-v137-quick-start-list .setting-item{gap:16px;padding:12px 0}
+.writer-v137-quick-start-list .setting-item-info{min-width:0}
+.writer-v137-quick-start-list .setting-item-name{line-height:1.4}
+.writer-v137-quick-start-list .setting-item-description{line-height:1.45}
+.writer-v137-quick-start .writer-v137-quick-start-note{
+ color:var(--text-muted);font-size:var(--font-ui-small);line-height:1.5;
+}
+.writer-v137-quick-start .writer-v137-quick-start-footer{
+ display:flex;justify-content:flex-end;gap:10px;flex:0 0 auto;
+ position:sticky;bottom:0;padding:8px 0 0;background:var(--background-primary);
+}
+.writer-v137-quick-start-footer>button{min-height:38px;height:auto;white-space:normal;line-height:1.4}
+@media(max-width:600px){
+ .writer-v13-settings .writer-v137-settings-favorite{flex-basis:44px;width:44px;height:44px}
+ .writer-v13-settings .writer-v137-settings-heading>h3{font-size:var(--font-ui-medium)}
+ .writer-v13-settings .writer-v137-settings-shortcut-group>button{min-height:44px}
+ .writer-v13-settings .writer-v137-settings-hidden>button{min-height:44px;width:100%}
+ .writer-v137-quick-start-modal{width:calc(100vw - 20px);max-height:calc(100dvh - 20px)}
+ .writer-v137-quick-start .writer-v137-quick-start-controls{grid-template-columns:minmax(0,1fr)}
+ .writer-v137-quick-start-controls :is(select,input){min-height:44px;font-size:16px}
+ .writer-v137-quick-start-footer>button{flex:1;min-height:44px;min-width:0}
+ .writer-v137-quick-start .writer-v137-quick-start-footer{padding-bottom:env(safe-area-inset-bottom,0px)}
+}
+
+/* Typewriter follows explicit editor input; its visuals use native theme tokens. */
+body.writer-v4-typewriter .cm-editor .cm-scroller{
+ scroll-padding-block:0;
+}
+body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line{
+ background-color:color-mix(in srgb,var(--interactive-accent) 8%,transparent);
+ border-radius:var(--radius-s);
+}
+body.writer-v4-typewriter .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line::before{
+ width:2px;opacity:.8;
+}
+body.writer-v4-typewriter:not(.writer-v137-typewriter-highlight) .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line{
+ background-color:transparent;
+}
+body.writer-v4-typewriter:not(.writer-v137-typewriter-highlight) .cm-editor.writer-v4-typewriter-engaged .cm-line.writer-v4-typewriter-current-line::before{
+ display:none;
+}
+body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line:not(.writer-v4-typewriter-current-line){
+ opacity:var(--writer-typewriter-focus-opacity,.7);
+ transition:opacity 100ms ease;
+}
+.writer-v137-typewriter-preview{
+ margin:12px 0 18px;padding:12px;
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-secondary);
+ color:var(--text-normal);
+ font-size:var(--font-ui-medium);line-height:1.6;
+}
+.writer-v137-typewriter-preview>div{
+ position:relative;padding:3px 10px;
+ overflow-wrap:break-word;border-radius:var(--radius-s);
+}
+.writer-v137-typewriter-preview.is-focused .writer-v137-typewriter-preview-context{
+ opacity:var(--writer-typewriter-focus-opacity,.7);
+}
+.writer-v137-typewriter-preview.is-highlighted .writer-v137-typewriter-preview-current{
+ background:color-mix(in srgb,var(--interactive-accent) 8%,transparent);
+}
+.writer-v137-typewriter-preview.is-highlighted .writer-v137-typewriter-preview-current::before{
+ content:'';position:absolute;inset-block:0;inset-inline-start:0;
+ width:2px;border-radius:var(--radius-s);background:var(--interactive-accent);
+}
+@media(prefers-reduced-motion:reduce){
+ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line{transition:none}
+}
+
+/* Grammar setup and findings follow native theme colors and real pane width. */
+.writer-grammar-settings{display:flex;flex-direction:column;gap:12px;min-width:0}
+.writer-grammar-settings>h3{margin-bottom:0}
+.writer-grammar-settings>.setting-item-description{margin:0;line-height:1.5}
+.writer-grammar-settings .writer-grammar-state{
+ padding:10px 12px;border:1px solid var(--background-modifier-border);
+ border-inline-start:3px solid var(--interactive-accent);border-radius:var(--radius-s);
+ background:var(--background-secondary);line-height:1.5;color:var(--text-normal);
+}
+.writer-grammar-settings .writer-grammar-state[data-state="disabled"]{
+ border-inline-start-color:var(--text-muted);color:var(--text-muted);
+}
+.writer-grammar-settings .writer-grammar-section{
+ min-width:0;padding:12px 14px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);background:var(--background-primary);
+}
+.writer-grammar-settings .writer-grammar-section>h4{margin:0 0 6px;font-size:var(--font-ui-medium);line-height:1.4}
+.writer-grammar-settings .writer-grammar-section>.setting-item:last-of-type{border-bottom:0}
+.writer-grammar-settings .setting-item-control{min-width:0;max-width:100%}
+.writer-grammar-settings .setting-item-control :is(input,select,textarea){min-width:0;max-width:100%}
+.writer-grammar-settings .setting-item-control>input{width:100%}
+.writer-grammar-settings .setting-item-control>input[type="password"]{flex:1 1 150px}
+.writer-grammar-settings .setting-item-control>textarea{width:100%;min-height:82px;resize:vertical;line-height:1.5}
+.writer-grammar-settings :is(.writer-grammar-feedback,.writer-grammar-test-status){
+ margin:6px 0 0;font-size:var(--font-ui-small);line-height:1.5;overflow-wrap:anywhere;
+}
+.writer-grammar-settings :is(.writer-grammar-feedback,.writer-grammar-test-status):empty{display:none}
+.writer-grammar-settings .writer-grammar-feedback{color:var(--text-muted)}
+.writer-grammar-settings .writer-grammar-test-status[data-state="loading"]{color:var(--text-accent)}
+.writer-grammar-settings .writer-grammar-test-status[data-state="error"]{color:var(--text-error)}
+.writer-grammar-settings input[aria-invalid="true"]{border-color:var(--text-error)}
+.dictionary-view-content.writer-tool-root .writer-review-panel .writer-review-header{
+ display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;line-height:1.4;
+}
+.dictionary-view-content.writer-tool-root .writer-review-results{display:flex;flex-direction:column;gap:12px;min-width:0}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result{
+ margin:0;padding:12px;border:1px solid var(--background-modifier-border);
+ border-inline-start-width:3px;border-radius:var(--radius-m);background:var(--background-primary);
+}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-major{border-inline-start-color:var(--text-error)}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-minor{border-inline-start-color:var(--text-warning,var(--text-accent))}
+.dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-style{border-inline-start-color:var(--text-accent)}
+:is(.writer-cm-review-mark,.writer-lt-result,.writer-lt-menu-info).writer-lt-major{--writer-lt-underline:var(--text-error)}
+:is(.writer-cm-review-mark,.writer-lt-result,.writer-lt-menu-info).writer-lt-minor{--writer-lt-underline:var(--text-warning,var(--text-accent))}
+:is(.writer-cm-review-mark,.writer-lt-result,.writer-lt-menu-info).writer-lt-style{--writer-lt-underline:var(--text-accent)}
+.dictionary-view-content.writer-tool-root .writer-lt-result-heading{display:flex;flex-direction:column;align-items:start;gap:4px;min-width:0}
+.dictionary-view-content.writer-tool-root .writer-lt-category{font-size:var(--font-ui-smaller);color:var(--text-muted);line-height:1.4}
+.dictionary-view-content.writer-tool-root .writer-lt-title{font-size:var(--font-ui-small);line-height:1.45;overflow-wrap:anywhere}
+.dictionary-view-content.writer-tool-root .writer-lt-original{margin-block:10px;line-height:1.55;overflow-wrap:anywhere}
+.dictionary-view-content.writer-tool-root .writer-lt-original>mark{
+ padding:1px 3px;border-radius:var(--radius-s);background:var(--text-highlight-bg);color:var(--text-normal);
+}
+.dictionary-view-content.writer-tool-root .writer-lt-choices{display:flex;flex-wrap:wrap;gap:6px}
+.dictionary-view-content.writer-tool-root .writer-lt-choices>.writer-lt-choice{
+ min-width:0;max-width:100%;min-height:36px;height:auto;white-space:normal;overflow-wrap:anywhere;
+ line-height:1.4;padding:6px 10px;
+}
+.dictionary-view-content.writer-tool-root .writer-lt-result-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px;margin-top:10px}
+.dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{min-height:34px;white-space:normal;line-height:1.35}
+.dictionary-view-content.writer-tool-root .writer-lt-details{margin-top:10px;padding-top:8px;border-top:1px solid var(--background-modifier-border)}
+.dictionary-view-content.writer-tool-root .writer-lt-details>summary{font-size:var(--font-ui-small);line-height:1.4;cursor:var(--cursor)}
+.dictionary-view-content.writer-tool-root .writer-lt-details p{font-size:var(--font-ui-small);line-height:1.55;overflow-wrap:anywhere}
+.dictionary-view-content.writer-tool-root .writer-review-external .writer-tools-v3-actions{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+.dictionary-view-content.writer-tool-root .writer-review-external .writer-tools-v3-actions>button{white-space:normal;min-width:0;min-height:38px;line-height:1.35}
+:is(.writer-grammar-settings,.writer-review-panel) :is(button,input,select,textarea,summary):focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:2px;
+}
+@media(max-width:600px){
+ .writer-grammar-settings .writer-grammar-section{padding:10px}
+ .writer-grammar-settings .setting-item-control :is(button,input,select){min-height:44px}
+ .dictionary-view-content.writer-tool-root .writer-review-panel :is(.writer-lt-choice,.writer-lt-result-actions>button,.writer-lt-details>button,.writer-lt-show-more){min-height:44px}
+ .dictionary-view-content.writer-tool-root .writer-review-external .writer-tools-v3-actions{grid-template-columns:minmax(0,1fr)}
 }
 /* END V8 MODULAR STYLES */

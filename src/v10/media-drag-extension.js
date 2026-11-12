@@ -1,8 +1,8 @@
 'use strict';
 /* Cross-note block move, responsive columns and best-effort PDF per-page previews. */
 function writerV107MediaConfig(settings){
- const old=settings.v107Media&&typeof settings.v107Media==='object'?settings.v107Media:{};
- return settings.v107Media={pdfPages:true,maxPage:30,crossNote:true,columns:true,...old,maxPage:Math.max(3,Math.min(80,Number(old.maxPage)||30))};
+ const old=settings.v107Media&&typeof settings.v107Media==='object'&&!Array.isArray(settings.v107Media)?settings.v107Media:{};
+ return settings.v107Media=Object.assign(old,{pdfPages:true,maxPage:30,crossNote:true,columns:true,...old,maxPage:Math.max(3,Math.min(80,Number(old.maxPage)||30))});
 }
 function writerV107CrossNoteBlock(editor){
  const selected=editor.getSelection();
@@ -107,13 +107,13 @@ function writerV107MediaRegister(plugin){
  plugin.register?.(()=>{writerV8MediaOpen=prior;});
  // Dragger commands are desktop-only; keep unrelated PDF and columns features on mobile.
  if(require('obsidian').Platform?.isMobile!==true&&plugin.app?.isMobile!==true){
- plugin.addCommand({id:'v107-move-block-to-note',name:writerUi('Dragger: mover bloco para outra nota','Dragger: move block to another note'),editorCheckCallback:(checking,editor,view)=>{
+ plugin.addCommand({id:'v107-move-block-to-note',name:writerUi('Blocos: mover para outra nota','Blocks: move to another note'),editorCheckCallback:(checking,editor,view)=>{
   if(!plugin.settings.v107Media.crossNote||!view?.file)return false;
   if(!checking)writerV107MoveBlockModal(plugin,editor,view.file);
   return true;
  }});
  }
- plugin.addCommand({id:'v107-insert-columns',name:writerUi('Make.md: inserir colunas Markdown','Make.md: insert Markdown columns'),editorCallback:editor=>{
+ plugin.addCommand({id:'v107-insert-columns',name:writerUi('Formatação: inserir colunas Markdown','Formatting: insert Markdown columns'),editorCallback:editor=>{
   const fence=String.fromCharCode(96).repeat(3);
   editor.replaceSelection(['',fence+'writer-columns','## '+writerUi('Coluna 1','Column 1'),'',
    '---column---','## '+writerUi('Coluna 2','Column 2'),fence,''].join('\n'));
@@ -127,7 +127,7 @@ function writerV107MediaRegister(plugin){
 }
 function writerV107MediaSettings(plugin,panel){
  const cfg=plugin.settings.v107Media;
- panel.createEl('h3',{text:writerUi('Mídia, PDF e Dragger','Media, PDF and Dragger')});
+ panel.createEl('h3',{text:writerUi('Mídia, PDF e movimentação de blocos','Media, PDF and block movement')});
  for(const [key,pt,en] of [['pdfPages','Prévia PDF por página','PDF page previews'],['crossNote','Mover blocos entre notas','Move blocks between notes'],['columns','Colunas Markdown responsivas','Responsive Markdown columns']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  }

@@ -140,13 +140,13 @@ class WriterEasyTyping{
     ed.setSelection({line:from,ch:0},{line:to,ch:ed.getLine(to).length});
    }]
   ];
-  for(const [id,pt,en,action] of commands)p.addCommand({id:'v5-easy-'+id,name:'Easy Typing: '+writerUi(pt,en),editorCheckCallback:(checking,editor)=>{
+  for(const [id,pt,en,action] of commands)p.addCommand({id:'v5-easy-'+id,name:writerUi('Digitação: ','Typing: ')+writerUi(pt,en),editorCheckCallback:(checking,editor)=>{
    if(!this.active())return false;
    if(!checking)action(editor);return true;
   }});
-  p.addCommand({id:'v5-easy-toggle',name:writerUi('Easy Typing: alternar assistentes','Easy Typing: toggle helpers'),callback:async()=>{
+  p.addCommand({id:'v5-easy-toggle',name:writerUi('Digitação assistida: ativar/desativar','Typing assistance: toggle'),callback:async()=>{
    this.cfg.enabled=!this.cfg.enabled;await p.saveSettings();
-   new Notice(writerUi('Digitação fácil: ','Easy Typing: ')+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
+   new Notice(writerUi('Digitação assistida: ','Typing assistance: ')+(this.cfg.enabled?writerUi('ativado','on'):writerUi('desativado','off')));
   }});
   const {keymap,EditorView}=require('@codemirror/view');
   const bindings=[
@@ -184,10 +184,10 @@ class WriterEasyTyping{
   }));
  }
  renderSettings(panel){
-  panel.createEl('h3',{text:writerUi('Easy Typing · digitação eficiente','Easy Typing · editing assistance')});
+  panel.createEl('h3',{text:writerUi('Digitação assistida','Typing assistance')});
   panel.createEl('p',{text:writerUi('Tab e Backspace inteligentes, colagem em listas, substituições literais e comandos manuais. Sem a antiga toolbar.','Tab and Backspace helpers, smart list pasting, literal rules and editor commands; no retired toolbar.'),cls:'dictionary-muted'});
   for(const [key,pt,en] of [
-   ['enabled','Ativar Easy Typing','Enable Easy Typing'],['tabOut','Tab sai de símbolos pareados','Tab moves past paired symbols'],
+   ['enabled','Ativar digitação assistida','Enable typing assistance'],['tabOut','Tab sai de símbolos pareados','Tab moves past paired symbols'],
    ['smartPaste','Colagem inteligente em listas e citações','Smart paste in lists and quotes'],
    ['smartBackspace','Backspace em itens vazios','Smart Backspace for empty list items'],
    ['autoCapitalize','Maiúsculas no início de frases','Auto capitalize sentences'],
@@ -201,8 +201,8 @@ class WriterEasyTyping{
   const section=panel.createDiv({cls:'writer-typing-rules'});
   section.createEl('h4',{text:writerUi('Substituições automáticas de texto','Automatic text replacements')});
   section.createEl('p',{cls:'dictionary-muted',text:writerUi(
-   'Digite um atalho e escolha o texto que aparece no lugar. Ex.: vc → você ou att → atenciosamente. Aceita espaços, quebras e o caractere |; não usa expressões regulares. Aspas e travessões ficam em Smart Typography.',
-   'Type a shortcut and choose what it becomes. For example, btw → by the way. Spaces and | are allowed; regular expressions are separate. Quotes and dashes are configured in Smart Typography.'
+   'Digite um atalho e escolha o texto que aparece no lugar. Ex.: vc → você ou att → atenciosamente. Aceita espaços, quebras e o caractere |; não usa expressões regulares. Aspas e travessões ficam em Tipografia automática.',
+   'Type a shortcut and choose what it becomes. For example, btw → by the way. Spaces and | are allowed; regular expressions are separate. Quotes and dashes are configured in Automatic typography.'
   )});
   const list=section.createDiv({cls:'writer-typing-rule-list'});
   const label=rule=>rule.from+' → '+(rule.to||writerUi('(apagar)','(delete)'))+(rule.enabled===false?writerUi(' · desativada',' · disabled'):'');

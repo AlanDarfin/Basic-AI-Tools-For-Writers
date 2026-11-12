@@ -1,8 +1,8 @@
 'use strict';
-/* Offline Web Speech and a small, explicit LanguageTool/Typewriter interaction guard. */
+/* Device/browser Web Speech and an explicit grammar/focus interaction guard. */
 function writerV107SpeechConfig(settings){
- const old=settings.v107Speech&&typeof settings.v107Speech==='object'?settings.v107Speech:{};
- return settings.v107Speech={enabled:true,lang:'pt-BR',voice:'',rate:1,pitch:1,...old,rate:Math.max(.5,Math.min(2,Number(old.rate)||1)),pitch:Math.max(.5,Math.min(2,Number(old.pitch)||1))};
+ const old=settings.v107Speech&&typeof settings.v107Speech==='object'&&!Array.isArray(settings.v107Speech)?settings.v107Speech:{};
+ return settings.v107Speech=Object.assign(old,{enabled:true,lang:'pt-BR',voice:'',rate:1,pitch:1,...old,rate:Math.max(.5,Math.min(2,Number(old.rate)||1)),pitch:Math.max(.5,Math.min(2,Number(old.pitch)||1))});
 }
 function writerV107SpeechChunks(text,max=1450){
  const src=String(text||'').replace(/\s+/g,' ').trim().slice(0,30000);
@@ -16,6 +16,7 @@ function writerV107SpeechChunks(text,max=1450){
  return result;
 }
 function writerV107SpeechStart(plugin,text){
+ if(plugin.settings.v107Speech?.enabled===false)return false;
  const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
  const Utterance=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.SpeechSynthesisUtterance;
  if(!speech||!Utterance){new Notice(writerUi('O Android/WebView não disponibilizou voz local. Use a opção Edge TTS do Basic.','No local speech voice in this WebView. Try Basic Edge TTS.'));return false;}
@@ -39,7 +40,7 @@ function writerV107SpeechPanel(plugin){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Leitura em voz alta · local','Local text to speech'));
  modal.onOpen=()=>{
   const root=modal.contentEl,cfg=plugin.settings.v107Speech;
-  root.createEl('p',{cls:'setting-item-description',text:writerUi('Vozes locais do sistema; nenhum texto é enviado pela função de voz local. A disponibilidade depende do Android/Linux e WebView.','Uses OS voices without sending the text to a server. Android/Linux/WebView support varies.')});
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Usa vozes disponibilizadas pelo sistema ou navegador. A disponibilidade e o uso de rede dependem da voz escolhida e do dispositivo.','Uses voices provided by the system or browser. Availability and network use depend on the selected voice and device.')});
   const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
   const list=speech?.getVoices?.()||[];
   new Setting(root).setName(writerUi('Voz do dispositivo','Device voice')).addDropdown(d=>{
@@ -83,7 +84,7 @@ function writerV107SpeechRegister(plugin){
 }
 function writerV107SpeechSettings(plugin,panel){
  const cfg=plugin.settings.v107Speech;
- panel.createEl('h3',{text:writerUi('Voz local e LanguageTool','Local speech and LanguageTool')});
+ panel.createEl('h3',{text:writerUi('Leitura com voz do dispositivo','Read with device voices')});
  new Setting(panel).setName(writerUi('Ativar TTS local','Enable local speech')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Abrir seletor de voz','Open voice settings')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV107SpeechPanel(plugin)));
 }

@@ -803,7 +803,7 @@ function writerV91FlexRegister(plugin){
 }
 function writerV91FlexSettings(plugin,panel){
  const cfg=plugin.settings.v91Flex;
- panel.createEl('h3',{text:'Flexplorer'});
+ panel.createEl('h3',{text:writerUi('Apresentação de pastas e arquivos','Folder and file presentation')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
   'Use o botão nativo Ordenar, no topo do explorador, para aplicar uma ordem a todas as pastas. Use arrastar para escolher a ordem manual; o menu de contexto mantém os comandos de fixar e ocultar.',
   'Use Obsidian’s native Sort button to choose an order for all folders. Drag to arrange items in manual mode; file context menus retain pin and hide actions.'

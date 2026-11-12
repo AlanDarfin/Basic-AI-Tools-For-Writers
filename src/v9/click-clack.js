@@ -152,11 +152,11 @@ class WriterV91ClickClack{
   if(this.plugin.app.isMobile)return;
   const modal=new Modal(this.plugin.app);
   modal.onOpen=()=>{
-   modal.setTitle(writerUi('Pacotes de sons do Click Clack','Click Clack sound packs'));
+   modal.setTitle(writerUi('Pacotes de sons de digitação','Typing sound packs'));
    const root=modal.contentEl;root.empty();
    root.createEl('p',{cls:'dictionary-muted',text:writerUi(
-    '13 pacotes do Click Clack original. Os arquivos são baixados do GitHub apenas com sua autorização e funcionam offline depois.',
-    '13 original Click Clack packs. Files download from GitHub only on request and work offline afterward.'
+    '13 pacotes de sons opcionais. Os arquivos são baixados do GitHub apenas com sua autorização e funcionam offline depois.',
+    '13 optional typing sound packs. Files download from GitHub only on request and work offline afterward.'
    )});
    const status=root.createEl('p',{cls:'dictionary-muted',attr:{role:'status','aria-live':'polite'}});
    const actions=root.createDiv({cls:'writer-v91-click-actions'});
@@ -272,7 +272,7 @@ function writerV91ClickSettings(plugin,panel){
    drop.setValue(choices.some(x=>x.id===cfg.scheme)?cfg.scheme:'generated');
    drop.onChange(async v=>{cfg.scheme=v;await plugin.saveSettings();await plugin.writerV91Click.load();});
   });
- new Setting(panel).setName(writerUi('Baixar pacotes do Click Clack','Download Click Clack sound packs'))
+ new Setting(panel).setName(writerUi('Baixar pacotes de sons','Download sound packs'))
   .setDesc(writerUi('Escolha entre os 13 pacotes originais ou instale todos. Download sob demanda.',
    'Choose from 13 original packs or install all. On-demand downloads.'))
   .addButton(b=>b.setButtonText(writerUi('Ver pacotes','Browse packs')).setCta()

@@ -1,8 +1,8 @@
 'use strict';
 /* Local, bounded Markdown database with safe arithmetic formulas and relation rollups. */
 function writerV107DbConfig(settings){
- const old=settings.v107Db&&typeof settings.v107Db==='object'?settings.v107Db:{};
- return settings.v107Db={enabled:true,maxFiles:500,editable:true,...old,maxFiles:Math.max(25,Math.min(2000,Number(old.maxFiles)||500))};
+ const old=settings.v107Db&&typeof settings.v107Db==='object'&&!Array.isArray(settings.v107Db)?settings.v107Db:{};
+ return settings.v107Db=Object.assign(old,{enabled:true,maxFiles:500,editable:true,...old,maxFiles:Math.max(25,Math.min(2000,Number(old.maxFiles)||500))});
 }
 function writerV107DbSpec(source){
  const s={folder:'',columns:['file','tags'],filter:'',sort:'file',order:'asc',group:'',view:'table',limit:80,formulas:[],rollups:[]};
@@ -162,14 +162,14 @@ function writerV107DbRender(plugin,source,element,ctx){
 function writerV107DbRegister(plugin){
  writerV107DbConfig(plugin.settings);
  for(const lang of ['writer-database','basic-database'])plugin.registerMarkdownCodeBlockProcessor(lang,(source,element,ctx)=>writerV107DbRender(plugin,source,element,ctx));
- plugin.addCommand({id:'v107-insert-database',name:writerUi('Make.md: inserir banco de dados','Make.md: insert database'),editorCallback:editor=>{
+ plugin.addCommand({id:'v107-insert-database',name:writerUi('Banco de dados: inserir tabela','Database: insert table'),editorCallback:editor=>{
   const fence=String.fromCharCode(96).repeat(3);
   editor.replaceSelection(['',fence+'writer-database','folder:','columns: file, status, priority','view: table','group: status','filter: status != done','sort: modified','order: desc','formula: score = priority * 2','rollup: total = related.pages | sum',fence,''].join('\n'));
  }});
 }
 function writerV107DbSettings(plugin,panel){
  const cfg=plugin.settings.v107Db;
- panel.createEl('h3',{text:writerUi('Make.md — bases e fórmulas','Make.md — databases and formulas')});
+ panel.createEl('h3',{text:writerUi('Bancos de dados e fórmulas','Databases and formulas')});
  for(const [key,pt,en] of [['enabled','Bases Markdown','Markdown databases'],['editable','Editar células','Edit cells']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  }

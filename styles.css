@@ -10934,7 +10934,7 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-
 /* Visual-only Longform story arc dividers, compact on desktop and Android. */
 .writer-project-root .writer-project-arc-divider{
  display:grid;grid-template-columns:32px minmax(0,1fr) 32px;
- align-items:center;column-gap:6px;min-width:0;
+ align-items:center;gap:6px;min-width:0;
  padding:5px 0;margin:1px 0;
 }
 .writer-project-root .writer-project-arc-rule{

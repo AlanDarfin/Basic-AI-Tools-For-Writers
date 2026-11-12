@@ -1,0 +1,733 @@
+{
+  "application": "Obsidian 1.15.0",
+  "platform": "Obsidian 1.15.0 on Linux. Narrow viewport/CSS mobile layout with app.isMobile and Snailkit isPhone flags; no physical Android/iOS test.",
+  "physicalAndroid": false,
+  "cases": {
+    "desktop-center": {
+      "cards": 9,
+      "overflow": 0,
+      "view": "basic-connected-plugins"
+    },
+    "mobile-center": {
+      "cards": 9,
+      "overflow": 0,
+      "buttons": true
+    },
+    "mobile-note": {
+      "viewport": {
+        "width": 412,
+        "height": 915,
+        "visual": {
+          "width": 412,
+          "height": 915
+        }
+      },
+      "controls": [
+        {
+          "selector": ".fk-tts-player",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 64,
+          "top": 721,
+          "right": 384,
+          "bottom": 891.296875,
+          "width": 320,
+          "height": 170.296875,
+          "translate": "0px",
+          "z": "24",
+          "style": "inset: 721px auto auto 64px;",
+          "classes": "fk-tts-player is-active writer-companion-managed"
+        },
+        {
+          "selector": ".fs-float-btn",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 356,
+          "top": 12,
+          "right": 400,
+          "bottom": 56,
+          "width": 44,
+          "height": 44,
+          "translate": "0px",
+          "z": "23",
+          "style": "--writer-companion-x: 0px; --writer-companion-y: 0px;",
+          "classes": "fs-float-btn writer-companion-managed"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 10,
+          "top": 10,
+          "right": 48,
+          "bottom": 185,
+          "width": 38,
+          "height": 175,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-tasks-fab",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "20",
+          "style": null,
+          "classes": "sk-tasks-fab is-fan"
+        },
+        {
+          "selector": ".sk-tasks-fan",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "19",
+          "style": null,
+          "classes": "sk-tasks-fan"
+        },
+        {
+          "selector": ".writer-v9-format-toolbar",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 6,
+          "top": 919,
+          "right": 406,
+          "bottom": 969,
+          "width": 400,
+          "height": 50,
+          "translate": "none",
+          "z": "12",
+          "style": "--writer-v1048-button-size: 32px;",
+          "classes": "writer-v9-format-toolbar writer-v1048-format-toolbar is-style-compact"
+        }
+      ]
+    },
+    "narrow-note": {
+      "viewport": {
+        "width": 320,
+        "height": 640,
+        "visual": {
+          "width": 320,
+          "height": 640
+        }
+      },
+      "controls": [
+        {
+          "selector": ".fk-tts-player",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 8,
+          "top": 446,
+          "right": 312,
+          "bottom": 616.296875,
+          "width": 304,
+          "height": 170.296875,
+          "translate": "0px",
+          "z": "24",
+          "style": "max-width: 304px; inset: 446px auto auto 8px;",
+          "classes": "fk-tts-player is-active writer-companion-managed"
+        },
+        {
+          "selector": ".fs-float-btn",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 264,
+          "top": 12,
+          "right": 308,
+          "bottom": 56,
+          "width": 44,
+          "height": 44,
+          "translate": "0px",
+          "z": "23",
+          "style": "--writer-companion-x: 0px; --writer-companion-y: 0px;",
+          "classes": "fs-float-btn writer-companion-managed"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 10,
+          "top": 10,
+          "right": 48,
+          "bottom": 185,
+          "width": 38,
+          "height": 175,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-tasks-fab",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "20",
+          "style": null,
+          "classes": "sk-tasks-fab is-fan"
+        },
+        {
+          "selector": ".sk-tasks-fan",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "19",
+          "style": null,
+          "classes": "sk-tasks-fan"
+        },
+        {
+          "selector": ".writer-v9-format-toolbar",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 6,
+          "top": 644,
+          "right": 314,
+          "bottom": 694,
+          "width": 308,
+          "height": 50,
+          "translate": "none",
+          "z": "12",
+          "style": "--writer-v1048-button-size: 32px;",
+          "classes": "writer-v9-format-toolbar writer-v1048-format-toolbar is-style-compact"
+        }
+      ]
+    },
+    "short-keyboard-like-viewport": {
+      "viewport": {
+        "width": 412,
+        "height": 420,
+        "visual": {
+          "width": 412,
+          "height": 420
+        }
+      },
+      "controls": [
+        {
+          "selector": ".fk-tts-player",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 64,
+          "top": 226,
+          "right": 384,
+          "bottom": 396.296875,
+          "width": 320,
+          "height": 170.296875,
+          "translate": "0px",
+          "z": "24",
+          "style": "inset: 226px auto auto 64px;",
+          "classes": "fk-tts-player is-active writer-companion-managed"
+        },
+        {
+          "selector": ".fs-float-btn",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 356,
+          "top": 12,
+          "right": 400,
+          "bottom": 56,
+          "width": 44,
+          "height": 44,
+          "translate": "0px",
+          "z": "23",
+          "style": "--writer-companion-x: 0px; --writer-companion-y: 0px;",
+          "classes": "fs-float-btn writer-companion-managed"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 10,
+          "top": 10,
+          "right": 48,
+          "bottom": 185,
+          "width": 38,
+          "height": 175,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-tasks-fab",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "20",
+          "style": null,
+          "classes": "sk-tasks-fab is-fan"
+        },
+        {
+          "selector": ".sk-tasks-fan",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "19",
+          "style": null,
+          "classes": "sk-tasks-fan"
+        },
+        {
+          "selector": ".writer-v9-format-toolbar",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 6,
+          "top": 424,
+          "right": 406,
+          "bottom": 474,
+          "width": 400,
+          "height": 50,
+          "translate": "none",
+          "z": "12",
+          "style": "--writer-v1048-button-size: 32px;",
+          "classes": "writer-v9-format-toolbar writer-v1048-format-toolbar is-style-compact"
+        }
+      ]
+    },
+    "layout-off": {
+      "viewport": {
+        "width": 412,
+        "height": 420,
+        "visual": {
+          "width": 412,
+          "height": 420
+        }
+      },
+      "controls": [
+        {
+          "selector": ".fk-tts-player",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 64,
+          "top": 225.703125,
+          "right": 384,
+          "bottom": 396,
+          "width": 320,
+          "height": 170.296875,
+          "translate": "none",
+          "z": "1050",
+          "style": "",
+          "classes": "fk-tts-player is-active"
+        },
+        {
+          "selector": ".fs-float-btn",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 364.9375,
+          "top": 12,
+          "right": 400,
+          "bottom": 56,
+          "width": 35.0625,
+          "height": 44,
+          "translate": "none",
+          "z": "9000",
+          "style": "",
+          "classes": "fs-float-btn"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-note-rail",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "0.5",
+          "left": 10,
+          "top": 10,
+          "right": 48,
+          "bottom": 185,
+          "width": 38,
+          "height": 175,
+          "translate": "none",
+          "z": "22",
+          "style": "--sk-note-rail-rest: 0.5;",
+          "classes": "sk-note-rail"
+        },
+        {
+          "selector": ".sk-tasks-fab",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "20",
+          "style": null,
+          "classes": "sk-tasks-fab is-fan"
+        },
+        {
+          "selector": ".sk-tasks-fan",
+          "display": "block",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 0,
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "width": 0,
+          "height": 0,
+          "translate": "none",
+          "z": "19",
+          "style": null,
+          "classes": "sk-tasks-fan"
+        },
+        {
+          "selector": ".writer-v9-format-toolbar",
+          "display": "flex",
+          "visibility": "visible",
+          "opacity": "1",
+          "left": 6,
+          "top": 424,
+          "right": 406,
+          "bottom": 474,
+          "width": 400,
+          "height": 50,
+          "translate": "none",
+          "z": "12",
+          "style": "--writer-v1048-button-size: 32px;",
+          "classes": "writer-v9-format-toolbar writer-v1048-format-toolbar is-style-compact"
+        }
+      ]
+    },
+    "snail-phone-panel": {
+      "mode": "Native Snailkit phone layout in expanded desktop sidebar; not Android",
+      "markdownLeaves": 0,
+      "view": "snailkit-tasks",
+      "pane": {
+        "x": 44,
+        "y": 40,
+        "width": 368,
+        "height": 875,
+        "top": 40,
+        "right": 412,
+        "bottom": 915,
+        "left": 44
+      },
+      "fab": {
+        "x": 336,
+        "y": 765,
+        "width": 58,
+        "height": 58,
+        "top": 765,
+        "right": 394,
+        "bottom": 823,
+        "left": 336
+      },
+      "fan": {
+        "x": 44,
+        "y": 87,
+        "width": 368,
+        "height": 828,
+        "top": 87,
+        "right": 412,
+        "bottom": 915,
+        "left": 44
+      },
+      "buttons": [
+        "writing2",
+        "review1"
+      ],
+      "modals": 0
+    },
+    "explorer-priority": {
+      "companion": [
+        {
+          "row": "tree-item-self nav-file-title tappable is-clickable writer-v92-has-favorite is-active writer-companion-icon-toolkit",
+          "rect": {
+            "x": 56,
+            "y": 120.09375,
+            "width": 276,
+            "height": 28,
+            "top": 120.09375,
+            "right": 332,
+            "bottom": 148.09375,
+            "left": 56
+          },
+          "icons": [
+            {
+              "class": "writer-v9-explorer-icon",
+              "display": "none",
+              "connected": true
+            },
+            {
+              "class": "ft-icon ft-markdown",
+              "display": "flex",
+              "connected": true
+            }
+          ]
+        }
+      ],
+      "basic": [
+        {
+          "row": "tree-item-self nav-file-title tappable is-clickable writer-v92-has-favorite is-active writer-companion-icon-basic",
+          "rect": {
+            "x": 56,
+            "y": 120.09375,
+            "width": 276,
+            "height": 28,
+            "top": 120.09375,
+            "right": 332,
+            "bottom": 148.09375,
+            "left": 56
+          },
+          "icons": [
+            {
+              "class": "writer-v9-explorer-icon",
+              "display": "flex",
+              "connected": true
+            },
+            {
+              "class": "ft-icon ft-markdown",
+              "display": "none",
+              "connected": true
+            }
+          ]
+        }
+      ],
+      "off": [
+        {
+          "row": "tree-item-self nav-file-title tappable is-clickable writer-v92-has-favorite is-active",
+          "rect": {
+            "x": 56,
+            "y": 120.09375,
+            "width": 276,
+            "height": 28,
+            "top": 120.09375,
+            "right": 332,
+            "bottom": 148.09375,
+            "left": 56
+          },
+          "icons": [
+            {
+              "class": "writer-v9-explorer-icon",
+              "display": "flex",
+              "connected": true
+            },
+            {
+              "class": "ft-icon ft-markdown",
+              "display": "flex",
+              "connected": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "errors": [],
+  "limitations": [
+    "Full Platform.isMobile switching on the desktop runtime requires absent native mobile UI components and was not used as evidence.",
+    "Keyboard case uses a short visible viewport, not a hardware soft keyboard.",
+    "Snailkit FAB exists only in its native side layout. Its phone UI/fan was tested in an expanded desktop sidebar with the isPhone flag.",
+    "No Android/iOS hardware was available.",
+    "Explorer CSS specificity fix was loaded from the exact source style for computed-display verification."
+  ],
+  "discardedTrials": [
+    "The first screenshot pass was obscured by an existing Visual Kit annotation modal and was discarded.",
+    "An early attempt to switch full desktop Platform flags produced core mobile-component errors and was discarded."
+  ],
+  "screenshots": [
+    "docs/images/13.8.0/connected-plugins-desktop.png",
+    "docs/images/13.8.0/mobile-companion-controls.png",
+    "docs/images/13.8.0/snailkit-mobile-fan.png",
+    "docs/images/13.8.0/explorer-icons-toolkit.png",
+    "docs/images/13.8.0/explorer-icons-basic.png"
+  ],
+  "checks": {
+    "nativeModalOverlayAbsent": true,
+    "centerCards": 9,
+    "centerDocumentOverflow": 0,
+    "mobileActionMinimumHeight": 44,
+    "snailFabWidth": 58,
+    "snailFabHeight": 58,
+    "snailFanTagButtons": 2,
+    "toolkitPriorityBasicHidden": true,
+    "basicPriorityToolkitHidden": true,
+    "compatibilityOffBothIconNodesVisible": true,
+    "layoutUnitTests": 10,
+    "layoutRuntimeErrorsInAcceptedPass": 0
+  }
+}

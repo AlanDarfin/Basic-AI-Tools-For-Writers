@@ -11743,8 +11743,8 @@ body.is-mobile .writer-companion-managed{
 body.is-mobile .fs-float-btn.writer-companion-managed{z-index:23;min-height:44px;min-width:44px;}
 body.is-mobile .fk-tts-player.writer-companion-managed{z-index:24;box-sizing:border-box;}
 body.is-mobile .fs-hint.writer-companion-managed{z-index:25;box-sizing:border-box;white-space:normal;flex-wrap:wrap;}
-.writer-companion-icon-toolkit>.writer-v9-explorer-icon,
-.writer-companion-icon-basic>.ft-icon{display:none;}
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title,.nav-folder-title).writer-companion-icon-toolkit>.writer-v9-explorer-icon,
+.workspace-leaf-content[data-type="file-explorer"] :is(.nav-file-title,.nav-folder-title).writer-companion-icon-basic>.ft-icon{display:none;}
 /* Native pane and settings cards use the available pane width, including sidebars. */
 .writer-companion-center{
  box-sizing:border-box;display:flex;flex-direction:column;gap:14px;

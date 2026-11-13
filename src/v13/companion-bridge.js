@@ -226,7 +226,6 @@ function writerCompanionRender(plugin,root,role,context){
  }
  const footer=root.createDiv({cls:'writer-companion-actions'});
  writerCompanionButton(footer,writerUi('Atualizar recursos','Refresh capabilities'),()=>writerCompanionRender(plugin,root,role,context));
- writerCompanionButton(footer,writerUi('Configurar integrações','Configure integrations'),()=>plugin.openCoreSettings('integrationsV4'));
 }
 function writerCompanionSyncSelector(plugin,panel){
  new Setting(panel).setName(writerUi('Provedor manual de sincronização','Manual synchronization provider'))

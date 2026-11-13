@@ -1,0 +1,10 @@
+/* Reserve real editor space for docked formatting controls. */
+.writer-v9-toolbar-host.writer-v9-toolbar-docked{
+ display:flex;flex-direction:column;min-height:0;
+}
+.writer-v9-toolbar-host.writer-v9-toolbar-docked>.markdown-source-view,
+.writer-v9-toolbar-host.writer-v9-toolbar-docked>.markdown-preview-view,
+.writer-v9-toolbar-host.writer-v9-toolbar-docked>.markdown-reading-view{
+ flex:1 1 auto;min-height:0;height:auto;
+}
+body .writer-v9-toolbar-host>.writer-v9-format-toolbar.writer-v1048-format-toolbar:not(.is-floating){inset:auto;}

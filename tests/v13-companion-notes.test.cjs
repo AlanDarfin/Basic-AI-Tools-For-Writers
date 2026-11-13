@@ -140,7 +140,7 @@ test('native tab buttons are bilingual and honor Basic module disable on both re
   const instance=h.tabs[0].mount(el,{}),buttons=el.children.find(item=>item.classes.has('basic-companion-snailkit-actions')).children;
   assert.equal(el.children[0].text,language==='pt'?'Escrita com Basic':'Writing with Basic');
   buttons[0].click();buttons[1].click();buttons[2].click();
-  assert.deepEqual(h.calls,[['projects'],['tools'],['basic-settings','integrationsV4']]);
+  assert.deepEqual(h.calls,[['projects'],['tools'],['basic-settings','editorAdvanced']]);
   h.plugin.settings.visibleModules.projects=false;h.plugin.settings.visibleModules.tools=false;
   life.refresh();assert.equal(buttons[0].hidden,true);assert.equal(buttons[1].hidden,true);
   buttons[0].click();buttons[1].click();assert.equal(h.calls.length,3);

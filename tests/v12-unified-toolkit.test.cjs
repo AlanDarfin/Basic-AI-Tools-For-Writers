@@ -59,7 +59,7 @@ test('command discovery is scoped to the installed companion',()=>{
 test('registration never starts a sync transport or accesses the network',()=>{
  const registered=[],events=[];
  const plugin={
-  settings:{},app:{plugins:{plugins:{}},workspace:{onLayoutReady:()=>{},on:()=>({})}},
+  settings:{},app:{plugins:{plugins:{}},workspace:{onLayoutReady:()=>{},on:event=>({event})}},
   addCommand:c=>registered.push(c.id),
   registerMarkdownPostProcessor:()=>{},
   registerEvent:x=>events.push(x),
@@ -71,6 +71,6 @@ test('registration never starts a sync transport or accesses the network',()=>{
  assert.ok(registered.includes('v12-capture'));
  assert.ok(registered.includes('v12-tasks'));
  assert.equal(registered.length,10);
- assert.equal(events.length,1);
+ assert.deepEqual(events.map(ref=>ref.event).sort(),['file-menu','layout-change']);
  assert.equal(plugin.settings.v12Toolkit.syncProvider,'none');
 });

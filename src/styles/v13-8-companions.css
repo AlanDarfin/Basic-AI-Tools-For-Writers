@@ -7,6 +7,11 @@
 body.is-mobile .writer-companion-managed{
  translate:var(--writer-companion-x,0px) var(--writer-companion-y,0px);
 }
+/* Native bars must create a bounded stacking context below native menus.
+ * Inline visibility/pointer events also suspend top-layer popovers temporarily. */
+body.is-mobile :is(.fk-selection-toolbar,.fk-live-image-toolbar).writer-companion-managed{
+ z-index:26;box-sizing:border-box;white-space:normal;flex-wrap:wrap;
+}
 /* Native Toolkit fullscreen's z-index 9000 otherwise sits above Obsidian menus. */
 body.is-mobile .fs-float-btn.writer-companion-managed{z-index:23;min-height:44px;min-width:44px;}
 body.is-mobile .fk-tts-player.writer-companion-managed{z-index:24;box-sizing:border-box;}

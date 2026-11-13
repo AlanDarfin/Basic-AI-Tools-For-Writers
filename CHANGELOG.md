@@ -2,6 +2,16 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.9.0 — Native tools and mobile plugin support
+
+- Add native task date filters, priorities and previewed quick capture into an existing Markdown note, with concurrent-edit checks and no Snailkit dependency.
+- Add native read-from-cursor using the current editor buffer while retaining Markdown exclusions, feature switches, character limits and selected-provider consent.
+- Add explorer folder-focus context actions and an inline path/Show all control, preserving original files and decorations.
+- Remove the Integrations & sync settings page; map saved routes to Advanced editing and keep voice, explorer and floating-control options beside their native features.
+- Coordinate supported mobile floating controls and anchored popups with menus/dialogs; suspend secondary controls when no safe position exists and restore managed styles/state afterward.
+- Keep passive mobile layout independent of the quick-actions master switch while retaining explicit compatibility opt-outs.
+- Document each supported plugin in both READMEs and update bilingual support guides; recheck the supplied original files and record their hashes without bundling upstream code.
+
 ## 13.8.0 — Connected plugins and mobile compatibility
 
 - Replace generic companion discovery with audited commands, native panel reuse, selected native preferences and per-plugin disable controls across nine integrations.

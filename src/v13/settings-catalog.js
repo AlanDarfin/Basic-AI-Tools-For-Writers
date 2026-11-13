@@ -16,7 +16,6 @@ const WRITER_SETTINGS_CATALOG=[
  {id:'modules',group:'general',pt:'Recursos',en:'Features',descriptionPt:'Escolha quais recursos aparecem nos painéis, menus e comandos.',descriptionEn:'Choose the features shown in panes, menus and commands.',keywords:'módulos modules visibility ocultar hide ativar enabled'},
  {id:'workspaceProfiles',group:'general',pt:'Perfis de escrita',en:'Writing profiles',descriptionPt:'Salve combinações de preferências e desfaça a última aplicação.',descriptionEn:'Save combinations of preferences and undo the last application.'},
  {id:'diagnostics',group:'general',pt:'Diagnóstico e atalhos',en:'Diagnostics & shortcuts',descriptionPt:'Confira o estado local e possíveis conflitos de atalhos.',descriptionEn:'Check local status and possible shortcut conflicts.'},
- {id:'integrationsV4',group:'general',pt:'Integrações e sincronização',en:'Integrations & sync',descriptionPt:'Menções, ações integradas e conexões com plugins externos.',descriptionEn:'Mentions, integrated actions and connections to external plugins.'},
  {id:'compatibility',group:'general',pt:'Compatibilidade',en:'Compatibility',descriptionPt:'Controle o carregamento dos recursos avançados após reiniciar.',descriptionEn:'Control advanced feature loading after restarting.'},
  {id:'homepage',group:'customize',pt:'Página inicial',en:'Homepage',descriptionPt:'Busca, atalhos, widgets e livros na página inicial.',descriptionEn:'Search, shortcuts, widgets and books on the homepage.',modules:['writingHome']},
  {id:'v9Explorer',group:'customize',pt:'Explorador de arquivos',en:'File explorer',descriptionPt:'Ícones, cores, prévias e apresentação das pastas.',descriptionEn:'Icons, colors, previews and folder presentation.',modules:['nativeExplorer']},
@@ -81,13 +80,15 @@ const WRITER_SETTINGS_CATALOG=[
  {id:'prompts',group:'ai',pt:'Instruções da IA',en:'AI instructions',descriptionPt:'Prompts padrão para definições, tradução e escrita.',descriptionEn:'Default prompts for definitions, translation and writing.',keywords:'prompts system instructions'}
 ];
 let writerSettingsInstance=0;
+// Saved shortcuts from older versions still lead to their native writing options.
+function writerSettingsResolveSection(id){return id==='integrationsV4'?'editorAdvanced':id;}
 function writerSettingsSections(){return WRITER_SETTINGS_CATALOG.map(item=>[item.id,writerUi(item.pt,item.en)]);}
 function writerSettingsGroups(){return WRITER_SETTINGS_GROUPS.map(item=>[item.id,writerUi(item.pt,item.en),WRITER_SETTINGS_CATALOG.filter(section=>section.group===item.id).map(section=>section.id)]);}
 function writerSettingsNavigation(settings){
  const valid=new Set(WRITER_SETTINGS_CATALOG.map(item=>item.id));
  const value=settings.settingsNavigation;
  const cfg=settings.settingsNavigation=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
- cfg.favorites=[...new Set(Array.isArray(cfg.favorites)?cfg.favorites:[])].filter(id=>valid.has(id)).slice(0,12);
+ cfg.favorites=[...new Set((Array.isArray(cfg.favorites)?cfg.favorites:[]).map(writerSettingsResolveSection))].filter(id=>valid.has(id)).slice(0,12);
  return cfg;
 }
 function writerSettingsToggleFavorite(settings,id){

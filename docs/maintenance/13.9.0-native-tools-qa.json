@@ -1,0 +1,110 @@
+{
+  "ready": {
+    "plugin": "13.9.0",
+    "nativeCursor": true,
+    "nativeFocus": true,
+    "companions": []
+  },
+  "cursor": {
+    "dispatched": true,
+    "text": [
+      "the unsaved paragraph from here."
+    ],
+    "buffer": "Before 😃\nRead the unsaved paragraph from here.",
+    "cursor": {
+      "line": 1,
+      "ch": 5
+    },
+    "activeFile": "Native Reader Focus QA/Chapter.md"
+  },
+  "cursorDisabled": {
+    "before": 1,
+    "after": 1
+  },
+  "folderMenu": {
+    "found": true
+  },
+  "menuAction": {
+    "found": true
+  },
+  "focus": {
+    "path": "Native Reader Focus QA",
+    "bar": "Native Reader Focus QA",
+    "otherHidden": "none",
+    "iconNodes": 0
+  },
+  "showAll": {
+    "path": "",
+    "bar": false,
+    "otherDisplay": ""
+  },
+  "taskSetup": {
+    "today": "2026-11-13",
+    "path": "Native Tasks QA.md",
+    "plugins": [
+      "basic-ai-tool-for-writers"
+    ]
+  },
+  "taskLanguages": {
+    "en": {
+      "title": "My tasks",
+      "scope": "today",
+      "options": [
+        "All",
+        "Today",
+        "Overdue",
+        "Next 7 days",
+        "No due date"
+      ],
+      "rows": [
+        "Native today example #writing 📅 2026-11-13"
+      ],
+      "overflow": 0
+    },
+    "pt-BR": {
+      "title": "Minhas tarefas",
+      "scope": "today",
+      "options": [
+        "Todas",
+        "Hoje",
+        "Atrasadas",
+        "Próximos 7 dias",
+        "Sem prazo"
+      ],
+      "rows": [
+        "Native today example #writing 📅 2026-11-13"
+      ],
+      "overflow": 0
+    }
+  },
+  "quickAddInitial": {
+    "addDisabled": true,
+    "preview": ""
+  },
+  "quickAddPreview": {
+    "line": "- [ ] Native quick capture proof #high #writing #native 📅 2026-11-13",
+    "destination": "Destination: Native Tasks QA.md",
+    "addDisabled": false,
+    "fileUnchanged": true
+  },
+  "quickAddCommitted": {
+    "text": "# Native tasks QA\n\n- [ ] Native today example #writing 📅 2026-11-13\n- [ ] Native overdue example #review 📅 2026-11-12\n- [ ] Native unscheduled example #writing\n- [ ] Native quick capture proof #high #writing #native 📅 2026-11-13\n",
+    "captureOpen": false
+  },
+  "taskModuleOff": {
+    "captureOpen": false,
+    "dashboardOpen": false
+  },
+  "application": "Chapter - vault - Obsidian 1.15.1",
+  "errors": [],
+  "limitations": [
+    "Isolated Linux/Electron Obsidian 1.15.1 with Basic 13.9.0 and no companion plugins.",
+    "Web Speech scheduling/control boundary was stubbed to capture the exact cursor text. No audible speech or remote speech service was exercised.",
+    "Folder focus and task creation were exercised through their native command, context menu and modal interfaces using synthetic notes. No physical Android/iOS device was used."
+  ],
+  "testedAssets": {
+    "main.js": "884a475a013bdff8c658aae06516079e597212f0a2eb456783ab0cb5f0b33a4d",
+    "manifest.json": "d4cb8ad61688adc6b551fd02475805d7085380e9547f24ad5e9ff74cdff5de98",
+    "styles.css": "189c62d76f34af29980d1b254d12324784a799a171c13ca12c5dbbea1d8523d3"
+  }
+}

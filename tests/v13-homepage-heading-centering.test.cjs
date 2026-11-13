@@ -34,11 +34,12 @@ test('homepage heading and title are horizontally centered, not left aligned',()
 test('homepage icon aligns its SVG and custom image in the same centered slot',()=>{
  const icon=rule(source,iconSelector);
  const svg=rule(source,iconSelector+' svg');
- for(const property of ['display:flex;','align-items:center;','justify-content:center;','width:42px;','height:42px;','line-height:0;'])
+ for(const property of ['display:flex;','align-items:center;','justify-content:center;','flex:0 0 48px;','width:48px;','height:48px;','line-height:0;'])
   assert.ok(icon.includes(property),'Icon missing '+property);
  assert.match(svg,/display:block;/);
  assert.match(svg,/flex:0 0 auto;/);
- assert.match(svg,/width:32px;/);
+ assert.match(svg,/width:38px;/);
+ assert.match(svg,/height:38px;/);
  // Keep image support from the original title implementation.
  assert.match(fs.readFileSync('src/v8/writing-home.js','utf8'),/icon\.createEl\('img'/);
  assert.match(fs.readFileSync('src/styles/v9-final.css','utf8'),/\.writer-v8-home-title-icon img\{/);
@@ -60,6 +61,12 @@ test('physical mobile layout stays stacked even on wider tablets',()=>{
  assert.match(ruleBody,/flex-direction:column;/);
  assert.match(ruleBody,/align-items:center;/);
  assert.match(ruleBody,/justify-content:center;/);
+});
+
+test('homepage title stays prominent with bounded scaling on desktop and mobile',()=>{
+ const mobileTitle='body.is-mobile'+titleSelector.slice('body'.length);
+ assert.match(rule(source,titleSelector),/font-size:clamp\(1\.5rem,3cqi,2\.125rem\);/);
+ assert.match(rule(source,mobileTitle),/font-size:clamp\(1\.5rem,5\.5cqi,2rem\);/);
 });
 
 test('the Obsidian styles.css includes the complete modular heading fix',()=>{

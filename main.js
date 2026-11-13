@@ -2524,6 +2524,12 @@ class WriterFinalFeatures{
    ['writer-insert-template',writerUi('Inserir modelo pelo nome da nota','Insert note-name template'),()=>this.applyTemplateToCurrent()]
   ];
   for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
+  p.addCommand({id:'writer-tts-from-cursor',name:writerUi('Ler a partir do cursor','Read from cursor'),
+   editorCheckCallback:(checking,editor,view)=>{
+    if(!writerModuleOn(p,'tts')||this.cfg.tts.enabled!==true||!this.cursorView(editor,view))return false;
+    if(!checking)void this.speakActive({fromCursor:true,editor,view}).catch(error=>new Notice(String(error?.message||error)));
+    return true;
+   }});
   // Voices can arrive asynchronously. Android WebView may not expose Web Speech.
   if(typeof speechSynthesis!=='undefined'&&typeof speechSynthesis.addEventListener==='function'){
    const update=()=>this.refreshVoiceSelectors();
@@ -2968,25 +2974,50 @@ class WriterFinalFeatures{
   }
   for(const node of document.querySelectorAll('.writer-tts-system-diagnostic'))node.setText?.(this.systemSpeechStatus());
  }
- async speakActive(){
+ cursorView(editor,view){
+  const workspace=this.plugin.app.workspace,leaves=workspace.getLeavesOfType?.('markdown')||[];
+  const usable=candidate=>candidate?.file?.extension==='md'&&candidate.getMode?.()!=='preview'&&
+   ['getValue','getCursor','posToOffset'].every(key=>typeof candidate.editor?.[key]==='function')&&
+   leaves.some(leaf=>leaf.view===candidate);
+  // A native editor command must retain its exact editor and file; do not pick
+  // a different note if its original view has closed or changed.
+  if(editor||view)return view?.editor===editor&&usable(view)?view:null;
+  const active=workspace.getActiveViewOfType?.(MarkdownView);
+  if(usable(active))return active;
+  const recent=workspace.getMostRecentLeaf?.()?.view;
+  if(usable(recent))return recent;
+  const file=workspace.getActiveFile?.()||this.lastFile;
+  return leaves.map(leaf=>leaf.view).find(candidate=>candidate.file?.path===file?.path&&usable(candidate))||null;
+ }
+ async speakActive(options={}){
   const cfg=this.cfg.tts;
   if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice(writerUi('Ative a leitura de texto nas configurações.','Enable text-to-speech in settings.'));
+  const fromCursor=options?.fromCursor===true;
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
   const workspace=this.plugin.app.workspace;
   const file=workspace.getActiveFile?.()||this.lastFile;
   const leaves=workspace.getLeavesOfType?.('markdown')||[];
-  const view=workspace.getActiveViewOfType(MarkdownView)
+  const view=fromCursor?this.cursorView(options.editor,options.view):workspace.getActiveViewOfType(MarkdownView)
    ||leaves.find(leaf=>leaf.view?.file?.path===file?.path&&leaf.view?.editor)?.view
    ||leaves.find(leaf=>leaf.view?.file?.extension==='md'&&leaf.view?.editor)?.view;
+  if(fromCursor&&!view)return new Notice(writerUi('Abra a nota em modo de edição para ler a partir do cursor.','Open the note in edit mode to read from the cursor.'));
   const note= view?.file||file;
   if(!note||note.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   this.lastFile=note;
-  const selected=view?.editor?.getSelection?.()||'';
+  const selected=fromCursor?'':view?.editor?.getSelection?.()||'';
   const raw=selected&&cfg.readSelection?selected:
     (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
+  let cursor=0;
+  if(fromCursor){
+   cursor=view.editor.posToOffset(view.editor.getCursor('head'));
+   if(typeof raw!=='string'||!Number.isSafeInteger(cursor)||cursor<0||cursor>raw.length)
+    return new Notice(writerUi('A posição do cursor mudou. Tente novamente na nota aberta.','The cursor position changed. Try again in the open note.'));
+  }
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
-  const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
+  // The shared Markdown mask preserves UTF-16 offsets. Mask the whole buffer
+  // before slicing so a cursor inside a fence/comment never reads hidden code.
+  const text=writerMaskMarkdown(raw).slice(cursor).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
   if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(this.plugin).ttsProvider==='ahmed-toolkit'){
    this.stop();return writerCompanionSpeechStart(this.plugin,text,note.basename);
@@ -3153,6 +3184,9 @@ function writerRenderFinalSettings(panel,plugin,section){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(x=>x.setValue(cfg[key]===true)
     .onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
   new Setting(panel).setName(translateLabel('Speech')).addButton(b=>b.setButtonText(translateLabel('Read')).onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText(translateLabel('Pause')).onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText(translateLabel('Resume')).onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText(translateLabel('Stop')).onClick(()=>plugin.writerFinalFeatures.stop()));
+  new Setting(panel).setName(writerUi('Continuar a leitura da nota','Continue reading the note'))
+   .setDesc(writerUi('Usa o texto atual do editor, a partir do cursor, mesmo antes de salvar a nota.','Uses the current editor text from the cursor, including unsaved writing.'))
+   .addButton(b=>b.setButtonText(writerUi('Ler a partir do cursor','Read from cursor')).onClick(()=>plugin.writerFinalFeatures.speakActive({fromCursor:true})));
   panel.createDiv({cls:'writer-tts-current-status',text:translateLabel('Ready')});
 
  }
@@ -14233,7 +14267,7 @@ function writerV9RegisterToolbar(plugin){
  let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null;
  const remove=()=>{
   if(root){root.remove();root=null;}
-  if(owner){owner.classList.remove('writer-v9-toolbar-host');owner=null;}
+  if(owner){owner.classList.remove('writer-v9-toolbar-host');owner.classList.remove('writer-v9-toolbar-docked');owner=null;}
   currentView=null;
  };
  const paint=()=>{
@@ -14248,6 +14282,7 @@ function writerV9RegisterToolbar(plugin){
   currentView=view;
   if(root)root.remove();
   const mobile=writerV8HomeIsMobile(plugin);
+  owner.classList.toggle('writer-v9-toolbar-docked',cfg.placement!=='floating'||mobile);
   const classes=['writer-v9-format-toolbar','writer-v1048-format-toolbar',
    'is-style-'+cfg.style,cfg.showLabels?'is-labeled':'',
    cfg.placement==='top'?'is-top':cfg.placement==='floating'&&!mobile?'is-floating':''];
@@ -28033,6 +28068,7 @@ function writerV12TaskLines(source){
  return out;
 }
 async function writerV12OpenTasks(plugin){
+ if(typeof writerV12TaskWorkbench==='function')return writerV12TaskWorkbench(plugin);
  if(!writerV12On(plugin,'taskNavigator'))return;
  const modal=new Modal(plugin.app);
  modal.titleEl.setText(writerUi('Tarefas do cofre','Vault tasks'));
@@ -28097,51 +28133,125 @@ function writerV12ActiveFolder(plugin){
  return parent&&parent.path!=='/'?parent.path:'';
 }
 function writerV12FocusRefresh(plugin){
- const focus=writerV12On(plugin,'folderFocus')?(plugin._writerV12FolderFocus||''):'';
- for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
-  const root=leaf.view?.containerEl;
-  if(!root)continue;
+ const vault=plugin.app.vault;
+ let focus=writerV12On(plugin,'folderFocus')?(plugin._writerV12FolderFocus||''):'';
+ const target=plugin._writerV12FolderFocusFolder||vault?.getAbstractFileByPath?.(focus);
+ // Keep the same folder after a rename; a removed/replaced folder ends the session.
+ if(focus&&typeof TFolder==='function'&&target instanceof TFolder&&target.path&&target.path!=='/'&&vault?.getAbstractFileByPath?.(target.path)===target){
+  focus=target.path;plugin._writerV12FolderFocusFolder=target;
+ }else if(focus)focus='';
+ plugin._writerV12FolderFocus=focus;
+ if(!focus)plugin._writerV12FolderFocusFolder=null;
+ const roots=plugin._writerV12FocusRoots||(plugin._writerV12FocusRoots=new Set());
+ const active=new Set((plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]).map(leaf=>leaf.view?.containerEl).filter(Boolean));
+ for(const root of active)roots.add(root);
+ for(const root of roots){
+  const current=active.has(root)?focus:'';
   for(const el of root.querySelectorAll('.nav-file, .nav-folder')){
    const title=el.querySelector(':scope > .nav-file-title, :scope > .nav-folder-title');
    const path=el.getAttribute('data-path')||title?.getAttribute('data-path')||'';
-   // A blank path must not be hidden; other plugins may supply custom rows.
-   const keep=!focus||!path||path===focus||path.startsWith(focus+'/')||focus.startsWith(path+'/');
+   // Blank/custom rows and ancestors remain visible. No file or icon is changed.
+   const keep=!current||!path||path==='/'||path===current||path.startsWith(current+'/')||current.startsWith(path+'/');
    if(!keep&&el.dataset.writerV12Hidden!=='1'){
-    el.dataset.writerV12Hidden='1';el.dataset.writerV12Display=el.style.display||'';el.style.display='none';
+    el.dataset.writerV12Hidden='1';
+    el.dataset.writerV12Display=el.style.getPropertyValue('display');
+    el.dataset.writerV12DisplayPriority=el.style.getPropertyPriority('display');
+    el.style.setProperty('display','none',el.dataset.writerV12DisplayPriority);
    }else if(keep&&el.dataset.writerV12Hidden==='1'){
-    el.style.display=el.dataset.writerV12Display||'';
-    delete el.dataset.writerV12Hidden;delete el.dataset.writerV12Display;
+    // Restore only our hide; a later native styling change belongs to its owner.
+    if(el.style.getPropertyValue('display')==='none'&&el.style.getPropertyPriority('display')===(el.dataset.writerV12DisplayPriority||'')){
+     if(el.dataset.writerV12Display)el.style.setProperty('display',el.dataset.writerV12Display,el.dataset.writerV12DisplayPriority||'');
+     else el.style.removeProperty('display');
+    }
+    delete el.dataset.writerV12Hidden;delete el.dataset.writerV12Display;delete el.dataset.writerV12DisplayPriority;
    }
   }
+  let bar=root.querySelector('.writer-folder-focus-bar');
+  if(!current){bar?.remove();if(!active.has(root))roots.delete(root);continue;}
+  if(!bar){
+   bar=root.createDiv({cls:'writer-folder-focus-bar',attr:{role:'group','aria-label':writerUi('Foco temporário em pasta','Temporary folder focus')}});
+   bar.createSpan({cls:'writer-folder-focus-path'});
+   const reset=bar.createEl('button',{cls:'writer-folder-focus-reset',attr:{type:'button'}});
+   reset.addEventListener('click',()=>writerV12FolderFocus(plugin,true));
+   const files=root.querySelector('.nav-files-container');
+   if(files?.parentElement)files.parentElement.insertBefore(bar,files);
+  }
+  const path=bar.querySelector('.writer-folder-focus-path'),reset=bar.querySelector('.writer-folder-focus-reset');
+  if(path.textContent!==current)path.setText(current);
+  path.setAttribute('title',current);
+  const label=writerUi('Mostrar todas','Show all');
+  if(reset.textContent!==label)reset.setText(label);
+  reset.setAttribute('aria-label',writerUi('Mostrar todas as pastas','Show all folders'));
  }
 }
-function writerV12FolderFocus(plugin,clear){
- if(!writerV12On(plugin,'folderFocus'))return;
- if(!clear&&!writerV12ActiveFolder(plugin)){
-  new Notice(writerUi('Abra uma nota dentro de uma pasta.','Open a note inside a folder.'));return;
+function writerV12FolderFocus(plugin,clear,folder){
+ if(!clear&&!writerV12On(plugin,'folderFocus'))return false;
+ const vault=plugin.app.vault;
+ const target=clear?null:(folder||vault?.getAbstractFileByPath?.(writerV12ActiveFolder(plugin)));
+ if(!clear&&!(typeof TFolder==='function'&&target instanceof TFolder&&target.path&&target.path!=='/'&&vault?.getAbstractFileByPath?.(target.path)===target)){
+  new Notice(writerUi('Escolha uma pasta existente no explorador ou abra uma nota dentro dela.','Choose an existing explorer folder or open a note inside it.'));return false;
  }
- plugin._writerV12FolderFocus=clear?'':writerV12ActiveFolder(plugin);
+ plugin._writerV12FolderFocus=clear?'':target.path;
+ plugin._writerV12FolderFocusFolder=target;
  writerV12FocusRefresh(plugin);
  new Notice(clear?writerUi('Explorador completo restaurado.','Full explorer restored.'):
-  writerUi('Foco temporário: ','Temporary folder focus: ')+plugin._writerV12FolderFocus);
+  writerUi('Foco temporário: ','Temporary folder focus: ')+target.path);
+ return true;
 }
 function writerV12RegisterFocus(plugin){
- plugin._writerV12FolderFocus='';
- const run=()=>writerV12FocusRefresh(plugin);
- plugin.app.workspace.onLayoutReady?.(()=>{
-  run();
-  const root=plugin.app.workspace.containerEl;
-  if(typeof MutationObserver!=='undefined'&&root){
-   let scheduled=false;
-   const observer=new MutationObserver(()=>{
-    if(scheduled||!plugin._writerV12FolderFocus)return;
-    scheduled=true;Promise.resolve().then(()=>{scheduled=false;run();});
+ if(plugin._writerV12FocusSession)return;
+ plugin._writerV12FolderFocus='';plugin._writerV12FolderFocusFolder=null;
+ const workspace=plugin.app.workspace,vault=plugin.app.vault,observers=new Map(),events=[];
+ let stopped=false,scheduled=false;
+ const schedule=()=>{
+  if(stopped||scheduled||!plugin._writerV12FolderFocus)return;
+  scheduled=true;Promise.resolve().then(()=>{scheduled=false;if(!stopped)run();});
+ };
+ const run=()=>{
+  if(stopped)return;
+  writerV12FocusRefresh(plugin);
+  const roots=new Set((workspace.getLeavesOfType?.('file-explorer')||[]).map(leaf=>leaf.view?.containerEl).filter(Boolean));
+  for(const [root,observer] of observers)if(!roots.has(root)){observer.disconnect();observers.delete(root);}
+  for(const root of roots){
+   if(observers.has(root))continue;
+   const Observer=root.ownerDocument?.defaultView?.MutationObserver||(typeof MutationObserver!=='undefined'?MutationObserver:null);
+   if(!Observer)continue;
+   const files=root.querySelector('.nav-files-container')||root;
+   const observer=new Observer(records=>{
+    // The inline breadcrumb is outside the observed file list; its own text does
+    // not produce a render loop. Only native rows and their paths are observed.
+    if(records.some(record=>record.type==='attributes'||!record.target?.closest?.('.writer-folder-focus-bar')))schedule();
    });
-   observer.observe(root,{childList:true,subtree:true});
-   plugin.register(()=>{observer.disconnect();plugin._writerV12FolderFocus='';run();});
+   observer.observe(files,{childList:true,subtree:true,attributes:true,attributeFilter:['data-path']});
+   observers.set(root,observer);
   }
+ };
+ const listen=(emitter,event,callback)=>{
+  if(typeof emitter?.on!=='function')return;
+  const ref=emitter.on(event,callback);events.push({emitter,ref});plugin.registerEvent?.(ref);
+ };
+ listen(workspace,'layout-change',run);
+ listen(workspace,'file-menu',(menu,file)=>{
+  if(stopped||!writerV12On(plugin,'folderFocus')||!(typeof TFolder==='function'&&file instanceof TFolder)||!file.path||file.path==='/'||vault?.getAbstractFileByPath?.(file.path)!==file)return;
+  menu.addItem(item=>item.setTitle(writerUi('Focar nesta pasta','Focus this folder')).setIcon('focus').onClick(()=>writerV12FolderFocus(plugin,false,file)));
  });
- plugin.registerEvent(plugin.app.workspace.on('layout-change',run));
+ listen(vault,'rename',()=>run());
+ listen(vault,'delete',file=>{
+  const focused=plugin._writerV12FolderFocus;
+  if(focused&&typeof TFolder==='function'&&file instanceof TFolder&&(focused===file.path||focused.startsWith(file.path+'/'))){
+   plugin._writerV12FolderFocus='';plugin._writerV12FolderFocusFolder=null;
+  }
+  run();
+ });
+ const stop=()=>{
+  if(stopped)return;stopped=true;
+  for(const observer of observers.values())observer.disconnect();observers.clear();
+  for(const {emitter,ref} of events)emitter.offref?.(ref);
+  plugin._writerV12FolderFocus='';plugin._writerV12FolderFocusFolder=null;
+  writerV12FocusRefresh(plugin);plugin._writerV12FocusRoots?.clear();
+ };
+ plugin._writerV12FocusSession={refresh:run,stop};plugin.register(stop);
+ workspace.onLayoutReady?.(()=>{if(!stopped)run();});
 }
 function writerV12ConflictViewer(plugin){
  const files=plugin.app.vault.getFiles().filter(file=>/\.sync-conflict-/i.test(file.name)).slice(0,100);
@@ -28493,85 +28603,242 @@ function writerV12TaskReplacedLine(entry){
 async function writerV12ToggleTask(plugin,file,entry,expected){
  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid task file');
  if(typeof expected!=='string'||expected.length>2500000)throw Error('Invalid source snapshot');
- for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
-  if(leaf.view?.file?.path===file.path&&leaf.view.editor?.getValue?.()!==expected)
-   throw Error(writerUi('Nota com alterações não salvas: salve antes de marcar.','Unsaved changes: save the note first.'));
- const oldLines=expected.split(/\r?\n/);
- if(oldLines[entry.line]!==entry.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
- const next=oldLines.map((s,i)=>i===entry.line?writerV12TaskReplacedLine(entry):s)
-  .join(expected.includes('\r\n')?'\r\n':'\n');
+ const path=file.path;writerV139TaskEditable(plugin,file,path,expected);
+ const parts=expected.split(/(\r?\n)/),index=entry.line*2;
+ if(!Number.isInteger(entry.line)||entry.line<0||parts[index]!==entry.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ // Keep each original line ending, including notes containing both LF and CRLF.
+ parts[index]=writerV12TaskReplacedLine(entry);const next=parts.join('');
  await plugin.app.vault.process(file,current=>{
+  writerV139TaskEditable(plugin,file,path,expected);
   if(current!==expected)throw Error(writerUi('Arquivo mudou; nada foi alterado.','File changed; no modifications applied.'));
   return next;
  });
  return next;
 }
-function writerV12TaskWorkbench(plugin){
- if(!writerV12On(plugin,'taskNavigator'))return;
- const modal=new Modal(plugin.app);
- modal.setTitle(writerUi('Workbench de tarefas','Task workbench'));
- const root=modal.contentEl;
- const summary=root.createEl('p',{cls:'setting-item-description'});
- const query=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar por tarefa, nota ou etiqueta','Filter by task, note or tag'),style:'width:100%'}});
- const showDone=root.createEl('label',{text:' '+writerUi('Mostrar concluídas','Show completed')});
- const checkbox=showDone.createEl('input',{attr:{type:'checkbox',checked:''}});
- const results=root.createDiv();
- let data=[],loading=false;
+function writerV139TaskOn(plugin){
+ return typeof writerV12On==='function'?writerV12On(plugin,'taskNavigator'):
+  plugin?.settings?.v12Toolkit?.enabled!==false&&plugin?.settings?.v12Toolkit?.taskNavigator!==false;
+}
+function writerV139TaskToday(now=new Date()){
+ return String(now.getFullYear()).padStart(4,'0')+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+}
+function writerV139TaskDate(value){
+ if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return '';
+ const [year,month,day]=value.split('-').map(Number);
+ if(year<1||month<1||month>12||day<1||day>31)return '';
+ const check=new Date(0);check.setUTCHours(12,0,0,0);check.setUTCFullYear(year,month-1,day);
+ return check.getUTCFullYear()===year&&check.getUTCMonth()===month-1&&check.getUTCDate()===day?value:'';
+}
+function writerV139TaskDayAfter(day,count){
+ const date=new Date(day+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+count);
+ return date.toISOString().slice(0,10);
+}
+function writerV139TaskMetadata(text){
+ const source=String(text||'');
+ const dates=[...source.matchAll(/📅\s*(\d{4}-\d{2}-\d{2})(?=$|\s)|\[due::\s*(\d{4}-\d{2}-\d{2})\s*\]/gu)];
+ const due=dates.map(match=>writerV139TaskDate(match[1]||match[2])).find(Boolean)||'';
+ const priority=/(?:^|\s)#(high|medium|low)(?=\s|$)/i.exec(source)?.[1]?.toLowerCase()||'';
+ return {due,priority};
+}
+function writerV139TaskVisible(entry,scope,today=writerV139TaskToday(),metadata){
+ const {due}=metadata||writerV139TaskMetadata(entry.text);
+ if(scope==='today')return due===today;
+ if(scope==='overdue')return !!due&&due<today;
+ if(scope==='upcoming')return !!due&&due>today&&due<=writerV139TaskDayAfter(today,7);
+ if(scope==='unscheduled')return !due;
+ return true;
+}
+function writerV139TaskLine(fields){
+ const title=String(fields?.title||'').trim();
+ if(!title||title.length>500||/[\r\n\0]/.test(title))throw Error(writerUi('Use uma descrição de uma linha, com até 500 caracteres.','Use a one-line description of up to 500 characters.'));
+ const due=String(fields?.due||'').trim(),priority=String(fields?.priority||'');
+ if(due&&!writerV139TaskDate(due))throw Error(writerUi('Informe uma data válida no formato AAAA-MM-DD.','Enter a valid YYYY-MM-DD date.'));
+ if(!['','high','medium','low'].includes(priority))throw Error(writerUi('Prioridade inválida.','Invalid priority.'));
+ const tags=[...new Set(String(fields?.tags||'').trim().split(/\s+/).filter(Boolean))];
+ if(tags.length>8||tags.some(tag=>!/^#[\p{L}\p{N}_][\p{L}\p{N}_/-]*$/u.test(tag)))throw Error(writerUi('Use até oito etiquetas, como #escrita #revisão.','Use up to eight tags, such as #writing #review.'));
+ return '- [ ] '+title+(priority?' #'+priority:'')+(tags.length?' '+tags.join(' '):'')+(due?' 📅 '+due:'');
+}
+function writerV139TaskAppendable(source){
+ const lines=source.split(/\r?\n/);let fence=null,start=0;
+ if(lines[0]?.trim()==='---'){
+  const end=lines.findIndex((line,index)=>index>0&&/^(?:---|\.\.\.)\s*$/.test(line));
+  if(end<0)return false;start=end+1;
+ }
+ for(const line of lines.slice(start)){
+  const match=/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(line);if(!match)continue;
+  const marker=match[1],tail=match[2];
+  if(fence){if(marker[0]===fence.char&&marker.length>=fence.length&&!tail.trim())fence=null;}
+  else if(marker[0]==='~'||!tail.includes('`'))fence={char:marker[0],length:marker.length};
+ }
+ return !fence;
+}
+function writerV139TaskEditable(plugin,file,path,source){
+ if(!writerV139TaskOn(plugin))throw Error(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));
+ if(!(file instanceof TFile)||file.extension!=='md'||file.path!==path||
+  (typeof plugin.app.vault.getAbstractFileByPath==='function'&&plugin.app.vault.getAbstractFileByPath(path)!==file))
+  throw Error(writerUi('A nota foi movida ou removida. Escolha o destino novamente.','The note was moved or removed. Choose the destination again.'));
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
+  const view=leaf.view;
+  if(view?.file?.path===path&&typeof view.editor?.getValue==='function'&&view.editor.getValue()!==source)
+   throw Error(writerUi('A nota tem alterações não salvas. Salve antes de adicionar ou marcar tarefas.','The note has unsaved changes. Save before adding or checking tasks.'));
+ }
+}
+async function writerV139TaskPreview(plugin,file,fields){
+ if(!writerV139TaskOn(plugin))throw Error(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));
+ if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi('Escolha uma nota Markdown de destino.','Choose a destination Markdown note.'));
+ const path=file.path,mtime=file.stat?.mtime,size=file.stat?.size,line=writerV139TaskLine(fields);
+ const source=await plugin.app.vault.read(file);
+ if(typeof source!=='string'||source.length>2500000)throw Error(writerUi('Esta nota é grande demais para uma captura segura.','This note is too large for safe capture.'));
+ writerV139TaskEditable(plugin,file,path,source);
+ if(file.stat?.mtime!==mtime||file.stat?.size!==size)throw Error(writerUi('A nota mudou durante a leitura. Atualize a prévia.','The note changed while reading. Refresh the preview.'));
+ if(!writerV139TaskAppendable(source))throw Error(writerUi('Feche o bloco de código ou de propriedades no final da nota antes de adicionar tarefas.','Close the unfinished code or properties block before adding tasks.'));
+ const eol=source.includes('\r\n')?'\r\n':'\n',separator=source&&!source.endsWith('\n')?eol:'';
+ return Object.freeze({file,path,mtime,size,source,line,next:source+separator+line+eol});
+}
+async function writerV139TaskCommit(plugin,snapshot){
+ if(!snapshot||typeof snapshot.source!=='string'||typeof snapshot.line!=='string'||typeof snapshot.next!=='string')throw Error('Invalid task preview');
+ const {file,path,source,next,mtime,size}=snapshot;
+ writerV139TaskEditable(plugin,file,path,source);
+ if(file.stat?.mtime!==mtime||file.stat?.size!==size)throw Error(writerUi('A nota mudou. Atualize a prévia antes de adicionar.','The note changed. Refresh the preview before adding.'));
+ if(typeof plugin.app.vault.process!=='function')throw Error(writerUi('A captura exige gravação atômica do Obsidian.','Capture requires Obsidian atomic writes.'));
+ await plugin.app.vault.process(file,current=>{
+  writerV139TaskEditable(plugin,file,path,source);
+  if(current!==source)throw Error(writerUi('A nota mudou. Nenhuma tarefa foi adicionada.','The note changed. No task was added.'));
+  return next;
+ });
+ return file;
+}
+function writerV139TaskQuickAdd(plugin,onSaved){
+ if(!writerV139TaskOn(plugin))return;
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Nova tarefa','New task'));
+ const root=modal.contentEl;root.addClass('writer-native-task-capture');
+ root.createEl('p',{cls:'setting-item-description',text:writerUi('Adiciona uma linha de tarefa no final da nota escolhida. Confira o destino e a prévia antes de salvar.','Append a task line to the selected note. Review the destination and preview before saving.')});
+ const files=plugin.app.vault.getMarkdownFiles().sort((a,b)=>a.path.localeCompare(b.path));
+ const active=plugin.app.workspace.getActiveFile?.(),fields={title:'',due:'',priority:'',tags:''};
+ let chosen=files.includes(active)?active:null,snapshot=null,token=0,closed=false,busy=false,addButton,previewButton;
+ const controls=[];
+ const feedback=root.createEl('p',{cls:'writer-native-task-feedback',attr:{role:'status','aria-live':'polite'}});
+ const destination=root.createEl('p',{cls:'writer-native-task-destination'});
+ const preview=root.createEl('pre',{cls:'writer-native-task-preview'});
+ const invalidate=()=>{token++;snapshot=null;addButton?.setDisabled(true);preview.setText('');destination.setText('');feedback.setText('');};
+ const bind=(setting,key,placeholder='')=>new Setting(root).setName(setting).addText(input=>{
+  controls.push(input);input.setValue(fields[key]).setPlaceholder(placeholder).onChange(value=>{fields[key]=value;invalidate();});
+  if(key==='title')input.inputEl.setAttribute('maxlength','500');
+  if(key==='due')input.inputEl.type='date';
+ });
+ new Setting(root).setName(writerUi('Nota de destino','Destination note')).addDropdown(dropdown=>{
+  controls.push(dropdown);dropdown.addOption('',writerUi('Escolher nota Markdown','Choose Markdown note'));
+  for(const file of files)dropdown.addOption(file.path,file.path);
+  dropdown.setValue(chosen?.path||'').onChange(path=>{chosen=files.find(file=>file.path===path)||null;invalidate();});
+ });
+ bind(writerUi('Descrição','Description'),'title',writerUi('O que precisa ser feito?','What needs to be done?'));
+ bind(writerUi('Prazo (opcional)','Due date (optional)'),'due');
+ new Setting(root).setName(writerUi('Prioridade','Priority')).addDropdown(dropdown=>{
+  controls.push(dropdown);
+  for(const [value,pt,en] of [['','Sem prioridade','No priority'],['high','Alta','High'],['medium','Média','Medium'],['low','Baixa','Low']])dropdown.addOption(value,writerUi(pt,en));
+  dropdown.setValue('').onChange(value=>{fields.priority=value;invalidate();});
+ });
+ bind(writerUi('Etiquetas (opcional)','Tags (optional)'),'tags','#writing #review');
+ const setBusy=value=>{busy=value;for(const control of controls)control.setDisabled(value);previewButton?.setDisabled(value);addButton?.setDisabled(value||!snapshot);};
+ new Setting(root).addButton(button=>{
+  previewButton=button;button.setButtonText(writerUi('Preparar prévia','Prepare preview')).onClick(async()=>{
+   if(busy||closed)return;invalidate();const current=token;setBusy(true);
+   try{
+    const prepared=await writerV139TaskPreview(plugin,chosen,fields);
+    if(closed||token!==current)return;
+    snapshot=prepared;destination.setText(writerUi('Destino: ','Destination: ')+prepared.path);preview.setText(prepared.line);
+    feedback.setText(writerUi('Pronto para adicionar uma tarefa.','Ready to add one task.'));
+   }catch(error){if(!closed&&token===current)feedback.setText(String(error.message||error));}
+   finally{if(!closed)setBusy(false);}
+  });
+ }).addButton(button=>{
+  addButton=button;button.setButtonText(writerUi('Adicionar tarefa','Add task')).setCta().setDisabled(true).onClick(async()=>{
+   if(busy||closed||!snapshot)return;setBusy(true);
+   try{
+    const file=await writerV139TaskCommit(plugin,snapshot);
+    if(!closed){modal.close();new Notice(writerUi('Tarefa adicionada em ','Task added to ')+file.path);onSaved?.();}
+   }catch(error){if(!closed){invalidate();feedback.setText(String(error.message||error));}}
+   finally{if(!closed)setBusy(false);}
+  });
+ });
+ if(!files.length)feedback.setText(writerUi('Crie uma nota Markdown para receber suas tarefas.','Create a Markdown note to hold your tasks.'));
+ modal.onClose=()=>{closed=true;token++;snapshot=null;};modal.open();return modal;
+}
+function writerV12TaskWorkbench(plugin,initialScope='all'){
+ if(!writerV139TaskOn(plugin))return;
+ const modal=new Modal(plugin.app);modal.setTitle(writerUi('Minhas tarefas','My tasks'));
+ const root=modal.contentEl;root.addClass('writer-native-tasks');
+ const summary=root.createEl('p',{cls:'setting-item-description',attr:{role:'status','aria-live':'polite'}});
+ const toolbar=root.createDiv({cls:'writer-native-task-toolbar'});
+ const query=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar por tarefa, nota ou etiqueta','Filter by task, note or tag'),'aria-label':writerUi('Buscar tarefas','Find tasks')}});
+ const scope=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar por prazo','Filter by due date')}});
+ for(const [value,pt,en] of [['all','Todas','All'],['today','Hoje','Today'],['overdue','Atrasadas','Overdue'],['upcoming','Próximos 7 dias','Next 7 days'],['unscheduled','Sem prazo','No due date']])scope.createEl('option',{text:writerUi(pt,en),attr:{value}});
+ scope.value=['all','today','overdue','upcoming','unscheduled'].includes(initialScope)?initialScope:'all';
+ const showDone=toolbar.createEl('label',{cls:'writer-native-task-completed'});
+ const checkbox=showDone.createEl('input',{attr:{type:'checkbox'}});showDone.createSpan({text:writerUi('Mostrar concluídas','Show completed')});
+ const results=root.createDiv({cls:'writer-native-task-results'});let data=[],loading=false,closed=false;
  const render=()=>{
-  results.empty();
-  const term=query.value.trim().toLocaleLowerCase();
-  const visible=data.filter(row=>(checkbox.checked||!row.entry.done)&&
+  if(closed)return;results.empty();
+  if(!writerV139TaskOn(plugin)){summary.setText(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));return;}
+  const term=query.value.trim().toLocaleLowerCase(),today=writerV139TaskToday();
+  const visible=data.filter(row=>(checkbox.checked||!row.entry.done)&&writerV139TaskVisible(row.entry,scope.value,today,row.meta)&&
    (!term||(row.entry.text+' '+row.file.path).toLocaleLowerCase().includes(term)));
-  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible'));
+  const rank={high:0,medium:1,low:2,'':3};
+  visible.sort((a,b)=>{
+   const x=a.meta,y=b.meta;
+   return Number(a.entry.done)-Number(b.entry.done)||(x.due||'9999').localeCompare(y.due||'9999')||rank[x.priority]-rank[y.priority]||a.file.path.localeCompare(b.file.path)||a.entry.line-b.entry.line;
+  });
+  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible')+(visible.length>400?writerUi(' · exibindo as primeiras 400',' · showing the first 400'):''));
   const groups=new Map();
   for(const row of visible.slice(0,400)){
-   const tag=row.entry.tags[0]||writerUi('Sem etiqueta','Untagged');
-   if(!groups.has(tag))groups.set(tag,[]);
-   groups.get(tag).push(row);
+   const tag=row.entry.tags.find(tag=>!/^#(?:high|medium|low)$/i.test(tag))||writerUi('Sem etiqueta','Untagged');
+   if(!groups.has(tag))groups.set(tag,[]);groups.get(tag).push(row);
   }
-  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada.','No tasks found.')});
+  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada neste filtro.','No tasks found for this filter.')});
   for(const [tag,group] of groups){
    results.createEl('h4',{text:tag+' ('+group.length+')'});
    for(const row of group){
-    const el=results.createDiv({cls:'setting-item'}),info=el.createDiv({cls:'setting-item-info'});
-    info.createDiv({cls:'setting-item-name',text:row.entry.text.slice(0,320)});
+    const meta=row.meta,el=results.createDiv({cls:'writer-native-task-row'});
+    const checkLabel=el.createEl('label',{cls:'writer-native-task-check'});
+    const button=checkLabel.createEl('input',{attr:{type:'checkbox','aria-label':writerUi('Alternar tarefa','Toggle task')}});button.checked=row.entry.done;
+    const info=el.createDiv({cls:'writer-native-task-info'});info.createDiv({cls:'writer-native-task-title',text:row.entry.text.slice(0,500)});
     info.createDiv({cls:'setting-item-description',text:row.file.path+' · '+(row.entry.line+1)});
-    const button=el.createEl('button',{text:row.entry.done?'☑':'☐',attr:{type:'button','aria-label':writerUi('Alternar tarefa','Toggle task')}});
-    button.addEventListener('click',async()=>{
-     button.disabled=true;
-     try{await writerV12ToggleTask(plugin,row.file,row.entry,row.source);await refresh();}
-     catch(err){new Notice(String(err.message||err));button.disabled=false;}
+    if(meta.due){const due=info.createSpan({cls:'writer-native-task-due',text:meta.due});if(!row.entry.done&&meta.due<today)due.addClass('is-overdue');}
+    if(meta.priority)info.createSpan({cls:'writer-native-task-priority',text:writerUi({high:'Alta',medium:'Média',low:'Baixa'}[meta.priority],{high:'High',medium:'Medium',low:'Low'}[meta.priority])});
+    button.addEventListener('change',async()=>{
+     if(closed)return;
+     if(!writerV139TaskOn(plugin)){button.checked=row.entry.done;render();return;}button.disabled=true;
+     try{await writerV12ToggleTask(plugin,row.file,row.entry,row.source);if(!closed)await refresh();}
+     catch(error){if(!closed){button.checked=row.entry.done;button.disabled=false;new Notice(String(error.message||error));}}
     });
-    el.createEl('button',{text:writerUi('Abrir','Open'),attr:{type:'button'}})
-     .addEventListener('click',()=>void plugin.app.workspace.getLeaf(false).openFile(row.file));
+    el.createEl('button',{text:writerUi('Abrir','Open'),attr:{type:'button'}}).addEventListener('click',()=>{
+     if(closed||!writerV139TaskOn(plugin))return;modal.close();void plugin.app.workspace.getLeaf(false).openFile(row.file,{eState:{line:row.entry.line}});
+    });
    }
   }
  };
  const refresh=async()=>{
-  if(loading)return;
-  loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
+  if(loading||closed)return;if(!writerV139TaskOn(plugin)){render();return;}loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
   try{
    const files=plugin.app.vault.getMarkdownFiles().slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
    for(let i=0;i<files.length;i+=12){
-    const batch=await Promise.all(files.slice(i,i+12).map(async file=>({
-     file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)
-    })));
-    if(!root.isConnected)return;
-    for(const {file,source} of batch)if(source!==null)
-     for(const entry of writerV12TaskRefs(source))rows.push({file,source,entry});
+    const batch=await Promise.all(files.slice(i,i+12).map(async file=>({file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)})));
+    if(closed||!writerV139TaskOn(plugin))return;
+    for(const {file,source} of batch)if(source!==null)for(const entry of writerV12TaskRefs(source))rows.push({file,source,entry,meta:writerV139TaskMetadata(entry.text)});
    }
    data=rows;
-  }catch(err){new Notice(String(err.message||err));}
-  finally{loading=false;render();}
+  }catch(error){if(!closed)new Notice(String(error.message||error));}
+  finally{loading=false;if(!closed&&writerV139TaskOn(plugin))render();}
  };
- query.addEventListener('input',render);
- checkbox.addEventListener('change',render);
- new Setting(root).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()));
- modal.open();void refresh();
+ query.addEventListener('input',render);checkbox.addEventListener('change',render);scope.addEventListener('change',render);
+ new Setting(root).addButton(button=>button.setButtonText(writerUi('Nova tarefa','New task')).onClick(()=>writerV139TaskQuickAdd(plugin,()=>void refresh())))
+  .addButton(button=>button.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()));
+ modal.onClose=()=>{closed=true;data=[];};modal.open();void refresh();return modal;
 }
 function writerV12TasksRegister(plugin){
- plugin.addCommand({id:'v12-task-workbench',name:writerUi('Tarefas: Workbench com etiquetas','Tasks: tag-grouped workbench'),
-  callback:()=>writerV12TaskWorkbench(plugin)});
+ plugin.addCommand({id:'v12-task-workbench',name:writerUi('Tarefas: abrir painel','Tasks: open dashboard'),callback:()=>writerV12TaskWorkbench(plugin)});
+ plugin.addCommand({id:'v13-tasks-today',name:writerUi('Tarefas: ver prazos de hoje','Tasks: view today’s due dates'),callback:()=>writerV12TaskWorkbench(plugin,'today')});
+ plugin.addCommand({id:'v13-task-quick-add',name:writerUi('Tarefas: criar tarefa rápida','Tasks: quick add'),callback:()=>writerV139TaskQuickAdd(plugin)});
 }
 
 // v3 module: src/v12/image-annotations.js
@@ -29460,7 +29727,6 @@ const WRITER_SETTINGS_CATALOG=[
  {id:'modules',group:'general',pt:'Recursos',en:'Features',descriptionPt:'Escolha quais recursos aparecem nos painéis, menus e comandos.',descriptionEn:'Choose the features shown in panes, menus and commands.',keywords:'módulos modules visibility ocultar hide ativar enabled'},
  {id:'workspaceProfiles',group:'general',pt:'Perfis de escrita',en:'Writing profiles',descriptionPt:'Salve combinações de preferências e desfaça a última aplicação.',descriptionEn:'Save combinations of preferences and undo the last application.'},
  {id:'diagnostics',group:'general',pt:'Diagnóstico e atalhos',en:'Diagnostics & shortcuts',descriptionPt:'Confira o estado local e possíveis conflitos de atalhos.',descriptionEn:'Check local status and possible shortcut conflicts.'},
- {id:'integrationsV4',group:'general',pt:'Integrações e sincronização',en:'Integrations & sync',descriptionPt:'Menções, ações integradas e conexões com plugins externos.',descriptionEn:'Mentions, integrated actions and connections to external plugins.'},
  {id:'compatibility',group:'general',pt:'Compatibilidade',en:'Compatibility',descriptionPt:'Controle o carregamento dos recursos avançados após reiniciar.',descriptionEn:'Control advanced feature loading after restarting.'},
  {id:'homepage',group:'customize',pt:'Página inicial',en:'Homepage',descriptionPt:'Busca, atalhos, widgets e livros na página inicial.',descriptionEn:'Search, shortcuts, widgets and books on the homepage.',modules:['writingHome']},
  {id:'v9Explorer',group:'customize',pt:'Explorador de arquivos',en:'File explorer',descriptionPt:'Ícones, cores, prévias e apresentação das pastas.',descriptionEn:'Icons, colors, previews and folder presentation.',modules:['nativeExplorer']},
@@ -29525,13 +29791,15 @@ const WRITER_SETTINGS_CATALOG=[
  {id:'prompts',group:'ai',pt:'Instruções da IA',en:'AI instructions',descriptionPt:'Prompts padrão para definições, tradução e escrita.',descriptionEn:'Default prompts for definitions, translation and writing.',keywords:'prompts system instructions'}
 ];
 let writerSettingsInstance=0;
+// Saved shortcuts from older versions still lead to their native writing options.
+function writerSettingsResolveSection(id){return id==='integrationsV4'?'editorAdvanced':id;}
 function writerSettingsSections(){return WRITER_SETTINGS_CATALOG.map(item=>[item.id,writerUi(item.pt,item.en)]);}
 function writerSettingsGroups(){return WRITER_SETTINGS_GROUPS.map(item=>[item.id,writerUi(item.pt,item.en),WRITER_SETTINGS_CATALOG.filter(section=>section.group===item.id).map(section=>section.id)]);}
 function writerSettingsNavigation(settings){
  const valid=new Set(WRITER_SETTINGS_CATALOG.map(item=>item.id));
  const value=settings.settingsNavigation;
  const cfg=settings.settingsNavigation=value&&typeof value==='object'&&!Array.isArray(value)?value:{};
- cfg.favorites=[...new Set(Array.isArray(cfg.favorites)?cfg.favorites:[])].filter(id=>valid.has(id)).slice(0,12);
+ cfg.favorites=[...new Set((Array.isArray(cfg.favorites)?cfg.favorites:[]).map(writerSettingsResolveSection))].filter(id=>valid.has(id)).slice(0,12);
  return cfg;
 }
 function writerSettingsToggleFavorite(settings,id){
@@ -30006,8 +30274,43 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "editorAdvanced",
+  "titlePt": "Ações de IA para escrita",
+  "titleEn": "AI writing actions"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Mudar tom",
+  "titleEn": "Change tone"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Corrigir gramática",
+  "titleEn": "Correct grammar"
+ },
+ {
+  "id": "editorAdvanced",
   "titlePt": "Ativar ferramentas avançadas",
   "titleEn": "Enable advanced tools"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Expandir",
+  "titleEn": "Expand"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Explorar alternativa",
+  "titleEn": "Explore an alternative"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Melhorar diálogo",
+  "titleEn": "Improve dialogue"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Melhorar estilo",
+  "titleEn": "Improve style"
  },
  {
   "id": "editorAdvanced",
@@ -30023,6 +30326,41 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "editorAdvanced",
   "titlePt": "Máximo de notas para busca/substituição",
   "titleEn": "Max files for batch replace"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Pasta das menções",
+  "titleEn": "Mention folder"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Inserção de menções",
+  "titleEn": "Mention insertion"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Símbolo de menção",
+  "titleEn": "Mention trigger"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Menções de notas",
+  "titleEn": "Note mentions"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Revisar pontos fracos",
+  "titleEn": "Review weak points"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Encurtar",
+  "titleEn": "Shorten"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Simplificar",
+  "titleEn": "Simplify"
  },
  {
   "id": "extendedSyntax",
@@ -30305,145 +30643,6 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "images",
   "titlePt": "Abrir buscador de imagens",
   "titleEn": "Open image search"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Ações de IA para escrita",
-  "titleEn": "AI writing actions"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Permitir voz online do Toolkit",
-  "titleEn": "Allow Toolkit online speech"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Organizar botões no mobile",
-  "titleEn": "Arrange mobile buttons"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Mudar tom",
-  "titleEn": "Change tone"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Corrigir gramática",
-  "titleEn": "Correct grammar"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Ativar integrações",
-  "titleEn": "Enable integrations",
-  "descriptionPt": "Desligar remove as conexões do Basic. Cada plugin continua com seus próprios módulos.",
-  "descriptionEn": "Turning this off removes Basic connections. Each plugin retains its own modules."
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Expandir",
-  "titleEn": "Expand"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Explorar alternativa",
-  "titleEn": "Explore an alternative"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Ícones do explorador quando há duplicação",
-  "titleEn": "Explorer icons when both plugins add one"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Melhorar diálogo",
-  "titleEn": "Improve dialogue"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Melhorar estilo",
-  "titleEn": "Improve style"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Inspecionar conflitos",
-  "titleEn": "Inspect conflicts"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Central de integrações",
-  "titleEn": "Integration center"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Conflitos locais",
-  "titleEn": "Local conflicts"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Provedor manual de sincronização",
-  "titleEn": "Manual synchronization provider",
-  "descriptionPt": "Selecionar aqui não desativa sincronizadores externos automáticos.",
-  "descriptionEn": "Selecting a provider does not disable external automatic sync jobs."
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Pasta das menções",
-  "titleEn": "Mention folder"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Inserção de menções",
-  "titleEn": "Mention insertion"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Símbolo de menção",
-  "titleEn": "Mention trigger"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Menções de notas",
-  "titleEn": "Note mentions"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Abrir central de plugins",
-  "titleEn": "Open plugin center"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Local dos painéis",
-  "titleEn": "Panel placement"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Revisar pontos fracos",
-  "titleEn": "Review weak points"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Atalho nos painéis do Basic",
-  "titleEn": "Shortcut in Basic panels"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Encurtar",
-  "titleEn": "Shorten"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Simplificar",
-  "titleEn": "Simplify"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Provedor de leitura",
-  "titleEn": "Speech provider"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Vozes e player do Toolkit",
-  "titleEn": "Toolkit voices and player"
  },
  {
   "id": "keyshots",
@@ -31783,6 +31982,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "tts",
+  "titlePt": "Continuar a leitura da nota",
+  "titleEn": "Continue reading the note",
+  "descriptionPt": "Usa o texto atual do editor, a partir do cursor, mesmo antes de salvar a nota.",
+  "descriptionEn": "Uses the current editor text from the cursor, including unsaved writing."
+ },
+ {
+  "id": "tts",
   "titlePt": "Voz online do Edge",
   "titleEn": "Edge online voice",
   "descriptionPt": "Vozes online de alta qualidade, independentes das vozes instaladas no Linux.",
@@ -32165,6 +32371,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "v10Tools",
   "titlePt": "Permitir edição de arquivos de texto (até 512 KiB)",
   "titleEn": "Allow text-file edits (up to 512 KiB)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Organizar controles flutuantes no mobile",
+  "titleEn": "Arrange floating controls on mobile",
+  "descriptionPt": "Mantém controles compatíveis fora de barras, menus e painéis abertos. Controles secundários sem espaço ficam temporariamente ocultos e retornam quando houver espaço.",
+  "descriptionEn": "Keeps supported controls clear of bars, menus and open panels. Secondary controls without room are temporarily hidden and return when space is available."
  },
  {
   "id": "v10Tools",
@@ -32575,6 +32788,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "v9Explorer",
   "titlePt": "Arrastar para reordenar manualmente",
   "titleEn": "Drag to reorder manually"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Prioridade dos ícones duplicados",
+  "titleEn": "Duplicate icon priority",
+  "descriptionPt": "Quando Basic e Ultimate Toolkit decoram a mesma linha, escolha o ícone visível. As preferências dos dois plugins são preservadas.",
+  "descriptionEn": "When Basic and Ultimate Toolkit decorate the same row, choose the visible icon. Both plugins keep their preferences."
  },
  {
   "id": "v9Explorer",
@@ -34989,7 +35209,7 @@ function writerCompanionSnailkitRegister(plugin,isEnabled=()=>true){
   };
   add('Projetos e manuscritos','Projects and manuscripts','projects','openProjects');
   add('Ferramentas de escrita','Writing tools','tools','openWritingTools');
-  add('Configurações das integrações','Integration settings',null,'openCoreSettings','integrationsV4');
+  add('Opções de escrita','Writing options',null,'openCoreSettings','editorAdvanced');
   const instance={
    update(){
     if(destroyed)return;
@@ -35418,128 +35638,201 @@ function writerCompanionControlPlace(rect,bounds,obstacles=[],gap=8){
  candidates.sort((a,b)=>a.distance-b.distance);
  return candidates[0]||null;
 }
+/** Passive screen coordination must survive disabling quick actions or command bridges. */
+function writerCompanionLayoutAllowed(plugin,id){
+ return !!plugin?.app?.plugins?.plugins?.[id]&&plugin?.settings?.companionCompatibility?.enabledById?.[id]!==false;
+}
+function writerCompanionRectsUnion(rects){
+ const all=rects.map(writerCompanionRect).filter(Boolean);if(!all.length)return null;
+ const left=Math.min(...all.map(r=>r.left)),top=Math.min(...all.map(r=>r.top));
+ return writerCompanionRect({left,top,width:Math.max(...all.map(r=>r.right))-left,height:Math.max(...all.map(r=>r.bottom))-top});
+}
+/** Shrink scrollable surfaces only to actual free vertical space; never drop obstacles. */
+function writerCompanionCompactPlace(rect,bounds,obstacles,minHeight=80){
+ const direct=writerCompanionControlPlace(rect,bounds,obstacles);if(direct)return direct;
+ const r=writerCompanionRect(rect),area=writerCompanionRect(bounds);if(!r||!area)return null;
+ const edges=[area.top,area.bottom,...obstacles.flatMap(o=>[o.top-8,o.bottom+8])];
+ const heights=[...new Set(edges.flatMap(a=>edges.map(b=>Math.min(r.height,Math.floor(b-a)))))].filter(h=>h>=minHeight&&h<r.height).sort((a,b)=>b-a);
+ for(const height of heights){const candidate=writerCompanionControlPlace({...r,height},area,obstacles);if(candidate)return candidate;}
+ return null;
+}
 function writerCompanionLayoutRegister(plugin){
- const doc=plugin?.app?.workspace?.containerEl?.ownerDocument||(typeof document==='object'?document:null);
- const win=doc?.defaultView;
+ const doc=plugin?.app?.workspace?.containerEl?.ownerDocument||(typeof document==='object'?document:null),win=doc?.defaultView;
  if(!doc||!win)return {refresh(){},stop(){}};
- const shifted=new Map(),marked=new Set(),cleanups=[];
+ const shifted=new Map(),marked=new Set(),cleanups=[],ownedAttributes=new WeakMap(),fanAnchors=new WeakMap();
  let frame=null,stopped=false,dragging=false;
- const enabled=id=>typeof writerCompanionEnabled==='function'?writerCompanionEnabled(plugin,id):
-  Boolean(plugin?.settings?.v12Toolkit?.enabled!==false&&plugin?.settings?.v12Toolkit?.integrations!==false&&
-   plugin?.settings?.companionCompatibility?.enabledById?.[id]!==false&&plugin?.app?.plugins?.plugins?.[id]);
- const config=()=>plugin?.settings?.companionCompatibility||{};
- const restore=(preserve=null)=>{
-  for(const [el,snapshot] of shifted){
-   if(preserve?.(el))continue;
-   for(const [key,value] of snapshot.props){
-    // A companion may update its own styling during a drag. Restore only our values.
-    if(el.style.getPropertyValue(key)!==snapshot.applied.get(key))continue;
-    if(value.value)el.style.setProperty(key,value.value,value.priority);else el.style.removeProperty(key);
-   }
-   if(!snapshot.hadClass)el.classList.remove('writer-companion-managed');
-   shifted.delete(el);
-  }
-  for(const el of marked)el.classList.remove('writer-companion-icon-toolkit','writer-companion-icon-basic');
-  marked.clear();
- };
- const visible=el=>{
-  const r=writerCompanionRect(el.getBoundingClientRect());if(!r)return null;
-  const style=win.getComputedStyle(el);
-  return style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)!==0?r:null;
+ const enabled=id=>writerCompanionLayoutAllowed(plugin,id),config=()=>plugin?.settings?.companionCompatibility||{};
+ const query=selector=>Array.from(doc.querySelectorAll(selector));
+ const attribute=(el,key)=>el.getAttribute?.(key)??null;
+ const stamp=(el,key)=>{let values=ownedAttributes.get(el);if(!values){values=new Map();ownedAttributes.set(el,values);}values.set(key,attribute(el,key));};
+ const remember=el=>{
+  let saved=shifted.get(el);
+  if(!saved){saved={props:new Map(),applied:new Map(),attrs:new Map(),attrApplied:new Map(),hadClass:el.classList.contains('writer-companion-managed'),hadSuspended:el.classList.contains('writer-companion-suspended')};shifted.set(el,saved);}
+  return saved;
  };
  const manage=(el,properties)=>{
-  let snapshot=shifted.get(el);
-  if(!snapshot){snapshot={props:new Map(),applied:new Map(),hadClass:el.classList.contains('writer-companion-managed')};shifted.set(el,snapshot);}
+  const saved=remember(el);
   for(const [key,value] of Object.entries(properties)){
-   if(!snapshot.props.has(key))snapshot.props.set(key,{value:el.style.getPropertyValue(key),priority:el.style.getPropertyPriority(key)});
-   el.style.setProperty(key,value);snapshot.applied.set(key,value);
+   if(!saved.props.has(key))saved.props.set(key,{value:el.style.getPropertyValue(key),priority:el.style.getPropertyPriority(key)});
+   if(el.style.getPropertyValue(key)!==value)el.style.setProperty(key,value);
+   saved.applied.set(key,value);
   }
-  el.classList.add('writer-companion-managed');
+  stamp(el,'style');el.classList.add('writer-companion-managed');stamp(el,'class');
  };
+ const setAttribute=(el,key,value)=>{
+  if(typeof el.setAttribute!=='function')return;
+  const saved=remember(el);if(!saved.attrs.has(key))saved.attrs.set(key,attribute(el,key));
+  el.setAttribute(key,value);saved.attrApplied.set(key,value);stamp(el,key);
+ };
+ const suspend=(el,reason)=>{
+  manage(el,{visibility:'hidden','pointer-events':'none'});
+  el.classList.add('writer-companion-suspended');stamp(el,'class');
+  setAttribute(el,'aria-hidden','true');setAttribute(el,'data-basic-companion-hidden',reason);
+ };
+ const restore=()=>{
+  for(const [el,saved] of shifted){
+   for(const [key,value] of saved.props){
+    if(el.style.getPropertyValue(key)!==saved.applied.get(key))continue;
+    if(value.value)el.style.setProperty(key,value.value,value.priority);else el.style.removeProperty(key);
+   }
+   stamp(el,'style');
+   for(const [key,value] of saved.attrs){
+    if(attribute(el,key)!==saved.attrApplied.get(key))continue;
+    if(value===null)el.removeAttribute?.(key);else el.setAttribute?.(key,value);stamp(el,key);
+   }
+   if(!saved.hadClass)el.classList.remove('writer-companion-managed');
+   if(!saved.hadSuspended)el.classList.remove('writer-companion-suspended');stamp(el,'class');
+  }
+  shifted.clear();
+  for(const el of marked){el.classList.remove('writer-companion-icon-toolkit','writer-companion-icon-basic');stamp(el,'class');}marked.clear();
+ };
+ const visible=el=>{
+  const r=writerCompanionRect(el.getBoundingClientRect());if(!r||el.hidden)return null;
+  const style=win.getComputedStyle(el);
+  // Opening transitions start at opacity zero; their open classes already express intent.
+  const opening=el.matches('.is-open,.is-active,.is-visible,[popover]');
+  return style.display!=='none'&&style.visibility!=='hidden'&&!(Number(style.opacity)===0&&style.pointerEvents==='none'&&!opening)?r:null;
+ };
+ const toolkit='.fs-float-btn,.fs-hint,.fk-tts-player,.fk-selection-toolbar,.fk-live-image-toolbar,.ic-lightbox-overlay';
+ const snail='.sk-note-rail,.sk-note-rail-panel,.sk-note-rail-tooltip,.sk-tasks-fab,.sk-tasks-fan,.sk-pins-popup,.sk-tag-picker-pop,.sk-tag-picker-backdrop,.sk-tag-card,.sk-tasks-donepop,.sk-slash-menu-menu,.sk-tables-ui.sk-tables-toolbar,.sk-tables-popover,.sk-search-backdrop,.sk-search-dialog,.sk-sessions-panel.is-sheet,.sk-sessions-sheet-back,.sk-sessions-sheet,.sk-sessions-tri';
+ const nativePriority='.modal-container,.menu,.popover,.suggestion-container,.bases-toolbar-menu,.writer-lt-mobile-modal,.cm-tooltip,.lt-tooltip';
+ const snailModal='.sk-tag-picker-pop,.sk-tag-picker-backdrop,.sk-search-backdrop,.sk-search-dialog,.sk-sessions-panel.is-sheet,.sk-sessions-sheet-back,.sk-sessions-sheet,.sk-sessions-tri';
+ const snailPopups='.sk-pins-popup,.sk-tag-picker-pop,.sk-tag-card,.sk-tasks-donepop,.sk-slash-menu-menu,.sk-tables-popover';
+ const reserved='.mobile-navbar,.mobile-toolbar,.writer-v9-format-toolbar,.writer-review-floating,.writer-review-panel,.writer-v1201-zen-exit,.status-bar,.view-header,.workspace-tab-header-container,.writer-native-mobile-controls';
+ const contains=(parent,child)=>parent===child||parent.contains?.(child)===true;
+ const related=(el,roots)=>roots.some(root=>contains(root,el)||contains(el,root));
  const refresh=()=>{
   if(stopped||dragging)return;
-  const mobile=plugin.app.isMobile===true||doc.body.classList.contains('is-mobile');
-  // The task fan draws its connectors from the button's current screen rect. Do
-  // not move that anchor while the fan is open; disable/unload still restores it.
-  const pinned=el=>mobile&&config().mobileLayout!==false&&enabled('snailkit')&&el.matches('.sk-tasks-fab.is-fan');
-  restore(pinned);
+  restore();
   if(enabled('ahmed-toolkit')&&config().explorerIcons!=='both'&&config().explorerIcons!==false){
-   const preferBasic=config().explorerIcons==='basic';
    for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
     for(const row of leaf.view?.containerEl?.querySelectorAll?.('.nav-file-title,.nav-folder-title')||[]){
      if(!row.querySelector(':scope > .ft-icon')||!row.querySelector(':scope > .writer-v9-explorer-icon'))continue;
-     row.classList.add(preferBasic?'writer-companion-icon-basic':'writer-companion-icon-toolkit');marked.add(row);
+     row.classList.add(config().explorerIcons==='basic'?'writer-companion-icon-basic':'writer-companion-icon-toolkit');stamp(row,'class');marked.add(row);
     }
    }
   }
+  const mobile=plugin.app.isMobile===true||doc.body.classList.contains('is-mobile')||(typeof Platform!=='undefined'&&Platform.isMobile===true);
   if(!mobile||config().mobileLayout===false)return;
-  const vv=win.visualViewport;
-  const viewport={left:vv?.offsetLeft||0,top:vv?.offsetTop||0,width:vv?.width||win.innerWidth,height:vv?.height||win.innerHeight};
-  // The probe resolves the platform safe areas without interpreting CSS env() in JS.
+  const floats=[...new Set([...(enabled('snailkit')?query(snail):[]),...(enabled('ahmed-toolkit')?query(toolkit):[])])].filter(el=>visible(el));
+  if(!floats.length)return;
+  const primary=query(nativePriority).filter(el=>visible(el));
+  if(primary.length){for(const el of floats)if(!related(el,primary))suspend(el,'dialog');return;}
+  const vv=win.visualViewport,viewport={left:vv?.offsetLeft||0,top:vv?.offsetTop||0,width:vv?.width||win.innerWidth,height:vv?.height||win.innerHeight};
   const probe=doc.createElement('div');probe.className='writer-companion-safe-area';doc.body.appendChild(probe);
-  const safeStyle=win.getComputedStyle(probe),bodyStyle=win.getComputedStyle(doc.body);
+  const probeStyle=win.getComputedStyle(probe),bodyStyle=win.getComputedStyle(doc.body);
   const safe=(padding,side)=>Math.max(parseFloat(padding)||0,parseFloat(bodyStyle.getPropertyValue?.('--safe-area-inset-'+side))||0);
-  const safeTop=safe(safeStyle.paddingTop,'top'),safeBottom=safe(safeStyle.paddingBottom,'bottom');
-  const safeLeft=safe(safeStyle.paddingLeft,'left'),safeRight=safe(safeStyle.paddingRight,'right');probe.remove();
-  const area={left:viewport.left+safeLeft+8,top:viewport.top+safeTop+8,
-   width:viewport.width-safeLeft-safeRight-16,height:viewport.height-safeTop-safeBottom-16};
-  const areaRect=writerCompanionRect(area);if(!areaRect)return;
-  const obstacles=[];
-  // These are existing native/Basic controls, not guessed companion panels.
-  const reserved='.mobile-navbar,.mobile-toolbar,.writer-v9-format-toolbar,.writer-review-floating,.writer-lt-mobile-modal,.writer-v1201-zen-exit,.status-bar';
-  for(const el of doc.querySelectorAll(reserved)){const r=visible(el);if(r)obstacles.push(r);}
-  const selectors=[];
-  if(enabled('snailkit')){
-   // Snailkit positions the rail and shell together. Moving just the rail would
-   // detach its panel, so preserve native geometry and reserve it for other buttons.
-   for(const node of doc.querySelectorAll('.sk-note-rail,.sk-note-rail-panel.is-open')){const r=visible(node);if(r)obstacles.push(r);}
-   selectors.push('.sk-tasks-fab');
-  }
-  if(enabled('ahmed-toolkit')){
-   for(const node of doc.querySelectorAll('.fk-selection-toolbar,.fk-live-image-toolbar')){const r=visible(node);if(r)obstacles.push(r);}
-   selectors.push('.fs-float-btn','.fk-tts-player','.fs-hint');
-  }
-  if(!selectors.length)return;
-  const priority=el=>el.matches('.fk-tts-player')?0:el.matches('.fs-hint')?1:el.matches('.sk-tasks-fab')?2:3;
-  const controls=Array.from(doc.querySelectorAll(selectors.join(','))).sort((a,b)=>priority(a)-priority(b));
-  // Reserve the wide audio player first, then Snailkit's task button. Move
-  // Toolkit's small fullscreen button around them; native anchored popovers keep working.
-  for(const el of controls){
-   let r=visible(el);if(!r)continue;
-   if(pinned(el)){obstacles.push(r);continue;}
-   if(win.getComputedStyle(el).translate&&!['none','0px','0px 0px'].includes(win.getComputedStyle(el).translate))continue;
-   manage(el,{});r=visible(el);if(!r)continue;
-   let bounds=areaRect;
-   const pane=el.closest('.workspace-leaf-content');
-   const paneRect=pane&&writerCompanionRect(pane.getBoundingClientRect());
-   if(paneRect){
-    const left=Math.max(bounds.left,paneRect.left+4),top=Math.max(bounds.top,paneRect.top+4);
-    bounds=writerCompanionRect({left,top,width:Math.min(bounds.right,paneRect.right-4)-left,height:Math.min(bounds.bottom,paneRect.bottom-4)-top});
-    if(!bounds)continue;
-   }
-   // The native Toolkit player is 320px wide. Constrain it on narrow phones while
-   // retaining its original size and position as soon as compatibility is disabled.
+  const top=safe(probeStyle.paddingTop,'top'),bottom=safe(probeStyle.paddingBottom,'bottom'),left=safe(probeStyle.paddingLeft,'left'),right=safe(probeStyle.paddingRight,'right');probe.remove();
+  const area=writerCompanionRect({left:viewport.left+left+8,top:viewport.top+top+8,width:viewport.width-left-right-16,height:viewport.height-top-bottom-16});if(!area)return;
+  const obstacles=query(reserved).map(el=>visible(el)).filter(Boolean);
+  const boundsFor=el=>{
+   const pane=el.closest?.('.workspace-leaf-content'),r=pane&&writerCompanionRect(pane.getBoundingClientRect());
+   if(!r)return area;
+   const x=Math.max(area.left,r.left+4),y=Math.max(area.top,r.top+4);
+   return writerCompanionRect({left:x,top:y,width:Math.min(area.right,r.right-4)-x,height:Math.min(area.bottom,r.bottom-4)-y});
+  };
+  const restrict=(el,bounds)=>{
+   let r=visible(el);if(!r)return null;
    const props={};
-   if(el.matches('.fk-tts-player,.fs-hint')){
-    if(r.width>bounds.width){props['max-width']=Math.floor(bounds.width)+'px';manage(el,props);r=visible(el);if(!r)continue;}
-    if(r.height>bounds.height){props['max-height']=Math.floor(bounds.height)+'px';props['overflow-y']='auto';manage(el,props);r=visible(el);if(!r)continue;}
+   if(r.width>bounds.width)props['max-width']=Math.floor(bounds.width)+'px';
+   if(r.height>bounds.height){props['max-height']=Math.floor(bounds.height)+'px';props['overflow-y']='auto';}
+   if(Object.keys(props).length){manage(el,props);r=visible(el);}return r;
+  };
+  const applyMove=(el,from,to)=>{
+   const props={};
+   if(el.matches('.fk-tts-player')){props.left=Math.round(to.left)+'px';props.top=Math.round(to.top)+'px';props.right='auto';props.bottom='auto';}
+   else {props['--writer-companion-x']=Math.round(to.left-from.left)+'px';props['--writer-companion-y']=Math.round(to.top-from.top)+'px';}
+   manage(el,props);
+  };
+  const fit=(el,scrollable=false)=>{
+   const bounds=boundsFor(el);if(!bounds){suspend(el,'space');return null;}
+   let r=restrict(el,bounds);if(!r)return null;
+   const translated=win.getComputedStyle(el).translate;
+   if(translated&&!['none','0px','0px 0px'].includes(translated)){
+    if(obstacles.some(o=>writerCompanionRectsOverlap(r,o,8))||r.left<bounds.left||r.top<bounds.top||r.right>bounds.right||r.bottom>bounds.bottom){suspend(el,'space');return null;}
+    obstacles.push(r);return r;
    }
-   const ownObstacles=obstacles.filter(o=>o!==r);
-   // If a very short keyboard viewport cannot fit every native control, keep
-   // the control reachable inside its pane rather than below the keyboard.
-   const place=writerCompanionControlPlace(r,bounds,ownObstacles)||writerCompanionControlPlace(r,bounds,[]);
-   if(place){
-    if(el.matches('.fk-tts-player')){
-     // The native player drag records screen coordinates and writes left/top.
-     // A separate translation would be added a second time during that drag.
-     props.left=Math.round(place.left)+'px';props.top=Math.round(place.top)+'px';props.right='auto';props.bottom='auto';
-    }else{
-     props['--writer-companion-x']=Math.round(place.left-r.left)+'px';
-     props['--writer-companion-y']=Math.round(place.top-r.top)+'px';
+   const place=scrollable?writerCompanionCompactPlace(r,bounds,obstacles):writerCompanionControlPlace(r,bounds,obstacles);
+   if(!place){suspend(el,'space');return null;}
+   if(place.height<r.height){manage(el,{'max-height':Math.floor(place.height)+'px','overflow-y':'auto'});r=visible(el)||r;}
+   applyMove(el,r,place);obstacles.push(place);return place;
+  };
+  const exclusive=floats.filter(el=>el.matches(snailModal)||el.matches('.ic-lightbox-overlay'));
+  if(exclusive.length){for(const el of floats)if(!related(el,exclusive))suspend(el,'popup');return;}
+  const popups=floats.filter(el=>el.matches(snailPopups));
+  if(popups.length){for(const el of floats)if(!related(el,popups))suspend(el,'popup');for(const popup of popups)fit(popup,true);return;}
+  const fans=floats.filter(el=>el.matches('.sk-tasks-fan'));
+  if(fans.length){
+   const fabs=floats.filter(el=>el.matches('.sk-tasks-fab.is-fan'));
+   for(const el of floats)if(!related(el,[...fans,...fabs]))suspend(el,'popup');
+   let moved=false;
+   for(const fab of fabs){const place=fit(fab),before=fanAnchors.get(fab);if(!place){for(const fan of fans)suspend(fan,'space');continue;}
+    const key=[place.left,place.top,place.width,place.height].join(',');if(before!==key){fanAnchors.set(fab,key);moved=true;}}
+   for(const fan of fans){const r=visible(fan),bounds=boundsFor(fan);if(!r||!bounds)continue;
+    // Clip the native veil without translating SVG paths away from the FAB.
+    manage(fan,{'clip-path':'inset('+Math.max(0,bounds.top-r.top)+'px '+Math.max(0,r.right-bounds.right)+'px '+Math.max(0,r.bottom-bounds.bottom)+'px '+Math.max(0,bounds.left-r.left)+'px)'});}
+   if(moved&&typeof win.dispatchEvent==='function'&&typeof win.Event==='function')win.dispatchEvent(new win.Event('resize'));
+   return;
+  }
+  const panels=floats.filter(el=>el.matches('.sk-note-rail-panel'));
+  if(panels.length){
+   const roots=[];
+   for(const panel of panels){const host=panel.parentElement||panel.closest?.('.sk-note-rail-host'),rail=host?.querySelector?.('.sk-note-rail');roots.push(panel,...(rail?[rail]:[]));}
+   for(const el of floats)if(!related(el,roots))suspend(el,'popup');
+   for(const panel of panels){
+    const host=panel.parentElement||panel.closest?.('.sk-note-rail-host'),rail=host?.querySelector?.('.sk-note-rail'),bounds=boundsFor(panel);
+    if(!bounds){suspend(panel,'space');if(rail)suspend(rail,'space');continue;}
+    if(rail)restrict(rail,bounds);
+    const rr=rail&&visible(rail),width=Math.max(100,bounds.width-(rr?.width||0)-8);
+    manage(panel,{'max-width':Math.floor(width)+'px','max-height':Math.floor(bounds.height)+'px','overflow-y':'auto'});
+    let union=writerCompanionRectsUnion([visible(panel),rr].filter(Boolean)),place=union&&writerCompanionCompactPlace(union,bounds,obstacles);
+    if(place&&place.height<union.height){
+     for(const el of [panel,rail].filter(Boolean))manage(el,{'max-height':Math.floor(place.height)+'px','overflow-y':'auto'});
+     union=writerCompanionRectsUnion([visible(panel),rail&&visible(rail)].filter(Boolean));place=union&&writerCompanionControlPlace(union,bounds,obstacles);
     }
-    manage(el,props);
-    obstacles.push(place);
-   }else obstacles.push(r);
+    if(!place){suspend(panel,'space');if(rail)suspend(rail,'space');continue;}
+    for(const el of [panel,rail].filter(Boolean))applyMove(el,union,place);obstacles.push(place);
+   }
+   return;
+  }
+  const bars=floats.filter(el=>el.matches('.fk-selection-toolbar,.fk-live-image-toolbar'));
+  const pickerBars=bars.filter(bar=>Array.from(bar.querySelectorAll?.('.fk-st-callout-picker,.fk-st-ai-picker')||[]).some(el=>visible(el)));
+  if(pickerBars.length){
+   for(const el of floats)if(!related(el,pickerBars))suspend(el,'popup');
+   for(const bar of pickerBars){const bounds=boundsFor(bar);if(!bounds){suspend(bar,'space');continue;}
+    manage(bar,{'max-width':Math.floor(bounds.width)+'px','flex-wrap':'wrap'});
+    const pickers=Array.from(bar.querySelectorAll?.('.fk-st-callout-picker,.fk-st-ai-picker')||[]).filter(el=>visible(el));
+    for(const picker of pickers)manage(picker,{'max-width':Math.floor(bounds.width)+'px','max-height':Math.max(60,Math.floor(bounds.height-(visible(bar)?.height||44)-8))+'px','overflow-y':'auto',left:'0px',right:'auto'});
+    const union=writerCompanionRectsUnion([visible(bar),...pickers.map(el=>visible(el))].filter(Boolean)),place=union&&writerCompanionControlPlace(union,bounds,obstacles);
+    if(!place)suspend(bar,'space');else {applyMove(bar,union,place);obstacles.push(place);}
+   }
+   return;
+  }
+  const priority=el=>el.matches('.fk-selection-toolbar,.fk-live-image-toolbar')?0:el.matches('.fk-tts-player')?1:el.matches('.sk-note-rail')?2:el.matches('.sk-tasks-fab')?3:4;
+  for(const el of floats.sort((a,b)=>priority(a)-priority(b))){
+   if(el.matches('.sk-note-rail-tooltip')){suspend(el,'space');continue;}
+   if(el.matches('.fk-selection-toolbar,.fk-live-image-toolbar'))manage(el,{'max-width':Math.floor(boundsFor(el)?.width||area.width)+'px','flex-wrap':'wrap'});
+   fit(el,el.matches('.fk-tts-player,.fs-hint'));
   }
  };
  const schedule=()=>{if(stopped||frame!==null)return;frame=win.requestAnimationFrame(()=>{frame=null;refresh();});};
@@ -35549,16 +35842,25 @@ function writerCompanionLayoutRegister(plugin){
  listen(doc,'pointerdown',event=>{
   if(!event.target?.closest?.('.fk-tts-header,.fs-float-btn,.sk-note-rail,.sk-tasks-fab'))return;
   dragging=true;
-  const player=event.target.closest('.fk-tts-header')&&!event.target.closest('.fk-tts-close')?event.target.closest('.fk-tts-player'):null;
-  const snapshot=player&&shifted.get(player);
-  // A user dragging the native header takes ownership of its position. Keep the
-  // native coordinates instead of restoring a position from before that gesture.
-  if(snapshot)for(const key of ['left','top','right','bottom']){snapshot.props.delete(key);snapshot.applied.delete(key);}
+  const player=event.target.closest('.fk-tts-header')&&!event.target.closest('.fk-tts-close')?event.target.closest('.fk-tts-player'):null,saved=player&&shifted.get(player);
+  if(saved)for(const key of ['left','top','right','bottom']){saved.props.delete(key);saved.applied.delete(key);}
  },{passive:true});
  listen(win,'pointerup',()=>{dragging=false;schedule();},{passive:true});listen(win,'pointercancel',()=>{dragging=false;schedule();},{passive:true});
- // Ignore our geometry writes (attributes) and coalesce native rendering bursts.
+ const observed=[toolkit,snail,nativePriority,reserved].join(',');
+ // Popover API state and CSS animation completion need not mutate any attribute.
+ const surfaceState=event=>{if(event.target?.matches?.(observed)||event.target?.closest?.(observed))schedule();};
+ for(const type of ['beforetoggle','toggle','transitionend','animationend'])listen(doc,type,surfaceState,{capture:true,passive:true});
  const Observer=win.MutationObserver;
- if(Observer){const observer=new Observer(records=>{if(records.some(record=>[...record.addedNodes,...record.removedNodes].some(node=>node.nodeType===1&&!node.classList?.contains('writer-companion-safe-area'))))schedule();});observer.observe(doc.body,{childList:true,subtree:true});cleanups.push(()=>observer.disconnect());}
+ if(Observer){const observer=new Observer(records=>{
+  if(records.some(record=>{
+   if(record.type==='attributes'){
+    const target=record.target,key=record.attributeName,own=ownedAttributes.get(target);
+    if(own?.has(key)&&own.get(key)===attribute(target,key))return false;
+    return target?.matches?.(observed)||target===doc.body;
+   }
+   return [...(record.addedNodes||[]),...(record.removedNodes||[])].some(node=>node.nodeType===1&&!node.classList?.contains('writer-companion-safe-area'));
+  }))schedule();
+ });observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden','aria-expanded','popover']});cleanups.push(()=>observer.disconnect());}
  const stop=()=>{if(stopped)return;stopped=true;if(frame!==null)win.cancelAnimationFrame(frame);frame=null;for(const cleanup of cleanups)cleanup();restore();};
  plugin.register?.(stop);schedule();return {refresh,schedule,stop};
 }
@@ -35791,7 +36093,6 @@ function writerCompanionRender(plugin,root,role,context){
  }
  const footer=root.createDiv({cls:'writer-companion-actions'});
  writerCompanionButton(footer,writerUi('Atualizar recursos','Refresh capabilities'),()=>writerCompanionRender(plugin,root,role,context));
- writerCompanionButton(footer,writerUi('Configurar integrações','Configure integrations'),()=>plugin.openCoreSettings('integrationsV4'));
 }
 function writerCompanionSyncSelector(plugin,panel){
  new Setting(panel).setName(writerUi('Provedor manual de sincronização','Manual synchronization provider'))
@@ -35887,6 +36188,30 @@ function writerCompanionRegister(plugin){
   if(typeof plugin.registerEvent==='function')plugin.registerEvent(ref);else plugin.register(()=>plugin.app.workspace.offref?.(ref));
  }
  plugin.registerInterval(setInterval(refresh,2000));plugin.app.workspace.onLayoutReady(refresh);
+}
+
+// v3 module: src/v13/native-support-settings.js
+/* Coexistence controls belong beside the native interface they affect. */
+function writerNativeFloatingSettings(plugin,panel){
+ const cfg=writerCompanionConfig(plugin);
+ new Setting(panel).setName(writerUi('Organizar controles flutuantes no mobile','Arrange floating controls on mobile'))
+  .setDesc(writerUi('Mantém controles compatíveis fora de barras, menus e painéis abertos. Controles secundários sem espaço ficam temporariamente ocultos e retornam quando houver espaço.',
+   'Keeps supported controls clear of bars, menus and open panels. Secondary controls without room are temporarily hidden and return when space is available.'))
+  .addToggle(control=>control.setValue(cfg.mobileLayout!==false).onChange(async value=>{
+   cfg.mobileLayout=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();
+  }));
+}
+function writerNativeExplorerSupportSettings(plugin,panel){
+ const cfg=writerCompanionConfig(plugin);
+ new Setting(panel).setName(writerUi('Prioridade dos ícones duplicados','Duplicate icon priority'))
+  .setDesc(writerUi('Quando Basic e Ultimate Toolkit decoram a mesma linha, escolha o ícone visível. As preferências dos dois plugins são preservadas.',
+   'When Basic and Ultimate Toolkit decorate the same row, choose the visible icon. Both plugins keep their preferences.'))
+  .addDropdown(control=>control.addOption('basic',writerUi('Ícone personalizado do Basic','Custom Basic icon'))
+   .addOption('companion','Ultimate Toolkit').addOption('both',writerUi('Mostrar ambos','Show both'))
+   .setValue(cfg.explorerIcons).onChange(async value=>{
+    if(!['basic','companion','both'].includes(value))return;
+    cfg.explorerIcons=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();
+   }));
 }
 
 // END WRITER V3 MODULES
@@ -36799,7 +37124,7 @@ class DictionarySettings extends PluginSettingTab{
    homepage:'house',soundscapes:'headphones',v10Bookshelf:'library-big',v10Tools:'file-pen-line',writingWidgets:'columns-3',research:'book-marked',sessionDrafts:'notebook-pen',v9Pomodoro:'timer',v9Toolbar:'type',v9Explorer:'folder-tree',v9Spaces:'layers',v9Calendar:'calendar-days',v9Lock:'lock-keyhole',
    dictionary:'book-a',translation:'languages',assistant:'message-circle',projects:'notebook-pen',
    v7Worldbuilding:'globe',complements:'lightbulb',variants:'git-compare',
-   writingProfiles:'scan-text',integrationsV4:'wrench',keyshots:'keyboard',
+   writingProfiles:'scan-text',keyshots:'keyboard',
    extendedSyntax:'file-code',pandocSyntax:'file-text',v6Markdown:'code-xml',
    smartInsert:'wand-sparkles',typing:'type',clickClack:'keyboard',cursor:'mouse-pointer-2',snapshots:'history',
    projectTasks:'list-check',bookNavigation:'book-open-check',virtualContent:'panels-top-left',abbreviations:'text-cursor-input',
@@ -36853,6 +37178,7 @@ class DictionarySettings extends PluginSettingTab{
   const finder=writerWorkspaceBindSearch(el,enabledSections,id=>showTab(id),()=>panel,()=>this.activeSettingsTab);
   el.insertBefore(finder.wrap,nav);
   const showTab=id=>{
+    id=writerSettingsResolveSection(id);
     if(!enabledSections.some(([key])=>key===id))id='modules';
     this.activeSettingsTab=id;
     const group=groupFor(id);
@@ -36870,7 +37196,7 @@ class DictionarySettings extends PluginSettingTab{
     if(id==='homepage'){writerV8FinishSettings(this.plugin,panel);
     }else if(id==='soundscapes'){writerV91SoundSettings(this.plugin,panel);
     }else if(id==='v9Toolbar'){writerV9ToolbarSettings(this.plugin,panel);
-    }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);writerV92ExplorerSettings(this.plugin,panel);
+    }else if(id==='v9Explorer'){writerV9ExplorerSettings(this.plugin,panel);writerV91FlexSettings(this.plugin,panel);writerV92ExplorerSettings(this.plugin,panel);writerNativeExplorerSupportSettings(this.plugin,panel);
     }else if(id==='v9Pretty'){writerV9215PrettySettings(this.plugin,panel);
     }else if(id==='images'){writerV102ImagesSettings(this.plugin,panel);writerV1201SettingsImages(this.plugin,panel);
     }else if(id==='media'){writerV107MediaSettings(this.plugin,panel);
@@ -36881,7 +37207,7 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='numbering'){writerV1201SettingsSuite(this.plugin,panel,'suiteNumbering');
     }else if(id==='study'){writerV1201SettingsSuite(this.plugin,panel,'suiteEducation');writerV107StudySettings(this.plugin,panel);
     }else if(id==='graph'){writerV107GraphSettings(this.plugin,panel);
-    }else if(id==='editorAdvanced'){writerV107EditorSettings(this.plugin,panel);
+    }else if(id==='editorAdvanced'){writerV107EditorSettings(this.plugin,panel);this.plugin.writerV4Extras?.renderSettings(panel);
     }else if(id==='speech'){writerV1201SettingsReader(this.plugin,panel);
     }else if(id==='compatibility'){writerV107CompatibilitySettings(this.plugin,panel);
     }else if(id==='privacy'){writerV1201SettingsPrivacy(this.plugin,panel);
@@ -36889,7 +37215,7 @@ class DictionarySettings extends PluginSettingTab{
     }else if(id==='v9Pomodoro'){writerV931PomodoroSettings(this.plugin,panel);
     }else if(id==='v9Spaces'){writerV9SpacesSettings(this.plugin,panel);writerV101SpaceHistorySettings(this.plugin,panel);
     }else if(id==='v10Bookshelf'){writerV10BookshelfSettings(this.plugin,panel);
-    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);writerV101EnhancementsSettings(this.plugin,panel,{includeAdvanced:false});
+    }else if(id==='v10Tools'){writerV10ToolboxSettings(this.plugin,panel);writerV101EnhancementsSettings(this.plugin,panel,{includeAdvanced:false});writerNativeFloatingSettings(this.plugin,panel);
     }else if(id==='v9Lock'){writerV9LockSettings(this.plugin,panel);
     }else if(id==='v9Calendar'){writerV9CalendarSettings(this.plugin,panel);writerV101CalendarExchangeSettings(this.plugin,panel);writerV107CalendarSettings(this.plugin,panel);
     }else if(id==='workspaceProfiles'){
@@ -36924,8 +37250,7 @@ class DictionarySettings extends PluginSettingTab{
       panel.createEl('p',{text:msg('A revisão por IA envia o texto ao provedor configurado. Os pareceres não alteram a nota.','AI review sends text to the configured provider. Feedback never edits the note.'),cls:'dictionary-muted'});
     }else if(id==='writingProfiles'){
       writerV4RenderSettings(this.plugin,panel);
-    }else if(id==='integrationsV4'){
-      this.plugin.writerV4Extras.renderSettings(panel);writerV1201SettingsConnections(this.plugin,panel);
+
     }else if(id==='keyshots'){
       this.plugin.writerKeyshots.renderSettings(panel);
     }else if(id==='v6Markdown'){
@@ -37387,7 +37712,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   openCoreSettings(section,provider){
     if(!this.app.setting?.open||!this.app.setting?.openTabById)return;
     if(provider)this.writerV131AISelected=provider;
-    if(this.writerSettingsTab)this.writerSettingsTab.activeSettingsTab=section;
+    if(this.writerSettingsTab)this.writerSettingsTab.activeSettingsTab=writerSettingsResolveSection(section);
     this.app.setting.open();
     this.app.setting.openTabById(this.manifest.id);
   }

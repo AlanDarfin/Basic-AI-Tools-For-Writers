@@ -2,9 +2,9 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.8.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 13.9.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
-[Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Features and integrations](docs/SUITES_AND_INTEGRATIONS.en.md)
+[Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
 Basic brings chapter writing, story planning, editing tools, a configurable homepage and optional AI into your vault. Your notes remain ordinary Markdown files with their folders, links and properties. Choose the features you need and keep the rest out of your menus.
 
@@ -40,7 +40,7 @@ Settings are grouped by the task you want to perform:
 
 | Category | Examples |
 | --- | --- |
-| **General** | Quick start, Features, Writing profiles, Diagnostics, integrations and compatibility. |
+| **General** | Quick start, Features, Writing profiles, Diagnostics and compatibility. |
 | **Appearance & panes** | Homepage, file explorer, note properties, images, media and widgets. |
 | **Writing & editing** | Editor shortcuts, typing, word suggestions, cursor position, templates and quick actions. |
 | **Markdown & formatting** | Toolbar, text formatting, lists, numbering, symbols, tables of contents and cleanup. |
@@ -64,11 +64,27 @@ To assemble a manuscript, choose **Books: compile Markdown manuscript**, select 
 
 Optional desktop export to DOCX, EPUB, HTML or PDF uses a separately installed **Pandoc** executable; PDF may also require a compatible rendering engine. See the [first-use guide](docs/GETTING_STARTED.en.md#write-your-first-book).
 
-## Connect installed plugins
+## Supported plugins
 
-**General → Integrations & sync** connects native panels, selected settings and available commands from Ultimate Toolkit, Visual Kit, Snailkit, dropit, Syncthing, Git, FIT and LanguageTool. Each bridge can be disabled. Choose Toolkit speech explicitly; Basic remains the default, with a separate permission for Toolkit online speech. Mobile controls avoid detected overlaps, and explorer icon priority keeps duplicate decorations under control. Visual Kit is desktop-only; Git on mobile depends on its own backend.
+Basic's own tools work without these plugins. Its task dashboard now filters **Today**, **Overdue**, **Next seven days** and **Undated** tasks and can add a task to a chosen Markdown note with a preview. Native speech can read **from the cursor**, and folder focus is available from the file explorer with an inline **Show all** action. These features retain their normal on/off switches.
 
-See the [connected plugins guide](docs/guides/companion-compatibility.md) for setup, speech, grammar, data use and platform limits.
+When another plugin is installed and enabled, Basic provides the support below. Support does not install the plugin, copy its settings into Basic or replace its engine.
+
+| Plugin | Support provided by Basic |
+| --- | --- |
+| **Ultimate Toolkit** | Mobile floating-control coordination, explorer icon priority and an optional, explicitly selected speech provider using Toolkit's own player. Online Toolkit speech requires separate permission. |
+| **Snailkit** | Coordinated mobile rail, popups and task controls; a Basic writing tab through its public Tasks API; native task previews/actions when available. Basic tasks also work on their own. |
+| **LanguageTool** | Correct editor targeting, selected native preferences, native suggestion actions and narrow-screen tooltip styling. Basic's built-in grammar client remains independent. |
+| **Visual Kit** | Native image annotation, clipboard/image actions and HTML panels, retaining its settings/index persistence. Desktop only. |
+| **dropit** | Explicit native receive/send commands and desktop processing actions. Pairing and transfer rules remain in dropit. |
+| **Syncthing Integration** | Its native conflict, diff and configuration dialogs. This companion is not a synchronization engine. |
+| **Syncthing Manager** | Its native panel, cached status and explicit scan/diagnostic actions. Server configuration and schedules remain native. |
+| **Obsidian Git** | Native source-control/history views and commands checked against the running backend. Mobile availability depends on Git's own initialized backend. |
+| **FIT** | Explicit sync/status commands when the installed release exposes them. No invented panel or automatic synchronization. |
+
+There is no dedicated **Integrations** settings page. Keep each plugin's full configuration in that plugin. Basic's speech provider stays under **Read aloud**, duplicate icon priority under **File explorer**, and floating-control layout under **Files & tools**. Existing command IDs and saved preferences are retained. Legacy panel commands remain available for existing setups.
+
+See the [plugin support guide](docs/guides/companion-compatibility.md) for behavior, data use and platform limits. Compatibility layout temporarily hides secondary controls when there is no safe room and restores them when the obstruction closes; it does not change notes or external plugin settings.
 
 ## Optional AI and online services
 

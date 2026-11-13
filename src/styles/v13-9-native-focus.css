@@ -1,0 +1,17 @@
+/* Native folder focus is an inline explorer row, never a floating control. */
+.writer-folder-focus-bar{
+ display:flex;align-items:center;gap:8px;flex:none;min-width:0;
+ margin:4px 10px 8px;padding:8px 10px;border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-s);background:var(--background-secondary);
+}
+.writer-folder-focus-path{
+ flex:1 1 80px;min-width:0;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;font-size:var(--font-ui-small);color:var(--text-muted);
+}
+.writer-folder-focus-reset{
+ flex:none;min-height:32px;height:auto;padding:5px 8px;
+ font-size:var(--font-ui-smaller);white-space:normal;
+}
+.writer-folder-focus-reset:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:2px;}
+body.is-mobile .writer-folder-focus-bar{margin-inline:8px;flex-wrap:wrap;}
+body.is-mobile .writer-folder-focus-reset{min-height:44px;}

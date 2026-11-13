@@ -220,6 +220,7 @@ function writerV12TaskLines(source){
  return out;
 }
 async function writerV12OpenTasks(plugin){
+ if(typeof writerV12TaskWorkbench==='function')return writerV12TaskWorkbench(plugin);
  if(!writerV12On(plugin,'taskNavigator'))return;
  const modal=new Modal(plugin.app);
  modal.titleEl.setText(writerUi('Tarefas do cofre','Vault tasks'));
@@ -284,51 +285,125 @@ function writerV12ActiveFolder(plugin){
  return parent&&parent.path!=='/'?parent.path:'';
 }
 function writerV12FocusRefresh(plugin){
- const focus=writerV12On(plugin,'folderFocus')?(plugin._writerV12FolderFocus||''):'';
- for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
-  const root=leaf.view?.containerEl;
-  if(!root)continue;
+ const vault=plugin.app.vault;
+ let focus=writerV12On(plugin,'folderFocus')?(plugin._writerV12FolderFocus||''):'';
+ const target=plugin._writerV12FolderFocusFolder||vault?.getAbstractFileByPath?.(focus);
+ // Keep the same folder after a rename; a removed/replaced folder ends the session.
+ if(focus&&typeof TFolder==='function'&&target instanceof TFolder&&target.path&&target.path!=='/'&&vault?.getAbstractFileByPath?.(target.path)===target){
+  focus=target.path;plugin._writerV12FolderFocusFolder=target;
+ }else if(focus)focus='';
+ plugin._writerV12FolderFocus=focus;
+ if(!focus)plugin._writerV12FolderFocusFolder=null;
+ const roots=plugin._writerV12FocusRoots||(plugin._writerV12FocusRoots=new Set());
+ const active=new Set((plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]).map(leaf=>leaf.view?.containerEl).filter(Boolean));
+ for(const root of active)roots.add(root);
+ for(const root of roots){
+  const current=active.has(root)?focus:'';
   for(const el of root.querySelectorAll('.nav-file, .nav-folder')){
    const title=el.querySelector(':scope > .nav-file-title, :scope > .nav-folder-title');
    const path=el.getAttribute('data-path')||title?.getAttribute('data-path')||'';
-   // A blank path must not be hidden; other plugins may supply custom rows.
-   const keep=!focus||!path||path===focus||path.startsWith(focus+'/')||focus.startsWith(path+'/');
+   // Blank/custom rows and ancestors remain visible. No file or icon is changed.
+   const keep=!current||!path||path==='/'||path===current||path.startsWith(current+'/')||current.startsWith(path+'/');
    if(!keep&&el.dataset.writerV12Hidden!=='1'){
-    el.dataset.writerV12Hidden='1';el.dataset.writerV12Display=el.style.display||'';el.style.display='none';
+    el.dataset.writerV12Hidden='1';
+    el.dataset.writerV12Display=el.style.getPropertyValue('display');
+    el.dataset.writerV12DisplayPriority=el.style.getPropertyPriority('display');
+    el.style.setProperty('display','none',el.dataset.writerV12DisplayPriority);
    }else if(keep&&el.dataset.writerV12Hidden==='1'){
-    el.style.display=el.dataset.writerV12Display||'';
-    delete el.dataset.writerV12Hidden;delete el.dataset.writerV12Display;
+    // Restore only our hide; a later native styling change belongs to its owner.
+    if(el.style.getPropertyValue('display')==='none'&&el.style.getPropertyPriority('display')===(el.dataset.writerV12DisplayPriority||'')){
+     if(el.dataset.writerV12Display)el.style.setProperty('display',el.dataset.writerV12Display,el.dataset.writerV12DisplayPriority||'');
+     else el.style.removeProperty('display');
+    }
+    delete el.dataset.writerV12Hidden;delete el.dataset.writerV12Display;delete el.dataset.writerV12DisplayPriority;
    }
   }
+  let bar=root.querySelector('.writer-folder-focus-bar');
+  if(!current){bar?.remove();if(!active.has(root))roots.delete(root);continue;}
+  if(!bar){
+   bar=root.createDiv({cls:'writer-folder-focus-bar',attr:{role:'group','aria-label':writerUi('Foco temporário em pasta','Temporary folder focus')}});
+   bar.createSpan({cls:'writer-folder-focus-path'});
+   const reset=bar.createEl('button',{cls:'writer-folder-focus-reset',attr:{type:'button'}});
+   reset.addEventListener('click',()=>writerV12FolderFocus(plugin,true));
+   const files=root.querySelector('.nav-files-container');
+   if(files?.parentElement)files.parentElement.insertBefore(bar,files);
+  }
+  const path=bar.querySelector('.writer-folder-focus-path'),reset=bar.querySelector('.writer-folder-focus-reset');
+  if(path.textContent!==current)path.setText(current);
+  path.setAttribute('title',current);
+  const label=writerUi('Mostrar todas','Show all');
+  if(reset.textContent!==label)reset.setText(label);
+  reset.setAttribute('aria-label',writerUi('Mostrar todas as pastas','Show all folders'));
  }
 }
-function writerV12FolderFocus(plugin,clear){
- if(!writerV12On(plugin,'folderFocus'))return;
- if(!clear&&!writerV12ActiveFolder(plugin)){
-  new Notice(writerUi('Abra uma nota dentro de uma pasta.','Open a note inside a folder.'));return;
+function writerV12FolderFocus(plugin,clear,folder){
+ if(!clear&&!writerV12On(plugin,'folderFocus'))return false;
+ const vault=plugin.app.vault;
+ const target=clear?null:(folder||vault?.getAbstractFileByPath?.(writerV12ActiveFolder(plugin)));
+ if(!clear&&!(typeof TFolder==='function'&&target instanceof TFolder&&target.path&&target.path!=='/'&&vault?.getAbstractFileByPath?.(target.path)===target)){
+  new Notice(writerUi('Escolha uma pasta existente no explorador ou abra uma nota dentro dela.','Choose an existing explorer folder or open a note inside it.'));return false;
  }
- plugin._writerV12FolderFocus=clear?'':writerV12ActiveFolder(plugin);
+ plugin._writerV12FolderFocus=clear?'':target.path;
+ plugin._writerV12FolderFocusFolder=target;
  writerV12FocusRefresh(plugin);
  new Notice(clear?writerUi('Explorador completo restaurado.','Full explorer restored.'):
-  writerUi('Foco temporário: ','Temporary folder focus: ')+plugin._writerV12FolderFocus);
+  writerUi('Foco temporário: ','Temporary folder focus: ')+target.path);
+ return true;
 }
 function writerV12RegisterFocus(plugin){
- plugin._writerV12FolderFocus='';
- const run=()=>writerV12FocusRefresh(plugin);
- plugin.app.workspace.onLayoutReady?.(()=>{
-  run();
-  const root=plugin.app.workspace.containerEl;
-  if(typeof MutationObserver!=='undefined'&&root){
-   let scheduled=false;
-   const observer=new MutationObserver(()=>{
-    if(scheduled||!plugin._writerV12FolderFocus)return;
-    scheduled=true;Promise.resolve().then(()=>{scheduled=false;run();});
+ if(plugin._writerV12FocusSession)return;
+ plugin._writerV12FolderFocus='';plugin._writerV12FolderFocusFolder=null;
+ const workspace=plugin.app.workspace,vault=plugin.app.vault,observers=new Map(),events=[];
+ let stopped=false,scheduled=false;
+ const schedule=()=>{
+  if(stopped||scheduled||!plugin._writerV12FolderFocus)return;
+  scheduled=true;Promise.resolve().then(()=>{scheduled=false;if(!stopped)run();});
+ };
+ const run=()=>{
+  if(stopped)return;
+  writerV12FocusRefresh(plugin);
+  const roots=new Set((workspace.getLeavesOfType?.('file-explorer')||[]).map(leaf=>leaf.view?.containerEl).filter(Boolean));
+  for(const [root,observer] of observers)if(!roots.has(root)){observer.disconnect();observers.delete(root);}
+  for(const root of roots){
+   if(observers.has(root))continue;
+   const Observer=root.ownerDocument?.defaultView?.MutationObserver||(typeof MutationObserver!=='undefined'?MutationObserver:null);
+   if(!Observer)continue;
+   const files=root.querySelector('.nav-files-container')||root;
+   const observer=new Observer(records=>{
+    // The inline breadcrumb is outside the observed file list; its own text does
+    // not produce a render loop. Only native rows and their paths are observed.
+    if(records.some(record=>record.type==='attributes'||!record.target?.closest?.('.writer-folder-focus-bar')))schedule();
    });
-   observer.observe(root,{childList:true,subtree:true});
-   plugin.register(()=>{observer.disconnect();plugin._writerV12FolderFocus='';run();});
+   observer.observe(files,{childList:true,subtree:true,attributes:true,attributeFilter:['data-path']});
+   observers.set(root,observer);
   }
+ };
+ const listen=(emitter,event,callback)=>{
+  if(typeof emitter?.on!=='function')return;
+  const ref=emitter.on(event,callback);events.push({emitter,ref});plugin.registerEvent?.(ref);
+ };
+ listen(workspace,'layout-change',run);
+ listen(workspace,'file-menu',(menu,file)=>{
+  if(stopped||!writerV12On(plugin,'folderFocus')||!(typeof TFolder==='function'&&file instanceof TFolder)||!file.path||file.path==='/'||vault?.getAbstractFileByPath?.(file.path)!==file)return;
+  menu.addItem(item=>item.setTitle(writerUi('Focar nesta pasta','Focus this folder')).setIcon('focus').onClick(()=>writerV12FolderFocus(plugin,false,file)));
  });
- plugin.registerEvent(plugin.app.workspace.on('layout-change',run));
+ listen(vault,'rename',()=>run());
+ listen(vault,'delete',file=>{
+  const focused=plugin._writerV12FolderFocus;
+  if(focused&&typeof TFolder==='function'&&file instanceof TFolder&&(focused===file.path||focused.startsWith(file.path+'/'))){
+   plugin._writerV12FolderFocus='';plugin._writerV12FolderFocusFolder=null;
+  }
+  run();
+ });
+ const stop=()=>{
+  if(stopped)return;stopped=true;
+  for(const observer of observers.values())observer.disconnect();observers.clear();
+  for(const {emitter,ref} of events)emitter.offref?.(ref);
+  plugin._writerV12FolderFocus='';plugin._writerV12FolderFocusFolder=null;
+  writerV12FocusRefresh(plugin);plugin._writerV12FocusRoots?.clear();
+ };
+ plugin._writerV12FocusSession={refresh:run,stop};plugin.register(stop);
+ workspace.onLayoutReady?.(()=>{if(!stopped)run();});
 }
 function writerV12ConflictViewer(plugin){
  const files=plugin.app.vault.getFiles().filter(file=>/\.sync-conflict-/i.test(file.name)).slice(0,100);

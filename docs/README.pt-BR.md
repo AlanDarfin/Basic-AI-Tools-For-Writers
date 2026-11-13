@@ -2,9 +2,9 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.8.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.9.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
-[Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e integrações](SUITES_AND_INTEGRATIONS.pt-BR.md)
+[Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
 O Basic reúne escrita de capítulos, planejamento de histórias, edição, uma página inicial configurável e IA opcional dentro do seu cofre. As notas continuam sendo arquivos Markdown comuns, com suas pastas, links e propriedades. Escolha os recursos que usa e deixe os demais fora dos menus.
 
@@ -40,7 +40,7 @@ As categorias acompanham o trabalho que você está realizando:
 
 | Categoria | Exemplos |
 | --- | --- |
-| **Geral** | Configuração inicial, Recursos, Perfis de escrita, Diagnóstico, integrações e compatibilidade. |
+| **Geral** | Configuração inicial, Recursos, Perfis de escrita, Diagnóstico e compatibilidade. |
 | **Aparência e painéis** | Página inicial, explorador, propriedades, imagens, mídia e widgets. |
 | **Escrita e edição** | Atalhos do editor, digitação, sugestões, posição do cursor, modelos e ações rápidas. |
 | **Markdown e formatação** | Barra, formatação de texto, listas, numeração, símbolos, sumários e padronização. |
@@ -64,11 +64,27 @@ Para montar o manuscrito, use **Livros: compilar manuscrito Markdown**, escolha 
 
 A exportação opcional para DOCX, EPUB, HTML ou PDF no computador usa o **Pandoc** instalado separadamente; PDF também pode exigir um mecanismo compatível de renderização. Veja o [guia de primeiro uso](GETTING_STARTED.pt-BR.md#escreva-seu-primeiro-livro).
 
-## Conecte os plugins instalados
+## Plugins com suporte
 
-**Geral → Integrações e sincronização** conecta painéis nativos, algumas configurações e comandos disponíveis do Ultimate Toolkit, Visual Kit, Snailkit, dropit, Syncthing, Git, FIT e LanguageTool. Cada conexão pode ser desligada. Escolha a leitura do Toolkit explicitamente; o Basic permanece como padrão, com permissão separada para voz online do Toolkit. Os controles móveis evitam sobreposições detectadas, e a prioridade de ícones controla decorações duplicadas no explorador. Visual Kit funciona só no computador; Git no celular depende do backend dele.
+As ferramentas próprias do Basic funcionam sem esses plugins. O painel de tarefas agora filtra **Hoje**, **Atrasadas**, **Próximos sete dias** e **Sem prazo** e permite adicionar uma tarefa a uma nota Markdown escolhida, com prévia. A leitura nativa pode começar **a partir do cursor**, e o foco de pastas aparece no menu do explorador, com a ação **Mostrar todas** no próprio painel. Os recursos mantêm seus interruptores normais.
 
-Consulte o [guia de plugins conectados](guides/companion-compatibility.pt-BR.md) para configuração, voz, gramática, uso de dados e limites de plataforma.
+Quando outro plugin está instalado e ativo, o Basic oferece o suporte abaixo. Esse suporte não instala o plugin, não copia suas configurações para o Basic nem substitui seu motor.
+
+| Plugin | Suporte oferecido pelo Basic |
+| --- | --- |
+| **Ultimate Toolkit** | Organização dos controles flutuantes no mobile, prioridade de ícones do explorador e provedor de voz opcional, escolhido explicitamente, com o player do Toolkit. A voz online exige permissão separada. |
+| **Snailkit** | Organização da barra lateral móvel, popups e controles de tarefas; aba de escrita do Basic pela API pública de tarefas; prévias e ações nativas quando disponíveis. As tarefas do Basic também funcionam sozinhas. |
+| **LanguageTool** | Uso do editor correto, algumas preferências nativas, ações das sugestões e ajuste dos avisos em telas estreitas. O corretor integrado do Basic continua independente. |
+| **Visual Kit** | Anotação de imagens, ações de imagem/área de transferência e painéis HTML nativos, preservando configurações e índice. Exclusivo do computador. |
+| **dropit** | Comandos nativos explícitos de receber/enviar e processamento no computador. Pareamento e regras continuam no dropit. |
+| **Syncthing Integration** | Janelas nativas de conflitos, diferenças e configuração. Esse plugin não é um motor de sincronização. |
+| **Syncthing Manager** | Painel nativo, estado já disponível e ações explícitas de varredura/diagnóstico. Configuração do servidor e agendas permanecem no plugin. |
+| **Obsidian Git** | Painéis nativos de controle de versão/histórico e comandos verificados conforme o backend ativo. No celular, depende do backend do próprio Git estar inicializado. |
+| **FIT** | Comandos explícitos de sincronização/estado quando a versão instalada os oferece. Sem painel inventado nem sincronização automática. |
+
+Não há uma página dedicada de **Integrações** nas configurações. A configuração completa de cada plugin continua nele. No Basic, o provedor de voz fica em **Leitura em voz alta**, a prioridade de ícones em **Explorador de arquivos** e a organização dos controles em **Arquivos e ferramentas**. IDs de comandos e preferências salvas são preservados. Comandos antigos de painéis continuam disponíveis para instalações existentes.
+
+Consulte o [guia de suporte aos plugins](guides/companion-compatibility.pt-BR.md) para comportamento, uso de dados e limites de plataforma. Quando não há espaço seguro, controles secundários ficam temporariamente ocultos e retornam ao fechar a obstrução; isso não altera notas nem configurações dos plugins externos.
 
 ## IA e serviços online opcionais
 
@@ -93,7 +109,7 @@ Leia os [detalhes de segurança e uso dos dados](../SECURITY.md) antes de usar s
 O Basic oferece suporte ao Obsidian no computador e no Android. Perfis de teclado, rádio web, pacotes de sons de digitação, redimensionamento de widgets no computador e exportação Pandoc têm requisitos de plataforma. A disponibilidade de voz depende do dispositivo, navegador e serviço. Capturas de uma janela estreita no computador não comprovam compatibilidade física de todos os recursos no Android; a validação no aparelho continua necessária.
 
 - [Instalação e primeiros passos](GETTING_STARTED.pt-BR.md)
-- [Guia de recursos, configurações e integrações](SUITES_AND_INTEGRATIONS.pt-BR.md)
+- [Guia de recursos, configurações e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 - [Exemplos de blocos Markdown](BLOCKS.pt-BR.md): abas, fichas de universo, chat fictício, mídias, colunas, cronologias e navegação de capítulos. Os aliases existentes `writer-tabs`, `writer-avatar`, `writer-wiki`, `writer-post`, `writer-chat`, `writer-media-gallery` e `writer-folder-overview` continuam aceitos.
 - [Histórico de versões](../CHANGELOG.md) e [documentação antiga](README_HISTORY.md). Os guias antigos podem usar nomes anteriores; use o guia atual para localizar configurações.
 - [Relatar problema](https://github.com/AlanDarfin/Basic-AI-Tools-For-Writers/issues): informe versões do Basic/Obsidian, plataforma e passos para reproduzir. Preserve suas chaves de API e manuscritos privados.

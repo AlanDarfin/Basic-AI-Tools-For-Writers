@@ -152,7 +152,7 @@ function writerCompanionSnailkitRegister(plugin,isEnabled=()=>true){
   };
   add('Projetos e manuscritos','Projects and manuscripts','projects','openProjects');
   add('Ferramentas de escrita','Writing tools','tools','openWritingTools');
-  add('Configurações das integrações','Integration settings',null,'openCoreSettings','integrationsV4');
+  add('Opções de escrita','Writing options',null,'openCoreSettings','editorAdvanced');
   const instance={
    update(){
     if(destroyed)return;

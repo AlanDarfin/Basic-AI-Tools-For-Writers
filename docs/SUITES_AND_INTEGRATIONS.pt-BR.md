@@ -22,7 +22,6 @@ Favorite até 12 seções para acesso rápido. Em **Geral → Perfis de escrita*
 | **Recursos** | Escolha quais recursos aparecem nos painéis, menus e comandos. |
 | **Perfis de escrita** | Salve combinações de preferências e desfaça a última aplicação. |
 | **Diagnóstico e atalhos** | Confira o estado local e possíveis conflitos de atalhos. |
-| **Integrações e sincronização** | Menções, ações integradas e conexões com plugins externos. |
 | **Compatibilidade** | Controle o carregamento dos recursos avançados após reiniciar. |
 
 ### Aparência e painéis
@@ -208,7 +207,7 @@ O chat fictício aceita `[Left=Maria, right=João]`, formas curtas como `[Maria=
 
 ## Plugins da comunidade conectados
 
-Use **Geral → Integrações e sincronização** para a central de painéis nativos, interruptores por plugin, algumas preferências originais, provedor de voz, botões móveis e prioridade dos ícones no explorador. O [guia de plugins conectados](guides/companion-compatibility.pt-BR.md) detalha os nove plugins auditados e seus requisitos. Cada plugin mantém credenciais, transporte e rotinas automáticas próprios.
+O suporte a plugins não tem uma página separada de configurações. Configure a voz em **Leitura em voz alta**, a prioridade de ícones em **Explorador de arquivos** e os controles móveis em **Arquivos e ferramentas**. Menções e ações de IA para escrita ficam em **Edição avançada**. O [guia de suporte aos plugins](guides/companion-compatibility.pt-BR.md) descreve os nove plugins suportados. Credenciais, transporte e agendas continuam nos plugins originais.
 
 ## Conexões e uso de dados
 

@@ -437,7 +437,7 @@ function writerV9RegisterToolbar(plugin){
  let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null;
  const remove=()=>{
   if(root){root.remove();root=null;}
-  if(owner){owner.classList.remove('writer-v9-toolbar-host');owner=null;}
+  if(owner){owner.classList.remove('writer-v9-toolbar-host');owner.classList.remove('writer-v9-toolbar-docked');owner=null;}
   currentView=null;
  };
  const paint=()=>{
@@ -452,6 +452,7 @@ function writerV9RegisterToolbar(plugin){
   currentView=view;
   if(root)root.remove();
   const mobile=writerV8HomeIsMobile(plugin);
+  owner.classList.toggle('writer-v9-toolbar-docked',cfg.placement!=='floating'||mobile);
   const classes=['writer-v9-format-toolbar','writer-v1048-format-toolbar',
    'is-style-'+cfg.style,cfg.showLabels?'is-labeled':'',
    cfg.placement==='top'?'is-top':cfg.placement==='floating'&&!mobile?'is-floating':''];

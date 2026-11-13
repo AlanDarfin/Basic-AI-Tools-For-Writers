@@ -1,8 +1,8 @@
 # Companion source audit / Auditoria dos plugins conectados
 
-Inspected on 2026-11-12 for Basic 13.8.0. Revisions below identify the original source that informed each adapter. They are not minimum supported versions or a promise that every future release preserves private methods. Basic ships its own bridge code and references the installed plugin at runtime; these upstream implementations are not bundled.
+Initially inspected on 2026-11-12 for Basic 13.8.0; the supplied Snailkit/Toolkit files were rechecked for 13.9.0 below. Revisions below identify the original source that informed each adapter. They are not minimum supported versions or a promise that every future release preserves private methods. Basic ships its own bridge code and references the installed plugin at runtime; these upstream implementations are not bundled.
 
-Inspeção de 12/11/2026 para o Basic 13.8.0. As revisões abaixo identificam os fontes consultados; não representam versões mínimas nem garantem estabilidade futura de métodos privados. O Basic distribui seu próprio código de conexão e consulta o plugin instalado em tempo de execução; não inclui essas implementações externas.
+Inspeção inicial de 12/11/2026 para o Basic 13.8.0; os arquivos fornecidos do Snailkit/Toolkit foram reconferidos para a 13.9.0 abaixo. As revisões abaixo identificam os fontes consultados; não representam versões mínimas nem garantem estabilidade futura de métodos privados. O Basic distribui seu próprio código de conexão e consulta o plugin instalado em tempo de execução; não inclui essas implementações externas.
 
 | Plugin / manifest ID | Original revision / Revisão original | Manifest version; minimum Obsidian | License |
 | --- | --- | --- | --- |
@@ -52,3 +52,25 @@ No mobile, o Toolkit usa `.fs-float-btn` e `.fk-tts-player`; o Snailkit usa `.sk
 Tests exercise these contracts with synthetic plugin instances, including unavailable commands, disable/reload, stale editors, setting persistence and explicit actions. They do not establish live remote service availability or physical Android/iOS compatibility. Actual verification results belong in the release notes and QA artifact; do not infer them from this source audit.
 
 Os testes usam instâncias sintéticas e cobrem capacidades ausentes, desligamento/recarregamento, editores antigos, persistência e ações explícitas. Eles não comprovam disponibilidade de serviços remotos nem compatibilidade física Android/iOS. Os resultados de verificação ficam nas notas da versão e no artefato de QA.
+
+## Supplied files rechecked for 13.9.0 / Arquivos fornecidos reconferidos
+
+The user supplied the Snailkit 0.2.9 and Ultimate Toolkit 2.9.17 manifests and styles, plus Snailkit's JavaScript. Both manifests and both stylesheets are byte-identical to the official release assets used in the original audit. The supplied Snailkit JavaScript differs from the official release only by the 18-byte trailing `\n/* nosourcemap */` comment; the executable implementation is unchanged. No Toolkit JavaScript was attached; its previously audited official 2.9.17 implementation remains the reference.
+
+O usuário forneceu os manifests e estilos do Snailkit 0.2.9 e do Ultimate Toolkit 2.9.17, além do JavaScript do Snailkit. Manifests e estilos são idênticos, byte a byte, aos arquivos oficiais usados na auditoria inicial. O JavaScript fornecido do Snailkit difere apenas pelo comentário final de 18 bytes `\n/* nosourcemap */`; a implementação executável é a mesma. Não foi anexado JavaScript do Toolkit; sua implementação oficial 2.9.17 já auditada continua como referência.
+
+| Supplied file / Arquivo fornecido | SHA-256 |
+| --- | --- |
+| Snailkit `manifest.json` | `f8cc7a3ad8f3177fee6fa3d34fabd2ca807346544958bb2251b6be9ef745ca1d` |
+| Snailkit `styles.css` | `c6388128b950140e6e064e4cad1423ff0488e231b85ac1f5ebe6c8b257421614` |
+| Snailkit `main.js` | `d8bcec0389ca0af53c0c822a252c40b1648e724f99895f733b8f3acfe70f2799` |
+| Toolkit `manifest.json` | `0dcf4608d637d96d43b9241113eaed86e97202326831286dd4f69c7174110fe4` |
+| Toolkit `styles.css` | `6bca050c2dfd11eb6b8f26d67900a9d7d98fdb73875c3f66c49ab3dedbb70d86` |
+
+The follow-up mobile audit includes Snailkit's rail and anchored panels, task button/tag fan, tag/table/done-task/slash popups and native popover behavior. Toolkit selection/image toolbars and their child pickers must be treated as anchored groups; its lightbox and speech player can compete with Basic dialogs. Snailkit's pins popup can use the browser top layer through `showPopover()`, so increasing a z-index alone does not establish correct ordering. The new layout preserves native DOM/anchors and temporarily suspends secondary controls when needed rather than invoking undocumented close functions or dropping obstacles.
+
+A revisão móvel inclui a barra e os painéis ancorados do Snailkit, botão/leque de tarefas, popups de etiquetas/tabelas/concluídas/slash e popovers nativos. Barras de seleção/imagem do Toolkit e seus seletores filhos precisam ser tratados como grupos ancorados; lightbox e player podem competir com diálogos do Basic. O popup de favoritos do Snailkit pode usar a camada superior do navegador com `showPopover()`, portanto aumentar apenas o z-index não resolve a ordenação. O novo posicionamento preserva DOM/âncoras e suspende controles secundários temporariamente, sem chamar fechamentos privados presumidos nem descartar obstáculos.
+
+Basic's task date filters/quick capture, read-from-cursor and explorer folder-focus additions use independent native implementations and existing Basic feature switches. Their behavior was informed by the original plugins; no original implementation was copied into the distributable. The MIT upstream credits and source revisions above remain unchanged. Final behavior and device-specific verification belong in the 13.9.0 release/QA record.
+
+Filtros de prazo/captura de tarefas, leitura pelo cursor e foco de pastas usam implementações próprias e os interruptores nativos já existentes do Basic. O comportamento foi estudado nos plugins originais, sem copiar suas implementações para o pacote. Créditos MIT e revisões dos fontes acima permanecem preservados. O comportamento final e as verificações por dispositivo pertencem ao registro de versão/QA da 13.9.0.

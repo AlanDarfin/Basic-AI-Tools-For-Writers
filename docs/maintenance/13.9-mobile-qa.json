@@ -1,0 +1,122 @@
+{
+  "version": "13.9.0",
+  "date": "2026-11-13",
+  "runtime": "Linux Electron with viewport/mobile CSS/app override and Snailkit isPhone only; no physical Android/iOS",
+  "acceptedErrors": [],
+  "baselineOverlaps": {
+    "narrow-tasks-popup": [
+      {
+        "a": ".fs-float-btn",
+        "b": ".sk-note-rail-panel",
+        "width": 38,
+        "height": 44,
+        "area": 1672
+      }
+    ],
+    "selection-and-menu": [
+      {
+        "a": ".fk-tts-player",
+        "b": ".menu",
+        "width": 320,
+        "height": 45.09375,
+        "area": 14430
+      }
+    ]
+  },
+  "acceptedScenarios": [
+    "normal-controls",
+    "narrow-tasks-popup",
+    "popup-closed",
+    "native-menu",
+    "menu-closed",
+    "native-selection",
+    "basic-palette",
+    "legacy-actions-off",
+    "short-controls"
+  ],
+  "layoutSnapshotHashes": {
+    "main.js": "6da5c2f895920659cee442d99a0dbbb0b20eee5e853dc08aef1edccf1ace56d7",
+    "manifest.json": "d4cb8ad61688adc6b551fd02475805d7085380e9547f24ad5e9ff74cdff5de98",
+    "styles.css": "189c62d76f34af29980d1b254d12324784a799a171c13ca12c5dbbea1d8523d3"
+  },
+  "finalPopoverMainSha256": "3718ce49d826b72e38ae51237fc1d430529ea33f724dd41758267fe5a43cacc1",
+  "checks": {
+    "popupRemainsVisible": true,
+    "fullscreenPopupOverlap": false,
+    "menuRemainsVisible": true,
+    "playerMenuOverlap": false,
+    "playerRestoredAfterMenu": true,
+    "normalDockInside915": true,
+    "shortDockInside420": true,
+    "nativePopoverEventsWithoutPolling": true
+  },
+  "settings": {
+    "en": {
+      "pageCount": 66,
+      "legacyDestination": "editorAdvanced",
+      "integrationCategoryAbsent": true
+    },
+    "pt-BR": {
+      "pageCount": 66,
+      "legacyDestination": "editorAdvanced",
+      "integrationCategoryAbsent": true
+    }
+  },
+  "nativePopoverApi": {
+    "scope": "Actual browser HTML Popover API on one persistent controlled .sk-pins-popup probe using the original Snailkit CSS; original Snail/Toolkit stay loaded. No real device; fallback timer disabled during API probe.",
+    "version": "13.9.0",
+    "fallbackDelay": 2000,
+    "before": {
+      "player": "visible",
+      "connected": true,
+      "open": false,
+      "popoverAttr": "manual"
+    },
+    "open": {
+      "elapsedMs": 31.700000002980232,
+      "playerVisibility": "hidden",
+      "aria": "true",
+      "pointer": "none",
+      "probeOpen": true,
+      "probeConnected": true,
+      "popoverAttr": "manual"
+    },
+    "close": {
+      "elapsedMs": 31.700000002980232,
+      "playerVisibility": "visible",
+      "aria": null,
+      "pointer": "auto",
+      "probeOpen": false,
+      "probeConnected": true,
+      "popoverAttr": "manual"
+    },
+    "events": [
+      {
+        "type": "toggle",
+        "newState": "open",
+        "time": 17230201
+      },
+      {
+        "type": "toggle",
+        "newState": "closed",
+        "time": 17230232.200000003
+      }
+    ],
+    "errors": [],
+    "mainSha256": "3718ce49d826b72e38ae51237fc1d430529ea33f724dd41758267fe5a43cacc1"
+  },
+  "screenshots": [
+    "docs/images/13.9.0/before-narrow-tasks-popup.png",
+    "docs/images/13.9.0/after-narrow-tasks-popup.png",
+    "docs/images/13.9.0/after-native-menu.png",
+    "docs/images/13.9.0/after-short-controls.png",
+    "docs/images/13.9.0/settings-no-integrations-pt-BR.png"
+  ],
+  "limits": [
+    "Linux Electron viewport/CSS/app flags and partial Snailkit phone UI emulation; no physical Android/iOS device.",
+    "Short viewport simulates keyboard space; no hardware keyboard test.",
+    "Network and process transports blocked; no remote sync, submitted note text or audible speech.",
+    "The final browser API probe uses one persistent controlled native HTML popover with original Snailkit CSS; the original plugins remain loaded. It is not a screenshot of a new product panel.",
+    "Nine layout scenarios used the preceding shipped bundle snapshot. The final source differs only by scoped native toggle/animation event listeners, independently verified through the browser API probe."
+  ]
+}

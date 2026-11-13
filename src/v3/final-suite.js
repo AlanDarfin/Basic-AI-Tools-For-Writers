@@ -75,6 +75,12 @@ class WriterFinalFeatures{
    ['writer-insert-template',writerUi('Inserir modelo pelo nome da nota','Insert note-name template'),()=>this.applyTemplateToCurrent()]
   ];
   for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
+  p.addCommand({id:'writer-tts-from-cursor',name:writerUi('Ler a partir do cursor','Read from cursor'),
+   editorCheckCallback:(checking,editor,view)=>{
+    if(!writerModuleOn(p,'tts')||this.cfg.tts.enabled!==true||!this.cursorView(editor,view))return false;
+    if(!checking)void this.speakActive({fromCursor:true,editor,view}).catch(error=>new Notice(String(error?.message||error)));
+    return true;
+   }});
   // Voices can arrive asynchronously. Android WebView may not expose Web Speech.
   if(typeof speechSynthesis!=='undefined'&&typeof speechSynthesis.addEventListener==='function'){
    const update=()=>this.refreshVoiceSelectors();
@@ -519,25 +525,50 @@ class WriterFinalFeatures{
   }
   for(const node of document.querySelectorAll('.writer-tts-system-diagnostic'))node.setText?.(this.systemSpeechStatus());
  }
- async speakActive(){
+ cursorView(editor,view){
+  const workspace=this.plugin.app.workspace,leaves=workspace.getLeavesOfType?.('markdown')||[];
+  const usable=candidate=>candidate?.file?.extension==='md'&&candidate.getMode?.()!=='preview'&&
+   ['getValue','getCursor','posToOffset'].every(key=>typeof candidate.editor?.[key]==='function')&&
+   leaves.some(leaf=>leaf.view===candidate);
+  // A native editor command must retain its exact editor and file; do not pick
+  // a different note if its original view has closed or changed.
+  if(editor||view)return view?.editor===editor&&usable(view)?view:null;
+  const active=workspace.getActiveViewOfType?.(MarkdownView);
+  if(usable(active))return active;
+  const recent=workspace.getMostRecentLeaf?.()?.view;
+  if(usable(recent))return recent;
+  const file=workspace.getActiveFile?.()||this.lastFile;
+  return leaves.map(leaf=>leaf.view).find(candidate=>candidate.file?.path===file?.path&&usable(candidate))||null;
+ }
+ async speakActive(options={}){
   const cfg=this.cfg.tts;
   if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice(writerUi('Ative a leitura de texto nas configurações.','Enable text-to-speech in settings.'));
+  const fromCursor=options?.fromCursor===true;
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
   const workspace=this.plugin.app.workspace;
   const file=workspace.getActiveFile?.()||this.lastFile;
   const leaves=workspace.getLeavesOfType?.('markdown')||[];
-  const view=workspace.getActiveViewOfType(MarkdownView)
+  const view=fromCursor?this.cursorView(options.editor,options.view):workspace.getActiveViewOfType(MarkdownView)
    ||leaves.find(leaf=>leaf.view?.file?.path===file?.path&&leaf.view?.editor)?.view
    ||leaves.find(leaf=>leaf.view?.file?.extension==='md'&&leaf.view?.editor)?.view;
+  if(fromCursor&&!view)return new Notice(writerUi('Abra a nota em modo de edição para ler a partir do cursor.','Open the note in edit mode to read from the cursor.'));
   const note= view?.file||file;
   if(!note||note.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   this.lastFile=note;
-  const selected=view?.editor?.getSelection?.()||'';
+  const selected=fromCursor?'':view?.editor?.getSelection?.()||'';
   const raw=selected&&cfg.readSelection?selected:
     (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
+  let cursor=0;
+  if(fromCursor){
+   cursor=view.editor.posToOffset(view.editor.getCursor('head'));
+   if(typeof raw!=='string'||!Number.isSafeInteger(cursor)||cursor<0||cursor>raw.length)
+    return new Notice(writerUi('A posição do cursor mudou. Tente novamente na nota aberta.','The cursor position changed. Try again in the open note.'));
+  }
   const maximum=Math.max(100,Math.min(60000,Number(cfg.maxCharacters)||12000));
-  const text=writerMaskMarkdown(raw).replace(/ {2,}/g,' ').trim().slice(0,maximum);
+  // The shared Markdown mask preserves UTF-16 offsets. Mask the whole buffer
+  // before slicing so a cursor inside a fence/comment never reads hidden code.
+  const text=writerMaskMarkdown(raw).slice(cursor).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
   if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(this.plugin).ttsProvider==='ahmed-toolkit'){
    this.stop();return writerCompanionSpeechStart(this.plugin,text,note.basename);
@@ -704,6 +735,9 @@ function writerRenderFinalSettings(panel,plugin,section){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(x=>x.setValue(cfg[key]===true)
     .onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
   new Setting(panel).setName(translateLabel('Speech')).addButton(b=>b.setButtonText(translateLabel('Read')).onClick(()=>plugin.writerFinalFeatures.speakActive())).addButton(b=>b.setButtonText(translateLabel('Pause')).onClick(()=>plugin.writerFinalFeatures.pause())).addButton(b=>b.setButtonText(translateLabel('Resume')).onClick(()=>plugin.writerFinalFeatures.resume())).addButton(b=>b.setButtonText(translateLabel('Stop')).onClick(()=>plugin.writerFinalFeatures.stop()));
+  new Setting(panel).setName(writerUi('Continuar a leitura da nota','Continue reading the note'))
+   .setDesc(writerUi('Usa o texto atual do editor, a partir do cursor, mesmo antes de salvar a nota.','Uses the current editor text from the cursor, including unsaved writing.'))
+   .addButton(b=>b.setButtonText(writerUi('Ler a partir do cursor','Read from cursor')).onClick(()=>plugin.writerFinalFeatures.speakActive({fromCursor:true})));
   panel.createDiv({cls:'writer-tts-current-status',text:translateLabel('Ready')});
 
  }

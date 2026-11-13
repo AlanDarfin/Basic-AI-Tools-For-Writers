@@ -1,55 +1,63 @@
-# Connected plugins
+# Plugin support
 
 [Português](companion-compatibility.pt-BR.md)
 
-Basic connects to separately installed community plugins. Install and enable the original plugin first, then open **Settings → Basic → General → Integrations & sync** or **Connected plugins** from the command palette. The center shows the running plugin, its available commands and its original settings.
+Basic's writing tools work without external plugins. Support for an installed plugin helps its available controls, panels and commands coexist with Basic. It does not install that plugin, replace its engine or copy its credentials. The [README support table](../../README.md#supported-plugins) describes each of the nine supported plugins.
 
-You can turn all integrations off, disable the bridge for one plugin, hide the Basic launcher or choose where panels open. Disabling a bridge keeps both plugins' data and preferences. It does not disable the external plugin or change its automatic jobs.
+There is no dedicated **Integrations** settings page. Each external plugin keeps its full configuration in its own settings. Existing panel commands and saved compatibility preferences remain available for established workflows. A saved shortcut to the former page now opens **Advanced editing**, where Basic's native mentions and AI writing actions remain configurable.
 
-## Panels and settings
+## Native tools: no companion required
 
-A panel opens in the chosen sidebar or a new tab, and an existing panel is reused. Commands that open a dialog continue to use that dialog. Disabled modules, unregistered commands and desktop-only features stay unavailable. Basic does not move another plugin's interface into its own DOM.
+### Tasks with dates and quick capture
 
-| Companion | Connection |
+Open Basic's task dashboard to filter **All**, **Today**, **Overdue**, **Next seven days** or **Undated** tasks. Dates use your local calendar day. Completed tasks have a separate visibility switch. Task text can contain a due date such as `📅 2026-11-20` or `[due:: 2026-11-20]`, and priority tags `#high`, `#medium` or `#low`.
+
+Choose **New task** to append a task to an **existing Markdown note**. Select the destination, enter the description and optional date, priority and tags, then generate the preview. Review the destination and exact Markdown line before adding it. Editing a field invalidates the old preview. A changed, moved or deleted note, unsaved editor changes or an unfinished code/properties block can block the write; refresh the preview or save the note before retrying. Capture does not silently create a new inbox or overwrite concurrent edits.
+
+Task dashboard, capture and date filters use Basic's existing task feature switch. They do not require Snailkit or its task database.
+
+### Read from the cursor
+
+Open a Markdown note in edit mode, place the cursor and run **Read from cursor**, or use the corresponding button under **Read aloud**. Basic reads from that position using the current editor buffer, including unsaved text. It honors the character limit, speech feature switch and selected provider; Markdown regions already excluded from reading remain excluded. The command does not save the note.
+
+**Basic** remains the default provider. Installing Toolkit does not switch voices. If you explicitly select **Ultimate Toolkit** under **Speech provider**, it must be installed with its speech feature enabled. Its own settings choose its voices and languages. Basic's pause/resume/stop controls apply to playback it initiated through Toolkit.
+
+**Allow Toolkit online speech** is a separate permission, initially off. The audited Toolkit 2.9.17 labels its online engine as Edge but sends passages to Google Translate; supported languages depend on its implementation. This is independent of Basic's Edge engine and Microsoft permission. Device voices also depend on the system and may use network access. An unavailable selected provider does not silently switch to another.
+
+### Focus a folder in the explorer
+
+Use **Focus this folder** from a folder's native explorer context menu. Basic shows an inline path and **Show all** action in the explorer, rather than adding another floating panel. The existing focus command for the current note's folder remains available. **Show all** restores the complete tree, and disabling folder focus removes its temporary presentation.
+
+Folder focus is visual. It does not encrypt files, block access, move notes or rewrite the original explorer icons. The folder-focus feature switch remains under **Quick actions**.
+
+## Where options live
+
+| Option | Basic settings |
 | --- | --- |
-| **Ultimate Toolkit** | Native tools and settings; optional speech provider; mobile player/button layout; explorer icon priority. |
-| **Visual Kit** | Native image annotation, clipboard/image actions, HTML notes and settings. Desktop only. |
-| **Snailkit** | Native Workbench; Basic writing tab through its public Tasks API; task previews and explicit completion; section-specific settings. |
-| **dropit** | Native receive/send commands and settings. Desktop processing rules remain separate explicit actions. |
-| **Syncthing Integration** | Original conflict, note-difference and configuration dialogs. It does not expose a manual synchronization engine. |
-| **Syncthing Manager** | Native dashboard, current status, note versions and explicit connection/scan actions. |
-| **Obsidian Git** | Registered source-control/history views and explicit Git commands, subject to its backend being ready. |
-| **FIT** | Explicit synchronization and remote status explanation. No separate native panel. |
-| **LanguageTool** | External checker, editor suggestions, navigation and selected native preferences, alongside Basic's independent built-in checker. |
+| Task scanning and task dashboard switch | **Tasks & capture** |
+| Speech provider, voices, online permission and cursor reading | **Read aloud** |
+| Folder-focus switch | **Quick actions** |
+| Duplicate icon priority | **File explorer** |
+| Arrange floating controls on mobile | **Files & tools** |
+| Native note mentions and AI writing actions | **Advanced editing** |
+| External LanguageTool checker | **Grammar** |
 
-Selected simple Toolkit/Visual Kit preferences are saved through the original plugin's settings writer. Reload requirements remain visible. Accounts, tokens, repositories, pairing and processing rules stay in each plugin's original settings. A plugin update may change a private method; Basic checks capabilities at use time and leaves unavailable actions disabled.
+## Mobile controls and the explorer
 
-## Choose a speech provider
+**Arrange floating controls on mobile** coordinates supported Toolkit and Snailkit controls with the visible pane, bars, open menus and dialogs. Attached popups retain their native anchors. When a safe position does not exist, secondary controls can be temporarily hidden instead of being placed over an obstruction; they return when the obstruction closes or space becomes available. This coordination does not change the external plugin's stored coordinates, notes or feature settings.
 
-**Basic** remains the default. Installing Toolkit does not change your voices. Choose **Ultimate Toolkit** under **Speech provider** to send Basic's selected/current text to its own player. Toolkit must be installed with speech enabled. Its voices and languages come from its original settings. Pause/resume/stop in Basic apply to playback started through this connection.
+The passive layout support operates independently of Basic's quick-actions master switch. Earlier explicit layout/plugin opt-outs are retained. Turning the layout option off restores the styling managed by Basic. Choose the rail side and enabled Snailkit buttons in Snailkit's native **Note rail** settings.
 
-**Allow Toolkit online speech** is a separate permission, initially off. The audited Toolkit version labels its online engine as Edge but actually requests Google Translate speech, with language choices limited by its implementation. Basic does not describe that engine as offline or reuse Basic's Edge settings. Device voices also depend on the system and may require network access. An unavailable chosen provider does not silently fall back to another one.
+Under **File explorer**, choose **Ultimate Toolkit**, **Custom Basic icon** or **Show both** when both plugins decorate the same row. The choice changes the duplicate decoration's visibility and retains both plugins' preferences and elements.
 
-## Grammar and LanguageTool
+Visual Kit remains desktop-only. Obsidian Git on mobile requires its own available, initialized backend. Basic does not add desktop Git to Android. Viewport/CSS emulation does not replace testing native navigation, device keyboards or floating panels on physical Android/iOS hardware.
 
-Basic's built-in LanguageTool client works without the external plugin. Choose the **external checker** when you want the installed LanguageTool plugin to check the note in its native editor and present its own underlines and notices. Open that note in an editor first. The bridge restores the appropriate editor when starting a check from Basic.
+## Grammar, panels and synchronization
 
-External automatic checking, language and picky mode can be configured through the bridge; the account, endpoint, dictionaries and full configuration remain in LanguageTool. Its note properties `lt-language`, `lt-autoCheck` and `lt-picky` can override global choices. Its automatic checks can run with the Basic pane closed. Turn automatic checking off in that plugin if you want it to stop; disabling Basic's bridge alone does not change it.
+Basic's built-in LanguageTool client works without the external plugin. Select the external checker in **Grammar** to use the installed plugin's editor underlines, notices and native actions. Basic restores the relevant editor and checks available capabilities. The external plugin retains its account, endpoint, dictionaries and note overrides (`lt-language`, `lt-autoCheck`, `lt-picky`). Its automatic checking can continue with the Basic pane closed; disable it in that plugin when you want it to stop.
 
-A manual check can send the current note or selection to the external plugin's configured server. Basic's own endpoint and credentials remain independent. Changing the note, configuration or selected checker invalidates obsolete Basic review results. A request already sent can still complete at the service.
+Existing companion-panel commands reuse registered native views. Commands that open dialogs continue to open native dialogs. Disabled modules, missing commands and unsupported platform features remain unavailable. Full plugin configuration belongs to the original plugin, including repositories, pairing, processing rules and automatic schedules.
 
-## Mobile buttons and the explorer
+Basic does not start transfers or synchronize files when recognizing a companion. Legacy manual synchronization actions still require an explicit provider selection and click. Git's **Commit and sync** can create commits and transfer changes; FIT's status command can contact its remote when the installed release offers it. Opening a native panel can trigger that plugin's own refresh. Command dispatch does not certify a completed transfer.
 
-**Arrange mobile buttons** adjusts supported Toolkit and Snailkit controls around the visible viewport, native bars and other detected controls. It responds to viewport/keyboard resizing and keeps pane-owned controls inside their pane. The original handlers and settings remain intact. Disable it to restore their original styling. The layout can only reposition a control where enough space exists.
-
-Use Snailkit's native **Note rail** settings for its left/right position and enabled buttons. Visual Kit is unavailable on mobile. Obsidian Git's availability depends on the installed version, repository and initialized mobile backend; the bridge does not add desktop Git to Android.
-
-When both Basic and Toolkit add an explorer icon, choose **Ultimate Toolkit**, **Custom Basic** or **Both**. This controls the duplicate decoration without deleting folder/file styling preferences. Changing icon priority does not recolor notes or rewrite Toolkit's folder map.
-
-## Synchronization
-
-Choose one **Manual synchronization provider** to enable its effectful actions. Selecting it does not transfer files. Every sync, remote inspection, receive, send or processing action requires a click. Opening a native panel may use the external plugin's own refresh behavior.
-
-Git's **Commit and sync** can create a commit and transfer changes; **Push** is a separate action. FIT's status explanation can contact its remote. Syncthing itself and the other plugins' schedules continue to run according to their own settings. Basic reports command dispatch and available native state; dispatch does not certify a completed transfer.
-
-For inspected revisions, licenses, API boundaries and platform requirements, see the [source audit](../maintenance/COMPANION_SOURCE_AUDIT.md). Basic's minimum Obsidian version does not override an external plugin's newer requirements.
+See the [source audit](../maintenance/COMPANION_SOURCE_AUDIT.md) for inspected versions, licenses, API boundaries and the original files supplied for the mobile review. An external plugin's newer Obsidian requirement still applies.

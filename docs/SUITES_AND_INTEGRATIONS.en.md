@@ -22,7 +22,6 @@ Favorite up to 12 sections for quick access. Use **General → Writing profiles*
 | **Features** | Choose the features shown in panes, menus and commands. |
 | **Writing profiles** | Save combinations of preferences and undo the last application. |
 | **Diagnostics & shortcuts** | Check local status and possible shortcut conflicts. |
-| **Integrations & sync** | Mentions, integrated actions and connections to external plugins. |
 | **Compatibility** | Control advanced feature loading after restarting. |
 
 ### Appearance & panes
@@ -208,7 +207,7 @@ Fictional chat accepts `[Left=Maria, right=João]`, participant shorthand such a
 
 ## Connected community plugins
 
-Use **General → Integrations & sync** for the native panel center, per-plugin bridge switches, selected original preferences, speech provider, mobile button layout and explorer icon priority. See the [connected plugins guide](guides/companion-compatibility.md) for the nine audited companions and their requirements. External plugins keep their own credentials, transport and automatic schedules.
+Plugin support has no separate settings page. Configure speech in **Read aloud**, icon priority in **File explorer**, and mobile floating controls in **Files & tools**. Native mentions and AI writing actions are in **Advanced editing**. See the [plugin support guide](guides/companion-compatibility.md) for the nine supported companions. Their credentials, transport and schedules remain in the original plugins.
 
 ## Connections and data use
 

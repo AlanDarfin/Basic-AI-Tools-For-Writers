@@ -379,8 +379,43 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "editorAdvanced",
+  "titlePt": "Ações de IA para escrita",
+  "titleEn": "AI writing actions"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Mudar tom",
+  "titleEn": "Change tone"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Corrigir gramática",
+  "titleEn": "Correct grammar"
+ },
+ {
+  "id": "editorAdvanced",
   "titlePt": "Ativar ferramentas avançadas",
   "titleEn": "Enable advanced tools"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Expandir",
+  "titleEn": "Expand"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Explorar alternativa",
+  "titleEn": "Explore an alternative"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Melhorar diálogo",
+  "titleEn": "Improve dialogue"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Melhorar estilo",
+  "titleEn": "Improve style"
  },
  {
   "id": "editorAdvanced",
@@ -396,6 +431,41 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "editorAdvanced",
   "titlePt": "Máximo de notas para busca/substituição",
   "titleEn": "Max files for batch replace"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Pasta das menções",
+  "titleEn": "Mention folder"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Inserção de menções",
+  "titleEn": "Mention insertion"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Símbolo de menção",
+  "titleEn": "Mention trigger"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Menções de notas",
+  "titleEn": "Note mentions"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Revisar pontos fracos",
+  "titleEn": "Review weak points"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Encurtar",
+  "titleEn": "Shorten"
+ },
+ {
+  "id": "editorAdvanced",
+  "titlePt": "Simplificar",
+  "titleEn": "Simplify"
  },
  {
   "id": "extendedSyntax",
@@ -678,145 +748,6 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "images",
   "titlePt": "Abrir buscador de imagens",
   "titleEn": "Open image search"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Ações de IA para escrita",
-  "titleEn": "AI writing actions"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Permitir voz online do Toolkit",
-  "titleEn": "Allow Toolkit online speech"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Organizar botões no mobile",
-  "titleEn": "Arrange mobile buttons"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Mudar tom",
-  "titleEn": "Change tone"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Corrigir gramática",
-  "titleEn": "Correct grammar"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Ativar integrações",
-  "titleEn": "Enable integrations",
-  "descriptionPt": "Desligar remove as conexões do Basic. Cada plugin continua com seus próprios módulos.",
-  "descriptionEn": "Turning this off removes Basic connections. Each plugin retains its own modules."
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Expandir",
-  "titleEn": "Expand"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Explorar alternativa",
-  "titleEn": "Explore an alternative"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Ícones do explorador quando há duplicação",
-  "titleEn": "Explorer icons when both plugins add one"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Melhorar diálogo",
-  "titleEn": "Improve dialogue"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Melhorar estilo",
-  "titleEn": "Improve style"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Inspecionar conflitos",
-  "titleEn": "Inspect conflicts"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Central de integrações",
-  "titleEn": "Integration center"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Conflitos locais",
-  "titleEn": "Local conflicts"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Provedor manual de sincronização",
-  "titleEn": "Manual synchronization provider",
-  "descriptionPt": "Selecionar aqui não desativa sincronizadores externos automáticos.",
-  "descriptionEn": "Selecting a provider does not disable external automatic sync jobs."
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Pasta das menções",
-  "titleEn": "Mention folder"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Inserção de menções",
-  "titleEn": "Mention insertion"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Símbolo de menção",
-  "titleEn": "Mention trigger"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Menções de notas",
-  "titleEn": "Note mentions"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Abrir central de plugins",
-  "titleEn": "Open plugin center"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Local dos painéis",
-  "titleEn": "Panel placement"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Revisar pontos fracos",
-  "titleEn": "Review weak points"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Atalho nos painéis do Basic",
-  "titleEn": "Shortcut in Basic panels"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Encurtar",
-  "titleEn": "Shorten"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Simplificar",
-  "titleEn": "Simplify"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Provedor de leitura",
-  "titleEn": "Speech provider"
- },
- {
-  "id": "integrationsV4",
-  "titlePt": "Vozes e player do Toolkit",
-  "titleEn": "Toolkit voices and player"
  },
  {
   "id": "keyshots",
@@ -2156,6 +2087,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "tts",
+  "titlePt": "Continuar a leitura da nota",
+  "titleEn": "Continue reading the note",
+  "descriptionPt": "Usa o texto atual do editor, a partir do cursor, mesmo antes de salvar a nota.",
+  "descriptionEn": "Uses the current editor text from the cursor, including unsaved writing."
+ },
+ {
+  "id": "tts",
   "titlePt": "Voz online do Edge",
   "titleEn": "Edge online voice",
   "descriptionPt": "Vozes online de alta qualidade, independentes das vozes instaladas no Linux.",
@@ -2538,6 +2476,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "v10Tools",
   "titlePt": "Permitir edição de arquivos de texto (até 512 KiB)",
   "titleEn": "Allow text-file edits (up to 512 KiB)"
+ },
+ {
+  "id": "v10Tools",
+  "titlePt": "Organizar controles flutuantes no mobile",
+  "titleEn": "Arrange floating controls on mobile",
+  "descriptionPt": "Mantém controles compatíveis fora de barras, menus e painéis abertos. Controles secundários sem espaço ficam temporariamente ocultos e retornam quando houver espaço.",
+  "descriptionEn": "Keeps supported controls clear of bars, menus and open panels. Secondary controls without room are temporarily hidden and return when space is available."
  },
  {
   "id": "v10Tools",
@@ -2948,6 +2893,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "v9Explorer",
   "titlePt": "Arrastar para reordenar manualmente",
   "titleEn": "Drag to reorder manually"
+ },
+ {
+  "id": "v9Explorer",
+  "titlePt": "Prioridade dos ícones duplicados",
+  "titleEn": "Duplicate icon priority",
+  "descriptionPt": "Quando Basic e Ultimate Toolkit decoram a mesma linha, escolha o ícone visível. As preferências dos dois plugins são preservadas.",
+  "descriptionEn": "When Basic and Ultimate Toolkit decorate the same row, choose the visible icon. Both plugins keep their preferences."
  },
  {
   "id": "v9Explorer",

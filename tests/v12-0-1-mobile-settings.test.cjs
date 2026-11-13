@@ -29,11 +29,11 @@ test('settings routes organize features without version-branded categories',()=>
  const groups=fs.readFileSync(path.join(root,'src/v13/settings-catalog.js'),'utf8');
  assert.doesNotMatch(groups,/\['toolkit',/);
  assert.doesNotMatch(groups,/\['suites',/);
- for(const id of ['v9Toolbar','v9Pretty','v9Flow','v9Calendar','v9Lock','v10Tools','integrationsV4','projects'])
+ for(const id of ['v9Toolbar','v9Pretty','v9Flow','v9Calendar','v9Lock','v10Tools','editorAdvanced','projects'])
   assert.match(groups,new RegExp("'"+id+"'"));
  for(const fn of ['writerV1201SettingsOverview','writerV1201SettingsWriting','writerV1201SettingsImages',
   'writerV1201SettingsTasks','writerV1201SettingsPrivacy','writerV1201SettingsReader',
-  'writerV1201SettingsConnections','writerV1201SettingsSuite'])
+  'writerNativeFloatingSettings','writerNativeExplorerSupportSettings','writerV1201SettingsSuite'])
   assert.ok(navigation.includes(fn+'(this.plugin,panel'));
 });
 test('recent modules are no longer all appended to Files and shortcuts settings',()=>{

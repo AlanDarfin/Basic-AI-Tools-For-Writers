@@ -11881,7 +11881,6 @@ body.is-mobile .writer-folder-focus-reset{min-height:44px;}
  background:var(--background-secondary);color:var(--text-muted);
 }
 .writer-native-task-due.is-overdue{color:var(--text-error);font-weight:var(--font-medium);}
-.writer-native-task-row>button{flex:none;}
 .writer-native-task-capture .setting-item{min-width:0;gap:10px;}
 .writer-native-task-capture .setting-item-control{min-width:0;max-width:100%;}
 .writer-native-task-capture :is(input,select){max-width:100%;}
@@ -11899,7 +11898,6 @@ body.is-mobile .writer-folder-focus-reset{min-height:44px;}
  .writer-native-task-toolbar>input[type="search"]{flex-basis:100%;}
  .writer-native-task-toolbar>:is(input,select){min-height:44px;}
  .writer-native-task-completed{min-height:44px;}
- .writer-native-task-row>button{min-height:44px;min-width:54px;}
  .writer-native-task-check{min-width:44px;min-height:44px;}
  .writer-native-task-check>input[type="checkbox"]{width:24px;height:24px;}
  .writer-native-task-capture .setting-item{flex-wrap:wrap;}
@@ -11907,6 +11905,24 @@ body.is-mobile .writer-folder-focus-reset{min-height:44px;}
  .writer-native-task-capture .setting-item-control{flex:1 1 100%;justify-content:flex-start;}
  .writer-native-task-capture .setting-item-control>:is(input,select,button){min-height:44px;}
  .writer-native-task-capture .setting-item-control>input{width:100%;}
+}
+
+.writer-native-task-row-actions{
+ display:flex;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;gap:4px;
+}
+.writer-native-task-row-actions>button{min-height:32px}
+.writer-native-task-edit-due>span{display:flex;align-items:center}
+.writer-native-task-edit-due svg{width:16px;height:16px}
+.writer-native-task-reschedule{display:grid;min-width:0;gap:10px}
+.writer-native-task-reschedule p{margin-block:0;overflow-wrap:anywhere}
+.writer-native-task-reschedule label{display:grid;gap:5px}
+.writer-native-task-reschedule input[type="date"]{min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+.writer-native-task-date-presets{display:flex;flex-wrap:wrap;gap:6px}
+@media(max-width:600px){
+ .writer-native-task-row{gap:8px}
+ .writer-native-task-row-actions{flex-direction:column}
+ .writer-native-task-row-actions>button{min-height:44px;min-width:44px}
+ .writer-native-task-reschedule :is(input,button){min-height:44px}
 }
 
 /* Reserve real editor space for docked formatting controls. */

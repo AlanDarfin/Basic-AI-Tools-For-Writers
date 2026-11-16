@@ -40,8 +40,8 @@ function harness(language='en'){
    cachedRead:async file=>{await hooks.beforeCachedRead?.(file);return stored.get(file.path)?.text??'';},
    process:async(file,update)=>{processes++;await hooks.beforeProcess?.(file);const row=stored.get(file.path);if(!row)throw Error('Missing note');const next=update(row.text);row.text=next;file.stat.mtime++;file.stat.size=next.length;writes.push(next);return next;}
   }},addCommand:command=>commands.push(command)};
- const api=vm.runInNewContext(source+'\n({writerV12TaskRefs,writerV12ToggleTask,writerV12TaskWorkbench,writerV12TasksRegister,writerV139TaskDate,writerV139TaskToday,writerV139TaskMetadata,writerV139TaskVisible,writerV139TaskLine,writerV139TaskAppendable,writerV139TaskPreview,writerV139TaskCommit,writerV139TaskQuickAdd})',{
-  TFile,Modal,Setting,Notice:class{constructor(message){notices.push(message);}},writerUi:(pt,en)=>language==='pt'?pt:en,
+ const api=vm.runInNewContext(source+'\n({writerV12TaskRefs,writerV12ToggleTask,writerV12TaskWorkbench,writerV12TasksRegister,writerV139TaskDate,writerV139TaskToday,writerV139TaskDayAfter,writerV139TaskMetadata,writerV139TaskVisible,writerV139TaskLine,writerV139TaskAppendable,writerV139TaskPreview,writerV139TaskCommit,writerV139TaskQuickAdd,writerTaskReplaceDue,writerTaskReschedule})',{
+  TFile,Modal,Setting,require:()=>({setIcon(){}}),Notice:class{constructor(message){notices.push(message);}},writerUi:(pt,en)=>language==='pt'?pt:en,
   writerV12On:(plugin,key)=>plugin.settings.v12Toolkit.enabled!==false&&plugin.settings.v12Toolkit[key]!==false,
   writerV12Config:plugin=>plugin.settings.v12Toolkit,console
  });
@@ -203,9 +203,9 @@ test('native task UI and commands are bilingual, need no companion and respect t
 test('dashboard filters native Markdown tasks and opens the original line without depending on Snailkit',async()=>{
  const h=harness(),today=h.api.writerV139TaskToday(),file=h.add('Tasks.md','- [ ] Due today #writing #high 📅 '+today+'\n- [ ] No due date #review\n- [x] Done today 📅 '+today+'\n```md\n- [ ] Example 📅 '+today+'\n```\n');
  const modal=h.api.writerV12TaskWorkbench(h.plugin,'today');await new Promise(setImmediate);
- const rows=modal.contentEl.withClass('writer-native-task-results');assert.equal(rows.all('button').length,1);
+ const rows=modal.contentEl.withClass('writer-native-task-results');assert.equal(rows.all('button').length,2);
  assert.ok(rows.withClass('writer-native-task-title').text.startsWith('Due today'));assert.equal(rows.withClass('writer-native-task-priority').text,'High');
- rows.all('button')[0].listeners.click();assert.equal(h.opens.length,1);assert.equal(h.opens[0].file,file);assert.deepEqual(plain(h.opens[0].options),{eState:{line:0}});
+ rows.all('button').find(button=>button.text==='Open').listeners.click();assert.equal(h.opens.length,1);assert.equal(h.opens[0].file,file);assert.deepEqual(plain(h.opens[0].options),{eState:{line:0}});
 });
 
 test('switching tasks off while the dashboard is open refuses checking and explains its disabled state',async()=>{
@@ -214,4 +214,103 @@ test('switching tasks off while the dashboard is open refuses checking and expla
  h.plugin.settings.v12Toolkit.taskNavigator=false;check.checked=true;await check.listeners.change();
  assert.equal(h.writes.length,0);assert.equal(check.checked,false);assert.equal(results.children.length,0);
  assert.ok(modal.contentEl.all('p').some(el=>el.text==='Tasks are disabled in settings.'));
+});
+
+test('reschedule changes only the editable date and retains date syntax, checkbox, links, comments and mixed line endings',async()=>{
+ const h=harness(),raw='\t3. [X] Revisar [[nota|capítulo]] 📅 2000-04-20 #high %% 📅 2020-01-01 %%  ';
+ const original='Prefix\r\n'+raw+'\n- [ ] Another task\r\n';
+ const file=h.add('Tasks.md',original),entry=h.api.writerV12TaskRefs(original)[0];
+ await h.api.writerTaskReschedule(h.plugin,file,entry,original,'2028-02-29');
+ assert.equal(h.writes[0],original.replace('2000-04-20','2028-02-29'));
+ assert.equal(h.api.writerTaskReplaceDue('- [ ] Matter [due::  2026-11-16\t ] #tag','2026-12-01'),
+  '- [ ] Matter [due::  2026-12-01\t ] #tag');
+ assert.equal(h.api.writerTaskReplaceDue('- [ ] Matter [due::  2026-11-16\t ] #tag',''),'- [ ] Matter #tag');
+ assert.equal(h.api.writerTaskReplaceDue('- [ ] 📅 2026-11-16 Matter',''),'- [ ] Matter');
+ assert.equal(h.api.writerTaskReplaceDue('- [ ] Matter  ^my-obsidian-block  ','2026-11-16'),
+  '- [ ] Matter 📅 2026-11-16  ^my-obsidian-block  ');
+});
+
+test('hidden date examples do not become deadlines, and adding a date preserves comments and code',()=>{
+ const h=harness(),due='2026-11-16';
+ for(const raw of ['- [ ] Report `📅 2025-03-21`','- [ ] Report [[Project|📅 2025-03-21]]',
+  '- [ ] Report [📅 2025-03-21](http://example.test)','- [ ] Report <span title="📅 2025-03-21">draft</span>']){
+  assert.equal(h.api.writerV139TaskMetadata(raw).due,'');
+  assert.equal(h.api.writerTaskReplaceDue(raw,due),raw+' 📅 '+due);
+ }
+ for(const suffix of [' %% Private 📅 2025-03-21 %%',' <!-- 📅 2025-03-21']){
+  assert.equal(h.api.writerV139TaskMetadata('Task'+suffix).due,'');
+  assert.equal(h.api.writerTaskReplaceDue('- [ ] Task'+suffix,due),'- [ ] Task 📅 '+due+suffix);
+ }
+ assert.equal(h.api.writerV139TaskMetadata('Task %% 📅 2025-03-21 %% 📅 2026-11-16').due,due);
+ assert.equal(h.api.writerV139TaskMetadata('Task 📅 2026-11-16<!-- note -->').due,due);
+});
+
+test('duplicate, malformed and invalid dates never enter the atomic write',async()=>{
+ for(const raw of ['- [ ] Existing 📅 2026-11-12 [due:: 2026-11-16]','- [ ] Existing 📅 2026-02-30',
+  '- [ ] Existing 📅 tomorrow','- [ ] Existing [due:: ]','- [ ] Existing 📅 📅 2026-11-16']){
+  const h=harness(),file=h.add('Tasks.md',raw),entry=h.api.writerV12TaskRefs(raw)[0];
+  await assert.rejects(h.api.writerTaskReschedule(h.plugin,file,entry,raw,'2026-12-02'),/duplicate or invalid/);
+  assert.equal(h.processes,0);
+ }
+ const h=harness(),raw='- [ ] Existing',file=h.add('Tasks.md',raw),entry=h.api.writerV12TaskRefs(raw)[0];
+ await assert.rejects(h.api.writerTaskReschedule(h.plugin,file,entry,raw,'2026-02-29'),/valid date/);
+ assert.equal(h.processes,0);
+});
+
+test('reschedule rejects task dates changed by a concurrently saved note',async()=>{
+ const h=harness(),raw='- [ ] Existing 📅 2026-11-16',file=h.add('Tasks.md',raw),entry=h.api.writerV12TaskRefs(raw)[0];
+ const wait=deferred();h.hooks.beforeProcess=()=>wait.promise;
+ const saving=h.api.writerTaskReschedule(h.plugin,file,entry,raw,'2026-12-06');
+ h.stored.get(file.path).text=raw+' #changed';wait.resolve();
+ await assert.rejects(saving,/File changed/);
+ assert.equal(h.writes.length,0);
+});
+
+test('dashboard Tomorrow preset moves a task out of Today only after Save, and No due date can remove it',async()=>{
+ const h=harness(),today=h.api.writerV139TaskToday();
+ const file=h.add('Tasks.md','- [ ] Remarcar 📅 '+today+' #high');
+ const dashboard=h.api.writerV12TaskWorkbench(h.plugin,'today');
+ await new Promise(setImmediate);
+ const openEditor=()=>dashboard.contentEl.withClass('writer-native-task-edit-due').listeners.click();
+ const button=name=>h.modal.contentEl.all('button').find(item=>item.text===name);
+ openEditor();
+ assert.equal(h.modal.title,'Edit task due date');
+ assert.equal(button('Save due date').disabled,true);
+ button('Tomorrow').listeners.click();
+ const date=h.modal.contentEl.all('input')[0].value;
+ assert.equal(date,h.api.writerV139TaskDayAfter(today,1));
+ assert.equal(h.writes.length,0);
+ await button('Save due date').listeners.click();
+ await new Promise(setImmediate);
+ assert.equal(h.stored.get(file.path).text,'- [ ] Remarcar 📅 '+date+' #high');
+ assert.ok(!dashboard.contentEl.withClass('writer-native-task-title'));
+ const filter=dashboard.contentEl.all('select')[0];
+ filter.value='upcoming';filter.listeners.change();
+ openEditor();
+ button('No due date').listeners.click();
+ await button('Save due date').listeners.click();
+ await new Promise(setImmediate);
+ assert.equal(h.stored.get(file.path).text,'- [ ] Remarcar #high');
+ assert.ok(!dashboard.contentEl.withClass('writer-native-task-title'));
+});
+
+test('a canceled or partially entered date never saves, and an undated task can gain a date',async()=>{
+ const h=harness('pt'),file=h.add('Tarefas.md','- [ ] Entregar capítulo ^entrega');
+ const dashboard=h.api.writerV12TaskWorkbench(h.plugin,'unscheduled');
+ await new Promise(setImmediate);
+ const openEditor=()=>dashboard.contentEl.withClass('writer-native-task-edit-due').listeners.click();
+ const button=name=>h.modal.contentEl.all('button').find(item=>item.text===name);
+ openEditor();
+ button('Hoje').listeners.click();
+ const input=h.modal.contentEl.all('input')[0];
+ input.validity={badInput:true};input.listeners.input();
+ assert.equal(button('Salvar prazo').disabled,true);
+ await button('Salvar prazo').listeners.click();
+ button('Cancelar').listeners.click();
+ assert.equal(h.writes.length,0);
+ openEditor();
+ button('Hoje').listeners.click();
+ const today=h.api.writerV139TaskToday();
+ await button('Salvar prazo').listeners.click();
+ assert.equal(h.stored.get(file.path).text,'- [ ] Entregar capítulo 📅 '+today+' ^entrega');
 });

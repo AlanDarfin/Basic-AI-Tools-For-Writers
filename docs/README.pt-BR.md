@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.12.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.13.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
@@ -77,6 +77,10 @@ A exportação opcional para DOCX, EPUB, HTML ou PDF no computador usa o **Pando
 ## Revise o ritmo da prosa
 
 Use **Escrita: ritmo e repetições** para analisar uma seleção ou a nota atual. Veja a distribuição do tamanho das frases, as frases e os parágrafos mais longos e as palavras que se repetem. Toque num resultado para voltar ao trecho no editor. A análise ignora propriedades, títulos Markdown, blocos de código e comentários. Os números orientam a leitura e não alteram nem enviam a sua nota.
+
+## Remarque uma tarefa
+
+Abra **Tarefas: abrir painel** e use o ícone de calendário ao lado da tarefa. Escolha uma data ou use **Hoje**, **Amanhã**, **Em 7 dias** ou **Sem prazo** e salve. O painel atualiza os filtros e muda apenas o marcador de prazo na nota Markdown original.
 
 ## Plugins com suporte
 

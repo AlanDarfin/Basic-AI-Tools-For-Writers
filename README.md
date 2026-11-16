@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.10.2 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 13.11.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -65,6 +65,8 @@ Use the icon tabs under **Writing**, **World**, or **Project** to open a section
 On phones, **Basic settings → General → Get started → Mobile status bar** controls the row below navigation. It uses available native status items or Basic indicators such as word count, editor mode, reading time and Pomodoro. The row hides while the on-screen keyboard is open.
 
 In **Projects → Writing → Structure → Story plan**, develop a premise into a paragraph, a synopsis and a treatment. Mark stages ready when you choose and review later stages when an earlier one changes. In **Threads**, link a setup, reinforcements and a payoff to existing scenes. **Check** flags missing scenes and out-of-order or unfinished threads in the active draft. **Export plan** creates a separate Markdown note without changing the manuscript.
+
+Open **Projects → Project → Review**, use the review button in **Scenes**, or run **Longform: open review queue** to work through comments in the active draft. Filter by chapter, search comment text or quotations, and switch between open and resolved items. Use **Comment on selection** from the editor to attach a passage, or **Comment on chapter** for a note without a quote. **Go to passage** selects the original text if it can be identified. Resolving or reopening a comment does not edit the manuscript.
 
 Chapter drafts have local recovery copies. Use **Books: recover drafts** to inspect them, save a separate Markdown copy or discard an entry. A changed original is kept separate for review. Recovery copies and version snapshots serve different purposes; neither replaces an independent backup. Temporary session drafts stay in memory until you save them.
 

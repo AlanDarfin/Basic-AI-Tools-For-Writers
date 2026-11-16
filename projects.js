@@ -184,7 +184,7 @@ class ProjectsView extends ItemView{
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
    if(this.activeTab==='manuscript'&&this.plugin.settings?.v11Studio?.enabled===false)this.activeTab='scenes';
-  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['manuscript',lfMsg('Escrita contínua','Continuous writing')],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments') ]].filter(([id])=>(id!=='manuscript'||this.plugin.settings?.v11Studio?.enabled!==false)&&(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
+  const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['manuscript',lfMsg('Escrita contínua','Continuous writing')],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Revisão','Review') ]].filter(([id])=>(id!=='manuscript'||this.plugin.settings?.v11Studio?.enabled!==false)&&(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
   &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false||this.plugin.settings.v7?.storyPlanning!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
@@ -474,9 +474,14 @@ class ProjectsView extends ItemView{
   },title).open();
  }
  drawScenes(panel,project){
+  const addReviewButton=parent=>{
+   if(writerModuleOn(this.plugin,'comments'))lfIconButton(parent,'message-square-text',lfMsg('Fila de revisão','Review queue'))
+    .addEventListener('click',()=>void this.plugin.openProjects('comments').catch(writerEditorialError));
+  };
   if(project.format==='single'){
    panel.createEl('p',{text:lfMsg("Projeto de nota única.","Single-note project.")});
    panel.createEl('button',{text:lfMsg("Abrir texto","Open text")}).addEventListener('click',()=>this.openFile(project.file));
+   addReviewButton(panel);
    return;
   }
   const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-draft-actions',
@@ -506,6 +511,7 @@ class ProjectsView extends ItemView{
    attr:{role:'group','aria-label':lfMsg('Ações de cenas','Scene actions')}});
   lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
   lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
+  addReviewButton(toolbar);
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
   const branches=new Set(),pending=[...tree];
   while(pending.length){

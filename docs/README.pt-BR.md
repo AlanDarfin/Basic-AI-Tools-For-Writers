@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.10.2 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.11.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
@@ -65,6 +65,8 @@ Use as abas com ícones em **Escrita**, **Universo** ou **Projeto** para abrir u
 No celular, **Configurações do Basic → Geral → Comece por aqui → Barra de status no celular** controla a faixa abaixo da navegação. Ela reaproveita os indicadores nativos disponíveis e mostra indicadores do Basic, como contagem de palavras, modo do editor, tempo de leitura e Pomodoro. A faixa some enquanto o teclado virtual estiver aberto.
 
 Em **Projetos → Escrita → Estrutura → Plano da história**, expanda a premissa em um parágrafo, uma sinopse e um tratamento. Marque as etapas como prontas quando quiser e revise as seguintes quando uma etapa anterior mudar. Em **Pistas**, vincule plantio, reforços e desfecho às cenas que já existem. A **Checagem** aponta cenas ausentes e pistas incompletas ou fora de ordem no rascunho ativo. **Exportar plano** cria uma nota Markdown separada sem alterar o manuscrito.
+
+Abra **Projetos → Projeto → Revisão**, use o ícone de revisão em **Cenas** ou execute **Longform: abrir fila de revisão**. A fila mostra os comentários do rascunho ativo. Filtre por capítulo, pesquise no texto dos comentários ou nos trechos citados e alterne entre pendentes e resolvidos. Use **Comentar seleção** no editor para marcar um trecho ou **Comentar capítulo** para deixar uma nota sem citação. **Ir ao trecho** seleciona a passagem quando consegue identificá-la. Resolver ou reabrir um comentário não altera o manuscrito.
 
 Rascunhos dos capítulos têm cópias locais de recuperação. Use **Livros: recuperar rascunhos** para conferir, salvar uma cópia Markdown separada ou descartar uma entrada. Se o original mudou, o rascunho fica separado para revisão. Recuperação e snapshots de versões têm propósitos diferentes; mantenha também um backup independente. Rascunhos temporários de sessão ficam em memória até serem salvos.
 

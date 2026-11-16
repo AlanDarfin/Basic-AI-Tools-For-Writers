@@ -2,6 +2,11 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.10.1 — Horizontal tab icons and one scene collapse control
+
+- Keep icons beside their labels in Longform, Basic AI and Settings, including on narrow mobile panes.
+- Replace the two Longform hierarchy actions with one button that switches between Collapse all and Expand all. Top-level scenes remain visible.
+
 ## 13.10.0 — Story planning and compact mobile navigation
 
 - Add the optional Longform Story Plan with a premise, one-paragraph outline, synopsis and treatment. Earlier edits flag later material for review without replacing it.

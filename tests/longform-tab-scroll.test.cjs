@@ -158,6 +158,8 @@ test('shared sidebar strip stays in one scrolling row with icon-only tabs at the
  const sidebarCss=fs.readFileSync('src/styles/v13-6-tools.css','utf8');
  assert.doesNotMatch(projectCss,/writer-v136-project-sections|writer-project-tabs[^{}]*\{\s*display:none/);
  assert.match(sidebarCss,/\.writer-sidebar-tabs\{[^}]*flex-flow:row nowrap;[^}]*overflow-x:auto/);
+ assert.match(sidebarCss,/\.writer-sidebar-tabs>button\{[^}]*display:inline-flex;flex-direction:row/);
+ assert.doesNotMatch(sidebarCss,/\.writer-sidebar-tabs>button\{[^}]*flex-direction:column/);
  assert.match(sidebarCss,/\.writer-sidebar-tabs>button\.is-active\{[^}]*border-bottom-color:var\(--interactive-accent\)/);
  assert.match(sidebarCss,/body\.is-mobile \.writer-sidebar-tabs\{--writer-sidebar-touch-height:44px\}/);
  assert.match(sidebarCss,/@container basic-project \(max-width:205px\)\{\s*\.writer-project-root \.writer-sidebar-tab-label\{display:none\}/);

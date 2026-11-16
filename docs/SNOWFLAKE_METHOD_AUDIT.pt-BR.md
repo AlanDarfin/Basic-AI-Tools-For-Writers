@@ -13,4 +13,4 @@ A referência auditada foi o [Snowflake Method 0.32.0 de Polaris](https://github
 
 ## Onde usar
 
-Abra **Projetos → Escrita → Estrutura → Plano da história**, ou use **Longform: abrir plano da história** na paleta. Dentro dele há **Etapas**, **Pistas**, **Checagem** e uma ação de exportação. O plano pode ser desligado na seção **Projetos de escrita** das configurações do Basic, sem apagar os dados salvos.
+Abra **Projetos → Escrita → Estrutura → Plano da história**, ou use **Longform: abrir plano da história** na paleta. Dentro dele há **Etapas**, **Pistas**, **Checagem** e uma ação de exportação. O plano pode ser desligado em **Livros e projetos → Escrita de livros**, nas configurações do Basic, sem apagar os dados salvos.

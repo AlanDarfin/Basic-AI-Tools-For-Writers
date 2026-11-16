@@ -10,6 +10,14 @@ const WRITER_STORY_STAGES=[
 const WRITER_STORY_ROLES=[['plant','Plantio','Setup'],['echo','Reforço','Reinforcement'],['payoff','Desfecho','Payoff']];
 const WRITER_STORY_STATES=[['planned','Planejada','Planned'],['active','Em andamento','Active'],['resolved','Resolvida','Resolved'],['abandoned','Abandonada','Abandoned']];
 const writerStoryName=(list,id)=>{const item=list.find(entry=>entry[0]===id);return item?writerUi(item[1],item[2]):id;};
+function writerStoryPlanSettings(plugin,panel){
+ const cfg=plugin.settings.v7??={};
+ new Setting(panel).setName(writerUi('Exibir plano da história','Show story plan'))
+  .setDesc(writerUi('Etapas, pistas e checagem em Estrutura. Desligar preserva o plano salvo.','Stages, threads and checks under Structure. Turning this off keeps the saved plan.'))
+  .addToggle(toggle=>toggle.setValue(cfg.storyPlanning!==false).onChange(async value=>{
+   cfg.storyPlanning=value;await plugin.saveSettings();plugin.refreshModuleVisibility?.();
+  }));
+}
 function writerStoryRead(plugin,path){
  const state=plugin.settings.writerStoryPlans;
  return state&&Object.hasOwn(state,path)?state[path]:null;

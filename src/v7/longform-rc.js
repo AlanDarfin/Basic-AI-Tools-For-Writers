@@ -452,7 +452,7 @@ class WriterV7LongformRC{
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   panel.createEl('h4',{text:writerUi('Planejamento Longform (RC)','Longform planning (RC)')});
   panel.createEl('p',{text:writerUi('Usa o índice Longform e as propriedades das cenas existentes; não cria outra organização paralela.','Uses the existing Longform index and scene properties; no parallel scene organization is created.')});
-  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies'],['storyPlanning','Exibir plano da história','Show story plan']]){
+  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies']]){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
     .onChange(async value=>{cfg[key]=value;await this.plugin.saveSettings();}));
   }

@@ -1335,28 +1335,10 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "projects",
-  "titlePt": "Exibir modelos de marcos",
-  "titleEn": "Show beat templates"
- },
- {
-  "id": "projects",
-  "titlePt": "Exibir análise de ritmo",
-  "titleEn": "Show pacing analysis"
- },
- {
-  "id": "projects",
-  "titlePt": "Exibir tramas e arcos",
-  "titleEn": "Show plotlines and arcs"
- },
- {
-  "id": "projects",
-  "titlePt": "Exibir preparações e consequências",
-  "titleEn": "Show scene dependencies"
- },
- {
-  "id": "projects",
   "titlePt": "Exibir plano da história",
-  "titleEn": "Show story plan"
+  "titleEn": "Show story plan",
+  "descriptionPt": "Etapas, pistas e checagem em Estrutura. Desligar preserva o plano salvo.",
+  "descriptionEn": "Stages, threads and checks under Structure. Turning this off keeps the saved plan."
  },
  {
   "id": "projectTasks",

@@ -9872,7 +9872,7 @@ class WriterV7LongformRC{
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   panel.createEl('h4',{text:writerUi('Planejamento Longform (RC)','Longform planning (RC)')});
   panel.createEl('p',{text:writerUi('Usa o índice Longform e as propriedades das cenas existentes; não cria outra organização paralela.','Uses the existing Longform index and scene properties; no parallel scene organization is created.')});
-  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies'],['storyPlanning','Exibir plano da história','Show story plan']]){
+  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies']]){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
     .onChange(async value=>{cfg[key]=value;await this.plugin.saveSettings();}));
   }
@@ -29871,6 +29871,14 @@ const WRITER_STORY_STAGES=[
 const WRITER_STORY_ROLES=[['plant','Plantio','Setup'],['echo','Reforço','Reinforcement'],['payoff','Desfecho','Payoff']];
 const WRITER_STORY_STATES=[['planned','Planejada','Planned'],['active','Em andamento','Active'],['resolved','Resolvida','Resolved'],['abandoned','Abandonada','Abandoned']];
 const writerStoryName=(list,id)=>{const item=list.find(entry=>entry[0]===id);return item?writerUi(item[1],item[2]):id;};
+function writerStoryPlanSettings(plugin,panel){
+ const cfg=plugin.settings.v7??={};
+ new Setting(panel).setName(writerUi('Exibir plano da história','Show story plan'))
+  .setDesc(writerUi('Etapas, pistas e checagem em Estrutura. Desligar preserva o plano salvo.','Stages, threads and checks under Structure. Turning this off keeps the saved plan.'))
+  .addToggle(toggle=>toggle.setValue(cfg.storyPlanning!==false).onChange(async value=>{
+   cfg.storyPlanning=value;await plugin.saveSettings();plugin.refreshModuleVisibility?.();
+  }));
+}
 function writerStoryRead(plugin,path){
  const state=plugin.settings.writerStoryPlans;
  return state&&Object.hasOwn(state,path)?state[path]:null;
@@ -31785,28 +31793,10 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "projects",
-  "titlePt": "Exibir modelos de marcos",
-  "titleEn": "Show beat templates"
- },
- {
-  "id": "projects",
-  "titlePt": "Exibir análise de ritmo",
-  "titleEn": "Show pacing analysis"
- },
- {
-  "id": "projects",
-  "titlePt": "Exibir tramas e arcos",
-  "titleEn": "Show plotlines and arcs"
- },
- {
-  "id": "projects",
-  "titlePt": "Exibir preparações e consequências",
-  "titleEn": "Show scene dependencies"
- },
- {
-  "id": "projects",
   "titlePt": "Exibir plano da história",
-  "titleEn": "Show story plan"
+  "titleEn": "Show story plan",
+  "descriptionPt": "Etapas, pistas e checagem em Estrutura. Desligar preserva o plano salvo.",
+  "descriptionEn": "Stages, threads and checks under Structure. Turning this off keeps the saved plan."
  },
  {
   "id": "projectTasks",
@@ -37912,6 +37902,7 @@ class DictionarySettings extends PluginSettingTab{
       this.plugin.writerV7Worldbuilding.renderSettings(panel);
     }else if(id==='projects'){
       writerV1201SettingsSuite(this.plugin,panel,'suiteLongform');
+      writerStoryPlanSettings(this.plugin,panel);
       panel.createEl('h3',{text:msg('Projetos de escrita','Writing projects')});
       panel.createEl('p',{text:msg('Compatibilidade com índices Longform, cenas, rascunhos, notas organizadas, metas e compilação. Os índices existentes são reconhecidos automaticamente, sem importação destrutiva.','Longform-compatible indexes, scenes, drafts, organized notes, goals and compilation. Existing indexes are detected automatically, without destructive migration.'),cls:'dictionary-muted'});
       new Setting(panel).setName(msg('Abrir gerenciador de projetos','Open project manager')).addButton(b=>b.setButtonText(msg('Abrir projetos','Open projects')).setCta().onClick(()=>this.plugin.openProjects()));

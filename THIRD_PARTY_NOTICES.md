@@ -32,6 +32,8 @@ until they have verified compatibility for their workflows.
 
 The v7 Compendium, Longform planner, timeline, folder-note affordances, scene sheets, tags, relationship explorer, image maps, and series manager are independent implementations developed for Basic AI Tool for Writers. Feature ideas and screenshots from community projects (including StoryLine, Storyteller Suite, Folder Notes, Make-a-Wiki, Avatar, and Tabbed) were used as **behavioral and visual references**.
 
+The Longform Story Plan is an independent implementation informed by Randy Ingermanson's [Snowflake Method article](https://www.advancedfictionwriting.com/articles/snowflake-method/) and Polaris's [Snowflake Method plugin](https://github.com/ZzPoLariszZ/obsidian-snowflake-method/tree/e0b159ed5608ee069cee4d9a809f10823c7b0f9a). These are design references for progressive outlining, narrative threads and structural checks. No upstream source, art or writing templates are bundled.
+
 Their JavaScript, CSS, images, bundled assets and documentation are **not** copied into, required by or redistributed with the Basic AI v7 plugin. Each reference plugin remains a separate project with its own license, maintainers, trademarks and capabilities.
 
 **Compatibility note:** the v7 Folder Notes action recognizes common folder-note naming conventions and does not replace a dedicated Folder Notes plugin. Longform-compatible scene indexing and project compilation are not complete upstream Longform implementations. Back up any related plugin data before making major changes to a vault.

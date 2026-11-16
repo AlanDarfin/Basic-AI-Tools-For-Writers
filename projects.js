@@ -179,7 +179,7 @@ class ProjectsView extends ItemView{
    if(this.activeTab==='manuscript'&&this.plugin.settings?.v11Studio?.enabled===false)this.activeTab='scenes';
   const allTabs=[['scenes',lfMsg("Cenas","Scenes")],['manuscript',lfMsg('Escrita contínua','Continuous writing')],['project',lfMsg("Projeto","Project")],['compile',lfMsg("Compilar","Compile")],['notes',lfMsg("Compêndio","Compendium")],['timeline',lfMsg('Timeline','Timeline')],['board',lfMsg('Quadro','Board')],['structure',lfMsg('Estrutura','Structure')],['relations',lfMsg('Relações','Relationships')],['maps',lfMsg('Mapas','Maps')],['gallery',lfMsg('Galeria','Gallery')],['sessions',lfMsg('Sessões','Sessions')],['analytics',lfMsg('Análise','Analytics')],['tasks',lfMsg('Tarefas','Tasks')],['comments',lfMsg('Comentários','Comments') ]].filter(([id])=>(id!=='manuscript'||this.plugin.settings?.v11Studio?.enabled!==false)&&(id!=='comments'||writerModuleOn(this.plugin,'comments'))&&(id!=='timeline'||this.plugin.settings.v7?.timeline!==false)
   &&(id!=='board'||this.plugin.settings.v7?.studioBoard!==false)
-  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false)
+  &&(id!=='structure'||this.plugin.settings.v7?.rcPlotlines!==false||this.plugin.settings.v7?.rcBeats!==false||this.plugin.settings.v7?.rcPacing!==false||this.plugin.settings.v7?.stableDependencies!==false||this.plugin.settings.v7?.storyPlanning!==false)
   &&(id!=='relations'||this.plugin.settings.v7?.studioRelations!==false)
   &&(id!=='maps'||this.plugin.settings.v7?.studioMaps!==false)
   &&(id!=='analytics'||this.plugin.settings.v7?.studioAnalytics!==false)

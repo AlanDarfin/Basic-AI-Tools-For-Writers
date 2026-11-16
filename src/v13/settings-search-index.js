@@ -1334,6 +1334,31 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "titleEn": "Recoverable drafts"
  },
  {
+  "id": "projects",
+  "titlePt": "Exibir modelos de marcos",
+  "titleEn": "Show beat templates"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Exibir análise de ritmo",
+  "titleEn": "Show pacing analysis"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Exibir tramas e arcos",
+  "titleEn": "Show plotlines and arcs"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Exibir preparações e consequências",
+  "titleEn": "Show scene dependencies"
+ },
+ {
+  "id": "projects",
+  "titlePt": "Exibir plano da história",
+  "titleEn": "Show story plan"
+ },
+ {
   "id": "projectTasks",
   "titlePt": "Ocultar tarefas concluídas",
   "titleEn": "Hide completed tasks"

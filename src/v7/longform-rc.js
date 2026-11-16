@@ -384,35 +384,45 @@ function writerV7RCRenderStructure(view,panel,project){
  const root=panel.createDiv({cls:'writer-v7-rc-structure'});
  const tabs=root.createDiv({cls:'writer-v7-rc-structure-tabs'});
  tabs.setAttribute('role','tablist');
+ tabs.setAttribute('aria-label',writerUi('Áreas de estrutura','Structure sections'));
+ if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
  tabs.addEventListener('wheel',event=>{
   if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
    tabs.scrollLeft+=event.deltaY;event.preventDefault();
   }
  },{passive:false});
  const content=root.createDiv({cls:'writer-v7-rc-structure-body'});
+ const idPrefix=(view.writerStructureTabId??=('writer-structure-'+Math.random().toString(36).slice(2)));
+ content.id=idPrefix+'-panel';
+ content.setAttribute('role','tabpanel');
  const settings=view.plugin.settings.v7||{};
  const choices=[
   ['plotlines',writerUi('Tramas','Plotlines'),'rcPlotlines'],
   ['beats',writerUi('Marcos narrativos','Story beats'),'rcBeats'],
   ['pacing',writerUi('Ritmo','Pacing'),'rcPacing'],
-  ['dependencies',writerUi('Conexões','Connections'),'stableDependencies']
+  ['dependencies',writerUi('Conexões','Connections'),'stableDependencies'],
+  ['story-plan',writerUi('Plano da história','Story plan'),'storyPlanning']
  ].filter(entry=>settings[entry[2]]!==false);
  const show=()=>{
   const active=choices.some(x=>x[0]===view.writerV7RCSubtab)?view.writerV7RCSubtab:choices[0]?.[0]||'plotlines';
   content.empty();
   if(!choices.length)return void content.createEl('p',{text:writerUi('Habilite algum módulo de estrutura nas configurações.','Enable a structure module in settings.')});
+  content.setAttribute('aria-labelledby',idPrefix+'-'+active);
   for(const btn of tabs.querySelectorAll('button')){
    const selected=btn.dataset.section===active;
    btn.classList.toggle('is-active',selected);
    btn.setAttribute('aria-selected',String(selected));
+   btn.tabIndex=selected?0:-1;
   }
   if(active==='beats')writerV7RCRenderBeats(view,content,project);
   else if(active==='pacing')writerV7RCRenderPacing(view,content,project);
   else if(active==='dependencies')writerV7StableRenderDependencies(view,content,project);
+  else if(active==='story-plan')writerStoryPlanUI(view,content,project);
   else writerV7RCRenderPlotlines(view,content,project);
  };
  for(const [id,label] of choices){
-  const btn=tabs.createEl('button',{text:label,attr:{type:'button',role:'tab','aria-label':label,'data-section':id}});
+  const btn=tabs.createEl('button',{text:label,attr:{type:'button',role:'tab',id:idPrefix+'-'+id,
+   'aria-controls':content.id,'aria-label':label,'data-section':id}});
   btn.addEventListener('click',()=>{view.writerV7RCSubtab=id;show();});
  }
  show();
@@ -429,12 +439,20 @@ class WriterV7LongformRC{
   p.addCommand({id:'v7-rc-plotlines',name:writerUi('Longform: tramas e arcos','Longform: plotlines and arcs'),callback:()=>open('plotlines')});
   p.addCommand({id:'v7-rc-beat-sheet',name:writerUi('Longform: marcos narrativos','Longform: story beats'),callback:()=>open('beats')});
   p.addCommand({id:'v7-rc-pacing',name:writerUi('Longform: ritmo e intensidade','Longform: pacing and intensity'),callback:()=>open('pacing')});
+  p.addCommand({id:'longform-story-plan',name:writerUi('Longform: abrir plano da história','Longform: open story plan'),
+   checkCallback:checking=>{
+    if(p.settings.v7?.storyPlanning===false||!writerModuleOn(p,'projects'))return false;
+    if(!checking)void open('story-plan');
+    return true;
+   }});
+  if(typeof p.app.vault?.on==='function')
+   p.registerEvent(p.app.vault.on('rename',(file,oldPath)=>writerStorySaveRename(p,file,oldPath)));
  }
  renderSettings(panel){
   const cfg=this.plugin.settings.v7||(this.plugin.settings.v7={});
   panel.createEl('h4',{text:writerUi('Planejamento Longform (RC)','Longform planning (RC)')});
   panel.createEl('p',{text:writerUi('Usa o índice Longform e as propriedades das cenas existentes; não cria outra organização paralela.','Uses the existing Longform index and scene properties; no parallel scene organization is created.')});
-  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies']]){
+  for(const [key,pt,en] of [['rcPlotlines','Exibir tramas e arcos','Show plotlines and arcs'],['rcBeats','Exibir modelos de marcos','Show beat templates'],['rcPacing','Exibir análise de ritmo','Show pacing analysis'],['stableDependencies','Exibir preparações e consequências','Show scene dependencies'],['storyPlanning','Exibir plano da história','Show story plan']]){
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false)
     .onChange(async value=>{cfg[key]=value;await this.plugin.saveSettings();}));
   }

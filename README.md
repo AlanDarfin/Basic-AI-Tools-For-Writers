@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.11.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 13.12.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -31,7 +31,7 @@ For manual updates, replace all three release files together and reload Obsidian
 | **Write and edit notes** | Word suggestions, editor shortcuts, quote pairing, en/em dashes (`--` → `–`, `---` → `—`), immediate or Space-triggered literal/regex replacements, Backspace restoration, snippets, cursor memory and Markdown formatting. |
 | **Organize a vault** | Workspaces, virtual collections, a configurable homepage, file previews, calendars, tasks, local database views and image annotation. |
 | **Study and read** | Flashcards, spaced repetition, study routines, reading estimates, imported citations and read-aloud controls. |
-| **Revise your text** | Local repetition review, a personal spelling dictionary, optional LanguageTool checking, version comparisons and snapshots. |
+| **Revise your text** | Local rhythm and repetition review, a personal spelling dictionary, optional LanguageTool checking, version comparisons and snapshots. |
 | **Use AI when useful** | Definitions, translation, conversation, rewriting and editorial feedback, with provider and model choices per function. |
 
 The [feature guide](docs/SUITES_AND_INTEGRATIONS.en.md) lists the current settings sections, available actions, connections and limits.
@@ -73,6 +73,10 @@ Chapter drafts have local recovery copies. Use **Books: recover drafts** to insp
 To assemble a manuscript, choose **Books: compile Markdown manuscript**, select saved files or current writing, review the preview and create a new file under `Basic Exports/`. Compilation includes all chapters in the selected draft, beyond the chapter-editor display limit. Missing chapters or conflicting versions block export. Refresh the preview to include later changes.
 
 Optional desktop export to DOCX, EPUB, HTML or PDF uses a separately installed **Pandoc** executable; PDF may also require a compatible rendering engine. See the [first-use guide](docs/GETTING_STARTED.en.md#write-your-first-book).
+
+## Review prose rhythm
+
+Run **Writing: rhythm and repetition** on a selection or the current note. It shows sentence-length distribution, long sentences and paragraphs, and repeated words. Select a result to jump to its place in the editor. It skips frontmatter, headings, code fences and comments. Use the counts as reading cues rather than rules. No edits or network calls are made.
 
 ## Supported plugins
 

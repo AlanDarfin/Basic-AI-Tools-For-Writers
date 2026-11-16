@@ -35,7 +35,7 @@ function harness(language='en'){
   process:async(file,update)=>{processCalls++;await hooks.beforeProcess?.(file);const row=files.get(file.path);const text=update(row.text);row.text=text;writes.push(text);}
  }}};
  const api=vm.runInNewContext(source+'\n({writerV12TaskRefs,writerV12ToggleTask,writerV1391TaskScan,writerV1391TaskEligible,writerV12TaskWorkbench,writerV139TaskAppendable,writerV139TaskPreview})',{
-  TFile,Modal,Setting,console,Notice:class{constructor(message){notices.push(message);}},writerUi:(pt,en)=>language==='pt'?pt:en,
+  TFile,Modal,Setting,console,require:()=>({setIcon(){}}),Notice:class{constructor(message){notices.push(message);}},writerUi:(pt,en)=>language==='pt'?pt:en,
   writerV12On:(plugin,key)=>plugin.settings.v12Toolkit.enabled!==false&&plugin.settings.v12Toolkit[key]!==false,
   writerV12Config:plugin=>plugin.settings.v12Toolkit
  });

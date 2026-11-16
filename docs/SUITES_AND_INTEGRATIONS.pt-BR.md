@@ -175,7 +175,7 @@ limit: 80
 ~~~
 ~~~~
 
-O painel de tarefas filtra Todas, Hoje, Atrasadas, Próximos sete dias e Sem prazo. Ele lê linhas de tarefas Markdown fora de propriedades, comentários HTML/Obsidian e blocos de código. Mudanças de checkbox conferem novamente a tarefa e o texto de origem antes da gravação atômica. A captura de tarefa mostra a prévia do destino e da linha antes de acrescentar a uma nota Markdown existente escolhida; edições não salvas ou concorrentes exigem outra prévia.
+O painel de tarefas filtra Todas, Hoje, Atrasadas, Próximos sete dias e Sem prazo. Ele lê linhas de tarefas Markdown fora de propriedades, comentários HTML/Obsidian e blocos de código. Mudanças de checkbox conferem novamente a tarefa e o texto de origem antes da gravação atômica. A captura de tarefa mostra a prévia do destino e da linha antes de acrescentar a uma nota Markdown existente escolhida; edições não salvas ou concorrentes exigem outra prévia. O ícone de calendário permite mudar o prazo direto no painel, respeita o formato `📅` ou `[due:: …]` já usado na nota e oferece Hoje, Amanhã, Em 7 dias e Sem prazo. Marcadores duplicados ou inválidos precisam ser corrigidos na nota original.
 
 O resumo mostra notas examinadas/total. **Busca incompleta** explica notas fora do limite configurado, falhas de leitura ou arquivos com mais de 250 tarefas válidas; apenas as primeiras 250 tarefas de cada arquivo são incluídas. **Opções de busca** abre **Tarefas e captura** para conferir o limite existente. Os limites não são aumentados automaticamente. Se uma atualização falhar, um aviso identifica os resultados anteriores mantidos.
 

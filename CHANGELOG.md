@@ -2,6 +2,13 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.10.0 — Story planning and compact mobile navigation
+
+- Add the optional Longform Story Plan with a premise, one-paragraph outline, synopsis and treatment. Earlier edits flag later material for review without replacing it.
+- Link setups, reinforcements and payoffs to existing scenes, check ordering and missing references in the active draft, and export a separate Markdown plan.
+- Use compact icons for Longform actions and horizontally scrolling icon tabs in Longform, Basic AI and settings.
+- Show a mobile status row under Obsidian's navigation, reusing available native items and adding Basic indicators as needed. Hide it while the keyboard is open and allow it to be switched off.
+
 ## 13.9.1 — Reliable task scans, speech cancellation and homepage clarity
 
 - Exclude checkbox lines inside YAML properties, HTML/Obsidian comments and code fences from task scans; revalidate task eligibility before and during atomic checkbox writes.

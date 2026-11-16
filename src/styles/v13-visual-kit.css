@@ -1,0 +1,193 @@
+.qrc-editor.modal {
+  width: min(1400px, 96vw);
+  max-width: 96vw;
+  height: 94vh;
+  display: flex;
+  flex-direction: column;
+}
+.qrc-editor .modal-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 10px;
+  overflow: auto;
+}
+.qrc-toolbar,
+.qrc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.qrc-toolbar button {
+  font-size: 12px;
+  padding: 4px 9px;
+}
+.qrc-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+.qrc-toolbar input[type="number"] {
+  width: 62px;
+}
+.qrc-toolbar input[type="color"] {
+  width: 34px;
+  height: 28px;
+  padding: 1px;
+}
+.qrc-viewport {
+  flex: 1;
+  min-height: 280px;
+  height: 52vh;
+  overflow: auto;
+  background: #25262b;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+}
+.qrc-status {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.qrc-editor .canvas-container {
+  margin: auto;
+}
+.vk-html-note {
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  gap: 8px;
+  height: 100%;
+}
+.vk-html-toolbar,
+.vk-html-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.vk-html-actions {
+  max-height: 180px;
+  overflow: auto;
+}
+.vk-html-actions label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: var(--font-ui-small);
+}
+.vk-html-actions input[type="color"] {
+  width: 32px;
+  height: 26px;
+  padding: 2px;
+}
+.vk-html-status {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.vk-html-surface {
+  flex: 1;
+  min-height: 180px;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+}
+.vk-html-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: white;
+}
+.vk-html-surface .cm-editor {
+  height: 100%;
+  color: var(--text-normal);
+  background: var(--background-primary);
+}
+.vk-html-surface .cm-scroller {
+  overflow: auto;
+  font-family: var(--font-monospace);
+}
+.vk-create-note .setting-item {
+  border: 0;
+}
+.vk-create-note input[type="text"],
+.vk-template-label select {
+  width: 100%;
+}
+.vk-template-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 20px;
+  font-weight: 600;
+}
+.vk-html-toolbar {
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--background-secondary);
+}
+.vk-html-toolbar button,
+.vk-html-actions button {
+  box-shadow: none;
+  border-radius: 6px;
+}
+.vk-html-actions {
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  background: var(--background-primary);
+}
+.vk-html-actions label {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+.vk-html-toolbar button[aria-pressed="true"] {
+  color: var(--text-on-accent);
+  background: var(--interactive-accent);
+}
+.vk-html-surface {
+  border-radius: 10px;
+}
+
+.vk-html-overflow summary {
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.vk-html-overflow-panel {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: min(420px, 75%);
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  box-shadow: var(--shadow-s);
+}
+.vk-html-actions {
+  position: relative;
+  overflow: visible;
+}
+
+/* Use the Basic theme variables and compact details on small desktop screens. */
+.writer-basic-visual-kit-group {
+  margin-block: 5px;
+  padding: 7px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: var(--radius-s);
+}
+.writer-basic-visual-kit-group > summary { cursor: pointer; font-weight: 600; }
+.writer-basic-visual-kit-group .setting-item { min-width: 0; }
+.writer-basic-visual-kit-group .setting-item-control > select { max-width: 100%; }
+.qrc-viewport { min-height: 160px; height: min(52vh, 520px); }
+@media (max-height: 760px) {
+  .qrc-editor.modal { height: 92vh; }
+  .qrc-editor .modal-content { gap: 6px; }
+  .qrc-toolbar, .qrc-actions { gap: 4px; }
+  .vk-html-actions { max-height: 130px; }
+}

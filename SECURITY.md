@@ -16,9 +16,9 @@ AI, translation, grammar, online dictionaries and neural text-to-speech may tran
 
 IA, gramática, tradução, dicionários e TTS online podem transmitir o texto selecionado aos provedores configurados. O Pandoc integrado usa recursos de arquivos e processos somente no computador e pode acessar recursos locais/remotos durante a exportação. Acesse apenas serviços e executáveis confiáveis.
 
-## Network disclosures (eight HTTP request paths plus the Zotero API read-only adapter)
+## Network disclosures
 
-These request sites and the Zotero API adapter are bundled, but are **not automatically contacted when Obsidian opens**. Remote Zotero and iCalendar features are opt-in and require a configured library or HTTPS feed; automatic iCalendar refresh remains disabled by default.
+These request sites are bundled, but are **not automatically contacted when Obsidian opens**. Remote Zotero and iCalendar features are opt-in and require a configured library or HTTPS feed; automatic iCalendar refresh remains disabled by default.
 
 | Feature / request | When it runs | Destination | Information sent |
 | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ These request sites and the Zotero API adapter are bundled, but are **not automa
 | Unsplash download tracking (`GET`) | User selects a result for local download from Unsplash, as required by its API | `api.unsplash.com/photos/*/download` | Unsplash Client-ID and photo download tracking, not note contents |
 | iCalendar HTTPS subscriptions (`GET`, opt-in) | After user adds a feed URL and explicitly enables/synchronizes it; optional automatic refresh is **off by default** | User-configured public HTTPS calendar feed endpoint | The complete requested feed URL (which may contain a private access token), IP address; **no manuscript text**. Feed URLs are stored locally in vault plugin settings without encryption |
 | Zotero Web API read-only (`GET`, opt-in) | Only after enabling API integration and clicking Import / Export; API key requested for each operation | `api.zotero.org` only | Numeric library ID, an ephemeral user-provided API key in an HTTP header (not saved), request path, IP address; Zotero bibliographic metadata is downloaded, not uploaded; no manuscript text |
-
+| Visual Kit remote image import (`GET`, two opt-in paths) | Pasting rich Markdown or explicitly importing/pasting into an HTML note, only if downloads are allowed in Images & annotations | Original HTTP(S) image URL | The requested URL and IP address. No text from the note or clipboard is uploaded. HTML preview does not load remote images. |
 
 **Additional transport:** the optional online speech synthesizer sends the requested reading text via a **WebSocket** connection to `speech.platform.bing.com` only after the user opts into that TTS option. WebSocket usage may not be counted among the direct `requestUrl` sites.
 
@@ -68,10 +68,18 @@ Não publique informações sensíveis ou detalhes de exploração em issues pú
 
 ## v12 unified toolkit / Toolkit unificado v12
 
-The v12 additions do not introduce background network requests, local synchronization transports or third-party executables. The companion integration center runs commands of **separately installed and enabled** plugins only when the user invokes them. Their requests, credentials and schedules remain governed by their own settings; choosing one provider in Basic does **not** suspend other plugins' automatic jobs. Use only one background sync strategy for a vault and keep independent backups.
+The v12 additions do not introduce background network requests, local synchronization transports or third-party executables. The manual synchronization controls run commands of **separately installed and enabled** plugins only when the user invokes them. Their requests, credentials and schedules remain governed by their own settings; choosing one provider in Basic does **not** suspend other plugins' automatic jobs. Use only one background sync strategy for a vault and keep independent backups.
 
 **Per-note encrypted files (opt-in):** Basic v12 can create NEW files with ciphertext only under `Basic Secure/`. It uses Web Crypto AES-256-GCM with a fresh random 96-bit IV, 128-bit random salt, PBKDF2-SHA256 with 310,000 iterations, and an authenticated version marker; the password and derived key are not saved by Basic. Decryption happens in a temporary read-only modal, and its textarea is cleared when the modal closes. Passwords are not recoverable. File names, directory structure, file existence, sizes, timestamps, plugin logs, device backups and metadata are **not hidden or encrypted**. This is not encrypted folder protection, a security audit, key management, or a guarantee against memory/screen capture. Do not add confidential source text to an ordinary Markdown note first if it must remain encrypted.
 
 **Source-preserving edits:** the image annotator writes a new PNG instead of replacing existing images (the original can still show unredacted content). The task Workbench can toggle checkboxes but verifies the full source snapshot atomically before writing; the original read-only task navigator remains available. Copy/extract commands request a new Markdown file and replace the selected passage with a link only after successful creation and a source-state check. Image width changes require explicit confirmation. Folder focus only hides rows in the explorer UI; it never restricts filesystem access.
 
-The original plugins are still needed for folder encryption/index isolation, full Visual Kit HTML handling, dropit remote pairing/transfer, Git/FIT libraries and Syncthing API support. See `docs/V12_SCOPE.pt-BR.md` for exact coverage. Local speech uses the Web Speech voices made available by the browser/OS; those voices are not guaranteed offline by Basic.
+The original plugins are still needed for folder encryption/index isolation, dropit remote pairing/transfer, Git/FIT libraries and Syncthing API support. See `docs/V12_SCOPE.pt-BR.md` for exact coverage. Local speech uses the Web Speech voices made available by the browser/OS; those voices are not guaranteed offline by Basic.
+
+### Embedded Visual Kit (desktop)
+
+Image annotations, identical-file hashes and HTML notes are handled locally. Basic stores the Visual Kit preferences and optional hash index in its plugin data. The desktop rich-copy commands write to the system clipboard through Electron, and paste uses content provided by Obsidian’s clipboard event. Remote image downloads are off by default. Enable them under **Images & annotations → Visual Kit → HTML notes** only if you want Markdown and HTML paste/import to contact the original image URLs. The HTML preview uses a sandboxed frame with scripts and network access disabled.
+
+No Android clipboard permissions or desktop APIs are added on mobile. The original screenshot and editable annotation data can still contain information covered by a redaction. Share the flattened PNG, not the originals or editable annotation file.
+
+No Visual Kit integrado, imagens remotas ficam bloqueadas por padrão. As anotações, o índice de imagens idênticas e as notas HTML ficam no cofre ou nos dados locais do Basic.

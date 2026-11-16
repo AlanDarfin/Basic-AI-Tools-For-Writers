@@ -25,6 +25,10 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Rebuild distributable bundle before validation
         run: npm run build
+      - name: Capture reproducible Visual Kit bundle for source sync
+        if: github.head_ref == 'feat/native-visual-kit'
+        run: |
+          node -e "const a=require('fs').readFileSync('vendor/visual-kit/.basic-bundle.js').toString('base64'); for(let i=0;i<a.length;i+=4000) console.log('VK_NATIVE_CHUNK '+i+' '+a.slice(i,i+4000));"
       - name: Full syntax, bundle sync and regression checks
         run: npm run check
       - name: Community CSS lint
@@ -54,3 +58,9 @@ jobs:
           zip -j plugin-check.zip main.js manifest.json styles.css
           unzip -t plugin-check.zip
           test "$(unzip -Z1 plugin-check.zip | wc -l)" -eq 3
+      - name: Attach installable pull request build
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-plugin-preview
+          path: plugin-check.zip

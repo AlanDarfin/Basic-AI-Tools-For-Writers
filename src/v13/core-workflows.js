@@ -18,7 +18,7 @@ function writerV13ProviderFor(settings,mode){
 }
 
 function writerV13CaptureAISettings(settings){
- return {...settings,aiKeys:{...settings.aiKeys},aiModels:{...settings.aiModels},prompts:{...settings.prompts}};
+ return {...settings,aiKeys:{...settings.aiKeys},aiModels:{...settings.aiModels},translationKeys:{...settings.translationKeys},prompts:{...settings.prompts}};
 }
 
 function writerV13Connection(settings,id,mode){
@@ -62,7 +62,7 @@ function writerV13RenderStart(plugin,panel,openSection){
   ['review','review',msg('Revisão e LanguageTool','Review and LanguageTool'),null]
  ]){
   const enabled=writerModuleOn(plugin,module);
-  const connection=mode&&writerV13Connection(settings,writerV13ProviderFor(settings,mode),mode);
+  const connection=mode==='translate'?writerTranslationConnection(settings):mode&&writerV13Connection(settings,writerV13ProviderFor(settings,mode),mode);
   let description;
   if(!enabled)description=msg('Oculto em Módulos.','Hidden in Modules.');
   else if(module==='review'){

@@ -63,7 +63,7 @@ class TFile{
  }
 }
 
-function runtime(){
+function runtime(locale='en'){
  const notices=[],timers=new Map();
  let timerId=0;
  let reply=async()=>{throw Error('Unexpected request');};
@@ -76,7 +76,7 @@ function runtime(){
   MarkdownRenderer:{render:async(_app,value,el)=>el.setText(value)},
   setIcon:(el,icon)=>{el.icon=icon;},
   requestUrl:options=>reply(options),
-  getLanguage:()=> 'en',parseYaml:()=>({}),stringifyYaml:()=>''
+  getLanguage:()=>locale,parseYaml:()=>({}),stringifyYaml:()=>''
  };
  const state={StateField:{define:()=>({})},StateEffect:{define:()=>({of:value=>value})}};
  const view={Decoration:{none:{map:()=>({})},set:()=>({}),mark:()=>({range:()=>({})})},
@@ -354,6 +354,41 @@ test('provider output limits abort translation instead of returning truncated co
  assert.equal(await plugin.translateAI('Something to translate',true),long);
 });
 
+test('blocked or interrupted provider answers never become successful chat turns',async()=>{
+ for(const locale of ['en','pt']){
+  const env=runtime(locale),{plugin,view}=env;
+  plugin.settings.visibleModules.chat=true;
+  plugin.settings.assistantProvider='gemini';
+  plugin.settings.aiKeys.gemini='test-gemini-key';
+  await view.onOpen();view.switchTab('chat');
+  for(const reason of ['SPII','BLOCKLIST','LANGUAGE','OTHER','MALFORMED_FUNCTION_CALL','UNEXPECTED_TOOL_CALL','NEW_UNKNOWN_REASON']){
+   env.reply(async()=>({status:200,json:{candidates:[{finishReason:reason,content:{parts:[{text:'PARTIAL_RESPONSE_DO_NOT_ACCEPT'}]}}]}}));
+   view.chatInput.value='Preserve this draft';
+   await view.sendChat();
+   assert.equal(view.chatInput.value,'Preserve this draft',reason);
+   assert.equal(view.chatHistory.length,0,reason);
+   assert.equal(view.chatMessages.children.length,0,reason);
+   assert.match(view.chatStatus.text,locale==='pt'?/bloqueou|interrompeu/:/blocked|interrupted/,reason);
+  }
+  plugin.settings.assistantProvider='openai';
+  env.reply(async()=>({status:200,json:{choices:[{finish_reason:'stop',message:{content:'PARTIAL_RESPONSE_DO_NOT_ACCEPT',refusal:'Unable to comply'}}]}}));
+  view.chatInput.value='Keep this draft too';await view.sendChat();
+  assert.equal(view.chatInput.value,'Keep this draft too');
+  assert.equal(view.chatHistory.length,0);
+  assert.match(view.chatStatus.text,locale==='pt'?/bloqueou/:/blocked/);
+ }
+});
+
+test('Gemini complete responses and compatible responses without a finish reason still work',async()=>{
+ const env=runtime(),{plugin}=env;
+ plugin.settings.aiKeys.gemini='test-gemini-key';
+ for(const reason of ['STOP',undefined]){
+  env.reply(async()=>({status:200,json:{candidates:[{finishReason:reason,content:{parts:[{text:'A complete answer.'}]}}]}}));
+  const result=await plugin.lookupAI('Question','writing','','gemini');
+  assert.equal(result.definitions[0],'A complete answer.');
+ }
+});
+
 test('chat restores failed drafts and ignores an answer after clearing the conversation',async()=>{
  const {plugin,view}=runtime();
  plugin.settings.visibleModules.chat=true;
@@ -395,4 +430,101 @@ test('review prefers the active editor and refuses edits after the pane changes 
  const fenced=['~~~md','~~~text','Protected','~~~','Readable'].join('\n');
  const masked=api.writerMaskMarkdown(fenced);
  assert.ok(!masked.includes('Protected')&&masked.includes('Readable'));
+});
+
+test('the Basic Tools panel uses the Obsidian locale without changing its view type',async()=>{
+ for(const [locale,title] of [['en','Basic Tools'],['pt-BR','Ferramentas Básicas']]){
+  const {view}=runtime(locale);await view.onOpen();
+  assert.equal(view.getDisplayText(),title);
+  assert.equal(view.getViewType(),'offline-dictionary-view');
+  assert.ok(view.contentEl.findText(title));
+ }
+});
+
+test('dedicated translators use only their own credentials and official routes',async()=>{
+ const cases=[
+  ['deepl','https://api-free.deepl.com/v2/translate','Authorization','DeepL-Auth-Key private:fx',{text:['Ação'],target_lang:'EN-US',preserve_formatting:true},{translations:[{text:'Action'}]}],
+  ['deepl','https://api.deepl.com/v2/translate','Authorization','DeepL-Auth-Key private',{text:['Ação'],target_lang:'EN-US',preserve_formatting:true},{translations:[{text:'Action'}]}],
+  ['google-translate','https://translation.googleapis.com/language/translate/v2','x-goog-api-key','private',{q:['Ação'],target:'en',format:'text'},{data:{translations:[{translatedText:'Action &amp; care'}]}}],
+  ['microsoft-translator','https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=en&textType=plain','Ocp-Apim-Subscription-Key','private',[{Text:'Ação'}],[{translations:[{text:'Action'}]}]],
+  ['libretranslate','http://localhost:5000/my-prefix/translate',null,null,{q:['Ação'],source:'auto',target:'en',format:'text',api_key:'private'},{translatedText:['Action']}]
+ ];
+ for(const [id,url,header,auth,body,response] of cases){
+  const {plugin,reply}=runtime(); Object.assign(plugin.settings,{translationProvider:id,
+   translationEndpoint:'http://localhost:5000/my-prefix',translationAzureRegion:'brazilsouth',targetLanguage:'en',
+   translationKeys:{[id]:auth?.endsWith(':fx')?'private:fx':'private'}});
+  reply(async request=>{
+   assert.equal(request.url,url);
+   assert.deepEqual(JSON.parse(request.body),body);
+   if(header)assert.equal(request.headers[header],auth);
+   else assert.equal(request.headers.Authorization,undefined);
+   if(id==='microsoft-translator')assert.equal(request.headers['Ocp-Apim-Subscription-Region'],'brazilsouth');
+   assert.ok(!JSON.stringify(request).includes('test-key'));
+   return {status:200,json:response};
+  });
+  assert.equal(await plugin.translateAI('Ação'),id==='google-translate'?'Action & care':'Action');
+ }
+});
+
+test('dedicated Markdown translation keeps links, properties, code and line endings in a separate copy',async()=>{
+ const env=runtime(),{plugin,view,reply,add,data,writes}=env;
+ Object.assign(plugin.settings,{translationProvider:'deepl',translationKeys:{deepl:'secret'},targetLanguage:'en'});
+ const original='---\r\ntitle: Private\r\n---\r\n\r\n# Olá **mundo**\r\n- [ ] Pendente [[Arquivo]]\r\n\r\n```js\r\nsegredo\r\n```\r\n';
+ const file=add('Livro.md',original);reply(async({body})=>{
+  const {text}=JSON.parse(body);
+  assert.deepEqual(text,['Olá','mundo','Pendente']);
+  return {status:200,json:{translations:['Hello','world','Pending'].map(text=>({text}))}};
+ });
+ await view.onOpen();await view.translateVaultFile(file);
+ assert.deepEqual(writes,['Livro (en).md']);assert.equal(data.get('Livro.md'),original);
+ assert.equal(data.get('Livro (en).md'),original.replace('Olá','Hello').replace('mundo','world').replace('Pendente','Pending'));
+});
+
+test('missing credentials and invalid endpoints are blocked, and failed translators never fall back or echo their secrets',async()=>{
+ const {plugin,view,reply}=runtime();
+ await view.onOpen();plugin.settings.translationProvider='libretranslate';
+ plugin.settings.translationEndpoint='http://untrusted.example/translate';
+ await view.translate('Texto');assert.ok(view.translationOutput.findText('Configure connection'));
+ assert.ok(view.translationOutput.descendants().some(e=>e.text.includes('instance URL')));
+ Object.assign(plugin.settings,{translationProvider:'google-translate',translationKeys:{'google-translate':'secret'}});
+ let calls=0;reply(async()=>{calls++;return {status:403,json:{error:'secret user manuscript'}};});
+ await assert.rejects(plugin.translateAI('Texto'),error=>/403/.test(error.message)&&!error.message.includes('secret'));
+ assert.equal(calls,1);
+ reply(async()=>({status:200,json:{data:{translations:{malformed:true}}}}));
+ await assert.rejects(plugin.translateAI('Texto'),/invalid or incomplete translation/);
+});
+
+test('chat shortcuts only draft, stop drops a late answer, and Gemini reasoning is not shown as prose',async()=>{
+ const {plugin,view,reply}=runtime();plugin.settings.visibleModules.chat=true;
+ plugin.settings.assistantProvider='gemini';
+ await view.onOpen();view.switchTab('chat');
+ assert.match(view.chatRoute.text,/Gemini.*gemini/);
+ view.chatInput.value='A scene';
+ view.panels.chat.findText('Brainstorm').fire('click');
+ assert.match(view.chatInput.value,/three different ways[\s\S]*A scene/);
+ const draft=view.chatInput.value;
+ let finish,started;const pending=new Promise(resolve=>finish=resolve),start=new Promise(resolve=>started=resolve);
+ reply(async config=>{assert.equal(JSON.parse(config.body).generationConfig.maxOutputTokens,2200);started();return pending;});
+ const send=view.sendChat();await start;
+ view.chatStop.fire('click');assert.equal(view.chatInput.value,draft);
+ finish({status:200,json:{candidates:[{content:{parts:[{text:'late answer'}]}}]}});await send;
+ assert.equal(view.chatHistory.length,0);assert.ok(!view.chatMessages.findText('late answer'));
+ reply(async()=>({status:200,json:{candidates:[{content:{parts:[{thought:true,text:'internal'},{text:'Visible answer'}]}}]}}));
+ await view.sendChat();assert.ok(view.chatMessages.findText('Visible answer'));assert.ok(!view.chatMessages.findText('internal'));
+});
+
+test('dedicated translation stops between batches when language settings change in the panel',async()=>{
+ const {view,plugin,reply}=runtime();
+ Object.assign(plugin.settings,{translationProvider:'deepl',translationKeys:{deepl:'secret'},targetLanguage:'en'});
+ await view.onOpen();
+ const input=('Palavra '.repeat(500)+'\n').repeat(5);
+ let answer,begin,calls=0;const started=new Promise(resolve=>begin=resolve);
+ reply(async config=>{calls++;begin();return new Promise(resolve=>answer=()=>resolve({
+  status:200,json:{translations:JSON.parse(config.body).text.map(text=>({text}))}
+ }));});
+ const work=view.translate(input);await started;
+ view.targetSelect.value='fr';view.targetSelect.fire('change');answer();await work;
+ assert.equal(calls,1);
+ assert.equal(view.translationOutput.children.length,0);
+ assert.equal(plugin.settings.targetLanguage,'fr');
 });

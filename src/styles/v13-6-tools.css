@@ -200,3 +200,31 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-pa
   min-height:44px;
  }
 }
+
+.dictionary-view-content.writer-tool-root .writer-basic-route{
+ display:flex;flex:0 0 auto;flex-wrap:wrap;align-items:center;gap:4px 8px;min-width:0;
+}
+.dictionary-view-content.writer-tool-root .writer-basic-route>span{
+ flex:1 1 145px;min-width:0;overflow-wrap:anywhere;
+}
+.dictionary-view-content.writer-tool-root .writer-basic-route button[hidden]{display:none}
+.dictionary-view-content.writer-tool-root .writer-basic-route>button,
+.dictionary-view-content.writer-tool-root .writer-basic-chat-presets>button{
+ max-width:100%;min-height:32px;height:auto;white-space:normal;
+}
+.dictionary-view-content.writer-tool-root .writer-basic-chat-presets{
+ display:flex;flex:0 0 auto;flex-wrap:wrap;gap:4px;min-width:0;padding-block:4px;
+}
+.dictionary-view-content.writer-tool-root .writer-basic-translation-text{white-space:pre-wrap;overflow-wrap:anywhere}
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>.writer-switch-languages{
+ grid-column:2;min-height:32px;padding:0;box-shadow:none;background:transparent;
+}
+.dictionary-view-content.writer-tool-root .writer-switch-languages svg{width:18px;height:18px}
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-basic-route>button,
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-basic-chat-presets>button{min-height:44px}
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar{
+ grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);
+}
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>.writer-switch-languages{
+ min-width:44px;width:44px;min-height:44px;
+}

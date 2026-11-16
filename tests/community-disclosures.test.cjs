@@ -5,11 +5,11 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-test('runtime retains eight HTTP request paths and opt-in Zotero/ICS',()=>{
+test('runtime retains nine HTTP request paths and opt-in Zotero/ICS',()=>{
  const bundle=read('main.js');
  const hits=bundle.match(/\brequestUrl\s*\(/g)||[];
  const grammarAlias=(bundle.match(/await send\(\{url:endpoint,method:'POST'/g)||[]).length;
- assert.equal(hits.length+grammarAlias,8,'Update SECURITY.md and this inventory if HTTP request paths change');
+ assert.equal(hits.length+grammarAlias,9,'Update SECURITY.md and this inventory if HTTP request paths change');
  for(const fragment of ['UnicodeData.txt','api.languagetool.org/v2/check','/v1/models','/v1/chat/completions','Acylation/obsidian-click-clack']){
    assert(bundle.includes(fragment),'Missing expected network functionality: '+fragment);
  }
@@ -17,7 +17,7 @@ test('runtime retains eight HTTP request paths and opt-in Zotero/ICS',()=>{
  assert(read('src/v10/zotero-web.js').includes('api.zotero.org'));
  assert(read('src/v10/calendar-feeds.js').includes('requestUrl'));
 
- for(const fragment of ['Unicode index download','LanguageTool grammar check','AI model discovery','AI requests','speech.platform.bing.com','auto-check is enabled','Click Clack sound pack download','Photo search and download','Unsplash download tracking','Zotero Web API read-only','iCalendar HTTPS subscriptions']){
+ for(const fragment of ['Unicode index download','LanguageTool grammar check','AI model discovery','AI requests','Dedicated translation APIs','speech.platform.bing.com','auto-check is enabled','Click Clack sound pack download','Photo search and download','Unsplash download tracking','Zotero Web API read-only','iCalendar HTTPS subscriptions']){
    assert(security.includes(fragment),'Missing disclosure: '+fragment);
  }
 });

@@ -85,7 +85,8 @@ const routes=[
  ['speech','v12/selection-reader','writerV12ReaderSettings'],
  ['speech','v10/speech-accessibility','writerV107SpeechSettings'],
  ['compatibility','v10/integrations-107','writerV107Settings'],
- ['assistant','v8/inline-ai','renderSettings']
+ ['assistant','v8/inline-ai','renderSettings'],
+ ['translation','v13/translation-services','writerTranslationServiceSettings']
 ];
 function tokenize(source){
  const tokens=[];let index=0,previous='',at=0;

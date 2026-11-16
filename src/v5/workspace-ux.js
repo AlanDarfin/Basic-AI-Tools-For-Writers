@@ -32,6 +32,7 @@ function writerWorkspaceCapture(settings){
  return values;
 }
 function writerWorkspaceApplyValues(settings,values){
+ const changed=[];
  for(const [name,fields] of Object.entries(values||{})){
   if(!Object.hasOwn(WRITER_WORKSPACE_FIELDS,name)||!fields||typeof fields!=='object')continue;
   const target=writerWorkspaceTarget(settings,name);
@@ -40,9 +41,15 @@ function writerWorkspaceApplyValues(settings,values){
    if(!WRITER_WORKSPACE_FIELDS[name].includes(key))continue;
    if(key==='preset'&&(!['vscode','jetbrains','none'].includes(value)))continue;
    if(key!=='preset'&&typeof value!=='boolean')continue;
+   changed.push({target,key,had:Object.hasOwn(target,key),previous:target[key],value});
    target[key]=value;
   }
  }
+ return ()=>{
+  for(const {target,key,had,previous,value} of changed)if(target[key]===value){
+   if(had)target[key]=previous;else delete target[key];
+  }
+ };
 }
 function writerWorkspaceMerge(settings){
  const prev=settings.workspaceProfiles,valid=prev&&typeof prev==='object'&&!Array.isArray(prev)?prev:{};
@@ -365,46 +372,79 @@ function writerWorkspaceHotkeyAudit(plugin){
  return {items,duplicates,hostScanned,status};
 }
 class WriterWorkspaceProfiles{
- constructor(plugin){this.plugin=plugin;}
+ constructor(plugin){this.plugin=plugin;this.busy=false;this.disposed=false;}
  get cfg(){return this.plugin.settings.workspaceProfiles;}
+ async persist(change){
+  if(this.busy||this.disposed)return false;
+  this.busy=true;this.refreshBusy?.();
+  try{
+   const rollback=change();
+   try{await this.plugin.saveSettings();}catch(error){rollback();throw error;}
+   return !this.disposed;
+  }finally{this.busy=false;if(!this.disposed)this.refreshBusy?.();}
+ }
+ async run(action){
+  if(this.disposed)return false;
+  try{return await action();}
+  catch(error){if(!this.disposed)new Notice(writerUi('Não foi possível salvar o perfil. As escolhas anteriores foram mantidas.','Could not save the profile. Previous choices were kept.'));return false;}
+ }
  async apply(name,values){
-  this.cfg.undo=writerWorkspaceCapture(this.plugin.settings);
-  writerWorkspaceApplyValues(this.plugin.settings,values);
-  this.cfg.lastPreset=name;
-  await this.plugin.saveSettings();
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,previousUndo=cfg.undo,previousName=cfg.lastPreset;
+   const undo=writerWorkspaceCapture(this.plugin.settings),rollback=writerWorkspaceApplyValues(this.plugin.settings,values);
+   cfg.undo=undo;cfg.lastPreset=name;
+   return ()=>{rollback();if(cfg.undo===undo)cfg.undo=previousUndo;if(cfg.lastPreset===name)cfg.lastPreset=previousName;};
+  })||this.disposed)return false;
   this.plugin.writerV4Extras?.updateTypewriterClass?.();
   this.plugin.refreshModuleVisibility?.();
   writerV5RefreshEditors(this.plugin);
   this.refreshSettings?.();
   new Notice(writerUi('Perfil aplicado: ','Applied profile: ')+name);
+  return true;
  }
  async undo(){
+  if(this.disposed)return false;
   if(!this.cfg.undo)return;
-  const old=this.cfg.undo;this.cfg.undo=null;
-  writerWorkspaceApplyValues(this.plugin.settings,old);
-  await this.plugin.saveSettings();this.plugin.writerV4Extras?.updateTypewriterClass?.();writerV5RefreshEditors(this.plugin);
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,old=cfg.undo,rollback=writerWorkspaceApplyValues(this.plugin.settings,old);cfg.undo=null;
+   return ()=>{rollback();if(cfg.undo===null)cfg.undo=old;};
+  })||this.disposed)return false;
+  this.plugin.writerV4Extras?.updateTypewriterClass?.();writerV5RefreshEditors(this.plugin);
   this.refreshSettings?.();
   new Notice(writerUi('Preferências anteriores restauradas.','Previous preferences restored.'));
+  return true;
  }
  async saveCustom(name){
+  if(this.busy||this.disposed)return false;
   const title=String(name||'').trim().slice(0,60);
   if(!title)return;
   if(this.cfg.saved.some(item=>item.name.toLowerCase()===title.toLowerCase()))return new Notice(writerUi('Já existe um perfil com esse nome.','A profile with that name already exists.'));
-  this.cfg.saved.push({name:title,values:writerWorkspaceCapture(this.plugin.settings)});
-  this.cfg.saved=this.cfg.saved.slice(-10);
-  await this.plugin.saveSettings();
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,previous=cfg.saved,next=[...previous,{name:title,values:writerWorkspaceCapture(this.plugin.settings)}].slice(-10);
+   cfg.saved=next;return ()=>{if(cfg.saved===next)cfg.saved=previous;};
+  })||this.disposed)return false;
   this.refreshSettings?.();
   new Notice(writerUi('Perfil salvo: ','Saved profile: ')+title);
+  return true;
+ }
+ async deleteCustom(name){
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,previous=cfg.saved,next=previous.filter(item=>item.name!==name);
+   cfg.saved=next;return ()=>{if(cfg.saved===next)cfg.saved=previous;};
+  })||this.disposed)return false;
+  this.refreshSettings?.();return true;
  }
  register(){
+  this.plugin.register?.(()=>{this.disposed=true;this.refreshSettings=null;this.refreshBusy=null;this.picker?.close?.();this.picker=null;});
   this.plugin.addCommand({id:'v51-choose-workspace-profile',name:writerUi('Perfis de escrita: escolher perfil','Writing profiles: choose preset'),callback:()=>this.openPicker()});
   this.plugin.addCommand({id:'v51-undo-workspace-profile',name:writerUi('Perfis de escrita: desfazer última troca','Writing profiles: undo last change'),checkCallback:checking=>{
-   if(!this.cfg.undo)return false;
-   if(!checking)this.undo();
+   if(this.disposed||this.busy||!this.cfg.undo)return false;
+   if(!checking)void this.run(()=>this.undo());
    return true;
   }});
  }
  openPicker(){
+  if(this.disposed||this.busy)return;
   const plugin=this.plugin,controller=this;
   class Picker extends FuzzySuggestModal{
    getItems(){return [
@@ -412,11 +452,12 @@ class WriterWorkspaceProfiles{
     ...controller.cfg.saved.map(item=>({name:item.name,value:item.name,values:item.values}))
    ];}
    getItemText(item){return item.name;}
-   onChooseItem(item){controller.apply(item.name,item.values);}
+   onChooseItem(item){return controller.run(()=>controller.apply(item.name,item.values));}
   }
-  new Picker(plugin.app).open();
+  this.picker=new Picker(plugin.app);this.picker.open();
  }
  renderSettings(panel){
+  if(this.disposed)return;
   const root=panel.createDiv({cls:'writer-v137-profile-settings'});
   let chosen='',selectedToDelete='';
   const mark=(control,action)=>{(control.buttonEl||control.selectEl)?.setAttribute?.('data-profile-action',action);return control;};
@@ -435,12 +476,12 @@ class WriterWorkspaceProfiles{
    d.setValue(chosen);
    d.onChange(value=>chosen=value);
   }).addButton(b=>mark(b,'apply').setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
-   const item=items.find(x=>x.key===chosen);if(item)await this.apply(item.label,item.values);
+   const item=items.find(x=>x.key===chosen);if(item)await this.run(()=>this.apply(item.label,item.values));
   }));
   new Setting(root).setName(writerUi('Guardar perfil atual','Save current profile'))
    .setDesc(writerUi('Salva somente opções de edição permitidas, até 10 perfis.','Saves only selected editor preferences, up to 10 profiles.'))
    .addButton(b=>mark(b,'save').setButtonText(writerUi('Salvar como…','Save as…')).onClick(()=>{
-    new TextPrompt(this.plugin.app,writerUi('Nome do perfil','Profile name'),value=>this.saveCustom(value)).open();
+    if(!this.busy)new TextPrompt(this.plugin.app,writerUi('Nome do perfil','Profile name'),value=>this.run(()=>this.saveCustom(value))).open();
    }));
   if(this.cfg.saved.length){
    if(!this.cfg.saved.some(item=>item.name===selectedToDelete))selectedToDelete=this.cfg.saved[0]?.name||'';
@@ -448,15 +489,18 @@ class WriterWorkspaceProfiles{
     mark(d,'delete-choice');
     for(const item of this.cfg.saved)d.addOption(item.name,item.name);
     d.setValue(selectedToDelete).onChange(v=>selectedToDelete=v);
-   }).addButton(b=>mark(b,'delete').setButtonText(writerUi('Excluir','Delete')).onClick(async()=>{
-    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==selectedToDelete);await this.plugin.saveSettings();this.refreshSettings?.();
-   }));
+   }).addButton(b=>mark(b,'delete').setButtonText(writerUi('Excluir','Delete')).onClick(()=>this.run(()=>this.deleteCustom(selectedToDelete))));
   }
   new Setting(root).setName(writerUi('Desfazer última aplicação','Undo last application'))
-   .addButton(b=>mark(b,'restore').setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.undo()));
+   .addButton(b=>mark(b,'restore').setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.run(()=>this.undo())));
+  this.refreshBusy?.();
   if(focus)(root.querySelector?.('[data-profile-action="'+focus+'"]:not(:disabled)')||root.querySelector?.('select:not(:disabled)'))?.focus?.({preventScroll:true});
   };
-  this.refreshSettings=()=>{if(root.isConnected!==false)render();};
+  this.refreshBusy=()=>{
+   if(!this.disposed&&root.isConnected!==false)for(const control of root.querySelectorAll('[data-profile-action]'))
+    control.disabled=this.busy||control.getAttribute('data-profile-action')==='restore'&&!this.cfg.undo;
+  };
+  this.refreshSettings=()=>{if(!this.disposed&&root.isConnected!==false)render();};
   render();
  }
 }

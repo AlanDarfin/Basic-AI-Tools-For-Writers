@@ -71,6 +71,41 @@ function harness(options={}){
  return {api,node,doc,root,header,native,drawer,workspace,plugin,leaf,flush,start,bar,observers,menus,timers,logs,
   stop:()=>cleanups.forEach(fn=>fn())};
 }
+function filteredExplorer(){
+ const h=harness(),explorer=h.leaf('file-explorer','Files');h.drawer.children=[explorer];
+ const rows=['Keep.md','Hidden.md'].map(title=>{
+  const row=h.node('nav-file');row.querySelector=()=>({textContent:title});row.querySelectorAll=()=>[];return row;
+ });
+ const query=explorer.view.containerEl.querySelectorAll;
+ explorer.view.containerEl.querySelectorAll=selector=>selector==='.nav-file,.nav-folder'?rows:query.call(explorer.view.containerEl,selector);
+ h.workspace.getLeavesOfType=type=>type==='file-explorer'?[explorer]:[];
+ h.plugin.settings.v1010Layout.sidebar.fileFilter=true;h.start();
+ const input=()=>h.bar()?.children.find(child=>child.classList.contains('writer-v1010-sidebar-filter'));
+ input().value='keep';input().dispatch('input');
+ assert.equal(rows[0].classList.contains('writer-v1010-filter-hidden'),false);
+ assert.equal(rows[1].classList.contains('writer-v1010-filter-hidden'),true);
+ return {...h,rows,input};
+}
+
+test('disabling the Explorer filter or sidebar restores files and re-enabling reapplies the visible query',()=>{
+ for(const key of ['fileFilter','enabled','mobileTabs']){
+  const h=filteredExplorer();h.plugin.settings.v1010Layout.sidebar[key]=false;
+  h.plugin.writerV1010Refresh();h.flush();
+  assert.equal(h.input(),undefined,key);assert.ok(h.rows.every(row=>!row.classList.contains('writer-v1010-filter-hidden')),key);
+  h.plugin.settings.v1010Layout.sidebar[key]=true;h.plugin.writerV1010Refresh();h.flush();
+  assert.equal(h.input().value,'keep');assert.equal(h.rows[1].classList.contains('writer-v1010-filter-hidden'),true);
+  h.stop();assert.ok(h.rows.every(row=>!row.classList.contains('writer-v1010-filter-hidden')));
+ }
+});
+test('native fallback and disabling a filter during a native popup release hidden files',()=>{
+ const fallback=filteredExplorer();fallback.drawer.tabsListEl=null;fallback.header.replaceChildren();
+ fallback.plugin.writerV1010Refresh();fallback.flush();
+ assert.equal(fallback.bar(),undefined);assert.ok(fallback.rows.every(row=>!row.classList.contains('writer-v1010-filter-hidden')));
+ const pending=filteredExplorer(),bar=pending.bar();pending.plugin._writerV1010NativeActionPending=true;
+ pending.plugin.settings.v1010Layout.sidebar.fileFilter=false;pending.plugin.writerV1010Refresh();pending.flush();
+ assert.equal(pending.bar(),bar,'The native popup anchor stays intact');
+ assert.ok(pending.rows.every(row=>!row.classList.contains('writer-v1010-filter-hidden')));
+});
 
 test('mobile inventory keeps every leaf instance including Markdown and plugin views',()=>{
  const h=harness(),a=h.leaf('outline','Outline A','apple'),b=h.leaf('outline','Outline B','banana'),md=h.leaf('markdown','Chapter.md','file-text');

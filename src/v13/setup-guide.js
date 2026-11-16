@@ -10,26 +10,31 @@ function writerQuickStartChoices(settings,preset='custom'){
  return Object.fromEntries(WRITER_MODULES.map(([id])=>[id,enabled?enabled.includes(id):settings.visibleModules?.[id]!==false]));
 }
 async function writerQuickStartApply(plugin,choices){
+ if(plugin._writerQuickStartStopped)return false;
  const previous=plugin.settings.visibleModules,previousStart=plugin.settings.quickStart;
  const next={...previous};
  for(const [id] of WRITER_MODULES)if(typeof choices?.[id]==='boolean')next[id]=choices[id];
  plugin.settings.visibleModules=next;
- plugin.settings.quickStart={version:1,status:'complete'};
+ const complete={version:1,status:'complete'};plugin.settings.quickStart=complete;
  try{await plugin.saveSettings();}
- catch(error){plugin.settings.visibleModules=previous;plugin.settings.quickStart=previousStart;throw error;}
+ catch(error){if(plugin.settings.visibleModules===next)plugin.settings.visibleModules=previous;if(plugin.settings.quickStart===complete)plugin.settings.quickStart=previousStart;throw error;}
+ if(plugin._writerQuickStartStopped)return false;
  plugin.refreshModuleVisibility?.();
  plugin.writerV4Extras?.resetTypewriterHighlights?.();plugin.writerV4Extras?.updateTypewriterClass?.();
  plugin.writerV92Research?.refreshStyle?.();
  if(!writerModuleOn(plugin,'soundscapes'))plugin.writerV91Sound?.pause?.();
  plugin.writerV91Sound?.emit?.();
+ return true;
 }
 function writerQuickStartOpen(plugin,initial=false){
+ if(plugin._writerQuickStartStopped)return null;
  if(plugin._writerQuickStartModal?.modalEl?.isConnected)return plugin._writerQuickStartModal;
  const modal=new Modal(plugin.app);plugin._writerQuickStartModal=modal;
  modal.modalEl.addClass('writer-v137-quick-start-modal');
  modal.setTitle(writerUi('Configuração inicial','Quick start'));
- let choices=writerQuickStartChoices(plugin.settings,initial?'essentials':'custom'),finished=false,busy=false;
- const close=modal.close.bind(modal);modal.close=()=>{if(!busy||finished)close();};
+ let choices=writerQuickStartChoices(plugin.settings,initial?'essentials':'custom'),finished=false,busy=false,closed=false;
+ const active=()=>!closed&&!plugin._writerQuickStartStopped;
+ const close=modal.close.bind(modal);modal.close=()=>{if(!busy||finished||plugin._writerQuickStartStopped)close();};
  modal.onOpen=()=>{
   const root=modal.contentEl;root.addClass('writer-v137-quick-start');
   root.createEl('p',{text:writerUi('Escolha os recursos que você quer usar. As opções desligadas ficam ocultas nos menus; suas configurações e dados continuam disponíveis.','Choose the features you want to use. Features you turn off are hidden from menus; their settings and data remain available.')});
@@ -72,16 +77,17 @@ function writerQuickStartOpen(plugin,initial=false){
   later.addEventListener('click',()=>{if(!busy)modal.close();});
   const apply=footer.createEl('button',{cls:'mod-cta',text:writerUi('Aplicar escolhas','Apply choices'),attr:{type:'button'}});
   apply.addEventListener('click',async()=>{
-   if(busy)return;busy=true;apply.disabled=true;later.disabled=true;
-   try{await writerQuickStartApply(plugin,choices);finished=true;modal.close();plugin.writerSettingsTab?.display?.();}
-   catch(error){new Notice(String(error?.message||error));}
-   finally{busy=false;apply.disabled=false;later.disabled=false;}
+   if(busy||!active())return;busy=true;apply.disabled=true;later.disabled=true;
+   try{const applied=await writerQuickStartApply(plugin,choices);if(!active()||applied===false)return;finished=true;modal.close();plugin.writerSettingsTab?.display?.();}
+   catch(error){if(active())new Notice(String(error?.message||error));}
+   finally{busy=false;if(active()){apply.disabled=false;later.disabled=false;}}
   });
   render();
  };
  modal.onClose=()=>{
+  closed=true;
   if(plugin._writerQuickStartModal===modal)plugin._writerQuickStartModal=null;
-  if(initial&&!finished){
+  if(initial&&!finished&&!plugin._writerQuickStartStopped){
    plugin.settings.quickStart={version:1,status:'deferred'};
    void plugin.saveSettings().catch(error=>console.error('[Basic] Quick start preferences:',error));
   }
@@ -90,9 +96,10 @@ function writerQuickStartOpen(plugin,initial=false){
  modal.open();return modal;
 }
 function writerQuickStartRegister(plugin,firstInstall){
+ plugin._writerQuickStartStopped=false;
  plugin.addCommand({id:'v137-quick-start',name:writerUi('Configuração inicial: abrir','Quick start: open'),callback:()=>writerQuickStartOpen(plugin)});
  let stopped=false;
- plugin.register?.(()=>{stopped=true;plugin._writerQuickStartModal?.close();});
+ plugin.register?.(()=>{stopped=true;plugin._writerQuickStartStopped=true;plugin._writerQuickStartModal?.close();});
  if(!firstInstall)return;
  const open=()=>{if(!stopped&&!plugin.settings.quickStart)writerQuickStartOpen(plugin,true);};
  if(typeof plugin.app.workspace.onLayoutReady==='function')plugin.app.workspace.onLayoutReady(open);

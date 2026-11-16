@@ -114,7 +114,9 @@ DOCX, EPUB, HTML and PDF export are separate optional desktop actions under **Ma
 
 You can use the saved Markdown dictionary without an AI key. Typing in **Definitions** performs local lookup; **Define word** or Enter requests an online result. The dictionary file is created when you save the first definition.
 
-For translation, choose the source/target languages and use the explicit translation action. Translating a file saves a separate Markdown copy beside it. The assistant can use reference attachments; their text is part of the material sent to the configured provider. If a send fails, its draft remains available for retrying.
+Open **Basic Tools → Translation** to choose the source/target languages and translate text or a selection. In **Settings → Basic → Artificial intelligence → Translation**, choose an AI connection or a dedicated DeepL, Google Cloud Translation, Microsoft Translator or LibreTranslate connection. Dedicated translators use their own credentials and sample test; LibreTranslate needs your instance address. A failed service does not switch providers automatically. Translating a file saves a separate Markdown copy beside it.
+
+In **Chat**, writing shortcuts prepare editable instructions and show the selected provider/model. **Stop response** discards a pending answer in the panel; the provider may still finish processing. The assistant can use reference attachments; their text is sent to the selected provider. A failed send or a stopped response restores its draft if the input is empty, keeping any newer text you have typed.
 
 LanguageTool grammar checking has its own endpoint and language choices under **Review & versions → Grammar checking**. Automatic checking sends text after a typing pause while the review pane is active when enabled. Inline AI also needs explicit configuration before it can send text while you write. Keep either feature disabled when you do not want those requests.
 

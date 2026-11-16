@@ -2067,6 +2067,20 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "translation",
+  "titlePt": "Região do recurso Azure",
+  "titleEn": "Azure resource region",
+  "descriptionPt": "Necessária para recursos regionais ou de vários serviços.",
+  "descriptionEn": "Required for regional or multi-service resources."
+ },
+ {
+  "id": "translation",
+  "titlePt": "Endereço do LibreTranslate",
+  "titleEn": "LibreTranslate address",
+  "descriptionPt": "Use HTTPS ou HTTP no próprio dispositivo (localhost).",
+  "descriptionEn": "Use HTTPS or HTTP on this device (localhost)."
+ },
+ {
+  "id": "translation",
   "titlePt": "Idioma de origem",
   "titleEn": "Source language"
  },
@@ -2074,6 +2088,18 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "translation",
   "titlePt": "Idioma de destino",
   "titleEn": "Target language"
+ },
+ {
+  "id": "translation",
+  "titlePt": "Testar tradução",
+  "titleEn": "Test translation"
+ },
+ {
+  "id": "translation",
+  "titlePt": "Chave da API de tradução",
+  "titleEn": "Translation API key",
+  "descriptionPt": "Salva localmente nos dados do plugin, sem criptografia. LibreTranslate só precisa de chave se a instância exigir.",
+  "descriptionEn": "Stored locally in plugin data without encryption. LibreTranslate only needs a key if the instance requires it."
  },
  {
   "id": "translation",

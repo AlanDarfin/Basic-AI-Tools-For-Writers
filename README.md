@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.14.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 13.15.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -107,6 +107,12 @@ When another plugin is installed and enabled, Basic provides the support below. 
 There is no dedicated **Integrations** settings page. Keep each plugin's full configuration in that plugin. Basic's speech provider stays under **Read aloud**, duplicate icon priority under **File explorer**, and floating-control layout under **Files & tools**. Existing command IDs and saved preferences are retained. Legacy panel commands remain available for existing setups.
 
 See the [plugin support guide](docs/guides/companion-compatibility.md) for behavior, data use and platform limits. Compatibility layout temporarily hides secondary controls when there is no safe room and restores them when the obstruction closes; it does not change notes or external plugin settings.
+
+## Basic Tools · translation and assistant
+
+Use the **Translation** tab for selected text, pasted text or a separate translated Markdown copy. Choose DeepL, Google Translate (Cloud), Microsoft Translator, LibreTranslate, or one of the existing AI providers. Configure dedicated translators under **Settings → Basic → Artificial intelligence → Translation**. DeepL and Google Cloud use their official API keys. Microsoft also uses a resource region when required. LibreTranslate uses your instance URL and an optional key. Auto detection is available, and explicit source and target languages can be swapped. The installed languages for LibreTranslate depend on the instance.
+
+In **Chat**, the current provider and model are visible. **Rewrite**, **Summarize** and **Brainstorm** prepare editable instructions without sending them automatically. **Stop response** ignores the pending answer locally and preserves your draft if the input is empty. The provider may still finish a request already sent.
 
 ## Optional AI and online services
 

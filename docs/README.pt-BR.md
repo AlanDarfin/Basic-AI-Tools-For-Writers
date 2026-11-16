@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.14.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.15.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
@@ -107,6 +107,12 @@ Quando outro plugin está instalado e ativo, o Basic oferece o suporte abaixo. E
 Não há uma página dedicada de **Integrações** nas configurações. A configuração completa de cada plugin continua nele. No Basic, o provedor de voz fica em **Leitura em voz alta**, a prioridade de ícones em **Explorador de arquivos** e a organização dos controles em **Arquivos e ferramentas**. IDs de comandos e preferências salvas são preservados. Comandos antigos de painéis continuam disponíveis para instalações existentes.
 
 Consulte o [guia de suporte aos plugins](guides/companion-compatibility.pt-BR.md) para comportamento, uso de dados e limites de plataforma. Quando não há espaço seguro, controles secundários ficam temporariamente ocultos e retornam ao fechar a obstrução; isso não altera notas nem configurações dos plugins externos.
+
+## Ferramentas Básicas · tradução e assistente
+
+Na aba **Tradução**, traduza uma seleção, um texto colado ou um arquivo Markdown em uma cópia separada. Escolha DeepL, Google Tradutor (Cloud), Microsoft Translator, LibreTranslate ou um dos provedores de IA existentes. Configure tradutores dedicados em **Configurações → Basic → Inteligência artificial → Tradução**. DeepL e Google Cloud usam chaves das APIs oficiais. O Microsoft usa a região do recurso quando exigida. O LibreTranslate usa o endereço da sua instância e uma chave opcional. Você pode detectar o idioma de origem automaticamente ou inverter os idiomas selecionados. No LibreTranslate, os idiomas disponíveis dependem da instância.
+
+No **Chat**, o provedor e o modelo ativos ficam visíveis. **Reescrever**, **Resumir** e **Explorar ideias** preparam instruções editáveis, sem enviar automaticamente. **Parar resposta** descarta a resposta pendente no painel e restaura o rascunho se o campo estiver vazio. O provedor ainda pode concluir uma solicitação já enviada.
 
 ## IA e serviços online opcionais
 

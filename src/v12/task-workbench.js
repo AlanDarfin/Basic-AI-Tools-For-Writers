@@ -1,7 +1,7 @@
 'use strict';
 /* Basic v12 task workbench: notes stay authoritative, writes are optional,
  * atomic and reject concurrent changes. Hidden Markdown regions are excluded. */
-function writerV1391TaskCommentState(line,comment){
+function writerV1391TaskCommentState(line,comment,hide){
  const ticks=new Map();
  for(const match of line.matchAll(/\x60+/g)){
   const size=match[0].length;
@@ -11,20 +11,23 @@ function writerV1391TaskCommentState(line,comment){
  for(let at=0;at<line.length;){
   if(comment){
    const close=comment==='html'?'-->':'%%',end=line.indexOf(close,at);
-   if(end<0)return comment;
+   if(end<0){hide?.(at,line.length);return comment;}
+   hide?.(at,end+close.length);
    at=end+close.length;comment=null;continue;
   }
-  if(line[at]==='\\'){at+=2;continue;}
+  if(line[at]==='\\'){hide?.(at,at+2);at+=2;continue;}
   // Comment examples in a same-line code span must not hide subsequent tasks.
   if(line[at]==='`'){
    let end=at+1;while(line[end]==='`')end++;
    const group=ticks.get(end-at);
    // Each delimiter is visited at most once, even in a long unmatched example.
    if(group)while(group.next<group.runs.length&&group.runs[group.next].start<end)group.next++;
-   at=group?.runs[group.next]?.end??end;continue;
+   const close=group?.runs[group.next]?.end;
+   if(close!==undefined)hide?.(at,close);
+   at=close??end;continue;
   }
-  if(line.startsWith('<!--',at)){comment='html';at+=4;continue;}
-  if(line.startsWith('%%',at)){comment='obsidian';at+=2;continue;}
+  if(line.startsWith('<!--',at)){hide?.(at,at+4);comment='html';at+=4;continue;}
+  if(line.startsWith('%%',at)){hide?.(at,at+2);comment='obsidian';at+=2;continue;}
   at++;
  }
  return comment;
@@ -81,7 +84,7 @@ function writerV12TaskReplacedLine(entry){
  if(!m)throw Error('Invalid task marker');
  return m[1]+(entry.done?' ':'x')+m[3];
 }
-async function writerV12ToggleTask(plugin,file,entry,expected){
+async function writerTaskUpdateLine(plugin,file,entry,expected,transform){
  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid task file');
  if(typeof expected!=='string'||expected.length>2500000)throw Error('Invalid source snapshot');
  const path=file.path;writerV139TaskEditable(plugin,file,path,expected);
@@ -91,7 +94,9 @@ async function writerV12ToggleTask(plugin,file,entry,expected){
  if(parts[index]!==reference.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
  if(!writerV1391TaskEligible(expected,reference))throw Error(writerUi('Esta linha não é uma tarefa Markdown editável. Atualize o painel.','This line is not an editable Markdown task. Refresh the dashboard.'));
  // Keep each original line ending, including notes containing both LF and CRLF.
- parts[index]=writerV12TaskReplacedLine(reference);const next=parts.join('');
+ parts[index]=transform(reference);
+ if(parts[index]===reference.raw)return expected;
+ const next=parts.join('');
  await plugin.app.vault.process(file,current=>{
   writerV139TaskEditable(plugin,file,path,expected);
   if(current!==expected)throw Error(writerUi('Arquivo mudou; nada foi alterado.','File changed; no modifications applied.'));
@@ -99,6 +104,9 @@ async function writerV12ToggleTask(plugin,file,entry,expected){
   return next;
  });
  return next;
+}
+function writerV12ToggleTask(plugin,file,entry,expected){
+ return writerTaskUpdateLine(plugin,file,entry,expected,writerV12TaskReplacedLine);
 }
 function writerV139TaskOn(plugin){
  return typeof writerV12On==='function'?writerV12On(plugin,'taskNavigator'):
@@ -118,12 +126,67 @@ function writerV139TaskDayAfter(day,count){
  const date=new Date(day+'T12:00:00Z');date.setUTCDate(date.getUTCDate()+count);
  return date.toISOString().slice(0,10);
 }
+function writerTaskDueMarkers(raw){
+ const prefix=/^[ \t]*(?:[-*+]|\d+\.)[ \t]+\[[ xX]\][ \t]+/.exec(raw)?.[0]||'';
+ const body=raw.slice(prefix.length);
+ const hidden=[];
+ writerV1391TaskCommentState(body,null,(from,to)=>hidden.push([from,to]));
+ const masked=[];let cursor=0;
+ for(const [from,to] of hidden){masked.push(body.slice(cursor,from),'\0'.repeat(Math.min(to,body.length)-from));cursor=to;}
+ masked.push(body.slice(cursor));
+ const text=masked.join('');
+ // Due dates written inside links or HTML attributes are not task metadata.
+ const safe=text.replace(/!?\[\[[^\[\]\r\n]*\]\]|!?\[[^\[\]\r\n]*\]\([^\r\n()]*\)|<[^<>\r\n]*>/g,match=>'\0'.repeat(match.length));
+ const matches=[];
+ const rx=/(?<![^\s\0])(?:📅|\[due::)/g;
+ for(const marker of safe.matchAll(rx)){
+  const start=prefix.length+marker.index,tail=marker.index+marker[0].length;
+  const calendar=marker[0]==='📅';
+  const pattern=calendar?/[ \t]*(\d{4}-\d{2}-\d{2})(?=$|\s|\0)/y:
+   /[ \t]*(\d{4}-\d{2}-\d{2})[ \t]*\](?=$|\s|\0)/y;
+  pattern.lastIndex=tail;
+  const value=pattern.exec(safe),date=writerV139TaskDate(value?.[1]);
+  matches.push({start,end:date?prefix.length+pattern.lastIndex:start+marker[0].length,date,
+   at:date?prefix.length+tail+value[0].indexOf(value[1]):-1});
+ }
+ const comment=hidden.find(([from])=>body.startsWith('<!--',from)||body.startsWith('%%',from));
+ return {matches,prefix:prefix.length,appendAt:comment?prefix.length+comment[0]:raw.length};
+}
 function writerV139TaskMetadata(text){
  const source=String(text||'');
- const dates=[...source.matchAll(/📅\s*(\d{4}-\d{2}-\d{2})(?=$|\s)|\[due::\s*(\d{4}-\d{2}-\d{2})\s*\]/gu)];
- const due=dates.map(match=>writerV139TaskDate(match[1]||match[2])).find(Boolean)||'';
+ const due=source.includes('📅')||source.includes('[due::')?writerTaskDueMarkers(source).matches.find(mark=>mark.date)?.date||'':'';
  const priority=/(?:^|\s)#(high|medium|low)(?=\s|$)/i.exec(source)?.[1]?.toLowerCase()||'';
  return {due,priority};
+}
+function writerTaskReplaceDue(raw,date){
+ const {matches,prefix,appendAt}=writerTaskDueMarkers(raw);
+ if(matches.length>1||matches.some(mark=>!mark.date))
+  throw Error(writerUi('Há prazos duplicados ou inválidos. Corrija o prazo na nota antes de editá-lo aqui.',
+   'There are duplicate or invalid due dates. Fix the due date in the note before editing it here.'));
+ const current=matches[0];
+ if(current){
+  if(date)return raw.slice(0,current.at)+date+raw.slice(current.at+10);
+  const left=raw.slice(0,current.start),right=raw.slice(current.end);
+  const removeBefore=current.start>prefix&&/[ \t]$/.test(left);
+  const next=removeBefore?left.slice(0,-1)+right:left+right.replace(/^[ \t]/,'');
+  if(!/^[ \t]*(?:[-*+]|\d+\.)[ \t]+\[[ xX]\][ \t]+\S/.test(next))
+   throw Error(writerUi('Escreva uma descrição na tarefa antes de remover seu único prazo.',
+    'Give the task a description before removing its only due date.'));
+  return next;
+ }
+ if(!date)return raw;
+ // Insert before trailing whitespace or the first inline comment so the
+ // new date is visible even when a comment runs through the end of the note.
+ const blockId=/[ \t]+\^[a-zA-Z0-9-]+[ \t]*$/.exec(raw.slice(prefix,appendAt));
+ const end=blockId?prefix+blockId.index:appendAt;
+ const anchor=Math.max(prefix,raw.slice(0,end).trimEnd().length);
+ if(!raw.slice(prefix,anchor).trim())throw Error(writerUi('Escreva uma descrição antes de adicionar o prazo.','Give the task a description before adding the due date.'));
+ const right=raw.slice(anchor);
+ return raw.slice(0,anchor)+' 📅 '+date+(right&&!/^[ \t]/.test(right)?' ':'')+right;
+}
+async function writerTaskReschedule(plugin,file,entry,expected,date){
+ if(date!==''&&!writerV139TaskDate(date))throw Error(writerUi('Escolha uma data válida.','Choose a valid date.'));
+ return writerTaskUpdateLine(plugin,file,entry,expected,reference=>writerTaskReplaceDue(reference.raw,date));
 }
 function writerV139TaskVisible(entry,scope,today=writerV139TaskToday(),metadata){
  const {due}=metadata||writerV139TaskMetadata(entry.text);
@@ -239,6 +302,50 @@ function writerV139TaskQuickAdd(plugin,onSaved){
  if(!files.length)feedback.setText(writerUi('Crie uma nota Markdown para receber suas tarefas.','Create a Markdown note to hold your tasks.'));
  modal.onClose=()=>{closed=true;token++;snapshot=null;};modal.open();return modal;
 }
+function writerTaskDueEditor(plugin,row,onSaved){
+ const modal=new Modal(plugin.app);
+ modal.setTitle(writerUi('Editar prazo da tarefa','Edit task due date'));
+ const root=modal.contentEl;root.addClass('writer-native-task-reschedule');
+ root.createEl('p',{text:row.entry.text.slice(0,500)});
+ root.createEl('p',{cls:'setting-item-description',text:row.file.path+' · '+(row.entry.line+1)});
+ const label=root.createEl('label',{text:writerUi('Prazo','Due date')});
+ const input=label.createEl('input',{attr:{type:'date'}});
+ input.value=row.meta.due;
+ const presets=root.createDiv({cls:'writer-native-task-date-presets'});
+ let saving=false,closed=false;
+ const today=()=>writerV139TaskToday();
+ const add=(parent,text,fn)=>{const button=parent.createEl('button',{text,attr:{type:'button'}});button.addEventListener('click',fn);return button;};
+ const assign=value=>{if(!closed&&!saving){input.value=value;changed();}};
+ const choices=[
+  add(presets,writerUi('Hoje','Today'),()=>assign(today())),
+  add(presets,writerUi('Amanhã','Tomorrow'),()=>assign(writerV139TaskDayAfter(today(),1))),
+  add(presets,writerUi('Em 7 dias','In 7 days'),()=>assign(writerV139TaskDayAfter(today(),7))),
+  add(presets,writerUi('Sem prazo','No due date'),()=>assign(''))
+ ];
+ const feedback=root.createEl('p',{cls:'writer-native-task-feedback',attr:{role:'status'}});
+ const actions=root.createDiv({cls:'writer-native-task-date-presets'});
+ const cancel=add(actions,writerUi('Cancelar','Cancel'),()=>{if(!saving)modal.close();});
+ const save=add(actions,writerUi('Salvar prazo','Save due date'),async()=>{
+  if(closed||saving||save.disabled)return;
+  const date=input.value;saving=true;changed();feedback.setText('');
+  try{
+   await writerTaskReschedule(plugin,row.file,row.entry,row.source,date);
+   if(!closed)modal.close();
+   onSaved?.();
+  }catch(error){if(!closed)feedback.setText(String(error.message||error));}
+  finally{saving=false;if(!closed)changed();}
+ });
+ save.addClass('mod-cta');
+ const changed=()=>{
+  input.disabled=saving;cancel.disabled=saving;
+  for(const button of choices)button.disabled=saving;
+  save.disabled=saving||input.validity?.badInput===true||input.value===row.meta.due||!!(input.value&&!writerV139TaskDate(input.value));
+ };
+ input.addEventListener('input',changed);
+ input.addEventListener('change',changed);
+ modal.onClose=()=>{closed=true;};
+ changed();modal.open();return modal;
+}
 function writerV12TaskWorkbench(plugin,initialScope='all'){
  if(!writerV139TaskOn(plugin))return;
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Minhas tarefas','My tasks'));
@@ -252,7 +359,7 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
  scope.value=['all','today','overdue','upcoming','unscheduled'].includes(initialScope)?initialScope:'all';
  const showDone=toolbar.createEl('label',{cls:'writer-native-task-completed'});
  const checkbox=showDone.createEl('input',{attr:{type:'checkbox'}});showDone.createSpan({text:writerUi('Mostrar concluídas','Show completed')});
- const results=root.createDiv({cls:'writer-native-task-results'});let data=[],loading=false,closed=false;
+ const results=root.createDiv({cls:'writer-native-task-results'});let data=[],loading=false,closed=false,rescan=false;
  let scan={total:0,examined:0,failed:0,limited:0},scanFailed=false;
  const render=()=>{
   if(closed)return;results.empty();
@@ -294,14 +401,21 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
      try{await writerV12ToggleTask(plugin,row.file,row.entry,row.source);if(!closed)await refresh();}
      catch(error){if(!closed){button.checked=row.entry.done;button.disabled=false;new Notice(String(error.message||error));}}
     });
-    el.createEl('button',{text:writerUi('Abrir','Open'),attr:{type:'button'}}).addEventListener('click',()=>{
+    const actions=el.createDiv({cls:'writer-native-task-row-actions'});
+    const edit=actions.createEl('button',{cls:'writer-native-task-edit-due',attr:{type:'button',
+     title:writerUi('Editar prazo','Edit due date'),'aria-label':writerUi('Editar prazo: ','Edit due date: ')+row.entry.text.slice(0,160)}});
+    const glyph=edit.createSpan({attr:{'aria-hidden':'true'}});
+    require('obsidian').setIcon?.(glyph,'calendar-clock');
+    edit.disabled=loading;
+    edit.addEventListener('click',()=>{if(!closed&&!loading&&writerV139TaskOn(plugin))writerTaskDueEditor(plugin,row,()=>void refresh());});
+    actions.createEl('button',{text:writerUi('Abrir','Open'),attr:{type:'button'}}).addEventListener('click',()=>{
      if(closed||!writerV139TaskOn(plugin))return;modal.close();void plugin.app.workspace.getLeaf(false).openFile(row.file,{eState:{line:row.entry.line}});
     });
    }
   }
  };
  const refresh=async()=>{
-  if(loading||closed)return;if(!writerV139TaskOn(plugin)){render();return;}loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
+  if(closed)return;if(loading){rescan=true;return;}if(!writerV139TaskOn(plugin)){render();return;}loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
   try{
    const all=plugin.app.vault.getMarkdownFiles(),files=all.slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
    const report={total:all.length,examined:0,failed:0,limited:0};
@@ -317,7 +431,12 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
    }
    data=rows;scan=report;scanFailed=false;
   }catch(error){scanFailed=true;if(!closed)new Notice(String(error.message||error));}
-  finally{loading=false;if(!closed&&writerV139TaskOn(plugin))render();}
+  finally{
+   loading=false;
+   if(!closed&&writerV139TaskOn(plugin)){
+    if(rescan){rescan=false;void refresh();}else render();
+   }
+  }
  };
  query.addEventListener('input',render);checkbox.addEventListener('change',render);scope.addEventListener('change',render);
  new Setting(root).addButton(button=>button.setButtonText(writerUi('Nova tarefa','New task')).onClick(()=>writerV139TaskQuickAdd(plugin,()=>void refresh())))

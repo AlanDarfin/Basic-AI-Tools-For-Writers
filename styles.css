@@ -9755,6 +9755,15 @@ body.is-mobile .writer-v925-grid .writer-v1205-resize-handle{display:none;}
  .writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more{transition:none;}
 }
 
+.writer-v1205-bookmarks-widget .writer-home-bookmark-filters{
+ display:flex;flex-wrap:wrap;gap:6px;min-width:0;margin-block:0 8px;
+}
+.writer-home-bookmark-filters>input{flex:1 1 125px;min-width:0;max-width:100%;box-sizing:border-box}
+.writer-home-bookmark-filters>select{flex:1 1 112px;min-width:0;max-width:100%;text-overflow:ellipsis}
+.writer-home-bookmark-results{min-width:0}
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmarks-expand[hidden]{display:none}
+body.is-mobile .writer-home-bookmark-filters>:is(input,select){min-height:44px}
+
 /* 12.0.5: timeline overflow, marker alignment and distinguishable themes. */
 .writer-v95-timeline{
  --writer-v95-marker-size:18px;
@@ -11881,7 +11890,6 @@ body.is-mobile .writer-folder-focus-reset{min-height:44px;}
  background:var(--background-secondary);color:var(--text-muted);
 }
 .writer-native-task-due.is-overdue{color:var(--text-error);font-weight:var(--font-medium);}
-.writer-native-task-row>button{flex:none;}
 .writer-native-task-capture .setting-item{min-width:0;gap:10px;}
 .writer-native-task-capture .setting-item-control{min-width:0;max-width:100%;}
 .writer-native-task-capture :is(input,select){max-width:100%;}
@@ -11899,7 +11907,6 @@ body.is-mobile .writer-folder-focus-reset{min-height:44px;}
  .writer-native-task-toolbar>input[type="search"]{flex-basis:100%;}
  .writer-native-task-toolbar>:is(input,select){min-height:44px;}
  .writer-native-task-completed{min-height:44px;}
- .writer-native-task-row>button{min-height:44px;min-width:54px;}
  .writer-native-task-check{min-width:44px;min-height:44px;}
  .writer-native-task-check>input[type="checkbox"]{width:24px;height:24px;}
  .writer-native-task-capture .setting-item{flex-wrap:wrap;}
@@ -11907,6 +11914,24 @@ body.is-mobile .writer-folder-focus-reset{min-height:44px;}
  .writer-native-task-capture .setting-item-control{flex:1 1 100%;justify-content:flex-start;}
  .writer-native-task-capture .setting-item-control>:is(input,select,button){min-height:44px;}
  .writer-native-task-capture .setting-item-control>input{width:100%;}
+}
+
+.writer-native-task-row-actions{
+ display:flex;flex:0 0 auto;flex-wrap:wrap;justify-content:flex-end;gap:4px;
+}
+.writer-native-task-row-actions>button{min-height:32px}
+.writer-native-task-edit-due>span{display:flex;align-items:center}
+.writer-native-task-edit-due svg{width:16px;height:16px}
+.writer-native-task-reschedule{display:grid;min-width:0;gap:10px}
+.writer-native-task-reschedule p{margin-block:0;overflow-wrap:anywhere}
+.writer-native-task-reschedule label{display:grid;gap:5px}
+.writer-native-task-reschedule input[type="date"]{min-width:0;max-width:100%;width:100%;box-sizing:border-box}
+.writer-native-task-date-presets{display:flex;flex-wrap:wrap;gap:6px}
+@media(max-width:600px){
+ .writer-native-task-row{gap:8px}
+ .writer-native-task-row-actions{flex-direction:column}
+ .writer-native-task-row-actions>button{min-height:44px;min-width:44px}
+ .writer-native-task-reschedule :is(input,button){min-height:44px}
 }
 
 /* Reserve real editor space for docked formatting controls. */
@@ -12018,4 +12043,46 @@ body.is-mobile :is(.writer-story-plan,.writer-story-modal) :is(.writer-story-act
  .writer-story-plan>.writer-story-actions>button{flex:1 0 44px;padding-inline:4px}
  .writer-story-plan>.writer-story-actions>button>.writer-story-label{display:none}
 }
+
+/* The editorial queue is scoped to the Projects side panel and its compose dialog. */
+.writer-editorial-queue,.writer-editorial-list,.writer-editorial-section{
+ display:grid;gap:8px;min-width:0;
+}
+.writer-editorial-queue :is(h4,h5,p){margin:0;overflow-wrap:anywhere}
+.writer-editorial-queue .writer-v4-comment-card>p{margin-block:6px}
+.writer-editorial-controls{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:5px;min-width:0;
+}
+.writer-editorial-controls :is(select,input,button),.writer-editorial-compose textarea{
+ width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+}
+.writer-editorial-controls select{text-overflow:ellipsis}
+.writer-editorial-actions{display:flex;flex-wrap:wrap;gap:4px;margin-block-start:5px}
+.writer-editorial-controls>button,.writer-editorial-actions>button{
+ max-width:100%;height:auto;min-height:32px;white-space:normal;overflow-wrap:anywhere;
+}
+.writer-editorial-compose label{display:grid;gap:6px}
+.writer-editorial-compose blockquote{
+ white-space:pre-wrap;overflow-wrap:anywhere;max-height:10rem;overflow:auto;margin-inline:0;
+}
+body.is-mobile .writer-editorial-controls :is(select,input,button),
+body.is-mobile .writer-editorial-actions>button{min-height:44px}
+
+.writer-prose-review{display:grid;gap:8px;min-width:0;overflow-wrap:anywhere}
+.writer-prose-review :is(h4,h5,p,dl,dd,ul){margin-block:0}
+.writer-prose-review .writer-prose-distribution{
+ display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;align-items:center;
+}
+.writer-prose-distribution dd{display:grid;grid-template-columns:3ch minmax(0,1fr);align-items:center;gap:6px;margin-inline:0}
+.writer-prose-distribution progress{width:100%;height:8px;accent-color:var(--interactive-accent)}
+.writer-prose-findings{border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);padding:6px 8px}
+.writer-prose-findings>summary{padding-block:3px;cursor:pointer}
+.writer-prose-findings[open]>summary{margin-block-end:6px}
+.writer-prose-review .writer-prose-jumps{display:grid;gap:4px;padding:0;list-style:none}
+.writer-prose-jumps>li>button{
+ width:100%;max-width:100%;height:auto;min-height:32px;text-align:start;
+ white-space:normal;overflow-wrap:anywhere;padding:5px 8px;
+}
+body.is-mobile .writer-prose-findings>summary{min-height:40px;align-content:center}
+body.is-mobile .writer-prose-jumps>li>button{min-height:44px}
 /* END V8 MODULAR STYLES */

@@ -680,7 +680,8 @@ In `beat-sheet`, use `Title | content` on each line. Spaces around the separator
 are required, so wiki-link aliases such as `[[Note|Alias]]` stay intact. A block
 is limited to 32,000 characters and a beat sheet to 80 lines.
 
-**Writing: review repetitions** analyzes the selection, or the current note if
-nothing is selected. It shows frequent and nearby repetitions locally, without
-editing or transmitting the note. Names and deliberate repetition can appear;
-only the first 200,000 characters are analyzed.
+**Writing: rhythm and repetition** analyzes the selection, or the current note if
+nothing is selected. It groups sentences into 1–12, 13–24 and 25+ words,
+shows the longest sentences and paragraphs, and lists nearby repetitions.
+Click a finding to return to the original text. Counts are approximate and
+analysis stays local. A report covers at most 200,000 characters.

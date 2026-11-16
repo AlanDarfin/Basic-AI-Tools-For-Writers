@@ -101,10 +101,6 @@ function writerV137TypewriterSettings(plugin,panel){
   }));
  refresh();
 }
-function writerV4NoteEditor(plugin,file){
- const leaves=plugin.app.workspace.getLeavesOfType('markdown')||[];
- return leaves.find(leaf=>leaf.view?.file?.path===file?.path)?.view?.editor||null;
-}
 class WriterV4Mentions extends EditorSuggest{
  constructor(plugin){super(plugin.app);this.plugin=plugin;}
  get opts(){return this.plugin.settings.writerV4Extras.mention;}
@@ -295,13 +291,14 @@ class WriterV4Extras{
   }));
   this.lastNote=this.getCurrentNote();
   p.registerEvent(p.app.vault.on('rename',(file,oldPath)=>{
-   if(!(file instanceof TFile))return;
-   const store=this.config.comments||{};
-   if(store[oldPath]){
-    store[file.path]=[...(store[file.path]||[]),...store[oldPath]];
-    delete store[oldPath];p.saveSettings().catch(console.warn);
-   }
+   if(!oldPath||!file?.path||oldPath===file.path||!Object.keys(this.config.comments).length)return;
+   void writerEditorialRename(p,oldPath,file.path).catch(error=>console.warn('[Basic] Could not save renamed comment paths',error));
   }));
+  p.addCommand({id:'longform-editorial-queue',name:writerUi('Longform: abrir fila de revisão','Longform: open review queue'),checkCallback:checking=>{
+   if(!writerModuleOn(p,'projects')||!writerModuleOn(p,'comments'))return false;
+   if(!checking)void p.openProjects('comments').catch(writerEditorialError);
+   return true;
+  }});
   p.registerEditorSuggest(new WriterV4Mentions(p));
   p.addCommand({id:'v4-add-comment',name:writerUi('Comentar seleção','Comment on selection'),editorCallback:(editor,view)=>{
     this.commentSelection(view?.file,editor);
@@ -492,87 +489,11 @@ class WriterV4Extras{
  }
  commentSelection(file,editor){
   if(!writerModuleOn(this.plugin,'comments'))return new Notice(writerUi('Comentários ocultos nas configurações.','Comments are hidden in settings.'));
-  if(!file||file.extension!=='md'||!editor?.getSelection?.()?.trim())return new Notice(writerUi('Selecione um trecho para comentar.','Select text to comment on.'));
-  const quote=editor.getSelection().slice(0,2000);
-  const modal=new Modal(this.plugin.app);
-  let body='';
-  modal.onOpen=()=>{
-   modal.setTitle(writerUi('Comentar trecho','Comment on passage'));
-   modal.contentEl.createEl('blockquote',{text:quote.slice(0,250)});
-   new Setting(modal.contentEl).setName(writerUi('Comentário','Comment')).addTextArea(t=>{t.inputEl.rows=5;t.onChange(v=>body=v);});
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
-   .addButton(b=>b.setButtonText(writerUi('Salvar comentário','Save comment')).setCta().onClick(async()=>{
-    if(!body.trim())return;
-    const record={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),quote,
-      body:body.trim().slice(0,10000),at:new Date().toISOString(),resolved:false};
-    const items=this.config.comments[file.path]||(this.config.comments[file.path]=[]);
-    items.push(record);await this.plugin.saveSettings();modal.close();
-    new Notice(writerUi('Comentário adicionado.','Comment added.'));
-   }));
-  };
-  modal.open();
+  const capture=file?.extension==='md'?writerEditorialCapture(editor):null;
+  if(!capture)return new Notice(writerUi('Selecione um trecho para comentar.','Select text to comment on.'));
+  writerEditorialCompose(this.plugin,file,capture);
  }
- async jumpComment(file,comment){
-  await this.plugin.app.workspace.getLeaf(false).openFile(file);
-  const view=this.currentEditor();
-  if(!view?.editor)return;
-  const text=view.editor.getValue(),pos=text.indexOf(comment.quote);
-  if(pos<0)return new Notice(writerUi('Trecho original alterado; comentário preservado.','Quote changed; comment is preserved.'));
-  view.editor.setSelection(view.editor.offsetToPos(pos),view.editor.offsetToPos(pos+comment.quote.length));
-  view.editor.scrollIntoView({from:view.editor.offsetToPos(pos),to:view.editor.offsetToPos(pos+comment.quote.length)},true);
- }
- drawComments(panel,project,projectsView){
-  panel.createEl('h4',{text:writerUi('Comentários do manuscrito','Manuscript comments')});
-  panel.createEl('p',{text:writerUi('Anotações locais ligadas a trechos dos capítulos. Não são enviadas à IA.','Local annotations anchored to passages in chapters. Never sent to AI.'),cls:'writer-tools-muted'});
-  const scenes=projectsView.activeScenes(project),files=[project.file,...scenes.map(s=>projectsView.resolveScene(project,s.title)).filter(Boolean)];
-  const unique=[...new Map(files.map(f=>[f.path,f])).values()];
-  const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
-  const dropdown=bar.createEl('select',{attr:{'aria-label':writerUi('Capítulo para comentar','Chapter to comment')}});
-  for(const file of unique){const opt=dropdown.createEl('option',{text:file.basename});opt.value=file.path;}
-  const current=projectsView.commentsFilePath||this.getCurrentNote()?.path||project.file.path;
-  dropdown.value=unique.some(f=>f.path===current)?current:project.file.path;
-  dropdown.addEventListener('change',()=>{projectsView.commentsFilePath=dropdown.value;projectsView.render();});
-  bar.createEl('button',{text:writerUi('Comentar seleção','Comment selection')}).addEventListener('click',()=>{
-   const file=unique.find(f=>f.path===dropdown.value),editor=writerV4NoteEditor(this.plugin,file);
-   if(!editor)return new Notice(writerUi('Abra o capítulo e selecione o texto antes de comentar.','Open the chapter and select text to comment.'));
-   this.commentSelection(file,editor);
-  });
-  const filter=panel.createEl('label',{cls:'writer-v4-comment-filter'});
-  const check=filter.createEl('input',{attr:{type:'checkbox'}});check.checked=!!projectsView.showResolvedComments;
-  filter.createSpan({text:writerUi('Mostrar comentários resolvidos','Show resolved comments')});
-  check.addEventListener('change',()=>{projectsView.showResolvedComments=check.checked;projectsView.render();});
-  let count=0;
-  for(const file of unique){
-   const items=(this.config.comments[file.path]||[]).filter(c=>projectsView.showResolvedComments||!c.resolved);
-   if(!items.length)continue;
-   const section=panel.createDiv({cls:'writer-v4-comment-section'});
-   section.createEl('h5',{text:file.basename});
-   for(const comment of items){
-    count++;
-    const card=section.createDiv({cls:'writer-v4-comment-card'+(comment.resolved?' is-resolved':'')});
-    card.createEl('blockquote',{text:comment.quote||''});
-    card.createEl('p',{text:comment.body});
-    card.createEl('small',{text:new Date(comment.at).toLocaleString()});
-    const actions=card.createDiv({cls:'writer-v4-actions'});
-    actions.createEl('button',{text:writerUi('Localizar','Locate')}).addEventListener('click',()=>this.jumpComment(file,comment));
-    actions.createEl('button',{text:comment.resolved?writerUi('Reabrir','Reopen'):writerUi('Resolver','Resolve')}).addEventListener('click',async()=>{
-     comment.resolved=!comment.resolved;await this.plugin.saveSettings();projectsView.render();
-    });
-    actions.createEl('button',{text:writerUi('Excluir','Delete')}).addEventListener('click',()=>{
-     const modal=new Modal(this.plugin.app);
-     modal.onOpen=()=>{
-      modal.setTitle(writerUi('Excluir comentário?','Delete comment?'));
-      new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
-       .addButton(b=>b.setButtonText(writerUi('Excluir','Delete')).setWarning().onClick(async()=>{
-        this.config.comments[file.path]=this.config.comments[file.path].filter(c=>c.id!==comment.id);
-        await this.plugin.saveSettings();modal.close();projectsView.render();
-       }));
-     };modal.open();
-    });
-   }
-  }
-  if(!count)panel.createEl('p',{text:writerUi('Nenhum comentário para exibir.','No comments to show.'),cls:'writer-tools-muted'});
- }
+ drawComments(panel,project,projectsView){writerEditorialQueue(projectsView,panel,project);}
  runEditorAIAction(editor,kind){
    if(!writerModuleOn(this.plugin,'wordwise'))return new Notice(writerUi('Ações de IA ocultas nas configurações.','AI actions are hidden in settings.'));
    if(!writerModuleOn(this.plugin,'wordwise')||this.config.wordwise.enabled===false)return new Notice(writerUi('Ative as ações de IA nas configurações.','Enable AI actions in settings.'));

@@ -175,7 +175,7 @@ limit: 80
 ~~~
 ~~~~
 
-The task dashboard filters All, Today, Overdue, Next seven days and No due date. It reads Markdown task lines outside note properties, HTML/Obsidian comments and code fences. Checkbox changes recheck the task and source before an atomic write. Task quick-add previews the destination and line before appending to a chosen existing Markdown note; unsaved or concurrent changes require a fresh preview.
+The task dashboard filters All, Today, Overdue, Next seven days and No due date. It reads Markdown task lines outside note properties, HTML/Obsidian comments and code fences. Checkbox changes recheck the task and source before an atomic write. Task quick-add previews the destination and line before appending to a chosen existing Markdown note; unsaved or concurrent changes require a fresh preview. The calendar icon on each task edits its due date in place, preserves existing `📅` or `[due:: …]` syntax and offers shortcuts for today, tomorrow, seven days from today and no due date. Duplicate or invalid markers must be corrected in the original note.
 
 The summary shows examined/total notes. **Incomplete search** explains notes outside the configured limit, read failures or files with more than 250 valid task lines; only the first 250 tasks per file are included. **Search options** opens **Tasks & capture** to review the existing limit. Limits are not increased automatically. If refresh fails, a warning identifies the retained earlier results.
 

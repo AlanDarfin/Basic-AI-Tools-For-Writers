@@ -21,12 +21,13 @@ class Element{
  querySelector(selector){return this.children.find(el=>el.options.cls?.split(' ').includes(selector.slice(1)))||null;}
  querySelectorAll(){return [];}
 }
-function fixture(language='pt-BR',draft='Principal'){
+function fixture(language='pt-BR',draft='Principal',comments=true){
  const calls=[],prompts=[],notices=[];
  const obsidian={ItemView:class{},Modal:class{open(){prompts.push(this);}},
   Notice:class{constructor(message){notices.push(message);}},
   getLanguage:()=>language,setIcon:(element,icon)=>{element.icon=icon;}};
- const context=vm.createContext({module:{exports:{}},require:()=>obsidian});
+ const context=vm.createContext({module:{exports:{}},require:()=>obsidian,
+  writerModuleOn:(_plugin,id)=>id!=='comments'||comments,writerEditorialError:error=>{throw error;}});
  vm.runInContext(projectsSource,context);
  vm.runInContext(dividersSource,context);
  const view=Object.create(context.module.exports.ProjectsView.prototype);
@@ -34,7 +35,7 @@ function fixture(language='pt-BR',draft='Principal'){
  const prefs={drafts:{Alternativa:[]}};
  Object.assign(view,{draft,app:{},prefs:()=>prefs,indexes:()=>[],activeScenes:()=>[],resolveScene:()=>null,
   addScene:current=>calls.push(['scene',current]),createLinkedDraft:current=>calls.push(['draft',current]),
-  plugin:{saveSettings:async()=>{calls.push('save');}},render:async()=>{calls.push('render');},
+  plugin:{saveSettings:async()=>{calls.push('save');},openProjects:async tab=>{calls.push(['tab',tab]);}},render:async()=>{calls.push('render');},
   savePrefs:async()=>{calls.push('prefs');},openFile:file=>calls.push(['open',file])});
  const panel=new Element();
  return {panel,project,view,prefs,calls,prompts,notices};
@@ -54,16 +55,16 @@ function checkButtons(bar,expected){
  });
  return controls;
 }
-test('scenes have four ordered icon buttons with localized names and existing actions',()=>{
+test('scenes have five ordered icon buttons with localized names and existing actions',()=>{
  const {panel,project,view,calls,prompts}=fixture();
  view.drawScenes(panel,project);
  const bar=panel.querySelector('.writer-project-scene-actions-bar');
- const [scene,divider,draft,toggle]=checkButtons(bar,[
+ const [scene,divider,draft,review,toggle]=checkButtons(bar,[
   ['file-plus','Adicionar cena'],['separator-horizontal','Adicionar separador de arco'],
-  ['notebook-pen','Novo rascunho Longform'],['chevrons-down-up','Recolher tudo']]);
- scene.click();draft.click();divider.click();
+  ['notebook-pen','Novo rascunho Longform'],['message-square-text','Fila de revisão'],['chevrons-down-up','Recolher tudo']]);
+ scene.click();draft.click();divider.click();review.click();
  assert.match(prompts[0].titleText,/Novo separador de arco/);
- assert.deepEqual(calls,[['scene',project],['draft',project]]);
+ assert.deepEqual(calls,[['scene',project],['draft',project],['tab','comments']]);
  assert.equal(toggle.disabled,true);
 });
 const renderTree=({project,view})=>{
@@ -133,4 +134,12 @@ test('single-note projects retain their open-text action without scene controls'
  assert.equal(open.options.text,'Open text');
  open.click();
  assert.deepEqual(calls,[['open',project.file]]);
+});
+
+test('review shortcut follows the existing comments module switch',()=>{
+ const {panel,project,view}=fixture('en','Principal',false);
+ view.drawScenes(panel,project);
+ const bar=panel.querySelector('.writer-project-scene-actions-bar');
+ assert.equal(buttons(bar).length,4);
+ assert.equal(buttons(bar).some(button=>button.options.attr['aria-label']==='Review queue'),false);
 });

@@ -1,0 +1,23 @@
+/* The editorial queue is scoped to the Projects side panel and its compose dialog. */
+.writer-editorial-queue,.writer-editorial-list,.writer-editorial-section{
+ display:grid;gap:8px;min-width:0;
+}
+.writer-editorial-queue :is(h4,h5,p){margin:0;overflow-wrap:anywhere}
+.writer-editorial-queue .writer-v4-comment-card>p{margin-block:6px}
+.writer-editorial-controls{
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,9rem),1fr));gap:5px;min-width:0;
+}
+.writer-editorial-controls :is(select,input,button),.writer-editorial-compose textarea{
+ width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+}
+.writer-editorial-controls select{text-overflow:ellipsis}
+.writer-editorial-actions{display:flex;flex-wrap:wrap;gap:4px;margin-block-start:5px}
+.writer-editorial-controls>button,.writer-editorial-actions>button{
+ max-width:100%;height:auto;min-height:32px;white-space:normal;overflow-wrap:anywhere;
+}
+.writer-editorial-compose label{display:grid;gap:6px}
+.writer-editorial-compose blockquote{
+ white-space:pre-wrap;overflow-wrap:anywhere;max-height:10rem;overflow:auto;margin-inline:0;
+}
+body.is-mobile .writer-editorial-controls :is(select,input,button),
+body.is-mobile .writer-editorial-actions>button{min-height:44px}

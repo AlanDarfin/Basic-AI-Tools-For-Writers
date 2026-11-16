@@ -33,6 +33,18 @@ function writerV8HomeValidURL(input){
   return parsed.href;
  }catch(_){return '';}
 }
+function writerHomeBookmarkSearchText(value){
+ return String(value||'').normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+}
+function writerHomeBookmarkResults(bookmarks,query='',group=null){
+ const words=writerHomeBookmarkSearchText(query).trim().split(/\s+/).filter(Boolean);
+ return bookmarks.filter(bookmark=>{
+  if(group!==null&&(bookmark.group||'')!==group)return false;
+  if(!words.length)return true;
+  const text=writerHomeBookmarkSearchText([bookmark.title,bookmark.url,bookmark.group].join(' '));
+  return words.every(word=>text.includes(word));
+ });
+}
 function writerV8HomeIsMobile(plugin){
  return Boolean(plugin.app?.isMobile||require('obsidian').Platform?.isMobile);
 }

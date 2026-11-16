@@ -60,6 +60,8 @@ Under **General → Features**, turn features off or on to choose which entries 
 
 Open **Projects** or the **Library** to create a book or add an existing note. Chapters remain separate Markdown files. The **Add story arc divider** icon in Longform's Scenes toolbar inserts a visual line, with an optional caption and drag/touch reordering. Dividers stay in Basic settings per draft and do not enter notes or compiled manuscripts. Continuous writing uses an editor for each expanded chapter; saves are explicit and check for concurrent changes.
 
+Use the icon tabs under **Writing**, **World**, or **Project** to open a section. On narrow screens, swipe the tab strip sideways to see the remaining sections.
+
 Chapter drafts have local recovery copies. Use **Books: recover drafts** to inspect them, save a separate Markdown copy or discard an entry. A changed original is kept separate for review. Recovery copies and version snapshots serve different purposes; neither replaces an independent backup. Temporary session drafts stay in memory until you save them.
 
 To assemble a manuscript, choose **Books: compile Markdown manuscript**, select saved files or current writing, review the preview and create a new file under `Basic Exports/`. Compilation includes all chapters in the selected draft, beyond the chapter-editor display limit. Missing chapters or conflicting versions block export. Refresh the preview to include later changes.

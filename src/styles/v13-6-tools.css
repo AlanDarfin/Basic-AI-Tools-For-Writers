@@ -2,15 +2,54 @@
 .dictionary-view-content.writer-tool-root{
  gap:10px;
 }
-.dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs{
- display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
- gap:4px;overflow:visible;align-items:stretch;
- padding:0 0 8px;
+/* The Basic AI and Longform strips share the same active underline and sizing. */
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs{
+ display:flex;flex-flow:row nowrap;align-items:stretch;justify-content:flex-start;
+ gap:3px;padding:0 0 3px;
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:none;
 }
-body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button{
- width:100%;min-width:0;max-width:100%;min-height:36px;
- padding:7px 5px;white-space:normal;overflow-wrap:normal;
- line-height:1.3;box-shadow:none;
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs>button{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ width:auto;min-height:var(--writer-sidebar-touch-height,34px);height:auto;margin:0;padding:5px 8px;
+ border:0;border-bottom:2px solid transparent;border-radius:var(--radius-s) var(--radius-s) 0 0;
+ background:transparent;box-shadow:none;color:var(--text-muted);
+ font-size:var(--font-ui-smaller);line-height:1.2;white-space:nowrap;
+}
+body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{flex:1 0 0;min-width:44px}
+body .writer-project-root .writer-project-tabs.writer-sidebar-tabs>button{flex:1 0 auto;min-width:44px;max-width:168px}
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs>button.is-active{
+ border-bottom-color:var(--interactive-accent);background:var(--background-modifier-hover);color:var(--text-normal);box-shadow:none;
+}
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs>button:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-3px;
+}
+body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button[hidden]{display:none}
+body.is-mobile .writer-sidebar-tabs{--writer-sidebar-touch-height:44px}
+.writer-sidebar-tabs .writer-sidebar-tab-label{
+ display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.writer-sidebar-tabs .writer-v901-nav-icon{flex:0 0 auto}
+.writer-tool-root .writer-sidebar-icon-action{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:0;
+}
+.writer-tool-root .writer-sidebar-icon-action .writer-v901-nav-icon svg{display:block;width:16px;height:16px}
+.writer-sidebar-header .writer-sidebar-action-label{
+ min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+@container writer-sidebar (max-width:400px){
+ body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{flex-direction:column;gap:3px;padding-inline:3px}
+}
+@container writer-sidebar (max-width:205px){
+ .writer-tool-root .writer-sidebar-tab-label,
+ .writer-sidebar-header .writer-sidebar-action-label{display:none}
+}
+@container basic-project (max-width:400px){
+ body .writer-project-root .writer-project-tabs.writer-sidebar-tabs>button{
+  flex-direction:column;gap:3px;max-width:110px;padding-inline:7px;
+ }
+}
+@container basic-project (max-width:205px){
+ .writer-project-root .writer-sidebar-tab-label{display:none}
 }
 body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-tool-panel{
  gap:10px;padding:6px 0 12px;
@@ -128,12 +167,6 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-pa
  color:var(--text-accent);
 }
 @container writer-sidebar (max-width:300px){
- .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs{
-  grid-template-columns:repeat(2,minmax(0,1fr));
- }
- body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button{
-  min-height:38px;
- }
  .dictionary-view-content.writer-tool-root .writer-review-engine-row{
   grid-template-columns:minmax(0,1fr);gap:4px;
  }
@@ -143,7 +176,7 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-pa
  .dictionary-view-content.writer-tool-root :is(input[type="search"],textarea){
   font-size:16px;
  }
- body .dictionary-view-content.writer-tool-root :is(.writer-tool-tabs.writer-tool-tabs>button,.dictionary-controls button,.dictionary-actions button,.writer-file-actions>button){
+ body .dictionary-view-content.writer-tool-root :is(.dictionary-controls button,.dictionary-actions button,.writer-file-actions>button){
   min-height:44px;
  }
  .dictionary-view-content.writer-tool-root .writer-chat-composer textarea{

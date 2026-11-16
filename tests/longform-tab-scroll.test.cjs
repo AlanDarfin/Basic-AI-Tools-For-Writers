@@ -36,7 +36,7 @@ class Element{
  }
 }
 const TFile=class{};const noopClass=class{};
-const obsidian={ItemView:noopClass,TFile,TFolder:noopClass,Notice:noopClass,Modal:noopClass,Menu:noopClass,Setting:noopClass,parseYaml:()=>({}),stringifyYaml:()=>'',getLanguage:()=> 'pt-BR'};
+const obsidian={ItemView:noopClass,TFile,TFolder:noopClass,Notice:noopClass,Modal:noopClass,Menu:noopClass,Setting:noopClass,parseYaml:()=>({}),stringifyYaml:()=>'',getLanguage:()=> 'pt-BR',setIcon:(el,icon)=>{el.icon=icon;}};
 let relationsRenders=0,sessionsRenders=0,managerOpens=0;
 const sandbox={
  module:{exports:{}},require:id=>{if(id==='obsidian')return obsidian;throw Error('Unexpected module '+id);},
@@ -72,8 +72,10 @@ test('switching to Sessions only changes the page, not the horizontal tab DOM',a
  let rerenderCount=0;
  const originalRender=view.render;
  view.render=async function(){rerenderCount++;return originalRender.call(this);};
- const sessions=originalChildren.find(x=>x.text==='Sessões');
+ const sessions=originalChildren.find(x=>x.attributes['aria-label']==='Sessões');
  assert.ok(sessions);
+ assert.equal(sessions.children[0].icon,'clock');
+ assert.equal(sessions.children[1].text,'Sessões');
  const previousSessions=sessionsRenders;
  sessions.click();
  assert.equal(view.activeTab,'sessions');
@@ -104,6 +106,7 @@ test('group switches only refresh tab buttons, preserving the strip and group po
  assert.equal(view.tabGroup,'world');
  assert.equal(tabs.scrollLeft,230);
  assert.equal(view.tabScrollPositions.writing,100);
+ assert.equal(view.activeTab,'relations');
  assert.equal(rerenderCount,0);
 });
 
@@ -130,10 +133,32 @@ test('series summary stays in a separate second row when changing Longform tabs'
  assert.equal(field.text,'Bonfire Saga · Extra Stories');
  assert.equal(field.attributes.title,field.text,'Full series names accessible despite ellipsis');
  const tabs=view.root.querySelector('.writer-project-tabs');
- tabs.children.find(x=>x.text==='Sessões').click();
+ tabs.children.find(x=>x.attributes['aria-label']==='Sessões').click();
  assert.equal(view.root.querySelector('.writer-project-series-row'),row,'Tab switch must not move or recreate series UI');
  assert.equal(field.text,'Bonfire Saga · Extra Stories');
  view.plugin.settings.v7Series=[];
  view.refreshSeriesMembership();
  assert.equal(field.text,'Sem série');
+});
+
+test('Longform uses one accessible icon tab strip instead of the compact select',async()=>{
+ const view=viewFixture();
+ await view.render();
+ assert.equal(view.root.querySelector('.writer-v136-project-sections'),null);
+ const tabs=view.root.querySelector('.writer-sidebar-tabs');
+ assert.equal(tabs.attributes.role,'tablist');
+ assert.ok(tabs.children.every(tab=>tab.attributes.role==='tab'&&tab.children[0].icon&&tab.children[1].text));
+ const selected=tabs.children.find(tab=>tab.attributes['aria-selected']==='true');
+ const panel=view.root.children.find(el=>el.attributes.id===selected.attributes['aria-controls']);
+ assert.equal(panel.attributes['aria-labelledby'],selected.attributes.id);
+});
+
+test('shared sidebar strip stays in one scrolling row with icon-only tabs at the smallest widths',()=>{
+ const projectCss=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const sidebarCss=fs.readFileSync('src/styles/v13-6-tools.css','utf8');
+ assert.doesNotMatch(projectCss,/writer-v136-project-sections|writer-project-tabs[^{}]*\{\s*display:none/);
+ assert.match(sidebarCss,/\.writer-sidebar-tabs\{[^}]*flex-flow:row nowrap;[^}]*overflow-x:auto/);
+ assert.match(sidebarCss,/\.writer-sidebar-tabs>button\.is-active\{[^}]*border-bottom-color:var\(--interactive-accent\)/);
+ assert.match(sidebarCss,/body\.is-mobile \.writer-sidebar-tabs\{--writer-sidebar-touch-height:44px\}/);
+ assert.match(sidebarCss,/@container basic-project \(max-width:205px\)\{\s*\.writer-project-root \.writer-sidebar-tab-label\{display:none\}/);
 });

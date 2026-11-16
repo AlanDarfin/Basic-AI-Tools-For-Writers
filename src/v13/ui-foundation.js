@@ -177,16 +177,16 @@ function writerV132ProtectStatusBar(plugin,item){
  if(!already)plugin.register?.(()=>bar.classList.remove('writer-v132-status-host'));
 }
 
-/** Keep horizontal project tabs usable without a pointer or a visible scrollbar. */
+/** Keep horizontal sidebar tabs usable without a pointer or a visible scrollbar. */
 function writerV136BindProjectTabs(strip){
- if(!strip||strip.dataset.basicV136Keyboard==='1')return;
+ if(!strip?.dataset||strip.dataset.basicV136Keyboard==='1')return;
  strip.dataset.basicV136Keyboard='1';
  strip.addEventListener('keydown',event=>{
   if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
-  const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
+  const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled):not([hidden])'));
   if(!tabs.length)return;
   const target=event.target.closest?.('button[role="tab"]');
-  let index=tabs.indexOf(target);
+  const index=tabs.indexOf(target);
   if(index<0)return;
   const direction=strip.ownerDocument?.defaultView?.getComputedStyle?.(strip)?.direction==='rtl'?-1:1;
   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
@@ -195,6 +195,11 @@ function writerV136BindProjectTabs(strip){
   tabs[next].focus();tabs[next].click();
   tabs[next].scrollIntoView?.({block:'nearest',inline:'nearest'});
  });
+}
+function writerSidebarButtonIcon(button,icon,label,labelClass='writer-sidebar-action-label'){
+ const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon?.(glyph,icon);
+ button.createSpan({cls:labelClass,text:label});
 }
 
 /** Named tool panes let compact layouts follow the pane width, not the window. */

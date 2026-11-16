@@ -174,6 +174,33 @@ test('typing and provider changes search saved definitions without sending text'
  assert.match(env.data.get('Dicionario.md'),/# caminho\n\ndefinition from provider/);
 });
 
+test('Basic AI sidebar keeps named icon tabs and excludes modules that are off',async()=>{
+ const {plugin,view}=runtime();
+ await view.onOpen();
+ const strip=view.contentEl.querySelectorAll('.writer-sidebar-tabs')[0];
+ assert.equal(strip.attrs.role,'tablist');
+ assert.ok(view.contentEl.querySelectorAll('.writer-tools-launcher')[0].children.some(el=>el.icon==='wrench'));
+ assert.deepEqual(strip.children.map(tab=>[tab.attrs['aria-label'],tab.children[0].icon]),[
+  ['Definitions','book-open'],['Translation','languages'],['Chat','messages-square'],['Review','spell-check']
+ ]);
+ assert.equal(view.tabs.chat.hidden,true);
+ assert.equal(view.tabs.definition.attrs['aria-selected'],'true');
+ assert.equal(view.tabs.definition.tabIndex,0);
+ assert.equal(view.panels.definition.attrs['aria-labelledby'],view.tabs.definition.attrs.id);
+ assert.deepEqual(view.panels.definition.querySelectorAll('.writer-sidebar-icon-action').map(button=>button.children[0].icon),['search','equal','equal-not']);
+ view.tabs.translation.fire('click');
+ assert.equal(view.tabs.translation.attrs['aria-selected'],'true');
+ assert.equal(view.tabs.definition.tabIndex,-1);
+ plugin.settings.visibleModules.translation=false;
+ view.applyModuleVisibility();
+ assert.equal(view.activeTab,'definition');
+ assert.equal(view.tabs.translation.hidden,true);
+ for(const module of ['dictionary','review'])plugin.settings.visibleModules[module]=false;
+ view.applyModuleVisibility();
+ assert.equal(view.activeTab,null);
+ assert.ok(strip.children.every(tab=>tab.hidden&&tab.tabIndex===-1));
+});
+
 test('dictionary creation is explicit and append rechecks duplicates against the latest note',async()=>{
  const {plugin,data,writes,api}=runtime();
  assert.deepEqual(Array.from(await plugin.getEntries()),[]);

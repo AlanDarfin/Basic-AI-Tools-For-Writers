@@ -205,18 +205,18 @@ class ProjectsView extends ItemView{
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   const groupButtons={};
   const tabPrefix=this.writerTabPrefix??=('writer-project-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
-  const compactTabs=this.root.createEl('select',{cls:'writer-v136-project-sections',attr:{'aria-label':lfMsg('Seção do projeto','Project section')}});
-  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
+  const tabs=this.root.createDiv({cls:'writer-project-tabs writer-sidebar-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
   if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
   const panels={};
   const tabButtons={};
+  const lastTabs=this.writerLastGroupTabs??={};
   let rebuildingTabs=false;
   // Keep the tab strip mounted on regular tab changes. Only the selected panel
   // is redrawn, so horizontal scroll, focus and pointer position stay intact.
   const switchTab=id=>{
    if(this.activeTab===id)return;
    this.activeTab=id;
-   compactTabs.value=id;
+   lastTabs[this.tabGroup]=id;
    for(const [key,button] of Object.entries(tabButtons)){
     const selected=key===id;
     button.classList.toggle('is-active',selected);
@@ -233,24 +233,21 @@ class ProjectsView extends ItemView{
   const fillTabs=group=>{
    rebuildingTabs=true;
    tabs.empty();
-   compactTabs.empty();
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
-    const option=compactTabs.createEl('option',{text:name});option.value=id;
     const selected=this.activeTab===id;
-    const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
-     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
+    const btn=tabs.createEl('button',{cls:selected?'is-active':'',
+     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,
+      title:name,'aria-label':name,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
     require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
-    btn.prepend?.(glyph);
+    btn.createSpan({cls:'writer-sidebar-tab-label',text:name});
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
-   compactTabs.value=this.activeTab;
    tabs.scrollLeft=Math.max(0,this.tabScrollPositions[group]||0);
    rebuildingTabs=false;
   };
-  compactTabs.addEventListener('change',()=>switchTab(compactTabs.value));
   for(const group of menuGroups){
    const groupLabel=lfMsg(group.pt,group.en);
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
@@ -261,11 +258,12 @@ class ProjectsView extends ItemView{
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
     if(this.tabGroup===group.id)return;
-    const first=allTabs.find(([id])=>group.tabs.includes(id));
-    if(!first)return;
+    const available=allTabs.filter(([id])=>group.tabs.includes(id));
+    if(!available.length)return;
     this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
+    lastTabs[this.tabGroup]=this.activeTab;
     this.tabGroup=group.id;
-    this.activeTab=first[0];
+    this.activeTab=available.find(([id])=>id===lastTabs[group.id])?.[0]||available[0][0];
     for(const [key,b] of Object.entries(groupButtons)){
      const active=key===group.id;
      b.classList.toggle('is-active',active);

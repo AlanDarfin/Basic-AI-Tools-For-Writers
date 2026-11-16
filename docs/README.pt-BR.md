@@ -60,6 +60,8 @@ Em **Geral → Recursos**, ligue ou desligue os recursos para escolher quais ent
 
 Abra **Projetos** ou a **Biblioteca** para criar um livro ou adicionar uma nota existente. Os capítulos continuam em arquivos Markdown separados. O ícone **Adicionar separador de arco** na barra de Cenas do Longform insere uma linha visual, com legenda opcional e movimento por arraste/toque. Os separadores ficam nas configurações do Basic por rascunho e não entram nas notas nem na compilação. A escrita contínua usa um editor por capítulo expandido; a gravação é explícita e verifica alterações concorrentes.
 
+Use as abas com ícones em **Escrita**, **Universo** ou **Projeto** para abrir uma seção. Em telas estreitas, deslize a barra para o lado para ver as outras abas.
+
 Rascunhos dos capítulos têm cópias locais de recuperação. Use **Livros: recuperar rascunhos** para conferir, salvar uma cópia Markdown separada ou descartar uma entrada. Se o original mudou, o rascunho fica separado para revisão. Recuperação e snapshots de versões têm propósitos diferentes; mantenha também um backup independente. Rascunhos temporários de sessão ficam em memória até serem salvos.
 
 Para montar o manuscrito, use **Livros: compilar manuscrito Markdown**, escolha arquivos salvos ou escrita atual, confira a prévia e crie um novo arquivo em `Basic Exports/`. A compilação inclui todos os capítulos do rascunho selecionado, além do limite de editores exibidos. Capítulos ausentes ou versões conflitantes impedem a exportação. Atualize a prévia para incluir alterações posteriores.

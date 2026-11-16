@@ -207,18 +207,18 @@ class ProjectsView extends ItemView{
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   const groupButtons={};
   const tabPrefix=this.writerTabPrefix??=('writer-project-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
-  const compactTabs=this.root.createEl('select',{cls:'writer-v136-project-sections',attr:{'aria-label':lfMsg('Seção do projeto','Project section')}});
-  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
+  const tabs=this.root.createDiv({cls:'writer-project-tabs writer-sidebar-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
   if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
   const panels={};
   const tabButtons={};
+  const lastTabs=this.writerLastGroupTabs??={};
   let rebuildingTabs=false;
   // Keep the tab strip mounted on regular tab changes. Only the selected panel
   // is redrawn, so horizontal scroll, focus and pointer position stay intact.
   const switchTab=id=>{
    if(this.activeTab===id)return;
    this.activeTab=id;
-   compactTabs.value=id;
+   lastTabs[this.tabGroup]=id;
    for(const [key,button] of Object.entries(tabButtons)){
     const selected=key===id;
     button.classList.toggle('is-active',selected);
@@ -235,24 +235,21 @@ class ProjectsView extends ItemView{
   const fillTabs=group=>{
    rebuildingTabs=true;
    tabs.empty();
-   compactTabs.empty();
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
-    const option=compactTabs.createEl('option',{text:name});option.value=id;
     const selected=this.activeTab===id;
-    const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
-     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
+    const btn=tabs.createEl('button',{cls:selected?'is-active':'',
+     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,
+      title:name,'aria-label':name,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
     require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
-    btn.prepend?.(glyph);
+    btn.createSpan({cls:'writer-sidebar-tab-label',text:name});
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
-   compactTabs.value=this.activeTab;
    tabs.scrollLeft=Math.max(0,this.tabScrollPositions[group]||0);
    rebuildingTabs=false;
   };
-  compactTabs.addEventListener('change',()=>switchTab(compactTabs.value));
   for(const group of menuGroups){
    const groupLabel=lfMsg(group.pt,group.en);
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
@@ -263,11 +260,12 @@ class ProjectsView extends ItemView{
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
     if(this.tabGroup===group.id)return;
-    const first=allTabs.find(([id])=>group.tabs.includes(id));
-    if(!first)return;
+    const available=allTabs.filter(([id])=>group.tabs.includes(id));
+    if(!available.length)return;
     this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
+    lastTabs[this.tabGroup]=this.activeTab;
     this.tabGroup=group.id;
-    this.activeTab=first[0];
+    this.activeTab=available.find(([id])=>id===lastTabs[group.id])?.[0]||available[0][0];
     for(const [key,b] of Object.entries(groupButtons)){
      const active=key===group.id;
      b.classList.toggle('is-active',active);
@@ -29814,16 +29812,16 @@ function writerV132ProtectStatusBar(plugin,item){
  if(!already)plugin.register?.(()=>bar.classList.remove('writer-v132-status-host'));
 }
 
-/** Keep horizontal project tabs usable without a pointer or a visible scrollbar. */
+/** Keep horizontal sidebar tabs usable without a pointer or a visible scrollbar. */
 function writerV136BindProjectTabs(strip){
- if(!strip||strip.dataset.basicV136Keyboard==='1')return;
+ if(!strip?.dataset||strip.dataset.basicV136Keyboard==='1')return;
  strip.dataset.basicV136Keyboard='1';
  strip.addEventListener('keydown',event=>{
   if(!['ArrowRight','ArrowLeft','Home','End'].includes(event.key)||event.altKey||event.ctrlKey||event.metaKey)return;
-  const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled)'));
+  const tabs=Array.from(strip.querySelectorAll('button[role="tab"]:not(:disabled):not([hidden])'));
   if(!tabs.length)return;
   const target=event.target.closest?.('button[role="tab"]');
-  let index=tabs.indexOf(target);
+  const index=tabs.indexOf(target);
   if(index<0)return;
   const direction=strip.ownerDocument?.defaultView?.getComputedStyle?.(strip)?.direction==='rtl'?-1:1;
   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
@@ -29832,6 +29830,11 @@ function writerV136BindProjectTabs(strip){
   tabs[next].focus();tabs[next].click();
   tabs[next].scrollIntoView?.({block:'nearest',inline:'nearest'});
  });
+}
+function writerSidebarButtonIcon(button,icon,label,labelClass='writer-sidebar-action-label'){
+ const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon?.(glyph,icon);
+ button.createSpan({cls:labelClass,text:label});
 }
 
 /** Named tool panes let compact layouts follow the pane width, not the window. */
@@ -36327,7 +36330,11 @@ function writerCompanionRegister(plugin){
    const show=writerCompanionConfig(plugin).showLaunchers&&writerV12On(plugin,'integrations')&&writerCompanionCatalog().some(item=>writerCompanionEnabled(plugin,item.id));
    if(!show)old?.remove();
    if(show&&!old){
-    const button=writerCompanionButton(header,writerUi('Plugins','Plugins'),()=>writerCompanionOpen(plugin));button.addClass('writer-companion-launcher');
+    const label=writerUi('Plugins','Plugins');
+    const button=header.createEl('button',{cls:'writer-companion-launcher writer-sidebar-icon-action',
+     attr:{type:'button',title:label,'aria-label':label}});
+    writerSidebarButtonIcon(button,'plug',label);
+    button.addEventListener('click',()=>{void writerCompanionOpen(plugin).catch(()=>{});});
    }
   }
   if(next===fingerprint)return;fingerprint=next;
@@ -36386,23 +36393,28 @@ class DictionaryView extends ItemView{
   const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});
   const sidebarHead=root.createDiv({cls:'writer-sidebar-header'});
   sidebarHead.createSpan({text:'Basic AI',cls:'writer-sidebar-brand'});
-  sidebarHead.createEl('button',{text:msg('✦ Ferramentas','✦ Writing tools'),cls:'writer-tools-launcher'})
-   .addEventListener('click',()=>this.plugin.openWritingTools());
-  const tabs=root.createDiv({cls:'writer-tool-tabs',attr:{role:'group','aria-label':msg('Ferramentas do Basic','Basic tools')}});
-  tabs.addEventListener('wheel',event=>{
-   if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
-    tabs.scrollLeft+=event.deltaY;
-    event.preventDefault();
-   }
-  },{passive:false});
+  const toolsLabel=msg('Ferramentas','Writing tools');
+  const tools=sidebarHead.createEl('button',{cls:'writer-tools-launcher writer-sidebar-icon-action',
+   attr:{type:'button',title:toolsLabel,'aria-label':toolsLabel}});
+  writerSidebarButtonIcon(tools,'wrench',toolsLabel);
+  tools.addEventListener('click',()=>this.plugin.openWritingTools());
+  const tabs=root.createDiv({cls:'writer-tool-tabs writer-sidebar-tabs',attr:{role:'tablist','aria-label':msg('Ferramentas do Basic','Basic tools')}});
+  writerV136BindProjectTabs(tabs);
+  const tabPrefix=this.writerTabPrefix??=('writer-tool-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
   const defs=root.createDiv({cls:'writer-tool-panel'});
   const translations=root.createDiv({cls:'writer-tool-panel'});
   const chat=root.createDiv({cls:'writer-tool-panel writer-chat-panel'});
   const review=root.createDiv({cls:'writer-tool-panel writer-review-panel'});
   this.panels={definition:defs,translation:translations,chat,review};
   this.tabs={};
-  for(const [id,label] of [['definition',msg('Definições','Definitions')],['translation',msg('Tradução','Translation')],['chat','Chat'],['review',msg('Revisão','Review')]]){
-   const button=tabs.createEl('button',{text:label,attr:{type:'button','aria-pressed':'false'}});
+  for(const [id,label,icon] of [['definition',msg('Definições','Definitions'),'book-open'],
+   ['translation',msg('Tradução','Translation'),'languages'],['chat','Chat','messages-square'],['review',msg('Revisão','Review'),'spell-check']]){
+   const tabId=tabPrefix+'-tab-'+id,panelId=tabPrefix+'-panel-'+id;
+   const button=tabs.createEl('button',{attr:{id:tabId,type:'button',role:'tab',title:label,'aria-label':label,
+    'aria-controls':panelId,'aria-selected':'false',tabindex:'-1'}});
+   writerSidebarButtonIcon(button,icon,label,'writer-sidebar-tab-label');
+   const panel=this.panels[id];
+   panel.setAttribute('id',panelId);panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',tabId);
    this.tabs[id]=button;
    button.addEventListener('click',()=>this.switchTab(id));
   }
@@ -36417,9 +36429,14 @@ class DictionaryView extends ItemView{
   selectOptions(this.language,Object.entries(LANGS),this.plugin.settings.onlineLanguage,v=>{
    this.plugin.settings.onlineLanguage=v;this.clearDefinitionResult();void this.plugin.saveSettings();
   });
-  this.lookupButton=controls.createEl('button',{text:t('lookup'),cls:'mod-cta'});this.lookupButton.addEventListener('click',()=>this.lookup());
+  this.lookupButton=controls.createEl('button',{cls:'mod-cta writer-sidebar-icon-action',attr:{type:'button'}});
+  writerSidebarButtonIcon(this.lookupButton,'search',t('lookup'));
+  this.lookupButton.addEventListener('click',()=>this.lookup());
   const actions=defs.createDiv({cls:'dictionary-actions dictionary-lexical-actions'});
-  const button=(label,fn)=>{const b=actions.createEl('button',{text:label});b.addEventListener('click',fn);return b;};
+  const button=(label,icon,fn)=>{
+   const b=actions.createEl('button',{cls:'writer-sidebar-icon-action',attr:{type:'button'}});
+   writerSidebarButtonIcon(b,icon,label);b.addEventListener('click',fn);return b;
+  };
   
   const translationLabel=msg('Texto para traduzir','Text to translate');
   this.translationInput=translations.createEl('textarea',{attr:{placeholder:translationLabel,'aria-label':translationLabel}});
@@ -36432,8 +36449,8 @@ class DictionaryView extends ItemView{
   this.targetSelect=translation.createEl('select',{attr:{'aria-label':t('target')}});
   selectOptions(this.targetSelect,Object.entries(LANGS),this.plugin.settings.targetLanguage,v=>{this.plugin.settings.targetLanguage=v;this.clearTranslationResult();void this.plugin.saveSettings();});
   const translateButton=translation.createEl('button',{text:msg('Traduzir texto','Translate text'),cls:'mod-cta'});translateButton.addEventListener('click',()=>this.translate(this.translationInput.value));
-  button(t('synonyms'),()=>this.lexical('synonyms'));
-  button(t('antonyms'),()=>this.lexical('antonyms'));
+  button(t('synonyms'),'equal',()=>this.lexical('synonyms'));
+  button(t('antonyms'),'equal-not',()=>this.lexical('antonyms'));
   // Optional context should never occupy most of a sidebar by default.
   this.context=defs.createEl('textarea',{cls:'dictionary-context-optional',attr:{
    placeholder:t('context'),'aria-label':t('context'),rows:'2'
@@ -36527,19 +36544,20 @@ class DictionaryView extends ItemView{
  }
  applyModuleVisibility(){
   const tabs={definition:'dictionary',translation:'translation',chat:'chat',review:'review'};
-  for(const [id,button] of Object.entries(this.tabs))button.style.display=writerModuleOn(this.plugin,tabs[id])?'':'none';
+  for(const [id,button] of Object.entries(this.tabs))button.hidden=!writerModuleOn(this.plugin,tabs[id]);
   if(!writerModuleOn(this.plugin,'translation'))this.cancelFileTranslation();
   this.switchTab(this.activeTab||'definition');
  }
  switchTab(id){
   const mapping={definition:'dictionary',translation:'translation',chat:'chat',review:'review'};
-  if(!writerModuleOn(this.plugin,mapping[id]))id=Object.keys(mapping).find(key=>writerModuleOn(this.plugin,mapping[key]))||null;
+  if(!Object.hasOwn(mapping,id)||!writerModuleOn(this.plugin,mapping[id]))id=Object.keys(mapping).find(key=>writerModuleOn(this.plugin,mapping[key]))||null;
   if(this.activeTab==='review'&&id!=='review')this.cancelReview();
   for(const [key,panel] of Object.entries(this.panels)){
    const active=key===id;
    panel.style.display=active?'flex':'none';
    this.tabs[key].classList.toggle('is-active',active);
-   this.tabs[key].setAttribute('aria-pressed',String(active));
+   this.tabs[key].setAttribute('aria-selected',String(active));
+   this.tabs[key].tabIndex=active?0:-1;
   }
   this.activeTab=id;
   const settings=this.plugin.settings;

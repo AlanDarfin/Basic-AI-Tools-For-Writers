@@ -434,7 +434,7 @@ function writerV1061ToolbarEditingMode(view){
 function writerV9RegisterToolbar(plugin){
  const settings=plugin.settings.v9Toolbar;
  writerV1044ContextMenus(plugin);
- let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null;
+ let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null,stopped=false;
  const remove=()=>{
   if(root){root.remove();root=null;}
   if(owner){owner.classList.remove('writer-v9-toolbar-host');owner.classList.remove('writer-v9-toolbar-docked');owner=null;}
@@ -442,6 +442,7 @@ function writerV9RegisterToolbar(plugin){
  };
  const paint=()=>{
   queued=null;
+  if(stopped)return;
   const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
   observeMode(view);
   const host=view?.contentEl;
@@ -477,7 +478,7 @@ function writerV9RegisterToolbar(plugin){
     require('obsidian').setIcon(arrow,'chevron-down');
     if(cfg.showLabels)button.createSpan({cls:'writer-v1048-action-label',text:group.name});
     button.addEventListener('mousedown',event=>event.preventDefault());
-    button.addEventListener('click',event=>writerV1048ToolbarMenu(plugin,group,event));
+    button.addEventListener('click',event=>{if(!stopped)writerV1048ToolbarMenu(plugin,group,event);});
     continue;
    }
    const label=writerV1048ToolbarLabel(cfg,item),icon=writerV1048ToolbarIcon(cfg,item);
@@ -487,14 +488,16 @@ function writerV9RegisterToolbar(plugin){
    if(cfg.showLabels)button.createSpan({cls:'writer-v1048-action-label',text:label});
    button.addEventListener('mousedown',event=>event.preventDefault());
    button.addEventListener('click',()=>{
+    if(stopped)return;
     const current=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
     writerV1048ToolbarRun(plugin,current?.editor,id);
    });
   }
   writerV1048ToolbarPosition(root,owner,view,cfg);
  };
- const refresh=()=>{if(queued)return;queued=setTimeout(paint,90);};
+ const refresh=()=>{if(stopped||queued)return;queued=setTimeout(paint,90);};
  const observeMode=view=>{
+  if(stopped)return;
   const host=view?.containerEl||view?.contentEl||null;
   if(host===observedHost&&view===observedView)return;
   modeObserver?.disconnect();modeObserver=null;
@@ -503,6 +506,7 @@ function writerV9RegisterToolbar(plugin){
   const Observer=host?.ownerDocument?.defaultView?.MutationObserver;
   if(!host||typeof Observer!=='function')return;
   modeObserver=new Observer(()=>{
+   if(stopped)return;
    const editable=writerV1061ToolbarEditingMode(observedView);
    if(editable===lastEditable)return;
    lastEditable=editable;
@@ -513,6 +517,7 @@ function writerV9RegisterToolbar(plugin){
   modeObserver.observe(host,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
  };
  const reposition=()=>{
+  if(stopped)return;
   if(root&&currentView&&!writerV1061ToolbarEditingMode(currentView)){remove();refresh();return;}
   const cfg=writerV1048ToolbarProfile(plugin);
   if(cfg.placement==='floating'){
@@ -531,17 +536,20 @@ function writerV9RegisterToolbar(plugin){
    plugin.registerDomEvent(document,key,reposition,true);
  }
  if(typeof plugin.register==='function')plugin.register(()=>{
-  clearTimeout(queued);modeObserver?.disconnect();modeObserver=null;observedHost=null;observedView=null;remove();plugin.writerV9ToolbarRefresh=null;
+  if(stopped)return;stopped=true;
+  clearTimeout(queued);queued=null;modeObserver?.disconnect();modeObserver=null;observedHost=null;observedView=null;remove();
+  if(plugin.writerV9ToolbarRefresh===refresh)plugin.writerV9ToolbarRefresh=null;
  });
  plugin.app.workspace.onLayoutReady?.(refresh);
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
   plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
    editorCallback:editor=>{
-    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
+    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
    }});
  }
  plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),
   callback:async()=>{
+   if(stopped)return;
    if(writerV8HomeIsMobile(plugin))settings.enabledMobile=!settings.enabledMobile;
    else settings.enabledDesktop=!settings.enabledDesktop;
    await plugin.saveSettings();refresh();

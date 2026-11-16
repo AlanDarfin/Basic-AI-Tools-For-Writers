@@ -2492,10 +2492,11 @@ function writerV101TtsChunks(source,limit=700){
  return chunks;
 }
 class WriterFinalFeatures{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsRunId=0;this.soundscapePausedByTts=false;this.ttsStatus='idle';this.ttsMessage='';}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsRunId=0;this.ttsRequestId=0;this.ttsDisposed=false;this.soundscapePausedByTts=false;this.ttsStatus='idle';this.ttsMessage='';}
  get cfg(){return this.plugin.settings.finalSuite;}
  register(){
   const p=this.plugin;
+  p.register?.(()=>{this.ttsDisposed=true;this.stop();});
   p.registerEvent(p.app.workspace.on('layout-change',()=>this.refreshNames()));
   if(p.app.metadataCache?.on)p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
   p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.lastFile=file;this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
@@ -2523,7 +2524,7 @@ class WriterFinalFeatures{
    ['writer-abbreviations',writerUi('Editar abreviações','Edit abbreviations'),()=>this.editAbbreviations()],
    ['writer-insert-template',writerUi('Inserir modelo pelo nome da nota','Insert note-name template'),()=>this.applyTemplateToCurrent()]
   ];
-  for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
+  for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{if(this.ttsDisposed)return;try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
   p.addCommand({id:'writer-tts-from-cursor',name:writerUi('Ler a partir do cursor','Read from cursor'),
    editorCheckCallback:(checking,editor,view)=>{
     if(!writerModuleOn(p,'tts')||this.cfg.tts.enabled!==true||!this.cursorView(editor,view))return false;
@@ -2964,6 +2965,7 @@ class WriterFinalFeatures{
   return writerUi('Vozes disponíveis pelo WebView: ','Voices available in WebView: ')+voices.length;
  }
  refreshVoiceSelectors(){
+  if(this.ttsDisposed)return;
   if(typeof document==='undefined'||!document.querySelectorAll)return;
   for(const select of document.querySelectorAll('.writer-tts-voice-select')){
    const selected=this.cfg.tts.voice||'';
@@ -2990,8 +2992,19 @@ class WriterFinalFeatures{
   return leaves.map(leaf=>leaf.view).find(candidate=>candidate.file?.path===file?.path&&usable(candidate))||null;
  }
  async speakActive(options={}){
+  if(this.ttsDisposed)return false;
+  // A new Read or Stop invalidates earlier disk reads before they can start audio.
+  this.stop();
+  const request=this.ttsRequestId;
   const cfg=this.cfg.tts;
   if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice(writerUi('Ative a leitura de texto nas configurações.','Enable text-to-speech in settings.'));
+  const provider=()=>typeof writerCompanionConfig==='function'?writerCompanionConfig(this.plugin).ttsProvider:'basic';
+  const selectedProvider=provider(),companion=this.plugin.app.plugins?.plugins?.['ahmed-toolkit'];
+  const keys=['enabled','engine','allowOnline','readSelection','maxCharacters','chunkSize','language','edgeVoice','voice','rate','pitch','volume','pauseMusic','resumeMusic'];
+  const values=keys.map(key=>cfg[key]);
+  const current=()=>!this.ttsDisposed&&this.ttsRequestId===request&&writerModuleOn(this.plugin,'tts')&&
+   this.cfg.tts===cfg&&keys.every((key,index)=>cfg[key]===values[index])&&provider()===selectedProvider&&
+   (selectedProvider!=='ahmed-toolkit'||this.plugin.app.plugins?.plugins?.['ahmed-toolkit']===companion);
   const fromCursor=options?.fromCursor===true;
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
@@ -3005,9 +3018,23 @@ class WriterFinalFeatures{
   const note= view?.file||file;
   if(!note||note.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   this.lastFile=note;
+  const path=note.path,mtime=note.stat?.mtime,size=note.stat?.size,editor=view?.editor;
+  const sameNote=()=>{
+   if(!current()||note.path!==path)return false;
+   const active=workspace.getActiveFile?.()||this.lastFile;
+   if(active&&active!==note&&active.path!==path)return false;
+   if(view&&(view.file!==note||view.editor!==editor))return false;
+   if(view&&typeof workspace.getLeavesOfType==='function'&&!workspace.getLeavesOfType('markdown').some(leaf=>leaf.view===view))return false;
+   const vault=this.plugin.app.vault;
+   return typeof vault.getAbstractFileByPath!=='function'||vault.getAbstractFileByPath(path)===note;
+  };
   const selected=fromCursor?'':view?.editor?.getSelection?.()||'';
-  const raw=selected&&cfg.readSelection?selected:
-    (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
+  let raw=selected&&cfg.readSelection?selected:editor?.getValue?.();
+  if(raw==null){
+   try{raw=await this.plugin.app.vault.cachedRead(note);}catch(error){if(!sameNote())return false;throw error;}
+   if(note.stat?.mtime!==mtime||note.stat?.size!==size)return false;
+  }
+  if(!sameNote())return false;
   let cursor=0;
   if(fromCursor){
    cursor=view.editor.posToOffset(view.editor.getCursor('head'));
@@ -3020,22 +3047,22 @@ class WriterFinalFeatures{
   const text=writerMaskMarkdown(raw).slice(cursor).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
   if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(this.plugin).ttsProvider==='ahmed-toolkit'){
-   this.stop();return writerCompanionSpeechStart(this.plugin,text,note.basename);
+   return writerCompanionSpeechStart(this.plugin,text,note.basename);
   }
   const engine=cfg.engine||'system';
   if(engine==='edge'){
    if(!cfg.allowOnline)return new Notice(writerUi('Ative o envio de texto à Microsoft nas configurações de voz antes de usar vozes online.','Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.'));
    if(typeof WebSocket==='undefined')return new Notice(writerUi('A voz online requer suporte a WebSocket.','Online voice requires WebSocket support.'));
-   this.stop();this.prepareAudioFocus();
+   this.prepareAudioFocus();if(!sameNote()){this.stop();return false;}
    const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
    const selectedVoice=cfg.edgeVoice||WRITER_EDGE_VOICES[lang]||WRITER_EDGE_VOICES[lang.split('-')[0]==='pt'?'pt-BR':'en-US'];
    try{await this.getEdgePlayer().start(text,selectedVoice,cfg.rate);}
-   catch(error){this.onTtsState('error',error.message);}
+   catch(error){if(current())this.onTtsState('error',error.message);}
    return;
   }
   if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')
    return new Notice(writerUi('O WebView do Android não expõe a voz nativa do sistema. Use o mecanismo online somente se autorizar o envio do texto.','This WebView does not expose native text-to-speech. Use online speech only after allowing text to be sent.'),8000);
-  this.stop();this.prepareAudioFocus();
+  this.prepareAudioFocus();if(!sameNote()){this.stop();return false;}
   const run=++this.ttsRunId,chunks=writerV101TtsChunks(text,cfg.chunkSize||700);
   const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
   const voices=this.systemVoices();
@@ -3044,6 +3071,7 @@ class WriterFinalFeatures{
   let index=0;
   const next=()=>{
    if(run!==this.ttsRunId)return;
+   if(!current()){this.stop();return;}
    if(index>=chunks.length){this.speaking=false;this.onTtsState('idle');return;}
    const utterance=new SpeechSynthesisUtterance(chunks[index++]);
    utterance.lang=lang;utterance.rate=Number(cfg.rate)||1;
@@ -3068,6 +3096,7 @@ class WriterFinalFeatures{
   else if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
  }
  stop(){
+  this.ttsRequestId=(this.ttsRequestId||0)+1;
   if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(this.plugin,'stop');
   this.ttsRunId=(this.ttsRunId||0)+1;
   this.edgePlayer?.stop();
@@ -3083,8 +3112,8 @@ function writerRenderFinalSettings(panel,plugin,section){
  const sectionMap={abbreviations:'Abbreviations',anotherName:'Alternate titles',viewMode:'View mode',templates:'Templates by note name',unicode:'Unicode search',toc:'Table of contents',tts:'Read aloud'};
  const cfg=plugin.settings.finalSuite[section];
  panel.createEl('h3',{text:translateLabel(sectionMap[section]||section)});
- const bool=(field,label)=>new Setting(panel).setName(translateLabel(label)).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
- const str=(field,label)=>new Setting(panel).setName(translateLabel(label)).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
+ const bool=(field,label)=>new Setting(panel).setName(translateLabel(label)).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;if(section==='tts'&&field==='enabled'&&!v)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
+ const str=(field,label)=>new Setting(panel).setName(translateLabel(label)).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;if(section==='tts'&&field==='enabled'&&!v)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
  bool('enabled','Enabled');
  if(section==='abbreviations'){bool('expandAtWordBoundary','Expand on punctuation or space (instead of space only)');new Setting(panel).setName(translateLabel('Edit abbreviations')).addButton(b=>b.setButtonText(translateLabel('Open')).onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
  if(section==='anotherName')str('property','Frontmatter property');
@@ -14264,7 +14293,7 @@ function writerV1061ToolbarEditingMode(view){
 function writerV9RegisterToolbar(plugin){
  const settings=plugin.settings.v9Toolbar;
  writerV1044ContextMenus(plugin);
- let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null;
+ let owner=null,root=null,queued=null,currentView=null,modeObserver=null,observedHost=null,observedView=null,lastEditable=null,stopped=false;
  const remove=()=>{
   if(root){root.remove();root=null;}
   if(owner){owner.classList.remove('writer-v9-toolbar-host');owner.classList.remove('writer-v9-toolbar-docked');owner=null;}
@@ -14272,6 +14301,7 @@ function writerV9RegisterToolbar(plugin){
  };
  const paint=()=>{
   queued=null;
+  if(stopped)return;
   const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
   observeMode(view);
   const host=view?.contentEl;
@@ -14307,7 +14337,7 @@ function writerV9RegisterToolbar(plugin){
     require('obsidian').setIcon(arrow,'chevron-down');
     if(cfg.showLabels)button.createSpan({cls:'writer-v1048-action-label',text:group.name});
     button.addEventListener('mousedown',event=>event.preventDefault());
-    button.addEventListener('click',event=>writerV1048ToolbarMenu(plugin,group,event));
+    button.addEventListener('click',event=>{if(!stopped)writerV1048ToolbarMenu(plugin,group,event);});
     continue;
    }
    const label=writerV1048ToolbarLabel(cfg,item),icon=writerV1048ToolbarIcon(cfg,item);
@@ -14317,14 +14347,16 @@ function writerV9RegisterToolbar(plugin){
    if(cfg.showLabels)button.createSpan({cls:'writer-v1048-action-label',text:label});
    button.addEventListener('mousedown',event=>event.preventDefault());
    button.addEventListener('click',()=>{
+    if(stopped)return;
     const current=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
     writerV1048ToolbarRun(plugin,current?.editor,id);
    });
   }
   writerV1048ToolbarPosition(root,owner,view,cfg);
  };
- const refresh=()=>{if(queued)return;queued=setTimeout(paint,90);};
+ const refresh=()=>{if(stopped||queued)return;queued=setTimeout(paint,90);};
  const observeMode=view=>{
+  if(stopped)return;
   const host=view?.containerEl||view?.contentEl||null;
   if(host===observedHost&&view===observedView)return;
   modeObserver?.disconnect();modeObserver=null;
@@ -14333,6 +14365,7 @@ function writerV9RegisterToolbar(plugin){
   const Observer=host?.ownerDocument?.defaultView?.MutationObserver;
   if(!host||typeof Observer!=='function')return;
   modeObserver=new Observer(()=>{
+   if(stopped)return;
    const editable=writerV1061ToolbarEditingMode(observedView);
    if(editable===lastEditable)return;
    lastEditable=editable;
@@ -14343,6 +14376,7 @@ function writerV9RegisterToolbar(plugin){
   modeObserver.observe(host,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
  };
  const reposition=()=>{
+  if(stopped)return;
   if(root&&currentView&&!writerV1061ToolbarEditingMode(currentView)){remove();refresh();return;}
   const cfg=writerV1048ToolbarProfile(plugin);
   if(cfg.placement==='floating'){
@@ -14361,17 +14395,20 @@ function writerV9RegisterToolbar(plugin){
    plugin.registerDomEvent(document,key,reposition,true);
  }
  if(typeof plugin.register==='function')plugin.register(()=>{
-  clearTimeout(queued);modeObserver?.disconnect();modeObserver=null;observedHost=null;observedView=null;remove();plugin.writerV9ToolbarRefresh=null;
+  if(stopped)return;stopped=true;
+  clearTimeout(queued);queued=null;modeObserver?.disconnect();modeObserver=null;observedHost=null;observedView=null;remove();
+  if(plugin.writerV9ToolbarRefresh===refresh)plugin.writerV9ToolbarRefresh=null;
  });
  plugin.app.workspace.onLayoutReady?.(refresh);
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
   plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
    editorCallback:editor=>{
-    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
+    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
    }});
  }
  plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),
   callback:async()=>{
+   if(stopped)return;
    if(writerV8HomeIsMobile(plugin))settings.enabledMobile=!settings.enabledMobile;
    else settings.enabledDesktop=!settings.enabledDesktop;
    await plugin.saveSettings();refresh();
@@ -25105,8 +25142,19 @@ function writerV107SpeechChunks(text,max=1450){
  }
  return result;
 }
+function writerV107SpeechAllowed(plugin){
+ return plugin._writerV107SpeechDisposed!==true&&plugin.settings.v107Speech?.enabled!==false&&plugin.settings.visibleModules?.tts!==false&&plugin.settings.finalSuite?.tts?.enabled!==false;
+}
+function writerV107SpeechStop(plugin){
+ if(typeof plugin.writerFinalFeatures?.stop==='function'){plugin.writerFinalFeatures.stop();return;}
+ if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
+ plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;
+ if(plugin._writerV107SpeechActive)plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis?.cancel();
+ plugin._writerV107SpeechActive=false;
+}
 function writerV107SpeechStart(plugin,text){
- if(plugin.settings.v107Speech?.enabled===false||plugin.settings.visibleModules?.tts===false||plugin.settings.finalSuite?.tts?.enabled===false)return false;
+ if(!writerV107SpeechAllowed(plugin))return false;
+ plugin.writerFinalFeatures?.stop();
  if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(plugin).ttsProvider==='ahmed-toolkit')return writerCompanionSpeechStart(plugin,text);
  if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
  const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
@@ -25119,7 +25167,8 @@ function writerV107SpeechStart(plugin,text){
  const voice=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>v.lang===cfg.lang)||voices.find(v=>v.lang?.split('-')[0]===cfg.lang.split('-')[0]);
  let index=0;
  const speak=()=>{
-  if(plugin._writerV107SpeechId!==id)return;
+  if(plugin._writerV107SpeechId!==id||!plugin._writerV107SpeechActive)return;
+  if(!writerV107SpeechAllowed(plugin)){speech.cancel();plugin._writerV107SpeechActive=false;return;}
   if(index>=chunks.length){plugin._writerV107SpeechActive=false;return;}
   const utter=new Utterance(chunks[index++]);
   utter.lang=voice?.lang||cfg.lang;utter.rate=cfg.rate;utter.pitch=cfg.pitch;if(voice)utter.voice=voice;
@@ -25128,6 +25177,34 @@ function writerV107SpeechStart(plugin,text){
   speech.speak(utter);
  };
  speak();return true;
+}
+async function writerV107SpeechReadNote(plugin){
+ if(!writerV107SpeechAllowed(plugin))return false;
+ plugin.writerFinalFeatures?.stop();
+ const token=plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;
+ const workspace=plugin.app.workspace,file=workspace.getActiveFile?.();
+ if(!(file instanceof TFile)||file.extension!=='md')return false;
+ const path=file.path,mtime=file.stat?.mtime,size=file.stat?.size,cfg=plugin.settings.v107Speech;
+ const keys=['enabled','lang','voice','rate','pitch'],values=keys.map(key=>cfg?.[key]);
+ const provider=()=>typeof writerCompanionConfig==='function'?writerCompanionConfig(plugin).ttsProvider:'basic',selectedProvider=provider();
+ const companion=plugin.app.plugins?.plugins?.['ahmed-toolkit'];
+ const leaves=workspace.getLeavesOfType?.('markdown')||[];
+ const view=[workspace.activeLeaf?.view,workspace.getMostRecentLeaf?.()?.view,...leaves.map(leaf=>leaf.view)]
+  .find(item=>item?.file===file&&typeof item.editor?.getValue==='function');
+ const editor=view?.editor;
+ const current=()=>writerV107SpeechAllowed(plugin)&&token===plugin._writerV107SpeechId&&provider()===selectedProvider&&
+  (selectedProvider!=='ahmed-toolkit'||plugin.app.plugins?.plugins?.['ahmed-toolkit']===companion)&&
+  cfg===plugin.settings.v107Speech&&keys.every((key,index)=>cfg?.[key]===values[index])&&
+  workspace.getActiveFile?.()===file&&file.path===path&&
+  (!view||view.file===file&&view.editor===editor&&(workspace.getLeavesOfType?.('markdown')||[]).some(leaf=>leaf.view===view))&&
+  (typeof plugin.app.vault.getAbstractFileByPath!=='function'||plugin.app.vault.getAbstractFileByPath(path)===file);
+ let source=editor?.getValue?.();
+ if(source==null){
+  try{source=await plugin.app.vault.cachedRead(file);}catch(error){if(!current())return false;throw error;}
+  if(file.stat?.mtime!==mtime||file.stat?.size!==size)return false;
+ }
+ if(!current()||typeof source!=='string')return false;
+ return writerV107SpeechStart(plugin,source.replace(/^---\r?\n[\s\S]*?\r?\n---/,'').replace(/^\s*#{1,6}\s/gm,''));
 }
 function writerV107SpeechPanel(plugin){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Leitura em voz alta','Text to speech'));
@@ -25147,27 +25224,22 @@ function writerV107SpeechPanel(plugin){
   const commands=root.createDiv({cls:'writer-v10-discovery-actions'});
   commands.createEl('button',{text:writerUi('Pausar','Pause')}).addEventListener('click',()=>plugin._writerCompanionSpeechHandle?writerCompanionSpeechControl(plugin,'pause'):plugin._writerV107SpeechActive&&speech?.pause());
   commands.createEl('button',{text:writerUi('Continuar','Resume')}).addEventListener('click',()=>plugin._writerCompanionSpeechHandle?writerCompanionSpeechControl(plugin,'resume'):plugin._writerV107SpeechActive&&speech?.resume());
-  commands.createEl('button',{text:writerUi('Parar','Stop')}).addEventListener('click',()=>{plugin._writerV107SpeechId++;if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');if(plugin._writerV107SpeechActive)speech?.cancel();plugin._writerV107SpeechActive=false;});
+  commands.createEl('button',{text:writerUi('Parar','Stop')}).addEventListener('click',()=>{if(!plugin._writerV107SpeechDisposed)writerV107SpeechStop(plugin);});
  };
  modal.open();
 }
 function writerV107SpeechRegister(plugin){
+ plugin._writerV107SpeechDisposed=false;
  const cfg=writerV107SpeechConfig(plugin.settings);
  plugin.addCommand({id:'v107-local-tts-selection',name:writerUi('TTS: ler seleção com voz local','TTS: read selection with local voice'),editorCheckCallback:(checking,editor)=>{
   if(!cfg.enabled||!editor.getSelection().trim())return false;
   if(!checking)writerV107SpeechStart(plugin,editor.getSelection());
   return true;
  }});
- plugin.addCommand({id:'v107-local-tts-note',name:writerUi('TTS: ler nota atual com voz local','TTS: read note with local voice'),callback:async()=>{
-  const file=plugin.app.workspace.getActiveFile();
-  if(!(file instanceof TFile)||file.extension!=='md')return;
-  const source=await plugin.app.vault.cachedRead(file);
-  writerV107SpeechStart(plugin,source.replace(/^---\r?\n[\s\S]*?\r?\n---/,'').replace(/^\s*#{1,6}\s/gm,''));
- }});
+ plugin.addCommand({id:'v107-local-tts-note',name:writerUi('TTS: ler nota atual com voz local','TTS: read note with local voice'),callback:()=>writerV107SpeechReadNote(plugin)});
  plugin.addCommand({id:'v107-local-tts-panel',name:writerUi('TTS: vozes e controles locais','TTS: local voice controls'),callback:()=>writerV107SpeechPanel(plugin)});
  plugin.addCommand({id:'v107-tts-stop',name:writerUi('TTS: parar reprodução','TTS: stop playback'),callback:()=>{
-  if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
-  plugin._writerV107SpeechId++;if(plugin._writerV107SpeechActive)plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis?.cancel();plugin._writerV107SpeechActive=false;
+  if(!plugin._writerV107SpeechDisposed)writerV107SpeechStop(plugin);
  }});
  const workspace=plugin.app.workspace.containerEl;
  plugin.registerDomEvent?.(workspace,'pointerdown',event=>{
@@ -25175,12 +25247,12 @@ function writerV107SpeechRegister(plugin){
    plugin.writerReviewInteractionGuard?.captureScroll?.();plugin.writerReviewInteractionGuard?.pause?.(1200);
   }
  },true);
- plugin.register?.(()=>{plugin._writerV107SpeechId++;if(plugin._writerV107SpeechActive)workspace?.ownerDocument?.defaultView?.speechSynthesis?.cancel();plugin._writerV107SpeechActive=false;});
+ plugin.register?.(()=>{plugin._writerV107SpeechDisposed=true;writerV107SpeechStop(plugin);});
 }
 function writerV107SpeechSettings(plugin,panel){
  const cfg=plugin.settings.v107Speech;
  panel.createEl('h3',{text:writerUi('Leitura com voz do dispositivo','Read with device voices')});
- new Setting(panel).setName(writerUi('Ativar TTS local','Enable local speech')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Ativar TTS local','Enable local speech')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;if(!v){plugin.writerFinalFeatures?.stop();plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;}await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Abrir seletor de voz','Open voice settings')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV107SpeechPanel(plugin)));
 }
 
@@ -28568,12 +28640,42 @@ function writerV12SecureSettings(plugin,panel){
 
 // v3 module: src/v12/task-workbench.js
 /* Basic v12 task workbench: notes stay authoritative, writes are optional,
- * atomic and reject concurrent changes. Markdown code fences are excluded. */
-function writerV12TaskRefs(source){
- const lines=String(source||'').split(/\r?\n/),tasks=[];
- let fence=null;
+ * atomic and reject concurrent changes. Hidden Markdown regions are excluded. */
+function writerV1391TaskCommentState(line,comment){
+ const ticks=new Map();
+ for(const match of line.matchAll(/\x60+/g)){
+  const size=match[0].length;
+  if(!ticks.has(size))ticks.set(size,{runs:[],next:0});
+  ticks.get(size).runs.push({start:match.index,end:match.index+size});
+ }
+ for(let at=0;at<line.length;){
+  if(comment){
+   const close=comment==='html'?'-->':'%%',end=line.indexOf(close,at);
+   if(end<0)return comment;
+   at=end+close.length;comment=null;continue;
+  }
+  if(line[at]==='\\'){at+=2;continue;}
+  // Comment examples in a same-line code span must not hide subsequent tasks.
+  if(line[at]==='`'){
+   let end=at+1;while(line[end]==='`')end++;
+   const group=ticks.get(end-at);
+   // Each delimiter is visited at most once, even in a long unmatched example.
+   if(group)while(group.next<group.runs.length&&group.runs[group.next].start<end)group.next++;
+   at=group?.runs[group.next]?.end??end;continue;
+  }
+  if(line.startsWith('<!--',at)){comment='html';at+=4;continue;}
+  if(line.startsWith('%%',at)){comment='obsidian';at+=2;continue;}
+  at++;
+ }
+ return comment;
+}
+function writerV1391TaskWalk(source,visit){
+ const lines=String(source||'').split(/\r?\n/);
+ let frontmatter=/^\uFEFF?---[ \t]*$/.test(lines[0]||''),fence=null,comment=null;
  for(let line=0;line<lines.length;line++){
-  const raw=lines[line],delimiter=/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(raw);
+  const raw=lines[line];
+  if(frontmatter){if(line>0&&/^(?:---|\.\.\.)[ \t]*$/.test(raw))frontmatter=false;continue;}
+  const hidden=!!comment,delimiter=!hidden&&/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(raw);
   if(delimiter){
    const marker=delimiter[1],tail=delimiter[2];
    if(fence){
@@ -28586,14 +28688,33 @@ function writerV12TaskRefs(source){
    }
   }
   if(fence)continue;
+  comment=writerV1391TaskCommentState(raw,comment);
+  if(hidden||typeof visit!=='function')continue;
   const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);
   if(!m)continue;
   const label=m[3].replace(/^\]\s+/,'').trim();
   const tags=[...new Set(label.match(/#[\p{L}\p{N}_/-]+/gu)||[])].slice(0,8);
-  tasks.push({line,raw,text:label,done:m[2].toLowerCase()==='x',tags});
-  if(tasks.length>=250)break;
+  if(visit({line,raw,text:label,done:m[2].toLowerCase()==='x',tags})===false)break;
  }
- return tasks;
+ return {frontmatter,fence,comment};
+}
+function writerV1391TaskScan(source){
+ const tasks=[];let truncated=false;
+ writerV1391TaskWalk(source,task=>{
+  if(tasks.length===250){truncated=true;return false;}
+  tasks.push(task);
+ });
+ return {tasks,truncated};
+}
+function writerV12TaskRefs(source){return writerV1391TaskScan(source).tasks;}
+function writerV1391TaskEligible(source,entry){
+ if(!entry||!Number.isInteger(entry.line)||entry.line<0||typeof entry.raw!=='string'||typeof entry.done!=='boolean')return false;
+ let eligible=false;
+ writerV1391TaskWalk(source,task=>{
+  if(task.line>entry.line)return false;
+  if(task.line===entry.line){eligible=task.raw===entry.raw&&task.done===entry.done;return false;}
+ });
+ return eligible;
 }
 function writerV12TaskReplacedLine(entry){
  const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(entry.raw);
@@ -28604,13 +28725,17 @@ async function writerV12ToggleTask(plugin,file,entry,expected){
  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid task file');
  if(typeof expected!=='string'||expected.length>2500000)throw Error('Invalid source snapshot');
  const path=file.path;writerV139TaskEditable(plugin,file,path,expected);
- const parts=expected.split(/(\r?\n)/),index=entry.line*2;
- if(!Number.isInteger(entry.line)||entry.line<0||parts[index]!==entry.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ if(!entry||!Number.isInteger(entry.line)||entry.line<0)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ const reference={line:entry.line,raw:entry.raw,done:entry.done};
+ const parts=expected.split(/(\r?\n)/),index=reference.line*2;
+ if(parts[index]!==reference.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ if(!writerV1391TaskEligible(expected,reference))throw Error(writerUi('Esta linha não é uma tarefa Markdown editável. Atualize o painel.','This line is not an editable Markdown task. Refresh the dashboard.'));
  // Keep each original line ending, including notes containing both LF and CRLF.
- parts[index]=writerV12TaskReplacedLine(entry);const next=parts.join('');
+ parts[index]=writerV12TaskReplacedLine(reference);const next=parts.join('');
  await plugin.app.vault.process(file,current=>{
   writerV139TaskEditable(plugin,file,path,expected);
   if(current!==expected)throw Error(writerUi('Arquivo mudou; nada foi alterado.','File changed; no modifications applied.'));
+  if(!writerV1391TaskEligible(current,reference))throw Error(writerUi('Esta linha não é uma tarefa Markdown editável. Atualize o painel.','This line is not an editable Markdown task. Refresh the dashboard.'));
   return next;
  });
  return next;
@@ -28659,18 +28784,8 @@ function writerV139TaskLine(fields){
  return '- [ ] '+title+(priority?' #'+priority:'')+(tags.length?' '+tags.join(' '):'')+(due?' 📅 '+due:'');
 }
 function writerV139TaskAppendable(source){
- const lines=source.split(/\r?\n/);let fence=null,start=0;
- if(lines[0]?.trim()==='---'){
-  const end=lines.findIndex((line,index)=>index>0&&/^(?:---|\.\.\.)\s*$/.test(line));
-  if(end<0)return false;start=end+1;
- }
- for(const line of lines.slice(start)){
-  const match=/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(line);if(!match)continue;
-  const marker=match[1],tail=match[2];
-  if(fence){if(marker[0]===fence.char&&marker.length>=fence.length&&!tail.trim())fence=null;}
-  else if(marker[0]==='~'||!tail.includes('`'))fence={char:marker[0],length:marker.length};
- }
- return !fence;
+ const state=writerV1391TaskWalk(source);
+ return !state.frontmatter&&!state.fence&&!state.comment;
 }
 function writerV139TaskEditable(plugin,file,path,source){
  if(!writerV139TaskOn(plugin))throw Error(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));
@@ -28691,7 +28806,7 @@ async function writerV139TaskPreview(plugin,file,fields){
  if(typeof source!=='string'||source.length>2500000)throw Error(writerUi('Esta nota é grande demais para uma captura segura.','This note is too large for safe capture.'));
  writerV139TaskEditable(plugin,file,path,source);
  if(file.stat?.mtime!==mtime||file.stat?.size!==size)throw Error(writerUi('A nota mudou durante a leitura. Atualize a prévia.','The note changed while reading. Refresh the preview.'));
- if(!writerV139TaskAppendable(source))throw Error(writerUi('Feche o bloco de código ou de propriedades no final da nota antes de adicionar tarefas.','Close the unfinished code or properties block before adding tasks.'));
+ if(!writerV139TaskAppendable(source))throw Error(writerUi('Feche o comentário ou bloco de código/propriedades no final da nota antes de adicionar tarefas.','Close the unfinished comment, code or properties block before adding tasks.'));
  const eol=source.includes('\r\n')?'\r\n':'\n',separator=source&&!source.endsWith('\n')?eol:'';
  return Object.freeze({file,path,mtime,size,source,line,next:source+separator+line+eol});
 }
@@ -28769,6 +28884,7 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Minhas tarefas','My tasks'));
  const root=modal.contentEl;root.addClass('writer-native-tasks');
  const summary=root.createEl('p',{cls:'setting-item-description',attr:{role:'status','aria-live':'polite'}});
+ const coverage=root.createEl('p',{cls:'writer-native-task-coverage',attr:{role:'status','aria-live':'polite'}});
  const toolbar=root.createDiv({cls:'writer-native-task-toolbar'});
  const query=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar por tarefa, nota ou etiqueta','Filter by task, note or tag'),'aria-label':writerUi('Buscar tarefas','Find tasks')}});
  const scope=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar por prazo','Filter by due date')}});
@@ -28777,9 +28893,10 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
  const showDone=toolbar.createEl('label',{cls:'writer-native-task-completed'});
  const checkbox=showDone.createEl('input',{attr:{type:'checkbox'}});showDone.createSpan({text:writerUi('Mostrar concluídas','Show completed')});
  const results=root.createDiv({cls:'writer-native-task-results'});let data=[],loading=false,closed=false;
+ let scan={total:0,examined:0,failed:0,limited:0},scanFailed=false;
  const render=()=>{
   if(closed)return;results.empty();
-  if(!writerV139TaskOn(plugin)){summary.setText(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));return;}
+  if(!writerV139TaskOn(plugin)){summary.setText(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));coverage.setText('');return;}
   const term=query.value.trim().toLocaleLowerCase(),today=writerV139TaskToday();
   const visible=data.filter(row=>(checkbox.checked||!row.entry.done)&&writerV139TaskVisible(row.entry,scope.value,today,row.meta)&&
    (!term||(row.entry.text+' '+row.file.path).toLocaleLowerCase().includes(term)));
@@ -28788,13 +28905,19 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
    const x=a.meta,y=b.meta;
    return Number(a.entry.done)-Number(b.entry.done)||(x.due||'9999').localeCompare(y.due||'9999')||rank[x.priority]-rank[y.priority]||a.file.path.localeCompare(b.file.path)||a.entry.line-b.entry.line;
   });
-  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible')+(visible.length>400?writerUi(' · exibindo as primeiras 400',' · showing the first 400'):''));
+  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible')+' · '+scan.examined+'/'+scan.total+' '+writerUi('notas examinadas','notes examined')+(visible.length>400?writerUi(' · exibindo as primeiras 400',' · showing the first 400'):''));
+  const incomplete=[];
+  if(scanFailed)incomplete.push(writerUi('não foi possível atualizar; os resultados anteriores foram mantidos','refresh failed; previous results were retained'));
+  if(scan.examined<scan.total)incomplete.push((scan.total-scan.examined)+' '+writerUi('notas fora do limite da busca','notes outside the scan limit'));
+  if(scan.failed)incomplete.push(scan.failed+' '+writerUi('notas não puderam ser lidas','notes could not be read'));
+  if(scan.limited)incomplete.push(scan.limited+' '+writerUi('notas com mais de 250 tarefas; somente as primeiras 250 de cada nota foram incluídas','notes with more than 250 tasks; only the first 250 from each note were included'));
+  coverage.setText(incomplete.length?writerUi('Busca incompleta: ','Incomplete search: ')+incomplete.join(' · ')+'.':'');
   const groups=new Map();
   for(const row of visible.slice(0,400)){
    const tag=row.entry.tags.find(tag=>!/^#(?:high|medium|low)$/i.test(tag))||writerUi('Sem etiqueta','Untagged');
    if(!groups.has(tag))groups.set(tag,[]);groups.get(tag).push(row);
   }
-  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada neste filtro.','No tasks found for this filter.')});
+  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada neste filtro nas notas examinadas.','No tasks found for this filter in the examined notes.')});
   for(const [tag,group] of groups){
    results.createEl('h4',{text:tag+' ('+group.length+')'});
    for(const row of group){
@@ -28820,19 +28943,28 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
  const refresh=async()=>{
   if(loading||closed)return;if(!writerV139TaskOn(plugin)){render();return;}loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
   try{
-   const files=plugin.app.vault.getMarkdownFiles().slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
+   const all=plugin.app.vault.getMarkdownFiles(),files=all.slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
+   const report={total:all.length,examined:0,failed:0,limited:0};
    for(let i=0;i<files.length;i+=12){
     const batch=await Promise.all(files.slice(i,i+12).map(async file=>({file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)})));
     if(closed||!writerV139TaskOn(plugin))return;
-    for(const {file,source} of batch)if(source!==null)for(const entry of writerV12TaskRefs(source))rows.push({file,source,entry,meta:writerV139TaskMetadata(entry.text)});
+    report.examined+=batch.length;
+    for(const {file,source} of batch){
+     if(typeof source!=='string'){report.failed++;continue;}
+     const parsed=writerV1391TaskScan(source);if(parsed.truncated)report.limited++;
+     for(const entry of parsed.tasks)rows.push({file,source,entry,meta:writerV139TaskMetadata(entry.text)});
+    }
    }
-   data=rows;
-  }catch(error){if(!closed)new Notice(String(error.message||error));}
+   data=rows;scan=report;scanFailed=false;
+  }catch(error){scanFailed=true;if(!closed)new Notice(String(error.message||error));}
   finally{loading=false;if(!closed&&writerV139TaskOn(plugin))render();}
  };
  query.addEventListener('input',render);checkbox.addEventListener('change',render);scope.addEventListener('change',render);
  new Setting(root).addButton(button=>button.setButtonText(writerUi('Nova tarefa','New task')).onClick(()=>writerV139TaskQuickAdd(plugin,()=>void refresh())))
-  .addButton(button=>button.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()));
+  .addButton(button=>button.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()))
+  .addButton(button=>button.setButtonText(writerUi('Opções de busca','Search options')).setDisabled(typeof plugin.openCoreSettings!=='function').onClick(()=>{
+   if(closed||typeof plugin.openCoreSettings!=='function')return;modal.close();plugin.openCoreSettings('tasks');
+  }));
  modal.onClose=()=>{closed=true;data=[];};modal.open();void refresh();return modal;
 }
 function writerV12TasksRegister(plugin){
@@ -35690,7 +35822,9 @@ function writerCompanionLayoutRegister(plugin){
   setAttribute(el,'aria-hidden','true');setAttribute(el,'data-basic-companion-hidden',reason);
  };
  const restore=()=>{
+  const restoredFans=[];
   for(const [el,saved] of shifted){
+   const fanBefore=el.matches('.sk-tasks-fab.is-fan')?writerCompanionRect(el.getBoundingClientRect()):null;
    for(const [key,value] of saved.props){
     if(el.style.getPropertyValue(key)!==saved.applied.get(key))continue;
     if(value.value)el.style.setProperty(key,value.value,value.priority);else el.style.removeProperty(key);
@@ -35702,9 +35836,25 @@ function writerCompanionLayoutRegister(plugin){
    }
    if(!saved.hadClass)el.classList.remove('writer-companion-managed');
    if(!saved.hadSuspended)el.classList.remove('writer-companion-suspended');stamp(el,'class');
+   if(fanBefore){
+    const after=writerCompanionRect(el.getBoundingClientRect());
+    if(after&&['left','top','width','height'].some(key=>after[key]!==fanBefore[key]))restoredFans.push(el);
+   }
   }
   shifted.clear();
   for(const el of marked){el.classList.remove('writer-companion-icon-toolkit','writer-companion-icon-basic');stamp(el,'class');}marked.clear();
+  return restoredFans;
+ };
+ const redrawRestoredFans=fabs=>{
+  let changed=false;
+  for(const fab of fabs){
+   if(fab.isConnected===false||!fab.matches('.sk-tasks-fab.is-fan'))continue;
+   const r=writerCompanionRect(fab.getBoundingClientRect());if(!r)continue;
+   fanAnchors.set(fab,[r.left,r.top,r.width,r.height].join(','));changed=true;
+  }
+  // Snailkit draws its SVG from the FAB rect only on open/resize. Restore its
+  // native anchor after an opt-out or Basic unload, without closing the fan.
+  if(changed&&typeof win.dispatchEvent==='function'&&typeof win.Event==='function')win.dispatchEvent(new win.Event('resize'));
  };
  const visible=el=>{
   const r=writerCompanionRect(el.getBoundingClientRect());if(!r||el.hidden)return null;
@@ -35723,7 +35873,7 @@ function writerCompanionLayoutRegister(plugin){
  const related=(el,roots)=>roots.some(root=>contains(root,el)||contains(el,root));
  const refresh=()=>{
   if(stopped||dragging)return;
-  restore();
+  const restoredFans=restore();
   if(enabled('ahmed-toolkit')&&config().explorerIcons!=='both'&&config().explorerIcons!==false){
    for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
     for(const row of leaf.view?.containerEl?.querySelectorAll?.('.nav-file-title,.nav-folder-title')||[]){
@@ -35733,7 +35883,8 @@ function writerCompanionLayoutRegister(plugin){
    }
   }
   const mobile=plugin.app.isMobile===true||doc.body.classList.contains('is-mobile')||(typeof Platform!=='undefined'&&Platform.isMobile===true);
-  if(!mobile||config().mobileLayout===false)return;
+  if(!mobile||config().mobileLayout===false){redrawRestoredFans(restoredFans);return;}
+  if(!enabled('snailkit'))redrawRestoredFans(restoredFans);
   const floats=[...new Set([...(enabled('snailkit')?query(snail):[]),...(enabled('ahmed-toolkit')?query(toolkit):[])])].filter(el=>visible(el));
   if(!floats.length)return;
   const primary=query(nativePriority).filter(el=>visible(el));
@@ -35861,7 +36012,7 @@ function writerCompanionLayoutRegister(plugin){
    return [...(record.addedNodes||[]),...(record.removedNodes||[])].some(node=>node.nodeType===1&&!node.classList?.contains('writer-companion-safe-area'));
   }))schedule();
  });observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden','aria-expanded','popover']});cleanups.push(()=>observer.disconnect());}
- const stop=()=>{if(stopped)return;stopped=true;if(frame!==null)win.cancelAnimationFrame(frame);frame=null;for(const cleanup of cleanups)cleanup();restore();};
+ const stop=()=>{if(stopped)return;stopped=true;if(frame!==null)win.cancelAnimationFrame(frame);frame=null;for(const cleanup of cleanups)cleanup();redrawRestoredFans(restore());};
  plugin.register?.(stop);schedule();return {refresh,schedule,stop};
 }
 

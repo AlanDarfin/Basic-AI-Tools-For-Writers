@@ -175,7 +175,11 @@ limit: 80
 ~~~
 ~~~~
 
-O navegador de tarefas lê tarefas Markdown; a central pode marcar uma caixa depois de verificar se o texto de origem ainda corresponde ao carregado. Captura rápida e sessão de ideias criam notas Markdown separadas quando solicitado. Eventos, importação/exportação local de iCalendar e feeds opcionais têm controles próprios. Atualizar feeds pode contatar as URLs configuradas automaticamente quando essa opção está ativa.
+O painel de tarefas filtra Todas, Hoje, Atrasadas, Próximos sete dias e Sem prazo. Ele lê linhas de tarefas Markdown fora de propriedades, comentários HTML/Obsidian e blocos de código. Mudanças de checkbox conferem novamente a tarefa e o texto de origem antes da gravação atômica. A captura de tarefa mostra a prévia do destino e da linha antes de acrescentar a uma nota Markdown existente escolhida; edições não salvas ou concorrentes exigem outra prévia.
+
+O resumo mostra notas examinadas/total. **Busca incompleta** explica notas fora do limite configurado, falhas de leitura ou arquivos com mais de 250 tarefas válidas; apenas as primeiras 250 tarefas de cada arquivo são incluídas. **Opções de busca** abre **Tarefas e captura** para conferir o limite existente. Os limites não são aumentados automaticamente. Se uma atualização falhar, um aviso identifica os resultados anteriores mantidos.
+
+As ações separadas de captura de nota e brainstorm criam novas notas Markdown quando solicitadas. Entradas do calendário, importação/exportação local de iCalendar e feeds opcionais têm controles próprios. Atualizar feeds pode acessar automaticamente as URLs configuradas quando você ativa o recurso.
 
 Os estudos usam cartões em notas marcadas com `#flashcards`, no formato `Pergunta::Resposta`, cartões reversíveis `A:::B` e lacunas aceitas. O agendamento oferece as opções implementadas de SM-2 e FSRS-4.5. Importação/exportação TSV permite trocar arquivos de texto compatíveis com Anki; não é uma conexão em tempo real com a coleção do Anki. Rotinas de estudo incluem criação sob demanda de notas de aulas/diário, lembretes e blocos de horário.
 

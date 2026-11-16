@@ -246,3 +246,42 @@ test('existing native popovers update layout through API lifecycle events withou
  assert.equal(h.listeners.some(item=>['beforetoggle','toggle','transitionend','animationend'].includes(item.type)),false);
  lateHandler({target:popup});assert.equal(h.frames.size,0);
 });
+
+test('restoring an open fan on layout opt-out redraws its native anchor exactly once',()=>{
+ const h=harness(),anchors=[];
+ h.win.addEventListener('resize',()=>anchors.push(h.fab.getBoundingClientRect()));
+ h.manager.refresh();h.fab.classList.add('is-fan');h.fab.setAttribute('aria-expanded','true');
+ const fan=h.element('sk-tasks-fan',rect(0,0,300,400));h.manager.refresh();
+ const managed=h.fab.getBoundingClientRect(),draws=anchors.length;
+ h.plugin.settings.companionCompatibility.mobileLayout=false;h.manager.refresh();
+ const native=h.fab.getBoundingClientRect();
+ assert.notEqual(native.top,managed.top);assert.equal(anchors.length,draws+1);
+ assert.equal(anchors.at(-1).top,native.top);assert.equal(anchors.at(-1).left,native.left);
+ assert.equal(h.fab.classList.contains('is-fan'),true);assert.equal(h.fab.getAttribute('aria-expanded'),'true');assert.ok(h.elements.includes(fan));
+ for(const [id,callback] of [...h.frames]){h.frames.delete(id);callback();}
+ h.manager.refresh();assert.equal(anchors.length,draws+1);assert.equal(h.frames.size,0);
+});
+
+test('per-plugin opt-out and Basic unload restore an open native fan without closing or deleting it',()=>{
+ for(const action of ['plugin-off','unload']){
+  const h=harness(),anchors=[];
+  h.win.addEventListener('resize',()=>anchors.push(h.fab.getBoundingClientRect()));
+  h.manager.refresh();h.fab.classList.add('is-fan');const fan=h.element('sk-tasks-fan',rect(0,0,300,400));h.manager.refresh();
+  const managed=h.fab.getBoundingClientRect(),draws=anchors.length;
+  if(action==='plugin-off'){h.plugin.settings.companionCompatibility.enabledById.snailkit=false;h.manager.refresh();}
+  else h.manager.stop();
+  assert.notEqual(h.fab.getBoundingClientRect().top,managed.top,action);
+  assert.equal(anchors.length,draws+1,action);assert.equal(anchors.at(-1).top,h.fab.getBoundingClientRect().top,action);
+  assert.equal(h.fab.classList.contains('is-fan'),true,action);assert.ok(h.elements.includes(fan),action);
+  h.manager.stop();h.manager.stop();assert.equal(anchors.length,draws+1,action);
+  assert.equal(h.listeners.length,1,action+': native resize listener survives Basic cleanup');assert.equal(h.frames.size,0,action);
+ }
+});
+
+test('restoring a fan whose native coordinates are unchanged does not emit a redundant resize',()=>{
+ const h=harness();h.fab.bounds=rect(220,300,58,58);h.fab.classList.add('is-fan');h.element('sk-tasks-fan',rect(0,0,300,400));
+ h.manager.refresh();const before=h.fab.getBoundingClientRect(),draws=h.win.events.length;
+ h.plugin.settings.companionCompatibility.mobileLayout=false;h.manager.refresh();
+ assert.equal(h.fab.getBoundingClientRect().top,before.top);assert.equal(h.fab.getBoundingClientRect().left,before.left);
+ assert.equal(h.win.events.length,draws);h.manager.stop();assert.equal(h.win.events.length,draws);
+});

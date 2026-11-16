@@ -2,11 +2,13 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.9.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 13.9.1 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
 Basic brings chapter writing, story planning, editing tools, a configurable homepage and optional AI into your vault. Your notes remain ordinary Markdown files with their folders, links and properties. Choose the features you need and keep the rest out of your menus.
+
+Task scans exclude checkboxes inside note properties, comments and code fences, and show how much of the vault was examined. Pending speech reads are cancelled when you stop, disable speech or change the note or provider. The homepage title and logo have more prominence while retaining their narrow-pane layout.
 
 ## Install and make it yours
 

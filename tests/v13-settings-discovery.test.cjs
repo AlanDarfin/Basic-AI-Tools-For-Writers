@@ -195,6 +195,41 @@ test('source indexing extracts bilingual controls and loops without evaluating c
  assert.equal(result.find(item=>item.titleEn==='Destination').descriptionPt,'Descrição');
 });
 
+test('section indexing skips callback guards and unrelated equalities before the rendered section',()=>{
+ const {tokenize,extract,branch}=require('../scripts/settings-search-index.js');
+ const source=`
+ const selected=section==='tts';
+ const changed=value=>{if(section==='tts'&&field==='enabled'&&!value)stop();};
+ if(section==='tts'||section==='review'){new Setting(panel).setName('Shared control');}
+ if(section==='tts'){
+  new Setting(panel).setName(writerUi('Mecanismo de voz','Voice engine'));
+ }
+ if(section==='anotherName')new Setting(panel).setName(writerUi('Propriedade','Property'));
+ `;
+ const model=tokenize(source);
+ assert.deepEqual(extract(model,branch(model,'tts','section')).map(item=>item.titleEn),['Voice engine']);
+ assert.deepEqual(extract(model,branch(model,'anotherName','section')).map(item=>item.titleEn),['Property']);
+ assert.equal(branch(model,'review','section'),null);
+});
+
+test('fresh settings index keeps read-aloud controls and online consent searchable in both languages',()=>{
+ const {build}=require('../scripts/settings-search-index.js');
+ const entries=vm.runInNewContext(build()+'\nWRITER_SETTINGS_SEARCH_INDEX;');
+ const tts=entries.filter(item=>item.id==='tts');
+ for(const [titlePt,titleEn] of [
+  ['Mecanismo de voz','Voice engine'],
+  ['Permitir processamento online de texto','Allow online text processing'],
+  ['Continuar a leitura da nota','Continue reading the note'],
+  ['Idioma da leitura','Speech language'],
+  ['Tamanho dos trechos de leitura','Speech chunk size'],
+  ['Máximo de caracteres por leitura','Maximum characters per playback'],
+  ['Velocidade da fala','Speaking speed']
+ ])assert.ok(tts.some(item=>item.titlePt===titlePt&&item.titleEn===titleEn),'Missing bilingual TTS option: '+titleEn);
+ const consent=tts.find(item=>item.titleEn==='Allow online text processing');
+ assert.match(consent.descriptionPt,/Desativado por padrão.*Microsoft/);
+ assert.match(consent.descriptionEn,/OFF by default.*Microsoft/);
+});
+
 test('generated labels cover every settings route and keep provider credentials out of model-only results',()=>{
  const h=fixture(),entries=h.api.WRITER_SETTINGS_SEARCH_INDEX;
  for(const section of h.api.WRITER_SETTINGS_CATALOG)assert.ok(entries.some(item=>item.id===section.id),'No searchable options for '+section.id);

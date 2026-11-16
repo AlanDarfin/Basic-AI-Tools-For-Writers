@@ -81,7 +81,9 @@ function writerCompanionLayoutRegister(plugin){
   setAttribute(el,'aria-hidden','true');setAttribute(el,'data-basic-companion-hidden',reason);
  };
  const restore=()=>{
+  const restoredFans=[];
   for(const [el,saved] of shifted){
+   const fanBefore=el.matches('.sk-tasks-fab.is-fan')?writerCompanionRect(el.getBoundingClientRect()):null;
    for(const [key,value] of saved.props){
     if(el.style.getPropertyValue(key)!==saved.applied.get(key))continue;
     if(value.value)el.style.setProperty(key,value.value,value.priority);else el.style.removeProperty(key);
@@ -93,9 +95,25 @@ function writerCompanionLayoutRegister(plugin){
    }
    if(!saved.hadClass)el.classList.remove('writer-companion-managed');
    if(!saved.hadSuspended)el.classList.remove('writer-companion-suspended');stamp(el,'class');
+   if(fanBefore){
+    const after=writerCompanionRect(el.getBoundingClientRect());
+    if(after&&['left','top','width','height'].some(key=>after[key]!==fanBefore[key]))restoredFans.push(el);
+   }
   }
   shifted.clear();
   for(const el of marked){el.classList.remove('writer-companion-icon-toolkit','writer-companion-icon-basic');stamp(el,'class');}marked.clear();
+  return restoredFans;
+ };
+ const redrawRestoredFans=fabs=>{
+  let changed=false;
+  for(const fab of fabs){
+   if(fab.isConnected===false||!fab.matches('.sk-tasks-fab.is-fan'))continue;
+   const r=writerCompanionRect(fab.getBoundingClientRect());if(!r)continue;
+   fanAnchors.set(fab,[r.left,r.top,r.width,r.height].join(','));changed=true;
+  }
+  // Snailkit draws its SVG from the FAB rect only on open/resize. Restore its
+  // native anchor after an opt-out or Basic unload, without closing the fan.
+  if(changed&&typeof win.dispatchEvent==='function'&&typeof win.Event==='function')win.dispatchEvent(new win.Event('resize'));
  };
  const visible=el=>{
   const r=writerCompanionRect(el.getBoundingClientRect());if(!r||el.hidden)return null;
@@ -114,7 +132,7 @@ function writerCompanionLayoutRegister(plugin){
  const related=(el,roots)=>roots.some(root=>contains(root,el)||contains(el,root));
  const refresh=()=>{
   if(stopped||dragging)return;
-  restore();
+  const restoredFans=restore();
   if(enabled('ahmed-toolkit')&&config().explorerIcons!=='both'&&config().explorerIcons!==false){
    for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
     for(const row of leaf.view?.containerEl?.querySelectorAll?.('.nav-file-title,.nav-folder-title')||[]){
@@ -124,7 +142,8 @@ function writerCompanionLayoutRegister(plugin){
    }
   }
   const mobile=plugin.app.isMobile===true||doc.body.classList.contains('is-mobile')||(typeof Platform!=='undefined'&&Platform.isMobile===true);
-  if(!mobile||config().mobileLayout===false)return;
+  if(!mobile||config().mobileLayout===false){redrawRestoredFans(restoredFans);return;}
+  if(!enabled('snailkit'))redrawRestoredFans(restoredFans);
   const floats=[...new Set([...(enabled('snailkit')?query(snail):[]),...(enabled('ahmed-toolkit')?query(toolkit):[])])].filter(el=>visible(el));
   if(!floats.length)return;
   const primary=query(nativePriority).filter(el=>visible(el));
@@ -252,6 +271,6 @@ function writerCompanionLayoutRegister(plugin){
    return [...(record.addedNodes||[]),...(record.removedNodes||[])].some(node=>node.nodeType===1&&!node.classList?.contains('writer-companion-safe-area'));
   }))schedule();
  });observer.observe(doc.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden','aria-expanded','popover']});cleanups.push(()=>observer.disconnect());}
- const stop=()=>{if(stopped)return;stopped=true;if(frame!==null)win.cancelAnimationFrame(frame);frame=null;for(const cleanup of cleanups)cleanup();restore();};
+ const stop=()=>{if(stopped)return;stopped=true;if(frame!==null)win.cancelAnimationFrame(frame);frame=null;for(const cleanup of cleanups)cleanup();redrawRestoredFans(restore());};
  plugin.register?.(stop);schedule();return {refresh,schedule,stop};
 }

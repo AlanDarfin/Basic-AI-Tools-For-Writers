@@ -133,3 +133,11 @@ test('review interaction guard remains active without starting or controlling sp
  pointer.callback({target:{closest:()=>true}});assert.deepEqual(guard,['capture',1200]);
  assert.equal(h.browserCalls.length,0);assert.equal(h.toolkitCalls.length,0);
 });
+
+
+test('the local panel Stop cancels final-reader disk work before it can start audio',async()=>{
+ const h=harness();let resolve;const pending=new Promise(done=>{resolve=done;});
+ h.plugin.app.workspace.getActiveViewOfType=()=>null;h.plugin.app.workspace.getLeavesOfType=()=>[];h.plugin.app.vault.cachedRead=()=>pending;
+ const reading=h.final.speakActive();h.api.writerV107SpeechPanel(h.plugin);h.button('Stop').events.click();resolve('Cancelled pending note.');
+ await reading;assert.equal(h.utterances.length,0);assert.equal(h.toolkitCalls.length,0);
+});

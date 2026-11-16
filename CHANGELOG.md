@@ -2,6 +2,15 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.9.1 — Reliable task scans, speech cancellation and homepage clarity
+
+- Exclude checkbox lines inside YAML properties, HTML/Obsidian comments and code fences from task scans; revalidate task eligibility before and during atomic checkbox writes.
+- Report examined/total notes, unreadable files and scan/task limits; retain prior results with a warning if refresh fails and link to the existing search options.
+- Cancel obsolete pending speech reads after Stop, disable, note/provider changes, unload or a newer request; keep local note speech on the current editor buffer and ignore stale failures.
+- Preserve the complete speech-settings search index when callback conditions mention the same section ID as a settings panel.
+- Keep formatting-toolbar callbacks inert after unload and redraw Snailkit's native fan once when restoring a moved task button.
+- Incorporate PR #141: give the homepage title and logo more prominence while preserving centering, narrow layouts, custom images and long-title wrapping.
+
 ## 13.9.0 — Native tools and mobile plugin support
 
 - Add native task date filters, priorities and previewed quick capture into an existing Markdown note, with concurrent-edit checks and no Snailkit dependency.

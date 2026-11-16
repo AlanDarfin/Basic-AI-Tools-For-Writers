@@ -10,19 +10,6 @@
  font-size:var(--font-ui-large);
  line-height:1.35;
 }
-.writer-v13-settings .writer-v131-settings-pickers{
- position:sticky;
- top:-24px;
- z-index:4;
- padding-block:6px;
- margin-block:0 12px;
- background:var(--background-primary);
- border-bottom:1px solid var(--background-modifier-border);
-}
-.writer-v13-settings .writer-v131-settings-pickers>select{
- min-height:36px;
- box-shadow:none;
-}
 .writer-v13-settings .writer-v901-search-field{
  min-height:38px;
  background:var(--background-secondary);
@@ -178,11 +165,7 @@
   padding:18px 12px 32px;
   padding-inline:12px;
  }
- .writer-v13-settings .writer-v131-settings-pickers{
-  gap:8px;
-  top:-18px;
- }
- .writer-v13-settings :is(.writer-v131-settings-pickers>select,.dictionary-settings-panel button:not(.clickable-icon),.dictionary-settings-panel select:not(.is-measuring)){
+ .writer-v13-settings :is(.dictionary-settings-panel button:not(.clickable-icon),.dictionary-settings-panel select:not(.is-measuring)){
   min-height:44px;
   height:auto;
  }

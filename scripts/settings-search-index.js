@@ -8,6 +8,7 @@ const root=path.resolve(__dirname,'..');
 const output=path.join(root,'src/v13/settings-search-index.js');
 const routes=[
  ['general','v13/core-workflows','writerV13RenderStart'],
+ ['general','v13/mobile-status','writerMobileStatusSettings'],
  ['general','v12/settings-hub-1201','writerV1201SettingsOverview'],
  ['modules','v4/modules','writerRenderModuleSettings'],
  ['workspaceProfiles','v5/workspace-ux','renderSettings'],

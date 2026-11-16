@@ -3546,14 +3546,6 @@ body.writer-v4-typewriter-focus .cm-editor.writer-v4-typewriter-engaged .cm-line
  padding:6px 10px;
  font-size:var(--font-ui-small);
 }
-.writer-project-root .writer-project-series-row>.writer-v7-stable-series-launch{
- box-sizing:border-box;
- min-width:0;min-height:36px;padding:6px 10px;
- border:1px solid var(--background-modifier-border);
- background:var(--background-secondary);box-shadow:none;
- border-radius:var(--radius-s);
- font-size:var(--font-ui-small);
-}
 .writer-v7-stable-series{
  box-sizing:border-box;max-width:100%;min-width:0;
 }
@@ -3729,10 +3721,6 @@ body:not(.is-mobile) .writer-project-root .writer-project-tabs.writer-project-ta
   min-height:29px;
   padding:5px 8px;
 }
-body:not(.is-mobile) .writer-project-root .writer-project-series-row>.writer-v7-stable-series-launch{
-  min-height:32px;
-  padding:5px 8px;
-}
 body:not(.is-mobile) .writer-project-root .writer-v7-rc-structure-tabs>button{
   min-height:30px;
   padding:5px 9px;
@@ -3810,12 +3798,6 @@ body:not(.is-mobile) .writer-project-root :is(.writer-v7-toolbar,.writer-v7-inli
  color:var(--text-normal);
  font-size:var(--font-ui-small);
  font-weight:500;
-}
-.writer-project-root .writer-project-series-row>.writer-v7-stable-series-launch{
- flex:0 0 auto;
- align-self:stretch;
- white-space:nowrap;
- min-height:34px;
 }
 body:not(.is-mobile) .writer-project-root .writer-project-series-row{
  gap:5px;
@@ -10370,31 +10352,8 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  container-type:inline-size;
  min-width:0;
 }
-.writer-v13-settings .writer-v131-settings-pickers{display:none;gap:6px;margin:4px 0 8px;}
-.writer-v13-settings .writer-v131-settings-pickers>select{
- min-width:0;width:100%;min-height:32px;padding:5px 8px;
- border:1px solid var(--background-modifier-border);
- border-radius:var(--radius-s,5px);background:var(--background-secondary);
- color:var(--text-normal);font-size:var(--font-ui-small);
-}
 .writer-v13-settings .dictionary-settings-tabs{
  position:relative;top:auto;z-index:auto;
- display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
- gap:4px;padding:4px 0 6px;overflow:visible;scroll-snap-type:none;
- scrollbar-width:none;max-width:100%;
-}
-.writer-v13-settings .dictionary-settings-tabs>button{
- box-sizing:border-box;flex:initial;width:100%;min-width:0;min-height:32px;
- padding:5px 7px;gap:4px;white-space:normal;text-align:center;
- font-size:var(--font-ui-smaller);
- overflow-wrap:break-word;word-break:normal;
-}
-.writer-v13-settings .dictionary-settings-subtabs{
- gap:3px;padding:2px 0 5px;scrollbar-width:none;overscroll-behavior-x:contain;
-}
-.writer-v13-settings .dictionary-settings-subtabs>button{
- min-height:30px;padding:4px 8px;max-width:240px;
- overflow:hidden;text-overflow:ellipsis;font-size:var(--font-ui-smaller);
 }
 .writer-v13-settings .dictionary-settings-subtabs::-webkit-scrollbar{display:none;height:0;}
 .writer-v13-settings :is(.writer-v901-settings-search,.writer-v1050-settings-search){
@@ -10415,16 +10374,6 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
 }
 .writer-v13-settings .dictionary-settings-panel :is(.setting-item-name,.setting-item-description){
  overflow-wrap:break-word;word-break:normal;
-}
-@container basic-settings (max-width:780px){
- .writer-v13-settings .dictionary-settings-tabs,
- .writer-v13-settings .dictionary-settings-subtabs{display:none;}
- .writer-v13-settings .writer-v131-settings-pickers{
-  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
- }
-}
-@container basic-settings (max-width:440px){
- .writer-v13-settings .writer-v131-settings-pickers{grid-template-columns:minmax(0,1fr);}
 }
 
 /* The actual homepage width, not monitor width, controls widget layout. */
@@ -10863,9 +10812,7 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{
 .writer-project-root .writer-project-nav-groups{gap:5px;margin-block:4px}
 .writer-project-root .writer-project-nav-groups>button{min-height:34px;padding:5px 7px}
 .writer-project-root .writer-project-nav-groups .writer-v901-nav-icon{flex:0 0 16px}
-.writer-project-root .writer-project-tabs.writer-project-tabs>button{min-height:34px;padding:6px 9px}
-.writer-project-root .writer-v136-project-sections{display:none;width:100%;max-width:100%;min-height:36px;margin:4px 0 8px}
-.writer-project-root :is(.writer-project-tabs,.writer-project-nav-groups)>button:focus-visible{
+.writer-project-root .writer-project-nav-groups>button:focus-visible{
  outline:2px solid var(--interactive-accent);outline-offset:-2px;
 }
 .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap>.writer-project-scene-title{
@@ -10890,10 +10837,44 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{
 .writer-project-root .writer-v11-editor{line-height:1.6}
 .writer-project-root .writer-project-notes-toolbar{gap:6px;margin-block:6px}
 .writer-project-root .writer-project-notes-toolbar :is(button,select){min-height:32px;font-size:var(--font-ui-small)}
+/* Match the explorer's outline icons without shrinking the mobile touch target. */
+.writer-project-root{
+ --writer-project-action-size:32px;
+ --writer-project-glyph-size:18px;
+}
+body.is-mobile .writer-project-root{
+ --writer-project-action-size:44px;
+ --writer-project-glyph-size:22px;
+}
+.writer-project-root :is(.writer-project-toolbar,.writer-project-series-row,.writer-project-notes-toolbar)>button.writer-project-icon-action{
+ box-sizing:border-box;
+ display:inline-flex;align-items:center;justify-content:center;align-self:center;
+ flex:0 0 var(--writer-project-action-size);
+ width:var(--writer-project-action-size);min-width:var(--writer-project-action-size);
+ height:var(--writer-project-action-size);min-height:var(--writer-project-action-size);
+ padding:0;border:0;border-radius:var(--radius-s);
+ background:transparent;box-shadow:none;color:var(--icon-color,var(--text-muted));
+}
+.writer-project-root :is(.writer-project-toolbar,.writer-project-series-row,.writer-project-notes-toolbar)>button.writer-project-icon-action:is(:hover,:focus-visible,:active){
+ background:var(--background-modifier-hover);color:var(--icon-color-hover,var(--text-normal));
+}
+.writer-project-root :is(.writer-project-toolbar,.writer-project-series-row,.writer-project-notes-toolbar)>button.writer-project-icon-action:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-2px;
+}
+.writer-project-root .writer-project-action-glyph{display:flex;line-height:0;pointer-events:none}
+.writer-project-root .writer-project-action-glyph svg{
+ width:var(--writer-project-glyph-size);height:var(--writer-project-glyph-size);
+}
+.writer-project-root .writer-project-notes-toolbar:is(.writer-project-draft-actions,.writer-project-scene-actions-bar){
+ align-items:center;gap:4px;
+}
+.writer-project-root .writer-project-draft-actions>select{
+ flex:1 1 0;min-width:0;margin:0;text-overflow:ellipsis;
+}
+.writer-project-root .writer-project-draft-actions>.writer-project-linked-draft-select{flex-basis:100%}
+body.is-mobile .writer-project-root .writer-project-draft-actions>select{min-height:var(--writer-project-action-size)}
 .writer-project-root .writer-project-panel[role="tabpanel"]:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:-2px}
 @container basic-project (max-width:540px){
- .writer-project-root .writer-v136-project-sections{display:block}
- .writer-project-root .writer-project-tabs.writer-project-tabs{display:none}
  .writer-project-root .writer-project-nav-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:28px minmax(0,1fr) 30px;gap:3px 6px}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{grid-column:1;grid-row:1;width:28px;min-width:28px}
@@ -10902,8 +10883,6 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions .writer-project-scene-controls>button.writer-project-small-button:not(.writer-project-scene-more){display:none}
  .writer-project-root .writer-project-nav-groups>button .writer-project-nav-label{font-size:var(--font-ui-small)}
  body .writer-project-root .writer-project-nav-groups.writer-project-nav-groups>button{gap:4px;padding-inline:2px;min-height:34px}
- .writer-project-root .writer-project-toolbar>.writer-project-create{flex:0 0 36px;width:36px;min-width:36px;padding:4px;font-size:0}
- .writer-project-root .writer-project-toolbar>.writer-project-create::before{content:'+';font-size:22px;line-height:1}
  .writer-project-root .writer-v11-chapter summary{flex-wrap:wrap}
  .writer-project-root .writer-v11-chapter summary small{flex-basis:100%}
 }
@@ -10911,7 +10890,7 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{
  .writer-project-root .writer-project-nav-label{display:none}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions .writer-project-scene-controls>button.writer-project-small-button:not(.writer-project-scene-more){display:none}
 }
-body.is-mobile .writer-project-root :is(.writer-project-nav-groups>button,.writer-v136-project-sections,.writer-project-scene-title){min-height:44px}
+body.is-mobile .writer-project-root :is(.writer-project-nav-groups>button,.writer-project-scene-title){min-height:44px}
 body.is-mobile .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap>.writer-project-scene-title{min-height:44px}
 body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:44px minmax(0,1fr) 44px}
 body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle,
@@ -10987,19 +10966,6 @@ body.is-mobile .writer-project-root :is(.writer-project-arc-grip,.writer-project
  padding:0;
  font-size:var(--font-ui-large);
  line-height:1.35;
-}
-.writer-v13-settings .writer-v131-settings-pickers{
- position:sticky;
- top:-24px;
- z-index:4;
- padding-block:6px;
- margin-block:0 12px;
- background:var(--background-primary);
- border-bottom:1px solid var(--background-modifier-border);
-}
-.writer-v13-settings .writer-v131-settings-pickers>select{
- min-height:36px;
- box-shadow:none;
 }
 .writer-v13-settings .writer-v901-search-field{
  min-height:38px;
@@ -11156,11 +11122,7 @@ body.is-mobile .writer-project-root :is(.writer-project-arc-grip,.writer-project
   padding:18px 12px 32px;
   padding-inline:12px;
  }
- .writer-v13-settings .writer-v131-settings-pickers{
-  gap:8px;
-  top:-18px;
- }
- .writer-v13-settings :is(.writer-v131-settings-pickers>select,.dictionary-settings-panel button:not(.clickable-icon),.dictionary-settings-panel select:not(.is-measuring)){
+ .writer-v13-settings :is(.dictionary-settings-panel button:not(.clickable-icon),.dictionary-settings-panel select:not(.is-measuring)){
   min-height:44px;
   height:auto;
  }
@@ -11356,15 +11318,56 @@ body.is-mobile :is(.writer-v10-bookshelf,.writer-v108-books-widget) .writer-v108
 .dictionary-view-content.writer-tool-root{
  gap:10px;
 }
-.dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs{
- display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
- gap:4px;overflow:visible;align-items:stretch;
- padding:0 0 8px;
+/* Basic AI, Longform and settings share the same active underline and sizing. */
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs{
+ display:flex;flex-flow:row nowrap;align-items:stretch;justify-content:flex-start;
+ gap:3px;padding:0 0 3px;
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:none;
 }
-body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button{
- width:100%;min-width:0;max-width:100%;min-height:36px;
- padding:7px 5px;white-space:normal;overflow-wrap:normal;
- line-height:1.3;box-shadow:none;
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs>button{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ width:auto;min-height:var(--writer-sidebar-touch-height,34px);height:auto;margin:0;padding:5px 8px;
+ border:0;border-bottom:2px solid transparent;border-radius:var(--radius-s) var(--radius-s) 0 0;
+ background:transparent;box-shadow:none;color:var(--text-muted);
+ font-size:var(--font-ui-smaller);line-height:1.2;white-space:nowrap;
+}
+body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{flex:1 0 0;min-width:44px}
+body .writer-project-root .writer-project-tabs.writer-sidebar-tabs>button{flex:1 0 auto;min-width:44px;max-width:168px}
+body .writer-v13-settings .writer-sidebar-tabs{margin-block:0 5px}
+body .writer-v13-settings .writer-sidebar-tabs>button{flex:0 0 auto;min-width:44px;max-width:185px}
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs>button.is-active{
+ border-bottom-color:var(--interactive-accent);background:var(--background-modifier-hover);color:var(--text-normal);box-shadow:none;
+}
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs>button:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-3px;
+}
+body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button[hidden]{display:none}
+body.is-mobile .writer-sidebar-tabs{--writer-sidebar-touch-height:44px}
+.writer-sidebar-tabs .writer-sidebar-tab-label{
+ display:block;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.writer-sidebar-tabs .writer-v901-nav-icon{flex:0 0 auto}
+.writer-tool-root .writer-sidebar-icon-action{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:0;
+}
+.writer-tool-root .writer-sidebar-icon-action .writer-v901-nav-icon svg{display:block;width:16px;height:16px}
+.writer-sidebar-header .writer-sidebar-action-label{
+ min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+@container writer-sidebar (max-width:400px){
+ body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{flex-direction:column;gap:3px;padding-inline:3px}
+}
+@container writer-sidebar (max-width:205px){
+ .writer-tool-root .writer-sidebar-tab-label,
+ .writer-sidebar-header .writer-sidebar-action-label{display:none}
+}
+@container basic-project (max-width:400px){
+ body .writer-project-root .writer-project-tabs.writer-sidebar-tabs>button{
+  flex-direction:column;gap:3px;max-width:110px;padding-inline:7px;
+ }
+}
+@container basic-project (max-width:205px){
+ .writer-project-root .writer-sidebar-tab-label{display:none}
 }
 body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-tool-panel{
  gap:10px;padding:6px 0 12px;
@@ -11481,13 +11484,15 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-pa
 .writer-v134-recovery .writer-v134-recovery-original>summary::marker{
  color:var(--text-accent);
 }
+@container basic-settings (max-width:530px){
+ body .writer-v13-settings .writer-sidebar-tabs>button{
+  flex-direction:column;gap:3px;max-width:122px;padding-inline:7px;
+ }
+}
+@container basic-settings (max-width:205px){
+ .writer-v13-settings .writer-sidebar-tab-label{display:none}
+}
 @container writer-sidebar (max-width:300px){
- .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs{
-  grid-template-columns:repeat(2,minmax(0,1fr));
- }
- body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-tool-tabs>button{
-  min-height:38px;
- }
  .dictionary-view-content.writer-tool-root .writer-review-engine-row{
   grid-template-columns:minmax(0,1fr);gap:4px;
  }
@@ -11497,7 +11502,7 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-pa
  .dictionary-view-content.writer-tool-root :is(input[type="search"],textarea){
   font-size:16px;
  }
- body .dictionary-view-content.writer-tool-root :is(.writer-tool-tabs.writer-tool-tabs>button,.dictionary-controls button,.dictionary-actions button,.writer-file-actions>button){
+ body .dictionary-view-content.writer-tool-root :is(.dictionary-controls button,.dictionary-actions button,.writer-file-actions>button){
   min-height:44px;
  }
  .dictionary-view-content.writer-tool-root .writer-chat-composer textarea{
@@ -11913,4 +11918,44 @@ body.is-mobile .writer-folder-focus-reset{min-height:44px;}
  flex:1 1 auto;min-height:0;height:auto;
 }
 body .writer-v9-toolbar-host>.writer-v9-format-toolbar.writer-v1048-format-toolbar:not(.is-floating){inset:auto;}
+
+/* Phone status is a real child of the mobile navigator: the native actions
+ * stay first, and the platform's bottom inset still belongs to that navigator. */
+body.is-mobile .writer-mobile-status-navbar.writer-mobile-status-navbar-wrap{flex-wrap:wrap}
+body.is-mobile .writer-mobile-status-navbar.writer-mobile-status-navbar-fit{
+ box-sizing:border-box;min-height:var(--writer-mobile-status-navbar-min);
+}
+.writer-mobile-status{display:none}
+body.is-mobile .writer-mobile-status-navbar>.writer-mobile-status:not([hidden]){
+ box-sizing:border-box;
+ display:flex;flex:0 0 auto;align-items:center;gap:4px;
+ order:100;width:100%;min-width:0;height:28px;padding:0 8px;
+ overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;
+ background:var(--background-primary);
+ border-top:1px solid var(--background-modifier-border);
+ color:var(--text-muted);font-size:var(--font-ui-smaller);
+}
+body.is-mobile:not(.is-hidden-nav) .writer-mobile-status-overlay .workspace-split.mod-root{
+ margin-block-end:28px;
+}
+body.is-mobile .writer-mobile-status>.writer-mobile-status-native.status-bar{
+ display:inline-flex;position:static;inset:auto;z-index:auto;transform:none;
+ flex:0 0 auto;align-items:center;align-self:stretch;
+ height:auto;min-height:0;width:auto;max-width:none;
+ margin:0;padding:0;border:0;background:transparent;overflow:visible;
+}
+.writer-mobile-status .writer-mobile-status-item:not([hidden]){
+ display:inline-flex;flex:0 0 auto;align-items:center;gap:4px;white-space:nowrap;
+ padding-inline:5px;font-variant-numeric:tabular-nums;
+}
+.writer-mobile-status>.writer-mobile-status-item[hidden]{display:none}
+.writer-mobile-status>button.writer-mobile-status-item{
+ height:100%;min-height:0;padding-block:0;border:0;border-radius:var(--radius-s);
+ background:transparent;box-shadow:none;color:inherit;font-size:inherit;
+}
+.writer-mobile-status>.writer-mobile-status-item:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-2px;
+}
+.writer-mobile-status-glyph{display:inline-flex}
+.writer-mobile-status-glyph svg{display:block;width:14px;height:14px}
 /* END V8 MODULAR STYLES */

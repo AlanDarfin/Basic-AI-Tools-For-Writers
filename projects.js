@@ -2,6 +2,13 @@
 const {ItemView,TFile,TFolder,Notice,Modal,Menu,Setting,parseYaml,stringifyYaml}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
 const lfMsg=(pt,en)=>{try{return require('obsidian').getLanguage?.()?.toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}};
+function lfIconButton(parent,icon,label,extraClass=''){
+ const button=parent.createEl('button',{cls:['writer-project-icon-action',extraClass].filter(Boolean).join(' '),
+  attr:{type:'button',title:label,'aria-label':label}});
+ const glyph=button.createSpan({cls:'writer-project-action-glyph',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon?.(glyph,icon);
+ return button;
+}
 const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
 function lfPath(...parts){const path=[];for(const part of parts){for(const segment of String(part||'').split('/')){if(!segment||segment==='.')continue;if(segment==='..'){path.pop();continue;}path.push(segment);}}return path.join('/');}
 class TextPrompt extends Modal{
@@ -134,7 +141,8 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create',attr:{title:lfMsg('Criar projeto','Create project'),'aria-label':lfMsg('Criar projeto','Create project')}}).addEventListener('click',()=>this.promptNewProject());
+  lfIconButton(top,'plus',lfMsg('Criar projeto','Create project'),'writer-project-create')
+   .addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
@@ -158,8 +166,7 @@ class ProjectsView extends ItemView{
   seriesField.createSpan({cls:'writer-project-series-label',text:lfMsg('Série','Series')});
   this.seriesMembershipValue=seriesField.createSpan({cls:'writer-project-series-value',attr:{'aria-live':'polite'}});
   this.refreshSeriesMembership();
-  seriesRow.createEl('button',{text:lfMsg('Gerenciar','Manage'),cls:'writer-v7-stable-series-launch',
-   attr:{type:'button','aria-label':lfMsg('Gerenciar séries de livros','Manage book series')}})
+  lfIconButton(seriesRow,'settings-2',lfMsg('Gerenciar séries de livros','Manage book series'),'writer-v7-stable-series-launch')
    .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
    try{const raw=await this.app.vault.cachedRead(project.file);
@@ -198,18 +205,18 @@ class ProjectsView extends ItemView{
   const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   const groupButtons={};
   const tabPrefix=this.writerTabPrefix??=('writer-project-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
-  const compactTabs=this.root.createEl('select',{cls:'writer-v136-project-sections',attr:{'aria-label':lfMsg('Seção do projeto','Project section')}});
-  const tabs=this.root.createDiv({cls:'writer-project-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
+  const tabs=this.root.createDiv({cls:'writer-project-tabs writer-sidebar-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
   if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
   const panels={};
   const tabButtons={};
+  const lastTabs=this.writerLastGroupTabs??={};
   let rebuildingTabs=false;
   // Keep the tab strip mounted on regular tab changes. Only the selected panel
   // is redrawn, so horizontal scroll, focus and pointer position stay intact.
   const switchTab=id=>{
    if(this.activeTab===id)return;
    this.activeTab=id;
-   compactTabs.value=id;
+   lastTabs[this.tabGroup]=id;
    for(const [key,button] of Object.entries(tabButtons)){
     const selected=key===id;
     button.classList.toggle('is-active',selected);
@@ -226,24 +233,21 @@ class ProjectsView extends ItemView{
   const fillTabs=group=>{
    rebuildingTabs=true;
    tabs.empty();
-   compactTabs.empty();
    for(const key of Object.keys(tabButtons))delete tabButtons[key];
    for(const [id,name] of allTabs.filter(([id])=>menuGroups.find(g=>g.id===group)?.tabs.includes(id))){
-    const option=compactTabs.createEl('option',{text:name});option.value=id;
     const selected=this.activeTab===id;
-    const btn=tabs.createEl('button',{text:name,cls:selected?'is-active':'',
-     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
+    const btn=tabs.createEl('button',{cls:selected?'is-active':'',
+     attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,
+      title:name,'aria-label':name,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
     require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
-    btn.prepend?.(glyph);
+    btn.createSpan({cls:'writer-sidebar-tab-label',text:name});
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
    }
-   compactTabs.value=this.activeTab;
    tabs.scrollLeft=Math.max(0,this.tabScrollPositions[group]||0);
    rebuildingTabs=false;
   };
-  compactTabs.addEventListener('change',()=>switchTab(compactTabs.value));
   for(const group of menuGroups){
    const groupLabel=lfMsg(group.pt,group.en);
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
@@ -254,11 +258,12 @@ class ProjectsView extends ItemView{
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
     if(this.tabGroup===group.id)return;
-    const first=allTabs.find(([id])=>group.tabs.includes(id));
-    if(!first)return;
+    const available=allTabs.filter(([id])=>group.tabs.includes(id));
+    if(!available.length)return;
     this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
+    lastTabs[this.tabGroup]=this.activeTab;
     this.tabGroup=group.id;
-    this.activeTab=first[0];
+    this.activeTab=available.find(([id])=>id===lastTabs[group.id])?.[0]||available[0][0];
     for(const [key,b] of Object.entries(groupButtons)){
      const active=key===group.id;
      b.classList.toggle('is-active',active);
@@ -474,10 +479,12 @@ class ProjectsView extends ItemView{
    panel.createEl('button',{text:lfMsg("Abrir texto","Open text")}).addEventListener('click',()=>this.openFile(project.file));
    return;
   }
-  const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-draft-actions',
+   attr:{role:'group','aria-label':lfMsg('Variantes e rascunhos','Variants and drafts')}});
   const linked=this.indexes().filter(x=>x.title===project.title&&x.file.path!==project.file.path);
   if(linked.length){
-   const other=draftBar.createEl('select',{attr:{'aria-label':lfMsg('Rascunhos Longform existentes','Existing Longform drafts')}});
+   const other=draftBar.createEl('select',{cls:'writer-project-linked-draft-select',
+    attr:{'aria-label':lfMsg('Rascunhos Longform existentes','Existing Longform drafts')}});
    other.createEl('option',{text:lfMsg('Trocar para rascunho Longform...','Switch to Longform draft...'),value:''});
    for(const d of linked){const o=other.createEl('option',{text:d.draftTitle||d.file.basename});o.value=d.file.path;}
    other.addEventListener('change',()=>{if(other.value){this.draft='Principal';writerProjectRemember(this,other.value);this.render();}});
@@ -487,21 +494,22 @@ class ProjectsView extends ItemView{
   if(!drafts.includes(this.draft))this.draft='Principal';
   for(const d of drafts){const o=select.createEl('option',{text:d==='Principal'?lfMsg('Principal','Main'):d});o.value=d;}select.value=this.draft;
   select.addEventListener('change',()=>{this.draft=select.value;this.render();});
-  draftBar.createEl('button',{text:lfMsg('+ Variante','+ Variant')}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome da variante','Variant name'),async name=>{
+  lfIconButton(draftBar,'git-branch-plus',lfMsg('Adicionar variante','Add variant')).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome da variante','Variant name'),async name=>{
    name=clean(name);if(!name||name==='Principal'||prefs.drafts[name])return;
    prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
   }).open());
-  if(this.draft!=='Principal')draftBar.createEl('button',{text:lfMsg("Excluir variante","Delete variant")}).addEventListener('click',async()=>{
+  if(this.draft!=='Principal')lfIconButton(draftBar,'trash-2',lfMsg('Excluir variante','Delete variant')).addEventListener('click',async()=>{
    delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();
   });
-  const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
-  toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
-  toolbar.createEl('button',{text:lfMsg("Novo rascunho Longform","New Longform draft")}).addEventListener('click',()=>this.createLinkedDraft(project));
-  toolbar.createEl('button',{text:lfMsg('Expandir tudo','Expand all')}).addEventListener('click',async()=>{
+  const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-scene-actions-bar',
+   attr:{role:'group','aria-label':lfMsg('Ações de cenas','Scene actions')}});
+  lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
+  lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
+  lfIconButton(toolbar,'chevrons-up-down',lfMsg('Expandir tudo','Expand all')).addEventListener('click',async()=>{
    prefs.v7CollapsedScenes={};await this.plugin.saveSettings();await this.render();
   });
-  toolbar.createEl('button',{text:lfMsg('Recolher tudo','Collapse all')}).addEventListener('click',async()=>{
+  lfIconButton(toolbar,'chevrons-down-up',lfMsg('Recolher tudo','Collapse all')).addEventListener('click',async()=>{
    prefs.v7CollapsedScenes=Object.fromEntries(this.activeScenes(project).map(x=>[x.title,true]));
    await this.plugin.saveSettings();await this.render();
   });

@@ -124,12 +124,10 @@ function writerV13ArcInstall(){
   original.call(this,panel,project);
   if(project.format==='single')return;
   const view=this,roots=writerV13ArcRoots(view,project),dividers=writerV13ArcStore(view,project);
-  const bars=panel.querySelectorAll('.writer-project-notes-toolbar');
-  const toolbar=bars[bars.length-1];
+  const toolbar=panel.querySelector('.writer-project-scene-actions-bar');
   if(toolbar){
-   const button=toolbar.createEl('button',{text:lfMsg('+ Separador','+ Divider'),
-    cls:'writer-project-arc-create',attr:{type:'button',
-     title:lfMsg('Inserir linha divisória sem criar nota','Insert visual divider without creating a note')}});
+   const button=lfIconButton(toolbar,'separator-horizontal',
+    lfMsg('Adicionar separador de arco','Add story arc divider'),'writer-project-arc-create');
    button.addEventListener('click',()=>writerV13ArcPrompt(view,project));
    toolbar.insertBefore(button,toolbar.children[1]||null);
   }

@@ -258,7 +258,7 @@ test('live speech module and provider changes release only the Basic-owned sessi
 
 test('manager lifecycle is idempotent, refreshes live capability gates and never starts transport during discovery',()=>{
  const h=runtime();h.api.writerCompanionRegister(h.plugin);h.api.writerCompanionRegister(h.plugin);
- assert.equal(h.registered.filter(item=>item.type==='basic-connected-plugins').length,1);assert.equal(h.timers.size,1);
+ assert.equal(h.registered.filter(item=>item.type==='basic-connected-plugins').length,0);assert.equal(h.timers.size,1);
  const manager=h.plugin._writerCompanionManager;
  assert.ok(h.lifecycle.includes('snail-refresh'));assert.ok(h.lifecycle.includes('layout-refresh'));assert.equal(h.dispatches.length,0);assert.equal(h.speech.length,0);
  h.api.writerCompanionConfig(h.plugin).ttsProvider='ahmed-toolkit';h.api.writerCompanionSpeechStart(h.plugin,'Owned writing','Chapter');

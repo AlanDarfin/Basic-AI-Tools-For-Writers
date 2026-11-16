@@ -110,7 +110,7 @@ Consulte o [guia de suporte aos plugins](guides/companion-compatibility.pt-BR.md
 
 ### Visual Kit integrado (desktop)
 
-Use a paleta de comandos, o menu da imagem ou **Aparência e painéis → Imagens e anotações**. O Basic inclui editor de anotações com exportação PNG, colagem de várias imagens e texto rico, normalização de tamanhos, detecção de duplicatas, cópia formatada e notas HTML em modo visual, código e prévia com modelos. Não é necessário instalar o Visual Kit à parte. No celular continua disponível a anotação rápida do Basic.
+Use a paleta de comandos, o menu da imagem ou **Aparência e painéis → Imagens e anotações**. O Basic inclui editor de anotações com exportação PNG, colagem de várias imagens e texto rico, normalização de tamanhos, detecção de duplicatas, cópia formatada e notas HTML em modo visual, código e prévia com modelos. Não é necessário instalar o Visual Kit à parte. No celular continua disponível a anotação rápida do Basic. Veja o [guia do Visual Kit](guides/visual-kit.pt-BR.md).
 
 ## Ferramentas Básicas · tradução e assistente
 

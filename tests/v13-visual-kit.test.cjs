@@ -45,3 +45,33 @@ test('packaged desktop code remains lazy; HTML extensions and network lookups ar
  const preview=fs.readFileSync('vendor/visual-kit/src/html-notes/FullPreview.ts','utf8');
  assert.match(preview,/script-src 'none'/);assert.match(preview,/sandbox: ""/);
 });
+
+test('compiled Visual Kit registers commands, vault events, and a separate HTML view on a desktop host',()=>{
+ const source=fs.readFileSync('main.js','utf8').split('function writerVisualKitBuild(){')[1].split('// END WRITER V3 MODULES')[0];
+ const noop=class {};
+ const calls={commands:[],views:[],extensions:[],events:[],removed:[]};
+ const obsidian={Modal:noop,PluginSettingTab:noop,FileView:noop,Plugin:class{
+  constructor(app,manifest){this.app=app;this.manifest=manifest;}
+  addCommand(command){calls.commands.push(command.id);}
+  registerView(type){calls.views.push(type);}
+  registerExtensions(extension){calls.extensions.push(extension);}
+  registerEvent(ref){calls.events.push(ref);}
+  register(){} registerDomEvent(){} registerInterval(){}
+ }};
+ const app={workspace:{
+  on:name=>'workspace:'+name,onLayoutReady:()=>{},detachLeavesOfType:type=>calls.removed.push(type),
+ },vault:{on:name=>'vault:'+name}};
+ const context={require:name=>name==='obsidian'?obsidian:{},document:{documentElement:{style:{}}},
+  window:{setInterval:()=>1},navigator:{userAgent:'',vendor:'',platform:''}};
+ const Kit=vm.runInNewContext('function writerVisualKitBuild(){'+source+'\nwriterVisualKitBuild();',context);
+ const instance=new Kit({app,manifest:{id:'basic-ai-tool-for-writers'}},(pt,en)=>en,()=>undefined,()=>{throw Error('No writes on load');},()=>true);
+ instance.onload();
+ assert.equal(calls.commands.length,9);
+ assert.ok(calls.commands.includes('visual-kit-create-html-note'));
+ assert.ok(calls.commands.includes('visual-kit-rebuild-image-duplicate-index'));
+ assert.deepEqual(calls.views,['basic-visual-kit-html-note']);
+ assert.deepEqual(calls.extensions,[]);
+ assert.ok(calls.events.includes('workspace:editor-paste')&&calls.events.includes('vault:rename'));
+ instance.onunload();
+ assert.deepEqual(calls.removed,['basic-visual-kit-html-note']);
+});

@@ -2,9 +2,9 @@
 
 [English](companion-compatibility.md)
 
-As ferramentas de escrita do Basic funcionam sem plugins externos. O suporte a um plugin instalado permite que seus controles, painéis e comandos disponíveis convivam com o Basic. Isso não instala o plugin, não substitui seu motor nem copia suas credenciais. A [tabela de suporte do README](../README.pt-BR.md#plugins-com-suporte) descreve cada um dos nove plugins suportados.
+As ferramentas de escrita do Basic funcionam sem plugins externos. O suporte a um plugin instalado permite que seus controles, painéis e comandos disponíveis convivam com o Basic. Isso não instala o plugin, não substitui seu motor nem copia suas credenciais. A [tabela de suporte do README](../README.pt-BR.md#plugins-com-suporte) descreve os plugins externos suportados.
 
-Não há uma página dedicada de **Integrações** nas configurações. A configuração completa de cada plugin externo permanece nas configurações dele. Comandos antigos de painéis e preferências de compatibilidade salvas continuam disponíveis para instalações existentes. Um atalho salvo para a página removida abre **Edição avançada**, onde as menções e ações de IA nativas do Basic continuam configuráveis.
+Não há uma página dedicada de **Integrações** nas configurações. A configuração completa de cada plugin externo permanece nas configurações dele. A aba lateral **Plugins conectados** e seus atalhos foram removidos. Use as funções e configurações no local correspondente. **Sincronização: abrir central** abre somente a janela de sincronização manual. Um atalho salvo para a página removida abre **Edição avançada**, onde as menções e ações de IA nativas do Basic continuam configuráveis.
 
 ## Ferramentas nativas: sem plugin adicional
 
@@ -50,7 +50,7 @@ O suporte visual passivo funciona independentemente do interruptor geral de aç�
 
 Em **Explorador de arquivos**, escolha **Ultimate Toolkit**, **Ícone personalizado do Basic** ou **Mostrar ambos** quando os dois decoram a mesma linha. A escolha altera a visibilidade da decoração duplicada e conserva os elementos e preferências dos dois plugins.
 
-O Visual Kit continua exclusivo do computador. O Obsidian Git no celular exige um backend próprio disponível e inicializado. O Basic não adiciona o Git do computador ao Android. A emulação de viewport/CSS não substitui testes de navegação nativa, teclado do dispositivo e painéis flutuantes em aparelhos Android/iOS físicos.
+O Visual Kit vem integrado ao Basic no computador. No celular, a ferramenta de anotação rápida do Basic continua disponível. O Obsidian Git no celular exige um backend próprio disponível e inicializado. O Basic não adiciona o Git do computador ao Android. A emulação de viewport/CSS não substitui testes de navegação nativa, teclado do dispositivo e painéis flutuantes em aparelhos Android/iOS físicos.
 
 ## Gramática, painéis e sincronização
 

@@ -127,7 +127,7 @@ function writerCompanionLayoutRegister(plugin){
  const nativePriority='.modal-container,.menu,.popover,.suggestion-container,.bases-toolbar-menu,.writer-lt-mobile-modal,.cm-tooltip,.lt-tooltip';
  const snailModal='.sk-tag-picker-pop,.sk-tag-picker-backdrop,.sk-search-backdrop,.sk-search-dialog,.sk-sessions-panel.is-sheet,.sk-sessions-sheet-back,.sk-sessions-sheet,.sk-sessions-tri';
  const snailPopups='.sk-pins-popup,.sk-tag-picker-pop,.sk-tag-card,.sk-tasks-donepop,.sk-slash-menu-menu,.sk-tables-popover';
- const reserved='.mobile-navbar,.mobile-toolbar,.writer-v9-format-toolbar,.writer-review-floating,.writer-review-panel,.writer-v1201-zen-exit,.status-bar,.view-header,.workspace-tab-header-container,.writer-native-mobile-controls';
+ const reserved='.mobile-navbar,.mobile-toolbar,.writer-v9-format-toolbar,.writer-review-floating,.writer-review-panel,.writer-v1201-zen-exit,.status-bar,.writer-mobile-status,.view-header,.workspace-tab-header-container,.writer-native-mobile-controls';
  const contains=(parent,child)=>parent===child||parent.contains?.(child)===true;
  const related=(el,roots)=>roots.some(root=>contains(root,el)||contains(el,root));
  const refresh=()=>{

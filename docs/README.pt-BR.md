@@ -58,7 +58,11 @@ Em **Geral → Recursos**, ligue ou desligue os recursos para escolher quais ent
 
 ## Escreva, recupere e exporte
 
-Abra **Projetos** ou a **Biblioteca** para criar um livro ou adicionar uma nota existente. Os capítulos continuam em arquivos Markdown separados. **+ Separador** no Longform adiciona uma linha visual de arco, com legenda opcional e movimento por arraste/toque. Os separadores ficam nas configurações do Basic por rascunho e não entram nas notas nem na compilação. A escrita contínua usa um editor por capítulo expandido; a gravação é explícita e verifica alterações concorrentes.
+Abra **Projetos** ou a **Biblioteca** para criar um livro ou adicionar uma nota existente. Os capítulos continuam em arquivos Markdown separados. O ícone **Adicionar separador de arco** na barra de Cenas do Longform insere uma linha visual, com legenda opcional e movimento por arraste/toque. Os separadores ficam nas configurações do Basic por rascunho e não entram nas notas nem na compilação. A escrita contínua usa um editor por capítulo expandido; a gravação é explícita e verifica alterações concorrentes.
+
+Use as abas com ícones em **Escrita**, **Universo** ou **Projeto** para abrir uma seção. Em telas estreitas, deslize a barra para o lado para ver as outras abas.
+
+No celular, **Configurações do Basic → Geral → Comece por aqui → Barra de status no celular** controla a faixa abaixo da navegação. Ela reaproveita os indicadores nativos disponíveis e mostra indicadores do Basic, como contagem de palavras, modo do editor, tempo de leitura e Pomodoro. A faixa some enquanto o teclado virtual estiver aberto.
 
 Em **Projetos → Escrita → Estrutura → Plano da história**, expanda a premissa em um parágrafo, uma sinopse e um tratamento. Marque as etapas como prontas quando quiser e revise as seguintes quando uma etapa anterior mudar. Em **Pistas**, vincule plantio, reforços e desfecho às cenas que já existem. A **Checagem** aponta cenas ausentes e pistas incompletas ou fora de ordem no rascunho ativo. **Exportar plano** cria uma nota Markdown separada sem alterar o manuscrito.
 

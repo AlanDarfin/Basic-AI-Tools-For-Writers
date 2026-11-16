@@ -8,3 +8,43 @@
  flex:1 1 auto;min-height:0;height:auto;
 }
 body .writer-v9-toolbar-host>.writer-v9-format-toolbar.writer-v1048-format-toolbar:not(.is-floating){inset:auto;}
+
+/* Phone status is a real child of the mobile navigator: the native actions
+ * stay first, and the platform's bottom inset still belongs to that navigator. */
+body.is-mobile .writer-mobile-status-navbar.writer-mobile-status-navbar-wrap{flex-wrap:wrap}
+body.is-mobile .writer-mobile-status-navbar.writer-mobile-status-navbar-fit{
+ box-sizing:border-box;min-height:var(--writer-mobile-status-navbar-min);
+}
+.writer-mobile-status{display:none}
+body.is-mobile .writer-mobile-status-navbar>.writer-mobile-status:not([hidden]){
+ box-sizing:border-box;
+ display:flex;flex:0 0 auto;align-items:center;gap:4px;
+ order:100;width:100%;min-width:0;height:28px;padding:0 8px;
+ overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;
+ background:var(--background-primary);
+ border-top:1px solid var(--background-modifier-border);
+ color:var(--text-muted);font-size:var(--font-ui-smaller);
+}
+body.is-mobile:not(.is-hidden-nav) .writer-mobile-status-overlay .workspace-split.mod-root{
+ margin-block-end:28px;
+}
+body.is-mobile .writer-mobile-status>.writer-mobile-status-native.status-bar{
+ display:inline-flex;position:static;inset:auto;z-index:auto;transform:none;
+ flex:0 0 auto;align-items:center;align-self:stretch;
+ height:auto;min-height:0;width:auto;max-width:none;
+ margin:0;padding:0;border:0;background:transparent;overflow:visible;
+}
+.writer-mobile-status .writer-mobile-status-item:not([hidden]){
+ display:inline-flex;flex:0 0 auto;align-items:center;gap:4px;white-space:nowrap;
+ padding-inline:5px;font-variant-numeric:tabular-nums;
+}
+.writer-mobile-status>.writer-mobile-status-item[hidden]{display:none}
+.writer-mobile-status>button.writer-mobile-status-item{
+ height:100%;min-height:0;padding-block:0;border:0;border-radius:var(--radius-s);
+ background:transparent;box-shadow:none;color:inherit;font-size:inherit;
+}
+.writer-mobile-status>.writer-mobile-status-item:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-2px;
+}
+.writer-mobile-status-glyph{display:inline-flex}
+.writer-mobile-status-glyph svg{display:block;width:14px;height:14px}

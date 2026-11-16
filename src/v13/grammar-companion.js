@@ -122,7 +122,7 @@ function writerLanguageToolSettings(plugin,panel){
    'This plugin can check while the Basic pane is closed. Disabling the bridge does not turn off this preference.'],
   ['pickyMode','Revisão rigorosa externa','External picky mode','Inclui sugestões adicionais de estilo.','Include additional style suggestions.'],
   ['longCheckNotification','Avisar sobre verificações longas','Notify about long checks',
-   'Útil no celular, onde o indicador da barra de status não aparece.','Useful on mobile, where the status bar indicator is unavailable.']
+   'Útil quando o indicador da barra de status não está visível.','Useful when the status bar indicator is not visible.']
  ]){
   if(typeof writerLanguageToolInstalled(plugin).settings.options[key]!=='boolean')continue;
   new Setting(root).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))

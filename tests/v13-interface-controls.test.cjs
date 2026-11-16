@@ -19,13 +19,13 @@ test('compact native settings scope follows Basic and clears when its page is hi
 
 function tabs(direction='ltr'){
  const handlers={},actions=[];
- const buttons=Array.from({length:4},(_,index)=>({
-  index,disabled:index===1,focus(){actions.push(['focus',index]);},click(){actions.push(['click',index]);},
+ const buttons=Array.from({length:5},(_,index)=>({
+  index,disabled:index===1,hidden:index===2,focus(){actions.push(['focus',index]);},click(){actions.push(['click',index]);},
   scrollIntoView(options){actions.push(['scroll',index,options.inline]);}
  }));
  const strip={dataset:{},ownerDocument:{defaultView:{getComputedStyle:()=>({direction})}},
   addEventListener(name,callback){assert.equal(handlers[name],undefined);handlers[name]=callback;},
-  querySelectorAll(selector){assert.equal(selector,'button[role="tab"]:not(:disabled)');return buttons.filter(button=>!button.disabled);}};
+  querySelectorAll(selector){assert.equal(selector,'button[role="tab"]:not(:disabled):not([hidden])');return buttons.filter(button=>!button.disabled&&!button.hidden);}};
  bind(strip);bind(strip);
  const press=(key,index=0,modifiers={})=>{
   let prevented=false;
@@ -34,15 +34,15 @@ function tabs(direction='ltr'){
  };
  return {strip,buttons,actions,press};
 }
-test('project keyboard navigation skips disabled tabs and keeps the activated tab visible',()=>{
+test('sidebar keyboard navigation skips hidden and disabled tabs and reveals the activated tab',()=>{
  const h=tabs();assert.equal(h.press('ArrowRight'),true);
- assert.deepEqual(h.actions,[['focus',2],['click',2],['scroll',2,'nearest']]);
- h.actions.length=0;h.press('ArrowLeft');assert.deepEqual(h.actions[1],['click',3]);
+ assert.deepEqual(h.actions,[['focus',3],['click',3],['scroll',3,'nearest']]);
+ h.actions.length=0;h.press('ArrowLeft');assert.deepEqual(h.actions[1],['click',4]);
  h.actions.length=0;h.press('Home',3);assert.deepEqual(h.actions[1],['click',0]);
- h.actions.length=0;h.press('End');assert.deepEqual(h.actions[1],['click',3]);
+ h.actions.length=0;h.press('End');assert.deepEqual(h.actions[1],['click',4]);
 });
 test('project tabs respect right-to-left order and leave modified or unrelated keys alone',()=>{
- const h=tabs('rtl');h.press('ArrowRight');assert.deepEqual(h.actions[1],['click',3]);
+ const h=tabs('rtl');h.press('ArrowRight');assert.deepEqual(h.actions[1],['click',4]);
  for(const modifier of [{ctrlKey:true},{altKey:true},{metaKey:true}])assert.equal(h.press('ArrowLeft',0,modifier),false);
  assert.equal(h.press('Enter'),false);assert.equal(h.press('ArrowDown'),false);
  const before=h.actions.length;assert.equal(h.press('End',99),false);assert.equal(h.actions.length,before);

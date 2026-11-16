@@ -5,6 +5,7 @@ const fs=require('node:fs');
 const main=fs.readFileSync('main.js','utf8');
 const css=fs.readFileSync('styles.css','utf8');
 const project=fs.readFileSync('projects.js','utf8');
+const vm=require('node:vm');
 
 test('settings main and secondary tabs both support vertical wheel to horizontal scroll',()=>{
  const settings=main.slice(main.indexOf('class DictionarySettings extends PluginSettingTab'),main.indexOf('module.exports=class AlansOfflineDictionary'));
@@ -20,6 +21,21 @@ test('switching within a settings group leaves the second tab row mounted',()=>{
  assert.match(settings,/else\{\s*\/\/ Never recreate this horizontal strip/);
  assert.match(settings,/this\.settingsSubtabsScrollLeft\[group\]/);
  assert.match(settings,/this\.settingsSubtabsScrollLeft\[previousSubnav\.dataset\.group\]/);
+});
+test('settings use named icon tabs on both rows and reveal an offscreen active tab locally',()=>{
+ const settings=main.slice(main.indexOf('class DictionarySettings extends PluginSettingTab'),main.indexOf('module.exports=class AlansOfflineDictionary'));
+ assert.match(settings,/dictionary-settings-tabs writer-sidebar-tabs/);
+ assert.match(settings,/dictionary-settings-subtabs writer-sidebar-tabs/);
+ assert.match(settings,/writerSidebarButtonIcon\(b,sectionIcons\[key\]/);
+ assert.match(settings,/writerSidebarButtonIcon\(b,groupIcons\[id\]/);
+ assert.doesNotMatch(settings,/groupPicker|sectionPicker/);
+ const reveal=vm.runInNewContext(fs.readFileSync('src/v13/ui-foundation.js','utf8')+'\nwriterSidebarRevealSelected');
+ let tab={left:230,right:295},scrolls=0;
+ const row={scrollWidth:600,clientWidth:260,scrollLeft:100,getBoundingClientRect:()=>({left:0,right:260}),
+  querySelector:()=>({getBoundingClientRect:()=>tab,scrollIntoView(){scrolls++;}})};
+ reveal(row);assert.equal(row.scrollLeft,135);
+ tab={left:-20,right:45};reveal(row);assert.equal(row.scrollLeft,115);
+ assert.equal(scrolls,0,'Revealing a tab must not scroll the settings modal');
 });
 test('navigation strips avoid scroll snapping and animated jumps',()=>{
  const section=css.slice(css.lastIndexOf('/* 7.0.4 — stable horizontal navigation'));

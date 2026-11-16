@@ -301,7 +301,11 @@ function writerCompanionRegister(plugin){
    const show=writerCompanionConfig(plugin).showLaunchers&&writerV12On(plugin,'integrations')&&writerCompanionCatalog().some(item=>writerCompanionEnabled(plugin,item.id));
    if(!show)old?.remove();
    if(show&&!old){
-    const button=writerCompanionButton(header,writerUi('Plugins','Plugins'),()=>writerCompanionOpen(plugin));button.addClass('writer-companion-launcher');
+    const label=writerUi('Plugins','Plugins');
+    const button=header.createEl('button',{cls:'writer-companion-launcher writer-sidebar-icon-action',
+     attr:{type:'button',title:label,'aria-label':label}});
+    writerSidebarButtonIcon(button,'plug',label);
+    button.addEventListener('click',()=>{void writerCompanionOpen(plugin).catch(()=>{});});
    }
   }
   if(next===fingerprint)return;fingerprint=next;

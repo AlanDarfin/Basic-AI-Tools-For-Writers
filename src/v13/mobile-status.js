@@ -27,6 +27,8 @@ function writerMobileStatusRegister(plugin){
  const make=(parent,tag,cls)=>{
   const el=doc.createElement(tag);el.className=cls;parent.appendChild(el);return el;
  };
+ const insets=make(app,'div','writer-mobile-safe-insets');
+ insets.setAttribute('aria-hidden','true');
  const indicator=(cls,icon,tag='span')=>{
   const el=make(row,tag,'writer-mobile-status-item '+cls);
   const glyph=make(el,'span','writer-mobile-status-glyph');
@@ -52,10 +54,8 @@ function writerMobileStatusRegister(plugin){
   statsToken++;
   restoreNative();
   row?.remove();
-  nav?.classList.remove('writer-mobile-status-navbar','writer-mobile-status-navbar-fit','writer-mobile-status-navbar-wrap');
-  nav?.style.removeProperty('--writer-mobile-status-navbar-min');
-  app.classList.remove('writer-mobile-status-overlay');
-  nav=row=word=read=mode=timer=null;
+  clearOffset();
+  row=word=read=mode=timer=null;
  };
  const keyboardOpen=()=>{
   const style=win.getComputedStyle?.(doc.body);
@@ -68,24 +68,116 @@ function writerMobileStatusRegister(plugin){
   viewportMax=Math.max(viewportMax,height);
   return inset>0||Math.max(win.innerHeight||0,viewportMax)-height>110;
  };
- const setVisible=()=>{
-  if(!row)return;
-  keyboard=keyboardOpen();
-  row.hidden=keyboard;
-  const style=win.getComputedStyle(nav);
-  nav.classList.toggle('writer-mobile-status-navbar-wrap',style.display.includes('flex')&&style.flexDirection?.startsWith('row'));
-  nav.classList.remove('writer-mobile-status-navbar-fit');
-  nav.style.removeProperty('--writer-mobile-status-navbar-min');
-  if(!keyboard){
-   const rowBounds=row.getBoundingClientRect(),navBounds=nav.getBoundingClientRect();
-   const endGap=(parseFloat(style.paddingBottom)||0)+(parseFloat(style.borderBottomWidth)||0);
-   const overflow=rowBounds.bottom+endGap-navBounds.bottom;
-   if(overflow>1&&navBounds.height>0){
-    nav.style.setProperty('--writer-mobile-status-navbar-min',Math.ceil(navBounds.height+overflow)+'px');
-    nav.classList.add('writer-mobile-status-navbar-fit');
-   }
+ const homeProps=new Set(),topProps=new Set(),observed=new Set();
+ const resize=typeof win.ResizeObserver==='function'?new win.ResizeObserver(()=>scheduleLayout()):null;
+ const flowBar=style=>style.position!=='fixed'&&style.position!=='absolute';
+ const clearOffset=()=>{
+  nav?.classList.remove('writer-mobile-nav-lifted','writer-mobile-nav-lifted-by-translation');
+  nav?.style.removeProperty('--writer-mobile-nav-bottom');
+  nav?.style.removeProperty('--writer-mobile-nav-lift');
+  lift=0;
+ };
+ let lift=0,baseBottom=null,layoutFrame=null;
+ const visible=el=>{
+  if(!el||el.hidden)return null;
+  const rect=el.getBoundingClientRect?.(),style=win.getComputedStyle(el);
+  return rect?.width>0&&rect.height>0&&style.display!=='none'&&style.visibility!=='hidden'&&Number.parseFloat(style.opacity)!==0?rect:null;
+ };
+ const apply=(tracked,property,next)=>{
+  for(const node of tracked)if(!next.has(node)){node.style.removeProperty(property);tracked.delete(node);}
+  for(const [node,value] of next){
+   const css=Math.ceil(value)+'px';
+   if(node.style.getPropertyValue(property)!==css)node.style.setProperty(property,css);
+   tracked.add(node);
   }
-  app.classList.toggle('writer-mobile-status-overlay',!keyboard&&(style.position==='fixed'||style.position==='absolute'));
+ };
+ const place=()=>{
+  if(stopped)return;
+  const wasKeyboard=keyboard;
+  keyboard=keyboardOpen();
+  const vv=win.visualViewport,area={
+   left:vv?.offsetLeft||0,top:vv?.offsetTop||0,width:vv?.width||win.innerWidth,height:vv?.height||win.innerHeight
+  };
+  const css=win.getComputedStyle(doc.body),insetStyle=win.getComputedStyle(insets);
+  const safe=side=>Math.max(0,parseFloat(css.getPropertyValue('--safe-area-inset-'+side))||0,
+   parseFloat(insetStyle.getPropertyValue('padding-'+side))||0);
+  const floor=area.top+area.height-Math.max(safe('bottom'),4);
+  const ceiling=area.top+safe('top');
+  const mobileToolbar=app.querySelector('.mobile-toolbar');
+  const nativeToolbarBounds=!keyboard&&visible(mobileToolbar);
+  const navBounds=visible(nav);
+  const style=nav?win.getComputedStyle(nav):null;
+  const shown=navBounds&&navBounds.bottom>ceiling&&navBounds.top<floor&&!doc.body.classList.contains('is-hidden-nav');
+  const floating=style&&!flowBar(style);
+  const watch=new Set([nav,mobileToolbar].filter(Boolean));
+  if(row){
+   const hidden=!shown||keyboard;
+   if(row.hidden!==hidden)row.hidden=hidden;
+   row.classList.toggle('writer-mobile-status-floating',floating);
+   if(floating&&row.parentNode!==app)app.appendChild(row);
+   else if(!floating&&nav.nextSibling!==row)nav.after(row);
+  }
+  let navTop=shown?navBounds.top+lift:null,rowTop=null;
+  if(row&&!row.hidden&&floating){
+   if(!lift)baseBottom=parseFloat(style.bottom);
+   const height=row.getBoundingClientRect().height||30;
+   const naturalBottom=navBounds.bottom+lift,gap=4;
+   const target=Math.min(naturalBottom+gap,floor-height);
+   const required=Math.max(0,Math.ceil(naturalBottom+gap-target));
+   if(navTop-required<=ceiling+8){
+    row.hidden=true;clearOffset();
+   }else{
+    if(required){
+     const useBottom=Number.isFinite(baseBottom);
+     const key=useBottom?'--writer-mobile-nav-bottom':'--writer-mobile-nav-lift';
+     const amount=useBottom?baseBottom+required:-required;
+     const value=amount+'px';
+     if(nav.style.getPropertyValue(key)!==value)nav.style.setProperty(key,value);
+     const marker=useBottom?'writer-mobile-nav-lifted':'writer-mobile-nav-lifted-by-translation';
+     if(!nav.classList.contains(marker))nav.classList.add(marker);
+     lift=required;
+    }else if(lift)clearOffset();
+    navTop-=required;rowTop=target;
+    const left=Math.max(area.left+safe('left')+4,navBounds.left);
+    const right=Math.min(area.left+area.width-safe('right')-4,navBounds.right);
+    const styles={top:target,left,width:Math.max(0,right-left)};
+    for(const [key,value] of Object.entries(styles)){
+     const property='--writer-mobile-status-'+key,css=Math.round(value)+'px';
+     if(row.style.getPropertyValue(property)!==css)row.style.setProperty(property,css);
+    }
+   }
+  }else if(lift)clearOffset();
+  const homes=new Map(),editors=new Map();
+  for(const home of app.querySelectorAll('.writer-v8-home')){
+   const bounds=visible(home);if(!bounds)continue;
+   watch.add(home);
+   const upper=[floating?navTop:null,rowTop,
+    nativeToolbarBounds&&nativeToolbarBounds.bottom>bounds.top?nativeToolbarBounds.top:null]
+    .filter(n=>n!==null&&n>=bounds.top&&n<bounds.bottom);
+   if(!keyboard&&upper.length)homes.set(home,Math.max(0,bounds.bottom-Math.min(...upper)+8));
+  }
+  for(const toolbar of app.querySelectorAll('.writer-v9-toolbar-docked > .writer-v9-format-toolbar.is-top')){
+   const host=toolbar.parentElement,bounds=visible(host);if(!bounds)continue;
+   const header=host.closest?.('.workspace-leaf-content')?.querySelector?.('.view-header');
+   if(header)watch.add(header);
+   watch.add(host);
+   const headerBox=visible(header);
+   const headerEnd=headerBox&&headerBox.top<bounds.top+120?headerBox.bottom:ceiling;
+   const inset=Math.max(0,Math.max(ceiling,headerEnd)-bounds.top);
+   if(inset)editors.set(host,inset);
+  }
+  apply(homeProps,'--writer-mobile-home-clearance',homes);
+  apply(topProps,'--writer-mobile-editor-top-clearance',editors);
+  if(resize){
+   for(const node of observed)if(!watch.has(node)){resize.unobserve(node);observed.delete(node);}
+   for(const node of watch)if(!observed.has(node)){resize.observe(node);observed.add(node);}
+  }
+  if(wasKeyboard&&!keyboard)queue();
+ };
+ const scheduleLayout=()=>{
+  if(stopped||layoutFrame!==null)return;
+  if(!win.requestAnimationFrame){place();return;}
+  layoutFrame=win.requestAnimationFrame(()=>{layoutFrame=null;place();});
  };
  const renderTimer=()=>{
   if(!timer)return;
@@ -95,13 +187,12 @@ function writerMobileStatusRegister(plugin){
  };
  const syncLayout=()=>{
   if(stopped)return false;
-  const target=plugin.settings.mobileStatusBar!==false?app.querySelector(WRITER_MOBILE_STATUS_NAV):null;
-  if(!target){unmount();return false;}
-  if(nav!==target||row?.parentNode!==target){
-   unmount();
-   nav=target;
-   nav.classList.add('writer-mobile-status-navbar');
-   row=make(nav,'div',WRITER_MOBILE_STATUS_ROW);
+  const target=app.querySelector(WRITER_MOBILE_STATUS_NAV);
+  if(nav!==target){unmount();nav=target;}
+  if(!nav||plugin.settings.mobileStatusBar===false){if(row)unmount();scheduleLayout();return false;}
+  if(!row||!app.contains(row)){
+   if(row)unmount();
+   row=make(app,'div',WRITER_MOBILE_STATUS_ROW);
    row.setAttribute('role','group');
    row.setAttribute('aria-label',msg('Barra de status','Status bar'));
    word=indicator('writer-mobile-status-words','text-cursor-input');
@@ -122,7 +213,7 @@ function writerMobileStatusRegister(plugin){
    native.classList.add('writer-mobile-status-native');
    row.insertBefore(native,word.el);
   }
-  setVisible();
+  scheduleLayout();
   renderTimer();
   return true;
  };
@@ -162,13 +253,10 @@ function writerMobileStatusRegister(plugin){
   queued=win.setTimeout(()=>{queued=null;void details();},150);
  };
  const refresh=()=>{if(syncLayout())queue();};
- const onViewport=()=>{
-  if(stopped)return;
-  if(!row)return;
-  const wasKeyboard=keyboard;
-  setVisible();
-  if(wasKeyboard&&!keyboard)queue();
- };
+ const onViewport=scheduleLayout;
+ const onResize=()=>{if(lift)clearOffset();scheduleLayout();};
+ const geometry='.mobile-navbar,.mobile-toolbar,.view-header,.writer-v8-home,.writer-v9-toolbar-docked,.writer-v9-format-toolbar';
+ const onTransition=event=>{if(event.target?.matches?.(geometry))scheduleLayout();};
  let lastPath=null;
  const onFile=()=>{
   if(!row)return;
@@ -177,29 +265,41 @@ function writerMobileStatusRegister(plugin){
   queue();
  };
  const observe=typeof win.MutationObserver==='function'?new win.MutationObserver(records=>{
-  if(stopped||plugin.settings.mobileStatusBar===false)return;
-  if(native&&records.some(record=>native.contains(record.target)))queue();
-  if(nav&&(!app.contains(nav)||row?.parentNode!==nav)||native&&native.parentNode!==row||
-   records.some(record=>Array.from(record.addedNodes).some(el=>
-    el.matches?.(WRITER_MOBILE_STATUS_NAV+',.status-bar')||el.querySelector?.(WRITER_MOBILE_STATUS_NAV)))){
-   refresh();
-  }
+  if(stopped)return;
+  if(native&&records.some(record=>record.target&&native.contains(record.target)))queue();
+  const added=(record,selector)=>Array.from(record.addedNodes||[]).some(el=>el!==row&&el!==native&&
+   (el.matches?.(selector)||el.querySelector?.(selector)));
+  if(nav&&!app.contains(nav)||row&&!app.contains(row)||native&&native.parentNode!==row||
+   records.some(record=>added(record,WRITER_MOBILE_STATUS_NAV+',.status-bar'))){refresh();return;}
+  if(records.some(record=>record.type==='attributes'&&(record.target===doc.body||record.target===app||
+   record.target?.matches?.(geometry))||added(record,geometry)||
+   Array.from(record.removedNodes||[]).some(el=>el.matches?.(geometry)||el.querySelector?.(geometry))))scheduleLayout();
  }):null;
  plugin.writerMobileStatus={refresh,renderTimer};
  for(const event of ['active-leaf-change','file-open'])plugin.registerEvent(ws.on(event,onFile));
  for(const event of ['editor-change','layout-change'])plugin.registerEvent(ws.on(event,event==='layout-change'?refresh:queue));
  plugin.registerEvent(plugin.app.vault.on('modify',file=>{if(file?.path===ws.getActiveFile?.()?.path)queue();}));
- win.addEventListener('resize',onViewport);
+ win.addEventListener('resize',onResize);
  win.visualViewport?.addEventListener('resize',onViewport);
+ win.visualViewport?.addEventListener('scroll',onViewport);
+ app.addEventListener('transitionend',onTransition);
  plugin.register(()=>{
   stopped=true;
   observe?.disconnect();
-  win.removeEventListener('resize',onViewport);
+  win.removeEventListener('resize',onResize);
   win.visualViewport?.removeEventListener('resize',onViewport);
+  win.visualViewport?.removeEventListener('scroll',onViewport);
+  app.removeEventListener('transitionend',onTransition);
+  if(layoutFrame!==null)win.cancelAnimationFrame?.(layoutFrame);
+  resize?.disconnect();
+  insets.remove();
+  apply(homeProps,'--writer-mobile-home-clearance',new Map());
+  apply(topProps,'--writer-mobile-editor-top-clearance',new Map());
   unmount();
   delete plugin.writerMobileStatus;
  });
- observe?.observe(app,{childList:true,subtree:true});
+ observe?.observe(app,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style','hidden']});
+ observe?.observe(doc.body,{attributes:true,attributeFilter:['class','style']});
  ws.onLayoutReady?.(refresh);
  refresh();
 }

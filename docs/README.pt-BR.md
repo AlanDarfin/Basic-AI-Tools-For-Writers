@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.10.1 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.10.2 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 

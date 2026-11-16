@@ -9755,6 +9755,15 @@ body.is-mobile .writer-v925-grid .writer-v1205-resize-handle{display:none;}
  .writer-v1205-bookmarks-widget .writer-v1203-web-bookmark-more{transition:none;}
 }
 
+.writer-v1205-bookmarks-widget .writer-home-bookmark-filters{
+ display:flex;flex-wrap:wrap;gap:6px;min-width:0;margin-block:0 8px;
+}
+.writer-home-bookmark-filters>input{flex:1 1 125px;min-width:0;max-width:100%;box-sizing:border-box}
+.writer-home-bookmark-filters>select{flex:1 1 112px;min-width:0;max-width:100%;text-overflow:ellipsis}
+.writer-home-bookmark-results{min-width:0}
+.writer-v1205-bookmarks-widget .writer-v1203-web-bookmarks-expand[hidden]{display:none}
+body.is-mobile .writer-home-bookmark-filters>:is(input,select){min-height:44px}
+
 /* 12.0.5: timeline overflow, marker alignment and distinguishable themes. */
 .writer-v95-timeline{
  --writer-v95-marker-size:18px;

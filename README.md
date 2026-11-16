@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.13.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 13.14.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -77,6 +77,10 @@ Optional desktop export to DOCX, EPUB, HTML or PDF uses a separately installed *
 ## Review prose rhythm
 
 Run **Writing: rhythm and repetition** on a selection or the current note. It shows sentence-length distribution, long sentences and paragraphs, and repeated words. Select a result to jump to its place in the editor. It skips frontmatter, headings, code fences and comments. Use the counts as reading cues rather than rules. No edits or network calls are made.
+
+## Find saved websites
+
+In the **Web bookmarks** homepage widget, search by name, URL or group, or select a group from the filter. The search covers all saved websites, including those outside the initial 12-link view, and does not contact the web.
 
 ## Reschedule a task
 

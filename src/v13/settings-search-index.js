@@ -551,6 +551,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "general",
+  "titlePt": "Barra de status no celular",
+  "titleEn": "Mobile status bar",
+  "descriptionPt": "Exibe os indicadores abaixo dos botões de navegação do Obsidian.",
+  "descriptionEn": "Shows status indicators below Obsidian’s navigation buttons."
+ },
+ {
+  "id": "general",
   "titlePt": "Configuração inicial",
   "titleEn": "Quick start",
   "descriptionPt": "Escolha um conjunto de recursos e personalize o que fica ativo.",
@@ -1617,8 +1624,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "review",
   "titlePt": "Avisar sobre verificações longas",
   "titleEn": "Notify about long checks",
-  "descriptionPt": "Útil no celular, onde o indicador da barra de status não aparece.",
-  "descriptionEn": "Useful on mobile, where the status bar indicator is unavailable."
+  "descriptionPt": "Útil quando o indicador da barra de status não está visível.",
+  "descriptionEn": "Useful when the status bar indicator is not visible."
  },
  {
   "id": "review",

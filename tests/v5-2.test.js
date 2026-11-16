@@ -84,7 +84,7 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
   assert.ok(main.includes("this.plugin.writerEasyTyping.renderSettings(panel)"));
   assert.ok(main.includes("this.plugin.writerSmartTypography.renderSettings(panel)"));
   assert.ok(main.includes("const groups=writerSettingsGroups()"));
-  assert.ok(main.includes("const subnav=el.createDiv({cls:'dictionary-settings-subtabs'})"));
+  assert.match(main,/const subnav=el\.createDiv\(\{cls:'dictionary-settings-subtabs\b/);
   assert.ok(!main.includes("['easyTyping',msg("));
   assert.ok(!main.includes("['smartTypography',msg("));
  });

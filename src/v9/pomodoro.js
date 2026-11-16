@@ -136,6 +136,7 @@ class WriterV931PomodoroController{
     (cfg.running?writerUi(' · em andamento',' · running'):'');
    this.status.setAttribute('aria-label',this.status.title);
   }
+  this.plugin.writerMobileStatus?.renderTimer();
   for(const view of [...this.views]){
    if(!view.contentEl?.isConnected){this.views.delete(view);continue;}
    view.update();
@@ -295,8 +296,8 @@ function writerV931PomodoroSettings(plugin,panel){
  const cfg=plugin.settings.v931Pomodoro;
  panel.createEl('h3',{text:writerUi('Pomodoro · Foco','Pomodoro · Focus')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Ciclos de foco e pausa inspirados no Pomodoro Timer. Painel lateral no PC e no celular; status bar somente no PC. Nenhum cronômetro começa automaticamente.',
-  'Focus and break cycles inspired by Pomodoro Timer. Sidebar on desktop and mobile; status bar only on desktop. No timer starts automatically.'
+  'Ciclos de foco e pausa inspirados no Pomodoro Timer. Disponível no painel lateral e na barra de status, quando ela está ativa. Nenhum cronômetro começa automaticamente.',
+  'Focus and break cycles inspired by Pomodoro Timer. Available in the sidebar and in the status bar when it is enabled. No timer starts automatically.'
  )});
  const toggle=(key,pt,en)=>{
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{
@@ -308,7 +309,7 @@ function writerV931PomodoroSettings(plugin,panel){
  for(const [key,pt,en] of [
   ['enabled','Ativar Pomodoro','Enable Pomodoro'],
   ['sidebar','Permitir painel lateral','Enable sidebar'],
-  ['statusBar','Exibir na status bar (PC)','Show in status bar (desktop)'],
+  ['statusBar','Exibir na barra de status','Show in status bar'],
   ['autoAdvance','Iniciar próxima etapa automaticamente','Auto-start next phase'],
   ['notify','Avisar quando terminar','Notify when finished'],
   ['sound','Som de conclusão (quando permitido)','Completion sound (when allowed)'],

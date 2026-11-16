@@ -62,6 +62,8 @@ Abra **Projetos** ou a **Biblioteca** para criar um livro ou adicionar uma nota 
 
 Use as abas com ícones em **Escrita**, **Universo** ou **Projeto** para abrir uma seção. Em telas estreitas, deslize a barra para o lado para ver as outras abas.
 
+No celular, **Configurações do Basic → Geral → Comece por aqui → Barra de status no celular** controla a faixa abaixo da navegação. Ela reaproveita os indicadores nativos disponíveis e mostra indicadores do Basic, como contagem de palavras, modo do editor, tempo de leitura e Pomodoro. A faixa some enquanto o teclado virtual estiver aberto.
+
 Rascunhos dos capítulos têm cópias locais de recuperação. Use **Livros: recuperar rascunhos** para conferir, salvar uma cópia Markdown separada ou descartar uma entrada. Se o original mudou, o rascunho fica separado para revisão. Recuperação e snapshots de versões têm propósitos diferentes; mantenha também um backup independente. Rascunhos temporários de sessão ficam em memória até serem salvos.
 
 Para montar o manuscrito, use **Livros: compilar manuscrito Markdown**, escolha arquivos salvos ou escrita atual, confira a prévia e crie um novo arquivo em `Basic Exports/`. A compilação inclui todos os capítulos do rascunho selecionado, além do limite de editores exibidos. Capítulos ausentes ou versões conflitantes impedem a exportação. Atualize a prévia para incluir alterações posteriores.

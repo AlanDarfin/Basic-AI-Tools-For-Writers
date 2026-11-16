@@ -2,13 +2,13 @@
 .dictionary-view-content.writer-tool-root{
  gap:10px;
 }
-/* The Basic AI and Longform strips share the same active underline and sizing. */
-body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs{
+/* Basic AI, Longform and settings share the same active underline and sizing. */
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs{
  display:flex;flex-flow:row nowrap;align-items:stretch;justify-content:flex-start;
  gap:3px;padding:0 0 3px;
  overflow-x:auto;overflow-y:hidden;scrollbar-width:none;scroll-snap-type:none;
 }
-body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs>button{
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs>button{
  display:inline-flex;align-items:center;justify-content:center;gap:5px;
  width:auto;min-height:var(--writer-sidebar-touch-height,34px);height:auto;margin:0;padding:5px 8px;
  border:0;border-bottom:2px solid transparent;border-radius:var(--radius-s) var(--radius-s) 0 0;
@@ -17,10 +17,12 @@ body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-ro
 }
 body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{flex:1 0 0;min-width:44px}
 body .writer-project-root .writer-project-tabs.writer-sidebar-tabs>button{flex:1 0 auto;min-width:44px;max-width:168px}
-body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs>button.is-active{
+body .writer-v13-settings .writer-sidebar-tabs{margin-block:0 5px}
+body .writer-v13-settings .writer-sidebar-tabs>button{flex:0 0 auto;min-width:44px;max-width:185px}
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs>button.is-active{
  border-bottom-color:var(--interactive-accent);background:var(--background-modifier-hover);color:var(--text-normal);box-shadow:none;
 }
-body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs).writer-sidebar-tabs>button:focus-visible{
+body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-root .writer-project-tabs.writer-project-tabs,.writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs).writer-sidebar-tabs>button:focus-visible{
  outline:2px solid var(--interactive-accent);outline-offset:-3px;
 }
 body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button[hidden]{display:none}
@@ -165,6 +167,14 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-chat-pa
 .writer-v135-compile details>summary::marker,
 .writer-v134-recovery .writer-v134-recovery-original>summary::marker{
  color:var(--text-accent);
+}
+@container basic-settings (max-width:530px){
+ body .writer-v13-settings .writer-sidebar-tabs>button{
+  flex-direction:column;gap:3px;max-width:122px;padding-inline:7px;
+ }
+}
+@container basic-settings (max-width:205px){
+ .writer-v13-settings .writer-sidebar-tab-label{display:none}
 }
 @container writer-sidebar (max-width:300px){
  .dictionary-view-content.writer-tool-root .writer-review-engine-row{

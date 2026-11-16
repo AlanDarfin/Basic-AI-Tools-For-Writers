@@ -201,6 +201,14 @@ function writerSidebarButtonIcon(button,icon,label,labelClass='writer-sidebar-ac
  require('obsidian').setIcon?.(glyph,icon);
  button.createSpan({cls:labelClass,text:label});
 }
+function writerSidebarRevealSelected(strip){
+ const selected=strip.querySelector?.('button[aria-selected="true"]');
+ if(!selected||strip.scrollWidth<=strip.clientWidth)return;
+ const row=strip.getBoundingClientRect?.(),tab=selected.getBoundingClientRect?.();
+ if(!row||!tab)return;
+ const delta=tab.left<row.left?tab.left-row.left:tab.right>row.right?tab.right-row.right:0;
+ if(delta)strip.scrollLeft+=delta;
+}
 
 /** Named tool panes let compact layouts follow the pane width, not the window. */
 function writerV136DecorateToolPanels(view){

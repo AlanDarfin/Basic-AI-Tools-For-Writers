@@ -121,6 +121,8 @@ function writerV1048SearchIndex(sections,panel,active,cache){
  // Options remain discoverable before their settings page has been visited.
  if(typeof WRITER_SETTINGS_SEARCH_INDEX!=='undefined')for(const item of WRITER_SETTINGS_SEARCH_INDEX){
   if(!labels.has(item.id))continue;
+  if(item.titleEn==='Mobile status bar'&&typeof writerMobileStatusPlatform==='function'&&
+   !writerMobileStatusPlatform())continue;
   const title=writerUi(item.titlePt,item.titleEn);
   const keywords=[item.titlePt,item.titleEn,item.descriptionPt,item.descriptionEn,item.keywords].filter(Boolean).join(' ');
   const existing=all.find(entry=>entry.id===item.id&&writerWorkspaceSearchNormalize(entry.title)===writerWorkspaceSearchNormalize(title));

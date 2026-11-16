@@ -500,17 +500,46 @@ test('chat shortcuts only draft, stop drops a late answer, and Gemini reasoning 
  await view.onOpen();view.switchTab('chat');
  assert.match(view.chatRoute.text,/Gemini.*gemini/);
  view.chatInput.value='A scene';
- view.panels.chat.findText('Brainstorm').fire('click');
+ view.panels.chat.descendants().find(el=>el.attrs['aria-label']==='Brainstorm').fire('click');
  assert.match(view.chatInput.value,/three different ways[\s\S]*A scene/);
  const draft=view.chatInput.value;
  let finish,started;const pending=new Promise(resolve=>finish=resolve),start=new Promise(resolve=>started=resolve);
  reply(async config=>{assert.equal(JSON.parse(config.body).generationConfig.maxOutputTokens,2200);started();return pending;});
  const send=view.sendChat();await start;
+ assert.equal(view.chatSend.hidden,true);
+ assert.equal(view.chatStop.hidden,false);
  view.chatStop.fire('click');assert.equal(view.chatInput.value,draft);
+ assert.equal(view.chatSend.hidden,false);
+ assert.equal(view.chatStop.hidden,true);
  finish({status:200,json:{candidates:[{content:{parts:[{text:'late answer'}]}}]}});await send;
  assert.equal(view.chatHistory.length,0);assert.ok(!view.chatMessages.findText('late answer'));
  reply(async()=>({status:200,json:{candidates:[{content:{parts:[{thought:true,text:'internal'},{text:'Visible answer'}]}}]}}));
  await view.sendChat();assert.ok(view.chatMessages.findText('Visible answer'));assert.ok(!view.chatMessages.findText('internal'));
+});
+
+test('the chat keeps accessible actions and groups attachment, send and stop in the composer',async()=>{
+ const {plugin,view,add}=runtime('pt');
+ const sections=[];
+ plugin.openCoreSettings=(...args)=>sections.push(args);
+ await view.onOpen();
+ const chat=view.panels.chat, header=chat.querySelectorAll('.writer-basic-chat-header-actions')[0];
+ assert.deepEqual(header.children.map(button=>[button.attrs['aria-label'],button.children[0].icon]),[
+  ['Configurar assistente','settings'],['Limpar conversa','eraser']
+ ]);
+ header.children[0].fire('click');
+ assert.deepEqual(sections,[['assistant']]);
+ const composer=chat.querySelectorAll('.writer-chat-composer')[0];
+ const actions=composer.querySelectorAll('.writer-basic-chat-composer-actions')[0];
+ assert.equal(actions.children[0].attrs['aria-label'],'Anexar Markdown');
+ assert.equal(view.chatSend.parent,view.chatStop.parent);
+ assert.equal(view.chatSend.parent.parent,actions);
+ assert.equal(view.chatAttachmentArea.hidden,true);
+ view.attachChatFile(add('Capítulos/Cena 1.md','texto'));
+ assert.equal(view.chatAttachmentArea.hidden,false);
+ const remove=view.chatAttachmentArea.querySelectorAll('.writer-basic-chat-button')[0];
+ assert.equal(remove.attrs['aria-label'],'Remover anexo: Cena 1.md');
+ remove.fire('click');
+ assert.equal(view.chatAttachmentArea.hidden,true);
 });
 
 test('dedicated translation stops between batches when language settings change in the panel',async()=>{

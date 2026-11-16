@@ -211,7 +211,7 @@ Fictional chat accepts `[Left=Maria, right=João]`, participant shorthand such a
 
 ## Connected community plugins
 
-Plugin support has no separate settings page. Configure speech in **Read aloud**, icon priority in **File explorer**, and mobile floating controls in **Files & tools**. Native mentions and AI writing actions are in **Advanced editing**. See the [plugin support guide](guides/companion-compatibility.md) for the nine supported companions. Their credentials, transport and schedules remain in the original plugins.
+Plugin support has no separate settings page. Configure speech in **Read aloud**, icon priority in **File explorer**, and mobile floating controls in **Files & tools**. Native mentions and AI writing actions are in **Advanced editing**. See the [plugin support guide](guides/companion-compatibility.md) for supported external plugins. Their credentials, transport and schedules remain in the original plugins. The old **Connected plugins** sidebar has been removed. Visual Kit is built into Basic on desktop under **Images & annotations**.
 
 ## Connections and data use
 

@@ -25,7 +25,8 @@ function runtime(){
   add(kind,register){const control={kind,options:{},addOption(key,label){this.options[key]=label;return this;},setValue(value){this.value=value;return this;},setDisabled(value){this.disabled=value;return this;},setButtonText(value){this.text=value;return this;},onChange(fn){this.change=fn;return this;},onClick(fn){this.click=fn;return this;}};this.row.controls.push(control);register(control);return this;}
   addDropdown(fn){return this.add('dropdown',fn);}addToggle(fn){return this.add('toggle',fn);}addButton(fn){return this.add('button',fn);}
  }
- const sandbox={console,Setting,Notice:class{constructor(value){notices.push(value);}},Platform:{isMobile:false},ItemView:class{constructor(leaf){this.leaf=leaf;this.contentEl=new Element();}},
+ class Modal{constructor(){this.titleEl={setText:text=>{this.title=text;}};this.contentEl=new Element();}open(){this.onOpen?.();}close(){this.onClose?.();}}
+ const sandbox={console,Setting,Modal,Notice:class{constructor(value){notices.push(value);}},Platform:{isMobile:false},ItemView:class{constructor(leaf){this.leaf=leaf;this.contentEl=new Element();}},
   writerUi:(pt,en)=>en,writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
   writerV12On:(plugin,id)=>plugin.settings.v12Toolkit?.enabled!==false&&plugin.settings.v12Toolkit?.[id]!==false,
   writerV12Config:plugin=>plugin.settings.v12Toolkit,
@@ -121,23 +122,18 @@ test('switching sync providers during editor restoration cancels a pending netwo
  assert.equal(await running,false);assert.equal(h.dispatches.length,0);
 });
 
-test('an already rendered companion center follows the latest editor through workspace events',async()=>{
+test('active Markdown editor tracking preserves explicit companion actions after the hub is removed',async()=>{
  const h=runtime();h.api.writerCompanionRegister(h.plugin);
- const panel={};panel.view=h.registered.find(item=>item.type==='basic-connected-plugins').factory(panel);
- panel.view.editorContext=h.api.writerCompanionEditorContext(h.plugin);h.leaves.set('basic-connected-plugins',[panel]);panel.view.render();
+ assert.equal(h.registered.some(item=>item.type==='basic-connected-plugins'),false);
  const second={view:{file:{path:'Manuscript/Next.md',basename:'Next',extension:'md'},editor:{...h.editor,selection:'Latest note selection'}}};
  h.leaves.set('markdown',[h.note,second]);h.ws.activeLeaf=second;h.emit('active-leaf-change',second);
- assert.equal(panel.view.editorContext.leaf,second);
- h.ws.activeLeaf=panel;h.ws.getActiveFile=()=>null;
- assert.equal(h.api.writerCompanionEditorContext(h.plugin).leaf,second);
- const find=(root,predicate)=>predicate(root)?root:root.children.map(child=>find(child,predicate)).find(Boolean);
- const card=find(panel.view.contentEl,el=>el.dataset.companion==='dropit');
- const send=find(card,el=>el.tag==='button'&&el.text==='Send selection');assert.ok(send);
- send.events.click();await new Promise(resolve=>setImmediate(resolve));
+ h.ws.activeLeaf=null;h.ws.getActiveFile=()=>null;
+ const context=h.api.writerCompanionEditorContext(h.plugin);
+ assert.equal(context.leaf,second);
+ assert.equal(await h.api.writerCompanionRun(h.plugin,'dropit','send-selection',context),true);
  assert.equal(h.restores.at(-1),second);assert.deepEqual(h.dispatches,['dropit:send-selection']);
  for(const cleanup of h.cleanups)cleanup();assert.equal(h.events.size,0);
 });
-
 test('host restoration failure and native command failure return false instead of leaking rejected UI actions',async()=>{
  const h=runtime();h.ws.setActiveLeaf=async()=>{throw Error('Leaf was closed');};
  assert.equal(await h.api.writerCompanionRun(h.plugin,'dropit','send-note',h.api.writerCompanionEditorContext(h.plugin)),false);
@@ -262,7 +258,7 @@ test('live speech module and provider changes release only the Basic-owned sessi
 
 test('manager lifecycle is idempotent, refreshes live capability gates and never starts transport during discovery',()=>{
  const h=runtime();h.api.writerCompanionRegister(h.plugin);h.api.writerCompanionRegister(h.plugin);
- assert.equal(h.registered.filter(item=>item.type==='basic-connected-plugins').length,1);assert.equal(h.timers.size,1);
+ assert.equal(h.registered.filter(item=>item.type==='basic-connected-plugins').length,0);assert.equal(h.timers.size,1);
  const manager=h.plugin._writerCompanionManager;
  assert.ok(h.lifecycle.includes('snail-refresh'));assert.ok(h.lifecycle.includes('layout-refresh'));assert.equal(h.dispatches.length,0);assert.equal(h.speech.length,0);
  h.api.writerCompanionConfig(h.plugin).ttsProvider='ahmed-toolkit';h.api.writerCompanionSpeechStart(h.plugin,'Owned writing','Chapter');
@@ -271,42 +267,31 @@ test('manager lifecycle is idempotent, refreshes live capability gates and never
  const count=h.lifecycle.length;for(const callback of h.timers.values())callback();assert.equal(h.lifecycle.length,count);assert.equal(h.dispatches.length,0);
 });
 
-test('companion center materializes deferred placeholders before rendering on first open and reuse',async()=>{
+test('only a manual synchronization modal remains, with no sidebar allocation or transport on open',async()=>{
  const h=runtime();h.api.writerCompanionRegister(h.plugin);
- const factory=h.registered.find(item=>item.type==='basic-connected-plugins').factory;
- const states=[];let ready=deferred(),allocations=0,materializations=0;
- const leaf={view:{getViewType:()=> 'deferred'},
-  setViewState:async state=>{states.push(plain(state));h.leaves.set('basic-connected-plugins',[leaf]);},
-  async loadIfDeferred(){
-   if(typeof this.view.render==='function')return;
-   await ready.promise;this.view=factory(this);materializations++;
-  }};
- h.ws.getRightLeaf=()=>{allocations++;return leaf;};
- const first=h.api.writerCompanionOpen(h.plugin,'sync');await Promise.resolve();
- assert.equal(h.reveals.length,0);assert.equal(typeof leaf.view.render,'undefined');
- ready.resolve();assert.equal(await first,true);
- assert.equal(materializations,1);assert.equal(leaf.view.role,'sync');assert.equal(leaf.view.editorContext.leaf,h.note);
- assert.ok(leaf.view.contentEl.children.some(el=>el.tag==='h2'&&el.text==='Connected plugins'));
- assert.deepEqual(states,[{type:'basic-connected-plugins',active:true}]);assert.deepEqual(h.reveals,[leaf]);
- leaf.view={getViewType:()=> 'deferred'};ready=deferred();
- const reused=h.api.writerCompanionOpen(h.plugin);await Promise.resolve();assert.equal(h.reveals.length,1);
- ready.resolve();assert.equal(await reused,true);
- assert.equal(materializations,2);assert.equal(allocations,1);assert.equal(states.length,1);assert.equal(leaf.view.role,undefined);
- assert.equal(leaf.view.editorContext.leaf,h.note);assert.deepEqual(h.reveals,[leaf,leaf]);
- h.plugin._writerCompanionManager.stop();
+ h.ws.getRightLeaf=()=>{throw Error('A sync command must not allocate a sidebar');};
+ assert.equal(await h.api.writerCompanionOpen(h.plugin),false);
+ assert.equal(await h.api.writerCompanionOpen(h.plugin,'sync'),true);
+ const modal=h.plugin._writerCompanionSyncModal;
+ assert.equal(modal.title,'Manual synchronization');
+ const cards=modal.contentEl.children.map(child=>child.dataset.companion).filter(Boolean);
+ assert.ok(cards.includes('obsidian-git'));
+ assert.ok(!cards.includes('visual-kit')&&!cards.includes('dropit'));
+ assert.equal(await h.api.writerCompanionOpen(h.plugin,'sync'),true);
+ assert.equal(h.plugin._writerCompanionSyncModal,modal);
+ assert.equal(h.dispatches.length,0);
+ h.plugin.settings.v12Toolkit.integrations=false;h.plugin._writerCompanionManager.refresh();
+ assert.equal(h.plugin._writerCompanionSyncModal,null);
 });
-
-test('manager stop detaches only its own center leaves and keeps native companion views and plugins running',()=>{
- const h=runtime(),detached=[];h.api.writerCompanionRegister(h.plugin);
- const factory=h.registered.find(item=>item.type==='basic-connected-plugins').factory;
- const own={detach:()=>detached.push('center')};own.view=factory(own);
- const ownDeferred={view:{getViewType:()=> 'deferred'},detach:()=>detached.push('deferred-center')};
- const native={view:{getViewType:()=> 'snailkit-tasks'},detach:()=>detached.push('native-snailkit')};
- h.note.detach=()=>detached.push('markdown');
- h.leaves.set('basic-connected-plugins',[own,ownDeferred]);h.leaves.set('snailkit-tasks',[native]);
- const companion=h.plugin.app.plugins.plugins.snailkit;companion.onunload=()=>detached.push('native-plugin-unload');
- h.plugin._writerCompanionManager.stop();h.plugin._writerCompanionManager.stop();
- for(const callback of h.timers.values())callback();
- assert.deepEqual(detached,['center','deferred-center']);assert.equal(h.plugin.app.plugins.plugins.snailkit,companion);
- assert.equal(h.leaves.get('snailkit-tasks')[0],native);assert.equal(h.dispatches.length,0);
+test('layout migration detaches only the old Connected plugins pane, including deferred panes',()=>{
+ const h=runtime(),detached=[];
+ const own={detach:()=>detached.push('center')};
+ const deferred={getViewState:()=>({type:'basic-connected-plugins'}),detach:()=>detached.push('deferred-center')};
+ const native={getViewState:()=>({type:'snailkit-tasks'}),detach:()=>detached.push('native-snailkit')};
+ h.leaves.set('basic-connected-plugins',[own]);
+ h.ws.iterateAllLeaves=fn=>[own,deferred,native].forEach(fn);
+ h.api.writerCompanionRegister(h.plugin);
+ h.plugin._writerCompanionManager.stop();
+ assert.deepEqual(detached,['center','deferred-center']);
+ assert.equal(h.dispatches.length,0);
 });

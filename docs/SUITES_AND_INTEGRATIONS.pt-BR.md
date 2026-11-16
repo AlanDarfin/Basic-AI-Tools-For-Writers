@@ -211,7 +211,7 @@ O chat fictício aceita `[Left=Maria, right=João]`, formas curtas como `[Maria=
 
 ## Plugins da comunidade conectados
 
-O suporte a plugins não tem uma página separada de configurações. Configure a voz em **Leitura em voz alta**, a prioridade de ícones em **Explorador de arquivos** e os controles móveis em **Arquivos e ferramentas**. Menções e ações de IA para escrita ficam em **Edição avançada**. O [guia de suporte aos plugins](guides/companion-compatibility.pt-BR.md) descreve os nove plugins suportados. Credenciais, transporte e agendas continuam nos plugins originais.
+O suporte a plugins não tem uma página separada de configurações. Configure a voz em **Leitura em voz alta**, a prioridade de ícones em **Explorador de arquivos** e os controles móveis em **Arquivos e ferramentas**. Menções e ações de IA para escrita ficam em **Edição avançada**. O [guia de suporte aos plugins](guides/companion-compatibility.pt-BR.md) descreve os plugins suportados. Credenciais, transporte e agendas continuam nos plugins originais. A aba lateral **Plugins conectados** foi removida. O Visual Kit fica integrado ao Basic para computador em **Imagens e anotações**.
 
 ## Conexões e uso de dados
 

@@ -92,8 +92,7 @@ function writerV1201QuickMenu(plugin,event){
   [writerUi('Ler seleção ou nota','Read selection or note'),'volume-2',()=>writerV1201Read(plugin)],
   [writerUi('Abrir paleta de formatação','Open formatting palette'),'wand-sparkles',()=>writerV1201Format(plugin)],
   [writerUi('Alternar tela de foco','Toggle focus screen'),'maximize-2',()=>writerV1201Zen(plugin)],
-  [writerUi('Alternar foco na pasta','Toggle folder focus'),'target',()=>writerV1201Folder(plugin)],
-  [writerUi('Central de integrações','Integration center'),'blocks',()=>writerV12OpenIntegrationHub(plugin)]
+  [writerUi('Alternar foco na pasta','Toggle folder focus'),'target',()=>writerV1201Folder(plugin)]
  ])menu.addItem(i=>i.setTitle(title).setIcon(icon).onClick(callback));
  if(event?.clientX!==undefined)menu.showAtMouseEvent(event);
  else menu.showAtPosition({x:80,y:150});

@@ -1,0 +1,42 @@
+{
+  "name": "obsidian-visual-kit",
+  "version": "0.9.1",
+  "author": "pedrof",
+  "private": true,
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "check": "tsc --noEmit",
+    "test": "node tests/run.mjs",
+    "test:browser": "node tests/browser-html-notes.mjs",
+    "assets:readme": "node scripts/generate-readme-overview.cjs",
+    "format": "prettier --write src tests *.json *.mjs styles.css README.md",
+    "lint": "eslint src --max-warnings=0"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-html": "^6.4.12",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "6.43.13",
+    "dompurify": "^3.4.17",
+    "fabric": "^7.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "eslint": "^10.13.0",
+    "eslint-plugin-obsidianmd": "^0.4.2",
+    "jsdom": "^26.1.0",
+    "obsidian": "^1.8.7",
+    "playwright": "^1.62.1",
+    "prettier": "^3.9.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.72.0"
+  },
+  "license": "MIT",
+  "overrides": {
+    "moment": "2.31.0"
+  }
+}

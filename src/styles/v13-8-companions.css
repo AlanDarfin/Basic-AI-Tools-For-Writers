@@ -47,18 +47,11 @@ body.is-mobile .fs-hint.writer-companion-managed{z-index:25;box-sizing:border-bo
 .writer-companion-options .setting-item-info{min-width:120px;flex:1 1 150px;}
 .writer-companion-options .setting-item-control{min-width:0;max-width:100%;flex-wrap:wrap;}
 .writer-companion-options .setting-item-control>select{max-width:100%;}
-.writer-companion-tasks{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-direction:column;gap:4px;}
-.writer-companion-tasks>li{display:flex;align-items:flex-start;gap:10px;min-height:36px;padding-block:6px;line-height:1.5;}
-.writer-companion-tasks>li>input[type="checkbox"]{flex:none;margin-top:3px;width:18px;height:18px;}
-.writer-companion-tasks>li>span{min-width:0;overflow-wrap:anywhere;}
-.writer-sidebar-header>.writer-companion-launcher{flex:none;min-height:30px;padding-inline:8px;font-size:var(--font-ui-smaller);}
 :is(.writer-companion-center,.writer-companion-options) :is(button,input,select,summary):focus-visible{
  outline:2px solid var(--interactive-accent);outline-offset:2px;
 }
 body.is-mobile .writer-companion-center{padding:12px;gap:12px;}
 body.is-mobile .writer-companion-actions>button{min-height:44px;}
-body.is-mobile .writer-companion-tasks>li{min-height:44px;}
-body.is-mobile .writer-companion-tasks>li>input[type="checkbox"]{width:22px;height:22px;}
 @media(max-width:420px){
  .writer-companion-card{padding:12px;}
  .writer-companion-center .setting-item{min-width:0;flex-wrap:wrap;gap:8px;}

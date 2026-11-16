@@ -9,30 +9,48 @@
 }
 body .writer-v9-toolbar-host>.writer-v9-format-toolbar.writer-v1048-format-toolbar:not(.is-floating){inset:auto;}
 
-/* Phone status is a real child of the mobile navigator: the native actions
- * stay first, and the platform's bottom inset still belongs to that navigator. */
-body.is-mobile .writer-mobile-status-navbar.writer-mobile-status-navbar-wrap{flex-wrap:wrap}
-body.is-mobile .writer-mobile-status-navbar.writer-mobile-status-navbar-fit{
- box-sizing:border-box;min-height:var(--writer-mobile-status-navbar-min);
+/* The navigation pill keeps its own size, clipping and touch targets.
+ * The status row is a separate surface beneath it. */
+body.is-mobile .app-container .mobile-navbar.writer-mobile-nav-lifted{
+ bottom:var(--writer-mobile-nav-bottom);
+}
+body.is-mobile .app-container .mobile-navbar.writer-mobile-nav-lifted-by-translation{
+ translate:0 var(--writer-mobile-nav-lift);
 }
 .writer-mobile-status{display:none}
-body.is-mobile .writer-mobile-status-navbar>.writer-mobile-status:not([hidden]){
+body.is-mobile .writer-mobile-status:not([hidden]){
  box-sizing:border-box;
  display:flex;flex:0 0 auto;align-items:center;gap:4px;
- order:100;width:100%;min-width:0;height:28px;padding:0 8px;
+ width:100%;min-width:0;height:30px;padding:0 8px;
  overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;
- background:var(--background-primary);
- border-top:1px solid var(--background-modifier-border);
+ background:var(--background-secondary,var(--background-primary));
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-m,8px);
  color:var(--text-muted);font-size:var(--font-ui-smaller);
 }
-body.is-mobile:not(.is-hidden-nav) .writer-mobile-status-overlay .workspace-split.mod-root{
- margin-block-end:28px;
+body.is-mobile .writer-mobile-status.writer-mobile-status-floating{
+ position:fixed;inset:auto;top:var(--writer-mobile-status-top);left:var(--writer-mobile-status-left);
+ width:var(--writer-mobile-status-width);z-index:var(--layer-status-bar,10);
+}
+body.is-mobile .writer-v8-home{
+ padding-block-end:calc(var(--writer-home-footer-padding,30px) + var(--writer-mobile-home-clearance,0px));
+ scroll-padding-block-end:var(--writer-mobile-home-clearance,0px);
+}
+@media(max-width:680px){
+ body.is-mobile .writer-v8-home{--writer-home-footer-padding:24px}
+}
+body.is-mobile .writer-v9-toolbar-host.writer-v9-toolbar-docked>.writer-v9-format-toolbar.is-top{
+ margin-block-start:calc(4px + var(--writer-mobile-editor-top-clearance,0px));
+}
+.writer-mobile-safe-insets{
+ position:fixed;visibility:hidden;pointer-events:none;
+ padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 body.is-mobile .writer-mobile-status>.writer-mobile-status-native.status-bar{
  display:inline-flex;position:static;inset:auto;z-index:auto;transform:none;
  flex:0 0 auto;align-items:center;align-self:stretch;
  height:auto;min-height:0;width:auto;max-width:none;
  margin:0;padding:0;border:0;background:transparent;overflow:visible;
+ white-space:nowrap;
 }
 .writer-mobile-status .writer-mobile-status-item:not([hidden]){
  display:inline-flex;flex:0 0 auto;align-items:center;gap:4px;white-space:nowrap;

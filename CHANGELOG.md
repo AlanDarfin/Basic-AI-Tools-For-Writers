@@ -2,6 +2,12 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.10.2 — Mobile floating navigation clearance
+
+- Separate the mobile status row from Obsidian's floating navigation pill so long indicators scroll without clipping the pill.
+- Reserve bottom scrolling space on the homepage based on the visible navigation, even if Basic's status row is off.
+- Keep the top formatting toolbar below the system safe area and visible native header.
+
 ## 13.10.1 — Horizontal tab icons and one scene collapse control
 
 - Keep icons beside their labels in Longform, Basic AI and Settings, including on narrow mobile panes.

@@ -119,7 +119,7 @@ Favorite até 12 seções para acesso rápido. Em **Geral → Perfis de escrita*
 | Seção | O que configurar |
 | --- | --- |
 | **Dicionário e definições** | Dicionário local, busca e conexão usada nas definições. |
-| **Tradução** | Conexão, idioma de origem e idioma de destino. |
+| **Tradução** | IA ou tradutor dedicado, credenciais de API independentes, instância/região quando necessário, idiomas de origem/destino e teste de exemplo explícito. |
 | **Assistente de escrita** | Chat, sugestões no editor, modelo e instruções do assistente. |
 | **Conexões de IA** | Chaves, endpoints e testes sob demanda. |
 | **Modelos de IA** | Catálogo de modelos e escolhas por função. |

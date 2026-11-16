@@ -1,0 +1,372 @@
+{
+  "version": "13.15.0",
+  "runtime": {
+    "application": "Obsidian",
+    "appVersion": "1.15.1",
+    "platform": "Linux Electron",
+    "fixture": "synthetic isolated vault; Basic plus QA transport guard",
+    "network": "external network blocked; native requestUrl IPC fulfilled with synthetic provider responses",
+    "audio": "speech boundary stub; no audible playback"
+  },
+  "testedAssetSha256": {
+    "main.js": "4d2bdc43d5ed68a3a1120f9c89b35b4aff1b2ba36f1835dca18bb4498ad26c48",
+    "manifest.json": "2e75bff489ab9e80e520161a486d362928042859439fa94894ac2bb21929c161",
+    "styles.css": "0cf8023247ec894f891082e4fc33518cebe3bfa0af7f4a8d47f6aa03caebef51"
+  },
+  "tools": {
+    "titles": {
+      "en": "Basic Tools",
+      "pt": "Ferramentas Básicas"
+    },
+    "chat": {
+      "providerAndModelVisible": true,
+      "shortcutsEditableWithoutSending": true,
+      "stopRestoresSubmittedDraft": true,
+      "stopPreservesNewerDraft": true,
+      "successfulReplyInHistory": true,
+      "truncatedReplyRejectedAndDraftRetained": true,
+      "refusalWithContentRejectedAndDraftRetained": true,
+      "geminiBlocklistAndOtherRejectedAndDraftRetained": true,
+      "moduleDisableDiscardsPendingReply": true
+    },
+    "translation": {
+      "dedicatedProviders": [
+        "deepl",
+        "google-translate",
+        "microsoft-translator",
+        "libretranslate"
+      ],
+      "nativeSettingsAndSampleTestsPassed": [
+        "deepl",
+        "google-translate",
+        "microsoft-translator",
+        "libretranslate"
+      ],
+      "apiKeyFieldsArePasswordInputs": true,
+      "missingKeySendsNoRequest": true,
+      "quotaAndInvalidResponseReported": true,
+      "explicitLanguagesSwapped": [
+        "pt",
+        "en"
+      ],
+      "autoDetectDisablesSwap": true,
+      "moduleDisableDiscardsPendingReply": true,
+      "closedViewDiscardsPendingReply": true,
+      "originalMarkdownUnchanged": true,
+      "newMarkdownCopyCreated": true,
+      "yamlLinkDestinationAndCodeFencePreserved": true,
+      "fileCopyRequiresExplicitActionAndDoesNotShowPreview": true
+    }
+  },
+  "layout": [
+    {
+      "viewport": [
+        1280,
+        800
+      ],
+      "tab": "translation",
+      "title": "Basic Tools",
+      "rootWidth": 1212,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "DeepL · Text sent only when translating",
+      "scrollableTabstrip": false,
+      "swap": {
+        "width": 18,
+        "height": 32
+      },
+      "language": "en",
+      "name": "desktop",
+      "mobileCss": false
+    },
+    {
+      "viewport": [
+        412,
+        915
+      ],
+      "tab": "translation",
+      "title": "Basic Tools",
+      "rootWidth": 328,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "DeepL · Text sent only when translating",
+      "scrollableTabstrip": true,
+      "swap": {
+        "width": 44,
+        "height": 44
+      },
+      "language": "en",
+      "name": "mobile",
+      "mobileCss": true
+    },
+    {
+      "viewport": [
+        320,
+        700
+      ],
+      "tab": "translation",
+      "title": "Basic Tools",
+      "rootWidth": 236,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "DeepL · Text sent only when translating",
+      "scrollableTabstrip": true,
+      "swap": {
+        "width": 44,
+        "height": 44
+      },
+      "language": "en",
+      "name": "small",
+      "mobileCss": true
+    },
+    {
+      "viewport": [
+        1280,
+        800
+      ],
+      "tab": "chat",
+      "title": "Basic Tools",
+      "rootWidth": 1212,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "OpenAI · qa-model",
+      "scrollableTabstrip": false,
+      "swap": null,
+      "language": "en",
+      "name": "desktop",
+      "mobileCss": false
+    },
+    {
+      "viewport": [
+        412,
+        915
+      ],
+      "tab": "chat",
+      "title": "Basic Tools",
+      "rootWidth": 328,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "OpenAI · qa-model",
+      "scrollableTabstrip": true,
+      "swap": null,
+      "language": "en",
+      "name": "mobile",
+      "mobileCss": true
+    },
+    {
+      "viewport": [
+        320,
+        700
+      ],
+      "tab": "chat",
+      "title": "Basic Tools",
+      "rootWidth": 236,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "OpenAI · qa-model",
+      "scrollableTabstrip": true,
+      "swap": null,
+      "language": "en",
+      "name": "small",
+      "mobileCss": true
+    },
+    {
+      "viewport": [
+        1280,
+        800
+      ],
+      "tab": "translation",
+      "title": "Ferramentas Básicas",
+      "rootWidth": 1212,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "DeepL · Texto enviado só ao traduzir",
+      "scrollableTabstrip": false,
+      "swap": {
+        "width": 18,
+        "height": 32
+      },
+      "language": "pt-BR",
+      "name": "desktop",
+      "mobileCss": false
+    },
+    {
+      "viewport": [
+        412,
+        915
+      ],
+      "tab": "translation",
+      "title": "Ferramentas Básicas",
+      "rootWidth": 328,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "DeepL · Texto enviado só ao traduzir",
+      "scrollableTabstrip": true,
+      "swap": {
+        "width": 44,
+        "height": 44
+      },
+      "language": "pt-BR",
+      "name": "mobile",
+      "mobileCss": true
+    },
+    {
+      "viewport": [
+        320,
+        700
+      ],
+      "tab": "translation",
+      "title": "Ferramentas Básicas",
+      "rootWidth": 236,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "DeepL · Texto enviado só ao traduzir",
+      "scrollableTabstrip": true,
+      "swap": {
+        "width": 44,
+        "height": 44
+      },
+      "language": "pt-BR",
+      "name": "small",
+      "mobileCss": true
+    },
+    {
+      "viewport": [
+        1280,
+        800
+      ],
+      "tab": "chat",
+      "title": "Ferramentas Básicas",
+      "rootWidth": 1212,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "OpenAI · qa-model",
+      "scrollableTabstrip": false,
+      "swap": null,
+      "language": "pt-BR",
+      "name": "desktop",
+      "mobileCss": false
+    },
+    {
+      "viewport": [
+        412,
+        915
+      ],
+      "tab": "chat",
+      "title": "Ferramentas Básicas",
+      "rootWidth": 328,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "OpenAI · qa-model",
+      "scrollableTabstrip": true,
+      "swap": null,
+      "language": "pt-BR",
+      "name": "mobile",
+      "mobileCss": true
+    },
+    {
+      "viewport": [
+        320,
+        700
+      ],
+      "tab": "chat",
+      "title": "Ferramentas Básicas",
+      "rootWidth": 236,
+      "rootOverflow": 0,
+      "documentOverflow": 0,
+      "controlsOutside": [],
+      "unlabeledButtons": 0,
+      "route": "OpenAI · qa-model",
+      "scrollableTabstrip": true,
+      "swap": null,
+      "language": "pt-BR",
+      "name": "small",
+      "mobileCss": true
+    }
+  ],
+  "layoutMethod": "Actual native app at three desktop viewport sizes in both languages and both panels. is-mobile CSS toggled for 412/320 widths; platform runtime stays desktop. Intentionally scrolling tab strips are excluded from action clipping checks; root/document overflow and other visible controls are checked.",
+  "regressions": {
+    "profileRollback": {
+      "apply": {
+        "returned": false,
+        "unchanged": true,
+        "busy": false
+      },
+      "undo": {
+        "returned": false,
+        "unchanged": true,
+        "busy": false
+      },
+      "save": {
+        "returned": false,
+        "unchanged": true,
+        "busy": false
+      }
+    },
+    "mobileQuickRead": {
+      "controlUtterances": 1,
+      "utterancesAfterStop": 0
+    },
+    "explorerFilter": {
+      "applied": 7,
+      "afterFilterOff": 0,
+      "reapplied": 7,
+      "afterManagerOff": 0
+    },
+    "quickStartUnload": {
+      "beforeUnload": {
+        "connected": true,
+        "disabled": true
+      },
+      "afterUnload": {
+        "connected": false,
+        "stopped": true
+      },
+      "afterResolve": {
+        "refreshes": 0,
+        "displays": 0,
+        "connected": false
+      }
+    }
+  },
+  "screenshots": [
+    "docs/images/13.15.0/chat-desktop-en.png",
+    "docs/images/13.15.0/chat-mobile-pt.png",
+    "docs/images/13.15.0/translation-mobile-en.png",
+    "docs/images/13.15.0/translation-settings-pt.png"
+  ],
+  "limitations": [
+    "No physical Android/iOS device was tested.",
+    "Provider contracts used synthetic local responses, with no real keys, paid requests or service-availability checks.",
+    "Speech checks establish scheduling/cancellation at a stubbed audio boundary, not audible playback.",
+    "Native app API exports are immutable; the fixture used its guarded native IPC request boundary instead of replacing requestUrl.",
+    "Screenshots use one dark theme; responsive CSS checks do not establish every device/theme behavior."
+  ],
+  "rawReportsRetainedInWorkspace": [
+    "/workspace/artifacts/basic-13.15.0/native-tools-qa.json",
+    "/workspace/artifacts/basic-13.15.0/native-regressions-qa.json"
+  ],
+  "acceptedRunErrors": []
+}

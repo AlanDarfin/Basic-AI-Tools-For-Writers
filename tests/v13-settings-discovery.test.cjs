@@ -230,6 +230,18 @@ test('fresh settings index keeps read-aloud controls and online consent searchab
  assert.match(consent.descriptionEn,/OFF by default.*Microsoft/);
 });
 
+test('fresh settings index finds dedicated translator credentials, endpoint, region and sample action in both languages',()=>{
+ const {build}=require('../scripts/settings-search-index.js');
+ const entries=vm.runInNewContext(build()+'\nWRITER_SETTINGS_SEARCH_INDEX;');
+ const translation=entries.filter(item=>item.id==='translation');
+ for(const [titlePt,titleEn] of [
+  ['Chave da API de tradução','Translation API key'],
+  ['Endereço do LibreTranslate','LibreTranslate address'],
+  ['Região do recurso Azure','Azure resource region'],
+  ['Testar tradução','Test translation']
+ ])assert.ok(translation.some(item=>item.titlePt===titlePt&&item.titleEn===titleEn),'Missing bilingual translation option: '+titleEn);
+});
+
 test('generated labels cover every settings route and keep provider credentials out of model-only results',()=>{
  const h=fixture(),entries=h.api.WRITER_SETTINGS_SEARCH_INDEX;
  for(const section of h.api.WRITER_SETTINGS_CATALOG)assert.ok(entries.some(item=>item.id===section.id),'No searchable options for '+section.id);

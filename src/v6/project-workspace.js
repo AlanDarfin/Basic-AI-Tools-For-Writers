@@ -134,6 +134,6 @@ function writerV6ProjectPreferencesRender(view,panel,project){
    d.setValue(WRITER_WORKSPACE_PRESETS[picked]?picked:'').onChange(async v=>{picked=v;cfg.writingPreset=v;await view.plugin.saveSettings();});
   }).addButton(b=>b.setButtonText(writerUi('Aplicar','Apply')).onClick(async()=>{
    const preset=WRITER_WORKSPACE_PRESETS[picked];
-   if(preset)await view.plugin.writerWorkspaceProfiles.apply(writerUi(preset.labelPt,preset.labelEn),preset.values);
+   if(preset)await view.plugin.writerWorkspaceProfiles.run(()=>view.plugin.writerWorkspaceProfiles.apply(writerUi(preset.labelPt,preset.labelEn),preset.values));
   }));
 }

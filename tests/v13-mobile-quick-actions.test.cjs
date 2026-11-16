@@ -23,6 +23,32 @@ function harness(){
  const plugin={settings:{},app:{workspace,vault:{cachedRead:()=>{throw Error('Unexpected disk read');}}}};
  return {api,plugin,workspace,file,spoken,notices,menus};
 }
+function pendingSpeech(provider='basic'){
+ const spoken=[],notices=[],requests=[],cleanups=[];
+ class TFile{constructor(path){this.path=path;this.basename=path.replace(/\.md$/,'');this.extension='md';this.stat={mtime:1,size:20};}}
+ const file=new TFile('Chapter.md'),files=new Map([[file.path,file]]);let active=file;
+ const speech={speak:utterance=>spoken.push(utterance.text),cancel(){},getVoices:()=>[]};
+ const Utterance=class{constructor(text){this.text=text;}};
+ const workspace={getActiveFile:()=>active,getActiveViewOfType:()=>null,getLeavesOfType:()=>[],on:()=>({}),
+  containerEl:{ownerDocument:{defaultView:{speechSynthesis:speech,SpeechSynthesisUtterance:Utterance}}}};
+ const plugin={settings:{visibleModules:{tts:true},companionCompatibility:{ttsProvider:provider}},
+  app:{workspace,plugins:{plugins:{'ahmed-toolkit':{}}},vault:{on:()=>({}),getAbstractFileByPath:path=>files.get(path),cachedRead:()=>new Promise((resolve,reject)=>requests.push({resolve,reject}))}},
+  addCommand(){},registerEvent(){},registerDomEvent(){},register:fn=>cleanups.push(fn)};
+ const source=['v3/core','v3/final-suite','v10/speech-accessibility','v12/mobile-ux-1201'].map(name=>fs.readFileSync(path.join(__dirname,'../src/'+name+'.js'),'utf8')).join('\n');
+ const api=vm.runInNewContext(source+'\n({WriterFinalFeatures,writerFinalMerge,writerV107SpeechConfig,writerV107SpeechStop,writerV107SpeechStart,writerV107SpeechRegister,writerV1201Read})',{
+  console,TFile,MarkdownView:class{},EditorView:{},writerUi:(_pt,en)=>en,
+  writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
+  writerV12SelectedText:()=>'',speechSynthesis:speech,SpeechSynthesisUtterance:Utterance,
+  navigator:{language:'en-US'},Notice:class{constructor(message){notices.push(message);}},
+  writerCompanionConfig:plugin=>plugin.settings.companionCompatibility,
+  writerCompanionSpeechControl:()=>false,writerCompanionSpeechStart:(_plugin,text)=>{spoken.push(text);return true;}
+ });
+ api.writerFinalMerge(plugin);api.writerV107SpeechConfig(plugin.settings);
+ const reader=plugin.writerFinalFeatures=new api.WriterFinalFeatures(plugin);
+ return {api,plugin,workspace,file,files,reader,spoken,notices,requests,newFile:path=>new TFile(path),
+  active:next=>{active=next;},stop:()=>api.writerV107SpeechStop(plugin),
+  unload(){api.writerV107SpeechRegister(plugin);for(const cleanup of cleanups)cleanup();}};
+}
 test('mobile read-aloud uses the current unsaved editor buffer',()=>{
  const h=harness();
  h.workspace.activeEditor={file:h.file,editor:{getSelection:()=>'',getValue:()=>'# New draft\nUnsaved words'}};
@@ -68,6 +94,45 @@ test('reading view still reads the selected note and reports disk errors',async(
  h.plugin.app.vault.cachedRead=async()=>{throw Error('Read failed');};
  await h.api.writerV1201Read(h.plugin);
  assert.deepEqual(h.notices,['Read failed']);
+});
+test('mobile preview reads cannot start speech after Stop, disable, unload or changed choices',async()=>{
+ const changes=[h=>h.stop(),h=>{h.plugin.settings.visibleModules.tts=false;},
+  h=>{h.plugin.settings.finalSuite.tts.enabled=false;},h=>{h.plugin.settings.v107Speech.enabled=false;},
+  h=>h.unload(),h=>{h.plugin.settings.companionCompatibility.ttsProvider='other-provider';},
+  h=>{h.plugin.settings.v107Speech.voice='Another voice';}];
+ for(const provider of ['basic','ahmed-toolkit'])for(const change of changes){
+  const h=pendingSpeech(provider),reading=h.api.writerV1201Read(h.plugin);
+  assert.equal(h.requests.length,1);change(h);h.requests[0].resolve('Obsolete preview.');await reading;
+  assert.deepEqual(h.spoken,[],provider);assert.deepEqual(h.notices,[],provider);
+ }
+});
+test('mobile preview reads reject changed files, new editor buffers and replaced Toolkit instances',async()=>{
+ for(const change of [h=>h.active(h.newFile('Other.md')),h=>{h.file.path='Renamed.md';},
+  h=>{h.file.stat.mtime++;},h=>{h.files.set(h.file.path,h.newFile(h.file.path));},
+  h=>{h.workspace.activeEditor={file:h.file,editor:{getValue:()=> 'New unsaved buffer'}};},
+  h=>{h.plugin.app.plugins.plugins['ahmed-toolkit']={};}]){
+  const h=pendingSpeech('ahmed-toolkit'),reading=h.api.writerV1201Read(h.plugin);
+  change(h);h.requests[0].resolve('Old file content.');await reading;
+  assert.deepEqual(h.spoken,[]);
+ }
+});
+test('the latest mobile read wins and selection speech supersedes a pending mobile read',async()=>{
+ const h=pendingSpeech(),first=h.api.writerV1201Read(h.plugin),second=h.api.writerV1201Read(h.plugin);
+ h.requests[1].resolve('Newest mobile reading.');await second;
+ h.requests[0].resolve('Older mobile reading.');await first;
+ assert.deepEqual(h.spoken,['Newest mobile reading.']);
+ const pending=h.api.writerV1201Read(h.plugin);
+ h.api.writerV107SpeechStart(h.plugin,'Selected passage.');h.requests[2].resolve('Earlier note.');await pending;
+ assert.deepEqual(h.spoken,['Newest mobile reading.','Selected passage.']);
+});
+test('mobile quick read supersedes a pending main-reader request and stale failures stay silent',async()=>{
+ const h=pendingSpeech(),main=h.reader.speakActive();
+ h.workspace.activeEditor={file:h.file,editor:{getSelection:()=> 'Mobile selection.'}};
+ h.api.writerV1201Read(h.plugin);h.requests[0].resolve('Old main reading.');await main;
+ assert.deepEqual(h.spoken,['Mobile selection.']);
+ h.workspace.activeEditor=null;
+ const old=h.api.writerV1201Read(h.plugin);h.stop();h.requests[1].reject(Error('Obsolete read failure'));await old;
+ assert.deepEqual(h.notices,[]);
 });
 test('Basic quick actions expose the existing Space chooser when registered',()=>{
  const h=harness();let opened=0;

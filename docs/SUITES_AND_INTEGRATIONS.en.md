@@ -119,7 +119,7 @@ Favorite up to 12 sections for quick access. Use **General → Writing profiles*
 | Section | What you configure |
 | --- | --- |
 | **Dictionary & definitions** | Local dictionary, lookup and definition connection. |
-| **Translation** | Connection, source language and target language. |
+| **Translation** | AI or dedicated translator, independent API credentials, instance/region when needed, source/target languages and an explicit sample test. |
 | **Writing assistant** | Chat, editor suggestions, model and assistant instructions. |
 | **AI connections** | Keys, endpoints and on-demand checks. |
 | **AI models** | Model catalog and per-feature choices. |

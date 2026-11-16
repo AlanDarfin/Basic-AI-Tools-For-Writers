@@ -354,6 +354,41 @@ test('provider output limits abort translation instead of returning truncated co
  assert.equal(await plugin.translateAI('Something to translate',true),long);
 });
 
+test('blocked or interrupted provider answers never become successful chat turns',async()=>{
+ for(const locale of ['en','pt']){
+  const env=runtime(locale),{plugin,view}=env;
+  plugin.settings.visibleModules.chat=true;
+  plugin.settings.assistantProvider='gemini';
+  plugin.settings.aiKeys.gemini='test-gemini-key';
+  await view.onOpen();view.switchTab('chat');
+  for(const reason of ['SPII','BLOCKLIST','LANGUAGE','OTHER','MALFORMED_FUNCTION_CALL','UNEXPECTED_TOOL_CALL','NEW_UNKNOWN_REASON']){
+   env.reply(async()=>({status:200,json:{candidates:[{finishReason:reason,content:{parts:[{text:'PARTIAL_RESPONSE_DO_NOT_ACCEPT'}]}}]}}));
+   view.chatInput.value='Preserve this draft';
+   await view.sendChat();
+   assert.equal(view.chatInput.value,'Preserve this draft',reason);
+   assert.equal(view.chatHistory.length,0,reason);
+   assert.equal(view.chatMessages.children.length,0,reason);
+   assert.match(view.chatStatus.text,locale==='pt'?/bloqueou|interrompeu/:/blocked|interrupted/,reason);
+  }
+  plugin.settings.assistantProvider='openai';
+  env.reply(async()=>({status:200,json:{choices:[{finish_reason:'stop',message:{content:'PARTIAL_RESPONSE_DO_NOT_ACCEPT',refusal:'Unable to comply'}}]}}));
+  view.chatInput.value='Keep this draft too';await view.sendChat();
+  assert.equal(view.chatInput.value,'Keep this draft too');
+  assert.equal(view.chatHistory.length,0);
+  assert.match(view.chatStatus.text,locale==='pt'?/bloqueou/:/blocked/);
+ }
+});
+
+test('Gemini complete responses and compatible responses without a finish reason still work',async()=>{
+ const env=runtime(),{plugin}=env;
+ plugin.settings.aiKeys.gemini='test-gemini-key';
+ for(const reason of ['STOP',undefined]){
+  env.reply(async()=>({status:200,json:{candidates:[{finishReason:reason,content:{parts:[{text:'A complete answer.'}]}}]}}));
+  const result=await plugin.lookupAI('Question','writing','','gemini');
+  assert.equal(result.definitions[0],'A complete answer.');
+ }
+});
+
 test('chat restores failed drafts and ignores an answer after clearing the conversation',async()=>{
  const {plugin,view}=runtime();
  plugin.settings.visibleModules.chat=true;

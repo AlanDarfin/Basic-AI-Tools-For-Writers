@@ -114,7 +114,9 @@ Exportar DOCX, EPUB, HTML ou PDF é uma ação opcional separada para computador
 
 É possível usar o dicionário Markdown salvo sem chave de IA. Digitar em **Definições** faz a busca local; **Definir palavra** ou Enter solicita um resultado online. O arquivo do dicionário é criado ao salvar a primeira definição.
 
-Na tradução, escolha os idiomas de origem e destino e use a ação de traduzir. A tradução de arquivo salva uma cópia Markdown separada ao lado dele. O assistente aceita anexos de referência; o texto deles faz parte do material enviado ao provedor escolhido. Se o envio falhar, a mensagem fica disponível para tentar novamente.
+Abra **Ferramentas Básicas → Tradução** para escolher os idiomas de origem e destino e traduzir texto ou uma seleção. Em **Configurações → Basic → Inteligência artificial → Tradução**, escolha uma conexão de IA ou uma conexão dedicada do DeepL, Google Cloud Translation, Microsoft Translator ou LibreTranslate. Tradutores dedicados usam credenciais e teste de exemplo próprios; o LibreTranslate precisa do endereço da sua instância. Uma falha não troca automaticamente o provedor. A tradução de arquivo salva uma cópia Markdown separada ao lado dele.
+
+No **Chat**, os atalhos de escrita preparam instruções editáveis e mostram o provedor/modelo escolhido. **Parar resposta** descarta uma resposta pendente no painel; o provedor ainda pode concluir o processamento. O assistente aceita anexos de referência; o texto deles é enviado ao provedor escolhido. Se o envio falhar ou você parar a resposta, o rascunho retorna quando o campo está vazio, preservando qualquer texto novo que você tenha digitado.
 
 A revisão com LanguageTool tem endpoint e idioma próprios em **Revisão e versões → Revisão gramatical**. Quando ativada, a verificação automática envia texto após uma pausa na digitação enquanto o painel de revisão está ativo. A IA durante a digitação também precisa ser configurada antes de enviar texto enquanto você escreve. Mantenha esses recursos desligados quando não desejar essas solicitações.
 

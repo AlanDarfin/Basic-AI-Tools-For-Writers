@@ -356,7 +356,15 @@ function writerV1010Register(plugin){
   drawerObservers.set(side,{root,observer});
  };
  const make=(tag,cls,doc)=>{const node=doc.createElement(tag);if(cls)node.className=cls;return node;};
+ let fileFilterApplied=false;
+ // Avoid traversing the Explorer on every refresh when no query was applied.
+ const applyFileFilter=query=>{
+  const text=String(query||'');
+  if(!text&&!fileFilterApplied)return;
+  writerV1010FilterFiles(workspace,text);fileFilterApplied=!!text;
+ };
  const restoreSidebar=side=>{
+  if(side==='left')applyFileFilter('');
   groupNativeActions(side,[],false);
   const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
   bar?.remove?.();hosts.delete(side);hostState.delete(side);
@@ -390,6 +398,7 @@ function writerV1010Register(plugin){
   const nativeTabs=drawer?(drawer.tabsListEl&&root.contains?.(drawer.tabsListEl)!==false&&drawer.tabsListEl.isConnected!==false?
    drawer.tabsListEl:header?.querySelector?.('.workspace-drawer-tab-options-list')):null;
   if(!header||(drawer&&!nativeTabs)){restoreSidebar(side);return;}
+  if(side==='left')applyFileFilter(cfg.sidebar.fileFilter===true?plugin._writerV1010Filter:'');
   const doc=header.ownerDocument;
   const collected=writerV1010CollectLeaves(workspace,side),leafSignature=writerV133EntriesSignature(collected);
   const ordered=writerV1010SortLeaves(plugin,side,collected);
@@ -484,7 +493,7 @@ function writerV1010Register(plugin){
    box.value=plugin._writerV1010Filter||'';
    box.addEventListener('input',()=>{
     plugin._writerV1010Filter=box.value;
-    writerV1010FilterFiles(workspace,box.value);
+    applyFileFilter(box.value);
    });bar.appendChild(box);
   }
   if(drawer&&typeof writerV112SidebarWire==='function')writerV112SidebarWire(plugin,side,visible,bar);
@@ -513,6 +522,7 @@ function writerV1010Register(plugin){
  };
  const refresh=()=>{
   if(unloaded)return;
+  if(cfg.sidebar.fileFilter!==true||!showSidebar('left'))applyFileFilter('');
   if(plugin._writerV1010NativeActionPending){
    const sidebar=cfg.sidebar,mobile=Boolean(require('obsidian').Platform?.isMobile);
    if(sidebar.enabled&&sidebar.actionMenu!==false&&(mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true))return;

@@ -19,8 +19,8 @@ function writerTranslationLibreEndpoint(input){
   const url=new URL(String(input||'').trim());
   if(url.username||url.password||url.search||url.hash)return '';
   if(url.protocol!=='https:'&&!(url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)))return '';
-  url.pathname=url.pathname.replace(/\/+$/,'');
-  if(!url.pathname.endsWith('/translate'))url.pathname+='/translate';
+  const pathname=url.pathname.replace(/\/+$/,'');
+  url.pathname=pathname.endsWith('/translate')?pathname:pathname+'/translate';
   return url.href;
  }catch(_){return '';}
 }
@@ -37,7 +37,7 @@ function writerTranslationConnection(cfg,mode='translate'){
  return {id,title:id==='google-translate'?msg('Google Tradutor (Cloud)','Google Translate (Cloud)'):service[1],key,endpoint,region,problem,section:'translation',service:true};
 }
 function writerTranslationOptions(){
- return writerTranslationProviders().map(([id,label])=>[id,id==='google-translate'?msg('Google Tradutor (Cloud)','Google Translate (Cloud)'):writerTranslationService(id)?label:'IA / AI · '+label]);
+ return writerTranslationProviders().map(([id,label])=>[id,id==='google-translate'?msg('Google Tradutor (Cloud)','Google Translate (Cloud)'):writerTranslationService(id)?label:msg('IA · ','AI · ')+label]);
 }
 function writerTranslationNormalize(cfg){
  if(!writerTranslationProviders().some(([id])=>id===cfg.translationProvider))cfg.translationProvider=cfg.provider;
@@ -114,9 +114,26 @@ async function writerTranslationSend(connection,pair,segments){
 function writerTranslationServicePlan(source,protect){
  const ranges=protect?writerV4ProtectedRanges(source):[];
  if(protect){
-  const structural=/^(?: {4}|\t)[^\r\n]*|^[ \t]{0,3}\[[^\]\r\n]+\]:[^\r\n]*|<(script|style|code|pre|textarea)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)|<[^<>\r\n]+>/gim;
+  const structural=/^(?: {4}|\t)[^\r\n]*|^[ \t]{0,3}\[[^\]\r\n]+\]:[^\r\n]*|<(script|style|code|pre|textarea)\b(?:[^<>"']|"[^"]*"|'[^']*')*>[\s\S]*?(?:<\/\1\s*>|$)|<[^<>\s@]+@[^<>\s@]+>|<(?:\/?[A-Za-z][A-Za-z\d:-]*(?=[\s/>])|!|\?)(?:[^<>"']|"[^"]*"|'[^']*')*>/gim;
   for(const match of source.matchAll(structural))ranges.push([match.index,match.index+match[0].length]);
-  const syntax=/^[ \t]*(?:(?:#{1,6}|>+|[-+*]|\d+[.)])(?=[ \t])(?:[ \t]+\[[ xX]\])?[ \t]+|(?:[-*_][ \t]*){3,}$)|!?(?:\[\[[^\r\n]+?\]\]|\[[^\r\n\]]+\]\[[^\r\n\]]*\])|(?<!\w)https?:\/\/[^\s<>]+|[\x60*_~]+|(?<=\s)\^[A-Za-z\d-]+(?=[ \t]*\r?$)/gm;
+  // Reparse inline code across line endings without pairing ticks from a
+  // fenced block, link, HTML tag or comment with the surrounding prose.
+  const blocked=ranges.filter(([from,to])=>source[from]!=='\x60'||source.slice(from,to).includes('\n')).sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
+  const ticks=[];let boundary=0;
+  for(const match of source.matchAll(/\x60+/g)){
+   while(boundary<blocked.length&&blocked[boundary][1]<=match.index)boundary++;
+   if(boundary<blocked.length&&blocked[boundary][0]<=match.index)continue;
+   ticks.push(match);
+  }
+  const next=new Map(),closing=[];
+  for(let i=ticks.length-1;i>=0;i--){closing[i]=next.get(ticks[i][0].length);next.set(ticks[i][0].length,i);}
+  for(let i=0;i<ticks.length;i++){
+   const end=closing[i];if(end===undefined)continue;
+   let escaped=0;for(let p=ticks[i].index-1;source[p]==='\\';p--)escaped++;
+   if(escaped%2||/\r?\n[ \t]*\r?\n/.test(source.slice(ticks[i].index,ticks[end].index)))continue;
+   ranges.push([ticks[i].index,ticks[end].index+ticks[end][0].length]);i=end;
+  }
+  const syntax=/\\[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]|\[\^[^\]\r\n]+\]|&(?:[A-Za-z][A-Za-z\d]{1,31}|#(?:\d{1,8}|[xX][a-fA-F\d]{1,8}));|^[ \t]*(?:(?:#{1,6}|>+|[-+*]|\d+[.)])(?=[ \t])(?:[ \t]+\[[ xX]\])?[ \t]+|(?:[-*_][ \t]*){3,}$)|!?(?:\[\[[^\r\n]+?\]\]|\[[^\r\n\]]+\]\[[^\r\n\]]*\])|(?<!\w)https?:\/\/[^\s<>]+|[\x60*_~]+|(?<=\s)\^[A-Za-z\d-]+(?=[ \t]*\r?$)/gm;
   for(const match of source.matchAll(syntax))ranges.push([match.index,match.index+match[0].length]);
  }
  ranges.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
@@ -154,6 +171,7 @@ async function writerTranslateService(settings,connection,source,{protect=false,
  for(const [i,batch] of batches.entries()){
   if(!active())return '';
   progress(i+1,batches.length);
+  if(!active())return '';
   const values=await writerTranslationSend(connection,pair,batch.map(p=>p.text));
   if(!active())return '';
   for(const [j,part] of batch.entries())part.translated=values[j];
@@ -181,7 +199,7 @@ function writerTranslationServiceSettings(plugin,panel){
    .onChange(value=>{settings.translationAzureRegion=value.trim();void plugin.saveSettings();}));
  const status=panel.createEl('p',{cls:'dictionary-muted',attr:{role:'status'}});
  let running=false;
- new Setting(panel).setName(connection.title).addButton(button=>button.setButtonText(msg('Testar tradução','Test translation')).onClick(async()=>{
+ new Setting(panel).setName(msg('Testar tradução','Test translation')).setDesc(connection.title).addButton(button=>button.setButtonText(msg('Testar tradução','Test translation')).onClick(async()=>{
   if(running)return;
   running=true;
   const cfg=writerV13CaptureAISettings(settings),current=writerTranslationConnection(cfg);

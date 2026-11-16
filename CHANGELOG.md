@@ -2,6 +2,20 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.15.0 — Basic Tools, dedicated translators and reliable settings
+
+- Review and incorporate PR #152: localized Basic Tools title, DeepL/Google Cloud/Microsoft/LibreTranslate connections and explicit language swapping, independent of AI providers.
+- Show the chat provider/model, prepare editable writing shortcuts, discard pending answers while retaining newer drafts and reject blocked or interrupted provider responses.
+- Preserve protected Markdown during dedicated translation and expose translator credentials, endpoint, region and sample action in settings search.
+- Give mobile language swapping a 44 × 44 px touch target while keeping narrow panels within the viewport.
+- Restore prior writing-profile settings when persistence fails, serialize profile actions and close Quick start safely during unload.
+- Cancel pending mobile quick-read operations after Stop and restore Explorer visibility when its local filter is switched off.
+
+## 13.14.0 — Homepage bookmark search and accumulated writing tools
+
+- Search saved homepage websites by title, URL or group, across all bookmarks and without network access.
+- Include the Longform review queue (13.11.0), local prose rhythm analysis (13.12.0) and safe task due-date editing (13.13.0), previously prepared without standalone releases.
+
 ## 13.10.2 — Mobile floating navigation clearance
 
 - Separate the mobile status row from Obsidian's floating navigation pill so long indicators scroll without clipping the pill.

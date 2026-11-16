@@ -11550,6 +11550,9 @@ body.is-mobile .dictionary-view-content.writer-tool-root .writer-basic-chat-pres
 body.is-mobile .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar{
  grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);
 }
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>.writer-switch-languages{
+ min-width:44px;width:44px;min-height:44px;
+}
 
 /* Settings routes and first-run choices use native colors and controls. */
 .writer-v13-settings .writer-v137-settings-heading{

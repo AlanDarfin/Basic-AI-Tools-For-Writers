@@ -6410,6 +6410,7 @@ function writerWorkspaceCapture(settings){
  return values;
 }
 function writerWorkspaceApplyValues(settings,values){
+ const changed=[];
  for(const [name,fields] of Object.entries(values||{})){
   if(!Object.hasOwn(WRITER_WORKSPACE_FIELDS,name)||!fields||typeof fields!=='object')continue;
   const target=writerWorkspaceTarget(settings,name);
@@ -6418,9 +6419,15 @@ function writerWorkspaceApplyValues(settings,values){
    if(!WRITER_WORKSPACE_FIELDS[name].includes(key))continue;
    if(key==='preset'&&(!['vscode','jetbrains','none'].includes(value)))continue;
    if(key!=='preset'&&typeof value!=='boolean')continue;
+   changed.push({target,key,had:Object.hasOwn(target,key),previous:target[key],value});
    target[key]=value;
   }
  }
+ return ()=>{
+  for(const {target,key,had,previous,value} of changed)if(target[key]===value){
+   if(had)target[key]=previous;else delete target[key];
+  }
+ };
 }
 function writerWorkspaceMerge(settings){
  const prev=settings.workspaceProfiles,valid=prev&&typeof prev==='object'&&!Array.isArray(prev)?prev:{};
@@ -6743,46 +6750,79 @@ function writerWorkspaceHotkeyAudit(plugin){
  return {items,duplicates,hostScanned,status};
 }
 class WriterWorkspaceProfiles{
- constructor(plugin){this.plugin=plugin;}
+ constructor(plugin){this.plugin=plugin;this.busy=false;this.disposed=false;}
  get cfg(){return this.plugin.settings.workspaceProfiles;}
+ async persist(change){
+  if(this.busy||this.disposed)return false;
+  this.busy=true;this.refreshBusy?.();
+  try{
+   const rollback=change();
+   try{await this.plugin.saveSettings();}catch(error){rollback();throw error;}
+   return !this.disposed;
+  }finally{this.busy=false;if(!this.disposed)this.refreshBusy?.();}
+ }
+ async run(action){
+  if(this.disposed)return false;
+  try{return await action();}
+  catch(error){if(!this.disposed)new Notice(writerUi('Não foi possível salvar o perfil. As escolhas anteriores foram mantidas.','Could not save the profile. Previous choices were kept.'));return false;}
+ }
  async apply(name,values){
-  this.cfg.undo=writerWorkspaceCapture(this.plugin.settings);
-  writerWorkspaceApplyValues(this.plugin.settings,values);
-  this.cfg.lastPreset=name;
-  await this.plugin.saveSettings();
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,previousUndo=cfg.undo,previousName=cfg.lastPreset;
+   const undo=writerWorkspaceCapture(this.plugin.settings),rollback=writerWorkspaceApplyValues(this.plugin.settings,values);
+   cfg.undo=undo;cfg.lastPreset=name;
+   return ()=>{rollback();if(cfg.undo===undo)cfg.undo=previousUndo;if(cfg.lastPreset===name)cfg.lastPreset=previousName;};
+  })||this.disposed)return false;
   this.plugin.writerV4Extras?.updateTypewriterClass?.();
   this.plugin.refreshModuleVisibility?.();
   writerV5RefreshEditors(this.plugin);
   this.refreshSettings?.();
   new Notice(writerUi('Perfil aplicado: ','Applied profile: ')+name);
+  return true;
  }
  async undo(){
+  if(this.disposed)return false;
   if(!this.cfg.undo)return;
-  const old=this.cfg.undo;this.cfg.undo=null;
-  writerWorkspaceApplyValues(this.plugin.settings,old);
-  await this.plugin.saveSettings();this.plugin.writerV4Extras?.updateTypewriterClass?.();writerV5RefreshEditors(this.plugin);
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,old=cfg.undo,rollback=writerWorkspaceApplyValues(this.plugin.settings,old);cfg.undo=null;
+   return ()=>{rollback();if(cfg.undo===null)cfg.undo=old;};
+  })||this.disposed)return false;
+  this.plugin.writerV4Extras?.updateTypewriterClass?.();writerV5RefreshEditors(this.plugin);
   this.refreshSettings?.();
   new Notice(writerUi('Preferências anteriores restauradas.','Previous preferences restored.'));
+  return true;
  }
  async saveCustom(name){
+  if(this.busy||this.disposed)return false;
   const title=String(name||'').trim().slice(0,60);
   if(!title)return;
   if(this.cfg.saved.some(item=>item.name.toLowerCase()===title.toLowerCase()))return new Notice(writerUi('Já existe um perfil com esse nome.','A profile with that name already exists.'));
-  this.cfg.saved.push({name:title,values:writerWorkspaceCapture(this.plugin.settings)});
-  this.cfg.saved=this.cfg.saved.slice(-10);
-  await this.plugin.saveSettings();
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,previous=cfg.saved,next=[...previous,{name:title,values:writerWorkspaceCapture(this.plugin.settings)}].slice(-10);
+   cfg.saved=next;return ()=>{if(cfg.saved===next)cfg.saved=previous;};
+  })||this.disposed)return false;
   this.refreshSettings?.();
   new Notice(writerUi('Perfil salvo: ','Saved profile: ')+title);
+  return true;
+ }
+ async deleteCustom(name){
+  if(!await this.persist(()=>{
+   const cfg=this.cfg,previous=cfg.saved,next=previous.filter(item=>item.name!==name);
+   cfg.saved=next;return ()=>{if(cfg.saved===next)cfg.saved=previous;};
+  })||this.disposed)return false;
+  this.refreshSettings?.();return true;
  }
  register(){
+  this.plugin.register?.(()=>{this.disposed=true;this.refreshSettings=null;this.refreshBusy=null;this.picker?.close?.();this.picker=null;});
   this.plugin.addCommand({id:'v51-choose-workspace-profile',name:writerUi('Perfis de escrita: escolher perfil','Writing profiles: choose preset'),callback:()=>this.openPicker()});
   this.plugin.addCommand({id:'v51-undo-workspace-profile',name:writerUi('Perfis de escrita: desfazer última troca','Writing profiles: undo last change'),checkCallback:checking=>{
-   if(!this.cfg.undo)return false;
-   if(!checking)this.undo();
+   if(this.disposed||this.busy||!this.cfg.undo)return false;
+   if(!checking)void this.run(()=>this.undo());
    return true;
   }});
  }
  openPicker(){
+  if(this.disposed||this.busy)return;
   const plugin=this.plugin,controller=this;
   class Picker extends FuzzySuggestModal{
    getItems(){return [
@@ -6790,11 +6830,12 @@ class WriterWorkspaceProfiles{
     ...controller.cfg.saved.map(item=>({name:item.name,value:item.name,values:item.values}))
    ];}
    getItemText(item){return item.name;}
-   onChooseItem(item){controller.apply(item.name,item.values);}
+   onChooseItem(item){return controller.run(()=>controller.apply(item.name,item.values));}
   }
-  new Picker(plugin.app).open();
+  this.picker=new Picker(plugin.app);this.picker.open();
  }
  renderSettings(panel){
+  if(this.disposed)return;
   const root=panel.createDiv({cls:'writer-v137-profile-settings'});
   let chosen='',selectedToDelete='';
   const mark=(control,action)=>{(control.buttonEl||control.selectEl)?.setAttribute?.('data-profile-action',action);return control;};
@@ -6813,12 +6854,12 @@ class WriterWorkspaceProfiles{
    d.setValue(chosen);
    d.onChange(value=>chosen=value);
   }).addButton(b=>mark(b,'apply').setButtonText(writerUi('Aplicar','Apply')).setCta().onClick(async()=>{
-   const item=items.find(x=>x.key===chosen);if(item)await this.apply(item.label,item.values);
+   const item=items.find(x=>x.key===chosen);if(item)await this.run(()=>this.apply(item.label,item.values));
   }));
   new Setting(root).setName(writerUi('Guardar perfil atual','Save current profile'))
    .setDesc(writerUi('Salva somente opções de edição permitidas, até 10 perfis.','Saves only selected editor preferences, up to 10 profiles.'))
    .addButton(b=>mark(b,'save').setButtonText(writerUi('Salvar como…','Save as…')).onClick(()=>{
-    new TextPrompt(this.plugin.app,writerUi('Nome do perfil','Profile name'),value=>this.saveCustom(value)).open();
+    if(!this.busy)new TextPrompt(this.plugin.app,writerUi('Nome do perfil','Profile name'),value=>this.run(()=>this.saveCustom(value))).open();
    }));
   if(this.cfg.saved.length){
    if(!this.cfg.saved.some(item=>item.name===selectedToDelete))selectedToDelete=this.cfg.saved[0]?.name||'';
@@ -6826,15 +6867,18 @@ class WriterWorkspaceProfiles{
     mark(d,'delete-choice');
     for(const item of this.cfg.saved)d.addOption(item.name,item.name);
     d.setValue(selectedToDelete).onChange(v=>selectedToDelete=v);
-   }).addButton(b=>mark(b,'delete').setButtonText(writerUi('Excluir','Delete')).onClick(async()=>{
-    this.cfg.saved=this.cfg.saved.filter(x=>x.name!==selectedToDelete);await this.plugin.saveSettings();this.refreshSettings?.();
-   }));
+   }).addButton(b=>mark(b,'delete').setButtonText(writerUi('Excluir','Delete')).onClick(()=>this.run(()=>this.deleteCustom(selectedToDelete))));
   }
   new Setting(root).setName(writerUi('Desfazer última aplicação','Undo last application'))
-   .addButton(b=>mark(b,'restore').setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.undo()));
+   .addButton(b=>mark(b,'restore').setButtonText(writerUi('Restaurar','Restore')).setDisabled(!this.cfg.undo).onClick(()=>this.run(()=>this.undo())));
+  this.refreshBusy?.();
   if(focus)(root.querySelector?.('[data-profile-action="'+focus+'"]:not(:disabled)')||root.querySelector?.('select:not(:disabled)'))?.focus?.({preventScroll:true});
   };
-  this.refreshSettings=()=>{if(root.isConnected!==false)render();};
+  this.refreshBusy=()=>{
+   if(!this.disposed&&root.isConnected!==false)for(const control of root.querySelectorAll('[data-profile-action]'))
+    control.disabled=this.busy||control.getAttribute('data-profile-action')==='restore'&&!this.cfg.undo;
+  };
+  this.refreshSettings=()=>{if(!this.disposed&&root.isConnected!==false)render();};
   render();
  }
 }
@@ -8219,7 +8263,7 @@ function writerV6ProjectPreferencesRender(view,panel,project){
    d.setValue(WRITER_WORKSPACE_PRESETS[picked]?picked:'').onChange(async v=>{picked=v;cfg.writingPreset=v;await view.plugin.saveSettings();});
   }).addButton(b=>b.setButtonText(writerUi('Aplicar','Apply')).onClick(async()=>{
    const preset=WRITER_WORKSPACE_PRESETS[picked];
-   if(preset)await view.plugin.writerWorkspaceProfiles.apply(writerUi(preset.labelPt,preset.labelEn),preset.values);
+   if(preset)await view.plugin.writerWorkspaceProfiles.run(()=>view.plugin.writerWorkspaceProfiles.apply(writerUi(preset.labelPt,preset.labelEn),preset.values));
   }));
 }
 
@@ -25838,7 +25882,15 @@ function writerV1010Register(plugin){
   drawerObservers.set(side,{root,observer});
  };
  const make=(tag,cls,doc)=>{const node=doc.createElement(tag);if(cls)node.className=cls;return node;};
+ let fileFilterApplied=false;
+ // Avoid traversing the Explorer on every refresh when no query was applied.
+ const applyFileFilter=query=>{
+  const text=String(query||'');
+  if(!text&&!fileFilterApplied)return;
+  writerV1010FilterFiles(workspace,text);fileFilterApplied=!!text;
+ };
  const restoreSidebar=side=>{
+  if(side==='left')applyFileFilter('');
   groupNativeActions(side,[],false);
   const bar=hosts.get(side),split=side==='right'?workspace.rightSplit:workspace.leftSplit;
   bar?.remove?.();hosts.delete(side);hostState.delete(side);
@@ -25872,6 +25924,7 @@ function writerV1010Register(plugin){
   const nativeTabs=drawer?(drawer.tabsListEl&&root.contains?.(drawer.tabsListEl)!==false&&drawer.tabsListEl.isConnected!==false?
    drawer.tabsListEl:header?.querySelector?.('.workspace-drawer-tab-options-list')):null;
   if(!header||(drawer&&!nativeTabs)){restoreSidebar(side);return;}
+  if(side==='left')applyFileFilter(cfg.sidebar.fileFilter===true?plugin._writerV1010Filter:'');
   const doc=header.ownerDocument;
   const collected=writerV1010CollectLeaves(workspace,side),leafSignature=writerV133EntriesSignature(collected);
   const ordered=writerV1010SortLeaves(plugin,side,collected);
@@ -25966,7 +26019,7 @@ function writerV1010Register(plugin){
    box.value=plugin._writerV1010Filter||'';
    box.addEventListener('input',()=>{
     plugin._writerV1010Filter=box.value;
-    writerV1010FilterFiles(workspace,box.value);
+    applyFileFilter(box.value);
    });bar.appendChild(box);
   }
   if(drawer&&typeof writerV112SidebarWire==='function')writerV112SidebarWire(plugin,side,visible,bar);
@@ -25995,6 +26048,7 @@ function writerV1010Register(plugin){
  };
  const refresh=()=>{
   if(unloaded)return;
+  if(cfg.sidebar.fileFilter!==true||!showSidebar('left'))applyFileFilter('');
   if(plugin._writerV1010NativeActionPending){
    const sidebar=cfg.sidebar,mobile=Boolean(require('obsidian').Platform?.isMobile);
    if(sidebar.enabled&&sidebar.actionMenu!==false&&(mobile?sidebar.mobileTabs!==false:sidebar.desktopTabs===true))return;
@@ -29394,28 +29448,45 @@ function writerV1201Editor(plugin){
 }
 function writerV1201Read(plugin){
  if(!writerModuleOn(plugin,'tts')){new Notice(writerUi('Ative TTS em Módulos.','Enable TTS in Modules.'));return;}
+ const allowed=()=>plugin._writerV107SpeechDisposed!==true&&plugin.writerFinalFeatures?.ttsDisposed!==true&&
+  writerModuleOn(plugin,'tts')&&plugin.settings.v107Speech?.enabled!==false&&plugin.settings.finalSuite?.tts?.enabled!==false;
+ if(!allowed())return false;
+ if(typeof writerV107SpeechStart!=='function'){
+  new Notice(writerUi('O leitor de voz local não está disponível.','Local speech is unavailable.'));return false;
+ }
+ writerV107SpeechConfig(plugin.settings);
+ // A preview read shares Stop/new-read invalidation with both existing readers.
+ if(typeof writerV107SpeechStop==='function')writerV107SpeechStop(plugin);
+ else plugin.writerFinalFeatures?.stop();
+ const token=plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1,cfg=plugin.settings.v107Speech;
+ const keys=['enabled','lang','voice','rate','pitch'],values=keys.map(key=>cfg?.[key]);
+ const provider=()=>typeof writerCompanionConfig==='function'?writerCompanionConfig(plugin).ttsProvider:'basic',selectedProvider=provider();
+ const companion=plugin.app.plugins?.plugins?.['ahmed-toolkit'];
+ const current=()=>allowed()&&token===plugin._writerV107SpeechId&&cfg===plugin.settings.v107Speech&&
+  keys.every((key,index)=>cfg?.[key]===values[index])&&provider()===selectedProvider&&
+  (selectedProvider!=='ahmed-toolkit'||plugin.app.plugins?.plugins?.['ahmed-toolkit']===companion);
  const editor=writerV1201Editor(plugin),selected=editor?.getSelection?.()||'';
  const domText=typeof writerV12SelectedText==='function'?writerV12SelectedText(plugin):'';
  const play=source=>{
+  if(!current())return false;
   const content=String(source||'').replace(/^---\r?\n[\s\S]*?\r?\n---\s*/,'')
    .replace(/(?:^|\n)#{1,6}\s+/g,' ').replace(/!\[\[[^\]]+\]\]/g,'')
    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(_,path,alias)=>alias||path)
    .replace(/[\x60*_~]/g,' ').trim();
   if(!content){new Notice(writerUi('Nenhum texto disponível.','No readable text available.'));return;}
-  if(typeof writerV107SpeechStart!=='function'){
-   new Notice(writerUi('O leitor de voz local não está disponível.','Local speech is unavailable.'));return;
-  }
-  writerV107SpeechConfig(plugin.settings);
   writerV107SpeechStart(plugin,content.slice(0,30000));
  };
  if(selected.trim()||domText.trim()){play(selected.trim()||domText.trim());return;}
  const file=plugin.app.workspace.getActiveFile?.();
  if(file?.extension==='md'){
   if(typeof editor?.getValue==='function'){play(editor.getValue());return;}
-  const path=file.path;
+  const path=file.path,mtime=file.stat?.mtime,size=file.stat?.size;
+  const sameNote=()=>current()&&file.path===path&&plugin.app.workspace.getActiveFile?.()===file&&
+   writerV1201Editor(plugin)===editor&&file.stat?.mtime===mtime&&file.stat?.size===size&&
+   (typeof plugin.app.vault.getAbstractFileByPath!=='function'||plugin.app.vault.getAbstractFileByPath(path)===file);
   return plugin.app.vault.cachedRead(file).then(text=>{
-   if(file.path===path&&plugin.app.workspace.getActiveFile?.()?.path===path)play(text);
-  }).catch(e=>new Notice(String(e.message||e)));
+   if(sameNote())play(text);
+  }).catch(e=>{if(sameNote())new Notice(String(e.message||e));});
  }
  new Notice(writerUi('Abra uma nota Markdown ou selecione texto no documento.','Open a Markdown note or select document text.'));
 }
@@ -33088,6 +33159,20 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "translation",
+  "titlePt": "Região do recurso Azure",
+  "titleEn": "Azure resource region",
+  "descriptionPt": "Necessária para recursos regionais ou de vários serviços.",
+  "descriptionEn": "Required for regional or multi-service resources."
+ },
+ {
+  "id": "translation",
+  "titlePt": "Endereço do LibreTranslate",
+  "titleEn": "LibreTranslate address",
+  "descriptionPt": "Use HTTPS ou HTTP no próprio dispositivo (localhost).",
+  "descriptionEn": "Use HTTPS or HTTP on this device (localhost)."
+ },
+ {
+  "id": "translation",
   "titlePt": "Idioma de origem",
   "titleEn": "Source language"
  },
@@ -33095,6 +33180,18 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "translation",
   "titlePt": "Idioma de destino",
   "titleEn": "Target language"
+ },
+ {
+  "id": "translation",
+  "titlePt": "Testar tradução",
+  "titleEn": "Test translation"
+ },
+ {
+  "id": "translation",
+  "titlePt": "Chave da API de tradução",
+  "titleEn": "Translation API key",
+  "descriptionPt": "Salva localmente nos dados do plugin, sem criptografia. LibreTranslate só precisa de chave se a instância exigir.",
+  "descriptionEn": "Stored locally in plugin data without encryption. LibreTranslate only needs a key if the instance requires it."
  },
  {
   "id": "translation",
@@ -34990,26 +35087,31 @@ function writerQuickStartChoices(settings,preset='custom'){
  return Object.fromEntries(WRITER_MODULES.map(([id])=>[id,enabled?enabled.includes(id):settings.visibleModules?.[id]!==false]));
 }
 async function writerQuickStartApply(plugin,choices){
+ if(plugin._writerQuickStartStopped)return false;
  const previous=plugin.settings.visibleModules,previousStart=plugin.settings.quickStart;
  const next={...previous};
  for(const [id] of WRITER_MODULES)if(typeof choices?.[id]==='boolean')next[id]=choices[id];
  plugin.settings.visibleModules=next;
- plugin.settings.quickStart={version:1,status:'complete'};
+ const complete={version:1,status:'complete'};plugin.settings.quickStart=complete;
  try{await plugin.saveSettings();}
- catch(error){plugin.settings.visibleModules=previous;plugin.settings.quickStart=previousStart;throw error;}
+ catch(error){if(plugin.settings.visibleModules===next)plugin.settings.visibleModules=previous;if(plugin.settings.quickStart===complete)plugin.settings.quickStart=previousStart;throw error;}
+ if(plugin._writerQuickStartStopped)return false;
  plugin.refreshModuleVisibility?.();
  plugin.writerV4Extras?.resetTypewriterHighlights?.();plugin.writerV4Extras?.updateTypewriterClass?.();
  plugin.writerV92Research?.refreshStyle?.();
  if(!writerModuleOn(plugin,'soundscapes'))plugin.writerV91Sound?.pause?.();
  plugin.writerV91Sound?.emit?.();
+ return true;
 }
 function writerQuickStartOpen(plugin,initial=false){
+ if(plugin._writerQuickStartStopped)return null;
  if(plugin._writerQuickStartModal?.modalEl?.isConnected)return plugin._writerQuickStartModal;
  const modal=new Modal(plugin.app);plugin._writerQuickStartModal=modal;
  modal.modalEl.addClass('writer-v137-quick-start-modal');
  modal.setTitle(writerUi('Configuração inicial','Quick start'));
- let choices=writerQuickStartChoices(plugin.settings,initial?'essentials':'custom'),finished=false,busy=false;
- const close=modal.close.bind(modal);modal.close=()=>{if(!busy||finished)close();};
+ let choices=writerQuickStartChoices(plugin.settings,initial?'essentials':'custom'),finished=false,busy=false,closed=false;
+ const active=()=>!closed&&!plugin._writerQuickStartStopped;
+ const close=modal.close.bind(modal);modal.close=()=>{if(!busy||finished||plugin._writerQuickStartStopped)close();};
  modal.onOpen=()=>{
   const root=modal.contentEl;root.addClass('writer-v137-quick-start');
   root.createEl('p',{text:writerUi('Escolha os recursos que você quer usar. As opções desligadas ficam ocultas nos menus; suas configurações e dados continuam disponíveis.','Choose the features you want to use. Features you turn off are hidden from menus; their settings and data remain available.')});
@@ -35052,16 +35154,17 @@ function writerQuickStartOpen(plugin,initial=false){
   later.addEventListener('click',()=>{if(!busy)modal.close();});
   const apply=footer.createEl('button',{cls:'mod-cta',text:writerUi('Aplicar escolhas','Apply choices'),attr:{type:'button'}});
   apply.addEventListener('click',async()=>{
-   if(busy)return;busy=true;apply.disabled=true;later.disabled=true;
-   try{await writerQuickStartApply(plugin,choices);finished=true;modal.close();plugin.writerSettingsTab?.display?.();}
-   catch(error){new Notice(String(error?.message||error));}
-   finally{busy=false;apply.disabled=false;later.disabled=false;}
+   if(busy||!active())return;busy=true;apply.disabled=true;later.disabled=true;
+   try{const applied=await writerQuickStartApply(plugin,choices);if(!active()||applied===false)return;finished=true;modal.close();plugin.writerSettingsTab?.display?.();}
+   catch(error){if(active())new Notice(String(error?.message||error));}
+   finally{busy=false;if(active()){apply.disabled=false;later.disabled=false;}}
   });
   render();
  };
  modal.onClose=()=>{
+  closed=true;
   if(plugin._writerQuickStartModal===modal)plugin._writerQuickStartModal=null;
-  if(initial&&!finished){
+  if(initial&&!finished&&!plugin._writerQuickStartStopped){
    plugin.settings.quickStart={version:1,status:'deferred'};
    void plugin.saveSettings().catch(error=>console.error('[Basic] Quick start preferences:',error));
   }
@@ -35070,9 +35173,10 @@ function writerQuickStartOpen(plugin,initial=false){
  modal.open();return modal;
 }
 function writerQuickStartRegister(plugin,firstInstall){
+ plugin._writerQuickStartStopped=false;
  plugin.addCommand({id:'v137-quick-start',name:writerUi('Configuração inicial: abrir','Quick start: open'),callback:()=>writerQuickStartOpen(plugin)});
  let stopped=false;
- plugin.register?.(()=>{stopped=true;plugin._writerQuickStartModal?.close();});
+ plugin.register?.(()=>{stopped=true;plugin._writerQuickStartStopped=true;plugin._writerQuickStartModal?.close();});
  if(!firstInstall)return;
  const open=()=>{if(!stopped&&!plugin.settings.quickStart)writerQuickStartOpen(plugin,true);};
  if(typeof plugin.app.workspace.onLayoutReady==='function')plugin.app.workspace.onLayoutReady(open);
@@ -35283,8 +35387,8 @@ function writerTranslationLibreEndpoint(input){
   const url=new URL(String(input||'').trim());
   if(url.username||url.password||url.search||url.hash)return '';
   if(url.protocol!=='https:'&&!(url.protocol==='http:'&&['localhost','127.0.0.1','[::1]'].includes(url.hostname)))return '';
-  url.pathname=url.pathname.replace(/\/+$/,'');
-  if(!url.pathname.endsWith('/translate'))url.pathname+='/translate';
+  const pathname=url.pathname.replace(/\/+$/,'');
+  url.pathname=pathname.endsWith('/translate')?pathname:pathname+'/translate';
   return url.href;
  }catch(_){return '';}
 }
@@ -35301,7 +35405,7 @@ function writerTranslationConnection(cfg,mode='translate'){
  return {id,title:id==='google-translate'?msg('Google Tradutor (Cloud)','Google Translate (Cloud)'):service[1],key,endpoint,region,problem,section:'translation',service:true};
 }
 function writerTranslationOptions(){
- return writerTranslationProviders().map(([id,label])=>[id,id==='google-translate'?msg('Google Tradutor (Cloud)','Google Translate (Cloud)'):writerTranslationService(id)?label:'IA / AI · '+label]);
+ return writerTranslationProviders().map(([id,label])=>[id,id==='google-translate'?msg('Google Tradutor (Cloud)','Google Translate (Cloud)'):writerTranslationService(id)?label:msg('IA · ','AI · ')+label]);
 }
 function writerTranslationNormalize(cfg){
  if(!writerTranslationProviders().some(([id])=>id===cfg.translationProvider))cfg.translationProvider=cfg.provider;
@@ -35378,9 +35482,26 @@ async function writerTranslationSend(connection,pair,segments){
 function writerTranslationServicePlan(source,protect){
  const ranges=protect?writerV4ProtectedRanges(source):[];
  if(protect){
-  const structural=/^(?: {4}|\t)[^\r\n]*|^[ \t]{0,3}\[[^\]\r\n]+\]:[^\r\n]*|<(script|style|code|pre|textarea)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)|<[^<>\r\n]+>/gim;
+  const structural=/^(?: {4}|\t)[^\r\n]*|^[ \t]{0,3}\[[^\]\r\n]+\]:[^\r\n]*|<(script|style|code|pre|textarea)\b(?:[^<>"']|"[^"]*"|'[^']*')*>[\s\S]*?(?:<\/\1\s*>|$)|<[^<>\s@]+@[^<>\s@]+>|<(?:\/?[A-Za-z][A-Za-z\d:-]*(?=[\s/>])|!|\?)(?:[^<>"']|"[^"]*"|'[^']*')*>/gim;
   for(const match of source.matchAll(structural))ranges.push([match.index,match.index+match[0].length]);
-  const syntax=/^[ \t]*(?:(?:#{1,6}|>+|[-+*]|\d+[.)])(?=[ \t])(?:[ \t]+\[[ xX]\])?[ \t]+|(?:[-*_][ \t]*){3,}$)|!?(?:\[\[[^\r\n]+?\]\]|\[[^\r\n\]]+\]\[[^\r\n\]]*\])|(?<!\w)https?:\/\/[^\s<>]+|[\x60*_~]+|(?<=\s)\^[A-Za-z\d-]+(?=[ \t]*\r?$)/gm;
+  // Reparse inline code across line endings without pairing ticks from a
+  // fenced block, link, HTML tag or comment with the surrounding prose.
+  const blocked=ranges.filter(([from,to])=>source[from]!=='\x60'||source.slice(from,to).includes('\n')).sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
+  const ticks=[];let boundary=0;
+  for(const match of source.matchAll(/\x60+/g)){
+   while(boundary<blocked.length&&blocked[boundary][1]<=match.index)boundary++;
+   if(boundary<blocked.length&&blocked[boundary][0]<=match.index)continue;
+   ticks.push(match);
+  }
+  const next=new Map(),closing=[];
+  for(let i=ticks.length-1;i>=0;i--){closing[i]=next.get(ticks[i][0].length);next.set(ticks[i][0].length,i);}
+  for(let i=0;i<ticks.length;i++){
+   const end=closing[i];if(end===undefined)continue;
+   let escaped=0;for(let p=ticks[i].index-1;source[p]==='\\';p--)escaped++;
+   if(escaped%2||/\r?\n[ \t]*\r?\n/.test(source.slice(ticks[i].index,ticks[end].index)))continue;
+   ranges.push([ticks[i].index,ticks[end].index+ticks[end][0].length]);i=end;
+  }
+  const syntax=/\\[\x21-\x2f\x3a-\x40\x5b-\x60\x7b-\x7e]|\[\^[^\]\r\n]+\]|&(?:[A-Za-z][A-Za-z\d]{1,31}|#(?:\d{1,8}|[xX][a-fA-F\d]{1,8}));|^[ \t]*(?:(?:#{1,6}|>+|[-+*]|\d+[.)])(?=[ \t])(?:[ \t]+\[[ xX]\])?[ \t]+|(?:[-*_][ \t]*){3,}$)|!?(?:\[\[[^\r\n]+?\]\]|\[[^\r\n\]]+\]\[[^\r\n\]]*\])|(?<!\w)https?:\/\/[^\s<>]+|[\x60*_~]+|(?<=\s)\^[A-Za-z\d-]+(?=[ \t]*\r?$)/gm;
   for(const match of source.matchAll(syntax))ranges.push([match.index,match.index+match[0].length]);
  }
  ranges.sort((a,b)=>a[0]-b[0]||b[1]-a[1]);
@@ -35418,6 +35539,7 @@ async function writerTranslateService(settings,connection,source,{protect=false,
  for(const [i,batch] of batches.entries()){
   if(!active())return '';
   progress(i+1,batches.length);
+  if(!active())return '';
   const values=await writerTranslationSend(connection,pair,batch.map(p=>p.text));
   if(!active())return '';
   for(const [j,part] of batch.entries())part.translated=values[j];
@@ -35445,7 +35567,7 @@ function writerTranslationServiceSettings(plugin,panel){
    .onChange(value=>{settings.translationAzureRegion=value.trim();void plugin.saveSettings();}));
  const status=panel.createEl('p',{cls:'dictionary-muted',attr:{role:'status'}});
  let running=false;
- new Setting(panel).setName(connection.title).addButton(button=>button.setButtonText(msg('Testar tradução','Test translation')).onClick(async()=>{
+ new Setting(panel).setName(msg('Testar tradução','Test translation')).setDesc(connection.title).addButton(button=>button.setButtonText(msg('Testar tradução','Test translation')).onClick(async()=>{
   if(running)return;
   running=true;
   const cfg=writerV13CaptureAISettings(settings),current=writerTranslationConnection(cfg);
@@ -39626,8 +39748,11 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const stop=id==='gemini'?data?.candidates?.[0]?.finishReason:id==='claude'?data?.stop_reason:data?.choices?.[0]?.finish_reason;
     if(['length','MAX_TOKENS','max_tokens'].includes(stop))
      throw Error(msg('O provedor atingiu o limite de saída. Tente um pedido menor ou outro modelo.','The provider reached its output limit. Try a shorter request or another model.'));
-    if(['SAFETY','RECITATION','PROHIBITED_CONTENT','content_filter','refusal'].includes(stop)||data?.promptFeedback?.blockReason)
+    if(['SAFETY','RECITATION','PROHIBITED_CONTENT','SPII','BLOCKLIST','content_filter','refusal'].includes(stop)||
+      data?.promptFeedback?.blockReason||data?.choices?.[0]?.message?.refusal)
      throw Error(msg('O provedor bloqueou esta resposta.','The provider blocked this response.'));
+    if(id==='gemini'&&stop&&stop!=='STOP')
+     throw Error(msg('O provedor interrompeu a resposta. Tente novamente ou escolha outro modelo.','The provider interrupted the response. Try again or choose another model.'));
     const content=id==='gemini'?data?.candidates?.[0]?.content?.parts?.filter(p=>p?.thought!==true).map(p=>p.text||'').join('\n'):
      id==='claude'?data?.content?.map(p=>p.text||'').join('\n'):data?.choices?.[0]?.message?.content;
     if(typeof content!=='string'||!content.trim())throw Error(t('noResult'));

@@ -14,28 +14,45 @@ function writerV1201Editor(plugin){
 }
 function writerV1201Read(plugin){
  if(!writerModuleOn(plugin,'tts')){new Notice(writerUi('Ative TTS em Módulos.','Enable TTS in Modules.'));return;}
+ const allowed=()=>plugin._writerV107SpeechDisposed!==true&&plugin.writerFinalFeatures?.ttsDisposed!==true&&
+  writerModuleOn(plugin,'tts')&&plugin.settings.v107Speech?.enabled!==false&&plugin.settings.finalSuite?.tts?.enabled!==false;
+ if(!allowed())return false;
+ if(typeof writerV107SpeechStart!=='function'){
+  new Notice(writerUi('O leitor de voz local não está disponível.','Local speech is unavailable.'));return false;
+ }
+ writerV107SpeechConfig(plugin.settings);
+ // A preview read shares Stop/new-read invalidation with both existing readers.
+ if(typeof writerV107SpeechStop==='function')writerV107SpeechStop(plugin);
+ else plugin.writerFinalFeatures?.stop();
+ const token=plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1,cfg=plugin.settings.v107Speech;
+ const keys=['enabled','lang','voice','rate','pitch'],values=keys.map(key=>cfg?.[key]);
+ const provider=()=>typeof writerCompanionConfig==='function'?writerCompanionConfig(plugin).ttsProvider:'basic',selectedProvider=provider();
+ const companion=plugin.app.plugins?.plugins?.['ahmed-toolkit'];
+ const current=()=>allowed()&&token===plugin._writerV107SpeechId&&cfg===plugin.settings.v107Speech&&
+  keys.every((key,index)=>cfg?.[key]===values[index])&&provider()===selectedProvider&&
+  (selectedProvider!=='ahmed-toolkit'||plugin.app.plugins?.plugins?.['ahmed-toolkit']===companion);
  const editor=writerV1201Editor(plugin),selected=editor?.getSelection?.()||'';
  const domText=typeof writerV12SelectedText==='function'?writerV12SelectedText(plugin):'';
  const play=source=>{
+  if(!current())return false;
   const content=String(source||'').replace(/^---\r?\n[\s\S]*?\r?\n---\s*/,'')
    .replace(/(?:^|\n)#{1,6}\s+/g,' ').replace(/!\[\[[^\]]+\]\]/g,'')
    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,(_,path,alias)=>alias||path)
    .replace(/[\x60*_~]/g,' ').trim();
   if(!content){new Notice(writerUi('Nenhum texto disponível.','No readable text available.'));return;}
-  if(typeof writerV107SpeechStart!=='function'){
-   new Notice(writerUi('O leitor de voz local não está disponível.','Local speech is unavailable.'));return;
-  }
-  writerV107SpeechConfig(plugin.settings);
   writerV107SpeechStart(plugin,content.slice(0,30000));
  };
  if(selected.trim()||domText.trim()){play(selected.trim()||domText.trim());return;}
  const file=plugin.app.workspace.getActiveFile?.();
  if(file?.extension==='md'){
   if(typeof editor?.getValue==='function'){play(editor.getValue());return;}
-  const path=file.path;
+  const path=file.path,mtime=file.stat?.mtime,size=file.stat?.size;
+  const sameNote=()=>current()&&file.path===path&&plugin.app.workspace.getActiveFile?.()===file&&
+   writerV1201Editor(plugin)===editor&&file.stat?.mtime===mtime&&file.stat?.size===size&&
+   (typeof plugin.app.vault.getAbstractFileByPath!=='function'||plugin.app.vault.getAbstractFileByPath(path)===file);
   return plugin.app.vault.cachedRead(file).then(text=>{
-   if(file.path===path&&plugin.app.workspace.getActiveFile?.()?.path===path)play(text);
-  }).catch(e=>new Notice(String(e.message||e)));
+   if(sameNote())play(text);
+  }).catch(e=>{if(sameNote())new Notice(String(e.message||e));});
  }
  new Notice(writerUi('Abra uma nota Markdown ou selecione texto no documento.','Open a Markdown note or select document text.'));
 }

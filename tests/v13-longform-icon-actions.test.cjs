@@ -7,11 +7,12 @@ const projectsSource=fs.readFileSync('projects.js','utf8');
 const dividersSource=fs.readFileSync('src/v13/longform-dividers.js','utf8');
 
 class Element{
- constructor(tag='div',options={}){this.tag=tag;this.options=options;this.children=[];this.listeners={};}
+ constructor(tag='div',options={}){this.tag=tag;this.options=options;this.children=[];this.listeners={};this.dataset={};}
  createEl(tag,options){const child=new Element(tag,options);this.children.push(child);return child;}
  createSpan(options){return this.createEl('span',options);}
  createDiv(options){return this.createEl('div',options);}
  addEventListener(name,fn){this.listeners[name]=fn;}
+ addClass(name){this.options.cls=[this.options.cls,name].filter(Boolean).join(' ');}
  click(){return this.listeners.click?.();}
  insertBefore(child,before){
   this.children.splice(this.children.indexOf(child),1);
@@ -21,8 +22,9 @@ class Element{
  querySelectorAll(){return [];}
 }
 function fixture(language='pt-BR',draft='Principal'){
- const calls=[],prompts=[];
+ const calls=[],prompts=[],notices=[];
  const obsidian={ItemView:class{},Modal:class{open(){prompts.push(this);}},
+  Notice:class{constructor(message){notices.push(message);}},
   getLanguage:()=>language,setIcon:(element,icon)=>{element.icon=icon;}};
  const context=vm.createContext({module:{exports:{}},require:()=>obsidian});
  vm.runInContext(projectsSource,context);
@@ -30,12 +32,12 @@ function fixture(language='pt-BR',draft='Principal'){
  const view=Object.create(context.module.exports.ProjectsView.prototype);
  const project={format:'scenes',title:'Bonfire',file:{path:'Bonfire/Index.md'}};
  const prefs={drafts:{Alternativa:[]}};
- Object.assign(view,{draft,app:{},prefs:()=>prefs,indexes:()=>[],activeScenes:()=>[],
+ Object.assign(view,{draft,app:{},prefs:()=>prefs,indexes:()=>[],activeScenes:()=>[],resolveScene:()=>null,
   addScene:current=>calls.push(['scene',current]),createLinkedDraft:current=>calls.push(['draft',current]),
   plugin:{saveSettings:async()=>{calls.push('save');}},render:async()=>{calls.push('render');},
   savePrefs:async()=>{calls.push('prefs');},openFile:file=>calls.push(['open',file])});
  const panel=new Element();
- return {panel,project,view,prefs,calls,prompts};
+ return {panel,project,view,prefs,calls,prompts,notices};
 }
 function buttons(bar){return bar.children.filter(el=>el.tag==='button');}
 function checkButtons(bar,expected){
@@ -52,23 +54,57 @@ function checkButtons(bar,expected){
  });
  return controls;
 }
-test('scenes have five ordered icon buttons with localized names and existing actions',async()=>{
- const {panel,project,view,prefs,calls,prompts}=fixture();
+test('scenes have four ordered icon buttons with localized names and existing actions',()=>{
+ const {panel,project,view,calls,prompts}=fixture();
  view.drawScenes(panel,project);
  const bar=panel.querySelector('.writer-project-scene-actions-bar');
- const [scene,divider,draft,expand,collapse]=checkButtons(bar,[
+ const [scene,divider,draft,toggle]=checkButtons(bar,[
   ['file-plus','Adicionar cena'],['separator-horizontal','Adicionar separador de arco'],
-  ['notebook-pen','Novo rascunho Longform'],['chevrons-up-down','Expandir tudo'],
-  ['chevrons-down-up','Recolher tudo']]);
+  ['notebook-pen','Novo rascunho Longform'],['chevrons-down-up','Recolher tudo']]);
  scene.click();draft.click();divider.click();
  assert.match(prompts[0].titleText,/Novo separador de arco/);
  assert.deepEqual(calls,[['scene',project],['draft',project]]);
- view.activeScenes=()=>[{title:'A'},{title:'B'}];
- await collapse.click();
- assert.deepEqual({...prefs.v7CollapsedScenes},{A:true,B:true});
- await expand.click();
- assert.deepEqual({...prefs.v7CollapsedScenes},{});
- assert.deepEqual(calls.slice(2),['save','render','save','render']);
+ assert.equal(toggle.disabled,true);
+});
+const renderTree=({project,view})=>{
+ view.activeScenes=()=>[{title:'A',indent:0},{title:'A.1',indent:1},{title:'A.1.a',indent:2},
+  {title:'B',indent:0},{title:'B.1',indent:1},{title:'Leaf',indent:0}];
+ const panel=new Element();
+ view.drawScenes(panel,project);
+ return {rows:panel.children.map(el=>el.dataset.sceneTitle).filter(Boolean),
+  toggle:panel.querySelector('.writer-project-scene-actions-bar').querySelector('.writer-project-toggle-scenes')};
+};
+test('one scene toggle folds all branches in a mixed tree and restores nested scenes on the next press',async()=>{
+ const h=fixture('en');
+ h.prefs.v7CollapsedScenes={B:true,OtherDraft:true};
+ const open=renderTree(h);
+ assert.deepEqual(open.rows,['A','A.1','A.1.a','B','Leaf']);
+ assert.equal(open.toggle.options.attr['aria-label'],'Collapse all');
+ assert.equal(open.toggle.children[0].icon,'chevrons-down-up');
+ await open.toggle.click();
+ assert.deepEqual({...h.prefs.v7CollapsedScenes},{A:true,'A.1':true,B:true,OtherDraft:true});
+ const closed=renderTree(h);
+ assert.deepEqual(closed.rows,['A','B','Leaf']);
+ assert.equal(closed.toggle.options.attr['aria-label'],'Expand all');
+ assert.equal(closed.toggle.children[0].icon,'chevrons-up-down');
+ await closed.toggle.click();
+ assert.deepEqual({...h.prefs.v7CollapsedScenes},{OtherDraft:true});
+ assert.deepEqual(renderTree(h).rows,['A','A.1','A.1.a','B','B.1','Leaf']);
+ assert.deepEqual(h.calls,['save','render','save','render']);
+});
+test('the scene toggle ignores repeat clicks while saving and keeps the previous state on failure',async()=>{
+ const h=fixture();
+ const previous=h.prefs.v7CollapsedScenes={B:true};
+ let reject,attempts=0;
+ h.view.plugin.saveSettings=()=>{attempts++;return new Promise((_,fail)=>{reject=fail;});};
+ const {toggle}=renderTree(h);
+ const first=toggle.click();await toggle.click();
+ assert.equal(attempts,1);
+ reject(Error('Disk offline'));await first;
+ assert.equal(h.prefs.v7CollapsedScenes,previous);
+ assert.equal(toggle.disabled,false);
+ assert.equal(h.notices.length,1);
+ assert.deepEqual(h.calls,[]);
 });
 test('variants keep the selector and translated actions, with delete only off the main draft',async()=>{
  const {panel,project,view,prefs,calls,prompts}=fixture('en','Alternativa');

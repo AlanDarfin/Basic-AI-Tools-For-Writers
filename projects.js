@@ -506,14 +506,47 @@ class ProjectsView extends ItemView{
    attr:{role:'group','aria-label':lfMsg('Ações de cenas','Scene actions')}});
   lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
   lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
-  lfIconButton(toolbar,'chevrons-up-down',lfMsg('Expandir tudo','Expand all')).addEventListener('click',async()=>{
-   prefs.v7CollapsedScenes={};await this.plugin.saveSettings();await this.render();
-  });
-  lfIconButton(toolbar,'chevrons-down-up',lfMsg('Recolher tudo','Collapse all')).addEventListener('click',async()=>{
-   prefs.v7CollapsedScenes=Object.fromEntries(this.activeScenes(project).map(x=>[x.title,true]));
-   await this.plugin.saveSettings();await this.render();
-  });
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
+  const branches=new Set(),pending=[...tree];
+  while(pending.length){
+   const item=pending.pop();
+   if(!item.children.length)continue;
+   branches.add(item.title);
+   for(const child of item.children)pending.push(child);
+  }
+  const allCollapsed=()=>branches.size>0&&[...branches].every(name=>prefs.v7CollapsedScenes?.[name]===true);
+  const expand=allCollapsed();
+  const toggle=lfIconButton(toolbar,expand?'chevrons-up-down':'chevrons-down-up',
+   expand?lfMsg('Expandir tudo','Expand all'):lfMsg('Recolher tudo','Collapse all'),
+   'writer-project-toggle-scenes');
+  toggle.disabled=!branches.size;
+  toggle.addEventListener('click',async()=>{
+   if(toggle.disabled)return;
+   const previous=prefs.v7CollapsedScenes;
+   const next={...previous};
+   const unfolding=allCollapsed();
+   for(const name of branches){
+    if(unfolding)delete next[name];
+    else Object.defineProperty(next,name,{value:true,enumerable:true,configurable:true,writable:true});
+   }
+   const restoreFocus=toggle.ownerDocument?.activeElement===toggle;
+   toggle.disabled=true;
+   prefs.v7CollapsedScenes=next;
+   try{await this.plugin.saveSettings();}
+   catch(error){
+    if(prefs.v7CollapsedScenes===next)prefs.v7CollapsedScenes=previous;
+    new Notice(lfMsg('Não foi possível salvar o estado das cenas.','Could not save the scene state.'));
+    toggle.disabled=false;
+    if(restoreFocus)toggle.focus?.({preventScroll:true});
+    return;
+   }
+   await this.render();
+   if(restoreFocus&&this.currentProject?.file===project.file&&this.activeTab==='scenes'){
+    const active=toggle.ownerDocument.activeElement;
+    if(active===toggle||active===toggle.ownerDocument.body)
+     this.root?.querySelector('.writer-project-toggle-scenes')?.focus({preventScroll:true});
+   }
+  });
   const renderItem=(item,parent,level=0)=>{
    const name=item.title;
    const row=parent.createDiv({cls:'writer-project-scene writer-project-scene-actions'});
@@ -627,7 +660,7 @@ class ProjectsView extends ItemView{
    if(prefs.v7CollapsedScenes?.[name]!==true)for(const child of item.children)renderItem(child,parent,level+1);
   };
   for(const item of tree)renderItem(item,panel);
-  if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use + Cena.','No scenes yet. Use + Scene.')});
+  if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use o botão Adicionar cena.','No scenes yet. Use the Add scene button.')});
  }
  async createLinkedDraft(project){
   new TextPrompt(this.app,lfMsg('Nome do novo rascunho Longform','New Longform draft name'),async raw=>{

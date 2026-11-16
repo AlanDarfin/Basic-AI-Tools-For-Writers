@@ -687,7 +687,8 @@ requer espaços dos dois lados, preservando links como `[[Nota|Apelido]]`. Há n
 máximo 80 batidas por bloco e 32 mil caracteres por bloco. Os exemplos não
 precisam de IA nem serviços externos.
 
-O comando **Escrita: analisar repetições** examina a seleção ou, se não houver
-seleção, a nota atual. Mostra palavras recorrentes e repetições próximas, sem
-editar a nota ou enviar seu conteúdo. Nomes e repetições intencionais podem
-aparecer; textos acima de 200 mil caracteres são analisados até esse limite.
+O comando **Escrita: ritmo e repetições** analisa a seleção ou, se não houver
+seleção, a nota atual. Agrupa frases em 1–12, 13–24 e 25+ palavras, destaca as
+frases e os parágrafos mais longos e mostra repetições próximas. Toque num
+resultado para voltar ao texto original. As contagens são aproximadas e a
+análise é local, com limite de 200 mil caracteres por relatório.

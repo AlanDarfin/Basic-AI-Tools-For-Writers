@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.11.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.12.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
@@ -31,7 +31,7 @@ Para atualizar manualmente, substitua os três arquivos da release juntos e reca
 | **Escrever e editar notas** | Sugestões de palavras, atalhos do editor, aspas pareadas, meia-risca/travessão (`--` → `–`, `---` → `—`), substituições literais/regex imediatas ou após Espaço, restauração por Backspace, trechos reutilizáveis, memória do cursor e formatação Markdown. |
 | **Organizar o cofre** | Espaços de trabalho, coleções virtuais, página inicial, prévias de arquivos, calendários, tarefas, bancos locais e anotações em imagens. |
 | **Estudar e ler** | Cartões, revisão espaçada, rotina de estudos, estimativa de leitura, citações importadas e controles de voz. |
-| **Revisar textos** | Análise local de repetições, dicionário ortográfico pessoal, LanguageTool opcional, comparação de versões e snapshots. |
+| **Revisar textos** | Análise local de ritmo e repetições, dicionário ortográfico pessoal, LanguageTool opcional, comparação de versões e snapshots. |
 | **Usar IA quando precisar** | Definições, tradução, conversa, reescrita e comentários editoriais, com escolha de provedor e modelo por função. |
 
 O [guia de recursos](SUITES_AND_INTEGRATIONS.pt-BR.md) reúne as seções atuais de configuração, ações, conexões e limites.
@@ -73,6 +73,10 @@ Rascunhos dos capítulos têm cópias locais de recuperação. Use **Livros: rec
 Para montar o manuscrito, use **Livros: compilar manuscrito Markdown**, escolha arquivos salvos ou escrita atual, confira a prévia e crie um novo arquivo em `Basic Exports/`. A compilação inclui todos os capítulos do rascunho selecionado, além do limite de editores exibidos. Capítulos ausentes ou versões conflitantes impedem a exportação. Atualize a prévia para incluir alterações posteriores.
 
 A exportação opcional para DOCX, EPUB, HTML ou PDF no computador usa o **Pandoc** instalado separadamente; PDF também pode exigir um mecanismo compatível de renderização. Veja o [guia de primeiro uso](GETTING_STARTED.pt-BR.md#escreva-seu-primeiro-livro).
+
+## Revise o ritmo da prosa
+
+Use **Escrita: ritmo e repetições** para analisar uma seleção ou a nota atual. Veja a distribuição do tamanho das frases, as frases e os parágrafos mais longos e as palavras que se repetem. Toque num resultado para voltar ao trecho no editor. A análise ignora propriedades, títulos Markdown, blocos de código e comentários. Os números orientam a leitura e não alteram nem enviam a sua nota.
 
 ## Plugins com suporte
 

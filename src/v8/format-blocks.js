@@ -196,7 +196,7 @@ function writerV131WritingAnalysis(input){
   entry.count++;
   if(i-entry.last<=7&&near.length<20){
    const excerpt=text.slice(Math.max(0,item.index-36),Math.min(text.length,item.index+item.word.length+36)).replace(/\s+/g,' ').trim();
-   near.push({word:item.word,distance:i-entry.last,excerpt});
+   near.push({word:item.word,distance:i-entry.last,excerpt,from:item.index,to:item.index+item.word.length});
   }
   entry.last=i;counts.set(key,entry);
  }
@@ -204,30 +204,6 @@ function writerV131WritingAnalysis(input){
   .sort((a,b)=>b.count-a.count||a.word.localeCompare(b.word)).slice(0,20)
   .map(({word,count})=>({word,count}));
  return {wordCount:words.length,repeated,near,truncated:String(input||'').length>text.length};
-}
-function writerV131ReviewModal(plugin,text,scope){
- const result=writerV131WritingAnalysis(text),modal=new Modal(plugin.app);
- modal.setTitle(writerUi('Revisão de repetições','Repetition review'));
- modal.onOpen=()=>{
-  const root=modal.contentEl;root.empty();root.addClass('writer-v131-review');
-  root.createEl('p',{cls:'setting-item-description',text:scope+' · '+result.wordCount+' '+writerUi('palavras','words')+
-   (result.truncated?' · '+writerUi('primeiros 200 mil caracteres','first 200,000 characters'):'')});
-  root.createEl('p',{cls:'setting-item-description',text:writerUi('Sugestões locais: nomes e repetições intencionais também podem aparecer. Nenhuma alteração é feita na nota.','Local suggestions: names and intentional repetition may appear. Your note is not changed.')});
-  root.createEl('h4',{text:writerUi('Palavras repetidas','Repeated words')});
-  if(!result.repeated.length)root.createEl('p',{text:writerUi('Nenhuma repetição relevante encontrada.','No relevant repetitions found.')});
-  else{
-   const list=root.createEl('ul',{cls:'writer-v131-review-frequency'});
-   for(const item of result.repeated)list.createEl('li',{text:item.word+' · '+item.count});
-  }
-  root.createEl('h4',{text:writerUi('Repetições próximas','Nearby repetitions')});
-  if(!result.near.length)root.createEl('p',{text:writerUi('Nenhuma repetição próxima encontrada.','No nearby repetitions found.')});
-  else{
-   const list=root.createEl('ul',{cls:'writer-v131-review-near'});
-   for(const item of result.near){const li=list.createEl('li');li.createEl('strong',{text:item.word});
-    li.createEl('span',{text:' · …'+item.excerpt+'…'});}
-  }
- };
- modal.onClose=()=>modal.contentEl.empty();modal.open();
 }
 function writerV131BeatLines(text){
  return String(text||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).slice(0,80).map((line,i)=>{
@@ -312,9 +288,6 @@ function writerV131RegisterWritingBlocks(plugin,enabled){
    editor.replaceSelection(writerV131BlockTemplate(type,selection));
   }});
  }
- plugin.addCommand?.({id:'v131-review-repetitions',name:writerUi('Escrita: analisar repetições','Writing: review repetitions'),editorCallback:editor=>{
-  const selection=editor.getSelection(),content=selection||editor.getValue();
-  if(!content.trim()){new Notice(writerUi('Não há texto para analisar.','No text to review.'));return;}
-  writerV131ReviewModal(plugin,content,selection?writerUi('Seleção','Selection'):writerUi('Nota atual','Current note'));
- }});
+ plugin.addCommand?.({id:'v131-review-repetitions',name:writerUi('Escrita: ritmo e repetições','Writing: rhythm and repetition'),
+  editorCallback:(editor,view)=>writerProseModal(plugin,editor,view)});
 }

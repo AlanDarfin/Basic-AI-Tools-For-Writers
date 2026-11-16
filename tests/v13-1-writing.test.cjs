@@ -15,6 +15,7 @@ const rendered=[];const context={console,TFile:class{},writerUi:(pt,en)=>pt,
  require:name=>{assert.equal(name,'obsidian');return {setIcon(){}};},
  MarkdownRenderer:{render:async(app,text,element,path)=>{rendered.push({text,path});element.text=text;}},
  writerV8InlineEditor:(...args)=>{context.edits.push(args);},edits:[],
+ writerProseModal:(plugin,editor,view)=>context.prose.push({plugin,editor,view}),prose:[],
  Notice:class{constructor(value){context.notices.push(value);}},notices:[],modals:[],
  Modal:class{constructor(){this.contentEl=new Element();context.modals.push(this);}setTitle(t){this.title=t;}open(){this.onOpen();}}};
 const api=vm.runInNewContext(source+'\n({writerV131WritingAnalysis,writerV131BlockTemplate,writerV131BeatLines,writerV131RegisterWritingBlocks,writerV131RenderStoryBlock})',context);
@@ -44,9 +45,10 @@ test('four insertion commands preserve selection and use a safe fence',()=>{
  }
  assert.ok(commands['v131-review-repetitions']);
  assert.ok(api.writerV131BlockTemplate('scene-card','   ').endsWith('\n---\n   \n```\n'));
- commands['v131-review-repetitions'].editorCallback({getSelection:()=> 'noite e noite',getValue:()=>{throw Error('Selected text should be used');}});
- const modal=context.modals.at(-1);assert.equal(modal.title,'Revisão de repetições');
- assert.ok(modal.contentEl.children.some(child=>child.text.includes('Seleção')));
+ assert.equal(commands['v131-review-repetitions'].name,'Escrita: ritmo e repetições');
+ const editor={},view={};
+ commands['v131-review-repetitions'].editorCallback(editor,view);
+ assert.deepEqual(context.prose.at(-1),{plugin,editor,view});
  enabled=false;let replaced=false;
  commands['v131-insert-scene-card'].editorCallback({getSelection:()=>'',replaceSelection:()=>{replaced=true;}});
  assert.equal(replaced,false);assert.ok(context.notices.length);

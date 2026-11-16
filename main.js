@@ -4,6 +4,13 @@ const VIEW = 'offline-dictionary-view';
 const {TFolder}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
 const lfMsg=(pt,en)=>{try{return require('obsidian').getLanguage?.()?.toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}};
+function lfIconButton(parent,icon,label,extraClass=''){
+ const button=parent.createEl('button',{cls:['writer-project-icon-action',extraClass].filter(Boolean).join(' '),
+  attr:{type:'button',title:label,'aria-label':label}});
+ const glyph=button.createSpan({cls:'writer-project-action-glyph',attr:{'aria-hidden':'true'}});
+ require('obsidian').setIcon?.(glyph,icon);
+ return button;
+}
 const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
 function lfPath(...parts){const path=[];for(const part of parts){for(const segment of String(part||'').split('/')){if(!segment||segment==='.')continue;if(segment==='..'){path.pop();continue;}path.push(segment);}}return path.join('/');}
 class TextPrompt extends Modal{
@@ -136,7 +143,8 @@ class ProjectsView extends ItemView{
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
   if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
   const top=this.root.createDiv({cls:'writer-project-toolbar'});
-  top.createEl('button',{text:lfMsg("+ Projeto","+ Project"),cls:'writer-project-create',attr:{title:lfMsg('Criar projeto','Create project'),'aria-label':lfMsg('Criar projeto','Create project')}}).addEventListener('click',()=>this.promptNewProject());
+  lfIconButton(top,'plus',lfMsg('Criar projeto','Create project'),'writer-project-create')
+   .addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
   if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
@@ -160,8 +168,7 @@ class ProjectsView extends ItemView{
   seriesField.createSpan({cls:'writer-project-series-label',text:lfMsg('Série','Series')});
   this.seriesMembershipValue=seriesField.createSpan({cls:'writer-project-series-value',attr:{'aria-live':'polite'}});
   this.refreshSeriesMembership();
-  seriesRow.createEl('button',{text:lfMsg('Gerenciar','Manage'),cls:'writer-v7-stable-series-launch',
-   attr:{type:'button','aria-label':lfMsg('Gerenciar séries de livros','Manage book series')}})
+  lfIconButton(seriesRow,'settings-2',lfMsg('Gerenciar séries de livros','Manage book series'),'writer-v7-stable-series-launch')
    .addEventListener('click',()=>writerV7SeriesOpen(this));
   if(project.format==='scenes'&&!project.scenes.length){
    try{const raw=await this.app.vault.cachedRead(project.file);
@@ -476,10 +483,12 @@ class ProjectsView extends ItemView{
    panel.createEl('button',{text:lfMsg("Abrir texto","Open text")}).addEventListener('click',()=>this.openFile(project.file));
    return;
   }
-  const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar'});
+  const prefs=this.prefs(project),draftBar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-draft-actions',
+   attr:{role:'group','aria-label':lfMsg('Variantes e rascunhos','Variants and drafts')}});
   const linked=this.indexes().filter(x=>x.title===project.title&&x.file.path!==project.file.path);
   if(linked.length){
-   const other=draftBar.createEl('select',{attr:{'aria-label':lfMsg('Rascunhos Longform existentes','Existing Longform drafts')}});
+   const other=draftBar.createEl('select',{cls:'writer-project-linked-draft-select',
+    attr:{'aria-label':lfMsg('Rascunhos Longform existentes','Existing Longform drafts')}});
    other.createEl('option',{text:lfMsg('Trocar para rascunho Longform...','Switch to Longform draft...'),value:''});
    for(const d of linked){const o=other.createEl('option',{text:d.draftTitle||d.file.basename});o.value=d.file.path;}
    other.addEventListener('change',()=>{if(other.value){this.draft='Principal';writerProjectRemember(this,other.value);this.render();}});
@@ -489,21 +498,22 @@ class ProjectsView extends ItemView{
   if(!drafts.includes(this.draft))this.draft='Principal';
   for(const d of drafts){const o=select.createEl('option',{text:d==='Principal'?lfMsg('Principal','Main'):d});o.value=d;}select.value=this.draft;
   select.addEventListener('change',()=>{this.draft=select.value;this.render();});
-  draftBar.createEl('button',{text:lfMsg('+ Variante','+ Variant')}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome da variante','Variant name'),async name=>{
+  lfIconButton(draftBar,'git-branch-plus',lfMsg('Adicionar variante','Add variant')).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome da variante','Variant name'),async name=>{
    name=clean(name);if(!name||name==='Principal'||prefs.drafts[name])return;
    prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
   }).open());
-  if(this.draft!=='Principal')draftBar.createEl('button',{text:lfMsg("Excluir variante","Delete variant")}).addEventListener('click',async()=>{
+  if(this.draft!=='Principal')lfIconButton(draftBar,'trash-2',lfMsg('Excluir variante','Delete variant')).addEventListener('click',async()=>{
    delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();
   });
-  const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar'});
-  toolbar.createEl('button',{text:lfMsg("+ Cena","+ Scene")}).addEventListener('click',()=>this.addScene(project));
-  toolbar.createEl('button',{text:lfMsg("Novo rascunho Longform","New Longform draft")}).addEventListener('click',()=>this.createLinkedDraft(project));
-  toolbar.createEl('button',{text:lfMsg('Expandir tudo','Expand all')}).addEventListener('click',async()=>{
+  const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-scene-actions-bar',
+   attr:{role:'group','aria-label':lfMsg('Ações de cenas','Scene actions')}});
+  lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
+  lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
+  lfIconButton(toolbar,'chevrons-up-down',lfMsg('Expandir tudo','Expand all')).addEventListener('click',async()=>{
    prefs.v7CollapsedScenes={};await this.plugin.saveSettings();await this.render();
   });
-  toolbar.createEl('button',{text:lfMsg('Recolher tudo','Collapse all')}).addEventListener('click',async()=>{
+  lfIconButton(toolbar,'chevrons-down-up',lfMsg('Recolher tudo','Collapse all')).addEventListener('click',async()=>{
    prefs.v7CollapsedScenes=Object.fromEntries(this.activeScenes(project).map(x=>[x.title,true]));
    await this.plugin.saveSettings();await this.render();
   });
@@ -34925,12 +34935,10 @@ function writerV13ArcInstall(){
   original.call(this,panel,project);
   if(project.format==='single')return;
   const view=this,roots=writerV13ArcRoots(view,project),dividers=writerV13ArcStore(view,project);
-  const bars=panel.querySelectorAll('.writer-project-notes-toolbar');
-  const toolbar=bars[bars.length-1];
+  const toolbar=panel.querySelector('.writer-project-scene-actions-bar');
   if(toolbar){
-   const button=toolbar.createEl('button',{text:lfMsg('+ Separador','+ Divider'),
-    cls:'writer-project-arc-create',attr:{type:'button',
-     title:lfMsg('Inserir linha divisória sem criar nota','Insert visual divider without creating a note')}});
+   const button=lfIconButton(toolbar,'separator-horizontal',
+    lfMsg('Adicionar separador de arco','Add story arc divider'),'writer-project-arc-create');
    button.addEventListener('click',()=>writerV13ArcPrompt(view,project));
    toolbar.insertBefore(button,toolbar.children[1]||null);
   }

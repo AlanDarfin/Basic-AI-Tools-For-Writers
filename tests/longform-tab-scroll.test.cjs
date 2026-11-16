@@ -23,7 +23,7 @@ class Element{
  createSpan(options={}){return this.add(options);}
  setText(value){this.text=value;}
  createEl(_tag,options={}){return this.add(options);}
- add(options){const child=new Element(options.cls||'',options.text||'',this);this.children.push(child);return child;}
+ add(options){const child=new Element(options.cls||'',options.text||'',this);Object.assign(child.attributes,options.attr);this.children.push(child);return child;}
  addEventListener(name,fn){(this.listeners[name]??=[]).push(fn);}
  setAttribute(name,value){this.attributes[name]=value;}
  click(){for(const fn of this.listeners.click||[])fn();}
@@ -117,8 +117,10 @@ test('series summary stays in a separate second row when changing Longform tabs'
  assert.equal(row.parent,view.root,'Series row must be below, not inside selector toolbar');
  assert.ok(view.root.children.indexOf(row)>view.root.children.indexOf(toolbar));
  assert.equal(field.text,'Sem série');
- const manager=row.children.find(x=>x.text==='Gerenciar');
- assert.ok(manager,'Manage button must be visible in the second row');
+ const manager=row.querySelector('.writer-v7-stable-series-launch');
+ assert.ok(manager,'Manage icon must be visible in the second row');
+ assert.equal(manager.text,'');
+ assert.equal(manager.attributes['aria-label'],'Gerenciar séries de livros');
  const prior=managerOpens;manager.click();assert.equal(managerOpens,prior+1);
  view.plugin.settings.v7Series=[
   {id:'one',name:'Bonfire Saga',books:[project.file.path]},

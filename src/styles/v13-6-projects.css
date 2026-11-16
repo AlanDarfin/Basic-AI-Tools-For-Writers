@@ -29,6 +29,42 @@
 .writer-project-root .writer-v11-editor{line-height:1.6}
 .writer-project-root .writer-project-notes-toolbar{gap:6px;margin-block:6px}
 .writer-project-root .writer-project-notes-toolbar :is(button,select){min-height:32px;font-size:var(--font-ui-small)}
+/* Match the explorer's outline icons without shrinking the mobile touch target. */
+.writer-project-root{
+ --writer-project-action-size:32px;
+ --writer-project-glyph-size:18px;
+}
+body.is-mobile .writer-project-root{
+ --writer-project-action-size:44px;
+ --writer-project-glyph-size:22px;
+}
+.writer-project-root :is(.writer-project-toolbar,.writer-project-series-row,.writer-project-notes-toolbar)>button.writer-project-icon-action{
+ box-sizing:border-box;
+ display:inline-flex;align-items:center;justify-content:center;align-self:center;
+ flex:0 0 var(--writer-project-action-size);
+ width:var(--writer-project-action-size);min-width:var(--writer-project-action-size);
+ height:var(--writer-project-action-size);min-height:var(--writer-project-action-size);
+ padding:0;border:0;border-radius:var(--radius-s);
+ background:transparent;box-shadow:none;color:var(--icon-color,var(--text-muted));
+}
+.writer-project-root :is(.writer-project-toolbar,.writer-project-series-row,.writer-project-notes-toolbar)>button.writer-project-icon-action:is(:hover,:focus-visible,:active){
+ background:var(--background-modifier-hover);color:var(--icon-color-hover,var(--text-normal));
+}
+.writer-project-root :is(.writer-project-toolbar,.writer-project-series-row,.writer-project-notes-toolbar)>button.writer-project-icon-action:focus-visible{
+ outline:2px solid var(--interactive-accent);outline-offset:-2px;
+}
+.writer-project-root .writer-project-action-glyph{display:flex;line-height:0;pointer-events:none}
+.writer-project-root .writer-project-action-glyph svg{
+ width:var(--writer-project-glyph-size);height:var(--writer-project-glyph-size);
+}
+.writer-project-root .writer-project-notes-toolbar:is(.writer-project-draft-actions,.writer-project-scene-actions-bar){
+ align-items:center;gap:4px;
+}
+.writer-project-root .writer-project-draft-actions>select{
+ flex:1 1 0;min-width:0;margin:0;text-overflow:ellipsis;
+}
+.writer-project-root .writer-project-draft-actions>.writer-project-linked-draft-select{flex-basis:100%}
+body.is-mobile .writer-project-root .writer-project-draft-actions>select{min-height:var(--writer-project-action-size)}
 .writer-project-root .writer-project-panel[role="tabpanel"]:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:-2px}
 @container basic-project (max-width:540px){
  .writer-project-root .writer-v136-project-sections{display:block}
@@ -41,8 +77,6 @@
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions .writer-project-scene-controls>button.writer-project-small-button:not(.writer-project-scene-more){display:none}
  .writer-project-root .writer-project-nav-groups>button .writer-project-nav-label{font-size:var(--font-ui-small)}
  body .writer-project-root .writer-project-nav-groups.writer-project-nav-groups>button{gap:4px;padding-inline:2px;min-height:34px}
- .writer-project-root .writer-project-toolbar>.writer-project-create{flex:0 0 36px;width:36px;min-width:36px;padding:4px;font-size:0}
- .writer-project-root .writer-project-toolbar>.writer-project-create::before{content:'+';font-size:22px;line-height:1}
  .writer-project-root .writer-v11-chapter summary{flex-wrap:wrap}
  .writer-project-root .writer-v11-chapter summary small{flex-basis:100%}
 }

@@ -1,0 +1,182 @@
+{
+  "version": "13.9.1",
+  "runtime": {
+    "application": "Obsidian",
+    "appVersion": "1.15.1",
+    "platform": "Linux Electron",
+    "viewport": [
+      1280,
+      800
+    ],
+    "fixture": "synthetic vault; Basic plus QA transport guard only",
+    "network": "external transports blocked; no remote services invoked"
+  },
+  "testedAssetSha256": {
+    "main.js": "2ceff36eee7fbae81a1f91921694518e0fd4f175cb9dbff03b80d2f9c0de6a6d",
+    "styles.css": "a7e216bd49dc0b6fd3a0ae2846ec2a5f8c3c41377cf390dbc446b563604ce232",
+    "manifest.json": "7c61845d94d69fde120c8a2bdc9af0a31f215a1a6ee6c35833e23882efc24648"
+  },
+  "baseline": {
+    "version": "13.9.0",
+    "hiddenTasksListed": [
+      "YAML frontmatter",
+      "HTML comment",
+      "Obsidian %% comment"
+    ],
+    "realVisibleTasks": 1,
+    "perNoteCap": {
+      "sourceTasks": 251,
+      "listed": 250,
+      "warning": false
+    },
+    "partialCoverage": {
+      "examined": 25,
+      "total": 34,
+      "warning": false
+    },
+    "pendingSpeechAfterModuleOff": 1
+  },
+  "tasks": {
+    "hiddenRegionsExcluded": true,
+    "nativeCheckboxOnlyChangedVisibleTask": true,
+    "hiddenContentPreservedByteForByte": true,
+    "perNoteCap": {
+      "sourceTasks": 251,
+      "listed": 250,
+      "warning": "Incomplete search: 1 notes with more than 250 tasks; only the first 250 from each note were included."
+    },
+    "partialCoverage": {
+      "summary": "27 tasks · 0 visible · 25/34 notes examined",
+      "warning": "Incomplete search: 9 notes outside the scan limit.",
+      "zeroMatchesQualifiedAsExaminedNotes": true,
+      "searchOptionsButtonPresent": true
+    },
+    "unreadableNote": {
+      "summary": "24 tasks · 0 visible · 25/34 notes examined",
+      "warning": "Incomplete search: 9 notes outside the scan limit · 1 notes could not be read.",
+      "privateExceptionNotDisplayed": true
+    },
+    "portuguese": {
+      "title": "Minhas tarefas",
+      "warning": "Busca incompleta: 9 notas fora do limite da busca."
+    },
+    "disabledModuleBlocksDashboardAndQuickAdd": true
+  },
+  "speech": {
+    "control": {
+      "utterances": 1,
+      "edgeStarts": 0,
+      "playing": true
+    },
+    "module-off": {
+      "utterances": 0,
+      "edgeStarts": 0,
+      "playing": false
+    },
+    "setting-off": {
+      "utterances": 0,
+      "edgeStarts": 0,
+      "playing": false
+    },
+    "stop": {
+      "utterances": 0,
+      "edgeStarts": 0,
+      "playing": false
+    },
+    "provider-change": {
+      "utterances": 0,
+      "edgeStarts": 0,
+      "playing": false
+    },
+    "engine-change": {
+      "utterances": 0,
+      "edgeStarts": 0,
+      "playing": false
+    },
+    "note-change": {
+      "utterances": 0,
+      "edgeStarts": 0,
+      "playing": false
+    },
+    "older-read": {
+      "utterances": 1,
+      "edgeStarts": 0,
+      "playing": true
+    }
+  },
+  "speechNewestReadText": [
+    "REL1391 newest reading."
+  ],
+  "toolbarLateLayoutReady": {
+    "capturedOriginalRefreshCallback": true,
+    "basicUnloadedDuringReplay": true,
+    "baseline13_9_0": {
+      "afterUnload": 0,
+      "afterCallback": 1
+    },
+    "final13_9_1": {
+      "afterUnload": 0,
+      "afterCallback": 0
+    }
+  },
+  "screenshots": [
+    "docs/images/13.9.1/tasks-before.png",
+    "docs/images/13.9.1/tasks-after.png",
+    "docs/images/13.9.1/task-scan-coverage.png",
+    "docs/images/13.9.1/task-scan-coverage-pt.png"
+  ],
+  "rawReports": [
+    "/workspace/artifacts/basic-13.9.1/baseline-native.json",
+    "/workspace/artifacts/basic-13.9.1/after-native-tasks.json",
+    "/workspace/artifacts/basic-13.9.1/baseline-tts-async.json",
+    "/workspace/artifacts/basic-13.9.1/after-tts-async.json",
+    "/workspace/artifacts/basic-13.9.1/baseline-toolbar-lifecycle.json",
+    "/workspace/artifacts/basic-13.9.1/after-toolbar-lifecycle.json",
+    "/workspace/artifacts/basic-13.9.1/after-settings-search.json"
+  ],
+  "limitations": [
+    "Desktop native Obsidian only; no physical Android/iOS verification.",
+    "Speech scheduling used a delayed cachedRead plus audio boundary stubs; no audible speech or remote TTS transport.",
+    "Toolbar lifecycle held and replayed its actual layout-ready refresh callback after unload."
+  ],
+  "acceptedRunErrors": [],
+  "finalBundleRerun": "All AFTER scenarios rerun after the settings search index generator correction; bundle reloaded in native Obsidian.",
+  "settingsSearch": {
+    "bundleIndexEntries": 686,
+    "bundleTtsEntries": 20,
+    "nativeQueriesBeforeOpeningSpeechSettings": [
+      {
+        "locale": "en",
+        "query": "Maximum characters per playback",
+        "activeSection": "general",
+        "targets": [
+          "Open Maximum characters per playback · Read aloud"
+        ]
+      },
+      {
+        "locale": "en",
+        "query": "Speech chunk size",
+        "activeSection": "general",
+        "targets": [
+          "Open Speech chunk size · Read aloud"
+        ]
+      },
+      {
+        "locale": "en",
+        "query": "Allow online text processing",
+        "activeSection": "general",
+        "targets": [
+          "Open Allow online text processing · Read aloud"
+        ]
+      },
+      {
+        "locale": "pt-BR",
+        "query": "Máximo de caracteres por leitura",
+        "activeSection": "general",
+        "targets": [
+          "Abrir Máximo de caracteres por leitura · Leitura em voz alta"
+        ]
+      }
+    ]
+  }
+}

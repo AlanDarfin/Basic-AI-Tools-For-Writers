@@ -318,10 +318,13 @@ function extract(model,range){
 }
 function branch(model,id,variable='id'){
  const {tokens,pairs}=model;
- for(let i=0;i<tokens.length;i++)if(tokens[i].value===variable&&tokens[i+1]?.value==='==='&&tokens[i+2]?.type==='string'&&tokens[i+2].value===id){
-  let end=i+3;while(end<tokens.length&&tokens[end].value!==')')end++;
-  if(tokens[end+1]?.value==='{')return [end+2,pairs.get(end+1)];
-  return [end+1,statementEnd(model,end+1)];
+ // Section branches use a complete equality condition. Callback guards may
+ // mention the same section alongside other checks and do not render its UI.
+ for(let i=0;i<tokens.length;i++)if(tokens[i].value==='if'&&tokens[i+1]?.value==='('&&
+  tokens[i+2]?.value===variable&&tokens[i+3]?.value==='==='&&
+  tokens[i+4]?.type==='string'&&tokens[i+4].value===id&&tokens[i+5]?.value===')'){
+  if(tokens[i+6]?.value==='{')return [i+7,pairs.get(i+6)];
+  return [i+6,statementEnd(model,i+6)];
  }
  return null;
 }

@@ -175,7 +175,11 @@ limit: 80
 ~~~
 ~~~~
 
-The task navigator reads Markdown tasks; the workbench can toggle a checkbox after checking that the source still matches. Quick capture and brainstorming create separate Markdown notes when requested. Calendar entries, local iCalendar import/export and optional feeds have their own controls. Feed refresh can contact configured URLs automatically when you enable it.
+The task dashboard filters All, Today, Overdue, Next seven days and No due date. It reads Markdown task lines outside note properties, HTML/Obsidian comments and code fences. Checkbox changes recheck the task and source before an atomic write. Task quick-add previews the destination and line before appending to a chosen existing Markdown note; unsaved or concurrent changes require a fresh preview.
+
+The summary shows examined/total notes. **Incomplete search** explains notes outside the configured limit, read failures or files with more than 250 valid task lines; only the first 250 tasks per file are included. **Search options** opens **Tasks & capture** to review the existing limit. Limits are not increased automatically. If refresh fails, a warning identifies the retained earlier results.
+
+Separate quick-note capture and brainstorming actions create new Markdown notes when requested. Calendar entries, local iCalendar import/export and optional feeds have their own controls. Feed refresh can contact configured URLs automatically when you enable it.
 
 Study tools use tagged Markdown cards such as `#flashcards` with `Question::Answer`, reversible `A:::B` cards and supported clozes. Scheduling offers the implemented SM-2 and FSRS-4.5 choices. TSV import/export supports interchange with Anki-compatible text files; it is not a live connection to an Anki collection. Study routines include user-triggered class/daily notes, reminders and timetable blocks.
 

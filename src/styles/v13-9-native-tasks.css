@@ -32,6 +32,8 @@
 }
 :is(.writer-native-task-preview,.writer-native-task-destination,.writer-native-task-feedback):empty{display:none;}
 .writer-native-task-feedback{color:var(--text-muted);line-height:1.5;}
+.writer-native-task-coverage{color:var(--text-warning);font-size:var(--font-ui-small);line-height:1.5;overflow-wrap:anywhere;}
+.writer-native-task-coverage:empty{display:none;}
 .writer-native-task-destination{font-weight:var(--font-medium);overflow-wrap:anywhere;}
 @media(max-width:600px){
  .writer-native-task-toolbar{align-items:stretch;}

@@ -43,10 +43,11 @@ function writerV101TtsChunks(source,limit=700){
  return chunks;
 }
 class WriterFinalFeatures{
- constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsRunId=0;this.soundscapePausedByTts=false;this.ttsStatus='idle';this.ttsMessage='';}
+ constructor(plugin){this.plugin=plugin;this.timer=null;this.speaking=false;this.lastFile=plugin.app.workspace.getActiveFile?.()||null;this.edgePlayer=null;this.ttsRunId=0;this.ttsRequestId=0;this.ttsDisposed=false;this.soundscapePausedByTts=false;this.ttsStatus='idle';this.ttsMessage='';}
  get cfg(){return this.plugin.settings.finalSuite;}
  register(){
   const p=this.plugin;
+  p.register?.(()=>{this.ttsDisposed=true;this.stop();});
   p.registerEvent(p.app.workspace.on('layout-change',()=>this.refreshNames()));
   if(p.app.metadataCache?.on)p.registerEvent(p.app.metadataCache.on('changed',()=>this.refreshNames()));
   p.registerEvent(p.app.workspace.on('file-open',file=>{if(file){this.lastFile=file;this.refreshNames();this.applyViewMode(file).catch(console.warn);}}));
@@ -74,7 +75,7 @@ class WriterFinalFeatures{
    ['writer-abbreviations',writerUi('Editar abreviações','Edit abbreviations'),()=>this.editAbbreviations()],
    ['writer-insert-template',writerUi('Inserir modelo pelo nome da nota','Insert note-name template'),()=>this.applyTemplateToCurrent()]
   ];
-  for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
+  for(const [id,name,callback] of commands)p.addCommand({id,name,callback:async()=>{if(this.ttsDisposed)return;try{await callback();}catch(e){new Notice(String(e?.message||e));}}});
   p.addCommand({id:'writer-tts-from-cursor',name:writerUi('Ler a partir do cursor','Read from cursor'),
    editorCheckCallback:(checking,editor,view)=>{
     if(!writerModuleOn(p,'tts')||this.cfg.tts.enabled!==true||!this.cursorView(editor,view))return false;
@@ -515,6 +516,7 @@ class WriterFinalFeatures{
   return writerUi('Vozes disponíveis pelo WebView: ','Voices available in WebView: ')+voices.length;
  }
  refreshVoiceSelectors(){
+  if(this.ttsDisposed)return;
   if(typeof document==='undefined'||!document.querySelectorAll)return;
   for(const select of document.querySelectorAll('.writer-tts-voice-select')){
    const selected=this.cfg.tts.voice||'';
@@ -541,8 +543,19 @@ class WriterFinalFeatures{
   return leaves.map(leaf=>leaf.view).find(candidate=>candidate.file?.path===file?.path&&usable(candidate))||null;
  }
  async speakActive(options={}){
+  if(this.ttsDisposed)return false;
+  // A new Read or Stop invalidates earlier disk reads before they can start audio.
+  this.stop();
+  const request=this.ttsRequestId;
   const cfg=this.cfg.tts;
   if(!writerModuleOn(this.plugin,'tts')||!cfg.enabled)return new Notice(writerUi('Ative a leitura de texto nas configurações.','Enable text-to-speech in settings.'));
+  const provider=()=>typeof writerCompanionConfig==='function'?writerCompanionConfig(this.plugin).ttsProvider:'basic';
+  const selectedProvider=provider(),companion=this.plugin.app.plugins?.plugins?.['ahmed-toolkit'];
+  const keys=['enabled','engine','allowOnline','readSelection','maxCharacters','chunkSize','language','edgeVoice','voice','rate','pitch','volume','pauseMusic','resumeMusic'];
+  const values=keys.map(key=>cfg[key]);
+  const current=()=>!this.ttsDisposed&&this.ttsRequestId===request&&writerModuleOn(this.plugin,'tts')&&
+   this.cfg.tts===cfg&&keys.every((key,index)=>cfg[key]===values[index])&&provider()===selectedProvider&&
+   (selectedProvider!=='ahmed-toolkit'||this.plugin.app.plugins?.plugins?.['ahmed-toolkit']===companion);
   const fromCursor=options?.fromCursor===true;
   // On Android, tapping a sidebar button often makes the sidebar the active leaf.
   // Find the last markdown editor before falling back to the vault note on disk.
@@ -556,9 +569,23 @@ class WriterFinalFeatures{
   const note= view?.file||file;
   if(!note||note.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   this.lastFile=note;
+  const path=note.path,mtime=note.stat?.mtime,size=note.stat?.size,editor=view?.editor;
+  const sameNote=()=>{
+   if(!current()||note.path!==path)return false;
+   const active=workspace.getActiveFile?.()||this.lastFile;
+   if(active&&active!==note&&active.path!==path)return false;
+   if(view&&(view.file!==note||view.editor!==editor))return false;
+   if(view&&typeof workspace.getLeavesOfType==='function'&&!workspace.getLeavesOfType('markdown').some(leaf=>leaf.view===view))return false;
+   const vault=this.plugin.app.vault;
+   return typeof vault.getAbstractFileByPath!=='function'||vault.getAbstractFileByPath(path)===note;
+  };
   const selected=fromCursor?'':view?.editor?.getSelection?.()||'';
-  const raw=selected&&cfg.readSelection?selected:
-    (view?.editor?.getValue?.()??await this.plugin.app.vault.cachedRead(note));
+  let raw=selected&&cfg.readSelection?selected:editor?.getValue?.();
+  if(raw==null){
+   try{raw=await this.plugin.app.vault.cachedRead(note);}catch(error){if(!sameNote())return false;throw error;}
+   if(note.stat?.mtime!==mtime||note.stat?.size!==size)return false;
+  }
+  if(!sameNote())return false;
   let cursor=0;
   if(fromCursor){
    cursor=view.editor.posToOffset(view.editor.getCursor('head'));
@@ -571,22 +598,22 @@ class WriterFinalFeatures{
   const text=writerMaskMarkdown(raw).slice(cursor).replace(/ {2,}/g,' ').trim().slice(0,maximum);
   if(!text)return new Notice(writerUi('Nenhum texto disponível para leitura.','No readable text.'));
   if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(this.plugin).ttsProvider==='ahmed-toolkit'){
-   this.stop();return writerCompanionSpeechStart(this.plugin,text,note.basename);
+   return writerCompanionSpeechStart(this.plugin,text,note.basename);
   }
   const engine=cfg.engine||'system';
   if(engine==='edge'){
    if(!cfg.allowOnline)return new Notice(writerUi('Ative o envio de texto à Microsoft nas configurações de voz antes de usar vozes online.','Enable "Allow text to be sent to Microsoft" in TTS settings before using online voices.'));
    if(typeof WebSocket==='undefined')return new Notice(writerUi('A voz online requer suporte a WebSocket.','Online voice requires WebSocket support.'));
-   this.stop();this.prepareAudioFocus();
+   this.prepareAudioFocus();if(!sameNote()){this.stop();return false;}
    const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
    const selectedVoice=cfg.edgeVoice||WRITER_EDGE_VOICES[lang]||WRITER_EDGE_VOICES[lang.split('-')[0]==='pt'?'pt-BR':'en-US'];
    try{await this.getEdgePlayer().start(text,selectedVoice,cfg.rate);}
-   catch(error){this.onTtsState('error',error.message);}
+   catch(error){if(current())this.onTtsState('error',error.message);}
    return;
   }
   if(typeof speechSynthesis==='undefined'||typeof SpeechSynthesisUtterance==='undefined')
    return new Notice(writerUi('O WebView do Android não expõe a voz nativa do sistema. Use o mecanismo online somente se autorizar o envio do texto.','This WebView does not expose native text-to-speech. Use online speech only after allowing text to be sent.'),8000);
-  this.stop();this.prepareAudioFocus();
+  this.prepareAudioFocus();if(!sameNote()){this.stop();return false;}
   const run=++this.ttsRunId,chunks=writerV101TtsChunks(text,cfg.chunkSize||700);
   const lang=cfg.language==='auto'?(typeof navigator!=='undefined'?navigator.language:'pt-BR'):cfg.language;
   const voices=this.systemVoices();
@@ -595,6 +622,7 @@ class WriterFinalFeatures{
   let index=0;
   const next=()=>{
    if(run!==this.ttsRunId)return;
+   if(!current()){this.stop();return;}
    if(index>=chunks.length){this.speaking=false;this.onTtsState('idle');return;}
    const utterance=new SpeechSynthesisUtterance(chunks[index++]);
    utterance.lang=lang;utterance.rate=Number(cfg.rate)||1;
@@ -619,6 +647,7 @@ class WriterFinalFeatures{
   else if((this.speaking||this.plugin._writerV107SpeechActive)&&typeof speechSynthesis!=='undefined'){speechSynthesis.resume();this.onTtsState('playing');}
  }
  stop(){
+  this.ttsRequestId=(this.ttsRequestId||0)+1;
   if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(this.plugin,'stop');
   this.ttsRunId=(this.ttsRunId||0)+1;
   this.edgePlayer?.stop();
@@ -634,8 +663,8 @@ function writerRenderFinalSettings(panel,plugin,section){
  const sectionMap={abbreviations:'Abbreviations',anotherName:'Alternate titles',viewMode:'View mode',templates:'Templates by note name',unicode:'Unicode search',toc:'Table of contents',tts:'Read aloud'};
  const cfg=plugin.settings.finalSuite[section];
  panel.createEl('h3',{text:translateLabel(sectionMap[section]||section)});
- const bool=(field,label)=>new Setting(panel).setName(translateLabel(label)).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
- const str=(field,label)=>new Setting(panel).setName(translateLabel(label)).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;await plugin.saveSettings();}));
+ const bool=(field,label)=>new Setting(panel).setName(translateLabel(label)).addToggle(t=>t.setValue(!!cfg[field]).onChange(async v=>{cfg[field]=v;if(section==='tts'&&field==='enabled'&&!v)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
+ const str=(field,label)=>new Setting(panel).setName(translateLabel(label)).addText(t=>t.setValue(String(cfg[field]??'')).onChange(async v=>{cfg[field]=v;if(section==='tts'&&field==='enabled'&&!v)plugin.writerFinalFeatures.stop();await plugin.saveSettings();}));
  bool('enabled','Enabled');
  if(section==='abbreviations'){bool('expandAtWordBoundary','Expand on punctuation or space (instead of space only)');new Setting(panel).setName(translateLabel('Edit abbreviations')).addButton(b=>b.setButtonText(translateLabel('Open')).onClick(()=>plugin.writerFinalFeatures.editAbbreviations()));}
  if(section==='anotherName')str('property','Frontmatter property');

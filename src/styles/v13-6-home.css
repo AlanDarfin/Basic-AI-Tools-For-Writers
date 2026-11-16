@@ -18,7 +18,7 @@ body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading h2{
  max-width:100%;
  margin:0;
  padding:0;
- font-size:clamp(1.3rem,2.6cqi,1.85rem);
+ font-size:clamp(1.5rem,3cqi,2.125rem);
  font-weight:var(--font-semibold);
  line-height:1.3;
  letter-spacing:normal;
@@ -31,18 +31,18 @@ body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon{
  display:flex;
  align-items:center;
  justify-content:center;
- flex:0 0 42px;
- width:42px;
- min-width:42px;
- height:42px;
- min-height:42px;
+ flex:0 0 48px;
+ width:48px;
+ min-width:48px;
+ height:48px;
+ min-height:48px;
  line-height:0;
 }
 body .writer-v8-home .writer-v8-home-heading .writer-v8-home-title-icon svg{
  display:block;
  flex:0 0 auto;
- width:32px;
- height:32px;
+ width:38px;
+ height:38px;
 }
 .writer-v8-home .writer-v8-home-search-region{
  box-sizing:border-box;
@@ -140,6 +140,9 @@ body.is-mobile .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
  align-items:center;
  justify-content:center;
  gap:8px;
+}
+body.is-mobile .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading h2{
+ font-size:clamp(1.5rem,5.5cqi,2rem);
 }
 /* Physical mobile controls remain comfortable to tap. Reordering stays in the
  * widget menu; do not reintroduce drag or resize handles on touch devices. */

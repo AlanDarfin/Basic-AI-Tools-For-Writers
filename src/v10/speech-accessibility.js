@@ -15,8 +15,19 @@ function writerV107SpeechChunks(text,max=1450){
  }
  return result;
 }
+function writerV107SpeechAllowed(plugin){
+ return plugin._writerV107SpeechDisposed!==true&&plugin.settings.v107Speech?.enabled!==false&&plugin.settings.visibleModules?.tts!==false&&plugin.settings.finalSuite?.tts?.enabled!==false;
+}
+function writerV107SpeechStop(plugin){
+ if(typeof plugin.writerFinalFeatures?.stop==='function'){plugin.writerFinalFeatures.stop();return;}
+ if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
+ plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;
+ if(plugin._writerV107SpeechActive)plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis?.cancel();
+ plugin._writerV107SpeechActive=false;
+}
 function writerV107SpeechStart(plugin,text){
- if(plugin.settings.v107Speech?.enabled===false||plugin.settings.visibleModules?.tts===false||plugin.settings.finalSuite?.tts?.enabled===false)return false;
+ if(!writerV107SpeechAllowed(plugin))return false;
+ plugin.writerFinalFeatures?.stop();
  if(typeof writerCompanionConfig==='function'&&writerCompanionConfig(plugin).ttsProvider==='ahmed-toolkit')return writerCompanionSpeechStart(plugin,text);
  if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
  const speech=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis;
@@ -29,7 +40,8 @@ function writerV107SpeechStart(plugin,text){
  const voice=voices.find(v=>v.voiceURI===cfg.voice)||voices.find(v=>v.lang===cfg.lang)||voices.find(v=>v.lang?.split('-')[0]===cfg.lang.split('-')[0]);
  let index=0;
  const speak=()=>{
-  if(plugin._writerV107SpeechId!==id)return;
+  if(plugin._writerV107SpeechId!==id||!plugin._writerV107SpeechActive)return;
+  if(!writerV107SpeechAllowed(plugin)){speech.cancel();plugin._writerV107SpeechActive=false;return;}
   if(index>=chunks.length){plugin._writerV107SpeechActive=false;return;}
   const utter=new Utterance(chunks[index++]);
   utter.lang=voice?.lang||cfg.lang;utter.rate=cfg.rate;utter.pitch=cfg.pitch;if(voice)utter.voice=voice;
@@ -38,6 +50,34 @@ function writerV107SpeechStart(plugin,text){
   speech.speak(utter);
  };
  speak();return true;
+}
+async function writerV107SpeechReadNote(plugin){
+ if(!writerV107SpeechAllowed(plugin))return false;
+ plugin.writerFinalFeatures?.stop();
+ const token=plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;
+ const workspace=plugin.app.workspace,file=workspace.getActiveFile?.();
+ if(!(file instanceof TFile)||file.extension!=='md')return false;
+ const path=file.path,mtime=file.stat?.mtime,size=file.stat?.size,cfg=plugin.settings.v107Speech;
+ const keys=['enabled','lang','voice','rate','pitch'],values=keys.map(key=>cfg?.[key]);
+ const provider=()=>typeof writerCompanionConfig==='function'?writerCompanionConfig(plugin).ttsProvider:'basic',selectedProvider=provider();
+ const companion=plugin.app.plugins?.plugins?.['ahmed-toolkit'];
+ const leaves=workspace.getLeavesOfType?.('markdown')||[];
+ const view=[workspace.activeLeaf?.view,workspace.getMostRecentLeaf?.()?.view,...leaves.map(leaf=>leaf.view)]
+  .find(item=>item?.file===file&&typeof item.editor?.getValue==='function');
+ const editor=view?.editor;
+ const current=()=>writerV107SpeechAllowed(plugin)&&token===plugin._writerV107SpeechId&&provider()===selectedProvider&&
+  (selectedProvider!=='ahmed-toolkit'||plugin.app.plugins?.plugins?.['ahmed-toolkit']===companion)&&
+  cfg===plugin.settings.v107Speech&&keys.every((key,index)=>cfg?.[key]===values[index])&&
+  workspace.getActiveFile?.()===file&&file.path===path&&
+  (!view||view.file===file&&view.editor===editor&&(workspace.getLeavesOfType?.('markdown')||[]).some(leaf=>leaf.view===view))&&
+  (typeof plugin.app.vault.getAbstractFileByPath!=='function'||plugin.app.vault.getAbstractFileByPath(path)===file);
+ let source=editor?.getValue?.();
+ if(source==null){
+  try{source=await plugin.app.vault.cachedRead(file);}catch(error){if(!current())return false;throw error;}
+  if(file.stat?.mtime!==mtime||file.stat?.size!==size)return false;
+ }
+ if(!current()||typeof source!=='string')return false;
+ return writerV107SpeechStart(plugin,source.replace(/^---\r?\n[\s\S]*?\r?\n---/,'').replace(/^\s*#{1,6}\s/gm,''));
 }
 function writerV107SpeechPanel(plugin){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Leitura em voz alta','Text to speech'));
@@ -57,27 +97,22 @@ function writerV107SpeechPanel(plugin){
   const commands=root.createDiv({cls:'writer-v10-discovery-actions'});
   commands.createEl('button',{text:writerUi('Pausar','Pause')}).addEventListener('click',()=>plugin._writerCompanionSpeechHandle?writerCompanionSpeechControl(plugin,'pause'):plugin._writerV107SpeechActive&&speech?.pause());
   commands.createEl('button',{text:writerUi('Continuar','Resume')}).addEventListener('click',()=>plugin._writerCompanionSpeechHandle?writerCompanionSpeechControl(plugin,'resume'):plugin._writerV107SpeechActive&&speech?.resume());
-  commands.createEl('button',{text:writerUi('Parar','Stop')}).addEventListener('click',()=>{plugin._writerV107SpeechId++;if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');if(plugin._writerV107SpeechActive)speech?.cancel();plugin._writerV107SpeechActive=false;});
+  commands.createEl('button',{text:writerUi('Parar','Stop')}).addEventListener('click',()=>{if(!plugin._writerV107SpeechDisposed)writerV107SpeechStop(plugin);});
  };
  modal.open();
 }
 function writerV107SpeechRegister(plugin){
+ plugin._writerV107SpeechDisposed=false;
  const cfg=writerV107SpeechConfig(plugin.settings);
  plugin.addCommand({id:'v107-local-tts-selection',name:writerUi('TTS: ler seleção com voz local','TTS: read selection with local voice'),editorCheckCallback:(checking,editor)=>{
   if(!cfg.enabled||!editor.getSelection().trim())return false;
   if(!checking)writerV107SpeechStart(plugin,editor.getSelection());
   return true;
  }});
- plugin.addCommand({id:'v107-local-tts-note',name:writerUi('TTS: ler nota atual com voz local','TTS: read note with local voice'),callback:async()=>{
-  const file=plugin.app.workspace.getActiveFile();
-  if(!(file instanceof TFile)||file.extension!=='md')return;
-  const source=await plugin.app.vault.cachedRead(file);
-  writerV107SpeechStart(plugin,source.replace(/^---\r?\n[\s\S]*?\r?\n---/,'').replace(/^\s*#{1,6}\s/gm,''));
- }});
+ plugin.addCommand({id:'v107-local-tts-note',name:writerUi('TTS: ler nota atual com voz local','TTS: read note with local voice'),callback:()=>writerV107SpeechReadNote(plugin)});
  plugin.addCommand({id:'v107-local-tts-panel',name:writerUi('TTS: vozes e controles locais','TTS: local voice controls'),callback:()=>writerV107SpeechPanel(plugin)});
  plugin.addCommand({id:'v107-tts-stop',name:writerUi('TTS: parar reprodução','TTS: stop playback'),callback:()=>{
-  if(typeof writerCompanionSpeechControl==='function')writerCompanionSpeechControl(plugin,'stop');
-  plugin._writerV107SpeechId++;if(plugin._writerV107SpeechActive)plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.speechSynthesis?.cancel();plugin._writerV107SpeechActive=false;
+  if(!plugin._writerV107SpeechDisposed)writerV107SpeechStop(plugin);
  }});
  const workspace=plugin.app.workspace.containerEl;
  plugin.registerDomEvent?.(workspace,'pointerdown',event=>{
@@ -85,11 +120,11 @@ function writerV107SpeechRegister(plugin){
    plugin.writerReviewInteractionGuard?.captureScroll?.();plugin.writerReviewInteractionGuard?.pause?.(1200);
   }
  },true);
- plugin.register?.(()=>{plugin._writerV107SpeechId++;if(plugin._writerV107SpeechActive)workspace?.ownerDocument?.defaultView?.speechSynthesis?.cancel();plugin._writerV107SpeechActive=false;});
+ plugin.register?.(()=>{plugin._writerV107SpeechDisposed=true;writerV107SpeechStop(plugin);});
 }
 function writerV107SpeechSettings(plugin,panel){
  const cfg=plugin.settings.v107Speech;
  panel.createEl('h3',{text:writerUi('Leitura com voz do dispositivo','Read with device voices')});
- new Setting(panel).setName(writerUi('Ativar TTS local','Enable local speech')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Ativar TTS local','Enable local speech')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;if(!v){plugin.writerFinalFeatures?.stop();plugin._writerV107SpeechId=(plugin._writerV107SpeechId||0)+1;}await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Abrir seletor de voz','Open voice settings')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV107SpeechPanel(plugin)));
 }

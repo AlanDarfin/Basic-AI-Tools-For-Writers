@@ -1,11 +1,41 @@
 'use strict';
 /* Basic v12 task workbench: notes stay authoritative, writes are optional,
- * atomic and reject concurrent changes. Markdown code fences are excluded. */
-function writerV12TaskRefs(source){
- const lines=String(source||'').split(/\r?\n/),tasks=[];
- let fence=null;
+ * atomic and reject concurrent changes. Hidden Markdown regions are excluded. */
+function writerV1391TaskCommentState(line,comment){
+ const ticks=new Map();
+ for(const match of line.matchAll(/\x60+/g)){
+  const size=match[0].length;
+  if(!ticks.has(size))ticks.set(size,{runs:[],next:0});
+  ticks.get(size).runs.push({start:match.index,end:match.index+size});
+ }
+ for(let at=0;at<line.length;){
+  if(comment){
+   const close=comment==='html'?'-->':'%%',end=line.indexOf(close,at);
+   if(end<0)return comment;
+   at=end+close.length;comment=null;continue;
+  }
+  if(line[at]==='\\'){at+=2;continue;}
+  // Comment examples in a same-line code span must not hide subsequent tasks.
+  if(line[at]==='`'){
+   let end=at+1;while(line[end]==='`')end++;
+   const group=ticks.get(end-at);
+   // Each delimiter is visited at most once, even in a long unmatched example.
+   if(group)while(group.next<group.runs.length&&group.runs[group.next].start<end)group.next++;
+   at=group?.runs[group.next]?.end??end;continue;
+  }
+  if(line.startsWith('<!--',at)){comment='html';at+=4;continue;}
+  if(line.startsWith('%%',at)){comment='obsidian';at+=2;continue;}
+  at++;
+ }
+ return comment;
+}
+function writerV1391TaskWalk(source,visit){
+ const lines=String(source||'').split(/\r?\n/);
+ let frontmatter=/^\uFEFF?---[ \t]*$/.test(lines[0]||''),fence=null,comment=null;
  for(let line=0;line<lines.length;line++){
-  const raw=lines[line],delimiter=/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(raw);
+  const raw=lines[line];
+  if(frontmatter){if(line>0&&/^(?:---|\.\.\.)[ \t]*$/.test(raw))frontmatter=false;continue;}
+  const hidden=!!comment,delimiter=!hidden&&/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(raw);
   if(delimiter){
    const marker=delimiter[1],tail=delimiter[2];
    if(fence){
@@ -18,14 +48,33 @@ function writerV12TaskRefs(source){
    }
   }
   if(fence)continue;
+  comment=writerV1391TaskCommentState(raw,comment);
+  if(hidden||typeof visit!=='function')continue;
   const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);
   if(!m)continue;
   const label=m[3].replace(/^\]\s+/,'').trim();
   const tags=[...new Set(label.match(/#[\p{L}\p{N}_/-]+/gu)||[])].slice(0,8);
-  tasks.push({line,raw,text:label,done:m[2].toLowerCase()==='x',tags});
-  if(tasks.length>=250)break;
+  if(visit({line,raw,text:label,done:m[2].toLowerCase()==='x',tags})===false)break;
  }
- return tasks;
+ return {frontmatter,fence,comment};
+}
+function writerV1391TaskScan(source){
+ const tasks=[];let truncated=false;
+ writerV1391TaskWalk(source,task=>{
+  if(tasks.length===250){truncated=true;return false;}
+  tasks.push(task);
+ });
+ return {tasks,truncated};
+}
+function writerV12TaskRefs(source){return writerV1391TaskScan(source).tasks;}
+function writerV1391TaskEligible(source,entry){
+ if(!entry||!Number.isInteger(entry.line)||entry.line<0||typeof entry.raw!=='string'||typeof entry.done!=='boolean')return false;
+ let eligible=false;
+ writerV1391TaskWalk(source,task=>{
+  if(task.line>entry.line)return false;
+  if(task.line===entry.line){eligible=task.raw===entry.raw&&task.done===entry.done;return false;}
+ });
+ return eligible;
 }
 function writerV12TaskReplacedLine(entry){
  const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(entry.raw);
@@ -36,13 +85,17 @@ async function writerV12ToggleTask(plugin,file,entry,expected){
  if(!(file instanceof TFile)||file.extension!=='md')throw Error('Invalid task file');
  if(typeof expected!=='string'||expected.length>2500000)throw Error('Invalid source snapshot');
  const path=file.path;writerV139TaskEditable(plugin,file,path,expected);
- const parts=expected.split(/(\r?\n)/),index=entry.line*2;
- if(!Number.isInteger(entry.line)||entry.line<0||parts[index]!==entry.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ if(!entry||!Number.isInteger(entry.line)||entry.line<0)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ const reference={line:entry.line,raw:entry.raw,done:entry.done};
+ const parts=expected.split(/(\r?\n)/),index=reference.line*2;
+ if(parts[index]!==reference.raw)throw Error(writerUi('Tarefa desatualizada.','Task is outdated.'));
+ if(!writerV1391TaskEligible(expected,reference))throw Error(writerUi('Esta linha não é uma tarefa Markdown editável. Atualize o painel.','This line is not an editable Markdown task. Refresh the dashboard.'));
  // Keep each original line ending, including notes containing both LF and CRLF.
- parts[index]=writerV12TaskReplacedLine(entry);const next=parts.join('');
+ parts[index]=writerV12TaskReplacedLine(reference);const next=parts.join('');
  await plugin.app.vault.process(file,current=>{
   writerV139TaskEditable(plugin,file,path,expected);
   if(current!==expected)throw Error(writerUi('Arquivo mudou; nada foi alterado.','File changed; no modifications applied.'));
+  if(!writerV1391TaskEligible(current,reference))throw Error(writerUi('Esta linha não é uma tarefa Markdown editável. Atualize o painel.','This line is not an editable Markdown task. Refresh the dashboard.'));
   return next;
  });
  return next;
@@ -91,18 +144,8 @@ function writerV139TaskLine(fields){
  return '- [ ] '+title+(priority?' #'+priority:'')+(tags.length?' '+tags.join(' '):'')+(due?' 📅 '+due:'');
 }
 function writerV139TaskAppendable(source){
- const lines=source.split(/\r?\n/);let fence=null,start=0;
- if(lines[0]?.trim()==='---'){
-  const end=lines.findIndex((line,index)=>index>0&&/^(?:---|\.\.\.)\s*$/.test(line));
-  if(end<0)return false;start=end+1;
- }
- for(const line of lines.slice(start)){
-  const match=/^[ \t]*(`{3,}|~{3,})(.*)$/.exec(line);if(!match)continue;
-  const marker=match[1],tail=match[2];
-  if(fence){if(marker[0]===fence.char&&marker.length>=fence.length&&!tail.trim())fence=null;}
-  else if(marker[0]==='~'||!tail.includes('`'))fence={char:marker[0],length:marker.length};
- }
- return !fence;
+ const state=writerV1391TaskWalk(source);
+ return !state.frontmatter&&!state.fence&&!state.comment;
 }
 function writerV139TaskEditable(plugin,file,path,source){
  if(!writerV139TaskOn(plugin))throw Error(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));
@@ -123,7 +166,7 @@ async function writerV139TaskPreview(plugin,file,fields){
  if(typeof source!=='string'||source.length>2500000)throw Error(writerUi('Esta nota é grande demais para uma captura segura.','This note is too large for safe capture.'));
  writerV139TaskEditable(plugin,file,path,source);
  if(file.stat?.mtime!==mtime||file.stat?.size!==size)throw Error(writerUi('A nota mudou durante a leitura. Atualize a prévia.','The note changed while reading. Refresh the preview.'));
- if(!writerV139TaskAppendable(source))throw Error(writerUi('Feche o bloco de código ou de propriedades no final da nota antes de adicionar tarefas.','Close the unfinished code or properties block before adding tasks.'));
+ if(!writerV139TaskAppendable(source))throw Error(writerUi('Feche o comentário ou bloco de código/propriedades no final da nota antes de adicionar tarefas.','Close the unfinished comment, code or properties block before adding tasks.'));
  const eol=source.includes('\r\n')?'\r\n':'\n',separator=source&&!source.endsWith('\n')?eol:'';
  return Object.freeze({file,path,mtime,size,source,line,next:source+separator+line+eol});
 }
@@ -201,6 +244,7 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Minhas tarefas','My tasks'));
  const root=modal.contentEl;root.addClass('writer-native-tasks');
  const summary=root.createEl('p',{cls:'setting-item-description',attr:{role:'status','aria-live':'polite'}});
+ const coverage=root.createEl('p',{cls:'writer-native-task-coverage',attr:{role:'status','aria-live':'polite'}});
  const toolbar=root.createDiv({cls:'writer-native-task-toolbar'});
  const query=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar por tarefa, nota ou etiqueta','Filter by task, note or tag'),'aria-label':writerUi('Buscar tarefas','Find tasks')}});
  const scope=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar por prazo','Filter by due date')}});
@@ -209,9 +253,10 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
  const showDone=toolbar.createEl('label',{cls:'writer-native-task-completed'});
  const checkbox=showDone.createEl('input',{attr:{type:'checkbox'}});showDone.createSpan({text:writerUi('Mostrar concluídas','Show completed')});
  const results=root.createDiv({cls:'writer-native-task-results'});let data=[],loading=false,closed=false;
+ let scan={total:0,examined:0,failed:0,limited:0},scanFailed=false;
  const render=()=>{
   if(closed)return;results.empty();
-  if(!writerV139TaskOn(plugin)){summary.setText(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));return;}
+  if(!writerV139TaskOn(plugin)){summary.setText(writerUi('As tarefas estão desligadas nas configurações.','Tasks are disabled in settings.'));coverage.setText('');return;}
   const term=query.value.trim().toLocaleLowerCase(),today=writerV139TaskToday();
   const visible=data.filter(row=>(checkbox.checked||!row.entry.done)&&writerV139TaskVisible(row.entry,scope.value,today,row.meta)&&
    (!term||(row.entry.text+' '+row.file.path).toLocaleLowerCase().includes(term)));
@@ -220,13 +265,19 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
    const x=a.meta,y=b.meta;
    return Number(a.entry.done)-Number(b.entry.done)||(x.due||'9999').localeCompare(y.due||'9999')||rank[x.priority]-rank[y.priority]||a.file.path.localeCompare(b.file.path)||a.entry.line-b.entry.line;
   });
-  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible')+(visible.length>400?writerUi(' · exibindo as primeiras 400',' · showing the first 400'):''));
+  summary.setText(data.length+' '+writerUi('tarefas · ','tasks · ')+visible.length+' '+writerUi('visíveis','visible')+' · '+scan.examined+'/'+scan.total+' '+writerUi('notas examinadas','notes examined')+(visible.length>400?writerUi(' · exibindo as primeiras 400',' · showing the first 400'):''));
+  const incomplete=[];
+  if(scanFailed)incomplete.push(writerUi('não foi possível atualizar; os resultados anteriores foram mantidos','refresh failed; previous results were retained'));
+  if(scan.examined<scan.total)incomplete.push((scan.total-scan.examined)+' '+writerUi('notas fora do limite da busca','notes outside the scan limit'));
+  if(scan.failed)incomplete.push(scan.failed+' '+writerUi('notas não puderam ser lidas','notes could not be read'));
+  if(scan.limited)incomplete.push(scan.limited+' '+writerUi('notas com mais de 250 tarefas; somente as primeiras 250 de cada nota foram incluídas','notes with more than 250 tasks; only the first 250 from each note were included'));
+  coverage.setText(incomplete.length?writerUi('Busca incompleta: ','Incomplete search: ')+incomplete.join(' · ')+'.':'');
   const groups=new Map();
   for(const row of visible.slice(0,400)){
    const tag=row.entry.tags.find(tag=>!/^#(?:high|medium|low)$/i.test(tag))||writerUi('Sem etiqueta','Untagged');
    if(!groups.has(tag))groups.set(tag,[]);groups.get(tag).push(row);
   }
-  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada neste filtro.','No tasks found for this filter.')});
+  if(!groups.size)results.createEl('p',{text:writerUi('Nenhuma tarefa encontrada neste filtro nas notas examinadas.','No tasks found for this filter in the examined notes.')});
   for(const [tag,group] of groups){
    results.createEl('h4',{text:tag+' ('+group.length+')'});
    for(const row of group){
@@ -252,19 +303,28 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
  const refresh=async()=>{
   if(loading||closed)return;if(!writerV139TaskOn(plugin)){render();return;}loading=true;summary.setText(writerUi('Lendo notas locais…','Reading local notes…'));
   try{
-   const files=plugin.app.vault.getMarkdownFiles().slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
+   const all=plugin.app.vault.getMarkdownFiles(),files=all.slice(0,writerV12Config(plugin).maxTaskFiles),rows=[];
+   const report={total:all.length,examined:0,failed:0,limited:0};
    for(let i=0;i<files.length;i+=12){
     const batch=await Promise.all(files.slice(i,i+12).map(async file=>({file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)})));
     if(closed||!writerV139TaskOn(plugin))return;
-    for(const {file,source} of batch)if(source!==null)for(const entry of writerV12TaskRefs(source))rows.push({file,source,entry,meta:writerV139TaskMetadata(entry.text)});
+    report.examined+=batch.length;
+    for(const {file,source} of batch){
+     if(typeof source!=='string'){report.failed++;continue;}
+     const parsed=writerV1391TaskScan(source);if(parsed.truncated)report.limited++;
+     for(const entry of parsed.tasks)rows.push({file,source,entry,meta:writerV139TaskMetadata(entry.text)});
+    }
    }
-   data=rows;
-  }catch(error){if(!closed)new Notice(String(error.message||error));}
+   data=rows;scan=report;scanFailed=false;
+  }catch(error){scanFailed=true;if(!closed)new Notice(String(error.message||error));}
   finally{loading=false;if(!closed&&writerV139TaskOn(plugin))render();}
  };
  query.addEventListener('input',render);checkbox.addEventListener('change',render);scope.addEventListener('change',render);
  new Setting(root).addButton(button=>button.setButtonText(writerUi('Nova tarefa','New task')).onClick(()=>writerV139TaskQuickAdd(plugin,()=>void refresh())))
-  .addButton(button=>button.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()));
+  .addButton(button=>button.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void refresh()))
+  .addButton(button=>button.setButtonText(writerUi('Opções de busca','Search options')).setDisabled(typeof plugin.openCoreSettings!=='function').onClick(()=>{
+   if(closed||typeof plugin.openCoreSettings!=='function')return;modal.close();plugin.openCoreSettings('tasks');
+  }));
  modal.onClose=()=>{closed=true;data=[];};modal.open();void refresh();return modal;
 }
 function writerV12TasksRegister(plugin){

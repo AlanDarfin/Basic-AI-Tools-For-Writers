@@ -2,11 +2,13 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.9.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 13.9.1 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
 O Basic reúne escrita de capítulos, planejamento de histórias, edição, uma página inicial configurável e IA opcional dentro do seu cofre. As notas continuam sendo arquivos Markdown comuns, com suas pastas, links e propriedades. Escolha os recursos que usa e deixe os demais fora dos menus.
+
+A busca de tarefas exclui checkboxes dentro de propriedades, comentários e blocos de código e mostra quanto do cofre foi examinado. Leituras de voz pendentes são canceladas ao parar, desligar a leitura ou mudar a nota ou o provedor. O título e a logo da página inicial ganham destaque, preservando o layout de painéis estreitos.
 
 ## Instale e ajuste ao seu trabalho
 

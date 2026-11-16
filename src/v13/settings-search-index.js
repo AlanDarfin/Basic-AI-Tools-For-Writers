@@ -1341,6 +1341,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "titleEn": "Recoverable drafts"
  },
  {
+  "id": "projects",
+  "titlePt": "Exibir plano da história",
+  "titleEn": "Show story plan",
+  "descriptionPt": "Etapas, pistas e checagem em Estrutura. Desligar preserva o plano salvo.",
+  "descriptionEn": "Stages, threads and checks under Structure. Turning this off keeps the saved plan."
+ },
+ {
   "id": "projectTasks",
   "titlePt": "Ocultar tarefas concluídas",
   "titleEn": "Hide completed tasks"

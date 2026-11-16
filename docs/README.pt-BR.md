@@ -64,6 +64,8 @@ Use as abas com ícones em **Escrita**, **Universo** ou **Projeto** para abrir u
 
 No celular, **Configurações do Basic → Geral → Comece por aqui → Barra de status no celular** controla a faixa abaixo da navegação. Ela reaproveita os indicadores nativos disponíveis e mostra indicadores do Basic, como contagem de palavras, modo do editor, tempo de leitura e Pomodoro. A faixa some enquanto o teclado virtual estiver aberto.
 
+Em **Projetos → Escrita → Estrutura → Plano da história**, expanda a premissa em um parágrafo, uma sinopse e um tratamento. Marque as etapas como prontas quando quiser e revise as seguintes quando uma etapa anterior mudar. Em **Pistas**, vincule plantio, reforços e desfecho às cenas que já existem. A **Checagem** aponta cenas ausentes e pistas incompletas ou fora de ordem no rascunho ativo. **Exportar plano** cria uma nota Markdown separada sem alterar o manuscrito.
+
 Rascunhos dos capítulos têm cópias locais de recuperação. Use **Livros: recuperar rascunhos** para conferir, salvar uma cópia Markdown separada ou descartar uma entrada. Se o original mudou, o rascunho fica separado para revisão. Recuperação e snapshots de versões têm propósitos diferentes; mantenha também um backup independente. Rascunhos temporários de sessão ficam em memória até serem salvos.
 
 Para montar o manuscrito, use **Livros: compilar manuscrito Markdown**, escolha arquivos salvos ou escrita atual, confira a prévia e crie um novo arquivo em `Basic Exports/`. A compilação inclui todos os capítulos do rascunho selecionado, além do limite de editores exibidos. Capítulos ausentes ou versões conflitantes impedem a exportação. Atualize a prévia para incluir alterações posteriores.

@@ -65,6 +65,7 @@ const routes=[
  ['v6Reading','v6/reading','renderSettings'],
  ['v7Worldbuilding','v7/worldbuilding','renderSettings'],
  ['projects','v11/longform-studio','writerV11StudioSettings'],
+ ['projects','v13/story-planning','writerStoryPlanSettings'],
  ['images','v10/image-inserter','writerV102ImagesSettings'],
  ['images','v12/settings-hub-1201','writerV1201SettingsImages'],
  ['images','v12/image-annotations','writerV12AnnotationSettings'],

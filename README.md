@@ -64,6 +64,8 @@ Use the icon tabs under **Writing**, **World**, or **Project** to open a section
 
 On phones, **Basic settings → General → Get started → Mobile status bar** controls the row below navigation. It uses available native status items or Basic indicators such as word count, editor mode, reading time and Pomodoro. The row hides while the on-screen keyboard is open.
 
+In **Projects → Writing → Structure → Story plan**, develop a premise into a paragraph, a synopsis and a treatment. Mark stages ready when you choose and review later stages when an earlier one changes. In **Threads**, link a setup, reinforcements and a payoff to existing scenes. **Check** flags missing scenes and out-of-order or unfinished threads in the active draft. **Export plan** creates a separate Markdown note without changing the manuscript.
+
 Chapter drafts have local recovery copies. Use **Books: recover drafts** to inspect them, save a separate Markdown copy or discard an entry. A changed original is kept separate for review. Recovery copies and version snapshots serve different purposes; neither replaces an independent backup. Temporary session drafts stay in memory until you save them.
 
 To assemble a manuscript, choose **Books: compile Markdown manuscript**, select saved files or current writing, review the preview and create a new file under `Basic Exports/`. Compilation includes all chapters in the selected draft, beyond the chapter-editor display limit. Missing chapters or conflicting versions block export. Refresh the preview to include later changes.

@@ -1,0 +1,40 @@
+/* Story planning stays inside Longform and its own modal. */
+.writer-story-plan,.writer-story-body,.writer-story-list,.writer-story-modal,.writer-story-points{
+ display:grid;gap:8px;min-width:0;
+}
+.writer-story-plan{margin-block:8px}
+.writer-story-plan p,.writer-story-plan h4{margin:0;overflow-wrap:anywhere}
+.writer-story-actions{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-width:0}
+.writer-story-actions>button{
+ display:inline-flex;align-items:center;justify-content:center;gap:5px;
+ min-width:0;max-width:100%;min-height:34px;height:auto;padding:5px 8px;
+ color:var(--text-normal);background:transparent;box-shadow:none;
+ border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+}
+.writer-story-actions>button:is(.is-active,:hover){background:var(--background-modifier-hover)}
+.writer-story-actions>button.is-active{border-bottom-color:var(--interactive-accent)}
+.writer-story-actions>button:focus-visible{outline:2px solid var(--interactive-accent);outline-offset:-2px}
+.writer-story-actions>select{flex:1 1 125px;min-width:0;max-width:100%;text-overflow:ellipsis}
+.writer-story-actions>strong,.writer-story-label{min-width:0;overflow-wrap:anywhere}
+.writer-story-actions .writer-v901-nav-icon{flex:0 0 16px}
+.writer-story-plan :is(input,textarea),.writer-story-modal :is(input,textarea,select){
+ width:100%;min-width:0;max-width:100%;box-sizing:border-box;
+}
+.writer-story-plan textarea,.writer-story-modal textarea{min-height:110px;resize:vertical}
+.writer-story-plan input{min-height:36px}
+.writer-story-modal label{display:grid;gap:4px}
+.writer-story-reference,.writer-story-card{
+ padding:8px;border:1px solid var(--background-modifier-border);border-radius:var(--radius-s);
+ min-width:0;overflow-wrap:anywhere;
+}
+.writer-story-reference p{white-space:pre-wrap;max-height:12rem;overflow:auto}
+.writer-story-list{padding:0;margin:0;list-style:none}
+.writer-story-card.is-target{border-color:var(--interactive-accent)}
+.writer-story-card ul{padding-inline-start:16px;margin:6px 0 0}
+.writer-story-card li>button{white-space:normal;height:auto;max-width:100%;overflow-wrap:anywhere}
+.writer-story-warning{color:var(--text-warning,var(--text-normal))}
+body.is-mobile :is(.writer-story-plan,.writer-story-modal) :is(.writer-story-actions>button,select,input,.writer-story-card li>button){min-height:44px}
+@container basic-project (max-width:245px){
+ .writer-story-plan>.writer-story-actions>button{flex:1 0 44px;padding-inline:4px}
+ .writer-story-plan>.writer-story-actions>button>.writer-story-label{display:none}
+}

@@ -13,11 +13,10 @@ const original=read('main.js');
 let passed=0;
 const test=(name,fn)=>{fn();passed++;console.log('PASS',name);};
 test('language detection switches between English and Portuguese',()=>{
- const code=read('projects.js').match(/const lfMsg=\(pt,en\)=>\{[\s\S]*?\};/)?.[0];
- assert.ok(code);
+ const code=read('projects.js').split('function getLocale()')[1].split('const WRITER_DEFAULT_WORKFLOW')[0];
  for(const [language,expected] of [['en','Save'],['en-US','Save'],['pt-BR','Salvar']]){
-  const ctx={require:()=>({getLanguage:()=>language})};
-  const fn=vm.runInNewContext(code+';lfMsg',ctx);
+  const ctx={getLanguage:()=>language};
+  const fn=vm.runInNewContext('function getLocale()'+code+';lfMsg',ctx);
   assert.equal(fn('Salvar','Save'),expected);
  }
  const helper=original.match(/function writerUi\(pt,en\)\{[\s\S]*?\}\s*function writerMaskMarkdown/)?.[0];
@@ -30,8 +29,8 @@ test('Longform UI uses bilingual labels and keeps stored identifiers unchanged',
   const matches=code.includes("lfMsg('"+pt+"','"+en+"')")||code.includes('lfMsg("'+pt+'","'+en+'")');
   assert.ok(matches,'Missing translated label '+pt+' → '+en);
  }
- assert.ok(code.includes("prefs.workflows={'Padrão':standard}"));
- assert.ok(code.includes("const path=[root,'Índice.md'].join('/')"));
+ assert.ok(code.includes("const WRITER_DEFAULT_WORKFLOW='Padrão'"));
+ assert.ok(code.includes("lfMsg('Índice.md','Index.md')"));
 });
 test('variants and snapshots have English error, action and dialog text',()=>{
  const v=read('src/v3/variants.js'),s=read('src/v3/snapshots.js'),w=read('src/v3/workspace.js');

@@ -60,8 +60,8 @@ async function asyncChecks(){
  assert.deepEqual(view.scenes.map(x=>x.title),['B','A','A1','C']);
  total++;console.log('PASS Longform blocks moving a parent into its descendant');
  const longform=fs.readFileSync('projects.js','utf8');
- assert.ok(longform.includes('const previousScroll=this.root.scrollTop;'));
- assert.ok(longform.includes('this.root.scrollTop=previousScroll;'));
+ assert.ok(longform.includes('const previousScroll=root.scrollTop;'));
+ assert.ok(longform.includes('root.scrollTop=previousScroll;'));
  assert.ok(longform.includes('writer-project-drag-handle'));
  assert.ok(longform.includes("this.activeTab==='comments'"));
  total++;console.log('PASS Longform preserves scroll and has comments/touch drag UI');

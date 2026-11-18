@@ -27,7 +27,7 @@ function harness(language='en'){
  const sandbox={console,Setting,EditorView:{},MarkdownView:class{},TFile:class{},
   speechSynthesis:speech,SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},
   Notice:class{constructor(value){notices.push(value);}},document:{querySelectorAll:()=>[]},navigator:{language:'en-US'},
-  require:()=>({getLanguage:()=>language}),writerModuleOn:(plugin,key)=>plugin.settings.visibleModules?.[key]!==false,
+  lfMsg:(pt,en)=>language.startsWith('pt')?pt:en,writerModuleOn:(plugin,key)=>plugin.settings.visibleModules?.[key]!==false,
   writerV12On:(plugin,key)=>plugin.settings.v12Toolkit.enabled!==false&&plugin.settings.v12Toolkit[key]!==false,
   writerV12Config:plugin=>plugin.settings.v12Toolkit,Platform:{isMobile:false},
   WebSocket:class{constructor(){throw Error('Unexpected transport');}},WRITER_EDGE_VOICES:{'en-US':'en-US-Test'}};

@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.15.1 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 14.0.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -59,6 +59,8 @@ Under **General → Features**, turn features off or on to choose which entries 
 ## Write, recover and export
 
 Open **Projects** or the **Library** to create a book or add an existing note. Chapters remain separate Markdown files. The **Add story arc divider** icon in Longform's Scenes toolbar inserts a visual line, with an optional caption and drag/touch reordering. Dividers stay in Basic settings per draft and do not enter notes or compiled manuscripts. Continuous writing uses an editor for each expanded chapter; saves are explicit and check for concurrent changes.
+
+Under **Writing → Compile**, preview the manuscript or save it as a new note. If the destination already exists, **Replace with backup** keeps the old content in `_Backups/Manuscripts` before replacing the output. Close the destination in the editor first. Chapter notes and Longform indexes cannot be replaced by this action. Edits to index properties use Obsidian’s YAML serializer, which may change formatting or remove YAML comments.
 
 Use the icon tabs under **Writing**, **World**, or **Project** to open a section. On narrow screens, swipe the tab strip sideways to see the remaining sections.
 

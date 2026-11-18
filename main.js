@@ -1,17 +1,37 @@
 'use strict';
-const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, Modal, FuzzySuggestModal, EditorSuggest, Menu, requestUrl, parseYaml, stringifyYaml} = require('obsidian');
+const {Plugin, ItemView, PluginSettingTab, Setting, Notice, MarkdownRenderer, MarkdownView, TFile, TFolder, getLanguage, setIcon, Modal, FuzzySuggestModal, EditorSuggest, Menu, requestUrl, parseYaml, stringifyYaml} = require('obsidian');
 const VIEW = 'offline-dictionary-view';
-const {TFolder}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
-const lfMsg=(pt,en)=>{try{return require('obsidian').getLanguage?.()?.toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}};
+function getLocale(){
+ const pick=value=>typeof value==='string'&&value.trim()?(/^pt(?:[-_]|$)/i.test(value.trim())?'pt':'en'):null;
+ try{const locale=pick(getLanguage?.());if(locale)return locale;}catch(_){}
+ try{const locale=pick(globalThis.window?.localStorage?.getItem('language'));if(locale)return locale;}catch(_){}
+ return pick(globalThis.navigator?.language)||'en';
+}
+function lfMsg(pt,en){return getLocale()==='pt'?pt:en;}
+const WRITER_DEFAULT_WORKFLOW='Padrão'; // Persistent key, independent of the displayed language.
 function lfIconButton(parent,icon,label,extraClass=''){
  const button=parent.createEl('button',{cls:['writer-project-icon-action',extraClass].filter(Boolean).join(' '),
   attr:{type:'button',title:label,'aria-label':label}});
  const glyph=button.createSpan({cls:'writer-project-action-glyph',attr:{'aria-hidden':'true'}});
- require('obsidian').setIcon?.(glyph,icon);
+ setIcon?.(glyph,icon);
  return button;
 }
-const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'-').trim();
+function clean(value){
+ const name=String(value??'').replace(/[\\/:*?"<>|\x00-\x1f]/g,'-').trim().replace(/[. ]+$/,'');
+ return /^(?:CON|PRN|AUX|NUL|COM[1-9¹²³]|LPT[1-9¹²³]) *(?:\.|$)/i.test(name)||['__proto__','constructor','prototype'].includes(name)?'':name;
+}
+function lfProjectSceneFolder(project,value=project.meta.sceneFolder){
+ const base=lfPath(project.file.parent?.path||'');
+ const relative=[];
+ for(const segment of String(value||'').split('/')){
+  if(!segment||segment==='.')continue;
+  if(segment==='..'){if(!relative.length)return null;relative.pop();continue;}
+  if(clean(segment)!==segment||!segment)return null;
+  relative.push(segment);
+ }
+ return lfPath(base,...relative);
+}
 function lfPath(...parts){const path=[];for(const part of parts){for(const segment of String(part||'').split('/')){if(!segment||segment==='.')continue;if(segment==='..'){path.pop();continue;}path.push(segment);}}return path.join('/');}
 class TextPrompt extends Modal{
  constructor(app,title,done,initial=''){super(app);this.titleText=title;this.done=done;this.initial=initial;}
@@ -88,19 +108,30 @@ function lfWordCount(text){
 }
 function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
- constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow='Padrão';this.renderToken=0;this.tabScrollPositions=Object.create(null);this.tabPanelScrollPositions=Object.create(null);this.tabGroup=null;}
+ constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow=WRITER_DEFAULT_WORKFLOW;this.renderToken=0;this.tabScrollPositions=Object.create(null);this.tabPanelScrollPositions=Object.create(null);this.tabGroup=null;}
  getViewType(){return PROJECT_VIEW;}
  getDisplayText(){return lfMsg('Projetos de escrita','Writing projects');}
  getIcon(){return 'notebook-pen';}
  async onOpen(){
   this.writerProjectClosed=false;
   this.root=this.contentEl.createDiv({cls:'writer-project-root'});
-  if(typeof MutationObserver==='function'){
-   this.writerSettingsObserver=new MutationObserver(()=>{
-    if(typeof writerMarkCompactSettings==='function')writerMarkCompactSettings(this.root);
+  const root=this.root;
+  if(typeof MutationObserver==='function'&&typeof writerMarkCompactSettings==='function'){
+   const options={childList:true,subtree:true};
+   const observer=new MutationObserver(()=>{
+    if(this.writerProjectClosed||this.root!==root)return;
+    observer.disconnect();
+    try{writerMarkCompactSettings(root);}finally{observer.observe(root,options);}
    });
-   this.writerSettingsObserver.observe(this.root,{childList:true,subtree:true});
+   this.writerSettingsObserver=observer;
+   observer.observe(root,options);
   }
+  this.registerDomEvent?.(root,'wheel',event=>{
+   const tabs=event.target?.closest?.('.writer-project-tabs');
+   if(tabs&&root.contains(tabs)&&tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+    tabs.scrollLeft+=event.deltaY;event.preventDefault();
+   }
+  },{passive:false});
   this.registerEvent(this.app.vault.on('create',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('delete',()=>this.queueRender()));
   this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
@@ -118,58 +149,50 @@ class ProjectsView extends ItemView{
     &&this.activeScenes(this.currentProject).some(scene=>this.resolveScene(this.currentProject,scene.title)?.path===file?.path);
    if(file?.path===this.selected||(notes&&file?.path?.startsWith(notes)&&['notes','timeline'].includes(this.activeTab))||changedScene)this.queueRender();
   }));
-  this.registerEvent(this.app.vault.on('modify',file=>{if(file instanceof TFile)this.recordSessionChange(file);}));
+  this.registerEvent(this.app.vault.on('modify',file=>{
+   if(!(file instanceof TFile))return;
+   this.recordSessionChange(file);
+   if(this.activeTab==='project')void this.refreshProjectStats(file);
+  }));
   await this.render();
  }
  queueRender(){if(this.writerProjectClosed)return;clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){this.writerProjectClosed=true;this.renderToken++;this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);for(const timer of this.sessionUpdateJobs?.values()||[])clearTimeout(timer);await this.plugin.saveSettings();}
+ async onClose(){this.writerProjectClosed=true;this.renderToken++;this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);this.clearSessionJobs();await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   const root=this.root;
   if(!root||this.writerProjectClosed)return;
-  this.tabPanelScrollPositions=this.tabPanelScrollPositions||Object.create(null);
-  const previousScroll=this.root.scrollTop;
-  for(const element of this.root.querySelectorAll?.('.writer-project-panel[data-tab]')||[]){
-   this.tabPanelScrollPositions[element.dataset.tab]=element.scrollTop;
-  }
-  const previousTabs=this.root.querySelector('.writer-project-tabs');
-  if(previousTabs&&this.tabGroup){
-   this.tabScrollPositions[this.tabGroup]=previousTabs.scrollLeft;
-  }
-  this.root.empty();
-  const indexes=this.indexes();
   const token=++this.renderToken;
+  const navigation=this.writerPanelNavigation;
+  const isLatest=()=>!this.writerProjectClosed&&this.root===root&&token===this.renderToken&&this.writerPanelNavigation===navigation;
+  const indexes=this.indexes();
   const active=this.app.workspace.getActiveFile();
   const activeProject=active&&indexes.find(p=>p.file.path===active.path);
-  if(!this.selected&&activeProject)writerProjectRemember(this,activeProject.file.path);
-  const top=this.root.createDiv({cls:'writer-project-toolbar'});
+  const staging=root.cloneNode(false);
+  const top=staging.createDiv({cls:'writer-project-toolbar',attr:{role:'toolbar','aria-label':lfMsg('Ações dos projetos','Project actions')}});
   lfIconButton(top,'plus',lfMsg('Criar projeto','Create project'),'writer-project-create')
    .addEventListener('click',()=>this.promptNewProject());
   const selector=top.createEl('select',{attr:{'aria-label':lfMsg("Projeto","Project")}});
   for(const project of indexes){const option=selector.createEl('option',{text:project.title});option.value=project.file.path;}
-  if(!indexes.length){this.root.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});return;}
-  if(!indexes.some(x=>x.file.path===this.selected)){
-   this.selected=activeProject?.file.path||indexes[0].file.path;
-   writerProjectRemember(this,this.selected);
+  const mount=()=>{
+   this.rememberPanelScroll(root);
+   const previousTabs=root.querySelector('.writer-project-tabs');
+   if(previousTabs&&this.tabGroup)this.tabScrollPositions[this.tabGroup]=previousTabs.scrollLeft;
+   root.replaceChildren(...staging.childNodes);
+   this.writerMountedProject=staging;
+  };
+  if(!indexes.length){
+   staging.createEl('p',{text:lfMsg("Nenhum projeto encontrado. Crie um projeto ou selecione um índice Longform existente. Projetos Longform válidos são detectados automaticamente.","No projects found. Create one or select an existing Longform index. Valid Longform projects are detected automatically.")});
+   if(isLatest()){mount();this.currentProject=null;this.projectPrefs=null;this.seriesMembershipValue=null;}
+   return;
   }
-  if(this.lastSelected!==this.selected){this.draft='Principal';this.workflowDraft=null;}
-  this.lastSelected=this.selected;
+  if(!indexes.some(x=>x.file.path===this.selected))writerProjectRemember(this,activeProject?.file.path||indexes[0].file.path);
   selector.value=this.selected;
   selector.addEventListener('change',()=>{writerProjectRemember(this,selector.value);this.render();});
   const project=indexes.find(x=>x.file.path===this.selected);
   selector.title=project.title;
   const projectPath=project.file.path;
-  const isCurrent=()=>!this.writerProjectClosed&&this.root===root&&token===this.renderToken&&
-   this.selected===projectPath&&project.file.path===projectPath;
-  this.currentProject=project;
-  // Series stays below the selector, even when the viewport or tab changes.
-  const seriesRow=this.root.createDiv({cls:'writer-project-series-row'});
-  const seriesField=seriesRow.createDiv({cls:'writer-project-series-field'});
-  seriesField.createSpan({cls:'writer-project-series-label',text:lfMsg('Série','Series')});
-  this.seriesMembershipValue=seriesField.createSpan({cls:'writer-project-series-value',attr:{'aria-live':'polite'}});
-  this.refreshSeriesMembership();
-  lfIconButton(seriesRow,'settings-2',lfMsg('Gerenciar séries de livros','Manage book series'),'writer-v7-stable-series-launch')
-   .addEventListener('click',()=>writerV7SeriesOpen(this));
+  const isCurrent=()=>isLatest()&&this.selected===projectPath&&project.file.path===projectPath;
   if(project.format==='scenes'&&!project.scenes.length){
    try{const raw=await this.app.vault.cachedRead(project.file);
     if(!isCurrent())return;
@@ -179,10 +202,24 @@ class ProjectsView extends ItemView{
    }catch(e){if(!isCurrent())return;console.warn('[Basic AI] Could not read Longform index',e);}
   }
   if(!isCurrent())return;
-  this.projectPrefs=this.prefs(project);
+  if(this.lastSelected!==projectPath){this.draft='Principal';this.workflowDraft=null;}
+  this.lastSelected=projectPath;
+  const projectPrefs=this.prefs(project);
+  // Series stays below the selector, even when the viewport or tab changes.
+  const seriesRow=staging.createDiv({cls:'writer-project-series-row'});
+  const seriesField=seriesRow.createDiv({cls:'writer-project-series-field'});
+  seriesField.createSpan({cls:'writer-project-series-label',text:lfMsg('Série','Series')});
+  const membership=seriesField.createSpan({cls:'writer-project-series-value',attr:{'aria-live':'polite'}});
+  this.refreshSeriesMembership(membership,projectPath);
+  lfIconButton(seriesRow,'settings-2',lfMsg('Gerenciar séries de livros','Manage book series'),'writer-v7-stable-series-launch')
+   .addEventListener('click',()=>writerV7SeriesOpen(this));
+  const commit=()=>{
+   mount();
+   this.currentProject=project;this.projectPrefs=projectPrefs;this.seriesMembershipValue=membership;
+  };
   if(!writerModuleOn(this.plugin,'projects')){
-   this.root.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
-   return;
+   staging.createEl('p',{text:lfMsg('Projetos ocultos. Reative em Configurações → Módulos.','Projects hidden. Enable in Settings → Modules.')});
+   commit();return;
   }
   if(this.activeTab==='comments'&&!writerModuleOn(this.plugin,'comments'))this.activeTab='scenes';
    if(this.activeTab==='manuscript'&&this.plugin.settings?.v11Studio?.enabled===false)this.activeTab='scenes';
@@ -203,33 +240,40 @@ class ProjectsView extends ItemView{
    {id:'management',pt:'Projeto',en:'Project',tabs:['project','tasks','comments']}
   ];
   const activeGroup=menuGroups.find(g=>g.tabs.includes(this.activeTab))?.id||'writing';
-  this.tabGroup=activeGroup;
-  const groupNav=this.root.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
+  const groupNav=staging.createDiv({cls:'writer-project-nav-groups',attr:{role:'group','aria-label':lfMsg('Áreas do projeto','Project areas')}});
   const groupButtons={};
   const tabPrefix=this.writerTabPrefix??=('writer-project-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
-  const tabs=this.root.createDiv({cls:'writer-project-tabs writer-sidebar-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
+  const tabs=staging.createDiv({cls:'writer-project-tabs writer-sidebar-tabs',attr:{role:'tablist','aria-label':lfMsg('Seções do projeto','Project sections')}});
   if(typeof writerV136BindProjectTabs==='function')writerV136BindProjectTabs(tabs);
   const panels={};
   const tabButtons={};
   const lastTabs=this.writerLastGroupTabs??={};
   let rebuildingTabs=false;
+  const canNavigate=()=>this.root===root&&this.writerMountedProject===staging&&!this.writerProjectClosed&&this.selected===projectPath&&project.file.path===projectPath;
+  const openTab=id=>{
+   this.rememberPanelScroll(root,this.activeTab);
+   this.activeTab=id;
+   const navigation=this.writerPanelNavigation=(this.writerPanelNavigation||0)+1;
+   return ()=>canNavigate()&&this.writerPanelNavigation===navigation&&this.activeTab===id;
+  };
   // Keep the tab strip mounted on regular tab changes. Only the selected panel
   // is redrawn, so horizontal scroll, focus and pointer position stay intact.
   const switchTab=id=>{
-   if(this.activeTab===id)return;
-   this.activeTab=id;
+   if(!canNavigate()||this.activeTab===id)return;
+   const isPanelCurrent=openTab(id);
    lastTabs[this.tabGroup]=id;
    for(const [key,button] of Object.entries(tabButtons)){
     const selected=key===id;
     button.classList.toggle('is-active',selected);
     button.setAttribute('aria-selected',String(selected));
+    if(selected)button.setAttribute('aria-current','true');else button.removeAttribute?.('aria-current');
     button.tabIndex=selected?0:-1;
    }
    for(const [key,panel] of Object.entries(panels)){
     panel.style.display=key===id?'block':'none';
     panel.setAttribute?.('aria-hidden',String(key!==id));
    }
-   void this.renderProjectPanel(panels,project,++this.renderToken,id)
+   void this.renderProjectPanel(panels,project,isPanelCurrent,id)
     .catch(error=>console.error('[Basic AI] Could not render project tab',error));
   };
   const fillTabs=group=>{
@@ -240,9 +284,9 @@ class ProjectsView extends ItemView{
     const selected=this.activeTab===id;
     const btn=tabs.createEl('button',{cls:selected?'is-active':'',
      attr:{type:'button',role:'tab',id:tabPrefix+'-tab-'+id,'aria-controls':tabPrefix+'-panel-'+id,
-      title:name,'aria-label':name,'aria-selected':String(selected),tabindex:selected?'0':'-1'}});
+      title:name,'aria-label':name,'aria-selected':String(selected),...(selected?{'aria-current':'true'}:{}),tabindex:selected?'0':'-1'}});
     const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
-    require('obsidian').setIcon?.(glyph,tabLucide[id]||'file-text');
+    setIcon?.(glyph,tabLucide[id]||'file-text');
     btn.createSpan({cls:'writer-sidebar-tab-label',text:name});
     tabButtons[id]=btn;
     btn.addEventListener('click',()=>switchTab(id));
@@ -255,17 +299,17 @@ class ProjectsView extends ItemView{
    const button=groupNav.createEl('button',{cls:activeGroup===group.id?'is-active':'',
     attr:{type:'button',title:groupLabel,'aria-label':groupLabel,'aria-pressed':String(activeGroup===group.id)}});
    const glyph=button.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
-   require('obsidian').setIcon?.(glyph,groupLucide[group.id]||'folder');
+   setIcon?.(glyph,groupLucide[group.id]||'folder');
    button.createSpan({cls:'writer-project-nav-label',text:groupLabel});
    groupButtons[group.id]=button;
    button.addEventListener('click',()=>{
-    if(this.tabGroup===group.id)return;
+    if(!canNavigate()||this.tabGroup===group.id)return;
     const available=allTabs.filter(([id])=>group.tabs.includes(id));
     if(!available.length)return;
     this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
     lastTabs[this.tabGroup]=this.activeTab;
     this.tabGroup=group.id;
-    this.activeTab=available.find(([id])=>id===lastTabs[group.id])?.[0]||available[0][0];
+    const isPanelCurrent=openTab(available.find(([id])=>id===lastTabs[group.id])?.[0]||available[0][0]);
     for(const [key,b] of Object.entries(groupButtons)){
      const active=key===group.id;
      b.classList.toggle('is-active',active);
@@ -276,42 +320,55 @@ class ProjectsView extends ItemView{
      panel.style.display=key===this.activeTab?'block':'none';
      panel.setAttribute?.('aria-hidden',String(key!==this.activeTab));
     }
-    void this.renderProjectPanel(panels,project,++this.renderToken,this.activeTab)
+    void this.renderProjectPanel(panels,project,isPanelCurrent,this.activeTab)
      .catch(error=>console.error('[Basic AI] Could not render project group',error));
    });
   }
   for(const [id] of allTabs){
-   panels[id]=this.root.createDiv({cls:'writer-project-panel',attr:{role:'tabpanel',id:tabPrefix+'-panel-'+id,'aria-labelledby':tabPrefix+'-tab-'+id,tabindex:'0'}});
+   panels[id]=staging.createDiv({cls:'writer-project-panel',attr:{role:'tabpanel',id:tabPrefix+'-panel-'+id,'aria-labelledby':tabPrefix+'-tab-'+id,tabindex:'0'}});
    panels[id].setAttribute?.('data-tab',id);
+   panels[id].setAttribute?.('data-project-path',projectPath);
    panels[id].setAttribute?.('aria-hidden',String(this.activeTab!==id));
    panels[id].style.display=this.activeTab===id?'block':'none';
   }
-  tabs.addEventListener('wheel',event=>{
-   if(tabs.scrollWidth>tabs.clientWidth&&Math.abs(event.deltaY)>Math.abs(event.deltaX)){
-    tabs.scrollLeft+=event.deltaY;event.preventDefault();
-   }
-  },{passive:false});
   tabs.addEventListener('scroll',()=>{
-   if(!rebuildingTabs&&tabs.isConnected)this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
+   if(!rebuildingTabs&&canNavigate()&&tabs.isConnected)this.tabScrollPositions[this.tabGroup]=tabs.scrollLeft;
   },{passive:true});
   fillTabs(activeGroup);
-  await this.renderProjectPanel(panels,project,token,this.activeTab);
+  const id=this.activeTab;
+  await this.renderProjectPanel(panels,project,isCurrent,id);
   if(!isCurrent())return;
-  this.root.scrollTop=previousScroll;
+  const previousScroll=root.scrollTop;
+  commit();
+  this.tabGroup=activeGroup;
+  tabs.scrollLeft=Math.max(0,this.tabScrollPositions[activeGroup]||0);
+  this.restorePanelScroll(panels[id],projectPath,id);
+  root.scrollTop=previousScroll;
   if(this.pendingSceneFocus?.path===project.file.path&&this.activeTab==='scenes'){
    const scene=this.pendingSceneFocus.title;this.pendingSceneFocus=null;
    const moved=[...(this.root.querySelectorAll?.('.writer-project-scene[data-scene-title]')||[])].find(el=>el.dataset.sceneTitle===scene);
    if(moved&&typeof moved.scrollIntoView==='function')moved.scrollIntoView({block:'nearest'});
   }
  }
- async renderProjectPanel(panels,project,token,id=this.activeTab){
+ rememberPanelScroll(root,onlyTab){
+  this.tabPanelScrollPositions??=Object.create(null);
+  for(const element of root.querySelectorAll?.('.writer-project-panel[data-tab]')||[]){
+   const {projectPath,tab}=element.dataset;
+   if(!projectPath||!tab||(onlyTab?tab!==onlyTab:element.style.display==='none'))continue;
+   const offsets=this.tabPanelScrollPositions[projectPath]??=Object.create(null);
+   offsets[tab]=element.scrollTop;
+  }
+ }
+ restorePanelScroll(panel,projectPath,id){
+  if(panel?.isConnected)panel.scrollTop=Math.max(0,this.tabPanelScrollPositions?.[projectPath]?.[id]||0);
+ }
+ async renderProjectPanel(panels,project,isCurrent,id=this.activeTab){
   const panel=panels[id];
   if(!panel)return;
-  this.tabPanelScrollPositions[id]=panel.scrollTop||this.tabPanelScrollPositions[id]||0;
   panel.empty();
   if(id==='scenes')this.drawScenes(panel,project);
    else if(id==='manuscript'&&typeof writerV11RenderLongformTab==='function')writerV11RenderLongformTab(this,panel,project);
-  else if(id==='project'){this.drawProject(panel,project);await this.drawStats(panel,project,token);}
+  else if(id==='project'){this.drawProject(panel,project);await this.drawStats(panel,project,isCurrent);}
   else if(id==='compile')this.drawCompile(panel,project);
   else if(id==='notes')await this.drawNotes(panel,project);
   else if(id==='timeline')writerV7RenderTimeline(this,panel,project);
@@ -324,15 +381,15 @@ class ProjectsView extends ItemView{
   else if(id==='sessions')writerV7StudioRenderSessions(this,panel,project);
   else if(id==='tasks')this.drawTasks(panel,project);
   else if(id==='comments')this.plugin.writerV4Extras?.drawComments(panel,project,this);
-  if(panel.isConnected)panel.scrollTop=Math.max(0,this.tabPanelScrollPositions[id]||0);
+  if(isCurrent())this.restorePanelScroll(panel,project.file.path,id);
  }
- refreshSeriesMembership(){
-  if(!this.seriesMembershipValue)return;
-  const matches=writerV7SeriesForProject(this.plugin.settings,this.selected);
+ refreshSeriesMembership(value=this.seriesMembershipValue,path=this.currentProject?.file.path){
+  if(!value)return;
+  const matches=writerV7SeriesForProject(this.plugin.settings,path);
   const name=matches.length?matches.map(item=>item.name).join(' · '):lfMsg('Sem série','No series');
-  this.seriesMembershipValue.setText(name);
-  this.seriesMembershipValue.setAttribute('title',name);
-  this.seriesMembershipValue.setAttribute('aria-label',lfMsg('Série do livro: ','Book series: ')+name);
+  value.setText(name);
+  value.setAttribute('title',name);
+  value.setAttribute('aria-label',lfMsg('Série do livro: ','Book series: ')+name);
  }
  resolveScene(project,name){
   const base=project.file.parent?.path||'';
@@ -346,7 +403,7 @@ class ProjectsView extends ItemView{
  prefs(project){
   if(!this.plugin.settings.projectsData)this.plugin.settings.projectsData={};
   const key=project.file.path;
-  return this.plugin.settings.projectsData[key]||(this.plugin.settings.projectsData[key]={drafts:{},goal:0,workflow:'standard'});
+  return this.plugin.settings.projectsData[key]||(this.plugin.settings.projectsData[key]={drafts:{},goal:0});
  }
  async savePrefs(){await this.plugin.saveSettings();await this.render();}
  async backupIndex(project){
@@ -362,6 +419,8 @@ class ProjectsView extends ItemView{
  }
  async updateIndex(project,change){
   await this.backupIndex(project);
+  // Use Obsidian's safe frontmatter API. Its YAML serializer can normalize formatting
+  // or discard YAML comments; backupIndex retains the original text.
   await this.app.fileManager.processFrontMatter(project.file,fm=>{
    if(!fm.longform||typeof fm.longform!=='object')fm.longform={};
    change(fm.longform);
@@ -369,7 +428,7 @@ class ProjectsView extends ItemView{
   await this.render();
  }
  sceneList(project){return lfFlattenScenes(project.scenes);}
- activeScenes(project){return this.draft==='Principal'?this.sceneList(project):(this.prefs(project).drafts[this.draft]||this.sceneList(project));}
+ activeScenes(project,draft=this.draft){return draft==='Principal'?this.sceneList(project):(this.prefs(project).drafts?.[draft]||this.sceneList(project));}
  async changeScenes(project,change){
   if(this.draft==='Principal')return this.updateIndex(project,data=>{
    const flat=lfFlattenScenes(data.scenes||[]);
@@ -385,10 +444,12 @@ class ProjectsView extends ItemView{
  subtreeEnd(scenes,i){let end=i+1;while(end<scenes.length&&scenes[end].indent>scenes[i].indent)end++;return end;}
  async addScene(project,parentTitle=null){
   new TextPrompt(this.app,parentTitle?lfMsg('Novo subcapítulo','New subchapter'):lfMsg('Nova cena','New scene'),async raw=>{
-   const name=clean(raw);if(!name||name==='.'||name==='..')return;
-   const base=project.file.parent?.path||'',folder=String(project.meta.sceneFolder||'/').split('/').filter(Boolean).join('/');
-   const dir=lfPath(base,folder),path=lfPath(dir,name+'.md');
+   const name=clean(raw);
    try{
+    if(!name)throw Error(lfMsg('Nome de cena inválido.','Invalid scene name.'));
+    const dir=lfProjectSceneFolder(project);
+    if(dir===null)throw Error(lfMsg('A pasta das cenas deve ficar dentro da pasta do projeto.','The scene folder must stay inside the project folder.'));
+    const path=lfPath(dir,name+'.md');
     if(this.app.vault.getAbstractFileByPath(path))throw Error(lfMsg('Já existe uma cena com esse nome.','A scene with this name already exists.'));
     if(this.activeScenes(project).some(x=>x.title===name))throw Error(lfMsg('Nome de cena duplicado.','Duplicate scene name.'));
     if(dir)await this.ensureFolder(dir);
@@ -506,11 +567,19 @@ class ProjectsView extends ItemView{
    prefs.drafts[name]=JSON.parse(JSON.stringify(this.activeScenes(project)));
    this.draft=name;await this.savePrefs();
   }).open());
-  if(this.draft!=='Principal')lfIconButton(draftBar,'trash-2',lfMsg('Excluir variante','Delete variant')).addEventListener('click',async()=>{
-   delete prefs.drafts[this.draft];this.draft='Principal';await this.savePrefs();
+  if(this.draft!=='Principal')lfIconButton(draftBar,'trash-2',lfMsg('Excluir variante','Delete variant')).addEventListener('click',()=>{
+   const draft=this.draft,original=prefs.drafts[draft];
+   if(!original||draft==='Principal')return;
+   new ConfirmProjectAction(this.app,lfMsg('Excluir variante','Delete variant'),
+    lfMsg('Excluir a variante “','Delete the variant “')+draft+lfMsg('”? As notas das cenas serão mantidas.','”? The scene notes will be kept.'),async()=>{
+     if(prefs.drafts[draft]!==original)return;
+     delete prefs.drafts[draft];
+     if((this.selected??this.currentProject?.file.path)===project.file.path&&this.draft===draft)this.draft='Principal';
+     await this.savePrefs();
+   }).open();
   });
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-scene-actions-bar',
-   attr:{role:'group','aria-label':lfMsg('Ações de cenas','Scene actions')}});
+   attr:{role:'toolbar','aria-label':lfMsg('Ações de cenas','Scene actions')}});
   lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
   lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
   addReviewButton(toolbar);
@@ -673,8 +742,8 @@ class ProjectsView extends ItemView{
  async createLinkedDraft(project){
   new TextPrompt(this.app,lfMsg('Nome do novo rascunho Longform','New Longform draft name'),async raw=>{
    const name=clean(raw);if(!name)return;
-   const root=[project.file.parent?.path,'Rascunhos',name].filter(Boolean).join('/');
-   const path=[root,'Índice.md'].join('/');
+   const root=[project.file.parent?.path,lfMsg('Rascunhos','Drafts'),name].filter(Boolean).join('/');
+   const path=[root,lfMsg('Índice.md','Index.md')].join('/');
    try{
     if(this.app.vault.getAbstractFileByPath(path))throw Error(lfMsg('Esse rascunho já existe.','This draft already exists.'));
     await this.ensureFolder(root);
@@ -701,7 +770,11 @@ class ProjectsView extends ItemView{
   panel.createEl('p',{text:lfMsg("Cenas: ","Scenes: ")+sceneNames(project.scenes).length});
   panel.createEl('button',{text:lfMsg("Abrir índice","Open index")}).addEventListener('click',()=>this.openFile(project.file));
   new Setting(panel).setName(lfMsg("Título do projeto","Project title")).addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
-  new Setting(panel).setName(lfMsg("Pasta das cenas","Scene folder")).setDesc(lfMsg("Relativa à pasta do índice; não move arquivos existentes.","Relative to the index folder; does not move existing files.")).addText(t=>t.setValue(project.meta.sceneFolder||'').onChange(v=>this.sceneFolder=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>this.updateIndex(project,data=>{data.sceneFolder=this.sceneFolder||'';})));
+  let sceneFolder=project.meta.sceneFolder||'';
+  new Setting(panel).setName(lfMsg("Pasta das cenas","Scene folder")).setDesc(lfMsg("Relativa à pasta do índice; não move arquivos existentes.","Relative to the index folder; does not move existing files.")).addText(t=>t.setValue(sceneFolder).onChange(v=>sceneFolder=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>{
+   if(lfProjectSceneFolder(project,sceneFolder)===null)return new Notice(lfMsg('A pasta das cenas deve ficar dentro da pasta do projeto.','The scene folder must stay inside the project folder.'));
+   return this.updateIndex(project,data=>{data.sceneFolder=sceneFolder;});
+  }));
   const prefs=this.prefs(project);
   new Setting(panel).setName(lfMsg("Meta diária (palavras)","Daily goal (words)")).addText(t=>t.setValue(String(prefs.dailyGoal||0)).onChange(v=>this.dailyGoalInput=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(async()=>{prefs.dailyGoal=Math.max(0,Number(this.dailyGoalInput)||0);await this.savePrefs();}));
   this.drawSession(panel,project);
@@ -715,8 +788,8 @@ class ProjectsView extends ItemView{
 
  workflowCatalog(){
   return [
-   ['strip-frontmatter','Remover propriedades YAML','both'],
-   ['remove-links','Remover links','both'],
+   ['strip-frontmatter',lfMsg('Remover propriedades YAML','Remove YAML properties'),'both'],
+   ['remove-links',lfMsg('Remover links','Remove links'),'both'],
    ['remove-comments',lfMsg('Remover comentários','Remove comments'),'both'],
    ['remove-strikethroughs',lfMsg('Remover trechos riscados','Remove strikethrough passages'),'both'],
    ['prepend-title',lfMsg('Adicionar títulos','Add titles'),'scene'],
@@ -726,7 +799,7 @@ class ProjectsView extends ItemView{
   ];
  }
  defaultWorkflow(){
-  return {name:'Padrão',description:lfMsg('Compilação compatível com etapas Longform','Compilation compatible with Longform steps'),steps:[
+  return {name:WRITER_DEFAULT_WORKFLOW,description:lfMsg('Compilação compatível com etapas Longform','Compilation compatible with Longform steps'),steps:[
    {id:'strip-frontmatter',optionValues:{}},
    {id:'remove-links',optionValues:{'remove-wikilinks':true,'remove-external-links':true}},
    {id:'prepend-title',optionValues:{format:'$3{#} $1',separator:'\n\n'}},
@@ -739,7 +812,7 @@ class ProjectsView extends ItemView{
   if(!prefs.workflows||!Object.values(prefs.workflows).some(v=>v&&Array.isArray(v.steps))){
    const legacy=prefs.workflows||{},standard=this.defaultWorkflow();
    if(project.format==='single')standard.steps=standard.steps.filter(s=>s.id!=='concatenate-text');
-   prefs.workflows={'Padrão':standard};
+   prefs.workflows={[WRITER_DEFAULT_WORKFLOW]:standard};
    for(const [name,options] of Object.entries(legacy)){
     if(!options||typeof options!=='object'||Array.isArray(options.steps))continue;
     const steps=JSON.parse(JSON.stringify(standard.steps));
@@ -790,17 +863,75 @@ class ProjectsView extends ItemView{
    });
   }
  }
- async compileProject(project,wf,preview=false){
+ compileOutputPath(project,wf){
+  const step=wf.steps.find(item=>item.id==='write-to-note');
+  const target=String(step?.optionValues?.target||'manuscript.md').replace(/\$1/g,clean(project.title)).trim();
+  const parts=target.split('/');
+  const relative=parts.map(clean);
+  if(parts.some(part=>!part||part==='..'||part==='.')||target.includes('\\')||
+   relative.some(part=>!part)||relative.at(-1).toLowerCase()==='.md'){
+   throw Error(lfMsg('Caminho de saída inválido.','Invalid output path.'));
+  }
+  if(!/\.md$/i.test(relative.at(-1)))relative[relative.length-1]+='.md';
+  return lfPath(project.file.parent?.path,...relative);
+ }
+ assertCompileOutput(project,path,sourcePaths,allProjects=false){
+  const normalized=path.normalize('NFC').toLowerCase();
+  const protectedPath=target=>target?.normalize('NFC').toLowerCase()===normalized;
+  const error=()=>Error(lfMsg('A saída não pode sobrescrever um índice ou uma cena.','The output cannot overwrite an index or a scene.'));
+  if(protectedPath(project.file.path)||[...sourcePaths].some(protectedPath))throw error();
+  if(!allProjects)return;
+  const projects=[project,...this.indexes().filter(item=>item.file.path!==project.file.path)];
+  for(const item of projects){
+   if(protectedPath(item.file.path))throw error();
+   const drafts=this.plugin.settings.projectsData?.[item.file.path]?.drafts||{};
+   const all=[...this.sceneList(item),...Object.values(drafts).filter(Array.isArray).flat()];
+   if(all.some(scene=>typeof scene?.title==='string'&&protectedPath(this.resolveScene(item,scene.title)?.path)))throw error();
+  }
+ }
+ async replaceCompiledManuscript(project,path,expectedFile,expectedText,manuscript,sourcePaths){
+  const vault=this.app.vault;
+  const changed=()=>Error(lfMsg('O destino mudou. Confira e compile novamente.','The destination changed. Review it and compile again.'));
+  const verify=()=>{
+   if(vault.getAbstractFileByPath(path)!==expectedFile||expectedFile.path!==path)throw changed();
+   this.assertCompileOutput(project,path,sourcePaths,true);
+   if(writerActiveEditor(this.plugin,expectedFile))throw Error(lfMsg(
+    'Feche o manuscrito no editor antes de substituir.','Close the manuscript in the editor before replacing it.'));
+  };
+  verify();
+  const previous=await vault.read(expectedFile);
+  if(previous!==expectedText)throw changed();
+  const folder=lfPath(project.file.parent?.path,'_Backups','Manuscripts');
+  await this.ensureFolder(folder);
+  const stamp=new Date().toISOString().replace(/[:.]/g,'-');
+  const basename=clean(expectedFile.basename)||'manuscript';
+  const prefix=folder+'/'+basename+' - '+stamp;
+  let backupPath=prefix+'.txt',n=2;
+  while(vault.getAbstractFileByPath(backupPath))backupPath=prefix+' '+n+++'.txt';
+  const backup=await vault.create(backupPath,previous);
+  verify();
+  await vault.process(expectedFile,current=>{
+   if(vault.getAbstractFileByPath(path)!==expectedFile||expectedFile.path!==path||current!==previous||writerActiveEditor(this.plugin,expectedFile))throw changed();
+   return manuscript;
+  });
+  return backup;
+ }
+ async compileProject(project,wf,preview=false,{draft=this.draft,replacement=null}={}){
   this.validateWorkflow(project,wf);
-  const flat=lfNumberScenes(project.format==='single'?[{title:project.title,indent:0}]:this.activeScenes(project));
+  const originalProjectPath=project.file.path;
+  const outputPath=preview?null:this.compileOutputPath(project,wf);
+  const flat=lfNumberScenes(project.format==='single'?[{title:project.title,indent:0}]:this.activeScenes(project,draft));
+  const sourcePaths=new Set();
   let scenes=[];
   for(const entry of flat){
    const file=project.format==='single'?project.file:this.resolveScene(project,entry.title);
    if(!(file instanceof TFile))throw Error(lfMsg('Cena ausente: ','Missing scene: ')+entry.title);
+   sourcePaths.add(file.path);
    const contents=await this.app.vault.read(file);
+   sourcePaths.add(file.path);
    scenes.push({title:entry.title,indent:entry.indent,numbering:entry.numbering,contents});
   }
-  let manuscript=null,target='manuscript.md',openAfter=true;
+  let manuscript=null,openAfter=true;
   for(const step of wf.steps){
    const o=step.optionValues||{},id=step.id;
    const each=fn=>{if(manuscript!==null)manuscript=fn(manuscript,{title:project.title,indent:0});else scenes=scenes.map(scene=>({...scene,contents:fn(scene.contents,scene)}));};
@@ -835,23 +966,59 @@ class ProjectsView extends ItemView{
     }
    }
    else if(id==='write-to-note'){
-    target=String(o.target||'manuscript.md').replace(/\$1/g,clean(project.title)).trim();
     openAfter=o['open-after']!==false;
    }
   }
   if(manuscript===null)manuscript=scenes.map(x=>x.contents.trim()).join('\n\n');
   if(preview)return {contents:manuscript};
-  if(!target.endsWith('.md'))target+='.md';
-  if(target.startsWith('/')||target.split('/').some(part=>part==='..'||part==='.')||target.includes('\\'))throw Error(lfMsg('Caminho de saída inválido.','Invalid output path.'));
-  const dir=project.file.parent?.path||'',relative=target.split('/').map(clean).filter(Boolean).join('/');
-  let path=[dir,relative].filter(Boolean).join('/');
-  if(path===project.file.path||flat.some(x=>this.resolveScene(project,x.title)?.path===path))throw Error(lfMsg('A saída não pode sobrescrever o índice nem uma cena.','The output cannot overwrite the index or a scene.'));
-  const basename=path.replace(/\.md$/i,''),original=path;let n=2;
+  if(project.file.path!==originalProjectPath)throw Error(lfMsg('O índice foi movido. Compile novamente.','The index was moved. Compile again.'));
+  let path=outputPath;
+  this.assertCompileOutput(project,path,sourcePaths);
+  if(replacement){
+   const {file,text}=replacement;
+   const backup=await this.replaceCompiledManuscript(project,path,file,text,manuscript+'\n',sourcePaths);
+   if(openAfter)this.openFile(file);
+   return {contents:manuscript,file,backup};
+  }
+  const basename=path.replace(/\.md$/i,'');let n=2;
   while(this.app.vault.getAbstractFileByPath(path))path=basename+' '+n+++'.md';
   const parent=path.split('/').slice(0,-1).join('/');if(parent)await this.ensureFolder(parent);
   const file=await this.app.vault.create(path,manuscript+'\n');
   if(openAfter)this.openFile(file);
-  return {contents:manuscript,file,original};
+  return {contents:manuscript,file};
+ }
+ async chooseCompileOutput(project,workflow,status){
+  const wf=JSON.parse(JSON.stringify(workflow)),draft=this.draft,projectPath=project.file.path;
+  const run=async(replacement=null)=>{
+   try{
+    if(project.file.path!==projectPath)throw Error(lfMsg('O índice foi movido. Compile novamente.','The index was moved. Compile again.'));
+    const result=await this.compileProject(project,wf,false,{draft,replacement});
+    status.setText(result.backup?
+     lfMsg('Substituído: ','Replaced: ')+result.file.path+lfMsg(' · Backup: ',' · Backup: ')+result.backup.path:
+     lfMsg('Criado: ','Created: ')+result.file.path);
+    new Notice(result.backup?lfMsg('Manuscrito substituído. Backup criado.','Manuscript replaced. Backup created.'):
+     lfMsg('Manuscrito criado sem sobrescrever o original.','Manuscript created without overwriting the original.'));
+   }catch(e){new Notice(lfMsg('Falha na compilação: ','Compilation failed: ')+e.message,8000);}
+  };
+  try{
+   this.validateWorkflow(project,wf);
+   const path=this.compileOutputPath(project,wf),vault=this.app.vault;
+   const existing=vault.getAbstractFileByPath(path);
+   if(!(existing instanceof TFile))return await run();
+   const text=await vault.read(existing);
+   const modal=new Modal(this.app);
+   modal.setTitle(lfMsg('Compilar manuscrito','Compile manuscript'));
+   modal.contentEl.createEl('p',{text:lfMsg('Já existe um arquivo neste destino.','A file already exists at this destination.')});
+   modal.contentEl.createEl('p',{text:path});
+   modal.contentEl.createEl('p',{text:lfMsg('Substituir guarda o conteúdo anterior em _Backups/Manuscripts.','Replacing keeps the previous content in _Backups/Manuscripts.')});
+   new Setting(modal.contentEl)
+    .addButton(b=>b.setButtonText(lfMsg('Cancelar','Cancel')).onClick(()=>modal.close()))
+    .addButton(b=>b.setButtonText(lfMsg('Criar novo','Create new')).setCta().onClick(()=>{modal.close();return run();}))
+    .addButton(b=>b.setButtonText(lfMsg('Substituir com backup','Replace with backup')).setWarning().onClick(()=>{
+     modal.close();return run({file:existing,text});
+    }));
+   modal.open();
+  }catch(e){new Notice(lfMsg('Falha na compilação: ','Compilation failed: ')+e.message,8000);}
  }
  async importLongformWorkflows(project){
   try{
@@ -900,7 +1067,7 @@ class ProjectsView extends ItemView{
   if(!workflows[this.workflow])this.workflow=Object.keys(workflows)[0];
   const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const selector=bar.createEl('select',{attr:{'aria-label':'Workflow'}});
-  for(const name of Object.keys(workflows)){const opt=selector.createEl('option',{text:name==='Padrão'?lfMsg('Padrão','Default'):name});opt.value=name;}
+  for(const name of Object.keys(workflows)){const opt=selector.createEl('option',{text:name===WRITER_DEFAULT_WORKFLOW?lfMsg('Padrão','Default'):name});opt.value=name;}
   selector.value=this.workflow;
   selector.addEventListener('change',()=>{this.workflow=selector.value;this.workflowDraft=null;this.render();});
   bar.createEl('button',{text:'+ Workflow'}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome do workflow','Workflow name'),async name=>{
@@ -962,10 +1129,8 @@ class ProjectsView extends ItemView{
     }catch(e){new Notice(lfMsg('Falha na compilação: ','Compilation failed: ')+e.message);}
    });
   }
-  add.createEl('button',{text:lfMsg("Compilar","Compile"),cls:'mod-cta'}).addEventListener('click',async()=>{
-   try{const result=await this.compileProject(project,wf,false);status.setText(lfMsg('Criado: ','Created: ')+result.file.path);new Notice(lfMsg('Manuscrito criado sem sobrescrever o original.','Manuscript created without overwriting the original.'));}
-   catch(e){new Notice(lfMsg('Falha: ','Failed: ')+e.message,8000);}
-  });
+  add.createEl('button',{text:lfMsg("Compilar","Compile"),cls:'mod-cta'})
+   .addEventListener('click',()=>this.chooseCompileOutput(project,wf,status));
  }
  notesRoot(project){const dir=project.file.parent?.path||'';return (dir?dir+'/':'')+'_Notas';}
  async ensureFolder(path){let current='';for(const part of path.split('/').filter(Boolean)){current=current?current+'/'+part:part;if(!this.app.vault.getAbstractFileByPath(current))await this.app.vault.createFolder(current);}}
@@ -1034,7 +1199,7 @@ class ProjectsView extends ItemView{
  }
  promptNote(dir){
   new TextPrompt(this.app,lfMsg('Nova nota','New note'),async raw=>{
-   const name=clean(raw);if(!name)return;
+   const name=clean(raw);if(!name)return new Notice(lfMsg('Nome inválido.','Invalid name.'));
    try{await this.ensureFolder(dir);const path=dir+'/'+name+'.md';
     if(this.app.vault.getAbstractFileByPath(path))throw Error(lfMsg('Já existe uma nota com esse nome.','A note with this name already exists.'));
     const file=await this.app.vault.create(path,'');this.openFile(file);await this.render();
@@ -1043,7 +1208,7 @@ class ProjectsView extends ItemView{
  }
  renameProjectItem(item){
   new TextPrompt(this.app,lfMsg('Novo nome','New name'),async raw=>{
-   const name=clean(raw);if(!name)return;
+   const name=clean(raw);if(!name)return new Notice(lfMsg('Nome inválido.','Invalid name.'));
    const path=[item.parent?.path,name+(item instanceof TFile?'.'+item.extension:'')].filter(Boolean).join('/');
    if(path===item.path)return;
    try{
@@ -1085,7 +1250,7 @@ class ProjectsView extends ItemView{
   let title='',parent=active?.parent?.path||'',format='scenes';
   modal.onOpen=()=>{
    modal.setTitle(lfMsg("Novo projeto de escrita","New writing project"));
-   new Setting(modal.contentEl).setName('Nome').addText(t=>t.setPlaceholder(lfMsg('Meu livro','My book')).onChange(v=>title=v));
+   new Setting(modal.contentEl).setName(lfMsg('Nome','Name')).addText(t=>t.setPlaceholder(lfMsg('Meu livro','My book')).onChange(v=>title=v));
    new Setting(modal.contentEl).setName(lfMsg('Pasta no cofre','Vault folder')).setDesc(lfMsg('Caminho relativo ao cofre','Path relative to the vault')).addText(t=>t.setValue(parent).onChange(v=>parent=v));
    new Setting(modal.contentEl).setName(lfMsg('Tipo','Type')).addDropdown(d=>d.addOption('scenes',lfMsg('Várias cenas','Multiple scenes')).addOption('single',lfMsg('Nota única','Single note')).onChange(v=>format=v));
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg("Criar projeto","Create project")).setCta().onClick(async()=>{
@@ -1093,7 +1258,7 @@ class ProjectsView extends ItemView{
      title=clean(title);if(!title)throw Error(lfMsg('Informe o nome do projeto.','Enter a project name.'));
      if(parent.startsWith('/')||parent.split('/').includes('..'))throw Error(lfMsg('Pasta inválida.','Invalid folder.'));
      const dir=[parent,clean(title)].filter(Boolean).join('/');
-     const path=dir+'/'+(format==='scenes'?'Índice.md':title+'.md');
+     const path=dir+'/'+(format==='scenes'?lfMsg('Índice.md','Index.md'):title+'.md');
      if(this.app.vault.getAbstractFileByPath(path))throw Error(lfMsg('Projeto já existe nesse caminho.','A project already exists at this path.'));
      await this.ensureFolder(dir);
      const data={format,title,sceneFolder:'/',scenes:[],ignoredFiles:[]};
@@ -1107,67 +1272,136 @@ class ProjectsView extends ItemView{
  }
 
  async startWritingSession(project){
-  const prefs=this.prefs(project),baseline={};
+  const prefs=this.prefs(project),baseline=Object.create(null);
+  const projectPath=project.file.path;
+  if(prefs.session?.active&&prefs.session.day===new Date().toDateString())return;
   const files=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
   for(const file of files){try{baseline[file.path]=lfWordCount(await this.app.vault.cachedRead(file));}catch(_){}}
+  if(this.writerProjectClosed||project.file.path!==projectPath)return;
   const today=new Date().toDateString();
   const previous=prefs.session;
-  prefs.session={active:true,startedAt:Date.now(),day:today,words:previous?.day===today?previous.words||0:0,baseline,notified:false};
+  if(previous?.active&&previous.day===today)return;
+  prefs.session={active:true,projectPath,startedAt:Date.now(),day:today,words:previous?.day===today?previous.words||0:0,baseline,notified:false};
   await this.plugin.saveSettings();await this.render();
+ }
+ clearSessionJobs(session){
+  for(const [key,job] of this.sessionUpdateJobs||[]){
+   if(session&&job.session!==session)continue;
+   clearTimeout(job.timer);
+   this.sessionUpdateJobs.delete(key);
+  }
+ }
+ applySessionCount(prefs,session,path,words){
+  const before=session.baseline[path];
+  session.baseline[path]=words;
+  session.words=Math.max(0,(session.words||0)+words-before);
+  if(prefs.dailyGoal>0&&session.words>=prefs.dailyGoal&&!session.notified){
+   session.notified=true;new Notice(lfMsg("Meta diária de escrita atingida!","Daily writing goal reached!"));
+  }
  }
  async stopWritingSession(project){
-  const prefs=this.prefs(project);
-  if(prefs.session){prefs.session.active=false;prefs.session.stoppedAt=Date.now();}
+  const prefs=this.prefs(project),session=prefs.session;
+  if(session?.active){
+   session.active=false;session.stoppedAt=Date.now();
+   // Count queued saves once, including jobs already waiting for an async read.
+   const pending=[...(this.sessionUpdateJobs?.values()||[])].filter(job=>job.session===session);
+   this.clearSessionJobs(session);
+   for(const {file,path} of pending){
+    try{
+     const words=lfWordCount(await this.app.vault.cachedRead(file));
+     if(prefs.session===session&&file.path===path)this.applySessionCount(prefs,session,path,words);
+    }catch(e){console.warn('[Basic AI] Session tracking:',e);}
+   }
+  }
   await this.plugin.saveSettings();await this.render();
  }
- async recordSessionChange(file){
-  const project=this.currentProject;if(!project||!this.plugin.settings?.projectsData)return;
-  const prefs=this.prefs(project),session=prefs.session;
-  if(!session?.active||session.day!==new Date().toDateString())return;
-  if(!Object.prototype.hasOwnProperty.call(session.baseline||{},file.path))return;
-  if(!this.sessionUpdateJobs)this.sessionUpdateJobs=new Map();
-  clearTimeout(this.sessionUpdateJobs.get(file.path));
-  this.sessionUpdateJobs.set(file.path,setTimeout(async()=>{
-   try{
-    const words=lfWordCount(await this.app.vault.cachedRead(file));
-    const before=session.baseline[file.path],diff=words-before;
-    session.baseline[file.path]=words;
-    session.words=Math.max(0,(session.words||0)+diff);
-    if(prefs.dailyGoal>0&&session.words>=prefs.dailyGoal&&!session.notified){session.notified=true;new Notice(lfMsg("Meta diária de escrita atingida!","Daily writing goal reached!"));}
-    clearTimeout(this.sessionSaveTimer);
-    this.sessionSaveTimer=setTimeout(()=>this.plugin.saveSettings(),1300);
-    if(this.activeTab==='project')this.queueRender();
-   }catch(e){console.warn('[Basic AI] Session tracking:',e);}
-  },500));
+ recordSessionChange(file){
+  if(this.writerProjectClosed)return;
+  const path=file.path,today=new Date().toDateString();
+  for(const [projectPath,prefs] of Object.entries(this.plugin.settings?.projectsData||{})){
+   const session=prefs?.session;
+   if(!session?.active||session.day!==today||!Object.hasOwn(session.baseline||{},path))continue;
+   // Older saved sessions are owned by the path of their containing settings record.
+   session.projectPath=projectPath;
+   const key=JSON.stringify([session.projectPath,path]);
+   this.sessionUpdateJobs??=new Map();
+   clearTimeout(this.sessionUpdateJobs.get(key)?.timer);
+   const job={session,file,path,timer:null};
+   this.sessionUpdateJobs.set(key,job);
+   job.timer=setTimeout(async()=>{
+    const isCurrent=()=>this.sessionUpdateJobs.get(key)===job&&!this.writerProjectClosed&&session.active&&
+     file.path===path&&this.plugin.settings.projectsData?.[projectPath]?.session===session;
+    try{
+     const words=lfWordCount(await this.app.vault.cachedRead(file));
+     if(!isCurrent())return;
+     this.applySessionCount(prefs,session,path,words);
+     clearTimeout(this.sessionSaveTimer);
+     this.sessionSaveTimer=setTimeout(()=>this.plugin.saveSettings(),1300);
+     if(this.activeTab==='project'&&this.currentProject?.file.path===projectPath)this.refreshSessionProgress(projectPath,session,prefs);
+    }catch(e){console.warn('[Basic AI] Session tracking:',e);}
+    finally{if(this.sessionUpdateJobs.get(key)===job)this.sessionUpdateJobs.delete(key);}
+   },500);
+  }
+ }
+ sessionProgressText(words,goal){
+  return words+lfMsg(' palavras registradas hoje',' words recorded today')+(goal?lfMsg(' / meta ',' / goal ')+goal:'');
+ }
+ refreshSessionProgress(projectPath,session,prefs){
+  const target=this.root?.querySelector('.writer-project-session');
+  if(!target||target.dataset.projectPath!==projectPath)return;
+  target.querySelector('.writer-session-count')?.setText(this.sessionProgressText(session.words,prefs.dailyGoal));
+  const progress=target.querySelector('progress');
+  if(progress)progress.value=Math.min(session.words,prefs.dailyGoal);
  }
  drawSession(panel,project){
   const prefs=this.prefs(project),session=prefs.session;
-  const box=panel.createDiv({cls:'writer-project-session'});
+  const box=panel.createDiv({cls:'writer-project-session',attr:{'data-project-path':project.file.path}});
   box.createEl('h4',{text:lfMsg("Sessão de escrita","Writing session")});
   const today=new Date().toDateString(),words=session?.day===today?session.words||0:0;
-  box.createEl('p',{text:words+lfMsg(' palavras registradas hoje',' words recorded today')+(prefs.dailyGoal?' / meta '+prefs.dailyGoal:'')});
+  box.createEl('p',{cls:'writer-session-count',text:this.sessionProgressText(words,prefs.dailyGoal)});
   if(prefs.dailyGoal>0){
    const progress=box.createEl('progress');progress.max=prefs.dailyGoal;progress.value=Math.min(words,prefs.dailyGoal);
   }
   box.createEl('button',{text:session?.active?lfMsg('Encerrar sessão','End session'):lfMsg('Iniciar sessão','Start session')}).addEventListener('click',()=>session?.active?this.stopWritingSession(project):this.startWritingSession(project));
   box.createEl('p',{text:lfMsg("Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.","Counts reflect files saved during this session. Changes outside Obsidian may not be counted.")});
  }
- async drawStats(panel,project,token){
+ async drawStats(panel,project,isCurrent){
   const scenes=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
-  const box=panel.createDiv({cls:'writer-project-progress'});
-  let total=0;
-  for(const f of scenes){
-   if(token!==this.renderToken)return;
-   try{total+=lfWordCount(await this.app.vault.cachedRead(f));}catch(_){}
+  const box=panel.createDiv({cls:'writer-project-progress',attr:{'data-project-path':project.file.path}});
+  const counts=new Map();
+  for(const file of scenes){
+   if(!isCurrent())return;
+   try{counts.set(file.path,lfWordCount(await this.app.vault.cachedRead(file)));}catch(_){counts.set(file.path,0);}
   }
-  if(token!==this.renderToken)return;
-  const prefs=this.prefs(project);
-  box.createEl('strong',{text:'Total: '+total.toLocaleString('pt-BR')+lfMsg(' palavras',' words')});
-  if(prefs.goal>0){
-   const percent=Math.min(100,Math.round(100*total/prefs.goal));
-   box.createEl('p',{text:percent+'% da meta de '+prefs.goal+lfMsg(' palavras',' words')});
-   const progress=box.createEl('progress');progress.max=prefs.goal;progress.value=Math.min(total,prefs.goal);
+  if(!isCurrent())return;
+  const goal=this.prefs(project).goal||0;
+  const label=box.createEl('strong');
+  const goalLabel=goal>0?box.createEl('p'):null;
+  const progress=goal>0?box.createEl('progress'):null;
+  const state={counts,goal,label,goalLabel,progress,reads:new Map()};
+  this.projectProgress??=new WeakMap();this.projectProgress.set(box,state);
+  this.paintProjectStats(state);
+ }
+ paintProjectStats({counts,goal,label,goalLabel,progress}){
+  const total=[...counts.values()].reduce((sum,count)=>sum+count,0);
+  label.setText('Total: '+total.toLocaleString(getLocale())+lfMsg(' palavras',' words'));
+  if(progress){
+   goalLabel.setText(Math.min(100,Math.round(100*total/goal))+lfMsg('% da meta de ','% of goal: ')+goal+lfMsg(' palavras',' words'));
+   progress.max=goal;progress.value=Math.min(total,goal);
   }
+ }
+ async refreshProjectStats(file){
+  const box=this.root?.querySelector('.writer-project-progress');
+  const state=box&&this.projectProgress?.get(box),path=file.path;
+  if(!state?.counts.has(path)||box.dataset.projectPath!==this.selected)return;
+  const read={};state.reads.set(path,read);
+  try{
+   const text=await this.app.vault.cachedRead(file);
+   if(this.writerProjectClosed||this.activeTab!=='project'||!box.isConnected||box.dataset.projectPath!==this.selected||
+     state.reads.get(path)!==read||file.path!==path)return;
+   state.counts.set(path,lfWordCount(text));this.paintProjectStats(state);
+  }catch(error){console.warn('[Basic AI] Could not refresh project count',error);}
+  finally{if(state.reads.get(path)===read)state.reads.delete(path);}
  }
 
  taskOptions(){
@@ -1177,7 +1411,7 @@ class ProjectsView extends ItemView{
  }
  taskState(project){
   const states=this.plugin.settings.longformTasks||(this.plugin.settings.longformTasks={});
-  if(!states[project.file.path])states[project.file.path]={groups:[{name:'General',tasks:[]}],tasks:[]};
+  if(!states[project.file.path])states[project.file.path]={groups:[{name:lfMsg('Geral','General'),tasks:[]}],tasks:[]};
   return states[project.file.path];
  }
  async saveTaskState(){await this.plugin.saveSettings();this.render();}
@@ -1199,7 +1433,7 @@ class ProjectsView extends ItemView{
    for(const task of ordered){
     if(options.hideCompleted&&task.done)continue;
     const row=container.createDiv({cls:'writer-task-row'});
-    const toggle=row.createEl('input',{type:'checkbox',attr:{'aria-label':lfMsg('Concluir tarefa','Complete task')}});
+    const toggle=row.createEl('input',{type:'checkbox',attr:{'aria-label':lfMsg('Concluir tarefa','Complete task')+' — '+task.name}});
     toggle.checked=!!task.done;
     toggle.addEventListener('change',async()=>{task.done=toggle.checked;await this.saveTaskState();});
     const content=row.createDiv({cls:'writer-task-info'});
@@ -1246,7 +1480,7 @@ class ProjectsView extends ItemView{
    new Setting(modal.contentEl).setName(lfMsg('Descrição','Description')).addText(x=>x.setValue(values.name).onChange(v=>values.name=v));
    new Setting(modal.contentEl).setName(lfMsg('Prazo (AAAA-MM-DD)','Due (YYYY-MM-DD)')).addText(x=>x.setValue(values.date||'').onChange(v=>values.date=v));
    new Setting(modal.contentEl).setName(lfMsg('Nota vinculada (opcional)','Linked note (optional)')).addText(x=>x.setValue(values.page||'').onChange(v=>values.page=v));
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg(lfMsg("Salvar","Save"),'Save')).setCta().onClick(async()=>{
+   new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).setCta().onClick(async()=>{
     if(!values.name.trim())return new Notice(lfMsg('Informe a tarefa','Enter a task'));
     if(values.date&&!/^\d{4}-\d{2}-\d{2}$/.test(values.date))return new Notice('YYYY-MM-DD');
     if(existing)Object.assign(existing,values);else (group?group.tasks:state.tasks).push(values);
@@ -1259,19 +1493,47 @@ class ProjectsView extends ItemView{
 const {StateField,StateEffect}=require('@codemirror/state');
 const {Decoration,EditorView,ViewPlugin}=require('@codemirror/view');
 const setReviewMarks=StateEffect.define();
+const removeReviewMark=StateEffect.define();
 const reviewMarkField=StateField.define({
  create(){return Decoration.none;},
  update(value,tr){
-  value=value.map(tr.changes);
+  if(tr.docChanged){
+   const edits=[];
+   tr.changes.iterChangedRanges((from,to)=>edits.push({from,to}));
+   value=value.update({filter:(from,to)=>!edits.some(edit=>edit.from<to&&edit.to>from)}).map(tr.changes);
+  }
   for(const effect of tr.effects)if(effect.is(setReviewMarks)){
    const marks=effect.value||[];
    value=Decoration.set(marks.filter(m=>m.from>=0&&m.to<=tr.state.doc.length&&m.to>m.from).map(m=>Decoration.mark({class:'writer-cm-review-mark writer-lt-'+(m.severity||'minor'),attributes:{title:m.message||'LanguageTool','data-review-from':String(m.from),'data-review-to':String(m.to)}}).range(m.from,m.to)),true);
   }
-  if(tr.docChanged)value=Decoration.none;
+  else if(effect.is(removeReviewMark)){
+   const {from,to}=effect.value;
+   value=value.update({filter:(_from,_to,mark)=>{
+    const attributes=mark.spec.attributes;
+    return attributes['data-review-from']!==String(from)||attributes['data-review-to']!==String(to);
+   }});
+  }
   return value;
  },
  provide:f=>EditorView.decorations.from(f)
 });
+// Decoration ranges move with the document. Their attributes retain the ID
+// of the original LanguageTool finding, never the new editor offsets.
+function writerMappedReviewMark(cm,position,requested){
+ const marks=cm.state.field(reviewMarkField,false);
+ let result=null;
+ if(!marks)return result;
+ const from=requested?0:position,to=requested?cm.state.doc.length:position;
+ marks.between(from,to,(start,end,mark)=>{
+  const attr=mark.spec.attributes;
+  const originalFrom=Number(attr['data-review-from']),originalTo=Number(attr['data-review-to']);
+  if(requested?(originalFrom===requested.from&&originalTo===requested.to):(position>=start&&position<=end)){
+   result={from:originalFrom,to:originalTo,position:start};
+   return false;
+  }
+ });
+ return result;
+}
 function writerGrammarSeverity(match){
  const category=String(match?.rule?.category?.id||'').toUpperCase();
  const rule=String(match?.rule?.id||'').toUpperCase();
@@ -1352,7 +1614,6 @@ const I18N={
  en:{title:'Word checker',search:'Search a word...',provider:'AI provider',language:'Definition language',lookup:'Define word',save:'Save definition',translate:'Translate word',translateMeaning:'Translate meaning',synonyms:'Synonyms',antonyms:'Antonyms',context:'Optional sentence or context',result:'Definition',translation:'Translation',copy:'Copy',missing:'No local entry found.',saved:'Definition saved.',noWord:'Enter a word first.',noResult:'No definition returned.',error:'Request failed',settings:'Word checker settings',dictionary:'Local Markdown dictionary',target:'Translation target language',source:'Translation source language',key:'API key',model:'Model',endpoint:'Custom HTTPS endpoint',offline:'Local entries',notice:'API keys are stored in Obsidian plugin data without encryption. Do not sync them to untrusted devices.',transProvider:'Translation AI provider',detect:'Detect language',compare:'Compare meaning',original:'Original meaning',translated:'Translated meaning',alternatives:'Contextual alternatives',needAI:'Configure an AI provider and API key in settings.'},
  pt:{title:'Verificador de palavras',search:'Pesquisar palavra...',provider:'Provedor de IA',language:'Idioma da definição',lookup:'Definir palavra',save:'Salvar definição',translate:'Traduzir palavra',translateMeaning:'Traduzir significado',synonyms:'Sinônimos',antonyms:'Antônimos',context:'Frase ou contexto opcional',result:'Definição',translation:'Tradução',copy:'Copiar',missing:'Nenhuma entrada local encontrada.',saved:'Definição salva.',noWord:'Digite uma palavra primeiro.',noResult:'Nenhuma definição retornada.',error:'Falha na solicitação',settings:'Configurações do verificador',dictionary:'Dicionário Markdown local',target:'Idioma de destino da tradução',source:'Idioma de origem da tradução',key:'Chave de API',model:'Modelo',endpoint:'Endpoint HTTPS personalizado',offline:'Entradas locais',notice:'As chaves de API ficam nos dados do plugin sem criptografia. Não sincronize com dispositivos não confiáveis.',transProvider:'IA para tradução',detect:'Detectar idioma',compare:'Comparar significado',original:'Significado original',translated:'Significado traduzido',alternatives:'Alternativas contextuais',needAI:'Configure um provedor de IA e sua chave nas opções.'}
 };
-const getLocale=()=>{try{const l=require('obsidian').getLanguage?.()||'en';return l.toLowerCase().startsWith('pt')?'pt':'en';}catch{return 'en';}};
 const t=k=>(I18N[getLocale()]||I18N.en)[k]||k;
 const PROMPT_DEFAULTS={
  definition:'You are a precise dictionary. Define the word in {language}. Give part of speech, concise senses and one short example. No introduction or closing remarks. Return Markdown.',
@@ -1388,7 +1649,7 @@ function writerMergeV3(settings){
  }
  base.schemaVersion=3;return base;
 }
-function writerUi(pt,en){try{return (require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}}
+function writerUi(pt,en){return lfMsg(pt,en);}
 function writerMaskMarkdown(source,keepVariants=false){
  const text=String(source||''),hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
@@ -1470,8 +1731,9 @@ function writerMaskMarkdown(source,keepVariants=false){
  }
  const structural=/^[ \t]{0,3}(?:#{1,6}(?=\s)|>(?=\s)|[-*+](?=\s)|\d+[.)](?=\s)|(?:---+|\*\*\*+|___+)[ \t]*$)/gm;
  while((m=structural.exec(text))!==null)hide(m.index,m.index+m[0].length);
- let masked='';for(let i=0;i<text.length;i++)masked+=hidden[i]?' ':text[i];
- return masked;
+ const masked=new Array(text.length);
+ for(let i=0;i<text.length;i++)masked[i]=hidden[i]?' ':text[i];
+ return masked.join('');
 }
 function writerGrammarMatchIsSafe(source,masked,match){
  const from=match?.offset,length=match?.length;
@@ -1519,15 +1781,14 @@ function writerActiveEditor(plugin,file){
 }
 function writerCurrentText(plugin,file){const editor=writerActiveEditor(plugin,file);return editor?Promise.resolve(editor.getValue()):plugin.app.vault.read(file);}
 function writerOffsetToPos(editor,offset){return typeof editor.offsetToPos==='function'?editor.offsetToPos(offset):{line:0,ch:offset};}
-async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason){
+async function writerSafeReplace(plugin,file,from,to,expected,replacement,{reason,snapshot='rewrite'}={}){
  if(!file||file.extension!=='md')throw Error(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
  if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<from)throw Error(writerUi('Intervalo inválido.','Invalid range.'));
  const editor=writerActiveEditor(plugin,file),text=editor?editor.getValue():await plugin.app.vault.read(file);
  if(to>text.length||text.slice(from,to)!==expected)throw Error(writerUi('A nota mudou depois da sugestão. Refaça a operação.','The note changed after the suggestion. Please try again.'));
- const committing=reason.includes('confirmar variante')||reason.includes('confirmar todas as variantes');
- const shouldSnapshot=committing?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
+ const shouldSnapshot=snapshot==='commit'?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
  if(plugin.settings.snapshots?.enabled&&shouldSnapshot&&plugin.writerSnapshots){
-  await plugin.writerSnapshots.create(file,'Antes de '+reason,{content:text});
+  await plugin.writerSnapshots.create(file,writerUi('Antes de ','Before ')+(reason||writerUi('reescrever','rewrite')),{content:text});
  }
  const next=text.slice(0,from)+replacement+text.slice(to);
  if(editor){
@@ -1546,7 +1807,7 @@ async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason
 // v3 module: src/v3/complements.js
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{
- constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;}
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.invalidation=0;this.generation=0;this.maskCache=new WeakMap();this.byPrefix=new Map();this.vaultTerms=new Map();this.saveTimer=null;this.saving=null;this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;}
  get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
  isExcluded(file){
   if(!file||file.extension!=='md')return true;
@@ -1563,10 +1824,57 @@ class WriterComplements extends EditorSuggest{
   }
   return m;
  }
- reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.dictionaries.clear();this.fileTermCache.clear();this.linkList=null;}
+ markDirty(){this.invalidation++;this.dirty=true;this.linkList=null;}
+ reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.vaultTerms.clear();this.byPrefix.clear();this.dictionaries.clear();this.fileTermCache.clear();this.maskCache=new WeakMap();this.linkList=null;}
+ setVaultVocabulary(cache){
+  const vocabulary=new Map(),prefixes=new Map();
+  for(const [path,terms] of cache)for(const [key,item] of terms){
+   const score=Math.min(20,item.count);
+   const first=vocabulary.get(key);
+   const entry={path,word:item.word,count:item.count,score};
+   if(!first){
+    vocabulary.set(key,[entry]);
+    for(let size=1;size<=Math.min(3,key.length);size++){
+     const prefix=key.slice(0,size),bucket=prefixes.get(prefix)||new Set();
+     bucket.add(key);prefixes.set(prefix,bucket);
+    }
+   }else if(score>first[0].score){first[1]=first[0];first[0]=entry;}
+   else if(!first[1]||score>first[1].score)first[1]=entry;
+  }
+  this.vaultTerms=vocabulary;this.byPrefix=prefixes;
+ }
+ editorRecord(editor){
+  const text=editor.getValue();let record=this.maskCache.get(editor);
+  if(!record||record.source!==text){record={source:text};this.maskCache.set(editor,record);}
+  return record;
+ }
+ editorMask(record){
+  return record.masked??=(writerMaskMarkdown(record.source));
+ }
+ isEditableQuery(editor,line,start,query,pos){
+  const record=this.editorRecord(editor);
+  if(record.masked!==undefined)return record.masked.slice(pos,pos+query.length)===query;
+  // A fixed window can start mid-fence, YAML, comment or raw HTML. Only use
+  // the line when no syntax in the note can change masking across lines.
+  record.multiline??=/^---\r?\n/.test(record.source)||/^[ \t]{0,3}(?:`{3,}|~{3,})|%%|</m.test(record.source);
+  const visible=record.multiline?this.editorMask(record).slice(pos,pos+query.length):
+   writerMaskMarkdown(line).slice(start,start+query.length);
+  return visible===query;
+ }
+ queueSave(){
+  clearTimeout(this.saveTimer);
+  this.saveTimer=setTimeout(()=>{void this.flushSave();},500);
+ }
+ async flushSave(){
+  if(this.saveTimer===null)return this.saving;
+  clearTimeout(this.saveTimer);this.saveTimer=null;
+  this.saving=(this.saving||Promise.resolve()).then(()=>this.plugin.saveSettings())
+   .catch(error=>console.warn('[Basic AI] Could not save completion ranking:',error));
+  return this.saving;
+ }
  async rebuild(){
   if(this.building)return this.building;
-  const generation=++this.generation;
+  const generation=++this.generation, invalidation=this.invalidation;
   this.building=(async()=>{
    const all=this.plugin.app.vault.getMarkdownFiles();
    // Every eligible Markdown note receives a share of the vocabulary budget.
@@ -1607,16 +1915,18 @@ class WriterComplements extends EditorSuggest{
     }
    }
    if(generation!==this.generation)return;
+   await this.loadDictionaries(generation);
+   if(generation!==this.generation)return;
    this.cache=next;
+   this.setVaultVocabulary(next);
    this.indexStats={vaultMarkdown:all.length,eligible:files.length,indexed:next.size,failed,partial};
-   this.ready=true;this.dirty=false;
-   await this.loadDictionaries();
+   this.ready=true;this.dirty=this.invalidation!==invalidation;
   })().finally(()=>{this.building=null;});
   return this.building;
  }
- async loadDictionaries(){
-  this.dictionaries.clear();
-  if(!this.options.dictionaries)return;
+ async loadDictionaries(generation=this.generation){
+  const dictionaries=new Map();
+  if(!this.options.dictionaries){this.dictionaries=dictionaries;return;}
   let paths=String(this.options.dictionaryPaths||'').split(/[\n,;]/).map(s=>s.trim()).filter(Boolean);
   if(this.options.useLocalDictionary&&this.plugin.settings.dictionaryFileName)paths.push(this.plugin.settings.dictionaryFileName);
   for(const path of new Set(paths)){
@@ -1624,6 +1934,7 @@ class WriterComplements extends EditorSuggest{
    if(!(file instanceof TFile)||file.extension!=='md')continue;
    try{
     const text=await this.plugin.app.vault.cachedRead(file);
+    if(generation!==this.generation)return;
     for(const line of text.split('\n').slice(0,25000)){
      if(!line.trim()||/^\s*(?:#|---|\x60{3}|%%)/.test(line))continue;
      let parts=line.split(/\s*(?:=>|→|\t)\s*/);
@@ -1631,14 +1942,16 @@ class WriterComplements extends EditorSuggest{
      const label=parts[0].replace(/^[-*]\s+/,'').replace(/^\*\*|\*\*$/g,'').trim();
      if(!label||label.length>100||/[:{}\[\]]/.test(label))continue;
      const insert=(parts[1]||label).trim();
-     this.dictionaries.set(this.options.caseSensitive?label:label.toLocaleLowerCase(),{word:label,insert,source:writerUi('Dicionário','Dictionary'),count:7});
+     dictionaries.set(this.options.caseSensitive?label:label.toLocaleLowerCase(),{word:label,insert,source:writerUi('Dicionário','Dictionary'),count:7});
     }
    }catch(e){console.warn('[Basic AI] dictionary:',path,e.message);}
   }
+  if(generation===this.generation)this.dictionaries=dictionaries;
  }
  async getSuggestions(context){
   if(!this.options.enabled)return [];
-  if(this.dirty||!this.ready)try{await this.rebuild();}catch(e){console.warn(e);}
+  const rebuild=()=>this.rebuild().catch(error=>console.warn('[Basic AI] autocomplete index:',error));
+  if(!this.ready)await rebuild();else if(this.dirty)void rebuild();
   const query=String(context.query||''),key=this.options.caseSensitive?query:query.toLocaleLowerCase(),candidates=new Map();
   const add=(word,insert,score,source)=>{
    if(!word||word===query||word.length>128)return;
@@ -1651,12 +1964,23 @@ class WriterComplements extends EditorSuggest{
    if(!prior||prior.score<weight)candidates.set(normalized,{word,insert,source,score:weight});
   };
   if(this.options.currentFile&&context.editor){
-   const current=this.tokenize(writerMaskMarkdown(context.editor.getValue()));
-   for(const item of current.values())add(item.word,item.word,55+Math.min(35,item.count),writerUi('Nota atual','Current note'));
+   const record=this.editorRecord(context.editor);
+   const caseSensitive=Boolean(this.options.caseSensitive);
+   if(!record.terms||record.caseSensitive!==caseSensitive){
+    record.caseSensitive=caseSensitive;record.terms=this.tokenize(this.editorMask(record));
+   }
+   const source=writerUi('Nota atual','Current note');
+   for(const item of record.terms.values())add(item.word,item.word,55+Math.min(35,item.count),source);
   }
-  if(this.options.vault)for(const [path,terms] of this.cache){
-   if(path===context.file?.path)continue;
-   for(const item of terms.values())add(item.word,item.word,10+Math.min(20,item.count),'Cofre');
+  if(this.options.vault!==false){
+   const all=this.options.matchMiddle||!key;
+   const keys=all?this.vaultTerms.keys():this.byPrefix.get(key.slice(0,3))||[];
+   const path=context.file?.path,source=writerUi('Cofre','Vault');
+   for(const word of keys){
+    const [first,second]=this.vaultTerms.get(word);
+    const item=first.path===path?second:first;
+    if(item)add(item.word,item.word,10+item.score,source);
+   }
   }
   if(this.options.dictionaries)for(const item of this.dictionaries.values())add(item.word,item.insert,85,item.source);
   // A suggestion request should not enumerate a large vault for every key.
@@ -1669,12 +1993,12 @@ class WriterComplements extends EditorSuggest{
    }
    for(const file of this.linkList){
    if(this.isExcluded(file))continue;
-    add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,'Link interno');
+    add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,writerUi('Link interno','Internal link'));
    }
   }
   if(this.options.frontmatter&&context.file){
    const props=this.plugin.app.metadataCache.getFileCache(context.file)?.frontmatter||{};
-   for(const name of Object.keys(props))if(name!=='position')add(name,name,17,'Propriedade');
+   for(const name of Object.keys(props))if(name!=='position')add(name,name,17,writerUi('Propriedade','Property'));
   }
   return [...candidates.values()].sort((a,b)=>b.score-a.score||a.word.localeCompare(b.word,'pt-BR'))
    .slice(0,Math.max(1,Math.min(30,Number(this.options.maxResults)||8)));
@@ -1686,11 +2010,7 @@ class WriterComplements extends EditorSuggest{
   if(!m||m[1].length<Math.max(1,Number(this.options.minChars)||3))return null;
   const start={line:cursor.line,ch:cursor.ch-m[1].length},end={line:cursor.line,ch:cursor.ch};
   const pos=typeof editor.posToOffset==='function'?editor.posToOffset(start):null;
-  if(pos!==null){
-   const full=editor.getValue();let record=this.maskCache.get(editor);
-   if(!record||record.source!==full){record={source:full,masked:writerMaskMarkdown(full)};this.maskCache.set(editor,record);}
-   if(record.masked.slice(pos,pos+m[1].length)!==m[1])return null;
-  }
+  if(pos!==null&&!this.isEditableQuery(editor,line,start.ch,m[1],pos))return null;
   if(this.plugin.reviewPopup)this.plugin.closeReviewPopup();
   return {start,end,query:m[1],editor,file};
  }
@@ -1707,7 +2027,7 @@ class WriterComplements extends EditorSuggest{
    const usage=this.options.usage||(this.options.usage={});
    usage[key]=Math.min(50,(usage[key]||0)+1);
    if(Object.keys(usage).length>1500)for(const k of Object.keys(usage).slice(0,300))delete usage[k];
-   this.plugin.saveSettings();
+   this.queueSave();
   }
  }
  async manual(){
@@ -1761,7 +2081,7 @@ class WriterVariants{
    new Setting(modal.contentEl).setName(writerUi('Primeira alternativa','First alternative')).addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Criar variantes","Create variants")).setCta().onClick(async()=>{
     if(!alternative.trim()||alternative===text)return new Notice(writerUi('Escreva uma alternativa diferente.','Enter a different alternative.'));
-    try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),writerUi('criar variantes','create variants'));modal.close();}
+    try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),{reason:writerUi('criar variantes','create variants')});modal.close();}
     catch(e){new Notice(e.message);}
    }));
   };modal.open();
@@ -1771,7 +2091,7 @@ class WriterVariants{
   const from=match.offset,to=from+match.length,original=source.slice(from,to);
   if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice(writerUi("Sugestão inválida.","Invalid suggestion."));
   if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice(writerUi("A sugestão contém caracteres de controle. Use o editor de variantes.","The suggestion contains control characters. Use the variant editor."));
-  try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),writerUi('criar variante da revisão','create review variant'));
+  try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),{reason:writerUi('criar variante da revisão','create review variant')});
    new Notice(writerUi('Variante adicionada sem descartar o original.','Variant added without discarding the original.'));
   }catch(e){new Notice(e.message);}
  }
@@ -1779,7 +2099,7 @@ class WriterVariants{
   const selected=file||this.active()?.file;
   if(!selected||!found)return;
   const replacement=commit?newOptions[active]:writerEncodeVariant(newOptions,active);
-  await writerSafeReplace(this.plugin,selected,found.from,found.to,found.raw,replacement,commit?'confirmar variante':'editar variantes');
+  await writerSafeReplace(this.plugin,selected,found.from,found.to,found.raw,replacement,{reason:commit?writerUi('confirmar variante','confirm variant'):writerUi('editar variantes','edit variants'),snapshot:commit?'commit':'rewrite'});
  }
  async open(){
   if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
@@ -1842,7 +2162,7 @@ class WriterVariants{
   const run=async()=>{
    let result=text;
    for(const item of [...items].reverse())result=result.slice(0,item.from)+item.variants[item.active]+result.slice(item.to);
-   try{await writerSafeReplace(this.plugin,active.file,0,text.length,text,result,writerUi('confirmar todas as variantes','confirm all variants'));new Notice(items.length+writerUi(' variantes confirmadas.',' variants confirmed.'));}
+   try{await writerSafeReplace(this.plugin,active.file,0,text.length,text,result,{reason:writerUi('confirmar todas as variantes','confirm all variants'),snapshot:'commit'});new Notice(items.length+writerUi(' variantes confirmadas.',' variants confirmed.'));}
    catch(e){new Notice(e.message);}
   };
   if(!this.options.confirmAll)return run();
@@ -1863,7 +2183,7 @@ class WriterVariants{
    const response=await this.plugin.generateWriting(prompt,selected);
    const alternatives=response.split(/\n+/).map(x=>x.replace(/^\s*(?:[-*]|\d+[.)])\s*/,'').trim()).filter(x=>x&&x!==selected).slice(0,5);
    if(!alternatives.length)throw Error(writerUi('A IA não retornou alternativas válidas.','The AI did not return valid alternatives.'));
-   await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),'inserir variantes da IA');
+   await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),{reason:writerUi('inserir variantes da IA','insert AI variants')});
    new Notice(writerUi('Alternativas adicionadas como variantes.','Alternatives added as variants.'));
   }catch(e){new Notice(writerUi("Não foi possível gerar variantes: ","Could not generate variants: ")+e.message);}
  }
@@ -3607,7 +3927,7 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false}={}){
         try{
           const result=writerV4MergeHunks(groups,accepted);
           if(plugin.settings.writerV4.protectMarkdown!==false)writerV4AssertProtected(original,result);
-          await writerSafeReplace(plugin,file,from,to,original,result,writerUi('revisão seletiva v4','v4 selective review'));
+          await writerSafeReplace(plugin,file,from,to,original,result,{reason:writerUi('revisão seletiva v4','v4 selective review')});
           modal.close();new Notice(writerUi('Revisão aplicada.','Review applied.'));
         }catch(e){busy=false;new Notice(String(e?.message||e),7000);renderDiff();}
       };
@@ -39348,9 +39668,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
          const touch=event.changedTouches?.[0];
          if(!touch)return;
          const position=view.posAtCoords?.({x:touch.clientX,y:touch.clientY});
-         const mark=plugin.reviewMarks?.find(item=>
-          Number.isInteger(position)&&position>=item.from&&position<=item.to);
-         if(mark)this.schedule({mark:{from:mark.from,to:mark.to}},90);
+         if(Number.isInteger(position))this.schedule({position,caret:true},90);
         };
         this.onPointerLeave=()=>{this.hoverKey='';clearTimeout(this.timer);this.timer=null;};
         view.dom.addEventListener('pointermove',this.onPointerMove,{passive:true});
@@ -39468,11 +39786,11 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.registerEditorExtension(this.writerVariants.editorExtension());
     this.registerEvent(this.app.vault.on('rename',(file,oldPath)=>{
       if(file instanceof TFile||file instanceof TFolder)this.writerSnapshots.onRename(file,oldPath);
-      this.writerComplements.dirty=true;
+      this.writerComplements.markDirty();
     }));
     for(const event of ['create','delete','modify'])this.registerEvent(this.app.vault.on(event,file=>{
       if(file instanceof TFile&&file.extension==='md'&&!file.path.startsWith(this.writerSnapshots.root()+'/')){
-        this.writerComplements.dirty=true;
+        this.writerComplements.markDirty();
         if(event==='modify')this.writerSnapshots.onModify(file);
       }
     }));
@@ -39948,7 +40266,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       if(auto?.pendingPath===file.path){
        clearTimeout(auto.timer);auto.timer=null;auto.pendingPath=null;
       }
-      const after=await writerSafeReplace(this,current,start,end,source.slice(start,end),replacement,msg('aceitar revisão gramatical','accept grammar correction'));
+      const after=await writerSafeReplace(this,current,start,end,source.slice(start,end),replacement,{reason:msg('aceitar revisão gramatical','accept grammar correction')});
       this.closeReviewPopup();
       if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'&&cached){
        needsFullReview=await view.recheckGrammarCorrection(current,source,after,start,end,start+replacement.length,cached);
@@ -40112,10 +40430,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const file=leaf?.view?.file;
     if(!file||file.path!==this.reviewMarkedPath)return;
     const requested=anchor.mark;
-    const caret=cm.state.selection.main.head;
-    const mark=this.reviewMarks.find(m=>requested
-     ?m.from===requested.from&&m.to===requested.to
-     :caret>=m.from&&caret<=m.to);
+    const caret=anchor.position??cm.state.selection.main.head;
+    const mark=writerMappedReviewMark(cm,caret,requested);
     if(!mark){
      if(anchor.caret)this.closeReviewPopup();
      return;
@@ -40124,7 +40440,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(this.reviewPopup&&this.reviewPopupKey===key)return;
     const original=this.reviewMatches?.find(m=>m.offset===mark.from&&m.length===mark.to-mark.from);
     if(!original)return;
-    const coords=cm.coordsAtPos(mark.from);
+    const coords=cm.coordsAtPos(mark.position);
     const viewport=window.visualViewport;
     const left=viewport?.offsetLeft||0,top=viewport?.offsetTop||0;
     const width=viewport?.width||window.innerWidth,height=viewport?.height||window.innerHeight;
@@ -40147,14 +40463,17 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     this.reviewMatches=matches;
     this.reviewMarks=matches.filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&m.length>0).map(m=>({from:m.offset,to:m.offset+m.length,message:m.message,severity:writerGrammarSeverity(m)}));
     this.reviewMarkedPath=file.path;
-    for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
+    for(const cm of this.reviewEditors(file)){
+     const current=cm.state?.doc?.toString();
+     cm.dispatch({effects:setReviewMarks.of(current==null||current===this.reviewSource?this.reviewMarks:[])});
+    }
   }
   hideReviewMark(file,start,end){
     if(this.reviewMarkedPath!==file.path)return;
     // A dismissed finding must not reappear from the incremental cache.
     this.reviewMatches=this.reviewMatches.filter(m=>m.offset!==start||m.offset+m.length!==end);
     this.reviewMarks=this.reviewMarks.filter(m=>m.from!==start||m.to!==end);
-    for(const cm of this.reviewEditors(file))cm.dispatch({effects:setReviewMarks.of(this.reviewMarks)});
+    for(const cm of this.reviewEditors(file))cm.dispatch({effects:removeReviewMark.of({from:start,to:end})});
   }
   clearReviewMarks(){
     this.closeReviewPopup();this.reviewMarks=[];this.reviewMatches=[];this.reviewMarkedPath=null;
@@ -40325,6 +40644,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   async onunload(){
     this.rememberHotReloadSidebars();
+    await this.writerComplements?.flushSave();
     try{await this._writerV134Recovery?.close();}
     catch(error){console.warn('[Basic] Draft recovery could not finish writing:',error);}
     await this.writerCursorMemory?.stop();

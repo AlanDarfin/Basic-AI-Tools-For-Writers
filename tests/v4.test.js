@@ -4,7 +4,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const base=fs.readFileSync('src/v3/core.js','utf8')+'\n'+fs.readFileSync('src/v3/snapshots.js','utf8');
 const code=base+'\n'+fs.readFileSync('src/v4/editor.js','utf8');
-const api=vm.runInNewContext(code+'\n({writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence,writerSafeReplace})',{console,require:()=>({getLanguage:()=> 'pt'}),Uint8Array,Uint16Array});
+const api=vm.runInNewContext(code+'\n({writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence,writerSafeReplace})',{console,lfMsg:pt=>pt,Uint8Array,Uint16Array});
 const {writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence,writerSafeReplace}=api;
 let count=0;function test(name,fn){fn();count++;console.log('PASS',name);}
 test('v4 settings migrate without deleting legacy keys',()=>{
@@ -67,7 +67,7 @@ async function concurrencyTests(){
     writerSnapshots:{create:async()=>{current='Edited elsewhere';}},
     app:{workspace:{getLeavesOfType:()=>[{view:{file,editor}}]}}
   };
-  await assert.rejects(writerSafeReplace(plugin,file,0,5,'Hello','Hi','v4 revision'),/mudou durante o snapshot/);
+  await assert.rejects(writerSafeReplace(plugin,file,0,5,'Hello','Hi',{reason:'v4 revision'}),/mudou durante o snapshot/);
   assert.equal(calls,0);
   count++;console.log('PASS concurrent editor edit is blocked after async snapshot');
   let stored='Hello world';
@@ -78,7 +78,7 @@ async function concurrencyTests(){
       vault:{read:async()=>stored,process:async(_file,fn)=>{stored='Other world';stored=fn(stored);}}
     }
   };
-  await assert.rejects(writerSafeReplace(vaultPlugin,file,0,5,'Hello','Hi','v4 revision'),/simultaneamente/);
+  await assert.rejects(writerSafeReplace(vaultPlugin,file,0,5,'Hello','Hi',{reason:'v4 revision'}),/simultaneamente/);
   assert.equal(stored,'Other world');
   count++;console.log('PASS concurrent vault edit cannot be overwritten');
   console.log(count+' v4 tests passed.');

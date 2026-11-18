@@ -16,7 +16,7 @@ class Element{
 function fixture(text,selection='',offset=0){
  const notices=[],modals=[],edits=[];
  const api=vm.runInNewContext(source+`\n({writerProseMask,writerProseAnalyze,writerProseSnapshot,writerProseJump,writerProseModal})`,{
-  require:()=>({getLanguage:()=> 'pt-BR'}),
+  lfMsg:pt=>pt,
   Notice:class{constructor(text){notices.push(text);}},
   Modal:class{
    constructor(){this.contentEl=new Element();modals.push(this);}

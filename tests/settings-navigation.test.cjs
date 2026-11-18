@@ -48,7 +48,7 @@ test('navigation strips avoid scroll snapping and animated jumps',()=>{
 });
 test('Longform tab changes rerender only the selected panel, not the complete root',()=>{
  assert.match(project,/const switchTab=id=>/);
- assert.match(project,/void this\.renderProjectPanel\(panels,project,\+\+this\.renderToken,id\)/);
+ assert.match(project,/void this\.renderProjectPanel\(panels,project,isPanelCurrent,id\)/);
  assert.match(project,/async renderProjectPanel\(/);
  const body=project.slice(project.indexOf('const switchTab=id=>'),project.indexOf('const fillTabs=group=>'));
  assert.doesNotMatch(body,/this\.render\(/);

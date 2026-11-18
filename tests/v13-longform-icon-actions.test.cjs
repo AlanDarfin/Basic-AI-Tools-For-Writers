@@ -33,7 +33,7 @@ function fixture(language='pt-BR',draft='Principal',comments=true){
  const view=Object.create(context.module.exports.ProjectsView.prototype);
  const project={format:'scenes',title:'Bonfire',file:{path:'Bonfire/Index.md'}};
  const prefs={drafts:{Alternativa:[]}};
- Object.assign(view,{draft,app:{},prefs:()=>prefs,indexes:()=>[],activeScenes:()=>[],resolveScene:()=>null,
+ Object.assign(view,{draft,selected:project.file.path,app:{},prefs:()=>prefs,indexes:()=>[],activeScenes:()=>[],resolveScene:()=>null,
   addScene:current=>calls.push(['scene',current]),createLinkedDraft:current=>calls.push(['draft',current]),
   plugin:{saveSettings:async()=>{calls.push('save');},openProjects:async tab=>{calls.push(['tab',tab]);}},render:async()=>{calls.push('render');},
   savePrefs:async()=>{calls.push('prefs');},openFile:file=>calls.push(['open',file])});
@@ -117,7 +117,11 @@ test('variants keep the selector and translated actions, with delete only off th
  const [add,remove]=checkButtons(bar,[['git-branch-plus','Add variant'],['trash-2','Delete variant']]);
  add.click();
  assert.equal(prompts[0].titleText,'Variant name');
- await remove.click();
+ remove.click();
+ assert.equal(view.draft,'Alternativa','Opening the dialog does not delete the draft');
+ assert.ok(prefs.drafts.Alternativa);
+ assert.equal(prompts[1].label,'Delete variant');
+ await prompts[1].done();
  assert.equal(view.draft,'Principal');
  assert.equal(prefs.drafts.Alternativa,undefined);
  assert.deepEqual(calls,['prefs']);

@@ -62,6 +62,10 @@ Open **Projects** or the **Library** to create a book or add an existing note. C
 
 Under **Writing → Compile**, preview the manuscript or save it as a new note. If the destination already exists, **Replace with backup** keeps the old content in `_Backups/Manuscripts` before replacing the output. Close the destination in the editor first. Chapter notes and Longform indexes cannot be replaced by this action. Edits to index properties use Obsidian’s YAML serializer, which may change formatting or remove YAML comments.
 
+In **Scenes**, use the search icon or assign a hotkey to **Find project scene**. The search is limited to the selected draft. To reorder on a phone, hold a scene handle and tap the destination, or tap **Cancel** in the notice. In **Compile**, rename custom workflows and use **Export JSON** to copy the currently displayed steps. **Import JSON** reads the same format.
+
+Under **Project → Project**, **Words per scene** shows the saved word count and the note’s `target_wordcount`, when set. Start, pause, resume, or end a writing session for the selected project. Pauses do not count toward writing time or word progress. Use **Diagnostics** to ignore loose files without moving them. **Restore index backup** restores the latest index backup, keeps a separate copy of the current index, and leaves scene notes untouched.
+
 Use the icon tabs under **Writing**, **World**, or **Project** to open a section. On narrow screens, swipe the tab strip sideways to see the remaining sections.
 
 On phones, **Basic settings → General → Get started → Mobile status bar** controls the row below navigation. It uses available native status items or Basic indicators such as word count, editor mode, reading time and Pomodoro. The row hides while the on-screen keyboard is open.

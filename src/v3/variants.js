@@ -71,9 +71,13 @@ class WriterVariants{
       if(selected===i)selected=n;else if(selected===n)selected=i;render();
      });
     }
-    header.createEl('button',{text:'×',attr:{'aria-label':writerUi('Excluir alternativa','Delete alternative')}}).addEventListener('click',()=>{
+    const remove=header.createEl('button',{text:'×',attr:{type:'button','aria-label':writerUi('Excluir alternativa','Delete alternative')}});
+    remove.addEventListener('click',()=>{
      if(items.length<=2)return new Notice(writerUi('Mantenha ao menos duas alternativas.','Keep at least two alternatives.'));
-     items.splice(i,1);if(selected>=items.length)selected=items.length-1;render();
+     const label=writerUi('Excluir alternativa ','Delete alternative ')+(i+1)+'?';
+     new ConfirmProjectAction(this.plugin.app,label,writerUi('A alternativa será removida do rascunho deste painel. A nota só mudará ao salvar.','The alternative will be removed from this panel’s draft. The note will only change when you save.'),()=>{
+      items.splice(i,1);if(selected>i)selected--;else if(selected===i)selected=Math.min(i,items.length-1);render();
+     }).open();
     });
     const textarea=box.createEl('textarea',{cls:'writer-variant-textarea'});
     textarea.value=value;textarea.addEventListener('input',()=>{items[i]=textarea.value;});

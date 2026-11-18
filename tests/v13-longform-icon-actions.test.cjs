@@ -34,7 +34,7 @@ function fixture(language='pt-BR',draft='Principal',comments=true){
  const project={format:'scenes',title:'Bonfire',file:{path:'Bonfire/Index.md'}};
  const prefs={drafts:{Alternativa:[]}};
  Object.assign(view,{draft,selected:project.file.path,app:{},prefs:()=>prefs,indexes:()=>[],activeScenes:()=>[],resolveScene:()=>null,
-  addScene:current=>calls.push(['scene',current]),createLinkedDraft:current=>calls.push(['draft',current]),
+  addScene:current=>calls.push(['scene',current]),createLinkedDraft:current=>calls.push(['draft',current]),openSceneSearch:current=>calls.push(['search',current]),
   plugin:{saveSettings:async()=>{calls.push('save');},openProjects:async tab=>{calls.push(['tab',tab]);}},render:async()=>{calls.push('render');},
   savePrefs:async()=>{calls.push('prefs');},openFile:file=>calls.push(['open',file])});
  const panel=new Element();
@@ -55,16 +55,16 @@ function checkButtons(bar,expected){
  });
  return controls;
 }
-test('scenes have five ordered icon buttons with localized names and existing actions',()=>{
+test('scenes have six ordered icon buttons with localized names and actions',()=>{
  const {panel,project,view,calls,prompts}=fixture();
  view.drawScenes(panel,project);
  const bar=panel.querySelector('.writer-project-scene-actions-bar');
- const [scene,divider,draft,review,toggle]=checkButtons(bar,[
-  ['file-plus','Adicionar cena'],['separator-horizontal','Adicionar separador de arco'],
+ const [scene,divider,search,draft,review,toggle]=checkButtons(bar,[
+  ['file-plus','Adicionar cena'],['separator-horizontal','Adicionar separador de arco'],['search','Buscar cena'],
   ['notebook-pen','Novo rascunho Longform'],['message-square-text','Fila de revisão'],['chevrons-down-up','Recolher tudo']]);
- scene.click();draft.click();divider.click();review.click();
+ scene.click();draft.click();divider.click();review.click();search.click();
  assert.match(prompts[0].titleText,/Novo separador de arco/);
- assert.deepEqual(calls,[['scene',project],['draft',project],['tab','comments']]);
+ assert.deepEqual(calls,[['scene',project],['draft',project],['tab','comments'],['search',project]]);
  assert.equal(toggle.disabled,true);
 });
 const renderTree=({project,view})=>{
@@ -144,6 +144,6 @@ test('review shortcut follows the existing comments module switch',()=>{
  const {panel,project,view}=fixture('en','Principal',false);
  view.drawScenes(panel,project);
  const bar=panel.querySelector('.writer-project-scene-actions-bar');
- assert.equal(buttons(bar).length,4);
+ assert.equal(buttons(bar).length,5);
  assert.equal(buttons(bar).some(button=>button.options.attr['aria-label']==='Review queue'),false);
 });

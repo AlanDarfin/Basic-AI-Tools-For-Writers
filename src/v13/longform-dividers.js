@@ -173,7 +173,7 @@ function writerV13ArcInstall(){
    grip.draggable=true;
    grip.addEventListener('click',()=>{
     if(view.scenePickup?.path===projectKey&&view.scenePickup?.draft===draft){
-     const source=view.scenePickup.source;view.scenePickup=null;
+     const source=view.scenePickup.source;view.clearScenePickup();
      const target=divider.before||roots.at(-1);
      if(target)void view.moveSceneRelative(project,source,target,!divider.before);
      return;
@@ -185,7 +185,7 @@ function writerV13ArcInstall(){
      const id=view.writerArcPickup.id;view.writerArcPickup=null;
      void writerV13ArcMove(view,project,id,divider.id,false);return;
     }
-    view.scenePickup=null;
+    view.clearScenePickup();
     view.writerArcPickup={path:projectKey,draft,id:divider.id};
     row.addClass('writer-project-arc-picked');
     new Notice(lfMsg('Separador selecionado. Toque na alça de outro separador ou capítulo.','Divider selected. Tap the handle of a chapter or another divider.'),3000);

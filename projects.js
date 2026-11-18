@@ -1,5 +1,5 @@
 'use strict';
-const {ItemView,TFile,TFolder,Notice,Modal,Menu,Setting,parseYaml,stringifyYaml,getLanguage,setIcon}=require('obsidian');
+const {ItemView,TFile,TFolder,Notice,Modal,Menu,Setting,FuzzySuggestModal,parseYaml,stringifyYaml,getLanguage,setIcon}=require('obsidian');
 const PROJECT_VIEW='basic-ai-projects';
 function getLocale(){
  const pick=value=>typeof value==='string'&&value.trim()?(/^pt(?:[-_]|$)/i.test(value.trim())?'pt':'en'):null;
@@ -105,6 +105,45 @@ function lfNumberScenes(flat){
 function lfWordCount(text){
  return (String(text||'').replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/,'').match(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)||[]).length;
 }
+function lfSessionElapsed(session,now=Date.now()){
+ if(!session)return 0;
+ const segment=session.runningSince??(session.elapsedMs==null?session.startedAt:null);
+ const end=session.pausedAt??session.stoppedAt??now;
+ return (session.elapsedMs||0)+(segment==null?0:Math.max(0,end-segment));
+}
+function lfIgnoredScene(entries,file,folder){
+ if(!Array.isArray(entries))return false;
+ const relative=folder&&file.path.startsWith(folder+'/')?file.path.slice(folder.length+1):file.path;
+ return entries.some(entry=>typeof entry==='string'&&[file.basename,file.path,relative,relative.replace(/\.md$/i,'')].includes(entry));
+}
+function lfMigrateProjectPaths(settings,oldPath,newPath){
+ const data=settings.projectsData;
+ if(!data||!oldPath||!newPath||oldPath===newPath)return false;
+ const rename=path=>path===oldPath||path.startsWith(oldPath+'/')?newPath+path.slice(oldPath.length):path;
+ let changed=false;
+ for(const [path,prefs] of Object.entries(data)){
+  if(!prefs||data[path]!==prefs)continue;
+  const next=rename(path);
+  if(next!==path){
+   const existing=Object.hasOwn(data,next)?data[next]:null;
+   if(existing&&existing!==prefs){
+    const drafts={...existing.drafts,...prefs.drafts},workflows={...existing.workflows,...prefs.workflows};
+    for(const [key,value] of Object.entries(existing))if(!Object.hasOwn(prefs,key))prefs[key]=value;
+    if(Object.keys(drafts).length)prefs.drafts=drafts;
+    if(Object.keys(workflows).length)prefs.workflows=workflows;
+   }
+   Object.defineProperty(data,next,{value:prefs,configurable:true,writable:true,enumerable:true});delete data[path];changed=true;
+  }
+  const session=prefs?.session;
+  if(!session)continue;
+  if(session.projectPath!==next){session.projectPath=next;changed=true;}
+  for(const [file,count] of Object.entries(session.baseline||{})){
+   const target=rename(file);if(target===file)continue;
+   session.baseline[target]=count;delete session.baseline[file];changed=true;
+  }
+ }
+ return changed;
+}
 function lfUnescape(s){return String(s||'').replace(/\\n/g,'\n').replace(/\\t/g,'\t');}
 class ProjectsView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.activeTab='scenes';this.selected=typeof plugin.settings?.lastLongformProject==='string'?plugin.settings.lastLongformProject:null;this.draft='Principal';this.workflow=WRITER_DEFAULT_WORKFLOW;this.renderToken=0;this.tabScrollPositions=Object.create(null);this.tabPanelScrollPositions=Object.create(null);this.tabGroup=null;}
@@ -138,7 +177,14 @@ class ProjectsView extends ItemView{
     const saved=this.plugin.settings.lastLongformProject;
     const next=writerProjectRenamedPath(saved,oldPath,file.path);
     if(next!==saved){this.plugin.settings.lastLongformProject=next;void this.plugin.saveSettings();}
+    this.lastSelected=writerProjectRenamedPath(this.lastSelected,oldPath,file.path);
     this.selected=writerProjectRenamedPath(this.selected,oldPath,file.path);
+    const replay=new Set();
+    for(const [key,job] of this.sessionUpdateJobs||[]){
+     if(job.file.path===job.path&&job.session.projectPath===job.projectPath)continue;
+     clearTimeout(job.timer);this.sessionUpdateJobs.delete(key);replay.add(job.file);
+    }
+    for(const pendingFile of replay)this.recordSessionChange(pendingFile);
    }
    this.queueRender();
   }));
@@ -153,14 +199,17 @@ class ProjectsView extends ItemView{
    this.recordSessionChange(file);
    if(this.activeTab==='project')void this.refreshProjectStats(file);
   }));
+  if(this.registerInterval){this.sessionClock=setInterval(()=>this.refreshSessionClock(),1000);this.registerInterval(this.sessionClock);}
   await this.render();
  }
  queueRender(){if(this.writerProjectClosed)return;clearTimeout(this.refreshTimer);this.refreshTimer=setTimeout(()=>this.render(),220);}
- async onClose(){this.writerProjectClosed=true;this.renderToken++;this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);this.clearSessionJobs();await this.plugin.saveSettings();}
+ async onClose(){this.writerProjectClosed=true;this.renderToken++;this.writerSettingsObserver?.disconnect();clearTimeout(this.refreshTimer);clearTimeout(this.sessionSaveTimer);if(this.sessionClock!=null)clearInterval(this.sessionClock);this.clearScenePickup();this.clearSessionJobs();await this.plugin.saveSettings();}
  indexes(){return this.app.vault.getMarkdownFiles().map(f=>longformIndex(f,this.app)).filter(Boolean);}
  async render(){
   const root=this.root;
   if(!root||this.writerProjectClosed)return;
+  this.cancelSceneHold();
+  if(this.scenePickup&&(this.scenePickup.path!==this.selected||this.scenePickup.draft!==this.draft||this.activeTab!=='scenes'))this.clearScenePickup();
   const token=++this.renderToken;
   const navigation=this.writerPanelNavigation;
   const isLatest=()=>!this.writerProjectClosed&&this.root===root&&token===this.renderToken&&this.writerPanelNavigation===navigation;
@@ -251,6 +300,7 @@ class ProjectsView extends ItemView{
   const canNavigate=()=>this.root===root&&this.writerMountedProject===staging&&!this.writerProjectClosed&&this.selected===projectPath&&project.file.path===projectPath;
   const openTab=id=>{
    this.rememberPanelScroll(root,this.activeTab);
+   if(id!=='scenes')this.clearScenePickup();
    this.activeTab=id;
    const navigation=this.writerPanelNavigation=(this.writerPanelNavigation||0)+1;
    return ()=>canNavigate()&&this.writerPanelNavigation===navigation&&this.activeTab===id;
@@ -398,6 +448,24 @@ class ProjectsView extends ItemView{
   return exact.map(p=>this.app.vault.getAbstractFileByPath(p)).find(f=>f instanceof TFile)||null;
  }
  openFile(file){if(file instanceof TFile)this.app.workspace.getLeaf(false).openFile(file);}
+ openSceneSearch(project){
+  const draft=this.draft,projectPath=project.file.path;
+  const items=(project.format==='single'?[{title:project.title,file:project.file}]:this.activeScenes(project,draft)
+   .map(({title})=>({title,file:this.resolveScene(project,title)})).filter(item=>item.file));
+  if(!items.length)return new Notice(lfMsg('Nenhuma cena disponível neste rascunho.','No scenes available in this draft.'));
+  const view=this;
+  const picker=new class extends FuzzySuggestModal{
+   getItems(){return items;}
+   getItemText(item){return item.title+' · '+item.file.path;}
+   onChooseItem(item){
+    if(view.writerProjectClosed||view.selected!==projectPath||view.draft!==draft)return;
+    const file=project.format==='single'?project.file:view.resolveScene(project,item.title);
+    if(file===item.file&&view.app.vault.getAbstractFileByPath(file.path)===file)view.openFile(file);
+    else new Notice(lfMsg('A cena mudou. Abra a busca novamente.','The scene changed. Open the search again.'));
+   }
+  }(this.app);
+  picker.setPlaceholder(lfMsg('Buscar cenas neste rascunho…','Find scenes in this draft…'));picker.open();
+ }
 
  prefs(project){
   if(!this.plugin.settings.projectsData)this.plugin.settings.projectsData={};
@@ -406,21 +474,76 @@ class ProjectsView extends ItemView{
  }
  async savePrefs(){await this.plugin.saveSettings();await this.render();}
  async backupIndex(project){
-  if(!this.indexBackups)this.indexBackups=new Set();
-  if(this.indexBackups.has(project.file.path))return;
+  const index=project.file,path=index.path;
+  this.indexBackups??=new Map();
+  if(this.indexBackups.has(path))return this.indexBackups.get(path);
+  const pending=(async()=>{
+   const text=await this.app.vault.read(index);
+   if(index.path!==path)throw Error(lfMsg('O índice foi movido. Tente novamente.','The index was moved. Try again.'));
+   return this.writeIndexBackup(project,text);
+  })();
+  this.indexBackups.set(path,pending);
+  try{return await pending;}
+  catch(error){if(this.indexBackups.get(path)===pending)this.indexBackups.delete(path);throw error;}
+ }
+ async writeIndexBackup(project,text,prefix=''){
+  const indexPath=project.file.path,basename=clean(project.file.basename)||'Index';
   const dir=lfPath(project.file.parent?.path,'_Backups');
   await this.ensureFolder(dir);
+  if(project.file.path!==indexPath)throw Error(lfMsg('O índice foi movido. Tente novamente.','The index was moved. Try again.'));
   const stamp=new Date().toISOString().replace(/[:.]/g,'-');
-  const filename=clean(project.file.basename)+' - '+stamp+'.txt';
-  const path=lfPath(dir,filename);
-  await this.app.vault.create(path,await this.app.vault.read(project.file));
-  this.indexBackups.add(project.file.path);
+  const base=lfPath(dir,basename+' - '+prefix+stamp);
+  let path=base+'.txt',n=2;
+  while(this.app.vault.getAbstractFileByPath(path))path=base+' '+n+++'.txt';
+  return this.app.vault.create(path,text);
+ }
+ latestIndexBackup(project){
+  const folder=this.app.vault.getAbstractFileByPath(lfPath(project.file.parent?.path,'_Backups'));
+  if(!(folder instanceof TFolder))return null;
+  const prefix=(clean(project.file.basename)||'Index')+' - ';
+  const timestamp=/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z(?: \d+)?\.txt$/;
+  return (folder.children||[]).filter(file=>file instanceof TFile&&file.name?.startsWith(prefix)&&timestamp.test(file.name.slice(prefix.length)))
+   .sort((a,b)=>b.name.localeCompare(a.name,undefined,{numeric:true}))[0]||null;
+ }
+ async restoreIndexBackup(project,backup,indexPath,expected,text,backupPath=backup.path){
+  const index=project.file,vault=this.app.vault;
+  const changed=()=>Error(lfMsg('O índice ou o backup mudou. Abra a restauração novamente.','The index or backup changed. Open the restore action again.'));
+  const verify=()=>{
+   if(index.path!==indexPath||vault.getAbstractFileByPath(indexPath)!==index||backup.path!==backupPath||vault.getAbstractFileByPath(backupPath)!==backup)throw changed();
+   if(writerActiveEditor(this.plugin,index))throw Error(lfMsg('Feche o índice no editor antes de restaurar.','Close the index in the editor before restoring it.'));
+  };
+  verify();
+  if(await vault.read(backup)!==text||await vault.read(index)!==expected)throw changed();
+  if(expected===text)return false;
+  const safeguard=await this.writeIndexBackup(project,expected,'pre-restore - ');
+  verify();
+  if(await vault.read(backup)!==text)throw changed();
+  await vault.process(index,current=>{verify();if(current!==expected)throw changed();return text;});
+  this.indexBackups?.delete(indexPath);
+  await this.render();return safeguard;
+ }
+ async confirmIndexRestore(project){
+  try{
+   const backup=this.latestIndexBackup(project),indexPath=project.file.path;
+   if(!backup)return new Notice(lfMsg('Nenhum backup do índice encontrado.','No index backup found.'));
+   const backupPath=backup.path;
+   const [expected,text]=await Promise.all([this.app.vault.read(project.file),this.app.vault.read(backup)]);
+   new ConfirmProjectAction(this.app,lfMsg('Restaurar backup do índice','Restore index backup'),
+    lfMsg('Esta ação restaura o índice inteiro a partir de ','This restores the entire index from ')+backup.name+
+     lfMsg('. O índice atual será guardado em _Backups. Nenhuma nota de cena será editada, movida ou apagada.','. The current index will be kept in _Backups. No scene note will be edited, moved, or deleted.'),async()=>{
+     const safeguard=await this.restoreIndexBackup(project,backup,indexPath,expected,text,backupPath);
+     new Notice(safeguard?lfMsg('Índice restaurado. Cópia anterior: ','Index restored. Previous copy: ')+safeguard.path:
+      lfMsg('O índice já é idêntico ao backup.','The index already matches the backup.'));
+    }).open();
+  }catch(error){new Notice(error.message);}
  }
  async updateIndex(project,change){
+  const path=project.file.path;
   await this.backupIndex(project);
   // Use Obsidian's safe frontmatter API. Its YAML serializer can normalize formatting
   // or discard YAML comments; backupIndex retains the original text.
   await this.app.fileManager.processFrontMatter(project.file,fm=>{
+   if(project.file.path!==path)throw Error(lfMsg('O índice foi movido. Tente novamente.','The index was moved. Try again.'));
    if(!fm.longform||typeof fm.longform!=='object')fm.longform={};
    change(fm.longform);
   });
@@ -535,6 +658,29 @@ class ProjectsView extends ItemView{
    }catch(e){new Notice(lfMsg('Erro ao renomear cena: ','Failed to rename scene: ')+e.message);}
   },title).open();
  }
+ cancelSceneHold(){
+  const hold=this.sceneHold;
+  if(hold){clearTimeout(hold.timer);this.sceneHold=null;}
+ }
+ clearScenePickup(){
+  this.cancelSceneHold();
+  this.scenePickup=null;
+  this.scenePickupNotice?.hide?.();this.scenePickupNotice=null;
+  for(const row of this.root?.querySelectorAll?.('.writer-project-pickup')||[])row.removeClass('writer-project-pickup');
+ }
+ pickUpScene(project,draft,name,row){
+  this.clearScenePickup();
+  this.writerArcPickup=null;
+  this.scenePickup={path:project.file.path,draft,source:name};
+  row.addClass('writer-project-pickup');
+  const message=lfMsg('Toque na alça de destino para mover o capítulo.','Tap the destination handle to move the chapter.');
+  const doc=row.ownerDocument,fragment=doc.createDocumentFragment();
+  const label=doc.createElement('span');label.textContent=message+' ';
+  label.addEventListener('click',event=>event.stopPropagation());fragment.append(label);
+  const cancel=doc.createElement('button');cancel.type='button';cancel.textContent=lfMsg('Cancelar','Cancel');
+  cancel.addEventListener('click',event=>{event.stopPropagation();this.clearScenePickup();});
+  fragment.append(cancel);this.scenePickupNotice=new Notice(fragment,0);
+ }
  drawScenes(panel,project){
   const addReviewButton=parent=>{
    if(writerModuleOn(this.plugin,'comments'))lfIconButton(parent,'message-square-text',lfMsg('Fila de revisão','Review queue'))
@@ -580,6 +726,7 @@ class ProjectsView extends ItemView{
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-scene-actions-bar',
    attr:{role:'toolbar','aria-label':lfMsg('Ações de cenas','Scene actions')}});
   lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
+  lfIconButton(toolbar,'search',lfMsg('Buscar cena','Find scene')).addEventListener('click',()=>this.openSceneSearch(project));
   lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
   addReviewButton(toolbar);
   const scenes=this.activeScenes(project),tree=lfSceneTree(scenes);
@@ -634,35 +781,35 @@ class ProjectsView extends ItemView{
    row.draggable=false;
    const grip=row.createEl('button',{text:'⠿',cls:'writer-project-drag-handle',attr:{title:lfMsg('Arraste para mover ou toque e escolha o destino','Drag to reorder or tap and choose a destination'),'aria-label':lfMsg('Mover capítulo: ','Move chapter: ')+name}});
    grip.draggable=true;
-   let holdTimer=null,holdStart=null,consumeClick=false;
-   const cancelHold=()=>{if(holdTimer){clearTimeout(holdTimer);holdTimer=null;}};
+   const path=project.file.path,draft=this.draft;
+   const inScope=()=>!this.writerProjectClosed&&grip.isConnected&&this.selected===path&&this.draft===draft&&this.activeTab==='scenes';
+   let consumeClick=false;
+   const cancelHold=()=>{if(this.sceneHold?.grip===grip)this.cancelSceneHold();};
    grip.addEventListener('touchstart',event=>{
     const touch=event.touches?.[0];if(!touch)return;
-    holdStart={x:touch.clientX,y:touch.clientY};
-    cancelHold();holdTimer=setTimeout(()=>{
-     holdTimer=null;consumeClick=true;
-     this.scenePickup={path:project.file.path,draft:this.draft,source:name};
-     row.addClass('writer-project-pickup');
-     new Notice(lfMsg('Toque na alça de destino para mover o capítulo.','Tap the destination handle to move the chapter.'),3000);
+    consumeClick=false;this.cancelSceneHold();
+    const hold={grip,x:touch.clientX,y:touch.clientY,timer:null};this.sceneHold=hold;
+    hold.timer=setTimeout(()=>{
+     if(this.sceneHold!==hold)return;
+     this.sceneHold=null;
+     if(!inScope())return;
+     consumeClick=true;this.pickUpScene(project,draft,name,row);
     },420);
    },{passive:true});
    grip.addEventListener('touchmove',event=>{
-    const touch=event.touches?.[0];
-    if(touch&&holdStart&&Math.hypot(touch.clientX-holdStart.x,touch.clientY-holdStart.y)>10)cancelHold();
+    const touch=event.touches?.[0],hold=this.sceneHold;
+    if(touch&&hold?.grip===grip&&Math.hypot(touch.clientX-hold.x,touch.clientY-hold.y)>10)cancelHold();
    },{passive:true});
    for(const event of ['touchend','touchcancel'])grip.addEventListener(event,cancelHold,{passive:true});
    grip.addEventListener('click',event=>{
     if(consumeClick){consumeClick=false;event.preventDefault();return;}
-    if(this.scenePickup?.path===project.file.path&&this.scenePickup?.source===name){this.scenePickup=null;this.render();return;}
-    if(this.scenePickup?.path===project.file.path&&this.scenePickup?.draft===this.draft){
-     const source=this.scenePickup.source;this.scenePickup=null;this.moveSceneRelative(project,source,name,false);
-    }else{
-     this.scenePickup={path:project.file.path,draft:this.draft,source:name};
-     new Notice(lfMsg('Capítulo selecionado. Toque na alça do destino para mover antes dele.','Chapter selected. Tap the destination handle to move before it.'),4000);
-     row.addClass('writer-project-pickup');
-    }
+    if(!inScope())return;
+    const pickup=this.scenePickup;
+    if(pickup?.path===path&&pickup.draft===draft){
+     this.clearScenePickup();if(pickup.source!==name)void this.moveSceneRelative(project,pickup.source,name,false);
+    }else this.pickUpScene(project,draft,name,row);
    });
-   if(this.scenePickup?.source===name&&this.scenePickup?.path===project.file.path)row.addClass('writer-project-pickup');
+   if(this.scenePickup?.source===name&&this.scenePickup.path===path&&this.scenePickup.draft===draft)row.addClass('writer-project-pickup');
    row.addEventListener('dragstart',e=>{
     if(!e.dataTransfer)return;
     e.dataTransfer.setData('application/x-basic-ai-scene',JSON.stringify({path:project.file.path,draft:this.draft,name}));
@@ -768,6 +915,8 @@ class ProjectsView extends ItemView{
   panel.createEl('p',{text:lfMsg("Índice: ","Index: ")+project.file.path});
   panel.createEl('p',{text:lfMsg("Cenas: ","Scenes: ")+sceneNames(project.scenes).length});
   panel.createEl('button',{text:lfMsg("Abrir índice","Open index")}).addEventListener('click',()=>this.openFile(project.file));
+  if(this.latestIndexBackup(project))panel.createEl('button',{text:lfMsg('Restaurar backup do índice','Restore index backup')})
+   .addEventListener('click',()=>this.confirmIndexRestore(project));
   new Setting(panel).setName(lfMsg("Título do projeto","Project title")).addText(t=>t.setValue(project.title).onChange(v=>this.newTitle=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>this.updateIndex(project,data=>{data.title=this.newTitle||project.title;})));
   let sceneFolder=project.meta.sceneFolder||'';
   new Setting(panel).setName(lfMsg("Pasta das cenas","Scene folder")).setDesc(lfMsg("Relativa à pasta do índice; não move arquivos existentes.","Relative to the index folder; does not move existing files.")).addText(t=>t.setValue(sceneFolder).onChange(v=>sceneFolder=v)).addButton(b=>b.setButtonText(lfMsg("Salvar","Save")).onClick(()=>{
@@ -819,18 +968,65 @@ class ProjectsView extends ItemView{
     const links=steps.find(x=>x.id==='remove-links');
     if(options.links===false&&links)links.optionValues={'remove-wikilinks':false,'remove-external-links':false};
     const join=steps.find(x=>x.id==='concatenate-text');if(join&&options.separator!=null)join.optionValues.separator=options.separator;
-    prefs.workflows[name]={name,steps,description:lfMsg('Importado da configuração anterior','Imported from previous settings')};
+    Object.defineProperty(prefs.workflows,name,{value:{name,steps,description:lfMsg('Importado da configuração anterior','Imported from previous settings')},enumerable:true,configurable:true,writable:true});
    }
   }
   return prefs.workflows;
  }
+ async renameWorkflow(project,previous,raw){
+  const workflows=this.workflowsFor(project),name=clean(raw);
+  if(!name)throw Error(lfMsg('Nome de workflow inválido.','Invalid workflow name.'));
+  if(previous===WRITER_DEFAULT_WORKFLOW)throw Error(lfMsg('O workflow padrão não pode ser renomeado.','The default workflow cannot be renamed.'));
+  const original=Object.hasOwn(workflows,previous)?workflows[previous]:null;
+  if(!original)throw Error(lfMsg('O workflow não existe mais.','The workflow no longer exists.'));
+  if(name===previous)return previous;
+  if(Object.keys(workflows).some(key=>key.normalize('NFC').toLowerCase()===name.normalize('NFC').toLowerCase()&&key!==previous)){
+   throw Error(lfMsg('Já existe um workflow com esse nome.','A workflow with this name already exists.'));
+  }
+  const next={...original,name};
+  workflows[name]=next;delete workflows[previous];
+  try{await this.plugin.saveSettings();}
+  catch(error){
+   if(workflows[name]===next&&!Object.hasOwn(workflows,previous)){delete workflows[name];workflows[previous]=original;}
+   throw error;
+  }
+  return name;
+ }
+ workflowJSON(name,wf){
+  return JSON.stringify({workflows:{[name]:{...wf,name}}},null,2)+'\n';
+ }
+ importWorkflowEntries(project,entries,prefix=''){
+  const dest=this.workflowsFor(project);let count=0;
+  const used=new Set(Object.keys(dest).map(key=>key.normalize('NFC').toLowerCase()));
+  for(const [key,wf] of Object.entries(entries)){
+   if(!Array.isArray(wf?.steps)||wf.steps.some(step=>!step||typeof step.id!=='string'))continue;
+   const base=clean((prefix+key).slice(0,90))||lfMsg('Workflow importado','Imported workflow');
+   let name=base,n=2;
+   while(used.has(name.normalize('NFC').toLowerCase()))name=base+' '+n++;
+   used.add(name.normalize('NFC').toLowerCase());
+   dest[name]=JSON.parse(JSON.stringify({...wf,name}));count++;
+  }
+  return count;
+ }
+ exportWorkflowJSON(name,wf){
+  const modal=new Modal(this.app),json=this.workflowJSON(name,wf);
+  modal.setTitle(lfMsg('Exportar workflow (JSON)','Export workflow (JSON)'));
+  modal.contentEl.createEl('p',{text:lfMsg('Inclui as etapas e opções atuais, mesmo antes de salvar o workflow.','Includes the current steps and options, even before saving the workflow.')});
+  const area=modal.contentEl.createEl('textarea',{cls:'writer-project-compile-preview',attr:{rows:'12','aria-label':lfMsg('JSON do workflow','Workflow JSON')}});
+  area.readOnly=true;area.value=json;
+  new Setting(modal.contentEl).addButton(b=>b.setButtonText(lfMsg('Copiar JSON','Copy JSON')).setCta().onClick(async()=>{
+   try{await area.ownerDocument.defaultView.navigator.clipboard.writeText(json);new Notice(lfMsg('JSON copiado.','JSON copied.'));}
+   catch(_){area.focus();area.select();new Notice(lfMsg('O texto foi selecionado. Copie pelo menu do sistema.','The text is selected. Copy it using the system menu.'));}
+  }));
+  modal.open();
+ }
  validateWorkflow(project,wf){
   if(!wf||!Array.isArray(wf.steps)||!wf.steps.length)throw Error(lfMsg('Workflow sem etapas.','Workflow has no steps.'));
-  const catalog=Object.fromEntries(this.workflowCatalog().map(([id,,kind])=>[id,kind]));
+  const catalog=new Map(this.workflowCatalog().map(([id,,kind])=>[id,kind]));
   let joined=project.format==='single';
   let saves=0;
   for(let i=0;i<wf.steps.length;i++){
-   const id=wf.steps[i].id,kind=catalog[id];
+   const id=wf.steps[i]?.id,kind=catalog.get(id);
    if(!kind)throw Error(lfMsg('Etapa não suportada: ','Unsupported step: ')+id+lfMsg('. Scripts externos não são executados por segurança.','. External scripts are not executed for security.'));
    if(kind==='scene'&&joined&&project.format!=='single')throw Error(lfMsg('Uma etapa de cena não pode aparecer depois de Juntar.','A scene step cannot come after Join.'));
    if(kind==='join'){if(joined)throw Error(lfMsg('Juntar cenas só pode ocorrer uma vez em projeto multicena.','Join scenes can appear only once in a multi-scene project.'));joined=true;}
@@ -844,22 +1040,59 @@ class ProjectsView extends ItemView{
  drawSceneDiagnostics(panel,project){
   if(project.format==='single')return;
   const tracked=new Set(this.sceneList(project).map(x=>x.title));
-  const dir=lfPath(project.file.parent?.path||'',project.meta.sceneFolder||'/');
-  const folder=this.app.vault.getAbstractFileByPath(dir||'/');
+  const dir=lfProjectSceneFolder(project);
+  const folder=dir===null?null:this.app.vault.getAbstractFileByPath(dir||'/');
   const existing=folder instanceof TFolder?folder.children.filter(x=>x instanceof TFile&&x.extension==='md'&&x.path!==project.file.path):[];
-  const unknown=existing.filter(f=>!tracked.has(f.basename)&&!((project.meta.ignoredFiles||[]).includes(f.basename)));
+  const trackedPaths=new Set([...tracked].map(title=>this.resolveScene(project,title)?.path).filter(Boolean));
+  const ignored=Array.isArray(project.meta.ignoredFiles)?project.meta.ignoredFiles:[];
+  const unknown=existing.filter(f=>!trackedPaths.has(f.path)&&!lfIgnoredScene(ignored,f,dir));
   const missing=[...tracked].filter(name=>!this.resolveScene(project,name));
   const section=panel.createEl('details',{cls:'writer-project-diagnostics'});
   section.createEl('summary',{text:lfMsg("Diagnóstico · ","Diagnostics · ")+missing.length+lfMsg(' cenas ausentes, ',' missing scenes, ')+unknown.length+lfMsg(' arquivos soltos',' unindexed files')});
   if(missing.length)section.createEl('p',{text:lfMsg('Ausentes: ','Missing: ')+missing.join(', ')});
   if(unknown.length){
-   section.createEl('p',{text:lfMsg("Novos arquivos: ","New files: ")+unknown.map(f=>f.basename).join(', ')});
+   for(const file of unknown){
+    const row=section.createDiv({cls:'writer-project-notes-toolbar'});
+    row.createSpan({text:file.basename});
+    lfIconButton(row,'ellipsis',lfMsg('Ações para ','Actions for ')+file.basename).addEventListener('click',event=>{
+     const path=file.path;
+     const menu=new Menu();
+     menu.addItem(item=>item.setTitle(lfMsg('Ignorar este arquivo','Ignore this file')).setIcon('eye-off').onClick(()=>{
+      void this.updateIndex(project,data=>{
+       if(this.app.vault.getAbstractFileByPath(path)!==file||file.path!==path)return;
+       const entries=Array.isArray(data.ignoredFiles)?data.ignoredFiles:[];
+       if(!lfIgnoredScene(entries,file,dir))data.ignoredFiles=[...entries,file.basename];
+      }).catch(error=>new Notice(error.message));
+     }));
+     menu.showAtMouseEvent(event);
+    });
+   }
    section.createEl('button',{text:lfMsg("Adicionar arquivos soltos ao índice","Add unindexed files")}).addEventListener('click',()=>{
     new ConfirmProjectAction(this.app,lfMsg('Adicionar arquivos ao índice','Add files to index'),
      lfMsg('Adicionar ','Add ')+unknown.length+lfMsg(' arquivo(s) Markdown como cenas ao final do índice? Nenhum arquivo será movido.',' Markdown file(s) as scenes to the end of the index? No files will be moved.'),
-     ()=>this.changeScenes(project,scenes=>{for(const f of unknown)scenes.push({title:f.basename,indent:0});})
+     ()=>this.updateIndex(project,data=>{
+      const scenes=lfFlattenScenes(data.scenes||[]),paths=new Set(scenes.map(scene=>this.resolveScene(project,scene.title)?.path).filter(Boolean));
+      for(const f of unknown){
+       if(paths.has(f.path)||lfIgnoredScene(data.ignoredFiles,f,dir)||this.app.vault.getAbstractFileByPath(f.path)!==f)continue;
+       if(lfPath(dir,f.basename+'.md')!==f.path)continue;
+       scenes.push({title:f.basename,indent:0});paths.add(f.path);
+      }
+      data.scenes=lfNestScenes(scenes);
+     })
     ).open();
    });
+  }
+  if(ignored.length){
+   section.createEl('p',{text:lfMsg('Ignorados no índice:','Ignored in the index:')});
+   for(const name of new Set(ignored.filter(item=>typeof item==='string'&&item))){
+    const row=section.createDiv({cls:'writer-project-notes-toolbar'});
+    row.createSpan({text:name});
+    row.createEl('button',{text:lfMsg('Voltar a mostrar','Show again'),attr:{type:'button','aria-label':lfMsg('Voltar a mostrar ','Show again ')+name}}).addEventListener('click',()=>{
+     void this.updateIndex(project,data=>{
+      if(Array.isArray(data.ignoredFiles))data.ignoredFiles=data.ignoredFiles.filter(item=>item!==name);
+     }).catch(error=>new Notice(error.message));
+    });
+   }
   }
  }
  compileOutputPath(project,wf){
@@ -911,6 +1144,7 @@ class ProjectsView extends ItemView{
   verify();
   await vault.process(expectedFile,current=>{
    if(vault.getAbstractFileByPath(path)!==expectedFile||expectedFile.path!==path||current!==previous||writerActiveEditor(this.plugin,expectedFile))throw changed();
+   this.assertCompileOutput(project,path,sourcePaths,true);
    return manuscript;
   });
   return backup;
@@ -1025,13 +1259,7 @@ class ProjectsView extends ItemView{
    if(!installed?.loadData)throw Error(lfMsg('O Longform não está instalado ou ativo; use a importação por JSON.','Longform is not installed or active; use JSON import.'));
    const data=await installed.loadData(),entries=data?.workflows;
    if(!entries||typeof entries!=='object')throw Error(lfMsg('Nenhum workflow encontrado no Longform.','No workflows found in Longform.'));
-   const ours=this.workflowsFor(project);
-   let count=0;
-   for(const [name,wf] of Object.entries(entries)){
-    if(!Array.isArray(wf?.steps))continue;
-    const label='Longform · '+name;
-    ours[label]=JSON.parse(JSON.stringify(wf));count++;
-   }
+   const count=this.importWorkflowEntries(project,entries,'Longform · ');
    await this.savePrefs();new Notice(count+lfMsg(' workflow(s) importado(s). Etapas externas serão sinalizadas.',' workflow(s) imported. External steps are flagged.'));
   }catch(e){new Notice(e.message,7000);}
  }
@@ -1046,13 +1274,7 @@ class ProjectsView extends ItemView{
     try{
      const parsed=JSON.parse(raw),input=parsed.workflows||parsed;
      if(!input||typeof input!=='object'||Array.isArray(input))throw Error(lfMsg('Esperado objeto de workflows.','Expected a workflows object.'));
-     const dest=this.workflowsFor(project);let count=0;
-     for(const [key,wf] of Object.entries(input)){
-      if(!wf||!Array.isArray(wf.steps))continue;
-      let name='Importado · '+String(key).slice(0,90);
-      if(dest[name])name+=' (2)';
-      dest[name]=JSON.parse(JSON.stringify(wf));count++;
-     }
+     const count=this.importWorkflowEntries(project,input);
      if(!count)throw Error(lfMsg('Nenhum workflow com etapas foi encontrado.','No workflow with steps was found.'));
      modal.close();await this.savePrefs();new Notice(count+lfMsg(' workflow(s) importado(s).',' workflow(s) imported.'));
     }catch(e){new Notice(lfMsg("Importação inválida: ","Invalid import: ")+e.message,7000);}
@@ -1063,21 +1285,43 @@ class ProjectsView extends ItemView{
  drawCompile(panel,project){
   panel.createEl('h4',{text:lfMsg("Compilação por etapas","Step-by-step compilation")});
   const workflows=this.workflowsFor(project);
-  if(!workflows[this.workflow])this.workflow=Object.keys(workflows)[0];
+  if(!Object.hasOwn(workflows,this.workflow))this.workflow=Object.keys(workflows)[0];
   const bar=panel.createDiv({cls:'writer-project-notes-toolbar'});
   const selector=bar.createEl('select',{attr:{'aria-label':'Workflow'}});
   for(const name of Object.keys(workflows)){const opt=selector.createEl('option',{text:name===WRITER_DEFAULT_WORKFLOW?lfMsg('Padrão','Default'):name});opt.value=name;}
   selector.value=this.workflow;
+  const workflowName=this.workflow;
   selector.addEventListener('change',()=>{this.workflow=selector.value;this.workflowDraft=null;this.render();});
   bar.createEl('button',{text:'+ Workflow'}).addEventListener('click',()=>new TextPrompt(this.app,lfMsg('Nome do workflow','Workflow name'),async name=>{
-   name=clean(name);if(!name||workflows[name])return;
-   workflows[name]=JSON.parse(JSON.stringify(workflows[this.workflow]));workflows[name].name=name;
-   this.workflow=name;this.workflowDraft=null;await this.savePrefs();
+   name=clean(name);
+   if(!name)return new Notice(lfMsg('Nome de workflow inválido.','Invalid workflow name.'));
+   if(Object.keys(workflows).some(key=>key.normalize('NFC').toLowerCase()===name.normalize('NFC').toLowerCase())){
+    return new Notice(lfMsg('Já existe um workflow com esse nome.','A workflow with this name already exists.'));
+   }
+   if(!Object.hasOwn(workflows,workflowName))return;
+   const next=JSON.parse(JSON.stringify({...workflows[workflowName],name}));
+   workflows[name]=next;
+   try{await this.plugin.saveSettings();}
+   catch(error){if(workflows[name]===next)delete workflows[name];return new Notice(error.message);}
+   if(this.selected===project.file.path&&this.workflow===workflowName){this.workflow=name;this.workflowDraft=null;await this.render();}
   }).open());
   bar.createEl('button',{text:lfMsg('Importar Longform','Import from Longform')}).addEventListener('click',()=>this.importLongformWorkflows(project));
   bar.createEl('button',{text:lfMsg('Importar JSON','Import JSON')}).addEventListener('click',()=>this.importWorkflowJSON(project));
-  const wf=this.workflowDraft&&this.workflowDraftName===this.workflow?this.workflowDraft:
-   (this.workflowDraft=JSON.parse(JSON.stringify(workflows[this.workflow])),this.workflowDraftName=this.workflow,this.workflowDraft);
+  const wf=this.workflowDraft&&this.workflowDraftName===workflowName?this.workflowDraft:
+   (this.workflowDraft=JSON.parse(JSON.stringify(workflows[workflowName])),this.workflowDraftName=workflowName,this.workflowDraft);
+  if(workflowName!==WRITER_DEFAULT_WORKFLOW){
+   bar.createEl('button',{text:lfMsg('Renomear workflow','Rename workflow')}).addEventListener('click',()=>{
+    new TextPrompt(this.app,lfMsg('Novo nome do workflow','New workflow name'),async raw=>{
+     try{
+      const name=await this.renameWorkflow(project,workflowName,raw);
+      if(this.selected===project.file.path&&this.workflow===workflowName){
+       this.workflow=name;this.workflowDraftName=name;this.workflowDraft={...wf,name};await this.render();
+      }
+     }catch(error){new Notice(error.message);}
+    },workflowName).open();
+   });
+  }
+  bar.createEl('button',{text:lfMsg('Exportar JSON','Export JSON')}).addEventListener('click',()=>this.exportWorkflowJSON(workflowName,wf));
   const status=panel.createEl('p',{text:lfMsg("Edite etapas e clique em Salvar workflow. Scripts externos não são executados.","Edit steps and select Save workflow. External scripts are not executed.")});
   const stepNames=Object.fromEntries(this.workflowCatalog().map(([id,label])=>[id,label]));
   const drawStep=(step,i)=>{
@@ -1110,7 +1354,8 @@ class ProjectsView extends ItemView{
   for(const [id,label] of this.workflowCatalog()){const o=stepPicker.createEl('option',{text:label});o.value=id;}
   add.createEl('button',{text:lfMsg('+ Etapa','+ Step')}).addEventListener('click',()=>{wf.steps.push({id:stepPicker.value,optionValues:{}});this.render();});
   add.createEl('button',{text:lfMsg("Salvar workflow","Save workflow")}).addEventListener('click',async()=>{
-   workflows[this.workflow]=JSON.parse(JSON.stringify(wf));await this.plugin.saveSettings();status.setText(lfMsg('Workflow salvo.','Workflow saved.'));
+   if(!Object.hasOwn(workflows,workflowName))return;
+   workflows[workflowName]=JSON.parse(JSON.stringify({...wf,name:workflowName}));await this.plugin.saveSettings();status.setText(lfMsg('Workflow salvo.','Workflow saved.'));
   });
   add.createEl('button',{text:lfMsg("Prévia","Preview")}).addEventListener('click',async()=>{
    try{const result=await this.compileProject(project,wf,true);let preview=panel.querySelector('.writer-project-compile-preview');
@@ -1272,15 +1517,15 @@ class ProjectsView extends ItemView{
 
  async startWritingSession(project){
   const prefs=this.prefs(project),baseline=Object.create(null);
-  const projectPath=project.file.path;
-  if(prefs.session?.active&&prefs.session.day===new Date().toDateString())return;
-  const files=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
-  for(const file of files){try{baseline[file.path]=lfWordCount(await this.app.vault.cachedRead(file));}catch(_){}}
-  if(this.writerProjectClosed||project.file.path!==projectPath)return;
-  const today=new Date().toDateString();
+  const projectPath=project.file.path,today=new Date().toDateString();
   const previous=prefs.session;
   if(previous?.active&&previous.day===today)return;
-  prefs.session={active:true,projectPath,startedAt:Date.now(),day:today,words:previous?.day===today?previous.words||0:0,baseline,notified:false};
+  const files=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
+  for(const file of files){try{const words=lfWordCount(await this.app.vault.cachedRead(file));baseline[file.path]=words;}catch(_){}}
+  if(this.writerProjectClosed||project.file.path!==projectPath||prefs.session!==previous)return;
+  const now=Date.now(),sameDay=previous?.day===today;
+  prefs.session={active:true,projectPath,startedAt:now,runningSince:now,elapsedMs:sameDay?lfSessionElapsed(previous):0,day:today,
+   words:sameDay?previous.words||0:0,baseline,notified:sameDay&&previous.notified};
   await this.plugin.saveSettings();await this.render();
  }
  clearSessionJobs(session){
@@ -1291,6 +1536,7 @@ class ProjectsView extends ItemView{
   }
  }
  applySessionCount(prefs,session,path,words){
+  if(!Object.hasOwn(session.baseline,path))return;
   const before=session.baseline[path];
   session.baseline[path]=words;
   session.words=Math.max(0,(session.words||0)+words-before);
@@ -1298,19 +1544,47 @@ class ProjectsView extends ItemView{
    session.notified=true;new Notice(lfMsg("Meta diária de escrita atingida!","Daily writing goal reached!"));
   }
  }
+ async flushSessionChanges(prefs,session){
+  // Count queued saves once, including jobs already waiting for an async read.
+  const pending=[...(this.sessionUpdateJobs?.values()||[])].filter(job=>job.session===session);
+  this.clearSessionJobs(session);
+  for(const {file,path} of pending){
+   try{
+    const words=lfWordCount(await this.app.vault.cachedRead(file));
+    if(!this.writerProjectClosed&&prefs.session===session&&file.path===path)this.applySessionCount(prefs,session,path,words);
+   }catch(e){console.warn('[Basic AI] Session tracking:',e);}
+  }
+ }
+ async pauseWritingSession(project){
+  const prefs=this.prefs(project),session=prefs.session;
+  if(!session?.active||session.pausedAt!=null)return;
+  const now=Date.now();
+  session.elapsedMs=lfSessionElapsed(session,now);session.runningSince=null;session.pausedAt=now;
+  await this.flushSessionChanges(prefs,session);
+  await this.plugin.saveSettings();await this.render();
+ }
+ async resumeWritingSession(project){
+  const prefs=this.prefs(project),session=prefs.session;
+  if(!session?.active||session.pausedAt==null)return;
+  if(session.day!==new Date().toDateString())return this.startWritingSession(project);
+  const pausedAt=session.pausedAt,baseline=Object.create(null),projectPath=project.file.path;
+  for(const path of Object.keys(session.baseline||{})){
+   const file=this.app.vault.getAbstractFileByPath(path);
+   if(!(file instanceof TFile)||file.path!==path)continue;
+   try{const words=lfWordCount(await this.app.vault.cachedRead(file));if(file.path===path)baseline[path]=words;}
+   catch(e){console.warn('[Basic AI] Session tracking:',e);}
+  }
+  if(this.writerProjectClosed||project.file.path!==projectPath||prefs.session!==session||!session.active||session.pausedAt!==pausedAt)return;
+  session.baseline=baseline;session.pausedAt=null;session.runningSince=Date.now();
+  await this.plugin.saveSettings();await this.render();
+ }
  async stopWritingSession(project){
   const prefs=this.prefs(project),session=prefs.session;
   if(session?.active){
-   session.active=false;session.stoppedAt=Date.now();
-   // Count queued saves once, including jobs already waiting for an async read.
-   const pending=[...(this.sessionUpdateJobs?.values()||[])].filter(job=>job.session===session);
-   this.clearSessionJobs(session);
-   for(const {file,path} of pending){
-    try{
-     const words=lfWordCount(await this.app.vault.cachedRead(file));
-     if(prefs.session===session&&file.path===path)this.applySessionCount(prefs,session,path,words);
-    }catch(e){console.warn('[Basic AI] Session tracking:',e);}
-   }
+   const now=Date.now();
+   session.elapsedMs=lfSessionElapsed(session,now);session.runningSince=null;session.pausedAt=null;
+   session.active=false;session.stoppedAt=now;
+   await this.flushSessionChanges(prefs,session);
   }
   await this.plugin.saveSettings();await this.render();
  }
@@ -1319,23 +1593,23 @@ class ProjectsView extends ItemView{
   const path=file.path,today=new Date().toDateString();
   for(const [projectPath,prefs] of Object.entries(this.plugin.settings?.projectsData||{})){
    const session=prefs?.session;
-   if(!session?.active||session.day!==today||!Object.hasOwn(session.baseline||{},path))continue;
+   if(!session?.active||session.pausedAt!=null||session.day!==today||!Object.hasOwn(session.baseline||{},path))continue;
    // Older saved sessions are owned by the path of their containing settings record.
    session.projectPath=projectPath;
    const key=JSON.stringify([session.projectPath,path]);
    this.sessionUpdateJobs??=new Map();
    clearTimeout(this.sessionUpdateJobs.get(key)?.timer);
-   const job={session,file,path,timer:null};
+   const job={session,file,path,projectPath,timer:null};
    this.sessionUpdateJobs.set(key,job);
    job.timer=setTimeout(async()=>{
-    const isCurrent=()=>this.sessionUpdateJobs.get(key)===job&&!this.writerProjectClosed&&session.active&&
+    const isCurrent=()=>this.sessionUpdateJobs.get(key)===job&&!this.writerProjectClosed&&session.active&&session.pausedAt==null&&session.day===new Date().toDateString()&&
      file.path===path&&this.plugin.settings.projectsData?.[projectPath]?.session===session;
     try{
      const words=lfWordCount(await this.app.vault.cachedRead(file));
      if(!isCurrent())return;
      this.applySessionCount(prefs,session,path,words);
      clearTimeout(this.sessionSaveTimer);
-     this.sessionSaveTimer=setTimeout(()=>this.plugin.saveSettings(),1300);
+     this.sessionSaveTimer=setTimeout(()=>this.plugin.saveSettings().catch(error=>console.warn('[Basic AI] Could not save writing session:',error)),1300);
      if(this.activeTab==='project'&&this.currentProject?.file.path===projectPath)this.refreshSessionProgress(projectPath,session,prefs);
     }catch(e){console.warn('[Basic AI] Session tracking:',e);}
     finally{if(this.sessionUpdateJobs.get(key)===job)this.sessionUpdateJobs.delete(key);}
@@ -1352,24 +1626,50 @@ class ProjectsView extends ItemView{
   const progress=target.querySelector('progress');
   if(progress)progress.value=Math.min(session.words,prefs.dailyGoal);
  }
+ sessionTimeText(session,today=new Date().toDateString()){
+  const seconds=Math.floor((session?.day===today?lfSessionElapsed(session):0)/1000);
+  const time=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60].map(value=>String(value).padStart(2,'0')).join(':');
+  return lfMsg('Tempo de escrita: ','Writing time: ')+time;
+ }
+ refreshSessionClock(){
+  const time=this.root?.querySelector('.writer-session-time');
+  const path=time?.closest('.writer-project-session')?.dataset.projectPath;
+  if(!path||path!==this.selected||this.activeTab!=='project')return;
+  const session=this.plugin.settings.projectsData?.[path]?.session;
+  const text=this.sessionTimeText(session);
+  if(time.textContent!==text)time.setText(text);
+ }
  drawSession(panel,project){
   const prefs=this.prefs(project),session=prefs.session;
   const box=panel.createDiv({cls:'writer-project-session',attr:{'data-project-path':project.file.path}});
   box.createEl('h4',{text:lfMsg("Sessão de escrita","Writing session")});
   const today=new Date().toDateString(),words=session?.day===today?session.words||0:0;
+  const active=session?.active&&session.day===today,paused=active&&session.pausedAt!=null;
   box.createEl('p',{cls:'writer-session-count',text:this.sessionProgressText(words,prefs.dailyGoal)});
+  box.createEl('p',{cls:'writer-session-time',text:this.sessionTimeText(session,today)});
   if(prefs.dailyGoal>0){
    const progress=box.createEl('progress');progress.max=prefs.dailyGoal;progress.value=Math.min(words,prefs.dailyGoal);
   }
-  box.createEl('button',{text:session?.active?lfMsg('Encerrar sessão','End session'):lfMsg('Iniciar sessão','Start session')}).addEventListener('click',()=>session?.active?this.stopWritingSession(project):this.startWritingSession(project));
+  const actions=box.createDiv({cls:'writer-project-notes-toolbar'});
+  const button=(label,action)=>actions.createEl('button',{text:label,attr:{type:'button'}}).addEventListener('click',async()=>{
+   const buttons=actions.querySelectorAll('button');for(const item of buttons)item.disabled=true;
+   try{await action.call(this,project);}catch(error){new Notice(error.message);}
+   finally{for(const item of buttons)item.disabled=false;}
+  });
+  if(active){
+   button(paused?lfMsg('Retomar sessão','Resume session'):lfMsg('Pausar sessão','Pause session'),paused?this.resumeWritingSession:this.pauseWritingSession);
+   button(lfMsg('Encerrar sessão','End session'),this.stopWritingSession);
+  }else button(lfMsg('Iniciar sessão','Start session'),this.startWritingSession);
   box.createEl('p',{text:lfMsg("Contagem baseada nos arquivos salvos durante a sessão. Alterações fora do Obsidian podem não ser contabilizadas.","Counts reflect files saved during this session. Changes outside Obsidian may not be counted.")});
  }
  async drawStats(panel,project,isCurrent){
-  const scenes=project.format==='single'?[project.file]:this.activeScenes(project).map(x=>this.resolveScene(project,x.title)).filter(Boolean);
+  const scenes=project.format==='single'?[{title:project.title,file:project.file}]:this.activeScenes(project)
+   .map(({title})=>({title,file:this.resolveScene(project,title)})).filter(item=>item.file);
   const box=panel.createDiv({cls:'writer-project-progress',attr:{'data-project-path':project.file.path}});
   const counts=new Map();
-  for(const file of scenes){
+  for(const {file} of scenes){
    if(!isCurrent())return;
+   if(counts.has(file.path))continue;
    try{counts.set(file.path,lfWordCount(await this.app.vault.cachedRead(file)));}catch(_){counts.set(file.path,0);}
   }
   if(!isCurrent())return;
@@ -1377,16 +1677,32 @@ class ProjectsView extends ItemView{
   const label=box.createEl('strong');
   const goalLabel=goal>0?box.createEl('p'):null;
   const progress=goal>0?box.createEl('progress'):null;
-  const state={counts,goal,label,goalLabel,progress,reads:new Map()};
+  const sceneLabels=new Map();
+  if(scenes.length&&project.format!=='single'){
+   const details=box.createEl('details');
+   details.createEl('summary',{text:lfMsg('Palavras por cena','Words per scene')});
+   const entries=details.createEl('ul');
+   for(const {title,file} of scenes){
+    if(sceneLabels.has(file.path))continue;
+    const row=entries.createEl('li'),target=Number(this.app.metadataCache?.getFileCache?.(file)?.frontmatter?.target_wordcount);
+    row.createEl('strong',{text:title});
+    sceneLabels.set(file.path,{label:row.createEl('span'),target:Number.isFinite(target)&&target>0?Math.floor(target):0});
+   }
+  }
+  const state={counts,goal,label,goalLabel,progress,reads:new Map(),sceneLabels};
   this.projectProgress??=new WeakMap();this.projectProgress.set(box,state);
   this.paintProjectStats(state);
  }
- paintProjectStats({counts,goal,label,goalLabel,progress}){
+ paintProjectStats({counts,goal,label,goalLabel,progress,sceneLabels}){
   const total=[...counts.values()].reduce((sum,count)=>sum+count,0);
   label.setText('Total: '+total.toLocaleString(getLocale())+lfMsg(' palavras',' words'));
   if(progress){
    goalLabel.setText(Math.min(100,Math.round(100*total/goal))+lfMsg('% da meta de ','% of goal: ')+goal+lfMsg(' palavras',' words'));
    progress.max=goal;progress.value=Math.min(total,goal);
+  }
+  for(const [path,{label,target}] of sceneLabels||[]){
+   const locale=getLocale(),format=value=>value.toLocaleString(locale);
+   label.setText(' · '+format(counts.get(path)??0)+(target?' / '+format(target):'')+lfMsg(' palavras',' words'));
   }
  }
  async refreshProjectStats(file){
@@ -1398,7 +1714,10 @@ class ProjectsView extends ItemView{
    const text=await this.app.vault.cachedRead(file);
    if(this.writerProjectClosed||this.activeTab!=='project'||!box.isConnected||box.dataset.projectPath!==this.selected||
      state.reads.get(path)!==read||file.path!==path)return;
-   state.counts.set(path,lfWordCount(text));this.paintProjectStats(state);
+   state.counts.set(path,lfWordCount(text));
+   const scene=state.sceneLabels?.get(path);
+   if(scene){const target=Number(this.app.metadataCache?.getFileCache?.(file)?.frontmatter?.target_wordcount);scene.target=Number.isFinite(target)&&target>0?Math.floor(target):0;}
+   this.paintProjectStats(state);
   }catch(error){console.warn('[Basic AI] Could not refresh project count',error);}
   finally{if(state.reads.get(path)===read)state.reads.delete(path);}
  }

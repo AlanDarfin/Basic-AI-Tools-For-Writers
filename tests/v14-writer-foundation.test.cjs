@@ -6,9 +6,9 @@ const vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 
-class TFolder{constructor(path){this.path=path;}}
+class TFolder{constructor(path){this.path=path;this.children=[];}}
 class TFile{
- constructor(path){this.path=path;this.basename=path.split('/').pop().replace(/\.md$/,'');this.extension=path.split('.').pop();this.parent={path:path.split('/').slice(0,-1).join('/')};}
+ constructor(path){this.path=path;this.name=path.split('/').pop();this.extension=path.split('.').pop();this.basename=this.name.slice(0,-this.extension.length-1);this.parent={path:path.split('/').slice(0,-1).join('/')};}
 }
 function setup({obsidian={},globals={}}={}){
  const notices=[],jobs=new Map();let timer=0;
@@ -16,17 +16,17 @@ function setup({obsidian={},globals={}}={}){
   setTimeout:(fn,delay)=>{const id=++timer;jobs.set(id,{fn,delay});return id;},clearTimeout:id=>jobs.delete(id),
   require:()=>({TFile,TFolder,Notice:class{constructor(message){notices.push(message);}},
    ItemView:class{},Modal:class{},...obsidian}),...globals};
- const code=['projects.js','src/v3/core.js','src/v3/complements.js'].map(read).join('\n');
- const api=vm.runInNewContext(code+'\n({getLocale,lfMsg,writerUi,clean,lfProjectSceneFolder,ProjectsView,lfFlattenScenes,lfNestScenes,lfNumberScenes,writerMaskMarkdown,writerGrammarMatchIsSafe,writerSafeReplace,writerParseVariants,writerEncodeVariant,writerVariantAt,WriterComplements})',sandbox);
+ const code=['projects.js','src/v3/core.js','src/v3/complements.js','src/v3/variants.js'].map(read).join('\n');
+ const api=vm.runInNewContext(code+'\n({getLocale,lfMsg,writerUi,clean,lfProjectSceneFolder,ProjectsView,lfFlattenScenes,lfNestScenes,lfNumberScenes,lfIgnoredScene,lfSessionElapsed,lfMigrateProjectPaths,writerMaskMarkdown,writerGrammarMatchIsSafe,writerSafeReplace,writerParseVariants,writerEncodeVariant,writerVariantAt,WriterComplements,WriterVariants})',sandbox);
  const flush=async delay=>{
   for(const [id,job] of [...jobs])if(job.delay===delay&&jobs.delete(id))await job.fn();
  };
  return {api,notices,jobs,flush};
 }
-function projectHarness(){
- const h=setup(),files=new Map(),contents=new Map(),opens=[];
+function projectHarness(options){
+ const h=setup(options),files=new Map(),contents=new Map(),opens=[];
  const insert=(path,text)=>{
-  const file=new TFile(path);files.set(path,file);contents.set(path,text);return file;
+  const file=new TFile(path);files.set(path,file);contents.set(path,text);files.get(file.parent.path)?.children?.push(file);return file;
  };
  const index=insert('Book/Index.md','index content'),chapter=insert('Book/Chapter.md','The chapter.');
  const project={file:index,title:'Book',format:'scenes',scenes:['Chapter'],meta:{}};
@@ -230,4 +230,192 @@ test('compile refuses unsafe paths, invalid workflows, tracked scenes, drafts, o
  assert.equal(h.contents.get(outgoing.path),'Newer version');
  const backups=[...h.contents].filter(([path])=>path.endsWith('.txt'));
  assert.equal(backups.length,1);assert.equal(backups[0][1],'Initial');
+});
+
+test('pausing flushes saved scene edits, excludes paused time and words, and resumes at the new baseline',async()=>{
+ let now=Date.UTC(2026,10,18,18);
+ class Clock extends Date{constructor(...args){super(...(args.length?args:[now]));}static now(){return now;}}
+ const h=projectHarness({globals:{Date:Clock}}),{view,project,chapter,contents}=h;
+ await view.startWritingSession(project);
+ const session=view.prefs(project).session;
+ now+=6000;contents.set(chapter.path,'The chapter. Four words here now.');
+ view.recordSessionChange(chapter);
+ await view.pauseWritingSession(project);
+ assert.equal(session.words,4);assert.equal(h.api.lfSessionElapsed(session),6000);
+ assert.equal(view.sessionUpdateJobs.size,0);
+ now+=15000;contents.set(chapter.path,'The chapter. Four words here now. Not tracked.');
+ view.recordSessionChange(chapter);
+ assert.equal(view.sessionUpdateJobs.size,0);
+ assert.equal(h.api.lfSessionElapsed(session),6000);
+ await view.resumeWritingSession(project);
+ now+=2000;contents.set(chapter.path,'The chapter. Four words here now. Not tracked. Resume.');
+ view.recordSessionChange(chapter);
+ await view.stopWritingSession(project);
+ assert.equal(session.words,5);assert.equal(h.api.lfSessionElapsed(session),8000);
+ now+=7000;await view.startWritingSession(project);
+ now+=3000;assert.equal(h.api.lfSessionElapsed(view.prefs(project).session),11000);
+ assert.equal(view.prefs(project).session.words,5);
+});
+
+test('a blocked resume cannot reactivate an ended session',async()=>{
+ const h=projectHarness(),{view,project}=h;
+ await view.startWritingSession(project);await view.pauseWritingSession(project);
+ let release;
+ h.app.vault.cachedRead=()=>new Promise(resolve=>{release=resolve;});
+ const pending=view.resumeWritingSession(project);
+ await view.stopWritingSession(project);
+ release('New baseline');await pending;
+ assert.equal(view.prefs(project).session.active,false);
+ assert.equal(view.prefs(project).session.runningSince,null);
+});
+
+test('project and chapter renames migrate settings and session baselines without losing drafts',()=>{
+ const {api}=setup();
+ const old='Books/Old/Index.md',next='Books/New/Index.md',scene='Books/Old/Cena.md',newScene='Books/New/Cena.md';
+ const source={drafts:{Mine:[]},session:{projectPath:old,baseline:{[scene]:42,'Other.md':3}}};
+ const other={session:{projectPath:'Other.md',baseline:{[scene]:9}}};
+ const settings={projectsData:{[old]:source,[next]:{goal:150,drafts:{Existing:[]}},'Other.md':other}};
+ assert.equal(api.lfMigrateProjectPaths(settings,'Books/Old','Books/New'),true);
+ assert.ok(!settings.projectsData[old]);assert.equal(settings.projectsData[next],source);
+ assert.equal(source.goal,150);assert.deepEqual(Object.keys(source.drafts).sort(),['Existing','Mine']);
+ assert.equal(source.session.projectPath,next);
+ assert.deepEqual(plain(source.session.baseline),{[newScene]:42,'Other.md':3});
+ assert.deepEqual(plain(other.session.baseline),{[newScene]:9});
+ assert.equal(api.lfMigrateProjectPaths(settings,'Else','Different'),false);
+});
+
+test('workflow JSON round-trips options and colliding imports never replace a saved workflow',async()=>{
+ const h=projectHarness(),{view,project}=h;
+ const cuts=h.workflow('draft.md');cuts.description='Draft workflow';
+ assert.equal(view.importWorkflowEntries(project,{Cuts:cuts}),1);
+ let workflows=view.workflowsFor(project);
+ assert.ok(workflows.Cuts);
+ const renamed=await view.renameWorkflow(project,'Cuts','Final draft');
+ assert.equal(renamed,'Final draft');assert.ok(!workflows.Cuts);
+ assert.deepEqual(plain(workflows[renamed].steps),cuts.steps);
+ const json=JSON.parse(view.workflowJSON(renamed,workflows[renamed]));
+ assert.deepEqual(json.workflows[renamed].steps,cuts.steps);
+ view.importWorkflowEntries(project,json.workflows);view.importWorkflowEntries(project,json.workflows);
+ assert.deepEqual(Object.keys(workflows),['Padrão','Final draft','Final draft 2','Final draft 3']);
+ await assert.rejects(view.renameWorkflow(project,'Final draft','FINAL DRAFT 2'),/already exists/);
+ await assert.rejects(view.renameWorkflow(project,'Padrão','Backup draft'),/default workflow/);
+ await assert.rejects(view.renameWorkflow(project,'Final draft','__proto__'),/Invalid workflow name/);
+ assert.throws(()=>view.validateWorkflow(project,{steps:[{id:'constructor'},{id:'concatenate-text'}]}),/Unsupported step/);
+ h.plugin.saveSettings=async()=>{throw Error('disk full');};
+ await assert.rejects(view.renameWorkflow(project,'Final draft','Revised'),/disk full/);
+ assert.ok(workflows[renamed]);assert.ok(!workflows.Revised);
+});
+
+test('restoring an index finds only that index’s backups, saves the current text, and rejects intervening changes',async()=>{
+ const h=projectHarness(),{view,project,contents,insert,app}=h;
+ const [backup,duplicate]=await Promise.all([view.backupIndex(project),view.backupIndex(project)]);
+ assert.equal(backup,duplicate);
+ insert('Book/_Backups/Index-Other - 2099-01-01T00-00-00-000Z.txt','another index');
+ insert('Book/_Backups/Index - pre-restore - 2099-01-01T00-00-00-000Z.txt','another safeguard');
+ assert.equal(view.latestIndexBackup(project),backup);
+ const index=project.file;
+ contents.set(index.path,'new index');
+ const protectedCopy=await view.restoreIndexBackup(project,backup,index.path,'new index','index content');
+ assert.match(protectedCopy.name,/pre-restore/);
+ assert.equal(contents.get(protectedCopy.path),'new index');
+ assert.equal(contents.get(index.path),'index content');
+ assert.equal(contents.get(h.chapter.path),'The chapter.');
+ contents.set(index.path,'later index');
+ const process=app.vault.process;
+ app.vault.process=async (file,change)=>{contents.set(file.path,'concurrent index');return process(file,change);};
+ await assert.rejects(view.restoreIndexBackup(project,backup,index.path,'later index','index content'),/changed/);
+ assert.equal(contents.get(index.path),'concurrent index');
+ app.workspace.getLeavesOfType=()=>[{view:{file:index,editor:{getValue:()=> 'Unsaved'}}}];
+ await assert.rejects(view.restoreIndexBackup(project,backup,index.path,'concurrent index','index content'),/Close the index/);
+ app.workspace.getLeavesOfType=()=>[];
+ contents.set(backup.path,'changed backup');
+ await assert.rejects(view.restoreIndexBackup(project,backup,index.path,'concurrent index','index content'),/changed/);
+ assert.equal(contents.get(index.path),'concurrent index');
+});
+
+test('scene search uses only the selected draft and rejects stale selection or file changes',()=>{
+ let picker;
+ class FuzzySuggestModal{setPlaceholder(){}open(){picker=this;}}
+ const h=projectHarness({obsidian:{FuzzySuggestModal}}),{view,project,chapter,insert,files,opens}=h;
+ const second=insert('Book/Outro capítulo.md','other scene');
+ view.prefs(project).drafts.Alt=[{title:second.basename,indent:0}];
+ view.selected=project.file.path;view.draft='Alt';view.openSceneSearch(project);
+ const [item]=picker.getItems();assert.equal(item.file,second);assert.equal(picker.getItems().length,1);
+ assert.match(picker.getItemText(item),/Outro capítulo/);
+ view.draft='Principal';picker.onChooseItem(item);assert.deepEqual(opens,[]);
+ view.openSceneSearch(project);const [main]=picker.getItems();picker.onChooseItem(main);assert.deepEqual(opens,[chapter]);
+ files.delete(chapter.path);picker.onChooseItem(main);assert.deepEqual(opens,[chapter]);
+});
+
+test('ignored scene matching supports legacy names, paths and relative filenames',()=>{
+ const {api}=setup();
+ const file=new TFile('Book/Scenes/Chapter.md');
+ for(const name of ['Chapter','Chapter.md','Book/Scenes/Chapter.md'])assert.equal(api.lfIgnoredScene([name],file,'Book/Scenes'),true);
+ assert.equal(api.lfIgnoredScene(['Book/Other/Chapter.md'],file,'Book/Scenes'),false);
+ assert.equal(api.lfIgnoredScene('Chapter',file,'Book/Scenes'),false);
+});
+
+class SceneElement{
+ constructor(tag='div',options={}){this.tag=tag;this.text=options.text;this.attrs=options.attr||{};this.cls=options.cls;this.children=[];this.events={};this.dataset={projectPath:this.attrs['data-project-path']};this.isConnected=true;}
+ createEl(tag,options){const element=new SceneElement(tag,options);this.children.push(element);return element;}
+ createDiv(options){return this.createEl('div',options);}
+ setText(text){this.text=text;}
+ empty(){this.children=[];}
+ addEventListener(name,fn){this.events[name]=fn;}
+}
+test('the project panel updates a scene’s saved count and target without rebuilding its list',async()=>{
+ const h=projectHarness(),{view,chapter,project,app,contents}=h;
+ let target=1200;
+ app.metadataCache.getFileCache=()=>({frontmatter:{target_wordcount:target}});
+ const panel=new SceneElement();
+ await view.drawStats(panel,project,()=>true);
+ const [box]=panel.children,state=view.projectProgress.get(box),scene=state.sceneLabels.get(chapter.path);
+ assert.equal(scene.label.text,' · 2 / 1,200 words');
+ view.root={querySelector:()=>box};view.activeTab='project';view.selected=project.file.path;
+ contents.set(chapter.path,'The chapter now has five.');target=1500;
+ await view.refreshProjectStats(chapter);
+ assert.equal(scene.label.text,' · 5 / 1,500 words');assert.equal(state.label.text,'Total: 5 words');
+});
+
+test('the persistent pickup notice cancels without moving a scene and is hidden when Projects closes',async()=>{
+ const notices=[];
+ class Notice{constructor(fragment,timeout){Object.assign(this,{fragment,timeout});notices.push(this);}hide(){this.hidden=true;}}
+ const h=projectHarness({obsidian:{Notice}}),{view,project}=h;
+ const picked=new Set();
+ const row={addClass:value=>picked.add(value),removeClass:value=>picked.delete(value),ownerDocument:{
+  createDocumentFragment:()=>({children:[],append(node){this.children.push(node);}}),
+  createTextNode:text=>({text}),createElement:tag=>new SceneElement(tag)
+ }};
+ view.root={querySelectorAll:()=>[row]};
+ view.pickUpScene(project,'Principal','Chapter',row);
+ assert.equal(notices[0].timeout,0);assert.equal(view.scenePickup.source,'Chapter');
+ assert.ok(picked.has('writer-project-pickup'));
+ const cancel=notices[0].fragment.children[1];
+ assert.equal(cancel.textContent,'Cancel');cancel.events.click({stopPropagation(){}});
+ assert.equal(view.scenePickup,null);assert.equal(notices[0].hidden,true);assert.equal(picked.size,0);
+ view.pickUpScene(project,'Principal','Chapter',row);await view.onClose();
+ assert.equal(notices[1].hidden,true);
+});
+
+test('deleting an inline alternative asks first and preserves the selected text when an earlier option is removed',async()=>{
+ const modals=[];
+ class Modal{constructor(){this.contentEl=new SceneElement();modals.push(this);}setTitle(){}open(){this.onOpen?.();}close(){this.onClose?.();}}
+ class Setting{
+  addButton(setup){const button={setButtonText(){return this;},setWarning(){return this;},onClick(fn){this.click=fn;return this;}};(this.buttons??=[]).push(button);setup(button);return this;}
+  constructor(){Setting.last=this;}
+ }
+ const h=setup({obsidian:{Modal,Setting}}),plugin={settings:{variants:{enabled:true}},app:{}};
+ const variants=new h.api.WriterVariants(plugin);
+ const file=new TFile('Scene.md');
+ variants.atCaret=()=>({found:{variants:['First','Second','Selected','Fourth'],active:2},file});
+ let saved;variants.replace=async (_found,items,active)=>{saved=[...items,active];};
+ await variants.open();
+ const edit=modals[0];
+ const removeFirst=()=>edit.contentEl.children[1].children[0].children.at(-1).events.click();
+ removeFirst();assert.equal(modals.length,2);assert.equal(saved,undefined);
+ await Setting.last.buttons[0].click();assert.equal(edit.contentEl.children.length,6);
+ removeFirst();await Setting.last.buttons[1].click();
+ const actions=edit.contentEl.children.at(-1);
+ await actions.children[1].events.click();
+ assert.deepEqual(saved,['Second','Selected','Fourth',1]);
 });

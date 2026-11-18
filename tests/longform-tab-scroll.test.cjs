@@ -8,12 +8,19 @@ class Element{
  constructor(cls='',text='',parent=null){
   this.cls=cls;this.text=text;this.parent=parent;this.children=[];
   this.listeners={};this.style={};this.scrollTop=0;this._scrollLeft=0;this.value='';
-  this.removed=false;this.clientWidth=155;this.attributes={};
+  this.removed=false;this.clientWidth=155;this.attributes={};this.dataset={};
   this.classList={toggle:(name,enabled)=>{
    const classes=new Set(this.cls.split(/\s+/).filter(Boolean));
    if(enabled)classes.add(name);else classes.delete(name);
    this.cls=[...classes].join(' ');
   }};
+ }
+ get childNodes(){return this.children;}
+ cloneNode(){const node=new Element(this.cls);node.removed=true;return node;}
+ replaceChildren(...children){this.empty();for(const child of children)child.parent=this;this.children=children;}
+ querySelectorAll(selector){
+  if(selector!=='.writer-project-panel[data-tab]')return [];
+  return this.children.filter(child=>child.dataset.tab);
  }
  get isConnected(){return !this.removed&&(!this.parent||this.parent.isConnected);}
  get scrollWidth(){return this.cls.split(' ').includes('writer-project-tabs')?this.children.length*78:0;}
@@ -25,7 +32,8 @@ class Element{
  createEl(_tag,options={}){return this.add(options);}
  add(options){const child=new Element(options.cls||'',options.text||'',this);Object.assign(child.attributes,options.attr);this.children.push(child);return child;}
  addEventListener(name,fn){(this.listeners[name]??=[]).push(fn);}
- setAttribute(name,value){this.attributes[name]=value;}
+ setAttribute(name,value){this.attributes[name]=value;if(name.startsWith('data-'))this.dataset[name==='data-tab'?'tab':'projectPath']=value;}
+ removeAttribute(name){delete this.attributes[name];}
  click(){for(const fn of this.listeners.click||[])fn();}
  scrollTo(value){this.scrollLeft=value;for(const fn of this.listeners.scroll||[])fn();}
  empty(){for(const child of this.children)child.removed=true;this.children=[];this._scrollLeft=0;}
@@ -163,4 +171,18 @@ test('shared sidebar strip stays in one scrolling row with icon-only tabs at the
  assert.match(sidebarCss,/\.writer-sidebar-tabs>button\.is-active\{[^}]*border-bottom-color:var\(--interactive-accent\)/);
  assert.match(sidebarCss,/body\.is-mobile \.writer-sidebar-tabs\{--writer-sidebar-touch-height:44px\}/);
  assert.match(sidebarCss,/@container basic-project \(max-width:205px\)\{\s*\.writer-project-root \.writer-sidebar-tab-label\{display:none\}/);
+});
+
+test('longform restores nonzero and zero scroll independently for each project',async()=>{
+ const view=viewFixture();
+ const second={...project,file:{path:'Other/Index.md'}};
+ view.indexes=()=>[project,second];
+ const active=()=>view.root.children.find(node=>node.dataset.tab==='relations');
+ await view.render();active().scrollTop=125;
+ view.selected=second.file.path;await view.render();assert.equal(active().scrollTop,0);
+ active().scrollTop=36;
+ view.selected=project.file.path;await view.render();assert.equal(active().scrollTop,125);
+ active().scrollTop=0;
+ view.selected=second.file.path;await view.render();assert.equal(active().scrollTop,36);
+ view.selected=project.file.path;await view.render();assert.equal(active().scrollTop,0);
 });

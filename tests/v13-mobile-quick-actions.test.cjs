@@ -36,7 +36,7 @@ function pendingSpeech(provider='basic'){
   addCommand(){},registerEvent(){},registerDomEvent(){},register:fn=>cleanups.push(fn)};
  const source=['v3/core','v3/final-suite','v10/speech-accessibility','v12/mobile-ux-1201'].map(name=>fs.readFileSync(path.join(__dirname,'../src/'+name+'.js'),'utf8')).join('\n');
  const api=vm.runInNewContext(source+'\n({WriterFinalFeatures,writerFinalMerge,writerV107SpeechConfig,writerV107SpeechStop,writerV107SpeechStart,writerV107SpeechRegister,writerV1201Read})',{
-  console,TFile,MarkdownView:class{},EditorView:{},writerUi:(_pt,en)=>en,
+  console,TFile,MarkdownView:class{},EditorView:{},lfMsg:(_pt,en)=>en,
   writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
   writerV12SelectedText:()=>'',speechSynthesis:speech,SpeechSynthesisUtterance:Utterance,
   navigator:{language:'en-US'},Notice:class{constructor(message){notices.push(message);}},

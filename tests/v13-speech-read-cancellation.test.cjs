@@ -10,7 +10,7 @@ function fixture(provider='system'){
  class TFile{constructor(path){this.path=path;this.basename=path.replace(/.*\//,'').replace(/\.md$/,'');this.extension='md';this.stat={mtime:1,size:20};}}
  const file=active=new TFile('Chapter.md'),files=new Map([[file.path,file]]);
  const speech={speak:item=>utterances.push(item),cancel(){},pause(){},resume(){},getVoices:()=>[]};
- const sandbox={console,Date,MarkdownView:class{},TFile,EditorView:{},writerUi:(_pt,en)=>en,writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
+ const sandbox={console,Date,MarkdownView:class{},TFile,EditorView:{},writerUi:(_pt,en)=>en,lfMsg:(_pt,en)=>en,writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,
   speechSynthesis:speech,SpeechSynthesisUtterance:class{constructor(text){this.text=text;}},WebSocket:class{},WRITER_EDGE_VOICES:{'en-US':'Test voice'},
   document:{querySelectorAll:()=>[]},navigator:{language:'en-US'},Notice:class{},
   writerCompanionConfig:plugin=>plugin.settings.companionCompatibility,

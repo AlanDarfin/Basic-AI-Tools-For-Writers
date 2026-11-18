@@ -201,7 +201,7 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false}={}){
         try{
           const result=writerV4MergeHunks(groups,accepted);
           if(plugin.settings.writerV4.protectMarkdown!==false)writerV4AssertProtected(original,result);
-          await writerSafeReplace(plugin,file,from,to,original,result,writerUi('revisão seletiva v4','v4 selective review'));
+          await writerSafeReplace(plugin,file,from,to,original,result,{reason:writerUi('revisão seletiva v4','v4 selective review')});
           modal.close();new Notice(writerUi('Revisão aplicada.','Review applied.'));
         }catch(e){busy=false;new Notice(String(e?.message||e),7000);renderDiff();}
       };

@@ -116,8 +116,20 @@ test('hover selects the error independent of caret; caret selection is a fallbac
   msg:pt=>pt,
   console
  };
- const obj=vm.runInNewContext('({'+source.slice(a,b)+'})',sandbox);
- const file={path:'Story.md'},view={state:{selection:{main:{head:50}}},coordsAtPos:()=>({left:100,bottom:40})};
+ const markStart=source.indexOf('function writerMappedReviewMark');
+ const markEnd=source.indexOf('function writerGrammarSeverity',markStart);
+ const ranges=[{from:10,to:13,shift:0},{from:20,to:25,shift:0}];
+ const field={between(from,to,visit){
+  for(const range of ranges){
+   const start=range.from+range.shift,end=range.to+range.shift;
+   if(from<=end&&to>=start&&visit(start,end,{spec:{attributes:{
+    'data-review-from':String(range.from),'data-review-to':String(range.to)}}})===false)break;
+  }
+ }};
+ const obj=vm.runInNewContext(source.slice(markStart,markEnd)+'\n({'+source.slice(a,b)+'})',{...sandbox,reviewMarkField:{}});
+ const seen=[];
+ const file={path:'Story.md'},view={state:{selection:{main:{head:50}},doc:{length:100},field:()=>field},
+  coordsAtPos:pos=>{seen.push(pos);return {left:100,bottom:40};}};
  let opened=0,closed=0,key='';
  const host={
   settings:{reviewPopupEnabled:true},
@@ -134,9 +146,10 @@ test('hover selects the error independent of caret; caret selection is a fallbac
  assert.equal(opened,1);assert.equal(key,10);
  host.maybeShowReviewPopup(view,{mark:{from:10,to:13}});
  assert.equal(opened,1,'Existing popup does not reopen for same error');
+ ranges[1].shift=9; // An edit before the mark moved the underline, not its finding ID.
  host.maybeShowReviewPopup(view,{mark:{from:20,to:25}});
- assert.equal(opened,2);assert.equal(key,20);
- view.state.selection.main.head=22;
+ assert.equal(opened,2);assert.equal(key,20);assert.deepEqual(seen,[10,29]);
+ view.state.selection.main.head=31;
  host.maybeShowReviewPopup(view,{caret:true});
  assert.equal(opened,2);
  view.state.selection.main.head=45;

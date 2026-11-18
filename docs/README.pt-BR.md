@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 13.15.1 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 14.0.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
@@ -59,6 +59,12 @@ Em **Geral → Recursos**, ligue ou desligue os recursos para escolher quais ent
 ## Escreva, recupere e exporte
 
 Abra **Projetos** ou a **Biblioteca** para criar um livro ou adicionar uma nota existente. Os capítulos continuam em arquivos Markdown separados. O ícone **Adicionar separador de arco** na barra de Cenas do Longform insere uma linha visual, com legenda opcional e movimento por arraste/toque. Os separadores ficam nas configurações do Basic por rascunho e não entram nas notas nem na compilação. A escrita contínua usa um editor por capítulo expandido; a gravação é explícita e verifica alterações concorrentes.
+
+Em **Escrita → Compilar**, gere uma prévia ou salve o manuscrito em uma nova nota. Se o destino já existir, **Substituir com backup** guarda o conteúdo anterior em `_Backups/Manuscripts` antes de gravar. Feche o destino no editor primeiro. Essa ação não substitui notas de capítulos nem índices do Longform. As alterações nas propriedades do índice usam o gravador de YAML do Obsidian, que pode alterar a formatação ou remover comentários do YAML.
+
+Em **Cenas**, use a lupa ou atribua um atalho ao comando **Buscar cena no projeto**. A busca fica no rascunho selecionado. Para reorganizar no celular, segure a alça de uma cena e toque na alça de destino, ou toque em **Cancelar** no aviso. Em **Compilar**, renomeie workflows personalizados e use **Exportar JSON** para copiar as etapas exibidas. **Importar JSON** aceita o mesmo formato.
+
+Em **Projeto → Projeto**, **Palavras por cena** mostra a contagem salva e a meta da nota em `target_wordcount`, quando definida. Inicie, pause, retome ou encerre uma sessão de escrita do projeto selecionado. O período em pausa não conta para o tempo nem para o progresso em palavras. Use o **Diagnóstico** para ignorar arquivos soltos sem movê-los. **Restaurar backup do índice** recupera o backup mais recente, guarda uma cópia separada do índice atual e preserva as notas de cena.
 
 Use as abas com ícones em **Escrita**, **Universo** ou **Projeto** para abrir uma seção. Em telas estreitas, deslize a barra para o lado para ver as outras abas.
 

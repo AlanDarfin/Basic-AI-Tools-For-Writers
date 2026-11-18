@@ -44,15 +44,27 @@ function writerExtendedTokens(source,config=WRITER_EXTENDED_DEFAULTS){
  return result;
 }
 function writerExtendedColor(tag){
- return ({red:'var(--color-red)',orange:'var(--color-orange)',yellow:'var(--color-yellow)',green:'var(--color-green)',blue:'var(--color-blue)',purple:'var(--color-purple)',pink:'var(--color-pink)',accent:'var(--interactive-accent)'})[String(tag).toLowerCase()]||null;
+ const name=String(tag).toLowerCase();
+ if(/^hex-[0-9a-f]{6}$/.test(name))return '#'+name.slice(4);
+ const colors={red:'var(--color-red)',orange:'var(--color-orange)',yellow:'var(--color-yellow)',green:'var(--color-green)',blue:'var(--color-blue)',purple:'var(--color-purple)',pink:'var(--color-pink)',accent:'var(--interactive-accent)'};
+ return Object.hasOwn(colors,name)?colors[name]:null;
+}
+function writerExtendedStyle(token){
+ if(token.kind==='highlight'){
+  const color=writerExtendedColor(token.tag);
+  if(color)return ['--writer-v5-highlight-color',color];
+ }
+ if(token.kind==='span'){
+  const color=/^color-([0-9a-f]{6})$/i.exec(token.tag);
+  if(color)return ['color','#'+color[1]];
+ }
+ return null;
 }
 function writerExtendedElement(token){
  const tag=token.kind==='superscript'?'sup':token.kind==='subscript'?'sub':token.kind==='underline'?'ins':token.kind==='highlight'?'mark':'span';
  const node=document.createElement(tag);node.classList.add('writer-v5-ext','writer-v5-'+token.kind);node.textContent=token.value;
- if(token.kind==='highlight'){
-  const color=writerExtendedColor(token.tag);
-  if(color)node.style.setProperty('--writer-v5-highlight-color',color);
- }
+ const style=writerExtendedStyle(token);
+ if(style)node.style.setProperty(...style);
  if(token.kind==='span'){
   for(const cls of token.tag.trim().split(/\s+/))if(/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(cls))node.classList.add('writer-v5-class-'+cls);
  }
@@ -66,6 +78,22 @@ function writerExtendedElement(token){
 }
 function writerExtendedReading(root,cfg){
  if(!root||typeof document==='undefined'||typeof document.createTreeWalker!=='function')return;
+ if(cfg.coloredHighlight!==false){
+  // Obsidian can consume the == delimiters before post-processors run.
+  // Style the native mark in place so nested links/emphasis are preserved.
+  for(const mark of root.querySelectorAll?.('mark')||[]){
+   if(mark.closest('pre,code,.cm-editor,.writer-v5-ext'))continue;
+   const first=mark.firstChild;
+   if(first?.nodeType!==3)continue;
+   const prefix=/^\{([a-zA-Z0-9_-]{1,30})\}(?=\S|$)/.exec(first.nodeValue||'');
+   if(!prefix||!mark.textContent.slice(prefix[0].length).trim())continue;
+   const style=writerExtendedStyle({kind:'highlight',tag:prefix[1]});
+   if(!style)continue;
+   first.nodeValue=first.nodeValue.slice(prefix[0].length);
+   mark.classList.add('writer-v5-ext','writer-v5-highlight');
+   mark.style.setProperty(...style);
+  }
+ }
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];
  while(walker.nextNode()){
   const n=walker.currentNode,p=n.parentElement;
@@ -118,7 +146,8 @@ function writerExtendedLiveDecorations(view,cfg){
   for(const token of writerExtendedTokens(raw,cfg)){
    const from=line.from+token.from,to=line.from+token.to;
    const attrs={};
-   if(token.kind==='highlight'&&writerExtendedColor(token.tag))attrs.style='--writer-v5-highlight-color:'+writerExtendedColor(token.tag);
+   const style=writerExtendedStyle(token);
+   if(style)attrs.style=style.join(':');
    ranges.push(Decoration.mark({class:'writer-v5-ext writer-v5-'+token.kind,attributes:attrs}).range(line.from+token.innerFrom,line.from+token.innerTo));
    if(selection.from<=to&&selection.to>=from)continue;
    ranges.push(Decoration.replace({}).range(from,line.from+token.innerFrom));

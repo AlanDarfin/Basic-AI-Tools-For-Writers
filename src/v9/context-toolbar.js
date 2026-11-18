@@ -5,6 +5,7 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['bold','bold','Negrito','Bold'],['italic','italic','Itálico','Italic'],
  ['underline','underline','Sublinhado','Underline'],['superscript','superscript','Sobrescrito','Superscript'],
  ['subscript','subscript','Subscrito','Subscript'],
+ ['spoiler','eye-off','Spoiler','Spoiler'],
  ['strike','strikethrough','Riscado','Strikethrough'],['highlight','highlighter','Realce','Highlight'],
  ['code','code','Código inline','Inline code'],['codeblock','file-code','Bloco de código','Code block'],
  ['h1','heading-1','Título 1','Heading 1'],['h2','heading-2','Título 2','Heading 2'],
@@ -27,6 +28,12 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['background-color','paint-bucket','Cor de destaque','Background color']
 ];
 const WRITER_V9_FORMAT_IDS=WRITER_V9_FORMAT_ACTIONS.map(x=>x[0]);
+const WRITER_V9_EXTENDED_ACTIONS={
+ underline:['underline','++','++'],superscript:['superscript','^','^',true],
+ subscript:['subscript','~','~',true],spoiler:['spoiler','||','||'],
+ 'text-color':['customSpan',options=>'!!{color-'+writerV1048ToolbarHex(options.textColor,'#cf517f').slice(1)+'}','!!'],
+ 'background-color':['coloredHighlight',options=>'=={hex-'+writerV1048ToolbarHex(options.backgroundColor,'#ffd66a').slice(1)+'}','==']
+};
 const WRITER_V9_TOOLBAR_DEFAULTS={
  enabledDesktop:true,enabledMobile:false,compact:true,placement:'bottom',
  style:'compact',buttonSize:32,showLabels:false,textColor:'#cf517f',backgroundColor:'#ffd66a',
@@ -169,12 +176,26 @@ function writerV9Format(editor,action,options={}){
   const value=text.split('\n').map((line,i)=>typeof prefix==='function'?prefix(line,i):prefix+line).join('\n');
   editor.replaceSelection(value);
  };
+ const extended=Object.hasOwn(WRITER_V9_EXTENDED_ACTIONS,action)?WRITER_V9_EXTENDED_ACTIONS[action]:null;
+ if(extended){
+  const [,prefix,suffix,splitWords]=extended;
+  const opening=typeof prefix==='function'?prefix(options):prefix;
+  if(!selected)replacement(opening,suffix);
+  else{
+   const wrap=text=>opening+text+suffix;
+   // Extended marks are inline. Super/subscript keep the existing single-word
+   // syntax, and all marks leave whitespace at selection boundaries untouched.
+   const formatted=splitWords?selected.replace(/\S+/g,wrap):
+    selected.split('\n').map(line=>line.replace(/\S(?:.*\S)?/,wrap)).join('\n');
+   if(formatted===selected)return false;
+   editor.replaceSelection(formatted);
+  }
+  editor.focus?.();
+  return true;
+ }
  switch(action){
  case 'bold':replacement('**','**');break;
  case 'italic':replacement('*','*');break;
- case 'underline':replacement('<u>','</u>');break;
- case 'superscript':replacement('<sup>','</sup>');break;
- case 'subscript':replacement('<sub>','</sub>');break;
  case 'strike':replacement('~~','~~');break;
  case 'highlight':replacement('==','==');break;
  case 'code':replacement(String.fromCharCode(96),String.fromCharCode(96));break;
@@ -206,14 +227,6 @@ function writerV9Format(editor,action,options={}){
  case 'justify':{
   if(typeof writerV102AlignApply!=='function')return false;
   writerV102AlignApply(editor,'j');break;
- }
- case 'text-color':{
-  const color=writerV1048ToolbarHex(options.textColor,'#cf517f');
-  replacement('<span style="color:'+color+'">','</span>');break;
- }
- case 'background-color':{
-  const color=writerV1048ToolbarHex(options.backgroundColor,'#ffd66a');
-  replacement('<mark style="background-color:'+color+'">','</mark>');break;
  }
  default:return false;
  }
@@ -267,12 +280,12 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
  const addFormat=parent=>{
   const existing=new Set((parent.items||[]).map(item=>writerV1044MenuTitle(item)));
   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
-   if(!['underline','superscript','subscript','highlight','codeblock',
+   if(!['underline','superscript','subscript','spoiler','highlight','codeblock',
     'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
    const title=writerUi(pt,en);
    if(existing.has(title))continue;
    writerV1044MenuAdd(parent,title,icon,()=>{
-    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
+    if(writerModuleOn(plugin,'formatToolbar'))writerV1048ToolbarRun(plugin,editor,id);
    },'basic-format');
   }
   if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
@@ -382,6 +395,13 @@ function writerV1048ToolbarRun(plugin,editor,id){
    return false;
   }
   return plugin.app.commands.executeCommandById?.(item.command)!==false;
+ }
+ const syntax=plugin.settings.extendedSyntax;
+ const feature=Object.hasOwn(WRITER_V9_EXTENDED_ACTIONS,id)?WRITER_V9_EXTENDED_ACTIONS[id][0]:null;
+ if(feature&&(!writerModuleOn(plugin,'extendedSyntax')||syntax?.enabled===false||syntax?.[feature]===false)){
+  new Notice(writerUi('Ative a opção correspondente em Formatação de texto para usar este botão.',
+   'Enable the corresponding option in Text formatting to use this action.'));
+  return false;
  }
  return writerV9Format(editor,id,cfg);
 }
@@ -544,7 +564,7 @@ function writerV9RegisterToolbar(plugin){
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
   plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
    editorCallback:editor=>{
-    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
+    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV1048ToolbarRun(plugin,editor,id);
    }});
  }
  plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),

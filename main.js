@@ -5070,15 +5070,27 @@ function writerExtendedTokens(source,config=WRITER_EXTENDED_DEFAULTS){
  return result;
 }
 function writerExtendedColor(tag){
- return ({red:'var(--color-red)',orange:'var(--color-orange)',yellow:'var(--color-yellow)',green:'var(--color-green)',blue:'var(--color-blue)',purple:'var(--color-purple)',pink:'var(--color-pink)',accent:'var(--interactive-accent)'})[String(tag).toLowerCase()]||null;
+ const name=String(tag).toLowerCase();
+ if(/^hex-[0-9a-f]{6}$/.test(name))return '#'+name.slice(4);
+ const colors={red:'var(--color-red)',orange:'var(--color-orange)',yellow:'var(--color-yellow)',green:'var(--color-green)',blue:'var(--color-blue)',purple:'var(--color-purple)',pink:'var(--color-pink)',accent:'var(--interactive-accent)'};
+ return Object.hasOwn(colors,name)?colors[name]:null;
+}
+function writerExtendedStyle(token){
+ if(token.kind==='highlight'){
+  const color=writerExtendedColor(token.tag);
+  if(color)return ['--writer-v5-highlight-color',color];
+ }
+ if(token.kind==='span'){
+  const color=/^color-([0-9a-f]{6})$/i.exec(token.tag);
+  if(color)return ['color','#'+color[1]];
+ }
+ return null;
 }
 function writerExtendedElement(token){
  const tag=token.kind==='superscript'?'sup':token.kind==='subscript'?'sub':token.kind==='underline'?'ins':token.kind==='highlight'?'mark':'span';
  const node=document.createElement(tag);node.classList.add('writer-v5-ext','writer-v5-'+token.kind);node.textContent=token.value;
- if(token.kind==='highlight'){
-  const color=writerExtendedColor(token.tag);
-  if(color)node.style.setProperty('--writer-v5-highlight-color',color);
- }
+ const style=writerExtendedStyle(token);
+ if(style)node.style.setProperty(...style);
  if(token.kind==='span'){
   for(const cls of token.tag.trim().split(/\s+/))if(/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(cls))node.classList.add('writer-v5-class-'+cls);
  }
@@ -5092,6 +5104,22 @@ function writerExtendedElement(token){
 }
 function writerExtendedReading(root,cfg){
  if(!root||typeof document==='undefined'||typeof document.createTreeWalker!=='function')return;
+ if(cfg.coloredHighlight!==false){
+  // Obsidian can consume the == delimiters before post-processors run.
+  // Style the native mark in place so nested links/emphasis are preserved.
+  for(const mark of root.querySelectorAll?.('mark')||[]){
+   if(mark.closest('pre,code,.cm-editor,.writer-v5-ext'))continue;
+   const first=mark.firstChild;
+   if(first?.nodeType!==3)continue;
+   const prefix=/^\{([a-zA-Z0-9_-]{1,30})\}(?=\S|$)/.exec(first.nodeValue||'');
+   if(!prefix||!mark.textContent.slice(prefix[0].length).trim())continue;
+   const style=writerExtendedStyle({kind:'highlight',tag:prefix[1]});
+   if(!style)continue;
+   first.nodeValue=first.nodeValue.slice(prefix[0].length);
+   mark.classList.add('writer-v5-ext','writer-v5-highlight');
+   mark.style.setProperty(...style);
+  }
+ }
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];
  while(walker.nextNode()){
   const n=walker.currentNode,p=n.parentElement;
@@ -5144,7 +5172,8 @@ function writerExtendedLiveDecorations(view,cfg){
   for(const token of writerExtendedTokens(raw,cfg)){
    const from=line.from+token.from,to=line.from+token.to;
    const attrs={};
-   if(token.kind==='highlight'&&writerExtendedColor(token.tag))attrs.style='--writer-v5-highlight-color:'+writerExtendedColor(token.tag);
+   const style=writerExtendedStyle(token);
+   if(style)attrs.style=style.join(':');
    ranges.push(Decoration.mark({class:'writer-v5-ext writer-v5-'+token.kind,attributes:attrs}).range(line.from+token.innerFrom,line.from+token.innerTo));
    if(selection.from<=to&&selection.to>=from)continue;
    ranges.push(Decoration.replace({}).range(from,line.from+token.innerFrom));
@@ -13914,6 +13943,7 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['bold','bold','Negrito','Bold'],['italic','italic','Itálico','Italic'],
  ['underline','underline','Sublinhado','Underline'],['superscript','superscript','Sobrescrito','Superscript'],
  ['subscript','subscript','Subscrito','Subscript'],
+ ['spoiler','eye-off','Spoiler','Spoiler'],
  ['strike','strikethrough','Riscado','Strikethrough'],['highlight','highlighter','Realce','Highlight'],
  ['code','code','Código inline','Inline code'],['codeblock','file-code','Bloco de código','Code block'],
  ['h1','heading-1','Título 1','Heading 1'],['h2','heading-2','Título 2','Heading 2'],
@@ -13936,6 +13966,12 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['background-color','paint-bucket','Cor de destaque','Background color']
 ];
 const WRITER_V9_FORMAT_IDS=WRITER_V9_FORMAT_ACTIONS.map(x=>x[0]);
+const WRITER_V9_EXTENDED_ACTIONS={
+ underline:['underline','++','++'],superscript:['superscript','^','^',true],
+ subscript:['subscript','~','~',true],spoiler:['spoiler','||','||'],
+ 'text-color':['customSpan',options=>'!!{color-'+writerV1048ToolbarHex(options.textColor,'#cf517f').slice(1)+'}','!!'],
+ 'background-color':['coloredHighlight',options=>'=={hex-'+writerV1048ToolbarHex(options.backgroundColor,'#ffd66a').slice(1)+'}','==']
+};
 const WRITER_V9_TOOLBAR_DEFAULTS={
  enabledDesktop:true,enabledMobile:false,compact:true,placement:'bottom',
  style:'compact',buttonSize:32,showLabels:false,textColor:'#cf517f',backgroundColor:'#ffd66a',
@@ -14078,12 +14114,26 @@ function writerV9Format(editor,action,options={}){
   const value=text.split('\n').map((line,i)=>typeof prefix==='function'?prefix(line,i):prefix+line).join('\n');
   editor.replaceSelection(value);
  };
+ const extended=Object.hasOwn(WRITER_V9_EXTENDED_ACTIONS,action)?WRITER_V9_EXTENDED_ACTIONS[action]:null;
+ if(extended){
+  const [,prefix,suffix,splitWords]=extended;
+  const opening=typeof prefix==='function'?prefix(options):prefix;
+  if(!selected)replacement(opening,suffix);
+  else{
+   const wrap=text=>opening+text+suffix;
+   // Extended marks are inline. Super/subscript keep the existing single-word
+   // syntax, and all marks leave whitespace at selection boundaries untouched.
+   const formatted=splitWords?selected.replace(/\S+/g,wrap):
+    selected.split('\n').map(line=>line.replace(/\S(?:.*\S)?/,wrap)).join('\n');
+   if(formatted===selected)return false;
+   editor.replaceSelection(formatted);
+  }
+  editor.focus?.();
+  return true;
+ }
  switch(action){
  case 'bold':replacement('**','**');break;
  case 'italic':replacement('*','*');break;
- case 'underline':replacement('<u>','</u>');break;
- case 'superscript':replacement('<sup>','</sup>');break;
- case 'subscript':replacement('<sub>','</sub>');break;
  case 'strike':replacement('~~','~~');break;
  case 'highlight':replacement('==','==');break;
  case 'code':replacement(String.fromCharCode(96),String.fromCharCode(96));break;
@@ -14115,14 +14165,6 @@ function writerV9Format(editor,action,options={}){
  case 'justify':{
   if(typeof writerV102AlignApply!=='function')return false;
   writerV102AlignApply(editor,'j');break;
- }
- case 'text-color':{
-  const color=writerV1048ToolbarHex(options.textColor,'#cf517f');
-  replacement('<span style="color:'+color+'">','</span>');break;
- }
- case 'background-color':{
-  const color=writerV1048ToolbarHex(options.backgroundColor,'#ffd66a');
-  replacement('<mark style="background-color:'+color+'">','</mark>');break;
  }
  default:return false;
  }
@@ -14176,12 +14218,12 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
  const addFormat=parent=>{
   const existing=new Set((parent.items||[]).map(item=>writerV1044MenuTitle(item)));
   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
-   if(!['underline','superscript','subscript','highlight','codeblock',
+   if(!['underline','superscript','subscript','spoiler','highlight','codeblock',
     'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
    const title=writerUi(pt,en);
    if(existing.has(title))continue;
    writerV1044MenuAdd(parent,title,icon,()=>{
-    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
+    if(writerModuleOn(plugin,'formatToolbar'))writerV1048ToolbarRun(plugin,editor,id);
    },'basic-format');
   }
   if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
@@ -14291,6 +14333,13 @@ function writerV1048ToolbarRun(plugin,editor,id){
    return false;
   }
   return plugin.app.commands.executeCommandById?.(item.command)!==false;
+ }
+ const syntax=plugin.settings.extendedSyntax;
+ const feature=Object.hasOwn(WRITER_V9_EXTENDED_ACTIONS,id)?WRITER_V9_EXTENDED_ACTIONS[id][0]:null;
+ if(feature&&(!writerModuleOn(plugin,'extendedSyntax')||syntax?.enabled===false||syntax?.[feature]===false)){
+  new Notice(writerUi('Ative a opção correspondente em Formatação de texto para usar este botão.',
+   'Enable the corresponding option in Text formatting to use this action.'));
+  return false;
  }
  return writerV9Format(editor,id,cfg);
 }
@@ -14453,7 +14502,7 @@ function writerV9RegisterToolbar(plugin){
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
   plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
    editorCallback:editor=>{
-    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
+    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV1048ToolbarRun(plugin,editor,id);
    }});
  }
  plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),

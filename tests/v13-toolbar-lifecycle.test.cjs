@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const source=fs.readFileSync('src/v9/context-toolbar.js','utf8');
 
-function harness(){
+function harness(actions=['bold']){
  const timers=new Map(),posted=[],ready=[],cleanups=[],workspaceCallbacks=[],domCallbacks=[],observers=[],commands=new Map(),writes=[];
  let timerId=0,saves=0;
  class Element{
@@ -28,7 +28,7 @@ function harness(){
  class MarkdownView{}
  const host=new Element(),editor={getSelection:()=> 'Selected writing',replaceSelection:value=>writes.push(value),focus(){}};
  const view=new MarkdownView();view.contentEl=host;view.editor=editor;view.mode='source';view.getMode=()=>view.mode;
- const settings={visibleModules:{formatToolbar:true},v9Toolbar:{enabledDesktop:true,enabledMobile:false,placement:'bottom',actions:['bold']}};
+ const settings={visibleModules:{formatToolbar:true},v9Toolbar:{enabledDesktop:true,enabledMobile:false,placement:'bottom',actions}};
  const plugin={settings,app:{workspace:{getActiveViewOfType:()=>view,on(type,callback){const ref={type,callback};workspaceCallbacks.push(ref);return ref;},onLayoutReady:callback=>ready.push(callback)}},
   registerEvent(){},registerDomEvent(target,type,callback){domCallbacks.push({target,type,callback});},register:callback=>cleanups.push(callback),
   addCommand:command=>commands.set(command.id,command),saveSettings:async()=>{saves++;}};
@@ -82,4 +82,19 @@ test('late workspace, DOM, mode and action callbacks remain inert after removing
 test('an older toolbar cleanup does not clear a replacement refresh callback',()=>{
  const h=harness(),replacement=()=>{};h.plugin.writerV9ToolbarRefresh=replacement;
  h.unload();assert.equal(h.plugin.writerV9ToolbarRefresh,replacement);
+});
+
+test('toolbar buttons and Obsidian commands pinned to its mobile toolbar use the same Basic format',()=>{
+ const h=harness(['underline','text-color']);
+ h.plugin.settings.v9Toolbar.profiles.desktop.textColor='#82a4d5';
+ h.ready[0]();h.flush();
+ const buttons=h.host.children[0].children;
+ for(const button of buttons){
+  button.events.click[0]();
+  h.commands.get('v9-format-'+button.attrs['data-writer-action']).editorCallback(h.editor);
+ }
+ assert.deepEqual(h.writes,[
+  '++Selected writing++','++Selected writing++',
+  '!!{color-82a4d5}Selected writing!!','!!{color-82a4d5}Selected writing!!'
+ ]);
 });

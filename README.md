@@ -78,6 +78,8 @@ Optional desktop export to DOCX, EPUB, HTML or PDF uses a separately installed *
 
 The Basic toolbar uses Markdown and Basic's own formatting syntax. Select text and use Underline, Superscript, Subscript or Spoiler to insert `++text++`, `^2^`, `~2~` or `||text||`. Text color and Background color use the exact colors saved in the desktop or mobile toolbar profile, for example `!!{color-cf517f}text!!` and `=={hex-ffd66a}text==`. Keep the matching options enabled under **Text formatting** to render them in Reading view and Live Preview.
 
+By default, automatic typography turns two hyphens into `–` and a third into `—`, even at the start of a paragraph. Press Backspace right after a conversion to recover the typed hyphens (for example, `---` for a Markdown separator) or the straight quote. If the editor auto-paired the quote, the automatically inserted closer is removed too.
+
 ## Review prose rhythm
 
 Run **Writing: rhythm and repetition** on a selection or the current note. It shows sentence-length distribution, long sentences and paragraphs, and repeated words. Select a result to jump to its place in the editor. It skips frontmatter, headings, code fences and comments. Use the counts as reading cues rather than rules. No edits or network calls are made.

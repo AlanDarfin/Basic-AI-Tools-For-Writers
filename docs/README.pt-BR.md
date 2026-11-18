@@ -74,6 +74,12 @@ Para montar o manuscrito, use **Livros: compilar manuscrito Markdown**, escolha 
 
 A exportação opcional para DOCX, EPUB, HTML ou PDF no computador usa o **Pandoc** instalado separadamente; PDF também pode exigir um mecanismo compatível de renderização. Veja o [guia de primeiro uso](GETTING_STARTED.pt-BR.md#escreva-seu-primeiro-livro).
 
+## Formate texto sem HTML
+
+A barra do Basic usa Markdown e a sintaxe do próprio plugin. Selecione um trecho e use Sublinhado, Sobrescrito, Subscrito ou Spoiler para inserir `++texto++`, `^2^`, `~2~` ou `||texto||`. Cor do texto e Cor de destaque usam as cores exatas salvas no perfil de PC ou celular, como `!!{color-cf517f}texto!!` e `=={hex-ffd66a}texto==`. Mantenha as opções correspondentes ativadas em **Formatação de texto** para renderizar no modo de leitura e na Prévia ao vivo.
+
+Por padrão, a tipografia automática transforma dois hífens em `–` e o terceiro em `—`, inclusive no começo do parágrafo. Pressione Backspace logo após a troca para recuperar os hífens digitados (por exemplo, `---` para um separador Markdown) ou a aspa reta. Se o editor criou um par de aspas, a aspa de fechamento que ele inseriu também é removida.
+
 ## Revise o ritmo da prosa
 
 Use **Escrita: ritmo e repetições** para analisar uma seleção ou a nota atual. Veja a distribuição do tamanho das frases, as frases e os parágrafos mais longos e as palavras que se repetem. Toque num resultado para voltar ao trecho no editor. A análise ignora propriedades, títulos Markdown, blocos de código e comentários. Os números orientam a leitura e não alteram nem enviam a sua nota.

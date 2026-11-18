@@ -5070,15 +5070,27 @@ function writerExtendedTokens(source,config=WRITER_EXTENDED_DEFAULTS){
  return result;
 }
 function writerExtendedColor(tag){
- return ({red:'var(--color-red)',orange:'var(--color-orange)',yellow:'var(--color-yellow)',green:'var(--color-green)',blue:'var(--color-blue)',purple:'var(--color-purple)',pink:'var(--color-pink)',accent:'var(--interactive-accent)'})[String(tag).toLowerCase()]||null;
+ const name=String(tag).toLowerCase();
+ if(/^hex-[0-9a-f]{6}$/.test(name))return '#'+name.slice(4);
+ const colors={red:'var(--color-red)',orange:'var(--color-orange)',yellow:'var(--color-yellow)',green:'var(--color-green)',blue:'var(--color-blue)',purple:'var(--color-purple)',pink:'var(--color-pink)',accent:'var(--interactive-accent)'};
+ return Object.hasOwn(colors,name)?colors[name]:null;
+}
+function writerExtendedStyle(token){
+ if(token.kind==='highlight'){
+  const color=writerExtendedColor(token.tag);
+  if(color)return ['--writer-v5-highlight-color',color];
+ }
+ if(token.kind==='span'){
+  const color=/^color-([0-9a-f]{6})$/i.exec(token.tag);
+  if(color)return ['color','#'+color[1]];
+ }
+ return null;
 }
 function writerExtendedElement(token){
  const tag=token.kind==='superscript'?'sup':token.kind==='subscript'?'sub':token.kind==='underline'?'ins':token.kind==='highlight'?'mark':'span';
  const node=document.createElement(tag);node.classList.add('writer-v5-ext','writer-v5-'+token.kind);node.textContent=token.value;
- if(token.kind==='highlight'){
-  const color=writerExtendedColor(token.tag);
-  if(color)node.style.setProperty('--writer-v5-highlight-color',color);
- }
+ const style=writerExtendedStyle(token);
+ if(style)node.style.setProperty(...style);
  if(token.kind==='span'){
   for(const cls of token.tag.trim().split(/\s+/))if(/^[a-zA-Z][a-zA-Z0-9_-]{0,40}$/.test(cls))node.classList.add('writer-v5-class-'+cls);
  }
@@ -5092,6 +5104,22 @@ function writerExtendedElement(token){
 }
 function writerExtendedReading(root,cfg){
  if(!root||typeof document==='undefined'||typeof document.createTreeWalker!=='function')return;
+ if(cfg.coloredHighlight!==false){
+  // Obsidian can consume the == delimiters before post-processors run.
+  // Style the native mark in place so nested links/emphasis are preserved.
+  for(const mark of root.querySelectorAll?.('mark')||[]){
+   if(mark.closest('pre,code,.cm-editor,.writer-v5-ext'))continue;
+   const first=mark.firstChild;
+   if(first?.nodeType!==3)continue;
+   const prefix=/^\{([a-zA-Z0-9_-]{1,30})\}(?=\S|$)/.exec(first.nodeValue||'');
+   if(!prefix||!mark.textContent.slice(prefix[0].length).trim())continue;
+   const style=writerExtendedStyle({kind:'highlight',tag:prefix[1]});
+   if(!style)continue;
+   first.nodeValue=first.nodeValue.slice(prefix[0].length);
+   mark.classList.add('writer-v5-ext','writer-v5-highlight');
+   mark.style.setProperty(...style);
+  }
+ }
  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT),nodes=[];
  while(walker.nextNode()){
   const n=walker.currentNode,p=n.parentElement;
@@ -5144,7 +5172,8 @@ function writerExtendedLiveDecorations(view,cfg){
   for(const token of writerExtendedTokens(raw,cfg)){
    const from=line.from+token.from,to=line.from+token.to;
    const attrs={};
-   if(token.kind==='highlight'&&writerExtendedColor(token.tag))attrs.style='--writer-v5-highlight-color:'+writerExtendedColor(token.tag);
+   const style=writerExtendedStyle(token);
+   if(style)attrs.style=style.join(':');
    ranges.push(Decoration.mark({class:'writer-v5-ext writer-v5-'+token.kind,attributes:attrs}).range(line.from+token.innerFrom,line.from+token.innerTo));
    if(selection.from<=to&&selection.to>=from)continue;
    ranges.push(Decoration.replace({}).range(from,line.from+token.innerFrom));
@@ -6072,13 +6101,18 @@ function writerTypoMerge(settings){
   if(typeof cfg[key]!=='string'||!cfg[key]||cfg[key].length>8)cfg[key]=WRITER_TYPO_DEFAULTS[key];
  return cfg;
 }
-function writerTypoAtInput(before,typed,cfg){
+function writerTypoAtInput(before,typed,cfg,{batch=false,leadingEnDash=false}={}){
  if(!typed||typed.length!==1||!cfg?.enabled)return null;
  const put=(needle,output)=>({consume:needle.length,text:output});
- if(cfg.dashes&&typed===' '&&/^\s*-- $/.test(before))return put('-- ','— '); // Dialogue, but preserve YAML and thematic breaks.
+ // Dialogue shorthand can still promote a newly typed leading en dash.
+ if(cfg.dashes&&(typed===' '||(cfg.dialogueDashes&&/[\p{L}]/u.test(typed)))){
+  const dialogueStart=leadingEnDash?'–':'--';
+  if(before.slice(0,-1).trimStart()===dialogueStart)return put(dialogueStart+typed,'—'+typed);
+ }
  if(cfg.dashes&&typed==='-'){
-  // Preserve Markdown thematic breaks and YAML frontmatter delimiters.
-  if(/^\s*-{2,}$/.test(before))return null;
+  // In the batch formatter a literal leading run may already be Markdown.
+  // While typing, show the en dash on the second key, even at line start.
+  if((batch&&/^\s*--$/.test(before))||/^\s*-{3,}$/.test(before))return null;
   // -- becomes –; adding a third hyphen makes —.
   if(before.endsWith('–-'))return put('–-','—');
   // The optional direct-to-em-dash mode must not undo its own conversion.
@@ -6086,10 +6120,6 @@ function writerTypoAtInput(before,typed,cfg){
   if(before.endsWith('---'))return put('---','—');
   if(before.endsWith('--'))return put('--',cfg.skipEnDash?'—':'–');
  }
- // A dialogue dash can be typed without a space: "--Olá" → "—Olá".
- // Wait for the first letter so Markdown's --- separator remains available.
- if(cfg.dashes&&cfg.dialogueDashes&&/[\p{L}]/u.test(typed)&&/^\s*--[\p{L}]$/u.test(before))
-  return put('--'+typed,'—'+typed);
  if(cfg.ellipsis&&typed==='.'&&before.endsWith('...'))return put('...','…');
  if(cfg.guillemets&&typed==='<'&&before.endsWith('<<'))return put('<<',cfg.openGuillemet);
  if(cfg.guillemets&&typed==='>'&&before.endsWith('>>'))return put('>>',cfg.closeGuillemet);
@@ -6108,7 +6138,7 @@ function writerTypoAtInput(before,typed,cfg){
  }
  if(cfg.curlyQuotes&&(typed==='"'||typed==="'")){
   const isSingle=typed==="'",opening=isSingle?cfg.openSingle:cfg.openDouble,closing=isSingle?cfg.closeSingle:cfg.closeDouble;
-  const previous=before.at(-2)||'',prior=before.slice(0,-1);
+  const previous=before.at(-2)||'';
   if(isSingle&&cfg.smartApostrophes&&/[\p{L}\p{N}]/u.test(previous))return put(typed,closing);
   const opener=previous===opening?false:(!previous||/[\s([{<—–«“‘]/u.test(previous));
   return put(typed,opener?opening:closing);
@@ -6143,7 +6173,7 @@ function writerTypoConvertProse(text,cfg){
   const convert=part=>{
    let result='';
    for(const character of part){
-    const candidate=writerTypoAtInput(result+character,character,cfg);
+    const candidate=writerTypoAtInput(result+character,character,cfg,{batch:true});
     if(candidate)result=result.slice(0,result.length+1-candidate.consume)+candidate.text;
     else result+=character;
    }
@@ -6167,18 +6197,18 @@ function writerTypingFilterTransaction(tr,p){
  // On Android, the virtual keyboard may delete without using the Backspace keymap.
  if(prior&&p.writerSmartTypography?.cfg?.restoreOnBackspace!==false&&
     (tr.isUserEvent?.('delete.backward')||tr.isUserEvent?.('input.delete'))){
-  let matches=false,count=0;
+  const head=prior.head??prior.to;
+  let removed=0,count=0;
   tr.changes.iterChanges((fromA,toA,fromB,toB,inserted)=>{
    count++;
-   matches=fromA===prior.to-1&&toA===prior.to&&fromB===fromA&&toB===fromB&&
-    inserted.toString()===''&&tr.startState.selection?.ranges?.length===1&&
-    tr.startState.selection?.main?.empty&&
-    tr.startState.selection.main.head===prior.to;
+   const previousChar=Array.from(prior.text.slice(0,head-prior.from)).pop();
+   const deletesChar=fromA===head-(previousChar?.length||1)&&toA===head;
+   const deletesPair=prior.head!=null&&fromA===prior.from&&toA===prior.to;
+   if((deletesChar||deletesPair)&&fromB===fromA&&toB===fromB&&inserted.toString()==='')
+    removed=toA-fromA;
   });
-  const allowed=prior.source==='easy'?p.writerEasyTyping?.active()===true:
-   p.writerSmartTypography?.active()===true;
-  if(count===1&&matches&&allowed&&tr.startState.doc.sliceString(prior.from,prior.to)===prior.text)
-   return [tr,{changes:{from:prior.from,to:prior.to-1,insert:prior.original},
+  if(count===1&&removed&&writerTypingCanRestore(tr.startState,p,prior))
+   return [tr,{changes:{from:prior.from,to:prior.to-removed,insert:prior.original},
     sequential:true,selection:{anchor:prior.from+prior.original.length}}];
  }
  if(!tr.isUserEvent?.('input'))return tr;
@@ -6206,7 +6236,9 @@ function writerTypingFilterTransaction(tr,p){
    const closer=insertion[0]==="'"?typography.cfg.closeSingle:typography.cfg.closeDouble;
    const suggestion=writerTypoAtInput(doc.sliceString(line.from,fromB+1),insertion[0],typography.cfg);
    if(suggestion?.text===closer&&doc.sliceString(toB,Math.min(doc.length,toB+closer.length))===closer){
-    edits.push({from:fromB,to:toB,insert:''});caret={anchor:fromB+closer.length};return;
+    edits.push({from:fromB,to:toB,insert:''});caret={anchor:fromB+closer.length};
+    if(closer!==insertion[0])restore={from:fromB,to:caret.anchor,text:closer,original:insertion[0],source:'typography'};
+    return;
    }
   }
   if(paired&&typoOn&&typography.cfg.curlyQuotes){
@@ -6218,10 +6250,14 @@ function writerTypingFilterTransaction(tr,p){
    if(suggestion?.text!==opener)return; // Only change auto-paired opening quotes.
    edits.push({from:fromB,to:toB,insert:opener+closer});
    caret={anchor:fromB+opener.length};
+   if(opener+closer!==insertion)
+    restore={from:fromB,to:fromB+opener.length+closer.length,head:caret.anchor,
+     text:opener+closer,original:insertion[0],source:'typography'};
    return;
   }
   if(insertion.length!==1)return;
-  let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg):null;
+  const leadingEnDash=prior?.source==='typography'&&prior.text==='–'&&prior.original==='--'&&prior.to===fromA;
+  let proposal=typoOn?writerTypoAtInput(prefix,insertion,typography.cfg,{leadingEnDash}):null;
   let source=proposal?'typography':null;
   if(!proposal&&easyOn){proposal=writerEasyTypingAtInput(prefix,insertion,easy.cfg);source='easy';}
   if(proposal&&proposal.consume>0&&proposal.consume<=prefix.length){
@@ -6241,19 +6277,21 @@ function writerTypingFilterTransaction(tr,p){
  if(edits.some((e,i)=>i>0&&e.from<edits[i-1].to))return tr;
  const next={changes:edits,sequential:true};
  if(caret&&edits.length===1)next.selection=caret;
- if(restore&&edits.length===1&&p._writerTypingRestoreAnnotation&&
-    p.writerSmartTypography?.cfg?.restoreOnBackspace!==false)
+ if(restore&&edits.length===1&&p._writerTypingRestoreAnnotation)
   next.annotations=p._writerTypingRestoreAnnotation.of(restore);
  return [tr,next];
+}
+function writerTypingCanRestore(state,p,meta){
+ const sel=state.selection;
+ if(sel?.ranges?.length!==1||!sel.main.empty||sel.main.head!==(meta.head??meta.to))return false;
+ const active=meta.source==='easy'?p.writerEasyTyping?.active()===true:
+  p.writerSmartTypography?.active()===true;
+ return active&&state.doc.sliceString(meta.from,meta.to)===meta.text;
 }
 function writerTypingRestoreBackspace(view,p){
  const meta=p._writerTypingRestoreField&&view.state.field?.(p._writerTypingRestoreField,false);
  if(!meta||view.composing||p.writerSmartTypography?.cfg?.restoreOnBackspace===false)return false;
- const sel=view.state.selection;
- if(sel?.ranges?.length!==1||!sel.main.empty||sel.main.head!==meta.to)return false;
- const active=meta.source==='easy'?p.writerEasyTyping?.active()===true:
-  p.writerSmartTypography?.active()===true;
- if(!active||view.state.doc.sliceString(meta.from,meta.to)!==meta.text)return false;
+ if(!writerTypingCanRestore(view.state,p,meta))return false;
  view.dispatch({changes:{from:meta.from,to:meta.to,insert:meta.original},
   selection:{anchor:meta.from+meta.original.length},userEvent:'delete.backward'});
  return true;
@@ -6273,7 +6311,7 @@ class WriterSmartTypography{
    const text=editor.getSelection(),converted=writerTypoConvertProse(text,this.cfg);
    if(text!==converted)editor.replaceSelection(converted);
   }});
-  const {EditorState,StateField,Annotation}=require('@codemirror/state');
+  const {EditorState,StateField,Annotation,Prec}=require('@codemirror/state');
   const {keymap}=require('@codemirror/view');
   if(!EditorState?.transactionFilter?.of)return;
   if(StateField?.define&&Annotation?.define){
@@ -6290,9 +6328,10 @@ class WriterSmartTypography{
    p._writerTypingRestoreField=field;
    p._writerTypingRestoreAnnotation=marker;
    p.registerEditorExtension(field);
-   if(keymap?.of)p.registerEditorExtension(keymap.of([
-    {key:'Backspace',run:view=>writerTypingRestoreBackspace(view,p)}
-   ]));
+   if(keymap?.of){
+    const binding=keymap.of([{key:'Backspace',run:view=>writerTypingRestoreBackspace(view,p)}]);
+    p.registerEditorExtension(Prec?.highest?Prec.highest(binding):binding);
+   }
   }
   p.registerEditorExtension(EditorState.transactionFilter.of(tr=>writerTypingFilterTransaction(tr,p)));
  }
@@ -6310,8 +6349,8 @@ class WriterSmartTypography{
    ['smartApostrophes','Reconhecer apóstrofos em palavras','Smart apostrophes']
   ])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(this.cfg[key]).onChange(async value=>{this.cfg[key]=value;await this.plugin.saveSettings();}));
   panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-   'Padrão: -- vira meia-risca (–) e --- vira travessão (—) no texto. Linhas --- do Markdown continuam intactas. Backspace após a conversão recupera os hífens.',
-   'Default: -- becomes an en dash (–), and --- an em dash (—) in prose. Markdown --- separators stay intact. Backspace directly after conversion restores the hyphens.'
+   'Padrão: -- vira meia-risca (–) e --- vira travessão (—), inclusive no começo do parágrafo. Use Backspace logo após a troca para recuperar os hífens (por exemplo, para um separador Markdown) ou a aspa reta.',
+   'Default: -- becomes an en dash (–), and --- an em dash (—), even at the start of a paragraph. Press Backspace right after conversion to restore the hyphens (for example, for a Markdown separator) or the straight quote.'
   )});
   for(const [key,pt,en] of [
    ['openDouble','Aspas duplas de abertura','Opening double quote'],['closeDouble','Aspas duplas de fechamento','Closing double quote'],
@@ -13914,6 +13953,7 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['bold','bold','Negrito','Bold'],['italic','italic','Itálico','Italic'],
  ['underline','underline','Sublinhado','Underline'],['superscript','superscript','Sobrescrito','Superscript'],
  ['subscript','subscript','Subscrito','Subscript'],
+ ['spoiler','eye-off','Spoiler','Spoiler'],
  ['strike','strikethrough','Riscado','Strikethrough'],['highlight','highlighter','Realce','Highlight'],
  ['code','code','Código inline','Inline code'],['codeblock','file-code','Bloco de código','Code block'],
  ['h1','heading-1','Título 1','Heading 1'],['h2','heading-2','Título 2','Heading 2'],
@@ -13936,6 +13976,12 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['background-color','paint-bucket','Cor de destaque','Background color']
 ];
 const WRITER_V9_FORMAT_IDS=WRITER_V9_FORMAT_ACTIONS.map(x=>x[0]);
+const WRITER_V9_EXTENDED_ACTIONS={
+ underline:['underline','++','++'],superscript:['superscript','^','^',true],
+ subscript:['subscript','~','~',true],spoiler:['spoiler','||','||'],
+ 'text-color':['customSpan',options=>'!!{color-'+writerV1048ToolbarHex(options.textColor,'#cf517f').slice(1)+'}','!!'],
+ 'background-color':['coloredHighlight',options=>'=={hex-'+writerV1048ToolbarHex(options.backgroundColor,'#ffd66a').slice(1)+'}','==']
+};
 const WRITER_V9_TOOLBAR_DEFAULTS={
  enabledDesktop:true,enabledMobile:false,compact:true,placement:'bottom',
  style:'compact',buttonSize:32,showLabels:false,textColor:'#cf517f',backgroundColor:'#ffd66a',
@@ -14078,12 +14124,26 @@ function writerV9Format(editor,action,options={}){
   const value=text.split('\n').map((line,i)=>typeof prefix==='function'?prefix(line,i):prefix+line).join('\n');
   editor.replaceSelection(value);
  };
+ const extended=Object.hasOwn(WRITER_V9_EXTENDED_ACTIONS,action)?WRITER_V9_EXTENDED_ACTIONS[action]:null;
+ if(extended){
+  const [,prefix,suffix,splitWords]=extended;
+  const opening=typeof prefix==='function'?prefix(options):prefix;
+  if(!selected)replacement(opening,suffix);
+  else{
+   const wrap=text=>opening+text+suffix;
+   // Extended marks are inline. Super/subscript keep the existing single-word
+   // syntax, and all marks leave whitespace at selection boundaries untouched.
+   const formatted=splitWords?selected.replace(/\S+/g,wrap):
+    selected.split('\n').map(line=>line.replace(/\S(?:.*\S)?/,wrap)).join('\n');
+   if(formatted===selected)return false;
+   editor.replaceSelection(formatted);
+  }
+  editor.focus?.();
+  return true;
+ }
  switch(action){
  case 'bold':replacement('**','**');break;
  case 'italic':replacement('*','*');break;
- case 'underline':replacement('<u>','</u>');break;
- case 'superscript':replacement('<sup>','</sup>');break;
- case 'subscript':replacement('<sub>','</sub>');break;
  case 'strike':replacement('~~','~~');break;
  case 'highlight':replacement('==','==');break;
  case 'code':replacement(String.fromCharCode(96),String.fromCharCode(96));break;
@@ -14115,14 +14175,6 @@ function writerV9Format(editor,action,options={}){
  case 'justify':{
   if(typeof writerV102AlignApply!=='function')return false;
   writerV102AlignApply(editor,'j');break;
- }
- case 'text-color':{
-  const color=writerV1048ToolbarHex(options.textColor,'#cf517f');
-  replacement('<span style="color:'+color+'">','</span>');break;
- }
- case 'background-color':{
-  const color=writerV1048ToolbarHex(options.backgroundColor,'#ffd66a');
-  replacement('<mark style="background-color:'+color+'">','</mark>');break;
  }
  default:return false;
  }
@@ -14176,12 +14228,12 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
  const addFormat=parent=>{
   const existing=new Set((parent.items||[]).map(item=>writerV1044MenuTitle(item)));
   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
-   if(!['underline','superscript','subscript','highlight','codeblock',
+   if(!['underline','superscript','subscript','spoiler','highlight','codeblock',
     'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
    const title=writerUi(pt,en);
    if(existing.has(title))continue;
    writerV1044MenuAdd(parent,title,icon,()=>{
-    if(writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id);
+    if(writerModuleOn(plugin,'formatToolbar'))writerV1048ToolbarRun(plugin,editor,id);
    },'basic-format');
   }
   if(typeof writerV102AlignApply==='function'&&plugin.settings.v102Align?.enabled!==false){
@@ -14291,6 +14343,13 @@ function writerV1048ToolbarRun(plugin,editor,id){
    return false;
   }
   return plugin.app.commands.executeCommandById?.(item.command)!==false;
+ }
+ const syntax=plugin.settings.extendedSyntax;
+ const feature=Object.hasOwn(WRITER_V9_EXTENDED_ACTIONS,id)?WRITER_V9_EXTENDED_ACTIONS[id][0]:null;
+ if(feature&&(!writerModuleOn(plugin,'extendedSyntax')||syntax?.enabled===false||syntax?.[feature]===false)){
+  new Notice(writerUi('Ative a opção correspondente em Formatação de texto para usar este botão.',
+   'Enable the corresponding option in Text formatting to use this action.'));
+  return false;
  }
  return writerV9Format(editor,id,cfg);
 }
@@ -14453,7 +14512,7 @@ function writerV9RegisterToolbar(plugin){
  for(const [id,,pt,en] of WRITER_V9_FORMAT_ACTIONS){
   plugin.addCommand({id:'v9-format-'+id,name:writerUi('Formatar: '+pt,'Format: '+en),
    editorCallback:editor=>{
-    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV9Format(editor,id,writerV1048ToolbarProfile(plugin));
+    if(!stopped&&writerModuleOn(plugin,'formatToolbar'))writerV1048ToolbarRun(plugin,editor,id);
    }});
  }
  plugin.addCommand({id:'v9-toggle-format-toolbar',name:writerUi('Barra de formatação: alternar','Formatting toolbar: toggle'),

@@ -2,6 +2,12 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 13.15.1 — Basic toolbar syntax and reversible smart typography
+
+- Apply underline, superscript, subscript, text color and highlight with Basic's own syntax instead of HTML. Make spoiler available as a toolbar button and preserve saved desktop and mobile profiles.
+- Convert two hyphens to an en dash and the third to an em dash, including at the start of a paragraph. Backspace immediately after conversion can restore literal hyphens for Markdown separators.
+- Restore straight single and double quotes on immediate Backspace, removing the auto-inserted closing quote when present.
+
 ## 13.15.0 — Basic Tools, dedicated translators and reliable settings
 
 - Review and incorporate PR #152: localized Basic Tools title, DeepL/Google Cloud/Microsoft/LibreTranslate connections and explicit language swapping, independent of AI providers.

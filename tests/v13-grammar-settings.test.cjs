@@ -23,7 +23,7 @@ function runtime(initial={},language='en'){
   control(type,register){
    const control={type,inputEl:new Element('input'),buttonEl:new Element('button'),
     setValue(value){this.value=value;return this;},setDisabled(value){this.disabled=value;return this;},
-    setPlaceholder(){return this;},setLimits(){return this;},setDynamicTooltip(){return this;},
+    setPlaceholder(){return this;},setLimits(...limits){this.limits=limits;return this;},setDynamicTooltip(){return this;},
     addOption(){return this;},setButtonText(value){this.text=value;return this;},
     onChange(callback){this.change=callback;return this;},onClick(callback){this.click=callback;return this;}};
    this.row.controls.push(control);register(control);return this;
@@ -50,9 +50,9 @@ function runtime(initial={},language='en'){
   saveSettings:async()=>{saves.push(structuredClone(settings));},
   checkGrammar:text=>api.writerGrammarRequest(plugin,text)};
  const panel=new Element();
- const control=(name,type)=>{
+ const control=(name,type,text)=>{
   const row=rows.find(row=>row.name===name);assert.ok(row,'Missing setting '+name);
-  const item=row.controls.find(item=>item.type===type);assert.ok(item,'Missing '+type+' for '+name);return item;
+  const item=row.controls.find(item=>item.type===type&&(!text||item.text===text));assert.ok(item,'Missing '+type+' for '+name);return item;
  };
  return {api,settings,plugin,panel,rows,saves,requests,timers,control,
   send:callback=>{reply=callback;},read:callback=>{read=callback;},render:()=>api.writerV137GrammarSettings(plugin,panel)};
@@ -75,20 +75,57 @@ test('grammar setup renders both languages without reading notes or contacting a
  }
 });
 
-test('invalid server edits retain the last endpoint and valid HTTPS edits persist',async()=>{
+test('invalid server edits are rejected and discard restores the last saved connection',async()=>{
  const h=runtime();const root=h.render(),endpoint=h.control('Server endpoint','text');
+ const save=h.control('Save connection','button','Save'),discard=h.control('Save connection','button','Discard changes');
  const original=h.settings.reviewEndpoint;
  for(const value of ['not a URL','http://example.org/v2/check','https://user:secret@example.org/v2/check']){
   await endpoint.change(value);assert.equal(h.settings.reviewEndpoint,original);
   assert.equal(endpoint.inputEl.getAttribute('aria-invalid'),'true');
   assert.equal(h.control('Test connection','button').disabled,true);
+  assert.equal(save.disabled,true);await save.click();
  }
- assert.match(root.find('writer-grammar-feedback').text,/previous address was kept/);
+ assert.match(root.find('writer-grammar-feedback').text,/Use an HTTPS address/);
  await endpoint.change(' https://grammar.example.org/v2/check ');
- assert.equal(h.settings.reviewEndpoint,'https://grammar.example.org/v2/check');
- assert.equal(endpoint.inputEl.getAttribute('aria-invalid'),'false');assert.equal(h.saves.length,1);
+ assert.equal(h.settings.reviewEndpoint,original);
+ assert.equal(endpoint.inputEl.getAttribute('aria-invalid'),'false');assert.equal(h.saves.length,0);
+ assert.equal(discard.disabled,false);discard.click();
+ assert.equal(endpoint.value,original);assert.equal(discard.disabled,true);
+ assert.equal(h.control('Test connection','button').disabled,false);
  assert.equal(h.api.writerGrammarEndpoint(''),original);
  assert.equal(h.requests.length,0);
+});
+
+test('endpoint and credentials take effect together only after saving the connection',async()=>{
+ const h=runtime({reviewUsername:'old-user',reviewApiKey:'old-key'});h.render();h.send(async()=>response([]));
+ const original=h.settings.reviewEndpoint,endpoint=h.control('Server endpoint','text');
+ const testButton=h.control('Test connection','button'),save=h.control('Save connection','button','Save');
+ await endpoint.change('https://g');
+ await endpoint.change(' https://grammar.example.org/v2/check ');
+ await h.control('LanguageTool account (optional)','text').change(' new-user ');
+ await h.control('API key (optional)','text').change(' new-key ');
+ assert.equal(save.disabled,false);assert.equal(testButton.disabled,true);await testButton.click();
+ assert.equal(h.saves.length,0);assert.equal(h.requests.length,0);
+ await h.plugin.checkGrammar('A synthetic note.');
+ assert.equal(h.requests[0].url,original);assert.equal(new URLSearchParams(h.requests[0].body).get('apiKey'),'old-key');
+ await save.click();
+ assert.equal(h.saves.length,1);assert.equal(save.disabled,true);assert.equal(testButton.disabled,false);
+ await testButton.click();
+ assert.equal(h.requests[1].url,'https://grammar.example.org/v2/check');
+ const body=new URLSearchParams(h.requests[1].body);
+ assert.equal(body.get('username'),'new-user');assert.equal(body.get('apiKey'),'new-key');
+ assert.equal(body.get('text'),'This is a short test sentence.');
+});
+
+test('a failed connection save restores the previous settings and allows retrying the draft',async()=>{
+ const h=runtime({reviewUsername:'old-user'});h.render();
+ const originalSave=h.plugin.saveSettings;
+ h.plugin.saveSettings=async()=>{throw Error('No space');};
+ await h.control('LanguageTool account (optional)','text').change('new-user');
+ const save=h.control('Save connection','button','Save');await save.click();
+ assert.equal(h.settings.reviewUsername,'old-user');assert.equal(save.disabled,false);
+ h.plugin.saveSettings=originalSave;await save.click();
+ assert.equal(h.settings.reviewUsername,'new-user');assert.equal(h.saves.length,1);assert.equal(save.disabled,true);
 });
 
 test('grammar requests send configured language and optional account fields without changing preferences',async()=>{
@@ -150,6 +187,16 @@ test('editing a connection while its test is pending ignores the old response wi
  await h.control('Server endpoint','text').change('https://new.example.org/v2/check');
  pending.resolve(response([]));await job;
  assert.equal(h.requests.length,1);assert.equal(root.find('writer-grammar-test-status').text,'');
+ assert.equal(root.find('writer-grammar-test-status').dataset.state,undefined);
+ assert.equal(button.disabled,true);
+ h.control('Save connection','button','Discard changes').click();assert.equal(button.disabled,false);
+});
+
+test('a cancelled connection test reports cancellation and enables retry',async()=>{
+ const h=runtime(),pending=deferred();const root=h.render();h.send(()=>pending.promise);
+ const button=h.control('Test connection','button'),job=button.click();
+ h.api.writerGrammarCancel(h.plugin);pending.resolve(response([]));await job;
+ assert.match(root.find('writer-grammar-test-status').text,/Grammar check cancelled/);
  assert.equal(button.disabled,false);
 });
 
@@ -157,14 +204,16 @@ test('manual mode and reviewer controls keep valid choices through repeated norm
  const h=runtime({autoGrammar:{enabled:true,delayMs:3500,minIntervalMs:9000,maxWindowChars:12000}});
  let cancellations=0;h.plugin.autoGrammar.cancelPending=()=>{cancellations++;};h.render();
  const current=h.settings.autoGrammar;
+ const delay=h.control('Pause after typing','slider');
+ assert.equal(delay.value,3.5);assert.deepEqual(delay.limits,[2,15,0.5]);
  await h.control('When to check','dropdown').change('manual');h.api.writerAutoGrammarSettings(h.settings);
  assert.equal(h.settings.autoGrammar,current);assert.equal(h.settings.autoGrammar.enabled,false);
  assert.equal(h.control('Pause after typing','slider').disabled,true);
  await h.control('When to check','dropdown').change('automatic');
- await h.control('Pause after typing','slider').change(8);
+ await delay.change(8.5);
  await h.control('Minimum interval between checks','slider').change(15);
  await h.control('Characters per automatic check','slider').change(8000);
- assert.equal(h.settings.autoGrammar.delayMs,8000);assert.equal(h.settings.autoGrammar.minIntervalMs,15000);
+ assert.equal(h.settings.autoGrammar.delayMs,8500);assert.equal(h.settings.autoGrammar.minIntervalMs,15000);
  assert.equal(h.settings.autoGrammar.maxWindowChars,8000);assert.ok(cancellations>=5);
  assert.equal(h.requests.length,0);
 });
@@ -180,8 +229,9 @@ test('disabled review and external checker keep Basic connection tests unavailab
 });
 
 test('personal words and ignored rule editors deduplicate valid entries and explain rejected entries',async()=>{
- const h=runtime();h.render();
- await h.control('Personal spelling dictionary','textarea').change('Ana\nAna\nFaísca\n123\nnot a word');
+ const h=runtime({reviewCustomWords:'Ana\nFaísca'});h.render();
+ const dictionary=h.control('Personal spelling dictionary','textarea');assert.equal(dictionary.value,'Ana\nFaísca');
+ await dictionary.change('Ana\nANA\nFaísca\nfai\u0301sca\n123\nnot a word');
  assert.deepEqual(Array.from(h.settings.reviewCustomWords),['Ana','Faísca']);
  await h.control('Ignored rule IDs','textarea').change('RULE_ONE, rule_one; OTHER_RULE\n<invalid>');
  assert.equal(h.settings.reviewIgnoreRules,'RULE_ONE, OTHER_RULE');assert.equal(h.requests.length,0);

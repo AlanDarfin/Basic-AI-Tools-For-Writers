@@ -38781,6 +38781,12 @@ function writerMobileStatusRegister(plugin){
 }
 
 // END WRITER V3 MODULES
+function writerBasicChatButton(parent,label,icon,classes='',title=label){
+ const button=parent.createEl('button',{cls:('writer-basic-chat-button '+classes).trim(),
+  attr:{type:'button',title,'aria-label':label}});
+ writerSidebarButtonIcon(button,icon,label,'writer-basic-chat-button-label');
+ return button;
+}
 class DictionaryView extends ItemView{
  constructor(leaf,plugin){
   super(leaf);this.plugin=plugin;this.sequence=0;this.localSequence=0;this.translationSequence=0;
@@ -38793,7 +38799,7 @@ class DictionaryView extends ItemView{
   const root=this.contentEl.createDiv({cls:'dictionary-view-content writer-tool-root'});
   const sidebarHead=root.createDiv({cls:'writer-sidebar-header'});
   sidebarHead.createSpan({text:writerBasicToolsTitle(),cls:'writer-sidebar-brand'});
-  const toolsLabel=msg('Ferramentas','Writing tools');
+  const toolsLabel=msg('Mais ferramentas','More tools');
   const tools=sidebarHead.createEl('button',{cls:'writer-tools-launcher writer-sidebar-icon-action',
    attr:{type:'button',title:toolsLabel,'aria-label':toolsLabel}});
   writerSidebarButtonIcon(tools,'wrench',toolsLabel);
@@ -38890,40 +38896,50 @@ class DictionaryView extends ItemView{
   this.translationInput.addEventListener('input',()=>this.clearTranslationResult());
   chat.addClass('writer-v91-ai-dialogue');
   const header=chat.createDiv({cls:'writer-chat-header'});header.createEl('strong',{text:msg('Assistente de escrita','Writing assistant')});
-  const clearChatLabel=msg('Limpar conversa','Clear conversation');
-  const clearChat=header.createEl('button',{cls:'writer-chat-clear',attr:{'aria-label':clearChatLabel,title:clearChatLabel}});
-  require('obsidian').setIcon(clearChat,'eraser');
+  const headerActions=header.createDiv({cls:'writer-basic-chat-header-actions'});
+  writerBasicChatButton(headerActions,msg('Configurar assistente','Configure assistant'),'settings')
+   .addEventListener('click',()=>this.plugin.openCoreSettings('assistant'));
+  const clearChat=writerBasicChatButton(headerActions,msg('Limpar conversa','Clear conversation'),'eraser','writer-chat-clear');
   clearChat.addEventListener('click',()=>{
    this.stopChat(false);
    this.chatHistory=[];this.chatMessages.empty();this.chatStatus.empty();
   });
   const route=chat.createDiv({cls:'writer-basic-route'});
   this.chatRoute=route.createSpan({cls:'dictionary-muted'});
-  route.createEl('button',{text:msg('Configurar assistente','Configure assistant'),attr:{type:'button'}})
-   .addEventListener('click',()=>this.plugin.openCoreSettings('assistant'));
-  this.chatStop=route.createEl('button',{text:msg('Parar resposta','Stop response'),attr:{type:'button'}});
-  this.chatStop.hidden=true;
-  this.chatStop.title=msg('Descarta a resposta neste painel. O provedor pode continuar processando.','Discards the response in this panel. The provider may still finish processing.');
-  this.chatStop.addEventListener('click',()=>this.stopChat());
   this.chatMessages=chat.createDiv({cls:'writer-chat-messages'});this.chatHistory=this.chatHistory||[];
   this.chatAttachments=[];
-  this.chatAttachmentArea=chat.createDiv({cls:'writer-chat-attachments'});
-  this.chatAttachmentArea.createEl('button',{text:msg('Anexar Markdown','Attach Markdown')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.attachChatFile(file)).open());
   this.chatStatus=chat.createDiv({cls:'writer-file-status',attr:{role:'status'}});
-  const quick=chat.createDiv({cls:'writer-basic-chat-presets',attr:{role:'group','aria-label':msg('Atalhos de escrita','Writing shortcuts')}});
-  for(const [pt,en,promptPt,promptEn] of [
-   ['Reescrever','Rewrite','Reescreva sem mudar a voz nem o sentido:','Rewrite without changing the voice or meaning:'],
-   ['Resumir','Summarize','Resuma os pontos principais deste trecho:','Summarize the main points of this passage:'],
-   ['Explorar ideias','Brainstorm','Sugira três caminhos diferentes para desenvolver esta ideia:','Suggest three different ways to develop this idea:']
-  ])quick.createEl('button',{text:msg(pt,en),attr:{type:'button'}}).addEventListener('click',()=>{
-   this.chatInput.value=msg(promptPt,promptEn)+'\n\n'+this.chatInput.value;
-   this.chatInput.focus?.();
-  });
   const composer=chat.createDiv({cls:'writer-chat-composer'});
+  const quick=composer.createDiv({cls:'writer-basic-chat-presets',attr:{role:'group','aria-label':msg('Atalhos de escrita','Writing shortcuts')}});
+  for(const [pt,en,icon,promptPt,promptEn,fullLabel] of [
+   ['Reescrever','Rewrite','pencil-line','Reescreva sem mudar a voz nem o sentido:','Rewrite without changing the voice or meaning:'],
+   ['Resumir','Summarize','list','Resuma os pontos principais deste trecho:','Summarize the main points of this passage:'],
+   ['Ideias','Brainstorm','lightbulb','Sugira três caminhos diferentes para desenvolver esta ideia:','Suggest three different ways to develop this idea:',msg('Explorar ideias','Brainstorm')]
+  ]){
+   const shortcut=writerBasicChatButton(quick,msg(pt,en),icon,'',fullLabel);
+   if(fullLabel)shortcut.setAttribute('aria-label',fullLabel);
+   shortcut.addEventListener('click',()=>{
+    this.chatInput.value=msg(promptPt,promptEn)+'\n\n'+this.chatInput.value;
+    this.chatInput.focus?.();
+   });
+  }
+  this.chatAttachmentArea=composer.createDiv({cls:'writer-chat-attachments'});
+  this.chatAttachmentArea.hidden=true;
   const chatLabel=msg('Escreva uma mensagem…','Write a message…');
   this.chatInput=composer.createEl('textarea',{attr:{placeholder:chatLabel,'aria-label':chatLabel}});
-  this.chatSend=composer.createEl('button',{text:msg('Enviar','Send'),cls:'mod-cta'});
+  const actionsRow=composer.createDiv({cls:'writer-basic-chat-composer-actions'});
+  const attachLabel=msg('Anexar Markdown','Attach Markdown');
+  const attach=writerBasicChatButton(actionsRow,msg('Anexar','Attach'),'paperclip','writer-basic-chat-attach',attachLabel);
+  attach.setAttribute('aria-label',attachLabel);
+  attach.addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.attachChatFile(file)).open());
+  const submit=actionsRow.createDiv({cls:'writer-basic-chat-submit'});
+  this.chatSend=writerBasicChatButton(submit,msg('Enviar','Send'),'send','mod-cta');
   this.chatSend.addEventListener('click',()=>this.sendChat());
+  this.chatStop=writerBasicChatButton(submit,msg('Parar','Stop'),'square','writer-basic-chat-stop',
+   msg('Descarta a resposta no painel. O provedor pode continuar processando.','Discards the response in this panel. The provider may still finish processing.'));
+  this.chatStop.setAttribute('aria-label',msg('Parar resposta','Stop response'));
+  this.chatStop.addEventListener('click',()=>this.stopChat());
+  this.setChatBusy(false);
   this.chatInput.addEventListener('keydown',e=>{
    if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();void this.sendChat();}
   });
@@ -39025,13 +39041,22 @@ class DictionaryView extends ItemView{
   const settings=this.plugin.settings,connection=writerV13Connection(settings,writerV13ProviderFor(settings,'writing'),'writing');
   this.chatRoute?.setText(connection.title+' · '+(connection.problem||connection.model));
  }
+ setChatBusy(busy){
+  const previous=busy?this.chatSend:this.chatStop;
+  const next=busy?this.chatStop:this.chatSend;
+  const focused=previous.ownerDocument?.activeElement===previous;
+  this.chatSend.disabled=busy;
+  this.chatSend.hidden=busy;
+  this.chatStop.hidden=!busy;
+  if(focused)next.focus?.();
+ }
  stopChat(show=true){
   const job=this.chatRequest;
   if(!job)return;
   this.chatRequest=null;
   for(const row of job.rows)row.remove();
   if(!this.chatInput.value)this.chatInput.value=job.draft;
-  this.chatSend.disabled=false;this.chatStop.hidden=true;
+  this.setChatBusy(false);
   if(show)this.chatStatus.setText(msg('Resposta interrompida no painel.','Response stopped in this panel.'));
  }
  async addChat(role,value){
@@ -39132,11 +39157,13 @@ class DictionaryView extends ItemView{
   this.chatAttachments.push(file);this.renderChatAttachments();
  }
  renderChatAttachments(){
-  this.chatAttachmentArea.querySelectorAll('.writer-attachment-chip').forEach(el=>el.remove());
+  this.chatAttachmentArea.empty();
+  this.chatAttachmentArea.hidden=!this.chatAttachments.length;
   for(const file of this.chatAttachments){
     const chip=this.chatAttachmentArea.createDiv({cls:'writer-attachment-chip'});
-    chip.createSpan({text:file.basename+'.md'});
-    chip.createEl('button',{text:'×'}).addEventListener('click',()=>{this.chatAttachments=this.chatAttachments.filter(x=>x!==file);this.renderChatAttachments();});
+    chip.createSpan({text:file.name,cls:'writer-basic-chat-filename',attr:{title:file.name}});
+    writerBasicChatButton(chip,msg('Remover anexo: ','Remove attachment: ')+file.name,'x')
+     .addEventListener('click',()=>{this.chatAttachments=this.chatAttachments.filter(x=>x!==file);this.renderChatAttachments();});
   }
  }
  async sendChat(){
@@ -39150,7 +39177,7 @@ class DictionaryView extends ItemView{
   const job={draft,rows:[]};
   this.chatRequest=job;
   this.chatInput.value='';
-  this.chatSend.disabled=true;this.chatStop.hidden=false;
+  this.setChatBusy(true);
   this.chatStatus.setText(msg('Enviando para ','Sending to ')+connection.title+'…');
   let userRow,loading,answerRow;
   try{
@@ -39185,7 +39212,7 @@ class DictionaryView extends ItemView{
    if(!this.chatInput.value)this.chatInput.value=draft;
    this.chatStatus.setText(msg('Erro: ','Error: ')+(e.message||String(e)));
   }finally{
-   if(this.chatRequest===job){this.chatRequest=null;this.chatSend.disabled=false;this.chatStop.hidden=true;}
+   if(this.chatRequest===job){this.chatRequest=null;this.setChatBusy(false);}
   }
  }
  async receiveSelection(selection,mode){

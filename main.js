@@ -4891,6 +4891,7 @@ async function writerGrammarRequest(plugin,text){
  if(!endpoint)throw Error(writerUi('Use um endpoint HTTPS válido, sem usuário ou senha na URL.','Use a valid HTTPS endpoint without URL credentials.'));
  const source=String(text||'');
  if(source.length>18000)throw Error(writerUi('Limite de 18 mil caracteres por verificação. Escolha um trecho menor.','18,000-character limit per check. Select a shorter passage.'));
+ if(!source.trim())return [];
  const body=new URLSearchParams({text:source,language:settings.reviewLanguage||'pt-BR'});
  const apiKey=String(settings.reviewApiKey||'').trim(),username=String(settings.reviewUsername||'').trim();
  if(apiKey)body.set('apiKey',apiKey);
@@ -4918,7 +4919,10 @@ async function writerGrammarRequest(plugin,text){
  let matches;
  try{matches=response.json?.matches;}catch(_){}
  if(!Array.isArray(matches))throw Error(writerUi('Resposta inválida do corretor. Confira o endpoint configurado.','Invalid checker response. Check the configured endpoint.'));
- return matches;
+ return matches.filter(match=>Number.isInteger(match?.offset)&&Number.isInteger(match.length)&&
+  match.offset>=0&&match.length>0&&match.offset+match.length<=source.length)
+  .map(match=>({...match,replacements:Array.isArray(match.replacements)?
+   match.replacements.filter(replacement=>typeof replacement?.value==='string'):[]}));
 }
 // Long manuscripts exceed LanguageTool's single-request limit. Check a bounded
 // window around the cursor and translate its offsets back into full-note offsets.
@@ -5031,7 +5035,10 @@ class WriterAutoGrammar{
   }));
   this.plugin.registerEvent(this.plugin.app.workspace.on('file-open',file=>{
    const view=this.reviewView();
-   if(file?.extension==='md'&&view&&view.reviewFilePath){
+   if(file?.extension==='md'&&view&&view.reviewFilePath!==file.path&&this.config?.enabled!==false){
+    view.cancelReview?.();
+    view.reviewResults?.empty?.();
+    if(this.plugin.reviewMarkedPath&&this.plugin.reviewMarkedPath!==file.path)this.plugin.clearReviewMarks();
     view.reviewFilePath=file.path;
     this.schedule(file);
    }
@@ -5042,9 +5049,9 @@ class WriterAutoGrammar{
  cancelPending(){this.revision++;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  stop(){this.destroyed=true;this.cancelPending();}
  schedule(file,{delay}={}){
-  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.plugin.settings.reviewEngine==='external'||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.plugin.settings.reviewEngine==='external'||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return false;
   const view=this.reviewView(file.path);
-  if(!view)return;
+  if(!view)return false;
   this.pendingPath=file.path;
   clearTimeout(this.timer);
   const cooldown=Math.max(0,this.lastRun+(this.config.minIntervalMs||9000)-Date.now());
@@ -5052,6 +5059,7 @@ class WriterAutoGrammar{
   const revision=++this.revision;
   this.timer=setTimeout(()=>this.run(revision),ms);
   view.reviewStatus?.setText?.(writerUi('Alterações detectadas. Verificação automática em breve…','Changes detected. Automatic grammar check scheduled…'));
+  return true;
  }
  async run(revision=this.revision){
   if(revision!==this.revision)return;
@@ -5076,7 +5084,11 @@ class WriterAutoGrammar{
   if(revision!==this.revision||this.destroyed||this.config?.enabled===false||
    this.pendingPath!==path||this.reviewView(path)!==view)return;
   if(view.grammarCheckedPath===path&&view.grammarCheckedSource===source){
-   this.pendingPath=null;return;
+   this.pendingPath=null;
+   const count=this.plugin.reviewMarkedPath===path?this.plugin.reviewMatches?.length:undefined;
+   view.reviewStatus?.setText?.(path+' · '+(count===undefined?writerUi('Revisão atualizada','Review up to date'):
+    count+' '+writerUi('sugestões na revisão atual','suggestions in the current review')));
+   return;
   }
   this.pendingPath=null;this.lastRun=Date.now();
   // A known reviewed document has a trustworthy result cache. Recheck only
@@ -33413,8 +33425,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "review",
   "titlePt": "Conta do LanguageTool (opcional)",
   "titleEn": "LanguageTool account (optional)",
-  "descriptionPt": "E-mail da conta quando exigido por uma chave Premium ou servidor próprio.",
-  "descriptionEn": "Account email when required by a Premium API key or your own server."
+  "descriptionPt": "Informe o e-mail da conta Premium ou o usuário exigido pelo seu servidor.",
+  "descriptionEn": "Enter your Premium account email or the username required by your server."
  },
  {
   "id": "review",
@@ -33454,10 +33466,17 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "review",
+  "titlePt": "Salvar conexão",
+  "titleEn": "Save connection",
+  "descriptionPt": "O corretor passa a usar o novo endereço e as credenciais depois de salvar.",
+  "descriptionEn": "The checker uses the new endpoint and credentials after you save."
+ },
+ {
+  "id": "review",
   "titlePt": "Endereço do servidor",
   "titleEn": "Server endpoint",
-  "descriptionPt": "URL HTTPS da API /v2/check. Deixe vazio para usar o servidor público do LanguageTool.",
-  "descriptionEn": "HTTPS URL for the /v2/check API. Leave empty to use LanguageTool’s public server."
+  "descriptionPt": "Deixe vazio para usar o servidor gratuito. Para o Premium, use https://api.languagetoolplus.com/v2/check.",
+  "descriptionEn": "Leave empty to use the free server. For Premium, use https://api.languagetoolplus.com/v2/check."
  },
  {
   "id": "review",
@@ -35576,8 +35595,11 @@ function writerV137GrammarWords(value){
  const words=[],seen=new Set();let skipped=0;
  for(const line of String(value||'').split(/\r?\n/)){
   const word=line.trim().normalize('NFC');if(!word)continue;
-  if(!/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(word)||words.length>=2000){skipped++;continue;}
-  if(!seen.has(word)){seen.add(word);words.push(word);}
+  if(!/^[\p{L}][\p{L}\p{M}'’\-]{0,63}$/u.test(word)){skipped++;continue;}
+  const key=word.toLocaleLowerCase();
+  if(seen.has(key))continue;
+  if(words.length>=2000){skipped++;continue;}
+  seen.add(key);words.push(word);
  }
  return {words,skipped};
 }
@@ -35609,19 +35631,28 @@ function writerV137GrammarSettings(plugin,panel){
   'O LanguageTool sugere correções. A nota só muda quando você aceita uma sugestão; o texto revisado é enviado ao servidor escolhido.',
   'LanguageTool suggests corrections. Notes change only when you accept a suggestion; reviewed text is sent to the selected server.')});
  const status=root.createDiv({cls:'writer-grammar-state',attr:{role:'status','aria-live':'polite'}});
- const builtIn=[],automatic=[];let busy=false,revision=0,testButton,testStatus;
+ const builtIn=[],automatic=[];
+ const savedConnection=()=>({reviewEndpoint:settings.reviewEndpoint||'',reviewUsername:settings.reviewUsername||'',reviewApiKey:settings.reviewApiKey||''});
+ const connectionDraft=savedConnection(),connectionFields={};
+ const connectionDirty=()=>Object.entries(savedConnection()).some(([key,value])=>connectionDraft[key]!==value);
+ const connectionValid=()=>Boolean(writerGrammarEndpoint(connectionDraft.reviewEndpoint));
+ let busy=false,savingConnection=false,revision=0,testButton,testStatus,saveConnection,discardConnection,connectionFeedback,endpointFeedback;
  const section=(pt,en)=>{
   const card=root.createDiv({cls:'writer-grammar-section'});
   card.createEl('h4',{text:writerUi(pt,en)});return card;
  };
  const save=()=>plugin.saveSettings();
+ const resetTest=()=>{
+  revision++;busy=false;
+  if(testStatus){delete testStatus.dataset.state;testStatus.setText('');}
+ };
  const changed=()=>{
-  revision++;busy=false;writerV137GrammarInvalidate(plugin);refresh();
-  testStatus?.setText('');return save();
+  resetTest();writerV137GrammarInvalidate(plugin);refresh();return save();
  };
  const remember=(control,list=builtIn)=>{list.push(control);return control;};
  const refresh=()=>{
   const enabled=writerModuleOn(plugin,'review'),external=settings.reviewEngine==='external';
+  const dirty=connectionDirty(),valid=connectionValid();
   status.dataset.state=!enabled?'disabled':external?'external':cfg.enabled?'automatic':'manual';
   status.setText(!enabled?writerUi('Revisão desativada em Recursos. Suas preferências podem ser preparadas aqui.',
    'Review is disabled in Features. You can prepare its preferences here.'):
@@ -35632,7 +35663,12 @@ function writerV137GrammarSettings(plugin,panel){
    writerUi('Manual. O corretor só verifica quando você usa uma ação de revisão.','Manual. The checker runs only when you use a review action.'));
   for(const control of builtIn)control.setDisabled?.(external);
   for(const control of automatic)control.setDisabled?.(external||!cfg.enabled);
-  testButton?.setDisabled?.(busy||!enabled||external||endpointInput?.getAttribute('aria-invalid')==='true');
+  for(const field of Object.values(connectionFields))field.setDisabled?.(external||savingConnection);
+  connectionFields.reviewEndpoint?.inputEl.setAttribute('aria-invalid',String(!valid));
+  endpointFeedback?.setText(valid?'':writerUi('Use um endereço HTTPS sem usuário ou senha na URL.','Use an HTTPS address without a username or password in the URL.'));
+  saveConnection?.setDisabled?.(external||savingConnection||!dirty||!valid);
+  discardConnection?.setDisabled?.(external||savingConnection||!dirty);
+  testButton?.setDisabled?.(busy||savingConnection||!enabled||external||dirty||!valid);
  };
  const workflow=section('Como revisar','Checking behavior');
  new Setting(workflow).setName(writerUi('Corretor de gramática','Grammar checker'))
@@ -35656,13 +35692,13 @@ function writerV137GrammarSettings(plugin,panel){
   d.setValue(language).onChange(async value=>{settings.reviewLanguage=value;await changed();});
  });
  for(const [key,pt,en,min,max,step,unit] of [
-  ['delayMs','Pausa após digitar','Pause after typing',2,15,1,1000],
+  ['delayMs','Pausa após digitar','Pause after typing',2,15,0.5,1000],
   ['minIntervalMs','Intervalo mínimo entre verificações','Minimum interval between checks',6,30,1,1000],
   ['maxWindowChars','Caracteres por verificação automática','Characters per automatic check',4000,16000,1000,1]
  ])new Setting(workflow).setName(writerUi(pt,en))
   .setDesc(key==='maxWindowChars'?writerUi('Em notas longas, revisa um trecho próximo ao cursor.',
    'Long notes are checked in a passage near the cursor.'):writerUi('Em segundos.','In seconds.'))
-  .addSlider(s=>remember(s,automatic).setLimits(min,max,step).setDynamicTooltip().setValue(Math.round(cfg[key]/unit))
+  .addSlider(s=>remember(s,automatic).setLimits(min,max,step).setDynamicTooltip().setValue(cfg[key]/unit)
    .onChange(async value=>{cfg[key]=value*unit;await changed();}));
  new Setting(workflow).setName(writerUi('Modo inicial do painel','Default pane mode'))
   .setDesc(writerUi('Modo usado ao abrir um novo painel de revisão.','Mode used when opening a new Review pane.'))
@@ -35686,39 +35722,34 @@ function writerV137GrammarSettings(plugin,panel){
   }));
  const connection=section('Conexão do corretor','Checker connection');
  const endpointId='writer-grammar-endpoint-'+(++writerV137GrammarSettingId);
- let endpointInput;
+ const editConnection=(key,value)=>{
+  if(savingConnection||connectionDraft[key]===value)return;
+  connectionDraft[key]=value;resetTest();
+  connectionFeedback.setText(connectionDirty()?writerUi('Salve as alterações para testar a conexão.','Save your changes to test the connection.'):'');
+  refresh();
+ };
  new Setting(connection).setName(writerUi('Endereço do servidor','Server endpoint'))
-  .setDesc(writerUi('URL HTTPS da API /v2/check. Deixe vazio para usar o servidor público do LanguageTool.',
-   'HTTPS URL for the /v2/check API. Leave empty to use LanguageTool’s public server.'))
+  .setDesc(writerUi('Deixe vazio para usar o servidor gratuito. Para o Premium, use https://api.languagetoolplus.com/v2/check.',
+   'Leave empty to use the free server. For Premium, use https://api.languagetoolplus.com/v2/check.'))
   .addText(field=>{
-   remember(field);endpointInput=field.inputEl;
+   connectionFields.reviewEndpoint=field;field.inputEl.type='url';
    field.inputEl.setAttribute('aria-describedby',endpointId);
-   field.setPlaceholder(WRITER_GRAMMAR_ENDPOINT).setValue(settings.reviewEndpoint||'').onChange(async value=>{
-    revision++;busy=false;testStatus?.setText('');
-    const valid=Boolean(writerGrammarEndpoint(value));
-    field.inputEl.setAttribute('aria-invalid',String(!valid));
-    endpointFeedback.setText(valid?'':writerUi('Endereço inválido. Use HTTPS sem usuário ou senha na URL. O endereço anterior foi mantido.',
-     'Invalid address. Use HTTPS without URL credentials. The previous address was kept.'));
-    if(!valid){refresh();return;}
-    settings.reviewEndpoint=value.trim();await changed();
-   });
+   field.setPlaceholder(WRITER_GRAMMAR_ENDPOINT).setValue(connectionDraft.reviewEndpoint)
+    .onChange(value=>editConnection('reviewEndpoint',value.trim()));
   });
- const endpointFeedback=connection.createEl('p',{cls:'writer-grammar-feedback',attr:{id:endpointId,role:'status','aria-live':'polite'}});
- if(!writerGrammarEndpoint(settings.reviewEndpoint)){
-  endpointInput.setAttribute('aria-invalid','true');
-  endpointFeedback.setText(writerUi('O endereço salvo precisa de uma URL HTTPS válida antes de verificar.','The saved endpoint needs a valid HTTPS URL before checking.'));
- }
+ endpointFeedback=connection.createEl('p',{cls:'writer-grammar-feedback',attr:{id:endpointId,role:'status','aria-live':'polite'}});
  new Setting(connection).setName(writerUi('Conta do LanguageTool (opcional)','LanguageTool account (optional)'))
-  .setDesc(writerUi('E-mail da conta quando exigido por uma chave Premium ou servidor próprio.',
-   'Account email when required by a Premium API key or your own server.'))
-  .addText(field=>{remember(field);field.inputEl.type='email';field.inputEl.autocomplete='username';
-   field.setValue(settings.reviewUsername||'').onChange(async value=>{settings.reviewUsername=value.trim().slice(0,254);await changed();});});
+  .setDesc(writerUi('Informe o e-mail da conta Premium ou o usuário exigido pelo seu servidor.',
+   'Enter your Premium account email or the username required by your server.'))
+  .addText(field=>{connectionFields.reviewUsername=field;field.inputEl.autocomplete='username';
+   field.inputEl.setAttribute('autocapitalize','none');
+   field.setValue(connectionDraft.reviewUsername).onChange(value=>editConnection('reviewUsername',value.trim().slice(0,254)));});
  let keyInput,showKey=false;
  const keyRow=new Setting(connection).setName(writerUi('Chave da API (opcional)','API key (optional)'))
   .setDesc(writerUi('O servidor público não exige chave. A chave fica nas configurações locais do cofre.',
    'The public server does not require a key. Keys are stored in the vault’s local settings.'));
- keyRow.addText(field=>{remember(field);keyInput=field.inputEl;keyInput.type='password';keyInput.autocomplete='off';
-  field.setValue(settings.reviewApiKey||'').onChange(async value=>{settings.reviewApiKey=value.trim();await changed();});});
+ keyRow.addText(field=>{connectionFields.reviewApiKey=field;keyInput=field.inputEl;keyInput.type='password';keyInput.autocomplete='off';
+  field.setValue(connectionDraft.reviewApiKey).onChange(value=>editConnection('reviewApiKey',value.trim()));});
  keyRow.addButton(button=>{remember(button);button.setButtonText(writerUi('Mostrar','Show')).onClick(()=>{
   showKey=!showKey;keyInput.type=showKey?'text':'password';
   button.setButtonText(showKey?writerUi('Ocultar','Hide'):writerUi('Mostrar','Show'));
@@ -35726,14 +35757,32 @@ function writerV137GrammarSettings(plugin,panel){
   button.buttonEl?.setAttribute('aria-label',showKey?writerUi('Ocultar chave da API','Hide API key'):writerUi('Mostrar chave da API','Show API key'));
  });button.buttonEl?.setAttribute('aria-pressed','false');
  button.buttonEl?.setAttribute('aria-label',writerUi('Mostrar chave da API','Show API key'));});
+ new Setting(connection).setName(writerUi('Salvar conexão','Save connection'))
+  .setDesc(writerUi('O corretor passa a usar o novo endereço e as credenciais depois de salvar.','The checker uses the new endpoint and credentials after you save.'))
+  .addButton(button=>{saveConnection=button;button.setButtonText(writerUi('Salvar','Save')).onClick(async()=>{
+   if(savingConnection||settings.reviewEngine==='external'||!connectionDirty()||!connectionValid())return;
+   const previous=savedConnection();savingConnection=true;
+   Object.assign(settings,connectionDraft);
+   try{
+    await changed();
+    connectionFeedback.setText(writerUi('Conexão salva.','Connection saved.'));
+   }catch(_){
+    Object.assign(settings,previous);writerV137GrammarInvalidate(plugin);
+    connectionFeedback.setText(writerUi('Não foi possível salvar a conexão. Tente novamente.','Could not save the connection. Try again.'));
+   }finally{savingConnection=false;refresh();}
+  });})
+  .addButton(button=>{discardConnection=button;button.setButtonText(writerUi('Descartar alterações','Discard changes')).onClick(()=>{
+   if(savingConnection||settings.reviewEngine==='external'||!connectionDirty())return;
+   Object.assign(connectionDraft,savedConnection());
+   for(const [key,field] of Object.entries(connectionFields))field.setValue(connectionDraft[key]);
+   connectionFeedback.setText('');refresh();
+  });});
+ connectionFeedback=connection.createEl('p',{cls:'writer-grammar-feedback',attr:{role:'status','aria-live':'polite'}});
  const testText=writerUi('Este é um pequeno texto de teste.','This is a short test sentence.');
  new Setting(connection).setName(writerUi('Testar a conexão','Test connection'))
-  .setDesc(writerUi('Envia somente esta frase ao servidor: ','Sends only this sentence to the server: ')+testText)
+  .setDesc(writerUi('O teste envia apenas a frase ','The test sends only the sentence ')+`“${testText}”`)
   .addButton(button=>{testButton=button;button.setButtonText(writerUi('Testar agora','Test now')).onClick(async()=>{
-   if(busy||!writerModuleOn(plugin,'review')||settings.reviewEngine==='external')return;
-   if(!writerGrammarEndpoint(settings.reviewEndpoint)){
-    testStatus.setText(writerUi('Corrija o endereço do servidor antes de testar.','Correct the server endpoint before testing.'));return;
-   }
+   if(busy||savingConnection||!writerModuleOn(plugin,'review')||settings.reviewEngine==='external'||connectionDirty()||!connectionValid())return;
    const token=++revision,connectionKey=writerGrammarConnectionKey(settings);busy=true;refresh();
    testStatus.dataset.state='loading';testStatus.setText(writerUi('Verificando a conexão…','Checking the connection…'));
    const current=()=>token===revision&&root.isConnected!==false&&writerModuleOn(plugin,'review')&&
@@ -35744,7 +35793,7 @@ function writerV137GrammarSettings(plugin,panel){
     testStatus.dataset.state='success';testStatus.setText(writerUi('Conexão disponível. Sugestões no texto de teste: ',
      'Connection available. Suggestions in the test sentence: ')+matches.length+'.');
    }catch(error){
-    if(!current()||error?.code==='WRITER_GRAMMAR_CANCELLED')return;
+    if(!current())return;
     testStatus.dataset.state='error';testStatus.setText(String(error?.message||error));
    }finally{if(token===revision){busy=false;refresh();}}
   });});
@@ -35755,7 +35804,8 @@ function writerV137GrammarSettings(plugin,panel){
   .setDesc(writerUi('Uma palavra por linha, até 2.000. Nomes e termos inventados não gerarão avisos de ortografia.',
    'One word per line, up to 2,000. Names and invented terms will not produce spelling warnings.'))
   .addTextArea(field=>{remember(field);field.inputEl.rows=5;field.inputEl.setAttribute('aria-describedby',wordsId);
-   field.setValue((settings.reviewCustomWords||[]).join('\n')).onChange(async value=>{
+   const stored=settings.reviewCustomWords;
+   field.setValue(Array.isArray(stored)?stored.join('\n'):typeof stored==='string'?stored:'').onChange(async value=>{
     const result=writerV137GrammarWords(value);settings.reviewCustomWords=result.words;
     wordsFeedback.setText(result.words.length+' '+writerUi('palavras aceitas','accepted words')+
      (result.skipped?' · '+result.skipped+' '+writerUi('linhas inválidas ou além do limite','invalid or over-limit lines'):''));
@@ -37602,8 +37652,10 @@ function writerLanguageToolEditor(plugin,file){
  if(!leaf)return null;
  // runDetection reads the active note's frontmatter; commands also use its editor.
  // Restore the chosen note before either call, including when Basic has focus.
- workspace.setActiveLeaf?.(leaf,{focus:true});
- if(workspace.getActiveFile?.()?.path!==file.path)return null;
+ if(workspace.activeLeaf!==leaf){
+  try{workspace.setActiveLeaf?.(leaf,{focus:true});}catch(_){return null;}
+ }
+ if(workspace.activeLeaf!==leaf||workspace.getActiveFile?.()?.path!==file.path||!leaf.view?.editor?.cm)return null;
  return {leaf,editor:leaf.view.editor,cm:leaf.view.editor.cm};
 }
 function writerLanguageToolCommand(plugin,command,file){
@@ -37612,36 +37664,43 @@ function writerLanguageToolCommand(plugin,command,file){
  if(action.requiresEditor&&!writerLanguageToolEditor(plugin,file||plugin.app.workspace.getActiveFile?.())){
   new Notice(writerUi('Abra a nota no editor para usar esta ação do LanguageTool.','Open the note in an editor to use this LanguageTool action.'));return false;
  }
- return !!plugin.app.commands.executeCommandById(action.command);
+ try{return !!plugin.app.commands.executeCommandById(action.command);}catch(_){return false;}
 }
 async function writerLanguageToolReview(plugin,file,view){
  if(!writerLanguageToolEnabled(plugin)||plugin.settings.reviewEngine!=='external'||view?.activeTab!=='review'||
-  view.reviewMode?.value!=='grammar'||view.reviewFilePath!==file?.path)return false;
+  view.reviewMode?.value!=='grammar'||!file?.path||view.reviewFilePath!==file.path||view.reviewBusy)return false;
+ const path=file.path;
  const instance=writerLanguageToolInstalled(plugin);
  if(typeof instance?.runDetection!=='function'){view.updateReviewEngineUI?.();return false;}
  const context=writerLanguageToolEditor(plugin,file);
  if(!context){view.reviewStatus?.setText(writerUi('Abra esta nota no editor para usar o corretor externo.','Open the note in an editor to use the external checker.'));return false;}
- if(view.reviewBusy)return false;
  const token=view.reviewToken=(view.reviewToken||0)+1;
  const document=context.cm.state?.doc;
  const current=()=>view.reviewToken===token&&writerLanguageToolEnabled(plugin)&&
   writerLanguageToolInstalled(plugin)===instance&&plugin.settings.reviewEngine==='external'&&
-  view.reviewMode?.value==='grammar'&&view.activeTab==='review'&&view.reviewFilePath===file.path&&
-  context.leaf.view?.file?.path===file.path&&context.leaf.view?.editor?.cm===context.cm&&
+  view.reviewMode?.value==='grammar'&&view.activeTab==='review'&&view.reviewFilePath===path;
+ const editorUnchanged=()=>context.leaf.view?.file?.path===path&&context.leaf.view?.editor?.cm===context.cm&&
   context.cm.state?.doc===document;
+ const changed=()=>view.reviewStatus?.setText(writerUi('O editor mudou durante a verificação. Verifique novamente para atualizar as sugestões.',
+  'The editor changed during the check. Check again for updated suggestions.'));
  view.reviewBusy=true;
  view.reviewStatus?.setText(writerUi('Verificando pelo LanguageTool externo…','Checking with external LanguageTool…'));
  try{
-  await instance.runDetection(context.cm);
+  const found=await instance.runDetection(context.cm);
   if(!current())return false;
+  if(!editorUnchanged()){changed();return false;}
   // Upstream returns true for some handled failures as well as findings.
   // Completion cannot certify successful transport; its own notices explain errors.
-  view.reviewStatus?.setText(writerUi('Solicitação encerrada. Confira os sublinhados e os avisos do LanguageTool no editor.',
+  view.reviewStatus?.setText(found===false?writerUi('Nenhuma sugestão do LanguageTool para este texto.',
+   'No LanguageTool suggestions for this text.'):writerUi('Solicitação encerrada. Confira os sublinhados e os avisos do LanguageTool no editor.',
    'Request finished. Check the editor underlines and LanguageTool notices.'));
   return true;
  }catch(_){
-  if(current())view.reviewStatus?.setText(writerUi('O LanguageTool externo não concluiu a verificação. Confira as configurações e os avisos dele.',
-   'External LanguageTool could not finish the check. Review its settings and notices.'));
+  if(current()){
+   if(!editorUnchanged())changed();
+   else view.reviewStatus?.setText(writerUi('O LanguageTool externo não concluiu a verificação. Confira as configurações e os avisos dele.',
+    'External LanguageTool could not finish the check. Review its settings and notices.'));
+  }
   return false;
  }finally{if(view.reviewToken===token)view.reviewBusy=false;}
 }
@@ -37678,8 +37737,11 @@ function writerLanguageToolSettings(plugin,panel){
  const persist=async(control,key,value)=>{
   control.setDisabled(true);
   try{await writerLanguageToolUpdate(plugin,key,value);feedback.setText(writerUi('Preferência salva no LanguageTool.','Preference saved in LanguageTool.'));}
-  catch(_){feedback.setText(writerUi('Não foi possível salvar. Reabra esta seção para conferir a preferência atual.',
-   'Could not save. Reopen this section to check the current preference.'));}
+  catch(_){
+   const saved=writerLanguageToolInstalled(plugin)?.settings?.options?.[key];
+   if(typeof saved===typeof value)control.setValue(saved);
+   feedback.setText(writerUi('Não foi possível salvar a preferência no LanguageTool.','Could not save the preference in LanguageTool.'));
+  }
   finally{control.setDisabled(!writerLanguageToolState(plugin).canConfigure);}
  };
  for(const [key,pt,en,descPt,descEn] of [
@@ -37720,18 +37782,36 @@ function writerLanguageToolPanel(view){
   const element=actions.createEl('button',{text:writerUi(pt,en)});element.disabled=!enabled;
   element.addEventListener('click',callback);return element;
  };
- button('Verificar nota/seleção','Check note/selection',state.canCheck,()=>view.reviewActiveFile());
- for(const action of WRITER_COMPANION_GRAMMAR[0].actions.filter(item=>item.id!=='check')){
-  let pt=action.pt,en=action.en;
-  if(action.id==='toggle-auto-check'&&state.automatic!==null){
-   pt=state.automatic?'Desativar verificação automática externa':'Ativar verificação automática externa';
-   en=state.automatic?'Turn off external automatic checking':'Turn on external automatic checking';
-  }
-  const element=button(pt,en,state.commands[action.id],()=>{
-   const file=plugin.app.vault.getAbstractFileByPath?.(view.reviewFilePath)||plugin.app.workspace.getActiveFile?.();
-   if(!writerLanguageToolCommand(plugin,action.id,file))view.reviewStatus.setText(writerUi(
+ for(const action of WRITER_COMPANION_GRAMMAR[0].actions.filter(item=>item.requiresEditor&&item.id!=='check')){
+  button(action.pt,action.en,state.commands[action.id],()=>{
+   const file=view.reviewFilePath?plugin.app.vault.getAbstractFileByPath?.(view.reviewFilePath):plugin.app.workspace.getActiveFile?.();
+   if(!file||!writerLanguageToolCommand(plugin,action.id,file))view.reviewStatus.setText(writerUi(
     'Ação indisponível para a nota atual.','Action unavailable for the current note.'));
-   if(action.id==='toggle-auto-check')element.textContent=writerUi('Preferência enviada; reabra o painel para atualizar.','Preference sent; reopen the pane to refresh.');
+  });
+ }
+ const automaticLabel=automatic=>automatic?['Desativar verificação automática externa','Turn off external automatic checking']:
+  ['Ativar verificação automática externa','Turn on external automatic checking'];
+ const canSetAutomatic=state.canConfigure&&state.automatic!==null;
+ if(canSetAutomatic){
+  const toggle=button(...automaticLabel(state.automatic),true,async()=>{
+   if(toggle.disabled)return;
+   toggle.disabled=true;
+   try{
+    const automatic=writerLanguageToolState(plugin).automatic;
+    if(automatic===null)throw Error('External automatic checking unavailable');
+    await writerLanguageToolUpdate(plugin,'shouldAutoCheck',!automatic);
+   }catch(_){new Notice(writerUi('Não foi possível salvar a verificação automática no LanguageTool.',
+    'Could not save automatic checking in LanguageTool.'));}
+   finally{
+    const current=writerLanguageToolState(plugin);
+    toggle.disabled=!current.canConfigure||current.automatic===null;
+    if(current.automatic!==null)toggle.setText(writerUi(...automaticLabel(current.automatic)));
+   }
+  });
+ }else{
+  button('Alternar verificação automática','Toggle automatic checking',state.commands['toggle-auto-check'],()=>{
+   if(!writerLanguageToolCommand(plugin,'toggle-auto-check'))view.reviewStatus.setText(writerUi(
+    'A verificação automática externa está indisponível.','External automatic checking is unavailable.'));
   });
  }
  button('Configurar LanguageTool','LanguageTool settings',state.installed,()=>{
@@ -37747,7 +37827,7 @@ function writerLanguageToolRegister(plugin){
   if(stopped)return;
   const enabled=writerLanguageToolEnabled(plugin),state=writerLanguageToolState(plugin);
   const body=document.body;if(body){body.classList.toggle('writer-grammar-external-compat',enabled);bodies.add(body);}
-  const fingerprint=JSON.stringify([state.enabled,state.canCheck,state.version,state.automatic,state.commands]);
+  const fingerprint=JSON.stringify([state.installed,state.enabled,state.canCheck,state.canConfigure,state.version,state.automatic,state.commands]);
   if(fingerprint===previous&&!pendingRefresh)return;previous=fingerprint;pendingRefresh=false;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.(typeof VIEW==='string'?VIEW:'offline-dictionary-view')||[]){
    const view=leaf.view;
@@ -38855,13 +38935,14 @@ class DictionaryView extends ItemView{
   this.reviewMode.value=this.plugin.settings.reviewMode||'grammar';
   this.reviewMode.addEventListener('change',()=>{
    this.plugin.settings.reviewMode=this.reviewMode.value;void this.plugin.saveSettings();
+   if(this.reviewMode.value!=='grammar')this.plugin.clearReviewMarks();
    this.updateReviewEngineUI();
    if(this.reviewMode.value==='grammar'&&this.plugin.settings.reviewEngine!=='external'&&this.reviewFilePath){
     const file=this.app.vault.getAbstractFileByPath(this.reviewFilePath);
     if(file)this.plugin.autoGrammar?.schedule(file);
    }
   });
-  const engineRow=reviewControls.createDiv({cls:'writer-review-engine-row'});
+  const engineRow=this.reviewEngineRow=reviewControls.createDiv({cls:'writer-review-engine-row'});
   engineRow.createSpan({text:msg('Corretor','Checker'),cls:'writer-tools-muted'});
   this.reviewEngine=engineRow.createEl('select',{attr:{'aria-label':msg('Motor do LanguageTool','LanguageTool engine')}});
   for(const [key,label] of [['basic',msg('Integrado do Basic AI','Basic AI built-in')],['external',msg('Plugin LanguageTool externo','External LanguageTool plugin')]]){
@@ -38870,15 +38951,15 @@ class DictionaryView extends ItemView{
   this.reviewEngine.value=this.plugin.settings.reviewEngine==='external'?'external':'basic';
   this.reviewEngine.addEventListener('change',()=>{
    this.plugin.settings.reviewEngine=this.reviewEngine.value;
-   this.plugin.autoGrammar?.cancelPending?.();
-   this.plugin.clearReviewMarks();
+   writerV137GrammarInvalidate(this.plugin);
    void this.plugin.saveSettings();
-   this.updateReviewEngineUI();
   });
   const reviewButtons=review.createDiv({cls:'writer-file-actions'});
-  reviewButtons.createEl('button',{text:msg('Revisar nota ativa','Review active note')}).addEventListener('click',()=>this.reviewActiveFile());
-  reviewButtons.createEl('button',{text:msg('Escolher arquivo','Choose file')}).addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
-  this.reviewStatus=review.createDiv({cls:'writer-file-status'});
+  this.reviewActiveButton=reviewButtons.createEl('button',{attr:{type:'button'}});
+  this.reviewActiveButton.addEventListener('click',()=>this.reviewActiveFile());
+  this.reviewChooseButton=reviewButtons.createEl('button',{text:msg('Escolher nota','Choose note'),attr:{type:'button'}});
+  this.reviewChooseButton.addEventListener('click',()=>new MarkdownVaultPicker(this.app,file=>this.reviewFile(file)).open());
+  this.reviewStatus=review.createDiv({cls:'writer-file-status',attr:{role:'status'}});
   this.reviewResults=review.createDiv({cls:'writer-review-results'});
   writerV136DecorateToolPanels(this);
   this.updateReviewEngineUI();
@@ -38903,6 +38984,7 @@ class DictionaryView extends ItemView{
  switchTab(id){
   const mapping={definition:'dictionary',translation:'translation',chat:'chat',review:'review'};
   if(!Object.hasOwn(mapping,id)||!writerModuleOn(this.plugin,mapping[id]))id=Object.keys(mapping).find(key=>writerModuleOn(this.plugin,mapping[key]))||null;
+  const enteringReview=id==='review'&&this.activeTab!=='review';
   if(this.activeTab==='review'&&id!=='review')this.cancelReview();
   for(const [key,panel] of Object.entries(this.panels)){
    const active=key===id;
@@ -38922,9 +39004,12 @@ class DictionaryView extends ItemView{
    this.targetSelect.value=settings.targetLanguage;
    this.refreshTranslationRoute();
   }else if(id==='chat')this.refreshChatRoute();
-  if(id==='review'&&this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine!=='external'&&this.plugin.settings.autoGrammar?.enabled!==false){
+  if(enteringReview&&this.reviewMode?.value==='grammar'){
+   if(this.plugin.settings.reviewEngine==='external'){this.updateReviewEngineUI();return;}
+   if(this.plugin.settings.autoGrammar?.enabled===false)return;
    const file=this.app.workspace.getActiveFile?.();
    if(file instanceof TFile&&file.extension==='md'){
+    if(this.reviewFilePath!==file.path)this.reviewResults.empty();
     this.reviewFilePath=file.path;this.plugin.autoGrammar?.schedule(file);
    }
   }
@@ -39113,12 +39198,19 @@ class DictionaryView extends ItemView{
  cancelReview(){
   this.reviewToken=(this.reviewToken||0)+1;
   if(this.reviewBusy){this.reviewResults?.empty?.();this.reviewStatus?.setText?.('');}
-  this.reviewBusy=false;this.grammarCheckedPath=null;this.grammarCheckedSource=null;
+  this.reviewBusy=false;this.reviewManualPath=null;this.grammarCheckedPath=null;this.grammarCheckedSource=null;
  }
  updateReviewEngineUI(){
   this.cancelReview();
   if(!this.reviewResults||!this.reviewStatus)return;
-  const external=this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine==='external';
+  const grammar=this.reviewMode?.value==='grammar';
+  const external=grammar&&this.plugin.settings.reviewEngine==='external';
+  if(this.reviewEngineRow)this.reviewEngineRow.style.display=grammar?'':'none';
+  if(this.reviewActiveButton){
+   this.reviewActiveButton.setText(external?msg('Verificar nota ou seleção','Check note or selection'):msg('Revisar nota ativa','Review active note'));
+   const disabled=external&&!writerLanguageToolState(this.plugin).canCheck;
+   this.reviewActiveButton.disabled=disabled;this.reviewChooseButton.disabled=disabled;
+  }
   if(!external){this.reviewResults.empty();this.reviewStatus.setText('');return;}
   this.reviewResults.empty();
   writerLanguageToolPanel(this);
@@ -39130,19 +39222,30 @@ class DictionaryView extends ItemView{
  }
  async reviewFile(file,{automatic=false}={}){
   if(!writerModuleOn(this.plugin,'review'))return;
-  if(this.reviewBusy)return;
   if(!(file instanceof TFile)||file.extension!=='md')return;
-  if(this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine==='external'){
+  const external=this.reviewMode?.value==='grammar'&&this.plugin.settings.reviewEngine==='external';
+  if(this.reviewBusy&&(automatic||this.reviewManualPath===file.path||(external&&this.reviewFilePath===file.path)))return;
+  if(external){
+   if(automatic)return;
    this.plugin.clearReviewMarks();
    this.reviewFilePath=file.path;this.updateReviewEngineUI();
-   if(!automatic)await this.plugin.reviewWithExternalLanguageTool(file,this);
+   await this.plugin.reviewWithExternalLanguageTool(file,this);
    return;
   }
   const reviewToken=this.reviewToken=(this.reviewToken||0)+1,mode=this.reviewMode.value;
+  if(!automatic)this.plugin.autoGrammar?.cancelPending?.();
+  if(this.plugin.reviewMarkedPath&&this.plugin.reviewMarkedPath!==file.path)this.plugin.clearReviewMarks();
   this.reviewFilePath=file.path;
+  this.reviewManualPath=automatic?null:file.path;
   const current=()=>this.reviewToken===reviewToken&&writerModuleOn(this.plugin,'review')&&
    this.reviewFilePath===file.path&&this.activeTab==='review'&&this.reviewMode.value===mode&&
    (mode!=='grammar'||this.plugin.settings.reviewEngine!=='external');
+  const changed=()=>{
+   this.grammarCheckedPath=null;this.grammarCheckedSource=null;
+   if(this.plugin.reviewMarkedPath===file.path)this.plugin.clearReviewMarks();
+   this.reviewResults.empty();
+   if(!this.plugin.autoGrammar?.schedule(file))this.reviewStatus.setText(msg('A nota mudou durante a revisão. Clique em Revisar para verificar novamente.','The note changed during review. Click Review to check again.'));
+  };
   this.reviewBusy=true;if(!automatic)this.reviewResults.empty();this.reviewStatus.setText((automatic?msg('Atualizando gramática de ','Updating grammar for '):msg('Analisando ','Analyzing '))+file.path+'…');
   try{
     const source=await writerCurrentText(this.plugin,file);
@@ -39153,28 +39256,30 @@ class DictionaryView extends ItemView{
       const editor=writerActiveEditor(this.plugin,file);
       const offset=editor?.posToOffset?.(editor.getCursor?.())||0;
       const window=writerAutoGrammarWindow(grammarText,offset,automatic?(this.plugin.settings.autoGrammar?.maxWindowChars||12000):16000);
-      const rawMatches=await this.plugin.checkGrammar(window.text);
+      const hasProse=Boolean(window.text.trim());
+      const rawMatches=hasProse?await this.plugin.checkGrammar(window.text):[];
       if(!current())return;
       // Never publish stale matches from a request that finished after the edit.
       const checkedSource=await writerCurrentText(this.plugin,file);
       if(!current())return;
-      if(source!==checkedSource){
-       this.reviewStatus.setText(msg('Nota alterada durante a análise; atualizando…','Note changed during review; refreshing…'));
-       this.plugin.autoGrammar?.schedule(file);return;
-      }
+      if(source!==checkedSource){changed();return;}
       const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
-      const matches=rawMatches.map(m=>({...m,offset:Number(m.offset)+window.from}))
+      const matches=rawMatches.filter(m=>Number.isInteger(m?.offset)&&m.offset>=0&&Number.isInteger(m.length)&&m.offset+m.length<=window.text.length)
+       .map(m=>({...m,offset:m.offset+window.from}))
        .filter(m=>writerGrammarMatchIsSafe(source,grammarText,m)&&!writerReviewIsAcceptedWord(this.plugin.settings,source,m)&&(typeof writerV101ProjectAcceptedWord!=='function'||!writerV101ProjectAcceptedWord(this.plugin,file,source,m))&&(!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(source,m))&&!ignored.has(String(m.rule?.id||'').toUpperCase()));
-      if(this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
+      if(hasProse&&this.plugin.settings.reviewAutoOpenNote!==false)await this.plugin.openReviewNote(file);
       if(!current())return;
       const openedSource=await writerCurrentText(this.plugin,file);
       if(!current())return;
-      if(source!==openedSource){this.plugin.autoGrammar?.schedule(file);return;}
+      if(source!==openedSource){changed();return;}
       this.plugin.reviewSource=source;
       this.grammarCheckedPath=file.path;this.grammarCheckedSource=source;
       this.plugin.showReviewMarks(file,matches);
-      this.reviewStatus.setText(matches.length+' '+msg('sugestões encontradas','suggestions found')+(window.partial?msg(' (trecho próximo ao cursor)',' (near cursor)'):''));
-      this.renderGrammarResults(file,source,matches);
+      const summary=hasProse?matches.length+' '+(matches.length===1?msg('sugestão encontrada','suggestion found'):
+       msg('sugestões encontradas','suggestions found')):msg('Nenhum texto para revisar','No text to review');
+      this.reviewStatus.setText(file.path+' · '+summary+(window.partial?msg(' (trecho próximo ao cursor)',' (near cursor)'):''));
+      if(matches.length||(hasProse&&!window.partial))this.renderGrammarResults(file,source,matches);
+      else this.reviewResults.empty();
     }else{
       this.plugin.clearReviewMarks();
       const result=await this.plugin.reviewWithAI(source,mode,file);
@@ -39191,7 +39296,7 @@ class DictionaryView extends ItemView{
   }
   finally{
    if(this.reviewToken===reviewToken){
-    this.reviewBusy=false;
+    this.reviewBusy=false;this.reviewManualPath=null;
     if(current()&&this.plugin.autoGrammar?.pendingPath===file.path&&!this.plugin.autoGrammar.timer)this.plugin.autoGrammar.schedule(file);
    }
   }
@@ -39202,43 +39307,52 @@ class DictionaryView extends ItemView{
   const current=()=>this.reviewToken===reviewToken&&writerModuleOn(this.plugin,'review')&&
    this.plugin.settings.reviewEngine!=='external'&&this.reviewFilePath===file.path&&this.activeTab==='review'&&this.reviewMode?.value==='grammar';
   const scopes=writerGrammarLocalScopes(before,after,start,oldEnd,newEnd,preferParagraph);
-  const preserved=writerGrammarPreserveOutside(previousMatches,scopes.old,after.length-before.length);
-  const publish=(matches,status)=>{
+  const masked=prepareGrammarText(after);
+  const preserved=writerGrammarPreserveOutside(previousMatches,scopes.old,after.length-before.length)
+   .filter(match=>writerGrammarMatchIsSafe(after,masked,match));
+  this.grammarCheckedPath=null;this.grammarCheckedSource=null;
+  const publish=(matches,status,checked=false)=>{
    if(!current())return;
    this.reviewSource=after;this.plugin.reviewSource=after;
-   this.grammarCheckedPath=file.path;this.grammarCheckedSource=after;
+   if(checked){this.grammarCheckedPath=file.path;this.grammarCheckedSource=after;}
    this.plugin.showReviewMarks(file,matches);
-   this.reviewStatus.setText(status);
-   this.renderGrammarResults(file,after,matches);
+   this.reviewStatus.setText(file.path+' · '+status);
+   if(matches.length||checked)this.renderGrammarResults(file,after,matches);
+   else this.reviewResults.empty();
   };
+  const discardStale=()=>{
+   if(this.plugin.reviewMarkedPath===file.path)this.plugin.clearReviewMarks();
+   this.reviewResults.empty();
+   this.reviewStatus.setText(msg('A nota mudou durante a revisão. Clique em Revisar para verificar novamente.','The note changed during review. Click Review to check again.'));
+   return true;
+  };
+  this.reviewBusy=true;this.reviewManualPath=null;
   // Keep every unaffected paragraph's findings while the small request is in flight.
   publish(preserved,msg('Reanalisando apenas ','Rechecking only ')+
    (scopes.next.kind==='sentence'?msg('a sentença alterada…','the changed sentence…'):msg('o trecho alterado…','the changed passage…')));
-  this.reviewBusy=true;
   try{
-   const masked=prepareGrammarText(after);
    const raw=await this.plugin.checkGrammar(masked.slice(scopes.next.from,scopes.next.to));
    if(!current())return false;
    const checkedSource=await writerCurrentText(this.plugin,file);
    if(!current())return false;
-   if(after!==checkedSource)return true;
+   if(after!==checkedSource)return discardStale();
    const ignored=new Set((this.plugin.settings.reviewIgnoreRules||'').split(/[\s,;]+/).map(x=>x.trim().toUpperCase()).filter(Boolean));
-   const revised=raw.map(m=>({...m,offset:Number(m.offset)+scopes.next.from}))
+   const revised=raw.map(m=>({...m,offset:m.offset+scopes.next.from}))
     .filter(m=>m.offset>=scopes.next.from&&m.offset+m.length<=scopes.next.to&&
      writerGrammarMatchIsSafe(after,masked,m)&&
      !writerReviewIsAcceptedWord(this.plugin.settings,after,m)&&(typeof writerV101ProjectAcceptedWord!=='function'||!writerV101ProjectAcceptedWord(this.plugin,file,after,m))&&
      (!this.plugin.settings.reviewIgnoreWhitespace||meaningfulGrammarMatch(after,m))&&
      !ignored.has(String(m.rule?.id||'').toUpperCase()));
    const all=[...preserved,...revised].sort((a,b)=>a.offset-b.offset||a.length-b.length);
-   publish(all,all.length+' '+msg('sugestões no documento (trecho alterado atualizado)','suggestions in document (changed passage refreshed)'));
+   const count=all.length+' '+(all.length===1?msg('sugestão','suggestion'):msg('sugestões','suggestions'));
+   publish(all,count+msg(' (trecho alterado atualizado)',' (changed passage refreshed)'),true);
    return false;
   }catch(error){
    if(!current())return false;
-   if(error.code==='WRITER_GRAMMAR_CANCELLED')return false;
-   const checkedSource=await writerCurrentText(this.plugin,file);
+   const checkedSource=await writerCurrentText(this.plugin,file).catch(()=>null);
    if(!current())return false;
-   if(after!==checkedSource)return true;
-   publish(preserved,msg('Não foi possível reanalisar o trecho; outras sugestões preservadas. ','Could not recheck passage; other suggestions preserved. ')+(error.message||String(error)));
+   if(after!==checkedSource)return discardStale();
+   publish(preserved,msg('Não foi possível reanalisar o trecho. Clique em Revisar para tentar novamente. ','Could not recheck the passage. Click Review to try again. ')+(error.message||String(error)));
    return false;
   }finally{if(this.reviewToken===reviewToken)this.reviewBusy=false;}
  }
@@ -39280,16 +39394,25 @@ class DictionaryView extends ItemView{
   excerpt.createSpan({text:msg('No texto: ','In text: '),cls:'writer-lt-muted'});
   excerpt.createEl('mark',{text:original.slice(0,100)||msg('(sem texto)','(empty)')});
   const choices=card.createDiv({cls:'writer-lt-choices'});
+  const addChoice=text=>{
+   const choice=choices.createEl('button',{text:text||msg('(remover)','(delete)'),cls:'writer-lt-choice',attr:{type:'button'}});
+   choice.setAttribute('title',msg('Substituir pelo texto sugerido','Replace with suggested text'));
+   choice.addEventListener('click',()=>this.plugin.applyGrammarReplacement(file,source,match,text));
+   return choice;
+  };
   if(suggestions.length){
-   for(const text of suggestions.slice(0,2)){
-    const choice=choices.createEl('button',{text:text||msg('(remover)','(delete)'),cls:'writer-lt-choice'});
-    choice.setAttribute('title',msg('Substituir pelo texto sugerido','Replace with suggested text'));
-    choice.addEventListener('click',()=>this.plugin.applyGrammarReplacement(file,source,match,text));
+   for(const text of suggestions.slice(0,2))addChoice(text);
+   if(suggestions.length>2){
+    const more=choices.createEl('button',{text:msg('Mais opções','More options')+' ('+(suggestions.length-2)+')',cls:'writer-lt-choice',attr:{type:'button'}});
+    more.addEventListener('click',()=>{
+     more.remove();
+     const expanded=suggestions.slice(2).map(addChoice);
+     expanded[0]?.focus();
+    });
    }
-   if(suggestions.length>2)choices.createSpan({cls:'writer-lt-muted',text:'+'+(suggestions.length-2)});
   }else choices.createSpan({cls:'writer-lt-muted',text:msg('Sem substituição automática','No automatic replacement')});
   const actions=card.createDiv({cls:'writer-lt-result-actions'});
-  actions.createEl('button',{text:msg('Ir ao erro','Go to error')}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end));
+  actions.createEl('button',{text:msg('Ir ao trecho','Go to passage')}).addEventListener('click',()=>this.plugin.jumpToReviewError(file,start,end,source));
   actions.createEl('button',{text:msg('Opções ⋯','Options ⋯'),cls:'writer-lt-more'})
    .addEventListener('click',event=>this.plugin.showReviewSuggestionMenu(file,source,match,{event}));
   const detail=card.createEl('details',{cls:'writer-review-details writer-lt-details'});
@@ -40563,7 +40686,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     await this.app.workspace.revealLeaf(leaf);
     return leaf.view;
   }
-  async jumpToReviewError(file,start,end){
+  async jumpToReviewError(file,start,end,source){
     try{
       const existing=this.app.workspace.getLeavesOfType('markdown').find(leaf=>leaf.view?.file?.path===file.path);
       const leaf=existing||this.app.workspace.getLeaf('tab');
@@ -40571,6 +40694,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       if(!existing)await leaf.openFile(file,{active:false});
       const editor=leaf.view?.editor;
       if(!editor)throw new Error(msg('Abra a nota no editor Markdown.','Open the note in the Markdown editor.'));
+      if(source!==undefined&&editor.getValue()!==source)throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
       const from=editor.offsetToPos(start),to=editor.offsetToPos(end);
       editor.setSelection(from,to);
       editor.scrollIntoView({from,to},true);
@@ -40583,15 +40707,16 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     if(this.reviewPopup){
       const open=this.reviewPopup;
       this.reviewPopup=null;
-      if(typeof open.close==='function')open.close();
+      if(typeof open.hide==='function')open.hide();
+      else if(typeof open.close==='function')open.close();
       else if(typeof open.remove==='function')open.remove();
     }
     this.reviewPopupKey=null;
   }
   async applyGrammarReplacement(file,source,match,replacement){
     this.grammarCorrectionPaths ||=new Set();
-    if(this.grammarCorrectionPaths.has(file.path))return;
-    let needsFullReview=false,current=null;
+    if(this.grammarCorrectionPaths.has(file.path))return new Notice(msg('Aguarde a revisão da última correção.','Wait for the last correction to be checked.'));
+    let needsFullReview=false,current=null,view=null;
     this.grammarCorrectionPaths.add(file.path);
     try{
       current=this.app.vault.getAbstractFileByPath(file.path);
@@ -40599,7 +40724,8 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       const present=await writerCurrentText(this,current);
       if(present!==source)throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
       const start=match.offset,end=start+match.length;
-      const view=this.app.workspace.getLeavesOfType(VIEW)[0]?.view;
+      view=this.app.workspace.getLeavesOfType(VIEW).map(leaf=>leaf.view).find(candidate=>candidate?.activeTab==='review'&&
+       candidate.reviewMode?.value==='grammar'&&candidate.reviewFilePath===file.path&&this.settings.reviewEngine!=='external');
       const cached=this.reviewMarkedPath===file.path&&this.reviewSource===source&&
        Array.isArray(this.reviewMatches)?this.reviewMatches.slice():null;
       const auto=this.autoGrammar;
@@ -40608,17 +40734,20 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       }
       const after=await writerSafeReplace(this,current,start,end,source.slice(start,end),replacement,{reason:msg('aceitar revisão gramatical','accept grammar correction')});
       this.closeReviewPopup();
-      if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'&&cached){
+      new Notice(msg('Correção aplicada','Correction applied'));
+      if(view&&cached){
        needsFullReview=await view.recheckGrammarCorrection(current,source,after,start,end,start+replacement.length,cached);
        if(!needsFullReview&&auto)auto.lastRun=Date.now();
-      }else if(view?.activeTab==='review'&&view.reviewMode?.value==='grammar'){
+      }else if(view){
        needsFullReview=true; // No trustworthy cached offsets; use the existing full check.
-      }else this.clearReviewMarks();
-      new Notice(msg('Correção aplicada','Correction applied'));
+      }else if(this.reviewMarkedPath===file.path)this.clearReviewMarks();
     }catch(error){new Notice(error.message||String(error),7000);}
     finally{
      this.grammarCorrectionPaths.delete(file.path);
-     if(needsFullReview&&current)this.autoGrammar?.schedule(current,{delay:2000});
+     if(needsFullReview&&current&&!this.autoGrammar?.schedule(current,{delay:2000})&&view?.reviewFilePath===current.path){
+      view.reviewResults.empty();
+      view.reviewStatus.setText(msg('Clique em Revisar para atualizar as sugestões.','Click Review to refresh the suggestions.'));
+     }
     }
   }
   async createGrammarVariant(file,source,match,replacement){
@@ -40710,7 +40839,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     return modal;
   }
   showReviewSuggestionMenu(file,source,match,anchor={}){
-    const key=file.path+':'+match.offset+':'+match.length;
+    const key=file.path+':'+match.offset+':'+(match.offset+match.length);
     if(this.reviewPopup&&this.reviewPopupKey===key)return this.reviewPopup;
     this.closeReviewPopup();
     if(this.app.isMobile)return this.showMobileReviewSuggestionMenu(file,source,match,key);
@@ -40752,16 +40881,14 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       .onClick(()=>this.dismissGrammarSuggestion(file,match)));
     if(match.rule?.id)menu.addItem(item=>item.setTitle(msg('Ignorar esta regra','Ignore this rule')).setIcon('ban')
       .onClick(()=>this.ignoreGrammarRule(file,match)));
+    this.reviewPopup=menu;
+    this.reviewPopupKey=key;
+    menu.onHide(()=>{
+      if(this.reviewPopup===menu){this.reviewPopup=null;this.reviewPopupKey=null;}
+    });
     const event=anchor.event;
     if(event&&typeof menu.showAtMouseEvent==='function')menu.showAtMouseEvent(event);
     else menu.showAtPosition(anchor.position||{x:window.innerWidth/2,y:Math.min(window.innerHeight/2,300)});
-    this.reviewPopup=menu;
-    this.reviewPopupKey=key;
-    const originalOnHide=menu.onHide;
-    menu.onHide=(...args)=>{
-      if(this.reviewPopup===menu){this.reviewPopup=null;this.reviewPopupKey=null;}
-      if(typeof originalOnHide==='function')originalOnHide.apply(menu,args);
-    };
     return menu;
   }
   maybeShowReviewPopup(cm,anchor={}){
@@ -40800,6 +40927,9 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   showReviewMarks(file,matches){
     this.closeReviewPopup();
+    if(this.reviewMarkedPath&&this.reviewMarkedPath!==file.path){
+     for(const cm of this.reviewEditors({path:this.reviewMarkedPath}))cm.dispatch({effects:setReviewMarks.of([])});
+    }
     this.reviewMatches=matches;
     this.reviewMarks=matches.filter(m=>Number.isInteger(m.offset)&&Number.isInteger(m.length)&&m.length>0).map(m=>({from:m.offset,to:m.offset+m.length,message:m.message,severity:writerGrammarSeverity(m)}));
     this.reviewMarkedPath=file.path;

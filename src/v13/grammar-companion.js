@@ -36,8 +36,10 @@ function writerLanguageToolEditor(plugin,file){
  if(!leaf)return null;
  // runDetection reads the active note's frontmatter; commands also use its editor.
  // Restore the chosen note before either call, including when Basic has focus.
- workspace.setActiveLeaf?.(leaf,{focus:true});
- if(workspace.getActiveFile?.()?.path!==file.path)return null;
+ if(workspace.activeLeaf!==leaf){
+  try{workspace.setActiveLeaf?.(leaf,{focus:true});}catch(_){return null;}
+ }
+ if(workspace.activeLeaf!==leaf||workspace.getActiveFile?.()?.path!==file.path||!leaf.view?.editor?.cm)return null;
  return {leaf,editor:leaf.view.editor,cm:leaf.view.editor.cm};
 }
 function writerLanguageToolCommand(plugin,command,file){
@@ -46,36 +48,43 @@ function writerLanguageToolCommand(plugin,command,file){
  if(action.requiresEditor&&!writerLanguageToolEditor(plugin,file||plugin.app.workspace.getActiveFile?.())){
   new Notice(writerUi('Abra a nota no editor para usar esta ação do LanguageTool.','Open the note in an editor to use this LanguageTool action.'));return false;
  }
- return !!plugin.app.commands.executeCommandById(action.command);
+ try{return !!plugin.app.commands.executeCommandById(action.command);}catch(_){return false;}
 }
 async function writerLanguageToolReview(plugin,file,view){
  if(!writerLanguageToolEnabled(plugin)||plugin.settings.reviewEngine!=='external'||view?.activeTab!=='review'||
-  view.reviewMode?.value!=='grammar'||view.reviewFilePath!==file?.path)return false;
+  view.reviewMode?.value!=='grammar'||!file?.path||view.reviewFilePath!==file.path||view.reviewBusy)return false;
+ const path=file.path;
  const instance=writerLanguageToolInstalled(plugin);
  if(typeof instance?.runDetection!=='function'){view.updateReviewEngineUI?.();return false;}
  const context=writerLanguageToolEditor(plugin,file);
  if(!context){view.reviewStatus?.setText(writerUi('Abra esta nota no editor para usar o corretor externo.','Open the note in an editor to use the external checker.'));return false;}
- if(view.reviewBusy)return false;
  const token=view.reviewToken=(view.reviewToken||0)+1;
  const document=context.cm.state?.doc;
  const current=()=>view.reviewToken===token&&writerLanguageToolEnabled(plugin)&&
   writerLanguageToolInstalled(plugin)===instance&&plugin.settings.reviewEngine==='external'&&
-  view.reviewMode?.value==='grammar'&&view.activeTab==='review'&&view.reviewFilePath===file.path&&
-  context.leaf.view?.file?.path===file.path&&context.leaf.view?.editor?.cm===context.cm&&
+  view.reviewMode?.value==='grammar'&&view.activeTab==='review'&&view.reviewFilePath===path;
+ const editorUnchanged=()=>context.leaf.view?.file?.path===path&&context.leaf.view?.editor?.cm===context.cm&&
   context.cm.state?.doc===document;
+ const changed=()=>view.reviewStatus?.setText(writerUi('O editor mudou durante a verificação. Verifique novamente para atualizar as sugestões.',
+  'The editor changed during the check. Check again for updated suggestions.'));
  view.reviewBusy=true;
  view.reviewStatus?.setText(writerUi('Verificando pelo LanguageTool externo…','Checking with external LanguageTool…'));
  try{
-  await instance.runDetection(context.cm);
+  const found=await instance.runDetection(context.cm);
   if(!current())return false;
+  if(!editorUnchanged()){changed();return false;}
   // Upstream returns true for some handled failures as well as findings.
   // Completion cannot certify successful transport; its own notices explain errors.
-  view.reviewStatus?.setText(writerUi('Solicitação encerrada. Confira os sublinhados e os avisos do LanguageTool no editor.',
+  view.reviewStatus?.setText(found===false?writerUi('Nenhuma sugestão do LanguageTool para este texto.',
+   'No LanguageTool suggestions for this text.'):writerUi('Solicitação encerrada. Confira os sublinhados e os avisos do LanguageTool no editor.',
    'Request finished. Check the editor underlines and LanguageTool notices.'));
   return true;
  }catch(_){
-  if(current())view.reviewStatus?.setText(writerUi('O LanguageTool externo não concluiu a verificação. Confira as configurações e os avisos dele.',
-   'External LanguageTool could not finish the check. Review its settings and notices.'));
+  if(current()){
+   if(!editorUnchanged())changed();
+   else view.reviewStatus?.setText(writerUi('O LanguageTool externo não concluiu a verificação. Confira as configurações e os avisos dele.',
+    'External LanguageTool could not finish the check. Review its settings and notices.'));
+  }
   return false;
  }finally{if(view.reviewToken===token)view.reviewBusy=false;}
 }
@@ -112,8 +121,11 @@ function writerLanguageToolSettings(plugin,panel){
  const persist=async(control,key,value)=>{
   control.setDisabled(true);
   try{await writerLanguageToolUpdate(plugin,key,value);feedback.setText(writerUi('Preferência salva no LanguageTool.','Preference saved in LanguageTool.'));}
-  catch(_){feedback.setText(writerUi('Não foi possível salvar. Reabra esta seção para conferir a preferência atual.',
-   'Could not save. Reopen this section to check the current preference.'));}
+  catch(_){
+   const saved=writerLanguageToolInstalled(plugin)?.settings?.options?.[key];
+   if(typeof saved===typeof value)control.setValue(saved);
+   feedback.setText(writerUi('Não foi possível salvar a preferência no LanguageTool.','Could not save the preference in LanguageTool.'));
+  }
   finally{control.setDisabled(!writerLanguageToolState(plugin).canConfigure);}
  };
  for(const [key,pt,en,descPt,descEn] of [
@@ -154,18 +166,36 @@ function writerLanguageToolPanel(view){
   const element=actions.createEl('button',{text:writerUi(pt,en)});element.disabled=!enabled;
   element.addEventListener('click',callback);return element;
  };
- button('Verificar nota/seleção','Check note/selection',state.canCheck,()=>view.reviewActiveFile());
- for(const action of WRITER_COMPANION_GRAMMAR[0].actions.filter(item=>item.id!=='check')){
-  let pt=action.pt,en=action.en;
-  if(action.id==='toggle-auto-check'&&state.automatic!==null){
-   pt=state.automatic?'Desativar verificação automática externa':'Ativar verificação automática externa';
-   en=state.automatic?'Turn off external automatic checking':'Turn on external automatic checking';
-  }
-  const element=button(pt,en,state.commands[action.id],()=>{
-   const file=plugin.app.vault.getAbstractFileByPath?.(view.reviewFilePath)||plugin.app.workspace.getActiveFile?.();
-   if(!writerLanguageToolCommand(plugin,action.id,file))view.reviewStatus.setText(writerUi(
+ for(const action of WRITER_COMPANION_GRAMMAR[0].actions.filter(item=>item.requiresEditor&&item.id!=='check')){
+  button(action.pt,action.en,state.commands[action.id],()=>{
+   const file=view.reviewFilePath?plugin.app.vault.getAbstractFileByPath?.(view.reviewFilePath):plugin.app.workspace.getActiveFile?.();
+   if(!file||!writerLanguageToolCommand(plugin,action.id,file))view.reviewStatus.setText(writerUi(
     'Ação indisponível para a nota atual.','Action unavailable for the current note.'));
-   if(action.id==='toggle-auto-check')element.textContent=writerUi('Preferência enviada; reabra o painel para atualizar.','Preference sent; reopen the pane to refresh.');
+  });
+ }
+ const automaticLabel=automatic=>automatic?['Desativar verificação automática externa','Turn off external automatic checking']:
+  ['Ativar verificação automática externa','Turn on external automatic checking'];
+ const canSetAutomatic=state.canConfigure&&state.automatic!==null;
+ if(canSetAutomatic){
+  const toggle=button(...automaticLabel(state.automatic),true,async()=>{
+   if(toggle.disabled)return;
+   toggle.disabled=true;
+   try{
+    const automatic=writerLanguageToolState(plugin).automatic;
+    if(automatic===null)throw Error('External automatic checking unavailable');
+    await writerLanguageToolUpdate(plugin,'shouldAutoCheck',!automatic);
+   }catch(_){new Notice(writerUi('Não foi possível salvar a verificação automática no LanguageTool.',
+    'Could not save automatic checking in LanguageTool.'));}
+   finally{
+    const current=writerLanguageToolState(plugin);
+    toggle.disabled=!current.canConfigure||current.automatic===null;
+    if(current.automatic!==null)toggle.setText(writerUi(...automaticLabel(current.automatic)));
+   }
+  });
+ }else{
+  button('Alternar verificação automática','Toggle automatic checking',state.commands['toggle-auto-check'],()=>{
+   if(!writerLanguageToolCommand(plugin,'toggle-auto-check'))view.reviewStatus.setText(writerUi(
+    'A verificação automática externa está indisponível.','External automatic checking is unavailable.'));
   });
  }
  button('Configurar LanguageTool','LanguageTool settings',state.installed,()=>{
@@ -181,7 +211,7 @@ function writerLanguageToolRegister(plugin){
   if(stopped)return;
   const enabled=writerLanguageToolEnabled(plugin),state=writerLanguageToolState(plugin);
   const body=document.body;if(body){body.classList.toggle('writer-grammar-external-compat',enabled);bodies.add(body);}
-  const fingerprint=JSON.stringify([state.enabled,state.canCheck,state.version,state.automatic,state.commands]);
+  const fingerprint=JSON.stringify([state.installed,state.enabled,state.canCheck,state.canConfigure,state.version,state.automatic,state.commands]);
   if(fingerprint===previous&&!pendingRefresh)return;previous=fingerprint;pendingRefresh=false;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.(typeof VIEW==='string'?VIEW:'offline-dictionary-view')||[]){
    const view=leaf.view;

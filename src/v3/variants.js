@@ -29,7 +29,7 @@ class WriterVariants{
    new Setting(modal.contentEl).setName(writerUi('Primeira alternativa','First alternative')).addTextArea(t=>{t.inputEl.rows=4;t.setValue(alternative).onChange(v=>alternative=v);});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Criar variantes","Create variants")).setCta().onClick(async()=>{
     if(!alternative.trim()||alternative===text)return new Notice(writerUi('Escreva uma alternativa diferente.','Enter a different alternative.'));
-    try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),writerUi('criar variantes','create variants'));modal.close();}
+    try{await writerSafeReplace(this.plugin,active.file,from,to,text,writerEncodeVariant([text,alternative],0),{reason:writerUi('criar variantes','create variants')});modal.close();}
     catch(e){new Notice(e.message);}
    }));
   };modal.open();
@@ -39,7 +39,7 @@ class WriterVariants{
   const from=match.offset,to=from+match.length,original=source.slice(from,to);
   if(!original||typeof replacement!=='string'||!replacement.trim())return new Notice(writerUi("Sugestão inválida.","Invalid suggestion."));
   if(/^\s*$/.test(original)||/[{}|]/.test(replacement))return new Notice(writerUi("A sugestão contém caracteres de controle. Use o editor de variantes.","The suggestion contains control characters. Use the variant editor."));
-  try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),writerUi('criar variante da revisão','create review variant'));
+  try{await writerSafeReplace(this.plugin,file,from,to,original,writerEncodeVariant([original,replacement],0),{reason:writerUi('criar variante da revisão','create review variant')});
    new Notice(writerUi('Variante adicionada sem descartar o original.','Variant added without discarding the original.'));
   }catch(e){new Notice(e.message);}
  }
@@ -47,7 +47,7 @@ class WriterVariants{
   const selected=file||this.active()?.file;
   if(!selected||!found)return;
   const replacement=commit?newOptions[active]:writerEncodeVariant(newOptions,active);
-  await writerSafeReplace(this.plugin,selected,found.from,found.to,found.raw,replacement,commit?'confirmar variante':'editar variantes');
+  await writerSafeReplace(this.plugin,selected,found.from,found.to,found.raw,replacement,{reason:commit?writerUi('confirmar variante','confirm variant'):writerUi('editar variantes','edit variants'),snapshot:commit?'commit':'rewrite'});
  }
  async open(){
   if(!this.options.enabled)return new Notice(writerUi("Ative Variantes nas configurações.","Enable Variants in settings."));
@@ -71,9 +71,13 @@ class WriterVariants{
       if(selected===i)selected=n;else if(selected===n)selected=i;render();
      });
     }
-    header.createEl('button',{text:'×',attr:{'aria-label':writerUi('Excluir alternativa','Delete alternative')}}).addEventListener('click',()=>{
+    const remove=header.createEl('button',{text:'×',attr:{type:'button','aria-label':writerUi('Excluir alternativa','Delete alternative')}});
+    remove.addEventListener('click',()=>{
      if(items.length<=2)return new Notice(writerUi('Mantenha ao menos duas alternativas.','Keep at least two alternatives.'));
-     items.splice(i,1);if(selected>=items.length)selected=items.length-1;render();
+     const label=writerUi('Excluir alternativa ','Delete alternative ')+(i+1)+'?';
+     new ConfirmProjectAction(this.plugin.app,label,writerUi('A alternativa será removida do rascunho deste painel. A nota só mudará ao salvar.','The alternative will be removed from this panel’s draft. The note will only change when you save.'),()=>{
+      items.splice(i,1);if(selected>i)selected--;else if(selected===i)selected=Math.min(i,items.length-1);render();
+     }).open();
     });
     const textarea=box.createEl('textarea',{cls:'writer-variant-textarea'});
     textarea.value=value;textarea.addEventListener('input',()=>{items[i]=textarea.value;});
@@ -110,7 +114,7 @@ class WriterVariants{
   const run=async()=>{
    let result=text;
    for(const item of [...items].reverse())result=result.slice(0,item.from)+item.variants[item.active]+result.slice(item.to);
-   try{await writerSafeReplace(this.plugin,active.file,0,text.length,text,result,writerUi('confirmar todas as variantes','confirm all variants'));new Notice(items.length+writerUi(' variantes confirmadas.',' variants confirmed.'));}
+   try{await writerSafeReplace(this.plugin,active.file,0,text.length,text,result,{reason:writerUi('confirmar todas as variantes','confirm all variants'),snapshot:'commit'});new Notice(items.length+writerUi(' variantes confirmadas.',' variants confirmed.'));}
    catch(e){new Notice(e.message);}
   };
   if(!this.options.confirmAll)return run();
@@ -131,7 +135,7 @@ class WriterVariants{
    const response=await this.plugin.generateWriting(prompt,selected);
    const alternatives=response.split(/\n+/).map(x=>x.replace(/^\s*(?:[-*]|\d+[.)])\s*/,'').trim()).filter(x=>x&&x!==selected).slice(0,5);
    if(!alternatives.length)throw Error(writerUi('A IA não retornou alternativas válidas.','The AI did not return valid alternatives.'));
-   await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),'inserir variantes da IA');
+   await writerSafeReplace(this.plugin,active.file,from,to,selected,writerEncodeVariant([selected,...alternatives]),{reason:writerUi('inserir variantes da IA','insert AI variants')});
    new Notice(writerUi('Alternativas adicionadas como variantes.','Alternatives added as variants.'));
   }catch(e){new Notice(writerUi("Não foi possível gerar variantes: ","Could not generate variants: ")+e.message);}
  }

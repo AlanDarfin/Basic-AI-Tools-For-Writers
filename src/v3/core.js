@@ -14,7 +14,7 @@ function writerMergeV3(settings){
  }
  base.schemaVersion=3;return base;
 }
-function writerUi(pt,en){try{return (require('obsidian').getLanguage?.()||'en').toLowerCase().startsWith('pt')?pt:en;}catch(_){return en;}}
+function writerUi(pt,en){return lfMsg(pt,en);}
 function writerMaskMarkdown(source,keepVariants=false){
  const text=String(source||''),hidden=new Uint8Array(text.length);
  const hide=(from,to)=>{for(let i=Math.max(0,from);i<Math.min(text.length,to);i++)if(text[i]!=='\n'&&text[i]!=='\r')hidden[i]=1;};
@@ -96,8 +96,9 @@ function writerMaskMarkdown(source,keepVariants=false){
  }
  const structural=/^[ \t]{0,3}(?:#{1,6}(?=\s)|>(?=\s)|[-*+](?=\s)|\d+[.)](?=\s)|(?:---+|\*\*\*+|___+)[ \t]*$)/gm;
  while((m=structural.exec(text))!==null)hide(m.index,m.index+m[0].length);
- let masked='';for(let i=0;i<text.length;i++)masked+=hidden[i]?' ':text[i];
- return masked;
+ const masked=new Array(text.length);
+ for(let i=0;i<text.length;i++)masked[i]=hidden[i]?' ':text[i];
+ return masked.join('');
 }
 function writerGrammarMatchIsSafe(source,masked,match){
  const from=match?.offset,length=match?.length;
@@ -145,15 +146,14 @@ function writerActiveEditor(plugin,file){
 }
 function writerCurrentText(plugin,file){const editor=writerActiveEditor(plugin,file);return editor?Promise.resolve(editor.getValue()):plugin.app.vault.read(file);}
 function writerOffsetToPos(editor,offset){return typeof editor.offsetToPos==='function'?editor.offsetToPos(offset):{line:0,ch:offset};}
-async function writerSafeReplace(plugin,file,from,to,expected,replacement,reason){
+async function writerSafeReplace(plugin,file,from,to,expected,replacement,{reason,snapshot='rewrite'}={}){
  if(!file||file.extension!=='md')throw Error(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
  if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<from)throw Error(writerUi('Intervalo inválido.','Invalid range.'));
  const editor=writerActiveEditor(plugin,file),text=editor?editor.getValue():await plugin.app.vault.read(file);
  if(to>text.length||text.slice(from,to)!==expected)throw Error(writerUi('A nota mudou depois da sugestão. Refaça a operação.','The note changed after the suggestion. Please try again.'));
- const committing=reason.includes('confirmar variante')||reason.includes('confirmar todas as variantes');
- const shouldSnapshot=committing?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
+ const shouldSnapshot=snapshot==='commit'?plugin.settings.variants?.snapshotBeforeCommit!==false:plugin.settings.snapshots?.snapshotBeforeRewrite!==false;
  if(plugin.settings.snapshots?.enabled&&shouldSnapshot&&plugin.writerSnapshots){
-  await plugin.writerSnapshots.create(file,'Antes de '+reason,{content:text});
+  await plugin.writerSnapshots.create(file,writerUi('Antes de ','Before ')+(reason||writerUi('reescrever','rewrite')),{content:text});
  }
  const next=text.slice(0,from)+replacement+text.slice(to);
  if(editor){

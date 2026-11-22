@@ -36,17 +36,13 @@ test('packaged desktop code remains lazy; HTML extensions and network lookups ar
  const bundle=fs.readFileSync('main.js','utf8');
  assert.match(bundle,/function writerVisualKitBuild\(\)\{/);
  assert.match(bundle,/basic-visual-kit-html-note/);
- const defaults=fs.readFileSync('vendor/visual-kit/src/settings.ts','utf8');
- assert.match(defaults,/htmlRegisterExtensions: false/);
- assert.match(defaults,/htmlExternalImages: "block"/);
- assert.match(defaults,/copyMode: "dedicated"/);
  const paste=fs.readFileSync('vendor/visual-kit/src/paste/HtmlImagePaste.ts','utf8');
  assert.ok(paste.indexOf('if (!allowRemote)')<paste.indexOf('await requestUrl('));
  const preview=fs.readFileSync('vendor/visual-kit/src/html-notes/FullPreview.ts','utf8');
  assert.match(preview,/script-src 'none'/);assert.match(preview,/sandbox: ""/);
 });
 
-test('compiled Visual Kit registers commands, vault events, and a separate HTML view on a desktop host',()=>{
+test('compiled Visual Kit registers commands and keeps remote image downloads opt-in',async()=>{
  const source=fs.readFileSync('main.js','utf8').split('function writerVisualKitBuild(){')[1].split('// END WRITER V3 MODULES')[0];
  const noop=class {};
  const calls={commands:[],views:[],extensions:[],events:[],removed:[]};
@@ -64,8 +60,14 @@ test('compiled Visual Kit registers commands, vault events, and a separate HTML 
  const context={require:name=>name==='obsidian'?obsidian:{},document:{documentElement:{style:{}}},
   window:{setInterval:()=>1},navigator:{userAgent:'',vendor:'',platform:''}};
  const Kit=vm.runInNewContext('function writerVisualKitBuild(){'+source+'\nwriterVisualKitBuild();',context);
- const instance=new Kit({app,manifest:{id:'basic-ai-tool-for-writers'}},(pt,en)=>en,()=>undefined,()=>{throw Error('No writes on load');},()=>true);
+ const writes=[];
+ const create=state=>new Kit({app,manifest:{id:'basic-ai-tool-for-writers'}},(pt,en)=>en,()=>state,
+  async next=>writes.push(next),()=>true);
+ const instance=create(undefined);
  instance.onload();
+ assert.equal(instance.settings.htmlRegisterExtensions,false);
+ assert.equal(instance.settings.htmlExternalImages,'block');
+ assert.equal(instance.settings.copyMode,'dedicated');
  assert.equal(calls.commands.length,9);
  assert.ok(calls.commands.includes('visual-kit-create-html-note'));
  assert.ok(calls.commands.includes('visual-kit-rebuild-image-duplicate-index'));
@@ -74,4 +76,19 @@ test('compiled Visual Kit registers commands, vault events, and a separate HTML 
  assert.ok(calls.events.includes('workspace:editor-paste')&&calls.events.includes('vault:rename'));
  instance.onunload();
  assert.deepEqual(calls.removed,['basic-visual-kit-html-note']);
+ assert.equal(writes.length,0,'loading by itself does not persist settings');
+
+ const preview=create({settings:{htmlExternalImages:'download',width:720}});
+ preview.onload();
+ assert.equal(preview.settings.htmlExternalImages,'block','ignore the default persisted by early previews');
+ assert.equal(preview.settings.width,720);
+ preview.settings.htmlExternalImages='download';
+ await preview.persist();
+ assert.equal(writes[0].remoteImagesOptIn,true);
+ preview.onunload();
+
+ const consented=create(writes[0]);
+ consented.onload();
+ assert.equal(consented.settings.htmlExternalImages,'download');
+ consented.onunload();
 });

@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 13.15.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 14.0.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -60,6 +60,12 @@ Under **General → Features**, turn features off or on to choose which entries 
 
 Open **Projects** or the **Library** to create a book or add an existing note. Chapters remain separate Markdown files. The **Add story arc divider** icon in Longform's Scenes toolbar inserts a visual line, with an optional caption and drag/touch reordering. Dividers stay in Basic settings per draft and do not enter notes or compiled manuscripts. Continuous writing uses an editor for each expanded chapter; saves are explicit and check for concurrent changes.
 
+Under **Writing → Compile**, preview the manuscript or save it as a new note. If the destination already exists, **Replace with backup** keeps the old content in `_Backups/Manuscripts` before replacing the output. Close the destination in the editor first. Chapter notes and Longform indexes cannot be replaced by this action. Edits to index properties use Obsidian’s YAML serializer, which may change formatting or remove YAML comments.
+
+In **Scenes**, use the search icon or assign a hotkey to **Find project scene**. The search is limited to the selected draft. To reorder on a phone, hold a scene handle and tap the destination, or tap **Cancel** in the notice. In **Compile**, rename custom workflows and use **Export JSON** to copy the currently displayed steps. **Import JSON** reads the same format.
+
+Under **Project → Project**, **Words per scene** shows the saved word count and the note’s `target_wordcount`, when set. Start, pause, resume, or end a writing session for the selected project. Pauses do not count toward writing time or word progress. Use **Diagnostics** to ignore loose files without moving them. **Restore index backup** restores the latest index backup, keeps a separate copy of the current index, and leaves scene notes untouched.
+
 Use the icon tabs under **Writing**, **World**, or **Project** to open a section. On narrow screens, swipe the tab strip sideways to see the remaining sections.
 
 On phones, **Basic settings → General → Get started → Mobile status bar** controls the row below navigation. It uses available native status items or Basic indicators such as word count, editor mode, reading time and Pomodoro. The row hides while the on-screen keyboard is open.
@@ -73,6 +79,12 @@ Chapter drafts have local recovery copies. Use **Books: recover drafts** to insp
 To assemble a manuscript, choose **Books: compile Markdown manuscript**, select saved files or current writing, review the preview and create a new file under `Basic Exports/`. Compilation includes all chapters in the selected draft, beyond the chapter-editor display limit. Missing chapters or conflicting versions block export. Refresh the preview to include later changes.
 
 Optional desktop export to DOCX, EPUB, HTML or PDF uses a separately installed **Pandoc** executable; PDF may also require a compatible rendering engine. See the [first-use guide](docs/GETTING_STARTED.en.md#write-your-first-book).
+
+## Format text without HTML
+
+The Basic toolbar uses Markdown and Basic's own formatting syntax. Select text and use Underline, Superscript, Subscript or Spoiler to insert `++text++`, `^2^`, `~2~` or `||text||`. Text color and Background color use the exact colors saved in the desktop or mobile toolbar profile, for example `!!{color-cf517f}text!!` and `=={hex-ffd66a}text==`. Keep the matching options enabled under **Text formatting** to render them in Reading view and Live Preview.
+
+By default, automatic typography turns two hyphens into `–` and a third into `—`, even at the start of a paragraph. Press Backspace right after a conversion to recover the typed hyphens (for example, `---` for a Markdown separator) or the straight quote. If the editor auto-paired the quote, the automatically inserted closer is removed too.
 
 ## Review prose rhythm
 

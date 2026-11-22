@@ -11,6 +11,9 @@ class Element{
  createEl(tag,options){const child=new Element(tag,options);this.children.push(child);return child;}
  createDiv(options){return this.createEl('div',options);}
  createSpan(options){return this.createEl('span',options);}
+ get childNodes(){return this.children;}
+ cloneNode(){return new Element(this.tag,{cls:this.cls});}
+ replaceChildren(...children){this.children=children;}
  querySelector(){return null;}
  querySelectorAll(){return [];}
  empty(){this.children=[];}
@@ -145,4 +148,24 @@ test('late panel completion cannot restore old scroll or consume pending focus o
   assert.equal(h.view.pendingSceneFocus,pendingFocus,change+' keeps the newer focus request');
   assert.equal(focused,0);assert.equal(h.view.projectPrefs.book,change==='selection'?'Book B':'Book A');
  }
+});
+
+test('a project keeps its last committed screen visible during async index and panel reads',async()=>{
+ const h=harness({showProjects:true}),started=deferred(),release=deferred();
+ h.view.selected=h.second.file.path;
+ h.view.renderProjectPanel=async(panels,project,_current,id)=>{
+  if(project===h.first){started.resolve();await release.promise;}
+  panels[id].createEl('p',{text:project.title});
+ };
+ await h.view.render();
+ const oldChildren=h.view.root.children;
+ h.view.selected=h.first.file.path;
+ const pending=h.view.render();await started.promise;
+ assert.equal(h.view.root.children,oldChildren);
+ assert.equal(h.view.currentProject,h.second);
+ assert.equal(h.view.projectPrefs.book,'Book B');
+ release.resolve();await pending;
+ assert.notEqual(h.view.root.children,oldChildren);
+ assert.equal(h.view.currentProject,h.first);
+ assert.equal(h.view.projectPrefs.book,'Book A');
 });

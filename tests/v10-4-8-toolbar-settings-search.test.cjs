@@ -36,10 +36,10 @@ test('new text actions preserve Markdown and never insert unsanitized CSS',()=>{
  const editor={getSelection:()=>selection,replaceSelection:v=>{selection=v;},
   getCursor:()=>({line:0,ch:selection.length}),setSelection(){},focus(){}};
  assert.equal(api.writerV9Format(editor,'text-color',{textColor:'#ff0000'}),true);
- assert.equal(selection,'<span style="color:#ff0000">word</span>');
+ assert.equal(selection,'!!{color-ff0000}word!!');
  selection='word';
  assert.equal(api.writerV9Format(editor,'background-color',{backgroundColor:'red;break'}),true);
- assert.equal(selection,'<mark style="background-color:#ffd66a">word</mark>');
+ assert.equal(selection,'=={hex-ffd66a}word==');
  selection='A\n  B';
  assert.equal(api.writerV9Format(editor,'indent'),true);
  assert.equal(selection,'    A\n      B');

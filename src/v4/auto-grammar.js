@@ -39,6 +39,7 @@ async function writerGrammarRequest(plugin,text){
  if(!endpoint)throw Error(writerUi('Use um endpoint HTTPS válido, sem usuário ou senha na URL.','Use a valid HTTPS endpoint without URL credentials.'));
  const source=String(text||'');
  if(source.length>18000)throw Error(writerUi('Limite de 18 mil caracteres por verificação. Escolha um trecho menor.','18,000-character limit per check. Select a shorter passage.'));
+ if(!source.trim())return [];
  const body=new URLSearchParams({text:source,language:settings.reviewLanguage||'pt-BR'});
  const apiKey=String(settings.reviewApiKey||'').trim(),username=String(settings.reviewUsername||'').trim();
  if(apiKey)body.set('apiKey',apiKey);
@@ -66,7 +67,10 @@ async function writerGrammarRequest(plugin,text){
  let matches;
  try{matches=response.json?.matches;}catch(_){}
  if(!Array.isArray(matches))throw Error(writerUi('Resposta inválida do corretor. Confira o endpoint configurado.','Invalid checker response. Check the configured endpoint.'));
- return matches;
+ return matches.filter(match=>Number.isInteger(match?.offset)&&Number.isInteger(match.length)&&
+  match.offset>=0&&match.length>0&&match.offset+match.length<=source.length)
+  .map(match=>({...match,replacements:Array.isArray(match.replacements)?
+   match.replacements.filter(replacement=>typeof replacement?.value==='string'):[]}));
 }
 // Long manuscripts exceed LanguageTool's single-request limit. Check a bounded
 // window around the cursor and translate its offsets back into full-note offsets.
@@ -179,7 +183,10 @@ class WriterAutoGrammar{
   }));
   this.plugin.registerEvent(this.plugin.app.workspace.on('file-open',file=>{
    const view=this.reviewView();
-   if(file?.extension==='md'&&view&&view.reviewFilePath){
+   if(file?.extension==='md'&&view&&view.reviewFilePath!==file.path&&this.config?.enabled!==false){
+    view.cancelReview?.();
+    view.reviewResults?.empty?.();
+    if(this.plugin.reviewMarkedPath&&this.plugin.reviewMarkedPath!==file.path)this.plugin.clearReviewMarks();
     view.reviewFilePath=file.path;
     this.schedule(file);
    }
@@ -190,9 +197,9 @@ class WriterAutoGrammar{
  cancelPending(){this.revision++;clearTimeout(this.timer);this.timer=null;this.pendingPath=null;}
  stop(){this.destroyed=true;this.cancelPending();}
  schedule(file,{delay}={}){
-  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.plugin.settings.reviewEngine==='external'||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return;
+  if(this.destroyed||!writerModuleOn(this.plugin,'review')||this.plugin.settings.reviewEngine==='external'||this.config?.enabled===false||file?.extension!=='md'||this.plugin.grammarCorrectionPaths?.has(file.path))return false;
   const view=this.reviewView(file.path);
-  if(!view)return;
+  if(!view)return false;
   this.pendingPath=file.path;
   clearTimeout(this.timer);
   const cooldown=Math.max(0,this.lastRun+(this.config.minIntervalMs||9000)-Date.now());
@@ -200,6 +207,7 @@ class WriterAutoGrammar{
   const revision=++this.revision;
   this.timer=setTimeout(()=>this.run(revision),ms);
   view.reviewStatus?.setText?.(writerUi('Alterações detectadas. Verificação automática em breve…','Changes detected. Automatic grammar check scheduled…'));
+  return true;
  }
  async run(revision=this.revision){
   if(revision!==this.revision)return;
@@ -224,7 +232,11 @@ class WriterAutoGrammar{
   if(revision!==this.revision||this.destroyed||this.config?.enabled===false||
    this.pendingPath!==path||this.reviewView(path)!==view)return;
   if(view.grammarCheckedPath===path&&view.grammarCheckedSource===source){
-   this.pendingPath=null;return;
+   this.pendingPath=null;
+   const count=this.plugin.reviewMarkedPath===path?this.plugin.reviewMatches?.length:undefined;
+   view.reviewStatus?.setText?.(path+' · '+(count===undefined?writerUi('Revisão atualizada','Review up to date'):
+    count+' '+writerUi('sugestões na revisão atual','suggestions in the current review')));
+   return;
   }
   this.pendingPath=null;this.lastRun=Date.now();
   // A known reviewed document has a trustworthy result cache. Recheck only

@@ -1,7 +1,7 @@
 'use strict';
 /* Offline autocomplete inspired by Various Complements. */
 class WriterComplements extends EditorSuggest{
- constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.generation=0;this.maskCache=new WeakMap();this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;}
+ constructor(plugin){super(plugin.app);this.plugin=plugin;this.cache=new Map();this.ready=false;this.building=null;this.dictionaries=new Map();this.dirty=true;this.invalidation=0;this.generation=0;this.maskCache=new WeakMap();this.byPrefix=new Map();this.vaultTerms=new Map();this.saveTimer=null;this.saving=null;this.fileTermCache=new Map();this.linkList=null;this.linkListAt=0;}
  get options(){return this.plugin.settings.complements||WRITER_V3_DEFAULTS.complements;}
  isExcluded(file){
   if(!file||file.extension!=='md')return true;
@@ -18,10 +18,57 @@ class WriterComplements extends EditorSuggest{
   }
   return m;
  }
- reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.dictionaries.clear();this.fileTermCache.clear();this.linkList=null;}
+ markDirty(){this.invalidation++;this.dirty=true;this.linkList=null;}
+ reset(){this.generation++;this.dirty=true;this.ready=false;this.cache.clear();this.vaultTerms.clear();this.byPrefix.clear();this.dictionaries.clear();this.fileTermCache.clear();this.maskCache=new WeakMap();this.linkList=null;}
+ setVaultVocabulary(cache){
+  const vocabulary=new Map(),prefixes=new Map();
+  for(const [path,terms] of cache)for(const [key,item] of terms){
+   const score=Math.min(20,item.count);
+   const first=vocabulary.get(key);
+   const entry={path,word:item.word,count:item.count,score};
+   if(!first){
+    vocabulary.set(key,[entry]);
+    for(let size=1;size<=Math.min(3,key.length);size++){
+     const prefix=key.slice(0,size),bucket=prefixes.get(prefix)||new Set();
+     bucket.add(key);prefixes.set(prefix,bucket);
+    }
+   }else if(score>first[0].score){first[1]=first[0];first[0]=entry;}
+   else if(!first[1]||score>first[1].score)first[1]=entry;
+  }
+  this.vaultTerms=vocabulary;this.byPrefix=prefixes;
+ }
+ editorRecord(editor){
+  const text=editor.getValue();let record=this.maskCache.get(editor);
+  if(!record||record.source!==text){record={source:text};this.maskCache.set(editor,record);}
+  return record;
+ }
+ editorMask(record){
+  return record.masked??=(writerMaskMarkdown(record.source));
+ }
+ isEditableQuery(editor,line,start,query,pos){
+  const record=this.editorRecord(editor);
+  if(record.masked!==undefined)return record.masked.slice(pos,pos+query.length)===query;
+  // A fixed window can start mid-fence, YAML, comment or raw HTML. Only use
+  // the line when no syntax in the note can change masking across lines.
+  record.multiline??=/^---\r?\n/.test(record.source)||/^[ \t]{0,3}(?:`{3,}|~{3,})|%%|</m.test(record.source);
+  const visible=record.multiline?this.editorMask(record).slice(pos,pos+query.length):
+   writerMaskMarkdown(line).slice(start,start+query.length);
+  return visible===query;
+ }
+ queueSave(){
+  clearTimeout(this.saveTimer);
+  this.saveTimer=setTimeout(()=>{void this.flushSave();},500);
+ }
+ async flushSave(){
+  if(this.saveTimer===null)return this.saving;
+  clearTimeout(this.saveTimer);this.saveTimer=null;
+  this.saving=(this.saving||Promise.resolve()).then(()=>this.plugin.saveSettings())
+   .catch(error=>console.warn('[Basic AI] Could not save completion ranking:',error));
+  return this.saving;
+ }
  async rebuild(){
   if(this.building)return this.building;
-  const generation=++this.generation;
+  const generation=++this.generation, invalidation=this.invalidation;
   this.building=(async()=>{
    const all=this.plugin.app.vault.getMarkdownFiles();
    // Every eligible Markdown note receives a share of the vocabulary budget.
@@ -62,16 +109,18 @@ class WriterComplements extends EditorSuggest{
     }
    }
    if(generation!==this.generation)return;
+   await this.loadDictionaries(generation);
+   if(generation!==this.generation)return;
    this.cache=next;
+   this.setVaultVocabulary(next);
    this.indexStats={vaultMarkdown:all.length,eligible:files.length,indexed:next.size,failed,partial};
-   this.ready=true;this.dirty=false;
-   await this.loadDictionaries();
+   this.ready=true;this.dirty=this.invalidation!==invalidation;
   })().finally(()=>{this.building=null;});
   return this.building;
  }
- async loadDictionaries(){
-  this.dictionaries.clear();
-  if(!this.options.dictionaries)return;
+ async loadDictionaries(generation=this.generation){
+  const dictionaries=new Map();
+  if(!this.options.dictionaries){this.dictionaries=dictionaries;return;}
   let paths=String(this.options.dictionaryPaths||'').split(/[\n,;]/).map(s=>s.trim()).filter(Boolean);
   if(this.options.useLocalDictionary&&this.plugin.settings.dictionaryFileName)paths.push(this.plugin.settings.dictionaryFileName);
   for(const path of new Set(paths)){
@@ -79,6 +128,7 @@ class WriterComplements extends EditorSuggest{
    if(!(file instanceof TFile)||file.extension!=='md')continue;
    try{
     const text=await this.plugin.app.vault.cachedRead(file);
+    if(generation!==this.generation)return;
     for(const line of text.split('\n').slice(0,25000)){
      if(!line.trim()||/^\s*(?:#|---|\x60{3}|%%)/.test(line))continue;
      let parts=line.split(/\s*(?:=>|→|\t)\s*/);
@@ -86,14 +136,16 @@ class WriterComplements extends EditorSuggest{
      const label=parts[0].replace(/^[-*]\s+/,'').replace(/^\*\*|\*\*$/g,'').trim();
      if(!label||label.length>100||/[:{}\[\]]/.test(label))continue;
      const insert=(parts[1]||label).trim();
-     this.dictionaries.set(this.options.caseSensitive?label:label.toLocaleLowerCase(),{word:label,insert,source:writerUi('Dicionário','Dictionary'),count:7});
+     dictionaries.set(this.options.caseSensitive?label:label.toLocaleLowerCase(),{word:label,insert,source:writerUi('Dicionário','Dictionary'),count:7});
     }
    }catch(e){console.warn('[Basic AI] dictionary:',path,e.message);}
   }
+  if(generation===this.generation)this.dictionaries=dictionaries;
  }
  async getSuggestions(context){
   if(!this.options.enabled)return [];
-  if(this.dirty||!this.ready)try{await this.rebuild();}catch(e){console.warn(e);}
+  const rebuild=()=>this.rebuild().catch(error=>console.warn('[Basic AI] autocomplete index:',error));
+  if(!this.ready)await rebuild();else if(this.dirty)void rebuild();
   const query=String(context.query||''),key=this.options.caseSensitive?query:query.toLocaleLowerCase(),candidates=new Map();
   const add=(word,insert,score,source)=>{
    if(!word||word===query||word.length>128)return;
@@ -106,12 +158,23 @@ class WriterComplements extends EditorSuggest{
    if(!prior||prior.score<weight)candidates.set(normalized,{word,insert,source,score:weight});
   };
   if(this.options.currentFile&&context.editor){
-   const current=this.tokenize(writerMaskMarkdown(context.editor.getValue()));
-   for(const item of current.values())add(item.word,item.word,55+Math.min(35,item.count),writerUi('Nota atual','Current note'));
+   const record=this.editorRecord(context.editor);
+   const caseSensitive=Boolean(this.options.caseSensitive);
+   if(!record.terms||record.caseSensitive!==caseSensitive){
+    record.caseSensitive=caseSensitive;record.terms=this.tokenize(this.editorMask(record));
+   }
+   const source=writerUi('Nota atual','Current note');
+   for(const item of record.terms.values())add(item.word,item.word,55+Math.min(35,item.count),source);
   }
-  if(this.options.vault)for(const [path,terms] of this.cache){
-   if(path===context.file?.path)continue;
-   for(const item of terms.values())add(item.word,item.word,10+Math.min(20,item.count),'Cofre');
+  if(this.options.vault!==false){
+   const all=this.options.matchMiddle||!key;
+   const keys=all?this.vaultTerms.keys():this.byPrefix.get(key.slice(0,3))||[];
+   const path=context.file?.path,source=writerUi('Cofre','Vault');
+   for(const word of keys){
+    const [first,second]=this.vaultTerms.get(word);
+    const item=first.path===path?second:first;
+    if(item)add(item.word,item.word,10+item.score,source);
+   }
   }
   if(this.options.dictionaries)for(const item of this.dictionaries.values())add(item.word,item.insert,85,item.source);
   // A suggestion request should not enumerate a large vault for every key.
@@ -124,12 +187,12 @@ class WriterComplements extends EditorSuggest{
    }
    for(const file of this.linkList){
    if(this.isExcluded(file))continue;
-    add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,'Link interno');
+    add(file.basename,'[['+file.path.replace(/\.md$/i,'')+']]',28,writerUi('Link interno','Internal link'));
    }
   }
   if(this.options.frontmatter&&context.file){
    const props=this.plugin.app.metadataCache.getFileCache(context.file)?.frontmatter||{};
-   for(const name of Object.keys(props))if(name!=='position')add(name,name,17,'Propriedade');
+   for(const name of Object.keys(props))if(name!=='position')add(name,name,17,writerUi('Propriedade','Property'));
   }
   return [...candidates.values()].sort((a,b)=>b.score-a.score||a.word.localeCompare(b.word,'pt-BR'))
    .slice(0,Math.max(1,Math.min(30,Number(this.options.maxResults)||8)));
@@ -141,11 +204,7 @@ class WriterComplements extends EditorSuggest{
   if(!m||m[1].length<Math.max(1,Number(this.options.minChars)||3))return null;
   const start={line:cursor.line,ch:cursor.ch-m[1].length},end={line:cursor.line,ch:cursor.ch};
   const pos=typeof editor.posToOffset==='function'?editor.posToOffset(start):null;
-  if(pos!==null){
-   const full=editor.getValue();let record=this.maskCache.get(editor);
-   if(!record||record.source!==full){record={source:full,masked:writerMaskMarkdown(full)};this.maskCache.set(editor,record);}
-   if(record.masked.slice(pos,pos+m[1].length)!==m[1])return null;
-  }
+  if(pos!==null&&!this.isEditableQuery(editor,line,start.ch,m[1],pos))return null;
   if(this.plugin.reviewPopup)this.plugin.closeReviewPopup();
   return {start,end,query:m[1],editor,file};
  }
@@ -162,7 +221,7 @@ class WriterComplements extends EditorSuggest{
    const usage=this.options.usage||(this.options.usage={});
    usage[key]=Math.min(50,(usage[key]||0)+1);
    if(Object.keys(usage).length>1500)for(const k of Object.keys(usage).slice(0,300))delete usage[k];
-   this.plugin.saveSettings();
+   this.queueSave();
   }
  }
  async manual(){

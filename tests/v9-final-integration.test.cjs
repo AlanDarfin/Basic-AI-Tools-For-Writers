@@ -98,9 +98,9 @@ test('cMenu-inspired formatting includes underline, super/subscript and headings
  const settings={};tb.merge(settings);
  for(const name of ['underline','superscript','subscript','h4','h5','h6'])assert.ok(tb.ids.includes(name));
  const editor={getSelection:()=>'word',replaceSelection:next=>{editor.value=next;},focus:()=>{}};
- assert.equal(tb.format(editor,'underline'),true);assert.equal(editor.value,'<u>word</u>');
- assert.equal(tb.format(editor,'superscript'),true);assert.equal(editor.value,'<sup>word</sup>');
- assert.equal(tb.format(editor,'subscript'),true);assert.equal(editor.value,'<sub>word</sub>');
+ assert.equal(tb.format(editor,'underline'),true);assert.equal(editor.value,'++word++');
+ assert.equal(tb.format(editor,'superscript'),true);assert.equal(editor.value,'^word^');
+ assert.equal(tb.format(editor,'subscript'),true);assert.equal(editor.value,'~word~');
  assert.equal(tb.format(editor,'h6'),true);assert.equal(editor.value,'###### word');
  assert.equal(settings.v9Toolbar.placement,'bottom');
  assert.match(format,/Choose and reorder buttons/);

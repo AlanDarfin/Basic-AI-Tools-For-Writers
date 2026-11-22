@@ -4,7 +4,7 @@ export interface Settings {
   htmlDefaultMode: "visual" | "source" | "preview";
   htmlFolder: string;
   htmlImportImages: boolean;
-  htmlExternalImages: "block" | "block";
+  htmlExternalImages: "block" | "download";
   htmlClipboardCompatibility: boolean;
   copyMode: "dedicated" | "smart" | "always";
   preserveFormatting: boolean;
@@ -40,7 +40,7 @@ export const defaults: Settings = {
   htmlDefaultMode: "visual",
   htmlFolder: "",
   htmlImportImages: true,
-  htmlExternalImages: "download",
+  htmlExternalImages: "block",
   htmlClipboardCompatibility: false,
   copyMode: "dedicated",
   preserveFormatting: true,

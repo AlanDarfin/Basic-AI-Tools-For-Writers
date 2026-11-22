@@ -24,7 +24,8 @@ class FakeMenu {
  addSeparator(){this.items.push({separator:true});return this;}
  showAtPosition(p){this.visible=true;this.position=p;return this;}
  showAtMouseEvent(e){this.visible=true;this.event=e;return this;}
- close(){this.visible=false;this.onHide?.();}
+ onHide(callback){this.hideCallback=callback;}
+ hide(){this.visible=false;this.hideCallback?.();return this;}
 }
 const fakeDocument={
  createDocumentFragment:()=>({children:[],appendChild(child){this.children.push(child);}}),
@@ -74,7 +75,7 @@ const S={StateField:{define:()=>({})},StateEffect:{define:()=>({of:x=>x})}};
 const V={Decoration:{none:{map:()=>({})},set:()=>({}),mark:()=>({range:()=>({})})},EditorView:{decorations:{from:()=>({})}},ViewPlugin:{fromClass:()=>({})}};
 const getRequire=name=>name==='obsidian'?O:name==='@codemirror/state'?S:name==='@codemirror/view'?V:(()=>{throw Error('unknown import: '+name)})();
 const mods=['core','complements','variants','snapshots','workspace'].map(name=>fs.readFileSync('src/v3/'+name+'.js','utf8').replace(/^'use strict';\s*/,'')).join('\n');
-const api=vm.runInNewContext(mods+'\n({writerMergeV3,writerMaskMarkdown,writerGrammarMatchIsSafe,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots,WriterVariants})',{...O,...V,require:getRequire,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
+const api=vm.runInNewContext(mods+'\n({writerMergeV3,writerMaskMarkdown,writerGrammarMatchIsSafe,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots,WriterVariants})',{...O,...V,lfMsg:(_pt,en)=>en,require:getRequire,console,setTimeout,clearTimeout,crypto:crypto.webcrypto});
 const {writerMergeV3,writerMaskMarkdown,writerGrammarMatchIsSafe,writerParseVariants,writerEncodeVariant,writerDiffLines,WriterComplements,WriterSnapshots}=api;
 function j(value){return JSON.parse(JSON.stringify(value));}
 async function run(){
@@ -189,7 +190,9 @@ async function run(){
  assert.ok(menu.items.some(x=>['Criar variante','Create variant'].includes(x.title)));
  assert.ok(menu.items.some(x=>['Ignorar esta regra','Ignore this rule'].includes(x.title)));
  assert.ok(menu.items.some(x=>['Explicar com IA','Explain with AI'].includes(x.title)));
- menu.close();
+ assert.equal(entry.showReviewSuggestionMenu(new TFile('Book/Chapter.md'),'Ero',finding),menu);
+ menu.hide();
+ assert.equal(entry.reviewPopup,null);
  assert.equal(entry.reviewPopupKey,null);
  console.log('PASS','Native LanguageTool-style menu shows actions and clears after closing');tests++;
  const css=fs.readFileSync('styles.css','utf8');

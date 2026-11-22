@@ -1626,8 +1626,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "review",
   "titlePt": "Conta do LanguageTool (opcional)",
   "titleEn": "LanguageTool account (optional)",
-  "descriptionPt": "E-mail da conta quando exigido por uma chave Premium ou servidor próprio.",
-  "descriptionEn": "Account email when required by a Premium API key or your own server."
+  "descriptionPt": "Informe o e-mail da conta Premium ou o usuário exigido pelo seu servidor.",
+  "descriptionEn": "Enter your Premium account email or the username required by your server."
  },
  {
   "id": "review",
@@ -1667,10 +1667,17 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "review",
+  "titlePt": "Salvar conexão",
+  "titleEn": "Save connection",
+  "descriptionPt": "O corretor passa a usar o novo endereço e as credenciais depois de salvar.",
+  "descriptionEn": "The checker uses the new endpoint and credentials after you save."
+ },
+ {
+  "id": "review",
   "titlePt": "Endereço do servidor",
   "titleEn": "Server endpoint",
-  "descriptionPt": "URL HTTPS da API /v2/check. Deixe vazio para usar o servidor público do LanguageTool.",
-  "descriptionEn": "HTTPS URL for the /v2/check API. Leave empty to use LanguageTool’s public server."
+  "descriptionPt": "Deixe vazio para usar o servidor gratuito. Para o Premium, use https://api.languagetoolplus.com/v2/check.",
+  "descriptionEn": "Leave empty to use the free server. For Premium, use https://api.languagetoolplus.com/v2/check."
  },
  {
   "id": "review",

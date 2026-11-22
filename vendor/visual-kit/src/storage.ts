@@ -20,7 +20,8 @@ export function readStoredData(value: unknown): {
         continue;
       if (
         key === "htmlExternalImages" &&
-        !["download", "block"].includes(String(candidate))
+        candidate !== "block" &&
+        (candidate !== "download" || value.remoteImagesOptIn !== true)
       )
         continue;
       if (

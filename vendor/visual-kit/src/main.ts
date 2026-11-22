@@ -305,6 +305,7 @@ export default class VisualKit extends Plugin {
       .then(() =>
         this.live ? this.writeState({
           settings: this.settings,
+          remoteImagesOptIn: this.settings.htmlExternalImages === "download",
           index: this.settings.persistIndex
             ? Array.from(this.index.entries.values())
             : [],

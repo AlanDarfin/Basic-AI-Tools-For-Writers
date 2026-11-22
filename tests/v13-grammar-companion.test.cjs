@@ -59,6 +59,13 @@ test('external LanguageTool commands restore the chosen Markdown editor before n
  assert.equal(h.api.writerLanguageToolCommand(h.plugin,'accept-all',h.file),false,'no mass edits in bridge');
 });
 
+test('a native command is never sent to another split of the same note',()=>{
+ const h=runtime(),otherSplit={view:{file:h.file,editor:{cm:{state:{doc:{}}}}}};
+ h.workspace.setActiveLeaf=()=>{h.workspace.activeLeaf=otherSplit;};
+ assert.equal(h.api.writerLanguageToolCommand(h.plugin,'clear',h.file),false);
+ assert.equal(h.executed.length,0);
+});
+
 test('review uses external frontmatter context and never sends a second Basic request',async()=>{
  const h=runtime();h.plugin.checkGrammar=()=>{throw Error('Must not call Basic checker');};
  assert.equal(await h.api.writerLanguageToolReview(h.plugin,h.file,h.view),true);
@@ -67,13 +74,24 @@ test('review uses external frontmatter context and never sends a second Basic re
  assert.equal(h.executed.length,0);
 });
 
+test('a busy external review leaves editor focus alone and a clean result clears the working status',async()=>{
+ const h=runtime(),pending=deferred();let requests=0;
+ h.instance.runDetection=()=>{requests++;return pending.promise;};
+ const job=h.api.writerLanguageToolReview(h.plugin,h.file,h.view);
+ h.workspace.activeLeaf=h.otherLeaf;
+ assert.equal(await h.api.writerLanguageToolReview(h.plugin,h.file,h.view),false);
+ assert.equal(h.workspace.activeLeaf,h.otherLeaf);assert.equal(requests,1);
+ pending.resolve(false);assert.equal(await job,true);
+ assert.equal(h.view.reviewBusy,false);assert.match(h.view.status,/No LanguageTool suggestions/);
+});
+
 test('missing methods and exact command capabilities are detected separately',()=>{
  const h=runtime();delete h.commands['languagetool:next'];delete h.instance.runDetection;
  const state=h.api.writerLanguageToolState(h.plugin);
  assert.equal(state.canCheck,false);assert.equal(state.commands.clear,true);assert.equal(state.commands.next,false);
  h.api.writerLanguageToolPanel(h.view);
  const buttons=h.view.reviewResults.all().filter(element=>element.tag==='button');
- assert.equal(buttons.find(button=>button.textContent==='Check note/selection').disabled,true);
+ assert.ok(!buttons.some(button=>button.textContent==='Check note/selection'));
  assert.equal(buttons.find(button=>button.textContent==='Clear suggestions').disabled,false);
  assert.equal(buttons.find(button=>button.textContent==='Next suggestion').disabled,true);
 });
@@ -100,15 +118,24 @@ test('external review refuses inactive or changed reviewer contexts before trans
  }
 });
 
-test('late external results cannot overwrite status after disable, reload, edit or mode change',async()=>{
+test('late external results cannot overwrite status after disable, reload or mode change',async()=>{
  for(const change of [h=>h.plugin.settings.visibleModules.review=false,h=>h.plugin.settings.reviewEngine='basic',
   h=>h.view.activeTab='dictionary',h=>h.view.reviewMode.value='beta',h=>h.view.reviewFilePath='Other.md',
-  h=>h.plugin.app.plugins.plugins.languagetool={...h.instance},h=>h.cm.state.doc={},
+  h=>h.plugin.app.plugins.plugins.languagetool={...h.instance},
   h=>h.view.reviewToken++]){
   const h=runtime(),pending=deferred();h.instance.runDetection=()=>pending.promise;
   const job=h.api.writerLanguageToolReview(h.plugin,h.file,h.view);change(h);
   h.view.status='New status';pending.resolve(true);assert.equal(await job,false);assert.equal(h.view.status,'New status');
  }
+});
+
+test('editing a note during an external review clears the working status and allows another check',async()=>{
+ const h=runtime(),pending=deferred();h.instance.runDetection=()=>pending.promise;
+ const job=h.api.writerLanguageToolReview(h.plugin,h.file,h.view);
+ h.cm.state.doc={};pending.resolve(true);
+ assert.equal(await job,false);assert.match(h.view.status,/editor changed during the check/);
+ assert.equal(h.view.reviewBusy,false);
+ assert.equal(await h.api.writerLanguageToolReview(h.plugin,h.file,h.view),true);
 });
 
 test('external errors do not echo note text or credentials into the Basic pane',async()=>{
@@ -140,6 +167,50 @@ test('both languages render external controls without reading notes, networking 
   const full=h.rows.find(row=>row.name===(language==='en'?'Full plugin settings':'Configuração completa do plugin'));
   full.control.click();assert.deepEqual(h.opened,['open','languagetool']);
  }
+});
+
+test('a failed settings save displays the stored preference again',async()=>{
+ const h=runtime();h.instance.settings.update=async()=>{throw Error('Cannot write');};
+ const section=h.api.writerLanguageToolSettings(h.plugin,new Element());
+ const toggle=h.rows.find(row=>row.name==='External picky mode').control;
+ toggle.value=true;await toggle.change(true);
+ assert.equal(toggle.value,false);assert.equal(toggle.disabled,false);
+ assert.match(section.all().find(element=>element.cls==='writer-grammar-feedback').textContent,/Could not save/);
+});
+
+test('external suggestion controls avoid the active note when the reviewed path is gone',()=>{
+ const h=runtime();h.view.reviewFilePath='Removed.md';h.workspace.activeLeaf=h.otherLeaf;
+ h.api.writerLanguageToolPanel(h.view);
+ const clear=h.view.reviewResults.all().find(element=>element.textContent==='Clear suggestions');
+ clear.handlers.click();
+ assert.equal(h.executed.length,0);assert.match(h.view.status,/Action unavailable/);
+ h.view.reviewFilePath='';clear.handlers.click();
+ assert.deepEqual(h.executed,[{command:'languagetool:clear',file:h.other.path}]);
+ h.plugin.app.commands.executeCommandById=()=>{throw Error('Native command unavailable');};
+ assert.doesNotThrow(()=>clear.handlers.click());assert.match(h.view.status,/Action unavailable/);
+});
+
+test('the external auto-check toggle shows the committed preference and recovers from errors',async()=>{
+ const h=runtime(),pending=deferred(),update=h.instance.settings.update.bind(h.instance.settings);
+ h.instance.settings.update=async patch=>{await pending.promise;await update(patch);};
+ h.api.writerLanguageToolPanel(h.view);
+ const toggle=h.view.reviewResults.all().find(element=>element.textContent==='Turn on external automatic checking');
+ const job=toggle.handlers.click();
+ assert.equal(toggle.disabled,true);assert.match(toggle.textContent,/Turn on/);
+ await toggle.handlers.click();pending.resolve();await job;
+ assert.equal(h.updates.length,1);assert.equal(h.executed.length,0);
+ assert.equal(toggle.disabled,false);assert.match(toggle.textContent,/Turn off/);
+ h.instance.settings.update=async()=>{throw Error('Cannot write');};await toggle.handlers.click();
+ assert.equal(toggle.disabled,false);assert.match(toggle.textContent,/Turn off/);
+ assert.match(h.notices[0],/Could not save automatic checking/);
+});
+
+test('external auto-check can still use the native command when the settings updater is missing',()=>{
+ const h=runtime();delete h.instance.settings.update;
+ h.api.writerLanguageToolPanel(h.view);
+ const toggle=h.view.reviewResults.all().find(element=>element.textContent==='Toggle automatic checking');
+ toggle.handlers.click();assert.equal(h.executed[0].command,'languagetool:toggle-auto-check');
+ assert.equal(toggle.textContent,'Toggle automatic checking');
 });
 
 test('runtime watcher removes optional UI styling after disable and refreshes only on capability changes',()=>{

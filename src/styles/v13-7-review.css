@@ -168,3 +168,74 @@ body.is-mobile .writer-lt-mobile-modal :is(.writer-lt-mobile-info,.writer-lt-mob
   min-width:0;max-width:100%;
  }
 }
+
+/* Compact LanguageTool popups; do not let an explanation bury the editor. */
+body .menu.writer-v406-lt-compact{
+ box-sizing:border-box;width:min(240px,calc(100vw - 20px));
+ min-width:0;max-width:min(240px,calc(100vw - 20px));
+ max-height:min(285px,52dvh);overflow-y:auto;padding:3px;
+ overscroll-behavior:contain;
+}
+body .menu.writer-v406-lt-compact .menu-item{
+ min-height:26px;height:auto;padding:3px 6px;gap:4px;line-height:1.22;
+}
+body .menu.writer-v406-lt-compact .menu-separator{margin:2px 1px}
+body .menu.writer-v406-lt-compact .writer-lt-menu-info{padding:4px 5px;max-width:100%;gap:2px}
+body .menu.writer-v406-lt-compact .writer-lt-menu-title{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+ font-size:var(--font-ui-smaller);line-height:1.26;
+}
+body .menu.writer-v406-lt-compact .writer-lt-menu-message{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+ overflow:hidden;font-size:var(--font-ui-smaller);line-height:1.25;
+}
+/* The review sidebar uses a consistent dense card rhythm at every pane width. */
+body .dictionary-view-content.writer-tool-root .writer-review-panel{gap:5px}
+body .dictionary-view-content.writer-tool-root .writer-review-results{
+ display:flex;flex-direction:column;gap:5px;min-width:0;
+}
+body .dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result{
+ box-sizing:border-box;min-width:0;gap:5px;margin:0;padding:7px 8px;
+ border-inline-start-width:2px;border-radius:var(--radius-s);
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-result-heading{
+ display:flex;flex-direction:column;gap:1px;align-items:start;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-category{
+ font-size:var(--font-ui-smaller);line-height:1.2;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-title{
+ font-size:var(--font-ui-small);line-height:1.3;overflow-wrap:anywhere;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-original{
+ margin:3px 0;line-height:1.35;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-choices{gap:4px}
+body .dictionary-view-content.writer-tool-root .writer-lt-choices>.writer-lt-choice{
+ min-height:30px;padding:4px 7px;line-height:1.25;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-result-actions{
+ gap:4px;margin-top:3px;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{
+ min-height:30px;padding:4px 7px;line-height:1.2;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-details{
+ margin-top:4px;padding-top:4px;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-details>summary{
+ line-height:1.25;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-details p{
+ margin:4px 0;line-height:1.35;
+}
+/* Retain touch sizes, but not the oversized gaps and padding, on mobile. */
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result{
+ padding:7px 8px;gap:4px;
+}
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-choices>.writer-lt-choice,
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{
+ min-height:40px;
+}
+body.is-mobile .writer-lt-mobile-modal .modal-content{padding:3px 2px 6px}
+body.is-mobile .writer-lt-mobile-modal h3{margin-bottom:4px}

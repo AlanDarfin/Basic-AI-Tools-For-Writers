@@ -91,7 +91,23 @@ test('mobile Spaces search matches accents and folders, retains focus through re
  assert.deepEqual(refreshed.map(x=>x.hidden),[true,true,false]);
  refreshed[2].querySelector('.writer-v9216-space-chip').click();await Promise.resolve();await Promise.resolve();h.flush();
  assert.equal(h.settings.v9Spaces.activeId,'study');assert.equal(h.dock().querySelector('.writer-v1014-spaces-toggle').getAttribute('aria-expanded'),'false');
+ assert.equal(h.dock().querySelector('.writer-v133-spaces-search'),null);
+ h.dock().querySelector('.writer-v1014-spaces-toggle').click();
  assert.equal(h.dock().querySelector('.writer-v133-spaces-search').value,'');
+});
+
+test('closed mobile Spaces keep only the toggle and mount current choices on demand',()=>{
+ const h=setup();h.start();
+ const toggle=h.dock().querySelector('.writer-v1014-spaces-toggle');
+ const panel=h.dock().querySelector('.writer-v1014-spaces-options');
+ assert.equal(panel.id,toggle.getAttribute('aria-controls'));
+ assert.equal(panel.children.length,0);
+ h.settings.v9Spaces.spaces[0].name='Ficção revisada';
+ h.plugin.writerV9216SpacesDockRefresh();h.flush();
+ assert.equal(h.dock().querySelector('.writer-v1014-spaces-toggle'),toggle);
+ toggle.click();
+ const chip=h.dock().querySelector('.writer-v9216-space-chip');
+ assert.equal(chip.getAttribute('aria-label'),'Ficção revisada');
 });
 
 test('editing only a Space folder refreshes the open search index without losing the query',()=>{

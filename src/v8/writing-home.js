@@ -107,7 +107,16 @@ class WriterV8HomeView extends ItemView{
    this.syncSurfingVisibility();
   },1000);
  }
- async onClose(){this.disposed=true;clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;this.homeSearchInput=null;this.homeSurfingInput=null;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
+ async onClose(){
+  this.disposed=true;
+  clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;
+  clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
+  this.homeSearchInput=null;this.homeSurfingInput=null;
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;
+  const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;
+  if(unsaved)await this.plugin.saveSettings();
+ }
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -134,6 +143,7 @@ class WriterV8HomeView extends ItemView{
  render(){
   if(this.disposed)return;
   const scroll=this.contentEl.scrollTop||0;
+  clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
   this.writerV8ClockRefresh=null;
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
@@ -626,7 +636,6 @@ class WriterV8HomeView extends ItemView{
   this.homeSearchInput=input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
-  const files=this.app.vault.getMarkdownFiles?.()||[];
   // A leading slash is a web-only command, not part of the search term.
   const slashSearch=()=>input.value.trimStart().startsWith('/');
   const slashTerm=()=>input.value.trimStart().slice(1).trim();
@@ -644,6 +653,7 @@ class WriterV8HomeView extends ItemView{
    status.setText(writerUi('Selecionada ','Selected ')+(selected+1)+' / '+matches.length+' · '+file.path+' · '+writerUi('Enter para abrir','Enter to open'));
   };
   const draw=(preserve=false)=>{
+   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
    const previous=preserve?matches[selected]?.path:'';
    results.empty();results.hidden=true;status.hidden=true;
    const q=input.value.trim();
@@ -654,6 +664,7 @@ class WriterV8HomeView extends ItemView{
      writerUi('Digite uma pesquisa após /.','Enter a search after /.'));
     return; // Never search or show vault notes in slash mode.
    }
+   const files=this.app.vault.getMarkdownFiles?.()||[];
    matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
    if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
    else selected=0;
@@ -701,6 +712,8 @@ class WriterV8HomeView extends ItemView{
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
+   if(event.isComposing||event.keyCode===229)return;
+   if(this.homeSearchTimer!==null&&['ArrowDown','ArrowUp','Enter'].includes(event.key))draw();
    if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
    if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
    if(event.key==='Enter'){
@@ -717,7 +730,13 @@ class WriterV8HomeView extends ItemView{
     event.preventDefault();input.value='';updateLink();draw();
    }
   });
-  input.addEventListener('input',()=>{updateLink();draw();});
+  input.addEventListener('input',()=>{
+   updateLink();
+   if(!input.value.trim()||slashSearch()){draw();return;}
+   results.hidden=true;status.hidden=true;
+   clearTimeout(this.homeSearchTimer);
+   this.homeSearchTimer=setTimeout(draw,100);
+  });
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
   box.addEventListener('keydown',focus);

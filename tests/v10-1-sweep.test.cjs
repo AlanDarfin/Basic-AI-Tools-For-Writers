@@ -14,6 +14,18 @@ test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
  assert.equal(a.writerV10BookState(plugin,{file,meta:{},scenes:[]}).progress,0); // live chapter status overrides stored manual percentage
  assert.equal(a.writerV10BookRecord({progress:999}).progress,100);
 });
+test('bookshelf: progress sort reads each manuscript once and preserves title tie breaks',()=>{
+ const flattened=[];
+ const {writerV10BookshelfSort}=expose('src/v10/bookshelf.js',['writerV10BookshelfSort'],{
+  lfFlattenScenes:scenes=>{flattened.push(scenes);return scenes;}
+ });
+ const book=(title,status)=>({title,file:{path:title+'.md'},scenes:[{status}]});
+ const books=[book('Zebra','done'),book('Draft','planned'),book('Alpha','finished')];
+ const plugin={settings:{v10Bookshelf:{}}};
+ assert.deepEqual(Array.from(writerV10BookshelfSort(books,'progress',plugin),p=>p.title),['Alpha','Zebra','Draft']);
+ assert.deepEqual(flattened,books.map(p=>p.scenes));
+ assert.deepEqual(books.map(p=>p.title),['Zebra','Draft','Alpha']);
+});
 test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{
  const a=expose('src/v10/space-history.js',['writerV101SpaceHistoryMerge','writerV101SpaceHistoryRemember','writerV101SpaceHistoryEntry','writerV101SpaceLayoutSummary']);
  const settings={v101SpaceHistory:{maxPerSpace:3,history:{}}},cfg=a.writerV101SpaceHistoryMerge(settings);

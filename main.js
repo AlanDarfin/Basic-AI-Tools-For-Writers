@@ -12917,6 +12917,7 @@ function writerV8HomeAttachedEmpty(workspace){
 
 // v3 module: src/v8/home-fuzzy.js
 /* Small deterministic, dependency-free fuzzy matcher for homepage. */
+const WRITER_V83_FUZZY_EXACT_SCORE=1100;
 function writerV83Fold(value){
  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().trim();
 }
@@ -12934,14 +12935,17 @@ function writerV83EditOne(a,b){
  return errors+(a.length-i)+(b.length-j)<=1;
 }
 function writerV83FuzzyScore(hay,needle){
- const text=writerV83Fold(hay),term=writerV83Fold(needle);
+ return writerV83FuzzyScoreFolded(writerV83Fold(hay),writerV83Fold(needle));
+}
+function writerV83FuzzyScoreFolded(text,term){
  if(!text||!term)return -1;
- if(text===term)return 1100;
+ if(text===term)return WRITER_V83_FUZZY_EXACT_SCORE;
  if(text.startsWith(term))return 900-Math.min(text.length-term.length,90);
  const pos=text.indexOf(term);
  if(pos>=0)return (pos===0||/[^\p{L}\p{N}]/u.test(text[pos-1])?780:640)-Math.min(pos,160);
+ if(term.length<3)return -1;
  const words=text.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
- if(term.length>=3&&words.some(w=>writerV83EditOne(w,term)))return 535;
+ if(words.some(w=>writerV83EditOne(w,term)))return 535;
  let p=0,gaps=0,last=-1;
  for(let i=0;i<text.length&&p<term.length;i++){
   if(text[i]!==term[p])continue;
@@ -12951,27 +12955,40 @@ function writerV83FuzzyScore(hay,needle){
  if(p!==term.length)return -1;
  // Avoid returning unrelated files based on a few scattered letters.
  const spread=last-text.indexOf(term[0])+1;
- if(term.length<3||gaps>Math.max(4,term.length*2)||spread>term.length*3)return -1;
+ if(gaps>Math.max(4,term.length*2)||spread>term.length*3)return -1;
  return 340-Math.min(gaps*10,240);
 }
 function writerV83FuzzySearch(files,query,cache,max=12){
  const term=writerV83Fold(query);
  if(!term||!Array.isArray(files))return [];
  const tokens=term.split(/\s+/).filter(Boolean).slice(0,5);
- return files.map(file=>{
-  const title=String(file.basename||''),path=String(file.path||'');
-  const headings=(cache?.getFileCache?.(file)?.headings||[]).slice(0,60);
-  const scoreTokens=tokens.map(token=>{
-   const titleScore=writerV83FuzzyScore(title,token);
-   const pathScore=writerV83FuzzyScore(path,token);
-   const headingScore=headings.reduce((best,h)=>Math.max(best,writerV83FuzzyScore(h.heading,token)), -1);
-   return Math.max(titleScore, pathScore>=0?pathScore-70:-1,headingScore>=0?headingScore-110:-1);
-  });
-  if(scoreTokens.some(s=>s<0))return null;
-  return {file,score:scoreTokens.reduce((a,b)=>a+b,0)};
- }).filter(Boolean).sort((a,b)=>b.score-a.score||
-  String(a.file.basename).localeCompare(String(b.file.basename),undefined,{sensitivity:'base'}))
-  .slice(0,Math.max(1,Math.min(30,max))).map(x=>x.file);
+ const pathPenalty=70,headingPenalty=110;
+ const matches=[];
+ fileLoop: for(const file of files){
+  const title=writerV83Fold(file.basename),path=writerV83Fold(file.path);
+  let headings,score=0;
+  for(const token of tokens){
+   const titleScore=writerV83FuzzyScoreFolded(title,token);
+   const pathScore=writerV83FuzzyScoreFolded(path,token);
+   let best=Math.max(titleScore,pathScore-pathPenalty);
+   // Skip heading lookups when even an exact match cannot improve the score.
+   if(best<WRITER_V83_FUZZY_EXACT_SCORE-headingPenalty){
+    headings??=(cache?.getFileCache?.(file)?.headings||[]).slice(0,60)
+     .map(h=>writerV83Fold(h.heading));
+    for(const heading of headings){
+     const headingScore=writerV83FuzzyScoreFolded(heading,token);
+     best=Math.max(best,headingScore-headingPenalty);
+     if(headingScore===WRITER_V83_FUZZY_EXACT_SCORE)break;
+    }
+   }
+   if(best<0)continue fileLoop;
+   score+=best;
+  }
+  matches.push({file,score});
+ }
+ const collator=new Intl.Collator(undefined,{sensitivity:'base'});
+ return matches.sort((a,b)=>b.score-a.score||collator.compare(String(a.file.basename),String(b.file.basename)))
+  .slice(0,Math.max(1,Math.min(30,max))).map(match=>match.file);
 }
 
 // v3 module: src/v8/writing-calendar.js
@@ -13602,7 +13619,16 @@ class WriterV8HomeView extends ItemView{
    this.syncSurfingVisibility();
   },1000);
  }
- async onClose(){this.disposed=true;clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;this.homeSearchInput=null;this.homeSurfingInput=null;this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;if(unsaved)await this.plugin.saveSettings();}
+ async onClose(){
+  this.disposed=true;
+  clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;
+  clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
+  this.homeSearchInput=null;this.homeSurfingInput=null;
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;
+  const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;
+  if(unsaved)await this.plugin.saveSettings();
+ }
  saveSoon(){
   clearTimeout(this.saveTimer);
   this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
@@ -13629,6 +13655,7 @@ class WriterV8HomeView extends ItemView{
  render(){
   if(this.disposed)return;
   const scroll=this.contentEl.scrollTop||0;
+  clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
   this.writerV8ClockRefresh=null;
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
@@ -14121,7 +14148,6 @@ class WriterV8HomeView extends ItemView{
   this.homeSearchInput=input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
-  const files=this.app.vault.getMarkdownFiles?.()||[];
   // A leading slash is a web-only command, not part of the search term.
   const slashSearch=()=>input.value.trimStart().startsWith('/');
   const slashTerm=()=>input.value.trimStart().slice(1).trim();
@@ -14139,6 +14165,7 @@ class WriterV8HomeView extends ItemView{
    status.setText(writerUi('Selecionada ','Selected ')+(selected+1)+' / '+matches.length+' · '+file.path+' · '+writerUi('Enter para abrir','Enter to open'));
   };
   const draw=(preserve=false)=>{
+   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
    const previous=preserve?matches[selected]?.path:'';
    results.empty();results.hidden=true;status.hidden=true;
    const q=input.value.trim();
@@ -14149,6 +14176,7 @@ class WriterV8HomeView extends ItemView{
      writerUi('Digite uma pesquisa após /.','Enter a search after /.'));
     return; // Never search or show vault notes in slash mode.
    }
+   const files=this.app.vault.getMarkdownFiles?.()||[];
    matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
    if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
    else selected=0;
@@ -14196,6 +14224,8 @@ class WriterV8HomeView extends ItemView{
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
+   if(event.isComposing||event.keyCode===229)return;
+   if(this.homeSearchTimer!==null&&['ArrowDown','ArrowUp','Enter'].includes(event.key))draw();
    if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
    if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
    if(event.key==='Enter'){
@@ -14212,7 +14242,13 @@ class WriterV8HomeView extends ItemView{
     event.preventDefault();input.value='';updateLink();draw();
    }
   });
-  input.addEventListener('input',()=>{updateLink();draw();});
+  input.addEventListener('input',()=>{
+   updateLink();
+   if(!input.value.trim()||slashSearch()){draw();return;}
+   results.hidden=true;status.hidden=true;
+   clearTimeout(this.homeSearchTimer);
+   this.homeSearchTimer=setTimeout(draw,100);
+  });
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
   box.addEventListener('keydown',focus);
@@ -16834,7 +16870,6 @@ function writerV9216SpaceDockRegister(plugin){
  let timer=null,mobileMenuOpen=false,mobileQuery='',mobileObserver=null,observedMobileRoot=null,unloaded=false,panelSerial=0;
  const cfg=plugin.settings.v9Spaces;
  const hosts=new Set(),actions=new Set(),documents=new Set();
- const mobileIntegrated=()=>Boolean(writerV1014MobileSpacesAnchor(plugin));
  const closeMobile=(restoreFocus=false)=>{
   if(!mobileMenuOpen)return;
   mobileMenuOpen=false;mobileQuery='';
@@ -16967,10 +17002,13 @@ function writerV9216SpaceDockRegister(plugin){
  const draw=(dock)=>{
   const active=writerV9215ActiveSpace(plugin);
   const mobile=dock.classList.contains('writer-v1014-collapsible-spaces');
+  const expanded=mobile&&mobileMenuOpen;
+  // Closed mobile drawers need only the active Space and the toggle.
   const signature=JSON.stringify({
    enabled:cfg.enabled,activeId:cfg.activeId,
-   spaces:cfg.spaces.map(s=>[s.id,s.name,s.icon,s.iconColor,s.folder]),
-   mobile,expanded:mobile&&mobileMenuOpen,locale:writerUi('pt','en')
+   spaces:mobile&&!expanded?[active?.name,active?.icon,active?.iconColor]:
+    cfg.spaces.map(s=>[s.id,s.name,s.icon,s.iconColor,s.folder]),
+   mobile,expanded,locale:writerUi('pt','en')
   });
   if(dock.dataset.signature===signature)return;
   const doc=dock.ownerDocument;
@@ -16999,8 +17037,9 @@ function writerV9216SpaceDockRegister(plugin){
    panel.className='writer-v1014-spaces-options';panel.id=dock.dataset.optionsId;
    panel.setAttribute('role','group');
    panel.setAttribute('aria-label',writerUi('Coleções Spaces','Spaces collections'));
-   panel.hidden=!mobileMenuOpen;dock.classList.toggle('is-open',mobileMenuOpen);
+   panel.hidden=!expanded;dock.classList.toggle('is-open',expanded);
    dock.appendChild(panel);content=panel;
+   if(!expanded)return;
    search=doc.createElement('input');search.type='search';search.className='writer-v133-spaces-search';
    search.placeholder=writerUi('Buscar Spaces…','Find Spaces…');
    search.setAttribute('aria-label',writerUi('Buscar Spaces','Find Spaces'));
@@ -17100,9 +17139,9 @@ function writerV9216SpaceDockRegister(plugin){
    manageButton.appendChild(manageText);
   }
  };
- const attachManageAction=()=>{
+ const attachManageAction=mobileIntegrated=>{
   const current=new Set();
-  if(!writerModuleOn(plugin,'smartSpaces')||cfg.manageIcon===false||mobileIntegrated()){
+  if(!writerModuleOn(plugin,'smartSpaces')||cfg.manageIcon===false||mobileIntegrated){
    for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
    actions.clear();return;
   }
@@ -17149,8 +17188,9 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const attach=()=>{
   observeDrawer();
-  if(!mobileIntegrated()){mobileMenuOpen=false;mobileQuery='';}
-  attachManageAction();
+  const mount=writerV1014MobileSpacesAnchor(plugin);
+  if(!mount){mobileMenuOpen=false;mobileQuery='';}
+  attachManageAction(Boolean(mount));
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
     parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
@@ -17159,8 +17199,7 @@ function writerV9216SpaceDockRegister(plugin){
    hosts.clear();return;
   }
   const current=new Set();
-  if(mobileIntegrated()){
-   const mount=writerV1014MobileSpacesAnchor(plugin);
+  if(mount){
    current.add(mount);hosts.add(mount);
    mount.classList.add('writer-v1014-mobile-spaces-anchor');
    let dock=mount.querySelector(':scope > .writer-v9216-spaces-dock');
@@ -23261,15 +23300,17 @@ function writerV109StandaloneProject(plugin,file){
 }
 function writerV109BookDescription(project){return String(project.meta?.description||project.meta?.summary||project.meta?.sinopse||'').trim().slice(0,1400);}
 function writerV109BookCopyright(project){return String(project.meta?.copyright||project.meta?.rights||'').trim().slice(0,400);}
-function writerV10BookState(plugin,project){
+function writerV10BookFields(plugin,project){
  const meta=project.meta||{},existing=plugin.settings.v10Bookshelf?.library?.[project.file.path];
  const record=writerV10BookRecord(existing);
  if(!existing){
   record.shelf=String(meta.genre||meta.category||'').trim().slice(0,60);
   if(['planned','reading','paused','finished'].includes(String(meta.status||'')))record.status=meta.status;
-  const fromMeta=Number(meta.readingProgress||meta.progress);
-  if(Number.isFinite(fromMeta))record.progress=Math.max(0,Math.min(100,Math.round(fromMeta)));
  }
+ return record;
+}
+function writerV10BookState(plugin,project){
+ const record=writerV10BookFields(plugin,project);
  record.progress=writerV109BookProgress(plugin,project,record);
  return record;
 }
@@ -23302,7 +23343,10 @@ function writerV10BookshelfSort(projects,sort,plugin){
  const title=(a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'});
  if(sort==='recent')return books.sort((a,b)=>(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0)||title(a,b));
  if(sort==='chapters')return books.sort((a,b)=>(b.scenes?.length||0)-(a.scenes?.length||0)||title(a,b));
- if(sort==='progress'&&plugin)return books.sort((a,b)=>writerV10BookState(plugin,b).progress-writerV10BookState(plugin,a).progress||title(a,b));
+ if(sort==='progress'&&plugin){
+  const progress=new Map(books.map(book=>[book,writerV10BookState(plugin,book).progress]));
+  return books.sort((a,b)=>progress.get(b)-progress.get(a)||title(a,b));
+ }
  if(sort==='series')return books.sort((a,b)=>String(a.meta?.series||'').localeCompare(String(b.meta?.series||''))||title(a,b));
  return books.sort(title);
 }
@@ -23404,8 +23448,8 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
  search.classList.add('writer-v1042-bookshelf-search');
  let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
- const shelfNames=[...new Set(projects.map(p=>writerV10BookState(plugin,p).shelf).filter(Boolean))].sort();
  if(!opts.compact){
+  const shelfNames=[...new Set(projects.map(p=>writerV10BookFields(plugin,p).shelf).filter(Boolean))].sort();
   const sorting=toolbar.createEl('select',{cls:'writer-v1042-bookshelf-sort',
    attr:{'aria-label':writerUi('Ordenar livros','Sort books')}});
   for(const [key,pt,en] of [
@@ -23432,12 +23476,13 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  const draw=()=>{
   grid.empty();pagination.empty();
   const query=search.value.trim().toLocaleLowerCase();
-  const items=writerV10BookshelfSort([...projects],sortMode,plugin).filter(p=>{
-   const record=writerV10BookState(plugin,p);
+  const matching=(onlyFavorites||statusFilter||shelfFilter||query)?projects.filter(p=>{
+   const record=writerV10BookFields(plugin,p);
    return (!onlyFavorites||record.favorite)&&(!statusFilter||record.status===statusFilter)&&
     (!shelfFilter||record.shelf===shelfFilter)&&(!query||
      (p.title+' '+String(p.meta?.series||'')+' '+record.shelf).toLocaleLowerCase().includes(query));
-  });
+  }):projects;
+  const items=writerV10BookshelfSort(matching,sortMode,plugin);
   count.setText(items.length+' '+writerUi('livros','books'));
   const size=opts.compact?8:30,maxPage=Math.max(0,Math.ceil(items.length/size)-1);
   page=Math.min(page,maxPage);
@@ -23475,10 +23520,9 @@ function writerV10RenderBookshelfWidget(view,parent){
   wrapper.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Seus livros Longform aparecerão aqui.','Your Longform books will appear here.')});return;
  }
  const grid=wrapper.createDiv({cls:'writer-v108-books-widget-grid'});
- const books=projects.slice().sort((a,b)=>{
-  const af=writerV10BookState(plugin,a).favorite,bf=writerV10BookState(plugin,b).favorite;
-  return Number(bf)-Number(af)||(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0);
- });
+ const favorites=plugin.settings.v10Bookshelf?.library;
+ const books=projects.slice().sort((a,b)=>Number(favorites?.[b.file.path]?.favorite===true)-
+  Number(favorites?.[a.file.path]?.favorite===true)||(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0));
  for(const project of books.slice(0,4))writerV10BookshelfCard(plugin,grid,project,true,()=>view.render());
 }
 function writerV109AddStandaloneBook(plugin,done){
@@ -33303,6 +33347,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "extendedSyntax",
+  "titlePt": "Justificar e hifenizar parágrafos",
+  "titleEn": "Justify and hyphenate paragraphs",
+  "descriptionPt": "Ativado por padrão na leitura: recuo de 5%, texto justificado e hifenização automática. Não altera listas, cartões ou os alinhamentos explícitos {l}, {c}, {r} e {j}.",
+  "descriptionEn": "On by default in Reading view: 5% first-line indent, justified text and automatic hyphenation. Does not change lists, cards or explicit {l}, {c}, {r} and {j} alignment."
+ },
+ {
+  "id": "extendedSyntax",
   "titlePt": "Renderizar no modo de leitura",
   "titleEn": "Render in Reading mode"
  },
@@ -34502,6 +34553,20 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "titleEn": "Personal spelling dictionary",
   "descriptionPt": "Uma palavra por linha, até 2.000. Nomes e termos inventados não gerarão avisos de ortografia.",
   "descriptionEn": "One word per line, up to 2,000. Names and invented terms will not produce spelling warnings."
+ },
+ {
+  "id": "review",
+  "titlePt": "Respeitar expressões em outros idiomas",
+  "titleEn": "Respect phrases in other languages",
+  "descriptionPt": "Evita tratar interjeições e expressões comuns em inglês e outros idiomas como erros de ortografia em português. Detecção conservadora, não uma tradução automática.",
+  "descriptionEn": "Avoid treating common English and other-language interjections and phrases as Portuguese spelling mistakes. Conservative detection, not automatic translation."
+ },
+ {
+  "id": "review",
+  "titlePt": "Revisar diálogos e contrações",
+  "titleEn": "Review dialogue and contractions",
+  "descriptionPt": "Verbos dicendi e abreviações como ma'. Correções só são aplicadas quando aceitas.",
+  "descriptionEn": "Speech tags and forms such as ma'. Corrections are only applied when accepted."
  },
  {
   "id": "review",

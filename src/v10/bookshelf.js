@@ -43,15 +43,17 @@ function writerV109StandaloneProject(plugin,file){
 }
 function writerV109BookDescription(project){return String(project.meta?.description||project.meta?.summary||project.meta?.sinopse||'').trim().slice(0,1400);}
 function writerV109BookCopyright(project){return String(project.meta?.copyright||project.meta?.rights||'').trim().slice(0,400);}
-function writerV10BookState(plugin,project){
+function writerV10BookFields(plugin,project){
  const meta=project.meta||{},existing=plugin.settings.v10Bookshelf?.library?.[project.file.path];
  const record=writerV10BookRecord(existing);
  if(!existing){
   record.shelf=String(meta.genre||meta.category||'').trim().slice(0,60);
   if(['planned','reading','paused','finished'].includes(String(meta.status||'')))record.status=meta.status;
-  const fromMeta=Number(meta.readingProgress||meta.progress);
-  if(Number.isFinite(fromMeta))record.progress=Math.max(0,Math.min(100,Math.round(fromMeta)));
  }
+ return record;
+}
+function writerV10BookState(plugin,project){
+ const record=writerV10BookFields(plugin,project);
  record.progress=writerV109BookProgress(plugin,project,record);
  return record;
 }
@@ -84,7 +86,10 @@ function writerV10BookshelfSort(projects,sort,plugin){
  const title=(a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'});
  if(sort==='recent')return books.sort((a,b)=>(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0)||title(a,b));
  if(sort==='chapters')return books.sort((a,b)=>(b.scenes?.length||0)-(a.scenes?.length||0)||title(a,b));
- if(sort==='progress'&&plugin)return books.sort((a,b)=>writerV10BookState(plugin,b).progress-writerV10BookState(plugin,a).progress||title(a,b));
+ if(sort==='progress'&&plugin){
+  const progress=new Map(books.map(book=>[book,writerV10BookState(plugin,book).progress]));
+  return books.sort((a,b)=>progress.get(b)-progress.get(a)||title(a,b));
+ }
  if(sort==='series')return books.sort((a,b)=>String(a.meta?.series||'').localeCompare(String(b.meta?.series||''))||title(a,b));
  return books.sort(title);
 }
@@ -186,8 +191,8 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
  search.classList.add('writer-v1042-bookshelf-search');
  let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
- const shelfNames=[...new Set(projects.map(p=>writerV10BookState(plugin,p).shelf).filter(Boolean))].sort();
  if(!opts.compact){
+  const shelfNames=[...new Set(projects.map(p=>writerV10BookFields(plugin,p).shelf).filter(Boolean))].sort();
   const sorting=toolbar.createEl('select',{cls:'writer-v1042-bookshelf-sort',
    attr:{'aria-label':writerUi('Ordenar livros','Sort books')}});
   for(const [key,pt,en] of [
@@ -214,12 +219,13 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
  const draw=()=>{
   grid.empty();pagination.empty();
   const query=search.value.trim().toLocaleLowerCase();
-  const items=writerV10BookshelfSort([...projects],sortMode,plugin).filter(p=>{
-   const record=writerV10BookState(plugin,p);
+  const matching=(onlyFavorites||statusFilter||shelfFilter||query)?projects.filter(p=>{
+   const record=writerV10BookFields(plugin,p);
    return (!onlyFavorites||record.favorite)&&(!statusFilter||record.status===statusFilter)&&
     (!shelfFilter||record.shelf===shelfFilter)&&(!query||
      (p.title+' '+String(p.meta?.series||'')+' '+record.shelf).toLocaleLowerCase().includes(query));
-  });
+  }):projects;
+  const items=writerV10BookshelfSort(matching,sortMode,plugin);
   count.setText(items.length+' '+writerUi('livros','books'));
   const size=opts.compact?8:30,maxPage=Math.max(0,Math.ceil(items.length/size)-1);
   page=Math.min(page,maxPage);
@@ -257,10 +263,9 @@ function writerV10RenderBookshelfWidget(view,parent){
   wrapper.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Seus livros Longform aparecerão aqui.','Your Longform books will appear here.')});return;
  }
  const grid=wrapper.createDiv({cls:'writer-v108-books-widget-grid'});
- const books=projects.slice().sort((a,b)=>{
-  const af=writerV10BookState(plugin,a).favorite,bf=writerV10BookState(plugin,b).favorite;
-  return Number(bf)-Number(af)||(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0);
- });
+ const favorites=plugin.settings.v10Bookshelf?.library;
+ const books=projects.slice().sort((a,b)=>Number(favorites?.[b.file.path]?.favorite===true)-
+  Number(favorites?.[a.file.path]?.favorite===true)||(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0));
  for(const project of books.slice(0,4))writerV10BookshelfCard(plugin,grid,project,true,()=>view.render());
 }
 function writerV109AddStandaloneBook(plugin,done){

@@ -511,6 +511,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "extendedSyntax",
+  "titlePt": "Justificar e hifenizar parágrafos",
+  "titleEn": "Justify and hyphenate paragraphs",
+  "descriptionPt": "Ativado por padrão na leitura: recuo de 5%, texto justificado e hifenização automática. Não altera listas, cartões ou os alinhamentos explícitos {l}, {c}, {r} e {j}.",
+  "descriptionEn": "On by default in Reading view: 5% first-line indent, justified text and automatic hyphenation. Does not change lists, cards or explicit {l}, {c}, {r} and {j} alignment."
+ },
+ {
+  "id": "extendedSyntax",
   "titlePt": "Renderizar no modo de leitura",
   "titleEn": "Render in Reading mode"
  },
@@ -1710,6 +1717,20 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "titleEn": "Personal spelling dictionary",
   "descriptionPt": "Uma palavra por linha, até 2.000. Nomes e termos inventados não gerarão avisos de ortografia.",
   "descriptionEn": "One word per line, up to 2,000. Names and invented terms will not produce spelling warnings."
+ },
+ {
+  "id": "review",
+  "titlePt": "Respeitar expressões em outros idiomas",
+  "titleEn": "Respect phrases in other languages",
+  "descriptionPt": "Evita tratar interjeições e expressões comuns em inglês e outros idiomas como erros de ortografia em português. Detecção conservadora, não uma tradução automática.",
+  "descriptionEn": "Avoid treating common English and other-language interjections and phrases as Portuguese spelling mistakes. Conservative detection, not automatic translation."
+ },
+ {
+  "id": "review",
+  "titlePt": "Revisar diálogos e contrações",
+  "titleEn": "Review dialogue and contractions",
+  "descriptionPt": "Verbos dicendi e abreviações como ma'. Correções só são aplicadas quando aceitas.",
+  "descriptionEn": "Speech tags and forms such as ma'. Corrections are only applied when accepted."
  },
  {
   "id": "review",

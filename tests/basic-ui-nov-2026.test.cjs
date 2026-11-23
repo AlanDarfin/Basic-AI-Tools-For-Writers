@@ -23,7 +23,7 @@ test('homepage slash searches use native Web Viewer and never match vault notes'
 
 test('narrative indent and hyphenation are opt-out and respect explicit Basic alignment',()=>{
  const align=fs.readFileSync('src/v10/inline-alignment.js','utf8');
- const foundation=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+ const foundation=fs.readFileSync('src/styles/v13-6-tools.css','utf8');
  assert.match(align,/hideDelimiters:true,proseLayout:true/);
  assert.match(align,/function writerV102SyncProseLayout/);
  assert.match(align,/cfg\.proseLayout=value;\s*writerV102SyncProseLayout\(plugin\)/);

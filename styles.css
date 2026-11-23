@@ -10827,16 +10827,6 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{
 }
 .writer-tool-root .writer-file-actions > button[hidden]{display:none;}
 
-/* Basic prose typography, adapted from the user's Basic-Compat-Unificado-v2.
- * Only ordinary Reading-mode paragraphs: never cards, blocks, lists or {l/c/r/j}. */
-body.writer-v102-prose-layout .markdown-preview-view .markdown-preview-sizer>.el-p>p:not([align]):not(.writer-v102-align-processed){
- text-indent:5%;text-align:justify;text-justify:auto;hyphens:auto;
- orphans:2;widows:2;overflow-wrap:break-word;
-}
-body.writer-v102-prose-layout .markdown-preview-view .markdown-preview-sizer>.el-p>p:is(.writer-v102-align-left,.writer-v102-align-center,.writer-v102-align-right,.writer-v102-align-justify){
- text-indent:0;hyphens:manual;
-}
-
 /* Local Longform draft recovery. The manuscript remains a separate note. */
 .writer-v134-recovery-modal{width:min(1000px,96vw);max-height:92vh;}
 .writer-v134-recovery{min-width:0;max-width:100%;}
@@ -11794,6 +11784,41 @@ body.is-mobile .dictionary-view-content.writer-tool-root .writer-translation-pan
 body.is-mobile .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>.writer-switch-languages{
  min-width:44px;width:44px;min-height:44px;
 }
+
+/* Basic prose typography, adapted from the user's Basic-Compat-Unificado-v2.
+ * Only ordinary Reading-mode paragraphs: never cards, blocks, lists or {l/c/r/j}. */
+body.writer-v102-prose-layout .markdown-preview-view .markdown-preview-sizer>.el-p>p:not([align]):not(.writer-v102-align-processed){
+ text-indent:5%;text-align:justify;text-justify:auto;hyphens:auto;
+ orphans:2;widows:2;overflow-wrap:break-word;
+}
+body.writer-v102-prose-layout .markdown-preview-view .markdown-preview-sizer>.el-p>p:is(.writer-v102-align-left,.writer-v102-align-center,.writer-v102-align-right,.writer-v102-align-justify){
+ text-indent:0;hyphens:manual;
+}
+
+/* Basic 14.2.0 — manuscript-style decorative capitals.
+ * CSS first-letter keeps Markdown links, emphasis and inline formatting intact. */
+.markdown-preview-view p.writer-v102-dropcap{
+ text-indent:0;
+}
+.markdown-preview-view p.writer-v102-dropcap::first-letter{
+ float:left;font-size:3.15em;line-height:.84;font-weight:700;
+ margin:.08em .12em .02em 0;
+ font-family:var(--font-text,var(--font-interface));
+ color:var(--text-normal);
+}
+body.writer-v102-prose-layout .markdown-preview-view p.writer-v102-dropcap:not(.writer-v102-align-left):not(.writer-v102-align-center):not(.writer-v102-align-right){
+ text-align:justify;hyphens:auto;
+}
+.markdown-source-view .cm-line.writer-v102-dropcap .writer-v102-dropcap-initial{
+ font-size:1.85em;font-weight:700;line-height:1;vertical-align:-.17em;
+ color:var(--text-normal);
+}
+@media(max-width:600px){
+ .markdown-preview-view p.writer-v102-dropcap::first-letter{
+  font-size:2.7em;margin-right:.1em;
+ }
+}
+
 
 /* Settings routes and first-run choices use native colors and controls. */
 .writer-v13-settings .writer-v137-settings-heading{

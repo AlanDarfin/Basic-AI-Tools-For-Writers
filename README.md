@@ -2,13 +2,15 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 14.1.2 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 14.2.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
 Basic brings chapter writing, story planning, editing tools, a configurable homepage and optional AI into your vault. Your notes remain ordinary Markdown files with their folders, links and properties. Choose the features you need and keep the rest out of your menus.
 
 Task scans exclude checkboxes inside note properties, comments and code fences, and show how much of the vault was examined. Pending speech reads are cancelled when you stop, disable speech or change the note or provider. The homepage title and logo have more prominence while retaining their narrow-pane layout.
+
+**Drop caps and exports:** append `{dropcap}` (or `{capitular}`) to a paragraph to enlarge its first letter, optionally combined with `{j}`, `{l}`, `{c}` or `{r}` (e.g. `Once upon a time... {j} {dropcap}`). Default prose justification can be disabled under **Text and heading alignment**. Pandoc HTML and EPUB exports include matching Basic CSS; other export formats preserve content and structural markers but may need custom templates for the same appearance.
 
 ## Install and make it yours
 

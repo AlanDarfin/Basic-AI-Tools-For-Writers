@@ -106,6 +106,23 @@ function writerV8HomeSearchURL(plugin,input){
  if(!result)throw Error(writerUi('Busca web inválida.','Invalid web search URL.'));
  return result;
 }
+/* Slash searches are handled only by Obsidian's native Web Viewer.
+ * Never fall through to vault matches, Surfing or the external browser. */
+async function writerV8HomeOpenNativeSearch(plugin,input){
+ const query=String(input||'').trim();
+ if(!query)throw Error(writerUi('Digite um termo após /.','Enter a search term after /.'));
+ if(!writerV8HomeWebViewerEnabled(plugin))
+  throw Error(writerUi('Ative o Visualizador Web nativo nas opções de plugins principais do Obsidian.',
+   'Enable the native Web Viewer in Obsidian core plugins.'));
+ const url=writerV8HomeSearchURL(plugin,query);
+ const leaf=plugin.app.workspace.getLeaf?.('tab');
+ if(!leaf)throw Error(writerUi('Não foi possível abrir uma aba.','Could not open a tab.'));
+ await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+ if(leaf.getViewState?.()?.type!=='webviewer')
+  throw Error(writerUi('O Visualizador Web não está disponível.','Web Viewer is unavailable.'));
+ plugin.app.workspace.setActiveLeaf?.(leaf,{focus:true});
+ return 'webviewer';
+}
 async function writerV8HomeOpenURL(plugin,input){
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));

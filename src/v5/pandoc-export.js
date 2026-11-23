@@ -61,8 +61,13 @@ async function writerPandocExportRun(plugin,format){
  const source=path.join(folder,'input.md'),dest=path.join(folder,'result.'+WRITER_PANDOC_EXPORT_FORMATS[format]);
  const parent=path.dirname(path.resolve(root,file.path));
  try{
-  await fs.promises.writeFile(source,view.editor.getValue(),'utf8');
+  await fs.promises.writeFile(source,writerPandocExportPrepare(view.editor.getValue()),'utf8');
   const args=writerPandocExportArgs(format,dest,parent+path.delimiter+root);
+  if(format==='epub'){
+   const stylesheet=path.join(folder,'basic-export.css');
+   await fs.promises.writeFile(stylesheet,WRITER_PANDOC_EXPORT_CSS,'utf8');
+   args.push('--css',stylesheet);
+  }
   await new Promise((resolve,reject)=>{
    const child=cp.spawn(cfg.pandocPath,[...args,source],{cwd:parent,shell:false,windowsHide:true,stdio:['ignore','ignore','pipe']});
    let stderr='',finished=false;
@@ -76,7 +81,8 @@ async function writerPandocExportRun(plugin,format){
    child.on('error',finish);
    child.on('close',code=>finish(code===0?null:new Error('pandoc exit '+code)));
   });
-  const bytes=await fs.promises.readFile(dest);
+  let bytes=await fs.promises.readFile(dest);
+  if(format==='html')bytes=Buffer.from(writerPandocExportEmbedCSS(bytes.toString('utf8')),'utf8');
   if(bytes.length===0)throw Error(writerUi('Pandoc gerou um arquivo vazio.','Pandoc generated an empty file.'));
   const folderInVault=writerPandocExportFolder(cfg.folder);
   let segments='';
@@ -133,6 +139,9 @@ class WriterPandocExporter{
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Exportação Pandoc (desktop)','Pandoc export (desktop)')});
   panel.createEl('p',{text:writerUi('Requer Pandoc instalado. A exportação cria uma cópia em seu cofre. Não usa um shell nem filtros Lua personalizados. O Pandoc ainda é um processo externo e pode acessar recursos locais ou remotos referenciados na nota. PDF pode exigir um mecanismo LaTeX instalado.','Requires a local Pandoc executable. Exports into a vault folder without using a shell or custom Lua filters. Pandoc is still an external process and may access local or remote resources referenced by the note. PDF may require an additional LaTeX engine.'),cls:'dictionary-muted'});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Atributos de parágrafos, sublinhado, spoiler e cores do Basic são convertidos sem alterar as notas. HTML e EPUB recebem CSS próprio. Em DOCX, ODT, PDF e LaTeX, a estrutura e o texto são mantidos, mas estilos de capitulares podem exigir modelos personalizados.',
+   'Basic paragraph attributes and extended marks are converted without editing notes. HTML and EPUB include export CSS. DOCX, ODT, PDF and LaTeX retain the content, but decorative drop-cap styling can require a custom template.')});
   new Setting(panel).setName(writerUi('Ativar exportação','Enable export')).addToggle(t=>t.setValue(this.cfg.enabled).onChange(async value=>{this.cfg.enabled=value;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Formato padrão','Default format')).addDropdown(d=>{
    for(const key of Object.keys(WRITER_PANDOC_EXPORT_FORMATS))d.addOption(key,key.toUpperCase());

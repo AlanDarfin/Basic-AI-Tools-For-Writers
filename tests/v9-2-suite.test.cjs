@@ -16,7 +16,7 @@ class MarkdownRenderChild{registerEvent(off){this.unload=off;}}
 const context={TFile,TFolder,Date,Set,Map,Number,String,Object,Array,Math,RegExp,console,writerUi:(a,b)=>b,
  writerModuleOn:()=>true,writerV7FolderNote:()=>folderNote,WRITER_V8_HOME_VIEW:'home',
  ItemView:class{},Setting:class{},MarkdownRenderer:{render:async()=>{}},parseYaml:JSON.parse,require:()=>({setIcon:()=>{},MarkdownRenderChild})};
-const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV921PreviewSource,writerV921PreviewBody,writerV921ResolveImage,writerV921PreviewImage,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92MetaToken,writerV92RegisterBlocks,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92ResearchStyleApply,writerV92SessionMerge})',context);
+const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV921PreviewSource,writerV921PreviewBody,writerV921ResolveImage,writerV921PreviewImage,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92MetaToken,writerV92RegisterBlocks,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92ResearchStyleApply,writerV92ResearchRegister,writerV92SessionMerge})',context);
 test('9.2.x metadata, modules and CSS',()=>{
  const manifest=JSON.parse(read('manifest.json')),pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json')),versions=JSON.parse(read('versions.json'));
  assert.match(manifest.version,/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/);assert.equal(pkg.version,manifest.version);assert.equal(lock.version,manifest.version);
@@ -186,7 +186,7 @@ test('legacy fences leave unsupported blocks alone and only edit their named fro
  assert.equal(frontmatter.doneCount,12);
 });
 
-test('reading presets normalize styles and the scoped print treatment is opt-in',()=>{
+test('reading presets normalize styles and leave unused overrides unset',()=>{
  const cfg=api.writerV92ResearchMerge({v92Research:{
   fontSize:19,stylePresets:[{name:' Draft ',values:{fontSize:60,headingSizes:[2],bodyColor:'bad'}}]
  }});
@@ -203,14 +203,31 @@ test('reading presets normalize styles and the scoped print treatment is opt-in'
  api.writerV92ResearchStyleApply(root,cfg,true);
  assert.equal(properties.get('--writer-v92-font-size'),'19px');
  assert.equal(properties.has('--writer-v92-list-indent'),false);
- assert.equal(classes.has('writer-v92-style-print'),false);
- cfg.stylePrint=true;
- api.writerV92ResearchStyleApply(root,cfg,true);
- assert.equal(classes.has('writer-v92-style-print'),true);
- assert.match(read('styles.css'),/@media print\{\s*\.writer-v92-style-print/);
  api.writerV92ResearchStyleApply(root,cfg,false);
  assert.equal(classes.size,0);
  assert.equal(properties.size,0);
+});
+
+test('the native print preview recolors text without a raster filter and grayscales embedded media',()=>{
+ const settings={},cfg=api.writerV92ResearchMerge(settings);
+ const style=()=>({setProperty(key,value){this[key]=value;}});
+ const image={style:style(),matches:()=>true};
+ const preview={style:style(),matches:()=>false,querySelectorAll:()=>[image],
+  closest:selector=>selector==='.print > .markdown-preview-view'?preview:null,
+  ownerDocument:{defaultView:{CSS:{supports:()=>true},getComputedStyle:()=>({
+   getPropertyValue:key=>key==='color'?'rgb(24, 124, 200)':''
+  })}}};
+ let registered;
+ const p={settings,app:{workspace:{on(){}}},registerEvent(){},registerMarkdownPostProcessor(callback){registered=callback;}};
+ api.writerV92ResearchRegister(p);
+ cfg.styleEnabled=true;
+ registered(preview);assert.equal(preview.style.color,undefined);
+ cfg.stylePrint=true;
+ registered({closest:()=>preview});assert.equal(preview.style.color,undefined);
+ registered(preview);
+ assert.equal(preview.style.color,'oklch(from rgb(24, 124, 200) l 0 h / alpha)');
+ assert.equal(preview.style.filter,undefined);
+ assert.equal(image.style.filter,'grayscale(1)');
 });
 
 test('9.2.1 Explorer has a right-aligned interactive favorite and bottom preview toggle',()=>{

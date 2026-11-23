@@ -199,7 +199,6 @@ function writerV92ReadingStyleValues(input){
 }
 function writerV92ResearchStyleApply(root,cfg,on){
  root.classList.toggle('writer-v92-style',on);
- root.classList.toggle('writer-v92-style-print',on&&cfg.stylePrint);
  const set=(key,value)=>{
   if(on&&value)root.style.setProperty('--writer-v92-'+key,value);
   else root.style.removeProperty('--writer-v92-'+key);
@@ -220,10 +219,43 @@ function writerV92ResearchStyle(plugin){
   writerV92ResearchStyleApply(root,cfg,cfg.styleEnabled&&writerModuleOn(plugin,'styleMate'));
  }
 }
+function writerV92ResearchPrint(plugin,element){
+ const cfg=plugin.settings.v92Research;
+ if(!cfg?.styleEnabled||!cfg.stylePrint||!writerModuleOn(plugin,'styleMate'))return;
+ // Native PDF export renders into a separate print document, without the
+ // workspace leaf that supplies the live note's style classes.
+ const preview=element.closest?.('.print > .markdown-preview-view');
+ if(preview!==element)return;
+ const win=preview.ownerDocument?.defaultView;
+ if(!win)return;
+ const colors=new Map();
+ const gray=value=>{
+  if(!value)return '';
+  if(!colors.has(value)){
+   const converted='oklch(from '+value+' l 0 h / alpha)';
+   colors.set(value,win.CSS?.supports?.('color',converted)?converted:'');
+  }
+  return colors.get(value);
+ };
+ const properties=['color','background-color','border-top-color','border-right-color','border-bottom-color',
+  'border-left-color','outline-color','text-decoration-color','accent-color','fill','stroke'];
+ const updates=[preview,...preview.querySelectorAll('*')].map(node=>{
+  const current=win.getComputedStyle(node);
+  return [node,properties.map(property=>[property,gray(current.getPropertyValue(property))])];
+ });
+ // Filtering the whole preview converts its text into an image in Chromium.
+ // Recolor the rendered CSS instead and reserve filters for embedded media.
+ for(const [node,styles] of updates){
+  if(!node.style)continue;
+  for(const [property,value] of styles)if(value)node.style.setProperty(property,value);
+  if(node.matches('img,canvas,video'))node.style.filter='grayscale(1)';
+ }
+}
 function writerV92ResearchRegister(plugin){
  plugin.writerV92Research={quotes:()=>writerV92ZoteroQuotes(plugin),refreshStyle:()=>writerV92ResearchStyle(plugin)};
  for(const type of ['zotero','bibliography'])plugin.registerMarkdownCodeBlockProcessor?.(type,
   (source,el,ctx)=>writerV10ZoteroBibliography(plugin,source,el,ctx));
+ plugin.registerMarkdownPostProcessor?.(element=>writerV92ResearchPrint(plugin,element),1000);
  plugin.registerEvent(plugin.app.workspace.on('layout-change',()=>writerV92ResearchStyle(plugin)));
  plugin.app.workspace.onLayoutReady?.(()=>writerV92ResearchStyle(plugin));
  plugin.register?.(()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
@@ -267,8 +299,8 @@ function writerV92ResearchSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Ativar estilo por nota','Enable note styling'))
   .addToggle(t=>t.setValue(cfg.styleEnabled).onChange(async v=>{cfg.styleEnabled=v;await saveStyle();}));
  new Setting(panel).setName(writerUi('Impressão em preto e branco','Black-and-white printing'))
-  .setDesc(writerUi('Usa tons de cinza na impressão e na exportação PDF com o estilo de leitura ativo.',
-   'Use grayscale when printing or exporting PDF while reading style is active.'))
+  .setDesc(writerUi('Usa tons de cinza ao exportar um PDF no Obsidian com o estilo de leitura ativo.',
+   'Use grayscale in Obsidian PDF exports while reading style is active.'))
   .addToggle(t=>t.setValue(cfg.stylePrint).onChange(async v=>{cfg.stylePrint=v;await saveStyle();}));
  for(const [key,pt,en,min,max,step] of WRITER_V92_STYLE_RANGES)
   new Setting(panel).setName(writerUi(pt,en)).addSlider(s=>s.setLimits(min,max,step).setValue(cfg[key])

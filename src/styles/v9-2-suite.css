@@ -266,11 +266,6 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
  font-size:var(--writer-v92-heading-size);
  color:var(--writer-v92-specific-heading-color,var(--basic-ui-text,var(--text-normal)));
 }
-@media print{
- .writer-v92-style-print :is(.markdown-preview-view,.markdown-source-view){
-  filter:grayscale(1);
- }
-}
 .writer-v92-session{
  display:flex;flex-direction:column;gap:12px;
  padding:16px;min-height:100%;box-sizing:border-box;

@@ -1494,8 +1494,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "research",
   "titlePt": "Impressão em preto e branco",
   "titleEn": "Black-and-white printing",
-  "descriptionPt": "Usa tons de cinza na impressão e na exportação PDF com o estilo de leitura ativo.",
-  "descriptionEn": "Use grayscale when printing or exporting PDF while reading style is active."
+  "descriptionPt": "Usa tons de cinza ao exportar um PDF no Obsidian com o estilo de leitura ativo.",
+  "descriptionEn": "Use grayscale in Obsidian PDF exports while reading style is active."
  },
  {
   "id": "research",

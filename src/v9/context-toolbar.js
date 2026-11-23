@@ -24,6 +24,7 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['align-center','align-center','Centralizar','Center'],
  ['align-right','align-right','Alinhar à direita','Align right'],
  ['justify','align-justify','Justificar','Justify'],
+ ['dropcap','type','Capitular','Drop cap'],
  ['text-color','palette','Cor do texto','Text color'],
  ['background-color','paint-bucket','Cor de destaque','Background color']
 ];
@@ -228,6 +229,10 @@ function writerV9Format(editor,action,options={}){
   if(typeof writerV102AlignApply!=='function')return false;
   writerV102AlignApply(editor,'j');break;
  }
+ case 'dropcap':{
+  if(typeof writerV102ToggleDropcap!=='function')return false;
+  writerV102ToggleDropcap(editor);break;
+ }
  default:return false;
  }
  editor.focus?.();
@@ -281,7 +286,7 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
   const existing=new Set((parent.items||[]).map(item=>writerV1044MenuTitle(item)));
   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
    if(!['underline','superscript','subscript','spoiler','highlight','codeblock',
-    'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
+    'h4','h5','h6','footnote','callout','table','rule','dropcap'].includes(id))continue;
    const title=writerUi(pt,en);
    if(existing.has(title))continue;
    writerV1044MenuAdd(parent,title,icon,()=>{

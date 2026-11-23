@@ -1,5 +1,12 @@
 # Changelog — Basic
 
+## 14.2.1 — Longform compacto no Android
+
+- As cenas agora ficam em linhas únicas, com alça, título e menu de ações lado a lado.
+- Corrigido o layout para painéis estreitos que colocava o botão `...` abaixo dos títulos e ampliava o espaço entre capítulos.
+- Títulos longos são abreviados com reticências, enquanto controles de toque continuam com 44 px.
+- CSS modular e `styles.css` sincronizados, com testes regressivos de layout mobile e desktop preservado.
+
 ## 14.2.0 — Capitulares e exportação de formatações
 
 - Capitulares literárias por parágrafo com `{dropcap}` ou `{capitular}`, compatíveis com `{l}`, `{c}`, `{r}` e `{j}`, em leitura e Live Preview.

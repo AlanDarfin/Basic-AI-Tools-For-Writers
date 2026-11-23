@@ -6404,6 +6404,16 @@ function writerPandocExportSuffix(line){
   side:side?({l:'left',c:'center',r:'right',j:'justify'}[side]||side):null,
   dropcap:tags.includes('dropcap')||tags.includes('capitular')};
 }
+function writerPandocExportLegacy(line){
+ const raw=String(line||'');
+ const modern=/^\s{0,3}::(left|center|right|justify|l|c|r|j):[ \t]+(.+)$/i.exec(raw);
+ const bracket=modern?null:/^\s{0,3}::(left|center|right|justify|l|c|r|j)\[([^\n]+)\][ \t]*$/i.exec(raw);
+ const match=modern||bracket;
+ if(!match)return null;
+ const key=match[1].toLowerCase();
+ const side={l:'left',c:'center',r:'right',j:'justify'}[key]||key;
+ return {side,text:match[2]};
+}
 function writerPandocExportPrepare(source){
  const raw=String(source||''),eol=raw.includes('\r\n')?'\r\n':'\n';
  const lines=raw.split(/\r?\n/),out=[],paragraph=[];
@@ -6411,11 +6421,17 @@ function writerPandocExportPrepare(source){
  const flush=()=>{
   if(!paragraph.length)return;
   const last=paragraph[paragraph.length-1],tag=writerPandocExportSuffix(last);
-  if(!tag){out.push(...paragraph.map(writerPandocExportInline));paragraph.length=0;return;}
-  const updated=paragraph.map((line,i)=>i===paragraph.length-1?line.slice(0,tag.from):line);
+  const legacy=paragraph.length===1?writerPandocExportLegacy(tag?last.slice(0,tag.from):last):null;
+  if(!tag&&!legacy){out.push(...paragraph.map(writerPandocExportInline));paragraph.length=0;return;}
+  const updated=legacy?[legacy.text]:paragraph.map((line,i)=>i===paragraph.length-1?line.slice(0,tag.from):line);
+  const side=tag?.side||legacy?.side||null;
+  if(legacy&&/^#{1,6}\s+/.test(legacy.text)){
+   out.push(writerPandocExportInline(legacy.text)+' {style="text-align:'+side+'"}');
+   paragraph.length=0;return;
+  }
   const attrs=['.basic-export-paragraph'];
-  if(tag.side)attrs.push('.basic-export-'+tag.side);
-  if(tag.dropcap)attrs.push('.basic-export-dropcap');
+  if(side)attrs.push('.basic-export-'+side);
+  if(tag?.dropcap)attrs.push('.basic-export-dropcap');
   out.push('::: {'+attrs.join(' ')+'}',...updated.map(writerPandocExportInline),':::');
   paragraph.length=0;
  };

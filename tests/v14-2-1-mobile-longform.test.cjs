@@ -1,0 +1,35 @@
+'use strict';
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const css=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+const shipped=fs.readFileSync('styles.css','utf8');
+const projects=fs.readFileSync('projects.js','utf8');
+const start=css.indexOf('/* Mobile Longform: keep drag, title and menu');
+const stop=css.indexOf('/* Visual-only Longform story arc dividers',start);
+const mobile=css.slice(start,stop);
+test('Android scenes keep drag, title and overflow in one 48px row',()=>{
+ assert.ok(start>=0&&stop>start);
+ assert.ok(shipped.includes(mobile),'Bundled CSS must match modular CSS');
+ assert.match(mobile,/grid-template-columns:44px minmax\(0,1fr\) 44px/);
+ assert.match(mobile,/grid-template-rows:minmax\(44px,auto\)/);
+ assert.match(mobile,/min-height:48px;padding:2px 0/);
+ assert.match(mobile,/writer-project-drag-handle\{[\s\S]*?grid-column:1;grid-row:1/);
+ assert.match(mobile,/writer-v7-scene-title-wrap\{[\s\S]*?grid-column:2;grid-row:1/);
+ assert.match(mobile,/writer-project-scene-controls\{[\s\S]*?grid-column:3;grid-row:1/);
+ assert.doesNotMatch(mobile,/grid-row:2/);
+ assert.match(mobile,/writer-project-scene-title-text\{[\s\S]*?white-space:nowrap;overflow:hidden;text-overflow:ellipsis/);
+ assert.match(mobile,/writer-project-scene-more\{[\s\S]*?min-height:44px;height:44px/);
+ assert.match(mobile,/button:not\(\.writer-project-scene-more\)\{display:none/);
+ assert.match(projects,/row\.dataset\.sceneTitle=name/);
+ assert.match(projects,/more\.addEventListener\('click'/);
+});
+test('narrow containers do not insert a second action row',()=>{
+ const begin=css.indexOf('@container basic-project (max-width:540px)');
+ const end=css.indexOf('@container basic-project (max-width:250px)',begin);
+ const narrow=css.slice(begin,end);
+ assert.match(narrow,/grid-template-columns:44px minmax\(0,1fr\) 44px/);
+ assert.match(narrow,/writer-project-scene-controls\{grid-column:3;grid-row:1/);
+ assert.doesNotMatch(narrow,/grid-row:2/);
+ assert.match(css.slice(css.indexOf('/* Desktop Longform: compact single-line scenes'),start),/body:not\(\.is-mobile\)/);
+});

@@ -70,10 +70,10 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-
 @container basic-project (max-width:540px){
  .writer-project-root .writer-project-nav-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr))}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:28px minmax(0,1fr);gap:3px 6px}
- body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:44px minmax(0,1fr)}
+ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:44px minmax(0,1fr) 44px}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{grid-column:1;grid-row:1;width:28px;min-width:28px}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-v7-scene-title-wrap{grid-column:2;grid-row:1;align-items:start}
- .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{grid-column:2;grid-row:2;justify-self:end;gap:4px}
+ .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-scene-controls{grid-column:3;grid-row:1;justify-self:end;gap:4px}
  body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-controls>button:not(.writer-project-scene-more){display:none}
  .writer-project-root .writer-project-nav-groups>button .writer-project-nav-label{display:block;font-size:var(--font-ui-small)}
  body .writer-project-root .writer-project-nav-groups.writer-project-nav-groups>button{gap:4px;padding-inline:2px;min-height:34px}
@@ -108,7 +108,7 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-v7-scene-title
 }
 
 /* Desktop Longform: compact single-line scenes, including narrow sidebars.
- * Keep mobile's multi-row layout and 44px touch targets unchanged. */
+ * Mobile receives its own compact touch-friendly layout below. */
 body:not(.is-mobile) .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{
  grid-template-columns:24px minmax(0,1fr) max-content;
  grid-template-rows:minmax(28px,auto);
@@ -158,6 +158,39 @@ body:not(.is-mobile) .writer-project-root .writer-project-panel .writer-project-
  body:not(.is-mobile) .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions:is(:hover,:focus-within)>.writer-project-scene-controls{
   opacity:1;pointer-events:auto;
  }
+}
+
+/* Mobile Longform: keep drag, title and menu on one compact touch-friendly row. */
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title]{
+ grid-template-columns:44px minmax(0,1fr) 44px;grid-template-rows:minmax(44px,auto);
+ align-items:center;gap:0 4px;min-height:48px;padding:2px 0;
+}
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title]>.writer-project-drag-handle{
+ grid-column:1;grid-row:1;align-self:center;justify-self:center;
+ box-sizing:border-box;min-width:44px;width:44px;min-height:44px;height:44px;margin:0;padding:0;
+}
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title]>.writer-v7-scene-title-wrap{
+ grid-column:2;grid-row:1;display:flex;align-items:center;gap:2px;min-width:0;max-width:100%;overflow:hidden;
+}
+body.is-mobile .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap>.writer-v7-scene-collapse{
+ flex:0 0 44px;min-width:44px;width:44px;min-height:44px;height:44px;padding:0;
+}
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title] .writer-v7-scene-title-wrap>.writer-project-scene-title{
+ flex:1 1 auto;display:flex;align-items:center;min-width:0;max-width:100%;
+ min-height:44px;height:44px;margin:0;padding:0 2px;overflow:hidden;white-space:nowrap;
+}
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title] .writer-project-scene-title-text{
+ display:block;flex:1 1 auto;min-width:0;max-width:100%;-webkit-line-clamp:unset;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;word-break:normal;hyphens:none;line-height:1.25;
+}
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title]>.writer-project-scene-controls{
+ grid-column:3;grid-row:1;justify-self:end;align-self:center;
+ display:flex;align-items:center;justify-content:center;flex-wrap:nowrap;
+ min-width:44px;width:44px;margin:0;padding:0;
+}
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title] .writer-project-scene-controls>button:not(.writer-project-scene-more){display:none;}
+body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions[data-scene-title] .writer-project-scene-controls>.writer-project-scene-more{
+ box-sizing:border-box;flex:0 0 44px;min-width:44px;width:44px;min-height:44px;height:44px;margin:0;padding:0;
 }
 
 /* Visual-only Longform story arc dividers, compact on desktop and Android. */

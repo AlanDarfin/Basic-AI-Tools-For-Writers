@@ -1,5 +1,15 @@
 # Changelog — Basic
 
+## 14.2.0 — Capitulares e exportação de formatações
+
+- Capitulares literárias por parágrafo com `{dropcap}` ou `{capitular}`, compatíveis com `{l}`, `{c}`, `{r}` e `{j}`, em leitura e Live Preview.
+- Nova ação de capitular na barra de formatação e na paleta de comandos; preserva alinhamentos existentes.
+- Exportação Pandoc traduz atributos e sintaxes Basic (sublinhado, spoiler, realces coloridos e spans) para classes e estilos reconhecidos; HTML autossuficiente e EPUB com CSS incorporado.
+- A sintaxe em código, metadados YAML e listas não é alterada.
+- DOCX, ODT, PDF, LaTeX e texto simples preservam conteúdo e estrutura, mas a aparência da capitular depende do suporte ao estilo no conversor e de modelos de exportação.
+- Novos testes de compatibilidade para leitura, Markdown e exportação.
+
+
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
 ## 14.1.0 — LanguageTool, Visual Kit and writing workflows

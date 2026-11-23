@@ -52,7 +52,7 @@ body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-tool-pa
  min-height:var(--basic-panel-control-size);
 }
 @container writer-sidebar (max-width:240px){
- body .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar{
+ body .dictionary-view-content.writer-tool-root .writer-tool-panel.writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar{
   grid-template-columns:minmax(0,1fr) var(--basic-panel-control-size);
  }
  .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>select:not(.dictionary-translation-engine){
@@ -123,7 +123,8 @@ body.is-mobile .writer-v8-home .writer-v8-home-quick-actions>.writer-v8-home-act
 .writer-v9-calendar :is(.writer-v9-calendar-header,.writer-v9-calendar-layout,.writer-v9-calendar-side),
 .writer-v9-space-sidebar,
 .writer-v92-session,
-body :is(.writer-v931-pomodoro,.writer-companion-center){
+body.is-mobile :is(.writer-v931-pomodoro,.writer-companion-center),
+:is(.writer-v931-pomodoro,.writer-companion-center){
  gap:var(--basic-panel-section-gap);
 }
 .writer-v9-calendar .writer-v9-calendar-header{

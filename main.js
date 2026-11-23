@@ -4881,6 +4881,65 @@ function writerGrammarCancelled(){
  const error=new Error(writerUi('Verificação cancelada.','Grammar check cancelled.'));
  error.name='WriterGrammarCancelled';error.code='WRITER_GRAMMAR_CANCELLED';return error;
 }
+
+/* Context-aware, optional Portuguese dialogue hints. Never auto-change prose. */
+const WRITER_LITERARY_DICENDI=/^(?:disse|respondeu|perguntou|indagou|afirmou|negou|gritou|murmurou|sussurrou|retrucou|exclamou|observou|comentou|argumentou|confessou|ironizou|bradou|rosnou|reclamou|advertiu|acrescentou|balbuciou|repetiu|insistiu|concordou|protestou|interrompeu|explicou|declarou|resmungou)$/iu;
+const WRITER_LITERARY_ELISIONS={ma:['mais','mas'],ta:['está'],to:['estou'],vamo:['vamos'],pera:['espera'],ce:['você'],num:['não']};
+function writerLiteraryReviewMatches(source,matches,settings={}){
+ const text=String(source||''),remote=Array.isArray(matches)?matches:[];
+ if(settings.reviewLiteraryMode===false||!/^pt(?:-|$)/i.test(settings.reviewLanguage||'pt-BR'))return remote;
+ const lower=value=>value.toLocaleLowerCase('pt-BR');
+ const speechTag=(word,before)=>WRITER_LITERARY_DICENDI.test(lower(word))&&
+  /^\s*—\s*\S/u.test(before)&&/\s+—\s*$/u.test(before);
+ // Suppress only demonstrably misplaced sentence-capitalization suggestions.
+ const valid=remote.filter(match=>{
+  const word=text.slice(match.offset,match.offset+match.length),lineStart=text.lastIndexOf('\n',match.offset-1)+1;
+  if(!word||word!==lower(word)||!speechTag(word,text.slice(lineStart,match.offset)))return true;
+  const rule=[match.rule?.id,match.rule?.description,match.message].join(' ');
+  if(!/upper|capital|sentence.start|maiúscul|frase inicia|casing/i.test(rule))return true;
+  return !(match.replacements||[]).some(r=>typeof r?.value==='string'&&lower(r.value)===word&&r.value!==word);
+ });
+ const local=[];
+ const add=(offset,word,id,title,message,replacements,category='STYLE')=>{
+  if(local.length>=100)return;
+  local.push({offset,length:word.length,message,shortMessage:title,
+   replacements:[...new Set(replacements)].map(value=>({value})),
+   rule:{id,description:title,category:{id:category,name:'Escrita literária'}}});
+ };
+ // A trailing apostrophe can be intentional elision; context decides its expansion.
+ const contractions=/\b(ma|ta|to|vamo|pera|ce|num)['’](?=$|[\s.,!?;:)\]}])/giu;
+ let match;
+ while((match=contractions.exec(text))!==null){
+  const options=WRITER_LITERARY_ELISIONS[lower(match[1])];
+  if(!options)continue;
+  const caps=match[1]===match[1].toLocaleUpperCase('pt-BR');
+  const titlecase=/^\p{Lu}/u.test(match[1]);
+  const variants=options.map(v=>caps?v.toLocaleUpperCase('pt-BR'):titlecase?v[0].toLocaleUpperCase('pt-BR')+v.slice(1):v);
+  add(match.index,match[0],'BASIC_LITERARY_APOSTROPHE',
+   'Possível contração com apóstrofo',
+   'A forma abreviada pode ser intencional na fala. As alternativas dependem do contexto; nenhuma será aplicada automaticamente.',
+   variants);
+ }
+ // Dialogue attribution after a closing em dash normally starts in lower case.
+ const lines=/[^\r\n]+/g,verbs=/\s+—\s+(disse|respondeu|perguntou|indagou|afirmou|negou|gritou|murmurou|sussurrou|retrucou|exclamou|observou|comentou|argumentou|confessou|ironizou|bradou|rosnou|reclamou|advertiu|acrescentou|balbuciou|repetiu|insistiu|concordou|protestou|interrompeu|explicou|declarou|resmungou)\b/giu;
+ let line;
+ while((line=lines.exec(text))!==null){
+  if(!/^\s*—\s*\S/u.test(line[0]))continue;
+  verbs.lastIndex=0;let found;
+  while((found=verbs.exec(line[0]))!==null){
+   const word=found[1],index=found.index+found[0].lastIndexOf(word),before=line[0].slice(0,index);
+   if(word===lower(word)||word===word.toLocaleUpperCase('pt-BR')||!speechTag(word,before))continue;
+   add(line.index+index,word,'BASIC_LITERARY_DICENDI',
+    'Verbo dicendi após travessão',
+    'Após uma fala e seu travessão de fechamento, o verbo que atribui a fala costuma começar com letra minúscula, inclusive depois de ? ou !.',
+    [lower(word)],'GRAMMAR');
+  }
+ }
+ // Never duplicate an overlapping remote spelling finding.
+ return [...valid.filter(m=>!local.some(x=>m.offset<x.offset+x.length&&x.offset<m.offset+m.length)),...local]
+  .sort((a,b)=>a.offset-b.offset||a.length-b.length);
+}
+
 async function writerGrammarRequest(plugin,text){
  const settings=plugin.settings,epoch=plugin._writerGrammarRequestEpoch||0;
  const key=writerGrammarConnectionKey(settings);
@@ -4919,10 +4978,11 @@ async function writerGrammarRequest(plugin,text){
  let matches;
  try{matches=response.json?.matches;}catch(_){}
  if(!Array.isArray(matches))throw Error(writerUi('Resposta inválida do corretor. Confira o endpoint configurado.','Invalid checker response. Check the configured endpoint.'));
- return matches.filter(match=>Number.isInteger(match?.offset)&&Number.isInteger(match.length)&&
+ const valid=matches.filter(match=>Number.isInteger(match?.offset)&&Number.isInteger(match.length)&&
   match.offset>=0&&match.length>0&&match.offset+match.length<=source.length)
   .map(match=>({...match,replacements:Array.isArray(match.replacements)?
    match.replacements.filter(replacement=>typeof replacement?.value==='string'):[]}));
+ return writerLiteraryReviewMatches(source,valid,settings);
 }
 // Long manuscripts exceed LanguageTool's single-request limit. Check a bounded
 // window around the cursor and translate its offsets back into full-note offsets.
@@ -5116,7 +5176,6 @@ class WriterAutoGrammar{
   }
  }
 }
-
 // v3 module: src/v4/modules.js
 /* Basic AI v4 RC — opt-in module visibility, persisted independently of data. */
 const WRITER_MODULES=[
@@ -36434,11 +36493,14 @@ function writerV137GrammarSettings(plugin,panel){
   ['reviewPopupEnabled','Mostrar sugestões ao passar o mouse ou mover o cursor','Show suggestions on hover or caret',
    'No celular, toque na palavra sublinhada.','On mobile, tap an underlined word.'],
   ['reviewIgnoreWhitespace','Ocultar sugestões só de espaço e formatação','Hide spacing-only and formatting suggestions',
-   'Reduz avisos causados pela estrutura Markdown.','Reduce findings caused by Markdown structure.']
+   'Reduz avisos causados pela estrutura Markdown.','Reduce findings caused by Markdown structure.'],
+  ['reviewLiteraryMode','Revisar diálogos e contrações','Review dialogue and contractions',
+   'Verbos dicendi e abreviações como ma\u0027. Correções só são aplicadas quando aceitas.',
+   'Speech tags and forms such as ma\u0027. Corrections are only applied when accepted.']
  ])new Setting(editor).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
   .addToggle(t=>remember(t).setValue(settings[key]!==false).onChange(async value=>{
    settings[key]=value;
-   if(key==='reviewIgnoreWhitespace')await changed();
+   if(key==='reviewIgnoreWhitespace'||key==='reviewLiteraryMode')await changed();
    else{if(key==='reviewPopupEnabled'&&!value)plugin.closeReviewPopup?.();await save();}
   }));
  const connection=section('Conexão do corretor','Checker connection');
@@ -36547,7 +36609,6 @@ function writerV137GrammarSettings(plugin,panel){
  const rulesFeedback=exceptions.createEl('p',{cls:'writer-grammar-feedback',attr:{id:rulesId,role:'status','aria-live':'polite'}});
  refresh();return root;
 }
-
 // v3 module: src/v13/setup-guide.js
 /* First-run choices only change feature availability; existing vaults opt in. */
 const WRITER_QUICK_START_PRESETS={
@@ -42866,7 +42927,11 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     const panel=modal.contentEl;
     panel.empty();
     panel.createEl('h3',{text:match.rule?.description||match.shortMessage||msg('Sugestão do LanguageTool','LanguageTool suggestion')});
-    if(match.message)panel.createEl('p',{text:match.message,cls:'writer-lt-mobile-reason'});
+    if(match.message){
+      const reason=panel.createEl('details',{cls:'writer-lt-mobile-info'});
+      reason.createEl('summary',{text:msg('Por que esta sugestão?','Why this suggestion?')});
+      reason.createEl('p',{text:match.message,cls:'writer-lt-mobile-reason'});
+    }
     const choices=panel.createDiv({cls:'writer-lt-mobile-choices'});
     const action=(parent,label,callback,cls='')=>{
       const button=parent.createEl('button',{text:label,cls,attr:{type:'button'}});
@@ -42875,12 +42940,24 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     };
     const replacements=[...new Set((match.replacements||[]).map(x=>x?.value).filter(x=>typeof x==='string'))].slice(0,8);
     if(!replacements.length)choices.createEl('p',{text:msg('Nenhuma substituição automática','No automatic replacement'),cls:'setting-item-description'});
-    for(const replacement of replacements)action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
-    const extras=panel.createDiv({cls:'writer-lt-mobile-actions'});
+    for(const replacement of replacements.slice(0,2))
+      action(choices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement),'mod-cta');
+    if(replacements.length>2){
+      const more=panel.createEl('details',{cls:'writer-lt-mobile-extra-details writer-lt-mobile-alternatives'});
+      more.createEl('summary',{text:msg('Outras alternativas','Other alternatives')+' ('+(replacements.length-2)+')'});
+      const moreChoices=more.createDiv({cls:'writer-lt-mobile-choices'});
+      for(const replacement of replacements.slice(2))
+        action(moreChoices,replacement||msg('(remover)','(delete)'),()=>this.applyGrammarReplacement(file,source,match,replacement));
+    }
+    const footer=panel.createDiv({cls:'writer-lt-mobile-footer'});
+    action(footer,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
+    const moreActions=panel.createEl('details',{cls:'writer-lt-mobile-extra-details'});
+    moreActions.createEl('summary',{text:msg('Dicionários, IA e outras ações','Dictionaries, AI and other actions')});
+    const extras=moreActions.createDiv({cls:'writer-lt-mobile-actions'});
     if(writerReviewWord(source,match))action(extras,msg('Adicionar ao dicionário','Add to dictionary'),()=>this.addGrammarWord(file,source,match));
-    if(writerReviewWord(source,match)&&typeof writerV101ProjectAddWord==='function'&&typeof writerV6ProjectContext==='function'&&writerV6ProjectContext(this,file.path)?.indexPath)action(extras,msg('Adicionar ao dicionário deste livro','Add to this book dictionary'),()=>writerV101ProjectAddWord(this,file,writerReviewWord(source,match)));
+    if(writerReviewWord(source,match)&&typeof writerV101ProjectAddWord==='function'&&typeof writerV6ProjectContext==='function'&&writerV6ProjectContext(this,file.path)?.indexPath)
+      action(extras,msg('Adicionar ao dicionário deste livro','Add to this book dictionary'),()=>writerV101ProjectAddWord(this,file,writerReviewWord(source,match)));
     action(extras,msg('Explicar com IA','Explain with AI'),()=>this.explainGrammarSuggestion(file,source,match));
-    action(extras,msg('Ignorar ocorrência','Ignore occurrence'),()=>this.dismissGrammarSuggestion(file,match));
     if(match.rule?.id)action(extras,msg('Ignorar regra','Ignore rule'),()=>this.ignoreGrammarRule(file,match));
     modal.onClose=()=>{if(this.reviewPopup===modal){this.reviewPopup=null;this.reviewPopupKey=null;}panel.empty();};
     this.reviewPopup=modal;this.reviewPopupKey=key;modal.open();

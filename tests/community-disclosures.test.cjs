@@ -5,8 +5,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
-test('runtime retains nine HTTP request paths and opt-in Zotero/ICS',()=>{
- const bundle=read('main.js');
+test('runtime retains the existing HTTP inventory and declares two opt-in Visual Kit import routes',()=>{
+ const bundle=read('main.js').replace(/\/\*! Visual Kit \(embedded by Basic\)[\s\S]*?(?=\/\/ END WRITER V3 MODULES)/,'');
  const hits=bundle.match(/\brequestUrl\s*\(/g)||[];
  const grammarAlias=(bundle.match(/await send\(\{url:endpoint,method:'POST'/g)||[]).length;
  assert.equal(hits.length+grammarAlias,9,'Update SECURITY.md and this inventory if HTTP request paths change');
@@ -14,6 +14,10 @@ test('runtime retains nine HTTP request paths and opt-in Zotero/ICS',()=>{
    assert(bundle.includes(fragment),'Missing expected network functionality: '+fragment);
  }
  const security=read('SECURITY.md');
+ for(const file of ['src/paste/HtmlImagePaste.ts','src/html-notes/Assets.ts'])
+   assert.equal((read('vendor/visual-kit/'+file).match(/\brequestUrl\(/g)||[]).length,1);
+ assert(security.includes('Visual Kit remote image import'));
+ assert(read('vendor/visual-kit/src/settings.ts').includes('htmlExternalImages: "block"'));
  assert(read('src/v10/zotero-web.js').includes('api.zotero.org'));
  assert(read('src/v10/calendar-feeds.js').includes('requestUrl'));
 

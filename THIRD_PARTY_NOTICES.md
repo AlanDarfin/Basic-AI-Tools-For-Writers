@@ -141,10 +141,10 @@ These are **feature integrations, not full ports**. In particular, the upstream 
 
 ## v12 toolkit and synchronization references (2026)
 
-The v12 additions in `src/v12/unified-toolkit.js` are independent implementations of the documented user interactions and a **runtime command bridge**, not source-code copies or redistributed packages. **No upstream code has been vendored.** Each original project retains its copyright and license; install the original plugin separately to access capabilities delegated to it.
+The v12 additions in `src/v12/unified-toolkit.js` independently implement the documented user interactions and provide a **runtime command bridge**. Each original project retains its copyright and license. The original plugins provide delegated capabilities. The Visual Kit source bundled with Basic is listed below.
 
 - Ultimate Toolkit / My Toolkit — Ahmed Moussa: https://github.com/ahmdmusa/obsidian-toolkit
-- Visual Kit — pedrohf-dev: https://github.com/pedrohf-dev/visual-kit
+- **Visual Kit 0.9.1** — pedrof, MIT, upstream commit `ff4274caa4669aa0f95b05c4246bb5ce26abf9e3`: https://github.com/pedrohf-dev/visual-kit. Adapted source and original license are in `vendor/visual-kit/`. The built plugin bundles Fabric.js, DOMPurify and CodeMirror support; their license texts are included in the `main.js` banner at build time.
 - Snailkit — Arnaud Gastelblum: https://github.com/arnaudgastelblum/snailkit
 - dropit Obsidian — smart-kits: https://github.com/smart-kits/dropit-obsidian
 - Syncthing Integration — LBF38: https://github.com/LBF38/obsidian-syncthing-integration

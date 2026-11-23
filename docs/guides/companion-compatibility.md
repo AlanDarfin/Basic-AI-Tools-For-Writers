@@ -2,9 +2,9 @@
 
 [Português](companion-compatibility.pt-BR.md)
 
-Basic's writing tools work without external plugins. Support for an installed plugin helps its available controls, panels and commands coexist with Basic. It does not install that plugin, replace its engine or copy its credentials. The [README support table](../../README.md#supported-plugins) describes each of the nine supported plugins.
+Basic's writing tools work without external plugins. Support for an installed plugin helps its available controls, panels and commands coexist with Basic. It does not install that plugin, replace its engine or copy its credentials. The [README support table](../../README.md#supported-plugins) describes supported external plugins.
 
-There is no dedicated **Integrations** settings page. Each external plugin keeps its full configuration in its own settings. Existing panel commands and saved compatibility preferences remain available for established workflows. A saved shortcut to the former page now opens **Advanced editing**, where Basic's native mentions and AI writing actions remain configurable.
+There is no dedicated **Integrations** settings page. Each external plugin keeps its full configuration in its own settings. The old **Connected plugins** sidebar and its launcher are removed. Use the named tools or their settings directly. **Synchronization: open center** opens a dedicated manual dialog. A saved shortcut to the former page now opens **Advanced editing**, where Basic's native mentions and AI writing actions remain configurable.
 
 ## Native tools: no companion required
 
@@ -41,6 +41,7 @@ Folder focus is visual. It does not encrypt files, block access, move notes or r
 | Arrange floating controls on mobile | **Files & tools** |
 | Native note mentions and AI writing actions | **Advanced editing** |
 | External LanguageTool checker | **Grammar** |
+| Embedded Visual Kit on desktop | **Images & annotations** |
 
 ## Mobile controls and the explorer
 
@@ -50,7 +51,7 @@ The passive layout support operates independently of Basic's quick-actions maste
 
 Under **File explorer**, choose **Ultimate Toolkit**, **Custom Basic icon** or **Show both** when both plugins decorate the same row. The choice changes the duplicate decoration's visibility and retains both plugins' preferences and elements.
 
-Visual Kit remains desktop-only. Obsidian Git on mobile requires its own available, initialized backend. Basic does not add desktop Git to Android. Viewport/CSS emulation does not replace testing native navigation, device keyboards or floating panels on physical Android/iOS hardware.
+Basic includes Visual Kit on desktop without a separate installation. The lightweight Basic annotation tool remains available on mobile. Obsidian Git on mobile requires its own available, initialized backend. Basic does not add desktop Git to Android. Viewport/CSS emulation does not replace testing native navigation, device keyboards or floating panels on physical Android/iOS hardware.
 
 ## Grammar, panels and synchronization
 

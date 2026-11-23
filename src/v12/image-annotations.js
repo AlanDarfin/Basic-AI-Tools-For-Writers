@@ -141,6 +141,7 @@ function writerV12AnnotateImage(plugin,file){
  modal.open();
 }
 function writerV12AnnotationRegister(plugin){
+ if(typeof writerVisualKitRegister==='function')writerVisualKitRegister(plugin);
  plugin.addCommand({id:'v12-annotate-image',name:writerUi('Imagens: anotar nova cópia PNG','Images: annotate a new PNG copy'),
   callback:()=>writerV12AnnotatePick(plugin)});
 }

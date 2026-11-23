@@ -33,8 +33,8 @@ function writerV1201SettingsWriting(plugin,panel){
  writerV1201SettingToggle(plugin,panel,'folderFocus','Foco na pasta do explorador','Explorer folder focus',
   ['Apenas visual; não bloqueia o acesso aos arquivos.','Visual only; does not restrict file access.']);
  new Setting(panel).setName(writerUi('Atalhos do ribbon do Basic','Basic ribbon shortcuts'))
-  .setDesc(writerUi('Abra as ações de leitura, formatação, foco e integrações do Basic.',
-   'Open Basic actions for reading, formatting, focus and integrations.'))
+  .setDesc(writerUi('Abra as ações de leitura, formatação e foco do Basic.',
+   'Open Basic actions for reading, formatting and focus.'))
   .addButton(b=>b.setButtonText(writerUi('Abrir menu','Open menu'))
    .onClick(()=>writerV1201QuickMenu(plugin)));
 }
@@ -42,6 +42,7 @@ function writerV1201SettingsImages(plugin,panel){
  panel.createEl('h3',{text:writerUi('Imagens e anotações','Images and annotations')});
  writerV1201SettingToggle(plugin,panel,'imageTools','Visualizador e tamanhos de imagens','Image viewer and resizing',
   ['Inclui visualização ampliada e normalização confirmada de largura.','Includes zoom preview and confirmed width normalization.']);
+ if(typeof writerVisualKitSettings==='function')writerVisualKitSettings(plugin,panel);
  if(typeof writerV12AnnotationSettings==='function')writerV12AnnotationSettings(plugin,panel);
  new Setting(panel).setName(writerUi('Anotar imagem local','Annotate local image'))
   .setDesc(writerUi('Salva um novo PNG e preserva o arquivo original.','Saves a new PNG, keeping the original file.'))
@@ -112,9 +113,9 @@ function writerV1201SettingsConnections(plugin,panel){
    writerUi('Plugin externo instalado e ativo.','External plugin installed and active.'):
    writerUi('Exige instalar e ativar o plugin original.','Requires installing and enabling the original plugin.'));
  }
- new Setting(panel).setName(writerUi('Central de integrações','Integration center'))
+ new Setting(panel).setName(writerUi('Sincronização manual','Manual synchronization'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open'))
-   .onClick(()=>writerV12OpenIntegrationHub(plugin)));
+   .onClick(()=>writerV12OpenIntegrationHub(plugin,'sync')));
  new Setting(panel).setName(writerUi('Inspecionar conflitos','Inspect conflicts'))
   .addButton(b=>b.setButtonText(writerUi('Inspecionar','Inspect'))
    .onClick(()=>writerV12ConflictViewer(plugin)));

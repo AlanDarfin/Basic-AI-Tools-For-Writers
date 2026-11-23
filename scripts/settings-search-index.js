@@ -21,6 +21,7 @@ const routes=[
  ['v9Explorer','v9/explorer-flex','writerV91FlexSettings'],
  ['v9Explorer','v9/explorer-favorites-preview','writerV92ExplorerSettings'],
  ['v9Pretty','v9/pretty-properties','writerV9215PrettySettings'],
+ ['images','v13/visual-kit','writerVisualKitSettings'],
  ['v9Spaces','v9/smart-spaces','writerV9SpacesSettings'],
  ['v9Spaces','v10/space-history','writerV101SpaceHistorySettings'],
  ['v9Calendar','v9/calendar-studio','writerV9CalendarSettings'],

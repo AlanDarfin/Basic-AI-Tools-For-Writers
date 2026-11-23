@@ -109,7 +109,6 @@ Quando outro plugin está instalado e ativo, o Basic oferece o suporte abaixo. E
 | **Ultimate Toolkit** | Organização dos controles flutuantes no mobile, prioridade de ícones do explorador e provedor de voz opcional, escolhido explicitamente, com o player do Toolkit. A voz online exige permissão separada. |
 | **Snailkit** | Organização da barra lateral móvel, popups e controles de tarefas; aba de escrita do Basic pela API pública de tarefas; prévias e ações nativas quando disponíveis. As tarefas do Basic também funcionam sozinhas. |
 | **LanguageTool** | Uso do editor correto, algumas preferências nativas, ações das sugestões e ajuste dos avisos em telas estreitas. O corretor integrado do Basic continua independente. |
-| **Visual Kit** | Anotação de imagens, ações de imagem/área de transferência e painéis HTML nativos, preservando configurações e índice. Exclusivo do computador. |
 | **dropit** | Comandos nativos explícitos de receber/enviar e processamento no computador. Pareamento e regras continuam no dropit. |
 | **Syncthing Integration** | Janelas nativas de conflitos, diferenças e configuração. Esse plugin não é um motor de sincronização. |
 | **Syncthing Manager** | Painel nativo, estado já disponível e ações explícitas de varredura/diagnóstico. Configuração do servidor e agendas permanecem no plugin. |
@@ -119,6 +118,11 @@ Quando outro plugin está instalado e ativo, o Basic oferece o suporte abaixo. E
 Não há uma página dedicada de **Integrações** nas configurações. A configuração completa de cada plugin continua nele. No Basic, o provedor de voz fica em **Leitura em voz alta**, a prioridade de ícones em **Explorador de arquivos** e a organização dos controles em **Arquivos e ferramentas**. IDs de comandos e preferências salvas são preservados. Comandos antigos de painéis continuam disponíveis para instalações existentes.
 
 Consulte o [guia de suporte aos plugins](guides/companion-compatibility.pt-BR.md) para comportamento, uso de dados e limites de plataforma. Quando não há espaço seguro, controles secundários ficam temporariamente ocultos e retornam ao fechar a obstrução; isso não altera notas nem configurações dos plugins externos.
+
+
+### Visual Kit integrado (desktop)
+
+Use a paleta de comandos, o menu da imagem ou **Aparência e painéis → Imagens e anotações**. O Basic inclui editor de anotações com exportação PNG, colagem de várias imagens e texto rico, normalização de tamanhos, detecção de duplicatas, cópia formatada e notas HTML em modo visual, código e prévia com modelos. Não é necessário instalar o Visual Kit à parte. No celular continua disponível a anotação rápida do Basic. Veja o [guia do Visual Kit](guides/visual-kit.pt-BR.md).
 
 ## Ferramentas Básicas · tradução e assistente
 

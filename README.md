@@ -109,7 +109,6 @@ When another plugin is installed and enabled, Basic provides the support below. 
 | **Ultimate Toolkit** | Mobile floating-control coordination, explorer icon priority and an optional, explicitly selected speech provider using Toolkit's own player. Online Toolkit speech requires separate permission. |
 | **Snailkit** | Coordinated mobile rail, popups and task controls; a Basic writing tab through its public Tasks API; native task previews/actions when available. Basic tasks also work on their own. |
 | **LanguageTool** | Correct editor targeting, selected native preferences, native suggestion actions and narrow-screen tooltip styling. Basic's built-in grammar client remains independent. |
-| **Visual Kit** | Native image annotation, clipboard/image actions and HTML panels, retaining its settings/index persistence. Desktop only. |
 | **dropit** | Explicit native receive/send commands and desktop processing actions. Pairing and transfer rules remain in dropit. |
 | **Syncthing Integration** | Its native conflict, diff and configuration dialogs. This companion is not a synchronization engine. |
 | **Syncthing Manager** | Its native panel, cached status and explicit scan/diagnostic actions. Server configuration and schedules remain native. |
@@ -119,6 +118,11 @@ When another plugin is installed and enabled, Basic provides the support below. 
 There is no dedicated **Integrations** settings page. Keep each plugin's full configuration in that plugin. Basic's speech provider stays under **Read aloud**, duplicate icon priority under **File explorer**, and floating-control layout under **Files & tools**. Existing command IDs and saved preferences are retained. Legacy panel commands remain available for existing setups.
 
 See the [plugin support guide](docs/guides/companion-compatibility.md) for behavior, data use and platform limits. Compatibility layout temporarily hides secondary controls when there is no safe room and restores them when the obstruction closes; it does not change notes or external plugin settings.
+
+
+### Built-in Visual Kit (desktop)
+
+Use the command palette, the image context menu, or **Appearance & panes → Images & annotations**. Basic includes image annotation and PNG export, multi-image and rich paste, size normalization, duplicate detection, rich copy, and HTML notes with visual/source/preview modes and templates. No separate Visual Kit installation is required. Basic’s quick image annotation remains available on mobile.
 
 ## Basic Tools · translation and assistant
 

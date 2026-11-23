@@ -453,68 +453,7 @@ function writerV12BasicTools(plugin,modal){
 }
 
 function writerV12OpenIntegrationHub(plugin,role){
- if(typeof writerCompanionOpen==='function')return writerCompanionOpen(plugin,role);
- if(!writerV12On(plugin,'integrations'))return;
- const cfg=writerV12Config(plugin),modal=new Modal(plugin.app);
- modal.titleEl.setText(role==='sync'?writerUi('Central de sincronização','Synchronization center'):
-  writerUi('Central de integrações','Integration center'));
- const intro=role==='sync'?
-  writerUi('Escolha apenas um mecanismo para executar comandos manuais. O Basic não inicia sincronização automática, nem desliga rotinas de outros plugins.',
-   'Select one provider for manual commands. Basic does not auto-sync or disable other plugins’ background jobs.'):
-  writerUi('Funções nativas do Basic continuam independentes. Plugins externos, quando instalados, aparecem como comandos adicionais sem copiar seus dados.',
-   'Native Basic features remain independent. Installed companion plugins expose additional commands without duplicating their data.');
- modal.contentEl.createEl('p',{text:intro});
- if(role!=='sync')writerV12BasicTools(plugin,modal);
- if(role==='sync'){
-  new Setting(modal.contentEl).setName(writerUi('Provedor selecionado','Selected provider'))
-   .addDropdown(d=>{
-    for(const id of WRITER_V12_SYNC){
-     const name=id==='none'?writerUi('Nenhum','None'):WRITER_V12_COMPANIONS.find(p=>p.id===id)?.name||id;
-     d.addOption(id,name);
-    }
-    d.setValue(cfg.syncProvider).onChange(async value=>{
-     cfg.syncProvider=WRITER_V12_SYNC.includes(value)?value:'none';
-     await plugin.saveSettings();modal.close();writerV12OpenIntegrationHub(plugin,'sync');
-    });
-   });
-  new Setting(modal.contentEl).setName(writerUi('Conflitos locais','Local conflicts'))
-   .addButton(b=>b.setButtonText(writerUi('Inspecionar','Inspect')).onClick(()=>writerV12ConflictViewer(plugin)));
- }
- for(const item of WRITER_V12_COMPANIONS.filter(i=>role!=='sync'||i.role==='sync')){
-  const installed=writerV12CompanionInstalled(plugin,item.id);
-  const section=modal.contentEl.createDiv({cls:'setting-item'});
-  const info=section.createDiv({cls:'setting-item-info'});
-  info.createEl('div',{cls:'setting-item-name',text:item.name});
-  info.createEl('div',{cls:'setting-item-description',text:installed?writerUi('Ativo no Obsidian','Active in Obsidian'):
-    writerUi('Não instalado ou desativado','Not installed or disabled')});
-  if(installed&&(role!=='sync'||cfg.syncProvider===item.id)){
-   const cmd=writerV12Commands(plugin,item.id)
-    .filter(c=>!/(?:delete|remove|discard|reset|force-push|drop)/i.test(c.id)).slice(0,12);
-   if(cmd.length){
-    const actions=modal.contentEl.createDiv();
-    for(const command of cmd){
-     const button=actions.createEl('button',{text:command.name,attr:{type:'button',style:'margin:3px;'}});
-     button.addEventListener('click',()=>{
-      if(role==='sync'&&plugin._writerV12SyncRunning)return;
-      // Dispatch is explicit; commands and configuration remain owned by the companion.
-      try{
-       if(role==='sync')plugin._writerV12SyncRunning=true;
-       const maybe=plugin.app.commands.executeCommandById(command.id);
-       if(maybe&&typeof maybe.finally==='function')
-        maybe.finally(()=>{plugin._writerV12SyncRunning=false;});
-       else plugin._writerV12SyncRunning=false;
-      }catch(error){
-       plugin._writerV12SyncRunning=false;new Notice(String(error.message||error));
-      }
-     });
-    }
-   }
-  }
- }
- if(role==='sync')modal.contentEl.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Atenção: Git, FIT e Syncthing podem sobrescrever mudanças entre dispositivos. Faça backup e desative agendas concorrentes nos plugins instalados.',
-  'Caution: Git, FIT and Syncthing can conflict across devices. Back up your vault and disable concurrent jobs in installed plugins.')});
- modal.open();
+ if(role==='sync'&&typeof writerCompanionOpen==='function')return writerCompanionOpen(plugin,'sync');
 }
 function writerV12Templates(plugin,editor){
  if(!editor)return;
@@ -539,7 +478,6 @@ function writerV12Register(plugin){
  if(typeof writerCompanionRegister==='function')writerCompanionRegister(plugin);
  writerV12Config(plugin);
  const command=(id,pt,en,callback)=>plugin.addCommand({id,name:writerUi(pt,en),callback});
- command('v12-integrations','Integrações: abrir central','Integrations: open center',()=>writerV12OpenIntegrationHub(plugin));
  command('v12-sync-center','Sincronização: abrir central','Sync: open center',()=>writerV12OpenIntegrationHub(plugin,'sync'));
  command('v12-tasks','Tarefas: localizar em notas','Tasks: find in notes',()=>void writerV12OpenTasks(plugin));
  command('v12-capture','Captura: guardar na Inbox local','Capture: save to local inbox',()=>writerV12Capture(plugin,false));
@@ -574,8 +512,6 @@ function writerV12Settings(plugin,panel){
  new Setting(panel).setName(writerUi('Limite de notas na busca por tarefas','Task scan note limit'))
   .addSlider(s=>s.setLimits(25,1000,25).setValue(cfg.maxTaskFiles).setDynamicTooltip()
    .onChange(async val=>{cfg.maxTaskFiles=val;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Central de integrações','Integration center'))
-  .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin)));
  new Setting(panel).setName(writerUi('Central de sincronização','Synchronization center'))
   .addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerV12OpenIntegrationHub(plugin,'sync')));
 }

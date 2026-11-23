@@ -70,7 +70,8 @@ test('registration never starts a sync transport or accesses the network',()=>{
  assert.ok(registered.includes('v12-format-palette'));
  assert.ok(registered.includes('v12-capture'));
  assert.ok(registered.includes('v12-tasks'));
- assert.equal(registered.length,10);
+ assert.ok(!registered.includes('v12-integrations'));
+ assert.equal(registered.length,9);
  assert.deepEqual(events.map(ref=>ref.event).sort(),['file-menu','layout-change']);
  assert.equal(plugin.settings.v12Toolkit.syncProvider,'none');
 });

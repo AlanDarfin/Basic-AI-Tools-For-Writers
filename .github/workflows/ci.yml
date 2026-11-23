@@ -54,3 +54,9 @@ jobs:
           zip -j plugin-check.zip main.js manifest.json styles.css
           unzip -t plugin-check.zip
           test "$(unzip -Z1 plugin-check.zip | wc -l)" -eq 3
+      - name: Attach installable pull request build
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic-plugin-preview
+          path: plugin-check.zip

@@ -703,6 +703,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "images",
+  "titlePt": "Ferramentas visuais do Basic",
+  "titleEn": "Basic visual tools",
+  "descriptionPt": "Editor HTML, anotações, colagem de imagens e cópia rica. Recarregue o Basic depois de alterar esta opção.",
+  "descriptionEn": "HTML editor, annotations, image paste and rich copy. Reload Basic after changing this setting."
+ },
+ {
+  "id": "images",
   "titlePt": "Fonte padrão",
   "titleEn": "Default provider"
  },
@@ -1458,8 +1465,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "quickActions",
   "titlePt": "Atalhos do ribbon do Basic",
   "titleEn": "Basic ribbon shortcuts",
-  "descriptionPt": "Abra as ações de leitura, formatação, foco e integrações do Basic.",
-  "descriptionEn": "Open Basic actions for reading, formatting, focus and integrations."
+  "descriptionPt": "Abra as ações de leitura, formatação e foco do Basic.",
+  "descriptionEn": "Open Basic actions for reading, formatting and focus."
  },
  {
   "id": "quickActions",

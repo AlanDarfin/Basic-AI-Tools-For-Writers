@@ -20,3 +20,5 @@ Thanks for helping improve this writing workspace. / Obrigado por contribuir com
 Describe the problem, include reproducible steps, add screenshots for UI changes, and ensure automated checks pass. Preserve user settings and manuscripts. Avoid unrelated refactors.
 
 **Português:** use Node 22, `npm ci`, altere os fontes, regenere `main.js` com `npm run build`, execute os testes e confira Android quando aplicável. Consulte [as notas de revisão](docs/maintenance/COMMUNITY_REVIEW.md).
+
+The build installs the pinned Visual Kit build dependencies from the separate lockfile in `vendor/visual-kit/` and bundles them with the three plugin assets. No extra files are needed at runtime.

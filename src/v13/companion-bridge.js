@@ -20,7 +20,6 @@ function writerCompanionConfig(plugin){
  if(!['right','left','tab'].includes(cfg.panelPlacement))cfg.panelPlacement='right';
  if(!['companion','basic','both'].includes(cfg.explorerIcons))cfg.explorerIcons='companion';
  if(typeof cfg.mobileLayout!=='boolean')cfg.mobileLayout=true;
- if(typeof cfg.showLaunchers!=='boolean')cfg.showLaunchers=true;
  if(typeof cfg.allowToolkitOnline!=='boolean')cfg.allowToolkitOnline=false;
  return cfg;
 }
@@ -185,13 +184,11 @@ function writerCompanionButton(root,text,callback,disabled=false){
  const button=root.createEl('button',{text,attr:{type:'button'}});button.disabled=disabled;
  button.addEventListener('click',()=>{if(!button.disabled)Promise.resolve(callback()).catch(()=>{});});return button;
 }
-function writerCompanionRender(plugin,root,role,context){
+function writerCompanionRender(plugin,root,context){
  root.empty();root.addClass('writer-companion-center');
- root.createEl('h2',{text:writerUi('Plugins conectados','Connected plugins')});
- root.createEl('p',{cls:'setting-item-description',text:writerUi('Abra os painéis originais e configure cada conexão. O Basic usa somente os recursos disponíveis na versão ativa.','Open native panels and configure each connection. Basic uses only capabilities available in the running version.')});
  if(!writerV12On(plugin,'integrations')){root.createEl('p',{text:writerUi('As integrações estão desligadas nas configurações do Basic.','Integrations are disabled in Basic settings.')});return;}
- if(role==='sync')writerCompanionSyncSelector(plugin,root);
- for(const item of writerCompanionCatalog().filter(item=>role!=='sync'||item.role==='sync')){
+ writerCompanionSyncSelector(plugin,root);
+ for(const item of writerCompanionCatalog().filter(item=>item.role==='sync')){
   const card=root.createDiv({cls:'writer-companion-card'});card.dataset.companion=item.id;
   card.createEl('h3',{text:item.name});card.createEl('p',{cls:'writer-companion-status',text:writerCompanionStatus(plugin,item),attr:{role:'status'}});
   const description=item.description?writerUi(item.description.pt,item.description.en):writerUi(item.descriptionPt||'',item.descriptionEn||'');
@@ -214,18 +211,10 @@ function writerCompanionRender(plugin,root,role,context){
    const available=writerCompanionViewAvailable(plugin,type)&&writerCompanionEnabled(plugin,item.id)&&(!view?.requiresSetting||plugin.app.plugins.plugins[item.id]?.settings?.[view.requiresSetting]===true);
    if(writerCompanionViewAvailable(plugin,type))writerCompanionButton(actions,(view?writerUi(view.pt,view.en):writerUi('Abrir painel','Open panel')+' · '+item.name)+' · '+writerUi({left:'à esquerda',right:'à direita',tab:'em aba'}[writerCompanionConfig(plugin).panelPlacement],{left:'left',right:'right',tab:'tab'}[writerCompanionConfig(plugin).panelPlacement]),()=>writerCompanionOpenPanel(plugin,item.id,type),!available);
   }
-  if(item.id==='snailkit'&&writerCompanionEnabled(plugin,item.id)){
-   const tasks=writerCompanionSnailkitTasks(plugin).slice(0,8);
-   if(tasks.length){const list=card.createEl('ul',{cls:'writer-companion-tasks'});
-    for(const task of tasks){const row=list.createEl('li');const check=row.createEl('input',{attr:{type:'checkbox','aria-label':writerUi('Concluir tarefa','Complete task')}});check.checked=task.done;
-     row.createSpan({text:task.plainTitle||task.text||task.title||task.raw});
-     check.addEventListener('change',async()=>{check.disabled=true;const result=await writerCompanionSnailkitSetDone(plugin,task,check.checked);if(!result){check.checked=task.done;new Notice(writerUi('A tarefa mudou. Atualize o painel.','The task changed. Refresh the panel.'));}check.disabled=false;});
-    }
-   }
-  }
+
  }
  const footer=root.createDiv({cls:'writer-companion-actions'});
- writerCompanionButton(footer,writerUi('Atualizar recursos','Refresh capabilities'),()=>writerCompanionRender(plugin,root,role,context));
+ writerCompanionButton(footer,writerUi('Atualizar recursos','Refresh capabilities'),()=>writerCompanionRender(plugin,root,context));
 }
 function writerCompanionSyncSelector(plugin,panel){
  new Setting(panel).setName(writerUi('Provedor manual de sincronização','Manual synchronization provider'))
@@ -238,12 +227,11 @@ function writerCompanionSettings(plugin,panel){
  panel.createEl('h3',{text:writerUi('Compatibilidade entre plugins','Plugin compatibility')});
  new Setting(panel).setName(writerUi('Ativar integrações','Enable integrations')).setDesc(writerUi('Desligar remove as conexões do Basic. Cada plugin continua com seus próprios módulos.','Turning this off removes Basic connections. Each plugin retains its own modules.'))
   .addToggle(t=>t.setValue(writerV12On(plugin,'integrations')).onChange(async value=>{writerV12Config(plugin).integrations=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}));
- new Setting(panel).setName(writerUi('Abrir central de plugins','Open plugin center')).addButton(b=>b.setButtonText(writerUi('Abrir','Open')).onClick(()=>writerCompanionOpen(plugin)));
  new Setting(panel).setName(writerUi('Local dos painéis','Panel placement')).addDropdown(d=>{
   for(const [key,pt,en] of [['right','Lateral direita','Right sidebar'],['left','Lateral esquerda','Left sidebar'],['tab','Nova aba','New tab']])d.addOption(key,writerUi(pt,en));
   d.setValue(cfg.panelPlacement).onChange(async value=>{if(['right','left','tab'].includes(value)){cfg.panelPlacement=value;await plugin.saveSettings();}});
  });
- for(const [key,pt,en] of [['showLaunchers','Atalho nos painéis do Basic','Shortcut in Basic panels'],['mobileLayout','Organizar botões no mobile','Arrange mobile buttons']])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}));
+ for(const [key,pt,en] of [['mobileLayout','Organizar botões no mobile','Arrange mobile buttons']])new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}));
  new Setting(panel).setName(writerUi('Ícones do explorador quando há duplicação','Explorer icons when both plugins add one')).addDropdown(d=>d.addOption('companion','Ultimate Toolkit').addOption('basic',writerUi('Basic personalizado','Custom Basic')).addOption('both',writerUi('Ambos','Both')).setValue(cfg.explorerIcons).onChange(async value=>{if(['companion','basic','both'].includes(value)){cfg.explorerIcons=value;await plugin.saveSettings();plugin._writerCompanionManager?.refresh();}}));
  writerCompanionSyncSelector(plugin,panel);
  for(const item of writerCompanionCatalog()){
@@ -260,33 +248,28 @@ function writerCompanionSettings(plugin,panel){
  new Setting(panel).setName(writerUi('Conflitos locais','Local conflicts')).addButton(b=>b.setButtonText(writerUi('Inspecionar','Inspect')).onClick(()=>writerV12ConflictViewer(plugin)));
 }
 async function writerCompanionOpen(plugin,role){
- if(!writerV12On(plugin,'integrations'))return;
- const context=writerCompanionEditorContext(plugin),ws=plugin.app.workspace;
- let leaf=ws.getLeavesOfType(WRITER_COMPANION_VIEW)?.[0];
- if(leaf){
-  try{await leaf.loadIfDeferred?.();}catch(_){return false;}
-  if(typeof leaf.view?.render!=='function'){
-   if((ws.getLeavesOfType(WRITER_COMPANION_VIEW)||[]).includes(leaf))leaf.detach?.();
-   leaf=null;
-  }
- }
- if(!leaf){const place=writerCompanionConfig(plugin).panelPlacement;leaf=place==='tab'?ws.getLeaf('tab'):place==='left'?ws.getLeftLeaf(false):ws.getRightLeaf(false);if(!leaf)return;await leaf.setViewState({type:WRITER_COMPANION_VIEW,active:true});}
- await leaf.loadIfDeferred?.();
- if(!writerV12On(plugin,'integrations')||typeof leaf.view?.render!=='function')return false;
- leaf.view.role=role;leaf.view.editorContext=context;leaf.view.render();await ws.revealLeaf(leaf);return true;
+ if(role!=='sync'||!writerV12On(plugin,'integrations'))return false;
+ if(plugin._writerCompanionSyncModal)return true;
+ const context=writerCompanionEditorContext(plugin),modal=new Modal(plugin.app);
+ modal.titleEl.setText(writerUi('Sincronização manual','Manual synchronization'));
+ modal.onOpen=()=>writerCompanionRender(plugin,modal.contentEl,context);
+ modal.onClose=()=>{
+  modal.contentEl.empty();
+  if(plugin._writerCompanionSyncModal===modal)plugin._writerCompanionSyncModal=null;
+ };
+ modal.refresh=()=>writerCompanionRender(plugin,modal.contentEl,context);
+ plugin._writerCompanionSyncModal=modal;modal.open();return true;
+}
+function writerCompanionDropLegacyLeaves(plugin){
+ const ws=plugin.app.workspace;
+ const leaves=new Set(ws.getLeavesOfType(WRITER_COMPANION_VIEW)||[]);
+ ws.iterateAllLeaves?.(leaf=>{if(leaf.getViewState?.()?.type===WRITER_COMPANION_VIEW)leaves.add(leaf);});
+ for(const leaf of leaves)leaf.detach?.();
 }
 function writerCompanionRegister(plugin){
  if(plugin._writerCompanionManager)return;
  writerCompanionConfig(plugin);
  if(typeof writerLanguageToolRegister==='function')writerLanguageToolRegister(plugin);
- class CompanionView extends ItemView{
-  getViewType(){return WRITER_COMPANION_VIEW;}
-  getDisplayText(){return writerUi('Plugins conectados','Connected plugins');}
-  getIcon(){return 'plug';}
-  async onOpen(){this.render();}
-  render(){writerCompanionRender(plugin,this.contentEl,this.role,this.editorContext);}
- }
- plugin.registerView(WRITER_COMPANION_VIEW,leaf=>new CompanionView(leaf));
  const snail=typeof writerCompanionSnailkitRegister==='function'?writerCompanionSnailkitRegister(plugin,()=>writerCompanionEnabled(plugin,'snailkit')):null;
  const layout=typeof writerCompanionLayoutRegister==='function'?writerCompanionLayoutRegister(plugin):null;
  let stopped=false,fingerprint='';
@@ -294,35 +277,23 @@ function writerCompanionRegister(plugin){
   if(stopped)return;
   snail?.refresh();layout?.refresh();
   if(plugin._writerCompanionSpeechHandle&&(typeof writerCompanionToolkitAllowed!=='function'||!writerCompanionToolkitAllowed(plugin)||plugin.app.plugins.plugins['ahmed-toolkit']?.settings?.enableTTS!==true))writerCompanionSpeechControl(plugin,'stop');
-  const next=JSON.stringify([writerV12On(plugin,'integrations'),writerCompanionConfig(plugin),writerCompanionCatalog().map(item=>[item.id,writerCompanionStatus(plugin,item),item.actions.map(action=>writerCompanionActionAvailable(plugin,item,action))])]);
-  const doc=plugin.app.workspace.containerEl?.ownerDocument;
-  for(const header of doc?.querySelectorAll('.writer-sidebar-header')||[]){
-   const old=header.querySelector('.writer-companion-launcher');
-   const show=writerCompanionConfig(plugin).showLaunchers&&writerV12On(plugin,'integrations')&&writerCompanionCatalog().some(item=>writerCompanionEnabled(plugin,item.id));
-   if(!show)old?.remove();
-   if(show&&!old){
-    const label=writerUi('Plugins','Plugins');
-    const button=header.createEl('button',{cls:'writer-companion-launcher writer-sidebar-icon-action',
-     attr:{type:'button',title:label,'aria-label':label}});
-    writerSidebarButtonIcon(button,'plug',label);
-    button.addEventListener('click',()=>{void writerCompanionOpen(plugin).catch(()=>{});});
-   }
-  }
-  if(next===fingerprint)return;fingerprint=next;
-  for(const leaf of plugin.app.workspace.getLeavesOfType(WRITER_COMPANION_VIEW)||[])leaf.view.render?.();
+  const modal=plugin._writerCompanionSyncModal;
+  if(!modal){fingerprint='';return;}
+  if(!writerV12On(plugin,'integrations')){modal.close();return;}
+  const next=JSON.stringify([writerV12Config(plugin).syncProvider,writerCompanionConfig(plugin),writerCompanionCatalog().filter(item=>item.role==='sync').map(item=>[item.id,writerCompanionStatus(plugin,item),item.actions.map(action=>writerCompanionActionAvailable(plugin,item,action))])]);
+  if(next===fingerprint)return;fingerprint=next;modal.refresh();
  };
  const stop=()=>{if(stopped)return;stopped=true;snail?.stop();layout?.stop();writerCompanionSpeechControl(plugin,'stop');
-  const doc=plugin.app.workspace.containerEl?.ownerDocument;for(const el of doc?.querySelectorAll('.writer-companion-launcher')||[])el.remove();
-  for(const leaf of plugin.app.workspace.getLeavesOfType(WRITER_COMPANION_VIEW)||[])leaf.detach?.();
+  plugin._writerCompanionSyncModal?.close();
  };
  plugin._writerCompanionManager={refresh,stop};plugin.register(stop);
  if(typeof plugin.app.workspace.on==='function'){
   const ref=plugin.app.workspace.on('active-leaf-change',leaf=>{
    if(!leaf?.view?.editor||leaf.view.file?.extension!=='md')return;
-   const context={leaf,editor:leaf.view.editor,path:leaf.view.file.path};plugin._writerCompanionEditorContext=context;
-   for(const panel of plugin.app.workspace.getLeavesOfType(WRITER_COMPANION_VIEW)||[]){panel.view.editorContext=context;panel.view.render?.();}
+   plugin._writerCompanionEditorContext={leaf,editor:leaf.view.editor,path:leaf.view.file.path};
   });
   if(typeof plugin.registerEvent==='function')plugin.registerEvent(ref);else plugin.register(()=>plugin.app.workspace.offref?.(ref));
  }
- plugin.registerInterval(setInterval(refresh,2000));plugin.app.workspace.onLayoutReady(refresh);
+ plugin.registerInterval(setInterval(refresh,2000));
+ plugin.app.workspace.onLayoutReady(()=>{if(!stopped){writerCompanionDropLegacyLeaves(plugin);refresh();}});
 }

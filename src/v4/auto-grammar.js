@@ -29,6 +29,65 @@ function writerGrammarCancelled(){
  const error=new Error(writerUi('Verificação cancelada.','Grammar check cancelled.'));
  error.name='WriterGrammarCancelled';error.code='WRITER_GRAMMAR_CANCELLED';return error;
 }
+
+/* Context-aware, optional Portuguese dialogue hints. Never auto-change prose. */
+const WRITER_LITERARY_DICENDI=/^(?:disse|respondeu|perguntou|indagou|afirmou|negou|gritou|murmurou|sussurrou|retrucou|exclamou|observou|comentou|argumentou|confessou|ironizou|bradou|rosnou|reclamou|advertiu|acrescentou|balbuciou|repetiu|insistiu|concordou|protestou|interrompeu|explicou|declarou|resmungou)$/iu;
+const WRITER_LITERARY_ELISIONS={ma:['mais','mas'],ta:['está'],to:['estou'],vamo:['vamos'],pera:['espera'],ce:['você'],num:['não']};
+function writerLiteraryReviewMatches(source,matches,settings={}){
+ const text=String(source||''),remote=Array.isArray(matches)?matches:[];
+ if(settings.reviewLiteraryMode===false||!/^pt(?:-|$)/i.test(settings.reviewLanguage||'pt-BR'))return remote;
+ const lower=value=>value.toLocaleLowerCase('pt-BR');
+ const speechTag=(word,before)=>WRITER_LITERARY_DICENDI.test(lower(word))&&
+  /^\s*—\s*\S/u.test(before)&&/\s+—\s*$/u.test(before);
+ // Suppress only demonstrably misplaced sentence-capitalization suggestions.
+ const valid=remote.filter(match=>{
+  const word=text.slice(match.offset,match.offset+match.length),lineStart=text.lastIndexOf('\n',match.offset-1)+1;
+  if(!word||word!==lower(word)||!speechTag(word,text.slice(lineStart,match.offset)))return true;
+  const rule=[match.rule?.id,match.rule?.description,match.message].join(' ');
+  if(!/upper|capital|sentence.start|maiúscul|frase inicia|casing/i.test(rule))return true;
+  return !(match.replacements||[]).some(r=>typeof r?.value==='string'&&lower(r.value)===word&&r.value!==word);
+ });
+ const local=[];
+ const add=(offset,word,id,title,message,replacements,category='STYLE')=>{
+  if(local.length>=100)return;
+  local.push({offset,length:word.length,message,shortMessage:title,
+   replacements:[...new Set(replacements)].map(value=>({value})),
+   rule:{id,description:title,category:{id:category,name:'Escrita literária'}}});
+ };
+ // A trailing apostrophe can be intentional elision; context decides its expansion.
+ const contractions=/\b(ma|ta|to|vamo|pera|ce|num)['’](?=$|[\s.,!?;:)\]}])/giu;
+ let match;
+ while((match=contractions.exec(text))!==null){
+  const options=WRITER_LITERARY_ELISIONS[lower(match[1])];
+  if(!options)continue;
+  const caps=match[1]===match[1].toLocaleUpperCase('pt-BR');
+  const titlecase=/^\p{Lu}/u.test(match[1]);
+  const variants=options.map(v=>caps?v.toLocaleUpperCase('pt-BR'):titlecase?v[0].toLocaleUpperCase('pt-BR')+v.slice(1):v);
+  add(match.index,match[0],'BASIC_LITERARY_APOSTROPHE',
+   'Possível contração com apóstrofo',
+   'A forma abreviada pode ser intencional na fala. As alternativas dependem do contexto; nenhuma será aplicada automaticamente.',
+   variants);
+ }
+ // Dialogue attribution after a closing em dash normally starts in lower case.
+ const lines=/[^\r\n]+/g,verbs=/\s+—\s+(disse|respondeu|perguntou|indagou|afirmou|negou|gritou|murmurou|sussurrou|retrucou|exclamou|observou|comentou|argumentou|confessou|ironizou|bradou|rosnou|reclamou|advertiu|acrescentou|balbuciou|repetiu|insistiu|concordou|protestou|interrompeu|explicou|declarou|resmungou)\b/giu;
+ let line;
+ while((line=lines.exec(text))!==null){
+  if(!/^\s*—\s*\S/u.test(line[0]))continue;
+  verbs.lastIndex=0;let found;
+  while((found=verbs.exec(line[0]))!==null){
+   const word=found[1],index=found.index+found[0].lastIndexOf(word),before=line[0].slice(0,index);
+   if(word===lower(word)||word===word.toLocaleUpperCase('pt-BR')||!speechTag(word,before))continue;
+   add(line.index+index,word,'BASIC_LITERARY_DICENDI',
+    'Verbo dicendi após travessão',
+    'Após uma fala e seu travessão de fechamento, o verbo que atribui a fala costuma começar com letra minúscula, inclusive depois de ? ou !.',
+    [lower(word)],'GRAMMAR');
+  }
+ }
+ // Never duplicate an overlapping remote spelling finding.
+ return [...valid.filter(m=>!local.some(x=>m.offset<x.offset+x.length&&x.offset<m.offset+m.length)),...local]
+  .sort((a,b)=>a.offset-b.offset||a.length-b.length);
+}
+
 async function writerGrammarRequest(plugin,text){
  const settings=plugin.settings,epoch=plugin._writerGrammarRequestEpoch||0;
  const key=writerGrammarConnectionKey(settings);
@@ -67,10 +126,11 @@ async function writerGrammarRequest(plugin,text){
  let matches;
  try{matches=response.json?.matches;}catch(_){}
  if(!Array.isArray(matches))throw Error(writerUi('Resposta inválida do corretor. Confira o endpoint configurado.','Invalid checker response. Check the configured endpoint.'));
- return matches.filter(match=>Number.isInteger(match?.offset)&&Number.isInteger(match.length)&&
+ const valid=matches.filter(match=>Number.isInteger(match?.offset)&&Number.isInteger(match.length)&&
   match.offset>=0&&match.length>0&&match.offset+match.length<=source.length)
   .map(match=>({...match,replacements:Array.isArray(match.replacements)?
    match.replacements.filter(replacement=>typeof replacement?.value==='string'):[]}));
+ return writerLiteraryReviewMatches(source,valid,settings);
 }
 // Long manuscripts exceed LanguageTool's single-request limit. Check a bounded
 // window around the cursor and translate its offsets back into full-note offsets.

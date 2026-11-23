@@ -6269,8 +6269,13 @@ async function writerPandocExportRun(plugin,format){
  const source=path.join(folder,'input.md'),dest=path.join(folder,'result.'+WRITER_PANDOC_EXPORT_FORMATS[format]);
  const parent=path.dirname(path.resolve(root,file.path));
  try{
-  await fs.promises.writeFile(source,view.editor.getValue(),'utf8');
+  await fs.promises.writeFile(source,writerPandocExportPrepare(view.editor.getValue()),'utf8');
   const args=writerPandocExportArgs(format,dest,parent+path.delimiter+root);
+  if(format==='epub'){
+   const stylesheet=path.join(folder,'basic-export.css');
+   await fs.promises.writeFile(stylesheet,WRITER_PANDOC_EXPORT_CSS,'utf8');
+   args.push('--css',stylesheet);
+  }
   await new Promise((resolve,reject)=>{
    const child=cp.spawn(cfg.pandocPath,[...args,source],{cwd:parent,shell:false,windowsHide:true,stdio:['ignore','ignore','pipe']});
    let stderr='',finished=false;
@@ -6284,7 +6289,8 @@ async function writerPandocExportRun(plugin,format){
    child.on('error',finish);
    child.on('close',code=>finish(code===0?null:new Error('pandoc exit '+code)));
   });
-  const bytes=await fs.promises.readFile(dest);
+  let bytes=await fs.promises.readFile(dest);
+  if(format==='html')bytes=Buffer.from(writerPandocExportEmbedCSS(bytes.toString('utf8')),'utf8');
   if(bytes.length===0)throw Error(writerUi('Pandoc gerou um arquivo vazio.','Pandoc generated an empty file.'));
   const folderInVault=writerPandocExportFolder(cfg.folder);
   let segments='';
@@ -6341,6 +6347,9 @@ class WriterPandocExporter{
  renderSettings(panel){
   panel.createEl('h3',{text:writerUi('Exportação Pandoc (desktop)','Pandoc export (desktop)')});
   panel.createEl('p',{text:writerUi('Requer Pandoc instalado. A exportação cria uma cópia em seu cofre. Não usa um shell nem filtros Lua personalizados. O Pandoc ainda é um processo externo e pode acessar recursos locais ou remotos referenciados na nota. PDF pode exigir um mecanismo LaTeX instalado.','Requires a local Pandoc executable. Exports into a vault folder without using a shell or custom Lua filters. Pandoc is still an external process and may access local or remote resources referenced by the note. PDF may require an additional LaTeX engine.'),cls:'dictionary-muted'});
+  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
+   'Atributos de parágrafos, sublinhado, spoiler e cores do Basic são convertidos sem alterar as notas. HTML e EPUB recebem CSS próprio. Em DOCX, ODT, PDF e LaTeX, a estrutura e o texto são mantidos, mas estilos de capitulares podem exigir modelos personalizados.',
+   'Basic paragraph attributes and extended marks are converted without editing notes. HTML and EPUB include export CSS. DOCX, ODT, PDF and LaTeX retain the content, but decorative drop-cap styling can require a custom template.')});
   new Setting(panel).setName(writerUi('Ativar exportação','Enable export')).addToggle(t=>t.setValue(this.cfg.enabled).onChange(async value=>{this.cfg.enabled=value;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Formato padrão','Default format')).addDropdown(d=>{
    for(const key of Object.keys(WRITER_PANDOC_EXPORT_FORMATS))d.addOption(key,key.toUpperCase());
@@ -6349,6 +6358,100 @@ class WriterPandocExporter{
   new Setting(panel).setName(writerUi('Executável Pandoc','Pandoc executable')).addText(t=>t.setValue(this.cfg.pandocPath).onChange(async value=>{this.cfg.pandocPath=value.trim().slice(0,512)||'pandoc';await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi('Pasta de exportações','Export folder')).addText(t=>t.setValue(this.cfg.folder).onChange(async value=>{this.cfg.folder=writerPandocExportFolder(value);await this.plugin.saveSettings();}));
  }
+}
+
+// v3 module: src/v5/pandoc-format-compat.js
+/* Export Basic paragraph attributes and text marks to Pandoc-native Markdown.
+ * Original vault notes and fenced/inline code are never modified. */
+const WRITER_PANDOC_EXPORT_CSS=".basic-export-paragraph.basic-export-left>p{text-align:left}\n.basic-export-paragraph.basic-export-center>p{text-align:center}\n.basic-export-paragraph.basic-export-right>p{text-align:right}\n.basic-export-paragraph.basic-export-justify>p{text-align:justify;hyphens:auto}\n.basic-export-paragraph.basic-export-dropcap>p{text-indent:0}\n.basic-export-paragraph.basic-export-dropcap>p::first-letter{float:left;font-size:3.15em;line-height:.84;font-weight:700;margin:.08em .12em .02em 0}\n.basic-export-underline{text-decoration:underline}\n.basic-export-spoiler{border-bottom:1px dotted currentColor}\n.basic-export-highlight{background:#ffe49c}\n.basic-export-color-red{background:#ffa5a5}\n.basic-export-color-orange{background:#ffd0a4}\n.basic-export-color-yellow{background:#ffe49c}\n.basic-export-color-green{background:#ace4b3}\n.basic-export-color-blue{background:#b1d9ff}\n.basic-export-color-purple{background:#d9bafa}\n.basic-export-color-pink{background:#f4bfdf}\n.basic-export-color-accent{background:#e9d4ff}";
+function writerPandocExportInline(line){
+ const text=String(line||'');
+ if(typeof writerExtendedTokens!=='function')return text;
+ const changes=[];
+ for(const token of writerExtendedTokens(text)){
+  let attr=null;
+  if(token.kind==='underline')attr='.basic-export-underline';
+  else if(token.kind==='spoiler')attr='.basic-export-spoiler';
+  else if(token.kind==='highlight'){
+   const name=String(token.tag||'').toLowerCase();
+   attr=/^hex-[0-9a-f]{6}$/.test(name)?'style="background-color:#'+name.slice(4)+'"':
+    ['red','orange','yellow','green','blue','purple','pink','accent'].includes(name)?
+     '.basic-export-highlight .basic-export-color-'+name:'.basic-export-highlight';
+  }else if(token.kind==='span'){
+   const name=String(token.tag||'').trim();
+   attr=/^color-[0-9a-f]{6}$/i.test(name)?'style="color:#'+name.slice(6)+'"':
+    name.split(/\s+/).filter(x=>/^[a-zA-Z][\w-]{0,40}$/.test(x))
+     .map(x=>'.writer-v5-class-'+x).join(' ')||null;
+  }else continue;
+  if(!attr)continue; // ^sup^ and ~sub~ are handled natively by Pandoc.
+  const value=token.value.replace(/\\/g,'\\\\').replace(/\[/g,'\\[').replace(/\]/g,'\\]');
+  changes.push({from:token.from,to:token.to,text:'['+value+']{'+attr+'}'});
+ }
+ let output=text;
+ for(const change of changes.reverse())output=output.slice(0,change.from)+change.text+output.slice(change.to);
+ return output;
+}
+function writerPandocExportSuffix(line){
+ if(typeof writerV102ParagraphSuffix==='function')return writerV102ParagraphSuffix(line);
+ const raw=String(line||'');
+ const match=/(?:[ \t]+\{(?:dropcap|capitular|left|center|right|justify|l|c|r|j)\})+[ \t]*$/i.exec(raw);
+ if(!match||!raw.slice(0,match.index).trim())return null;
+ const tags=[...match[0].matchAll(/\{([^}]+)\}/g)].map(x=>x[1].toLowerCase());
+ const sides=tags.filter(x=>['left','center','right','justify','l','c','r','j'].includes(x));
+ if(sides.length>1)return null;
+ const side=sides[0];
+ return {base:raw.slice(0,match.index),from:match.index,
+  side:side?({l:'left',c:'center',r:'right',j:'justify'}[side]||side):null,
+  dropcap:tags.includes('dropcap')||tags.includes('capitular')};
+}
+function writerPandocExportPrepare(source){
+ const raw=String(source||''),eol=raw.includes('\r\n')?'\r\n':'\n';
+ const lines=raw.split(/\r?\n/),out=[],paragraph=[];
+ let fence=null,frontmatter=lines[0]?.trim()==='---';
+ const flush=()=>{
+  if(!paragraph.length)return;
+  const last=paragraph[paragraph.length-1],tag=writerPandocExportSuffix(last);
+  if(!tag){out.push(...paragraph.map(writerPandocExportInline));paragraph.length=0;return;}
+  const updated=paragraph.map((line,i)=>i===paragraph.length-1?line.slice(0,tag.from):line);
+  const attrs=['.basic-export-paragraph'];
+  if(tag.side)attrs.push('.basic-export-'+tag.side);
+  if(tag.dropcap)attrs.push('.basic-export-dropcap');
+  out.push('::: {'+attrs.join(' ')+'}',...updated.map(writerPandocExportInline),':::');
+  paragraph.length=0;
+ };
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i],trim=line.trim();
+  if(frontmatter){out.push(line);if(i>0&&trim==='---')frontmatter=false;continue;}
+  const match=/^\s{0,3}(\x60{3,}|~{3,})/.exec(line);
+  if(match){
+   flush();
+   if(!fence)fence=match[1][0];else if(fence===match[1][0])fence=null;
+   out.push(line);continue;
+  }
+  if(fence){out.push(line);continue;}
+  if(!trim){flush();out.push(line);continue;}
+  const header=/^(\s{0,3}#{1,6}\s+)(.*)$/.exec(line);
+  if(header){
+   flush();
+   const tag=writerPandocExportSuffix(header[2]);
+   if(tag?.side&&!tag.dropcap)
+    out.push(header[1]+writerPandocExportInline(header[2].slice(0,tag.from))+
+     ' {style="text-align:'+tag.side+'"}');
+   else out.push(writerPandocExportInline(line));
+   continue;
+  }
+  if(/^(?: {4}|\t)|^\s{0,3}(?:>\s|[-*+]\s|\d+[.)]\s|\||:::\s|(?:---|\*\*\*|___)\s*$)/.test(line)){
+   flush();out.push(line);continue;
+  }
+  paragraph.push(line);
+ }
+ flush();
+ return out.join(eol);
+}
+function writerPandocExportEmbedCSS(html){
+ const raw=String(html||'');
+ return /<\/head\s*>/i.test(raw)?raw.replace(/<\/head\s*>/i,
+  '<style id="basic-export-typography">\n'+WRITER_PANDOC_EXPORT_CSS+'\n</style>\n</head>'):raw;
 }
 
 // v3 module: src/v5/easy-typing.js
@@ -14811,6 +14914,7 @@ const WRITER_V9_FORMAT_ACTIONS=[
  ['align-center','align-center','Centralizar','Center'],
  ['align-right','align-right','Alinhar à direita','Align right'],
  ['justify','align-justify','Justificar','Justify'],
+ ['dropcap','type','Capitular','Drop cap'],
  ['text-color','palette','Cor do texto','Text color'],
  ['background-color','paint-bucket','Cor de destaque','Background color']
 ];
@@ -15015,6 +15119,10 @@ function writerV9Format(editor,action,options={}){
   if(typeof writerV102AlignApply!=='function')return false;
   writerV102AlignApply(editor,'j');break;
  }
+ case 'dropcap':{
+  if(typeof writerV102ToggleDropcap!=='function')return false;
+  writerV102ToggleDropcap(editor);break;
+ }
  default:return false;
  }
  editor.focus?.();
@@ -15068,7 +15176,7 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
   const existing=new Set((parent.items||[]).map(item=>writerV1044MenuTitle(item)));
   for(const [id,icon,pt,en] of WRITER_V9_FORMAT_ACTIONS){
    if(!['underline','superscript','subscript','spoiler','highlight','codeblock',
-    'h4','h5','h6','footnote','callout','table','rule'].includes(id))continue;
+    'h4','h5','h6','footnote','callout','table','rule','dropcap'].includes(id))continue;
    const title=writerUi(pt,en);
    if(existing.has(title))continue;
    writerV1044MenuAdd(parent,title,icon,()=>{
@@ -24677,18 +24785,56 @@ function writerV102AlignSide(alias){
  return side==='l'||side==='left'?'left':side==='r'||side==='right'?'right':
   side==='j'||side==='justify'?'justify':'center';
 }
+/* Paragraph-only suffixes are metadata, not visible prose. Suffixes may be
+ * combined in either order, e.g. {j} {dropcap} or {capitular} {r}. */
+function writerV102ParagraphSuffix(source){
+ const raw=String(source||'');
+ if(!raw||raw.length>6000||/[\r\n]/.test(raw))return null;
+ let remaining=raw,attributes=[];
+ while(attributes.length<8){
+  const match=/[ \t]+\{(dropcap|capitular|left|center|right|justify|l|c|r|j)\}[ \t]*$/i.exec(remaining);
+  if(!match)break;
+  attributes.unshift({key:match[1].toLowerCase(),from:match.index,to:remaining.length});
+  remaining=remaining.slice(0,match.index);
+ }
+ if(!attributes.length||!remaining.trim())return null;
+ const align=attributes.filter(attr=>!['dropcap','capitular'].includes(attr.key));
+ if(align.length>1||attributes.filter(attr=>['dropcap','capitular'].includes(attr.key)).length>1)return null;
+ const dropcap=attributes.find(attr=>attr.key==='dropcap'||attr.key==='capitular');
+ const heading=/^[ \t]{0,3}#{1,6}[ \t]+/.test(remaining);
+ if(heading&&dropcap)return null; // Capitals belong to prose, never headings.
+ return {from:remaining.length,to:raw.length,base:remaining,attributes,
+  side:align.length?writerV102AlignSide(align[0].key):null,
+  dropcap:!!dropcap,dropcapKey:dropcap?.key||null};
+}
+function writerV102InitialRange(source,token){
+ if(!token?.dropcap||token.heading)return null;
+ const beginning=token.format==='prefix'?token.innerFrom:0;
+ const ending=token.suffixFrom??token.from;
+ const prose=source.slice(beginning,ending);
+ if(/^\s*(?:!\[|[-*+]\s|\d+[.)]\s|>\s|\x60)/.test(prose))return null;
+ const letter=/\p{L}/u.exec(prose);
+ if(!letter)return null;
+ const from=beginning+letter.index;
+ return {from,to:from+letter[0].length};
+}
 function writerV102AlignToken(raw){
  const source=String(raw||'');
  if(source.length>6000||!source.trim()||source.includes('\n'))return null;
- // Heading markers stay at the beginning, so Obsidian recognizes actual H1–H6.
- const heading=/^([ \t]{0,3}#{1,6}[ \t]+)/.exec(source);
+ const trailing=writerV102ParagraphSuffix(source);
+ const base=trailing?.base??source;
+ const heading=/^([ \t]{0,3}#{1,6}[ \t]+)/.exec(base);
  const offset=heading?heading[0].length:0;
- const text=source.slice(offset);
- const suffix=/[ \t]+\{(left|center|right|justify|l|c|r|j)\}[ \t]*$/i.exec(text);
- if(suffix&&text.slice(0,suffix.index).trim()){
-  const from=offset+suffix.index,to=offset+suffix.index+suffix[0].length;
-  return {side:writerV102AlignSide(suffix[1]),format:'suffix',legacy:false,heading:!!heading,
-   from,innerFrom:to,innerTo:to,to};
+ const text=base.slice(offset);
+ if(trailing?.side||trailing?.dropcap){
+  // A suffix may coexist with an old prefix-alignment marker; preserve it.
+  const old=/^([ \t]*)::(left|center|right|justify|l|c|r|j)(?::[ \t]+|\[)/i.exec(text);
+  if(!old||trailing.side){
+   return {side:trailing.side,dropcap:trailing.dropcap,dropcapKey:trailing.dropcapKey,
+    format:'suffix',legacy:false,heading:!!heading,
+    from:trailing.from,innerFrom:trailing.to,innerTo:trailing.to,to:trailing.to,
+    suffixFrom:trailing.from,suffixTo:trailing.to};
+  }
  }
  const modern=/^([ \t]*)::(left|center|right|justify|l|c|r|j):[ \t]+([^\n]{1,5000}?)[ \t]*$/i.exec(text);
  const legacy=modern?null:/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[([^\n]{1,5000})\][ \t]*$/i.exec(text);
@@ -24700,8 +24846,10 @@ function writerV102AlignToken(raw){
  const from=offset+match[1].length;
  const innerFrom=offset+start.length;
  const innerTo=innerFrom+match[3].trimEnd().length;
- return {side:writerV102AlignSide(match[2]),format:'prefix',legacy:!!legacy,heading:!!heading,
-  from,innerFrom,innerTo,to:offset+match[0].trimEnd().length};
+ return {side:writerV102AlignSide(match[2]),dropcap:!!trailing?.dropcap,
+  dropcapKey:trailing?.dropcapKey||null,format:'prefix',legacy:!!legacy,heading:!!heading,
+  from,innerFrom,innerTo,to:offset+match[0].trimEnd().length,
+  suffixFrom:trailing?.from??null,suffixTo:trailing?.to??null};
 }
 function writerV102AlignReading(root){
  if(!root?.querySelectorAll||typeof document==='undefined'||typeof NodeFilter==='undefined')return;
@@ -24716,9 +24864,9 @@ function writerV102AlignReading(root){
   const first=texts[0],last=texts[texts.length-1];
   if(first.parentElement?.closest?.('code,pre')||last.parentElement?.closest?.('code,pre'))continue;
   if(token.format==='suffix'){
-   // Only remove the author's dedicated suffix; preserve inline links/emphasis.
-   if(!/[ \t]+\{(?:left|center|right|justify|l|c|r|j)\}[ \t]*$/i.test(last.nodeValue||''))continue;
-   last.nodeValue=last.nodeValue.replace(/[ \t]+\{(?:left|center|right|justify|l|c|r|j)\}[ \t]*$/i,'');
+   // Only author-owned terminal attributes, not Markdown links or emphasis.
+   if(!/[ \t]+\{(?:left|center|right|justify|l|c|r|j|dropcap|capitular)\}[ \t]*$/i.test(last.nodeValue||''))continue;
+   last.nodeValue=last.nodeValue.replace(/(?:[ \t]+\{(?:left|center|right|justify|l|c|r|j|dropcap|capitular)\})+[ \t]*$/i,'');
   }else{
    const begin=token.legacy
     ?/^([ \t]*)::(left|center|right|justify|l|c|r|j)\[/i
@@ -24727,7 +24875,8 @@ function writerV102AlignReading(root){
    if(!open||(token.legacy&&!/\][ \t]*$/.test(last.nodeValue||'')))continue;
    first.nodeValue=first.nodeValue.slice(open[0].length);
    if(token.legacy)last.nodeValue=last.nodeValue.replace(/\][ \t]*$/,'');
-   // Preserve heading semantics for old lines such as ::c: # Title.
+   if(token.suffixFrom!==null)
+    last.nodeValue=last.nodeValue.replace(/(?:[ \t]+\{(?:left|center|right|justify|l|c|r|j|dropcap|capitular)\})+[ \t]*$/i,'');
    const oldHeading=block.tagName?.toLowerCase()==='p'
     ?/^#{1,6}[ \t]+/.exec(first.nodeValue||''):null;
    if(oldHeading){
@@ -24737,10 +24886,13 @@ function writerV102AlignReading(root){
     block.replaceWith(actual);block=actual;
    }
   }
-  block.classList.add('writer-v102-align-processed','writer-v102-align-'+token.side);
-  // Honor an explicitly marked heading even when the user's CSS snippet
-  // centers every h1–h6 with !important.
-  block.style?.setProperty?.('text-align',token.side==='justify'?'justify':token.side==='center'?'center':token.side==='left'?'left':'right','important');
+  block.classList.add('writer-v102-align-processed');
+  if(token.side){
+   block.classList.add('writer-v102-align-'+token.side);
+   block.style?.setProperty?.('text-align',token.side,'important');
+  }
+  if(token.dropcap&&block.tagName?.toLowerCase()==='p')
+   block.classList.add('writer-v102-dropcap');
  }
 }
 function writerV102AlignDecorations(view,cfg){
@@ -24752,37 +24904,41 @@ function writerV102AlignDecorations(view,cfg){
   if(n===1&&trim==='---'){frontMatter=true;continue;}
   if(frontMatter){if(trim==='---')frontMatter=false;continue;}
   if(/^\s{0,3}(?:\x60{3,}|~{3,})/.test(source)){fenced=!fenced;continue;}
-  if(fenced||/^(?: {4}|\t)/.test(source))continue;
+  if(fenced||/^(?: {4}|\t)/.test(source)||/^\s*(?:[-*+]\s|\d+[.)]\s|>|\|)/.test(source))continue;
   if(view.visibleRanges?.length&&!view.visibleRanges.some(range=>line.to>=range.from&&line.from<=range.to))continue;
   const token=writerV102AlignToken(source);
   if(!token)continue;
-  ranges.push(Decoration.line({class:'writer-v102-align-'+token.side}).range(line.from));
+  const classes=[token.side?'writer-v102-align-'+token.side:'',token.dropcap?'writer-v102-dropcap':''].filter(Boolean);
+  if(classes.length)ranges.push(Decoration.line({class:classes.join(' ')}).range(line.from));
+  const initial=writerV102InitialRange(source,token);
+  if(initial)ranges.push(Decoration.mark({class:'writer-v102-dropcap-initial'}).range(line.from+initial.from,line.from+initial.to));
   if(!cfg.hideDelimiters||selection.from<=line.to&&selection.to>=line.from)continue;
   const start=line.from+token.from,inside=line.from+token.innerFrom,after=line.from+token.innerTo,end=line.from+token.to;
   if(inside>start)ranges.push(Decoration.replace({}).range(start,inside));
   if(end>after)ranges.push(Decoration.replace({}).range(after,end));
+  if(token.format==='prefix'&&token.suffixFrom!==null&&token.suffixTo>token.suffixFrom)
+   ranges.push(Decoration.replace({}).range(line.from+token.suffixFrom,line.from+token.suffixTo));
  }
  return ranges.length?Decoration.set(ranges.sort((a,b)=>a.from-b.from||a.to-b.to),true):Decoration.none;
 }
 function writerV102AlignNormalizeLine(source){
- let text=String(source||'');
+ const trailing=writerV102ParagraphSuffix(source);
+ let text=trailing?String(source).slice(0,trailing.from):String(source||'');
  const heading=/^([ \t]{0,3}#{1,6}[ \t]+)/.exec(text);
  let lead=heading?heading[0]:'';
  if(lead)text=text.slice(lead.length);
  const token=writerV102AlignToken(source);
- if(token?.format==='suffix')text=text.slice(0,token.from-lead.length).trimEnd();
- else if(token?.format==='prefix'){
+ if(token?.format==='prefix'){
   const open=/^([ \t]*)::(left|center|right|justify|l|c|r|j)(?::[ \t]+|\[)/i.exec(text);
   if(open)text=text.slice(open[0].length);
   if(token.legacy)text=text.replace(/\][ \t]*$/,'');
-  text=text.trimEnd();
  }
- // Legacy prefix-before-heading becomes a real heading when a command is used.
+ text=text.trimEnd();
  if(!lead){
   const inside=/^([ \t]{0,3}#{1,6}[ \t]+)/.exec(text);
   if(inside){lead=inside[0];text=text.slice(lead.length);}
  }
- return {lead,text,side:token?.side||null};
+ return {lead,text,side:token?.side||null,dropcapKey:trailing?.dropcapKey||null};
 }
 function writerV102AlignApply(editor,side){
  const from=editor.getCursor?.('from')||editor.getCursor?.()||{line:0};
@@ -24796,8 +24952,29 @@ function writerV102AlignApply(editor,side){
   const line=writerV102AlignNormalizeLine(before);
   if(!line.text.trim()&&!line.lead)continue;
   const label=line.text.trim()?'':writerUi('Título','Heading');
-  const replacement=line.lead+(line.text||label)+(side?' {'+side[0]+'}':'');
+  const replacement=line.lead+(line.text||label)+(side?' {'+side[0]+'}':'')+(line.dropcapKey?' {'+line.dropcapKey+'}':'');
   if(before===replacement)continue;
+  editor.replaceRange(replacement,{line:n,ch:0},{line:n,ch:before.length});
+  changed=true;
+ }
+ return changed;
+}
+function writerV102ToggleDropcap(editor){
+ const from=editor.getCursor?.('from')||editor.getCursor?.()||{line:0};
+ const to=editor.getCursor?.('to')||from;
+ const end=Math.max(from.line,to.line-(to.line>from.line&&to.ch===0?1:0));
+ const start=Math.min(from.line,end);
+ let changed=false;
+ for(let n=end;n>=start;n--){
+  const before=String(editor.getLine?.(n)||'');
+  if(!before.trim()||/^\s*(?:\x60{3,}|~{3,}|#{1,6}\s|[-*+]\s|\d+[.)]\s|>\s|\|)/.test(before))continue;
+  const trailing=writerV102ParagraphSuffix(before);
+  const attributes=trailing?.attributes||[];
+  const kept=attributes.filter(attr=>!['dropcap','capitular'].includes(attr.key));
+  const base=trailing?trailing.base:before.trimEnd();
+  const suffix=kept.map(attr=>' {'+attr.key+'}').join('');
+  const replacement=base+suffix+(trailing?.dropcap?'':' {dropcap}');
+  if(replacement===before)continue;
   editor.replaceRange(replacement,{line:n,ch:0},{line:n,ch:before.length});
   changed=true;
  }
@@ -24838,6 +25015,13 @@ function writerV102AlignRegister(plugin){
     writerV102AlignApply(editor,side);return true;
    }});
  }
+ plugin.addCommand({id:'v102-toggle-dropcap',
+  name:writerUi('Capitular: alternar primeira letra ampliada','Drop cap: toggle enlarged first letter'),
+  editorCheckCallback:(checking,editor)=>{
+   if(plugin.settings.v102Align?.enabled===false)return false;
+   if(checking)return true;
+   writerV102ToggleDropcap(editor);return true;
+  }});
  plugin.addCommand({id:'v105-align-cycle',name:writerUi('Alternar alinhamento da linha ou título','Cycle line or heading alignment'),
   editorCheckCallback:(checking,editor)=>{
    if(!plugin.settings.v102Align?.enabled)return false;
@@ -24852,8 +25036,8 @@ function writerV102AlignSettings(plugin,panel){
  const cfg=plugin.settings.v102Align;
  panel.createEl('h3',{text:writerUi('Alinhamento de texto e títulos','Text and heading alignment')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi(
-  'Use um comando na paleta ou na barra móvel (Centralizar, Direita, Esquerda, Justificar ou Alternar). Para digitar: texto {c}, # Título {r}, ## Título {l}, texto {j}. Os formatos antigos ::c: texto e ::c[texto] continuam funcionando.',
-  'Use a command from the palette or mobile toolbar (Center, Right, Left, Justify or Cycle). To type: text {c}, # Heading {r}, ## Heading {l}, text {j}. Legacy ::c: text and ::c[text] stay supported.')});
+  'Use alinhamentos {l}, {c}, {r}, {j} e a capitular {dropcap} (ou {capitular}) ao fim de parágrafos. Exemplo: Era uma vez... {j} {dropcap}. Use a paleta de comandos para alternar a capitular. Os formatos antigos ::c: texto e ::c[texto] continuam funcionando.',
+  'Append {l}, {c}, {r} or {j} to align text. Use {dropcap} (or {capitular}) to enlarge a paragraph’s first letter; e.g. Once upon a time... {j} {dropcap}. A palette command toggles it. Legacy ::c: text and ::c[text] remain supported.')});
  for(const [key,pt,en] of [
   ['enabled','Ativar alinhamento de texto','Enable text alignment'],
   ['reading','Renderizar no modo de leitura','Render in Reading mode'],

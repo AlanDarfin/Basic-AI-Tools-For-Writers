@@ -119,6 +119,77 @@ test('10.9 supports standalone books, automatic progress, metadata, and fuzzy pi
  assert.match(src,/class BookNotePicker extends require\('obsidian'\)\.FuzzySuggestModal/);
  assert.doesNotMatch(src,/const progressField=field\('Leitura \(%\)'/);
 });
+
+function scrollHarness(){
+ let nextTimer=0,saves=0,cleanup,scroll,rename;
+ const timers=new Map(),metadata=new Map();
+ const api=load('src/v10/bookshelf.js',{
+  setTimeout:callback=>{timers.set(++nextTimer,callback);return nextTimer;},
+  clearTimeout:id=>timers.delete(id)
+ },['writerV10BookshelfMerge','writerV10RegisterBookshelf','writerV109StandaloneProject','writerV10BookState']);
+ const first={path:'Books/First.md',extension:'md'},second={path:'Books/Second.md',extension:'md'},
+  unrelated={path:'Books/Other.md',extension:'md'};
+ const preview='.markdown-preview-view',source='.markdown-source-view .cm-scroller';
+ const label={textContent:'0%'},bar={value:0};
+ const card={dataset:{writerBookPath:second.path},querySelector:selector=>selector.endsWith('strong')?label:bar};
+ const ownerDocument={querySelectorAll:()=>[card]};
+ const scroller=selector=>({isConnected:true,ownerDocument,scrollHeight:1000,clientHeight:500,scrollTop:0,
+  matches:query=>query===selector});
+ const firstScroll=scroller(preview),secondScroll=scroller('.cm-scroller'),unrelatedScroll=scroller(preview);
+ const leaf=(file,selector,scroll)=>({view:{file,containerEl:{querySelector:query=>query===selector?scroll:null}}});
+ const leaves=[leaf(first,preview,firstScroll),leaf(second,source,secondScroll),leaf(unrelated,preview,unrelatedScroll)];
+ const settings={v10Bookshelf:{standalone:[first.path,second.path],library:{[first.path]:{favorite:true}}}};
+ api.writerV10BookshelfMerge(settings);
+ const workspace={containerEl:{},getActiveFile:()=>first,getLeavesOfType:()=>leaves};
+ const plugin={settings,app:{workspace,metadataCache:{getFileCache:file=>({frontmatter:metadata.get(file.path)})},
+  vault:{on(event,handler){assert.equal(event,'rename');return handler;}}},
+  registerDomEvent(target,name,handler,capture){assert.equal(target,workspace.containerEl);assert.equal(name,'scroll');assert.equal(capture,true);scroll=handler;},
+  registerEvent(handler){rename=handler;},register(handler){cleanup=handler;},async saveSettings(){saves++;}};
+ api.writerV10RegisterBookshelf(plugin);
+ return {plugin,first,second,metadata,firstScroll,secondScroll,unrelatedScroll,label,bar,timers,cleanup,rename,
+  scroll:target=>scroll({target}),progress:file=>api.writerV10BookState(plugin,api.writerV109StandaloneProject(plugin,file)).progress,
+  saves:()=>saves};
+}
+
+test('standalone progress records the furthest scroll in its own pane and updates open library cards',async()=>{
+ const h=scrollHarness();
+ h.unrelatedScroll.scrollTop=500;h.scroll(h.unrelatedScroll);
+ const embedded={...h.secondScroll,scrollTop:500};h.scroll(embedded);
+ assert.equal(h.timers.size,0,'ordinary notes and embedded scrollers are ignored');
+ h.secondScroll.scrollTop=300;h.scroll(h.secondScroll);
+ assert.equal(h.progress(h.first),0);assert.equal(h.progress(h.second),60);
+ assert.equal(h.label.textContent,'60%');assert.equal(h.bar.value,60);
+ h.secondScroll.scrollTop=150;h.scroll(h.secondScroll);
+ assert.equal(h.progress(h.second),60,'scrolling back does not lose progress');
+ h.firstScroll.scrollTop=250;h.scroll(h.firstScroll);
+ assert.equal(h.progress(h.first),50);assert.equal(h.timers.size,1,'disk writes are debounced');
+ h.cleanup();await Promise.resolve();assert.equal(h.saves(),1,'pending progress is saved on unload');
+ assert.equal(h.timers.size,0);
+});
+
+test('explicit YAML including zero overrides scroll history, and tracking can be paused',()=>{
+ const h=scrollHarness(),cfg=h.plugin.settings.v10Bookshelf;
+ h.firstScroll.scrollTop=250;h.scroll(h.firstScroll);
+ h.metadata.set(h.first.path,{readingProgress:0});
+ h.firstScroll.scrollTop=500;h.scroll(h.firstScroll);
+ assert.equal(h.progress(h.first),0);assert.equal(cfg.scrollProgress[h.first.path],50);
+ h.metadata.set(h.first.path,{readingProgress:'72.5'});assert.equal(h.progress(h.first),72.5);
+ h.metadata.delete(h.first.path);assert.equal(h.progress(h.first),50);
+ cfg.trackStandaloneProgress=false;h.scroll(h.firstScroll);
+ assert.equal(h.progress(h.first),50);
+ cfg.library[h.first.path].status='finished';assert.equal(h.progress(h.first),100);
+});
+
+test('standalone progress and library preferences follow Markdown notes when a folder is renamed',async()=>{
+ const h=scrollHarness(),cfg=h.plugin.settings.v10Bookshelf;
+ h.firstScroll.scrollTop=325;h.scroll(h.firstScroll);
+ h.first.path='Moved/First.md';h.second.path='Moved/Second.md';h.rename({path:'Moved'},'Books');
+ assert.equal(cfg.standalone.join(','),'Moved/First.md,Moved/Second.md');
+ assert.equal(cfg.scrollProgress['Books/First.md'],undefined);assert.equal(h.progress(h.first),65);
+ assert.equal(cfg.library['Moved/First.md'].favorite,true);
+ h.cleanup();await Promise.resolve();assert.equal(h.saves(),1);
+});
+
 test('10.9 keeps changelogs out of both READMEs and supports fuzzy path settings',()=>{
  for(const path of ['README.md','docs/README.pt-BR.md']){
   const text=read(path);

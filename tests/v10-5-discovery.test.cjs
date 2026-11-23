@@ -61,6 +61,73 @@ test('Zotero note metadata produces citekey and author without network',()=>{
  const ref=helpers.writerV10ZoteroRef({app},file);
  assert.equal(ref.key,'doe2026');assert.equal(ref.author,'Doe, Jane');assert.equal(ref.doi,'10.1000/example');
 });
+const bibSource=fs.readFileSync('src/v9/research-style.js','utf8');
+const zotero=vm.runInNewContext(bibSource+'\n'+source+'\n({writerV92BibEntries,writerV92ResearchMerge,writerV10ZoteroReferences,writerV10ZoteroBibliography})',{
+ ItemView:class{},TFile,writerUi:(pt,en)=>en,writerModuleOn:plugin=>!plugin.disabled,
+ parseYaml:()=>({keys:['@other:2026']})
+});
+const bib=[
+ '@string{p = "Publisher"}',
+ '% @book{commented, title={Ignored comment}}',
+ '@article{doe2026, title={A {nested {Better BibTeX}} title}, author={Doe, Jane}, year=2026, doi={10.1000/example}}',
+ '@book(other:2026, title="Árvores" # " do Brasil", author="F. Silva", date={2026-01-01})',
+ '@inbook{invalid[link], title={Ignored}}',
+ '@book{unfinished, title={Not closed}',
+ '@book{recovered, title={Valid next entry}}'
+].join('\n');
+test('Better BibTeX supports nested, multiline, quoted and concatenated reference fields',()=>{
+ const refs=zotero.writerV92BibEntries(bib.replace('{nested','{nested\n'));
+ assert.deepEqual(Array.from(refs,ref=>ref.key),['doe2026','other:2026','recovered']);
+ assert.equal(refs[0].title,'A nested Better BibTeX title');
+ assert.equal(refs[0].author,'Doe, Jane');assert.equal(refs[0].doi,'10.1000/example');
+ assert.equal(refs[1].title,'Árvores do Brasil');assert.equal(refs[1].year,'2026-01-01');
+});
+test('malformed nested entries cannot cause repeated unbounded scans',()=>{
+ const malformed='@book{unfinished, title={\n'.repeat(17000);
+ const refs=zotero.writerV92BibEntries('@book{valid, title={Valid entry}}\n'+malformed);
+ assert.deepEqual(Array.from(refs,ref=>ref.key),['valid']);
+});
+test('local BibTeX reads only the opt-in vault file, retains Markdown matches and caches by file revision',async()=>{
+ const file=Object.assign(new TFile(),{path:'Zotero/reference.md',extension:'md',basename:'Imported'});
+ const requests=[];let mtime=1;
+ const cfg=zotero.writerV92ResearchMerge({}),plugin={settings:{v92Research:cfg},app:{
+  metadataCache:{getFileCache:()=>({frontmatter:{citekey:'doe2026',title:'Imported title'}})},
+  vault:{getMarkdownFiles:()=>[file],adapter:{stat:async path=>{requests.push(['stat',path]);return {type:'file',size:bib.length,mtime};},
+   read:async path=>{requests.push(['read',path]);return bib;}}}
+ }};
+ assert.equal((await zotero.writerV10ZoteroReferences(plugin)).references.length,1);
+ assert.deepEqual(requests,[]);
+ cfg.zoteroBibFile='../Outside.bib';
+ assert.equal((await zotero.writerV10ZoteroReferences(plugin)).unavailable,true);
+ assert.deepEqual(requests,[]);
+ cfg.zoteroBibFile='Referências/Artigos 2026.bib';
+ const {references,unavailable}=await zotero.writerV10ZoteroReferences(plugin);
+ assert.equal(unavailable,false);
+ assert.deepEqual(Array.from(references,ref=>ref.title),['Imported title','Árvores do Brasil','Valid next entry']);
+ await zotero.writerV10ZoteroReferences(plugin);
+ assert.equal(requests.filter(([method])=>method==='read').length,1);
+ mtime++;
+ await Promise.all([zotero.writerV10ZoteroReferences(plugin),zotero.writerV10ZoteroReferences(plugin)]);
+ assert.equal(requests.filter(([method])=>method==='read').length,2);
+ plugin.disabled=true;
+ assert.equal((await zotero.writerV10ZoteroReferences(plugin)).references.length,1);
+ assert.equal(requests.filter(([method])=>method==='read').length,2);
+});
+test('bibliography block renders only requested keys and handles unavailable exports',async()=>{
+ const cfg=zotero.writerV92ResearchMerge({v92Research:{zoteroBibFile:'Sources.bib'}});
+ let available=true;
+ const plugin={settings:{v92Research:cfg},app:{vault:{getMarkdownFiles:()=>[],adapter:{
+  stat:async()=>available?{type:'file',size:bib.length,mtime:1}:null,read:async()=>bib
+ }}}};
+ const tags=[];
+ const el={createEl:(tag,options)=>{tags.push([tag,options?.text]);return el;},
+  createSpan:options=>tags.push(['span',options.text])};
+ await zotero.writerV10ZoteroBibliography(plugin,'keys: [other:2026]',el,{});
+ assert.deepEqual(tags,[['ol',undefined],['li',undefined],['span','F. Silva · Árvores do Brasil · 2026-01-01'],['small',' @other:2026']]);
+ available=false;tags.length=0;
+ await zotero.writerV10ZoteroBibliography(plugin,'keys: [other:2026]',el,{});
+ assert.match(tags[0][1],/Could not read BibTeX/);
+});
 test('Homepage, bundle, and styles include all discovery integrations',()=>{
  const home=fs.readFileSync('src/v8/writing-home.js','utf8'),build=fs.readFileSync('scripts/build-v3.js','utf8');
  const enhancement=fs.readFileSync('src/v10/enhancements.js','utf8');

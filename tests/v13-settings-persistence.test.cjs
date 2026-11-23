@@ -106,6 +106,7 @@ test('calendar hour changes keep later controls current and synchronize the disp
  h.api.writerV9CalendarMerge(h.plugin.settings);
  h.api.writerV9CalendarSettings(h.plugin,h.panel);
  const start=h.control('Timeline start hour','slider'),end=h.control('Timeline end hour','slider');
+ await h.control('Open calendar in','dropdown').change('left');
  await start.change(9);
  await end.change(17);
  assert.equal(h.plugin.settings.v9Calendar.startHour,9);
@@ -120,6 +121,7 @@ test('calendar hour changes keep later controls current and synchronize the disp
  assert.equal(h.plugin.settings.v9Calendar.endHour,24);
  assert.equal(h.plugin.settings.v9Calendar.maxMonthEvents,5);
  assert.equal(h.plugin.settings.v9Calendar.compactMonth,false);
+ assert.equal(h.saves.at(-1).v9Calendar.openLocation,'left');
  assert.equal(h.saves.at(-1).v9Calendar.startHour,20);
 });
 

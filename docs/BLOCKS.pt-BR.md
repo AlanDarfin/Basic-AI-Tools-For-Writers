@@ -381,6 +381,28 @@ label: Autor (somente leitura)
 ~~~
 ~~~~
 
+### Campos no modo Leitura
+
+Ative **Campos INPUT e VIEW na leitura** nas configurações do Basic. Escreva os marcadores como texto comum no Markdown. Eles leem ou editam propriedades YAML de primeiro nível da própria nota.
+
+```markdown
+Capítulo concluído INPUT[toggle:concluido]
+Estado INPUT[select(Rascunho, Revisando, Concluído):status]
+Progresso INPUT[slider(0, 100, 5):progresso]
+Estado atual VIEW[status]
+```
+
+Ative **Blocos antigos do Meta Bind** para usar formulários simples `meta-bind` e botões `meta-bind-button` na própria nota. O plugin Meta Bind, quando ativo, tem prioridade. Os botões aceitam `set`, `toggle` e `increment`.
+
+~~~~markdown
+~~~meta-bind-button
+property: revisao
+action: increment
+step: 1
+label: Avançar revisão
+~~~
+~~~~
+
 ## 12. Sumário instantâneo (`insta-toc`)
 
 Gera um índice a partir dos títulos **da nota atual**. `maxDepth` varia de 1 a 6. `numbered` define lista numerada; `folded` recolhe as seções inicialmente.
@@ -534,6 +556,20 @@ layout: graph
 [[Rascunho/Capítulo 1]]
 [[Rascunho/Capítulo 2]] | after:[[Rascunho/Capítulo 1]]
 [[Rascunho/Capítulo 3]] | after:[[Rascunho/Capítulo 2]]
+~~~
+~~~~
+
+**Cartões de texto no Flow.** Comece cada coluna com `=== Nome da coluna` e cada cartão com `- `. Mova os cartões arrastando no computador ou usando as setas. O Basic salva a coluna de cada cartão nas configurações do cofre e preserva o Markdown. Use um `id` exclusivo para manter as posições ao deslocar o quadro dentro da nota.
+
+Use **Escrita: catálogo de inserção rápida**, na paleta de comandos, para adicionar um quadro de cartões de texto ou outros blocos no editor.
+
+~~~~markdown
+~~~flow
+id: ideias-da-historia
+=== Ideias
+- Planejar a abertura
+=== Em andamento
+- Escrever o primeiro capítulo
 ~~~
 ~~~~
 

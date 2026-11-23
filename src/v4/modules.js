@@ -141,4 +141,9 @@ function writerRenderDiagnostics(plugin,panel){
     row.createSpan({text:value,cls:'writer-diagnostic-value'});
    }
   }));
+ new Setting(panel).setName(writerUi('Recuperar dicionário da v1','Recover v1 dictionary'))
+  .setDesc(writerUi('Procure a nota Markdown de dicionário nas configurações do plugin antigo.',
+   'Find the Markdown dictionary note in the older plugin’s settings.'))
+  .addButton(button=>button.setButtonText(writerUi('Procurar nota','Find note'))
+   .onClick(()=>writerV106LegacyDictionaryInspector(plugin)));
 }

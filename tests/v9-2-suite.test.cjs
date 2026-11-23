@@ -12,10 +12,11 @@ const novel=new TFile('Novel/Chapter.md'),folder=new TFolder('Novel'),folderNote
 const cache={frontmatter:{description:'Folder description from YAML',tags:['zotero'],author:'Researcher',title:'Research work'},tags:[]};
 const vault={getAbstractFileByPath:path=>[novel,folder,folderNote].find(x=>x.path===path)||null,getMarkdownFiles:()=>[novel,folderNote],cachedRead:async()=> '# Highlights\n> A passage explicitly marked as a highlight in Zotero.'};
 const plugin={settings:{v8Finish:{homeFavorites:['Novel/Chapter.md']}},app:{vault,metadataCache:{getFileCache:()=>cache}}};
+class MarkdownRenderChild{registerEvent(off){this.unload=off;}}
 const context={TFile,TFolder,Date,Set,Map,Number,String,Object,Array,Math,RegExp,console,writerUi:(a,b)=>b,
  writerModuleOn:()=>true,writerV7FolderNote:()=>folderNote,WRITER_V8_HOME_VIEW:'home',
- ItemView:class{},Setting:class{},MarkdownRenderer:{render:async()=>{}},require:()=>({setIcon:()=>{}})};
-const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV921PreviewSource,writerV921PreviewBody,writerV921ResolveImage,writerV921PreviewImage,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92SessionMerge})',context);
+ ItemView:class{},Setting:class{},MarkdownRenderer:{render:async()=>{}},parseYaml:JSON.parse,require:()=>({setIcon:()=>{},MarkdownRenderChild})};
+const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV921PreviewSource,writerV921PreviewBody,writerV921ResolveImage,writerV921PreviewImage,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92MetaToken,writerV92RegisterBlocks,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92ResearchStyleApply,writerV92ResearchRegister,writerV92SessionMerge})',context);
 test('9.2.x metadata, modules and CSS',()=>{
  const manifest=JSON.parse(read('manifest.json')),pkg=JSON.parse(read('package.json')),lock=JSON.parse(read('package-lock.json')),versions=JSON.parse(read('versions.json'));
  assert.match(manifest.version,/^\d+\.\d+\.\d+(?:-(?:beta|rc)\.\d+)?$/);assert.equal(pkg.version,manifest.version);assert.equal(lock.version,manifest.version);
@@ -68,6 +69,165 @@ test('blocks do not execute arbitrary JS actions',()=>{
  assert.match(src,/processFrontMatter/);
  assert.doesNotMatch(src,/eval\(|new Function\(/);
  for(const type of ['columns','progressbar','widgets','meta-field'])assert.ok(src.includes("register('"+type+"'"));
+});
+
+test('inline field parser accepts only explicit current-note property bindings',()=>{
+ const parse=token=>JSON.parse(JSON.stringify(api.writerV92MetaToken(token)));
+ assert.deepEqual(parse('VIEW[chapter-title]'),{key:'chapter-title',type:'view'});
+ assert.equal(parse('INPUT[toggle:done]').type,'toggle');
+ assert.deepEqual(parse('INPUT[slider(-2,4,0.5):progress]'),{key:'progress',type:'slider',min:-2,max:4,step:.5});
+ assert.deepEqual(parse('INPUT[select(Ready,Draft):phase]'),{key:'phase',type:'select',options:['Ready','Draft']});
+ for(const invalid of ['VIEW[other.md#title]','VIEW[title + done]','VIEW[chapter.title]','VIEW[constructor]',
+  'INPUT[toggle:prototype]','INPUT[userScript:done]','INPUT[text(alert(1)):done]','INPUT[select:done]',
+  'INPUT[slider(4,2):done]','INPUT[slider(0,1,9):done]'])assert.equal(parse(invalid),null,invalid);
+});
+
+function metaSection(){
+ class Element{
+  constructor(tag,text=''){this.tag=tag;this.nodeValue=tag==='#text'?text:null;this.textContent=text;this.children=[];this.events={};this.attrs={};}
+  append(...nodes){for(const node of nodes){node.parentElement=this;this.children.push(node);}}
+  closest(selector){return selector.split(',').includes(this.tag)?this:this.parentElement?.closest(selector);}
+  createEl(tag,options){const el=new Element(tag,options?.text);el.attrs={...options?.attr};this.append(el);return el;}
+  createSpan(){return this.createEl('span');}
+  createDiv(){return this.createEl('div');}
+  setText(value){this.textContent=value;}
+  setAttribute(key,value){this.attrs[key]=value;}
+  addEventListener(name,listener){this.events[name]=listener;}
+  replaceWith(node){const siblings=this.parentElement.children;siblings.splice(siblings.indexOf(this),1,...(node.tag==='fragment'?node.children:[node]));}
+ }
+ const root=new Element('p'),text=(value)=>new Element('#text',value);
+ root.ownerDocument={
+  createTreeWalker(){
+   const entries=root.children.flatMap(el=>el.children.length?el.children:[el]).filter(el=>el.tag==='#text');
+   return {nextNode(){this.currentNode=entries.shift();return Boolean(this.currentNode);}};
+  },
+  createElement:tag=>new Element(tag),createTextNode:text,createDocumentFragment:()=>new Element('fragment')
+ };
+ const inline=text('Check INPUT[toggle:done]. Value: VIEW[done]. VIEW[constructor].');
+ const literal=new Element('code');literal.append(text('INPUT[toggle:done]'));
+ root.append(inline,literal);
+ return {root,inline,literal,Element};
+}
+
+test('registered inline widgets respect opt-in, save the correct note, and refresh linked output',()=>{
+ const {root,inline,literal}=metaSection();
+ const settings={},cfg=api.writerV92BlocksMerge(settings);
+ const frontmatter={done:false,other:'preserved'},other=new TFile('Other.md');
+ let currentFile=novel,postprocess,changed,child;
+ const p={settings,app:{
+  vault:{getAbstractFileByPath:path=>path===novel.path?currentFile:other},
+  metadataCache:{getFileCache:()=>({frontmatter}),on:(_event,listener)=>{changed=listener;return ()=>{changed=null;};}},
+  fileManager:{processFrontMatter:async(file,write)=>{assert.equal(file,novel);write(frontmatter);changed(file);}}
+ },registerMarkdownPostProcessor:callback=>{postprocess=callback;}};
+ const ctx={sourcePath:novel.path,addChild:value=>{child=value;}};
+ api.writerV92RegisterBlocks(p);
+ postprocess(root,ctx);
+ assert.equal(root.children[0],inline);
+ cfg.inlineMetaFields=true;
+ postprocess(root,ctx);
+ const [input,view]=root.children.filter(el=>el.className==='writer-v92-meta-inline').map(el=>el.children[0]);
+ assert.equal(input.type,'checkbox');
+ assert.equal(input.attrs['aria-label'],'done');
+ assert.equal(input.checked,false);
+ assert.equal(view.textContent,'false');
+ assert.equal(literal.children[0].nodeValue,'INPUT[toggle:done]');
+ assert.ok(root.children.some(node=>node.nodeValue?.includes('VIEW[constructor]')));
+ input.checked=true;input.events.change();
+ assert.deepEqual(frontmatter,{done:true,other:'preserved'});
+ assert.equal(view.textContent,'true');
+ currentFile=other;input.checked=false;input.events.change();
+ assert.equal(frontmatter.done,true);
+ child.unload();
+ assert.equal(changed,null);
+});
+
+test('legacy fences leave unsupported blocks alone and only edit their named frontmatter field',async()=>{
+ const {root,Element}=metaSection(),settings={};
+ const cfg=api.writerV92BlocksMerge(settings);
+ const makeFence=(lang,spec)=>{
+  const pre=new Element('pre'),code=new Element('code',JSON.stringify(spec));
+  code.classList=new Set(['language-'+lang]);code.classList.contains=key=>code.classList.has(key);
+  pre.append(code);root.append(pre);return code;
+ };
+ const field=makeFence('meta-bind',{fields:[{key:'done',type:'toggle'},{key:'untrusted.path',type:'number'}]});
+ const increment=makeFence('meta-bind-button',{property:'doneCount',action:'increment',step:2,label:'Add'});
+ const badAction=makeFence('meta-bind-button',{property:'done',action:'command',command:'delete-note'});
+ const badValue=makeFence('meta-bind-button',{property:'done',action:'set',value:{nested:true}});
+ const original=new Set(),frontmatter={done:false,doneCount:10,other:'preserved'};
+ let listener;
+ const p={settings,app:{
+  plugins:{enabledPlugins:original},vault:{getAbstractFileByPath:()=>novel},
+  metadataCache:{getFileCache:()=>({frontmatter})},
+  fileManager:{processFrontMatter:async(file,write)=>{assert.equal(file,novel);write(frontmatter);}}
+ },registerMarkdownPostProcessor:callback=>{listener=callback;}};
+ const ctx={sourcePath:novel.path};
+ root.querySelectorAll=()=>[field,increment,badAction,badValue];
+ api.writerV92RegisterBlocks(p);
+ listener(root,ctx);
+ assert.equal(root.children.filter(el=>el.tag==='pre').length,4);
+ cfg.metaBindFences=true;
+ original.add('obsidian-meta-bind-plugin');
+ listener(root,ctx);
+ assert.equal(root.children.filter(el=>el.tag==='pre').length,4);
+ original.clear();
+ listener(root,ctx);
+ assert.deepEqual(root.children.filter(el=>el.tag==='pre').map(el=>el.children[0]),[badAction,badValue]);
+ const [form,action]=root.children.filter(el=>el.tag==='div');
+ const [checkbox]=form.children[0].children.filter(el=>el.tag==='input');
+ assert.equal(form.children.length,1);
+ checkbox.checked=true;checkbox.events.change();
+ const button=action.children[0];
+ assert.equal(button.attrs.type,'button');
+ assert.equal(button.textContent,'Add');
+ await button.events.click();
+ assert.deepEqual(frontmatter,{done:true,doneCount:12,other:'preserved'});
+ original.add('obsidian-meta-bind-plugin');
+ await button.events.click();
+ assert.equal(frontmatter.doneCount,12);
+});
+
+test('reading presets normalize styles and leave unused overrides unset',()=>{
+ const cfg=api.writerV92ResearchMerge({v92Research:{
+  fontSize:19,stylePresets:[{name:' Draft ',values:{fontSize:60,headingSizes:[2],bodyColor:'bad'}}]
+ }});
+ assert.equal(cfg.fontSize,19);
+ assert.equal(cfg.stylePrint,false);
+ assert.equal(cfg.stylePresets[0].name,'Draft');
+ assert.equal(cfg.stylePresets[0].values.fontSize,24);
+ assert.equal(cfg.stylePresets[0].values.headingSizes[0],2);
+ assert.equal(cfg.stylePresets[0].values.bodyColor,'');
+ const classes=new Set(),properties=new Map();
+ const root={classList:{toggle:(key,enabled)=>enabled?classes.add(key):classes.delete(key)},style:{
+  setProperty:(key,value)=>properties.set(key,value),removeProperty:key=>properties.delete(key)
+ }};
+ api.writerV92ResearchStyleApply(root,cfg,true);
+ assert.equal(properties.get('--writer-v92-font-size'),'19px');
+ assert.equal(properties.has('--writer-v92-list-indent'),false);
+ api.writerV92ResearchStyleApply(root,cfg,false);
+ assert.equal(classes.size,0);
+ assert.equal(properties.size,0);
+});
+
+test('the native print preview recolors text without a raster filter and grayscales embedded media',()=>{
+ const settings={},cfg=api.writerV92ResearchMerge(settings);
+ const style=()=>({setProperty(key,value){this[key]=value;}});
+ const image={style:style(),matches:()=>true};
+ const preview={style:style(),matches:()=>false,querySelectorAll:()=>[image],
+  closest:selector=>selector==='.print > .markdown-preview-view'?preview:null,
+  ownerDocument:{defaultView:{CSS:{supports:()=>true},getComputedStyle:()=>({
+   getPropertyValue:key=>key==='color'?'rgb(24, 124, 200)':''
+  })}}};
+ let registered;
+ const p={settings,app:{workspace:{on(){}}},registerEvent(){},registerMarkdownPostProcessor(callback){registered=callback;}};
+ api.writerV92ResearchRegister(p);
+ cfg.styleEnabled=true;
+ registered(preview);assert.equal(preview.style.color,undefined);
+ cfg.stylePrint=true;
+ registered({closest:()=>preview});assert.equal(preview.style.color,undefined);
+ registered(preview);
+ assert.equal(preview.style.color,'oklch(from rgb(24, 124, 200) l 0 h / alpha)');
+ assert.equal(preview.style.filter,undefined);
+ assert.equal(image.style.filter,'grayscale(1)');
 });
 
 test('9.2.1 Explorer has a right-aligned interactive favorite and bottom preview toggle',()=>{

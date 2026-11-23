@@ -244,14 +244,40 @@ class WriterV83CalendarView extends ItemView{
 }
 function writerV83RegisterCalendar(plugin){
  plugin.registerView(WRITER_V83_CAL_VIEW,leaf=>new WriterV83CalendarView(leaf,plugin));
- const open=async(date)=>{
-  if(!writerModuleOn(plugin,'calendar'))return;
+ const pending=new Map();
+ const open=async(placement,date)=>{
+  if(!writerModuleOn(plugin,'calendar'))return null;
   const workspace=plugin.app.workspace;
-  let leaf=workspace.getLeavesOfType(WRITER_V83_CAL_VIEW)[0];
-  if(!leaf){leaf=workspace.getLeaf('tab');await leaf.setViewState({type:WRITER_V83_CAL_VIEW,active:true});}
-  if(writerV83Date(date)&&leaf.view instanceof WriterV83CalendarView){leaf.view.anchor=date;leaf.view.render();}
-  await workspace.revealLeaf?.(leaf);
+  try{
+   let leaf;
+   if(pending.has(placement))leaf=await pending.get(placement);
+   else{
+    leaf=workspace.getLeavesOfType(WRITER_V83_CAL_VIEW)
+     .find(item=>(writerV1010SideForLeaf(workspace,item)||'tab')===placement);
+    if(!leaf){
+     leaf=placement==='left'?workspace.getLeftLeaf?.(true):
+      placement==='right'?workspace.getRightLeaf?.(true):workspace.getLeaf('tab');
+     if(!leaf)throw Error('Calendar pane unavailable');
+     const ready=leaf.setViewState({type:WRITER_V83_CAL_VIEW,active:true}).then(()=>leaf);
+     pending.set(placement,ready);
+     try{await ready;}finally{pending.delete(placement);}
+    }
+   }
+   const anchor=writerV83Date(date);
+   if(anchor&&leaf.view instanceof WriterV83CalendarView){leaf.view.anchor=anchor;leaf.view.render();}
+   await workspace.revealLeaf?.(leaf);
+   return leaf;
+  }catch(error){
+   console.warn('[Basic] Could not open calendar:',error);
+   new Notice(writerUi('Não foi possível abrir o calendário neste painel.','Could not open the calendar in this pane.'));
+   return null;
+  }
  };
- plugin.writerCalendarOpen=open;
- plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void open()});
+ plugin.writerCalendarOpenIn=(placement,date)=>open(WRITER_V9_CAL_LOCATIONS.some(([id])=>id===placement)?placement:'tab',date);
+ plugin.writerCalendarOpen=date=>plugin.writerCalendarOpenIn(plugin.settings.v9Calendar?.openLocation,date);
+ plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void plugin.writerCalendarOpen()});
+ for(const [placement,pt,en] of WRITER_V9_CAL_LOCATIONS){
+  plugin.addCommand({id:'v901-calendar-open-'+placement,name:writerUi('Calendário: abrir na '+pt.toLowerCase(),'Calendar: open in '+en.toLowerCase()),
+   callback:()=>void plugin.writerCalendarOpenIn(placement)});
+ }
 }

@@ -220,7 +220,7 @@ Plugin support has no separate settings page. Configure speech in **Read aloud**
 | **AI providers** | Selected text, prompts and reference attachments are sent to the chosen provider for the requested action. Account access, models and billing depend on the provider. Automatic inline features can send text while enabled. |
 | **Ollama or a custom endpoint** | Requests go to the configured server. A locally hosted server can be used, but the endpoint you select determines where text goes. |
 | **LanguageTool** | Grammar text goes to the configured endpoint, or to the separately installed integration selected in settings. Automatic checks can run while the review pane is active when enabled. |
-| **Zotero** | Imported Markdown highlights can be read locally. Optional Web API actions use a configured library and a temporary request key, with a preview before creating reference notes; they do not edit the remote library. |
+| **Zotero** | In **Citations & reading**, configure an optional vault-relative Better BibTeX `.bib` file for the local citation picker and `bibliography` blocks. The homepage can mix, prefer or exclusively show highlights from imported Markdown notes. Optional Web API actions use a configured library and a temporary request key, with a preview before creating reference notes. |
 | **Pandoc** | Desktop exports require a separate executable. It can access referenced local or remote document resources. PDF may require an additional engine. |
 | **Device speech and online speech** | Device speech uses the voices exposed by the browser/OS; availability and offline operation depend on the voice. Online Edge read-aloud sends text to an external, undocumented consumer endpoint that may change. |
 | **Music and typing sounds** | Desktop web radio uses YouTube embeds and may be blocked by the service. Local audio stays in the vault. Sound-pack downloads contact their remote source when requested. |
@@ -229,6 +229,8 @@ Plugin support has no separate settings page. Configure speech in **Read aloud**
 | **Synchronization integrations** | Basic discovers and manually dispatches available commands of separately installed plugins, including Git, Syncthing and FIT integrations. Their authentication, transfers and automatic schedules remain in those plugins. Selecting a provider in Basic does not suspend another plugin's jobs. |
 
 AI credentials live in Basic's plugin settings without encryption. Zotero's temporary request key has a different, session-only lifecycle. Do not publish API keys, personal plugin data or private manuscripts in issue reports. See [security](../SECURITY.md) and [third-party notices](../THIRD_PARTY_NOTICES.md) for licenses and implementation details.
+
+Run **Zotero: insert local citation** to search by citation key, title, author or DOI. In a fenced `bibliography` block, use `keys: [smith2023, costa2024]` to show selected references. The local picker and blocks read imported notes and the configured `.bib` file from the vault. Better BibTeX export files up to 3 MB are supported.
 
 ## Platform and scope limits
 

@@ -5260,6 +5260,11 @@ function writerRenderDiagnostics(plugin,panel){
     row.createSpan({text:value,cls:'writer-diagnostic-value'});
    }
   }));
+ new Setting(panel).setName(writerUi('Recuperar dicionário da v1','Recover v1 dictionary'))
+  .setDesc(writerUi('Procure a nota Markdown de dicionário nas configurações do plugin antigo.',
+   'Find the Markdown dictionary note in the older plugin’s settings.'))
+  .addButton(button=>button.setButtonText(writerUi('Procurar nota','Find note'))
+   .onClick(()=>writerV106LegacyDictionaryInspector(plugin)));
 }
 
 // v3 module: src/v4/cursor-memory.js
@@ -7819,14 +7824,17 @@ function writerV6TimestampReading(root,cfg){
 function writerV6ReadingTextStatus(plugin,element){
  const cfg=plugin.settings.v6.readingTime,file=plugin.app.workspace.getActiveFile?.();
  if(!writerV6Allowed(plugin,'readingTime')||(typeof writerV6ProjectToolAllowed==='function'&&!writerV6ProjectToolAllowed(plugin,'readingTime',file?.path))||!cfg.status||!file||file.extension!=='md'){
-  element.textContent='';element.style.display='none';return;
+  element.textContent='';element.title='';element.removeAttribute('aria-label');element.style.display='none';return;
  }
  const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
  const source=view?.editor?.getValue?.()||'';
  const result=writerV6ReadingEstimate(source,cfg);
  element.style.display='';
- element.textContent=result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('min leitura','min read');
- element.title=writerUi('Estimativa de tempo de leitura','Estimated reading time');
+ element.textContent=result.minutes+' '+writerUi('min leitura','min read');
+ const duration=result.minutes+' '+(result.minutes===1?writerUi('minuto de leitura','minute of reading'):writerUi('minutos de leitura','minutes of reading'));
+ const words=result.words+' '+(result.words===1?writerUi('palavra','word'):writerUi('palavras','words'));
+ element.title=duration+' · '+words;
+ element.setAttribute('aria-label',element.title);
 }
 class WriterV6Reading{
  constructor(plugin){this.plugin=plugin;this.updateTimer=null;}
@@ -7835,6 +7843,7 @@ class WriterV6Reading{
   const status=p.addStatusBarItem?.();
   if(status){
    status.addClass('writer-v6-reading-status');
+   status.setAttribute('role','group');
    const update=()=>{clearTimeout(this.updateTimer);this.updateTimer=setTimeout(()=>writerV6ReadingTextStatus(p,status),250);};
    p.registerEvent(p.app.workspace.on('active-leaf-change',update));
    p.registerEvent(p.app.vault.on('modify',file=>{if(file?.path===p.app.workspace.getActiveFile?.()?.path)update();}));
@@ -12971,16 +12980,42 @@ class WriterV83CalendarView extends ItemView{
 }
 function writerV83RegisterCalendar(plugin){
  plugin.registerView(WRITER_V83_CAL_VIEW,leaf=>new WriterV83CalendarView(leaf,plugin));
- const open=async(date)=>{
-  if(!writerModuleOn(plugin,'calendar'))return;
+ const pending=new Map();
+ const open=async(placement,date)=>{
+  if(!writerModuleOn(plugin,'calendar'))return null;
   const workspace=plugin.app.workspace;
-  let leaf=workspace.getLeavesOfType(WRITER_V83_CAL_VIEW)[0];
-  if(!leaf){leaf=workspace.getLeaf('tab');await leaf.setViewState({type:WRITER_V83_CAL_VIEW,active:true});}
-  if(writerV83Date(date)&&leaf.view instanceof WriterV83CalendarView){leaf.view.anchor=date;leaf.view.render();}
-  await workspace.revealLeaf?.(leaf);
+  try{
+   let leaf;
+   if(pending.has(placement))leaf=await pending.get(placement);
+   else{
+    leaf=workspace.getLeavesOfType(WRITER_V83_CAL_VIEW)
+     .find(item=>(writerV1010SideForLeaf(workspace,item)||'tab')===placement);
+    if(!leaf){
+     leaf=placement==='left'?workspace.getLeftLeaf?.(true):
+      placement==='right'?workspace.getRightLeaf?.(true):workspace.getLeaf('tab');
+     if(!leaf)throw Error('Calendar pane unavailable');
+     const ready=leaf.setViewState({type:WRITER_V83_CAL_VIEW,active:true}).then(()=>leaf);
+     pending.set(placement,ready);
+     try{await ready;}finally{pending.delete(placement);}
+    }
+   }
+   const anchor=writerV83Date(date);
+   if(anchor&&leaf.view instanceof WriterV83CalendarView){leaf.view.anchor=anchor;leaf.view.render();}
+   await workspace.revealLeaf?.(leaf);
+   return leaf;
+  }catch(error){
+   console.warn('[Basic] Could not open calendar:',error);
+   new Notice(writerUi('Não foi possível abrir o calendário neste painel.','Could not open the calendar in this pane.'));
+   return null;
+  }
  };
- plugin.writerCalendarOpen=open;
- plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void open()});
+ plugin.writerCalendarOpenIn=(placement,date)=>open(WRITER_V9_CAL_LOCATIONS.some(([id])=>id===placement)?placement:'tab',date);
+ plugin.writerCalendarOpen=date=>plugin.writerCalendarOpenIn(plugin.settings.v9Calendar?.openLocation,date);
+ plugin.addCommand({id:'v83-calendar-open',name:writerUi('Calendário: abrir agenda','Calendar: open agenda'),callback:()=>void plugin.writerCalendarOpen()});
+ for(const [placement,pt,en] of WRITER_V9_CAL_LOCATIONS){
+  plugin.addCommand({id:'v901-calendar-open-'+placement,name:writerUi('Calendário: abrir na '+pt.toLowerCase(),'Calendar: open in '+en.toLowerCase()),
+   callback:()=>void plugin.writerCalendarOpenIn(placement)});
+ }
 }
 
 // v3 module: src/v8/writing-study.js
@@ -14276,33 +14311,43 @@ class WriterV8HomeView extends ItemView{
  }
  renderQuotes(parent){
   const box=this.card(parent,'quotes','Citação aleatória','Random quote');
-  const options=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
-  let list=options.map(([text,by])=>[text,by,null,null]);
-  let current=this.homeQuote||writerV8HomePick(list,this.homeQuotePrevious)||list[0];
+  const manual=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes).map(([text,by])=>[text,by,null,null]);
+  const mode=writerV92ZoteroQuoteMode(this.plugin),read=this.plugin.writerV92Research?.quotes;
+  let loading=mode!=='manual'&&Boolean(read),list=mode==='only'?[]:manual;
+  const previous=this.homeQuote;
+  const pick=(prior)=>list.find(quote=>quote[0]===prior?.[0]&&quote[2]===prior?.[2])||writerV8HomePick(list,this.homeQuotePrevious);
+  let current=pick(previous);
+  const initial=current;
   const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
   const quote=body.createEl('p'),author=box.createDiv({cls:'writer-v905-quote-author'});
   const actions=box.createDiv({cls:'writer-v903-widget-actions'});
   const source=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
   const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
   const draw=()=>{
-   this.homeQuote=current;quote.setText(current[0]);
-   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
-   source.hidden=!current[2];
+   this.homeQuote=current;
+   quote.setText(current?.[0]||(loading?writerUi('Carregando destaques do Zotero…','Loading Zotero highlights…'):
+    writerUi('Nenhum destaque Zotero encontrado.','No Zotero highlights found.')));
+   author.setText(current?(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration')):'');
+   source.hidden=!current?.[2];next.disabled=list.length<2;
   };
   source.addEventListener('click',()=>{
-   const file=current[2]?this.app.vault.getAbstractFileByPath(current[2]):null;
+   const file=current?.[2]?this.app.vault.getAbstractFileByPath(current[2]):null;
    if(file instanceof TFile)this.openFile(file);
   });
   next.addEventListener('click',()=>{
+   if(!current)return;
    this.homeQuotePrevious=current[0];
    current=writerV8HomePick(list,current[0])||current;draw();
   });
   draw();
-  if(this.plugin.writerV92Research?.quotes)void this.plugin.writerV92Research.quotes().then(entries=>{
-   if(!box.isConnected||!entries.length)return;
-   list=[...list,...entries.map(([text,by,path,title])=>[text,by,path,title])];
+  const load=entries=>{
+   if(!box.isConnected)return;
+   loading=false;
+   list=mode==='both'?[...manual,...entries]:entries.length||mode==='only'?entries:manual;
+   current=pick(current===initial?previous||current:current);
    draw();
-  }).catch(error=>console.warn('[Basic AI] Zotero quote widget:',error));
+  };
+  if(loading)void read().then(load,error=>{console.warn('[Basic AI] Zotero quote widget:',error);load([]);});
  }
  renderActivity(parent){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
@@ -17212,14 +17257,16 @@ function writerV9CalEventColor(event){
  * recurrence-aware event editor and localized settings. Only local Markdown data. */
 const WRITER_V9_CAL_VIEWS=['month','week','three','day','agenda'];
 const WRITER_V9_CAL_VIEW_OPTIONS=[['month','Mês','Month'],['week','Semana','Week'],['three','3 dias','3 days'],['day','Dia','Day'],['agenda','Agenda','Agenda']];
+const WRITER_V9_CAL_LOCATIONS=[['tab','Aba principal','Main tab'],['left','Barra lateral esquerda','Left sidebar'],['right','Barra lateral direita','Right sidebar']];
 const WRITER_V9_CAL_REPEAT=[['none','Não repetir','Does not repeat'],['daily','Diariamente','Daily'],['weekly','Semanalmente','Weekly'],['monthly','Mensalmente','Monthly'],['yearly','Anualmente','Yearly']];
 function writerV9CalendarMerge(settings){
  const prior=settings.v9Calendar&&typeof settings.v9Calendar==='object'&&!Array.isArray(settings.v9Calendar)?settings.v9Calendar:{};
  const cfg=settings.v9Calendar=Object.assign(prior,{
-  defaultView:'month',showSidebar:true,showSidebarMobile:false,compactMonth:true,
+  defaultView:'month',openLocation:'tab',showSidebar:true,showSidebarMobile:false,compactMonth:true,
   startHour:7,endHour:21,maxMonthEvents:3,...prior
  });
  cfg.defaultView=WRITER_V9_CAL_VIEWS.includes(cfg.defaultView)?cfg.defaultView:'month';
+ if(!WRITER_V9_CAL_LOCATIONS.some(([id])=>id===cfg.openLocation))cfg.openLocation='tab';
  cfg.showSidebar=cfg.showSidebar!==false;cfg.showSidebarMobile=cfg.showSidebarMobile===true;
  cfg.compactMonth=cfg.compactMonth!==false;
  cfg.startHour=Math.max(0,Math.min(20,Number.isFinite(Number(cfg.startHour))?Math.floor(Number(cfg.startHour)):7));
@@ -17416,8 +17463,9 @@ function writerV9CalEditor(view,occurrence){
 const writerV9OldCalendarOpen=WriterV83CalendarView.prototype.onOpen;
 WriterV83CalendarView.prototype.onOpen=async function(){
  const cfg=writerV9CalendarMerge(this.plugin.settings);
- this.mode=cfg.defaultView;
- this.writerV9SidebarOpen=writerV8HomeIsMobile(this.plugin)?cfg.showSidebarMobile:cfg.showSidebar;
+ const docked=Boolean(writerV1010SideForLeaf(this.app.workspace,this.leaf));
+ this.mode=docked?'agenda':cfg.defaultView;
+ this.writerV9SidebarOpen=!docked&&(writerV8HomeIsMobile(this.plugin)?cfg.showSidebarMobile:cfg.showSidebar);
  this.writerV9CategoryFilter='';
  await writerV9OldCalendarOpen.call(this);
 };
@@ -17493,21 +17541,25 @@ function writerV9CalendarMonth(view,parent,range,rows){
  const grid=parent.createDiv({cls:'writer-v9-calendar-month'});
  for(let i=0;i<7;i++)grid.createSpan({cls:'writer-v9-calendar-weekday',text:writerV9CalendarLabel(writerV83DateOf(new Date(2024,0,1+i)),{weekday:'short'})});
  const firstDay=writerV9CalendarWeek(range.start),lastDay=writerV83ShiftDay(range.end,(7-(writerV9CalWeekday(range.end)+6)%7-1)%7);
- const cfg=view.plugin.settings.v9Calendar;
+ const cfg=view.plugin.settings.v9Calendar,today=writerV83DateOf(new Date());
  for(let day=firstDay;day<=lastDay;day=writerV83ShiftDay(day,1)){
-  const outside=day<range.start||day>range.end;
-  const box=grid.createDiv({cls:'writer-v9-calendar-month-day'+(outside?' is-outside':'')+(day===writerV83DateOf(new Date())?' is-today':'')});
+  const outside=day<range.start||day>range.end,selected=day===view.anchor;
+  const box=grid.createDiv({cls:'writer-v9-calendar-month-day'+(outside?' is-outside':'')+
+   (day===today?' is-today':'')+(selected?' is-selected':'')});
   const header=box.createDiv({cls:'writer-v9-calendar-month-dayhead'});
-  writerV9CalButton(header,String(Number(day.slice(-2))),null,()=>{
+  const dateButton=writerV9CalButton(header,String(Number(day.slice(-2))),null,()=>{
    view.anchor=day;view.mode='day';view.render();
   },writerV9CalendarLabel(day,{weekday:'long',day:'numeric',month:'long'}));
+  if(selected)dateButton.setAttribute('aria-current','date');
   const events=dayMap.get(day)||[];
   const visible=cfg.compactMonth?cfg.maxMonthEvents:5;
   for(const event of events.slice(0,visible))writerV9CalendarEntry(view,box,event,true);
   if(events.length>visible)writerV9CalButton(box,'+'+(events.length-visible),null,()=>{
    view.anchor=day;view.mode='day';view.render();
   },writerUi('Ver todos os eventos','See all events'));
-  if(!events.length&&!outside)box.addEventListener('dblclick',()=>view.edit({date:day}));
+  if(!outside)box.addEventListener('click',event=>{
+   if(event.target===box&&event.detail<2)view.edit({date:day});
+  });
  }
 }
 function writerV9CalendarAgenda(view,parent,range,rows){
@@ -17528,6 +17580,13 @@ function writerV9CalendarAgenda(view,parent,range,rows){
  }
  if(!rows.length)list.createEl('p',{text:writerUi('Não há eventos neste período.','No events in this period.'),cls:'writer-v83-cal-muted'});
 }
+function writerV9CalTimeSlot(view,parent,date,time=''){
+ const day=writerV9CalendarLabel(date,{weekday:'long',day:'numeric',month:'long'});
+ const label=time?writerUi('Criar evento em ','Create event on ')+day+writerUi(' às ',' at ')+time:
+  writerUi('Criar evento para o dia inteiro: ','Create all-day event: ')+day;
+ const button=parent.createEl('button',{cls:'writer-v9-calendar-slot-add',attr:{type:'button','aria-label':label,title:label}});
+ button.addEventListener('click',()=>view.edit(time?{date,time}:{date}));
+}
 function writerV9CalendarTimegrid(view,parent,range,rows){
  const days=[];
  for(let date=range.start;date<=range.end;date=writerV83ShiftDay(date,1))days.push(date);
@@ -17546,17 +17605,16 @@ function writerV9CalendarTimegrid(view,parent,range,rows){
  for(const day of days){
   const all=board.createDiv({cls:'writer-v9-calendar-time-slot is-all-day'});
   for(const event of daily.get(day).filter(e=>!e.time))writerV9CalendarEntry(view,all,event,true);
-  writerV9CalButton(all,'','plus',()=>view.edit({date:day}),writerUi('Criar evento para o dia','Create all-day event'));
+  writerV9CalTimeSlot(view,all,day);
  }
  for(let hour=cfg.startHour;hour<cfg.endHour;hour++){
-  board.createDiv({cls:'writer-v9-calendar-hour-label',text:String(hour).padStart(2,'0')+':00'});
+  const time=String(hour).padStart(2,'0')+':00';
+  board.createDiv({cls:'writer-v9-calendar-hour-label',text:time});
   for(const day of days){
    const cell=board.createDiv({cls:'writer-v9-calendar-time-slot'});
    for(const event of daily.get(day).filter(e=>e.time&&Number(e.time.slice(0,2))===hour))
     writerV9CalendarEntry(view,cell,event,true);
-   const add=writerV9CalButton(cell,'','plus',()=>view.edit({date:day,time:String(hour).padStart(2,'0')+':00'}),
-    writerUi('Novo evento às ','New event at ')+String(hour).padStart(2,'0')+':00');
-   add.addClass('writer-v9-calendar-hour-add');
+   writerV9CalTimeSlot(view,cell,day,time);
   }
  }
  const other=rows.filter(e=>e.time&&(Number(e.time.slice(0,2))<cfg.startHour||Number(e.time.slice(0,2))>=cfg.endHour));
@@ -17579,6 +17637,10 @@ WriterV83CalendarView.prototype.render=function(){
   this.writerV9SidebarOpen=!this.writerV9SidebarOpen;this.render();
  },writerUi('Mostrar/ocultar painel lateral','Toggle calendar sidebar'));
  writerV9CalButton(toolbar,writerUi('Hoje','Today'),null,()=>{this.anchor=writerV83DateOf(new Date());this.render();});
+ if(writerV1010SideForLeaf(this.app.workspace,this.leaf)!=='right'){
+  writerV9CalButton(toolbar,'','panel-right-open',()=>void this.plugin.writerCalendarOpenIn?.('right',this.anchor),
+   writerUi('Abrir na barra lateral direita','Open in right sidebar'));
+ }
  const move=delta=>{
   if(this.mode==='month'){
    const d=new Date(this.anchor+'T12:00:00');d.setDate(1);d.setMonth(d.getMonth()+delta);
@@ -17618,6 +17680,12 @@ function writerV9CalendarSettings(plugin,panel){
    if(leaf.view instanceof WriterV83CalendarView)leaf.view.render();
   }
  };
+ new Setting(panel).setName(writerUi('Abrir o calendário em','Open calendar in'))
+  .setDesc(writerUi('Escolha onde o comando principal abre o calendário.','Choose where the main calendar command opens.'))
+  .addDropdown(drop=>{
+   for(const [id,pt,en] of WRITER_V9_CAL_LOCATIONS)drop.addOption(id,writerUi(pt,en));
+   drop.setValue(cfg.openLocation).onChange(async value=>{cfg.openLocation=value;await plugin.saveSettings();});
+  });
  new Setting(panel).setName(writerUi('Vista inicial','Default view')).addDropdown(drop=>{
   for(const [id,pt,en] of WRITER_V9_CAL_VIEW_OPTIONS)drop.addOption(id,writerUi(pt,en));
   drop.setValue(cfg.defaultView).onChange(async value=>{cfg.defaultView=value;await plugin.saveSettings();});
@@ -19913,6 +19981,7 @@ function writerV92ExplorerMerge(settings){
  cfg.previewHoldMs=Math.max(400,Math.min(1500,Number(cfg.previewHoldMs)||650));
  cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||3)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
+ cfg.previewImageShape=cfg.previewImageShape==='wide'?'wide':'square';
  cfg.favoriteIcon=/^[a-z][a-z0-9-]{0,38}$/.test(cfg.favoriteIcon)?cfg.favoriteIcon:'star';
  cfg.favoriteIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.favoriteIconColor||''))?cfg.favoriteIconColor:'';
  cfg.previewMode=['off','folder','all'].includes(cfg.previewMode)?cfg.previewMode:'folder';
@@ -20311,6 +20380,7 @@ function writerV92ExplorerRegister(plugin){
   shell.dataset.holdMs=cfg.previewTouchExpand?String(cfg.previewHoldMs):'0';
   shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
   shell.classList.toggle('has-image',Boolean(imagePath));
+  shell.classList.toggle('is-wide-thumbnail',Boolean(imagePath)&&cfg.previewImageShape==='wide');
   let label=shell.querySelector(':scope > .writer-v92-file-preview');
   if(description){
    if(!label){
@@ -20486,6 +20556,12 @@ function writerV92ExplorerSettings(plugin,panel){
   .addSlider(t=>t.setLimits(40,96,4).setValue(cfg.previewImageSize).setDynamicTooltip().onChange(async v=>{
    cfg.previewImageSize=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
+ new Setting(panel).setName(writerUi('Formato da miniatura','Thumbnail format'))
+  .addDropdown(d=>d.addOption('square',writerUi('Quadrada','Square'))
+   .addOption('wide',writerUi('Panorâmica (16:9)','Widescreen (16:9)'))
+   .setValue(cfg.previewImageShape).onChange(async value=>{
+    cfg.previewImageShape=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+   }));
  new Setting(panel).setName(writerUi('Limite da descrição','Preview length')).addSlider(s=>s.setLimits(40,280,10)
   .setValue(cfg.previewMax).setDynamicTooltip().onChange(async v=>{cfg.previewMax=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
 }
@@ -20495,7 +20571,7 @@ function writerV92ExplorerSettings(plugin,panel){
  * Progressbar and Obsidian Widgets. No GPL code is copied or bundled. */
 function writerV92BlocksMerge(settings){
  const old=settings.v92Blocks&&typeof settings.v92Blocks==='object'?settings.v92Blocks:{};
- return settings.v92Blocks={enabled:true,columns:true,progress:true,widgets:true,metaFields:true,...old};
+ return settings.v92Blocks={enabled:true,columns:true,progress:true,widgets:true,metaFields:true,inlineMetaFields:false,metaBindFences:false,...old};
 }
 function writerV92BlockOptions(source){
  const result={};
@@ -20634,41 +20710,198 @@ function writerV92RenderWidget(plugin,source,el,ctx){
   if(options.text)host.createEl('small',{text:options.text.slice(0,160)});
  }else host.createEl('p',{text:writerUi('Tipo de widget não suportado.','Unsupported widget type.')});
 }
-function writerV92MetaValue(plugin,ctx,key){
- const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
- if(!(file instanceof TFile))return {file:null,value:undefined};
- const front=plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter||{};
- return {file,value:front[key]};
+function writerV92MetaKey(key){
+ return /^[a-zA-Z][\w-]{0,79}$/.test(key)&&key!=='constructor'&&key!=='prototype';
+}
+function writerV92MetaEnabled(plugin,mode='block'){
+ const cfg=plugin.settings.v92Blocks;
+ if(!writerModuleOn(plugin,'writingWidgets')||!cfg?.enabled||!cfg.metaFields)return false;
+ if(mode==='block')return true;
+ const plugins=plugin.app.plugins,id='obsidian-meta-bind-plugin';
+ if(plugins?.enabledPlugins?.has?.(id)||plugins?.plugins?.[id])return false;
+ return mode==='inline'?cfg.inlineMetaFields===true:cfg.metaBindFences===true;
+}
+function writerV92MetaValue(front,key){
+ return front&&Object.hasOwn(front,key)?front[key]:undefined;
+}
+async function writerV92MetaWrite(plugin,file,key,mode,resolve){
+ if(!writerV92MetaKey(key)||!writerV92MetaEnabled(plugin,mode)||!plugin.app.fileManager?.processFrontMatter||
+    plugin.app.vault.getAbstractFileByPath(file.path)!==file)return false;
+ try{
+  await plugin.app.fileManager.processFrontMatter(file,front=>{
+   const next=resolve(writerV92MetaValue(front,key));
+   if(next!==undefined)front[key]=next;
+  });
+  return true;
+ }catch(_){
+  new Notice(writerUi('Não foi possível salvar a propriedade.','Could not save property.'));
+  return false;
+ }
 }
 function writerV92RenderMeta(plugin,source,el,ctx){
  const options=writerV92BlockOptions(source),key=String(options.property||'').trim();
- if(!/^[a-zA-Z][\w-]{0,79}$/.test(key)){
+ if(!writerV92MetaKey(key)){
   el.createEl('small',{text:writerUi('Defina property: nome_da_propriedade','Set property: property_name')});return;
  }
- const {file,value}=writerV92MetaValue(plugin,ctx,key);
- if(!file)return;
  const type=['toggle','text','number','select','view'].includes(options.type)?options.type:'view';
- const host=el.createDiv({cls:'writer-v92-meta'});
- host.createEl('label',{text:String(options.label||key).slice(0,90)});
- if(type==='view'){host.createSpan({text:String(value??'—').slice(0,500)});return;}
+ const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
+ if(!(file instanceof TFile))return;
+ writerV92MetaField(plugin,el.createDiv({cls:'writer-v92-meta'}),file,key,{...options,type});
+}
+function writerV92MetaField(plugin,host,file,key,options,mode='block'){
+ const inline=mode==='inline';
+ const value=()=>writerV92MetaValue(plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter,key);
+ const type=options.type,label=String(options.label||key).slice(0,90);
+ if(!inline)host.createEl('label',{text:label});
+ if(type==='view'){
+  const output=host.createSpan();
+  const refresh=()=>output.setText(String(value()??'—').slice(0,500));
+  refresh();
+  return refresh;
+ }
  const field=type==='select'?host.createEl('select'):host.createEl('input');
+ field.setAttribute('aria-label',label);
  if(type==='select'){
-  for(const entry of String(options.options||'').split('|').slice(0,25)){
+  for(const entry of (Array.isArray(options.options)?options.options:String(options.options||'').split('|')).slice(0,25)){
    const opt=field.createEl('option',{text:entry.trim()});opt.value=entry.trim();
   }
-  field.value=String(value??'');
  }else{
-  field.type=type==='toggle'?'checkbox':type==='number'?'number':'text';
-  if(type==='toggle')field.checked=value===true||value==='true';
-  else field.value=String(value??'');
+  field.type=({toggle:'checkbox',number:'number',slider:'range',date:'date'})[type]||'text';
+  if(type==='slider'){
+   field.min=String(options.min);field.max=String(options.max);field.step=String(options.step);
+  }
  }
- const write=async()=>{
-  if(!plugin.app.fileManager?.processFrontMatter)return;
-  const newValue=type==='toggle'?field.checked:type==='number'?Number(field.value):field.value;
-  try{await plugin.app.fileManager.processFrontMatter(file,front=>{front[key]=newValue;});}
-  catch(error){new Notice(writerUi('Não foi possível salvar a propriedade.','Could not save property.'));}
+ const refresh=()=>{
+  const current=value();
+  if(type==='toggle')field.checked=current===true||current==='true';
+  else field.value=String(current??(type==='slider'?options.min:''));
  };
- field.addEventListener(type==='text'?'change':'change',()=>void write());
+ refresh();
+ const write=()=>{
+  const numeric=type==='number'||type==='slider';
+  const newValue=type==='toggle'?field.checked:numeric?Number(field.value):field.value;
+  if(numeric&&(!Number.isFinite(newValue)||(mode!=='block'&&(!field.value||field.validity?.valid===false))))return;
+  return writerV92MetaWrite(plugin,file,key,mode,()=>newValue);
+ };
+ field.addEventListener('change',()=>void write());
+}
+function writerV92MetaToken(token){
+ const match=/^(INPUT|VIEW)\[([^\]\r\n]{1,220})\]$/.exec(token);
+ if(!match)return null;
+ if(match[1]==='VIEW'){
+  const key=match[2].trim();
+  return writerV92MetaKey(key)?{key,type:'view'}:null;
+ }
+ const input=/^(toggle|text|number|slider|date|select)(?:\(([^()]*)\))?\s*:\s*([\w-]+)$/.exec(match[2].trim());
+ if(!input||!writerV92MetaKey(input[3]))return null;
+ const [,type,args,key]=input;
+ if(args===undefined)return type==='select'?null:{key,type,min:0,max:100,step:1};
+ const values=args.split(',').map(value=>value.trim());
+ if(type==='select'&&values.length<=25&&values.every(Boolean))return {key,type,options:values};
+ if(type!=='slider'||values.length<2||values.length>3||!values.every(value=>/^-?\d+(?:\.\d+)?$/.test(value)))return null;
+ const [min,max,step=1]=values.map(Number);
+ return min>=-1e6&&max<=1e6&&max>min&&step>0&&step<=max-min?{key,type,min,max,step}:null;
+}
+function writerV92MetaInline(plugin,el,ctx){
+ if(!writerV92MetaEnabled(plugin,'inline')||!ctx?.sourcePath)return;
+ const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
+ const doc=el.ownerDocument;
+ if(!(file instanceof TFile)||file.extension!=='md'||!doc?.createTreeWalker)return;
+ const walker=doc.createTreeWalker(el,4),nodes=[],refreshers=[];
+ while(nodes.length<120&&walker.nextNode()){
+  const node=walker.currentNode;
+  if(!/\b(?:INPUT|VIEW)\[/.test(node.nodeValue||'')||node.parentElement?.closest(
+   'pre,code,script,style,a,textarea,input,button,select,.cm-editor,.writer-v92-meta,.writer-v92-meta-inline'))continue;
+  nodes.push(node);
+ }
+ for(const node of nodes){
+  const text=node.nodeValue,fragment=doc.createDocumentFragment();
+  let from=0;
+  for(const token of text.matchAll(/\b(?:INPUT|VIEW)\[[^\]\r\n]{1,220}\]/g)){
+   const spec=writerV92MetaToken(token[0]);if(!spec)continue;
+   fragment.append(doc.createTextNode(text.slice(from,token.index)));
+   const host=doc.createElement('span');host.className='writer-v92-meta-inline';
+   const refresh=writerV92MetaField(plugin,host,file,spec.key,spec,'inline');
+   if(refresh)refreshers.push(refresh);
+   fragment.append(host);from=token.index+token[0].length;
+  }
+  if(!from)continue;
+  fragment.append(doc.createTextNode(text.slice(from)));node.replaceWith(fragment);
+ }
+ const cache=plugin.app.metadataCache,Child=require('obsidian').MarkdownRenderChild;
+ if(refreshers.length&&typeof cache?.on==='function'&&Child&&ctx.addChild){
+  const child=new Child(el);
+  child.registerEvent(cache.on('changed',changed=>{
+   if(changed===file)for(const refresh of refreshers)refresh();
+  }));
+  ctx.addChild(child);
+ }
+}
+function writerV92MetaFenceField(spec){
+ if(!spec||typeof spec!=='object'||Array.isArray(spec))return null;
+ const key=spec.key??spec.property,type=spec.type??'text';
+ if(typeof key!=='string'||!writerV92MetaKey(key)||!['toggle','text','number','slider','date','select','view'].includes(type))return null;
+ const label=typeof spec.label==='string'?spec.label:'';
+ if(type==='select'){
+  const options=Array.isArray(spec.options)?spec.options:typeof spec.options==='string'?spec.options.split('|'):[];
+  if(!options.length||options.length>25||options.some(option=>typeof option!=='string'||!option.trim()||option.length>120))return null;
+  return {key,type,label,options};
+ }
+ if(type==='slider'){
+  const {min=0,max=100,step=1}=spec;
+  if(![min,max,step].every(Number.isFinite)||min< -1e6||max>1e6||max<=min||step<=0||step>max-min)return null;
+  return {key,type,label,min,max,step};
+ }
+ return {key,type,label};
+}
+function writerV92MetaFenceButton(spec){
+ const key=spec.property,action=spec.action??'toggle';
+ if(typeof key!=='string'||!writerV92MetaKey(key))return null;
+ const label=typeof spec.label==='string'?spec.label.trim().slice(0,80):'';
+ if(action==='toggle')return {key,label,resolve:value=>value!==true&&value!=='true'};
+ if(action==='increment'){
+  const step=spec.step??1;
+  if(!Number.isFinite(step)||Math.abs(step)>1000)return null;
+  return {key,label,resolve:value=>{
+   const amount=value==null?0:value;
+   const result=typeof amount==='number'?amount+step:NaN;
+   return Number.isFinite(result)?result:undefined;
+  }};
+ }
+ const value=spec.value,scalar=typeof value==='string'&&value.length<=2000||
+  typeof value==='boolean'||Number.isFinite(value);
+ return action==='set'&&scalar?{key,label,resolve:()=>value}:null;
+}
+function writerV92MetaFences(plugin,el,ctx){
+ if(!writerV92MetaEnabled(plugin,'fence')||!ctx?.sourcePath)return;
+ const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
+ if(!(file instanceof TFile)||file.extension!=='md')return;
+ // Use the stock code blocks left by the renderer rather than claiming the
+ // fence languages, so enabling Meta Bind later lets it own the next render.
+ for(const code of Array.from(el.querySelectorAll?.('pre > code.language-meta-bind, pre > code.language-meta-bind-button')||[]).slice(0,40)){
+  const source=code.textContent;
+  if(!source||source.length>10000)continue;
+  let spec;
+  try{spec=parseYaml(source);}catch(_){continue;}
+  if(!spec||typeof spec!=='object'||Array.isArray(spec))continue;
+  const host=el.ownerDocument.createElement('div');
+  if(code.classList.contains('language-meta-bind-button')){
+   const action=writerV92MetaFenceButton(spec);
+   if(!action)continue;
+   const button=host.createEl('button',{text:action.label||writerUi('Atualizar propriedade','Update property'),attr:{type:'button'}});
+   button.addEventListener('click',async()=>{
+    if(button.disabled)return;
+    button.disabled=true;
+    try{await writerV92MetaWrite(plugin,file,action.key,'fence',action.resolve);}
+    finally{button.disabled=false;}
+   });
+  }else{
+   const fields=(Array.isArray(spec.fields)?spec.fields.slice(0,40):[spec]).map(writerV92MetaFenceField).filter(Boolean);
+   if(!fields.length)continue;
+   for(const field of fields)writerV92MetaField(plugin,host.createDiv({cls:'writer-v92-meta'}),file,field.key,field,'fence');
+  }
+  code.parentElement.replaceWith(host);
+ }
 }
 function writerV92RegisterBlocks(plugin){
  const register=(name,enabled,render)=>{
@@ -20683,6 +20916,10 @@ function writerV92RegisterBlocks(plugin){
  register('progressbar','progress',writerV92RenderProgress);
  register('widgets','widgets',writerV92RenderWidget);
  register('meta-field','metaFields',writerV92RenderMeta);
+ plugin.registerMarkdownPostProcessor?.((el,ctx)=>{
+  writerV92MetaInline(plugin,el,ctx);
+  writerV92MetaFences(plugin,el,ctx);
+ },-10);
  plugin.addCommand?.({id:'v92-insert-columns',name:writerUi('Colunas: inserir layout','Columns: insert layout'),
   editorCallback:editor=>editor.replaceSelection('\n\`\`\`columns\ncolumns: 2\n### Coluna 1\nTexto aqui.\n--- end-column ---\n### Coluna 2\nTexto aqui.\n\`\`\`\n')});
  plugin.addCommand?.({id:'v92-insert-progress',name:writerUi('Progresso: inserir barra','Progress: insert bar'),
@@ -20701,6 +20938,14 @@ function writerV92BlockSettings(plugin,panel){
   ['progress','Barras de progresso','Progress bars'],['widgets','Widgets de notas','Note widgets'],['metaFields','Campos vinculados ao YAML','YAML-bound fields']]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  }
+ new Setting(panel).setName(writerUi('Campos INPUT e VIEW na leitura','Inline INPUT and VIEW fields'))
+  .setDesc(writerUi('No modo Leitura, INPUT[toggle:done] edita a propriedade YAML done e VIEW[done] mostra seu valor. O plugin Meta Bind tem prioridade.',
+   'In Reading view, INPUT[toggle:done] edits the done YAML property and VIEW[done] shows its value. The Meta Bind plugin takes priority.'))
+  .addToggle(t=>t.setValue(cfg.inlineMetaFields===true).onChange(async value=>{cfg.inlineMetaFields=value;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Blocos antigos do Meta Bind','Legacy Meta Bind blocks'))
+  .setDesc(writerUi('Renderiza campos YAML simples e botões set, toggle e increment dos blocos meta-bind e meta-bind-button. O plugin Meta Bind tem prioridade.',
+   'Render simple YAML fields and set, toggle and increment buttons in meta-bind and meta-bind-button blocks. The Meta Bind plugin takes priority.'))
+  .addToggle(t=>t.setValue(cfg.metaBindFences===true).onChange(async value=>{cfg.metaBindFences=value;await plugin.saveSettings();}));
 }
 
 // v3 module: src/v9/research-style.js
@@ -20711,19 +20956,25 @@ function writerV92BlockSettings(plugin,panel){
 function writerV92ResearchMerge(settings){
  const old=settings.v92Research&&typeof settings.v92Research==='object'?settings.v92Research:{};
  const cfg=settings.v92Research={
-  enabled:true,zoteroQuotes:false,zoteroFolder:'Zotero',zoteroTag:'zotero',
-  styleEnabled:false,fontSize:16,lineHeight:1.6,contentWidth:850,headingAccent:'',
+  enabled:true,zoteroQuotes:false,zoteroFolder:'Zotero',zoteroTag:'zotero',zoteroBibFile:'',zoteroQuoteMode:'both',
+  styleEnabled:false,stylePrint:false,stylePresets:[],
   ...old
  };
  cfg.enabled=cfg.enabled!==false;
  cfg.zoteroQuotes=cfg.zoteroQuotes===true;
  cfg.zoteroFolder=String(cfg.zoteroFolder||'Zotero').replace(/^\/|\/$/g,'').slice(0,180);
  cfg.zoteroTag=String(cfg.zoteroTag||'zotero').replace(/^#/,'').slice(0,70);
+ cfg.zoteroBibFile=String(cfg.zoteroBibFile||'').trim().slice(0,500);
+ cfg.zoteroQuoteMode=['both','prefer','only'].includes(cfg.zoteroQuoteMode)?cfg.zoteroQuoteMode:'both';
  cfg.styleEnabled=cfg.styleEnabled===true;
- cfg.fontSize=Math.max(12,Math.min(24,Number(cfg.fontSize)||16));
- cfg.lineHeight=Math.max(1.2,Math.min(2.3,Number(cfg.lineHeight)||1.6));
- cfg.contentWidth=Math.max(480,Math.min(1400,Number(cfg.contentWidth)||850));
- cfg.headingAccent=/^#[0-9a-f]{6}$/i.test(cfg.headingAccent)?cfg.headingAccent:'';
+ cfg.stylePrint=cfg.stylePrint===true;
+ Object.assign(cfg,writerV92ReadingStyleValues(cfg));
+ const names=new Set();
+ cfg.stylePresets=(Array.isArray(cfg.stylePresets)?cfg.stylePresets:[]).filter(preset=>{
+  const name=typeof preset?.name==='string'?preset.name.trim().slice(0,45):'';
+  if(!name||names.has(name)||!preset.values||typeof preset.values!=='object')return false;
+  names.add(name);return true;
+ }).slice(0,25).map(preset=>({name:preset.name.trim().slice(0,45),values:writerV92ReadingStyleValues(preset.values)}));
  return cfg;
 }
 function writerV92ZoteroIsSource(plugin,file){
@@ -20783,39 +21034,185 @@ async function writerV92ZoteroQuotes(plugin,limit=180){
  }
  return quotes.slice(0,limit);
 }
+function writerV92ZoteroQuoteMode(plugin){
+ const cfg=plugin.settings.v92Research;
+ return cfg?.enabled&&cfg.zoteroQuotes&&writerModuleOn(plugin,'zoteroIntegration')?cfg.zoteroQuoteMode||'both':'manual';
+}
+function writerV92RefreshZoteroQuotes(plugin){
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
+  leaf.view.homeQuote=null;leaf.view.render?.();
+ }
+}
+const WRITER_ZOTERO_BIB_SIZE=3*1024*1024;
+const WRITER_ZOTERO_BIB_CACHE=new WeakMap();
+const WRITER_ZOTERO_CITEKEY=/^[\p{L}\p{N}_][\p{L}\p{N}_:.+/?-]{0,119}$/u;
+function writerV92BibTerm(text,start,limit,budget){
+ const opener=text[start];
+ if(opener!=='{'&&opener!=='"'){
+  const bare=/[^\s,#})]+/y;bare.lastIndex=start;
+  const match=bare.exec(text);
+  return match&&bare.lastIndex<=limit?{value:match[0],end:bare.lastIndex}:null;
+ }
+ let depth=opener==='{'?1:0;
+ for(let cursor=start+1;cursor<limit&&budget.remaining>0;cursor++){
+  budget.remaining--;
+  const char=text[cursor];
+  if(char==='\\'){cursor++;continue;}
+  if(char==='"'&&opener==='"'&&depth===0)return {value:text.slice(start+1,cursor),end:cursor+1};
+  if(char==='{')depth++;
+  if(char==='}'&&depth>0&&--depth===0&&opener==='{')return {value:text.slice(start+1,cursor),end:cursor+1};
+ }
+ return null;
+}
+function writerV92BibEntries(source){
+ const text=String(source||'').slice(0,WRITER_ZOTERO_BIB_SIZE),entries=[];
+ // Failed entries can revisit earlier content during recovery. Bound total scanning as well.
+ const budget={remaining:text.length*2};
+ const header=/%[^\r\n]*|@([a-z]+)\s*([({])\s*([^,=\s{}()]+)\s*,/gi;
+ const field=/([a-z][\w-]*)\s*=\s*/iy,space=/(?:\s|%[^\r\n]*)*/y;
+ const skip=start=>{space.lastIndex=start;space.exec(text);return space.lastIndex;};
+ const clean=(value,max)=>String(value||'').replace(/[{}]/g,'').replace(/\s+/g,' ').trim().slice(0,max);
+ let head;
+ while(entries.length<1500&&budget.remaining>0&&(head=header.exec(text))){
+  const key=head[3];
+  if(!key||!WRITER_ZOTERO_CITEKEY.test(key)||/^(comment|string|preamble)$/i.test(head[1]))continue;
+  const close=head[2]==='{'?'}':')',fields=new Map(),limit=Math.min(text.length,header.lastIndex+100000);
+  let cursor=skip(header.lastIndex);
+  while(cursor<limit&&text[cursor]!==close){
+   field.lastIndex=cursor;
+   const name=field.exec(text)?.[1];
+   if(!name)break;
+   let term=writerV92BibTerm(text,field.lastIndex,limit,budget),value='';
+   while(term){
+    value+=term.value;cursor=skip(term.end);
+    if(text[cursor]!=='#')break;
+    term=writerV92BibTerm(text,skip(cursor+1),limit,budget);
+   }
+   if(!term)break;
+   fields.set(name.toLowerCase(),value);
+   if(text[cursor]!==',')break;
+   cursor=skip(cursor+1);
+  }
+  if(text[cursor]!==close)continue;
+  header.lastIndex=cursor+1;
+  entries.push({key,title:clean(fields.get('title'),250)||key,author:clean(fields.get('author'),180),
+   year:clean(fields.get('year')||fields.get('date'),30),doi:clean(fields.get('doi'),120)});
+ }
+ return entries;
+}
+async function writerV92ZoteroBibReferences(plugin){
+ const cfg=plugin.settings.v92Research,path=cfg?.zoteroBibFile;
+ if(!path||!cfg.enabled||!writerModuleOn(plugin,'zoteroIntegration'))return [];
+ if(!/\.bib$/i.test(path)||/[\\:\x00-\x1f]/.test(path)||path.split('/').some(part=>!part||part==='.'||part==='..'))
+  throw Error('Invalid vault bibliography path');
+ // Access the explicitly selected path even when Obsidian hides .bib files from its file index.
+ const adapter=plugin.app.vault.adapter;
+ const stat=await adapter.stat(path);
+ if(stat?.type!=='file'||!Number.isFinite(stat.size)||stat.size>WRITER_ZOTERO_BIB_SIZE)throw Error('Unavailable vault bibliography');
+ const cached=WRITER_ZOTERO_BIB_CACHE.get(plugin);
+ if(cached?.path===path&&cached.mtime===stat.mtime&&cached.size===stat.size)return cached.entries;
+ const entries=adapter.read(path).then(writerV92BibEntries),record={path,mtime:stat.mtime,size:stat.size,entries};
+ WRITER_ZOTERO_BIB_CACHE.set(plugin,record);
+ try{return await entries;}
+ catch(error){
+  if(WRITER_ZOTERO_BIB_CACHE.get(plugin)===record)WRITER_ZOTERO_BIB_CACHE.delete(plugin);
+  throw error;
+ }
+}
+const WRITER_V92_STYLE_RANGES=[
+ ['fontSize','Tamanho da fonte','Font size',12,24,1,16,'px','font-size'],
+ ['lineHeight','Altura de linha','Line height',1.2,2.3,.1,1.6,'','line-height'],
+ ['contentWidth','Largura da leitura','Reading width',480,1400,20,850,'px','width'],
+ ['paragraphSpacing','Espaçamento entre parágrafos','Paragraph spacing',0,36,2,0,'px','paragraph-spacing'],
+ ['listIndent','Recuo das listas','List indentation',0,72,2,0,'px','list-indent'],
+ ['quoteRadius','Arredondamento de citações','Quote corner radius',0,28,1,0,'px','quote-radius']
+];
+const WRITER_V92_STYLE_COLORS=[
+ ['headingAccent','Cor dos títulos','Heading color','heading-color'],
+ ['bodyColor','Cor do texto','Text color','body-color'],
+ ['linkColor','Cor dos links','Link color','link-color'],
+ ['quoteColor','Cor das citações','Quote color','quote-color'],
+ ['quoteBorder','Cor da borda das citações','Quote border color','quote-border'],
+ ['bulletColor','Cor dos marcadores de lista','List marker color','bullet-color']
+];
+function writerV92ReadingStyleValues(input){
+ const readNumber=(value,min,max,fallback)=>value==null||value===''||!Number.isFinite(Number(value))?fallback:
+  Math.min(max,Math.max(min,Number(value)));
+ const color=value=>typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value)?value:'';
+ const values={};
+ for(const [field,,,min,max,,fallback] of WRITER_V92_STYLE_RANGES)
+  values[field]=readNumber(input[field],min,max,fallback);
+ for(const [field] of WRITER_V92_STYLE_COLORS)values[field]=color(input[field]);
+ values.headingSizes=Array.from({length:6},(_,i)=>readNumber(input.headingSizes?.[i],0,3,0));
+ values.headingColors=Array.from({length:6},(_,i)=>color(input.headingColors?.[i]));
+ return values;
+}
+function writerV92ResearchStyleApply(root,cfg,on){
+ root.classList.toggle('writer-v92-style',on);
+ const set=(key,value)=>{
+  if(on&&value)root.style.setProperty('--writer-v92-'+key,value);
+  else root.style.removeProperty('--writer-v92-'+key);
+ };
+ for(const [field,,,,,,,unit,css] of WRITER_V92_STYLE_RANGES)set(css,cfg[field]?cfg[field]+unit:'');
+ for(const [field,,,css] of WRITER_V92_STYLE_COLORS)set(css,cfg[field]);
+ for(let i=0;i<6;i++){
+  set('h'+(i+1)+'-size',cfg.headingSizes?.[i]?cfg.headingSizes[i]+'em':'');
+  set('h'+(i+1)+'-color',cfg.headingColors?.[i]);
+ }
+}
 function writerV92ResearchStyle(plugin){
  const cfg=plugin.settings.v92Research;
  const roots=plugin.app.workspace.getLeavesOfType?.('markdown')||[];
  for(const leaf of roots){
   const root=leaf.view?.containerEl;
   if(!root)continue;
-  const on=cfg.styleEnabled&&writerModuleOn(plugin,'styleMate');
-  root.classList.toggle('writer-v92-style',on);
-  if(on){
-   root.style.setProperty('--writer-v92-font-size',cfg.fontSize+'px');
-   root.style.setProperty('--writer-v92-line-height',String(cfg.lineHeight));
-   root.style.setProperty('--writer-v92-width',cfg.contentWidth+'px');
-   if(cfg.headingAccent)root.style.setProperty('--writer-v92-heading-color',cfg.headingAccent);
-   else root.style.removeProperty('--writer-v92-heading-color');
-  }else for(const key of ['--writer-v92-font-size','--writer-v92-line-height','--writer-v92-width','--writer-v92-heading-color'])
-   root.style.removeProperty(key);
+  writerV92ResearchStyleApply(root,cfg,cfg.styleEnabled&&writerModuleOn(plugin,'styleMate'));
+ }
+}
+function writerV92ResearchPrint(plugin,element){
+ const cfg=plugin.settings.v92Research;
+ if(!cfg?.styleEnabled||!cfg.stylePrint||!writerModuleOn(plugin,'styleMate'))return;
+ // Native PDF export renders into a separate print document, without the
+ // workspace leaf that supplies the live note's style classes.
+ const preview=element.closest?.('.print > .markdown-preview-view');
+ if(preview!==element)return;
+ const win=preview.ownerDocument?.defaultView;
+ if(!win)return;
+ const colors=new Map();
+ const gray=value=>{
+  if(!value)return '';
+  if(!colors.has(value)){
+   const converted='oklch(from '+value+' l 0 h / alpha)';
+   colors.set(value,win.CSS?.supports?.('color',converted)?converted:'');
+  }
+  return colors.get(value);
+ };
+ const properties=['color','background-color','border-top-color','border-right-color','border-bottom-color',
+  'border-left-color','outline-color','text-decoration-color','accent-color','fill','stroke'];
+ const updates=[preview,...preview.querySelectorAll('*')].map(node=>{
+  const current=win.getComputedStyle(node);
+  return [node,properties.map(property=>[property,gray(current.getPropertyValue(property))])];
+ });
+ // Filtering the whole preview converts its text into an image in Chromium.
+ // Recolor the rendered CSS instead and reserve filters for embedded media.
+ for(const [node,styles] of updates){
+  if(!node.style)continue;
+  for(const [property,value] of styles)if(value)node.style.setProperty(property,value);
+  if(node.matches('img,canvas,video'))node.style.filter='grayscale(1)';
  }
 }
 function writerV92ResearchRegister(plugin){
  plugin.writerV92Research={quotes:()=>writerV92ZoteroQuotes(plugin),refreshStyle:()=>writerV92ResearchStyle(plugin)};
+ for(const type of ['zotero','bibliography'])plugin.registerMarkdownCodeBlockProcessor?.(type,
+  (source,el,ctx)=>writerV10ZoteroBibliography(plugin,source,el,ctx));
+ plugin.registerMarkdownPostProcessor?.(element=>writerV92ResearchPrint(plugin,element),1000);
  plugin.registerEvent(plugin.app.workspace.on('layout-change',()=>writerV92ResearchStyle(plugin)));
  plugin.app.workspace.onLayoutReady?.(()=>writerV92ResearchStyle(plugin));
  plugin.register?.(()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
   const root=leaf.view?.containerEl;
-  root?.classList?.remove('writer-v92-style');
-  for(const key of ['--writer-v92-font-size','--writer-v92-line-height','--writer-v92-width','--writer-v92-heading-color'])
-   root?.style?.removeProperty(key);
+  if(root)writerV92ResearchStyleApply(root,plugin.settings.v92Research,false);
  }});
- plugin.addCommand?.({id:'v92-refresh-zotero-quotes',name:writerUi('Zotero: atualizar widget de citações','Zotero: refresh quote widget'),callback:()=>{
-  for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)||[]){
-   leaf.view.homeQuote=null;leaf.view.render?.();
-  }
- }});
+ plugin.addCommand?.({id:'v92-refresh-zotero-quotes',name:writerUi('Zotero: atualizar widget de citações','Zotero: refresh quote widget'),callback:()=>writerV92RefreshZoteroQuotes(plugin)});
  plugin.addCommand?.({id:'v92-toggle-reading-style',name:writerUi('Estilo de leitura: ativar/desativar','Reading style: toggle'),callback:async()=>{
   const cfg=plugin.settings.v92Research;cfg.styleEnabled=!cfg.styleEnabled;
   await plugin.saveSettings();writerV92ResearchStyle(plugin);
@@ -20825,31 +21222,90 @@ function writerV92ResearchSettings(plugin,panel){
  const cfg=plugin.settings.v92Research;
  panel.createEl('h3',{text:writerUi('Zotero e citações','Zotero & quotes')});
  panel.createEl('p',{cls:'dictionary-muted',text:writerUi(
-  'Lê destaques de notas Markdown já importadas pelo Zotero Integration. Sem conexão direta à biblioteca Zotero e sem inventar citações.',
-  'Reads highlights from Markdown notes previously imported using Zotero Integration. No direct Zotero library connection and no invented quotations.'
+  'Use referências de notas Markdown importadas e de um arquivo BibTeX no cofre. O widget usa os destaques das notas importadas.',
+  'Use references from imported Markdown notes and a BibTeX file in the vault. The widget uses highlights from imported notes.'
  )});
+ const saveQuoteSettings=async()=>{await plugin.saveSettings();writerV92RefreshZoteroQuotes(plugin);};
  new Setting(panel).setName(writerUi('Ativar fontes de pesquisa','Enable research sources')).addToggle(t=>t.setValue(cfg.enabled)
-  .onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
+  .onChange(async v=>{cfg.enabled=v;await saveQuoteSettings();}));
  new Setting(panel).setName(writerUi('Usar destaques Zotero no widget de citações','Use Zotero highlights in quote widget'))
-  .addToggle(t=>t.setValue(cfg.zoteroQuotes).onChange(async v=>{cfg.zoteroQuotes=v;await plugin.saveSettings();}));
+  .addToggle(t=>t.setValue(cfg.zoteroQuotes).onChange(async v=>{cfg.zoteroQuotes=v;await saveQuoteSettings();}));
  new Setting(panel).setName(writerUi('Pasta das notas importadas','Imported notes folder'))
   .addText(t=>t.setValue(cfg.zoteroFolder).onChange(async v=>{cfg.zoteroFolder=v.slice(0,180);await plugin.saveSettings();}));
  new Setting(panel).setName(writerUi('Tag das notas Zotero','Zotero note tag'))
   .addText(t=>t.setValue(cfg.zoteroTag).onChange(async v=>{cfg.zoteroTag=v.slice(0,70);await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Arquivo BibTeX opcional','Optional BibTeX file'))
+  .setDesc(writerUi('Caminho relativo ao cofre para um arquivo .bib. Deixe em branco para usar as notas importadas.',
+   'Vault-relative path to a .bib file. Leave blank to use imported notes.'))
+  .addText(t=>t.setPlaceholder('References/library.bib').setValue(cfg.zoteroBibFile)
+   .onChange(async v=>{cfg.zoteroBibFile=v.trim().slice(0,500);await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Origem das citações da página inicial','Homepage quote source'))
+  .addDropdown(d=>d.addOption('both',writerUi('Misturar destaques Zotero e citações manuais','Mix Zotero highlights and manual quotes'))
+   .addOption('prefer',writerUi('Preferir destaques Zotero','Prefer Zotero highlights'))
+   .addOption('only',writerUi('Somente destaques Zotero','Zotero highlights only'))
+   .setValue(cfg.zoteroQuoteMode).onChange(async v=>{cfg.zoteroQuoteMode=v;await saveQuoteSettings();}));
  panel.createEl('h3',{text:writerUi('Estilo de leitura','Reading style')});
+ const saveStyle=async()=>{await plugin.saveSettings();writerV92ResearchStyle(plugin);};
  new Setting(panel).setName(writerUi('Ativar estilo por nota','Enable note styling'))
-  .addToggle(t=>t.setValue(cfg.styleEnabled).onChange(async v=>{cfg.styleEnabled=v;await plugin.saveSettings();writerV92ResearchStyle(plugin);}));
- for(const [key,pt,en,min,max,step] of [
-  ['fontSize','Tamanho da fonte','Font size',12,24,1],
-  ['lineHeight','Altura de linha','Line height',1.2,2.3,.1],
-  ['contentWidth','Largura da leitura','Reading width',480,1400,20]
- ])new Setting(panel).setName(writerUi(pt,en)).addSlider(s=>s.setLimits(min,max,step).setValue(cfg[key])
-  .setDynamicTooltip().onChange(async v=>{cfg[key]=v;await plugin.saveSettings();writerV92ResearchStyle(plugin);}));
+  .addToggle(t=>t.setValue(cfg.styleEnabled).onChange(async v=>{cfg.styleEnabled=v;await saveStyle();}));
+ new Setting(panel).setName(writerUi('Impressão em preto e branco','Black-and-white printing'))
+  .setDesc(writerUi('Usa tons de cinza ao exportar um PDF no Obsidian com o estilo de leitura ativo.',
+   'Use grayscale in Obsidian PDF exports while reading style is active.'))
+  .addToggle(t=>t.setValue(cfg.stylePrint).onChange(async v=>{cfg.stylePrint=v;await saveStyle();}));
+ for(const [key,pt,en,min,max,step] of WRITER_V92_STYLE_RANGES)
+  new Setting(panel).setName(writerUi(pt,en)).addSlider(s=>s.setLimits(min,max,step).setValue(cfg[key])
+   .setDynamicTooltip().onChange(async v=>{cfg[key]=v;await saveStyle();}));
  new Setting(panel).setName(writerUi('Cor dos títulos (#RRGGBB)','Heading color (#RRGGBB)'))
   .addText(t=>t.setValue(cfg.headingAccent).setPlaceholder('#ffaa33').onChange(async v=>{
    cfg.headingAccent=/^#[0-9a-f]{6}$/i.test(v)?v:'';
-   await plugin.saveSettings();writerV92ResearchStyle(plugin);
+   await saveStyle();
   }));
+ const advanced=panel.createEl('details');
+ advanced.createEl('summary',{text:writerUi('Cores de texto e títulos H1–H6','Text and H1–H6 heading styles')});
+ const colorControl=(parent,name,value,set)=>new Setting(parent).setName(name).addText(t=>t.setValue(value)
+  .setPlaceholder('#RRGGBB').onChange(async v=>{set(/^#[0-9a-f]{6}$/i.test(v)?v:'');await saveStyle();}));
+ for(const [key,pt,en] of WRITER_V92_STYLE_COLORS.slice(1))
+  colorControl(advanced,writerUi(pt,en),cfg[key],value=>{cfg[key]=value;});
+ for(let i=0;i<6;i++){
+  const heading='H'+(i+1)+' · ';
+  new Setting(advanced).setName(heading+writerUi('Tamanho relativo','Relative size'))
+   .setDesc(writerUi('Use 0 para manter o tamanho do tema.','Use 0 for the theme size.'))
+   .addSlider(s=>s.setLimits(0,3,.05).setValue(cfg.headingSizes[i]).setDynamicTooltip()
+    .onChange(async value=>{cfg.headingSizes[i]=value;await saveStyle();}));
+  colorControl(advanced,heading+writerUi('Cor','Color'),cfg.headingColors[i],value=>{cfg.headingColors[i]=value;});
+ }
+ let presetName='';
+ const presets=new Setting(panel).setName(writerUi('Perfis de estilo de leitura','Reading style presets'))
+  .addText(t=>t.setPlaceholder(writerUi('Nome do perfil','Preset name')).onChange(value=>{presetName=value.trim().slice(0,45);}));
+ presets.addButton(b=>b.setButtonText(writerUi('Salvar perfil','Save preset')).onClick(async()=>{
+  if(!presetName)return;
+  const index=cfg.stylePresets.findIndex(preset=>preset.name===presetName);
+  const entry={name:presetName,values:writerV92ReadingStyleValues(cfg)};
+  if(index<0&&cfg.stylePresets.length>=25){
+   new Notice(writerUi('Remova um perfil antes de salvar outro.','Remove a preset before saving another.'));return;
+  }
+  if(index<0)cfg.stylePresets.push(entry);else cfg.stylePresets[index]=entry;
+  await saveStyle();plugin.writerSettingsTab?.display?.();
+ }));
+ if(cfg.stylePresets.length){
+  let selected='';
+  const saved=new Setting(panel).setName(writerUi('Perfis de estilo salvos','Saved style presets'))
+   .addDropdown(d=>{
+    d.addOption('',writerUi('Escolher perfil','Choose preset'));
+    for(const preset of cfg.stylePresets)d.addOption(preset.name,preset.name);
+    d.onChange(value=>{selected=value;});
+   });
+  saved.addButton(b=>b.setButtonText(writerUi('Aplicar','Apply')).onClick(async()=>{
+   const preset=cfg.stylePresets.find(item=>item.name===selected);if(!preset)return;
+   Object.assign(cfg,writerV92ReadingStyleValues(preset.values));
+   await saveStyle();plugin.writerSettingsTab?.display?.();
+  }));
+  saved.addButton(b=>b.setButtonText(writerUi('Remover','Remove')).onClick(async()=>{
+   if(!selected)return;
+   cfg.stylePresets=cfg.stylePresets.filter(item=>item.name!==selected);
+   await saveStyle();plugin.writerSettingsTab?.display?.();
+  }));
+ }
 }
 
 // v3 module: src/v9/session-drafts.js
@@ -21375,8 +21831,89 @@ async function writerV93FlowPersist(plugin,ctx,root,source,model){
   return true;
  }catch(error){new Notice(String(error.message||error));return false;}
 }
+function writerV93TextBoardParse(source,maxItems){
+ const columns=[],cards=[];let id='',column=null;
+ for(const line of String(source||'').split(/\r?\n/)){
+  const name=/^\s*===\s+(.+?)\s*$/.exec(line)?.[1];
+  if(name){
+   column=null;
+   if(columns.length<10){column=columns.length;columns.push(name.slice(0,80));}
+   continue;
+  }
+  if(!columns.length){id||=/^\s*id:\s*([\w-]{1,70})\s*$/.exec(line)?.[1]||'';continue;}
+  const label=/^\s*[-*]\s+(?:\[[ xX]\]\s+)?(.+?)\s*$/.exec(line)?.[1];
+  if(column!==null&&label&&cards.length<maxItems)cards.push({label:label.slice(0,300),column,index:cards.length});
+ }
+ return {id,columns,cards};
+}
+function writerV93TextBoard(plugin,source,root,ctx,board){
+ const cfg=plugin.settings.v9215Flow,lanes=root.createDiv({cls:'writer-v93-flow-items'});
+ root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-board');
+ const anchor=board.id||ctx.getSectionInfo?.(root)?.lineStart||0;
+ const key=ctx.sourcePath&&JSON.stringify([ctx.sourcePath,anchor,writerV83StudyHash(source.trim())]);
+ const canMove=cfg.flowArrange&&Boolean(key);
+ let dragged=null,saving=false;
+ const positions=()=>cfg.textBoardMoves?.[key]||{};
+ const position=(card,moves)=>Number.isInteger(moves[card.index])&&board.columns[moves[card.index]]!==undefined?
+  moves[card.index]:card.column;
+ const move=async(card,to)=>{
+  if(!canMove||!cfg.enabled||!cfg.flowArrange||saving||board.columns[to]===undefined||to===position(card,positions()))return;
+  const previous=cfg.textBoardMoves||{},nextPositions={...positions()};
+  if(to===card.column)delete nextPositions[card.index];else nextPositions[card.index]=to;
+  const entries=Object.entries(previous).filter(([id])=>id!==key);
+  if(Object.keys(nextPositions).length)entries.push([key,nextPositions]);
+  const next=Object.fromEntries(entries.slice(-120));
+  cfg.textBoardMoves=next;saving=true;
+  try{await plugin.saveSettings();draw(card.index);}
+  catch(_){
+   if(cfg.textBoardMoves===next)cfg.textBoardMoves=previous;
+   new Notice(writerUi('Não foi possível salvar a posição do cartão.','Could not save the card position.'));
+  }finally{saving=false;}
+ };
+ const draw=focusIndex=>{
+  const moves=positions();
+  lanes.empty();
+  board.columns.forEach((name,index)=>{
+   const lane=lanes.createDiv({cls:'writer-v93-flow-lane writer-v9216-flow-card'});
+   lane.createEl('h4',{text:name});
+   if(canMove){
+    lane.addEventListener('dragover',event=>{if(dragged!==null)event.preventDefault();});
+    lane.addEventListener('drop',event=>{
+     if(dragged===null)return;
+     event.preventDefault();const card=dragged;dragged=null;void move(card,index);
+    });
+   }
+   for(const card of board.cards){
+    if(position(card,moves)!==index)continue;
+    const row=lane.createDiv({cls:'writer-v9216-flow-card'});
+    row.createSpan({text:card.label});
+    if(!canMove)continue;
+    row.draggable=true;
+    row.addEventListener('dragstart',event=>{
+     dragged=card;
+     if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',card.label);}
+    });
+    row.addEventListener('dragend',()=>{dragged=null;});
+    const actions=row.createDiv({cls:'writer-v93-flow-actions'});
+    const choices=[];
+    for(const [step,icon,pt,en] of [[-1,'arrow-left','Mover para a coluna anterior','Move to previous column'],
+     [1,'arrow-right','Mover para a próxima coluna','Move to next column']]){
+     const button=actions.createEl('button',{attr:{type:'button','aria-label':writerUi(pt,en)}});
+     require('obsidian').setIcon(button,icon);
+     button.disabled=board.columns[index+step]===undefined;
+     button.addEventListener('click',()=>move(card,index+step));
+     if(!button.disabled)choices.push(button);
+    }
+    if(card.index===focusIndex)choices[0]?.focus();
+   }
+  });
+ };
+ draw();
+}
 function writerV93FlowComposer(plugin,source,root,ctx){
  const cfg=plugin.settings.v9215Flow;if(!cfg.enabled||!cfg.flowBlocks)return;
+ const board=writerV93TextBoardParse(source,cfg.maxItems);
+ if(board.columns.length)return writerV93TextBoard(plugin,source,root,ctx,board);
  const model=writerV93FlowParse(source,cfg);
  root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-'+model.layout);
  const toolbar=root.createDiv({cls:'writer-v93-flow-toolbar'});
@@ -21518,11 +22055,22 @@ function writerV9215SlashActions(){
   {id:'highlight',pt:'Realce',en:'Highlight',keys:'mark highlight',text:"==texto=="},
   {id:'formula',pt:'Fórmula',en:'Math formula',keys:'math formula latex',text:"$$\n\n$$"},
   {id:'flowboard',pt:'Painel de notas',en:'Note board',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
+  {id:'flowcards',pt:'Quadro de cartões de texto',en:'Text card board',keys:'flow board columns cards',
+   text:'~~~flow\n=== Ideas\n- New idea\n=== In progress\n~~~',textPt:'~~~flow\n=== Ideias\n- Ideia nova\n=== Em andamento\n~~~'},
   {id:'dbview',pt:'Banco: nova visualização',en:'Database: new view',keys:'notion base database gallery board',text:'~~~basic-suite-db\nfolder: Databases/Tarefas\nview: gallery\ncolumns: file, status\n~~~'},
   {id:'timetable',pt:'Estudos: horário de aulas',en:'Study: class timetable',keys:'unique agenda schedule horario aula',text:'~~~basic-timetable\n~~~'},
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
   {id:'flow',pt:'Incorporar nota',en:'Embed note',keys:'embed inline edit note flow',text:''}
  ];
+}
+function writerV9215InsertAction(action,editor,start,end){
+ let text=action.textPt?writerUi(action.textPt,action.text):action.text;
+ if(action.id==='date'){
+  const today=new Date();
+  text=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
+ }
+ editor.replaceRange(text,start,end);
+ editor.focus();
 }
 class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
  constructor(app,plugin){super(app);this.plugin=plugin;}
@@ -21558,11 +22106,7 @@ class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
    modal.setPlaceholder(writerUi('Escolha a nota para incorporar…','Choose the note to embed…'));
    modal.open();return;
   }
-  const today=new Date();
-  const yyyy=today.getFullYear(),mm=String(today.getMonth()+1).padStart(2,'0'),dd=String(today.getDate()).padStart(2,'0');
-  const text=action.id==='date'?[yyyy,mm,dd].join('-'):action.text;
-  editor.replaceRange(text,ctx.start,ctx.end);
-  editor.focus();
+  writerV9215InsertAction(action,editor,ctx.start,ctx.end);
  }
 }
 /* Shared Flow editor: check actual vault content before overwriting. */
@@ -21660,6 +22204,25 @@ function writerV9215FlowRegister(plugin){
   for(const id of ['flow','writer-flow'])
    plugin.registerMarkdownCodeBlockProcessor(id,(source,root,context)=>writerV9216FlowBlock(plugin,source,root,context));
  }
+ plugin.addCommand({id:'v93-insert-block',name:writerUi('Escrita: catálogo de inserção rápida','Writing: quick insert catalog'),
+  editorCheckCallback:(checking,editor,context)=>{
+   if(!plugin.settings.v9215Flow.enabled)return false;
+   if(checking)return true;
+   const file=context.file,start=editor.getCursor('from'),end=editor.getCursor('to'),original=editor.getValue();
+   const Picker=require('obsidian').FuzzySuggestModal;
+   const modal=new (class extends Picker{
+    getItems(){return writerV9215SlashActions().filter(action=>action.id!=='flow');}
+    getItemText(action){return writerUi(action.pt,action.en);}
+    onChooseItem(action){
+     if(!plugin.settings.v9215Flow.enabled||context.file!==file||editor.getValue()!==original){
+      new Notice(writerUi('A nota mudou. Abra o catálogo novamente.','The note changed. Open the catalog again.'));return;
+     }
+     writerV9215InsertAction(action,editor,start,end);
+    }
+   })(plugin.app);
+   modal.setPlaceholder(writerUi('Inserir bloco…','Insert block…'));modal.open();return true;
+  }
+ });
  plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Notas incorporadas: ativar/desativar edição','Embedded notes: toggle inline editing'),callback:async()=>{
   plugin.settings.v9215Flow.embeds=!plugin.settings.v9215Flow.embeds;
   await plugin.saveSettings();
@@ -21674,7 +22237,7 @@ function writerV9215FlowSettings(plugin,panel){
   ['slash','Menu de comandos /','Slash command menu'],
   ['embeds','Edição de notas incorporadas','Editable embedded notes'],
   ['flowBlocks','Painéis para coleções de notas','Boards for note collections'],
-  ['flowArrange','Organizar cartões e salvar no Markdown','Arrange cards and save to Markdown'],
+  ['flowArrange','Permitir mover cartões','Allow moving cards'],
   ['flowPreviews','Prévia do texto nos cartões','Card text previews']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));
@@ -22394,8 +22957,13 @@ function writerV95RegisterTimelineBlocks(plugin){
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
- const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},standalone:[],...old};
+ const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,trackStandaloneProgress:true,
+  sort:'title',density:'normal',library:{},standalone:[],scrollProgress:{},...old};
  cfg.standalone=[...new Set((Array.isArray(cfg.standalone)?cfg.standalone:[]).filter(p=>typeof p==='string'&&p.endsWith('.md')).slice(0,500))];
+ cfg.trackStandaloneProgress=cfg.trackStandaloneProgress!==false;
+ const progress=cfg.scrollProgress&&typeof cfg.scrollProgress==='object'&&!Array.isArray(cfg.scrollProgress)?cfg.scrollProgress:{};
+ cfg.scrollProgress=Object.fromEntries(cfg.standalone.filter(path=>Number.isFinite(progress[path]))
+  .map(path=>[path,Math.min(100,Math.max(0,Math.round(progress[path])))]));
  cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
@@ -22409,8 +22977,17 @@ function writerV10BookRecord(raw){
   status:['planned','reading','paused','finished'].includes(r.status)?r.status:'planned',
   progress:Math.max(0,Math.min(100,Math.round(Number(r.progress)||0)))};
 }
+function writerV109BookProgressOverride(meta){
+ const raw=meta?.readingProgress;
+ if(typeof raw!=='number'&&(typeof raw!=='string'||!raw.trim()))return null;
+ const value=Number(raw);
+ return Number.isFinite(value)?Math.max(0,Math.min(100,value)):null;
+}
 function writerV109BookProgress(plugin,project,record){
- if(project.standalone)return record.status==='finished'?100:Math.max(0,Math.min(100,Number(project.meta?.readingProgress)||0));
+ if(project.standalone){
+  if(record.status==='finished')return 100;
+  return writerV109BookProgressOverride(project.meta)??plugin.settings.v10Bookshelf?.scrollProgress?.[project.file.path]??0;
+ }
  const scenes=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
  if(!scenes.length)return record.status==='finished'?100:0;
  return Math.round(100*scenes.filter(scene=>/^(done|complete|completed|finished|conclu[ií]do)$/i.test(String(scene.status||scene.meta?.status||''))).length/scenes.length);
@@ -22472,7 +23049,8 @@ function writerV10BookFavoriteIcon(plugin){
 }
 function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{}){
  const record=writerV10BookState(plugin,project);
- const card=parent.createDiv({cls:'writer-v10-book-card writer-v108-book-card'+(compact?' is-compact':'')});
+ const card=parent.createDiv({cls:'writer-v10-book-card writer-v108-book-card'+(compact?' is-compact':''),
+  attr:{'data-writer-book-path':project.file.path}});
  card.classList.toggle('is-favorite',record.favorite);
  const btn=card.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),attr:{
   type:'button','aria-label':writerUi('Abrir livro: ','Open book: ')+project.title
@@ -22519,7 +23097,9 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   if(project.standalone){
    const remove=card.createEl('button',{cls:'writer-v109-book-remove',text:writerUi('Remover da biblioteca','Remove from library'),attr:{type:'button'}});
    remove.addEventListener('click',async()=>{
-    plugin.settings.v10Bookshelf.standalone=plugin.settings.v10Bookshelf.standalone.filter(path=>path!==project.file.path);
+    const cfg=plugin.settings.v10Bookshelf;
+    cfg.standalone=cfg.standalone.filter(path=>path!==project.file.path);
+    delete cfg.scrollProgress[project.file.path];
     await plugin.saveSettings();redraw();
    });
   }
@@ -22650,7 +23230,69 @@ function writerV109AddStandaloneBook(plugin,done){
  modal.setPlaceholder(writerUi('Buscar nota para adicionar à biblioteca…','Search a note to add to the library…'));
  modal.open();
 }
+function writerV109RegisterStandaloneProgress(plugin){
+ const workspace=plugin.app.workspace;
+ let timer=null,save=Promise.resolve();
+ const flush=()=>{
+  if(timer===null)return;
+  clearTimeout(timer);timer=null;
+  save=save.then(()=>plugin.saveSettings()).catch(error=>console.warn('[Basic] Could not save reading progress:',error));
+ };
+ const schedule=()=>{clearTimeout(timer);timer=setTimeout(flush,500);};
+ const onScroll=event=>{
+  const cfg=plugin.settings.v10Bookshelf;
+  if(!cfg?.enabled||!cfg.trackStandaloneProgress||!cfg.standalone.length)return;
+  const scroller=event.target;
+  const selector=scroller?.matches?.('.markdown-preview-view')?'.markdown-preview-view':
+   scroller?.matches?.('.cm-scroller')?'.markdown-source-view .cm-scroller':null;
+  if(!selector||!scroller.isConnected)return;
+  // A split pane can scroll without being active. Use the view that owns this scroller.
+  const leaf=(workspace.getLeavesOfType?.('markdown')||[]).find(item=>item.view?.containerEl?.querySelector(selector)===scroller);
+  const file=leaf?.view?.file;
+  if(file?.extension!=='md'||!cfg.standalone.includes(file.path))return;
+  const project=writerV109StandaloneProject(plugin,file);
+  if(writerV109BookProgressOverride(project.meta)!==null)return;
+  const distance=scroller.scrollHeight-scroller.clientHeight;
+  if(distance<=0)return;
+  const progress=Math.min(100,Math.max(0,Math.round(100*scroller.scrollTop/distance)));
+  if(!Number.isFinite(progress)||progress<=(cfg.scrollProgress[file.path]||0))return;
+  cfg.scrollProgress[file.path]=progress;
+  schedule();
+  const displayed=writerV10BookState(plugin,project).progress;
+  for(const card of scroller.ownerDocument?.querySelectorAll('.writer-v10-book-card[data-writer-book-path]')||[]){
+   if(card.dataset.writerBookPath!==file.path)continue;
+   const label=card.querySelector('.writer-v108-book-progress strong');
+   if(label)label.textContent=displayed+'%';
+   const bar=card.querySelector('.writer-v10-reading-progress');
+   if(bar)bar.value=displayed;
+  }
+ };
+ if(workspace.containerEl)plugin.registerDomEvent?.(workspace.containerEl,'scroll',onScroll,true);
+ const vault=plugin.app.vault;
+ if(typeof vault?.on==='function')plugin.registerEvent?.(vault.on('rename',(file,oldPath)=>{
+  const cfg=plugin.settings.v10Bookshelf,newPath=file?.path;
+  if(!cfg||!oldPath||!newPath||oldPath===newPath)return;
+  const renamed=cfg.standalone.filter(path=>path===oldPath||path.startsWith(oldPath+'/'));
+  if(!renamed.length)return;
+  const replacements=new Map();
+  for(const path of renamed){
+   const next=newPath+path.slice(oldPath.length);
+   replacements.set(path,next);
+   if(Object.hasOwn(cfg.scrollProgress,path)){
+    cfg.scrollProgress[next]=Math.max(cfg.scrollProgress[path],cfg.scrollProgress[next]||0);
+    delete cfg.scrollProgress[path];
+   }
+   if(Object.hasOwn(cfg.library,path)){
+    cfg.library[next]=cfg.library[path];delete cfg.library[path];
+   }
+  }
+  cfg.standalone=[...new Set(cfg.standalone.map(path=>replacements.get(path)||path))];
+  schedule();
+ }));
+ plugin.register?.(flush);
+}
 function writerV10RegisterBookshelf(plugin){
+ writerV109RegisterStandaloneProgress(plugin);
  for(const name of ['bookshelf','writer-bookshelf']){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
    if(!plugin.settings.v10Bookshelf?.enabled){el.createEl('pre',{text:source});return;}
@@ -22673,6 +23315,10 @@ function writerV10BookshelfSettings(plugin,panel){
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('Projetos Longform e notas avulsas. Banner, descrição e copyright vêm do frontmatter; progresso automático.','Longform projects and standalone notes. Banner, description and copyright come from frontmatter; automatic progress.')});
  const toggle=(key,pt,en)=>new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  toggle('enabled','Ativar biblioteca de livros','Enable bookshelf');
+ new Setting(panel).setName(writerUi('Salvar progresso ao rolar','Save progress while scrolling'))
+  .setDesc(writerUi('Registra até onde você leu nas notas avulsas adicionadas à biblioteca. Para definir a porcentagem na nota, use a propriedade readingProgress.',
+   'Records how far you have read in standalone notes added to the library. To set the percentage on the note, use the readingProgress property.'))
+  .addToggle(t=>t.setValue(cfg.trackStandaloneProgress).onChange(async value=>{cfg.trackStandaloneProgress=value;await plugin.saveSettings();}));
  toggle('showWidget','Permitir widget de livros na homepage','Allow bookshelf homepage widget');
  toggle('showProgress','Mostrar progresso automático','Show automatic progress');
  new Setting(panel).setName(writerUi('Ordem padrão','Default order')).addDropdown(d=>{
@@ -24364,7 +25010,7 @@ function writerV10RenderZoteroWidget(view,parent){
   const button=host.createEl('button',{cls:'writer-v10-discovery-open',text:file.basename});
   button.addEventListener('click',()=>void view.app.workspace.getLeaf('tab').openFile(file));
  }
- host.createEl('small',{cls:'writer-v8-home-muted',text:writerUi('Fonte: notas locais importadas; sem sincronização automática.','Source: local imported notes; no automatic sync.')});
+ host.createEl('small',{cls:'writer-v8-home-muted',text:writerUi('Fontes: notas importadas e arquivo BibTeX opcional do cofre.','Sources: imported notes and an optional vault BibTeX file.')});
 }
 function writerV10ZoteroRef(plugin,file){
  const front=plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter||{};
@@ -24375,32 +25021,80 @@ function writerV10ZoteroRef(plugin,file){
  return {file,key,title,author:author.slice(0,150),doi:String(front.DOI||front.doi||'').slice(0,100)};
 }
 function writerV10ZoteroPicker(plugin){
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
- const references=files.map(file=>writerV10ZoteroRef(plugin,file));
+ let references=writerV10ZoteroImportedReferences(plugin);
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Inserir citação Zotero','Insert Zotero citation'));
  modal.onOpen=()=>{
   const root=modal.contentEl;root.empty();
-  root.createEl('p',{cls:'setting-item-description',text:writerUi('Pesquisa em notas Markdown já importadas. Better BibTeX: propriedade citekey.','Search previously imported Markdown notes. Better BibTeX: citekey property.')});
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Pesquise nas notas importadas e no arquivo BibTeX configurado no Basic.','Search imported notes and the BibTeX file configured in Basic.')});
   const search=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Título, autor, DOI ou citekey…','Title, author, DOI or citekey…'),'aria-label':writerUi('Buscar referências','Search references')}});
+  const status=root.createEl('p',{attr:{role:'status'}});
   const results=root.createDiv({cls:'writer-v10-zotero-picker'});
   const draw=()=>{
    results.empty();const query=search.value.trim().toLocaleLowerCase();
    const filtered=references.filter(ref=>[ref.key,ref.title,ref.author,ref.doi].some(value=>value.toLocaleLowerCase().includes(query))).slice(0,40);
-   if(!filtered.length){results.createEl('p',{text:writerUi('Nenhuma referência importada encontrada.','No imported reference found.')});return;}
+   if(!filtered.length){results.createEl('p',{text:writerUi('Nenhuma referência encontrada.','No reference found.')});return;}
    for(const ref of filtered){
     const button=results.createEl('button',{cls:'writer-v10-discovery-open',attr:{type:'button'}});
-    button.createSpan({text:ref.title});button.createEl('small',{text:[ref.author,ref.key?'@'+ref.key:'',ref.doi].filter(Boolean).join(' · ')});
+    button.createSpan({text:ref.title});button.createEl('small',{text:[ref.author,ref.year,ref.key?'@'+ref.key:'',ref.doi].filter(Boolean).join(' · ')});
     button.addEventListener('click',()=>{
      const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
      if(!view?.editor||!view?.file){new Notice(writerUi('Abra uma nota editável antes de citar.','Open an editable note to insert a citation.'));return;}
-     const citation=ref.key?'[@'+ref.key.replace(/[^\w:.-]/g,'')+']':plugin.app.fileManager.generateMarkdownLink(ref.file,view.file.path);
+     const citation=WRITER_ZOTERO_CITEKEY.test(ref.key)?'[@'+ref.key+']':plugin.app.fileManager.generateMarkdownLink(ref.file,view.file.path);
      view.editor.replaceSelection(citation);modal.close();
     });
    }
   };
   search.addEventListener('input',draw);draw();
+  if(plugin.settings.v92Research?.zoteroBibFile){
+   void writerV10ZoteroReferences(plugin,references).then(result=>{
+    if(!results.isConnected)return;
+    references=result.references;draw();
+    if(result.unavailable)status.setText(writerV10ZoteroBibUnavailable());
+   });
+  }
  };
  modal.open();
+}
+function writerV10ZoteroImportedReferences(plugin){
+ const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
+ return files.map(file=>writerV10ZoteroRef(plugin,file));
+}
+async function writerV10ZoteroReferences(plugin,imported=writerV10ZoteroImportedReferences(plugin)){
+ try{
+  const entries=await writerV92ZoteroBibReferences(plugin),references=[...imported];
+  const keys=new Set(imported.map(ref=>ref.key));
+  for(const entry of entries){
+   if(keys.has(entry.key))continue;
+   keys.add(entry.key);references.push(entry);
+  }
+  return {references,unavailable:false};
+ }catch(_){return {references:imported,unavailable:true};}
+}
+function writerV10ZoteroBibUnavailable(){
+ return writerUi('Não foi possível ler o BibTeX. Confira o caminho no cofre e o limite de 3 MB.',
+  'Could not read BibTeX. Check the vault path and the 3 MB limit.');
+}
+async function writerV10ZoteroBibliography(plugin,source,el,ctx){
+ if(!plugin.settings.v92Research?.enabled||!writerModuleOn(plugin,'zoteroIntegration'))return;
+ let options;
+ try{options=parseYaml(source)||{};}catch(_){options={};}
+ const value=options.keys||options.citekeys||'';
+ const keys=new Set((Array.isArray(value)?value:String(value).split(/[\s,]+/)).map(v=>String(v).replace(/^@/,'')).filter(Boolean));
+ const {references,unavailable}=await writerV10ZoteroReferences(plugin);
+ if(unavailable)el.createEl('p',{text:writerV10ZoteroBibUnavailable()});
+ const rows=references.filter(ref=>!keys.size||keys.has(ref.key)).slice(0,150);
+ if(!rows.length){el.createEl('p',{text:writerUi('Nenhuma referência encontrada.','No reference found.')});return;}
+ const list=el.createEl('ol');
+ for(const ref of rows){
+  const row=list.createEl('li');
+  const title=[ref.author,ref.title,ref.year].filter(Boolean).join(' · ');
+  if(ref.file){
+   const path=ref.file.path;
+   const link=row.createEl('a',{text:title,attr:{href:path,'data-href':path,class:'internal-link'}});
+   link.addEventListener('click',event=>{event.preventDefault();void plugin.app.workspace.openLinkText(path,ctx.sourcePath,false);});
+  }else row.createSpan({text:title});
+  if(ref.key)row.createEl('small',{text:' @'+ref.key});
+ }
 }
 function writerV10DiscoveryRegister(plugin){
  writerV10DiscoveryMerge(plugin.settings);
@@ -24415,7 +25109,7 @@ function writerV10DiscoveryRegister(plugin){
  });
  const open=async(type)=>{const leaf=plugin.app.workspace.getLeavesOfType?.(type)?.[0]||plugin.app.workspace.getRightLeaf?.(false)||plugin.app.workspace.getLeaf?.('tab');if(leaf){await leaf.setViewState({type,active:true});plugin.app.workspace.revealLeaf?.(leaf);}};
  plugin.writerV10OpenRelated=()=>open(WRITER_V10_RELATED_VIEW);
- plugin.addCommand({id:'v10-zotero-insert-citation',name:writerUi('Zotero: inserir referência importada','Zotero: insert imported citation'),callback:()=>writerV10ZoteroPicker(plugin)});
+ plugin.addCommand({id:'v10-zotero-insert-citation',name:writerUi('Zotero: inserir citação local','Zotero: insert local citation'),callback:()=>writerV10ZoteroPicker(plugin)});
  plugin.addCommand({id:'v10-related-notes',name:writerUi('Notas: encontrar relacionadas','Notes: find related'),callback:()=>void plugin.writerV10OpenRelated()});
  const refresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V10_RELATED_VIEW)||[])leaf.view?.refresh?.();};
  plugin.registerEvent(plugin.app.workspace.on('file-open',refresh));
@@ -25028,7 +25722,7 @@ async function writerV106LegacyDictionaryInspector(plugin){
    new Setting(root).setName(file.path)
     .addButton(btn=>btn.setButtonText(writerUi('Usar neste plugin','Use in Basic')).onClick(async()=>{
      const cfg=plugin.settings.complements||(plugin.settings.complements={});
-     const list=String(cfg.dictionaryPaths||'').split(',').map(x=>x.trim()).filter(Boolean);
+     const list=String(cfg.dictionaryPaths||'').split(/[\n,;]/).map(x=>x.trim()).filter(Boolean);
      if(!list.includes(file.path))list.push(file.path);
      cfg.dictionaryPaths=list.join(',');
      cfg.dictionaries=true;cfg.enabled=true;
@@ -25049,7 +25743,6 @@ function writerV106HistoricRegister(plugin){
    if(!checking)writerV106JsonTree(plugin,text);
    return true;
   }});
- plugin.addCommand({id:'v106-recover-v1-dictionary',name:writerUi('Dicionário: recuperar caminho da v1','Dictionary: recover v1 path'),callback:()=>void writerV106LegacyDictionaryInspector(plugin)});
 }
 
 // v3 module: src/v10/data-tables.js
@@ -32080,6 +32773,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "diagnostics",
+  "titlePt": "Recuperar dicionário da v1",
+  "titleEn": "Recover v1 dictionary",
+  "descriptionPt": "Procure a nota Markdown de dicionário nas configurações do plugin antigo.",
+  "descriptionEn": "Find the Markdown dictionary note in the older plugin’s settings."
+ },
+ {
+  "id": "diagnostics",
   "titlePt": "Atualizar informações",
   "titleEn": "Refresh information"
  },
@@ -33228,6 +33928,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Impressão em preto e branco",
+  "titleEn": "Black-and-white printing",
+  "descriptionPt": "Usa tons de cinza ao exportar um PDF no Obsidian com o estilo de leitura ativo.",
+  "descriptionEn": "Use grayscale in Obsidian PDF exports while reading style is active."
+ },
+ {
+  "id": "research",
   "titlePt": "Ativar acesso à API",
   "titleEn": "Enable API access"
  },
@@ -33258,6 +33965,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Origem das citações da página inicial",
+  "titleEn": "Homepage quote source"
+ },
+ {
+  "id": "research",
   "titlePt": "Pasta das notas importadas",
   "titleEn": "Imported notes folder"
  },
@@ -33278,6 +33990,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Recuo das listas",
+  "titleEn": "List indentation"
+ },
+ {
+  "id": "research",
   "titlePt": "Itens por consulta",
   "titleEn": "Max items per request"
  },
@@ -33288,8 +34005,35 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Arquivo BibTeX opcional",
+  "titleEn": "Optional BibTeX file",
+  "descriptionPt": "Caminho relativo ao cofre para um arquivo .bib. Deixe em branco para usar as notas importadas.",
+  "descriptionEn": "Vault-relative path to a .bib file. Leave blank to use imported notes."
+ },
+ {
+  "id": "research",
+  "titlePt": "Espaçamento entre parágrafos",
+  "titleEn": "Paragraph spacing"
+ },
+ {
+  "id": "research",
+  "titlePt": "Arredondamento de citações",
+  "titleEn": "Quote corner radius"
+ },
+ {
+  "id": "research",
+  "titlePt": "Perfis de estilo de leitura",
+  "titleEn": "Reading style presets"
+ },
+ {
+  "id": "research",
   "titlePt": "Largura da leitura",
   "titleEn": "Reading width"
+ },
+ {
+  "id": "research",
+  "titlePt": "Perfis de estilo salvos",
+  "titleEn": "Saved style presets"
  },
  {
   "id": "research",
@@ -34261,6 +35005,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v10Bookshelf",
+  "titlePt": "Salvar progresso ao rolar",
+  "titleEn": "Save progress while scrolling",
+  "descriptionPt": "Registra até onde você leu nas notas avulsas adicionadas à biblioteca. Para definir a porcentagem na nota, use a propriedade readingProgress.",
+  "descriptionEn": "Records how far you have read in standalone notes added to the library. To set the percentage on the note, use the readingProgress property."
+ },
+ {
+  "id": "v10Bookshelf",
   "titlePt": "Mostrar progresso automático",
   "titleEn": "Show automatic progress"
  },
@@ -34653,6 +35404,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v9Calendar",
+  "titlePt": "Abrir o calendário em",
+  "titleEn": "Open calendar in",
+  "descriptionPt": "Escolha onde o comando principal abre o calendário.",
+  "descriptionEn": "Choose where the main calendar command opens."
+ },
+ {
+  "id": "v9Calendar",
   "titlePt": "Abrir calendário de escrita",
   "titleEn": "Open writing calendar"
  },
@@ -34862,6 +35620,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v9Explorer",
+  "titlePt": "Formato da miniatura",
+  "titleEn": "Thumbnail format"
+ },
+ {
+  "id": "v9Explorer",
   "titlePt": "Tamanho da miniatura",
   "titleEn": "Thumbnail size"
  },
@@ -34872,8 +35635,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v9Flow",
-  "titlePt": "Organizar cartões e salvar no Markdown",
-  "titleEn": "Arrange cards and save to Markdown"
+  "titlePt": "Permitir mover cartões",
+  "titleEn": "Allow moving cards"
  },
  {
   "id": "v9Flow",
@@ -35509,6 +36272,20 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "writingWidgets",
   "titlePt": "Ativar renderizadores",
   "titleEn": "Enable renderers"
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Campos INPUT e VIEW na leitura",
+  "titleEn": "Inline INPUT and VIEW fields",
+  "descriptionPt": "No modo Leitura, INPUT[toggle:done] edita a propriedade YAML done e VIEW[done] mostra seu valor. O plugin Meta Bind tem prioridade.",
+  "descriptionEn": "In Reading view, INPUT[toggle:done] edits the done YAML property and VIEW[done] shows its value. The Meta Bind plugin takes priority."
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Blocos antigos do Meta Bind",
+  "titleEn": "Legacy Meta Bind blocks",
+  "descriptionPt": "Renderiza campos YAML simples e botões set, toggle e increment dos blocos meta-bind e meta-bind-button. O plugin Meta Bind tem prioridade.",
+  "descriptionEn": "Render simple YAML fields and set, toggle and increment buttons in meta-bind and meta-bind-button blocks. The Meta Bind plugin takes priority."
  },
  {
   "id": "writingWidgets",

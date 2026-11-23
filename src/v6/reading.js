@@ -61,14 +61,17 @@ function writerV6TimestampReading(root,cfg){
 function writerV6ReadingTextStatus(plugin,element){
  const cfg=plugin.settings.v6.readingTime,file=plugin.app.workspace.getActiveFile?.();
  if(!writerV6Allowed(plugin,'readingTime')||(typeof writerV6ProjectToolAllowed==='function'&&!writerV6ProjectToolAllowed(plugin,'readingTime',file?.path))||!cfg.status||!file||file.extension!=='md'){
-  element.textContent='';element.style.display='none';return;
+  element.textContent='';element.title='';element.removeAttribute('aria-label');element.style.display='none';return;
  }
  const view=plugin.app.workspace.getActiveViewOfType?.(MarkdownView);
  const source=view?.editor?.getValue?.()||'';
  const result=writerV6ReadingEstimate(source,cfg);
  element.style.display='';
- element.textContent=result.words+' '+writerUi('palavras','words')+' · '+result.minutes+' '+writerUi('min leitura','min read');
- element.title=writerUi('Estimativa de tempo de leitura','Estimated reading time');
+ element.textContent=result.minutes+' '+writerUi('min leitura','min read');
+ const duration=result.minutes+' '+(result.minutes===1?writerUi('minuto de leitura','minute of reading'):writerUi('minutos de leitura','minutes of reading'));
+ const words=result.words+' '+(result.words===1?writerUi('palavra','word'):writerUi('palavras','words'));
+ element.title=duration+' · '+words;
+ element.setAttribute('aria-label',element.title);
 }
 class WriterV6Reading{
  constructor(plugin){this.plugin=plugin;this.updateTimer=null;}
@@ -77,6 +80,7 @@ class WriterV6Reading{
   const status=p.addStatusBarItem?.();
   if(status){
    status.addClass('writer-v6-reading-status');
+   status.setAttribute('role','group');
    const update=()=>{clearTimeout(this.updateTimer);this.updateTimer=setTimeout(()=>writerV6ReadingTextStatus(p,status),250);};
    p.registerEvent(p.app.workspace.on('active-leaf-change',update));
    p.registerEvent(p.app.vault.on('modify',file=>{if(file?.path===p.app.workspace.getActiveFile?.()?.path)update();}));

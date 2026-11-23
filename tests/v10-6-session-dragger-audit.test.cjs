@@ -79,6 +79,40 @@ test('Legacy dictionary paths ignore credentials and JSON inspector is bounded',
  assert.throws(()=>hist.writerV106JsonParse('invalid'));
  assert.throws(()=>hist.writerV106JsonParse('x'.repeat(200001)));
 });
+test('Diagnostics opens the legacy dictionary recovery and preserves existing dictionary paths',async()=>{
+ const rows=[],commands=[];let reads=0,saves=0;
+ const panel={createEl(){},createDiv(){return this;},createSpan(){},empty(){}};
+ class Setting{
+  constructor(){this.row={};rows.push(this.row);}
+  setName(name){this.row.name=name;return this;}
+  setDesc(){return this;}
+  addButton(configure){configure({setButtonText(){return this;},onClick:callback=>{this.row.click=callback;}});return this;}
+ }
+ class Modal{
+  constructor(){this.contentEl=panel;}
+  setTitle(){}
+  open(){this.onOpen();}
+  close(){}
+ }
+ class TFile{constructor(path){this.path=path;this.extension='md';}}
+ const legacy=new TFile('Notes/Old dictionary.md');
+ const source=['src/v4/modules.js','src/v10/historical-helpers.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+ const api=vm.runInNewContext(source+'\n({writerRenderDiagnostics,writerV106HistoricRegister})',{
+  Setting,Modal,TFile,Notice:class{},writerUi:(pt,en)=>en
+ });
+ const plugin={settings:{complements:{dictionaryPaths:'First.md\nSecond.md',enabled:false}},app:{vault:{
+  adapter:{exists:async()=>true,read:async()=>{reads++;return JSON.stringify({dictionaryPath:legacy.path,apiKey:'PRIVATE'});}},
+  getAbstractFileByPath:path=>path===legacy.path?legacy:null
+ }},addCommand:command=>commands.push(command.id),saveSettings:async()=>{saves++;}};
+ api.writerV106HistoricRegister(plugin);api.writerRenderDiagnostics(plugin,panel);
+ assert.deepEqual(commands,['v106-json-tree-viewer']);assert.equal(reads,0);
+ await rows.find(row=>row.name==='Recover v1 dictionary').click();
+ assert.equal(reads,1);assert.equal(saves,0,'select a dictionary note before modifying any settings');
+ await rows.find(row=>row.name===legacy.path).click();
+ assert.equal(plugin.settings.complements.dictionaryPaths,'First.md,Second.md,Notes/Old dictionary.md');
+ assert.equal(plugin.settings.complements.enabled,true);assert.equal(plugin.settings.complements.dictionaries,true);
+ assert.equal(saves,1);assert.doesNotMatch(JSON.stringify(plugin.settings),/PRIVATE/);
+});
 test('Build, homepage and settings contain required v10.6 wiring',()=>{
  const read=x=>fs.readFileSync(x,'utf8');
  const homeSrc=read('src/v8/writing-home.js'),build=read('scripts/build-v3.js'),enhancements=read('src/v10/enhancements.js');

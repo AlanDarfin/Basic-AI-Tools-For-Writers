@@ -23,5 +23,6 @@ test('current day colors entire tile, not the date button, in narrow and native 
 test('date button keeps day-navigation click behavior and calendar events',()=>{
  assert.match(calendar,/view\.anchor=day;view\.mode='day';view\.render\(\);/);
  assert.match(calendar,/writerV9CalendarEntry\(view,box,event,true\)/);
- assert.match(calendar,/day===writerV83DateOf\(new Date\(\)\)\?' is-today'/);
+ assert.match(calendar,/today=writerV83DateOf\(new Date\(\)\)/);
+ assert.match(calendar,/day===today\?' is-today'/);
 });

@@ -1056,33 +1056,43 @@ class WriterV8HomeView extends ItemView{
  }
  renderQuotes(parent){
   const box=this.card(parent,'quotes','Citação aleatória','Random quote');
-  const options=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes);
-  let list=options.map(([text,by])=>[text,by,null,null]);
-  let current=this.homeQuote||writerV8HomePick(list,this.homeQuotePrevious)||list[0];
+  const manual=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes).map(([text,by])=>[text,by,null,null]);
+  const mode=writerV92ZoteroQuoteMode(this.plugin),read=this.plugin.writerV92Research?.quotes;
+  let loading=mode!=='manual'&&Boolean(read),list=mode==='only'?[]:manual;
+  const previous=this.homeQuote;
+  const pick=(prior)=>list.find(quote=>quote[0]===prior?.[0]&&quote[2]===prior?.[2])||writerV8HomePick(list,this.homeQuotePrevious);
+  let current=pick(previous);
+  const initial=current;
   const body=box.createEl('blockquote',{cls:'writer-v905-quote-text'});
   const quote=body.createEl('p'),author=box.createDiv({cls:'writer-v905-quote-author'});
   const actions=box.createDiv({cls:'writer-v903-widget-actions'});
   const source=actions.createEl('button',{text:writerUi('Abrir fonte Zotero','Open Zotero source')});
   const next=actions.createEl('button',{text:writerUi('Outra citação','Another quote')});
   const draw=()=>{
-   this.homeQuote=current;quote.setText(current[0]);
-   author.setText(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration'));
-   source.hidden=!current[2];
+   this.homeQuote=current;
+   quote.setText(current?.[0]||(loading?writerUi('Carregando destaques do Zotero…','Loading Zotero highlights…'):
+    writerUi('Nenhum destaque Zotero encontrado.','No Zotero highlights found.')));
+   author.setText(current?(current[1]?'— '+current[1]:writerUi('Inspiração para escrever','Writing inspiration')):'');
+   source.hidden=!current?.[2];next.disabled=list.length<2;
   };
   source.addEventListener('click',()=>{
-   const file=current[2]?this.app.vault.getAbstractFileByPath(current[2]):null;
+   const file=current?.[2]?this.app.vault.getAbstractFileByPath(current[2]):null;
    if(file instanceof TFile)this.openFile(file);
   });
   next.addEventListener('click',()=>{
+   if(!current)return;
    this.homeQuotePrevious=current[0];
    current=writerV8HomePick(list,current[0])||current;draw();
   });
   draw();
-  if(this.plugin.writerV92Research?.quotes)void this.plugin.writerV92Research.quotes().then(entries=>{
-   if(!box.isConnected||!entries.length)return;
-   list=[...list,...entries.map(([text,by,path,title])=>[text,by,path,title])];
+  const load=entries=>{
+   if(!box.isConnected)return;
+   loading=false;
+   list=mode==='both'?[...manual,...entries]:entries.length||mode==='only'?entries:manual;
+   current=pick(current===initial?previous||current:current);
    draw();
-  }).catch(error=>console.warn('[Basic AI] Zotero quote widget:',error));
+  };
+  if(loading)void read().then(load,error=>{console.warn('[Basic AI] Zotero quote widget:',error);load([]);});
  }
  renderActivity(parent){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');

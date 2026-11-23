@@ -30,11 +30,22 @@ function writerV9215SlashActions(){
   {id:'highlight',pt:'Realce',en:'Highlight',keys:'mark highlight',text:"==texto=="},
   {id:'formula',pt:'Fórmula',en:'Math formula',keys:'math formula latex',text:"$$\n\n$$"},
   {id:'flowboard',pt:'Painel de notas',en:'Note board',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
+  {id:'flowcards',pt:'Quadro de cartões de texto',en:'Text card board',keys:'flow board columns cards',
+   text:'~~~flow\n=== Ideas\n- New idea\n=== In progress\n~~~',textPt:'~~~flow\n=== Ideias\n- Ideia nova\n=== Em andamento\n~~~'},
   {id:'dbview',pt:'Banco: nova visualização',en:'Database: new view',keys:'notion base database gallery board',text:'~~~basic-suite-db\nfolder: Databases/Tarefas\nview: gallery\ncolumns: file, status\n~~~'},
   {id:'timetable',pt:'Estudos: horário de aulas',en:'Study: class timetable',keys:'unique agenda schedule horario aula',text:'~~~basic-timetable\n~~~'},
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
   {id:'flow',pt:'Incorporar nota',en:'Embed note',keys:'embed inline edit note flow',text:''}
  ];
+}
+function writerV9215InsertAction(action,editor,start,end){
+ let text=action.textPt?writerUi(action.textPt,action.text):action.text;
+ if(action.id==='date'){
+  const today=new Date();
+  text=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
+ }
+ editor.replaceRange(text,start,end);
+ editor.focus();
 }
 class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
  constructor(app,plugin){super(app);this.plugin=plugin;}
@@ -70,11 +81,7 @@ class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
    modal.setPlaceholder(writerUi('Escolha a nota para incorporar…','Choose the note to embed…'));
    modal.open();return;
   }
-  const today=new Date();
-  const yyyy=today.getFullYear(),mm=String(today.getMonth()+1).padStart(2,'0'),dd=String(today.getDate()).padStart(2,'0');
-  const text=action.id==='date'?[yyyy,mm,dd].join('-'):action.text;
-  editor.replaceRange(text,ctx.start,ctx.end);
-  editor.focus();
+  writerV9215InsertAction(action,editor,ctx.start,ctx.end);
  }
 }
 /* Shared Flow editor: check actual vault content before overwriting. */
@@ -172,6 +179,25 @@ function writerV9215FlowRegister(plugin){
   for(const id of ['flow','writer-flow'])
    plugin.registerMarkdownCodeBlockProcessor(id,(source,root,context)=>writerV9216FlowBlock(plugin,source,root,context));
  }
+ plugin.addCommand({id:'v93-insert-block',name:writerUi('Escrita: catálogo de inserção rápida','Writing: quick insert catalog'),
+  editorCheckCallback:(checking,editor,context)=>{
+   if(!plugin.settings.v9215Flow.enabled)return false;
+   if(checking)return true;
+   const file=context.file,start=editor.getCursor('from'),end=editor.getCursor('to'),original=editor.getValue();
+   const Picker=require('obsidian').FuzzySuggestModal;
+   const modal=new (class extends Picker{
+    getItems(){return writerV9215SlashActions().filter(action=>action.id!=='flow');}
+    getItemText(action){return writerUi(action.pt,action.en);}
+    onChooseItem(action){
+     if(!plugin.settings.v9215Flow.enabled||context.file!==file||editor.getValue()!==original){
+      new Notice(writerUi('A nota mudou. Abra o catálogo novamente.','The note changed. Open the catalog again.'));return;
+     }
+     writerV9215InsertAction(action,editor,start,end);
+    }
+   })(plugin.app);
+   modal.setPlaceholder(writerUi('Inserir bloco…','Insert block…'));modal.open();return true;
+  }
+ });
  plugin.addCommand({id:'v9215-flow-toggle',name:writerUi('Notas incorporadas: ativar/desativar edição','Embedded notes: toggle inline editing'),callback:async()=>{
   plugin.settings.v9215Flow.embeds=!plugin.settings.v9215Flow.embeds;
   await plugin.saveSettings();
@@ -186,7 +212,7 @@ function writerV9215FlowSettings(plugin,panel){
   ['slash','Menu de comandos /','Slash command menu'],
   ['embeds','Edição de notas incorporadas','Editable embedded notes'],
   ['flowBlocks','Painéis para coleções de notas','Boards for note collections'],
-  ['flowArrange','Organizar cartões e salvar no Markdown','Arrange cards and save to Markdown'],
+  ['flowArrange','Permitir mover cartões','Allow moving cards'],
   ['flowPreviews','Prévia do texto nos cartões','Card text previews']
  ]){
   new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]).onChange(async value=>{cfg[key]=value;await plugin.saveSettings();}));

@@ -60,6 +60,72 @@ test('Flow fenced editor updates only the selected code block and keeps note con
  assert.match(markdown,/Intro\n~~~flow\n\[\[B\.md\]\]\n\[\[A\.md\]\]\n~~~\nOutro conteúdo importante/);
  assert.equal(api.writerV93FlowLocateBlock(markdown,block,1),null,'stale source must not match');
 });
+test('Flow text cards save column assignments in settings, scoped to the board and note',async()=>{
+ class Element{
+  constructor(props={}){this.props=props;this.children=[];this.events={};this.classList={add(){}};}
+  empty(){this.children=[];}
+  createEl(_tag,props){const child=new Element(props);this.children.push(child);return child;}
+  createDiv(props){return this.createEl('div',props);}
+  createSpan(props){return this.createEl('span',props);}
+  addEventListener(type,callback){this.events[type]=callback;}
+  focus(){this.focused=true;}
+ }
+ const api=vm.runInNewContext(read('src/v9/flow-composer.js')+
+  '\n({writerV93TextBoardParse,writerV93FlowComposer})',{
+  writerUi:(_pt,en)=>en,writerV83StudyHash:text=>String(text.length),require:()=>({setIcon(){}})
+ });
+ const source='id: ideas\n=== Draft\n- First card\n- Second card\n=== Done\n- First card';
+ let saves=0;
+ const plugin={settings:{v9215Flow:{enabled:true,flowBlocks:true,flowArrange:true,maxItems:30}},
+  async saveSettings(){saves++;}};
+ const render=(sourcePath,block=source)=>{
+  const root=new Element();api.writerV93FlowComposer(plugin,block,root,{sourcePath});return root.children[0];
+ };
+ const text=lane=>lane.children.slice(1).map(row=>row.children[0].props.text);
+ const lanes=render('Ideas.md');
+ assert.deepEqual(text(lanes.children[0]),['First card','Second card']);
+ assert.deepEqual(text(lanes.children[1]),['First card']);
+ await lanes.children[0].children[2].children[1].children[1].events.click();
+ assert.deepEqual(text(lanes.children[0]),['First card']);
+ assert.deepEqual(text(lanes.children[1]),['Second card','First card']);
+ assert.equal(lanes.children[1].children[1].children[1].children[0].focused,true);
+ assert.deepEqual(text(render('Ideas.md').children[1]),['Second card','First card']);
+ assert.deepEqual(text(render('Other.md').children[1]),['First card']);
+ assert.deepEqual(text(render('Ideas.md',source+'\n- Third card').children[1]),['First card','Third card']);
+ assert.equal(saves,1);
+ assert.equal(api.writerV93TextBoardParse('[[Chapter 1]]\n[[Chapter 2]]',30).columns.length,0);
+});
+test('Explorer can opt into a 16:9 preview while existing settings stay square',()=>{
+ const src=read('src/v9/explorer-favorites-preview.js');
+ const {writerV92ExplorerMerge}=vm.runInNewContext(src+'\n({writerV92ExplorerMerge})',{});
+ assert.equal(writerV92ExplorerMerge({}).previewImageShape,'square');
+ assert.equal(writerV92ExplorerMerge({v92Explorer:{previewImageShape:'wide'}}).previewImageShape,'wide');
+ assert.match(src,/classList\.toggle\('is-wide-thumbnail'/);
+ assert.match(read('src/styles/v9-2-2-iconic-fixes.css'),/\.is-wide-thumbnail > img[^\{]+\{[^}]+aspect-ratio:16\/9/);
+});
+test('insert catalog works with slash suggestions turned off and rejects stale edits',()=>{
+ let picker,notice;
+ class FuzzySuggestModal{setPlaceholder(){}open(){picker=this;}}
+ const {writerV9215FlowRegister}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({writerV9215FlowRegister})',{
+  require:()=>({EditorSuggest:class{},FuzzySuggestModal}),writerUi:pt=>pt,Notice:class{constructor(text){notice=text;}}
+ });
+ const commands=new Map();
+ const plugin={settings:{v9215Flow:{enabled:true,slash:false}},addCommand:command=>commands.set(command.id,command)};
+ writerV9215FlowRegister(plugin);
+ let content='Original';const offset={line:0,ch:0};
+ const editor={getValue:()=>content,getCursor:()=>offset,focus(){},replaceRange(text,start,end){
+  assert.equal(start,offset);assert.equal(end,offset);content=text+content;
+ }};
+ const context={file:{path:'Story.md'}};
+ const run=commands.get('v93-insert-block').editorCheckCallback;
+ assert.equal(run(true,editor,context),true);
+ assert.equal(run(false,editor,context),true);
+ picker.onChooseItem(picker.getItems().find(action=>action.id==='flowcards'));
+ assert.match(content,/=== Ideias/);
+ run(false,editor,context);content='Edited';
+ picker.onChooseItem(picker.getItems()[0]);
+ assert.match(notice,/mudou/);assert.equal(content,'Edited');
+});
 test('long pressing expands on mobile without synthetic click immediately closing',()=>{
  const src=read('src/v9/explorer-favorites-preview.js');
  assert.match(src,/touchstart/);assert.match(src,/touchmove/);

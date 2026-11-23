@@ -370,6 +370,28 @@ label: Author (read-only)
 ~~~
 ~~~~
 
+### Inline fields in Reading view
+
+Enable **Inline INPUT and VIEW fields** in Basic’s settings. Write these tokens as plain Markdown text. They read or edit top-level YAML properties in the same note.
+
+```markdown
+Chapter complete INPUT[toggle:complete]
+Status INPUT[select(Draft, Revising, Complete):status]
+Progress INPUT[slider(0, 100, 5):progress]
+Current status VIEW[status]
+```
+
+Enable **Legacy Meta Bind blocks** to use simple `meta-bind` forms and `meta-bind-button` actions on the same note. An active Meta Bind plugin takes priority. Buttons support `set`, `toggle` and `increment`.
+
+~~~~markdown
+~~~meta-bind-button
+property: revision
+action: increment
+step: 1
+label: Advance revision
+~~~
+~~~~
+
 ## 12. Instant table of contents (`insta-toc`)
 
 Builds a nested contents list from the headings **in the current note**. `maxDepth` is 1–6; `numbered` and `folded` are booleans. Heading links jump to the corresponding text.
@@ -523,6 +545,20 @@ layout: graph
 [[Draft/Chapter 1]]
 [[Draft/Chapter 2]] | after:[[Draft/Chapter 1]]
 [[Draft/Chapter 3]] | after:[[Draft/Chapter 2]]
+~~~
+~~~~
+
+**Flow text cards:** Start each column with `=== Column name` and each card with `- `. Move cards by dragging on desktop or using the arrow buttons. Basic saves the column assignments in its vault settings and keeps the Markdown as written. Give each board an optional unique `id` to keep its assignments when it moves within the note.
+
+Use **Writing: quick insert catalog** from the command palette to add a text card board or other blocks while editing.
+
+~~~~markdown
+~~~flow
+id: story-ideas
+=== Ideas
+- Plan the opening
+=== In progress
+- Draft chapter one
 ~~~
 ~~~~
 

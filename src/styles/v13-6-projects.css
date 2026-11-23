@@ -204,3 +204,23 @@ body.is-mobile .writer-project-root .writer-project-arc-divider{
 body.is-mobile .writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more){
  min-width:44px;width:44px;min-height:44px;
 }
+
+/* Fixed bottom dock rather than a centered floating status bar.
+ * Keep the left pane's native Help, Settings and launcher buttons unobstructed. */
+body:not(.is-mobile) .status-bar.writer-v132-status-host{
+ --status-bar-position:fixed;
+ position:fixed;inset:auto 0 0 auto;top:auto;left:auto;right:0;bottom:0;
+ transform:none;box-sizing:border-box;
+ width:max-content;max-width:calc(100vw - 268px);
+ min-width:0;min-height:28px;height:auto;margin:0;padding:2px 8px;
+ display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:4px;
+ border:1px solid var(--background-modifier-border);border-bottom:0;
+ border-radius:var(--radius-s) var(--radius-s) 0 0;
+ background:var(--background-secondary);box-shadow:none;
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+}
+@media(max-width:620px){
+ body:not(.is-mobile) .status-bar.writer-v132-status-host{
+  max-width:calc(100vw - 90px);
+ }
+}

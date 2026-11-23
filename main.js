@@ -12680,6 +12680,23 @@ function writerV8HomeSearchURL(plugin,input){
  if(!result)throw Error(writerUi('Busca web inválida.','Invalid web search URL.'));
  return result;
 }
+/* Slash searches are handled only by Obsidian's native Web Viewer.
+ * Never fall through to vault matches, Surfing or the external browser. */
+async function writerV8HomeOpenNativeSearch(plugin,input){
+ const query=String(input||'').trim();
+ if(!query)throw Error(writerUi('Digite um termo após /.','Enter a search term after /.'));
+ if(!writerV8HomeWebViewerEnabled(plugin))
+  throw Error(writerUi('Ative o Visualizador Web nativo nas opções de plugins principais do Obsidian.',
+   'Enable the native Web Viewer in Obsidian core plugins.'));
+ const url=writerV8HomeSearchURL(plugin,query);
+ const leaf=plugin.app.workspace.getLeaf?.('tab');
+ if(!leaf)throw Error(writerUi('Não foi possível abrir uma aba.','Could not open a tab.'));
+ await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+ if(leaf.getViewState?.()?.type!=='webviewer')
+  throw Error(writerUi('O Visualizador Web não está disponível.','Web Viewer is unavailable.'));
+ plugin.app.workspace.setActiveLeaf?.(leaf,{focus:true});
+ return 'webviewer';
+}
 async function writerV8HomeOpenURL(plugin,input){
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));
@@ -13986,6 +14003,9 @@ class WriterV8HomeView extends ItemView{
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
   const files=this.app.vault.getMarkdownFiles?.()||[];
+  // A leading slash is a web-only command, not part of the search term.
+  const slashSearch=()=>input.value.trimStart().startsWith('/');
+  const slashTerm=()=>input.value.trimStart().slice(1).trim();
   let matches=[],selected=0;
   const select=(index,scroll=false)=>{
    if(!matches.length)return;
@@ -14004,6 +14024,12 @@ class WriterV8HomeView extends ItemView{
    results.empty();results.hidden=true;status.hidden=true;
    const q=input.value.trim();
    if(!q){matches=[];selected=0;return;}
+   if(slashSearch()){
+    matches=[];selected=0;status.hidden=false;
+    status.setText(slashTerm()?writerUi('Enter para pesquisar na web pelo Visualizador Web.','Enter to search the web in Web Viewer.'):
+     writerUi('Digite uma pesquisa após /.','Enter a search after /.'));
+    return; // Never search or show vault notes in slash mode.
+   }
    matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
    if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
    else selected=0;
@@ -14036,20 +14062,29 @@ class WriterV8HomeView extends ItemView{
   const web=box.createDiv({cls:'writer-v8-home-web-links'});web.hidden=true;
   const link=web.createEl('button',{text:writerUi('Abrir endereço','Open address'),attr:{type:'button'}});link.hidden=true;
   const updateLink=()=>{
-   const url=writerV8HomeValidURL(input.value);
-   web.hidden=!url;link.hidden=!url;
+   const webOnly=slashSearch(),url=!webOnly&&writerV8HomeValidURL(input.value);
+   web.hidden=!(webOnly||url);link.hidden=web.hidden;
+   link.setText(webOnly?writerUi('Pesquisar na web','Search the web'):writerUi('Abrir endereço','Open address'));
+   link.disabled=webOnly&&!slashTerm();
   };
   const open=async()=>{
    link.disabled=true;
-   try{await writerV8HomeOpenURL(this.plugin,input.value);}
-   catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
-   finally{link.disabled=false;}
+   try{
+    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm());
+    else await writerV8HomeOpenURL(this.plugin,input.value);
+   }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   finally{updateLink();}
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
    if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
    if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
    if(event.key==='Enter'){
+    if(slashSearch()){
+     event.preventDefault();
+     if(slashTerm())void open();
+     return;
+    }
     const url=writerV8HomeValidURL(input.value);
     if(url){event.preventDefault();void open();return;}
     if(matches.length){event.preventDefault();this.openFile(matches[selected]);return;}
@@ -24633,8 +24668,8 @@ function writerV102ImagesSettings(plugin,panel){
  * notes automatically. Editor commands replace only the current line(s). */
 function writerV102AlignMerge(settings){
  const raw=settings.v102Align&&typeof settings.v102Align==='object'?settings.v102Align:{};
- const cfg=settings.v102Align={enabled:true,livePreview:true,reading:true,hideDelimiters:true,...raw};
- for(const key of ['enabled','livePreview','reading','hideDelimiters'])cfg[key]=cfg[key]!==false;
+ const cfg=settings.v102Align={enabled:true,livePreview:true,reading:true,hideDelimiters:true,proseLayout:true,...raw};
+ for(const key of ['enabled','livePreview','reading','hideDelimiters','proseLayout'])cfg[key]=cfg[key]!==false;
  return cfg;
 }
 function writerV102AlignSide(alias){
@@ -24768,7 +24803,16 @@ function writerV102AlignApply(editor,side){
  }
  return changed;
 }
+function writerV102SyncProseLayout(plugin){
+ const doc=plugin.app?.workspace?.containerEl?.ownerDocument||(typeof document!=='undefined'?document:null);
+ doc?.body?.classList?.toggle('writer-v102-prose-layout',plugin.settings?.v102Align?.proseLayout!==false);
+}
 function writerV102AlignRegister(plugin){
+ writerV102SyncProseLayout(plugin);
+ plugin.register?.(()=>{
+  const doc=plugin.app?.workspace?.containerEl?.ownerDocument||(typeof document!=='undefined'?document:null);
+  doc?.body?.classList?.remove('writer-v102-prose-layout');
+ });
  plugin.registerMarkdownPostProcessor?.(root=>{
   if(plugin.settings.v102Align?.enabled&&plugin.settings.v102Align.reading)writerV102AlignReading(root);
  });
@@ -24817,6 +24861,14 @@ function writerV102AlignSettings(plugin,panel){
   ['hideDelimiters','Ocultar marcadores fora da linha em edição','Hide markers outside the edited line']
  ])new Setting(panel).setName(writerUi(pt,en))
   .addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Justificar e hifenizar parágrafos','Justify and hyphenate paragraphs'))
+  .setDesc(writerUi('Ativado por padrão na leitura: recuo de 5%, texto justificado e hifenização automática. Não altera listas, cartões ou os alinhamentos explícitos {l}, {c}, {r} e {j}.',
+   'On by default in Reading view: 5% first-line indent, justified text and automatic hyphenation. Does not change lists, cards or explicit {l}, {c}, {r} and {j} alignment.'))
+  .addToggle(t=>t.setValue(cfg.proseLayout!==false).onChange(async value=>{
+   cfg.proseLayout=value;
+   writerV102SyncProseLayout(plugin);
+   await plugin.saveSettings();
+  }));
 }
 
 // v3 module: src/v10/discovery.js
@@ -42846,18 +42898,36 @@ module.exports=class AlansOfflineDictionary extends Plugin{
   }
   async jumpToReviewError(file,start,end,source){
     try{
-      const existing=this.app.workspace.getLeavesOfType('markdown').find(leaf=>leaf.view?.file?.path===file.path);
-      const leaf=existing||this.app.workspace.getLeaf('tab');
+      if(!file?.path||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start)
+        throw new Error(msg('Localização inválida.','Invalid passage position.'));
+      const workspace=this.app.workspace;
+      const existing=workspace.getLeavesOfType('markdown').find(leaf=>leaf.view?.file?.path===file.path);
+      const leaf=existing||workspace.getLeaf('tab');
       if(!leaf)throw new Error(msg('Editor não disponível.','Editor unavailable.'));
       if(!existing)await leaf.openFile(file,{active:false});
       const editor=leaf.view?.editor;
       if(!editor)throw new Error(msg('Abra a nota no editor Markdown.','Open the note in the Markdown editor.'));
-      if(source!==undefined&&editor.getValue()!==source)throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
+      if(source!==undefined&&editor.getValue()!==source)
+        throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
       const from=editor.offsetToPos(start),to=editor.offsetToPos(end);
+      // Reveal the markdown leaf BEFORE setting a range or requesting scroll.
+      // Obsidian Mobile otherwise measures the hidden editor and jumps elsewhere.
+      workspace.setActiveLeaf(leaf,{focus:true});
+      if(typeof workspace.revealLeaf==='function')await workspace.revealLeaf(leaf);
+      if(this.app.isMobile)await new Promise(resolve=>setTimeout(resolve,120));
+      if(leaf.view?.file?.path!==file.path||
+        (source!==undefined&&editor.getValue()!==source))
+        throw new Error(msg('A nota mudou. Faça uma nova revisão.','The note has changed. Review it again.'));
       editor.setSelection(from,to);
-      editor.scrollIntoView({from,to},true);
-      this.app.workspace.setActiveLeaf(leaf,{focus:true});
       editor.focus();
+      editor.scrollIntoView({from,to},true);
+      if(this.app.isMobile){
+        // A second bounded scroll follows the Android drawer/keyboard repaint.
+        await new Promise(resolve=>setTimeout(resolve,70));
+        if(leaf.view?.file?.path===file.path&&
+          (source===undefined||editor.getValue()===source))
+          editor.scrollIntoView({from,to},true);
+      }
     }catch(e){new Notice(msg('Não foi possível localizar o erro: ','Could not locate error: ')+(e.message||e));}
   }
   closeReviewPopup(){
@@ -43029,6 +43099,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
       const message=document.createElement('div');
       message.className='writer-lt-menu-message';
       message.textContent=match.message;
+      message.title=match.message; // Complete explanation remains readable on hover.
       block.appendChild(message);
     }
     info.appendChild(block);

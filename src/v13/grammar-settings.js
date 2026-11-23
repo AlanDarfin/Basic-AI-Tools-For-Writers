@@ -126,11 +126,14 @@ function writerV137GrammarSettings(plugin,panel){
    'Reduz avisos causados pela estrutura Markdown.','Reduce findings caused by Markdown structure.'],
   ['reviewLiteraryMode','Revisar diálogos e contrações','Review dialogue and contractions',
    'Verbos dicendi e abreviações como ma\u0027. Correções só são aplicadas quando aceitas.',
-   'Speech tags and forms such as ma\u0027. Corrections are only applied when accepted.']
+   'Speech tags and forms such as ma\u0027. Corrections are only applied when accepted.'],
+  ['reviewMixedLanguageMode','Respeitar expressões em outros idiomas','Respect phrases in other languages',
+   'Evita tratar interjeições e expressões comuns em inglês e outros idiomas como erros de ortografia em português. Detecção conservadora, não uma tradução automática.',
+   'Avoid treating common English and other-language interjections and phrases as Portuguese spelling mistakes. Conservative detection, not automatic translation.']
  ])new Setting(editor).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
   .addToggle(t=>remember(t).setValue(settings[key]!==false).onChange(async value=>{
    settings[key]=value;
-   if(key==='reviewIgnoreWhitespace'||key==='reviewLiteraryMode')await changed();
+   if(key==='reviewIgnoreWhitespace'||key==='reviewLiteraryMode'||key==='reviewMixedLanguageMode')await changed();
    else{if(key==='reviewPopupEnabled'&&!value)plugin.closeReviewPopup?.();await save();}
   }));
  const connection=section('Conexão do corretor','Checker connection');

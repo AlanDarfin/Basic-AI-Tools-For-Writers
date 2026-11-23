@@ -11997,6 +11997,36 @@ body.is-mobile .writer-lt-mobile-modal .writer-lt-mobile-footer>button{grid-colu
 @media(max-width:340px){
  body.is-mobile .writer-lt-mobile-modal :is(.writer-lt-mobile-choices,.writer-lt-mobile-actions){grid-template-columns:minmax(0,1fr)}
 }
+/* Keep review navigation and actions visible in narrow Obsidian Mobile panes. */
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result{
+ box-sizing:border-box;min-width:0;max-width:100%;overflow-wrap:anywhere;
+}
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-choices,
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result-actions{
+ min-width:0;max-width:100%;
+}
+body.is-mobile .writer-lt-mobile-modal .modal-content{
+ box-sizing:border-box;min-width:0;width:100%;max-width:100%;overflow-x:hidden;
+}
+body.is-mobile .writer-lt-mobile-modal :is(.writer-lt-mobile-info,.writer-lt-mobile-extra-details,.writer-lt-mobile-choices,.writer-lt-mobile-actions){
+ box-sizing:border-box;min-width:0;max-width:100%;
+}
+@container writer-sidebar (max-width:440px){
+ body.is-mobile .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-sidebar-tabs{
+  flex-wrap:wrap;overflow-x:visible;overflow-y:visible;
+ }
+ body.is-mobile .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{
+  flex:1 1 calc(50% - 4px);min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:center;
+ }
+}
+@media(max-width:360px){
+ body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-result-actions{
+  grid-template-columns:minmax(0,1fr);
+ }
+ body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{
+  min-width:0;max-width:100%;
+ }
+}
 
 /* Compatibility is opt-out and owned classes disappear on disable/unload. */
 .writer-companion-safe-area{

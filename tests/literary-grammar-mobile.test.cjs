@@ -74,3 +74,48 @@ test('bundled code and mobile layout include compact progressive disclosure',()=
  assert.match(css,/writer-lt-mobile-footer/);
  assert.match(css,/writer-lt-details\[open\]/);
 });
+
+test('English interjections and common foreign expressions do not become Portuguese spelling errors',()=>{
+ const text='— _Damn!_ — exclamou ela. Hey, Gotcha! Bonjour, gracias.';
+ const values=['Damn','Hey','Gotcha','Bonjour','gracias'];
+ const remote=values.map(word=>({offset:text.indexOf(word),length:word.length,
+  message:'Possível erro ortográfico',rule:{id:'MORFOLOGIK_RULE_PT_BR',category:{id:'TYPOS'}},
+  replacements:[{value:'correção'}]}));
+ assert.deepEqual(review(text,remote,pt),[],'spelling false positives are suppressed');
+ assert.equal(review(text,remote,{...pt,reviewMixedLanguageMode:false}).length,5);
+});
+test('Portuguese agreement is preserved while nearby foreign words are protected',()=>{
+ const text='Os cara gritaram Damn!';
+ const remote=[
+  {offset:0,length:7,rule:{id:'GENERAL_AGREEMENT',category:{id:'GRAMMAR'}},message:'Concordância de número',replacements:[{value:'Os caras'}]},
+  {offset:text.indexOf('Damn'),length:4,rule:{id:'MORFOLOGIK_RULE_PT_BR'},message:'Possible spelling mistake',replacements:[{value:'Dão'}]}
+ ];
+ const actual=review(text,remote,pt);
+ assert.equal(actual.length,1);assert.equal(actual[0].rule.id,'GENERAL_AGREEMENT');
+});
+test('dialogue em dash after italic English exclamation retains lowercase dicendi',()=>{
+ const text='— _Damn!_ — exclamou mais uma vez.';
+ const offset=text.indexOf('exclamou');
+ const remote=[cap(offset,'exclamou')];
+ assert.equal(review(text,remote,pt).length,0);
+ const upper='— _Damn!_ — Exclamou mais uma vez.';
+ const findings=review(upper,[],pt);
+ assert.equal(findings.length,1);
+ assert.equal(findings[0].offset,upper.indexOf('Exclamou'));
+ assert.equal(findings[0].replacements[0].value,'exclamou');
+});
+test('mixed-language clause detection is conservative and ignores only spelling reports',()=>{
+ const english='She was really thinking about the story.';
+ const errors=[{offset:english.indexOf('thinking'),length:8,rule:{id:'MORFOLOGIK_RULE_PT_BR'},replacements:[]}];
+ assert.equal(review(english,errors,pt).length,0);
+ const portuguese='A história foi bem contada e não tem erro.';
+ const finding={offset:portuguese.indexOf('história'),length:8,rule:{id:'MORFOLOGIK_RULE_PT_BR'},replacements:[]};
+ assert.equal(review(portuguese,[finding],pt).length,1);
+});
+test('small-screen menu CSS wraps the full navigation instead of clipping tabs',()=>{
+ const css=fs.readFileSync('styles.css','utf8');
+ assert.match(css,/@container writer-sidebar \(max-width:440px\)/);
+ assert.match(css,/writer-tool-tabs\.writer-sidebar-tabs\{\s*flex-wrap:wrap;overflow-x:visible/);
+ assert.match(css,/writer-lt-mobile-modal \.modal-content\{\s*box-sizing:border-box;min-width:0;width:100%/);
+});
+

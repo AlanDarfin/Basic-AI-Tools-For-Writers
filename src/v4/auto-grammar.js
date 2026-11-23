@@ -30,31 +30,62 @@ function writerGrammarCancelled(){
  error.name='WriterGrammarCancelled';error.code='WRITER_GRAMMAR_CANCELLED';return error;
 }
 
-/* Context-aware, optional Portuguese dialogue hints. Never auto-change prose. */
-const WRITER_LITERARY_DICENDI=/^(?:disse|respondeu|perguntou|indagou|afirmou|negou|gritou|murmurou|sussurrou|retrucou|exclamou|observou|comentou|argumentou|confessou|ironizou|bradou|rosnou|reclamou|advertiu|acrescentou|balbuciou|repetiu|insistiu|concordou|protestou|interrompeu|explicou|declarou|resmungou)$/iu;
+/* Context-aware Portuguese dialogue hints and conservative mixed-language protection.
+ * The checker never rewrites prose; author confirmation is mandatory. */
+const WRITER_LITERARY_DICENDI=/^(?:disse|respondeu|perguntou|indagou|afirmou|negou|gritou|murmurou|sussurrou|retrucou|exclamou|observou|comentou|argumentou|confessou|ironizou|bradou|rosnou|reclamou|advertiu|acrescentou|balbuciou|repetiu|insistiu|concordou|protestou|interrompeu|explicou|declarou|resmungou|pediu|falou)$/iu;
 const WRITER_LITERARY_ELISIONS={ma:['mais','mas'],ta:['está'],to:['estou'],vamo:['vamos'],pera:['espera'],ce:['você'],num:['não']};
-function writerLiteraryReviewMatches(source,matches,settings={}){
- const text=String(source||''),remote=Array.isArray(matches)?matches:[];
- if(settings.reviewLiteraryMode===false||!/^pt(?:-|$)/i.test(settings.reviewLanguage||'pt-BR'))return remote;
- const lower=value=>value.toLocaleLowerCase('pt-BR');
- const speechTag=(word,before)=>WRITER_LITERARY_DICENDI.test(lower(word))&&
-  /^\s*—\s*\S/u.test(before)&&/\s+—\s*$/u.test(before);
- // Suppress only demonstrably misplaced sentence-capitalization suggestions.
- const valid=remote.filter(match=>{
-  const word=text.slice(match.offset,match.offset+match.length),lineStart=text.lastIndexOf('\n',match.offset-1)+1;
-  if(!word||word!==lower(word)||!speechTag(word,text.slice(lineStart,match.offset)))return true;
-  const rule=[match.rule?.id,match.rule?.description,match.message].join(' ');
-  if(!/upper|capital|sentence.start|maiúscul|frase inicia|casing/i.test(rule))return true;
-  return !(match.replacements||[]).some(r=>typeof r?.value==='string'&&lower(r.value)===word&&r.value!==word);
+const WRITER_FOREIGN_WORDS=new Set((
+ 'gotcha hey damn dammit damnit hello bye goodbye sorry thanks thankyou yeah yep nope nah oops ouch wow okay '+
+ 'whatever dude buddy bro awesome fuck fucking hell shit wtf gosh jeez gotta gonna wanna lemme dunno '+
+ "don't doesn't didn't can't cannot won't wouldn't shouldn't couldn't ain't i'm you're we're they're i've i'll it's what's that's y'all "+
+ 'hola gracias adiós adios perdón perdon mierda bonjour merci salut voilà voila putain merde hallo danke bitte tschüss tschuss ciao grazie prego buongiorno konnichiwa arigato arigatou sayonara'
+).split(/\s+/u));
+const WRITER_FOREIGN_PHRASES=/\b(?:what the hell|what the fuck|oh my god|i don['’]t know|thank you|shut up|good morning|good night|see you|come on|no way|my bad|damn it|je ne sais pas|au revoir|buenos días|buenas noches)\b/giu;
+const WRITER_ENGLISH_CUES=new Set(("the you your you're i'm don't can't won't this that these those what where when why there here they them we're have has was were would should could please thanks thank sorry very really know because gonna wanna fucking fuck hell").split(/\s+/u));
+const WRITER_PORTUGUESE_CUES=new Set(("que uma não você tem está meu minha pelo falou disse exclamou respondeu ela ele pode quero aquilo isso com porque agora quando aqui tinha então para mais entre sobre").split(/\s+/u));
+function writerForeignReviewMatches(source,matches,settings={}){
+ if(settings.reviewMixedLanguageMode===false)return matches;
+ const text=String(source||'');
+ const spans=[];
+ let found;
+ WRITER_FOREIGN_PHRASES.lastIndex=0;
+ while((found=WRITER_FOREIGN_PHRASES.exec(text))!==null)spans.push({from:found.index,to:found.index+found[0].length});
+ const tokenRegex=/[\p{L}]+(?:['’][\p{L}]+)*/gu;
+ while((found=tokenRegex.exec(text))!==null){
+  if(WRITER_FOREIGN_WORDS.has(found[0].toLocaleLowerCase('en-US')))
+   spans.push({from:found.index,to:found.index+found[0].length});
+ }
+ // A longer English clause requires several strong cues and no Portuguese ones.
+ // One common word alone is never enough to suppress a Portuguese correction.
+ const chunks=/[^.!?;\r\n]+/g;
+ while((found=chunks.exec(text))!==null){
+  const words=[...found[0].matchAll(/[\p{L}]+(?:['’][\p{L}]+)*/gu)]
+   .map(x=>x[0].toLocaleLowerCase('en-US'));
+  const en=words.filter(w=>WRITER_ENGLISH_CUES.has(w)).length;
+  const pt=words.filter(w=>WRITER_PORTUGUESE_CUES.has(w)).length;
+  if(words.length>=3&&en>=2&&pt===0)
+   spans.push({from:found.index,to:found.index+found[0].length});
+ }
+ return matches.filter(match=>{
+  if(!Number.isInteger(match?.offset)||!Number.isInteger(match?.length)||match.length<=0)return true;
+  const rule=match.rule||{};
+  const issue=[rule.id,rule.issueType,rule.category?.id,rule.description,match.message].join(' ');
+  if(!/morfologik|hunspell|spell|misspell|ortogr[aá]f|typos|unknown.word/i.test(issue))return true;
+  const from=match.offset,to=from+match.length;
+  return !spans.some(span=>from>=span.from&&to<=span.to);
  });
- const local=[];
+}
+function writerLiteraryReviewMatches(source,matches,settings={}){
+ const text=String(source||''),remote=writerForeignReviewMatches(text,Array.isArray(matches)?matches:[],settings);
+ if(settings.reviewLiteraryMode===false||!(/^(?:pt(?:-|$)|auto$)/i.test(settings.reviewLanguage||'pt-BR')))return remote;
+ const lower=value=>value.toLocaleLowerCase('pt-BR');
+ const local=[],attributions=[];
  const add=(offset,word,id,title,message,replacements,category='STYLE')=>{
   if(local.length>=100)return;
   local.push({offset,length:word.length,message,shortMessage:title,
    replacements:[...new Set(replacements)].map(value=>({value})),
    rule:{id,description:title,category:{id:category,name:'Escrita literária'}}});
  };
- // A trailing apostrophe can be intentional elision; context decides its expansion.
  const contractions=/\b(ma|ta|to|vamo|pera|ce|num)['’](?=$|[\s.,!?;:)\]}])/giu;
  let match;
  while((match=contractions.exec(text))!==null){
@@ -68,22 +99,35 @@ function writerLiteraryReviewMatches(source,matches,settings={}){
    'A forma abreviada pode ser intencional na fala. As alternativas dependem do contexto; nenhuma será aplicada automaticamente.',
    variants);
  }
- // Dialogue attribution after a closing em dash normally starts in lower case.
- const lines=/[^\r\n]+/g,verbs=/\s+—\s+(disse|respondeu|perguntou|indagou|afirmou|negou|gritou|murmurou|sussurrou|retrucou|exclamou|observou|comentou|argumentou|confessou|ironizou|bradou|rosnou|reclamou|advertiu|acrescentou|balbuciou|repetiu|insistiu|concordou|protestou|interrompeu|explicou|declarou|resmungou)\b/giu;
+ // Markdown emphasis, blockquotes and leading HTML markup may surround a speech line.
+ const lines=/[^\r\n]+/g,verbs=/\s+—\s+([\p{L}]+)\b/giu;
  let line;
  while((line=lines.exec(text))!==null){
-  if(!/^\s*—\s*\S/u.test(line[0]))continue;
+  const withoutPrefix=line[0].replace(/^\s*(?:(?:>\s*)|(?:<[^>]+>\s*))*/u,'');
+  if(!/^—\s*\S/u.test(withoutPrefix))continue;
   verbs.lastIndex=0;let found;
   while((found=verbs.exec(line[0]))!==null){
-   const word=found[1],index=found.index+found[0].lastIndexOf(word),before=line[0].slice(0,index);
-   if(word===lower(word)||word===word.toLocaleUpperCase('pt-BR')||!speechTag(word,before))continue;
-   add(line.index+index,word,'BASIC_LITERARY_DICENDI',
+   const word=found[1];
+   if(!WRITER_LITERARY_DICENDI.test(lower(word)))continue;
+   const index=found.index+found[0].lastIndexOf(word),offset=line.index+index;
+   if(!line[0].slice(0,index).includes('—'))continue;
+   attributions.push({offset,length:word.length,word});
+   if(word===lower(word)||word===word.toLocaleUpperCase('pt-BR'))continue;
+   add(offset,word,'BASIC_LITERARY_DICENDI',
     'Verbo dicendi após travessão',
-    'Após uma fala e seu travessão de fechamento, o verbo que atribui a fala costuma começar com letra minúscula, inclusive depois de ? ou !.',
+    'Após o travessão de atribuição, o verbo dicendi costuma começar com minúscula, inclusive após ? ou !.',
     [lower(word)],'GRAMMAR');
   }
  }
- // Never duplicate an overlapping remote spelling finding.
+ const valid=remote.filter(match=>{
+  const label=[match.rule?.id,match.rule?.description,match.message].join(' ');
+  if(!/upper|capital|sentence.start|maiúscul|frase inicia|casing/i.test(label))return true;
+  const replacements=(match.replacements||[]).map(r=>r?.value).filter(x=>typeof x==='string');
+  return !attributions.some(a=>{
+   if(lower(a.word)!==a.word||match.offset>a.offset||match.offset+match.length<a.offset+a.length)return false;
+   return replacements.some(value=>lower(value.trim())===a.word&&value.trim()!==a.word);
+  });
+ });
  return [...valid.filter(m=>!local.some(x=>m.offset<x.offset+x.length&&x.offset<m.offset+m.length)),...local]
   .sort((a,b)=>a.offset-b.offset||a.length-b.length);
 }

@@ -123,11 +123,14 @@ function writerV137GrammarSettings(plugin,panel){
   ['reviewPopupEnabled','Mostrar sugestões ao passar o mouse ou mover o cursor','Show suggestions on hover or caret',
    'No celular, toque na palavra sublinhada.','On mobile, tap an underlined word.'],
   ['reviewIgnoreWhitespace','Ocultar sugestões só de espaço e formatação','Hide spacing-only and formatting suggestions',
-   'Reduz avisos causados pela estrutura Markdown.','Reduce findings caused by Markdown structure.']
+   'Reduz avisos causados pela estrutura Markdown.','Reduce findings caused by Markdown structure.'],
+  ['reviewLiteraryMode','Revisar diálogos e contrações','Review dialogue and contractions',
+   'Verbos dicendi e abreviações como ma\u0027. Correções só são aplicadas quando aceitas.',
+   'Speech tags and forms such as ma\u0027. Corrections are only applied when accepted.']
  ])new Setting(editor).setName(writerUi(pt,en)).setDesc(writerUi(descPt,descEn))
   .addToggle(t=>remember(t).setValue(settings[key]!==false).onChange(async value=>{
    settings[key]=value;
-   if(key==='reviewIgnoreWhitespace')await changed();
+   if(key==='reviewIgnoreWhitespace'||key==='reviewLiteraryMode')await changed();
    else{if(key==='reviewPopupEnabled'&&!value)plugin.closeReviewPopup?.();await save();}
   }));
  const connection=section('Conexão do corretor','Checker connection');

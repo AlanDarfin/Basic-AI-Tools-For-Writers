@@ -95,8 +95,17 @@ test('Android popup exposes native Obsidian modal actions without mouse coordina
  assert.equal(host.reviewPopupKey,'book:6');
  const choices=modal.contentEl.children.find(e=>e.options?.cls==='writer-lt-mobile-choices');
  assert.equal(choices.children.length,1);
- const actions=modal.contentEl.children.find(e=>e.options?.cls==='writer-lt-mobile-actions');
- assert.equal(actions.children.length,4);
+ const findClass=(element,cls)=>{
+  if(element?.options?.cls?.split(' ').includes(cls))return element;
+  for(const child of element?.children||[]){const found=findClass(child,cls);if(found)return found;}
+  return null;
+ };
+ const actions=findClass(modal.contentEl,'writer-lt-mobile-actions');
+ const footer=findClass(modal.contentEl,'writer-lt-mobile-footer');
+ const more=findClass(modal.contentEl,'writer-lt-mobile-extra-details');
+ assert.ok(actions&&footer&&more,'secondary actions remain reachable behind a details section');
+ assert.equal(actions.children.length,3,'dictionary, AI and ignore-rule actions are preserved');
+ assert.equal(footer.children.length,1,'ignore-occurrence remains directly accessible');
  choices.children[0].events.click();
  assert.equal(modal.opened,false);
  assert.equal(host.reviewPopup,null);

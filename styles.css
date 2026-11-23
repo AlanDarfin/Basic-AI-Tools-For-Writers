@@ -10827,6 +10827,16 @@ body:not(.is-mobile) .status-bar.writer-v132-status-host{
 }
 .writer-tool-root .writer-file-actions > button[hidden]{display:none;}
 
+/* Basic prose typography, adapted from the user's Basic-Compat-Unificado-v2.
+ * Only ordinary Reading-mode paragraphs: never cards, blocks, lists or {l/c/r/j}. */
+body.writer-v102-prose-layout .markdown-preview-view .markdown-preview-sizer>.el-p>p:not([align]):not(.writer-v102-align-processed){
+ text-indent:5%;text-align:justify;text-justify:auto;hyphens:auto;
+ orphans:2;widows:2;overflow-wrap:break-word;
+}
+body.writer-v102-prose-layout .markdown-preview-view .markdown-preview-sizer>.el-p>p:is(.writer-v102-align-left,.writer-v102-align-center,.writer-v102-align-right,.writer-v102-align-justify){
+ text-indent:0;hyphens:manual;
+}
+
 /* Local Longform draft recovery. The manuscript remains a separate note. */
 .writer-v134-recovery-modal{width:min(1000px,96vw);max-height:92vh;}
 .writer-v134-recovery{min-width:0;max-width:100%;}
@@ -11104,6 +11114,26 @@ body.is-mobile .writer-project-root .writer-project-arc-divider{
 }
 body.is-mobile .writer-project-root :is(.writer-project-arc-grip,.writer-project-arc-more){
  min-width:44px;width:44px;min-height:44px;
+}
+
+/* Fixed bottom dock rather than a centered floating status bar.
+ * Keep the left pane's native Help, Settings and launcher buttons unobstructed. */
+body:not(.is-mobile) .status-bar.writer-v132-status-host{
+ --status-bar-position:fixed;
+ position:fixed;inset:auto 0 0 auto;top:auto;left:auto;right:0;bottom:0;
+ transform:none;box-sizing:border-box;
+ width:max-content;max-width:calc(100vw - 268px);
+ min-width:0;min-height:28px;height:auto;margin:0;padding:2px 8px;
+ display:flex;align-items:center;justify-content:flex-end;flex-wrap:nowrap;gap:4px;
+ border:1px solid var(--background-modifier-border);border-bottom:0;
+ border-radius:var(--radius-s) var(--radius-s) 0 0;
+ background:var(--background-secondary);box-shadow:none;
+ overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+}
+@media(max-width:620px){
+ body:not(.is-mobile) .status-bar.writer-v132-status-host{
+  max-width:calc(100vw - 90px);
+ }
 }
 
 /* Basic 13.6 — settings measured in Obsidian's native settings window.
@@ -12081,6 +12111,77 @@ body.is-mobile .writer-lt-mobile-modal :is(.writer-lt-mobile-info,.writer-lt-mob
   min-width:0;max-width:100%;
  }
 }
+
+/* Compact LanguageTool popups; do not let an explanation bury the editor. */
+body .menu.writer-v406-lt-compact{
+ box-sizing:border-box;width:min(240px,calc(100vw - 20px));
+ min-width:0;max-width:min(240px,calc(100vw - 20px));
+ max-height:min(285px,52dvh);overflow-y:auto;padding:3px;
+ overscroll-behavior:contain;
+}
+body .menu.writer-v406-lt-compact .menu-item{
+ min-height:26px;height:auto;padding:3px 6px;gap:4px;line-height:1.22;
+}
+body .menu.writer-v406-lt-compact .menu-separator{margin:2px 1px}
+body .menu.writer-v406-lt-compact .writer-lt-menu-info{padding:4px 5px;max-width:100%;gap:2px}
+body .menu.writer-v406-lt-compact .writer-lt-menu-title{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+ font-size:var(--font-ui-smaller);line-height:1.26;
+}
+body .menu.writer-v406-lt-compact .writer-lt-menu-message{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
+ overflow:hidden;font-size:var(--font-ui-smaller);line-height:1.25;
+}
+/* The review sidebar uses a consistent dense card rhythm at every pane width. */
+body .dictionary-view-content.writer-tool-root .writer-review-panel{gap:5px}
+body .dictionary-view-content.writer-tool-root .writer-review-results{
+ display:flex;flex-direction:column;gap:5px;min-width:0;
+}
+body .dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result{
+ box-sizing:border-box;min-width:0;gap:5px;margin:0;padding:7px 8px;
+ border-inline-start-width:2px;border-radius:var(--radius-s);
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-result-heading{
+ display:flex;flex-direction:column;gap:1px;align-items:start;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-category{
+ font-size:var(--font-ui-smaller);line-height:1.2;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-title{
+ font-size:var(--font-ui-small);line-height:1.3;overflow-wrap:anywhere;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-original{
+ margin:3px 0;line-height:1.35;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-choices{gap:4px}
+body .dictionary-view-content.writer-tool-root .writer-lt-choices>.writer-lt-choice{
+ min-height:30px;padding:4px 7px;line-height:1.25;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-result-actions{
+ gap:4px;margin-top:3px;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{
+ min-height:30px;padding:4px 7px;line-height:1.2;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-details{
+ margin-top:4px;padding-top:4px;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-details>summary{
+ line-height:1.25;
+}
+body .dictionary-view-content.writer-tool-root .writer-lt-details p{
+ margin:4px 0;line-height:1.35;
+}
+/* Retain touch sizes, but not the oversized gaps and padding, on mobile. */
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-review-results .writer-lt-result{
+ padding:7px 8px;gap:4px;
+}
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-choices>.writer-lt-choice,
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-lt-result-actions>button{
+ min-height:40px;
+}
+body.is-mobile .writer-lt-mobile-modal .modal-content{padding:3px 2px 6px}
+body.is-mobile .writer-lt-mobile-modal h3{margin-bottom:4px}
 
 /* Compatibility is opt-out and owned classes disappear on disable/unload. */
 .writer-companion-safe-area{

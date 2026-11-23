@@ -10,16 +10,22 @@ export interface HtmlImagePaste {
   render: (embeds: string[]) => string;
 }
 
-/** Keep sanitized clipboard markup detached from the live document. */
+/** Keep clipboard resources inert until the download preference is checked. */
 export function htmlImagePaste(
   html: string,
   files: File[],
   allowRemote = false,
 ): HtmlImagePaste | undefined {
   if (!html || !/<img\b/i.test(html)) return;
-  const fragment = sanitizeHTMLToDom(html);
+  // Obsidian's sanitizer can load images while constructing detached markup.
+  // A template keeps the original URLs inert before replacing the images.
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const fragment = template.content;
   fragment
-    .querySelectorAll("script,style,iframe,object,embed,link,meta,base")
+    .querySelectorAll(
+      "script,style,iframe,object,embed,link,meta,base,video,audio,source,track,svg,math,template,noscript",
+    )
     .forEach((el) => el.remove());
   const nodes = Array.from(fragment.querySelectorAll("img"));
   if (!nodes.length) return;
@@ -61,7 +67,13 @@ export function htmlImagePaste(
       },
     };
   });
-  const markdown = htmlToMarkdown(fragment);
+  for (const element of fragment.querySelectorAll(
+    "[src],[srcset],[poster],[background]",
+  )) {
+    for (const attribute of ["src", "srcset", "poster", "background"])
+      element.removeAttribute(attribute);
+  }
+  const markdown = htmlToMarkdown(sanitizeHTMLToDom(template.innerHTML));
   return {
     images,
     render: (embeds) => {

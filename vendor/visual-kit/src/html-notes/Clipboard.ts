@@ -34,7 +34,7 @@ export async function exportHtml(
   for (const img of images) {
     const source = img.getAttribute("src") || "";
     try {
-      const { bytes, extension } = await assets.bytes(source, note);
+      const { bytes, extension } = await assets.bytes(source, note, "copy");
       total += bytes.byteLength;
       if (total > MAX_HTML) throw new Error("Image batch exceeds 32 MB.");
       const dimension = (value: string | null) =>

@@ -54,6 +54,7 @@ export class HtmlAssets {
   async bytes(
     source: string,
     note: TFile,
+    purpose: "copy" | "import",
   ): Promise<{ bytes: ArrayBuffer; extension: string }> {
     const local = this.resolve(source, note);
     let file: File;
@@ -72,6 +73,8 @@ export class HtmlAssets {
         throw new Error(
           "Image URL is not portable. Paste the image file instead.",
         );
+      if (purpose === "copy")
+        throw new Error("Import the linked image into the vault before copying.");
       if (this.plugin.settings.htmlExternalImages !== "download")
         throw new Error(
           "Remote images are blocked. Enable downloading in HTML notes settings, or paste the image file.",
@@ -173,7 +176,7 @@ export class HtmlAssets {
         const data =
           attached ??
           new File(
-            [(await this.bytes(source, note)).bytes],
+            [(await this.bytes(source, note, "import")).bytes],
             img.alt || "image",
           );
         total += data.size;

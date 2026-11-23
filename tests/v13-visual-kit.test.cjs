@@ -42,6 +42,88 @@ test('packaged desktop code remains lazy; HTML extensions and network lookups ar
  assert.match(preview,/script-src 'none'/);assert.match(preview,/sandbox: ""/);
 });
 
+test('rich Markdown paste removes live resource attributes before sanitizing the surrounding markup',async t=>{
+ const {JSDOM}=require('../vendor/visual-kit/node_modules/jsdom');
+ const {buildSync}=require('../vendor/visual-kit/node_modules/esbuild');
+ const dom=new JSDOM('');
+ t.after(()=>dom.window.close());
+ const document=dom.window.document;
+ const requests=[];
+ const obsidian={
+  sanitizeHTMLToDom(html){
+   assert.doesNotMatch(html,/<(?:img|source|iframe|script|style)\b|\b(?:src|srcset|poster|background)=/i);
+   const template=document.createElement('template');template.innerHTML=html;
+   template.content.querySelector('p').removeAttribute('onclick');
+   return template.content;
+  },
+  htmlToMarkdown(fragment){
+   assert.equal(fragment.querySelector('p').getAttribute('onclick'),null);
+   assert.equal(fragment.querySelector('strong').textContent,'Antes');
+   assert.equal(fragment.querySelector('a').getAttribute('href'),'https://example.test/note');
+   return fragment.textContent;
+  },
+  async requestUrl({url}){requests.push(url);return {status:200,arrayBuffer:Uint8Array.of(1,2,3).buffer};}
+ };
+ const module={exports:{}};
+ const {outputFiles}=buildSync({entryPoints:['vendor/visual-kit/src/paste/HtmlImagePaste.ts'],
+  bundle:true,external:['obsidian'],platform:'browser',format:'cjs',write:false});
+ vm.runInNewContext(outputFiles[0].text,{module,require:name=>{assert.equal(name,'obsidian');return obsidian;},
+  document,crypto:require('node:crypto').webcrypto,File,URL});
+ const {htmlImagePaste}=module.exports;
+ const url='https://example.test/image.png';
+ const html=`<p onclick="return false"><strong>Antes</strong><a href="https://example.test/note">Nota</a>`+
+  `<picture><source srcset="${url}"><img src="${url}" alt="Amostra"></picture></p>`+
+  `<iframe src="${url}"></iframe><div background="${url}"></div>`;
+ const blocked=htmlImagePaste(html,[]);
+ assert.equal(blocked.images.length,1);
+ assert.equal(blocked.images[0].name,'Amostra');
+ assert.equal(blocked.render(['![[Amostra.png]]']),'AntesNota![[Amostra.png]]');
+ await assert.rejects(blocked.images[0].load(),/Remote images are blocked/);
+ assert.deepEqual(requests,[]);
+
+ const allowed=htmlImagePaste(html,[],true);
+ assert.equal(requests.length,0,'Parsing never downloads an image');
+ const image=await allowed.images[0].load();
+ assert.equal(image.name,'Amostra');
+ assert.deepEqual(requests,[url]);
+});
+
+test('rich HTML copy uses local images and leaves the clipboard unchanged for a linked image',async t=>{
+ const {JSDOM}=require('../vendor/visual-kit/node_modules/jsdom');
+ const {buildSync}=require('../vendor/visual-kit/node_modules/esbuild');
+ const dom=new JSDOM('');
+ t.after(()=>dom.window.close());
+ const document=dom.window.document;
+ const written=[],requests=[];
+ class TFile{constructor(path){this.path=path;this.name=path;}}
+ const bytes=Uint8Array.of(137,80,78,71).buffer;
+ const imports={
+  obsidian:{TFile,requestUrl:async({url})=>{requests.push(url);return {status:200,arrayBuffer:bytes};}},
+  electron:{clipboard:{write:value=>written.push(value)},nativeImage:{createFromDataURL:()=>({isEmpty:()=>true})}}
+ };
+ const file=new TFile('local.png');
+ const note=new TFile('Note.html');
+ const plugin={settings:{htmlExternalImages:'download',htmlClipboardCompatibility:false},
+  app:{vault:{getAbstractFileByPath:path=>path===file.path?file:null,readBinary:async()=>bytes}}};
+ const module={exports:{}};
+ const {outputFiles}=buildSync({entryPoints:['vendor/visual-kit/src/html-notes/Clipboard.ts'],
+  bundle:true,external:['obsidian','electron'],platform:'browser',format:'cjs',write:false});
+ vm.runInNewContext(outputFiles[0].text,{module,require:name=>imports[name],
+  document,window:dom.window,createEl:tag=>document.createElement(tag),File,URL,TextDecoder,Blob,btoa,atob,
+  createImageBitmap:async()=>({width:1,height:1,close(){}})});
+ const {copyHtml}=module.exports;
+
+ await copyHtml(plugin,note,'<p><strong>Texto local</strong></p><img src="local.png" alt="Local">');
+ assert.equal(written.length,1);
+ assert.match(written[0].html,/<strong>Texto local<\/strong>/);
+ assert.match(written[0].html,/src="data:image\/png;base64,/);
+ assert.match(written[0].text,/Texto local/);
+ await assert.rejects(copyHtml(plugin,note,'<p>Outro texto</p><img src="https://example.test/image.png" alt="Remota">'),
+  /Import the linked image into the vault before copying.*Clipboard unchanged/);
+ assert.equal(written.length,1);
+ assert.deepEqual(requests,[]);
+});
+
 test('compiled Visual Kit registers commands and keeps remote image downloads opt-in',async()=>{
  const source=fs.readFileSync('main.js','utf8').split('function writerVisualKitBuild(){')[1].split('// END WRITER V3 MODULES')[0];
  const noop=class {};

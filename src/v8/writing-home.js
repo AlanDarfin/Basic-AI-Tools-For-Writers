@@ -627,6 +627,9 @@ class WriterV8HomeView extends ItemView{
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
   const files=this.app.vault.getMarkdownFiles?.()||[];
+  // A leading slash is a web-only command, not part of the search term.
+  const slashSearch=()=>input.value.trimStart().startsWith('/');
+  const slashTerm=()=>input.value.trimStart().slice(1).trim();
   let matches=[],selected=0;
   const select=(index,scroll=false)=>{
    if(!matches.length)return;
@@ -645,6 +648,12 @@ class WriterV8HomeView extends ItemView{
    results.empty();results.hidden=true;status.hidden=true;
    const q=input.value.trim();
    if(!q){matches=[];selected=0;return;}
+   if(slashSearch()){
+    matches=[];selected=0;status.hidden=false;
+    status.setText(slashTerm()?writerUi('Enter para pesquisar na web pelo Visualizador Web.','Enter to search the web in Web Viewer.'):
+     writerUi('Digite uma pesquisa após /.','Enter a search after /.'));
+    return; // Never search or show vault notes in slash mode.
+   }
    matches=writerV8HomeSearch(files,q,this.app.metadataCache,12);
    if(previous)selected=Math.max(0,matches.findIndex(file=>file.path===previous));
    else selected=0;
@@ -677,20 +686,29 @@ class WriterV8HomeView extends ItemView{
   const web=box.createDiv({cls:'writer-v8-home-web-links'});web.hidden=true;
   const link=web.createEl('button',{text:writerUi('Abrir endereço','Open address'),attr:{type:'button'}});link.hidden=true;
   const updateLink=()=>{
-   const url=writerV8HomeValidURL(input.value);
-   web.hidden=!url;link.hidden=!url;
+   const webOnly=slashSearch(),url=!webOnly&&writerV8HomeValidURL(input.value);
+   web.hidden=!(webOnly||url);link.hidden=web.hidden;
+   link.setText(webOnly?writerUi('Pesquisar na web','Search the web'):writerUi('Abrir endereço','Open address'));
+   link.disabled=webOnly&&!slashTerm();
   };
   const open=async()=>{
    link.disabled=true;
-   try{await writerV8HomeOpenURL(this.plugin,input.value);}
-   catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
-   finally{link.disabled=false;}
+   try{
+    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm());
+    else await writerV8HomeOpenURL(this.plugin,input.value);
+   }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   finally{updateLink();}
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
    if(event.key==='ArrowDown'&&matches.length){event.preventDefault();select(selected+1,true);return;}
    if(event.key==='ArrowUp'&&matches.length){event.preventDefault();select(selected-1,true);return;}
    if(event.key==='Enter'){
+    if(slashSearch()){
+     event.preventDefault();
+     if(slashTerm())void open();
+     return;
+    }
     const url=writerV8HomeValidURL(input.value);
     if(url){event.preventDefault();void open();return;}
     if(matches.length){event.preventDefault();this.openFile(matches[selected]);return;}

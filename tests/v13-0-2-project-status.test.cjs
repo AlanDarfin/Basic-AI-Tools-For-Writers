@@ -60,3 +60,20 @@ test('reading status shows duration and exposes the complete estimate in both la
   assert.equal(labels.has('aria-label'),false);
  }
 });
+
+test('Longform scene rows are compact and inline on desktop, with hover and keyboard-revealed actions',()=>{
+ const css=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const shipped=fs.readFileSync('styles.css','utf8');
+ const start=css.indexOf('/* Desktop Longform: compact single-line scenes');
+ const end=css.indexOf('/* Visual-only Longform story arc dividers',start);
+ assert.ok(start>=0&&end>start,'Missing desktop-only Longform override');
+ const desktop=css.slice(start,end);
+ assert.ok(shipped.includes(desktop),'Published styles.css must include the desktop layout');
+ assert.match(desktop,/body:not\(\.is-mobile\) .*writer-project-scene-actions\{[\s\S]*?grid-template-columns:24px minmax\(0,1fr\) max-content/);
+ assert.match(desktop,/writer-project-scene-controls\{[\s\S]*?grid-column:3;grid-row:1/);
+ assert.match(desktop,/writer-project-scene-title-text\{[\s\S]*?white-space:nowrap;overflow:hidden;text-overflow:ellipsis/);
+ assert.match(desktop,/@media \(hover:hover\) and \(pointer:fine\)/);
+ assert.match(desktop,/:is\(:hover,:focus-within\)>\.writer-project-scene-controls\{[\s\S]*?opacity:1;pointer-events:auto/);
+ assert.match(desktop,/\.writer-project-scene-controls\{\s*opacity:0;pointer-events:none/);
+ assert.match(css,/body\.is-mobile \.writer-project-root \.writer-project-panel \.writer-project-scene\.writer-project-scene-actions\{grid-template-columns:44px/);
+});

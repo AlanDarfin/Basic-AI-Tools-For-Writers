@@ -5176,6 +5176,7 @@ class WriterAutoGrammar{
   }
  }
 }
+
 // v3 module: src/v4/modules.js
 /* Basic AI v4 RC — opt-in module visibility, persisted independently of data. */
 const WRITER_MODULES=[
@@ -36609,6 +36610,7 @@ function writerV137GrammarSettings(plugin,panel){
  const rulesFeedback=exceptions.createEl('p',{cls:'writer-grammar-feedback',attr:{id:rulesId,role:'status','aria-live':'polite'}});
  refresh();return root;
 }
+
 // v3 module: src/v13/setup-guide.js
 /* First-run choices only change feature availability; existing vaults opt in. */
 const WRITER_QUICK_START_PRESETS={

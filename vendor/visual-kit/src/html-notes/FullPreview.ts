@@ -29,8 +29,11 @@ export function fullPreview(
     FORBID_ATTR: ["autofocus"],
   });
   const doc = parseHtml(cleaned, owner);
-  for (const anchor of doc.querySelectorAll("a"))
-    anchor.removeAttribute("href");
+  // A sandboxed frame can still navigate itself when a link is activated.
+  for (const link of doc.querySelectorAll("a,area")) {
+    link.removeAttribute("href");
+    link.removeAttribute("xlink:href");
+  }
   for (const image of doc.querySelectorAll("img")) {
     const src = image.getAttribute("src") || "";
     image.removeAttribute("srcset");

@@ -5,8 +5,8 @@
  * notes automatically. Editor commands replace only the current line(s). */
 function writerV102AlignMerge(settings){
  const raw=settings.v102Align&&typeof settings.v102Align==='object'?settings.v102Align:{};
- const cfg=settings.v102Align={enabled:true,livePreview:true,reading:true,hideDelimiters:true,...raw};
- for(const key of ['enabled','livePreview','reading','hideDelimiters'])cfg[key]=cfg[key]!==false;
+ const cfg=settings.v102Align={enabled:true,livePreview:true,reading:true,hideDelimiters:true,proseLayout:true,...raw};
+ for(const key of ['enabled','livePreview','reading','hideDelimiters','proseLayout'])cfg[key]=cfg[key]!==false;
  return cfg;
 }
 function writerV102AlignSide(alias){
@@ -140,7 +140,16 @@ function writerV102AlignApply(editor,side){
  }
  return changed;
 }
+function writerV102SyncProseLayout(plugin){
+ const doc=plugin.app?.workspace?.containerEl?.ownerDocument||(typeof document!=='undefined'?document:null);
+ doc?.body?.classList?.toggle('writer-v102-prose-layout',plugin.settings?.v102Align?.proseLayout!==false);
+}
 function writerV102AlignRegister(plugin){
+ writerV102SyncProseLayout(plugin);
+ plugin.register?.(()=>{
+  const doc=plugin.app?.workspace?.containerEl?.ownerDocument||(typeof document!=='undefined'?document:null);
+  doc?.body?.classList?.remove('writer-v102-prose-layout');
+ });
  plugin.registerMarkdownPostProcessor?.(root=>{
   if(plugin.settings.v102Align?.enabled&&plugin.settings.v102Align.reading)writerV102AlignReading(root);
  });
@@ -189,4 +198,12 @@ function writerV102AlignSettings(plugin,panel){
   ['hideDelimiters','Ocultar marcadores fora da linha em edição','Hide markers outside the edited line']
  ])new Setting(panel).setName(writerUi(pt,en))
   .addToggle(t=>t.setValue(cfg[key]===true).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Justificar e hifenizar parágrafos','Justify and hyphenate paragraphs'))
+  .setDesc(writerUi('Ativado por padrão na leitura: recuo de 5%, texto justificado e hifenização automática. Não altera listas, cartões ou os alinhamentos explícitos {l}, {c}, {r} e {j}.',
+   'On by default in Reading view: 5% first-line indent, justified text and automatic hyphenation. Does not change lists, cards or explicit {l}, {c}, {r} and {j} alignment.'))
+  .addToggle(t=>t.setValue(cfg.proseLayout!==false).onChange(async value=>{
+   cfg.proseLayout=value;
+   writerV102SyncProseLayout(plugin);
+   await plugin.saveSettings();
+  }));
 }

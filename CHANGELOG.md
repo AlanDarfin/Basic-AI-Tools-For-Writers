@@ -2,6 +2,16 @@
 
 The README files describe current features and usage examples only. Release history belongs here and in GitHub Releases.
 
+## 14.1.0 — LanguageTool, Visual Kit and writing workflows
+
+- Keep LanguageTool suggestions on the correct note, discard stale responses and recheck edited passages after accepting a correction. Save connection settings together and test them with a sample sentence.
+- Bundle Visual Kit on desktop for image annotation, rich paste and copy, and HTML notes. External image imports require opt-in. The quick annotation tool remains available on Android.
+- Improve the Basic Tools chat controls, narrow Longform layouts and keyboard access to calendar time slots. Choose where to open the calendar.
+- Add text-card Flow boards and an insert catalog, optional widescreen Explorer thumbnails, and saved reading progress for standalone books.
+- Read local Better BibTeX bibliographies, configure which Zotero highlights appear on the homepage, and opt into simple Meta Bind fields and buttons. Reading styles support presets and searchable grayscale PDF export.
+
+[Full release notes in English and Portuguese](docs/releases/14.1.0.md)
+
 ## 13.15.1 — Basic toolbar syntax and reversible smart typography
 
 - Apply underline, superscript, subscript, text color and highlight with Basic's own syntax instead of HTML. Make spoiler available as a toolbar button and preserve saved desktop and mobile profiles.

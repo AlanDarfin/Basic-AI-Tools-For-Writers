@@ -1,5 +1,13 @@
 # Changelog — Basic
 
+## 15.0.0 — Busca mais rápida e painéis compactos
+
+- A busca na página inicial agrupa a digitação e reaproveita o texto normalizado de títulos, caminhos e cabeçalhos durante cada consulta.
+- A Biblioteca filtra antes de ordenar e calcula o progresso uma vez por livro na ordenação. No celular, o seletor de Spaces monta a lista de coleções ao abrir.
+- Os painéis usam espaçamentos e controles mais uniformes. Em painéis estreitos, os seletores de idioma da tradução se empilham para mostrar os nomes completos.
+
+[Notas completas em português e inglês](docs/releases/15.0.0.md)
+
 ## 14.2.1 — Longform compacto no Android
 
 - As cenas agora ficam em linhas únicas, com alça, título e menu de ações lado a lado.

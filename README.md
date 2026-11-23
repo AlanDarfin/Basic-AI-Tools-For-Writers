@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 14.2.1 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 15.0.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 

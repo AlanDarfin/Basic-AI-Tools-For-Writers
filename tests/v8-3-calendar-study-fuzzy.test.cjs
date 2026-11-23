@@ -18,6 +18,22 @@ test('fuzzy search ranks titles, accents, headings, partial and one-letter typos
  assert.equal(f.search(files,'nonexistent',cache).length,0);
  assert.ok(f.score('Capítulo Principal','capitulo')>f.score('Capítulo Principal','ciprin'));
 });
+test('exact titles skip unnecessary heading lookups without changing ranking or multi-token matches',()=>{
+ const exact={basename:'Café',path:'A/Café.md'};
+ const tied={basename:'Cafe',path:'B/Cafe.md'};
+ const heading={basename:'Arquivo',path:'C/Arquivo.md'};
+ const prefix={basename:'Cafeteria',path:'D/Cafeteria.md'};
+ const lookedUp=[];
+ const cache={getFileCache:file=>{
+  lookedUp.push(file.path);
+  return {headings:file===exact?[{heading:'Receitas'}]:file===heading?[{heading:'Café'}]:[]};
+ }};
+ const files=[prefix,tied,heading,exact];
+ assert.deepEqual(Array.from(f.search(files,'café',cache),file=>file.path),[tied.path,exact.path,heading.path,prefix.path]);
+ assert.deepEqual(lookedUp,[prefix.path,heading.path]);
+ assert.equal(f.search(files,'café receitas',cache)[0],exact);
+ assert.equal(f.search(files,'café',cache,1)[0],tied);
+});
 test('calendar validates malformed dates and times without timezone shifts',()=>{
  assert.equal(cal.date('2026-02-30'),'');
  assert.equal(cal.date('2026-02-28'),'2026-02-28');

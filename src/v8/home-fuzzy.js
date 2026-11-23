@@ -1,5 +1,6 @@
 'use strict';
 /* Small deterministic, dependency-free fuzzy matcher for homepage. */
+const WRITER_V83_FUZZY_EXACT_SCORE=1100;
 function writerV83Fold(value){
  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase().trim();
 }
@@ -17,14 +18,17 @@ function writerV83EditOne(a,b){
  return errors+(a.length-i)+(b.length-j)<=1;
 }
 function writerV83FuzzyScore(hay,needle){
- const text=writerV83Fold(hay),term=writerV83Fold(needle);
+ return writerV83FuzzyScoreFolded(writerV83Fold(hay),writerV83Fold(needle));
+}
+function writerV83FuzzyScoreFolded(text,term){
  if(!text||!term)return -1;
- if(text===term)return 1100;
+ if(text===term)return WRITER_V83_FUZZY_EXACT_SCORE;
  if(text.startsWith(term))return 900-Math.min(text.length-term.length,90);
  const pos=text.indexOf(term);
  if(pos>=0)return (pos===0||/[^\p{L}\p{N}]/u.test(text[pos-1])?780:640)-Math.min(pos,160);
+ if(term.length<3)return -1;
  const words=text.split(/[^\p{L}\p{N}]+/u).filter(Boolean);
- if(term.length>=3&&words.some(w=>writerV83EditOne(w,term)))return 535;
+ if(words.some(w=>writerV83EditOne(w,term)))return 535;
  let p=0,gaps=0,last=-1;
  for(let i=0;i<text.length&&p<term.length;i++){
   if(text[i]!==term[p])continue;
@@ -34,25 +38,38 @@ function writerV83FuzzyScore(hay,needle){
  if(p!==term.length)return -1;
  // Avoid returning unrelated files based on a few scattered letters.
  const spread=last-text.indexOf(term[0])+1;
- if(term.length<3||gaps>Math.max(4,term.length*2)||spread>term.length*3)return -1;
+ if(gaps>Math.max(4,term.length*2)||spread>term.length*3)return -1;
  return 340-Math.min(gaps*10,240);
 }
 function writerV83FuzzySearch(files,query,cache,max=12){
  const term=writerV83Fold(query);
  if(!term||!Array.isArray(files))return [];
  const tokens=term.split(/\s+/).filter(Boolean).slice(0,5);
- return files.map(file=>{
-  const title=String(file.basename||''),path=String(file.path||'');
-  const headings=(cache?.getFileCache?.(file)?.headings||[]).slice(0,60);
-  const scoreTokens=tokens.map(token=>{
-   const titleScore=writerV83FuzzyScore(title,token);
-   const pathScore=writerV83FuzzyScore(path,token);
-   const headingScore=headings.reduce((best,h)=>Math.max(best,writerV83FuzzyScore(h.heading,token)), -1);
-   return Math.max(titleScore, pathScore>=0?pathScore-70:-1,headingScore>=0?headingScore-110:-1);
-  });
-  if(scoreTokens.some(s=>s<0))return null;
-  return {file,score:scoreTokens.reduce((a,b)=>a+b,0)};
- }).filter(Boolean).sort((a,b)=>b.score-a.score||
-  String(a.file.basename).localeCompare(String(b.file.basename),undefined,{sensitivity:'base'}))
-  .slice(0,Math.max(1,Math.min(30,max))).map(x=>x.file);
+ const pathPenalty=70,headingPenalty=110;
+ const matches=[];
+ fileLoop: for(const file of files){
+  const title=writerV83Fold(file.basename),path=writerV83Fold(file.path);
+  let headings,score=0;
+  for(const token of tokens){
+   const titleScore=writerV83FuzzyScoreFolded(title,token);
+   const pathScore=writerV83FuzzyScoreFolded(path,token);
+   let best=Math.max(titleScore,pathScore-pathPenalty);
+   // Skip heading lookups when even an exact match cannot improve the score.
+   if(best<WRITER_V83_FUZZY_EXACT_SCORE-headingPenalty){
+    headings??=(cache?.getFileCache?.(file)?.headings||[]).slice(0,60)
+     .map(h=>writerV83Fold(h.heading));
+    for(const heading of headings){
+     const headingScore=writerV83FuzzyScoreFolded(heading,token);
+     best=Math.max(best,headingScore-headingPenalty);
+     if(headingScore===WRITER_V83_FUZZY_EXACT_SCORE)break;
+    }
+   }
+   if(best<0)continue fileLoop;
+   score+=best;
+  }
+  matches.push({file,score});
+ }
+ const collator=new Intl.Collator(undefined,{sensitivity:'base'});
+ return matches.sort((a,b)=>b.score-a.score||collator.compare(String(a.file.basename),String(b.file.basename)))
+  .slice(0,Math.max(1,Math.min(30,max))).map(match=>match.file);
 }

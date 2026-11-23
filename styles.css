@@ -10773,13 +10773,10 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  .writer-project-root .writer-project-nav-label{display:none;}
 }
 /* Prism-inspired compact floating bar, restricted to hosts with Basic items. */
-body:not(.is-mobile) .status-bar.writer-v132-status-host{
- --status-bar-position:fixed;
- position:fixed;left:50%;right:auto;bottom:4px;transform:translateX(-50%);
- width:max-content;max-width:calc(100vw - 128px);margin:0;
- padding:2px 5px;gap:3px;border:1px solid var(--background-modifier-border);
- border-radius:var(--radius-s,5px);background:var(--background-secondary);
- box-shadow:var(--shadow-s);overflow-x:auto;overflow-y:hidden;
+body:not(.is-mobile) .status-bar.writer-v132-status-host{left:50%;right:auto;bottom:4px;transform:translateX(-50%);max-width:calc(100vw - 128px);
+ padding:2px 5px;gap:3px;
+ border-radius:var(--radius-s,5px);
+ box-shadow:var(--shadow-s);
 }
 /* Four writing formats, using Obsidian's theme tokens without replacing theme CSS. */
 .writer-v131-story-block{
@@ -11549,7 +11546,7 @@ body :is(.writer-tool-root .writer-tool-tabs.writer-tool-tabs,.writer-project-ro
 }
 body .writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button[hidden]{display:none}
 body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-sidebar-tabs{
- gap:4px;padding:4px;margin:0;overflow-x:auto;
+ gap:4px;padding:4px;margin:0;
  border:1px solid var(--background-modifier-border);border-radius:var(--radius-m);
  background:var(--background-secondary);
 }
@@ -11851,7 +11848,6 @@ body.writer-v102-prose-layout .markdown-preview-view p.writer-v102-dropcap:not(.
   font-size:2.7em;margin-right:.1em;
  }
 }
-
 
 /* Settings routes and first-run choices use native colors and controls. */
 .writer-v13-settings .writer-v137-settings-heading{
@@ -12764,5 +12760,282 @@ body.is-mobile .writer-prose-jumps>li>button{min-height:44px}
   .qrc-editor .modal-content { gap: 6px; }
   .qrc-toolbar, .qrc-actions { gap: 4px; }
   .vk-html-actions { max-height: 130px; }
+}
+
+/* Shared rhythm for Basic views, including sidebars and split panes. */
+body.is-mobile{--basic-panel-input-target:44px;}
+@media(pointer:coarse){
+ body{--basic-panel-input-target:44px;}
+}
+:is(.writer-tool-root,.writer-tools-v3,.writer-project-root,.writer-v8-home,
+ .writer-v83-calendar,.writer-v83-study,.writer-v9-space-sidebar,.writer-v912-sidebar,
+ .writer-v92-session,.writer-v931-pomodoro,.writer-v10-discovery-pane,.writer-v107-graph,
+ .writer-v13-settings,.writer-v95-timeline,.writer-v11-studio-modal,.writer-v102-spaces-manager,
+ .writer-v10-bookshelf,.writer-v134-recovery,.writer-v135-compile,.writer-companion-center,
+ .writer-v137-quick-start,.vk-html-note,.qrc-editor.modal){
+ --basic-panel-inset:8px;
+ --basic-panel-section-gap:8px;
+ --basic-panel-control-gap:4px;
+ --basic-panel-control-size:var(--basic-panel-input-target,32px);
+}
+
+.workspace-leaf-content .view-content:is(.writer-v8-home,.writer-v83-calendar,.writer-v83-study,
+ .writer-v9-space-sidebar,.writer-v912-sidebar,.writer-v92-session,.writer-v931-pomodoro,
+ .writer-v10-discovery-pane,.writer-v107-graph,.vk-html-note),
+body .writer-companion-center{
+ box-sizing:border-box;
+ padding:var(--basic-panel-inset);
+ padding-block-end:max(var(--safe-area-inset-bottom,0px),calc(2 * var(--basic-panel-inset)));
+}
+body .view-content> :is(.writer-project-root.writer-project-root,.writer-tools-v3.writer-tools-v3){
+ padding:var(--basic-panel-inset) var(--basic-panel-inset) calc(2 * var(--basic-panel-inset));
+}
+body .view-content>.dictionary-view-content.writer-tool-root{
+ --writer-tools-control-size:var(--basic-panel-control-size);
+ padding:var(--basic-panel-inset) var(--basic-panel-inset) 0;
+ gap:var(--basic-panel-control-gap);
+}
+body.is-mobile .dictionary-view-content.writer-tool-root{
+ --writer-tools-control-size:var(--basic-panel-control-size);
+}
+body .dictionary-view-content.writer-tool-root>.writer-tool-panel.writer-tool-panel:not(.writer-chat-panel){
+ gap:var(--basic-panel-section-gap);
+ padding-block-start:var(--basic-panel-control-gap);
+}
+.dictionary-view-content.writer-tool-root>.writer-sidebar-header{
+ padding-block:0 var(--basic-panel-control-gap);
+}
+.dictionary-view-content.writer-tool-root .writer-chat-panel>.writer-chat-composer{
+ padding:var(--basic-panel-inset);
+ gap:var(--basic-panel-control-gap);
+}
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar{
+ gap:var(--basic-panel-control-gap);
+}
+.dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar select{
+ min-height:var(--basic-panel-control-size);
+}
+@container writer-sidebar (max-width:240px){
+ body .dictionary-view-content.writer-tool-root .writer-tool-panel.writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar{
+  grid-template-columns:minmax(0,1fr) var(--basic-panel-control-size);
+ }
+ .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>select:not(.dictionary-translation-engine){
+  grid-column:1;
+ }
+ .dictionary-view-content.writer-tool-root .writer-translation-panel .dictionary-translation-bar.dictionary-translation-bar>.writer-switch-languages{
+  grid-row:2 / span 2;
+ }
+}
+
+/* Desktop tabs scroll in narrow panes. Mobile can still wrap at touch widths. */
+body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-sidebar-tabs{
+ flex-wrap:nowrap;
+ gap:var(--basic-panel-control-gap);
+ padding:2px;
+ overflow-x:auto;
+ overflow-y:hidden;
+ scrollbar-width:thin;
+}
+body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-sidebar-tabs::-webkit-scrollbar{
+ display:block;
+ height:4px;
+}
+body .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{
+ flex:1 0 auto;
+ min-width:var(--basic-panel-control-size);
+ min-height:var(--basic-panel-control-size);
+ padding:4px 6px;
+ white-space:nowrap;
+}
+body.is-mobile .dictionary-view-content.writer-tool-root .writer-tool-tabs.writer-sidebar-tabs>button{
+ min-height:var(--basic-panel-control-size);
+}
+body :is(.writer-project-root .writer-project-tabs.writer-project-tabs.writer-sidebar-tabs,
+ .writer-v13-settings :is(.dictionary-settings-tabs,.dictionary-settings-subtabs).writer-sidebar-tabs,
+ .writer-tools-v3 .writer-tools-v3-tabs.writer-tools-v3-tabs,
+ .writer-project-root .writer-v7-rc-structure-tabs.writer-v7-rc-structure-tabs)>button{
+ min-height:var(--basic-panel-control-size);
+ padding:4px 8px;
+}
+
+/* Outer margins can shrink independently of writing areas and custom widgets. */
+.workspace-leaf-content .view-content.writer-v8-home{
+ padding-block-end:max(var(--safe-area-inset-bottom,0px),
+  calc(2 * var(--basic-panel-inset) + var(--writer-mobile-home-clearance,0px)));
+}
+.writer-v8-home :is(.writer-v8-home-hero,.writer-v8-home-search-region,.writer-v8-home-quick-actions){
+ margin-block-end:var(--basic-panel-section-gap);
+}
+body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading{
+ padding-block:var(--basic-panel-control-gap);
+}
+.writer-v8-home .writer-v8-home-card{
+ padding:var(--basic-panel-inset);
+}
+.writer-v8-home .writer-v8-home-card-header{
+ gap:var(--basic-panel-control-gap);
+ margin-block-end:var(--basic-panel-section-gap);
+}
+.writer-v8-home .writer-v8-home-quick-actions>.writer-v8-home-action{
+ min-height:var(--basic-panel-control-size);
+}
+body.is-mobile .writer-v8-home .writer-v8-home-quick-actions>.writer-v8-home-action{
+ min-height:var(--basic-panel-control-size);
+}
+
+.writer-v83-calendar.writer-v9-calendar,
+.writer-v9-calendar :is(.writer-v9-calendar-header,.writer-v9-calendar-layout,.writer-v9-calendar-side),
+.writer-v9-space-sidebar,
+.writer-v92-session,
+body.is-mobile :is(.writer-v931-pomodoro,.writer-companion-center),
+:is(.writer-v931-pomodoro,.writer-companion-center){
+ gap:var(--basic-panel-section-gap);
+}
+.writer-v9-calendar .writer-v9-calendar-header{
+ padding-block:0 var(--basic-panel-control-gap);
+}
+.writer-v9-calendar .writer-v9-calendar-side{
+ padding:var(--basic-panel-inset);
+}
+:is(.writer-v83-cal-toolbar,.writer-v83-study-head,.writer-v912-sidebar-heading,
+ .writer-v912-sidebar-tabs,.writer-v912-sidebar-card){
+ margin-block-end:var(--basic-panel-section-gap);
+}
+.writer-v912-sidebar-heading{
+ padding-block-end:var(--basic-panel-control-gap);
+}
+.writer-v912-sidebar-card,
+.writer-v83-study .writer-v83-study-card,
+.writer-v10-discovery-pane .writer-v10-related-card{
+ padding:var(--basic-panel-inset);
+}
+.writer-v83-study .writer-v83-study-choices{
+ gap:var(--basic-panel-control-gap);
+ margin-block-start:var(--basic-panel-section-gap);
+}
+.writer-v83-study{
+ container:basic-study / inline-size;
+}
+@container basic-study (max-width:420px){
+ .writer-v83-study-choices{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+.writer-v83-study .writer-v83-study-decks>select{
+ flex:1 1 auto;
+ width:0;
+}
+.writer-v9-space-sidebar .writer-v9-space-side-head{
+ min-height:var(--basic-panel-control-size);
+}
+.writer-v9-space-sidebar .writer-v9-space-side-nav{
+ min-height:calc(var(--basic-panel-control-size) + var(--basic-panel-section-gap));
+ gap:var(--basic-panel-control-gap);
+ padding-block:2px 4px;
+}
+.writer-v9-space-sidebar :is(.writer-v9-space-side-nav button,.writer-v9-spaces-search,.writer-v9-space-side-item),
+.writer-v9-calendar .writer-v9-calendar-actions :is(button,select),
+.writer-v83-cal-toolbar :is(button,select),
+.writer-v83-study :is(.writer-v83-study-head>button,.writer-v83-study-decks>select,.writer-v83-study-choices>button),
+.writer-v912-sidebar .writer-v912-sidebar-tabs>button,
+.writer-v92-session .writer-v92-session-actions>button,
+.writer-v10-discovery-pane :is(.writer-v10-discovery-top>button,.writer-v10-discovery-actions button,.writer-v10-discovery-icon),
+body .writer-v931-pomodoro :is(.writer-v931-pomodoro-modes>button,.writer-v931-pomodoro-control),
+.writer-v107-graph-toolbar :is(button,input,select){
+ min-height:var(--basic-panel-control-size);
+}
+.writer-v107-graph .writer-v107-graph-toolbar,
+.writer-v10-discovery-pane :is(.writer-v10-related-list,.writer-v10-discovery-actions){
+ gap:var(--basic-panel-control-gap);
+}
+.writer-v107-graph .writer-v107-graph-toolbar{
+ margin-block-end:var(--basic-panel-control-gap);
+}
+
+/* Use the same rhythm in Settings and the independently opened tools. */
+.modal.mod-settings .vertical-tab-content.writer-v13-settings,
+.vertical-tab-content.writer-v13-settings{
+ padding-block:calc(2 * var(--basic-panel-inset)) calc(3 * var(--basic-panel-inset));
+}
+.writer-v13-settings>h2,
+.writer-v13-settings .writer-v901-settings-search{
+ margin-block-end:var(--basic-panel-section-gap);
+}
+.writer-v13-settings .dictionary-settings-panel{
+ padding-block-end:var(--basic-panel-section-gap);
+}
+.writer-v13-settings .dictionary-settings-panel> :is(h3,h4){
+ margin-block:calc(2 * var(--basic-panel-inset)) var(--basic-panel-control-gap);
+ padding-block-end:var(--basic-panel-control-gap);
+}
+.writer-v13-settings .dictionary-settings-panel .setting-item,
+.writer-tools-v3 .writer-tools-v3-panel .setting-item,
+.writer-v135-compile .setting-item{
+ min-height:calc(var(--basic-panel-control-size) + 2 * var(--basic-panel-control-gap));
+ padding-block:var(--basic-panel-control-gap);
+}
+.writer-v13-settings .dictionary-settings-panel .setting-item-control{
+ gap:var(--basic-panel-control-gap);
+}
+.writer-v13-settings .dictionary-settings-panel button:not(.clickable-icon){
+ min-height:var(--basic-panel-control-size);
+ padding-block:var(--basic-panel-control-gap);
+}
+.writer-v13-settings .dictionary-settings-panel .setting-item-description{
+ margin-block-start:2px;
+}
+.writer-v13-settings .dictionary-settings-panel .writer-v131-ai-details{
+ gap:var(--basic-panel-section-gap);
+ padding:var(--basic-panel-inset);
+}
+.writer-project-root .writer-v11-studio,
+.writer-v11-studio-modal .writer-v11-studio,
+.writer-v95-timeline .writer-v95-timeline-toolbar,
+.writer-v102-spaces-manager :is(.writer-v102-spaces-header,.writer-v102-spaces-controls),
+.writer-v10-bookshelf :is(.writer-v10-bookshelf-toolbar,.writer-v10-bookshelf-grid),
+.writer-v134-recovery .writer-v134-recovery-columns{
+ gap:var(--basic-panel-section-gap);
+}
+.writer-v11-studio :is(.writer-v11-chapter summary,.writer-v11-chapter-body){
+ padding:var(--basic-panel-inset);
+}
+.writer-v10-bookshelf .writer-v10-bookshelf-toolbar{
+ margin-block-end:var(--basic-panel-section-gap);
+}
+.writer-v134-recovery .writer-v134-recovery-item{
+ padding:var(--basic-panel-control-gap) var(--basic-panel-inset);
+}
+.writer-v137-quick-start-modal .modal-content.writer-v137-quick-start,
+.writer-v137-quick-start :is(.writer-v137-quick-start-controls,.writer-v137-quick-start-footer){
+ gap:var(--basic-panel-section-gap);
+}
+.writer-v137-quick-start-list .setting-item{
+ gap:var(--basic-panel-section-gap);
+ padding-block:var(--basic-panel-control-gap);
+}
+.writer-companion-center :is(.writer-companion-card,.writer-companion-options){
+ padding:var(--basic-panel-inset);
+}
+.writer-companion-center :is(.writer-companion-status,.writer-companion-options){
+ margin-block-end:var(--basic-panel-section-gap);
+}
+.writer-companion-center .writer-companion-actions{
+ gap:var(--basic-panel-control-gap);
+}
+.writer-companion-center .writer-companion-actions>button{
+ min-height:var(--basic-panel-control-size);
+ padding:var(--basic-panel-control-gap) var(--basic-panel-inset);
+}
+.qrc-editor .modal-content,
+.vk-html-note{
+ gap:var(--basic-panel-section-gap);
+}
+:is(.vk-html-note,.qrc-editor) :is(.vk-html-toolbar,.vk-html-actions,.vk-html-overflow-panel,.qrc-toolbar,.qrc-actions){
+ gap:var(--basic-panel-control-gap);
+}
+.vk-html-note :is(.vk-html-toolbar,.vk-html-actions){
+ padding:var(--basic-panel-control-gap) var(--basic-panel-inset);
+ border-radius:var(--radius-m);
+}
+:is(.vk-html-note,.qrc-editor) :is(.vk-html-toolbar,.vk-html-actions,.qrc-toolbar,.qrc-actions) button{
+ min-height:var(--basic-panel-control-size);
 }
 /* END V8 MODULAR STYLES */

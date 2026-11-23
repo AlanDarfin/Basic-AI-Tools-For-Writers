@@ -27,17 +27,22 @@ class Element {
 }
 class TFile {constructor(path){this.path=path;this.basename=path.split('/').pop().replace(/\.md$/,'');this.extension='md';}}
 class ItemView {}
-const View=vm.runInNewContext(source+'\nWriterV8HomeView',{
- ItemView,TFile,writerUi:pt=>pt,writerModuleOn:()=>true,
- writerV8HomeValidURL:()=>'',writerV8HomeOpenURL:async()=>{},console,
- require:()=>({setIcon:()=>{}}),
-});
 function fixture(){
- const files=[new TFile('Journal/Sem título.md'),new TFile('Book/Sem título.md'),new TFile('Book/Semanário.md')];
+ const timers=new Map();
+ let nextTimer=0;
+ const View=vm.runInNewContext(source+'\nWriterV8HomeView',{
+  ItemView,TFile,writerUi:pt=>pt,writerModuleOn:()=>true,
+  writerV8HomeValidURL:()=>'',writerV8HomeOpenURL:async()=>{},console,
+  require:()=>({setIcon:()=>{}}),clearInterval,
+  setTimeout:callback=>{const id=++nextTimer;timers.set(id,callback);return id;},
+  clearTimeout:id=>timers.delete(id),
+ });
+ let files=[new TFile('Journal/Sem título.md'),new TFile('Book/Sem título.md'),new TFile('Book/Semanário.md')];
+ let vaultReads=0;
  const opened=[];
  const leaf={openFile:file=>opened.push(file.path)};
  const plugin={settings:{v8Finish:{homeOrder:['continue','recent'],homeFavorites:[]}},app:{
-  vault:{getMarkdownFiles:()=>files},
+  vault:{getMarkdownFiles:()=>{vaultReads++;return files;}},
   workspace:{activeLeaf:leaf,getLeaf:()=>{throw Error('Homepage must not open a new tab');}},
   metadataCache:{getFileCache:()=>({})}
  }};
@@ -47,7 +52,9 @@ function fixture(){
  const card=root.children[0],input=card.children.find(el=>el.tag==='input');
  const results=card.children.find(el=>el.cls.includes('writer-v901-home-search-results'));
  const status=card.children.find(el=>el.cls.includes('writer-v901-home-search-status'));
- return {files,opened,card,input,results,status};
+ return {opened,card,input,results,status,view,timers,get vaultReads(){return vaultReads;},
+  replaceFiles:paths=>{files=paths.map(path=>new TFile(path));},
+  flushSearch:()=>{for(const callback of [...timers.values()])callback();}};
 }
 test('homepage title is above full-width search and search remains above actions and calendar',()=>{
  const begin=source.indexOf('this.renderSearch(top);');
@@ -64,6 +71,7 @@ test('homepage title is above full-width search and search remains above actions
 });
 test('search shows full paths to distinguish equally named notes',()=>{
  const f=fixture();f.input.value='sem';f.input.emit('input');
+ f.flushSearch();
  assert.equal(f.results.children.length,3);
  const names=f.results.children.map(row=>row.children[0].children[1].children[0].text);
  const paths=f.results.children.map(row=>row.children[0].children[1].children[1].text);
@@ -74,6 +82,7 @@ test('search shows full paths to distinguish equally named notes',()=>{
 });
 test('arrow keys wrap the selected match and Enter opens exactly that note',()=>{
  const f=fixture();f.input.value='sem';f.input.emit('input');
+ f.flushSearch();
  const firstPath=f.status.text;
  assert.equal(f.input.emit('keydown',{key:'ArrowDown'}).prevented,true);
  assert.notEqual(f.status.text,firstPath);
@@ -88,9 +97,47 @@ test('arrow keys wrap the selected match and Enter opens exactly that note',()=>
 });
 test('favorite buttons remain available and do not open notes',()=>{
  const f=fixture();f.input.value='sem';f.input.emit('input');
+ f.flushSearch();
  const star=f.results.children[0].children[1];
  star.emit('click');
  assert.equal(f.opened.length,0);
  assert.equal(f.results.children.length,3);
  assert.equal(f.results.children[0].children[1].attrs['aria-pressed'],'true');
+});
+test('only the latest typed query scans the current vault, and Enter can flush it immediately',()=>{
+ const f=fixture();
+ f.input.value='se';f.input.emit('input');
+ f.input.value='chapter';f.input.emit('input');
+ assert.equal(f.vaultReads,0);
+ assert.equal(f.timers.size,1);
+ assert.equal(f.results.hidden,true);
+ f.replaceFiles(['Book/New chapter.md']);
+ assert.equal(f.input.emit('keydown',{key:'Enter'}).prevented,true);
+ assert.deepEqual(f.opened,['Book/New chapter.md']);
+ assert.equal(f.vaultReads,1);
+ assert.equal(f.timers.size,0);
+});
+test('IME confirmation never flushes a pending search or opens a matched note',()=>{
+ const f=fixture();
+ f.input.value='sem';f.input.emit('input');
+ for(const composition of [{isComposing:true},{keyCode:229}]){
+  assert.equal(f.input.emit('keydown',{key:'Enter',...composition}).prevented,undefined);
+ }
+ assert.equal(f.vaultReads,0);
+ f.flushSearch();
+ assert.equal(f.input.emit('keydown',{key:'Enter',isComposing:true}).prevented,undefined);
+ assert.equal(f.opened.length,0);
+});
+test('slash mode and closing the panel cancel pending vault work',async()=>{
+ const f=fixture();
+ f.input.value='sem';f.input.emit('input');
+ f.input.value='/paper';f.input.emit('input');
+ assert.equal(f.timers.size,0);
+ assert.match(f.status.text,/pesquisar na web/);
+ f.input.value='sem';f.input.emit('input');
+ assert.equal(f.timers.size,1);
+ await f.view.onClose();
+ f.flushSearch();
+ assert.equal(f.timers.size,0);
+ assert.equal(f.vaultReads,0);
 });

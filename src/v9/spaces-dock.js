@@ -25,7 +25,6 @@ function writerV9216SpaceDockRegister(plugin){
  let timer=null,mobileMenuOpen=false,mobileQuery='',mobileObserver=null,observedMobileRoot=null,unloaded=false,panelSerial=0;
  const cfg=plugin.settings.v9Spaces;
  const hosts=new Set(),actions=new Set(),documents=new Set();
- const mobileIntegrated=()=>Boolean(writerV1014MobileSpacesAnchor(plugin));
  const closeMobile=(restoreFocus=false)=>{
   if(!mobileMenuOpen)return;
   mobileMenuOpen=false;mobileQuery='';
@@ -158,10 +157,13 @@ function writerV9216SpaceDockRegister(plugin){
  const draw=(dock)=>{
   const active=writerV9215ActiveSpace(plugin);
   const mobile=dock.classList.contains('writer-v1014-collapsible-spaces');
+  const expanded=mobile&&mobileMenuOpen;
+  // Closed mobile drawers need only the active Space and the toggle.
   const signature=JSON.stringify({
    enabled:cfg.enabled,activeId:cfg.activeId,
-   spaces:cfg.spaces.map(s=>[s.id,s.name,s.icon,s.iconColor,s.folder]),
-   mobile,expanded:mobile&&mobileMenuOpen,locale:writerUi('pt','en')
+   spaces:mobile&&!expanded?[active?.name,active?.icon,active?.iconColor]:
+    cfg.spaces.map(s=>[s.id,s.name,s.icon,s.iconColor,s.folder]),
+   mobile,expanded,locale:writerUi('pt','en')
   });
   if(dock.dataset.signature===signature)return;
   const doc=dock.ownerDocument;
@@ -190,8 +192,9 @@ function writerV9216SpaceDockRegister(plugin){
    panel.className='writer-v1014-spaces-options';panel.id=dock.dataset.optionsId;
    panel.setAttribute('role','group');
    panel.setAttribute('aria-label',writerUi('Coleções Spaces','Spaces collections'));
-   panel.hidden=!mobileMenuOpen;dock.classList.toggle('is-open',mobileMenuOpen);
+   panel.hidden=!expanded;dock.classList.toggle('is-open',expanded);
    dock.appendChild(panel);content=panel;
+   if(!expanded)return;
    search=doc.createElement('input');search.type='search';search.className='writer-v133-spaces-search';
    search.placeholder=writerUi('Buscar Spaces…','Find Spaces…');
    search.setAttribute('aria-label',writerUi('Buscar Spaces','Find Spaces'));
@@ -291,9 +294,9 @@ function writerV9216SpaceDockRegister(plugin){
    manageButton.appendChild(manageText);
   }
  };
- const attachManageAction=()=>{
+ const attachManageAction=mobileIntegrated=>{
   const current=new Set();
-  if(!writerModuleOn(plugin,'smartSpaces')||cfg.manageIcon===false||mobileIntegrated()){
+  if(!writerModuleOn(plugin,'smartSpaces')||cfg.manageIcon===false||mobileIntegrated){
    for(const bar of actions)bar.querySelector(':scope > .writer-v93-space-manage-action')?.remove();
    actions.clear();return;
   }
@@ -340,8 +343,9 @@ function writerV9216SpaceDockRegister(plugin){
  };
  const attach=()=>{
   observeDrawer();
-  if(!mobileIntegrated()){mobileMenuOpen=false;mobileQuery='';}
-  attachManageAction();
+  const mount=writerV1014MobileSpacesAnchor(plugin);
+  if(!mount){mobileMenuOpen=false;mobileQuery='';}
+  attachManageAction(Boolean(mount));
   if(!writerModuleOn(plugin,'smartSpaces')||cfg.dock===false){
    for(const parent of hosts){
     parent.querySelector(':scope > .writer-v9216-spaces-dock')?.remove();
@@ -350,8 +354,7 @@ function writerV9216SpaceDockRegister(plugin){
    hosts.clear();return;
   }
   const current=new Set();
-  if(mobileIntegrated()){
-   const mount=writerV1014MobileSpacesAnchor(plugin);
+  if(mount){
    current.add(mount);hosts.add(mount);
    mount.classList.add('writer-v1014-mobile-spaces-anchor');
    let dock=mount.querySelector(':scope > .writer-v9216-spaces-dock');

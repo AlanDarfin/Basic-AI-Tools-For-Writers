@@ -42896,7 +42896,7 @@ module.exports=class AlansOfflineDictionary extends Plugin{
     await this.app.workspace.revealLeaf(leaf);
     return leaf.view;
   }
-  async async jumpToReviewError(file,start,end,source){
+  async jumpToReviewError(file,start,end,source){
     try{
       if(!file?.path||!Number.isInteger(start)||!Number.isInteger(end)||start<0||end<=start)
         throw new Error(msg('Localização inválida.','Invalid passage position.'));

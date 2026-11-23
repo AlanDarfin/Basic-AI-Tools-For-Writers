@@ -53,6 +53,9 @@ test('Pandoc preserves Basic styles with semantic divs, spans and HTML CSS',()=>
  assert.equal(convert('Era uma vez {capitular} {r}'),
   '::: {.basic-export-paragraph .basic-export-right .basic-export-dropcap}\nEra uma vez\n:::');
  assert.equal(convert('# Título {c}'),'# Título {style="text-align:center"}');
+ assert.equal(convert('::c: Um trecho'), '::: {.basic-export-paragraph .basic-export-center}\nUm trecho\n:::');
+ assert.equal(convert('::l[Um trecho]'), '::: {.basic-export-paragraph .basic-export-left}\nUm trecho\n:::');
+ assert.equal(convert('::c: # Título antigo'), '# Título antigo {style="text-align:center"}');
  const rich=convert('++under++ ||spoiler|| =={red}mark== !!{color-ff0022}color!! ^2^ ~2~');
  for(const fragment of ['[under]{.basic-export-underline}','[spoiler]{.basic-export-spoiler}',
   '[mark]{.basic-export-highlight .basic-export-color-red}',

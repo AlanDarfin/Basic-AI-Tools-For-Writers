@@ -63,6 +63,12 @@ test('physical mobile layout stays stacked even on wider tablets',()=>{
  assert.match(ruleBody,/justify-content:center;/);
 });
 
+test('homepage title stays prominent with bounded scaling on desktop and mobile',()=>{
+ const mobileTitle='body.is-mobile'+titleSelector.slice('body'.length);
+ assert.match(rule(source,titleSelector),/font-size:clamp\(1\.5rem,3cqi,2\.125rem\);/);
+ assert.match(rule(source,mobileTitle),/font-size:clamp\(1\.5rem,5\.5cqi,2rem\);/);
+});
+
 test('the Obsidian styles.css includes the complete modular heading fix',()=>{
  assert.ok(distributed.includes(source.trimEnd()),'Rebuild CSS with npm run build:css');
 });

@@ -2,8 +2,13 @@
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
- const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,sort:'title',density:'normal',library:{},standalone:[],...old};
+ const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,trackStandaloneProgress:true,
+  sort:'title',density:'normal',library:{},standalone:[],scrollProgress:{},...old};
  cfg.standalone=[...new Set((Array.isArray(cfg.standalone)?cfg.standalone:[]).filter(p=>typeof p==='string'&&p.endsWith('.md')).slice(0,500))];
+ cfg.trackStandaloneProgress=cfg.trackStandaloneProgress!==false;
+ const progress=cfg.scrollProgress&&typeof cfg.scrollProgress==='object'&&!Array.isArray(cfg.scrollProgress)?cfg.scrollProgress:{};
+ cfg.scrollProgress=Object.fromEntries(cfg.standalone.filter(path=>Number.isFinite(progress[path]))
+  .map(path=>[path,Math.min(100,Math.max(0,Math.round(progress[path])))]));
  cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
@@ -17,8 +22,17 @@ function writerV10BookRecord(raw){
   status:['planned','reading','paused','finished'].includes(r.status)?r.status:'planned',
   progress:Math.max(0,Math.min(100,Math.round(Number(r.progress)||0)))};
 }
+function writerV109BookProgressOverride(meta){
+ const raw=meta?.readingProgress;
+ if(typeof raw!=='number'&&(typeof raw!=='string'||!raw.trim()))return null;
+ const value=Number(raw);
+ return Number.isFinite(value)?Math.max(0,Math.min(100,value)):null;
+}
 function writerV109BookProgress(plugin,project,record){
- if(project.standalone)return record.status==='finished'?100:Math.max(0,Math.min(100,Number(project.meta?.readingProgress)||0));
+ if(project.standalone){
+  if(record.status==='finished')return 100;
+  return writerV109BookProgressOverride(project.meta)??plugin.settings.v10Bookshelf?.scrollProgress?.[project.file.path]??0;
+ }
  const scenes=typeof lfFlattenScenes==='function'?lfFlattenScenes(project.scenes):[];
  if(!scenes.length)return record.status==='finished'?100:0;
  return Math.round(100*scenes.filter(scene=>/^(done|complete|completed|finished|conclu[ií]do)$/i.test(String(scene.status||scene.meta?.status||''))).length/scenes.length);
@@ -80,7 +94,8 @@ function writerV10BookFavoriteIcon(plugin){
 }
 function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{}){
  const record=writerV10BookState(plugin,project);
- const card=parent.createDiv({cls:'writer-v10-book-card writer-v108-book-card'+(compact?' is-compact':'')});
+ const card=parent.createDiv({cls:'writer-v10-book-card writer-v108-book-card'+(compact?' is-compact':''),
+  attr:{'data-writer-book-path':project.file.path}});
  card.classList.toggle('is-favorite',record.favorite);
  const btn=card.createEl('button',{cls:'writer-v10-book'+(compact?' is-compact':''),attr:{
   type:'button','aria-label':writerUi('Abrir livro: ','Open book: ')+project.title
@@ -127,7 +142,9 @@ function writerV10BookshelfCard(plugin,parent,project,compact=false,redraw=()=>{
   if(project.standalone){
    const remove=card.createEl('button',{cls:'writer-v109-book-remove',text:writerUi('Remover da biblioteca','Remove from library'),attr:{type:'button'}});
    remove.addEventListener('click',async()=>{
-    plugin.settings.v10Bookshelf.standalone=plugin.settings.v10Bookshelf.standalone.filter(path=>path!==project.file.path);
+    const cfg=plugin.settings.v10Bookshelf;
+    cfg.standalone=cfg.standalone.filter(path=>path!==project.file.path);
+    delete cfg.scrollProgress[project.file.path];
     await plugin.saveSettings();redraw();
    });
   }
@@ -258,7 +275,69 @@ function writerV109AddStandaloneBook(plugin,done){
  modal.setPlaceholder(writerUi('Buscar nota para adicionar à biblioteca…','Search a note to add to the library…'));
  modal.open();
 }
+function writerV109RegisterStandaloneProgress(plugin){
+ const workspace=plugin.app.workspace;
+ let timer=null,save=Promise.resolve();
+ const flush=()=>{
+  if(timer===null)return;
+  clearTimeout(timer);timer=null;
+  save=save.then(()=>plugin.saveSettings()).catch(error=>console.warn('[Basic] Could not save reading progress:',error));
+ };
+ const schedule=()=>{clearTimeout(timer);timer=setTimeout(flush,500);};
+ const onScroll=event=>{
+  const cfg=plugin.settings.v10Bookshelf;
+  if(!cfg?.enabled||!cfg.trackStandaloneProgress||!cfg.standalone.length)return;
+  const scroller=event.target;
+  const selector=scroller?.matches?.('.markdown-preview-view')?'.markdown-preview-view':
+   scroller?.matches?.('.cm-scroller')?'.markdown-source-view .cm-scroller':null;
+  if(!selector||!scroller.isConnected)return;
+  // A split pane can scroll without being active. Use the view that owns this scroller.
+  const leaf=(workspace.getLeavesOfType?.('markdown')||[]).find(item=>item.view?.containerEl?.querySelector(selector)===scroller);
+  const file=leaf?.view?.file;
+  if(file?.extension!=='md'||!cfg.standalone.includes(file.path))return;
+  const project=writerV109StandaloneProject(plugin,file);
+  if(writerV109BookProgressOverride(project.meta)!==null)return;
+  const distance=scroller.scrollHeight-scroller.clientHeight;
+  if(distance<=0)return;
+  const progress=Math.min(100,Math.max(0,Math.round(100*scroller.scrollTop/distance)));
+  if(!Number.isFinite(progress)||progress<=(cfg.scrollProgress[file.path]||0))return;
+  cfg.scrollProgress[file.path]=progress;
+  schedule();
+  const displayed=writerV10BookState(plugin,project).progress;
+  for(const card of scroller.ownerDocument?.querySelectorAll('.writer-v10-book-card[data-writer-book-path]')||[]){
+   if(card.dataset.writerBookPath!==file.path)continue;
+   const label=card.querySelector('.writer-v108-book-progress strong');
+   if(label)label.textContent=displayed+'%';
+   const bar=card.querySelector('.writer-v10-reading-progress');
+   if(bar)bar.value=displayed;
+  }
+ };
+ if(workspace.containerEl)plugin.registerDomEvent?.(workspace.containerEl,'scroll',onScroll,true);
+ const vault=plugin.app.vault;
+ if(typeof vault?.on==='function')plugin.registerEvent?.(vault.on('rename',(file,oldPath)=>{
+  const cfg=plugin.settings.v10Bookshelf,newPath=file?.path;
+  if(!cfg||!oldPath||!newPath||oldPath===newPath)return;
+  const renamed=cfg.standalone.filter(path=>path===oldPath||path.startsWith(oldPath+'/'));
+  if(!renamed.length)return;
+  const replacements=new Map();
+  for(const path of renamed){
+   const next=newPath+path.slice(oldPath.length);
+   replacements.set(path,next);
+   if(Object.hasOwn(cfg.scrollProgress,path)){
+    cfg.scrollProgress[next]=Math.max(cfg.scrollProgress[path],cfg.scrollProgress[next]||0);
+    delete cfg.scrollProgress[path];
+   }
+   if(Object.hasOwn(cfg.library,path)){
+    cfg.library[next]=cfg.library[path];delete cfg.library[path];
+   }
+  }
+  cfg.standalone=[...new Set(cfg.standalone.map(path=>replacements.get(path)||path))];
+  schedule();
+ }));
+ plugin.register?.(flush);
+}
 function writerV10RegisterBookshelf(plugin){
+ writerV109RegisterStandaloneProgress(plugin);
  for(const name of ['bookshelf','writer-bookshelf']){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
    if(!plugin.settings.v10Bookshelf?.enabled){el.createEl('pre',{text:source});return;}
@@ -281,6 +360,10 @@ function writerV10BookshelfSettings(plugin,panel){
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('Projetos Longform e notas avulsas. Banner, descrição e copyright vêm do frontmatter; progresso automático.','Longform projects and standalone notes. Banner, description and copyright come from frontmatter; automatic progress.')});
  const toggle=(key,pt,en)=>new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await plugin.saveSettings();}));
  toggle('enabled','Ativar biblioteca de livros','Enable bookshelf');
+ new Setting(panel).setName(writerUi('Salvar progresso ao rolar','Save progress while scrolling'))
+  .setDesc(writerUi('Registra até onde você leu nas notas avulsas adicionadas à biblioteca. Para definir a porcentagem na nota, use a propriedade readingProgress.',
+   'Records how far you have read in standalone notes added to the library. To set the percentage on the note, use the readingProgress property.'))
+  .addToggle(t=>t.setValue(cfg.trackStandaloneProgress).onChange(async value=>{cfg.trackStandaloneProgress=value;await plugin.saveSettings();}));
  toggle('showWidget','Permitir widget de livros na homepage','Allow bookshelf homepage widget');
  toggle('showProgress','Mostrar progresso automático','Show automatic progress');
  new Setting(panel).setName(writerUi('Ordem padrão','Default order')).addDropdown(d=>{

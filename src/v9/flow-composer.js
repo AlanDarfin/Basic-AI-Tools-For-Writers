@@ -70,8 +70,89 @@ async function writerV93FlowPersist(plugin,ctx,root,source,model){
   return true;
  }catch(error){new Notice(String(error.message||error));return false;}
 }
+function writerV93TextBoardParse(source,maxItems){
+ const columns=[],cards=[];let id='',column=null;
+ for(const line of String(source||'').split(/\r?\n/)){
+  const name=/^\s*===\s+(.+?)\s*$/.exec(line)?.[1];
+  if(name){
+   column=null;
+   if(columns.length<10){column=columns.length;columns.push(name.slice(0,80));}
+   continue;
+  }
+  if(!columns.length){id||=/^\s*id:\s*([\w-]{1,70})\s*$/.exec(line)?.[1]||'';continue;}
+  const label=/^\s*[-*]\s+(?:\[[ xX]\]\s+)?(.+?)\s*$/.exec(line)?.[1];
+  if(column!==null&&label&&cards.length<maxItems)cards.push({label:label.slice(0,300),column,index:cards.length});
+ }
+ return {id,columns,cards};
+}
+function writerV93TextBoard(plugin,source,root,ctx,board){
+ const cfg=plugin.settings.v9215Flow,lanes=root.createDiv({cls:'writer-v93-flow-items'});
+ root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-board');
+ const anchor=board.id||ctx.getSectionInfo?.(root)?.lineStart||0;
+ const key=ctx.sourcePath&&JSON.stringify([ctx.sourcePath,anchor,writerV83StudyHash(source.trim())]);
+ const canMove=cfg.flowArrange&&Boolean(key);
+ let dragged=null,saving=false;
+ const positions=()=>cfg.textBoardMoves?.[key]||{};
+ const position=(card,moves)=>Number.isInteger(moves[card.index])&&board.columns[moves[card.index]]!==undefined?
+  moves[card.index]:card.column;
+ const move=async(card,to)=>{
+  if(!canMove||!cfg.enabled||!cfg.flowArrange||saving||board.columns[to]===undefined||to===position(card,positions()))return;
+  const previous=cfg.textBoardMoves||{},nextPositions={...positions()};
+  if(to===card.column)delete nextPositions[card.index];else nextPositions[card.index]=to;
+  const entries=Object.entries(previous).filter(([id])=>id!==key);
+  if(Object.keys(nextPositions).length)entries.push([key,nextPositions]);
+  const next=Object.fromEntries(entries.slice(-120));
+  cfg.textBoardMoves=next;saving=true;
+  try{await plugin.saveSettings();draw(card.index);}
+  catch(_){
+   if(cfg.textBoardMoves===next)cfg.textBoardMoves=previous;
+   new Notice(writerUi('Não foi possível salvar a posição do cartão.','Could not save the card position.'));
+  }finally{saving=false;}
+ };
+ const draw=focusIndex=>{
+  const moves=positions();
+  lanes.empty();
+  board.columns.forEach((name,index)=>{
+   const lane=lanes.createDiv({cls:'writer-v93-flow-lane writer-v9216-flow-card'});
+   lane.createEl('h4',{text:name});
+   if(canMove){
+    lane.addEventListener('dragover',event=>{if(dragged!==null)event.preventDefault();});
+    lane.addEventListener('drop',event=>{
+     if(dragged===null)return;
+     event.preventDefault();const card=dragged;dragged=null;void move(card,index);
+    });
+   }
+   for(const card of board.cards){
+    if(position(card,moves)!==index)continue;
+    const row=lane.createDiv({cls:'writer-v9216-flow-card'});
+    row.createSpan({text:card.label});
+    if(!canMove)continue;
+    row.draggable=true;
+    row.addEventListener('dragstart',event=>{
+     dragged=card;
+     if(event.dataTransfer){event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('text/plain',card.label);}
+    });
+    row.addEventListener('dragend',()=>{dragged=null;});
+    const actions=row.createDiv({cls:'writer-v93-flow-actions'});
+    const choices=[];
+    for(const [step,icon,pt,en] of [[-1,'arrow-left','Mover para a coluna anterior','Move to previous column'],
+     [1,'arrow-right','Mover para a próxima coluna','Move to next column']]){
+     const button=actions.createEl('button',{attr:{type:'button','aria-label':writerUi(pt,en)}});
+     require('obsidian').setIcon(button,icon);
+     button.disabled=board.columns[index+step]===undefined;
+     button.addEventListener('click',()=>move(card,index+step));
+     if(!button.disabled)choices.push(button);
+    }
+    if(card.index===focusIndex)choices[0]?.focus();
+   }
+  });
+ };
+ draw();
+}
 function writerV93FlowComposer(plugin,source,root,ctx){
  const cfg=plugin.settings.v9215Flow;if(!cfg.enabled||!cfg.flowBlocks)return;
+ const board=writerV93TextBoardParse(source,cfg.maxItems);
+ if(board.columns.length)return writerV93TextBoard(plugin,source,root,ctx,board);
  const model=writerV93FlowParse(source,cfg);
  root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-'+model.layout);
  const toolbar=root.createDiv({cls:'writer-v93-flow-toolbar'});

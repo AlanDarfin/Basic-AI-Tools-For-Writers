@@ -220,7 +220,7 @@ O suporte a plugins não tem uma página separada de configurações. Configure 
 | **Provedores de IA** | Texto escolhido, instruções e anexos de referência são enviados ao provedor para a ação solicitada. Acesso, modelos e cobrança dependem do provedor. Recursos automáticos de IA podem enviar texto enquanto ativos. |
 | **Ollama ou endpoint personalizado** | As solicitações vão ao servidor configurado. Você pode usar um servidor local, mas o endereço escolhido determina o destino do texto. |
 | **LanguageTool** | O texto vai ao endpoint configurado ou à integração instalada separadamente e selecionada nas opções. Quando ativadas, verificações automáticas podem ocorrer com o painel de revisão ativo. |
-| **Zotero** | Destaques Markdown importados podem ser lidos localmente. Ações opcionais da Web API usam a biblioteca configurada e uma chave temporária, com prévia antes de criar notas de referências; não editam a biblioteca remota. |
+| **Zotero** | Em **Citações e leitura**, indique o caminho de um arquivo `.bib` do Better BibTeX dentro do cofre para o seletor de citações local e os blocos `bibliography`. A página inicial pode misturar, priorizar ou mostrar somente destaques de notas Markdown importadas. Ações opcionais da Web API usam a biblioteca configurada e uma chave temporária, com prévia antes de criar notas de referências. |
 | **Pandoc** | Exportações no computador exigem o executável separado. Ele pode acessar recursos locais ou remotos referenciados no documento. PDF pode exigir outro mecanismo. |
 | **Voz do dispositivo e voz online** | A voz do dispositivo usa as opções expostas pelo navegador/sistema; disponibilidade e funcionamento offline dependem da voz. A leitura online Edge envia texto a um endpoint externo de consumo, não documentado, que pode mudar. |
 | **Música e sons de digitação** | A rádio web no computador usa incorporações do YouTube e pode ser bloqueada pelo serviço. Áudio local fica no cofre. Baixar pacotes de sons contata a origem remota quando solicitado. |
@@ -229,6 +229,8 @@ O suporte a plugins não tem uma página separada de configurações. Configure 
 | **Integrações de sincronização** | O Basic descobre e encaminha comandos sob demanda para plugins instalados separadamente, incluindo integrações Git, Syncthing e FIT. Autenticação, transferências e rotinas automáticas continuam nesses plugins. Escolher um provedor no Basic não suspende os demais. |
 
 Credenciais de IA ficam nas configurações do Basic sem criptografia. A chave temporária do Zotero tem outro ciclo de vida, apenas na sessão. Preserve chaves de API, dados pessoais do plugin e manuscritos privados ao relatar problemas. Consulte [segurança](../SECURITY.md) e [créditos de terceiros](../THIRD_PARTY_NOTICES.md) para licenças e detalhes de implementação.
+
+Use **Zotero: inserir citação local** para buscar por chave de citação, título, autor ou DOI. Em um bloco `bibliography`, use `keys: [smith2023, costa2024]` para mostrar referências específicas. O seletor e os blocos leem notas importadas e o arquivo `.bib` configurado no cofre. Arquivos exportados pelo Better BibTeX podem ter até 3 MB.
 
 ## Plataformas e limites
 

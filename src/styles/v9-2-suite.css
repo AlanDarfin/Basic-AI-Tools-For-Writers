@@ -213,6 +213,10 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
 .writer-v92-meta input:not([type="checkbox"]),.writer-v92-meta select{
  flex:1 1 160px;min-width:0;max-width:100%;
 }
+.writer-v92-meta-inline{display:inline-flex;align-items:center;max-width:100%;vertical-align:middle;}
+.writer-v92-meta-inline :is(input,select){max-width:100%;min-width:0;}
+.writer-v92-meta-inline input:is([type="text"],[type="range"]){width:9em;}
+.writer-v92-meta-inline input[type="number"]{width:5em;}
 .writer-v92-style .markdown-preview-view,
 .writer-v92-style .markdown-source-view{
  --file-line-width:var(--writer-v92-width);
@@ -221,9 +225,51 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v92-pr
 .writer-v92-style .markdown-source-view .cm-content{
  font-size:var(--writer-v92-font-size);
  line-height:var(--writer-v92-line-height);
+ color:var(--writer-v92-body-color,var(--text-normal));
 }
-.writer-v92-style .markdown-preview-view :is(h1,h2,h3,h4,h5,h6){
- color:var(--writer-v92-heading-color,var(--basic-ui-text,var(--text-normal)));
+.writer-v92-style .markdown-preview-view p{margin-block-end:var(--writer-v92-paragraph-spacing,var(--p-spacing));}
+.writer-v92-style .markdown-preview-view :is(ul,ol){padding-inline-start:var(--writer-v92-list-indent,var(--list-indent));}
+.writer-v92-style .markdown-preview-view li::marker{color:var(--writer-v92-bullet-color,var(--list-marker-color));}
+.writer-v92-style .markdown-preview-view a{color:var(--writer-v92-link-color,var(--link-color));}
+.writer-v92-style .markdown-preview-view a.external-link{color:var(--writer-v92-link-color,var(--link-external-color));}
+.writer-v92-style .markdown-preview-view blockquote{
+ color:var(--writer-v92-quote-color,var(--blockquote-color));
+ border-inline-start-color:var(--writer-v92-quote-border,var(--blockquote-border-color));
+ border-radius:var(--writer-v92-quote-radius,0);
+}
+.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h1,.cm-header-1){
+ --writer-v92-heading-size:var(--writer-v92-h1-size,var(--h1-size));
+ --writer-v92-specific-heading-color:var(--writer-v92-h1-color,var(--writer-v92-heading-color,var(--h1-color)));
+}
+.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h2,.cm-header-2){
+ --writer-v92-heading-size:var(--writer-v92-h2-size,var(--h2-size));
+ --writer-v92-specific-heading-color:var(--writer-v92-h2-color,var(--writer-v92-heading-color,var(--h2-color)));
+}
+.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h3,.cm-header-3){
+ --writer-v92-heading-size:var(--writer-v92-h3-size,var(--h3-size));
+ --writer-v92-specific-heading-color:var(--writer-v92-h3-color,var(--writer-v92-heading-color,var(--h3-color)));
+}
+.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h4,.cm-header-4){
+ --writer-v92-heading-size:var(--writer-v92-h4-size,var(--h4-size));
+ --writer-v92-specific-heading-color:var(--writer-v92-h4-color,var(--writer-v92-heading-color,var(--h4-color)));
+}
+.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h5,.cm-header-5){
+ --writer-v92-heading-size:var(--writer-v92-h5-size,var(--h5-size));
+ --writer-v92-specific-heading-color:var(--writer-v92-h5-color,var(--writer-v92-heading-color,var(--h5-color)));
+}
+.writer-v92-style :is(.markdown-preview-view,.markdown-source-view) :is(h6,.cm-header-6){
+ --writer-v92-heading-size:var(--writer-v92-h6-size,var(--h6-size));
+ --writer-v92-specific-heading-color:var(--writer-v92-h6-color,var(--writer-v92-heading-color,var(--h6-color)));
+}
+.writer-v92-style :is(.markdown-preview-view,.markdown-source-view)
+ :is(h1,h2,h3,h4,h5,h6,.cm-header-1,.cm-header-2,.cm-header-3,.cm-header-4,.cm-header-5,.cm-header-6){
+ font-size:var(--writer-v92-heading-size);
+ color:var(--writer-v92-specific-heading-color,var(--basic-ui-text,var(--text-normal)));
+}
+@media print{
+ .writer-v92-style-print :is(.markdown-preview-view,.markdown-source-view){
+  filter:grayscale(1);
+ }
 }
 .writer-v92-session{
  display:flex;flex-direction:column;gap:12px;

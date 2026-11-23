@@ -293,7 +293,7 @@ function writerV10RenderZoteroWidget(view,parent){
   const button=host.createEl('button',{cls:'writer-v10-discovery-open',text:file.basename});
   button.addEventListener('click',()=>void view.app.workspace.getLeaf('tab').openFile(file));
  }
- host.createEl('small',{cls:'writer-v8-home-muted',text:writerUi('Fonte: notas locais importadas; sem sincronização automática.','Source: local imported notes; no automatic sync.')});
+ host.createEl('small',{cls:'writer-v8-home-muted',text:writerUi('Fontes: notas importadas e arquivo BibTeX opcional do cofre.','Sources: imported notes and an optional vault BibTeX file.')});
 }
 function writerV10ZoteroRef(plugin,file){
  const front=plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter||{};
@@ -304,32 +304,80 @@ function writerV10ZoteroRef(plugin,file){
  return {file,key,title,author:author.slice(0,150),doi:String(front.DOI||front.doi||'').slice(0,100)};
 }
 function writerV10ZoteroPicker(plugin){
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
- const references=files.map(file=>writerV10ZoteroRef(plugin,file));
+ let references=writerV10ZoteroImportedReferences(plugin);
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Inserir citação Zotero','Insert Zotero citation'));
  modal.onOpen=()=>{
   const root=modal.contentEl;root.empty();
-  root.createEl('p',{cls:'setting-item-description',text:writerUi('Pesquisa em notas Markdown já importadas. Better BibTeX: propriedade citekey.','Search previously imported Markdown notes. Better BibTeX: citekey property.')});
+  root.createEl('p',{cls:'setting-item-description',text:writerUi('Pesquise nas notas importadas e no arquivo BibTeX configurado no Basic.','Search imported notes and the BibTeX file configured in Basic.')});
   const search=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Título, autor, DOI ou citekey…','Title, author, DOI or citekey…'),'aria-label':writerUi('Buscar referências','Search references')}});
+  const status=root.createEl('p',{attr:{role:'status'}});
   const results=root.createDiv({cls:'writer-v10-zotero-picker'});
   const draw=()=>{
    results.empty();const query=search.value.trim().toLocaleLowerCase();
    const filtered=references.filter(ref=>[ref.key,ref.title,ref.author,ref.doi].some(value=>value.toLocaleLowerCase().includes(query))).slice(0,40);
-   if(!filtered.length){results.createEl('p',{text:writerUi('Nenhuma referência importada encontrada.','No imported reference found.')});return;}
+   if(!filtered.length){results.createEl('p',{text:writerUi('Nenhuma referência encontrada.','No reference found.')});return;}
    for(const ref of filtered){
     const button=results.createEl('button',{cls:'writer-v10-discovery-open',attr:{type:'button'}});
-    button.createSpan({text:ref.title});button.createEl('small',{text:[ref.author,ref.key?'@'+ref.key:'',ref.doi].filter(Boolean).join(' · ')});
+    button.createSpan({text:ref.title});button.createEl('small',{text:[ref.author,ref.year,ref.key?'@'+ref.key:'',ref.doi].filter(Boolean).join(' · ')});
     button.addEventListener('click',()=>{
      const view=plugin.app.workspace.getActiveViewOfType?.(require('obsidian').MarkdownView);
      if(!view?.editor||!view?.file){new Notice(writerUi('Abra uma nota editável antes de citar.','Open an editable note to insert a citation.'));return;}
-     const citation=ref.key?'[@'+ref.key.replace(/[^\w:.-]/g,'')+']':plugin.app.fileManager.generateMarkdownLink(ref.file,view.file.path);
+     const citation=WRITER_ZOTERO_CITEKEY.test(ref.key)?'[@'+ref.key+']':plugin.app.fileManager.generateMarkdownLink(ref.file,view.file.path);
      view.editor.replaceSelection(citation);modal.close();
     });
    }
   };
   search.addEventListener('input',draw);draw();
+  if(plugin.settings.v92Research?.zoteroBibFile){
+   void writerV10ZoteroReferences(plugin,references).then(result=>{
+    if(!results.isConnected)return;
+    references=result.references;draw();
+    if(result.unavailable)status.setText(writerV10ZoteroBibUnavailable());
+   });
+  }
  };
  modal.open();
+}
+function writerV10ZoteroImportedReferences(plugin){
+ const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
+ return files.map(file=>writerV10ZoteroRef(plugin,file));
+}
+async function writerV10ZoteroReferences(plugin,imported=writerV10ZoteroImportedReferences(plugin)){
+ try{
+  const entries=await writerV92ZoteroBibReferences(plugin),references=[...imported];
+  const keys=new Set(imported.map(ref=>ref.key));
+  for(const entry of entries){
+   if(keys.has(entry.key))continue;
+   keys.add(entry.key);references.push(entry);
+  }
+  return {references,unavailable:false};
+ }catch(_){return {references:imported,unavailable:true};}
+}
+function writerV10ZoteroBibUnavailable(){
+ return writerUi('Não foi possível ler o BibTeX. Confira o caminho no cofre e o limite de 3 MB.',
+  'Could not read BibTeX. Check the vault path and the 3 MB limit.');
+}
+async function writerV10ZoteroBibliography(plugin,source,el,ctx){
+ if(!plugin.settings.v92Research?.enabled||!writerModuleOn(plugin,'zoteroIntegration'))return;
+ let options;
+ try{options=parseYaml(source)||{};}catch(_){options={};}
+ const value=options.keys||options.citekeys||'';
+ const keys=new Set((Array.isArray(value)?value:String(value).split(/[\s,]+/)).map(v=>String(v).replace(/^@/,'')).filter(Boolean));
+ const {references,unavailable}=await writerV10ZoteroReferences(plugin);
+ if(unavailable)el.createEl('p',{text:writerV10ZoteroBibUnavailable()});
+ const rows=references.filter(ref=>!keys.size||keys.has(ref.key)).slice(0,150);
+ if(!rows.length){el.createEl('p',{text:writerUi('Nenhuma referência encontrada.','No reference found.')});return;}
+ const list=el.createEl('ol');
+ for(const ref of rows){
+  const row=list.createEl('li');
+  const title=[ref.author,ref.title,ref.year].filter(Boolean).join(' · ');
+  if(ref.file){
+   const path=ref.file.path;
+   const link=row.createEl('a',{text:title,attr:{href:path,'data-href':path,class:'internal-link'}});
+   link.addEventListener('click',event=>{event.preventDefault();void plugin.app.workspace.openLinkText(path,ctx.sourcePath,false);});
+  }else row.createSpan({text:title});
+  if(ref.key)row.createEl('small',{text:' @'+ref.key});
+ }
 }
 function writerV10DiscoveryRegister(plugin){
  writerV10DiscoveryMerge(plugin.settings);
@@ -344,7 +392,7 @@ function writerV10DiscoveryRegister(plugin){
  });
  const open=async(type)=>{const leaf=plugin.app.workspace.getLeavesOfType?.(type)?.[0]||plugin.app.workspace.getRightLeaf?.(false)||plugin.app.workspace.getLeaf?.('tab');if(leaf){await leaf.setViewState({type,active:true});plugin.app.workspace.revealLeaf?.(leaf);}};
  plugin.writerV10OpenRelated=()=>open(WRITER_V10_RELATED_VIEW);
- plugin.addCommand({id:'v10-zotero-insert-citation',name:writerUi('Zotero: inserir referência importada','Zotero: insert imported citation'),callback:()=>writerV10ZoteroPicker(plugin)});
+ plugin.addCommand({id:'v10-zotero-insert-citation',name:writerUi('Zotero: inserir citação local','Zotero: insert local citation'),callback:()=>writerV10ZoteroPicker(plugin)});
  plugin.addCommand({id:'v10-related-notes',name:writerUi('Notas: encontrar relacionadas','Notes: find related'),callback:()=>void plugin.writerV10OpenRelated()});
  const refresh=()=>{for(const leaf of plugin.app.workspace.getLeavesOfType?.(WRITER_V10_RELATED_VIEW)||[])leaf.view?.refresh?.();};
  plugin.registerEvent(plugin.app.workspace.on('file-open',refresh));

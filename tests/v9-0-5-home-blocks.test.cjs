@@ -19,6 +19,40 @@ test('quote widget supports local customized quotes and original offline fallbac
  assert.match(home,/renderQuotes\(parent\)/);
  assert.doesNotMatch(home,/fetch\(|requestUrl\(/);
 });
+test('homepage quote modes mix, prefer, or use only imported Zotero highlights',async()=>{
+ const research=read('src/v9/research-style.js');
+ const {WriterV8HomeView,writerV92ResearchMerge}=vm.runInNewContext(home+'\n'+research+'\n({WriterV8HomeView,writerV92ResearchMerge})',{
+  ItemView:class{},writerUi:(_pt,en)=>en,writerModuleOn:()=>true
+ });
+ const imported=['An imported highlight','Author','Zotero/source.md','Source'];
+ async function render(mode,entries,options={}){
+  let reads=0;
+  const cfg=writerV92ResearchMerge({v92Research:{zoteroQuotes:true,zoteroQuoteMode:mode,...options}});
+  const plugin={settings:{v92Research:cfg,v8Finish:{homeQuotes:'A manual quote | Author'}},
+   writerV92Research:{quotes:async()=>{reads++;return entries;}}};
+  const elements=[];
+  const card={isConnected:true,createDiv:options=>card.createEl('div',options),createEl(tag,options){
+   const node={tag,text:options?.text||'',setText(value){this.text=value;},createEl:card.createEl,
+    addEventListener(_event,run){this.click=run;}};
+   elements.push(node);return node;
+  }};
+  const view={plugin,app:{},homeQuote:mode==='manual'?imported:null,card:()=>card};
+  WriterV8HomeView.prototype.renderQuotes.call(view,null);
+  await Promise.resolve();
+  return {view,reads,elements};
+ }
+ const both=await render('both',[imported]);
+ assert.equal(both.view.homeQuote[0],'A manual quote');
+ both.elements.find(element=>element.text==='Another quote').click();
+ assert.equal(both.view.homeQuote[2],imported[2]);
+ assert.equal((await render('prefer',[imported])).view.homeQuote[0],imported[0]);
+ assert.equal((await render('prefer',[])).view.homeQuote[0],'A manual quote');
+ const only=await render('only',[]);
+ assert.equal(only.view.homeQuote,null);
+ assert.ok(only.elements.some(element=>element.text==='No Zotero highlights found.'));
+ const manual=await render('manual',[imported],{zoteroQuotes:false});
+ assert.equal(manual.reads,0);assert.equal(manual.view.homeQuote[0],'A manual quote');
+});
 test('gallery exclusively filters local vault images and uses native resource paths',()=>{
  assert.match(home,/renderGallery\(parent\)/);
  assert.match(home,/this\.app\.vault\.getFiles\?\.\(\)/);

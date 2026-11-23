@@ -68,7 +68,7 @@ async function writerV106LegacyDictionaryInspector(plugin){
    new Setting(root).setName(file.path)
     .addButton(btn=>btn.setButtonText(writerUi('Usar neste plugin','Use in Basic')).onClick(async()=>{
      const cfg=plugin.settings.complements||(plugin.settings.complements={});
-     const list=String(cfg.dictionaryPaths||'').split(',').map(x=>x.trim()).filter(Boolean);
+     const list=String(cfg.dictionaryPaths||'').split(/[\n,;]/).map(x=>x.trim()).filter(Boolean);
      if(!list.includes(file.path))list.push(file.path);
      cfg.dictionaryPaths=list.join(',');
      cfg.dictionaries=true;cfg.enabled=true;
@@ -89,5 +89,4 @@ function writerV106HistoricRegister(plugin){
    if(!checking)writerV106JsonTree(plugin,text);
    return true;
   }});
- plugin.addCommand({id:'v106-recover-v1-dictionary',name:writerUi('Dicionário: recuperar caminho da v1','Dictionary: recover v1 path'),callback:()=>void writerV106LegacyDictionaryInspector(plugin)});
 }

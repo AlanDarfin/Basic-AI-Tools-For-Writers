@@ -337,6 +337,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "diagnostics",
+  "titlePt": "Recuperar dicionário da v1",
+  "titleEn": "Recover v1 dictionary",
+  "descriptionPt": "Procure a nota Markdown de dicionário nas configurações do plugin antigo.",
+  "descriptionEn": "Find the Markdown dictionary note in the older plugin’s settings."
+ },
+ {
+  "id": "diagnostics",
   "titlePt": "Atualizar informações",
   "titleEn": "Refresh information"
  },
@@ -1485,6 +1492,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Impressão em preto e branco",
+  "titleEn": "Black-and-white printing",
+  "descriptionPt": "Usa tons de cinza na impressão e na exportação PDF com o estilo de leitura ativo.",
+  "descriptionEn": "Use grayscale when printing or exporting PDF while reading style is active."
+ },
+ {
+  "id": "research",
   "titlePt": "Ativar acesso à API",
   "titleEn": "Enable API access"
  },
@@ -1515,6 +1529,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Origem das citações da página inicial",
+  "titleEn": "Homepage quote source"
+ },
+ {
+  "id": "research",
   "titlePt": "Pasta das notas importadas",
   "titleEn": "Imported notes folder"
  },
@@ -1535,6 +1554,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Recuo das listas",
+  "titleEn": "List indentation"
+ },
+ {
+  "id": "research",
   "titlePt": "Itens por consulta",
   "titleEn": "Max items per request"
  },
@@ -1545,8 +1569,35 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "research",
+  "titlePt": "Arquivo BibTeX opcional",
+  "titleEn": "Optional BibTeX file",
+  "descriptionPt": "Caminho relativo ao cofre para um arquivo .bib. Deixe em branco para usar as notas importadas.",
+  "descriptionEn": "Vault-relative path to a .bib file. Leave blank to use imported notes."
+ },
+ {
+  "id": "research",
+  "titlePt": "Espaçamento entre parágrafos",
+  "titleEn": "Paragraph spacing"
+ },
+ {
+  "id": "research",
+  "titlePt": "Arredondamento de citações",
+  "titleEn": "Quote corner radius"
+ },
+ {
+  "id": "research",
+  "titlePt": "Perfis de estilo de leitura",
+  "titleEn": "Reading style presets"
+ },
+ {
+  "id": "research",
   "titlePt": "Largura da leitura",
   "titleEn": "Reading width"
+ },
+ {
+  "id": "research",
+  "titlePt": "Perfis de estilo salvos",
+  "titleEn": "Saved style presets"
  },
  {
   "id": "research",
@@ -2518,6 +2569,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v10Bookshelf",
+  "titlePt": "Salvar progresso ao rolar",
+  "titleEn": "Save progress while scrolling",
+  "descriptionPt": "Registra até onde você leu nas notas avulsas adicionadas à biblioteca. Para definir a porcentagem na nota, use a propriedade readingProgress.",
+  "descriptionEn": "Records how far you have read in standalone notes added to the library. To set the percentage on the note, use the readingProgress property."
+ },
+ {
+  "id": "v10Bookshelf",
   "titlePt": "Mostrar progresso automático",
   "titleEn": "Show automatic progress"
  },
@@ -2910,6 +2968,13 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v9Calendar",
+  "titlePt": "Abrir o calendário em",
+  "titleEn": "Open calendar in",
+  "descriptionPt": "Escolha onde o comando principal abre o calendário.",
+  "descriptionEn": "Choose where the main calendar command opens."
+ },
+ {
+  "id": "v9Calendar",
   "titlePt": "Abrir calendário de escrita",
   "titleEn": "Open writing calendar"
  },
@@ -3119,6 +3184,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v9Explorer",
+  "titlePt": "Formato da miniatura",
+  "titleEn": "Thumbnail format"
+ },
+ {
+  "id": "v9Explorer",
   "titlePt": "Tamanho da miniatura",
   "titleEn": "Thumbnail size"
  },
@@ -3129,8 +3199,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "v9Flow",
-  "titlePt": "Organizar cartões e salvar no Markdown",
-  "titleEn": "Arrange cards and save to Markdown"
+  "titlePt": "Permitir mover cartões",
+  "titleEn": "Allow moving cards"
  },
  {
   "id": "v9Flow",
@@ -3766,6 +3836,20 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
   "id": "writingWidgets",
   "titlePt": "Ativar renderizadores",
   "titleEn": "Enable renderers"
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Campos INPUT e VIEW na leitura",
+  "titleEn": "Inline INPUT and VIEW fields",
+  "descriptionPt": "No modo Leitura, INPUT[toggle:done] edita a propriedade YAML done e VIEW[done] mostra seu valor. O plugin Meta Bind tem prioridade.",
+  "descriptionEn": "In Reading view, INPUT[toggle:done] edits the done YAML property and VIEW[done] shows its value. The Meta Bind plugin takes priority."
+ },
+ {
+  "id": "writingWidgets",
+  "titlePt": "Blocos antigos do Meta Bind",
+  "titleEn": "Legacy Meta Bind blocks",
+  "descriptionPt": "Renderiza campos YAML simples e botões set, toggle e increment dos blocos meta-bind e meta-bind-button. O plugin Meta Bind tem prioridade.",
+  "descriptionEn": "Render simple YAML fields and set, toggle and increment buttons in meta-bind and meta-bind-button blocks. The Meta Bind plugin takes priority."
  },
  {
   "id": "writingWidgets",

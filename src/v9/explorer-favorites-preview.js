@@ -20,6 +20,7 @@ function writerV92ExplorerMerge(settings){
  cfg.previewHoldMs=Math.max(400,Math.min(1500,Number(cfg.previewHoldMs)||650));
  cfg.previewLines=Math.max(1,Math.min(4,Math.floor(Number(cfg.previewLines)||3)));
  cfg.previewImageSize=Math.max(40,Math.min(96,Math.floor(Number(cfg.previewImageSize)||62)));
+ cfg.previewImageShape=cfg.previewImageShape==='wide'?'wide':'square';
  cfg.favoriteIcon=/^[a-z][a-z0-9-]{0,38}$/.test(cfg.favoriteIcon)?cfg.favoriteIcon:'star';
  cfg.favoriteIconColor=/^#[0-9a-f]{6}$/i.test(String(cfg.favoriteIconColor||''))?cfg.favoriteIconColor:'';
  cfg.previewMode=['off','folder','all'].includes(cfg.previewMode)?cfg.previewMode:'folder';
@@ -418,6 +419,7 @@ function writerV92ExplorerRegister(plugin){
   shell.dataset.holdMs=cfg.previewTouchExpand?String(cfg.previewHoldMs):'0';
   shell.style.setProperty('--writer-v92-preview-image-size',cfg.previewImageSize+'px');
   shell.classList.toggle('has-image',Boolean(imagePath));
+  shell.classList.toggle('is-wide-thumbnail',Boolean(imagePath)&&cfg.previewImageShape==='wide');
   let label=shell.querySelector(':scope > .writer-v92-file-preview');
   if(description){
    if(!label){
@@ -593,6 +595,12 @@ function writerV92ExplorerSettings(plugin,panel){
   .addSlider(t=>t.setLimits(40,96,4).setValue(cfg.previewImageSize).setDynamicTooltip().onChange(async v=>{
    cfg.previewImageSize=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
   }));
+ new Setting(panel).setName(writerUi('Formato da miniatura','Thumbnail format'))
+  .addDropdown(d=>d.addOption('square',writerUi('Quadrada','Square'))
+   .addOption('wide',writerUi('Panorâmica (16:9)','Widescreen (16:9)'))
+   .setValue(cfg.previewImageShape).onChange(async value=>{
+    cfg.previewImageShape=value;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();
+   }));
  new Setting(panel).setName(writerUi('Limite da descrição','Preview length')).addSlider(s=>s.setLimits(40,280,10)
   .setValue(cfg.previewMax).setDynamicTooltip().onChange(async v=>{cfg.previewMax=v;await plugin.saveSettings();plugin.writerV92Explorer?.schedule();}));
 }

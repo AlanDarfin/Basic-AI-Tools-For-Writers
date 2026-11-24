@@ -27,11 +27,11 @@
 .writer-template-matcher-controls>select:first-child{grid-area:method;}
 .writer-template-matcher-controls>input{grid-area:fragment;}
 .writer-template-matcher-controls>.writer-template-matcher-path{grid-area:path;}
-.writer-template-matcher-controls>:is(select,input){
+.writer-template-matcher .writer-template-matcher-controls>:is(select,input){
  width:100%;
  min-height:var(--writer-control-height);
 }
-.writer-template-matcher-controls>.writer-template-matcher-delete{
+.writer-template-matcher .writer-template-matcher-controls>.writer-template-matcher-delete{
  grid-area:delete;
  min-width:var(--writer-control-height);
  min-height:var(--writer-control-height);

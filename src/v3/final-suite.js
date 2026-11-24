@@ -29,6 +29,9 @@ function writerFinalMerge(plugin){
  plugin.settings.finalSuite=current;
  return current;
 }
+function writerFinalTemplateFolder(value){
+ return String(value||'Templates').replace(/^\/+|\/+$/g,'');
+}
 function writerV101TtsChunks(source,limit=700){
  const chunks=[],max=Math.max(100,Math.min(1600,Math.floor(Number(limit)||700)));
  let remaining=String(source||'').trim();
@@ -136,7 +139,7 @@ class WriterFinalFeatures{
   await view.setState(state,{history:false});
  }
  templateFolder(){
-  return String(this.cfg.templates.folder||'Templates').replace(/^\/+|\/+$/g,'');
+  return writerFinalTemplateFolder(this.cfg.templates.folder);
  }
  fileMatchesTemplateRule(basename,rule){
   const raw=String(rule?.matchString||'').trim();
@@ -670,7 +673,10 @@ function writerRenderFinalSettings(panel,plugin,section){
  if(section==='anotherName')str('property','Frontmatter property');
  if(section==='viewMode')str('property','View mode frontmatter property');
  if(section==='templates'){
-  str('folder','Templates folder');
+  new Setting(panel).setName(translateLabel('Templates folder')).addText(t=>{
+   t.setValue(String(cfg.folder??'')).onChange(async value=>{cfg.folder=value;await plugin.saveSettings();});
+   t.inputEl.addEventListener('change',()=>refreshTemplateOptions());
+  });
   str('dateFormat','Date format (e.g. YYYY-MM-DD)');
   str('timeFormat','Time format (e.g. HH:mm)');
   bool('applyOnCreate','Apply templates on note creation');
@@ -678,15 +684,33 @@ function writerRenderFinalSettings(panel,plugin,section){
   bool('caseSensitive','Case-sensitive title matching');
   new Setting(panel).setName(translateLabel('Original matching rules')).setDesc(translateLabel('The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.')).setHeading();
   const container=panel.createDiv({cls:'writer-template-matcher-list'});
+  const templateSelects=new Map();
+  const templateLabel=translateLabel('Select template');
+  const refreshTemplateOptions=()=>{
+   if(!templateSelects.size)return;
+   const folder=writerFinalTemplateFolder(cfg.folder);
+   const paths=plugin.app.vault.getMarkdownFiles().map(file=>file.path);
+   const options=paths.filter(path=>path.startsWith(folder+'/')).sort((a,b)=>a.localeCompare(b));
+   const available=new Set(options),existing=new Set(paths);
+   for(const [template,rule] of templateSelects){
+    const savedPath=rule.templatePath||'';
+    template.empty();
+    template.createEl('option',{text:templateLabel,value:''});
+    for(const path of options)template.createEl('option',{text:path,value:path});
+    if(savedPath&&!available.has(savedPath)){
+     const status=existing.has(savedPath)?writerUi(' (fora da pasta)',' (outside folder)'):writerUi(' (ausente)',' (missing)');
+     template.createEl('option',{text:savedPath+status,value:savedPath});
+    }
+    template.value=savedPath;
+    template.title=template.selectedOptions[0]?.textContent||'';
+   }
+  };
   let addButton;
   const render=(focusIndex=-1,focusRemove=false)=>{
    container.empty();
+   templateSelects.clear();
    const matchers=cfg.matchers||(cfg.matchers=[]);
    if(!matchers.length){if(focusIndex>=0)addButton?.focus();return;}
-   const folder=String(cfg.folder||'Templates').replace(/^\/+|\/+$/g,'');
-   const paths=plugin.app.vault.getMarkdownFiles().map(file=>file.path)
-    .filter(path=>path.startsWith(folder+'/')).sort((a,b)=>a.localeCompare(b));
-   const available=new Set(paths);
    let focusTarget;
    for(let index=0;index<matchers.length;index++){
     const rule=matchers[index];
@@ -702,14 +726,8 @@ function writerRenderFinalSettings(panel,plugin,section){
     const fragment=controls.createEl('input',{attr:{type:'text',placeholder:fragmentLabel,'aria-label':fragmentLabel}});
     fragment.value=rule.matchString||'';
     fragment.addEventListener('input',async()=>{rule.matchString=fragment.value;await plugin.saveSettings();});
-    const templateLabel=translateLabel('Select template');
     const template=controls.createEl('select',{cls:'dropdown writer-template-matcher-path',attr:{'aria-label':templateLabel}});
-    template.createEl('option',{text:templateLabel,value:''});
-    for(const path of paths)template.createEl('option',{text:path,value:path});
-    if(rule.templatePath&&!available.has(rule.templatePath))
-     template.createEl('option',{text:rule.templatePath+writerUi(' (ausente)',' (missing)'),value:rule.templatePath});
-    template.value=rule.templatePath||'';
-    template.title=template.selectedOptions[0]?.textContent||'';
+    templateSelects.set(template,rule);
     template.addEventListener('change',async()=>{
      rule.templatePath=template.value;
      template.title=template.selectedOptions[0]?.textContent||'';
@@ -725,6 +743,7 @@ function writerRenderFinalSettings(panel,plugin,section){
      await plugin.saveSettings();
     });
    }
+   refreshTemplateOptions();
    focusTarget?.focus();
   };
   new Setting(panel).setName(translateLabel('Add matching rule')).addButton(b=>{

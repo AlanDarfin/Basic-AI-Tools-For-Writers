@@ -8,6 +8,62 @@ const O={getLanguage:()=> 'en',moment:()=>({format:pattern=>'formatted-'+pattern
 const source=fs.readFileSync('src/v3/final-suite.js','utf8');
 const ctx={console,writerModuleOn:()=>true,require:()=>O,TFile,MarkdownView:class MarkdownView{},setTimeout,clearTimeout,requestUrl:async()=>({status:200,text:'0041;LATIN CAPITAL LETTER A;Lu;0;L;;;;;N;;;;0061;\n00E9;LATIN SMALL LETTER E WITH ACUTE;Ll;0;L;;;;;N;;;00C9;;00C9;\n'})};
 const {writerFinalMerge,WriterFinalFeatures}=vm.runInNewContext(source+'\n({writerFinalMerge,WriterFinalFeatures})',ctx);
+async function checkTemplateFolderRefresh(){
+ let focused;
+ class Element{
+  constructor(options={}){Object.assign(this,options);this.children=[];this.textContent=options.text||'';}
+  createEl(_tag,options){const child=new Element(options);this.children.push(child);return child;}
+  createDiv(options){return this.createEl('div',options);}
+  empty(){this.children=[];}
+  focus(){focused=this;}
+  addEventListener(type,callback){this[type]=callback;}
+  get selectedOptions(){return this.children.filter(option=>option.value===this.value);}
+ }
+ const fields=new Map();
+ class Setting{
+  setName(name){this.name=name;return this;}
+  setDesc(){return this;}
+  setHeading(){return this;}
+  addText(render){
+   const field={inputEl:new Element(),setValue(value){this.inputEl.value=value;return this;},onChange(callback){this.input=callback;return this;}};
+   render(field);fields.set(this.name,field);return this;
+  }
+  addToggle(render){return this.addText(render);}
+  addButton(render){render({buttonEl:new Element(),setButtonText(){return this;},setIcon(){return this;},setTooltip(){return this;},onClick(){return this;}});return this;}
+ }
+ const render=vm.runInNewContext(source+'\nwriterRenderFinalSettings',{
+  Setting,writerUi:(_pt,en)=>en,require:()=>({setIcon(){}})
+ });
+ const savedPath='Templates/Chapter.md',newPath='Story models/Outline.md';
+ const rule={matchMethod:'prefix',matchString:'Chapter',templatePath:savedPath};
+ const templates={folder:'Templates',matchers:[rule]};
+ const panel=new Element();let saves=0;
+ const plugin={settings:{finalSuite:{templates}},app:{vault:{getMarkdownFiles:()=>[new TFile(savedPath),new TFile(newPath)]}},
+  async saveSettings(){saves++;}};
+ render(panel,plugin,'templates');
+ const list=panel.children.find(node=>node.cls==='writer-template-matcher-list');
+ const templateSelect=()=>list.children[0].children.find(node=>node.cls==='writer-template-matcher-controls').children
+  .find(node=>node.attr?.['aria-label']==='Select template');
+ const select=templateSelect();
+ assert.equal(select.value,savedPath);
+ assert.deepEqual(select.children.map(option=>option.value),['',savedPath]);
+ const folder=fields.get('Templates folder');
+ folder.inputEl.focus();
+ await folder.input('/Story models/');
+ folder.inputEl.change();
+ assert.equal(templateSelect(),select);
+ assert.equal(focused,folder.inputEl);
+ assert.equal(select.value,savedPath);
+ assert.equal(rule.templatePath,savedPath);
+ assert.equal(select.title,savedPath+' (outside folder)');
+ assert.deepEqual(select.children.map(option=>option.value),['',newPath,savedPath]);
+ assert.equal(saves,1);
+ select.value=newPath;
+ await select.change();
+ assert.equal(rule.templatePath,newPath);
+ assert.equal(select.title,newPath);
+ assert.equal(saves,2);
+}
 async function main(){
  let count=0;const ok=(name)=>{console.log('PASS',name);count++;};
  const settings={};
@@ -91,6 +147,8 @@ async function main(){
  assert.equal(await f.applyTemplate(noTemplate,true),false);
  assert.equal(docs.get(noTemplate.path),saved);
  ok('When matcher rules exist, exact-name fallback does not override them');
+ await checkTemplateFolderRefresh();
+ ok('Folder changes refresh existing template selects and preserve saved paths and focus');
  const css=fs.readFileSync('styles.css','utf8');
  assert.ok(css.includes('@container writer-sidebar (max-width:420px)'));
  assert.ok(css.includes('dictionary-translation-engine'));

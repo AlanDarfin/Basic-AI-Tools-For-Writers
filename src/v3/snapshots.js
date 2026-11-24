@@ -241,25 +241,15 @@ class WriterSnapshots{
   if(!(file instanceof TFile)||file.extension!=='md')return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const modal=new Modal(this.plugin.app);
   modal.modalEl?.addClass?.('writer-legacy-history-modal');
-  let historyOpen=false,renderGeneration=0;
+  let historyOpen=false,renderGeneration=0,summary,list;
   const render=async()=>{
    if(!historyOpen)return;
    const generation=++renderGeneration;
    const snapshots=await this.list(file);
    if(!historyOpen||generation!==renderGeneration)return;
-   modal.contentEl.empty();
-   modal.contentEl.createEl('p',{cls:'writer-history-summary',text:snapshots.length+writerUi(' versões · histórico local do Basic',' versions · local Basic history')});
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
-    await this.create(file,writerUi('Manual','Manual'));await render();
-   })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
-    const prompt=new Modal(this.plugin.app);let label='';
-    prompt.onOpen=()=>{prompt.setTitle(writerUi("Nome da versão","Version name"));
-     new Setting(prompt.contentEl).addText(t=>t.setPlaceholder(writerUi('Antes da revisão','Before review')).onChange(v=>label=v))
-      .addButton(b=>b.setButtonText(writerUi("Salvar","Save")).setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
-    };prompt.open();
-   }));
-   if(!snapshots.length)modal.contentEl.createEl('p',{text:writerUi("Nenhuma versão salva ainda.","No versions saved yet.")});
-   const list=modal.contentEl.createDiv({cls:'writer-history-list'});
+   summary.setText(snapshots.length+writerUi(' versões · histórico local do Basic',' versions · local Basic history'));
+   list.empty();
+   if(!snapshots.length)list.createEl('p',{text:writerUi("Nenhuma versão salva ainda.","No versions saved yet.")});
    for(const entry of snapshots.slice(0,250)){
     const card=list.createDiv({cls:'writer-history-entry'});
     card.createEl('strong',{text:entry.name});
@@ -293,6 +283,18 @@ class WriterSnapshots{
   modal.onOpen=()=>{
    historyOpen=true;
    modal.setTitle(writerUi("Histórico de versões · ","Version history · ")+file.basename);
+   summary=modal.contentEl.createEl('p',{cls:'writer-history-summary',attr:{role:'status'}});
+   new Setting(modal.contentEl).setClass('writer-history-toolbar')
+    .addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
+     await this.create(file,writerUi('Manual','Manual'));await render();
+    })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
+     const prompt=new Modal(this.plugin.app);let label='';
+     prompt.onOpen=()=>{prompt.setTitle(writerUi("Nome da versão","Version name"));
+      new Setting(prompt.contentEl).addText(t=>t.setPlaceholder(writerUi('Antes da revisão','Before review')).onChange(v=>label=v))
+       .addButton(b=>b.setButtonText(writerUi("Salvar","Save")).setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
+     };prompt.open();
+    }));
+   list=modal.contentEl.createDiv({cls:'writer-history-list'});
    render().catch(e=>{if(historyOpen)new Notice(writerUi("Histórico: ","History: ")+e.message);});
   };
   modal.onClose=()=>{historyOpen=false;};

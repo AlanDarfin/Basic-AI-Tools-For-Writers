@@ -2779,25 +2779,15 @@ class WriterSnapshots{
   if(!(file instanceof TFile)||file.extension!=='md')return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const modal=new Modal(this.plugin.app);
   modal.modalEl?.addClass?.('writer-legacy-history-modal');
-  let historyOpen=false,renderGeneration=0;
+  let historyOpen=false,renderGeneration=0,summary,list;
   const render=async()=>{
    if(!historyOpen)return;
    const generation=++renderGeneration;
    const snapshots=await this.list(file);
    if(!historyOpen||generation!==renderGeneration)return;
-   modal.contentEl.empty();
-   modal.contentEl.createEl('p',{cls:'writer-history-summary',text:snapshots.length+writerUi(' versões · histórico local do Basic',' versions · local Basic history')});
-   new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
-    await this.create(file,writerUi('Manual','Manual'));await render();
-   })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
-    const prompt=new Modal(this.plugin.app);let label='';
-    prompt.onOpen=()=>{prompt.setTitle(writerUi("Nome da versão","Version name"));
-     new Setting(prompt.contentEl).addText(t=>t.setPlaceholder(writerUi('Antes da revisão','Before review')).onChange(v=>label=v))
-      .addButton(b=>b.setButtonText(writerUi("Salvar","Save")).setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
-    };prompt.open();
-   }));
-   if(!snapshots.length)modal.contentEl.createEl('p',{text:writerUi("Nenhuma versão salva ainda.","No versions saved yet.")});
-   const list=modal.contentEl.createDiv({cls:'writer-history-list'});
+   summary.setText(snapshots.length+writerUi(' versões · histórico local do Basic',' versions · local Basic history'));
+   list.empty();
+   if(!snapshots.length)list.createEl('p',{text:writerUi("Nenhuma versão salva ainda.","No versions saved yet.")});
    for(const entry of snapshots.slice(0,250)){
     const card=list.createDiv({cls:'writer-history-entry'});
     card.createEl('strong',{text:entry.name});
@@ -2831,6 +2821,18 @@ class WriterSnapshots{
   modal.onOpen=()=>{
    historyOpen=true;
    modal.setTitle(writerUi("Histórico de versões · ","Version history · ")+file.basename);
+   summary=modal.contentEl.createEl('p',{cls:'writer-history-summary',attr:{role:'status'}});
+   new Setting(modal.contentEl).setClass('writer-history-toolbar')
+    .addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
+     await this.create(file,writerUi('Manual','Manual'));await render();
+    })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
+     const prompt=new Modal(this.plugin.app);let label='';
+     prompt.onOpen=()=>{prompt.setTitle(writerUi("Nome da versão","Version name"));
+      new Setting(prompt.contentEl).addText(t=>t.setPlaceholder(writerUi('Antes da revisão','Before review')).onChange(v=>label=v))
+       .addButton(b=>b.setButtonText(writerUi("Salvar","Save")).setCta().onClick(async()=>{prompt.close();await this.create(file,label||'Manual');await render();}));
+     };prompt.open();
+    }));
+   list=modal.contentEl.createDiv({cls:'writer-history-list'});
    render().catch(e=>{if(historyOpen)new Notice(writerUi("Histórico: ","History: ")+e.message);});
   };
   modal.onClose=()=>{historyOpen=false;};
@@ -3245,6 +3247,9 @@ function writerFinalMerge(plugin){
  plugin.settings.finalSuite=current;
  return current;
 }
+function writerFinalTemplateFolder(value){
+ return String(value||'Templates').replace(/^\/+|\/+$/g,'');
+}
 function writerV101TtsChunks(source,limit=700){
  const chunks=[],max=Math.max(100,Math.min(1600,Math.floor(Number(limit)||700)));
  let remaining=String(source||'').trim();
@@ -3352,7 +3357,7 @@ class WriterFinalFeatures{
   await view.setState(state,{history:false});
  }
  templateFolder(){
-  return String(this.cfg.templates.folder||'Templates').replace(/^\/+|\/+$/g,'');
+  return writerFinalTemplateFolder(this.cfg.templates.folder);
  }
  fileMatchesTemplateRule(basename,rule){
   const raw=String(rule?.matchString||'').trim();
@@ -3886,7 +3891,10 @@ function writerRenderFinalSettings(panel,plugin,section){
  if(section==='anotherName')str('property','Frontmatter property');
  if(section==='viewMode')str('property','View mode frontmatter property');
  if(section==='templates'){
-  str('folder','Templates folder');
+  new Setting(panel).setName(translateLabel('Templates folder')).addText(t=>{
+   t.setValue(String(cfg.folder??'')).onChange(async value=>{cfg.folder=value;await plugin.saveSettings();});
+   t.inputEl.addEventListener('change',()=>refreshTemplateOptions());
+  });
   str('dateFormat','Date format (e.g. YYYY-MM-DD)');
   str('timeFormat','Time format (e.g. HH:mm)');
   bool('applyOnCreate','Apply templates on note creation');
@@ -3894,15 +3902,33 @@ function writerRenderFinalSettings(panel,plugin,section){
   bool('caseSensitive','Case-sensitive title matching');
   new Setting(panel).setName(translateLabel('Original matching rules')).setDesc(translateLabel('The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.')).setHeading();
   const container=panel.createDiv({cls:'writer-template-matcher-list'});
+  const templateSelects=new Map();
+  const templateLabel=translateLabel('Select template');
+  const refreshTemplateOptions=()=>{
+   if(!templateSelects.size)return;
+   const folder=writerFinalTemplateFolder(cfg.folder);
+   const paths=plugin.app.vault.getMarkdownFiles().map(file=>file.path);
+   const options=paths.filter(path=>path.startsWith(folder+'/')).sort((a,b)=>a.localeCompare(b));
+   const available=new Set(options),existing=new Set(paths);
+   for(const [template,rule] of templateSelects){
+    const savedPath=rule.templatePath||'';
+    template.empty();
+    template.createEl('option',{text:templateLabel,value:''});
+    for(const path of options)template.createEl('option',{text:path,value:path});
+    if(savedPath&&!available.has(savedPath)){
+     const status=existing.has(savedPath)?writerUi(' (fora da pasta)',' (outside folder)'):writerUi(' (ausente)',' (missing)');
+     template.createEl('option',{text:savedPath+status,value:savedPath});
+    }
+    template.value=savedPath;
+    template.title=template.selectedOptions[0]?.textContent||'';
+   }
+  };
   let addButton;
   const render=(focusIndex=-1,focusRemove=false)=>{
    container.empty();
+   templateSelects.clear();
    const matchers=cfg.matchers||(cfg.matchers=[]);
    if(!matchers.length){if(focusIndex>=0)addButton?.focus();return;}
-   const folder=String(cfg.folder||'Templates').replace(/^\/+|\/+$/g,'');
-   const paths=plugin.app.vault.getMarkdownFiles().map(file=>file.path)
-    .filter(path=>path.startsWith(folder+'/')).sort((a,b)=>a.localeCompare(b));
-   const available=new Set(paths);
    let focusTarget;
    for(let index=0;index<matchers.length;index++){
     const rule=matchers[index];
@@ -3918,14 +3944,8 @@ function writerRenderFinalSettings(panel,plugin,section){
     const fragment=controls.createEl('input',{attr:{type:'text',placeholder:fragmentLabel,'aria-label':fragmentLabel}});
     fragment.value=rule.matchString||'';
     fragment.addEventListener('input',async()=>{rule.matchString=fragment.value;await plugin.saveSettings();});
-    const templateLabel=translateLabel('Select template');
     const template=controls.createEl('select',{cls:'dropdown writer-template-matcher-path',attr:{'aria-label':templateLabel}});
-    template.createEl('option',{text:templateLabel,value:''});
-    for(const path of paths)template.createEl('option',{text:path,value:path});
-    if(rule.templatePath&&!available.has(rule.templatePath))
-     template.createEl('option',{text:rule.templatePath+writerUi(' (ausente)',' (missing)'),value:rule.templatePath});
-    template.value=rule.templatePath||'';
-    template.title=template.selectedOptions[0]?.textContent||'';
+    templateSelects.set(template,rule);
     template.addEventListener('change',async()=>{
      rule.templatePath=template.value;
      template.title=template.selectedOptions[0]?.textContent||'';
@@ -3941,6 +3961,7 @@ function writerRenderFinalSettings(panel,plugin,section){
      await plugin.saveSettings();
     });
    }
+   refreshTemplateOptions();
    focusTarget?.focus();
   };
   new Setting(panel).setName(translateLabel('Add matching rule')).addButton(b=>{
@@ -4323,7 +4344,7 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false,view}={}){
     area.addEventListener('input',()=>{proposal=area.value;apply.disabled=true;diffEl.empty();diffEl.createEl('p',{text:writerUi('Compare novamente para atualizar as alterações.','Compare again to refresh the changes.'),cls:'writer-v4-hint'});});
     const toolbar=root.createDiv({cls:'writer-v4-actions'});
     const btn=(label,click,primary=false)=>{const b=toolbar.createEl('button',{text:label,cls:primary?'mod-cta':''});b.disabled=busy;b.addEventListener('click',click);return b;};
-    btn(writerUi('Comparar','Compare'),()=>{proposal=area.value;accepted=new Set();renderDiff(root);});
+    btn(writerUi('Comparar','Compare'),()=>{proposal=area.value;accepted=new Set();renderDiff();});
     btn(writerUi('Gerar com IA','Generate with AI'),()=>generateProposal(task));
     const diffEl=root.createDiv({cls:'writer-v4-diff-results'});
     const apply=root.createEl('button',{text:writerUi('Aplicar mudanças selecionadas','Apply selected changes'),cls:'mod-cta writer-v4-apply'});
@@ -4334,20 +4355,30 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false,view}={}){
       }catch(error){diffEl.createEl('p',{text:error.message,cls:'writer-v4-error'});apply.disabled=true;return;}
       const changes=groups.filter(g=>!g.same);
       if(!changes.length){diffEl.createEl('p',{text:writerUi('Nenhuma diferença encontrada.','No differences found.')});apply.disabled=true;return;}
+      const choices=[];
+      const syncApply=()=>{apply.disabled=busy||accepted.size===0;};
       const toggles=diffEl.createDiv({cls:'writer-v4-actions'});
-      const toggle=(label,all)=>toggles.createEl('button',{text:label}).addEventListener('click',()=>{accepted=all?new Set(changes.map((_,i)=>i)):new Set();renderDiff();});
+      const toggle=(label,all)=>toggles.createEl('button',{text:label,attr:{type:'button'}}).addEventListener('click',()=>{
+        accepted.clear();
+        for(const [index,input] of choices.entries()){
+          input.checked=all;
+          if(all)accepted.add(index);
+        }
+        syncApply();
+      });
       toggle(writerUi('Aceitar todas','Accept all'),true);toggle(writerUi('Rejeitar todas','Reject all'),false);
-      let h=0;
-      for(const group of groups){if(group.same)continue;
-        const i=h++,card=diffEl.createDiv({cls:'writer-v4-hunk'});
+      for(const [i,group] of changes.entries()){
+        const card=diffEl.createDiv({cls:'writer-v4-hunk'});
         card.createEl('strong',{text:writerUi('Alteração ','Change ')+(i+1)});
         if(group.old.length)card.createEl('pre',{text:group.old.join('\n'),cls:'writer-v4-removed'});
         if(group.next.length)card.createEl('pre',{text:group.next.join('\n'),cls:'writer-v4-added'});
-        const accept=card.createEl('label',{cls:'writer-v4-choice'}),input=accept.createEl('input',{attr:{type:'checkbox'}});
+        const accept=card.createEl('label',{cls:'writer-v4-choice'});
+        const input=accept.createEl('input',{attr:{type:'checkbox','aria-label':writerUi('Aceitar alteração ','Accept change ')+(i+1)}});
+        choices.push(input);
         input.checked=accepted.has(i);accept.createSpan({text:writerUi('Aceitar esta alteração','Accept this change')});
-        input.addEventListener('change',()=>{if(input.checked)accepted.add(i);else accepted.delete(i);apply.disabled=accepted.size===0;});
+        input.addEventListener('change',()=>{if(input.checked)accepted.add(i);else accepted.delete(i);syncApply();});
       }
-      apply.disabled=accepted.size===0||busy;
+      syncApply();
       apply.onclick=async()=>{if(busy||!accepted.size)return;busy=true;apply.disabled=true;
         try{
           const result=writerV4MergeHunks(groups,accepted);

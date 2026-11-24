@@ -13497,6 +13497,20 @@ body .writer-tools-v3 .writer-tools-v3-tabs.writer-sidebar-tabs>button.is-active
 .writer-legacy-history-modal .writer-history-summary{
  color:var(--text-muted);
 }
+.writer-legacy-history-modal .writer-history-toolbar .setting-item-info{
+ display:none;
+}
+.writer-legacy-history-modal .writer-history-toolbar .setting-item-control{
+ flex:1;
+ flex-wrap:wrap;
+ gap:4px;
+ min-width:0;
+}
+.writer-legacy-history-modal .writer-history-toolbar .setting-item-control>button{
+ max-width:100%;
+ height:auto;
+ white-space:normal;
+}
 .writer-legacy-history-modal .writer-history-compare{
  display:grid;
  grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));
@@ -13526,6 +13540,14 @@ body .writer-tools-v3 .writer-tools-v3-tabs.writer-sidebar-tabs>button.is-active
 .writer-complement-manual>button{
  min-height:var(--basic-legacy-control-size);
  padding-block:4px;
+}
+.writer-v4-diff-modal .writer-v4-apply.writer-v4-apply,
+.writer-v4-diff-modal .writer-v4-choice{
+ min-height:var(--basic-legacy-control-size);
+}
+.writer-v4-diff-modal .writer-v4-apply{
+ height:auto;
+ white-space:normal;
 }
 :is(.writer-legacy-history-modal,.writer-legacy-variants-modal,.writer-complement-manual)
  :is(button,textarea):focus-visible{

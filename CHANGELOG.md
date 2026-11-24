@@ -1,5 +1,14 @@
 # Changelog — Basic
 
+## 15.1.0 — Ferramentas, modelos e painéis antigos
+
+- Ferramentas de Escrita usa abas navegáveis pelo teclado, ações agrupadas e diálogos mais compactos. Variantes mantém a seleção do editor, e o histórico acompanha a troca de nota na mesma aba.
+- As regras de modelos e os formulários de fichas se adaptam a painéis estreitos. Trocar a pasta de modelos atualiza as opções de cada regra na hora.
+- O Dicionário reorganiza seletores em painéis estreitos. O catálogo de IA preserva o filtro e o foco ao atribuir um provedor.
+- A revisão seletiva mantém o foco ao aceitar ou rejeitar alterações em lote. A barra do histórico de versões mantém os botões acessíveis em telas estreitas.
+
+[Notas completas em português e inglês](docs/releases/15.1.0.md)
+
 ## 15.0.0 — Busca mais rápida e painéis compactos
 
 - A busca na página inicial agrupa a digitação e reaproveita o texto normalizado de títulos, caminhos e cabeçalhos durante cada consulta.

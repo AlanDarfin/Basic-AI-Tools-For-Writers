@@ -172,7 +172,7 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false,view}={}){
     area.addEventListener('input',()=>{proposal=area.value;apply.disabled=true;diffEl.empty();diffEl.createEl('p',{text:writerUi('Compare novamente para atualizar as alterações.','Compare again to refresh the changes.'),cls:'writer-v4-hint'});});
     const toolbar=root.createDiv({cls:'writer-v4-actions'});
     const btn=(label,click,primary=false)=>{const b=toolbar.createEl('button',{text:label,cls:primary?'mod-cta':''});b.disabled=busy;b.addEventListener('click',click);return b;};
-    btn(writerUi('Comparar','Compare'),()=>{proposal=area.value;accepted=new Set();renderDiff(root);});
+    btn(writerUi('Comparar','Compare'),()=>{proposal=area.value;accepted=new Set();renderDiff();});
     btn(writerUi('Gerar com IA','Generate with AI'),()=>generateProposal(task));
     const diffEl=root.createDiv({cls:'writer-v4-diff-results'});
     const apply=root.createEl('button',{text:writerUi('Aplicar mudanças selecionadas','Apply selected changes'),cls:'mod-cta writer-v4-apply'});
@@ -183,20 +183,30 @@ async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false,view}={}){
       }catch(error){diffEl.createEl('p',{text:error.message,cls:'writer-v4-error'});apply.disabled=true;return;}
       const changes=groups.filter(g=>!g.same);
       if(!changes.length){diffEl.createEl('p',{text:writerUi('Nenhuma diferença encontrada.','No differences found.')});apply.disabled=true;return;}
+      const choices=[];
+      const syncApply=()=>{apply.disabled=busy||accepted.size===0;};
       const toggles=diffEl.createDiv({cls:'writer-v4-actions'});
-      const toggle=(label,all)=>toggles.createEl('button',{text:label}).addEventListener('click',()=>{accepted=all?new Set(changes.map((_,i)=>i)):new Set();renderDiff();});
+      const toggle=(label,all)=>toggles.createEl('button',{text:label,attr:{type:'button'}}).addEventListener('click',()=>{
+        accepted.clear();
+        for(const [index,input] of choices.entries()){
+          input.checked=all;
+          if(all)accepted.add(index);
+        }
+        syncApply();
+      });
       toggle(writerUi('Aceitar todas','Accept all'),true);toggle(writerUi('Rejeitar todas','Reject all'),false);
-      let h=0;
-      for(const group of groups){if(group.same)continue;
-        const i=h++,card=diffEl.createDiv({cls:'writer-v4-hunk'});
+      for(const [i,group] of changes.entries()){
+        const card=diffEl.createDiv({cls:'writer-v4-hunk'});
         card.createEl('strong',{text:writerUi('Alteração ','Change ')+(i+1)});
         if(group.old.length)card.createEl('pre',{text:group.old.join('\n'),cls:'writer-v4-removed'});
         if(group.next.length)card.createEl('pre',{text:group.next.join('\n'),cls:'writer-v4-added'});
-        const accept=card.createEl('label',{cls:'writer-v4-choice'}),input=accept.createEl('input',{attr:{type:'checkbox'}});
+        const accept=card.createEl('label',{cls:'writer-v4-choice'});
+        const input=accept.createEl('input',{attr:{type:'checkbox','aria-label':writerUi('Aceitar alteração ','Accept change ')+(i+1)}});
+        choices.push(input);
         input.checked=accepted.has(i);accept.createSpan({text:writerUi('Aceitar esta alteração','Accept this change')});
-        input.addEventListener('change',()=>{if(input.checked)accepted.add(i);else accepted.delete(i);apply.disabled=accepted.size===0;});
+        input.addEventListener('change',()=>{if(input.checked)accepted.add(i);else accepted.delete(i);syncApply();});
       }
-      apply.disabled=accepted.size===0||busy;
+      syncApply();
       apply.onclick=async()=>{if(busy||!accepted.size)return;busy=true;apply.disabled=true;
         try{
           const result=writerV4MergeHunks(groups,accepted);

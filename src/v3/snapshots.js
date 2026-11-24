@@ -240,10 +240,15 @@ class WriterSnapshots{
  async showHistory(file){
   if(!(file instanceof TFile)||file.extension!=='md')return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const modal=new Modal(this.plugin.app);
+  modal.modalEl?.addClass?.('writer-legacy-history-modal');
+  let historyOpen=false,renderGeneration=0;
   const render=async()=>{
-   modal.contentEl.empty();modal.setTitle(writerUi("Histórico de versões · ","Version history · ")+file.basename);
+   if(!historyOpen)return;
+   const generation=++renderGeneration;
    const snapshots=await this.list(file);
-   modal.contentEl.createEl('p',{text:snapshots.length+writerUi(' versões · histórico local do Basic AI',' versions · local Basic AI history')});
+   if(!historyOpen||generation!==renderGeneration)return;
+   modal.contentEl.empty();
+   modal.contentEl.createEl('p',{cls:'writer-history-summary',text:snapshots.length+writerUi(' versões · histórico local do Basic',' versions · local Basic history')});
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi("Salvar versão agora","Save version now")).setCta().onClick(async()=>{
     await this.create(file,writerUi('Manual','Manual'));await render();
    })).addButton(b=>b.setButtonText(writerUi("Nomear versão","Name a version")).onClick(()=>{
@@ -260,7 +265,9 @@ class WriterSnapshots{
     card.createEl('strong',{text:entry.name});
     card.createEl('small',{text:new Date(entry.at).toLocaleString()+' · '+entry.size+writerUi(' caracteres · ',' characters · ')+(entry.attachments?.length||0)+writerUi(' anexo(s)',' attachment(s)')});
     const actions=card.createDiv({cls:'writer-history-actions'});
-    actions.createEl('button',{text:writerUi('Comparar','Compare')}).addEventListener('click',()=>this.showDiff(file,entry));
+    actions.createEl('button',{text:writerUi('Comparar','Compare')}).addEventListener('click',()=>{
+     this.showDiff(file,entry,()=>historyOpen&&generation===renderGeneration).catch(error=>new Notice(error.message));
+    });
     actions.createEl('button',{text:writerUi('Restaurar','Restore')}).addEventListener('click',()=>{
      const confirm=new Modal(this.plugin.app);let withAttachments=false;
      confirm.onOpen=()=>{confirm.setTitle(writerUi("Restaurar versão","Restore version"));
@@ -283,19 +290,33 @@ class WriterSnapshots{
     });
    }
   };
-  modal.onOpen=()=>{render().catch(e=>new Notice(writerUi("Histórico: ","History: ")+e.message));};modal.open();
+  modal.onOpen=()=>{
+   historyOpen=true;
+   modal.setTitle(writerUi("Histórico de versões · ","Version history · ")+file.basename);
+   render().catch(e=>{if(historyOpen)new Notice(writerUi("Histórico: ","History: ")+e.message);});
+  };
+  modal.onClose=()=>{historyOpen=false;};
+  modal.open();
  }
- async showDiff(file,entry){
+ async showDiff(file,entry,canOpen=()=>true){
   const [oldText,current]=await Promise.all([this.read(file,entry),writerCurrentText(this.plugin,file)]);
+  if(!canOpen())return;
   const diff=writerDiffLines(oldText,current);
-  const modal=new Modal(this.plugin.app);modal.onOpen=()=>{
+  const modal=new Modal(this.plugin.app);
+  modal.modalEl?.addClass?.('writer-legacy-history-modal');
+  modal.onOpen=()=>{
    modal.setTitle(writerUi('Comparar · ','Compare · ')+entry.name);
-   modal.contentEl.createEl('p',{text:diff.added+writerUi(' linha(s) adicionada(s) · ',' added line(s) · ')+diff.removed+writerUi(' removida(s)',' removed')});
+   modal.contentEl.createEl('p',{cls:'writer-history-summary',text:diff.added+writerUi(' linha(s) adicionada(s) · ',' added line(s) · ')+diff.removed+writerUi(' removida(s)',' removed')});
    const box=modal.contentEl.createDiv({cls:'writer-history-diff'});
    if(diff.truncated){
     box.createEl('p',{text:writerUi("Nota longa demais para diferença linha a linha. Comparação lado a lado disponível.","Note too long for line-by-line diff. Side-by-side comparison is available.")});
+    box.addClass('writer-history-compare');
     for(const [title,contents] of [[writerUi('Versão salva','Saved version'),oldText],[writerUi('Nota atual','Current note'),current]]){
-     box.createEl('strong',{text:title});const area=box.createEl('textarea');area.readOnly=true;area.value=contents;
+     const preview=box.createEl('label',{cls:'writer-history-preview'});
+     preview.createEl('strong',{text:title});
+     const area=preview.createEl('textarea');
+     area.readOnly=true;
+     area.value=contents;
     }
    }else{
     let unchanged=0;

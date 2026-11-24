@@ -80,7 +80,7 @@ function writerV7StudioLinkedTargets(app,entry){
  return [...found];
 }
 async function writerV7StudioCreate(view,project,template){
- new TextPrompt(view.app,writerUi('Novo registro: ','New record: ')+writerUi(template.pt||template.name,template.en||template.name),
+ const prompt=new TextPrompt(view.app,writerUi('Novo registro: ','New record: ')+writerUi(template.pt||template.name,template.en||template.name),
  async raw=>{
   const name=clean(raw);
   if(!name)return;
@@ -94,7 +94,9 @@ async function writerV7StudioCreate(view,project,template){
    const file=await view.app.vault.create(target,content);
    view.openFile(file);await view.render();
   }catch(e){new Notice(String(e.message||e));}
- }).open();
+ });
+ prompt.modalEl.addClass('writer-v7-legacy-template-modal');
+ prompt.open();
 }
 function writerV7StudioOpenSheet(view,entry,template){
  const modal=new Modal(view.app),fm=entry.cache?.frontmatter||{};
@@ -102,6 +104,7 @@ function writerV7StudioOpenSheet(view,entry,template){
  const initial=Object.fromEntries(keys.map(k=>[k,Array.isArray(fm[k])?fm[k].join(', '):String(fm[k]??'')]));
  const values={...initial};
  modal.onOpen=()=>{
+  modal.modalEl.addClass('writer-v7-legacy-template-modal');
   modal.contentEl.addClass('writer-v7-studio-sheet');
   modal.setTitle(writerUi('Ficha: ','Sheet: ')+entry.title);
   modal.contentEl.createEl('p',{text:writerUi('Edita apenas os campos exibidos; preserva as demais propriedades e o texto.','Edits only listed properties and preserves all others and the note body.')});
@@ -109,19 +112,27 @@ function writerV7StudioOpenSheet(view,entry,template){
    const label=writerUi(...(WRITER_V7_FIELD_LABELS[key]||[key,key]));
    const set=new Setting(modal.contentEl).setName(label);
    if(key==='summary'||key==='rules'||key==='traditions')set.addTextArea(t=>{
-    t.inputEl.rows=3;t.setValue(values[key]).onChange(v=>values[key]=v.slice(0,3000));
+    t.inputEl.rows=3;
+    t.inputEl.setAttribute('aria-label',label);
+    t.setValue(values[key]).onChange(v=>values[key]=v.slice(0,3000));
    });
-   else set.addText(t=>t.setValue(values[key]).onChange(v=>values[key]=v.slice(0,1000)));
+   else set.addText(t=>{
+    t.inputEl.setAttribute('aria-label',label);
+    t.setValue(values[key]).onChange(v=>values[key]=v.slice(0,1000));
+   });
   }
   const records=writerV7ProjectNotes(view,view.currentProject).filter(r=>r.path!==entry.path);
   const candidates=records.slice(0,300);
   let related='';
-  new Setting(modal.contentEl).setName(writerUi('Vincular outra nota','Link another note')).addDropdown(d=>{
+  const relationLabel=writerUi('Vincular outra nota','Link another note');
+  new Setting(modal.contentEl).setName(relationLabel).addDropdown(d=>{
+   d.selectEl.setAttribute('aria-label',relationLabel);
    d.addOption('',writerUi('Selecionar nota…','Select note…'));
    for(const record of candidates)d.addOption(record.path,record.title);
-   d.setValue('').onChange(v=>related=v);
+   d.setValue('').onChange(v=>{related=v;d.selectEl.title=v;});
   });
-  new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+  new Setting(modal.contentEl).setClass('writer-v7-studio-modal-actions')
+   .addButton(b=>b.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
    .addButton(b=>b.setCta().setButtonText(writerUi('Salvar ficha','Save sheet')).onClick(async()=>{
     try{
      await view.app.fileManager.processFrontMatter(entry.file,data=>{
@@ -153,7 +164,7 @@ function writerV7StudioOpenSheet(view,entry,template){
    }));
  };modal.open();
 }
-function writerV7StudioAugmentEntry(view,card,record,templates,allRecords){
+function writerV7StudioAugmentEntry(view,card,actions,record,templates,allRecords){
  const template=writerV7StudioKind(record,templates);
  const fm=record.cache?.frontmatter||{};
  const src=writerV7StudioImage(view.app,record);
@@ -163,8 +174,8 @@ function writerV7StudioAugmentEntry(view,card,record,templates,allRecords){
  }
  const summary=String(fm.summary||fm.description||'').trim();
  if(summary)card.createEl('p',{cls:'writer-v7-studio-summary',text:summary.slice(0,380)});
- const bar=card.createDiv({cls:'writer-v7-studio-card-actions'});
- bar.createEl('button',{text:writerUi('Ficha','Sheet')}).addEventListener('click',()=>writerV7StudioOpenSheet(view,record,template));
+ actions.createEl('button',{text:writerUi('Ficha','Sheet'),attr:{type:'button','aria-label':writerUi('Editar ficha: ','Edit sheet: ')+record.title}})
+  .addEventListener('click',()=>writerV7StudioOpenSheet(view,record,template));
  const linked=new Set(writerV7StudioLinkedTargets(view.app,record));
  for(const target of writerV7Connections(view.app,allRecords,record))linked.add(target.file.path);
  if(linked.size){
@@ -172,7 +183,7 @@ function writerV7StudioAugmentEntry(view,card,record,templates,allRecords){
   details.createEl('summary',{text:linked.size+' '+writerUi('conexões','connections')});
   for(const path of [...linked].slice(0,18)){
    const target=allRecords.find(r=>r.path===path);
-   if(target)details.createEl('button',{text:target.title}).addEventListener('click',()=>view.openFile(target.file));
+   if(target)details.createEl('button',{text:target.title,attr:{type:'button',title:target.path}}).addEventListener('click',()=>view.openFile(target.file));
   }
  }
 }
@@ -413,35 +424,71 @@ class WriterV7StoryStudio{
    if(cfg[key]===undefined)cfg[key]=true;
    new Setting(panel).setName(writerUi(pt,en)).addToggle(t=>t.setValue(cfg[key]!==false).onChange(async v=>{cfg[key]=v;await this.plugin.saveSettings();}));
   }
-  panel.createEl('h4',{text:writerUi('Modelos próprios de fichas','Custom sheet templates')});
-  panel.createEl('p',{text:writerUi('Modelos personalizados acrescentam categorias e campos ao mesmo Compêndio. Não alteram fichas existentes.','Custom templates add categories and fields to the same Compendium without modifying existing sheets.')});
-  const templates=writerV7StudioTemplates(this.plugin);
-  for(const tpl of templates.filter(t=>!WRITER_V7_STUDIO_TEMPLATES.some(x=>x.id===t.id))){
-   const row=new Setting(panel).setName(tpl.name||tpl.id).setDesc('#'+tpl.tag+' · '+tpl.fields.join(', '));
-   row.addButton(b=>b.setButtonText(writerUi('Remover','Remove')).onClick(async()=>{
-    this.plugin.settings.v7StudioTemplates=this.plugin.settings.v7StudioTemplates.filter(x=>x.id!==tpl.id);
-    await this.plugin.saveSettings();
-    new Notice(writerUi('Modelo removido; fichas existentes foram preservadas.','Template removed; existing sheets were preserved.'));
-   }));
-  }
-  new Setting(panel).setName(writerUi('Novo modelo','New template')).addButton(b=>b.setButtonText(writerUi('Criar modelo','Create template')).onClick(()=>{
+  const section=panel.createDiv({cls:'writer-v7-studio-templates'});
+  section.createEl('h4',{text:writerUi('Modelos próprios de fichas','Custom sheet templates')});
+  section.createEl('p',{text:writerUi('Modelos personalizados acrescentam categorias e campos ao mesmo Compêndio. Não alteram fichas existentes.','Custom templates add categories and fields to the same Compendium without modifying existing sheets.')});
+  const list=section.createDiv({cls:'writer-v7-studio-template-list'});
+  let createButton;
+  const renderTemplates=()=>{
+   list.empty();
+   const templates=writerV7StudioTemplates(this.plugin).filter(t=>!WRITER_V7_STUDIO_TEMPLATES.some(x=>x.id===t.id));
+   for(const tpl of templates){
+    const name=tpl.name||tpl.id;
+    const row=new Setting(list).setName(name).setDesc(['#'+tpl.tag,tpl.fields.join(', ')].filter(Boolean).join(' · '));
+    row.addButton(b=>{
+     b.buttonEl.setAttribute('aria-label',writerUi('Remover modelo: ','Remove template: ')+name);
+     b.setButtonText(writerUi('Remover','Remove')).onClick(async()=>{
+      this.plugin.settings.v7StudioTemplates=this.plugin.settings.v7StudioTemplates.filter(x=>x.id!==tpl.id);
+      renderTemplates();
+      createButton?.focus();
+      await this.plugin.saveSettings();
+      new Notice(writerUi('Modelo removido; fichas existentes foram preservadas.','Template removed; existing sheets were preserved.'));
+     });
+    });
+   }
+  };
+  const openTemplateEditor=()=>{
    const modal=new Modal(this.plugin.app),draft={name:'',tag:'',fields:'summary, cover'};
    modal.onOpen=()=>{
+    modal.modalEl.addClass('writer-v7-legacy-template-modal');
+    modal.contentEl.addClass('writer-v7-studio-template-editor');
     modal.setTitle(writerUi('Modelo de ficha','Sheet template'));
-    for(const [key,pt,en] of [['name','Nome','Name'],['tag','Tag principal','Main tag'],['fields','Campos separados por vírgulas','Comma-separated fields']])
-     new Setting(modal.contentEl).setName(writerUi(pt,en)).addText(t=>t.setValue(draft[key]).onChange(x=>draft[key]=x));
-    new Setting(modal.contentEl).addButton(x=>x.setButtonText(writerUi('Salvar','Save')).setCta().onClick(async()=>{
-     const name=draft.name.trim().slice(0,80),id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-     const tag=writerV7Tag(draft.tag);
-     const fields=draft.fields.split(',').map(x=>x.trim()).filter(x=>/^[a-zA-Z][\w-]{0,50}$/.test(x)).slice(0,15);
-     if(!name||!id||!tag||writerV7StudioTemplates(this.plugin).some(x=>x.id===id))
-      return void new Notice(writerUi('Nome ou tag inválida, ou modelo já existente.','Invalid name/tag or template already exists.'));
-     if(!Array.isArray(this.plugin.settings.v7StudioTemplates))this.plugin.settings.v7StudioTemplates=[];
-     this.plugin.settings.v7StudioTemplates.push({id,name,tag:tag.slice(1),fields});
-     await this.plugin.saveSettings();modal.close();
-     new Notice(writerUi('Modelo criado.','Template created.'));
-    }));
-   };modal.open();
-  }));
+    for(const [key,pt,en] of [['name','Nome','Name'],['tag','Tag principal','Main tag'],['fields','Campos separados por vírgulas','Comma-separated fields']]){
+     const label=writerUi(pt,en);
+     const row=new Setting(modal.contentEl).setName(label);
+     if(key==='fields')row.addTextArea(t=>{
+      t.inputEl.rows=2;
+      t.inputEl.setAttribute('aria-label',label);
+      t.setValue(draft[key]).onChange(x=>draft[key]=x);
+     });
+     else row.addText(t=>{
+      t.inputEl.setAttribute('aria-label',label);
+      if(key==='name')t.inputEl.maxLength=80;
+      t.setValue(draft[key]).onChange(x=>draft[key]=x);
+     });
+    }
+    new Setting(modal.contentEl).setClass('writer-v7-studio-modal-actions')
+     .addButton(x=>x.setButtonText(writerUi('Cancelar','Cancel')).onClick(()=>modal.close()))
+     .addButton(x=>x.setButtonText(writerUi('Salvar','Save')).setCta().onClick(async()=>{
+      const name=draft.name.trim().slice(0,80);
+      const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-/,'').slice(0,41).replace(/-$/,'');
+      const tag=writerV7Tag(draft.tag);
+      const fields=draft.fields.split(',').map(x=>x.trim()).filter(x=>/^[a-zA-Z][\w-]{0,50}$/.test(x)).slice(0,15);
+      if(!/^[a-z][a-z0-9-]{0,40}$/.test(id)||!tag||writerV7StudioTemplates(this.plugin).some(x=>x.id===id))
+       return void new Notice(writerUi('Nome ou tag inválida, ou modelo já existente.','Invalid name/tag or template already exists.'));
+      if(!Array.isArray(this.plugin.settings.v7StudioTemplates))this.plugin.settings.v7StudioTemplates=[];
+      this.plugin.settings.v7StudioTemplates.push({id,name,tag:tag.slice(1),fields});
+      await this.plugin.saveSettings();modal.close();
+      renderTemplates();
+      new Notice(writerUi('Modelo criado.','Template created.'));
+     }));
+   };
+   modal.open();
+  };
+  new Setting(section).setName(writerUi('Novo modelo','New template')).addButton(b=>{
+   createButton=b.buttonEl;
+   b.setButtonText(writerUi('Criar modelo','Create template')).onClick(openTemplateEditor);
+  });
+  renderTemplates();
  }
 }

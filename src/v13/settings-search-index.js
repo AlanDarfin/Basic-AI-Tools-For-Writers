@@ -2116,6 +2116,11 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
  },
  {
   "id": "templates",
+  "titlePt": "Tipo de correspondência",
+  "titleEn": "Match method"
+ },
+ {
+  "id": "templates",
   "titlePt": "Regras de correspondência",
   "titleEn": "Original matching rules",
   "descriptionPt": "A primeira regra correspondente aplica um modelo. Sem regras, permanece a busca pelo nome exato.",

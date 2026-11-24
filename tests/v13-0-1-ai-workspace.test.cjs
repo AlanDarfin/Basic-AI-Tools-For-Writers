@@ -39,5 +39,6 @@ test('provider use-case shortcuts never replace key or model maps',()=>{
  assert.match(source,/\['provider',label\(/);
  assert.match(source,/\['translationProvider',label\(/);
  assert.match(source,/\['assistantProvider',label\(/);
- assert.match(source,/cfg\[field\]=id;await save\(\);render\(\)/);
+ assert.match(source,/cfg\[field\]=id;refreshUsage\(\);await save\(\)/);
+ assert.match(source,/button\.setAttribute\('aria-pressed',String\(active\)\)/);
 });

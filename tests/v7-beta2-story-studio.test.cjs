@@ -39,6 +39,52 @@ test('builtin templates add worldbuilding types without duplicate Compendium sto
  const fields=api.writerV7StudioFields(entry,t[0]);
  assert.ok(fields.some(x=>x.key==='summary'&&x.text==='An archivist'));
 });
+test('a long custom template name is preserved and the saved template remains usable',async()=>{
+ const buttons=new Map(),inputs=new Map(),notices=[];
+ const panel={createEl(){},createDiv(){return this;},addClass(){},empty(){}};
+ class Setting{
+  setName(name){this.name=name;return this;}
+  setDesc(){return this;}
+  setClass(){return this;}
+  addToggle(){return this;}
+  addText(build){
+   const label=this.name;
+   build({inputEl:{setAttribute(){}},setValue(){return this;},onChange(fn){inputs.set(label,fn);return this;}});
+   return this;
+  }
+  addTextArea(build){return this.addText(build);}
+  addButton(build){
+   build({buttonEl:{setAttribute(){},focus(){}},setButtonText(text){this.text=text;return this;},
+    setCta(){return this;},onClick(fn){buttons.set(this.text,fn);return this;}});
+   return this;
+  }
+ }
+ class Modal{
+  constructor(){this.modalEl=panel;this.contentEl=panel;}
+  setTitle(){}
+  open(){this.onOpen();}
+  close(){}
+ }
+ const {WriterV7StoryStudio,writerV7StudioTemplates}=vm.runInNewContext(studio+'\n({WriterV7StoryStudio,writerV7StudioTemplates})',{
+  ...context,Setting,Modal,Notice:class{constructor(text){notices.push(text);}},writerUi:(_pt,en)=>en
+ });
+ let saves=0;
+ const plugin={settings:{},saveSettings:async()=>{saves++;}};
+ new WriterV7StoryStudio(plugin).renderSettings(panel);
+ buttons.get('Create template')();
+ const name='The long template name for a worldbuilding archive and its original site';
+ inputs.get('Name')(name);
+ inputs.get('Main tag')('lore');
+ inputs.get('Comma-separated fields')('summary, rules');
+ await buttons.get('Save')();
+ assert.equal(saves,1);
+ const active=writerV7StudioTemplates(plugin).find(template=>template.tag==='lore');
+ assert.equal(active?.name,name);
+ assert.deepEqual(Array.from(active.fields),['summary','rules']);
+ assert.match(active.id,/^[a-z][a-z0-9-]{0,40}$/);
+ assert.deepEqual(notices,['Template created.']);
+ assert.ok(buttons.has('Remove'));
+});
 test('portrait display is limited to vault image files (no arbitrary remote URLs)',()=>{
  const entry={path:'World/Alice.md',cache:caches.get('World/Alice.md')};
  assert.equal(api.writerV7StudioImage(app,entry),'app://World/hero.png');

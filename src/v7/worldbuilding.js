@@ -195,16 +195,20 @@ function writerV7RenderCompendium(view,panel,project){
  heading.createEl('h3',{text:writerUi('Compêndio do universo','World compendium')});
  heading.createEl('p',{text:writerUi('Pastas + tags do Obsidian, inclusive tags herdadas das notas de pasta.','Obsidian folders + tags, including tags inherited from folder notes.')});
  const actions=root.createDiv({cls:'writer-v7-toolbar'});
- actions.createEl('button',{text:writerUi('+ Nota','+ Note')}).addEventListener('click',()=>view.promptNote(view.notesRoot(project)));
- actions.createEl('button',{text:writerUi('+ Pasta','+ Folder')}).addEventListener('click',()=>view.promptNotesFolder(view.notesRoot(project)));
+ actions.createEl('button',{text:writerUi('+ Nota','+ Note'),attr:{type:'button'}}).addEventListener('click',()=>view.promptNote(view.notesRoot(project)));
+ actions.createEl('button',{text:writerUi('+ Pasta','+ Folder'),attr:{type:'button'}}).addEventListener('click',()=>view.promptNotesFolder(view.notesRoot(project)));
  const templates=writerV7StudioTemplates(view.plugin);
- const templatesSelect=actions.createEl('select',{attr:{'aria-label':writerUi('Tipo de novo registro','New entry type')}});
- for(const tpl of templates){const o=templatesSelect.createEl('option',{text:writerUi(tpl.pt||tpl.name,tpl.en||tpl.name)});o.value=tpl.id;}
- actions.createEl('button',{text:writerUi('+ Registro','+ Entry')}).addEventListener('click',()=>{
+ const create=actions.createDiv({cls:'writer-v7-record-create'});
+ const templatesSelect=create.createEl('select',{attr:{'aria-label':writerUi('Tipo de novo registro','New entry type')}});
+ for(const tpl of templates)templatesSelect.createEl('option',{text:writerUi(tpl.pt||tpl.name||tpl.id,tpl.en||tpl.name||tpl.id),value:tpl.id});
+ const showTemplateName=()=>{templatesSelect.title=templatesSelect.selectedOptions[0]?.textContent||'';};
+ showTemplateName();
+ templatesSelect.addEventListener('change',showTemplateName);
+ create.createEl('button',{text:writerUi('+ Registro','+ Entry'),attr:{type:'button'}}).addEventListener('click',()=>{
   const selected=templates.find(x=>x.id===templatesSelect.value);
   if(selected)writerV7StudioCreate(view,project,selected);
  });
- actions.createEl('button',{text:writerUi('Pastas','Folders')}).addEventListener('click',()=>{
+ actions.createEl('button',{text:writerUi('Pastas','Folders'),attr:{type:'button'}}).addEventListener('click',()=>{
   const tree=root.querySelector('.writer-v7-compendium-folders');
   if(tree)tree.open=!tree.open;
  });
@@ -215,37 +219,36 @@ function writerV7RenderCompendium(view,panel,project){
  tagPicker.createEl('option',{text:writerUi('Todas as tags','All tags'),value:''});
  for(const tag of allTags){const opt=tagPicker.createEl('option',{text:tag});opt.value=tag;}
  const kind=controls.createEl('select',{attr:{'aria-label':writerUi('Tipo de registro','Record type')}});
- const allTypes=[{id:'',pt:'Todos',en:'All'},...templates.map(t=>({id:t.id,pt:t.pt||t.name,en:t.en||t.name})),{id:'note',pt:'Outros',en:'Other'}];
+ const allTypes=[{id:'',pt:'Todos',en:'All'},...templates.map(t=>({id:t.id,pt:t.pt||t.name||t.id,en:t.en||t.name||t.id})),{id:'note',pt:'Outros',en:'Other'}];
  for(const category of allTypes){
   const o=kind.createEl('option',{text:writerUi(category.pt,category.en)});o.value=category.id;
  }
+ const stat=root.createEl('p',{cls:'writer-v7-compendium-count',attr:{role:'status'}});
  const results=root.createDiv({cls:'writer-v7-compendium-results'});
  const update=()=>{
   results.empty();
   const q=search.value.trim().toLocaleLowerCase(),tag=tagPicker.value,type=kind.value;
   const shown=records.filter(r=>(!tag||r.tags.includes(tag))&&(!type||(writerV7StudioKind(r,templates)?.id||'note')===type)&&
    (!q||(r.title+' '+r.folder+' '+r.tags.join(' ')).toLocaleLowerCase().includes(q))).slice(0,500);
-  const stat=root.querySelector('.writer-v7-compendium-count');
-  if(stat)stat.setText(shown.length+'/'+records.length+' '+writerUi('registros','entries'));
+  stat.setText(shown.length+'/'+records.length+' '+writerUi('registros','entries'));
   if(!shown.length){results.createEl('p',{cls:'writer-v7-empty',text:writerUi('Nenhuma nota corresponde aos filtros.','No notes match these filters.')});return;}
   for(const r of shown){
    const card=results.createDiv({cls:'writer-v7-entry'});
    const head=card.createDiv({cls:'writer-v7-entry-head'});
-   head.createEl('button',{cls:'writer-v7-entry-title',text:(r.folderNote?'▣ ':'')+r.title})
+   head.createEl('button',{cls:'writer-v7-entry-title',text:(r.folderNote?'▣ ':'')+r.title,attr:{type:'button',title:r.path}})
     .addEventListener('click',()=>view.openFile(r.file));
+   const entryActions=head.createDiv({cls:'writer-v7-studio-card-actions'});
+   entryActions.createEl('button',{cls:'writer-v7-mini-action',text:'+ #',attr:{type:'button','aria-label':writerUi('Adicionar tag a ','Add tag to ')+r.title}})
+    .addEventListener('click',()=>writerV7TagPrompt(view,r.file));
    const metadata=card.createDiv({cls:'writer-v7-entry-meta'});
    metadata.createSpan({text:r.folder,cls:'writer-v7-path'});
    for(const tag of r.tags.slice(0,12)){
     metadata.createEl('button',{cls:'writer-v7-tag',text:tag,attr:{type:'button','aria-label':writerUi('Filtrar por ','Filter by ')+tag}})
      .addEventListener('click',()=>{tagPicker.value=tag;update();});
    }
-   card.createEl('button',{cls:'writer-v7-mini-action',text:'+ #',attr:{'aria-label':writerUi('Adicionar tag','Add tag')}})
-    .addEventListener('click',()=>writerV7TagPrompt(view,r.file));
-   writerV7StudioAugmentEntry(view,card,r,templates,records);
-
+   writerV7StudioAugmentEntry(view,card,entryActions,r,templates,records);
   }
  };
- const stat=root.createEl('p',{cls:'writer-v7-compendium-count'});
  search.addEventListener('input',update);tagPicker.addEventListener('change',update);kind.addEventListener('change',update);
  update();
  const folders=root.createEl('details',{cls:'writer-v7-compendium-folders'});

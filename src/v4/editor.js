@@ -140,9 +140,9 @@ function writerV4StripFence(text){
   const m=/^```(?:markdown|md|text)?\r?\n([\s\S]*?)\r?\n```$/.exec(value);
   return m?m[1]:value;
 }
-async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false}={}){
+async function writerV4OpenDiff(plugin,{task=null,autoGenerate=false,view}={}){
   if(plugin.settings.writerV4?.enabled===false)return new Notice(writerUi('Ative a revisão seletiva nas configurações.','Enable selective review in settings.'));
-  const view=plugin.app.workspace.getActiveViewOfType(MarkdownView)||plugin.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(view=>view?.file?.extension==='md'&&view?.editor?.getSelection?.()?.trim());
+  if(view===undefined)view=plugin.app.workspace.getActiveViewOfType(MarkdownView)||plugin.app.workspace.getLeavesOfType('markdown').map(leaf=>leaf.view).find(view=>view?.file?.extension==='md'&&view?.editor?.getSelection?.()?.trim());
   if(!view?.file||!view?.editor||view.file.extension!=='md')return new Notice(writerUi('Abra uma nota Markdown no editor.','Open a Markdown note in the editor.'));
   const editor=view.editor,original=editor.getSelection(),max=plugin.settings.writerV4.maxSelectedChars||2800;
   if(!original.trim())return new Notice(writerUi('Selecione o trecho que deseja revisar.','Select a passage to review.'));

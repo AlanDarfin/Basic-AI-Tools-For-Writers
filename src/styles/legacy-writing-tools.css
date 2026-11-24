@@ -1,0 +1,198 @@
+/* Bring the original writing tools and their previews into Basic's panel layout. */
+.writer-tools-v3{
+ container:basic-writing-tools / inline-size;
+}
+.writer-tools-v3 .writer-tools-v3-header,
+.writer-tools-v3 .writer-tools-v3-panel{
+ display:flex;
+ flex-direction:column;
+ gap:var(--basic-panel-section-gap);
+ min-width:0;
+}
+.writer-tools-v3 .writer-tools-v3-header{
+ gap:var(--basic-panel-control-gap);
+}
+.writer-tools-v3 .writer-tools-v3-header h3,
+.writer-tools-v3 .writer-tools-v3-header .writer-tools-note-path,
+.writer-tools-v3 .writer-tools-v3-panel :is(h4,h5,p){
+ margin:0;
+}
+.writer-tools-v3 .writer-tools-note-path{
+ color:var(--text-muted);
+ overflow-wrap:anywhere;
+}
+.writer-tools-v3 .writer-tools-note-path[title]{
+ overflow:hidden;
+ text-overflow:ellipsis;
+ white-space:nowrap;
+}
+body .writer-tools-v3 .writer-tools-v3-tabs.writer-sidebar-tabs{
+ gap:var(--basic-panel-control-gap);
+ margin-block:var(--basic-panel-section-gap);
+ padding:2px 0 var(--basic-panel-control-gap);
+ scroll-behavior:auto;
+ scroll-snap-type:none;
+}
+body .writer-tools-v3 .writer-tools-v3-tabs.writer-sidebar-tabs>button{
+ display:inline-flex;
+ align-items:center;
+ gap:var(--basic-panel-control-gap);
+ min-width:max-content;
+ border-bottom:2px solid transparent;
+ border-radius:var(--radius-s) var(--radius-s) 0 0;
+ box-shadow:none;
+}
+body .writer-tools-v3 .writer-tools-v3-tabs.writer-sidebar-tabs>button.is-active{
+ border-bottom-color:var(--interactive-accent);
+ background:var(--background-modifier-hover);
+}
+.writer-tools-v3 :is(.writer-tools-v3-tabs,.writer-tools-v3-panel)[hidden],
+.writer-tools-v3 .writer-tools-v3-preview[hidden]{
+ display:none;
+}
+.writer-tools-v3 .writer-tools-v3-tabs>button:focus-visible{
+ outline-offset:-2px;
+}
+.writer-tools-v3 .writer-tools-v3-panel:focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:-2px;
+}
+@container basic-writing-tools (max-width:310px){
+ .writer-tools-v3 .writer-tools-v3-tabs>button:not(.is-active) .writer-sidebar-tab-label{
+  display:none;
+ }
+ body .writer-tools-v3 .writer-tools-v3-tabs.writer-sidebar-tabs>button{
+  min-width:var(--basic-panel-control-size);
+  justify-content:center;
+ }
+}
+.writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer){
+ display:flex;
+ flex-wrap:wrap;
+ gap:var(--basic-panel-control-gap);
+ margin:0;
+}
+.writer-tools-v3 .writer-tools-footer{
+ margin-block-start:var(--basic-panel-section-gap);
+ padding-block-start:var(--basic-panel-section-gap);
+ border-top:1px solid var(--background-modifier-border);
+}
+.writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button{
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ gap:var(--basic-panel-control-gap);
+ flex:0 1 auto;
+ min-width:0;
+ min-height:var(--basic-panel-control-size);
+ height:auto;
+ max-width:100%;
+ padding:var(--basic-panel-control-gap) var(--basic-panel-inset);
+ overflow-wrap:anywhere;
+ text-align:center;
+}
+.writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button .writer-v901-nav-icon{
+ flex:0 0 auto;
+}
+.writer-tools-v3 :is(.writer-tools-v3-actions,.writer-tools-footer)>button:not(.mod-cta){
+ min-height:var(--basic-panel-control-size);
+}
+.writer-tools-v3 :is(.writer-extras-card,.writer-tools-v3-preview){
+ display:flex;
+ flex-direction:column;
+ gap:var(--basic-panel-control-gap);
+ min-width:0;
+ padding:var(--basic-panel-inset);
+ border:1px solid var(--background-modifier-border);
+ border-radius:var(--radius-m);
+ background:var(--background-secondary);
+ overflow-wrap:anywhere;
+}
+.writer-tools-v3 .writer-extras-card-head{
+ gap:var(--basic-panel-control-gap);
+}
+.writer-tools-v3 .writer-variant-current{
+ padding:0;
+ margin:0;
+}
+.writer-tools-v3 .writer-extras-favorites:empty{
+ display:none;
+}
+.writer-tools-v3 .writer-extras-favorites>button{
+ width:var(--basic-panel-control-size);
+ height:var(--basic-panel-control-size);
+ min-height:var(--basic-panel-control-size);
+}
+
+:is(.writer-legacy-variants-modal,.writer-legacy-history-modal,.writer-complement-manual,.writer-v4-diff-modal){
+ --basic-legacy-control-size:var(--basic-panel-input-target,32px);
+}
+:is(.writer-legacy-variants-modal,.writer-legacy-history-modal) .modal-content{
+ overflow-wrap:anywhere;
+}
+:is(.writer-legacy-variants-modal,.writer-legacy-history-modal) .modal-content>p{
+ margin-block:0 8px;
+}
+.writer-legacy-variants-modal .setting-item-control>textarea{
+ width:100%;
+ min-width:0;
+}
+.writer-legacy-variants-modal .writer-variant-option{
+ box-sizing:border-box;
+ margin-block:4px;
+ padding:8px;
+}
+.writer-legacy-variants-modal .writer-variant-option.is-selected{
+ border-color:var(--interactive-accent);
+}
+.writer-legacy-variants-modal .writer-variant-option-header{
+ flex-wrap:wrap;
+ gap:4px;
+ margin-block-end:4px;
+}
+.writer-legacy-variants-modal .writer-variant-textarea{
+ display:block;
+ min-width:0;
+}
+.writer-legacy-history-modal .writer-history-entry{
+ gap:4px;
+ padding:8px;
+}
+.writer-legacy-history-modal .writer-history-summary{
+ color:var(--text-muted);
+}
+.writer-legacy-history-modal .writer-history-compare{
+ display:grid;
+ grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));
+ gap:8px;
+}
+.writer-history-compare>p{
+ grid-column:1/-1;
+ margin:0;
+}
+.writer-history-preview{
+ display:grid;
+ gap:4px;
+ min-width:0;
+}
+.writer-legacy-history-modal .writer-history-preview>textarea{
+ width:100%;
+ min-height:8rem;
+ resize:vertical;
+}
+:is(.writer-legacy-history-modal,.writer-legacy-variants-modal,.writer-v4-diff-modal)
+ :is(.writer-history-actions,.writer-variant-actions,.writer-v4-actions){
+ gap:4px;
+ margin-block:8px 0;
+}
+:is(.writer-legacy-history-modal,.writer-legacy-variants-modal,.writer-v4-diff-modal)
+ :is(.writer-history-actions,.writer-variant-actions,.writer-variant-option-header,.writer-v4-actions,.setting-item-control)>button,
+.writer-complement-manual>button{
+ min-height:var(--basic-legacy-control-size);
+ padding-block:4px;
+}
+:is(.writer-legacy-history-modal,.writer-legacy-variants-modal,.writer-complement-manual)
+ :is(button,textarea):focus-visible{
+ outline:2px solid var(--interactive-accent);
+ outline-offset:2px;
+}

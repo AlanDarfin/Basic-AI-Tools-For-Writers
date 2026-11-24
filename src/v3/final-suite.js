@@ -678,38 +678,63 @@ function writerRenderFinalSettings(panel,plugin,section){
   bool('caseSensitive','Case-sensitive title matching');
   new Setting(panel).setName(translateLabel('Original matching rules')).setDesc(translateLabel('The first matching rule applies one template. When no rules exist, the previous exact-name lookup remains available.')).setHeading();
   const container=panel.createDiv({cls:'writer-template-matcher-list'});
-  const templates=plugin.app.vault.getMarkdownFiles().filter(file=>{
-   const folder=String(cfg.folder||'Templates').replace(/^\/+|\/+$/g,'');
-   return file.path.startsWith(folder+'/');
-  }).sort((a,b)=>a.path.localeCompare(b.path));
-  const render=()=>{
+  let addButton;
+  const render=(focusIndex=-1,focusRemove=false)=>{
    container.empty();
    const matchers=cfg.matchers||(cfg.matchers=[]);
+   if(!matchers.length){if(focusIndex>=0)addButton?.focus();return;}
+   const folder=String(cfg.folder||'Templates').replace(/^\/+|\/+$/g,'');
+   const paths=plugin.app.vault.getMarkdownFiles().map(file=>file.path)
+    .filter(path=>path.startsWith(folder+'/')).sort((a,b)=>a.localeCompare(b));
+   const available=new Set(paths);
+   let focusTarget;
    for(let index=0;index<matchers.length;index++){
     const rule=matchers[index];
-    const row=new Setting(container).setClass('writer-template-matcher');
-    row.setName(translateLabel('Rule ')+(index+1));
-    row.addDropdown(d=>{
-     for(const [key,label] of [['prefix','Starts with'],['contains','Contains'],['suffix','Ends with']])d.addOption(key,translateLabel(label));
-     d.setValue(rule.matchMethod||'prefix').onChange(async value=>{rule.matchMethod=value;await plugin.saveSettings();});
+    const row=container.createEl('fieldset',{cls:'writer-template-matcher'});
+    row.createEl('legend',{text:translateLabel('Rule ')+(index+1)});
+    const controls=row.createDiv({cls:'writer-template-matcher-controls'});
+    const method=controls.createEl('select',{cls:'dropdown',attr:{'aria-label':writerUi('Tipo de correspondência','Match method')}});
+    for(const [key,label] of [['prefix','Starts with'],['contains','Contains'],['suffix','Ends with']])
+     method.createEl('option',{text:translateLabel(label),value:key});
+    method.value=rule.matchMethod||'prefix';
+    method.addEventListener('change',async()=>{rule.matchMethod=method.value;await plugin.saveSettings();});
+    const fragmentLabel=translateLabel('Name fragment');
+    const fragment=controls.createEl('input',{attr:{type:'text',placeholder:fragmentLabel,'aria-label':fragmentLabel}});
+    fragment.value=rule.matchString||'';
+    fragment.addEventListener('input',async()=>{rule.matchString=fragment.value;await plugin.saveSettings();});
+    const templateLabel=translateLabel('Select template');
+    const template=controls.createEl('select',{cls:'dropdown writer-template-matcher-path',attr:{'aria-label':templateLabel}});
+    template.createEl('option',{text:templateLabel,value:''});
+    for(const path of paths)template.createEl('option',{text:path,value:path});
+    if(rule.templatePath&&!available.has(rule.templatePath))
+     template.createEl('option',{text:rule.templatePath+writerUi(' (ausente)',' (missing)'),value:rule.templatePath});
+    template.value=rule.templatePath||'';
+    template.title=template.selectedOptions[0]?.textContent||'';
+    template.addEventListener('change',async()=>{
+     rule.templatePath=template.value;
+     template.title=template.selectedOptions[0]?.textContent||'';
+     await plugin.saveSettings();
     });
-    row.addText(t=>t.setPlaceholder(translateLabel('Name fragment')).setValue(rule.matchString||'').onChange(async value=>{rule.matchString=value;await plugin.saveSettings();}));
-    row.addDropdown(d=>{
-     d.addOption('',translateLabel('Select template'));
-     for(const file of templates)d.addOption(file.path,file.path);
-     if(rule.templatePath&&!templates.some(f=>f.path===rule.templatePath))d.addOption(rule.templatePath,rule.templatePath+writerUi(' (ausente)',' (missing)'));
-     d.setValue(rule.templatePath||'').onChange(async value=>{rule.templatePath=value;await plugin.saveSettings();});
-    });
-    row.addExtraButton(b=>b.setIcon('trash').setTooltip(translateLabel('Delete rule')).onClick(async()=>{
+    const deleteLabel=translateLabel('Delete rule')+' · '+(index+1);
+    const remove=controls.createEl('button',{cls:'writer-template-matcher-delete',attr:{type:'button',title:deleteLabel,'aria-label':deleteLabel}});
+    require('obsidian').setIcon(remove,'trash-2');
+    if(index===focusIndex)focusTarget=focusRemove?remove:fragment;
+    remove.addEventListener('click',async()=>{
      matchers.splice(index,1);
-     await plugin.saveSettings();render();
-    }));
+     render(Math.max(0,Math.min(index,matchers.length-1)),true);
+     await plugin.saveSettings();
+    });
    }
+   focusTarget?.focus();
   };
-  new Setting(panel).setName(translateLabel('Add matching rule')).addButton(b=>b.setButtonText(translateLabel('Add')).setIcon('plus').setTooltip(translateLabel('Add matching rule')).onClick(async()=>{
-   cfg.matchers.push({matchMethod:'prefix',matchString:'',templatePath:''});
-   await plugin.saveSettings();render();
-  }));
+  new Setting(panel).setName(translateLabel('Add matching rule')).addButton(b=>{
+   addButton=b.buttonEl;
+   b.setButtonText(translateLabel('Add')).setIcon('plus').setTooltip(translateLabel('Add matching rule')).onClick(async()=>{
+    cfg.matchers.push({matchMethod:'prefix',matchString:'',templatePath:''});
+    render(cfg.matchers.length-1);
+    await plugin.saveSettings();
+   });
+  });
   render();
   new Setting(panel).setName(translateLabel('Legacy exact-name fallback')).setDesc(translateLabel('If no matcher rules are configured, look for Templates/<note name>.md and apply it only when the note is empty.')).addToggle(t=>t.setValue(cfg.onlyNew!==false).onChange(async value=>{cfg.onlyNew=value;await plugin.saveSettings();}));
  }

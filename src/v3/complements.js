@@ -224,9 +224,9 @@ class WriterComplements extends EditorSuggest{
    this.queueSave();
   }
  }
- async manual(){
+ async manual(view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView)){
    if(!writerModuleOn(this.plugin,'complements'))return;
-  const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView),editor=view?.editor,file=view?.file;
+  const editor=view?.editor,file=view?.file;
   if(!editor||!file)return new Notice(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
   const cursor=editor.getCursor(),line=editor.getLine(cursor.line)||'';
   const m=/([\p{L}\p{N}][\p{L}\p{N}_’'-]*)$/u.exec(line.slice(0,cursor.ch));

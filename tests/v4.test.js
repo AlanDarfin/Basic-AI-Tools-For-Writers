@@ -58,6 +58,43 @@ test('standalone bundle includes v4 module, hook and profile settings',()=>{
   const bundled=fs.readFileSync('main.js','utf8');
   for(const expected of ['// v3 module: src/v4/editor.js','writerV4Merge(this.settings);','writerV4RenderSettings(this.plugin,panel);','writerV4ProfilePrompt(this','writerV4AssertProtected(content,translatedText)'])assert.ok(bundled.includes(expected),expected);
 });
+async function reviewSelectionTest(){
+  class Element{
+    constructor(tag,options={}){this.tag=tag;this.textContent=options.text||'';this.cls=options.cls;this.children=[];this.events={};}
+    createEl(tag,options){const child=new Element(tag,options);this.children.push(child);return child;}
+    createDiv(options){return this.createEl('div',options);}
+    createSpan(options){return this.createEl('span',options);}
+    addClass(){}
+    empty(){this.children=[];}
+    addEventListener(name,callback){this.events[name]=callback;}
+    all(){return this.children.flatMap(child=>[child,...child.all()]);}
+  }
+  let root;
+  const Modal=class{
+    constructor(){root=this.contentEl=new Element('div');}
+    setTitle(){}
+    open(){this.onOpen();}
+  };
+  const openReview=vm.runInNewContext(code+'\nwriterV4OpenDiff',{Modal,lfMsg:(_pt,en)=>en});
+  const original='Once\nMiddle\nLast';
+  const view={file:{path:'Test.md',extension:'md'},editor:{getSelection:()=>original,getCursor:()=>0,posToOffset:()=>0}};
+  await openReview({app:{},settings:{writerV4:{}}},{view});
+  const button=label=>root.all().find(el=>el.tag==='button'&&el.textContent===label);
+  root.all().find(el=>el.tag==='textarea').value='First\nMiddle\nFinal';
+  button('Compare').events.click();
+  const accept=button('Accept all'),reject=button('Reject all'),apply=button('Apply selected changes');
+  const choices=root.all().filter(el=>el.tag==='input');
+  assert.equal(choices.length,2);
+  accept.events.click();
+  assert.equal(button('Accept all'),accept,'accepting all keeps the focused control mounted');
+  assert.ok(choices.every(el=>el.checked));
+  assert.equal(apply.disabled,false);
+  reject.events.click();
+  assert.equal(button('Reject all'),reject,'rejecting all keeps the focused control mounted');
+  assert.ok(choices.every(el=>!el.checked));
+  assert.equal(apply.disabled,true);
+  count++;console.log('PASS bulk review selection preserves controls and synchronizes choices');
+}
 async function concurrencyTests(){
   const file={path:'Story.md',extension:'md'};
   let current='Hello world',calls=0;
@@ -83,4 +120,4 @@ async function concurrencyTests(){
   count++;console.log('PASS concurrent vault edit cannot be overwritten');
   console.log(count+' v4 tests passed.');
 }
-concurrencyTests().catch(err=>{console.error(err);process.exitCode=1;});
+reviewSelectionTest().then(concurrencyTests).catch(err=>{console.error(err);process.exitCode=1;});

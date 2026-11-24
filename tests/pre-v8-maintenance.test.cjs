@@ -70,10 +70,43 @@ test('writing tools tab click updates content only without rebuilding the nav',(
  const stop=tools.indexOf('  // Restore scroll after adding buttons',from);
  assert.ok(from>0&&stop>from);
  const click=tools.slice(from,stop);
- assert.match(click,/this\.renderSelectedTab\(panel,this\.app\.workspace\.getActiveFile\(\)\)/);
+ assert.match(click,/this\.renderSelectedTab\(panel,/);
  assert.doesNotMatch(click,/this\.render\(\)/,'No full render for selecting Extras');
  assert.ok(tools.includes('const previousTabs=root.querySelector'));
  assert.ok(tools.includes('tabs.scrollLeft=Math.max(0,this.tabScrollLeft||0)'));
+});
+test('writing tools preserve the live editor context across sidebar focus and next file in the same leaf',async()=>{
+ const WriterToolsView=vm.runInNewContext(tools+'\nWriterToolsView',{
+  ItemView:class{
+   constructor(leaf){this.app=leaf.app;this.leaf=leaf;this.contentEl={createDiv:()=>({})};}
+   registerEvent(){}
+  },MarkdownView:class{}
+ });
+ const file={extension:'md',path:'Draft.md'};
+ const left={view:{file,editor:{}}},right={view:{file,editor:{}}};
+ let active=left.view,recent=right,leaves=[left,right];
+ const handlers={};
+ const workspace={
+  getActiveViewOfType:()=>active,getMostRecentLeaf:()=>recent,
+  getLeavesOfType:()=>leaves,getActiveFile:()=>file,
+  on:(name,handler)=>{handlers[name]=handler;}
+ };
+ const toolsView=new WriterToolsView({app:{workspace}},{});
+ assert.equal(toolsView.editorView(),left.view);
+ active=null;
+ assert.equal(toolsView.editorView(),right.view,'Preserve the exact split with the selection');
+ recent={view:right.view};
+ assert.equal(toolsView.editorView(),null,'No arbitrary split when the recent leaf is stale');
+ leaves=[left];
+ assert.equal(toolsView.editorView(),left.view);
+ const rendered=[];
+ toolsView.render=()=>{toolsView.renderedNotePath=toolsView.noteFile()?.path;rendered.push(toolsView.renderedNotePath);};
+ await toolsView.onOpen();
+ handlers['file-open']();
+ left.view.file={extension:'md',path:'New draft.md'};
+ active=left.view;
+ handlers['file-open']();
+ assert.deepEqual(rendered,['Draft.md','New draft.md']);
 });
 test('external reviewer uses plugin APIs and never triggers native LanguageTool',async()=>{
  const {externalLanguageTool,runExternalLanguageToolCommand,reviewWithExternalLanguageTool}=externalMethods();

@@ -8,12 +8,42 @@ class WriterToolsView extends ItemView{
  getIcon(){return 'wand-sparkles';}
  async onOpen(){
   this.root=this.contentEl.createDiv({cls:'writer-tools-v3'});
-  this.registerEvent(this.app.workspace.on('active-leaf-change',()=>this.render()));
+  this.registerEvent(this.app.workspace.on('active-leaf-change',leaf=>{
+   if(leaf!==this.leaf)this.render();
+  }));
+  this.registerEvent(this.app.workspace.on('file-open',()=>{
+   if(this.noteFile()?.path!==this.renderedNotePath)this.render();
+  }));
   this.render();
  }
- addButton(container,label,fn,primary=false){
-  const button=container.createEl('button',{text:label,cls:primary?'mod-cta':''});
-  button.addEventListener('click',async()=>{try{await fn();this.render();}catch(e){new Notice(e.message||String(e));}});
+ editorView(){
+  const workspace=this.app.workspace,active=workspace.getActiveViewOfType(MarkdownView);
+  const usable=view=>view?.file?.extension==='md'&&view.editor&&view.getMode?.()!=='preview';
+  if(usable(active))return active;
+  const leaves=workspace.getLeavesOfType('markdown'),recent=workspace.getMostRecentLeaf?.();
+  if(recent&&leaves.includes(recent)&&usable(recent.view))return recent.view;
+  const file=workspace.getActiveFile();
+  const matches=leaves.filter(({view})=>usable(view)&&view.file===file);
+  return matches.length===1?matches[0].view:null;
+ }
+ noteFile(){return this.editorView()?.file||this.app.workspace.getActiveFile();}
+ addButton(container,label,fn,{primary=false,icon,refresh=false}={}){
+  const button=container.createEl('button',{cls:primary?'mod-cta':'',attr:{type:'button'}});
+  if(icon)writerSidebarButtonIcon(button,icon,label);
+  else button.setText(label);
+  button.addEventListener('click',async()=>{
+   try{
+    await fn();
+    if(!refresh||!button.isConnected)return;
+    const panel=button.closest('.writer-tools-v3-panel');
+    if(!panel)return;
+    const restoreFocus=button.ownerDocument.activeElement===button;
+    this.renderSelectedTab(panel,this.noteFile());
+    if(restoreFocus)Array.from(panel.querySelectorAll('.writer-tools-v3-actions>button'))
+     .find(item=>item.textContent===label)?.focus({preventScroll:true});
+   }
+   catch(e){new Notice(e.message||String(e));}
+  });
   return button;
  }
  render(){
@@ -22,10 +52,15 @@ class WriterToolsView extends ItemView{
   const previousTabs=root.querySelector('.writer-tools-v3-tabs');
   if(previousTabs)this.tabScrollLeft=previousTabs.scrollLeft;
   root.empty();
-  root.createEl('h3',{text:writerUi("Ferramentas de escrita","Writing tools")});
-  const active=this.app.workspace.getActiveFile();
-  root.createEl('p',{text:active?.extension==='md'?active.path:writerUi('Abra uma nota Markdown para usar as ferramentas.','Open a Markdown note to use the tools.'),cls:'writer-tools-note-path'});
-  const tabs=root.createDiv({cls:'writer-tools-v3-tabs'});
+  const title=this.getDisplayText();
+  const header=root.createDiv({cls:'writer-tools-v3-header'});
+  header.createEl('h3',{text:title});
+  const active=this.noteFile();
+  this.renderedNotePath=active?.path;
+  const note=active?.extension==='md'?active.path:'';
+  header.createEl('p',{text:note||writerUi('Abra uma nota Markdown para usar as ferramentas.','Open a Markdown note to use the tools.'),cls:'writer-tools-note-path',attr:note?{title:note}:{}});
+  const tabs=root.createDiv({cls:'writer-tools-v3-tabs writer-sidebar-tabs',attr:{role:'tablist','aria-label':title}});
+  writerV136BindProjectTabs(tabs);
   tabs.addEventListener('scroll',()=>{
    if(tabs.isConnected)this.tabScrollLeft=tabs.scrollLeft;
   },{passive:true});
@@ -34,45 +69,57 @@ class WriterToolsView extends ItemView{
     tabs.scrollLeft+=event.deltaY;event.preventDefault();
    }
   },{passive:false});
-  const tabLucide={complements:'lightbulb',variants:'git-compare',reviewV4:'scan-text',snapshots:'history',extras:'wrench'};
   const sections=[
-   ['complements',writerUi("Sugestões","Suggestions"),'complements'],
-   ['variants',writerUi("Variantes","Variants"),'variants'],
-   ['reviewV4',writerUi('Diff e perfis','Diff & profiles'),'diff'],
-   ['snapshots',writerUi("Versões","Versions"),'snapshots'],
-   ['extras',writerUi('Extras','Extras'),'extras']
+   ['complements',writerUi("Sugestões","Suggestions"),'complements','lightbulb'],
+   ['variants',writerUi("Variantes","Variants"),'variants','git-compare'],
+   ['reviewV4',writerUi('Diff e perfis','Diff & profiles'),'diff','scan-text'],
+   ['snapshots',writerUi("Versões","Versions"),'snapshots','history'],
+   ['extras',writerUi('Extras','Extras'),'extras','wrench']
   ].filter(([,label,feature])=>feature==='extras'
    ?['tts','unicode','projects'].some(id=>writerModuleOn(this.plugin,id))
    :writerModuleOn(this.plugin,feature));
   if(!sections.some(([id])=>id===this.tab))this.tab=sections[0]?.[0]||null;
+  const prefix=this.writerTabPrefix??=('writer-tools-v3-'+(this.leaf?.id||Math.random().toString(36).slice(2)));
+  const panelId=prefix+'-panel';
+  const panel=root.createDiv({cls:'writer-tools-v3-panel',attr:{id:panelId,role:'tabpanel',tabindex:'0'}});
   const buttons={};
-  for(const [id,label] of sections){
-   const btn=tabs.createEl('button',{text:label,cls:this.tab===id?'is-active':''});
-   const glyph=btn.createSpan({cls:'writer-v901-nav-icon',attr:{'aria-hidden':'true'}});
-   require('obsidian').setIcon?.(glyph,tabLucide[id]||'wrench');
-   btn.prepend?.(glyph);
+  const updateSelection=()=>{
+   for(const [id,button] of Object.entries(buttons)){
+    const selected=this.tab===id;
+    button.classList.toggle('is-active',selected);
+    button.setAttribute('aria-selected',String(selected));
+    button.tabIndex=selected?0:-1;
+   }
+   if(this.tab)panel.setAttribute('aria-labelledby',buttons[this.tab].id);
+  };
+  for(const [id,label,,icon] of sections){
+   const btn=tabs.createEl('button',{attr:{type:'button',role:'tab',id:prefix+'-tab-'+id,
+    'aria-controls':panelId,'aria-label':label,title:label}});
+   writerSidebarButtonIcon(btn,icon,label,'writer-sidebar-tab-label');
    buttons[id]=btn;
    btn.addEventListener('click',()=>{
     if(this.tab===id)return;
     this.tabScrollLeft=tabs.scrollLeft;
     this.tab=id;
-    for(const [key,button] of Object.entries(buttons))
-     button.classList.toggle('is-active',key===id);
-    // Keep the tab strip mounted, replacing ONLY the content panel.
-    this.renderSelectedTab(panel,this.app.workspace.getActiveFile());
+    updateSelection();
+    this.renderSelectedTab(panel,this.noteFile());
    });
   }
   // Restore scroll after adding buttons; on an empty strip it clamps to zero.
   tabs.scrollLeft=Math.max(0,this.tabScrollLeft||0);
-  const panel=root.createDiv({cls:'writer-tools-v3-panel'});
+  panel.hidden=!this.tab;
+  tabs.hidden=!this.tab;
+  updateSelection();
+  writerSidebarRevealSelected(tabs);
   this.renderSelectedTab(panel,active);
   const footer=root.createDiv({cls:'writer-tools-footer'});
-  if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview());
-  if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects());
-  this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic AI pelo menu do Obsidian.","Open Basic AI settings through Obsidian's settings menu."));});
+  if(writerModuleOn(this.plugin,'review'))this.addButton(footer,writerUi("Revisão","Review"),()=>this.plugin.openReview(),{icon:'spell-check'});
+  if(writerModuleOn(this.plugin,'projects'))this.addButton(footer,writerUi("Projetos","Projects"),()=>this.plugin.openProjects(),{icon:'folder-open'});
+  this.addButton(footer,writerUi("Configurações","Settings"),()=>{if(this.app.setting?.open){this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}else new Notice(writerUi("Abra as configurações do Basic pelo menu do Obsidian.","Open Basic settings through the Obsidian settings menu."));},{icon:'settings'});
  }
  renderSelectedTab(panel,active){
   panel.empty();
+  panel.classList.toggle('writer-tools-extras',this.tab==='extras');
   if(this.tab==='complements')this.renderComplements(panel);
   else if(this.tab==='variants')this.renderVariants(panel);
   else if(this.tab==='reviewV4')this.renderV4(panel,active);
@@ -87,7 +134,7 @@ class WriterToolsView extends ItemView{
   new Setting(panel).setName(writerUi("Ativar sugestões","Enable suggestions")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
   new Setting(panel).setName(writerUi("Aparecer enquanto escreve","Suggest while typing")).addToggle(t=>t.setValue(opts.automatic!==false).onChange(async v=>{opts.automatic=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(),true);
+  this.addButton(actions,writerUi("Mostrar sugestões","Show suggestions"),()=>this.plugin.writerComplements.manual(this.editorView()),{primary:true});
   if(writerModuleOn(this.plugin,'dictionary'))this.addButton(actions,writerUi("Abrir dicionário","Open dictionary"),async()=>{await this.plugin.activateView();this.plugin.app.workspace.getLeavesOfType(VIEW)[0]?.view?.switchTab('definition');});
  }
  renderVariants(panel){
@@ -96,28 +143,32 @@ class WriterToolsView extends ItemView{
   panel.createEl('p',{text:writerUi('Experimente frases alternativas sem apagar o original. Toque numa variante destacada para editar.','Try alternative wording without deleting the original. Tap a highlighted variant to edit.')});
   new Setting(panel).setName(writerUi("Ativar variantes","Enable variants")).addToggle(t=>t.setValue(opts.enabled!==false).onChange(async v=>{opts.enabled=v;await this.plugin.saveSettings();}));
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(actions,writerUi("Criar da seleção","Create from selection"),()=>this.plugin.writerVariants.createFromSelection(),true);
-  this.addButton(actions,writerUi("Editar no cursor","Edit at cursor"),()=>this.plugin.writerVariants.open());
-  this.addButton(actions,writerUi("Anterior","Previous"),()=>this.plugin.writerVariants.step(-1));
-  this.addButton(actions,writerUi("Próxima","Next"),()=>this.plugin.writerVariants.step(1));
-  this.addButton(actions,writerUi("Confirmar escolhida","Commit selected"),()=>this.plugin.writerVariants.commit());
-  this.addButton(actions,writerUi("Confirmar todas","Commit all"),()=>this.plugin.writerVariants.commitAll());
-  this.addButton(actions,writerUi("Gerar com IA","Generate with AI"),()=>this.plugin.writerVariants.aiAlternatives());
-  const current=this.plugin.writerVariants.atCaret();
+  this.addButton(actions,writerUi("Criar da seleção","Create from selection"),()=>this.plugin.writerVariants.createFromSelection(this.editorView()),{primary:true});
+  this.addButton(actions,writerUi("Editar no cursor","Edit at cursor"),()=>this.plugin.writerVariants.open(this.editorView()));
+  this.addButton(actions,writerUi("Gerar com IA","Generate with AI"),()=>this.plugin.writerVariants.aiAlternatives(this.editorView()),{refresh:true});
+  const current=this.plugin.writerVariants.atCaret(this.editorView());
+  const selection=panel.createDiv({cls:'writer-tools-v3-preview'});
   if(current){
-   panel.createEl('strong',{text:writerUi('Variante ','Variant ')+(current.found.active+1)+' de '+current.found.variants.length});
-   const sample=panel.createDiv({cls:'writer-variant-current'});
-   sample.setText(current.found.variants[current.found.active].slice(0,1000));
+   const {active,variants}=current.found;
+   selection.createEl('h5',{text:writerUi(`Variante ${active+1} de ${variants.length}`,`Variant ${active+1} of ${variants.length}`)});
+   selection.createDiv({cls:'writer-variant-current',text:variants[active].slice(0,1000)});
   }
+  const navigation=selection.createDiv({cls:'writer-tools-v3-actions'});
+  this.addButton(navigation,writerUi("Anterior","Previous"),()=>this.plugin.writerVariants.step(-1,this.editorView()),{icon:'chevron-left',refresh:true});
+  this.addButton(navigation,writerUi("Próxima","Next"),()=>this.plugin.writerVariants.step(1,this.editorView()),{icon:'chevron-right',refresh:true});
+  this.addButton(navigation,writerUi("Confirmar escolhida","Commit selected"),()=>this.plugin.writerVariants.commit(this.editorView()),{refresh:true});
+  this.addButton(navigation,writerUi("Confirmar todas","Commit all"),()=>this.plugin.writerVariants.commitAll(this.editorView()));
  }
 
  renderV4(panel,file){
-  panel.createEl('h4',{text:writerUi('Revisão seletiva · v4','Selective review · v4')});
+  panel.createEl('h4',{text:writerUi('Revisão seletiva','Selective review')});
   panel.createEl('p',{text:writerUi('Selecione um trecho na nota, compare as propostas e aceite somente as alterações desejadas. A nota original permanece intacta até você aplicar.','Select a passage, compare the suggestions and accept only the changes you want. Your note stays unchanged until you apply.'),cls:'writer-tools-muted'});
   const profile=file?writerV4Profile(this.plugin,file):null;
-  panel.createEl('p',{text:writerUi('Perfil ativo: ','Active profile: ')+(profile?.name||writerUi('Padrão','Default')),cls:'writer-tools-muted'});
+  const profileInfo=panel.createDiv({cls:'writer-tools-v3-preview'});
+  profileInfo.createEl('h5',{text:writerUi('Perfil ativo','Active profile')});
+  profileInfo.createEl('p',{text:profile?.name||writerUi('Padrão','Default')});
   const buttons=panel.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(buttons,writerUi('Abrir revisão seletiva','Open selective review'),()=>writerV4OpenDiff(this.plugin),true);
+  this.addButton(buttons,writerUi('Abrir revisão seletiva','Open selective review'),()=>writerV4OpenDiff(this.plugin,{view:this.editorView()}),{primary:true});
   this.addButton(buttons,writerUi('Configurar perfis','Configure profiles'),()=>{
    if(this.app.setting?.open){this.plugin.settingsTabV4Hint=true;this.app.setting.open();this.app.setting.openTabById?.(this.plugin.manifest.id);}
    else new Notice(writerUi('Abra as configurações do plugin.','Open the plugin settings.'));
@@ -125,7 +176,6 @@ class WriterToolsView extends ItemView{
   panel.createEl('p',{text:writerUi('A geração de alternativas usa seu provedor de IA apenas quando você clicar em Gerar com IA no comparador.','AI generation uses your configured provider only after you choose Generate with AI in the comparator.'),cls:'writer-tools-muted'});
  }
  renderExtras(panel){
-  panel.addClass('writer-tools-extras');
   const tools=this.plugin.writerFinalFeatures,tts=this.plugin.settings.finalSuite?.tts||{};
   const unicode=panel.createDiv({cls:'writer-extras-card'});
   const unicodeHeader=unicode.createDiv({cls:'writer-extras-card-head'});
@@ -134,12 +184,12 @@ class WriterToolsView extends ItemView{
   const favorites=unicode.createDiv({cls:'writer-extras-favorites'});
   for(const char of (this.plugin.settings.finalSuite?.unicode?.favorites||[]).slice(0,12)){
    favorites.createEl('button',{text:char,attr:{'aria-label':'Insert '+char}}).addEventListener('click',()=>{
-    const editor=this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+    const editor=this.editorView()?.editor;
     if(editor)editor.replaceSelection(char);else tools.unicodePicker();
    });
   }
   const unicodeActions=unicode.createDiv({cls:'writer-tools-v3-actions'});
-  this.addButton(unicodeActions,writerUi('Abrir pesquisa Unicode','Search Unicode'),()=>tools.unicodePicker(),true);
+  this.addButton(unicodeActions,writerUi('Abrir pesquisa Unicode','Search Unicode'),()=>tools.unicodePicker(),{primary:true});
   const speech=panel.createDiv({cls:'writer-extras-card'});
   const speechHead=speech.createDiv({cls:'writer-extras-card-head'});
   speechHead.createEl('h4',{text:writerUi('Leitura em voz alta','Text-to-speech')});
@@ -155,9 +205,7 @@ class WriterToolsView extends ItemView{
    const support=speech.createDiv({cls:'writer-tts-support'});
    support.createEl('p',{text:tools.systemSpeechStatus(),cls:'writer-tts-system-diagnostic'});
    const diagnostics=support.createDiv({cls:'writer-tools-v3-actions'});
-   this.addButton(diagnostics,writerUi('Verificar vozes','Check voices'),()=>{
-    tools.refreshVoiceSelectors();this.render();
-   });
+   this.addButton(diagnostics,writerUi('Verificar vozes','Check voices'),()=>tools.refreshVoiceSelectors(),{refresh:true});
   }
   if(tts.engine==='edge'){
    const privacy=speech.createDiv({cls:'writer-tts-privacy'});
@@ -172,7 +220,7 @@ class WriterToolsView extends ItemView{
   });
   const status=speech.createDiv({cls:'writer-tts-current-status',text:writerUi('Pronto para ler','Ready to read')});
   const actions=speech.createDiv({cls:'writer-tools-v3-actions writer-tts-actions'});
-  this.addButton(actions,writerUi('Ler','Read'),()=>tools.speakActive(),true);
+  this.addButton(actions,writerUi('Ler','Read'),()=>tools.speakActive(),{primary:true});
   this.addButton(actions,writerUi('Pausar','Pause'),()=>tools.pause());
   this.addButton(actions,writerUi('Continuar','Resume'),()=>tools.resume());
   this.addButton(actions,writerUi('Parar','Stop'),()=>tools.stop());
@@ -191,17 +239,23 @@ class WriterToolsView extends ItemView{
   const actions=panel.createDiv({cls:'writer-tools-v3-actions'});
   this.addButton(actions,writerUi("Salvar versão agora","Save version now"),async()=>{
    if(!(file instanceof TFile)||file.extension!=='md')throw Error(writerUi("Abra uma nota Markdown.","Open a Markdown note."));
-   await this.plugin.writerSnapshots.create(file,writerUi('Manual','Manual'));new Notice(writerUi(writerUi('Versão salva.','Version saved.'),"Version saved."));
-  },true);
+   if(file!==this.noteFile()){
+    this.render();
+    throw Error(writerUi('A nota mudou. Confira a nota ativa e salve novamente.','The note changed. Check the active note and save again.'));
+   }
+   await this.plugin.writerSnapshots.create(file,writerUi('Manual','Manual'));
+   new Notice(writerUi('Versão salva.','Version saved.'));
+  },{primary:true,refresh:true});
   this.addButton(actions,writerUi('Nomear uma versão','Name a version'),async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
   this.addButton(actions,writerUi("Abrir histórico","Open history"),async()=>{if(!file)return;await this.plugin.writerSnapshots.showHistory(file);});
   if(file instanceof TFile&&file.extension==='md'){
+   const box=panel.createDiv({cls:'writer-tools-v3-preview writer-tools-snapshot-recent'});
+   box.hidden=true;
    this.plugin.writerSnapshots.list(file).then(items=>{
-    if(this.tab==='snapshots'&&panel.isConnected){
-     const box=panel.createDiv({cls:'writer-tools-snapshot-recent'});
-     box.createEl('strong',{text:items.length+writerUi(' versão(ões) salva(s)',' saved version(s)')});
-     for(const item of items.slice(0,5))box.createEl('p',{text:item.name+' · '+new Date(item.at).toLocaleString()});
-    }
+    if(!box.isConnected)return;
+    box.createEl('h5',{text:items.length+writerUi(' versão(ões) salva(s)',' saved version(s)')});
+    for(const item of items.slice(0,5))box.createEl('p',{text:item.name+' · '+new Date(item.at).toLocaleString()});
+    box.hidden=false;
    }).catch(()=>{});
   }
  }

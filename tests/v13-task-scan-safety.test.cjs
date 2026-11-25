@@ -78,6 +78,18 @@ test('nested and ordered visible tasks retain their raw lines, state and inline 
  assert.equal(tasks.length,3);assert.equal(tasks[0].raw,raw);assert.equal(tasks[0].done,true);
  assert.equal(tasks[0].text,'日本語 😃 #writing 📅 2026-11-16 <!-- inline note -->');assert.deepEqual([...tasks[0].tags],['#writing']);
 });
+test('parenthesized ordered tasks are recognized only outside properties, comments and code fences',()=>{
+ const h=harness(),text=['---','description: |','  1) [ ] YAML','---','<!--','1) [ ] HTML','-->',
+  '%%','1) [ ] Comment','%%','```md','1) [ ] Code','```','1) [ ] Visible','  12) [x] Nested',
+  '(1) [ ] Prose','1)) [ ] Invalid','1)[ ] Missing space'].join('\r\n');
+ const tasks=h.api.writerV12TaskRefs(text);
+ assert.deepEqual(Array.from(tasks,task=>task.line),[13,14]);
+ assert.equal(tasks[1].done,true);
+ for(const line of [2,5,8,11]){
+  const raw=text.split('\r\n')[line];
+  assert.equal(h.api.writerV1391TaskEligible(text,{line,raw,done:false}),false);
+ }
+});
 test('forged hidden task references cannot reach the atomic write',async()=>{
  for(const text of ['---\n  - [ ] Hidden\n---','<!--\n  - [ ] Hidden\n-->','%%\n  - [ ] Hidden\n%%','```md\n  - [ ] Hidden\n```']){
   const h=harness(),file=h.add('Tasks.md',text),reference={line:1,raw:'  - [ ] Hidden',done:false};

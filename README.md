@@ -100,6 +100,8 @@ In the **Web bookmarks** homepage widget, search by name, URL or group, or selec
 
 Open **Tasks: open dashboard** and use the calendar icon beside a task. Pick a date or choose **Today**, **Tomorrow**, **In 7 days** or **No due date**, then save. The dashboard updates its filters and changes only the due-date marker in the original Markdown note.
 
+The dashboard recognizes bulleted tasks (`- [ ]`, `* [ ]`, `+ [ ]`) and numbered tasks with either delimiter (`1. [ ]` or `1) [ ]`). Checking a task or editing its deadline preserves its list marker, indentation and note content.
+
 ## Supported plugins
 
 Basic's own tools work without these plugins. Its task dashboard now filters **Today**, **Overdue**, **Next seven days** and **Undated** tasks and can add a task to a chosen Markdown note with a preview. Native speech can read **from the cursor**, and folder focus is available from the file explorer with an inline **Show all** action. These features retain their normal on/off switches.

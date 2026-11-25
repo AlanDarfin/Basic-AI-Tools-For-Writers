@@ -163,6 +163,47 @@ test('checking one task preserves mixed line endings and rejects moved raw-line 
  await assert.rejects(h.api.writerV12ToggleTask(h.plugin,file,stale,changed),/outdated/);assert.equal(h.writes.length,1);
 });
 
+test('both ordered task delimiters support checking and rescheduling without changing the list marker',async()=>{
+ for(const marker of ['1.','1)','12.','12)']){
+  const h=harness(),raw='\t'+marker+' [X] Revisar [[Livro|capítulo]] #writing [due:: 2026-11-16] <!-- nota -->';
+  const original='Cabeçalho 日本語\r\n'+raw+'\n- [ ] Outra tarefa\r\n';
+  const file=h.add('Livro/Tarefas.md',original);
+  let entry=h.api.writerV12TaskRefs(original)[0];
+  assert.equal(entry.line,1);assert.equal(entry.raw,raw);assert.equal(entry.done,true);
+  assert.deepEqual([...entry.tags],['#writing']);
+  const checked=await h.api.writerV12ToggleTask(h.plugin,file,entry,original);
+  assert.equal(checked,original.replace('[X]','[ ]'));
+  entry=h.api.writerV12TaskRefs(checked)[0];
+  const rescheduled=await h.api.writerTaskReschedule(h.plugin,file,entry,checked,'2028-02-29');
+  assert.equal(rescheduled,checked.replace('2026-11-16','2028-02-29'));
+  assert.equal(h.api.writerV12TaskRefs(rescheduled)[0].done,false);
+  assert.equal(h.stored.get(file.path).text,rescheduled);
+ }
+});
+
+test('parenthesized ordered tasks can add and remove deadlines while retaining block IDs and comments',async()=>{
+ const h=harness(),raw='12) [ ] Entregar capítulo ^entrega <!-- observação -->';
+ const file=h.add('Tarefas.md',raw+'\r\n'),entry=h.api.writerV12TaskRefs(raw)[0];
+ const dated=await h.api.writerTaskReschedule(h.plugin,file,entry,raw+'\r\n','2026-12-01');
+ assert.equal(dated,'12) [ ] Entregar capítulo 📅 2026-12-01 ^entrega <!-- observação -->\r\n');
+ const restored=await h.api.writerTaskReschedule(h.plugin,file,h.api.writerV12TaskRefs(dated)[0],dated,'');
+ assert.equal(restored,raw+'\r\n');
+ assert.throws(()=>h.api.writerTaskReplaceDue('1) [ ] 📅 2026-12-01',''),/description/);
+});
+
+test('parenthesized ordered tasks still reject concurrent edits before toggling or rescheduling',async()=>{
+ for(const action of ['toggle','reschedule']){
+  const h=harness(),raw='1) [ ] Revisar capítulo 📅 2026-11-16';
+  const file=h.add('Tarefas.md',raw),entry=h.api.writerV12TaskRefs(raw)[0],pending=deferred();
+  h.hooks.beforeProcess=()=>pending.promise;
+  const writing=action==='toggle'?h.api.writerV12ToggleTask(h.plugin,file,entry,raw):
+   h.api.writerTaskReschedule(h.plugin,file,entry,raw,'2026-12-01');
+  const changed=raw+' #editado';h.stored.get(file.path).text=changed;pending.resolve();
+  await assert.rejects(writing,/File changed/);
+  assert.equal(h.writes.length,0);assert.equal(h.stored.get(file.path).text,changed);
+ }
+});
+
 test('quick add requires a reviewed preview, invalidates it when fields change and adds exactly one task',async()=>{
  const h=harness(),file=h.add('Tasks.md','Original\n'),modal=h.api.writerV139TaskQuickAdd(h.plugin);
  assert.equal(h.reads,0);assert.equal(h.button('Add task').disabled,true);
@@ -292,6 +333,26 @@ test('dashboard Tomorrow preset moves a task out of Today only after Save, and N
  await new Promise(setImmediate);
  assert.equal(h.stored.get(file.path).text,'- [ ] Remarcar #high');
  assert.ok(!dashboard.contentEl.withClass('writer-native-task-title'));
+});
+
+test('dashboard finds parenthesized ordered tasks, edits their deadline and checks the original line',async()=>{
+ const h=harness('pt'),today=h.api.writerV139TaskToday();
+ const file=h.add('Livro/Tarefas.md','# Livro\r\n1) [ ] Revisar capítulo 📅 '+today+' #writing\n');
+ const dashboard=h.api.writerV12TaskWorkbench(h.plugin,'today');await new Promise(setImmediate);
+ const title=()=>dashboard.contentEl.withClass('writer-native-task-title');
+ assert.equal(title()?.text,'Revisar capítulo 📅 '+today+' #writing');
+ dashboard.contentEl.withClass('writer-native-task-edit-due').listeners.click();
+ const button=name=>h.modal.contentEl.all('button').find(item=>item.text===name);
+ button('Amanhã').listeners.click();await button('Salvar prazo').listeners.click();await new Promise(setImmediate);
+ const tomorrow=h.api.writerV139TaskDayAfter(today,1);
+ const dated='# Livro\r\n1) [ ] Revisar capítulo 📅 '+tomorrow+' #writing\n';
+ assert.equal(h.stored.get(file.path).text,dated);assert.equal(title(),undefined);
+ const filter=dashboard.contentEl.all('select')[0];filter.value='upcoming';filter.listeners.change();
+ assert.equal(title()?.text,'Revisar capítulo 📅 '+tomorrow+' #writing');
+ const check=dashboard.contentEl.withClass('writer-native-task-check').all('input')[0];
+ check.checked=true;await check.listeners.change();
+ assert.equal(h.stored.get(file.path).text,dated.replace('[ ]','[x]'));assert.equal(title(),undefined);
+ assert.equal(h.writes.length,2);
 });
 
 test('a canceled or partially entered date never saves, and an undated task can gain a date',async()=>{

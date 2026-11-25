@@ -53,7 +53,7 @@ function writerV1391TaskWalk(source,visit){
   if(fence)continue;
   comment=writerV1391TaskCommentState(raw,comment);
   if(hidden||typeof visit!=='function')continue;
-  const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);
+  const m=/^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(raw);
   if(!m)continue;
   const label=m[3].replace(/^\]\s+/,'').trim();
   const tags=[...new Set(label.match(/#[\p{L}\p{N}_/-]+/gu)||[])].slice(0,8);
@@ -80,7 +80,7 @@ function writerV1391TaskEligible(source,entry){
  return eligible;
 }
 function writerV12TaskReplacedLine(entry){
- const m=/^([ \t]*(?:[-*+]|\d+\.)[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(entry.raw);
+ const m=/^([ \t]*(?:[-*+]|\d+[.)])[ \t]+\[)([ xX])(\][ \t]+.+)$/.exec(entry.raw);
  if(!m)throw Error('Invalid task marker');
  return m[1]+(entry.done?' ':'x')+m[3];
 }
@@ -127,7 +127,7 @@ function writerV139TaskDayAfter(day,count){
  return date.toISOString().slice(0,10);
 }
 function writerTaskDueMarkers(raw){
- const prefix=/^[ \t]*(?:[-*+]|\d+\.)[ \t]+\[[ xX]\][ \t]+/.exec(raw)?.[0]||'';
+ const prefix=/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[ xX]\][ \t]+/.exec(raw)?.[0]||'';
  const body=raw.slice(prefix.length);
  const hidden=[];
  writerV1391TaskCommentState(body,null,(from,to)=>hidden.push([from,to]));
@@ -169,7 +169,7 @@ function writerTaskReplaceDue(raw,date){
   const left=raw.slice(0,current.start),right=raw.slice(current.end);
   const removeBefore=current.start>prefix&&/[ \t]$/.test(left);
   const next=removeBefore?left.slice(0,-1)+right:left+right.replace(/^[ \t]/,'');
-  if(!/^[ \t]*(?:[-*+]|\d+\.)[ \t]+\[[ xX]\][ \t]+\S/.test(next))
+  if(!/^[ \t]*(?:[-*+]|\d+[.)])[ \t]+\[[ xX]\][ \t]+\S/.test(next))
    throw Error(writerUi('Escreva uma descrição na tarefa antes de remover seu único prazo.',
     'Give the task a description before removing its only due date.'));
   return next;

@@ -103,9 +103,6 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-v7-scene-title
  .status-bar.writer-v132-status-host .writer-v91-sound-status input[type="range"]{display:none}
  .status-bar.writer-v132-status-host .writer-v1010-width-status input[type="range"]{display:none}
 }
-@media(max-width:640px){
- body:not(.is-mobile) .status-bar.writer-v132-status-host{max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center;row-gap:2px}
-}
 
 /* Desktop Longform: compact single-line scenes, including narrow sidebars.
  * Mobile receives its own compact touch-friendly layout below. */

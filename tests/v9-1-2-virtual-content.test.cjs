@@ -46,7 +46,7 @@ test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and docume
  assert.match(main,/WRITER_V912_VIRTUAL_VIEW/);
  assert.match(read('scripts/build-v3.js'),/'v9\/virtual-content'/);
  assert.match(read('styles.css'),/writer-v912-virtual-block/);
- assert.match(read('scripts/build-css.js'),/v9-1-2-virtual-content\.css/);
+ assert.match(read('scripts/css-manifest.js'),/v9-1-2-virtual-content\.css/);
  for(const [doc,guide,dynamic,navigation] of [
   ['README.md','docs/SUITES_AND_INTEGRATIONS.en.md','Dynamic content','Chapter navigation'],
   ['docs/README.pt-BR.md','docs/SUITES_AND_INTEGRATIONS.pt-BR.md','Conteúdo dinâmico','Navegação de capítulos']

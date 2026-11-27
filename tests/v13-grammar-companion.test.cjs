@@ -23,7 +23,7 @@ function runtime(lang='en'){
   addToggle(callback){return this.control(callback);}
   addDropdown(callback){return this.control(callback);}
  }
- const api=vm.runInNewContext(fs.readFileSync('src/v13/grammar-companion.js','utf8')+
+ const api=vm.runInNewContext(fs.readFileSync('src/integrations/grammar-companion.js','utf8')+
   '\n({WRITER_COMPANION_GRAMMAR,writerLanguageToolState,writerLanguageToolEnabled,writerLanguageToolCommand,writerLanguageToolReview,writerLanguageToolUpdate,writerLanguageToolSettings,writerLanguageToolPanel,writerLanguageToolRegister})',{
   Setting,Notice:class{constructor(message){notices.push(message);}},writerUi:(pt,en)=>lang==='pt'?pt:en,
   writerModuleOn:plugin=>plugin.settings.visibleModules.review!==false,document,

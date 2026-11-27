@@ -212,3 +212,9 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - CI #1397 rebuilt and verified committed artifacts, then reported 179/180 regression files passing. Linter behavior passed; the historical v6 test was using a physical source path as a stable bundle marker. Keep its ID list stable and resolve the physical source only for filesystem reads.
 - Relocate Auto Grammar into `src/writing/`, preserving its original blob and all 124 ordered module IDs. Update six grammar-related regression consumers and the relocation assertion; retain historical marker-only checks.
 - LanguageTool-specific settings and companion modules remain in place for a separate migration. No runtime source content, settings schema, dependency or distributed artifact changes. Full CI and live editor/mobile QA pending.
+
+### Phase 10.7 — LanguageTool settings and integration relocation
+
+- CI #1398 passed full validation on the Auto Grammar relocation and Linter regression repair.
+- Move Grammar Settings into `src/settings/` and Grammar Companion into `src/integrations/`, preserving their original source blobs and all 124 ordered module IDs. Resolve the settings search generator's additional grammar-settings path and the companion bridge fixture through the stable-ID manifest. Update three other grammar-related regression consumers and the relocation assertions.
+- No runtime behavior, settings schema, dependencies or generated artifacts changed. Full CI and live Obsidian QA on this batch remain pending. Next batch: Pandoc Export and Extended Syntax, followed by remaining editor extensions.

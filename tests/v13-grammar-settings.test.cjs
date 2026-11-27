@@ -35,7 +35,7 @@ function runtime(initial={},language='en'){
   addTextArea(register){return this.control('textarea',register);}
   addButton(register){return this.control('button',register);}
  }
- const source=fs.readFileSync('src/writing/auto-grammar.js','utf8')+'\n'+fs.readFileSync('src/v13/grammar-settings.js','utf8');
+ const source=fs.readFileSync('src/writing/auto-grammar.js','utf8')+'\n'+fs.readFileSync('src/settings/grammar-settings.js','utf8');
  const api=vm.runInNewContext(source+'\n({writerAutoGrammarSettings,writerGrammarEndpoint,writerGrammarRequest,writerGrammarCancel,WriterAutoGrammar,writerV137GrammarSettings,writerV137GrammarWords,writerV137GrammarRules})',{
   Setting,URL,URLSearchParams,VIEW:'offline-dictionary-view',Date,console,
   writerUi:(pt,en)=>language==='pt'?pt:en,

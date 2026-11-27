@@ -376,7 +376,7 @@ function build(){
   connectionSource.slice(connections.tokens[credentialBranch[1]].at):connectionSource;
  const models=tokenize(modelSource);
  for(const item of extract(models,scope(models,'writerV131RenderAISettings')))add('models',item);
- const grammar=path.join(root,'src/v13/grammar-settings.js');
+ const grammar=path.join(root,resolveSourcePath('src/v13/grammar-settings.js'));
  if(fs.existsSync(grammar)){
   const model=load('v13/grammar-settings');
   for(const item of extract(model,scope(model,'writerV137GrammarSettings')))add('review',item);

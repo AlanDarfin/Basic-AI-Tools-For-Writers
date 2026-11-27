@@ -118,6 +118,12 @@ test('stable source IDs resolve relocated modules without changing bundle marker
  assert.equal(resolveSourcePath('src/v4/auto-grammar.js'),'src/writing/auto-grammar.js');
  assert.ok(!fs.existsSync('src/v4/auto-grammar.js'));
  assert.ok(fs.existsSync('src/writing/auto-grammar.js'));
+ assert.equal(resolveSourcePath('src/v13/grammar-settings.js'),'src/settings/grammar-settings.js');
+ assert.ok(!fs.existsSync('src/v13/grammar-settings.js'));
+ assert.ok(fs.existsSync('src/settings/grammar-settings.js'));
+ assert.equal(resolveSourcePath('src/v13/grammar-companion.js'),'src/integrations/grammar-companion.js');
+ assert.ok(!fs.existsSync('src/v13/grammar-companion.js'));
+ assert.ok(fs.existsSync('src/integrations/grammar-companion.js'));
  for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
  assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });

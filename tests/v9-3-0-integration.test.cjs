@@ -139,7 +139,7 @@ test('Explorer can opt into a 16:9 preview while existing settings stay square',
  assert.equal(writerV92ExplorerMerge({}).previewImageShape,'square');
  assert.equal(writerV92ExplorerMerge({v92Explorer:{previewImageShape:'wide'}}).previewImageShape,'wide');
  assert.match(src,/classList\.toggle\('is-wide-thumbnail'/);
- assert.match(read('src/styles/v9-2-2-iconic-fixes.css'),/\.is-wide-thumbnail > img[^\{]+\{[^}]+aspect-ratio:16\/9/);
+ assert.match(read('src/styles/native/v9-2-2-iconic-fixes.css'),/\.is-wide-thumbnail > img[^\{]+\{[^}]+aspect-ratio:16\/9/);
 });
 test('insert catalog works with slash suggestions turned off and rejects stale edits',()=>{
  let picker,notice;
@@ -172,7 +172,7 @@ test('long pressing expands on mobile without synthetic click immediately closin
  assert.match(src,/previewHoldMs/);
 });
 test('responsive toolbar, note title icon and Flow/Space controls remain configurable',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  for(const name of ['writer-v93-space-manage-action','writer-v93-reorder-actions',
   'writer-v93-flow-toolbar','writer-v9-inline-title-icon'])assert.ok(css.includes(name));
  assert.match(read('src/v9/native-explorer.js'),/showTitleIcons/);

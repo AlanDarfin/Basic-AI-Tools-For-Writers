@@ -47,7 +47,7 @@ test('slash actions and Flow preserve editable note files',()=>{
  assert.match(src,/vault\.process/);
 });
 test('compiled stylesheet will contain right-side previews and white/inherited title icons',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(css,/flex-direction:row/);
  assert.match(css,/aspect-ratio:1/);
  assert.match(css,/margin-inline-start:auto/);

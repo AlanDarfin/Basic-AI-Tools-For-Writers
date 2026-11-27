@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('src/v9/explorer-flex.js','utf8');
-const css=fs.readFileSync('src/styles/v9-2-2-iconic-fixes.css','utf8');
+const css=fs.readFileSync('src/styles/native/v9-2-2-iconic-fixes.css','utf8');
 const expose=(names)=>vm.runInNewContext(source+'\n({'+names.join(',')+'})',{
  console,Date,Math,Number,String,Array,RegExp,Set,Map,Intl,
  writerUi:(pt,en)=>en,require:()=>({setIcon:()=>{}})

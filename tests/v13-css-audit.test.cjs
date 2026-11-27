@@ -127,3 +127,8 @@ test('CSS phase 4: principal component files live under their ownership folders'
  const {sections}=require('../scripts/css-manifest.js');
  for(const file of ["features/v13-6-home.css","features/v13-6-projects.css","features/v13-6-tools.css","features/v13-7-review.css","features/v9-3-1-pomodoro.css","blocks/v9-5-1-chat.css","blocks/v9-5-2-chat-audio.css","features/v9-calendar-studio.css","features/v9-final.css"])assert.ok(sections.includes(file),file);
 });
+
+test('CSS phase 4: foundation, workflow and native fixes retain categorized sources',()=>{
+ const {sections}=require('../scripts/css-manifest.js');
+ for(const file of ['core/v13-foundation.css','features/v10-2-workflow.css','native/v9-2-2-iconic-fixes.css'])assert.ok(sections.includes(file),file);
+});

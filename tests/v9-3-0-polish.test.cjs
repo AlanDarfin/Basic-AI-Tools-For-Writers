@@ -26,7 +26,7 @@ test('Folder Notes use only description YAML, not the opening prose',()=>{
  assert.match(source,/noteExcerpts/);
 });
 test('Title icons do not affect editable title baseline and toolbar icons are sized for touch',()=>{
- const source=read('src/v9/native-explorer.js'),css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const source=read('src/v9/native-explorer.js'),css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(source,/writer-v93-title-icon-host/);
  assert.match(source,/title\.classList\.toggle/);
  assert.match(css,/\.inline-title\.writer-v93-title-icon-host/);

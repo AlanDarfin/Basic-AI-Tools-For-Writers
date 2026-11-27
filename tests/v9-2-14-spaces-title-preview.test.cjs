@@ -35,7 +35,7 @@ test('title icon shares native explorer setting and does not rewrite notes',()=>
  assert.match(src,/writerV9ExplorerRefresh/);
 });
 test('preview restores square thumbnail to right side on mobile',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(css,/9\.2\.15/);
  assert.match(css,/flex-direction:row/);
  assert.match(css,/aspect-ratio:1/);

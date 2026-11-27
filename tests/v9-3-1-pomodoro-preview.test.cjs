@@ -60,7 +60,7 @@ test('daily log is opt-in, touches only an existing daily note, and never create
  assert.ok(lookups.includes(file.path));
 });
 test('preview button uses neutral color and only clipped descriptions render three-dot indicator',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  const source=read('src/v9/explorer-favorites-preview.js');
  assert.match(css,/writer-v921-preview-toggle\.is-active/);
  assert.match(css,/color:var\(--basic-ui-muted,var\(--text-muted\)\)/);

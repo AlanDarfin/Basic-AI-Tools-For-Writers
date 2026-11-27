@@ -105,7 +105,7 @@ test('slash embed picker keeps the slash text on cancel and rejects stale insert
  assert.equal(content,'Intro ![[Chapter.md]]');
 });
 test('source and CSS provide a compact dock on mobile, not a second explorer',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(css,/writer-v9216-spaces-host/);
  assert.match(css,/writer-v9216-spaces-rail/);
  assert.match(css,/body\.is-mobile \.writer-v9216-spaces-dock/);

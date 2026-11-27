@@ -29,7 +29,7 @@ test('the chat puts user bubbles on right despite inherited row-reverse CSS',()=
 
 test('the Explorer preview is outside the folder or file title row',()=>{
  const source=read('src/v9/explorer-favorites-preview.js');
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(source,/node\.insertAdjacentElement\('afterend',shell\)/);
  assert.doesNotMatch(source,/node\.appendChild\(shell\)/);
  assert.match(source,/oldInline\?\.remove\(\)/);

@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const read=path=>fs.readFileSync(path,'utf8');
 
 test('native icon remains part of first title line, not absolutely positioned at mobile title box top',()=>{
- const css=read('src/styles/v9-2-2-iconic-fixes.css');
+ const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  const section=css.slice(css.indexOf('/* 9.3.2 — Place note icons'),css.indexOf('/* Folder Note previews are the YAML description'));
  assert.ok(section.includes('.inline-title.writer-v93-title-icon-host'));
  assert.match(section,/padding-inline-start:0/);

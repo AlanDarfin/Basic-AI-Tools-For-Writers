@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const click=fs.readFileSync('src/v9/click-clack.js','utf8');
 const preview=fs.readFileSync('src/v9/explorer-favorites-preview.js','utf8');
-const css=fs.readFileSync('src/styles/v9-2-2-iconic-fixes.css','utf8');
+const css=fs.readFileSync('src/styles/native/v9-2-2-iconic-fixes.css','utf8');
 const createWav=()=>{
  const buffer=new ArrayBuffer(44),bytes=new Uint8Array(buffer);
  for(const [offset,label] of [[0,'RIFF'],[8,'WAVE']])

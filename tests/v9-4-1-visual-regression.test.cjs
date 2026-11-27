@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const source=fs.readFileSync('src/styles/v9-2-2-iconic-fixes.css','utf8');
+const source=fs.readFileSync('src/styles/native/v9-2-2-iconic-fixes.css','utf8');
 const compiled=fs.readFileSync('styles.css','utf8');
 const patch=source.slice(source.indexOf('/* 9.4.1 —'));
 test('pre-v10 icon alignment is bundled and remains in normal text flow',()=>{

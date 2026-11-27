@@ -17,7 +17,7 @@ const entries=Object.freeze([
  Object.freeze({path:'features/v9-1-unified.css',category:'features'}),
  Object.freeze({path:'blocks/v9-1-2-virtual-content.css',category:'blocks'}),
  Object.freeze({path:'features/v9-2-suite.css',category:'features'}),
- Object.freeze({path:'v9-2-2-iconic-fixes.css',category:'native'}),
+ Object.freeze({path:'native/v9-2-2-iconic-fixes.css',category:'native'}),
  Object.freeze({path:'features/v9-2-3-home-title-favorites.css',category:'features'}),
  Object.freeze({path:'features/v9-2-4-dashboard.css',category:'features'}),
  Object.freeze({path:'features/v9-2-6-dashboard.css',category:'features'}),

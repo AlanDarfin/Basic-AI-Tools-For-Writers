@@ -73,3 +73,10 @@ Run npm run build:css, npm run check:css, npm test. Test editor width with each 
 - Update 12 historical test path consumers and add component path regression coverage. Both distributable blob hashes and the complete ordered module basename sequence remain unchanged.
 - Six flat paths remain: foundation, workflow, iconic fixes, both Timeline modules and Homepage widgets. The first three have numerous test/audit consumers; the last three are deferred to avoid conflicts with Timeline PR #175.
 - Latest CI remains pending. No JavaScript runtime changes or visual verification in this stage.
+
+## Phase 4 — batch 5 (foundation, workflow and native fixes)
+
+- Baseline CI #1373 passed all 178 regression files, bundle synchronization, lint, metadata and packaging.
+- Move the foundation, historical workflow and iconic fixes into core/, features/ and native/, preserving original Git blobs and cascade slots. Total categorized modules: 50/53.
+- Update audit and historical test source consumers; retain historical documentation as a record of past releases. Add categorized path coverage.
+- Three flat paths remain deliberately deferred: both Timeline sources and Homepage widgets, pending separate PR #175 integration. No runtime artifact changes or JS runtime refactor. Latest CI and visual QA remain pending.

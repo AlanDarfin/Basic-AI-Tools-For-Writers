@@ -55,3 +55,13 @@ test('CSS foundation: mobile notes and explorer controls require Basic-owned mar
  assert.ok(!rules.some(r=>r.selector==='.workspace-leaf-content[data-type="file-explorer"] .nav-action-button'));
  assert.ok(!rules.some(r=>r.selector.includes('.nav-action-buttons .nav-action-button')&&!r.selector.includes('writer-')));
 });
+
+test('CSS phase 3: component layout stays scoped and responsive',()=>{
+ const css=fs.readFileSync('styles.css','utf8'),rules=collectRules(css);
+ assert.ok(rules.some(r=>r.selector.includes('.writer-project-scene.writer-project-scene-actions')&&r.context.includes('basic-project')&&r.body.includes('grid-template-columns:28px minmax(0,1fr) max-content')));
+ assert.ok(rules.some(r=>r.selector==='.writer-v8-home'&&r.body.includes('--writer-home-grid-columns:12')));
+ assert.ok(rules.some(r=>r.selector==='body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid'&&r.body.includes('repeat(var(--writer-home-grid-columns,12),minmax(0,1fr))')));
+ assert.ok(!rules.some(r=>r.selector==='.writer-v8-home .writer-v925-grid>[data-section] :is(h3,h4,p,button,small,strong,span)'));
+ assert.ok(rules.some(r=>r.selector==='.writer-v9216-space-chip > span'&&r.body.includes('min-width:0')));
+ assert.ok(rules.some(r=>r.selector==='.dictionary-view-content.writer-tool-root .writer-lt-result-actions'&&r.body.includes('repeat(auto-fit,minmax(min(100%,120px),1fr))')));
+});

@@ -26,28 +26,38 @@ function writerV107Register(plugin){
  }
 }
 function writerV107RegisterAfterStartup(plugin){
- if(plugin._writerV107StartupQueued)return;
- plugin._writerV107StartupQueued=true;
- let cancelled=false;
- plugin.register?.(()=>{cancelled=true;});
+ if(plugin._writerV107StartupQueued||plugin._writerV107Registered)return;
+ const session={};
+ plugin._writerV107StartupQueued=session;
+ let cancelled=false,started=false,timer=null;
+ const current=()=>!cancelled&&plugin._writerV107StartupQueued===session;
+ plugin.register?.(()=>{
+  cancelled=true;
+  if(timer!==null&&typeof clearTimeout==='function')clearTimeout(timer);
+  timer=null;
+  if(plugin._writerV107StartupQueued===session)delete plugin._writerV107StartupQueued;
+ });
  const run=()=>{
-  if(cancelled)return;
+  if(!current()||started)return;
+  started=true;timer=null;
   try{writerV107Register(plugin);}
   catch(error){console.error('[Basic AI] 10.7 startup was isolated:',error);}
+ };
+ const schedule=()=>{
+  if(!current()||started||timer!==null)return;
+  if(typeof setTimeout==='function')timer=setTimeout(run,0);
+  else run();
  };
  // The long-established Basic v3-v10 modules must initialize first. A broken
  // optional extension cannot reject Plugin.onload and make the entire plugin
  // appear disabled. This also avoids registering a View during layout restore.
  try{
   const ready=plugin.app?.workspace?.onLayoutReady;
-  if(typeof ready==='function')ready.call(plugin.app.workspace,()=>{
-   if(typeof setTimeout==='function')setTimeout(run,0);else run();
-  });
-  else if(typeof setTimeout==='function')setTimeout(run,0);
-  else run();
+  if(typeof ready==='function')ready.call(plugin.app.workspace,schedule);
+  else schedule();
  }catch(error){
   console.warn('[Basic AI] Deferred registration unavailable:',error);
-  if(typeof setTimeout==='function')setTimeout(run,0);
+  schedule();
  }
 }
 function writerV107CompatibilitySettings(plugin,panel){

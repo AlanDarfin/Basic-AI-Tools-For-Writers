@@ -248,3 +248,36 @@ test('stale native fallback does not open an external browser, but active fallba
  }
  const h=webNavigationHarness();h.close();assert.equal(await open(h.plugin,'https://example.org',h.current),null);assert.equal(h.attempts.length,0);
 });
+
+function integrationStartupHarness({throwReady=false}={}){
+ const timers=new Map(),callbacks=[],cleanups=[];let seq=0,registrations=0;
+ const workspace={onLayoutReady(fn){callbacks.push(fn);if(throwReady){fn();throw Error('layout unavailable');}}};
+ const plugin={app:{workspace},settings:{},register:fn=>cleanups.push(fn)};
+ const noop=()=>{};
+ const register=load('src/v10/integrations-107.js','writerV107RegisterAfterStartup',{
+  console:{warn:noop,error:noop,info:noop},
+  setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id),
+  writerV107DbRegister:()=>registrations++,writerV107ZoteroRegister:noop,writerV107StudyRegister:noop,
+  writerV107CalendarRegister:noop,writerV107GraphRegister:noop,writerV107EditorRegister:noop,
+  writerV107SpeechRegister:noop,writerV107MediaRegister:noop
+ });
+ const flush=()=>{for(const [id,fn] of [...timers]){timers.delete(id);fn();}};
+ return {plugin,register,timers,callbacks,cleanups,flush,count:()=>registrations};
+}
+test('optional integration startup coalesces repeated layout-ready callbacks',()=>{
+ const h=integrationStartupHarness();h.register(h.plugin);h.register(h.plugin);
+ assert.equal(h.callbacks.length,1);h.callbacks[0]();h.callbacks[0]();assert.equal(h.timers.size,1);
+ h.flush();h.callbacks[0]();h.register(h.plugin);h.flush();assert.equal(h.count(),1);assert.equal(h.timers.size,0);
+ h.cleanups[0]();
+});
+test('unloading pending optional integrations cancels the timer and makes old callbacks inert',()=>{
+ const h=integrationStartupHarness();h.register(h.plugin);h.callbacks[0]();
+ const oldTimer=[...h.timers.values()][0];h.cleanups[0]();
+ assert.equal(h.timers.size,0);h.callbacks[0]();oldTimer();assert.equal(h.count(),0);
+ h.register(h.plugin);h.callbacks[1]();h.cleanups[0]();h.callbacks[0]();oldTimer();
+ assert.equal(h.timers.size,1);h.flush();assert.equal(h.count(),1);h.cleanups[1]();
+});
+test('layout-ready failure after scheduling does not queue a second registration',()=>{
+ const h=integrationStartupHarness({throwReady:true});h.register(h.plugin);
+ assert.equal(h.timers.size,1);h.flush();assert.equal(h.count(),1);h.cleanups[0]();
+});

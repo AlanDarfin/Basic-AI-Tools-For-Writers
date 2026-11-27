@@ -140,3 +140,7 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 
 ### Phase 7.5.2 — CI fixture follow-up
 - CI #1388 rebuilt the bundle but reported 178/180 regression files passing. The bookmark DOM mock now models `isConnected` and awaits its asynchronous click handler; a detached-widget and duplicate-click regression fixture exercises the new guard. The native slash-search static contract now matches the explicit live-render predicate. Production sources and shipping bundle are unchanged in this follow-up. Full CI and real Obsidian QA remain pending.
+
+### Phase 7.5.3 — deferred optional integrations (first pass)
+- The v10.7 integration startup now owns a cancellable timer and one session token. Repeated layout-ready events coalesce; pending registration is cancelled on unload and stale callbacks cannot register modules in a later startup session. A layout-ready exception cannot enqueue a duplicate registration. Already-registered integrations are not registered again.
+- Added three deterministic lifecycle fixtures for repeated readiness, unload/requeue and readiness exceptions. The generated main.js contains the exact updated source region. No CSS, settings schema, dependencies or command IDs changed. Full CI, real desktop/Android QA and private Surfing header teardown remain pending; this pass does not claim cancellation of already-started external requests or teardown of every registered integration.

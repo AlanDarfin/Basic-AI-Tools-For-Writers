@@ -39,7 +39,7 @@ function writerV107ZoteroMarkdown(entry){
   '> [!info] Zotero','> '+entry.key,''];
  return lines.join('\n');
 }
-async function writerV107ZoteroRequest(plugin,key,url){
+async function writerV107ZoteroRequest(key,url){
  if(!/^https:\/\/api\.zotero\.org\/(?:users|groups)\/\d+\/items\/top\?/.test(url))throw Error('Untrusted Zotero URL');
  const req=require('obsidian').requestUrl;
  const headers={'Zotero-API-Version':'3','Accept':'application/json'};
@@ -51,14 +51,15 @@ async function writerV107ZoteroRequest(plugin,key,url){
  if(String(res.text||'').length>3000000)throw Error('Zotero response too large');
  return res;
 }
-async function writerV107ZoteroRead(plugin,key,format='json'){
- const cfg=writerV107ZoteroConfig(plugin.settings);
+async function writerV107ZoteroRead(key,format,cfg,isCurrent){
  if(!cfg.enabled)throw Error(writerUi('Ative a integração Zotero nas configurações.','Enable Zotero integration in settings.'));
  if(!cfg.libraryId)throw Error(writerUi('Informe o ID numérico da biblioteca.','Enter the numeric library ID.'));
  let data=[];
  for(let start=0;start<cfg.maxItems;start+=100){
-  const response=await writerV107ZoteroRequest(plugin,key,writerV107ZoteroUrl(cfg,start,format));
-  const batch=format==='json'?(Array.isArray(response.json)?response.json:[]):(Array.isArray(response.json)?response.json:[]);
+  if(!isCurrent())return null;
+  const response=await writerV107ZoteroRequest(key,writerV107ZoteroUrl(cfg,start,format));
+  if(!isCurrent())return null;
+  const batch=Array.isArray(response.json)?response.json:[];
   data.push(...batch.slice(0,cfg.maxItems-data.length));
   if(batch.length<100)break;
  }
@@ -73,69 +74,139 @@ function writerV107ZoteroCsl(item){
   URL:entry.url||undefined,'container-title':d.publicationTitle||undefined,volume:d.volume||undefined,issue:d.issue||undefined,
   page:d.pages||undefined,publisher:d.publisher||undefined};
 }
-async function writerV107ZoteroEnsureFolder(plugin,path){
- const parts=path.split('/').filter(Boolean);let current='';
- for(const p of parts){current=current?current+'/'+p:p;if(!plugin.app.vault.getAbstractFileByPath(current))await plugin.app.vault.createFolder(current);}
+const writerV16ZoteroSessions=new WeakMap();
+function writerV16ZoteroSession(plugin,renew=false){
+ const previous=writerV16ZoteroSessions.get(plugin);
+ if(previous&&(!previous.stopped||!renew))return previous;
+ const session={modals:new Set(),revision:0,stopped:false};
+ writerV16ZoteroSessions.set(plugin,session);
+ plugin.register(()=>{
+  session.stopped=true;
+  for(const modal of session.modals)modal.close();
+  session.modals.clear();
+ });
+ return session;
 }
-async function writerV107ZoteroImport(plugin,raw){
- const cfg=plugin.settings.v107Zotero,all=raw.map(writerV107ZoteroNormalize).filter(x=>x&&x.type!=='attachment'&&x.type!=='note');
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Importar referências do Zotero','Import Zotero references'));
+function writerV16ZoteroModal(plugin,title){
+ const session=writerV16ZoteroSession(plugin);
+ if(session.stopped)return null;
+ const modal=new Modal(plugin.app);
+ modal.setTitle(title);
+ session.modals.add(modal);
+ modal.onClose=()=>{session.modals.delete(modal);};
+ return {modal,session,isOpen:()=>!session.stopped&&session.modals.has(modal)};
+}
+async function writerV107ZoteroEnsureFolder(plugin,path,isCurrent){
+ const parts=path.split('/').filter(Boolean);let current='';
+ for(const part of parts){
+  if(!isCurrent())return;
+  current=current?current+'/'+part:part;
+  if(!plugin.app.vault.getAbstractFileByPath(current))await plugin.app.vault.createFolder(current);
+ }
+}
+function writerV107ZoteroImport(plugin,raw,cfg,isLibraryCurrent){
+ const all=raw.map(writerV107ZoteroNormalize).filter(x=>x&&x.type!=='attachment'&&x.type!=='note');
+ const view=writerV16ZoteroModal(plugin,writerUi('Importar referências do Zotero','Import Zotero references'));
+ if(!view)return;
+ const {modal,isOpen}=view;
+ const isCurrent=()=>isOpen()&&isLibraryCurrent();
+ let busy=false;
  modal.onOpen=()=>{
   modal.contentEl.createEl('p',{text:all.length+' '+writerUi('referências encontradas. Notas existentes não serão sobrescritas.','references found. Existing notes will not be overwritten.')});
-  const previews=modal.contentEl.createEl('small',{text:all.slice(0,6).map(x=>x.title).join('\n'),cls:'writer-v101-ics-preview'});
+  modal.contentEl.createEl('small',{text:all.slice(0,6).map(x=>x.title).join('\n'),cls:'writer-v101-ics-preview'});
   new Setting(modal.contentEl).addButton(btn=>btn.setButtonText(writerUi('Criar notas','Create notes')).setCta().onClick(async()=>{
+   if(busy||!isCurrent())return;
+   busy=true;
    btn.setDisabled(true);let count=0;
    try{
-    await writerV107ZoteroEnsureFolder(plugin,cfg.folder);
+    await writerV107ZoteroEnsureFolder(plugin,cfg.folder,isCurrent);
     for(const entry of all){
+     if(!isCurrent())return;
      const path=cfg.folder+'/'+entry.key+'.md';
      if(plugin.app.vault.getAbstractFileByPath(path))continue;
      await plugin.app.vault.create(path,writerV107ZoteroMarkdown(entry));count++;
     }
+    if(!isCurrent())return;
     modal.close();new Notice(count+' '+writerUi('referências importadas.','references imported.'));
-   }catch(error){new Notice(String(error.message||error).slice(0,200));btn.setDisabled(false);}
+   }catch(error){
+    if(isCurrent())new Notice(String(error.message||error).slice(0,200));
+   }finally{
+    busy=false;
+    if(isOpen())btn.setDisabled(false);
+   }
   }));
  };
  modal.open();
 }
 function writerV107ZoteroPrompt(plugin,format='json'){
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Zotero Web API','Zotero Web API'));
- let key='';
+ const view=writerV16ZoteroModal(plugin,'Zotero Web API');
+ if(!view)return;
+ const {modal,session,isOpen}=view;
+ let input,busy=false;
+ const untrack=modal.onClose;
+ modal.onClose=()=>{untrack();if(input)input.value='';};
  modal.onOpen=()=>{
   modal.contentEl.createEl('p',{text:writerUi('Informe uma chave de API somente para esta solicitação (opcional para biblioteca pública). A chave não será salva. A consulta envia solicitações apenas ao api.zotero.org.','Enter a temporary API key (optional for public libraries). It is not saved. Requests go only to api.zotero.org.')});
-  const input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:'Zotero API key'}});
-  input.addEventListener('input',()=>{key=input.value.slice(0,300);});
+  input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:'Zotero API key'}});
   new Setting(modal.contentEl).addButton(btn=>btn.setButtonText(writerUi('Consultar biblioteca','Fetch library')).setCta().onClick(async()=>{
+   if(busy||!isOpen())return;
+   busy=true;
    btn.setDisabled(true);
+   const key=input.value.slice(0,300);
+   input.value='';
+   const cfg={...writerV107ZoteroConfig(plugin.settings)},revision=session.revision;
+   const isLibraryCurrent=()=>{
+    const current=plugin.settings.v107Zotero;
+    return session.revision===revision&&current&&current.enabled===cfg.enabled&&current.libraryType===cfg.libraryType&&
+     current.libraryId===cfg.libraryId&&current.folder===cfg.folder&&current.maxItems===cfg.maxItems;
+   };
+   const isCurrent=()=>isOpen()&&isLibraryCurrent();
    try{
-    const items=await writerV107ZoteroRead(plugin,key,format);
-    key='';input.value='';modal.close();
-    if(format==='json')writerV107ZoteroImport(plugin,items);
-    else{
+    const items=await writerV107ZoteroRead(key,format,cfg,isCurrent);
+    if(!items||!isCurrent())return;
+    if(format==='json'){
+     modal.close();
+     writerV107ZoteroImport(plugin,items,cfg,isLibraryCurrent);
+    }else{
      const entries=items.filter(item=>item&&typeof item==='object')
       .map(item=>item.id||item.type?item:writerV107ZoteroCsl(item)).filter(Boolean);
      const path='Zotero-csl-'+Date.now()+'.json';
      await plugin.app.vault.create(path,JSON.stringify(entries,null,2));
+     if(!isCurrent())return;
+     modal.close();
      new Notice(writerUi('Exportação CSL criada: ','CSL export created: ')+path);
     }
-   }catch(error){key='';input.value='';new Notice(String(error.message||error).slice(0,240));btn.setDisabled(false);}
+   }catch(error){
+    if(isCurrent())new Notice(String(error.message||error).slice(0,240));
+   }finally{
+    busy=false;
+    if(isOpen())btn.setDisabled(false);
+   }
   }));
  };
- modal.onClose=()=>{key='';};
  modal.open();
 }
 function writerV107ZoteroRegister(plugin){
+ const session=writerV16ZoteroSession(plugin,true);
  writerV107ZoteroConfig(plugin.settings);
- plugin.addCommand({id:'v107-zotero-web-import',name:writerUi('Zotero: importar biblioteca via API','Zotero: import library via API'),callback:()=>writerV107ZoteroPrompt(plugin)});
- plugin.addCommand({id:'v107-zotero-web-csl',name:writerUi('Zotero: exportar biblioteca CSL JSON','Zotero: export library to CSL JSON'),callback:()=>writerV107ZoteroPrompt(plugin,'csljson')});
+ const open=format=>{if(!session.stopped)writerV107ZoteroPrompt(plugin,format);};
+ plugin.addCommand({id:'v107-zotero-web-import',name:writerUi('Zotero: importar biblioteca via API','Zotero: import library via API'),callback:()=>open('json')});
+ plugin.addCommand({id:'v107-zotero-web-csl',name:writerUi('Zotero: exportar biblioteca CSL JSON','Zotero: export library to CSL JSON'),callback:()=>open('csljson')});
 }
 function writerV107ZoteroSettings(plugin,panel){
  const cfg=plugin.settings.v107Zotero;
+ const update=async (field,value)=>{
+  const session=writerV16ZoteroSessions.get(plugin);
+  if(session?.stopped||plugin.settings.v107Zotero!==cfg)return;
+  if(session&&value!==cfg[field])session.revision++;
+  cfg[field]=value;
+  await plugin.saveSettings();
+ };
  panel.createEl('h3',{text:writerUi('Zotero Web API (somente leitura)','Zotero Web API (read only)')});
- new Setting(panel).setName(writerUi('Ativar acesso à API','Enable API access')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Tipo de biblioteca','Library type')).addDropdown(d=>d.addOption('users',writerUi('Pessoal','User')).addOption('groups',writerUi('Grupo','Group')).setValue(cfg.libraryType).onChange(async v=>{cfg.libraryType=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('ID numérico da biblioteca','Numeric library ID')).addText(t=>t.setValue(cfg.libraryId).setPlaceholder('1234567').onChange(async v=>{cfg.libraryId=/^\d{0,15}$/.test(v)?v:cfg.libraryId;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Pasta de importação','Imported notes folder')).addText(t=>t.setValue(cfg.folder).onChange(async v=>{if(/^[\p{L}\p{N} _\/-]{1,120}$/u.test(v)){cfg.folder=v;await plugin.saveSettings();}}));
- new Setting(panel).setName(writerUi('Itens por consulta','Max items per request')).addSlider(s=>s.setLimits(20,300,20).setDynamicTooltip().setValue(cfg.maxItems).onChange(async v=>{cfg.maxItems=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Ativar acesso à API','Enable API access')).addToggle(t=>t.setValue(cfg.enabled).onChange(v=>update('enabled',v)));
+ new Setting(panel).setName(writerUi('Tipo de biblioteca','Library type')).addDropdown(d=>d.addOption('users',writerUi('Pessoal','User')).addOption('groups',writerUi('Grupo','Group')).setValue(cfg.libraryType).onChange(v=>update('libraryType',v)));
+ new Setting(panel).setName(writerUi('ID numérico da biblioteca','Numeric library ID')).addText(t=>t.setValue(cfg.libraryId).setPlaceholder('1234567').onChange(v=>update('libraryId',/^\d{0,15}$/.test(v)?v:cfg.libraryId)));
+ new Setting(panel).setName(writerUi('Pasta de importação','Imported notes folder')).addText(t=>t.setValue(cfg.folder).onChange(async v=>{if(/^[\p{L}\p{N} _\/-]{1,120}$/u.test(v))await update('folder',v);}));
+ new Setting(panel).setName(writerUi('Itens por consulta','Max items per request')).addSlider(s=>s.setLimits(20,300,20).setDynamicTooltip().setValue(cfg.maxItems).onChange(v=>update('maxItems',v)));
  new Setting(panel).setName(writerUi('Buscar referências','Fetch references')).addButton(b=>b.setButtonText(writerUi('Conectar','Connect')).onClick(()=>writerV107ZoteroPrompt(plugin)));
 }

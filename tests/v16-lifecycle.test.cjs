@@ -33,6 +33,94 @@ function homeHarness({delayed=false}={}){
  return {register,plugin,cleanups,ready:()=>ready,release:()=>release?.(),open:async()=>{opened++;},stats:()=>({opened,detached,activated,stored,commands})};
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));
+function zoteroHarness({create=async()=>{},existing=[]}={}){
+ const modals=[],buttons=[],requests=[],writes=[],notices=[],cleanups=[],commands=new Map(),settingsChanges=new Map();
+ class Modal{
+  constructor(){this.contentEl={createEl:tag=>tag==='input'?(this.input={value:''}):{}};modals.push(this);}
+  setTitle(title){this.title=title;}
+  open(){this.opened=true;this.onOpen();}
+  close(){this.opened=false;this.onClose();}
+ }
+ class Setting{
+  setName(name){this.name=name;return this;}
+  addText(configure){
+   configure({setValue(){return this;},setPlaceholder(){return this;},onChange:fn=>settingsChanges.set(this.name,fn)});
+   return this;
+  }
+  addToggle(configure){return this.addText(configure);}
+  addDropdown(configure){
+   configure({addOption(){return this;},setValue(){return this;},onChange:fn=>settingsChanges.set(this.name,fn)});
+   return this;
+  }
+  addSlider(configure){
+   configure({setLimits(){return this;},setDynamicTooltip(){return this;},setValue(){return this;},onChange:fn=>settingsChanges.set(this.name,fn)});
+   return this;
+  }
+  addButton(configure){
+   const button={setButtonText(){return this;},setCta(){return this;},setDisabled(value){this.disabled=value;},onClick(fn){this.click=fn;}};
+   buttons.push(button);configure(button);
+  }
+ }
+ const vault={getAbstractFileByPath:path=>existing.includes(path),createFolder:async path=>writes.push(path),
+  create:(path,data)=>{writes.push(path);return create(path,data);}};
+ const plugin={app:{vault},settings:{v107Zotero:{enabled:true,libraryId:'1234',folder:'Zotero',maxItems:200}},
+  register:fn=>cleanups.push(fn),addCommand:({id,callback})=>commands.set(id,callback),saveSettings:async()=>{}};
+ const api=load('src/v10/zotero-web.js','({prompt:writerV107ZoteroPrompt,register:writerV107ZoteroRegister,settings:writerV107ZoteroSettings})',
+  {Modal,Setting,Notice:class{constructor(text){notices.push(text);}},
+  require:()=>({requestUrl:options=>new Promise((resolve,reject)=>requests.push({options,resolve,reject}))})});
+ return {...api,plugin,modals,buttons,requests,writes,notices,cleanups,commands,settingsChanges};
+}
+const zoteroItem=key=>({key,data:{title:`Reference ${key}`,itemType:'book'}});
+const zoteroResponse=json=>({status:200,json});
+test('closed Zotero prompt clears its credential and stops pagination and import handoff',async()=>{
+ const h=zoteroHarness();h.prompt(h.plugin);h.modals[0].input.value='temporary-example';
+ const running=h.buttons[0].click();await h.buttons[0].click();
+ assert.equal(h.requests.length,1);assert.equal(h.requests[0].options.headers['Zotero-API-Key'],'temporary-example');
+ h.modals[0].close();assert.equal(h.modals[0].input.value,'');
+ h.requests[0].resolve(zoteroResponse(Array.from({length:100},(_,i)=>zoteroItem(i))));await running;
+ assert.equal(h.requests.length,1);assert.equal(h.modals.length,1);assert.deepEqual(h.notices,[]);
+});
+test('Zotero unload closes pending prompts and suppresses late export and errors',async()=>{
+ const h=zoteroHarness();h.prompt(h.plugin,'csljson');h.prompt(h.plugin);
+ const exportJob=h.buttons[0].click(),importJob=h.buttons[1].click();
+ assert.equal(h.cleanups.length,1);h.cleanups[0]();
+ h.requests[0].resolve(zoteroResponse([{id:'saved',type:'book'}]));h.requests[1].reject(Error('late'));
+ await Promise.all([exportJob,importJob]);h.prompt(h.plugin);
+ assert.equal(h.modals.length,2);assert.ok(h.modals.every(modal=>!modal.opened));
+ assert.deepEqual(h.writes,[]);assert.deepEqual(h.notices,[]);
+});
+test('Zotero invalidates a pending query even if a library setting changes back',async()=>{
+ const h=zoteroHarness();h.prompt(h.plugin);const fetching=h.buttons[0].click();
+ h.settings(h.plugin,{createEl:()=>({})});
+ const changeId=h.settingsChanges.get('Numeric library ID');await changeId('4321');await changeId('1234');
+ h.requests[0].resolve(zoteroResponse(Array.from({length:100},(_,i)=>zoteroItem(i))));await fetching;
+ assert.equal(h.requests.length,1);assert.equal(h.modals.length,1);assert.equal(h.buttons[0].disabled,false);
+});
+test('a retained Zotero command cannot open a prompt in a new registration session',()=>{
+ const h=zoteroHarness(),id='v107-zotero-web-import';
+ h.register(h.plugin);const previous=h.commands.get(id);previous();h.cleanups[0]();
+ h.register(h.plugin);previous();assert.equal(h.modals.length,1);
+ h.commands.get(id)();assert.equal(h.modals.length,2);assert.equal(h.modals[1].opened,true);
+ h.cleanups[1]();assert.equal(h.modals[1].opened,false);
+});
+test('Zotero stops after an in-flight import write when its confirmation closes',async()=>{
+ let complete;
+ const h=zoteroHarness({existing:['Zotero','Zotero/SKIP.md'],create:()=>new Promise(resolve=>{complete=resolve;})});
+ h.prompt(h.plugin);const fetch=h.buttons[0].click();
+ h.requests[0].resolve(zoteroResponse(['SKIP','FIRST','LATER'].map(zoteroItem)));await fetch;
+ assert.equal(h.modals[0].opened,false);assert.equal(h.modals[1].opened,true);
+ const importing=h.buttons[1].click();await h.buttons[1].click();
+ assert.deepEqual(h.writes,['Zotero/FIRST.md']);h.modals[1].close();complete();await importing;
+ assert.deepEqual(h.writes,['Zotero/FIRST.md']);assert.deepEqual(h.notices,[]);
+});
+test('current Zotero export paginates and creates one CSL file',async()=>{
+ const h=zoteroHarness();h.prompt(h.plugin,'csljson');const exporting=h.buttons[0].click();
+ h.requests[0].resolve(zoteroResponse(Array.from({length:100},(_,i)=>({id:i,type:'book'}))));await flush();
+ assert.equal(h.requests.length,2);assert.match(h.requests[1].options.url,/start=100$/);
+ h.requests[1].resolve(zoteroResponse([{id:100,type:'book'}]));await exporting;
+ assert.equal(h.modals[0].opened,false);assert.equal(h.writes.length,1);
+ assert.match(h.writes[0],/^Zotero-csl-\d+\.json$/);assert.match(h.notices[0],/^CSL export created: /);
+});
 test('startup callback is inert after unloading before layout and registration is idempotent',async()=>{
  const h=homeHarness();h.register(h.plugin,h.open);h.register(h.plugin,h.open);
  assert.equal(h.stats().commands,1);h.cleanups[0]();h.ready()();await flush();

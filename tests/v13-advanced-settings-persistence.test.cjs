@@ -15,7 +15,7 @@ const features=[
  {file:'zotero-web',key:'v107Zotero',name:'Zotero',field:'libraryId',label:'Numeric library ID',value:'1234567'}
 ];
 
-function runtime(feature,initial={}){
+function runtime(feature,initial={},globals={}){
  const rows=[],saves=[];
  class Setting{
   constructor(){this.row={};rows.push(this.row);}
@@ -25,7 +25,7 @@ function runtime(feature,initial={}){
    const input={inputEl:{},setValue(){return this;},setPlaceholder(){return this;},
     setLimits(){return this;},setDynamicTooltip(){return this;},addOption(){return this;},
     setButtonText(){return this;},onChange:callback=>{this.row.change=callback;return input;},
-    onClick:()=>input};
+    onClick:callback=>{this.row.click=callback;return input;}};
    register(input);return this;
   }
   addToggle(register){return this.control(register);}
@@ -38,14 +38,14 @@ function runtime(feature,initial={}){
  const render='writerV107'+feature.name+'Settings';
  const extras={
   'data-tables':['writerV107DbRows','writerV107DbSpec'],
-  'calendar-feeds':['writerV107CalendarSynchronize'],
+  'calendar-feeds':['writerV107CalendarSynchronize','writerV107CalendarRegister'],
   'story-graph':['writerV107GraphBuild'],
   'speech-accessibility':['writerV107SpeechStart'],
   'study-fsrs':['writerV107StudySchedule']
  }[feature.file]||[];
  const api=vm.runInNewContext(fs.readFileSync('src/v10/'+feature.file+'.js','utf8')+
   '\n({'+[config,render,...extras].join(',')+'})',{
-   Setting,ItemView:class{},TFile:class{},URL,writerUi:(_pt,en)=>en,console
+   Setting,ItemView:class{},TFile:class{},URL,writerUi:(_pt,en)=>en,console,...globals
   });
  const settings={[feature.key]:initial};
  const plugin={settings,app:{vault:{getMarkdownFiles:()=>[]},metadataCache:{}},
@@ -148,6 +148,130 @@ test('adding a later calendar feed preserves empty preceding fields through read
  h.api[h.config](h.settings);
  await fifth.change('https://example.org/updated.ics');
  assert.deepEqual(Array.from(h.settings.v107Feeds.urls),['','','','','https://example.org/updated.ics']);
+});
+
+function calendarLifecycle({autoSync=false,deferWrites=false}={}){
+ const feature=features.find(item=>item.file==='calendar-feeds');
+ const urls=['https://example.org/one.ics','https://example.org/two.ics'];
+ const requests=[],writes=[],notices=[],warnings=[],timers=[],cleared=[],cleanups=[],commands=[];
+ const paths=new Set(['Calendar']);
+ const h=runtime(feature,{enabled:true,autoSync,urls}, {
+  WRITER_V83_CAL_FOLDER:'Calendar',writerV101IcsParse:response=>response,
+  writerV83CalValid:event=>event,writerV83CalFormat:event=>event.title,
+  require:()=>({requestUrl:({url})=>new Promise((resolve,reject)=>{requests.push({url,resolve,reject});})}),
+  Notice:class{constructor(message){notices.push(message);}},console:{warn:message=>warnings.push(message)}
+ });
+ const win={setInterval:handler=>timers.push(handler),clearInterval:id=>cleared.push(id)};
+ const ownerDocument={defaultView:win};
+ h.plugin.app.workspace={containerEl:{ownerDocument}};
+ h.plugin.register=cleanup=>cleanups.push(cleanup);
+ h.plugin.addCommand=command=>commands.push(command);
+ h.plugin.app.vault.getAbstractFileByPath=path=>paths.has(path)?{path}:null;
+ h.plugin.app.vault.create=async(path,contents)=>{
+  let finish;
+  const waiting=deferWrites?new Promise(resolve=>{finish=resolve;}):Promise.resolve();
+  writes.push({path,contents,finish});
+  await waiting;
+  assert.equal(paths.has(path),false,'existing events must never be overwritten');
+  paths.add(path);
+ };
+ h.api.writerV107CalendarRegister(h.plugin);
+ h.api[h.render](h.plugin,h.panel);
+ const sync=()=>h.api.writerV107CalendarSynchronize(h.plugin);
+ const toggle=(name,value)=>h.rows.find(row=>row.name===name).change(value);
+ const flush=()=>new Promise(resolve=>setImmediate(resolve));
+ const respond=(index,...titles)=>requests[index].resolve({status:200,text:titles.map(title=>({uid:title,title}))});
+ return {...h,sync,toggle,flush,respond,urls,requests,writes,notices,warnings,timers,cleared,cleanups,commands,ownerDocument};
+}
+
+test('calendar interval, command and settings sync share one run and preserve imported events',async()=>{
+ const h=calendarLifecycle({autoSync:true});
+ h.api.writerV107CalendarRegister(h.plugin);
+ assert.equal(h.timers.length,1);
+ assert.equal(h.commands.length,1);
+ h.timers[0]();
+ h.commands[0].callback();
+ h.rows.find(row=>row.name==='Sync now').click();
+ const pending=h.sync();
+ h.api[h.config](h.settings);
+ assert.deepEqual(h.requests.map(request=>request.url),[h.urls[0]]);
+ h.respond(0,'Event');
+ await h.flush();
+ h.respond(1);
+ assert.deepEqual({...await pending},{imported:1,skipped:0,errors:0});
+ assert.deepEqual(h.notices,['1 new events, 0 already imported, 0 feeds failed.']);
+ const resync=h.sync();
+ h.respond(2,'Event');
+ await h.flush();
+ h.respond(3);
+ assert.deepEqual({...await resync},{imported:0,skipped:1,errors:0});
+ assert.equal(h.writes.length,1);
+});
+
+test('calendar unload clears the original window interval and ignores retained callbacks and late errors',async()=>{
+ const h=calendarLifecycle({autoSync:true});
+ const pending=h.sync();
+ h.ownerDocument.defaultView={clearInterval:()=>assert.fail('use the original browser window')};
+ h.cleanups[0]();
+ h.timers[0]();
+ h.commands[0].callback();
+ h.rows.find(row=>row.name==='Sync now').click();
+ h.requests[0].reject(Error('private request URL with token'));
+ assert.deepEqual({...await pending},{imported:0,skipped:0,errors:0});
+ assert.deepEqual(h.cleared,[1]);
+ assert.equal(h.requests.length,1);
+ assert.deepEqual(h.writes,[]);
+ assert.deepEqual(h.notices,[]);
+ assert.deepEqual(h.warnings,[]);
+});
+
+test('re-enabling calendar sync and replacing its feed discards the superseded download',async()=>{
+ const h=calendarLifecycle();
+ const oldRun=h.sync();
+ await h.toggle('Enable external subscriptions',false);
+ await h.toggle('Enable external subscriptions',true);
+ const newUrl='https://example.org/replacement.ics';
+ await h.toggle('HTTPS ICS feed 1',newUrl);
+ const newRun=h.sync();
+ assert.equal(h.requests.length,1);
+ h.respond(0,'Old event');
+ assert.deepEqual({...await oldRun},{imported:0,skipped:0,errors:0});
+ await h.flush();
+ assert.equal(h.requests[1].url,newUrl);
+ h.respond(1,'Replacement event');
+ await h.flush();
+ h.respond(2);
+ assert.deepEqual({...await newRun},{imported:1,skipped:0,errors:0});
+ assert.deepEqual(h.writes.map(write=>write.contents),['Replacement event']);
+ assert.equal(h.notices.length,1);
+});
+
+test('disabling subscriptions cancels a queued manual retry before the old request settles',async()=>{
+ const h=calendarLifecycle();
+ const oldRun=h.sync();
+ await h.toggle('HTTPS ICS feed 1','https://example.org/replacement.ics');
+ const queuedRun=h.sync();
+ await h.toggle('Enable external subscriptions',false);
+ await h.toggle('Enable external subscriptions',true);
+ h.respond(0,'Old event');
+ await oldRun;
+ assert.deepEqual({...await queuedRun},{imported:0,skipped:0,errors:0});
+ assert.equal(h.requests.length,1);
+ assert.deepEqual(h.writes,[]);
+});
+
+test('stopping automatic calendar sync during a vault write prevents new imports and feed requests',async()=>{
+ const h=calendarLifecycle({autoSync:true,deferWrites:true});
+ h.timers[0]();
+ h.respond(0,'Started','Next');
+ await h.flush();
+ assert.deepEqual(h.writes.map(write=>write.contents),['Started']);
+ await h.toggle('Automatic refresh',false);
+ h.writes[0].finish();
+ await h.flush();
+ assert.deepEqual(h.writes.map(write=>write.contents),['Started']);
+ assert.equal(h.requests.length,1);
+ assert.deepEqual(h.notices,[]);
 });
 
 test('turning off local speech prevents the note reader from starting the device voice engine',async()=>{

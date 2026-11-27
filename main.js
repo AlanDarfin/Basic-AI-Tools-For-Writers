@@ -27156,7 +27156,7 @@ function writerV107ZoteroMarkdown(entry){
   '> [!info] Zotero','> '+entry.key,''];
  return lines.join('\n');
 }
-async function writerV107ZoteroRequest(plugin,key,url){
+async function writerV107ZoteroRequest(key,url){
  if(!/^https:\/\/api\.zotero\.org\/(?:users|groups)\/\d+\/items\/top\?/.test(url))throw Error('Untrusted Zotero URL');
  const req=require('obsidian').requestUrl;
  const headers={'Zotero-API-Version':'3','Accept':'application/json'};
@@ -27168,14 +27168,15 @@ async function writerV107ZoteroRequest(plugin,key,url){
  if(String(res.text||'').length>3000000)throw Error('Zotero response too large');
  return res;
 }
-async function writerV107ZoteroRead(plugin,key,format='json'){
- const cfg=writerV107ZoteroConfig(plugin.settings);
+async function writerV107ZoteroRead(key,format,cfg,isCurrent){
  if(!cfg.enabled)throw Error(writerUi('Ative a integração Zotero nas configurações.','Enable Zotero integration in settings.'));
  if(!cfg.libraryId)throw Error(writerUi('Informe o ID numérico da biblioteca.','Enter the numeric library ID.'));
  let data=[];
  for(let start=0;start<cfg.maxItems;start+=100){
-  const response=await writerV107ZoteroRequest(plugin,key,writerV107ZoteroUrl(cfg,start,format));
-  const batch=format==='json'?(Array.isArray(response.json)?response.json:[]):(Array.isArray(response.json)?response.json:[]);
+  if(!isCurrent())return null;
+  const response=await writerV107ZoteroRequest(key,writerV107ZoteroUrl(cfg,start,format));
+  if(!isCurrent())return null;
+  const batch=Array.isArray(response.json)?response.json:[];
   data.push(...batch.slice(0,cfg.maxItems-data.length));
   if(batch.length<100)break;
  }
@@ -27190,70 +27191,140 @@ function writerV107ZoteroCsl(item){
   URL:entry.url||undefined,'container-title':d.publicationTitle||undefined,volume:d.volume||undefined,issue:d.issue||undefined,
   page:d.pages||undefined,publisher:d.publisher||undefined};
 }
-async function writerV107ZoteroEnsureFolder(plugin,path){
- const parts=path.split('/').filter(Boolean);let current='';
- for(const p of parts){current=current?current+'/'+p:p;if(!plugin.app.vault.getAbstractFileByPath(current))await plugin.app.vault.createFolder(current);}
+const writerV16ZoteroSessions=new WeakMap();
+function writerV16ZoteroSession(plugin,renew=false){
+ const previous=writerV16ZoteroSessions.get(plugin);
+ if(previous&&(!previous.stopped||!renew))return previous;
+ const session={modals:new Set(),revision:0,stopped:false};
+ writerV16ZoteroSessions.set(plugin,session);
+ plugin.register(()=>{
+  session.stopped=true;
+  for(const modal of session.modals)modal.close();
+  session.modals.clear();
+ });
+ return session;
 }
-async function writerV107ZoteroImport(plugin,raw){
- const cfg=plugin.settings.v107Zotero,all=raw.map(writerV107ZoteroNormalize).filter(x=>x&&x.type!=='attachment'&&x.type!=='note');
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Importar referências do Zotero','Import Zotero references'));
+function writerV16ZoteroModal(plugin,title){
+ const session=writerV16ZoteroSession(plugin);
+ if(session.stopped)return null;
+ const modal=new Modal(plugin.app);
+ modal.setTitle(title);
+ session.modals.add(modal);
+ modal.onClose=()=>{session.modals.delete(modal);};
+ return {modal,session,isOpen:()=>!session.stopped&&session.modals.has(modal)};
+}
+async function writerV107ZoteroEnsureFolder(plugin,path,isCurrent){
+ const parts=path.split('/').filter(Boolean);let current='';
+ for(const part of parts){
+  if(!isCurrent())return;
+  current=current?current+'/'+part:part;
+  if(!plugin.app.vault.getAbstractFileByPath(current))await plugin.app.vault.createFolder(current);
+ }
+}
+function writerV107ZoteroImport(plugin,raw,cfg,isLibraryCurrent){
+ const all=raw.map(writerV107ZoteroNormalize).filter(x=>x&&x.type!=='attachment'&&x.type!=='note');
+ const view=writerV16ZoteroModal(plugin,writerUi('Importar referências do Zotero','Import Zotero references'));
+ if(!view)return;
+ const {modal,isOpen}=view;
+ const isCurrent=()=>isOpen()&&isLibraryCurrent();
+ let busy=false;
  modal.onOpen=()=>{
   modal.contentEl.createEl('p',{text:all.length+' '+writerUi('referências encontradas. Notas existentes não serão sobrescritas.','references found. Existing notes will not be overwritten.')});
-  const previews=modal.contentEl.createEl('small',{text:all.slice(0,6).map(x=>x.title).join('\n'),cls:'writer-v101-ics-preview'});
+  modal.contentEl.createEl('small',{text:all.slice(0,6).map(x=>x.title).join('\n'),cls:'writer-v101-ics-preview'});
   new Setting(modal.contentEl).addButton(btn=>btn.setButtonText(writerUi('Criar notas','Create notes')).setCta().onClick(async()=>{
+   if(busy||!isCurrent())return;
+   busy=true;
    btn.setDisabled(true);let count=0;
    try{
-    await writerV107ZoteroEnsureFolder(plugin,cfg.folder);
+    await writerV107ZoteroEnsureFolder(plugin,cfg.folder,isCurrent);
     for(const entry of all){
+     if(!isCurrent())return;
      const path=cfg.folder+'/'+entry.key+'.md';
      if(plugin.app.vault.getAbstractFileByPath(path))continue;
      await plugin.app.vault.create(path,writerV107ZoteroMarkdown(entry));count++;
     }
+    if(!isCurrent())return;
     modal.close();new Notice(count+' '+writerUi('referências importadas.','references imported.'));
-   }catch(error){new Notice(String(error.message||error).slice(0,200));btn.setDisabled(false);}
+   }catch(error){
+    if(isCurrent())new Notice(String(error.message||error).slice(0,200));
+   }finally{
+    busy=false;
+    if(isOpen())btn.setDisabled(false);
+   }
   }));
  };
  modal.open();
 }
 function writerV107ZoteroPrompt(plugin,format='json'){
- const modal=new Modal(plugin.app);modal.setTitle(writerUi('Zotero Web API','Zotero Web API'));
- let key='';
+ const view=writerV16ZoteroModal(plugin,'Zotero Web API');
+ if(!view)return;
+ const {modal,session,isOpen}=view;
+ let input,busy=false;
+ const untrack=modal.onClose;
+ modal.onClose=()=>{untrack();if(input)input.value='';};
  modal.onOpen=()=>{
   modal.contentEl.createEl('p',{text:writerUi('Informe uma chave de API somente para esta solicitação (opcional para biblioteca pública). A chave não será salva. A consulta envia solicitações apenas ao api.zotero.org.','Enter a temporary API key (optional for public libraries). It is not saved. Requests go only to api.zotero.org.')});
-  const input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:'Zotero API key'}});
-  input.addEventListener('input',()=>{key=input.value.slice(0,300);});
+  input=modal.contentEl.createEl('input',{attr:{type:'password',autocomplete:'off',placeholder:'Zotero API key'}});
   new Setting(modal.contentEl).addButton(btn=>btn.setButtonText(writerUi('Consultar biblioteca','Fetch library')).setCta().onClick(async()=>{
+   if(busy||!isOpen())return;
+   busy=true;
    btn.setDisabled(true);
+   const key=input.value.slice(0,300);
+   input.value='';
+   const cfg={...writerV107ZoteroConfig(plugin.settings)},revision=session.revision;
+   const isLibraryCurrent=()=>{
+    const current=plugin.settings.v107Zotero;
+    return session.revision===revision&&current&&current.enabled===cfg.enabled&&current.libraryType===cfg.libraryType&&
+     current.libraryId===cfg.libraryId&&current.folder===cfg.folder&&current.maxItems===cfg.maxItems;
+   };
+   const isCurrent=()=>isOpen()&&isLibraryCurrent();
    try{
-    const items=await writerV107ZoteroRead(plugin,key,format);
-    key='';input.value='';modal.close();
-    if(format==='json')writerV107ZoteroImport(plugin,items);
-    else{
+    const items=await writerV107ZoteroRead(key,format,cfg,isCurrent);
+    if(!items||!isCurrent())return;
+    if(format==='json'){
+     modal.close();
+     writerV107ZoteroImport(plugin,items,cfg,isLibraryCurrent);
+    }else{
      const entries=items.filter(item=>item&&typeof item==='object')
       .map(item=>item.id||item.type?item:writerV107ZoteroCsl(item)).filter(Boolean);
      const path='Zotero-csl-'+Date.now()+'.json';
      await plugin.app.vault.create(path,JSON.stringify(entries,null,2));
+     if(!isCurrent())return;
+     modal.close();
      new Notice(writerUi('Exportação CSL criada: ','CSL export created: ')+path);
     }
-   }catch(error){key='';input.value='';new Notice(String(error.message||error).slice(0,240));btn.setDisabled(false);}
+   }catch(error){
+    if(isCurrent())new Notice(String(error.message||error).slice(0,240));
+   }finally{
+    busy=false;
+    if(isOpen())btn.setDisabled(false);
+   }
   }));
  };
- modal.onClose=()=>{key='';};
  modal.open();
 }
 function writerV107ZoteroRegister(plugin){
+ const session=writerV16ZoteroSession(plugin,true);
  writerV107ZoteroConfig(plugin.settings);
- plugin.addCommand({id:'v107-zotero-web-import',name:writerUi('Zotero: importar biblioteca via API','Zotero: import library via API'),callback:()=>writerV107ZoteroPrompt(plugin)});
- plugin.addCommand({id:'v107-zotero-web-csl',name:writerUi('Zotero: exportar biblioteca CSL JSON','Zotero: export library to CSL JSON'),callback:()=>writerV107ZoteroPrompt(plugin,'csljson')});
+ const open=format=>{if(!session.stopped)writerV107ZoteroPrompt(plugin,format);};
+ plugin.addCommand({id:'v107-zotero-web-import',name:writerUi('Zotero: importar biblioteca via API','Zotero: import library via API'),callback:()=>open('json')});
+ plugin.addCommand({id:'v107-zotero-web-csl',name:writerUi('Zotero: exportar biblioteca CSL JSON','Zotero: export library to CSL JSON'),callback:()=>open('csljson')});
 }
 function writerV107ZoteroSettings(plugin,panel){
  const cfg=plugin.settings.v107Zotero;
+ const update=async (field,value)=>{
+  const session=writerV16ZoteroSessions.get(plugin);
+  if(session?.stopped||plugin.settings.v107Zotero!==cfg)return;
+  if(session&&value!==cfg[field])session.revision++;
+  cfg[field]=value;
+  await plugin.saveSettings();
+ };
  panel.createEl('h3',{text:writerUi('Zotero Web API (somente leitura)','Zotero Web API (read only)')});
- new Setting(panel).setName(writerUi('Ativar acesso à API','Enable API access')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Tipo de biblioteca','Library type')).addDropdown(d=>d.addOption('users',writerUi('Pessoal','User')).addOption('groups',writerUi('Grupo','Group')).setValue(cfg.libraryType).onChange(async v=>{cfg.libraryType=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('ID numérico da biblioteca','Numeric library ID')).addText(t=>t.setValue(cfg.libraryId).setPlaceholder('1234567').onChange(async v=>{cfg.libraryId=/^\d{0,15}$/.test(v)?v:cfg.libraryId;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Pasta de importação','Imported notes folder')).addText(t=>t.setValue(cfg.folder).onChange(async v=>{if(/^[\p{L}\p{N} _\/-]{1,120}$/u.test(v)){cfg.folder=v;await plugin.saveSettings();}}));
- new Setting(panel).setName(writerUi('Itens por consulta','Max items per request')).addSlider(s=>s.setLimits(20,300,20).setDynamicTooltip().setValue(cfg.maxItems).onChange(async v=>{cfg.maxItems=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Ativar acesso à API','Enable API access')).addToggle(t=>t.setValue(cfg.enabled).onChange(v=>update('enabled',v)));
+ new Setting(panel).setName(writerUi('Tipo de biblioteca','Library type')).addDropdown(d=>d.addOption('users',writerUi('Pessoal','User')).addOption('groups',writerUi('Grupo','Group')).setValue(cfg.libraryType).onChange(v=>update('libraryType',v)));
+ new Setting(panel).setName(writerUi('ID numérico da biblioteca','Numeric library ID')).addText(t=>t.setValue(cfg.libraryId).setPlaceholder('1234567').onChange(v=>update('libraryId',/^\d{0,15}$/.test(v)?v:cfg.libraryId)));
+ new Setting(panel).setName(writerUi('Pasta de importação','Imported notes folder')).addText(t=>t.setValue(cfg.folder).onChange(async v=>{if(/^[\p{L}\p{N} _\/-]{1,120}$/u.test(v))await update('folder',v);}));
+ new Setting(panel).setName(writerUi('Itens por consulta','Max items per request')).addSlider(s=>s.setLimits(20,300,20).setDynamicTooltip().setValue(cfg.maxItems).onChange(v=>update('maxItems',v)));
  new Setting(panel).setName(writerUi('Buscar referências','Fetch references')).addButton(b=>b.setButtonText(writerUi('Conectar','Connect')).onClick(()=>writerV107ZoteroPrompt(plugin)));
 }
 
@@ -27357,6 +27428,19 @@ function writerV107StudySettings(plugin,panel){
 
 // v3 module: src/v10/calendar-feeds.js
 /* Optional HTTPS iCalendar subscriptions. Read-only upstream, append-only local imports. */
+const writerV107CalendarSessions=new WeakMap();
+function writerV107CalendarSession(plugin,renew=false){
+ const previous=writerV107CalendarSessions.get(plugin);
+ if(previous&&(!previous.closed||!renew))return previous;
+ const session={closed:false,registered:false,run:null,revision:0,automaticRevision:0,lastAutomatic:null,stopInterval:null};
+ writerV107CalendarSessions.set(plugin,session);
+ plugin.register?.(()=>{
+  session.closed=true;
+  session.stopInterval?.();
+  session.stopInterval=null;
+ });
+ return session;
+}
 function writerV107CalendarConfig(settings){
  const old=settings.v107Feeds&&typeof settings.v107Feeds==='object'&&!Array.isArray(settings.v107Feeds)?settings.v107Feeds:{};
  const urls=Array.isArray(old.urls)?Array.from(old.urls.slice(0,5),value=>typeof value==='string'?value:''):[];
@@ -27378,68 +27462,117 @@ function writerV107CalendarHash(value){
  for(const ch of String(value)){hash=Math.imul(hash^ch.charCodeAt(0),16777619);}
  return (hash>>>0).toString(36);
 }
-async function writerV107CalendarFetch(plugin,url){
+async function writerV107CalendarFetch(url){
  const safe=writerV107CalendarUrl(url);if(!safe)throw Error('Invalid HTTPS iCalendar feed URL');
  const res=await require('obsidian').requestUrl({url:safe,headers:{Accept:'text/calendar'},method:'GET',throw:false});
  if(res.status!==200)throw Error('iCalendar returned HTTP '+res.status);
  if(String(res.text||'').length>1000000)throw Error('iCalendar feed too large');
  return res.text;
 }
-async function writerV107CalendarSynchronize(plugin,quiet=false){
- const cfg=writerV107CalendarConfig(plugin.settings);
- if(!cfg.enabled)return {imported:0,skipped:0,errors:0};
+async function writerV107CalendarImport(plugin,run,current){
  let imported=0,skipped=0,errors=0;
- const folder=WRITER_V83_CAL_FOLDER;
- if(!plugin.app.vault.getAbstractFileByPath(folder))await plugin.app.vault.createFolder(folder);
- for(const url of cfg.urls.slice(0,5)){
+ const folder=WRITER_V83_CAL_FOLDER,vault=plugin.app.vault;
+ if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+ for(const url of run.urls){
+  if(!current())break;
   if(!url)continue;
   if(!writerV107CalendarUrl(url)){errors++;continue;}
   try{
-   const items=writerV101IcsParse(await writerV107CalendarFetch(plugin,url),cfg.maxEvents);
+   const response=await writerV107CalendarFetch(url);
+   if(!current())break;
+   const items=writerV101IcsParse(response,run.maxEvents);
    const prefix='feed-'+writerV107CalendarHash(url)+'-';
    for(const event of items){
+    if(!current())break;
     const valid=writerV83CalValid(event);if(!valid){skipped++;continue;}
     const id=writerV107CalendarHash(String(event.uid||'')||event.date+'|'+event.time+'|'+event.title);
     const path=folder+'/'+prefix+id+'.md';
-    if(plugin.app.vault.getAbstractFileByPath(path)){skipped++;continue;}
+    if(vault.getAbstractFileByPath(path)){skipped++;continue;}
     const body=['> [!info] '+writerUi('Assinatura iCalendar','iCalendar subscription'),
      '> '+writerUi('Evento importado. Mudanças locais são preservadas; atualizações não sobrescrevem notas existentes.','Imported event. Local edits are preserved; updates never overwrite existing notes.'),'',event.description||''].join('\n');
-    await plugin.app.vault.create(path,writerV83CalFormat({...valid,category:valid.category||'iCalendar'},body));
+    await vault.create(path,writerV83CalFormat({...valid,category:valid.category||'iCalendar'},body));
     imported++;
    }
-  }catch(error){errors++;console.warn('[Basic AI] Calendar subscription failed:',String(error.message||error).slice(0,150));}
+  }catch(_){
+   if(!current())break;
+   errors++;
+   console.warn('[Basic AI] Calendar subscription failed.');
+  }
  }
- if(!quiet)new Notice(imported+' '+writerUi('eventos novos, ','new events, ')+skipped+' '+writerUi('já importados, ','already imported, ')+errors+' '+writerUi('fontes com erro.','feeds failed.'));
+ if(current()&&run.notify)new Notice(imported+' '+writerUi('eventos novos, ','new events, ')+skipped+' '+writerUi('já importados, ','already imported, ')+errors+' '+writerUi('fontes com erro.','feeds failed.'));
  return {imported,skipped,errors};
 }
-function writerV107CalendarRegister(plugin){
+async function writerV107CalendarSynchronize(plugin,quiet=false,session=writerV107CalendarSession(plugin),automatic=false){
+ if(session.closed)return {imported:0,skipped:0,errors:0};
  const cfg=writerV107CalendarConfig(plugin.settings);
- plugin.addCommand({id:'v107-sync-ical-subscriptions',name:writerUi('Calendário: atualizar assinaturas HTTPS','Calendar: sync HTTPS subscriptions'),callback:()=>void writerV107CalendarSynchronize(plugin).catch(e=>new Notice(String(e.message||e)))});
- const interval=plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.setInterval;
- if(typeof interval==='function'){
-  const handler=()=>{const c=plugin.settings.v107Feeds;if(c?.enabled&&c?.autoSync&&(!plugin._writerV107FeedLast||Date.now()-plugin._writerV107FeedLast>=c.intervalHours*3600000)){
-   plugin._writerV107FeedLast=Date.now();void writerV107CalendarSynchronize(plugin,true);
+ if(!cfg.enabled||(automatic&&!cfg.autoSync))return {imported:0,skipped:0,errors:0};
+ const pending=session.run;
+ if(pending){
+  if(pending.current()){
+   if(!quiet)pending.notify=true;
+   return pending.promise;
+  }
+  // An already-dispatched vault write can still finish. Wait before another import starts.
+  pending.invalidated=true;
+  const {revision,automaticRevision}=session;
+  await pending.promise;
+  if(session.revision!==revision||(automatic&&session.automaticRevision!==automaticRevision))return {imported:0,skipped:0,errors:0};
+  return writerV107CalendarSynchronize(plugin,quiet,session,automatic);
+ }
+ const {revision,automaticRevision}=session;
+ const run={notify:!quiet,automatic,invalidated:false,urls:cfg.urls.slice(),maxEvents:cfg.maxEvents};
+ const current=()=>!session.closed&&session.run===run&&!run.invalidated&&session.revision===revision&&plugin.settings.v107Feeds===cfg&&cfg.enabled&&
+  (!run.automatic||run.notify||(cfg.autoSync&&session.automaticRevision===automaticRevision))&&cfg.maxEvents===run.maxEvents&&cfg.urls.length===run.urls.length&&
+  run.urls.every((url,index)=>cfg.urls[index]===url);
+ run.current=current;
+ session.run=run;
+ run.promise=writerV107CalendarImport(plugin,run,current).catch(error=>{
+  if(current()&&run.notify)new Notice(String(error.message||error));
+  return {imported:0,skipped:0,errors:1};
+ }).finally(()=>{if(session.run===run)session.run=null;});
+ return run.promise;
+}
+function writerV107CalendarRegister(plugin){
+ const session=writerV107CalendarSession(plugin,true);
+ if(session.registered)return;
+ session.registered=true;
+ writerV107CalendarConfig(plugin.settings);
+ plugin.addCommand({id:'v107-sync-ical-subscriptions',name:writerUi('Calendário: atualizar assinaturas HTTPS','Calendar: sync HTTPS subscriptions'),callback:()=>void writerV107CalendarSynchronize(plugin,false,session)});
+ const win=plugin.app.workspace.containerEl?.ownerDocument?.defaultView;
+ if(typeof win?.setInterval==='function'){
+  const handler=()=>{const c=plugin.settings.v107Feeds;if(!session.closed&&c?.enabled&&c?.autoSync&&(session.lastAutomatic===null||Date.now()-session.lastAutomatic>=c.intervalHours*3600000)){
+   session.lastAutomatic=Date.now();void writerV107CalendarSynchronize(plugin,true,session,true);
   }};
-  const id=plugin.app.workspace.containerEl.ownerDocument.defaultView.setInterval(handler,3600000);
-  plugin.register?.(()=>plugin.app.workspace.containerEl?.ownerDocument?.defaultView?.clearInterval(id));
+  const id=win.setInterval(handler,3600000);
+  session.stopInterval=()=>win.clearInterval(id);
  }
 }
 function writerV107CalendarSettings(plugin,panel){
  const cfg=plugin.settings.v107Feeds;
+ const session=writerV107CalendarSession(plugin);
  panel.createEl('h3',{text:writerUi('Calendário · assinaturas HTTPS','Calendar · HTTPS subscriptions')});
  panel.createEl('p',{cls:'setting-item-description',text:writerUi('URLs privadas podem conter tokens: são guardadas localmente nas configurações do cofre. Não envie URLs de outras pessoas. Sincronização somente de leitura; notas locais nunca são sobrescritas.','Private URLs may contain tokens and are stored locally in vault settings. Read-only import; existing local notes are never overwritten.')});
- new Setting(panel).setName(writerUi('Ativar assinaturas externas','Enable external subscriptions')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{cfg.enabled=v;await plugin.saveSettings();}));
- new Setting(panel).setName(writerUi('Atualizar automaticamente','Automatic refresh')).addToggle(t=>t.setValue(cfg.autoSync).onChange(async v=>{cfg.autoSync=v;await plugin.saveSettings();}));
+ new Setting(panel).setName(writerUi('Ativar assinaturas externas','Enable external subscriptions')).addToggle(t=>t.setValue(cfg.enabled).onChange(async v=>{
+  cfg.enabled=v;
+  if(!v)session.revision++;
+  await plugin.saveSettings();
+ }));
+ new Setting(panel).setName(writerUi('Atualizar automaticamente','Automatic refresh')).addToggle(t=>t.setValue(cfg.autoSync).onChange(async v=>{
+  cfg.autoSync=v;
+  if(!v)session.automaticRevision++;
+  await plugin.saveSettings();
+ }));
  new Setting(panel).setName(writerUi('Intervalo (horas)','Refresh interval (hours)')).addSlider(s=>s.setLimits(1,24,1).setValue(cfg.intervalHours).setDynamicTooltip().onChange(async v=>{cfg.intervalHours=v;await plugin.saveSettings();}));
  for(let i=0;i<5;i++){
   new Setting(panel).setName(writerUi('Fonte ICS HTTPS ','HTTPS ICS feed ')+(i+1))
    .addText(t=>t.setValue(cfg.urls[i]||'').setPlaceholder('https://example.com/calendar.ics').onChange(async v=>{
     const list=[...cfg.urls];if(v&&!writerV107CalendarUrl(v))return;
     while(list.length<=i)list.push('');
+    if(list[i]!==v)session.revision++;
     list[i]=v;cfg.urls=list;await plugin.saveSettings();
    }));
  }
- new Setting(panel).setName(writerUi('Sincronizar agora','Sync now')).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void writerV107CalendarSynchronize(plugin)));
+ new Setting(panel).setName(writerUi('Sincronizar agora','Sync now')).addButton(b=>b.setButtonText(writerUi('Atualizar','Refresh')).onClick(()=>void writerV107CalendarSynchronize(plugin,false,session)));
 }
 
 // v3 module: src/v10/story-graph.js

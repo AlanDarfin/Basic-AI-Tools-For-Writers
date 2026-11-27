@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync('src/v8/format-blocks.js','utf8');
 const extension=fs.readFileSync('src/v5/extended-syntax.js','utf8');
 const studio=fs.readFileSync('src/v7/story-studio.js','utf8');
-const css=fs.readFileSync('src/styles/v8-format-blocks.css','utf8');
+const css=fs.readFileSync('src/styles/blocks/v8-format-blocks.css','utf8');
 const {writerV8SplitTabs,writerV8ReadCard,writerV8ImagePath}=vm.runInNewContext(source+'\n({writerV8SplitTabs,writerV8ReadCard,writerV8ImagePath})',{TFile:class TFile{}});
 test('tabs respect Markdown separators, max tab count and input size',()=>{
  const tabs=writerV8SplitTabs('=== Resumo\n**texto**\n=== Pessoas\n- [[Joana]]');

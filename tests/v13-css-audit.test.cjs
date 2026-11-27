@@ -109,3 +109,16 @@ test('CSS phase 4: categorized modules match their ownership and stable source n
  assert.throws(()=>validateEntries([{path:'core/test.css',category:'core'},{path:'editor/test.css',category:'editor'}]),/Duplicate CSS module name/);
  assert.throws(()=>validateEntries([{path:'native/test.css',category:'core'}]),/CSS path does not match category/);
 });
+
+test('CSS phase 4: every registered stylesheet has exactly one authoritative file',()=>{
+ const {entries,sections}=require('../scripts/css-manifest.js');
+ const path=require('node:path');
+ const root='src/styles';
+ function walk(dir){return fs.readdirSync(dir,{withFileTypes:true}).flatMap(e=>e.isDirectory()?walk(path.join(dir,e.name)):e.isFile()&&e.name.endsWith('.css')?[path.relative(root,path.join(dir,e.name)).split(path.sep).join('/')]:[]);}
+ assert.deepEqual(walk(root).sort(),[...sections].sort());
+ for(const e of entries){
+  if(e.path.includes('/'))assert.equal(e.path.split('/')[0],e.category);
+ }
+ const categorized=["features/v10-1-extensions.css","features/v11-1-integration.css","features/v11-longform-studio.css","features/v13-6-settings.css","features/v13-7-settings.css","features/v13-8-companions.css","features/v13-editorial-queue.css","features/v13-recovery.css","features/v13-story-planning.css","blocks/v13-visual-kit.css","features/v8-calendar-studies.css","features/v8-finish-suite.css","blocks/v8-folder-inscribe.css","blocks/v8-format-blocks.css","blocks/v8-interactive-media.css","features/v8-polish.css","blocks/v9-1-2-virtual-content.css","features/v9-1-unified.css","features/v9-2-3-home-title-favorites.css","features/v9-2-4-dashboard.css","features/v9-2-6-dashboard.css","features/v9-2-suite.css"];
+ for(const file of categorized)assert.ok(sections.includes(file),file);
+});

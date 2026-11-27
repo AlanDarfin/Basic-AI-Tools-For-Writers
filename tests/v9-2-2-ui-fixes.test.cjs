@@ -18,7 +18,7 @@ test('9.2.2 manifest and package versions match',()=>{
 });
 
 test('the chat puts user bubbles on right despite inherited row-reverse CSS',()=>{
- const css=read('src/styles/v9-1-unified.css');
+ const css=read('src/styles/features/v9-1-unified.css');
  assert.match(css,/\.writer-v91-ai-chat-row\.is-right\s*\{[^}]*flex-direction:row\s*;[^}]*justify-content:flex-end/s);
  assert.match(css,/\.writer-v91-ai-chat-row\.is-right \.writer-v8-chat-group\s*\{[^}]*margin-inline-start:auto/s);
  assert.match(css,/\.writer-v91-ai-chat-row\.is-left\{justify-content:flex-start/);

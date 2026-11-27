@@ -6,7 +6,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const src=read('src/v8/finish-blocks.js');
 const utilities=read('src/v8/home-utilities.js');
 const home=read('src/v8/writing-home.js');
-const css=read('src/styles/v8-finish-suite.css');
+const css=read('src/styles/features/v8-finish-suite.css');
 const fm=vm.runInNewContext(utilities+'\n'+src+'\n({writerV8FinishMerge,writerV8ParseCaption,writerV8CaptionFromImage,writerV8CaptionProcess,writerV8ChatParse})',{});
 const hm=vm.runInNewContext(home+'\n({writerV8HomeSearch,writerV8HomeTopFiles,writerV8HomeStats,writerV8HomeToggleFavorite})',{ItemView:class{},TFile:class{},PROJECT_VIEW:'writer-projects'});
 test('caption parser preserves user text, filename shorthand and avoids default filenames',()=>{

@@ -167,7 +167,7 @@ test('media lightbox skips documents and PDFs and pauses playback when navigatin
 });
 test('read-only formatting modules do not add CodeMirror extensions',()=>{
  for(const input of [editable,posts,media])assert.doesNotMatch(input,/registerEditorExtension\(/);
- const build=read('scripts/build-v3.js'),css=read('src/styles/v8-interactive-media.css');
+ const build=read('scripts/build-v3.js'),css=read('src/styles/blocks/v8-interactive-media.css');
  for(const name of ['v8/block-edit','v8/social-post','v8/media-gallery'])assert.ok(build.includes(name),name);
  assert.match(css,/writer-v8-tabs-side/);
  assert.match(css,/writer-v8-avatar-right/);

@@ -58,3 +58,11 @@ Run npm run build:css, npm run check:css, npm test. Test editor width with each 
 - Relocate 13 additional modules into their existing ownership categories; 16/53 files now have categorized physical paths. Keep exact original blobs and relative cascade order. Timeline PR #175 remains independent; do not relocate its files before reconciliation.
 - Update four known test path consumers, extend the manifest to reject duplicate basenames and category/path mismatches, and add regression checks for moved files and absence of obsolete duplicates.
 - Use a single Git tree/commit for the entire batch, so no intermediate branch state contains duplicated or missing modules. The next CI must confirm all test paths and clean build.
+
+## Phase 4 — batch 3 (feature and block sources)
+
+- Baseline CI #1371: full rebuild, bundle synchronization, 178/178 regression files, CSS lint and package smoke test passed.
+- Relocate 22 feature/block sources in one atomic Git commit, retaining original blob hashes and manifest order. Total categorized physical modules: 38/53.
+- Update 10 historical test path consumers and add a recursive stylesheet inventory check against the manifest, including duplicate/unregistered files.
+- Defer the two timeline sources and the Homepage widget source referenced by the separate Timeline PR #175 until integration; the other remaining modules have additional path consumers that will be migrated in a subsequent batch.
+- No generated artifact changes are intended; latest CI and visual QA remain pending.

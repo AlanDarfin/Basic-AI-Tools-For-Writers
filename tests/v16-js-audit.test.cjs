@@ -133,3 +133,14 @@ test('stable source IDs resolve relocated modules without changing bundle marker
  for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
  assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });
+
+test('all editor-domain sources live under their owner directory',()=>{
+ const editor=entries.filter(entry=>entry.domain==='editor');
+ assert.equal(editor.length,25);
+ for(const entry of editor){
+  assert.ok(entry.path.startsWith('src/editor/'),entry.id);
+  assert.equal(resolveSourcePath(entry.id),entry.path);
+  assert.ok(fs.existsSync(entry.path),entry.path);
+  if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
+ }
+});

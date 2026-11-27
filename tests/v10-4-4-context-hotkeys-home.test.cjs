@@ -49,7 +49,7 @@ test('AI context menu groups all actions after later subscribers add them and pr
    setSubmenu(){return this.submenu||(this.submenu=new Menu());}};
   return item;
  }
- const api=expose('src/v9/context-toolbar.js',
+ const api=expose('src/editor/context-toolbar.js',
   ['writerV1044ContextMenus','writerV1044AiKey'],{
    writerModuleOn:()=>true,writerV102AlignApply:()=>{},Menu,
    writerUi:(pt,en)=>en

@@ -69,7 +69,7 @@ test('Notion additional Markdown views, rollup source and safe chart arithmetic'
  assert.deepEqual(Array.from(chart,x=>[x[0],x[1]]),[['Done',5],['Todo',1]]);
 });
 test('Number Suite compatible safe parsing: code fences, YAML, preview and conservative cleanup',()=>{
- const a=load('src/v10/suite-numbering-1011.js',
+ const a=load('src/editor/suite-numbering-1011.js',
   ['writerV1011NumberCfg','writerV1011NumberHeadings','writerV1011NumberStored','writerV1011NumberPlan']);
  const tick=String.fromCharCode(96).repeat(3);
  const source=['---','title: A','# YAML','---','# Main','## Part',tick,'## Do not number',tick,
@@ -87,16 +87,16 @@ test('Number Suite compatible safe parsing: code fences, YAML, preview and conse
 });
 test('Suites isolated by guarded registration, no extra ribbon and no external network',()=>{
  const enhance=read('src/v10/enhancements.js');
- const {sourceIds}=require('../scripts/js-manifest.js');
+ const {sourceIds,resolveSourcePath}=require('../scripts/js-manifest.js');
  for(const module of ['suite-education-1011','suite-notion-1011','suite-numbering-1011']){
   assert.ok(sourceIds.includes('src/v10/'+module+'.js'));
-  const source=read('src/v10/'+module+'.js');
+  const source=read(resolveSourcePath('src/v10/'+module+'.js'));
   assert.doesNotMatch(source,/addRibbonIcon|requestUrl|fetch\s*\(/,module);
  }
  for(const fn of ['writerV1011StudyRegister','writerV1011NotionRegister','writerV1011NumberRegister']){
   assert.match(enhance,new RegExp("safeRegister\\([^\\n]*"+fn+"\\(plugin\\)"));
  }
- const numbering=read('src/v10/suite-numbering-1011.js');
+ const numbering=read('src/editor/suite-numbering-1011.js');
  assert.match(numbering,/vault\.process\(file,current=>/);
  assert.match(numbering,/current!==plan\.before/);
  assert.match(numbering,/approved/);

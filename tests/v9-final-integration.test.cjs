@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const format=read('src/v9/context-toolbar.js');
+const format=read('src/editor/context-toolbar.js');
 const explorer=read('src/v9/native-explorer.js');
 const home=read('src/v8/home-utilities.js');
 const TFile=class TFile{};

@@ -5,7 +5,7 @@ function expose(path,names,extras={}){
   {console,Date,Map,Set,Math,Number,String,Boolean,Uint8Array,JSON,Promise,writerUi:(pt,en)=>en,...extras});
 }
 const home=expose('src/v10/startup-cleanup.js',['writerV106HomeStartupPolicy','writerV106HomeChooseLeaf','writerV106HomeCleanup'],{writerModuleOn:()=>true,WRITER_V8_HOME_VIEW:'writer-writing-home'});
-const drag=expose('src/v10/block-dragger.js',['writerV106DragMerge','writerV106DragBlocks','writerV106DragBlockAt','writerV106DragMove','writerV106DragConvert','writerV106DragApply']);
+const drag=expose('src/editor/block-dragger.js',['writerV106DragMerge','writerV106DragBlocks','writerV106DragBlockAt','writerV106DragMove','writerV106DragConvert','writerV106DragApply']);
 const hist=expose('src/compat/historical-helpers.js',['writerV106LegacyDictionaryCandidates','writerV106JsonParse']);
 test('Clean startup skips hot reload and respects disabled setting',()=>{
  assert.equal(home.writerV106HomeStartupPolicy({homeCleanStart:true},true,false),'skip');

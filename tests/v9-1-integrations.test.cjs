@@ -6,7 +6,7 @@ const path=require('node:path');
 const vm=require('node:vm');
 const root=path.join(__dirname,'..');
 function moduleUnderTest(name,exportNames){
- const source=fs.readFileSync(path.join(root,'src/v9',name),'utf8');
+ const source=fs.readFileSync(path.join(root,require('../scripts/js-manifest.js').resolveSourcePath('src/v9/'+name)),'utf8');
  const context=vm.createContext({console,URL,RegExp,Math,Number,String,Set,Map,Array,Date,writerUi:(pt,en)=>en});
  const exports=exportNames.map(key=>key+':'+key).join(',');
  const exposed=vm.runInContext(source+'\n({'+exports+'})',context);
@@ -159,7 +159,7 @@ test('Root reorder changes saved order only, without moving or deleting files',(
 });
 test('Desktop-only sections and README feature documentation in both languages',()=>{
  const sound=fs.readFileSync(path.join(root,'src/v9/soundscapes.js'),'utf8');
- const clicks=fs.readFileSync(path.join(root,'src/v9/click-clack.js'),'utf8');
+ const clicks=fs.readFileSync(path.join(root,'src/editor/click-clack.js'),'utf8');
  assert.match(sound,/if\(plugin\.app\.isMobile\)return/);
  assert.match(clicks,/if\(plugin\.app\.isMobile\)return/);
  const en=fs.readFileSync(path.join(root,'README.md'),'utf8');

@@ -224,3 +224,10 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - CI #1399 passed full validation on the LanguageTool settings and integration relocation.
 - Move Pandoc Export into `src/writing/` and Extended Syntax into `src/editor/`, preserving their exact original source blobs and all 124 ordered stable module IDs. Update eight historical regression consumers covering export, community disclosures, paragraph drop caps and Markdown toolbar behavior; retain historical bundle-marker assertions. Extend the manifest relocation fixture.
 - No runtime behavior, settings schema, dependencies or generated artifacts changed. Full new CI and live Obsidian QA pending. Next batch: Keyshots, Smart Insert and remaining editor extensions.
+
+### Phase 10.9 — complete editor-domain relocation (consolidated batch)
+
+- CI #1400 passed full validation at the formatting/export checkpoint. Consolidate the remaining editor relocation work instead of one-module checkpoints.
+- Move all 19 remaining editor-domain modules, covering core editor, Keyshots, Reading, Markup, Smart Insert, Context Toolbar, Click Clack, Pretty Properties, Flow Composer/Slash, Image Inserter, Inline Alignment, Block Dragger, Editor Pro, Media Drag, both numbering modules, image annotations and Selection Reader. All 25 editor-domain modules now live under `src/editor/`; 34 of 124 manifest modules are relocated in total, plus the separately extracted legacy dictionary.
+- Update 40 historical regression consumers, including dynamic source reads for Click Clack and the numbering suite. Keep historical bundle markers and stable IDs intact. Add a domain-wide assertion checking all editor paths and absence of obsolete source files. Preserve the exact original source blobs, ordered module IDs and generated artifacts. No runtime behavior or dependency changes intended.
+- Verify complete CI and live Obsidian desktop/mobile QA before release. Next: batch remaining domain relocations, prioritizing blocks, persistence, platform, and settings. Timeline coordination remains separate.

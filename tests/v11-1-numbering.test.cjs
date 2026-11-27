@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v11/numbering-extensions.js','utf8');
+const source=fs.readFileSync('src/editor/numbering-extensions.js','utf8');
 function load(keys,extra={}){
  return vm.runInNewContext(source+'\n({'+keys.join(',')+'})',{
   Number,Math,String,Array,Set,Map,Date,console,

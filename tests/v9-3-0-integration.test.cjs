@@ -42,7 +42,7 @@ test('numeric and YAML property sorting work without touching physical files',()
 });
 test('Flow fenced editor updates only the selected code block and keeps note content intact',async()=>{
  class TFile{constructor(path){this.path=path;this.extension='md';}}
- const api=vm.runInNewContext(read('src/v9/flow-composer.js')+'\n'+read('src/v8/block-edit.js')+
+ const api=vm.runInNewContext(read('src/editor/flow-composer.js')+'\n'+read('src/v8/block-edit.js')+
   '\n({writerV93FlowParse,writerV93FlowPersist})',
   {TFile,WRITER_V8_BLOCK_MAX:32000,writerUi:(_pt,en)=>en,Notice:class{}});
  const block='[[A.md]]\n[[B.md]]';
@@ -65,7 +65,7 @@ test('Flow fenced editor updates only the selected code block and keeps note con
  assert.equal(markdown,updated,'a single identical older block is never used as a fallback');
 });
 test('Flow edits preserve notes beyond the display limit and Markdown reference syntax',()=>{
- const api=vm.runInNewContext(read('src/v9/flow-composer.js')+
+ const api=vm.runInNewContext(read('src/editor/flow-composer.js')+
   '\n({writerV93FlowParse,writerV93FlowSerialize,writerV93FlowRow,writerV93FlowLink,writerV101FlowLinkDependency})',{});
  const first='  ![[A.md#Opening | after: the intro]]';
  const second='[[B.md]] | after:[[A.md]]';
@@ -93,7 +93,7 @@ test('Flow text cards save column assignments in settings, scoped to the board a
   addEventListener(type,callback){this.events[type]=callback;}
   focus(){this.focused=true;}
  }
- const api=vm.runInNewContext(read('src/v9/flow-composer.js')+
+ const api=vm.runInNewContext(read('src/editor/flow-composer.js')+
   '\n({writerV93TextBoardParse,writerV93FlowComposer})',{
   writerUi:(_pt,en)=>en,writerV83StudyHash:text=>String(text.length),Notice:class{},require:()=>({setIcon(){}})
  });
@@ -144,7 +144,7 @@ test('Explorer can opt into a 16:9 preview while existing settings stay square',
 test('insert catalog works with slash suggestions turned off and rejects stale edits',()=>{
  let picker,notice;
  class FuzzySuggestModal{setPlaceholder(){}open(){picker=this;}}
- const {writerV9215FlowRegister}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({writerV9215FlowRegister})',{
+ const {writerV9215FlowRegister}=vm.runInNewContext(read('src/editor/flow-slash.js')+'\n({writerV9215FlowRegister})',{
   require:()=>({EditorSuggest:class{},FuzzySuggestModal}),writerUi:pt=>pt,Notice:class{constructor(text){notice=text;}}
  });
  const commands=new Map();
@@ -177,6 +177,6 @@ test('responsive toolbar, note title icon and Flow/Space controls remain configu
   'writer-v93-flow-toolbar','writer-v9-inline-title-icon'])assert.ok(css.includes(name));
  assert.match(read('src/v9/native-explorer.js'),/showTitleIcons/);
  assert.match(read('src/v9/spaces-dock.js'),/writer-v93-space-manage-action/);
- assert.match(read('src/v9/flow-slash.js'),/flowArrange/);
+ assert.match(read('src/editor/flow-slash.js'),/flowArrange/);
  assert.doesNotMatch(css,/!important/);
 });

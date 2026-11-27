@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
-const source=fs.readFileSync('src/v9/context-toolbar.js','utf8');
+const source=fs.readFileSync('src/editor/context-toolbar.js','utf8');
 const ctx={
  writerUi:(pt,en)=>en,writerModuleOn:()=>true,
  writerV8HomeIsMobile:p=>Boolean(p.app.isMobile),console

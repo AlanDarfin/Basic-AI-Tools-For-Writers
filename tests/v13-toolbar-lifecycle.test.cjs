@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/context-toolbar.js','utf8');
+const source=fs.readFileSync('src/editor/context-toolbar.js','utf8');
 
 function harness(actions=['bold']){
  const timers=new Map(),posted=[],ready=[],cleanups=[],workspaceCallbacks=[],domCallbacks=[],observers=[],commands=new Map(),writes=[];

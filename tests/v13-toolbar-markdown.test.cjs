@@ -18,7 +18,7 @@ function element(firstChild=null){
   style:{setProperty:(key,value)=>{styles[key]=value;}}};
 }
 const api=vm.runInNewContext([
- read('src/editor/extended-syntax.js'),read('src/v10/inline-alignment.js'),read('src/v9/context-toolbar.js'),
+ read('src/editor/extended-syntax.js'),read('src/editor/inline-alignment.js'),read('src/editor/context-toolbar.js'),
  '({writerV9Format,writerV9ToolbarMerge,writerV1048ToolbarRun,writerExtendedTokens,writerExtendedElement,writerExtendedReading,writerExtendedLiveDecorations,WRITER_EXTENDED_DEFAULTS})'
 ].join('\n'),{
  document,NodeFilter:{SHOW_TEXT:4},writerUi:(pt,en)=>en,

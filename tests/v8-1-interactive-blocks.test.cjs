@@ -99,7 +99,7 @@ test('fictional posts parse replies and bound author-input metrics',()=>{
  assert.equal(fn.writerV8SplitPost('First\n'+'=== reply\nReply\n'.repeat(41)),null);
 });
 test('both column formats render nested code and retain all content at the column limit',()=>{
- const widgets=read('src/v9/interactive-widgets.js'),legacyColumns=read('src/v10/media-drag-extension.js');
+ const widgets=read('src/v9/interactive-widgets.js'),legacyColumns=read('src/editor/media-drag-extension.js');
  const rendered=[];
  const MarkdownRenderer={render:async(_app,markdown)=>{rendered.push(markdown);}};
  const {writerV92RenderColumns,writerV107ColumnsRender}=vm.runInNewContext(

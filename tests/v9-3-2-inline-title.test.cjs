@@ -19,7 +19,7 @@ test('native icon remains part of first title line, not absolutely positioned at
 
 test('explorer title glyphs take precedence over YAML glyphs and remain decorative',()=>{
  const explorer=read('src/v9/native-explorer.js');
- const pretty=read('src/v9/pretty-properties.js');
+ const pretty=read('src/editor/pretty-properties.js');
  assert.match(explorer,/if\(icon\)title\.querySelector\(':scope > \.writer-v9215-pretty-icon'\)\?\.remove\(\)/);
  assert.match(explorer,/node\.setAttribute\('contenteditable','false'\)/);
  assert.match(pretty,/span\.setAttribute\('contenteditable','false'\)/);

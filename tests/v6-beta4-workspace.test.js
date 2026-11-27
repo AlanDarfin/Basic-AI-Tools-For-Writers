@@ -42,7 +42,7 @@ assert.equal(api.writerV6ProjectToolAllowed(plugin,'ruby',one.path),true);
 prefs.tools={ruby:'off'};assert.equal(api.writerV6ProjectToolAllowed(plugin,'ruby',one.path),false);
 assert.equal(api.writerV6ProjectToolAllowed(plugin,'ratings',one.path),true);
 prefs.reviewProfile='Review voices and punctuation';assert.equal(api.writerV6ProjectReviewText(plugin,one),'Review voices and punctuation');
-const insert=fs.readFileSync('src/v6/smart-insert.js','utf8');
+const insert=fs.readFileSync('src/editor/smart-insert.js','utf8');
 const ui=vm.runInNewContext(insert+'\n({writerV6InsertSnapshot,writerV6InsertIfUnchanged,writerV6InsertValidRubyText})',{
  Notice:class{},writerUi:(a,b)=>b||a,Modal:class{},Setting:class{},Menu:class{},console
 });

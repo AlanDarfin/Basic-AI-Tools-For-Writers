@@ -21,7 +21,7 @@ test('Explorer hiding combines independent Space rules with global rules',()=>{
  assert.equal(scope.writerV91FlexIsHidden({hidden:[]},'Writing/Drafts/chapter.md',[],plugin),false);
 });
 test('Pretty Properties sanitizes settings and stays native and local',()=>{
- const src=read('src/v9/pretty-properties.js');
+ const src=read('src/editor/pretty-properties.js');
  const helpers=vm.runInNewContext(src+'\n({writerV9215PrettyMerge,writerV9215PrettyPairs})',{});
  const cfg={v9215Pretty:{hidden:['Status','status'],colors:'status=#aabbcc'}};
  helpers.writerV9215PrettyMerge(cfg);
@@ -33,7 +33,7 @@ test('Pretty Properties sanitizes settings and stays native and local',()=>{
  assert.doesNotMatch(src,/fetch\s*\(/);
 });
 test('slash actions and Flow preserve editable note files',()=>{
- const src=read('src/v9/flow-slash.js');
+ const src=read('src/editor/flow-slash.js');
  const helpers=vm.runInNewContext(src+'\n({writerV9215SlashActions,writerV9215FlowMerge})',{
   require:()=>({EditorSuggest:class{}})
  });
@@ -56,7 +56,7 @@ test('compiled stylesheet will contain right-side previews and white/inherited t
  assert.match(css,/writer-v9215-pretty-banner/);
 });
 test('the quick-insert catalogue supplies usable fences without absorbing adjacent prose',()=>{
- const source=read('src/v9/flow-slash.js');
+ const source=read('src/editor/flow-slash.js');
  const {writerV9215SlashActions,writerV9215InsertAction}=vm.runInNewContext(source+
   '\n({writerV9215SlashActions,writerV9215InsertAction})',{require:()=>({EditorSuggest:class{}}),writerUi:pt=>pt});
  const actions=writerV9215SlashActions();

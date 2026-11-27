@@ -37,7 +37,7 @@ test('narrow project panes wrap navigation groups and keep scene actions inline'
 });
 
 test('reading status shows duration and exposes the complete estimate in both languages',()=>{
- const source=fs.readFileSync('src/v6/reading.js','utf8');
+ const source=fs.readFileSync('src/editor/reading.js','utf8');
  for(const [lang,visible,detail] of [['pt','1 min leitura','1 minuto de leitura · 6 palavras'],['en','1 min read','1 minute of reading · 6 words']]){
   const {writerV6ReadingTextStatus:update}=vm.runInNewContext(source+'\n({writerV6ReadingTextStatus})',{
    writerUi:(pt,en)=>lang==='pt'?pt:en,writerV6Allowed:()=>true,MarkdownView:class{}

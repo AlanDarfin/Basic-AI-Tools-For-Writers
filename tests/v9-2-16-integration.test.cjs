@@ -36,7 +36,7 @@ test('native Spaces use their own name, icon and color, without mutating vault c
  assert.match(dock,/Nenhum arquivo será excluído/);
 });
 test('Pretty settings cover extended visual features',()=>{
- const src=read('src/v9/pretty-properties.js');
+ const src=read('src/editor/pretty-properties.js');
  const api=vm.runInNewContext(src+'\n({writerV9215PrettyMerge})',{});
  const cfg={v9215Pretty:{coverShape:'weird',bannerPosition:'top',dueSoonDays:400}};
  api.writerV9215PrettyMerge(cfg);
@@ -47,7 +47,7 @@ test('Pretty settings cover extended visual features',()=>{
   assert.ok(src.includes(term),term);
 });
 test('Flow and slash actions are registered and use conflict-safe writes',()=>{
- const src=read('src/v9/flow-slash.js');
+ const src=read('src/editor/flow-slash.js');
  const api=vm.runInNewContext(src+'\n({writerV9215SlashActions,writerV9215FlowMerge})',{require:()=>({EditorSuggest:class{}})});
  const a=Array.from(api.writerV9215SlashActions(),x=>x.id);
  for(const id of ['tip','warning','important','flow','flowboard','highlight'])assert.ok(a.includes(id),id);
@@ -68,7 +68,7 @@ test('Flow inline editing rejects concurrent writes and saves against the curren
   remove(){this.removed=true;}
  }
  let notice='',content='Original',commitBeforeSave=false;
- const {writerV9216FlowOpenEditor}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({writerV9216FlowOpenEditor})',{
+ const {writerV9216FlowOpenEditor}=vm.runInNewContext(read('src/editor/flow-slash.js')+'\n({writerV9216FlowOpenEditor})',{
   require:()=>({EditorSuggest:class{}}),writerUi:(_pt,en)=>en,Notice:class{constructor(text){notice=text;}}
  });
  const file={path:'Story.md',basename:'Story',stat:{mtime:1}};
@@ -91,7 +91,7 @@ test('Flow inline editing rejects concurrent writes and saves against the curren
 test('slash embed picker keeps the slash text on cancel and rejects stale insertion',()=>{
  let picker,notice,content='Intro /flow';
  class Search{setPlaceholder(){}open(){picker=this;}}
- const {WriterV9215SlashSuggest}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({WriterV9215SlashSuggest})',{
+ const {WriterV9215SlashSuggest}=vm.runInNewContext(read('src/editor/flow-slash.js')+'\n({WriterV9215SlashSuggest})',{
   require:()=>({EditorSuggest:class{},FuzzySuggestModal:Search}),writerUi:(_pt,en)=>en,Notice:class{constructor(text){notice=text;}}
  });
  const editor={getValue:()=>content,focus(){},replaceRange(value,start,end){content=content.slice(0,start.ch)+value+content.slice(end.ch);}};

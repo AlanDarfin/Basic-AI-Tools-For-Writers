@@ -88,7 +88,7 @@ test('Timeline themes have distinct CSS, in both layout orientations',()=>{
  assert.ok(js.includes('is-layout-horizontal'));
 });
 test('Property search lives inside native collapsible properties and preserves the filter',()=>{
- const js=fs.readFileSync('src/v9/pretty-properties.js','utf8');
+ const js=fs.readFileSync('src/editor/pretty-properties.js','utf8');
  const css=fs.readFileSync('src/styles/v9-5-timeline.css','utf8');
  assert.match(js,/firstRow\?\.closest\('\.metadata-properties'\)/);
  assert.match(js,/properties\.insertBefore\(input,properties\.firstChild\)/);

@@ -14,14 +14,14 @@ test('Spaces manager uses accessible actions, responsive cards and finite pagina
  assert.match(css,/writer-v102-spaces-results\.is-cards/);
 });
 test('Pretty Properties migrates per-file hidden keys and custom icons without rewriting frontmatter',()=>{
- const cfg=expose('src/v9/pretty-properties.js',['writerV9215PrettyMerge','writerV9215PrettyKey']);
+ const cfg=expose('src/editor/pretty-properties.js',['writerV9215PrettyMerge','writerV9215PrettyKey']);
  const settings={v9215Pretty:{hidden:['status'],hiddenPerFile:{'Novel.md':['banner','NT']},
   propertyIcons:{status:'star','banner':'image'}}};
  const result=cfg.writerV9215PrettyMerge(settings);
  assert.deepEqual(Array.from(result.hiddenPerFile['Novel.md']),['banner','nt']);
  assert.equal(result.propertyIcons.status,'star');assert.equal(result.propertyActions,true);
- assert.match(read('src/v9/pretty-properties.js'),/writerV102PropertyMenu/);
- assert.match(read('src/v9/pretty-properties.js'),/onApply:async icon/);
+ assert.match(read('src/editor/pretty-properties.js'),/writerV102PropertyMenu/);
+ assert.match(read('src/editor/pretty-properties.js'),/onApply:async icon/);
 });
 test('Chat parses speaker bubble color independently of name color and transparent background',()=>{
  const api=expose('src/v8/finish-blocks.js',['writerV8ChatParse','writerV8ChatFakeAudio']);
@@ -48,7 +48,7 @@ test('Preview supports banner and secure direct HTTPS links with privacy switch'
  assert.match(read('src/v9/explorer-favorites-preview.js'),/\['banner','cover','image','thumbnail'\]/);
 });
 test('Image source integration filters to safe providers, supports Wikimedia with no key',()=>{
- const api=expose('src/v10/image-inserter.js',['writerV102ImagesMerge','writerV102ImageQuery','writerV102ImageSafeUrl','writerV102ImageNormalize','writerV102ImageExtension']);
+ const api=expose('src/editor/image-inserter.js',['writerV102ImagesMerge','writerV102ImageQuery','writerV102ImageSafeUrl','writerV102ImageNormalize','writerV102ImageExtension']);
  const cfg=api.writerV102ImagesMerge({}),url=api.writerV102ImageQuery(cfg,'a cat',1).url;
  assert.match(url,/commons\.wikimedia\.org/);
  assert.equal(api.writerV102ImageSafeUrl('https://evil.example/a.jpg'),'');
@@ -59,7 +59,7 @@ test('Image source integration filters to safe providers, supports Wikimedia wit
  assert.equal(cfg.mode,'local');
 });
 test('Alignment syntax does not conflict with Markdown pipes, paths, or normal prose',()=>{
- const api=expose('src/v10/inline-alignment.js',['writerV102AlignToken','writerV102AlignMerge']);
+ const api=expose('src/editor/inline-alignment.js',['writerV102AlignToken','writerV102AlignMerge']);
  assert.equal(api.writerV102AlignToken('::c: hello **bold**').side,'center');
  assert.equal(api.writerV102AlignToken('::c: hello **bold**').legacy,false);
  assert.equal(api.writerV102AlignToken('::c[legacy]').legacy,true);
@@ -71,7 +71,7 @@ test('Alignment syntax does not conflict with Markdown pipes, paths, or normal p
  const cfg=api.writerV102AlignMerge({});assert.equal(cfg.enabled,true);
 });
 test('Short suffixes work with native Markdown headings, normal text and legacy notation',()=>{
- const api=expose('src/v10/inline-alignment.js',['writerV102AlignToken','writerV102AlignApply']);
+ const api=expose('src/editor/inline-alignment.js',['writerV102AlignToken','writerV102AlignApply']);
  for(const [line,side] of [['# Chapter {c}','center'],['## Subtitle {r}','right'],
   ['###### Notes {l}','left'],['Text **bold** {c}','center'],
   ['# ::c: Old heading','center'],['::c[old text]','center']]){
@@ -113,7 +113,7 @@ test('Reading View applies heading suffix without losing semantics and overrides
    this.currentNode=nodes[this.index++];return true;
   }
  })};
- const api=expose('src/v10/inline-alignment.js',['writerV102AlignReading'],
+ const api=expose('src/editor/inline-alignment.js',['writerV102AlignReading'],
   {document,NodeFilter:{SHOW_TEXT:4}});
  api.writerV102AlignReading({querySelectorAll:()=>[heading]});
  assert.equal(nodes[0].nodeValue,'Heading');

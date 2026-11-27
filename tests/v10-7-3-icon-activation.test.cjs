@@ -63,7 +63,7 @@ function loadModule(path,globals={}){
 
 test('Dragger startup renders its first icon through the Obsidian API, not a global',()=>{
  const env=makeRuntime();
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.deepEqual(env.icons,['grip']);
  assert.ok(env.commands.includes('v106-drag-move-block-up'));
@@ -78,7 +78,7 @@ test('Dragger startup renders its first icon through the Obsidian API, not a glo
 
 test('Dragger falls back gracefully if setIcon is not available in older Obsidian',()=>{
  const env=makeRuntime(false);
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.deepEqual(env.icons,[]);
  assert.equal(env.doc.body.children[0].textContent,'⋮⋮');
@@ -88,7 +88,7 @@ test('Dragger falls back gracefully if setIcon is not available in older Obsidia
 test('Android long-press support keeps the grip hidden and does not cover buttons',()=>{
  const env=makeRuntime();
  env.obsidian.Platform.isMobile=true;
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.equal(env.doc.body.children.length,2,'handle and indicator mount hidden');
  assert.equal(env.doc.body.children[0].style.display,'none');
@@ -101,7 +101,7 @@ test('Android long-press support keeps the grip hidden and does not cover button
 test('app.isMobile fallback also protects buttons with a hidden grip',()=>{
  const env=makeRuntime();
  env.plugin.app.isMobile=true;
- const api=loadModule('src/v10/block-dragger.js',{obsidian:env.obsidian});
+ const api=loadModule('src/editor/block-dragger.js',{obsidian:env.obsidian});
  assert.doesNotThrow(()=>api.writerV106DragRegister(env.plugin));
  assert.equal(env.doc.body.children.length,2);
  assert.equal(env.doc.body.children[0].style.display,'none');
@@ -142,7 +142,7 @@ test('Supplemental UI module crash does not abort core feature registration',()=
 });
 
 test('All active 10.6/10.7 UI icon calls are API-backed',()=>{
- const drag=fs.readFileSync('src/v10/block-dragger.js','utf8');
+ const drag=fs.readFileSync('src/editor/block-dragger.js','utf8');
  const discovery=fs.readFileSync('src/v10/discovery.js','utf8');
  assert.match(drag,/setIcon:obsidianSetIcon/);
  assert.match(drag,/obsidianSetIcon\(handle/);

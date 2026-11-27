@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const align=read('src/v10/inline-alignment.js');
+const align=read('src/editor/inline-alignment.js');
 const ext=read('src/editor/extended-syntax.js');
 const exportCode=read('src/compat/pandoc-format-compat.js');
 const api=vm.runInNewContext(ext+'\n'+align+'\n'+exportCode+

@@ -3,8 +3,8 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const read=p=>fs.readFileSync(p,'utf8');
 const spaces=read('src/v9/smart-spaces.js');
 const flex=read('src/v9/explorer-flex.js');
-const toolbar=read('src/v9/context-toolbar.js');
-const dragger=read('src/v10/block-dragger.js');
+const toolbar=read('src/editor/context-toolbar.js');
+const dragger=read('src/editor/block-dragger.js');
 const ctx={
  writerUi:(pt,en)=>pt,
  writerV8HomeIsMobile:plugin=>!!plugin.app?.isMobile,

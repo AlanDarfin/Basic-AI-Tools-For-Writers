@@ -79,7 +79,7 @@ test('Timeline: dependency sort, eras and legacy defaults',()=>{
  assert.equal(a.writerV95TimelineParse('+ 1\n+ One\n+ Body').config.maxEvents,80);
 });
 test('Flow: dependency levels are finite even when links cycle',()=>{
- const a=expose('src/v9/flow-composer.js',['writerV101FlowDepths','writerV93FlowParse']);
+ const a=expose('src/editor/flow-composer.js',['writerV101FlowDepths','writerV93FlowParse']);
  const depths=a.writerV101FlowDepths(['[[First]]','[[Second]] | after:[[First]]','[[Third]] | after:[[Second]]']);
  assert.deepEqual(Array.from(depths),[0,1,2]);
  const cyclic=a.writerV101FlowDepths(['[[A]] | after:[[B]]','[[B]] | after:[[A]]']);

@@ -59,8 +59,8 @@ test('Custom Sorting-compatible YAML subset is opt-in and per folder',()=>{
  assert.match(flex,/foldersFirst/);
 });
 test('Flow and per-Space settings retain distinct controls for pre-v10 modularity',()=>{
- const spaces=read('src/v9/smart-spaces.js'),flow=read('src/v9/flow-slash.js');
- const pretty=read('src/v9/pretty-properties.js');
+ const spaces=read('src/v9/smart-spaces.js'),flow=read('src/editor/flow-slash.js');
+ const pretty=read('src/editor/pretty-properties.js');
  assert.match(spaces,/manageIcon/);assert.match(spaces,/pinnedPaths/);
  assert.match(spaces,/homeWidgetsEnabled/);assert.match(spaces,/foldersFirst/);
  assert.match(flow,/flowArrange/);assert.match(flow,/flowPreviews/);

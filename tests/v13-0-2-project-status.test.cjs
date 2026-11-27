@@ -23,7 +23,7 @@ test('project titles retain a full row in narrow panes and status sliders use on
 });
 
 test('narrow project panes wrap navigation groups and keep scene actions inline',()=>{
- const css=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
  const narrow=css.slice(css.indexOf('@container basic-project (max-width:540px)'),css.indexOf('@container basic-project (max-width:250px)'));
  assert.match(narrow,/writer-project-nav-groups\{[^}]*grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,96px\),1fr\)\)/);
  assert.match(narrow,/writer-project-nav-label\{display:block/);
@@ -62,7 +62,7 @@ test('reading status shows duration and exposes the complete estimate in both la
 });
 
 test('Longform scene rows are compact and inline on desktop, with hover and keyboard-revealed actions',()=>{
- const css=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
  const shipped=fs.readFileSync('styles.css','utf8');
  const start=css.indexOf('/* Desktop Longform: compact single-line scenes');
  const end=css.indexOf('/* Visual-only Longform story arc dividers',start);

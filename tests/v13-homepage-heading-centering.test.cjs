@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const source=fs.readFileSync('src/styles/v13-6-home.css','utf8');
+const source=fs.readFileSync('src/styles/features/v13-6-home.css','utf8');
 const distributed=fs.readFileSync('styles.css','utf8');
 const headingSelector='body .writer-v8-home .writer-v8-home-hero .writer-v8-home-heading';
 const titleSelector=headingSelector+' h2';
@@ -42,7 +42,7 @@ test('homepage icon aligns its SVG and custom image in the same centered slot',(
  assert.match(svg,/height:38px;/);
  // Keep image support from the original title implementation.
  assert.match(fs.readFileSync('src/v8/writing-home.js','utf8'),/icon\.createEl\('img'/);
- assert.match(fs.readFileSync('src/styles/v9-final.css','utf8'),/\.writer-v8-home-title-icon img\{/);
+ assert.match(fs.readFileSync('src/styles/features/v9-final.css','utf8'),/\.writer-v8-home-title-icon img\{/);
 });
 
 test('narrow homepage panes stack icon above the centered title',()=>{

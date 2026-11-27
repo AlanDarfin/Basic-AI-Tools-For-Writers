@@ -62,7 +62,7 @@ test('resize hotspots do not intercept invisible button click targets',()=>{
 test('settings and toolbar remain compact without visible accidental horizontal scrollbars',()=>{
  assert.match(css,/container-name:basic-settings/);
  assert.doesNotMatch(css,/writer-v131-settings-pickers/);
- assert.match(fs.readFileSync('src/styles/v13-6-tools.css','utf8'),/@container basic-settings \(max-width:530px\)/);
+ assert.match(fs.readFileSync('src/styles/features/v13-6-tools.css','utf8'),/@container basic-settings \(max-width:530px\)/);
  assert.match(css,/dictionary-settings-subtabs::-webkit-scrollbar\{display:none/);
  assert.match(css,/writer-v1048-format-toolbar::-webkit-scrollbar\{/);
  assert.match(css,/writer-v9-toolbar-host \.writer-v9-format-toolbar/);

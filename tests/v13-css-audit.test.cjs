@@ -122,3 +122,8 @@ test('CSS phase 4: every registered stylesheet has exactly one authoritative fil
  const categorized=["features/v10-1-extensions.css","features/v11-1-integration.css","features/v11-longform-studio.css","features/v13-6-settings.css","features/v13-7-settings.css","features/v13-8-companions.css","features/v13-editorial-queue.css","features/v13-recovery.css","features/v13-story-planning.css","blocks/v13-visual-kit.css","features/v8-calendar-studies.css","features/v8-finish-suite.css","blocks/v8-folder-inscribe.css","blocks/v8-format-blocks.css","blocks/v8-interactive-media.css","features/v8-polish.css","blocks/v9-1-2-virtual-content.css","features/v9-1-unified.css","features/v9-2-3-home-title-favorites.css","features/v9-2-4-dashboard.css","features/v9-2-6-dashboard.css","features/v9-2-suite.css"];
  for(const file of categorized)assert.ok(sections.includes(file),file);
 });
+
+test('CSS phase 4: principal component files live under their ownership folders',()=>{
+ const {sections}=require('../scripts/css-manifest.js');
+ for(const file of ["features/v13-6-home.css","features/v13-6-projects.css","features/v13-6-tools.css","features/v13-7-review.css","features/v9-3-1-pomodoro.css","blocks/v9-5-1-chat.css","blocks/v9-5-2-chat-audio.css","features/v9-calendar-studio.css","features/v9-final.css"])assert.ok(sections.includes(file),file);
+});

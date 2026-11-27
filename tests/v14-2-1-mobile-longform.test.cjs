@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const css=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+const css=fs.readFileSync('src/styles/features/v13-6-projects.css','utf8');
 const shipped=fs.readFileSync('styles.css','utf8');
 const projects=fs.readFileSync('projects.js','utf8');
 const start=css.indexOf('/* Mobile Longform: keep drag, title and menu');

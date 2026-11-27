@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
-const source=fs.readFileSync('src/styles/v9-calendar-studio.css','utf8');
+const source=fs.readFileSync('src/styles/features/v9-calendar-studio.css','utf8');
 const bundle=fs.readFileSync('styles.css','utf8');
 const calendar=fs.readFileSync('src/v9/calendar-studio.js','utf8');
 test('mobile day numbers are upper-left without circular backgrounds',()=>{

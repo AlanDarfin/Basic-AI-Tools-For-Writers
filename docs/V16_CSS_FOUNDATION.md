@@ -66,3 +66,10 @@ Run npm run build:css, npm run check:css, npm test. Test editor width with each 
 - Update 10 historical test path consumers and add a recursive stylesheet inventory check against the manifest, including duplicate/unregistered files.
 - Defer the two timeline sources and the Homepage widget source referenced by the separate Timeline PR #175 until integration; the other remaining modules have additional path consumers that will be migrated in a subsequent batch.
 - No generated artifact changes are intended; latest CI and visual QA remain pending.
+
+## Phase 4 — batch 4 (principal components)
+
+- Relocate nine further sources: Homepage, Longform/projects, tools, LanguageTool review, Pomodoro, Chat, Chat audio, Calendar and historical feature overrides. Total categorized physical modules: 47/53.
+- Update 12 historical test path consumers and add component path regression coverage. Both distributable blob hashes and the complete ordered module basename sequence remain unchanged.
+- Six flat paths remain: foundation, workflow, iconic fixes, both Timeline modules and Homepage widgets. The first three have numerous test/audit consumers; the last three are deferred to avoid conflicts with Timeline PR #175.
+- Latest CI remains pending. No JavaScript runtime changes or visual verification in this stage.

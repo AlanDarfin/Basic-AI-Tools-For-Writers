@@ -68,7 +68,7 @@ test('transcript is always visible, text-only and has no extra toggle',()=>{
 
 test('shipped bundle, styles and documentation include transcription and no external recognition',()=>{
  assert.match(fs.readFileSync('main.js','utf8'),/Written transcript/);
- const css=fs.readFileSync('src/styles/v9-5-2-chat-audio.css','utf8');
+ const css=fs.readFileSync('src/styles/blocks/v9-5-2-chat-audio.css','utf8');
  assert.ok(fs.readFileSync('styles.css','utf8').includes(css.trimEnd()));
  assert.match(css,/writer-v8-chat-transcript-text/);
  assert.doesNotMatch(source,/getUserMedia\(|MediaRecorder\(|new Audio\(/);

@@ -78,6 +78,6 @@ test('responsive Pomodoro UI uses an isolated sidebar and desktop-only status ba
  assert.match(source,/!plugin\.app\.isMobile&&!obs\.Platform\?\.isMobile/);
  assert.match(source,/registerInterval\(window\.setInterval/);
  assert.match(source,/writerV931PomodoroSettings/);
- assert.match(read('src/styles/v9-3-1-pomodoro.css'),/body\.is-mobile/);
+ assert.match(read('src/styles/features/v9-3-1-pomodoro.css'),/body\.is-mobile/);
  assert.doesNotMatch(source,/fetch\s*\(/);
 });

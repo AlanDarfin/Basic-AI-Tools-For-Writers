@@ -91,7 +91,7 @@ test('v9 is registered without adding another sidebar or replacing the mobile ed
   assert.doesNotMatch(src,/detachLeavesOfType/);
   assert.doesNotMatch(src,/registerView\(/);
  }
- assert.doesNotMatch(read('src/styles/v9-final.css'),/!important/);
+ assert.doesNotMatch(read('src/styles/features/v9-final.css'),/!important/);
 });
 
 test('cMenu-inspired formatting includes underline, super/subscript and headings 1–6',()=>{

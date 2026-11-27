@@ -77,7 +77,7 @@ test('group picture is local-only and independent of avatars: off',()=>{
 });
 test('group photo and dividers have scoped styles, are built, and bilingual docs exist',()=>{
  const css=fs.readFileSync('styles.css','utf8');
- const original=fs.readFileSync('src/styles/v9-5-1-chat.css','utf8');
+ const original=fs.readFileSync('src/styles/blocks/v9-5-1-chat.css','utf8');
  assert.ok(css.includes(original.trimEnd()));
  for(const token of ['writer-v8-chat-divider','writer-v8-chat-group-photo','writer-v8-chat-heading'])assert.match(css,new RegExp(token));
  const bundle=fs.readFileSync('main.js','utf8');

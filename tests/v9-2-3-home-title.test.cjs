@@ -76,6 +76,6 @@ test('desktop icon is visually larger, text cannot be masked, and mobile layout 
  assert.match(css,/body:not\(\.is-mobile\) \.writer-v8-home \.writer-v8-home-title-icon svg\s*\{[^}]*width:53px;[^}]*height:53px;/s);
  assert.match(css,/@media\(min-width:701px\)/);
  assert.match(read('styles.css'),/9\.2\.3: Home heading proportions/);
- assert.match(read('scripts/build-css.js'),/v9-2-3-home-title-favorites\.css/);
+ assert.match(read('scripts/css-manifest.js'),/v9-2-3-home-title-favorites\.css/);
  assert.match(read('main.js'),/writerV8HomeTitleClean/);
 });

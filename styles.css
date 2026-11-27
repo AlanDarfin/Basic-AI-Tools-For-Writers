@@ -6770,26 +6770,22 @@ body.is-mobile .inline-title > .writer-v9-inline-title-icon,
 body.is-mobile .inline-title > .writer-v9215-pretty-icon{
  top:-.02em;vertical-align:middle;
 }
-/* Larger explorer toolbar pictograms; mobile native actions live at the bottom. */
-.workspace-leaf-content[data-type="file-explorer"] .nav-action-button{
- min-width:33px;min-height:33px;
+/* Basic-owned explorer actions only; native and third-party buttons keep their theme sizing. */
+.workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action){
  display:inline-flex;align-items:center;justify-content:center;
+ min-width:30px;min-height:30px;flex:0 0 auto;
 }
-.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- width:21px;height:21px;display:block;stroke-width:1.9;
+.workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action) svg{
+ display:block;width:18px;height:18px;stroke-width:1.9;
 }
-.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action{
- flex:0 0 auto;color:var(--basic-ui-muted,var(--text-muted));
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-action-button{
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action){
  min-width:40px;min-height:40px;
 }
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- width:25px;height:25px;
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] :is(.writer-v921-preview-toggle,.writer-v93-space-manage-action) svg{
+ width:22px;height:22px;
+}
+.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action{
+ color:var(--basic-ui-muted,var(--text-muted));
 }
 /* Explorer arrows are an opt-in editing overlay, not part of every row.
    Keep the mobile tree at Obsidian's normal compact height. */
@@ -6823,22 +6819,10 @@ body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
  min-height:36px;
  align-items:center;
 }
-/* Do not impose a height on actual folder-note descriptions, thumbnails,
-   or preview shells: those deliberately occupy extra vertical space. */
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
- :is(.nav-file-title,.nav-folder-title):not(.writer-v92-has-preview){
- box-sizing:border-box;
- min-height:36px;
- max-height:44px;
- padding-block:3px;
- align-items:center;
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-file-title-content,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title-content{
- min-width:0;
- overflow:hidden;
- text-overflow:ellipsis;
- white-space:nowrap;
+/* Truncate only the rows carrying Basic's explicit reorder controls. Native
+ * rows and folder previews keep their own wrapping and height. */
+body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v1047-reorder-title :is(.nav-file-title-content,.nav-folder-title-content){
+ min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 body.is-mobile .workspace-leaf-content[data-type="file-explorer"]
  .writer-v1047-reorder-title .writer-v93-reorder-action:focus-visible{
@@ -6951,40 +6935,7 @@ body.is-mobile .writer-v93-flow-layout-board > .writer-v93-flow-items{
  overflow:visible;
  white-space:normal;
 }
-/* Make the native mobile explorer toolbar readable and touch friendly. */
-.workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button,
-.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button,
-.workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button{
- display:inline-flex;
- align-items:center;
- justify-content:center;
- min-width:38px;
- min-height:38px;
- line-height:0;
-}
-.workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-.workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- display:block;
- flex:0 0 23px;
- width:23px;
- height:23px;
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button{
- min-width:43px;
- min-height:43px;
-}
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .nav-header .nav-action-button svg,
-body.is-mobile .workspace-leaf-content[data-type="file-explorer"] .writer-v93-space-manage-action svg{
- flex-basis:27px;
- width:27px;
- height:27px;
-}
+/* Explorer button geometry is defined in the Basic-owned action rule above. */
 /* 9.3.1 — Preview toggle inherits the same neutral pictogram color as neighbors. */
 .workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle,
 .workspace-leaf-content[data-type="file-explorer"] .nav-action-button.writer-v921-preview-toggle.is-active,
@@ -7985,23 +7936,7 @@ body.is-mobile .writer-v8-chat .writer-v8-chat-transcript-text{padding:9px 10px;
 @media(max-width:700px){.modal.writer-v102-image-modal-host{width:calc(100vw - 16px);max-width:calc(100vw - 16px)}}
 
 
-/* Desktop: larger, consistent native explorer toolbar hit targets without enlarging mobile UI. */
-body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-action-buttons .nav-action-button,
-body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-buttons-container .nav-action-button{
- min-width:30px;
- width:30px;
- min-height:30px;
- height:30px;
- padding:6px;
- display:inline-flex;
- justify-content:center;
- align-items:center;
- flex:0 0 30px;
-}
-body:not(.is-mobile) .workspace-leaf-content[data-type="file-explorer"] .nav-action-button svg{
- width:18px;
- height:18px;
-}
+/* Basic-owned explorer control sizes are defined in v9-2-2-iconic-fixes.css. */
 body:not(.is-mobile) .writer-v93-mobile-spaces-entry{display:none;}
 
 
@@ -12536,6 +12471,12 @@ body.is-mobile .writer-mobile-status:not([hidden]){
 body.is-mobile .writer-mobile-status.writer-mobile-status-floating{
  position:fixed;inset:auto;top:var(--writer-mobile-status-top);left:var(--writer-mobile-status-left);
  width:var(--writer-mobile-status-width);z-index:var(--layer-status-bar,10);
+}
+/* Only Markdown scroll surfaces measured by the mobile layout adapter. Preserve
+ * larger native padding, and remove the entire override when there is no overlap. */
+body.is-mobile :is(.markdown-preview-view,.cm-scroller).writer-mobile-note-scroll-clearance{
+ padding-bottom:max(var(--writer-mobile-note-base-padding,0px),var(--writer-mobile-note-clearance,0px));
+ scroll-padding-bottom:max(var(--writer-mobile-note-base-scroll-padding,0px),var(--writer-mobile-note-clearance,0px));
 }
 body.is-mobile .writer-v8-home{
  padding-block-end:calc(var(--writer-home-footer-padding,30px) + var(--writer-mobile-home-clearance,0px));

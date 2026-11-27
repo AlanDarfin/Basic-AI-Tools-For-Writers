@@ -93,3 +93,10 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Reports are leads for manual review, not proof of leaks, duplicate runtime registrations or dead code. Receiver aliases, indirect calls, conditional execution, computed keys and destructuring are not fully resolved. No cleanup or runtime refactoring has been performed.
 - Run `npm run build` then `npm run audit:js` for the summary or `npm run audit:js -- --json` for the full inventory. CI runs the audit and dedicated regression fixture file. Syntax and exact source/bundle mismatches fail validation; candidate repetition does not.
 - Next: inspect the real report, prioritize confirmed lifecycle and prototype ownership conflicts, map registrations to disposal paths, and record baseline counts before implementing Phase 7.
+
+## Phase 6.2 — first real audit and review queue
+
+- CI #1379 succeeded with 179/179 regression files. The first real inventory found 1,508 named top-level declarations, 203 command sites (16 dynamic), eight direct prototype writes and 1,940 lifecycle/persistence call sites; no repeated top-level names, literal command IDs or direct prototype targets in recognized patterns.
+- [Baseline and prioritized review queue](V16_JS_AUDIT_BASELINE.md) records the evidence, limitations and source locations. Startup callbacks, reading-progress teardown, native menu wrapper ownership and explorer sorting are initial targets.
+- Extend the analyzer to report prototype aliases, computed writes, deferred layout callbacks and lifecycle module rankings. Add a regression fixture for aliased/conditional/dynamic writes and shadowed function parameters. New CI must validate this expanded inventory.
+- The reading-progress teardown gap is visible in source: outstanding delayed work can recreate DOM after unload. Fix in Phase 7 with cancellation, a stopped guard and deterministic regression tests; no runtime changes in this audit pass.

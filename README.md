@@ -2,7 +2,7 @@
 
 **A writing workspace for Obsidian: plan, write, revise and organize your work in Markdown.**
 
-**Version:** 15.1.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
+**Version:** 15.2.0 · **Requires:** Obsidian 1.11.4+ · **Platforms:** Desktop and Android · **License:** MIT
 
 [Leia em português](docs/README.pt-BR.md) · [Get started](docs/GETTING_STARTED.en.md) · [Feature guide](docs/SUITES_AND_INTEGRATIONS.en.md)
 
@@ -99,6 +99,8 @@ In the **Web bookmarks** homepage widget, search by name, URL or group, or selec
 ## Reschedule a task
 
 Open **Tasks: open dashboard** and use the calendar icon beside a task. Pick a date or choose **Today**, **Tomorrow**, **In 7 days** or **No due date**, then save. The dashboard updates its filters and changes only the due-date marker in the original Markdown note.
+
+The dashboard recognizes bulleted tasks (`- [ ]`, `* [ ]`, `+ [ ]`) and numbered tasks with either delimiter (`1. [ ]` or `1) [ ]`). Checking a task or editing its deadline preserves its list marker, indentation and note content.
 
 ## Supported plugins
 

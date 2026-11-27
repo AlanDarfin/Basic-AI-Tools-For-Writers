@@ -2,7 +2,7 @@
 
 **Um espaço de escrita no Obsidian: planeje, escreva, revise e organize seu trabalho em Markdown.**
 
-**Versão:** 15.1.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
+**Versão:** 15.2.0 · **Requer:** Obsidian 1.11.4+ · **Plataformas:** Computador e Android · **Licença:** MIT
 
 [Read in English](../README.md) · [Primeiros passos](GETTING_STARTED.pt-BR.md) · [Recursos e suporte](SUITES_AND_INTEGRATIONS.pt-BR.md)
 
@@ -99,6 +99,8 @@ No widget **Favoritos da web** da homepage, busque por nome, URL ou grupo, ou es
 ## Remarque uma tarefa
 
 Abra **Tarefas: abrir painel** e use o ícone de calendário ao lado da tarefa. Escolha uma data ou use **Hoje**, **Amanhã**, **Em 7 dias** ou **Sem prazo** e salve. O painel atualiza os filtros e muda apenas o marcador de prazo na nota Markdown original.
+
+O painel reconhece tarefas com marcadores (`- [ ]`, `* [ ]`, `+ [ ]`) e numeradas com ponto ou parêntese (`1. [ ]` ou `1) [ ]`). Marcar uma tarefa ou editar seu prazo preserva a numeração, o recuo e o conteúdo da nota.
 
 ## Plugins com suporte
 

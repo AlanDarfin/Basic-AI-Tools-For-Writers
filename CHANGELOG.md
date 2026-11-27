@@ -1,5 +1,12 @@
 # Changelog — Basic
 
+## 15.2.0 — Timeline, blocos Markdown e tarefas
+
+- Timeline narrativa responsiva, melhorias nos blocos Markdown e edição segura.
+- Correções de chats, sumário, Flow, galeria, biblioteca e tarefas numeradas com parênteses.
+
+[Notas completas em português e inglês](docs/releases/15.2.0.md)
+
 ## 15.1.0 — Ferramentas, modelos e painéis antigos
 
 - Ferramentas de Escrita usa abas navegáveis pelo teclado, ações agrupadas e diálogos mais compactos. Variantes mantém a seleção do editor, e o histórico acompanha a troca de nota na mesma aba.

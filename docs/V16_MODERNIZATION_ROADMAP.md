@@ -184,3 +184,8 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Baseline CI #1392 passed. Move historical helpers into `src/compat/`, retaining the original source blob and all 124 ordered bundle IDs.
 - Settings search generation now resolves stable source IDs through the manifest, including the generated output path. Updated historical test consumers and added coverage for relocated paths, all IDs and unknown IDs.
 - No runtime, generated distributable, settings schema or dependency changes. Full clean build, generated index check and regression CI remain pending. Next batch: Zotero and iCalendar integration modules.
+
+### Phase 10.3 — manifest-driven syntax gate
+
+- CI #1393 rebuilt the bundle and verified committed build artifacts, then failed before regressions because `npm run check` still named the relocated historical helper path.
+- Replace the hard-coded authored source syntax list with a manifest-driven gate covering all 124 bundled modules and the extracted legacy dictionary. Preserve the remaining syntax, bundle, CSS, audit and regression checks. CI rerun pending.

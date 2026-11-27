@@ -139,7 +139,7 @@ test('timeline headings normalize legacy HTML breaks and preserve safe Markdown'
  ].join('\n'),'timeline-labeled');
  assert.equal(labeled.events[0].title,'One\nTwo');
  assert.equal(labeled.events[0].content,'Normal <br> HTML is preserved.');
- const css=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+ const css=fs.readFileSync('src/styles/core/v13-foundation.css','utf8');
  assert.match(css,/writer-v95-timeline-title\{\s*white-space:pre-line/);
  assert.match(css,/is-heading-only/);
 });

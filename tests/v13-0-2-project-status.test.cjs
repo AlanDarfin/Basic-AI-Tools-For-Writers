@@ -13,7 +13,7 @@ test('status protection is scoped, shared by widgets and restored on unload',()=
  assert.equal(callbacks.length,1);
 });
 test('project titles retain a full row in narrow panes and status sliders use one track style',()=>{
- const css=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+ const css=fs.readFileSync('src/styles/core/v13-foundation.css','utf8');
  assert.match(css,/writer-v7-scene-title-wrap\{[\s\S]*?grid-column:2;grid-row:1/);
  assert.match(css,/writer-project-scene-title-text\{[\s\S]*?text-overflow:ellipsis/);
  assert.match(css,/writer-project-tabs\.writer-project-tabs>button[\s\S]*?white-space:nowrap/);

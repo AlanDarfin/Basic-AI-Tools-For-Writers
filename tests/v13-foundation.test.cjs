@@ -66,7 +66,7 @@ test('generated outputs and build inventories both include the same v13 entry',(
 });
 
 test('v13 compatibility adapters remain scoped to Basic hosts and preserve Surfing native UI',()=>{
- const css=fs.readFileSync(path.join(root,'src/styles/v13-foundation.css'),'utf8');
+ const css=fs.readFileSync(path.join(root,'src/styles/core/v13-foundation.css'),'utf8');
  assert.match(css,/writer-v11-studio-actions/);
  assert.match(css,/writer-v102-spaces-manager/);
  assert.match(css,/writer-v95-timeline\.is-layout-horizontal/);

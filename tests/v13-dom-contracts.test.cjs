@@ -6,7 +6,7 @@ const root=path.resolve(__dirname,'..');
 const load=p=>fs.readFileSync(path.join(root,p),'utf8');
 test('v13 adapters protect Obsidian/Surfing DOM and keep Basic class contracts',()=>{
  const r=auditFromStrings({
-  foundation:load('src/styles/v13-foundation.css'),
+  foundation:load('src/styles/core/v13-foundation.css'),
   surfing:load('src/styles/v12-0-5-home-widgets.css'),
   main:load('main.js'),css:load('styles.css')
  });

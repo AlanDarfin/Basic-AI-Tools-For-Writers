@@ -34,7 +34,7 @@ const entries=Object.freeze([
  Object.freeze({path:'mobile/v12-0-1-mobile.css',category:'mobile'}),
  Object.freeze({path:'v12-0-5-home-widgets.css',category:'features'}),
  Object.freeze({path:'v12-0-5-timeline-dragger.css',category:'blocks'}),
- Object.freeze({path:'v13-foundation.css',category:'core'}),
+ Object.freeze({path:'core/v13-foundation.css',category:'core'}),
  Object.freeze({path:'features/v13-recovery.css',category:'features'}),
  Object.freeze({path:'features/v13-6-projects.css',category:'features'}),
  Object.freeze({path:'features/v13-6-settings.css',category:'features'}),

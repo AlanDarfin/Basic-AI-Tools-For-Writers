@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const source=fs.readFileSync('src/v8/format-blocks.js','utf8');
-const css=fs.readFileSync('src/styles/v13-foundation.css','utf8');
+const css=fs.readFileSync('src/styles/core/v13-foundation.css','utf8');
 const projects=fs.readFileSync('projects.js','utf8');
 class Element{
  constructor(tag='div',options={}){this.tag=tag;this.cls=options.cls||'';this.text=options.text||'';this.attr=options.attr||{};this.children=[];this.listeners={};}

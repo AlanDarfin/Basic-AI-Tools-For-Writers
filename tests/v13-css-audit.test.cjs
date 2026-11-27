@@ -72,7 +72,7 @@ test('CSS phase 4: ordered manifest validates paths and ownership without regrou
  assert.equal(new Set(sections).size,sections.length);
  assert.ok(categories.every(c=>entries.some(e=>e.category===c)));
  assert.ok(sections.indexOf('v9-5-timeline.css')<sections.indexOf('v12-0-5-timeline-dragger.css'));
- assert.ok(sections.indexOf('v12-0-5-home-widgets.css')<sections.indexOf('v13-foundation.css'));
+ assert.ok(sections.indexOf('v12-0-5-home-widgets.css')<sections.indexOf('core/v13-foundation.css'));
  assert.throws(()=>validateEntries([entries[0],entries[0]]),/Duplicate CSS module/);
  assert.throws(()=>validateEntries([{path:'../styles.css',category:'core'}]),/Invalid CSS module path/);
  assert.throws(()=>validateEntries([{path:'test.css',category:'unknown'}]),/Invalid CSS category/);

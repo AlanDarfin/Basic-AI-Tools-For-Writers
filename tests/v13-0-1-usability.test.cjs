@@ -8,7 +8,7 @@ const ui=read('src/v13/ui-foundation.js');
 const drag=read('src/v10/block-dragger.js');
 const home=read('src/v8/writing-home.js');
 const toolbar=read('src/v9/context-toolbar.js');
-const css=read('src/styles/v13-foundation.css');
+const css=read('src/styles/core/v13-foundation.css');
 const main=read('main.js');
 const functions=vm.runInNewContext(ui+'\n'+drag+'\n({writerV131MinWidgetColumns,writerV131WidgetDropAfter,writerV131RankSettings,writerV131DragPosition})',{console,writerUi:(pt,en)=>en});
 test('widget width is safe in an Obsidian 720p split pane',()=>{

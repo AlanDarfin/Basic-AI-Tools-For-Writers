@@ -39,7 +39,7 @@ if(unstyled.length)warnings.push('Styles missing from build: '+unstyled.join(', 
 const main=get('main.js'),css=get('styles.css');
 if(!sources.includes('src/v13/ui-foundation.js')||!main.includes('// v3 module: src/v13/ui-foundation.js'))
  errors.push('UI foundation missing from generated JS');
-if(!styles.includes('src/styles/v13-foundation.css')||!css.includes('Basic v13 — foundation overrides'))
+if(!styles.includes('src/styles/core/v13-foundation.css')||!css.includes('Basic v13 — foundation overrides'))
  errors.push('Design tokens missing from generated CSS');
 if(!main.includes('writerV13BindSettingsTabs(nav,subnav);'))
  errors.push('Settings keyboard navigation not connected');

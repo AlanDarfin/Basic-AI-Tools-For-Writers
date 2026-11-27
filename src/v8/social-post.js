@@ -3,12 +3,12 @@
 function writerV8SplitPost(source){
  const text=String(source||'');
  if(text.length>WRITER_V8_BLOCK_MAX)return null;
- const chunks=text.replace(/\r\n/g,'\n').split(/^===\s+reply\s*$/gmi);
+ const chunks=writerV8MarkdownSections(text,line=>/^===[ \t]+reply[ \t]*$/i.test(line),42);
  if(chunks.length>41)return null;
  const main=writerV8ReadCard(chunks[0]);
  if(!main)return null;
  const replies=chunks.slice(1).map(chunk=>{
-  const data=writerV8ReadCard(chunk.replace(/^\n+/,''));
+  const data=writerV8ReadCard(writerV8TrimBlankLines(chunk));
   if(!data)return null;
   const value=Number(data.fields.depth??data.fields.level??1);
   return {...data,depth:Number.isFinite(value)?Math.max(1,Math.min(5,Math.floor(value))):1};
@@ -20,7 +20,7 @@ function writerV8PostCount(value){
  return Number.isFinite(number)&&number>=0?Math.min(Math.floor(number),999999999):0;
 }
 function writerV8PostIcon(host,name,fallback){
- const span=host.createSpan({cls:'writer-v8-social-icon'});
+ const span=host.createSpan({cls:'writer-v8-social-icon',attr:{'aria-hidden':'true'}});
  try{const setIcon=require('obsidian').setIcon;if(typeof setIcon==='function'){setIcon(span,name);return;}}catch(_){}
  span.setText(fallback);
 }
@@ -35,20 +35,23 @@ function writerV8RenderPost(plugin,source,element,ctx){
   const author=String(fields.author||fields.name||fields.nome||writerUi('Personagem','Character')).slice(0,100);
   const url=writerV8ImagePath(plugin.app,fields.avatar||fields.image,ctx.sourcePath);
   if(url)heading.createEl('img',{cls:'writer-v8-social-avatar',attr:{src:url,alt:author,loading:'lazy'}});
-  else heading.createSpan({cls:'writer-v8-social-placeholder',text:author.slice(0,1).toUpperCase()});
+  else heading.createSpan({cls:'writer-v8-social-placeholder',text:[...author][0].toUpperCase(),attr:{'aria-hidden':'true'}});
   const labels=heading.createDiv({cls:'writer-v8-social-labels'});
   labels.createEl('strong',{text:author});
   const handle=String(fields.handle||fields.username||'').slice(0,80);
   const date=String(fields.date||fields.time||'').slice(0,80);
   if(handle||date)labels.createEl('span',{text:[handle,date].filter(Boolean).join(' · '),cls:'writer-v8-social-subtitle'});
   const content=post.createDiv({cls:'writer-v8-social-body'});
-  if(item.body)void writerV8Markdown(plugin,ctx,content,item.body).catch(error=>console.warn('[Basic AI] social card:',error));
+  if(item.body)void writerV8Markdown(plugin,ctx,content,item.body).catch(error=>{
+   console.warn('[Basic AI] social card:',error);content.setText(item.body);
+  });
   const metrics=post.createDiv({cls:'writer-v8-social-metrics'});
   const counts=[['message-circle',replyIndex<0?(fields.comments===undefined?data.replies.length:writerV8PostCount(fields.comments)):writerV8PostCount(fields.comments),'💬'],
     ['flame',writerV8PostCount(fields.likes||fields.flames),'🔥'],
     ['eye',writerV8PostCount(fields.views),'◉']];
   for(const [icon,value,fallback] of counts){
-   const stat=metrics.createSpan({cls:'writer-v8-social-stat',attr:{title:icon==='flame'?writerUi('Curtidas fictícias','Fictional reactions'):icon==='eye'?writerUi('Visualizações fictícias','Fictional views'):writerUi('Comentários fictícios','Fictional replies')}});
+   const label=icon==='flame'?writerUi('Curtidas fictícias','Fictional reactions'):icon==='eye'?writerUi('Visualizações fictícias','Fictional views'):writerUi('Comentários fictícios','Fictional replies');
+   const stat=metrics.createSpan({cls:'writer-v8-social-stat',attr:{role:'img','aria-label':label+': '+value,title:label}});
    writerV8PostIcon(stat,icon,fallback);stat.createSpan({text:String(value)});
   }
  };

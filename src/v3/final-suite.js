@@ -67,7 +67,7 @@ class WriterFinalFeatures{
    });
    if(change)queueMicrotask(()=>this.tryExpand(update.view,change));
   }));
-  if(p.registerMarkdownCodeBlockProcessor)p.registerMarkdownCodeBlockProcessor('insta-toc',async(source,el,ctx)=>this.renderToc(el,ctx.sourcePath,source));
+  if(p.registerMarkdownCodeBlockProcessor)p.registerMarkdownCodeBlockProcessor('insta-toc',(source,el,ctx)=>this.renderToc(el,ctx.sourcePath,source,ctx));
   const commands=[
    ['writer-insert-unicode',writerUi('Unicode: pesquisar e inserir','Unicode: Search and insert'),()=>this.unicodePicker()],
    ['writer-tts-read',writerUi('Ler seleção ou nota atual em voz alta','Read selection or current note aloud'),()=>this.speakActive()],
@@ -244,67 +244,86 @@ class WriterFinalFeatures{
   if(!view)return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   view.editor.replaceSelection('\n'+String.fromCharCode(96,96,96)+'insta-toc\n'+String.fromCharCode(96,96,96)+'\n');
  }
- async renderToc(el,path,source=''){
+ renderToc(el,path,source='',context){
   const cfg=this.cfg.toc;
   if(!cfg.enabled)return;
-  const file=this.plugin.app.vault.getAbstractFileByPath(path);
+  const {vault,metadataCache,workspace}=this.plugin.app;
+  const file=vault.getAbstractFileByPath(path);
   if(!(file instanceof TFile))return;
   const local={...cfg};
+  const keys={maxdepth:'maxDepth',numbered:'numbered',folded:'folded'};
   for(const line of String(source).split('\n')){
    const match=/^\s*(maxDepth|numbered|folded)\s*:\s*(.*?)\s*$/i.exec(line);
    if(!match)continue;
-   if(match[1]==='maxDepth')local.maxDepth=Math.max(1,Math.min(6,Number(match[2])||6));
-   else local[match[1]]=match[2].toLowerCase()==='true';
-  }
-  const text=await this.plugin.app.vault.cachedRead(file);
-  const re=/^(#{1,6})[ \t]+([^\r\n]+)$/gm;
-  const nodes=[],stack=[{level:0,children:nodes}];let match;
-  while((match=re.exec(text))!==null){
-   const level=match[1].length,title=match[2].replace(/[ \t]+#+[ \t]*$/,'').trim();
-   if(!title||level>Number(local.maxDepth)||title.toLowerCase()==='table of contents')continue;
-   const node={level,title,children:[],offset:match.index};
-   while(stack.length>1&&stack[stack.length-1].level>=level)stack.pop();
-   stack[stack.length-1].children.push(node);stack.push(node);
+   const key=keys[match[1].toLowerCase()];
+   if(key==='maxDepth')local.maxDepth=Math.max(1,Math.min(6,Number(match[2])||6));
+   else local[key]=match[2].toLowerCase()==='true';
   }
   const wrap=el.createDiv({cls:'writer-insta-toc-rendered'});
-  if(!nodes.length){wrap.createEl('p',{text:writerUi('Nenhum título encontrado.','No headings found.')});return;}
-  const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
-  const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
   const openAt=async node=>{
-   const active=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-   if(!active||active.file?.path!==file.path){
-    const leaf=this.plugin.app.workspace.getLeaf(false);
+   let view=workspace.getActiveViewOfType(MarkdownView);
+   workspace.iterateAllLeaves?.(leaf=>{
+    if(leaf.view instanceof MarkdownView&&leaf.view.file===file&&leaf.view.containerEl.contains(el))view=leaf.view;
+   });
+   if(view?.file?.path!==file.path){
+    const leaf=workspace.getLeaf(false);
     await leaf.openFile(file);
+    view=leaf.view;
    }
-   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-   const cache=this.plugin.app.metadataCache.getFileCache(file);
-   const found=cache?.headings?.find(h=>h.heading===node.title&&h.level===node.level);
-   if(view?.editor){
-    const pos=found?.position?.start||view.editor.offsetToPos(node.offset);
+   if(view?.file?.path!==file.path)return;
+   const pos=node.position;
+   if(view.getMode?.()==='preview')view.previewMode.applyScroll(pos.line);
+   else if(view.editor){
     view.editor.setCursor(pos);view.editor.scrollIntoView({from:pos,to:pos},true);
    }
   };
   const draw=(items,parent)=>{
    for(const node of items){
     const li=parent.createEl('li',{cls:'writer-insta-toc-item'});
+    const label=node.title.replace(/(`+)([^`]+)\1/g,'$2')
+     .replace(/(^|[\s(])(\*{1,3}|_{1,3})(\S(?:.*?\S)?)\2(?=$|[\s.,!?;:)])/g,'$1$3');
     if(node.children.length){
      const details=li.createEl('details',{cls:'writer-insta-toc-branch'});
      details.open=!local.folded;
      const summary=details.createEl('summary');
-     const title=summary.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     const title=summary.createEl('a',{text:label,href:'#'});
      title.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openAt(node).catch(console.warn);});
      const child=details.createEl(local.numbered?'ol':'ul');
      draw(node.children,child);
     }else{
-     const link=li.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     const link=li.createEl('a',{text:label,href:'#'});
      link.addEventListener('click',event=>{event.preventDefault();openAt(node).catch(console.warn);});
     }
    }
   };
-  draw(nodes,list);
-  const all=()=>[...list.querySelectorAll('details')];
-  toolbar.createEl('button',{text:writerUi('Expandir tudo','Expand all'),attr:{'aria-label':writerUi('Expandir todos os títulos','Expand all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
-  toolbar.createEl('button',{text:writerUi('Recolher tudo','Collapse all'),attr:{'aria-label':writerUi('Recolher todos os títulos','Collapse all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
+  let previous;
+  const renderHeadings=cache=>{
+   const headings=(cache?.headings||[]).filter(({heading,level})=>heading&&level<=Number(local.maxDepth)&&heading.toLowerCase()!=='table of contents');
+   const signature=JSON.stringify(headings.map(({heading,level,position})=>[heading,level,position.start.line,position.start.col]));
+   if(signature===previous)return;
+   previous=signature;
+   wrap.empty();
+   if(!headings.length){wrap.createEl('p',{text:writerUi('Nenhum título encontrado.','No headings found.')});return;}
+   const nodes=[],stack=[{level:0,children:nodes}];
+   for(const {heading,level,position:{start}} of headings){
+    const node={level,title:heading,children:[],position:{line:start.line,ch:start.col}};
+    while(stack.length>1&&stack.at(-1).level>=level)stack.pop();
+    stack.at(-1).children.push(node);stack.push(node);
+   }
+   const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
+   const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
+   draw(nodes,list);
+   const all=()=>list.querySelectorAll('details');
+   toolbar.createEl('button',{text:writerUi('Expandir tudo','Expand all'),attr:{type:'button','aria-label':writerUi('Expandir todos os títulos','Expand all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
+   toolbar.createEl('button',{text:writerUi('Recolher tudo','Collapse all'),attr:{type:'button','aria-label':writerUi('Recolher todos os títulos','Collapse all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
+  };
+  renderHeadings(metadataCache.getFileCache(file));
+  if(context?.addChild){
+   const {MarkdownRenderChild}=require('obsidian');
+   const child=new MarkdownRenderChild(wrap);
+   child.registerEvent(metadataCache.on('changed',(changed,_data,cache)=>{if(changed===file)renderHeadings(cache);}));
+   context.addChild(child);
+  }
  }
  unicodePath(){
   const base=this.plugin.manifest.dir||this.plugin.app.vault.configDir+'/plugins/'+this.plugin.manifest.id;

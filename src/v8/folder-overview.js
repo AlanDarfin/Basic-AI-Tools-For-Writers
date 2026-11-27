@@ -19,7 +19,7 @@ function writerV8OverviewConfig(source){
   }
   if(key==='sort'&&WRITER_V8_OVERVIEW_SORTS.includes(value))cfg.sort=value;
   if(key==='type'&&value==='folder_brief_live')cfg.live=true;
-  if(key==='folder'&&value&&!value.includes('..')&&!value.startsWith('/')&&value.length<400)cfg.folder=value;
+  if(key==='folder'&&value&&(value==='/'||(!value.startsWith('/')&&!value.split('/').includes('..')))&&value.length<400)cfg.folder=value;
   if(['subfolders','noteOnly','showBrief','showPath','controls','folderFirst'].includes(key)&&/^(true|false)$/.test(value))
    cfg[key]=value==='true';
   if(key==='depth')cfg.depth=Math.max(0,Math.min(8,Number(value)||0));
@@ -29,11 +29,11 @@ function writerV8OverviewConfig(source){
  return cfg;
 }
 function writerV8OverviewRoot(app,sourcePath,config){
- const file=app.vault.getAbstractFileByPath(sourcePath||'');
  if(config.folder){
-  const explicit=app.vault.getAbstractFileByPath(config.folder.replace(/\/$/,''));
+  const explicit=config.folder==='/'?app.vault.getRoot():app.vault.getAbstractFileByPath(config.folder.replace(/\/$/,''));
   return explicit instanceof TFolder?explicit:null;
  }
+ const file=app.vault.getAbstractFileByPath(sourcePath||'');
  if(file instanceof TFolder)return file;
  if(!(file instanceof TFile))return null;
  const outside=app.vault.getAbstractFileByPath(file.path.replace(/\.md$/i,''));
@@ -63,9 +63,12 @@ function writerV8OverviewSortEntries(entries,cfg){
  };
  return entries.sort(comparison);
 }
-function writerV8OverviewEntries(app,root,cfg){
+function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
  if(!(root instanceof TFolder))return [];
  const entries=[],seen=new Set();
+ const normalized=query.trim().normalize('NFC').toLocaleLowerCase();
+ const matches=child=>!normalized||[child.basename||child.name,child.path].some(value=>
+  value.normalize('NFC').toLocaleLowerCase().includes(normalized));
  const scan=(folder,depth)=>{
   if(depth>cfg.depth||entries.length>=cfg.limit)return;
   const children=(folder.children||[]).filter(child=>child instanceof TFolder||
@@ -77,11 +80,12 @@ function writerV8OverviewEntries(app,root,cfg){
    if(entries.length>=cfg.limit)break;
    const child=item.file;
    if(item.kind==='folder'){
-    if(!cfg.noteOnly)entries.push({...item,depth});
-    if(cfg.subfolders&&depth<cfg.depth)scan(child,depth+1);
+    if(!cfg.noteOnly&&matches(child))entries.push({...item,depth});
+    if(cfg.subfolders&&depth<cfg.depth&&(normalized||!collapsed.has(child.path)))scan(child,depth+1);
    }else{
+    if(!matches(child)||seen.has(child.path))continue;
     const folderNote=typeof writerV7FolderNote==='function'?writerV7FolderNote(app,child.parent):null;
-    if(folderNote?.path===child.path||seen.has(child.path))continue;
+    if(folderNote?.path===child.path)continue;
     seen.add(child.path);
     entries.push({...item,depth});
    }
@@ -151,68 +155,51 @@ function writerV8OverviewStyleOptions(){
 }
 function writerV8RegisterFolderOverview(plugin){
  if(typeof plugin.registerMarkdownCodeBlockProcessor!=='function')return;
- const render=async(source,element,ctx)=>{
+ const render=(source,element,ctx)=>{
   const cfg=writerV8OverviewConfig(source),root=writerV8OverviewRoot(plugin.app,ctx.sourcePath,cfg);
   const host=element.createDiv({cls:'writer-v8-overview'});
   if(!root){host.createEl('p',{text:writerUi('Pasta não encontrada.','Folder not found.')});return;}
   let current=root,revision=0,style=cfg.style,sort=cfg.sort,query='';
   const collapsed=new Set();
-  const draw=async()=>{
-   const seq=++revision;
-   host.empty();
-   const header=host.createDiv({cls:'writer-v8-overview-header'});
-   if(current.path!==root.path){
-    const back=header.createEl('button',{text:'← '+writerUi('Voltar','Back'),attr:{type:'button'}});
-    back.addEventListener('click',event=>{
-     event.preventDefault();event.stopPropagation();
-     current=current.parent instanceof TFolder?current.parent:root;collapsed.clear();void draw();
-    });
-   }
-   header.createEl('strong',{text:current.name||writerUi('Cofre','Vault')});
-   if(cfg.controls){
-    const toolbar=host.createDiv({cls:'writer-v8-overview-controls'});
-    const select=(options,value,label,onChange)=>{
-     const field=toolbar.createEl('select',{attr:{'aria-label':label,title:label}});
-     for(const [key,pt,en] of options){
-      const opt=field.createEl('option',{text:writerUi(pt,en)});opt.value=key;
-     }
-     field.value=value;
-     field.addEventListener('change',()=>onChange(field.value));
-     return field;
-    };
-    select(writerV8OverviewStyleOptions(),style,writerUi('Modo de visualização','View mode'),
-     value=>{style=value;collapsed.clear();void draw();});
-    select(writerV8OverviewSortOptions(),sort,writerUi('Ordenação','Sort order'),
-     value=>{sort=value;void draw();});
-    const search=toolbar.createEl('input',{attr:{
-     type:'search',placeholder:writerUi('Filtrar nomes…','Filter names…'),
-     'aria-label':writerUi('Pesquisar no Overview','Search overview')
-    }});
-    search.value=query;
-    search.addEventListener('input',()=>{
-     query=search.value;const position=search.selectionStart;
-     void draw().then(()=>{
-      const active=host.querySelector('.writer-v8-overview-controls input[type="search"]');
-      if(active){active.focus();if(position!==null)try{active.setSelectionRange(position,position);}catch(_){}}
-     });
-    });
-   }
-   const config={...cfg,sort},entries=writerV8OverviewEntries(plugin.app,current,config);
-   const normalized=query.toLocaleLowerCase().trim();
-   const filtered=entries.filter(entry=>{
-    if(normalized&&!String(entry.file.basename||entry.file.name||'').toLocaleLowerCase().includes(normalized)
-       &&!entry.file.path.toLocaleLowerCase().includes(normalized))return false;
-    if(!normalized&&style==='list'&&cfg.subfolders)
-     for(const path of collapsed)if(entry.file.path.startsWith(path+'/'))return false;
-    return true;
-   });
-   const content=host.createDiv({cls:'writer-v8-overview-items is-'+style});
+  const header=host.createDiv({cls:'writer-v8-overview-header'});
+  const back=header.createEl('button',{text:'← '+writerUi('Voltar','Back'),attr:{type:'button'}});
+  const heading=header.createEl('strong');
+  back.addEventListener('click',event=>{
+   event.preventDefault();event.stopPropagation();
+   current=current.parent instanceof TFolder?current.parent:root;collapsed.clear();draw();
+  });
+  if(cfg.controls){
+   const toolbar=host.createDiv({cls:'writer-v8-overview-controls'});
+   const select=(options,value,label,onChange)=>{
+    const field=toolbar.createEl('select',{attr:{'aria-label':label,title:label}});
+    for(const [key,pt,en] of options){
+     const opt=field.createEl('option',{text:writerUi(pt,en)});opt.value=key;
+    }
+    field.value=value;
+    field.addEventListener('change',()=>onChange(field.value));
+   };
+   select(writerV8OverviewStyleOptions(),style,writerUi('Modo de visualização','View mode'),
+    value=>{style=value;collapsed.clear();draw();});
+   select(writerV8OverviewSortOptions(),sort,writerUi('Ordenação','Sort order'),value=>{sort=value;draw();});
+   const search=toolbar.createEl('input',{attr:{
+    type:'search',placeholder:writerUi('Filtrar nomes…','Filter names…'),
+    'aria-label':writerUi('Pesquisar no Overview','Search overview')
+   }});
+   search.addEventListener('input',()=>{query=search.value;draw();});
+  }
+  const content=host.createDiv({cls:'writer-v8-overview-items'});
+  const draw=focusPath=>{
+   const seq=++revision,previews=[];
+   back.hidden=current===root;
+   heading.setText(current.name||writerUi('Cofre','Vault'));
+   content.empty();content.className='writer-v8-overview-items is-'+style;
+   const config={...cfg,sort};
+   const filtered=writerV8OverviewEntries(plugin.app,current,config,query,style==='list'?collapsed:undefined);
    if(!filtered.length){
     content.createEl('p',{text:writerUi('Nenhuma nota ou subpasta encontrada.','No notes or subfolders found.')});return;
    }
    const obs=typeof require==='function'?require('obsidian'):null;
-   const createTile=async(entry,parent=content)=>{
-    if(seq!==revision)return;
+   const createTile=(entry,parent=content)=>{
     const path=entry.file.path,name=entry.file.basename||entry.file.name;
     const row=parent.createDiv({cls:'writer-v8-overview-entry'+(entry.depth?' is-nested':'')});
     if(style==='list'&&entry.depth>0)row.style.setProperty('--writer-v8-overview-depth',String(Math.min(entry.depth,8)));
@@ -231,15 +218,11 @@ function writerV8RegisterFolderOverview(plugin){
     if(cfg.showBrief&&style!=='compact'&&style!=='grid'){
      const note=entry.kind==='folder'?
       (typeof writerV7FolderNote==='function'?writerV7FolderNote(plugin.app,entry.file):null):entry.file;
-     if(note instanceof TFile){
-      const brief=await writerV8OverviewBrief(plugin.app,note,cfg.briefMax);
-      if(seq!==revision)return;
-      if(brief)tile.createSpan({cls:'writer-v8-overview-brief',text:brief});
-     }
+     if(note instanceof TFile)previews.push({note,tile});
     }
     tile.addEventListener('click',event=>{
      event.preventDefault();event.stopPropagation();
-     if(entry.kind==='folder'){current=entry.file;collapsed.clear();void draw();}
+     if(entry.kind==='folder'){current=entry.file;collapsed.clear();draw();}
      else void plugin.app.workspace.getLeaf(false).openFile(entry.file);
     });
     if(style==='list'&&entry.kind==='folder'&&cfg.subfolders&&entry.depth<cfg.depth){
@@ -253,8 +236,9 @@ function writerV8RegisterFolderOverview(plugin){
      toggle.addEventListener('click',event=>{
       event.preventDefault();event.stopPropagation();
       if(collapsed.has(path))collapsed.delete(path);else collapsed.add(path);
-      void draw();
+      draw(path);
      });
+     if(path===focusPath)toggle.focus();
     }
     return row;
    };
@@ -263,7 +247,7 @@ function writerV8RegisterFolderOverview(plugin){
      const column=content.createDiv({cls:'writer-v8-overview-column'});
      const group=filtered.filter(item=>item.kind===kind);
      column.createEl('h4',{text:(kind==='folder'?writerUi('Pastas','Folders'):writerUi('Notas','Notes'))+' ('+group.length+')'});
-     for(const entry of group)await createTile(entry,column);
+     for(const entry of group)createTile(entry,column);
     }
    }else{
     if(style==='table'){
@@ -271,22 +255,30 @@ function writerV8RegisterFolderOverview(plugin){
      for(const [pt,en] of [['Nome','Name'],['Tipo','Type'],['Modificado','Modified']])
       row.createSpan({text:writerUi(pt,en)});
     }
-    for(const entry of filtered)await createTile(entry);
+    for(const entry of filtered)createTile(entry);
    }
+   void (async()=>{
+    for(const {note,tile} of previews){
+     if(seq!==revision)return;
+     const brief=await writerV8OverviewBrief(plugin.app,note,cfg.briefMax);
+     if(seq===revision&&brief)tile.createSpan({cls:'writer-v8-overview-brief',text:brief});
+    }
+   })();
   };
-  await draw();
+  draw();
   const Child=require('obsidian').MarkdownRenderChild;
   if(typeof Child==='function'&&typeof ctx.addChild==='function'){
    const observer=new Child(host);let timer;
    observer.onload=()=>{
-    const update=file=>{
-     if(file?.path&&(file.path===current.path||file.path.startsWith(current.path+'/'))){
-      clearTimeout(timer);timer=setTimeout(()=>{if(host.isConnected)void draw();},260);
+    const matches=path=>path&&(current.path==='/'||path===current.path||path.startsWith(current.path+'/')||current.path.startsWith(path+'/'));
+    const update=(file,oldPath)=>{
+     if(matches(file?.path)||matches(oldPath)){
+      clearTimeout(timer);timer=setTimeout(()=>{if(host.isConnected)draw();},260);
      }
     };
     for(const name of ['create','delete','rename','modify'])observer.registerEvent(plugin.app.vault.on(name,update));
    };
-   observer.onunload=()=>clearTimeout(timer);
+   observer.onunload=()=>{clearTimeout(timer);revision++;};
    ctx.addChild(observer);
   }
  };

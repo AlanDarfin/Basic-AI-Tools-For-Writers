@@ -102,15 +102,20 @@ function writerV1011StudyReminders(text,now=writerV1011StudyDate()){
  }
  return rows.sort((a,b)=>a.date.localeCompare(b.date)).slice(0,40);
 }
+const WRITER_V1011_STUDY_WEEKDAYS=[['dom','sun'],['seg','mon'],['ter','tue'],['qua','wed'],
+ ['qui','thu'],['sex','fri'],['sab','sat']];
+function writerV1011StudyWeekday(value){
+ const prefix=value.normalize('NFD').replace(/\p{M}/gu,'').slice(0,3).toLowerCase();
+ return WRITER_V1011_STUDY_WEEKDAYS.findIndex(codes=>codes.includes(prefix));
+}
 function writerV1011StudyTimetable(text,maxRows=120){
  const lines=String(text||'').split(/\r?\n/);
  const rows=[];
  for(const line of lines){
   if(rows.length>=maxRows)break;
-  const cells=line.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(x=>x.trim());
-  if(cells.length<3||cells.length>8||cells.every(x=>/^:?-{3,}:?$/.test(x)))continue;
-  if(/^(dia|day|weekday)$/i.test(cells[0]))continue;
-  if(!/^(seg|ter|qua|qui|sex|sáb|sab|dom|mon|tue|wed|thu|fri|sat|sun)/i.test(cells[0]))continue;
+  if(!line.includes('|'))continue;
+  const cells=writerV101TableSplit(line);
+  if(cells.length<3||cells.length>8||writerV1011StudyWeekday(cells[0])<0)continue;
   rows.push({day:cells[0].slice(0,25),time:cells[1].slice(0,32),
    course:cells[2].slice(0,100),place:String(cells[3]||'').slice(0,100)});
  }
@@ -122,7 +127,7 @@ function writerV1011StudyScheduleBlock(plugin,source,element){
  const opts={},lines=String(source||'').split(/\r?\n/);
  for(const line of lines.slice(0,20)){
   const m=/^\s*(file|title):\s*(.*?)\s*$/.exec(line);
-  if(m)opts[m[1]]=m[2];
+  if(m)opts[m[1]]=m[2].replace(/^(["'])(.*)\1$/,'$2');
  }
  const cfg=writerV1011StudyCfg(plugin.settings),path=opts.file||writerV1011StudyPath(cfg,'timetable');
  const file=plugin.app.vault.getAbstractFileByPath(path);
@@ -135,10 +140,10 @@ function writerV1011StudyScheduleBlock(plugin,source,element){
   const header=table.createEl('thead').createEl('tr');
   for(const name of [writerUi('Dia','Day'),writerUi('Hora','Time'),writerUi('Aula','Class'),writerUi('Local','Place')])header.createEl('th',{text:name});
   const body=table.createEl('tbody');
-  const current=new Date().getDay(),codes=['dom','seg','ter','qua','qui','sex','sáb'];
+  const current=new Date().getDay();
   for(const item of rows){
    const tr=body.createEl('tr');
-   if(item.day.toLocaleLowerCase().startsWith(codes[current]))tr.addClass('is-today');
+   if(writerV1011StudyWeekday(item.day)===current)tr.addClass('is-today');
    for(const key of ['day','time','course','place'])tr.createEl('td',{text:item[key]});
   }
  }).catch(error=>root.createEl('small',{text:String(error.message||error)}));

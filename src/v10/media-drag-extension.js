@@ -62,10 +62,10 @@ function writerV107MoveBlockModal(plugin,editor,source){
 }
 function writerV107ColumnsRender(plugin,source,element,ctx){
  const root=element.createDiv({cls:'writer-v107-columns'});
- const sections=String(source||'').split(/^\s*---column---\s*$/m).slice(0,4);
+ const sections=writerV8MarkdownSections(source,line=>/^ {0,3}---column---[ \t]*$/.test(line),4);
  for(const section of sections){
   const col=root.createDiv({cls:'writer-v107-column markdown-rendered'});
-  void MarkdownRenderer.render(plugin.app,section,col,ctx.sourcePath,plugin).catch(()=>col.setText(section));
+  void writerV8Markdown(plugin,ctx,col,writerV8TrimBlankLines(section)).catch(()=>col.setText(section));
  }
 }
 function writerV107PdfViewer(plugin,file){

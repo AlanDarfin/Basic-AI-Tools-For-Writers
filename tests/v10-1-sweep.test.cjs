@@ -26,6 +26,25 @@ test('bookshelf: progress sort reads each manuscript once and preserves title ti
  assert.deepEqual(flattened,books.map(p=>p.scenes));
  assert.deepEqual(books.map(p=>p.title),['Zebra','Draft','Alpha']);
 });
+test('both bookshelf block aliases accept documented progress and series sorts',()=>{
+ const register=vm.runInNewContext(read('src/v10/bookshelf.js')+`\n{
+  writerV10RenderBookshelf=(_plugin,target,options)=>target.push(options);
+  writerV109RegisterStandaloneProgress=()=>{};
+ }\nwriterV10RegisterBookshelf`);
+ const processors=new Map(),result=[];
+ const plugin={settings:{v10Bookshelf:{enabled:true}},registerMarkdownCodeBlockProcessor:(name,processor)=>processors.set(name,processor)};
+ register(plugin);
+ for(const processor of processors.values()){
+  processor('layout: compact\nsort: Progress',result);
+  processor('sort: series',result);
+  processor('',result);
+ }
+ assert.deepEqual([...processors.keys()],['bookshelf','writer-bookshelf']);
+ assert.deepEqual(result.map(({compact,sort})=>[compact,sort]),[
+  [true,'progress'],[false,'series'],[false,undefined],
+  [true,'progress'],[false,'series'],[false,undefined]
+ ]);
+});
 test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{
  const a=expose('src/v10/space-history.js',['writerV101SpaceHistoryMerge','writerV101SpaceHistoryRemember','writerV101SpaceHistoryEntry','writerV101SpaceLayoutSummary']);
  const settings={v101SpaceHistory:{maxPerSpace:3,history:{}}},cfg=a.writerV101SpaceHistoryMerge(settings);

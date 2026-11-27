@@ -1,8 +1,19 @@
 # Guia completo de blocos Markdown — Basic AI Tool for Writers
 
-Este guia apresenta **exemplos prontos para copiar** de cada bloco de código renderizado pelo plugin, incluindo suas opções disponíveis. Cole cada exemplo em uma nota do Obsidian e abra a Visualização de leitura ou a Prévia ao vivo. Ative o módulo correspondente nas configurações.
+Em uma nota Markdown, execute **Escrita: catálogo de inserção rápida** ou digite `/` seguido do nome de um bloco. Você também pode colar um exemplo completo deste guia. Ative o módulo correspondente nas configurações do Basic e use a Visualização de leitura ou a Prévia ao vivo. Substitua os caminhos dos exemplos pelos do seu cofre.
 
-Os nomes curtos são recomendados. Os aliases antigos `writer-tabs`, `writer-avatar`, `writer-wiki`, `writer-post`, `writer-chat`, `writer-media-gallery` e `writer-folder-overview` ainda funcionam. Os exemplos usam caminhos fictícios; substitua-os pelas pastas e notas reais do seu cofre.
+| Uso | Nomes dos blocos |
+| --- | --- |
+| Conversas e publicações fictícias | `chat` / `writer-chat`, `post` / `writer-post` |
+| Notas e criação de mundos | `tabs` / `writer-tabs`, `wiki` / `writer-wiki`, `avatar` / `writer-avatar` |
+| Escrita e revisão | `scene-card`, `character-voice`, `beat-sheet`, `editor-note` |
+| Arquivos e mídias | `folder-overview` / `writer-folder-overview`, `media-gallery` / `writer-media-gallery` |
+| Layout e navegação | `columns`, `writer-columns`, `insta-toc`, `longform-nav` |
+| Planejamento | `flow` / `writer-flow`, `timeline` / `writer-timeline`, `timeline-labeled`, `basic-timetable` |
+| Biblioteca e citações | `bookshelf` / `writer-bookshelf`, `bibliography` / `zotero` |
+| Bancos e propriedades | `basic-database` / `writer-database`, `basic-suite-db`, `basic-suite-chart`, `meta-field` |
+| Widgets e progresso | `widgets`, `progressbar` |
+| Compatibilidade com Meta Bind | `meta-bind`, `meta-bind-button` |
 
 ## 1. Overview de pastas (`folder-overview`)
 
@@ -29,13 +40,13 @@ controls: true
 
 | Campo | Valores e significado |
 | --- | --- |
-| `folder` | Caminho da pasta no cofre (opcional). Sem ele, usa a pasta ligada à nota atual ou a pasta da própria nota. |
+| `folder` | Caminho da pasta no cofre (opcional). Use `/` para a raiz. Sem esse campo, usa a pasta ligada à nota atual ou a pasta da própria nota. |
 | `style` / `view` / `layout` | `cards` (cartões), `list` (árvore de lista), `compact` (linhas densas), `grid` (grade de ícones), `table` (tabela), `board` (quadro com pastas e notas). |
 | `sort` | `name-asc`, `name-desc`, `modified-desc`, `modified-asc`, `created-desc`, `created-asc`, `size-desc`, `size-asc`, `type`. |
 | `folderFirst` | `true`: pastas antes de notas; `false`: mistura os tipos na ordenação. |
 | `subfolders` | `true` percorre subpastas; `false` mostra apenas os itens diretos. Pastas permanecem clicáveis nos dois casos. |
 | `depth` | De 0 a 8 níveis adicionais de subpastas (padrão: 2). |
-| `limit` | De 1 a 200 itens no total. |
+| `limit` | De 1 a 200 itens. A busca por nome ou caminho considera a profundidade configurada antes de aplicar o limite. |
 | `noteOnly` | `true`: mostra apenas notas, mas ainda pode pesquisar dentro de subpastas. |
 | `showBrief` | `true` exibe o resumo textual, quando existir; padrão `false`. |
 | `briefMax` | Máximo de 32 a 400 caracteres no resumo. Campos técnicos da Folder Note são ignorados. |
@@ -78,7 +89,7 @@ Para usar só os ícones maiores, experimente `style: grid`. Para separar pastas
 
 ## 2. Abas (`tabs`)
 
-Cada `=== Nome` cria uma aba, até o limite de 12. `layout: top` (padrão), `left`, `right` ou `side` organiza a navegação. O conteúdo aceita Markdown e edição pela prévia.
+Cada `=== Nome` cria uma aba, até o limite de 12. `layout: top` (padrão), `left`, `right` ou `side` organiza a navegação. O conteúdo aceita Markdown e edição pela prévia. Um marcador dentro de um exemplo cercado de código permanece no conteúdo da aba.
 
 ~~~~markdown
 ~~~tabs
@@ -99,7 +110,7 @@ O grupo chega à cidade.
 
 ## 3. Wiki / caixa de informação (`wiki`)
 
-Os campos `chave: valor` vêm antes de `---`; depois fica o corpo em Markdown. `title`/`name`/`nome`, `subtitle`/`role`/`type`/`tipo`, `image`/`cover`/`avatar` são especiais. Outros campos são exibidos como metadados, até 12 campos. Imagens devem existir no cofre.
+Os campos `chave: valor` vêm antes de `---`, seguidos pelo corpo em Markdown. `title`/`name`/`nome`, `subtitle`/`role`/`type`/`tipo`, `image`/`cover`/`avatar` são especiais. Até 12 outros campos aparecem como metadados e seus nomes podem ter acentos. Imagens devem existir no cofre.
 
 ~~~~markdown
 ~~~wiki
@@ -138,7 +149,7 @@ layout: right
 
 ## 5. Publicação fictícia (`post`)
 
-Campos aceitos: `author`/`name`/`nome`, `handle`/`username`, `date`/`time`, `avatar`/`image`, `likes`/`flames`, `views`, `comments`. Escreva `=== reply` para iniciar uma resposta. `depth` ou `level` indica o recuo da resposta, de 1 a 5.
+O bloco aceita `author`/`name`/`nome`, `handle`/`username`, `date`/`time`, `avatar`/`image`, `likes`/`flames`, `views` e `comments`. Fora de exemplos cercados de código, uma linha com `=== reply` inicia uma resposta. `depth` ou `level` indica o recuo da resposta, de 1 a 5.
 
 ~~~~markdown
 ~~~post
@@ -189,7 +200,7 @@ group-image: [[Imagens/Expedicao.webp]]
 ~~~
 ~~~~
 
-Sintaxes curtas aceitas: `< Mira | Olá`, `> Jonas | Oi | 10:00`. A sintaxe antiga com seções `=== Personagem` também é aceita e pode conter `avatar`, `time`, `side` e `mine` antes de `---`.
+Use `< Mira | Olá` para uma mensagem curta, `> Jonas | Oi | 10:00` para incluir o horário ou `< [[Personagens/Mira.png]] | Mira | Olá` para incluir um avatar sem horário. A sintaxe antiga com seções `=== Personagem` também é aceita e pode conter `avatar`, `time`, `side` e `mine` antes de `---`.
 
 
 **Separadores de conversa:** coloque `---` em uma linha isolada **entre duas mensagens** para desenhar uma divisão discreta. Use `--- Duas horas depois ---` ou `--- 14:30 ---` para centralizar uma legenda entre as linhas. Eles não entram no balão da mensagem, e uma mensagem após o separador volta a exibir o avatar/nome quando informados. Na sintaxe antiga com `=== Personagem`, o **primeiro** `---` após o cabeçalho mantém a função de separar metadados e corpo; os seguintes podem ser separadores de conversa.
@@ -198,19 +209,19 @@ Sintaxes curtas aceitas: `< Mira | Olá`, `> Jonas | Oi | 10:00`. A sintaxe anti
 
 **Áudio falso:** use `[audio:0:15]` ou `[voice:1:09]` como o conteúdo inteiro da mensagem. O botão anima as ondas de som, **sem tocar, gravar nem enviar áudio real**. Exemplo: `< | [audio:0:15] | 10:00`.
 
-**Transcrição do áudio fictício (9.5.2):** acrescente `:texto` depois da duração: `[áudio:0:15:Estou chegando agora, abram o portão!]`. O áudio continua visual e sem som, mas surge um botão **Ver transcrição** para mostrar/ocultar o texto. O conteúdo é exibido como texto simples (sem executar HTML), aceita dois-pontos e `\\n` para várias linhas. A transcrição é **escrita por você**, não é gerada automaticamente.
+Para incluir uma transcrição escrita, acrescente `:texto` depois da duração, como em `[áudio:0:15:Estou chegando agora, abram o portão!]`. O texto aparece abaixo da onda quando a mensagem carrega. Use `\n` para quebrar a linha ou `\\n` para exibir a sequência literal de barra invertida e n.
 
 ~~~~markdown
 ~~~chat
 title: Grupo da expedição
 group-image: [[Imagens/grupo.webp]]
 [Left=Lia, Right=Davi]
-< | Lia | [áudio:0:15:Estou chegando agora.\\nGuardem um lugar para mim!] | 10:01
+< | Lia | [áudio:0:15:Estou chegando agora.\nGuardem um lugar para mim!] | 10:01
 > | Davi | [audio:0:08:Estamos esperando você!] | 10:02
 ~~~
 ~~~~
 
-**Quebras de linha:** linhas consecutivas e linhas vazias depois da mensagem permanecem no mesmo balão como Markdown. Também é possível usar `\\n` dentro do campo para quebrar a linha; `\\\\n` mantém a barra e o n.
+**Quebras de linha:** linhas consecutivas e linhas vazias depois da mensagem permanecem no mesmo balão como Markdown. Também é possível usar `\n` dentro do campo para quebrar a linha; `\\n` mantém a barra e o n.
 
 **Estilos opcionais antes das mensagens:** `density: compact|normal|relaxed`, `bubbles: soft|round|square`, `avatars: on|off`, `width: normal|wide`. As cores, avatares e nomes padrão continuam funcionando.
 
@@ -219,7 +230,7 @@ group-image: [[Imagens/grupo.webp]]
 density: compact
 bubbles: round
 [Left=Maria, right=João]
-< | Olá\\nSegunda linha | 10:00
+< | Olá\nSegunda linha | 10:00
 > | [audio:0:15] | 10:01
 < | Outra mensagem
 Novo parágrafo:
@@ -228,9 +239,11 @@ Novo parágrafo:
 ~~~
 ~~~~
 
+Conversas longas abrem com os primeiros 50 itens. Clique em **Mostrar mais mensagens** para continuar a leitura. Cada bloco aceita até 32.000 caracteres.
+
 ## 7. Galeria de mídias (`media-gallery`)
 
-Use `path` ou `folder` para o diretório do cofre; `type` pode ser `all`, `image`, `video`, `audio` ou `pdf`. `layout`: `masonry`, `grid`, `ratio`. `sort`: `name-asc`, `name-desc`, `mtime-desc`, `mtime-asc`, `size-desc`, `size-asc`. `subfolders` permite pesquisar em pastas internas; `limit` vai de 1 a 150.
+Use `path` ou `folder` para indicar o diretório e `/` para a raiz do cofre. `type` aceita `all`, `image`, `video`, `audio`, `pdf` e `document`. Para `layout`, escolha `masonry`, `grid` ou `ratio`. Para `sort`, use `name-asc`, `name-desc`, `mtime-desc`, `mtime-asc`, `size-desc` ou `size-asc`. Ative `subfolders: true` para incluir pastas internas. `limit` restringe os resultados após a ordenação e os filtros (1–500), e `pageSize` define quantos aparecem por página (8–60).
 
 ~~~~markdown
 ~~~media-gallery
@@ -245,7 +258,7 @@ limit: 90
 
 ## 8. Colunas Markdown (`columns`)
 
-Configure de 1 a 4 colunas com `columns:`. Separe os conteúdos com `--- end-column ---`, `--- column-end ---`, `--- column-break ---` ou `:::columnbreak`.
+Configure de 1 a 4 colunas com `columns:` na primeira linha. Separe os conteúdos com `--- end-column ---`, `--- column-end ---`, `--- column-break ---` ou `:::columnbreak`. Um separador dentro de um exemplo cercado de código permanece no Markdown da coluna.
 
 ~~~~markdown
 ~~~columns
@@ -405,7 +418,7 @@ label: Avançar revisão
 
 ## 12. Sumário instantâneo (`insta-toc`)
 
-Gera um índice a partir dos títulos **da nota atual**. `maxDepth` varia de 1 a 6. `numbered` define lista numerada; `folded` recolhe as seções inicialmente.
+Gera um índice com os títulos Markdown da nota atual, incluindo títulos sublinhados com `===` ou `---`. `maxDepth` varia de 1 a 6. Use `numbered: true` para numerar a lista e `folded: true` para iniciar com as seções recolhidas. Cada link leva ao título certo na Visualização de leitura ou na Prévia ao vivo, mesmo quando o texto do título se repete.
 
 ~~~~markdown
 ~~~insta-toc
@@ -492,6 +505,8 @@ Opções: `layout` (`vertical` ou `horizontal`), `theme` (`classic`, `cards`, `m
 
 Estilos originais de linha: `line: 2` usa um anel vazado, `line: 3` um ponto sólido, `line: 4` linha tracejada com marcador circular, e `line: 5` um losango. Cartões: `body: 2` é um painel, `body: 3` uma bandeira colorida e `body: 4` uma faixa lateral. São compatíveis `spaced-lines`, `hide-titles` e todas as 11 cores `active-color-*`. Use o seletor da timeline para testar os estilos; altere o bloco Markdown para salvar a escolha. Minimal é texto sem cartões e com mais respiro; Compact é uma lista densa com data e título lado a lado.
 
+Descrições aceitam código delimitado ou indentado. Para separar eventos no formato com rótulos, coloque `---` antes do próximo campo `date`, `time` ou `when`. Uma divisória seguida de mais texto fica na descrição. Para rolar uma timeline horizontal pelo teclado, coloque o foco nela e use as setas.
+
 ## Se um bloco não funcionar
 
 Verifique a grafia do nome entre as crases, o módulo habilitado e o modo de leitura do Obsidian. Em `folder-overview` e `media-gallery`, `folder`/`path` são caminhos **dentro do cofre**, e não caminhos absolutos do computador. Imagens locais precisam existir no cofre. No Android, o Overview em **lista** oferece dois alvos de toque: a seta expande/recolhe as subpastas e o nome abre a pasta.
@@ -510,7 +525,7 @@ layout: compact
 ~~~
 ~~~~
 
-Opções: sort (title, recent, chapters); layout (normal, compact). A contagem de capítulos não significa progresso de leitura.
+Use `sort` para ordenar por `title`, `recent`, `chapters`, `progress` ou `series`. Use `layout` para escolher entre `normal` e `compact`.
 
 ## 16. Gallery de documentos e editor de texto
 
@@ -532,7 +547,7 @@ Com [áudio:0:15:Texto escrito] ou [audio:0:15:Written text], o conteúdo fornec
 
 ## 18. Adições da versão 10.1 e compatibilidade
 
-**Biblioteca:** os blocos \`bookshelf\` e \`writer-bookshelf\` continuam aceitando \`sort: title|recent|chapters\` e passam a aceitar \`sort: progress|series\`. Na biblioteca, filtre por estante, estado de leitura e favoritos. A porcentagem (0–100%) e a estante podem ser editadas no cartão. Essas opções não alteram o Markdown do projeto.
+Os blocos `bookshelf` e `writer-bookshelf` oferecem a mesma biblioteca. Filtre por estante, estado de leitura ou favoritos e ajuste esses dados pelo cartão. Nos projetos Longform, a porcentagem acompanha os capítulos concluídos. Em livros de uma única nota, ela acompanha a rolagem ou usa o valor da propriedade `readingProgress`.
 
 **Media Gallery:** mantenha \`media-gallery\` ou \`writer-media-gallery\`. Use \`pageSize: 24\` e \`limit: 200\` para navegar por páginas. A função **Selecionar vários → Copiar links** gera wikilinks do Obsidian. Excertos de documentos de texto são locais; PDFs abrem pelo Obsidian.
 
@@ -670,6 +685,25 @@ limit: 100
 - C
 - D
 ```
+
+## Visualizações de banco e horário de aulas
+
+Use `basic-suite-db` com `folder` ou `database` e uma opção `view` como `table`, `board` ou `gallery`. Para contar notas por propriedade YAML, use `basic-suite-chart` com `group`.
+
+~~~~markdown
+~~~basic-suite-chart
+folder: Escrita
+group: status
+~~~
+~~~~
+
+Crie a nota de horário em **Estudos: abrir central acadêmica** e insira `basic-timetable`. A opção `file` aponta para outra nota de horário. O bloco reconhece dias em português e inglês e destaca o dia atual.
+
+~~~~markdown
+~~~basic-timetable
+title: Aulas do semestre
+~~~
+~~~~
 
 ## Quatro blocos para escrever e revisar
 

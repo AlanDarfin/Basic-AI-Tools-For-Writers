@@ -300,7 +300,7 @@ function writerV10ZoteroRef(plugin,file){
  const key=String(front.citekey||front.citationKey||front['citation-key']||front.bibtexKey||'').trim().replace(/^@/,'').slice(0,100);
  const title=String(front.title||file.basename).slice(0,160);
  const creator=front.author||front.creators||front.creator||'';
- const author=Array.isArray(creator)?creator.map(p=>typeof p==='string'?p:[p.lastName,p.firstName].filter(Boolean).join(', ')).join('; '):String(creator);
+ const author=Array.isArray(creator)?creator.map(p=>typeof p==='string'?p:[p?.lastName,p?.firstName].filter(Boolean).join(', ')).filter(Boolean).join('; '):String(creator);
  return {file,key,title,author:author.slice(0,150),doi:String(front.DOI||front.doi||'').slice(0,100)};
 }
 function writerV10ZoteroPicker(plugin){
@@ -360,12 +360,21 @@ function writerV10ZoteroBibUnavailable(){
 async function writerV10ZoteroBibliography(plugin,source,el,ctx){
  if(!plugin.settings.v92Research?.enabled||!writerModuleOn(plugin,'zoteroIntegration'))return;
  let options;
- try{options=parseYaml(source)||{};}catch(_){options={};}
- const value=options.keys||options.citekeys||'';
- const keys=new Set((Array.isArray(value)?value:String(value).split(/[\s,]+/)).map(v=>String(v).replace(/^@/,'')).filter(Boolean));
+ try{options=parseYaml(source)??{};}catch(_){options=null;}
+ if(!options||typeof options!=='object'||Array.isArray(options)){
+  el.createEl('p',{text:writerUi('Opções inválidas no bloco de bibliografia.','Invalid bibliography block options.')});return;
+ }
+ const value=options.keys??options.citekeys??'';
+ const keys=new Set((Array.isArray(value)?value:String(value).split(/[\s,]+/)).map(v=>String(v).trim().replace(/^@/,'')).filter(Boolean));
  const {references,unavailable}=await writerV10ZoteroReferences(plugin);
  if(unavailable)el.createEl('p',{text:writerV10ZoteroBibUnavailable()});
- const rows=references.filter(ref=>!keys.size||keys.has(ref.key)).slice(0,150);
+ let rows=references;
+ if(keys.size){
+  const byKey=new Map();
+  for(const ref of references){if(keys.has(ref.key)&&!byKey.has(ref.key))byKey.set(ref.key,ref);}
+  rows=Array.from(keys,key=>byKey.get(key)).filter(Boolean);
+ }
+ rows=rows.slice(0,150);
  if(!rows.length){el.createEl('p',{text:writerUi('Nenhuma referência encontrada.','No reference found.')});return;}
  const list=el.createEl('ol');
  for(const ref of rows){
@@ -374,7 +383,7 @@ async function writerV10ZoteroBibliography(plugin,source,el,ctx){
   if(ref.file){
    const path=ref.file.path;
    const link=row.createEl('a',{text:title,attr:{href:path,'data-href':path,class:'internal-link'}});
-   link.addEventListener('click',event=>{event.preventDefault();void plugin.app.workspace.openLinkText(path,ctx.sourcePath,false);});
+   link.addEventListener('click',event=>{event.preventDefault();void plugin.app.workspace.openLinkText(path,ctx?.sourcePath||'',event.ctrlKey||event.metaKey||event.shiftKey);});
   }else row.createSpan({text:title});
   if(ref.key)row.createEl('small',{text:' @'+ref.key});
  }

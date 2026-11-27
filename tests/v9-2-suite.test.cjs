@@ -13,7 +13,7 @@ const cache={frontmatter:{description:'Folder description from YAML',tags:['zote
 const vault={getAbstractFileByPath:path=>[novel,folder,folderNote].find(x=>x.path===path)||null,getMarkdownFiles:()=>[novel,folderNote],cachedRead:async()=> '# Highlights\n> A passage explicitly marked as a highlight in Zotero.'};
 const plugin={settings:{v8Finish:{homeFavorites:['Novel/Chapter.md']}},app:{vault,metadataCache:{getFileCache:()=>cache}}};
 class MarkdownRenderChild{registerEvent(off){this.unload=off;}}
-const context={TFile,TFolder,Date,Set,Map,Number,String,Object,Array,Math,RegExp,console,writerUi:(a,b)=>b,
+const context={TFile,TFolder,Date,Set,Map,Number,String,Object,Array,Math,RegExp,Event,console,writerUi:(a,b)=>b,
  writerModuleOn:()=>true,writerV7FolderNote:()=>folderNote,WRITER_V8_HOME_VIEW:'home',
  ItemView:class{},Setting:class{},MarkdownRenderer:{render:async()=>{}},parseYaml:JSON.parse,require:()=>({setIcon:()=>{},MarkdownRenderChild})};
 const api=vm.runInNewContext(sources.join('\n')+'\n({writerV92ExplorerMerge,writerV92Favorite,writerV92PreviewValue,writerV921PreviewSource,writerV921PreviewBody,writerV921ResolveImage,writerV921PreviewImage,writerV92BlockOptions,writerV92ProgressData,writerV92BlocksMerge,writerV92MetaToken,writerV92RegisterBlocks,writerV92ZoteroExtract,writerV92ZoteroIsSource,writerV92ResearchMerge,writerV92ResearchStyleApply,writerV92ResearchRegister,writerV92SessionMerge})',context);
@@ -44,6 +44,20 @@ test('progressbar supports manual, year, month, week and date',()=>{
  assert.equal(api.writerV92ProgressData({kind:'day-week'},new Date(2026,10,2)).value,1);
  assert.equal(api.writerV92ProgressData({kind:'month'},new Date(2026,10,2)).value,11);
  assert.equal(api.writerV92ProgressData({kind:'day-custom',min:'2026-11-01',max:'2026-11-11'},new Date(2026,10,6)).percent,55);
+});
+test('calendar progress counts whole local dates across daylight saving and accepts a one-day period',()=>{
+ const original=process.env.TZ;
+ try{
+  process.env.TZ='America/New_York';
+  const today=new Date(2026,2,9,12);
+  assert.equal(api.writerV92ProgressData({kind:'day-year'},today).value,68);
+  assert.equal(api.writerV92ProgressData({kind:'day-month'},today).value,9);
+  assert.equal(api.writerV92ProgressData({kind:'day-custom',min:'2026-03-07',max:'2026-03-10'},today).percent,75);
+  assert.equal(api.writerV92ProgressData({kind:'day-custom',min:'2026-03-09',max:'2026-03-09'},today).percent,100);
+  assert.equal(api.writerV92ProgressData({kind:'day-custom',min:'2026-02-30',max:'2026-03-09'},today).percent,0);
+ }finally{
+  if(original===undefined)delete process.env.TZ;else process.env.TZ=original;
+ }
 });
 test('Zotero quotes must be explicit highlights with source',()=>{
  const cfg=api.writerV92ResearchMerge(plugin.settings);cfg.zoteroQuotes=true;
@@ -84,7 +98,7 @@ test('inline field parser accepts only explicit current-note property bindings',
 
 function metaSection(){
  class Element{
-  constructor(tag,text=''){this.tag=tag;this.nodeValue=tag==='#text'?text:null;this.textContent=text;this.children=[];this.events={};this.attrs={};}
+  constructor(tag,text=''){this.tag=tag;this.nodeValue=tag==='#text'?text:null;this.textContent=text;this.children=[];this.events={};this.attrs={};this.dataset={};}
   append(...nodes){for(const node of nodes){node.parentElement=this;this.children.push(node);}}
   closest(selector){return selector.split(',').includes(this.tag)?this:this.parentElement?.closest(selector);}
   createEl(tag,options){const el=new Element(tag,options?.text);el.attrs={...options?.attr};this.append(el);return el;}
@@ -93,6 +107,7 @@ function metaSection(){
   setText(value){this.textContent=value;}
   setAttribute(key,value){this.attrs[key]=value;}
   addEventListener(name,listener){this.events[name]=listener;}
+  dispatchEvent(event){this.events[event.type]?.(event);}
   replaceWith(node){const siblings=this.parentElement.children;siblings.splice(siblings.indexOf(this),1,...(node.tag==='fragment'?node.children:[node]));}
  }
  const root=new Element('p'),text=(value)=>new Element('#text',value);
@@ -108,6 +123,48 @@ function metaSection(){
  root.append(inline,literal);
  return {root,inline,literal,Element};
 }
+
+test('widget counters with a shared ID update both previews and restore the configured start value',()=>{
+ const {Element}=metaSection(),first=new Element('div'),second=new Element('div'),processors=new Map(),settings={};
+ api.writerV92BlocksMerge(settings);
+ const plugin={settings,app:{workspace:{getLeavesOfType:()=>[first,second].map(root=>({view:{containerEl:{
+  querySelectorAll:()=>root.children
+ }}}))}},saveSettings(){},registerMarkdownCodeBlockProcessor:(name,processor)=>processors.set(name,processor)};
+ api.writerV92RegisterBlocks(plugin);
+ const source='type: counter\nid: writing\nstartvalue: 10\nincrement: 2';
+ processors.get('widgets')(source,first,{});
+ processors.get('widgets')(source,second,{});
+ const controls=first.children[0].children,other=second.children[0].children[0];
+ assert.equal(other.textContent,'10');
+ assert.equal(controls[2].attrs['aria-label'],'Increase');
+ controls[2].events.click();
+ assert.equal(controls[0].textContent,'12');assert.equal(other.textContent,'12');
+ controls[3].events.click();
+ assert.equal(other.textContent,'10');
+});
+
+test('YAML block number fields ignore blanks and their read-only views refresh when the note changes',()=>{
+ const {Element}=metaSection(),view=new Element('div'),editor=new Element('div'),processors=new Map(),settings={};
+ api.writerV92BlocksMerge(settings);
+ const frontmatter={score:7};let changed,child;
+ const plugin={settings,app:{vault:{getAbstractFileByPath:()=>novel},metadataCache:{
+  getFileCache:()=>({frontmatter}),on:(_event,listener)=>{changed=listener;return ()=>{changed=null;};}
+ },fileManager:{processFrontMatter:async(file,write)=>{write(frontmatter);changed(file);}}},
+ registerMarkdownCodeBlockProcessor:(name,processor)=>processors.set(name,processor)};
+ api.writerV92RegisterBlocks(plugin);
+ const render=processors.get('meta-field');
+ const ctx={sourcePath:novel.path,addChild:value=>{child=value;}};
+ render('property: score\ntype: view',view,ctx);
+ render('property: score\ntype: number',editor,ctx);
+ const field=editor.children[0].children.find(el=>el.tag==='input');
+ const output=view.children[0].children.find(el=>el.tag==='span');
+ assert.equal(field.step,'any');assert.equal(output.textContent,'7');
+ field.value='';field.events.change();
+ assert.equal(frontmatter.score,7);
+ field.value='8.5';field.events.change();
+ assert.equal(frontmatter.score,8.5);assert.equal(output.textContent,'8.5');
+ child.unload();assert.equal(changed,null);
+});
 
 test('registered inline widgets respect opt-in, save the correct note, and refresh linked output',()=>{
  const {root,inline,literal}=metaSection();

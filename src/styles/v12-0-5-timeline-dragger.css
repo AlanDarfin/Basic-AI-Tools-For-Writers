@@ -221,6 +221,7 @@
 }
 .writer-v95-timeline.is-narrative-timeline.is-layout-horizontal .writer-v95-timeline-items{
  height:auto;max-height:none;overflow-x:auto;overflow-y:hidden;align-items:flex-start;
+ scroll-behavior:smooth;
 }
 .writer-v95-timeline.is-narrative-timeline.is-layout-horizontal .writer-v95-timeline-event-body{
  flex:0 0 auto;
@@ -246,6 +247,14 @@
 }
 .writer-v95-timeline.is-narrative-timeline .writer-v95-timeline-date{
  font-size:.86em;line-height:1.35;
+}
+.writer-v95-timeline.is-narrative-timeline .writer-v101-timeline-pager:empty{
+ display:none;
+}
+@media(prefers-reduced-motion:reduce){
+ .writer-v95-timeline.is-narrative-timeline.is-layout-horizontal .writer-v95-timeline-items{
+  scroll-behavior:auto;
+ }
 }
 @media(max-width:540px){
  .writer-v95-timeline.is-narrative-timeline.is-layout-vertical .writer-v95-timeline-event{

@@ -44,7 +44,7 @@ test('slash actions and Flow preserve editable note files',()=>{
  assert.match(src,/registerEditorSuggest/);
  assert.match(src,/registerMarkdownPostProcessor/);
  assert.match(src,/stat\?\.mtime/);
- assert.match(src,/vault\.modify/);
+ assert.match(src,/vault\.process/);
 });
 test('compiled stylesheet will contain right-side previews and white/inherited title icons',()=>{
  const css=read('src/styles/v9-2-2-iconic-fixes.css');
@@ -54,4 +54,25 @@ test('compiled stylesheet will contain right-side previews and white/inherited t
  assert.match(css,/color:inherit/);
  assert.match(css,/writer-v9215-flow-editor/);
  assert.match(css,/writer-v9215-pretty-banner/);
+});
+test('the quick-insert catalogue supplies usable fences without absorbing adjacent prose',()=>{
+ const source=read('src/v9/flow-slash.js');
+ const {writerV9215SlashActions,writerV9215InsertAction}=vm.runInNewContext(source+
+  '\n({writerV9215SlashActions,writerV9215InsertAction})',{require:()=>({EditorSuggest:class{}}),writerUi:pt=>pt});
+ const actions=writerV9215SlashActions();
+ const fences=new Set(actions.filter(action=>action.fence).map(action=>action.fence));
+ for(const fence of ['chat','post','tabs','wiki','avatar','scene-card','character-voice','beat-sheet','editor-note',
+  'media-gallery','folder-overview','columns','writer-columns','progressbar','widgets','meta-field','insta-toc',
+  'longform-nav','timeline','timeline-labeled','bookshelf','bibliography','basic-database','basic-suite-db',
+  'basic-suite-chart','basic-timetable','flow'])assert.ok(fences.has(fence),fence);
+ for(const action of actions.filter(action=>action.fence)){
+  for(const template of [action.text,action.textPt].filter(Boolean)){
+   assert.equal(template.split('\n')[0],'~~~'+action.fence);
+   assert.equal(template.split('\n').at(-1),'~~~');
+  }
+ }
+ let value='Before /chat after';
+ const editor={getLine:()=>value,replaceRange:(text,from,to)=>{value=value.slice(0,from.ch)+text+value.slice(to.ch);},focus(){}};
+ writerV9215InsertAction(actions.find(action=>action.id==='chat'),editor,{line:0,ch:7},{line:0,ch:12});
+ assert.match(value,/^Before \n~~~chat\n[\s\S]*Você encontrou o mapa\?[\s\S]*\n~~~\n after$/);
 });

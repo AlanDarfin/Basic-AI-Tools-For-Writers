@@ -144,15 +144,17 @@ test('timeline headings normalize legacy HTML breaks and preserve safe Markdown'
  assert.match(css,/is-heading-only/);
 });
 test('Timeline render uses text nodes and removes empty bottom area for heading-only events',()=>{
- const rendered=vm.runInNewContext(source+'\n({writerV95TimelineRender})',{console,writerUi:pt=>pt});
- function create(cls=''){
-  const node={children:[],cssClass:cls,style:{setProperty(){}},classNames:new Set(cls.split(/\s+/).filter(Boolean))};
+ const rendered=vm.runInNewContext(source+'\n({writerV95TimelineRender})',{
+  console,writerUi:pt=>pt,writerV8ImagePath:()=>'',TFile:class TFile{}
+ });
+ function create(cls='',attrs={}){
+  const node={children:[],cssClass:cls,attrs,style:{setProperty(){}},classNames:new Set(cls.split(/\s+/).filter(Boolean))};
   node.empty=()=>{node.children.length=0;};
   node.classList={
    add(...names){for(const name of names)node.classNames.add(name);},
    contains:name=>node.classNames.has(name)
   };
-  node.createDiv=options=>{const child=create(options?.cls||'');node.children.push(child);return child;};
+  node.createDiv=options=>{const child=create(options?.cls||'',options?.attr);node.children.push(child);return child;};
   node.createEl=(tag,options={})=>{
    const child=create(options.cls||'');child.tag=tag;child.text=options.text||'';
    node.children.push(child);return child;
@@ -161,11 +163,13 @@ test('Timeline render uses text nodes and removes empty bottom area for heading-
   return node;
  }
  const mount=create();
- rendered.writerV95TimelineRender({},[
-  'controls: false','date: 1700 a 1800',"title: Seekin' My Secrets </br>"
+ rendered.writerV95TimelineRender({app:{vault:{}}},[
+  'controls: false','layout: horizontal','date: 1700 a 1800',"title: Seekin' My Secrets </br>",
+  'image: [[Missing.png]]','link: [[Missing note]]'
  ].join('\n'),mount,{},'timeline-labeled');
  const root=mount.children[0];
  const list=root.children.find(node=>node.cssClass==='writer-v95-timeline-items');
+ assert.equal(list.attrs.tabindex,'0');
  const body=list.children[0].children.find(node=>node.cssClass==='writer-v95-timeline-event-body');
  assert.ok(body.classNames.has('is-heading-only'));
  const title=body.children[0].children.find(node=>node.cssClass==='writer-v95-timeline-title');
@@ -175,6 +179,10 @@ test('Timeline render uses text nodes and removes empty bottom area for heading-
 test('Narrative ranges sort by start year, unknown eras keep their slots',()=>{
  const events=api.writerV95TimelineParse('sort: asc\n+ 1850 a 1890\n+ Cowboy\n+ Body\n+ Before time\n+ Myth\n+ Body\n+ 1700 a 1800\n+ Secrets\n+ Body').events;
  assert.deepEqual(Array.from(events,e=>e.title),['Secrets','Myth','Cowboy']);
+ assert.equal(api.writerV95TimelineSortKey('2026'),api.writerV95TimelineSortKey('2026-01-01'));
+ assert.equal(api.writerV95TimelineSortKey('2026-06'),api.writerV95TimelineSortKey('2026-06-01'));
+ assert.equal(api.writerV95TimelineSortKey('2026-02-29'),null);
+ assert.equal(api.writerV95TimelineSortKey('2024-02-29')+1,api.writerV95TimelineSortKey('2024-03-01'));
 });
 test('Narrative descriptions retain nested lists, fences and long prose',()=>{
  const fence='\x60'.repeat(3);
@@ -185,8 +193,36 @@ test('Narrative descriptions retain nested lists, fences and long prose',()=>{
  assert.match(events[0].content,/image: literal/);
  assert.equal(events[0].image,'');
  assert.equal(events[1].content.length,9000);
- const labeled=api.writerV95TimelineParse(['date: 1','title: A','content: Text',fence+'yaml','date: literal',fence,'---','date: 2','title: B','content: More'].join('\n'),'timeline-labeled').events;
+ const labeled=api.writerV95TimelineParse([
+  'date: 1','title: A','content: Text',fence+'yaml','date: literal',fence,
+  '---','Next paragraph.','---','','date: 2','title: B','content: More'
+ ].join('\n'),'timeline-labeled').events;
  assert.equal(labeled.length,2);
  assert.match(labeled[0].content,/date: literal/);
- assert.match(labeled[0].content,/---/);
+ assert.match(labeled[0].content,/---\nNext paragraph\.$/);
+});
+test('Narrative descriptions can start with a Markdown fence and preserve code examples',()=>{
+ const fence='\x60'.repeat(3);
+ const literal=[
+  fence+'yaml','date: just code','image: literal.png','+ not an event','---','closing: </br>',fence
+ ].join('\n');
+ const legacy=api.writerV95TimelineParse([
+  '+ 1700','+ Story','+ '+literal,'+ 1800','+ Next','+ More'
+ ].join('\r')).events;
+ assert.equal(legacy.length,2);
+ assert.equal(legacy[0].content,literal);
+ assert.equal(legacy[0].image,'');
+ const labeled=api.writerV95TimelineParse([
+  'date: 1','title: A','content: '+literal,'---','when: 2','title: B','content:',
+  '    indented </br>','An inline \x60</br>\x60 and a prose </br> break.'
+ ].join('\n'),'timeline-labeled').events;
+ assert.equal(labeled.length,2);
+ assert.equal(labeled[0].content,literal);
+ assert.equal(labeled[0].image,'');
+ assert.equal(labeled[1].content,'    indented </br>\nAn inline \x60</br>\x60 and a prose  \nbreak.');
+});
+test('Timeline numeric limits produce whole pages',()=>{
+ const data=api.writerV95TimelineParse('max-events: 22.7\npage-size: 10.5\n+ 2030\n+ Event\n+ More');
+ assert.equal(data.config.maxEvents,22);
+ assert.equal(data.config.pageSize,10);
 });

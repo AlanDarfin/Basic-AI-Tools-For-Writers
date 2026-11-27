@@ -1,5 +1,6 @@
 /* Interactive Markdown controls stay within Basic AI blocks; no editor-global selectors. */
 .writer-v8-tabs-side{display:grid;grid-template-columns:minmax(90px,31%) minmax(0,1fr);}
+.writer-v8-tabs-right{grid-template-columns:minmax(0,1fr) minmax(90px,31%);}
 .writer-v8-tabs-side>.writer-v8-tab-list{flex-direction:column;align-items:stretch;overflow-y:auto;overflow-x:hidden;max-height:380px;border-bottom:0;border-inline-end:1px solid var(--basic-ui-border,var(--background-modifier-border));padding:8px 6px;}
 .writer-v8-tabs-side .writer-v8-tab-list>button{min-width:0;width:100%;white-space:normal;overflow-wrap:anywhere;text-align:start;}
 .writer-v8-tabs-side>.writer-v8-tab-panels{min-width:0;}
@@ -17,6 +18,7 @@
 .writer-v8-inline-actions{display:flex;flex-wrap:wrap;gap:7px;justify-content:flex-end;padding-top:8px;}
 .writer-v8-inline-actions button{min-height:34px;padding:5px 12px;}
 .writer-v8-avatar-side{display:grid;grid-template-columns:minmax(96px,34%) minmax(0,1fr);align-items:stretch;}
+.writer-v8-avatar-right{grid-template-columns:minmax(0,1fr) minmax(96px,34%);}
 .writer-v8-avatar-side .writer-v8-card-heading{display:flex;flex-direction:column;align-items:center;gap:9px;min-width:0;padding:14px;}
 .writer-v8-avatar-side .writer-v8-card-image,.writer-v8-avatar-side .writer-v8-avatar-placeholder{box-sizing:border-box;width:min(100%,152px);height:auto;aspect-ratio:1/1;font-size:2.6em;object-fit:cover;}
 .writer-v8-avatar-side .writer-v8-card-labels{width:100%;text-align:center;}
@@ -71,8 +73,10 @@
 .writer-v8-media-preview{max-width:100%;max-height:65vh;object-fit:contain;}
 .writer-v8-media-audio{max-width:100%;width:min(100%,500px);}
 body.is-mobile .writer-v8-tabs-side{grid-template-columns:minmax(86px,32%) minmax(0,1fr);}
+body.is-mobile .writer-v8-tabs-right{grid-template-columns:minmax(0,1fr) minmax(86px,32%);}
 body.is-mobile .writer-v8-tab-list>button{min-height:40px;}
 body.is-mobile .writer-v8-avatar-side{grid-template-columns:minmax(100px,36%) minmax(0,1fr);}
+body.is-mobile .writer-v8-avatar-right{grid-template-columns:minmax(0,1fr) minmax(100px,36%);}
 body.is-mobile .writer-v8-avatar-side>.writer-v8-card-content{padding:12px 9px;}
 body.is-mobile .writer-v8-social-post.is-depth-5{margin-inline-start:45px;}
 body.is-mobile .writer-v8-social-post.is-depth-4{margin-inline-start:38px;}

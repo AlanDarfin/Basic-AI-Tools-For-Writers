@@ -10,8 +10,10 @@ function load(path,names,extra={}){
  return value;
 }
 test('Unique study configuration preserves vault paths and never creates notes at startup',()=>{
+ const {writerV101TableSplit}=load('src/v10/enhancements.js',['writerV101TableSplit']);
  const a=load('src/v10/suite-education-1011.js',
-  ['writerV1011StudyCfg','writerV1011StudyPath','writerV1011StudyDate','writerV1011StudyTimetable','writerV1011StudyReminders']);
+  ['writerV1011StudyCfg','writerV1011StudyPath','writerV1011StudyDate','writerV1011StudyTimetable','writerV1011StudyReminders','writerV1011StudyWeekday'],
+  {writerV101TableSplit});
  const settings={v1011Study:{root:'../Secrets',daily:'Diario',classes:'Aulas',reminders:'Lembretes.md'}};
  const cfg=a.writerV1011StudyCfg(settings);
  assert.equal(cfg.root,'Estudos','path traversal is not accepted');
@@ -19,6 +21,11 @@ test('Unique study configuration preserves vault paths and never creates notes a
  assert.equal(a.writerV1011StudyDate(new Date(2026,10,6)),'2026-11-06');
  const t='| Dia | Hora | Aula | Local |\n| --- | --- | --- | --- |\n| Seg | 09:00 | Matemática | Sala 2 |\n| Ter | 10:00 | Física | Sala 3 |';
  assert.equal(a.writerV1011StudyTimetable(t).length,2);
+ const [classRow]=a.writerV1011StudyTimetable('| Saturday | 14:00 | Theory \\| Lab | Room 4 |');
+ assert.equal(classRow.course,'Theory | Lab');
+ assert.equal(classRow.place,'Room 4');
+ assert.equal(a.writerV1011StudyWeekday(classRow.day),6);
+ assert.equal(a.writerV1011StudyWeekday('Sa\u0301bado'),6);
  const r=a.writerV1011StudyReminders('- [ ] [due:: 2026-11-09] prova\n- [x] [due:: 2026-11-01] concluído\n- [ ] [due:: 2026-11-06] ler');
  assert.deepEqual(Array.from(r,item=>item.label),['ler','prova']);
 });

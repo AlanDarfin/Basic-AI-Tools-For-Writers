@@ -38,6 +38,12 @@ test('fenced saves preserve indentation, CRLF and all content outside the block'
  assert.equal(result,'Before\r\n  ~~~~editor-note extra\r\n  new\r\n    indented\r\n  ~~~\r\n  ~~~~  \r\nAfter\r\n');
  assert.ok(api.writerV8FenceCandidate(result,'editor-note',{lineStart:1,lineEnd:5},'new\n  indented\n~~~'));
 });
+test('fenced saves preserve mixed line endings, fence spacing and an existing wider close',()=>{
+ const original='Before\n  ~~~  writer-flow extra\r\n  old\n  body\r\n  ~~~~~  \r\nAfter\n';
+ const result=api.writerV8FenceReplace(original,'writer-flow',section(1,4),null,'old\nbody','new\ntext\nthird');
+ assert.equal(result,'Before\n  ~~~  writer-flow extra\r\n  new\n  text\r\n  third\r\n  ~~~~~  \r\nAfter\n');
+ assert.ok(api.writerV8FenceCandidate(result,'writer-flow',{lineStart:1,lineEnd:5},'new\ntext\nthird'));
+});
 test('bounded blocks with more than 1200 short lines remain editable',()=>{
  const body=Array(1500).fill('x').join('\n');
  const original='```editor-note\n'+body+'\n```';
@@ -94,11 +100,13 @@ test('repetition review counts composed and decomposed accents as the same origi
  assert.equal(result.near[0].word,decomposed);assert.ok(result.near[0].excerpt.includes(decomposed));
  assert.equal(api.writerV131WritingAnalysis('guarda-chuva '+ 'guarda-chuva'.normalize('NFD')).repeated[0].count,2);
 });
-test('beat separators preserve spaced wiki aliases, inline code and escaped pipes',()=>{
+test('beat separators preserve wiki aliases, Markdown link labels, inline code and escaped pipes',()=>{
  const cases=[
   ['[[A note | An alias]]','1','[[A note | An alias]]'],
   ['Opening | [[A note | An alias]]','Opening','[[A note | An alias]]'],
   ['[[A note | An alias]] | Details','[[A note | An alias]]','Details'],
+  ['[Arrival | Detour](arrival.md) | Details','[Arrival | Detour](arrival.md)','Details'],
+  ['[Arrival | Detour][scene] | Details','[Arrival | Detour][scene]','Details'],
   ['`one | two` | Details','`one | two`','Details'],
   ['``one ` | two`` | Details','``one ` | two``','Details'],
   ['Opening `draft | Details','Opening `draft','Details'],

@@ -1,5 +1,6 @@
 'use strict';
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
+const WRITER_V10_BOOK_SORTS=['title','recent','chapters','progress','series'];
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
  const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,trackStandaloneProgress:true,
@@ -9,7 +10,7 @@ function writerV10BookshelfMerge(settings){
  const progress=cfg.scrollProgress&&typeof cfg.scrollProgress==='object'&&!Array.isArray(cfg.scrollProgress)?cfg.scrollProgress:{};
  cfg.scrollProgress=Object.fromEntries(cfg.standalone.filter(path=>Number.isFinite(progress[path]))
   .map(path=>[path,Math.min(100,Math.max(0,Math.round(progress[path])))]));
- cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
+ cfg.sort=WRITER_V10_BOOK_SORTS.includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
  cfg.library=Object.fromEntries(Object.entries(library).slice(0,500).filter(([path])=>typeof path==='string'&&path.length<=500)
@@ -85,7 +86,10 @@ function writerV10BookshelfSort(projects,sort,plugin){
  const books=projects.slice();
  const title=(a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'});
  if(sort==='recent')return books.sort((a,b)=>(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0)||title(a,b));
- if(sort==='chapters')return books.sort((a,b)=>(b.scenes?.length||0)-(a.scenes?.length||0)||title(a,b));
+ if(sort==='chapters'){
+  const counts=new Map(books.map(book=>[book,writerV10BookWordProgress(plugin,book).chapters]));
+  return books.sort((a,b)=>counts.get(b)-counts.get(a)||title(a,b));
+ }
  if(sort==='progress'&&plugin){
   const progress=new Map(books.map(book=>[book,writerV10BookState(plugin,book).progress]));
   return books.sort((a,b)=>progress.get(b)-progress.get(a)||title(a,b));
@@ -190,9 +194,8 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
 
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
  search.classList.add('writer-v1042-bookshelf-search');
- let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
+ let onlyFavorites=false,statusFilter='',shelfFilter='',page=0,shelf,shelfNames=[];
  if(!opts.compact){
-  const shelfNames=[...new Set(projects.map(p=>writerV10BookFields(plugin,p).shelf).filter(Boolean))].sort();
   const sorting=toolbar.createEl('select',{cls:'writer-v1042-bookshelf-sort',
    attr:{'aria-label':writerUi('Ordenar livros','Sort books')}});
   for(const [key,pt,en] of [
@@ -210,21 +213,34 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
    const option=status.createEl('option',{text:writerUi(pt,en)});option.value=key;
   }
   status.addEventListener('change',()=>{statusFilter=status.value;page=0;draw();});
-  const shelf=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar estante','Filter shelf')}});
-  for(const value of ['',...shelfNames]){const opt=shelf.createEl('option',{text:value||writerUi('Todas as estantes','All shelves')});opt.value=value;}
+  shelf=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar estante','Filter shelf')}});
   shelf.addEventListener('change',()=>{shelfFilter=shelf.value;page=0;draw();});
  }
  const grid=wrapper.createDiv({cls:'writer-v10-bookshelf-grid'});
  const pagination=wrapper.createDiv({cls:'writer-v10-bookshelf-pages'});
  const draw=()=>{
   grid.empty();pagination.empty();
+  const standalone=new Set(config.standalone);
+  const available=projects.filter(project=>!project.standalone||standalone.has(project.file.path));
+  if(shelf){
+   const names=['',...new Set(available.map(project=>writerV10BookFields(plugin,project).shelf).filter(Boolean))].sort();
+   if(names.length!==shelfNames.length||names.some((name,i)=>name!==shelfNames[i])){
+    shelfNames=names;
+    if(!names.includes(shelfFilter))shelfFilter='';
+    shelf.empty();
+    for(const value of names){
+     const option=shelf.createEl('option',{text:value||writerUi('Todas as estantes','All shelves')});option.value=value;
+    }
+    shelf.value=shelfFilter;
+   }
+  }
   const query=search.value.trim().toLocaleLowerCase();
-  const matching=(onlyFavorites||statusFilter||shelfFilter||query)?projects.filter(p=>{
+  const matching=(onlyFavorites||statusFilter||shelfFilter||query)?available.filter(p=>{
    const record=writerV10BookFields(plugin,p);
    return (!onlyFavorites||record.favorite)&&(!statusFilter||record.status===statusFilter)&&
     (!shelfFilter||record.shelf===shelfFilter)&&(!query||
      (p.title+' '+String(p.meta?.series||'')+' '+record.shelf).toLocaleLowerCase().includes(query));
-  }):projects;
+  }):available;
   const items=writerV10BookshelfSort(matching,sortMode,plugin);
   count.setText(items.length+' '+writerUi('livros','books'));
   const size=opts.compact?8:30,maxPage=Math.max(0,Math.ceil(items.length/size)-1);
@@ -347,8 +363,8 @@ function writerV10RegisterBookshelf(plugin){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
    if(!plugin.settings.v10Bookshelf?.enabled){el.createEl('pre',{text:source});return;}
    const compact=/^\s*(?:density|layout):\s*compact\s*$/mi.test(String(source||''));
-   const sort=/^\s*sort:\s*(title|recent|chapters)\s*$/mi.exec(String(source||''))?.[1];
-   writerV10RenderBookshelf(plugin,el,{compact,sort});
+   const sort=/^\s*sort:\s*([a-z]+)\s*$/mi.exec(String(source||''))?.[1].toLowerCase();
+   writerV10RenderBookshelf(plugin,el,{compact,sort:WRITER_V10_BOOK_SORTS.includes(sort)?sort:undefined});
   });
  }
  plugin.addCommand?.({id:'v10-open-bookshelf',name:writerUi('Longform: abrir biblioteca de livros','Longform: open bookshelf'),callback:()=>writerV10OpenBookshelf(plugin)});

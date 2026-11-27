@@ -54,7 +54,7 @@ function writerBookNavTargets(entries,currentPath){
  const rootPos=roots.findLastIndex(x=>x.i<=current);
  if(rootPos<0)return null;
  const root=roots[rootPos],nextRoot=roots.slice(rootPos+1).find(x=>x.path);
- const prevRoot=roots.slice(0,rootPos).reverse().find(x=>x.path);
+ const prevRootPos=roots.findLastIndex((x,i)=>i<rootPos&&x.path),prevRoot=roots[prevRootPos];
  let parent=null;
  if(level>0)for(let j=current-1;j>=root.i;j--)if(entries[j].indent<level){parent=entries[j];break;}
  const previousMain=level>0?(parent?.path?parent:prevRoot):prevRoot;
@@ -66,7 +66,7 @@ function writerBookNavTargets(entries,currentPath){
   // A chapter offers its first direct subchapter independently of the next main chapter.
   nextSub=entries.slice(current+1,limit).find(x=>x.indent===1&&x.path)||null;
   if(prevRoot){
-   const prevEnd=root.i;
+   const prevEnd=roots[prevRootPos+1].i;
    previousSub=entries.slice(prevRoot.i+1,prevEnd).filter(x=>x.indent===1&&x.path).pop()||null;
   }
  }else{
@@ -76,7 +76,10 @@ function writerBookNavTargets(entries,currentPath){
   previousSub=inFamily.filter(x=>x.i<current).pop()||null;
   nextSub=inFamily.find(x=>x.i>current)||null;
   // If this note has subchapters, descend when no next sibling exists.
-  if(!nextSub)nextSub=entries.slice(current+1,end).find(x=>x.indent===level+1&&x.path)||null;
+  if(!nextSub){
+   const childEnd=entries.findIndex((x,i)=>i>current&&x.indent<=level);
+   nextSub=entries.slice(current+1,childEnd<0?entries.length:childEnd).find(x=>x.indent===level+1&&x.path)||null;
+  }
  }
  const same=node.path;
  const cleaned=x=>x?.path&&x.path!==same?{path:x.path,title:x.title,indent:x.indent}:null;
@@ -203,7 +206,14 @@ function writerBookNavAutoAllowed(plugin,match,currentPath=''){
  return pref==='on'||(pref!=='off'&&(plugin.settings.bookNavigation.auto===true||dynamic));
 }
 function writerBookNavHasSourceBlock(text){
- return /^ {0,3}(?:\x60{3,}|~{3,})longform-nav(?:\s|$)/mi.test(String(text||''));
+ const source=String(text||'');
+ if(!/^ {0,3}(?:\x60{3,}|~{3,})[ \t]*longform-nav(?:[ \t\r]|$)/mi.test(source))return false;
+ const lines=source.split(/\r?\n/);
+ const frontmatterEnd=/^---[ \t]*$/.test(lines[0])?lines.findIndex((line,index)=>index>0&&/^(?:---|\.\.\.)[ \t]*$/.test(line)):-1;
+ for(const {fenceInfo} of writerV8TopLevelMarkdown(lines.slice(frontmatterEnd+1))){
+  if(/^longform-nav(?:[ \t]|$)/i.test(fenceInfo||''))return true;
+ }
+ return false;
 }
 class WriterBookNavWidget extends (typeof WriterV6WidgetType!=='undefined'?WriterV6WidgetType:class{}){
  constructor(plugin,buttons){super();this.plugin=plugin;this.buttons=buttons;}

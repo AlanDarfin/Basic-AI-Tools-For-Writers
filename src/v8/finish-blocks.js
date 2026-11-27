@@ -137,8 +137,11 @@ function writerV8CaptionProcess(plugin,root){
  }
 }
 const WRITER_V8_CHAT_COLORS=new Set(['red','orange','yellow','green','blue','purple','pink','cyan','gray','grey','accent']);
+const WRITER_V8_CHAT_AVATAR=/^(?:!?\[\[.+\]\]|[^<>:"|?*\r\n]+\.(?:png|jpe?g|webp|gif|svg|avif|bmp))$/i;
+const WRITER_V8_CHAT_TIME=/^\d{1,2}:\d{2}(?::\d{2})?$/;
+const WRITER_V8_CHAT_SOURCE_LIMIT=32000;
 function writerV8ChatNameKey(name){
- return String(name||'').trim().toLocaleLowerCase();
+ return String(name||'').trim().normalize('NFC').toLocaleLowerCase();
 }
 function writerV8ChatDirectives(lines){
  const profiles=new Map(),defaults={left:'',right:''};
@@ -186,11 +189,11 @@ function writerV8ChatDirectives(lines){
     const profile=profiles.get(key)||{color:'',avatar:'',bubbleColor:''};
     const color=value.toLowerCase(),bubbleMatch=/^(?:bubble|balloon|bal[aã]o):\s*([a-z]+)$/i.exec(value);
     if(WRITER_V8_CHAT_COLORS.has(color))profile.color=color==='grey'?'gray':color;
-    else if(/^(?:bubble|balloon|bal[aã]o):s*([a-z]+)$/i.test(value)){
+    else if(bubbleMatch){
      const named=bubbleMatch[1].toLowerCase();
      if(WRITER_V8_CHAT_COLORS.has(named))profile.bubbleColor=named==='grey'?'gray':named;
     }
-    else if(/^(?:!?\[\[.+\]\]|[^<>:"|?*\r\n]+\.(?:png|jpe?g|webp|gif|svg|avif|bmp))$/i.test(value))
+    else if(WRITER_V8_CHAT_AVATAR.test(value))
       profile.avatar=value.slice(0,450);
     profiles.set(key,profile);
    }
@@ -203,6 +206,7 @@ function writerV8ChatDirectives(lines){
 function writerV8ChatSplitFields(value){
  const parts=[];let current='',brackets=0,parentheses=0,codeTicks=0;
  const input=String(value||'');
+ const spoiler=/\|\|([^\s|](?:[^\n]*?[^\s|])?)\|\|(?!\|)/y;
  for(let i=0;i<input.length;i++){
   const char=input[i];
   if(char==='\\'&&i+1<input.length){current+=char+input[++i];continue;}
@@ -218,7 +222,14 @@ function writerV8ChatSplitFields(value){
    else if(char==='(')parentheses++;
    else if(char===')')parentheses=Math.max(0,parentheses-1);
   }
-  if(char==='|'&&brackets===0&&parentheses===0&&codeTicks===0){parts.push(current.trim());current='';}
+  if(char==='|'&&brackets===0&&parentheses===0&&codeTicks===0){
+   if(parts.length&&input[i+1]==='|'&&input[i-1]!=='|'){
+    spoiler.lastIndex=i;
+    const match=spoiler.exec(input);
+    if(match){current+=match[0];i+=match[0].length-1;continue;}
+   }
+   parts.push(current.trim());current='';
+  }
   else current+=char;
  }
  parts.push(current.trim());
@@ -236,12 +247,14 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
   time=fields[fields.length-1];
   body=fields.slice(2,-1).join(' | ');
  }else if(fields.length===3&&fields[0]===''){
-  if(/^\d{1,2}:\d{2}(?::\d{2})?$/.test(fields[2])){
+  if(WRITER_V8_CHAT_TIME.test(fields[2])){
    name=meta.defaults[side]||lastSpeaker[side]||'';
    body=fields[1];time=fields[2];
   }else{
    name=fields[1];body=fields[2];explicitName=Boolean(name);
   }
+ }else if(fields.length===3&&WRITER_V8_CHAT_AVATAR.test(fields[0])&&!WRITER_V8_CHAT_TIME.test(fields[2])){
+  [avatar,name,body]=fields;explicitName=Boolean(name);
  }else if(fields.length===3){
   [name,body,time]=fields;explicitName=Boolean(name);
  }else if(fields[0]===''){
@@ -254,7 +267,7 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  if(!body&&!avatar&&!name)return null;
  const profile=meta.profiles.get(writerV8ChatNameKey(name))||{};
  return {name,side,explicitName,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
-  color:profile.color||'',bubbleColor:profile.bubbleColor||'',body:String(body||'').slice(0,8000)};
+  color:profile.color||'',bubbleColor:profile.bubbleColor||'',body};
 }
 
 /* Fake voice notes are illustrative animations: never open audio files or the microphone. */
@@ -277,10 +290,28 @@ function writerV8ChatExpandBreaks(value){
  return String(value||'').replace(/(\\+)n/g,(_match,slashes)=>
   '\\'.repeat(Math.floor(slashes.length/2))+(slashes.length%2?'\n':'n'));
 }
+function writerV8ChatFence(line,fence){
+ const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(line);
+ if(!match)return fence;
+ const [,marker,info]=match;
+ if(fence)return marker[0]===fence[0]&&marker.length>=fence.length&&!info.trim()?null:fence;
+ return marker[0]==='\x60'&&info.includes('\x60')?null:marker;
+}
+function writerV8ChatBody(value){
+ const body=value.trim();
+ if(writerV8ChatFakeAudio(body))return body;
+ let fence=null;
+ return body.split('\n').map(line=>{
+  const previous=fence;
+  fence=writerV8ChatFence(line,fence);
+  return previous||fence?line:writerV8ChatExpandBreaks(line);
+ }).join('\n');
+}
 function writerV8ChatRenderFakeAudio(bubble,voice){
  const label=writerUi('Áudio falso: animação sem som ou gravação real','Fake voice note: animation without sound or recording');
  const player=bubble.createDiv({cls:'writer-v8-chat-fake-audio',attr:{role:'group','aria-label':label}});
- const button=player.createEl('button',{cls:'writer-v8-chat-voice-toggle',attr:{type:'button',title:label,'aria-pressed':'false'}});
+ const button=player.createEl('button',{cls:'writer-v8-chat-voice-toggle',attr:{type:'button',title:label,
+  'aria-label':writerUi('Animar áudio fictício','Animate fictional voice note'),'aria-pressed':'false'}});
  const wave=player.createDiv({cls:'writer-v8-chat-wave',attr:{'aria-hidden':'true'}});
  // Vary the fictional waveform per rendered message instead of repeating
  // the same nth-child pattern. This does not read or play audio.
@@ -297,8 +328,6 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  const update=on=>{
   player.classList.toggle('is-animating',on);
   button.setAttribute('aria-pressed',String(on));
-  button.setAttribute('aria-label',on?writerUi('Pausar animação fictícia','Pause fictional animation'):
-   writerUi('Animar áudio fictício','Animate fictional voice note'));
   if(typeof setIcon==='function')setIcon(button,on?'pause':'play');
   else button.setText(on?'Ⅱ':'▶');
  };
@@ -317,17 +346,27 @@ function writerV8ChatDivider(line){
  const match=/^[ \t]{0,3}---(?:[ \t]+([^\r\n]{1,120}?)[ \t]+---)?[ \t]*$/.exec(String(line||''));
  return match?{type:'divider',text:String(match[1]||'').trim().slice(0,120)}:null;
 }
-function writerV8ChatParseLegacy(source,meta){
- const sections=source.split(/^===\s+(.{1,90})\s*$/m),messages=[];
- for(let i=1;i+1<sections.length&&messages.length<100;i+=2){
-  const name=sections[i].trim(),content=sections[i+1].trim();
-  // The first bare --- is the legacy message header/body boundary; later
-  // standalone dividers belong to the transcript, not the message text.
-  const headerEnd=/^---[ \t]*$/m.exec(content);
-  const header=headerEnd?content.slice(0,headerEnd.index):content;
-  const textPart=headerEnd?content.slice(headerEnd.index+headerEnd[0].length).trim():content;
+function writerV8ChatParseLegacy(lines,meta){
+ const sections=[],messages=[];
+ let section=null,fence=null;
+ for(const line of lines){
+  const heading=!fence&&/^===[ \t]+(\S.{0,89})[ \t]*$/.exec(line);
+  if(heading){
+   section={name:heading[1].trim(),lines:[]};
+   sections.push(section);
+  }else if(section){
+   section.lines.push(line);
+   fence=writerV8ChatFence(line,fence);
+  }
+ }
+ for(const {name,lines:content} of sections){
+  // A legacy header can contain metadata and blank lines before its first ---.
+  // A separator in a metadata-free message belongs to the conversation.
+  const headerEnd=content.findIndex(line=>/^---[ \t]*$/.test(line));
+  const header=headerEnd<0?[]:content.slice(0,headerEnd);
+  const hasHeader=headerEnd>=0&&header.every(line=>!line.trim()||/^\s*[\w-]+\s*:/.test(line));
   const fields={};
-  if(headerEnd)for(const line of header.split('\n')){
+  if(hasHeader)for(const line of header){
    const m=/^(avatar|image|time|side|mine|name|bubble):\s*(.*)$/i.exec(line.trim());
    if(m)fields[m[1].toLowerCase()]=m[2].trim().slice(0,500);
   }
@@ -336,49 +375,56 @@ function writerV8ChatParseLegacy(source,meta){
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
   const base={name:actualName,side,explicitName:true,time:fields.time||'',
    avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',bubbleColor:WRITER_V8_CHAT_COLORS.has(String(fields.bubble||'').toLowerCase())?String(fields.bubble).toLowerCase():profile.bubbleColor||''};
-  let body=[];const parts=[];
-  for(const line of textPart.split('\n')){
-   const divider=writerV8ChatDivider(line);
+  let body=[];const firstItem=messages.length;
+  fence=null;
+  for(const line of hasHeader?content.slice(headerEnd+1):content){
+   const divider=!fence&&writerV8ChatDivider(line);
    if(divider){
-    if(body.length){parts.push({...base,body:body.join('\n').trim().slice(0,8000)});body=[];}
-    parts.push(divider);
-   }else body.push(line);
+    if(body.some(value=>value.trim()))messages.push({...base,body:writerV8ChatBody(body.join('\n'))});
+    body=[];
+    messages.push(divider);
+   }else{
+    body.push(line);
+    fence=writerV8ChatFence(line,fence);
+   }
   }
-  if(body.length||!parts.length)parts.push({...base,body:body.join('\n').trim().slice(0,8000)});
-  messages.push(...parts.slice(0,100-messages.length));
+  if(body.some(value=>value.trim())||messages.length===firstItem)messages.push({...base,body:writerV8ChatBody(body.join('\n'))});
  }
  return {title:meta.title,groupImage:meta.groupImage,messages,options:meta.options};
 }
 function writerV8ChatParse(source){
  const raw=String(source||'');
- if(raw.length>32000)return null;
- const lines=raw.replace(/\r\n/g,'\n').split('\n');
+ if(raw.length>WRITER_V8_CHAT_SOURCE_LIMIT)return null;
+ const lines=raw.replace(/\r\n?/g,'\n').split('\n');
  const meta=writerV8ChatDirectives(lines);
- const remaining=lines.slice(meta.start).join('\n');
- if(/^===\s+\S/.test(remaining.trimStart()))return writerV8ChatParseLegacy(remaining,meta);
- const messages=[],lastSpeaker={left:'',right:''};let messageCount=0;
- for(const line of lines.slice(meta.start)){
-  const divider=writerV8ChatDivider(line);
+ const remaining=lines.slice(meta.start);
+ if(/^===[ \t]+\S/.test(remaining[0]||''))return writerV8ChatParseLegacy(remaining,meta);
+ const messages=[],lastSpeaker={left:'',right:''};
+ let fence=null;
+ for(const line of remaining){
+  const divider=!fence&&writerV8ChatDivider(line);
   if(divider){
-   if(messages.length&&messages.length<100)messages.push(divider);
+   if(messages.length)messages.push(divider);
    continue;
   }
-  const message=writerV8ChatShortMessage(line,meta,lastSpeaker);
+  const message=!fence&&writerV8ChatShortMessage(line,meta,lastSpeaker);
   if(message){
-   if(messageCount>=50)break;
-   messageCount++;
    if(message.name)lastSpeaker[message.side]=message.name;
+   fence=writerV8ChatFence(message.body,fence);
    messages.push(message);continue;
   }
   // Multiline markdown stays inside the preceding bubble. A divider does not
   // become a bubble and must never absorb later unprefixed paragraphs.
   if(messages.length){
    const last=messages[messages.length-1];
-   if(last.type!=='divider'&&last.body.length+line.length<8000)last.body+='\n'+line;
+   if(last.type!=='divider'){
+    last.body+='\n'+line;
+    fence=writerV8ChatFence(line,fence);
+   }
   }
  }
  for(const message of messages)if(message.type!=='divider')
-  message.body=writerV8ChatExpandBreaks(message.body.trim());
+  message.body=writerV8ChatBody(message.body);
  return {title:meta.title,groupImage:meta.groupImage,messages,options:meta.options};
 }
 function writerV8ChatRender(plugin,source,element,ctx){
@@ -387,7 +433,8 @@ function writerV8ChatRender(plugin,source,element,ctx){
  const root=element.createDiv({cls:'writer-v8-block writer-v8-chat is-density-'+opts.density+' is-bubbles-'+opts.bubbles+
   ' is-width-'+opts.width+' is-background-'+(opts.background==='transparent'?'transparent':'default')+
   (WRITER_V8_CHAT_COLORS.has(opts.bubbleColor)?' is-chat-bubble-'+opts.bubbleColor:'')});
- if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
+ if(!data){root.createEl('p',{text:writerUi('A conversa ultrapassa 32.000 caracteres. Divida o conteúdo em vários blocos de chat.','This conversation exceeds 32,000 characters. Split it into multiple chat blocks.')});return;}
+ if(!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title||data.groupImage){
   const heading=root.createDiv({cls:'writer-v8-chat-heading'});
   const url=writerV8ImagePath(plugin.app,data.groupImage,ctx.sourcePath);
@@ -397,22 +444,21 @@ function writerV8ChatRender(plugin,source,element,ctx){
   if(!heading.childElementCount)heading.remove();
  }
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
- let previous=null;
- for(const msg of data.messages){
+ let previous=null,shown=0;
+ const renderItem=msg=>{
   if(msg.type==='divider'){
    const divider=transcript.createDiv({cls:'writer-v8-chat-divider'+(msg.text?' is-labeled':''),
-    attr:{role:'separator'}});
+    attr:msg.text?{role:'separator','aria-label':msg.text}:{role:'separator'}});
    if(msg.text)divider.createSpan({cls:'writer-v8-chat-divider-label',text:msg.text});
-   // A divider breaks speaker grouping, even when the next message is from
-   // the same person. Their avatar and explicit name can appear again.
    previous=null;
-   continue;
+   return divider;
   }
-  const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
+  const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&(!opts.avatars||msg.avatar===previous.avatar)&&
+   writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
   const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:'')+(WRITER_V8_CHAT_COLORS.has(msg.bubbleColor)?' is-bubble-color-'+msg.bubbleColor:''),attr:{role:'listitem'}});
   if(opts.avatars&&msg.avatar&&!continuation){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
-   if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});
+   if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy',decoding:'async'}});
   }
   const group=row.createDiv({cls:'writer-v8-chat-group'});
   if((msg.explicitName&&!continuation&&msg.name)||msg.time){
@@ -428,6 +474,25 @@ function writerV8ChatRender(plugin,source,element,ctx){
    bubble.empty();bubble.setText(msg.body);
   });
   previous=msg;
+  return row;
+ };
+ const renderBatch=()=>{
+  const end=Math.min(shown+50,data.messages.length);
+  let first=null;
+  for(;shown<end;shown++){
+   const item=renderItem(data.messages[shown]);
+   first??=item;
+  }
+  return first;
+ };
+ renderBatch();
+ if(shown<data.messages.length){
+  const more=root.createEl('button',{cls:'writer-v8-chat-more',text:writerUi('Mostrar mais mensagens','Show more messages'),attr:{type:'button'}});
+  more.addEventListener('click',()=>{
+   const first=renderBatch();
+   if(first){first.setAttribute('tabindex','-1');first.focus();}
+   if(shown===data.messages.length)more.remove();
+  });
  }
 }
 function writerV8RegisterFinishBlocks(plugin){

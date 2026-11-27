@@ -18,8 +18,8 @@ function writerV8MediaConfig(source){
   if(key==='layout'&&['masonry','grid','ratio'].includes(value))conf.layout=value;
   if(key==='sort'&&['name-asc','name-desc','mtime-desc','mtime-asc','size-desc','size-asc'].includes(value))conf.sort=value;
   if(key==='subfolders')conf.subfolders=value==='true';
-  if(key==='limit')conf.limit=Math.max(1,Math.min(500,Number(value)||90));
-  if(key==='pagesize'||key==='pageSize')conf.pageSize=Math.max(8,Math.min(60,Number(value)||24));
+  if(key==='limit')conf.limit=Math.max(1,Math.min(500,Math.trunc(Number(value))||90));
+  if(key==='pagesize')conf.pageSize=Math.max(8,Math.min(60,Math.trunc(Number(value))||24));
  }
  return conf;
 }
@@ -30,10 +30,9 @@ function writerV8MediaKind(file){
 function writerV8MediaFiles(app,folder,config){
  if(!(folder instanceof TFolder))return [];
  const files=[],stack=[{node:folder,depth:0}];
- while(stack.length&&files.length<config.limit){
+ while(stack.length){
   const {node,depth}=stack.pop();
   for(const child of node.children||[]){
-   if(files.length>=config.limit)break;
    if(child instanceof TFolder){
     if(config.subfolders&&depth<20)stack.push({node:child,depth:depth+1});
    }else if(child instanceof TFile){
@@ -42,17 +41,18 @@ function writerV8MediaFiles(app,folder,config){
    }
   }
  }
- const byName=(a,b)=>String(a.file.basename||a.file.name).localeCompare(String(b.file.basename||b.file.name),undefined,{sensitivity:'base'});
- const byTime=(a,b)=>(a.file.stat?.mtime||0)-(b.file.stat?.mtime||0)||byName(a,b);
- const bySize=(a,b)=>(a.file.stat?.size||0)-(b.file.stat?.size||0)||byName(a,b);
- files.sort(config.sort.startsWith('mtime')?byTime:config.sort.startsWith('size')?bySize:byName);
- if(config.sort.endsWith('desc'))files.reverse();
- return files;
+ const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+ const byName=(a,b)=>collator.compare(a.file.basename||a.file.name,b.file.basename||b.file.name)||
+  collator.compare(a.file.path,b.file.path);
+ const [field,order]=config.sort.split('-'),direction=order==='desc'?-1:1;
+ files.sort((a,b)=>field==='name'?direction*byName(a,b):
+  direction*((a.file.stat?.[field]||0)-(b.file.stat?.[field]||0))||byName(a,b));
+ return files.slice(0,config.limit);
 }
 function writerV8MediaRoot(plugin,sourcePath,config){
  const app=plugin.app;
  if(config.path){
-  const folder=app.vault.getAbstractFileByPath(config.path.replace(/\/$/,''));
+  const folder=config.path==='/'?app.vault.getRoot():app.vault.getAbstractFileByPath(config.path.replace(/\/$/,''));
   return folder instanceof TFolder?folder:null;
  }
  const current=app.vault.getAbstractFileByPath(sourcePath||'');
@@ -68,8 +68,9 @@ function writerV8MediaOpen(plugin,items,index){
    return;
   }
  const modal=new Modal(plugin.app);
+ const previews=items.filter(entry=>['image','video','audio'].includes(entry.kind));
  const draw=i=>{
-  const current=items[i];
+  const current=previews[i];
   if(!current)return;
   modal.contentEl.empty();
   const shell=modal.contentEl.createDiv({cls:'writer-v8-media-lightbox'});
@@ -81,21 +82,19 @@ function writerV8MediaOpen(plugin,items,index){
   if(current.kind==='image')shell.createEl('img',{cls:'writer-v8-media-preview',attr:{src:url,alt:current.file.basename||current.file.name}});
   if(current.kind==='video')shell.createEl('video',{cls:'writer-v8-media-preview',attr:{src:url,controls:'',preload:'metadata',playsinline:''}});
   if(current.kind==='audio')shell.createEl('audio',{cls:'writer-v8-media-audio',attr:{src:url,controls:'',preload:'metadata'}});
-  const available=items.filter(x=>x.kind!=='pdf');
-  const idx=available.findIndex(x=>x.file.path===current.file.path);
-  prev.disabled=idx<=0;next.disabled=idx>=available.length-1;
-  prev.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(items.indexOf(available[idx-1]));});
-  next.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(items.indexOf(available[idx+1]));});
+  prev.disabled=i===0;next.disabled=i===previews.length-1;
+  prev.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(i-1);});
+  next.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(i+1);});
   const native=shell.createEl('button',{text:writerUi('Abrir arquivo no Obsidian','Open file in Obsidian')});
   native.addEventListener('click',()=>{modal.close();void plugin.app.workspace.getLeaf(false).openFile(current.file);});
  };
- modal.onOpen=()=>{draw(index);};
+ modal.onOpen=()=>{draw(previews.indexOf(item));};
  modal.onClose=()=>{modal.contentEl.querySelectorAll('video, audio').forEach(media=>media.pause());};
  modal.open();
 }
 function writerV101MediaExcerpt(plugin,file,container){
  if(!file||Number(file.stat?.size||0)>200000)return;
- if(!['txt','md','csv','tsv','json','jsonc','yaml','yml','xml','html','css','toml'].includes(file.extension))return;
+ if(!['txt','md','csv','tsv','json','jsonc','yaml','yml','xml','html','css','toml'].includes(file.extension.toLowerCase()))return;
  const preview=container.createDiv({cls:'writer-v101-media-excerpt'});
  const show=()=>{
   void plugin.app.vault.cachedRead(file).then(text=>{
@@ -104,8 +103,8 @@ function writerV101MediaExcerpt(plugin,file,container){
  };
  if(typeof IntersectionObserver==='function'){
   const io=new IntersectionObserver(entries=>{if(!entries.some(e=>e.isIntersecting))return;io.disconnect();show();},{rootMargin:'160px'});
-  io.observe(preview);const cleanup=()=>io.disconnect();
-  if(typeof plugin.register==='function')plugin.register(cleanup);
+  io.observe(preview);
+  return io;
  }else show();
 }
 function writerV8RenderMediaGallery(plugin,source,element,ctx){
@@ -113,7 +112,7 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const root=writerV8MediaRoot(plugin,ctx.sourcePath,cfg);
  const host=element.createDiv({cls:'writer-v8-block writer-v8-media-gallery'});
  if(!root){host.createEl('p',{text:writerUi('Pasta da galeria não encontrada.','Gallery folder not found.')});return;}
- const all=writerV8MediaFiles(plugin.app,root,cfg);
+ const all=writerV8MediaFiles(plugin.app,root,{...cfg,limit:Infinity});
  const header=host.createDiv({cls:'writer-v8-media-header'});
  header.createEl('strong',{text:root.name||writerUi('Galeria','Gallery')});
  const count=header.createSpan({cls:'writer-v8-media-count',text:String(all.length)});
@@ -125,12 +124,18 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const selectedPaths=new Set();let multi=false;
  const grid=host.createDiv({cls:'writer-v8-media-grid writer-v8-media-'+cfg.layout});
  const pages=host.createDiv({cls:'writer-v101-media-pages'});
+ const excerpts=new Set();
+ const clearExcerpts=()=>{for(const observer of excerpts)observer.disconnect();excerpts.clear();};
+ const Child=require('obsidian').MarkdownRenderChild;
+ if(typeof Child==='function'&&typeof ctx.addChild==='function'){
+  const observer=new Child(host);observer.onunload=clearExcerpts;ctx.addChild(observer);
+ }
  let selected=cfg.type,page=0;
  const buttons=[];
  const render=()=>{
-  grid.empty();pages.empty();
-  const query=search.value.trim().toLocaleLowerCase();
-  const matching=all.filter(x=>(selected==='all'||x.kind===selected)&&(!query||x.file.path.toLocaleLowerCase().includes(query)));
+  clearExcerpts();grid.empty();pages.empty();
+  const query=search.value.trim().normalize('NFC').toLocaleLowerCase();
+  const matching=all.filter(x=>(selected==='all'||x.kind===selected)&&(!query||x.file.path.normalize('NFC').toLocaleLowerCase().includes(query))).slice(0,cfg.limit);
   count.setText(matching.length+' / '+all.length);
   buttons.forEach(({type,button})=>{button.classList.toggle('is-active',type===selected);button.setAttribute('aria-pressed',String(type===selected));});
   toggle.setAttribute('aria-pressed',String(multi));copy.disabled=!selectedPaths.size;
@@ -139,8 +144,6 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
   const visible=matching.slice(page*size,page*size+size);
   for(const item of visible){
    const tile=grid.createEl('button',{cls:'writer-v8-media-item',attr:{type:'button',title:item.file.path}});
-   tile.classList.toggle('is-selected',selectedPaths.has(item.file.path));
-   tile.setAttribute('aria-pressed',String(multi&&selectedPaths.has(item.file.path)));
    if(item.kind==='image'){
     tile.createEl('img',{attr:{src:plugin.app.vault.getResourcePath(item.file),alt:item.file.basename||item.file.name,loading:'lazy',decoding:'async'}});
    }else if(item.kind==='video'){
@@ -156,15 +159,24 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
     const icon=item.kind==='audio'?'music':item.kind==='document'?'file-code-2':'file-text';
     if(typeof obs?.setIcon==='function')obs.setIcon(glyph,icon);
     else glyph.textContent=item.kind.toUpperCase();
-    if(item.kind==='document')writerV101MediaExcerpt(plugin,item.file,tile);
+    if(item.kind==='document'){
+     const observer=writerV101MediaExcerpt(plugin,item.file,tile);
+     if(observer)excerpts.add(observer);
+    }
    }
    tile.createSpan({cls:'writer-v8-media-filename',text:item.file.basename||item.file.name});
-   if(multi)tile.createSpan({cls:'writer-v101-media-selection',text:selectedPaths.has(item.file.path)?'✓':'○'});
+   const marker=multi?tile.createSpan({cls:'writer-v101-media-selection',attr:{'aria-hidden':'true'}}):null;
+   const showSelected=()=>{
+    const checked=selectedPaths.has(item.file.path);
+    tile.classList.toggle('is-selected',checked);
+    tile.setAttribute('aria-pressed',String(checked));marker.setText(checked?'✓':'○');
+   };
+   if(multi)showSelected();
    tile.addEventListener('click',()=>{
     if(multi){
      if(selectedPaths.has(item.file.path))selectedPaths.delete(item.file.path);
      else if(selectedPaths.size<200)selectedPaths.add(item.file.path);
-     render();
+     showSelected();copy.disabled=!selectedPaths.size;
     }else writerV8MediaOpen(plugin,matching,matching.indexOf(item));
    });
   }

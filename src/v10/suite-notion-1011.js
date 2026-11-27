@@ -17,6 +17,8 @@ function writerV1011NotionSpec(source){
   opts[m[1].toLowerCase()]=m[2].replace(/^["']|["']$/g,'').slice(0,250);
  }
  opts.view=WRITER_V1011_DB_VIEWS.includes(opts.view)?opts.view:'table';
+ opts.group=opts.group||'status';
+ opts.folder=opts.folder.replace(/^\/+|\/+$/g,'');
  if(!opts.folder&&opts.database){
   const db=opts.database.replace(/^\/+|\/+$/g,'');
   if(!/^\.\.?$/.test(db)&&!db.split('/').some(p=>p==='..'||p.startsWith('.')))
@@ -94,11 +96,12 @@ function writerV1011NotionRender(plugin,source,element,ctx){
  catch(error){shell.createEl('p',{text:String(error.message||error)});return;}
  const top=shell.createDiv({cls:'writer-v1011-notion-toolbar'});
  top.createEl('strong',{text:spec.title||spec.database||spec.folder.split('/').pop()});
- top.createEl('small',{text:rows.length+' '+writerUi('itens','items')});
+ const count=top.createEl('small');
  const select=top.createEl('select',{attr:{'aria-label':writerUi('Visualização','View')}});
  for(const mode of WRITER_V1011_DB_VIEWS){
-  const option=select.createEl('option',{text:({table:'Tabela',board:'Quadro',gallery:'Galeria',
-   list:'Lista',calendar:'Calendário',timeline:'Linha do tempo',chart:'Gráfico'})[mode]});
+  const [pt,en]=({table:['Tabela','Table'],board:['Quadro','Board'],gallery:['Galeria','Gallery'],
+   list:['Lista','List'],calendar:['Calendário','Calendar'],timeline:['Linha do tempo','Timeline'],chart:['Gráfico','Chart']})[mode];
+  const option=select.createEl('option',{text:writerUi(pt,en)});
   option.value=mode;
  }select.value=spec.view;
  const query=top.createEl('input',{attr:{type:'search',placeholder:writerUi('Pesquisar itens…','Search rows…'),
@@ -108,13 +111,15 @@ function writerV1011NotionRender(plugin,source,element,ctx){
   modal.onOpen=()=>{
    new Setting(modal.contentEl).setName(writerUi('Título da nota','Note title')).addText(t=>t.onChange(v=>title=v));
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Criar','Create')).setCta().onClick(async()=>{
-    try{await writerV1011NotionNew(plugin,spec,title);modal.close();}
+    try{await writerV1011NotionNew(plugin,{...spec,view:select.value},title);modal.close();}
     catch(error){new Notice(String(error.message||error));}
    }));
   };modal.open();
  });
  const host=shell.createDiv({cls:'writer-v1011-notion-body'});
- let month=(new Date()).toISOString().slice(0,7);
+ const today=new Date();
+ let month=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
+ const moving=new Set();
  const link=(parent,row,detail=false)=>{
   const button=parent.createEl('button',{cls:'writer-v1011-notion-row',type:'button'});
   button.createEl('strong',{text:row.file.basename});
@@ -125,8 +130,22 @@ function writerV1011NotionRender(plugin,source,element,ctx){
   button.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
   return button;
  };
+ const move=async(row,value)=>{
+  if(moving.has(row.file.path))return;
+  moving.add(row.file.path);
+  try{
+   const next=String(value).slice(0,120);
+   if(await writerV11DbChangeGroup(plugin,row,spec.group,next)){
+    row.data[spec.group]=next;
+    if(!writerV107DbMatch(row.data,spec.filter))rows=rows.filter(item=>item!==row);
+    writerV107DbCalculate(plugin,row.file,row.data,spec);
+   }
+  }catch(error){new Notice(String(error.message||error));}
+  finally{moving.delete(row.file.path);draw();}
+ };
  const draw=()=>{
   host.empty();
+  count.setText(rows.length+' '+writerUi('itens','items'));
   const q=query.value.trim().toLowerCase();
   const shown=rows.filter(row=>!q||row.file.path.toLowerCase().includes(q)||
    spec.columns.some(k=>String(row.data[k]??'').toLowerCase().includes(q)));
@@ -156,31 +175,29 @@ function writerV1011NotionRender(plugin,source,element,ctx){
   }else if(mode==='board'){
    const groups=new Map();
    for(const row of shown){
-    const name=String(row.data[spec.group||'status']??'—');
+    const name=String(row.data[spec.group]??'');
     if(!groups.has(name))groups.set(name,[]);
     groups.get(name).push(row);
    }
    const board=host.createDiv({cls:'writer-v1011-notion-board'});
+   const canMove=writerV107DbEditable(plugin,spec.group,spec)&&typeof writerV11DbChangeGroup==='function';
+   const groupLabel=value=>value||writerUi('Sem grupo','Ungrouped');
    for(const [name,items] of groups){
     const lane=board.createDiv({cls:'writer-v1011-notion-lane'});
-    lane.createEl('h5',{text:name+' · '+items.length});
-    const canMove=plugin.settings.v107Db?.editable&&typeof writerV11DbChangeGroup==='function'&&typeof writerV11DbPropertyKey==='function'&&writerV11DbPropertyKey(spec.group);
+    lane.createEl('h5',{text:groupLabel(name)+' · '+items.length});
     if(canMove){
      lane.addEventListener('dragover',ev=>{if(ev.dataTransfer?.types.includes('text/plain'))ev.preventDefault();});
      lane.addEventListener('drop',ev=>{
       const data=ev.dataTransfer?.getData('text/plain')||'';
       if(!data.startsWith('basic-v11:'))return;
       ev.preventDefault();
-      const source=shown.find(x=>x.file.path===data.slice('basic-v11:'.length));
-      if(!source)return;
-      void writerV11DbChangeGroup(plugin,source,spec.group,name).then(()=>{
-       element.empty();writerV1011NotionRender(plugin,sourceText,element,ctx);
-      }).catch(error=>new Notice(String(error.message||error)));
+      const row=shown.find(x=>x.file.path===data.slice('basic-v11:'.length));
+      if(row)void move(row,name);
      });
     }
     for(const row of items){
      const button=link(lane,row,true);
-     if(!canMove)continue;
+     if(!canMove||groups.size<2)continue;
      button.draggable=true;
      button.addEventListener('dragstart',ev=>{
       ev.dataTransfer?.setData('text/plain','basic-v11:'+row.file.path);
@@ -188,16 +205,14 @@ function writerV1011NotionRender(plugin,source,element,ctx){
      });
      const change=lane.createEl('select',{cls:'writer-v11-db-move',attr:{'aria-label':writerUi('Mover cartão: ','Move card: ')+row.file.basename}});
      for(const value of groups.keys()){
-      const option=change.createEl('option',{text:value});option.value=value;
+      const option=change.createEl('option',{text:groupLabel(value)});option.value=value;
      }
      change.value=name;
+     change.disabled=moving.has(row.file.path);
      change.addEventListener('click',ev=>ev.stopPropagation());
      change.addEventListener('change',async()=>{
       change.disabled=true;
-      try{
-       await writerV11DbChangeGroup(plugin,row,spec.group,change.value);
-       element.empty();writerV1011NotionRender(plugin,sourceText,element,ctx);
-      }catch(error){new Notice(String(error.message||error));change.value=name;change.disabled=false;}
+      await move(row,change.value);
      });
     }
    }
@@ -232,8 +247,8 @@ function writerV1011NotionRender(plugin,source,element,ctx){
     date.setMonth(date.getMonth()+change);
     month=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');draw();
    };
-   controls.createEl('button',{text:'‹'}).addEventListener('click',()=>shift(-1));
-   controls.createEl('button',{text:'›'}).addEventListener('click',()=>shift(1));
+   controls.createEl('button',{text:'‹',attr:{type:'button','aria-label':writerUi('Mês anterior','Previous month')}}).addEventListener('click',()=>shift(-1));
+   controls.createEl('button',{text:'›',attr:{type:'button','aria-label':writerUi('Próximo mês','Next month')}}).addEventListener('click',()=>shift(1));
    const cells=host.createDiv({cls:'writer-v1011-notion-calendar'});
    const dayMap=new Map();
    for(const row of shown){
@@ -257,9 +272,8 @@ function writerV1011NotionRender(plugin,source,element,ctx){
     for(const col of spec.columns){
      const cell=tr.createEl('td');
      const btn=cell.createEl('button',{cls:'writer-v1011-notion-cell',text:String(row.data[col]??'—')});
-     const derived=spec.formulas?.some(f=>f.name===col)||spec.rollups?.some(f=>f.name===col);
      if(col==='file'||col==='path')btn.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
-     else if(!derived&&plugin.settings.v107Db?.editable)
+     else if(writerV107DbEditable(plugin,col,spec))
       btn.addEventListener('click',()=>writerV107DbEdit(plugin,row,col,()=>{element.empty();writerV1011NotionRender(plugin,source,element,ctx);}));
      else btn.disabled=true;
     }

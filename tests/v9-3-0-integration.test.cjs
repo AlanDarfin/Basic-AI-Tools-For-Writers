@@ -42,23 +42,46 @@ test('numeric and YAML property sorting work without touching physical files',()
 });
 test('Flow fenced editor updates only the selected code block and keeps note content intact',async()=>{
  class TFile{constructor(path){this.path=path;this.extension='md';}}
- const api=vm.runInNewContext(read('src/v9/flow-composer.js')+
-  '\n({writerV93FlowParse,writerV93FlowSerialize,writerV93FlowLocateBlock,writerV93FlowPersist})',
-  {TFile,writerUi:pt=>pt,Notice:class{}});
+ const api=vm.runInNewContext(read('src/v9/flow-composer.js')+'\n'+read('src/v8/block-edit.js')+
+  '\n({writerV93FlowParse,writerV93FlowPersist})',
+  {TFile,WRITER_V8_BLOCK_MAX:32000,writerUi:(_pt,en)=>en,Notice:class{}});
  const block='[[A.md]]\n[[B.md]]';
  const note=new TFile('Board.md');
- let markdown='Intro\n~~~flow\n'+block+'\n~~~\nOutro conteúdo importante';
+ const written=block.replaceAll('\n','\r\n');
+ let markdown='Intro\n~~~flow\r\n'+written+'\r\n~~~\n~~~ writer-flow\r\n'+written+'\r\n~~~\nOutro conteúdo importante';
  const plugin={app:{vault:{
   getAbstractFileByPath:path=>path===note.path?note:null,
+  async read(){return markdown;},
   async process(_file,change){markdown=change(markdown);}
  }}};
  const parsed=api.writerV93FlowParse(block,{maxItems:30,defaultLayout:'cards'});
  const next={...parsed,items:['[[B.md]]','[[A.md]]']};
- const found=api.writerV93FlowLocateBlock(markdown,block,1);
- assert.equal(found.start,1);
- assert.equal(await api.writerV93FlowPersist(plugin,{sourcePath:note.path,getSectionInfo:()=>({lineStart:1})},{},block,next),true);
- assert.match(markdown,/Intro\n~~~flow\n\[\[B\.md\]\]\n\[\[A\.md\]\]\n~~~\nOutro conteúdo importante/);
- assert.equal(api.writerV93FlowLocateBlock(markdown,block,1),null,'stale source must not match');
+ const ctx={sourcePath:note.path,getSectionInfo:()=>({lineStart:5,lineEnd:8})};
+ assert.equal(await api.writerV93FlowPersist(plugin,ctx,{},block,next,'writer-flow'),true);
+ assert.equal(markdown,'Intro\n~~~flow\r\n'+written+'\r\n~~~\n~~~ writer-flow\r\n[[B.md]]\r\n[[A.md]]\r\n~~~\nOutro conteúdo importante');
+ const updated=markdown;
+ assert.equal(await api.writerV93FlowPersist(plugin,ctx,{},block,next,'writer-flow'),false);
+ assert.equal(await api.writerV93FlowPersist(plugin,{sourcePath:note.path},{},block,next,'flow'),false);
+ assert.equal(markdown,updated,'a single identical older block is never used as a fallback');
+});
+test('Flow edits preserve notes beyond the display limit and Markdown reference syntax',()=>{
+ const api=vm.runInNewContext(read('src/v9/flow-composer.js')+
+  '\n({writerV93FlowParse,writerV93FlowSerialize,writerV93FlowRow,writerV93FlowLink,writerV101FlowLinkDependency})',{});
+ const first='  ![[A.md#Opening | after: the intro]]';
+ const second='[[B.md]] | after:[[A.md]]';
+ const hidden='[[Preserved when maxItems is smaller.md]]';
+ const source=['# Board comment','  layout: cards ',first,'',second,hidden].join('\n');
+ const model=api.writerV93FlowParse(source,{maxItems:2});
+ assert.deepEqual([...model.items],[first,second]);
+ assert.equal(api.writerV93FlowSerialize({...model,layout:'graph'}),source.replace('cards','graph'));
+ assert.equal(api.writerV93FlowSerialize({...model,items:[second,first]}),
+  ['# Board comment','  layout: cards ',second,'',first,hidden].join('\n'));
+ assert.equal(api.writerV93FlowSerialize({...model,items:[first]}),
+  ['# Board comment','  layout: cards ',first,'',hidden].join('\n'));
+ assert.equal(api.writerV93FlowLink(first),'A.md');
+ assert.equal(api.writerV101FlowLinkDependency(first),'');
+ assert.equal(api.writerV93FlowRow(first+' | after: [[B.md]]').link,first);
+ assert.equal(api.writerV101FlowLinkDependency(first+' | after: [[B.md]]'),'B.md');
 });
 test('Flow text cards save column assignments in settings, scoped to the board and note',async()=>{
  class Element{
@@ -72,7 +95,7 @@ test('Flow text cards save column assignments in settings, scoped to the board a
  }
  const api=vm.runInNewContext(read('src/v9/flow-composer.js')+
   '\n({writerV93TextBoardParse,writerV93FlowComposer})',{
-  writerUi:(_pt,en)=>en,writerV83StudyHash:text=>String(text.length),require:()=>({setIcon(){}})
+  writerUi:(_pt,en)=>en,writerV83StudyHash:text=>String(text.length),Notice:class{},require:()=>({setIcon(){}})
  });
  const source='id: ideas\n=== Draft\n- First card\n- Second card\n=== Done\n- First card';
  let saves=0;
@@ -94,6 +117,21 @@ test('Flow text cards save column assignments in settings, scoped to the board a
  assert.deepEqual(text(render('Ideas.md',source+'\n- Third card').children[1]),['First card','Third card']);
  assert.equal(saves,1);
  assert.equal(api.writerV93TextBoardParse('[[Chapter 1]]\n[[Chapter 2]]',30).columns.length,0);
+
+ let failFirst;
+ plugin.saveSettings=async()=>{
+  if(++saves===2)await new Promise((_resolve,reject)=>{failFirst=reject;});
+ };
+ const moveToDone=board=>board.children[0].children[2].children[1].children[1].events.click();
+ const failing=moveToDone(render('Failed.md'));
+ const successful=moveToDone(render('Continued.md'));
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(saves,2,'the second save waits for the first result');
+ failFirst(Error('Write failed'));
+ await Promise.all([failing,successful]);
+ assert.equal(saves,3);
+ assert.deepEqual(text(render('Failed.md').children[1]),['First card']);
+ assert.deepEqual(text(render('Continued.md').children[1]),['Second card','First card']);
 });
 test('Explorer can opt into a 16:9 preview while existing settings stay square',()=>{
  const src=read('src/v9/explorer-favorites-preview.js');
@@ -113,7 +151,7 @@ test('insert catalog works with slash suggestions turned off and rejects stale e
  const plugin={settings:{v9215Flow:{enabled:true,slash:false}},addCommand:command=>commands.set(command.id,command)};
  writerV9215FlowRegister(plugin);
  let content='Original';const offset={line:0,ch:0};
- const editor={getValue:()=>content,getCursor:()=>offset,focus(){},replaceRange(text,start,end){
+ const editor={getValue:()=>content,getLine:line=>content.split('\n')[line],getCursor:()=>offset,focus(){},replaceRange(text,start,end){
   assert.equal(start,offset);assert.equal(end,offset);content=text+content;
  }};
  const context={file:{path:'Story.md'}};
@@ -122,6 +160,7 @@ test('insert catalog works with slash suggestions turned off and rejects stale e
  assert.equal(run(false,editor,context),true);
  picker.onChooseItem(picker.getItems().find(action=>action.id==='flowcards'));
  assert.match(content,/=== Ideias/);
+ assert.match(content,/~~~\nOriginal$/);
  run(false,editor,context);content='Edited';
  picker.onChooseItem(picker.getItems()[0]);
  assert.match(notice,/mudou/);assert.equal(content,'Edited');

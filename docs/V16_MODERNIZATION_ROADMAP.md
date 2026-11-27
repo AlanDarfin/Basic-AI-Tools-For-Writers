@@ -149,3 +149,32 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - CI #1390 passed the deferred integration startup checkpoint. Home now owns its native Surfing host, detaches its own input listener, blurs the input before removing the host and rejects stale input callbacks. Disposal runs before a full render, on view close and after partial mount failures. Replacing the enabled Surfing instance also triggers a remount.
 - Upstream inspected at PKM-er/Obsidian-Surfing@1bf883852e2e068dc74deec97a3b76a64849e8e0: the private `addHeaderAndSearchBar` does not return a HeaderBar disposer; its TextInputSuggest closes on blur. Basic deliberately does not patch global keymaps, delete other suggestion containers or claim complete disposal of private upstream internals. Real Obsidian desktop QA and external request lifecycle remain pending.
 - Four focused regression fixtures cover remount/query preservation, partial failure, provider replacement and view close. Source and generated bundle updated together; full CI pending.
+
+### Phase 7.5.4 — Zotero and iCalendar continuations
+
+- CI #1391 passed the native Surfing header checkpoint. Zotero now drops late responses after a modal closes, the plugin unloads or its library settings change. Pagination, import and CSL export check their current session before dispatching more work. Closing a prompt clears the temporary credential from the input. Startup commands retained from earlier sessions are inert.
+- Manual and automatic calendar sync share an in-flight run. Feed edits, disabling subscriptions or unloading the plugin stop further imports and suppress stale notices. The automatic timer is cleared on its original window. Network requests and vault writes already dispatched can finish, and existing imported notes are preserved.
+- Six Zotero and five calendar regression cases exercise overlapping requests, restored configuration, close, reload, and partial imports. The runtime bundle was rebuilt from the updated source files.
+
+## Phase 8 — Longform and Spaces ownership
+
+- Longform renders arc dividers directly from the scene view and applies anchor changes after successful native frontmatter writes. Local variants save scene and anchor edits together. Removed two prototype wrappers, retaining chapter hierarchy, divider positions, controls, and draft-local preferences.
+- The shared selection controller updates Spaces UI after a switch or rollback. Sidebar and dock actions reuse that refresh. Selecting the current Space in the sidebar still clears its search locally.
+- Focused coverage passed for scene ordering, failed saves, concurrent divider moves, variant edits, and mobile Space switching. Broader component review remains open for Homepage, LanguageTool, Toolbar, Timeline and block renderers.
+
+## Phase 9 — connection persistence and task scans
+
+- Scope LanguageTool connection writes to one active save per plugin instance. A rebuilt settings panel waits for the pending write. Failed writes restore only the fields still owned by that operation and leave newer values intact.
+- Superseded task dashboard scans finish the current batch of reads and skip the remaining obsolete batches. A single replacement scan reads the latest limits and publishes current results. A regression fixture with 37 notes and a 13-note replacement observed 25 reads instead of 50 for that case.
+
+## Phase 10 — ordered JavaScript manifest and extraction pilot
+
+- The build and audit share `scripts/js-manifest.js`. The manifest preserves the 124 module markers and their order. Stable marker IDs resolve to physical paths and domain metadata independently.
+- Moved Pandoc compatibility into `src/compat/` and extracted the 40-line legacy dictionary section into `src/writing/`. A rebuild against the same sources produced byte-identical `main.js`. The remaining legacy runtime and source relocations can move incrementally with the same equivalence checks.
+
+## Phase 11 — pre-release verification
+
+- Rebuilding the Phase 7.5.3 checkpoint restored three Homepage layout declarations in `styles.css` from the existing CSS sources. CI compares tracked build artifacts immediately after compilation so a stale distributable fails the check.
+- Draft bilingual notes and the 15.2.0 upgrade and rollback procedure are in [the release draft](V16_RELEASE_DRAFT.md). The package version remains 15.2.0 throughout this work.
+- An isolated vault on Obsidian Desktop 1.15.1 for Linux passed the 15.2.0 upgrade and rollback. Settings, a recoverable Longform draft, and the original Markdown survived restart and two disable/re-enable cycles on each build. On the candidate, a renamed Longform chapter kept its divider, and light and dark narrow splits stayed within bounds at 1280×720.
+- An isolated combination with Timeline PR #175 built cleanly. Moving the three deferred CSS files there preserved their source bytes, cascade order, and both generated bundles. Timeline remains a separate PR. Android devices, live external integrations, and the rest of the desktop theme and interaction matrix still need verification for the release gate.

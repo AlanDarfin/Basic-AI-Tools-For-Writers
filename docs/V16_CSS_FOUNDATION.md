@@ -1,6 +1,6 @@
 # Basic v16 — CSS foundation (working plan)
 
-Status: second implementation phase; version remains unchanged until integration and release.
+Status: third implementation phase; version remains unchanged until integration and release.
 
 ## Design contracts
 - Native theme tokens remain authoritative. No global reset, no !important escalation and no changes to third-party DOM without a feature-specific host.
@@ -27,3 +27,12 @@ Run npm run build:css, npm run check:css, npm test. Test editor width with each 
 - Explorer control sizing is limited to Basic's preview and Spaces actions. Reorder titles alone receive truncation rules. Other native/third-party action buttons and titles retain theme sizing.
 - Runtime main.js and shipping CSS were synchronized by verified source replacement. Full build/CI and visual Android verification are still required; mock geometry tests cannot prove actual WebView layout.
 - Follow-up visual QA: confirm CodeMirror scroll extent, real keyboard open/close, landscape/split panes, toolbar with themes and external plugins, end-of-note reachability, native status row restore and hit targets.
+
+## Phase 3 — component layout (first pass)
+
+- Longform narrow-pane scene grid declares the third action column explicitly; shrinkable titles prevent min-content width from dominating.
+- Homepage narrow viewport and mobile retain the 12-track grid model while cards span the full row where required. Header wrapping is scoped to Basic's own widget headings rather than arbitrary nested controls.
+- Spaces chip labels can shrink and truncate without squeezing the options button.
+- LanguageTool review action grid adapts to available pane width, with wrapping button labels and bounded widths.
+- Timeline CSS remains owned by PR #175; reconcile after integration rather than applying competing changes here.
+- Source replacements and shipping CSS synchronized, followed by deduplication and isolated CSS audit tests. Full build, full test suite, visual QA and any further cascade consolidation remain pending.

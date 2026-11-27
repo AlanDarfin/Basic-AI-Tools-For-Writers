@@ -78,7 +78,7 @@ test('all available Lucide IDs are accepted, unknown IDs fall back',()=>{
 
 test('bundles remain registered without forcing HTML or SVG into notes',()=>{
  const main=read('main.js');
- const build=read('scripts/build-css.js');
+ const build=read('scripts/css-manifest.js');
  assert.match(main,/function writerV922OpenIconPicker/);
  assert.match(main,/node\.insertAdjacentElement\('afterend',shell\)/);
  assert.match(build,/v9-2-2-iconic-fixes\.css/);

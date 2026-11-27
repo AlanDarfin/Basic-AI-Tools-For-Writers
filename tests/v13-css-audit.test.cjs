@@ -78,3 +78,20 @@ test('CSS phase 4: ordered manifest validates paths and ownership without regrou
  assert.throws(()=>validateEntries([{path:'test.css',category:'unknown'}]),/Invalid CSS category/);
  for(const file of sections)assert.ok(fs.existsSync('src/styles/'+file),file);
 });
+
+test('CSS phase 4: migrated legacy modules keep a single authoritative source',()=>{
+ const {entries,sections}=require('../scripts/css-manifest.js');
+ const relocated=[
+  ['legacy-dictionary-settings.css','compat'],
+  ['legacy-templates.css','compat'],
+  ['legacy-writing-tools.css','editor']
+ ];
+ for(const [name,category] of relocated){
+  const path=category+'/'+name;
+  assert.ok(entries.some(e=>e.path===path&&e.category===category));
+  assert.ok(fs.existsSync('src/styles/'+path));
+  assert.ok(!fs.existsSync('src/styles/'+name),'Old duplicate source must be removed: '+name);
+  assert.equal(sections.filter(s=>s.split('/').pop()===name).length,1);
+ }
+ assert.deepEqual(sections.slice(-3),relocated.map(([name,category])=>category+'/'+name));
+});

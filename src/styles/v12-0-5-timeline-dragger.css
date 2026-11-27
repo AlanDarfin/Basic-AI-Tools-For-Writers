@@ -402,10 +402,6 @@
 .writer-v95-timeline.is-narrative-timeline.is-theme-classic:is(.is-body-2,.is-body-3) .writer-v95-timeline-event-body > .writer-v95-timeline-image{
  width:calc(100% - 2 * var(--writer-v95-card-inset));
 }
-.writer-v95-timeline.is-narrative-timeline .writer-v95-timeline-content :is(pre,table){
- max-width:100%;
- overflow-x:auto;
-}
 @media(max-width:540px){
  .writer-v95-timeline.is-narrative-timeline{
   --writer-v95-event-gap:9px;

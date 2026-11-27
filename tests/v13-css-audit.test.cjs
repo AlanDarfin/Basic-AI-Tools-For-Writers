@@ -24,3 +24,24 @@ test('CSS report lists each duplicated selector, without deleting rules',()=>{
  assert.match(makeMarkdown(result),/Inventário completo/);
  assert.ok(result.metrics.sameContext>0);
 });
+
+test('CSS foundation: only active features own native editor geometry',()=>{
+ const css=fs.readFileSync('styles.css','utf8'),rules=collectRules(css);
+ const width=rules.find(r=>r.selector==='.writer-v92-style .markdown-preview-view, .writer-v92-style .markdown-source-view');
+ assert.ok(width);
+ assert.match(width.body,/--file-line-width:var\(--basic-editor-width,var\(--writer-v92-width\)\)/);
+ assert.ok(rules.some(r=>r.selector.includes('.writer-v7-focus-mode :is(.cm-sizer,.markdown-preview-sizer):not(:where(')&&r.selector.includes('.writer-v1010-editor-width *')&&r.selector.includes('.writer-v92-style *')));
+ assert.ok(!rules.some(r=>r.selector==='body.writer-v4-typewriter .cm-editor .cm-line'));
+ assert.ok(!rules.some(r=>r.selector==='.metadata-property'));
+ assert.ok(!rules.some(r=>r.selector==='body.writer-v4-typewriter .cm-editor .cm-scroller'&&r.body.includes('40vh')));
+});
+test('CSS foundation: StyleMate prose and desktop status are scoped',()=>{
+ const css=fs.readFileSync('styles.css','utf8'),rules=collectRules(css);
+ const prose=rules.filter(r=>r.selector.startsWith('.writer-v92-style .markdown-preview-view'));
+ assert.ok(prose.some(r=>r.selector.includes('.markdown-preview-sizer > :is(.el-p,.el-ul,.el-ol,.el-blockquote')));
+ assert.ok(!prose.some(r=>/^\.writer-v92-style \.markdown-preview-view (p|a|blockquote|:is\(ul,ol\))$/.test(r.selector)));
+ const dock=rules.filter(r=>r.selector==='body:not(.is-mobile) .status-bar.writer-v132-status-host'&&!r.context);
+ assert.equal(dock.length,1);
+ assert.match(dock[0].body,/transform:none/);
+ assert.match(dock[0].body,/bottom:0/);
+});

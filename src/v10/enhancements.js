@@ -126,7 +126,14 @@ async function writerV101ExportCsv(plugin,table,sourceFile){
 
 /* Reading progress is derived from the current reading pane, never from book/chapter counts. */
 function writerV101ReadingProgressRegister(plugin){
+ if(plugin._writerReadingProgressSession)return;
+ const session={stopped:false};
+ plugin._writerReadingProgressSession=session;
+ const workspace=plugin.app.workspace;
+ let frame=null,frameView=null,queued=false,fileTimer=null;
+ const active=()=>!session.stopped&&plugin._writerReadingProgressSession===session;
  const refresh=()=>{
+  if(!active())return;
   const enabled=plugin.settings.v101Suite?.enabled&&plugin.settings.v101Suite.readingProgress!==false;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[]){
    const host=leaf.view?.containerEl;
@@ -135,7 +142,7 @@ function writerV101ReadingProgressRegister(plugin){
    const old=pane.querySelector(':scope > .writer-v101-reading-track');
    const scroller=[...host.querySelectorAll('.markdown-source-view .cm-scroller, .markdown-preview-view, .cm-scroller')]
     .find(el=>el.isConnected&&el.getBoundingClientRect().height>5&&el.getBoundingClientRect().width>5);
-   if(!enabled||!scroller){old?.remove();continue;}
+   if(!enabled||!scroller){old?.remove();pane.classList.remove('writer-v101-reading-pane');continue;}
    if(pane.ownerDocument?.defaultView?.getComputedStyle(pane).position==='static')pane.classList.add('writer-v101-reading-pane');
    let track=old;
    if(!track){
@@ -159,19 +166,41 @@ function writerV101ReadingProgressRegister(plugin){
    track.firstElementChild.style.width=value+'%';
   }
  };
- const throttled=()=>{if(plugin._writerReadingProgressRaf)return;
-  plugin._writerReadingProgressRaf=true;
-  const view=plugin.app.workspace.containerEl?.ownerDocument?.defaultView;
-  (view?.requestAnimationFrame||((fn)=>fn()))(()=>{plugin._writerReadingProgressRaf=false;refresh();});
+ const throttled=()=>{
+  if(!active()||queued)return;
+  const view=workspace.containerEl?.ownerDocument?.defaultView;
+  if(typeof view?.requestAnimationFrame!=='function'){refresh();return;}
+  queued=true;frameView=view;
+  frame=view.requestAnimationFrame(()=>{
+   frame=null;frameView=null;queued=false;
+   if(active())refresh();
+  });
  };
- plugin.registerDomEvent?.(plugin.app.workspace.containerEl,'scroll',throttled,true);
- plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',throttled));
- plugin.registerEvent(plugin.app.workspace.on('layout-change',throttled));
- plugin.registerEvent(plugin.app.workspace.on('file-open',()=>{throttled();setTimeout(throttled,140);}));
- plugin.registerEvent(plugin.app.workspace.on('editor-change',throttled));
- plugin.app.workspace.onLayoutReady?.(throttled);
+ const onFile=()=>{
+  if(!active())return;
+  throttled();
+  if(fileTimer!==null)clearTimeout(fileTimer);
+  fileTimer=setTimeout(()=>{fileTimer=null;if(active())throttled();},140);
+ };
+ plugin.registerDomEvent?.(workspace.containerEl,'scroll',throttled,true);
+ plugin.registerEvent(workspace.on('active-leaf-change',throttled));
+ plugin.registerEvent(workspace.on('layout-change',throttled));
+ plugin.registerEvent(workspace.on('file-open',onFile));
+ plugin.registerEvent(workspace.on('editor-change',throttled));
  plugin.writerV101ReadingProgressRefresh=throttled;
- plugin.register?.(()=>{for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();for(const el of plugin.app.workspace.containerEl.querySelectorAll('.writer-v101-reading-pane'))el.classList.remove('writer-v101-reading-pane');});
+ plugin.register?.(()=>{
+  if(session.stopped)return;
+  session.stopped=true;
+  if(fileTimer!==null)clearTimeout(fileTimer);
+  if(frame!==null)frameView?.cancelAnimationFrame?.(frame);
+  fileTimer=null;frame=null;frameView=null;queued=false;
+  if(plugin._writerReadingProgressSession!==session)return;
+  delete plugin._writerReadingProgressSession;
+  if(plugin.writerV101ReadingProgressRefresh===throttled)delete plugin.writerV101ReadingProgressRefresh;
+  for(const el of workspace.containerEl.querySelectorAll('.writer-v101-reading-track'))el.remove();
+  for(const el of workspace.containerEl.querySelectorAll('.writer-v101-reading-pane'))el.classList.remove('writer-v101-reading-pane');
+ });
+ workspace.onLayoutReady?.(throttled);
 }
 
 function writerV101RegisterEnhancements(plugin){

@@ -100,3 +100,11 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - [Baseline and prioritized review queue](V16_JS_AUDIT_BASELINE.md) records the evidence, limitations and source locations. Startup callbacks, reading-progress teardown, native menu wrapper ownership and explorer sorting are initial targets.
 - Extend the analyzer to report prototype aliases, computed writes, deferred layout callbacks and lifecycle module rankings. Add a regression fixture for aliased/conditional/dynamic writes and shadowed function parameters. New CI must validate this expanded inventory.
 - The reading-progress teardown gap is visible in source: outstanding delayed work can recreate DOM after unload. Fix in Phase 7 with cancellation, a stopped guard and deterministic regression tests; no runtime changes in this audit pass.
+
+## Phase 7.1 — lifecycle protection for startup and reading progress
+
+- CI #1381 passed the expanded static audit. Add explicit per-registration session ownership for Homepage startup and reading progress, preventing duplicate setup on one live plugin instance.
+- Startup callbacks now refuse stale work before layout and after awaited Homepage activation; no further restored tabs are detached after unload. An already dispatched view activation cannot be undone. Manual confirmation also checks the active session.
+- Reading progress now coalesces delayed file-open updates and animation frames, cancels both on unload, clears its owned refresh hook, and ignores stale callbacks even if dispatched despite cancellation. Use the owning window for animation frame methods; remove stale pane marker when disabled or no scroller.
+- Add deterministic regression cases for duplicate registration, cancellation, late callbacks, reload and normal startup. Update the authored modules and their exact generated main.js sections in the same commit. No CSS or dependency changes.
+- Runtime Obsidian visual/interaction checks and new CI remain pending; other deferred initialization, native menu wrappers, explorer and Homepage rendering remain future review areas.

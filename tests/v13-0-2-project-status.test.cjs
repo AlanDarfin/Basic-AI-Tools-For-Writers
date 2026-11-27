@@ -27,7 +27,7 @@ test('narrow project panes wrap navigation groups and keep scene actions inline'
  const narrow=css.slice(css.indexOf('@container basic-project (max-width:540px)'),css.indexOf('@container basic-project (max-width:250px)'));
  assert.match(narrow,/writer-project-nav-groups\{[^}]*grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,96px\),1fr\)\)/);
  assert.match(narrow,/writer-project-nav-label\{display:block/);
- assert.match(narrow,/writer-project-scene-actions\{grid-template-columns:28px minmax\(0,1fr\);/);
+ assert.match(narrow,/writer-project-scene-actions\{grid-template-columns:28px minmax\(0,1fr\) max-content;/);
  assert.match(narrow,/body\.is-mobile .*writer-project-scene-actions\{grid-template-columns:44px minmax\(0,1fr\) 44px\}/);
  assert.match(narrow,/writer-v7-scene-title-wrap\{grid-column:2;grid-row:1/);
  assert.match(narrow,/writer-project-scene-controls\{grid-column:3;grid-row:1/);

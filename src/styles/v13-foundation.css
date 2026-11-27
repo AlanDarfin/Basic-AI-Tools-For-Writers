@@ -735,15 +735,7 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
  .writer-project-root .writer-project-nav-groups>button{padding-inline:3px;}
  .writer-project-root .writer-project-nav-label{display:none;}
 }
-/* Prism-inspired compact floating bar, restricted to hosts with Basic items. */
-body:not(.is-mobile) .status-bar.writer-v132-status-host{
- --status-bar-position:fixed;
- position:fixed;left:50%;right:auto;bottom:4px;transform:translateX(-50%);
- width:max-content;max-width:calc(100vw - 128px);margin:0;
- padding:2px 5px;gap:3px;border:1px solid var(--background-modifier-border);
- border-radius:var(--radius-s,5px);background:var(--background-secondary);
- box-shadow:var(--shadow-s);overflow-x:auto;overflow-y:hidden;
-}
+/* Desktop status geometry is owned by v13-6-projects.css. */
 /* Four writing formats, using Obsidian's theme tokens without replacing theme CSS. */
 .writer-v131-story-block{
  box-sizing:border-box;min-width:0;max-width:100%;margin:12px 0;padding:12px;

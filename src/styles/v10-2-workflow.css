@@ -42,7 +42,7 @@
 .writer-v102-spaces-empty{color:var(--basic-ui-muted,var(--text-muted));padding:var(--size-4-4);text-align:center}
 
 /* Native property editor stays intact: visual-only per-note and global hiding. */
-.metadata-property{position:relative}
+.metadata-property.writer-v102-property-action-host{position:relative}
 .metadata-property .writer-v102-property-actions{position:absolute;inset-inline-end:4px;top:4px;z-index:2;min-width:27px;min-height:27px;width:27px;height:27px;display:inline-flex;align-items:center;justify-content:center;padding:4px;border:0;border-radius:var(--basic-ui-radius-small,var(--radius-s));background:var(--basic-ui-surface,var(--background-secondary));color:var(--basic-ui-muted,var(--text-muted));opacity:0;box-shadow:none}
 .metadata-property:is(:hover,:focus-within) .writer-v102-property-actions{opacity:1}
 .metadata-property .writer-v102-property-actions svg{width:15px;height:15px}

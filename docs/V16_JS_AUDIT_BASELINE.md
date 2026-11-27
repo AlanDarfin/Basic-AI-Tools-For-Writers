@@ -40,3 +40,7 @@ The first three areas are the initial lifecycle work queue. The review separates
 The original direct prototype count missed aliases, computed keys and Object.getPrototypeOf. The analyzer now lists possible function-scope alias bindings and writes, origin, property if statically known, source and bundle locations, and repeated resolved alias targets. It also inventories onLayoutReady callbacks and ranks modules by lifecycle call sites. The alias analysis is conservative and not full lexical/data-flow analysis; assignments in different block scopes can be conflated and dynamic keys are unresolved. A repeated alias target may be a patch and its restoration, not a conflict.
 
 Next gate: validate new AST fixture and real report in CI, then implement targeted lifecycle fixes in Phase 7 with mocked cleanup/reload tests and synchronized distributables. No runtime changes in Phase 6.2.
+
+## Phase 7.2 checkpoint
+
+The permanent Menu interceptors previously restored only if still outermost, leaving an earlier Basic wrapper active after out-of-order teardown. Shared disposable wrappers now forward transparently when inactive and skip disposed Basic layers when restoring an owned method. External wrappers remain intact. Editor registration has a per-session guard. Explorer sort adapters, deferred refresh and mobile/desktop interaction checks remain open.

@@ -354,32 +354,54 @@ function writerV1045OrganizeEditorMenu(plugin,menu,editor){
  });
  if(!moved)return;
 }
+// Dispose Basic wrappers without overwriting third-party changes. Retained
+// wrappers become transparent and owned restoration skips inactive layers.
+const writerV16MethodPatches=new WeakMap();
+function writerV16PatchMethod(target,key,around){
+ const original=target?.[key];
+ if(typeof original!=='function')return ()=>{};
+ let handler=around;
+ const replacement=function(...args){
+  return handler?handler(original,this,args):original.apply(this,args);
+ };
+ const entry={original,active:true,target,key};
+ try{target[key]=replacement;}catch(_){return ()=>{};}
+ if(target[key]!==replacement)return ()=>{};
+ writerV16MethodPatches.set(replacement,entry);
+ return ()=>{
+  if(!entry.active)return;
+  entry.active=false;handler=null;
+  if(target[key]!==replacement)return;
+  let next=original,prior=writerV16MethodPatches.get(next);
+  while(prior&&!prior.active&&prior.target===target&&prior.key===key){
+   next=prior.original;prior=writerV16MethodPatches.get(next);
+  }
+  try{target[key]=next;}catch(_){}
+ };
+}
+const writerV16ContextMenuSessions=new WeakMap();
 function writerV1044ContextMenus(plugin){
- // Register early to identify which menus belong to our editor, but finalize
- // at display time, *after* every other editor-menu subscriber has added items.
+ if(writerV16ContextMenuSessions.has(plugin))return;
+ const session={active:true},dispose=[];
+ writerV16ContextMenuSessions.set(plugin,session);
+ plugin.register?.(()=>{
+  if(!session.active)return;
+  session.active=false;
+  if(writerV16ContextMenuSessions.get(plugin)===session)writerV16ContextMenuSessions.delete(plugin);
+  for(const cleanup of dispose.reverse())cleanup();
+ });
  plugin.registerEvent?.(plugin.app.workspace.on('editor-menu',(menu,editor)=>{
-  if(!plugin.settings.v9Toolbar||!editor)return;
+  if(!session.active||!plugin.settings.v9Toolbar||!editor)return;
   menu.__writerV1045Editor=editor;
  }));
  if(typeof Menu==='undefined'||!Menu?.prototype)return;
- const prototype=Menu.prototype,patches=[];
  for(const key of ['showAtMouseEvent','showAtPosition','showAtCoordinates']){
-  const original=prototype[key];
-  if(typeof original!=='function')continue;
-  const replacement=function(){
-   if(this.__writerV1045Editor&&!this.__writerV1045Organized)
-    writerV1045OrganizeEditorMenu(plugin,this,this.__writerV1045Editor);
-   return original.apply(this,arguments);
-  };
-  try{prototype[key]=replacement;
-   if(prototype[key]===replacement)patches.push([key,original,replacement]);
-  }catch(_){}
+  dispose.push(writerV16PatchMethod(Menu.prototype,key,(original,menu,args)=>{
+   if(session.active&&menu.__writerV1045Editor&&!menu.__writerV1045Organized)
+    writerV1045OrganizeEditorMenu(plugin,menu,menu.__writerV1045Editor);
+   return original.apply(menu,args);
+  }));
  }
- plugin.register?.(()=>{
-  for(const [key,original,replacement] of patches){
-   if(prototype[key]===replacement)prototype[key]=original;
-  }
- });
 }
 
 function writerV1048ToolbarLabel(cfg,item){

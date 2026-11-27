@@ -50,3 +50,52 @@ test('active startup still closes other root tabs once and preserves the selecte
  assert.deepEqual(h.stats(),{opened:0,detached:1,activated:1,stored:1,commands:1});
  assert.equal(h.plugin._writerV106HomeStarted,true);
 });
+
+test('native method patches restore in either disposal order and preserve receiver and return value',()=>{
+ const patch=load('src/v9/context-toolbar.js','writerV16PatchMethod');
+ for(const reverse of [false,true]){
+  const calls=[],native=function(value){calls.push(['native',this,value]);return value+1;};
+  const target={show:native},receiver={};
+  const a=patch(target,'show',(next,self,args)=>{calls.push('a');return next.apply(self,args);});
+  const b=patch(target,'show',(next,self,args)=>{calls.push('b');return next.apply(self,args);});
+  assert.equal(target.show.call(receiver,2),3);
+  assert.deepEqual(calls,['b','a',['native',receiver,2]]);
+  calls.length=0;(reverse?b:a)();target.show.call(receiver,3);
+  assert.deepEqual(calls,[reverse?'a':'b',['native',receiver,3]]);
+  (reverse?a:b)();a();b();assert.equal(target.show,native);
+ }
+});
+test('disposed native menu patch is inert inside retained third-party wrapper',()=>{
+ const patch=load('src/v9/context-toolbar.js','writerV16PatchMethod');
+ let nativeCalls=0,basicCalls=0;
+ const native=function(){nativeCalls++;return this;},target={show:native};
+ const dispose=patch(target,'show',(next,self,args)=>{basicCalls++;return next.apply(self,args);});
+ const captured=target.show,external=function(...args){return captured.apply(this,args);};
+ target.show=external;dispose();
+ assert.equal(target.show,external);assert.equal(target.show(),target);
+ assert.equal(basicCalls,0);assert.equal(nativeCalls,1);
+ const again=patch(target,'show',(next,self,args)=>{basicCalls++;return next.apply(self,args);});
+ assert.equal(target.show(),target);assert.equal(basicCalls,1);again();
+ assert.equal(target.show,external);
+});
+test('native method patch preserves exceptions and tolerates non-writable methods',()=>{
+ const patch=load('src/v9/context-toolbar.js','writerV16PatchMethod');
+ const error=new Error('native failure'),native=()=>{throw error;},target={show:native};
+ const dispose=patch(target,'show',(next,self,args)=>next.apply(self,args));
+ assert.throws(()=>target.show(),err=>err===error);dispose();assert.equal(target.show,native);
+ Object.freeze(target);const noOp=patch(target,'show',()=>0);noOp();assert.equal(target.show,native);
+});
+test('editor menu registration is idempotent and old listeners cannot tag menus after unload',()=>{
+ class Menu {showAtMouseEvent(){return 'native';}}
+ const native=Menu.prototype.showAtMouseEvent,cleanups=[],events=[];
+ const plugin={settings:{v9Toolbar:true},app:{workspace:{on:(_event,fn)=>fn}},
+  register:fn=>cleanups.push(fn),registerEvent:fn=>events.push(fn)};
+ const register=load('src/v9/context-toolbar.js','writerV1044ContextMenus',{Menu});
+ register(plugin);register(plugin);assert.equal(events.length,1);
+ const editor={},menu={};events[0](menu,editor);assert.equal(menu.__writerV1045Editor,editor);
+ cleanups[0]();assert.equal(Menu.prototype.showAtMouseEvent,native);
+ register(plugin);assert.equal(events.length,2);
+ const stale={};events[0](stale,editor);assert.equal(stale.__writerV1045Editor,undefined);
+ events[1](stale,editor);assert.equal(stale.__writerV1045Editor,editor);
+ cleanups[1]();assert.equal(Menu.prototype.showAtMouseEvent,native);
+});

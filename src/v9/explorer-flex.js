@@ -568,16 +568,11 @@ function writerV91FlexRegister(plugin){
   patched.set(owner,{previous,adapter,setOwner,originalSet,wrappedSet});
   return true;
  };
- let menuPrototype=null,originalMenuShow=null,wrappedMenuShow=null;
- if(typeof Menu!=='undefined'&&Menu?.prototype&&typeof Menu.prototype.showAtMouseEvent==='function'){
-  menuPrototype=Menu.prototype;
-  originalMenuShow=menuPrototype.showAtMouseEvent;
-  wrappedMenuShow=function(event){
-   if(writerV1043IsSortButton(event))writerV1043GlobalSortingMenu(plugin,this);
-   return originalMenuShow.apply(this,arguments);
-  };
-  try{menuPrototype.showAtMouseEvent=wrappedMenuShow;}catch(_){wrappedMenuShow=null;}
- }
+ const disposeMenu=typeof Menu!=='undefined'&&Menu?.prototype
+  ?writerV16PatchMethod(Menu.prototype,'showAtMouseEvent',(original,menu,args)=>{
+   if(writerV1043IsSortButton(args[0]))writerV1043GlobalSortingMenu(plugin,menu);
+   return original.apply(menu,args);
+  }):()=>{};
 
  const scan=()=>{
   const patterns=writerV91FlexPatterns(cfg);
@@ -777,8 +772,7 @@ function writerV91FlexRegister(plugin){
    if(entry.wrappedSet&&entry.setOwner?.setSortOrder===entry.wrappedSet)
     entry.setOwner.setSortOrder=entry.originalSet;
   }
-  if(menuPrototype&&wrappedMenuShow&&menuPrototype.showAtMouseEvent===wrappedMenuShow)
-   menuPrototype.showAtMouseEvent=originalMenuShow;
+  disposeMenu();
   patched.clear();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;

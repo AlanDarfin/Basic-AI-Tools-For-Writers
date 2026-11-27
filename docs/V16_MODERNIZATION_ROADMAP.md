@@ -1,6 +1,6 @@
 # Basic V16 — modernization roadmap
 
-Status: in progress. This is a maintenance and reliability release, not a rewrite. The current CSS work lives in PR #176; Timeline PR #175 must be reconciled before release. JavaScript behavior changes have not started.
+Status: in progress. This is a maintenance and reliability release, not a rewrite. The current CSS work lives in PR #176; Timeline PR #175 must be reconciled before release. Targeted JavaScript lifecycle changes started in Phase 7.
 
 ## Baseline and non-negotiable contracts
 
@@ -108,3 +108,10 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Reading progress now coalesces delayed file-open updates and animation frames, cancels both on unload, clears its owned refresh hook, and ignores stale callbacks even if dispatched despite cancellation. Use the owning window for animation frame methods; remove stale pane marker when disabled or no scroller.
 - Add deterministic regression cases for duplicate registration, cancellation, late callbacks, reload and normal startup. Update the authored modules and their exact generated main.js sections in the same commit. No CSS or dependency changes.
 - Runtime Obsidian visual/interaction checks and new CI remain pending; other deferred initialization, native menu wrappers, explorer and Homepage rendering remain future review areas.
+
+## Phase 7.2 — native menu wrapper ownership
+
+- CI #1382 passed Phase 7.1. Shared disposable method patches now cover the editor and explorer permanent native menu interceptors. Preserve installation order, native receiver, arguments, return values and errors.
+- Out-of-order cleanup skips inactive Basic layers. A third-party wrapper retaining an old Basic wrapper is preserved; the inactive wrapper forwards without running Basic logic.
+- Editor registration is idempotent per live session and stale listeners cannot tag menus. Temporary mobile relay hooks retain their existing synchronous ownership-checked finally restoration.
+- Add four lifecycle regressions and synchronize both source edits in main.js. No CSS, dependency, command ID or settings changes. Explorer sort adapters and deferred refresh callbacks remain a separate follow-up. Full new CI and real Obsidian visual/runtime QA pending.

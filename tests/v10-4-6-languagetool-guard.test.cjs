@@ -6,7 +6,7 @@ const common={console,Date,Map,Set,Math,setTimeout,clearTimeout,
  writerModuleOn:()=>true,writerUi:(pt,en)=>en,
  MarkdownView:class{},EditorView:{},Setting:class{},Notice:class{}};
 const {writerV406ReviewGuard}=vm.runInNewContext(
- src('src/v4/integrations.js')+'\n({writerV406ReviewGuard})',common);
+ src('src/integrations/integrations.js')+'\n({writerV406ReviewGuard})',common);
 const {WriterCursorMemory,writerCursorMerge}=vm.runInNewContext(
  src('src/editor/cursor-memory.js')+'\n({WriterCursorMemory,writerCursorMerge})',common);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -76,7 +76,7 @@ test('Accepting a correction by mouse preserves visible scroll rather than resto
  if(memory.flushTimer)clearTimeout(memory.flushTimer);
 });
 test('Typewriter reacts to deliberate keyboard edits but not suggestion mouse actions',()=>{
- const code=src('src/v4/integrations.js');
+ const code=src('src/integrations/integrations.js');
  assert.match(code,/this\.onPointer=event=>\{/);
  assert.match(code,/this\.setInteracting\(false\)/);
  assert.match(code,/this\.onBeforeInput=\(\)=>\{owner\.plugin\.writerReviewInteractionGuard\?\.typing/);

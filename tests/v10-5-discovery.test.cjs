@@ -61,7 +61,7 @@ test('Zotero note metadata produces citekey and author without network',()=>{
  const ref=helpers.writerV10ZoteroRef({app},file);
  assert.equal(ref.key,'doe2026');assert.equal(ref.author,'Doe, Jane');assert.equal(ref.doi,'10.1000/example');
 });
-const bibSource=fs.readFileSync('src/v9/research-style.js','utf8');
+const bibSource=fs.readFileSync('src/writing/research-style.js','utf8');
 const zotero=vm.runInNewContext(bibSource+'\n'+source+'\n({writerV92BibEntries,writerV92ResearchMerge,writerV10ZoteroReferences,writerV10ZoteroBibliography})',{
  ItemView:class{},TFile,writerUi:(pt,en)=>en,writerModuleOn:plugin=>!plugin.disabled,
  parseYaml:source=>source.startsWith('{')?JSON.parse(source):({keys:['@other:2026']})

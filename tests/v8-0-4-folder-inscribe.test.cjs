@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const world=fs.readFileSync('src/v7/worldbuilding.js','utf8');
 const overview=fs.readFileSync('src/blocks/folder-overview.js','utf8');
-const inline=fs.readFileSync('src/v8/inline-ai.js','utf8');
+const inline=fs.readFileSync('src/writing/inline-ai.js','utf8');
 const css=fs.readFileSync('src/styles/blocks/v8-folder-inscribe.css','utf8');
 class TFolder{constructor(path,children=[]){this.path=path;this.name=path.split('/').pop();this.children=children;}}
 class TFile{constructor(path){this.path=path;this.extension='md';this.name=path.split('/').pop();this.basename=this.name.replace(/\.md$/,'');}}

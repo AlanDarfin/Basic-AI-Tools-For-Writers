@@ -62,7 +62,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  assert.ok(Object.keys(memory.entries).length<=50);
  console.log('PASS bookmarks are bounded');
 
- const css=fs.readFileSync('styles.css','utf8'),integration=fs.readFileSync('src/v4/integrations.js','utf8'),bundle=fs.readFileSync('main.js','utf8');
+ const css=fs.readFileSync('styles.css','utf8'),integration=fs.readFileSync('src/integrations/integrations.js','utf8'),bundle=fs.readFileSync('main.js','utf8');
  assert.ok(integration.includes("Decoration.line({class:'writer-v4-typewriter-current-line'})"));
  assert.ok(css.includes('.cm-line.writer-v4-typewriter-current-line'));
  assert.match(css,/body\.writer-v4-typewriter \.cm-editor\.writer-v4-typewriter-engaged \.cm-line\s*\{\s*padding-inline-start:10px;/);

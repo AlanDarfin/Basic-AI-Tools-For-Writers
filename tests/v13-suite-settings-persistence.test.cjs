@@ -27,7 +27,7 @@ class Setting{
 }
 function runtime(initial={}){
  const sources=[
-  'src/v10/suite-notion-1011.js','src/editor/suite-numbering-1011.js',
+  'src/integrations/suite-notion-1011.js','src/editor/suite-numbering-1011.js',
   'src/editor/numbering-extensions.js','src/v11/longform-studio.js',
   'src/editor/image-annotations.js'
  ].map(file=>fs.readFileSync(file,'utf8')).join('\n');

@@ -342,7 +342,7 @@ function integrationStartupHarness({throwReady=false}={}){
  const workspace={onLayoutReady(fn){callbacks.push(fn);if(throwReady){fn();throw Error('layout unavailable');}}};
  const plugin={app:{workspace},settings:{},register:fn=>cleanups.push(fn)};
  const noop=()=>{};
- const register=load('src/v10/integrations-107.js','writerV107RegisterAfterStartup',{
+ const register=load('src/integrations/integrations-107.js','writerV107RegisterAfterStartup',{
   console:{warn:noop,error:noop,info:noop},
   setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id),
   writerV107DbRegister:()=>registrations++,writerV107ZoteroRegister:noop,writerV107StudyRegister:noop,

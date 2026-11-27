@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v9/soundscapes.js','utf8');
+const source=fs.readFileSync('src/integrations/soundscapes.js','utf8');
 class FakeEl{
  constructor(tag,doc){
   this.tagName=tag.toUpperCase();this.ownerDocument=doc;

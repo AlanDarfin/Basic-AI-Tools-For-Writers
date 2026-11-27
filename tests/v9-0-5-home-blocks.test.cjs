@@ -20,7 +20,7 @@ test('quote widget supports local customized quotes and original offline fallbac
  assert.doesNotMatch(home,/fetch\(|requestUrl\(/);
 });
 test('homepage quote modes mix, prefer, or use only imported Zotero highlights',async()=>{
- const research=read('src/v9/research-style.js');
+ const research=read('src/writing/research-style.js');
  const {WriterV8HomeView,writerV92ResearchMerge}=vm.runInNewContext(home+'\n'+research+'\n({WriterV8HomeView,writerV92ResearchMerge})',{
   ItemView:class{},writerUi:(_pt,en)=>en,writerModuleOn:()=>true
  });

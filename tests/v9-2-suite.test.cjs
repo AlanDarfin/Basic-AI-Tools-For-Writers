@@ -73,7 +73,7 @@ test('Zotero quotes must be explicit highlights with source',()=>{
 });
 test('session drafts never delete existing vault files',()=>{
  assert.equal(api.writerV92SessionMerge({}).enabled,true);
- const src=read('src/v9/session-drafts.js');
+ const src=read('src/writing/session-drafts.js');
  assert.doesNotMatch(src,/vault\.(delete|trash|modify|process)\(/);
  assert.match(src,/vault\.create\(/);
  assert.match(src,/Confirm discard/);

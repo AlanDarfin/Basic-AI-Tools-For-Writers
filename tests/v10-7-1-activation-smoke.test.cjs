@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const vm=require('node:vm');
 const fs=require('node:fs');
-const source=fs.readFileSync('src/v10/integrations-107.js','utf8');
+const source=fs.readFileSync('src/integrations/integrations-107.js','utf8');
 function boot(globals={}){
  const calls=[],timeouts=[],logs=[];
  const env={

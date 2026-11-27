@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
-const source=fs.readFileSync('src/v8/inline-ai.js','utf8'),main=fs.readFileSync('main.js','utf8');
+const source=fs.readFileSync('src/writing/inline-ai.js','utf8'),main=fs.readFileSync('main.js','utf8');
 function harness(){
  let captured=null;
  const none={empty:true};

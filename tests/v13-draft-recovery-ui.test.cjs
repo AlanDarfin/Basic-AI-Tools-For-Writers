@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
-const source=fs.readFileSync(path.join(__dirname,'../src/v13/draft-recovery-ui.js'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'../src/writing/draft-recovery-ui.js'),'utf8');
 class TFile{
  constructor(path){this.path=path;this.extension=path.split('.').pop();this.basename=path.split('/').pop().replace(/\.[^.]+$/,'');}
 }

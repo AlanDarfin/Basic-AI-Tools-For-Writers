@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v4/integrations.js','utf8');
+const source=fs.readFileSync('src/integrations/integrations.js','utf8');
 const extra=vm.runInNewContext(source+'\n({writerV4ExtraMerge,WriterV4Mentions,WriterV4Extras})',{
  EditorSuggest:class{constructor(app){this.app=app;}},
  EditorView:{},ViewPlugin:null,Modal:class{},Setting:class{},TFile:class{},
@@ -65,7 +65,7 @@ async function asyncChecks(){
  assert.ok(longform.includes('writer-project-drag-handle'));
  assert.ok(longform.includes("this.activeTab==='comments'"));
  total++;console.log('PASS Longform preserves scroll and has comments/touch drag UI');
- const suite=fs.readFileSync('src/v3/final-suite.js','utf8');
+ const suite=fs.readFileSync('src/writing/final-suite.js','utf8');
  const speech={utterance:null,getVoices:()=>[],cancel(){},speak(v){this.utterance=v;}};
  const feature=vm.runInNewContext(suite+'\nWriterFinalFeatures',{
   console,require:()=>({getLanguage:()=> 'en'}),SpeechSynthesisUtterance:class{constructor(t){this.text=t;}},

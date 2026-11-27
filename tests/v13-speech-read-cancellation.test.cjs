@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=['src/v3/core.js','src/v3/final-suite.js','src/v10/speech-accessibility.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+const source=['src/v3/core.js','src/writing/final-suite.js','src/integrations/speech-accessibility.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 function fixture(provider='system'){
  const utterances=[],edge=[],toolkit=[],states=[],commands=new Map(),cleanups=[];let reads=0,read=async()=> 'Current note.',active,leaves=[];

@@ -158,7 +158,7 @@ test('Root reorder changes saved order only, without moving or deleting files',(
  assert.equal(source.includes("setTitle(writerUi('Mover para cima'"),false);
 });
 test('Desktop-only sections and README feature documentation in both languages',()=>{
- const sound=fs.readFileSync(path.join(root,'src/v9/soundscapes.js'),'utf8');
+ const sound=fs.readFileSync(path.join(root,'src/integrations/soundscapes.js'),'utf8');
  const clicks=fs.readFileSync(path.join(root,'src/editor/click-clack.js'),'utf8');
  assert.match(sound,/if\(plugin\.app\.isMobile\)return/);
  assert.match(clicks,/if\(plugin\.app\.isMobile\)return/);

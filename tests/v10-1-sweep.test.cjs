@@ -87,7 +87,7 @@ test('Flow: dependency levels are finite even when links cycle',()=>{
  assert.equal(a.writerV93FlowParse('layout: graph\n[[A]]',{maxItems:20}).layout,'graph');
 });
 test('Calendar: deterministic offline ICS parser, bounded events and export',()=>{
- const a=expose('src/v10/calendar-exchange.js',['writerV101IcsParse','writerV101IcsExport','writerV101CalendarExchangeMerge'],
+ const a=expose('src/integrations/calendar-exchange.js',['writerV101IcsParse','writerV101IcsExport','writerV101CalendarExchangeMerge'],
   {writerV83Date:x=>x,writerV83DateOf:d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-')});
  const source=['BEGIN:VCALENDAR','BEGIN:VEVENT','SUMMARY:Chapter\\, one','DTSTART;VALUE=DATE:20261108','RRULE:FREQ=WEEKLY','END:VEVENT','END:VCALENDAR'].join('\r\n');
  const events=a.writerV101IcsParse(source);
@@ -98,7 +98,7 @@ test('Calendar: deterministic offline ICS parser, bounded events and export',()=
  assert.equal(a.writerV101CalendarExchangeMerge({}).maxImport,150);
 });
 test('Spaced repetition: custom intervals preserve old schedule defaults',()=>{
- const a=expose('src/v8/writing-study.js',['writerV83StudySchedule','writerV83StudyConfig']);
+ const a=expose('src/writing/writing-study.js',['writerV83StudySchedule','writerV83StudyConfig']);
  const first=a.writerV83StudySchedule(null,4,1000);
  assert.equal(first.interval,1);
  const custom=a.writerV83StudySchedule(null,4,1000,{graduatingDays:3});

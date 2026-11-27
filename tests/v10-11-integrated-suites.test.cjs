@@ -11,7 +11,7 @@ function load(path,names,extra={}){
 }
 test('Unique study configuration preserves vault paths and never creates notes at startup',()=>{
  const {writerV101TableSplit}=load('src/v10/enhancements.js',['writerV101TableSplit']);
- const a=load('src/v10/suite-education-1011.js',
+ const a=load('src/integrations/suite-education-1011.js',
   ['writerV1011StudyCfg','writerV1011StudyPath','writerV1011StudyDate','writerV1011StudyTimetable','writerV1011StudyReminders','writerV1011StudyWeekday'],
   {writerV101TableSplit});
  const settings={v1011Study:{root:'../Secrets',daily:'Diario',classes:'Aulas',reminders:'Lembretes.md'}};
@@ -30,7 +30,7 @@ test('Unique study configuration preserves vault paths and never creates notes a
  assert.deepEqual(Array.from(r,item=>item.label),['ler','prova']);
 });
 test('Unique daily/class notes are user-triggered, local and non-overwriting',async()=>{
- const a=load('src/v10/suite-education-1011.js',
+ const a=load('src/integrations/suite-education-1011.js',
   ['writerV1011StudyDaily','writerV1011StudyClass','writerV1011StudyReminder']);
  const folders=new Map(),created=[],read=new Map();
  const vault={
@@ -53,7 +53,7 @@ test('Unique daily/class notes are user-triggered, local and non-overwriting',as
  await assert.rejects(a.writerV1011StudyReminder(plugin,'Revisar capítulo','2026-13-30'),/Invalid/);
 });
 test('Notion additional Markdown views, rollup source and safe chart arithmetic',()=>{
- const a=load('src/v10/suite-notion-1011.js',
+ const a=load('src/integrations/suite-notion-1011.js',
   ['writerV1011NotionSpec','writerV1011NotionChart','writerV1011NotionDate','writerV1011NotionSafeName'],
   {writerV107DbSpec:()=>({view:'table',columns:['file','status'],limit:80,formulas:[],rollups:[]})});
  const spec=a.writerV1011NotionSpec('database: Tasks\nview: gallery\ngroup: status\ncover: banner\n');
@@ -101,6 +101,6 @@ test('Suites isolated by guarded registration, no extra ribbon and no external n
  assert.match(numbering,/current!==plan\.before/);
  assert.match(numbering,/approved/);
  assert.doesNotMatch(numbering,/vault\.modify\(/);
- const notion=read('src/v10/suite-notion-1011.js');
+ const notion=read('src/integrations/suite-notion-1011.js');
  assert.doesNotMatch(notion,/registerMarkdownCodeBlockProcessor\?\.\('notion-db'/);
 });

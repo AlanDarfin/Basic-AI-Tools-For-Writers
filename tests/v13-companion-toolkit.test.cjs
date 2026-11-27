@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 
 function fixture({language='en',guard}={}){
- const source=fs.readFileSync('src/v13/companion-toolkit.js','utf8');
+ const source=fs.readFileSync('src/integrations/companion-toolkit.js','utf8');
  const context={writerUi:(pt,en)=>language==='pt'?pt:en};
  if(guard)context.writerCompanionEnabled=guard;
  const api=vm.runInNewContext(source+'\n({specs:WRITER_COMPANION_TOOLKIT_SPECS,speak:writerCompanionToolkitSpeech,status:writerCompanionToolkitSpeechStatus,control:writerCompanionToolkitControl})',context);

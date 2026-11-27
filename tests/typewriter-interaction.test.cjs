@@ -23,7 +23,7 @@ const sandbox={
  writerModuleOn:()=>true,writerUi:(pt,en)=>en,Notice:class{},TFile:class{},MarkdownView:class{},
  console,document:{body},setTimeout,clearTimeout
 };
-const src=fs.readFileSync('src/v4/integrations.js','utf8');
+const src=fs.readFileSync('src/integrations/integrations.js','utf8');
 const {WriterV4Extras,writerV4ExtraMerge}=vm.runInNewContext(
  src+'\n({WriterV4Extras,writerV4ExtraMerge})',sandbox);
 const settings={};writerV4ExtraMerge(settings);settings.writerV4Extras.typewriter.enabled=true;

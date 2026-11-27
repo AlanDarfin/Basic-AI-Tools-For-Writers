@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 
-const source=fs.readFileSync('src/v3/final-suite.js','utf8');
+const source=fs.readFileSync('src/writing/final-suite.js','utf8');
 let notice='';
 const sandbox={
  console,
@@ -33,7 +33,7 @@ console.log('PASS Android WebView speech diagnostics remain accurate');
  await instance.speakActive();
  assert.match(notice,/WebView/);
  const css=fs.readFileSync('styles.css','utf8');
- const extras=fs.readFileSync('src/v4/integrations.js','utf8');
+ const extras=fs.readFileSync('src/integrations/integrations.js','utf8');
  const main=fs.readFileSync('main.js','utf8');
  // The old formatting toolbar and commands must not return in either editor.
  for(const removed of [

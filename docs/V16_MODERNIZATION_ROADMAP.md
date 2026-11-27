@@ -238,3 +238,10 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Preserve the 124 stable source IDs and their order; require owner-directory placement for the four domains, with one explicit Timeline exception. All settings, persistence and platform modules are now under their respective owner directories; nine of ten block modules are relocated. Overall 54/124 manifest modules are relocated, plus the extracted legacy dictionary.
 - Update historical test consumers and the CI generated-artifact check to track the relocated settings search index. Use stable IDs for mixed bundle-marker/source assertions and resolve physical paths for file reads. No intended runtime or dependency changes; full CI and desktop/mobile QA pending.
 - Next: consolidate remaining writing and integrations modules, then projects/workspace and core. Coordinate PR #175 before release.
+
+### Phase 10.11 — writing and integrations (consolidated)
+
+- CI #1402 built and verified committed artifacts but 178/180 regression files passed. Repair dynamic source paths in the v3 and mobile quick-action fixtures using stable-ID resolution (commit f65db86).
+- Relocate all 27 remaining writing and integration modules: 12 writing, 15 integrations. All 15 writing and 18 integration manifest modules now live under their owner directories. The separately extracted legacy dictionary remains in writing. Overall 81/124 manifest modules are relocated.
+- Update historical regression consumers, including the v12 dynamic loader and the companion bridge/advanced integration consumers already covered by manifest resolution. Preserve stable module IDs, their order and original source blobs; add domain-wide ownership regression checks. No intended runtime, dependency or distributed artifact changes.
+- Full CI and real desktop/mobile QA remain pending for this batch. Next: projects and workspace, then core and the deferred Timeline coordination with PR #175.

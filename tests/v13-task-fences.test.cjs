@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const path=require('node:path');
 class TFile{constructor(path){this.path=path;this.extension='md';}}
 const context={TFile,writerUi:(_pt,en)=>en};
-vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/v12/task-workbench.js'),'utf8')+
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/writing/task-workbench.js'),'utf8')+
  '\nglobalThis.api={writerV12TaskRefs,writerV12ToggleTask};',context);
 const {writerV12TaskRefs,writerV12ToggleTask}=context.api;
 

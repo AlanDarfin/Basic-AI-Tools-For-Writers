@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v13/companion-sync.js','utf8');
+const source=fs.readFileSync('src/integrations/companion-sync.js','utf8');
 function fixture(enabled=true){
  const context={writerCompanionEnabled:()=>enabled};
  const api=vm.runInNewContext(source+'\n({WRITER_COMPANION_SYNC,writerCompanionSyncStatus,writerCompanionSyncActionAvailable})',context);

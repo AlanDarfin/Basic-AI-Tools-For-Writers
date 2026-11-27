@@ -61,7 +61,7 @@ class Element{
  toggleClass(){}
 }
 function sound(station='lofi',count=0){
- const {WriterV91SoundPlayer}=vm.runInNewContext(fs.readFileSync('src/v9/soundscapes.js','utf8')+'\n({WriterV91SoundPlayer})',{
+ const {WriterV91SoundPlayer}=vm.runInNewContext(fs.readFileSync('src/integrations/soundscapes.js','utf8')+'\n({WriterV91SoundPlayer})',{
   writerUi:(_pt,en)=>en,require:()=>({setIcon:(element,icon)=>{element.icon=icon;}}),console
  });
  const files=Array.from({length:count},(_,index)=>({path:'Music/'+index+'.mp3',basename:'Track '+index,extension:'mp3'}));

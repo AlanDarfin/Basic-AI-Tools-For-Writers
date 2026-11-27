@@ -156,3 +156,13 @@ test('block, persistence, platform and settings sources use owner directories',(
   if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
  }
 });
+
+test('writing and integrations sources use owner directories',()=>{
+ const domains=new Set(['writing','integrations']);
+ for(const entry of entries.filter(entry=>domains.has(entry.domain))){
+  assert.ok(entry.path.startsWith('src/'+entry.domain+'/'),entry.id);
+  assert.equal(resolveSourcePath(entry.id),entry.path);
+  assert.ok(fs.existsSync(entry.path),entry.path);
+  if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
+ }
+});

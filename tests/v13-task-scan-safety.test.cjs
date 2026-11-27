@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v12/task-workbench.js','utf8');
+const source=fs.readFileSync('src/writing/task-workbench.js','utf8');
 const plain=value=>JSON.parse(JSON.stringify(value));
 function deferred(){let resolve;const promise=new Promise(done=>{resolve=done;});return {promise,resolve};}
 class TFile{constructor(path,text=''){this.path=path;this.extension='md';this.stat={mtime:1,size:text.length};}}

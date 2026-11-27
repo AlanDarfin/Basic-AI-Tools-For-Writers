@@ -26,7 +26,7 @@ test('runtime retains the existing HTTP inventory and declares two opt-in Visual
  }
 });
 test('online TTS uses documented, opt-in WebSocket transport',()=>{
- const tts=read('src/v3/tts-online.js');
+ const tts=read('src/integrations/tts-online.js');
  assert(tts.includes('speech.platform.bing.com'));
  assert(tts.includes('new WebSocket(url)'));
  assert(read('SECURITY.md').includes('WebSocket'));

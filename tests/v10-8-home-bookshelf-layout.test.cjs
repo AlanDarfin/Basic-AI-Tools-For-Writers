@@ -98,8 +98,8 @@ test('All formerly quarantined 10.7 integrations are restored after the core loa
   assert.ok(sourceIds.includes('src/v10/'+name+'.js'),name+' missing from active bundle');
  }
  assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);
- assert.match(read('src/v10/integrations-107.js'),/if\(plugin\.settings\?\.v107AdvancedEnabled===false\)/);
- assert.match(read('src/v10/integrations-107.js'),/const ready=plugin\.app\?\.workspace\?\.onLayoutReady/);
+ assert.match(read('src/integrations/integrations-107.js'),/if\(plugin\.settings\?\.v107AdvancedEnabled===false\)/);
+ assert.match(read('src/integrations/integrations-107.js'),/const ready=plugin\.app\?\.workspace\?\.onLayoutReady/);
 });
 
 test('10.9 supports standalone books, automatic progress, metadata, and fuzzy picker',()=>{
@@ -198,7 +198,7 @@ test('10.9 keeps changelogs out of both READMEs and supports fuzzy path settings
  }
  assert.match(read('src/blocks/virtual-content.js'),/class TemplatePicker extends require\('obsidian'\)\.FuzzySuggestModal/);
  assert.match(read('src/v9/smart-spaces.js'),/class SpacePathPicker extends require\('obsidian'\)\.FuzzySuggestModal/);
- assert.match(read('src/v4/integrations.js'),/class FolderPicker extends require\('obsidian'\)\.FuzzySuggestModal/);
+ assert.match(read('src/integrations/integrations.js'),/class FolderPicker extends require\('obsidian'\)\.FuzzySuggestModal/);
  assert.match(read('src/v9/explorer-flex.js'),/Revelar arquivos ocultos/);
  assert.match(read('CHANGELOG.md'),/10\.9\.0/);
 });

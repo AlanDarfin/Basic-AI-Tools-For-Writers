@@ -238,7 +238,7 @@ test('mobile tooltip styling and correction scroll guard use only the enabled br
  const css=fs.readFileSync('src/styles/compat/v13-8-grammar-compat.css','utf8');
  assert.match(css,/\.is-mobile\.writer-grammar-external-compat/);assert.match(css,/min-height:44px/);
  assert.match(css,/max-width:calc\(100vw - 40px\)/);
- assert.match(fs.readFileSync('src/v4/integrations.js','utf8'),/\.writer-grammar-external-compat \.lt-tooltip/);
+ assert.match(fs.readFileSync('src/integrations/integrations.js','utf8'),/\.writer-grammar-external-compat \.lt-tooltip/);
 });
 
 test('diagnostics report the selected external engine and redact its server credentials and URL parameters',()=>{

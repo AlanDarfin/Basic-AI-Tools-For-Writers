@@ -59,3 +59,23 @@ test('dragger handles only nonempty lines, captures grip on body, and preserves 
  assert.ok(dragAPI.writerV106DragBlocks(lines).length>=3);
  assert.ok(dragAPI.writerV106DragMove('first\n\nsecond',0,1,3));
 });
+
+test('narrative line and body geometry is bounded and shipped in the CSS bundle',()=>{
+ const fix=css.slice(css.indexOf('/* Timeline geometry:'));
+ const shipped=fs.readFileSync('styles.css','utf8');
+ assert.ok(shipped.includes(fix.trimEnd()),'shipping CSS contains the geometry rules');
+ for(const line of [2,3,4,5]){
+  for(const body of [2,3,4]){
+   for(const layout of ['vertical','horizontal']){
+    const cfg=parse('layout: '+layout+'\nline: '+line+'\nbody: '+body+'\n\n+ 1700 a 1800\n+ A title\n+ Long text').config;
+    assert.equal(cfg.line,line);assert.equal(cfg.body,body);assert.equal(cfg.layout,layout);
+   }
+  }
+ }
+ assert.match(fix,/grid-template-columns:var\(--writer-v95-axis-gutter\) minmax\(0,1fr\)/);
+ assert.match(fix,/bottom:calc\(var\(--writer-v95-axis-gutter\)\/-2\)/);
+ assert.match(fix,/flex:0 0 min\(100%,clamp\(205px,85%,320px\)\)/);
+ assert.match(fix,/border-inline-end:8px solid var\(--writer-v95-banner\)/);
+ assert.match(fix,/max-width:calc\(100% - 2 \* var\(--writer-v95-card-inset\)\)/);
+ assert.match(fix,/is-heading-only > \.writer-v95-timeline-head/);
+});

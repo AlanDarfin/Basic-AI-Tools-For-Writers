@@ -55,7 +55,7 @@ test('generated outputs and build inventories both include the same v13 entry',(
  const main=fs.readFileSync(path.join(root,'main.js'),'utf8');
  const css=fs.readFileSync(path.join(root,'styles.css'),'utf8');
  const jsBuild=fs.readFileSync(path.join(root,'scripts/build-v3.js'),'utf8');
- const cssBuild=fs.readFileSync(path.join(root,'scripts/build-css.js'),'utf8');
+ const cssBuild=fs.readFileSync(path.join(root,'scripts/css-manifest.js'),'utf8');
  const toolbar=fs.readFileSync(path.join(root,'src/v9/context-toolbar.js'),'utf8');
  assert.match(toolbar,/return writerV1044CommandPicker\(plugin/,'toolbar reuses shared picker');
  assert.match(jsBuild,/v13\/ui-foundation/);

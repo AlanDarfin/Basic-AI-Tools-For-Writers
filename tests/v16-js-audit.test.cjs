@@ -38,3 +38,18 @@ test('source regions verify exact build order and exclude the vendor bundle',()=
  assert.throws(()=>buildRegions(main,names.slice().reverse(),n=>src[n],vendor),/out of sync/);
  assert.throws(()=>getSources("const sources=['core','core'];"),/Invalid JS source inventory/);
 });
+
+test('prototype aliases, computed keys and deferred layout callbacks stay review candidates',()=>{
+ const src="function init(p){const prototype=Menu.prototype; for(const key of ['show']){prototype[key]=wrap;} prototype.show=wrap; p.app.workspace.onLayoutReady(()=>{}); function nested(){prototype.show=restore;} function unrelated(prototype){prototype.show=other;}} function mobile(){const parent=typeof Menu!=='undefined'?Menu.prototype:null;parent.show=wrap;} function explorer(){let owner=view;owner=Object.getPrototypeOf(owner);owner.sort=adapter;}";
+ const r=analyzeSource(src);
+ assert.equal(r.errors.length,0);
+ assert.equal(r.prototypeWrites.length,0);
+ assert.equal(r.prototypeAliasSites.length,3);
+ assert.equal(r.prototypeAliasWriteCandidates.length,5);
+ assert.equal(r.prototypeAliasWriteCandidates[0].property,null);
+ assert.ok(r.prototypeAliasWriteCandidates.some(x=>x.target==='Menu.prototype.show'));
+ assert.ok(r.prototypeAliasWriteCandidates.some(x=>x.target==='Object.getPrototypeOf(?).sort'));
+ assert.ok(r.prototypeAliasWriteCandidates.every(x=>x.confidence==='candidate'));
+ assert.equal(r.lifecycleCounts['layout-ready'],1);
+ assert.equal(r.repeatedAliasTargets.find(x=>x.name==='Menu.prototype.show').sites.length,3);
+});

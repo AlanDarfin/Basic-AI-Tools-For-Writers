@@ -1,0 +1,113 @@
+/* Keep dictionary controls and cards aligned with the other Basic tool panels. */
+body .writer-tool-root .writer-dictionary-panel :is(.dictionary-controls,.dictionary-lexical-actions){
+ gap:var(--basic-panel-control-gap);
+}
+.writer-tool-root .writer-dictionary-panel .dictionary-controls{
+ grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;
+}
+.writer-tool-root .writer-dictionary-panel .dictionary-controls>select:first-child{
+ grid-column:auto;
+}
+body .writer-tool-root>.writer-dictionary-panel>input[type="search"],
+body .writer-tool-root .writer-dictionary-panel :is(.dictionary-controls,.dictionary-lexical-actions)>:is(select,button),
+.writer-tool-root .writer-dictionary-panel .dictionary-results>select,
+.writer-tool-root .writer-dictionary-panel .dictionary-card>button{
+ min-height:var(--basic-panel-control-size);
+ height:auto;
+}
+body .writer-tool-root .writer-dictionary-panel :is(.dictionary-controls,.dictionary-lexical-actions)>button{
+ min-width:0;
+ padding:var(--basic-panel-control-gap) var(--basic-panel-inset);
+ white-space:normal;
+ overflow-wrap:anywhere;
+}
+.writer-tool-root .writer-dictionary-panel :is(.dictionary-results,.dictionary-output){
+ gap:var(--basic-panel-section-gap);
+}
+.writer-tool-root .writer-dictionary-panel .dictionary-output:empty{
+ display:none;
+}
+body .writer-tool-root .writer-dictionary-panel .dictionary-card{
+ padding:var(--basic-panel-inset);
+}
+.writer-tool-root .writer-dictionary-panel .dictionary-card>h4{
+ margin-block:0 var(--basic-panel-section-gap);
+}
+.writer-tool-root .writer-dictionary-panel .dictionary-results>p{
+ margin:0;
+}
+@container writer-sidebar (max-width:360px){
+ .writer-tool-root .writer-dictionary-panel .dictionary-controls{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ }
+ .writer-tool-root .writer-dictionary-panel .dictionary-controls>button{
+  grid-column:1/-1;
+ }
+}
+@container writer-sidebar (max-width:250px){
+ .writer-tool-root .writer-dictionary-panel .dictionary-controls{
+  grid-template-columns:minmax(0,1fr);
+ }
+ body .writer-tool-root .writer-dictionary-panel .dictionary-lexical-actions>button{
+  padding-inline:var(--basic-panel-control-gap);
+ }
+}
+@container writer-sidebar (max-width:200px){
+ .writer-tool-root .writer-dictionary-panel .dictionary-lexical-actions{
+  grid-template-columns:minmax(0,1fr);
+ }
+}
+
+/* Keep model selection and provider actions grouped around the editable fields. */
+.writer-v13-settings .dictionary-settings-panel .writer-v131-ai-workspace{
+ gap:var(--basic-panel-section-gap);
+ margin-block:0 var(--basic-panel-section-gap);
+}
+.writer-v13-settings .writer-v131-ai-workspace>p,
+.writer-v13-settings .writer-v131-ai-details>p{
+ margin:0;
+}
+.writer-v13-settings .dictionary-settings-panel .writer-v131-ai-details>:is(.writer-v131-ai-heading,.writer-v131-ai-actions,.writer-v131-ai-defaults,.writer-v131-ai-catalog){
+ gap:var(--basic-panel-control-gap);
+ min-width:0;
+}
+.writer-v13-settings .dictionary-settings-panel .writer-v131-ai-actions>button.mod-cta:disabled{
+ border:1px solid var(--background-modifier-border);
+ background:var(--interactive-normal);
+ color:var(--text-muted);
+ box-shadow:none;
+ opacity:1;
+}
+.writer-v13-settings .dictionary-settings-panel .writer-v131-ai-details .writer-v131-ai-status{
+ max-width:100%;
+ border-radius:var(--radius-s);
+ padding:2px var(--basic-panel-control-gap);
+ overflow-wrap:anywhere;
+}
+.writer-v13-settings .dictionary-settings-panel .writer-v131-ai-catalog{
+ margin-top:0;
+}
+.writer-v13-settings .dictionary-settings-panel .writer-v131-ai-workspace :is(.setting-item-control input,.setting-item-control select,.writer-v131-ai-catalog input,.writer-v131-ai-catalog select){
+ min-height:var(--basic-panel-control-size);
+ min-width:0;
+ max-width:100%;
+}
+.writer-v13-settings .writer-v131-ai-workspace .setting-item-control input{
+ flex:1 1 12em;
+ width:100%;
+}
+.writer-v13-settings .writer-v131-ai-defaults{
+ padding-block-start:var(--basic-panel-section-gap);
+}
+.writer-v13-settings .writer-v131-ai-defaults h5{
+ flex:1 0 100%;
+ margin:0;
+}
+@container basic-settings (max-width:540px){
+ .writer-v13-settings .writer-v131-ai-workspace .setting-item-control :is(select,input){
+  width:100%;
+ }
+ .writer-v13-settings .writer-v131-ai-details>:is(.writer-v131-ai-actions,.writer-v131-ai-defaults)>button{
+  flex:1 1 auto;
+ }
+}

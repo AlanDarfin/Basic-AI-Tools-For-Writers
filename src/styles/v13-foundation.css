@@ -429,18 +429,18 @@ body.is-mobile :where(.writer-v11-studio-modal,.writer-v102-spaces-modal,
 }
 
 /* The actual homepage width, not monitor width, controls widget layout. */
-.writer-v8-home{container-name:basic-home;container-type:inline-size;}
+.writer-v8-home{container-name:basic-home;container-type:inline-size;--writer-home-grid-columns:12;}
 .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
  box-sizing:border-box;width:100%;max-width:1100px;
- display:grid;grid-template-columns:repeat(12,minmax(0,1fr));
+ display:grid;grid-template-columns:repeat(var(--writer-home-grid-columns),minmax(0,1fr));
  grid-auto-flow:row dense;gap:8px;min-width:0;
 }
 .writer-v8-home .writer-v925-grid>[data-section]{
  box-sizing:border-box;min-width:0;max-width:100%;
  overflow-wrap:break-word;word-break:normal;
 }
-.writer-v8-home .writer-v925-grid>[data-section] :is(h3,h4,p,button,small,strong,span){
- overflow-wrap:break-word;word-break:normal;
+.writer-v8-home .writer-v925-grid>[data-section] :is(.writer-v8-home-card-header,.writer-v903-widget-heading) :is(h3,h4,strong){
+ min-width:0;overflow-wrap:break-word;word-break:normal;
 }
 .writer-v8-home .writer-v925-grid>.writer-v1205-resize-card .writer-v1205-resize-handle{
  pointer-events:none;opacity:0;

@@ -4,7 +4,7 @@ const read=p=>fs.readFileSync(p,'utf8');
 const expose=(path,names,extras={})=>vm.runInNewContext(read(path)+'\n({'+names.join(',')+'})',
  {console,Date,Math,Map,Set,Uint8Array,ItemView:class{},writerUi:(pt,en)=>en,...extras});
 test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
- const a=expose('src/v10/bookshelf.js',['writerV10BookshelfMerge','writerV10BookRecord','writerV10BookshelfSort','writerV10BookState']);
+ const a=expose('src/projects/bookshelf.js',['writerV10BookshelfMerge','writerV10BookRecord','writerV10BookshelfSort','writerV10BookState']);
  const settings={v10Bookshelf:{library:{'Books/Index.md':{favorite:true,shelf:'Sci-fi',progress:64,status:'reading'}},sort:'progress'}};
  a.writerV10BookshelfMerge(settings);
  assert.equal(settings.v10Bookshelf.sort,'progress');
@@ -16,7 +16,7 @@ test('bookshelf: prior book metadata and favorites survive sanitization',()=>{
 });
 test('bookshelf: progress sort reads each manuscript once and preserves title tie breaks',()=>{
  const flattened=[];
- const {writerV10BookshelfSort}=expose('src/v10/bookshelf.js',['writerV10BookshelfSort'],{
+ const {writerV10BookshelfSort}=expose('src/projects/bookshelf.js',['writerV10BookshelfSort'],{
   lfFlattenScenes:scenes=>{flattened.push(scenes);return scenes;}
  });
  const book=(title,status)=>({title,file:{path:title+'.md'},scenes:[{status}]});
@@ -27,7 +27,7 @@ test('bookshelf: progress sort reads each manuscript once and preserves title ti
  assert.deepEqual(books.map(p=>p.title),['Zebra','Draft','Alpha']);
 });
 test('both bookshelf block aliases accept documented progress and series sorts',()=>{
- const register=vm.runInNewContext(read('src/v10/bookshelf.js')+`\n{
+ const register=vm.runInNewContext(read('src/projects/bookshelf.js')+`\n{
   writerV10RenderBookshelf=(_plugin,target,options)=>target.push(options);
   writerV109RegisterStandaloneProgress=()=>{};
  }\nwriterV10RegisterBookshelf`);
@@ -46,7 +46,7 @@ test('both bookshelf block aliases accept documented progress and series sorts',
  ]);
 });
 test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{
- const a=expose('src/v10/space-history.js',['writerV101SpaceHistoryMerge','writerV101SpaceHistoryRemember','writerV101SpaceHistoryEntry','writerV101SpaceLayoutSummary']);
+ const a=expose('src/workspace/space-history.js',['writerV101SpaceHistoryMerge','writerV101SpaceHistoryRemember','writerV101SpaceHistoryEntry','writerV101SpaceLayoutSummary']);
  const settings={v101SpaceHistory:{maxPerSpace:3,history:{}}},cfg=a.writerV101SpaceHistoryMerge(settings);
  const plugin={settings},space={id:'writing'};
  assert.equal(a.writerV101SpaceHistoryRemember(plugin,space,{type:'leaf',state:{type:'markdown'}},'First'),true);
@@ -108,7 +108,7 @@ test('Spaced repetition: custom intervals preserve old schedule defaults',()=>{
  assert.equal(a.writerV83StudyConfig({}).dailyMax,30);
 });
 test('Pomodoro: focus summary tracks local seven-day data',()=>{
- const a=expose('src/v9/pomodoro.js',['writerV101PomodoroSummary'],{require:()=>({ItemView:class{}})});
+ const a=expose('src/workspace/pomodoro.js',['writerV101PomodoroSummary'],{require:()=>({ItemView:class{}})});
  const now=new Date('2026-11-04T12:00:00Z').getTime();
  const result=a.writerV101PomodoroSummary([{end:now-1000,minutes:25,task:'Chapter 1'}],now);
  assert.equal(result.total,25);assert.equal(result.tasks[0][1],1);

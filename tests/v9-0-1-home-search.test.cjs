@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/writing-home.js','utf8');
+const source=fs.readFileSync('src/workspace/writing-home.js','utf8');
 class Element {
  constructor(tag='div',opts={},parent=null){
   this.tag=tag;this.cls=opts.cls||'';this.text=opts.text||'';this.children=[];

@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v5/workspace-ux.js','utf8');
+const source=fs.readFileSync('src/workspace/workspace-ux.js','utf8');
 const ctx={writerUi:(pt)=>pt,writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,writerKeyshotsBindings:()=>[['Alt-ArrowUp','move-up'],['Mod-Enter','insert-below']],console};
 const v=vm.runInNewContext(source+'\n({writerWorkspaceMerge,writerWorkspaceCapture,writerWorkspaceApplyValues,writerWorkspaceSearchNormalize,writerWorkspaceSearchSections,writerWorkspaceFilterRows,writerWorkspaceNormalizeShortcut,writerWorkspaceHotkeyAudit,WRITER_WORKSPACE_PRESETS})',ctx);
 let passed=0;function test(name,fn){fn();passed++;console.log('PASS',name);}

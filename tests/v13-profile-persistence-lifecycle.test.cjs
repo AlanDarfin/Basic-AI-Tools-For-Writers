@@ -48,7 +48,7 @@ function profileRuntime(language='en'){
  const root=new Element({},document);document.activeElement=root;
  const context={console,Setting,writerUi:(pt,en)=>language==='pt'?pt:en,Notice:class{constructor(message){notices.push(message);}},refreshes,
   FuzzySuggestModal:class{open(){context.picker=this;}}};
- const api=vm.runInNewContext(read('src/v5/workspace-ux.js')+'\n'+read('src/v6/project-workspace.js')+'\nwriterV5RefreshEditors=()=>refreshes.push("editors");\n({WriterWorkspaceProfiles,writerV6ProjectPreferencesRender});',context);
+ const api=vm.runInNewContext(read('src/workspace/workspace-ux.js')+'\n'+read('src/projects/project-workspace.js')+'\nwriterV5RefreshEditors=()=>refreshes.push("editors");\n({WriterWorkspaceProfiles,writerV6ProjectPreferencesRender});',context);
  const previousUndo={easyTyping:{enabled:false}},saved=[{name:'Existing',values:{easyTyping:{enabled:true}}}];
  const settings={workspaceProfiles:{undo:previousUndo,lastPreset:'Previous',saved},easyTyping:{enabled:true},smartTypography:{enabled:true},aiKeys:{private:'retain'},prompts:{writing:'Keep my voice'},visibleModules:{easyTyping:false}};
  const plugin={settings,app:{},saveSettings:async()=>{},register:callback=>cleanups.push(callback),addCommand:command=>commands.push(command),refreshModuleVisibility:()=>refreshes.push('modules'),writerV4Extras:{updateTypewriterClass:()=>refreshes.push('typewriter')}};

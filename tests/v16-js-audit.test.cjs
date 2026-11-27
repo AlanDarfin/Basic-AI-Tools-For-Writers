@@ -166,3 +166,13 @@ test('writing and integrations sources use owner directories',()=>{
   if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
  }
 });
+
+test('project and workspace sources use owner directories',()=>{
+ const domains=new Set(['projects','workspace']);
+ for(const entry of entries.filter(entry=>domains.has(entry.domain))){
+  assert.ok(entry.path.startsWith('src/'+entry.domain+'/'),entry.id);
+  assert.equal(resolveSourcePath(entry.id),entry.path);
+  assert.ok(fs.existsSync(entry.path),entry.path);
+  if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
+ }
+});

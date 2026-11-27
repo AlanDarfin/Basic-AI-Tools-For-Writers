@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const source=read('src/v9/smart-spaces.js');
+const source=read('src/workspace/smart-spaces.js');
 const scope=vm.runInNewContext(source+'\n({writerV9SpaceSanitize,writerV9SpaceItems})',{ItemView:class{}});
 test('per-Space hiding excludes only paths in that collection',()=>{
  const a=scope.writerV9SpaceSanitize({id:'a',name:'Writing',hiddenPaths:['Private','Draft.md']});
@@ -27,7 +27,7 @@ test('Spaces can use manual curated ordering and search beyond old 200-note cap'
  assert.equal(result[1],'Notes/001.md');
 });
 test('title icon shares native explorer setting and does not rewrite notes',()=>{
- const src=read('src/v9/native-explorer.js');
+ const src=read('src/workspace/native-explorer.js');
  assert.match(src,/writer-v9-inline-title-icon/);
  assert.match(src,/getLeavesOfType\?\.\('markdown'\)/);
  assert.match(src,/active-leaf-change/);

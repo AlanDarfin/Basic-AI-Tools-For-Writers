@@ -7,7 +7,7 @@ function expose(path,names,extras={}){
   {console,Date,Map,Set,URL,Math,Number,String,Array,writerUi:(pt,en)=>en,...extras});
 }
 test('Spaces manager uses accessible actions, responsive cards and finite pagination',()=>{
- const s=read('src/v9/smart-spaces.js'),css=read('styles.css');
+ const s=read('src/workspace/smart-spaces.js'),css=read('styles.css');
  assert.match(s,/writer-v102-space-entry-info/);assert.match(s,/writer-v102-space-entry-arrow/);
  assert.match(s,/writer-v102-space-picker/);assert.match(s,/pageSize=space\.view==='table'\?30:24/);
  assert.match(s,/file\.parent\?\.path/);
@@ -36,7 +36,7 @@ test('Chat parses speaker bubble color independently of name color and transpare
  assert.match(css,/is-background-transparent/);
 });
 test('Preview supports banner and secure direct HTTPS links with privacy switch',()=>{
- const api=expose('src/v9/explorer-favorites-preview.js',['writerV102PreviewRemoteUrl','writerV92ExplorerMerge']);
+ const api=expose('src/workspace/explorer-favorites-preview.js',['writerV102PreviewRemoteUrl','writerV92ExplorerMerge']);
  assert.equal(api.writerV102PreviewRemoteUrl('www.example.com/photo.png'),'https://www.example.com/photo.png');
  assert.equal(api.writerV102PreviewRemoteUrl('http://example.com/a.png'),'');
  assert.equal(api.writerV102PreviewRemoteUrl('https://localhost/a.png'),'');
@@ -45,7 +45,7 @@ test('Preview supports banner and secure direct HTTPS links with privacy switch'
  assert.equal(api.writerV102PreviewRemoteUrl('https://example.com/file.txt'),'');
  const settings={};api.writerV92ExplorerMerge(settings);
  assert.equal(settings.v92Explorer.previewRemoteImages,true);
- assert.match(read('src/v9/explorer-favorites-preview.js'),/\['banner','cover','image','thumbnail'\]/);
+ assert.match(read('src/workspace/explorer-favorites-preview.js'),/\['banner','cover','image','thumbnail'\]/);
 });
 test('Image source integration filters to safe providers, supports Wikimedia with no key',()=>{
  const api=expose('src/editor/image-inserter.js',['writerV102ImagesMerge','writerV102ImageQuery','writerV102ImageSafeUrl','writerV102ImageNormalize','writerV102ImageExtension']);
@@ -121,7 +121,7 @@ test('Reading View applies heading suffix without losing semantics and overrides
  assert.deepEqual(Array.from(applied[0]),['text-align','left','important']);
 });
 test('Native Explorer and voice-note CSS corrections are present in the distributed styles',()=>{
- const css=read('styles.css'),source=read('src/v9/explorer-flex.js');
+ const css=read('styles.css'),source=read('src/workspace/explorer-flex.js');
  assert.ok(css.includes('.writer-v8-chat .writer-v8-chat-voice-toggle{'));
  assert.match(css,/place-items:center/);
  assert.match(css,/writer-v91-flex-hidden/);
@@ -129,8 +129,8 @@ test('Native Explorer and voice-note CSS corrections are present in the distribu
  assert.match(source,/writerFlexConcealed/);
 });
 test('Spaces, bookshelf, command palette and fictional voice-note layout are wired',()=>{
- const spaces=read('src/v9/smart-spaces.js'),books=read('src/v10/bookshelf.js');
- const chat=read('src/blocks/finish-blocks.js'),flex=read('src/v9/explorer-flex.js');
+ const spaces=read('src/workspace/smart-spaces.js'),books=read('src/projects/bookshelf.js');
+ const chat=read('src/blocks/finish-blocks.js'),flex=read('src/workspace/explorer-flex.js');
  const css=read('styles.css');
  for(const label of ['v1042-spaces-next',
   'v1042-spaces-previous','v1042-spaces-quick-pin']){

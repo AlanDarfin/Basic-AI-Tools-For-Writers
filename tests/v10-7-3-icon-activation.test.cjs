@@ -111,12 +111,12 @@ test('app.isMobile fallback also protects buttons with a hidden grip',()=>{
 
 test('Related-notes/trash icon buttons also resolve setIcon explicitly',()=>{
  const env=makeRuntime();
- const api=loadModule('src/v10/discovery.js',{obsidian:env.obsidian});
+ const api=loadModule('src/workspace/discovery.js',{obsidian:env.obsidian});
  for(const name of ['link-2','refresh-cw','undo-2','trash-2','refresh-cw']){
   api.writerV10DiscoverySetIcon(makeElement('button'),name);
  }
  assert.deepEqual(env.icons,['link-2','refresh-cw','undo-2','trash-2','refresh-cw']);
- const source=fs.readFileSync('src/v10/discovery.js','utf8');
+ const source=fs.readFileSync('src/workspace/discovery.js','utf8');
  assert.equal((source.match(/\bwriterV10DiscoverySetIcon\(/g)||[]).length,7);
  assert.equal((source.match(/(?<![\w.])setIcon\(/g)||[]).length,0);
 });
@@ -143,7 +143,7 @@ test('Supplemental UI module crash does not abort core feature registration',()=
 
 test('All active 10.6/10.7 UI icon calls are API-backed',()=>{
  const drag=fs.readFileSync('src/editor/block-dragger.js','utf8');
- const discovery=fs.readFileSync('src/v10/discovery.js','utf8');
+ const discovery=fs.readFileSync('src/workspace/discovery.js','utf8');
  assert.match(drag,/setIcon:obsidianSetIcon/);
  assert.match(drag,/obsidianSetIcon\(handle/);
  assert.match(discovery,/require\('obsidian'\)\.setIcon/);

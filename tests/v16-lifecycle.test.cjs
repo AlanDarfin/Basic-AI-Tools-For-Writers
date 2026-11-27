@@ -189,7 +189,7 @@ test('editor menu registration is idempotent and old listeners cannot tag menus 
 });
 
 test('explorer concealment restores original inline display and respects later external changes',()=>{
- const conceal=load('src/v9/explorer-flex.js','writerV16FlexConceal');
+ const conceal=load('src/workspace/explorer-flex.js','writerV16FlexConceal');
  let value='grid',priority='important';
  const node={dataset:{},style:{getPropertyValue:()=>value,getPropertyPriority:()=>priority,
   setProperty:(_key,v,p)=>{value=v;priority=p;},removeProperty:()=>{value='';priority='';}}};
@@ -199,7 +199,7 @@ test('explorer concealment restores original inline display and respects later e
  assert.equal(value,'block');assert.equal(node.dataset.writerFlexConcealed,undefined);
 });
 test('explorer drag restoration preserves native attributes',()=>{
- const drag=load('src/v9/explorer-flex.js','writerV16FlexDraggable');
+ const drag=load('src/workspace/explorer-flex.js','writerV16FlexDraggable');
  let attr='false';const node={dataset:{},getAttribute:()=>attr,setAttribute:(_k,v)=>{attr=v;},
   removeAttribute:()=>{attr=null;},get draggable(){return attr==='true';},set draggable(v){attr=String(v);}};
  drag(node,true,'a');drag(node,true,'b');assert.equal(attr,'true');
@@ -212,7 +212,7 @@ test('explorer registration rejects stale layout, observer and timer callbacks',
  const workspace={containerEl:{},on:(_event,fn)=>fn,onLayoutReady:fn=>ready.push(fn),getLeavesOfType:()=>{scans++;return [];}};
  const plugin={settings:{v91Flex:{enabled:true}},app:{workspace,vault:{on:(_event,fn)=>fn}},
   register:fn=>cleanups.push(fn),registerEvent:fn=>events.push(fn),registerDomEvent:()=>{},addCommand:()=>commands++};
- const register=load('src/v9/explorer-flex.js','writerV91FlexRegister',{MutationObserver:Observer,
+ const register=load('src/workspace/explorer-flex.js','writerV91FlexRegister',{MutationObserver:Observer,
   setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
  register(plugin);register(plugin);assert.equal(commands,5);assert.equal(cleanups.length,1);
  ready[0]();const oldObserver=observers[0],oldRefresh=plugin.writerV91FlexRefresh;
@@ -227,7 +227,7 @@ test('explorer registration rejects stale layout, observer and timer callbacks',
 });
 
 test('homepage grid coalesces measurements and cancels the pending frame on disposal',()=>{
- const create=load('src/v8/writing-home.js','writerV16HomeFrameQueue',{ItemView:class{}});
+ const create=load('src/workspace/writing-home.js','writerV16HomeFrameQueue',{ItemView:class{}});
  const frames=new Map();let seq=0,updates=0;
  const q=create(fn=>{frames.set(++seq,fn);return seq;},id=>frames.delete(id),()=>updates++);
  q.schedule();q.schedule();q.schedule();assert.equal(frames.size,1);
@@ -242,7 +242,7 @@ test('homepage grid ignores callbacks retained by an old observer and avoids red
  ResizeObserver:class{constructor(fn){this.fn=fn;observers.push(this);}observe(){}disconnect(){this.disconnected=true;}}};
  const card={getBoundingClientRect:()=>({height:36}),style:{get gridRowEnd(){return span;},set gridRowEnd(v){writes++;span=v;}}};
  const grid={ownerDocument:{defaultView:host},isConnected:true,clientWidth:900,dataset:{basicCompactLayout:'false'},querySelectorAll:()=>[card]};
- const View=load('src/v8/writing-home.js','WriterV8HomeView',{ItemView:class{},getComputedStyle:()=>({rowGap:'10'})});
+ const View=load('src/workspace/writing-home.js','WriterV8HomeView',{ItemView:class{},getComputedStyle:()=>({rowGap:'10'})});
  const view=Object.create(View.prototype);view.homeRenderGeneration=1;
  const flush=()=>{for(const [id,fn] of [...frames]){frames.delete(id);fn();}};
  view.installWidgetGrid(grid);observers[0].fn();observers[0].fn();assert.equal(frames.size,1);
@@ -260,7 +260,7 @@ test('homepage registration is idempotent and old events and timers cannot mutat
  const workspace={on,onLayoutReady:fn=>{ready=fn;},getLeavesOfType:()=>[],getLeaf:()=>{opens++;return null;}};
  const plugin={app:{workspace,vault:{on}},settings:{v8Finish:{homeRecent:[],homeFavorites:[],homeOnNewTab:true}},_writerV106HomeStarted:true,
  register:fn=>cleanups.push(fn),registerEvent:({event,fn})=>events.set(event,fn),registerView:()=>views++,addCommand:cmd=>commands.set(cmd.id,cmd.callback),saveSettings:async()=>{saves++;}};
- const register=load('src/v8/writing-home.js','writerV8RegisterHome',{ItemView:class{},TFile,setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
+ const register=load('src/workspace/writing-home.js','writerV8RegisterHome',{ItemView:class{},TFile,setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
  register(plugin);register(plugin);assert.equal(views,1);assert.equal(cleanups.length,2);
  const oldOpen=plugin.writerV8HomeOpen,oldReady=ready,oldFile=events.get('file-open'),oldRename=events.get('rename'),oldLayout=events.get('layout-change');
  oldFile(new TFile('old.md'));oldReady();assert.equal(timers.size,2);const stale=[...timers.values()];
@@ -283,17 +283,17 @@ function draftExportHarness(){
   run:exportDraft=>exportDraft(view,0,'first draft',()=>active,()=>index,editor)};
 }
 test('quick draft export clears only its unchanged selected snapshot',async()=>{
- const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ const exportDraft=load('src/workspace/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
  const h=draftExportHarness(),pending=h.run(exportDraft);h.release();const result=await pending;
  assert.equal(result.file,h.file);assert.equal(result.cleared,true);assert.deepEqual(h.drafts,['','second draft','']);assert.equal(h.editor.value,'');assert.equal(h.saves(),1);
 });
 test('quick draft export retains both drafts if the user switches tabs while creating a note',async()=>{
- const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ const exportDraft=load('src/workspace/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
  const h=draftExportHarness(),pending=h.run(exportDraft);h.switchTab();h.release();const result=await pending;
  assert.equal(result.file,h.file);assert.equal(result.cleared,false);assert.deepEqual(h.drafts,['first draft','second draft','']);assert.equal(h.editor.value,'second draft');assert.equal(h.saves(),0);
 });
 test('quick draft export preserves newer edits and stale view state',async()=>{
- const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ const exportDraft=load('src/workspace/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
  for(const closed of [false,true]){
   const h=draftExportHarness(),pending=h.run(exportDraft);
   if(closed)h.close();else h.editor.value=h.drafts[0]='newer edit';
@@ -302,7 +302,7 @@ test('quick draft export preserves newer edits and stale view state',async()=>{
  }
 });
 test('quick draft export restores the snapshot if persisting its removal fails',async()=>{
- const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ const exportDraft=load('src/workspace/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
  const h=draftExportHarness();h.fail();const pending=h.run(exportDraft);h.release();
  await assert.rejects(pending,/save failure/);assert.equal(h.drafts[0],'first draft');assert.equal(h.editor.value,'first draft');
 });
@@ -315,21 +315,21 @@ function webNavigationHarness({surfing=true,webviewer=true}={}){
  return {plugin,current:()=>active,close:()=>{active=false;},resolve:()=>release.resolve(),reject:()=>release.reject(Error('unavailable')),attempts,focus:()=>focus,external:()=>external};
 }
 test('stale native slash search neither focuses nor reports an unavailable viewer',async()=>{
- const open=load('src/v8/home-utilities.js','writerV8HomeOpenNativeSearch',{URL});
+ const open=load('src/workspace/home-utilities.js','writerV8HomeOpenNativeSearch',{URL});
  for(const rejected of [false,true]){
   const h=webNavigationHarness(),pending=open(h.plugin,'query',h.current);h.close();rejected?h.reject():h.resolve();
   assert.equal(await pending,null);assert.equal(h.focus(),0);assert.deepEqual(h.attempts,['webviewer']);assert.equal(h.external(),0);
  }
 });
 test('stale Surfing navigation does not fall back to native viewer or external browser',async()=>{
- const open=load('src/v8/home-utilities.js','writerV8HomeOpenURL',{URL,require:()=>({Platform:{isMobile:false}})});
+ const open=load('src/workspace/home-utilities.js','writerV8HomeOpenURL',{URL,require:()=>({Platform:{isMobile:false}})});
  for(const rejected of [false,true]){
   const h=webNavigationHarness(),pending=open(h.plugin,'https://example.org',h.current);h.close();rejected?h.reject():h.resolve();
   assert.equal(await pending,null);assert.deepEqual(h.attempts,['surfing-view']);assert.equal(h.external(),0);
  }
 });
 test('stale native fallback does not open an external browser, but active fallback still works',async()=>{
- const open=load('src/v8/home-utilities.js','writerV8HomeOpenURL',{URL,require:()=>({Platform:{isMobile:false}})});
+ const open=load('src/workspace/home-utilities.js','writerV8HomeOpenURL',{URL,require:()=>({Platform:{isMobile:false}})});
  for(const stale of [false,true]){
   const h=webNavigationHarness({surfing:false}),pending=open(h.plugin,'https://example.org',h.current);
   if(stale)h.close();h.resolve();assert.equal(await pending,stale?null:'external');assert.equal(h.external(),stale?0:1);

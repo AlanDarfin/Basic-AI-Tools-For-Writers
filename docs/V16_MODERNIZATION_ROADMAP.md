@@ -245,3 +245,10 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Relocate all 27 remaining writing and integration modules: 12 writing, 15 integrations. All 15 writing and 18 integration manifest modules now live under their owner directories. The separately extracted legacy dictionary remains in writing. Overall 81/124 manifest modules are relocated.
 - Update historical regression consumers, including the v12 dynamic loader and the companion bridge/advanced integration consumers already covered by manifest resolution. Preserve stable module IDs, their order and original source blobs; add domain-wide ownership regression checks. No intended runtime, dependency or distributed artifact changes.
 - Full CI and real desktop/mobile QA remain pending for this batch. Next: projects and workspace, then core and the deferred Timeline coordination with PR #175.
+
+### Phase 10.12 — projects and workspace (consolidated)
+
+- CI #1404 passed the complete writing and integrations relocation. Move all 35 remaining projects/workspace modules (13 projects and 22 workspace) into their respective owner directories, including Longform, story and timeline studio, Homepage, Spaces, explorer, calendar, databases and secure notes.
+- Preserve all 124 ordered stable IDs and the original module blobs; update physical source reads in historical regression fixtures while retaining stable bundle markers. Add domain-wide ownership checks for projects and workspace. No intended runtime, dependency or generated artifact changes.
+- Overall 116/124 manifest modules relocated. Only seven core modules and the Timeline block exception remain. Timeline block and the separate PR #175 remain deferred for coordinated integration; the moved Timeline Studio module is distinct.
+- Full new CI and live desktop/mobile Obsidian QA pending. Next: core relocation, Timeline coordination and final migration invariant, then performance and redundancy audit.

@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const home=fs.readFileSync('src/v8/writing-home.js','utf8');
+const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
 const frames=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
-const spaces=fs.readFileSync('src/v9/smart-spaces.js','utf8');
+const spaces=fs.readFileSync('src/workspace/smart-spaces.js','utf8');
 const timeline=fs.readFileSync('src/v9/timeline-blocks.js','utf8');
 const drag=fs.readFileSync('src/editor/block-dragger.js','utf8');
 const css=fs.readFileSync('src/styles/v12-0-5-timeline-dragger.css','utf8');

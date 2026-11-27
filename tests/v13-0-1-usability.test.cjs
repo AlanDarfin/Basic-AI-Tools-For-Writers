@@ -6,7 +6,7 @@ const vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
 const ui=read('src/v13/ui-foundation.js');
 const drag=read('src/editor/block-dragger.js');
-const home=read('src/v8/writing-home.js');
+const home=read('src/workspace/writing-home.js');
 const toolbar=read('src/editor/context-toolbar.js');
 const css=read('src/styles/core/v13-foundation.css');
 const main=read('main.js');

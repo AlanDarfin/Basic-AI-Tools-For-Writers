@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const spaces=read('src/v9/smart-spaces.js');
-const flex=read('src/v9/explorer-flex.js');
+const spaces=read('src/workspace/smart-spaces.js');
+const flex=read('src/workspace/explorer-flex.js');
 const toolbar=read('src/editor/context-toolbar.js');
 const dragger=read('src/editor/block-dragger.js');
 const ctx={

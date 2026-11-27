@@ -58,7 +58,7 @@ test('diagnostics never expose API keys or credentials from endpoint',()=>{
 });
 test('standalone views and Longform respect optional modules and skip hidden panels',()=>{
  const main=fs.readFileSync('main.js','utf8');
- const tools=fs.readFileSync('src/v3/workspace.js','utf8');
+ const tools=fs.readFileSync('src/workspace/workspace.js','utf8');
  const projects=fs.readFileSync('projects.js','utf8');
  const grammar=fs.readFileSync('src/writing/auto-grammar.js','utf8');
  const integrations=fs.readFileSync('src/integrations/integrations.js','utf8');

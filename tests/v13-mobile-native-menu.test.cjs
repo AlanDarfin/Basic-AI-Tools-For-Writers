@@ -27,7 +27,7 @@ function harness(){
   onHide(callback){this.hideCallback=callback;}
  }
  const baseParent=Menu.prototype.setParentElement,baseShow=Menu.prototype.showAtPosition;
- const api=vm.runInNewContext(fs.readFileSync('src/v10/sidebar-width-1010.js','utf8')+'\n'+
+ const api=vm.runInNewContext(fs.readFileSync('src/workspace/sidebar-width-1010.js','utf8')+'\n'+
   fs.readFileSync('src/platform/mobile-ux-1201.js','utf8')+'\n({writerV1201NativeAction,writerV1012OpenNativeAction})',{
    console:{warn(){}},Menu,MutationObserver,writerUi:(_pt,en)=>en,
    setTimeout:(fn,delay=0)=>{const id=++serial;timers.set(id,{fn,at:now+delay});return id;},

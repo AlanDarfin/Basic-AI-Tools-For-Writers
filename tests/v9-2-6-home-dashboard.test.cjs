@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=file=>fs.readFileSync(file,'utf8');
-const home=read('src/v8/writing-home.js');
+const home=read('src/workspace/writing-home.js');
 const finish=read('src/blocks/finish-blocks.js');
 const css=read('src/styles/features/v9-2-6-dashboard.css');
 

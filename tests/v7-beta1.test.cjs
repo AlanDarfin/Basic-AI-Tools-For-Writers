@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v7/worldbuilding.js','utf8');
+const source=fs.readFileSync('src/projects/worldbuilding.js','utf8');
 class TFolder{
  constructor(path,parent=null){this.path=path;this.name=path.split('/').pop();this.parent=parent;this.children=[];}
 }

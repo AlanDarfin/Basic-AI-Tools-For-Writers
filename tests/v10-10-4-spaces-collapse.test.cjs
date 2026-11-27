@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+const source=fs.readFileSync('src/workspace/spaces-dock.js','utf8');
 function setup(){
  const doc={},callbacks=[],events={},observers=[],destroy=[];
  function node(tag='div'){
@@ -172,6 +172,6 @@ test('The mobile collapsing panel is positioned above tabs, not in explorer scro
  assert.match(css,/inset:auto 8px calc\(100% \+ 3px\)/);
  assert.match(css,/\.writer-v1014-spaces-options\[hidden\]/);
  assert.match(css,/\.writer-v1014-spaces-toggle/);
- const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+ const source=fs.readFileSync('src/workspace/spaces-dock.js','utf8');
  assert.doesNotMatch(source,/const mount=root\.querySelector\?\.\('\.workspace-drawer-inner'\)/);
 });

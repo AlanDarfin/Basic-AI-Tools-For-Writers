@@ -30,7 +30,7 @@ test('chat renders repeated speaker as compact message-only row',()=>{
  assert.ok(first.children[0].children.some(node=>node.options.cls==='writer-v8-chat-meta'));
  assert.ok(!second.children[0].children.some(node=>node.options.cls==='writer-v8-chat-meta'));
 });
-const lock=read('src/v9/password-lock.js');
+const lock=read('src/workspace/password-lock.js');
 const lockApi=vm.runInNewContext(lock+'\n({merge:writerV9LockMerge,matches:writerV9LockMatches})');
 test('visual lock is opt-in, limits paths and never claims encryption',()=>{
  const data={};lockApi.merge(data);

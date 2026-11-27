@@ -2,9 +2,9 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const mobile=fs.readFileSync('src/platform/mobile-panel-actions.js','utf8');
-const sidebar=fs.readFileSync('src/v10/sidebar-width-1010.js','utf8');
-const longform=fs.readFileSync('src/v11/longform-studio.js','utf8');
-const home=fs.readFileSync('src/v8/writing-home.js','utf8');
+const sidebar=fs.readFileSync('src/workspace/sidebar-width-1010.js','utf8');
+const longform=fs.readFileSync('src/projects/longform-studio.js','utf8');
+const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
 const projects=fs.readFileSync('projects.js','utf8');
 function load(names,extra={}){
  const ctx={console,Map,Set,Number,Math,Date,String,Object,Array,

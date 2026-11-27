@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=['src/v8/home-utilities.js','src/v8/writing-home.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+const source=['src/workspace/home-utilities.js','src/workspace/writing-home.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
 class Node{
  constructor(tag,options={}){this.tag=tag;this.cls=options.cls||'';this.attributes={...options.attr};this.text=options.text||'';this.children=[];this.listeners={};this.isConnected=true;}
  createEl(tag,opts){const el=new Node(tag,opts);this.children.push(el);return el;}

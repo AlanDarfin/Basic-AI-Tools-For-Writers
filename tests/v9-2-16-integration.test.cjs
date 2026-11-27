@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
 test('Folder Note descriptions survive metadata cache delay',()=>{
- const src=read('src/v9/explorer-favorites-preview.js');
+ const src=read('src/workspace/explorer-favorites-preview.js');
  class TFile{constructor(path){this.path=path;this.extension='md';}}
  class TFolder{constructor(path){this.path=path;this.name='Escrita';}}
  const note=new TFile('Trabalho/Escrita/Escrita.md');
@@ -20,7 +20,7 @@ test('Folder Note descriptions survive metadata cache delay',()=>{
  assert.match(src,/writerV921PreviewBody\(body,cfg.previewMax\)/);
 });
 test('native Spaces use their own name, icon and color, without mutating vault contents',()=>{
- const source=read('src/v9/smart-spaces.js');
+ const source=read('src/workspace/smart-spaces.js');
  const scope=vm.runInNewContext(source+'\n({writerV9SpaceSanitize,writerV9215SpaceHidden})',{ItemView:class{}});
  const a=scope.writerV9SpaceSanitize({name:'Escrita',id:'w',icon:'notebook-pen',iconColor:'#336699',hiddenPaths:['Private']});
  const b=scope.writerV9SpaceSanitize({name:'Estudos',id:'s',hiddenPaths:[]});
@@ -30,7 +30,7 @@ test('native Spaces use their own name, icon and color, without mutating vault c
  assert.equal(scope.writerV9215SpaceHidden(plugin,'Private/chapter.md'),true);
  plugin.settings.v9Spaces.activeId='s';
  assert.equal(scope.writerV9215SpaceHidden(plugin,'Private/chapter.md'),false);
- const dock=read('src/v9/spaces-dock.js');
+ const dock=read('src/workspace/spaces-dock.js');
  for(const term of ['writerV9SpaceEditor','writerV922OpenIconPicker','writerV9215SelectSpace','writer-v9216-spaces-dock'])
   assert.ok(dock.includes(term),term);
  assert.match(dock,/Nenhum arquivo será excluído/);

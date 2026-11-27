@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const studio=fs.readFileSync('src/v7/story-studio.js','utf8');
-const timeline=fs.readFileSync('src/v7/timeline-studio.js','utf8');
-const world=fs.readFileSync('src/v7/worldbuilding.js','utf8');
+const studio=fs.readFileSync('src/projects/story-studio.js','utf8');
+const timeline=fs.readFileSync('src/projects/timeline-studio.js','utf8');
+const world=fs.readFileSync('src/projects/worldbuilding.js','utf8');
 const fakeFiles=new Map();
 class TFile{constructor(path){this.path=path;this.basename=path.split('/').pop().replace(/\.[^.]+$/,'');this.extension=path.split('.').pop();}}
 fakeFiles.set('World/hero.png',new TFile('World/hero.png'));

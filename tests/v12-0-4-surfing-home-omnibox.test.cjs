@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const home=fs.readFileSync('src/v8/writing-home.js','utf8');
-const util=fs.readFileSync('src/v8/home-utilities.js','utf8');
+const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
+const util=fs.readFileSync('src/workspace/home-utilities.js','utf8');
 const css=fs.readFileSync('src/styles/v12-0-5-home-widgets.css','utf8');
 const utils=vm.runInNewContext(util+'\n({writerV8HomeSurfing})',{URL,writerUi:(pt,en)=>en,console});
 let nativeMounted=0,nativeEnter=0;

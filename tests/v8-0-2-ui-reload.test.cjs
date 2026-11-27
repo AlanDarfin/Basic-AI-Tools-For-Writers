@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const main=fs.readFileSync('main.js','utf8');
 const style=fs.readFileSync('src/styles/features/v8-polish.css','utf8');
-const rc=fs.readFileSync('src/v7/longform-rc.js','utf8');
+const rc=fs.readFileSync('src/projects/longform-rc.js','utf8');
 function methods(){
  const from=main.indexOf('  hotReloadStorageKey(){');
  const end=main.indexOf('  async onunload(){',from);

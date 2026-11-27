@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const spaces=read('src/v9/smart-spaces.js'),flex=read('src/v9/explorer-flex.js');
+const spaces=read('src/workspace/smart-spaces.js'),flex=read('src/workspace/explorer-flex.js');
 const scope=vm.runInNewContext(spaces+'\n'+flex+
  '\n({writerV9SpaceSanitize,writerV9SpacesMerge,writerV91FlexMerge,writerV93FlexCompare,writerV93FlexRecord,writerV93FlexPinned})',
  {ItemView:class {}});
@@ -26,7 +26,7 @@ test('a Space keeps its own manual orders, pins and homepage widget configuratio
  settings.v9Spaces.activeId='study';
  assert.equal(scope.writerV93FlexRecord(plugin,'Writing').sort,'native');
  assert.equal(scope.writerV93FlexPinned(plugin,'Writing/Book.md'),false);
- assert.match(read('src/v8/writing-home.js'),/widgetPreferences\(\)/);
+ assert.match(read('src/workspace/writing-home.js'),/widgetPreferences\(\)/);
 });
 test('numeric and YAML property sorting work without touching physical files',()=>{
  const cfg={v91Flex:{enabled:true}};scope.writerV91FlexMerge(cfg);
@@ -134,7 +134,7 @@ test('Flow text cards save column assignments in settings, scoped to the board a
  assert.deepEqual(text(render('Continued.md').children[1]),['Second card','First card']);
 });
 test('Explorer can opt into a 16:9 preview while existing settings stay square',()=>{
- const src=read('src/v9/explorer-favorites-preview.js');
+ const src=read('src/workspace/explorer-favorites-preview.js');
  const {writerV92ExplorerMerge}=vm.runInNewContext(src+'\n({writerV92ExplorerMerge})',{});
  assert.equal(writerV92ExplorerMerge({}).previewImageShape,'square');
  assert.equal(writerV92ExplorerMerge({v92Explorer:{previewImageShape:'wide'}}).previewImageShape,'wide');
@@ -166,7 +166,7 @@ test('insert catalog works with slash suggestions turned off and rejects stale e
  assert.match(notice,/mudou/);assert.equal(content,'Edited');
 });
 test('long pressing expands on mobile without synthetic click immediately closing',()=>{
- const src=read('src/v9/explorer-favorites-preview.js');
+ const src=read('src/workspace/explorer-favorites-preview.js');
  assert.match(src,/touchstart/);assert.match(src,/touchmove/);
  assert.match(src,/skipClick/);assert.match(src,/previewTouchExpand/);
  assert.match(src,/previewHoldMs/);
@@ -175,8 +175,8 @@ test('responsive toolbar, note title icon and Flow/Space controls remain configu
  const css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  for(const name of ['writer-v93-space-manage-action','writer-v93-reorder-actions',
   'writer-v93-flow-toolbar','writer-v9-inline-title-icon'])assert.ok(css.includes(name));
- assert.match(read('src/v9/native-explorer.js'),/showTitleIcons/);
- assert.match(read('src/v9/spaces-dock.js'),/writer-v93-space-manage-action/);
+ assert.match(read('src/workspace/native-explorer.js'),/showTitleIcons/);
+ assert.match(read('src/workspace/spaces-dock.js'),/writer-v93-space-manage-action/);
  assert.match(read('src/editor/flow-slash.js'),/flowArrange/);
  assert.doesNotMatch(css,/!important/);
 });

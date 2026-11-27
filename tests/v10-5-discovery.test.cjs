@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 class TFile{}
-const source=fs.readFileSync('src/v10/discovery.js','utf8');
+const source=fs.readFileSync('src/workspace/discovery.js','utf8');
 const helpers=vm.runInNewContext(source+'\n({writerV10DiscoveryMerge,writerV10RelatedTokens,writerV10RelatedSignature,writerV10RelatedScore,writerV10TrashRestore,writerV10TrashList,writerV10TrashFolders,writerV10TrashDeleteFolder,writerV10TrashPermanentlyDelete,writerV10ZoteroRef})',
  {console,Map,Set,Uint32Array,Math,Promise,setTimeout,ItemView:class{},TFile,writerUi:(pt,en)=>en});
 test('Discovery defaults remain bounded and opt in to local matching',()=>{
@@ -135,12 +135,12 @@ test('bibliography block renders only requested keys and handles unavailable exp
  assert.deepEqual(tags,[['p','Invalid bibliography block options.']]);
 });
 test('Homepage, bundle, and styles include all discovery integrations',()=>{
- const home=fs.readFileSync('src/v8/writing-home.js','utf8');
+ const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
  const {sourceIds}=require('../scripts/js-manifest.js');
  const enhancement=fs.readFileSync('src/v10/enhancements.js','utf8');
  for(const key of ['books','trash','reading','zotero'])assert.match(home,new RegExp('\\b'+key+':p=>'));
  assert.doesNotMatch(home,/related:p=>/);
- assert.doesNotMatch(fs.readFileSync('src/v10/discovery.js','utf8'),/id:'v10-trash-explorer'/);
+ assert.doesNotMatch(fs.readFileSync('src/workspace/discovery.js','utf8'),/id:'v10-trash-explorer'/);
  assert.ok(sourceIds.includes('src/v10/discovery.js'));
  assert.match(enhancement,/writerV10DiscoveryRegister/);
  assert.match(enhancement,/markdown-source-view \.cm-scroller/);

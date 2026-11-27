@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
 test('Folder Notes use only description YAML, not the opening prose',()=>{
- const source=read('src/v9/explorer-favorites-preview.js');
+ const source=read('src/workspace/explorer-favorites-preview.js');
  class TFile{constructor(path){this.path=path;this.extension='md';}}
  class TFolder{constructor(path){this.path=path;this.name='Writing';}}
  const target=new TFile('Writing/Writing.md'),folder=new TFolder('Writing');
@@ -26,7 +26,7 @@ test('Folder Notes use only description YAML, not the opening prose',()=>{
  assert.match(source,/noteExcerpts/);
 });
 test('Title icons do not affect editable title baseline and toolbar icons are sized for touch',()=>{
- const source=read('src/v9/native-explorer.js'),css=read('src/styles/native/v9-2-2-iconic-fixes.css');
+ const source=read('src/workspace/native-explorer.js'),css=read('src/styles/native/v9-2-2-iconic-fixes.css');
  assert.match(source,/writer-v93-title-icon-host/);
  assert.match(source,/title\.classList\.toggle/);
  assert.match(css,/\.inline-title\.writer-v93-title-icon-host/);
@@ -37,10 +37,10 @@ test('Title icons do not affect editable title baseline and toolbar icons are si
  assert.doesNotMatch(titleRule,/position:absolute/);
  assert.match(css,/width:27px/);
  assert.match(css,/writer-v93-folder-description:not\(\.is-expanded\)/);
- assert.match(read('src/v9/spaces-dock.js'),/writer-v93-space-manage-action/);
+ assert.match(read('src/workspace/spaces-dock.js'),/writer-v93-space-manage-action/);
 });
 test('Custom Sorting-compatible YAML subset is opt-in and per folder',()=>{
- const flex=read('src/v9/explorer-flex.js');
+ const flex=read('src/workspace/explorer-flex.js');
  const scope=vm.runInNewContext(flex+
   '\n({writerV93FlexParseSortSpec,writerV93FlexRecord,writerV91FlexMerge})',{});
  const rules=scope.writerV93FlexParseSortSpec('folders-first\norder-desc: a-z');
@@ -59,7 +59,7 @@ test('Custom Sorting-compatible YAML subset is opt-in and per folder',()=>{
  assert.match(flex,/foldersFirst/);
 });
 test('Flow and per-Space settings retain distinct controls for pre-v10 modularity',()=>{
- const spaces=read('src/v9/smart-spaces.js'),flow=read('src/editor/flow-slash.js');
+ const spaces=read('src/workspace/smart-spaces.js'),flow=read('src/editor/flow-slash.js');
  const pretty=read('src/editor/pretty-properties.js');
  assert.match(spaces,/manageIcon/);assert.match(spaces,/pinnedPaths/);
  assert.match(spaces,/homeWidgetsEnabled/);assert.match(spaces,/foldersFirst/);

@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const code=fs.readFileSync('src/v11/database-builder.js','utf8');
-const prev=fs.readFileSync('src/v11/database-workflow.js','utf8');
+const code=fs.readFileSync('src/workspace/database-builder.js','utf8');
+const prev=fs.readFileSync('src/workspace/database-workflow.js','utf8');
 const load=keys=>vm.runInNewContext(prev+'\n'+code+'\n({'+keys.join(',')+'})',{String,Number,Math,Set,Array,Object,
  writerV1011NotionSpec:text=>{
   const o={folder:'',columns:['file','status'],view:'table'};

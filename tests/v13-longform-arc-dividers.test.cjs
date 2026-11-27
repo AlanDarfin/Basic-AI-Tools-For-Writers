@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const projectsSource=fs.readFileSync('projects.js','utf8');
-const dividersSource=fs.readFileSync('src/v13/longform-dividers.js','utf8');
+const dividersSource=fs.readFileSync('src/projects/longform-dividers.js','utf8');
 const json=value=>JSON.parse(JSON.stringify(value));
 let lastPrompt=null;
 const context=vm.createContext({module:{exports:{}},require:()=>({

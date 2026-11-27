@@ -5,9 +5,9 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const main=fs.readFileSync('main.js','utf8');
 const complements=fs.readFileSync('src/writing/complements.js','utf8');
-const workspace=fs.readFileSync('src/v3/workspace.js','utf8');
+const workspace=fs.readFileSync('src/workspace/workspace.js','utf8');
 const projects=fs.readFileSync('projects.js','utf8');
-const world=fs.readFileSync('src/v7/worldbuilding.js','utf8');
+const world=fs.readFileSync('src/projects/worldbuilding.js','utf8');
 
 test('personal dictionary accepts Unicode proper nouns and suppresses repeated findings',()=>{
  const a=main.indexOf('function writerReviewWord('),b=main.indexOf('function prepareGrammarText(',a);

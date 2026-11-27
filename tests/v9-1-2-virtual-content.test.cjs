@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
 const source=read('src/blocks/virtual-content.js');
-const nav=read('src/blocks/format-blocks.js')+'\n'+read('src/v6/longform-navigation.js');
+const nav=read('src/blocks/format-blocks.js')+'\n'+read('src/projects/longform-navigation.js');
 class TFile{
  constructor(path){this.path=path;this.basename=path.split('/').at(-1).replace(/\.md$/,'');this.extension='md';this.parent={path:path.split('/').slice(0,-1).join('/')};}
 }

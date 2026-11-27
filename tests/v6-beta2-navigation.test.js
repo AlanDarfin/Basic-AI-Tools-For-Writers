@@ -1,7 +1,7 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').pop().replace(/\.md$/,'');this.parent={path:path.split('/').slice(0,-1).join('/')};}}
-const source=fs.readFileSync('src/v6/longform-navigation.js','utf8');
+const source=fs.readFileSync('src/projects/longform-navigation.js','utf8');
 const index=new TFile('Book/Index.md');
 const ordered=[
  {title:'A',indent:0},{title:'A.1',indent:1},{title:'A.2',indent:1},

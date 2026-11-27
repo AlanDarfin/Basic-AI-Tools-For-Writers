@@ -1,11 +1,11 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const files=['src/v10/bookshelf.js','src/v10/toolbox.js','src/v9/smart-spaces.js','src/blocks/media-gallery.js'];
+const files=['src/projects/bookshelf.js','src/workspace/toolbox.js','src/workspace/smart-spaces.js','src/blocks/media-gallery.js'];
 for(const file of files)test('v10 module exists: '+file,()=>assert.ok(fs.statSync(file).size>100));
 test('v10 safe text editor allows ordinary text and rejects large/binary files',()=>{
  class TFile{}
  const context={TFile,Set,console};
- const api=vm.runInNewContext(fs.readFileSync('src/v10/toolbox.js','utf8')+
+ const api=vm.runInNewContext(fs.readFileSync('src/workspace/toolbox.js','utf8')+
   '\n({writerV10EditableText,writerV10FormatJson,writerV10TableSortText,writerV10ToolboxMerge})',context);
  const a=new TFile();a.extension='json';a.stat={size:100};
  assert.equal(api.writerV10EditableText(a),true);
@@ -21,7 +21,7 @@ test('v10 safe text editor allows ordinary text and rejects large/binary files',
 test('v10 bookshelf uses existing Longform indices without duplicating books',()=>{
  class TFile{}
  const file=new TFile();file.basename='novel';file.stat={mtime:12};
- const api=vm.runInNewContext(fs.readFileSync('src/v10/bookshelf.js','utf8')+
+ const api=vm.runInNewContext(fs.readFileSync('src/projects/bookshelf.js','utf8')+
   '\n({writerV10BookshelfMerge,writerV10BookshelfProjects,writerV10BookshelfSort})',
   {TFile,writerUi:pt=>pt,longformIndex:(value)=>({file:value,title:'Novel',scenes:[],meta:{}})});
  const plugin={settings:{v10Bookshelf:{standalone:[]}},app:{vault:{getMarkdownFiles:()=>[file]}}};
@@ -35,7 +35,7 @@ test('new media gallery supports documents, audio and PDF while retaining legacy
  assert.match(src,/writer-media-gallery/);assert.match(src,/media-gallery/);
 });
 test('Spaces support snapshots that are optional and isolated',()=>{
- const s=fs.readFileSync('src/v9/smart-spaces.js','utf8');
+ const s=fs.readFileSync('src/workspace/smart-spaces.js','utf8');
  assert.match(s,/layoutSnapshot/);assert.match(s,/autoSaveLayouts:false/);
  assert.match(s,/restoreLayoutsOnSwitch:false/);
  assert.match(s,/writerV10SpaceSaveLayout/);

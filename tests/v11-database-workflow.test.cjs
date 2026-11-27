@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v11/database-workflow.js','utf8');
+const source=fs.readFileSync('src/workspace/database-workflow.js','utf8');
 const load=(names,extra={})=>vm.runInNewContext(source+'\n({'+names.join(',')+'})',
  {writerUi:(pt,en)=>pt,Number,String,Array,Set,Object,...extra});
 test('v11 safely parses typed properties and forbids prototype or file keys',()=>{

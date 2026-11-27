@@ -7,8 +7,8 @@ const main=fs.readFileSync('main.js','utf8');
 const css=fs.readFileSync('styles.css','utf8');
 
 test('homepage slash searches use native Web Viewer and never match vault notes',()=>{
- const home=fs.readFileSync('src/v8/writing-home.js','utf8');
- const utils=fs.readFileSync('src/v8/home-utilities.js','utf8');
+ const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
+ const utils=fs.readFileSync('src/workspace/home-utilities.js','utf8');
  assert.match(home,/const slashSearch=\(\)=>input\.value\.trimStart\(\)\.startsWith\('\/'\)/);
  assert.match(home,/if\(slashSearch\(\)\)\{[\s\S]*?matches=\[\];selected=0;status\.hidden=false;[\s\S]*?return; \/\/ Never search/);
  assert.match(home,/if\(slashSearch\(\)\)await writerV8HomeOpenNativeSearch\(this\.plugin,slashTerm\(\),current\)/);

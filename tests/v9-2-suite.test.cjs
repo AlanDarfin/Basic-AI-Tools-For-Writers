@@ -290,7 +290,7 @@ test('the native print preview recolors text without a raster filter and graysca
 });
 
 test('9.2.1 Explorer has a right-aligned interactive favorite and bottom preview toggle',()=>{
- const src=read('src/v9/explorer-favorites-preview.js'),css=read('src/styles/features/v9-2-suite.css');
+ const src=read('src/workspace/explorer-favorites-preview.js'),css=read('src/styles/features/v9-2-suite.css');
  assert.match(src,/writer-v921-preview-toggle/);
  assert.match(src,/nav-header > \.nav-buttons-container/);
  assert.match(src,/aria-pressed/);

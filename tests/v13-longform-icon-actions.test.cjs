@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const projectsSource=fs.readFileSync('projects.js','utf8');
-const dividersSource=fs.readFileSync('src/v13/longform-dividers.js','utf8');
+const dividersSource=fs.readFileSync('src/projects/longform-dividers.js','utf8');
 
 class Element{
  constructor(tag='div',options={}){this.tag=tag;this.options=options;this.children=[];this.listeners={};this.dataset={};}

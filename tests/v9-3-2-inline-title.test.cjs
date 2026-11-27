@@ -18,7 +18,7 @@ test('native icon remains part of first title line, not absolutely positioned at
 });
 
 test('explorer title glyphs take precedence over YAML glyphs and remain decorative',()=>{
- const explorer=read('src/v9/native-explorer.js');
+ const explorer=read('src/workspace/native-explorer.js');
  const pretty=read('src/editor/pretty-properties.js');
  assert.match(explorer,/if\(icon\)title\.querySelector\(':scope > \.writer-v9215-pretty-icon'\)\?\.remove\(\)/);
  assert.match(explorer,/node\.setAttribute\('contenteditable','false'\)/);
@@ -27,7 +27,7 @@ test('explorer title glyphs take precedence over YAML glyphs and remain decorati
 });
 
 test('unloading iterates all markdown panes and removes only Basic decorations',()=>{
- const source=read('src/v9/native-explorer.js');
+ const source=read('src/workspace/native-explorer.js');
  assert.match(source,/for\(const leaf of plugin\.app\.workspace\.getLeavesOfType\?\.\('markdown'\)\|\|\[\]\)\{/);
  assert.match(source,/writer-v9-inline-title-icon'\)\.forEach\(el=>el\.remove\(\)\)/);
  assert.match(source,/if\(!title\.querySelector\(':scope > \.writer-v9215-pretty-icon'\)\)/);

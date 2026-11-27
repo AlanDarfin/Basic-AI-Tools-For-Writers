@@ -115,7 +115,7 @@ test('Diagnostics opens the legacy dictionary recovery and preserves existing di
 });
 test('Build, homepage and settings contain required v10.6 wiring',()=>{
  const read=x=>fs.readFileSync(x,'utf8');
- const homeSrc=read('src/v8/writing-home.js'),enhancements=read('src/v10/enhancements.js');
+ const homeSrc=read('src/workspace/writing-home.js'),enhancements=read('src/v10/enhancements.js');
  const {sourceIds}=require('../scripts/js-manifest.js');
  for(const mod of ['startup-cleanup','block-dragger','historical-helpers'])assert.ok(sourceIds.includes('src/v10/'+mod+'.js'));
  assert.ok(homeSrc.includes('writerV106HomeRegisterStartup(plugin,open)'));

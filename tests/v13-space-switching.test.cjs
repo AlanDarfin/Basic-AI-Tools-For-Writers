@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/smart-spaces.js','utf8');
+const source=fs.readFileSync('src/workspace/smart-spaces.js','utf8');
 class Element{
  constructor(tag='div',options={}){
   this.tag=tag;this.children=[];this.events={};this.text=options.text||'';

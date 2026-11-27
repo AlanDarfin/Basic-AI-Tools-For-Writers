@@ -35,7 +35,7 @@ function html(){
  doc.createElement=node;doc.body=node('body');
  return {doc,node};
 }
-const source=fs.readFileSync('src/v10/sidebar-width-1010.js','utf8');
+const source=fs.readFileSync('src/workspace/sidebar-width-1010.js','utf8');
 function loadMobile(globals={}){
  const callbacks=[],logs=[],ctx={
   console:{warn:(...a)=>logs.push(['warn',...a]),error:(...a)=>logs.push(['error',...a])},
@@ -104,7 +104,7 @@ test('Mobile toolbar mounts INSIDE native selector, replaces only the old select
  assert.ok(!tabs.children.some(n=>n.classList.contains('writer-v1010-sidebar-toolbar')));
 });
 test('Mobile Spaces belongs to native tabs instead of Explorer scroll or rebuilt drawer inner',()=>{
- const source=fs.readFileSync('src/v9/spaces-dock.js','utf8');
+ const source=fs.readFileSync('src/workspace/spaces-dock.js','utf8');
  assert.match(source,/function writerV1014MobileSpacesAnchor\(plugin\)/);
  assert.match(source,/const mount=writerV1014MobileSpacesAnchor\(plugin\)/);
  assert.match(source,/writer-v1014-mobile-spaces-anchor/);

@@ -41,7 +41,7 @@ test('homepage icon aligns its SVG and custom image in the same centered slot',(
  assert.match(svg,/width:38px;/);
  assert.match(svg,/height:38px;/);
  // Keep image support from the original title implementation.
- assert.match(fs.readFileSync('src/v8/writing-home.js','utf8'),/icon\.createEl\('img'/);
+ assert.match(fs.readFileSync('src/workspace/writing-home.js','utf8'),/icon\.createEl\('img'/);
  assert.match(fs.readFileSync('src/styles/features/v9-final.css','utf8'),/\.writer-v8-home-title-icon img\{/);
 });
 

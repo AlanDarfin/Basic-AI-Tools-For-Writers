@@ -35,7 +35,7 @@ test('only Basic-owned visual elements are styled by the final theme layer',()=>
  assert.doesNotMatch(style,/\n(?:body|html|\.workspace-leaf|\.modal-container)\s*\{/);
 });
 test('file explorer observes only its own view and does not rebuild stable icons',()=>{
- const source=read('src/v9/native-explorer.js');
+ const source=read('src/workspace/native-explorer.js');
  assert.match(source,/explorerObservers=new Map/);
  assert.match(source,/watcher\.observe\(host,\{childList:true,subtree:true\}\)/);
  assert.doesNotMatch(source,/observer\.observe\(documentRoot/);

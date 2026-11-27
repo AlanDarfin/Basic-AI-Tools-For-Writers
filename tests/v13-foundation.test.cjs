@@ -79,7 +79,7 @@ test('v13 compatibility adapters remain scoped to Basic hosts and preserve Surfi
 });
 
 test('legacy command pickers are unified with v13 and obsolete local fallbacks removed',()=>{
- const toolbox=fs.readFileSync(path.join(root,'src/v10/toolbox.js'),'utf8');
+ const toolbox=fs.readFileSync(path.join(root,'src/workspace/toolbox.js'),'utf8');
  const toolbar=fs.readFileSync(path.join(root,'src/editor/context-toolbar.js'),'utf8');
  assert.match(toolbox,/const commands=writerV13CommandCatalog\(plugin\)/);
  assert.match(toolbox,/visible=writerV13RankCommands\(commands,query,70\)/);

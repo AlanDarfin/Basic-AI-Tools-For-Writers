@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const src=fs.readFileSync('src/writing/auto-grammar.js','utf8');
 const main=fs.readFileSync('main.js','utf8');
-const tools=fs.readFileSync('src/v3/workspace.js','utf8');
+const tools=fs.readFileSync('src/workspace/workspace.js','utf8');
 const read=()=>new Map();
 function externalMethods(){
  const from=main.indexOf('  externalLanguageTool(){'),end=main.indexOf('  async checkGrammar(text){',from);

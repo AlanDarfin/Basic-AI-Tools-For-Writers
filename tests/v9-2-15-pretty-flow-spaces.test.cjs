@@ -3,8 +3,8 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const spaceSource=read('src/v9/smart-spaces.js');
-const flexSource=read('src/v9/explorer-flex.js');
+const spaceSource=read('src/workspace/smart-spaces.js');
+const flexSource=read('src/workspace/explorer-flex.js');
 const sandbox={ItemView:class {}};
 const scope=vm.runInNewContext(spaceSource+'\n'+flexSource+
  '\n({writerV9SpacesMerge,writerV9215ActiveSpace,writerV9215SpaceHidden,writerV91FlexIsHidden})',sandbox);

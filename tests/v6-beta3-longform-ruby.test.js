@@ -11,7 +11,7 @@ const app={
  vault:{getMarkdownFiles:()=>all,getAbstractFileByPath:p=>all.find(f=>f.path===p)||null,cachedRead:async()=> '---\nlongform:\n  format: scenes\n  scenes: []\n---\n'},
  metadataCache:{getFileCache:f=>f===index?{frontmatter:{longform:{format:'scenes',sceneFolder:'Cenas',scenes:[]}}}:null}
 };
-const n=vm.runInNewContext(fs.readFileSync('src/v6/longform-navigation.js','utf8')+'\n({writerBookNavFindProject,writerBookNavFindProjectAsync,writerBookNavTargets})',{
+const n=vm.runInNewContext(fs.readFileSync('src/projects/longform-navigation.js','utf8')+'\n({writerBookNavFindProject,writerBookNavFindProjectAsync,writerBookNavTargets})',{
  TFile,console,parseYaml:()=>({longform:{format:'scenes',sceneFolder:'Cenas',scenes}}),
  longformIndex:f=>f===index?{file:index,format:'scenes',meta:{sceneFolder:'Cenas'},scenes:[]}:null,
  lfPath:(...xs)=>xs.filter(Boolean).join('/').replace(/\/+/g,'/'),

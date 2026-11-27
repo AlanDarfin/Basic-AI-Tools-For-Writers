@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v13/story-planning.js','utf8');
+const source=fs.readFileSync('src/projects/story-planning.js','utf8');
 const json=x=>JSON.parse(JSON.stringify(x));
 const workspace=()=>{
  const files=new Map(),writes=[],saves=[];

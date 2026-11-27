@@ -19,7 +19,7 @@ class Setting{
  addButton(fn){const b={setButtonText(){return this;},onClick(fn){this.click=fn;return this;}};this.button=b;fn(b);return this;}
 }
 const ctx={TFile,Setting,lfMsg:(pt)=>pt,Notice:class{},console};
-const source=fs.readFileSync('src/v5/project-metadata.js','utf8');
+const source=fs.readFileSync('src/projects/project-metadata.js','utf8');
 const projectApi=vm.runInNewContext(source+'\n({writerProjectCoverFiles,writerProjectValidCover,writerProjectNormalizeDescription,writerProjectLicenseInfo,writerProjectRemember,writerProjectRenamedPath,writerProjectMetaRender,WRITER_PROJECT_LICENSES})',ctx);
 let passed=0;
 async function test(name,fn){await fn();passed++;console.log('PASS',name);}

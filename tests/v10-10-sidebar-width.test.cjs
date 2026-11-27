@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v10/sidebar-width-1010.js','utf8');
+const source=fs.readFileSync('src/workspace/sidebar-width-1010.js','utf8');
 function run(globals={}){
  const waits=[],logs=[];
  const ctx={

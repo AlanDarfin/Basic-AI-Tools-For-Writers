@@ -37,6 +37,6 @@ test('Legacy settings and user-controlled startup remain supported',()=>{
  const old=fs.readFileSync('src/v10/enhancements.js','utf8');
  assert.match(old,/writerV101ReadingProgressRegister\(plugin\)/);
  assert.match(old,/typeof writerV107RegisterAfterStartup==='function'/);
- const home=fs.readFileSync('src/v8/writing-home.js','utf8');
+ const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
  assert.match(home,/homeCleanStart/);
 });

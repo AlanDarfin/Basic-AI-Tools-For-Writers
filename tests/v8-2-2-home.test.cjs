@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const util=read('src/v8/home-utilities.js'),home=read('src/v8/writing-home.js'),finish=read('src/blocks/finish-blocks.js'),css=read('src/styles/features/v8-finish-suite.css');
+const util=read('src/workspace/home-utilities.js'),home=read('src/workspace/writing-home.js'),finish=read('src/blocks/finish-blocks.js'),css=read('src/styles/features/v8-finish-suite.css');
 const obs={Platform:{isMobile:false}};
 const api=vm.runInNewContext(util+'\n({writerV8HomeValidURL,writerV8HomeIconName,writerV8HomeCalendarCells,writerV8HomeOpenURL,writerV8HomeAttachedEmpty,writerV8HomeIsRootEmpty})',{
  URL,require:name=>name==='obsidian'?obs:null,writerUi:pt=>pt,console

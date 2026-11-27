@@ -83,3 +83,13 @@ The ordered builder references 124 existing source modules, totaling 2,199,898 b
 Largest listed modules: settings-search-index (105613 B), writing-home (85456 B), final-suite (56937 B), explorer-flex (46376 B), smart-spaces (43813 B), context-toolbar (43587 B), longform-studio (40874 B). Size alone is not evidence of duplication or performance problems; generated indexes must be distinguished from handwritten implementation.
 
 Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle inventory, with source locations and an explicit distinction between lexical duplicates, intentional overrides and unverified candidates. Preserve builder order and runtime files. No dependency upgrades or code deletion as part of the initial inventory.
+
+## Phase 6.1 — syntax-aware read-only inventory
+
+- CI #1377 passed all validation stages on the 50/53 CSS migration checkpoint. The three Timeline-dependent CSS paths still await PR #175 and real Obsidian visual QA.
+- New `scripts/js-v16-audit.js` parses the distributed JS with the existing pinned Visual Kit TypeScript development dependency; it never executes the plugin or modifies the bundle. No new dependencies.
+- Verify all 124 ordered source slices and the compiled vendor block against the actual bundle before analysis. Map authored sites to source path, source line, bundle line and nearest function owner. Exclude the generated Visual Kit bundle from candidate counting; identify the generated settings search index separately.
+- Inventory named top-level function/class/variable declarations, repeated top-level names, prototype assignment targets, literal and dynamic command registration sites, and syntactic lifecycle/data candidates (listeners, observers, timers, registrations, cancellation, data saves).
+- Reports are leads for manual review, not proof of leaks, duplicate runtime registrations or dead code. Receiver aliases, indirect calls, conditional execution, computed keys and destructuring are not fully resolved. No cleanup or runtime refactoring has been performed.
+- Run `npm run build` then `npm run audit:js` for the summary or `npm run audit:js -- --json` for the full inventory. CI runs the audit and dedicated regression fixture file. Syntax and exact source/bundle mismatches fail validation; candidate repetition does not.
+- Next: inspect the real report, prioritize confirmed lifecycle and prototype ownership conflicts, map registrations to disposal paths, and record baseline counts before implementing Phase 7.

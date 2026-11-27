@@ -3,6 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
 
 const features=[
  {file:'data-tables',key:'v107Db',name:'Db',field:'maxFiles',label:'Maximum notes per database',value:750},
@@ -43,7 +44,7 @@ function runtime(feature,initial={},globals={}){
   'speech-accessibility':['writerV107SpeechStart'],
   'study-fsrs':['writerV107StudySchedule']
  }[feature.file]||[];
- const api=vm.runInNewContext(fs.readFileSync('src/v10/'+feature.file+'.js','utf8')+
+ const api=vm.runInNewContext(fs.readFileSync(resolveSourcePath('src/v10/'+feature.file+'.js'),'utf8')+
   '\n({'+[config,render,...extras].join(',')+'})',{
    Setting,ItemView:class{},TFile:class{},URL,writerUi:(_pt,en)=>en,console,...globals
   });
@@ -128,7 +129,7 @@ test('empty calendar feed fields do not produce synchronization errors or reques
  const feature=features.find(item=>item.file==='calendar-feeds');
  const h=runtime(feature,{enabled:true,urls:['','','']});
  h.plugin.app.vault.getAbstractFileByPath=()=>({path:'Calendar'});
- const source=fs.readFileSync('src/v10/calendar-feeds.js','utf8');
+ const source=fs.readFileSync('src/integrations/calendar-feeds.js','utf8');
  const run=vm.runInNewContext(source+'\nwriterV107CalendarSynchronize',{
   WRITER_V83_CAL_FOLDER:'Calendar',writerUi:(_pt,en)=>en,
   require:()=>{throw Error('No network request should be sent for an empty field');},console

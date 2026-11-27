@@ -65,7 +65,7 @@ function zoteroHarness({create=async()=>{},existing=[]}={}){
   create:(path,data)=>{writes.push(path);return create(path,data);}};
  const plugin={app:{vault},settings:{v107Zotero:{enabled:true,libraryId:'1234',folder:'Zotero',maxItems:200}},
   register:fn=>cleanups.push(fn),addCommand:({id,callback})=>commands.set(id,callback),saveSettings:async()=>{}};
- const api=load('src/v10/zotero-web.js','({prompt:writerV107ZoteroPrompt,register:writerV107ZoteroRegister,settings:writerV107ZoteroSettings})',
+ const api=load('src/integrations/zotero-web.js','({prompt:writerV107ZoteroPrompt,register:writerV107ZoteroRegister,settings:writerV107ZoteroSettings})',
   {Modal,Setting,Notice:class{constructor(text){notices.push(text);}},
   require:()=>({requestUrl:options=>new Promise((resolve,reject)=>requests.push({options,resolve,reject}))})});
  return {...api,plugin,modals,buttons,requests,writes,notices,cleanups,commands,settingsChanges};

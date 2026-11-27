@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const {sourceIds}=require('../scripts/js-manifest.js');
+const {sourceIds,resolveSourcePath}=require('../scripts/js-manifest.js');
 const main=fs.readFileSync('main.js','utf8');
 
 const quarantined=['v10/data-tables','v10/zotero-web','v10/study-fsrs','v10/calendar-feeds',
@@ -27,7 +27,7 @@ test('Recovery bundle retains every pre-10.7 core and historical source',()=>{
 test('Advanced 10.7 source modules are restored, while startup remains deferred and isolated',()=>{
  for(const name of quarantined){
   assert.ok(sourceIds.includes('src/'+name+'.js'),name+' restored into the 10.8 bundle');
-  assert.ok(fs.existsSync('src/'+name+'.js'),name+' must not be deleted');
+  assert.ok(fs.existsSync(resolveSourcePath('src/'+name+'.js')),name+' must not be deleted');
   assert.ok(main.includes('// v3 module: src/'+name+'.js'),name+' must be in main.js');
  }
  assert.ok(main.includes('function writerV107Register(plugin)'), 'restored optional integration entrypoint missing');

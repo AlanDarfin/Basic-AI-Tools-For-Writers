@@ -189,3 +189,8 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 
 - CI #1393 rebuilt the bundle and verified committed build artifacts, then failed before regressions because `npm run check` still named the relocated historical helper path.
 - Replace the hard-coded authored source syntax list with a manifest-driven gate covering all 124 bundled modules and the extracted legacy dictionary. Preserve the remaining syntax, bundle, CSS, audit and regression checks. CI rerun pending.
+
+### Phase 10.3 — external integration relocation
+
+- Move Zotero Web and iCalendar feed sources into `src/integrations/`, retaining their original blobs and all 124 ordered bundle IDs. Settings search and the new syntax gate resolve paths through the manifest.
+- Update the lifecycle, security disclosure, integration, persistence and stable-runtime regression consumers; extend relocation assertions. No changes to runtime source contents, distributed artifacts or dependencies. Full CI and real device validation remain pending.

@@ -18,8 +18,8 @@ test('runtime retains the existing HTTP inventory and declares two opt-in Visual
    assert.equal((read('vendor/visual-kit/'+file).match(/\brequestUrl\(/g)||[]).length,1);
  assert(security.includes('Visual Kit remote image import'));
  assert(read('vendor/visual-kit/src/settings.ts').includes('htmlExternalImages: "block"'));
- assert(read('src/v10/zotero-web.js').includes('api.zotero.org'));
- assert(read('src/v10/calendar-feeds.js').includes('requestUrl'));
+ assert(read('src/integrations/zotero-web.js').includes('api.zotero.org'));
+ assert(read('src/integrations/calendar-feeds.js').includes('requestUrl'));
 
  for(const fragment of ['Unicode index download','LanguageTool grammar check','AI model discovery','AI requests','Dedicated translation APIs','speech.platform.bing.com','auto-check is enabled','Click Clack sound pack download','Photo search and download','Unsplash download tracking','Zotero Web API read-only','iCalendar HTTPS subscriptions']){
    assert(security.includes(fragment),'Missing disclosure: '+fragment);

@@ -91,6 +91,12 @@ test('stable source IDs resolve relocated modules without changing bundle marker
  assert.equal(resolveSourcePath('src/v10/historical-helpers.js'),'src/compat/historical-helpers.js');
  assert.ok(!fs.existsSync('src/v10/historical-helpers.js'));
  assert.ok(fs.existsSync('src/compat/historical-helpers.js'));
+ assert.equal(resolveSourcePath('src/v10/zotero-web.js'),'src/integrations/zotero-web.js');
+ assert.ok(!fs.existsSync('src/v10/zotero-web.js'));
+ assert.ok(fs.existsSync('src/integrations/zotero-web.js'));
+ assert.equal(resolveSourcePath('src/v10/calendar-feeds.js'),'src/integrations/calendar-feeds.js');
+ assert.ok(!fs.existsSync('src/v10/calendar-feeds.js'));
+ assert.ok(fs.existsSync('src/integrations/calendar-feeds.js'));
  for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
  assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });

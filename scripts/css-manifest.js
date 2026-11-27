@@ -53,9 +53,9 @@ const entries=Object.freeze([
  Object.freeze({path:'v13-prose-rhythm.css',category:'editor'}),
  Object.freeze({path:'v13-visual-kit.css',category:'blocks'}),
  Object.freeze({path:'panel-density.css',category:'core'}),
- Object.freeze({path:'legacy-dictionary-settings.css',category:'compat'}),
- Object.freeze({path:'legacy-templates.css',category:'compat'}),
- Object.freeze({path:'legacy-writing-tools.css',category:'editor'}),
+ Object.freeze({path:'compat/legacy-dictionary-settings.css',category:'compat'}),
+ Object.freeze({path:'compat/legacy-templates.css',category:'compat'}),
+ Object.freeze({path:'editor/legacy-writing-tools.css',category:'editor'}),
 ]);
 function validateEntries(items){
  if(!Array.isArray(items)||!items.length)throw Error('Empty CSS manifest');

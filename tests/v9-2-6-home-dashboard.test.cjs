@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const read=file=>fs.readFileSync(file,'utf8');
 const home=read('src/v8/writing-home.js');
-const finish=read('src/v8/finish-blocks.js');
+const finish=read('src/blocks/finish-blocks.js');
 const css=read('src/styles/features/v9-2-6-dashboard.css');
 
 test('dashboard is bundled from its actual module and packs short cards',()=>{

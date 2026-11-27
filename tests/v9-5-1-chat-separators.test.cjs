@@ -2,7 +2,7 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/finish-blocks.js','utf8');
+const source=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
 const api=vm.runInNewContext(source+'\n({writerV8ChatParse,writerV8ChatDivider})',{console});
 test('three dashes and labeled dividers produce independent transcript items',()=>{
  const data=api.writerV8ChatParse([
@@ -70,7 +70,7 @@ test('group picture is local-only and independent of avatars: off',()=>{
  const data=api.writerV8ChatParse('group-photo: [[Folder/icon.png]]\navatars: off\n< Ana | Hello');
  assert.equal(data.options.avatars,false);
  assert.equal(data.groupImage,'[[Folder/icon.png]]');
- const src=fs.readFileSync('src/v8/format-blocks.js','utf8');
+ const src=fs.readFileSync('src/blocks/format-blocks.js','utf8');
  assert.match(src,/writerV8ImagePath/);
  assert.match(src,/https\?:\|file:\|data:\|javascript:/);
  assert.match(source,/writerV8ImagePath\(plugin\.app,data\.groupImage,ctx\.sourcePath\)/);

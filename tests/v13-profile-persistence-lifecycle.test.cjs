@@ -169,7 +169,7 @@ function quickStartRuntime(){
   close(){this.closed=true;this.modalEl.isConnected=false;this.onClose?.();}
  }
  const context={console,Modal,Setting,writerUi:(_pt,en)=>en,writerV13SearchText:value=>value.toLowerCase(),writerSettingsLabelControls(){},Notice:class{constructor(message){notices.push(message);}}};
- const api=vm.runInNewContext(read('src/v4/modules.js')+'\n'+read('src/v13/setup-guide.js')+'\n({writerQuickStartOpen,writerQuickStartApply,writerQuickStartRegister});',context);
+ const api=vm.runInNewContext(read('src/settings/modules.js')+'\n'+read('src/settings/setup-guide.js')+'\n({writerQuickStartOpen,writerQuickStartApply,writerQuickStartRegister});',context);
  const plugin={settings:{visibleModules:{dictionary:true}},app:{workspace:{}},saveSettings:async()=>{},register:callback=>cleanups.push(callback),addCommand:command=>commands.push(command),refreshModuleVisibility:()=>refreshes.push('modules'),writerSettingsTab:{display:()=>refreshes.push('settings')}};
  api.writerQuickStartRegister(plugin,false);
  return {api,plugin,notices,commands,refreshes,stop:()=>cleanups.forEach(cleanup=>cleanup()),button:(modal,text)=>modal.contentEl.all().find(item=>item.text===text)};

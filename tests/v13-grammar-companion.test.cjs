@@ -245,7 +245,7 @@ test('diagnostics report the selected external engine and redact its server cred
  const h=runtime();h.plugin.settings.reviewEndpoint='https://unused-basic.example/check';
  h.instance.settings.options.serverUrl='https://account:PRIVATE@external.example/v2?key=PRIVATE';
  h.plugin.app.vault.getMarkdownFiles=()=>[];
- const diagnostics=vm.runInNewContext(fs.readFileSync('src/v4/modules.js','utf8')+'\nwriterDiagnostics',{
+ const diagnostics=vm.runInNewContext(fs.readFileSync('src/settings/modules.js','utf8')+'\nwriterDiagnostics',{
   URL,writerUi:(_pt,en)=>en,writerLanguageToolState:h.api.writerLanguageToolState,
   writerLanguageToolInstalled:plugin=>plugin.app.plugins.plugins.languagetool
  })(h.plugin);

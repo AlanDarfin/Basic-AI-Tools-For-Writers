@@ -96,7 +96,7 @@ test('Diagnostics opens the legacy dictionary recovery and preserves existing di
  }
  class TFile{constructor(path){this.path=path;this.extension='md';}}
  const legacy=new TFile('Notes/Old dictionary.md');
- const source=['src/v4/modules.js','src/compat/historical-helpers.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+ const source=['src/settings/modules.js','src/compat/historical-helpers.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
  const api=vm.runInNewContext(source+'\n({writerRenderDiagnostics,writerV106HistoricRegister})',{
   Setting,Modal,TFile,Notice:class{},writerUi:(pt,en)=>en
  });
@@ -119,7 +119,7 @@ test('Build, homepage and settings contain required v10.6 wiring',()=>{
  const {sourceIds}=require('../scripts/js-manifest.js');
  for(const mod of ['startup-cleanup','block-dragger','historical-helpers'])assert.ok(sourceIds.includes('src/v10/'+mod+'.js'));
  assert.ok(homeSrc.includes('writerV106HomeRegisterStartup(plugin,open)'));
- assert.ok(read('src/v8/finish-blocks.js').includes('homeCleanStart:true'));
+ assert.ok(read('src/blocks/finish-blocks.js').includes('homeCleanStart:true'));
  assert.ok(enhancements.includes('writerV106DragRegister(plugin)'));
  assert.ok(enhancements.includes('writerV106HistoricRegister(plugin)'));
 });

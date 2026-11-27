@@ -42,7 +42,7 @@ test('numeric and YAML property sorting work without touching physical files',()
 });
 test('Flow fenced editor updates only the selected code block and keeps note content intact',async()=>{
  class TFile{constructor(path){this.path=path;this.extension='md';}}
- const api=vm.runInNewContext(read('src/editor/flow-composer.js')+'\n'+read('src/v8/block-edit.js')+
+ const api=vm.runInNewContext(read('src/editor/flow-composer.js')+'\n'+read('src/blocks/block-edit.js')+
   '\n({writerV93FlowParse,writerV93FlowPersist})',
   {TFile,WRITER_V8_BLOCK_MAX:32000,writerUi:(_pt,en)=>en,Notice:class{}});
  const block='[[A.md]]\n[[B.md]]';

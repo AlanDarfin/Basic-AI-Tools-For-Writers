@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const src=read('src/v8/finish-blocks.js');
+const src=read('src/blocks/finish-blocks.js');
 const utilities=read('src/v8/home-utilities.js');
 const home=read('src/v8/writing-home.js');
 const css=read('src/styles/features/v8-finish-suite.css');

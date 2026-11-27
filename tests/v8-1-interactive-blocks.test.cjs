@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const editable=read('src/v8/block-edit.js'),blocks=read('src/v8/format-blocks.js');
-const posts=read('src/v8/social-post.js'),media=read('src/v8/media-gallery.js');
+const editable=read('src/blocks/block-edit.js'),blocks=read('src/blocks/format-blocks.js');
+const posts=read('src/blocks/social-post.js'),media=read('src/blocks/media-gallery.js');
 const vmHelpers=vm.runInNewContext(editable+'\n'+blocks+'\n({writerV8FenceReplace,writerV8TabLayout,writerV8ReplaceTab,writerV8SplitTabs,writerV8ReadCard,writerV8ReplaceCardBody})',
  {writerUi:(pt,en)=>en});
 const {writerV8FenceReplace,writerV8TabLayout,writerV8ReplaceTab,writerV8SplitTabs,writerV8ReadCard,writerV8ReplaceCardBody}=vmHelpers;
@@ -99,7 +99,7 @@ test('fictional posts parse replies and bound author-input metrics',()=>{
  assert.equal(fn.writerV8SplitPost('First\n'+'=== reply\nReply\n'.repeat(41)),null);
 });
 test('both column formats render nested code and retain all content at the column limit',()=>{
- const widgets=read('src/v9/interactive-widgets.js'),legacyColumns=read('src/editor/media-drag-extension.js');
+ const widgets=read('src/blocks/interactive-widgets.js'),legacyColumns=read('src/editor/media-drag-extension.js');
  const rendered=[];
  const MarkdownRenderer={render:async(_app,markdown)=>{rendered.push(markdown);}};
  const {writerV92RenderColumns,writerV107ColumnsRender}=vm.runInNewContext(

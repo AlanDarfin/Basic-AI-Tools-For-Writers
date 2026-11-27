@@ -4,8 +4,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
 const files=['src/v9/explorer-favorites-preview.js','src/v9/interactive-widgets.js','src/v9/research-style.js','src/v9/session-drafts.js'];
-const sources=files.map(read);
+const sources=files.map(id=>read(resolveSourcePath(id)));
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').at(-1).replace(/\.md$/,'');this.parent={path:path.split('/').slice(0,-1).join('/')};}}
 class TFolder{constructor(path){this.path=path;this.name=path.split('/').at(-1);this.children=[];}}
 const novel=new TFile('Novel/Chapter.md'),folder=new TFolder('Novel'),folderNote=new TFile('Novel/Novel.md');
@@ -80,7 +81,7 @@ test('session drafts never delete existing vault files',()=>{
 test('blocks do not execute arbitrary JS actions',()=>{
  const cfg=api.writerV92BlocksMerge({});
  assert.equal(cfg.metaFields,true);
- const src=read('src/v9/interactive-widgets.js');
+ const src=read(resolveSourcePath('src/v9/interactive-widgets.js'));
  assert.match(src,/processFrontMatter/);
  assert.doesNotMatch(src,/eval\(|new Function\(/);
  for(const type of ['columns','progressbar','widgets','meta-field'])assert.ok(src.includes("register('"+type+"'"));

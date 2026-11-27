@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/format-blocks.js','utf8');
+const source=fs.readFileSync('src/blocks/format-blocks.js','utf8');
 const css=fs.readFileSync('src/styles/core/v13-foundation.css','utf8');
 const projects=fs.readFileSync('projects.js','utf8');
 class Element{

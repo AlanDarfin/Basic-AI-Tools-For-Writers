@@ -1,8 +1,8 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const home=read('src/v8/writing-home.js'),finish=read('src/v8/finish-blocks.js');
-const blocks=read('src/v8/format-blocks.js'),editable=read('src/v8/block-edit.js');
+const home=read('src/v8/writing-home.js'),finish=read('src/blocks/finish-blocks.js');
+const blocks=read('src/blocks/format-blocks.js'),editable=read('src/blocks/block-edit.js');
 const fns=vm.runInNewContext(home+'\n({quotes:writerV8HomeQuoteChoices,pick:writerV8HomePick})',{
  ItemView:class{},writerUi:pt=>pt
 });
@@ -79,7 +79,7 @@ test('new widget catalog is opt-in, preserves previous dashboard layout and quot
  assert.equal(empty.v8Finish.homeQuotes,'');
 });
 test('all seven presentation fences have short aliases and existing writer names still render',()=>{
- const f=read('src/v8/folder-overview.js'),post=read('src/v8/social-post.js'),media=read('src/v8/media-gallery.js');
+ const f=read('src/blocks/folder-overview.js'),post=read('src/blocks/social-post.js'),media=read('src/blocks/media-gallery.js');
  for(const item of ['tabs','avatar','wiki','writer-tabs','writer-avatar','writer-wiki'])
   assert.ok(blocks.includes("'"+item+"'"),item);
  for(const [source,short,legacy] of [

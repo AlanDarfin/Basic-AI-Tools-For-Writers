@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
-const mobile=fs.readFileSync('src/v11/mobile-panel-actions.js','utf8');
+const mobile=fs.readFileSync('src/platform/mobile-panel-actions.js','utf8');
 const sidebar=fs.readFileSync('src/v10/sidebar-width-1010.js','utf8');
 const longform=fs.readFileSync('src/v11/longform-studio.js','utf8');
 const home=fs.readFileSync('src/v8/writing-home.js','utf8');

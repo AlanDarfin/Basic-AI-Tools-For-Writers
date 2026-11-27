@@ -7,7 +7,7 @@ const path=require('node:path');
 function harness(){
  const spoken=[],notices=[],menus=[];
  class MarkdownView{}
- const api=vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/v12/mobile-ux-1201.js'),'utf8')+
+ const api=vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../src/platform/mobile-ux-1201.js'),'utf8')+
   '\n({writerV1201Editor,writerV1201Read,writerV1201Format,writerV1201QuickMenu})',{
   MarkdownView,writerUi:(_pt,en)=>en,writerModuleOn:()=>true,
   writerV12SelectedText:()=>'',writerV107SpeechConfig:()=>{},

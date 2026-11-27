@@ -21,7 +21,7 @@ test('Homepage widget catalog includes Books and Trash, never Related Notes',()=
  assert.match(books,/for\(const project of books\.slice\(0,4\)\)writerV10BookshelfCard/);
 });
 test('Old widget settings migrate Books into visible Home without losing user layout',()=>{
- const api=load('src/v8/finish-blocks.js',{},['writerV8FinishMerge']);
+ const api=load('src/blocks/finish-blocks.js',{},['writerV8FinishMerge']);
  const settings={v8Finish:{
   homeOrder:['continue','calendar','books','related','trash'],homeHidden:['books','related','trash'],
   homeWidgetSizes:{books:'wide',trash:'compact'},homeFavorites:['Books/Book.md'],
@@ -196,7 +196,7 @@ test('10.9 keeps changelogs out of both READMEs and supports fuzzy path settings
   assert.doesNotMatch(text,/^## (?:Version|Versão) 10\./m);
   assert.match(text,/Longform|Markdown/);
  }
- assert.match(read('src/v9/virtual-content.js'),/class TemplatePicker extends require\('obsidian'\)\.FuzzySuggestModal/);
+ assert.match(read('src/blocks/virtual-content.js'),/class TemplatePicker extends require\('obsidian'\)\.FuzzySuggestModal/);
  assert.match(read('src/v9/smart-spaces.js'),/class SpacePathPicker extends require\('obsidian'\)\.FuzzySuggestModal/);
  assert.match(read('src/v4/integrations.js'),/class FolderPicker extends require\('obsidian'\)\.FuzzySuggestModal/);
  assert.match(read('src/v9/explorer-flex.js'),/Revelar arquivos ocultos/);

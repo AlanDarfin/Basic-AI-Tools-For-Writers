@@ -1,7 +1,7 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
-const chat=read('src/v8/finish-blocks.js');
+const chat=read('src/blocks/finish-blocks.js');
 const parse=vm.runInNewContext(chat+'\nwriterV8ChatParse');
 test('repeated speaker is inherited without forcing a visible name or time',()=>{
  const data=parse('[Left=Maria]\n< Maria | Primeira | 08:00\n< | Segunda mensagem\n< João | Resposta | 09:00');

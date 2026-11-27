@@ -144,3 +144,15 @@ test('all editor-domain sources live under their owner directory',()=>{
   if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
  }
 });
+
+test('block, persistence, platform and settings sources use owner directories',()=>{
+ const domains=new Set(['blocks','persistence','platform','settings']);
+ const deferred=new Set(['src/v9/timeline-blocks.js']);
+ for(const entry of entries.filter(entry=>domains.has(entry.domain))){
+  if(deferred.has(entry.id))continue;
+  assert.ok(entry.path.startsWith('src/'+entry.domain+'/'),entry.id);
+  assert.equal(resolveSourcePath(entry.id),entry.path);
+  assert.ok(fs.existsSync(entry.path),entry.path);
+  if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
+ }
+});

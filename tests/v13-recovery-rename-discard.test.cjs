@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v13/draft-recovery.js','utf8');
+const source=fs.readFileSync('src/persistence/draft-recovery.js','utf8');
 const DIR='.obsidian/plugins/basic-ai-tool-for-writers';
 const PRIMARY=DIR+'/longform-recovery.json',PREVIOUS=DIR+'/longform-recovery.previous.json';
 const entry=(path,text)=>({path,original:'Original '+text,text,updatedAt:'2026-01-01T10:00:00.000Z'});

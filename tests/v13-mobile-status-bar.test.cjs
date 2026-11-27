@@ -3,7 +3,7 @@ const assert=require('node:assert/strict');
 const {test}=require('node:test');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v13/mobile-status.js','utf8');
+const source=fs.readFileSync('src/platform/mobile-status.js','utf8');
 class Node{
  constructor(cls=''){this.className=cls;this.children=[];this.attrs={};this.parentNode=null;this.ownText='';this.events={};
   const props=new Map();

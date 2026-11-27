@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v8/finish-blocks.js','utf8');
+const source=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
 const api=vm.runInNewContext(source+'\n({writerV8ChatParse,writerV8ChatFakeAudio,writerV8ChatRenderFakeAudio})',
  {console,writerUi:(pt)=>pt});
 

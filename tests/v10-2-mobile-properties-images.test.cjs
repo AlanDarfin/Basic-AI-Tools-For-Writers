@@ -24,7 +24,7 @@ test('Pretty Properties migrates per-file hidden keys and custom icons without r
  assert.match(read('src/editor/pretty-properties.js'),/onApply:async icon/);
 });
 test('Chat parses speaker bubble color independently of name color and transparent background',()=>{
- const api=expose('src/v8/finish-blocks.js',['writerV8ChatParse','writerV8ChatFakeAudio']);
+ const api=expose('src/blocks/finish-blocks.js',['writerV8ChatParse','writerV8ChatFakeAudio']);
  const chat=api.writerV8ChatParse('title: Test\nbackground: transparent\nbubble-color: blue\n[Maria=red]\n[Maria=bubble:green]\n\n< | Maria | [audio:0:05:teste teste] | 14:34');
  assert.equal(chat.options.background,'transparent');
  assert.equal(chat.options.bubbleColor,'blue');
@@ -130,7 +130,7 @@ test('Native Explorer and voice-note CSS corrections are present in the distribu
 });
 test('Spaces, bookshelf, command palette and fictional voice-note layout are wired',()=>{
  const spaces=read('src/v9/smart-spaces.js'),books=read('src/v10/bookshelf.js');
- const chat=read('src/v8/finish-blocks.js'),flex=read('src/v9/explorer-flex.js');
+ const chat=read('src/blocks/finish-blocks.js'),flex=read('src/v9/explorer-flex.js');
  const css=read('styles.css');
  for(const label of ['v1042-spaces-next',
   'v1042-spaces-previous','v1042-spaces-quick-pin']){

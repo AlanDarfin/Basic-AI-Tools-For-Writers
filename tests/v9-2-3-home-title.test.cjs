@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
 const utils=read('src/v8/home-utilities.js');
-const finish=read('src/v8/finish-blocks.js');
+const finish=read('src/blocks/finish-blocks.js');
 const home=read('src/v8/writing-home.js');
 const clean=vm.runInNewContext(utils+'\n'+finish+'\nwriterV8HomeTitleClean',{});
 const merge=vm.runInNewContext(utils+'\n'+finish+'\nwriterV8FinishMerge',{});

@@ -14,7 +14,7 @@ const app={
 };
 const prefs={};
 const plugin={app,settings:{bookNavigation:{enabled:true,auto:false,showMain:true,showSub:true},projectsData:{'Book/index.md':{writingSettings:prefs}},lastLongformProject:index.path,visibleModules:{ruby:true,ratings:true}}};
-const content=['src/v8/format-blocks.js','src/v6/longform-navigation.js','src/v6/project-workspace.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+const content=['src/blocks/format-blocks.js','src/v6/longform-navigation.js','src/v6/project-workspace.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
 const api=vm.runInNewContext(content+'\n({writerBookNavParseManual,writerBookNavManualButtons,writerBookNavAutoAllowed,writerBookNavFindProject,writerBookNavHasSourceBlock,writerV6ProjectContext,writerV6ProjectToolAllowed,writerV6ProjectReviewText})',{
  TFile,console,parseYaml:raw=>{
   const o={};for(const line of raw.split('\n')){const match=/^(\w+):\s*(.*)$/.exec(line);if(match){let v=match[2];try{v=JSON.parse(v);}catch{}o[match[1]]=v;}}return o;

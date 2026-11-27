@@ -8,8 +8,8 @@ const root=path.resolve(__dirname,'..');
 const main=fs.readFileSync(path.join(root,'main.js'),'utf8');
 const layout=fs.readFileSync(path.join(root,'src/v10/sidebar-width-1010.js'),'utf8');
 const enhancements=fs.readFileSync(path.join(root,'src/v10/enhancements.js'),'utf8');
-const quickSource=fs.readFileSync(path.join(root,'src/v12/mobile-ux-1201.js'),'utf8');
-const settings=fs.readFileSync(path.join(root,'src/v12/settings-hub-1201.js'),'utf8');
+const quickSource=fs.readFileSync(path.join(root,'src/platform/mobile-ux-1201.js'),'utf8');
+const settings=fs.readFileSync(path.join(root,'src/settings/settings-hub-1201.js'),'utf8');
 const queue=[];
 const callbacks=[];
 const ctx={
@@ -26,7 +26,7 @@ test('settings routes organize features without version-branded categories',()=>
  for(const page of ['v12Overview','v12Writing','v12Images','v12Tasks','v12Privacy','v12Reader','v12Connections',
   'suiteEducation','suiteDatabase','suiteNumbering','suiteLongform'])
   assert.equal(navigation.includes("['"+page+"',msg("),false,page+' must not have its own tab');
- const groups=fs.readFileSync(path.join(root,'src/v13/settings-catalog.js'),'utf8');
+ const groups=fs.readFileSync(path.join(root,'src/settings/settings-catalog.js'),'utf8');
  assert.doesNotMatch(groups,/\['toolkit',/);
  assert.doesNotMatch(groups,/\['suites',/);
  for(const id of ['v9Toolbar','v9Pretty','v9Flow','v9Calendar','v9Lock','v10Tools','editorAdvanced','projects'])

@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const files=['src/v10/bookshelf.js','src/v10/toolbox.js','src/v9/smart-spaces.js','src/v8/media-gallery.js'];
+const files=['src/v10/bookshelf.js','src/v10/toolbox.js','src/v9/smart-spaces.js','src/blocks/media-gallery.js'];
 for(const file of files)test('v10 module exists: '+file,()=>assert.ok(fs.statSync(file).size>100));
 test('v10 safe text editor allows ordinary text and rejects large/binary files',()=>{
  class TFile{}
@@ -30,7 +30,7 @@ test('v10 bookshelf uses existing Longform indices without duplicating books',()
  assert.equal(api.writerV10BookshelfMerge({}).enabled,true);
 });
 test('new media gallery supports documents, audio and PDF while retaining legacy aliases',()=>{
- const src=fs.readFileSync('src/v8/media-gallery.js','utf8');
+ const src=fs.readFileSync('src/blocks/media-gallery.js','utf8');
  assert.match(src,/document:\[/);assert.match(src,/audio:\[/);assert.match(src,/pdf:\[/);
  assert.match(src,/writer-media-gallery/);assert.match(src,/media-gallery/);
 });

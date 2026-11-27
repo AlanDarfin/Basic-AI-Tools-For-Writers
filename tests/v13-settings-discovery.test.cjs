@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const read=name=>fs.readFileSync(name,'utf8');
 const ui=read('src/v13/ui-foundation.js'),search=read('src/v5/workspace-ux.js');
-const catalog=read('src/v13/settings-catalog.js'),index=read('src/v13/settings-search-index.js');
+const catalog=read('src/settings/settings-catalog.js'),index=read('src/settings/settings-search-index.js');
 
 class Element{
  constructor(tag='div',options={},document=null){

@@ -8,7 +8,8 @@ const files=[
  'src/v3/final-suite.js','src/v4/editor.js','src/v4/integrations.js',
  'src/v4/auto-grammar.js','src/v4/modules.js'
 ];
-const read=path=>fs.readFileSync(path,'utf8');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
+const read=path=>fs.readFileSync(path.startsWith('src/')?resolveSourcePath(path):path,'utf8');
 const original=read('main.js');
 let passed=0;
 const test=(name,fn)=>{fn();passed++;console.log('PASS',name);};

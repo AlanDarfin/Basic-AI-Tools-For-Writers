@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 class TFile{constructor(path){this.path=path;this.extension='md';}}
 class TFolder{constructor(path){this.path=path;}}
-const source=fs.readFileSync('src/v3/snapshots.js','utf8');
+const source=fs.readFileSync('src/persistence/snapshots.js','utf8');
 const {WriterSnapshots}=vm.runInNewContext(source+'\n({WriterSnapshots})',{
  TFile,writerUi:(pt,en)=>en,writerCurrentText:async(plugin,file)=>plugin.notes.get(file.path),console
 });

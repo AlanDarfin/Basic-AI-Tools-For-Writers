@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v8/format-blocks.js','utf8')+'\n'+fs.readFileSync('src/v6/longform-navigation.js','utf8');
+const source=fs.readFileSync('src/blocks/format-blocks.js','utf8')+'\n'+fs.readFileSync('src/v6/longform-navigation.js','utf8');
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').pop().replace(/\.md$/,'');}}
 class Doc{constructor(text){this.text=text;this.length=text.length;}toString(){return this.text;}}
 class Element{

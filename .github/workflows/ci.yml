@@ -26,7 +26,7 @@ jobs:
       - name: Rebuild distributable bundle before validation
         run: npm run build
       - name: Verify committed build artifacts
-        run: git diff --exit-code -- main.js styles.css src/v13/settings-search-index.js
+        run: git diff --exit-code -- main.js styles.css src/settings/settings-search-index.js
       - name: Full syntax, bundle sync and regression checks
         run: npm run check
       - name: Community CSS lint

@@ -97,8 +97,8 @@ test('Property search lives inside native collapsible properties and preserves t
  assert.match(css,/\.metadata-container\.is-collapsed \.writer-v9216-pretty-search/);
 });
 test('Markdown block is registered with bilingual UI and bundled for distribution',()=>{
- const module=fs.readFileSync('src/v8/finish-blocks.js','utf8');
- const modules=fs.readFileSync('src/v4/modules.js','utf8');
+ const module=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
+ const modules=fs.readFileSync('src/settings/modules.js','utf8');
  const bundle=fs.readFileSync('main.js','utf8');
  const css=fs.readFileSync('styles.css','utf8');
  assert.match(module,/writerV95RegisterTimelineBlocks\(plugin\)/);

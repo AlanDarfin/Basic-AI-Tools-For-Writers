@@ -15,7 +15,7 @@ class Element{
  addEventListener(name,fn){this.events[name]=fn;}
  find(fn){if(fn(this))return this;for(const child of this.children){const found=child.find(fn);if(found)return found;}}
 }
-const source=fs.readFileSync('src/v13/draft-recovery.js','utf8')+'\n'+fs.readFileSync('src/v11/longform-studio.js','utf8');
+const source=fs.readFileSync('src/persistence/draft-recovery.js','utf8')+'\n'+fs.readFileSync('src/v11/longform-studio.js','utf8');
 function harness(){
  const disk=new Map(),notes=new Map(),timers=new Map(),notices=[],opened=[];let serial=0;
  const api=vm.runInNewContext(source+'\nwriterV11ReviewArea=()=>{};\n({writerV134Recovery,writerV11RenderLongformTab,writerV11StudioRegister})',{

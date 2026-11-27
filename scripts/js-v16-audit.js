@@ -15,7 +15,7 @@ const lifecycle=new Map([
  ['MutationObserver','mutation-observer'],['ResizeObserver','resize-observer'],['IntersectionObserver','intersection-observer'],
  ['observe','observer-candidate'],['disconnect','disconnect-candidate'],['on','event-subscribe-candidate'],['off','event-unsubscribe-candidate'],
  ['addCommand','command'],['removeCommand','command-remove'],['loadData','data-load'],['saveData','data-save'],['saveSettings','settings-save'],
- ['AbortController','abort-controller'],['abort','abort-candidate']
+ ['AbortController','abort-controller'],['abort','abort-candidate'],['onLayoutReady','layout-ready']
 ]);
 function member(node){
  if(!node)return null;
@@ -37,6 +37,65 @@ function literalCommandId(node){
 function group(rows,key){
  const groups=new Map();for(const r of rows){const k=r[key];if(k==null)continue;if(!groups.has(k))groups.set(k,[]);groups.get(k).push(r);}
  return [...groups].filter(([,items])=>items.length>1).map(([name,sites])=>({name,sites}));
+}
+// Conservative function-scope inventory: records possible aliases, not data-flow proof.
+// Multiple bindings/assignments or shadowing may make a candidate ambiguous.
+function prototypeOrigin(node){
+ if(!node)return null;
+ const direct=member(node);
+ if(direct?.endsWith('.prototype'))return direct;
+ if(ts.isConditionalExpression(node)){
+  const a=prototypeOrigin(node.whenTrue),b=prototypeOrigin(node.whenFalse);
+  return a&&b&&a!==b?null:a||b;
+ }
+ if(ts.isParenthesizedExpression(node))return prototypeOrigin(node.expression);
+ if(ts.isCallExpression(node)&&member(node.expression)==='Object.getPrototypeOf')return 'Object.getPrototypeOf(?)';
+ return null;
+}
+function functionScope(node,sf){
+ for(let p=node.parent;p;p=p.parent)if(ts.isFunctionLike(p))return p;
+ return sf;
+}
+function aliasWriteInventory(sf,source,regions,loc){
+ const scopes=new Map(),writes=[];
+ const included=node=>{const p=node.getStart(sf),r=regions.find(r=>p>=r.start&&p<r.end);return r&&!r.exclude;};
+ function scopeMap(scope){if(!scopes.has(scope))scopes.set(scope,new Map());return scopes.get(scope);}
+ function binding(scope,name,origin,node){
+  const m=scopeMap(scope);if(!m.has(name))m.set(name,[]);
+  m.get(name).push({origin,node});
+ }
+ function walk(node){
+  if(!included(node)&&regions.some(r=>r.exclude&&node.getStart(sf)>=r.start&&node.end<=r.end))return;
+  if(included(node)){
+   const scope=functionScope(node,sf);
+   if(ts.isVariableDeclaration(node)&&ts.isIdentifier(node.name))
+    binding(scope,node.name.text,prototypeOrigin(node.initializer),node);
+   if(ts.isParameter(node)&&ts.isIdentifier(node.name))binding(scope,node.name.text,null,node);
+   if(ts.isBinaryExpression(node)&&node.operatorToken.kind>=ts.SyntaxKind.FirstAssignment&&node.operatorToken.kind<=ts.SyntaxKind.LastAssignment){
+    if(ts.isIdentifier(node.left))binding(scope,node.left.text,prototypeOrigin(node.right),node);
+    else if(ts.isPropertyAccessExpression(node.left)||ts.isElementAccessExpression(node.left))writes.push(node);
+   }
+  }
+  ts.forEachChild(node,walk);
+ }
+ ts.forEachChild(sf,walk);
+ const aliases=[],candidates=[];
+ for(const [scope,m] of scopes)for(const [name,records] of m)for(const r of records)if(r.origin){
+  const site=loc(r.node,scope===sf?null:scope.name?.getText(sf)||'(anonymous)');
+  if(site)aliases.push({alias:name,origin:r.origin,...site});
+ }
+ for(const node of writes){
+  const lhs=node.left,base=lhs.expression;if(!ts.isIdentifier(base))continue;
+  let scope=functionScope(node,sf),records;
+  for(;;){records=scopes.get(scope)?.get(base.text);if(records||scope===sf)break;scope=functionScope(scope,sf);}
+  if(!records)continue;
+  const origins=[...new Set(records.map(r=>r.origin).filter(Boolean))];
+  if(!origins.length)continue;
+  const prop=ts.isPropertyAccessExpression(lhs)?lhs.name.text:ts.isStringLiteralLike(lhs.argumentExpression)?lhs.argumentExpression.text:null;
+  const owner=functionScope(node,sf),site=loc(node,owner===sf?null:owner.name?.getText(sf)||'(anonymous)');
+  if(site)candidates.push({alias:base.text,origins,property:prop,expression:lhs.getText(sf),target:origins.length===1&&prop?origins[0]+'.'+prop:null,confidence:'candidate',...site});
+ }
+ return {aliases,candidates};
 }
 function analyzeSource(source,regions=[{start:0,end:source.length,file:'main.js',lineOffset:0}]){
  const sf=ts.createSourceFile('main.js',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
@@ -81,8 +140,11 @@ function analyzeSource(source,regions=[{start:0,end:source.length,file:'main.js'
   ts.forEachChild(node,child=>visit(child,nextOwner,nextDepth));
  }
  ts.forEachChild(sf,node=>visit(node));
+ const aliasInventory=aliasWriteInventory(sf,source,regions,loc);
  const lifecycleCounts={};for(const row of registrations)lifecycleCounts[row.kind]=(lifecycleCounts[row.kind]||0)+1;
  return {errors,modules:[...modules.values()],declarations,prototypeWrites,registrations,commands,
+  prototypeAliasSites:aliasInventory.aliases,prototypeAliasWriteCandidates:aliasInventory.candidates,
+  repeatedAliasTargets:group(aliasInventory.candidates,'target'),
   repeatedTopLevelNames:group(declarations,'name'),repeatedPrototypeTargets:group(prototypeWrites,'target'),
   repeatedLiteralCommandIds:group(commands,'id'),lifecycleCounts};
 }
@@ -127,6 +189,11 @@ function summarize(r){
   prototypeWrites:r.prototypeWrites.length,repeatedPrototypeTargets:r.repeatedPrototypeTargets.length,
   commandSites:r.commands.length,dynamicCommandIds:r.commands.filter(c=>c.id===null).length,repeatedLiteralCommandIds:r.repeatedLiteralCommandIds.length,
   lifecycleSites:r.registrations.length,lifecycleCounts:r.lifecycleCounts,
+  prototypeAliasSites:r.prototypeAliasSites.length,prototypeAliasWriteCandidates:r.prototypeAliasWriteCandidates.length,
+  repeatedAliasTargets:r.repeatedAliasTargets.length,
+  topAliasCandidates:r.prototypeAliasWriteCandidates.filter(s=>s.origins.some(o=>o==='Menu.prototype')).slice(0,20),
+  layoutReadySites:r.registrations.filter(s=>s.kind==='layout-ready'),
+  topLifecycleModules:r.modules.slice().sort((a,b)=>b.lifecycleSites-a.lifecycleSites).slice(0,12),
   topPrototypeCandidates:r.repeatedPrototypeTargets.slice().sort((a,b)=>b.sites.length-a.sites.length).slice(0,10),
   topCommandCandidates:r.repeatedLiteralCommandIds.slice(0,10)};
 }

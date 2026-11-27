@@ -34,7 +34,7 @@ function pendingSpeech(provider='basic'){
  const plugin={settings:{visibleModules:{tts:true},companionCompatibility:{ttsProvider:provider}},
   app:{workspace,plugins:{plugins:{'ahmed-toolkit':{}}},vault:{on:()=>({}),getAbstractFileByPath:path=>files.get(path),cachedRead:()=>new Promise((resolve,reject)=>requests.push({resolve,reject}))}},
   addCommand(){},registerEvent(){},registerDomEvent(){},register:fn=>cleanups.push(fn)};
- const source=['v3/core','v3/final-suite','v10/speech-accessibility','v12/mobile-ux-1201'].map(name=>fs.readFileSync(path.join(__dirname,'../src/'+name+'.js'),'utf8')).join('\n');
+ const source=['v3/core','v3/final-suite','v10/speech-accessibility','v12/mobile-ux-1201'].map(name=>fs.readFileSync(path.join(__dirname,'..',require('../scripts/js-manifest.js').resolveSourcePath('src/'+name+'.js')),'utf8')).join('\n');
  const api=vm.runInNewContext(source+'\n({WriterFinalFeatures,writerFinalMerge,writerV107SpeechConfig,writerV107SpeechStop,writerV107SpeechStart,writerV107SpeechRegister,writerV1201Read})',{
   console,TFile,MarkdownView:class{},EditorView:{},lfMsg:(_pt,en)=>en,
   writerModuleOn:(plugin,id)=>plugin.settings.visibleModules?.[id]!==false,

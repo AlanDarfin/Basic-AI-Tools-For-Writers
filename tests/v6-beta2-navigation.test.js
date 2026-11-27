@@ -90,7 +90,7 @@ test('navigation toggle and main/sub filtering keep distinct targets',()=>{
  assert.equal(buttons[0].target.title,'A.1');
 });
 (async()=>{
- const cursor=fs.readFileSync('src/v4/cursor-memory.js','utf8');
+ const cursor=fs.readFileSync('src/editor/cursor-memory.js','utf8');
  const effects=[],scrollCalls=[];
  const EditorView={scrollIntoView:(at,opt)=>({at,opt})};
  const memoryAPI=vm.runInNewContext(cursor+'\n({WriterCursorMemory,writerCursorMerge})',{writerModuleOn:()=>true,writerUi:(a,b)=>b||a,MarkdownView:class{},EditorView,console,setTimeout,clearTimeout,Setting:class{},Notice:class{}});

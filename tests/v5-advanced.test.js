@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const paths=['src/editor/easy-typing.js','src/v5/easy-advanced.js','src/editor/smart-typography.js','src/v5/pandoc-export.js'];
+const paths=['src/editor/easy-typing.js','src/editor/easy-advanced.js','src/editor/smart-typography.js','src/v5/pandoc-export.js'];
 const source=paths.map(p=>fs.readFileSync(p,'utf8')).join('\n');
 const ctx={writerUi:(pt)=>pt,writerModuleOn:()=>true,console,require:()=>({})};
 const v=vm.runInNewContext(source+'\n({writerEasyMerge,writerEasyAdvancedMerge,writerEasyTypingAtInput,writerEasyRegexSafe,writerEasyRegexAtInput,writerEasySnippetExpand,writerPandocExportMerge,writerPandocExportFolder,writerPandocExportFilename,writerPandocExportArgs})',ctx);

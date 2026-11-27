@@ -8,7 +8,7 @@ const common={console,Date,Map,Set,Math,setTimeout,clearTimeout,
 const {writerV406ReviewGuard}=vm.runInNewContext(
  src('src/v4/integrations.js')+'\n({writerV406ReviewGuard})',common);
 const {WriterCursorMemory,writerCursorMerge}=vm.runInNewContext(
- src('src/v4/cursor-memory.js')+'\n({WriterCursorMemory,writerCursorMerge})',common);
+ src('src/editor/cursor-memory.js')+'\n({WriterCursorMemory,writerCursorMerge})',common);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 test('LanguageTool suggestion menu is compact and pauses cursor/typewriter tracking',()=>{
  const scrollDOM={scrollTop:780,scrollLeft:20},cm={dom:{},scrollDOM};
@@ -81,5 +81,5 @@ test('Typewriter reacts to deliberate keyboard edits but not suggestion mouse ac
  assert.match(code,/this\.setInteracting\(false\)/);
  assert.match(code,/this\.onBeforeInput=\(\)=>\{owner\.plugin\.writerReviewInteractionGuard\?\.typing/);
  assert.match(code,/guard\?\.isSuspended\?\.\(\)/);
- assert.match(src('src/v4/cursor-memory.js'),/writerReviewInteractionGuard\?\.isSuspended/);
+ assert.match(src('src/editor/cursor-memory.js'),/writerReviewInteractionGuard\?\.isSuspended/);
 });

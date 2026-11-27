@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=['src/editor/easy-typing.js','src/v5/easy-advanced.js','src/editor/smart-typography.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n');
+const source=['src/editor/easy-typing.js','src/editor/easy-advanced.js','src/editor/smart-typography.js'].map(p=>fs.readFileSync(p,'utf8')).join('\n');
 const mock={writerUi:(pt)=>pt,writerModuleOn:()=>true,console,require:()=>({})};
 const v=vm.runInNewContext(source+'\n({writerEasyMerge,writerEasyTypingAtInput,writerEasyExcluded,writerEasyPaste,writerEasyTabOut,writerEasyBackspacePrefix,writerEasyProseFormat,writerTypoMerge,writerTypoAtInput,writerTypoConvertProse,writerTypingUnsafeContext,WriterEasyTyping,WriterSmartTypography,writerTypingFilterTransaction,writerTypingRestoreBackspace,writerEasyRegexValid})',mock);
 let count=0;
@@ -152,7 +152,7 @@ test('literal replacements preserve pipes, disabled rules and independent editor
  assert.equal(v.writerEasyTypingAtInput('a|b','b',easy).text,'with|pipe');
  assert.equal(v.writerEasyTypingAtInput('off','f',easy),null);
  const text=fs.readFileSync('src/editor/easy-typing.js','utf8');
- const advanced=fs.readFileSync('src/v5/easy-advanced.js','utf8');
+ const advanced=fs.readFileSync('src/editor/easy-advanced.js','utf8');
  assert.ok(text.includes("createEl('details'"),'Literal rules need individual collapsible editors');
  assert.ok(!text.includes("origem|destino"),'Legacy pipe syntax must not be the editor');
  assert.ok(advanced.includes("writer-typing-regex-rule"));

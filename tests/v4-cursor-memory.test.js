@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const src=fs.readFileSync('src/v4/cursor-memory.js','utf8');
+const src=fs.readFileSync('src/editor/cursor-memory.js','utf8');
 const {writerCursorMerge,writerCursorClamp,WriterCursorMemory}=vm.runInNewContext(src+'\n({writerCursorMerge,writerCursorClamp,WriterCursorMemory})',{
  writerModuleOn:()=>true,writerUi:(pt,en)=>en,
  MarkdownView:class{},EditorView:{},Setting:class{},Notice:class{},

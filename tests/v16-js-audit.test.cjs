@@ -106,6 +106,15 @@ test('stable source IDs resolve relocated modules without changing bundle marker
  assert.equal(resolveSourcePath('src/v5/pandoc-syntax.js'),'src/editor/pandoc-syntax.js');
  assert.ok(!fs.existsSync('src/v5/pandoc-syntax.js'));
  assert.ok(fs.existsSync('src/editor/pandoc-syntax.js'));
+ assert.equal(resolveSourcePath('src/v5/easy-advanced.js'),'src/editor/easy-advanced.js');
+ assert.ok(!fs.existsSync('src/v5/easy-advanced.js'));
+ assert.ok(fs.existsSync('src/editor/easy-advanced.js'));
+ assert.equal(resolveSourcePath('src/v4/cursor-memory.js'),'src/editor/cursor-memory.js');
+ assert.ok(!fs.existsSync('src/v4/cursor-memory.js'));
+ assert.ok(fs.existsSync('src/editor/cursor-memory.js'));
+ assert.equal(resolveSourcePath('src/v6/linter.js'),'src/writing/linter.js');
+ assert.ok(!fs.existsSync('src/v6/linter.js'));
+ assert.ok(fs.existsSync('src/writing/linter.js'));
  for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
  assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });

@@ -200,3 +200,9 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - CI #1395 passed full validation on the previous integration relocation and manifest-driven syntax gate.
 - Move Easy Typing, Smart Typography and Pandoc syntax into `src/editor/`, preserving their exact original blobs and all 124 ordered stable module IDs. Update five historical test consumers and the manifest relocation assertions. The settings index and syntax gate resolve these paths through the manifest without further changes.
 - No runtime behavior, dependency, configuration schema or distributable changes. Full CI and live editor QA on this batch remain pending; next review Easy Advanced, cursor memory, linter and remaining editor modules.
+
+### Phase 10.5 — editor and writing domain relocation
+
+- CI #1396 passed full validation on the first editor relocation batch.
+- Move Easy Advanced and cursor memory into `src/editor/`, and Linter into `src/writing/`, preserving original source blobs and all 124 ordered bundle IDs. Update seven historical test consumers and relocation assertions while retaining stable bundle-marker checks.
+- No runtime behavior, dependencies, settings or generated artifacts changed. Full CI and live Obsidian QA on this batch remain pending. Auto Grammar is deferred to the next batch to review its broader regression consumers.

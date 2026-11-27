@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=['src/editor/easy-typing.js','src/v5/easy-advanced.js','src/editor/smart-typography.js']
+const source=['src/editor/easy-typing.js','src/editor/easy-advanced.js','src/editor/smart-typography.js']
  .map(path=>fs.readFileSync(path,'utf8')).join('\n');
 const api=vm.runInNewContext(source+
  '\n({writerEasyMerge,writerEasyAdvancedMerge,writerEasyTypingAtInput,writerTypoMerge,writerTypoAtInput,writerTypingFilterTransaction,writerTypingRestoreBackspace})',

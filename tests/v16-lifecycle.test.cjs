@@ -99,3 +99,41 @@ test('editor menu registration is idempotent and old listeners cannot tag menus 
  events[1](stale,editor);assert.equal(stale.__writerV1045Editor,editor);
  cleanups[1]();assert.equal(Menu.prototype.showAtMouseEvent,native);
 });
+
+test('explorer concealment restores original inline display and respects later external changes',()=>{
+ const conceal=load('src/v9/explorer-flex.js','writerV16FlexConceal');
+ let value='grid',priority='important';
+ const node={dataset:{},style:{getPropertyValue:()=>value,getPropertyPriority:()=>priority,
+  setProperty:(_key,v,p)=>{value=v;priority=p;},removeProperty:()=>{value='';priority='';}}};
+ conceal(node,true);conceal(node,true);assert.equal(value,'none');
+ conceal(node,false);assert.equal(value,'grid');assert.equal(priority,'important');
+ conceal(node,true);value='block';priority='';conceal(node,false);
+ assert.equal(value,'block');assert.equal(node.dataset.writerFlexConcealed,undefined);
+});
+test('explorer drag restoration preserves native attributes',()=>{
+ const drag=load('src/v9/explorer-flex.js','writerV16FlexDraggable');
+ let attr='false';const node={dataset:{},getAttribute:()=>attr,setAttribute:(_k,v)=>{attr=v;},
+  removeAttribute:()=>{attr=null;},get draggable(){return attr==='true';},set draggable(v){attr=String(v);}};
+ drag(node,true,'a');drag(node,true,'b');assert.equal(attr,'true');
+ drag(node,false);assert.equal(attr,'false');assert.equal(node.dataset.writerFlexPath,undefined);
+ attr=null;drag(node,true,'a');drag(node,false);assert.equal(attr,null);
+});
+test('explorer registration rejects stale layout, observer and timer callbacks',()=>{
+ const timers=new Map(),cleanups=[],observers=[],ready=[],events=[];let seq=0,scans=0,commands=0;
+ class Observer{constructor(fn){this.fn=fn;observers.push(this);}observe(){}disconnect(){this.disconnected=true;}}
+ const workspace={containerEl:{},on:(_event,fn)=>fn,onLayoutReady:fn=>ready.push(fn),getLeavesOfType:()=>{scans++;return [];}};
+ const plugin={settings:{v91Flex:{enabled:true}},app:{workspace,vault:{on:(_event,fn)=>fn}},
+  register:fn=>cleanups.push(fn),registerEvent:fn=>events.push(fn),registerDomEvent:()=>{},addCommand:()=>commands++};
+ const register=load('src/v9/explorer-flex.js','writerV91FlexRegister',{MutationObserver:Observer,
+  setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
+ register(plugin);register(plugin);assert.equal(commands,5);assert.equal(cleanups.length,1);
+ ready[0]();const oldObserver=observers[0],oldRefresh=plugin.writerV91FlexRefresh;
+ const oldTimer=[...timers.values()][0];oldRefresh();oldTimer();assert.equal(scans,1);
+ ready[0]();assert.equal(oldObserver.disconnected,true);
+ const count=timers.size;oldObserver.fn([{addedNodes:[1],removedNodes:[]}]);assert.equal(timers.size,count);
+ const stale=[...timers.values()][0];cleanups[0]();const after=scans;
+ stale();ready[0]();oldRefresh();oldObserver.fn([{addedNodes:[1],removedNodes:[]}]);
+ assert.equal(scans,after);assert.equal(timers.size,0);
+ register(plugin);ready[1]();assert.equal(commands,10);assert.equal(timers.size,1);
+ cleanups[0]();assert.equal(timers.size,1);cleanups[1]();
+});

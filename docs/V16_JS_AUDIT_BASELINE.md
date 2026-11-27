@@ -44,3 +44,7 @@ Next gate: validate new AST fixture and real report in CI, then implement target
 ## Phase 7.2 checkpoint
 
 The permanent Menu interceptors previously restored only if still outermost, leaving an earlier Basic wrapper active after out-of-order teardown. Shared disposable wrappers now forward transparently when inactive and skip disposed Basic layers when restoring an owned method. External wrappers remain intact. Editor registration has a per-session guard. Explorer sort adapters, deferred refresh and mobile/desktop interaction checks remain open.
+
+## Phase 7.3 checkpoint
+
+Explorer adapter ownership is now split by getSortedFolderItems and setSortOrder method owner. Disposed wrappers forward natively even if retained by third-party wrappers. Session and generation checks prevent late refresh/observer/layout work; a queued sort survives DOM refresh coalescing. Concealment and drag state now restore prior values rather than leaving hidden files after unload. No measured performance claims; live explorer/Spaces behavior remains a QA gate.

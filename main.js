@@ -19567,6 +19567,36 @@ function writerV1047ToggleMobileReorder(plugin,requested){
  return next;
 }
 
+function writerV16FlexConceal(node,hidden){
+ const data=node.dataset,style=node.style;
+ if(hidden){
+  if(data.writerFlexConcealed!=='true'){
+   data.writerFlexPreviousVisibility=style.getPropertyValue('display');
+   data.writerFlexPreviousVisibilityPriority=style.getPropertyPriority('display');
+   data.writerFlexConcealed='true';
+  }
+  style.setProperty('display','none','important');
+ }else if(data.writerFlexConcealed==='true'){
+  if(style.getPropertyValue('display')==='none'&&style.getPropertyPriority('display')==='important'){
+   if(data.writerFlexPreviousVisibility)style.setProperty('display',data.writerFlexPreviousVisibility,data.writerFlexPreviousVisibilityPriority||'');
+   else style.removeProperty('display');
+  }
+  delete data.writerFlexConcealed;delete data.writerFlexPreviousVisibility;delete data.writerFlexPreviousVisibilityPriority;
+ }
+}
+function writerV16FlexDraggable(title,enabled,path){
+ const data=title.dataset;
+ if(enabled){
+  if(!data.writerFlexPath)data.writerFlexPreviousDraggable=title.getAttribute('draggable')??'';
+  title.draggable=true;data.writerFlexPath=path;
+ }else if(data.writerFlexPath){
+  if(title.draggable===true){
+   if(data.writerFlexPreviousDraggable)title.setAttribute('draggable',data.writerFlexPreviousDraggable);
+   else title.removeAttribute('draggable');
+  }
+  delete data.writerFlexPath;delete data.writerFlexPreviousDraggable;
+ }
+}
 function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
@@ -19586,10 +19616,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   node.classList.toggle('writer-v91-flex-hidden',conceal);
   // Native file explorer styles may override simple CSS classes, so also set
   // a scoped inline display value. Never touch vault contents or file paths.
-  if(conceal){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
-  else if(node.dataset.writerFlexConcealed==='true'){
-   delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');
-  }
+  writerV16FlexConceal(node,conceal);
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden&&visibility.scope!=='excluded'));
   node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
   if(title){
@@ -19597,9 +19624,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
     cfg.enabled&&folder.sort==='custom'&&writerV1047MobileReorderVisible(plugin));
    if(!cfg.enabled||folder.sort!=='custom'||!writerV1047MobileReorderVisible(plugin))
     title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
-   if((!cfg.enabled||folder.sort!=='custom')&&title.dataset.writerFlexPath){
-    title.draggable=false;delete title.dataset.writerFlexPath;
-   }
+   if(!cfg.enabled||cfg.sortEnabled===false||folder.sort!=='custom'||!cfg.dragReorder)writerV16FlexDraggable(title,false);
    const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
    const wanted=cfg.enabled&&writerV93FlexPinned(plugin,path);
    if(prior&&!wanted)prior.remove();
@@ -19678,8 +19703,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
  if(folder.sort==='custom'&&cfg.dragReorder){
   for(const row of rows){
    const title=row.title;if(!title)continue;
-   title.draggable=true;
-   title.dataset.writerFlexPath=row.path;
+   writerV16FlexDraggable(title,true,row.path);
   }
  }
 }
@@ -19819,60 +19843,65 @@ function writerV1043GlobalSortingMenu(plugin,menu){
   menu.addItem(item=>item.setTitle(writerUi('Restaurar ordem nativa em todas as pastas','Restore native order in all folders'))
   .setIcon('rotate-ccw').onClick(()=>void set('native')));
 }
+const writerV16FlexSessions=new WeakMap();
 function writerV91FlexRegister(plugin){
+ if(writerV16FlexSessions.has(plugin))return;
+ const session={active:true};
+ writerV16FlexSessions.set(plugin,session);
  const cfg=plugin.settings.v91Flex;
  // Never carry editing mode between Obsidian sessions or after plugin reload.
  plugin.writerV91FlexMobileSortActive=false;
- plugin.writerV91FlexToggleMobileReorder=()=>writerV1047ToggleMobileReorder(plugin);
+ const toggleMobile=()=>session.active&&writerV1047ToggleMobileReorder(plugin);
+ plugin.writerV91FlexToggleMobileReorder=toggleMobile;
  plugin.addCommand?.({
   id:'v1047-toggle-explorer-mobile-reorder',
   name:writerUi('Explorador: ativar ou desativar reorganização móvel','Explorer: toggle mobile reorder mode'),
-  callback:()=>writerV1047ToggleMobileReorder(plugin)
+  callback:toggleMobile
  });
  let timer=null,observer=null,lastDrag='',dropNode=null;
- const patched=new Map();
- const active=()=>cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
+ const patched=new Map(),sortSetters=new Map();
+ const active=()=>session.active&&cfg.enabled&&writerModuleOn(plugin,'nativeExplorer');
  const patchView=view=>{
-  if(!view||!cfg.nativeSortIntegration)return false;
+  if(!session.active||!view||!cfg.nativeSortIntegration)return false;
   let owner=view;
   while(owner&&!Object.prototype.hasOwnProperty.call(owner,'getSortedFolderItems'))
    owner=Object.getPrototypeOf(owner);
   if(!owner||typeof owner.getSortedFolderItems!=='function')return false;
-  if(patched.has(owner))return true;
-  const previous=owner.getSortedFolderItems;
-  const adapter=function(folder){
-   const result=previous.apply(this,arguments);
-   return writerV104FlexNativeSort(plugin,folder,result);
-  };
-  try{owner.getSortedFolderItems=adapter;}catch(_){return false;}
-  if(owner.getSortedFolderItems!==adapter)return false;
+  if(!patched.has(owner)){
+   const previous=owner.getSortedFolderItems;
+   const dispose=writerV16PatchMethod(owner,'getSortedFolderItems',(original,self,args)=>{
+    const result=original.apply(self,args);
+    return active()&&cfg.nativeSortIntegration?writerV104FlexNativeSort(plugin,args[0],result):result;
+   });
+   if(owner.getSortedFolderItems===previous)return false;
+   patched.set(owner,dispose);
+  }
   let setOwner=view;
   while(setOwner&&!Object.prototype.hasOwnProperty.call(setOwner,'setSortOrder'))
    setOwner=Object.getPrototypeOf(setOwner);
-  let originalSet=null,wrappedSet=null;
-  if(setOwner&&typeof setOwner.setSortOrder==='function'){
-   originalSet=setOwner.setSortOrder;
-   wrappedSet=function(mode){
-    const result=originalSet.apply(this,arguments);
-    if(cfg.globalSortMode!=='native'){
+  if(setOwner&&typeof setOwner.setSortOrder==='function'&&!sortSetters.has(setOwner)){
+   const previous=setOwner.setSortOrder;
+   const dispose=writerV16PatchMethod(setOwner,'setSortOrder',(original,self,args)=>{
+    const result=original.apply(self,args);
+    if(active()&&cfg.nativeSortIntegration&&cfg.globalSortMode!=='native'){
      cfg.globalSortMode='native';
      void plugin.saveSettings();
      plugin.writerV91FlexRefresh?.();
     }
     return result;
-   };
-   try{setOwner.setSortOrder=wrappedSet;}catch(_){wrappedSet=null;}
+   });
+   if(setOwner.setSortOrder!==previous)sortSetters.set(setOwner,dispose);
   }
-  patched.set(owner,{previous,adapter,setOwner,originalSet,wrappedSet});
   return true;
  };
  const disposeMenu=typeof Menu!=='undefined'&&Menu?.prototype
   ?writerV16PatchMethod(Menu.prototype,'showAtMouseEvent',(original,menu,args)=>{
-   if(writerV1043IsSortButton(args[0]))writerV1043GlobalSortingMenu(plugin,menu);
+   if(active()&&writerV1043IsSortButton(args[0]))writerV1043GlobalSortingMenu(plugin,menu);
    return original.apply(menu,args);
   }):()=>{};
 
  const scan=()=>{
+  if(!session.active)return;
   const patterns=writerV91FlexPatterns(cfg);
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
@@ -19900,20 +19929,28 @@ function writerV91FlexRegister(plugin){
     node.classList.toggle('writer-v1202-space-root',visibility.scope==='root');
     node.classList.toggle('writer-v91-flex-hidden',hidden);
     node.classList.toggle('writer-v91-flex-revealed',cfg.enabled&&!hidden&&visibility.rule&&visibility.scope!=='excluded');
-    if(hidden){node.dataset.writerFlexConcealed='true';node.style.setProperty('display','none','important');}
-    else if(node.dataset.writerFlexConcealed==='true'){delete node.dataset.writerFlexConcealed;node.style.removeProperty('display');}
+    writerV16FlexConceal(node,hidden);
    }
   }
  };
- const refresh=()=>{
-  clearTimeout(timer);timer=setTimeout(()=>{
+ let generation=0,needsSort=false;
+ const schedule=(sort,delay)=>{
+  if(!session.active)return;
+  needsSort=needsSort||sort;
+  clearTimeout(timer);
+  const current=++generation;
+  timer=setTimeout(()=>{
+   if(!session.active||current!==generation)return;
+   timer=null;
+   const sortNow=needsSort;needsSort=false;
    scan();
-   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
+   if(sortNow&&session.active)for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
     if(active()&&cfg.nativeSortIntegration)try{leaf.view?.sort?.();}catch(_){}
    }
-  },100);
+  },delay);
  };
- const refreshDom=()=>{clearTimeout(timer);timer=setTimeout(scan,90);};
+ const refresh=()=>schedule(true,100);
+ const refreshDom=()=>schedule(false,90);
  plugin.writerV91FlexRefresh=refresh;
  const menu=(menu,file)=>{
   if(!active()||!(file instanceof TFile||file instanceof TFolder))return;
@@ -19956,6 +19993,7 @@ function writerV91FlexRegister(plugin){
  plugin.registerEvent(plugin.app.workspace.on('layout-change',refresh));
  plugin.registerEvent(plugin.app.vault.on('create',refresh));
  plugin.registerEvent(plugin.app.vault.on('delete',file=>{
+  if(!session.active)return;
   const old=file.path;cfg.pinned=cfg.pinned.filter(path=>path!==old&&!path.startsWith(old+'/'));
   cfg.hidden=cfg.hidden.filter(path=>path!==old&&!path.startsWith(old+'/'));
   for(const space of plugin.settings.v9Spaces?.spaces||[]){
@@ -19967,6 +20005,7 @@ function writerV91FlexRegister(plugin){
   void plugin.saveSettings();refresh();
  }));
  plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
+  if(!session.active)return;
   const swap=p=>p===old||p.startsWith(old+'/')?file.path+p.slice(old.length):p;
   cfg.pinned=cfg.pinned.map(swap);cfg.hidden=cfg.hidden.map(swap);
   for(const space of plugin.settings.v9Spaces?.spaces||[]){
@@ -20003,7 +20042,7 @@ function writerV91FlexRegister(plugin){
   event.stopImmediatePropagation?.();event.stopPropagation();
  };
  const over=event=>{
-  if(!lastDrag)return;
+  if(!session.active||!lastDrag)return;
   const node=event.target?.closest?.('.nav-file, .nav-folder');
   const target=node&&writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
   const a=plugin.app.vault.getAbstractFileByPath(lastDrag),b=plugin.app.vault.getAbstractFileByPath(target||'');
@@ -20016,7 +20055,7 @@ function writerV91FlexRegister(plugin){
   }
  };
  const drop=event=>{
-  if(!lastDrag)return;
+  if(!session.active||!lastDrag)return;
   const node=event.target?.closest?.('.nav-file, .nav-folder');
   const target=node&&writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view),source=lastDrag;
   const side=dropNode?.dataset.writerFlexDrop==='after'?'after':'before';
@@ -20033,10 +20072,12 @@ function writerV91FlexRegister(plugin){
  plugin.registerDomEvent?.(container,'drop',drop,true);
  plugin.registerDomEvent?.(container,'dragend',end,true);
  const attach=()=>{
+  if(!session.active)return;
   observer?.disconnect();if(typeof MutationObserver==='undefined'){refresh();return;}
-  observer=new MutationObserver(records=>{
-   if(records.some(record=>record.addedNodes.length||record.removedNodes.length))refreshDom();
+  const next=new MutationObserver(records=>{
+   if(session.active&&observer===next&&records.some(record=>record.addedNodes.length||record.removedNodes.length))refreshDom();
   });
+  observer=next;
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    if(leaf.view?.containerEl)observer.observe(leaf.view.containerEl,{childList:true,subtree:true});
   }
@@ -20064,17 +20105,25 @@ function writerV91FlexRegister(plugin){
   cfg.showHidden=!cfg.showHidden;await plugin.saveSettings();refresh();
  }});
  plugin.register?.(()=>{
-  clearTimeout(timer);observer?.disconnect();
-  for(const [owner,entry] of patched){
-   if(owner.getSortedFolderItems===entry.adapter)owner.getSortedFolderItems=entry.previous;
-   if(entry.wrappedSet&&entry.setOwner?.setSortOrder===entry.wrappedSet)
-    entry.setOwner.setSortOrder=entry.originalSet;
-  }
+  if(!session.active)return;
+  session.active=false;
+  if(writerV16FlexSessions.get(plugin)===session)writerV16FlexSessions.delete(plugin);
+  ++generation;clearTimeout(timer);timer=null;needsSort=false;
+  observer?.disconnect();observer=null;end();
+  for(const dispose of sortSetters.values())dispose();
+  for(const dispose of patched.values())dispose();
   disposeMenu();
-  patched.clear();
+  patched.clear();sortSetters.clear();
   for(const leaf of plugin.app.workspace.getLeavesOfType?.('file-explorer')||[]){
    const host=leaf.view?.containerEl;if(!host)continue;
-   host.classList?.remove?.('writer-v1047-mobile-reorder-on');
+   host.classList?.remove?.('writer-v1047-mobile-reorder-on','writer-v1202-space-scoped');
+   delete leaf.view._writerV1202SpaceRoot;
+   for(const node of host.querySelectorAll('.writer-v1202-space-ancestor, .writer-v1202-space-root, .writer-v91-flex-hidden, .writer-v91-flex-revealed, .writer-v91-flex-pinned, [data-writer-flex-concealed="true"]')){
+    node.classList.remove('writer-v1202-space-ancestor','writer-v1202-space-root','writer-v91-flex-hidden','writer-v91-flex-revealed','writer-v91-flex-pinned');
+    writerV16FlexConceal(node,false);
+   }
+   host.querySelectorAll?.('.writer-v91-flex-indicator')?.forEach?.(node=>node.remove?.());
+   for(const title of host.querySelectorAll('[data-writer-flex-path]'))writerV16FlexDraggable(title,false);
    host.querySelectorAll?.('.writer-v93-reorder-actions')?.forEach?.(node=>node.remove?.());
    host.querySelectorAll?.('.writer-v1047-reorder-title')?.forEach?.(node=>node.classList?.remove?.('writer-v1047-reorder-title'));
    for(const container of host.querySelectorAll('[data-writer-flex-order-host="1"]')){
@@ -20088,8 +20137,8 @@ function writerV91FlexRegister(plugin){
     node.style.removeProperty('order');delete node.dataset.writerFlexOrdered;
    }
   }
-  plugin.writerV91FlexRefresh=null;
-  plugin.writerV91FlexToggleMobileReorder=null;
+  if(plugin.writerV91FlexRefresh===refresh)plugin.writerV91FlexRefresh=null;
+  if(plugin.writerV91FlexToggleMobileReorder===toggleMobile)plugin.writerV91FlexToggleMobileReorder=null;
   plugin.writerV91FlexMobileSortActive=false;
  });
 }

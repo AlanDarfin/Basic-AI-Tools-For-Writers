@@ -115,3 +115,10 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Out-of-order cleanup skips inactive Basic layers. A third-party wrapper retaining an old Basic wrapper is preserved; the inactive wrapper forwards without running Basic logic.
 - Editor registration is idempotent per live session and stale listeners cannot tag menus. Temporary mobile relay hooks retain their existing synchronous ownership-checked finally restoration.
 - Add four lifecycle regressions and synchronize both source edits in main.js. No CSS, dependency, command ID or settings changes. Explorer sort adapters and deferred refresh callbacks remain a separate follow-up. Full new CI and real Obsidian visual/runtime QA pending.
+
+## Phase 7.3 — explorer lifecycle
+
+- CI #1383 passed Phase 7.2. Use disposable native sorting adapters and deduplicate sort setters by actual owner, not folder-list owner. Native sorting passes through when disabled.
+- Guard registration, late layout callbacks, stale observer notifications, timers and vault rename/delete callbacks with live session ownership. Coalesce refreshes without dropping a pending native sort. Cancel timers, observer and drag state on unload.
+- Restore explorer concealment and draggable attributes, clear owned visibility classes, pin indicators and Space markers. Restore prior inline display only when Basic still owns the hidden value. Existing CSS fallback ordering cleanup remains.
+- Add three regression fixtures and synchronize main.js. Full new CI, live Obsidian QA and broader stale asynchronous menu-action review remain pending.

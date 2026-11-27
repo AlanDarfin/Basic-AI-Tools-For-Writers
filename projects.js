@@ -537,7 +537,7 @@ class ProjectsView extends ItemView{
     }).open();
   }catch(error){new Notice(error.message);}
  }
- async updateIndex(project,change){
+ async writeIndex(project,change){
   const path=project.file.path;
   await this.backupIndex(project);
   // Use Obsidian's safe frontmatter API. Its YAML serializer can normalize formatting
@@ -547,19 +547,45 @@ class ProjectsView extends ItemView{
    if(!fm.longform||typeof fm.longform!=='object')fm.longform={};
    change(fm.longform);
   });
+ }
+ async updateIndex(project,change){
+  await this.writeIndex(project,change);
   await this.render();
  }
  sceneList(project){return lfFlattenScenes(project.scenes);}
  activeScenes(project,draft=this.draft){return draft==='Principal'?this.sceneList(project):(this.prefs(project).drafts?.[draft]||this.sceneList(project));}
  async changeScenes(project,change){
-  if(this.draft==='Principal')return this.updateIndex(project,data=>{
-   const flat=lfFlattenScenes(data.scenes||[]);
-   change(flat);
-   data.scenes=lfNestScenes(flat);
-  });
-  const prefs=this.prefs(project);
-  if(!prefs.drafts[this.draft])prefs.drafts[this.draft]=this.sceneList(project);
-  change(prefs.drafts[this.draft]);await this.savePrefs();
+  const draft=this.draft;
+  const dividers=typeof writerV13ArcStore==='function'?writerV13ArcStore(this,project,draft):[];
+  let planned=[];
+  const changeWithAnchors=scenes=>{
+   if(dividers.length)planned=writerV13ArcPlanSceneChange(dividers,scenes,change);
+   else change(scenes);
+  };
+  if(draft==='Principal'){
+   await this.writeIndex(project,data=>{
+    const flat=lfFlattenScenes(data.scenes||[]);
+    changeWithAnchors(flat);
+    data.scenes=lfNestScenes(flat);
+   });
+  }else{
+   const prefs=this.prefs(project);
+   if(!prefs.drafts[draft])prefs.drafts[draft]=this.sceneList(project);
+   changeWithAnchors(prefs.drafts[draft]);
+  }
+  let anchorsChanged=false;
+  // Index writes can finish after a divider has been moved or removed.
+  for(const {divider,previous,target} of planned){
+   if(divider.before!==previous||!dividers.includes(divider))continue;
+   divider.before=target;
+   anchorsChanged=true;
+  }
+  if(draft!=='Principal')return this.savePrefs();
+  try{
+   if(anchorsChanged)await this.plugin.saveSettings();
+  }finally{
+   await this.render();
+  }
  }
 
  sceneIndex(scenes,title){return scenes.findIndex(x=>x.title===title);}
@@ -726,6 +752,10 @@ class ProjectsView extends ItemView{
   const toolbar=panel.createDiv({cls:'writer-project-notes-toolbar writer-project-scene-actions-bar',
    attr:{role:'toolbar','aria-label':lfMsg('Ações de cenas','Scene actions')}});
   lfIconButton(toolbar,'file-plus',lfMsg('Adicionar cena','Add scene')).addEventListener('click',()=>this.addScene(project));
+  if(typeof writerV13ArcPrompt==='function'){
+   lfIconButton(toolbar,'separator-horizontal',lfMsg('Adicionar separador de arco','Add story arc divider'),'writer-project-arc-create')
+    .addEventListener('click',()=>writerV13ArcPrompt(this,project));
+  }
   lfIconButton(toolbar,'search',lfMsg('Buscar cena','Find scene')).addEventListener('click',()=>this.openSceneSearch(project));
   lfIconButton(toolbar,'notebook-pen',lfMsg('Novo rascunho Longform','New Longform draft')).addEventListener('click',()=>this.createLinkedDraft(project));
   addReviewButton(toolbar);
@@ -881,9 +911,11 @@ class ProjectsView extends ItemView{
     menu.showAtMouseEvent(event);
    });
    if(prefs.v7CollapsedScenes?.[name]!==true)for(const child of item.children)renderItem(child,parent,level+1);
+   return row;
   };
-  for(const item of tree)renderItem(item,panel);
+  const rootRows=tree.map(item=>renderItem(item,panel));
   if(!scenes.length)panel.createEl('p',{text:lfMsg('Nenhuma cena cadastrada. Use o botão Adicionar cena.','No scenes yet. Use the Add scene button.')});
+  if(typeof writerV13ArcRender==='function')writerV13ArcRender(this,panel,project,rootRows);
  }
  async createLinkedDraft(project){
   new TextPrompt(this.app,lfMsg('Nome do novo rascunho Longform','New Longform draft name'),async raw=>{

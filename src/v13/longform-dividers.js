@@ -87,159 +87,133 @@ async function writerV13ArcShift(view,project,id,delta){
  if(index<0||!target)return;
  await writerV13ArcMove(view,project,id,target.type==='divider'?target.id:target.title,delta>0);
 }
-function writerV13ArcInstall(){
- if(typeof ProjectsView!=='function'||ProjectsView.prototype._writerArcInstalled)return;
- const original=ProjectsView.prototype.drawScenes;
- const originalChange=ProjectsView.prototype.changeScenes;
- // Preserve an arc's position when the chapter anchoring it is renamed or removed.
- ProjectsView.prototype.changeScenes=async function(project,change){
-  const items=writerV13ArcStore(this,project),planned=[];
-  const result=await originalChange.call(this,project,scenes=>{
-   const before=scenes.filter(scene=>Number(scene.indent||0)===0)
-    .map(scene=>({scene,title:scene.title}));
-   change(scenes);
-   const after=scenes.filter(scene=>Number(scene.indent||0)===0);
-   planned.length=0;
-   for(const divider of items){
-    const oldIndex=before.findIndex(entry=>entry.title===divider.before);
-    if(oldIndex<0)continue;
-    const anchor=before[oldIndex].scene;
-    // Object identity distinguishes a rename from a deletion, without guessing
-    // from the new numeric position after unrelated removals or reordering.
-    const next=after.includes(anchor)?anchor:
-     before.slice(oldIndex+1).map(entry=>entry.scene).find(scene=>after.includes(scene));
-    const target=next?.title||null;
-    if(target!==divider.before)planned.push({divider,target});
+function writerV13ArcPlanSceneChange(dividers,scenes,change){
+ const before=scenes.filter(scene=>Number(scene.indent||0)===0)
+  .map(scene=>({scene,title:scene.title}));
+ change(scenes);
+ const after=new Set(scenes.filter(scene=>Number(scene.indent||0)===0));
+ const planned=[];
+ for(const divider of dividers){
+  if(!divider)continue;
+  const previous=divider.before;
+  const oldIndex=before.findIndex(entry=>entry.title===previous);
+  if(oldIndex<0)continue;
+  const anchor=before[oldIndex].scene;
+  // Object identity distinguishes renaming the anchor from removing it.
+  const next=after.has(anchor)?anchor:before.slice(oldIndex+1).find(entry=>after.has(entry.scene))?.scene;
+  const target=next?.title||null;
+  if(target!==previous)planned.push({divider,previous,target});
+ }
+ return planned;
+}
+function writerV13ArcRender(view,panel,project,rows){
+ const roots=writerV13ArcRoots(view,project),dividers=writerV13ArcStore(view,project);
+ const rowOf=title=>rows.find(row=>row.dataset.sceneTitle===title);
+ const projectKey=project.file.path,draft=view.draft;
+ const pickupValid=()=>view.writerArcPickup?.path===projectKey&&view.writerArcPickup?.draft===draft;
+ // Capture the destination grip before the regular chapter pickup handler runs.
+ for(const row of rows){
+  const grip=row.querySelector('.writer-project-drag-handle');
+  grip?.addEventListener('click',event=>{
+   if(!pickupValid())return;
+   event.preventDefault();event.stopImmediatePropagation();
+   const id=view.writerArcPickup.id;view.writerArcPickup=null;
+   void writerV13ArcMove(view,project,id,row.dataset.sceneTitle,false);
+  },true);
+  row.addEventListener('dragover',event=>{
+   if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc'))return;
+   event.preventDefault();row.addClass('writer-project-dragover');
+  });
+  row.addEventListener('dragleave',event=>{
+   if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
+  });
+  row.addEventListener('drop',event=>{
+   let data;try{data=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){return;}
+   if(data?.path!==projectKey||data?.draft!==draft)return;
+   event.preventDefault();event.stopImmediatePropagation();
+   row.removeClass('writer-project-dragover');
+   const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
+   void writerV13ArcMove(view,project,data.id,row.dataset.sceneTitle,after);
+  },true);
+ }
+ const layout=writerV13ArcLayout(roots,dividers);
+ for(const divider of layout){
+  if(divider.type!=='divider')continue;
+  const row=panel.createDiv({cls:'writer-project-arc-divider'});
+  row.dataset.arcId=divider.id;
+  row.setAttribute('role','group');
+  row.setAttribute('aria-label',divider.label?lfMsg('Separador: ','Divider: ')+divider.label:lfMsg('Separador de arco','Story arc divider'));
+  const grip=row.createEl('button',{text:'⠿',cls:'writer-project-arc-grip',attr:{
+   type:'button',title:lfMsg('Mover separador','Move divider'),
+   'aria-label':lfMsg('Mover separador','Move divider')}});
+  grip.draggable=true;
+  grip.addEventListener('click',()=>{
+   if(view.scenePickup?.path===projectKey&&view.scenePickup?.draft===draft){
+    const source=view.scenePickup.source;view.clearScenePickup();
+    const target=divider.before||roots.at(-1);
+    if(target)void view.moveSceneRelative(project,source,target,!divider.before);
+    return;
+   }
+   if(pickupValid()&&view.writerArcPickup.id===divider.id){
+    view.writerArcPickup=null;void view.render();return;
+   }
+   if(pickupValid()){
+    const id=view.writerArcPickup.id;view.writerArcPickup=null;
+    void writerV13ArcMove(view,project,id,divider.id,false);return;
+   }
+   view.clearScenePickup();
+   view.writerArcPickup={path:projectKey,draft,id:divider.id};
+   row.addClass('writer-project-arc-picked');
+   new Notice(lfMsg('Separador selecionado. Toque na alça de outro separador ou capítulo.','Divider selected. Tap the handle of a chapter or another divider.'),3000);
+  });
+  grip.addEventListener('dragstart',event=>{
+   event.dataTransfer?.setData('application/x-basic-ai-arc',JSON.stringify({path:projectKey,draft,id:divider.id}));
+   if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+  });
+  const rule=row.createDiv({cls:'writer-project-arc-rule'+(divider.label?' is-labeled':'')});
+  if(divider.label)rule.createSpan({cls:'writer-project-arc-label',text:divider.label});
+  const more=row.createEl('button',{text:'⋯',cls:'writer-project-arc-more',attr:{type:'button',
+   title:lfMsg('Opções do separador','Divider options'),'aria-label':lfMsg('Opções do separador','Divider options')}});
+  more.addEventListener('click',event=>{
+   event.stopPropagation();
+   const menu=new Menu();
+   const actions=[
+    [lfMsg('Editar texto','Edit text'),'pencil',()=>writerV13ArcPrompt(view,project,divider)],
+    [lfMsg('Mover para cima','Move up'),'arrow-up',()=>writerV13ArcShift(view,project,divider.id,-1)],
+    [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>writerV13ArcShift(view,project,divider.id,1)],
+    [lfMsg('Remover separador','Remove divider'),'trash-2',async()=>{
+     const items=writerV13ArcStore(view,project),at=items.findIndex(item=>item.id===divider.id);
+     if(at>=0){items.splice(at,1);view.writerArcPickup=null;await writerV13ArcSave(view);}
+    }]
+   ];
+   for(const [label,icon,action] of actions)menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
+   menu.showAtMouseEvent(event);
+  });
+  row.addEventListener('dragover',event=>{
+   if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc')&&!event.dataTransfer?.types?.includes('application/x-basic-ai-scene'))return;
+   event.preventDefault();row.addClass('writer-project-dragover');
+  });
+  row.addEventListener('dragleave',event=>{
+   if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
+  });
+  row.addEventListener('drop',event=>{
+   row.removeClass('writer-project-dragover');
+   let arc,scene;
+   try{arc=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){arc=null;}
+   if(arc?.path===projectKey&&arc?.draft===draft){
+    event.preventDefault();event.stopImmediatePropagation();
+    void writerV13ArcMove(view,project,arc.id,divider.id,false);return;
+   }
+   try{scene=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-scene')||'null');}catch(_){scene=null;}
+   if(scene?.path===projectKey&&scene?.draft===draft){
+    const target=divider.before||roots.at(-1);
+    if(target){
+     event.preventDefault();event.stopImmediatePropagation();
+     void view.moveSceneRelative(project,scene.name,target,!divider.before);
+    }
    }
   });
-  // Only update preferences after the native index operation has succeeded.
-  if(planned.length){
-   for(const {divider,target} of planned)divider.before=target;
-   await this.plugin.saveSettings();await this.render();
-  }
-  return result;
- };
- ProjectsView.prototype._writerArcInstalled=true;
- ProjectsView.prototype.drawScenes=function(panel,project){
-  original.call(this,panel,project);
-  if(project.format==='single')return;
-  const view=this,roots=writerV13ArcRoots(view,project),dividers=writerV13ArcStore(view,project);
-  const toolbar=panel.querySelector('.writer-project-scene-actions-bar');
-  if(toolbar){
-   const button=lfIconButton(toolbar,'separator-horizontal',
-    lfMsg('Adicionar separador de arco','Add story arc divider'),'writer-project-arc-create');
-   button.addEventListener('click',()=>writerV13ArcPrompt(view,project));
-   toolbar.insertBefore(button,toolbar.children[1]||null);
-  }
-  const rows=Array.from(panel.querySelectorAll('.writer-project-scene[data-depth="0"]'));
-  const rowOf=title=>rows.find(row=>row.dataset.sceneTitle===title);
-  const projectKey=project.file.path,draft=view.draft;
-  const pickupValid=()=>view.writerArcPickup?.path===projectKey&&view.writerArcPickup?.draft===draft;
-  // Capture the destination grip before the regular chapter pickup handler runs.
-  for(const row of rows){
-   const grip=row.querySelector('.writer-project-drag-handle');
-   grip?.addEventListener('click',event=>{
-    if(!pickupValid())return;
-    event.preventDefault();event.stopImmediatePropagation();
-    const id=view.writerArcPickup.id;view.writerArcPickup=null;
-    void writerV13ArcMove(view,project,id,row.dataset.sceneTitle,false);
-   },true);
-   row.addEventListener('dragover',event=>{
-    if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc'))return;
-    event.preventDefault();row.addClass('writer-project-dragover');
-   });
-   row.addEventListener('dragleave',event=>{
-    if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
-   });
-   row.addEventListener('drop',event=>{
-    let data;try{data=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){return;}
-    if(data?.path!==projectKey||data?.draft!==draft)return;
-    event.preventDefault();event.stopImmediatePropagation();
-    row.removeClass('writer-project-dragover');
-    const after=event.clientY>row.getBoundingClientRect().top+row.getBoundingClientRect().height/2;
-    void writerV13ArcMove(view,project,data.id,row.dataset.sceneTitle,after);
-   },true);
-  }
-  const layout=writerV13ArcLayout(roots,dividers);
-  for(const divider of layout){
-   if(divider.type!=='divider')continue;
-   const row=panel.createDiv({cls:'writer-project-arc-divider'});
-   row.dataset.arcId=divider.id;
-   row.setAttribute('role','group');
-   row.setAttribute('aria-label',divider.label?lfMsg('Separador: ','Divider: ')+divider.label:lfMsg('Separador de arco','Story arc divider'));
-   const grip=row.createEl('button',{text:'⠿',cls:'writer-project-arc-grip',attr:{
-    type:'button',title:lfMsg('Mover separador','Move divider'),
-    'aria-label':lfMsg('Mover separador','Move divider')}});
-   grip.draggable=true;
-   grip.addEventListener('click',()=>{
-    if(view.scenePickup?.path===projectKey&&view.scenePickup?.draft===draft){
-     const source=view.scenePickup.source;view.clearScenePickup();
-     const target=divider.before||roots.at(-1);
-     if(target)void view.moveSceneRelative(project,source,target,!divider.before);
-     return;
-    }
-    if(pickupValid()&&view.writerArcPickup.id===divider.id){
-     view.writerArcPickup=null;void view.render();return;
-    }
-    if(pickupValid()){
-     const id=view.writerArcPickup.id;view.writerArcPickup=null;
-     void writerV13ArcMove(view,project,id,divider.id,false);return;
-    }
-    view.clearScenePickup();
-    view.writerArcPickup={path:projectKey,draft,id:divider.id};
-    row.addClass('writer-project-arc-picked');
-    new Notice(lfMsg('Separador selecionado. Toque na alça de outro separador ou capítulo.','Divider selected. Tap the handle of a chapter or another divider.'),3000);
-   });
-   grip.addEventListener('dragstart',event=>{
-    event.dataTransfer?.setData('application/x-basic-ai-arc',JSON.stringify({path:projectKey,draft,id:divider.id}));
-    if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
-   });
-   const rule=row.createDiv({cls:'writer-project-arc-rule'+(divider.label?' is-labeled':'')});
-   if(divider.label)rule.createSpan({cls:'writer-project-arc-label',text:divider.label});
-   const more=row.createEl('button',{text:'⋯',cls:'writer-project-arc-more',attr:{type:'button',
-    title:lfMsg('Opções do separador','Divider options'),'aria-label':lfMsg('Opções do separador','Divider options')}});
-   more.addEventListener('click',event=>{
-    event.stopPropagation();
-    const menu=new Menu();
-    const actions=[
-     [lfMsg('Editar texto','Edit text'),'pencil',()=>writerV13ArcPrompt(view,project,divider)],
-     [lfMsg('Mover para cima','Move up'),'arrow-up',()=>writerV13ArcShift(view,project,divider.id,-1)],
-     [lfMsg('Mover para baixo','Move down'),'arrow-down',()=>writerV13ArcShift(view,project,divider.id,1)],
-     [lfMsg('Remover separador','Remove divider'),'trash-2',async()=>{
-      const items=writerV13ArcStore(view,project),at=items.findIndex(item=>item.id===divider.id);
-      if(at>=0){items.splice(at,1);view.writerArcPickup=null;await writerV13ArcSave(view);}
-     }]
-    ];
-    for(const [label,icon,action] of actions)menu.addItem(item=>item.setTitle(label).setIcon(icon).onClick(action));
-    menu.showAtMouseEvent(event);
-   });
-   row.addEventListener('dragover',event=>{
-    if(!event.dataTransfer?.types?.includes('application/x-basic-ai-arc')&&!event.dataTransfer?.types?.includes('application/x-basic-ai-scene'))return;
-    event.preventDefault();row.addClass('writer-project-dragover');
-   });
-   row.addEventListener('dragleave',event=>{
-    if(!row.contains(event.relatedTarget))row.removeClass('writer-project-dragover');
-   });
-   row.addEventListener('drop',event=>{
-    row.removeClass('writer-project-dragover');
-    let arc,scene;
-    try{arc=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-arc')||'null');}catch(_){arc=null;}
-    if(arc?.path===projectKey&&arc?.draft===draft){
-     event.preventDefault();event.stopImmediatePropagation();
-     void writerV13ArcMove(view,project,arc.id,divider.id,false);return;
-    }
-    try{scene=JSON.parse(event.dataTransfer?.getData('application/x-basic-ai-scene')||'null');}catch(_){scene=null;}
-    if(scene?.path===projectKey&&scene?.draft===draft){
-     const target=divider.before||roots.at(-1);
-     if(target){
-      event.preventDefault();event.stopImmediatePropagation();
-      void view.moveSceneRelative(project,scene.name,target,!divider.before);
-     }
-    }
-   });
-   if(pickupValid()&&view.writerArcPickup.id===divider.id)row.addClass('writer-project-arc-picked');
-   panel.insertBefore(row,divider.before?rowOf(divider.before)||null:null);
-  }
- };
+  if(pickupValid()&&view.writerArcPickup.id===divider.id)row.addClass('writer-project-arc-picked');
+  panel.insertBefore(row,divider.before?rowOf(divider.before)||null:null);
+ }
 }
-writerV13ArcInstall();

@@ -8812,7 +8812,7 @@ function writerBookNavMerge(settings){
  settings.bookNavigation={...WRITER_BOOKNAV_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
  return settings.bookNavigation;
 }
-function writerBookNavFindSceneFile(index,entry,app){
+function writerBookNavFindSceneFile(index,entry,app,getMarkdownFiles=()=>app.vault.getMarkdownFiles()){
  const parent=index.file.parent?.path||'';
  const folder=String(index.meta?.sceneFolder||'/').replace(/^\/+|\/+$/g,'');
  const title=String(entry?.title||'').trim();
@@ -8834,7 +8834,7 @@ function writerBookNavFindSceneFile(index,entry,app){
  // only, and only when the basename is unambiguous, never across other books.
  const projectRoot=parent?parent+'/':'';
  const basename=title.replace(/\.md$/i,'').split('/').pop();
- const matches=app.vault.getMarkdownFiles().filter(file=>
+ const matches=getMarkdownFiles().filter(file=>
   (file.path.startsWith(projectRoot)||!parent)&&file.basename===basename&&
   app.vault.getAbstractFileByPath(file.path) instanceof TFile
  );
@@ -8843,8 +8843,10 @@ function writerBookNavFindSceneFile(index,entry,app){
 function writerBookNavFlatten(index,app){
  if(!index||index.format!=='scenes')return [];
  const entries=lfFlattenScenes(index.scenes),out=[];
+ let markdownFiles;
+ const getMarkdownFiles=()=>markdownFiles??=app.vault.getMarkdownFiles();
  for(let i=0;i<entries.length;i++){
-  const file=writerBookNavFindSceneFile(index,entries[i],app);
+  const file=writerBookNavFindSceneFile(index,entries[i],app,getMarkdownFiles);
   const level=Math.max(0,Math.floor(Number(entries[i].indent)||0));
   // Entries lacking a valid note still determine hierarchy and placement but
   // should never produce a navigation button to an invented or missing file.
@@ -9551,8 +9553,7 @@ function writerV7TagList(raw){
  const values=Array.isArray(raw)?raw:typeof raw==='string'?raw.split(/[\s,]+/):[];
  return [...new Set(values.map(writerV7Tag).filter(Boolean))];
 }
-function writerV7NoteTags(app,file){
- const cache=app.metadataCache?.getFileCache?.(file);
+function writerV7NoteTags(app,file,cache=app.metadataCache?.getFileCache?.(file)){
  const tags=writerV7TagList(cache?.frontmatter?.tags);
  for(const entry of cache?.tags||[]){
   const tag=writerV7Tag(entry?.tag);
@@ -9573,12 +9574,12 @@ function writerV7FolderNote(app,folder){
  }
  return null;
 }
-function writerV7InheritedTags(app,file){
- const tags=new Set(writerV7NoteTags(app,file));
+function writerV7InheritedTags(app,file,noteTags=note=>writerV7NoteTags(app,note),folderNoteFor=folder=>writerV7FolderNote(app,folder)){
+ const tags=new Set(noteTags(file));
  let folder=file.parent,steps=0;
  while(folder instanceof TFolder&&steps++<32){
-  const folderNote=writerV7FolderNote(app,folder);
-  if(folderNote&&folderNote.path!==file.path)for(const tag of writerV7NoteTags(app,folderNote))tags.add(tag);
+  const folderNote=folderNoteFor(folder);
+  if(folderNote&&folderNote.path!==file.path)for(const tag of noteTags(folderNote))tags.add(tag);
   folder=folder.parent;
  }
  return [...tags];
@@ -9587,15 +9588,29 @@ function writerV7ProjectNotes(view,project){
  const root=view.notesRoot(project),folder=view.app.vault.getAbstractFileByPath(root);
  if(!(folder instanceof TFolder))return [];
  const out=[],limit=view.plugin.settings.v7?.maxEntries||3000;
+ // Reuse lookups within this synchronous traversal only.
+ const caches=new Map(),tagsByNote=new Map(),folderNotes=new Map();
+ const cacheFor=file=>{
+  if(!caches.has(file))caches.set(file,view.app.metadataCache?.getFileCache?.(file));
+  return caches.get(file);
+ };
+ const noteTags=file=>{
+  if(!tagsByNote.has(file))tagsByNote.set(file,writerV7NoteTags(view.app,file,cacheFor(file)??null));
+  return tagsByNote.get(file);
+ };
+ const folderNoteFor=folder=>{
+  if(!folderNotes.has(folder))folderNotes.set(folder,writerV7FolderNote(view.app,folder));
+  return folderNotes.get(folder);
+ };
  const walk=(node,depth)=>{
   if(depth>30||out.length>=limit)return;
   for(const item of node.children||[]){
    if(out.length>=limit)break;
    if(item instanceof TFolder)walk(item,depth+1);
    else if(item instanceof TFile&&item.extension==='md'){
-    const folderNote=item.parent instanceof TFolder?writerV7FolderNote(view.app,item.parent):null;
+    const folderNote=item.parent instanceof TFolder?folderNoteFor(item.parent):null;
     out.push({file:item,path:item.path,title:item.basename,folder:item.parent?.path||'',folderNote:folderNote?.path===item.path,
-     tags:writerV7InheritedTags(view.app,item),cache:view.app.metadataCache?.getFileCache?.(item)});
+     tags:writerV7InheritedTags(view.app,item,noteTags,folderNoteFor),cache:cacheFor(item)});
    }
   }
  };

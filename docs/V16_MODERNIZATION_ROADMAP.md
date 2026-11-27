@@ -271,3 +271,8 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Dashboard: share a lazy, per-render Markdown array snapshot across recent/stats/activity/random/tags/today widgets, skip fallback enumeration and sorting when recent history already fills the widget, read each timestamp once in the weekly activity calculation and construct the weekday formatter once. Keep live search independent of the snapshot and preserve existing activity-window semantics.
 - Explorer: memoize numeric, manual order and YAML sort keys for a single synchronous sort, reuse the already selected native explorer view during group scans, and compute pinned state once per row. Preserve existing sorting precedence and refresh metadata on each invocation. No persistent cache or new dependency.
 - Rebuild the two changed module regions in main.js using the existing stable markers, preserve all other regions and add three behavioral regression fixtures for enumeration, timestamp reads and sort-key memoization/freshness. Full build sync, regression CI, device profiling and Timeline CSS coordination pending. Continue with targeted DOM/render/lifecycle optimization rather than claiming measured speedup from static counts.
+
+### Phase 11.4 — Longform and Compendium traversal
+
+- CI #1408 passed the previous checkpoint. Reuse a lazily enumerated Markdown snapshot during each synchronous BookNav flatten, preserving direct path precedence and ambiguous basename rejection.
+- Compendium traversal reuses metadata, normalized tags and folder-note lookups within one scan; subsequent scans read fresh values. No persistent caches or settings changes. Source and bundle substitutions synchronized. New CI and device profiling pending.

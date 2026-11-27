@@ -6,7 +6,7 @@ function writerBookNavMerge(settings){
  settings.bookNavigation={...WRITER_BOOKNAV_DEFAULTS,...(old&&typeof old==='object'&&!Array.isArray(old)?old:{})};
  return settings.bookNavigation;
 }
-function writerBookNavFindSceneFile(index,entry,app){
+function writerBookNavFindSceneFile(index,entry,app,getMarkdownFiles=()=>app.vault.getMarkdownFiles()){
  const parent=index.file.parent?.path||'';
  const folder=String(index.meta?.sceneFolder||'/').replace(/^\/+|\/+$/g,'');
  const title=String(entry?.title||'').trim();
@@ -28,7 +28,7 @@ function writerBookNavFindSceneFile(index,entry,app){
  // only, and only when the basename is unambiguous, never across other books.
  const projectRoot=parent?parent+'/':'';
  const basename=title.replace(/\.md$/i,'').split('/').pop();
- const matches=app.vault.getMarkdownFiles().filter(file=>
+ const matches=getMarkdownFiles().filter(file=>
   (file.path.startsWith(projectRoot)||!parent)&&file.basename===basename&&
   app.vault.getAbstractFileByPath(file.path) instanceof TFile
  );
@@ -37,8 +37,10 @@ function writerBookNavFindSceneFile(index,entry,app){
 function writerBookNavFlatten(index,app){
  if(!index||index.format!=='scenes')return [];
  const entries=lfFlattenScenes(index.scenes),out=[];
+ let markdownFiles;
+ const getMarkdownFiles=()=>markdownFiles??=app.vault.getMarkdownFiles();
  for(let i=0;i<entries.length;i++){
-  const file=writerBookNavFindSceneFile(index,entries[i],app);
+  const file=writerBookNavFindSceneFile(index,entries[i],app,getMarkdownFiles);
   const level=Math.max(0,Math.floor(Number(entries[i].indent)||0));
   // Entries lacking a valid note still determine hierarchy and placement but
   // should never produce a navigation button to an invented or missing file.

@@ -11,9 +11,9 @@ test('homepage slash searches use native Web Viewer and never match vault notes'
  const utils=fs.readFileSync('src/v8/home-utilities.js','utf8');
  assert.match(home,/const slashSearch=\(\)=>input\.value\.trimStart\(\)\.startsWith\('\/'\)/);
  assert.match(home,/if\(slashSearch\(\)\)\{[\s\S]*?matches=\[\];selected=0;status\.hidden=false;[\s\S]*?return; \/\/ Never search/);
- assert.match(home,/if\(slashSearch\(\)\)await writerV8HomeOpenNativeSearch\(this\.plugin,slashTerm\(\)\)/);
+ assert.match(home,/if\(slashSearch\(\)\)await writerV8HomeOpenNativeSearch\(this\.plugin,slashTerm\(\),current\)/);
  assert.match(home,/if\(event\.key==='Enter'\)\{\s*if\(slashSearch\(\)\)/);
- assert.match(utils,/async function writerV8HomeOpenNativeSearch\(plugin,input\)/);
+ assert.match(utils,/async function writerV8HomeOpenNativeSearch\(plugin,input,current=\(\)=>true\)/);
  assert.match(utils,/if\(!writerV8HomeWebViewerEnabled\(plugin\)\)/);
  assert.match(utils,/await leaf\.setViewState\(\{type:'webviewer'/);
  assert.doesNotMatch(utils.slice(utils.indexOf('async function writerV8HomeOpenNativeSearch'),utils.indexOf('async function writerV8HomeOpenURL')),

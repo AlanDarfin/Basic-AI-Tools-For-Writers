@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const source=['src/v8/home-utilities.js','src/v8/writing-home.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
 class Node{
- constructor(tag,options={}){this.tag=tag;this.cls=options.cls||'';this.attributes={...options.attr};this.text=options.text||'';this.children=[];this.listeners={};}
+ constructor(tag,options={}){this.tag=tag;this.cls=options.cls||'';this.attributes={...options.attr};this.text=options.text||'';this.children=[];this.listeners={};this.isConnected=true;}
  createEl(tag,opts){const el=new Node(tag,opts);this.children.push(el);return el;}
  createDiv(opts){return this.createEl('div',opts);}
  createSpan(opts){return this.createEl('span',opts);}
@@ -42,7 +42,7 @@ test('search matches accents, combined words, host, URL path and group without r
  assert.equal(h.filter(list,'agora não').length,0);
  assert.equal(list.length,17);
 });
-test('looks past the first 12, retains search on rerender and keeps the same search input while filtering',()=>{
+test('looks past the first 12, retains search on rerender and keeps the same search input while filtering',async()=>{
  const h=harness(),root=h.render(),input=find(root,'input');
  assert.equal(rows(root).length,12);
  input.value='historia';input.listeners.input();
@@ -52,7 +52,7 @@ test('looks past the first 12, retains search on rerender and keeps the same sea
  assert.equal(root.byClass('writer-v1205-web-bookmark-count')[0].text,'1/17 sites encontrados');
  assert.equal(root.byClass('writer-v1203-web-bookmarks-expand')[0].hidden,true);
  assert.equal(find(h.render(),'input').value,'historia');
- rows(h.root)[0].listeners.click();
+ await rows(h.root)[0].listeners.click();
  assert.deepEqual(h.opened,[{url:'https://site16.test/reference',target:'_system'}]);
 });
 test('exact group filters combine with search, include ungrouped, and fall back when a group disappears',()=>{
@@ -85,4 +85,11 @@ test('empty bookmarks and entirely ungrouped lists do not add unusable controls'
  const list=make(3).map(item=>({...item,group:''}));
  const root=harness(list).render();
  assert.ok(find(root,'input'));assert.equal(find(root,'select'),undefined);
+});
+
+test('bookmark action ignores a detached widget and suppresses duplicate in-flight clicks',async()=>{
+ const h=harness(),root=h.render(),card=root.children[0],button=rows(root)[0];
+ card.isConnected=false;await button.listeners.click();assert.equal(h.opened.length,0);
+ card.isConnected=true;const pending=button.listeners.click();await button.listeners.click();await pending;
+ assert.equal(h.opened.length,1);assert.equal(button.disabled,false);
 });

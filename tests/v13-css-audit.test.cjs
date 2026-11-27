@@ -45,3 +45,13 @@ test('CSS foundation: StyleMate prose and desktop status are scoped',()=>{
  assert.match(dock[0].body,/transform:none/);
  assert.match(dock[0].body,/bottom:0/);
 });
+
+test('CSS foundation: mobile notes and explorer controls require Basic-owned markers',()=>{
+ const css=fs.readFileSync('styles.css','utf8'),rules=collectRules(css);
+ const mobile=rules.find(r=>r.selector==='body.is-mobile :is(.markdown-preview-view,.cm-scroller).writer-mobile-note-scroll-clearance');
+ assert.ok(mobile);
+ assert.match(mobile.body,/padding-bottom:max\(var\(--writer-mobile-note-base-padding,0px\),var\(--writer-mobile-note-clearance,0px\)\)/);
+ assert.ok(rules.some(r=>r.selector.includes(':is(.writer-v921-preview-toggle,.writer-v93-space-manage-action)')));
+ assert.ok(!rules.some(r=>r.selector==='.workspace-leaf-content[data-type="file-explorer"] .nav-action-button'));
+ assert.ok(!rules.some(r=>r.selector.includes('.nav-action-buttons .nav-action-button')&&!r.selector.includes('writer-')));
+});

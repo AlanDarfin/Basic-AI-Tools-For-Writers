@@ -20,6 +20,7 @@ class Node{
  get textContent(){return this.ownText+this.children.map(child=>child.textContent).join('');}
  set textContent(value){this.ownText=String(value);}
  setAttribute(key,value){this.attrs[key]=value;}
+ getAttribute(key){return this.attrs[key]??null;}
  addEventListener(name,fn){this.events[name]=fn;}
  removeEventListener(name){delete this.events[name];}
  getBoundingClientRect(){const inset=parseFloat(this.style.getPropertyValue('--writer-mobile-nav-bottom'));
@@ -207,4 +208,41 @@ test('desktop leaves its existing status bar and settings untouched',()=>{
  h.api.writerMobileStatusSettings(h.plugin,new Node());
  assert.equal(h.toggle,undefined);assert.equal(h.plugin.writerMobileStatus,undefined);
  assert.equal(h.node('writer-mobile-status'),null);assert.equal(h.native.parentNode,h.app);
+});
+
+test('Markdown reading and editor scrollers reserve only overlapping bottom geometry',async()=>{
+ const h=fixture(),pane=h.workspace.appendChild(new Node('workspace-leaf-content'));
+ pane.setAttribute('data-type','markdown');
+ const read=pane.appendChild(new Node('markdown-preview-view'));
+ const editor=pane.appendChild(new Node('markdown-source-view'));
+ const scroller=editor.appendChild(new Node('cm-scroller'));
+ const narrow=pane.appendChild(new Node('markdown-preview-view'));
+ const embed=read.appendChild(new Node('markdown-embed')).appendChild(new Node('markdown-preview-view'));
+ const other=h.workspace.appendChild(new Node('workspace-leaf-content'));
+ other.setAttribute('data-type','other');
+ const nonMarkdown=other.appendChild(new Node('cm-scroller'));
+ for(const node of [read,scroller,embed,nonMarkdown])node.rect={left:0,right:360,width:360,top:35,bottom:800,height:765};
+ narrow.rect={left:0,right:20,width:20,top:35,bottom:800,height:765};
+ h.safe(26,24);
+ for(const node of [read,scroller]){
+  assert.equal(node.style.getPropertyValue('--writer-mobile-note-clearance'),'116px');
+  assert.equal(node.classList.contains('writer-mobile-note-scroll-clearance'),true);
+ }
+ for(const node of [narrow,embed,nonMarkdown])assert.equal(node.style.getPropertyValue('--writer-mobile-note-clearance'),'');
+ h.keyboard(300);
+ for(const node of [read,scroller])assert.equal(node.classList.contains('writer-mobile-note-scroll-clearance'),false);
+ h.keyboard(0);
+ assert.equal(read.style.getPropertyValue('--writer-mobile-note-clearance'),'116px');
+ h.api.writerMobileStatusSettings(h.plugin,new Node());await h.toggle.change(false);
+ assert.equal(read.style.getPropertyValue('--writer-mobile-note-clearance'),'70px','native nav still overlaps');
+ h.doc.body.classList.add('is-hidden-nav');h.plugin.writerMobileStatus.refresh();
+ assert.equal(read.style.getPropertyValue('--writer-mobile-note-clearance'),'');
+ h.doc.body.classList.remove('is-hidden-nav');h.plugin.writerMobileStatus.refresh();
+ assert.equal(read.style.getPropertyValue('--writer-mobile-note-clearance'),'70px');
+ h.disable();
+ for(const node of [read,scroller]){
+  assert.equal(node.style.getPropertyValue('--writer-mobile-note-clearance'),'');
+  assert.equal(node.style.getPropertyValue('--writer-mobile-note-base-padding'),'');
+  assert.equal(node.classList.contains('writer-mobile-note-scroll-clearance'),false);
+ }
 });

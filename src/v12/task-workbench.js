@@ -421,7 +421,7 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
    const report={total:all.length,examined:0,failed:0,limited:0};
    for(let i=0;i<files.length;i+=12){
     const batch=await Promise.all(files.slice(i,i+12).map(async file=>({file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)})));
-    if(closed||!writerV139TaskOn(plugin))return;
+    if(closed||rescan||!writerV139TaskOn(plugin))return;
     report.examined+=batch.length;
     for(const {file,source} of batch){
      if(typeof source!=='string'){report.failed++;continue;}
@@ -430,11 +430,17 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
     }
    }
    data=rows;scan=report;scanFailed=false;
-  }catch(error){scanFailed=true;if(!closed)new Notice(String(error.message||error));}
+  }catch(error){
+   if(!closed&&!rescan&&writerV139TaskOn(plugin)){
+    scanFailed=true;new Notice(String(error.message||error));
+   }
+  }
   finally{
    loading=false;
-   if(!closed&&writerV139TaskOn(plugin)){
-    if(rescan){rescan=false;void refresh();}else render();
+   const restart=rescan;rescan=false;
+   if(!closed){
+    if(restart&&writerV139TaskOn(plugin))void refresh();
+    else render();
    }
   }
  };

@@ -31851,7 +31851,7 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
    const report={total:all.length,examined:0,failed:0,limited:0};
    for(let i=0;i<files.length;i+=12){
     const batch=await Promise.all(files.slice(i,i+12).map(async file=>({file,source:await plugin.app.vault.cachedRead(file).catch(()=>null)})));
-    if(closed||!writerV139TaskOn(plugin))return;
+    if(closed||rescan||!writerV139TaskOn(plugin))return;
     report.examined+=batch.length;
     for(const {file,source} of batch){
      if(typeof source!=='string'){report.failed++;continue;}
@@ -31860,11 +31860,17 @@ function writerV12TaskWorkbench(plugin,initialScope='all'){
     }
    }
    data=rows;scan=report;scanFailed=false;
-  }catch(error){scanFailed=true;if(!closed)new Notice(String(error.message||error));}
+  }catch(error){
+   if(!closed&&!rescan&&writerV139TaskOn(plugin)){
+    scanFailed=true;new Notice(String(error.message||error));
+   }
+  }
   finally{
    loading=false;
-   if(!closed&&writerV139TaskOn(plugin)){
-    if(rescan){rescan=false;void refresh();}else render();
+   const restart=rescan;rescan=false;
+   if(!closed){
+    if(restart&&writerV139TaskOn(plugin))void refresh();
+    else render();
    }
   }
  };
@@ -37724,6 +37730,8 @@ const WRITER_SETTINGS_SEARCH_INDEX=[
 // v3 module: src/v13/grammar-settings.js
 /* Grammar setup uses the existing review preferences. No requests run on render. */
 let writerV137GrammarSettingId=0;
+// A settings panel can be rebuilt while its connection write is still pending.
+const writerGrammarConnectionWrites=new WeakMap();
 function writerV137GrammarWords(value){
  const words=[],seen=new Set();let skipped=0;
  for(const line of String(value||'').split(/\r?\n/)){
@@ -37765,11 +37773,24 @@ function writerV137GrammarSettings(plugin,panel){
   'LanguageTool suggests corrections. Notes change only when you accept a suggestion; reviewed text is sent to the selected server.')});
  const status=root.createDiv({cls:'writer-grammar-state',attr:{role:'status','aria-live':'polite'}});
  const builtIn=[],automatic=[];
- const savedConnection=()=>({reviewEndpoint:settings.reviewEndpoint||'',reviewUsername:settings.reviewUsername||'',reviewApiKey:settings.reviewApiKey||''});
- const connectionDraft=savedConnection(),connectionFields={};
- const connectionDirty=()=>Object.entries(savedConnection()).some(([key,value])=>connectionDraft[key]!==value);
- const connectionValid=()=>Boolean(writerGrammarEndpoint(connectionDraft.reviewEndpoint));
- let busy=false,savingConnection=false,revision=0,testButton,testStatus,saveConnection,discardConnection,connectionFeedback,endpointFeedback;
+ const live=()=>root.isConnected!==false&&plugin.settings===settings;
+ const connectionWrite=()=>writerGrammarConnectionWrites.get(plugin);
+ const savedConnection=()=>connectionWrite()?.previous??({
+  reviewEndpoint:settings.reviewEndpoint||'',reviewUsername:settings.reviewUsername||'',reviewApiKey:settings.reviewApiKey||''
+ });
+ const connectionBaseline={...savedConnection()},connectionDraft={...connectionBaseline},connectionFields={};
+ const connectionEdits=()=>Object.fromEntries(Object.entries(connectionDraft).filter(([key,value])=>value!==connectionBaseline[key]));
+ const syncConnectionFields=(edits={})=>{
+  Object.assign(connectionBaseline,savedConnection());
+  Object.assign(connectionDraft,connectionBaseline,edits);
+  for(const [key,field] of Object.entries(connectionFields))field.setValue(connectionDraft[key]);
+ };
+ const connectionDirty=()=>{
+  const saved=savedConnection();
+  return Object.entries(connectionEdits()).some(([key,value])=>saved[key]!==value);
+ };
+ const connectionValid=()=>Boolean(writerGrammarEndpoint(connectionEdits().reviewEndpoint??savedConnection().reviewEndpoint));
+ let busy=false,revision=0,testButton,testStatus,saveConnection,discardConnection,connectionFeedback,endpointFeedback;
  const section=(pt,en)=>{
   const card=root.createDiv({cls:'writer-grammar-section'});
   card.createEl('h4',{text:writerUi(pt,en)});return card;
@@ -37785,7 +37806,7 @@ function writerV137GrammarSettings(plugin,panel){
  const remember=(control,list=builtIn)=>{list.push(control);return control;};
  const refresh=()=>{
   const enabled=writerModuleOn(plugin,'review'),external=settings.reviewEngine==='external';
-  const dirty=connectionDirty(),valid=connectionValid();
+  const dirty=connectionDirty(),valid=connectionValid(),savingConnection=Boolean(connectionWrite());
   status.dataset.state=!enabled?'disabled':external?'external':cfg.enabled?'automatic':'manual';
   status.setText(!enabled?writerUi('Revisão desativada em Recursos. Suas preferências podem ser preparadas aqui.',
    'Review is disabled in Features. You can prepare its preferences here.'):
@@ -37862,7 +37883,7 @@ function writerV137GrammarSettings(plugin,panel){
  const connection=section('Conexão do corretor','Checker connection');
  const endpointId='writer-grammar-endpoint-'+(++writerV137GrammarSettingId);
  const editConnection=(key,value)=>{
-  if(savingConnection||connectionDraft[key]===value)return;
+  if(!live()||connectionWrite()||connectionDraft[key]===value)return;
   connectionDraft[key]=value;resetTest();
   connectionFeedback.setText(connectionDirty()?writerUi('Salve as alterações para testar a conexão.','Save your changes to test the connection.'):'');
   refresh();
@@ -37899,21 +37920,41 @@ function writerV137GrammarSettings(plugin,panel){
  new Setting(connection).setName(writerUi('Salvar conexão','Save connection'))
   .setDesc(writerUi('O corretor passa a usar o novo endereço e as credenciais depois de salvar.','The checker uses the new endpoint and credentials after you save.'))
   .addButton(button=>{saveConnection=button;button.setButtonText(writerUi('Salvar','Save')).onClick(async()=>{
-   if(savingConnection||settings.reviewEngine==='external'||!connectionDirty()||!connectionValid())return;
-   const previous=savedConnection();savingConnection=true;
-   Object.assign(settings,connectionDraft);
+   if(!live()||connectionWrite()||settings.reviewEngine==='external'||!connectionDirty()||!connectionValid())return;
+   const previous=savedConnection(),next=connectionEdits();
+   const fields=Object.keys(next).filter(key=>next[key]!==previous[key]);
+   const original=fields.map(key=>({key,value:settings[key],present:Object.hasOwn(settings,key)}));
+   let settle;
+   const settled=new Promise(resolve=>{settle=resolve;});
+   writerGrammarConnectionWrites.set(plugin,{previous,settled});
+   let failed=false;
    try{
+    for(const key of fields)settings[key]=next[key];
     await changed();
-    connectionFeedback.setText(writerUi('Conexão salva.','Connection saved.'));
    }catch(_){
-    Object.assign(settings,previous);writerV137GrammarInvalidate(plugin);
-    connectionFeedback.setText(writerUi('Não foi possível salvar a conexão. Tente novamente.','Could not save the connection. Try again.'));
-   }finally{savingConnection=false;refresh();}
+    failed=true;
+    if(plugin.settings===settings){
+     for(const {key,value,present} of original){
+      if(settings[key]!==next[key])continue;
+      if(present)settings[key]=value;
+      else delete settings[key];
+     }
+     writerV137GrammarInvalidate(plugin);
+    }
+   }finally{
+    writerGrammarConnectionWrites.delete(plugin);settle();
+    if(live()){
+     syncConnectionFields(failed?next:{});
+     connectionFeedback.setText(failed?
+      writerUi('Não foi possível salvar a conexão. Tente novamente.','Could not save the connection. Try again.'):
+      writerUi('Conexão salva.','Connection saved.'));
+     refresh();
+    }
+   }
   });})
   .addButton(button=>{discardConnection=button;button.setButtonText(writerUi('Descartar alterações','Discard changes')).onClick(()=>{
-   if(savingConnection||settings.reviewEngine==='external'||!connectionDirty())return;
-   Object.assign(connectionDraft,savedConnection());
-   for(const [key,field] of Object.entries(connectionFields))field.setValue(connectionDraft[key]);
+   if(!live()||connectionWrite()||settings.reviewEngine==='external'||!connectionDirty())return;
+   syncConnectionFields();
    connectionFeedback.setText('');refresh();
   });});
  connectionFeedback=connection.createEl('p',{cls:'writer-grammar-feedback',attr:{role:'status','aria-live':'polite'}});
@@ -37921,10 +37962,10 @@ function writerV137GrammarSettings(plugin,panel){
  new Setting(connection).setName(writerUi('Testar a conexão','Test connection'))
   .setDesc(writerUi('O teste envia apenas a frase ','The test sends only the sentence ')+`“${testText}”`)
   .addButton(button=>{testButton=button;button.setButtonText(writerUi('Testar agora','Test now')).onClick(async()=>{
-   if(busy||savingConnection||!writerModuleOn(plugin,'review')||settings.reviewEngine==='external'||connectionDirty()||!connectionValid())return;
+   if(!live()||busy||connectionWrite()||!writerModuleOn(plugin,'review')||settings.reviewEngine==='external'||connectionDirty()||!connectionValid())return;
    const token=++revision,connectionKey=writerGrammarConnectionKey(settings);busy=true;refresh();
    testStatus.dataset.state='loading';testStatus.setText(writerUi('Verificando a conexão…','Checking the connection…'));
-   const current=()=>token===revision&&root.isConnected!==false&&writerModuleOn(plugin,'review')&&
+   const current=()=>token===revision&&live()&&writerModuleOn(plugin,'review')&&
     settings.reviewEngine!=='external'&&connectionKey===writerGrammarConnectionKey(settings);
    try{
     const matches=await plugin.checkGrammar(testText);
@@ -37934,7 +37975,7 @@ function writerV137GrammarSettings(plugin,panel){
    }catch(error){
     if(!current())return;
     testStatus.dataset.state='error';testStatus.setText(String(error?.message||error));
-   }finally{if(token===revision){busy=false;refresh();}}
+   }finally{if(token===revision){busy=false;if(live())refresh();}}
   });});
  testStatus=connection.createEl('p',{cls:'writer-grammar-test-status',attr:{role:'status','aria-live':'polite'}});
  const exceptions=section('Palavras e regras ignoradas','Words and ignored rules');
@@ -37963,6 +38004,14 @@ function writerV137GrammarSettings(plugin,panel){
     await changed();
    });});
  const rulesFeedback=exceptions.createEl('p',{cls:'writer-grammar-feedback',attr:{id:rulesId,role:'status','aria-live':'polite'}});
+ const syncAfterWrite=()=>{
+  if(!live())return;
+  const write=connectionWrite();
+  if(write){void write.settled.then(syncAfterWrite);return;}
+  syncConnectionFields();refresh();
+ };
+ const write=connectionWrite();
+ if(write)void write.settled.then(syncAfterWrite);
  refresh();return root;
 }
 

@@ -452,12 +452,12 @@ body.is-mobile .writer-v9215-flow-editor textarea{min-height:120px;}
  max-width:180px;min-width:0;font-size:var(--font-ui-smaller);padding-inline:6px;
 }
 .writer-v9216-space-chip > span{
- display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+ display:block;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
 }
 .writer-v9216-spaces-dock svg{display:block;flex:0 0 16px;width:16px;height:16px;}
 .writer-v9216-space-chip svg{color:var(--writer-v9216-space-color,currentColor);}
 .writer-v9216-spaces-dock .writer-v9216-space-options{
- min-width:25px;width:25px;padding:2px;opacity:.7;
+ flex:0 0 auto;min-width:25px;width:25px;padding:2px;opacity:.7;
 }
 .writer-v9216-space-inactive{
  color:var(--basic-ui-muted,var(--text-muted));font-size:var(--font-ui-smaller);

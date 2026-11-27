@@ -14035,7 +14035,7 @@ class WriterV8HomeView extends ItemView{
   this.widgetFrameQueue?.dispose();this.widgetFrameQueue=null;
   clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;
   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
-  this.homeSearchInput=null;this.homeSurfingInput=null;
+  this.homeSearchInput=null;this.disposeSurfingBar();
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
   clearInterval(this.writerV8ClockTimer);this.writerV8ClockTimer=null;this.writerV8ClockRefresh=null;
   const unsaved=!!this.saveTimer;clearTimeout(this.saveTimer);this.saveTimer=null;
@@ -14078,6 +14078,7 @@ class WriterV8HomeView extends ItemView{
   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
   this.writerV8ClockRefresh=null;
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  this.disposeSurfingBar();
   this.contentEl.empty();this.contentEl.addClass('writer-v8-home');
   const cfg=this.plugin.settings.v8Finish,widgetCfg=this.widgetPreferences();
   // Surfing's omnibox is a permanent top address/search bar only while Surfing
@@ -14524,7 +14525,7 @@ class WriterV8HomeView extends ItemView{
  syncSurfingVisibility(){
   const surfing=writerV8HomeSurfing(this.plugin);
   const active=Boolean(!writerV8HomeIsMobile(this.plugin)&&surfing!==this.homeSurfingFailed&&typeof surfing?.addHeaderAndSearchBar==='function');
-  if(active!==this.homeSurfingEnabled)this.render();
+  if(active!==this.homeSurfingEnabled||(active&&this.homeSurfingMount?.surfing!==surfing))this.render();
  }
  homeSearchWebMode(){
   if(!this.homeSurfingInput?.isConnected){
@@ -14534,17 +14535,34 @@ class WriterV8HomeView extends ItemView{
   this.homeSurfingInput.focus({preventScroll:true});
   return true;
  }
+ disposeSurfingBar(){
+  const mount=this.homeSurfingMount;
+  this.homeSurfingMount=null;this.homeSurfingInput=null;
+  if(!mount)return;
+  // Surfing's private mount API does not return its HeaderBar or suggester.
+  // Blur the owned input before detaching it so Surfing can close suggestions
+  // and release its own keymap scope and positioning resources.
+  const input=mount.input||mount.host.querySelector?.('input.wb-search-bar');
+  try{if(mount.onInput)input?.removeEventListener?.('input',mount.onInput);}
+  catch(error){console.warn('[Basic AI] Surfing input cleanup:',error);}
+  try{input?.blur?.();}
+  catch(error){console.warn('[Basic AI] Surfing blur cleanup:',error);}
+  finally{mount.host.remove?.();}
+ }
  renderSurfingBar(parent){
+  this.disposeSurfingBar();
+  if(this.disposed)return;
   const surfing=writerV8HomeSurfing(this.plugin);
   if(!surfing||typeof surfing.addHeaderAndSearchBar!=='function'){
    // Surfing's HeaderBar is an internal component, not a public API.
    // Do not silently replace it with a second, imitation search field.
    this.homeSurfingEnabled=false;
-   this.homeSurfingInput=null;
    return;
   }
   const host=parent.createDiv({cls:'writer-v1205-native-surfing-host',
    attr:{role:'search','aria-label':writerUi('Pesquisa nativa do Surfing','Surfing native search')}});
+  const mount={surfing,host,input:null,onInput:null};
+  this.homeSurfingMount=mount;
   // Use Surfing's own HeaderBar and suggestions, without duplicating its
   // search/URL engine. Adapt an empty view only for the private integration
   // method; the actual Basic homepage view type and leaf remain unchanged.
@@ -14559,13 +14577,18 @@ class WriterV8HomeView extends ItemView{
    surfing.addHeaderAndSearchBar(adapter);
    const input=host.querySelector('input.wb-search-bar');
    if(!input)throw Error('Surfing did not mount its native address bar.');
+   mount.input=input;
    input.value=this.homeSurfingQuery||'';
-   input.addEventListener('input',()=>{this.homeSurfingQuery=input.value.slice(0,2048);});
+   mount.onInput=()=>{
+    if(!this.disposed&&this.homeSurfingMount===mount&&input.isConnected)
+     this.homeSurfingQuery=input.value.slice(0,2048);
+   };
+   input.addEventListener('input',mount.onInput);
    this.homeSurfingInput=input;
+   this.homeSurfingEnabled=true;
   }catch(error){
-   host.remove?.();
+   this.disposeSurfingBar();
    this.homeSurfingEnabled=false;
-   this.homeSurfingInput=null;
    this.homeSurfingFailed=surfing;
    console.warn('[Basic AI] Native Surfing header unavailable:',error);
   }

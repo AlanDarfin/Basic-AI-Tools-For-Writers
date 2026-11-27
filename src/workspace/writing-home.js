@@ -68,21 +68,38 @@ function writerV8HomeSearch(files,query,cache,max=12){
   String(file.path||'').toLocaleLowerCase().includes(q)||
   (cache?.getFileCache?.(file)?.headings||[]).some(h=>String(h.heading||'').toLocaleLowerCase().includes(q))).slice(0,max);
 }
-function writerV8HomeTopFiles(plugin,count=12){
+// A lazy snapshot belongs to one synchronous dashboard render, never to search
+// or a later render. Hidden widgets do not trigger a vault enumeration.
+function writerV16HomeMarkdownSnapshot(vault){
+ let files;
+ return ()=>files??=(vault.getMarkdownFiles?.()||[]).slice();
+}
+function writerV8HomeTopFiles(plugin,count=12,getFiles=()=>plugin.app.vault.getMarkdownFiles?.()||[]){
  const recent=plugin.settings.v8Finish?.homeRecent||[];
  const used=new Set();
  const paths=recent.map(path=>plugin.app.vault.getAbstractFileByPath(path))
   .filter(f=>{if(!(f instanceof TFile)||f.extension!=='md'||used.has(f.path))return false;used.add(f.path);return true;});
- const seen=new Set(paths.map(f=>f.path));
- const last=plugin.app.vault.getMarkdownFiles?.().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0))||[];
+ if(paths.length>=count)return paths.slice(0,count);
+ const seen=used;
+ const last=getFiles().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0));
  for(const file of last){if(paths.length>=count)break;if(!seen.has(file.path)){paths.push(file);seen.add(file.path);}}
  return paths.slice(0,count);
 }
-function writerV8HomeStats(plugin){
- const files=plugin.app.vault.getMarkdownFiles?.()||[];
+function writerV8HomeStats(plugin,files=plugin.app.vault.getMarkdownFiles?.()||[]){
  const since=Date.now()-7*86400000;
  return {notes:files.length,recent:files.filter(f=>(f.stat?.mtime||0)>=since).length,
   projects:plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.length||0};
+}
+// Preserve the existing seven daily windows; read each file timestamp once.
+function writerV16HomeActivityCounts(files,now){
+ const days=[],counts=Array(7).fill(0);
+ for(let i=6;i>=0;i--)days.push(new Date(now.getFullYear(),now.getMonth(),now.getDate()-i));
+ const bounds=days.map(day=>[day.getTime(),day.getTime()+86400000]);
+ for(const file of files){
+  const mtime=file.stat?.mtime||0;
+  for(let i=0;i<bounds.length;i++)if(mtime>=bounds[i][0]&&mtime<bounds[i][1])counts[i]++;
+ }
+ return {days,counts};
 }
 // One pending measurement per render; retained observer callbacks become inert.
 function writerV16HomeFrameQueue(request,cancel,update){
@@ -254,22 +271,23 @@ class WriterV8HomeView extends ItemView{
   add.addEventListener('click',()=>this.manageWidgets());
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'});
   grid.dataset.widgetAlignment=widgetCfg.homeWidgetAlignment==='free'?'free':'grid';
+  const markdownFiles=writerV16HomeMarkdownSnapshot(this.app.vault);
   const cards={
    calendar:p=>this.renderCalendarWidget(p),
    soundscape:p=>writerV91HomeSoundscape(this,p),
    continue:p=>this.renderContinue(p),
-   recent:p=>this.renderFiles(p,'recent'),
+   recent:p=>this.renderFiles(p,'recent',markdownFiles),
    favorites:p=>this.renderFiles(p,'favorites'),
    webBookmarks:p=>this.renderWebBookmarks(p),
    quick:p=>this.renderQuick(p),
-   stats:p=>this.renderStats(p),
-   activity:p=>this.renderActivity(p),
-   random:p=>this.renderRandom(p),
-   tags:p=>this.renderTags(p),
+   stats:p=>this.renderStats(p,markdownFiles()),
+   activity:p=>this.renderActivity(p,markdownFiles()),
+   random:p=>this.renderRandom(p,markdownFiles()),
+   tags:p=>this.renderTags(p,markdownFiles()),
    goal:p=>this.renderGoal(p),
    gallery:p=>this.renderGallery(p),
    quotes:p=>this.renderQuotes(p),
-   today:p=>this.renderToday(p),
+   today:p=>this.renderToday(p,markdownFiles()),
     books:p=>{
      const card=this.card(p,'books','Meus livros','My books');
      if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card);
@@ -1029,16 +1047,16 @@ class WriterV8HomeView extends ItemView{
   };
   modal.open();
  }
- renderFiles(parent,kind){
+ renderFiles(parent,kind,getFiles){
   const recent=kind==='recent',box=this.card(parent,kind,recent?'Notas recentes':'Favoritos',recent?'Recent notes':'Favorites');
-  const files=recent?writerV8HomeTopFiles(this.plugin,12):
+  const files=recent?writerV8HomeTopFiles(this.plugin,12,getFiles):
    this.plugin.settings.v8Finish.homeFavorites.map(path=>this.app.vault.getAbstractFileByPath(path)).filter(file=>file instanceof TFile);
   this.renderNoteRows(box,files,kind);
  }
- renderToday(parent){
+ renderToday(parent,markdownFiles=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'today','Editadas hoje','Edited today'),midnight=new Date();
   midnight.setHours(0,0,0,0);
-  const files=(this.app.vault.getMarkdownFiles?.()||[])
+  const files=markdownFiles
    .filter(file=>(file.stat?.mtime||0)>=midnight.getTime())
    .sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0)).slice(0,24);
   this.renderNoteRows(box,files,'today');
@@ -1155,8 +1173,8 @@ class WriterV8HomeView extends ItemView{
    }finally{exporting=false;if(current())save.disabled=false;}
   });
  }
- renderStats(parent){
-  const box=this.card(parent,'stats','Resumo do cofre','Vault summary'),stats=writerV8HomeStats(this.plugin);
+ renderStats(parent,files){
+  const box=this.card(parent,'stats','Resumo do cofre','Vault summary'),stats=writerV8HomeStats(this.plugin,files);
   const items=box.createDiv({cls:'writer-v8-home-stats'});
   for(const [value,pt,en] of [[stats.notes,'Notas Markdown','Markdown notes'],[stats.recent,'Editadas em 7 dias','Edited in 7 days']]){
    const item=items.createDiv({cls:'writer-v8-home-stat'});
@@ -1234,16 +1252,11 @@ class WriterV8HomeView extends ItemView{
   };
   if(loading)void read().then(load,error=>{console.warn('[Basic AI] Zotero quote widget:',error);load([]);});
  }
- renderActivity(parent){
+ renderActivity(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
-  const files=this.app.vault.getMarkdownFiles?.()||[];
-  const now=new Date(),labels=[],counts=[];
-  for(let i=6;i>=0;i--){
-   const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
-   const begin=d.getTime(),end=begin+86400000;
-   labels.push(new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'}).format(d));
-   counts.push(files.filter(f=>(f.stat?.mtime||0)>=begin&&(f.stat?.mtime||0)<end).length);
-  }
+  const {days,counts}=writerV16HomeActivityCounts(files,new Date());
+  const formatter=new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'});
+  const labels=days.map(day=>formatter.format(day));
   const high=Math.max(1,...counts),chart=box.createDiv({cls:'writer-v903-activity'});
   for(let i=0;i<7;i++){
    const column=chart.createDiv({cls:'writer-v903-activity-day',attr:{title:labels[i]+': '+counts[i]}});
@@ -1254,9 +1267,8 @@ class WriterV8HomeView extends ItemView{
   }
   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Notas modificadas a cada dia.','Notes modified each day.')});
  }
- renderRandom(parent){
+ renderRandom(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'random','Nota surpresa','Surprise note');
-  const files=this.app.vault.getMarkdownFiles?.()||[];
   if(!files.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No notes found.')});return;}
   let file=files[Math.floor(Math.random()*files.length)];
   const label=box.createDiv({cls:'writer-v903-random-note'});
@@ -1275,9 +1287,9 @@ class WriterV8HomeView extends ItemView{
    name.setText(file.basename);path.setText(file.path);
   });
  }
- renderTags(parent){
+ renderTags(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'tags','Tags frequentes','Popular tags');
-  const cache=this.app.metadataCache,counts=new Map(),files=this.app.vault.getMarkdownFiles?.()||[];
+  const cache=this.app.metadataCache,counts=new Map();
   const obsidian=require('obsidian');
   for(const file of files.slice(0,3000)){
    const meta=cache?.getFileCache?.(file);

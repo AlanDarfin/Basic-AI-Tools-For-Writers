@@ -13974,21 +13974,38 @@ function writerV8HomeSearch(files,query,cache,max=12){
   String(file.path||'').toLocaleLowerCase().includes(q)||
   (cache?.getFileCache?.(file)?.headings||[]).some(h=>String(h.heading||'').toLocaleLowerCase().includes(q))).slice(0,max);
 }
-function writerV8HomeTopFiles(plugin,count=12){
+// A lazy snapshot belongs to one synchronous dashboard render, never to search
+// or a later render. Hidden widgets do not trigger a vault enumeration.
+function writerV16HomeMarkdownSnapshot(vault){
+ let files;
+ return ()=>files??=(vault.getMarkdownFiles?.()||[]).slice();
+}
+function writerV8HomeTopFiles(plugin,count=12,getFiles=()=>plugin.app.vault.getMarkdownFiles?.()||[]){
  const recent=plugin.settings.v8Finish?.homeRecent||[];
  const used=new Set();
  const paths=recent.map(path=>plugin.app.vault.getAbstractFileByPath(path))
   .filter(f=>{if(!(f instanceof TFile)||f.extension!=='md'||used.has(f.path))return false;used.add(f.path);return true;});
- const seen=new Set(paths.map(f=>f.path));
- const last=plugin.app.vault.getMarkdownFiles?.().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0))||[];
+ if(paths.length>=count)return paths.slice(0,count);
+ const seen=used;
+ const last=getFiles().slice().sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0));
  for(const file of last){if(paths.length>=count)break;if(!seen.has(file.path)){paths.push(file);seen.add(file.path);}}
  return paths.slice(0,count);
 }
-function writerV8HomeStats(plugin){
- const files=plugin.app.vault.getMarkdownFiles?.()||[];
+function writerV8HomeStats(plugin,files=plugin.app.vault.getMarkdownFiles?.()||[]){
  const since=Date.now()-7*86400000;
  return {notes:files.length,recent:files.filter(f=>(f.stat?.mtime||0)>=since).length,
   projects:plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.length||0};
+}
+// Preserve the existing seven daily windows; read each file timestamp once.
+function writerV16HomeActivityCounts(files,now){
+ const days=[],counts=Array(7).fill(0);
+ for(let i=6;i>=0;i--)days.push(new Date(now.getFullYear(),now.getMonth(),now.getDate()-i));
+ const bounds=days.map(day=>[day.getTime(),day.getTime()+86400000]);
+ for(const file of files){
+  const mtime=file.stat?.mtime||0;
+  for(let i=0;i<bounds.length;i++)if(mtime>=bounds[i][0]&&mtime<bounds[i][1])counts[i]++;
+ }
+ return {days,counts};
 }
 // One pending measurement per render; retained observer callbacks become inert.
 function writerV16HomeFrameQueue(request,cancel,update){
@@ -14160,22 +14177,23 @@ class WriterV8HomeView extends ItemView{
   add.addEventListener('click',()=>this.manageWidgets());
   const grid=this.contentEl.createDiv({cls:'writer-v8-home-grid writer-v925-grid'});
   grid.dataset.widgetAlignment=widgetCfg.homeWidgetAlignment==='free'?'free':'grid';
+  const markdownFiles=writerV16HomeMarkdownSnapshot(this.app.vault);
   const cards={
    calendar:p=>this.renderCalendarWidget(p),
    soundscape:p=>writerV91HomeSoundscape(this,p),
    continue:p=>this.renderContinue(p),
-   recent:p=>this.renderFiles(p,'recent'),
+   recent:p=>this.renderFiles(p,'recent',markdownFiles),
    favorites:p=>this.renderFiles(p,'favorites'),
    webBookmarks:p=>this.renderWebBookmarks(p),
    quick:p=>this.renderQuick(p),
-   stats:p=>this.renderStats(p),
-   activity:p=>this.renderActivity(p),
-   random:p=>this.renderRandom(p),
-   tags:p=>this.renderTags(p),
+   stats:p=>this.renderStats(p,markdownFiles()),
+   activity:p=>this.renderActivity(p,markdownFiles()),
+   random:p=>this.renderRandom(p,markdownFiles()),
+   tags:p=>this.renderTags(p,markdownFiles()),
    goal:p=>this.renderGoal(p),
    gallery:p=>this.renderGallery(p),
    quotes:p=>this.renderQuotes(p),
-   today:p=>this.renderToday(p),
+   today:p=>this.renderToday(p,markdownFiles()),
     books:p=>{
      const card=this.card(p,'books','Meus livros','My books');
      if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card);
@@ -14935,16 +14953,16 @@ class WriterV8HomeView extends ItemView{
   };
   modal.open();
  }
- renderFiles(parent,kind){
+ renderFiles(parent,kind,getFiles){
   const recent=kind==='recent',box=this.card(parent,kind,recent?'Notas recentes':'Favoritos',recent?'Recent notes':'Favorites');
-  const files=recent?writerV8HomeTopFiles(this.plugin,12):
+  const files=recent?writerV8HomeTopFiles(this.plugin,12,getFiles):
    this.plugin.settings.v8Finish.homeFavorites.map(path=>this.app.vault.getAbstractFileByPath(path)).filter(file=>file instanceof TFile);
   this.renderNoteRows(box,files,kind);
  }
- renderToday(parent){
+ renderToday(parent,markdownFiles=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'today','Editadas hoje','Edited today'),midnight=new Date();
   midnight.setHours(0,0,0,0);
-  const files=(this.app.vault.getMarkdownFiles?.()||[])
+  const files=markdownFiles
    .filter(file=>(file.stat?.mtime||0)>=midnight.getTime())
    .sort((a,b)=>(b.stat?.mtime||0)-(a.stat?.mtime||0)).slice(0,24);
   this.renderNoteRows(box,files,'today');
@@ -15061,8 +15079,8 @@ class WriterV8HomeView extends ItemView{
    }finally{exporting=false;if(current())save.disabled=false;}
   });
  }
- renderStats(parent){
-  const box=this.card(parent,'stats','Resumo do cofre','Vault summary'),stats=writerV8HomeStats(this.plugin);
+ renderStats(parent,files){
+  const box=this.card(parent,'stats','Resumo do cofre','Vault summary'),stats=writerV8HomeStats(this.plugin,files);
   const items=box.createDiv({cls:'writer-v8-home-stats'});
   for(const [value,pt,en] of [[stats.notes,'Notas Markdown','Markdown notes'],[stats.recent,'Editadas em 7 dias','Edited in 7 days']]){
    const item=items.createDiv({cls:'writer-v8-home-stat'});
@@ -15140,16 +15158,11 @@ class WriterV8HomeView extends ItemView{
   };
   if(loading)void read().then(load,error=>{console.warn('[Basic AI] Zotero quote widget:',error);load([]);});
  }
- renderActivity(parent){
+ renderActivity(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'activity','Atividade da semana','Weekly activity');
-  const files=this.app.vault.getMarkdownFiles?.()||[];
-  const now=new Date(),labels=[],counts=[];
-  for(let i=6;i>=0;i--){
-   const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
-   const begin=d.getTime(),end=begin+86400000;
-   labels.push(new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'}).format(d));
-   counts.push(files.filter(f=>(f.stat?.mtime||0)>=begin&&(f.stat?.mtime||0)<end).length);
-  }
+  const {days,counts}=writerV16HomeActivityCounts(files,new Date());
+  const formatter=new Intl.DateTimeFormat(writerUi('pt-BR','en-US'),{weekday:'short'});
+  const labels=days.map(day=>formatter.format(day));
   const high=Math.max(1,...counts),chart=box.createDiv({cls:'writer-v903-activity'});
   for(let i=0;i<7;i++){
    const column=chart.createDiv({cls:'writer-v903-activity-day',attr:{title:labels[i]+': '+counts[i]}});
@@ -15160,9 +15173,8 @@ class WriterV8HomeView extends ItemView{
   }
   box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Notas modificadas a cada dia.','Notes modified each day.')});
  }
- renderRandom(parent){
+ renderRandom(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'random','Nota surpresa','Surprise note');
-  const files=this.app.vault.getMarkdownFiles?.()||[];
   if(!files.length){box.createEl('p',{cls:'writer-v8-home-muted',text:writerUi('Nenhuma nota encontrada.','No notes found.')});return;}
   let file=files[Math.floor(Math.random()*files.length)];
   const label=box.createDiv({cls:'writer-v903-random-note'});
@@ -15181,9 +15193,9 @@ class WriterV8HomeView extends ItemView{
    name.setText(file.basename);path.setText(file.path);
   });
  }
- renderTags(parent){
+ renderTags(parent,files=this.app.vault.getMarkdownFiles?.()||[]){
   const box=this.card(parent,'tags','Tags frequentes','Popular tags');
-  const cache=this.app.metadataCache,counts=new Map(),files=this.app.vault.getMarkdownFiles?.()||[];
+  const cache=this.app.metadataCache,counts=new Map();
   const obsidian=require('obsidian');
   for(const file of files.slice(0,3000)){
    const meta=cache?.getFileCache?.(file);
@@ -19586,7 +19598,7 @@ function writerV104FlexNativeSort(plugin,folder,items){
  if(rows.some(row=>!row.file?.name))return items;
  if(record.sort==='native'&&!rows.some(row=>row.pinned))return items;
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
- rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,record,collator));
+ writerV16FlexSortRows(plugin,rows,record,collator);
  return rows.map(row=>row.source);
 }
 /* Supports a small, explicit subset of the Custom Sorting YAML syntax. */
@@ -19672,7 +19684,20 @@ function writerV93FlexMeta(plugin,row,key){
   (typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,row.file):null);
  return file?plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter?.[key]??'':'';
 }
-function writerV93FlexCompare(plugin,a,b,record,collator){
+// Cache sort keys only for one synchronous sort; later metadata edits and
+// Space changes are observed on the next invocation.
+function writerV16FlexSortRows(plugin,rows,record,collator){
+ const keys=new Map(),mode=record.sort;
+ const read=mode==='custom'?row=>writerV93FlexOrderIndex(row.name,record.order||[]):
+  mode==='number'||mode==='number-desc'?row=>writerV93FlexNumber(row.name):
+  mode==='property'||mode==='property-desc'?row=>writerV93FlexMeta(plugin,row,record.property||plugin.settings.v91Flex.defaultSortProperty):null;
+ const key=read?row=>{
+  if(!keys.has(row))keys.set(row,read(row));
+  return keys.get(row);
+ }:null;
+ return rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,record,collator,key));
+}
+function writerV93FlexCompare(plugin,a,b,record,collator,keyFor=null){
  if(a.pinned!==b.pinned)return a.pinned?-1:1;
  if(record.foldersFirst){
   const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
@@ -19681,11 +19706,11 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  const mode=record.sort;
  if(mode==='native')return a.index-b.index;
  if(mode==='custom'){
-  const ia=writerV93FlexOrderIndex(a.name,record.order||[]),ib=writerV93FlexOrderIndex(b.name,record.order||[]);
+  const ia=keyFor?keyFor(a):writerV93FlexOrderIndex(a.name,record.order||[]),ib=keyFor?keyFor(b):writerV93FlexOrderIndex(b.name,record.order||[]);
   return ia!==ib?ia-ib:a.index-b.index;
  }
  if(mode==='number'||mode==='number-desc'){
-  const na=writerV93FlexNumber(a.name),nb=writerV93FlexNumber(b.name);
+  const na=keyFor?keyFor(a):writerV93FlexNumber(a.name),nb=keyFor?keyFor(b):writerV93FlexNumber(b.name);
   if(na!==nb)return mode==='number-desc'?nb-na:na-nb;
  }
  if(mode==='folders-first'){
@@ -19694,7 +19719,7 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  }
  if(mode==='property'||mode==='property-desc'){
   const key=record.property||plugin.settings.v91Flex.defaultSortProperty;
-  const av=writerV93FlexMeta(plugin,a,key),bv=writerV93FlexMeta(plugin,b,key);
+  const av=keyFor?keyFor(a):writerV93FlexMeta(plugin,a,key),bv=keyFor?keyFor(b):writerV93FlexMeta(plugin,b,key);
   if(av!==''&&bv!==''&&Number.isFinite(Number(av))&&Number.isFinite(Number(bv))&&Number(av)!==Number(bv))
    return (Number(av)-Number(bv))*(mode==='property-desc'?-1:1);
   const delta=collator.compare(String(av),String(bv));if(delta)return mode==='property-desc'?-delta:delta;
@@ -19759,16 +19784,16 @@ function writerV16FlexDraggable(title,enabled,path){
   delete data.writerFlexPath;delete data.writerFlexPreviousDraggable;
  }
 }
-function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
+function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false,view=plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
  if(!children.length)return;
  const parentNode=container.closest('.nav-folder');
- const dir=parentNode?writerV91FlexNodePath(parentNode,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view):'';
+ const dir=parentNode?writerV91FlexNodePath(parentNode,view):'';
  const folder=writerV93FlexRecord(plugin,dir);
  const rows=children.map((node,index)=>{
-  const path=writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
-  const file=plugin.app.vault.getAbstractFileByPath(path);
+  const path=writerV91FlexNodePath(node,view);
+  const file=plugin.app.vault.getAbstractFileByPath(path),pinned=writerV93FlexPinned(plugin,path);
   const title=node.querySelector('.nav-file-title, .nav-folder-title');
   const visibility=writerV1202SpaceVisibility(plugin,cfg,path,patterns);
   const isHidden=visibility.rule;
@@ -19780,7 +19805,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   // a scoped inline display value. Never touch vault contents or file paths.
   writerV16FlexConceal(node,conceal);
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden&&visibility.scope!=='excluded'));
-  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
+  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&pinned));
   if(title){
    title.classList?.toggle?.('writer-v1047-reorder-title',
     cfg.enabled&&folder.sort==='custom'&&writerV1047MobileReorderVisible(plugin));
@@ -19788,14 +19813,14 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
     title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
    if(!cfg.enabled||cfg.sortEnabled===false||folder.sort!=='custom'||!cfg.dragReorder)writerV16FlexDraggable(title,false);
    const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
-   const wanted=cfg.enabled&&writerV93FlexPinned(plugin,path);
+   const wanted=cfg.enabled&&pinned;
    if(prior&&!wanted)prior.remove();
    if(wanted&&!prior){
     const icon=title.ownerDocument.createElement('span');icon.className='writer-v91-flex-indicator';
     icon.setAttribute('aria-hidden','true');require('obsidian').setIcon(icon,'pin');title.appendChild(icon);
    }
   }
-  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned:writerV93FlexPinned(plugin,path)};
+  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned};
  });
  if(!cfg.enabled||cfg.sortEnabled===false||(folder.sort==='native'&&!rows.some(row=>row.pinned))){
   if(container.dataset.writerFlexOrderHost==='1'){
@@ -19811,7 +19836,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   return;
  }
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
- rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
+ writerV16FlexSortRows(plugin,rows,folder,collator);
  // With a native sorted list, do not impose a second CSS order on its DOM.
  // The CSS fallback is retained for Obsidian versions without this method.
  if(nativePatched){
@@ -20080,7 +20105,7 @@ function writerV91FlexRegister(plugin){
    }else leaf.view._writerV1202SpaceRoot='';
    const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
-   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
+   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched,leaf.view);
    // Sync items even if their native wrapper differs from older Obsidian DOM.
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);

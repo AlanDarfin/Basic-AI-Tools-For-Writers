@@ -369,3 +369,61 @@ test('layout-ready failure after scheduling does not queue a second registration
  const h=integrationStartupHarness({throwReady:true});h.register(h.plugin);
  assert.equal(h.timers.size,1);h.flush();assert.equal(h.count(),1);h.cleanups[0]();
 });
+
+test('dashboard shares one lazy markdown snapshot and reads fresh files on a new render',()=>{
+ class TFile{constructor(path,mtime){this.path=path;this.basename=path;this.extension='md';this.stat={mtime};}}
+ const {snapshot,top,stats}=load('src/workspace/writing-home.js','({snapshot:writerV16HomeMarkdownSnapshot,top:writerV8HomeTopFiles,stats:writerV8HomeStats})',{ItemView:class{},TFile,PROJECT_VIEW:'projects'});
+ const recent=new TFile('recent.md',1),older=new TFile('older.md',2),newer=new TFile('newer.md',3);
+ let files=[recent,older,newer],scans=0;
+ const vault={getMarkdownFiles:()=>{scans++;return files;},getAbstractFileByPath:path=>files.find(f=>f.path===path)};
+ const plugin={settings:{v8Finish:{homeRecent:['recent.md','recent.md']}},app:{vault,workspace:{getLeavesOfType:()=>[]}}};
+ const current=snapshot(vault);
+ assert.equal(scans,0);
+ assert.deepEqual(Array.from(top(plugin,1,current),f=>f.path),['recent.md']);
+ assert.equal(scans,0,'sufficient history avoids full vault enumeration');
+ assert.deepEqual(Array.from(top(plugin,3,current),f=>f.path),['recent.md','newer.md','older.md']);
+ assert.equal(stats(plugin,current()).notes,3);
+ assert.equal(scans,1);
+ assert.deepEqual(files.map(f=>f.path),['recent.md','older.md','newer.md'],'never sort vault array in place');
+ files.push(new TFile('added.md',4));
+ assert.equal(current().length,3,'same render is a stable array snapshot');
+ assert.equal(snapshot(vault)().length,4);
+ assert.equal(scans,2);
+});
+test('weekly dashboard activity preserves previous time windows with one timestamp read per note',()=>{
+ const counts=load('src/workspace/writing-home.js','writerV16HomeActivityCounts',{ItemView:class{}});
+ const now=new Date(2026,10,27,15),first=new Date(2026,10,21).getTime(),last=new Date(2026,10,27).getTime();
+ const values=[first-1,first,first+86399999,last,last+86400000,0];
+ const expected=Array.from({length:7},(_,i)=>{
+  const start=new Date(2026,10,21+i).getTime();
+  return values.filter(t=>t>=start&&t<start+86400000).length;
+ });
+ let reads=0;
+ const files=values.map(mtime=>({stat:{get mtime(){reads++;return mtime;}}}));
+ const result=counts(files,now);
+ assert.deepEqual(Array.from(result.counts),expected);
+ assert.equal(reads,files.length);
+ assert.equal(result.days.length,7);
+});
+test('explorer cached sorting preserves order and bounds metadata reads to one per compared row',()=>{
+ const {sort,compare}=load('src/workspace/explorer-flex.js','({sort:writerV16FlexSortRows,compare:writerV93FlexCompare})');
+ const files=Array.from({length:200},(_,i)=>({name:'Note '+i+'.md',path:'Note '+i+'.md',extension:'md',rank:(i*37)%200}));
+ const rows=files.map((file,index)=>({file,index,name:file.name,pinned:index%13===0}));
+ let reads=0;
+ const plugin={settings:{v91Flex:{defaultSortProperty:'rank'}},app:{metadataCache:{getFileCache:file=>{reads++;return {frontmatter:{rank:file.rank}};}}}};
+ const collator=new Intl.Collator('en',{numeric:true,sensitivity:'base'});
+ for(const record of [{sort:'property',property:'rank'},{sort:'property-desc',property:'rank'},{sort:'custom',order:['Note 3.md','Note 1*.md','Note 2.md']},{sort:'number-desc'},{sort:'native'}]){
+  reads=0;const baseline=rows.slice().sort((a,b)=>compare(plugin,a,b,record,collator)).map(r=>r.index);
+  const baselineReads=reads;reads=0;
+  const actual=sort(plugin,rows.slice(),record,collator).map(r=>r.index);
+  assert.deepEqual(Array.from(actual),baseline);
+  if(record.sort.startsWith('property')){assert.ok(reads<=rows.length);assert.ok(baselineReads>reads);}
+  else assert.equal(reads,0);
+ }
+ const record={sort:'property',property:'rank'};
+ const previous=sort(plugin,rows.slice(),record,collator).map(r=>r.index);
+ files[13].rank=-1;
+ const next=sort(plugin,rows.slice(),record,collator).map(r=>r.index);
+ assert.notDeepEqual(Array.from(previous),Array.from(next),'new sort observes updated metadata');
+ assert.equal(next[0],13);
+});

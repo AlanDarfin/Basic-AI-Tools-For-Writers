@@ -126,7 +126,7 @@ function writerV104FlexNativeSort(plugin,folder,items){
  if(rows.some(row=>!row.file?.name))return items;
  if(record.sort==='native'&&!rows.some(row=>row.pinned))return items;
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
- rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,record,collator));
+ writerV16FlexSortRows(plugin,rows,record,collator);
  return rows.map(row=>row.source);
 }
 /* Supports a small, explicit subset of the Custom Sorting YAML syntax. */
@@ -212,7 +212,20 @@ function writerV93FlexMeta(plugin,row,key){
   (typeof writerV92FolderNote==='function'?writerV92FolderNote(plugin.app,row.file):null);
  return file?plugin.app.metadataCache?.getFileCache?.(file)?.frontmatter?.[key]??'':'';
 }
-function writerV93FlexCompare(plugin,a,b,record,collator){
+// Cache sort keys only for one synchronous sort; later metadata edits and
+// Space changes are observed on the next invocation.
+function writerV16FlexSortRows(plugin,rows,record,collator){
+ const keys=new Map(),mode=record.sort;
+ const read=mode==='custom'?row=>writerV93FlexOrderIndex(row.name,record.order||[]):
+  mode==='number'||mode==='number-desc'?row=>writerV93FlexNumber(row.name):
+  mode==='property'||mode==='property-desc'?row=>writerV93FlexMeta(plugin,row,record.property||plugin.settings.v91Flex.defaultSortProperty):null;
+ const key=read?row=>{
+  if(!keys.has(row))keys.set(row,read(row));
+  return keys.get(row);
+ }:null;
+ return rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,record,collator,key));
+}
+function writerV93FlexCompare(plugin,a,b,record,collator,keyFor=null){
  if(a.pinned!==b.pinned)return a.pinned?-1:1;
  if(record.foldersFirst){
   const af=a.file?.children!==undefined,bf=b.file?.children!==undefined;
@@ -221,11 +234,11 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  const mode=record.sort;
  if(mode==='native')return a.index-b.index;
  if(mode==='custom'){
-  const ia=writerV93FlexOrderIndex(a.name,record.order||[]),ib=writerV93FlexOrderIndex(b.name,record.order||[]);
+  const ia=keyFor?keyFor(a):writerV93FlexOrderIndex(a.name,record.order||[]),ib=keyFor?keyFor(b):writerV93FlexOrderIndex(b.name,record.order||[]);
   return ia!==ib?ia-ib:a.index-b.index;
  }
  if(mode==='number'||mode==='number-desc'){
-  const na=writerV93FlexNumber(a.name),nb=writerV93FlexNumber(b.name);
+  const na=keyFor?keyFor(a):writerV93FlexNumber(a.name),nb=keyFor?keyFor(b):writerV93FlexNumber(b.name);
   if(na!==nb)return mode==='number-desc'?nb-na:na-nb;
  }
  if(mode==='folders-first'){
@@ -234,7 +247,7 @@ function writerV93FlexCompare(plugin,a,b,record,collator){
  }
  if(mode==='property'||mode==='property-desc'){
   const key=record.property||plugin.settings.v91Flex.defaultSortProperty;
-  const av=writerV93FlexMeta(plugin,a,key),bv=writerV93FlexMeta(plugin,b,key);
+  const av=keyFor?keyFor(a):writerV93FlexMeta(plugin,a,key),bv=keyFor?keyFor(b):writerV93FlexMeta(plugin,b,key);
   if(av!==''&&bv!==''&&Number.isFinite(Number(av))&&Number.isFinite(Number(bv))&&Number(av)!==Number(bv))
    return (Number(av)-Number(bv))*(mode==='property-desc'?-1:1);
   const delta=collator.compare(String(av),String(bv));if(delta)return mode==='property-desc'?-delta:delta;
@@ -299,16 +312,16 @@ function writerV16FlexDraggable(title,enabled,path){
   delete data.writerFlexPath;delete data.writerFlexPreviousDraggable;
  }
 }
-function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
+function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false,view=plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view){
  const cfg=plugin.settings.v91Flex,children=Array.from(container.children).filter(node=>
   node.classList?.contains('nav-file')||node.classList?.contains('nav-folder')||node.classList?.contains('tree-item'));
  if(!children.length)return;
  const parentNode=container.closest('.nav-folder');
- const dir=parentNode?writerV91FlexNodePath(parentNode,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view):'';
+ const dir=parentNode?writerV91FlexNodePath(parentNode,view):'';
  const folder=writerV93FlexRecord(plugin,dir);
  const rows=children.map((node,index)=>{
-  const path=writerV91FlexNodePath(node,plugin.app.workspace.getLeavesOfType?.('file-explorer')?.[0]?.view);
-  const file=plugin.app.vault.getAbstractFileByPath(path);
+  const path=writerV91FlexNodePath(node,view);
+  const file=plugin.app.vault.getAbstractFileByPath(path),pinned=writerV93FlexPinned(plugin,path);
   const title=node.querySelector('.nav-file-title, .nav-folder-title');
   const visibility=writerV1202SpaceVisibility(plugin,cfg,path,patterns);
   const isHidden=visibility.rule;
@@ -320,7 +333,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   // a scoped inline display value. Never touch vault contents or file paths.
   writerV16FlexConceal(node,conceal);
   node.classList.toggle('writer-v91-flex-revealed',Boolean(cfg.enabled&&isHidden&&cfg.showHidden&&visibility.scope!=='excluded'));
-  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&writerV93FlexPinned(plugin,path)));
+  node.classList.toggle('writer-v91-flex-pinned',Boolean(cfg.enabled&&pinned));
   if(title){
    title.classList?.toggle?.('writer-v1047-reorder-title',
     cfg.enabled&&folder.sort==='custom'&&writerV1047MobileReorderVisible(plugin));
@@ -328,14 +341,14 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
     title.querySelector(':scope > .writer-v93-reorder-actions')?.remove();
    if(!cfg.enabled||cfg.sortEnabled===false||folder.sort!=='custom'||!cfg.dragReorder)writerV16FlexDraggable(title,false);
    const prior=title.querySelector(':scope > .writer-v91-flex-indicator');
-   const wanted=cfg.enabled&&writerV93FlexPinned(plugin,path);
+   const wanted=cfg.enabled&&pinned;
    if(prior&&!wanted)prior.remove();
    if(wanted&&!prior){
     const icon=title.ownerDocument.createElement('span');icon.className='writer-v91-flex-indicator';
     icon.setAttribute('aria-hidden','true');require('obsidian').setIcon(icon,'pin');title.appendChild(icon);
    }
   }
-  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned:writerV93FlexPinned(plugin,path)};
+  return {node,path,file,title,index,name:file?.name||path.split('/').pop()||'',pinned};
  });
  if(!cfg.enabled||cfg.sortEnabled===false||(folder.sort==='native'&&!rows.some(row=>row.pinned))){
   if(container.dataset.writerFlexOrderHost==='1'){
@@ -351,7 +364,7 @@ function writerV91FlexSortGroup(plugin,container,patterns,nativePatched=false){
   return;
  }
  const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
- rows.sort((a,b)=>writerV93FlexCompare(plugin,a,b,folder,collator));
+ writerV16FlexSortRows(plugin,rows,folder,collator);
  // With a native sorted list, do not impose a second CSS order on its DOM.
  // The CSS fallback is retained for Obsidian versions without this method.
  if(nativePatched){
@@ -620,7 +633,7 @@ function writerV91FlexRegister(plugin){
    }else leaf.view._writerV1202SpaceRoot='';
    const nativePatched=patchView(leaf.view);
    const groups=host.querySelectorAll('.nav-files-container, .nav-folder-children, .nav-files-container > div');
-   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched);
+   for(const group of groups)writerV91FlexSortGroup(plugin,group,patterns,nativePatched,leaf.view);
    // Sync items even if their native wrapper differs from older Obsidian DOM.
    for(const node of host.querySelectorAll('.nav-file, .nav-folder, .tree-item')){
     const path=writerV91FlexNodePath(node,leaf.view);

@@ -1,6 +1,6 @@
 # Basic v16 — CSS foundation (working plan)
 
-Status: first implementation phase; version remains unchanged until integration and release.
+Status: second implementation phase; version remains unchanged until integration and release.
 
 ## Design contracts
 - Native theme tokens remain authoritative. No global reset, no !important escalation and no changes to third-party DOM without a feature-specific host.
@@ -19,3 +19,11 @@ Status: first implementation phase; version remains unchanged until integration 
 
 ## Verification
 Run npm run build:css, npm run check:css, npm test. Test editor width with each feature alone and all combinations; test StyleMate with a timeline, callout, embedded note and chat block; compare native property and status layouts before and after disabling Basic. Validate native mobile scrolling with and without virtual keyboard. Static tests are not substitutes for real rendering.
+
+## Phase 2 — native/mobile implementation
+
+- Measured overlap is now applied to visible top-level Markdown reading and CodeMirror scroll surfaces, including horizontal pane intersection. Embedded notes and non-Markdown plugin editors are excluded.
+- Existing native bottom padding is preserved when larger; the measured override is removed for keyboard, hidden bars, nonoverlapping panes and plugin unload. Turning only the custom status row off still compensates for an overlapping native floating navbar.
+- Explorer control sizing is limited to Basic's preview and Spaces actions. Reorder titles alone receive truncation rules. Other native/third-party action buttons and titles retain theme sizing.
+- Runtime main.js and shipping CSS were synchronized by verified source replacement. Full build/CI and visual Android verification are still required; mock geometry tests cannot prove actual WebView layout.
+- Follow-up visual QA: confirm CodeMirror scroll extent, real keyboard open/close, landscape/split panes, toolbar with themes and external plugins, end-of-note reachability, native status row restore and hit targets.

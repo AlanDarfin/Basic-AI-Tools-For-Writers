@@ -7153,11 +7153,13 @@ body.is-mobile .writer-v924-masonry>.writer-v924-column{width:100%;flex:none;gap
 }
 @media(max-width:720px){
  .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+  grid-template-columns:minmax(0,1fr);
   gap:10px;
  }
  .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
 }
 body.is-mobile .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ grid-template-columns:minmax(0,1fr);
  gap:10px;
 }
 body.is-mobile .writer-v925-grid>[data-section][data-widget-size="wide"]{grid-column:span 1;}
@@ -9643,6 +9645,7 @@ body.is-mobile .dictionary-settings-subtabs button{
 }
 /* Replace old faux address bar selectors entirely. */
 .writer-v8-home .writer-v8-home-grid.writer-v925-grid{
+ grid-template-columns:repeat(12,minmax(0,1fr));
 }
 .writer-v8-home .writer-v925-grid>[data-section]{
  grid-column:span 6;position:relative;

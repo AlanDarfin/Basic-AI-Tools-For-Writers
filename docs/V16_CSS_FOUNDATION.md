@@ -1,6 +1,6 @@
 # Basic v16 — CSS foundation (working plan)
 
-Status: third implementation phase; version remains unchanged until integration and release.
+Status: fourth implementation phase (ordered manifest first); version remains unchanged until integration and release.
 
 ## Design contracts
 - Native theme tokens remain authoritative. No global reset, no !important escalation and no changes to third-party DOM without a feature-specific host.
@@ -15,7 +15,8 @@ Status: third implementation phase; version remains unchanged until integration 
 2. Native/mobile: audit explorer controls, mobile toolbar and status geometry; test keyboard and split-pane resizing; ensure cleanup on disable.
 3. Components: reconcile repeated style rules for Timeline (separate PR), Longform, Spaces, Homepage and LanguageTool; use scoped component tokens.
 4. Organize source modules by core/native/editor/blocks/features/mobile/compat, using an explicit build manifest and checking generated CSS equivalence at each move.
-5. Regression and release: static cascade audit; full build and regression suite; 720p desktop and Android, light/dark, narrow split panes, both Markdown modes, native themes and third-party themes. No version bump before QA.
+5. CSS regression gate: full build, cascade audit and visual QA. Reconcile Timeline PR #175 and verify a clean baseline before JS changes.
+6–11. JavaScript architecture and integration: see [V16 modernization roadmap](V16_MODERNIZATION_ROADMAP.md). No version bump before both CSS and JavaScript gates pass.
 
 ## Verification
 Run npm run build:css, npm run check:css, npm test. Test editor width with each feature alone and all combinations; test StyleMate with a timeline, callout, embedded note and chat block; compare native property and status layouts before and after disabling Basic. Validate native mobile scrolling with and without virtual keyboard. Static tests are not substitutes for real rendering.
@@ -36,3 +37,10 @@ Run npm run build:css, npm run check:css, npm test. Test editor width with each 
 - LanguageTool review action grid adapts to available pane width, with wrapping button labels and bounded widths.
 - Timeline CSS remains owned by PR #175; reconcile after integration rather than applying competing changes here.
 - Source replacements and shipping CSS synchronized, followed by deduplication and isolated CSS audit tests. Full build, full test suite, visual QA and any further cascade consolidation remain pending.
+
+## Phase 4 — ordered ownership manifest (first pass)
+
+- `scripts/css-manifest.js` records the existing 53 stylesheet modules in their exact historical cascade order, with core/native/editor/blocks/features/mobile/compat ownership metadata. Category never changes cascade.
+- The CSS builder and repository audit use the same manifest. Six historical registration tests now inspect the manifest; new regression checks cover duplicates, invalid paths, categories and ordering.
+- No stylesheet files were physically relocated in this pass. Establish a complete reproducible build and audit all path consumers before moving modules to ownership folders. No shipped CSS or JS runtime changes are intended by this tooling-only step.
+- The old and new manifest order were compared programmatically. Full repository build and runtime tests remain pending.

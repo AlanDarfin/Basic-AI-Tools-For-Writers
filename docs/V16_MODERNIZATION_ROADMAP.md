@@ -122,3 +122,12 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Guard registration, late layout callbacks, stale observer notifications, timers and vault rename/delete callbacks with live session ownership. Coalesce refreshes without dropping a pending native sort. Cancel timers, observer and drag state on unload.
 - Restore explorer concealment and draggable attributes, clear owned visibility classes, pin indicators and Space markers. Restore prior inline display only when Basic still owns the hidden value. Existing CSS fallback ordering cleanup remains.
 - Add three regression fixtures and synchronize main.js. Full new CI, live Obsidian QA and broader stale asynchronous menu-action review remain pending.
+
+## Phase 7.4 — Homepage lifecycle
+
+- CI #1386 completed successfully on the previous Homepage lifecycle checkpoint. Real Obsidian desktop/Android and integration QA remain pending.
+
+## Phase 7.5 — asynchronous draft export (first pass)
+
+- Quick drafts previously cleared the currently selected slot after an awaited vault write. Capture the original slot and text, keep the note creation explicit, and clear only an unchanged snapshot owned by the live render. Switching tabs, editing or closing the view retains the draft. A failed settings save restores the owned snapshot without overriding newer edits. Stale renders do not update controls or navigate.
+- Four focused deterministic async fixtures cover normal export, tab switching, newer edits/closed view and failed persistence. No CSS, settings schema, command ID or dependencies changed. Full CI, native navigation and third-party integration review remain pending.

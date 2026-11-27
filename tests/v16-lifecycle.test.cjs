@@ -184,3 +184,37 @@ test('homepage registration is idempotent and old events and timers cannot mutat
  for(const [id,fn] of [...timers]){timers.delete(id);fn();}assert.equal(saves,1);
  cleanups.slice(2).forEach(fn=>fn());
 });
+
+function draftExportHarness(){
+ let release,active=true,index=0,fail=false,saves=0;
+ const drafts=['first draft','second draft',''],editor={value:drafts[0]};
+ const file={path:'Quick Notes/export.md'};
+ const view={plugin:{settings:{v8Finish:{homeQuick:drafts}},saveSettings:async()=>{saves++;if(fail)throw Error('save failure');}},
+  app:{vault:{getAbstractFileByPath:path=>path==='Quick Notes'?{}:null,create:()=>new Promise(resolve=>{release=()=>resolve(file);})}}};
+ return {drafts,editor,view,file,release:()=>release(),close:()=>{active=false;},switchTab:()=>{index=1;editor.value=drafts[1];},fail:()=>{fail=true;},saves:()=>saves,
+  run:exportDraft=>exportDraft(view,0,'first draft',()=>active,()=>index,editor)};
+}
+test('quick draft export clears only its unchanged selected snapshot',async()=>{
+ const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ const h=draftExportHarness(),pending=h.run(exportDraft);h.release();const result=await pending;
+ assert.equal(result.file,h.file);assert.equal(result.cleared,true);assert.deepEqual(h.drafts,['','second draft','']);assert.equal(h.editor.value,'');assert.equal(h.saves(),1);
+});
+test('quick draft export retains both drafts if the user switches tabs while creating a note',async()=>{
+ const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ const h=draftExportHarness(),pending=h.run(exportDraft);h.switchTab();h.release();const result=await pending;
+ assert.equal(result.file,h.file);assert.equal(result.cleared,false);assert.deepEqual(h.drafts,['first draft','second draft','']);assert.equal(h.editor.value,'second draft');assert.equal(h.saves(),0);
+});
+test('quick draft export preserves newer edits and stale view state',async()=>{
+ const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ for(const closed of [false,true]){
+  const h=draftExportHarness(),pending=h.run(exportDraft);
+  if(closed)h.close();else h.editor.value=h.drafts[0]='newer edit';
+  h.release();const result=await pending;
+  assert.equal(result.cleared,false);assert.equal(h.drafts[0],closed?'first draft':'newer edit');assert.equal(h.saves(),0);
+ }
+});
+test('quick draft export restores the snapshot if persisting its removal fails',async()=>{
+ const exportDraft=load('src/v8/writing-home.js','writerV16HomeExportDraft',{ItemView:class{}});
+ const h=draftExportHarness();h.fail();const pending=h.run(exportDraft);h.release();
+ await assert.rejects(pending,/save failure/);assert.equal(h.drafts[0],'first draft');assert.equal(h.editor.value,'first draft');
+});

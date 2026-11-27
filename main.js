@@ -13970,6 +13970,32 @@ function writerV16HomeFrameQueue(request,cancel,update){
   }
  };
 }
+// Export the captured draft; never clear a newer edit or navigate from a stale render.
+async function writerV16HomeExportDraft(view,slot,raw,current,selected,editor){
+ const drafts=view.plugin.settings.v8Finish.homeQuick;
+ const body=raw.trim();
+ if(!body)return {file:null,cleared:false};
+ const vault=view.app.vault,folder='Quick Notes';
+ if(!vault.getAbstractFileByPath(folder))await vault.createFolder(folder);
+ const label=new Date().toISOString().slice(0,10);
+ let path=folder+'/'+label+'-writing.md',n=2;
+ while(vault.getAbstractFileByPath(path))path=folder+'/'+label+'-writing-'+n+++'.md';
+ const file=await vault.create(path,body+'\n');
+ const owns=()=>current()&&view.plugin.settings.v8Finish.homeQuick===drafts;
+ // Conservative on tab changes: retain the original draft if its editor is no longer selected.
+ if(!owns()||selected()!==slot||editor.value!==raw||drafts[slot]!==raw.slice(0,12000))return {file,cleared:false};
+ drafts[slot]='';editor.value='';
+ try{await view.plugin.saveSettings();}
+ catch(error){
+  // Restore only the value we cleared; a later edit always wins.
+  if(owns()&&drafts[slot]===''){
+   drafts[slot]=raw.slice(0,12000);
+   if(selected()===slot&&editor.value==='')editor.value=raw;
+  }
+  throw error;
+ }
+ return {file,cleared:true};
+}
 class WriterV8HomeView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.disposed=false;this.saveTimer=null;this.widgetResizeObserver=null;}
  getViewType(){return WRITER_V8_HOME_VIEW;}
@@ -14945,23 +14971,22 @@ class WriterV8HomeView extends ItemView{
   }
   pick(0);
   editor.addEventListener('input',()=>{this.plugin.settings.v8Finish.homeQuick[index]=editor.value.slice(0,12000);this.saveSoon();});
+  const generation=this.homeRenderGeneration,session=this.homeSession;
+  const current=()=>!this.disposed&&this.homeSession===session&&this.homeRenderGeneration===generation&&box.isConnected;
+  let exporting=false;
   save.addEventListener('click',async()=>{
-   save.disabled=true;message.setText('');
+   if(!current()||exporting)return;
+   const slot=index,raw=editor.value;
+   if(!raw.trim()){message.setText(writerUi('Escreva algo antes de exportar.','Write something before exporting.'));return;}
+   exporting=true;save.disabled=true;message.setText('');
    try{
-    const body=editor.value.trim();
-    if(!body){message.setText(writerUi('Escreva algo antes de exportar.','Write something before exporting.'));return;}
-    const folder='Quick Notes';
-    if(!this.app.vault.getAbstractFileByPath(folder))await this.app.vault.createFolder(folder);
-    const label=new Date().toISOString().slice(0,10);
-    let path=folder+'/'+label+'-writing.md',n=2;
-    while(this.app.vault.getAbstractFileByPath(path))path=folder+'/'+label+'-writing-'+n+++'.md';
-    const file=await this.app.vault.create(path,body+'\n');
-    this.plugin.settings.v8Finish.homeQuick[index]='';editor.value='';
-    await this.plugin.saveSettings();
+    const result=await writerV16HomeExportDraft(this,slot,raw,current,()=>index,editor);
+    if(!current())return;
     message.setText(writerUi('Nota criada.','Note created.'));
-    this.openFile(file);
-   }catch(error){message.setText(writerUi('Erro ao criar nota: ','Unable to create note: ')+String(error.message||error));}
-   finally{save.disabled=false;}
+    if(result.cleared&&index===slot&&editor.value==='')this.openFile(result.file);
+   }catch(error){
+    if(current())message.setText(writerUi('Erro ao exportar rascunho: ','Unable to export draft: ')+String(error.message||error));
+   }finally{exporting=false;if(current())save.disabled=false;}
   });
  }
  renderStats(parent){

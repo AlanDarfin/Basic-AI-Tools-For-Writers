@@ -54,5 +54,6 @@ test('v9.0.1 sources and runtime bundle contain new controls',()=>{
  }
  assert.match(style,/writer-v901-color-input/);
  assert.match(style,/writer-v9-space-sidebar/);
- assert.match(read('scripts/build-v3.js'),/v9\/password-lock/);
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v9/password-lock.js'));
 });

@@ -1,6 +1,10 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict');
-const {analyzeSource,getSources,buildRegions}=require('../scripts/js-v16-audit.js');
+const fs=require('node:fs');
+const path=require('node:path');
+const {analyzeSource,buildRegions}=require('../scripts/js-v16-audit.js');
+const {entries,sourceIds,legacyDictionary,validateEntries}=require('../scripts/js-manifest.js');
+const {locateBundle}=require('../scripts/js-bundle.js');
 test('AST inventory separates lexical duplicates from nested functions and ignores strings/comments',()=>{
  const source="function same(){} function same(){} function outer(){function same(){}} const s='fake.addCommand({id:\"ghost\"})'; // setTimeout()\n";
  const r=analyzeSource(source);
@@ -23,20 +27,49 @@ test('prototype writes and literal command candidates have locations; dynamic ID
  assert.equal(r.lifecycleCounts['interval-clear'],1);
  assert.ok(r.registrations.every(s=>s.owner==='init'&&!s.topLevel));
 });
-test('source regions verify exact build order and exclude the vendor bundle',()=>{
- const src={'src/v3/core.js':"'use strict';\nfunction core(){setTimeout(cb,1);}\n",'src/v4/editor.js':"function editor(){clearTimeout(1);}\n"};
- const names=getSources("const sources=['core','v4/editor'];");
+test('source regions verify stable marker order after relocation and map extracted sources',()=>{
+ const fixtures=[
+  {id:'src/v3/core.js',path:'src/v3/core.js'},
+  {id:'src/v4/editor.js',path:'src/editor/editor.js'}
+ ];
+ const src={
+  'src/v3/core.js':"'use strict';\nfunction core(){setTimeout(cb,1);}\n",
+  'src/editor/editor.js':"function editor(){clearTimeout(1);}\n",
+  [legacyDictionary.path]:"function parseDictionary(text){return text;}\n"
+ };
  const vendor='function writerVisualKitBuild(){setInterval(cb,1);}';
- const main='const prefix=1;\n// BEGIN WRITER V3 MODULES\n'+names.map(n=>'// v3 module: '+n+'\n'+src[n].replace(/^'use strict';\s*/,'')+'\n').join('')+vendor+'\n// END WRITER V3 MODULES\n';
- const regions=buildRegions(main,names,n=>src[n],vendor);
+ const main='const prefix=1;\n'+src[legacyDictionary.path]+'// BEGIN WRITER V3 MODULES\n'+
+  fixtures.map(({id,path})=>'// v3 module: '+id+'\n'+src[path].replace(/^'use strict';\s*/,'')+'\n').join('')+
+  vendor+'\n// END WRITER V3 MODULES\n';
+ const regions=buildRegions(main,fixtures,file=>src[file],vendor);
  const r=analyzeSource(main,regions);
  assert.equal(r.errors.length,0);
  assert.equal(r.lifecycleCounts['interval-create'],undefined);
+ const dictionary=r.declarations.find(row=>row.name==='parseDictionary');
+ assert.equal(dictionary.file,legacyDictionary.path);
+ assert.equal(dictionary.line,1);
+ assert.equal(dictionary.bundleLine,2);
  assert.equal(r.registrations[0].file,'src/v3/core.js');
  assert.equal(r.registrations[0].line,2);
- assert.equal(r.registrations[1].file,'src/v4/editor.js');
- assert.throws(()=>buildRegions(main,names.slice().reverse(),n=>src[n],vendor),/out of sync/);
- assert.throws(()=>getSources("const sources=['core','core'];"),/Invalid JS source inventory/);
+ assert.equal(r.registrations[1].file,'src/editor/editor.js');
+ assert.throws(()=>buildRegions(main,fixtures.slice().reverse(),file=>src[file],vendor),/out of sync/);
+ assert.throws(()=>buildRegions(main.replace('return text','return null'),fixtures,file=>src[file],vendor),/legacy-dictionary/);
+});
+
+test('manifest rejects duplicated markers or locations and covers every bundled source',()=>{
+ const core=['src/v3/core.js','core'];
+ assert.throws(()=>validateEntries([core,[...core,'src/core/core.js']]),/Duplicate JS source ID/);
+ assert.throws(()=>validateEntries([core,['src/v3/alternate.js','core',core[0]]]),/Duplicate JS source path/);
+ assert.throws(()=>validateEntries([['src/../module.js','core']]),/Invalid JS module/);
+ assert.throws(()=>validateEntries([['src/v3/core.js','unknown']]),/Invalid JS domain/);
+ const main=fs.readFileSync('main.js','utf8');
+ const {bodyStart,moduleEnd,legacyStart,moduleStart}=locateBundle(main);
+ const markerOrder=[...main.slice(bodyStart,moduleEnd).matchAll(/^\/\/ v3 module: (src\/[^\n]+)\n/gm)].map(match=>match[1]);
+ assert.deepEqual(markerOrder,sourceIds);
+ assert.equal(main.slice(legacyStart,moduleStart),fs.readFileSync(legacyDictionary.path,'utf8'));
+ const sourcePaths=fs.readdirSync('src',{recursive:true}).filter(file=>file.endsWith('.js'))
+  .map(file=>'src/'+file.split(path.sep).join('/')).sort();
+ assert.deepEqual([...entries.map(entry=>entry.path),legacyDictionary.path].sort(),sourcePaths);
 });
 
 test('prototype aliases, computed keys and deferred layout callbacks stay review candidates',()=>{

@@ -54,11 +54,11 @@ test('settings tabs support arrows, home and end without altering absent buttons
 test('generated outputs and build inventories both include the same v13 entry',()=>{
  const main=fs.readFileSync(path.join(root,'main.js'),'utf8');
  const css=fs.readFileSync(path.join(root,'styles.css'),'utf8');
- const jsBuild=fs.readFileSync(path.join(root,'scripts/build-v3.js'),'utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  const cssBuild=fs.readFileSync(path.join(root,'scripts/css-manifest.js'),'utf8');
  const toolbar=fs.readFileSync(path.join(root,'src/v9/context-toolbar.js'),'utf8');
  assert.match(toolbar,/return writerV1044CommandPicker\(plugin/,'toolbar reuses shared picker');
- assert.match(jsBuild,/v13\/ui-foundation/);
+ assert.ok(sourceIds.includes('src/v13/ui-foundation.js'));
  assert.match(cssBuild,/v13-foundation\.css/);
  assert.match(main,/v3 module: src\/v13\/ui-foundation\.js/);
  assert.match(main,/writerV13BindSettingsTabs\(nav,subnav\)/);

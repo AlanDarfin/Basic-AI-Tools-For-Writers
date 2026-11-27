@@ -3,11 +3,9 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const build=fs.readFileSync('scripts/build-v3.js','utf8');
+const {sourceIds}=require('../scripts/js-manifest.js');
 const main=fs.readFileSync('main.js','utf8');
-const parts=build.match(/const sources=(\[[^;]+\]);/);
-assert.ok(parts,'Active source list must exist');
-const active=parts[1].match(/'([^']+)'/g).map(s=>s.slice(1,-1));
+
 const quarantined=['v10/data-tables','v10/zotero-web','v10/study-fsrs','v10/calendar-feeds',
  'v10/story-graph','v10/editor-pro','v10/speech-accessibility','v10/media-drag-extension','v10/integrations-107'];
 const required=['core','complements','variants','snapshots','workspace','final-suite','tts-online',
@@ -18,15 +16,17 @@ const required=['core','complements','variants','snapshots','workspace','final-s
  'v10/block-dragger','v10/historical-helpers'];
 
 test('Recovery bundle retains every pre-10.7 core and historical source',()=>{
- for(const name of required)assert.ok(active.includes(name),name+' missing from active bundle');
+ for(const name of required){
+  const id='src/'+(name.includes('/')?name:'v3/'+name)+'.js';
+  assert.ok(sourceIds.includes(id),id+' missing from active bundle');
+ }
  assert.ok(main.includes('function writerV101RegisterEnhancements'));
  assert.ok(main.includes('writerV106HomeRegisterStartup'));
  assert.ok(main.includes('writerV1061ToolbarEditingMode'));
 });
 test('Advanced 10.7 source modules are restored, while startup remains deferred and isolated',()=>{
  for(const name of quarantined){
-  assert.ok(active.includes(name),name+' restored into the 10.8 bundle');
-  assert.ok(build.includes("'"+name+"'"),name+' must remain recoverable');
+  assert.ok(sourceIds.includes('src/'+name+'.js'),name+' restored into the 10.8 bundle');
   assert.ok(fs.existsSync('src/'+name+'.js'),name+' must not be deleted');
   assert.ok(main.includes('// v3 module: src/'+name+'.js'),name+' must be in main.js');
  }

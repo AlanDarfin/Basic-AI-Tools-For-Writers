@@ -114,8 +114,9 @@ test('Pomodoro: focus summary tracks local seven-day data',()=>{
  assert.equal(result.total,25);assert.equal(result.tasks[0][1],1);
 });
 test('Source and bundle ship extension modules, visuals, and translated reference guides',()=>{
- const build=read('scripts/build-v3.js'),css=read('styles.css'),js=read('main.js');
- for(const module of ['v10/space-history','v10/enhancements','v10/calendar-exchange'])assert.ok(build.includes(module),module);
+ const css=read('styles.css'),js=read('main.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ for(const id of ['src/v10/space-history.js','src/v10/enhancements.js','src/v10/calendar-exchange.js'])assert.ok(sourceIds.includes(id),id);
  for(const name of ['writerV101RegisterSpaceHistory(this)','writerV101RegisterEnhancements(this)','writerV101RegisterCalendarExchange(this)'])assert.ok(js.includes(name),name);
  assert.match(css,/writer-v101-focus-bars/);
  for(const file of ['README.md','docs/README.pt-BR.md']){

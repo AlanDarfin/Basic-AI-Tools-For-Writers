@@ -73,12 +73,13 @@ test('mobile runtime skips desktop Keyshots while preserving editing helpers',()
  assert.ok(scan.items.some(item=>item.key==='Backspace'));
 });
 test('source, bundle and responsive UI remain synchronized',()=>{
- const main=fs.readFileSync('main.js','utf8'),css=fs.readFileSync('styles.css','utf8'),builder=fs.readFileSync('scripts/build-v3.js','utf8');
+ const main=fs.readFileSync('main.js','utf8'),css=fs.readFileSync('styles.css','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  assert.ok(main.includes('// v3 module: src/v5/workspace-ux.js'));
  assert.ok(main.includes('writerWorkspaceMerge(this.settings)'));
  assert.ok(main.includes('writerWorkspaceBindSearch('));
  assert.ok(main.includes('writerWorkspaceRenderHotkeys(this.plugin,panel)'));
- assert.ok(builder.includes("'v5/workspace-ux'"));
+ assert.ok(sourceIds.includes('src/v5/workspace-ux.js'));
  assert.ok(css.includes('writer-v51-search'));
  assert.ok(css.includes('max-height:740px'));
 });

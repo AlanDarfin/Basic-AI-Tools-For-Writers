@@ -25,7 +25,8 @@ test('9.2.x metadata, modules and CSS',()=>{
  for(const path of files)assert.ok(main.includes('// v3 module: '+path));
  for(const name of ['writerV92ExplorerRegister(this)','writerV92RegisterBlocks(this)','writerV92ResearchRegister(this)','writerV92SessionRegister(this)'])assert.ok(main.includes(name));
  for(const name of ['writer-v92-favorite','writer-v92-file-preview','writer-v92-progress','writer-v92-session'])assert.ok(css.includes(name));
- assert.ok(read('scripts/build-v3.js').includes("'v9/session-drafts'"));
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v9/session-drafts.js'));
  assert.ok(read('scripts/css-manifest.js').includes('v9-2-suite.css'));
 });
 test('favorites reuse homepage list and folder note descriptions',()=>{

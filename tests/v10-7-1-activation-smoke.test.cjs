@@ -89,13 +89,16 @@ test('Plugin unload cancels delayed initialization instead of reopening inactive
  assert.equal(calls,0);
 });
 test('Core features and previous bundle modules are not deleted',()=>{
- const src=fs.readFileSync('scripts/build-v3.js','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  const old=['core','complements','variants','snapshots','workspace','final-suite','tts-online',
  'v4/editor','v4/cursor-memory','v6/longform-navigation','v7/story-studio','v8/writing-home',
  'v8/writing-study','v9/context-toolbar','v9/smart-spaces','v9/research-style',
  'v10/enhancements','v10/calendar-exchange','v10/discovery','v10/startup-cleanup',
  'v10/block-dragger','v10/historical-helpers'];
- for(const sourceName of old)assert.ok(src.includes("'"+sourceName+"'"),sourceName+' missing from bundle');
+ for(const name of old){
+  const id='src/'+(name.includes('/')?name:'v3/'+name)+'.js';
+  assert.ok(sourceIds.includes(id),id+' missing from bundle');
+ }
  const enhancements=fs.readFileSync('src/v10/enhancements.js','utf8');
  assert.match(enhancements,/writerV101ReadingProgressRegister\(plugin\)/);
  assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);

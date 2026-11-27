@@ -4,6 +4,8 @@
 const fs=require('node:fs'),path=require('node:path');
 const ts=require('../vendor/visual-kit/node_modules/typescript');
 const root=path.resolve(__dirname,'..');
+const {entries,sourceIds,legacyDictionary}=require('./js-manifest.js');
+const {locateBundle,readLegacyDictionary,readModule}=require('./js-bundle.js');
 const lifecycle=new Map([
  ['register','managed-registration'],['registerEvent','managed-event'],['registerDomEvent','managed-dom-event'],
  ['registerInterval','managed-interval'],['registerEditorExtension','editor-extension'],
@@ -148,39 +150,36 @@ function analyzeSource(source,regions=[{start:0,end:source.length,file:'main.js'
   repeatedTopLevelNames:group(declarations,'name'),repeatedPrototypeTargets:group(prototypeWrites,'target'),
   repeatedLiteralCommandIds:group(commands,'id'),lifecycleCounts};
 }
-function getSources(builder){
- const list=builder.match(/const sources=\[([\s\S]*?)\];/);
- if(!list)throw Error('Cannot locate ordered JS source list');
- const names=[...list[1].matchAll(/'([^']+)'/g)].map(m=>m[1]);
- if(!names.length||new Set(names).size!==names.length||names.some(n=>! /^(?:v\d+\/)?[a-z0-9-]+$/.test(n)))throw Error('Invalid JS source inventory');
- return names.map(n=>'src/'+(n.includes('/')?n:'v3/'+n)+'.js');
-}
-function buildRegions(main,sources,read,vendor){
- const begin='// BEGIN WRITER V3 MODULES\n',end='// END WRITER V3 MODULES';
- const start=main.indexOf(begin),stop=main.indexOf(end,start+begin.length);
- if(start<0||stop<0)throw Error('Missing JS bundle markers');
- const regions=[{start:0,end:start+begin.length,file:'main.js (legacy prefix)',lineOffset:0}];
- let cursor=start+begin.length;
- for(const file of sources){
-  const raw=read(file),body=raw.replace(/^'use strict';\s*/,''),header='// v3 module: '+file+'\n';
-  const expected=header+body+'\n';
-  if(!main.startsWith(expected,cursor))throw Error('JS source out of sync: '+file);
-  const bodyStart=cursor+header.length;
-  regions.push({start:bodyStart,end:bodyStart+body.length,file,lineOffset:(raw.slice(0,raw.length-body.length).match(/\n/g)||[]).length});
-  cursor+=expected.length;
+function buildRegions(main,orderedEntries,read,vendor){
+ const {legacyStart,moduleStart,bodyStart,moduleEnd}=locateBundle(main);
+ if(main.slice(legacyStart,moduleStart)!==readLegacyDictionary(read))
+  throw Error('JS source out of sync: '+legacyDictionary.path);
+ const regions=[
+  {start:0,end:legacyStart,file:'main.js (legacy prefix)',lineOffset:0},
+  {start:legacyStart,end:moduleStart,file:legacyDictionary.path,lineOffset:0}
+ ];
+ let cursor=bodyStart;
+ for(const entry of orderedEntries){
+  const {body,header,lineOffset,content}=readModule(entry,read);
+  if(!main.startsWith(content,cursor))throw Error('JS source out of sync: '+entry.path);
+  const start=cursor+header.length;
+  regions.push({start,end:start+body.length,file:entry.path,lineOffset});
+  cursor+=content.length;
  }
  const compiled=vendor.trimEnd()+'\n';
- if(cursor+compiled.length!==stop||!main.startsWith(compiled,cursor))throw Error('Visual Kit bundle out of sync');
- regions.push({start:cursor,end:stop,file:'vendor/visual-kit/.basic-bundle.js',exclude:true});
- regions.push({start:stop,end:main.length,file:'main.js (legacy suffix)',lineOffset:0});
+ if(cursor+compiled.length!==moduleEnd||!main.startsWith(compiled,cursor))throw Error('Visual Kit bundle out of sync');
+ regions.push({start:cursor,end:moduleEnd,file:'vendor/visual-kit/.basic-bundle.js',exclude:true});
+ regions.push({start:moduleEnd,end:main.length,file:'main.js (legacy suffix)',lineOffset:0});
  return regions;
 }
 function auditRepository(){
  const read=file=>fs.readFileSync(path.join(root,file),'utf8');
- const sources=getSources(read('scripts/build-v3.js')),main=read('main.js');
- const regions=buildRegions(main,sources,read,read('vendor/visual-kit/.basic-bundle.js'));
+ const main=read('main.js');
+ const regions=buildRegions(main,entries,read,read('vendor/visual-kit/.basic-bundle.js'));
  const result=analyzeSource(main,regions);
- return {...result,sourceModules:sources.length,sourceBytes:sources.reduce((n,file)=>n+Buffer.byteLength(read(file)),0),bundleBytes:Buffer.byteLength(main),sourceOrder:sources,
+ const sources=entries.map(entry=>entry.path);
+ return {...result,sourceModules:entries.length,sourceBytes:sources.reduce((n,file)=>n+Buffer.byteLength(read(file)),0),bundleBytes:Buffer.byteLength(main),
+  sourceOrder:sourceIds,sourceEntries:entries,extractedLegacySources:[legacyDictionary.path],
   generatedSources:['src/v13/settings-search-index.js','vendor/visual-kit/.basic-bundle.js']};
 }
 function summarize(r){
@@ -201,4 +200,4 @@ if(require.main===module){
  try{const r=auditRepository();console.log(JSON.stringify(process.argv.includes('--json')?r:summarize(r),null,2));if(r.errors.length)process.exitCode=1;}
  catch(error){console.error('V16 JS audit: '+error.message);process.exitCode=1;}
 }
-module.exports={analyzeSource,getSources,buildRegions,auditRepository,summarize};
+module.exports={analyzeSource,buildRegions,auditRepository,summarize};

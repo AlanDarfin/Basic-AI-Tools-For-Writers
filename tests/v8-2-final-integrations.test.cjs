@@ -92,6 +92,7 @@ test('published bundle, source and documentation all include final writing featu
   assert.ok(docs.includes('SUITES_AND_INTEGRATIONS.'),path+' links the current guide');
   for(const feature of [captions,music])assert.ok(details.includes(feature),guide+': '+feature);
  }
- assert.match(read('scripts/build-v3.js'),/v8\/finish-blocks/);
- assert.match(read('scripts/build-v3.js'),/v8\/writing-home/);
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v8/finish-blocks.js'));
+ assert.ok(sourceIds.includes('src/v8/writing-home.js'));
 });

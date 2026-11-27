@@ -115,10 +115,11 @@ test('navigation toggle and main/sub filtering keep distinct targets',()=>{
  assert.ok(effects.some(e=>e.effects.at===22),'CM6 should receive scrollIntoView for selected line');
  await memory.stop();
  console.log('PASS mobile cursor scroll effect retries after viewport settles');
- const main=fs.readFileSync('main.js','utf8'),build=fs.readFileSync('scripts/build-v3.js','utf8');
+ const main=fs.readFileSync('main.js','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  assert.ok(main.includes('// v3 module: src/v6/longform-navigation.js'));
  assert.ok(main.includes('new WriterBookNavigation(this)'));
- assert.ok(build.includes("'v6/longform-navigation'"));
+ assert.ok(sourceIds.includes('src/v6/longform-navigation.js'));
  console.log('PASS v6 beta2 code is included in Obsidian build');
  console.log(passed+2+' v6 navigation and mobile cursor regressions passed');
 })().catch(error=>{console.error(error);process.exitCode=1;});

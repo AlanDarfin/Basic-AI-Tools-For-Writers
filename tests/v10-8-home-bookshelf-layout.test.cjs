@@ -92,10 +92,10 @@ test('No ribbon shortcut popup or redundant Spaces/Books ribbon icons',()=>{
  assert.match(read('src/v10/bookshelf.js'),/id:'v10-open-bookshelf'/);
 });
 test('All formerly quarantined 10.7 integrations are restored after the core load',()=>{
- const build=read('scripts/build-v3.js'),enhancements=read('src/v10/enhancements.js');
- const list=(build.match(/const sources=(\[[^;]+\]);/)||[])[1]||'';
+ const enhancements=read('src/v10/enhancements.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  for(const name of ['data-tables','zotero-web','study-fsrs','calendar-feeds','story-graph','editor-pro','speech-accessibility','media-drag-extension','integrations-107']){
-  assert.ok(list.includes("'v10/"+name+"'"),name+' missing from active bundle');
+  assert.ok(sourceIds.includes('src/v10/'+name+'.js'),name+' missing from active bundle');
  }
  assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);
  assert.match(read('src/v10/integrations-107.js'),/if\(plugin\.settings\?\.v107AdvancedEnabled===false\)/);

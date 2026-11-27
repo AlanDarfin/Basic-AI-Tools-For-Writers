@@ -42,8 +42,9 @@ test('Spaces support snapshots that are optional and isolated',()=>{
 });
 test('new docs and bundle mention bookshelf and safe text files',()=>{
  for(const p of ['docs/BLOCKS.en.md','docs/BLOCKS.pt-BR.md'])assert.match(fs.readFileSync(p,'utf8'),/bookshelf/);
- const build=fs.readFileSync('scripts/build-v3.js','utf8');
- assert.match(build,/v10\/bookshelf/);assert.match(build,/v10\/toolbox/);
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v10/bookshelf.js'));
+ assert.ok(sourceIds.includes('src/v10/toolbox.js'));
  const main=fs.readFileSync('main.js','utf8');
  assert.match(main,/writerV10RegisterBookshelf\(this\)/);
  assert.match(main,/writerV10RegisterToolbox\(this\)/);

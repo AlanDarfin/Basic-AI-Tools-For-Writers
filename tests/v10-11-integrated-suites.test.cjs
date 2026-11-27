@@ -86,9 +86,10 @@ test('Number Suite compatible safe parsing: code fences, YAML, preview and conse
  assert.equal(cfg.virtual,false,'no unexpected visual numbering on upgrade');
 });
 test('Suites isolated by guarded registration, no extra ribbon and no external network',()=>{
- const build=read('scripts/build-v3.js'),enhance=read('src/v10/enhancements.js');
+ const enhance=read('src/v10/enhancements.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  for(const module of ['suite-education-1011','suite-notion-1011','suite-numbering-1011']){
-  assert.match(build,new RegExp("'v10/"+module+"'"));
+  assert.ok(sourceIds.includes('src/v10/'+module+'.js'));
   const source=read('src/v10/'+module+'.js');
   assert.doesNotMatch(source,/addRibbonIcon|requestUrl|fetch\s*\(/,module);
  }

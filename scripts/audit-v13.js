@@ -22,22 +22,23 @@ for(const f of files){
   &&/^(?:<<<<<<< |=======\r?$|>>>>>>> )/m.test(get(f)))
   errors.push('Unresolved merge marker: '+f);
 }
-const bundle=get('scripts/build-v3.js'),pkg=JSON.parse(get('package.json'));
+const pkg=JSON.parse(get('package.json'));
 const {entries,sections}=require('./css-manifest.js');
-function inventory(src,re){const m=src.match(re);return m?[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1]):[];}
-const sources=inventory(bundle,/const sources=\[([\s\S]*?)\];/).map(s=>'src/'+(s.includes('/')?s:'v3/'+s)+'.js');
+const {entries:jsEntries,sourceIds,legacyDictionary}=require('./js-manifest.js');
+const sources=jsEntries.map(entry=>entry.path);
+const sourceFiles=[...sources,legacyDictionary.path];
 const styles=sections.map(s=>'src/styles/'+s);
 const tests=[...String(pkg.scripts['test:sequential']||'').matchAll(/node\s+(?:--test\s+)?(tests\/[\w.\/-]+)/g)].map(x=>x[1]);
-for(const f of [...sources,...styles,...tests])if(!files.includes(f))errors.push('Missing referenced file: '+f);
-for(const [label,items] of [['source',sources],['style',styles],['test',tests]]){
+for(const f of [...sourceFiles,...styles,...tests])if(!files.includes(f))errors.push('Missing referenced file: '+f);
+for(const [label,items] of [['source',sourceFiles],['style',styles],['test',tests]]){
  const seen=new Set();for(const f of items){if(seen.has(f))errors.push('Duplicate '+label+': '+f);seen.add(f);}
 }
-const unbundled=files.filter(f=>/^src\/v\d+\/.*\.js$/.test(f)&&!sources.includes(f));
+const unbundled=files.filter(f=>f.startsWith('src/')&&f.endsWith('.js')&&!sourceFiles.includes(f));
 if(unbundled.length)warnings.push('Sources missing from build: '+unbundled.join(', '));
 const unstyled=files.filter(f=>f.startsWith('src/styles/')&&f.endsWith('.css')&&!styles.includes(f));
 if(unstyled.length)warnings.push('Styles missing from build: '+unstyled.join(', '));
 const main=get('main.js'),css=get('styles.css');
-if(!sources.includes('src/v13/ui-foundation.js')||!main.includes('// v3 module: src/v13/ui-foundation.js'))
+if(!sourceIds.includes('src/v13/ui-foundation.js')||!main.includes('// v3 module: src/v13/ui-foundation.js'))
  errors.push('UI foundation missing from generated JS');
 if(!styles.includes('src/styles/core/v13-foundation.css')||!css.includes('Basic v13 — foundation overrides'))
  errors.push('Design tokens missing from generated CSS');

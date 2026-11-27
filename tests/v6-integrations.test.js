@@ -83,8 +83,9 @@ test('original source and build markers are present in shipped plugin',()=>{
  const main=fs.readFileSync('main.js','utf8');
  for(const file of files)assert.ok(main.includes('// v3 module: '+file));
  for(const cls of ['WriterV6Reading','WriterV6Markup','WriterV6Linter'])assert.ok(main.includes('new '+cls+'(this)'));
- const build=fs.readFileSync('scripts/build-v3.js','utf8');
- assert.ok(build.includes("'v6/foundation'"));assert.ok(build.includes("'v6/linter'"));
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v6/foundation.js'));
+ assert.ok(sourceIds.includes('src/v6/linter.js'));
  assert.ok(fs.readFileSync('styles.css','utf8').includes('writer-v6-rating-editor'));
 });
 console.log(count+' v6 integration regression tests passed');

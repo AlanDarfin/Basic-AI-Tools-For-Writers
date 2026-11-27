@@ -90,12 +90,12 @@ async function test(name,fn){await fn();passed++;console.log('PASS',name);}
  });
  await test('source bundle, translations, responsive CSS and stable meta exist',()=>{
   const main=fs.readFileSync('main.js','utf8');
-  const build=fs.readFileSync('scripts/build-v3.js','utf8');
+  const {sourceIds}=require('../scripts/js-manifest.js');
   const css=fs.readFileSync('styles.css','utf8');
   assert.ok(main.includes('writerProjectMetaRender(this,panel,project)'));
   assert.ok(main.includes('writerProjectRemember(this,selector.value)'));
   assert.ok(main.includes('// v3 module: src/v5/project-metadata.js'));
-  assert.ok(build.includes("'v5/project-metadata'"));
+  assert.ok(sourceIds.includes('src/v5/project-metadata.js'));
   assert.ok(css.includes('.writer-project-cover-preview img'));
   assert.ok(css.includes('.dictionary-settings-subtabs'));
   assert.ok(fs.readFileSync('README.md','utf8').includes('Book writing'));

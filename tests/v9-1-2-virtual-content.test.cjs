@@ -44,7 +44,8 @@ test('v9.1.2 manifest, lockfile, modular source, compiled bundle, CSS and docume
  assert.match(main,/writerV912VirtualRegister\(this\)/);
  assert.match(main,/writerV912VirtualMerge\(this\.settings\)/);
  assert.match(main,/WRITER_V912_VIRTUAL_VIEW/);
- assert.match(read('scripts/build-v3.js'),/'v9\/virtual-content'/);
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.includes('src/v9/virtual-content.js'));
  assert.match(read('styles.css'),/writer-v912-virtual-block/);
  assert.match(read('scripts/css-manifest.js'),/v9-1-2-virtual-content\.css/);
  for(const [doc,guide,dynamic,navigation] of [

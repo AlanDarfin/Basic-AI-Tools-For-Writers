@@ -188,10 +188,10 @@ test('blank fenced-code lines remain literal even before syntax nodes are availa
 });
 test('typing settings are independent of Keyshots bindings',()=>{
  const basic=fs.readFileSync('main.js','utf8');
- const build=fs.readFileSync('scripts/build-v3.js','utf8');
+ const {sourceIds}=require('../scripts/js-manifest.js');
  for(const name of ['easy-typing','smart-typography']){
   assert.ok(basic.includes('// v3 module: src/v5/'+name+'.js'));
-  assert.ok(build.includes('v5/'+name));
+  assert.ok(sourceIds.includes('src/v5/'+name+'.js'));
  }
  for(const sym of ['writerEasyMerge(this.settings)','writerTypoMerge(this.settings)','this.writerEasyTyping.register()','this.writerSmartTypography.register()'])
   assert.ok(basic.includes(sym),sym);

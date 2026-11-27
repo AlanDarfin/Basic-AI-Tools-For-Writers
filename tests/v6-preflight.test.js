@@ -28,9 +28,10 @@ test('both existing typing modules are preserved before the new linter',()=>{
  assert.match(typo,/writerTypingUnsafeContext/);
 });
 test('canonical Longform and plugin bundle scripts are present',()=>{
- const build=read('scripts/build-v3.js'),sync=read('scripts/sync-projects.js');
- assert.ok(build.includes('src/v3/'));
- assert.ok(build.includes("'v5/"));
+ const sync=read('scripts/sync-projects.js');
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ assert.ok(sourceIds.some(id=>id.startsWith('src/v3/')));
+ assert.ok(sourceIds.some(id=>id.startsWith('src/v5/')));
  assert.ok(sync.includes('projects.js'));
  assert.ok(sync.includes('main.js'));
  assert.ok(read('projects.js').includes('lastLongformProject'));

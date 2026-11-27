@@ -148,8 +148,9 @@ test('Spaces, bookshelf, command palette and fictional voice-note layout are wir
  assert.doesNotMatch(flex,/container\.appendChild\(row\.node\)/);
 });
 test('Release wiring: bundled code, bilingual docs, CSS and version synchronize',()=>{
- const main=read('main.js'),build=read('scripts/build-v3.js'),css=read('styles.css'),manifest=JSON.parse(read('manifest.json'));
- for(const p of ['v10/image-inserter','v10/inline-alignment'])assert.ok(build.includes(p));
+ const main=read('main.js'),css=read('styles.css'),manifest=JSON.parse(read('manifest.json'));
+ const {sourceIds}=require('../scripts/js-manifest.js');
+ for(const id of ['src/v10/image-inserter.js','src/v10/inline-alignment.js'])assert.ok(sourceIds.includes(id));
  for(const name of ['writerV102ImagesRegister(this)','writerV102AlignRegister(this)',
   'writerV102ImagesMerge(this.settings)','writerV102AlignMerge(this.settings)'])assert.ok(main.includes(name),name);
  assert.equal(manifest.version,require('../package.json').version);

@@ -99,7 +99,7 @@ test('Core features and previous bundle modules are not deleted',()=>{
   const id='src/'+(name.includes('/')?name:'v3/'+name)+'.js';
   assert.ok(sourceIds.includes(id),id+' missing from bundle');
  }
- const enhancements=fs.readFileSync('src/v10/enhancements.js','utf8');
+ const enhancements=fs.readFileSync('src/core/enhancements.js','utf8');
  assert.match(enhancements,/writerV101ReadingProgressRegister\(plugin\)/);
  assert.match(enhancements,/writerV107RegisterAfterStartup\(plugin\)/);
  assert.ok(!enhancements.includes("if(typeof writerV107Register==='function')writerV107Register(plugin)"));

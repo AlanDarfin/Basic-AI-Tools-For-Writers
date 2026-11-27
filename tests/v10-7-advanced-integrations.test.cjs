@@ -117,7 +117,7 @@ test('Cross-note move extracts either a selection or full block safely',()=>{
  assert.equal(media.writerV107CrossNoteBlock(editor).text,'- Parent\n  - child');
 });
 test('All 10.7 sources are restored in active source list and package',()=>{
- const read=p=>fs.readFileSync(p,'utf8'),enhancements=read('src/v10/enhancements.js');
+ const read=p=>fs.readFileSync(p,'utf8'),enhancements=read('src/core/enhancements.js');
  const {sourceIds}=require('../scripts/js-manifest.js');
  for(const name of ['data-tables','zotero-web','study-fsrs','calendar-feeds','story-graph','editor-pro','speech-accessibility','media-drag-extension','integrations-107']){
   assert.ok(sourceIds.includes('src/v10/'+name+'.js'));

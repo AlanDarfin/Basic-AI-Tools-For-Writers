@@ -57,7 +57,7 @@ test('Spaces: versions are bounded and duplicate snapshots avoided',()=>{
  assert.equal(a.writerV101SpaceLayoutSummary({type:'leaf'}).panes,1);
 });
 test('Enhancement suite: validate YAML, filter table, CSV formula injection guard',()=>{
- const a=expose('src/v10/enhancements.js',['writerV101SuiteMerge','writerV101YamlValidate','writerV101TableParse','writerV101TableCsv']);
+ const a=expose('src/core/enhancements.js',['writerV101SuiteMerge','writerV101YamlValidate','writerV101TableParse','writerV101TableCsv']);
  const good=a.writerV101YamlValidate('name: Example',x=>({name:'Example'}));
  assert.equal(good.valid,true);
  const invalid=a.writerV101YamlValidate('broken: [',()=>{throw Error('Unexpected mapping');});
@@ -69,7 +69,7 @@ test('Enhancement suite: validate YAML, filter table, CSV formula injection guar
  assert.equal(a.writerV101SuiteMerge({}).bulkProperties,false);
 });
 test('Timeline: dependency sort, eras and legacy defaults',()=>{
- const a=expose('src/v9/timeline-blocks.js',['writerV95TimelineParse','writerV101TimelineDependencies']);
+ const a=expose('src/blocks/timeline-blocks.js',['writerV95TimelineParse','writerV101TimelineDependencies']);
  const data=a.writerV95TimelineParse('sort: dependencies\nmax-events: 150\npage-size: 30\n'+
   'date: 2027\ntitle: Second\nid: second\nafter: first\nera: Future\ncontent: B\n---\n'+
   'date: 2026\ntitle: First\nid: first\ncontent: A','timeline-labeled');

@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v12/unified-toolkit.js','utf8')+'\n'+fs.readFileSync('src/editor/selection-reader.js','utf8');
+const source=fs.readFileSync('src/core/unified-toolkit.js','utf8')+'\n'+fs.readFileSync('src/editor/selection-reader.js','utf8');
 
 function fixture(text='Before passage after',start=7,end=14){
  const files=new Map(),folders=new Set(),created=[],opened=[],replacements=[],notices=[],hooks={};

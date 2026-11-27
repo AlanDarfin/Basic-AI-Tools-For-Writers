@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict'),fs=requir
 const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
 const frames=fs.readFileSync('src/blocks/finish-blocks.js','utf8');
 const spaces=fs.readFileSync('src/workspace/smart-spaces.js','utf8');
-const timeline=fs.readFileSync('src/v9/timeline-blocks.js','utf8');
+const timeline=fs.readFileSync('src/blocks/timeline-blocks.js','utf8');
 const drag=fs.readFileSync('src/editor/block-dragger.js','utf8');
 const css=fs.readFileSync('src/styles/v12-0-5-timeline-dragger.css','utf8');
 const homeCss=fs.readFileSync('src/styles/v12-0-5-home-widgets.css','utf8');

@@ -34,7 +34,7 @@ test('Advanced 10.7 source modules are restored, while startup remains deferred 
  assert.ok(main.includes('function writerV107RegisterAfterStartup(plugin)'), 'deferred activation guard missing');
 });
 test('Legacy settings and user-controlled startup remain supported',()=>{
- const old=fs.readFileSync('src/v10/enhancements.js','utf8');
+ const old=fs.readFileSync('src/core/enhancements.js','utf8');
  assert.match(old,/writerV101ReadingProgressRegister\(plugin\)/);
  assert.match(old,/typeof writerV107RegisterAfterStartup==='function'/);
  const home=fs.readFileSync('src/workspace/writing-home.js','utf8');

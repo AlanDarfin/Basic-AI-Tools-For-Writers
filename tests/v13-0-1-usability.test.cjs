@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const ui=read('src/v13/ui-foundation.js');
+const ui=read('src/core/ui-foundation.js');
 const drag=read('src/editor/block-dragger.js');
 const home=read('src/workspace/writing-home.js');
 const toolbar=read('src/editor/context-toolbar.js');

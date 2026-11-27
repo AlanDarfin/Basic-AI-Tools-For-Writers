@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const base=fs.readFileSync('src/v3/core.js','utf8')+'\n'+fs.readFileSync('src/persistence/snapshots.js','utf8');
+const base=fs.readFileSync('src/core/core.js','utf8')+'\n'+fs.readFileSync('src/persistence/snapshots.js','utf8');
 const code=base+'\n'+fs.readFileSync('src/editor/editor.js','utf8');
 const api=vm.runInNewContext(code+'\n({writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence,writerSafeReplace})',{console,lfMsg:pt=>pt,Uint8Array,Uint16Array});
 const {writerV4Merge,writerV4Profile,writerV4ProfilePrompt,writerV4ProtectedTokens,writerV4AssertProtected,writerV4Hunks,writerV4MergeHunks,writerV4StripFence,writerSafeReplace}=api;

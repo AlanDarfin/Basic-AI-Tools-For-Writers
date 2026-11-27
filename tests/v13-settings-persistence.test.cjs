@@ -26,7 +26,7 @@ function runtime(settings={}){
  }
  const context={Setting,writerUi:(_pt,en)=>en,console,
   WriterV83CalendarView:class{async onOpen(){}},WRITER_V83_CAL_VIEW:'calendar',writerV8HomeIsMobile:()=>false};
- const files=['src/v12/unified-toolkit.js','src/settings/settings-hub-1201.js','src/integrations/suite-education-1011.js',
+ const files=['src/core/unified-toolkit.js','src/settings/settings-hub-1201.js','src/integrations/suite-education-1011.js',
   'src/workspace/calendar-studio.js','src/editor/image-inserter.js'];
  const code=files.map(file=>fs.readFileSync(path.resolve(__dirname,'..',file),'utf8')).join('\n');
  const api=vm.runInNewContext(code+'\n({writerV12Config,writerV12On,writerV1201SettingsWriting,writerV1201SettingsTasks,writerV1011StudyCfg,writerV1011StudySettings,writerV9CalendarMerge,writerV9CalendarSettings,writerV102ImagesMerge,writerV102ImagesSettings})',context);

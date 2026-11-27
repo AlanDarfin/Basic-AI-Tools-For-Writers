@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v7/stable.js','utf8');
+const source=fs.readFileSync('src/core/stable.js','utf8');
 class TFile{constructor(path){this.path=path;this.basename=path.split('/').pop().replace(/\.md$/,'');}}
 const context={
  TFile,writerUi:(pt,en)=>pt,Modal:class{},Setting:class{},Notice:class{},TextPrompt:class{},

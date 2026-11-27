@@ -4,9 +4,9 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const {writerV136BindProjectTabs:bind}=vm.runInNewContext(
- fs.readFileSync('src/v13/ui-foundation.js','utf8')+'\n({writerV136BindProjectTabs})');
+ fs.readFileSync('src/core/ui-foundation.js','utf8')+'\n({writerV136BindProjectTabs})');
 const {writerV136MarkSettingsHost:markHost}=vm.runInNewContext(
- fs.readFileSync('src/v13/ui-foundation.js','utf8')+'\n({writerV136MarkSettingsHost})');
+ fs.readFileSync('src/core/ui-foundation.js','utf8')+'\n({writerV136MarkSettingsHost})');
 test('compact native settings scope follows Basic and clears when its page is hidden or moved',()=>{
  const host=()=>{const classes=new Set();return {classes,classList:{add:key=>classes.add(key),remove:key=>classes.delete(key)}};};
  const one=host(),two=host();let current=one;

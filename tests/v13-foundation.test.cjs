@@ -7,7 +7,7 @@ const path=require('node:path');
 const root=path.resolve(__dirname,'..');
 const context={};
 vm.createContext(context);
-vm.runInContext(fs.readFileSync(path.join(root,'src/v13/ui-foundation.js'),'utf8')+
+vm.runInContext(fs.readFileSync(path.join(root,'src/core/ui-foundation.js'),'utf8')+
  '\nglobalThis.v13={writerV13SearchText,writerV13CommandCatalog,writerV13CommandScore,writerV13RankCommands,writerV13BindSettingsTabs};',context);
 const v=context.v13;
 test('search is accent-insensitive and command inventory retains existing command IDs',()=>{

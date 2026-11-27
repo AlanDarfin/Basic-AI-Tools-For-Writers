@@ -4,7 +4,7 @@ function expose(path,names,extras={}){
  return vm.runInNewContext(fs.readFileSync(path,'utf8')+'\n({'+names.join(',')+'})',
   {console,Date,Map,Set,Math,Number,String,Boolean,Uint8Array,JSON,Promise,writerUi:(pt,en)=>en,...extras});
 }
-const home=expose('src/v10/startup-cleanup.js',['writerV106HomeStartupPolicy','writerV106HomeChooseLeaf','writerV106HomeCleanup'],{writerModuleOn:()=>true,WRITER_V8_HOME_VIEW:'writer-writing-home'});
+const home=expose('src/core/startup-cleanup.js',['writerV106HomeStartupPolicy','writerV106HomeChooseLeaf','writerV106HomeCleanup'],{writerModuleOn:()=>true,WRITER_V8_HOME_VIEW:'writer-writing-home'});
 const drag=expose('src/editor/block-dragger.js',['writerV106DragMerge','writerV106DragBlocks','writerV106DragBlockAt','writerV106DragMove','writerV106DragConvert','writerV106DragApply']);
 const hist=expose('src/compat/historical-helpers.js',['writerV106LegacyDictionaryCandidates','writerV106JsonParse']);
 test('Clean startup skips hot reload and respects disabled setting',()=>{
@@ -115,7 +115,7 @@ test('Diagnostics opens the legacy dictionary recovery and preserves existing di
 });
 test('Build, homepage and settings contain required v10.6 wiring',()=>{
  const read=x=>fs.readFileSync(x,'utf8');
- const homeSrc=read('src/workspace/writing-home.js'),enhancements=read('src/v10/enhancements.js');
+ const homeSrc=read('src/workspace/writing-home.js'),enhancements=read('src/core/enhancements.js');
  const {sourceIds}=require('../scripts/js-manifest.js');
  for(const mod of ['startup-cleanup','block-dragger','historical-helpers'])assert.ok(sourceIds.includes('src/v10/'+mod+'.js'));
  assert.ok(homeSrc.includes('writerV106HomeRegisterStartup(plugin,open)'));

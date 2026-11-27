@@ -40,7 +40,7 @@ class Element{
 function harness(language='en'){
  const observers=[],cleanups=[],registered=[],notices=[],ready=[],workspace=new Emitter(),vault=new Emitter(),folders=new Map();
  class Observer{constructor(callback){this.callback=callback;observers.push(this);}observe(root,options){this.root=root;this.options=options;this.active=true;}disconnect(){this.active=false;}}
- const api=vm.runInNewContext(fs.readFileSync('src/v12/unified-toolkit.js','utf8')+'\n({writerV12RegisterFocus,writerV12FocusRefresh,writerV12FolderFocus})',{
+ const api=vm.runInNewContext(fs.readFileSync('src/core/unified-toolkit.js','utf8')+'\n({writerV12RegisterFocus,writerV12FocusRefresh,writerV12FolderFocus})',{
   TFolder,TFile,Set,Map,console,MutationObserver:Observer,writerUi:(pt,en)=>language==='pt'?pt:en,
   Notice:class{constructor(text){notices.push(text);}}
  });

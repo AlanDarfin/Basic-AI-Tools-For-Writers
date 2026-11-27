@@ -1,6 +1,6 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const source=fs.readFileSync('src/v13/ui-foundation.js','utf8');
+const source=fs.readFileSync('src/core/ui-foundation.js','utf8');
 const {writerV132ProtectStatusBar:protect}=vm.runInNewContext(source+'\n({writerV132ProtectStatusBar})');
 test('status protection is scoped, shared by widgets and restored on unload',()=>{
  const names=new Set(['status-bar']),callbacks=[];

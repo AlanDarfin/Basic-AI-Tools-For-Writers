@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=['src/v3/core.js','src/blocks/format-blocks.js','src/writing/prose-rhythm.js'].map(name=>fs.readFileSync(name,'utf8')).join('\n');
+const source=['src/core/core.js','src/blocks/format-blocks.js','src/writing/prose-rhythm.js'].map(name=>fs.readFileSync(name,'utf8')).join('\n');
 const plain=x=>JSON.parse(JSON.stringify(x));
 class Element{
  constructor(tag='div',opts={}){this.tag=tag;this.opts=opts;this.children=[];this.listeners={};}

@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v9/timeline-blocks.js','utf8');
+const source=fs.readFileSync('src/blocks/timeline-blocks.js','utf8');
 const api=vm.runInNewContext(source+'\n({writerV95TimelineParse,writerV95TimelineSortKey})',{console});
 
 test('George-debug legacy + triplets, bracket classes and event photo metadata',()=>{
@@ -75,7 +75,7 @@ test('All original line/body presets and 11 accent colors are supported',()=>{
 });
 test('Timeline themes have distinct CSS, in both layout orientations',()=>{
  const css=fs.readFileSync('src/styles/v9-5-timeline.css','utf8');
- const js=fs.readFileSync('src/v9/timeline-blocks.js','utf8');
+ const js=fs.readFileSync('src/blocks/timeline-blocks.js','utf8');
  for(const theme of ['minimal','compact','poster','glass','terminal']){
   assert.match(css,new RegExp('is-theme-'+theme));
   assert.ok(api.writerV95TimelineParse('theme: '+theme+'\n+ 2026\n+ Event\n+ Body').config.theme===theme);

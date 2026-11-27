@@ -10,7 +10,7 @@ function load(path,names,extra={}){
  return value;
 }
 test('Unique study configuration preserves vault paths and never creates notes at startup',()=>{
- const {writerV101TableSplit}=load('src/v10/enhancements.js',['writerV101TableSplit']);
+ const {writerV101TableSplit}=load('src/core/enhancements.js',['writerV101TableSplit']);
  const a=load('src/integrations/suite-education-1011.js',
   ['writerV1011StudyCfg','writerV1011StudyPath','writerV1011StudyDate','writerV1011StudyTimetable','writerV1011StudyReminders','writerV1011StudyWeekday'],
   {writerV101TableSplit});
@@ -86,7 +86,7 @@ test('Number Suite compatible safe parsing: code fences, YAML, preview and conse
  assert.equal(cfg.virtual,false,'no unexpected visual numbering on upgrade');
 });
 test('Suites isolated by guarded registration, no extra ribbon and no external network',()=>{
- const enhance=read('src/v10/enhancements.js');
+ const enhance=read('src/core/enhancements.js');
  const {sourceIds,resolveSourcePath}=require('../scripts/js-manifest.js');
  for(const module of ['suite-education-1011','suite-notion-1011','suite-numbering-1011']){
   assert.ok(sourceIds.includes('src/v10/'+module+'.js'));

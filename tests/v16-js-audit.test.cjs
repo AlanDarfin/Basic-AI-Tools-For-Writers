@@ -147,9 +147,7 @@ test('all editor-domain sources live under their owner directory',()=>{
 
 test('block, persistence, platform and settings sources use owner directories',()=>{
  const domains=new Set(['blocks','persistence','platform','settings']);
- const deferred=new Set(['src/v9/timeline-blocks.js']);
  for(const entry of entries.filter(entry=>domains.has(entry.domain))){
-  if(deferred.has(entry.id))continue;
   assert.ok(entry.path.startsWith('src/'+entry.domain+'/'),entry.id);
   assert.equal(resolveSourcePath(entry.id),entry.path);
   assert.ok(fs.existsSync(entry.path),entry.path);
@@ -174,5 +172,16 @@ test('project and workspace sources use owner directories',()=>{
   assert.equal(resolveSourcePath(entry.id),entry.path);
   assert.ok(fs.existsSync(entry.path),entry.path);
   if(entry.id!==entry.path)assert.ok(!fs.existsSync(entry.id),entry.id);
+ }
+});
+
+test('every manifest module has a physical home in its owner domain',()=>{
+ assert.equal(entries.length,124);
+ for(const entry of entries){
+  assert.ok(entry.path.startsWith('src/'+entry.domain+'/'),entry.id);
+  assert.notEqual(entry.id,entry.path);
+  assert.equal(resolveSourcePath(entry.id),entry.path);
+  assert.ok(fs.existsSync(entry.path),entry.path);
+  assert.ok(!fs.existsSync(entry.id),entry.id);
  }
 });

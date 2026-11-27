@@ -123,7 +123,7 @@ test('Related-notes/trash icon buttons also resolve setIcon explicitly',()=>{
 
 test('Supplemental UI module crash does not abort core feature registration',()=>{
  const caught=[],registered=[],failing=()=>{throw Error('An optional UI failed');};
- const code=fs.readFileSync('src/v10/enhancements.js','utf8');
+ const code=fs.readFileSync('src/core/enhancements.js','utf8');
  const api=vm.runInNewContext(code+'\n({writerV101RegisterEnhancements})',{
   console:{error(...args){caught.push(args);}},
   writerUi:(pt,en)=>en,

@@ -7,7 +7,7 @@ function readingHarness(){
  const root={ownerDocument:{defaultView:view},querySelectorAll:()=>[]};
  const workspace={containerEl:root,on:(event,fn)=>({event,fn}),onLayoutReady:fn=>{ready=fn;},getLeavesOfType:()=>{scans++;return [];}};
  const plugin={app:{workspace},settings:{v101Suite:{enabled:true}},register:fn=>cleanups.push(fn),registerEvent:({event,fn})=>{registered++;events.set(event,fn);},registerDomEvent:()=>{}};
- const register=load('src/v10/enhancements.js','writerV101ReadingProgressRegister',{setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
+ const register=load('src/core/enhancements.js','writerV101ReadingProgressRegister',{setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
  return {register,plugin,frames,timers,events,cleanups,ready:()=>ready,scans:()=>scans,registered:()=>registered};
 }
 test('reading progress coalesces file-open delay and frames and ignores callbacks after unload',()=>{
@@ -29,7 +29,7 @@ function homeHarness({delayed=false}={}){
  const other={getViewState:()=>({type:'markdown'}),setViewState:()=>{},detach:()=>{detached++;}};
  const workspace={layoutReady:false,activeLeaf:keep,containerEl:{ownerDocument:{defaultView:{sessionStorage:{getItem:()=>null,setItem:()=>stored++}}}},iterateRootLeaves:fn=>[keep,other].forEach(fn),onLayoutReady:fn=>{ready=fn;},setActiveLeaf:()=>activated++};
  const plugin={app:{workspace},settings:{v8Finish:{homeCleanStart:true}},register:fn=>cleanups.push(fn),addCommand:()=>commands++};
- const register=load('src/v10/startup-cleanup.js','writerV106HomeRegisterStartup');
+ const register=load('src/core/startup-cleanup.js','writerV106HomeRegisterStartup');
  return {register,plugin,cleanups,ready:()=>ready,release:()=>release?.(),open:async()=>{opened++;},stats:()=>({opened,detached,activated,stored,commands})};
 }
 const flush=()=>new Promise(resolve=>setImmediate(resolve));

@@ -252,3 +252,9 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Preserve all 124 ordered stable IDs and the original module blobs; update physical source reads in historical regression fixtures while retaining stable bundle markers. Add domain-wide ownership checks for projects and workspace. No intended runtime, dependency or generated artifact changes.
 - Overall 116/124 manifest modules relocated. Only seven core modules and the Timeline block exception remain. Timeline block and the separate PR #175 remain deferred for coordinated integration; the moved Timeline Studio module is distinct.
 - Full new CI and live desktop/mobile Obsidian QA pending. Next: core relocation, Timeline coordination and final migration invariant, then performance and redundancy audit.
+
+### Phase 10.13 — complete core and Timeline block source relocation
+
+- CI #1405 passed the complete projects/workspace batch. Relocate seven core modules and the Timeline Blocks JavaScript source, completing all 124 manifest relocations across 11 owner domains. PR #175 modifies Timeline CSS and a regression consumer, not this JS source; its CSS integration and overlapping test reconciliation are still separate and pending.
+- Remove the Timeline exception from the domain assertion and add a global invariant: each physical path lives under its owner directory, resolves from the historical ID, exists, and has no duplicate legacy source file. Preserve every historical ID, declaration order, original source blob and generated artifact.
+- Update source reads in historical tests. Full new CI and actual desktop/mobile QA pending. Next: phase 11 performance and redundancy inventory, followed by targeted behavior-preserving improvements with regression coverage.

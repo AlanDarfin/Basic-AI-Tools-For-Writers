@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const vm=require('node:vm');
-const text=fs.readFileSync(path.join(__dirname,'../src/v12/unified-toolkit.js'),'utf8');
+const text=fs.readFileSync(path.join(__dirname,'../src/core/unified-toolkit.js'),'utf8');
 const context={writerUi:(pt,en)=>en,console};
 vm.runInNewContext(text+'\nglobalThis.v12={writerV12Config,writerV12SafeName,writerV12NormalizeEmbeds,writerV12TaskLines,writerV12Commands,writerV12CompanionInstalled,writerV12Register,writerV12PaletteItems,WRITER_V12_COMPANIONS};',context,{filename:'unified-toolkit.js'});
 const v=context.v12;

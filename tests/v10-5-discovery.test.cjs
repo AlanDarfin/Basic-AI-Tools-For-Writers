@@ -137,7 +137,7 @@ test('bibliography block renders only requested keys and handles unavailable exp
 test('Homepage, bundle, and styles include all discovery integrations',()=>{
  const home=fs.readFileSync('src/workspace/writing-home.js','utf8');
  const {sourceIds}=require('../scripts/js-manifest.js');
- const enhancement=fs.readFileSync('src/v10/enhancements.js','utf8');
+ const enhancement=fs.readFileSync('src/core/enhancements.js','utf8');
  for(const key of ['books','trash','reading','zotero'])assert.match(home,new RegExp('\\b'+key+':p=>'));
  assert.doesNotMatch(home,/related:p=>/);
  assert.doesNotMatch(fs.readFileSync('src/workspace/discovery.js','utf8'),/id:'v10-trash-explorer'/);

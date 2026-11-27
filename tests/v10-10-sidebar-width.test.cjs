@@ -79,7 +79,7 @@ test('10.10 startup does not break Obsidian on missing sidebar DOM or mobile sta
  assert.equal(plugin.writerV1010Refresh,null);
 });
 test('10.10 integration does not take over ribbon, workspace layouts, files or vault APIs',()=>{
- const s=source,enhancements=fs.readFileSync('src/v10/enhancements.js','utf8');
+ const s=source,enhancements=fs.readFileSync('src/core/enhancements.js','utf8');
  assert.match(enhancements,/safeRegister\('sidebar-and-width',\(\)=>writerV1010Register\(plugin\)\)/);
  assert.match(enhancements,/writerV1010Settings\(plugin,panel\)/);
  assert.doesNotMatch(s,/addRibbonIcon|setViewState\(|replaceState\(|processFrontMatter|vault\.modify\(|vault\.delete\(/);

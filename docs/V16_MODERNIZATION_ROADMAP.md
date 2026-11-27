@@ -55,3 +55,31 @@ Status: in progress. This is a maintenance and reliability release, not a rewrit
 - Test large vaults, settings persistence, Longform scene manipulation, Spaces switching, Homepage resize/grid, grammar suggestions and correction, exports, and external integrations independently and combined.
 - Track baseline versus final metrics, but do not optimize bundle size at the cost of correctness. No feature removals or version bump without evidence and release review.
 - Keep PRs small enough to bisect; merge only after relevant checks are green and integration conflicts are resolved. Tag V16 only after both gates pass.
+
+## Checkpoint — end of independent CSS migration
+
+- CI #1373 validated the preceding 47/53-module layout with 178/178 regression files, bundle synchronization, CSS lint, metadata and package smoke tests.
+- The subsequent three content-identical moves leave 50/53 sources categorized. Only the two Timeline modules and Homepage widgets are deferred until PR #175 is reconciled. The current branch manifest matches the complete CSS filesystem inventory and its original basename order; the latest clean CI and visual checks remain pending.
+- Do not consider Phase 5 complete until Timeline integration, a clean final CI and real Obsidian desktop/mobile checks are recorded. Read-only JS inventory can begin without changing runtime behavior.
+
+### Preliminary JavaScript baseline (Git tree, 2026-11-27)
+
+The ordered builder references 124 existing source modules, totaling 2,199,898 bytes on disk. The distributed main.js is 3,399,954 bytes, including legacy runtime and bundled code. These are uncompressed source sizes, not measured startup cost or memory usage.
+
+| Source group | Modules | Bytes |
+| --- | ---: | ---: |
+| v3 | 7 | 147533 |
+| v4 | 5 | 99291 |
+| v5 | 10 | 135627 |
+| v6 | 7 | 86721 |
+| v7 | 5 | 109498 |
+| v8 | 12 | 229243 |
+| v9 | 20 | 477027 |
+| v10 | 24 | 333456 |
+| v11 | 5 | 67649 |
+| v12 | 7 | 110446 |
+| v13 | 22 | 403407 |
+
+Largest listed modules: settings-search-index (105613 B), writing-home (85456 B), final-suite (56937 B), explorer-flex (46376 B), smart-spaces (43813 B), context-toolbar (43587 B), longform-studio (40874 B). Size alone is not evidence of duplication or performance problems; generated indexes must be distinguished from handwritten implementation.
+
+Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle inventory, with source locations and an explicit distinction between lexical duplicates, intentional overrides and unverified candidates. Preserve builder order and runtime files. No dependency upgrades or code deletion as part of the initial inventory.

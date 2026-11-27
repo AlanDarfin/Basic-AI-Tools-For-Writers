@@ -11,7 +11,7 @@
 }
 .writer-project-root .writer-project-panel .writer-v7-scene-title-wrap .writer-project-scene-title-text{
  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;
- white-space:normal;overflow:hidden;text-overflow:ellipsis;overflow-wrap:break-word;
+ min-width:0;max-width:100%;white-space:normal;overflow:hidden;text-overflow:ellipsis;overflow-wrap:break-word;word-break:normal;
  line-height:1.4;
 }
 .writer-project-root .writer-project-scene-title .writer-project-scene-title-text{flex:1 1 auto}
@@ -69,7 +69,7 @@ body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.
 body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene-controls>.writer-project-scene-more{min-width:44px;width:44px;min-height:44px}
 @container basic-project (max-width:540px){
  .writer-project-root .writer-project-nav-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr))}
- .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:28px minmax(0,1fr);gap:3px 6px}
+ .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:28px minmax(0,1fr) max-content;gap:3px 6px}
  body.is-mobile .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions{grid-template-columns:44px minmax(0,1fr) 44px}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-project-drag-handle{grid-column:1;grid-row:1;width:28px;min-width:28px}
  .writer-project-root .writer-project-panel .writer-project-scene.writer-project-scene-actions>.writer-v7-scene-title-wrap{grid-column:2;grid-row:1;align-items:start}

@@ -76,5 +76,12 @@ test('project selectors target the nested title and full labels remain accessibl
  assert.match(css,/>\.writer-v7-scene-title-wrap\{[\s\S]*?grid-column:2/);
  assert.match(css,/\.writer-v7-scene-title-wrap \.writer-project-scene-title-text\{[\s\S]*?text-overflow:ellipsis/);
  assert.match(css,/@container basic-project \(max-width:175px\)/);
- assert.match(css,/\.status-bar\.writer-v132-status-host\{[\s\S]*?max-width:calc\(100vw - 128px\)/);
+ const dock=fs.readFileSync('src/styles/v13-6-projects.css','utf8');
+ const desktop=dock.match(/body:not\(\.is-mobile\) \.status-bar\.writer-v132-status-host\{([^}]+)\}/);
+ assert.ok(desktop,'Desktop status has an explicit owner');
+ assert.match(desktop[1],/position:fixed/);
+ assert.match(desktop[1],/bottom:0/);
+ assert.match(desktop[1],/transform:none/);
+ assert.match(desktop[1],/max-width:calc\(100vw - 268px\)/);
+ assert.doesNotMatch(css,/body:not\(\.is-mobile\) \.status-bar\.writer-v132-status-host\{/);
 });

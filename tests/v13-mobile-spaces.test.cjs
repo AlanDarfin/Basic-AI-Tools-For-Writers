@@ -110,6 +110,20 @@ test('closed mobile Spaces keep only the toggle and mount current choices on dem
  assert.equal(chip.getAttribute('aria-label'),'Ficção revisada');
 });
 
+test('the dock delegates selection refresh to the Space switch and closes its local chooser',async()=>{
+ const h=setup();h.start();
+ const refresh=h.plugin.writerV9216SpacesDockRefresh;
+ let refreshes=0;
+ h.plugin.writerV9216SpacesDockRefresh=()=>{refreshes++;refresh();};
+ h.dock().querySelector('.writer-v1014-spaces-toggle').click();
+ h.dock().querySelector('.writer-v9216-space-chip').click();
+ for(let turn=0;turn<4;turn++)await Promise.resolve();
+ h.flush();
+ assert.equal(refreshes,1);
+ assert.equal(h.settings.v9Spaces.activeId,'fiction');
+ assert.equal(h.dock().querySelector('.writer-v1014-spaces-toggle').getAttribute('aria-expanded'),'false');
+});
+
 test('editing only a Space folder refreshes the open search index without losing the query',()=>{
  const h=setup();h.start();h.dock().querySelector('.writer-v1014-spaces-toggle').click();
  let search=h.dock().querySelector('.writer-v133-spaces-search');

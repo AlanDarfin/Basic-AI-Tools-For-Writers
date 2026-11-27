@@ -16827,7 +16827,7 @@ function writerV9215SelectSpace(plugin,id){
  const switchSpace=async()=>{
   const cfg=plugin.settings.v9Spaces;
   const next=cfg.enabled&&cfg.spaces.some(space=>space.id===id)?id:'';
-  if(cfg.activeId===next)return;
+  if(cfg.activeId===next)return false;
   const previousId=cfg.activeId,previous=cfg.spaces.find(space=>space.id===previousId);
   // Keep a failed destination's saved layout: the current panes still belong
   // to the source. An explicit save or successful restore clears this guard.
@@ -16849,6 +16849,7 @@ function writerV9215SelectSpace(plugin,id){
     plugin._writerV133FailedSpaceLayout=next;
   }
   refresh();
+  return true;
  };
  // Serialize layout saves/restores too: an older asynchronous restore must never
  // finish after a newer selection and overwrite that Space's workspace.
@@ -17188,11 +17189,13 @@ class WriterV9SpacesSideView extends ItemView{
   const activeSpace=writerV9215ActiveSpace(this.plugin);
   const space=activeSpace||{mode:'filter',sort:'recent',hiddenPaths:[],pinnedPaths:[]};
   this.currentId=activeSpace?.id||'';
+  const renderUnchangedSelection=changed=>{
+   if(!changed&&root.isConnected!==false)this.render();
+  };
   const select=id=>{
    this.query='';
-   void writerV9215SelectSpace(this.plugin,id).then(()=>this.render(),error=>{
+   void writerV9215SelectSpace(this.plugin,id).then(renderUnchangedSelection,error=>{
     new Notice(writerUi('Não foi possível trocar de Space: ','Could not switch Space: ')+String(error.message||error));
-    this.render();
    });
   };
   const all=nav.createEl('button',{cls:'writer-v9-space-side-tab'+(!activeSpace?' is-active':''),
@@ -17218,7 +17221,7 @@ class WriterV9SpacesSideView extends ItemView{
   };
   quick('Nova Space','New Space','plus',()=>writerV9SpaceEditor(this.plugin,null,async created=>{
    cfg.spaces.push(created);await this.plugin.saveSettings();
-   await writerV9215SelectSpace(this.plugin,created.id);this.currentId=created.id;this.render();
+   renderUnchangedSelection(await writerV9215SelectSpace(this.plugin,created.id));
   }));
   quick('Biblioteca Longform','Longform bookshelf','library',()=>this.plugin.writerV10OpenBookshelf?.());
   quick('Ordenação global','Global sorting','list-ordered',()=>writerV1043OpenNativeSortMenu(this.plugin));
@@ -17323,7 +17326,6 @@ function writerV9RegisterSpaces(plugin){
       space.id='space-'+Date.now().toString(36);
       plugin.settings.v9Spaces.spaces.push(space);
       await writerV9215SelectSpace(plugin,space.id);
-      plugin.writerV91FlexRefresh?.();plugin.writerV9SpacesRefresh?.();plugin.writerV9216SpacesDockRefresh?.();
      });
     }));
   }
@@ -17587,8 +17589,7 @@ function writerV9216SpaceDockRegister(plugin){
     closeMobile();
    }
    void Promise.resolve(writerV9215SelectSpace(plugin,id))
-    .catch(error=>console.error('[Basic] Could not switch Space:',error))
-    .finally(()=>plugin.writerV9216SpacesDockRefresh?.());
+    .catch(error=>console.error('[Basic] Could not switch Space:',error));
   };
   const rail=doc.createElement('div');
   rail.className='writer-v9216-spaces-rail';

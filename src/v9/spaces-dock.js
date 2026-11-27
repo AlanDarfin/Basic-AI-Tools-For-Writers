@@ -205,8 +205,7 @@ function writerV9216SpaceDockRegister(plugin){
     closeMobile();
    }
    void Promise.resolve(writerV9215SelectSpace(plugin,id))
-    .catch(error=>console.error('[Basic] Could not switch Space:',error))
-    .finally(()=>plugin.writerV9216SpacesDockRefresh?.());
+    .catch(error=>console.error('[Basic] Could not switch Space:',error));
   };
   const rail=doc.createElement('div');
   rail.className='writer-v9216-spaces-rail';

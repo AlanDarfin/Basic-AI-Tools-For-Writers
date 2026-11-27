@@ -4,8 +4,9 @@
  * Routes deliberately name settings renderers, excluding editors and modals. */
 const fs=require('node:fs');
 const path=require('node:path');
+const {resolveSourcePath}=require('./js-manifest.js');
 const root=path.resolve(__dirname,'..');
-const output=path.join(root,'src/v13/settings-search-index.js');
+const output=path.join(root,resolveSourcePath('src/v13/settings-search-index.js'));
 const routes=[
  ['general','v13/core-workflows','writerV13RenderStart'],
  ['general','v13/mobile-status','writerMobileStatusSettings'],
@@ -336,7 +337,7 @@ function build(){
  const cache=new Map(),entries=[],seen=new Set();
  const load=name=>{
   if(!cache.has(name)){
-   const file=path.join(root,'src',name+'.js');
+   const file=path.join(root,resolveSourcePath('src/'+name+'.js'));
    try{cache.set(name,tokenize(fs.readFileSync(file,'utf8')));}catch(error){throw Error(name+': '+error.message);}
   }
   return cache.get(name);

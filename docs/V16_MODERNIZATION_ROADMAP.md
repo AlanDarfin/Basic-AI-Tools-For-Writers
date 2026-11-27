@@ -178,3 +178,9 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - Draft bilingual notes and the 15.2.0 upgrade and rollback procedure are in [the release draft](V16_RELEASE_DRAFT.md). The package version remains 15.2.0 throughout this work.
 - An isolated vault on Obsidian Desktop 1.15.1 for Linux passed the 15.2.0 upgrade and rollback. Settings, a recoverable Longform draft, and the original Markdown survived restart and two disable/re-enable cycles on each build. On the candidate, a renamed Longform chapter kept its divider, and light and dark narrow splits stayed within bounds at 1280×720.
 - An isolated combination with Timeline PR #175 built cleanly. Moving the three deferred CSS files there preserved their source bytes, cascade order, and both generated bundles. Timeline remains a separate PR. Android devices, live external integrations, and the rest of the desktop theme and interaction matrix still need verification for the release gate.
+
+## Phase 10.2 — stable source resolution and compatibility relocation
+
+- Baseline CI #1392 passed. Move historical helpers into `src/compat/`, retaining the original source blob and all 124 ordered bundle IDs.
+- Settings search generation now resolves stable source IDs through the manifest, including the generated output path. Updated historical test consumers and added coverage for relocated paths, all IDs and unknown IDs.
+- No runtime, generated distributable, settings schema or dependency changes. Full clean build, generated index check and regression CI remain pending. Next batch: Zotero and iCalendar integration modules.

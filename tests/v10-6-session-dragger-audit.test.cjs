@@ -6,7 +6,7 @@ function expose(path,names,extras={}){
 }
 const home=expose('src/v10/startup-cleanup.js',['writerV106HomeStartupPolicy','writerV106HomeChooseLeaf','writerV106HomeCleanup'],{writerModuleOn:()=>true,WRITER_V8_HOME_VIEW:'writer-writing-home'});
 const drag=expose('src/v10/block-dragger.js',['writerV106DragMerge','writerV106DragBlocks','writerV106DragBlockAt','writerV106DragMove','writerV106DragConvert','writerV106DragApply']);
-const hist=expose('src/v10/historical-helpers.js',['writerV106LegacyDictionaryCandidates','writerV106JsonParse']);
+const hist=expose('src/compat/historical-helpers.js',['writerV106LegacyDictionaryCandidates','writerV106JsonParse']);
 test('Clean startup skips hot reload and respects disabled setting',()=>{
  assert.equal(home.writerV106HomeStartupPolicy({homeCleanStart:true},true,false),'skip');
  assert.equal(home.writerV106HomeStartupPolicy({homeCleanStart:true},false,true),'skip');
@@ -96,7 +96,7 @@ test('Diagnostics opens the legacy dictionary recovery and preserves existing di
  }
  class TFile{constructor(path){this.path=path;this.extension='md';}}
  const legacy=new TFile('Notes/Old dictionary.md');
- const source=['src/v4/modules.js','src/v10/historical-helpers.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
+ const source=['src/v4/modules.js','src/compat/historical-helpers.js'].map(path=>fs.readFileSync(path,'utf8')).join('\n');
  const api=vm.runInNewContext(source+'\n({writerRenderDiagnostics,writerV106HistoricRegister})',{
   Setting,Modal,TFile,Notice:class{},writerUi:(pt,en)=>en
  });

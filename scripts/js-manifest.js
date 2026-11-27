@@ -79,7 +79,7 @@ const entries=Object.freeze(validateEntries([
  ['src/v10/discovery.js','workspace'],
  ['src/v10/startup-cleanup.js','core'],
  ['src/v10/block-dragger.js','editor'],
- ['src/v10/historical-helpers.js','compat'],
+ ['src/v10/historical-helpers.js','compat','src/compat/historical-helpers.js'],
  ['src/v10/data-tables.js','blocks'],
  ['src/v10/zotero-web.js','integrations'],
  ['src/v10/study-fsrs.js','writing'],
@@ -130,6 +130,12 @@ const entries=Object.freeze(validateEntries([
 ]).map(([id,domain,path=id])=>Object.freeze({id,domain,path})));
 const sourceIds=Object.freeze(entries.map(entry=>entry.id));
 
+function resolveSourcePath(id){
+ const entry=entries.find(row=>row.id===id);
+ if(!entry)throw Error('Unknown JS source ID: '+id);
+ return entry.path;
+}
+
 function validateEntries(rows){
  if(!Array.isArray(rows)||!rows.length)throw Error('Empty JS manifest');
  const sources=new Set(),ids=new Set();
@@ -152,4 +158,4 @@ const legacyDictionary=Object.freeze({
  path:'src/writing/legacy-dictionary.js',
  anchor:'function parseDictionary('
 });
-module.exports={domains,entries,sourceIds,legacyDictionary,validateEntries};
+module.exports={domains,entries,sourceIds,legacyDictionary,validateEntries,resolveSourcePath};

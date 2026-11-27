@@ -3,7 +3,7 @@ const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {analyzeSource,buildRegions}=require('../scripts/js-v16-audit.js');
-const {entries,sourceIds,legacyDictionary,validateEntries}=require('../scripts/js-manifest.js');
+const {entries,sourceIds,legacyDictionary,validateEntries,resolveSourcePath}=require('../scripts/js-manifest.js');
 const {locateBundle}=require('../scripts/js-bundle.js');
 test('AST inventory separates lexical duplicates from nested functions and ignores strings/comments',()=>{
  const source="function same(){} function same(){} function outer(){function same(){}} const s='fake.addCommand({id:\"ghost\"})'; // setTimeout()\n";
@@ -85,4 +85,12 @@ test('prototype aliases, computed keys and deferred layout callbacks stay review
  assert.ok(r.prototypeAliasWriteCandidates.every(x=>x.confidence==='candidate'));
  assert.equal(r.lifecycleCounts['layout-ready'],1);
  assert.equal(r.repeatedAliasTargets.find(x=>x.name==='Menu.prototype.show').sites.length,3);
+});
+
+test('stable source IDs resolve relocated modules without changing bundle markers',()=>{
+ assert.equal(resolveSourcePath('src/v10/historical-helpers.js'),'src/compat/historical-helpers.js');
+ assert.ok(!fs.existsSync('src/v10/historical-helpers.js'));
+ assert.ok(fs.existsSync('src/compat/historical-helpers.js'));
+ for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
+ assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });

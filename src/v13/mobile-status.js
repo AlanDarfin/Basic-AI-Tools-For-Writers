@@ -68,7 +68,7 @@ function writerMobileStatusRegister(plugin){
   viewportMax=Math.max(viewportMax,height);
   return inset>0||Math.max(win.innerHeight||0,viewportMax)-height>110;
  };
- const homeProps=new Set(),topProps=new Set(),observed=new Set();
+ const homeProps=new Set(),topProps=new Set(),noteProps=new Set(),observed=new Set();
  const resize=typeof win.ResizeObserver==='function'?new win.ResizeObserver(()=>scheduleLayout()):null;
  const flowBar=style=>style.position!=='fixed'&&style.position!=='absolute';
  const clearOffset=()=>{
@@ -89,6 +89,39 @@ function writerMobileStatusRegister(plugin){
    const css=Math.ceil(value)+'px';
    if(node.style.getPropertyValue(property)!==css)node.style.setProperty(property,css);
    tracked.add(node);
+  }
+ };
+ // Preserve the theme's native padding; only the scroll surface itself owns
+ // the extra clearance. Nested Markdown embeds and plugin editors are excluded.
+ const noteSelector='.markdown-preview-view,.cm-scroller';
+ const isNoteSurface=node=>{
+  const leaf=node.closest?.('.workspace-leaf-content');
+  if(leaf?.getAttribute?.('data-type')!=='markdown')return false;
+  if(node.closest?.('.markdown-embed,.internal-embed,.cm-embed-block'))return false;
+  if(node.classList.contains('cm-scroller')&&!node.closest?.('.markdown-source-view'))return false;
+  return !node.parentElement?.closest?.(noteSelector);
+ };
+ const noteClass='writer-mobile-note-scroll-clearance';
+ const clearNote=node=>{
+  node.classList.remove(noteClass);
+  for(const key of ['clearance','base-padding','base-scroll-padding'])
+   node.style.removeProperty('--writer-mobile-note-'+key);
+  noteProps.delete(node);
+ };
+ const applyNotes=next=>{
+  for(const node of noteProps)if(!next.has(node))clearNote(node);
+  for(const [node,value] of next){
+   if(!noteProps.has(node)){
+    const style=win.getComputedStyle(node);
+    const pixels=key=>Math.max(0,parseFloat(style.getPropertyValue(key))||0)+'px';
+    node.style.setProperty('--writer-mobile-note-base-padding',pixels('padding-bottom'));
+    node.style.setProperty('--writer-mobile-note-base-scroll-padding',pixels('scroll-padding-bottom'));
+    node.classList.add(noteClass);
+    noteProps.add(node);
+   }
+   const valuePx=Math.ceil(value)+'px';
+   if(node.style.getPropertyValue('--writer-mobile-note-clearance')!==valuePx)
+    node.style.setProperty('--writer-mobile-note-clearance',valuePx);
   }
  };
  const place=()=>{
@@ -147,7 +180,7 @@ function writerMobileStatusRegister(plugin){
     }
    }
   }else if(lift)clearOffset();
-  const homes=new Map(),editors=new Map();
+  const homes=new Map(),editors=new Map(),notes=new Map();
   for(const home of app.querySelectorAll('.writer-v8-home')){
    const bounds=visible(home);if(!bounds)continue;
    watch.add(home);
@@ -155,6 +188,22 @@ function writerMobileStatusRegister(plugin){
     nativeToolbarBounds&&nativeToolbarBounds.bottom>bounds.top?nativeToolbarBounds.top:null]
     .filter(n=>n!==null&&n>=bounds.top&&n<bounds.bottom);
    if(!keyboard&&upper.length)homes.set(home,Math.max(0,bounds.bottom-Math.min(...upper)+8));
+  }
+  // Work with actual viewport intersections, not global screen height. A
+  // narrow split pane beside a floating pill may not need any compensation.
+  const overlays=[];
+  if(!keyboard){
+   if(floating&&shown&&navTop!==null)overlays.push({top:navTop,bottom:navTop+navBounds.height,left:navBounds.left,right:navBounds.right});
+   if(nativeToolbarBounds)overlays.push(nativeToolbarBounds);
+   if(rowTop!==null&&row&&!row.hidden)overlays.push({top:rowTop,bottom:rowTop+(row.getBoundingClientRect().height||30),left:navBounds.left,right:navBounds.right});
+  }
+  for(const surface of app.querySelectorAll(noteSelector)){
+   if(!isNoteSurface(surface))continue;
+   const bounds=visible(surface);if(!bounds)continue;
+   watch.add(surface);
+   const overlapping=overlays.filter(rect=>rect.left<bounds.right&&rect.right>bounds.left&&
+    rect.top>=bounds.top&&rect.top<bounds.bottom&&rect.bottom>bounds.top);
+   if(overlapping.length)notes.set(surface,Math.max(0,bounds.bottom-Math.min(...overlapping.map(rect=>rect.top))+8));
   }
   for(const toolbar of app.querySelectorAll('.writer-v9-toolbar-docked > .writer-v9-format-toolbar.is-top')){
    const host=toolbar.parentElement,bounds=visible(host);if(!bounds)continue;
@@ -168,6 +217,7 @@ function writerMobileStatusRegister(plugin){
   }
   apply(homeProps,'--writer-mobile-home-clearance',homes);
   apply(topProps,'--writer-mobile-editor-top-clearance',editors);
+  applyNotes(notes);
   if(resize){
    for(const node of observed)if(!watch.has(node)){resize.unobserve(node);observed.delete(node);}
    for(const node of watch)if(!observed.has(node)){resize.observe(node);observed.add(node);}
@@ -254,11 +304,12 @@ function writerMobileStatusRegister(plugin){
  };
  const refresh=()=>{if(syncLayout())queue();};
  const onViewport=scheduleLayout;
- const onResize=()=>{if(lift)clearOffset();scheduleLayout();};
- const geometry='.mobile-navbar,.mobile-toolbar,.view-header,.writer-v8-home,.writer-v9-toolbar-docked,.writer-v9-format-toolbar';
+ const onResize=()=>{if(lift)clearOffset();for(const node of noteProps)clearNote(node);scheduleLayout();};
+ const geometry='.mobile-navbar,.mobile-toolbar,.view-header,.writer-v8-home,.writer-v9-toolbar-docked,.writer-v9-format-toolbar,'+noteSelector;
  const onTransition=event=>{if(event.target?.matches?.(geometry))scheduleLayout();};
  let lastPath=null;
  const onFile=()=>{
+  scheduleLayout();
   if(!row)return;
   const path=ws.getActiveFile?.()?.path;
   if(path!==lastPath){show(word);show(read);show(mode);lastPath=path;}
@@ -295,6 +346,7 @@ function writerMobileStatusRegister(plugin){
   insets.remove();
   apply(homeProps,'--writer-mobile-home-clearance',new Map());
   apply(topProps,'--writer-mobile-editor-top-clearance',new Map());
+  applyNotes(new Map());
   unmount();
   delete plugin.writerMobileStatus;
  });

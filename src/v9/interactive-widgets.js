@@ -19,22 +19,26 @@ function writerV92Clamp(value,min,max,fallback){
 function writerV92ProgressData(options,now=new Date()){
  const kind=String(options.kind||'manual').toLowerCase();
  let min=0,max=100,value=0;
- const startOfDay=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
- const elapsed=(start,end)=>Math.floor((startOfDay(now)-startOfDay(start))/86400000)+1;
+ const day=86400000;
+ const midnight=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
+ const elapsed=start=>(midnight-start)/day+1;
  if(kind==='day-year'){
-  const start=new Date(now.getFullYear(),0,1),end=new Date(now.getFullYear()+1,0,1);
-  max=Math.round((end-start)/86400000);value=elapsed(start,end);
+  const start=Date.UTC(now.getFullYear(),0,1),end=Date.UTC(now.getFullYear()+1,0,1);
+  max=(end-start)/day;value=elapsed(start);
  }else if(kind==='day-month'){
-  const start=new Date(now.getFullYear(),now.getMonth(),1),end=new Date(now.getFullYear(),now.getMonth()+1,1);
-  max=Math.round((end-start)/86400000);value=elapsed(start,end);
+  const start=Date.UTC(now.getFullYear(),now.getMonth(),1),end=Date.UTC(now.getFullYear(),now.getMonth()+1,1);
+  max=(end-start)/day;value=elapsed(start);
  }else if(kind==='day-week'){
   max=7;value=(now.getDay()+6)%7+1;
  }else if(kind==='month'){max=12;value=now.getMonth()+1;}
  else if(kind==='day-custom'){
-  const start=new Date(String(options.min||'')+'T00:00:00');
-  const end=new Date(String(options.max||'')+'T00:00:00');
-  if(Number.isFinite(start.getTime())&&Number.isFinite(end.getTime())&&end>start){
-   max=Math.round((end-start)/86400000)+1;value=elapsed(start,end);
+  const parse=value=>{
+   const raw=String(value||''),date=new Date(raw+'T00:00:00Z');
+   return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===raw?date.getTime():NaN;
+  };
+  const start=parse(options.min),end=parse(options.max);
+  if(end>=start){
+   max=(end-start)/day+1;value=elapsed(start);
   }
  }else{
   min=writerV92Clamp(options.min,-1e9,1e9,0);
@@ -45,11 +49,21 @@ function writerV92ProgressData(options,now=new Date()){
  const percent=Math.max(0,Math.min(100,Math.round((value-min)/(max-min)*100)));
  return {kind,min,max,value,percent};
 }
+function writerV92StoredValue(values,id,fallback){
+ return Object.hasOwn(values,id)?values[id]:fallback;
+}
+function writerV92UpdateWidgetValue(plugin,values,id,value,selector,dataKey){
+ Object.defineProperty(values,id,{value,writable:true,enumerable:true,configurable:true});
+ void plugin.saveSettings();
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
+  for(const node of leaf.view?.containerEl?.querySelectorAll?.(selector)||[])
+   if(node.dataset[dataKey]===id)node.dispatchEvent(new Event('writer-widget-sync'));
+}
 function writerV92RenderProgress(plugin,source,el,ctx){
  const options=writerV92BlockOptions(source);
  const key=String(options.id||'').slice(0,80);
  const values=plugin.settings.v92ProgressValues||(plugin.settings.v92ProgressValues={});
- const isManual=!['day-year','day-month','day-week','day-custom','month'].includes(options.kind);
+ const isManual=!['day-year','day-month','day-week','day-custom','month'].includes(options.kind?.toLowerCase());
  const host=el.createDiv({cls:'writer-v92-progress'});
  const name=host.createEl('label',{cls:'writer-v92-progress-label'});
  const bar=host.createDiv({cls:'writer-v92-progress-track',attr:{role:'progressbar','aria-valuemin':'0','aria-valuemax':'100'}});
@@ -57,7 +71,7 @@ function writerV92RenderProgress(plugin,source,el,ctx){
  const controls=host.createDiv({cls:'writer-v92-progress-controls'});
  const redraw=()=>{
   const cfg={...options};
-  if(key&&Object.prototype.hasOwnProperty.call(values,key))cfg.value=values[key];
+  if(key)cfg.value=writerV92StoredValue(values,key,options.value);
   const data=writerV92ProgressData(cfg);
   name.setText(String(options.name||options.kind||writerUi('Progresso','Progress')).replace(/\{(min|max|value|percentage)\}/g,(_,id)=>String(id==='percentage'?data.percent+'%':data[id])));
   bar.setAttribute('aria-valuenow',String(data.percent));
@@ -68,29 +82,29 @@ function writerV92RenderProgress(plugin,source,el,ctx){
   for(const [label,delta] of [['−',-1],['+',1]]){
    controls.createEl('button',{text:label,attr:{type:'button','aria-label':delta<0?writerUi('Diminuir','Decrease'):writerUi('Aumentar','Increase')}})
     .addEventListener('click',()=>{
-     const d=writerV92ProgressData({...options,value:values[key]??options.value});
-     values[key]=Math.max(d.min,Math.min(d.max,d.value+delta));
-     void plugin.saveSettings();
+     const d=writerV92ProgressData({...options,value:writerV92StoredValue(values,key,options.value)});
+     writerV92UpdateWidgetValue(plugin,values,key,Math.max(d.min,Math.min(d.max,d.value+delta)),
+      '.writer-v92-progress[data-progress-id]','progressId');
      redraw();
-     for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
-      for(const node of leaf.view?.containerEl?.querySelectorAll?.('.writer-v92-progress[data-progress-id]')||[])
-       if(node.dataset.progressId===key)node.dispatchEvent(new Event('writer-progress-sync'));
     });
   }
+ }
+ if(isManual&&key){
   host.dataset.progressId=key;
-  host.addEventListener('writer-progress-sync',redraw);
+  host.addEventListener('writer-widget-sync',redraw);
  }
  redraw();
 }
 function writerV92RenderColumns(plugin,source,el,ctx){
- const match=source.match(/^\s*columns?\s*:\s*(\d+)\s*$/mi);
+ const match=/^(?:[ \t]*\r?\n)* {0,3}columns?[ \t]*:[ \t]*(\d+)[ \t]*(?:\r?\n|$)/i.exec(source);
  const count=Math.round(writerV92Clamp(match?.[1],1,4,2));
- const parts=source.replace(/^\s*columns?\s*:\s*\d+\s*$/mi,'').split(/^\s*(?:---\s*(?:end-column|column-end|column-break)\s*---|:::columnbreak)\s*$/mi).slice(0,4);
+ const content=match?source.slice(match[0].length):source;
+ const parts=writerV8MarkdownSections(content,line=>/^ {0,3}(?:---[ \t]*(?:end-column|column-end|column-break)[ \t]*---|:::columnbreak)[ \t]*$/i.test(line),4);
  const host=el.createDiv({cls:'writer-v92-columns'});
  host.style.setProperty('--writer-v92-columns',String(Math.max(1,Math.min(count,parts.length))));
  for(const part of parts){
   const cell=host.createDiv({cls:'writer-v92-column markdown-rendered'});
-  void MarkdownRenderer.render(plugin.app,part.trim().slice(0,15000),cell,ctx.sourcePath,ctx);
+  void writerV8Markdown(plugin,ctx,cell,writerV8TrimBlankLines(part)).catch(()=>cell.setText(part));
  }
 }
 function writerV92RenderWidget(plugin,source,el,ctx){
@@ -126,17 +140,21 @@ function writerV92RenderWidget(plugin,source,el,ctx){
   else clearInterval(timer);
   if(options.to)host.createEl('small',{text:options.to.slice(0,180)});
  }else if(kind==='counter'){
-  const id=String(options.id||ctx.sourcePath||'default').slice(0,160);
+  const id=String(options.id||ctx?.sourcePath||'default').slice(0,160);
   const values=plugin.settings.v92CounterValues||(plugin.settings.v92CounterValues={});
   const value=host.createEl('strong');
-  const draw=()=>value.setText(String(values[id]??writerV92Clamp(options.startvalue,-1e8,1e8,0)));
+  const start=writerV92Clamp(options.startvalue,-1e8,1e8,0);
+  const current=()=>writerV92Clamp(writerV92StoredValue(values,id,start),-1e8,1e8,start);
+  const draw=()=>value.setText(String(current()));
+  host.dataset.counterId=id;
+  host.addEventListener('writer-widget-sync',draw);
   draw();
   const delta=writerV92Clamp(options.increment,0.01,10000,1);
-  for(const [text,change] of [['−',-delta],['+',delta],['↺',null]]){
-   host.createEl('button',{text,attr:{type:'button'}}).addEventListener('click',()=>{
-    values[id]=change===null?writerV92Clamp(options.startvalue,-1e8,1e8,0):
-     writerV92Clamp((values[id]??(Number(options.startvalue)||0))+change,-1e8,1e8,0);
-    void plugin.saveSettings();draw();
+  for(const [text,change,pt,en] of [['−',-delta,'Diminuir','Decrease'],['+',delta,'Aumentar','Increase'],['↺',null,'Reiniciar','Reset']]){
+   host.createEl('button',{text,attr:{type:'button','aria-label':writerUi(pt,en)}}).addEventListener('click',()=>{
+    const next=change===null?start:writerV92Clamp(current()+change,-1e8,1e8,start);
+    writerV92UpdateWidgetValue(plugin,values,id,next,'.writer-v92-widget[data-counter-id]','counterId');
+    draw();
    });
   }
   if(options.text)host.createEl('small',{text:options.text.slice(0,160)});
@@ -170,6 +188,17 @@ async function writerV92MetaWrite(plugin,file,key,mode,resolve){
   return false;
  }
 }
+function writerV92MetaWatch(plugin,el,ctx,file,refreshers){
+ const cache=plugin.app.metadataCache;
+ if(!refreshers.length||typeof cache?.on!=='function'||!ctx?.addChild)return;
+ const Child=require('obsidian').MarkdownRenderChild;
+ if(!Child)return;
+ const child=new Child(el);
+ child.registerEvent(cache.on('changed',changed=>{
+  if(changed===file)for(const refresh of refreshers)refresh();
+ }));
+ ctx.addChild(child);
+}
 function writerV92RenderMeta(plugin,source,el,ctx){
  const options=writerV92BlockOptions(source),key=String(options.property||'').trim();
  if(!writerV92MetaKey(key)){
@@ -178,7 +207,9 @@ function writerV92RenderMeta(plugin,source,el,ctx){
  const type=['toggle','text','number','select','view'].includes(options.type)?options.type:'view';
  const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
  if(!(file instanceof TFile))return;
- writerV92MetaField(plugin,el.createDiv({cls:'writer-v92-meta'}),file,key,{...options,type});
+ const host=el.createDiv({cls:'writer-v92-meta'});
+ const refresh=writerV92MetaField(plugin,host,file,key,{...options,type});
+ if(refresh)writerV92MetaWatch(plugin,host,ctx,file,[refresh]);
 }
 function writerV92MetaField(plugin,host,file,key,options,mode='block'){
  const inline=mode==='inline';
@@ -199,6 +230,7 @@ function writerV92MetaField(plugin,host,file,key,options,mode='block'){
   }
  }else{
   field.type=({toggle:'checkbox',number:'number',slider:'range',date:'date'})[type]||'text';
+  if(type==='number')field.step='any';
   if(type==='slider'){
    field.min=String(options.min);field.max=String(options.max);field.step=String(options.step);
   }
@@ -212,7 +244,7 @@ function writerV92MetaField(plugin,host,file,key,options,mode='block'){
  const write=()=>{
   const numeric=type==='number'||type==='slider';
   const newValue=type==='toggle'?field.checked:numeric?Number(field.value):field.value;
-  if(numeric&&(!Number.isFinite(newValue)||(mode!=='block'&&(!field.value||field.validity?.valid===false))))return;
+  if(numeric&&(!field.value||!Number.isFinite(newValue)||field.validity?.valid===false))return;
   return writerV92MetaWrite(plugin,file,key,mode,()=>newValue);
  };
  field.addEventListener('change',()=>void write());
@@ -260,14 +292,7 @@ function writerV92MetaInline(plugin,el,ctx){
   if(!from)continue;
   fragment.append(doc.createTextNode(text.slice(from)));node.replaceWith(fragment);
  }
- const cache=plugin.app.metadataCache,Child=require('obsidian').MarkdownRenderChild;
- if(refreshers.length&&typeof cache?.on==='function'&&Child&&ctx.addChild){
-  const child=new Child(el);
-  child.registerEvent(cache.on('changed',changed=>{
-   if(changed===file)for(const refresh of refreshers)refresh();
-  }));
-  ctx.addChild(child);
- }
+ writerV92MetaWatch(plugin,el,ctx,file,refreshers);
 }
 function writerV92MetaFenceField(spec){
  if(!spec||typeof spec!=='object'||Array.isArray(spec))return null;
@@ -330,7 +355,12 @@ function writerV92MetaFences(plugin,el,ctx){
   }else{
    const fields=(Array.isArray(spec.fields)?spec.fields.slice(0,40):[spec]).map(writerV92MetaFenceField).filter(Boolean);
    if(!fields.length)continue;
-   for(const field of fields)writerV92MetaField(plugin,host.createDiv({cls:'writer-v92-meta'}),file,field.key,field,'fence');
+   const refreshers=[];
+   for(const field of fields){
+    const refresh=writerV92MetaField(plugin,host.createDiv({cls:'writer-v92-meta'}),file,field.key,field,'fence');
+    if(refresh)refreshers.push(refresh);
+   }
+   writerV92MetaWatch(plugin,host,ctx,file,refreshers);
   }
   code.parentElement.replaceWith(host);
  }
@@ -353,7 +383,10 @@ function writerV92RegisterBlocks(plugin){
   writerV92MetaFences(plugin,el,ctx);
  },-10);
  plugin.addCommand?.({id:'v92-insert-columns',name:writerUi('Colunas: inserir layout','Columns: insert layout'),
-  editorCallback:editor=>editor.replaceSelection('\n\`\`\`columns\ncolumns: 2\n### Coluna 1\nTexto aqui.\n--- end-column ---\n### Coluna 2\nTexto aqui.\n\`\`\`\n')});
+  editorCallback:editor=>editor.replaceSelection([
+   '','~~~columns','columns: 2','### '+writerUi('Coluna 1','Column 1'),writerUi('Texto aqui.','Text here.'),
+   '--- end-column ---','### '+writerUi('Coluna 2','Column 2'),writerUi('Texto aqui.','Text here.'),'~~~',''
+  ].join('\n'))});
  plugin.addCommand?.({id:'v92-insert-progress',name:writerUi('Progresso: inserir barra','Progress: insert bar'),
   editorCallback:editor=>editor.replaceSelection('\n\`\`\`progressbar\nkind: manual\nname: {percentage}\nvalue: 30\nmin: 0\nmax: 100\n\`\`\`\n')});
  plugin.addCommand?.({id:'v92-insert-meta-field',name:writerUi('Meta Bind: inserir campo seguro','Meta Bind: insert safe field'),

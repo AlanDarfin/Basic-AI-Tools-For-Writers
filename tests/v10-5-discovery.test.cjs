@@ -64,7 +64,7 @@ test('Zotero note metadata produces citekey and author without network',()=>{
 const bibSource=fs.readFileSync('src/v9/research-style.js','utf8');
 const zotero=vm.runInNewContext(bibSource+'\n'+source+'\n({writerV92BibEntries,writerV92ResearchMerge,writerV10ZoteroReferences,writerV10ZoteroBibliography})',{
  ItemView:class{},TFile,writerUi:(pt,en)=>en,writerModuleOn:plugin=>!plugin.disabled,
- parseYaml:()=>({keys:['@other:2026']})
+ parseYaml:source=>source.startsWith('{')?JSON.parse(source):({keys:['@other:2026']})
 });
 const bib=[
  '@string{p = "Publisher"}',
@@ -127,6 +127,12 @@ test('bibliography block renders only requested keys and handles unavailable exp
  available=false;tags.length=0;
  await zotero.writerV10ZoteroBibliography(plugin,'keys: [other:2026]',el,{});
  assert.match(tags[0][1],/Could not read BibTeX/);
+ available=true;tags.length=0;
+ await zotero.writerV10ZoteroBibliography(plugin,'{"keys":[" recovered ","@other:2026","recovered"]}',el,{});
+ assert.deepEqual(tags.filter(([tag])=>tag==='small').map(([,key])=>key),[' @recovered',' @other:2026']);
+ tags.length=0;
+ await zotero.writerV10ZoteroBibliography(plugin,'{bad',el,{});
+ assert.deepEqual(tags,[['p','Invalid bibliography block options.']]);
 });
 test('Homepage, bundle, and styles include all discovery integrations',()=>{
  const home=fs.readFileSync('src/v8/writing-home.js','utf8'),build=fs.readFileSync('scripts/build-v3.js','utf8');

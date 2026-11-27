@@ -34,6 +34,20 @@ test('Database index remains bounded and CSV escapes spreadsheet formulas',()=>{
  assert.equal(rows.length,1);assert.equal(rows[0].file.path,'B.md');
  assert.ok(db.writerV107DbCsv([{data:{file:'=SUM(A1:A2)'}}],['file']).includes("'=SUM"));
 });
+test('database rollups resolve spaced wiki-links and skip empty or boolean numeric values',()=>{
+ const notes=new Map(['Index','A','B','C','D'].map(basename=>[basename,
+  Object.assign(new TFile(),{path:'Vault/'+basename+'.md',basename})]));
+ const props={Index:{related:'[[A]], [[B|Alias]], ![[C]], [[D]], [[B]]'},A:{pages:'8'},B:{pages:12},
+  C:{pages:''},D:{pages:false}};
+ const app={vault:{getMarkdownFiles:()=>[notes.get('Index')]},metadataCache:{
+  getFileCache:file=>({frontmatter:props[file.basename]}),getFirstLinkpathDest:key=>notes.get(key)
+ }};
+ const spec=db.writerV107DbSpec('columns: file, file, pages\nrollup: count = related.pages | count\nrollup: average = related.pages | avg');
+ assert.deepEqual(Array.from(spec.columns),['file','pages']);
+ const [row]=db.writerV107DbRows({app,settings:{}},spec);
+ assert.equal(row.data.count,4);
+ assert.equal(row.data.average,10);
+});
 test('Zotero URL rejects path injection and does not require storing a key',()=>{
  const cfg=zotero.writerV107ZoteroConfig({v107Zotero:{libraryId:'123',enabled:true}});
  const u=zotero.writerV107ZoteroUrl(cfg,100);

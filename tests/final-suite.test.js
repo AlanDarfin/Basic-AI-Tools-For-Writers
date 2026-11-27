@@ -4,10 +4,43 @@ const vm=require('node:vm');
 const assert=require('node:assert/strict');
 const api={};
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').at(-1).replace(/\.md$/,'');}}
-const O={getLanguage:()=> 'en',moment:()=>({format:pattern=>'formatted-'+pattern})};
+class MarkdownRenderChild{registerEvent(event){this.event=event;}}
+const O={MarkdownRenderChild,getLanguage:()=> 'en',moment:()=>({format:pattern=>'formatted-'+pattern})};
 const source=fs.readFileSync('src/v3/final-suite.js','utf8');
 const ctx={console,writerModuleOn:()=>true,require:()=>O,TFile,MarkdownView:class MarkdownView{},setTimeout,clearTimeout,requestUrl:async()=>({status:200,text:'0041;LATIN CAPITAL LETTER A;Lu;0;L;;;;;N;;;;0061;\n00E9;LATIN SMALL LETTER E WITH ACUTE;Ll;0;L;;;;;N;;;00C9;;00C9;\n'})};
+ctx.writerUi=(_pt,en)=>en;
 const {writerFinalMerge,WriterFinalFeatures}=vm.runInNewContext(source+'\n({writerFinalMerge,WriterFinalFeatures})',ctx);
+async function checkToc(){
+ class Element{
+  constructor(tag,options){this.tag=tag;this.text=options?.text;this.children=[];}
+  createEl(tag,options){const child=new Element(tag,options);this.children.push(child);return child;}
+  createDiv(options){return this.createEl('div',options);}
+  empty(){this.children=[];}
+  addEventListener(type,callback){this[type]=callback;}
+  querySelectorAll(tag){return this.children.flatMap(node=>[...(node.tag===tag?[node]:[]),...node.querySelectorAll(tag)]);}
+ }
+ const file=new TFile('Chapters.md'),heading=(heading,level,line,col=0)=>({heading,level,position:{start:{line,col}}});
+ const cache={headings:[heading('**Opening** file_name',1,1),heading('Repeated',2,8),heading('Repeated',2,21,2),heading('Too deep',3,25)]};
+ const el=new Element('div');let changed,child,cursor,scrolled,mode='source';
+ const view={file,getMode:()=>mode,editor:{setCursor:pos=>{cursor=pos;},scrollIntoView(){}},previewMode:{applyScroll:line=>{scrolled=line;}}};
+ const metadataCache={getFileCache:()=>cache,on:(type,callback)=>{assert.equal(type,'changed');changed=callback;return callback;}};
+ const plugin={settings:{},app:{vault:{getAbstractFileByPath:()=>file},metadataCache,workspace:{getActiveViewOfType:()=>view}}};
+ writerFinalMerge(plugin);
+ new WriterFinalFeatures(plugin).renderToc(el,file.path,'MAXDEPTH: 2\nNUMBERED: TRUE\nFOLDED: TRUE',{addChild:value=>{child=value;}});
+ assert.ok(child instanceof MarkdownRenderChild);
+ assert.ok(el.querySelectorAll('ol').length>=2);
+ assert.equal(el.querySelectorAll('details')[0].open,false);
+ const links=el.querySelectorAll('a');
+ assert.deepEqual(links.map(node=>node.text),['Opening file_name','Repeated','Repeated']);
+ await links[2].click({preventDefault(){}});
+ assert.equal(cursor.line,21);
+ assert.equal(cursor.ch,2);
+ mode='preview';
+ await links[1].click({preventDefault(){}});
+ assert.equal(scrolled,8);
+ changed(file,'',{headings:[heading('Updated',1,2)]});
+ assert.deepEqual(el.querySelectorAll('a').map(node=>node.text),['Updated']);
+}
 async function checkTemplateFolderRefresh(){
  let focused;
  class Element{
@@ -66,6 +99,8 @@ async function checkTemplateFolderRefresh(){
 }
 async function main(){
  let count=0;const ok=(name)=>{console.log('PASS',name);count++;};
+ await checkToc();
+ ok('Instant TOC follows native heading positions, live metadata and Reading View');
  const settings={};
  const docs=new Map();
  const templateFile=new TFile('Templates/Chapter.md');

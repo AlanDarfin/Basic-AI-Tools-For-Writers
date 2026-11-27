@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('src/v6/longform-navigation.js','utf8');
+const source=fs.readFileSync('src/v8/format-blocks.js','utf8')+'\n'+fs.readFileSync('src/v6/longform-navigation.js','utf8');
 class TFile{constructor(path){this.path=path;this.extension='md';this.basename=path.split('/').pop().replace(/\.md$/,'');}}
 class Doc{constructor(text){this.text=text;this.length=text.length;}toString(){return this.text;}}
 class Element{
@@ -128,6 +128,13 @@ test('manual fences clear an existing automatic footer immediately and removing 
  h.replace(sourceBlock);assert.equal(h.decorations().ranges.length,0);await settle();
  assert.equal(h.decorations().ranges.length,0);assert.equal(h.cm.state.doc.toString(),sourceBlock);
  h.replace('After');await h.resolve();footer(h);
+});
+
+test('fenced examples leave the automatic footer in place',async()=>{
+ const example='\x60\x60\x60\x60markdown\n~~~longform-nav\nmode: manual\n~~~\n\x60\x60\x60\x60';
+ const h=harness({text:example});await h.resolve();footer(h);
+ h.replace(example+'\n\n~~~ longform-nav\n~~~');
+ assert.equal(h.decorations().ranges.length,0);
 });
 
 test('a file switch clears old buttons and ignores the earlier path lookup',async()=>{

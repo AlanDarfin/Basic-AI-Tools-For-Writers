@@ -53,8 +53,56 @@ test('Flow and slash actions are registered and use conflict-safe writes',()=>{
  for(const id of ['tip','warning','important','flow','flowboard','highlight'])assert.ok(a.includes(id),id);
  assert.match(src,/registerMarkdownCodeBlockProcessor/);
  assert.match(src,/fresh!==original/);
- assert.match(src,/vault\.modify\(file,textarea.value\)/);
+ assert.match(src,/vault\.process\(file,fresh=>/);
  assert.doesNotMatch(src,/innerHTML\s*=/);
+});
+test('Flow inline editing rejects concurrent writes and saves against the current vault contents',async()=>{
+ class Element{
+  constructor(){this.children=[];this.events={};this.isConnected=true;}
+  querySelector(){return null;}
+  append(...children){this.children.push(...children);}
+  appendChild(child){this.append(child);}
+  setAttribute(){}
+  addEventListener(event,handler){this.events[event]=handler;}
+  focus(){}
+  remove(){this.removed=true;}
+ }
+ let notice='',content='Original',commitBeforeSave=false;
+ const {writerV9216FlowOpenEditor}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({writerV9216FlowOpenEditor})',{
+  require:()=>({EditorSuggest:class{}}),writerUi:(_pt,en)=>en,Notice:class{constructor(text){notice=text;}}
+ });
+ const file={path:'Story.md',basename:'Story',stat:{mtime:1}};
+ const plugin={app:{vault:{
+  cachedRead:async()=>content,
+  process:async(_file,change)=>{
+   if(commitBeforeSave)content='Changed concurrently';
+   content=change(content);
+  }
+ }}};
+ const mount=new Element(),toggle=new Element();
+ mount.ownerDocument={createElement:()=>new Element()};
+ await writerV9216FlowOpenEditor(plugin,file,mount,toggle);
+ const [edit]=mount.children,[input,actions]=edit.children,[save]=actions.children;
+ input.value='My changes';commitBeforeSave=true;await save.events.click();
+ assert.equal(content,'Changed concurrently');assert.match(notice,/changed elsewhere/);assert.equal(edit.removed,undefined);
+ commitBeforeSave=false;content='Original';await save.events.click();
+ assert.equal(content,'My changes');assert.equal(edit.removed,true);
+});
+test('slash embed picker keeps the slash text on cancel and rejects stale insertion',()=>{
+ let picker,notice,content='Intro /flow';
+ class Search{setPlaceholder(){}open(){picker=this;}}
+ const {WriterV9215SlashSuggest}=vm.runInNewContext(read('src/v9/flow-slash.js')+'\n({WriterV9215SlashSuggest})',{
+  require:()=>({EditorSuggest:class{},FuzzySuggestModal:Search}),writerUi:(_pt,en)=>en,Notice:class{constructor(text){notice=text;}}
+ });
+ const editor={getValue:()=>content,focus(){},replaceRange(value,start,end){content=content.slice(0,start.ch)+value+content.slice(end.ch);}};
+ const suggest=new WriterV9215SlashSuggest({},{});
+ suggest.context={editor,start:{ch:6},end:{ch:11},file:{path:'Story.md'}};
+ suggest.selectSuggestion({id:'flow'});
+ assert.equal(content,'Intro /flow');
+ content+=' edited';picker.onChooseItem({path:'Chapter.md'});
+ assert.equal(content,'Intro /flow edited');assert.match(notice,/note changed/i);
+ content='Intro /flow';suggest.selectSuggestion({id:'flow'});picker.onChooseItem({path:'Chapter.md'});
+ assert.equal(content,'Intro ![[Chapter.md]]');
 });
 test('source and CSS provide a compact dock on mobile, not a second explorer',()=>{
  const css=read('src/styles/v9-2-2-iconic-fixes.css');

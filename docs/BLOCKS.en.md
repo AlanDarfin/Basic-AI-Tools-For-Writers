@@ -1,8 +1,19 @@
 # Markdown block reference — Basic AI Tool for Writers
 
-This is a copy-ready guide to the **supported code-fence renderers**, not a list of hypothetical Make.md features. Replace the sample vault paths with your own. These blocks render content; the Markdown source remains in your notes.
+In a Markdown note, run **Writing: quick insert catalog** or type `/` and a block name. You can also paste a complete example below. Enable the corresponding Basic module in Settings and use Reading View or Live Preview. Replace sample paths with locations in your vault.
 
-**How to use:** create a Markdown note in Obsidian, paste any complete example below, and switch to Reading View or Live Preview. Enable the corresponding Basic module in Settings. The short names are preferred; existing `writer-` aliases remain supported for `tabs`, `avatar`, `wiki`, `post`, `chat`, `media-gallery` and `folder-overview`.
+| Purpose | Block names |
+| --- | --- |
+| Fictional conversations and posts | `chat` / `writer-chat`, `post` / `writer-post` |
+| Notes and worldbuilding | `tabs` / `writer-tabs`, `wiki` / `writer-wiki`, `avatar` / `writer-avatar` |
+| Writing and revision | `scene-card`, `character-voice`, `beat-sheet`, `editor-note` |
+| Files and media | `folder-overview` / `writer-folder-overview`, `media-gallery` / `writer-media-gallery` |
+| Layout and navigation | `columns`, `writer-columns`, `insta-toc`, `longform-nav` |
+| Planning | `flow` / `writer-flow`, `timeline` / `writer-timeline`, `timeline-labeled`, `basic-timetable` |
+| Library and citations | `bookshelf` / `writer-bookshelf`, `bibliography` / `zotero` |
+| Databases and properties | `basic-database` / `writer-database`, `basic-suite-db`, `basic-suite-chart`, `meta-field` |
+| Widgets and progress | `widgets`, `progressbar` |
+| Meta Bind compatibility | `meta-bind`, `meta-bind-button` |
 
 ## 1. Folder Overview (`folder-overview`)
 
@@ -25,7 +36,7 @@ controls: true
 ~~~
 ~~~~
 
-If `folder` is omitted, the block uses the folder associated with the note containing it (or its parent). A folder is always clickable to browse its contents, even if `subfolders: false`. In **list** mode, the right-hand chevron expands/collapses a nested subfolder while tapping its name opens it; this also works on mobile.
+Use `folder: /` for the vault root. If `folder` is omitted, the block uses the folder associated with the note containing it (or its parent). A folder is always clickable to browse its contents, even if `subfolders: false`. In **list** mode, the right-hand chevron expands or collapses a nested subfolder while tapping its name opens it. The search field checks names and paths within the configured depth before applying the result limit.
 
 **Layout choices:** `cards` (responsive tiles), `list` (indented folder tree), `compact` (dense rows), `grid` (large icon grid), `table` (name/type/modified), `board` (folder and note columns). Legacy `card` and `strip` still map to `cards` and `list`. `view:` and `layout:` may also select the mode.
 
@@ -65,7 +76,7 @@ limit: 50
 
 ## 2. Tabs (`tabs`)
 
-Use `=== Title` to begin each tab (up to 12). `layout: top`, `left`, `right` or `side` changes navigation placement. Content is regular Markdown and can be edited from the rendered tab.
+Use `=== Title` to begin each tab (up to 12). `layout: top`, `left`, `right` or `side` changes navigation placement. Content is regular Markdown and can be edited from the rendered tab. A marker inside a nested fenced code example stays in that tab’s content.
 
 ~~~~markdown
 ~~~tabs
@@ -86,7 +97,7 @@ The characters arrive in the city.
 
 ## 3. Wiki / infobox (`wiki`)
 
-Header fields are `key: value` lines until `---`, followed by a Markdown body. `title`/`name`, `subtitle`/`role`/`type`, and `image`/`cover`/`avatar` are special. Other header fields become metadata rows (up to 12). Images must resolve to a **local vault file**.
+Header fields are `key: value` lines until `---`, followed by a Markdown body. `title`/`name`, `subtitle`/`role`/`type`, and `image`/`cover`/`avatar` are special. Other header fields become metadata rows (up to 12), and their names can include accented letters. Images must resolve to a **local vault file**.
 
 ~~~~markdown
 ~~~wiki
@@ -125,7 +136,7 @@ layout: right
 
 ## 5. Fictional social post (`post`)
 
-A post accepts `author`/`name`, `handle`, `date`/`time`, `avatar`/`image`, `likes`/`flames`, `views` and `comments`. The line `=== reply` starts another post; `depth` or `level` (1–5) nests a reply.
+A post accepts `author`/`name`, `handle`, `date`/`time`, `avatar`/`image`, `likes`/`flames`, `views` and `comments`. Outside fenced code examples, a line with `=== reply` starts a reply. `depth` or `level` (1–5) sets its indentation.
 
 ~~~~markdown
 ~~~post
@@ -176,28 +187,28 @@ group-image: [[Images/Expedition.webp]]
 ~~~
 ~~~~
 
-A simpler valid format is `< Mira | Hello` or `> Jonas | Hi | 10:00`. Legacy `=== Speaker` sections remain supported with `avatar`, `time`, `side` or `mine` fields before `---`.
+Use `< Mira | Hello` for a short message, `> Jonas | Hi | 10:00` to include the time, or `< [[Characters/Mira.png]] | Mira | Hello` to include an avatar without the time. Legacy `=== Speaker` sections remain supported with `avatar`, `time`, `side` or `mine` fields before `---`.
 
 
 **Chat dividers:** write `---` on its own line **between messages** for a simple dividing line. Write `--- Two hours later ---` or `--- 14:30 ---` to center an elapsed-time or timestamp label. Dividers render outside the message bubbles and reset consecutive-speaker grouping. In the older `=== Speaker` format, the **first** plain `---` after a legacy header still separates metadata from the body; later dividers render in the transcript.
 
 **Group photo:** add `group-image: [[Images/Expedition.webp]]` just below `title:` for a circular image beside the conversation title. `group-photo:` and `group-avatar:` are also accepted. Image paths resolve only to files in the vault; remote images are ignored. The group image is independent of participant avatars and remains visible with `avatars: off`.
 
-**New fictional voice notes:** use `[audio:0:15]` or `[voice:1:09]` as the entire message body. The play/pause button animates a waveform but **does not produce audio, record, or upload anything**. Example: `< | [audio:0:15] | 10:00`.
+**Fictional voice notes:** use `[audio:0:15]` or `[voice:1:09]` as the entire message body. The play/pause button animates a waveform but **does not produce audio, record, or upload anything**. Example: `< | [audio:0:15] | 10:00`.
 
-**Fictional audio transcript (9.5.2):** append `:text` after the duration: `[audio:0:15:I'll be there in five minutes.]`. The visual voice note remains silent, but a **View transcript** button expands or hides the supplied words. Transcript text is displayed as plain text, supports colons and escaped `\\n` newlines, and never runs HTML. This is a **manually authored fictional transcript**, not automatic speech recognition.
+To include a written transcript, add `:text` after the duration, as in `[audio:0:15:I'll be there in five minutes.]`. The text appears below the waveform as soon as the message loads. Use `\n` for a line break or `\\n` to display a literal backslash-n.
 
 ~~~~markdown
 ~~~chat
 title: Expedition group
 group-image: [[Images/group.webp]]
 [Left=Lia, Right=Davi]
-< | Lia | [audio:0:15:I'm almost there.\\nPlease wait for me!] | 10:01
+< | Lia | [audio:0:15:I'm almost there.\nPlease wait for me!] | 10:01
 > | Davi | [voice:0:08:We're waiting!] | 10:02
 ~~~
 ~~~~
 
-**Line breaks:** consecutive lines and blank lines after a message become Markdown content in the same bubble. You can also type a literal `\\n` inside one message field for a new line; `\\\\n` displays a literal backslash-n.
+**Line breaks:** consecutive lines and blank lines after a message become Markdown content in the same bubble. You can also type a literal `\n` inside one message field for a new line; `\\n` displays a literal backslash-n.
 
 **Visual presets (optional, before messages):** `density: compact|normal|relaxed`, `bubbles: soft|round|square`, `avatars: on|off`, `width: normal|wide`. Character colors, avatars and default names still work as before.
 
@@ -206,7 +217,7 @@ group-image: [[Images/group.webp]]
 density: compact
 bubbles: round
 [Left=Maria, right=João]
-< | Hello\\nSecond line | 10:00
+< | Hello\nSecond line | 10:00
 > | [audio:0:15] | 10:01
 < | Next message
 Another paragraph:
@@ -215,9 +226,11 @@ Another paragraph:
 ~~~
 ~~~~
 
+Long conversations open with the first 50 transcript items. Choose **Show more messages** to continue reading. A chat block accepts up to 32,000 characters.
+
 ## 7. Vault media gallery (`media-gallery`)
 
-Use `path` or `folder` to target a vault folder. `type`: `all`, `image`, `video`, `audio`, `pdf`. `layout`: `masonry`, `grid`, `ratio`. `sort`: `name-asc`, `name-desc`, `mtime-desc`, `mtime-asc`, `size-desc`, `size-asc`. `subfolders` is a boolean; `limit` is 1–150.
+Use `path` or `folder` to target a vault folder and `/` for the vault root. The available types are `all`, `image`, `video`, `audio`, `pdf` and `document`. Choose `masonry`, `grid` or `ratio` for `layout` and use `name-asc`, `name-desc`, `mtime-desc`, `mtime-asc`, `size-desc` or `size-asc` for `sort`. Set `subfolders: true` to include nested folders. `limit` caps the results after sorting and filtering (1–500), and `pageSize` sets how many results appear per page (8–60).
 
 ~~~~markdown
 ~~~media-gallery
@@ -232,7 +245,7 @@ limit: 90
 
 ## 8. Markdown columns (`columns`)
 
-Set `columns: 1`–`4`; split sections with `--- end-column ---`, `--- column-break ---`, `--- column-end ---`, or `:::columnbreak`. Column content is rendered Markdown.
+Set `columns: 1`–`4` on the first line. Split sections with `--- end-column ---`, `--- column-break ---`, `--- column-end ---`, or `:::columnbreak`. A separator inside a nested fenced code example stays in that column’s Markdown.
 
 ~~~~markdown
 ~~~columns
@@ -394,7 +407,7 @@ label: Advance revision
 
 ## 12. Instant table of contents (`insta-toc`)
 
-Builds a nested contents list from the headings **in the current note**. `maxDepth` is 1–6; `numbered` and `folded` are booleans. Heading links jump to the corresponding text.
+Builds a nested contents list from the current note's Markdown headings, including headings underlined with `===` or `---`. `maxDepth` ranges from 1 to 6. Use `numbered: true` for an ordered list and `folded: true` to start with sections collapsed. Each link jumps to its own heading in Reading View or Live Preview, even when two headings have the same title.
 
 ~~~~markdown
 ~~~insta-toc
@@ -481,6 +494,8 @@ Options: `layout` (`vertical` or `horizontal`), `theme` (`classic`, `cards`, `mi
 
 Original line styles: `line: 2` uses a hollow ring, `line: 3` a solid dot, `line: 4` a dashed rail and target-shaped marker, and `line: 5` a diamond. Original card styles: `body: 2` is a panel, `body: 3` a colorful arrow banner, and `body: 4` a side accent strip. The original `spaced-lines`, `hide-titles`, and all 11 `active-color-*` presets are supported. The timeline toolbar lets you try themes, lines and cards; edit the Markdown block to save a choice. Minimal has unboxed prose and airy dividers, while Compact has dense rows with dates and titles aligned side by side.
 
+Descriptions support fenced and indented code. To separate labeled events, put `---` before the next `date`, `time`, or `when` field. A divider followed by more prose stays in the description. To scroll a horizontal timeline with the keyboard, focus it and use the arrow keys.
+
 ## Troubleshooting
 
 If you see raw code instead of a widget, check the spelling of the fence, the module toggle, and Obsidian's Reading View / Live Preview. For `folder-overview` and `media-gallery`, paths refer to **vault folders**, not operating-system absolute paths. For local images, the linked file must exist in the vault. On phones, the Overview **list tree** has separate touch targets: tap the chevron to collapse/expand, or the folder name to navigate into it.
@@ -499,7 +514,7 @@ layout: compact
 ~~~
 ~~~~
 
-Options: sort (title, recent, chapters); layout (normal, compact). Chapter count does not mean reading progress.
+Set `sort` to `title`, `recent`, `chapters`, `progress`, or `series`. Set `layout` to `normal` or `compact`.
 
 ## 16. Gallery documents and text editing
 
@@ -521,7 +536,7 @@ With [audio:0:15:Written text] or [áudio:0:15:Texto escrito], the supplied text
 
 ## 18. Version 10.1 additions and compatibility
 
-**Bookshelf:** the \`bookshelf\` and legacy \`writer-bookshelf\` renderers still accept \`sort: title|recent|chapters\`. They now also accept \`sort: progress|series\`. The library modal provides filters for shelf, reading status and favorites. You can edit progress (0–100%) or assign a shelf directly from a book card. Existing project Markdown is never modified by these book records.
+The `bookshelf` and `writer-bookshelf` blocks show the same library. Filter by shelf, reading status, or favorites and adjust those fields on the book card. For Longform projects, progress follows the share of completed chapters. For single-note books, progress follows scrolling or uses the note's `readingProgress` property.
 
 **Media Gallery:** keep \`media-gallery\` (or legacy \`writer-media-gallery\`), optionally set \`pageSize: 24\` and \`limit: 200\`; the UI paginates rather than showing every item. Use **Select multiple → Copy links** for Obsidian wikilinks. Text file excerpts are read locally, while PDFs use Obsidian's native handler.
 
@@ -665,6 +680,25 @@ limit: 100
 - C
 - D
 ```
+
+## Database views and class timetables
+
+Use `basic-suite-db` with `folder` or `database` and a `view` such as `table`, `board` or `gallery`. For a count by YAML property, use `basic-suite-chart` with `group`.
+
+~~~~markdown
+~~~basic-suite-chart
+folder: Writing
+group: status
+~~~
+~~~~
+
+Create the timetable note from **Study: open academic center**, then insert `basic-timetable`. The optional `file` points to a different timetable note. The block recognizes weekdays in English and Portuguese and highlights the current day.
+
+~~~~markdown
+~~~basic-timetable
+title: Classes this term
+~~~
+~~~~
 
 ## Four writing and editing blocks
 

@@ -28,6 +28,10 @@ test('escaped or actual newlines remain plain text; invalid or oversized audio s
   assert.equal(api.writerV8ChatFakeAudio(value),null);
  }
 });
+test('fictional transcripts interpret every escaped line break exactly once',()=>{
+ const [line]=api.writerV8ChatParse(String.raw`< Ana | [audio:0:15:New\nline, but literal \\n.] | 10:01`).messages;
+ assert.equal(api.writerV8ChatFakeAudio(line.body).transcript,'New\nline, but literal \\n.');
+});
 class FakeEl{
  constructor(tag='div',opts={}){this.tag=tag;this.options=opts;this.children=[];
   this.attributes={...(opts.attr||{})};this.hidden=false;this.text='';
@@ -50,6 +54,12 @@ test('transcript is always visible, text-only and has no extra toggle',()=>{
  const body=player.children.find(e=>e.classNames.has('writer-v8-chat-transcript-text'));
  assert.ok(body);assert.equal(body.hidden,false);
  assert.equal(body.text,'<span>Não executar HTML</span>');
+ const toggle=player.children.find(e=>e.classNames.has('writer-v8-chat-voice-toggle'));
+ assert.equal(toggle.attributes['aria-pressed'],'false');
+ toggle.handlers.click();
+ assert.equal(toggle.attributes['aria-pressed'],'true');
+ toggle.handlers.click();
+ assert.equal(toggle.attributes['aria-pressed'],'false');
  assert.equal(root.children.filter(e=>e.classNames.has('writer-v8-chat-transcript-toggle')).length,0);
  const plain=new FakeEl();
  api.writerV8ChatRenderFakeAudio(plain,api.writerV8ChatFakeAudio('[audio:0:15]'));

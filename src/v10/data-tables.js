@@ -9,7 +9,10 @@ function writerV107DbSpec(source){
  for(const line of String(source||'').slice(0,6000).split(/\r?\n/)){
   const m=/^\s*(folder|columns|filter|sort|order|group|view|limit|formula|rollup)\s*:\s*(.*?)\s*$/i.exec(line);if(!m)continue;
   const key=m[1].toLowerCase(),value=m[2].trim().replace(/^["']|["']$/g,'');
-  if(key==='columns')s.columns=value.split(',').map(x=>x.trim()).filter(x=>/^[\w-]{1,60}$/.test(x)).slice(0,24);
+  if(key==='columns'){
+   const columns=value.split(',').map(x=>x.trim()).filter(x=>/^[\w-]{1,60}$/.test(x));
+   if(columns.length)s.columns=[...new Set(columns)].slice(0,24);
+  }
   else if(key==='formula'){const f=/^([\w-]{1,35})\s*=\s*(.{1,140})$/.exec(value);if(f&&s.formulas.length<8)s.formulas.push({name:f[1],expression:f[2]});}
   else if(key==='rollup'){const f=/^([\w-]{1,35})\s*=\s*([\w-]{1,40})\.([\w-]{1,40})\s*\|\s*(count|sum|avg|min|max)$/i.exec(value);if(f&&s.rollups.length<8)s.rollups.push({name:f[1],relation:f[2],field:f[3],op:f[4].toLowerCase()});}
   else if(key==='limit')s.limit=Math.max(5,Math.min(300,Number(value)||80));
@@ -55,17 +58,28 @@ function writerV107DbMetadata(plugin,file){
 }
 function writerV107DbRollup(plugin,file,record,rollup){
  const paths=(Array.isArray(record[rollup.relation])?record[rollup.relation]:String(record[rollup.relation]||'').split(',')).slice(0,70);
- const related=[];
+ const related=new Map();
  for(const path of paths){
-  const dest=String(path||'').replace(/^\[\[|\]\]$/g,'').split('|')[0].trim();
+  const dest=String(path||'').trim().replace(/^!?\[\[|\]\]$/g,'').split('|')[0].trim();
+  if(!dest)continue;
   const linked=plugin.app.metadataCache.getFirstLinkpathDest(dest,file.path);
-  if(linked instanceof TFile&&!related.some(x=>x.path===linked.path))related.push(linked);
+  if(linked instanceof TFile)related.set(linked.path,linked);
  }
- if(rollup.op==='count')return related.length;
- const nums=related.map(f=>Number(writerV107DbMetadata(plugin,f)[rollup.field])).filter(Number.isFinite);
+ if(rollup.op==='count')return related.size;
+ const nums=[];
+ for(const linked of related.values()){
+  const raw=writerV107DbMetadata(plugin,linked)[rollup.field];
+  if(typeof raw!=='number'&&(typeof raw!=='string'||!raw.trim()))continue;
+  const value=Number(raw);
+  if(Number.isFinite(value))nums.push(value);
+ }
  if(!nums.length)return null;
  const sum=nums.reduce((a,b)=>a+b,0);
  return rollup.op==='sum'?sum:rollup.op==='avg'?Math.round(sum/nums.length*100)/100:rollup.op==='min'?Math.min(...nums):Math.max(...nums);
+}
+function writerV107DbCalculate(plugin,file,data,spec){
+ for(const formula of spec.formulas)data[formula.name]=writerV107DbFormula(formula.expression,data);
+ for(const rollup of spec.rollups)data[rollup.name]=writerV107DbRollup(plugin,file,data,rollup);
 }
 function writerV107DbRows(plugin,spec){
  const max=writerV107DbConfig(plugin.settings).maxFiles;
@@ -74,16 +88,19 @@ function writerV107DbRows(plugin,spec){
  for(const file of files){
   const data=writerV107DbMetadata(plugin,file);
   if(!writerV107DbMatch(data,spec.filter))continue;
-  for(const formula of spec.formulas)data[formula.name]=writerV107DbFormula(formula.expression,data);
-  for(const rollup of spec.rollups)data[rollup.name]=writerV107DbRollup(plugin,file,data,rollup);
+  writerV107DbCalculate(plugin,file,data,spec);
   rows.push({file,data});
  }
  const rev=spec.order==='desc'?-1:1;
  rows.sort((a,b)=>rev*String(a.data[spec.sort]??'').localeCompare(String(b.data[spec.sort]??''),undefined,{numeric:true})||a.file.path.localeCompare(b.file.path));
  return rows.slice(0,spec.limit);
 }
+function writerV107DbEditable(plugin,key,spec){
+ return plugin.settings.v107Db?.editable&&key!=='tags'&&writerV11DbPropertyKey(key)&&
+  !spec?.formulas?.some(formula=>formula.name===key)&&!spec?.rollups?.some(rollup=>rollup.name===key);
+}
 function writerV107DbEdit(plugin,item,key,refresh){
- if(!plugin.settings.v107Db.editable||['file','path','created','modified'].includes(key))return;
+ if(!writerV107DbEditable(plugin,key))return;
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Editar propriedade','Edit property'));
  modal.onOpen=()=>{
   let value=String(item.data[key]??'');
@@ -109,7 +126,8 @@ function writerV107DbRender(plugin,source,element,ctx){
  const top=root.createDiv({cls:'writer-v107-db-top'});
  top.createEl('strong',{text:writerUi('Banco Markdown','Markdown database')});
  const count=top.createEl('small');
- const filter=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar neste banco…','Filter database…')}});
+ const filter=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar neste banco…','Filter database…'),
+  'aria-label':writerUi('Buscar no banco de notas','Search note database')}});
  const scroller=root.createDiv({cls:'writer-v107-db-scroll'});
  const cols=[...new Set([...spec.columns,...spec.formulas.map(f=>f.name),...spec.rollups.map(f=>f.name)])];
  let rows=[];
@@ -135,7 +153,14 @@ function writerV107DbRender(plugin,source,element,ctx){
    return;
   }
   const table=scroller.createEl('table'),thead=table.createEl('thead').createEl('tr');
-  for(const col of cols){const b=thead.createEl('th').createEl('button',{text:col});b.addEventListener('click',()=>{spec.sort=col;spec.order=spec.order==='asc'?'desc':'asc';refresh();});}
+  for(const col of cols){
+   const header=thead.createEl('th',{attr:{scope:'col'}});
+   if(spec.sort===col)header.setAttribute('aria-sort',spec.order==='desc'?'descending':'ascending');
+   const button=header.createEl('button',{text:col,attr:{type:'button'}});
+   button.addEventListener('click',()=>{
+    spec.order=spec.sort===col&&spec.order==='asc'?'desc':'asc';spec.sort=col;refresh();
+   });
+  }
   const body=table.createEl('tbody');
   for(const row of shown){
    const tr=body.createEl('tr');
@@ -144,7 +169,7 @@ function writerV107DbRender(plugin,source,element,ctx){
     const b=cell.createEl('button',{text:String(row.data[col]??'—'),cls:'writer-v107-db-cell'});
     if(col==='file'||col==='path')b.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
     else{
-     b.disabled=!cfg.editable||col==='tags'||spec.formulas.some(f=>f.name===col)||spec.rollups.some(f=>f.name===col);
+     b.disabled=!writerV107DbEditable(plugin,col,spec);
      if(!b.disabled)b.addEventListener('click',()=>writerV107DbEdit(plugin,row,col,refresh));
     }
    }

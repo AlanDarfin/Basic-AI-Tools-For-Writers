@@ -28,6 +28,24 @@ test('Markdown embeds, links, escaped delimiters and inline code keep pipes',()=
  const parts=split(' | Olha ![[Imagem.png|200]] | 12:00');
  assert.equal(parts.length,3);assert.equal(parts[1],'Olha ![[Imagem.png|200]]');
 });
+test('avatar-only metadata and inline spoilers keep the intended message fields',()=>{
+ const data=parse([
+  '[Ana=balão: grey]',
+  '< [[Pessoas/ana.png|Ana]] | Ana | Este ||segredo | com barra|| chegou.',
+  '> Leo | ||Mensagem oculta|| | 10:02',
+  '<||Voltei.'
+ ].join('\n'));
+ const [first,second,third]=data.messages;
+ assert.equal(first.name,'Ana');
+ assert.equal(first.avatar,'[[Pessoas/ana.png|Ana]]');
+ assert.equal(first.bubbleColor,'gray');
+ assert.equal(first.body,'Este ||segredo | com barra|| chegou.');
+ assert.equal(first.time,'');
+ assert.equal(second.body,'||Mensagem oculta||');
+ assert.equal(second.time,'10:02');
+ assert.equal(third.name,'Ana');
+ assert.equal(third.body,'Voltei.');
+});
 test('Multiline Markdown images, lists and extended Basic AI notation survive',()=>{
  const text=['[Left=Maria, right=João]','< | **Atenção** ++sublinhado++ e =={blue}cor== | 20:30',
  '![Legenda](Fotos/porto.png)','![[Imagens/mapa.png|left|200]]','- Uma lista','- Outra lista',
@@ -51,23 +69,62 @@ test('malformed color strings and oversized inputs do not affect styles or memor
  const data=parse('[Maria=red; background:url(https://bad.test)]\n[Left=Maria]\n< | Mensagem | 13:30');
  assert.equal(data.messages[0].color,'');assert.equal(data.messages[0].avatar,'');
  assert.equal(parse('x'.repeat(33000)),null);
- assert.ok(parse('[Left=Maria]\n'+Array.from({length:60},()=>'< | Hi | 12:00').join('\n')).messages.length<=50);
+ assert.equal(parse('[Left=Maria]\n'+Array.from({length:60},()=>'< | Hi | 12:00').join('\n')).messages.length,60);
+ const long='x'.repeat(9000);
+ assert.equal(parse('< Maria | '+long).messages[0].body,long);
 });
+class E{
+ constructor(tag='div',options={}){this.tag=tag;this.options=options;this.children=[];this.handlers={};}
+ createDiv(o){return this.createEl('div',o);}
+ createEl(tag,o){const e=new E(tag,o);this.children.push(e);Object.defineProperty(e,'parent',{value:this});return e;}
+ setText(value){this.text=value;}
+ empty(){this.children=[];}
+ setAttribute(key,value){(this.options.attr??={})[key]=value;}
+ addEventListener(kind,handler){this.handlers[kind]=handler;}
+ focus(){this.focused=true;}
+ remove(){this.parent.children.splice(this.parent.children.indexOf(this),1);}
+}
+function renderer(calls){
+ return vm.runInNewContext(source+'\n({writerV8ChatRender})',{
+  writerUi:x=>x,writerV8ImagePath:(_,path)=>path?'app://local/'+path:'',
+  writerV8Markdown:(_p,_c,_e,body)=>{calls.push(body);return Promise.resolve();},console}).writerV8ChatRender;
+}
 test('renderer only creates avatar element when an image exists',()=>{
- const calls=[];
- class E{constructor(tag='div',options={}){this.tag=tag;this.options=options;this.children=[];}
-  createDiv(o){const e=new E('div',o);this.children.push(e);return e;}
-  createEl(tag,o){const e=new E(tag,o);this.children.push(e);return e;}
-  setText(value){this.text=value;}empty(){this.children=[];}}
- const local=vm.runInNewContext(source+'\n({writerV8ChatRender})',{
-  writerUi:x=>x,writerV8ImagePath:(_,path)=>path?'app://local':'',
-  writerV8Markdown:(_p,_c,_e,body)=>{calls.push(body);return Promise.resolve();},console});
+ const calls=[],render=renderer(calls);
  const one=new E();
- local.writerV8ChatRender({app:{}},'[Left=Maria, right=João]\n< | Texto | 12:00\n> | Resposta | 12:01',one,{sourcePath:'Story.md'});
+ render({app:{}},'[Left=Maria, right=João]\n< | Texto | 12:00\n> | Resposta | 12:01',one,{sourcePath:'Story.md'});
  assert.ok(!JSON.stringify(one).includes('"tag":"img"'));assert.equal(calls.length,2);
  const two=new E();
- local.writerV8ChatRender({app:{}},'[Maria=blue]\n< foto.png | Maria | Texto | 12:00',two,{sourcePath:'Story.md'});
+ render({app:{}},'[Maria=blue]\n< foto.png | Maria | Texto | 12:00',two,{sourcePath:'Story.md'});
  assert.match(JSON.stringify(two),/"tag":"img"/);assert.match(JSON.stringify(two),/is-color-blue/);
+});
+test('one-off avatars show within a run of messages from the same speaker',()=>{
+ const render=renderer([]),element=new E();
+ render({app:{}},[
+  '[Maria=usual.png]','< Maria | First','< special.png | Maria | Second','< Maria | Third'
+ ].join('\n'),element,{sourcePath:'Story.md'});
+ const list=element.children[0].children[0];
+ assert.deepEqual(list.children.map(row=>row.children[0].options.attr.src),[
+  'app://local/usual.png','app://local/special.png','app://local/usual.png'
+ ]);
+});
+test('long chats keep every message and progressively render later batches',()=>{
+ const calls=[],render=renderer(calls),element=new E();
+ const messages=Array.from({length:101},(_,index)=>'< Ana | Mensagem '+(index+1));
+ render({app:{}},messages.join('\n'),element,{sourcePath:'Story.md'});
+ const root=element.children[0];
+ const [list,more]=root.children;
+ assert.equal(calls.length,50);
+ assert.equal(list.children.length,50);
+ assert.equal(more.tag,'button');
+ more.handlers.click();
+ assert.equal(calls.length,100);
+ assert.equal(list.children[50].focused,true);
+ assert.match(list.children[50].options.cls,/is-continuation/);
+ more.handlers.click();
+ assert.equal(calls[100],'Mensagem 101');
+ assert.equal(list.children[100].focused,true);
+ assert.equal(root.children.length,1);
 });
 test('bundle, CSS and linked localized guides document both chat formats',()=>{
  const main=read('main.js'),css=read('styles.css');

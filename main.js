@@ -3285,7 +3285,7 @@ class WriterFinalFeatures{
    });
    if(change)queueMicrotask(()=>this.tryExpand(update.view,change));
   }));
-  if(p.registerMarkdownCodeBlockProcessor)p.registerMarkdownCodeBlockProcessor('insta-toc',async(source,el,ctx)=>this.renderToc(el,ctx.sourcePath,source));
+  if(p.registerMarkdownCodeBlockProcessor)p.registerMarkdownCodeBlockProcessor('insta-toc',(source,el,ctx)=>this.renderToc(el,ctx.sourcePath,source,ctx));
   const commands=[
    ['writer-insert-unicode',writerUi('Unicode: pesquisar e inserir','Unicode: Search and insert'),()=>this.unicodePicker()],
    ['writer-tts-read',writerUi('Ler seleção ou nota atual em voz alta','Read selection or current note aloud'),()=>this.speakActive()],
@@ -3462,67 +3462,86 @@ class WriterFinalFeatures{
   if(!view)return new Notice(writerUi('Abra uma nota Markdown.','Open a Markdown note.'));
   view.editor.replaceSelection('\n'+String.fromCharCode(96,96,96)+'insta-toc\n'+String.fromCharCode(96,96,96)+'\n');
  }
- async renderToc(el,path,source=''){
+ renderToc(el,path,source='',context){
   const cfg=this.cfg.toc;
   if(!cfg.enabled)return;
-  const file=this.plugin.app.vault.getAbstractFileByPath(path);
+  const {vault,metadataCache,workspace}=this.plugin.app;
+  const file=vault.getAbstractFileByPath(path);
   if(!(file instanceof TFile))return;
   const local={...cfg};
+  const keys={maxdepth:'maxDepth',numbered:'numbered',folded:'folded'};
   for(const line of String(source).split('\n')){
    const match=/^\s*(maxDepth|numbered|folded)\s*:\s*(.*?)\s*$/i.exec(line);
    if(!match)continue;
-   if(match[1]==='maxDepth')local.maxDepth=Math.max(1,Math.min(6,Number(match[2])||6));
-   else local[match[1]]=match[2].toLowerCase()==='true';
-  }
-  const text=await this.plugin.app.vault.cachedRead(file);
-  const re=/^(#{1,6})[ \t]+([^\r\n]+)$/gm;
-  const nodes=[],stack=[{level:0,children:nodes}];let match;
-  while((match=re.exec(text))!==null){
-   const level=match[1].length,title=match[2].replace(/[ \t]+#+[ \t]*$/,'').trim();
-   if(!title||level>Number(local.maxDepth)||title.toLowerCase()==='table of contents')continue;
-   const node={level,title,children:[],offset:match.index};
-   while(stack.length>1&&stack[stack.length-1].level>=level)stack.pop();
-   stack[stack.length-1].children.push(node);stack.push(node);
+   const key=keys[match[1].toLowerCase()];
+   if(key==='maxDepth')local.maxDepth=Math.max(1,Math.min(6,Number(match[2])||6));
+   else local[key]=match[2].toLowerCase()==='true';
   }
   const wrap=el.createDiv({cls:'writer-insta-toc-rendered'});
-  if(!nodes.length){wrap.createEl('p',{text:writerUi('Nenhum título encontrado.','No headings found.')});return;}
-  const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
-  const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
   const openAt=async node=>{
-   const active=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-   if(!active||active.file?.path!==file.path){
-    const leaf=this.plugin.app.workspace.getLeaf(false);
+   let view=workspace.getActiveViewOfType(MarkdownView);
+   workspace.iterateAllLeaves?.(leaf=>{
+    if(leaf.view instanceof MarkdownView&&leaf.view.file===file&&leaf.view.containerEl.contains(el))view=leaf.view;
+   });
+   if(view?.file?.path!==file.path){
+    const leaf=workspace.getLeaf(false);
     await leaf.openFile(file);
+    view=leaf.view;
    }
-   const view=this.plugin.app.workspace.getActiveViewOfType(MarkdownView);
-   const cache=this.plugin.app.metadataCache.getFileCache(file);
-   const found=cache?.headings?.find(h=>h.heading===node.title&&h.level===node.level);
-   if(view?.editor){
-    const pos=found?.position?.start||view.editor.offsetToPos(node.offset);
+   if(view?.file?.path!==file.path)return;
+   const pos=node.position;
+   if(view.getMode?.()==='preview')view.previewMode.applyScroll(pos.line);
+   else if(view.editor){
     view.editor.setCursor(pos);view.editor.scrollIntoView({from:pos,to:pos},true);
    }
   };
   const draw=(items,parent)=>{
    for(const node of items){
     const li=parent.createEl('li',{cls:'writer-insta-toc-item'});
+    const label=node.title.replace(/(`+)([^`]+)\1/g,'$2')
+     .replace(/(^|[\s(])(\*{1,3}|_{1,3})(\S(?:.*?\S)?)\2(?=$|[\s.,!?;:)])/g,'$1$3');
     if(node.children.length){
      const details=li.createEl('details',{cls:'writer-insta-toc-branch'});
      details.open=!local.folded;
      const summary=details.createEl('summary');
-     const title=summary.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     const title=summary.createEl('a',{text:label,href:'#'});
      title.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();openAt(node).catch(console.warn);});
      const child=details.createEl(local.numbered?'ol':'ul');
      draw(node.children,child);
     }else{
-     const link=li.createEl('a',{text:node.title.replace(/[*_\x60]+/g,''),href:'#'});
+     const link=li.createEl('a',{text:label,href:'#'});
      link.addEventListener('click',event=>{event.preventDefault();openAt(node).catch(console.warn);});
     }
    }
   };
-  draw(nodes,list);
-  const all=()=>[...list.querySelectorAll('details')];
-  toolbar.createEl('button',{text:writerUi('Expandir tudo','Expand all'),attr:{'aria-label':writerUi('Expandir todos os títulos','Expand all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
-  toolbar.createEl('button',{text:writerUi('Recolher tudo','Collapse all'),attr:{'aria-label':writerUi('Recolher todos os títulos','Collapse all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
+  let previous;
+  const renderHeadings=cache=>{
+   const headings=(cache?.headings||[]).filter(({heading,level})=>heading&&level<=Number(local.maxDepth)&&heading.toLowerCase()!=='table of contents');
+   const signature=JSON.stringify(headings.map(({heading,level,position})=>[heading,level,position.start.line,position.start.col]));
+   if(signature===previous)return;
+   previous=signature;
+   wrap.empty();
+   if(!headings.length){wrap.createEl('p',{text:writerUi('Nenhum título encontrado.','No headings found.')});return;}
+   const nodes=[],stack=[{level:0,children:nodes}];
+   for(const {heading,level,position:{start}} of headings){
+    const node={level,title:heading,children:[],position:{line:start.line,ch:start.col}};
+    while(stack.length>1&&stack.at(-1).level>=level)stack.pop();
+    stack.at(-1).children.push(node);stack.push(node);
+   }
+   const toolbar=wrap.createDiv({cls:'writer-insta-toc-toolbar'});
+   const list=wrap.createEl(local.numbered?'ol':'ul',{cls:'writer-insta-toc'});
+   draw(nodes,list);
+   const all=()=>list.querySelectorAll('details');
+   toolbar.createEl('button',{text:writerUi('Expandir tudo','Expand all'),attr:{type:'button','aria-label':writerUi('Expandir todos os títulos','Expand all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=true));
+   toolbar.createEl('button',{text:writerUi('Recolher tudo','Collapse all'),attr:{type:'button','aria-label':writerUi('Recolher todos os títulos','Collapse all headings')}}).addEventListener('click',()=>all().forEach(d=>d.open=false));
+  };
+  renderHeadings(metadataCache.getFileCache(file));
+  if(context?.addChild){
+   const {MarkdownRenderChild}=require('obsidian');
+   const child=new MarkdownRenderChild(wrap);
+   child.registerEvent(metadataCache.on('changed',(changed,_data,cache)=>{if(changed===file)renderHeadings(cache);}));
+   context.addChild(child);
+  }
  }
  unicodePath(){
   const base=this.plugin.manifest.dir||this.plugin.app.vault.configDir+'/plugins/'+this.plugin.manifest.id;
@@ -8809,7 +8828,7 @@ function writerBookNavTargets(entries,currentPath){
  const rootPos=roots.findLastIndex(x=>x.i<=current);
  if(rootPos<0)return null;
  const root=roots[rootPos],nextRoot=roots.slice(rootPos+1).find(x=>x.path);
- const prevRoot=roots.slice(0,rootPos).reverse().find(x=>x.path);
+ const prevRootPos=roots.findLastIndex((x,i)=>i<rootPos&&x.path),prevRoot=roots[prevRootPos];
  let parent=null;
  if(level>0)for(let j=current-1;j>=root.i;j--)if(entries[j].indent<level){parent=entries[j];break;}
  const previousMain=level>0?(parent?.path?parent:prevRoot):prevRoot;
@@ -8821,7 +8840,7 @@ function writerBookNavTargets(entries,currentPath){
   // A chapter offers its first direct subchapter independently of the next main chapter.
   nextSub=entries.slice(current+1,limit).find(x=>x.indent===1&&x.path)||null;
   if(prevRoot){
-   const prevEnd=root.i;
+   const prevEnd=roots[prevRootPos+1].i;
    previousSub=entries.slice(prevRoot.i+1,prevEnd).filter(x=>x.indent===1&&x.path).pop()||null;
   }
  }else{
@@ -8831,7 +8850,10 @@ function writerBookNavTargets(entries,currentPath){
   previousSub=inFamily.filter(x=>x.i<current).pop()||null;
   nextSub=inFamily.find(x=>x.i>current)||null;
   // If this note has subchapters, descend when no next sibling exists.
-  if(!nextSub)nextSub=entries.slice(current+1,end).find(x=>x.indent===level+1&&x.path)||null;
+  if(!nextSub){
+   const childEnd=entries.findIndex((x,i)=>i>current&&x.indent<=level);
+   nextSub=entries.slice(current+1,childEnd<0?entries.length:childEnd).find(x=>x.indent===level+1&&x.path)||null;
+  }
  }
  const same=node.path;
  const cleaned=x=>x?.path&&x.path!==same?{path:x.path,title:x.title,indent:x.indent}:null;
@@ -8958,7 +8980,14 @@ function writerBookNavAutoAllowed(plugin,match,currentPath=''){
  return pref==='on'||(pref!=='off'&&(plugin.settings.bookNavigation.auto===true||dynamic));
 }
 function writerBookNavHasSourceBlock(text){
- return /^ {0,3}(?:\x60{3,}|~{3,})longform-nav(?:\s|$)/mi.test(String(text||''));
+ const source=String(text||'');
+ if(!/^ {0,3}(?:\x60{3,}|~{3,})[ \t]*longform-nav(?:[ \t\r]|$)/mi.test(source))return false;
+ const lines=source.split(/\r?\n/);
+ const frontmatterEnd=/^---[ \t]*$/.test(lines[0])?lines.findIndex((line,index)=>index>0&&/^(?:---|\.\.\.)[ \t]*$/.test(line)):-1;
+ for(const {fenceInfo} of writerV8TopLevelMarkdown(lines.slice(frontmatterEnd+1))){
+  if(/^longform-nav(?:[ \t]|$)/i.test(fenceInfo||''))return true;
+ }
+ return false;
 }
 class WriterBookNavWidget extends (typeof WriterV6WidgetType!=='undefined'?WriterV6WidgetType:class{}){
  constructor(plugin,buttons){super();this.plugin=plugin;this.buttons=buttons;}
@@ -11262,40 +11291,45 @@ class WriterV7StableFeatures{
 // v3 module: src/v8/block-edit.js
 /* Safe bounded editing of ONLY the active fenced block. Does not touch unrelated notes. */
 function writerV8FenceCandidate(text,type,info,expected){
- const lines=String(text).split(/\r?\n/);
+ const parts=String(text).split(/(\r\n|\n|\r)/);
  if(!info||!Number.isInteger(info.lineStart)||!Number.isInteger(info.lineEnd)
-  ||info.lineStart<0||info.lineEnd<=info.lineStart||info.lineEnd>=lines.length)return null;
- const norm=s=>String(s).replace(/\r\n/g,'\n').replace(/\n+$/,'');
+  ||info.lineStart<0||info.lineEnd<=info.lineStart||info.lineEnd*2>=parts.length)return null;
+ const norm=s=>String(s).replace(/\r\n?/g,'\n').replace(/\n+$/,'');
  // Section coordinates identify the block. Never search a neighbour with identical text.
- const start=info.lineStart,end=info.lineEnd;
- const open=/^( {0,3})(`{3,}|~{3,})([\w-]+)([ \t].*)?$/.exec(lines[start]);
- if(!open||open[3]!==type)return null;
+ const start=info.lineStart*2,end=info.lineEnd*2;
+ const open=/^( {0,3})(`{3,}|~{3,})([ \t]*)([\w-]+)([ \t].*)?$/.exec(parts[start]);
+ if(!open||open[4]!==type||(open[2][0]==='`'&&open[5]?.includes('`')))return null;
  const close=new RegExp('^ {0,3}'+open[2][0]+'{'+open[2].length+',}[ \\t]*$');
- for(let j=start+1;j<=end;j++){
-  if(!close.test(lines[j]))continue;
-  if(j!==end)return null;
-  const body=lines.slice(start+1,end).map(line=>line.slice(Math.min(open[1].length,/^ */.exec(line)[0].length))).join('\n');
-  if(norm(body)!==norm(expected))return null;
-  return {lines,start,end,body,open,eol:String(text).includes('\r\n')?'\r\n':'\n'};
+ const lines=[];
+ for(let j=start+2;j<end;j+=2){
+  const line=parts[j];
+  if(close.test(line))return null;
+  lines.push(line.slice(Math.min(open[1].length,/^ */.exec(line)[0].length)));
  }
- return null;
+ const body=lines.join('\n');
+ return close.test(parts[end])&&norm(body)===norm(expected)?{parts,start,end,open}:null;
 }
 function writerV8FenceReplace(original,type,ctx,el,expected,updated){
  if(String(updated).length>WRITER_V8_BLOCK_MAX)throw Error(writerUi('Bloco excede o limite de 32 mil caracteres.','Block exceeds the 32K character limit.'));
  const info=typeof ctx.getSectionInfo==='function'?ctx.getSectionInfo(el):null;
  const block=writerV8FenceCandidate(original,type,info,expected);
  if(!block)throw Error(writerUi('O bloco mudou ou não pode ser localizado. Abra a nota no editor.','Block changed or was not found. Open the note in the editor.'));
- const content=String(updated).replace(/\r\n/g,'\n').replace(/\n+$/,''),marker=block.open[2][0];
- let width=block.open[2].length;
+ const content=String(updated).replace(/\r\n?/g,'\n').replace(/\n+$/,'').split('\n'),marker=block.open[2][0];
+ const {parts,start,end,open}=block;
+ let width=open[2].length;
  // A closing fence in edited Markdown must remain inside the outer block.
- for(const line of content.split('\n')){
+ for(const line of content){
   const match=/^ {0,3}(`+|~+)[ \t]*$/.exec(line);
   if(match&&match[1][0]===marker)width=Math.max(width,match[1].length+1);
  }
- const fence=marker.repeat(width),opening=block.open[1]+fence+block.open[3]+(block.open[4]||'');
- const closing=block.lines[block.end].replace(/`{3,}|~{3,}/,fence);
- const out=[...block.lines.slice(0,block.start),opening,...content.split('\n').map(line=>block.open[1]+line),closing,...block.lines.slice(block.end+1)];
- return out.join(block.eol);
+ parts[start]=open[1]+marker.repeat(width)+open[3]+open[4]+(open[5]||'');
+ parts[end]=parts[end].replace(/`{3,}|~{3,}/,fence=>width>fence.length?marker.repeat(width):fence);
+ const eol=parts[start+1];
+ const body=content.map((line,index)=>{
+  const lineEndingIndex=start+3+index*2;
+  return open[1]+line+(lineEndingIndex<end?parts[lineEndingIndex]:eol);
+ }).join('');
+ return parts.slice(0,start+2).join('')+body+parts.slice(end).join('');
 }
 function writerV8CaptureFenced(plugin,ctx){
  // Read at editor-open time, before a neighbouring identical block can replace this one.
@@ -11336,6 +11370,7 @@ function writerV8InlineEditor(plugin,ctx,host,element,type,source,initial,done,r
  host.classList.add('is-editing');
  const input=pre.createEl('textarea',{cls:'writer-v8-inline-textarea',attr:{'aria-label':writerUi('Editar conteúdo Markdown','Edit Markdown content')}});
  input.value=initial;input.rows=Math.max(4,Math.min(16,initial.split('\n').length+2));
+ const initialValue=input.value;
  const bar=pre.createDiv({cls:'writer-v8-inline-actions'});
  const cancel=bar.createEl('button',{text:writerUi('Cancelar','Cancel'),attr:{type:'button'}});
  const save=bar.createEl('button',{text:writerUi('Salvar','Save'),attr:{type:'button'},cls:'mod-cta'});
@@ -11343,78 +11378,116 @@ function writerV8InlineEditor(plugin,ctx,host,element,type,source,initial,done,r
  cancel.addEventListener('click',close);
  const commit=async()=>{
   if(save.disabled)return;
-  save.disabled=true;
+  if(input.value===initialValue){close();return;}
+  save.disabled=cancel.disabled=true;
+  input.readOnly=true;
+  let next;
   try{
-   const next=done(input.value);
+   next=done(input.value);
    if(typeof next!=='string'||next.length>WRITER_V8_BLOCK_MAX)throw Error(writerUi('Texto muito longo.','Text too long.'));
    if(next!==source)await writerV8CommitFenced(plugin,ctx,element,type,source,next,baseline);
-   close();if(element.isConnected){element.empty();rerender(next);}
   }catch(error){
-   save.disabled=false;
+   save.disabled=cancel.disabled=false;
+   input.readOnly=false;
    new Notice(writerUi('Não foi possível salvar: ','Unable to save: ')+String(error.message||error).slice(0,180));
+   return;
   }
+  close();if(element.isConnected){element.empty();rerender(next);}
  };
  save.addEventListener('click',()=>{void commit();});
  input.addEventListener('keydown',event=>{
-  if(event.key==='Escape'){event.preventDefault();close();}
+  if(event.key==='Escape'){event.preventDefault();if(!save.disabled)close();}
   if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();void commit();}
  });
  input.focus();
-}
-function writerV8TabLayout(source){
- const before=String(source||'').split(/^===\s+/m)[0];
- const match=/^(?:layout|position):\s*(top|side|left|right)\s*$/mi.exec(before);
- return match?match[1].toLowerCase():'top';
-}
-function writerV8ReplaceTab(source,index,newText){
- const lines=String(source).replace(/\r\n/g,'\n').split('\n');
- const headers=[];
- lines.forEach((line,i)=>{if(/^===\s+.{1,80}\s*$/.test(line))headers.push(i);});
- if(index<0||index>=headers.length)return null;
- const from=headers[index]+1,to=index+1<headers.length?headers[index+1]:lines.length;
- const trimmed=String(newText).replace(/\r\n/g,'\n').replace(/\n+$/,'');
- return [...lines.slice(0,from),...trimmed.split('\n'),...lines.slice(to)].join('\n').replace(/\n+$/,'');
 }
 
 // v3 module: src/v8/format-blocks.js
 /* v8: local, accessible Markdown presentation blocks. Source notes stay ordinary Markdown. */
 const WRITER_V8_BLOCK_MAX=32000;
 let writerV8TabSerial=0;
-function writerV8SplitTabs(source){
- const lines=String(source||'').slice(0,WRITER_V8_BLOCK_MAX+1).split(/\r?\n/);
- if(String(source||'').length>WRITER_V8_BLOCK_MAX)return [];
- const tabs=[];let current=null;
- for(const line of lines){
-  const marker=/^===\s+(.{1,80})\s*$/.exec(line);
-  if(marker){
-   if(tabs.length>=12)return [];
-   current={title:marker[1].trim(),content:[]};tabs.push(current);
-  }else if(current)current.content.push(line);
+function* writerV8TopLevelMarkdown(lines){
+ let fence='';
+ for(const [index,line] of lines.entries()){
+  const marker=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(line);
+  if(fence){
+   if(marker&&marker[1][0]===fence[0]&&marker[1].length>=fence.length&&!marker[2].trim())fence='';
+   continue;
+  }
+  const opening=marker&&(marker[1][0]==='~'||!marker[2].includes('\x60'));
+  if(opening)fence=marker[1];
+  yield {index,line,fenceInfo:opening?marker[2].trim():null};
  }
- return tabs.map(tab=>({title:tab.title,content:tab.content.join('\n').trim()})).filter(tab=>tab.title);
+}
+function writerV8TrimBlankLines(markdown){
+ const lines=markdown.split('\n');let start=0,end=lines.length;
+ while(start<end&&!lines[start].trim())start++;
+ while(end>start&&!lines[end-1].trim())end--;
+ return lines.slice(start,end).join('\n');
+}
+function writerV8MarkdownSections(source,isSeparator,limit){
+ const lines=String(source||'').split(/\r?\n/),sections=[];let start=0;
+ for(const {index,line} of writerV8TopLevelMarkdown(lines)){
+  if(!isSeparator(line))continue;
+  sections.push(lines.slice(start,index).join('\n'));start=index+1;
+  if(sections.length>=limit-1)break;
+ }
+ sections.push(lines.slice(start).join('\n'));
+ return sections;
+}
+function writerV8TabHeaders(lines){
+ const headers=[];
+ for(const {index,line} of writerV8TopLevelMarkdown(lines)){
+  const title=/^===[ \t]+(.{1,80}?)[ \t]*$/.exec(line)?.[1].trim();
+  if(title)headers.push({index,title});
+ }
+ return headers;
+}
+function writerV8SplitTabs(source){
+ const input=String(source||'');
+ if(input.length>WRITER_V8_BLOCK_MAX)return [];
+ const lines=input.split(/\r?\n/),headers=writerV8TabHeaders(lines);
+ if(headers.length>12)return [];
+ return headers.map(({index,title},i)=>({title,content:writerV8TrimBlankLines(lines.slice(index+1,headers[i+1]?.index).join('\n'))}));
+}
+function writerV8TabLayout(source){
+ const lines=String(source||'').split(/\r?\n/),first=writerV8TabHeaders(lines)[0]?.index;
+ for(const {line} of writerV8TopLevelMarkdown(lines.slice(0,first))){
+  const match=/^(?:layout|position):[ \t]*(top|side|left|right)[ \t]*$/i.exec(line);
+  if(match)return match[1].toLowerCase();
+ }
+ return 'top';
+}
+function writerV8ReplaceTab(source,index,newText){
+ const text=String(source),eol=text.includes('\r\n')?'\r\n':'\n';
+ const lines=text.split(/\r?\n/),headers=writerV8TabHeaders(lines),header=headers[index];
+ if(!header)return null;
+ const content=String(newText).replace(/\r\n/g,'\n').replace(/\n+$/,'');
+ return [...lines.slice(0,header.index+1),...content.split('\n'),...lines.slice(headers[index+1]?.index??lines.length)]
+  .join('\n').replace(/\n+$/,'').replace(/\n/g,eol);
+}
+function writerV8CardHeader(lines){
+ const fields=Object.create(null);let end=0;
+ for(const line of lines){
+  const match=/^(\p{L}[\p{L}\p{M}\p{N}_-]{0,35}):[ \t]*(.*)$/u.exec(line);
+  if(!match)break;
+  fields[match[1].normalize('NFC').toLowerCase()]=match[2].trim().slice(0,500);
+  end++;
+ }
+ return {fields,end};
 }
 function writerV8ReadCard(source){
  const input=String(source||'');
  if(input.length>WRITER_V8_BLOCK_MAX)return null;
- const lines=input.split(/\r?\n/),fields={},body=[];
- let header=true;
- for(const line of lines){
-  if(header&&/^---\s*$/.test(line)){header=false;continue;}
-  const match=header&&/^([a-z][a-z0-9_-]{0,35}):\s*(.*)$/i.exec(line);
-  if(match){fields[match[1].toLowerCase()]=match[2].trim().slice(0,500);continue;}
-  header=false;body.push(line);
- }
- return {fields,body:body.join('\n').trim()};
+ const lines=input.split(/\r?\n/),{fields,end}=writerV8CardHeader(lines);
+ const start=/^---[ \t]*$/.test(lines[end]||'')?end+1:end;
+ return {fields,body:writerV8TrimBlankLines(lines.slice(start).join('\n'))};
 }
 function writerV8ReplaceCardBody(source,value){
- const original=String(source||''),lines=original.split(/\r?\n/),header=[];
- for(const line of lines){
-  if(/^---\s*$/.test(line))break;
-  if(!/^([a-z][a-z0-9_-]{0,35}):\s*(.*)$/i.test(line))break;
-  header.push(line);
- }
+ const original=String(source||''),lines=original.split(/\r?\n/);
+ const {end}=writerV8CardHeader(lines);
  const eol=original.includes('\r\n')?'\r\n':'\n';
- return [...header,'---',String(value).replace(/\r\n/g,'\n')].join('\n').replace(/\n/g,eol);
+ return [...lines.slice(0,end),'---',String(value).replace(/\r\n/g,'\n')].join('\n').replace(/\n/g,eol);
 }
 function writerV8ImagePath(app,raw,sourcePath){
  let link=String(raw||'').trim();
@@ -11428,15 +11501,23 @@ function writerV8ImagePath(app,raw,sourcePath){
 }
 async function writerV8Markdown(plugin,ctx,element,value){
  if(!value)return;
- await MarkdownRenderer.render(plugin.app,value,element,ctx.sourcePath||'',plugin);
+ let component=plugin;
+ if(typeof ctx.addChild==='function'){
+  const Child=require('obsidian').MarkdownRenderChild;
+  if(typeof Child==='function'){
+   component=new Child(element);
+   ctx.addChild(component);
+  }
+ }
+ await MarkdownRenderer.render(plugin.app,value,element,ctx.sourcePath||'',component);
 }
-function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
+function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs',activeIndex=0,focus=false){
  const tabs=writerV8SplitTabs(source);
- const layout=writerV8TabLayout(source);
+ const layout=tabs.length?writerV8TabLayout(source):'top';
  const root=element.createDiv({cls:'writer-v8-block writer-v8-tabs'+(layout==='top'?'':' writer-v8-tabs-side')+(layout==='right'?' writer-v8-tabs-right':'')});
- const rerender=next=>writerV8RenderTabs(plugin,next,element,ctx,fenceType);
+ const rerender=(next,index)=>writerV8RenderTabs(plugin,next,element,ctx,fenceType,index,true);
  if(!tabs.length){root.createEl('p',{text:writerUi('Use === Título para iniciar cada aba (máximo 12).','Use === Title to start each tab (12 maximum).')});return;}
- const nav=root.createDiv({cls:'writer-v8-tab-list',attr:{role:'tablist','aria-label':writerUi('Abas do conteúdo','Content tabs')}});
+ const nav=root.createDiv({cls:'writer-v8-tab-list',attr:{role:'tablist','aria-orientation':layout==='top'?'horizontal':'vertical','aria-label':writerUi('Abas do conteúdo','Content tabs')}});
  const pane=root.createDiv({cls:'writer-v8-tab-panels'});
  const id='writer-v8-tab-'+(++writerV8TabSerial);
  const buttons=[],panels=[];
@@ -11459,10 +11540,12 @@ function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
     if(event?.target?.closest?.('a,button,input,textarea,select'))return;
     if(target.querySelector('.writer-v8-inline-editor'))return;
     writerV8InlineEditor(plugin,ctx,target,element,fenceType,source,tabs[index].content,
-     value=>writerV8ReplaceTab(source,index,value),rerender);
+     value=>writerV8ReplaceTab(source,index,value),next=>rerender(next,index));
    };
    content.addEventListener('click',edit);
-   content.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.ctrlKey&&!event.metaKey){event.preventDefault();edit();}});
+   content.addEventListener('keydown',event=>{
+    if(event.target===content&&event.key==='Enter'&&!event.ctrlKey&&!event.metaKey){event.preventDefault();edit(event);}
+   });
   }
  };
  tabs.forEach((tab,i)=>{
@@ -11471,7 +11554,8 @@ function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
   buttons.push(button);panels.push(panel);
   button.addEventListener('click',()=>select(i));
   button.addEventListener('keydown',event=>{
-   const keys={ArrowRight:1,ArrowLeft:-1,ArrowUp:-1,ArrowDown:1,Home:-i,End:tabs.length-1-i};
+   const keys=layout==='top'?{ArrowRight:1,ArrowLeft:-1}:{ArrowUp:-1,ArrowDown:1};
+   keys.Home=-i;keys.End=tabs.length-1-i;
    if(!Object.prototype.hasOwnProperty.call(keys,event.key))return;
    event.preventDefault();
    const next=(i+keys[event.key]+tabs.length)%tabs.length;
@@ -11487,20 +11571,28 @@ function writerV8RenderTabs(plugin,source,element,ctx,fenceType='writer-tabs'){
   input.maxLength=80;input.focus();
   const add=async()=>{
    const title=input.value.trim().replace(/[\r\n]/g,' ');
-   if(!title)return;
-   const next=source.replace(/\n+$/,'')+'\n=== '+title+'\n';
+   if(!title||input.disabled)return;
+   input.disabled=true;
+   const eol=source.includes('\r\n')?'\r\n':'\n';
+   const next=source.replace(/(?:\r?\n)+$/,'')+eol+'=== '+title+eol;
    try{
+    if(next.length<=WRITER_V8_BLOCK_MAX&&writerV8SplitTabs(next).length!==tabs.length+1)
+     throw new Error(writerUi('Feche a cerca Markdown da última aba antes de adicionar outra.','Close the last tab’s Markdown fence before adding another tab.'));
     await writerV8CommitFenced(plugin,ctx,element,fenceType,source,next,baseline);
-    if(element.isConnected){element.empty();rerender(next);}
-   }catch(error){new Notice(writerUi('Erro ao criar aba: ','Unable to add tab: ')+String(error.message||error));}
+    if(element.isConnected){element.empty();rerender(next,tabs.length);}
+   }catch(error){
+    input.disabled=false;input.focus();
+    new Notice(writerUi('Erro ao criar aba: ','Unable to add tab: ')+String(error.message||error));
+   }
   };
   input.addEventListener('keydown',event=>{
    if(event.key==='Enter'){event.preventDefault();void add();}
-   if(event.key==='Escape'){event.preventDefault();input.remove();}
+   if(event.key==='Escape'&&!input.disabled){event.preventDefault();input.remove();plus.focus();}
   });
   input.addEventListener('blur',()=>{if(!input.value.trim())input.remove();});
  });
- select(0);
+ const index=Math.min(activeIndex,tabs.length-1);
+ select(index);if(focus)buttons[index].focus();
 }
 function writerV8RenderCard(plugin,source,element,ctx,kind,fenceType=kind==='avatar'?'writer-avatar':'writer-wiki'){
  const parsed=writerV8ReadCard(source);
@@ -11512,7 +11604,7 @@ function writerV8RenderCard(plugin,source,element,ctx,kind,fenceType=kind==='ava
  const heading=root.createDiv({cls:'writer-v8-card-heading'});
  const url=writerV8ImagePath(plugin.app,fields.image||fields.avatar||fields.cover,ctx.sourcePath);
  if(url)heading.createEl('img',{cls:'writer-v8-card-image',attr:{src:url,alt:title||writerUi('Ilustração','Illustration'),loading:'lazy'}});
- else if(kind==='avatar')heading.createSpan({cls:'writer-v8-avatar-placeholder',text:(title||'?').slice(0,1).toUpperCase()});
+ else if(kind==='avatar')heading.createSpan({cls:'writer-v8-avatar-placeholder',text:[...(title||'?')][0].toUpperCase(),attr:{'aria-hidden':'true'}});
  const labels=heading.createDiv({cls:'writer-v8-card-labels'});
  if(title)labels.createEl('strong',{text:title});
  const subtitle=fields.subtitle||fields.role||fields.type||fields.tipo||'';
@@ -11536,7 +11628,9 @@ function writerV8RenderCard(plugin,source,element,ctx,kind,fenceType=kind==='ava
    next=>writerV8RenderCard(plugin,next,element,ctx,kind,fenceType));
  };
  content.addEventListener('click',edit);
- content.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.ctrlKey&&!event.metaKey){event.preventDefault();edit();}});
+ content.addEventListener('keydown',event=>{
+  if(event.target===content&&event.key==='Enter'&&!event.ctrlKey&&!event.metaKey){event.preventDefault();edit(event);}
+ });
 }
 function writerV8RegisterBlocks(plugin,enabled){
  if(typeof plugin.registerMarkdownCodeBlockProcessor!=='function')return;
@@ -11586,6 +11680,10 @@ function writerV131WritingAnalysis(input){
 function writerV131BeatLines(text){
  return String(text||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean).slice(0,80).map((line,i)=>{
   line=line.replace(/^[-*]\s+/,'');let separator=-1,wiki=0,code=0;
+  const linkLabels=new Map();
+  for(const match of line.matchAll(/\[(?:\\.|[^\[\]\\])*\](?=\(|\[)/g)){
+   linkLabels.set(match.index,match.index+match[0].length);
+  }
   for(let at=0;at<line.length;at++){
    if(line[at]==='\\'){at++;continue;}
    if(line[at]==='`'){
@@ -11600,6 +11698,7 @@ function writerV131BeatLines(text){
    if(code)continue;
    if(line.slice(at,at+2)==='[['){wiki++;at++;continue;}
    if(line.slice(at,at+2)===']]'&&wiki){wiki--;at++;continue;}
+   if(!wiki&&linkLabels.has(at)){at=linkLabels.get(at)-1;continue;}
    if(!wiki&&line[at]==='|'&&/\s/.test(line[at-1]||'')&&/\s/.test(line[at+1]||'')){separator=at;break;}
   }
   return {title:separator>=0?line.slice(0,separator).trim().slice(0,100):String(i+1),
@@ -11691,7 +11790,7 @@ function writerV8OverviewConfig(source){
   }
   if(key==='sort'&&WRITER_V8_OVERVIEW_SORTS.includes(value))cfg.sort=value;
   if(key==='type'&&value==='folder_brief_live')cfg.live=true;
-  if(key==='folder'&&value&&!value.includes('..')&&!value.startsWith('/')&&value.length<400)cfg.folder=value;
+  if(key==='folder'&&value&&(value==='/'||(!value.startsWith('/')&&!value.split('/').includes('..')))&&value.length<400)cfg.folder=value;
   if(['subfolders','noteOnly','showBrief','showPath','controls','folderFirst'].includes(key)&&/^(true|false)$/.test(value))
    cfg[key]=value==='true';
   if(key==='depth')cfg.depth=Math.max(0,Math.min(8,Number(value)||0));
@@ -11701,11 +11800,11 @@ function writerV8OverviewConfig(source){
  return cfg;
 }
 function writerV8OverviewRoot(app,sourcePath,config){
- const file=app.vault.getAbstractFileByPath(sourcePath||'');
  if(config.folder){
-  const explicit=app.vault.getAbstractFileByPath(config.folder.replace(/\/$/,''));
+  const explicit=config.folder==='/'?app.vault.getRoot():app.vault.getAbstractFileByPath(config.folder.replace(/\/$/,''));
   return explicit instanceof TFolder?explicit:null;
  }
+ const file=app.vault.getAbstractFileByPath(sourcePath||'');
  if(file instanceof TFolder)return file;
  if(!(file instanceof TFile))return null;
  const outside=app.vault.getAbstractFileByPath(file.path.replace(/\.md$/i,''));
@@ -11735,9 +11834,12 @@ function writerV8OverviewSortEntries(entries,cfg){
  };
  return entries.sort(comparison);
 }
-function writerV8OverviewEntries(app,root,cfg){
+function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
  if(!(root instanceof TFolder))return [];
  const entries=[],seen=new Set();
+ const normalized=query.trim().normalize('NFC').toLocaleLowerCase();
+ const matches=child=>!normalized||[child.basename||child.name,child.path].some(value=>
+  value.normalize('NFC').toLocaleLowerCase().includes(normalized));
  const scan=(folder,depth)=>{
   if(depth>cfg.depth||entries.length>=cfg.limit)return;
   const children=(folder.children||[]).filter(child=>child instanceof TFolder||
@@ -11749,11 +11851,12 @@ function writerV8OverviewEntries(app,root,cfg){
    if(entries.length>=cfg.limit)break;
    const child=item.file;
    if(item.kind==='folder'){
-    if(!cfg.noteOnly)entries.push({...item,depth});
-    if(cfg.subfolders&&depth<cfg.depth)scan(child,depth+1);
+    if(!cfg.noteOnly&&matches(child))entries.push({...item,depth});
+    if(cfg.subfolders&&depth<cfg.depth&&(normalized||!collapsed.has(child.path)))scan(child,depth+1);
    }else{
+    if(!matches(child)||seen.has(child.path))continue;
     const folderNote=typeof writerV7FolderNote==='function'?writerV7FolderNote(app,child.parent):null;
-    if(folderNote?.path===child.path||seen.has(child.path))continue;
+    if(folderNote?.path===child.path)continue;
     seen.add(child.path);
     entries.push({...item,depth});
    }
@@ -11823,68 +11926,51 @@ function writerV8OverviewStyleOptions(){
 }
 function writerV8RegisterFolderOverview(plugin){
  if(typeof plugin.registerMarkdownCodeBlockProcessor!=='function')return;
- const render=async(source,element,ctx)=>{
+ const render=(source,element,ctx)=>{
   const cfg=writerV8OverviewConfig(source),root=writerV8OverviewRoot(plugin.app,ctx.sourcePath,cfg);
   const host=element.createDiv({cls:'writer-v8-overview'});
   if(!root){host.createEl('p',{text:writerUi('Pasta não encontrada.','Folder not found.')});return;}
   let current=root,revision=0,style=cfg.style,sort=cfg.sort,query='';
   const collapsed=new Set();
-  const draw=async()=>{
-   const seq=++revision;
-   host.empty();
-   const header=host.createDiv({cls:'writer-v8-overview-header'});
-   if(current.path!==root.path){
-    const back=header.createEl('button',{text:'← '+writerUi('Voltar','Back'),attr:{type:'button'}});
-    back.addEventListener('click',event=>{
-     event.preventDefault();event.stopPropagation();
-     current=current.parent instanceof TFolder?current.parent:root;collapsed.clear();void draw();
-    });
-   }
-   header.createEl('strong',{text:current.name||writerUi('Cofre','Vault')});
-   if(cfg.controls){
-    const toolbar=host.createDiv({cls:'writer-v8-overview-controls'});
-    const select=(options,value,label,onChange)=>{
-     const field=toolbar.createEl('select',{attr:{'aria-label':label,title:label}});
-     for(const [key,pt,en] of options){
-      const opt=field.createEl('option',{text:writerUi(pt,en)});opt.value=key;
-     }
-     field.value=value;
-     field.addEventListener('change',()=>onChange(field.value));
-     return field;
-    };
-    select(writerV8OverviewStyleOptions(),style,writerUi('Modo de visualização','View mode'),
-     value=>{style=value;collapsed.clear();void draw();});
-    select(writerV8OverviewSortOptions(),sort,writerUi('Ordenação','Sort order'),
-     value=>{sort=value;void draw();});
-    const search=toolbar.createEl('input',{attr:{
-     type:'search',placeholder:writerUi('Filtrar nomes…','Filter names…'),
-     'aria-label':writerUi('Pesquisar no Overview','Search overview')
-    }});
-    search.value=query;
-    search.addEventListener('input',()=>{
-     query=search.value;const position=search.selectionStart;
-     void draw().then(()=>{
-      const active=host.querySelector('.writer-v8-overview-controls input[type="search"]');
-      if(active){active.focus();if(position!==null)try{active.setSelectionRange(position,position);}catch(_){}}
-     });
-    });
-   }
-   const config={...cfg,sort},entries=writerV8OverviewEntries(plugin.app,current,config);
-   const normalized=query.toLocaleLowerCase().trim();
-   const filtered=entries.filter(entry=>{
-    if(normalized&&!String(entry.file.basename||entry.file.name||'').toLocaleLowerCase().includes(normalized)
-       &&!entry.file.path.toLocaleLowerCase().includes(normalized))return false;
-    if(!normalized&&style==='list'&&cfg.subfolders)
-     for(const path of collapsed)if(entry.file.path.startsWith(path+'/'))return false;
-    return true;
-   });
-   const content=host.createDiv({cls:'writer-v8-overview-items is-'+style});
+  const header=host.createDiv({cls:'writer-v8-overview-header'});
+  const back=header.createEl('button',{text:'← '+writerUi('Voltar','Back'),attr:{type:'button'}});
+  const heading=header.createEl('strong');
+  back.addEventListener('click',event=>{
+   event.preventDefault();event.stopPropagation();
+   current=current.parent instanceof TFolder?current.parent:root;collapsed.clear();draw();
+  });
+  if(cfg.controls){
+   const toolbar=host.createDiv({cls:'writer-v8-overview-controls'});
+   const select=(options,value,label,onChange)=>{
+    const field=toolbar.createEl('select',{attr:{'aria-label':label,title:label}});
+    for(const [key,pt,en] of options){
+     const opt=field.createEl('option',{text:writerUi(pt,en)});opt.value=key;
+    }
+    field.value=value;
+    field.addEventListener('change',()=>onChange(field.value));
+   };
+   select(writerV8OverviewStyleOptions(),style,writerUi('Modo de visualização','View mode'),
+    value=>{style=value;collapsed.clear();draw();});
+   select(writerV8OverviewSortOptions(),sort,writerUi('Ordenação','Sort order'),value=>{sort=value;draw();});
+   const search=toolbar.createEl('input',{attr:{
+    type:'search',placeholder:writerUi('Filtrar nomes…','Filter names…'),
+    'aria-label':writerUi('Pesquisar no Overview','Search overview')
+   }});
+   search.addEventListener('input',()=>{query=search.value;draw();});
+  }
+  const content=host.createDiv({cls:'writer-v8-overview-items'});
+  const draw=focusPath=>{
+   const seq=++revision,previews=[];
+   back.hidden=current===root;
+   heading.setText(current.name||writerUi('Cofre','Vault'));
+   content.empty();content.className='writer-v8-overview-items is-'+style;
+   const config={...cfg,sort};
+   const filtered=writerV8OverviewEntries(plugin.app,current,config,query,style==='list'?collapsed:undefined);
    if(!filtered.length){
     content.createEl('p',{text:writerUi('Nenhuma nota ou subpasta encontrada.','No notes or subfolders found.')});return;
    }
    const obs=typeof require==='function'?require('obsidian'):null;
-   const createTile=async(entry,parent=content)=>{
-    if(seq!==revision)return;
+   const createTile=(entry,parent=content)=>{
     const path=entry.file.path,name=entry.file.basename||entry.file.name;
     const row=parent.createDiv({cls:'writer-v8-overview-entry'+(entry.depth?' is-nested':'')});
     if(style==='list'&&entry.depth>0)row.style.setProperty('--writer-v8-overview-depth',String(Math.min(entry.depth,8)));
@@ -11903,15 +11989,11 @@ function writerV8RegisterFolderOverview(plugin){
     if(cfg.showBrief&&style!=='compact'&&style!=='grid'){
      const note=entry.kind==='folder'?
       (typeof writerV7FolderNote==='function'?writerV7FolderNote(plugin.app,entry.file):null):entry.file;
-     if(note instanceof TFile){
-      const brief=await writerV8OverviewBrief(plugin.app,note,cfg.briefMax);
-      if(seq!==revision)return;
-      if(brief)tile.createSpan({cls:'writer-v8-overview-brief',text:brief});
-     }
+     if(note instanceof TFile)previews.push({note,tile});
     }
     tile.addEventListener('click',event=>{
      event.preventDefault();event.stopPropagation();
-     if(entry.kind==='folder'){current=entry.file;collapsed.clear();void draw();}
+     if(entry.kind==='folder'){current=entry.file;collapsed.clear();draw();}
      else void plugin.app.workspace.getLeaf(false).openFile(entry.file);
     });
     if(style==='list'&&entry.kind==='folder'&&cfg.subfolders&&entry.depth<cfg.depth){
@@ -11925,8 +12007,9 @@ function writerV8RegisterFolderOverview(plugin){
      toggle.addEventListener('click',event=>{
       event.preventDefault();event.stopPropagation();
       if(collapsed.has(path))collapsed.delete(path);else collapsed.add(path);
-      void draw();
+      draw(path);
      });
+     if(path===focusPath)toggle.focus();
     }
     return row;
    };
@@ -11935,7 +12018,7 @@ function writerV8RegisterFolderOverview(plugin){
      const column=content.createDiv({cls:'writer-v8-overview-column'});
      const group=filtered.filter(item=>item.kind===kind);
      column.createEl('h4',{text:(kind==='folder'?writerUi('Pastas','Folders'):writerUi('Notas','Notes'))+' ('+group.length+')'});
-     for(const entry of group)await createTile(entry,column);
+     for(const entry of group)createTile(entry,column);
     }
    }else{
     if(style==='table'){
@@ -11943,22 +12026,30 @@ function writerV8RegisterFolderOverview(plugin){
      for(const [pt,en] of [['Nome','Name'],['Tipo','Type'],['Modificado','Modified']])
       row.createSpan({text:writerUi(pt,en)});
     }
-    for(const entry of filtered)await createTile(entry);
+    for(const entry of filtered)createTile(entry);
    }
+   void (async()=>{
+    for(const {note,tile} of previews){
+     if(seq!==revision)return;
+     const brief=await writerV8OverviewBrief(plugin.app,note,cfg.briefMax);
+     if(seq===revision&&brief)tile.createSpan({cls:'writer-v8-overview-brief',text:brief});
+    }
+   })();
   };
-  await draw();
+  draw();
   const Child=require('obsidian').MarkdownRenderChild;
   if(typeof Child==='function'&&typeof ctx.addChild==='function'){
    const observer=new Child(host);let timer;
    observer.onload=()=>{
-    const update=file=>{
-     if(file?.path&&(file.path===current.path||file.path.startsWith(current.path+'/'))){
-      clearTimeout(timer);timer=setTimeout(()=>{if(host.isConnected)void draw();},260);
+    const matches=path=>path&&(current.path==='/'||path===current.path||path.startsWith(current.path+'/')||current.path.startsWith(path+'/'));
+    const update=(file,oldPath)=>{
+     if(matches(file?.path)||matches(oldPath)){
+      clearTimeout(timer);timer=setTimeout(()=>{if(host.isConnected)draw();},260);
      }
     };
     for(const name of ['create','delete','rename','modify'])observer.registerEvent(plugin.app.vault.on(name,update));
    };
-   observer.onunload=()=>clearTimeout(timer);
+   observer.onunload=()=>{clearTimeout(timer);revision++;};
    ctx.addChild(observer);
   }
  };
@@ -12151,12 +12242,12 @@ class WriterV8InlineAI{
 function writerV8SplitPost(source){
  const text=String(source||'');
  if(text.length>WRITER_V8_BLOCK_MAX)return null;
- const chunks=text.replace(/\r\n/g,'\n').split(/^===\s+reply\s*$/gmi);
+ const chunks=writerV8MarkdownSections(text,line=>/^===[ \t]+reply[ \t]*$/i.test(line),42);
  if(chunks.length>41)return null;
  const main=writerV8ReadCard(chunks[0]);
  if(!main)return null;
  const replies=chunks.slice(1).map(chunk=>{
-  const data=writerV8ReadCard(chunk.replace(/^\n+/,''));
+  const data=writerV8ReadCard(writerV8TrimBlankLines(chunk));
   if(!data)return null;
   const value=Number(data.fields.depth??data.fields.level??1);
   return {...data,depth:Number.isFinite(value)?Math.max(1,Math.min(5,Math.floor(value))):1};
@@ -12168,7 +12259,7 @@ function writerV8PostCount(value){
  return Number.isFinite(number)&&number>=0?Math.min(Math.floor(number),999999999):0;
 }
 function writerV8PostIcon(host,name,fallback){
- const span=host.createSpan({cls:'writer-v8-social-icon'});
+ const span=host.createSpan({cls:'writer-v8-social-icon',attr:{'aria-hidden':'true'}});
  try{const setIcon=require('obsidian').setIcon;if(typeof setIcon==='function'){setIcon(span,name);return;}}catch(_){}
  span.setText(fallback);
 }
@@ -12183,20 +12274,23 @@ function writerV8RenderPost(plugin,source,element,ctx){
   const author=String(fields.author||fields.name||fields.nome||writerUi('Personagem','Character')).slice(0,100);
   const url=writerV8ImagePath(plugin.app,fields.avatar||fields.image,ctx.sourcePath);
   if(url)heading.createEl('img',{cls:'writer-v8-social-avatar',attr:{src:url,alt:author,loading:'lazy'}});
-  else heading.createSpan({cls:'writer-v8-social-placeholder',text:author.slice(0,1).toUpperCase()});
+  else heading.createSpan({cls:'writer-v8-social-placeholder',text:[...author][0].toUpperCase(),attr:{'aria-hidden':'true'}});
   const labels=heading.createDiv({cls:'writer-v8-social-labels'});
   labels.createEl('strong',{text:author});
   const handle=String(fields.handle||fields.username||'').slice(0,80);
   const date=String(fields.date||fields.time||'').slice(0,80);
   if(handle||date)labels.createEl('span',{text:[handle,date].filter(Boolean).join(' · '),cls:'writer-v8-social-subtitle'});
   const content=post.createDiv({cls:'writer-v8-social-body'});
-  if(item.body)void writerV8Markdown(plugin,ctx,content,item.body).catch(error=>console.warn('[Basic AI] social card:',error));
+  if(item.body)void writerV8Markdown(plugin,ctx,content,item.body).catch(error=>{
+   console.warn('[Basic AI] social card:',error);content.setText(item.body);
+  });
   const metrics=post.createDiv({cls:'writer-v8-social-metrics'});
   const counts=[['message-circle',replyIndex<0?(fields.comments===undefined?data.replies.length:writerV8PostCount(fields.comments)):writerV8PostCount(fields.comments),'💬'],
     ['flame',writerV8PostCount(fields.likes||fields.flames),'🔥'],
     ['eye',writerV8PostCount(fields.views),'◉']];
   for(const [icon,value,fallback] of counts){
-   const stat=metrics.createSpan({cls:'writer-v8-social-stat',attr:{title:icon==='flame'?writerUi('Curtidas fictícias','Fictional reactions'):icon==='eye'?writerUi('Visualizações fictícias','Fictional views'):writerUi('Comentários fictícios','Fictional replies')}});
+   const label=icon==='flame'?writerUi('Curtidas fictícias','Fictional reactions'):icon==='eye'?writerUi('Visualizações fictícias','Fictional views'):writerUi('Comentários fictícios','Fictional replies');
+   const stat=metrics.createSpan({cls:'writer-v8-social-stat',attr:{role:'img','aria-label':label+': '+value,title:label}});
    writerV8PostIcon(stat,icon,fallback);stat.createSpan({text:String(value)});
   }
  };
@@ -12236,8 +12330,8 @@ function writerV8MediaConfig(source){
   if(key==='layout'&&['masonry','grid','ratio'].includes(value))conf.layout=value;
   if(key==='sort'&&['name-asc','name-desc','mtime-desc','mtime-asc','size-desc','size-asc'].includes(value))conf.sort=value;
   if(key==='subfolders')conf.subfolders=value==='true';
-  if(key==='limit')conf.limit=Math.max(1,Math.min(500,Number(value)||90));
-  if(key==='pagesize'||key==='pageSize')conf.pageSize=Math.max(8,Math.min(60,Number(value)||24));
+  if(key==='limit')conf.limit=Math.max(1,Math.min(500,Math.trunc(Number(value))||90));
+  if(key==='pagesize')conf.pageSize=Math.max(8,Math.min(60,Math.trunc(Number(value))||24));
  }
  return conf;
 }
@@ -12248,10 +12342,9 @@ function writerV8MediaKind(file){
 function writerV8MediaFiles(app,folder,config){
  if(!(folder instanceof TFolder))return [];
  const files=[],stack=[{node:folder,depth:0}];
- while(stack.length&&files.length<config.limit){
+ while(stack.length){
   const {node,depth}=stack.pop();
   for(const child of node.children||[]){
-   if(files.length>=config.limit)break;
    if(child instanceof TFolder){
     if(config.subfolders&&depth<20)stack.push({node:child,depth:depth+1});
    }else if(child instanceof TFile){
@@ -12260,17 +12353,18 @@ function writerV8MediaFiles(app,folder,config){
    }
   }
  }
- const byName=(a,b)=>String(a.file.basename||a.file.name).localeCompare(String(b.file.basename||b.file.name),undefined,{sensitivity:'base'});
- const byTime=(a,b)=>(a.file.stat?.mtime||0)-(b.file.stat?.mtime||0)||byName(a,b);
- const bySize=(a,b)=>(a.file.stat?.size||0)-(b.file.stat?.size||0)||byName(a,b);
- files.sort(config.sort.startsWith('mtime')?byTime:config.sort.startsWith('size')?bySize:byName);
- if(config.sort.endsWith('desc'))files.reverse();
- return files;
+ const collator=new Intl.Collator(undefined,{numeric:true,sensitivity:'base'});
+ const byName=(a,b)=>collator.compare(a.file.basename||a.file.name,b.file.basename||b.file.name)||
+  collator.compare(a.file.path,b.file.path);
+ const [field,order]=config.sort.split('-'),direction=order==='desc'?-1:1;
+ files.sort((a,b)=>field==='name'?direction*byName(a,b):
+  direction*((a.file.stat?.[field]||0)-(b.file.stat?.[field]||0))||byName(a,b));
+ return files.slice(0,config.limit);
 }
 function writerV8MediaRoot(plugin,sourcePath,config){
  const app=plugin.app;
  if(config.path){
-  const folder=app.vault.getAbstractFileByPath(config.path.replace(/\/$/,''));
+  const folder=config.path==='/'?app.vault.getRoot():app.vault.getAbstractFileByPath(config.path.replace(/\/$/,''));
   return folder instanceof TFolder?folder:null;
  }
  const current=app.vault.getAbstractFileByPath(sourcePath||'');
@@ -12286,8 +12380,9 @@ function writerV8MediaOpen(plugin,items,index){
    return;
   }
  const modal=new Modal(plugin.app);
+ const previews=items.filter(entry=>['image','video','audio'].includes(entry.kind));
  const draw=i=>{
-  const current=items[i];
+  const current=previews[i];
   if(!current)return;
   modal.contentEl.empty();
   const shell=modal.contentEl.createDiv({cls:'writer-v8-media-lightbox'});
@@ -12299,21 +12394,19 @@ function writerV8MediaOpen(plugin,items,index){
   if(current.kind==='image')shell.createEl('img',{cls:'writer-v8-media-preview',attr:{src:url,alt:current.file.basename||current.file.name}});
   if(current.kind==='video')shell.createEl('video',{cls:'writer-v8-media-preview',attr:{src:url,controls:'',preload:'metadata',playsinline:''}});
   if(current.kind==='audio')shell.createEl('audio',{cls:'writer-v8-media-audio',attr:{src:url,controls:'',preload:'metadata'}});
-  const available=items.filter(x=>x.kind!=='pdf');
-  const idx=available.findIndex(x=>x.file.path===current.file.path);
-  prev.disabled=idx<=0;next.disabled=idx>=available.length-1;
-  prev.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(items.indexOf(available[idx-1]));});
-  next.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(items.indexOf(available[idx+1]));});
+  prev.disabled=i===0;next.disabled=i===previews.length-1;
+  prev.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(i-1);});
+  next.addEventListener('click',()=>{shell.querySelector('video, audio')?.pause();draw(i+1);});
   const native=shell.createEl('button',{text:writerUi('Abrir arquivo no Obsidian','Open file in Obsidian')});
   native.addEventListener('click',()=>{modal.close();void plugin.app.workspace.getLeaf(false).openFile(current.file);});
  };
- modal.onOpen=()=>{draw(index);};
+ modal.onOpen=()=>{draw(previews.indexOf(item));};
  modal.onClose=()=>{modal.contentEl.querySelectorAll('video, audio').forEach(media=>media.pause());};
  modal.open();
 }
 function writerV101MediaExcerpt(plugin,file,container){
  if(!file||Number(file.stat?.size||0)>200000)return;
- if(!['txt','md','csv','tsv','json','jsonc','yaml','yml','xml','html','css','toml'].includes(file.extension))return;
+ if(!['txt','md','csv','tsv','json','jsonc','yaml','yml','xml','html','css','toml'].includes(file.extension.toLowerCase()))return;
  const preview=container.createDiv({cls:'writer-v101-media-excerpt'});
  const show=()=>{
   void plugin.app.vault.cachedRead(file).then(text=>{
@@ -12322,8 +12415,8 @@ function writerV101MediaExcerpt(plugin,file,container){
  };
  if(typeof IntersectionObserver==='function'){
   const io=new IntersectionObserver(entries=>{if(!entries.some(e=>e.isIntersecting))return;io.disconnect();show();},{rootMargin:'160px'});
-  io.observe(preview);const cleanup=()=>io.disconnect();
-  if(typeof plugin.register==='function')plugin.register(cleanup);
+  io.observe(preview);
+  return io;
  }else show();
 }
 function writerV8RenderMediaGallery(plugin,source,element,ctx){
@@ -12331,7 +12424,7 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const root=writerV8MediaRoot(plugin,ctx.sourcePath,cfg);
  const host=element.createDiv({cls:'writer-v8-block writer-v8-media-gallery'});
  if(!root){host.createEl('p',{text:writerUi('Pasta da galeria não encontrada.','Gallery folder not found.')});return;}
- const all=writerV8MediaFiles(plugin.app,root,cfg);
+ const all=writerV8MediaFiles(plugin.app,root,{...cfg,limit:Infinity});
  const header=host.createDiv({cls:'writer-v8-media-header'});
  header.createEl('strong',{text:root.name||writerUi('Galeria','Gallery')});
  const count=header.createSpan({cls:'writer-v8-media-count',text:String(all.length)});
@@ -12343,12 +12436,18 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
  const selectedPaths=new Set();let multi=false;
  const grid=host.createDiv({cls:'writer-v8-media-grid writer-v8-media-'+cfg.layout});
  const pages=host.createDiv({cls:'writer-v101-media-pages'});
+ const excerpts=new Set();
+ const clearExcerpts=()=>{for(const observer of excerpts)observer.disconnect();excerpts.clear();};
+ const Child=require('obsidian').MarkdownRenderChild;
+ if(typeof Child==='function'&&typeof ctx.addChild==='function'){
+  const observer=new Child(host);observer.onunload=clearExcerpts;ctx.addChild(observer);
+ }
  let selected=cfg.type,page=0;
  const buttons=[];
  const render=()=>{
-  grid.empty();pages.empty();
-  const query=search.value.trim().toLocaleLowerCase();
-  const matching=all.filter(x=>(selected==='all'||x.kind===selected)&&(!query||x.file.path.toLocaleLowerCase().includes(query)));
+  clearExcerpts();grid.empty();pages.empty();
+  const query=search.value.trim().normalize('NFC').toLocaleLowerCase();
+  const matching=all.filter(x=>(selected==='all'||x.kind===selected)&&(!query||x.file.path.normalize('NFC').toLocaleLowerCase().includes(query))).slice(0,cfg.limit);
   count.setText(matching.length+' / '+all.length);
   buttons.forEach(({type,button})=>{button.classList.toggle('is-active',type===selected);button.setAttribute('aria-pressed',String(type===selected));});
   toggle.setAttribute('aria-pressed',String(multi));copy.disabled=!selectedPaths.size;
@@ -12357,8 +12456,6 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
   const visible=matching.slice(page*size,page*size+size);
   for(const item of visible){
    const tile=grid.createEl('button',{cls:'writer-v8-media-item',attr:{type:'button',title:item.file.path}});
-   tile.classList.toggle('is-selected',selectedPaths.has(item.file.path));
-   tile.setAttribute('aria-pressed',String(multi&&selectedPaths.has(item.file.path)));
    if(item.kind==='image'){
     tile.createEl('img',{attr:{src:plugin.app.vault.getResourcePath(item.file),alt:item.file.basename||item.file.name,loading:'lazy',decoding:'async'}});
    }else if(item.kind==='video'){
@@ -12374,15 +12471,24 @@ function writerV8RenderMediaGallery(plugin,source,element,ctx){
     const icon=item.kind==='audio'?'music':item.kind==='document'?'file-code-2':'file-text';
     if(typeof obs?.setIcon==='function')obs.setIcon(glyph,icon);
     else glyph.textContent=item.kind.toUpperCase();
-    if(item.kind==='document')writerV101MediaExcerpt(plugin,item.file,tile);
+    if(item.kind==='document'){
+     const observer=writerV101MediaExcerpt(plugin,item.file,tile);
+     if(observer)excerpts.add(observer);
+    }
    }
    tile.createSpan({cls:'writer-v8-media-filename',text:item.file.basename||item.file.name});
-   if(multi)tile.createSpan({cls:'writer-v101-media-selection',text:selectedPaths.has(item.file.path)?'✓':'○'});
+   const marker=multi?tile.createSpan({cls:'writer-v101-media-selection',attr:{'aria-hidden':'true'}}):null;
+   const showSelected=()=>{
+    const checked=selectedPaths.has(item.file.path);
+    tile.classList.toggle('is-selected',checked);
+    tile.setAttribute('aria-pressed',String(checked));marker.setText(checked?'✓':'○');
+   };
+   if(multi)showSelected();
    tile.addEventListener('click',()=>{
     if(multi){
      if(selectedPaths.has(item.file.path))selectedPaths.delete(item.file.path);
      else if(selectedPaths.size<200)selectedPaths.add(item.file.path);
-     render();
+     showSelected();copy.disabled=!selectedPaths.size;
     }else writerV8MediaOpen(plugin,matching,matching.indexOf(item));
    });
   }
@@ -12571,8 +12677,11 @@ function writerV8CaptionProcess(plugin,root){
  }
 }
 const WRITER_V8_CHAT_COLORS=new Set(['red','orange','yellow','green','blue','purple','pink','cyan','gray','grey','accent']);
+const WRITER_V8_CHAT_AVATAR=/^(?:!?\[\[.+\]\]|[^<>:"|?*\r\n]+\.(?:png|jpe?g|webp|gif|svg|avif|bmp))$/i;
+const WRITER_V8_CHAT_TIME=/^\d{1,2}:\d{2}(?::\d{2})?$/;
+const WRITER_V8_CHAT_SOURCE_LIMIT=32000;
 function writerV8ChatNameKey(name){
- return String(name||'').trim().toLocaleLowerCase();
+ return String(name||'').trim().normalize('NFC').toLocaleLowerCase();
 }
 function writerV8ChatDirectives(lines){
  const profiles=new Map(),defaults={left:'',right:''};
@@ -12620,11 +12729,11 @@ function writerV8ChatDirectives(lines){
     const profile=profiles.get(key)||{color:'',avatar:'',bubbleColor:''};
     const color=value.toLowerCase(),bubbleMatch=/^(?:bubble|balloon|bal[aã]o):\s*([a-z]+)$/i.exec(value);
     if(WRITER_V8_CHAT_COLORS.has(color))profile.color=color==='grey'?'gray':color;
-    else if(/^(?:bubble|balloon|bal[aã]o):s*([a-z]+)$/i.test(value)){
+    else if(bubbleMatch){
      const named=bubbleMatch[1].toLowerCase();
      if(WRITER_V8_CHAT_COLORS.has(named))profile.bubbleColor=named==='grey'?'gray':named;
     }
-    else if(/^(?:!?\[\[.+\]\]|[^<>:"|?*\r\n]+\.(?:png|jpe?g|webp|gif|svg|avif|bmp))$/i.test(value))
+    else if(WRITER_V8_CHAT_AVATAR.test(value))
       profile.avatar=value.slice(0,450);
     profiles.set(key,profile);
    }
@@ -12637,6 +12746,7 @@ function writerV8ChatDirectives(lines){
 function writerV8ChatSplitFields(value){
  const parts=[];let current='',brackets=0,parentheses=0,codeTicks=0;
  const input=String(value||'');
+ const spoiler=/\|\|([^\s|](?:[^\n]*?[^\s|])?)\|\|(?!\|)/y;
  for(let i=0;i<input.length;i++){
   const char=input[i];
   if(char==='\\'&&i+1<input.length){current+=char+input[++i];continue;}
@@ -12652,7 +12762,14 @@ function writerV8ChatSplitFields(value){
    else if(char==='(')parentheses++;
    else if(char===')')parentheses=Math.max(0,parentheses-1);
   }
-  if(char==='|'&&brackets===0&&parentheses===0&&codeTicks===0){parts.push(current.trim());current='';}
+  if(char==='|'&&brackets===0&&parentheses===0&&codeTicks===0){
+   if(parts.length&&input[i+1]==='|'&&input[i-1]!=='|'){
+    spoiler.lastIndex=i;
+    const match=spoiler.exec(input);
+    if(match){current+=match[0];i+=match[0].length-1;continue;}
+   }
+   parts.push(current.trim());current='';
+  }
   else current+=char;
  }
  parts.push(current.trim());
@@ -12670,12 +12787,14 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
   time=fields[fields.length-1];
   body=fields.slice(2,-1).join(' | ');
  }else if(fields.length===3&&fields[0]===''){
-  if(/^\d{1,2}:\d{2}(?::\d{2})?$/.test(fields[2])){
+  if(WRITER_V8_CHAT_TIME.test(fields[2])){
    name=meta.defaults[side]||lastSpeaker[side]||'';
    body=fields[1];time=fields[2];
   }else{
    name=fields[1];body=fields[2];explicitName=Boolean(name);
   }
+ }else if(fields.length===3&&WRITER_V8_CHAT_AVATAR.test(fields[0])&&!WRITER_V8_CHAT_TIME.test(fields[2])){
+  [avatar,name,body]=fields;explicitName=Boolean(name);
  }else if(fields.length===3){
   [name,body,time]=fields;explicitName=Boolean(name);
  }else if(fields[0]===''){
@@ -12688,7 +12807,7 @@ function writerV8ChatShortMessage(line,meta,lastSpeaker){
  if(!body&&!avatar&&!name)return null;
  const profile=meta.profiles.get(writerV8ChatNameKey(name))||{};
  return {name,side,explicitName,time:String(time||'').slice(0,80),avatar:avatar||profile.avatar||'',
-  color:profile.color||'',bubbleColor:profile.bubbleColor||'',body:String(body||'').slice(0,8000)};
+  color:profile.color||'',bubbleColor:profile.bubbleColor||'',body};
 }
 
 /* Fake voice notes are illustrative animations: never open audio files or the microphone. */
@@ -12711,10 +12830,28 @@ function writerV8ChatExpandBreaks(value){
  return String(value||'').replace(/(\\+)n/g,(_match,slashes)=>
   '\\'.repeat(Math.floor(slashes.length/2))+(slashes.length%2?'\n':'n'));
 }
+function writerV8ChatFence(line,fence){
+ const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(line);
+ if(!match)return fence;
+ const [,marker,info]=match;
+ if(fence)return marker[0]===fence[0]&&marker.length>=fence.length&&!info.trim()?null:fence;
+ return marker[0]==='\x60'&&info.includes('\x60')?null:marker;
+}
+function writerV8ChatBody(value){
+ const body=value.trim();
+ if(writerV8ChatFakeAudio(body))return body;
+ let fence=null;
+ return body.split('\n').map(line=>{
+  const previous=fence;
+  fence=writerV8ChatFence(line,fence);
+  return previous||fence?line:writerV8ChatExpandBreaks(line);
+ }).join('\n');
+}
 function writerV8ChatRenderFakeAudio(bubble,voice){
  const label=writerUi('Áudio falso: animação sem som ou gravação real','Fake voice note: animation without sound or recording');
  const player=bubble.createDiv({cls:'writer-v8-chat-fake-audio',attr:{role:'group','aria-label':label}});
- const button=player.createEl('button',{cls:'writer-v8-chat-voice-toggle',attr:{type:'button',title:label,'aria-pressed':'false'}});
+ const button=player.createEl('button',{cls:'writer-v8-chat-voice-toggle',attr:{type:'button',title:label,
+  'aria-label':writerUi('Animar áudio fictício','Animate fictional voice note'),'aria-pressed':'false'}});
  const wave=player.createDiv({cls:'writer-v8-chat-wave',attr:{'aria-hidden':'true'}});
  // Vary the fictional waveform per rendered message instead of repeating
  // the same nth-child pattern. This does not read or play audio.
@@ -12731,8 +12868,6 @@ function writerV8ChatRenderFakeAudio(bubble,voice){
  const update=on=>{
   player.classList.toggle('is-animating',on);
   button.setAttribute('aria-pressed',String(on));
-  button.setAttribute('aria-label',on?writerUi('Pausar animação fictícia','Pause fictional animation'):
-   writerUi('Animar áudio fictício','Animate fictional voice note'));
   if(typeof setIcon==='function')setIcon(button,on?'pause':'play');
   else button.setText(on?'Ⅱ':'▶');
  };
@@ -12751,17 +12886,27 @@ function writerV8ChatDivider(line){
  const match=/^[ \t]{0,3}---(?:[ \t]+([^\r\n]{1,120}?)[ \t]+---)?[ \t]*$/.exec(String(line||''));
  return match?{type:'divider',text:String(match[1]||'').trim().slice(0,120)}:null;
 }
-function writerV8ChatParseLegacy(source,meta){
- const sections=source.split(/^===\s+(.{1,90})\s*$/m),messages=[];
- for(let i=1;i+1<sections.length&&messages.length<100;i+=2){
-  const name=sections[i].trim(),content=sections[i+1].trim();
-  // The first bare --- is the legacy message header/body boundary; later
-  // standalone dividers belong to the transcript, not the message text.
-  const headerEnd=/^---[ \t]*$/m.exec(content);
-  const header=headerEnd?content.slice(0,headerEnd.index):content;
-  const textPart=headerEnd?content.slice(headerEnd.index+headerEnd[0].length).trim():content;
+function writerV8ChatParseLegacy(lines,meta){
+ const sections=[],messages=[];
+ let section=null,fence=null;
+ for(const line of lines){
+  const heading=!fence&&/^===[ \t]+(\S.{0,89})[ \t]*$/.exec(line);
+  if(heading){
+   section={name:heading[1].trim(),lines:[]};
+   sections.push(section);
+  }else if(section){
+   section.lines.push(line);
+   fence=writerV8ChatFence(line,fence);
+  }
+ }
+ for(const {name,lines:content} of sections){
+  // A legacy header can contain metadata and blank lines before its first ---.
+  // A separator in a metadata-free message belongs to the conversation.
+  const headerEnd=content.findIndex(line=>/^---[ \t]*$/.test(line));
+  const header=headerEnd<0?[]:content.slice(0,headerEnd);
+  const hasHeader=headerEnd>=0&&header.every(line=>!line.trim()||/^\s*[\w-]+\s*:/.test(line));
   const fields={};
-  if(headerEnd)for(const line of header.split('\n')){
+  if(hasHeader)for(const line of header){
    const m=/^(avatar|image|time|side|mine|name|bubble):\s*(.*)$/i.exec(line.trim());
    if(m)fields[m[1].toLowerCase()]=m[2].trim().slice(0,500);
   }
@@ -12770,49 +12915,56 @@ function writerV8ChatParseLegacy(source,meta){
   const profile=meta.profiles.get(writerV8ChatNameKey(actualName))||{};
   const base={name:actualName,side,explicitName:true,time:fields.time||'',
    avatar:fields.avatar||fields.image||profile.avatar||'',color:profile.color||'',bubbleColor:WRITER_V8_CHAT_COLORS.has(String(fields.bubble||'').toLowerCase())?String(fields.bubble).toLowerCase():profile.bubbleColor||''};
-  let body=[];const parts=[];
-  for(const line of textPart.split('\n')){
-   const divider=writerV8ChatDivider(line);
+  let body=[];const firstItem=messages.length;
+  fence=null;
+  for(const line of hasHeader?content.slice(headerEnd+1):content){
+   const divider=!fence&&writerV8ChatDivider(line);
    if(divider){
-    if(body.length){parts.push({...base,body:body.join('\n').trim().slice(0,8000)});body=[];}
-    parts.push(divider);
-   }else body.push(line);
+    if(body.some(value=>value.trim()))messages.push({...base,body:writerV8ChatBody(body.join('\n'))});
+    body=[];
+    messages.push(divider);
+   }else{
+    body.push(line);
+    fence=writerV8ChatFence(line,fence);
+   }
   }
-  if(body.length||!parts.length)parts.push({...base,body:body.join('\n').trim().slice(0,8000)});
-  messages.push(...parts.slice(0,100-messages.length));
+  if(body.some(value=>value.trim())||messages.length===firstItem)messages.push({...base,body:writerV8ChatBody(body.join('\n'))});
  }
  return {title:meta.title,groupImage:meta.groupImage,messages,options:meta.options};
 }
 function writerV8ChatParse(source){
  const raw=String(source||'');
- if(raw.length>32000)return null;
- const lines=raw.replace(/\r\n/g,'\n').split('\n');
+ if(raw.length>WRITER_V8_CHAT_SOURCE_LIMIT)return null;
+ const lines=raw.replace(/\r\n?/g,'\n').split('\n');
  const meta=writerV8ChatDirectives(lines);
- const remaining=lines.slice(meta.start).join('\n');
- if(/^===\s+\S/.test(remaining.trimStart()))return writerV8ChatParseLegacy(remaining,meta);
- const messages=[],lastSpeaker={left:'',right:''};let messageCount=0;
- for(const line of lines.slice(meta.start)){
-  const divider=writerV8ChatDivider(line);
+ const remaining=lines.slice(meta.start);
+ if(/^===[ \t]+\S/.test(remaining[0]||''))return writerV8ChatParseLegacy(remaining,meta);
+ const messages=[],lastSpeaker={left:'',right:''};
+ let fence=null;
+ for(const line of remaining){
+  const divider=!fence&&writerV8ChatDivider(line);
   if(divider){
-   if(messages.length&&messages.length<100)messages.push(divider);
+   if(messages.length)messages.push(divider);
    continue;
   }
-  const message=writerV8ChatShortMessage(line,meta,lastSpeaker);
+  const message=!fence&&writerV8ChatShortMessage(line,meta,lastSpeaker);
   if(message){
-   if(messageCount>=50)break;
-   messageCount++;
    if(message.name)lastSpeaker[message.side]=message.name;
+   fence=writerV8ChatFence(message.body,fence);
    messages.push(message);continue;
   }
   // Multiline markdown stays inside the preceding bubble. A divider does not
   // become a bubble and must never absorb later unprefixed paragraphs.
   if(messages.length){
    const last=messages[messages.length-1];
-   if(last.type!=='divider'&&last.body.length+line.length<8000)last.body+='\n'+line;
+   if(last.type!=='divider'){
+    last.body+='\n'+line;
+    fence=writerV8ChatFence(line,fence);
+   }
   }
  }
  for(const message of messages)if(message.type!=='divider')
-  message.body=writerV8ChatExpandBreaks(message.body.trim());
+  message.body=writerV8ChatBody(message.body);
  return {title:meta.title,groupImage:meta.groupImage,messages,options:meta.options};
 }
 function writerV8ChatRender(plugin,source,element,ctx){
@@ -12821,7 +12973,8 @@ function writerV8ChatRender(plugin,source,element,ctx){
  const root=element.createDiv({cls:'writer-v8-block writer-v8-chat is-density-'+opts.density+' is-bubbles-'+opts.bubbles+
   ' is-width-'+opts.width+' is-background-'+(opts.background==='transparent'?'transparent':'default')+
   (WRITER_V8_CHAT_COLORS.has(opts.bubbleColor)?' is-chat-bubble-'+opts.bubbleColor:'')});
- if(!data||!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
+ if(!data){root.createEl('p',{text:writerUi('A conversa ultrapassa 32.000 caracteres. Divida o conteúdo em vários blocos de chat.','This conversation exceeds 32,000 characters. Split it into multiple chat blocks.')});return;}
+ if(!data.messages.length){root.createEl('p',{text:writerUi('Use < ou > e separe avatar, nome, mensagem e hora com |.','Use < or > with | to separate avatar, name, message and time.')});return;}
  if(data.title||data.groupImage){
   const heading=root.createDiv({cls:'writer-v8-chat-heading'});
   const url=writerV8ImagePath(plugin.app,data.groupImage,ctx.sourcePath);
@@ -12831,22 +12984,21 @@ function writerV8ChatRender(plugin,source,element,ctx){
   if(!heading.childElementCount)heading.remove();
  }
  const transcript=root.createDiv({cls:'writer-v8-chat-transcript',attr:{role:'list','aria-label':writerUi('Conversa fictícia','Fictional conversation')}});
- let previous=null;
- for(const msg of data.messages){
+ let previous=null,shown=0;
+ const renderItem=msg=>{
   if(msg.type==='divider'){
    const divider=transcript.createDiv({cls:'writer-v8-chat-divider'+(msg.text?' is-labeled':''),
-    attr:{role:'separator'}});
+    attr:msg.text?{role:'separator','aria-label':msg.text}:{role:'separator'}});
    if(msg.text)divider.createSpan({cls:'writer-v8-chat-divider-label',text:msg.text});
-   // A divider breaks speaker grouping, even when the next message is from
-   // the same person. Their avatar and explicit name can appear again.
    previous=null;
-   continue;
+   return divider;
   }
-  const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
+  const continuation=Boolean(previous&&msg.side===previous.side&&msg.name&&(!opts.avatars||msg.avatar===previous.avatar)&&
+   writerV8ChatNameKey(msg.name)===writerV8ChatNameKey(previous.name));
   const row=transcript.createDiv({cls:'writer-v8-chat-row'+(continuation?' is-continuation':'')+' is-'+msg.side+(WRITER_V8_CHAT_COLORS.has(msg.color)?' is-color-'+msg.color:'')+(WRITER_V8_CHAT_COLORS.has(msg.bubbleColor)?' is-bubble-color-'+msg.bubbleColor:''),attr:{role:'listitem'}});
   if(opts.avatars&&msg.avatar&&!continuation){
    const url=writerV8ImagePath(plugin.app,msg.avatar,ctx.sourcePath);
-   if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy'}});
+   if(url)row.createEl('img',{cls:'writer-v8-chat-avatar',attr:{src:url,alt:msg.name,loading:'lazy',decoding:'async'}});
   }
   const group=row.createDiv({cls:'writer-v8-chat-group'});
   if((msg.explicitName&&!continuation&&msg.name)||msg.time){
@@ -12862,6 +13014,25 @@ function writerV8ChatRender(plugin,source,element,ctx){
    bubble.empty();bubble.setText(msg.body);
   });
   previous=msg;
+  return row;
+ };
+ const renderBatch=()=>{
+  const end=Math.min(shown+50,data.messages.length);
+  let first=null;
+  for(;shown<end;shown++){
+   const item=renderItem(data.messages[shown]);
+   first??=item;
+  }
+  return first;
+ };
+ renderBatch();
+ if(shown<data.messages.length){
+  const more=root.createEl('button',{cls:'writer-v8-chat-more',text:writerUi('Mostrar mais mensagens','Show more messages'),attr:{type:'button'}});
+  more.addEventListener('click',()=>{
+   const first=renderBatch();
+   if(first){first.setAttribute('tabindex','-1');first.focus();}
+   if(shown===data.messages.length)more.remove();
+  });
  }
 }
 function writerV8RegisterFinishBlocks(plugin){
@@ -21072,22 +21243,26 @@ function writerV92Clamp(value,min,max,fallback){
 function writerV92ProgressData(options,now=new Date()){
  const kind=String(options.kind||'manual').toLowerCase();
  let min=0,max=100,value=0;
- const startOfDay=d=>new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
- const elapsed=(start,end)=>Math.floor((startOfDay(now)-startOfDay(start))/86400000)+1;
+ const day=86400000;
+ const midnight=Date.UTC(now.getFullYear(),now.getMonth(),now.getDate());
+ const elapsed=start=>(midnight-start)/day+1;
  if(kind==='day-year'){
-  const start=new Date(now.getFullYear(),0,1),end=new Date(now.getFullYear()+1,0,1);
-  max=Math.round((end-start)/86400000);value=elapsed(start,end);
+  const start=Date.UTC(now.getFullYear(),0,1),end=Date.UTC(now.getFullYear()+1,0,1);
+  max=(end-start)/day;value=elapsed(start);
  }else if(kind==='day-month'){
-  const start=new Date(now.getFullYear(),now.getMonth(),1),end=new Date(now.getFullYear(),now.getMonth()+1,1);
-  max=Math.round((end-start)/86400000);value=elapsed(start,end);
+  const start=Date.UTC(now.getFullYear(),now.getMonth(),1),end=Date.UTC(now.getFullYear(),now.getMonth()+1,1);
+  max=(end-start)/day;value=elapsed(start);
  }else if(kind==='day-week'){
   max=7;value=(now.getDay()+6)%7+1;
  }else if(kind==='month'){max=12;value=now.getMonth()+1;}
  else if(kind==='day-custom'){
-  const start=new Date(String(options.min||'')+'T00:00:00');
-  const end=new Date(String(options.max||'')+'T00:00:00');
-  if(Number.isFinite(start.getTime())&&Number.isFinite(end.getTime())&&end>start){
-   max=Math.round((end-start)/86400000)+1;value=elapsed(start,end);
+  const parse=value=>{
+   const raw=String(value||''),date=new Date(raw+'T00:00:00Z');
+   return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===raw?date.getTime():NaN;
+  };
+  const start=parse(options.min),end=parse(options.max);
+  if(end>=start){
+   max=(end-start)/day+1;value=elapsed(start);
   }
  }else{
   min=writerV92Clamp(options.min,-1e9,1e9,0);
@@ -21098,11 +21273,21 @@ function writerV92ProgressData(options,now=new Date()){
  const percent=Math.max(0,Math.min(100,Math.round((value-min)/(max-min)*100)));
  return {kind,min,max,value,percent};
 }
+function writerV92StoredValue(values,id,fallback){
+ return Object.hasOwn(values,id)?values[id]:fallback;
+}
+function writerV92UpdateWidgetValue(plugin,values,id,value,selector,dataKey){
+ Object.defineProperty(values,id,{value,writable:true,enumerable:true,configurable:true});
+ void plugin.saveSettings();
+ for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
+  for(const node of leaf.view?.containerEl?.querySelectorAll?.(selector)||[])
+   if(node.dataset[dataKey]===id)node.dispatchEvent(new Event('writer-widget-sync'));
+}
 function writerV92RenderProgress(plugin,source,el,ctx){
  const options=writerV92BlockOptions(source);
  const key=String(options.id||'').slice(0,80);
  const values=plugin.settings.v92ProgressValues||(plugin.settings.v92ProgressValues={});
- const isManual=!['day-year','day-month','day-week','day-custom','month'].includes(options.kind);
+ const isManual=!['day-year','day-month','day-week','day-custom','month'].includes(options.kind?.toLowerCase());
  const host=el.createDiv({cls:'writer-v92-progress'});
  const name=host.createEl('label',{cls:'writer-v92-progress-label'});
  const bar=host.createDiv({cls:'writer-v92-progress-track',attr:{role:'progressbar','aria-valuemin':'0','aria-valuemax':'100'}});
@@ -21110,7 +21295,7 @@ function writerV92RenderProgress(plugin,source,el,ctx){
  const controls=host.createDiv({cls:'writer-v92-progress-controls'});
  const redraw=()=>{
   const cfg={...options};
-  if(key&&Object.prototype.hasOwnProperty.call(values,key))cfg.value=values[key];
+  if(key)cfg.value=writerV92StoredValue(values,key,options.value);
   const data=writerV92ProgressData(cfg);
   name.setText(String(options.name||options.kind||writerUi('Progresso','Progress')).replace(/\{(min|max|value|percentage)\}/g,(_,id)=>String(id==='percentage'?data.percent+'%':data[id])));
   bar.setAttribute('aria-valuenow',String(data.percent));
@@ -21121,29 +21306,29 @@ function writerV92RenderProgress(plugin,source,el,ctx){
   for(const [label,delta] of [['−',-1],['+',1]]){
    controls.createEl('button',{text:label,attr:{type:'button','aria-label':delta<0?writerUi('Diminuir','Decrease'):writerUi('Aumentar','Increase')}})
     .addEventListener('click',()=>{
-     const d=writerV92ProgressData({...options,value:values[key]??options.value});
-     values[key]=Math.max(d.min,Math.min(d.max,d.value+delta));
-     void plugin.saveSettings();
+     const d=writerV92ProgressData({...options,value:writerV92StoredValue(values,key,options.value)});
+     writerV92UpdateWidgetValue(plugin,values,key,Math.max(d.min,Math.min(d.max,d.value+delta)),
+      '.writer-v92-progress[data-progress-id]','progressId');
      redraw();
-     for(const leaf of plugin.app.workspace.getLeavesOfType?.('markdown')||[])
-      for(const node of leaf.view?.containerEl?.querySelectorAll?.('.writer-v92-progress[data-progress-id]')||[])
-       if(node.dataset.progressId===key)node.dispatchEvent(new Event('writer-progress-sync'));
     });
   }
+ }
+ if(isManual&&key){
   host.dataset.progressId=key;
-  host.addEventListener('writer-progress-sync',redraw);
+  host.addEventListener('writer-widget-sync',redraw);
  }
  redraw();
 }
 function writerV92RenderColumns(plugin,source,el,ctx){
- const match=source.match(/^\s*columns?\s*:\s*(\d+)\s*$/mi);
+ const match=/^(?:[ \t]*\r?\n)* {0,3}columns?[ \t]*:[ \t]*(\d+)[ \t]*(?:\r?\n|$)/i.exec(source);
  const count=Math.round(writerV92Clamp(match?.[1],1,4,2));
- const parts=source.replace(/^\s*columns?\s*:\s*\d+\s*$/mi,'').split(/^\s*(?:---\s*(?:end-column|column-end|column-break)\s*---|:::columnbreak)\s*$/mi).slice(0,4);
+ const content=match?source.slice(match[0].length):source;
+ const parts=writerV8MarkdownSections(content,line=>/^ {0,3}(?:---[ \t]*(?:end-column|column-end|column-break)[ \t]*---|:::columnbreak)[ \t]*$/i.test(line),4);
  const host=el.createDiv({cls:'writer-v92-columns'});
  host.style.setProperty('--writer-v92-columns',String(Math.max(1,Math.min(count,parts.length))));
  for(const part of parts){
   const cell=host.createDiv({cls:'writer-v92-column markdown-rendered'});
-  void MarkdownRenderer.render(plugin.app,part.trim().slice(0,15000),cell,ctx.sourcePath,ctx);
+  void writerV8Markdown(plugin,ctx,cell,writerV8TrimBlankLines(part)).catch(()=>cell.setText(part));
  }
 }
 function writerV92RenderWidget(plugin,source,el,ctx){
@@ -21179,17 +21364,21 @@ function writerV92RenderWidget(plugin,source,el,ctx){
   else clearInterval(timer);
   if(options.to)host.createEl('small',{text:options.to.slice(0,180)});
  }else if(kind==='counter'){
-  const id=String(options.id||ctx.sourcePath||'default').slice(0,160);
+  const id=String(options.id||ctx?.sourcePath||'default').slice(0,160);
   const values=plugin.settings.v92CounterValues||(plugin.settings.v92CounterValues={});
   const value=host.createEl('strong');
-  const draw=()=>value.setText(String(values[id]??writerV92Clamp(options.startvalue,-1e8,1e8,0)));
+  const start=writerV92Clamp(options.startvalue,-1e8,1e8,0);
+  const current=()=>writerV92Clamp(writerV92StoredValue(values,id,start),-1e8,1e8,start);
+  const draw=()=>value.setText(String(current()));
+  host.dataset.counterId=id;
+  host.addEventListener('writer-widget-sync',draw);
   draw();
   const delta=writerV92Clamp(options.increment,0.01,10000,1);
-  for(const [text,change] of [['−',-delta],['+',delta],['↺',null]]){
-   host.createEl('button',{text,attr:{type:'button'}}).addEventListener('click',()=>{
-    values[id]=change===null?writerV92Clamp(options.startvalue,-1e8,1e8,0):
-     writerV92Clamp((values[id]??(Number(options.startvalue)||0))+change,-1e8,1e8,0);
-    void plugin.saveSettings();draw();
+  for(const [text,change,pt,en] of [['−',-delta,'Diminuir','Decrease'],['+',delta,'Aumentar','Increase'],['↺',null,'Reiniciar','Reset']]){
+   host.createEl('button',{text,attr:{type:'button','aria-label':writerUi(pt,en)}}).addEventListener('click',()=>{
+    const next=change===null?start:writerV92Clamp(current()+change,-1e8,1e8,start);
+    writerV92UpdateWidgetValue(plugin,values,id,next,'.writer-v92-widget[data-counter-id]','counterId');
+    draw();
    });
   }
   if(options.text)host.createEl('small',{text:options.text.slice(0,160)});
@@ -21223,6 +21412,17 @@ async function writerV92MetaWrite(plugin,file,key,mode,resolve){
   return false;
  }
 }
+function writerV92MetaWatch(plugin,el,ctx,file,refreshers){
+ const cache=plugin.app.metadataCache;
+ if(!refreshers.length||typeof cache?.on!=='function'||!ctx?.addChild)return;
+ const Child=require('obsidian').MarkdownRenderChild;
+ if(!Child)return;
+ const child=new Child(el);
+ child.registerEvent(cache.on('changed',changed=>{
+  if(changed===file)for(const refresh of refreshers)refresh();
+ }));
+ ctx.addChild(child);
+}
 function writerV92RenderMeta(plugin,source,el,ctx){
  const options=writerV92BlockOptions(source),key=String(options.property||'').trim();
  if(!writerV92MetaKey(key)){
@@ -21231,7 +21431,9 @@ function writerV92RenderMeta(plugin,source,el,ctx){
  const type=['toggle','text','number','select','view'].includes(options.type)?options.type:'view';
  const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath);
  if(!(file instanceof TFile))return;
- writerV92MetaField(plugin,el.createDiv({cls:'writer-v92-meta'}),file,key,{...options,type});
+ const host=el.createDiv({cls:'writer-v92-meta'});
+ const refresh=writerV92MetaField(plugin,host,file,key,{...options,type});
+ if(refresh)writerV92MetaWatch(plugin,host,ctx,file,[refresh]);
 }
 function writerV92MetaField(plugin,host,file,key,options,mode='block'){
  const inline=mode==='inline';
@@ -21252,6 +21454,7 @@ function writerV92MetaField(plugin,host,file,key,options,mode='block'){
   }
  }else{
   field.type=({toggle:'checkbox',number:'number',slider:'range',date:'date'})[type]||'text';
+  if(type==='number')field.step='any';
   if(type==='slider'){
    field.min=String(options.min);field.max=String(options.max);field.step=String(options.step);
   }
@@ -21265,7 +21468,7 @@ function writerV92MetaField(plugin,host,file,key,options,mode='block'){
  const write=()=>{
   const numeric=type==='number'||type==='slider';
   const newValue=type==='toggle'?field.checked:numeric?Number(field.value):field.value;
-  if(numeric&&(!Number.isFinite(newValue)||(mode!=='block'&&(!field.value||field.validity?.valid===false))))return;
+  if(numeric&&(!field.value||!Number.isFinite(newValue)||field.validity?.valid===false))return;
   return writerV92MetaWrite(plugin,file,key,mode,()=>newValue);
  };
  field.addEventListener('change',()=>void write());
@@ -21313,14 +21516,7 @@ function writerV92MetaInline(plugin,el,ctx){
   if(!from)continue;
   fragment.append(doc.createTextNode(text.slice(from)));node.replaceWith(fragment);
  }
- const cache=plugin.app.metadataCache,Child=require('obsidian').MarkdownRenderChild;
- if(refreshers.length&&typeof cache?.on==='function'&&Child&&ctx.addChild){
-  const child=new Child(el);
-  child.registerEvent(cache.on('changed',changed=>{
-   if(changed===file)for(const refresh of refreshers)refresh();
-  }));
-  ctx.addChild(child);
- }
+ writerV92MetaWatch(plugin,el,ctx,file,refreshers);
 }
 function writerV92MetaFenceField(spec){
  if(!spec||typeof spec!=='object'||Array.isArray(spec))return null;
@@ -21383,7 +21579,12 @@ function writerV92MetaFences(plugin,el,ctx){
   }else{
    const fields=(Array.isArray(spec.fields)?spec.fields.slice(0,40):[spec]).map(writerV92MetaFenceField).filter(Boolean);
    if(!fields.length)continue;
-   for(const field of fields)writerV92MetaField(plugin,host.createDiv({cls:'writer-v92-meta'}),file,field.key,field,'fence');
+   const refreshers=[];
+   for(const field of fields){
+    const refresh=writerV92MetaField(plugin,host.createDiv({cls:'writer-v92-meta'}),file,field.key,field,'fence');
+    if(refresh)refreshers.push(refresh);
+   }
+   writerV92MetaWatch(plugin,host,ctx,file,refreshers);
   }
   code.parentElement.replaceWith(host);
  }
@@ -21406,7 +21607,10 @@ function writerV92RegisterBlocks(plugin){
   writerV92MetaFences(plugin,el,ctx);
  },-10);
  plugin.addCommand?.({id:'v92-insert-columns',name:writerUi('Colunas: inserir layout','Columns: insert layout'),
-  editorCallback:editor=>editor.replaceSelection('\n\`\`\`columns\ncolumns: 2\n### Coluna 1\nTexto aqui.\n--- end-column ---\n### Coluna 2\nTexto aqui.\n\`\`\`\n')});
+  editorCallback:editor=>editor.replaceSelection([
+   '','~~~columns','columns: 2','### '+writerUi('Coluna 1','Column 1'),writerUi('Texto aqui.','Text here.'),
+   '--- end-column ---','### '+writerUi('Coluna 2','Column 2'),writerUi('Texto aqui.','Text here.'),'~~~',''
+  ].join('\n'))});
  plugin.addCommand?.({id:'v92-insert-progress',name:writerUi('Progresso: inserir barra','Progress: insert bar'),
   editorCallback:editor=>editor.replaceSelection('\n\`\`\`progressbar\nkind: manual\nname: {percentage}\nvalue: 30\nmin: 0\nmax: 100\n\`\`\`\n')});
  plugin.addCommand?.({id:'v92-insert-meta-field',name:writerUi('Meta Bind: inserir campo seguro','Meta Bind: insert safe field'),
@@ -22248,25 +22452,44 @@ function writerV9215PrettySettings(plugin,panel){
 /* Flow 9.3: Markdown-native note boards; edits only the single fenced source block.
  * This module has no network requests and never deletes or moves the linked notes. */
 function writerV93FlowParse(source,cfg){
- const options=[],items=[];let layout=cfg.defaultLayout||'cards';
- for(const line of String(source||'').split(/\r?\n/)){
+ const lines=String(source||'').split(/\r?\n/),itemLines=[];
+ let layout=cfg.defaultLayout||'cards',layoutLine=-1;
+ lines.forEach((line,index)=>{
   const trimmed=line.trim();
   if(/^layout:\s*(cards|list|board|graph)$/i.test(trimmed)){
-   layout=trimmed.split(':')[1].trim().toLowerCase();options.push('layout: '+layout);
-  }else if(!trimmed||trimmed.startsWith('#'))options.push(line);
-  else items.push(trimmed);
- }
- return {layout,options,items:items.slice(0,cfg.maxItems)};
+   layout=trimmed.split(':')[1].trim().toLowerCase();layoutLine=index;
+  }else if(trimmed&&!trimmed.startsWith('#')&&itemLines.length<cfg.maxItems)itemLines.push(index);
+ });
+ return {layout,originalLayout:layout,layoutLine,lines,itemLines,items:itemLines.map(index=>lines[index])};
 }
-function writerV93FlowSerialize(parsed){return [...parsed.options,...parsed.items].join('\n').trim();}
+function writerV93FlowSerialize(parsed){
+ const {layout,originalLayout,layoutLine,lines,itemLines,items}=parsed;
+ const slots=new Map(itemLines.map((line,index)=>[line,index])),output=[];
+ if(layout!==originalLayout&&layoutLine<0)output.push('layout: '+layout);
+ lines.forEach((line,index)=>{
+  if(index===layoutLine&&layout!==originalLayout){
+   output.push(line.replace(/(cards|list|board|graph)(\s*)$/i,(_match,_old,spacing)=>layout+spacing));
+  }else if(slots.has(index)){
+   const item=slots.get(index);
+   if(item<items.length)output.push(items[item]);
+   if(item===itemLines.length-1)output.push(...items.slice(itemLines.length));
+  }else output.push(line);
+ });
+ if(!itemLines.length)output.push(...items);
+ return output.join('\n');
+}
+function writerV93FlowRow(raw){
+ const text=String(raw||'').trimEnd();
+ const end=/^\s*!?\[\[.*?\]\]/.exec(text)?.[0].length||0;
+ const suffix=/\s+\|\s*after\s*:\s*(.*?)$/i.exec(text.slice(end));
+ return suffix?{link:text.slice(0,end+suffix.index).trimEnd(),after:suffix[1]}:{link:text,after:''};
+}
 function writerV93FlowLink(raw){
- const original=String(raw||'').trim().split(/\s+\|\s*after\s*:/i)[0];
- return original.replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
+ const {link}=writerV93FlowRow(raw);
+ return link.trim().replace(/^!?\[\[/,'').replace(/\]\]$/,'').split('|')[0].split('#')[0].trim();
 }
 function writerV101FlowLinkDependency(raw){
- const text=String(raw||'');
- const dep=/(?:^|\s+\|\s*)after:\s*(!?\[\[[^\]]+\]\]|[^\s|]+)/i.exec(text);
- return dep?writerV93FlowLink(dep[1]):'';
+ return writerV93FlowLink(writerV93FlowRow(raw).after);
 }
 function writerV101FlowDepths(items){
  const names=items.map(raw=>writerV93FlowLink(raw));
@@ -22282,37 +22505,10 @@ function writerV101FlowDepths(items){
  };
  items.forEach((_,i)=>depth(i));return depths;
 }
-function writerV93FlowLocateBlock(raw,source,hint){
- const nl=raw.includes('\r\n')?'\r\n':'\n',lines=raw.split(/\r?\n/),found=[];
- for(let start=0;start<lines.length;start++){
-  const open=/^\s{0,3}(\x60{3,}|~{3,})\s*(?:writer-)?flow\s*$/.exec(lines[start]);
-  if(!open)continue;
-  const char=open[1][0],min=open[1].length;
-  for(let end=start+1;end<lines.length;end++){
-   const closing=lines[end].trim();
-   if(closing.length>=min&&[...closing].every(c=>c===char)){
-    if(lines.slice(start+1,end).join('\n').trim()===source.trim())found.push({start,end});
-    start=end;break;
-   }
-  }
- }
- if(found.length===1)return {...found[0],lines,nl};
- const exact=found.find(x=>x.start===hint);
- return exact?{...exact,lines,nl}:null;
-}
-async function writerV93FlowPersist(plugin,ctx,root,source,model){
- const file=plugin.app.vault.getAbstractFileByPath(ctx.sourcePath||'');
- if(!(file instanceof TFile)||file.extension!=='md')return false;
- const start=ctx.getSectionInfo?.(root)?.lineStart;
- const hint=Number.isInteger(start)?start:-1;
+async function writerV93FlowPersist(plugin,ctx,root,source,model,type,baseline){
  const replacement=writerV93FlowSerialize(model);
  try{
-  await plugin.app.vault.process(file,raw=>{
-   const found=writerV93FlowLocateBlock(raw,source,hint);
-   if(!found)throw Error(writerUi('O painel de notas foi alterado. Reabra a nota e tente novamente.','Note board changed. Reopen the note and try again.'));
-   return [...found.lines.slice(0,found.start+1),...replacement.split('\n'),
-    ...found.lines.slice(found.end)].join(found.nl);
-  });
+  await writerV8CommitFenced(plugin,ctx,root,type,source,replacement,baseline);
   return true;
  }catch(error){new Notice(String(error.message||error));return false;}
 }
@@ -22331,6 +22527,7 @@ function writerV93TextBoardParse(source,maxItems){
  }
  return {id,columns,cards};
 }
+const WRITER_V93_TEXT_BOARD_WRITES=new WeakMap();
 function writerV93TextBoard(plugin,source,root,ctx,board){
  const cfg=plugin.settings.v9215Flow,lanes=root.createDiv({cls:'writer-v93-flow-items'});
  root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-board');
@@ -22342,16 +22539,23 @@ function writerV93TextBoard(plugin,source,root,ctx,board){
  const position=(card,moves)=>Number.isInteger(moves[card.index])&&board.columns[moves[card.index]]!==undefined?
   moves[card.index]:card.column;
  const move=async(card,to)=>{
-  if(!canMove||!cfg.enabled||!cfg.flowArrange||saving||board.columns[to]===undefined||to===position(card,positions()))return;
-  const previous=cfg.textBoardMoves||{},nextPositions={...positions()};
-  if(to===card.column)delete nextPositions[card.index];else nextPositions[card.index]=to;
-  const entries=Object.entries(previous).filter(([id])=>id!==key);
-  if(Object.keys(nextPositions).length)entries.push([key,nextPositions]);
-  const next=Object.fromEntries(entries.slice(-120));
-  cfg.textBoardMoves=next;saving=true;
-  try{await plugin.saveSettings();draw(card.index);}
+  if(!canMove||saving||board.columns[to]===undefined)return;
+  saving=true;
+  const pending=WRITER_V93_TEXT_BOARD_WRITES.get(cfg)||Promise.resolve();
+  const write=pending.then(async()=>{
+   if(!cfg.enabled||!cfg.flowArrange||to===position(card,positions()))return;
+   const previous=cfg.textBoardMoves||{},nextPositions={...positions()};
+   if(to===card.column)delete nextPositions[card.index];else nextPositions[card.index]=to;
+   const entries=Object.entries(previous).filter(([id])=>id!==key);
+   if(Object.keys(nextPositions).length)entries.push([key,nextPositions]);
+   const next=Object.fromEntries(entries.slice(-120));
+   cfg.textBoardMoves=next;
+   try{await plugin.saveSettings();}
+   catch(error){if(cfg.textBoardMoves===next)cfg.textBoardMoves=previous;throw error;}
+  });
+  WRITER_V93_TEXT_BOARD_WRITES.set(cfg,write.catch(()=>{}));
+  try{await write;draw(card.index);}
   catch(_){
-   if(cfg.textBoardMoves===next)cfg.textBoardMoves=previous;
    new Notice(writerUi('Não foi possível salvar a posição do cartão.','Could not save the card position.'));
   }finally{saving=false;}
  };
@@ -22395,7 +22599,7 @@ function writerV93TextBoard(plugin,source,root,ctx,board){
  };
  draw();
 }
-function writerV93FlowComposer(plugin,source,root,ctx){
+function writerV93FlowComposer(plugin,source,root,ctx,type){
  const cfg=plugin.settings.v9215Flow;if(!cfg.enabled||!cfg.flowBlocks)return;
  const board=writerV93TextBoardParse(source,cfg.maxItems);
  if(board.columns.length)return writerV93TextBoard(plugin,source,root,ctx,board);
@@ -22403,20 +22607,22 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  root.classList.add('writer-v9216-flow-board','writer-v93-flow-layout-'+model.layout);
  const toolbar=root.createDiv({cls:'writer-v93-flow-toolbar'});
  toolbar.createEl('strong',{text:writerUi('Painel de notas','Note board')+' · '+model.items.length+' '+writerUi('notas','notes')});
- const persist=next=>void writerV93FlowPersist(plugin,ctx,root,source,next);
+ const resolveNote=path=>plugin.app.metadataCache?.getFirstLinkpathDest?.(path,ctx.sourcePath||'')||
+  plugin.app.vault.getAbstractFileByPath(path);
+ const persist=(next,baseline)=>{
+  if(root.isConnected)void writerV93FlowPersist(plugin,ctx,root,source,next,type,baseline);
+ };
  if(cfg.flowArrange){
   const select=toolbar.createEl('select',{attr:{'aria-label':writerUi('Layout do painel de notas','Note board layout')}});
   for(const [id,pt,en] of [['cards','Cartões','Cards'],['list','Lista','List'],['board','Quadro','Board'],['graph','Grafo','Graph']]){
    const option=select.createEl('option',{text:writerUi(pt,en)});option.value=id;
   }
   select.value=model.layout;
-  select.addEventListener('change',()=>{
-   persist({...model,layout:select.value,
-    options:[...model.options.filter(x=>!/^layout:/i.test(x)),'layout: '+select.value]});
-  });
+  select.addEventListener('change',()=>persist({...model,layout:select.value}));
   const add=toolbar.createEl('button',{attr:{type:'button','aria-label':writerUi('Adicionar nota ao painel','Add note to board')}});
   require('obsidian').setIcon(add,'plus');
   add.addEventListener('click',()=>{
+   const baseline=writerV8CaptureFenced(plugin,ctx);
    const Suggest=require('obsidian').FuzzySuggestModal;
    const modal=new (class extends Suggest{
     getItems(){return plugin.app.vault.getMarkdownFiles().filter(f=>f.path!==ctx.sourcePath);}
@@ -22424,7 +22630,8 @@ function writerV93FlowComposer(plugin,source,root,ctx){
     onChooseItem(f){
      if(model.items.length>=cfg.maxItems){new Notice(writerUi('Limite de notas atingido.','Note limit reached.'));return;}
      const path='[['+f.path+']]';
-     if(!model.items.includes(path))persist({...model,items:[...model.items,path]});
+     if(!model.items.some(item=>resolveNote(writerV93FlowLink(item))?.path===f.path))
+      persist({...model,items:[...model.items,path]},baseline);
     }
    })(plugin.app);
    modal.setPlaceholder(writerUi('Adicionar nota existente…','Add an existing note…'));modal.open();
@@ -22433,6 +22640,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  const list=root.createDiv({cls:'writer-v93-flow-items'});
  const depths=writerV101FlowDepths(model.items);
  if(!model.items.length){list.createEl('p',{text:writerUi('Uma nota por linha no bloco flow.','Put one note per line inside the flow block.')});return;}
+ let dragged=null;
  const reorder=(from,to)=>{
   if(!cfg.flowArrange||from===to||from<0||to<0||from>=model.items.length||to>=model.items.length)return;
   const items=model.items.slice(),value=items.splice(from,1)[0];items.splice(to,0,value);
@@ -22440,8 +22648,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
  };
  model.items.forEach((raw,index)=>{
   const path=writerV93FlowLink(raw);
-  const file=plugin.app.metadataCache?.getFirstLinkpathDest?.(path,ctx.sourcePath||'')||
-   plugin.app.vault.getAbstractFileByPath(path);
+  const file=resolveNote(path);
   const card=list.createDiv({cls:'writer-v9216-flow-card'});
   if(model.layout==='graph'){
    card.dataset.depth=String(depths[index]);card.style.setProperty('--writer-v101-flow-depth',String(depths[index]));
@@ -22476,7 +22683,7 @@ function writerV93FlowComposer(plugin,source,root,ctx){
    }
    selector.value=current;
    selector.addEventListener('change',()=>{
-    const next=writerV93FlowLink(raw)+(selector.value?' | after:[['+selector.value+']]':'');
+    const next=writerV93FlowRow(raw).link+(selector.value?' | after:[['+selector.value+']]':'');
     const items=model.items.slice();items[index]=next;persist({...model,items});
    });
   }
@@ -22493,16 +22700,20 @@ function writerV93FlowComposer(plugin,source,root,ctx){
   remove.addEventListener('click',()=>persist({...model,items:model.items.filter((_,i)=>i!==index)}));
   card.draggable=true;
   card.addEventListener('dragstart',event=>{
-   event.dataTransfer?.setData('text/x-writer-flow-index',String(index));
-   if(event.dataTransfer)event.dataTransfer.effectAllowed='move';
+   dragged=index;
+   if(event.dataTransfer){
+    event.dataTransfer.setData('text/x-writer-flow-index',String(index));
+    event.dataTransfer.effectAllowed='move';
+   }
    event.stopPropagation();
   });
+  card.addEventListener('dragend',()=>{dragged=null;});
   card.addEventListener('dragover',event=>{
-   if(event.dataTransfer?.types?.includes('text/x-writer-flow-index'))event.preventDefault();
+   if(dragged!==null)event.preventDefault();
   });
   card.addEventListener('drop',event=>{
-   const from=Number(event.dataTransfer?.getData('text/x-writer-flow-index'));
-   if(!Number.isInteger(from))return;
+   if(dragged===null)return;
+   const from=dragged;dragged=null;
    event.preventDefault();event.stopPropagation();reorder(from,index);
   });
  });
@@ -22521,6 +22732,10 @@ function writerV9215FlowMerge(settings){
  return cfg;
 }
 function writerV9215SlashActions(){
+ const block=(id,pt,en,keys,body='',bodyPt,fence=id)=>{
+  const wrap=value=>'~~~'+fence+'\n'+(value?value+'\n':'')+'~~~';
+  return {id,pt,en,keys,fence,text:wrap(body),textPt:bodyPt===undefined?undefined:wrap(bodyPt)};
+ };
  return [
   {id:'h1',pt:'Título 1',en:'Heading 1',keys:'h1 title heading',text:'# '},
   {id:'h2',pt:'Título 2',en:'Heading 2',keys:'h2 title heading',text:'## '},
@@ -22539,13 +22754,44 @@ function writerV9215SlashActions(){
   {id:'link',pt:'Link Markdown',en:'Markdown link',keys:'link url',text:"[texto](https://)"},
   {id:'highlight',pt:'Realce',en:'Highlight',keys:'mark highlight',text:"==texto=="},
   {id:'formula',pt:'Fórmula',en:'Math formula',keys:'math formula latex',text:"$$\n\n$$"},
-  {id:'flowboard',pt:'Painel de notas',en:'Note board',keys:'flow board panel notes',text:"~~~flow\n[[nome da nota]]\n~~~"},
-  {id:'flowcards',pt:'Quadro de cartões de texto',en:'Text card board',keys:'flow board columns cards',
-   text:'~~~flow\n=== Ideas\n- New idea\n=== In progress\n~~~',textPt:'~~~flow\n=== Ideias\n- Ideia nova\n=== Em andamento\n~~~'},
-  {id:'dbview',pt:'Banco: nova visualização',en:'Database: new view',keys:'notion base database gallery board',text:'~~~basic-suite-db\nfolder: Databases/Tarefas\nview: gallery\ncolumns: file, status\n~~~'},
-  {id:'timetable',pt:'Estudos: horário de aulas',en:'Study: class timetable',keys:'unique agenda schedule horario aula',text:'~~~basic-timetable\n~~~'},
+  block('flowboard','Painel de notas','Note board','writer-flow flow board panel notes','[[Note name]]','[[Nome da nota]]','flow'),
+  block('flowcards','Quadro de cartões de texto','Text card board','writer-flow flow board columns cards',
+   '=== Ideas\n- New idea\n=== In progress','=== Ideias\n- Ideia nova\n=== Em andamento','flow'),
+  block('dbview','Banco: nova visualização','Database: new view','basic-suite-db notion base database gallery board',
+   'folder: Databases/Tasks\nview: gallery\ncolumns: file, status','folder: Bancos/Tarefas\nview: gallery\ncolumns: file, status','basic-suite-db'),
+  block('timetable','Estudos: horário de aulas','Study: class timetable','basic-timetable unique agenda schedule horario aula','',undefined,'basic-timetable'),
   {id:'date',pt:'Data de hoje',en:'Today',keys:'date today calendar',text:''},
-  {id:'flow',pt:'Incorporar nota',en:'Embed note',keys:'embed inline edit note flow',text:''}
+  {id:'flow',pt:'Incorporar nota',en:'Embed note',keys:'embed inline edit note flow',text:''},
+  block('chat','Conversa fictícia','Fictional chat','writer-chat diálogo dialogue','[left=Ana, right=Leo]\n< | Ana | Did you find the map?\n> | Leo | Yes, I did.',
+   '[left=Ana, right=Leo]\n< | Ana | Você encontrou o mapa?\n> | Leo | Encontrei.'),
+  block('post','Publicação fictícia','Fictional post','writer-post social','author: Ana\n---\nWe found the map.','author: Ana\n---\nEncontramos o mapa.'),
+  block('tabs','Abas Markdown','Markdown tabs','writer-tabs guides','=== Overview\nWrite here.\n=== Notes','=== Visão geral\nEscreva aqui.\n=== Notas'),
+  block('wiki','Ficha wiki','Wiki infobox','writer-wiki worldbuilding','title: Northern Archive\n---\nDescribe the archive.','title: Arquivo do Norte\n---\nDescreva o arquivo.'),
+  block('avatar','Cartão de personagem','Character card','writer-avatar portrait','title: Ana\nlayout: left\n---\nDescribe the character.','title: Ana\nlayout: left\n---\nDescreva a personagem.'),
+  block('scene-card','Ficha de cena','Scene card','writing cena','title: Opening\n---\nDraft the scene.','title: Abertura\n---\nEsboce a cena.'),
+  block('character-voice','Voz da personagem','Character voice','writing diálogo dialogue','name: Ana\n---\nWrite a line of dialogue.','name: Ana\n---\nEscreva uma fala.'),
+  block('beat-sheet','Batidas da história','Story beats','writing outline','---\nOpening | Ana finds a map.','---\nAbertura | Ana encontra um mapa.'),
+  block('editor-note','Nota de revisão','Editorial note','writing revisão edit','---\nWhat needs revision?','---\nO que precisa de revisão?'),
+  block('media-gallery','Galeria de mídias','Media gallery','writer-media-gallery fotos imagens pictures','type: all'),
+  block('folder-overview','Visão geral da pasta','Folder overview','writer-folder-overview explorer','style: cards'),
+  block('columns','Colunas Markdown','Markdown columns','layout','columns: 2\n### Notes\n--- end-column ---\n### References',
+   'columns: 2\n### Notas\n--- end-column ---\n### Referências'),
+  block('writer-columns','Colunas responsivas','Responsive columns','layout','### Notes\n---column---\n### References','### Notas\n---column---\n### Referências'),
+  block('progressbar','Barra de progresso','Progress bar','progresso','kind: manual\nmax: 20\nvalue: 5'),
+  block('widgets','Widget de relógio','Clock widget','relógio countdown contador quote counter','type: clock\nformat: 24hr'),
+  block('meta-field','Campo YAML','YAML property field','propriedade frontmatter','property: status\ntype: view'),
+  block('insta-toc','Sumário instantâneo','Instant table of contents','toc índice headings','maxDepth: 3'),
+  block('longform-nav','Navegação de capítulos','Chapter navigation','longform booknav'),
+  block('timeline','Linha do tempo narrativa','Narrative timeline','writer-timeline cronologia','+ Year one\n+ The expedition\n+ The journey begins.',
+   '+ Ano um\n+ A expedição\n+ A jornada começa.'),
+  block('timeline-labeled','Linha do tempo com campos','Timeline with fields','timeline cronologia','date: Year one\ntitle: The expedition\ncontent:\nThe journey begins.',
+   'date: Ano um\ntitle: A expedição\ncontent:\nA jornada começa.'),
+  block('bookshelf','Estante Longform','Longform bookshelf','writer-bookshelf library biblioteca','sort: title'),
+  block('bibliography','Bibliografia local','Local bibliography','zotero citação citation'),
+  block('basic-database','Banco de notas','Note database','writer-database tabela table',
+   'folder: Writing\ncolumns: file, status\nview: table','folder: Escrita\ncolumns: file, status\nview: table'),
+  block('basic-suite-chart','Gráfico do banco de notas','Note database chart','database gráfico chart',
+   'folder: Writing\ngroup: status','folder: Escrita\ngroup: status')
  ];
 }
 function writerV9215InsertAction(action,editor,start,end){
@@ -22553,6 +22799,10 @@ function writerV9215InsertAction(action,editor,start,end){
  if(action.id==='date'){
   const today=new Date();
   text=[today.getFullYear(),String(today.getMonth()+1).padStart(2,'0'),String(today.getDate()).padStart(2,'0')].join('-');
+ }
+ if(action.fence){
+  if(start.ch>0)text='\n'+text;
+  if(editor.getLine(end.line).slice(end.ch))text+='\n';
  }
  editor.replaceRange(text,start,end);
  editor.focus();
@@ -22581,12 +22831,18 @@ class WriterV9215SlashSuggest extends require('obsidian').EditorSuggest{
   if(!ctx)return;
   const editor=ctx.editor,position=ctx.start;
   if(action.id==='flow'){
-   editor.replaceRange('',ctx.start,ctx.end);
+   const original=editor.getValue();
    const Search=require('obsidian').FuzzySuggestModal;
    const modal=new (class extends Search{
     getItems(){return this.app.vault.getMarkdownFiles().filter(file=>file.path!==ctx.file?.path);}
     getItemText(file){return file.path;}
-    onChooseItem(file){editor.replaceRange('![['+file.path+']]',position);editor.focus();}
+    onChooseItem(file){
+     const activeFile=this.app?.workspace?.activeEditor?.file;
+     if((activeFile&&activeFile!==ctx.file)||editor.getValue()!==original){
+      new Notice(writerUi('A nota mudou. Abra o menu novamente.','The note changed. Open the menu again.'));return;
+     }
+     editor.replaceRange('![['+file.path+']]',position,ctx.end);editor.focus();
+    }
    })(this.plugin.app);
    modal.setPlaceholder(writerUi('Escolha a nota para incorporar…','Choose the note to embed…'));
    modal.open();return;
@@ -22600,7 +22856,7 @@ async function writerV9216FlowOpenEditor(plugin,file,mount,button){
  if(existing){existing.remove();button.setAttribute('aria-expanded','false');return;}
  button.disabled=true;
  try{
-  const baseline=file.stat?.mtime||0,original=await plugin.app.vault.cachedRead(file);
+  const path=file.path,baseline=file.stat?.mtime||0,original=await plugin.app.vault.cachedRead(file);
   if(!mount.isConnected)return;
   const box=mount.ownerDocument.createElement('div');box.className='writer-v9215-flow-editor';
   const textarea=mount.ownerDocument.createElement('textarea');textarea.value=original;
@@ -22612,14 +22868,15 @@ async function writerV9216FlowOpenEditor(plugin,file,mount,button){
   button.setAttribute('aria-expanded','true');
   cancel.addEventListener('click',()=>{box.remove();button.setAttribute('aria-expanded','false');});
   save.addEventListener('click',async()=>{
+   if(save.disabled)return;
    save.disabled=true;
    try{
-    const fresh=await plugin.app.vault.read(file);
-    if((file.stat?.mtime||0)!==baseline||fresh!==original){
-     new Notice(writerUi('A nota mudou em outra janela. Abra-a antes de salvar, para não perder alterações.','The note changed elsewhere. Open it before saving to avoid overwriting changes.'));
-     return;
-    }
-    if(textarea.value!==original)await plugin.app.vault.modify(file,textarea.value);
+    const next=textarea.value;
+    if(next!==original)await plugin.app.vault.process(file,fresh=>{
+     if(file.path!==path||(file.stat?.mtime||0)!==baseline||fresh!==original)
+      throw Error(writerUi('A nota mudou em outra janela. Abra-a antes de salvar, para não perder alterações.','The note changed elsewhere. Open it before saving to avoid overwriting changes.'));
+     return next;
+    });
     box.remove();button.setAttribute('aria-expanded','false');
     new Notice(writerUi('Nota incorporada salva.','Embedded note saved.'));
    }catch(error){new Notice(String(error.message||error));}
@@ -22630,8 +22887,8 @@ async function writerV9216FlowOpenEditor(plugin,file,mount,button){
  finally{button.disabled=false;}
 }
 /* Local note collections from a Markdown ~~~flow block: one note link per line. */
-function writerV9216FlowBlock(plugin,source,root,ctx){
- if(typeof writerV93FlowComposer==='function')return writerV93FlowComposer(plugin,source,root,ctx);
+function writerV9216FlowBlock(plugin,source,root,ctx,type){
+ if(typeof writerV93FlowComposer==='function')return writerV93FlowComposer(plugin,source,root,ctx,type);
  const cfg=plugin.settings.v9215Flow;
  if(!cfg.enabled||!cfg.flowBlocks)return;
  const rows=String(source||'').split(/\r?\n/).map(s=>s.trim())
@@ -22687,7 +22944,7 @@ function writerV9215FlowRegister(plugin){
   plugin.registerMarkdownPostProcessor((element,context)=>writerV9215FlowDecorateEmbed(plugin,element,context),90);
  if(typeof plugin.registerMarkdownCodeBlockProcessor==='function'){
   for(const id of ['flow','writer-flow'])
-   plugin.registerMarkdownCodeBlockProcessor(id,(source,root,context)=>writerV9216FlowBlock(plugin,source,root,context));
+   plugin.registerMarkdownCodeBlockProcessor(id,(source,root,context)=>writerV9216FlowBlock(plugin,source,root,context,id));
  }
  plugin.addCommand({id:'v93-insert-block',name:writerUi('Escrita: catálogo de inserção rápida','Writing: quick insert catalog'),
   editorCheckCallback:(checking,editor,context)=>{
@@ -22697,7 +22954,7 @@ function writerV9215FlowRegister(plugin){
    const Picker=require('obsidian').FuzzySuggestModal;
    const modal=new (class extends Picker{
     getItems(){return writerV9215SlashActions().filter(action=>action.id!=='flow');}
-    getItemText(action){return writerUi(action.pt,action.en);}
+    getItemText(action){return writerUi(action.pt,action.en)+(action.fence?' · '+action.fence:'');}
     onChooseItem(action){
      if(!plugin.settings.v9215Flow.enabled||context.file!==file||editor.getValue()!==original){
       new Notice(writerUi('A nota mudou. Abra o catálogo novamente.','The note changed. Open the catalog again.'));return;
@@ -23136,23 +23393,38 @@ function writerV95TimelineConfigOption(cfg,key,value){
  else if(name==='color'&&/^#[0-9a-f]{6}$/i.test(value.trim()))cfg.accent=value.trim();
  else if(name==='line'&&/^[2-5]$/.test(val))cfg.line=Number(val);
  else if(name==='body'&&/^[2-4]$/.test(val))cfg.body=Number(val);
- else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Number(val)||80));
- else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Number(val)||30));
+ else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Math.trunc(Number(val)||80)));
+ else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Math.trunc(Number(val)||30)));
+}
+function writerV95TimelineFence(line,active){
+ const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(line);
+ if(!match)return active;
+ const [,marker,tail]=match;
+ if(active)return marker[0]===active[0]&&marker.length>=active.length&&/^[ \t]*$/.test(tail)?'':active;
+ return marker[0]==='~'||!tail.includes('\x60')?marker:'';
 }
 // Normalize legacy <br>, <br/> and malformed </br> in headings.
-// Preserve valid HTML <br> within Markdown content, rewriting only malformed
-// closing </br> into a Markdown hard break. Never evaluate title/date as HTML.
+// In Markdown, only normalize malformed breaks in prose.
 function writerV95TimelineNormalizeBreaks(value,markdown=false){
  const input=String(value==null?'':value).replace(/\r\n?/g,'\n');
- return markdown?input.replace(/[ \t]*<\s*\/\s*br\s*>[ \t]*/gi,'  \n'):
-  input.replace(/<\s*\/?\s*br\s*\/?\s*>/gi,'\n');
+ if(!markdown)return input.replace(/<\s*\/?\s*br\s*\/?\s*>/gi,'\n');
+ let fence='';
+ return input.split('\n').map(line=>{
+  const wasFenced=Boolean(fence);
+  fence=writerV95TimelineFence(line,fence);
+  if(wasFenced||fence||/^(?: {4}|\t)/.test(line))return line;
+  return line.replace(/(?<!\x60)(\x60+)(?!\x60).*?(?<!\x60)\1(?!\x60)|(?<![ \t])[ \t]*<\s*\/\s*br\s*>[ \t]*/gi,
+   (match,delimiter)=>delimiter?match:'  \n');
+ }).join('\n');
 }
 function writerV95TimelineCleanEvent(raw){
  const e=raw||{};
+ const content=writerV95TimelineNormalizeBreaks(e.content||'',true)
+  .replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g,'');
  const result={
   date:writerV95TimelineNormalizeBreaks(e.date||e.time||'').trim().slice(0,120),
   title:writerV95TimelineNormalizeBreaks(e.title||'').trim().slice(0,200),
-  content:writerV95TimelineNormalizeBreaks(e.content||'',true).trim().slice(0,8000),
+  content:content.trim()?content:'',
   image:String(e.image||'').trim().slice(0,400),
   icon:String(e.icon||'').trim().slice(0,45),
   color:/^#[0-9a-f]{6}$/i.test(String(e.color||''))?String(e.color):'',
@@ -23165,26 +23437,42 @@ function writerV95TimelineCleanEvent(raw){
  return result.date||result.title||result.content?result:null;
 }
 function writerV95TimelineLegacy(lines){
- const events=[];let parts=[],extra=[];
+ const events=[];let parts=[],extra=[],fence='';
  const push=()=>{
   if(parts.length!==3)return;
-  const item={date:parts[0],title:parts[1],content:[parts[2],...extra].join('\n').trim()};
-  // Optional per-event attributes at the beginning of the content.
-  const body=item.content.split('\n'),remaining=[];
+  const item={date:parts[0],title:parts[1]};
+  const body=[parts[2],...extra],remaining=[];let codeFence='';
   for(const row of body){
-   const m=/^\s*(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
+   const previousFence=codeFence;
+   codeFence=writerV95TimelineFence(row,codeFence);
+   if(previousFence||codeFence){
+    remaining.push(row);
+    continue;
+   }
+   const m=/^(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
    if(m){item[m[1].toLowerCase()]=m[2].trim();continue;}
    remaining.push(row);
   }
-  item.content=remaining.join('\n').trim();
+  item.content=remaining.join('\n');
   const event=writerV95TimelineCleanEvent(item);
   if(event)events.push(event);
  };
  for(const line of lines){
-  const mark=/^\s*\+\s+(.+)$/.exec(line);
+  // Nested Markdown lists and fenced code belong to the current description.
+  if(parts.length===3){
+   const previousFence=fence;
+   fence=writerV95TimelineFence(line,fence);
+   if(previousFence||fence){
+    extra.push(line);
+    continue;
+   }
+  }
+  const mark=/^\+[ \t]+(.*)$/.exec(line);
   if(mark){
    if(parts.length===3){push();parts=[];extra=[];}
-   parts.push(mark[1].trim());continue;
+   parts.push(mark[1].trim());
+   if(parts.length===3)fence=writerV95TimelineFence(parts[2],fence);
+   continue;
   }
   if(parts.length===3)extra.push(line);
  }
@@ -23192,18 +23480,38 @@ function writerV95TimelineLegacy(lines){
  return events.slice(0,250);
 }
 function writerV95TimelineLabeled(lines){
- const events=[];let current=null,content=false;
- const push=()=>{const clean=writerV95TimelineCleanEvent(current);if(clean)events.push(clean);current=null;content=false;};
+ const events=[];let current=null,content=false,fence='';
+ const push=()=>{const clean=writerV95TimelineCleanEvent(current);if(clean)events.push(clean);current=null;content=false;fence='';};
  const keys={date:'date',time:'date',when:'date',title:'title',content:'content',description:'content',
   image:'image',photo:'image',icon:'icon',color:'color',group:'group',track:'group',link:'link',id:'id',after:'after',depends:'after',era:'era'};
- for(const line of lines){
-  if(/^\s*---\s*$/.test(line)){if(current)push();continue;}
-  const m=/^\s*([a-z][a-z-]*):\s*(.*)$/i.exec(line);
+ for(let index=0;index<lines.length;index++){
+  const line=lines[index];
+  if(current&&content){
+   const previousFence=fence;
+   fence=writerV95TimelineFence(line,fence);
+   if(previousFence||fence){
+    current.content=(current.content?current.content+'\n':'')+line;
+    continue;
+   }
+  }
+  if(/^\s*---\s*$/.test(line)){
+   let next=index+1;
+   while(next<lines.length&&!lines[next].trim())next++;
+   if(!content||(/^---/.test(line)&&/^(?:date|time|when):/i.test(lines[next]||''))){
+    if(current)push();
+    continue;
+   }
+  }
+  const m=/^([a-z][a-z-]*):\s*(.*)$/i.exec(line);
   const key=m?keys[m[1].toLowerCase()]:null;
   if(key){
-   if(key==='date'&&current?.date)push();
+   if(key==='date'&&current&&(current.date||current.title||current.content))push();
    if(!current)current={};
-   if(key==='content'){current.content=(current.content?current.content+'\n':'')+m[2];content=true;}
+   if(key==='content'){
+    current.content=(current.content?current.content+'\n':'')+m[2];
+    content=true;
+    fence=writerV95TimelineFence(m[2],fence);
+   }
    else {current[key]=m[2];content=false;}
    continue;
   }
@@ -23216,17 +23524,22 @@ function writerV95TimelineLabeled(lines){
 }
 function writerV95TimelineSortKey(date){
  const text=String(date||'').trim();
- if(/^-?\d{1,6}$/.test(text))return Number(text)*365.2425-719527;
  if(/^\d{4}-\d\d(?:-\d\d)?$/.test(text)){
-  const stamp=Date.parse(text.length===7?text+'-01':text);
-  return Number.isFinite(stamp)?stamp/86400000:null;
+  const isoDate=text.length===7?text+'-01':text;
+  const stamp=Date.parse(isoDate);
+  return Number.isFinite(stamp)&&new Date(stamp).toISOString().startsWith(isoDate+'T')?stamp/86400000:null;
  }
- return null;
+ const year=/^(-?\d{1,6})(?:\s*(?:a|até|to|–|—|\.\.|-)\s*-?\d{1,6})?$/i.exec(text);
+ if(!year)return null;
+ const previousYear=Number(year[1])-1;
+ const leapDays=Math.floor(previousYear/4)-Math.floor(previousYear/100)+Math.floor(previousYear/400);
+ // The Unix epoch is 719162 days after 0001-01-01.
+ return 365*previousYear+leapDays-719162;
 }
 function writerV95TimelineParse(source,format='timeline'){
  const raw=String(source||'');
  if(raw.length>64000)return null;
- const cfg={...WRITER_V95_TIMELINE_OPTIONS},lines=raw.replace(/\r\n/g,'\n').split('\n');
+ const cfg={...WRITER_V95_TIMELINE_OPTIONS},lines=raw.replace(/\r\n?/g,'\n').split('\n');
  let begin=0;
  while(begin<lines.length){
   const line=lines[begin].trim();
@@ -23251,9 +23564,12 @@ function writerV95TimelineParse(source,format='timeline'){
  let events=labeled?writerV95TimelineLabeled(body):writerV95TimelineLegacy(body);
  if(cfg.sort==='dependencies')events=writerV101TimelineDependencies(events);
  else if(cfg.sort!=='source'){
-  events=events.map((event,index)=>({...event,_order:index,_sort:writerV95TimelineSortKey(event.date)}))
-   .sort((a,b)=>a._sort===null||b._sort===null?a._order-b._order:
-    (cfg.sort==='asc'?1:-1)*(a._sort-b._sort)||a._order-b._order);
+  // Sort comparable dates, leaving fictional/unknown dates in their original slots.
+  const dated=events.map((event,index)=>({event,index,key:writerV95TimelineSortKey(event.date)}));
+  const sorted=dated.filter(item=>item.key!==null).sort((a,b)=>
+   (cfg.sort==='asc'?1:-1)*(a.key-b.key)||a.index-b.index);
+  let cursor=0;
+  events=dated.map(item=>item.key===null?item.event:sorted[cursor++].event);
  }
  return {config:cfg,events:events.slice(0,cfg.maxEvents)};
 }
@@ -23282,7 +23598,7 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  const root=element.createDiv({cls:'writer-v95-timeline'});
  if(!parsed){root.createEl('p',{text:writerUi('Timeline muito grande (limite de 64 KB).','Timeline exceeds the 64 KB limit.')});return;}
  const cfg=parsed.config;
- root.classList.add('is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
+ root.classList.add('is-narrative-timeline','is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
   'is-line-'+cfg.line,'is-body-'+cfg.body);
  if(cfg.spacedLines)root.classList.add('is-spaced-lines');
  if(cfg.hideTitles)root.classList.add('is-hide-titles');
@@ -23310,8 +23626,11 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
   setOrientation();
   orient.addEventListener('click',()=>{
    layout=layout==='vertical'?'horizontal':'vertical';
-   root.classList.toggle('is-layout-horizontal',layout==='horizontal');
-   root.classList.toggle('is-layout-vertical',layout==='vertical');
+   const horizontal=layout==='horizontal';
+   root.classList.toggle('is-layout-horizontal',horizontal);
+   root.classList.toggle('is-layout-vertical',!horizontal);
+   if(horizontal)list.setAttribute('tabindex','0');
+   else list.removeAttribute('tabindex');
    setOrientation();
   });
   // Original Timeline: live preview of line-2..5 and body-2..4 alongside named themes.
@@ -23353,20 +23672,21 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    select.addEventListener('change',()=>{group=select.value;page=0;draw();});
   }
  }
- const list=root.createDiv({cls:'writer-v95-timeline-items',attr:{role:'list','aria-label':writerUi('Linha do tempo','Timeline')}});
+ const list=root.createDiv({cls:'writer-v95-timeline-items',attr:{
+  role:'list','aria-label':writerUi('Linha do tempo','Timeline'),...(layout==='horizontal'?{tabindex:'0'}:{})}});
  if(bar){
   const backward=bar.createEl('button',{text:'‹',attr:{type:'button','aria-label':writerUi('Rolar para trás','Scroll backward')}});
   const forward=bar.createEl('button',{text:'›',attr:{type:'button','aria-label':writerUi('Rolar para frente','Scroll forward')}});
   backward.className='writer-v95-timeline-scroll';
   forward.className='writer-v95-timeline-scroll';
   for(const [button,dir] of [[backward,-1],[forward,1]])button.addEventListener('click',()=>{
-   if(root.classList.contains('is-layout-horizontal'))list.scrollBy({left:dir*Math.max(240,list.clientWidth*.7),behavior:'smooth'});
-   else list.scrollBy({top:dir*Math.max(240,list.clientHeight*.7),behavior:'smooth'});
+   if(layout==='horizontal')list.scrollBy({left:dir*Math.max(240,list.clientWidth*.7)});
   });
  }
  const pager=root.createDiv({cls:'writer-v101-timeline-pager'});
  function draw(){
   list.empty();pager.empty();
+  list.scrollLeft=0;
   const filtered=parsed.events.filter(e=>(!group||e.group===group)&&
    (!query||(e.date+' '+e.title+' '+e.content+' '+e.group).toLocaleLowerCase().includes(query)));
   if(!filtered.length){list.createEl('p',{cls:'writer-v95-empty',text:writerUi('Nenhum evento encontrado.','No matching events.')});return;}
@@ -23380,7 +23700,9 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     try{if(require('obsidian').getIcon?.(event.icon))require('obsidian').setIcon(marker,event.icon);}catch(_){}
    }
    const info=card.createDiv({cls:'writer-v95-timeline-event-body'});
-   if(!event.content&&!event.group&&!event.era&&!event.after&&!event.image&&!event.link)
+   const image=event.image&&writerV8ImagePath(plugin.app,event.image,ctx.sourcePath);
+   const file=event.link&&writerV95TimelineLink(plugin,ctx,event.link);
+   if(!event.content&&!event.group&&!event.era&&!event.after&&!image&&!file)
     info.classList.add('is-heading-only');
    const head=info.createDiv({cls:'writer-v95-timeline-head'});
    if(event.date)head.createSpan({cls:'writer-v95-timeline-date',text:event.date});
@@ -23388,27 +23710,21 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    if(event.group)info.createSpan({cls:'writer-v95-timeline-group',text:event.group});
    if(event.era)info.createSpan({cls:'writer-v101-timeline-era',text:event.era});
    if(event.after)info.createSpan({cls:'writer-v101-timeline-after',text:writerUi('Depois de: ','After: ')+event.after});
-   if(event.image){
-    const image=writerV8ImagePath(plugin.app,event.image,ctx.sourcePath);
-    if(image)info.createEl('img',{cls:'writer-v95-timeline-image',attr:{src:image,alt:event.title||writerUi('Imagem do evento','Event photo'),loading:'lazy',decoding:'async'}});
-   }
+   if(image)info.createEl('img',{cls:'writer-v95-timeline-image',attr:{src:image,alt:event.title||writerUi('Imagem do evento','Event photo'),loading:'lazy',decoding:'async'}});
    if(event.content){
     const area=info.createDiv({cls:'writer-v95-timeline-content'});
     void writerV8Markdown(plugin,ctx,area,event.content).catch(error=>{
      console.warn('[Basic AI] Timeline Markdown:',error);area.setText(event.content);
     });
    }
-   if(event.link){
-    const file=writerV95TimelineLink(plugin,ctx,event.link);
-    if(file)info.createEl('button',{cls:'writer-v95-timeline-link',text:writerUi('Abrir nota','Open note'),attr:{type:'button'}})
-     .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
-   }
+   if(file)info.createEl('button',{cls:'writer-v95-timeline-link',text:writerUi('Abrir nota','Open note'),attr:{type:'button'}})
+    .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
   }
   if(maxPage>0){
-   const previous=pager.createEl('button',{text:writerUi('Anterior','Previous')});previous.disabled=page===0;
+   const previous=pager.createEl('button',{text:writerUi('Anterior','Previous'),attr:{type:'button'}});previous.disabled=page===0;
    previous.addEventListener('click',()=>{page--;draw();});
    pager.createSpan({text:(page+1)+' / '+(maxPage+1)});
-   const next=pager.createEl('button',{text:writerUi('Próxima','Next')});next.disabled=page>=maxPage;
+   const next=pager.createEl('button',{text:writerUi('Próxima','Next'),attr:{type:'button'}});next.disabled=page>=maxPage;
    next.addEventListener('click',()=>{page++;draw();});
   }
  }
@@ -23440,6 +23756,7 @@ function writerV95RegisterTimelineBlocks(plugin){
 
 // v3 module: src/v10/bookshelf.js
 /* v10 Longform bookshelf: local indices and covers, without a second book database. */
+const WRITER_V10_BOOK_SORTS=['title','recent','chapters','progress','series'];
 function writerV10BookshelfMerge(settings){
  const old=settings.v10Bookshelf&&typeof settings.v10Bookshelf==='object'?settings.v10Bookshelf:{};
  const cfg=settings.v10Bookshelf={enabled:true,showWidget:true,showProgress:true,trackStandaloneProgress:true,
@@ -23449,7 +23766,7 @@ function writerV10BookshelfMerge(settings){
  const progress=cfg.scrollProgress&&typeof cfg.scrollProgress==='object'&&!Array.isArray(cfg.scrollProgress)?cfg.scrollProgress:{};
  cfg.scrollProgress=Object.fromEntries(cfg.standalone.filter(path=>Number.isFinite(progress[path]))
   .map(path=>[path,Math.min(100,Math.max(0,Math.round(progress[path])))]));
- cfg.sort=['title','recent','chapters','progress','series'].includes(cfg.sort)?cfg.sort:'title';
+ cfg.sort=WRITER_V10_BOOK_SORTS.includes(cfg.sort)?cfg.sort:'title';
  cfg.density=['compact','normal'].includes(cfg.density)?cfg.density:'normal';
  const library=cfg.library&&typeof cfg.library==='object'&&!Array.isArray(cfg.library)?cfg.library:{};
  cfg.library=Object.fromEntries(Object.entries(library).slice(0,500).filter(([path])=>typeof path==='string'&&path.length<=500)
@@ -23525,7 +23842,10 @@ function writerV10BookshelfSort(projects,sort,plugin){
  const books=projects.slice();
  const title=(a,b)=>a.title.localeCompare(b.title,undefined,{sensitivity:'base'});
  if(sort==='recent')return books.sort((a,b)=>(b.file.stat?.mtime||0)-(a.file.stat?.mtime||0)||title(a,b));
- if(sort==='chapters')return books.sort((a,b)=>(b.scenes?.length||0)-(a.scenes?.length||0)||title(a,b));
+ if(sort==='chapters'){
+  const counts=new Map(books.map(book=>[book,writerV10BookWordProgress(plugin,book).chapters]));
+  return books.sort((a,b)=>counts.get(b)-counts.get(a)||title(a,b));
+ }
  if(sort==='progress'&&plugin){
   const progress=new Map(books.map(book=>[book,writerV10BookState(plugin,book).progress]));
   return books.sort((a,b)=>progress.get(b)-progress.get(a)||title(a,b));
@@ -23630,9 +23950,8 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
 
  const search=toolbar.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar livros…','Search books…'),'aria-label':writerUi('Buscar livros','Search books')}});
  search.classList.add('writer-v1042-bookshelf-search');
- let onlyFavorites=false,statusFilter='',shelfFilter='',page=0;
+ let onlyFavorites=false,statusFilter='',shelfFilter='',page=0,shelf,shelfNames=[];
  if(!opts.compact){
-  const shelfNames=[...new Set(projects.map(p=>writerV10BookFields(plugin,p).shelf).filter(Boolean))].sort();
   const sorting=toolbar.createEl('select',{cls:'writer-v1042-bookshelf-sort',
    attr:{'aria-label':writerUi('Ordenar livros','Sort books')}});
   for(const [key,pt,en] of [
@@ -23650,21 +23969,34 @@ function writerV10RenderBookshelf(plugin,target,opts={}){
    const option=status.createEl('option',{text:writerUi(pt,en)});option.value=key;
   }
   status.addEventListener('change',()=>{statusFilter=status.value;page=0;draw();});
-  const shelf=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar estante','Filter shelf')}});
-  for(const value of ['',...shelfNames]){const opt=shelf.createEl('option',{text:value||writerUi('Todas as estantes','All shelves')});opt.value=value;}
+  shelf=toolbar.createEl('select',{attr:{'aria-label':writerUi('Filtrar estante','Filter shelf')}});
   shelf.addEventListener('change',()=>{shelfFilter=shelf.value;page=0;draw();});
  }
  const grid=wrapper.createDiv({cls:'writer-v10-bookshelf-grid'});
  const pagination=wrapper.createDiv({cls:'writer-v10-bookshelf-pages'});
  const draw=()=>{
   grid.empty();pagination.empty();
+  const standalone=new Set(config.standalone);
+  const available=projects.filter(project=>!project.standalone||standalone.has(project.file.path));
+  if(shelf){
+   const names=['',...new Set(available.map(project=>writerV10BookFields(plugin,project).shelf).filter(Boolean))].sort();
+   if(names.length!==shelfNames.length||names.some((name,i)=>name!==shelfNames[i])){
+    shelfNames=names;
+    if(!names.includes(shelfFilter))shelfFilter='';
+    shelf.empty();
+    for(const value of names){
+     const option=shelf.createEl('option',{text:value||writerUi('Todas as estantes','All shelves')});option.value=value;
+    }
+    shelf.value=shelfFilter;
+   }
+  }
   const query=search.value.trim().toLocaleLowerCase();
-  const matching=(onlyFavorites||statusFilter||shelfFilter||query)?projects.filter(p=>{
+  const matching=(onlyFavorites||statusFilter||shelfFilter||query)?available.filter(p=>{
    const record=writerV10BookFields(plugin,p);
    return (!onlyFavorites||record.favorite)&&(!statusFilter||record.status===statusFilter)&&
     (!shelfFilter||record.shelf===shelfFilter)&&(!query||
      (p.title+' '+String(p.meta?.series||'')+' '+record.shelf).toLocaleLowerCase().includes(query));
-  }):projects;
+  }):available;
   const items=writerV10BookshelfSort(matching,sortMode,plugin);
   count.setText(items.length+' '+writerUi('livros','books'));
   const size=opts.compact?8:30,maxPage=Math.max(0,Math.ceil(items.length/size)-1);
@@ -23787,8 +24119,8 @@ function writerV10RegisterBookshelf(plugin){
   plugin.registerMarkdownCodeBlockProcessor?.(name,(source,el)=>{
    if(!plugin.settings.v10Bookshelf?.enabled){el.createEl('pre',{text:source});return;}
    const compact=/^\s*(?:density|layout):\s*compact\s*$/mi.test(String(source||''));
-   const sort=/^\s*sort:\s*(title|recent|chapters)\s*$/mi.exec(String(source||''))?.[1];
-   writerV10RenderBookshelf(plugin,el,{compact,sort});
+   const sort=/^\s*sort:\s*([a-z]+)\s*$/mi.exec(String(source||''))?.[1].toLowerCase();
+   writerV10RenderBookshelf(plugin,el,{compact,sort:WRITER_V10_BOOK_SORTS.includes(sort)?sort:undefined});
   });
  }
  plugin.addCommand?.({id:'v10-open-bookshelf',name:writerUi('Longform: abrir biblioteca de livros','Longform: open bookshelf'),callback:()=>writerV10OpenBookshelf(plugin)});
@@ -25600,7 +25932,7 @@ function writerV10ZoteroRef(plugin,file){
  const key=String(front.citekey||front.citationKey||front['citation-key']||front.bibtexKey||'').trim().replace(/^@/,'').slice(0,100);
  const title=String(front.title||file.basename).slice(0,160);
  const creator=front.author||front.creators||front.creator||'';
- const author=Array.isArray(creator)?creator.map(p=>typeof p==='string'?p:[p.lastName,p.firstName].filter(Boolean).join(', ')).join('; '):String(creator);
+ const author=Array.isArray(creator)?creator.map(p=>typeof p==='string'?p:[p?.lastName,p?.firstName].filter(Boolean).join(', ')).filter(Boolean).join('; '):String(creator);
  return {file,key,title,author:author.slice(0,150),doi:String(front.DOI||front.doi||'').slice(0,100)};
 }
 function writerV10ZoteroPicker(plugin){
@@ -25660,12 +25992,21 @@ function writerV10ZoteroBibUnavailable(){
 async function writerV10ZoteroBibliography(plugin,source,el,ctx){
  if(!plugin.settings.v92Research?.enabled||!writerModuleOn(plugin,'zoteroIntegration'))return;
  let options;
- try{options=parseYaml(source)||{};}catch(_){options={};}
- const value=options.keys||options.citekeys||'';
- const keys=new Set((Array.isArray(value)?value:String(value).split(/[\s,]+/)).map(v=>String(v).replace(/^@/,'')).filter(Boolean));
+ try{options=parseYaml(source)??{};}catch(_){options=null;}
+ if(!options||typeof options!=='object'||Array.isArray(options)){
+  el.createEl('p',{text:writerUi('Opções inválidas no bloco de bibliografia.','Invalid bibliography block options.')});return;
+ }
+ const value=options.keys??options.citekeys??'';
+ const keys=new Set((Array.isArray(value)?value:String(value).split(/[\s,]+/)).map(v=>String(v).trim().replace(/^@/,'')).filter(Boolean));
  const {references,unavailable}=await writerV10ZoteroReferences(plugin);
  if(unavailable)el.createEl('p',{text:writerV10ZoteroBibUnavailable()});
- const rows=references.filter(ref=>!keys.size||keys.has(ref.key)).slice(0,150);
+ let rows=references;
+ if(keys.size){
+  const byKey=new Map();
+  for(const ref of references){if(keys.has(ref.key)&&!byKey.has(ref.key))byKey.set(ref.key,ref);}
+  rows=Array.from(keys,key=>byKey.get(key)).filter(Boolean);
+ }
+ rows=rows.slice(0,150);
  if(!rows.length){el.createEl('p',{text:writerUi('Nenhuma referência encontrada.','No reference found.')});return;}
  const list=el.createEl('ol');
  for(const ref of rows){
@@ -25674,7 +26015,7 @@ async function writerV10ZoteroBibliography(plugin,source,el,ctx){
   if(ref.file){
    const path=ref.file.path;
    const link=row.createEl('a',{text:title,attr:{href:path,'data-href':path,class:'internal-link'}});
-   link.addEventListener('click',event=>{event.preventDefault();void plugin.app.workspace.openLinkText(path,ctx.sourcePath,false);});
+   link.addEventListener('click',event=>{event.preventDefault();void plugin.app.workspace.openLinkText(path,ctx?.sourcePath||'',event.ctrlKey||event.metaKey||event.shiftKey);});
   }else row.createSpan({text:title});
   if(ref.key)row.createEl('small',{text:' @'+ref.key});
  }
@@ -26339,7 +26680,10 @@ function writerV107DbSpec(source){
  for(const line of String(source||'').slice(0,6000).split(/\r?\n/)){
   const m=/^\s*(folder|columns|filter|sort|order|group|view|limit|formula|rollup)\s*:\s*(.*?)\s*$/i.exec(line);if(!m)continue;
   const key=m[1].toLowerCase(),value=m[2].trim().replace(/^["']|["']$/g,'');
-  if(key==='columns')s.columns=value.split(',').map(x=>x.trim()).filter(x=>/^[\w-]{1,60}$/.test(x)).slice(0,24);
+  if(key==='columns'){
+   const columns=value.split(',').map(x=>x.trim()).filter(x=>/^[\w-]{1,60}$/.test(x));
+   if(columns.length)s.columns=[...new Set(columns)].slice(0,24);
+  }
   else if(key==='formula'){const f=/^([\w-]{1,35})\s*=\s*(.{1,140})$/.exec(value);if(f&&s.formulas.length<8)s.formulas.push({name:f[1],expression:f[2]});}
   else if(key==='rollup'){const f=/^([\w-]{1,35})\s*=\s*([\w-]{1,40})\.([\w-]{1,40})\s*\|\s*(count|sum|avg|min|max)$/i.exec(value);if(f&&s.rollups.length<8)s.rollups.push({name:f[1],relation:f[2],field:f[3],op:f[4].toLowerCase()});}
   else if(key==='limit')s.limit=Math.max(5,Math.min(300,Number(value)||80));
@@ -26385,17 +26729,28 @@ function writerV107DbMetadata(plugin,file){
 }
 function writerV107DbRollup(plugin,file,record,rollup){
  const paths=(Array.isArray(record[rollup.relation])?record[rollup.relation]:String(record[rollup.relation]||'').split(',')).slice(0,70);
- const related=[];
+ const related=new Map();
  for(const path of paths){
-  const dest=String(path||'').replace(/^\[\[|\]\]$/g,'').split('|')[0].trim();
+  const dest=String(path||'').trim().replace(/^!?\[\[|\]\]$/g,'').split('|')[0].trim();
+  if(!dest)continue;
   const linked=plugin.app.metadataCache.getFirstLinkpathDest(dest,file.path);
-  if(linked instanceof TFile&&!related.some(x=>x.path===linked.path))related.push(linked);
+  if(linked instanceof TFile)related.set(linked.path,linked);
  }
- if(rollup.op==='count')return related.length;
- const nums=related.map(f=>Number(writerV107DbMetadata(plugin,f)[rollup.field])).filter(Number.isFinite);
+ if(rollup.op==='count')return related.size;
+ const nums=[];
+ for(const linked of related.values()){
+  const raw=writerV107DbMetadata(plugin,linked)[rollup.field];
+  if(typeof raw!=='number'&&(typeof raw!=='string'||!raw.trim()))continue;
+  const value=Number(raw);
+  if(Number.isFinite(value))nums.push(value);
+ }
  if(!nums.length)return null;
  const sum=nums.reduce((a,b)=>a+b,0);
  return rollup.op==='sum'?sum:rollup.op==='avg'?Math.round(sum/nums.length*100)/100:rollup.op==='min'?Math.min(...nums):Math.max(...nums);
+}
+function writerV107DbCalculate(plugin,file,data,spec){
+ for(const formula of spec.formulas)data[formula.name]=writerV107DbFormula(formula.expression,data);
+ for(const rollup of spec.rollups)data[rollup.name]=writerV107DbRollup(plugin,file,data,rollup);
 }
 function writerV107DbRows(plugin,spec){
  const max=writerV107DbConfig(plugin.settings).maxFiles;
@@ -26404,16 +26759,19 @@ function writerV107DbRows(plugin,spec){
  for(const file of files){
   const data=writerV107DbMetadata(plugin,file);
   if(!writerV107DbMatch(data,spec.filter))continue;
-  for(const formula of spec.formulas)data[formula.name]=writerV107DbFormula(formula.expression,data);
-  for(const rollup of spec.rollups)data[rollup.name]=writerV107DbRollup(plugin,file,data,rollup);
+  writerV107DbCalculate(plugin,file,data,spec);
   rows.push({file,data});
  }
  const rev=spec.order==='desc'?-1:1;
  rows.sort((a,b)=>rev*String(a.data[spec.sort]??'').localeCompare(String(b.data[spec.sort]??''),undefined,{numeric:true})||a.file.path.localeCompare(b.file.path));
  return rows.slice(0,spec.limit);
 }
+function writerV107DbEditable(plugin,key,spec){
+ return plugin.settings.v107Db?.editable&&key!=='tags'&&writerV11DbPropertyKey(key)&&
+  !spec?.formulas?.some(formula=>formula.name===key)&&!spec?.rollups?.some(rollup=>rollup.name===key);
+}
 function writerV107DbEdit(plugin,item,key,refresh){
- if(!plugin.settings.v107Db.editable||['file','path','created','modified'].includes(key))return;
+ if(!writerV107DbEditable(plugin,key))return;
  const modal=new Modal(plugin.app);modal.setTitle(writerUi('Editar propriedade','Edit property'));
  modal.onOpen=()=>{
   let value=String(item.data[key]??'');
@@ -26439,7 +26797,8 @@ function writerV107DbRender(plugin,source,element,ctx){
  const top=root.createDiv({cls:'writer-v107-db-top'});
  top.createEl('strong',{text:writerUi('Banco Markdown','Markdown database')});
  const count=top.createEl('small');
- const filter=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar neste banco…','Filter database…')}});
+ const filter=root.createEl('input',{attr:{type:'search',placeholder:writerUi('Buscar neste banco…','Filter database…'),
+  'aria-label':writerUi('Buscar no banco de notas','Search note database')}});
  const scroller=root.createDiv({cls:'writer-v107-db-scroll'});
  const cols=[...new Set([...spec.columns,...spec.formulas.map(f=>f.name),...spec.rollups.map(f=>f.name)])];
  let rows=[];
@@ -26465,7 +26824,14 @@ function writerV107DbRender(plugin,source,element,ctx){
    return;
   }
   const table=scroller.createEl('table'),thead=table.createEl('thead').createEl('tr');
-  for(const col of cols){const b=thead.createEl('th').createEl('button',{text:col});b.addEventListener('click',()=>{spec.sort=col;spec.order=spec.order==='asc'?'desc':'asc';refresh();});}
+  for(const col of cols){
+   const header=thead.createEl('th',{attr:{scope:'col'}});
+   if(spec.sort===col)header.setAttribute('aria-sort',spec.order==='desc'?'descending':'ascending');
+   const button=header.createEl('button',{text:col,attr:{type:'button'}});
+   button.addEventListener('click',()=>{
+    spec.order=spec.sort===col&&spec.order==='asc'?'desc':'asc';spec.sort=col;refresh();
+   });
+  }
   const body=table.createEl('tbody');
   for(const row of shown){
    const tr=body.createEl('tr');
@@ -26474,7 +26840,7 @@ function writerV107DbRender(plugin,source,element,ctx){
     const b=cell.createEl('button',{text:String(row.data[col]??'—'),cls:'writer-v107-db-cell'});
     if(col==='file'||col==='path')b.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
     else{
-     b.disabled=!cfg.editable||col==='tags'||spec.formulas.some(f=>f.name===col)||spec.rollups.some(f=>f.name===col);
+     b.disabled=!writerV107DbEditable(plugin,col,spec);
      if(!b.disabled)b.addEventListener('click',()=>writerV107DbEdit(plugin,row,col,refresh));
     }
    }
@@ -27361,10 +27727,10 @@ function writerV107MoveBlockModal(plugin,editor,source){
 }
 function writerV107ColumnsRender(plugin,source,element,ctx){
  const root=element.createDiv({cls:'writer-v107-columns'});
- const sections=String(source||'').split(/^\s*---column---\s*$/m).slice(0,4);
+ const sections=writerV8MarkdownSections(source,line=>/^ {0,3}---column---[ \t]*$/.test(line),4);
  for(const section of sections){
   const col=root.createDiv({cls:'writer-v107-column markdown-rendered'});
-  void MarkdownRenderer.render(plugin.app,section,col,ctx.sourcePath,plugin).catch(()=>col.setText(section));
+  void writerV8Markdown(plugin,ctx,col,writerV8TrimBlankLines(section)).catch(()=>col.setText(section));
  }
 }
 function writerV107PdfViewer(plugin,file){
@@ -28274,15 +28640,20 @@ function writerV1011StudyReminders(text,now=writerV1011StudyDate()){
  }
  return rows.sort((a,b)=>a.date.localeCompare(b.date)).slice(0,40);
 }
+const WRITER_V1011_STUDY_WEEKDAYS=[['dom','sun'],['seg','mon'],['ter','tue'],['qua','wed'],
+ ['qui','thu'],['sex','fri'],['sab','sat']];
+function writerV1011StudyWeekday(value){
+ const prefix=value.normalize('NFD').replace(/\p{M}/gu,'').slice(0,3).toLowerCase();
+ return WRITER_V1011_STUDY_WEEKDAYS.findIndex(codes=>codes.includes(prefix));
+}
 function writerV1011StudyTimetable(text,maxRows=120){
  const lines=String(text||'').split(/\r?\n/);
  const rows=[];
  for(const line of lines){
   if(rows.length>=maxRows)break;
-  const cells=line.trim().replace(/^\|/,'').replace(/\|$/,'').split('|').map(x=>x.trim());
-  if(cells.length<3||cells.length>8||cells.every(x=>/^:?-{3,}:?$/.test(x)))continue;
-  if(/^(dia|day|weekday)$/i.test(cells[0]))continue;
-  if(!/^(seg|ter|qua|qui|sex|sáb|sab|dom|mon|tue|wed|thu|fri|sat|sun)/i.test(cells[0]))continue;
+  if(!line.includes('|'))continue;
+  const cells=writerV101TableSplit(line);
+  if(cells.length<3||cells.length>8||writerV1011StudyWeekday(cells[0])<0)continue;
   rows.push({day:cells[0].slice(0,25),time:cells[1].slice(0,32),
    course:cells[2].slice(0,100),place:String(cells[3]||'').slice(0,100)});
  }
@@ -28294,7 +28665,7 @@ function writerV1011StudyScheduleBlock(plugin,source,element){
  const opts={},lines=String(source||'').split(/\r?\n/);
  for(const line of lines.slice(0,20)){
   const m=/^\s*(file|title):\s*(.*?)\s*$/.exec(line);
-  if(m)opts[m[1]]=m[2];
+  if(m)opts[m[1]]=m[2].replace(/^(["'])(.*)\1$/,'$2');
  }
  const cfg=writerV1011StudyCfg(plugin.settings),path=opts.file||writerV1011StudyPath(cfg,'timetable');
  const file=plugin.app.vault.getAbstractFileByPath(path);
@@ -28307,10 +28678,10 @@ function writerV1011StudyScheduleBlock(plugin,source,element){
   const header=table.createEl('thead').createEl('tr');
   for(const name of [writerUi('Dia','Day'),writerUi('Hora','Time'),writerUi('Aula','Class'),writerUi('Local','Place')])header.createEl('th',{text:name});
   const body=table.createEl('tbody');
-  const current=new Date().getDay(),codes=['dom','seg','ter','qua','qui','sex','sáb'];
+  const current=new Date().getDay();
   for(const item of rows){
    const tr=body.createEl('tr');
-   if(item.day.toLocaleLowerCase().startsWith(codes[current]))tr.addClass('is-today');
+   if(writerV1011StudyWeekday(item.day)===current)tr.addClass('is-today');
    for(const key of ['day','time','course','place'])tr.createEl('td',{text:item[key]});
   }
  }).catch(error=>root.createEl('small',{text:String(error.message||error)}));
@@ -28424,6 +28795,8 @@ function writerV1011NotionSpec(source){
   opts[m[1].toLowerCase()]=m[2].replace(/^["']|["']$/g,'').slice(0,250);
  }
  opts.view=WRITER_V1011_DB_VIEWS.includes(opts.view)?opts.view:'table';
+ opts.group=opts.group||'status';
+ opts.folder=opts.folder.replace(/^\/+|\/+$/g,'');
  if(!opts.folder&&opts.database){
   const db=opts.database.replace(/^\/+|\/+$/g,'');
   if(!/^\.\.?$/.test(db)&&!db.split('/').some(p=>p==='..'||p.startsWith('.')))
@@ -28501,11 +28874,12 @@ function writerV1011NotionRender(plugin,source,element,ctx){
  catch(error){shell.createEl('p',{text:String(error.message||error)});return;}
  const top=shell.createDiv({cls:'writer-v1011-notion-toolbar'});
  top.createEl('strong',{text:spec.title||spec.database||spec.folder.split('/').pop()});
- top.createEl('small',{text:rows.length+' '+writerUi('itens','items')});
+ const count=top.createEl('small');
  const select=top.createEl('select',{attr:{'aria-label':writerUi('Visualização','View')}});
  for(const mode of WRITER_V1011_DB_VIEWS){
-  const option=select.createEl('option',{text:({table:'Tabela',board:'Quadro',gallery:'Galeria',
-   list:'Lista',calendar:'Calendário',timeline:'Linha do tempo',chart:'Gráfico'})[mode]});
+  const [pt,en]=({table:['Tabela','Table'],board:['Quadro','Board'],gallery:['Galeria','Gallery'],
+   list:['Lista','List'],calendar:['Calendário','Calendar'],timeline:['Linha do tempo','Timeline'],chart:['Gráfico','Chart']})[mode];
+  const option=select.createEl('option',{text:writerUi(pt,en)});
   option.value=mode;
  }select.value=spec.view;
  const query=top.createEl('input',{attr:{type:'search',placeholder:writerUi('Pesquisar itens…','Search rows…'),
@@ -28515,13 +28889,15 @@ function writerV1011NotionRender(plugin,source,element,ctx){
   modal.onOpen=()=>{
    new Setting(modal.contentEl).setName(writerUi('Título da nota','Note title')).addText(t=>t.onChange(v=>title=v));
    new Setting(modal.contentEl).addButton(b=>b.setButtonText(writerUi('Criar','Create')).setCta().onClick(async()=>{
-    try{await writerV1011NotionNew(plugin,spec,title);modal.close();}
+    try{await writerV1011NotionNew(plugin,{...spec,view:select.value},title);modal.close();}
     catch(error){new Notice(String(error.message||error));}
    }));
   };modal.open();
  });
  const host=shell.createDiv({cls:'writer-v1011-notion-body'});
- let month=(new Date()).toISOString().slice(0,7);
+ const today=new Date();
+ let month=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
+ const moving=new Set();
  const link=(parent,row,detail=false)=>{
   const button=parent.createEl('button',{cls:'writer-v1011-notion-row',type:'button'});
   button.createEl('strong',{text:row.file.basename});
@@ -28532,8 +28908,22 @@ function writerV1011NotionRender(plugin,source,element,ctx){
   button.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
   return button;
  };
+ const move=async(row,value)=>{
+  if(moving.has(row.file.path))return;
+  moving.add(row.file.path);
+  try{
+   const next=String(value).slice(0,120);
+   if(await writerV11DbChangeGroup(plugin,row,spec.group,next)){
+    row.data[spec.group]=next;
+    if(!writerV107DbMatch(row.data,spec.filter))rows=rows.filter(item=>item!==row);
+    writerV107DbCalculate(plugin,row.file,row.data,spec);
+   }
+  }catch(error){new Notice(String(error.message||error));}
+  finally{moving.delete(row.file.path);draw();}
+ };
  const draw=()=>{
   host.empty();
+  count.setText(rows.length+' '+writerUi('itens','items'));
   const q=query.value.trim().toLowerCase();
   const shown=rows.filter(row=>!q||row.file.path.toLowerCase().includes(q)||
    spec.columns.some(k=>String(row.data[k]??'').toLowerCase().includes(q)));
@@ -28563,31 +28953,29 @@ function writerV1011NotionRender(plugin,source,element,ctx){
   }else if(mode==='board'){
    const groups=new Map();
    for(const row of shown){
-    const name=String(row.data[spec.group||'status']??'—');
+    const name=String(row.data[spec.group]??'');
     if(!groups.has(name))groups.set(name,[]);
     groups.get(name).push(row);
    }
    const board=host.createDiv({cls:'writer-v1011-notion-board'});
+   const canMove=writerV107DbEditable(plugin,spec.group,spec)&&typeof writerV11DbChangeGroup==='function';
+   const groupLabel=value=>value||writerUi('Sem grupo','Ungrouped');
    for(const [name,items] of groups){
     const lane=board.createDiv({cls:'writer-v1011-notion-lane'});
-    lane.createEl('h5',{text:name+' · '+items.length});
-    const canMove=plugin.settings.v107Db?.editable&&typeof writerV11DbChangeGroup==='function'&&typeof writerV11DbPropertyKey==='function'&&writerV11DbPropertyKey(spec.group);
+    lane.createEl('h5',{text:groupLabel(name)+' · '+items.length});
     if(canMove){
      lane.addEventListener('dragover',ev=>{if(ev.dataTransfer?.types.includes('text/plain'))ev.preventDefault();});
      lane.addEventListener('drop',ev=>{
       const data=ev.dataTransfer?.getData('text/plain')||'';
       if(!data.startsWith('basic-v11:'))return;
       ev.preventDefault();
-      const source=shown.find(x=>x.file.path===data.slice('basic-v11:'.length));
-      if(!source)return;
-      void writerV11DbChangeGroup(plugin,source,spec.group,name).then(()=>{
-       element.empty();writerV1011NotionRender(plugin,sourceText,element,ctx);
-      }).catch(error=>new Notice(String(error.message||error)));
+      const row=shown.find(x=>x.file.path===data.slice('basic-v11:'.length));
+      if(row)void move(row,name);
      });
     }
     for(const row of items){
      const button=link(lane,row,true);
-     if(!canMove)continue;
+     if(!canMove||groups.size<2)continue;
      button.draggable=true;
      button.addEventListener('dragstart',ev=>{
       ev.dataTransfer?.setData('text/plain','basic-v11:'+row.file.path);
@@ -28595,16 +28983,14 @@ function writerV1011NotionRender(plugin,source,element,ctx){
      });
      const change=lane.createEl('select',{cls:'writer-v11-db-move',attr:{'aria-label':writerUi('Mover cartão: ','Move card: ')+row.file.basename}});
      for(const value of groups.keys()){
-      const option=change.createEl('option',{text:value});option.value=value;
+      const option=change.createEl('option',{text:groupLabel(value)});option.value=value;
      }
      change.value=name;
+     change.disabled=moving.has(row.file.path);
      change.addEventListener('click',ev=>ev.stopPropagation());
      change.addEventListener('change',async()=>{
       change.disabled=true;
-      try{
-       await writerV11DbChangeGroup(plugin,row,spec.group,change.value);
-       element.empty();writerV1011NotionRender(plugin,sourceText,element,ctx);
-      }catch(error){new Notice(String(error.message||error));change.value=name;change.disabled=false;}
+      await move(row,change.value);
      });
     }
    }
@@ -28639,8 +29025,8 @@ function writerV1011NotionRender(plugin,source,element,ctx){
     date.setMonth(date.getMonth()+change);
     month=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');draw();
    };
-   controls.createEl('button',{text:'‹'}).addEventListener('click',()=>shift(-1));
-   controls.createEl('button',{text:'›'}).addEventListener('click',()=>shift(1));
+   controls.createEl('button',{text:'‹',attr:{type:'button','aria-label':writerUi('Mês anterior','Previous month')}}).addEventListener('click',()=>shift(-1));
+   controls.createEl('button',{text:'›',attr:{type:'button','aria-label':writerUi('Próximo mês','Next month')}}).addEventListener('click',()=>shift(1));
    const cells=host.createDiv({cls:'writer-v1011-notion-calendar'});
    const dayMap=new Map();
    for(const row of shown){
@@ -28664,9 +29050,8 @@ function writerV1011NotionRender(plugin,source,element,ctx){
     for(const col of spec.columns){
      const cell=tr.createEl('td');
      const btn=cell.createEl('button',{cls:'writer-v1011-notion-cell',text:String(row.data[col]??'—')});
-     const derived=spec.formulas?.some(f=>f.name===col)||spec.rollups?.some(f=>f.name===col);
      if(col==='file'||col==='path')btn.addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(row.file));
-     else if(!derived&&plugin.settings.v107Db?.editable)
+     else if(writerV107DbEditable(plugin,col,spec))
       btn.addEventListener('click',()=>writerV107DbEdit(plugin,row,col,()=>{element.empty();writerV1011NotionRender(plugin,source,element,ctx);}));
      else btn.disabled=true;
     }

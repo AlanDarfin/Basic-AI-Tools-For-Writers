@@ -42,6 +42,20 @@ test('tree traversal includes mobile list subfolders, preserving hierarchy',()=>
  assert.equal(notesOnly.some(x=>x.kind==='folder'),false);
  assert.equal(notesOnly.some(x=>x.file.path===nested.path),true);
 });
+test('search and tree collapse apply before the result limit',()=>{
+ const {root,a,b,deep}=tree();
+ const draft=new TFile('Writing/Stories/História.md');draft.parent=a;a.children.push(draft);
+ const cfg=api.writerV8OverviewConfig('style: list\nlimit: 2');
+ assert.deepEqual(Array.from(api.writerV8OverviewEntries({},root,cfg),item=>item.file.path),[b.path,a.path]);
+ const search=api.writerV8OverviewEntries({},root,cfg,'HISTÓRIA'.normalize('NFD'),new Set([a.path]));
+ assert.deepEqual(Array.from(search,item=>item.file.path),[draft.path]);
+ const collapsed=api.writerV8OverviewEntries({},root,{...cfg,limit:3},'',new Set([a.path]));
+ assert.deepEqual(Array.from(collapsed,item=>item.file.path),[b.path,a.path,'Writing/Alpha.md']);
+ assert.equal(collapsed.some(item=>item.file===deep),false);
+ const vault={getRoot:()=>root,getAbstractFileByPath:()=>null};
+ assert.equal(api.writerV8OverviewRoot({vault},'',api.writerV8OverviewConfig('folder: /')),root);
+ assert.equal(api.writerV8OverviewConfig('folder: Essays..Archive').folder,'Essays..Archive');
+});
 test('name descending and modified ascending sort deterministically, folder-first optional',()=>{
  const {root}=tree();
  const alpha=api.writerV8OverviewEntries({},root,api.writerV8OverviewConfig('sort: name-asc\nsubfolders: false'));

@@ -45,6 +45,27 @@ test('legacy chat still recognizes the first header delimiter and later dividers
  assert.equal(data.messages[2].body,'Still Ana');
  assert.equal(data.messages[3].side,'right');
 });
+test('markdown code fences preserve chat-shaped lines in short and legacy messages',()=>{
+ const code=['~~~~text','---','> | Leo | Quoted message','=== Another old speaker',
+  '\\n remains literal','~~~','--- Still code ---','~~~~'];
+ for(const prefix of [['< Ana | Text'],['=== Ana','time: 10:00','---','Text']]){
+  const legacy=prefix[0].startsWith('===');
+  const next=legacy?['=== Leo','side: right','---','Reply']:['> Leo | Reply'];
+  const data=api.writerV8ChatParse([...prefix,...code,'--- Next ---',...next].join('\n'));
+  assert.equal(data.messages.length,3);
+  assert.equal(data.messages[0].body,['Text',...code].join('\n'));
+  assert.equal(data.messages[1].text,'Next');
+  assert.equal(data.messages[2].body,'Reply');
+ }
+});
+test('legacy sections without metadata preserve text before the first divider',()=>{
+ const data=api.writerV8ChatParse('=== Ana\nHello\n---\nAgain\n=== Leo\nReply');
+ assert.equal(data.messages.length,4);
+ assert.equal(data.messages[0].body,'Hello');
+ assert.equal(data.messages[1].type,'divider');
+ assert.equal(data.messages[2].body,'Again');
+ assert.equal(data.messages[3].body,'Reply');
+});
 test('group picture is local-only and independent of avatars: off',()=>{
  const data=api.writerV8ChatParse('group-photo: [[Folder/icon.png]]\navatars: off\n< Ana | Hello');
  assert.equal(data.options.avatars,false);

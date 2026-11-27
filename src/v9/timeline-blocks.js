@@ -34,23 +34,38 @@ function writerV95TimelineConfigOption(cfg,key,value){
  else if(name==='color'&&/^#[0-9a-f]{6}$/i.test(value.trim()))cfg.accent=value.trim();
  else if(name==='line'&&/^[2-5]$/.test(val))cfg.line=Number(val);
  else if(name==='body'&&/^[2-4]$/.test(val))cfg.body=Number(val);
- else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Number(val)||80));
- else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Number(val)||30));
+ else if(name==='max-events')cfg.maxEvents=Math.max(1,Math.min(250,Math.trunc(Number(val)||80)));
+ else if(name==='page-size')cfg.pageSize=Math.max(10,Math.min(50,Math.trunc(Number(val)||30)));
+}
+function writerV95TimelineFence(line,active){
+ const match=/^ {0,3}(\x60{3,}|~{3,})(.*)$/.exec(line);
+ if(!match)return active;
+ const [,marker,tail]=match;
+ if(active)return marker[0]===active[0]&&marker.length>=active.length&&/^[ \t]*$/.test(tail)?'':active;
+ return marker[0]==='~'||!tail.includes('\x60')?marker:'';
 }
 // Normalize legacy <br>, <br/> and malformed </br> in headings.
-// Preserve valid HTML <br> within Markdown content, rewriting only malformed
-// closing </br> into a Markdown hard break. Never evaluate title/date as HTML.
+// In Markdown, only normalize malformed breaks in prose.
 function writerV95TimelineNormalizeBreaks(value,markdown=false){
  const input=String(value==null?'':value).replace(/\r\n?/g,'\n');
- return markdown?input.replace(/[ \t]*<\s*\/\s*br\s*>[ \t]*/gi,'  \n'):
-  input.replace(/<\s*\/?\s*br\s*\/?\s*>/gi,'\n');
+ if(!markdown)return input.replace(/<\s*\/?\s*br\s*\/?\s*>/gi,'\n');
+ let fence='';
+ return input.split('\n').map(line=>{
+  const wasFenced=Boolean(fence);
+  fence=writerV95TimelineFence(line,fence);
+  if(wasFenced||fence||/^(?: {4}|\t)/.test(line))return line;
+  return line.replace(/(?<!\x60)(\x60+)(?!\x60).*?(?<!\x60)\1(?!\x60)|(?<![ \t])[ \t]*<\s*\/\s*br\s*>[ \t]*/gi,
+   (match,delimiter)=>delimiter?match:'  \n');
+ }).join('\n');
 }
 function writerV95TimelineCleanEvent(raw){
  const e=raw||{};
+ const content=writerV95TimelineNormalizeBreaks(e.content||'',true)
+  .replace(/^(?:[ \t]*\n)+|(?:\n[ \t]*)+$/g,'');
  const result={
   date:writerV95TimelineNormalizeBreaks(e.date||e.time||'').trim().slice(0,120),
   title:writerV95TimelineNormalizeBreaks(e.title||'').trim().slice(0,200),
-  content:writerV95TimelineNormalizeBreaks(e.content||'',true).trim().slice(0,8000),
+  content:content.trim()?content:'',
   image:String(e.image||'').trim().slice(0,400),
   icon:String(e.icon||'').trim().slice(0,45),
   color:/^#[0-9a-f]{6}$/i.test(String(e.color||''))?String(e.color):'',
@@ -63,26 +78,42 @@ function writerV95TimelineCleanEvent(raw){
  return result.date||result.title||result.content?result:null;
 }
 function writerV95TimelineLegacy(lines){
- const events=[];let parts=[],extra=[];
+ const events=[];let parts=[],extra=[],fence='';
  const push=()=>{
   if(parts.length!==3)return;
-  const item={date:parts[0],title:parts[1],content:[parts[2],...extra].join('\n').trim()};
-  // Optional per-event attributes at the beginning of the content.
-  const body=item.content.split('\n'),remaining=[];
+  const item={date:parts[0],title:parts[1]};
+  const body=[parts[2],...extra],remaining=[];let codeFence='';
   for(const row of body){
-   const m=/^\s*(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
+   const previousFence=codeFence;
+   codeFence=writerV95TimelineFence(row,codeFence);
+   if(previousFence||codeFence){
+    remaining.push(row);
+    continue;
+   }
+   const m=/^(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
    if(m){item[m[1].toLowerCase()]=m[2].trim();continue;}
    remaining.push(row);
   }
-  item.content=remaining.join('\n').trim();
+  item.content=remaining.join('\n');
   const event=writerV95TimelineCleanEvent(item);
   if(event)events.push(event);
  };
  for(const line of lines){
-  const mark=/^\s*\+\s+(.+)$/.exec(line);
+  // Nested Markdown lists and fenced code belong to the current description.
+  if(parts.length===3){
+   const previousFence=fence;
+   fence=writerV95TimelineFence(line,fence);
+   if(previousFence||fence){
+    extra.push(line);
+    continue;
+   }
+  }
+  const mark=/^\+[ \t]+(.*)$/.exec(line);
   if(mark){
    if(parts.length===3){push();parts=[];extra=[];}
-   parts.push(mark[1].trim());continue;
+   parts.push(mark[1].trim());
+   if(parts.length===3)fence=writerV95TimelineFence(parts[2],fence);
+   continue;
   }
   if(parts.length===3)extra.push(line);
  }
@@ -90,18 +121,38 @@ function writerV95TimelineLegacy(lines){
  return events.slice(0,250);
 }
 function writerV95TimelineLabeled(lines){
- const events=[];let current=null,content=false;
- const push=()=>{const clean=writerV95TimelineCleanEvent(current);if(clean)events.push(clean);current=null;content=false;};
+ const events=[];let current=null,content=false,fence='';
+ const push=()=>{const clean=writerV95TimelineCleanEvent(current);if(clean)events.push(clean);current=null;content=false;fence='';};
  const keys={date:'date',time:'date',when:'date',title:'title',content:'content',description:'content',
   image:'image',photo:'image',icon:'icon',color:'color',group:'group',track:'group',link:'link',id:'id',after:'after',depends:'after',era:'era'};
- for(const line of lines){
-  if(/^\s*---\s*$/.test(line)){if(current)push();continue;}
-  const m=/^\s*([a-z][a-z-]*):\s*(.*)$/i.exec(line);
+ for(let index=0;index<lines.length;index++){
+  const line=lines[index];
+  if(current&&content){
+   const previousFence=fence;
+   fence=writerV95TimelineFence(line,fence);
+   if(previousFence||fence){
+    current.content=(current.content?current.content+'\n':'')+line;
+    continue;
+   }
+  }
+  if(/^\s*---\s*$/.test(line)){
+   let next=index+1;
+   while(next<lines.length&&!lines[next].trim())next++;
+   if(!content||(/^---/.test(line)&&/^(?:date|time|when):/i.test(lines[next]||''))){
+    if(current)push();
+    continue;
+   }
+  }
+  const m=/^([a-z][a-z-]*):\s*(.*)$/i.exec(line);
   const key=m?keys[m[1].toLowerCase()]:null;
   if(key){
-   if(key==='date'&&current?.date)push();
+   if(key==='date'&&current&&(current.date||current.title||current.content))push();
    if(!current)current={};
-   if(key==='content'){current.content=(current.content?current.content+'\n':'')+m[2];content=true;}
+   if(key==='content'){
+    current.content=(current.content?current.content+'\n':'')+m[2];
+    content=true;
+    fence=writerV95TimelineFence(m[2],fence);
+   }
    else {current[key]=m[2];content=false;}
    continue;
   }
@@ -114,17 +165,22 @@ function writerV95TimelineLabeled(lines){
 }
 function writerV95TimelineSortKey(date){
  const text=String(date||'').trim();
- if(/^-?\d{1,6}$/.test(text))return Number(text)*365.2425-719527;
  if(/^\d{4}-\d\d(?:-\d\d)?$/.test(text)){
-  const stamp=Date.parse(text.length===7?text+'-01':text);
-  return Number.isFinite(stamp)?stamp/86400000:null;
+  const isoDate=text.length===7?text+'-01':text;
+  const stamp=Date.parse(isoDate);
+  return Number.isFinite(stamp)&&new Date(stamp).toISOString().startsWith(isoDate+'T')?stamp/86400000:null;
  }
- return null;
+ const year=/^(-?\d{1,6})(?:\s*(?:a|até|to|–|—|\.\.|-)\s*-?\d{1,6})?$/i.exec(text);
+ if(!year)return null;
+ const previousYear=Number(year[1])-1;
+ const leapDays=Math.floor(previousYear/4)-Math.floor(previousYear/100)+Math.floor(previousYear/400);
+ // The Unix epoch is 719162 days after 0001-01-01.
+ return 365*previousYear+leapDays-719162;
 }
 function writerV95TimelineParse(source,format='timeline'){
  const raw=String(source||'');
  if(raw.length>64000)return null;
- const cfg={...WRITER_V95_TIMELINE_OPTIONS},lines=raw.replace(/\r\n/g,'\n').split('\n');
+ const cfg={...WRITER_V95_TIMELINE_OPTIONS},lines=raw.replace(/\r\n?/g,'\n').split('\n');
  let begin=0;
  while(begin<lines.length){
   const line=lines[begin].trim();
@@ -149,9 +205,12 @@ function writerV95TimelineParse(source,format='timeline'){
  let events=labeled?writerV95TimelineLabeled(body):writerV95TimelineLegacy(body);
  if(cfg.sort==='dependencies')events=writerV101TimelineDependencies(events);
  else if(cfg.sort!=='source'){
-  events=events.map((event,index)=>({...event,_order:index,_sort:writerV95TimelineSortKey(event.date)}))
-   .sort((a,b)=>a._sort===null||b._sort===null?a._order-b._order:
-    (cfg.sort==='asc'?1:-1)*(a._sort-b._sort)||a._order-b._order);
+  // Sort comparable dates, leaving fictional/unknown dates in their original slots.
+  const dated=events.map((event,index)=>({event,index,key:writerV95TimelineSortKey(event.date)}));
+  const sorted=dated.filter(item=>item.key!==null).sort((a,b)=>
+   (cfg.sort==='asc'?1:-1)*(a.key-b.key)||a.index-b.index);
+  let cursor=0;
+  events=dated.map(item=>item.key===null?item.event:sorted[cursor++].event);
  }
  return {config:cfg,events:events.slice(0,cfg.maxEvents)};
 }
@@ -180,7 +239,7 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  const root=element.createDiv({cls:'writer-v95-timeline'});
  if(!parsed){root.createEl('p',{text:writerUi('Timeline muito grande (limite de 64 KB).','Timeline exceeds the 64 KB limit.')});return;}
  const cfg=parsed.config;
- root.classList.add('is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
+ root.classList.add('is-narrative-timeline','is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
   'is-line-'+cfg.line,'is-body-'+cfg.body);
  if(cfg.spacedLines)root.classList.add('is-spaced-lines');
  if(cfg.hideTitles)root.classList.add('is-hide-titles');
@@ -208,8 +267,11 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
   setOrientation();
   orient.addEventListener('click',()=>{
    layout=layout==='vertical'?'horizontal':'vertical';
-   root.classList.toggle('is-layout-horizontal',layout==='horizontal');
-   root.classList.toggle('is-layout-vertical',layout==='vertical');
+   const horizontal=layout==='horizontal';
+   root.classList.toggle('is-layout-horizontal',horizontal);
+   root.classList.toggle('is-layout-vertical',!horizontal);
+   if(horizontal)list.setAttribute('tabindex','0');
+   else list.removeAttribute('tabindex');
    setOrientation();
   });
   // Original Timeline: live preview of line-2..5 and body-2..4 alongside named themes.
@@ -251,20 +313,21 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    select.addEventListener('change',()=>{group=select.value;page=0;draw();});
   }
  }
- const list=root.createDiv({cls:'writer-v95-timeline-items',attr:{role:'list','aria-label':writerUi('Linha do tempo','Timeline')}});
+ const list=root.createDiv({cls:'writer-v95-timeline-items',attr:{
+  role:'list','aria-label':writerUi('Linha do tempo','Timeline'),...(layout==='horizontal'?{tabindex:'0'}:{})}});
  if(bar){
   const backward=bar.createEl('button',{text:'‹',attr:{type:'button','aria-label':writerUi('Rolar para trás','Scroll backward')}});
   const forward=bar.createEl('button',{text:'›',attr:{type:'button','aria-label':writerUi('Rolar para frente','Scroll forward')}});
   backward.className='writer-v95-timeline-scroll';
   forward.className='writer-v95-timeline-scroll';
   for(const [button,dir] of [[backward,-1],[forward,1]])button.addEventListener('click',()=>{
-   if(root.classList.contains('is-layout-horizontal'))list.scrollBy({left:dir*Math.max(240,list.clientWidth*.7),behavior:'smooth'});
-   else list.scrollBy({top:dir*Math.max(240,list.clientHeight*.7),behavior:'smooth'});
+   if(layout==='horizontal')list.scrollBy({left:dir*Math.max(240,list.clientWidth*.7)});
   });
  }
  const pager=root.createDiv({cls:'writer-v101-timeline-pager'});
  function draw(){
   list.empty();pager.empty();
+  list.scrollLeft=0;
   const filtered=parsed.events.filter(e=>(!group||e.group===group)&&
    (!query||(e.date+' '+e.title+' '+e.content+' '+e.group).toLocaleLowerCase().includes(query)));
   if(!filtered.length){list.createEl('p',{cls:'writer-v95-empty',text:writerUi('Nenhum evento encontrado.','No matching events.')});return;}
@@ -278,7 +341,9 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
     try{if(require('obsidian').getIcon?.(event.icon))require('obsidian').setIcon(marker,event.icon);}catch(_){}
    }
    const info=card.createDiv({cls:'writer-v95-timeline-event-body'});
-   if(!event.content&&!event.group&&!event.era&&!event.after&&!event.image&&!event.link)
+   const image=event.image&&writerV8ImagePath(plugin.app,event.image,ctx.sourcePath);
+   const file=event.link&&writerV95TimelineLink(plugin,ctx,event.link);
+   if(!event.content&&!event.group&&!event.era&&!event.after&&!image&&!file)
     info.classList.add('is-heading-only');
    const head=info.createDiv({cls:'writer-v95-timeline-head'});
    if(event.date)head.createSpan({cls:'writer-v95-timeline-date',text:event.date});
@@ -286,27 +351,21 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
    if(event.group)info.createSpan({cls:'writer-v95-timeline-group',text:event.group});
    if(event.era)info.createSpan({cls:'writer-v101-timeline-era',text:event.era});
    if(event.after)info.createSpan({cls:'writer-v101-timeline-after',text:writerUi('Depois de: ','After: ')+event.after});
-   if(event.image){
-    const image=writerV8ImagePath(plugin.app,event.image,ctx.sourcePath);
-    if(image)info.createEl('img',{cls:'writer-v95-timeline-image',attr:{src:image,alt:event.title||writerUi('Imagem do evento','Event photo'),loading:'lazy',decoding:'async'}});
-   }
+   if(image)info.createEl('img',{cls:'writer-v95-timeline-image',attr:{src:image,alt:event.title||writerUi('Imagem do evento','Event photo'),loading:'lazy',decoding:'async'}});
    if(event.content){
     const area=info.createDiv({cls:'writer-v95-timeline-content'});
     void writerV8Markdown(plugin,ctx,area,event.content).catch(error=>{
      console.warn('[Basic AI] Timeline Markdown:',error);area.setText(event.content);
     });
    }
-   if(event.link){
-    const file=writerV95TimelineLink(plugin,ctx,event.link);
-    if(file)info.createEl('button',{cls:'writer-v95-timeline-link',text:writerUi('Abrir nota','Open note'),attr:{type:'button'}})
-     .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
-   }
+   if(file)info.createEl('button',{cls:'writer-v95-timeline-link',text:writerUi('Abrir nota','Open note'),attr:{type:'button'}})
+    .addEventListener('click',()=>void plugin.app.workspace.getLeaf('tab').openFile(file));
   }
   if(maxPage>0){
-   const previous=pager.createEl('button',{text:writerUi('Anterior','Previous')});previous.disabled=page===0;
+   const previous=pager.createEl('button',{text:writerUi('Anterior','Previous'),attr:{type:'button'}});previous.disabled=page===0;
    previous.addEventListener('click',()=>{page--;draw();});
    pager.createSpan({text:(page+1)+' / '+(maxPage+1)});
-   const next=pager.createEl('button',{text:writerUi('Próxima','Next')});next.disabled=page>=maxPage;
+   const next=pager.createEl('button',{text:writerUi('Próxima','Next'),attr:{type:'button'}});next.disabled=page>=maxPage;
    next.addEventListener('click',()=>{page++;draw();});
   }
  }

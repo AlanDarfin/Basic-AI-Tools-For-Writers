@@ -67,6 +67,15 @@ test('only existing chapter files are rendered; no fabricated links',()=>{
  assert.equal(targets.nextSub,null);
  assert.equal(ui.writerBookNavTargets(list,'Other/note.md'),null);
 });
+test('missing notes do not redirect subchapter navigation to a different parent',()=>{
+ const entry=(title,indent,missing=false)=>({title,indent,path:missing?null:path(title)});
+ const list=[entry('A',0),entry('A.1',1),entry('A.2',1,true),entry('A.2.a',2),
+  entry('Unknown',0,true),entry('Unknown.1',1),entry('C',0)];
+ assert.equal(ui.writerBookNavTargets(list,path('A.1')).nextSub,null);
+ const later=ui.writerBookNavTargets(list,path('C'));
+ assert.equal(later.previousMain.path,path('A'));
+ assert.equal(later.previousSub.path,path('A.1'));
+});
 test('project discovery only matches Longform scene path, not unrelated Markdown',()=>{
  const found=ui.writerBookNavFindProject(app,path('B.1'),index.path);
  assert.equal(found.index.file.path,index.path);

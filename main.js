@@ -11883,7 +11883,11 @@ function writerV8OverviewSortEntries(entries,cfg){
 }
 function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
  if(!(root instanceof TFolder))return [];
- const entries=[],seen=new Set();
+ const entries=[],seen=new Set(),folderNotes=new Map();
+ const folderNoteFor=parent=>{
+  if(!folderNotes.has(parent))folderNotes.set(parent,typeof writerV7FolderNote==='function'?writerV7FolderNote(app,parent):null);
+  return folderNotes.get(parent);
+ };
  const normalized=query.trim().normalize('NFC').toLocaleLowerCase();
  const matches=child=>!normalized||[child.basename||child.name,child.path].some(value=>
   value.normalize('NFC').toLocaleLowerCase().includes(normalized));
@@ -11902,7 +11906,7 @@ function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
     if(cfg.subfolders&&depth<cfg.depth&&(normalized||!collapsed.has(child.path)))scan(child,depth+1);
    }else{
     if(!matches(child)||seen.has(child.path))continue;
-    const folderNote=typeof writerV7FolderNote==='function'?writerV7FolderNote(app,child.parent):null;
+    const folderNote=folderNoteFor(child.parent);
     if(folderNote?.path===child.path)continue;
     seen.add(child.path);
     entries.push({...item,depth});
@@ -18051,8 +18055,14 @@ function writerV9CalOccurrence(event,start,end){
  const firstWeekday=writerV9CalWeekday(event.date),selected=weekdays.length?weekdays:[firstWeekday];
  const [firstYear,firstMonth,firstDay]=event.date.split('-').map(Number);
  const startN=writerV9CalDayNumber(start),endN=writerV9CalDayNumber(end);
+ const lastN=Math.min(endN,startN+3659);
+ if(a>lastN||until&&until<start)return [];
+ if(!['daily','weekly','monthly','yearly'].includes(event.repeat)){
+  if(a<startN||until&&event.date>until||exclusions.has(event.date))return [];
+  return [{...event,occurs:event.date}];
+ }
  const results=[];
- for(let dayN=Math.max(startN,a);dayN<=Math.min(endN,startN+3659);dayN++){
+ for(let dayN=Math.max(startN,a);dayN<=lastN;dayN++){
   const date=new Date(dayN*86400000);
   const day=[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,'0'),String(date.getUTCDate()).padStart(2,'0')].join('-');
   if(until&&day>until)break;
@@ -18160,9 +18170,13 @@ function writerV9CalendarPeriod(view){
 }
 function writerV9CalRows(view,start,end){
  const rows=[];
- for(const event of view.events)rows.push(...writerV83CalOccurrence(event,start,end));
+ const category=view.writerV9CategoryFilter;
+ for(const event of view.events){
+  if(category&&(event.category||'')!==category)continue;
+  rows.push(...writerV83CalOccurrence(event,start,end));
+ }
  rows.sort((a,b)=>a.occurs.localeCompare(b.occurs)||(a.time||'').localeCompare(b.time||'')||a.title.localeCompare(b.title));
- return view.writerV9CategoryFilter?rows.filter(event=>(event.category||'')===view.writerV9CategoryFilter):rows;
+ return rows;
 }
 function writerV9CalButton(parent,label,icon,click,title){
  const btn=parent.createEl('button',{cls:'writer-v9-calendar-button',attr:{type:'button','aria-label':title||label,title:title||label}});
@@ -20484,8 +20498,8 @@ function writerV912VirtualMatch(rule,file,cache){
  if(!rule||rule.enabled===false||!file||file.extension!=='md')return false;
  const conditions=Array.isArray(rule.conditions)?rule.conditions:[];
  if(!conditions.length)return false;
- const results=conditions.map(c=>writerV912VirtualConditionMatch(c,file,cache));
- return rule.match==='any'?results.some(Boolean):results.every(Boolean);
+ const matches=c=>writerV912VirtualConditionMatch(c,file,cache);
+ return rule.match==='any'?conditions.some(matches):conditions.every(matches);
 }
 function writerV912HasBookNavRule(plugin,filePath){
  const cfg=plugin?.settings?.v912Virtual;

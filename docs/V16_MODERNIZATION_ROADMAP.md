@@ -286,3 +286,8 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 
 - Notes already identified by the configured Zotero folder (including its matching root note) skip tag-classification metadata reads. Notes outside it still use fresh inline/frontmatter tags, including nested tags, with the configured tag normalized once per classification.
 - Quote collection selects the first 240 qualifying notes in the same order before asynchronous reads, but stops classifying once the cap is reached. Two deterministic fixtures verify metadata read avoidance, tag freshness and preserved quote read order. Existing extraction behavior, source limits, settings and dependencies are unchanged. New CI and live Zotero QA pending.
+
+### Phase 11.7 — calendar and Markdown block work reduction
+
+- CI #1411 passed Phase 11.6. Avoid scanning the rendered range for single calendar occurrences, preserve exclusions and existing range cap, and skip recurrence expansion for filtered categories before sorting.
+- Folder Overview resolves a folder note once per parent per traversal, with no persistent cache. Virtual Content short-circuits any/all condition checks. Four focused behavioral regressions added; source and shipping bundle synchronized. Full new CI and live desktop/mobile profiling pending. Project metadata remains a follow-up target; no merge or release.

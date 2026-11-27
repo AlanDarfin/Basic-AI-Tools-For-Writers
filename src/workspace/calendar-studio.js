@@ -39,9 +39,13 @@ function writerV9CalendarPeriod(view){
 }
 function writerV9CalRows(view,start,end){
  const rows=[];
- for(const event of view.events)rows.push(...writerV83CalOccurrence(event,start,end));
+ const category=view.writerV9CategoryFilter;
+ for(const event of view.events){
+  if(category&&(event.category||'')!==category)continue;
+  rows.push(...writerV83CalOccurrence(event,start,end));
+ }
  rows.sort((a,b)=>a.occurs.localeCompare(b.occurs)||(a.time||'').localeCompare(b.time||'')||a.title.localeCompare(b.title));
- return view.writerV9CategoryFilter?rows.filter(event=>(event.category||'')===view.writerV9CategoryFilter):rows;
+ return rows;
 }
 function writerV9CalButton(parent,label,icon,click,title){
  const btn=parent.createEl('button',{cls:'writer-v9-calendar-button',attr:{type:'button','aria-label':title||label,title:title||label}});

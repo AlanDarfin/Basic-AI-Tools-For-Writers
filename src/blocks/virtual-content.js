@@ -97,8 +97,8 @@ function writerV912VirtualMatch(rule,file,cache){
  if(!rule||rule.enabled===false||!file||file.extension!=='md')return false;
  const conditions=Array.isArray(rule.conditions)?rule.conditions:[];
  if(!conditions.length)return false;
- const results=conditions.map(c=>writerV912VirtualConditionMatch(c,file,cache));
- return rule.match==='any'?results.some(Boolean):results.every(Boolean);
+ const matches=c=>writerV912VirtualConditionMatch(c,file,cache);
+ return rule.match==='any'?conditions.some(matches):conditions.every(matches);
 }
 function writerV912HasBookNavRule(plugin,filePath){
  const cfg=plugin?.settings?.v912Virtual;

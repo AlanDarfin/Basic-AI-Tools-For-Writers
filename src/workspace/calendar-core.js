@@ -76,8 +76,14 @@ function writerV9CalOccurrence(event,start,end){
  const firstWeekday=writerV9CalWeekday(event.date),selected=weekdays.length?weekdays:[firstWeekday];
  const [firstYear,firstMonth,firstDay]=event.date.split('-').map(Number);
  const startN=writerV9CalDayNumber(start),endN=writerV9CalDayNumber(end);
+ const lastN=Math.min(endN,startN+3659);
+ if(a>lastN||until&&until<start)return [];
+ if(!['daily','weekly','monthly','yearly'].includes(event.repeat)){
+  if(a<startN||until&&event.date>until||exclusions.has(event.date))return [];
+  return [{...event,occurs:event.date}];
+ }
  const results=[];
- for(let dayN=Math.max(startN,a);dayN<=Math.min(endN,startN+3659);dayN++){
+ for(let dayN=Math.max(startN,a);dayN<=lastN;dayN++){
   const date=new Date(dayN*86400000);
   const day=[date.getUTCFullYear(),String(date.getUTCMonth()+1).padStart(2,'0'),String(date.getUTCDate()).padStart(2,'0')].join('-');
   if(until&&day>until)break;

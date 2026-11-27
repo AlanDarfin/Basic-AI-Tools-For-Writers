@@ -65,7 +65,11 @@ function writerV8OverviewSortEntries(entries,cfg){
 }
 function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
  if(!(root instanceof TFolder))return [];
- const entries=[],seen=new Set();
+ const entries=[],seen=new Set(),folderNotes=new Map();
+ const folderNoteFor=parent=>{
+  if(!folderNotes.has(parent))folderNotes.set(parent,typeof writerV7FolderNote==='function'?writerV7FolderNote(app,parent):null);
+  return folderNotes.get(parent);
+ };
  const normalized=query.trim().normalize('NFC').toLocaleLowerCase();
  const matches=child=>!normalized||[child.basename||child.name,child.path].some(value=>
   value.normalize('NFC').toLocaleLowerCase().includes(normalized));
@@ -84,7 +88,7 @@ function writerV8OverviewEntries(app,root,cfg,query='',collapsed=new Set()){
     if(cfg.subfolders&&depth<cfg.depth&&(normalized||!collapsed.has(child.path)))scan(child,depth+1);
    }else{
     if(!matches(child)||seen.has(child.path))continue;
-    const folderNote=typeof writerV7FolderNote==='function'?writerV7FolderNote(app,child.parent):null;
+    const folderNote=folderNoteFor(child.parent);
     if(folderNote?.path===child.path)continue;
     seen.add(child.path);
     entries.push({...item,depth});

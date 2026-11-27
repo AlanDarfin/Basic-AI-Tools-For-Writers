@@ -31,6 +31,12 @@ body.is-mobile .writer-mobile-status.writer-mobile-status-floating{
  position:fixed;inset:auto;top:var(--writer-mobile-status-top);left:var(--writer-mobile-status-left);
  width:var(--writer-mobile-status-width);z-index:var(--layer-status-bar,10);
 }
+/* Only Markdown scroll surfaces measured by the mobile layout adapter. Preserve
+ * larger native padding, and remove the entire override when there is no overlap. */
+body.is-mobile :is(.markdown-preview-view,.cm-scroller).writer-mobile-note-scroll-clearance{
+ padding-bottom:max(var(--writer-mobile-note-base-padding,0px),var(--writer-mobile-note-clearance,0px));
+ scroll-padding-bottom:max(var(--writer-mobile-note-base-scroll-padding,0px),var(--writer-mobile-note-clearance,0px));
+}
 body.is-mobile .writer-v8-home{
  padding-block-end:calc(var(--writer-home-footer-padding,30px) + var(--writer-mobile-home-clearance,0px));
  scroll-padding-block-end:var(--writer-mobile-home-clearance,0px);

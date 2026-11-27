@@ -171,3 +171,22 @@ test('Timeline render uses text nodes and removes empty bottom area for heading-
  const title=body.children[0].children.find(node=>node.cssClass==='writer-v95-timeline-title');
  assert.equal(title.text,"Seekin' My Secrets");
 });
+
+test('Narrative ranges sort by start year, unknown eras keep their slots',()=>{
+ const events=api.writerV95TimelineParse('sort: asc\n+ 1850 a 1890\n+ Cowboy\n+ Body\n+ Before time\n+ Myth\n+ Body\n+ 1700 a 1800\n+ Secrets\n+ Body').events;
+ assert.deepEqual(Array.from(events,e=>e.title),['Secrets','Myth','Cowboy']);
+});
+test('Narrative descriptions retain nested lists, fences and long prose',()=>{
+ const fence='\x60'.repeat(3);
+ const lines=['+ 1700','+ Story','+ Intro','  + nested',fence+'yaml','+ not an event','image: literal',fence,'+ 1800','+ Next','+ '+ 'x'.repeat(9000)];
+ const events=api.writerV95TimelineParse(lines.join('\n')).events;
+ assert.equal(events.length,2);
+ assert.match(events[0].content,/  \+ nested/);
+ assert.match(events[0].content,/image: literal/);
+ assert.equal(events[0].image,'');
+ assert.equal(events[1].content.length,9000);
+ const labeled=api.writerV95TimelineParse(['date: 1','title: A','content: Text',fence+'yaml','date: literal',fence,'---','date: 2','title: B','content: More'].join('\n'),'timeline-labeled').events;
+ assert.equal(labeled.length,2);
+ assert.match(labeled[0].content,/date: literal/);
+ assert.match(labeled[0].content,/---/);
+});

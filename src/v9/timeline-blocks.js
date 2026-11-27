@@ -50,7 +50,7 @@ function writerV95TimelineCleanEvent(raw){
  const result={
   date:writerV95TimelineNormalizeBreaks(e.date||e.time||'').trim().slice(0,120),
   title:writerV95TimelineNormalizeBreaks(e.title||'').trim().slice(0,200),
-  content:writerV95TimelineNormalizeBreaks(e.content||'',true).trim().slice(0,8000),
+  content:writerV95TimelineNormalizeBreaks(e.content||'',true).trim(),
   image:String(e.image||'').trim().slice(0,400),
   icon:String(e.icon||'').trim().slice(0,45),
   color:/^#[0-9a-f]{6}$/i.test(String(e.color||''))?String(e.color):'',
@@ -63,14 +63,22 @@ function writerV95TimelineCleanEvent(raw){
  return result.date||result.title||result.content?result:null;
 }
 function writerV95TimelineLegacy(lines){
- const events=[];let parts=[],extra=[];
+ const events=[];let parts=[],extra=[],fence=null;
  const push=()=>{
   if(parts.length!==3)return;
   const item={date:parts[0],title:parts[1],content:[parts[2],...extra].join('\n').trim()};
   // Optional per-event attributes at the beginning of the content.
-  const body=item.content.split('\n'),remaining=[];
+  const body=item.content.split('\n'),remaining=[];let codeFence=null;
   for(const row of body){
-   const m=/^\s*(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
+   const opening=/^ {0,3}(`{3,}|~{3,})/.exec(row);
+   if(codeFence||opening){
+    remaining.push(row);
+    if(codeFence){
+     if(opening&&opening[1][0]===codeFence[0]&&opening[1].length>=codeFence.length&&/^ {0,3}(?:`{3,}|~{3,})[ \t]*$/.test(row))codeFence=null;
+    }else codeFence=opening[1];
+    continue;
+   }
+   const m=/^(image|icon|color|group|track|link|id|after|era):\s*(.+)\s*$/i.exec(row);
    if(m){item[m[1].toLowerCase()]=m[2].trim();continue;}
    remaining.push(row);
   }
@@ -79,7 +87,17 @@ function writerV95TimelineLegacy(lines){
   if(event)events.push(event);
  };
  for(const line of lines){
-  const mark=/^\s*\+\s+(.+)$/.exec(line);
+  // Nested Markdown lists and fenced code belong to the current description.
+  if(parts.length===3){
+   const opening=/^ {0,3}(`{3,}|~{3,})/.exec(line);
+   if(fence){
+    extra.push(line);
+    if(opening&&opening[1][0]===fence[0]&&opening[1].length>=fence.length&&/^ {0,3}(?:`{3,}|~{3,})[ \t]*$/.test(line))fence=null;
+    continue;
+   }
+   if(opening){fence=opening[1];extra.push(line);continue;}
+  }
+  const mark=/^\+[ \t]+(.*)$/.exec(line);
   if(mark){
    if(parts.length===3){push();parts=[];extra=[];}
    parts.push(mark[1].trim());continue;
@@ -90,16 +108,26 @@ function writerV95TimelineLegacy(lines){
  return events.slice(0,250);
 }
 function writerV95TimelineLabeled(lines){
- const events=[];let current=null,content=false;
+ const events=[];let current=null,content=false,fence=null;
  const push=()=>{const clean=writerV95TimelineCleanEvent(current);if(clean)events.push(clean);current=null;content=false;};
  const keys={date:'date',time:'date',when:'date',title:'title',content:'content',description:'content',
   image:'image',photo:'image',icon:'icon',color:'color',group:'group',track:'group',link:'link',id:'id',after:'after',depends:'after',era:'era'};
  for(const line of lines){
-  if(/^\s*---\s*$/.test(line)){if(current)push();continue;}
-  const m=/^\s*([a-z][a-z-]*):\s*(.*)$/i.exec(line);
+  if(current&&content){
+   const opening=/^ {0,3}(`{3,}|~{3,})/.exec(line);
+   if(fence||opening){
+    current.content=(current.content?current.content+'\n':'')+line;
+    if(fence){
+     if(opening&&opening[1][0]===fence[0]&&opening[1].length>=fence.length&&/^ {0,3}(?:`{3,}|~{3,})[ \t]*$/.test(line))fence=null;
+    }else fence=opening[1];
+    continue;
+   }
+  }
+  if(/^\s*---\s*$/.test(line)&&!content){if(current)push();continue;}
+  const m=/^([a-z][a-z-]*):\s*(.*)$/i.exec(line);
   const key=m?keys[m[1].toLowerCase()]:null;
   if(key){
-   if(key==='date'&&current?.date)push();
+   if(key==='date'&&current&&(current.date||current.title||current.content))push();
    if(!current)current={};
    if(key==='content'){current.content=(current.content?current.content+'\n':'')+m[2];content=true;}
    else {current[key]=m[2];content=false;}
@@ -114,6 +142,8 @@ function writerV95TimelineLabeled(lines){
 }
 function writerV95TimelineSortKey(date){
  const text=String(date||'').trim();
+ const range=/^(-?\d{1,6})\s*(?:a|até|to|–|—|\.\.|-)\s*-?\d{1,6}$/i.exec(text);
+ if(range)return Number(range[1])*365.2425-719527;
  if(/^-?\d{1,6}$/.test(text))return Number(text)*365.2425-719527;
  if(/^\d{4}-\d\d(?:-\d\d)?$/.test(text)){
   const stamp=Date.parse(text.length===7?text+'-01':text);
@@ -149,9 +179,12 @@ function writerV95TimelineParse(source,format='timeline'){
  let events=labeled?writerV95TimelineLabeled(body):writerV95TimelineLegacy(body);
  if(cfg.sort==='dependencies')events=writerV101TimelineDependencies(events);
  else if(cfg.sort!=='source'){
-  events=events.map((event,index)=>({...event,_order:index,_sort:writerV95TimelineSortKey(event.date)}))
-   .sort((a,b)=>a._sort===null||b._sort===null?a._order-b._order:
-    (cfg.sort==='asc'?1:-1)*(a._sort-b._sort)||a._order-b._order);
+  // Sort comparable dates, leaving fictional/unknown dates in their original slots.
+  const dated=events.map((event,index)=>({event,index,key:writerV95TimelineSortKey(event.date)}));
+  const sorted=dated.filter(item=>item.key!==null).sort((a,b)=>
+   (cfg.sort==='asc'?1:-1)*(a.key-b.key)||a.index-b.index);
+  let cursor=0;
+  events=dated.map(item=>item.key===null?item.event:sorted[cursor++].event);
  }
  return {config:cfg,events:events.slice(0,cfg.maxEvents)};
 }
@@ -180,7 +213,7 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
  const root=element.createDiv({cls:'writer-v95-timeline'});
  if(!parsed){root.createEl('p',{text:writerUi('Timeline muito grande (limite de 64 KB).','Timeline exceeds the 64 KB limit.')});return;}
  const cfg=parsed.config;
- root.classList.add('is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
+ root.classList.add('is-narrative-timeline','is-layout-'+cfg.layout,'is-theme-'+cfg.theme,'is-density-'+cfg.density,
   'is-line-'+cfg.line,'is-body-'+cfg.body);
  if(cfg.spacedLines)root.classList.add('is-spaced-lines');
  if(cfg.hideTitles)root.classList.add('is-hide-titles');
@@ -259,7 +292,7 @@ function writerV95TimelineRender(plugin,source,element,ctx,format){
   forward.className='writer-v95-timeline-scroll';
   for(const [button,dir] of [[backward,-1],[forward,1]])button.addEventListener('click',()=>{
    if(root.classList.contains('is-layout-horizontal'))list.scrollBy({left:dir*Math.max(240,list.clientWidth*.7),behavior:'smooth'});
-   else list.scrollBy({top:dir*Math.max(240,list.clientHeight*.7),behavior:'smooth'});
+   // Vertical timelines follow the native note scroll; no nested vertical scroller.
   });
  }
  const pager=root.createDiv({cls:'writer-v101-timeline-pager'});

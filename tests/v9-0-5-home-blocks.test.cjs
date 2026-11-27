@@ -103,7 +103,7 @@ test('inline editors preserve exactly the new or legacy fenced name when saving'
  assert.match(blocks,/writerV8InlineEditor\(plugin,ctx,target,element,fenceType,source/);
 });
 test('home heading prominence and compact list rules are bundled',()=>{
- const css=read('src/styles/v9-design-system.css'),bundle=read('styles.css');
+ const css=read('src/styles/core/v9-design-system.css'),bundle=read('styles.css');
  for(const key of ['writer-v905-note-list','writer-v905-note-row.is-selected','writer-v905-gallery-frame',
   'writer-v905-quote-text','writer-v8-home-heading h2']){assert.ok(css.includes(key));assert.ok(bundle.includes(key));}
 });

@@ -2,7 +2,7 @@
 const {test}=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),vm=require('node:vm');
 const read=path=>fs.readFileSync(path,'utf8');
-const main=read('main.js'),style=read('src/styles/v9-design-system.css');
+const main=read('main.js'),style=read('src/styles/core/v9-design-system.css');
 test('v1 Markdown dictionary headings and separators still parse after historical rename',()=>{
  const i=main.indexOf('function parseDictionary(text) {');
  const j=main.indexOf('const AI_PROVIDERS=',i);

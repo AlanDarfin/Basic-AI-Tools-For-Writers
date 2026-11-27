@@ -235,7 +235,7 @@ test('runtime capability refresh waits for an active review and cancels its Basi
 });
 
 test('mobile tooltip styling and correction scroll guard use only the enabled bridge scope',()=>{
- const css=fs.readFileSync('src/styles/v13-8-grammar-compat.css','utf8');
+ const css=fs.readFileSync('src/styles/compat/v13-8-grammar-compat.css','utf8');
  assert.match(css,/\.is-mobile\.writer-grammar-external-compat/);assert.match(css,/min-height:44px/);
  assert.match(css,/max-width:calc\(100vw - 40px\)/);
  assert.match(fs.readFileSync('src/v4/integrations.js','utf8'),/\.writer-grammar-external-compat \.lt-tooltip/);

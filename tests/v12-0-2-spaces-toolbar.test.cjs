@@ -83,7 +83,7 @@ test('dragger retains its handle while crossing from text to the grip',()=>{
  assert.match(dragger,/registerDomEvent\(handle,'pointerenter'/);
 });
 test('root Space styling hides only ancestor labels, not descendants',()=>{
- const css=read('src/styles/v12-0-1-mobile.css');
+ const css=read('src/styles/mobile/v12-0-1-mobile.css');
  assert.match(css,/writer-v1202-space-ancestor > \.nav-folder-title/);
  assert.match(css,/writer-v1202-space-scoped/);
  assert.doesNotMatch(css,/writer-v1202-space-root > \.nav-folder-title\s*\{\s*display:none/);

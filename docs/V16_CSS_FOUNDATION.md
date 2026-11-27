@@ -51,3 +51,10 @@ Run npm run build:css, npm run check:css, npm test. Test editor width with each 
 - Physically relocated `legacy-dictionary-settings.css` and `legacy-templates.css` into `src/styles/compat/`, and `legacy-writing-tools.css` into `src/styles/editor/`. Each destination blob was verified identical to its original before the old path was removed. Manifest positions were preserved exactly; no runtime changes are intended.
 - Added regression checks for the new paths, ownership, uniqueness and cascade order. Other modules remain in place until their path consumers and CI are checked.
 - The previous full build succeeded; the new commit still requires clean build/CI verification. Actual Android and desktop visual checks remain outstanding.
+
+## Phase 4 — batch 2 (core, editor, mobile, native, compatibility)
+
+- Baseline CI #1370 passed all 178 regression files, full rebuild, bundle synchronization, CSS lint, bilingual metadata and package smoke test.
+- Relocate 13 additional modules into their existing ownership categories; 16/53 files now have categorized physical paths. Keep exact original blobs and relative cascade order. Timeline PR #175 remains independent; do not relocate its files before reconciliation.
+- Update four known test path consumers, extend the manifest to reject duplicate basenames and category/path mismatches, and add regression checks for moved files and absence of obsolete duplicates.
+- Use a single Git tree/commit for the entire batch, so no intermediate branch state contains duplicated or missing modules. The next CI must confirm all test paths and clean build.

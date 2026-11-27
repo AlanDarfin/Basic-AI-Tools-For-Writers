@@ -95,3 +95,17 @@ test('CSS phase 4: migrated legacy modules keep a single authoritative source',(
  }
  assert.deepEqual(sections.slice(-3),relocated.map(([name,category])=>category+'/'+name));
 });
+
+test('CSS phase 4: categorized modules match their ownership and stable source names',()=>{
+ const {entries,sections,validateEntries}=require('../scripts/css-manifest.js');
+ const migrated=["core/v9-design-system.css","core/v10-consistency.css","core/panel-density.css","compat/v13-8-grammar-compat.css","editor/v13-7-typewriter.css","editor/v13-prose-rhythm.css","native/v13-9-native-focus.css","native/v13-9-native-tasks.css","mobile/v13-9-mobile-ui.css","mobile/v11-1-2-mobile-panels.css","mobile/v12-0-1-mobile.css","mobile/v8-review-mobile.css","native/v8-navigation.css"];
+ for(const file of migrated){
+  const name=file.split('/').pop();
+  assert.ok(sections.includes(file),file);
+  assert.ok(fs.existsSync('src/styles/'+file),file);
+  assert.ok(!fs.existsSync('src/styles/'+name),name);
+ }
+ assert.equal(new Set(entries.map(e=>e.path.split('/').pop())).size,entries.length);
+ assert.throws(()=>validateEntries([{path:'core/test.css',category:'core'},{path:'editor/test.css',category:'editor'}]),/Duplicate CSS module name/);
+ assert.throws(()=>validateEntries([{path:'native/test.css',category:'core'}]),/CSS path does not match category/);
+});

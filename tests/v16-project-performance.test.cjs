@@ -80,3 +80,33 @@ test('Zotero imported-reference collection stops at 500 matches and refreshes on
  files.shift();inspected=0;
  assert.equal(c.writerV10ZoteroImportedReferences(plugin)[0].title,'2');assert.equal(inspected,1000);
 });
+
+test('Zotero folder matches skip classification metadata and nested tags still work',()=>{
+ const source=fs.readFileSync('src/writing/research-style.js','utf8');
+ const c=vm.createContext({TFile});
+ vm.runInContext(source.slice(source.indexOf('function writerV92ZoteroIsSource'),source.indexOf('function writerV92ZoteroExtract')),c);
+ const folder=new TFile('Zotero/Book.md'),folderNote=new TFile('ZOTERO.md'),other=new TFile('Elsewhere.md');
+ let reads=0,tag='#ZoTeRo/research';
+ const plugin={settings:{v92Research:{zoteroFolder:'zotero',zoteroTag:'zotero'}},
+  app:{metadataCache:{getFileCache:()=>{reads++;return {frontmatter:{tags:[tag]}};}}}};
+ assert.equal(c.writerV92ZoteroIsSource(plugin,folder),true);
+ assert.equal(c.writerV92ZoteroIsSource(plugin,folderNote),true);
+ assert.equal(reads,0);
+ assert.equal(c.writerV92ZoteroIsSource(plugin,other),true);
+ tag='#unrelated';
+ assert.equal(c.writerV92ZoteroIsSource(plugin,other),false);
+ assert.equal(reads,2);
+});
+test('Zotero quote collection bounds source classification without changing read order',async()=>{
+ const source=fs.readFileSync('src/writing/research-style.js','utf8');
+ let inspected=0;const reads=[];
+ const files=Array.from({length:1000},(_,i)=>({path:String(i)}));
+ const c=vm.createContext({writerModuleOn:()=>true,
+  writerV92ZoteroIsSource:(p,f)=>{inspected++;return Number(f.path)%2===0;},
+  writerV92ZoteroExtract:()=>[]});
+ vm.runInContext(source.slice(source.indexOf('async function writerV92ZoteroQuotes'),source.indexOf('function writerV92ZoteroQuoteMode')),c);
+ const plugin={settings:{v92Research:{enabled:true,zoteroQuotes:true}},app:{vault:{getMarkdownFiles:()=>files,cachedRead:async f=>{reads.push(f.path);return 'note';}}}};
+ assert.equal((await c.writerV92ZoteroQuotes(plugin)).length,0);
+ assert.equal(inspected,479);assert.equal(reads.length,240);
+ assert.equal(reads[0],'0');assert.equal(reads[239],'478');
+});

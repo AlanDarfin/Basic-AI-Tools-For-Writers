@@ -281,3 +281,8 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 
 - CI #1409 passed Phase 11.4. Bookshelf and Zotero Home widgets consume the existing lazy per-render Markdown snapshot; standalone calls still enumerate independently. No persistent vault cache. The citation picker stops scanning immediately after the first 500 qualifying notes, maintaining original order and limits.
 - Two focused regression fixtures cover shared enumeration, snapshot freshness and the bounded reference scan. Updated the historical widget contract assertions and synchronized all three authored modules into `main.js` using the stable bundle markers. Full new CI and real device profiling pending; no timing claims.
+
+### Phase 11.6 — bounded Zotero quote sources and metadata fast path
+
+- Notes already identified by the configured Zotero folder (including its matching root note) skip tag-classification metadata reads. Notes outside it still use fresh inline/frontmatter tags, including nested tags, with the configured tag normalized once per classification.
+- Quote collection selects the first 240 qualifying notes in the same order before asynchronous reads, but stops classifying once the cap is reached. Two deterministic fixtures verify metadata read avoidance, tag freshness and preserved quote read order. Existing extraction behavior, source limits, settings and dependencies are unchanged. New CI and live Zotero QA pending.

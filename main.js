@@ -21937,11 +21937,12 @@ function writerV92ZoteroIsSource(plugin,file){
  if(!(file instanceof TFile)||file.extension!=='md')return false;
  const cfg=plugin.settings.v92Research;
  const path=file.path.toLocaleLowerCase(),folder=cfg.zoteroFolder.toLocaleLowerCase();
+ if(folder&&(path.startsWith(folder+'/')||path===folder+'.md'))return true;
  const cache=plugin.app.metadataCache?.getFileCache?.(file);
  const tags=[...(cache?.tags||[]).map(x=>x.tag),...(Array.isArray(cache?.frontmatter?.tags)?cache.frontmatter.tags:[cache?.frontmatter?.tags])]
   .filter(Boolean).map(x=>String(x).replace(/^#/,'').toLocaleLowerCase());
- return (folder&&(path.startsWith(folder+'/')||path===folder+'.md'))||
-  tags.some(tag=>tag===cfg.zoteroTag.toLocaleLowerCase()||tag.startsWith(cfg.zoteroTag.toLocaleLowerCase()+'/'));
+ const target=cfg.zoteroTag.toLocaleLowerCase();
+ return tags.some(tag=>tag===target||tag.startsWith(target+'/'));
 }
 function writerV92ZoteroExtract(plugin,file,text){
  const cache=plugin.app.metadataCache?.getFileCache?.(file);
@@ -21979,7 +21980,12 @@ function writerV92ZoteroExtract(plugin,file,text){
 async function writerV92ZoteroQuotes(plugin,limit=180){
  const cfg=plugin.settings.v92Research;
  if(!cfg.enabled||!cfg.zoteroQuotes||!writerModuleOn(plugin,'zoteroIntegration'))return [];
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>writerV92ZoteroIsSource(plugin,file)).slice(0,240);
+ const files=[];
+ for(const file of plugin.app.vault.getMarkdownFiles?.()||[]){
+  if(!writerV92ZoteroIsSource(plugin,file))continue;
+  files.push(file);
+  if(files.length===240)break;
+ }
  const quotes=[];
  for(const file of files){
   try{

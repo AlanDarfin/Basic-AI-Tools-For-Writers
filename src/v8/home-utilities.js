@@ -108,7 +108,8 @@ function writerV8HomeSearchURL(plugin,input){
 }
 /* Slash searches are handled only by Obsidian's native Web Viewer.
  * Never fall through to vault matches, Surfing or the external browser. */
-async function writerV8HomeOpenNativeSearch(plugin,input){
+async function writerV8HomeOpenNativeSearch(plugin,input,current=()=>true){
+ if(!current())return null;
  const query=String(input||'').trim();
  if(!query)throw Error(writerUi('Digite um termo após /.','Enter a search term after /.'));
  if(!writerV8HomeWebViewerEnabled(plugin))
@@ -117,13 +118,16 @@ async function writerV8HomeOpenNativeSearch(plugin,input){
  const url=writerV8HomeSearchURL(plugin,query);
  const leaf=plugin.app.workspace.getLeaf?.('tab');
  if(!leaf)throw Error(writerUi('Não foi possível abrir uma aba.','Could not open a tab.'));
- await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+ try{await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});}
+ catch(error){if(!current())return null;throw error;}
+ if(!current())return null;
  if(leaf.getViewState?.()?.type!=='webviewer')
   throw Error(writerUi('O Visualizador Web não está disponível.','Web Viewer is unavailable.'));
  plugin.app.workspace.setActiveLeaf?.(leaf,{focus:true});
  return 'webviewer';
 }
-async function writerV8HomeOpenURL(plugin,input){
+async function writerV8HomeOpenURL(plugin,input,current=()=>true){
+ if(!current())return null;
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));
  const mobile=writerV8HomeIsMobile(plugin);
@@ -135,20 +139,24 @@ async function writerV8HomeOpenURL(plugin,input){
    if(leaf){
     try{
      await leaf.setViewState({type:'surfing-view',state:{url},active:true});
+     if(!current())return null;
      if(leaf.getViewState?.()?.type==='surfing-view')return 'surfing';
-    }catch(error){console.warn('[Basic AI] Surfing browser unavailable:',error);}
+    }catch(error){if(!current())return null;console.warn('[Basic AI] Surfing browser unavailable:',error);}
    }
   }
+  if(!current())return null;
   if(writerV8HomeWebViewerEnabled(plugin)){
    const leaf=plugin.app.workspace.getLeaf?.('tab');
    if(leaf){
     try{
      await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+     if(!current())return null;
      if(leaf.getViewState?.()?.type==='webviewer')return 'webviewer';
-    }catch(error){console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
+    }catch(error){if(!current())return null;console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
    }
   }
  }
+ if(!current())return null;
  // Surfing is desktop-only; mobile always delegates to the external browser.
  const scope=plugin.app.workspace.containerEl?.ownerDocument?.defaultView || (typeof window!=='undefined'?window:null);
  if(typeof scope?.open==='function'){scope.open(url,mobile?'_system':'_blank');return 'external';}

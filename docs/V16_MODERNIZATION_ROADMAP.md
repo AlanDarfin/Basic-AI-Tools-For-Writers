@@ -131,3 +131,9 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 
 - Quick drafts previously cleared the currently selected slot after an awaited vault write. Capture the original slot and text, keep the note creation explicit, and clear only an unchanged snapshot owned by the live render. Switching tabs, editing or closing the view retains the draft. A failed settings save restores the owned snapshot without overriding newer edits. Stale renders do not update controls or navigate.
 - Four focused deterministic async fixtures cover normal export, tab switching, newer edits/closed view and failed persistence. No CSS, settings schema, command ID or dependencies changed. Full CI, native navigation and third-party integration review remain pending.
+
+## Phase 7.5 — navigation continuation and regression repair
+
+- CI #1387 rebuilt successfully and passed 179/180 regression files; the sole failed file was a historical quick-draft static assertion requiring the old explicit vault receiver. Update both path-creation assertions to match the extracted helper, retaining their behavioral intent. The lifecycle tests passed in CI.
+- Native slash search and the Surfing/Web Viewer/external fallback chain now accept an optional live-render predicate. After an awaited view activation, stale callers cannot focus, start another fallback or surface a stale notice. Already-dispatched native activation cannot be cancelled. Existing callers without a predicate retain their behavior.
+- Homepage search and bookmark buttons reject stale/repeated in-flight actions. Three async regression fixtures cover late success/failure and normal external fallback. No CSS, dependency or settings changes; third-party private header lifecycle and real visual QA remain pending.

@@ -772,13 +772,15 @@ class WriterV8HomeView extends ItemView{
    link.setText(webOnly?writerUi('Pesquisar na web','Search the web'):writerUi('Abrir endereço','Open address'));
    link.disabled=webOnly&&!slashTerm();
   };
+  let navigating=false;
   const open=async()=>{
-   link.disabled=true;
+   if(!current()||navigating)return;
+   navigating=true;link.disabled=true;
    try{
-    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm());
-    else await writerV8HomeOpenURL(this.plugin,input.value);
-   }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
-   finally{if(current())updateLink();}
+    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm(),current);
+    else await writerV8HomeOpenURL(this.plugin,input.value,current);
+   }catch(error){if(current())new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   finally{navigating=false;if(current())updateLink();}
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
@@ -816,6 +818,8 @@ class WriterV8HomeView extends ItemView{
  }
  renderWebBookmarks(parent){
   const box=this.card(parent,'webBookmarks','Favoritos da web','Web bookmarks');
+  const generation=this.homeRenderGeneration,session=this.homeSession;
+  const current=()=>!this.disposed&&this.homeSession===session&&this.homeRenderGeneration===generation&&box.isConnected;
   const cfg=this.plugin.settings.v8Finish,list=cfg.homeWebBookmarks||[];
   box.addClass('writer-v1205-bookmarks-widget');
   const tools=box.createDiv({cls:'writer-v1203-web-bookmarks-tools'});
@@ -904,8 +908,13 @@ class WriterV8HomeView extends ItemView{
      const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
      labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
      labels.createSpan({text:domain,cls:'writer-v1203-web-bookmark-domain'});
-     button.addEventListener('click',()=>void writerV8HomeOpenURL(this.plugin,bookmark.url)
-      .catch(error=>new Notice(String(error.message||error))));
+     button.addEventListener('click',async()=>{
+      if(!current()||button.disabled)return;
+      button.disabled=true;
+      try{await writerV8HomeOpenURL(this.plugin,bookmark.url,current);}
+      catch(error){if(current())new Notice(String(error.message||error));}
+      finally{if(current())button.disabled=false;}
+     });
      const more=item.createEl('button',{cls:'writer-v1203-web-bookmark-more',
       attr:{type:'button',title:writerUi('Opções','Options'),
        'aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});

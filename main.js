@@ -13155,7 +13155,8 @@ function writerV8HomeSearchURL(plugin,input){
 }
 /* Slash searches are handled only by Obsidian's native Web Viewer.
  * Never fall through to vault matches, Surfing or the external browser. */
-async function writerV8HomeOpenNativeSearch(plugin,input){
+async function writerV8HomeOpenNativeSearch(plugin,input,current=()=>true){
+ if(!current())return null;
  const query=String(input||'').trim();
  if(!query)throw Error(writerUi('Digite um termo após /.','Enter a search term after /.'));
  if(!writerV8HomeWebViewerEnabled(plugin))
@@ -13164,13 +13165,16 @@ async function writerV8HomeOpenNativeSearch(plugin,input){
  const url=writerV8HomeSearchURL(plugin,query);
  const leaf=plugin.app.workspace.getLeaf?.('tab');
  if(!leaf)throw Error(writerUi('Não foi possível abrir uma aba.','Could not open a tab.'));
- await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+ try{await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});}
+ catch(error){if(!current())return null;throw error;}
+ if(!current())return null;
  if(leaf.getViewState?.()?.type!=='webviewer')
   throw Error(writerUi('O Visualizador Web não está disponível.','Web Viewer is unavailable.'));
  plugin.app.workspace.setActiveLeaf?.(leaf,{focus:true});
  return 'webviewer';
 }
-async function writerV8HomeOpenURL(plugin,input){
+async function writerV8HomeOpenURL(plugin,input,current=()=>true){
+ if(!current())return null;
  const url=writerV8HomeValidURL(input);
  if(!url)throw Error(writerUi('Use um endereço HTTP ou HTTPS válido.','Enter a valid HTTP or HTTPS address.'));
  const mobile=writerV8HomeIsMobile(plugin);
@@ -13182,20 +13186,24 @@ async function writerV8HomeOpenURL(plugin,input){
    if(leaf){
     try{
      await leaf.setViewState({type:'surfing-view',state:{url},active:true});
+     if(!current())return null;
      if(leaf.getViewState?.()?.type==='surfing-view')return 'surfing';
-    }catch(error){console.warn('[Basic AI] Surfing browser unavailable:',error);}
+    }catch(error){if(!current())return null;console.warn('[Basic AI] Surfing browser unavailable:',error);}
    }
   }
+  if(!current())return null;
   if(writerV8HomeWebViewerEnabled(plugin)){
    const leaf=plugin.app.workspace.getLeaf?.('tab');
    if(leaf){
     try{
      await leaf.setViewState({type:'webviewer',state:{url,navigate:true},active:true});
+     if(!current())return null;
      if(leaf.getViewState?.()?.type==='webviewer')return 'webviewer';
-    }catch(error){console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
+    }catch(error){if(!current())return null;console.warn('[Basic AI] Native Web Viewer unavailable:',error);}
    }
   }
  }
+ if(!current())return null;
  // Surfing is desktop-only; mobile always delegates to the external browser.
  const scope=plugin.app.workspace.containerEl?.ownerDocument?.defaultView || (typeof window!=='undefined'?window:null);
  if(typeof scope?.open==='function'){scope.open(url,mobile?'_system':'_blank');return 'external';}
@@ -14638,13 +14646,15 @@ class WriterV8HomeView extends ItemView{
    link.setText(webOnly?writerUi('Pesquisar na web','Search the web'):writerUi('Abrir endereço','Open address'));
    link.disabled=webOnly&&!slashTerm();
   };
+  let navigating=false;
   const open=async()=>{
-   link.disabled=true;
+   if(!current()||navigating)return;
+   navigating=true;link.disabled=true;
    try{
-    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm());
-    else await writerV8HomeOpenURL(this.plugin,input.value);
-   }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
-   finally{if(current())updateLink();}
+    if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm(),current);
+    else await writerV8HomeOpenURL(this.plugin,input.value,current);
+   }catch(error){if(current())new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
+   finally{navigating=false;if(current())updateLink();}
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
@@ -14682,6 +14692,8 @@ class WriterV8HomeView extends ItemView{
  }
  renderWebBookmarks(parent){
   const box=this.card(parent,'webBookmarks','Favoritos da web','Web bookmarks');
+  const generation=this.homeRenderGeneration,session=this.homeSession;
+  const current=()=>!this.disposed&&this.homeSession===session&&this.homeRenderGeneration===generation&&box.isConnected;
   const cfg=this.plugin.settings.v8Finish,list=cfg.homeWebBookmarks||[];
   box.addClass('writer-v1205-bookmarks-widget');
   const tools=box.createDiv({cls:'writer-v1203-web-bookmarks-tools'});
@@ -14770,8 +14782,13 @@ class WriterV8HomeView extends ItemView{
      const labels=button.createSpan({cls:'writer-v1203-web-bookmark-labels'});
      labels.createSpan({text:bookmark.title,cls:'writer-v1203-web-bookmark-title'});
      labels.createSpan({text:domain,cls:'writer-v1203-web-bookmark-domain'});
-     button.addEventListener('click',()=>void writerV8HomeOpenURL(this.plugin,bookmark.url)
-      .catch(error=>new Notice(String(error.message||error))));
+     button.addEventListener('click',async()=>{
+      if(!current()||button.disabled)return;
+      button.disabled=true;
+      try{await writerV8HomeOpenURL(this.plugin,bookmark.url,current);}
+      catch(error){if(current())new Notice(String(error.message||error));}
+      finally{if(current())button.disabled=false;}
+     });
      const more=item.createEl('button',{cls:'writer-v1203-web-bookmark-more',
       attr:{type:'button',title:writerUi('Opções','Options'),
        'aria-label':writerUi('Opções do favorito ','Bookmark options for ')+bookmark.title}});

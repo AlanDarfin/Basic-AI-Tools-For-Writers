@@ -218,3 +218,33 @@ test('quick draft export restores the snapshot if persisting its removal fails',
  const h=draftExportHarness();h.fail();const pending=h.run(exportDraft);h.release();
  await assert.rejects(pending,/save failure/);assert.equal(h.drafts[0],'first draft');assert.equal(h.editor.value,'first draft');
 });
+
+function webNavigationHarness({surfing=true,webviewer=true}={}){
+ let active=true,release,attempts=[],focus=0,external=0;
+ const workspace={getLeaf:()=>({setViewState:state=>{attempts.push(state.type);return new Promise((resolve,reject)=>{release={resolve,reject};});},getViewState:()=>({type:'empty'})}),
+  setActiveLeaf:()=>focus++,containerEl:{ownerDocument:{defaultView:{open:()=>external++}}}};
+ const plugin={app:{workspace,internalPlugins:{getPluginById:()=>({enabled:webviewer})},plugins:{plugins:{surfing:{}},enabledPlugins:new Set(surfing?['surfing']:[])}},settings:{v8Finish:{homeWebSearchTarget:'auto'}}};
+ return {plugin,current:()=>active,close:()=>{active=false;},resolve:()=>release.resolve(),reject:()=>release.reject(Error('unavailable')),attempts,focus:()=>focus,external:()=>external};
+}
+test('stale native slash search neither focuses nor reports an unavailable viewer',async()=>{
+ const open=load('src/v8/home-utilities.js','writerV8HomeOpenNativeSearch',{URL});
+ for(const rejected of [false,true]){
+  const h=webNavigationHarness(),pending=open(h.plugin,'query',h.current);h.close();rejected?h.reject():h.resolve();
+  assert.equal(await pending,null);assert.equal(h.focus(),0);assert.deepEqual(h.attempts,['webviewer']);assert.equal(h.external(),0);
+ }
+});
+test('stale Surfing navigation does not fall back to native viewer or external browser',async()=>{
+ const open=load('src/v8/home-utilities.js','writerV8HomeOpenURL',{URL,require:()=>({Platform:{isMobile:false}})});
+ for(const rejected of [false,true]){
+  const h=webNavigationHarness(),pending=open(h.plugin,'https://example.org',h.current);h.close();rejected?h.reject():h.resolve();
+  assert.equal(await pending,null);assert.deepEqual(h.attempts,['surfing-view']);assert.equal(h.external(),0);
+ }
+});
+test('stale native fallback does not open an external browser, but active fallback still works',async()=>{
+ const open=load('src/v8/home-utilities.js','writerV8HomeOpenURL',{URL,require:()=>({Platform:{isMobile:false}})});
+ for(const stale of [false,true]){
+  const h=webNavigationHarness({surfing:false}),pending=open(h.plugin,'https://example.org',h.current);
+  if(stale)h.close();h.resolve();assert.equal(await pending,stale?null:'external');assert.equal(h.external(),stale?0:1);
+ }
+ const h=webNavigationHarness();h.close();assert.equal(await open(h.plugin,'https://example.org',h.current),null);assert.equal(h.attempts.length,0);
+});

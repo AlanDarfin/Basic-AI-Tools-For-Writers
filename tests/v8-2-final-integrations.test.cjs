@@ -66,8 +66,8 @@ test('quick drafts are local and persist across switches; export chooses a new p
  assert.match(home,/homeQuick=\[|homeQuick\[index\]/);
  assert.match(home,/if\(index>=0\)/);
  assert.match(home,/plugin\.saveSettings/);
- assert.match(home,/this\.app\.vault\.create\(path,body\+'\\n'\)/);
- assert.match(home,/while\(this\.app\.vault\.getAbstractFileByPath\(path\)\)/);
+ assert.match(home,/vault\.create\(path,body\+'\\n'\)/);
+ assert.match(home,/while\(vault\.getAbstractFileByPath\(path\)\)/);
  assert.doesNotMatch(home,/fetch\(|requestUrl\(/);
 });
 test('dashboard safely delegates startup cleanup and does not add editor extensions',()=>{

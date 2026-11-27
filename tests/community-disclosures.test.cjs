@@ -32,7 +32,7 @@ test('online TTS uses documented, opt-in WebSocket transport',()=>{
  assert(read('SECURITY.md').includes('WebSocket'));
 });
 test('optional integrated Pandoc is guarded on mobile and avoids an OS shell',()=>{
- const source=read('src/v5/pandoc-export.js');
+ const source=read('src/writing/pandoc-export.js');
  assert(source.includes('enabled:false'));
  assert(source.includes('plugin.app.isMobile'));
  assert(source.includes('shell:false'));

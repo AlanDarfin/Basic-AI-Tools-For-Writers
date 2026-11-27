@@ -14,7 +14,7 @@ test('v6 planning does not silently change stable Obsidian manifest',()=>{
  assert.equal(manifest.isDesktopOnly,false);
 });
 test('Markdown spoiler is already owned by Extended Syntax',()=>{
- const ext=read('src/v5/extended-syntax.js');
+ const ext=read('src/editor/extended-syntax.js');
  assert.match(ext,/spoiler:true/);
  assert.match(ext,/\['spoiler','spoiler'/);
  assert.match(ext,/registerMarkdownPostProcessor/);

@@ -218,3 +218,9 @@ Phase 6 next deliverable: a reproducible read-only module/declaration/lifecycle 
 - CI #1398 passed full validation on the Auto Grammar relocation and Linter regression repair.
 - Move Grammar Settings into `src/settings/` and Grammar Companion into `src/integrations/`, preserving their original source blobs and all 124 ordered module IDs. Resolve the settings search generator's additional grammar-settings path and the companion bridge fixture through the stable-ID manifest. Update three other grammar-related regression consumers and the relocation assertions.
 - No runtime behavior, settings schema, dependencies or generated artifacts changed. Full CI and live Obsidian QA on this batch remain pending. Next batch: Pandoc Export and Extended Syntax, followed by remaining editor extensions.
+
+### Phase 10.8 — formatting and export domain relocation
+
+- CI #1399 passed full validation on the LanguageTool settings and integration relocation.
+- Move Pandoc Export into `src/writing/` and Extended Syntax into `src/editor/`, preserving their exact original source blobs and all 124 ordered stable module IDs. Update eight historical regression consumers covering export, community disclosures, paragraph drop caps and Markdown toolbar behavior; retain historical bundle-marker assertions. Extend the manifest relocation fixture.
+- No runtime behavior, settings schema, dependencies or generated artifacts changed. Full new CI and live Obsidian QA pending. Next batch: Keyshots, Smart Insert and remaining editor extensions.

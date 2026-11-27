@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const pandoc=fs.readFileSync('src/v5/pandoc-export.js','utf8');
+const pandoc=fs.readFileSync('src/writing/pandoc-export.js','utf8');
 const main=fs.readFileSync('main.js','utf8');
 const sandbox={writerUi:(pt,en)=>en,console,Modal:class{},Setting:class{},Notice:class{}};
 const api=vm.runInNewContext(pandoc+'\n({writerPandocExecutableAllowed,writerPandocExportRun,writerPandocExportArgs})',sandbox);

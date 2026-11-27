@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const files=['src/v5/keyshots.js','src/v5/extended-syntax.js','src/editor/pandoc-syntax.js'];
+const files=['src/v5/keyshots.js','src/editor/extended-syntax.js','src/editor/pandoc-syntax.js'];
 const source=files.map(p=>fs.readFileSync(p,'utf8')).join('\n');
 const mock={writerUi:pt=>pt,writerModuleOn:()=>true,console,require:()=>({})};
 const v5=vm.runInNewContext(source+'\n({writerKeyshotsMerge,writerKeyshotsLineAction,writerKeyshotsBindings,writerExtendedMerge,writerExtendedTokens,writerPandocMerge,writerPandocNumber,writerPandocListItem,writerPandocOutline})',

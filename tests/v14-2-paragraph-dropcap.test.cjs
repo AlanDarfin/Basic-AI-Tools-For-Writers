@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const read=p=>fs.readFileSync(p,'utf8');
 const align=read('src/v10/inline-alignment.js');
-const ext=read('src/v5/extended-syntax.js');
+const ext=read('src/editor/extended-syntax.js');
 const exportCode=read('src/compat/pandoc-format-compat.js');
 const api=vm.runInNewContext(ext+'\n'+align+'\n'+exportCode+
  '\n({writerV102AlignToken,writerV102AlignApply,writerV102ToggleDropcap,writerV102AlignReading,writerPandocExportPrepare,writerPandocExportEmbedCSS})',
@@ -79,7 +79,7 @@ test('main.js and styles.css contain export pipeline and drop cap CSS',()=>{
  for(const fn of ['writerV102ParagraphSuffix','writerV102ToggleDropcap','writerPandocExportPrepare','writerPandocExportEmbedCSS'])
   assert.ok(main.includes('function '+fn+'('),fn);
  assert.match(css,/\.markdown-preview-view p\.writer-v102-dropcap::first-letter/);
- const exporter=read('src/v5/pandoc-export.js');
+ const exporter=read('src/writing/pandoc-export.js');
  assert.match(exporter,/writerPandocExportPrepare\(view\.editor\.getValue\(\)\)/);
  assert.match(exporter,/if\(format==='epub'\)/);
  assert.match(exporter,/if\(format==='html'\)bytes=Buffer\.from\(writerPandocExportEmbedCSS/);

@@ -124,6 +124,12 @@ test('stable source IDs resolve relocated modules without changing bundle marker
  assert.equal(resolveSourcePath('src/v13/grammar-companion.js'),'src/integrations/grammar-companion.js');
  assert.ok(!fs.existsSync('src/v13/grammar-companion.js'));
  assert.ok(fs.existsSync('src/integrations/grammar-companion.js'));
+ assert.equal(resolveSourcePath('src/v5/pandoc-export.js'),'src/writing/pandoc-export.js');
+ assert.ok(!fs.existsSync('src/v5/pandoc-export.js'));
+ assert.ok(fs.existsSync('src/writing/pandoc-export.js'));
+ assert.equal(resolveSourcePath('src/v5/extended-syntax.js'),'src/editor/extended-syntax.js');
+ assert.ok(!fs.existsSync('src/v5/extended-syntax.js'));
+ assert.ok(fs.existsSync('src/editor/extended-syntax.js'));
  for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
  assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });

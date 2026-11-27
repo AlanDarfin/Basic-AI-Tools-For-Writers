@@ -21,7 +21,7 @@ test('Markdown spoiler is already owned by Extended Syntax',()=>{
  assert.match(ext,/registerEditorExtension/);
 });
 test('both existing typing modules are preserved before the new linter',()=>{
- const easy=read('src/v5/easy-typing.js'),typo=read('src/v5/smart-typography.js');
+ const easy=read('src/editor/easy-typing.js'),typo=read('src/editor/smart-typography.js');
  assert.match(easy,/clipboardInputFilter/);
  assert.match(easy,/writerEasyTabOut/);
  assert.match(typo,/transactionFilter/);

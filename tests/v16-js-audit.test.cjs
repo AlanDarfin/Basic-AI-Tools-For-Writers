@@ -97,6 +97,15 @@ test('stable source IDs resolve relocated modules without changing bundle marker
  assert.equal(resolveSourcePath('src/v10/calendar-feeds.js'),'src/integrations/calendar-feeds.js');
  assert.ok(!fs.existsSync('src/v10/calendar-feeds.js'));
  assert.ok(fs.existsSync('src/integrations/calendar-feeds.js'));
+ assert.equal(resolveSourcePath('src/v5/easy-typing.js'),'src/editor/easy-typing.js');
+ assert.ok(!fs.existsSync('src/v5/easy-typing.js'));
+ assert.ok(fs.existsSync('src/editor/easy-typing.js'));
+ assert.equal(resolveSourcePath('src/v5/smart-typography.js'),'src/editor/smart-typography.js');
+ assert.ok(!fs.existsSync('src/v5/smart-typography.js'));
+ assert.ok(fs.existsSync('src/editor/smart-typography.js'));
+ assert.equal(resolveSourcePath('src/v5/pandoc-syntax.js'),'src/editor/pandoc-syntax.js');
+ assert.ok(!fs.existsSync('src/v5/pandoc-syntax.js'));
+ assert.ok(fs.existsSync('src/editor/pandoc-syntax.js'));
  for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
  assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });

@@ -1,7 +1,8 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
-const files=['src/v6/foundation.js','src/v6/reading.js','src/v6/markup.js','src/writing/linter.js'];
-const source=files.map(p=>fs.readFileSync(p,'utf8')).join('\n');
+const {resolveSourcePath}=require('../scripts/js-manifest.js');
+const files=['src/v6/foundation.js','src/v6/reading.js','src/v6/markup.js','src/v6/linter.js'];
+const source=files.map(id=>fs.readFileSync(resolveSourcePath(id),'utf8')).join('\n');
 const ctx={console,Intl,Date,Math,Number,String,Object,Array,RegExp,writerUi:(pt,en)=>en||pt,writerModuleOn:()=>true,writerV5RefreshEditors:()=>{},require:name=>{
  if(name==='@codemirror/view')return {WidgetType:class{}};throw Error(name);
 }};

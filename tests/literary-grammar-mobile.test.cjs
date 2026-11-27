@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 
-const source=fs.readFileSync('src/v4/auto-grammar.js','utf8');
+const source=fs.readFileSync('src/writing/auto-grammar.js','utf8');
 const start=source.indexOf('const WRITER_LITERARY_DICENDI=');
 const end=source.indexOf('async function writerGrammarRequest(',start);
 assert.ok(start>=0&&end>start,'Literary helper must remain in the grammar source');

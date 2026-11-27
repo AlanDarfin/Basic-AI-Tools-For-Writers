@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const src=fs.readFileSync('src/v4/auto-grammar.js','utf8');
+const src=fs.readFileSync('src/writing/auto-grammar.js','utf8');
 const main=fs.readFileSync('main.js','utf8');
 const tools=fs.readFileSync('src/v3/workspace.js','utf8');
 const read=()=>new Map();

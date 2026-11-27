@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const src=fs.readFileSync('src/v4/auto-grammar.js','utf8');
+const src=fs.readFileSync('src/writing/auto-grammar.js','utf8');
 const api=vm.runInNewContext(src+'\n({writerGrammarLocalWindow,writerGrammarLocalScopes,writerGrammarPreserveOutside})',{console});
 const {writerGrammarLocalWindow,writerGrammarLocalScopes,writerGrammarPreserveOutside}=api;
 

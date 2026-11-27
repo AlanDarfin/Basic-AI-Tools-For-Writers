@@ -115,6 +115,9 @@ test('stable source IDs resolve relocated modules without changing bundle marker
  assert.equal(resolveSourcePath('src/v6/linter.js'),'src/writing/linter.js');
  assert.ok(!fs.existsSync('src/v6/linter.js'));
  assert.ok(fs.existsSync('src/writing/linter.js'));
+ assert.equal(resolveSourcePath('src/v4/auto-grammar.js'),'src/writing/auto-grammar.js');
+ assert.ok(!fs.existsSync('src/v4/auto-grammar.js'));
+ assert.ok(fs.existsSync('src/writing/auto-grammar.js'));
  for(const entry of entries)assert.equal(resolveSourcePath(entry.id),entry.path);
  assert.throws(()=>resolveSourcePath('src/unknown.js'),/Unknown JS source ID/);
 });

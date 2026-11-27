@@ -60,7 +60,7 @@ test('standalone views and Longform respect optional modules and skip hidden pan
  const main=fs.readFileSync('main.js','utf8');
  const tools=fs.readFileSync('src/v3/workspace.js','utf8');
  const projects=fs.readFileSync('projects.js','utf8');
- const grammar=fs.readFileSync('src/v4/auto-grammar.js','utf8');
+ const grammar=fs.readFileSync('src/writing/auto-grammar.js','utf8');
  const integrations=fs.readFileSync('src/v4/integrations.js','utf8');
  assert.ok(main.includes('this.applyModuleVisibility()'));
  assert.ok(main.includes("const sections=writerSettingsSections();"));

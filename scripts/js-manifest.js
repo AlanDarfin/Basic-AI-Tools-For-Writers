@@ -12,7 +12,7 @@ const entries=Object.freeze(validateEntries([
  ['src/v3/tts-online.js','integrations'],
  ['src/v4/editor.js','editor'],
  ['src/v4/integrations.js','integrations'],
- ['src/v4/auto-grammar.js','writing'],
+ ['src/v4/auto-grammar.js','writing','src/writing/auto-grammar.js'],
  ['src/v4/modules.js','settings'],
  ['src/v4/cursor-memory.js','editor','src/editor/cursor-memory.js'],
  ['src/v5/keyshots.js','editor'],

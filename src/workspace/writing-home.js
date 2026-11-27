@@ -290,12 +290,12 @@ class WriterV8HomeView extends ItemView{
    today:p=>this.renderToday(p,markdownFiles()),
     books:p=>{
      const card=this.card(p,'books','Meus livros','My books');
-     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card);
+     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card,markdownFiles());
      else card.createEl('p',{text:writerUi('Abra a biblioteca pelos comandos.','Open bookshelf using commands.')});
     },
     trash:p=>writerV10RenderTrashWidget(this,p),
     reading:p=>writerV10RenderReadingWidget(this,p),
-    zotero:p=>writerV10RenderZoteroWidget(this,p)
+    zotero:p=>writerV10RenderZoteroWidget(this,p,markdownFiles())
   };
   for(const key of widgetCfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;

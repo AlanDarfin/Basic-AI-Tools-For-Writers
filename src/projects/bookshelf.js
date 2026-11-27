@@ -63,8 +63,7 @@ async function writerV10BookSaveState(plugin,project,record){
  cfg.library[project.file.path]=writerV10BookRecord(record);
  await plugin.saveSettings();
 }
-function writerV10BookshelfProjects(plugin){
- const files=plugin.app.vault.getMarkdownFiles?.()||[];
+function writerV10BookshelfProjects(plugin,files=plugin.app.vault.getMarkdownFiles?.()||[]){
  const longform=files.map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
  const indexed=new Set(longform.map(p=>p.file.path));
  const standalone=(plugin.settings.v10Bookshelf?.standalone||[])
@@ -265,10 +264,10 @@ function writerV10OpenBookshelf(plugin){
  modal.onOpen=()=>{modal.contentEl.empty();writerV10RenderBookshelf(plugin,modal.contentEl);};
  modal.open();
 }
-function writerV10RenderBookshelfWidget(view,parent){
+function writerV10RenderBookshelfWidget(view,parent,files){
  const plugin=view.plugin,wrapper=parent.createDiv({cls:'writer-v108-books-widget'});
  const toolbar=wrapper.createDiv({cls:'writer-v108-books-widget-toolbar'});
- const projects=writerV10BookshelfProjects(plugin);
+ const projects=writerV10BookshelfProjects(plugin,files);
  toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  toolbar.createEl('button',{text:writerUi('Ver biblioteca','View library'),attr:{type:'button'}})
   .addEventListener('click',()=>writerV10OpenBookshelf(plugin));

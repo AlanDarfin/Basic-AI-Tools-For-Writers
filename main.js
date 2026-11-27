@@ -14211,12 +14211,12 @@ class WriterV8HomeView extends ItemView{
    today:p=>this.renderToday(p,markdownFiles()),
     books:p=>{
      const card=this.card(p,'books','Meus livros','My books');
-     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card);
+     if(typeof writerV10RenderBookshelfWidget==='function')writerV10RenderBookshelfWidget(this,card,markdownFiles());
      else card.createEl('p',{text:writerUi('Abra a biblioteca pelos comandos.','Open bookshelf using commands.')});
     },
     trash:p=>writerV10RenderTrashWidget(this,p),
     reading:p=>writerV10RenderReadingWidget(this,p),
-    zotero:p=>writerV10RenderZoteroWidget(this,p)
+    zotero:p=>writerV10RenderZoteroWidget(this,p,markdownFiles())
   };
   for(const key of widgetCfg.homeOrder){
    if(!WRITER_V8_HOME_SECTIONS.includes(key)||widgetCfg.homeHidden.includes(key))continue;
@@ -24086,8 +24086,7 @@ async function writerV10BookSaveState(plugin,project,record){
  cfg.library[project.file.path]=writerV10BookRecord(record);
  await plugin.saveSettings();
 }
-function writerV10BookshelfProjects(plugin){
- const files=plugin.app.vault.getMarkdownFiles?.()||[];
+function writerV10BookshelfProjects(plugin,files=plugin.app.vault.getMarkdownFiles?.()||[]){
  const longform=files.map(file=>typeof longformIndex==='function'?longformIndex(file,plugin.app):null).filter(Boolean);
  const indexed=new Set(longform.map(p=>p.file.path));
  const standalone=(plugin.settings.v10Bookshelf?.standalone||[])
@@ -24288,10 +24287,10 @@ function writerV10OpenBookshelf(plugin){
  modal.onOpen=()=>{modal.contentEl.empty();writerV10RenderBookshelf(plugin,modal.contentEl);};
  modal.open();
 }
-function writerV10RenderBookshelfWidget(view,parent){
+function writerV10RenderBookshelfWidget(view,parent,files){
  const plugin=view.plugin,wrapper=parent.createDiv({cls:'writer-v108-books-widget'});
  const toolbar=wrapper.createDiv({cls:'writer-v108-books-widget-toolbar'});
- const projects=writerV10BookshelfProjects(plugin);
+ const projects=writerV10BookshelfProjects(plugin,files);
  toolbar.createSpan({text:projects.length+' '+writerUi('livros','books')});
  toolbar.createEl('button',{text:writerUi('Ver biblioteca','View library'),attr:{type:'button'}})
   .addEventListener('click',()=>writerV10OpenBookshelf(plugin));
@@ -26211,9 +26210,9 @@ function writerV10RenderReadingWidget(view,parent){
   detail.createEl('p',{text:words+' '+writerUi('palavras','words')+' · '+headings+' '+writerUi('títulos','headings')+' · ~'+minutes+' min'});
  }).catch(()=>{if(detail.isConnected)detail.setText(writerUi('Não foi possível ler esta nota.','Could not read this note.'));});
 }
-function writerV10RenderZoteroWidget(view,parent){
+function writerV10RenderZoteroWidget(view,parent,markdownFiles=view.app.vault.getMarkdownFiles?.()||[]){
  const host=view.card(parent,'zotero','Biblioteca Zotero','Zotero library');
- const files=(view.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
+ const files=markdownFiles.filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
  host.createEl('p',{text:files.length+' '+writerUi('notas importadas','imported notes')});
  const cite=host.createEl('button',{text:writerUi('Inserir citação…','Insert citation…')});
  cite.addEventListener('click',()=>writerV10ZoteroPicker(view.plugin));
@@ -26267,8 +26266,14 @@ function writerV10ZoteroPicker(plugin){
  modal.open();
 }
 function writerV10ZoteroImportedReferences(plugin){
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
- return files.map(file=>writerV10ZoteroRef(plugin,file));
+ if(typeof writerV92ZoteroIsSource!=='function')return [];
+ const references=[];
+ for(const file of plugin.app.vault.getMarkdownFiles?.()||[]){
+  if(!writerV92ZoteroIsSource(plugin,file))continue;
+  references.push(writerV10ZoteroRef(plugin,file));
+  if(references.length===500)break;
+ }
+ return references;
 }
 async function writerV10ZoteroReferences(plugin,imported=writerV10ZoteroImportedReferences(plugin)){
  try{

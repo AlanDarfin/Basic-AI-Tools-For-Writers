@@ -283,9 +283,9 @@ function writerV10RenderReadingWidget(view,parent){
   detail.createEl('p',{text:words+' '+writerUi('palavras','words')+' · '+headings+' '+writerUi('títulos','headings')+' · ~'+minutes+' min'});
  }).catch(()=>{if(detail.isConnected)detail.setText(writerUi('Não foi possível ler esta nota.','Could not read this note.'));});
 }
-function writerV10RenderZoteroWidget(view,parent){
+function writerV10RenderZoteroWidget(view,parent,markdownFiles=view.app.vault.getMarkdownFiles?.()||[]){
  const host=view.card(parent,'zotero','Biblioteca Zotero','Zotero library');
- const files=(view.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
+ const files=markdownFiles.filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(view.plugin,file));
  host.createEl('p',{text:files.length+' '+writerUi('notas importadas','imported notes')});
  const cite=host.createEl('button',{text:writerUi('Inserir citação…','Insert citation…')});
  cite.addEventListener('click',()=>writerV10ZoteroPicker(view.plugin));
@@ -339,8 +339,14 @@ function writerV10ZoteroPicker(plugin){
  modal.open();
 }
 function writerV10ZoteroImportedReferences(plugin){
- const files=(plugin.app.vault.getMarkdownFiles?.()||[]).filter(file=>typeof writerV92ZoteroIsSource==='function'&&writerV92ZoteroIsSource(plugin,file)).slice(0,500);
- return files.map(file=>writerV10ZoteroRef(plugin,file));
+ if(typeof writerV92ZoteroIsSource!=='function')return [];
+ const references=[];
+ for(const file of plugin.app.vault.getMarkdownFiles?.()||[]){
+  if(!writerV92ZoteroIsSource(plugin,file))continue;
+  references.push(writerV10ZoteroRef(plugin,file));
+  if(references.length===500)break;
+ }
+ return references;
 }
 async function writerV10ZoteroReferences(plugin,imported=writerV10ZoteroImportedReferences(plugin)){
  try{

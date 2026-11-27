@@ -13,11 +13,11 @@ function load(path,globals,names){
 test('Homepage widget catalog includes Books and Trash, never Related Notes',()=>{
  const home=read('src/workspace/writing-home.js'),books=read('src/projects/bookshelf.js');
  assert.match(home,/books:p=>\{/);
- assert.match(home,/writerV10RenderBookshelfWidget\(this,card\)/);
+ assert.match(home,/writerV10RenderBookshelfWidget\(this,card,markdownFiles\(\)\)/);
  assert.match(home,/trash:p=>writerV10RenderTrashWidget\(this,p\)/);
  assert.doesNotMatch(home,/related:p=>/);
  assert.doesNotMatch(home,/related:\['link-2'/);
- assert.match(books,/function writerV10RenderBookshelfWidget\(view,parent\)/);
+ assert.match(books,/function writerV10RenderBookshelfWidget\(view,parent,files\)/);
  assert.match(books,/for\(const project of books\.slice\(0,4\)\)writerV10BookshelfCard/);
 });
 test('Old widget settings migrate Books into visible Home without losing user layout',()=>{

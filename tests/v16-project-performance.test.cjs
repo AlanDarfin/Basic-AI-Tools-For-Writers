@@ -39,3 +39,44 @@ test('Compendium shares metadata and folder lookups per scan but refreshes next 
  assert.equal(c.writerV7ProjectNotes(view,{})[0].tags.join(','),'#item,#character');
  assert.equal(reads,6);assert.equal(lookups,4);
 });
+
+test('Homepage Books and Zotero use the same per-render file snapshot',()=>{
+ const read=path=>fs.readFileSync(path,'utf8');
+ const home=read('src/workspace/writing-home.js');
+ const bookshelf=read('src/projects/bookshelf.js');
+ const discovery=read('src/workspace/discovery.js');
+ const slice=(src,start,end)=>src.slice(src.indexOf(start),src.indexOf(end,src.indexOf(start)));
+ const files=[{path:'A.md',basename:'A',extension:'md'}];let scans=0;
+ const vault={getMarkdownFiles:()=>{scans++;return files;}};
+ const plugin={app:{vault},settings:{}};
+ const c=vm.createContext({longformIndex:file=>({file}),writerV92ZoteroIsSource:()=>true,writerUi:(pt,en)=>en});
+ vm.runInContext(slice(home,'function writerV16HomeMarkdownSnapshot','function writerV8HomeTopFiles')+
+  slice(bookshelf,'function writerV10BookshelfProjects','function writerV10BookCover')+
+  slice(discovery,'function writerV10RenderZoteroWidget','function writerV10ZoteroRef'),c);
+ const snapshot=c.writerV16HomeMarkdownSnapshot(vault);
+ const node={createEl:()=>node,addEventListener:()=>{}};
+ const view={app:plugin.app,plugin,card:()=>node};
+ assert.equal(scans,0);
+ assert.equal(c.writerV10BookshelfProjects(plugin,snapshot()).length,1);
+ c.writerV10RenderZoteroWidget(view,node,snapshot());
+ assert.equal(scans,1);
+ files.push({path:'B.md',basename:'B',extension:'md'});
+ assert.equal(c.writerV10BookshelfProjects(plugin,snapshot()).length,1);
+ assert.equal(c.writerV10BookshelfProjects(plugin).length,2);
+ assert.equal(scans,2);
+ assert.match(home,/writerV10RenderBookshelfWidget\(this,card,markdownFiles\(\)\)/);
+ assert.match(home,/writerV10RenderZoteroWidget\(this,p,markdownFiles\(\)\)/);
+});
+test('Zotero imported-reference collection stops at 500 matches and refreshes on each call',()=>{
+ const source=fs.readFileSync('src/workspace/discovery.js','utf8');
+ let inspected=0;
+ const files=Array.from({length:1500},(_,i)=>({path:i+'.md',basename:String(i)}));
+ const c=vm.createContext({writerV92ZoteroIsSource:(p,f)=>{inspected++;return Number(f.basename)%2===0;},
+  writerV10ZoteroRef:(p,f)=>({title:f.basename})});
+ vm.runInContext(source.slice(source.indexOf('function writerV10ZoteroImportedReferences'),source.indexOf('async function writerV10ZoteroReferences')),c);
+ const plugin={app:{vault:{getMarkdownFiles:()=>files}}};
+ const result=c.writerV10ZoteroImportedReferences(plugin);
+ assert.equal(result.length,500);assert.equal(result[499].title,'998');assert.equal(inspected,999);
+ files.shift();inspected=0;
+ assert.equal(c.writerV10ZoteroImportedReferences(plugin)[0].title,'2');assert.equal(inspected,1000);
+});

@@ -1,6 +1,6 @@
 # Basic v16 — CSS foundation (working plan)
 
-Status: fourth implementation phase (ordered manifest first); version remains unchanged until integration and release.
+Status: fourth implementation phase (pilot file relocation); version remains unchanged until integration and release.
 
 ## Design contracts
 - Native theme tokens remain authoritative. No global reset, no !important escalation and no changes to third-party DOM without a feature-specific host.
@@ -44,3 +44,10 @@ Run npm run build:css, npm run check:css, npm test. Test editor width with each 
 - The CSS builder and repository audit use the same manifest. Six historical registration tests now inspect the manifest; new regression checks cover duplicates, invalid paths, categories and ordering.
 - No stylesheet files were physically relocated in this pass. Establish a complete reproducible build and audit all path consumers before moving modules to ownership folders. No shipped CSS or JS runtime changes are intended by this tooling-only step.
 - The old and new manifest order were compared programmatically. Full repository build and runtime tests remain pending.
+
+## Phase 4 — pilot physical relocation and CI follow-up
+
+- CI run 1363 completed the clean bundle rebuild and ran all 178 regression files: 175 passed and 3 failed. The failures asserted old CSS contracts: unengaged Typewriter padding, an implicit Longform action column, and obsolete desktop status geometry. All three assertions were updated to verify the intended scoped contracts rather than removing coverage.
+- Physically relocated `legacy-dictionary-settings.css` and `legacy-templates.css` into `src/styles/compat/`, and `legacy-writing-tools.css` into `src/styles/editor/`. Each destination blob was verified identical to its original before the old path was removed. Manifest positions were preserved exactly; no runtime changes are intended.
+- Added regression checks for the new paths, ownership, uniqueness and cascade order. Other modules remain in place until their path consumers and CI are checked.
+- The previous full build succeeded; the new commit still requires clean build/CI verification. Actual Android and desktop visual checks remain outstanding.

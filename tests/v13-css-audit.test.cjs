@@ -65,3 +65,16 @@ test('CSS phase 3: component layout stays scoped and responsive',()=>{
  assert.ok(rules.some(r=>r.selector==='.writer-v9216-space-chip > span'&&r.body.includes('min-width:0')));
  assert.ok(rules.some(r=>r.selector==='.dictionary-view-content.writer-tool-root .writer-lt-result-actions'&&r.body.includes('repeat(auto-fit,minmax(min(100%,120px),1fr))')));
 });
+
+test('CSS phase 4: ordered manifest validates paths and ownership without regrouping cascade',()=>{
+ const {entries,sections,categories,validateEntries}=require('../scripts/css-manifest.js');
+ assert.deepEqual(sections,entries.map(e=>e.path));
+ assert.equal(new Set(sections).size,sections.length);
+ assert.ok(categories.every(c=>entries.some(e=>e.category===c)));
+ assert.ok(sections.indexOf('v9-5-timeline.css')<sections.indexOf('v12-0-5-timeline-dragger.css'));
+ assert.ok(sections.indexOf('v12-0-5-home-widgets.css')<sections.indexOf('v13-foundation.css'));
+ assert.throws(()=>validateEntries([entries[0],entries[0]]),/Duplicate CSS module/);
+ assert.throws(()=>validateEntries([{path:'../styles.css',category:'core'}]),/Invalid CSS module path/);
+ assert.throws(()=>validateEntries([{path:'test.css',category:'unknown'}]),/Invalid CSS category/);
+ for(const file of sections)assert.ok(fs.existsSync('src/styles/'+file),file);
+});

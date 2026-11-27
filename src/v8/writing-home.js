@@ -84,31 +84,55 @@ function writerV8HomeStats(plugin){
  return {notes:files.length,recent:files.filter(f=>(f.stat?.mtime||0)>=since).length,
   projects:plugin.app.workspace.getLeavesOfType?.(PROJECT_VIEW)?.length||0};
 }
+// One pending measurement per render; retained observer callbacks become inert.
+function writerV16HomeFrameQueue(request,cancel,update){
+ let pending=null,disposed=false;
+ return {
+  schedule(){
+   if(disposed||pending)return;
+   const ticket={id:null};pending=ticket;
+   ticket.id=request(()=>{
+    if(disposed||pending!==ticket)return;
+    pending=null;update();
+   });
+  },
+  dispose(){
+   if(disposed)return;
+   disposed=true;
+   const ticket=pending;pending=null;
+   if(ticket?.id!=null)cancel(ticket.id);
+  }
+ };
+}
 class WriterV8HomeView extends ItemView{
  constructor(leaf,plugin){super(leaf);this.plugin=plugin;this.disposed=false;this.saveTimer=null;this.widgetResizeObserver=null;}
  getViewType(){return WRITER_V8_HOME_VIEW;}
  getDisplayText(){return String(this.plugin.settings?.v8Finish?.homeTitle||'').trim()||writerUi('Início · Escrita','Home · Writing');}
  getIcon(){return writerV8HomeIconName(this.plugin.settings?.v8Finish?.homeIcon);}
  async onOpen(){
+  if(this.homeSession)return;
+  const session=this.homeSession={};
   this.disposed=false;this.homeQuote=null;this.homeQuotePrevious='';this.homeGalleryImage=null;
   this.render();
   // Desktop-only: focus the search once when this view opens, not on every rerender.
   if(!writerV8HomeIsMobile(this.plugin)){
    this.homeFocusTimer=setTimeout(()=>{
-    if(!this.disposed&&this.app.workspace.activeLeaf===this.leaf){
+    if(this.homeSession===session&&!this.disposed&&this.app.workspace.activeLeaf===this.leaf){
      const target=this.homeSurfingInput?.isConnected?this.homeSurfingInput:this.homeSearchInput;
      if(target?.isConnected)target.focus({preventScroll:true});
     }
    },0);
   }
   this.writerV8ClockTimer=setInterval(()=>{
-   if(this.disposed)return;
+   if(this.disposed||this.homeSession!==session)return;
    this.writerV8ClockRefresh?.();
    this.syncSurfingVisibility();
   },1000);
  }
  async onClose(){
-  this.disposed=true;
+  this.disposed=true;this.homeSession=null;
+  this.homeRenderGeneration=(this.homeRenderGeneration||0)+1;
+  this.widgetFrameQueue?.dispose();this.widgetFrameQueue=null;
   clearTimeout(this.homeFocusTimer);this.homeFocusTimer=null;
   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
   this.homeSearchInput=null;this.homeSurfingInput=null;
@@ -118,8 +142,14 @@ class WriterV8HomeView extends ItemView{
   if(unsaved)await this.plugin.saveSettings();
  }
  saveSoon(){
+  if(this.disposed)return;
   clearTimeout(this.saveTimer);
-  this.saveTimer=setTimeout(()=>{this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));},600);
+  const session=this.homeSession;
+  const timer=setTimeout(()=>{
+   if(this.disposed||this.homeSession!==session||this.saveTimer!==timer)return;
+   this.saveTimer=null;void this.plugin.saveSettings().catch(e=>console.warn('[Basic AI] homepage settings:',e));
+  },600);
+  this.saveTimer=timer;
  }
  widgetPreferences(){
   const global=this.plugin.settings.v8Finish;
@@ -143,6 +173,8 @@ class WriterV8HomeView extends ItemView{
  render(){
   if(this.disposed)return;
   const scroll=this.contentEl.scrollTop||0;
+  this.homeRenderGeneration=(this.homeRenderGeneration||0)+1;
+  this.widgetFrameQueue?.dispose();this.widgetFrameQueue=null;
   clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
   this.writerV8ClockRefresh=null;
   this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
@@ -346,8 +378,11 @@ class WriterV8HomeView extends ItemView{
   }
  }
  installWidgetGrid(grid){
+  this.widgetFrameQueue?.dispose();
+  this.widgetResizeObserver?.disconnect();this.widgetResizeObserver=null;
+  const generation=this.homeRenderGeneration;
   const update=()=>{
-   if(this.disposed||!grid.isConnected)return;
+   if(this.disposed||this.homeRenderGeneration!==generation||!grid.isConnected)return;
    // Responsive widths depend on the pane, never the overall monitor.
    // Reset stale inline frame widths while compact, restore when expanded.
    const compact=grid.clientWidth<=760;
@@ -367,18 +402,24 @@ class WriterV8HomeView extends ItemView{
    }
    const gap=parseFloat(getComputedStyle(grid).rowGap)||10;
    const row=8;
-   for(const card of grid.querySelectorAll('[data-section]')){
-    const height=card.getBoundingClientRect().height;
-    if(height>0)card.style.gridRowEnd='span '+Math.max(1,Math.ceil((height+gap)/(row+gap)));
+   const measurements=[...grid.querySelectorAll('[data-section]')].map(card=>[card,card.getBoundingClientRect().height]);
+   for(const [card,height] of measurements){
+    const span='span '+Math.max(1,Math.ceil((height+gap)/(row+gap)));
+    if(height>0&&card.style.gridRowEnd!==span)card.style.gridRowEnd=span;
    }
   };
   // Each widget uses its own measured height, so short widgets fill available space.
-  if(typeof ResizeObserver==='function'){
-   this.widgetResizeObserver=new ResizeObserver(()=>requestAnimationFrame(update));
+  const host=grid.ownerDocument?.defaultView;
+  const request=host?.requestAnimationFrame?.bind(host)||requestAnimationFrame;
+  const cancel=host?.cancelAnimationFrame?.bind(host)||cancelAnimationFrame;
+  const queue=this.widgetFrameQueue=writerV16HomeFrameQueue(request,cancel,update);
+  const Observer=host?.ResizeObserver||(typeof ResizeObserver==='function'?ResizeObserver:null);
+  if(Observer){
+   this.widgetResizeObserver=new Observer(()=>queue.schedule());
    for(const card of grid.querySelectorAll('[data-section]'))this.widgetResizeObserver.observe(card);
    this.widgetResizeObserver.observe(grid);
   }
-  requestAnimationFrame(update);
+  queue.schedule();
  }
  setWidgetSize(key,size){
   if(!WRITER_V8_HOME_SECTIONS.includes(key)||!['compact','normal','wide'].includes(size))return;
@@ -634,6 +675,8 @@ class WriterV8HomeView extends ItemView{
   box.addClass('writer-v901-home-search-card');
   const input=box.createEl('input',{cls:'writer-v8-home-search',attr:{type:'search',placeholder:writerUi('Pesquisar notas por nome, caminho ou conteúdo indexado…','Find notes by name, path or indexed content…'),'aria-label':writerUi('Buscar notas','Search notes'),autocomplete:'off'}});
   this.homeSearchInput=input;
+  const generation=this.homeRenderGeneration;
+  const current=()=>!this.disposed&&this.homeRenderGeneration===generation&&this.homeSearchInput===input;
   const results=box.createDiv({cls:'writer-v8-home-file-list writer-v901-home-search-results',attr:{role:'list','aria-label':writerUi('Notas encontradas','Matching notes')}});
   const status=box.createDiv({cls:'writer-v901-home-search-status',attr:{role:'status','aria-live':'polite','aria-atomic':'true'}});
   // A leading slash is a web-only command, not part of the search term.
@@ -653,6 +696,7 @@ class WriterV8HomeView extends ItemView{
    status.setText(writerUi('Selecionada ','Selected ')+(selected+1)+' / '+matches.length+' · '+file.path+' · '+writerUi('Enter para abrir','Enter to open'));
   };
   const draw=(preserve=false)=>{
+   if(!current())return;
    clearTimeout(this.homeSearchTimer);this.homeSearchTimer=null;
    const previous=preserve?matches[selected]?.path:'';
    results.empty();results.hidden=true;status.hidden=true;
@@ -708,7 +752,7 @@ class WriterV8HomeView extends ItemView{
     if(slashSearch())await writerV8HomeOpenNativeSearch(this.plugin,slashTerm());
     else await writerV8HomeOpenURL(this.plugin,input.value);
    }catch(error){new Notice(writerUi('Não foi possível abrir: ','Unable to open: ')+String(error.message||error).slice(0,160));}
-   finally{updateLink();}
+   finally{if(current())updateLink();}
   };
   link.addEventListener('click',()=>void open());
   input.addEventListener('keydown',event=>{
@@ -731,11 +775,13 @@ class WriterV8HomeView extends ItemView{
    }
   });
   input.addEventListener('input',()=>{
+   if(!current())return;
    updateLink();
    if(!input.value.trim()||slashSearch()){draw();return;}
    results.hidden=true;status.hidden=true;
    clearTimeout(this.homeSearchTimer);
-   this.homeSearchTimer=setTimeout(draw,100);
+   const timer=setTimeout(()=>{if(current()&&this.homeSearchTimer===timer)draw();},100);
+   this.homeSearchTimer=timer;
   });
   const focus=event=>{if(event.key==='/'&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&
     !/INPUT|TEXTAREA/.test(event.target?.tagName||'')){event.preventDefault();input.focus();}};
@@ -1096,7 +1142,7 @@ class WriterV8HomeView extends ItemView{
   const manual=writerV8HomeQuoteChoices(this.plugin.settings.v8Finish.homeQuotes).map(([text,by])=>[text,by,null,null]);
   const mode=writerV92ZoteroQuoteMode(this.plugin),read=this.plugin.writerV92Research?.quotes;
   let loading=mode!=='manual'&&Boolean(read),list=mode==='only'?[]:manual;
-  const previous=this.homeQuote;
+  const previous=this.homeQuote,generation=this.homeRenderGeneration;
   const pick=(prior)=>list.find(quote=>quote[0]===prior?.[0]&&quote[2]===prior?.[2])||writerV8HomePick(list,this.homeQuotePrevious);
   let current=pick(previous);
   const initial=current;
@@ -1123,7 +1169,7 @@ class WriterV8HomeView extends ItemView{
   });
   draw();
   const load=entries=>{
-   if(!box.isConnected)return;
+   if(this.disposed||this.homeRenderGeneration!==generation||!box.isConnected)return;
    loading=false;
    list=mode==='both'?[...manual,...entries]:entries.length||mode==='only'?entries:manual;
    current=pick(current===initial?previous||current:current);
@@ -1204,14 +1250,16 @@ class WriterV8HomeView extends ItemView{
   const fill=track.createDiv({cls:'writer-v903-goal-fill'});
   const foot=box.createEl('p',{cls:'writer-v8-home-muted',text:file?.path||writerUi('Abra uma nota Markdown para acompanhar.','Open a Markdown note to begin tracking.')});
   if(!(file instanceof TFile)||file.extension!=='md')return;
+  const generation=this.homeRenderGeneration;
+  const current=()=>!this.disposed&&this.homeRenderGeneration===generation&&box.isConnected;
   Promise.resolve(this.app.vault.cachedRead(file)).then(content=>{
-   if(this.disposed||!box.isConnected)return;
+   if(!current())return;
    const words=(String(content||'').match(/[^\s]+/g)||[]).length;
    count.setText(String(words));target.setText('/ '+cfg.homeWordGoal+' '+writerUi('palavras','words'));
    fill.style.width=Math.min(100,words/cfg.homeWordGoal*100)+'%';
    track.setAttribute('aria-valuenow',String(Math.min(words,cfg.homeWordGoal)));
    foot.setText(file.path);
-  }).catch(()=>{foot.setText(writerUi('Não foi possível ler a nota.','Could not read note.'));});
+  }).catch(()=>{if(current())foot.setText(writerUi('Não foi possível ler a nota.','Could not read note.'));});
  }
 
 }

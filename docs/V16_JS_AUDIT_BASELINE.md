@@ -48,3 +48,7 @@ The permanent Menu interceptors previously restored only if still outermost, lea
 ## Phase 7.3 checkpoint
 
 Explorer adapter ownership is now split by getSortedFolderItems and setSortOrder method owner. Disposed wrappers forward natively even if retained by third-party wrappers. Session and generation checks prevent late refresh/observer/layout work; a queued sort survives DOM refresh coalescing. Concealment and drag state now restore prior values rather than leaving hidden files after unload. No measured performance claims; live explorer/Spaces behavior remains a QA gate.
+
+### Phase 7.4 — Homepage lifecycle (view pass)
+
+Coalesce widget grid measurements into a single cancellable frame, invalidate old render generations, and avoid unchanged grid span writes. The Home view owns its focus/clock/save timers across reopen; search, Zotero quotes and word-target callbacks cannot update stale renders. Existing widget order, geometry and persistence format are unchanged. This is a lifecycle correction, not a measured performance benchmark. Validate with lifecycle fixtures and full CI; registration timers, real desktop/Android and third-party asynchronous widget QA remain follow-up work.

@@ -137,3 +137,30 @@ test('explorer registration rejects stale layout, observer and timer callbacks',
  register(plugin);ready[1]();assert.equal(commands,10);assert.equal(timers.size,1);
  cleanups[0]();assert.equal(timers.size,1);cleanups[1]();
 });
+
+test('homepage grid coalesces measurements and cancels the pending frame on disposal',()=>{
+ const create=load('src/v8/writing-home.js','writerV16HomeFrameQueue',{ItemView:class{}});
+ const frames=new Map();let seq=0,updates=0;
+ const q=create(fn=>{frames.set(++seq,fn);return seq;},id=>frames.delete(id),()=>updates++);
+ q.schedule();q.schedule();q.schedule();assert.equal(frames.size,1);
+ const [id,run]=[...frames.entries()][0];frames.delete(id);run();assert.equal(updates,1);
+ q.schedule();assert.equal(frames.size,1);const stale=[...frames.values()][0];
+ q.dispose();q.dispose();stale();q.schedule();
+ assert.equal(frames.size,0);assert.equal(updates,1);
+});
+test('homepage grid ignores callbacks retained by an old observer and avoids redundant style writes',()=>{
+ const frames=new Map(),observers=[];let seq=0,writes=0,span='';
+ const host={requestAnimationFrame(fn){assert.equal(this,host);frames.set(++seq,fn);return seq;},cancelAnimationFrame(id){assert.equal(this,host);frames.delete(id);},
+ ResizeObserver:class{constructor(fn){this.fn=fn;observers.push(this);}observe(){}disconnect(){this.disconnected=true;}}};
+ const card={getBoundingClientRect:()=>({height:36}),style:{get gridRowEnd(){return span;},set gridRowEnd(v){writes++;span=v;}}};
+ const grid={ownerDocument:{defaultView:host},isConnected:true,clientWidth:900,dataset:{basicCompactLayout:'false'},querySelectorAll:()=>[card]};
+ const View=load('src/v8/writing-home.js','WriterV8HomeView',{ItemView:class{},getComputedStyle:()=>({rowGap:'10'})});
+ const view=Object.create(View.prototype);view.homeRenderGeneration=1;
+ const flush=()=>{for(const [id,fn] of [...frames]){frames.delete(id);fn();}};
+ view.installWidgetGrid(grid);observers[0].fn();observers[0].fn();assert.equal(frames.size,1);
+ flush();assert.equal(writes,1);observers[0].fn();flush();assert.equal(writes,1);
+ observers[0].fn();const stale=[...frames.values()][0];view.homeRenderGeneration++;
+ view.installWidgetGrid(grid);assert.equal(observers[0].disconnected,true);assert.equal(frames.size,1);
+ observers[0].fn();stale();assert.equal(frames.size,1);flush();assert.equal(writes,1);
+ view.widgetFrameQueue.dispose();view.widgetResizeObserver.disconnect();
+});

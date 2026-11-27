@@ -22,10 +22,11 @@ for(const f of files){
   &&/^(?:<<<<<<< |=======\r?$|>>>>>>> )/m.test(get(f)))
   errors.push('Unresolved merge marker: '+f);
 }
-const bundle=get('scripts/build-v3.js'),cssBuild=get('scripts/build-css.js'),pkg=JSON.parse(get('package.json'));
+const bundle=get('scripts/build-v3.js'),pkg=JSON.parse(get('package.json'));
+const {entries,sections}=require('./css-manifest.js');
 function inventory(src,re){const m=src.match(re);return m?[...m[1].matchAll(/'([^']+)'/g)].map(x=>x[1]):[];}
 const sources=inventory(bundle,/const sources=\[([\s\S]*?)\];/).map(s=>'src/'+(s.includes('/')?s:'v3/'+s)+'.js');
-const styles=inventory(cssBuild,/const sections=\[([\s\S]*?)\];/).map(s=>'src/styles/'+s);
+const styles=sections.map(s=>'src/styles/'+s);
 const tests=[...String(pkg.scripts['test:sequential']||'').matchAll(/node\s+(?:--test\s+)?(tests\/[\w.\/-]+)/g)].map(x=>x[1]);
 for(const f of [...sources,...styles,...tests])if(!files.includes(f))errors.push('Missing referenced file: '+f);
 for(const [label,items] of [['source',sources],['style',styles],['test',tests]]){
@@ -53,7 +54,7 @@ for(const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)){
 const repeated=[...selectors].filter(([,count])=>count>1).sort((a,b)=>b[1]-a[1]);
 console.log(JSON.stringify({
  auditedFiles:files.length,bytes,fileTypes:ext,sourceModules:sources.length,
- styleModules:styles.length,registeredTests:tests.length,
+ styleModules:styles.length,styleCategories:entries.reduce((acc,e)=>(acc[e.category]=(acc[e.category]||0)+1,acc),{}),registeredTests:tests.length,
  repeatedCssSelectors:repeated.length,topRepeatedSelectors:repeated.slice(0,10),
  errors,warnings
 },null,2));

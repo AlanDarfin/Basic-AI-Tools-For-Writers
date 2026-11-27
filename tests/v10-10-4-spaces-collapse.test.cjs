@@ -167,7 +167,7 @@ test('Spaces selector is restored when Android recreates native tabs',()=>{
  assert.equal(observers[0].disconnected,true);
 });
 test('The mobile collapsing panel is positioned above tabs, not in explorer scroll',()=>{
- const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+ const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
  assert.match(css,/\.writer-v1014-mobile-spaces-anchor/);
  assert.match(css,/inset:auto 8px calc\(100% \+ 3px\)/);
  assert.match(css,/\.writer-v1014-spaces-options\[hidden\]/);

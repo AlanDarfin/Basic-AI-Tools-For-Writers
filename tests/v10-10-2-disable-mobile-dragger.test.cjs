@@ -5,7 +5,7 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const block=fs.readFileSync('src/v10/block-dragger.js','utf8');
 const media=fs.readFileSync('src/v10/media-drag-extension.js','utf8');
-const css=fs.readFileSync('src/styles/v10-2-workflow.css','utf8');
+const css=fs.readFileSync('src/styles/features/v10-2-workflow.css','utf8');
 function load(source,apiNames,platformMobile=false){
  const context={
   console,

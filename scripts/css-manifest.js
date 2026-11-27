@@ -27,7 +27,7 @@ const entries=Object.freeze([
  Object.freeze({path:'blocks/v9-5-2-chat-audio.css',category:'blocks'}),
  Object.freeze({path:'core/v10-consistency.css',category:'core'}),
  Object.freeze({path:'features/v10-1-extensions.css',category:'features'}),
- Object.freeze({path:'v10-2-workflow.css',category:'features'}),
+ Object.freeze({path:'features/v10-2-workflow.css',category:'features'}),
  Object.freeze({path:'features/v11-longform-studio.css',category:'features'}),
  Object.freeze({path:'features/v11-1-integration.css',category:'features'}),
  Object.freeze({path:'mobile/v11-1-2-mobile-panels.css',category:'mobile'}),

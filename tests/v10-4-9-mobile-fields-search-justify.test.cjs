@@ -5,7 +5,7 @@ const read=path=>fs.readFileSync(path,'utf8');
 const alignment=read('src/v10/inline-alignment.js');
 const toolbar=read('src/v9/context-toolbar.js');
 const settings=read('src/v5/workspace-ux.js');
-const css=read('src/styles/v10-2-workflow.css');
+const css=read('src/styles/features/v10-2-workflow.css');
 const context={console,Date,Map,Set,Array,Math,Number,String,RegExp,
  writerUi:(pt,en)=>pt,writerModuleOn:()=>true};
 function expose(source,names,extra={}){

@@ -51,14 +51,14 @@ test('Longform book favorite style matches explorer icon and renders filled sele
  assert.equal(api.writerV10BookFavoriteIcon({settings:{v92Explorer:{favoriteIcon:'bookmark'}}}),'bookmark');
  assert.equal(api.writerV10BookFavoriteIcon({settings:{}}),'star');
  assert.equal(api.writerV10BookRecord({favorite:true,progress:100,status:'finished'}).favorite,true);
- const source=read('src/v10/bookshelf.js'),css=read('src/styles/v10-2-workflow.css');
+ const source=read('src/v10/bookshelf.js'),css=read('src/styles/features/v10-2-workflow.css');
  assert.match(source,/classList\.toggle\('is-favorite',record\.favorite\)/);
  assert.match(source,/aria-pressed':String\(record\.favorite\)/);
  assert.match(css,/\.writer-v108-book-card\.is-favorite > \.writer-v108-book-favorite svg\{/);
  assert.match(css,/fill:currentColor/);
 });
 test('Related Notes is a panel with bounded self-sizing rows and no Home widget',()=>{
- const src=read('src/v10/discovery.js'),css=read('src/styles/v10-2-workflow.css');
+ const src=read('src/v10/discovery.js'),css=read('src/styles/features/v10-2-workflow.css');
  assert.match(src,/class WriterV10RelatedView extends ItemView/);
  assert.match(src,/writer-v10-related-card/);
  assert.match(src,/writer-v10-related-title/);

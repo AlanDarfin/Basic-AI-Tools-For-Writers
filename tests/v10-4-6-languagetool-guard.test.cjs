@@ -34,7 +34,7 @@ test('LanguageTool suggestion menu is compact and pauses cursor/typewriter track
  assert.equal(guard.isSuspended(),true);
  assert.ok(resets>=1);
  assert.ok(cancels>=1);
- const css=src('src/styles/v10-2-workflow.css');
+ const css=src('src/styles/features/v10-2-workflow.css');
  assert.match(css,/\.menu\.writer-v406-lt-compact/);
  assert.match(css,/\.writer-review-floating \.writer-lt-choices/);
  guard.typing();

@@ -19,6 +19,21 @@ const lifecycle=new Map([
  ['addCommand','command'],['removeCommand','command-remove'],['loadData','data-load'],['saveData','data-save'],['saveSettings','settings-save'],
  ['AbortController','abort-controller'],['abort','abort-candidate'],['onLayoutReady','layout-ready']
 ]);
+// Static review candidates: these calls may be cheap or necessary in context.
+// Counts are call sites, not measured runtime costs or proof of a leak.
+const performanceCalls=new Map([
+ ['getMarkdownFiles','vault-markdown-scan'],['getFiles','vault-file-scan'],['getAllLoadedFiles','vault-tree-scan'],
+ ['cachedRead','vault-cached-read'],['getFileCache','metadata-cache-read'],['getLeavesOfType','workspace-leaf-query'],
+ ['querySelectorAll','dom-query-all'],['querySelector','dom-query'],['getBoundingClientRect','layout-geometry-read'],
+ ['getComputedStyle','layout-style-read'],['requestAnimationFrame','frame-schedule'],
+ ['requestUrl','network-request'],['fetch','network-request']
+]);
+function performanceKind(target){
+ const name=target?.split('.').pop();
+ // Ignore unqualified generic names except browser/Obsidian global APIs.
+ if(!target||(!target.includes('.')&&!['getComputedStyle','requestAnimationFrame','requestUrl','fetch'].includes(name)))return null;
+ return performanceCalls.get(name)||null;
+}
 function member(node){
  if(!node)return null;
  if(ts.isIdentifier(node))return node.text;
@@ -102,6 +117,7 @@ function aliasWriteInventory(sf,source,regions,loc){
 function analyzeSource(source,regions=[{start:0,end:source.length,file:'main.js',lineOffset:0}]){
  const sf=ts.createSourceFile('main.js',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
  const declarations=[],prototypeWrites=[],registrations=[],commands=[],modules=new Map();
+ const performanceSites=[],functionBodies=new Map();
  const errors=sf.parseDiagnostics.map(d=>({line:sf.getLineAndCharacterOfPosition(d.start||0).line+1,message:ts.flattenDiagnosticMessageText(d.messageText,' ')}));
  const findRegion=pos=>regions.find(r=>pos>=r.start&&pos<r.end);
  function loc(node,owner){
@@ -118,6 +134,14 @@ function analyzeSource(source,regions=[{start:0,end:source.length,file:'main.js'
    const stats=modules.get(site.file);
    if(node.parent===sf&&(ts.isFunctionDeclaration(node)||ts.isClassDeclaration(node))&&node.name){
     declarations.push({name:node.name.text,kind:ts.isFunctionDeclaration(node)?'function':'class',...site});stats.topLevelDeclarations++;
+    if(ts.isFunctionDeclaration(node)&&node.body){
+     // Exact source-body comparison deliberately avoids claiming semantic equivalence.
+     const body=node.body.getText(sf);
+     if(body.length>=120){
+      if(!functionBodies.has(body))functionBodies.set(body,[]);
+      functionBodies.get(body).push({name:node.name.text,...site});
+     }
+    }
    }
    if(ts.isVariableDeclaration(node)&&node.parent?.parent?.parent===sf&&ts.isIdentifier(node.name)){
     declarations.push({name:node.name.text,kind:'variable',...site});stats.topLevelDeclarations++;
@@ -129,6 +153,10 @@ function analyzeSource(source,regions=[{start:0,end:source.length,file:'main.js'
    }
    if(ts.isCallExpression(node)||ts.isNewExpression(node)){
     const target=member(node.expression),name=target?.split('.').pop(),kind=lifecycle.get(name);
+    if(ts.isCallExpression(node)){
+     const candidate=performanceKind(target);
+     if(candidate)performanceSites.push({kind:candidate,target,...site});
+    }
     if(kind){
      registrations.push({kind,target,topLevel:depth===0,...site});stats.lifecycleSites++;
      if(kind==='command'){commands.push({id:literalCommandId(node),target,...site});stats.commandSites++;}
@@ -144,7 +172,15 @@ function analyzeSource(source,regions=[{start:0,end:source.length,file:'main.js'
  ts.forEachChild(sf,node=>visit(node));
  const aliasInventory=aliasWriteInventory(sf,source,regions,loc);
  const lifecycleCounts={};for(const row of registrations)lifecycleCounts[row.kind]=(lifecycleCounts[row.kind]||0)+1;
- return {errors,modules:[...modules.values()],declarations,prototypeWrites,registrations,commands,
+ const performanceCounts={},performanceModules=new Map();
+ for(const row of performanceSites){
+  performanceCounts[row.kind]=(performanceCounts[row.kind]||0)+1;
+  if(!performanceModules.has(row.file))performanceModules.set(row.file,{file:row.file,total:0,kinds:{}});
+  const item=performanceModules.get(row.file);item.total++;item.kinds[row.kind]=(item.kinds[row.kind]||0)+1;
+ }
+ const duplicateFunctionBodies=[...functionBodies].filter(([,sites])=>sites.length>1)
+  .map(([body,sites])=>({bodyLength:body.length,sites}));
+ return {errors,performanceSites,performanceCounts,performanceModules:[...performanceModules.values()],duplicateFunctionBodies,modules:[...modules.values()],declarations,prototypeWrites,registrations,commands,
   prototypeAliasSites:aliasInventory.aliases,prototypeAliasWriteCandidates:aliasInventory.candidates,
   repeatedAliasTargets:group(aliasInventory.candidates,'target'),
   repeatedTopLevelNames:group(declarations,'name'),repeatedPrototypeTargets:group(prototypeWrites,'target'),
@@ -180,7 +216,7 @@ function auditRepository(){
  const sources=entries.map(entry=>entry.path);
  return {...result,sourceModules:entries.length,sourceBytes:sources.reduce((n,file)=>n+Buffer.byteLength(read(file)),0),bundleBytes:Buffer.byteLength(main),
   sourceOrder:sourceIds,sourceEntries:entries,extractedLegacySources:[legacyDictionary.path],
-  generatedSources:['src/v13/settings-search-index.js','vendor/visual-kit/.basic-bundle.js']};
+  generatedSources:[entries.find(entry=>entry.id==='src/v13/settings-search-index.js').path,'vendor/visual-kit/.basic-bundle.js']};
 }
 function summarize(r){
  return {sourceModules:r.sourceModules,sourceBytes:r.sourceBytes,bundleBytes:r.bundleBytes,syntaxErrors:r.errors,
@@ -194,7 +230,11 @@ function summarize(r){
   layoutReadySites:r.registrations.filter(s=>s.kind==='layout-ready'),
   topLifecycleModules:r.modules.slice().sort((a,b)=>b.lifecycleSites-a.lifecycleSites).slice(0,12),
   topPrototypeCandidates:r.repeatedPrototypeTargets.slice().sort((a,b)=>b.sites.length-a.sites.length).slice(0,10),
-  topCommandCandidates:r.repeatedLiteralCommandIds.slice(0,10)};
+  topCommandCandidates:r.repeatedLiteralCommandIds.slice(0,10),
+  performanceSites:r.performanceSites.length,performanceCounts:r.performanceCounts,
+  topPerformanceModules:r.performanceModules.slice().sort((a,b)=>b.total-a.total||a.file.localeCompare(b.file)).slice(0,15),
+  duplicateFunctionBodyGroups:r.duplicateFunctionBodies.length,
+  duplicateFunctionBodyCandidates:r.duplicateFunctionBodies.slice(0,15)};
 }
 if(require.main===module){
  try{const r=auditRepository();console.log(JSON.stringify(process.argv.includes('--json')?r:summarize(r),null,2));if(r.errors.length)process.exitCode=1;}

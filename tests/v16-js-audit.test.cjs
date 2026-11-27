@@ -185,3 +185,22 @@ test('every manifest module has a physical home in its owner domain',()=>{
   assert.ok(!fs.existsSync(entry.id),entry.id);
  }
 });
+
+test('performance inventory counts AST call sites, not comments, strings or generic global calls',()=>{
+ const source="function work(app,root){app.vault.getMarkdownFiles();root.querySelectorAll('.note');root.getBoundingClientRect();getComputedStyle(root);requestAnimationFrame(cb);getFiles(); const fake='app.vault.getFiles()'; /* root.querySelectorAll() */}";
+ const r=analyzeSource(source);
+ assert.equal(r.errors.length,0);
+ assert.deepEqual(r.performanceCounts,{'vault-markdown-scan':1,'dom-query-all':1,'layout-geometry-read':1,'layout-style-read':1,'frame-schedule':1});
+ assert.equal(r.performanceSites.length,5);
+ assert.ok(r.performanceSites.every(site=>site.owner==='work'));
+ assert.equal(r.performanceModules[0].total,5);
+ assert.equal(r.performanceModules[0].kinds['dom-query-all'],1);
+});
+test('exact duplicate top-level function bodies are review candidates, not automatic deletions',()=>{
+ const body="{const result=items.filter(item=>item&&item.name).map(item=>({name:item.name,description:item.description||''}));return result.sort((a,b)=>a.name.localeCompare(b.name));}";
+ const source='function alpha(items)'+body+' function beta(items)'+body+' function outer(){function nested(items)'+body+'} function tiny(){return 1;} function small(){return 1;}';
+ const r=analyzeSource(source);
+ assert.equal(r.errors.length,0);
+ assert.equal(r.duplicateFunctionBodies.length,1);
+ assert.deepEqual(r.duplicateFunctionBodies[0].sites.map(site=>site.name),['alpha','beta']);
+});

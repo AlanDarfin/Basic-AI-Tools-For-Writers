@@ -1273,8 +1273,12 @@ function writerV8HomeToggleFavorite(plugin,path){
  plugin.writerV92Explorer?.schedule?.();
 }
 function writerV8RegisterHome(plugin){
+ if(plugin._writerV16HomeRegistration)return;
+ const session={active:true};plugin._writerV16HomeRegistration=session;
+ const active=()=>session.active&&plugin._writerV16HomeRegistration===session;
  plugin.registerView?.(WRITER_V8_HOME_VIEW,leaf=>new WriterV8HomeView(leaf,plugin));
  const open=async()=>{
+  if(!active())return;
   const workspace=plugin.app.workspace,existing=workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0];
   if(existing){
    // Opening an already present Home tab is a new visit, not an incidental rerender.
@@ -1289,6 +1293,7 @@ function writerV8RegisterHome(plugin){
  plugin.addCommand({id:'v1203-bookmark-current-webpage',
   name:writerUi('Web: favoritar página aberta no Surfing','Web: bookmark current Surfing page'),
   callback:async()=>{
+   if(!active())return;
    const view=plugin.app.workspace.activeLeaf?.view;
    const type=view?.getViewType?.();
    if(type!=='surfing-view'&&type!=='webviewer'){
@@ -1298,16 +1303,20 @@ function writerV8RegisterHome(plugin){
    if(!url){new Notice(writerUi('Essa página não possui um endereço web válido.','This page has no valid web address.'));return;}
    const bookmark={url,title:String(view.getCurrentTitle?.()||view.getDisplayText?.()||new URL(url).hostname).slice(0,70)};
    await open();
+   if(!active())return;
    const home=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
    home?.editWebBookmark?.(bookmark);
   }});
  plugin.addCommand({id:'v1203-web-search',name:writerUi('Web: pesquisar na homepage','Web: search from home'),
   callback:async()=>{
+   if(!active())return;
    await open();
+   if(!active())return;
    const view=plugin.app.workspace.getLeavesOfType?.(WRITER_V8_HOME_VIEW)?.[0]?.view;
    view?.homeSearchWebMode?.();
   }});
  plugin.addCommand({id:'v8-toggle-current-favorite',name:writerUi('Início: favoritar nota atual','Home: toggle current note favorite'),callback:()=>{
+  if(!active())return;
   const file=plugin.app.workspace.getActiveFile?.();
   if(!(file instanceof TFile))return new Notice(writerUi('Abra uma nota primeiro.','Open a note first.'));
   writerV8HomeToggleFavorite(plugin,file.path);
@@ -1316,25 +1325,32 @@ function writerV8RegisterHome(plugin){
  }});
  let timer=null;
  plugin.registerEvent(plugin.app.workspace.on('file-open',file=>{
-  if(!(file instanceof TFile)||file.extension!=='md')return;
+  if(!active()||!(file instanceof TFile)||file.extension!=='md')return;
   const recents=plugin.settings?.v8Finish?.homeRecent;
   if(!recents)return;
   plugin.settings.v8Finish.homeRecent=[file.path,...recents.filter(p=>p!==file.path)].slice(0,16);
   clearTimeout(timer);
-  timer=setTimeout(()=>{timer=null;void plugin.saveSettings().catch(console.warn);},1400);
+  const ticket=setTimeout(()=>{if(!active()||timer!==ticket)return;timer=null;void plugin.saveSettings().catch(console.warn);},1400);timer=ticket;
  }));
  plugin.registerEvent(plugin.app.vault.on('rename',(file,old)=>{
+  if(!active())return;
   const cfg=plugin.settings.v8Finish;
   if(!(file instanceof TFile))return;
   cfg.homeFavorites=cfg.homeFavorites.map(p=>p===old?file.path:p);
   cfg.homeRecent=cfg.homeRecent.map(p=>p===old?file.path:p);
  }));
- plugin.register?.(()=>clearTimeout(timer));
+ plugin.register?.(()=>{
+  session.active=false;clearTimeout(timer);timer=null;
+  if(plugin._writerV16HomeRegistration===session){
+   delete plugin._writerV16HomeRegistration;
+   if(plugin.writerV8HomeOpen===open)delete plugin.writerV8HomeOpen;
+  }
+ });
  // Reconcile only ATTACHED, empty root tabs; never touch existing notes,
  // settings, sidebars, restored sessions or the native Web Viewer.
  let tabTimer=null,tabBusy=false;
  const populateEmptyTabs=()=>{
-  if(tabBusy||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
+  if(!active()||tabBusy||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab||!writerModuleOn(plugin,'writingHome'))return;
   tabBusy=true;
   try{
    for(const leaf of writerV8HomeAttachedEmpty(plugin.app.workspace)){
@@ -1348,20 +1364,20 @@ function writerV8RegisterHome(plugin){
   }finally{tabBusy=false;}
  };
  const schedule=()=>{
-  if(!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab)return;
+  if(!active()||!plugin._writerV106HomeStarted||plugin._writerV106HomeStarting||!plugin.settings?.v8Finish?.homeOnNewTab)return;
   clearTimeout(tabTimer);
-  tabTimer=setTimeout(()=>{tabTimer=null;populateEmptyTabs();},85);
+  const ticket=setTimeout(()=>{if(!active()||tabTimer!==ticket)return;tabTimer=null;populateEmptyTabs();},85);tabTimer=ticket;
  };
  if(typeof plugin.app.workspace.on==='function'){
   plugin.registerEvent(plugin.app.workspace.on('layout-change',schedule));
   plugin.registerEvent(plugin.app.workspace.on('active-leaf-change',leaf=>{
-   if(writerV8HomeIsRootEmpty(leaf))schedule();
+   if(active()&&writerV8HomeIsRootEmpty(leaf))schedule();
   }));
  }
- plugin.register?.(()=>clearTimeout(tabTimer));
+ plugin.register?.(()=>{clearTimeout(tabTimer);tabTimer=null;});
  if(typeof writerV106HomeRegisterStartup==='function')writerV106HomeRegisterStartup(plugin,open);
  if(typeof plugin.app.workspace.onLayoutReady==='function')
-  plugin.app.workspace.onLayoutReady(()=>{if(plugin.settings.v8Finish.homeOnNewTab)schedule();});
+  plugin.app.workspace.onLayoutReady(()=>{if(active()&&plugin.settings.v8Finish.homeOnNewTab)schedule();});
 }
 function writerV8FinishSettings(plugin,panel){
  const cfg=plugin.settings.v8Finish;

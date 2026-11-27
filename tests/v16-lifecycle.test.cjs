@@ -164,3 +164,23 @@ test('homepage grid ignores callbacks retained by an old observer and avoids red
  observers[0].fn();stale();assert.equal(frames.size,1);flush();assert.equal(writes,1);
  view.widgetFrameQueue.dispose();view.widgetResizeObserver.disconnect();
 });
+
+test('homepage registration is idempotent and old events and timers cannot mutate a new session',async()=>{
+ const timers=new Map(),events=new Map(),commands=new Map(),cleanups=[];let seq=0,ready,saves=0,views=0,opens=0;
+ class TFile{constructor(path){this.path=path;this.extension='md';}}
+ const on=(event,fn)=>({event,fn});
+ const workspace={on,onLayoutReady:fn=>{ready=fn;},getLeavesOfType:()=>[],getLeaf:()=>{opens++;return null;}};
+ const plugin={app:{workspace,vault:{on}},settings:{v8Finish:{homeRecent:[],homeFavorites:[],homeOnNewTab:true}},_writerV106HomeStarted:true,
+ register:fn=>cleanups.push(fn),registerEvent:({event,fn})=>events.set(event,fn),registerView:()=>views++,addCommand:cmd=>commands.set(cmd.id,cmd.callback),saveSettings:async()=>{saves++;}};
+ const register=load('src/v8/writing-home.js','writerV8RegisterHome',{ItemView:class{},TFile,setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)});
+ register(plugin);register(plugin);assert.equal(views,1);assert.equal(cleanups.length,2);
+ const oldOpen=plugin.writerV8HomeOpen,oldReady=ready,oldFile=events.get('file-open'),oldRename=events.get('rename'),oldLayout=events.get('layout-change');
+ oldFile(new TFile('old.md'));oldReady();assert.equal(timers.size,2);const stale=[...timers.values()];
+ cleanups.forEach(fn=>fn());assert.equal(timers.size,0);assert.equal(plugin.writerV8HomeOpen,undefined);
+ register(plugin);events.get('file-open')(new TFile('new.md'));assert.equal(timers.size,1);
+ oldFile(new TFile('stale.md'));oldRename(new TFile('renamed.md'),'new.md');oldLayout();oldReady();await oldOpen();stale.forEach(fn=>fn());
+ assert.equal(timers.size,1);assert.equal(opens,0);assert.equal(saves,0);
+ assert.equal(Array.from(plugin.settings.v8Finish.homeRecent).join(','),'new.md,old.md');
+ for(const [id,fn] of [...timers]){timers.delete(id);fn();}assert.equal(saves,1);
+ cleanups.slice(2).forEach(fn=>fn());
+});
